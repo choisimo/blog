@@ -15,7 +15,7 @@ const Index = () => {
       <section className="bg-gradient-to-b from-primary/10 to-background py-20">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            개발자 블로그
+            nodove blog
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             개발 경험, 학습 내용, 그리고 기술적 인사이트를 공유하는 공간입니다.
@@ -137,7 +137,7 @@ const Index = () => {
       <footer className="py-8 border-t">
         <div className="container mx-auto px-4 text-center">
           <p className="text-muted-foreground">
-            © 2024 개발자 블로그. React + TypeScript + GitHub Pages로 제작되었습니다.
+            © 2024 nodove blog. React + TypeScript + GitHub Pages로 제작되었습니다.
           </p>
         </div>
       </footer>
