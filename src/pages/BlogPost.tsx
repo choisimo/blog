@@ -1,10 +1,12 @@
 import { useParams, Link, Navigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { getPostBySlug, posts } from '@/data/posts';
+import { getPostBySlug, getPosts } from '@/data/posts';
 import { formatDate } from '@/utils/blog';
+import { BlogPost as BlogPostType } from '@/types/blog';
 import { 
   Calendar, 
   Clock, 
@@ -16,22 +18,60 @@ import {
 } from 'lucide-react';
 
 const BlogPost = () => {
-  const { slug } = useParams<{ slug: string }>();
+  const { year, slug } = useParams<{ year: string; slug: string }>();
+  const [post, setPost] = useState<BlogPostType | null>(null);
+  const [posts, setPosts] = useState<BlogPostType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [prevPost, setPrevPost] = useState<BlogPostType | null>(null);
+  const [nextPost, setNextPost] = useState<BlogPostType | null>(null);
   
-  if (!slug) {
+  useEffect(() => {
+    const loadPost = async () => {
+      if (!year || !slug) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const fullSlug = `${year}/${slug}`;
+        const allPosts = await getPosts();
+        setPosts(allPosts);
+        
+        const foundPost = allPosts.find(p => p.slug === fullSlug);
+        setPost(foundPost || null);
+        
+        // 이전/다음 포스트 찾기
+        const currentIndex = allPosts.findIndex(p => p.slug === fullSlug);
+        setPrevPost(currentIndex > 0 ? allPosts[currentIndex - 1] : null);
+        setNextPost(currentIndex < allPosts.length - 1 ? allPosts[currentIndex + 1] : null);
+      } catch (error) {
+        console.error('Failed to load post:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPost();
+  }, [year, slug]);
+  
+  if (!year || !slug) {
     return <Navigate to="/blog" replace />;
   }
-
-  const post = getPostBySlug(slug);
   
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">포스트를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!post) {
     return <Navigate to="/blog" replace />;
   }
-
-  // 이전/다음 포스트 찾기
-  const currentIndex = posts.findIndex(p => p.slug === slug);
-  const prevPost = currentIndex > 0 ? posts[currentIndex - 1] : null;
-  const nextPost = currentIndex < posts.length - 1 ? posts[currentIndex + 1] : null;
 
   return (
     <div className="min-h-screen bg-background">

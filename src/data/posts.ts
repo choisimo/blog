@@ -1,111 +1,144 @@
 import { BlogPost } from '@/types/blog';
 
-// 실제 프로젝트에서는 이 데이터를 마크다운 파일에서 동적으로 로드할 수 있습니다
-export const posts: BlogPost[] = [
-  {
-    id: '1',
-    title: 'React와 TypeScript로 블로그 만들기',
-    description: 'React와 TypeScript를 사용해서 정적 블로그를 만드는 방법을 알아보겠습니다.',
-    date: '2024-01-15',
-    category: 'Development',
-    tags: ['React', 'TypeScript', 'Blog'],
-    slug: 'react-typescript-blog',
-    content: `# React와 TypeScript로 블로그 만들기
-
-React와 TypeScript를 사용해서 정적 블로그를 만드는 것은 매우 흥미로운 프로젝트입니다.
-
-## 왜 React로 블로그를 만들까요?
-
-- **컴포넌트 기반**: 재사용 가능한 컴포넌트로 일관성 있는 UI 구축
-- **TypeScript 지원**: 타입 안정성으로 더 안전한 코드 작성
-- **생태계**: 풍부한 라이브러리와 도구들
-
-## 구현 과정
-
-1. 프로젝트 설정
-2. 블로그 구조 설계
-3. 마크다운 파싱
-4. 라우팅 설정
-
-\`\`\`typescript
-interface BlogPost {
-  id: string;
-  title: string;
-  content: string;
-}
-\`\`\`
-
-이제 시작해보세요!`,
-    readTime: 5
-  },
-  {
-    id: '2',
-    title: 'GitHub Pages 배포 자동화',
-    description: 'GitHub Actions를 사용해서 자동으로 블로그를 배포하는 방법을 설명합니다.',
-    date: '2024-01-10',
-    category: 'DevOps',
-    tags: ['GitHub Pages', 'CI/CD', 'Automation'],
-    slug: 'github-pages-automation',
-    content: `# GitHub Pages 배포 자동화
-
-GitHub Actions를 사용하면 코드를 푸시할 때마다 자동으로 사이트가 배포됩니다.
-
-## GitHub Actions 설정
-
-\`.github/workflows/deploy.yml\` 파일을 생성하고 다음과 같이 설정합니다:
-
-\`\`\`yaml
-name: Deploy to GitHub Pages
-on:
-  push:
-    branches: [ main ]
-\`\`\`
-
-## 장점
-
-- 자동화된 배포
-- 빠른 피드백
-- 안정적인 프로세스`,
-    readTime: 3
-  },
-  {
-    id: '3',
-    title: 'CSS Grid와 Flexbox 마스터하기',
-    description: 'Modern CSS 레이아웃 기법인 Grid와 Flexbox를 완전히 이해하고 실무에 적용하는 방법',
-    date: '2024-01-08',
-    category: 'CSS',
-    tags: ['CSS', 'Grid', 'Flexbox', 'Layout'],
-    slug: 'css-grid-flexbox-master',
-    content: `# CSS Grid와 Flexbox 마스터하기
-
-Modern CSS의 핵심인 Grid와 Flexbox를 완전히 마스터해보세요.
-
-## CSS Grid
-
-Grid는 2차원 레이아웃 시스템입니다.
-
-\`\`\`css
-.container {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-}
-\`\`\`
-
-## Flexbox
-
-Flexbox는 1차원 레이아웃에 최적화되어 있습니다.
-
-\`\`\`css
-.flex-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-\`\`\``,
-    readTime: 7
+function parseMarkdownFrontmatter(content: string): { frontmatter: any; content: string } {
+  const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/;
+  const match = content.match(frontmatterRegex);
+  
+  if (!match) {
+    return { frontmatter: {}, content };
   }
-];
+  
+  const frontmatterText = match[1];
+  const bodyContent = match[2];
+  
+  const frontmatter: any = {};
+  frontmatterText.split('\n').forEach(line => {
+    const colonIndex = line.indexOf(':');
+    if (colonIndex > 0) {
+      const key = line.substring(0, colonIndex).trim();
+      let value = line.substring(colonIndex + 1).trim();
+      
+      // Remove quotes if present
+      if ((value.startsWith('"') && value.endsWith('"')) || 
+          (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+      
+      // Parse arrays
+      if (value.startsWith('[') && value.endsWith(']')) {
+        try {
+          value = JSON.parse(value);
+        } catch {
+          // If JSON parsing fails, treat as string
+        }
+      }
+      
+      frontmatter[key] = value;
+    }
+  });
+  
+  return { frontmatter, content: bodyContent };
+}
+
+function createSlug(filename: string): string {
+  return filename.replace(/\.md$/, '');
+}
+
+async function loadMarkdownPosts(): Promise<BlogPost[]> {
+  const posts: BlogPost[] = [];
+  
+  try {
+    // Load 2025 posts
+    const manifest2025Response = await fetch('/src/pages/posts/2025/manifest.json');
+    const manifest2025 = await manifest2025Response.json();
+    
+    for (const filename of manifest2025.files) {
+      if (filename.endsWith('.md')) {
+        try {
+          const response = await fetch(`/src/pages/posts/2025/${filename}`);
+          const content = await response.text();
+          const { frontmatter, content: bodyContent } = parseMarkdownFrontmatter(content);
+          
+          if (frontmatter.title) {
+            posts.push({
+              id: `2025-${createSlug(filename)}`,
+              title: frontmatter.title,
+              description: frontmatter.excerpt || bodyContent.substring(0, 200) + '...',
+              date: frontmatter.date,
+              category: frontmatter.category || '기술',
+              tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
+              slug: `2025/${createSlug(filename)}`,
+              content: bodyContent,
+              readTime: parseInt(frontmatter.readTime) || Math.ceil(bodyContent.split(' ').length / 200)
+            });
+          }
+        } catch (error) {
+          console.warn(`Failed to load ${filename}:`, error);
+        }
+      }
+    }
+    
+    // Load 2024 posts
+    const manifest2024Response = await fetch('/src/pages/posts/2024/manifest.json');
+    const manifest2024 = await manifest2024Response.json();
+    
+    for (const filename of manifest2024.files) {
+      if (filename.endsWith('.md')) {
+        try {
+          const response = await fetch(`/src/pages/posts/2024/${filename}`);
+          const content = await response.text();
+          const { frontmatter, content: bodyContent } = parseMarkdownFrontmatter(content);
+          
+          if (frontmatter.title) {
+            posts.push({
+              id: `2024-${createSlug(filename)}`,
+              title: frontmatter.title,
+              description: frontmatter.excerpt || bodyContent.substring(0, 200) + '...',
+              date: frontmatter.date,
+              category: frontmatter.category || '기술',
+              tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
+              slug: `2024/${createSlug(filename)}`,
+              content: bodyContent,
+              readTime: parseInt(frontmatter.readTime) || Math.ceil(bodyContent.split(' ').length / 200)
+            });
+          }
+        } catch (error) {
+          console.warn(`Failed to load ${filename}:`, error);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load posts:', error);
+  }
+  
+  // Sort posts by date (newest first)
+  return posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+}
+
+// Initialize posts
+let posts: BlogPost[] = [];
+let postsLoaded = false;
+
+// Load posts immediately
+const initializePosts = async () => {
+  if (!postsLoaded) {
+    posts = await loadMarkdownPosts();
+    postsLoaded = true;
+  }
+};
+
+// Start loading posts
+initializePosts();
+
+export { posts };
+
+// Export a function to get posts with loading check
+export const getPosts = async (): Promise<BlogPost[]> => {
+  if (!postsLoaded) {
+    await initializePosts();
+  }
+  return posts;
+};
 
 export const getPostBySlug = (slug: string): BlogPost | undefined => {
   return posts.find(post => post.slug === slug);
