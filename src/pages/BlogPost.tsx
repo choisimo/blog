@@ -4,8 +4,8 @@ import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { getPostBySlug, getPosts } from '@/data/posts';
-import { formatDate } from '@/utils/blog';
+import { getPosts } from '@/data/posts';
+import { loadPostBySlug, formatDate } from '@/utils/blog';
 import { BlogPost as BlogPostType } from '@/types/blog';
 import { 
   Calendar, 
@@ -20,7 +20,6 @@ import {
 const BlogPost = () => {
   const { year, slug } = useParams<{ year: string; slug: string }>();
   const [post, setPost] = useState<BlogPostType | null>(null);
-  const [posts, setPosts] = useState<BlogPostType[]>([]);
   const [loading, setLoading] = useState(true);
   const [prevPost, setPrevPost] = useState<BlogPostType | null>(null);
   const [nextPost, setNextPost] = useState<BlogPostType | null>(null);
@@ -34,13 +33,15 @@ const BlogPost = () => {
 
       try {
         const fullSlug = `${year}/${slug}`;
+        
+        // Load the specific post
+        const foundPost = await loadPostBySlug(fullSlug);
+        setPost(foundPost);
+        
+        // Load all posts for navigation
         const allPosts = await getPosts();
-        setPosts(allPosts);
         
-        const foundPost = allPosts.find(p => p.slug === fullSlug);
-        setPost(foundPost || null);
-        
-        // 이전/다음 포스트 찾기
+        // Find prev/next posts
         const currentIndex = allPosts.findIndex(p => p.slug === fullSlug);
         setPrevPost(currentIndex > 0 ? allPosts[currentIndex - 1] : null);
         setNextPost(currentIndex < allPosts.length - 1 ? allPosts[currentIndex + 1] : null);

@@ -48,62 +48,73 @@ async function loadMarkdownPosts(): Promise<BlogPost[]> {
   const posts: BlogPost[] = [];
   
   try {
-    // Load 2025 posts
-    const manifest2025Response = await fetch('/src/pages/posts/2025/manifest.json');
-    const manifest2025 = await manifest2025Response.json();
+    // Get base URL for GitHub Pages
+    const baseUrl = import.meta.env.BASE_URL || '/';
     
-    for (const filename of manifest2025.files) {
-      if (filename.endsWith('.md')) {
-        try {
-          const response = await fetch(`/src/pages/posts/2025/${filename}`);
-          const content = await response.text();
-          const { frontmatter, content: bodyContent } = parseMarkdownFrontmatter(content);
-          
-          if (frontmatter.title) {
-            posts.push({
-              id: `2025-${createSlug(filename)}`,
-              title: frontmatter.title,
-              description: frontmatter.excerpt || bodyContent.substring(0, 200) + '...',
-              date: frontmatter.date,
-              category: frontmatter.category || '기술',
-              tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
-              slug: `2025/${createSlug(filename)}`,
-              content: bodyContent,
-              readTime: parseInt(frontmatter.readTime) || Math.ceil(bodyContent.split(' ').length / 200)
-            });
+    // Load 2025 posts
+    const manifest2025Response = await fetch(`${baseUrl}posts/2025/manifest.json`);
+    if (manifest2025Response.ok) {
+      const manifest2025 = await manifest2025Response.json();
+      
+      for (const filename of manifest2025.files) {
+        if (filename.endsWith('.md')) {
+          try {
+            const response = await fetch(`${baseUrl}posts/2025/${filename}`);
+            if (response.ok) {
+              const content = await response.text();
+              const { frontmatter, content: bodyContent } = parseMarkdownFrontmatter(content);
+              
+              if (frontmatter.title) {
+                posts.push({
+                  id: `2025-${createSlug(filename)}`,
+                  title: frontmatter.title,
+                  description: frontmatter.excerpt || bodyContent.substring(0, 200) + '...',
+                  date: frontmatter.date,
+                  category: frontmatter.category || '기술',
+                  tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
+                  slug: `2025/${createSlug(filename)}`,
+                  content: bodyContent,
+                  readTime: parseInt(frontmatter.readTime) || Math.ceil(bodyContent.split(' ').length / 200)
+                });
+              }
+            }
+          } catch (error) {
+            console.warn(`Failed to load ${filename}:`, error);
           }
-        } catch (error) {
-          console.warn(`Failed to load ${filename}:`, error);
         }
       }
     }
     
     // Load 2024 posts
-    const manifest2024Response = await fetch('/src/pages/posts/2024/manifest.json');
-    const manifest2024 = await manifest2024Response.json();
-    
-    for (const filename of manifest2024.files) {
-      if (filename.endsWith('.md')) {
-        try {
-          const response = await fetch(`/src/pages/posts/2024/${filename}`);
-          const content = await response.text();
-          const { frontmatter, content: bodyContent } = parseMarkdownFrontmatter(content);
-          
-          if (frontmatter.title) {
-            posts.push({
-              id: `2024-${createSlug(filename)}`,
-              title: frontmatter.title,
-              description: frontmatter.excerpt || bodyContent.substring(0, 200) + '...',
-              date: frontmatter.date,
-              category: frontmatter.category || '기술',
-              tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
-              slug: `2024/${createSlug(filename)}`,
-              content: bodyContent,
-              readTime: parseInt(frontmatter.readTime) || Math.ceil(bodyContent.split(' ').length / 200)
-            });
+    const manifest2024Response = await fetch(`${baseUrl}posts/2024/manifest.json`);
+    if (manifest2024Response.ok) {
+      const manifest2024 = await manifest2024Response.json();
+      
+      for (const filename of manifest2024.files) {
+        if (filename.endsWith('.md')) {
+          try {
+            const response = await fetch(`${baseUrl}posts/2024/${filename}`);
+            if (response.ok) {
+              const content = await response.text();
+              const { frontmatter, content: bodyContent } = parseMarkdownFrontmatter(content);
+              
+              if (frontmatter.title) {
+                posts.push({
+                  id: `2024-${createSlug(filename)}`,
+                  title: frontmatter.title,
+                  description: frontmatter.excerpt || bodyContent.substring(0, 200) + '...',
+                  date: frontmatter.date,
+                  category: frontmatter.category || '기술',
+                  tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
+                  slug: `2024/${createSlug(filename)}`,
+                  content: bodyContent,
+                  readTime: parseInt(frontmatter.readTime) || Math.ceil(bodyContent.split(' ').length / 200)
+                });
+              }
+            }
+          } catch (error) {
+            console.warn(`Failed to load ${filename}:`, error);
           }
-        } catch (error) {
-          console.warn(`Failed to load ${filename}:`, error);
         }
       }
     }
