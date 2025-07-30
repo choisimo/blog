@@ -1,0 +1,4 @@
+# GitHub Pages Jekyll bypass
+# This file ensures GitHub Pages serves the static files directly
+include:
+  - _*
