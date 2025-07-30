@@ -48,18 +48,15 @@ async function loadMarkdownPosts(): Promise<BlogPost[]> {
   const posts: BlogPost[] = [];
   
   try {
-    // Get base URL for GitHub Pages
-    const baseUrl = import.meta.env.BASE_URL || '/';
-    
     // Load 2025 posts
-    const manifest2025Response = await fetch(`${baseUrl}posts/2025/manifest.json`);
+    const manifest2025Response = await fetch(`/posts/2025/manifest.json`);
     if (manifest2025Response.ok) {
       const manifest2025 = await manifest2025Response.json();
       
       for (const filename of manifest2025.files) {
         if (filename.endsWith('.md')) {
           try {
-            const response = await fetch(`${baseUrl}posts/2025/${filename}`);
+            const response = await fetch(`/posts/2025/${filename}`);
             if (response.ok) {
               const content = await response.text();
               const { frontmatter, content: bodyContent } = parseMarkdownFrontmatter(content);
@@ -86,14 +83,14 @@ async function loadMarkdownPosts(): Promise<BlogPost[]> {
     }
     
     // Load 2024 posts
-    const manifest2024Response = await fetch(`${baseUrl}posts/2024/manifest.json`);
+    const manifest2024Response = await fetch(`/posts/2024/manifest.json`);
     if (manifest2024Response.ok) {
       const manifest2024 = await manifest2024Response.json();
       
       for (const filename of manifest2024.files) {
         if (filename.endsWith('.md')) {
           try {
-            const response = await fetch(`${baseUrl}posts/2024/${filename}`);
+            const response = await fetch(`/posts/2024/${filename}`);
             if (response.ok) {
               const content = await response.text();
               const { frontmatter, content: bodyContent } = parseMarkdownFrontmatter(content);
