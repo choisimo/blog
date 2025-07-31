@@ -1,7 +1,8 @@
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
-import { posts } from '@/data/posts';
+import { getPosts } from '@/data/posts';
+import { BlogPost as BlogPostType } from '@/types/blog';
 import { formatDate } from '@/utils/blog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,32 +16,42 @@ const BlogPost = () => {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-
-  const post = posts.find(p => p.slug === slug && p.year === year);
+  const [post, setPost] = useState<BlogPostType | null>(null);
+  const [posts, setPosts] = useState<BlogPostType[]>([]);
 
   useEffect(() => {
-    if (!post) {
-      setLoading(false);
-      setError(true);
-      return;
-    }
-
-    fetch(`/posts/${year}/${slug}.md`)
-      .then(response => {
+    const loadData = async () => {
+      try {
+        const loadedPosts = await getPosts();
+        setPosts(loadedPosts);
+        
+        const fullSlug = `${year}/${slug}`;
+        const foundPost = loadedPosts.find(p => p.slug === fullSlug);
+        
+        if (!foundPost) {
+          setError(true);
+          setLoading(false);
+          return;
+        }
+        
+        setPost(foundPost);
+        
+        // Fetch the markdown content
+        const response = await fetch(`/posts/${year}/${slug}.md`);
         if (!response.ok) {
           throw new Error('Failed to fetch');
         }
-        return response.text();
-      })
-      .then(text => {
+        const text = await response.text();
         setContent(text);
         setLoading(false);
-      })
-      .catch(() => {
+      } catch (err) {
         setError(true);
         setLoading(false);
-      });
-  }, [year, slug, post]);
+      }
+    };
+
+    loadData();
+  }, [year, slug]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -161,7 +172,7 @@ const BlogPost = () => {
             {relatedPosts.map((relatedPost) => (
               <Link
                 key={relatedPost.slug}
-                to={`/blog/${relatedPost.year}/${relatedPost.slug}`}
+                to={`/blog/${relatedPost.slug}`}
                 className="group"
               >
                 <div className="border rounded-lg p-4 hover:shadow-md transition-shadow">

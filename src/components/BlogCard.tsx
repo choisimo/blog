@@ -24,7 +24,7 @@ const BlogCard = ({ post }: BlogCardProps) => {
           </div>
         </div>
         <CardTitle className="line-clamp-2 group-hover:text-primary transition-colors">
-          <Link to={`/blog/${post.year}/${post.slug}`}>
+          <Link to={`/blog/${post.slug}`}>
             {post.title}
           </Link>
         </CardTitle>
@@ -55,7 +55,7 @@ const BlogCard = ({ post }: BlogCardProps) => {
           )}
         </div>
         <Button asChild variant="ghost" className="w-full group/button">
-          <Link to={`/blog/${post.year}/${post.slug}`}>
+          <Link to={`/blog/${post.slug}`}>
             Read more
             <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/button:translate-x-1" />
           </Link>

@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import BlogCard from '@/components/BlogCard';
-import { posts } from '@/data/posts';
+import { getPosts } from '@/data/posts';
+import { BlogPost } from '@/types/blog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,16 +19,35 @@ const Blog = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryParam = searchParams.get('category');
   
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(categoryParam || 'all');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('date');
 
+  useEffect(() => {
+    const loadPosts = async () => {
+      try {
+        console.log('Loading posts...');
+        const loadedPosts = await getPosts();
+        console.log('Loaded posts:', loadedPosts);
+        setPosts(loadedPosts);
+      } catch (error) {
+        console.error('Failed to load posts:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPosts();
+  }, []);
+
   // Get unique categories and tags
   const categories = useMemo(() => {
     const cats = new Set(posts.map(post => post.category));
     return Array.from(cats).sort();
-  }, []);
+  }, [posts]);
 
   const allTags = useMemo(() => {
     const tags = new Set<string>();
@@ -35,7 +55,7 @@ const Blog = () => {
       post.tags?.forEach(tag => tags.add(tag));
     });
     return Array.from(tags).sort();
-  }, []);
+  }, [posts]);
 
   // Filter and sort posts
   const filteredPosts = useMemo(() => {
@@ -162,7 +182,11 @@ const Blog = () => {
       </div>
 
       {/* Blog Posts Grid */}
-      {filteredPosts.length > 0 ? (
+      {loading ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Loading posts...</p>
+        </div>
+      ) : filteredPosts.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredPosts.map((post) => (
             <BlogCard key={post.slug} post={post} />

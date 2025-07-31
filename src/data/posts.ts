@@ -48,31 +48,44 @@ async function loadMarkdownPosts(): Promise<BlogPost[]> {
   const posts: BlogPost[] = [];
   
   try {
+    console.log('Loading posts...');
+    
     // Load 2025 posts
+    console.log('Fetching 2025 manifest...');
     const manifest2025Response = await fetch(`/posts/2025/manifest.json`);
+    console.log('2025 manifest response:', manifest2025Response.status, manifest2025Response.ok);
+    
     if (manifest2025Response.ok) {
       const manifest2025 = await manifest2025Response.json();
+      console.log('2025 manifest:', manifest2025);
       
       for (const filename of manifest2025.files) {
         if (filename.endsWith('.md')) {
           try {
+            console.log(`Loading 2025/${filename}...`);
             const response = await fetch(`/posts/2025/${filename}`);
+            console.log(`Response for ${filename}:`, response.status, response.ok);
+            
             if (response.ok) {
               const content = await response.text();
               const { frontmatter, content: bodyContent } = parseMarkdownFrontmatter(content);
+              console.log(`Frontmatter for ${filename}:`, frontmatter);
               
               if (frontmatter.title) {
-                posts.push({
+                const post = {
                   id: `2025-${createSlug(filename)}`,
                   title: frontmatter.title,
                   description: frontmatter.excerpt || bodyContent.substring(0, 200) + '...',
                   date: frontmatter.date,
+                  year: '2025',
                   category: frontmatter.category || '기술',
                   tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
                   slug: `2025/${createSlug(filename)}`,
                   content: bodyContent,
                   readTime: parseInt(frontmatter.readTime) || Math.ceil(bodyContent.split(' ').length / 200)
-                });
+                };
+                console.log(`Adding post:`, post);
+                posts.push(post);
               }
             }
           } catch (error) {
@@ -83,30 +96,41 @@ async function loadMarkdownPosts(): Promise<BlogPost[]> {
     }
     
     // Load 2024 posts
+    console.log('Fetching 2024 manifest...');
     const manifest2024Response = await fetch(`/posts/2024/manifest.json`);
+    console.log('2024 manifest response:', manifest2024Response.status, manifest2024Response.ok);
+    
     if (manifest2024Response.ok) {
       const manifest2024 = await manifest2024Response.json();
+      console.log('2024 manifest:', manifest2024);
       
       for (const filename of manifest2024.files) {
         if (filename.endsWith('.md')) {
           try {
+            console.log(`Loading 2024/${filename}...`);
             const response = await fetch(`/posts/2024/${filename}`);
+            console.log(`Response for ${filename}:`, response.status, response.ok);
+            
             if (response.ok) {
               const content = await response.text();
               const { frontmatter, content: bodyContent } = parseMarkdownFrontmatter(content);
+              console.log(`Frontmatter for ${filename}:`, frontmatter);
               
               if (frontmatter.title) {
-                posts.push({
+                const post = {
                   id: `2024-${createSlug(filename)}`,
                   title: frontmatter.title,
                   description: frontmatter.excerpt || bodyContent.substring(0, 200) + '...',
                   date: frontmatter.date,
+                  year: '2024',
                   category: frontmatter.category || '기술',
                   tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
                   slug: `2024/${createSlug(filename)}`,
                   content: bodyContent,
                   readTime: parseInt(frontmatter.readTime) || Math.ceil(bodyContent.split(' ').length / 200)
-                });
+                };
+                console.log(`Adding post:`, post);
+                posts.push(post);
               }
             }
           } catch (error) {
@@ -118,6 +142,8 @@ async function loadMarkdownPosts(): Promise<BlogPost[]> {
   } catch (error) {
     console.error('Failed to load posts:', error);
   }
+  
+  console.log('Total posts loaded:', posts.length);
   
   // Sort posts by date (newest first)
   return posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
