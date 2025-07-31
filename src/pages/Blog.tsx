@@ -1,6 +1,8 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import BlogCard from '@/components/BlogCard';
+import BlogCardSkeleton from '@/components/BlogCardSkeleton';
+import Pagination from '@/components/Pagination';
 import { getPosts } from '@/data/posts';
 import { BlogPost } from '@/types/blog';
 import { Input } from '@/components/ui/input';
@@ -13,28 +15,41 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, X } from 'lucide-react';
+import { Search, X, Grid, List } from 'lucide-react';
+import { useDebounce } from '@/hooks/useDebounce';
+
+const POSTS_PER_PAGE = 12;
 
 const Blog = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryParam = searchParams.get('category');
+  const pageParam = searchParams.get('page');
   
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(categoryParam || 'all');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('date');
+  const [currentPage, setCurrentPage] = useState(parseInt(pageParam || '1'));
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  
+  // Debounce search term to avoid excessive filtering
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   useEffect(() => {
     const loadPosts = async () => {
       try {
+        setLoading(true);
+        setError(null);
         console.log('Loading posts...');
         const loadedPosts = await getPosts();
-        console.log('Loaded posts:', loadedPosts);
+        console.log('Loaded posts:', loadedPosts.length);
         setPosts(loadedPosts);
       } catch (error) {
         console.error('Failed to load posts:', error);
+        setError('Failed to load blog posts. Please try again later.');
       } finally {
         setLoading(false);
       }
@@ -60,9 +75,10 @@ const Blog = () => {
   // Filter and sort posts
   const filteredPosts = useMemo(() => {
     let filtered = posts.filter(post => {
-      const matchesSearch = searchTerm === '' || 
-        post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        post.description.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = debouncedSearchTerm === '' || 
+        post.title.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        post.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        post.tags?.some(tag => tag.toLowerCase().includes(debouncedSearchTerm.toLowerCase()));
       
       const matchesCategory = selectedCategory === 'all' || post.category === selectedCategory;
       
@@ -82,23 +98,47 @@ const Blog = () => {
     }
 
     return filtered;
-  }, [searchTerm, selectedCategory, selectedTags, sortBy]);
+  }, [posts, debouncedSearchTerm, selectedCategory, selectedTags, sortBy]);
+  
+  // Pagination
+  const totalPages = Math.ceil(filteredPosts.length / POSTS_PER_PAGE);
+  const paginatedPosts = useMemo(() => {
+    const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
+    return filteredPosts.slice(startIndex, startIndex + POSTS_PER_PAGE);
+  }, [filteredPosts, currentPage]);
+  
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm, selectedCategory, selectedTags, sortBy]);
 
-  const handleTagToggle = (tag: string) => {
+  const handleTagToggle = useCallback((tag: string) => {
     setSelectedTags(prev => 
       prev.includes(tag) 
         ? prev.filter(t => t !== tag)
         : [...prev, tag]
     );
-  };
+  }, []);
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearchTerm('');
     setSelectedCategory('all');
     setSelectedTags([]);
     setSortBy('date');
+    setCurrentPage(1);
     setSearchParams({});
-  };
+  }, [setSearchParams]);
+  
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('page', page.toString());
+      return newParams;
+    });
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [setSearchParams]);
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -116,7 +156,7 @@ const Blog = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search posts..."
+              placeholder="Search posts, tags, or content..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -145,22 +185,43 @@ const Blog = () => {
               <SelectItem value="readTime">Read Time</SelectItem>
             </SelectContent>
           </Select>
+          <div className="flex gap-2">
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+              className="px-3"
+            >
+              <Grid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              className="px-3"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Tag Filter */}
         <div className="flex flex-wrap gap-2 items-center">
           <span className="text-sm font-medium mr-2">Tags:</span>
-          {allTags.slice(0, 10).map(tag => (
+          {allTags.slice(0, 15).map(tag => (
             <Badge
               key={tag}
               variant={selectedTags.includes(tag) ? 'default' : 'outline'}
-              className="cursor-pointer"
+              className="cursor-pointer hover:bg-primary/10 transition-colors"
               onClick={() => handleTagToggle(tag)}
             >
-              {tag}
+              #{tag}
             </Badge>
           ))}
-          {selectedTags.length > 0 && (
+          {allTags.length > 15 && (
+            <span className="text-sm text-muted-foreground">+{allTags.length - 15} more</span>
+          )}
+          {(selectedTags.length > 0 || debouncedSearchTerm || selectedCategory !== 'all') && (
             <Button
               variant="ghost"
               size="sm"
@@ -174,30 +235,75 @@ const Blog = () => {
         </div>
       </div>
 
-      {/* Results count */}
-      <div className="mb-6">
-        <p className="text-sm text-muted-foreground">
-          Showing {filteredPosts.length} of {posts.length} posts
-        </p>
+      {/* Results count and pagination info */}
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="flex items-center gap-4">
+          <p className="text-sm text-muted-foreground">
+            Showing {filteredPosts.length} of {posts.length} posts
+          </p>
+          {totalPages > 1 && (
+            <p className="text-sm text-muted-foreground">
+              Page {currentPage} of {totalPages}
+            </p>
+          )}
+        </div>
+        {loading && (
+          <div className="text-sm text-muted-foreground animate-pulse">
+            Loading posts...
+          </div>
+        )}
       </div>
 
-      {/* Blog Posts Grid */}
+      {/* Blog Posts Grid/List */}
       {loading ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">Loading posts...</p>
-        </div>
-      ) : filteredPosts.length > 0 ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredPosts.map((post) => (
-            <BlogCard key={post.slug} post={post} />
+        <div className={`grid gap-6 ${viewMode === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+          {Array.from({ length: POSTS_PER_PAGE }).map((_, index) => (
+            <BlogCardSkeleton key={index} />
           ))}
         </div>
+      ) : error ? (
+        <div className="text-center py-12">
+          <p className="text-red-500 mb-4">{error}</p>
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            Try again
+          </Button>
+        </div>
+      ) : paginatedPosts.length > 0 ? (
+        <>
+          <div className={`grid gap-6 ${viewMode === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+            {paginatedPosts.map((post) => (
+              <BlogCard key={post.slug} post={post} />
+            ))}
+          </div>
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-12">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+                className="justify-center"
+              />
+            </div>
+          )}
+        </>
       ) : (
         <div className="text-center py-12">
-          <p className="text-muted-foreground mb-4">No posts found matching your criteria.</p>
-          <Button variant="outline" onClick={clearFilters}>
-            Clear filters
-          </Button>
+          <div className="mb-4">
+            <Search className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
+            <p className="text-lg font-medium mb-2">No posts found</p>
+            <p className="text-muted-foreground mb-4">
+              {debouncedSearchTerm || selectedCategory !== 'all' || selectedTags.length > 0
+                ? "Try adjusting your search criteria or filters."
+                : "No blog posts are available at the moment."}
+            </p>
+          </div>
+          {(debouncedSearchTerm || selectedCategory !== 'all' || selectedTags.length > 0) && (
+            <Button variant="outline" onClick={clearFilters}>
+              Clear all filters
+            </Button>
+          )}
         </div>
       )}
     </div>

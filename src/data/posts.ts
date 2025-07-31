@@ -44,109 +44,91 @@ function createSlug(filename: string): string {
   return filename.replace(/\.md$/, '');
 }
 
-async function loadMarkdownPosts(): Promise<BlogPost[]> {
+async function loadPostsFromYear(year: string): Promise<BlogPost[]> {
   const posts: BlogPost[] = [];
   
   try {
-    console.log('Loading posts...');
+    console.log(`Fetching ${year} manifest...`);
+    const manifestResponse = await fetch(`/posts/${year}/manifest.json`);
     
-    // Load 2025 posts
-    console.log('Fetching 2025 manifest...');
-    const manifest2025Response = await fetch(`/posts/2025/manifest.json`);
-    console.log('2025 manifest response:', manifest2025Response.status, manifest2025Response.ok);
-    
-    if (manifest2025Response.ok) {
-      const manifest2025 = await manifest2025Response.json();
-      console.log('2025 manifest:', manifest2025);
-      
-      for (const filename of manifest2025.files) {
-        if (filename.endsWith('.md')) {
-          try {
-            console.log(`Loading 2025/${filename}...`);
-            const response = await fetch(`/posts/2025/${filename}`);
-            console.log(`Response for ${filename}:`, response.status, response.ok);
-            
-            if (response.ok) {
-              const content = await response.text();
-              const { frontmatter, content: bodyContent } = parseMarkdownFrontmatter(content);
-              console.log(`Frontmatter for ${filename}:`, frontmatter);
-              
-              if (frontmatter.title) {
-                const post = {
-                  id: `2025-${createSlug(filename)}`,
-                  title: frontmatter.title,
-                  description: frontmatter.excerpt || bodyContent.substring(0, 200) + '...',
-                  date: frontmatter.date,
-                  year: '2025',
-                  category: frontmatter.category || '기술',
-                  tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
-                  slug: `2025/${createSlug(filename)}`,
-                  content: bodyContent,
-                  readTime: parseInt(frontmatter.readTime) || Math.ceil(bodyContent.split(' ').length / 200)
-                };
-                console.log(`Adding post:`, post);
-                posts.push(post);
-              }
-            }
-          } catch (error) {
-            console.warn(`Failed to load ${filename}:`, error);
-          }
-        }
-      }
+    if (!manifestResponse.ok) {
+      console.warn(`Failed to fetch ${year} manifest:`, manifestResponse.status);
+      return posts;
     }
     
-    // Load 2024 posts
-    console.log('Fetching 2024 manifest...');
-    const manifest2024Response = await fetch(`/posts/2024/manifest.json`);
-    console.log('2024 manifest response:', manifest2024Response.status, manifest2024Response.ok);
+    const manifest = await manifestResponse.json();
+    const markdownFiles = manifest.files.filter((file: string) => file.endsWith('.md'));
     
-    if (manifest2024Response.ok) {
-      const manifest2024 = await manifest2024Response.json();
-      console.log('2024 manifest:', manifest2024);
-      
-      for (const filename of manifest2024.files) {
-        if (filename.endsWith('.md')) {
-          try {
-            console.log(`Loading 2024/${filename}...`);
-            const response = await fetch(`/posts/2024/${filename}`);
-            console.log(`Response for ${filename}:`, response.status, response.ok);
-            
-            if (response.ok) {
-              const content = await response.text();
-              const { frontmatter, content: bodyContent } = parseMarkdownFrontmatter(content);
-              console.log(`Frontmatter for ${filename}:`, frontmatter);
-              
-              if (frontmatter.title) {
-                const post = {
-                  id: `2024-${createSlug(filename)}`,
-                  title: frontmatter.title,
-                  description: frontmatter.excerpt || bodyContent.substring(0, 200) + '...',
-                  date: frontmatter.date,
-                  year: '2024',
-                  category: frontmatter.category || '기술',
-                  tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
-                  slug: `2024/${createSlug(filename)}`,
-                  content: bodyContent,
-                  readTime: parseInt(frontmatter.readTime) || Math.ceil(bodyContent.split(' ').length / 200)
-                };
-                console.log(`Adding post:`, post);
-                posts.push(post);
-              }
-            }
-          } catch (error) {
-            console.warn(`Failed to load ${filename}:`, error);
-          }
+    console.log(`Loading ${markdownFiles.length} posts from ${year}...`);
+    
+    // Load all posts in parallel
+    const postPromises = markdownFiles.map(async (filename: string) => {
+      try {
+        const response = await fetch(`/posts/${year}/${filename}`);
+        
+        if (!response.ok) {
+          console.warn(`Failed to load ${year}/${filename}:`, response.status);
+          return null;
         }
+        
+        const content = await response.text();
+        const { frontmatter, content: bodyContent } = parseMarkdownFrontmatter(content);
+        
+        if (!frontmatter.title) {
+          console.warn(`No title found in ${filename}`);
+          return null;
+        }
+        
+        return {
+          id: `${year}-${createSlug(filename)}`,
+          title: frontmatter.title,
+          description: frontmatter.excerpt || bodyContent.substring(0, 200) + '...',
+          date: frontmatter.date,
+          year,
+          category: frontmatter.category || '기술',
+          tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
+          slug: `${year}/${createSlug(filename)}`,
+          content: bodyContent,
+          readTime: parseInt(frontmatter.readTime) || Math.ceil(bodyContent.split(' ').length / 200)
+        };
+      } catch (error) {
+        console.warn(`Failed to load ${filename}:`, error);
+        return null;
       }
-    }
+    });
+    
+    const results = await Promise.all(postPromises);
+    const validPosts = results.filter((post): post is BlogPost => post !== null);
+    
+    console.log(`Successfully loaded ${validPosts.length}/${markdownFiles.length} posts from ${year}`);
+    return validPosts;
+    
+  } catch (error) {
+    console.error(`Failed to load posts from ${year}:`, error);
+    return posts;
+  }
+}
+
+async function loadMarkdownPosts(): Promise<BlogPost[]> {
+  try {
+    console.log('Loading posts from all years...');
+    
+    // Load posts from both years in parallel
+    const [posts2025, posts2024] = await Promise.all([
+      loadPostsFromYear('2025'),
+      loadPostsFromYear('2024')
+    ]);
+    
+    const allPosts = [...posts2025, ...posts2024];
+    console.log(`Total posts loaded: ${allPosts.length}`);
+    
+    // Sort posts by date (newest first)
+    return allPosts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
   } catch (error) {
     console.error('Failed to load posts:', error);
+    return [];
   }
-  
-  console.log('Total posts loaded:', posts.length);
-  
-  // Sort posts by date (newest first)
-  return posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
 // Initialize posts
