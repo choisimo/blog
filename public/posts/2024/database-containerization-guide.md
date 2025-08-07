@@ -1,6 +1,6 @@
 ---
 title: "데이터베이스 및 애플리케이션 컨테이너화 설치 가이드"
-date: "2024-02-01"
+date: "2024-07-29"
 category: "Database"
 tags: ['MySQL', 'PostgreSQL', 'Redis', 'RabbitMQ', 'Kavita', 'SSL', 'TLS', 'Container']
 excerpt: "MySQL, PostgreSQL, Redis, RabbitMQ, Kavita 등 주요 데이터베이스와 애플리케이션의 Docker 컨테이너화 및 호스트 설치 방법을 SSL/TLS 설정과 함께 소개합니다."

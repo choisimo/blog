@@ -1,6 +1,6 @@
 ---
 title: "Rsync 커스텀 SSH 포트 사용법 완벽 가이드"
-date: "2024-02-20"
+date: "2024-08-21"
 category: "Linux"
 tags: ['rsync', 'SSH', '파일 동기화', '백업', 'Linux']
 excerpt: "Rsync를 사용할 때 기본 SSH 포트가 아닌 커스텀 포트를 지정하는 올바른 방법을 상세히 설명합니다."

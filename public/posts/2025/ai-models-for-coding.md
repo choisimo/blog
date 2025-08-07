@@ -1,6 +1,6 @@
 ---
 title: "코딩용 AI 모델, 어떤 걸 써야 할까?"
-date: "2025-01-24"
+date: "2024-11-23"
 category: "기술"
 tags: ['AI', '개발', 'GPT', 'Claude', 'Gemini', '코딩']
 excerpt: "개발자 입장에서 GPT, Claude, Gemini 등 주요 AI 모델들을 실제로 써보고 비교해본 후기"

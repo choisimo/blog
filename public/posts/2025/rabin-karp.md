@@ -1,6 +1,6 @@
 ---
 title: "라빈-카프 알고리즘 (Rabin-Karp Algorithm)"
-date: "2025-04-21"
+date: "2024-11-05"
 category: "Algorithm"
 tags: ['Rabin-Karp', '해싱', '문자열매칭', '롤링해시']
 excerpt: "라빈-카프 알고리즘을 통해 해싱을 활용한 효율적인 문자열 패턴 매칭과 롤링 해시 기법을 학습합니다."

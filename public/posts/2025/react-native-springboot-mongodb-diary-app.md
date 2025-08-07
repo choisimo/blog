@@ -1,6 +1,6 @@
 ---
 title: "React Native + Spring Boot + MongoDB로 일기 앱 만들기"
-date: "2025-01-24"
+date: "2024-12-28"
 category: "개발"
 tags: ['React Native', 'Spring Boot', 'MongoDB', 'Python', 'AI', '일기앱']
 excerpt: "React Native 클라이언트와 Spring Boot 백엔드, Python AI 서버를 연동해서 일기 앱을 만든 경험"

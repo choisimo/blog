@@ -1,6 +1,6 @@
 ---
 title: "9-10주차: 그래프 이론 기초"
-date: "2024-02-12"
+date: "2024-07-10"
 category: "Algorithm"
 tags: ['그래프', 'BFS', 'DFS', '탐색', '알고리즘']
 excerpt: "그래프의 표현 방법과 BFS, DFS 탐색 알고리즘을 완벽하게 마스터한다"

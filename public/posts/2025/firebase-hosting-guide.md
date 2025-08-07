@@ -1,6 +1,6 @@
 ---
 title: "Flutter 웹앱을 Firebase에 무료로 배포하기"
-date: "2025-01-24"
+date: "2024-12-14"
 category: "개발"
 tags: ['Flutter', 'Firebase', 'Hosting', '웹배포', '개발']
 excerpt: "Flutter 웹앱을 Firebase Hosting에 배포하는 방법을 실제 경험을 바탕으로 단계별 설명"

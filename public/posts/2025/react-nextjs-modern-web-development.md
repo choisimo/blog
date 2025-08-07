@@ -1,6 +1,6 @@
 ---
 title: "React와 Next.js로 모던 웹 개발하기"
-date: "2025-01-20"
+date: "2024-10-08"
 category: "Web Development"
 tags: ["React", "Next.js", "JavaScript", "Frontend"]
 excerpt: "최신 React 기능과 Next.js의 장점을 활용한 웹 개발 방법론을 소개합니다."

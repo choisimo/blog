@@ -1,6 +1,6 @@
 ---
 title: "ChangeDetection.io 완벽 활용 가이드"
-date: "2024-01-20"
+date: "2024-07-21"
 category: "DevOps"
 tags: ['웹 모니터링', '자동화', 'Discord', 'Webhook', 'ChangeDetection']
 excerpt: "웹페이지 변경 감지 서비스 ChangeDetection.io의 Duration Time 설정과 Discord 웹훅 연동을 통한 효율적인 모니터링 방법을 소개합니다."

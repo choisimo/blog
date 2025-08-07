@@ -86,7 +86,7 @@ const Index = () => {
                   </span>
                 </div>
                 <CardTitle className="line-clamp-2">
-                  <Link to={`/blog/${post.year}/${post.slug}`} className="hover:text-primary transition-colors">
+                  <Link to={`/blog/${post.slug}`} className="hover:text-primary transition-colors">
                     {post.title}
                   </Link>
                 </CardTitle>

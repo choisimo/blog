@@ -1,6 +1,6 @@
 ---
 title: "Docker와 Kubernetes 삽질기"
-date: "2025-01-10"
+date: "2024-10-04"
 category: "DevOps"
 tags: ["Docker", "Kubernetes", "DevOps", "Container"]
 excerpt: "컨테이너 기술의 핵심인 Docker와 오케스트레이션 도구 Kubernetes 활용법을 다룹니다."

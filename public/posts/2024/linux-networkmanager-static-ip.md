@@ -1,6 +1,6 @@
 ---
 title: "NetworkManager를 사용한 Linux Static IP 설정 완벽 가이드"
-date: "2024-01-25"
+date: "2024-07-14"
 category: "Linux"
 tags: ['NetworkManager', 'Static IP', 'nmcli', 'nmtui', 'Ubuntu', 'CentOS', 'Rocky Linux']
 excerpt: "NetworkManager를 활용하여 다양한 Linux 배포판에서 고정 IP를 설정하는 방법을 상세히 설명합니다."

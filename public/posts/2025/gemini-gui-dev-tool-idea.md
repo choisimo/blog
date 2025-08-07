@@ -1,6 +1,6 @@
 ---
 title: "Gemini-CLI를 GUI로? 비개발자도 쓸 수 있는 AI 개발도구 아이디어"
-date: "2025-01-24"
+date: "2024-11-19"
 category: "Development"
 tags: ['Gemini-CLI', 'Flutter', 'GUI', 'AI개발도구', '앱개발', '아이디어']
 excerpt: "Gemini-CLI를 Flutter로 감싸서 비개발자도 쉽게 앱을 만들 수 있는 도구를 만들면 어떨까?"

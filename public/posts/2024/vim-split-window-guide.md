@@ -1,6 +1,6 @@
 ---
 title: "Vim 분할 창 사용법과 파일 간 전환 방법"
-date: "2024-02-05"
+date: "2024-07-17"
 category: "Editor"
 tags: ['Vim', '편집기', '분할 창', 'Linux', '단축키']
 excerpt: "Vim에서 vertical split view를 사용하여 여러 파일을 동시에 편집하고 파일 간 전환하는 방법을 소개합니다."

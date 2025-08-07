@@ -1,6 +1,6 @@
 ---
 title: "Python으로 AI 챗봇 만들기"
-date: "2025-01-15"
+date: "2024-10-11"
 category: "AI/ML"
 tags: ["Python", "AI", "Chatbot", "OpenAI"]
 excerpt: "OpenAI API를 활용하여 실용적인 AI 챗봇을 구현하는 과정을 단계별로 설명합니다."

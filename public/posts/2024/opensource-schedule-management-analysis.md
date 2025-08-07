@@ -1,6 +1,6 @@
 ---
 title: "비개발자를 위한 오픈소스 스케줄 관리 도구 완전 분석"
-date: "2024-02-25"
+date: "2024-10-01"
 category: "DevOps"
 tags: ['스케줄 관리', 'Docker', '오픈소스', 'Easy!Appointments', 'Cal.com', 'Plane']
 excerpt: "레딧 사용자 만족도가 높은 비개발자용 스케줄 관리 오픈소스 도구들을 Docker 컨테이너 기반으로 심층 분석합니다."

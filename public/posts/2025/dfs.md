@@ -1,6 +1,6 @@
 ---
 title: "깊이 우선 탐색 (DFS, Depth-First Search)"
-date: "2025-04-21"
+date: "2024-12-11"
 category: "Algorithm"
 tags: ['DFS', '그래프', '탐색', '재귀', '스택']
 excerpt: "깊이 우선 탐색(DFS) 알고리즘의 원리와 구현, 다양한 응용 문제 해결법을 학습합니다."

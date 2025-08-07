@@ -1,6 +1,6 @@
 ---
 title: "큐(Queue) 완전 정복"
-date: "2025-04-21"
+date: "2024-10-22"
 category: "Algorithm"
 tags: ['큐', '자료구조', 'FIFO', 'BFS', '알고리즘']
 excerpt: "FIFO 구조의 큐 자료구조 개념부터 우선순위 큐까지 완벽 가이드"

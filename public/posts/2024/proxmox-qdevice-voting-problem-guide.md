@@ -1,6 +1,6 @@
 ---
 title: "Proxmox QDevice 투표 문제 완벽 해결 가이드"
-date: "2024-03-01"
+date: "2024-08-18"
 category: "Proxmox"
 tags: ['Proxmox', 'QDevice', '클러스터', '쿼럼', 'Raspberry Pi', '고가용성']
 excerpt: "Proxmox 클러스터에서 QDevice가 투표권을 갖지 못하는 문제를 단계별로 해결하는 완전한 가이드입니다."

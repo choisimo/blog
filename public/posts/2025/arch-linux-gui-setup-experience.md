@@ -1,6 +1,6 @@
 ---
 title: "아치 리눅스 설치하면서 깨달은 GUI 환경 선택의 중요성"
-date: "2025-01-24"
+date: "2024-11-12"
 category: "Linux"
 tags: ['ArchLinux', 'UEFI', 'KDE', 'GNOME', 'i3wm', 'Hyprland', '리눅스설치']
 excerpt: "아치 리눅스 설치 과정에서 데스크톱 환경을 선택하면서 느낀 점들과 각 환경의 특징"

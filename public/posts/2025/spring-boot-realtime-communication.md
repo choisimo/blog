@@ -1,6 +1,6 @@
 ---
 title: "Spring Boot로 실시간 통신 구현하면서 겪은 삽질기"
-date: "2025-01-24"
+date: "2024-10-19"
 category: "Spring Boot"
 tags: ['SpringBoot', 'SSE', 'WebSocket', '실시간통신', 'SseEmitter', 'STOMP']
 excerpt: "SSE와 WebSocket을 써보면서 각각의 장단점과 실제 사용 시 주의점들을 정리해본 경험담"

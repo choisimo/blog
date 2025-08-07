@@ -1,6 +1,6 @@
 ---
 title: "NanoPi Neo3 우분투 설정 및 네트워크 구성 완벽 가이드"
-date: "2024-03-05"
+date: "2024-09-05"
 category: "Linux"
 tags: ['NanoPi Neo3', 'Ubuntu', 'NetworkManager', 'ARM SBC', 'IoT', '고정 IP']
 excerpt: "NanoPi Neo3에 우분투 설치 후 로그인부터 고정 IP 설정까지 완벽한 설정 가이드를 제공합니다."
