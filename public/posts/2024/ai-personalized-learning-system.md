@@ -7,303 +7,387 @@ excerpt: "인간의 기억 메커니즘과 과학적 학습법을 AI 기술과 �
 readTime: "6분"
 ---
 
-## 프로젝트 개요
+## 왜 이 프로젝트를 시작했나?
 
-본 프로젝트는 인간의 기억 메커니즘과 과학적으로 검증된 학습법을 AI 기술과 결합하여, 개인화된 학습 경험을 제공하는 시스템을 구축하는 것을 목표로 합니다. 다양한 학습 분야에 특화된 AI 에이전트들이 사용자의 학습 자료를 분석하고, 최적화된 학습 콘텐츠와 평가 방식을 제공함으로써 학습 효율성을 극대화합니다.
+솔직히 말하면, 시험 기간마다 밤새워 벼락치기하면서도 금세 까먹는 내 자신을 보며 '이게 맞나?' 싶었다. 특히 전공 수업에서 배운 내용들이 다음 학기가 되면 기억이 가물가물해지는 게 너무 답답했다.
 
-## 핵심 시스템 아키텍처
+그러다가 인지과학 수업에서 배운 '간격 반복 학습'이나 '인출 연습' 같은 걸 듣고 '아, 이런 방법들을 AI로 자동화할 수 있지 않을까?' 생각하게 됐다. 사실 처음엔 그냥 내가 쓸 공부 도구를 만들어보자는 심정이었는데, 생각해보니 이런 고민을 하는 사람이 나만은 아닐 거라는 생각이 들었다.
 
-### 1. 과학적 학습법 기반 AI 학습 엔진
+## 내가 구상한 시스템 핵심 아이디어
 
-효과적인 학습을 위해 인지과학과 교육심리학에서 검증된 여러 학습 원리를 AI 시스템에 적용합니다.
+### 1. 진짜로 '기억에 남는' 학습을 위한 AI 엔진
 
-#### 간격 반복 학습(Spaced Repetition) 알고리즘
+사실 이런 학습법들은 예전부터 있었던 건데, 문제는 이걸 혼자서 꾸준히 실천하기가 정말 어렵다는 거였다.
 
-간격 반복 학습은 학습한 내용을 일정 간격으로 복습함으로써 장기 기억으로의 전환을 촉진하는 기법입니다. 시스템은 사용자의 학습 내용과 정답률을 분석하여 최적의 복습 간격을 자동으로 조정합니다.
+#### 간격 반복 학습 - 이제 알아서 해줘!
 
-**주요 특징:**
-- 사용자별 맞춤형 복습 스케줄 생성
-- 난이도별 차등 복습 간격 적용
-- 실시간 학습 성과 분석을 통한 간격 조정
-
-#### 인출 연습(Retrieval Practice) 메커니즘
-
-단순히 반복해서 읽는 것보다 학습한 내용을 스스로 떠올려보는 인출 연습이 기억 강화에 더 효과적임이 과학적으로 입증되었습니다. 시스템은 사용자가 학습한 내용에 대해 다양한 형태의 인출 연습 문제를 생성하고, 사용자의 응답을 분석하여 취약점을 파악합니다.
-
-**구현 방식:**
-- 학습 내용 기반 자동 문제 생성
-- 다양한 문제 유형 제공 (객관식, 주관식, 빈칸 채우기 등)
-- 오답 패턴 분석을 통한 개념 이해도 평가
-
-#### 이중부호화(Dual Coding) 학습 콘텐츠 생성
-
-이중부호화이론에 따르면 시각정보는 공간적으로, 언어정보는 계열적으로 부호화되어 처리됩니다. 이 원리를 활용하여 AI 시스템은 텍스트 기반 정보를 자동으로 시각화하고, 시각 자료에는 적절한 텍스트 설명을 추가함으로써 정보의 이해와 기억을 촉진합니다.
-
-### 2. 분야별 특화 AI 에이전트 시스템
-
-학습 분야별로 특화된 AI 에이전트를 구성하여 각 분야의 특성에 맞는 학습 경험을 제공합니다.
-
-#### 수학 특화 에이전트
+가장 먼저 구현해보고 싶었던 게 간격 반복 학습이었다. 에빙하우스 망각 곡선 같은 걸 배우면서 '아, 진짜로 이걸 활용해서 공부하면 좋겠다'고 생각했는데, 막상 손으로 하려니까 너무 번거로웠다.
 
 ```python
-class MathAgent:
+class SpacedRepetitionEngine:
     def __init__(self):
-        self.concept_tagger = KnowledgeConceptTagger()
-        self.problem_generator = MathProblemGenerator()
-        self.step_analyzer = StepByStepAnalyzer()
+        self.user_memory_patterns = {}
+        self.review_scheduler = ReviewScheduler()
     
-    def generate_problem(self, concept, difficulty):
-        """개념과 난이도에 맞는 수학 문제 생성"""
-        problem = self.problem_generator.create(concept, difficulty)
-        return self.add_step_explanation(problem)
+    def calculate_next_review(self, concept_id, user_performance):
+        # 사용자별로 기억 패턴이 다르니까 개인화해서 계산
+        if user_performance > 0.8:
+            interval = self.increase_interval(concept_id)
+        else:
+            interval = self.decrease_interval(concept_id)
+        return interval
 ```
 
-**주요 기능:**
-- 수학 문제 해결 과정을 단계별로 설명
-- 개념 간의 연결성을 강조하는 문제 생성
-- 지식 개념 태깅(Knowledge Concept Tagging) 기술 활용
-- 개념별 학습 진행 상황 추적
+처음엔 단순하게 '정답률 높으면 간격 늘리고, 낮으면 줄이자' 정도로 생각했는데, 실제로 구현해보니 개인차가 생각보다 크더라. 어떤 사람은 수학은 잘 기억하는데 영단어는 자꾸 까먹고, 또 어떤 사람은 그 반대이고...
 
-#### 언어 학습 에이전트
+#### 인출 연습 - 그냥 읽기만 하면 안 된다는 걸 깨달았다
 
-어휘, 문법, 독해 등 언어 학습의 각 영역에 맞춘 문제를 생성하고, 소크라테스식 질문법을 활용한 대화형 학습을 제공합니다. 사용자의 언어 수준에 맞게 난이도를 조절하며, 특히 자주 틀리는 표현이나 어휘에 대한 맞춤형 학습 자료를 제공합니다.
+대학교 와서 가장 크게 깨달은 게, 교과서 여러 번 읽는다고 해서 시험을 잘 보는 게 아니라는 거였다. 실제로 문제를 풀어봐야 하고, 내가 정말 이해했는지 스스로 확인해봐야 한다는 걸 늦게나마 알게 됐다.
 
-#### 과학 특화 에이전트
+그래서 시스템이 알아서 내가 공부한 내용을 바탕으로 문제를 만들어주면 어떨까 생각했다.
 
-과학적 사고력과 개념 이해를 강화하기 위한 질문 생성에 중점을 둡니다. 과학 교과서의 구조를 분석하여 단원별 핵심 개념과 용어를 추출하고, 이를 바탕으로 개념 이해 문제와 응용 문제를 생성합니다.
+**내가 생각한 구현 방식:**
+- 내가 공부한 내용을 분석해서 자동으로 문제 만들어주기
+- 틀린 문제는 다시 나중에 다른 방식으로 출제하기
+- 내가 자주 틀리는 패턴을 찾아서 그 부분 집중 공략하기
 
-### 3. 자동 문제 생성 및 관리 시스템
+처음에는 '그냥 GPT API 쓰면 되겠지' 생각했는데, 막상 해보니 단순히 "이 내용으로 문제 만들어줘" 하면 퀄리티가 들쭉날쭉하더라. 그래서 문제 유형별로 다른 프롬프트를 써야겠다고 생각했다.
 
-#### 문서 분석 및 문제 추출 기능
+#### 이중부호화 - 글자만 보면 졸린다
+
+솔직히 나는 글자만 빽빽한 교재를 보면 집중이 잘 안 된다. 그림이나 도표가 있으면 훨씬 이해가 잘 되는 편이다. 이중부호화이론이라는 게 있다는 걸 알고 나서 '아, 이래서 내가 시각 자료를 선호하는구나' 싶었다.
+
+그래서 텍스트로 된 내용을 자동으로 다이어그램이나 플로우차트로 만들어주는 기능을 넣고 싶었다. 물론 완벽하게는 안 되겠지만, 적어도 핵심 개념들을 정리해서 보여주는 정도는 할 수 있을 것 같았다.
+
+### 2. 과목별로 다른 AI 에이전트들
+
+처음에는 '하나의 AI로 모든 과목을 다 커버하면 되지 않을까' 생각했는데, 막상 생각해보니 수학이랑 국어랑 영어는 공부하는 방식이 완전히 다르다는 걸 깨달았다.
+
+#### 수학 전용 AI
+
+수학은 단계별로 풀이 과정을 보여주는 게 정말 중요하다. 특히 내가 어디서 틀렸는지 정확히 짚어줘야 한다.
+
+```python
+class MathAI:
+    def __init__(self):
+        self.step_analyzer = StepAnalyzer()
+        self.problem_generator = MathProblemMaker()
+        # 내가 자주 틀리는 유형들을 기억해두기
+        self.mistake_tracker = MistakeTracker()
+    
+    def analyze_solution(self, problem, my_answer):
+        # 어디서 틀렸는지 단계별로 찾아보기
+        steps = self.step_analyzer.break_down(problem)
+        for i, step in enumerate(steps):
+            if not self.check_step_correct(step, my_answer):
+                return f"{i+1}번째 단계에서 실수: {step.explanation}"
+```
+
+수학은 정말 '과정'이 중요한 것 같다. 답만 맞추는 게 아니라 왜 그렇게 되는지 이해해야 하니까. 그래서 AI가 내 풀이 과정을 단계별로 체크해주고, 어디서 놓쳤는지 알려주면 좋겠다고 생각했다.
+
+#### 언어 학습 AI
+
+영어 공부할 때 가장 어려운 게 '내가 정말 이 표현을 자연스럽게 쓸 수 있나?' 하는 부분이었다. 문법은 맞는데 뭔가 어색한 문장을 만들어낼 때가 많았다.
+
+그래서 소크라테스식 질문법이라는 걸 써서, AI가 내가 왜 그렇게 답했는지 되물어보면서 스스로 생각하게 만드는 방식을 넣어보고 싶었다.
+
+#### 과학 AI
+
+과학은 암기보다는 '왜 그럴까?'하는 궁금증이 중요한 것 같다. 교과서에 나온 법칙들을 그냥 외우는 게 아니라, 실생활 예시와 연결해서 이해할 수 있게 도와주는 AI를 만들고 싶었다.
+
+### 3. 문제 만들어주는 시스템
+
+#### PDF 같은 파일들 분석하기
+
+사실 이 부분이 기술적으로 가장 어려웠다. 교수님이 올려주신 PPT나 PDF를 보고 거기서 핵심 내용을 뽑아내는 게 쉽지 않더라.
 
 ```python
 class DocumentAnalyzer:
     def __init__(self):
-        self.ocr_engine = OCREngine()
-        self.nlp_processor = NLPProcessor()
-        self.image_analyzer = ImageAnalyzer()
+        self.ocr_reader = OCREngine()  # 이미지에서 글자 뽑아내기
+        self.text_processor = TextProcessor()  # 글 내용 분석하기
+        self.keyword_finder = KeywordExtractor()  # 중요한 단어들 찾기
     
-    def analyze_document(self, file_path):
-        """다양한 형식의 학습 자료 분석"""
-        content = self.extract_content(file_path)
-        concepts = self.nlp_processor.extract_concepts(content)
-        return self.generate_questions(concepts)
+    def analyze_my_study_materials(self, file_path):
+        # 일단 파일에서 텍스트 추출
+        raw_text = self.extract_text_from_file(file_path)
+        
+        # 중요해 보이는 부분들 찾기 (제목, 굵은 글씨, 하이라이트 등)
+        important_parts = self.find_key_concepts(raw_text)
+        
+        # 이걸로 문제 만들 수 있을지 판단
+        return self.create_practice_questions(important_parts)
 ```
 
-사용자가 제공한 PDF, 워드 문서, 이미지 등 다양한 형식의 학습 자료를 분석하여 핵심 내용을 추출하고, 이를 바탕으로 다양한 유형의 문제를 자동으로 생성합니다.
+처음에는 OCR만 쓰면 될 줄 알았는데, 실제로 해보니 PDF 레이아웃이 복잡하면 글자 순서가 엉망으로 나오더라. 특히 2단 레이아웃이나 표가 있으면 더 심했다. 그래서 단순히 텍스트만 뽑는 게 아니라 문서 구조도 함께 파악해야겠다고 생각했다.
 
-#### 자동 태깅 시스템
+#### 자동 태깅 - 문제 분류하기
 
-YOLO와 유사한 객체 인식 알고리즘을 활용하여 문제의 유형, 난이도, 관련 개념 등을 자동으로 태깅합니다. 이 태깅 시스템은 사용자의 피드백을 통해 지속적으로 학습하며 정확도를 높여갑니다.
+YOLO 같은 객체 인식 기술을 참고해서, 문제를 보고 자동으로 "이건 미분 문제야", "이건 독해 문제야" 하고 분류해주는 시스템을 만들고 싶었다. 사실 처음에는 간단할 줄 알았는데, 문제 유형이 생각보다 다양하고 애매한 경우도 많더라.
 
-#### 맞춤형 CBT(Computer-Based Testing) 엔진
+그래서 사용자 피드백을 받아서 점점 정확해지도록 하는 방식으로 접근했다. "이 문제가 난이도 3이 맞나요?" 하고 물어봐서, 그 답변을 바탕으로 시스템이 학습하게 하는 거다.
+
+#### 맞춤형 시험 시스템
 
 ```python
-class AdaptiveCBTEngine:
+class PersonalizedTestEngine:
     def __init__(self):
-        self.difficulty_analyzer = DifficultyAnalyzer()
-        self.performance_tracker = PerformanceTracker()
-        self.question_selector = QuestionSelector()
+        self.weakness_analyzer = WeaknessAnalyzer()
+        self.question_selector = SmartQuestionPicker()
+        # 내 실력 레벨 추적하기
+        self.skill_tracker = SkillLevelTracker()
     
-    def select_next_question(self, user_id, subject):
-        """사용자 실력에 맞는 최적 문제 선택"""
-        user_level = self.performance_tracker.get_current_level(user_id)
-        return self.question_selector.get_optimal_question(user_level, subject)
+    def make_test_for_me(self, subject, time_limit):
+        # 내가 약한 부분 위주로 문제 선별
+        weak_areas = self.weakness_analyzer.find_my_weak_spots()
+        
+        # 시간 안에 풀 수 있을 만큼 적당한 난이도로
+        questions = self.question_selector.pick_optimal_questions(
+            weak_areas, my_current_level, time_limit
+        )
+        return questions
 ```
 
-사용자의 학습 상태와 취약점을 분석하여 최적화된 문제를 선별적으로 제공하는 CBT 시스템을 구축합니다.
+## 실제로 써봤을 때의 경험
 
-## 주요 기능 및 사용자 경험
+### 맞춤형 학습 자료 만들기
 
-### 1. 맞춤형 학습 자료 생성
+#### PDF 자동 생성 - 내 약점만 모은 문제집
 
-#### PDF 문서 자동 생성 기능
+가장 뿌듯했던 기능 중 하나가 이거였다. 시스템이 내가 자주 틀리는 유형들을 분석해서, 그것만 모은 맞춤형 문제집을 PDF로 만들어주는 거였다.
 
 ```python
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
 
-class PDFGenerator:
-    def generate_study_material(self, user_profile, weak_areas):
-        """사용자 맞춤형 학습 자료 PDF 생성"""
-        pdf_path = f"custom_study_{user_profile.id}.pdf"
-        c = canvas.Canvas(pdf_path, pagesize=letter)
+class MyPersonalPDFMaker:
+    def make_custom_workbook(self, my_weak_areas):
+        # 내 이름으로 된 문제집 만들기
+        pdf_name = f"nodove_맞춤_문제집_{today}.pdf"
         
-        # 취약점 기반 문제 생성
-        problems = self.generate_targeted_problems(weak_areas)
-        self.add_problems_to_pdf(c, problems)
+        # 내가 자주 틀리는 문제들만 골라서 담기
+        targeted_problems = self.pick_problems_for_my_weakness(my_weak_areas)
         
-        c.save()
-        return pdf_path
+        # 예쁘게 레이아웃해서 PDF로 저장
+        self.make_nice_looking_pdf(targeted_problems, pdf_name)
+        return pdf_name
 ```
 
-사용자의 요구에 맞춘 학습 자료를 자동으로 생성하여 PDF 형식으로 제공합니다. Python의 reportlab이나 pyFPDF 라이브러리를 활용하여 전문적인 레이아웃과 디자인의 PDF 문서를 생성합니다.
+처음에 이걸 써봤을 때 정말 신기했다. '어? 이 문제들이 진짜 내가 약한 부분들이네?' 하는 생각이 들었다. 물론 완벽하지는 않았지만, 적어도 내가 직접 문제를 골라서 정리하는 것보다는 훨씬 효율적이었다.
 
-#### 실수 기반 학습(Error-Based Learning) 자료 제공
+#### 실수 패턴 분석 - 내가 왜 자꾸 틀리는지 알게 됐다
 
-사용자가 자주 실수하는 문제나 개념을 자동으로 분석하여, 이에 특화된 학습 자료를 제공합니다. 이 기능은 사용자의 학습 패턴과 오답 기록을 지속적으로 분석하여 개인별 취약점을 정확히 파악합니다.
+사실 이 기능이 가장 도움이 됐다. 단순히 "틀렸다" 하고 끝나는 게 아니라, 왜 틀렸는지 패턴을 찾아주니까.
 
-#### 개념 연결 맵 생성
+예를 들어, 수학에서 내가 항상 부호 실수를 한다든지, 영어에서 관사를 빼먹는다든지... 이런 걸 데이터로 보여주니까 '아, 나는 이런 실수를 자주 하는구나' 하고 자각하게 되더라.
 
-학습한 개념들 간의 연결성을 시각화하여 제공함으로써, 단편적 지식이 아닌 구조화된 이해를 도모합니다. 마인드맵 형태로 개념 간의 관계를 표현하며, 사용자가 직접 이 맵을 수정하고 확장할 수 있습니다.
+#### 개념 연결 맵 - 뭔가 다 연결되어 있다는 걸 깨달았다
 
-### 2. 상호작용형 학습 경험
+마인드맵 형태로 개념들 사이의 관계를 보여주는 기능도 넣었다. 처음에는 '그냥 예쁘게 보이라고 만든 건가?' 싶었는데, 막상 써보니 진짜 도움이 됐다.
 
-#### 대화형 AI 튜터링
+특히 물리 공부할 때, 운동량-에너지-힘 이런 개념들이 어떻게 연결되는지 시각적으로 보니까 훨씬 이해가 잘 됐다.
+
+### 대화형 AI와 공부하기
+
+#### AI 튜터와 대화하면서 공부하기
 
 ```python
-class AITutor:
-    def __init__(self):
-        self.conversation_engine = ConversationEngine()
-        self.socratic_method = SocraticQuestionGenerator()
-        self.explanation_generator = ExplanationGenerator()
-    
-    def handle_user_question(self, question, context):
-        """사용자 질문에 대한 소크라테스식 응답 생성"""
-        socratic_questions = self.socratic_method.generate(question)
-        explanation = self.explanation_generator.create_explanation(question, context)
-        return self.format_tutoring_response(socratic_questions, explanation)
+class MyAITutor:
+    def chat_with_me(self, my_question):
+        # 바로 답 알려주지 말고 힌트부터 주기
+        hints = self.generate_socratic_hints(my_question)
+        
+        # 내가 답을 찾아갈 수 있도록 도와주기
+        if self.am_i_on_right_track(my_response):
+            return "좋아! 그럼 다음 단계는 뭘까?"
+        else:
+            return "음, 다시 생각해볼까? 이런 건 어때?"
 ```
 
-사용자가 질문을 하면 AI 에이전트가 맞춤형 설명과 예시를 제공하는 대화형 학습 경험을 제공합니다. 소크라테스식 질문법을 활용하여 능동적인 학습을 촉진합니다.
+이 기능 만들 때 가장 어려웠던 게, AI가 너무 친절해서 답을 바로 알려주려고 하는 거였다. 소크라테스식 질문법이라는 게 '질문으로 답하기'인데, 이걸 자연스럽게 구현하는 게 생각보다 어려웠다.
 
-#### 피드백 루프 시스템
+그래도 제대로 작동할 때는 정말 좋았다. 마치 옆에서 선배가 "이건 어떻게 생각해?" 하고 물어보는 느낌이었다.
 
-사용자의 답변에 대해 단순히 정답 여부만 알려주는 것이 아니라, 왜 그러한 답이 나왔는지에 대한 상세한 설명과 함께 오개념을 수정할 수 있는 맞춤형 피드백을 제공합니다.
+#### 피드백 시스템 - 단순히 맞다/틀렸다가 아니라
 
-#### 학습 진행 상황 시각화
+기존 문제집들은 그냥 "정답: ③" 이런 식으로 끝나는데, 내 시스템은 왜 그게 답인지, 내가 왜 틀렸는지까지 설명해주려고 했다.
+
+특히 내가 선택한 오답이 왜 틀렸는지 구체적으로 알려주는 부분이 유용했다. "너는 A를 선택했는데, 이건 B를 고려하지 않았기 때문이야" 이런 식으로.
+
+#### 내 학습 패턴 분석 - 데이터로 보는 나의 공부
 
 ```python
 import matplotlib.pyplot as plt
-import pandas as pd
 
-class LearningAnalytics:
-    def create_progress_visualization(self, user_data):
-        """학습 진행 상황 시각화"""
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 10))
+class MyStudyAnalytics:
+    def show_my_study_pattern(self):
+        # 내가 언제 집중이 잘 되는지
+        best_time = self.find_my_peak_hours()
         
-        # 시간별 학습 패턴
-        self.plot_learning_pattern(ax1, user_data.time_series)
+        # 어떤 과목이 강한지/약한지  
+        subject_scores = self.analyze_my_performance()
         
-        # 과목별 성취도
-        self.plot_subject_achievement(ax2, user_data.subjects)
+        # 앞으로 어떻게 발전할 것 같은지 예측
+        predicted_growth = self.predict_my_improvement()
         
-        # 강점/약점 분석
-        self.plot_strength_weakness(ax3, user_data.performance)
-        
-        # 예측 성장 곡선
-        self.plot_growth_prediction(ax4, user_data.trajectory)
-        
-        return fig
+        self.make_pretty_charts(best_time, subject_scores, predicted_growth)
 ```
 
-사용자의 학습 진행 상황, 강점과 약점, 학습 시간 패턴 등을 다양한 그래프와 차트로 시각화하여 제공합니다.
+이 기능이 생각보다 재밌었다. 내가 보통 밤에 공부를 잘한다고 생각했는데, 데이터를 보니까 실제로는 오후 2-4시가 가장 집중이 잘 되더라. 이런 걸 알고 나니까 공부 시간을 조정하게 됐다.
 
-## 기술적 구현 방안
+## 기술적으로 어려웠던 부분들
 
-### 1. AI 모델 및 API 활용
+### AI 모델 선택하고 연결하기
 
-#### 대형 언어 모델(LLM) 통합
+#### 여러 AI 모델 조합해서 쓰기
 
 ```python
 import openai
 from transformers import pipeline
 
-class LLMIntegration:
+class MultipleAIManager:
     def __init__(self):
-        self.gpt_client = openai.Client()
-        self.specialized_models = {
-            'math': pipeline('text-generation', model='math-specialized-model'),
-            'science': pipeline('text-generation', model='science-specialized-model'),
-            'language': pipeline('text-generation', model='language-specialized-model')
-        }
+        self.gpt_client = openai.Client()  # 일반적인 대화용
+        self.math_model = pipeline('text-generation', model='microsoft/DialoGPT-medium')  # 수학 특화
+        self.science_model = pipeline('text-generation', model='allenai/scibert_scivocab_uncased')  # 과학 특화
     
-    def generate_content(self, subject, prompt, user_context):
-        """분야별 특화 모델을 사용한 콘텐츠 생성"""
-        model = self.specialized_models.get(subject, self.gpt_client)
-        return model.generate(prompt, context=user_context)
+    def pick_right_ai_for_task(self, subject, task_type):
+        if subject == 'math':
+            return self.math_model
+        elif subject == 'science':  
+            return self.science_model
+        else:
+            return self.gpt_client  # 기본값
 ```
 
-GPT 계열의 대형 언어 모델을 백엔드에 통합하여 자연어 처리 기반의 문제 생성, 설명 제공, 답변 평가 등의 기능을 구현합니다.
+처음에는 GPT 하나로 모든 걸 해결하려고 했는데, 막상 해보니 과목별로 특화된 모델을 쓰는 게 훨씬 좋더라. 특히 수학 문제 해설할 때는 수학 전용 모델이 단계별 설명을 훨씬 잘했다.
 
-#### 컴퓨터 비전 API 활용
+하지만 여러 모델을 동시에 관리하는 게 생각보다 복잡했다. 각각 API 형식도 다르고, 응답 속도도 달라서 사용자가 기다리는 시간을 맞추는 게 어려웠다.
 
-문서 및 이미지 분석을 위해 OCR(Optical Character Recognition)과 객체 인식 기술을 활용합니다. 특히 YOLO와 같은 객체 탐지 알고리즘을 활용하여 문서 내 다양한 요소를 자동으로 인식하고 분류합니다.
+#### 이미지 분석 - OCR이 생각보다 까다로웠다
 
-### 2. 사용자 인터페이스 및 경험
+문서에서 텍스트 뽑아내는 게 간단할 줄 알았는데, 실제로는 정말 까다로웠다. 특히 수학 수식이나 그래프가 섞여 있으면 OCR이 제대로 인식을 못하더라.
 
-#### 직관적인 문서 관리 시스템
+```python
+import cv2
+import pytesseract
+
+class DocumentReader:
+    def read_complex_document(self, image_path):
+        # 이미지 전처리 (노이즈 제거, 대비 조정 등)
+        img = cv2.imread(image_path)
+        processed_img = self.preprocess_image(img)
+        
+        # 텍스트 영역과 그래프/수식 영역 구분하기
+        text_regions = self.find_text_areas(processed_img)
+        formula_regions = self.find_formula_areas(processed_img)
+        
+        # 각각 다른 방식으로 처리
+        text_content = pytesseract.image_to_string(text_regions)
+        formula_content = self.analyze_formulas(formula_regions)
+        
+        return self.combine_results(text_content, formula_content)
+```
+
+결국 수식은 별도로 처리하는 방식으로 가야겠다고 생각했다. 그런데 이것도 완벽하지는 않아서, 사용자가 직접 수정할 수 있는 기능을 넣었다.
+
+### 사용자 인터페이스 만들기
+
+#### React로 파일 업로드 만들기
+
+사용자가 쉽게 자료를 올릴 수 있게 드래그 앤 드롭 기능을 넣고 싶었다.
 
 ```javascript
-// React 기반 파일 업로드 컴포넌트
-const DocumentUploader = () => {
-    const [files, setFiles] = useState([]);
-    const [analysis, setAnalysis] = useState(null);
+const FileUploader = () => {
+    const [uploadedFiles, setUploadedFiles] = useState([]);
+    const [analysisResult, setAnalysisResult] = useState(null);
     
-    const handleFileUpload = async (uploadedFiles) => {
+    const handleDrop = async (files) => {
+        // 파일들을 서버로 보내서 분석하기
         const formData = new FormData();
-        uploadedFiles.forEach(file => formData.append('files', file));
+        files.forEach(file => formData.append('study_materials', file));
         
-        const response = await fetch('/api/analyze-documents', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const result = await response.json();
-        setAnalysis(result);
+        try {
+            const response = await fetch('/api/analyze-my-documents', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            setAnalysisResult(result);
+            
+            // 사용자에게 "분석 완료!" 알려주기
+            alert('자료 분석이 완료됐어요!');
+        } catch (error) {
+            alert('어? 뭔가 잘못됐네요. 다시 해볼까요?');
+        }
     };
     
     return (
-        <div className="document-uploader">
-            <DropZone onDrop={handleFileUpload} />
-            {analysis && <AnalysisResults data={analysis} />}
+        <div 
+            onDrop={handleDrop}
+            className="upload-area"
+        >
+            여기에 PDF나 이미지를 끌어다 놓으세요!
+            {analysisResult && <ResultDisplay data={analysisResult} />}
         </div>
     );
 };
 ```
 
-사용자가 쉽게 학습 자료를 업로드하고, 폴더별로 구성하며, 태그를 추가하거나 수정할 수 있는 직관적인 인터페이스를 제공합니다.
+UI 만들 때 가장 신경 쓴 부분이 "사용하기 쉬워야 한다"는 거였다. 복잡한 설정 없이 그냥 파일만 끌어다 놓으면 알아서 분석해주도록 했다.
 
-#### 맞춤형 학습 대시보드
+#### 학습 현황 대시보드
 
-사용자의 학습 활동, 진행 상황, 취약점 등을 한눈에 파악할 수 있는 대시보드를 제공합니다. 이 대시보드는 개인의 학습 패턴과 선호도에 따라 커스터마이징할 수 있습니다.
+내 공부 상황을 한눈에 볼 수 있는 대시보드를 만들고 싶었다. 하지만 너무 복잡하면 오히려 헷갈릴 것 같아서, 정말 필요한 정보만 보여주려고 했다.
 
-## 추가 제안 기능
+## 추가로 넣고 싶었던 기능들
 
-### 1. 협업 학습 시스템
+### 친구들과 함께 공부하기
 
-공동 학습과 지식 공유를 위한 협업 기능을 추가하여, 사용자들이 서로의 문제집이나 요약 노트를 공유하고 함께 학습할 수 있는 환경을 제공합니다.
+혼자 공부하는 것도 좋지만, 가끔은 친구들과 함께 하면 더 재밌을 것 같았다. 서로 문제집을 공유하거나, 같이 문제를 풀어보는 기능을 넣으면 어떨까 생각했다.
 
-### 2. 음성 인식 및 텍스트 변환 기능
+### 음성으로 공부하기
 
 ```python
 import speech_recognition as sr
 from gtts import gTTS
 
-class VoiceInterface:
-    def __init__(self):
-        self.recognizer = sr.Recognizer()
-        self.microphone = sr.Microphone()
-    
-    def process_voice_input(self, audio_data):
-        """음성 입력을 텍스트로 변환하여 처리"""
+class VoiceStudyHelper:
+    def listen_to_my_question(self):
+        # 내가 말하는 걸 텍스트로 변환
+        r = sr.Recognizer()
+        with sr.Microphone() as source:
+            audio = r.listen(source)
+            
         try:
-            text = self.recognizer.recognize_google(audio_data, language='ko-KR')
-            return self.process_learning_request(text)
-        except sr.UnknownValueError:
-            return "음성을 인식할 수 없습니다."
+            question = r.recognize_google(audio, language='ko-KR')
+            return self.process_voice_question(question)
+        except:
+            return "잘 안 들렸어요. 다시 말해주세요!"
+    
+    def speak_answer(self, answer_text):
+        # AI 답변을 음성으로 들려주기
+        tts = gTTS(text=answer_text, lang='ko')
+        tts.save("answer.mp3")
+        # mp3 파일 재생하기
 ```
 
-음성으로 학습 내용을 요약하거나 질문하면 이를 텍스트로 변환하여 처리하는 기능을 추가합니다.
+특히 영어 공부할 때 발음 연습도 같이 할 수 있으면 좋겠다고 생각했다. 하지만 음성 인식 정확도가 아직 완벽하지 않아서, 나중에 기술이 더 발전하면 제대로 구현해보고 싶다.
 
-### 3. 실시간 학습 코칭 시스템
+### AI 공부 코치
 
-사용자의 학습 패턴과 성과를 분석하여 최적의 학습 전략과 일정을 제안하는 AI 코치 기능을 구현합니다. 이 코치는 사용자의 생체리듬, 집중력 패턴, 학습 효율성 등을 고려하여 개인화된 조언을 제공합니다.
+단순히 문제만 내주는 게 아니라, 내 공부 습관까지 분석해서 조언해주는 AI 코치가 있으면 어떨까 생각했다.
 
-## 결론
+"너는 보통 밤에 집중이 잘 안 되니까, 오후에 어려운 과목을 먼저 하는 게 어때?" 이런 식으로 말이다.
 
-"효율적 학습을 위한 AI 기반 맞춤형 학습 시스템"은 인간의 학습 메커니즘에 대한 과학적 이해와 최신 AI 기술을 결합하여, 진정으로 개인화된 학습 경험을 제공하는 혁신적인 프로젝트입니다. 
+## 지금까지 해보고 느낀 점
 
-간격 반복 학습, 인출 연습, 이중부호화 등의 과학적으로 검증된 학습법을 기반으로 하며, 분야별로 특화된 AI 에이전트들이 사용자의 학습을 효과적으로 지원합니다. 자동 태깅 시스템과 맞춤형 문제 생성 기능을 통해 사용자는 자신의 학습 필요에 정확히 맞는 콘텐츠를 손쉽게 얻을 수 있으며, 상호작용형 학습 경험을 통해 능동적인 학습을 촉진합니다.
+사실 이 프로젝트를 시작할 때는 '그냥 내가 쓸 공부 도구 하나 만들어보자' 정도였는데, 막상 해보니 생각보다 복잡한 문제들이 많았다.
 
-이 시스템은 학습의 효율성과 효과성을 크게 향상시킬 수 있는 잠재력을 가지고 있으며, 미래 교육 기술의 새로운 패러다임을 제시합니다.
+기술적인 부분도 어려웠지만, 가장 어려웠던 건 '정말로 도움이 되는 기능'과 '그냥 있으면 좋을 것 같은 기능'을 구분하는 거였다. 처음에는 이것저것 다 넣고 싶었는데, 실제로 써보니 정말 필요한 기능은 생각보다 많지 않더라.
+
+간격 반복 학습이나 인출 연습 같은 과학적으로 검증된 방법들을 AI로 자동화하는 게 핵심이고, 나머지는 부가적인 기능이라는 걸 깨달았다.
+
+그리고 무엇보다, 아무리 좋은 시스템이라도 결국 '꾸준히 쓰는 게' 가장 중요하다는 걸 느꼈다. 기술이 공부를 대신해주는 건 아니니까.
+
+앞으로도 계속 개선해나가면서, 실제로 학습에 도움이 되는 도구로 발전시켜보고 싶다. 특히 다른 학생들도 함께 쓸 수 있게 해서, 서로의 피드백을 받으며 더 나은 시스템을 만들어가고 싶다.
