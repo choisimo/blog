@@ -20,17 +20,29 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
     // Extract headings from markdown content
     const headingRegex = /^(#{1,6})\s+(.+)$/gm;
     const headings: TocItem[] = [];
+    const usedIds = new Set<string>();
     let match: RegExpExecArray | null;
+    let counter = 0;
 
     while ((match = headingRegex.exec(content)) !== null) {
       const level = match[1].length;
       const title = match[2].trim();
-      const id = title
+      let id = title
         .toLowerCase()
         .replace(/[^\w\s-]/g, '')
         .replace(/\s+/g, '-');
       
-      headings.push({ id, title, level });
+      // Ensure unique IDs
+      let uniqueId = id;
+      let suffix = 1;
+      while (usedIds.has(uniqueId)) {
+        uniqueId = `${id}-${suffix}`;
+        suffix++;
+      }
+      usedIds.add(uniqueId);
+      
+      headings.push({ id: uniqueId, title, level });
+      counter++;
     }
 
     setToc(headings);
@@ -66,28 +78,33 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
   if (toc.length === 0) return null;
 
   return (
-    <div className="sticky top-8 w-64 hidden xl:block">
-      <div className="border rounded-lg p-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <h3 className="font-semibold mb-3 text-sm">Table of Contents</h3>
-        <ScrollArea className="h-[400px]">
-          <nav className="space-y-1">
-            {toc.map((item) => (
+    <div className="sticky top-8 w-72 hidden xl:block">
+      <div className="bg-card/50 backdrop-blur-sm border rounded-2xl p-6 shadow-lg">
+        <h3 className="font-bold mb-4 text-base flex items-center">
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+          </svg>
+          목차
+        </h3>
+        <ScrollArea className="h-[500px]">
+          <nav className="space-y-2">
+            {toc.map((item, index) => (
               <button
-                key={item.id}
+                key={`${item.id}-${index}`}
                 onClick={() => scrollToHeading(item.id)}
                 className={cn(
-                  "block w-full text-left text-sm py-1 px-2 rounded hover:bg-muted transition-colors",
+                  "block w-full text-left text-sm py-2 px-3 rounded-lg hover:bg-primary/10 transition-all duration-200",
                   "text-muted-foreground hover:text-foreground",
-                  activeId === item.id && "bg-muted text-foreground font-medium",
-                  item.level === 1 && "ml-0",
-                  item.level === 2 && "ml-3",
-                  item.level === 3 && "ml-6",
-                  item.level === 4 && "ml-9",
-                  item.level === 5 && "ml-12",
-                  item.level === 6 && "ml-15"
+                  activeId === item.id && "bg-primary/15 text-primary font-semibold border-l-2 border-primary",
+                  item.level === 1 && "ml-0 font-medium",
+                  item.level === 2 && "ml-4",
+                  item.level === 3 && "ml-8",
+                  item.level === 4 && "ml-12",
+                  item.level === 5 && "ml-16",
+                  item.level === 6 && "ml-20"
                 )}
               >
-                {item.title}
+                <span className="block truncate">{item.title}</span>
               </button>
             ))}
           </nav>

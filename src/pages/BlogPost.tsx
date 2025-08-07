@@ -47,7 +47,10 @@ const BlogPost = () => {
           throw new Error('Failed to fetch');
         }
         const text = await response.text();
-        setContent(text);
+        
+        // Remove YAML front matter if present
+        const cleanContent = text.replace(/^---[\s\S]*?---\s*/, '');
+        setContent(cleanContent);
         setLoading(false);
       } catch (err) {
         setError(true);
@@ -110,109 +113,129 @@ const BlogPost = () => {
   return (
     <>
       <ReadingProgress />
-      <div className="flex container mx-auto px-4 py-12 max-w-7xl gap-8">
-        <article className="flex-1 max-w-4xl">
-          <div className="mb-8">
-            <Breadcrumb 
-              items={[
-                { label: 'Blog', href: '/blog' },
-                { label: post.category },
-                { label: post.title }
-              ]}
-              className="mb-4"
-            />
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+        <div className="container mx-auto px-4 py-8 max-w-6xl">
+          <div className="flex gap-8">
+            <article className="flex-1 max-w-4xl mx-auto">
+              {/* Header Section */}
+              <div className="mb-12">
+                <Breadcrumb 
+                  items={[
+                    { label: 'Blog', href: '/blog' },
+                    { label: post.category },
+                    { label: post.title }
+                  ]}
+                  className="mb-6"
+                />
 
-            <Button asChild variant="ghost" className="mb-6">
-              <Link to="/blog">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Blog
-              </Link>
-            </Button>
+                <Button asChild variant="ghost" className="mb-8 hover:bg-primary/10">
+                  <Link to="/blog">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Blog
+                  </Link>
+                </Button>
 
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                <Badge variant="secondary">{post.category}</Badge>
-                <div className="flex items-center">
-                  <Calendar className="h-3 w-3 mr-1" />
-                  {formatDate(post.date)}
-                </div>
-                <div className="flex items-center">
-                  <Clock className="h-3 w-3 mr-1" />
-                  {post.readTime} min read
+                {/* Enhanced Header Card */}
+                <div className="bg-card/50 backdrop-blur-sm border rounded-2xl p-8 shadow-lg">
+                  <div className="space-y-6">
+                    {/* Meta Information */}
+                    <div className="flex flex-wrap items-center gap-3 text-sm">
+                      <Badge variant="secondary" className="px-3 py-1">
+                        {post.category}
+                      </Badge>
+                      <div className="flex items-center text-muted-foreground">
+                        <Calendar className="h-4 w-4 mr-1.5" />
+                        {formatDate(post.date)}
+                      </div>
+                      <div className="flex items-center text-muted-foreground">
+                        <Clock className="h-4 w-4 mr-1.5" />
+                        {post.readTime} 읽기
+                      </div>
+                    </div>
+
+                    {/* Title */}
+                    <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent leading-tight">
+                      {post.title}
+                    </h1>
+
+                    {/* Description */}
+                    <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
+                      {post.description}
+                    </p>
+
+                    {/* Tags */}
+                    {post.tags && post.tags.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Tag className="h-4 w-4 text-muted-foreground" />
+                        {post.tags.map((tag) => (
+                          <Badge key={tag} variant="outline" className="hover:bg-primary/10">
+                            #{tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-4 pt-2">
+                      <Button onClick={handleShare} variant="outline" size="sm" className="hover:bg-primary/10">
+                        <Share2 className="mr-2 h-4 w-4" />
+                        공유하기
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-                {post.title}
-              </h1>
+              <Separator className="my-12" />
 
-              <p className="text-xl text-muted-foreground">
-                {post.description}
-              </p>
+              {/* Content Section */}
+              <div className="mb-16">
+                <div className="bg-card/30 backdrop-blur-sm border rounded-2xl p-8 md:p-12 shadow-sm">
+                  <MarkdownRenderer content={content} />
+                </div>
+              </div>
 
-              {post.tags && post.tags.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <Tag className="h-4 w-4 text-muted-foreground" />
-                  {post.tags.map((tag) => (
-                    <Badge key={tag} variant="outline">
-                      {tag}
-                    </Badge>
-                  ))}
+              <Separator className="my-12" />
+
+              <PostNavigation currentPost={post} posts={posts} />
+
+              {/* Related Posts */}
+              {relatedPosts.length > 0 && (
+                <div className="mt-16">
+                  <div className="bg-card/30 backdrop-blur-sm border rounded-2xl p-8 shadow-sm">
+                    <h2 className="text-2xl font-bold mb-8 flex items-center justify-center">
+                      <BookOpen className="mr-3 h-6 w-6" />
+                      관련 포스트
+                    </h2>
+                    <div className="grid gap-6 md:grid-cols-3">
+                      {relatedPosts.map((relatedPost) => (
+                        <Link
+                          key={relatedPost.slug}
+                          to={`/blog/${relatedPost.slug}`}
+                          className="group"
+                        >
+                          <div className="bg-card border rounded-xl p-6 hover:shadow-lg hover:scale-105 transition-all duration-300">
+                            <Badge variant="secondary" className="mb-3">
+                              {relatedPost.category}
+                            </Badge>
+                            <h3 className="font-semibold line-clamp-2 group-hover:text-primary transition-colors mb-2">
+                              {relatedPost.title}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {relatedPost.readTime} 읽기
+                            </p>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
+            </article>
 
-              <div className="flex items-center gap-4 pt-4">
-                <Button onClick={handleShare} variant="outline" size="sm">
-                  <Share2 className="mr-2 h-4 w-4" />
-                  Share
-                </Button>
-              </div>
-            </div>
+            <TableOfContents content={content} />
           </div>
-
-          <Separator className="my-8" />
-
-          <div className="mb-12">
-            <MarkdownRenderer content={content} />
-          </div>
-
-          <Separator className="my-8" />
-
-          <PostNavigation currentPost={post} posts={posts} />
-
-          {/* Related Posts */}
-          {relatedPosts.length > 0 && (
-            <div className="mt-12">
-              <h2 className="text-2xl font-bold mb-6 flex items-center">
-                <BookOpen className="mr-2 h-6 w-6" />
-                Related Posts
-              </h2>
-              <div className="grid gap-4 md:grid-cols-3">
-                {relatedPosts.map((relatedPost) => (
-                  <Link
-                    key={relatedPost.slug}
-                    to={`/blog/${relatedPost.slug}`}
-                    className="group"
-                  >
-                    <div className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                      <Badge variant="secondary" className="mb-2">
-                        {relatedPost.category}
-                      </Badge>
-                      <h3 className="font-semibold line-clamp-2 group-hover:text-primary transition-colors">
-                        {relatedPost.title}
-                      </h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {relatedPost.readTime} min read
-                      </p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-        </article>
-
-        <TableOfContents content={content} />
+        </div>
       </div>
       <ScrollToTop />
     </>
