@@ -32,6 +32,9 @@ jobs:
     - name: Install dependencies
       run: npm ci
       
+    - name: Generate manifests
+      run: npm run generate-manifests
+      
     - name: Build
       run: npm run build
       
