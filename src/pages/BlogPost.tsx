@@ -1,6 +1,11 @@
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import { TableOfContents } from '@/components/TableOfContents';
+import { ReadingProgress } from '@/components/ReadingProgress';
+import { ScrollToTop } from '@/components/ScrollToTop';
+import { Breadcrumb } from '@/components/Breadcrumb';
+import { PostNavigation } from '@/components/PostNavigation';
 import { getPosts } from '@/data/posts';
 import { BlogPost as BlogPostType } from '@/types/blog';
 import { formatDate } from '@/utils/blog';
@@ -103,95 +108,114 @@ const BlogPost = () => {
     .slice(0, 3);
 
   return (
-    <article className="container mx-auto px-4 py-12 max-w-4xl">
-      <div className="mb-8">
-        <Button asChild variant="ghost" className="mb-6">
-          <Link to="/blog">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Blog
-          </Link>
-        </Button>
+    <>
+      <ReadingProgress />
+      <div className="flex container mx-auto px-4 py-12 max-w-7xl gap-8">
+        <article className="flex-1 max-w-4xl">
+          <div className="mb-8">
+            <Breadcrumb 
+              items={[
+                { label: 'Blog', href: '/blog' },
+                { label: post.category },
+                { label: post.title }
+              ]}
+              className="mb-4"
+            />
 
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <Badge variant="secondary">{post.category}</Badge>
-            <div className="flex items-center">
-              <Calendar className="h-3 w-3 mr-1" />
-              {formatDate(post.date)}
-            </div>
-            <div className="flex items-center">
-              <Clock className="h-3 w-3 mr-1" />
-              {post.readTime} min read
+            <Button asChild variant="ghost" className="mb-6">
+              <Link to="/blog">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Blog
+              </Link>
+            </Button>
+
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <Badge variant="secondary">{post.category}</Badge>
+                <div className="flex items-center">
+                  <Calendar className="h-3 w-3 mr-1" />
+                  {formatDate(post.date)}
+                </div>
+                <div className="flex items-center">
+                  <Clock className="h-3 w-3 mr-1" />
+                  {post.readTime} min read
+                </div>
+              </div>
+
+              <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+                {post.title}
+              </h1>
+
+              <p className="text-xl text-muted-foreground">
+                {post.description}
+              </p>
+
+              {post.tags && post.tags.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Tag className="h-4 w-4 text-muted-foreground" />
+                  {post.tags.map((tag) => (
+                    <Badge key={tag} variant="outline">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center gap-4 pt-4">
+                <Button onClick={handleShare} variant="outline" size="sm">
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Share
+                </Button>
+              </div>
             </div>
           </div>
 
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-            {post.title}
-          </h1>
+          <Separator className="my-8" />
 
-          <p className="text-xl text-muted-foreground">
-            {post.description}
-          </p>
+          <div className="mb-12">
+            <MarkdownRenderer content={content} />
+          </div>
 
-          {post.tags && post.tags.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <Tag className="h-4 w-4 text-muted-foreground" />
-              {post.tags.map((tag) => (
-                <Badge key={tag} variant="outline">
-                  {tag}
-                </Badge>
-              ))}
+          <Separator className="my-8" />
+
+          <PostNavigation currentPost={post} posts={posts} />
+
+          {/* Related Posts */}
+          {relatedPosts.length > 0 && (
+            <div className="mt-12">
+              <h2 className="text-2xl font-bold mb-6 flex items-center">
+                <BookOpen className="mr-2 h-6 w-6" />
+                Related Posts
+              </h2>
+              <div className="grid gap-4 md:grid-cols-3">
+                {relatedPosts.map((relatedPost) => (
+                  <Link
+                    key={relatedPost.slug}
+                    to={`/blog/${relatedPost.slug}`}
+                    className="group"
+                  >
+                    <div className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <Badge variant="secondary" className="mb-2">
+                        {relatedPost.category}
+                      </Badge>
+                      <h3 className="font-semibold line-clamp-2 group-hover:text-primary transition-colors">
+                        {relatedPost.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {relatedPost.readTime} min read
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
+        </article>
 
-          <div className="flex items-center gap-4 pt-4">
-            <Button onClick={handleShare} variant="outline" size="sm">
-              <Share2 className="mr-2 h-4 w-4" />
-              Share
-            </Button>
-          </div>
-        </div>
+        <TableOfContents content={content} />
       </div>
-
-      <Separator className="my-8" />
-
-      <div className="mb-12">
-        <MarkdownRenderer content={content} />
-      </div>
-
-      <Separator className="my-8" />
-
-      {/* Related Posts */}
-      {relatedPosts.length > 0 && (
-        <div className="mt-12">
-          <h2 className="text-2xl font-bold mb-6 flex items-center">
-            <BookOpen className="mr-2 h-6 w-6" />
-            Related Posts
-          </h2>
-          <div className="grid gap-4 md:grid-cols-3">
-            {relatedPosts.map((relatedPost) => (
-              <Link
-                key={relatedPost.slug}
-                to={`/blog/${relatedPost.slug}`}
-                className="group"
-              >
-                <div className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                  <Badge variant="secondary" className="mb-2">
-                    {relatedPost.category}
-                  </Badge>
-                  <h3 className="font-semibold line-clamp-2 group-hover:text-primary transition-colors">
-                    {relatedPost.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {relatedPost.readTime} min read
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-    </article>
+      <ScrollToTop />
+    </>
   );
 };
 

@@ -25,15 +25,60 @@ export const MarkdownRenderer = ({ content, className = '' }: MarkdownRendererPr
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          h1: ({ children }) => (
-            <h1 className="text-4xl font-bold mt-8 mb-4">{children}</h1>
-          ),
-          h2: ({ children }) => (
-            <h2 className="text-3xl font-semibold mt-6 mb-3">{children}</h2>
-          ),
-          h3: ({ children }) => (
-            <h3 className="text-2xl font-semibold mt-4 mb-2">{children}</h3>
-          ),
+          h1: ({ children }) => {
+            const text = String(children);
+            const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+            return (
+              <h1 id={id} className="text-4xl font-bold mt-8 mb-4 scroll-mt-24">
+                {children}
+              </h1>
+            );
+          },
+          h2: ({ children }) => {
+            const text = String(children);
+            const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+            return (
+              <h2 id={id} className="text-3xl font-semibold mt-6 mb-3 scroll-mt-24">
+                {children}
+              </h2>
+            );
+          },
+          h3: ({ children }) => {
+            const text = String(children);
+            const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+            return (
+              <h3 id={id} className="text-2xl font-semibold mt-4 mb-2 scroll-mt-24">
+                {children}
+              </h3>
+            );
+          },
+          h4: ({ children }) => {
+            const text = String(children);
+            const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+            return (
+              <h4 id={id} className="text-xl font-semibold mt-4 mb-2 scroll-mt-24">
+                {children}
+              </h4>
+            );
+          },
+          h5: ({ children }) => {
+            const text = String(children);
+            const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+            return (
+              <h5 id={id} className="text-lg font-semibold mt-4 mb-2 scroll-mt-24">
+                {children}
+              </h5>
+            );
+          },
+          h6: ({ children }) => {
+            const text = String(children);
+            const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+            return (
+              <h6 id={id} className="text-base font-semibold mt-4 mb-2 scroll-mt-24">
+                {children}
+              </h6>
+            );
+          },
           p: ({ children }) => (
             <p className="mb-4 leading-7">{children}</p>
           ),
