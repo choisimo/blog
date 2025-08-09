@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import BlogCard from '@/components/BlogCard';
 import BlogCardSkeleton from '@/components/BlogCardSkeleton';
 import Pagination from '@/components/Pagination';
+import { usePageTracking } from '@/contexts/SessionStackContext';
 import { getPosts } from '@/data/posts';
 import { BlogPost } from '@/types/blog';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,9 @@ import { useDebounce } from '@/hooks/useDebounce';
 const POSTS_PER_PAGE = 12;
 
 const Blog = () => {
+  // Track this page in session stack
+  usePageTracking('Blog');
+  
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryParam = searchParams.get('category');
   const pageParam = searchParams.get('page');
@@ -156,12 +160,12 @@ const Blog = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-primary/10 via-primary/5 to-background">
-        <div className="absolute inset-0 bg-grid-white/10 bg-grid-16 [mask-image:radial-gradient(white,transparent_70%)]" />
+      <div className="relative overflow-hidden bg-gradient-to-r from-primary/10 via-primary/5 to-background border-b">
+        <div className="absolute inset-0 bg-grid-white/5 bg-grid-16 [mask-image:radial-gradient(white,transparent_70%)]" />
         <div className="container mx-auto px-4 py-16 relative">
           <div className="text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-6">
-              <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-6 animate-pulse">
+              <div className="w-2 h-2 bg-primary rounded-full" />
               <span>Latest Articles</span>
             </div>
             <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent mb-6">
@@ -192,13 +196,13 @@ const Blog = () => {
             </div>
           </div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background to-transparent" />
       </div>
 
       <div className="container mx-auto px-4 py-12">
 
       {/* Search and Filters */}
-      <div className="mb-8 space-y-4">
+      <div className="mb-8 space-y-6">
+        <div className="bg-card/50 backdrop-blur-sm border rounded-xl p-6 shadow-sm">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -281,6 +285,7 @@ const Blog = () => {
             </Button>
           )}
         </div>
+        </div>
       </div>
 
       {/* Results count and pagination info */}
@@ -349,66 +354,14 @@ const Blog = () => {
           </div>
           {(debouncedSearchTerm || selectedCategory !== 'all' || selectedTags.length > 0) && (
             <Button variant="outline" onClick={clearFilters}>
+              Clear all filters
+            </Button>
+          )}
         </div>
       )}
+      </div>
     </div>
-
-    {/* Blog Posts Grid/List */}
-    {loading ? (
-      <div className={`grid gap-6 ${viewMode === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
-        {Array.from({ length: POSTS_PER_PAGE }).map((_, index) => (
-          <BlogCardSkeleton key={index} />
-        ))}
-      </div>
-    ) : error ? (
-      <div className="text-center py-12">
-        <p className="text-red-500 mb-4">{error}</p>
-        <Button variant="outline" onClick={() => window.location.reload()}>
-          Try again
-        </Button>
-      </div>
-    ) : paginatedPosts.length > 0 ? (
-      <>
-        <div className={`grid gap-6 ${viewMode === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
-          {paginatedPosts.map((post) => (
-            <BlogCard key={post.slug} post={post} />
-          ))}
-        </div>
-        
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-12">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-              className="justify-center"
-            />
-          </div>
-        )}
-      </>
-    ) : (
-      <div className="text-center py-12">
-        <div className="mb-4">
-          <Search className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
-          <p className="text-lg font-medium mb-2">No posts found</p>
-          <p className="text-muted-foreground mb-4">
-            {debouncedSearchTerm || selectedCategory !== 'all' || selectedTags.length > 0
-              ? "Try adjusting your search criteria or filters."
-              : "No blog posts are available at the moment."}
-          </p>
-        </div>
-        {(debouncedSearchTerm || selectedCategory !== 'all' || selectedTags.length > 0) && (
-          <Button variant="outline" onClick={clearFilters}>
-            Clear all filters
-          </Button>
-        )}
-      </div>
-    )}
-  </div>
-</div>
-</div>
-);
+  );
 };
 
 export default Blog;

@@ -1,0 +1,22 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy source code
+COPY server.js ./
+COPY client/build ./client/build
+
+# Create blog directory structure
+RUN mkdir -p /app/blog/public/posts
+
+# Expose port
+EXPOSE 5000
+
+# Start the application
+CMD ["npm", "start"]
