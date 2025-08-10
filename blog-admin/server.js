@@ -410,11 +410,39 @@ app.use(express.static(path.join(__dirname, 'client/build')));
 
 // Helper functions
 function generateSlug(title) {
-  return slugify(title, {
+  if (!title || !title.trim()) {
+    throw new Error('제목이 비어있습니다. 게시글 제목을 입력해주세요.');
+  }
+  
+  const trimmedTitle = title.trim();
+  
+  // Check if title is too short
+  if (trimmedTitle.length < 2) {
+    throw new Error('제목이 너무 짧습니다. 최소 2글자 이상 입력해주세요.');
+  }
+  
+  // Check if title is too long
+  if (trimmedTitle.length > 100) {
+    throw new Error('제목이 너무 깁니다. 100글자 이하로 입력해주세요.');
+  }
+  
+  const slug = slugify(trimmedTitle, {
     lower: true,
     strict: true,
     remove: /[*+~.()'"!:@]/g
   });
+  
+  // Check if generated slug is empty (happens with special characters only titles)
+  if (!slug || slug.trim() === '') {
+    throw new Error('제목에 유효한 문자가 없습니다. 알파벳, 숫자, 한글을 포함한 제목을 입력해주세요.');
+  }
+  
+  // Check if slug is too short after processing
+  if (slug.length < 2) {
+    throw new Error('제목이 처리 후 너무 짧아졌습니다. 더 긴 제목을 입력해주세요.');
+  }
+  
+  return slug;
 }
 
 function generateFrontmatter(data) {
@@ -444,14 +472,64 @@ async function updateManifest(year) {
   
   try {
     const files = await fs.readdir(yearDir);
-    const mdFiles = files.filter(file => file.endsWith('.md'));
+    const mdFiles = files.filter(file => {
+      // Basic validation during manifest update
+      if (!file.endsWith('.md')) return false;
+      
+      // Skip invalid filenames
+      if (file === '.md' || file.startsWith('.md')) {
+        console.warn(`⚠️  Skipping invalid file during manifest update: ${file}`);
+        return false;
+      }
+      
+      // Skip hidden files
+      if (file.startsWith('.')) {
+        console.warn(`⚠️  Skipping hidden file during manifest update: ${file}`);
+        return false;
+      }
+      
+      return true;
+    });
+    
+    // Validate file contents
+    const validFiles = [];
+    for (const file of mdFiles) {
+      try {
+        const filePath = path.join(yearDir, file);
+        const content = await fs.readFile(filePath, 'utf-8');
+        
+        // Check if file is empty
+        if (!content.trim()) {
+          console.warn(`⚠️  Skipping empty file during manifest update: ${file}`);
+          continue;
+        }
+        
+        // Try to parse frontmatter
+        const parsed = matter(content);
+        if (!parsed.data.title) {
+          console.warn(`⚠️  File missing title in frontmatter: ${file}`);
+        }
+        
+        validFiles.push(file);
+      } catch (fileError) {
+        console.error(`❌ Error validating file ${file} during manifest update:`, fileError);
+        // Don't include problematic files in manifest
+      }
+    }
     
     const manifest = {
-      files: mdFiles.sort()
+      files: validFiles.sort(),
+      generatedAt: new Date().toISOString(),
+      totalFiles: validFiles.length,
+      skippedFiles: mdFiles.length - validFiles.length
     };
     
     await fs.writeJson(manifestPath, manifest, { spaces: 2 });
-    console.log(`Updated manifest for ${year}`);
+    console.log(`Updated manifest for ${year}: ${validFiles.length} valid files, ${mdFiles.length - validFiles.length} skipped`);
+    
+    if (mdFiles.length - validFiles.length > 0) {
+      console.warn(`⚠️  ${mdFiles.length - validFiles.length} files were excluded from manifest due to validation issues`);
+    }
   } catch (error) {
     console.error(`Error updating manifest for ${year}:`, error);
     throw error;
@@ -544,6 +622,28 @@ app.post('/api/posts', async (req, res) => {
       return res.status(400).json({ error: 'Title and content are required' });
     }
     
+    // Validate title
+    if (!title.trim()) {
+      return res.status(400).json({ error: '제목을 입력해주세요.' });
+    }
+    
+    if (title.trim().length < 2) {
+      return res.status(400).json({ error: '제목은 최소 2글자 이상 입력해주세요.' });
+    }
+    
+    if (title.trim().length > 100) {
+      return res.status(400).json({ error: '제목은 100글자 이하로 입력해주세요.' });
+    }
+    
+    // Validate content
+    if (!content.trim()) {
+      return res.status(400).json({ error: '내용을 입력해주세요.' });
+    }
+    
+    if (content.trim().length < 10) {
+      return res.status(400).json({ error: '내용은 최소 10글자 이상 입력해주세요.' });
+    }
+    
     // Validate publishTime for new posts
     if (publishTime) {
       const publishMoment = moment(publishTime);
@@ -562,7 +662,13 @@ app.post('/api/posts', async (req, res) => {
       }
     }
     
-    const slug = generateSlug(title);
+    let slug;
+    try {
+      slug = generateSlug(title);
+    } catch (slugError) {
+      return res.status(400).json({ error: slugError.message });
+    }
+    
     const postYear = year || moment().format('YYYY');
     const yearDir = path.join(POSTS_DIR, postYear);
     
@@ -574,16 +680,25 @@ app.post('/api/posts', async (req, res) => {
     
     // Check if file already exists
     if (await fs.pathExists(filePath)) {
-      return res.status(409).json({ error: 'Post with this title already exists' });
+      return res.status(409).json({ 
+        error: '같은 제목의 게시글이 이미 존재합니다. 다른 제목을 사용해주세요.' 
+      });
+    }
+    
+    // Validate generated filename
+    if (filename === '.md' || filename.startsWith('.md')) {
+      return res.status(400).json({ 
+        error: '제목에서 생성된 파일명이 올바르지 않습니다. 영문, 숫자, 한글을 포함한 제목을 사용해주세요.' 
+      });
     }
     
     const postData = {
-      title,
-      excerpt: excerpt || content.substring(0, 200) + '...',
+      title: title.trim(),
+      excerpt: excerpt ? excerpt.trim() : content.substring(0, 200) + '...',
       category: category || '기술',
       tags: Array.isArray(tags) ? tags : (tags ? tags.split(',').map(t => t.trim()) : []),
       publishTime: publishTime || moment().format('YYYY-MM-DD HH:mm:ss'),
-      content
+      content: content.trim()
     };
     
     const markdownContent = generateFrontmatter(postData);
@@ -603,6 +718,16 @@ app.post('/api/posts', async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating post:', error);
+    
+    // Check if it's a validation error we want to pass through
+    if (error.message && (
+      error.message.includes('제목') || 
+      error.message.includes('파일명') ||
+      error.message.includes('너무')
+    )) {
+      return res.status(400).json({ error: error.message });
+    }
+    
     res.status(500).json({ error: 'Failed to create post' });
   }
 });
