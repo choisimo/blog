@@ -111,7 +111,9 @@ out/
 
 # Gatsby
 .cache/
-public/
+# Ignore public folder except posts
+public/*
+!public/posts/
 
 # Storybook build outputs
 storybook-static/
