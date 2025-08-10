@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 5000;
 
 // Blog directory paths
 const BLOG_DIR = path.join(__dirname, '..');
-const POSTS_DIR = path.join(__dirname, '..', 'post-main', 'public', 'posts');
+const POSTS_DIR = path.join(__dirname, '..', 'public', 'posts');
 
 // Initialize git with error handling
 let git;
