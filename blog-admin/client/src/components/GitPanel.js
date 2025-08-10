@@ -68,7 +68,7 @@ function GitPanel() {
   const handlePush = async () => {
     try {
       setLoading(true);
-      await axios.post('/api/git/push');
+      await axios.post('/api/git/push', { remote: 'blog' });
       toast.success('변경사항이 푸시되었습니다.');
       fetchGitStatus();
     } catch (error) {

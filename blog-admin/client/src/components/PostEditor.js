@@ -27,7 +27,8 @@ function PostEditor() {
     excerpt: '',
     category: '기술',
     tags: [],
-    year: moment().format('YYYY')
+    year: moment().format('YYYY'),
+    date: moment().format('YYYY-MM-DD')
   });
   
   const [loading, setLoading] = useState(false);
@@ -126,7 +127,8 @@ function PostEditor() {
       const response = await axios.get(`/api/posts/${year}/${slug}`);
       setPost({
         ...response.data,
-        tags: response.data.tags || []
+        tags: response.data.tags || [],
+        date: response.data.date || moment().format('YYYY-MM-DD')
       });
       setHasUnsavedChanges(false);
     } catch (error) {
@@ -172,6 +174,7 @@ function PostEditor() {
       setDeploying(false);
     }
   };
+
   const handleSave = async () => {
     if (!validatePost()) {
       toast.error('게시글을 확인해주세요.');
@@ -370,6 +373,21 @@ function PostEditor() {
           </div>
 
           <div>
+            <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-2">
+              게시 날짜
+            </label>
+            <input
+              type="date"
+              id="date"
+              value={post.date}
+              onChange={(e) => setPost(prev => ({ ...prev, date: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-1 gap-4 mt-4">
+          <div>
             <label htmlFor="readTime" className="block text-sm font-medium text-gray-700 mb-2">
               읽기 시간
             </label>
@@ -514,7 +532,7 @@ function PostEditor() {
                   {post.title || '제목을 입력하세요'}
                 </h1>
                 <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-                  <span>{moment().format('YYYY년 MM월 DD일')}</span>
+                  <span>{post.date ? moment(post.date).format('YYYY년 MM월 DD일') : moment().format('YYYY년 MM월 DD일')}</span>
                   <span>•</span>
                   <span>{post.category || '카테고리'}</span>
                   <span>•</span>

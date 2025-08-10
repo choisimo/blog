@@ -42,7 +42,8 @@ function DeployPanel() {
     try {
       setDeploying(true);
       const response = await axios.post('/api/deploy', {
-        message: commitMessage || undefined
+        message: commitMessage || undefined,
+        remote: 'blog'
       });
       
       toast.success(response.data.message);

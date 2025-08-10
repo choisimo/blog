@@ -301,8 +301,8 @@ app.post('/api/git/commit', async (req, res) => {
 
 app.post('/api/git/push', async (req, res) => {
   try {
-    const { branch = 'main' } = req.body;
-    await git.push('origin', branch);
+    const { branch = 'main', remote = 'blog' } = req.body;
+    await git.push(remote, branch);
     res.json({ message: 'Changes pushed successfully' });
   } catch (error) {
     console.error('Git push error:', error);
@@ -313,7 +313,7 @@ app.post('/api/git/push', async (req, res) => {
 // Auto-deploy post to GitHub Pages
 app.post('/api/deploy', async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message, remote = 'blog' } = req.body;
     const commitMessage = message || `새 게시글 자동 배포 - ${moment().format('YYYY-MM-DD HH:mm')}`;
     
     // Generate manifests first
@@ -330,12 +330,12 @@ app.post('/api/deploy', async (req, res) => {
     // Git operations
     await git.add('.');
     await git.commit(commitMessage);
-    await git.push('origin', 'main');
+    await git.push(remote, 'main');
     
     res.json({ 
       message: '게시글이 성공적으로 배포되었습니다!',
       commitMessage,
-      deployUrl: 'https://github.com/actions' // Will be updated with actual deploy URL
+      deployUrl: 'https://github.com/choisimo/blog/actions'
     });
   } catch (error) {
     console.error('Deploy error:', error);
