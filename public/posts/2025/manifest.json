@@ -1,5 +1,6 @@
 {
   "files": [
+    ".md",
     "QueryDSL.md",
     "ai-models-for-coding.md",
     "arch-linux-gui-setup-experience.md",

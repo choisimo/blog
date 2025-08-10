@@ -5,6 +5,7 @@ import PostList from './components/PostList';
 import PostEditor from './components/PostEditor';
 import GitPanel from './components/GitPanel';
 import DeployPanel from './components/DeployPanel';
+import Settings from './components/Settings';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
               <Route path="/posts/edit/:year/:slug" element={<PostEditor />} />
               <Route path="/deploy" element={<DeployPanel />} />
               <Route path="/git" element={<GitPanel />} />
+              <Route path="/settings" element={<Settings />} />
             </Routes>
           </main>
         </div>

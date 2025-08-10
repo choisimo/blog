@@ -4,7 +4,8 @@ import {
   PlusIcon,
   CodeBracketIcon,
   HomeIcon,
-  CloudArrowUpIcon
+  CloudArrowUpIcon,
+  CogIcon
 } from '@heroicons/react/24/outline';
 
 function Sidebar() {
@@ -16,6 +17,7 @@ function Sidebar() {
     { name: '새 게시글', href: '/posts/new', icon: PlusIcon },
     { name: '배포 관리', href: '/deploy', icon: CloudArrowUpIcon },
     { name: 'Git 관리', href: '/git', icon: CodeBracketIcon },
+    { name: '설정', href: '/settings', icon: CogIcon },
   ];
 
   return (

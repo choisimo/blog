@@ -1,0 +1,11 @@
+{
+  "provider": "openrouter",
+  "apiKeys": {
+    "gemini": "",
+    "openrouter": "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"
+  },
+  "models": {
+    "openrouter": "openai/gpt-4o-mini"
+  },
+  "lastUpdated": "2025-08-10T08:27:43.403Z"
+}
