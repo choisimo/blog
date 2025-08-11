@@ -114,6 +114,7 @@ out/
 # Ignore public folder except essential files
 public/*
 !public/posts/
+!public/images/
 !public/404.html
 !public/CNAME
 !public/.nojekyll

@@ -7,6 +7,8 @@ const moment = require('moment');
 const matter = require('gray-matter');
 const slugify = require('slugify');
 const axios = require('axios');
+const multer = require('multer');
+const sharp = require('sharp');
 require('dotenv').config();
 
 // Google AI SDK
@@ -387,6 +389,27 @@ ${title ? `\n글 제목: ${title}` : ''}
 // Blog directory paths
 const BLOG_DIR = path.join(__dirname, '..');
 const POSTS_DIR = path.join(__dirname, '..', 'public', 'posts');
+const IMAGES_DIR = path.join(__dirname, '..', 'public', 'images');
+
+// Ensure images directory exists
+fs.ensureDirSync(IMAGES_DIR);
+
+// Multer configuration for image uploads
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept only image files
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed!'), false);
+    }
+  }
+});
 
 // Initialize git with error handling
 let git;
@@ -1481,6 +1504,134 @@ function generateOutline(prompt) {
 - 관련 문서
 - 유용한 링크`;
 }
+
+// Image upload endpoint
+app.post('/api/images/upload', upload.array('images', 10), async (req, res) => {
+  try {
+    const { postSlug, year } = req.body;
+    
+    if (!postSlug || !year) {
+      return res.status(400).json({ error: 'Post slug and year are required' });
+    }
+    
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'No images uploaded' });
+    }
+    
+    // Create post-specific image directory
+    const postImageDir = path.join(IMAGES_DIR, year, postSlug);
+    await fs.ensureDir(postImageDir);
+    
+    const uploadedImages = [];
+    
+    for (const file of req.files) {
+      // Generate unique filename
+      const timestamp = Date.now();
+      const originalName = path.parse(file.originalname).name;
+      const extension = path.extname(file.originalname).toLowerCase();
+      const filename = `${originalName}-${timestamp}${extension}`;
+      const filepath = path.join(postImageDir, filename);
+      
+      // Optimize image using sharp
+      let processedBuffer;
+      if (extension === '.jpg' || extension === '.jpeg') {
+        processedBuffer = await sharp(file.buffer)
+          .jpeg({ quality: 85, progressive: true })
+          .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+          .toBuffer();
+      } else if (extension === '.png') {
+        processedBuffer = await sharp(file.buffer)
+          .png({ quality: 85, progressive: true })
+          .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+          .toBuffer();
+      } else if (extension === '.webp') {
+        processedBuffer = await sharp(file.buffer)
+          .webp({ quality: 85 })
+          .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+          .toBuffer();
+      } else {
+        // For other formats, just resize
+        processedBuffer = await sharp(file.buffer)
+          .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+          .toBuffer();
+      }
+      
+      // Save optimized image
+      await fs.writeFile(filepath, processedBuffer);
+      
+      // Generate relative URL for markdown
+      const imageUrl = `/images/${year}/${postSlug}/${filename}`;
+      
+      uploadedImages.push({
+        filename,
+        originalName: file.originalname,
+        url: imageUrl,
+        size: processedBuffer.length,
+        dimensions: await sharp(processedBuffer).metadata()
+      });
+    }
+    
+    console.log(`Uploaded ${uploadedImages.length} images for post ${year}/${postSlug}`);
+    
+    res.json({
+      success: true,
+      images: uploadedImages
+    });
+    
+  } catch (error) {
+    console.error('Error uploading images:', error);
+    res.status(500).json({ error: 'Failed to upload images', details: error.message });
+  }
+});
+
+// Get images for a specific post
+app.get('/api/images/:year/:slug', async (req, res) => {
+  try {
+    const { year, slug } = req.params;
+    const postImageDir = path.join(IMAGES_DIR, year, slug);
+    
+    if (!await fs.pathExists(postImageDir)) {
+      return res.json({ images: [] });
+    }
+    
+    const files = await fs.readdir(postImageDir);
+    const imageFiles = files.filter(file => {
+      const ext = path.extname(file).toLowerCase();
+      return ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(ext);
+    });
+    
+    const images = imageFiles.map(filename => ({
+      filename,
+      url: `/images/${year}/${slug}/${filename}`,
+      path: path.join(postImageDir, filename)
+    }));
+    
+    res.json({ images });
+    
+  } catch (error) {
+    console.error('Error fetching images:', error);
+    res.status(500).json({ error: 'Failed to fetch images' });
+  }
+});
+
+// Delete image
+app.delete('/api/images/:year/:slug/:filename', async (req, res) => {
+  try {
+    const { year, slug, filename } = req.params;
+    const imagePath = path.join(IMAGES_DIR, year, slug, filename);
+    
+    if (await fs.pathExists(imagePath)) {
+      await fs.unlink(imagePath);
+      console.log(`Deleted image: ${imagePath}`);
+    }
+    
+    res.json({ success: true });
+    
+  } catch (error) {
+    console.error('Error deleting image:', error);
+    res.status(500).json({ error: 'Failed to delete image' });
+  }
+});
 
 // Serve React app
 app.get('*', (req, res) => {
