@@ -1,4 +1,4 @@
-import { useParams, Link, Navigate } from 'react-router-dom';
+import { useParams, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { TableOfContents } from '@/components/TableOfContents';
@@ -17,12 +17,25 @@ import { useToast } from '@/components/ui/use-toast';
 
 const BlogPost = () => {
   const { year, slug } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as any)?.from;
   const { toast } = useToast();
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [post, setPost] = useState<BlogPostType | null>(null);
   const [posts, setPosts] = useState<BlogPostType[]>([]);
+
+  const handleBackToBlog = () => {
+    if (from && typeof from === 'object') {
+      const to = `${from.pathname}${from.search || ''}`;
+      navigate(to);
+    } else {
+      // Fallback to blog index
+      navigate('/blog');
+    }
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -121,18 +134,16 @@ const BlogPost = () => {
               <div className="mb-12">
                 <Breadcrumb 
                   items={[
-                    { label: 'Blog', href: '/blog' },
+                    { label: 'Blog', href: from ? `${from.pathname}${from.search || ''}` : '/blog' },
                     { label: post.category },
                     { label: post.title }
                   ]}
                   className="mb-6"
                 />
 
-                <Button asChild variant="ghost" className="mb-8 hover:bg-primary/10">
-                  <Link to="/blog">
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Blog
-                  </Link>
+                <Button variant="ghost" onClick={handleBackToBlog} className="mb-8 hover:bg-primary/10">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Blog
                 </Button>
 
                 {/* Enhanced Header Card */}
@@ -197,7 +208,7 @@ const BlogPost = () => {
 
               <Separator className="my-12" />
 
-              <PostNavigation currentPost={post} posts={posts} />
+              <PostNavigation currentPost={post} posts={posts} fromState={from} />
 
               {/* Related Posts */}
               {relatedPosts.length > 0 && (
@@ -212,6 +223,7 @@ const BlogPost = () => {
                         <Link
                           key={relatedPost.slug}
                           to={`/blog/${relatedPost.slug}`}
+                          state={from ? { from } : undefined}
                           className="group"
                         >
                           <div className="bg-card border rounded-xl p-6 hover:shadow-lg hover:scale-105 transition-all duration-300">

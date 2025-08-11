@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,7 @@ import { posts } from '@/data/posts';
 import { formatDate } from '@/utils/blog';
 
 const Index = () => {
+  const location = useLocation();
   // Get latest 3 posts
   const latestPosts = posts.slice(0, 3);
 
@@ -86,7 +87,7 @@ const Index = () => {
                   </span>
                 </div>
                 <CardTitle className="line-clamp-2">
-                  <Link to={`/blog/${post.slug}`} className="hover:text-primary transition-colors">
+                  <Link to={`/blog/${post.slug}`} state={{ from: location }} className="hover:text-primary transition-colors">
                     {post.title}
                   </Link>
                 </CardTitle>
