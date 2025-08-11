@@ -13,7 +13,10 @@ import {
   ArrowUpTrayIcon,
   CloudArrowUpIcon,
   ExclamationTriangleIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  PhotoIcon,
+  XMarkIcon,
+  PlusIcon
 } from '@heroicons/react/24/outline';
 
 function PostEditor() {
@@ -79,6 +82,15 @@ function PostEditor() {
     editingCategory: null,
     editName: ''
   });
+  
+  // Image upload states
+  const [imageUpload, setImageUpload] = useState({
+    isUploading: false,
+    dragOver: false,
+    images: [],
+    showGallery: false
+  });
+  const [textareaRef, setTextareaRef] = useState(null);
 
   // Auto-save functionality
   const autoSavePost = useCallback(async () => {
@@ -174,6 +186,7 @@ function PostEditor() {
     fetchAIConfig();
     if (isEditing) {
       fetchPost();
+      fetchPostImages();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year, slug, isEditing]);
@@ -506,6 +519,152 @@ function PostEditor() {
     }));
   };
 
+  // Image upload functions
+  const generateSlug = (title) => {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9가-힣\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim();
+  };
+
+  const uploadImages = async (files) => {
+    if (!files || files.length === 0) return [];
+    
+    const postSlug = isEditing ? slug : generateSlug(post.title);
+    if (!postSlug) {
+      toast.error('게시글 제목을 먼저 입력해주세요.');
+      return [];
+    }
+
+    setImageUpload(prev => ({ ...prev, isUploading: true }));
+
+    try {
+      const formData = new FormData();
+      Array.from(files).forEach(file => {
+        formData.append('images', file);
+      });
+      formData.append('postSlug', postSlug);
+      formData.append('year', post.year);
+
+      const response = await axios.post('/api/images/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      if (response.data.success) {
+        toast.success(`${response.data.images.length}개 이미지가 업로드되었습니다.`);
+        
+        // Update images list
+        setImageUpload(prev => ({
+          ...prev,
+          images: [...prev.images, ...response.data.images]
+        }));
+        
+        return response.data.images;
+      }
+    } catch (error) {
+      console.error('Image upload error:', error);
+      toast.error('이미지 업로드에 실패했습니다.');
+    } finally {
+      setImageUpload(prev => ({ ...prev, isUploading: false }));
+    }
+    
+    return [];
+  };
+
+  const insertImageAtCursor = (imageUrl, altText = '') => {
+    if (!textareaRef) return;
+    
+    const textarea = textareaRef;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const markdownImage = `![${altText}](${imageUrl})`;
+    
+    const newContent = 
+      post.content.substring(0, start) + 
+      markdownImage + 
+      post.content.substring(end);
+    
+    setPost(prev => ({ ...prev, content: newContent }));
+    setHasUnsavedChanges(true);
+    
+    // Set cursor position after the inserted image
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(
+        start + markdownImage.length,
+        start + markdownImage.length
+      );
+    }, 0);
+  };
+
+  const handleImageUpload = async (files) => {
+    const uploadedImages = await uploadImages(files);
+    
+    // Insert images at cursor position
+    uploadedImages.forEach((image, index) => {
+      setTimeout(() => {
+        insertImageAtCursor(image.url, image.originalName);
+      }, index * 100); // Slight delay between insertions
+    });
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setImageUpload(prev => ({ ...prev, dragOver: true }));
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setImageUpload(prev => ({ ...prev, dragOver: false }));
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setImageUpload(prev => ({ ...prev, dragOver: false }));
+    
+    const files = Array.from(e.dataTransfer.files).filter(file => 
+      file.type.startsWith('image/')
+    );
+    
+    if (files.length > 0) {
+      handleImageUpload(files);
+    }
+  };
+
+  const fetchPostImages = async () => {
+    if (!isEditing) return;
+    
+    try {
+      const response = await axios.get(`/api/images/${year}/${slug}`);
+      setImageUpload(prev => ({
+        ...prev,
+        images: response.data.images || []
+      }));
+    } catch (error) {
+      console.error('Error fetching post images:', error);
+    }
+  };
+
+  const deleteImage = async (filename) => {
+    if (!isEditing) return;
+    
+    try {
+      await axios.delete(`/api/images/${year}/${slug}/${filename}`);
+      setImageUpload(prev => ({
+        ...prev,
+        images: prev.images.filter(img => img.filename !== filename)
+      }));
+      toast.success('이미지가 삭제되었습니다.');
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      toast.error('이미지 삭제에 실패했습니다.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -836,12 +995,85 @@ function PostEditor() {
         {/* Content */}
         <div className="p-6">
           {activeTab === 'edit' ? (
-            <div>
+            <div className="relative">
+              {/* Image Upload Button */}
+              <div className="mb-4 flex items-center gap-2">
+                <label className="cursor-pointer inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                  <PhotoIcon className="h-4 w-4 mr-2" />
+                  이미지 업로드
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleImageUpload(e.target.files)}
+                  />
+                </label>
+                {imageUpload.isUploading && (
+                  <div className="flex items-center text-sm text-gray-600">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                    업로드 중...
+                  </div>
+                )}
+                {imageUpload.images.length > 0 && (
+                  <button
+                    onClick={() => setImageUpload(prev => ({ ...prev, showGallery: !prev.showGallery }))}
+                    className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    <PhotoIcon className="h-4 w-4 mr-2" />
+                    이미지 갤러리 ({imageUpload.images.length})
+                  </button>
+                )}
+              </div>
+              
+              {/* Image Gallery */}
+              {imageUpload.showGallery && imageUpload.images.length > 0 && (
+                <div className="mb-4 p-4 border border-gray-200 rounded-md bg-gray-50">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {imageUpload.images.map((image, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={image.url}
+                          alt={image.originalName}
+                          className="w-full h-24 object-cover rounded cursor-pointer hover:opacity-75"
+                          onClick={() => insertImageAtCursor(image.url, image.originalName)}
+                        />
+                        <button
+                          onClick={() => deleteImage(image.filename)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <XMarkIcon className="h-3 w-3" />
+                        </button>
+                        <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b truncate">
+                          {image.originalName}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Drag and Drop Overlay */}
+              {imageUpload.dragOver && (
+                <div className="absolute inset-0 bg-blue-100 bg-opacity-75 border-2 border-dashed border-blue-400 rounded-md flex items-center justify-center z-10">
+                  <div className="text-center">
+                    <PhotoIcon className="h-12 w-12 text-blue-600 mx-auto mb-2" />
+                    <p className="text-blue-600 font-medium">이미지를 여기에 드롭하세요</p>
+                  </div>
+                </div>
+              )}
+              
               <textarea
+                ref={setTextareaRef}
                 value={post.content}
                 onChange={(e) => setPost(prev => ({ ...prev, content: e.target.value }))}
-                className="w-full h-[600px] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                placeholder="마크다운으로 내용을 작성하세요..."
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`w-full h-[600px] px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm ${
+                  imageUpload.dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300'
+                }`}
+                placeholder="마크다운으로 내용을 작성하세요... (이미지를 드래그해서 업로드할 수 있습니다)"
               />
               <div className="mt-2 text-sm text-gray-500">
                 마크다운 문법을 사용할 수 있습니다. (# 제목, **굵게**, *기울임*, ```코드```, {'>'} 인용 등)
