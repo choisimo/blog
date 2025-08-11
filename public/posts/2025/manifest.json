@@ -12,6 +12,7 @@
     "firebase-hosting-guide.md",
     "gemini-gui-dev-tool-idea.md",
     "git-submodule-guide.md",
+    "hooks.md",
     "kmp.md",
     "knapsack.md",
     "latest.md",
@@ -30,7 +31,7 @@
     "spring-boot-realtime-communication.md",
     "stack.md"
   ],
-  "generatedAt": "2025-08-10T08:47:55.290Z",
-  "totalFiles": 29,
-  "excludedFiles": 0
+  "generatedAt": "2025-08-11T04:57:31.623Z",
+  "totalFiles": 30,
+  "skippedFiles": 0
 }
