@@ -387,11 +387,12 @@ ${title ? `\n글 제목: ${title}` : ''}
 }
 
 // Blog directory paths
-const BLOG_DIR = path.join(__dirname, '..');
-const POSTS_DIR = path.join(__dirname, '..', 'public', 'posts');
-const IMAGES_DIR = path.join(__dirname, '..', 'public', 'images');
+const BLOG_DIR = process.env.BLOG_DIR || path.join(__dirname, '..');
+const POSTS_DIR = path.join(BLOG_DIR, 'public', 'posts');
+const IMAGES_DIR = path.join(BLOG_DIR, 'public', 'images');
 
-// Ensure images directory exists
+// Ensure directories exist
+fs.ensureDirSync(POSTS_DIR);
 fs.ensureDirSync(IMAGES_DIR);
 
 // Multer configuration for image uploads
@@ -1339,6 +1340,87 @@ app.post('/api/ai/config', async (req, res) => {
   } catch (error) {
     console.error('Error updating AI config:', error);
     res.status(500).json({ error: 'Failed to update AI configuration', details: error.message });
+  }
+});
+
+// Test AI connection
+app.post('/api/ai/test', async (req, res) => {
+  try {
+    const { provider, apiKeys } = req.body;
+    
+    if (!provider || provider === 'template') {
+      return res.json({ success: true, message: 'Template provider is always available' });
+    }
+    
+    let testResult = { success: false, error: 'Unknown provider' };
+    
+    if (provider === 'gemini') {
+      if (!apiKeys?.gemini) {
+        return res.status(400).json({ success: false, error: 'Gemini API key is required' });
+      }
+      
+      try {
+        const testAI = new GoogleGenerativeAI(apiKeys.gemini);
+        const model = testAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+        await model.generateContent('Test connection');
+        testResult = { success: true, message: 'Gemini API connection successful' };
+      } catch (error) {
+        console.error('Gemini test error:', error);
+        testResult = { success: false, error: `Gemini API test failed: ${error.message}` };
+      }
+    }
+    
+    if (provider === 'openrouter') {
+      if (!apiKeys?.openrouter) {
+        return res.status(400).json({ success: false, error: 'OpenRouter API key is required' });
+      }
+      
+      try {
+        const response = await axios.get('https://openrouter.ai/api/v1/models', {
+          headers: { 'Authorization': `Bearer ${apiKeys.openrouter}` },
+          timeout: 10000
+        });
+        testResult = { success: true, message: 'OpenRouter API connection successful' };
+      } catch (error) {
+        console.error('OpenRouter test error:', error);
+        if (error.response?.status === 401) {
+          testResult = { success: false, error: 'Invalid OpenRouter API key' };
+        } else {
+          testResult = { success: false, error: `OpenRouter API test failed: ${error.message}` };
+        }
+      }
+    }
+    
+    res.json(testResult);
+  } catch (error) {
+    console.error('Error testing AI connection:', error);
+    res.status(500).json({ success: false, error: 'Internal server error during test' });
+  }
+});
+
+// Get models for a specific provider
+app.post('/api/ai/models', async (req, res) => {
+  try {
+    const { apiKey } = req.body;
+    
+    if (!apiKey) {
+      return res.status(400).json({ error: 'API key is required' });
+    }
+    
+    try {
+      const models = await AIService.fetchOpenRouterModels(apiKey);
+      res.json({ models });
+    } catch (error) {
+      console.error('Error fetching models:', error);
+      if (error.response?.status === 401) {
+        res.status(401).json({ error: 'Invalid API key' });
+      } else {
+        res.status(500).json({ error: 'Failed to fetch models', details: error.message });
+      }
+    }
+  } catch (error) {
+    console.error('Error in models endpoint:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });
 

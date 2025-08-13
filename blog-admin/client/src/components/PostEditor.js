@@ -16,8 +16,10 @@ import {
   CheckCircleIcon,
   PhotoIcon,
   XMarkIcon,
-  PlusIcon
+  PlusIcon,
+  Cog6ToothIcon
 } from '@heroicons/react/24/outline';
+import AIConfigModal from './AIConfigModal';
 
 function PostEditor() {
   const { year, slug } = useParams();
@@ -1538,6 +1540,16 @@ function PostEditor() {
           </div>
         </div>
       )}
+
+      {/* AI Config Modal */}
+      <AIConfigModal
+        isOpen={aiSettings.isOpen}
+        onClose={() => setAiSettings(prev => ({ ...prev, isOpen: false }))}
+        onConfigUpdate={(config) => {
+          setAiConfig(prev => ({ ...prev, ...config }));
+          setAiSettings(prev => ({ ...prev, isOpen: false }));
+        }}
+      />
     </div>
   );
 }

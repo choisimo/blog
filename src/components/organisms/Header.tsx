@@ -1,9 +1,10 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Menu, X, Home, BookOpen, User, Mail } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { NavigationItem } from '@/components/molecules';
 
 const navigation = [
   { name: 'Home', href: '/', icon: Home },
@@ -14,7 +15,8 @@ const navigation = [
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const location = useLocation();
+
+  const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -28,19 +30,12 @@ export function Header() {
             </Link>
             <div className="hidden md:flex md:gap-x-8">
               {navigation.map((item) => (
-                <Link
+                <NavigationItem
                   key={item.name}
-                  to={item.href}
-                  className={cn(
-                    'flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary',
-                    location.pathname === item.href
-                      ? 'text-primary'
-                      : 'text-muted-foreground'
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.name}
-                </Link>
+                  name={item.name}
+                  href={item.href}
+                  icon={item.icon}
+                />
               ))}
             </div>
           </div>
@@ -51,6 +46,7 @@ export function Header() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label="Toggle main menu"
               >
                 <span className="sr-only">Open main menu</span>
                 {mobileMenuOpen ? (
@@ -68,20 +64,14 @@ export function Header() {
       <div className={cn('md:hidden', mobileMenuOpen ? 'block' : 'hidden')}>
         <div className="space-y-1 px-4 pb-3 pt-2">
           {navigation.map((item) => (
-            <Link
+            <NavigationItem
               key={item.name}
-              to={item.href}
-              className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-base font-medium transition-colors',
-                location.pathname === item.href
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-              )}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <item.icon className="h-5 w-5" />
-              {item.name}
-            </Link>
+              name={item.name}
+              href={item.href}
+              icon={item.icon}
+              isMobile
+              onClick={closeMobileMenu}
+            />
           ))}
         </div>
       </div>

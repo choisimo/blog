@@ -13,10 +13,16 @@ export default defineConfig(({ mode }) => ({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: undefined,
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['lucide-react', '@radix-ui/react-accordion', '@radix-ui/react-avatar', '@radix-ui/react-dialog'],
+          markdown: ['react-markdown', 'react-syntax-highlighter', 'remark-gfm', 'remark-frontmatter'],
+          utils: ['clsx', 'class-variance-authority', 'tailwind-merge'],
+        },
       },
     },
     assetsDir: 'assets',
+    chunkSizeWarningLimit: 600,
   },
   plugins: [
     react(),
