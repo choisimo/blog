@@ -4,20 +4,20 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "build:dev": "vite build --mode development",
-    "build:analyze": "vite build --mode production && open dist/stats.html",
-    "lint": "eslint src --report-unused-disable-directives --max-warnings 0",
-    "lint:fix": "eslint src --fix",
-    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,scss,md}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,scss,md}\"",
-    "type-check": "tsc --noEmit",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage",
-    "preview": "vite preview",
+    "dev": "vite --config config/vite.config.ts",
+    "build": "vite build --config config/vite.config.ts",
+    "build:dev": "vite build --mode development --config config/vite.config.ts",
+    "build:analyze": "vite build --mode production --config config/vite.config.ts && open dist/stats.html",
+    "lint": "eslint src --config config/eslint.config.js --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint src --config config/eslint.config.js --fix",
+    "format": "prettier --config config/prettier.config.js --write \"src/**/*.{ts,tsx,js,jsx,json,css,scss,md}\"",
+    "format:check": "prettier --config config/prettier.config.js --check \"src/**/*.{ts,tsx,js,jsx,json,css,scss,md}\"",
+    "type-check": "tsc --project config/tsconfig.json --noEmit",
+    "test": "vitest --config config/vite.config.ts",
+    "test:run": "vitest run --config config/vite.config.ts",
+    "test:ui": "vitest --ui --config config/vite.config.ts",
+    "test:coverage": "vitest run --coverage --config config/vite.config.ts",
+    "preview": "vite preview --config config/vite.config.ts",
     "generate-manifests": "node scripts/generate-manifests.js",
     "prepare": "husky"
   },
@@ -112,11 +112,11 @@
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
-      "eslint --fix",
-      "prettier --write"
+      "eslint --config config/eslint.config.js --fix",
+      "prettier --config config/prettier.config.js --write"
     ],
     "*.{json,css,scss,md}": [
-      "prettier --write"
+      "prettier --config config/prettier.config.js --write"
     ]
   },
   "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748"

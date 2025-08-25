@@ -23,10 +23,10 @@
     "noImplicitReturns": true,
     "noImplicitOverride": true,
 
-    "baseUrl": ".",
+    "baseUrl": "..",
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["../src"]
 }
