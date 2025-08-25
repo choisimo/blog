@@ -122,3 +122,5 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
     </div>
   );
 };
+
+export default TableOfContents;

@@ -230,3 +230,5 @@ export const MarkdownRenderer = ({
     </div>
   );
 };
+
+export default MarkdownRenderer;

@@ -50,3 +50,5 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
     </DropdownMenu>
   );
 }
+
+export default ThemeToggle;

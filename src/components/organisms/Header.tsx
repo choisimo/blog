@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { ThemeToggle } from '@/components/common';
 import { Menu, X, Home, BookOpen, User, Mail } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -19,17 +19,20 @@ export function Header() {
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <nav className="container mx-auto px-4 sm:px-6 lg:px-8" aria-label="Global">
-        <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center gap-x-12">
-            <Link to="/" className="flex items-center space-x-2">
-              <span className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+    <header className='sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'>
+      <nav
+        className='container mx-auto px-4 sm:px-6 lg:px-8'
+        aria-label='Global'
+      >
+        <div className='flex h-16 items-center justify-between'>
+          <div className='flex items-center gap-x-12'>
+            <Link to='/' className='flex items-center space-x-2'>
+              <span className='text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent'>
                 Nodove
               </span>
             </Link>
-            <div className="hidden md:flex md:gap-x-8">
-              {navigation.map((item) => (
+            <div className='hidden md:flex md:gap-x-8'>
+              {navigation.map(item => (
                 <NavigationItem
                   key={item.name}
                   name={item.name}
@@ -39,20 +42,20 @@ export function Header() {
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-x-4">
+          <div className='flex items-center gap-x-4'>
             <ThemeToggle />
-            <div className="flex md:hidden">
+            <div className='flex md:hidden'>
               <Button
-                variant="ghost"
-                size="icon"
+                variant='ghost'
+                size='icon'
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                aria-label="Toggle main menu"
+                aria-label='Toggle main menu'
               >
-                <span className="sr-only">Open main menu</span>
+                <span className='sr-only'>Open main menu</span>
                 {mobileMenuOpen ? (
-                  <X className="h-6 w-6" aria-hidden="true" />
+                  <X className='h-6 w-6' aria-hidden='true' />
                 ) : (
-                  <Menu className="h-6 w-6" aria-hidden="true" />
+                  <Menu className='h-6 w-6' aria-hidden='true' />
                 )}
               </Button>
             </div>
@@ -62,8 +65,8 @@ export function Header() {
 
       {/* Mobile menu */}
       <div className={cn('md:hidden', mobileMenuOpen ? 'block' : 'hidden')}>
-        <div className="space-y-1 px-4 pb-3 pt-2">
-          {navigation.map((item) => (
+        <div className='space-y-1 px-4 pb-3 pt-2'>
+          {navigation.map(item => (
             <NavigationItem
               key={item.name}
               name={item.name}

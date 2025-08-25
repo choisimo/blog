@@ -1,8 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import BlogCard from '@/components/BlogCard';
-import BlogCardSkeleton from '@/components/BlogCardSkeleton';
-import Pagination from '@/components/Pagination';
+import { BlogCard, BlogCardSkeleton } from '@/components';
+import { Pagination } from '@/components';
 import { getPosts } from '@/data/posts';
 import { BlogPost } from '@/types/blog';
 import { Input } from '@/components/ui/input';
