@@ -19,6 +19,7 @@
     "test:coverage": "vitest run --coverage --config config/vite.config.ts",
     "preview": "vite preview --config config/vite.config.ts",
     "generate-manifests": "node scripts/generate-manifests.js",
+    "deploy": "npm run build && npm run generate-manifests",
     "prepare": "husky"
   },
   "dependencies": {

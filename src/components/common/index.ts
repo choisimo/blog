@@ -1,3 +1,5 @@
 export { default as ThemeToggle } from './ThemeToggle';
-export { default as ScrollToTop } from './ScrollToTop';
-export { default as ReadingProgress } from './ReadingProgress';
+export { ScrollToTop } from './ScrollToTop';
+export { ReadingProgress } from './ReadingProgress';
+export { OptimizedImage } from './OptimizedImage';
+export { SkipLink } from './SkipLink';
