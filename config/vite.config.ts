@@ -7,7 +7,7 @@ import { visualizer } from 'rollup-plugin-visualizer';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: '/',
+  base: '/blog/',
   publicDir: 'public',
   server: {
     host: '::',
