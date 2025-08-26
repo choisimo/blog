@@ -4,14 +4,36 @@
     <meta charset="utf-8" />
     <title>Page Not Found - nodove blog</title>
     <meta name="description" content="페이지를 찾을 수 없습니다. 홈페이지로 돌아가세요." />
-    <meta http-equiv="refresh" content="3;url=/#/">
+    <script>
+      // GitHub Pages SPA redirect script
+      // This script takes the current path and redirects to the root with the path as a hash
+      (function() {
+        var redirect = sessionStorage.redirect;
+        delete sessionStorage.redirect;
+        if (redirect && redirect !== location.href) {
+          history.replaceState(null, null, redirect);
+        }
+      })();
+      
+      // If no redirect in sessionStorage, redirect current path to hash
+      if (!sessionStorage.redirect) {
+        var pathSegmentsToKeep = 0;
+        var l = window.location;
+        var redirectURL = l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+          l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
+          l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
+          (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+          l.hash;
+        
+        // Immediate redirect to preserve the URL
+        window.location.replace(redirectURL);
+      }
+    </script>
   </head>
   <body>
     <div style="text-align: center; padding: 50px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
       <h1>404 - 페이지를 찾을 수 없습니다</h1>
-      <p>요청하신 페이지가 존재하지 않습니다.</p>
-      <p>3초 후 자동으로 홈페이지로 이동합니다...</p>
-      <a href="/#/" style="color: #0066cc; text-decoration: none;">지금 홈페이지로 이동</a>
+      <p>페이지를 리다이렉트하는 중...</p>
     </div>
   </body>
 </html>
