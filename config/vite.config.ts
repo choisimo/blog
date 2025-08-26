@@ -8,13 +8,13 @@ import { visualizer } from 'rollup-plugin-visualizer';
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   base: '/',
-  publicDir: '../public',
+  publicDir: 'public',
   server: {
     host: '::',
     port: 8080,
   },
   build: {
-    outDir: '../dist',
+    outDir: 'dist',
     emptyOutDir: true,
     copyPublicDir: true,
     rollupOptions: {
@@ -61,7 +61,7 @@ export default defineConfig(({ mode }) => ({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['../src/test/setup.ts'],
+    setupFiles: ['src/test/setup.ts'],
     css: true,
   },
 }));
