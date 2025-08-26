@@ -17,7 +17,7 @@
       
       // If no redirect in sessionStorage, redirect current path to hash
       if (!sessionStorage.redirect) {
-        var pathSegmentsToKeep = 0;
+        var pathSegmentsToKeep = 1;
         var l = window.location;
         var redirectURL = l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
           l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
