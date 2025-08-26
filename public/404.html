@@ -2,15 +2,16 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Redirecting...</title>
-    <!-- Note: this 404.html file must be at least 512 bytes for it to work
-         with Internet Explorer (it is currently > 512 bytes) -->
-    <script src="/spa-404-redirect.js"></script>
+    <title>Page Not Found - nodove blog</title>
+    <meta name="description" content="페이지를 찾을 수 없습니다. 홈페이지로 돌아가세요." />
+    <meta http-equiv="refresh" content="3;url=/#/">
   </head>
   <body>
-    <!-- Single Page Apps for GitHub Pages redirect script loaded above -->
-    <!-- This ensures the file meets the minimum size requirement for IE -->
-    <!-- The external script handles the SPA routing redirect functionality -->
-    <!-- that was previously inline but is now external to comply with CSP -->
+    <div style="text-align: center; padding: 50px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+      <h1>404 - 페이지를 찾을 수 없습니다</h1>
+      <p>요청하신 페이지가 존재하지 않습니다.</p>
+      <p>3초 후 자동으로 홈페이지로 이동합니다...</p>
+      <a href="/#/" style="color: #0066cc; text-decoration: none;">지금 홈페이지로 이동</a>
+    </div>
   </body>
 </html>

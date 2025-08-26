@@ -38,9 +38,6 @@ jobs:
     - name: Build
       run: npm run build
       
-    - name: Copy SPA scripts
-      run: cp public/spa-*.js dist/
-      
     - name: Setup Pages
       uses: actions/configure-pages@v4
       
