@@ -74,26 +74,19 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
+  // Create CSS variables object instead of inline styles
+  const cssVariables = colorConfig.reduce((acc, [key, itemConfig]) => {
+    const lightColor = itemConfig.theme?.light || itemConfig.color
+    const darkColor = itemConfig.theme?.dark || itemConfig.color
+    if (lightColor) acc[`--color-${key}`] = lightColor
+    return acc
+  }, {} as Record<string, string>)
+
   return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color =
-      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
-      itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
-  })
-  .join("\n")}
-}
-`
-          )
-          .join("\n"),
-      }}
+    <div 
+      data-chart={id} 
+      style={cssVariables}
+      className="chart-container"
     />
   )
 }
