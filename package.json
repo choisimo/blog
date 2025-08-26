@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --config config/vite.config.ts",
-    "build": "vite build --config config/vite.config.ts",
+    "build": "vite build --config config/vite.config.ts && cp public/spa-*.js dist/",
     "build:dev": "vite build --mode development --config config/vite.config.ts",
     "build:analyze": "vite build --mode production --config config/vite.config.ts && open dist/stats.html",
     "lint": "eslint src --config config/eslint.config.js --report-unused-disable-directives --max-warnings 0",
