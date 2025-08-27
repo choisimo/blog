@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --config config/vite.config.ts",
+    "prebuild": "npm run generate-seo",
     "build": "vite build --config config/vite.config.ts",
     "build:dev": "vite build --mode development --config config/vite.config.ts",
     "build:analyze": "vite build --mode production --config config/vite.config.ts && open dist/stats.html",
@@ -58,6 +59,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
+    "dotenv": "^17.2.1",
     "embla-carousel-react": "^8.3.0",
     "fuse.js": "^7.1.0",
     "gray-matter": "^4.0.3",

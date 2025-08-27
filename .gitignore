@@ -131,3 +131,5 @@ storybook-static/
 *.zip
 *.tar.gz
 *.rar
+.env
+blog-admin/.env

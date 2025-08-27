@@ -1,16 +1,21 @@
 #!/usr/bin/env node
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
+import fs from "fs";
+import path from "path";
+import matter from "gray-matter";
 
 const PROJECT_ROOT = process.cwd();
-const PUBLIC_DIR = path.join(PROJECT_ROOT, 'public');
-const MANIFEST_PATH = path.join(PUBLIC_DIR, 'posts-manifest.json');
+const PUBLIC_DIR = path.join(PROJECT_ROOT, "public");
+const MANIFEST_PATH = path.join(PUBLIC_DIR, "posts-manifest.json");
 
-const BASE_URL = 'https://blog.nodove.com';
-const SITE_NAME = 'Nodove Blog';
+import dotenv from "dotenv";
+dotenv.config();
+const BASE_URL =
+  process.env.SITE_BASE_URL ||
+  process.env.VITE_SITE_BASE_URL ||
+  "http://localhost:3000";
+const SITE_NAME = "Nodove Blog";
 const SITE_DESCRIPTION =
-  'A blog about technology, programming, and web development';
+  "A blog about technology, programming, and web development";
 
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -19,31 +24,31 @@ function ensureDir(dir) {
 function loadManifest() {
   if (!fs.existsSync(MANIFEST_PATH)) {
     throw new Error(
-      `posts-manifest.json not found at ${MANIFEST_PATH}. Run npm run generate-manifests first.`
+      `posts-manifest.json not found at ${MANIFEST_PATH}. Run npm run generate-manifests first.`,
     );
   }
-  const raw = fs.readFileSync(MANIFEST_PATH, 'utf8');
+  const raw = fs.readFileSync(MANIFEST_PATH, "utf8");
   return JSON.parse(raw);
 }
 
 function parsePost(filePath, manifestPath) {
-  const content = fs.readFileSync(filePath, 'utf8');
+  const content = fs.readFileSync(filePath, "utf8");
   const { data: frontMatter, content: body } = matter(content);
 
-  const rel = manifestPath.replace(/^\//, ''); // remove leading slash
-  const parts = rel.split('/'); // [ 'posts', '2025', 'my-post.md' ]
+  const rel = manifestPath.replace(/^\//, ""); // remove leading slash
+  const parts = rel.split("/"); // [ 'posts', '2025', 'my-post.md' ]
   const year = parts[1] || String(new Date().getFullYear());
   const filename = parts[2] || path.basename(filePath);
-  const slug = filename.replace(/\.md$/i, '');
+  const slug = filename.replace(/\.md$/i, "");
 
   const title =
     frontMatter.title ||
-    slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    slug.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
   const description =
-    frontMatter.description || body.trim().slice(0, 160) + '...';
+    frontMatter.description || body.trim().slice(0, 160) + "...";
   const date = frontMatter.date || `${year}-01-01`;
   const tags = Array.isArray(frontMatter.tags) ? frontMatter.tags : [];
-  const category = frontMatter.category || 'General';
+  const category = frontMatter.category || "General";
   const published = frontMatter.published !== false;
 
   return {
@@ -62,7 +67,7 @@ function loadPosts() {
   const manifest = loadManifest();
   const posts = [];
   for (const manifestPath of manifest.posts || []) {
-    const rel = manifestPath.replace(/^\//, '');
+    const rel = manifestPath.replace(/^\//, "");
     const abs = path.join(PUBLIC_DIR, rel);
     if (!fs.existsSync(abs)) {
       console.warn(`Skipping missing post file: ${abs}`);
@@ -80,31 +85,31 @@ function generateSitemap(posts) {
   const entries = [
     {
       url: BASE_URL,
-      changefreq: 'weekly',
+      changefreq: "weekly",
       priority: 1.0,
       lastmod: new Date().toISOString(),
     },
     {
       url: `${BASE_URL}/blog`,
-      changefreq: 'daily',
+      changefreq: "daily",
       priority: 0.9,
       lastmod: new Date().toISOString(),
     },
     {
       url: `${BASE_URL}/about`,
-      changefreq: 'monthly',
+      changefreq: "monthly",
       priority: 0.7,
       lastmod: new Date().toISOString(),
     },
     {
       url: `${BASE_URL}/contact`,
-      changefreq: 'monthly',
+      changefreq: "monthly",
       priority: 0.6,
       lastmod: new Date().toISOString(),
     },
-    ...posts.map(p => ({
+    ...posts.map((p) => ({
       url: `${BASE_URL}/blog/${p.year}/${p.slug}`,
-      changefreq: 'monthly',
+      changefreq: "monthly",
       priority: 0.8,
       lastmod: new Date(p.date).toISOString(),
     })),
@@ -115,46 +120,46 @@ function generateSitemap(posts) {
     `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
     entries
       .map(
-        e =>
-          `  <url>\n    <loc>${e.url}</loc>\n    <lastmod>${e.lastmod}</lastmod>\n    <changefreq>${e.changefreq}</changefreq>\n    <priority>${e.priority}</priority>\n  </url>`
+        (e) =>
+          `  <url>\n    <loc>${e.url}</loc>\n    <lastmod>${e.lastmod}</lastmod>\n    <changefreq>${e.changefreq}</changefreq>\n    <priority>${e.priority}</priority>\n  </url>`,
       )
-      .join('\n') +
+      .join("\n") +
     `\n</urlset>\n`;
   return xml;
 }
 
-function buildRobotsWithSitemap(existing = '') {
+function buildRobotsWithSitemap(existing = "") {
   const sitemapLine = `Sitemap: ${BASE_URL}/sitemap.xml`;
-  if (existing.includes('Sitemap:')) {
+  if (existing.includes("Sitemap:")) {
     // If a Sitemap line exists but not our exact URL, append our URL too.
     if (!existing.includes(sitemapLine)) {
-      const end = existing.endsWith('\n') ? '' : '\n';
-      return existing + end + sitemapLine + '\n';
+      const end = existing.endsWith("\n") ? "" : "\n";
+      return existing + end + sitemapLine + "\n";
     }
     return existing;
   }
   if (existing.trim().length > 0) {
-    const end = existing.endsWith('\n') ? '' : '\n';
-    return existing + end + sitemapLine + '\n';
+    const end = existing.endsWith("\n") ? "" : "\n";
+    return existing + end + sitemapLine + "\n";
   }
   // Default robots if none exists
   return `User-agent: *\nAllow: /\n\n${sitemapLine}\n`;
 }
 
-function escapeXml(str = '') {
+function escapeXml(str = "") {
   return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
 function generateRSS(posts) {
   const items = posts
     .slice(0, 20)
     .map(
-      p =>
+      (p) =>
         `    <item>\n` +
         `      <title>${escapeXml(p.title)}</title>\n` +
         `      <description>${escapeXml(p.description)}</description>\n` +
@@ -163,11 +168,11 @@ function generateRSS(posts) {
         `      <pubDate>${new Date(p.date).toUTCString()}</pubDate>\n` +
         `      <category>${escapeXml(p.category)}</category>\n` +
         p.tags
-          .map(t => `      <category>${escapeXml(t)}</category>`)
-          .join('\n') +
-        `\n    </item>`
+          .map((t) => `      <category>${escapeXml(t)}</category>`)
+          .join("\n") +
+        `\n    </item>`,
     )
-    .join('\n');
+    .join("\n");
 
   const rss =
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
@@ -189,32 +194,32 @@ function writeFileSafe(filePath, content) {
   ensureDir(path.dirname(filePath));
   fs.writeFileSync(filePath, content);
   console.log(
-    `✔ Wrote ${path.relative(PROJECT_ROOT, filePath)} (${Buffer.byteLength(content)} bytes)`
+    `✔ Wrote ${path.relative(PROJECT_ROOT, filePath)} (${Buffer.byteLength(content)} bytes)`,
   );
 }
 
 function main() {
-  console.log('🧭 Generating SEO files (sitemap.xml, robots.txt, rss.xml)...');
+  console.log("🧭 Generating SEO files (sitemap.xml, robots.txt, rss.xml)...");
   const posts = loadPosts();
   const sitemap = generateSitemap(posts);
   // Preserve existing robots.txt if present, ensure sitemap line exists
-  const robotsPath = path.join(PUBLIC_DIR, 'robots.txt');
+  const robotsPath = path.join(PUBLIC_DIR, "robots.txt");
   const existingRobots = fs.existsSync(robotsPath)
-    ? fs.readFileSync(robotsPath, 'utf8')
-    : '';
+    ? fs.readFileSync(robotsPath, "utf8")
+    : "";
   const robots = buildRobotsWithSitemap(existingRobots);
   const rss = generateRSS(posts);
 
-  writeFileSafe(path.join(PUBLIC_DIR, 'sitemap.xml'), sitemap);
+  writeFileSafe(path.join(PUBLIC_DIR, "sitemap.xml"), sitemap);
   writeFileSafe(robotsPath, robots);
-  writeFileSafe(path.join(PUBLIC_DIR, 'rss.xml'), rss);
+  writeFileSafe(path.join(PUBLIC_DIR, "rss.xml"), rss);
 
-  console.log('✨ SEO files generated successfully');
+  console.log("✨ SEO files generated successfully");
 }
 
 try {
   main();
 } catch (err) {
-  console.error('Failed to generate SEO files:', err);
+  console.error("Failed to generate SEO files:", err);
   process.exit(1);
 }

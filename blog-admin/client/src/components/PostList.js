@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import axios from 'axios';
-import toast from 'react-hot-toast';
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import axios from "axios";
+import toast from "react-hot-toast";
 import {
   PencilIcon,
   TrashIcon,
@@ -9,14 +9,14 @@ import {
   PlusIcon,
   CloudArrowUpIcon,
   ArrowPathIcon,
-  ExclamationTriangleIcon
-} from '@heroicons/react/24/outline';
+  ExclamationTriangleIcon,
+} from "@heroicons/react/24/outline";
 
 function PostList() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [categories, setCategories] = useState([]);
   const [deployStatus, setDeployStatus] = useState(null);
   const [deploying, setDeploying] = useState(false);
@@ -30,11 +30,11 @@ function PostList() {
   const fetchPosts = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/posts');
+      const response = await axios.get("/api/posts");
       setPosts(response.data);
     } catch (error) {
-      toast.error('게시글을 불러오는데 실패했습니다.');
-      console.error('Error fetching posts:', error);
+      toast.error("게시글을 불러오는데 실패했습니다.");
+      console.error("Error fetching posts:", error);
     } finally {
       setLoading(false);
     }
@@ -42,59 +42,61 @@ function PostList() {
 
   const fetchMetadata = async () => {
     try {
-      const response = await axios.get('/api/metadata');
+      const response = await axios.get("/api/metadata");
       setCategories(response.data.categories);
     } catch (error) {
-      console.error('Error fetching metadata:', error);
+      console.error("Error fetching metadata:", error);
     }
   };
 
   const fetchDeployStatus = async () => {
     try {
-      const response = await axios.get('/api/deploy/status');
+      const response = await axios.get("/api/deploy/status");
       setDeployStatus(response.data);
     } catch (error) {
-      console.error('Error fetching deploy status:', error);
+      console.error("Error fetching deploy status:", error);
     }
   };
 
   const handleQuickDeploy = async () => {
     if (!deployStatus?.hasChanges) {
-      toast.error('배포할 변경 사항이 없습니다.');
+      toast.error("배포할 변경 사항이 없습니다.");
       return;
     }
 
     try {
       setDeploying(true);
-      const response = await axios.post('/api/deploy', {
-        message: '게시글 관리에서 빠른 배포'
+      const response = await axios.post("/api/deploy", {
+        message: "게시글 관리에서 빠른 배포",
       });
-      
+
       toast.success(response.data.message);
       setTimeout(fetchDeployStatus, 2000);
     } catch (error) {
-      toast.error(error.response?.data?.error || '배포에 실패했습니다.');
+      toast.error(error.response?.data?.error || "배포에 실패했습니다.");
     } finally {
       setDeploying(false);
     }
   };
   const deletePost = async (year, slug) => {
-    if (window.confirm('정말로 이 게시글을 삭제하시겠습니까?')) {
+    if (window.confirm("정말로 이 게시글을 삭제하시겠습니까?")) {
       try {
         await axios.delete(`/api/posts/${year}/${slug}`);
-        toast.success('게시글이 삭제되었습니다.');
+        toast.success("게시글이 삭제되었습니다.");
         fetchPosts();
       } catch (error) {
-        toast.error('게시글 삭제에 실패했습니다.');
-        console.error('Error deleting post:', error);
+        toast.error("게시글 삭제에 실패했습니다.");
+        console.error("Error deleting post:", error);
       }
     }
   };
 
-  const filteredPosts = posts.filter(post => {
-    const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         post.content.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !selectedCategory || post.category === selectedCategory;
+  const filteredPosts = posts.filter((post) => {
+    const matchesSearch =
+      post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      post.content.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory =
+      !selectedCategory || post.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -118,26 +120,27 @@ function PostList() {
               className="bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-bold py-2 px-4 rounded-lg flex items-center"
             >
               <CloudArrowUpIcon className="h-5 w-5 mr-2" />
-              {deploying ? '배포 중...' : '빠른 배포'}
+              {deploying ? "배포 중..." : "빠른 배포"}
             </button>
           )}
           <Link
             to="/posts/new"
             className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center"
           >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            새 게시글
+            <PlusIcon className="h-5 w-5 mr-2" />새 게시글
           </Link>
         </div>
       </div>
 
       {/* Deploy Status Banner */}
       {deployStatus && (
-        <div className={`rounded-lg p-4 mb-6 ${
-          deployStatus.hasChanges 
-            ? 'bg-orange-50 border border-orange-200' 
-            : 'bg-green-50 border border-green-200'
-        }`}>
+        <div
+          className={`rounded-lg p-4 mb-6 ${
+            deployStatus.hasChanges
+              ? "bg-orange-50 border border-orange-200"
+              : "bg-green-50 border border-green-200"
+          }`}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               {deployStatus.hasChanges ? (
@@ -146,17 +149,24 @@ function PostList() {
                 <CloudArrowUpIcon className="h-6 w-6 text-green-600" />
               )}
               <div>
-                <p className={`font-medium ${
-                  deployStatus.hasChanges ? 'text-orange-800' : 'text-green-800'
-                }`}>
-                  {deployStatus.hasChanges 
-                    ? `${deployStatus.files.length}개 파일이 변경되어 배포가 필요합니다` 
-                    : '모든 변경사항이 배포되었습니다'
-                  }
+                <p
+                  className={`font-medium ${
+                    deployStatus.hasChanges
+                      ? "text-orange-800"
+                      : "text-green-800"
+                  }`}
+                >
+                  {deployStatus.hasChanges
+                    ? `${deployStatus.files.length}개 파일이 변경되어 배포가 필요합니다`
+                    : "모든 변경사항이 배포되었습니다"}
                 </p>
-                <p className={`text-sm ${
-                  deployStatus.hasChanges ? 'text-orange-600' : 'text-green-600'
-                }`}>
+                <p
+                  className={`text-sm ${
+                    deployStatus.hasChanges
+                      ? "text-orange-600"
+                      : "text-green-600"
+                  }`}
+                >
                   브랜치: {deployStatus.branch}
                 </p>
               </div>
@@ -176,7 +186,10 @@ function PostList() {
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="search"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               검색
             </label>
             <input
@@ -189,7 +202,10 @@ function PostList() {
             />
           </div>
           <div>
-            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="category"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               카테고리
             </label>
             <select
@@ -199,8 +215,10 @@ function PostList() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">모든 카테고리</option>
-              {categories.map(category => (
-                <option key={category} value={category}>{category}</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
               ))}
             </select>
           </div>
@@ -214,7 +232,7 @@ function PostList() {
             총 {filteredPosts.length}개의 게시글
           </h2>
         </div>
-        
+
         {filteredPosts.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
             게시글이 없습니다.
@@ -239,11 +257,13 @@ function PostList() {
                     <div className="mt-2 flex items-center text-sm text-gray-500 space-x-4">
                       <span>{post.date}</span>
                       <span>{post.readTime}</span>
-                      <span>{post.year}/{post.slug}</span>
+                      <span>
+                        {post.year}/{post.slug}
+                      </span>
                     </div>
                     {post.tags && post.tags.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1">
-                        {post.tags.map(tag => (
+                        {post.tags.map((tag) => (
                           <span
                             key={tag}
                             className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
@@ -254,10 +274,10 @@ function PostList() {
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="flex items-center space-x-2 ml-4">
                     <a
-                      href={`http://localhost:3000/blog/${post.year}/${post.slug}`}
+                      href={`${import.meta.env.VITE_SITE_BASE_URL || "http://localhost:3000"}/blog/${post.year}/${post.slug}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
