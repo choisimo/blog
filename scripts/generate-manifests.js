@@ -116,6 +116,58 @@ function generateManifestForYear(year) {
   return { valid: sortedValidFiles.length, invalid: invalidFiles.length };
 }
 
+function generateUnifiedManifest(years) {
+  console.log('\n📄 Generating unified posts manifest...');
+  
+  const allPosts = [];
+  
+  for (const year of years) {
+    const yearDir = path.join(postsDir, year);
+    
+    if (!fs.existsSync(yearDir)) {
+      continue;
+    }
+    
+    const files = fs.readdirSync(yearDir)
+      .filter(file => file.endsWith('.md'));
+    
+    for (const file of files) {
+      const filePath = path.join(yearDir, file);
+      
+      if (validateMarkdownFile(filePath, file)) {
+        // Use the path format that postService expects
+        allPosts.push(`/posts/${year}/${file}`);
+      }
+    }
+  }
+  
+  // Sort posts by year and filename (newest first)
+  allPosts.sort((a, b) => {
+    const [, yearA, fileA] = a.split('/');
+    const [, yearB, fileB] = b.split('/');
+    
+    if (yearA !== yearB) {
+      return yearB.localeCompare(yearA); // Newer years first
+    }
+    return fileB.localeCompare(fileA); // Then by filename
+  });
+  
+  const unifiedManifest = {
+    posts: allPosts,
+    generatedAt: new Date().toISOString(),
+    totalPosts: allPosts.length,
+    years: years.sort().reverse()
+  };
+  
+  const unifiedManifestPath = path.join(process.cwd(), 'public', 'posts-manifest.json');
+  fs.writeFileSync(unifiedManifestPath, JSON.stringify(unifiedManifest, null, 2) + '\n');
+  
+  console.log(`✅ Generated unified manifest: ${allPosts.length} posts`);
+  console.log(`   Saved to: posts-manifest.json`);
+  
+  return allPosts.length;
+}
+
 function generateAllManifests() {
   console.log('🚀 Starting manifest generation with validation...\n');
   
@@ -133,6 +185,7 @@ function generateAllManifests() {
   let totalValid = 0;
   let totalInvalid = 0;
   
+  // Generate individual year manifests
   for (const year of years) {
     const result = generateManifestForYear(year);
     if (result) {
@@ -141,10 +194,14 @@ function generateAllManifests() {
     }
   }
   
+  // Generate unified manifest for postService
+  const unifiedPostCount = generateUnifiedManifest(years);
+  
   console.log('\n🎉 Manifest generation completed!');
   console.log(`📊 Summary:`);
   console.log(`   ✅ Total valid files: ${totalValid}`);
   console.log(`   ❌ Total excluded files: ${totalInvalid}`);
+  console.log(`   📄 Unified manifest: ${unifiedPostCount} posts`);
   
   if (totalInvalid > 0) {
     console.log(`\n⚠️  ${totalInvalid} file(s) were excluded due to validation errors.`);
