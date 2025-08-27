@@ -1,26 +1,40 @@
-import matter from "gray-matter";
-import readingTime from "reading-time";
-import type { BlogPost } from "../types/blog";
+/// <reference types="vite/client" />
+import matter from 'gray-matter';
+import readingTime from 'reading-time';
+import type { BlogPost } from '../types/blog';
 
 export class PostService {
   private static postsCache: BlogPost[] | null = null;
 
-  private static async loadPostsManifest(): Promise<any> {
+  private static getBasePath(): string {
+    // Vite injects BASE_URL with a trailing slash (e.g., '/', '/blog/').
+    // Normalize by removing the trailing slash so we can safely concatenate paths.
+    const base = import.meta.env.BASE_URL ?? '/';
+    return base.replace(/\/$/, '');
+  }
+
+  private static async loadPostsManifest(): Promise<{
+    posts: string[];
+  } | null> {
     try {
-      const response = await fetch("/blog/posts-manifest.json");
+      const base = this.getBasePath();
+      const response = await fetch(`${base}/posts-manifest.json`);
       if (!response.ok) {
-        throw new Error("Failed to load posts manifest");
+        throw new Error('Failed to load posts manifest');
       }
       return await response.json();
     } catch (error) {
-      console.error("Error loading posts manifest:", error);
+      console.error('Error loading posts manifest:', error);
       return null;
     }
   }
 
   private static async loadMarkdownFile(path: string): Promise<string> {
     try {
-      const response = await fetch(`/blog${path}`);
+      const base = this.getBasePath();
+      const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+      const url = `${base}${normalizedPath}`;
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Failed to load ${path}`);
       }
@@ -33,39 +47,39 @@ export class PostService {
 
   private static parseMarkdownContent(
     content: string,
-    filePath: string,
+    filePath: string
   ): Partial<BlogPost> {
     const { data: frontMatter, content: markdownContent } = matter(content);
     const stats = readingTime(markdownContent);
 
     // Extract year and filename from path
-    const pathParts = filePath.split("/");
-    const filename = pathParts[pathParts.length - 1].replace(".md", "");
-    const year = pathParts.includes("2024")
-      ? "2024"
-      : pathParts.includes("2025")
-        ? "2025"
+    const pathParts = filePath.split('/');
+    const filename = pathParts[pathParts.length - 1].replace('.md', '');
+    const year = pathParts.includes('2024')
+      ? '2024'
+      : pathParts.includes('2025')
+        ? '2025'
         : new Date().getFullYear().toString();
 
     return {
       id: filename,
       title:
         frontMatter.title ||
-        filename.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
+        filename.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
       description:
-        frontMatter.description || markdownContent.substring(0, 150) + "...",
+        frontMatter.description || `${markdownContent.substring(0, 150)}...`,
       excerpt:
         frontMatter.excerpt ||
         frontMatter.description ||
-        markdownContent.substring(0, 150) + "...",
+        `${markdownContent.substring(0, 150)}...`,
       content: markdownContent,
       date: frontMatter.date || `${year}-01-01`,
-      author: frontMatter.author || "Admin",
+      author: frontMatter.author || 'Admin',
       tags: frontMatter.tags || [],
-      category: frontMatter.category || "General",
+      category: frontMatter.category || 'General',
       readingTime: stats.text,
       slug: filename,
-      year: year,
+      year,
       published: frontMatter.published !== false,
       coverImage: frontMatter.coverImage,
     };
@@ -78,7 +92,7 @@ export class PostService {
 
     const manifest = await this.loadPostsManifest();
     if (!manifest || !manifest.posts) {
-      console.warn("Posts manifest not available, returning empty array");
+      console.warn('Posts manifest not available, returning empty array');
       return [];
     }
 
@@ -114,7 +128,7 @@ export class PostService {
 
     // Sort by date (newest first)
     posts.sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
 
     this.postsCache = posts;
@@ -123,25 +137,23 @@ export class PostService {
 
   static async getPostBySlug(
     year: string,
-    slug: string,
+    slug: string
   ): Promise<BlogPost | null> {
     const posts = await this.getAllPosts();
-    return (
-      posts.find((post) => post.year === year && post.slug === slug) || null
-    );
+    return posts.find(post => post.year === year && post.slug === slug) || null;
   }
 
   static async getPostsByCategory(category: string): Promise<BlogPost[]> {
     const posts = await this.getAllPosts();
     return posts.filter(
-      (post) => post.category.toLowerCase() === category.toLowerCase(),
+      post => post.category.toLowerCase() === category.toLowerCase()
     );
   }
 
   static async getPostsByTag(tag: string): Promise<BlogPost[]> {
     const posts = await this.getAllPosts();
-    return posts.filter((post) =>
-      post.tags.some((t) => t.toLowerCase() === tag.toLowerCase()),
+    return posts.filter(post =>
+      post.tags.some(t => t.toLowerCase() === tag.toLowerCase())
     );
   }
 
@@ -150,12 +162,12 @@ export class PostService {
     const lowercaseQuery = query.toLowerCase();
 
     return posts.filter(
-      (post) =>
+      post =>
         post.title.toLowerCase().includes(lowercaseQuery) ||
         post.description.toLowerCase().includes(lowercaseQuery) ||
         (post.excerpt && post.excerpt.toLowerCase().includes(lowercaseQuery)) ||
-        post.tags.some((tag) => tag.toLowerCase().includes(lowercaseQuery)) ||
-        post.category.toLowerCase().includes(lowercaseQuery),
+        post.tags.some(tag => tag.toLowerCase().includes(lowercaseQuery)) ||
+        post.category.toLowerCase().includes(lowercaseQuery)
     );
   }
 

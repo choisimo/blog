@@ -30,7 +30,7 @@ export const PostNavigation = ({
         <Card className='group hover:shadow-md transition-shadow'>
           <CardContent className='p-6'>
             <Link
-              to={`/blog/${previousPost.slug}`}
+              to={`/blog/${previousPost.year}/${previousPost.slug}`}
               state={{ from: preservedFrom }}
               className='block'
             >
@@ -50,7 +50,7 @@ export const PostNavigation = ({
         <Card className='group hover:shadow-md transition-shadow'>
           <CardContent className='p-6'>
             <Link
-              to={`/blog/${nextPost.slug}`}
+              to={`/blog/${nextPost.year}/${nextPost.slug}`}
               state={{ from: preservedFrom }}
               className='block'
             >

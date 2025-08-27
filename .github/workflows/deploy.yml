@@ -35,6 +35,9 @@ jobs:
     - name: Generate manifests
       run: npm run generate-manifests
       
+    - name: Generate SEO files
+      run: npm run generate-seo
+      
     - name: Build
       run: npm run build
       

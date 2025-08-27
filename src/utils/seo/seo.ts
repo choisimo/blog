@@ -18,8 +18,8 @@ export const generateSEOData = (
   post?: BlogPost,
   pageType: 'home' | 'blog' | 'post' | 'about' | 'contact' = 'home'
 ): SEOData => {
-  const baseUrl = 'https://your-blog-domain.com'; // Replace with your actual domain
-  const siteName = 'Your Blog Name'; // Replace with your site name
+  const baseUrl = 'https://blog.nodove.com';
+  const siteName = 'Your Blog Name'; // TODO: set your actual site name
 
   switch (pageType) {
     case 'post':
@@ -28,7 +28,7 @@ export const generateSEOData = (
         title: `${post.title} | ${siteName}`,
         description: post.description,
         keywords: [...post.tags, post.category],
-        canonicalUrl: `${baseUrl}/blog/${post.slug}`,
+        canonicalUrl: `${baseUrl}/blog/${post.year}/${post.slug}`,
         ogImage: `${baseUrl}/api/og?title=${encodeURIComponent(post.title)}`,
         ogType: 'article',
         publishedTime: post.date,
@@ -91,9 +91,9 @@ export const generateStructuredData = (
   post?: BlogPost,
   pageType: string = 'home'
 ) => {
-  const baseUrl = 'https://your-blog-domain.com';
-  const siteName = 'Your Blog Name';
-  const authorName = 'Your Name';
+  const baseUrl = 'https://blog.nodove.com';
+  const siteName = 'Your Blog Name'; // TODO: set your actual site name
+  const authorName = 'Your Name'; // TODO: set your actual name
 
   if (pageType === 'post' && post) {
     return {
@@ -118,7 +118,7 @@ export const generateStructuredData = (
       dateModified: post.date,
       mainEntityOfPage: {
         '@type': 'WebPage',
-        '@id': `${baseUrl}/blog/${post.slug}`,
+        '@id': `${baseUrl}/blog/${post.year}/${post.slug}`,
       },
       keywords: post.tags.join(', '),
       articleSection: post.category,

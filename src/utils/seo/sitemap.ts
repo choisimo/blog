@@ -16,7 +16,7 @@ export interface SitemapEntry {
 }
 
 export const generateSitemap = async (): Promise<string> => {
-  const baseUrl = 'https://your-blog-domain.com'; // Replace with your actual domain
+  const baseUrl = 'https://blog.nodove.com';
   const posts = await getPosts();
 
   const entries: SitemapEntry[] = [
@@ -48,7 +48,7 @@ export const generateSitemap = async (): Promise<string> => {
 
     // Blog posts
     ...posts.map((post: BlogPost) => ({
-      url: `${baseUrl}/blog/${post.slug}`,
+      url: `${baseUrl}/blog/${post.year}/${post.slug}`,
       lastModified: new Date(post.date).toISOString(),
       changeFreq: 'monthly' as const,
       priority: 0.8,
@@ -73,7 +73,7 @@ ${entries
 };
 
 export const generateRobotsTxt = (): string => {
-  const baseUrl = 'https://your-blog-domain.com'; // Replace with your actual domain
+  const baseUrl = 'https://blog.nodove.com';
 
   return `User-agent: *
 Allow: /
@@ -83,7 +83,7 @@ Sitemap: ${baseUrl}/sitemap.xml`;
 
 // Generate RSS feed
 export const generateRSSFeed = async (): Promise<string> => {
-  const baseUrl = 'https://your-blog-domain.com';
+  const baseUrl = 'https://blog.nodove.com';
   const siteName = 'Your Blog Name';
   const siteDescription =
     'A blog about technology, programming, and web development';
@@ -105,8 +105,8 @@ ${posts
     (post: BlogPost) => `    <item>
       <title>${post.title}</title>
       <description>${post.description}</description>
-      <link>${baseUrl}/blog/${post.slug}</link>
-      <guid isPermaLink="true">${baseUrl}/blog/${post.slug}</guid>
+      <link>${baseUrl}/blog/${post.year}/${post.slug}</link>
+      <guid isPermaLink="true">${baseUrl}/blog/${post.year}/${post.slug}</guid>
       <pubDate>${new Date(post.date).toUTCString()}</pubDate>
       <category>${post.category}</category>
 ${post.tags.map(tag => `      <category>${tag}</category>`).join('\n')}

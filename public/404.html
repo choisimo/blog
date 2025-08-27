@@ -5,8 +5,16 @@
     <title>Page Not Found - nodove blog</title>
     <meta name="description" content="페이지를 찾을 수 없습니다. 홈페이지로 돌아가세요." />
     <script>
-      // Simple redirect to home page
-      window.location.replace('/blog/');
+      // Preserve the original path and redirect to hash-based route for SPA
+      (function () {
+        var l = window.location;
+        var path = l.pathname || '/';
+        var search = l.search || '';
+        var hash = l.hash || '';
+        // Redirect to '/index.html#/path?query#hash' so HashRouter can handle it
+        var redirectUrl = '/index.html#' + path + search + hash;
+        l.replace(redirectUrl);
+      })();
     </script>
   </head>
   <body>
