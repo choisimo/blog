@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import matter from 'gray-matter';
-import readingTime from 'reading-time';
+// import readingTime from 'reading-time';
 import type { BlogPost } from '../types/blog';
 
 export class PostService {
@@ -50,7 +50,15 @@ export class PostService {
     filePath: string
   ): Partial<BlogPost> {
     const { data: frontMatter, content: markdownContent } = matter(content);
-    const stats = readingTime(markdownContent);
+    // Simple reading time calculation: ~200 words per minute
+    const wordCount = markdownContent.trim().split(/\s+/).length;
+    const readingMinutes = Math.ceil(wordCount / 200);
+    const stats = {
+      text: `${readingMinutes} min read`,
+      minutes: readingMinutes,
+      time: readingMinutes * 60 * 1000,
+      words: wordCount,
+    };
 
     // Extract year and filename from path
     const pathParts = filePath.split('/');

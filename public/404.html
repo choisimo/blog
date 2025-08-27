@@ -11,8 +11,8 @@
         var path = l.pathname || '/';
         var search = l.search || '';
         var hash = l.hash || '';
-        // Redirect to '/index.html#/path?query#hash' so HashRouter can handle it
-        var redirectUrl = '/index.html#' + path + search + hash;
+        // Redirect to '/#/path?query#hash' so HashRouter can handle it
+        var redirectUrl = '/#' + path + search + hash;
         l.replace(redirectUrl);
       })();
     </script>

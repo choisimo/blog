@@ -18,6 +18,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      SITE_BASE_URL: https://noblog.nodove.com
+      VITE_SITE_BASE_URL: https://noblog.nodove.com
     
     steps:
     - name: Checkout

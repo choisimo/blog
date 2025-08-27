@@ -13,3 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 Sitemap: https://blog.nodove.com/sitemap.xml
+Sitemap: https://noblog.nodove.com/sitemap.xml
