@@ -13,6 +13,9 @@ export default defineConfig(({ mode }) => ({
     host: '::',
     port: 8080,
   },
+  optimizeDeps: {
+    include: ['buffer'],
+  },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
@@ -56,6 +59,7 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '../src'),
+      buffer: 'buffer',
     },
   },
   test: {
