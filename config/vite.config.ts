@@ -7,6 +7,9 @@ import { visualizer } from 'rollup-plugin-visualizer';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  css: {
+    postcss: path.resolve(__dirname, './postcss.config.js'),
+  },
   base: '/',
   publicDir: 'public',
   server: {
