@@ -1,7 +1,7 @@
 export default {
   plugins: {
     tailwindcss: {
-      config: new URL('./tailwind.config.ts', import.meta.url).pathname,
+      config: new URL('./tailwind.config.js', import.meta.url).pathname,
     },
     autoprefixer: {},
   },

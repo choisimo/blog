@@ -123,6 +123,7 @@ public/*
 !public/.nojekyll
 !public/_redirects
 !public/robots.txt
+!public/favicon.svg
 
 # Storybook build outputs
 storybook-static/
