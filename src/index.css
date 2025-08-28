@@ -50,9 +50,6 @@
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
   body {
     @apply bg-background text-foreground;
     font-feature-settings:
@@ -84,6 +81,17 @@
 }
 
 @layer utilities {
+  /* Responsive styles for markdown content */
+  .content img {
+    @apply max-w-full h-auto rounded-md;
+  }
+  .content pre {
+    @apply overflow-x-auto;
+  }
+  .content table {
+    @apply w-full overflow-x-auto block;
+  }
+
   .animate-gradient {
     background-size: 400% 400%;
     animation: gradient 15s ease infinite;
@@ -172,17 +180,9 @@
 }
 
 /* Better focus styles */
-*:focus {
-  outline: none;
-}
 
 *:focus-visible {
   @apply ring-2 ring-ring ring-offset-2 ring-offset-background;
-}
-
-/* Smooth transitions */
-* {
-  @apply transition-colors duration-200;
 }
 
 /* Line clamp utilities */

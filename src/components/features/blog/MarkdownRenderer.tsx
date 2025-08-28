@@ -25,7 +25,7 @@ export const MarkdownRenderer = ({
 
   return (
     <div
-      className={`prose prose-neutral dark:prose-invert max-w-none prose-lg ${className}`}
+      className={`prose prose-neutral dark:prose-invert max-w-none prose-lg content ${className}`}
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
