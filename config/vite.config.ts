@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => ({
   css: {
     postcss: path.resolve(__dirname, './postcss.config.js'),
   },
+  // Explicit base for clarity on GH Pages/custom domain
   base: '/',
   publicDir: 'public',
   server: {
