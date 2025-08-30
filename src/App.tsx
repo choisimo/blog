@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Header, Footer } from './components/organisms';
@@ -16,11 +16,17 @@ import './App.css';
 const queryClient = new QueryClient();
 
 function App() {
+  console.log('[App] component init');
+  useEffect(() => {
+    console.log('[App] mounted');
+    return () => console.log('[App] unmounted');
+  }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
           <Router>
+            {console.log('[App] rendering layout')}
             <div className='min-h-screen flex flex-col bg-background text-foreground'>
               <Header />
               <main className='flex-1'>
