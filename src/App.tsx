@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Header, Footer } from './components/organisms';
@@ -26,7 +26,6 @@ function App() {
       <ThemeProvider>
         <TooltipProvider>
           <Router>
-            {console.log('[App] rendering layout')}
             <div className='min-h-screen flex flex-col bg-background text-foreground'>
               <Header />
               <main className='flex-1'>

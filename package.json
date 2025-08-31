@@ -22,6 +22,9 @@
     "generate-manifests": "node scripts/generate-manifests.js",
     "generate-seo": "node scripts/generate-seo.js",
     "deploy": "npm run generate-manifests && npm run generate-seo && npm run build",
+    "build:all": "npm run build && cd blog-admin && npm run build && cd ../doc-converter && npm run build",
+    "lint:workspaces": "npm run lint && cd doc-converter && npm run lint",
+    "test:workspaces": "npm run test",
     "prepare": "husky"
   },
   "dependencies": {
