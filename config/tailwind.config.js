@@ -1,15 +1,19 @@
 /** JS mirror of Tailwind config to ensure CI compatibility */
 const tailwindcssAnimate = require('tailwindcss-animate');
+const path = require('path');
+
+// Resolve project root from the config/ directory
+const root = path.resolve(__dirname, '..');
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ['class'],
   content: [
-    '../pages/**/*.{ts,tsx,js,jsx}',
-    '../components/**/*.{ts,tsx,js,jsx}',
-    '../app/**/*.{ts,tsx,js,jsx}',
-    '../src/**/*.{ts,tsx,js,jsx}',
-    '../public/posts/**/*.{md,mdx}',
+    // Use absolute paths so CI resolves correctly from any CWD
+    path.join(root, 'index.html'),
+    path.join(root, 'src/**/*.{ts,tsx,js,jsx}'),
+    path.join(root, 'src/**/*.{md,mdx}'),
+    path.join(root, 'public/posts/**/*.{md,mdx}'),
   ],
   theme: {
     container: {
