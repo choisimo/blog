@@ -114,16 +114,6 @@ out/
 
 # Gatsby
 .cache/
-# Ignore public folder except essential files
-public/*
-!public/posts/
-!public/images/
-!public/404.html
-!public/CNAME
-!public/.nojekyll
-!public/_redirects
-!public/robots.txt
-!public/favicon.svg
 
 # Storybook build outputs
 storybook-static/
