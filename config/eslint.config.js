@@ -35,5 +35,31 @@ export default tseslint.config(
       'object-shorthand': 'error',
       'prefer-template': 'error',
     },
+  },
+  {
+    files: ['**/*.{js,jsx}'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: globals.browser,
+      parserOptions: {
+        ecmaFeatures: { jsx: true },
+      },
+    },
+    plugins: {
+      'react-hooks': reactHooks,
+      'react-refresh': reactRefresh,
+    },
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+      'react-refresh/only-export-components': [
+        'warn',
+        { allowConstantExport: true },
+      ],
+      'prefer-const': 'error',
+      'no-var': 'error',
+      'object-shorthand': 'error',
+      'prefer-template': 'error',
+    },
   }
 );
