@@ -12,7 +12,7 @@
 .launcher {
   position: fixed;
   right: 16px;
-  bottom: 16px;
+  bottom: 96px;
   z-index: 2147483647; /* max */
   width: 48px;
   height: 48px;
@@ -38,7 +38,7 @@
   height: 480px;
   max-height: calc(100vh - 24px);
   right: 16px; /* default before position restored */
-  bottom: 80px; /* default before position restored */
+  bottom: 160px; /* default before position restored (keeps ~64px above launcher) */
   display: none;
   background: #ffffff;
   color: #111827;

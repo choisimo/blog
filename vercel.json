@@ -3,6 +3,10 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
@@ -35,13 +39,19 @@
       ]
     },
     {
-      "source": "/(.*)\.(css|js|png|jpg|jpeg|gif|svg|webp|ico)",
+      "source": "/(.*)\\.(css|js|png|jpg|jpeg|gif|svg|webp|ico)",
       "headers": [
         {
           "key": "Cache-Control",
           "value": "public, max-age=31536000, immutable"
         }
       ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/archive/comments",
+      "schedule": "0 0 * * 1"
     }
   ]
 }

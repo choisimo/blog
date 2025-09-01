@@ -9,6 +9,7 @@ const slugify = require('slugify');
 const axios = require('axios');
 const multer = require('multer');
 const sharp = require('sharp');
+const { Octokit } = require('@octokit/rest');
 require('dotenv').config();
 
 // Google AI SDK
@@ -33,6 +34,13 @@ const AI_TEST_TIMEOUT_MS = parseInt(
   process.env.AI_TEST_TIMEOUT_MS || '10000',
   10
 );
+
+// GitHub / Git configuration
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
+const MAIN_BRANCH = process.env.MAIN_BRANCH || 'main';
+const GIT_REMOTE_NAME = process.env.GIT_REMOTE_NAME || 'blog';
+const GIT_USER_NAME = process.env.GIT_USER_NAME || '';
+const GIT_USER_EMAIL = process.env.GIT_USER_EMAIL || '';
 
 // Session-based configuration storage
 const sessionConfigs = new Map();
@@ -538,6 +546,16 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'client/build')));
 
 // Helper functions
+function parseGitHubRepo(remoteUrl) {
+  try {
+    if (!remoteUrl) return {};
+    const match = remoteUrl.match(/github\.com[:\/](.+?)\/(.+?)(?:\.git)?$/i);
+    if (!match) return {};
+    return { owner: match[1], repo: match[2] };
+  } catch (_) {
+    return {};
+  }
+}
 function generateSlug(title) {
   if (!title || !title.trim()) {
     throw new Error('제목이 비어있습니다. 게시글 제목을 입력해주세요.');
@@ -2006,6 +2024,235 @@ app.delete('/api/images/:year/:slug/:filename', async (req, res) => {
   } catch (error) {
     console.error('Error deleting image:', error);
     res.status(500).json({ error: 'Failed to delete image' });
+  }
+});
+
+// Propose new version endpoint
+app.post('/api/propose-new-version', async (req, res) => {
+  try {
+    const { original, markdown, sourcePage, sourcePageUrl } = req.body || {};
+
+    // Validate payload
+    if (!original || typeof original !== 'object') {
+      return res.status(400).json({ error: 'original 정보가 필요합니다.' });
+    }
+    const yearStr = String(original.year || '').trim();
+    const origSlug = String(original.slug || '').trim();
+    if (!/^\d{4}$/.test(yearStr) || !origSlug) {
+      return res
+        .status(400)
+        .json({ error: 'original.year(YYYY)와 original.slug가 필요합니다.' });
+    }
+    const proposedMd = (markdown || '').trim();
+    if (!proposedMd) {
+      return res.status(400).json({ error: 'markdown 본문이 비어 있습니다.' });
+    }
+
+    // Verify original file exists
+    const origFilePath = path.join(POSTS_DIR, yearStr, `${origSlug}.md`);
+    if (!(await fs.pathExists(origFilePath))) {
+      return res.status(404).json({ error: '원본 게시글을 찾을 수 없습니다.' });
+    }
+
+    // Parse original frontmatter
+    const origRaw = await fs.readFile(origFilePath, 'utf-8');
+    const origParsed = matter(origRaw);
+
+    // Parse proposed markdown
+    const parsed = matter(proposedMd);
+    const data = { ...(parsed.data || {}) };
+    const content = parsed.content || '';
+
+    // Derive title if missing from frontmatter
+    if (!data.title || !String(data.title).trim()) {
+      const h1 = content.match(/^#\s+(.+)$/m);
+      if (h1) data.title = h1[1].trim();
+      if (!data.title) {
+        data.title = origParsed.data?.title
+          ? `${origParsed.data.title} (개선안)`
+          : `${origSlug} 개정안`;
+      }
+    }
+
+    // Basic metadata fallbacks
+    const plain = content
+      .replace(/```[\s\S]*?```/gm, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!data.excerpt) {
+      data.excerpt =
+        plain.substring(0, 200) + (plain.length > 200 ? '...' : '');
+    }
+    if (!data.category && origParsed.data?.category)
+      data.category = origParsed.data.category;
+    if (!data.tags && origParsed.data?.tags) data.tags = origParsed.data.tags;
+    if (!data.date) data.date = moment().format('YYYY-MM-DD');
+    if (!data.publishTime)
+      data.publishTime = moment().format('YYYY-MM-DD HH:mm:ss');
+    data.readTime = calculateReadTime(content);
+
+    // Add derivedFrom and provenance
+    const originalPath = `/posts/${yearStr}/${origSlug}.md`;
+    data.derivedFrom = {
+      year: yearStr,
+      slug: origSlug,
+      path: original.path || originalPath,
+      url: original.url || sourcePageUrl || sourcePage || '',
+      title: origParsed.data?.title || undefined,
+    };
+    data.proposedAt = new Date().toISOString();
+    if (sourcePage || sourcePageUrl)
+      data.proposedFromPage = sourcePage || sourcePageUrl;
+
+    // Determine new filename/year
+    let newSlug = '';
+    try {
+      if (data.title) newSlug = generateSlug(String(data.title));
+    } catch (_) {}
+    if (!newSlug) newSlug = `${origSlug}-rev`;
+    const newYear = moment().format('YYYY');
+    const newYearDir = path.join(POSTS_DIR, newYear);
+    await fs.ensureDir(newYearDir);
+
+    // Ensure unique filename
+    let filename = `${newSlug}.md`;
+    let newFilePath = path.join(newYearDir, filename);
+    let i = 0;
+    while (await fs.pathExists(newFilePath)) {
+      i += 1;
+      const stamp = moment().format('YYYYMMDD-HHmmss');
+      filename = `${newSlug}-${stamp}${i > 1 ? `-${i}` : ''}.md`;
+      newFilePath = path.join(newYearDir, filename);
+    }
+
+    // Write new markdown with updated frontmatter
+    const output = matter.stringify(content, data);
+    await fs.writeFile(newFilePath, output, 'utf-8');
+
+    // Update manifest for the year
+    await updateManifest(newYear);
+
+    // Git operations
+    const status = await git.status();
+    const currentBranch = status.current;
+    try {
+      await git.fetch(GIT_REMOTE_NAME).catch(() => {});
+      await git.checkout(MAIN_BRANCH).catch(() => {});
+      await git.pull(GIT_REMOTE_NAME, MAIN_BRANCH).catch(() => {});
+    } catch (e) {
+      console.warn('Git sync warning:', e.message);
+    }
+
+    const branchBase = `propose/${origSlug}-${moment().format('YYYYMMDD-HHmmss')}`;
+    const branchName = branchBase
+      .toLowerCase()
+      .replace(/[^a-z0-9-_\/]/g, '-')
+      .replace(/-+/g, '-');
+    await git.checkoutLocalBranch(branchName);
+
+    const relPath = path.relative(BLOG_DIR, newFilePath);
+    await git.add(relPath);
+    const commitMessage = `Propose new version for ${origSlug}: ${filename}`;
+    // Ensure git user identity if provided via env
+    if (GIT_USER_NAME && git.addConfig) {
+      try {
+        await git.addConfig('user.name', GIT_USER_NAME);
+      } catch (_) {}
+    }
+    if (GIT_USER_EMAIL && git.addConfig) {
+      try {
+        await git.addConfig('user.email', GIT_USER_EMAIL);
+      } catch (_) {}
+    }
+    await git.commit(commitMessage);
+
+    // Determine remote to use for push/PR
+    const remotes = await git.getRemotes(true);
+    const selected =
+      remotes.find(r => r.name === GIT_REMOTE_NAME) ||
+      remotes.find(r => r.name === 'origin');
+    if (!selected) {
+      return res.status(500).json({
+        error:
+          "푸시할 원격을 찾지 못했습니다. 'blog' 또는 'origin' 원격을 설정하세요.",
+      });
+    }
+    const pushRemoteName = selected.name;
+
+    // Push to the selected remote (fallback to origin if blog remote is missing)
+    await git.push(pushRemoteName, branchName);
+
+    // Parse owner/repo from remote
+    const remoteUrl = selected?.refs?.push || selected?.refs?.fetch || '';
+    const { owner, repo } = parseGitHubRepo(remoteUrl);
+
+    if (!owner || !repo) {
+      return res.status(500).json({
+        error: '원격 저장소 정보를 파싱하지 못했습니다.',
+        remoteUrl,
+      });
+    }
+    if (!GITHUB_TOKEN) {
+      return res
+        .status(500)
+        .json({ error: 'GITHUB_TOKEN 환경변수가 설정되어 있지 않습니다.' });
+    }
+
+    const octokit = new Octokit({ auth: GITHUB_TOKEN });
+    const prTitle = `Propose: ${data.title || filename} (${origSlug})`;
+    const prBody = [
+      'AI Memo에서 기존 게시글의 새 버전을 제안합니다.',
+      '',
+      `원본: /blog/${yearStr}/${origSlug}`,
+      original.url ? `원본 URL: ${original.url}` : '',
+      sourcePage || sourcePageUrl
+        ? `제안 생성 페이지: ${sourcePage || sourcePageUrl}`
+        : '',
+      '',
+      `새 파일: ${relPath}`,
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    let pr;
+    try {
+      pr = await octokit.rest.pulls.create({
+        owner,
+        repo,
+        title: prTitle,
+        head: branchName,
+        base: MAIN_BRANCH,
+        body: prBody,
+      });
+    } catch (err) {
+      console.error('PR 생성 오류:', err.response?.data || err.message);
+      return res.status(500).json({
+        error: 'GitHub PR 생성에 실패했습니다.',
+        details: err.response?.data || err.message,
+      });
+    }
+
+    // Restore branch
+    try {
+      if (currentBranch && currentBranch !== branchName) {
+        await git.checkout(currentBranch);
+      }
+    } catch (_) {}
+
+    return res.json({
+      success: true,
+      prUrl: pr.data?.html_url,
+      branch: branchName,
+      file: `/posts/${newYear}/${filename}`,
+    });
+  } catch (error) {
+    console.error('/api/propose-new-version error:', error);
+    res
+      .status(500)
+      .json({
+        error: '새 버전 제안 처리 중 오류가 발생했습니다.',
+        details: error.message,
+      });
   }
 });
 

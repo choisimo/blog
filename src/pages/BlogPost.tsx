@@ -19,6 +19,7 @@ import { formatDate } from '@/utils/blog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { CommentSection } from '@/components/features/blog';
 import {
   ArrowLeft,
   Calendar,
@@ -302,6 +303,13 @@ const BlogPost = () => {
                   </ReactMarkdown>
                 </div>
               </div>
+            </div>
+
+            <Separator className='my-12' />
+
+            {/* Comments */}
+            <div className='mt-16'>
+              <CommentSection postId={`${post.year}/${post.slug}`} />
             </div>
 
             <Separator className='my-12' />

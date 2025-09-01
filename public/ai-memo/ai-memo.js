@@ -28,6 +28,8 @@
     devCss: 'aiMemo.dev.css',
     devJs: 'aiMemo.dev.js',
     repoUrl: 'aiMemo.repoUrl',
+    backendUrl: 'aiMemo.backendUrl',
+    proposalMd: 'aiMemo.proposalMd',
   };
 
   class AIMemoPad extends HTMLElement {
@@ -47,9 +49,12 @@
         ),
         devJs: LS.get(KEYS.devJs, 'console.log("Hello from user JS");'),
         repoUrl: LS.get(KEYS.repoUrl, ''),
+        backendUrl: LS.get(KEYS.backendUrl, ''),
+        proposalMd: LS.get(KEYS.proposalMd, ''),
       };
       this._drag = { active: false, startX: 0, startY: 0, origX: 0, origY: 0 };
       this.root = null; // shadow root container
+      this._originalLoaded = false;
     }
 
     connectedCallback() {
@@ -305,7 +310,7 @@
           </div>
           <div class="tabs">
             <div class="tab" data-tab="memo">메모</div>
-            <div class="tab" data-tab="dev">개발</div>
+            <div class="tab" data-tab="dev">새 버전 제안</div>
           </div>
           <div id="memoBody" class="body">
             <div class="section">
@@ -319,30 +324,29 @@
           </div>
           <div id="devBody" class="body">
             <div class="section">
-              <label class="label" for="repoUrl">GitHub 레포지토리 URL (이슈 생성용)</label>
-              <input id="repoUrl" class="input" placeholder="https://github.com/choisimo/blog" />
-            </div>
-            <div class="code-grid">
-              <div>
-                <label class="label" for="devHtml">HTML</label>
-                <textarea id="devHtml" class="textarea" spellcheck="false"></textarea>
-              </div>
-              <div>
-                <label class="label" for="devCss">CSS</label>
-                <textarea id="devCss" class="textarea" spellcheck="false"></textarea>
-              </div>
-              <div>
-                <label class="label" for="devJs">JavaScript</label>
-                <textarea id="devJs" class="textarea" spellcheck="false"></textarea>
+              <label class="label" for="backendUrl">백엔드 API 주소</label>
+              <input id="backendUrl" class="input" placeholder="http://localhost:5000" />
+              <div class="small muted" style="margin-top:4px;">
+                새로운 버전 제안을 위해 관리자 백엔드(API)를 사용합니다. 기본값은 로컬 개발 서버(5000)입니다.
               </div>
             </div>
-            <div class="actions" style="margin-top:8px;">
-              <button id="runPreview" class="btn">미리보기</button>
-              <button id="downloadFeature" class="btn secondary">기능 다운로드</button>
-              <button id="prSuggest" class="btn">PR 제안하기</button>
+            <div class="section">
+              <div class="label">원본 글</div>
+              <div id="originalPath" class="small" style="opacity:0.8"></div>
             </div>
-            <div class="preview-wrap">
-              <iframe id="preview" sandbox="allow-scripts"></iframe>
+            <div class="section">
+              <label class="label" for="proposalMd">새 버전 마크다운</label>
+              <textarea id="proposalMd" class="textarea" spellcheck="false" placeholder="원문을 불러오거나 이곳에 수정된 마크다운을 붙여넣으세요"></textarea>
+              <div class="row" style="margin-top:8px; gap:8px;">
+                <button id="loadOriginalMd" class="btn secondary">원문 불러오기</button>
+                <button id="proposeNewVersion" class="btn">PR 생성 제안</button>
+              </div>
+              <div class="small muted" style="margin-top:6px;">
+                - 원문을 불러온 후 필요한 수정을 하고 PR을 생성하세요. PR에는 원본과의 관계가 frontmatter의 derivedFrom으로 표시됩니다.
+              </div>
+            </div>
+            <div class="section">
+              <a id="prLink" class="small" target="_blank" rel="noopener" style="display:none;">PR 열기 →</a>
             </div>
           </div>
           <div class="footer">
@@ -368,14 +372,13 @@
       this.$devBody = this.shadowRoot.getElementById('devBody');
       this.$memo = this.shadowRoot.getElementById('memo');
       this.$apiKey = this.shadowRoot.getElementById('apiKey');
-      this.$repoUrl = this.shadowRoot.getElementById('repoUrl');
-      this.$devHtml = this.shadowRoot.getElementById('devHtml');
-      this.$devCss = this.shadowRoot.getElementById('devCss');
-      this.$devJs = this.shadowRoot.getElementById('devJs');
-      this.$runPreview = this.shadowRoot.getElementById('runPreview');
-      this.$downloadFeature = this.shadowRoot.getElementById('downloadFeature');
-      this.$prSuggest = this.shadowRoot.getElementById('prSuggest');
-      this.$preview = this.shadowRoot.getElementById('preview');
+      this.$backendUrl = this.shadowRoot.getElementById('backendUrl');
+      this.$originalPath = this.shadowRoot.getElementById('originalPath');
+      this.$proposalMd = this.shadowRoot.getElementById('proposalMd');
+      this.$loadOriginalMd = this.shadowRoot.getElementById('loadOriginalMd');
+      this.$proposeNewVersion =
+        this.shadowRoot.getElementById('proposeNewVersion');
+      this.$prLink = this.shadowRoot.getElementById('prLink');
       this.$status = this.shadowRoot.getElementById('status');
       this.$addSel = this.shadowRoot.getElementById('addSelection');
       this.$aiSummary = this.shadowRoot.getElementById('aiSummary');
@@ -406,10 +409,10 @@
       }
 
       // dev content
-      this.$repoUrl.value = this.state.repoUrl || '';
-      this.$devHtml.value = this.state.devHtml || '';
-      this.$devCss.value = this.state.devCss || '';
-      this.$devJs.value = this.state.devJs || '';
+      if (this.$backendUrl)
+        this.$backendUrl.value = this.state.backendUrl || '';
+      if (this.$proposalMd)
+        this.$proposalMd.value = this.state.proposalMd || '';
 
       // mode
       this.$tabs.forEach(t =>
@@ -429,6 +432,9 @@
       const mode = active ? active.dataset.tab : 'memo';
       LS.set(KEYS.mode, mode);
       this.state.mode = mode;
+      if (mode === 'dev') {
+        this.maybeLoadOriginalMarkdown();
+      }
     }
 
     bind() {
@@ -467,21 +473,20 @@
         this.state.apiKey = this.$apiKey.value;
         LS.set(KEYS.apiKey, this.state.apiKey);
       });
-      this.$repoUrl.addEventListener('input', () => {
-        this.state.repoUrl = this.$repoUrl.value;
-        LS.set(KEYS.repoUrl, this.state.repoUrl);
-      });
-      const persistDev = () => {
-        this.state.devHtml = this.$devHtml.value;
-        LS.set(KEYS.devHtml, this.state.devHtml);
-        this.state.devCss = this.$devCss.value;
-        LS.set(KEYS.devCss, this.state.devCss);
-        this.state.devJs = this.$devJs.value;
-        LS.set(KEYS.devJs, this.state.devJs);
-      };
-      this.$devHtml.addEventListener('input', persistDev);
-      this.$devCss.addEventListener('input', persistDev);
-      this.$devJs.addEventListener('input', persistDev);
+      if (this.$backendUrl) {
+        this.$backendUrl.addEventListener('input', () => {
+          this.state.backendUrl = this.$backendUrl.value;
+          LS.set(KEYS.backendUrl, this.state.backendUrl);
+        });
+      }
+      if (this.$proposalMd) {
+        const persistProposal = () => {
+          this.state.proposalMd = this.$proposalMd.value;
+          LS.set(KEYS.proposalMd, this.state.proposalMd);
+        };
+        this.$proposalMd.addEventListener('input', persistProposal);
+        this.$proposalMd.addEventListener('change', persistProposal);
+      }
 
       // selection add
       this.$addSel.addEventListener('click', () => {
@@ -518,12 +523,15 @@
         this.summarizeWithGemini()
       );
 
-      // Dev Mode actions
-      this.$runPreview.addEventListener('click', () => this.runPreview());
-      this.$downloadFeature.addEventListener('click', () =>
-        this.downloadFeature()
-      );
-      this.$prSuggest.addEventListener('click', () => this.openIssue());
+      // Proposal actions
+      if (this.$loadOriginalMd)
+        this.$loadOriginalMd.addEventListener('click', () =>
+          this.maybeLoadOriginalMarkdown(true)
+        );
+      if (this.$proposeNewVersion)
+        this.$proposeNewVersion.addEventListener('click', () =>
+          this.proposeNewVersion()
+        );
 
       // drag move
       const onPointerMove = e => {
@@ -588,6 +596,136 @@
           this.updateOpen();
         }
       });
+    }
+
+    getCurrentPostInfo() {
+      // Supports routes: #/blog/:year/:slug and /blog/:year/:slug (or 'post')
+      const fromHash = () => {
+        const h = (location.hash || '').replace(/^#/, '');
+        const m = h.match(/^\/?(blog|post)\/(\d{4})\/([^\/?#]+)/);
+        if (m) return { type: m[1], year: m[2], slug: m[3] };
+        return null;
+      };
+      const fromPath = () => {
+        const p = location.pathname || '';
+        const m = p.match(/^\/?(blog|post)\/(\d{4})\/([^\/?#]+)/);
+        if (m) return { type: m[1], year: m[2], slug: m[3] };
+        return null;
+      };
+      return fromHash() || fromPath();
+    }
+
+    buildOriginalMarkdownPath(info) {
+      if (!info) return null;
+      const { year, slug } = info;
+      return `/posts/${year}/${slug}.md`;
+    }
+
+    async maybeLoadOriginalMarkdown(force = false) {
+      try {
+        const info = this.getCurrentPostInfo();
+        if (!info) {
+          if (this.$originalPath)
+            this.$originalPath.textContent =
+              '현재 페이지가 블로그 글 상세가 아닙니다.';
+          return;
+        }
+        const mdPath = this.buildOriginalMarkdownPath(info);
+        if (this.$originalPath) this.$originalPath.textContent = `${mdPath}`;
+
+        if (this._originalLoaded && !force) return;
+
+        const origin = location.origin;
+        const url = `${origin}${mdPath}`;
+        if (this.$status) this.$status.textContent = '원문 불러오는 중…';
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`원문 로드 실패(${res.status})`);
+        const text = await res.text();
+        if (this.$proposalMd) {
+          if (force || !this.$proposalMd.value) {
+            this.$proposalMd.value = text;
+            this.state.proposalMd = text;
+            LS.set(KEYS.proposalMd, text);
+            this.toast(
+              '원문을 불러왔습니다. 내용을 편집한 뒤 PR을 생성하세요.'
+            );
+          }
+        }
+        this._originalLoaded = true;
+        if (this.$status) this.$status.textContent = 'Ready';
+      } catch (err) {
+        console.error('maybeLoadOriginalMarkdown error:', err);
+        if (this.$status) this.$status.textContent = '오류';
+        this.toast(err?.message || '원문을 불러오지 못했습니다.');
+      }
+    }
+
+    async proposeNewVersion() {
+      try {
+        const backend = (
+          this.$backendUrl?.value ||
+          this.state.backendUrl ||
+          ''
+        ).trim();
+        if (!backend) {
+          this.toast('백엔드 API 주소를 입력하세요. 예: http://localhost:5000');
+          return;
+        }
+        const info = this.getCurrentPostInfo();
+        if (!info) {
+          this.toast('현재 페이지에서 글 정보를 찾을 수 없습니다.');
+          return;
+        }
+        const md = (this.$proposalMd?.value || '').trim();
+        if (!md) {
+          this.toast('제안할 마크다운이 비어 있습니다.');
+          return;
+        }
+
+        const mdPath = this.buildOriginalMarkdownPath(info);
+        const endpoint = `${backend.replace(/\/$/, '')}/api/propose-new-version`;
+
+        const payload = {
+          original: {
+            year: info.year,
+            slug: info.slug,
+            path: mdPath,
+            url: `${location.origin}/#/blog/${info.year}/${info.slug}`,
+          },
+          markdown: md,
+          sourcePage: location.href,
+        };
+
+        if (this.$proposeNewVersion) this.$proposeNewVersion.disabled = true;
+        const prev = this.$status?.textContent || '';
+        if (this.$status) this.$status.textContent = 'PR 생성 요청 중…';
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const t = await res.text().catch(() => '');
+          throw new Error(`요청 실패(${res.status}) ${t.slice(0, 200)}`);
+        }
+        const data = await res.json().catch(() => ({}));
+        const prUrl = data.prUrl || data.url || data.html_url;
+        if (prUrl && this.$prLink) {
+          this.$prLink.href = prUrl;
+          this.$prLink.style.display = '';
+        }
+        this.toast(prUrl ? 'PR이 생성되었습니다.' : '요청이 완료되었습니다.');
+        if (this.$status) this.$status.textContent = '완료';
+        setTimeout(() => {
+          if (this.$status) this.$status.textContent = prev || 'Ready';
+        }, 1400);
+      } catch (err) {
+        console.error('proposeNewVersion error:', err);
+        if (this.$status) this.$status.textContent = '오류';
+        this.toast(err?.message || 'PR 생성 요청에 실패했습니다.');
+      } finally {
+        if (this.$proposeNewVersion) this.$proposeNewVersion.disabled = false;
+      }
     }
   }
 
