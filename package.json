@@ -25,7 +25,10 @@
     "build:all": "npm run build && cd blog-admin && npm run build && cd ../doc-converter && npm run build",
     "lint:workspaces": "npm run lint && cd doc-converter && npm run lint",
     "test:workspaces": "npm run test",
-    "prepare": "husky"
+    "prepare": "husky",
+    "korean:scan": "node scripts/korean-normalize.js",
+    "korean:fix": "node scripts/korean-normalize.js --fix --remove-zero-width",
+    "korean:scan:ci": "node scripts/korean-normalize.js --ci --silent"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
