@@ -24,6 +24,7 @@
     mode: 'aiMemo.mode',
     memo: 'aiMemo.content',
     apiKey: 'aiMemo.apiKey',
+    inlineEnabled: 'aiMemo.inline.enabled',
     devHtml: 'aiMemo.dev.html',
     devCss: 'aiMemo.dev.css',
     devJs: 'aiMemo.dev.js',
@@ -42,6 +43,7 @@
         mode: LS.get(KEYS.mode, 'memo'),
         memo: LS.get(KEYS.memo, ''),
         apiKey: LS.get(KEYS.apiKey, ''),
+        inlineEnabled: !!LS.get(KEYS.inlineEnabled, false),
         devHtml: LS.get(KEYS.devHtml, '<div>Hello AI Memo 👋</div>'),
         devCss: LS.get(
           KEYS.devCss,
@@ -318,6 +320,13 @@
               <input id="apiKey" class="input" placeholder="AIza..." />
             </div>
             <div class="section">
+              <label class="label" for="inlineEnabled">문단 끝 ✨ 인라인 확장</label>
+              <div class="row">
+                <input id="inlineEnabled" type="checkbox" />
+                <div class="small" style="opacity:0.8">글 본문 단락 끝에 ✨ 아이콘을 표시하고 아래로 결과를 펼칩니다.</div>
+              </div>
+            </div>
+            <div class="section">
               <label class="label" for="memo">메모</label>
               <textarea id="memo" class="textarea" placeholder="여기에 메모를 작성하세요"></textarea>
             </div>
@@ -372,6 +381,7 @@
       this.$devBody = this.shadowRoot.getElementById('devBody');
       this.$memo = this.shadowRoot.getElementById('memo');
       this.$apiKey = this.shadowRoot.getElementById('apiKey');
+      this.$inlineEnabled = this.shadowRoot.getElementById('inlineEnabled');
       this.$backendUrl = this.shadowRoot.getElementById('backendUrl');
       this.$originalPath = this.shadowRoot.getElementById('originalPath');
       this.$proposalMd = this.shadowRoot.getElementById('proposalMd');
@@ -390,6 +400,8 @@
       // content
       this.$memo.value = this.state.memo || '';
       this.$apiKey.value = this.state.apiKey || '';
+      if (this.$inlineEnabled)
+        this.$inlineEnabled.checked = !!this.state.inlineEnabled;
 
       // panel open
       this.$panel.classList.toggle('open', !!this.state.isOpen);
@@ -473,6 +485,16 @@
         this.state.apiKey = this.$apiKey.value;
         LS.set(KEYS.apiKey, this.state.apiKey);
       });
+      if (this.$inlineEnabled) {
+        const onToggleInline = () => {
+          const val = !!this.$inlineEnabled.checked;
+          this.state.inlineEnabled = val;
+          LS.set(KEYS.inlineEnabled, val);
+          this.toast(`인라인 ✨ ${val ? '켜짐' : '꺼짐'}`);
+        };
+        this.$inlineEnabled.addEventListener('change', onToggleInline);
+        this.$inlineEnabled.addEventListener('input', onToggleInline);
+      }
       if (this.$backendUrl) {
         this.$backendUrl.addEventListener('input', () => {
           this.state.backendUrl = this.$backendUrl.value;

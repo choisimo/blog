@@ -5,15 +5,20 @@ import remarkGfm from 'remark-gfm';
 import { Copy, Check } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import SparkInline from '@/components/features/sentio/SparkInline';
 
 interface MarkdownRendererProps {
   content: string;
   className?: string;
+  inlineEnabled?: boolean;
+  postTitle?: string;
 }
 
 export const MarkdownRenderer = ({
   content,
   className = '',
+  inlineEnabled = false,
+  postTitle = '',
 }: MarkdownRendererProps) => {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
@@ -120,11 +125,14 @@ export const MarkdownRenderer = ({
               </h6>
             );
           },
-          p: ({ children }) => (
-            <p className='mb-6 leading-8 text-justify max-w-4xl mx-auto'>
-              {children}
-            </p>
-          ),
+          p: ({ children }) =>
+            inlineEnabled ? (
+              <SparkInline postTitle={postTitle}>{children}</SparkInline>
+            ) : (
+              <p className='mb-6 leading-8 text-justify max-w-4xl mx-auto'>
+                {children}
+              </p>
+            ),
           ul: ({ children }) => (
             <ul className='list-disc pl-6 mb-6 space-y-3 max-w-4xl mx-auto'>
               {children}

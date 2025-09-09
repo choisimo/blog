@@ -2247,12 +2247,151 @@ app.post('/api/propose-new-version', async (req, res) => {
     });
   } catch (error) {
     console.error('/api/propose-new-version error:', error);
-    res
-      .status(500)
-      .json({
-        error: '새 버전 제안 처리 중 오류가 발생했습니다.',
-        details: error.message,
+    res.status(500).json({
+      error: '새 버전 제안 처리 중 오류가 발생했습니다.',
+      details: error.message,
+    });
+  }
+});
+
+// Environment Variables Manager Endpoints
+const PROJECT_ROOT = path.join(__dirname, '..');
+const ENV_SECTIONS = [
+  {
+    id: 'root',
+    name: 'Site (.env)',
+    envPath: path.join(PROJECT_ROOT, '.env'),
+    examplePath: path.join(PROJECT_ROOT, '.env.example'),
+  },
+  {
+    id: 'blog-admin',
+    name: 'Blog Admin (.env)',
+    envPath: path.join(__dirname, '.env'),
+    examplePath: path.join(__dirname, '.env.example'),
+  },
+];
+
+function readFileIfExists(filePath) {
+  try {
+    if (fs.existsSync(filePath)) {
+      return fs.readFileSync(filePath, 'utf-8');
+    }
+  } catch (_) {}
+  return '';
+}
+
+function parseEnv(content) {
+  const obj = {};
+  if (!content) return obj;
+  const lines = content.split(/\r?\n/);
+  for (const line of lines) {
+    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+    if (m) {
+      obj[m[1]] = m[2];
+    }
+  }
+  return obj;
+}
+
+function parseKeysFromExample(content) {
+  const keys = [];
+  if (!content) return keys;
+  const lines = content.split(/\r?\n/);
+  for (const line of lines) {
+    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/);
+    if (m) keys.push(m[1]);
+  }
+  return keys;
+}
+
+function isSecretKey(key) {
+  return /(KEY|TOKEN|SECRET|PASSWORD|PRIVATE|SERVICE_ACCOUNT)/i.test(key);
+}
+
+function buildEnvContentFromExample(exampleContent, values) {
+  const seen = new Set();
+  const lines = (exampleContent || '').split(/\r?\n/).map(line => {
+    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/);
+    if (m) {
+      const k = m[1];
+      seen.add(k);
+      const v = values[k] ?? '';
+      return `${k}=${v}`;
+    }
+    return line;
+  });
+  const extra = Object.keys(values || {})
+    .filter(k => !seen.has(k))
+    .map(k => `${k}=${values[k]}`);
+  return [
+    ...lines,
+    ...(extra.length ? ['', '# Added by Env Manager', ...extra] : []),
+  ].join('\n');
+}
+
+app.get('/api/env', async (req, res) => {
+  try {
+    const sections = ENV_SECTIONS.map(sec => {
+      const exampleContent = readFileIfExists(sec.examplePath);
+      const envFileContent = readFileIfExists(sec.envPath);
+      const exampleVars = parseEnv(exampleContent);
+      const envFileVars = parseEnv(envFileContent);
+      const keys = [
+        ...new Set([
+          ...parseKeysFromExample(exampleContent),
+          ...Object.keys(envFileVars),
+        ]),
+      ];
+      const items = keys.map(key => {
+        const value = envFileVars[key] ?? process.env[key] ?? '';
+        const example = exampleVars[key] ?? '';
+        return { key, value, example, secret: isSecretKey(key) };
       });
+      return {
+        id: sec.id,
+        name: sec.name,
+        envPath: sec.envPath,
+        examplePath: sec.examplePath,
+        fileExists: Boolean(envFileContent && envFileContent.length > 0),
+        exampleExists: Boolean(exampleContent && exampleContent.length > 0),
+        items,
+      };
+    });
+    res.json({ sections });
+  } catch (e) {
+    console.error('Error reading env files:', e);
+    res.status(500).json({
+      error: 'Failed to read environment configuration',
+      details: e.message,
+    });
+  }
+});
+
+app.post('/api/env', async (req, res) => {
+  try {
+    const { sectionId, values } = req.body || {};
+    const section = ENV_SECTIONS.find(s => s.id === sectionId);
+    if (!section) return res.status(400).json({ error: 'Invalid sectionId' });
+
+    const exampleContent = readFileIfExists(section.examplePath);
+    const envFileContent = readFileIfExists(section.envPath);
+
+    const existing = parseEnv(envFileContent);
+    const merged = { ...existing, ...(values || {}) };
+    const output = buildEnvContentFromExample(exampleContent, merged);
+
+    if (envFileContent) {
+      const backupPath = `${section.envPath}.backup-${moment().format('YYYYMMDD-HHmmss')}`;
+      try {
+        await fs.writeFile(backupPath, envFileContent, 'utf-8');
+      } catch (_) {}
+    }
+
+    await fs.writeFile(section.envPath, output, 'utf-8');
+    res.json({ success: true, message: '.env saved', path: section.envPath });
+  } catch (e) {
+    console.error('Error saving env:', e);
+    res.status(500).json({ error: 'Failed to save .env', details: e.message });
   }
 });
 

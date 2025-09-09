@@ -1,9 +1,9 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BlogCard, BlogCardSkeleton } from '@/components';
 import { Pagination } from '@/components';
-import { getPosts } from '@/data/posts';
-import { BlogPost } from '@/types/blog';
+import { getPostsPage, getAllCategories, getAllTags } from '@/data/posts';
+import { BlogPost, PostsPage } from '@/types/blog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +24,14 @@ const Blog = () => {
   const categoryParam = searchParams.get('category');
   const pageParam = searchParams.get('page');
 
-  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [pageData, setPageData] = useState<PostsPage<BlogPost>>({
+    items: [],
+    page: 1,
+    pageSize: POSTS_PER_PAGE,
+    total: 0,
+    totalPages: 1,
+    hasMore: false,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,6 +40,9 @@ const Blog = () => {
   const [sortBy, setSortBy] = useState('date');
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [categories, setCategories] = useState<string[]>([]);
+  const [allTags, setAllTags] = useState<string[]>([]);
+  const [siteTotalPosts, setSiteTotalPosts] = useState(0);
 
   // Debounce search term to avoid excessive filtering
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -50,83 +60,68 @@ const Blog = () => {
     }
   }, [categoryParam, pageParam]);
 
+  // Load a page of posts (metadata-only) whenever filters/sort/page change
   useEffect(() => {
-    const loadPosts = async () => {
+    let cancelled = false;
+    const loadPage = async () => {
       try {
         setLoading(true);
         setError(null);
-        console.log('Loading posts...');
-        const loadedPosts = await getPosts();
-        console.log('Loaded posts:', loadedPosts.length);
-        setPosts(loadedPosts);
+        const res = await getPostsPage({
+          page: currentPage,
+          pageSize: POSTS_PER_PAGE,
+          category: selectedCategory,
+          tags: selectedTags,
+          search: debouncedSearchTerm,
+          sort: sortBy as 'date' | 'title' | 'readTime',
+        });
+        if (!cancelled) setPageData(res);
       } catch (error) {
-        console.error('Failed to load posts:', error);
-        setError('Failed to load blog posts. Please try again later.');
+        console.error('Failed to load posts page:', error);
+        if (!cancelled)
+          setError('Failed to load blog posts. Please try again later.');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
+    loadPage();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    debouncedSearchTerm,
+    selectedCategory,
+    selectedTags,
+    sortBy,
+    currentPage,
+  ]);
 
-    loadPosts();
+  // Load global metadata (categories, tags, total posts)
+  useEffect(() => {
+    let cancelled = false;
+    const loadMeta = async () => {
+      try {
+        const [cats, tags, totalPage] = await Promise.all([
+          getAllCategories(),
+          getAllTags(),
+          getPostsPage({ page: 1, pageSize: 1 }),
+        ]);
+        if (cancelled) return;
+        setCategories(cats.sort());
+        setAllTags(tags.sort());
+        setSiteTotalPosts(totalPage.total);
+      } catch {
+        // ignore meta errors
+      }
+    };
+    loadMeta();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Get unique categories and tags
-  const categories = useMemo(() => {
-    const cats = new Set(posts.map(post => post.category));
-    return Array.from(cats).sort();
-  }, [posts]);
-
-  const allTags = useMemo(() => {
-    const tags = new Set<string>();
-    posts.forEach(post => {
-      post.tags?.forEach(tag => tags.add(tag));
-    });
-    return Array.from(tags).sort();
-  }, [posts]);
-
-  // Filter and sort posts
-  const filteredPosts = useMemo(() => {
-    const filtered = posts.filter(post => {
-      const matchesSearch =
-        debouncedSearchTerm === '' ||
-        post.title.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        post.description
-          .toLowerCase()
-          .includes(debouncedSearchTerm.toLowerCase()) ||
-        post.tags?.some(tag =>
-          tag.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-        );
-
-      const matchesCategory =
-        selectedCategory === 'all' || post.category === selectedCategory;
-
-      const matchesTags =
-        selectedTags.length === 0 ||
-        selectedTags.every(tag => post.tags?.includes(tag));
-
-      return matchesSearch && matchesCategory && matchesTags;
-    });
-
-    // Sort posts
-    if (sortBy === 'date') {
-      filtered.sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-    } else if (sortBy === 'title') {
-      filtered.sort((a, b) => a.title.localeCompare(b.title));
-    } else if (sortBy === 'readTime') {
-      filtered.sort((a, b) => (a.readTime || 0) - (b.readTime || 0));
-    }
-
-    return filtered;
-  }, [posts, debouncedSearchTerm, selectedCategory, selectedTags, sortBy]);
-
-  // Pagination
-  const totalPages = Math.ceil(filteredPosts.length / POSTS_PER_PAGE);
-  const paginatedPosts = useMemo(() => {
-    const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
-    return filteredPosts.slice(startIndex, startIndex + POSTS_PER_PAGE);
-  }, [filteredPosts, currentPage]);
+  // Pagination info from server
+  const totalPages = pageData.totalPages;
 
   // Reset page when filters change
   useEffect(() => {
@@ -182,7 +177,9 @@ const Blog = () => {
             <div className='flex flex-wrap justify-center gap-8 text-sm text-muted-foreground'>
               <div className='flex items-center gap-2'>
                 <div className='w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center'>
-                  <span className='text-primary font-bold'>{posts.length}</span>
+                  <span className='text-primary font-bold'>
+                    {siteTotalPosts}
+                  </span>
                 </div>
                 <span>Posts</span>
               </div>
@@ -307,7 +304,7 @@ const Blog = () => {
         <div className='mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
           <div className='flex items-center gap-4'>
             <p className='text-sm text-muted-foreground'>
-              Showing {filteredPosts.length} of {posts.length} posts
+              Showing {pageData.items.length} of {pageData.total} posts
             </p>
             {totalPages > 1 && (
               <p className='text-sm text-muted-foreground'>
@@ -327,9 +324,11 @@ const Blog = () => {
           <div
             className={`grid gap-6 ${viewMode === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}
           >
-            {Array.from({ length: POSTS_PER_PAGE }).map((_, index) => (
-              <BlogCardSkeleton key={index} />
-            ))}
+            {Array.from({ length: pageData.pageSize || POSTS_PER_PAGE }).map(
+              (_, index) => (
+                <BlogCardSkeleton key={index} />
+              )
+            )}
           </div>
         ) : error ? (
           <div className='text-center py-12'>
@@ -338,12 +337,12 @@ const Blog = () => {
               Try again
             </Button>
           </div>
-        ) : paginatedPosts.length > 0 ? (
+        ) : pageData.items.length > 0 ? (
           <>
             <div
               className={`grid gap-6 ${viewMode === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}
             >
-              {paginatedPosts.map(post => (
+              {pageData.items.map(post => (
                 <BlogCard key={post.slug} post={post} />
               ))}
             </div>

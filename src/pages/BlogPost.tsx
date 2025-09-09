@@ -5,20 +5,16 @@ import {
   useNavigate,
   useLocation,
 } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import remarkGfm from 'remark-gfm';
-import rehypeSlug from 'rehype-slug';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { ReadingProgress } from '@/components/common/ReadingProgress';
 import { ScrollToTop } from '@/components/common/ScrollToTop';
-import { getPostBySlug, getPosts } from '@/data/posts';
+import { getPostBySlug, getPostsPage, prefetchPost } from '@/data/posts';
 import { BlogPost as BlogPostType } from '@/types/blog';
 import { formatDate } from '@/utils/blog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { CommentSection } from '@/components/features/blog';
 import {
   ArrowLeft,
@@ -30,6 +26,11 @@ import {
   User,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+// import SparkInline from '@/components/features/sentio/SparkInline';
+
+const MarkdownRenderer = lazy(
+  () => import('@/components/features/blog/MarkdownRenderer')
+);
 
 const BlogPost = () => {
   const { year, slug } = useParams();
@@ -41,7 +42,8 @@ const BlogPost = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [post, setPost] = useState<BlogPostType | null>(null);
-  const [posts, setPosts] = useState<BlogPostType[]>([]);
+  const [relatedPosts, setRelatedPosts] = useState<BlogPostType[]>([]);
+  const [inlineEnabled, setInlineEnabled] = useState<boolean>(false);
 
   const handleBackToBlog = () => {
     if (from && typeof from === 'object' && 'pathname' in from) {
@@ -65,11 +67,7 @@ const BlogPost = () => {
           return;
         }
 
-        // Load all posts first
-        const loadedPosts = await getPosts();
-        setPosts(loadedPosts);
-
-        // Find the specific post
+        // Load the specific post
         const foundPost = await getPostBySlug(year, slug);
 
         if (!foundPost) {
@@ -89,6 +87,71 @@ const BlogPost = () => {
 
     loadData();
   }, [year, slug]);
+
+  // sync inline feature flag from localStorage and storage events
+  useEffect(() => {
+    const read = () => {
+      try {
+        const v = localStorage.getItem('aiMemo.inline.enabled');
+        setInlineEnabled(!!JSON.parse(v || 'false'));
+      } catch {
+        setInlineEnabled(false);
+      }
+    };
+    read();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'aiMemo.inline.enabled') {
+        read();
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('focus', read);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('focus', read);
+    };
+  }, [year, slug]);
+
+  // Load related posts using paginated metadata without fetching all posts
+  useEffect(() => {
+    let cancelled = false;
+    const loadRelated = async () => {
+      if (!post) return;
+      try {
+        const byCategory = await getPostsPage({
+          page: 1,
+          pageSize: 6,
+          category: post.category,
+          sort: 'date',
+        });
+        const candidates = byCategory.items.filter(
+          p => `${p.year}/${p.slug}` !== `${post.year}/${post.slug}`
+        );
+        let selected = candidates.slice(0, 3);
+        if (selected.length < 3 && post.tags && post.tags.length) {
+          const byTag = await getPostsPage({
+            page: 1,
+            pageSize: 6,
+            search: post.tags[0],
+            sort: 'date',
+          });
+          const more = byTag.items.filter(
+            p =>
+              `${p.year}/${p.slug}` !== `${post.year}/${post.slug}` &&
+              !selected.some(s => s.year === p.year && s.slug === p.slug)
+          );
+          selected = selected.concat(more).slice(0, 3);
+        }
+        if (!cancelled) setRelatedPosts(selected);
+      } catch {
+        if (!cancelled) setRelatedPosts([]);
+      }
+    };
+    loadRelated();
+    return () => {
+      cancelled = true;
+    };
+  }, [post]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -132,15 +195,7 @@ const BlogPost = () => {
     return <Navigate to='/404' replace />;
   }
 
-  // Get related posts
-  const relatedPosts = posts
-    .filter(
-      p =>
-        `${p.year}/${p.slug}` !== `${post.year}/${post.slug}` &&
-        (p.category === post.category ||
-          p.tags?.some((tag: string) => post.tags?.includes(tag)))
-    )
-    .slice(0, 3);
+  // Related posts are loaded lazily via paginated metadata
 
   return (
     <>
@@ -233,74 +288,27 @@ const BlogPost = () => {
             <div className='mb-16'>
               <div className='bg-card/30 backdrop-blur-sm border rounded-2xl p-8 md:p-12 shadow-sm'>
                 <div className='prose prose-gray dark:prose-invert max-w-none'>
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeSlug]}
-                    components={{
-                      code({ className, children, ..._props }) {
-                        const match = /language-(\w+)/.exec(className || '');
-                        const isInline = !match;
-
-                        return isInline ? (
-                          <code
-                            className={`${className} px-1 py-0.5 bg-muted rounded text-sm`}
-                          >
-                            {children}
-                          </code>
-                        ) : (
-                          <SyntaxHighlighter
-                            style={tomorrow}
-                            language={match[1]}
-                            PreTag='div'
-                            className='rounded-md'
-                          >
-                            {String(children).replace(/\n$/, '')}
-                          </SyntaxHighlighter>
-                        );
-                      },
-                      h1: ({ children }) => (
-                        <h1 className='text-3xl font-bold mt-8 mb-4'>
-                          {children}
-                        </h1>
-                      ),
-                      h2: ({ children }) => (
-                        <h2 className='text-2xl font-semibold mt-6 mb-3'>
-                          {children}
-                        </h2>
-                      ),
-                      h3: ({ children }) => (
-                        <h3 className='text-xl font-medium mt-4 mb-2'>
-                          {children}
-                        </h3>
-                      ),
-                      p: ({ children }) => (
-                        <p className='mb-4 leading-relaxed'>{children}</p>
-                      ),
-                      ul: ({ children }) => (
-                        <ul className='mb-4 space-y-1'>{children}</ul>
-                      ),
-                      ol: ({ children }) => (
-                        <ol className='mb-4 space-y-1'>{children}</ol>
-                      ),
-                      blockquote: ({ children }) => (
-                        <blockquote className='border-l-4 border-primary pl-4 italic my-4 text-muted-foreground'>
-                          {children}
-                        </blockquote>
-                      ),
-                      a: ({ children, href }) => (
-                        <a
-                          href={href}
-                          className='text-primary hover:underline'
-                          target='_blank'
-                          rel='noopener noreferrer'
-                        >
-                          {children}
-                        </a>
-                      ),
-                    }}
+                  <Suspense
+                    fallback={
+                      <div
+                        className='space-y-3'
+                        aria-label='Loading article content'
+                      >
+                        <Skeleton className='h-6 w-3/4' />
+                        <Skeleton className='h-4 w-full' />
+                        <Skeleton className='h-4 w-11/12' />
+                        <Skeleton className='h-4 w-10/12' />
+                        <Skeleton className='h-4 w-9/12' />
+                        <Skeleton className='h-4 w-1/2' />
+                      </div>
+                    }
                   >
-                    {post.content}
-                  </ReactMarkdown>
+                    <MarkdownRenderer
+                      content={post.content}
+                      inlineEnabled={inlineEnabled}
+                      postTitle={post.title}
+                    />
+                  </Suspense>
                 </div>
               </div>
             </div>
@@ -329,6 +337,12 @@ const BlogPost = () => {
                         to={`/blog/${relatedPost.year}/${relatedPost.slug}`}
                         state={from ? { from } : undefined}
                         className='group'
+                        onMouseEnter={() =>
+                          prefetchPost(relatedPost.year, relatedPost.slug)
+                        }
+                        onFocus={() =>
+                          prefetchPost(relatedPost.year, relatedPost.slug)
+                        }
                       >
                         <div className='bg-card border rounded-xl p-6 hover:shadow-lg hover:scale-105 transition-all duration-300'>
                           <Badge variant='secondary' className='mb-3'>

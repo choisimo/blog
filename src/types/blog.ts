@@ -27,3 +27,13 @@ export interface BlogTag {
   count: number;
   slug: string;
 }
+
+// Generic page result for paginated queries
+export interface PostsPage<T = BlogPost> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
+}

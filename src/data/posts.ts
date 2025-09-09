@@ -1,12 +1,12 @@
-import { PostService } from "../services/postService";
-import type { BlogPost, BlogCategory, BlogTag } from "../types/blog";
+import { PostService } from '../services/postService';
+import type { BlogPost, BlogCategory, BlogTag, PostsPage } from '../types/blog';
 
 // Main function to get all posts from markdown files
 export const getPosts = async (): Promise<BlogPost[]> => {
   try {
     return await PostService.getAllPosts();
   } catch (error) {
-    console.error("Error loading posts:", error);
+    console.error('Error loading posts:', error);
     return [];
   }
 };
@@ -14,7 +14,7 @@ export const getPosts = async (): Promise<BlogPost[]> => {
 // Get a single post by year and slug
 export const getPostBySlug = async (
   year: string,
-  slug: string,
+  slug: string
 ): Promise<BlogPost | null> => {
   try {
     return await PostService.getPostBySlug(year, slug);
@@ -24,15 +24,55 @@ export const getPostBySlug = async (
   }
 };
 
+// Paginated posts (metadata-only) with server-side filters/sort
+export type PostsQuery = {
+  page?: number;
+  pageSize?: number;
+  category?: string;
+  tags?: string[];
+  search?: string;
+  sort?: 'date' | 'title' | 'readTime';
+};
+
+export const getPostsPage = async (
+  q: PostsQuery
+): Promise<PostsPage<BlogPost>> => {
+  try {
+    return await PostService.getPostsPage(q);
+  } catch (error) {
+    console.error('Error loading paginated posts:', error);
+    return {
+      items: [],
+      page: q.page ?? 1,
+      pageSize: q.pageSize ?? 12,
+      total: 0,
+      totalPages: 1,
+      hasMore: false,
+    };
+  }
+};
+
+// Prefetch a single post's markdown content (fire-and-forget)
+export const prefetchPost = async (
+  year: string,
+  slug: string
+): Promise<void> => {
+  try {
+    await PostService.prefetchPost(year, slug);
+  } catch {
+    // ignore prefetch errors
+  }
+};
+
 // Legacy function for backward compatibility
 export const getPostBySlugLegacy = async (
-  slug: string,
+  slug: string
 ): Promise<BlogPost | null> => {
   try {
     const posts = await PostService.getAllPosts();
     return (
       posts.find(
-        (post) => post.slug === slug || `${post.year}/${post.slug}` === slug,
+        post => post.slug === slug || `${post.year}/${post.slug}` === slug
       ) || null
     );
   } catch (error) {
@@ -43,7 +83,7 @@ export const getPostBySlugLegacy = async (
 
 // Get posts by category
 export const getPostsByCategory = async (
-  category: string,
+  category: string
 ): Promise<BlogPost[]> => {
   try {
     return await PostService.getPostsByCategory(category);
@@ -79,7 +119,7 @@ export const getCategories = async (): Promise<BlogCategory[]> => {
     const posts = await PostService.getAllPosts();
     const categoryMap = new Map<string, number>();
 
-    posts.forEach((post) => {
+    posts.forEach(post => {
       const count = categoryMap.get(post.category) || 0;
       categoryMap.set(post.category, count + 1);
     });
@@ -87,10 +127,10 @@ export const getCategories = async (): Promise<BlogCategory[]> => {
     return Array.from(categoryMap.entries()).map(([name, count]) => ({
       name,
       count,
-      slug: name.toLowerCase().replace(/\s+/g, "-"),
+      slug: name.toLowerCase().replace(/\s+/g, '-'),
     }));
   } catch (error) {
-    console.error("Error loading categories:", error);
+    console.error('Error loading categories:', error);
     return [];
   }
 };
@@ -101,8 +141,8 @@ export const getTags = async (): Promise<BlogTag[]> => {
     const posts = await PostService.getAllPosts();
     const tagMap = new Map<string, number>();
 
-    posts.forEach((post) => {
-      post.tags.forEach((tag) => {
+    posts.forEach(post => {
+      post.tags.forEach(tag => {
         const count = tagMap.get(tag) || 0;
         tagMap.set(tag, count + 1);
       });
@@ -111,10 +151,10 @@ export const getTags = async (): Promise<BlogTag[]> => {
     return Array.from(tagMap.entries()).map(([name, count]) => ({
       name,
       count,
-      slug: name.toLowerCase().replace(/\s+/g, "-"),
+      slug: name.toLowerCase().replace(/\s+/g, '-'),
     }));
   } catch (error) {
-    console.error("Error loading tags:", error);
+    console.error('Error loading tags:', error);
     return [];
   }
 };
@@ -123,10 +163,10 @@ export const getTags = async (): Promise<BlogTag[]> => {
 export const getAllCategories = async (): Promise<string[]> => {
   try {
     const posts = await PostService.getAllPosts();
-    const categories = new Set(posts.map((post) => post.category));
+    const categories = new Set(posts.map(post => post.category));
     return Array.from(categories);
   } catch (error) {
-    console.error("Error loading categories:", error);
+    console.error('Error loading categories:', error);
     return [];
   }
 };
@@ -135,10 +175,10 @@ export const getAllCategories = async (): Promise<string[]> => {
 export const getAllTags = async (): Promise<string[]> => {
   try {
     const posts = await PostService.getAllPosts();
-    const tags = new Set(posts.flatMap((post) => post.tags));
+    const tags = new Set(posts.flatMap(post => post.tags));
     return Array.from(tags);
   } catch (error) {
-    console.error("Error loading tags:", error);
+    console.error('Error loading tags:', error);
     return [];
   }
 };

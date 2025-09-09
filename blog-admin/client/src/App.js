@@ -6,26 +6,28 @@ import PostEditor from './components/PostEditor';
 import GitPanel from './components/GitPanel';
 import DeployPanel from './components/DeployPanel';
 import Settings from './components/Settings';
+import EnvManager from './components/EnvManager';
 
 function App() {
   return (
     <Router>
-      <div className="flex h-screen bg-gray-100">
+      <div className='flex h-screen bg-gray-100'>
         <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
+        <div className='flex-1 flex flex-col overflow-hidden'>
+          <main className='flex-1 overflow-x-hidden overflow-y-auto bg-gray-50'>
             <Routes>
-              <Route path="/" element={<PostList />} />
-              <Route path="/posts" element={<PostList />} />
-              <Route path="/posts/new" element={<PostEditor />} />
-              <Route path="/posts/edit/:year/:slug" element={<PostEditor />} />
-              <Route path="/deploy" element={<DeployPanel />} />
-              <Route path="/git" element={<GitPanel />} />
-              <Route path="/settings" element={<Settings />} />
+              <Route path='/' element={<PostList />} />
+              <Route path='/posts' element={<PostList />} />
+              <Route path='/posts/new' element={<PostEditor />} />
+              <Route path='/posts/edit/:year/:slug' element={<PostEditor />} />
+              <Route path='/deploy' element={<DeployPanel />} />
+              <Route path='/git' element={<GitPanel />} />
+              <Route path='/settings' element={<Settings />} />
+              <Route path='/env' element={<EnvManager />} />
             </Routes>
           </main>
         </div>
-        <Toaster position="top-right" />
+        <Toaster position='top-right' />
       </div>
     </Router>
   );
