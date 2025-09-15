@@ -1,0 +1,17 @@
+version: "3.8"
+services:
+  api:
+    build: .
+    env_file: .env
+    ports:
+      - "5080:5080"
+    restart: unless-stopped
+  nginx:
+    image: nginx:alpine
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped

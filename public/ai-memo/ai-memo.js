@@ -30,6 +30,7 @@
     devJs: 'aiMemo.dev.js',
     repoUrl: 'aiMemo.repoUrl',
     backendUrl: 'aiMemo.backendUrl',
+    adminToken: 'aiMemo.adminToken',
     proposalMd: 'aiMemo.proposalMd',
   };
 
@@ -121,63 +122,90 @@
 
     async summarizeWithGemini() {
       const apiKey = (this.$apiKey.value || '').trim();
-      if (!apiKey) {
-        this.toast('Gemini API 키를 먼저 입력하세요.');
-        return;
-      }
-
       const article = this.getArticleText();
       const memo = this.$memo.value || '';
       const limit = (s, max = 8000) =>
         s && s.length > max ? `${s.slice(0, max)}\n…(truncated)` : s;
-
-      const prompt = [
+      const instructions = [
         '다음 페이지 본문과 나의 메모를 바탕으로 핵심 요약을 작성해 주세요.',
-        '',
-        '[페이지 본문]',
-        limit(article, 6000),
-        '',
-        '[나의 메모]',
-        limit(memo, 2000),
-        '',
         '- 한국어로 간결한 불릿 포인트 5~10개로 정리',
         '- 중요 개념/용어는 강조',
         '- 필요한 경우 간단한 예시 코드 포함',
       ].join('\n');
-
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
-      const body = {
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: prompt }],
-          },
-        ],
-      };
 
       const btn = this.$aiSummary;
       const prevStatus = this.$status.textContent;
       try {
         btn.disabled = true;
         this.$status.textContent = 'AI 요약 중…';
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) {
-          if (res.status === 401 || res.status === 403)
-            throw new Error('API 키 인증 오류');
-          const t = await res.text();
-          throw new Error(`요약 실패(${res.status}) ${t.slice(0, 200)}`);
-        }
-        const data = await res.json();
+        const backend =
+          (this.$backendUrl?.value || this.state.backendUrl || '').trim() ||
+          (window.APP_CONFIG && window.APP_CONFIG.apiBaseUrl) ||
+          '';
         let out = '';
-        try {
-          const cand = data?.candidates?.[0];
-          const parts = cand?.content?.parts || [];
-          out = parts.map(p => p.text || '').join('');
-        } catch (_) {}
+        if (backend) {
+          const endpoint = `${backend.replace(/\/$/, '')}/api/v1/ai/summarize`;
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              input: [
+                '[페이지 본문]',
+                limit(article, 6000),
+                '',
+                '[나의 메모]',
+                limit(memo, 2000),
+              ].join('\n'),
+              instructions,
+            }),
+          });
+          if (!res.ok) {
+            const t = await res.text().catch(() => '');
+            throw new Error(`요약 실패(${res.status}) ${t.slice(0, 200)}`);
+          }
+          const data = await res.json();
+          out = (data?.data?.summary || data?.summary || '').toString();
+        } else {
+          if (!apiKey) {
+            this.toast('Gemini API 키를 먼저 입력하세요.');
+            return;
+          }
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+          const body = {
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  {
+                    text: [
+                      instructions,
+                      '',
+                      '[본문+메모]',
+                      limit(`${article}\n\n${memo}`, 8000),
+                    ].join('\n'),
+                  },
+                ],
+              },
+            ],
+          };
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          if (!res.ok) {
+            if (res.status === 401 || res.status === 403)
+              throw new Error('API 키 인증 오류');
+            const t = await res.text();
+            throw new Error(`요약 실패(${res.status}) ${t.slice(0, 200)}`);
+          }
+          const data = await res.json();
+          try {
+            const cand = data?.candidates?.[0];
+            const parts = cand?.content?.parts || [];
+            out = parts.map(p => p.text || '').join('');
+          } catch (_) {}
+        }
         if (!out) throw new Error('응답 파싱 실패');
 
         const stamp = new Date().toLocaleString();
@@ -705,7 +733,7 @@
         }
 
         const mdPath = this.buildOriginalMarkdownPath(info);
-        const endpoint = `${backend.replace(/\/$/, '')}/api/propose-new-version`;
+        const endpoint = `${backend.replace(/\/$/, '')}/api/v1/admin/propose-new-version`;
 
         const payload = {
           original: {
@@ -721,9 +749,12 @@
         if (this.$proposeNewVersion) this.$proposeNewVersion.disabled = true;
         const prev = this.$status?.textContent || '';
         if (this.$status) this.$status.textContent = 'PR 생성 요청 중…';
+        const adminToken = LS.get(KEYS.adminToken, '');
+        const headers = { 'Content-Type': 'application/json' };
+        if (adminToken) headers['Authorization'] = `Bearer ${adminToken}`;
         const res = await fetch(endpoint, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify(payload),
         });
         if (!res.ok) {

@@ -1,4 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import * as React from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { getApiBaseUrl } from '@/utils/apiBase';
 
 // Load any archived comments bundled at build-time
 // Using a relative glob; keys may vary (relative vs absolute) depending on bundler.
@@ -55,12 +57,19 @@ export default function CommentSection({ postId }: { postId: string }) {
       try {
         setLoading(true);
         setError(null);
-        const resp = await fetch(
-          `/api/comments/list?postId=${encodeURIComponent(postId)}`
-        );
+        const apiBase = getApiBaseUrl();
+        const url = apiBase
+          ? `${apiBase.replace(/\/$/, '')}/api/v1/comments?postId=${encodeURIComponent(
+              postId
+            )}`
+          : `/api/comments/list?postId=${encodeURIComponent(postId)}`;
+        const resp = await fetch(url);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = (await resp.json()) as { comments: CommentItem[] };
-        if (!cancelled) setComments(data.comments || []);
+        const data = (await resp.json()) as any;
+        const list = Array.isArray(data?.comments)
+          ? data.comments
+          : data?.data?.comments || [];
+        if (!cancelled) setComments(list || []);
       } catch (e: any) {
         if (!cancelled) setError(e?.message || 'Failed to load comments');
       } finally {
@@ -80,7 +89,11 @@ export default function CommentSection({ postId }: { postId: string }) {
     try {
       setSubmitting(true);
       setError(null);
-      const resp = await fetch('/api/comments/add', {
+      const apiBase = getApiBaseUrl();
+      const url = apiBase
+        ? `${apiBase.replace(/\/$/, '')}/api/v1/comments`
+        : '/api/comments/add';
+      const resp = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -91,7 +104,8 @@ export default function CommentSection({ postId }: { postId: string }) {
         }),
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const id = (await resp.json()).id as string | undefined;
+      const respData = (await resp.json()) as any;
+      const id = (respData?.id ?? respData?.data?.id) as string | undefined;
       // Optimistic append
       setComments(prev => [
         ...(prev || []),

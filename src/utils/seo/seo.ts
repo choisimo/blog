@@ -1,4 +1,5 @@
 import { BlogPost } from '../../types/blog';
+import { getApiBaseUrl } from '@/utils/apiBase';
 
 export interface SEOData {
   title: string;
@@ -19,6 +20,7 @@ export const generateSEOData = (
   pageType: 'home' | 'blog' | 'post' | 'about' | 'contact' = 'home'
 ): SEOData => {
   const baseUrl = import.meta.env.VITE_SITE_BASE_URL || 'http://localhost:3000';
+  const apiBase = getApiBaseUrl();
   const siteName = 'Your Blog Name'; // TODO: set your actual site name
 
   switch (pageType) {
@@ -29,10 +31,11 @@ export const generateSEOData = (
         description: post.description,
         keywords: [...post.tags, post.category],
         canonicalUrl: `${baseUrl}/blog/${post.year}/${post.slug}`,
-        ogImage: `${baseUrl}/api/og?title=${encodeURIComponent(post.title)}`,
+        ogImage: `${(apiBase || baseUrl).replace(/\/$/, '')}/api/${apiBase ? 'v1/og' : 'og'}?title=${encodeURIComponent(post.title)}`,
         ogType: 'article',
         publishedTime: post.date,
-        author: 'Your Name', // Replace with your name
+        modifiedTime: post.date,
+        author: post.author,
         section: post.category,
         tags: post.tags,
       };
@@ -92,6 +95,7 @@ export const generateStructuredData = (
   pageType: string = 'home'
 ) => {
   const baseUrl = import.meta.env.VITE_SITE_BASE_URL || 'http://localhost:3000';
+  const apiBase = getApiBaseUrl();
   const siteName = 'Your Blog Name'; // TODO: set your actual site name
   const authorName = 'Your Name'; // TODO: set your actual name
 
@@ -101,7 +105,9 @@ export const generateStructuredData = (
       '@type': 'BlogPosting',
       headline: post.title,
       description: post.description,
-      image: `${baseUrl}/api/og?title=${encodeURIComponent(post.title)}`,
+      image: `${(apiBase || baseUrl).replace(/\/$/, '')}/api/${apiBase ? 'v1/og' : 'og'}?title=${encodeURIComponent(
+        post.title
+      )}`,
       author: {
         '@type': 'Person',
         name: authorName,

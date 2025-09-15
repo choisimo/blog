@@ -1,8 +1,10 @@
 /*
-  Browser-only Gemini client for inline AI features.
-  Reads API key from localStorage key 'aiMemo.apiKey'.
-  Exposes three high-level functions: sketch, prism, chain with JSON-first parsing and simple fallbacks.
+  AI client for inline features.
+  Prefers calling the unified backend API if available, and falls back to
+  browser-side Gemini calls using localStorage key 'aiMemo.apiKey'.
+  Exposes: sketch, prism, chain with JSON-first parsing and simple fallbacks.
 */
+import { getApiBaseUrl } from '@/utils/apiBase';
 
 export type SketchResult = {
   mood: string;
@@ -45,6 +47,24 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 }
 
 async function generateContent(prompt: string): Promise<string> {
+  // 1) Try backend first
+  const base = getApiBaseUrl();
+  if (base) {
+    const url = `${base.replace(/\/$/, '')}/api/v1/ai/generate`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, temperature: 0.2 }),
+    });
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}) as any);
+      const text = (data?.data?.text || '').toString();
+      if (text) return text;
+    }
+    // if backend fails, continue to fallback
+  }
+
+  // 2) Fallback to browser direct Gemini
   const apiKey = getApiKey();
   if (!apiKey) throw new Error('Missing Gemini API key in aiMemo.apiKey');
 
