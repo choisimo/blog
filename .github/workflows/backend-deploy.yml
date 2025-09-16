@@ -1,0 +1,133 @@
+name: Backend Build & Deploy (SSH Compose)
+
+on:
+  push:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-deploy.yml'
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Ref (branch/sha) to deploy'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      IMAGE_NAME: blog-backend
+      IMAGE_TAG: ${{ github.sha }}
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+      REMOTE_DIR: ${{ secrets.REMOTE_DIR }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image (local load)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: false
+          load: true
+          tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+
+      - name: Save image artifact (gzip)
+        run: |
+          docker save "${IMAGE_NAME}:${IMAGE_TAG}" | gzip > backend-image.tar.gz
+          ls -lh backend-image.tar.gz
+
+      - name: Start ssh-agent and add key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add remote host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${SSH_PORT}" -H "${SSH_HOST}" >> ~/.ssh/known_hosts
+
+      - name: Prepare .env from secret
+        run: |
+          if [ -z "${{ secrets.BACKEND_ENV_FILE }}" ]; then
+            echo "BACKEND_ENV_FILE secret is missing." >&2; exit 1;
+          fi
+          cat > /tmp/backend.env <<'ENV_EOF'
+${{ secrets.BACKEND_ENV_FILE }}
+ENV_EOF
+
+      - name: Upload artifacts to remote
+        run: |
+          test -n "${REMOTE_DIR}" || { echo "REMOTE_DIR secret is missing" >&2; exit 1; }
+          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "mkdir -p '${REMOTE_DIR}'"
+          scp -P "${SSH_PORT}" backend-image.tar.gz "${SSH_USER}@${SSH_HOST}:'${REMOTE_DIR}/'"
+          scp -P "${SSH_PORT}" backend/nginx.conf "${SSH_USER}@${SSH_HOST}:'${REMOTE_DIR}/nginx.conf'"
+          scp -P "${SSH_PORT}" /tmp/backend.env "${SSH_USER}@${SSH_HOST}:'${REMOTE_DIR}/.env'"
+
+      - name: Deploy & health check on remote
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" bash -s <<'REMOTE_EOF'
+          set -euo pipefail
+          DC="docker compose"
+          if ! $DC version >/dev/null 2>&1; then DC="docker-compose"; fi
+          cd "${REMOTE_DIR}"
+
+          echo "Loading image ${IMAGE_NAME}:${IMAGE_TAG} on remote..."
+          gzip -dc backend-image.tar.gz | docker load
+
+          cat > compose.runtime.yml <<YML
+          version: "3.8"
+          services:
+            api:
+              image: ${IMAGE_NAME}:${IMAGE_TAG}
+              env_file: .env
+              ports:
+                - "5080:5080"
+              restart: unless-stopped
+            nginx:
+              image: nginx:alpine
+              depends_on:
+                - api
+              ports:
+                - "8091:80"
+              volumes:
+                - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+              restart: unless-stopped
+          YML
+
+          echo "Bringing up services..."
+          $DC -f compose.runtime.yml up -d --remove-orphans
+
+          echo "Waiting for health check..."
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:5080/api/v1/healthz >/dev/null; then
+              echo "Health OK"; exit 0;
+            fi
+            echo "Retry $i/30"; sleep 2;
+          done
+
+          echo "Health check failed"
+          $DC ps || true
+          $DC logs --no-color api | tail -n 200 || true
+          exit 1
+REMOTE_EOF
