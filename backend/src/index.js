@@ -9,6 +9,8 @@ import aiRouter from './routes/ai.js';
 import commentsRouter from './routes/comments.js';
 import ogRouter from './routes/og.js';
 import adminRouter from './routes/admin.js';
+import postsRouter from './routes/posts.js';
+import imagesRouter from './routes/images.js';
 
 const app = express();
 
@@ -62,6 +64,8 @@ app.use('/api/v1/ai', aiRouter);
 app.use('/api/v1/comments', commentsRouter);
 app.use('/api/v1/og', ogRouter);
 app.use('/api/v1/admin', adminRouter);
+app.use('/api/v1/posts', postsRouter);
+app.use('/api/v1/images', imagesRouter);
 
 // not found
 app.use((req, res) => {

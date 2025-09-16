@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
+import path from 'node:path';
 
 // Load env once (no-op if already loaded)
 dotenv.config();
@@ -43,6 +44,11 @@ const allowedOrigins = raw.ALLOWED_ORIGINS.split(',')
   .map(s => s.trim())
   .filter(Boolean);
 
+const repoRoot = path.resolve(process.cwd(), '..');
+const publicDir = path.join(repoRoot, 'frontend', 'public');
+const postsDir = path.join(publicDir, 'posts');
+const imagesDir = path.join(publicDir, 'images');
+
 export const config = {
   appEnv: raw.APP_ENV,
   host: raw.HOST,
@@ -79,6 +85,13 @@ export const config = {
 
   admin: {
     bearerToken: raw.ADMIN_BEARER_TOKEN,
+  },
+
+  content: {
+    repoRoot,
+    publicDir,
+    postsDir,
+    imagesDir,
   },
 };
 
