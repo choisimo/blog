@@ -3,15 +3,15 @@
   <channel>
     <title>Nodove Blog</title>
     <description>A blog about technology, programming, and web development</description>
-    <link>https://noblog.nodove.com</link>
-    <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Sun, 14 Sep 2025 13:43:46 GMT</lastBuildDate>
+    <link>http://localhost:3000</link>
+    <atom:link href="http://localhost:3000/rss.xml" rel="self" type="application/rss+xml"/>
+    <lastBuildDate>Mon, 15 Sep 2025 14:13:14 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
       <title>네트워크 발전의 역사: ARPANET에서 5G/6G까지</title>
       <description>패킷 교환의 탄생부터 인터넷 표준화, 웹의 폭발적 성장, 모바일·클라우드·엣지, 그리고 5G/6G로 이어지는 네트워크 발전사를 핵심 이정표 중심으로 정리합니다.</description>
-      <link>https://noblog.nodove.com/blog/2025/network-evolution-history</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/network-evolution-history</guid>
+      <link>http://localhost:3000/blog/2025/network-evolution-history</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/network-evolution-history</guid>
       <pubDate>Sun, 31 Aug 2025 00:00:00 GMT</pubDate>
       <category>CS</category>
       <category>network</category>
@@ -28,8 +28,8 @@
 
 ## 개요
 React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lifecycle) 기능을 사용할 수 있게 해주는 기능입니다. React 16.8에서 처음 도입된 이 기능은 클래스형 컴포넌트를 사용하는 대신, 더 간결하고 이해하기 쉬운 코드를 작성할 수 있도록 도와줍니다. 이번 글에서는 React</description>
-      <link>https://noblog.nodove.com/blog/2025/hooks</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/hooks</guid>
+      <link>http://localhost:3000/blog/2025/hooks</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/hooks</guid>
       <pubDate>Mon, 11 Aug 2025 00:00:00 GMT</pubDate>
       <category>기술</category>
 
@@ -41,8 +41,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
 ## 영화 개관과 감독의 비전
 
 **블레이드 러너**는 1982년 리들리 스콧 감독이 필립 K. 딕의 소설 『안드로이드는 전기양의 꿈을 꾸는가?』를 각색한 SF 누아르의 금자탑입니다. 개봉 당시 상업적으로는 실패했지만, 시간이 지나면서 **인간 존재의 본질에 대한</description>
-      <link>https://noblog.nodove.com/blog/2024/blade-runner-philosophy</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2024/blade-runner-philosophy</guid>
+      <link>http://localhost:3000/blog/2024/blade-runner-philosophy</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2024/blade-runner-philosophy</guid>
       <pubDate>Sun, 10 Aug 2025 00:00:00 GMT</pubDate>
       <category>사고와 인식</category>
       <category>블레이드러너</category>
@@ -64,8 +64,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>칼 융 내면 성찰에 관련된 영화들</title>
       <description>칼 융의 분석심리학에서 핵심 개념인 **개성화(Individuation)**는 개인이 그림자를 통합하고 집단무의식에서 진정한 자아를 분리해 온전한 인간이 되는 여정을 가리킵니다. 융이 강조한 **내면의 강인함**은 외부 기준이나 집단 압력에 굴복하지 않고 내면 목소리에 따르는 용기에서 비롯됩니다. 아래 영화들은 이러한 융의 철학을 깊이 있게 반영한 작품들입</description>
-      <link>https://noblog.nodove.com/blog/2024/jung-psychology-cinema</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2024/jung-psychology-cinema</guid>
+      <link>http://localhost:3000/blog/2024/jung-psychology-cinema</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2024/jung-psychology-cinema</guid>
       <pubDate>Sun, 10 Aug 2025 00:00:00 GMT</pubDate>
       <category>사고와 인식</category>
       <category>칼융</category>
@@ -86,8 +86,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>Proxmox QDevice 투표 문제에 대해서</title>
       <description>Proxmox 클러스터에서 QDevice가 투표권을 갖지 못하는 문제 트러블슈팅</description>
-      <link>https://noblog.nodove.com/blog/2024/proxmox-qdevice-voting-problem-guide</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2024/proxmox-qdevice-voting-problem-guide</guid>
+      <link>http://localhost:3000/blog/2024/proxmox-qdevice-voting-problem-guide</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2024/proxmox-qdevice-voting-problem-guide</guid>
       <pubDate>Sun, 10 Aug 2025 00:00:00 GMT</pubDate>
       <category>Proxmox</category>
       <category>Proxmox</category>
@@ -106,8 +106,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
 
 ## 1일차: 준비 과정
 오늘은 두더지를 관찰하기 위해</description>
-      <link>https://noblog.nodove.com/blog/2025/mole-observation-diary</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/mole-observation-diary</guid>
+      <link>http://localhost:3000/blog/2025/mole-observation-diary</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/mole-observation-diary</guid>
       <pubDate>Sun, 10 Aug 2025 00:00:00 GMT</pubDate>
       <category>기술</category>
       <category>두더지</category>
@@ -120,8 +120,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
 ## 영화 개관
 
 **다크시티**는 1998년 알렉스 프로야스 감독이 선보인 SF 누아르 영화로, 매트릭스보다 1년 앞서 시뮬레이션 현실이라는 혁신적 개념을 다룬 숨겨진 걸작입니다. 하지만 이 영화의 진정한 가치는 단순한 SF적 상상력을 넘어, **실존주의 철학의 핵심 명제들</description>
-      <link>https://noblog.nodove.com/blog/2024/dark-city-existentialism</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2024/dark-city-existentialism</guid>
+      <link>http://localhost:3000/blog/2024/dark-city-existentialism</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2024/dark-city-existentialism</guid>
       <pubDate>Fri, 24 Jan 2025 07:30:00 GMT</pubDate>
       <category>General</category>
       <category>다크시티</category>
@@ -144,8 +144,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
 ## 영화 개관과 감독의 비전
 
 **브라질**은 1985년 테리 길리엄 감독이 선보인 디스토피아 SF 블랙 코미디로, 조지 오웰의 『1984』를 넘어서는 현대 문명 비판의 걸작입니다[1]. 길리엄은 이 작품을 통해 **관료제가 미쳐버린 산업 세계에 대한 평생의 분노**를</description>
-      <link>https://noblog.nodove.com/blog/2024/brazil-1985-review</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2024/brazil-1985-review</guid>
+      <link>http://localhost:3000/blog/2024/brazil-1985-review</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2024/brazil-1985-review</guid>
       <pubDate>Fri, 24 Jan 2025 06:30:00 GMT</pubDate>
       <category>General</category>
       <category>테리 길리엄</category>
@@ -164,8 +164,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>최신 게시글</title>
       <description></description>
-      <link>https://noblog.nodove.com/blog/2025/latest</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/latest</guid>
+      <link>http://localhost:3000/blog/2025/latest</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/latest</guid>
       <pubDate>Tue, 07 Jan 2025 00:00:00 GMT</pubDate>
       <category>기술</category>
 
@@ -173,8 +173,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>중동 지역 AI 도입으로 생긴 새로운 갈등들을 보면서 드는 생각</title>
       <description>중동 지역의 AI 기술 도입이 어떤 새로운 갈등 구조를 만들어내고 있는지 분석해본 내용</description>
-      <link>https://noblog.nodove.com/blog/2025/middle-east-ai-conflicts</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/middle-east-ai-conflicts</guid>
+      <link>http://localhost:3000/blog/2025/middle-east-ai-conflicts</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/middle-east-ai-conflicts</guid>
       <pubDate>Sat, 04 Jan 2025 00:00:00 GMT</pubDate>
       <category>Technology</category>
       <category>중동</category>
@@ -187,8 +187,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>메모리 관리 공부하다가 깨달은 페이징 시스템의 진짜 장점</title>
       <description>운영체제 메모리 관리를 공부하면서 페이징과 스와핑이 왜 필요했는지 이해한 과정</description>
-      <link>https://noblog.nodove.com/blog/2025/memory-management-study</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/memory-management-study</guid>
+      <link>http://localhost:3000/blog/2025/memory-management-study</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/memory-management-study</guid>
       <pubDate>Wed, 01 Jan 2025 00:00:00 GMT</pubDate>
       <category>Computer Science</category>
       <category>메모리관리</category>
@@ -200,8 +200,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>React Native + Spring Boot + MongoDB로 일기 앱 만들기</title>
       <description>React Native 클라이언트와 Spring Boot 백엔드, Python AI 서버를 연동해서 일기 앱을 만든 경험</description>
-      <link>https://noblog.nodove.com/blog/2025/react-native-springboot-mongodb-diary-app</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/react-native-springboot-mongodb-diary-app</guid>
+      <link>http://localhost:3000/blog/2025/react-native-springboot-mongodb-diary-app</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/react-native-springboot-mongodb-diary-app</guid>
       <pubDate>Sat, 28 Dec 2024 00:00:00 GMT</pubDate>
       <category>개발</category>
       <category>React Native</category>
@@ -214,8 +214,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>Git 서브모듈, 진짜 쓸 만한 걸까?</title>
       <description>Git 서브모듈을 실제 프로젝트에서 써본 후기와 실용적인 사용법 정리</description>
-      <link>https://noblog.nodove.com/blog/2025/git-submodule-guide</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/git-submodule-guide</guid>
+      <link>http://localhost:3000/blog/2025/git-submodule-guide</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/git-submodule-guide</guid>
       <pubDate>Wed, 25 Dec 2024 00:00:00 GMT</pubDate>
       <category>개발</category>
       <category>Git</category>
@@ -227,8 +227,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>배낭 문제 (Knapsack Problem)</title>
       <description>0-1 배낭 문제와 무한 배낭 문제를 동적 계획법으로 해결하는 다양한 방법을 학습합니다.</description>
-      <link>https://noblog.nodove.com/blog/2025/knapsack</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/knapsack</guid>
+      <link>http://localhost:3000/blog/2025/knapsack</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/knapsack</guid>
       <pubDate>Sat, 21 Dec 2024 00:00:00 GMT</pubDate>
       <category>Algorithm</category>
       <category>Knapsack</category>
@@ -239,8 +239,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>소수 판별과 소인수분해 알고리즘</title>
       <description>효율적인 소수 판별과 소인수분해를 위한 다양한 수학 알고리즘들을 학습합니다.</description>
-      <link>https://noblog.nodove.com/blog/2025/prime-numbers</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/prime-numbers</guid>
+      <link>http://localhost:3000/blog/2025/prime-numbers</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/prime-numbers</guid>
       <pubDate>Tue, 17 Dec 2024 00:00:00 GMT</pubDate>
       <category>Algorithm</category>
       <category>소수</category>
@@ -251,8 +251,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>Flutter 웹앱을 Firebase에 무료로 배포하기</title>
       <description>Flutter 웹앱을 Firebase Hosting에 배포하는 방법을 실제 경험을 바탕으로 단계별 설명</description>
-      <link>https://noblog.nodove.com/blog/2025/firebase-hosting-guide</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/firebase-hosting-guide</guid>
+      <link>http://localhost:3000/blog/2025/firebase-hosting-guide</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/firebase-hosting-guide</guid>
       <pubDate>Sat, 14 Dec 2024 00:00:00 GMT</pubDate>
       <category>개발</category>
       <category>Flutter</category>
@@ -264,8 +264,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>깊이 우선 탐색 (DFS, Depth-First Search)</title>
       <description>깊이 우선 탐색(DFS) 알고리즘의 원리와 구현, 다양한 응용 문제 해결법을 학습합니다.</description>
-      <link>https://noblog.nodove.com/blog/2025/dfs</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/dfs</guid>
+      <link>http://localhost:3000/blog/2025/dfs</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/dfs</guid>
       <pubDate>Wed, 11 Dec 2024 00:00:00 GMT</pubDate>
       <category>Algorithm</category>
       <category>DFS</category>
@@ -277,8 +277,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>최장 증가 부분 수열 (LIS, Longest Increasing Subsequence)</title>
       <description>최장 증가 부분 수열(LIS) 문제를 동적 계획법과 이분 탐색으로 효율적으로 해결하는 방법을 학습합니다.</description>
-      <link>https://noblog.nodove.com/blog/2025/lis</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/lis</guid>
+      <link>http://localhost:3000/blog/2025/lis</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/lis</guid>
       <pubDate>Sun, 08 Dec 2024 00:00:00 GMT</pubDate>
       <category>Algorithm</category>
       <category>LIS</category>
@@ -289,8 +289,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>이진 탐색(Binary Search) 완전 정복</title>
       <description>정렬된 배열에서 O(log n) 시간에 원소를 찾는 이진 탐색의 모든 것</description>
-      <link>https://noblog.nodove.com/blog/2025/binary-search</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/binary-search</guid>
+      <link>http://localhost:3000/blog/2025/binary-search</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/binary-search</guid>
       <pubDate>Thu, 05 Dec 2024 00:00:00 GMT</pubDate>
       <category>Algorithm</category>
       <category>이진탐색</category>
@@ -301,8 +301,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>운영체제 공부하면서 헷갈렸던 핵심 개념들 정리</title>
       <description>운영체제 공부하면서 반복해서 헷갈렸던 개념들을 정리해본 개인 노트</description>
-      <link>https://noblog.nodove.com/blog/2025/os-study-notes</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/os-study-notes</guid>
+      <link>http://localhost:3000/blog/2025/os-study-notes</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/os-study-notes</guid>
       <pubDate>Sun, 01 Dec 2024 00:00:00 GMT</pubDate>
       <category>Computer Science</category>
       <category>OS</category>

@@ -27,6 +27,15 @@
 
   <body>
     <div id="root"></div>
+    <script type="module">
+      // Runtime configuration injected by Vite at build time
+      // Allows the static site (GitHub Pages) to find the unified backend
+      // Note: import.meta.env.* will be statically replaced by Vite during build
+      // If not set, getApiBaseUrl() will fall back to localStorage or null
+      window.APP_CONFIG = Object.assign({}, window.APP_CONFIG || {}, {
+        apiBaseUrl: import.meta.env.VITE_API_BASE_URL || null,
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
     <script defer src="/ai-memo/ai-memo.js"></script>
   </body>

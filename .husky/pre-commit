@@ -1,1 +1,9 @@
-npm run lint:fix && npm run type-check && npx lint-staged
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+set -e
+
+# Run checks in frontend workspace
+npm --prefix frontend run lint:fix
+npm --prefix frontend run type-check
+(cd frontend && npx lint-staged)
