@@ -25,6 +25,71 @@ export type ChainResult = {
   }>;
 };
 
+export type StreamEvent =
+  | { type: 'open' }
+  | { type: 'token'; token: string }
+  | { type: 'done' }
+  | { type: 'error'; message: string };
+
+export async function* streamGenerate(prompt: string, opts?: { temperature?: number }) {
+  const base = getApiBaseUrl();
+  if (!base) throw new Error('Backend not configured for streaming');
+  const url = new URL(`${base.replace(/\/$/, '')}/api/v1/ai/generate/stream`);
+  url.searchParams.set('prompt', prompt);
+  if (opts?.temperature !== undefined) url.searchParams.set('temperature', String(opts.temperature));
+
+  const res = await fetch(url.toString(), {
+    method: 'GET',
+    headers: { Accept: 'text/event-stream' },
+  });
+  if (!res.ok || !res.body) {
+    const t = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status} ${t.slice(0, 120)}`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buffer.indexOf('\n\n')) !== -1) {
+        const raw = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+        const lines = raw
+          .split('\n')
+          .filter(l => l.trim().length > 0);
+        const dataLines = lines
+          .filter(l => l.startsWith('data:'))
+          .map(l => l.replace(/^data: ?/, ''));
+        const joined = dataLines.join('\n');
+        if (!joined) continue;
+        let payload: any;
+        try {
+          payload = JSON.parse(joined);
+        } catch {
+          payload = { message: joined };
+        }
+        const t = payload?.type as string | undefined;
+        if (payload && payload.token !== undefined) {
+          yield { type: 'token', token: String(payload.token) } as StreamEvent;
+        } else if (t === 'open' || payload?.ok) {
+          yield { type: 'open' } as StreamEvent;
+        } else if (t === 'done' || payload?.done) {
+          yield { type: 'done' } as StreamEvent;
+        } else if (t === 'error' || payload?.message) {
+          yield { type: 'error', message: String(payload.message || 'error') } as StreamEvent;
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 const GEMINI_MODEL = 'gemini-1.5-flash';
 
 function getApiKey(): string | null {

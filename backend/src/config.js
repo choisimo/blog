@@ -36,6 +36,9 @@ const schema = z.object({
   GIT_USER_EMAIL: z.string().optional(),
 
   ADMIN_BEARER_TOKEN: z.string().optional(),
+  JWT_SECRET: z.string().optional(),
+  ADMIN_USERNAME: z.string().optional(),
+  ADMIN_PASSWORD: z.string().optional(),
 });
 
 const raw = schema.parse(process.env);
@@ -85,6 +88,13 @@ export const config = {
 
   admin: {
     bearerToken: raw.ADMIN_BEARER_TOKEN,
+    username: raw.ADMIN_USERNAME,
+    password: raw.ADMIN_PASSWORD,
+  },
+
+  auth: {
+    jwtSecret: raw.JWT_SECRET,
+    jwtExpiresIn: '12h',
   },
 
   content: {

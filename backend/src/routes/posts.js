@@ -5,15 +5,23 @@ import path from 'node:path';
 import matter from 'gray-matter';
 import slugify from 'slugify';
 import { config } from '../config.js';
+import jwt from 'jsonwebtoken';
 
 const router = Router();
 
 function requireAdmin(req, res, next) {
-  const required = !!config.admin.bearerToken;
+  const required = !!(config.admin.bearerToken || config.auth?.jwtSecret);
   if (!required) return next();
   const auth = req.headers['authorization'] || '';
   const token = auth.replace(/^Bearer\s+/i, '').trim();
-  if (token && token === config.admin.bearerToken) return next();
+  if (!token) return res.status(401).json({ ok: false, error: 'Unauthorized' });
+  if (config.admin.bearerToken && token === config.admin.bearerToken) return next();
+  if (config.auth?.jwtSecret) {
+    try {
+      const claims = jwt.verify(token, config.auth.jwtSecret);
+      if (claims && (claims.role === 'admin' || claims.sub === 'admin')) return next();
+    } catch {}
+  }
   return res.status(401).json({ ok: false, error: 'Unauthorized' });
 }
 

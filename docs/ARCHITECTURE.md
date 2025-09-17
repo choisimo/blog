@@ -4,7 +4,7 @@ This repository now uses a single, unified backend for all dynamic features whil
 
 - Static site (React + Vite): `frontend/src/`, `frontend/public/` → built to `frontend/dist/` and deployed to GitHub Pages.
 - Unified backend (Express): `backend/` → provides AI, comments, OG image, and admin endpoints.
-- Legacy serverless endpoints in `api/` and the old admin server in `blog-admin/` are deprecated. They remain in the tree for now but should not be used for new development.
+- Legacy serverless endpoints in `api/` and the old admin server in `blog-admin/` are deprecated. They remain in the tree for now but should not be used for new development. The `doc-converter/` is a client-only static tool and is built and published under `/doc-converter/` on GitHub Pages by the main deploy workflow.
 
 ## Directories
 

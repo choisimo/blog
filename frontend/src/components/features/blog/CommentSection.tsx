@@ -47,10 +47,11 @@ export default function CommentSection({ postId }: { postId: string }) {
 
   useEffect(() => {
     let cancelled = false;
+    let es: EventSource | null = null;
     if (archived) {
       setLoading(false);
       setComments(archived.comments);
-      return;
+      return () => void 0;
     }
 
     async function load() {
@@ -58,11 +59,18 @@ export default function CommentSection({ postId }: { postId: string }) {
         setLoading(true);
         setError(null);
         const apiBase = getApiBaseUrl();
-        const url = apiBase
-          ? `${apiBase.replace(/\/$/, '')}/api/v1/comments?postId=${encodeURIComponent(
-              postId
-            )}`
-          : `/api/comments/list?postId=${encodeURIComponent(postId)}`;
+        if (!apiBase) {
+          if (!cancelled) {
+            setError('Comments backend not configured');
+            setComments([]);
+            setLoading(false);
+          }
+          return;
+        }
+        const base = apiBase.replace(/\/$/, '');
+        const url = `${base}/api/v1/comments?postId=${encodeURIComponent(
+          postId
+        )}`;
         const resp = await fetch(url);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = (await resp.json()) as any;
@@ -70,6 +78,44 @@ export default function CommentSection({ postId }: { postId: string }) {
           ? data.comments
           : data?.data?.comments || [];
         if (!cancelled) setComments(list || []);
+
+        // Try to open SSE stream for live updates (best-effort)
+        const sseUrl = `${base}/api/v1/comments/stream?postId=${encodeURIComponent(
+          postId
+        )}`;
+        es = new EventSource(sseUrl, { withCredentials: true } as any);
+        es.onmessage = ev => {
+          try {
+            const msg = JSON.parse(ev.data);
+            if (msg && msg.type === 'append' && Array.isArray(msg.items)) {
+              setComments(prev => {
+                const before = (prev || []).filter(Boolean) as any[];
+                const keyOf = (it: any) =>
+                  String(it.id || `${it.createdAt || ''}|${it.author || ''}|${(it.content || '').slice(0, 24)}`);
+                const seen = new Set(before.map(keyOf));
+                const merged = [...before];
+                for (const it of msg.items) {
+                  const k = keyOf(it);
+                  if (!seen.has(k)) {
+                    seen.add(k);
+                    merged.push(it);
+                  }
+                }
+                // keep chronological order by createdAt
+                merged.sort((a, b) => {
+                  const ta = a.createdAt ? Date.parse(a.createdAt) : 0;
+                  const tb = b.createdAt ? Date.parse(b.createdAt) : 0;
+                  return ta - tb;
+                });
+                return merged;
+              });
+            }
+          } catch {}
+        };
+        es.onerror = () => {
+          es?.close();
+          es = null;
+        };
       } catch (e: any) {
         if (!cancelled) setError(e?.message || 'Failed to load comments');
       } finally {
@@ -77,9 +123,13 @@ export default function CommentSection({ postId }: { postId: string }) {
       }
     }
 
-    load();
+    void load();
     return () => {
       cancelled = true;
+      if (es) {
+        es.close();
+        es = null;
+      }
     };
   }, [postId, archived]);
 
@@ -90,9 +140,10 @@ export default function CommentSection({ postId }: { postId: string }) {
       setSubmitting(true);
       setError(null);
       const apiBase = getApiBaseUrl();
-      const url = apiBase
-        ? `${apiBase.replace(/\/$/, '')}/api/v1/comments`
-        : '/api/comments/add';
+      if (!apiBase) {
+        throw new Error('Comments backend not configured');
+      }
+      const url = `${apiBase.replace(/\/$/, '')}/api/v1/comments`;
       const resp = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -136,6 +187,11 @@ export default function CommentSection({ postId }: { postId: string }) {
         <p className='text-sm text-muted-foreground'>Loading comments…</p>
       )}
       {error && <p className='text-sm text-red-600'>{error}</p>}
+      {!archived && !error && !loading && !getApiBaseUrl() && (
+        <p className='text-sm text-muted-foreground'>
+          Comments require a configured backend (set VITE_API_BASE_URL).
+        </p>
+      )}
 
       {comments && comments.length > 0 ? (
         <ul className='space-y-3'>

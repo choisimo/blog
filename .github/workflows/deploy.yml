@@ -34,7 +34,9 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
+        cache-dependency-path: |
+          frontend/package-lock.json
+          doc-converter/package-lock.json
         
     - name: Install dependencies (frontend)
       run: npm --prefix frontend ci
@@ -47,6 +49,15 @@ jobs:
       
     - name: Build (frontend)
       run: npm --prefix frontend run build
+
+    - name: Install dependencies (doc-converter)
+      run: npm --prefix doc-converter ci
+
+    - name: Build (doc-converter)
+      run: npm --prefix doc-converter run build
+
+    - name: Copy doc-converter into frontend dist
+      run: mkdir -p frontend/dist/doc-converter && cp -r doc-converter/dist/* frontend/dist/doc-converter/
       
     - name: Setup Pages
       uses: actions/configure-pages@v4

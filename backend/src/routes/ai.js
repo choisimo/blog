@@ -193,3 +193,94 @@ router.post('/generate', async (req, res, next) => {
     return next(err);
   }
 });
+
+// SSE streaming endpoint. Accepts GET with query `prompt` (or `q`) and optional `temperature`.
+// Streams the generated text in small chunks as 'token' events and completes with 'done'.
+router.get('/generate/stream', async (req, res, next) => {
+  try {
+    const q = (req.query.prompt || req.query.q || req.query.text || '').toString();
+    const t = Number(req.query.temperature);
+    const temperature = Number.isFinite(t) ? t : 0.2;
+
+    if (!q) {
+      res.writeHead(400, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      });
+      res.write(`event: error\n`);
+      res.write(`data: ${JSON.stringify({ message: 'prompt is required' })}\n\n`);
+      return res.end();
+    }
+
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+
+    const send = (event, data) => {
+      if (event) res.write(`event: ${event}\n`);
+      if (data !== undefined) {
+        const payload = typeof data === 'string' ? data : JSON.stringify(data);
+        // split by newlines to avoid very long lines
+        const lines = String(payload).split(/\n/);
+        for (const line of lines) {
+          res.write(`data: ${line}\n`);
+        }
+      }
+      res.write(`\n`);
+    };
+
+    send('open', { type: 'open' });
+
+    let closed = false;
+    const onClose = () => {
+      closed = true;
+      clearInterval(ping);
+      try {
+        res.end();
+      } catch {}
+    };
+    req.on('close', onClose);
+
+    const ping = setInterval(() => {
+      try {
+        send('ping', {});
+      } catch {
+        onClose();
+      }
+    }, 25000);
+
+    // Generate full text, then chunk-stream to client
+    let text = '';
+    try {
+      text = await generateContent(String(q), { temperature });
+    } catch (err) {
+      send('error', { message: err?.message || 'generation failed' });
+      return onClose();
+    }
+
+    const chunkSize = 80;
+    let idx = 0;
+    const total = text.length;
+
+    const tick = () => {
+      if (closed) return;
+      if (idx >= total) {
+        send('done', { type: 'done' });
+        return onClose();
+      }
+      const next = text.slice(idx, Math.min(idx + chunkSize, total));
+      idx += chunkSize;
+      send('token', { token: next });
+      setTimeout(tick, 25);
+    };
+
+    tick();
+  } catch (err) {
+    return next(err);
+  }
+});

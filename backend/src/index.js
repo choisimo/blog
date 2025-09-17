@@ -11,6 +11,7 @@ import ogRouter from './routes/og.js';
 import adminRouter from './routes/admin.js';
 import postsRouter from './routes/posts.js';
 import imagesRouter from './routes/images.js';
+import authRouter from './routes/auth.js';
 
 const app = express();
 
@@ -66,6 +67,7 @@ app.use('/api/v1/og', ogRouter);
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/posts', postsRouter);
 app.use('/api/v1/images', imagesRouter);
+app.use('/api/v1/auth', authRouter);
 
 // not found
 app.use((req, res) => {

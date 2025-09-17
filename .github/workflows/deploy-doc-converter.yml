@@ -1,14 +1,7 @@
 name: Build and Deploy Doc Converter
 
 on:
-  push:
-    paths:
-      - 'doc-converter/**'
-    branches:
-      - main
-  pull_request:
-    paths:
-      - 'doc-converter/**'
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
