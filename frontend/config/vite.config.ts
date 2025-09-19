@@ -1,21 +1,27 @@
 /// <reference types="vitest" />
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
 import { componentTagger } from 'lovable-tagger';
 import { visualizer } from 'rollup-plugin-visualizer';
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, path.resolve(__dirname, '..', '..'), '');
+  const devHost = env.VITE_DEV_HOST || '::';
+  const devPort = Number(env.VITE_DEV_PORT || 8080);
+  return {
   css: {
     postcss: path.resolve(__dirname, './postcss.config.js'),
   },
   // Explicit base for clarity on GH Pages/custom domain
   base: '/',
   publicDir: 'public',
+  // Load .env from repo root so a single .env controls all
+  envDir: path.resolve(__dirname, '..', '..'),
   server: {
-    host: '::',
-    port: 8080,
+    host: devHost,
+    port: devPort,
   },
   optimizeDeps: {
     include: ['buffer'],
@@ -72,4 +78,5 @@ export default defineConfig(({ mode }) => ({
     setupFiles: [path.resolve(__dirname, '../src/test/setup.ts')],
     css: true,
   },
-}));
+};
+});

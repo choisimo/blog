@@ -2,8 +2,10 @@ import dotenv from 'dotenv';
 import { z } from 'zod';
 import path from 'node:path';
 
-// Load env once (no-op if already loaded)
-dotenv.config();
+// Load env: prefer root .env, then backend/.env overrides
+const repoRoot = path.resolve(process.cwd(), '..');
+dotenv.config({ path: path.join(repoRoot, '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env'), override: true });
 
 const schema = z.object({
   APP_ENV: z
@@ -16,7 +18,7 @@ const schema = z.object({
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace'])
     .default('info'),
 
-  SITE_BASE_URL: z.string().url().default('https://blog.nodove.com'),
+  SITE_BASE_URL: z.string().url().default('https://noblog.nodove.com'),
   API_BASE_URL: z.string().default('http://localhost:5080'),
   ALLOWED_ORIGINS: z.string().default('http://localhost:5173'),
 
@@ -39,6 +41,7 @@ const schema = z.object({
   JWT_SECRET: z.string().optional(),
   ADMIN_USERNAME: z.string().optional(),
   ADMIN_PASSWORD: z.string().optional(),
+  VERCEL_DEPLOY_HOOK_URL: z.string().optional(),
 });
 
 const raw = schema.parse(process.env);
@@ -47,7 +50,6 @@ const allowedOrigins = raw.ALLOWED_ORIGINS.split(',')
   .map(s => s.trim())
   .filter(Boolean);
 
-const repoRoot = path.resolve(process.cwd(), '..');
 const publicDir = path.join(repoRoot, 'frontend', 'public');
 const postsDir = path.join(publicDir, 'posts');
 const imagesDir = path.join(publicDir, 'images');
@@ -102,6 +104,10 @@ export const config = {
     publicDir,
     postsDir,
     imagesDir,
+  },
+
+  integrations: {
+    vercelDeployHookUrl: raw.VERCEL_DEPLOY_HOOK_URL,
   },
 };
 

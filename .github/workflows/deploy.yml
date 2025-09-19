@@ -19,8 +19,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      SITE_BASE_URL: https://blog.nodove.com
-      VITE_SITE_BASE_URL: https://blog.nodove.com
+      SITE_BASE_URL: https://noblog.nodove.com
+      VITE_SITE_BASE_URL: https://noblog.nodove.com
       # Unified backend base URL (e.g., https://api.nodove.com or https://your-server:5080)
       # Configure this as a repository secret named VITE_API_BASE_URL
       VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}

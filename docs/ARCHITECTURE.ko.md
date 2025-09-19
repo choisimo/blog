@@ -72,7 +72,7 @@ GitHub Actions 워크플로(`.github/workflows/deploy.yml`)는 리포지토리 �
 
 - `APP_ENV` – development|staging|production
 - `HOST`, `PORT` – 기본 `0.0.0.0:5080`
-- `ALLOWED_ORIGINS` – CSV; 예) `https://blog.nodove.com`, 로컬호스트 포함
+- `ALLOWED_ORIGINS` – CSV; 예) `https://noblog.nodove.com`, 로컬호스트 포함
 - `GEMINI_API_KEY`, `GEMINI_MODEL`
 - `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_PROJECT_ID`
 - `GITHUB_TOKEN`, `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME`, `GIT_USER_NAME`, `GIT_USER_EMAIL`
@@ -81,7 +81,7 @@ GitHub Actions 워크플로(`.github/workflows/deploy.yml`)는 리포지토리 �
 프런트엔드(빌드 타임):
 
 - `VITE_SITE_BASE_URL` – 사이트 정규 URL
-- `VITE_API_BASE_URL` – 통합 백엔드 기준 URL(예: `https://api.nodove.com`)
+- `VITE_API_BASE_URL` – 통합 백엔드 기준 URL(예: `https://blog-api.nodove.com`)
 
 ## 배포
 
@@ -150,7 +150,7 @@ CORS/프록시 주의사항
 - API 404가 GitHub Pages에서 발생
   - Pages는 정적 호스팅만 제공합니다. 프런트가 `VITE_API_BASE_URL`로 외부 API 도메인을 바라보도록 설정해야 합니다.
 - CORS 오류(403/차단)
-  - 백엔드의 `ALLOWED_ORIGINS`에 정적 사이트 도메인(예: `https://blog.nodove.com`)과 개발 도메인을 추가하세요.
+  - 백엔드의 `ALLOWED_ORIGINS`에 정적 사이트 도메인(예: `https://noblog.nodove.com`)과 개발 도메인을 추가하세요.
 - 백엔드 URL이 비어 있음
   - 배포 파이프라인에서 `VITE_API_BASE_URL`이 누락되었는지 확인하세요. 로컬 개발은 `localStorage['aiMemo.backendUrl']`를 통해 임시 설정 가능합니다.
 

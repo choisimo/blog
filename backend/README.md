@@ -34,7 +34,10 @@
   - `GET /api/v1/public/config` (프론트에서 필요한 공개설정)
 
 ## 환경 변수
-`backend/.env.example`를 복사해 `.env`를 구성하세요.
+리포지토리 루트의 `.env`를 단일 소스로 사용합니다. 백엔드는 루트 `.env`를 우선 로드하고, 필요한 경우 `backend/.env`로 덮어씁니다. 프론트엔드(Vite)는 `envDir` 설정으로 루트 `.env`를 읽습니다.
+
+- 기본: 루트 `.env`를 복사·수정하세요 (`cp -n .env.example .env`).
+- 선택: 로컬 전용 오버라이드가 필요하면 `backend/.env`를 추가로 둘 수 있습니다.
 
 - 서버/네트워킹
   - `APP_ENV` (`development|staging|production`) 기본 `development`

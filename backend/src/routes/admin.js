@@ -236,7 +236,7 @@ router.post('/archive-comments', requireAdmin, async (req, res, next) => {
     }
 
     // Optional deploy hook (compat)
-    const hook = process.env.VERCEL_DEPLOY_HOOK_URL;
+    const hook = config.integrations?.vercelDeployHookUrl;
     if (hook && !dryRun) {
       try {
         await fetch(hook, { method: 'POST' });

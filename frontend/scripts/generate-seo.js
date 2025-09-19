@@ -13,7 +13,13 @@ const MANIFEST_NESTED_PATH = path.join(
 );
 
 import dotenv from 'dotenv';
-dotenv.config();
+// Load root .env if present, then frontend/.env override
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const repoRoot = path.resolve(__dirname, '..', '..');
+dotenv.config({ path: path.join(repoRoot, '.env') });
+dotenv.config({ path: path.join(repoRoot, 'frontend', '.env'), override: true });
 const BASE_URL =
   process.env.SITE_BASE_URL ||
   process.env.VITE_SITE_BASE_URL ||

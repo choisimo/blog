@@ -31,6 +31,8 @@ jobs:
       SSH_USER: ${{ secrets.SSH_USER }}
       SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
       REMOTE_DIR: ${{ secrets.REMOTE_DIR }}
+      PUBLIC_API_BASE_URL: ${{ secrets.PUBLIC_API_BASE_URL }}
+      PUBLIC_FRONTEND_ORIGIN: https://noblog.nodove.com
 
     steps:
       - name: Checkout
@@ -131,3 +133,34 @@ ENV_EOF
           $DC logs --no-color api | tail -n 200 || true
           exit 1
 REMOTE_EOF
+
+      - name: External health check (public domain)
+        if: ${{ env.PUBLIC_API_BASE_URL != '' }}
+        run: |
+          echo "Checking public health at ${PUBLIC_API_BASE_URL}/api/v1/healthz ..."
+          for i in $(seq 1 30); do
+            if curl -fsS "${PUBLIC_API_BASE_URL}/api/v1/healthz" >/dev/null; then
+              echo "Public health OK"; exit 0;
+            fi
+            echo "Retry $i/30"; sleep 2;
+          done
+          echo "Public health check failed at ${PUBLIC_API_BASE_URL}/api/v1/healthz" >&2
+          exit 1
+
+      - name: Verify public runtime config
+        if: ${{ env.PUBLIC_API_BASE_URL != '' }}
+        run: |
+          echo "Fetching ${PUBLIC_API_BASE_URL}/api/v1/public/config"
+          cfg=$(curl -fsS "${PUBLIC_API_BASE_URL}/api/v1/public/config")
+          echo "$cfg"
+          echo "$cfg" | grep -q '"ok":\s*true' || { echo 'Config ok=false' >&2; exit 1; }
+          echo "$cfg" | grep -q "\"apiBaseUrl\":\s*\"${PUBLIC_API_BASE_URL}\"" || { echo 'apiBaseUrl mismatch' >&2; exit 1; }
+
+      - name: Check CORS header for frontend origin
+        if: ${{ env.PUBLIC_API_BASE_URL != '' }}
+        run: |
+          echo "Checking CORS for origin ${PUBLIC_FRONTEND_ORIGIN}"
+          headers=$(curl -fsS -D - -o /dev/null -H "Origin: ${PUBLIC_FRONTEND_ORIGIN}" "${PUBLIC_API_BASE_URL}/api/v1/healthz")
+          echo "$headers"
+          printf "%s" "$headers" | awk 'tolower($0) ~ /^access-control-allow-origin:/ {print}' | grep -q "${PUBLIC_FRONTEND_ORIGIN}" || {
+            echo "CORS header missing or mismatched for origin ${PUBLIC_FRONTEND_ORIGIN}" >&2; exit 1; }

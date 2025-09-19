@@ -71,7 +71,7 @@ Backend (`backend/.env.example`):
 
 - `APP_ENV` – development|staging|production
 - `HOST`, `PORT` – default 0.0.0.0:5080
-- `ALLOWED_ORIGINS` – CSV; include `https://blog.nodove.com` and localhost for dev
+- `ALLOWED_ORIGINS` – CSV; include `https://noblog.nodove.com` and localhost for dev
 - `GEMINI_API_KEY`, `GEMINI_MODEL`
 - `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_PROJECT_ID`
 - `GITHUB_TOKEN`, `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME`, `GIT_USER_NAME`, `GIT_USER_EMAIL`
@@ -80,7 +80,7 @@ Backend (`backend/.env.example`):
 Frontend (build-time):
 
 - `VITE_SITE_BASE_URL` – canonical site URL
-- `VITE_API_BASE_URL` – unified backend base URL (e.g., `https://api.nodove.com`)
+- `VITE_API_BASE_URL` – unified backend base URL (e.g., `https://blog-api.nodove.com`)
 
 ## Deployment
 
