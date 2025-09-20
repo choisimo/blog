@@ -131,7 +131,7 @@ jobs:
           $DC ps || true
           $DC logs --no-color api | tail -n 200 || true
           exit 1
-REMOTE_EOF
+          REMOTE_EOF
 
       - name: External health check (public domain)
         if: ${{ env.PUBLIC_API_BASE_URL != '' }}
