@@ -5,25 +5,10 @@ import path from 'node:path';
 import multer from 'multer';
 import sharp from 'sharp';
 import { config } from '../config.js';
-import jwt from 'jsonwebtoken';
+import requireAdmin from '../middleware/adminAuth.js';
 
 const router = Router();
 
-function requireAdmin(req, res, next) {
-  const required = !!(config.admin.bearerToken || config.auth?.jwtSecret);
-  if (!required) return next();
-  const auth = req.headers['authorization'] || '';
-  const token = auth.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return res.status(401).json({ ok: false, error: 'Unauthorized' });
-  if (config.admin.bearerToken && token === config.admin.bearerToken) return next();
-  if (config.auth?.jwtSecret) {
-    try {
-      const claims = jwt.verify(token, config.auth.jwtSecret);
-      if (claims && (claims.role === 'admin' || claims.sub === 'admin')) return next();
-    } catch {}
-  }
-  return res.status(401).json({ ok: false, error: 'Unauthorized' });
-}
 
 const upload = multer({
   storage: multer.memoryStorage(),

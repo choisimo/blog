@@ -5,36 +5,17 @@ import path from 'node:path';
 import matter from 'gray-matter';
 import slugify from 'slugify';
 import { config } from '../config.js';
-import jwt from 'jsonwebtoken';
+import requireAdmin from '../middleware/adminAuth.js';
+import { buildFrontmatterMarkdown } from '../lib/markdown.js';
 
 const router = Router();
 
-function requireAdmin(req, res, next) {
-  const required = !!(config.admin.bearerToken || config.auth?.jwtSecret);
-  if (!required) return next();
-  const auth = req.headers['authorization'] || '';
-  const token = auth.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return res.status(401).json({ ok: false, error: 'Unauthorized' });
-  if (config.admin.bearerToken && token === config.admin.bearerToken) return next();
-  if (config.auth?.jwtSecret) {
-    try {
-      const claims = jwt.verify(token, config.auth.jwtSecret);
-      if (claims && (claims.role === 'admin' || claims.sub === 'admin')) return next();
-    } catch {}
-  }
-  return res.status(401).json({ ok: false, error: 'Unauthorized' });
-}
 
 function validateFilename(filename) {
   const validFilenamePattern = /^[a-zA-Z0-9][a-zA-Z0-9\-_]*\.md$/;
   return validFilenamePattern.test(filename);
 }
 
-function readMarkdown(absPath) {
-  const raw = fs.readFileSync(absPath, 'utf8');
-  const { data: fm, content } = matter(raw);
-  return { fm, content, raw };
-}
 
 function computeItem(year, file, fm, body) {
   const filename = path.basename(file, '.md');
@@ -229,9 +210,7 @@ router.post('/', requireAdmin, async (req, res, next) => {
       ...(frontmatter && typeof frontmatter === 'object' ? frontmatter : {}),
     };
     const body = typeof content === 'string' ? content : '';
-    const md = `---\n${Object.entries(fm)
-      .map(([k, v]) => `${k}: ${Array.isArray(v) ? `[${v.map(x => JSON.stringify(x)).join(', ')}]` : JSON.stringify(v)}`)
-      .join('\n')}\n---\n\n${body}\n`;
+    const md = buildFrontmatterMarkdown(fm, body);
 
     fs.writeFileSync(abs, md);
 
@@ -265,9 +244,7 @@ router.put('/:year/:slug', requireAdmin, async (req, res, next) => {
       const { data: fm0 } = matter(existing);
       const fm = { ...fm0, ...(frontmatter && typeof frontmatter === 'object' ? frontmatter : {}) };
       const body = typeof content === 'string' ? content : existing.replace(/^---[\s\S]*?---\n?/, '');
-      newMd = `---\n${Object.entries(fm)
-        .map(([k, v]) => `${k}: ${Array.isArray(v) ? `[${v.map(x => JSON.stringify(x)).join(', ')}]` : JSON.stringify(v)}`)
-        .join('\n')}\n---\n\n${body}\n`;
+      newMd = buildFrontmatterMarkdown(fm, body);
     }
 
     fs.writeFileSync(abs, newMd);

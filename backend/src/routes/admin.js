@@ -2,25 +2,10 @@ import { Router } from 'express';
 import { Octokit } from '@octokit/rest';
 import { config } from '../config.js';
 import { getDb, Timestamp } from '../lib/firebase.js';
-import jwt from 'jsonwebtoken';
+import requireAdmin from '../middleware/adminAuth.js'; // centralized admin auth middleware
 
 const router = Router();
 
-function requireAdmin(req, res, next) {
-  const required = !!(config.admin.bearerToken || config.auth?.jwtSecret);
-  if (!required) return next();
-  const auth = req.headers['authorization'] || '';
-  const token = auth.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return res.status(401).json({ ok: false, error: 'Unauthorized' });
-  if (config.admin.bearerToken && token === config.admin.bearerToken) return next();
-  if (config.auth?.jwtSecret) {
-    try {
-      const claims = jwt.verify(token, config.auth.jwtSecret);
-      if (claims && (claims.role === 'admin' || claims.sub === 'admin')) return next();
-    } catch {}
-  }
-  return res.status(401).json({ ok: false, error: 'Unauthorized' });
-}
 
 router.post('/propose-new-version', requireAdmin, async (req, res, next) => {
   try {

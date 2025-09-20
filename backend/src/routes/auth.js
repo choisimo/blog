@@ -1,19 +1,9 @@
 import { Router } from 'express';
-import jwt from 'jsonwebtoken';
+import { signJwt, verifyJwt } from '../lib/jwt.js';
 import { config } from '../config.js';
 
 const router = Router();
 
-function sign(payload) {
-  const secret = config.auth.jwtSecret;
-  if (!secret) throw Object.assign(new Error('Server not configured for JWT'), { status: 500 });
-  return jwt.sign(payload, secret, { expiresIn: config.auth.jwtExpiresIn });
-}
-
-function verify(token) {
-  const secret = config.auth.jwtSecret;
-  return jwt.verify(token, secret);
-}
 
 router.post('/login', async (req, res) => {
   const { username, password } = req.body || {};
@@ -31,7 +21,7 @@ router.post('/login', async (req, res) => {
     return res.status(401).json({ ok: false, error: 'invalid credentials' });
   }
 
-  const token = sign({ sub: 'admin', role: 'admin', username: u });
+  const token = signJwt({ sub: 'admin', role: 'admin', username: u });
   return res.json({ ok: true, data: { token } });
 });
 
@@ -40,7 +30,7 @@ router.get('/me', async (req, res) => {
     const auth = req.headers['authorization'] || '';
     const token = auth.replace(/^Bearer\s+/i, '').trim();
     if (!token) return res.status(401).json({ ok: false, error: 'Unauthorized' });
-    const claims = verify(token);
+    const claims = verifyJwt(token);
     return res.json({ ok: true, data: { claims } });
   } catch (err) {
     return res.status(401).json({ ok: false, error: 'Unauthorized' });

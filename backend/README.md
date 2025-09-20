@@ -49,6 +49,7 @@
   - 레이트 리밋: `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_MS`
 - 인증
   - `ADMIN_BEARER_TOKEN` 관리자 보호 라우트 토큰. 미설정 시 로컬 개발 편의를 위해 보호가 비활성화됩니다(운영에서는 반드시 설정!).
+  - (선택) `JWT_SECRET`, `JWT_EXPIRES_IN`을 설정하면 `/api/v1/auth/login` 에서 JWT 발급 후 동일 토큰을 Admin 라우트 보호에 사용할 수 있습니다. 중앙 미들웨어: `src/middleware/adminAuth.js`
 - 통합(옵션)
   - Gemini: `GEMINI_API_KEY`, `GEMINI_MODEL`
   - Firebase: `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_PROJECT_ID`
@@ -145,6 +146,8 @@ docker run --rm -it \
   - Delete: `DELETE /api/v1/images/:year/:slug/:filename` (admin)
 
 ## 보안 & 운영 팁
+- Admin 보호 구조: `src/middleware/adminAuth.js`가 모든 (posts/images/admin 등) 쓰기/민감 라우트에서 재사용됩니다. 이전 개별 파일 내 inline 검사 로직은 제거되었습니다.
+- JWT 유틸: `src/lib/jwt.js`에 `signJwt`, `verifyJwt`, `isAdminClaims` 제공. Auth 라우트(`/api/v1/auth/*`)는 이를 사용하여 일관성 유지.
 - 운영 환경에서는 반드시 `ADMIN_BEARER_TOKEN`을 설정하여 쓰기 라우트를 보호하세요.
 - CORS는 `ALLOWED_ORIGINS`에서 엄격히 제한하세요.
 - 리버스 프록시(Nginx/Cloud) 앞에서는 `TRUST_PROXY`를 올바르게 설정하세요.

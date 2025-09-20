@@ -72,9 +72,8 @@ jobs:
           if [ -z "${{ secrets.BACKEND_ENV_FILE }}" ]; then
             echo "BACKEND_ENV_FILE secret is missing." >&2; exit 1;
           fi
-          cat > /tmp/backend.env <<'ENV_EOF'
-${{ secrets.BACKEND_ENV_FILE }}
-ENV_EOF
+          # Write multi-line secret content to file safely
+          printf "%s" "${{ secrets.BACKEND_ENV_FILE }}" > /tmp/backend.env
 
       - name: Upload artifacts to remote
         run: |
