@@ -87,7 +87,8 @@ jobs:
         env:
           SHA: ${{ github.sha }}
         run: |
-          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" bash -s <<'REMOTE_EOF'
+          # Unquoted heredoc so vars expand locally before sending
+          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" bash -s <<REMOTE_EOF
           set -euo pipefail
           DC="docker compose"
           if ! $DC version >/dev/null 2>&1; then DC="docker-compose"; fi
