@@ -45,6 +45,12 @@ jobs:
         working-directory: workers
         run: npx wrangler d1 migrations apply blog-db-prod --env production --remote
 
+      - name: Set Secrets (production)
+        working-directory: workers
+        run: |
+          echo "${{ secrets.GEMINI_API_KEY }}" | npx wrangler secret put GEMINI_API_KEY --env production
+          echo "${{ secrets.JWT_SECRET }}" | npx wrangler secret put JWT_SECRET --env production
+
       - name: Deploy to Cloudflare Workers (production)
         working-directory: workers
         run: npx wrangler deploy --env production
@@ -53,4 +59,5 @@ jobs:
         run: |
           echo "✅ Cloudflare Workers deployed successfully"
           echo "📦 Environment: production"
-          echo "🌍 Endpoint: https://blog-api-prod.YOUR_SUBDOMAIN.workers.dev"
+          echo "🌍 Endpoint: https://blog-api-prod.immuddelo.workers.dev"
+          echo "🔑 Secrets configured: GEMINI_API_KEY, JWT_SECRET"
