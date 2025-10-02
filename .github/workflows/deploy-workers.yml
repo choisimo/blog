@@ -41,6 +41,13 @@ jobs:
         working-directory: workers
         run: npm run typecheck
 
+      - name: Verify Cloudflare credentials
+        working-directory: workers
+        run: |
+          echo "Verifying Cloudflare authentication..."
+          echo "Account ID: ${CLOUDFLARE_ACCOUNT_ID:0:8}***"
+          npx wrangler whoami
+
       - name: Apply D1 migrations (production)
         working-directory: workers
         run: npx wrangler d1 migrations apply blog-db-prod --env production --remote
