@@ -48,56 +48,18 @@
 | `/public/config` | ✅ | ✅ | 정상 |
 | `/api/v1/posts` | ✅ | ✅ | 정상 (데이터 없음) |
 | `/api/v1/comments` | ✅ | ✅ | 정상 |
-| `/api/v1/ai/*` | ⚠️ | ⚠️ | Secret 테스트 필요 |
+| `/api/v1/ai/sketch` | ✅ | ✅ | 정상 |
+| `/api/v1/ai/prism` | ✅ | ✅ | 정상 |
+| `/api/v1/ai/chain` | ✅ | ✅ | 정상 |
+| `/api/v1/ai/summarize` | ✅ | ✅ | 정상 (신규 추가) |
 
-## ⚠️ AI 기능 403 에러 해결
+## ✅ 모든 기능 정상 작동
 
-현재 AI 엔드포인트가 403 에러를 반환합니다:
-```
-"PERMISSION_DENIED": Method doesn't allow unregistered callers
-```
+모든 API 엔드포인트가 정상적으로 작동하고 있습니다! 
 
-### 원인
-Gemini API Key가 잘못 설정되었거나 유효하지 않을 가능성이 있습니다.
-
-### 해결 방법
-
-#### 1. GitHub Secret 확인
-GitHub Repository → Settings → Secrets and variables → Actions에서:
-- `GEMINI_API_KEY` 값이 올바른 Gemini API 키인지 확인
-- https://aistudio.google.com/app/apikey 에서 발급한 키인지 확인
-
-#### 2. 로컬에서 Secret 재설정
+테스트 스크립트로 확인:
 ```bash
-cd workers
-
-# GitHub Secret에서 사용한 것과 동일한 키로 설정
-npx wrangler secret put GEMINI_API_KEY --env production
-# 프롬프트에서 API 키 입력 (AIza로 시작하는 키)
-```
-
-#### 3. Workers 재배포
-```bash
-npx wrangler deploy --env production
-```
-
-#### 4. 테스트
-```bash
-curl -X POST https://blog-api-prod.immuddelo.workers.dev/api/v1/ai/sketch \
-  -H "Content-Type: application/json" \
-  -d '{"paragraph":"테스트 문단","postTitle":"테스트"}' \
-  | jq .
-```
-
-성공 응답 예시:
-```json
-{
-  "ok": true,
-  "data": {
-    "mood": "curious",
-    "bullets": ["...", "...", "..."]
-  }
-}
+./workers/test-endpoints.sh https://blog-api-prod.immuddelo.workers.dev
 ```
 
 ## 🔧 댓글 기능 사용법
