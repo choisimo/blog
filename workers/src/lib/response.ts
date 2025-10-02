@@ -1,17 +1,23 @@
 import { Context } from 'hono';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { ApiResponse } from '../types';
 
-export function success<T>(c: Context, data: T, status = 200) {
-  return c.json<ApiResponse<T>>({ ok: true, data }, status);
+export function success<T>(c: Context, data: T, status: ContentfulStatusCode = 200) {
+  return c.json<ApiResponse<T>>({ ok: true, data }, { status });
 }
 
-export function error(c: Context, message: string, status = 500, code?: string) {
+export function error(
+  c: Context,
+  message: string,
+  status: ContentfulStatusCode = 500,
+  code?: string
+) {
   return c.json<ApiResponse>(
     {
       ok: false,
       error: { message, code },
     },
-    status
+    { status }
   );
 }
 

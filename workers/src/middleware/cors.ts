@@ -7,7 +7,7 @@ export async function corsMiddleware(c: Context, next: Next) {
   // Handle preflight
   if (c.req.method === 'OPTIONS') {
     setCorsHeaders(c, origin);
-    return c.text('', 204);
+    return c.body(null, 204);
   }
 
   // Set CORS headers for actual requests
