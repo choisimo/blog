@@ -90,7 +90,7 @@ export async function* streamGenerate(prompt: string, opts?: { temperature?: num
   }
 }
 
-const GEMINI_MODEL = 'gemini-1.5-flash';
+const GEMINI_MODEL = 'gemini-2.5-flash';
 
 function getApiKey(): string | null {
   if (typeof window === 'undefined') return null;

@@ -7,7 +7,7 @@ export async function generateContent(
   env: Env,
   options?: { temperature?: number; maxTokens?: number }
 ): Promise<string> {
-  const model = 'gemini-1.5-flash';
+  const model = 'gemini-2.5-flash';
   const temperature = options?.temperature ?? 0.2;
   const maxTokens = options?.maxTokens ?? 2048;
 
