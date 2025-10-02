@@ -29,6 +29,10 @@ jobs:
           cache: 'npm'
           cache-dependency-path: workers/package-lock.json
 
+      - name: Install Wrangler 4
+        working-directory: workers
+        run: npm install --save-dev wrangler@4
+
       - name: Install dependencies
         working-directory: workers
         run: npm ci --ignore-scripts
@@ -39,7 +43,7 @@ jobs:
 
       - name: Apply D1 migrations (production)
         working-directory: workers
-        run: npx wrangler d1 migrations apply blog-db --env production --remote
+        run: npx wrangler d1 migrations apply blog-db-prod --env production --remote
 
       - name: Deploy to Cloudflare Workers (production)
         working-directory: workers
