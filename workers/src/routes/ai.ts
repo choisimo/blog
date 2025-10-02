@@ -164,4 +164,28 @@ ai.post('/generate', async (c) => {
   }
 });
 
+// POST /ai/summarize - Summarize article with memo
+ai.post('/summarize', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { input, instructions } = body;
+
+  if (!input || typeof input !== 'string') {
+    return badRequest(c, 'input is required');
+  }
+
+  const prompt = [
+    instructions || '다음 내용을 요약해주세요:',
+    '',
+    safeTruncate(input, 8000),
+  ].join('\n');
+
+  try {
+    const summary = await generateContent(prompt, c.env, { temperature: 0.2 });
+    return success(c, { summary });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'AI generation failed';
+    return badRequest(c, message);
+  }
+});
+
 export default ai;

@@ -28,11 +28,12 @@
     devHtml: 'aiMemo.dev.html',
     devCss: 'aiMemo.dev.css',
     devJs: 'aiMemo.dev.js',
-    repoUrl: 'aiMemo.repoUrl',
-    backendUrl: 'aiMemo.backendUrl',
-    adminToken: 'aiMemo.adminToken',
     proposalMd: 'aiMemo.proposalMd',
   };
+
+  // 기본값 설정
+  const DEFAULT_API_URL = 'https://blog-api.immuddelo.workers.dev';
+  const DEFAULT_REPO_URL = 'https://github.com/choisimo/blog';
 
   class AIMemoPad extends HTMLElement {
     constructor() {
@@ -51,8 +52,6 @@
           'body { font-family: system-ui, sans-serif; padding: 12px; }'
         ),
         devJs: LS.get(KEYS.devJs, 'console.log("Hello from user JS");'),
-        repoUrl: LS.get(KEYS.repoUrl, ''),
-        backendUrl: LS.get(KEYS.backendUrl, ''),
         proposalMd: LS.get(KEYS.proposalMd, ''),
       };
       this._drag = { active: false, startX: 0, startY: 0, origX: 0, origY: 0 };
@@ -138,10 +137,7 @@
       try {
         btn.disabled = true;
         this.$status.textContent = 'AI 요약 중…';
-        const backend =
-          (this.$backendUrl?.value || this.state.backendUrl || '').trim() ||
-          (window.APP_CONFIG && window.APP_CONFIG.apiBaseUrl) ||
-          '';
+        const backend = window.__APP_CONFIG?.apiBaseUrl || window.APP_CONFIG?.apiBaseUrl || DEFAULT_API_URL;
         let out = '';
         if (backend) {
           const endpoint = `${backend.replace(/\/$/, '')}/api/v1/ai/summarize`;
@@ -293,13 +289,7 @@
     }
 
     openIssue() {
-      const repo = (this.$repoUrl.value || '').trim();
-      if (!repo) {
-        this.toast(
-          '레포지토리 URL을 입력하세요. 예: https://github.com/choisimo/blog'
-        );
-        return;
-      }
+      const repo = DEFAULT_REPO_URL;
       const title = encodeURIComponent('Feature Proposal: AI Memo Extension');
       const bodyContent = [
         '### 설명',
@@ -361,13 +351,6 @@
           </div>
           <div id="devBody" class="body">
             <div class="section">
-              <label class="label" for="backendUrl">백엔드 API 주소</label>
-              <input id="backendUrl" class="input" placeholder="http://localhost:5000" />
-              <div class="small muted" style="margin-top:4px;">
-                새로운 버전 제안을 위해 관리자 백엔드(API)를 사용합니다. 기본값은 로컬 개발 서버(5000)입니다.
-              </div>
-            </div>
-            <div class="section">
               <div class="label">원본 글</div>
               <div id="originalPath" class="small" style="opacity:0.8"></div>
             </div>
@@ -410,7 +393,6 @@
       this.$memo = this.shadowRoot.getElementById('memo');
       this.$apiKey = this.shadowRoot.getElementById('apiKey');
       this.$inlineEnabled = this.shadowRoot.getElementById('inlineEnabled');
-      this.$backendUrl = this.shadowRoot.getElementById('backendUrl');
       this.$originalPath = this.shadowRoot.getElementById('originalPath');
       this.$proposalMd = this.shadowRoot.getElementById('proposalMd');
       this.$loadOriginalMd = this.shadowRoot.getElementById('loadOriginalMd');
@@ -449,8 +431,6 @@
       }
 
       // dev content
-      if (this.$backendUrl)
-        this.$backendUrl.value = this.state.backendUrl || '';
       if (this.$proposalMd)
         this.$proposalMd.value = this.state.proposalMd || '';
 
@@ -522,12 +502,6 @@
         };
         this.$inlineEnabled.addEventListener('change', onToggleInline);
         this.$inlineEnabled.addEventListener('input', onToggleInline);
-      }
-      if (this.$backendUrl) {
-        this.$backendUrl.addEventListener('input', () => {
-          this.state.backendUrl = this.$backendUrl.value;
-          LS.set(KEYS.backendUrl, this.state.backendUrl);
-        });
       }
       if (this.$proposalMd) {
         const persistProposal = () => {
@@ -712,15 +686,7 @@
 
     async proposeNewVersion() {
       try {
-        const backend = (
-          this.$backendUrl?.value ||
-          this.state.backendUrl ||
-          ''
-        ).trim();
-        if (!backend) {
-          this.toast('백엔드 API 주소를 입력하세요. 예: http://localhost:5000');
-          return;
-        }
+        const backend = window.__APP_CONFIG?.apiBaseUrl || window.APP_CONFIG?.apiBaseUrl || DEFAULT_API_URL;
         const info = this.getCurrentPostInfo();
         if (!info) {
           this.toast('현재 페이지에서 글 정보를 찾을 수 없습니다.');
