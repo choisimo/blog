@@ -1,0 +1,52 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "blog-api"
+main = "src/index.ts"
+compatibility_date = "2024-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Development environment variables
+[vars]
+ENV = "development"
+ALLOWED_ORIGINS = "http://localhost:5173,https://blog.nodove.com"
+
+# D1 Database binding (development)
+[[d1_databases]]
+binding = "DB"
+database_name = "blog-db"
+database_id = "65661464-f6e2-4cdf-8da8-dd63a482fd29"
+
+# R2 Storage binding (development)
+# [[r2_buckets]]
+# binding = "R2"
+# bucket_name = "blog-assets-dev"
+# preview_bucket_name = "blog-assets-dev"
+
+# KV namespace binding (development)
+[[kv_namespaces]]
+binding = "KV"
+id = "8bb28b36c3cb42da8ed7aca89f8cf0fe"
+
+# Production environment
+[env.production]
+name = "blog-api-prod"
+
+[env.production.vars]
+ENV = "production"
+ALLOWED_ORIGINS = "https://blog.nodove.com"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "blog-db-prod"
+database_id = "e547f944-71a0-42b6-8af1-abc50f29df80"
+
+# [[env.production.r2_buckets]]
+# binding = "R2"
+# bucket_name = "blog-assets-prod"
+
+[[env.production.kv_namespaces]]
+binding = "KV"
+id = "3d45140577d94404bc5f4bf000b07488"
+
+# Observability (optional)
+[observability]
+enabled = true
