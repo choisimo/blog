@@ -44,7 +44,6 @@
         position: LS.get(KEYS.position, { x: null, y: null }),
         mode: LS.get(KEYS.mode, 'memo'),
         memo: LS.get(KEYS.memo, ''),
-        apiKey: LS.get(KEYS.apiKey, ''),
         inlineEnabled: !!LS.get(KEYS.inlineEnabled, false),
         devHtml: LS.get(KEYS.devHtml, '<div>Hello AI Memo 👋</div>'),
         devCss: LS.get(
@@ -120,7 +119,6 @@
     }
 
     async summarizeWithGemini() {
-      const apiKey = (this.$apiKey.value || '').trim();
       const article = this.getArticleText();
       const memo = this.$memo.value || '';
       const limit = (s, max = 8000) =>
@@ -138,70 +136,27 @@
         btn.disabled = true;
         this.$status.textContent = 'AI 요약 중…';
         const backend = window.__APP_CONFIG?.apiBaseUrl || window.APP_CONFIG?.apiBaseUrl || DEFAULT_API_URL;
-        let out = '';
-        if (backend) {
-          const endpoint = `${backend.replace(/\/$/, '')}/api/v1/ai/summarize`;
-          const res = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              input: [
-                '[페이지 본문]',
-                limit(article, 6000),
-                '',
-                '[나의 메모]',
-                limit(memo, 2000),
-              ].join('\n'),
-              instructions,
-            }),
-          });
-          if (!res.ok) {
-            const t = await res.text().catch(() => '');
-            throw new Error(`요약 실패(${res.status}) ${t.slice(0, 200)}`);
-          }
-          const data = await res.json();
-          out = (data?.data?.summary || data?.summary || '').toString();
-        } else {
-          if (!apiKey) {
-            this.toast('Gemini API 키를 먼저 입력하세요.');
-            return;
-          }
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
-          const body = {
-            contents: [
-              {
-                role: 'user',
-                parts: [
-                  {
-                    text: [
-                      instructions,
-                      '',
-                      '[본문+메모]',
-                      limit(`${article}\n\n${memo}`, 8000),
-                    ].join('\n'),
-                  },
-                ],
-              },
-            ],
-          };
-          const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-          });
-          if (!res.ok) {
-            if (res.status === 401 || res.status === 403)
-              throw new Error('API 키 인증 오류');
-            const t = await res.text();
-            throw new Error(`요약 실패(${res.status}) ${t.slice(0, 200)}`);
-          }
-          const data = await res.json();
-          try {
-            const cand = data?.candidates?.[0];
-            const parts = cand?.content?.parts || [];
-            out = parts.map(p => p.text || '').join('');
-          } catch (_) {}
+        const endpoint = `${backend.replace(/\/$/, '')}/api/v1/ai/summarize`;
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            input: [
+              '[페이지 본문]',
+              limit(article, 6000),
+              '',
+              '[나의 메모]',
+              limit(memo, 2000),
+            ].join('\n'),
+            instructions,
+          }),
+        });
+        if (!res.ok) {
+          const t = await res.text().catch(() => '');
+          throw new Error(`요약 실패(${res.status}) ${t.slice(0, 200)}`);
         }
+        const data = await res.json();
+        const out = (data?.data?.summary || data?.summary || '').toString();
         if (!out) throw new Error('응답 파싱 실패');
 
         const stamp = new Date().toLocaleString();
@@ -237,7 +192,6 @@
           html: this.getArticleHtml(),
         },
         memo: { content: this.$memo?.value || '' },
-        user: { apiKey: (this.$apiKey?.value || '').trim() },
       };
     }
 
@@ -334,8 +288,8 @@
           </div>
           <div id="memoBody" class="body">
             <div class="section">
-              <label class="label" for="apiKey">Gemini API Key</label>
-              <input id="apiKey" class="input" placeholder="AIza..." />
+              <label class="label" for="memo">메모</label>
+              <textarea id="memo" class="textarea" placeholder="여기에 메모를 작성하세요"></textarea>
             </div>
             <div class="section">
               <label class="label" for="inlineEnabled">문단 끝 ✨ 인라인 확장</label>
@@ -343,10 +297,6 @@
                 <input id="inlineEnabled" type="checkbox" />
                 <div class="small" style="opacity:0.8">글 본문 단락 끝에 ✨ 아이콘을 표시하고 아래로 결과를 펼칩니다.</div>
               </div>
-            </div>
-            <div class="section">
-              <label class="label" for="memo">메모</label>
-              <textarea id="memo" class="textarea" placeholder="여기에 메모를 작성하세요"></textarea>
             </div>
           </div>
           <div id="devBody" class="body">
@@ -391,7 +341,6 @@
       this.$memoBody = this.shadowRoot.getElementById('memoBody');
       this.$devBody = this.shadowRoot.getElementById('devBody');
       this.$memo = this.shadowRoot.getElementById('memo');
-      this.$apiKey = this.shadowRoot.getElementById('apiKey');
       this.$inlineEnabled = this.shadowRoot.getElementById('inlineEnabled');
       this.$originalPath = this.shadowRoot.getElementById('originalPath');
       this.$proposalMd = this.shadowRoot.getElementById('proposalMd');
@@ -409,7 +358,6 @@
     restore() {
       // content
       this.$memo.value = this.state.memo || '';
-      this.$apiKey.value = this.state.apiKey || '';
       if (this.$inlineEnabled)
         this.$inlineEnabled.checked = !!this.state.inlineEnabled;
 
@@ -489,10 +437,6 @@
       };
       this.$memo.addEventListener('input', saveMemo);
       this.$memo.addEventListener('change', saveMemo);
-      this.$apiKey.addEventListener('input', () => {
-        this.state.apiKey = this.$apiKey.value;
-        LS.set(KEYS.apiKey, this.state.apiKey);
-      });
       if (this.$inlineEnabled) {
         const onToggleInline = () => {
           const val = !!this.$inlineEnabled.checked;
