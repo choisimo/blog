@@ -5,6 +5,14 @@ compatibility_date = "2024-09-01"
 compatibility_flags = ["nodejs_compat"]
 account_id = "f6f11e2a4e5178d2f37476785018f761"
 
+# Secrets (set via wrangler secret put):
+# - GEMINI_API_KEY: Google Gemini API key for AI features
+# - JWT_SECRET: Secret key for JWT token signing
+# - ADMIN_USERNAME: Admin username (optional)
+# - ADMIN_PASSWORD: Admin password hash (optional)
+#
+# Set secrets with: npx wrangler secret put <SECRET_NAME> [--env production]
+
 # Development environment variables
 [vars]
 ENV = "development"
