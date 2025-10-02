@@ -1,0 +1,76 @@
+# Cloudflare Tunnel Configuration
+# Place this file at /etc/cloudflared/config.yml
+# 
+# Prerequisites:
+# 1. Install cloudflared: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/
+# 2. Authenticate: cloudflared tunnel login
+# 3. Create tunnel: cloudflared tunnel create blog-api
+# 4. Route DNS: cloudflared tunnel route dns blog-api api.yourdomain.com
+# 5. Copy credentials: sudo cp ~/.cloudflared/<tunnel-uuid>.json /etc/cloudflared/
+# 6. Update this config with your tunnel name and UUID
+# 7. Start service: sudo systemctl enable --now cloudflared
+
+# Tunnel name (as created with 'cloudflared tunnel create')
+tunnel: blog-api
+
+# Path to credentials file (UUID will be shown after tunnel creation)
+# Replace <tunnel-uuid> with your actual tunnel UUID
+credentials-file: /etc/cloudflared/<tunnel-uuid>.json
+
+# Logging
+loglevel: info
+logfile: /var/log/cloudflared.log
+
+# Metrics server (optional, for monitoring)
+metrics: 127.0.0.1:2000
+
+# Update auto-restart
+autoupdate-freq: 24h
+
+# Grace period for shutdown
+grace-period: 30s
+
+# Ingress rules (routes)
+ingress:
+  # Main API route
+  - hostname: api.yourdomain.com
+    service: http://localhost:5080
+    originRequest:
+      # Disable TLS verification for localhost
+      noTLSVerify: true
+      # Keep connections alive
+      keepAliveConnections: 1
+      # Timeout settings
+      connectTimeout: 30s
+      tcpKeepAlive: 30s
+      # HTTP/2 support
+      http2Origin: false
+      # Disable chunked encoding issues
+      disableChunkedEncoding: false
+      # Headers to pass through
+      httpHostHeader: api.yourdomain.com
+
+  # Health check endpoint with different settings (optional)
+  - hostname: api.yourdomain.com
+    path: /api/v1/healthz
+    service: http://localhost:5080
+    originRequest:
+      connectTimeout: 5s
+
+  # Catch-all rule (required)
+  - service: http_status:404
+
+# Tunnel-specific settings
+originRequest:
+  # Global connection pool
+  keepAliveConnections: 10
+  # Global timeout
+  connectTimeout: 30s
+  # Expect continue timeout
+  expectContinueTimeout: 90s
+  # Keep alive timeout
+  keepAliveTimeout: 90s
+
+# Warp routing (optional, for private network access)
+# warp-routing:
+#   enabled: false
