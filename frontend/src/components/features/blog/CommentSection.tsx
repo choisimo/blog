@@ -58,16 +58,7 @@ export default function CommentSection({ postId }: { postId: string }) {
       try {
         setLoading(true);
         setError(null);
-        const apiBase = getApiBaseUrl();
-        if (!apiBase) {
-          if (!cancelled) {
-            setError('Comments backend not configured');
-            setComments([]);
-            setLoading(false);
-          }
-          return;
-        }
-        const base = apiBase.replace(/\/$/, '');
+        const base = getApiBaseUrl().replace(/\/$/, '');
         const url = `${base}/api/v1/comments?postId=${encodeURIComponent(
           postId
         )}`;
@@ -139,11 +130,8 @@ export default function CommentSection({ postId }: { postId: string }) {
     try {
       setSubmitting(true);
       setError(null);
-      const apiBase = getApiBaseUrl();
-      if (!apiBase) {
-        throw new Error('Comments backend not configured');
-      }
-      const url = `${apiBase.replace(/\/$/, '')}/api/v1/comments`;
+      const base = getApiBaseUrl().replace(/\/$/, '');
+      const url = `${base}/api/v1/comments`;
       const resp = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -187,11 +175,6 @@ export default function CommentSection({ postId }: { postId: string }) {
         <p className='text-sm text-muted-foreground'>Loading comments…</p>
       )}
       {error && <p className='text-sm text-red-600'>{error}</p>}
-      {!archived && !error && !loading && !getApiBaseUrl() && (
-        <p className='text-sm text-muted-foreground'>
-          Comments require a configured backend (set VITE_API_BASE_URL).
-        </p>
-      )}
 
       {comments && comments.length > 0 ? (
         <ul className='space-y-3'>

@@ -1,4 +1,7 @@
-export function getApiBaseUrl(): string | null {
+// Default API URL for production
+const DEFAULT_API_URL = 'https://blog-api.immuddelo.workers.dev';
+
+export function getApiBaseUrl(): string {
   // 1) runtime injected config
   const w = typeof window !== 'undefined' ? (window as any) : null;
   const fromRuntime = w?.APP_CONFIG?.apiBaseUrl || w?.__APP_CONFIG?.apiBaseUrl;
@@ -19,5 +22,6 @@ export function getApiBaseUrl(): string | null {
     void 0;
   }
 
-  return null;
+  // 4) Default production URL
+  return DEFAULT_API_URL;
 }
