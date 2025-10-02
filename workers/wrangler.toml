@@ -3,6 +3,7 @@ name = "blog-api"
 main = "src/index.ts"
 compatibility_date = "2024-09-01"
 compatibility_flags = ["nodejs_compat"]
+account_id = "f6f11e2a4e5178d2f37476785018f761"
 
 # Development environment variables
 [vars]
