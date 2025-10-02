@@ -8,7 +8,7 @@ account_id = "f6f11e2a4e5178d2f37476785018f761"
 # Development environment variables
 [vars]
 ENV = "development"
-ALLOWED_ORIGINS = "http://localhost:5173,https://blog.nodove.com"
+ALLOWED_ORIGINS = "http://localhost:5173,https://noblog.nodove.com,https://blog.nodove.com"
 
 # D1 Database binding (development)
 [[d1_databases]]
@@ -33,7 +33,7 @@ name = "blog-api-prod"
 
 [env.production.vars]
 ENV = "production"
-ALLOWED_ORIGINS = "https://blog.nodove.com"
+ALLOWED_ORIGINS = "https://noblog.nodove.com,https://blog.nodove.com"
 
 [[env.production.d1_databases]]
 binding = "DB"
