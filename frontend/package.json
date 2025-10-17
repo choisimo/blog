@@ -4,8 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "npm run generate-manifests",
     "dev": "vite --config config/vite.config.ts",
-    "prebuild": "npm run generate-seo",
+    "prebuild": "npm run generate-manifests && npm run generate-seo",
     "build": "vite build --config config/vite.config.ts",
     "build:dev": "vite build --mode development --config config/vite.config.ts",
     "build:analyze": "vite build --mode production --config config/vite.config.ts && open dist/stats.html",

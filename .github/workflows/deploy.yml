@@ -3,8 +3,22 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'frontend/public/posts/**/*.md'
+      - 'frontend/scripts/generate-manifests.js'
+      - 'frontend/scripts/generate-seo.js'
+      - 'frontend/package.json'
+      - 'doc-converter/**'
+      - '.github/workflows/deploy.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'frontend/public/posts/**/*.md'
+      - 'frontend/scripts/generate-manifests.js'
+      - 'frontend/scripts/generate-seo.js'
+      - 'frontend/package.json'
+      - 'doc-converter/**'
+      - '.github/workflows/deploy.yml'
 
 permissions:
   contents: read
