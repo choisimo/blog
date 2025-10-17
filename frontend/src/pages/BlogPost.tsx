@@ -32,6 +32,14 @@ const MarkdownRenderer = lazy(
   () => import('@/components/features/blog/MarkdownRenderer')
 );
 
+type VisitedPostItem = {
+  path: string;
+  title: string;
+  coverImage?: string;
+  year: string;
+  slug: string;
+};
+
 const BlogPost = () => {
   const { year, slug } = useParams();
   const navigate = useNavigate();
@@ -54,6 +62,11 @@ const BlogPost = () => {
       navigate('/blog');
     }
   };
+
+  // Ensure scroll starts at top when navigating between posts
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [year, slug]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -87,6 +100,29 @@ const BlogPost = () => {
 
     loadData();
   }, [year, slug]);
+
+  // After post loads, record it to visited posts
+  useEffect(() => {
+    if (!post) return;
+    try {
+      const key = 'visited.posts';
+      const raw = localStorage.getItem(key);
+      const items: VisitedPostItem[] = raw ? JSON.parse(raw) : [];
+      const path = `/blog/${post.year}/${post.slug}`;
+      const next: VisitedPostItem = {
+        path,
+        title: post.title,
+        coverImage: post.coverImage,
+        year: post.year,
+        slug: post.slug,
+      };
+      const deduped = [next, ...items.filter(i => i.path !== path)].slice(0, 12);
+      localStorage.setItem(key, JSON.stringify(deduped));
+      window.dispatchEvent(new CustomEvent('visitedposts:update'));
+    } catch {
+      // noop
+    }
+  }, [post]);
 
   // sync inline feature flag from localStorage and storage events
   useEffect(() => {

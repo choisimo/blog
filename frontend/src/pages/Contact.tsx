@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { Mail, MessageSquare, Send } from 'lucide-react';
+import { site } from '@/config/site';
 
 const Contact = () => {
   const { toast } = useToast();
@@ -118,8 +119,8 @@ const Contact = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <a href="mailto:contact@nodove.com" className="text-sm text-muted-foreground hover:text-primary">
-                  contact@nodove.com
+                <a href={`mailto:${site.email}`} className="text-sm text-muted-foreground hover:text-primary">
+                  {site.email}
                 </a>
               </CardContent>
             </Card>
@@ -132,15 +133,15 @@ const Contact = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <a href="https://github.com" target="_blank" rel="noopener noreferrer" 
+                <a href={site.social.github} target="_blank" rel="noopener noreferrer" 
                    className="block text-sm text-muted-foreground hover:text-primary">
-                  GitHub: @nodove
+                  GitHub: @choisimo
                 </a>
-                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer"
+                <a href={site.social.twitter} target="_blank" rel="noopener noreferrer"
                    className="block text-sm text-muted-foreground hover:text-primary">
                   Twitter: @nodove
                 </a>
-                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer"
+                <a href={site.social.linkedin} target="_blank" rel="noopener noreferrer"
                    className="block text-sm text-muted-foreground hover:text-primary">
                   LinkedIn: nodove
                 </a>

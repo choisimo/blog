@@ -12,6 +12,7 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import NotFound from './pages/NotFound';
 import './App.css';
+import { VisitedPostsMinimap } from '@/components/features/navigation/VisitedPostsMinimap';
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ function App() {
                 </Routes>
               </main>
               <Footer />
+              <VisitedPostsMinimap />
               <Toaster />
             </div>
           </Router>

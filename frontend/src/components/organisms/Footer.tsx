@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Github, Twitter, Linkedin, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { site } from '@/config/site';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -20,25 +21,25 @@ export function Footer() {
               </p>
               <div className="flex space-x-4">
                 <Button variant="ghost" size="icon" asChild>
-                  <a href="https://github.com" target="_blank" rel="noopener noreferrer">
+                  <a href={site.social.github} target="_blank" rel="noopener noreferrer">
                     <Github className="h-5 w-5" />
                     <span className="sr-only">GitHub</span>
                   </a>
                 </Button>
                 <Button variant="ghost" size="icon" asChild>
-                  <a href="https://twitter.com" target="_blank" rel="noopener noreferrer">
+                  <a href={site.social.twitter} target="_blank" rel="noopener noreferrer">
                     <Twitter className="h-5 w-5" />
                     <span className="sr-only">Twitter</span>
                   </a>
                 </Button>
                 <Button variant="ghost" size="icon" asChild>
-                  <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer">
+                  <a href={site.social.linkedin} target="_blank" rel="noopener noreferrer">
                     <Linkedin className="h-5 w-5" />
                     <span className="sr-only">LinkedIn</span>
                   </a>
                 </Button>
                 <Button variant="ghost" size="icon" asChild>
-                  <a href="mailto:contact@nodove.com">
+                  <a href={`mailto:${site.email}`}>
                     <Mail className="h-5 w-5" />
                     <span className="sr-only">Email</span>
                   </a>
