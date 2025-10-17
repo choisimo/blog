@@ -43,6 +43,7 @@ const Blog = () => {
   const [categories, setCategories] = useState<string[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [siteTotalPosts, setSiteTotalPosts] = useState(0);
+  const [showAllTags, setShowAllTags] = useState(false);
 
   // Debounce search term to avoid excessive filtering
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -159,71 +160,43 @@ const Blog = () => {
 
   return (
     <div className='min-h-screen bg-gradient-to-br from-background via-background to-muted/20'>
-      {/* Hero Section */}
-      <div className='relative overflow-hidden bg-gradient-to-r from-primary/10 via-primary/5 to-background border-b'>
-        <div className='absolute inset-0 bg-grid-white/5 bg-grid-16 [mask-image:radial-gradient(white,transparent_70%)]' />
-        <div className='container mx-auto px-4 py-16 relative'>
+      {/* Hero/Header Simplified */}
+      <div className='border-b bg-background'>
+        <div className='container mx-auto px-4 py-12'>
           <div className='text-center max-w-3xl mx-auto'>
-            <div className='inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-6 animate-pulse'>
-              <div className='w-2 h-2 bg-primary rounded-full' />
-              <span>Latest Articles</span>
-            </div>
-            <h1 className='text-5xl md:text-6xl font-bold bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent mb-6'>
+            <h1 className='text-4xl md:text-5xl font-bold tracking-tight mb-3'>
               Blog Posts
             </h1>
-            <p className='text-xl text-muted-foreground mb-8 leading-relaxed'>
-              Explore articles about software development, AI, and technology
+            <p className='text-muted-foreground'>
+              Articles on software development, AI, and technology
             </p>
-            <div className='flex flex-wrap justify-center gap-8 text-sm text-muted-foreground'>
-              <div className='flex items-center gap-2'>
-                <div className='w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center'>
-                  <span className='text-primary font-bold'>
-                    {siteTotalPosts}
-                  </span>
-                </div>
-                <span>Posts</span>
-              </div>
-              <div className='flex items-center gap-2'>
-                <div className='w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center'>
-                  <span className='text-primary font-bold'>
-                    {categories.length}
-                  </span>
-                </div>
-                <span>Categories</span>
-              </div>
-              <div className='flex items-center gap-2'>
-                <div className='w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center'>
-                  <span className='text-primary font-bold'>
-                    {allTags.length}
-                  </span>
-                </div>
-                <span>Tags</span>
-              </div>
-            </div>
           </div>
         </div>
       </div>
 
       <div className='container mx-auto px-4 py-12'>
-        {/* Search and Filters */}
+        {/* Search and Filters (restructured) */}
         <div className='mb-8 space-y-6'>
+          {/* Search (primary) */}
           <div className='bg-card/50 backdrop-blur-sm border rounded-xl p-6 shadow-sm'>
+            <div className='relative'>
+              <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' aria-hidden='true' />
+              <Input
+                type='text'
+                placeholder='Search posts, tags, or content...'
+                aria-label='Search posts'
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className='pl-10'
+              />
+            </div>
+          </div>
+
+          {/* Category + Sort (secondary) */}
+          <div className='bg-card/50 backdrop-blur-sm border rounded-xl p-4 md:p-6 shadow-sm'>
             <div className='flex flex-col md:flex-row gap-4'>
-              <div className='relative flex-1'>
-                <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
-                <Input
-                  type='text'
-                  placeholder='Search posts, tags, or content...'
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  className='pl-10'
-                />
-              </div>
-              <Select
-                value={selectedCategory}
-                onValueChange={setSelectedCategory}
-              >
-                <SelectTrigger className='w-full md:w-[200px]'>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className='w-full md:w-[240px]'>
                   <SelectValue placeholder='Select category' />
                 </SelectTrigger>
                 <SelectContent>
@@ -235,6 +208,7 @@ const Blog = () => {
                   ))}
                 </SelectContent>
               </Select>
+
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className='w-full md:w-[200px]'>
                   <SelectValue placeholder='Sort by' />
@@ -245,55 +219,77 @@ const Blog = () => {
                   <SelectItem value='readTime'>Read Time</SelectItem>
                 </SelectContent>
               </Select>
+
               <div className='flex gap-2'>
                 <Button
                   variant={viewMode === 'grid' ? 'default' : 'outline'}
                   size='sm'
                   onClick={() => setViewMode('grid')}
                   className='px-3'
+                  aria-pressed={viewMode === 'grid'}
                 >
-                  <Grid className='h-4 w-4' />
+                  <Grid className='h-4 w-4' aria-hidden='true' />
+                  <span className='sr-only'>Grid view</span>
                 </Button>
                 <Button
                   variant={viewMode === 'list' ? 'default' : 'outline'}
                   size='sm'
                   onClick={() => setViewMode('list')}
                   className='px-3'
+                  aria-pressed={viewMode === 'list'}
                 >
-                  <List className='h-4 w-4' />
+                  <List className='h-4 w-4' aria-hidden='true' />
+                  <span className='sr-only'>List view</span>
                 </Button>
               </div>
-            </div>
 
-            {/* Tag Filter */}
-            <div className='flex flex-wrap gap-2 items-center'>
-              <span className='text-sm font-medium mr-2'>Tags:</span>
-              {allTags.slice(0, 15).map(tag => (
-                <Badge
-                  key={tag}
-                  variant={selectedTags.includes(tag) ? 'default' : 'outline'}
-                  className='cursor-pointer hover:bg-primary/10 transition-colors'
-                  onClick={() => handleTagToggle(tag)}
-                >
-                  #{tag}
-                </Badge>
-              ))}
-              {allTags.length > 15 && (
-                <span className='text-sm text-muted-foreground'>
-                  +{allTags.length - 15} more
-                </span>
-              )}
-              {(selectedTags.length > 0 ||
-                debouncedSearchTerm ||
-                selectedCategory !== 'all') && (
+              {(selectedTags.length > 0 || debouncedSearchTerm || selectedCategory !== 'all') && (
                 <Button
                   variant='ghost'
                   size='sm'
                   onClick={clearFilters}
-                  className='ml-2'
+                  className='ml-auto'
                 >
                   <X className='h-4 w-4 mr-1' />
                   Clear filters
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Tags (collapsible) */}
+          <div className='bg-card/50 backdrop-blur-sm border rounded-xl p-4 md:p-6 shadow-sm'>
+            <div className='flex flex-wrap gap-2 items-center' id='tag-list'>
+              <span className='text-sm font-medium mr-2'>Tags:</span>
+              {(showAllTags ? allTags : allTags.slice(0, 10)).map(tag => (
+                <Badge
+                  key={tag}
+                  variant={selectedTags.includes(tag) ? 'default' : 'secondary'}
+                  className='cursor-pointer rounded-full bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 hover:bg-primary/10'
+                  role='button'
+                  aria-pressed={selectedTags.includes(tag)}
+                  aria-label={`Toggle tag ${tag}`}
+                  tabIndex={0}
+                  onClick={() => handleTagToggle(tag)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleTagToggle(tag);
+                    }
+                  }}
+                >
+                  #{tag}
+                </Badge>
+              ))}
+              {allTags.length > 10 && (
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => setShowAllTags(v => !v)}
+                  aria-expanded={showAllTags}
+                  aria-controls='tag-list'
+                >
+                  {showAllTags ? 'Less' : `More +${allTags.length - 10}`}
                 </Button>
               )}
             </div>
@@ -321,9 +317,9 @@ const Blog = () => {
 
         {/* Blog Posts Grid/List */}
         {loading ? (
-          <div
-            className={`grid gap-6 ${viewMode === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}
-          >
+            <div
+              className={`grid gap-8 ${viewMode === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}
+            >
             {Array.from({ length: pageData.pageSize || POSTS_PER_PAGE }).map(
               (_, index) => (
                 <BlogCardSkeleton key={index} />
@@ -340,7 +336,7 @@ const Blog = () => {
         ) : pageData.items.length > 0 ? (
           <>
             <div
-              className={`grid gap-6 ${viewMode === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}
+              className={`grid gap-8 ${viewMode === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}
             >
               {pageData.items.map(post => (
                 <BlogCard key={post.slug} post={post} />
