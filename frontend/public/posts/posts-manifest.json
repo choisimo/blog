@@ -1,5 +1,5 @@
 {
-  "total": 72,
+  "total": 73,
   "items": [
     {
       "path": "/posts/2025/BST-think01.md",
@@ -20,6 +20,34 @@
       "readingTime": "2 min read",
       "published": true,
       "url": "/blog/2025/BST-think01"
+    },
+    {
+      "path": "/posts/2025/Limitation-Of-Transformer.md",
+      "year": "2025",
+      "slug": "Limitation-Of-Transformer",
+      "title": "트랜스포머의 한계에 대하여: 바텀업을 넘어 하향식으로",
+      "description": "트랜스포머가 왜 강하고 왜 비켜가야 하는지, PIM·RAG·압축·NAS를 오가며 고찰한 기록.",
+      "snippet": "트랜스포머가 왜 강하고 왜 비켜가야 하는지, PIM·RAG·압축·NAS를 오가며 고찰한 기록.",
+      "date": "2025-10-17",
+      "tags": [
+        "Transformer",
+        "RAG",
+        "PIM",
+        "Inference",
+        "Training",
+        "LayerFusion",
+        "Quantization",
+        "Pruning",
+        "Distillation",
+        "NAS",
+        "TopDown",
+        "BottomUp"
+      ],
+      "category": "AI",
+      "author": "Admin",
+      "readingTime": "4 min read",
+      "published": true,
+      "url": "/blog/2025/Limitation-Of-Transformer"
     },
     {
       "path": "/posts/2025/QuantumShadow.md",
@@ -1500,7 +1528,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-10-17T05:22:35.509Z",
+  "generatedAt": "2025-10-17T07:09:02.965Z",
   "years": [
     "2025",
     "2024"
