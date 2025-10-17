@@ -1,6 +1,88 @@
 {
-  "total": 66,
+  "total": 72,
   "items": [
+    {
+      "path": "/posts/2025/BST-think01.md",
+      "year": "2025",
+      "slug": "BST-think01",
+      "title": "BST TreeInsertion 횟수 구하기 고민한 내용 정리",
+      "description": "BST 트리 호출 횟수 구하기를 보다가 떠오른 최적화 방안 생각 정리",
+      "snippet": "BST 트리 호출 횟수 구하기를 보다가 떠오른 최적화 방안 생각 정리",
+      "date": "2025-10-17",
+      "tags": [
+        "Machine Learning",
+        "BST",
+        "최적화",
+        "줌인"
+      ],
+      "category": "Algorithm",
+      "author": "Admin",
+      "readingTime": "2 min read",
+      "published": true,
+      "url": "/blog/2025/BST-think01"
+    },
+    {
+      "path": "/posts/2025/QuantumShadow.md",
+      "year": "2025",
+      "slug": "QuantumShadow",
+      "title": "보이지 않는 나는 양자 상태인가?: 물리적 현실과 심리학적 진실의 경계",
+      "description": "물리학의 '결어긋남'은 우리 몸의 양자 상태를 부정하지만, '무의식'의 작동 원리를 설명하는 가장 완벽한 비유일지도 모릅니다.",
+      "snippet": "물리학의 '결어긋남'은 우리 몸의 양자 상태를 부정하지만, '무의식'의 작동 원리를 설명하는 가장 완벽한 비유일지도 모릅니다.",
+      "date": "2025-10-17",
+      "tags": [
+        "양자역학",
+        "칼융",
+        "무의식",
+        "결어긋남",
+        "의식",
+        "심리학"
+      ],
+      "category": "과학 & 철학",
+      "author": "Admin",
+      "readingTime": "2 min read",
+      "published": true,
+      "url": "/blog/2025/QuantumShadow"
+    },
+    {
+      "path": "/posts/2025/QuantumSpaceInside.md",
+      "year": "2025",
+      "slug": "QuantumSpaceInside",
+      "title": "나의 고독은 우주의 시작과 맞닿아 있었다",
+      "description": "개인의 고독에 대한 내면 탐험이 어떻게 칼 융의 심리학과 양자역학을 거쳐, 결국 우주의 시작과 끝에 대한 거대한 통찰로 이어지는지에 대한 철학적 에세이.",
+      "snippet": "개인의 고독에 대한 내면 탐험이 어떻게 칼 융의 심리학과 양자역학을 거쳐, 결국 우주의 시작과 끝에 대한 거대한 통찰로 이어지는지에 대한 철학적 에세이.",
+      "date": "2025-10-17",
+      "tags": [
+        "칼융",
+        "양자역학",
+        "블랙홀",
+        "순환우주론",
+        "무의식",
+        "철학적사유"
+      ],
+      "category": "철학 & 사유",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/QuantumSpaceInside"
+    },
+    {
+      "path": "/posts/2025/ci-trigger-test.md",
+      "year": "2025",
+      "slug": "ci-trigger-test",
+      "title": "CI Trigger Test",
+      "description": "Non-visible post to exercise CI path filters.",
+      "snippet": "Non-visible post to exercise CI path filters.",
+      "date": "2025-10-17",
+      "tags": [
+        "ci",
+        "workflow"
+      ],
+      "category": "Maintenance",
+      "author": "Admin",
+      "readingTime": "1 min read",
+      "published": false,
+      "url": "/blog/2025/ci-trigger-test"
+    },
     {
       "path": "/posts/2025/network-evolution-history.md",
       "year": "2025",
@@ -131,12 +213,36 @@
       "description": "# 두더지 관찰 일기\n\n## 개요\n이번 일기는 내가 두더지를 관찰한 경험을 기록한 것입니다. 두더지는 생태계에서 중요한 역할을 하는 포유류로, 그들의 행동과 생태적 의미를 이해하는 것은 매우 흥미로운 일이었습니다. 이 일기에서는 두더지의 서식지, 행동, 그리고 관찰한 내용을 중심으로 작성하겠습니다.\n\n## 1일차: 준비 과정\n오늘은 두더지를 관찰하기 위해",
       "snippet": "# 두더지 관찰 일기\n\n## 개요\n이번 일기는 내가 두더지를 관찰한 경험을 기록한 것입니다. 두더지는 생태계에서 중요한 역할을 하는 포유류로, 그들의 행동과 생태적 의미를 이해하는 것은 매우 흥미로운 일이었습니다. 이 일기에서는 두더지의 서식지, 행동, 그리고 관찰한 내용을 중심으로 작성하겠습니다.\n\n## 1일차: 준비 과정\n오늘은 두더지를 관찰하기 위해",
       "date": "2025-08-10",
-      "tags": ["두더지", "dothechi"],
+      "tags": [
+        "두더지",
+        "dothechi"
+      ],
       "category": "기술",
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
       "url": "/blog/2025/mole-observation-diary"
+    },
+    {
+      "path": "/posts/2025/FutureClouding.md",
+      "year": "2025",
+      "slug": "FutureClouding",
+      "title": "격자를 부수다: 폰 노이만 아키텍처의 종말과 그리드 시스템의 한계",
+      "description": "우리가 당연하게 여겼던 중앙화된 '그리드' 시스템의 환상을 깨고, 폰 노이만 아키텍처의 근본적 한계를 넘어 분산형 미래로 나아가는 길을 제시합니다.",
+      "snippet": "우리가 당연하게 여겼던 중앙화된 '그리드' 시스템의 환상을 깨고, 폰 노이만 아키텍처의 근본적 한계를 넘어 분산형 미래로 나아가는 길을 제시합니다.",
+      "date": "2025-02-21",
+      "tags": [
+        "폰노이만아키텍처",
+        "그리드시스템",
+        "분산컴퓨팅",
+        "엣지컴퓨팅",
+        "블록체인"
+      ],
+      "category": "기술",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/FutureClouding"
     },
     {
       "path": "/posts/2024/dark-city-existentialism.md",
@@ -195,6 +301,27 @@
       "url": "/blog/2024/brazil-1985-review"
     },
     {
+      "path": "/posts/2025/QuantumLayerLLM.md",
+      "year": "2025",
+      "slug": "QuantumLayerLLM",
+      "title": "양자 얽힘으로 AI의 애매모호함 해결하기: 양자 기계 학습의 미래",
+      "description": "양자역학의 얽힘 원리를 활용해 딥러닝 레이어 간 애매모호함을 해결하는 혁명적 접근법",
+      "snippet": "양자역학의 얽힘 원리를 활용해 딥러닝 레이어 간 애매모호함을 해결하는 혁명적 접근법",
+      "date": "2025-01-16",
+      "tags": [
+        "양자컴퓨팅",
+        "AI",
+        "양자기계학습",
+        "QML",
+        "양자얽힘"
+      ],
+      "category": "기술",
+      "author": "Admin",
+      "readingTime": "2 min read",
+      "published": true,
+      "url": "/blog/2025/QuantumLayerLLM"
+    },
+    {
       "path": "/posts/2025/latest.md",
       "year": "2025",
       "slug": "latest",
@@ -239,7 +366,13 @@
       "description": "운영체제 메모리 관리를 공부하면서 페이징과 스와핑이 왜 필요했는지 이해한 과정",
       "snippet": "운영체제 메모리 관리를 공부하면서 페이징과 스와핑이 왜 필요했는지 이해한 과정",
       "date": "2025-01-01",
-      "tags": ["메모리관리", "페이징", "MMU", "스와핑", "운영체제"],
+      "tags": [
+        "메모리관리",
+        "페이징",
+        "MMU",
+        "스와핑",
+        "운영체제"
+      ],
       "category": "Computer Science",
       "author": "Admin",
       "readingTime": "3 min read",
@@ -276,7 +409,13 @@
       "description": "Git 서브모듈을 실제 프로젝트에서 써본 후기와 실용적인 사용법 정리",
       "snippet": "Git 서브모듈을 실제 프로젝트에서 써본 후기와 실용적인 사용법 정리",
       "date": "2024-12-25",
-      "tags": ["Git", "서브모듈", "버전관리", "개발도구", "프로젝트관리"],
+      "tags": [
+        "Git",
+        "서브모듈",
+        "버전관리",
+        "개발도구",
+        "프로젝트관리"
+      ],
       "category": "개발",
       "author": "Admin",
       "readingTime": "3 min read",
@@ -291,7 +430,12 @@
       "description": "0-1 배낭 문제와 무한 배낭 문제를 동적 계획법으로 해결하는 다양한 방법을 학습합니다.",
       "snippet": "0-1 배낭 문제와 무한 배낭 문제를 동적 계획법으로 해결하는 다양한 방법을 학습합니다.",
       "date": "2024-12-21",
-      "tags": ["Knapsack", "배낭문제", "동적계획법", "최적화"],
+      "tags": [
+        "Knapsack",
+        "배낭문제",
+        "동적계획법",
+        "최적화"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "2 min read",
@@ -306,7 +450,12 @@
       "description": "효율적인 소수 판별과 소인수분해를 위한 다양한 수학 알고리즘들을 학습합니다.",
       "snippet": "효율적인 소수 판별과 소인수분해를 위한 다양한 수학 알고리즘들을 학습합니다.",
       "date": "2024-12-17",
-      "tags": ["소수", "에라토스테네스의체", "소인수분해", "밀러라빈"],
+      "tags": [
+        "소수",
+        "에라토스테네스의체",
+        "소인수분해",
+        "밀러라빈"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "2 min read",
@@ -321,7 +470,13 @@
       "description": "Flutter 웹앱을 Firebase Hosting에 배포하는 방법을 실제 경험을 바탕으로 단계별 설명",
       "snippet": "Flutter 웹앱을 Firebase Hosting에 배포하는 방법을 실제 경험을 바탕으로 단계별 설명",
       "date": "2024-12-14",
-      "tags": ["Flutter", "Firebase", "Hosting", "웹배포", "개발"],
+      "tags": [
+        "Flutter",
+        "Firebase",
+        "Hosting",
+        "웹배포",
+        "개발"
+      ],
       "category": "개발",
       "author": "Admin",
       "readingTime": "3 min read",
@@ -336,7 +491,13 @@
       "description": "깊이 우선 탐색(DFS) 알고리즘의 원리와 구현, 다양한 응용 문제 해결법을 학습합니다.",
       "snippet": "깊이 우선 탐색(DFS) 알고리즘의 원리와 구현, 다양한 응용 문제 해결법을 학습합니다.",
       "date": "2024-12-11",
-      "tags": ["DFS", "그래프", "탐색", "재귀", "스택"],
+      "tags": [
+        "DFS",
+        "그래프",
+        "탐색",
+        "재귀",
+        "스택"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "2 min read",
@@ -351,7 +512,12 @@
       "description": "최장 증가 부분 수열(LIS) 문제를 동적 계획법과 이분 탐색으로 효율적으로 해결하는 방법을 학습합니다.",
       "snippet": "최장 증가 부분 수열(LIS) 문제를 동적 계획법과 이분 탐색으로 효율적으로 해결하는 방법을 학습합니다.",
       "date": "2024-12-08",
-      "tags": ["LIS", "동적계획법", "이분탐색", "부분수열"],
+      "tags": [
+        "LIS",
+        "동적계획법",
+        "이분탐색",
+        "부분수열"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "2 min read",
@@ -366,7 +532,12 @@
       "description": "정렬된 배열에서 O(log n) 시간에 원소를 찾는 이진 탐색의 모든 것",
       "snippet": "정렬된 배열에서 O(log n) 시간에 원소를 찾는 이진 탐색의 모든 것",
       "date": "2024-12-05",
-      "tags": ["이진탐색", "탐색", "분할정복", "알고리즘"],
+      "tags": [
+        "이진탐색",
+        "탐색",
+        "분할정복",
+        "알고리즘"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "2 min read",
@@ -381,7 +552,13 @@
       "description": "운영체제 공부하면서 반복해서 헷갈렸던 개념들을 정리해본 개인 노트",
       "snippet": "운영체제 공부하면서 반복해서 헷갈렸던 개념들을 정리해본 개인 노트",
       "date": "2024-12-01",
-      "tags": ["OS", "CPU 스케줄링", "메모리 관리", "교착상태", "공부 노트"],
+      "tags": [
+        "OS",
+        "CPU 스케줄링",
+        "메모리 관리",
+        "교착상태",
+        "공부 노트"
+      ],
       "category": "Computer Science",
       "author": "Admin",
       "readingTime": "3 min read",
@@ -419,7 +596,14 @@
       "description": "개발자 입장에서 GPT, Claude, Gemini 등 주요 AI 모델들을 실제로 써보고 비교해본 후기",
       "snippet": "개발자 입장에서 GPT, Claude, Gemini 등 주요 AI 모델들을 실제로 써보고 비교해본 후기",
       "date": "2024-11-23",
-      "tags": ["AI", "개발", "GPT", "Claude", "Gemini", "코딩"],
+      "tags": [
+        "AI",
+        "개발",
+        "GPT",
+        "Claude",
+        "Gemini",
+        "코딩"
+      ],
       "category": "기술",
       "author": "Admin",
       "readingTime": "3 min read",
@@ -456,7 +640,13 @@
       "description": "큐를 이용한 레벨별 그래프 탐색과 최단 경로 알고리즘의 핵심",
       "snippet": "큐를 이용한 레벨별 그래프 탐색과 최단 경로 알고리즘의 핵심",
       "date": "2024-11-15",
-      "tags": ["BFS", "그래프", "탐색", "최단경로", "알고리즘"],
+      "tags": [
+        "BFS",
+        "그래프",
+        "탐색",
+        "최단경로",
+        "알고리즘"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "2 min read",
@@ -494,7 +684,12 @@
       "description": "KMP 알고리즘을 통해 문자열 패턴 매칭을 효율적으로 수행하는 방법과 실패 함수의 원리를 학습합니다.",
       "snippet": "KMP 알고리즘을 통해 문자열 패턴 매칭을 효율적으로 수행하는 방법과 실패 함수의 원리를 학습합니다.",
       "date": "2024-11-08",
-      "tags": ["KMP", "문자열매칭", "패턴매칭", "실패함수"],
+      "tags": [
+        "KMP",
+        "문자열매칭",
+        "패턴매칭",
+        "실패함수"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "2 min read",
@@ -509,7 +704,12 @@
       "description": "라빈-카프 알고리즘을 통해 해싱을 활용한 효율적인 문자열 패턴 매칭과 롤링 해시 기법을 학습합니다.",
       "snippet": "라빈-카프 알고리즘을 통해 해싱을 활용한 효율적인 문자열 패턴 매칭과 롤링 해시 기법을 학습합니다.",
       "date": "2024-11-05",
-      "tags": ["Rabin-Karp", "해싱", "문자열매칭", "롤링해시"],
+      "tags": [
+        "Rabin-Karp",
+        "해싱",
+        "문자열매칭",
+        "롤링해시"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "2 min read",
@@ -524,7 +724,13 @@
       "description": "아치 리눅스 UEFI 설치부터 데스크톱 꾸미기까지 실제 경험을 바탕으로 정리",
       "snippet": "아치 리눅스 UEFI 설치부터 데스크톱 꾸미기까지 실제 경험을 바탕으로 정리",
       "date": "2024-11-01",
-      "tags": ["Linux", "Arch Linux", "UEFI", "데스크톱 환경", "커스터마이징"],
+      "tags": [
+        "Linux",
+        "Arch Linux",
+        "UEFI",
+        "데스크톱 환경",
+        "커스터마이징"
+      ],
       "category": "시스템",
       "author": "Admin",
       "readingTime": "4 min read",
@@ -539,7 +745,12 @@
       "description": "분할 정복을 이용한 최고 성능의 정렬 알고리즘, 퀵 정렬의 모든 것",
       "snippet": "분할 정복을 이용한 최고 성능의 정렬 알고리즘, 퀵 정렬의 모든 것",
       "date": "2024-10-28",
-      "tags": ["퀵정렬", "정렬", "분할정복", "알고리즘"],
+      "tags": [
+        "퀵정렬",
+        "정렬",
+        "분할정복",
+        "알고리즘"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "2 min read",
@@ -554,7 +765,12 @@
       "description": "다익스트라 알고리즘을 통해 가중 그래프에서의 최단 경로를 효율적으로 찾는 방법을 학습합니다.",
       "snippet": "다익스트라 알고리즘을 통해 가중 그래프에서의 최단 경로를 효율적으로 찾는 방법을 학습합니다.",
       "date": "2024-10-25",
-      "tags": ["Dijkstra", "최단경로", "우선순위큐", "그래프"],
+      "tags": [
+        "Dijkstra",
+        "최단경로",
+        "우선순위큐",
+        "그래프"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "2 min read",
@@ -569,7 +785,13 @@
       "description": "FIFO 구조의 큐 자료구조 개념부터 우선순위 큐까지 완벽 가이드",
       "snippet": "FIFO 구조의 큐 자료구조 개념부터 우선순위 큐까지 완벽 가이드",
       "date": "2024-10-22",
-      "tags": ["큐", "자료구조", "FIFO", "BFS", "알고리즘"],
+      "tags": [
+        "큐",
+        "자료구조",
+        "FIFO",
+        "BFS",
+        "알고리즘"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "2 min read",
@@ -606,7 +828,12 @@
       "description": "LIFO 구조의 스택 자료구조 개념부터 실전 활용까지 완벽 가이드",
       "snippet": "LIFO 구조의 스택 자료구조 개념부터 실전 활용까지 완벽 가이드",
       "date": "2024-10-15",
-      "tags": ["스택", "자료구조", "LIFO", "알고리즘"],
+      "tags": [
+        "스택",
+        "자료구조",
+        "LIFO",
+        "알고리즘"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "2 min read",
@@ -621,7 +848,12 @@
       "description": "OpenAI API를 활용하여 실용적인 AI 챗봇을 구현하는 과정을 단계별로 설명합니다.",
       "snippet": "OpenAI API를 활용하여 실용적인 AI 챗봇을 구현하는 과정을 단계별로 설명합니다.",
       "date": "2024-10-11",
-      "tags": ["Python", "AI", "Chatbot", "OpenAI"],
+      "tags": [
+        "Python",
+        "AI",
+        "Chatbot",
+        "OpenAI"
+      ],
       "category": "AI/ML",
       "author": "Admin",
       "readingTime": "3 min read",
@@ -636,7 +868,12 @@
       "description": "최신 React 기능과 Next.js의 장점을 활용한 웹 개발 방법론을 소개합니다.",
       "snippet": "최신 React 기능과 Next.js의 장점을 활용한 웹 개발 방법론을 소개합니다.",
       "date": "2024-10-08",
-      "tags": ["React", "Next.js", "JavaScript", "Frontend"],
+      "tags": [
+        "React",
+        "Next.js",
+        "JavaScript",
+        "Frontend"
+      ],
       "category": "Web Development",
       "author": "Admin",
       "readingTime": "3 min read",
@@ -651,7 +888,12 @@
       "description": "컨테이너 기술의 핵심인 Docker와 오케스트레이션 도구 Kubernetes 활용법을 다룹니다.",
       "snippet": "컨테이너 기술의 핵심인 Docker와 오케스트레이션 도구 Kubernetes 활용법을 다룹니다.",
       "date": "2024-10-04",
-      "tags": ["Docker", "Kubernetes", "DevOps", "Container"],
+      "tags": [
+        "Docker",
+        "Kubernetes",
+        "DevOps",
+        "Container"
+      ],
       "category": "DevOps",
       "author": "Admin",
       "readingTime": "4 min read",
@@ -688,7 +930,11 @@
       "description": "개인용 컴퓨팅을 변화시킨 인텔 486 마이크로프로세서에 대한 역사적인 고찰.",
       "snippet": "개인용 컴퓨팅을 변화시킨 인텔 486 마이크로프로세서에 대한 역사적인 고찰.",
       "date": "2024-09-27",
-      "tags": ["인텔", "486", "컴퓨팅 역사"],
+      "tags": [
+        "인텔",
+        "486",
+        "컴퓨팅 역사"
+      ],
       "category": "기술",
       "author": "Admin",
       "readingTime": "2 min read",
@@ -703,7 +949,13 @@
       "description": "핵심 정렬 알고리즘과 이진 탐색을 마스터하여 효율적인 데이터 처리의 기초를 다진다",
       "snippet": "핵심 정렬 알고리즘과 이진 탐색을 마스터하여 효율적인 데이터 처리의 기초를 다진다",
       "date": "2024-09-23",
-      "tags": ["정렬", "탐색", "이진탐색", "시간복잡도", "알고리즘"],
+      "tags": [
+        "정렬",
+        "탐색",
+        "이진탐색",
+        "시간복잡도",
+        "알고리즘"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "3 min read",
@@ -741,7 +993,13 @@
       "description": "비트마스크 DP와 트리 DP의 고급 기법을 마스터하고, 문자열 알고리즘의 기초를 다진다",
       "snippet": "비트마스크 DP와 트리 DP의 고급 기법을 마스터하고, 문자열 알고리즘의 기초를 다진다",
       "date": "2024-09-17",
-      "tags": ["고급DP", "비트마스크", "트리DP", "KMP", "문자열알고리즘"],
+      "tags": [
+        "고급DP",
+        "비트마스크",
+        "트리DP",
+        "KMP",
+        "문자열알고리즘"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "3 min read",
@@ -756,7 +1014,13 @@
       "description": "최적 부분 구조와 중복 부분 문제를 이용한 효율적 문제 해결 기법을 마스터한다",
       "snippet": "최적 부분 구조와 중복 부분 문제를 이용한 효율적 문제 해결 기법을 마스터한다",
       "date": "2024-09-13",
-      "tags": ["동적계획법", "DP", "메모이제이션", "최적화", "알고리즘"],
+      "tags": [
+        "동적계획법",
+        "DP",
+        "메모이제이션",
+        "최적화",
+        "알고리즘"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "3 min read",
@@ -771,7 +1035,13 @@
       "description": "재귀적 사고를 통한 문제 해결과 분할 정복 패러다임의 강력함을 경험한다",
       "snippet": "재귀적 사고를 통한 문제 해결과 분할 정복 패러다임의 강력함을 경험한다",
       "date": "2024-09-09",
-      "tags": ["재귀", "분할정복", "하노이탑", "피보나치", "알고리즘"],
+      "tags": [
+        "재귀",
+        "분할정복",
+        "하노이탑",
+        "피보나치",
+        "알고리즘"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "2 min read",
@@ -808,7 +1078,13 @@
       "description": "tmux 터미널 멀티플렉서의 기본 사용법과 세션이 사라지는 문제 해결 방법을 자세히 설명합니다.",
       "snippet": "tmux 터미널 멀티플렉서의 기본 사용법과 세션이 사라지는 문제 해결 방법을 자세히 설명합니다.",
       "date": "2024-09-02",
-      "tags": ["tmux", "터미널", "세션 관리", "Linux", "멀티플렉서"],
+      "tags": [
+        "tmux",
+        "터미널",
+        "세션 관리",
+        "Linux",
+        "멀티플렉서"
+      ],
       "category": "Linux",
       "author": "Admin",
       "readingTime": "2 min read",
@@ -823,7 +1099,11 @@
       "description": "Nginx 설정 파일(conf)의 구조와 작성 방법에 대한 가이드.",
       "snippet": "Nginx 설정 파일(conf)의 구조와 작성 방법에 대한 가이드.",
       "date": "2024-08-29",
-      "tags": ["Nginx", "Configuration", "Web Server"],
+      "tags": [
+        "Nginx",
+        "Configuration",
+        "Web Server"
+      ],
       "category": "기술",
       "author": "Admin",
       "readingTime": "1 min read",
@@ -838,7 +1118,14 @@
       "description": "탐욕 알고리즘의 핵심 원리를 이해하고, Union-Find 자료구조로 효율적인 집합 관리를 마스터한다",
       "snippet": "탐욕 알고리즘의 핵심 원리를 이해하고, Union-Find 자료구조로 효율적인 집합 관리를 마스터한다",
       "date": "2024-08-25",
-      "tags": ["탐욕법", "그리디", "크루스칼", "프림", "Union-Find", "MST"],
+      "tags": [
+        "탐욕법",
+        "그리디",
+        "크루스칼",
+        "프림",
+        "Union-Find",
+        "MST"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "3 min read",
@@ -853,7 +1140,13 @@
       "description": "Rsync를 사용할 때 기본 SSH 포트가 아닌 커스텀 포트를 지정하는 올바른 방법을 상세히 설명합니다.",
       "snippet": "Rsync를 사용할 때 기본 SSH 포트가 아닌 커스텀 포트를 지정하는 올바른 방법을 상세히 설명합니다.",
       "date": "2024-08-21",
-      "tags": ["rsync", "SSH", "파일 동기화", "백업", "Linux"],
+      "tags": [
+        "rsync",
+        "SSH",
+        "파일 동기화",
+        "백업",
+        "Linux"
+      ],
       "category": "Linux",
       "author": "Admin",
       "readingTime": "2 min read",
@@ -868,7 +1161,10 @@
       "description": "시간, 속죄, 그리고 미래를 조종하는 모래시계에 대한 이야기.",
       "snippet": "시간, 속죄, 그리고 미래를 조종하는 모래시계에 대한 이야기.",
       "date": "2024-08-14",
-      "tags": ["판타지", "시간여행"],
+      "tags": [
+        "판타지",
+        "시간여행"
+      ],
       "category": "기술",
       "author": "Admin",
       "readingTime": "2 min read",
@@ -913,7 +1209,11 @@
       "description": "세계 1차 대전 동안 기관총이 전쟁 양상을 어떻게 변화시켰는지에 대한 탐구.",
       "snippet": "세계 1차 대전 동안 기관총이 전쟁 양상을 어떻게 변화시켰는지에 대한 탐구.",
       "date": "2024-08-04",
-      "tags": ["세계 1차 대전", "기관총", "역사"],
+      "tags": [
+        "세계 1차 대전",
+        "기관총",
+        "역사"
+      ],
       "category": "기술",
       "author": "Admin",
       "readingTime": "2 min read",
@@ -928,7 +1228,14 @@
       "description": "알고리즘 학습의 첫 걸음, 이산수학과 기본 자료구조를 탄탄히 다지는 시간",
       "snippet": "알고리즘 학습의 첫 걸음, 이산수학과 기본 자료구조를 탄탄히 다지는 시간",
       "date": "2024-08-01",
-      "tags": ["알고리즘", "자료구조", "이산수학", "배열", "스택", "큐"],
+      "tags": [
+        "알고리즘",
+        "자료구조",
+        "이산수학",
+        "배열",
+        "스택",
+        "큐"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "2 min read",
@@ -967,7 +1274,13 @@
       "description": "힙과 우선순위 큐를 마스터하고, 다익스트라와 벨만-포드 최단경로 알고리즘을 정복한다",
       "snippet": "힙과 우선순위 큐를 마스터하고, 다익스트라와 벨만-포드 최단경로 알고리즘을 정복한다",
       "date": "2024-07-25",
-      "tags": ["힙", "우선순위큐", "다익스트라", "벨만포드", "최단경로"],
+      "tags": [
+        "힙",
+        "우선순위큐",
+        "다익스트라",
+        "벨만포드",
+        "최단경로"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "3 min read",
@@ -1003,7 +1316,13 @@
       "description": "Vim에서 vertical split view를 사용하여 여러 파일을 동시에 편집하고 파일 간 전환하는 방법을 소개합니다.",
       "snippet": "Vim에서 vertical split view를 사용하여 여러 파일을 동시에 편집하고 파일 간 전환하는 방법을 소개합니다.",
       "date": "2024-07-17",
-      "tags": ["Vim", "편집기", "분할 창", "Linux", "단축키"],
+      "tags": [
+        "Vim",
+        "편집기",
+        "분할 창",
+        "Linux",
+        "단축키"
+      ],
       "category": "Editor",
       "author": "Admin",
       "readingTime": "3 min read",
@@ -1041,7 +1360,13 @@
       "description": "그래프의 표현 방법과 BFS, DFS 탐색 알고리즘을 완벽하게 마스터한다",
       "snippet": "그래프의 표현 방법과 BFS, DFS 탐색 알고리즘을 완벽하게 마스터한다",
       "date": "2024-07-10",
-      "tags": ["그래프", "BFS", "DFS", "탐색", "알고리즘"],
+      "tags": [
+        "그래프",
+        "BFS",
+        "DFS",
+        "탐색",
+        "알고리즘"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "3 min read",
@@ -1071,7 +1396,10 @@
       "description": "잊혀진 마을에서 들려오는 신비한 속삭임에 대한 이야기.",
       "snippet": "잊혀진 마을에서 들려오는 신비한 속삭임에 대한 이야기.",
       "date": "2024-07-02",
-      "tags": ["소설", "미스터리"],
+      "tags": [
+        "소설",
+        "미스터리"
+      ],
       "category": "기술",
       "author": "Admin",
       "readingTime": "2 min read",
@@ -1086,7 +1414,13 @@
       "description": "대기업 코딩테스트 합격을 위한 실전 준비 가이드와 핵심 문제 유형별 공략법",
       "snippet": "대기업 코딩테스트 합격을 위한 실전 준비 가이드와 핵심 문제 유형별 공략법",
       "date": "2024-06-28",
-      "tags": ["코딩테스트", "취업", "알고리즘", "프로그래밍", "면접"],
+      "tags": [
+        "코딩테스트",
+        "취업",
+        "알고리즘",
+        "프로그래밍",
+        "면접"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "3 min read",
@@ -1138,7 +1472,12 @@
       "description": "효과적인 알고리즘 공부 방법과 실전 팁을 제공합니다",
       "snippet": "효과적인 알고리즘 공부 방법과 실전 팁을 제공합니다",
       "date": "2024-06-05",
-      "tags": ["알고리즘", "학습법", "코딩테스트", "자료구조"],
+      "tags": [
+        "알고리즘",
+        "학습법",
+        "코딩테스트",
+        "자료구조"
+      ],
       "category": "Algorithm",
       "author": "Admin",
       "readingTime": "3 min read",
@@ -1161,7 +1500,10 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-09-14T13:43:16.014Z",
-  "years": ["2025", "2024"],
+  "generatedAt": "2025-10-17T05:22:35.509Z",
+  "years": [
+    "2025",
+    "2024"
+  ],
   "format": 2
 }
