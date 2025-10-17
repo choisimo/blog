@@ -1,38 +1,48 @@
-import { Link, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  ArrowRight,
-  BookOpen,
-  Code2,
-  Sparkles,
-  TrendingUp,
-} from 'lucide-react';
-import { posts } from '@/data/posts';
-import { formatDate } from '@/utils/blog';
+import { ArrowRight, BookOpen, Code2, Sparkles, TrendingUp } from 'lucide-react';
+import { BlogCard, BlogCardSkeleton } from '@/components';
+import { getPostsPage } from '@/data/posts';
+import type { BlogPost } from '@/types/blog';
 
 const Index = () => {
-  const location = useLocation();
-  // Get latest 3 posts
-  const latestPosts = posts.slice(0, 3);
+  // Latest posts state
+  const [latestPosts, setLatestPosts] = useState<BlogPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Featured categories
+  useEffect(() => {
+    let cancelled = false;
+    const loadLatest = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await getPostsPage({ page: 1, pageSize: 3, sort: 'date' });
+        if (!cancelled) setLatestPosts(res.items);
+      } catch (e) {
+        if (!cancelled) setError('Failed to load latest posts.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    loadLatest();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Featured categories (static placeholders)
   const categories = [
     { name: 'AI & ML', icon: Sparkles, count: 12, color: 'text-purple-500' },
     { name: 'Web Dev', icon: Code2, count: 18, color: 'text-blue-500' },
-    {
-      name: 'Algorithms',
-      icon: TrendingUp,
-      count: 15,
-      color: 'text-green-500',
-    },
+    { name: 'Algorithms', icon: TrendingUp, count: 15, color: 'text-green-500' },
     { name: 'DevOps', icon: BookOpen, count: 10, color: 'text-orange-500' },
   ];
 
@@ -69,9 +79,7 @@ const Index = () => {
 
       {/* Categories Section */}
       <section className='mb-16'>
-        <h2 className='text-3xl font-bold mb-8 text-center'>
-          Popular Categories
-        </h2>
+        <h2 className='text-3xl font-bold mb-8 text-center'>Popular Categories</h2>
         <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
           {categories.map(category => (
             <Card
@@ -79,9 +87,7 @@ const Index = () => {
               className='hover:shadow-lg transition-shadow cursor-pointer'
             >
               <CardHeader className='text-center'>
-                <category.icon
-                  className={`h-8 w-8 mx-auto mb-2 ${category.color}`}
-                />
+                <category.icon className={`h-8 w-8 mx-auto mb-2 ${category.color}`} />
                 <CardTitle className='text-lg'>{category.name}</CardTitle>
                 <CardDescription>{category.count} posts</CardDescription>
               </CardHeader>
@@ -101,53 +107,21 @@ const Index = () => {
             </Link>
           </Button>
         </div>
-        <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
-          {latestPosts.map(post => (
-            <Card key={post.slug} className='hover:shadow-lg transition-shadow'>
-              <CardHeader>
-                <div className='flex justify-between items-start mb-2'>
-                  <Badge variant='secondary'>{post.category}</Badge>
-                  <span className='text-sm text-muted-foreground'>
-                    {formatDate(post.date)}
-                  </span>
-                </div>
-                <CardTitle className='line-clamp-2'>
-                  <Link
-                    to={`/blog/${post.year}/${post.slug}`}
-                    state={{ from: location }}
-                    className='hover:text-primary transition-colors'
-                  >
-                    {post.title}
-                  </Link>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className='line-clamp-3'>
-                  {post.description}
-                </CardDescription>
-                <div className='mt-4 flex items-center text-sm text-muted-foreground'>
-                  <span>{post.readTime} min read</span>
-                  {post.tags && post.tags.length > 0 && (
-                    <>
-                      <span className='mx-2'>•</span>
-                      <div className='flex gap-1'>
-                        {post.tags.slice(0, 2).map(tag => (
-                          <Badge
-                            key={tag}
-                            variant='outline'
-                            className='text-xs'
-                          >
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+
+        {error ? (
+          <div className='text-center py-8'>
+            <p className='text-red-500 mb-4'>{error}</p>
+            <Button variant='outline' onClick={() => window.location.reload()}>
+              Try again
+            </Button>
+          </div>
+        ) : (
+          <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
+            {loading
+              ? Array.from({ length: 3 }).map((_, i) => <BlogCardSkeleton key={i} />)
+              : latestPosts.map(post => <BlogCard key={post.slug} post={post} />)}
+          </div>
+        )}
       </section>
     </div>
   );
