@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { VisitedPostsMinimap } from '@/components/features/navigation/VisitedPostsMinimap';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -49,7 +49,7 @@ describe('VisitedPostsMinimap', () => {
     expect(screen.queryByText(/Recently visited/i)).not.toBeInTheDocument();
   });
 
-  it('reacts to visitedposts:update and storage events', () => {
+  it('reacts to visitedposts:update and storage events', async () => {
     localStorage.setItem('visited.posts', JSON.stringify([]));
     wrap(<VisitedPostsMinimap />);
 
@@ -58,11 +58,13 @@ describe('VisitedPostsMinimap', () => {
       'visited.posts',
       JSON.stringify([{ path: '/blog/2025/foo', title: 'Foo', year: '2025', slug: 'foo' }])
     );
-    // Dispatch custom event to trigger refresh
-    window.dispatchEvent(new CustomEvent('visitedposts:update'));
+    // Dispatch custom event to trigger refresh and wait for update
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent('visitedposts:update'));
+    });
 
     // Now the minimap should appear
-    const btn = screen.getByRole('button', { name: /visited posts minimap/i });
+    const btn = await screen.findByRole('button', { name: /visited posts minimap/i });
     expect(btn).toBeInTheDocument();
   });
 
