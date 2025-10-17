@@ -1,22 +1,17 @@
 name: Deploy to GitHub Pages
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
     paths:
-      - 'frontend/public/posts/**/*.md'
-      - 'frontend/scripts/generate-manifests.js'
-      - 'frontend/scripts/generate-seo.js'
-      - 'frontend/package.json'
+      - 'frontend/**'
       - 'doc-converter/**'
       - '.github/workflows/deploy.yml'
   pull_request:
     branches: [ main ]
     paths:
-      - 'frontend/public/posts/**/*.md'
-      - 'frontend/scripts/generate-manifests.js'
-      - 'frontend/scripts/generate-seo.js'
-      - 'frontend/package.json'
+      - 'frontend/**'
       - 'doc-converter/**'
       - '.github/workflows/deploy.yml'
 
