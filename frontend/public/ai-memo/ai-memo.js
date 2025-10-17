@@ -24,6 +24,7 @@
     mode: 'aiMemo.mode',
     memo: 'aiMemo.content',
     apiKey: 'aiMemo.apiKey',
+    adminToken: 'aiMemo.adminToken',
     inlineEnabled: 'aiMemo.inline.enabled',
     devHtml: 'aiMemo.dev.html',
     devCss: 'aiMemo.dev.css',
@@ -289,8 +290,27 @@
           <div id="memoBody" class="body">
             <div class="section">
               <label class="label" for="memo">메모</label>
+              <div class="row" style="justify-content: space-between; align-items:center; margin-bottom:6px;">
+                <div class="small" style="opacity:0.8">Markdown 지원 • 단축키: Alt+M 토글</div>
+                <div class="row" style="gap:6px;">
+                  <button id="memoBold" class="btn secondary" title="Bold"><strong>B</strong></button>
+                  <button id="memoItalic" class="btn secondary" title="Italic"><em>I</em></button>
+                  <button id="memoCode" class="btn secondary" title="Inline code">{}</button>
+                  <button id="memoH1" class="btn secondary" title="# H1">H1</button>
+                  <button id="memoH2" class="btn secondary" title="## H2">H2</button>
+                  <button id="memoUl" class="btn secondary" title="• bullet list">•</button>
+                  <button id="memoOl" class="btn secondary" title="1. numbered list">1.</button>
+                </div>
+              </div>
               <textarea id="memo" class="textarea" placeholder="여기에 메모를 작성하세요"></textarea>
+              <div class="row" style="margin-top:6px; gap:6px;">
+                <button id="memoFull" class="btn">전체화면</button>
+                <button id="memoExportMd" class="btn secondary">Markdown 내보내기</button>
+                <button id="memoExportHtml" class="btn secondary">HTML 내보내기</button>
+                <button id="memoClear" class="btn secondary">지우기</button>
+              </div>
             </div>
+
             <div class="section">
               <label class="label" for="inlineEnabled">문단 끝 ✨ 인라인 확장</label>
               <div class="row">
@@ -340,8 +360,20 @@
       this.$tabs = Array.from(this.shadowRoot.querySelectorAll('.tab'));
       this.$memoBody = this.shadowRoot.getElementById('memoBody');
       this.$devBody = this.shadowRoot.getElementById('devBody');
-      this.$memo = this.shadowRoot.getElementById('memo');
-      this.$inlineEnabled = this.shadowRoot.getElementById('inlineEnabled');
+       this.$memo = this.shadowRoot.getElementById('memo');
+       this.$inlineEnabled = this.shadowRoot.getElementById('inlineEnabled');
+       this.$memoBold = this.shadowRoot.getElementById('memoBold');
+       this.$memoItalic = this.shadowRoot.getElementById('memoItalic');
+       this.$memoCode = this.shadowRoot.getElementById('memoCode');
+       this.$memoH1 = this.shadowRoot.getElementById('memoH1');
+       this.$memoH2 = this.shadowRoot.getElementById('memoH2');
+       this.$memoUl = this.shadowRoot.getElementById('memoUl');
+       this.$memoOl = this.shadowRoot.getElementById('memoOl');
+       this.$memoFull = this.shadowRoot.getElementById('memoFull');
+       this.$memoExportMd = this.shadowRoot.getElementById('memoExportMd');
+       this.$memoExportHtml = this.shadowRoot.getElementById('memoExportHtml');
+       this.$memoClear = this.shadowRoot.getElementById('memoClear');
+
       this.$originalPath = this.shadowRoot.getElementById('originalPath');
       this.$proposalMd = this.shadowRoot.getElementById('proposalMd');
       this.$loadOriginalMd = this.shadowRoot.getElementById('loadOriginalMd');
@@ -431,10 +463,14 @@
       );
 
       // input persistence
-      const saveMemo = () => {
-        this.state.memo = this.$memo.value;
-        LS.set(KEYS.memo, this.state.memo);
-      };
+       const saveMemo = () => {
+         this.state.memo = this.$memo.value;
+         LS.set(KEYS.memo, this.state.memo);
+         this.$status.textContent = '저장됨';
+         clearTimeout(this._saveTimer);
+         this._saveTimer = setTimeout(() => (this.$status.textContent = 'Ready'), 900);
+       };
+
       this.$memo.addEventListener('input', saveMemo);
       this.$memo.addEventListener('change', saveMemo);
       if (this.$inlineEnabled) {
@@ -456,8 +492,80 @@
         this.$proposalMd.addEventListener('change', persistProposal);
       }
 
-      // selection add
-      this.$addSel.addEventListener('click', () => {
+       // memo toolbar helpers
+       const surround = (prefix, suffix = prefix) => {
+         const ta = this.$memo;
+         const { selectionStart: s, selectionEnd: e, value } = ta;
+         if (s == null || e == null) return;
+         const before = value.slice(0, s);
+         const selection = value.slice(s, e) || '텍스트';
+         const after = value.slice(e);
+         const next = `${before}${prefix}${selection}${suffix}${after}`;
+         ta.value = next;
+         ta.focus();
+         const caret = (before + prefix + selection + suffix).length;
+         ta.setSelectionRange(caret, caret);
+         ta.dispatchEvent(new Event('input', { bubbles: true }));
+       };
+       const linePrefix = pfx => {
+         const ta = this.$memo;
+         const { selectionStart: s, selectionEnd: e, value } = ta;
+         const start = value.lastIndexOf('\n', s - 1) + 1;
+         const end = value.indexOf('\n', e);
+         const last = end === -1 ? value.length : end;
+         const body = value.slice(start, last);
+         const prefix = body.startsWith(pfx + ' ') ? '' : `${pfx} `;
+         const next = value.slice(0, start) + prefix + body + value.slice(last);
+         ta.value = next;
+         ta.focus();
+         const caret = start + (prefix ? prefix.length : 0);
+         ta.setSelectionRange(caret, caret);
+         ta.dispatchEvent(new Event('input', { bubbles: true }));
+       };
+       this.$memoBold?.addEventListener('click', () => surround('**'));
+       this.$memoItalic?.addEventListener('click', () => surround('*'));
+       this.$memoCode?.addEventListener('click', () => surround('`'));
+       this.$memoH1?.addEventListener('click', () => linePrefix('#'));
+       this.$memoH2?.addEventListener('click', () => linePrefix('##'));
+       this.$memoUl?.addEventListener('click', () => linePrefix('-'));
+       this.$memoOl?.addEventListener('click', () => linePrefix('1.'));
+       this.$memoFull?.addEventListener('click', () => {
+         this.classList.toggle('memo-full');
+         this.toast(this.classList.contains('memo-full') ? '전체화면' : '일반 모드');
+       });
+       this.$memoExportMd?.addEventListener('click', () => {
+         const content = this.$memo.value || '';
+         const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+         const url = URL.createObjectURL(blob);
+         const a = document.createElement('a');
+         a.href = url; a.download = 'memo.md'; document.body.appendChild(a); a.click(); a.remove();
+         URL.revokeObjectURL(url);
+         this.toast('memo.md 다운로드');
+       });
+       this.$memoExportHtml?.addEventListener('click', () => {
+         const content = (this.$memo.value || '')
+           .replace(/\n/g, '<br/>')
+           .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+           .replace(/\*(.*?)\*/g, '<em>$1</em>')
+           .replace(/`(.*?)`/g, '<code>$1</code>');
+         const html = `<!doctype html><meta charset="utf-8"/><title>Memo</title><body style="font: 14px/1.6 system-ui, sans-serif; padding: 24px; max-width: 760px; margin: auto;">${content}</body>`;
+         const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+         const url = URL.createObjectURL(blob);
+         const a = document.createElement('a');
+         a.href = url; a.download = 'memo.html'; document.body.appendChild(a); a.click(); a.remove();
+         URL.revokeObjectURL(url);
+         this.toast('memo.html 다운로드');
+       });
+       this.$memoClear?.addEventListener('click', () => {
+         if (confirm('메모를 모두 지울까요?')) {
+           this.$memo.value = '';
+           this.$memo.dispatchEvent(new Event('input', { bubbles: true }));
+         }
+       });
+
+       // selection add
+       this.$addSel.addEventListener('click', () => {
+
         const sel = window.getSelection();
         const text = sel && sel.toString().trim();
         if (!text) {
@@ -553,17 +661,55 @@
         LS.set(KEYS.position, { x, y });
       });
 
-      // keyboard: Esc to close
-      window.addEventListener('keydown', e => {
-        if (e.key === 'Escape' && this.$panel.classList.contains('open')) {
-          this.$panel.classList.remove('open');
-          this.updateOpen();
-        }
-        if (e.altKey && (e.key === 'm' || e.key === 'M')) {
-          this.$panel.classList.toggle('open');
-          this.updateOpen();
-        }
-      });
+       // keyboard: Esc to close + editor shortcuts
+       window.addEventListener('keydown', e => {
+         if (e.key === 'Escape' && this.$panel.classList.contains('open')) {
+           this.$panel.classList.remove('open');
+           this.updateOpen();
+         }
+         if (e.altKey && (e.key === 'm' || e.key === 'M')) {
+           this.$panel.classList.toggle('open');
+           this.updateOpen();
+         }
+         // common editor shortcuts when panel open
+         if (this.$panel.classList.contains('open') && document.activeElement === this.$memo) {
+           const meta = e.metaKey || e.ctrlKey;
+           if (meta && e.key.toLowerCase() === 'b') { e.preventDefault(); surround('**'); }
+           if (meta && e.key.toLowerCase() === 'i') { e.preventDefault(); surround('*'); }
+           if (meta && e.key === '`') { e.preventDefault(); surround('`'); }
+         }
+       });
+
+       // indent/outdent with Tab/Shift+Tab inside memo
+       this.$memo.addEventListener('keydown', e => {
+         if (e.key === 'Tab') {
+           e.preventDefault();
+           const ta = this.$memo;
+           const { selectionStart: s, selectionEnd: epos, value } = ta;
+           if (e.shiftKey) {
+             // outdent: remove leading two spaces or one dash
+             const start = value.lastIndexOf('\n', s - 1) + 1;
+             const line = value.slice(start, epos);
+             let removed = 0;
+             let newLine = line;
+             if (newLine.startsWith('  ')) { newLine = newLine.slice(2); removed = 2; }
+             else if (newLine.startsWith('- ')) { newLine = newLine.slice(2); removed = 2; }
+             else if (newLine.startsWith('1. ')) { newLine = newLine.slice(3); removed = 3; }
+             const next = value.slice(0, start) + newLine + value.slice(epos);
+             ta.value = next;
+             const ns = Math.max(s - removed, start);
+             ta.setSelectionRange(ns, ns);
+           } else {
+             const before = value.slice(0, s);
+             const after = value.slice(epos);
+             ta.value = before + '  ' + after;
+             const ns = s + 2;
+             ta.setSelectionRange(ns, ns);
+           }
+           ta.dispatchEvent(new Event('input', { bubbles: true }));
+         }
+       });
+
     }
 
     getCurrentPostInfo() {

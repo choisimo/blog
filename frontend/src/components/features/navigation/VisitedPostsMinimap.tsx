@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -59,6 +59,8 @@ export function VisitedPostsMinimap() {
   const items = useVisitedPosts();
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
+  const listRef = useRef<HTMLUListElement | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const topStack = useMemo(() => items.slice(0, 4), [items]);
 
@@ -67,6 +69,14 @@ export function VisitedPostsMinimap() {
     navigate(p.path);
     // Scroll reset is handled by BlogPost's effect
   };
+
+  const clearAll = () => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+      window.dispatchEvent(new CustomEvent('visitedposts:update'));
+    } catch {}
+  };
+
 
   if (!items.length) return null;
 
@@ -86,47 +96,55 @@ export function VisitedPostsMinimap() {
           History
           {open ? <ChevronDown className="ml-1 h-3 w-3" /> : <ChevronUp className="ml-1 h-3 w-3" />}
         </Button>
-        <div className="relative h-8 w-[80px]" aria-hidden>
-          {topStack.map((p, i) => (
-            <div
-              key={p.path}
-              className={cn(
-                'absolute top-0 h-8 w-8 overflow-hidden rounded-full ring-2 ring-background shadow translate-x-0',
-                `right-[${i * 18}px]` // approximate stagger
-              )}
-              style={{ right: i * 18 }}
-              title={p.title}
-            >
-              {p.coverImage ? (
-                <img src={p.coverImage} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <FallbackAvatar title={p.title} />
-              )}
-            </div>
-          ))}
-        </div>
+        {/* avatar stack moved into panel header */}
       </div>
 
       {/* Expanded panel */}
       {open && (
         <Card className="mt-3 w-[320px] max-h-[60vh] overflow-hidden border shadow-xl">
           <div className="flex items-center justify-between px-3 py-2">
-            <div className="flex items-center gap-2 text-sm font-semibold">
+            <div className="flex items-center gap-3 text-sm font-semibold">
               <Map className="h-4 w-4" />
-              Recently visited
+              <span>Recently visited</span>
+              <div className="relative h-8 w-[96px]" aria-hidden>
+                {topStack.map((p, i) => (
+                  <div
+                    key={p.path}
+                    className="absolute top-0 h-8 w-8 overflow-hidden rounded-full ring-2 ring-background shadow"
+                    style={{ right: i * 20 }}
+                    title={p.title}
+                  >
+                    {p.coverImage ? (
+                      <img src={p.coverImage} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <FallbackAvatar title={p.title} />
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close minimap">
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" onClick={clearAll} aria-label="Clear history">Clear</Button>
+              <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close minimap">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
           <Separator />
-          <div className="max-h-[52vh] overflow-y-auto p-2">
-            <ul className="space-y-1">
-              {items.map(p => (
+          <div className="max-h-[52vh] overflow-y-auto p-2" onKeyDown={(e)=>{
+            if(e.key==='ArrowDown'){ e.preventDefault(); setActiveIndex(i=> Math.min(i+1, items.length-1)); }
+            if(e.key==='ArrowUp'){ e.preventDefault(); setActiveIndex(i=> Math.max(i-1, 0)); }
+            if(e.key==='Enter'){ e.preventDefault(); const p = items[activeIndex]; if(p) go(p); }
+          }}>
+            <ul ref={listRef} className="space-y-1">
+              {items.map((p, idx) => (
                 <li key={p.path}>
                   <button
                     onClick={() => go(p)}
-                    className="group flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-muted"
+                    className={cn(
+                      'group flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-muted',
+                      activeIndex===idx && 'ring-2 ring-primary'
+                    )}
                   >
                     <div className="h-8 w-8 overflow-hidden rounded">
                       {p.coverImage ? (

@@ -33,17 +33,17 @@
 .panel {
   position: fixed;
   z-index: 2147483647;
-  width: 360px;
-  max-width: calc(100vw - 24px);
-  height: 480px;
+  width: 420px;
+  max-width: min(720px, calc(100vw - 24px));
+  height: 560px;
   max-height: calc(100vh - 24px);
   right: 16px; /* default before position restored */
   bottom: 160px; /* default before position restored (keeps ~64px above launcher) */
   display: none;
   background: #ffffff;
   color: #111827;
-  border-radius: 12px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
   border: 1px solid rgba(0, 0, 0, 0.08);
   overflow: hidden;
 }
@@ -57,7 +57,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  background: #0f172a;
+  background: linear-gradient(90deg, #0f172a, #111827);
   color: #fff;
   cursor: move;
 }
@@ -111,6 +111,17 @@
   display: block;
 }
 
+/* Fullscreen memo mode */
+:host(.memo-full) .panel {
+  width: min(100vw, 1200px);
+  height: min(100vh, 860px);
+  left: 50% !important;
+  top: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translate(-50%, -50%);
+}
+
 .section {
   margin-bottom: 10px;
 }
@@ -132,8 +143,10 @@
     system-ui;
 }
 .textarea {
-  min-height: 160px;
-  resize: vertical;
+  min-height: 220px;
+  resize: both;
+  border-radius: 10px;
+  line-height: 1.6;
 }
 
 /* Dev mode */
@@ -181,6 +194,11 @@
   background: #111827;
   color: #fff;
   font: 600 12px/1 ui-sans-serif;
+  transition: transform 0.08s ease, box-shadow 0.15s ease;
+}
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.12);
 }
 .btn.secondary {
   background: #fff;
@@ -194,9 +212,12 @@
 .footer {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 8px;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-top: 1px solid #e5e7eb;
+  background: rgba(249, 250, 251, 0.7);
+  backdrop-filter: blur(6px);
 }
 .small {
   font-size: 11px;
@@ -227,6 +248,8 @@
   color: #e5e7eb;
   border-color: rgba(255, 255, 255, 0.08);
 }
+:host(.dark) .footer { background: rgba(2, 6, 23, 0.6); backdrop-filter: blur(6px); }
+:host(.dark) .btn:hover { box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
 :host(.dark) .header {
   background: #050a1a;
 }

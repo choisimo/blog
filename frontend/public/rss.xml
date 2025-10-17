@@ -3,15 +3,15 @@
   <channel>
     <title>Nodove Blog</title>
     <description>A blog about technology, programming, and web development</description>
-    <link>https://noblog.nodove.com</link>
-    <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Fri, 17 Oct 2025 05:22:35 GMT</lastBuildDate>
+    <link>http://localhost:3000</link>
+    <atom:link href="http://localhost:3000/rss.xml" rel="self" type="application/rss+xml"/>
+    <lastBuildDate>Fri, 17 Oct 2025 18:15:08 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
       <title>BST TreeInsertion 횟수 구하기 고민한 내용 정리</title>
       <description>BST 트리 호출 횟수 구하기를 보다가 떠오른 최적화 방안 생각 정리</description>
-      <link>https://noblog.nodove.com/blog/2025/BST-think01</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/BST-think01</guid>
+      <link>http://localhost:3000/blog/2025/BST-think01</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/BST-think01</guid>
       <pubDate>Fri, 17 Oct 2025 00:00:00 GMT</pubDate>
       <category>Algorithm</category>
       <category>Machine Learning</category>
@@ -20,10 +20,30 @@
       <category>줌인</category>
     </item>
     <item>
+      <title>트랜스포머의 한계에 대하여: 바텀업을 넘어 하향식으로</title>
+      <description>트랜스포머가 왜 강하고 왜 비켜가야 하는지, PIM·RAG·압축·NAS를 오가며 고찰한 기록.</description>
+      <link>http://localhost:3000/blog/2025/Limitation-Of-Transformer</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/Limitation-Of-Transformer</guid>
+      <pubDate>Fri, 17 Oct 2025 00:00:00 GMT</pubDate>
+      <category>AI</category>
+      <category>Transformer</category>
+      <category>RAG</category>
+      <category>PIM</category>
+      <category>Inference</category>
+      <category>Training</category>
+      <category>LayerFusion</category>
+      <category>Quantization</category>
+      <category>Pruning</category>
+      <category>Distillation</category>
+      <category>NAS</category>
+      <category>TopDown</category>
+      <category>BottomUp</category>
+    </item>
+    <item>
       <title>보이지 않는 나는 양자 상태인가?: 물리적 현실과 심리학적 진실의 경계</title>
       <description>물리학의 &apos;결어긋남&apos;은 우리 몸의 양자 상태를 부정하지만, &apos;무의식&apos;의 작동 원리를 설명하는 가장 완벽한 비유일지도 모릅니다.</description>
-      <link>https://noblog.nodove.com/blog/2025/QuantumShadow</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/QuantumShadow</guid>
+      <link>http://localhost:3000/blog/2025/QuantumShadow</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/QuantumShadow</guid>
       <pubDate>Fri, 17 Oct 2025 00:00:00 GMT</pubDate>
       <category>과학 &amp; 철학</category>
       <category>양자역학</category>
@@ -36,8 +56,8 @@
     <item>
       <title>나의 고독은 우주의 시작과 맞닿아 있었다</title>
       <description>개인의 고독에 대한 내면 탐험이 어떻게 칼 융의 심리학과 양자역학을 거쳐, 결국 우주의 시작과 끝에 대한 거대한 통찰로 이어지는지에 대한 철학적 에세이.</description>
-      <link>https://noblog.nodove.com/blog/2025/QuantumSpaceInside</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/QuantumSpaceInside</guid>
+      <link>http://localhost:3000/blog/2025/QuantumSpaceInside</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/QuantumSpaceInside</guid>
       <pubDate>Fri, 17 Oct 2025 00:00:00 GMT</pubDate>
       <category>철학 &amp; 사유</category>
       <category>칼융</category>
@@ -50,8 +70,8 @@
     <item>
       <title>네트워크 발전의 역사: ARPANET에서 5G/6G까지</title>
       <description>패킷 교환의 탄생부터 인터넷 표준화, 웹의 폭발적 성장, 모바일·클라우드·엣지, 그리고 5G/6G로 이어지는 네트워크 발전사를 핵심 이정표 중심으로 정리합니다.</description>
-      <link>https://noblog.nodove.com/blog/2025/network-evolution-history</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/network-evolution-history</guid>
+      <link>http://localhost:3000/blog/2025/network-evolution-history</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/network-evolution-history</guid>
       <pubDate>Sun, 31 Aug 2025 00:00:00 GMT</pubDate>
       <category>CS</category>
       <category>network</category>
@@ -68,8 +88,8 @@
 
 ## 개요
 React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lifecycle) 기능을 사용할 수 있게 해주는 기능입니다. React 16.8에서 처음 도입된 이 기능은 클래스형 컴포넌트를 사용하는 대신, 더 간결하고 이해하기 쉬운 코드를 작성할 수 있도록 도와줍니다. 이번 글에서는 React</description>
-      <link>https://noblog.nodove.com/blog/2025/hooks</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/hooks</guid>
+      <link>http://localhost:3000/blog/2025/hooks</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/hooks</guid>
       <pubDate>Mon, 11 Aug 2025 00:00:00 GMT</pubDate>
       <category>기술</category>
 
@@ -81,8 +101,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
 ## 영화 개관과 감독의 비전
 
 **블레이드 러너**는 1982년 리들리 스콧 감독이 필립 K. 딕의 소설 『안드로이드는 전기양의 꿈을 꾸는가?』를 각색한 SF 누아르의 금자탑입니다. 개봉 당시 상업적으로는 실패했지만, 시간이 지나면서 **인간 존재의 본질에 대한</description>
-      <link>https://noblog.nodove.com/blog/2024/blade-runner-philosophy</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2024/blade-runner-philosophy</guid>
+      <link>http://localhost:3000/blog/2024/blade-runner-philosophy</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2024/blade-runner-philosophy</guid>
       <pubDate>Sun, 10 Aug 2025 00:00:00 GMT</pubDate>
       <category>사고와 인식</category>
       <category>블레이드러너</category>
@@ -104,8 +124,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>칼 융 내면 성찰에 관련된 영화들</title>
       <description>칼 융의 분석심리학에서 핵심 개념인 **개성화(Individuation)**는 개인이 그림자를 통합하고 집단무의식에서 진정한 자아를 분리해 온전한 인간이 되는 여정을 가리킵니다. 융이 강조한 **내면의 강인함**은 외부 기준이나 집단 압력에 굴복하지 않고 내면 목소리에 따르는 용기에서 비롯됩니다. 아래 영화들은 이러한 융의 철학을 깊이 있게 반영한 작품들입</description>
-      <link>https://noblog.nodove.com/blog/2024/jung-psychology-cinema</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2024/jung-psychology-cinema</guid>
+      <link>http://localhost:3000/blog/2024/jung-psychology-cinema</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2024/jung-psychology-cinema</guid>
       <pubDate>Sun, 10 Aug 2025 00:00:00 GMT</pubDate>
       <category>사고와 인식</category>
       <category>칼융</category>
@@ -126,8 +146,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>Proxmox QDevice 투표 문제에 대해서</title>
       <description>Proxmox 클러스터에서 QDevice가 투표권을 갖지 못하는 문제 트러블슈팅</description>
-      <link>https://noblog.nodove.com/blog/2024/proxmox-qdevice-voting-problem-guide</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2024/proxmox-qdevice-voting-problem-guide</guid>
+      <link>http://localhost:3000/blog/2024/proxmox-qdevice-voting-problem-guide</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2024/proxmox-qdevice-voting-problem-guide</guid>
       <pubDate>Sun, 10 Aug 2025 00:00:00 GMT</pubDate>
       <category>Proxmox</category>
       <category>Proxmox</category>
@@ -146,8 +166,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
 
 ## 1일차: 준비 과정
 오늘은 두더지를 관찰하기 위해</description>
-      <link>https://noblog.nodove.com/blog/2025/mole-observation-diary</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/mole-observation-diary</guid>
+      <link>http://localhost:3000/blog/2025/mole-observation-diary</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/mole-observation-diary</guid>
       <pubDate>Sun, 10 Aug 2025 00:00:00 GMT</pubDate>
       <category>기술</category>
       <category>두더지</category>
@@ -156,8 +176,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>격자를 부수다: 폰 노이만 아키텍처의 종말과 그리드 시스템의 한계</title>
       <description>우리가 당연하게 여겼던 중앙화된 &apos;그리드&apos; 시스템의 환상을 깨고, 폰 노이만 아키텍처의 근본적 한계를 넘어 분산형 미래로 나아가는 길을 제시합니다.</description>
-      <link>https://noblog.nodove.com/blog/2025/FutureClouding</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/FutureClouding</guid>
+      <link>http://localhost:3000/blog/2025/FutureClouding</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/FutureClouding</guid>
       <pubDate>Fri, 21 Feb 2025 00:00:00 GMT</pubDate>
       <category>기술</category>
       <category>폰노이만아키텍처</category>
@@ -173,8 +193,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
 ## 영화 개관
 
 **다크시티**는 1998년 알렉스 프로야스 감독이 선보인 SF 누아르 영화로, 매트릭스보다 1년 앞서 시뮬레이션 현실이라는 혁신적 개념을 다룬 숨겨진 걸작입니다. 하지만 이 영화의 진정한 가치는 단순한 SF적 상상력을 넘어, **실존주의 철학의 핵심 명제들</description>
-      <link>https://noblog.nodove.com/blog/2024/dark-city-existentialism</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2024/dark-city-existentialism</guid>
+      <link>http://localhost:3000/blog/2024/dark-city-existentialism</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2024/dark-city-existentialism</guid>
       <pubDate>Fri, 24 Jan 2025 07:30:00 GMT</pubDate>
       <category>General</category>
       <category>다크시티</category>
@@ -197,8 +217,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
 ## 영화 개관과 감독의 비전
 
 **브라질**은 1985년 테리 길리엄 감독이 선보인 디스토피아 SF 블랙 코미디로, 조지 오웰의 『1984』를 넘어서는 현대 문명 비판의 걸작입니다[1]. 길리엄은 이 작품을 통해 **관료제가 미쳐버린 산업 세계에 대한 평생의 분노**를</description>
-      <link>https://noblog.nodove.com/blog/2024/brazil-1985-review</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2024/brazil-1985-review</guid>
+      <link>http://localhost:3000/blog/2024/brazil-1985-review</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2024/brazil-1985-review</guid>
       <pubDate>Fri, 24 Jan 2025 06:30:00 GMT</pubDate>
       <category>General</category>
       <category>테리 길리엄</category>
@@ -217,8 +237,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>양자 얽힘으로 AI의 애매모호함 해결하기: 양자 기계 학습의 미래</title>
       <description>양자역학의 얽힘 원리를 활용해 딥러닝 레이어 간 애매모호함을 해결하는 혁명적 접근법</description>
-      <link>https://noblog.nodove.com/blog/2025/QuantumLayerLLM</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/QuantumLayerLLM</guid>
+      <link>http://localhost:3000/blog/2025/QuantumLayerLLM</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/QuantumLayerLLM</guid>
       <pubDate>Thu, 16 Jan 2025 00:00:00 GMT</pubDate>
       <category>기술</category>
       <category>양자컴퓨팅</category>
@@ -230,8 +250,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>최신 게시글</title>
       <description></description>
-      <link>https://noblog.nodove.com/blog/2025/latest</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/latest</guid>
+      <link>http://localhost:3000/blog/2025/latest</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/latest</guid>
       <pubDate>Tue, 07 Jan 2025 00:00:00 GMT</pubDate>
       <category>기술</category>
 
@@ -239,8 +259,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>중동 지역 AI 도입으로 생긴 새로운 갈등들을 보면서 드는 생각</title>
       <description>중동 지역의 AI 기술 도입이 어떤 새로운 갈등 구조를 만들어내고 있는지 분석해본 내용</description>
-      <link>https://noblog.nodove.com/blog/2025/middle-east-ai-conflicts</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/middle-east-ai-conflicts</guid>
+      <link>http://localhost:3000/blog/2025/middle-east-ai-conflicts</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/middle-east-ai-conflicts</guid>
       <pubDate>Sat, 04 Jan 2025 00:00:00 GMT</pubDate>
       <category>Technology</category>
       <category>중동</category>
@@ -253,8 +273,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>메모리 관리 공부하다가 깨달은 페이징 시스템의 진짜 장점</title>
       <description>운영체제 메모리 관리를 공부하면서 페이징과 스와핑이 왜 필요했는지 이해한 과정</description>
-      <link>https://noblog.nodove.com/blog/2025/memory-management-study</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/memory-management-study</guid>
+      <link>http://localhost:3000/blog/2025/memory-management-study</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/memory-management-study</guid>
       <pubDate>Wed, 01 Jan 2025 00:00:00 GMT</pubDate>
       <category>Computer Science</category>
       <category>메모리관리</category>
@@ -266,8 +286,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>React Native + Spring Boot + MongoDB로 일기 앱 만들기</title>
       <description>React Native 클라이언트와 Spring Boot 백엔드, Python AI 서버를 연동해서 일기 앱을 만든 경험</description>
-      <link>https://noblog.nodove.com/blog/2025/react-native-springboot-mongodb-diary-app</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/react-native-springboot-mongodb-diary-app</guid>
+      <link>http://localhost:3000/blog/2025/react-native-springboot-mongodb-diary-app</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/react-native-springboot-mongodb-diary-app</guid>
       <pubDate>Sat, 28 Dec 2024 00:00:00 GMT</pubDate>
       <category>개발</category>
       <category>React Native</category>
@@ -280,8 +300,8 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>Git 서브모듈, 진짜 쓸 만한 걸까?</title>
       <description>Git 서브모듈을 실제 프로젝트에서 써본 후기와 실용적인 사용법 정리</description>
-      <link>https://noblog.nodove.com/blog/2025/git-submodule-guide</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/git-submodule-guide</guid>
+      <link>http://localhost:3000/blog/2025/git-submodule-guide</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/git-submodule-guide</guid>
       <pubDate>Wed, 25 Dec 2024 00:00:00 GMT</pubDate>
       <category>개발</category>
       <category>Git</category>
@@ -293,26 +313,14 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
     <item>
       <title>배낭 문제 (Knapsack Problem)</title>
       <description>0-1 배낭 문제와 무한 배낭 문제를 동적 계획법으로 해결하는 다양한 방법을 학습합니다.</description>
-      <link>https://noblog.nodove.com/blog/2025/knapsack</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/knapsack</guid>
+      <link>http://localhost:3000/blog/2025/knapsack</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/knapsack</guid>
       <pubDate>Sat, 21 Dec 2024 00:00:00 GMT</pubDate>
       <category>Algorithm</category>
       <category>Knapsack</category>
       <category>배낭문제</category>
       <category>동적계획법</category>
       <category>최적화</category>
-    </item>
-    <item>
-      <title>소수 판별과 소인수분해 알고리즘</title>
-      <description>효율적인 소수 판별과 소인수분해를 위한 다양한 수학 알고리즘들을 학습합니다.</description>
-      <link>https://noblog.nodove.com/blog/2025/prime-numbers</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/prime-numbers</guid>
-      <pubDate>Tue, 17 Dec 2024 00:00:00 GMT</pubDate>
-      <category>Algorithm</category>
-      <category>소수</category>
-      <category>에라토스테네스의체</category>
-      <category>소인수분해</category>
-      <category>밀러라빈</category>
     </item>
   </channel>
 </rss>

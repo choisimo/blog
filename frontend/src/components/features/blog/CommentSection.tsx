@@ -1,6 +1,8 @@
 import * as React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { getApiBaseUrl } from '@/utils/apiBase';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // Load any archived comments bundled at build-time
 // Using a relative glob; keys may vary (relative vs absolute) depending on bundler.
@@ -43,6 +45,8 @@ export default function CommentSection({ postId }: { postId: string }) {
   const [author, setAuthor] = useState('');
   const [content, setContent] = useState('');
   const [website, setWebsite] = useState('');
+  const [hp, setHp] = useState(''); // honeypot
+  const [formShownAt, setFormShownAt] = useState<number>(Date.now());
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -127,6 +131,16 @@ export default function CommentSection({ postId }: { postId: string }) {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!author.trim() || !content.trim()) return;
+    // spam defenses
+    const now = Date.now();
+    if (hp.trim()) {
+      setError('Submission blocked.');
+      return;
+    }
+    if (now - formShownAt < 3000) {
+      setError('Please take a moment before submitting.');
+      return;
+    }
     try {
       setSubmitting(true);
       setError(null);
@@ -140,6 +154,8 @@ export default function CommentSection({ postId }: { postId: string }) {
           author: author.trim(),
           content: content.trim(),
           website: website.trim() || undefined,
+          // spam signals (best-effort; backend may ignore)
+          meta: { shownAt: formShownAt, submittedAt: now },
         }),
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -168,7 +184,7 @@ export default function CommentSection({ postId }: { postId: string }) {
   }
 
   return (
-    <section aria-label='Comments' className='space-y-4'>
+    <section aria-label='Comments' className='space-y-6'>
       <h2 className='text-xl font-semibold'>Comments</h2>
 
       {loading && (
@@ -179,12 +195,16 @@ export default function CommentSection({ postId }: { postId: string }) {
       {comments && comments.length > 0 ? (
         <ul className='space-y-3'>
           {comments.map((c, idx) => (
-            <li key={c.id || idx} className='rounded border p-3'>
+            <li key={c.id || idx} className='rounded-xl border bg-card/50 backdrop-blur-sm p-4'>
               <div className='mb-1 text-sm font-medium'>{c.author}</div>
-              <div className='text-sm whitespace-pre-wrap'>{c.content}</div>
+              <div className='prose prose-sm dark:prose-invert max-w-none leading-6'>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {c.content}
+                </ReactMarkdown>
+              </div>
               {c.website && (
                 <div className='mt-1 text-xs text-muted-foreground'>
-                  <a href={c.website} target='_blank' rel='noreferrer'>
+                  <a href={c.website} target='_blank' rel='noreferrer' className='underline-offset-2 hover:underline'>
                     {c.website}
                   </a>
                 </div>
@@ -205,55 +225,62 @@ export default function CommentSection({ postId }: { postId: string }) {
         )
       )}
 
-      <form onSubmit={onSubmit} className='mt-6 grid gap-2'>
+      <form onSubmit={onSubmit} className='mt-2 grid gap-4 rounded-2xl border bg-card/60 p-4 backdrop-blur-sm'>
         <div className='grid gap-1'>
-          <label className='text-sm' htmlFor='c-author'>
+          <label className='text-sm text-muted-foreground' htmlFor='c-author'>
             Name
           </label>
           <input
             id='c-author'
-            className='rounded border px-3 py-2'
+            className='rounded-md border bg-background px-3 py-2 shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20'
             value={author}
             onChange={e => setAuthor(e.target.value)}
             required
           />
         </div>
         <div className='grid gap-1'>
-          <label className='text-sm' htmlFor='c-website'>
+          <label className='text-sm text-muted-foreground' htmlFor='c-website'>
             Website (optional)
           </label>
           <input
             id='c-website'
-            className='rounded border px-3 py-2'
+            className='rounded-md border bg-background px-3 py-2 shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20'
             value={website}
             onChange={e => setWebsite(e.target.value)}
             placeholder='https://example.com'
           />
         </div>
+        {/* Honeypot field - keep hidden from users */}
+        <div className='hidden'>
+          <label htmlFor='c-hp'>Do not fill</label>
+          <input id='c-hp' value={hp} onChange={e=>setHp(e.target.value)} />
+        </div>
         <div className='grid gap-1'>
-          <label className='text-sm' htmlFor='c-content'>
-            Comment
-          </label>
+          <div className='flex items-center justify-between'>
+            <label className='text-sm text-muted-foreground' htmlFor='c-content'>
+              Comment
+            </label>
+            <span className='text-xs text-muted-foreground'>Markdown supported: **bold**, *italic*, `code`, lists</span>
+          </div>
           <textarea
             id='c-content'
-            className='min-h-[120px] rounded border px-3 py-2'
+            className='min-h-[140px] rounded-md border bg-background px-3 py-2 leading-6 shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20'
             value={content}
             onChange={e => setContent(e.target.value)}
             required
           />
         </div>
-        <div>
+        <div className='flex items-center gap-3'>
           <button
             type='submit'
-            className='inline-flex items-center rounded bg-black px-4 py-2 text-white disabled:opacity-60 dark:bg-white dark:text-black'
+            className='inline-flex items-center rounded-md bg-primary px-4 py-2 text-primary-foreground shadow hover:brightness-110 disabled:opacity-60'
             disabled={submitting}
           >
             {submitting ? 'Submitting…' : 'Post Comment'}
           </button>
           {archived && (
-            <span className='ml-2 text-xs text-muted-foreground'>
-              This post has archived comments; new comments will show
-              dynamically.
+            <span className='text-xs text-muted-foreground'>
+              This post has archived comments; new comments will show dynamically.
             </span>
           )}
         </div>
