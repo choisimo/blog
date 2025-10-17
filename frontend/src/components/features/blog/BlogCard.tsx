@@ -15,6 +15,7 @@ import { formatDate } from '@/utils/blog';
 import { ArrowRight, Clock, User } from 'lucide-react';
 import { DateDisplay, TagList } from '@/components/atoms';
 import { prefetchPost } from '@/data/posts';
+import { OptimizedImage } from '@/components/common/OptimizedImage';
 
 interface BlogCardProps {
   post: BlogPost;
@@ -31,25 +32,31 @@ const BlogCard = memo(({ post }: BlogCardProps) => {
 
   return (
     <Card className='h-full flex flex-col hover:shadow-lg transition-all duration-300 group border-border/50 hover:border-border'>
-      {/* Cover image if available */}
-      {post.coverImage && (
-        <div className='aspect-video overflow-hidden'>
-          <img
+      {/* Cover image or placeholder */}
+      <div className='aspect-video overflow-hidden bg-muted/40'>
+        {post.coverImage ? (
+          <OptimizedImage
             src={post.coverImage}
             alt={post.title}
             className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'
           />
-        </div>
-      )}
+        ) : (
+          <div className='w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-900'>
+            <svg className='w-10 h-10 text-slate-400 dark:text-slate-500' viewBox='0 0 24 24' fill='none' stroke='currentColor' aria-hidden='true'>
+              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' />
+            </svg>
+          </div>
+        )}
+      </div>
 
-      <CardHeader className='pb-3'>
+      <CardHeader className='pb-0 px-6 pt-6 md:px-8 md:pt-8'>
         <div className='flex justify-between items-start gap-2 mb-3'>
           <Badge variant='secondary' className='text-xs'>
             {post.category}
           </Badge>
           <DateDisplay date={formatDate(post.date)} />
         </div>
-        <CardTitle className='line-clamp-2 group-hover:text-primary transition-colors leading-tight'>
+        <CardTitle className='line-clamp-2 group-hover:text-primary transition-colors leading-tight font-extrabold'>
           <Link
             to={postUrl}
             state={{ from: location }}
@@ -62,13 +69,13 @@ const BlogCard = memo(({ post }: BlogCardProps) => {
         </CardTitle>
       </CardHeader>
 
-      <CardContent className='flex-1 pt-0'>
-        <CardDescription className='line-clamp-3 text-sm leading-relaxed'>
+      <CardContent className='flex-1 pt-3 px-6 md:px-8'>
+        <CardDescription className='line-clamp-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400'>
           {displayText}
         </CardDescription>
       </CardContent>
 
-      <CardFooter className='flex flex-col gap-3 pt-3'>
+      <CardFooter className='flex flex-col gap-3 pt-3 px-6 pb-6 md:px-8'>
         {/* Metadata row */}
         <div className='flex items-center justify-between w-full text-xs text-muted-foreground'>
           <div className='flex items-center gap-4'>
@@ -93,7 +100,7 @@ const BlogCard = memo(({ post }: BlogCardProps) => {
         {/* Tags */}
         {post.tags && post.tags.length > 0 && (
           <div className='w-full'>
-            <TagList tags={post.tags} maxVisible={3} size='sm' />
+            <TagList tags={post.tags} maxVisible={3} size='sm' showIcon={false} variant='secondary' />
           </div>
         )}
 

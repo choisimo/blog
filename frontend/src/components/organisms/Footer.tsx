@@ -8,12 +8,15 @@ export function Footer() {
   return (
     <footer className="border-t bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="py-8 md:py-12">
+        <div className="py-10 md:py-14">
           <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Nodove Blog</h3>
               <p className="text-sm text-muted-foreground">
-                Sharing knowledge and experiences in software development.
+                최신 기술 트렌드를 놓치지 마세요!
+              </p>
+              <p className="text-sm text-muted-foreground">
+                유용한 글을 메일로 보내드려요.
               </p>
               <div className="flex space-x-4">
                 <Button variant="ghost" size="icon" asChild>
@@ -98,7 +101,7 @@ export function Footer() {
             <div className="space-y-4">
               <h4 className="text-sm font-semibold">Subscribe</h4>
               <p className="text-sm text-muted-foreground">
-                Get the latest posts delivered to your inbox.
+                최신 글을 메일로 받아보세요.
               </p>
               <form className="space-y-2">
                 <input

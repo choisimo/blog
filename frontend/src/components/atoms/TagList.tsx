@@ -14,7 +14,7 @@ export function TagList({
   tags,
   maxVisible = 2,
   showIcon = true,
-  variant = "outline",
+  variant = "secondary",
   className = "",
   size = "default",
 }: TagListProps) {
@@ -24,10 +24,9 @@ export function TagList({
   const remainingCount = tags.length - maxVisible;
 
   const sizeClasses = {
-    sm: "text-xs px-1.5 py-0.5",
-    default: "text-xs",
-    lg: "text-sm",
-  };
+    sm: "text-xs px-2 py-0.5 rounded-full",
+    default: "text-xs px-2.5 py-0.5 rounded-full",
+    lg: "text-sm px-3 py-1 rounded-full",};
 
   const iconSizes = {
     sm: "h-2.5 w-2.5",
@@ -42,7 +41,7 @@ export function TagList({
         <Badge
           key={tag}
           variant={variant}
-          className={`${sizeClasses[size]} whitespace-nowrap`}
+          className={`${sizeClasses[size]} whitespace-nowrap bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200`}
         >
           {tag}
         </Badge>

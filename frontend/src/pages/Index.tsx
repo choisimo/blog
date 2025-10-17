@@ -57,15 +57,13 @@ const Index = () => {
           </span>
         </h1>
         <p className='text-xl text-muted-foreground max-w-2xl mx-auto'>
-          Exploring the frontiers of software development, AI, and modern web
-          technologies. Join me on this journey of continuous learning and
-          innovation.
+          최신 웹, AI, 개발 인사이트를 빠르게 공유합니다.
         </p>
         <div className='flex flex-col sm:flex-row gap-4 justify-center'>
           <Button asChild size='lg'>
             <Link to='/blog'>
               <BookOpen className='mr-2 h-5 w-5' />
-              Explore Blog
+              Enter Blog
             </Link>
           </Button>
           <Button asChild variant='outline' size='lg'>
@@ -84,10 +82,10 @@ const Index = () => {
           {categories.map(category => (
             <Card
               key={category.name}
-              className='hover:shadow-lg transition-shadow cursor-pointer'
+              className='group hover:shadow-xl transition-all cursor-pointer hover:-translate-y-0.5'
             >
               <CardHeader className='text-center'>
-                <category.icon className={`h-8 w-8 mx-auto mb-2 ${category.color}`} />
+                <category.icon className={`h-8 w-8 mx-auto mb-2 ${category.color} group-hover:text-primary`} />
                 <CardTitle className='text-lg'>{category.name}</CardTitle>
                 <CardDescription>{category.count} posts</CardDescription>
               </CardHeader>
