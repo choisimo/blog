@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { X, Clock, Map, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Clock, Map } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export type VisitedPostItem = {
   path: string; // "/blog/:year/:slug"
@@ -59,8 +59,9 @@ export function VisitedPostsMinimap() {
   const items = useVisitedPosts();
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
-  const listRef = useRef<HTMLUListElement | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const isMobile = useIsMobile();
+  const listContainerRef = useRef<HTMLDivElement | null>(null);
 
   const topStack = useMemo(() => items.slice(0, 4), [items]);
 
@@ -77,73 +78,86 @@ export function VisitedPostsMinimap() {
     } catch {}
   };
 
-
   if (!items.length) return null;
 
   return (
     <div className="fixed bottom-8 right-24 z-50 select-none">
-      {/* Collapsed stack button */}
-      <div className="flex items-center justify-end gap-2">
-        <Button
-          variant="secondary"
-          size="sm"
-          className="shadow-lg backdrop-blur-sm"
-          onClick={() => setOpen(o => !o)}
-          aria-expanded={open}
-          aria-label="Visited posts minimap"
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="shadow-lg backdrop-blur-sm"
+            aria-expanded={open}
+            aria-label="Open visited posts history"
+            onClick={() => {
+              // Focus the list on open for keyboard users
+              setTimeout(() => listContainerRef.current?.focus(), 0);
+            }}
+          >
+            <Map className="mr-2 h-4 w-4" />
+            History
+          </Button>
+        </SheetTrigger>
+        <SheetContent
+          side={isMobile ? 'bottom' : 'right'}
+          className={cn(
+            isMobile ? 'h-[90dvh]' : 'w-[380px] h-full',
+            'p-0'
+          )}
+          aria-describedby={undefined}
+          style={isMobile ? { paddingBottom: 'env(safe-area-inset-bottom)' } : undefined}
         >
-          <Map className="mr-2 h-4 w-4" />
-          History
-          {open ? <ChevronDown className="ml-1 h-3 w-3" /> : <ChevronUp className="ml-1 h-3 w-3" />}
-        </Button>
-        {/* avatar stack moved into panel header */}
-      </div>
-
-      {/* Expanded panel */}
-      {open && (
-        <Card className="mt-3 w-[320px] max-h-[60vh] overflow-hidden border shadow-xl">
-          <div className="flex items-center justify-between px-3 py-2">
-            <div className="flex items-center gap-3 text-sm font-semibold">
-              <Map className="h-4 w-4" />
-              <span>Recently visited</span>
-              <div className="relative h-8 w-[96px]" aria-hidden>
-                {topStack.map((p, i) => (
-                  <div
-                    key={p.path}
-                    className="absolute top-0 h-8 w-8 overflow-hidden rounded-full ring-2 ring-background shadow"
-                    style={{ right: i * 20 }}
-                    title={p.title}
-                  >
-                    {p.coverImage ? (
-                      <img src={p.coverImage} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <FallbackAvatar title={p.title} />
-                    )}
-                  </div>
-                ))}
+          <SheetHeader className="sticky top-0 z-10 border-b bg-background px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 text-sm font-semibold">
+                <Map className="h-4 w-4" />
+                <SheetTitle>Recently visited</SheetTitle>
+                <div className="relative h-8 w-[96px]" aria-hidden>
+                  {topStack.map((p, i) => (
+                    <div
+                      key={p.path}
+                      className="absolute top-0 h-8 w-8 overflow-hidden rounded-full ring-2 ring-background shadow"
+                      style={{ right: i * 20 }}
+                      title={p.title}
+                    >
+                      {p.coverImage ? (
+                        <img src={p.coverImage} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <FallbackAvatar title={p.title} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="sm" onClick={clearAll} aria-label="Clear history">Clear</Button>
+                <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close history">
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" onClick={clearAll} aria-label="Clear history">Clear</Button>
-              <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close minimap">
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          <Separator />
-          <div className="max-h-[52vh] overflow-y-auto p-2" onKeyDown={(e)=>{
-            if(e.key==='ArrowDown'){ e.preventDefault(); setActiveIndex(i=> Math.min(i+1, items.length-1)); }
-            if(e.key==='ArrowUp'){ e.preventDefault(); setActiveIndex(i=> Math.max(i-1, 0)); }
-            if(e.key==='Enter'){ e.preventDefault(); const p = items[activeIndex]; if(p) go(p); }
-          }}>
-            <ul ref={listRef} className="space-y-1">
+          </SheetHeader>
+          <div
+            ref={listContainerRef}
+            tabIndex={0}
+            className="max-h-full overflow-y-auto p-2 focus:outline-none"
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, items.length - 1)); }
+              if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex(i => Math.max(i - 1, 0)); }
+              if (e.key === 'Enter') { e.preventDefault(); const p = items[activeIndex]; if (p) go(p); }
+            }}
+            role="region"
+            aria-label="Visited posts list"
+          >
+            <ul className="space-y-1">
               {items.map((p, idx) => (
                 <li key={p.path}>
                   <button
                     onClick={() => go(p)}
                     className={cn(
-                      'group flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-muted',
-                      activeIndex===idx && 'ring-2 ring-primary'
+                      'group flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring',
+                      activeIndex === idx && 'ring-2 ring-primary'
                     )}
                   >
                     <div className="h-8 w-8 overflow-hidden rounded">
@@ -167,8 +181,8 @@ export function VisitedPostsMinimap() {
               ))}
             </ul>
           </div>
-        </Card>
-      )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
