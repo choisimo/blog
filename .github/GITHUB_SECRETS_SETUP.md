@@ -4,11 +4,12 @@ GitHub Actions에서 Cloudflare Workers 배포를 위한 Secret 설정 방법입
 
 ## 필요한 Secrets
 
-다음 4개의 Secret을 설정해야 합니다:
+다음 5개의 Secret을 설정해야 합니다:
 1. `CLOUDFLARE_ACCOUNT_ID` - Cloudflare 계정 ID
 2. `CLOUDFLARE_API_TOKEN` - Cloudflare API 토큰
 3. `GEMINI_API_KEY` - Google Gemini API 키
 4. `JWT_SECRET` - JWT 서명용 비밀 키
+5. `VITE_API_BASE_URL` - 프론트엔드가 사용할 백엔드 API 기본 URL (프로덕션 권장)
 
 ---
 
@@ -108,6 +109,7 @@ GitHub Repository → **Settings** → **Secrets and variables** → **Actions**
 - [x] CLOUDFLARE_API_TOKEN
 - [x] GEMINI_API_KEY
 - [x] JWT_SECRET
+- [x] VITE_API_BASE_URL
 
 ### 로컬 테스트
 로컬에서 API Token이 올바른지 테스트:
@@ -149,6 +151,13 @@ git push
 2. 기존 Token 삭제
 3. 새 Token 생성
 4. GitHub Secret 업데이트
+
+### 프론트엔드가 잘못된 API로 호출함
+**원인**: `VITE_API_BASE_URL` Secret 미설정으로 기본값(`blog-api.immuddelo.workers.dev`) 사용
+
+**해결**:
+- Repository Secret에 `VITE_API_BASE_URL` 추가 (예: `https://blog-api-prod.immuddelo.workers.dev`)
+- 또는 사용자 정의 도메인을 사용 중이면 해당 URL로 설정
 
 ---
 
