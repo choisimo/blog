@@ -3,6 +3,7 @@ import { Octokit } from '@octokit/rest';
 import { config } from '../config.js';
 import { getDb, Timestamp } from '../lib/firebase.js';
 import requireAdmin from '../middleware/adminAuth.js'; // centralized admin auth middleware
+import { buildFrontmatterMarkdown } from '../lib/markdown.js';
 
 const router = Router();
 
@@ -229,6 +230,104 @@ router.post('/archive-comments', requireAdmin, async (req, res, next) => {
     }
 
     return res.json({ ok: true, data: { archivedPosts: results, totalComments: total } });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// Create a new post by opening a PR that adds the markdown file under frontend/public/posts/:year/:slug.md
+router.post('/create-post-pr', requireAdmin, async (req, res, next) => {
+  try {
+    const { title, slug: slugRaw, year: yearRaw, content, frontmatter, draft } = req.body || {};
+
+    const owner = config.github.owner;
+    const repo = config.github.repo;
+    const token = config.github.token;
+    if (!owner || !repo || !token) {
+      return res.status(500).json({ ok: false, error: 'Server not configured for GitHub (owner/repo/token missing)' });
+    }
+
+    const year = String(yearRaw || new Date().getFullYear());
+    if (!/^\d{4}$/.test(year)) {
+      return res.status(400).json({ ok: false, error: 'year must be YYYY' });
+    }
+
+    const baseTitle = String(title || slugRaw || 'New Post');
+    const normalizedSlug = (baseTitle || 'post')
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9\-\s_]/g, '')
+      .replace(/[\s_]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    const filename = `${normalizedSlug || 'post'}.md`;
+
+    const fm = {
+      title: baseTitle,
+      date: new Date().toISOString(),
+      tags: [],
+      category: 'General',
+      published: draft ? false : true,
+      ...(frontmatter && typeof frontmatter === 'object' ? frontmatter : {}),
+    };
+    const body = typeof content === 'string' ? content : '';
+    const markdown = buildFrontmatterMarkdown(fm, body);
+
+    const octokit = new Octokit({ auth: token });
+
+    // Get default branch
+    const repoInfo = await octokit.rest.repos.get({ owner, repo });
+    const baseBranch = repoInfo.data.default_branch || 'main';
+
+    // Base ref SHA
+    const baseRef = await octokit.rest.git.getRef({ owner, repo, ref: `heads/${baseBranch}` });
+    const baseSha = baseRef.data.object.sha;
+
+    // Branch name
+    const stamp = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 12);
+    const branch = `post/${year}-${normalizedSlug}-${stamp}`;
+
+    await octokit.rest.git.createRef({ owner, repo, ref: `refs/heads/${branch}`, sha: baseSha });
+
+    // Destination path in repo
+    const destPath = `frontend/public/posts/${year}/${filename}`;
+
+    // Commit file
+    await octokit.rest.repos.createOrUpdateFileContents({
+      owner,
+      repo,
+      path: destPath,
+      message: `feat(post): add ${year}/${filename}`,
+      content: Buffer.from(markdown, 'utf8').toString('base64'),
+      branch,
+      committer:
+        config.github.gitUserName && config.github.gitUserEmail
+          ? { name: config.github.gitUserName, email: config.github.gitUserEmail }
+          : undefined,
+      author:
+        config.github.gitUserName && config.github.gitUserEmail
+          ? { name: config.github.gitUserName, email: config.github.gitUserEmail }
+          : undefined,
+    });
+
+    // Optionally run manifest generation file updates inside PR by touching a file
+    // (CI will generate manifests automatically on PR)
+
+    // Create PR
+    const prTitle = `Add new post: ${baseTitle} (${year}/${normalizedSlug})`;
+    const prBody = `This PR adds a new post file at ${destPath}.\n\n- Title: ${baseTitle}\n- Year: ${year}\n- Slug: ${normalizedSlug}\n- Published: ${fm.published !== false}`;
+
+    const pr = await octokit.rest.pulls.create({
+      owner,
+      repo,
+      title: prTitle,
+      head: branch,
+      base: baseBranch,
+      body: prBody,
+    });
+
+    return res.status(201).json({ ok: true, data: { prUrl: pr.data.html_url, branch, path: destPath } });
   } catch (err) {
     return next(err);
   }

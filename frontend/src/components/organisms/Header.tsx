@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/common';
-import { Menu, X, Home, BookOpen, User, Mail } from 'lucide-react';
-import { useState } from 'react';
+import { Menu, X, Home, BookOpen, User, Mail, Shield } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { NavigationItem } from '@/components/molecules';
 
-const navigation = [
+const baseNavigation = [
   { name: 'Home', href: '/', icon: Home },
   { name: 'Blog', href: '/blog', icon: BookOpen },
   { name: 'About', href: '/about', icon: User },
@@ -15,6 +15,19 @@ const navigation = [
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [hasAdmin, setHasAdmin] = useState<boolean>(false);
+
+  useEffect(() => {
+    const check = () => {
+      try { setHasAdmin(!!localStorage.getItem('admin.token')); } catch { setHasAdmin(false); }
+    };
+    check();
+    const handler = () => check();
+    window.addEventListener('admin-auth-changed', handler);
+    return () => window.removeEventListener('admin-auth-changed', handler);
+  }, []);
+
+  const navigation = hasAdmin ? [...baseNavigation, { name: 'Admin', href: '/admin/new-post', icon: Shield }] : baseNavigation;
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 

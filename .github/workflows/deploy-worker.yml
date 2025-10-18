@@ -1,0 +1,54 @@
+name: Deploy Cloudflare Worker (db-api)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'workers/db-api/**'
+      - '.github/workflows/deploy-worker.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+      CLOUDFLARE_D1_DATABASE_NAME: ${{ secrets.CLOUDFLARE_D1_DATABASE_NAME }}
+      WORKER_NAME: ${{ secrets.WORKER_NAME }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: workers/db-api/package-lock.json
+
+      - name: Install dependencies
+        working-directory: workers/db-api
+        run: npm ci
+
+      - name: Generate wrangler.toml from template
+        working-directory: workers/db-api
+        run: |
+          : "${WORKER_NAME:=db-api}"
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID missing" >&2; exit 1; }
+          test -n "$CLOUDFLARE_D1_DATABASE_ID" || { echo "CLOUDFLARE_D1_DATABASE_ID missing" >&2; exit 1; }
+          test -n "$CLOUDFLARE_D1_DATABASE_NAME" || { echo "CLOUDFLARE_D1_DATABASE_NAME missing" >&2; exit 1; }
+          sed -e "s/__WORKER_NAME__/${WORKER_NAME}/g" \
+              -e "s/__CLOUDFLARE_ACCOUNT_ID__/${CLOUDFLARE_ACCOUNT_ID}/g" \
+              -e "s/__CLOUDFLARE_D1_DATABASE_NAME__/${CLOUDFLARE_D1_DATABASE_NAME}/g" \
+              -e "s/__CLOUDFLARE_D1_DATABASE_ID__/${CLOUDFLARE_D1_DATABASE_ID}/g" \
+              wrangler.toml.tpl > wrangler.toml
+          echo "Generated workers/db-api/wrangler.toml:" && cat wrangler.toml
+
+      - name: Publish Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: workers/db-api
+          command: deploy --env production
