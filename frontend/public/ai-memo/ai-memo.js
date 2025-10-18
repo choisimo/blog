@@ -30,6 +30,7 @@
     devCss: 'aiMemo.dev.css',
     devJs: 'aiMemo.dev.js',
     proposalMd: 'aiMemo.proposalMd',
+    fontSize: 'aiMemo.fontSize',
   };
 
   // 기본값 설정
@@ -53,6 +54,7 @@
         ),
         devJs: LS.get(KEYS.devJs, 'console.log("Hello from user JS");'),
         proposalMd: LS.get(KEYS.proposalMd, ''),
+        fontSize: LS.get(KEYS.fontSize, 13),
       };
       this._drag = { active: false, startX: 0, startY: 0, origX: 0, origY: 0 };
       this.root = null; // shadow root container
@@ -178,6 +180,114 @@
       }
     }
 
+    applyFontSize(size) {
+      const fs = Math.max(10, Math.min(20, parseInt(size || 13, 10)));
+      const root = this.shadowRoot;
+      if (!root) return;
+      const targets = [this.$memo, this.$memoEditor, this.$memoPreview];
+      targets.forEach(t => {
+        if (!t) return;
+        t.style.fontSize = `${fs}px`;
+        if (t.tagName === 'TEXTAREA') t.style.lineHeight = '1.6';
+      });
+    }
+
+    // very lightweight Markdown renderer with basic sanitization
+    renderMarkdownToPreview(src) {
+      if (!this.$memoPreview) return;
+      let s = String(src || '');
+
+      // escape HTML
+      s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      // collect tokens for code to avoid further markdown transforms inside
+      const tokens = [];
+      const tokenize = html => {
+        tokens.push(html);
+        return `@@TOKEN${tokens.length - 1}@@`;
+      };
+
+      // fenced code blocks ```lang\n...\n```
+      s = s.replace(/```([\w-]*)\n([\s\S]*?)```/g, (m, lang, code) => {
+        const c = code.replace(/\n$/, '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        return tokenize(`<pre><code class="lang-${lang || 'text'}">${c}</code></pre>`);
+      });
+
+      // inline code `...`
+      s = s.replace(/`([^`]+)`/g, (m, code) => {
+        const c = code.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        return tokenize(`<code>${c}</code>`);
+      });
+
+      // headings
+      s = s.replace(/^######\s+(.*)$/gm, '<h6>$1</h6>')
+           .replace(/^#####\s+(.*)$/gm, '<h5>$1</h5>')
+           .replace(/^####\s+(.*)$/gm, '<h4>$1</h4>')
+           .replace(/^###\s+(.*)$/gm, '<h3>$1</h3>')
+           .replace(/^##\s+(.*)$/gm, '<h2>$1</h2>')
+           .replace(/^#\s+(.*)$/gm, '<h1>$1</h1>');
+
+      // url sanitizer
+      const sanitizeUrl = (url) => {
+        try {
+          const raw = (url || '').trim();
+          if (!raw) return '#';
+          // allow only http(s), mailto, tel; support relative links
+          const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw);
+          const u = hasScheme ? new URL(raw) : new URL(raw, location.href);
+          const p = u.protocol.toLowerCase();
+          if (p === 'http:' || p === 'https:' || p === 'mailto:' || p === 'tel:') return u.href;
+          return '#';
+        } catch (_) {
+          return '#';
+        }
+      };
+
+      // images ![alt](url)
+      s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (m, alt, url) => {
+        const safe = sanitizeUrl(url);
+        const a = String(alt || '').replace(/"/g, '&quot;');
+        return `<img alt="${a}" src="${safe}" loading="lazy" referrerpolicy="no-referrer" />`;
+      });
+
+      // links [text](url)
+      s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (m, text, url) => {
+        const safe = sanitizeUrl(url);
+        return `<a href="${safe}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+      });
+
+      // bold/italic (naive)
+      s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+           .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+      // lists
+      s = s.replace(/^(?:- |\* )(.*)$/gm, '<li>$1</li>');
+      s = s.replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`);
+      // ordered lists
+      s = s.replace(/^\d+\. (.*)$/gm, '<li>$1</li>');
+      s = s.replace(/(<li>.*<\/li>\n?)+/g, m => m.includes('<ul>') ? m : `<ol>${m}</ol>`);
+
+      // blockquotes
+      s = s.replace(/^>\s?(.*)$/gm, '<blockquote>$1</blockquote>');
+
+      // paragraphs (split by double newlines)
+      s = s.split(/\n{2,}/).map(block => {
+        if (/^<h\d|<pre|<ul>|<ol>|<blockquote>|<img|<p>|<a /.test(block.trim())) return block;
+        return `<p>${block.replace(/\n/g, '<br/>')}</p>`;
+      }).join('\n');
+
+      // restore tokens
+      s = s.replace(/@@TOKEN(\d+)@@/g, (m, i) => tokens[+i] || '');
+
+      this.$memoPreview.innerHTML = s;
+    }
+
+    // debounce preview rendering to keep typing smooth
+    scheduleRenderPreview(src) {
+      clearTimeout(this._renderTimer);
+      this._renderTimer = setTimeout(() => this.renderMarkdownToPreview(src), 120);
+    }
+
     getArticleHtml() {
       const el =
         document.querySelector('article') || document.querySelector('main');
@@ -285,7 +395,9 @@
           </div>
           <div class="tabs">
             <div class="tab" data-tab="memo">메모</div>
+            <div class="tab" data-tab="preview">미리보기</div>
             <div class="tab" data-tab="dev">새 버전 제안</div>
+            <div class="tab" data-tab="settings">설정</div>
           </div>
           <div id="memoBody" class="body">
             <div class="section">
@@ -310,15 +422,21 @@
                 <button id="memoClear" class="btn secondary">지우기</button>
               </div>
             </div>
+          </div>
 
-            <div class="section">
-              <label class="label" for="inlineEnabled">문단 끝 ✨ 인라인 확장</label>
-              <div class="row">
-                <input id="inlineEnabled" type="checkbox" />
-                <div class="small" style="opacity:0.8">글 본문 단락 끝에 ✨ 아이콘을 표시하고 아래로 결과를 펼칩니다.</div>
+          <div id="previewBody" class="body">
+            <div class="split">
+              <div class="split-left">
+                <label class="label" for="memo">편집기</label>
+                <textarea id="memoEditor" class="textarea" placeholder="여기에 메모를 작성하세요"></textarea>
+              </div>
+              <div class="split-right">
+                <label class="label">미리보기</label>
+                <div id="memoPreview" class="preview-md"></div>
               </div>
             </div>
           </div>
+
           <div id="devBody" class="body">
             <div class="section">
               <div class="label">원본 글</div>
@@ -337,6 +455,25 @@
             </div>
             <div class="section">
               <a id="prLink" class="small" target="_blank" rel="noopener" style="display:none;">PR 열기 →</a>
+            </div>
+          </div>
+
+          <div id="settingsBody" class="body">
+            <div class="section">
+              <label class="label" for="inlineEnabled">문단 끝 ✨ 인라인 확장</label>
+              <div class="row">
+                <input id="inlineEnabled" type="checkbox" />
+                <div class="small" style="opacity:0.8">글 본문 단락 끝에 ✨ 아이콘을 표시하고 아래로 결과를 펼칩니다.</div>
+              </div>
+            </div>
+            <div class="section">
+              <label class="label" for="fontSize">폰트 크기</label>
+              <select id="fontSize" class="input">
+                <option value="12">12</option>
+                <option value="13" selected>13</option>
+                <option value="14">14</option>
+                <option value="16">16</option>
+              </select>
             </div>
           </div>
           <div class="footer">
@@ -359,20 +496,25 @@
       this.$close = this.shadowRoot.getElementById('close');
       this.$tabs = Array.from(this.shadowRoot.querySelectorAll('.tab'));
       this.$memoBody = this.shadowRoot.getElementById('memoBody');
+      this.$previewBody = this.shadowRoot.getElementById('previewBody');
       this.$devBody = this.shadowRoot.getElementById('devBody');
-       this.$memo = this.shadowRoot.getElementById('memo');
-       this.$inlineEnabled = this.shadowRoot.getElementById('inlineEnabled');
-       this.$memoBold = this.shadowRoot.getElementById('memoBold');
-       this.$memoItalic = this.shadowRoot.getElementById('memoItalic');
-       this.$memoCode = this.shadowRoot.getElementById('memoCode');
-       this.$memoH1 = this.shadowRoot.getElementById('memoH1');
-       this.$memoH2 = this.shadowRoot.getElementById('memoH2');
-       this.$memoUl = this.shadowRoot.getElementById('memoUl');
-       this.$memoOl = this.shadowRoot.getElementById('memoOl');
-       this.$memoFull = this.shadowRoot.getElementById('memoFull');
-       this.$memoExportMd = this.shadowRoot.getElementById('memoExportMd');
-       this.$memoExportHtml = this.shadowRoot.getElementById('memoExportHtml');
-       this.$memoClear = this.shadowRoot.getElementById('memoClear');
+      this.$settingsBody = this.shadowRoot.getElementById('settingsBody');
+      this.$memo = this.shadowRoot.getElementById('memo');
+      this.$memoEditor = this.shadowRoot.getElementById('memoEditor');
+      this.$memoPreview = this.shadowRoot.getElementById('memoPreview');
+      this.$fontSize = this.shadowRoot.getElementById('fontSize');
+      this.$inlineEnabled = this.shadowRoot.getElementById('inlineEnabled');
+      this.$memoBold = this.shadowRoot.getElementById('memoBold');
+      this.$memoItalic = this.shadowRoot.getElementById('memoItalic');
+      this.$memoCode = this.shadowRoot.getElementById('memoCode');
+      this.$memoH1 = this.shadowRoot.getElementById('memoH1');
+      this.$memoH2 = this.shadowRoot.getElementById('memoH2');
+      this.$memoUl = this.shadowRoot.getElementById('memoUl');
+      this.$memoOl = this.shadowRoot.getElementById('memoOl');
+      this.$memoFull = this.shadowRoot.getElementById('memoFull');
+      this.$memoExportMd = this.shadowRoot.getElementById('memoExportMd');
+      this.$memoExportHtml = this.shadowRoot.getElementById('memoExportHtml');
+      this.$memoClear = this.shadowRoot.getElementById('memoClear');
 
       this.$originalPath = this.shadowRoot.getElementById('originalPath');
       this.$proposalMd = this.shadowRoot.getElementById('proposalMd');
@@ -390,8 +532,14 @@
     restore() {
       // content
       this.$memo.value = this.state.memo || '';
+      if (this.$memoEditor) this.$memoEditor.value = this.state.memo || '';
       if (this.$inlineEnabled)
         this.$inlineEnabled.checked = !!this.state.inlineEnabled;
+      if (this.$fontSize) {
+        const fs = parseInt(this.state.fontSize || 13, 10);
+        this.$fontSize.value = String(fs);
+        this.applyFontSize(fs);
+      }
 
       // panel open
       this.$panel.classList.toggle('open', !!this.state.isOpen);
@@ -419,7 +567,14 @@
         t.classList.toggle('active', t.dataset.tab === this.state.mode)
       );
       this.$memoBody.classList.toggle('active', this.state.mode === 'memo');
+      this.$previewBody?.classList.toggle('active', this.state.mode === 'preview');
       this.$devBody.classList.toggle('active', this.state.mode === 'dev');
+      this.$settingsBody?.classList.toggle('active', this.state.mode === 'settings');
+
+      // ensure preview reflects latest (debounced for smoother mount)
+      if (this.state.mode === 'preview' && this.$memoPreview) {
+        this.scheduleRenderPreview(this.$memoEditor?.value || this.$memo?.value || '');
+      }
     }
 
     updateOpen() {
@@ -434,6 +589,12 @@
       this.state.mode = mode;
       if (mode === 'dev') {
         this.maybeLoadOriginalMarkdown();
+      }
+      if (mode === 'preview') {
+        if (this.$memoEditor && this.$memoPreview) {
+           this.$memoEditor.value = this.$memo.value || '';
+           this.scheduleRenderPreview(this.$memoEditor.value);
+        }
       }
     }
 
@@ -457,7 +618,9 @@
           tab.classList.add('active');
           const mode = tab.dataset.tab;
           this.$memoBody.classList.toggle('active', mode === 'memo');
+          this.$previewBody?.classList.toggle('active', mode === 'preview');
           this.$devBody.classList.toggle('active', mode === 'dev');
+          this.$settingsBody?.classList.toggle('active', mode === 'settings');
           this.updateMode();
         })
       );
@@ -466,13 +629,42 @@
        const saveMemo = () => {
          this.state.memo = this.$memo.value;
          LS.set(KEYS.memo, this.state.memo);
-         this.$status.textContent = '저장됨';
+         if (this.$memoEditor && this.$memoEditor.value !== this.state.memo) {
+           this.$memoEditor.value = this.state.memo;
+         }
+          if (this.$memoPreview) {
+            this.scheduleRenderPreview(this.state.memo);
+          }
+          this.$status.textContent = '저장됨';
          clearTimeout(this._saveTimer);
          this._saveTimer = setTimeout(() => (this.$status.textContent = 'Ready'), 900);
        };
 
       this.$memo.addEventListener('input', saveMemo);
       this.$memo.addEventListener('change', saveMemo);
+      if (this.$memoEditor) {
+        const saveAndRender = () => {
+          this.state.memo = this.$memoEditor.value;
+          LS.set(KEYS.memo, this.state.memo);
+          this.scheduleRenderPreview(this.state.memo);
+          if (this.$memo.value !== this.state.memo) this.$memo.value = this.state.memo;
+          this.$status.textContent = '저장됨';
+          clearTimeout(this._saveTimer);
+          this._saveTimer = setTimeout(() => (this.$status.textContent = 'Ready'), 900);
+        };
+        this.$memoEditor.addEventListener('input', saveAndRender);
+        this.$memoEditor.addEventListener('change', saveAndRender);
+
+        // scroll sync: editor -> preview
+        const sync = () => {
+          if (!this.$memoPreview) return;
+          const ta = this.$memoEditor;
+          const ratio = ta.scrollTop / (ta.scrollHeight - ta.clientHeight || 1);
+          const target = (this.$memoPreview.scrollHeight - this.$memoPreview.clientHeight) * ratio;
+          this.$memoPreview.scrollTop = target;
+        };
+        this.$memoEditor.addEventListener('scroll', () => requestAnimationFrame(sync));
+      }
       if (this.$inlineEnabled) {
         const onToggleInline = () => {
           const val = !!this.$inlineEnabled.checked;
@@ -493,8 +685,13 @@
       }
 
        // memo toolbar helpers
+       const getActiveTextarea = () => {
+         const active = this.shadowRoot.activeElement || document.activeElement;
+         if (active === this.$memoEditor) return this.$memoEditor;
+         return this.$memo;
+       };
        const surround = (prefix, suffix = prefix) => {
-         const ta = this.$memo;
+         const ta = getActiveTextarea();
          const { selectionStart: s, selectionEnd: e, value } = ta;
          if (s == null || e == null) return;
          const before = value.slice(0, s);
@@ -508,7 +705,7 @@
          ta.dispatchEvent(new Event('input', { bubbles: true }));
        };
        const linePrefix = pfx => {
-         const ta = this.$memo;
+         const ta = getActiveTextarea();
          const { selectionStart: s, selectionEnd: e, value } = ta;
          const start = value.lastIndexOf('\n', s - 1) + 1;
          const end = value.indexOf('\n', e);
@@ -522,17 +719,18 @@
          ta.setSelectionRange(caret, caret);
          ta.dispatchEvent(new Event('input', { bubbles: true }));
        };
-       this.$memoBold?.addEventListener('click', () => surround('**'));
-       this.$memoItalic?.addEventListener('click', () => surround('*'));
-       this.$memoCode?.addEventListener('click', () => surround('`'));
-       this.$memoH1?.addEventListener('click', () => linePrefix('#'));
-       this.$memoH2?.addEventListener('click', () => linePrefix('##'));
-       this.$memoUl?.addEventListener('click', () => linePrefix('-'));
-       this.$memoOl?.addEventListener('click', () => linePrefix('1.'));
-       this.$memoFull?.addEventListener('click', () => {
-         this.classList.toggle('memo-full');
-         this.toast(this.classList.contains('memo-full') ? '전체화면' : '일반 모드');
-       });
+        this.$memoBold?.addEventListener('click', () => surround('**'));
+        this.$memoItalic?.addEventListener('click', () => surround('*'));
+        this.$memoCode?.addEventListener('click', () => surround('`'));
+        this.$memoH1?.addEventListener('click', () => linePrefix('#'));
+        this.$memoH2?.addEventListener('click', () => linePrefix('##'));
+        this.$memoUl?.addEventListener('click', () => linePrefix('-'));
+        this.$memoOl?.addEventListener('click', () => linePrefix('1.'));
+        this.$memoFull?.addEventListener('click', () => {
+          this.classList.toggle('memo-full');
+          this.toast(this.classList.contains('memo-full') ? '전체화면' : '일반 모드');
+          if (this.$memoPreview) this.renderMarkdownToPreview(this.$memoEditor?.value || this.$memo?.value || '');
+        });
        this.$memoExportMd?.addEventListener('click', () => {
          const content = this.$memo.value || '';
          const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
@@ -563,8 +761,8 @@
          }
        });
 
-       // selection add
-       this.$addSel.addEventListener('click', () => {
+      // selection add
+      this.$addSel.addEventListener('click', () => {
 
         const sel = window.getSelection();
         const text = sel && sel.toString().trim();
@@ -574,7 +772,10 @@
         }
         const now = new Date();
         const entry = `\n> ${text}\n— ${now.toLocaleString()}`;
-        this.$memo.value = `${(this.$memo.value || '') + entry}\n`;
+        const next = `${(this.$memo.value || '') + entry}\n`;
+        this.$memo.value = next;
+        if (this.$memoEditor) this.$memoEditor.value = next;
+        if (this.$memoPreview) this.renderMarkdownToPreview(next);
         this.$memo.dispatchEvent(new Event('input', { bubbles: true }));
         this.toast('선택 내용을 추가했습니다.');
       });
@@ -598,6 +799,18 @@
       this.$aiSummary.addEventListener('click', () =>
         this.summarizeWithGemini()
       );
+
+      // font size
+      if (this.$fontSize) {
+        const onFs = () => {
+          const fs = parseInt(this.$fontSize.value || '13', 10);
+          this.applyFontSize(fs);
+          LS.set(KEYS.fontSize, fs);
+          this.state.fontSize = fs;
+        };
+        this.$fontSize.addEventListener('change', onFs);
+        this.$fontSize.addEventListener('input', onFs);
+      }
 
       // Proposal actions
       if (this.$loadOriginalMd)
@@ -662,7 +875,7 @@
       });
 
        // keyboard: Esc to close + editor shortcuts
-       window.addEventListener('keydown', e => {
+        window.addEventListener('keydown', e => {
          if (e.key === 'Escape' && this.$panel.classList.contains('open')) {
            this.$panel.classList.remove('open');
            this.updateOpen();
@@ -672,7 +885,10 @@
            this.updateOpen();
          }
          // common editor shortcuts when panel open
-         if (this.$panel.classList.contains('open') && document.activeElement === this.$memo) {
+         const activeEl = this.shadowRoot.activeElement || document.activeElement;
+         const isMemo = activeEl === this.$memo;
+         const isEditor = activeEl === this.$memoEditor;
+         if (this.$panel.classList.contains('open') && (isMemo || isEditor)) {
            const meta = e.metaKey || e.ctrlKey;
            if (meta && e.key.toLowerCase() === 'b') { e.preventDefault(); surround('**'); }
            if (meta && e.key.toLowerCase() === 'i') { e.preventDefault(); surround('*'); }
@@ -681,34 +897,34 @@
        });
 
        // indent/outdent with Tab/Shift+Tab inside memo
-       this.$memo.addEventListener('keydown', e => {
-         if (e.key === 'Tab') {
-           e.preventDefault();
-           const ta = this.$memo;
-           const { selectionStart: s, selectionEnd: epos, value } = ta;
-           if (e.shiftKey) {
-             // outdent: remove leading two spaces or one dash
-             const start = value.lastIndexOf('\n', s - 1) + 1;
-             const line = value.slice(start, epos);
-             let removed = 0;
-             let newLine = line;
-             if (newLine.startsWith('  ')) { newLine = newLine.slice(2); removed = 2; }
-             else if (newLine.startsWith('- ')) { newLine = newLine.slice(2); removed = 2; }
-             else if (newLine.startsWith('1. ')) { newLine = newLine.slice(3); removed = 3; }
-             const next = value.slice(0, start) + newLine + value.slice(epos);
-             ta.value = next;
-             const ns = Math.max(s - removed, start);
-             ta.setSelectionRange(ns, ns);
-           } else {
-             const before = value.slice(0, s);
-             const after = value.slice(epos);
-             ta.value = before + '  ' + after;
-             const ns = s + 2;
-             ta.setSelectionRange(ns, ns);
-           }
-           ta.dispatchEvent(new Event('input', { bubbles: true }));
-         }
-       });
+        const tabIndentHandler = (ta, e) => {
+          if (e.key === 'Tab') {
+            e.preventDefault();
+            const { selectionStart: s, selectionEnd: epos, value } = ta;
+            if (e.shiftKey) {
+              const start = value.lastIndexOf('\n', s - 1) + 1;
+              const line = value.slice(start, epos);
+              let removed = 0;
+              let newLine = line;
+              if (newLine.startsWith('  ')) { newLine = newLine.slice(2); removed = 2; }
+              else if (newLine.startsWith('- ')) { newLine = newLine.slice(2); removed = 2; }
+              else if (newLine.startsWith('1. ')) { newLine = newLine.slice(3); removed = 3; }
+              const next = value.slice(0, start) + newLine + value.slice(epos);
+              ta.value = next;
+              const ns = Math.max(s - removed, start);
+              ta.setSelectionRange(ns, ns);
+            } else {
+              const before = value.slice(0, s);
+              const after = value.slice(epos);
+              ta.value = before + '  ' + after;
+              const ns = s + 2;
+              ta.setSelectionRange(ns, ns);
+            }
+            ta.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        };
+        this.$memo.addEventListener('keydown', e => tabIndentHandler(this.$memo, e));
+        if (this.$memoEditor) this.$memoEditor.addEventListener('keydown', e => tabIndentHandler(this.$memoEditor, e));
 
     }
 

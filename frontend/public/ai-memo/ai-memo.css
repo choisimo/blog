@@ -6,6 +6,7 @@
 .button {
   cursor: pointer;
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Launcher */
@@ -25,6 +26,9 @@
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
+/* Safe-area aware bottom (overrides if supported) */
+.launcher { bottom: 96px; }
+.launcher { bottom: calc(96px + env(safe-area-inset-bottom)); }
 .launcher:hover {
   filter: brightness(1.1);
 }
@@ -36,6 +40,7 @@
   width: 420px;
   max-width: min(720px, calc(100vw - 24px));
   height: 560px;
+  /* Fallback to vh, then prefer dvh when available */
   max-height: calc(100vh - 24px);
   right: 16px; /* default before position restored */
   bottom: 160px; /* default before position restored (keeps ~64px above launcher) */
@@ -46,7 +51,13 @@
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
   border: 1px solid rgba(0, 0, 0, 0.08);
   overflow: hidden;
+  contain: layout paint style;
 }
+/* Prefer dynamic viewport unit when supported */
+.panel { max-height: calc(100dvh - 24px); }
+/* Safe-area aware bottom spacing (if supported) */
+.panel { bottom: 160px; }
+.panel { bottom: calc(160px + env(safe-area-inset-bottom)); }
 .panel.open {
   display: flex;
   flex-direction: column;
@@ -60,6 +71,7 @@
   background: linear-gradient(90deg, #0f172a, #111827);
   color: #fff;
   cursor: move;
+  touch-action: none; /* avoid scroll-steal while dragging */
 }
 .header .title {
   font:
@@ -106,10 +118,33 @@
   display: none;
   padding: 10px;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
-.body.active {
+ .body.active {
   display: block;
-}
+ }
+
+ /* Split view for preview tab */
+ .split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 100%; }
+ .split-left, .split-right { display: flex; flex-direction: column; min-width: 0; }
+ .split-left .textarea { flex: 1; min-height: 0; }
+  .preview-md { flex: 1; min-height: 0; overflow: auto; padding: 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: #ffffff; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  .preview-md h1, .preview-md h2, .preview-md h3, .preview-md h4, .preview-md h5 { margin: 12px 0 6px; line-height: 1.25; }
+  .preview-md p { margin: 8px 0; }
+  .preview-md ul, .preview-md ol { padding-left: 18px; margin: 8px 0; }
+  .preview-md a { color: #1d4ed8; text-decoration: underline; word-break: break-word; }
+  .preview-md blockquote { margin: 8px 0; padding: 6px 10px; border-left: 3px solid #d1d5db; background: #f9fafb; border-radius: 6px; }
+  .preview-md img { max-width: 100%; height: auto; display: block; margin: 8px 0; border-radius: 8px; border: 1px solid #e5e7eb; }
+  .preview-md code { background: rgba(0,0,0,0.05); padding: 2px 4px; border-radius: 4px; }
+  .preview-md pre { background: #0b1020; color: #e5e7eb; padding: 10px; border-radius: 8px; overflow: auto; }
+ 
+  :host(.dark) .preview-md { background: #0f172a; border-color: rgba(255,255,255,0.12); }
+  :host(.dark) .preview-md a { color: #93c5fd; }
+  :host(.dark) .preview-md blockquote { background: rgba(255,255,255,0.05); border-left-color: rgba(255,255,255,0.2); }
+  :host(.dark) .preview-md img { border-color: rgba(255,255,255,0.12); }
+  :host(.dark) .preview-md code { background: rgba(255,255,255,0.1); }
+  :host(.dark) .split-right .label { color: #cbd5e1; }
 
 /* Fullscreen memo mode */
 :host(.memo-full) .panel {
@@ -218,6 +253,7 @@
   border-top: 1px solid #e5e7eb;
   background: rgba(249, 250, 251, 0.7);
   backdrop-filter: blur(6px);
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
 }
 .small {
   font-size: 11px;
@@ -269,4 +305,14 @@
 :host(.dark) .btn.secondary {
   background: #0f172a;
   color: #e5e7eb;
+}
+
+/* Mobile tuning */
+@media (max-width: 640px) {
+  .panel {
+    width: min(96vw, 720px);
+    height: auto;
+  }
+  .textarea { resize: vertical; }
+  .split { grid-template-columns: 1fr; }
 }
