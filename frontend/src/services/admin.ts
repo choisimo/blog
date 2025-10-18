@@ -64,4 +64,3 @@ export async function uploadPostImages(
   }
   return json.data as { dir: string; items: Array<{ url: string; variantWebp?: { url: string } | null }> };
 }
-}
