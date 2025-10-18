@@ -547,7 +547,7 @@
           <div class="history-toolbar">
             <div class="left">
               <strong>Web of Curiosity</strong>
-              <span class="small" style="margin-left:8px; opacity:0.8;">Scroll: zoom • Drag: pan • Click: center • Double-click post: open</span>
+              <span class="small" style="margin-left:8px; opacity:0.8;">Scroll: zoom • Drag: pan • Click: pin • Double-click post: open</span>
             </div>
             <div class="right">
               <button id="historyExport" class="btn secondary">내보내기</button>
@@ -618,6 +618,7 @@
                 <button id="loadOriginalMd" class="btn secondary">원문 불러오기</button>
                 <button id="proposeNewVersion" class="btn">PR 생성 제안</button>
               </div>
+              </div>
               <div class="small muted" style="margin-top:6px;">
                 - 원문을 불러온 후 필요한 수정을 하고 PR을 생성하세요. PR에는 원본과의 관계가 frontmatter의 derivedFrom으로 표시됩니다.
               </div>
@@ -654,6 +655,7 @@
             <div id="status" class="small">Ready</div>
             <div class="row">
               <button id="addSelection" class="btn secondary">선택 추가</button>
+              <button id="memoToGraph" class="btn secondary">그래프에 추가 ✨</button>
               <button id="aiSummary" class="btn">AI 요약</button>
               <button id="catalyst" class="btn">Catalyst ✨</button>
               <button id="download" class="btn">메모 다운로드</button>
@@ -705,6 +707,7 @@
       this.$prLink = this.shadowRoot.getElementById('prLink');
       this.$status = this.shadowRoot.getElementById('status');
       this.$addSel = this.shadowRoot.getElementById('addSelection');
+      this.$memoToGraph = this.shadowRoot.getElementById('memoToGraph');
       this.$aiSummary = this.shadowRoot.getElementById('aiSummary');
       this.$catalystBtn = this.shadowRoot.getElementById('catalyst');
       this.$catalystBox = this.shadowRoot.getElementById('catalystBox');
@@ -785,10 +788,13 @@
        openHistory() {
          if (!this.$historyOverlay || !this.$historyCanvas) return;
          this.$historyOverlay.style.display = 'block';
+         this._hist = this._hist || { scale: 1, tx: 0, ty: 0, dragging: false };
+         this._hist.hoverId = null; this._hist.pinnedId = null;
          this.resizeHistoryCanvas();
          this.drawHistory();
          this.attachHistoryInteractions();
          this.hideHistoryTooltip();
+         this.closeHistoryInfo();
          this.logEvent({ type: 'history_open', label: '히스토리 열기' });
        }
        closeHistory() {
@@ -796,6 +802,8 @@
          this.$historyOverlay.style.display = 'none';
          this.detachHistoryInteractions();
          this.hideHistoryTooltip();
+         this.closeHistoryInfo();
+         if (this._hist) { this._hist.hoverId = null; this._hist.pinnedId = null; }
          this.logEvent({ type: 'history_close', label: '히스토리 닫기' });
        }
 
@@ -855,10 +863,10 @@
            // keep tooltip synced
            if (this._hist.mouseX != null && this._hist.mouseY != null) {
              const g = this._histGraph || this.layoutGraph(this.buildGraph());
-             let hit = null; const xw = (this._hist.mouseX - this._hist.tx)/ns; const yw = (this._hist.mouseY - this._hist.ty)/ns;
-             for (let i=g.nodes.length-1;i>=0;i--) { const n=g.nodes[i]; const r=n.r||16; const dx=xw-n.x, dy=yw-n.y; if (dx*dx+dy*dy<=r*r) { hit=n; break; } }
-             this._hist.hoverId = hit ? hit.id : null;
-             this.updateHistoryTooltip(hit, this._hist.mouseX, this._hist.mouseY);
+              let hit = null; const xw = (this._hist.mouseX - this._hist.tx)/ns; const yw = (this._hist.mouseY - this._hist.ty)/ns;
+              hit = this.hitTestHistoryNode(g, xw, yw);
+              this._hist.hoverId = hit ? hit.id : null;
+              this.updateHistoryTooltip(hit, this._hist.mouseX, this._hist.mouseY);
            }
          };
         const onDown = (e) => {
@@ -877,15 +885,12 @@
             const x = (mx - this._hist.tx) / (this._hist.scale||1);
             const y = (my - this._hist.ty) / (this._hist.scale||1);
             const g = this._histGraph || this.layoutGraph(this.buildGraph());
-            let hit = null;
-            for (let i=g.nodes.length-1;i>=0;i--) {
-              const n = g.nodes[i]; const r = (n.r||16);
-              const dx = x - n.x; const dy = y - n.y;
-              if (dx*dx + dy*dy <= r*r) { hit = n; break; }
+            const hit = this.hitTestHistoryNode(g, x, y);
+            if (!this._hist?.pinnedId) {
+              const prev = this._hist.hoverId;
+              this._hist.hoverId = hit ? hit.id : null;
+              if (prev !== this._hist.hoverId) this.drawHistory();
             }
-            const prev = this._hist.hoverId;
-            this._hist.hoverId = hit ? hit.id : null;
-            if (prev !== this._hist.hoverId) this.drawHistory();
             this.updateHistoryTooltip(hit, e.clientX, e.clientY);
             c.style.cursor = hit ? 'pointer' : 'grab';
           }
@@ -904,17 +909,16 @@
           const x = (mx - this._hist.tx) / (this._hist.scale||1);
           const y = (my - this._hist.ty) / (this._hist.scale||1);
           const g = this._histGraph || this.layoutGraph(this.buildGraph());
-          let hit = null;
-          for (let i=g.nodes.length-1;i>=0;i--) {
-            const n = g.nodes[i]; const r = (n.r||16);
-            const dx = x - n.x; const dy = y - n.y;
-            if (dx*dx + dy*dy <= r*r) { hit = n; break; }
-          }
+          const hit = this.hitTestHistoryNode(g, x, y);
           if (!hit) return;
+          // pin selection and show info
+          this._hist.pinnedId = hit.id;
+          this.updateHistoryInfo(hit, true);
           if (hit.kind === 'post' || hit.kind === 'post_node') {
             // smooth center on node
             this.centerHistoryOn(hit, { animate: true });
           }
+          this.drawHistory();
         };
         const onDblClick = (e) => {
           const rect = c.getBoundingClientRect();
@@ -922,12 +926,7 @@
           const x = (mx - this._hist.tx) / (this._hist.scale||1);
           const y = (my - this._hist.ty) / (this._hist.scale||1);
           const g = this._histGraph || this.layoutGraph(this.buildGraph());
-          let hit = null;
-          for (let i=g.nodes.length-1;i>=0;i--) {
-            const n = g.nodes[i]; const r = (n.r||16);
-            const dx = x - n.x; const dy = y - n.y;
-            if (dx*dx + dy*dy <= r*r) { hit = n; break; }
-          }
+          const hit = this.hitTestHistoryNode(g, x, y);
           if (hit && (hit.kind === 'post' || hit.kind === 'post_node')) {
             const p = hit.meta?.post;
             if (p) {
@@ -1070,6 +1069,24 @@
         return graph;
       }
 
+      hitTestHistoryNode(graph, x, y) {
+        for (let i = graph.nodes.length - 1; i >= 0; i--) {
+          const n = graph.nodes[i];
+          const r = n.r || 16;
+          const dx = x - n.x;
+          const dy = y - n.y;
+          if (n.kind === 'thought') {
+            const w = r * 2.6; const h = r * 1.6;
+            if (Math.abs(dx) <= w / 2 && Math.abs(dy) <= h / 2) return n;
+          } else if (n.kind === 'ai_summary_done' || n.kind === 'catalyst_run') {
+            if (Math.abs(dx) + Math.abs(dy) <= r) return n;
+          } else {
+            if (dx * dx + dy * dy <= r * r) return n;
+          }
+        }
+        return null;
+      }
+
       scheduleHistoryDraw() { if (this._histDrawReq) return; this._histDrawReq = requestAnimationFrame(() => { this._histDrawReq = null; this.drawHistory(); }); }
 
       drawHistory() {
@@ -1078,6 +1095,29 @@
         ctx.save(); ctx.clearRect(0,0,c.width,c.height); ctx.translate(tx, ty); ctx.scale(scale, scale);
         const graph = this.layoutGraph(this.buildGraph());
         this._histGraph = graph;
+
+        // helpers for shapes
+        const drawDiamond = (x, y, r, fill, stroke, lw=2) => {
+          ctx.beginPath();
+          ctx.moveTo(x, y - r);
+          ctx.lineTo(x + r, y);
+          ctx.lineTo(x, y + r);
+          ctx.lineTo(x - r, y);
+          ctx.closePath();
+          ctx.fillStyle = fill; ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.fill(); ctx.stroke();
+        };
+        const drawRoundedRect = (cx, cy, w, h, rad, fill, stroke, lw=2) => {
+          const x = cx - w/2, y = cy - h/2; const r = Math.min(rad, w/2, h/2);
+          ctx.beginPath();
+          ctx.moveTo(x + r, y);
+          ctx.arcTo(x + w, y, x + w, y + h, r);
+          ctx.arcTo(x + w, y + h, x, y + h, r);
+          ctx.arcTo(x, y + h, x, y, r);
+          ctx.arcTo(x, y, x + w, y, r);
+          ctx.closePath();
+          ctx.fillStyle = fill; ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.fill(); ctx.stroke();
+        };
+
         // edges
         ctx.strokeStyle = 'rgba(100,116,139,0.6)'; ctx.lineWidth = 2; ctx.setLineDash([0]);
         for (const e of graph.edges) {
@@ -1086,38 +1126,56 @@
         }
         // nodes
         for (const n of graph.nodes) {
-          ctx.beginPath();
-          if (n.kind === 'post') { ctx.fillStyle = '#111827'; ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 3; ctx.arc(n.x, n.y, n.r, 0, Math.PI*2); ctx.fill(); ctx.stroke(); }
-          else { ctx.fillStyle = '#1d4ed8'; ctx.strokeStyle = 'rgba(29,78,216,0.3)'; ctx.lineWidth = 2; ctx.arc(n.x, n.y, n.r, 0, Math.PI*2); ctx.fill(); ctx.stroke(); }
-          // label
-          ctx.fillStyle = n.kind==='post' ? '#fff' : '#0b1020';
-          ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          const raw = String(n.label || '');
-          const label = raw.length > 18 ? raw.slice(0, 17) + '…' : raw;
-          ctx.fillText(label, n.x, n.y);
-        }
-        // hover highlight
-        if (this._hist && this._hist.hoverId) {
-          const hn = graph.nodes.find(n => n.id === this._hist.hoverId);
-          if (hn) {
+          const labelRaw = String(n.label || '');
+          const label = labelRaw.length > 18 ? labelRaw.slice(0, 17) + '…' : labelRaw;
+          if (n.kind === 'post') {
             ctx.beginPath();
-            ctx.strokeStyle = hn.kind==='post' ? '#fcd34d' : '#93c5fd';
-            ctx.lineWidth = 3;
-            ctx.setLineDash([6, 4]);
-            ctx.arc(hn.x, hn.y, (hn.r||16)+6, 0, Math.PI*2);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            // draw subtle connector to center
-            const rect = this.$historyCanvas.getBoundingClientRect();
-            const cx = rect.width/2, cy = rect.height/2;
-            ctx.beginPath();
-            ctx.strokeStyle = 'rgba(148,163,184,0.5)';
-            ctx.setLineDash([2, 6]);
-            ctx.moveTo(hn.x, hn.y); ctx.lineTo(cx, cy); ctx.stroke();
-            ctx.setLineDash([]);
+            ctx.fillStyle = '#111827'; ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 3; ctx.arc(n.x, n.y, n.r, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(label, n.x, n.y);
+          } else if (n.kind === 'thought') {
+            const w = n.r * 2.6; const h = n.r * 1.6;
+            drawRoundedRect(n.x, n.y, w, h, 10, '#fef08a', 'rgba(250,204,21,0.6)');
+            ctx.fillStyle = '#713f12';
+            ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(label, n.x, n.y);
+          } else if (n.kind === 'ai_summary_done' || n.kind === 'catalyst_run') {
+            drawDiamond(n.x, n.y, n.r, '#c4b5fd', 'rgba(124,58,237,0.6)');
+            ctx.fillStyle = '#1f1147';
+            ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(label, n.x, n.y);
+          } else {
+            ctx.beginPath(); ctx.fillStyle = '#1d4ed8'; ctx.strokeStyle = 'rgba(29,78,216,0.3)'; ctx.lineWidth = 2; ctx.arc(n.x, n.y, n.r, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#0b1020';
+            ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(label, n.x, n.y);
           }
         }
+        // hover/pinned highlight
+        const hilite = (node) => {
+          if (!node) return;
+          ctx.beginPath();
+          let color = '#93c5fd';
+          if (node.kind === 'post') color = '#fcd34d';
+          else if (node.kind === 'thought') color = '#f59e0b';
+          else if (node.kind === 'ai_summary_done' || node.kind === 'catalyst_run') color = '#c084fc';
+          ctx.strokeStyle = color; ctx.lineWidth = 3;
+          ctx.setLineDash([6, 4]);
+          ctx.arc(node.x, node.y, (node.r||16)+6, 0, Math.PI*2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          // subtle connector to center
+          const rect = this.$historyCanvas.getBoundingClientRect();
+          const cx = rect.width/2, cy = rect.height/2;
+          ctx.beginPath(); ctx.strokeStyle = 'rgba(148,163,184,0.5)'; ctx.setLineDash([2, 6]); ctx.moveTo(node.x, node.y); ctx.lineTo(cx, cy); ctx.stroke(); ctx.setLineDash([]);
+        };
+        const pinned = this._hist?.pinnedId && graph.nodes.find(n => n.id === this._hist.pinnedId);
+        if (pinned) hilite(pinned); else if (this._hist && this._hist.hoverId) { const hn = graph.nodes.find(n => n.id === this._hist.hoverId); hilite(hn); }
         ctx.restore();
       }
 
@@ -1145,18 +1203,22 @@
            lines.push(`Post: ${node.label}`);
            if (p) lines.push(`${p.year}/${p.slug}`);
            lines.push('Click: center • Double-click: open');
-         } else {
-           const ev = node.meta?.ev;
-           const pg = ev?.page;
-           lines.push(`Event: ${node.label}`);
-           if (node.meta?.count && node.meta.count > 1) lines.push(`Count: ${node.meta.count}`);
-           if (ev?.type) lines.push(`Type: ${ev.type}`);
-           if (ev?.t) {
-             try { lines.push(new Date(ev.t).toLocaleString()); } catch (_) {}
-           }
-           if (pg?.title) lines.push(`Page: ${pg.title}`);
-           if (pg?.post) { const p = pg.post; lines.push(`Post: ${p.year}/${p.slug}`); }
-         }
+          } else {
+            const ev = node.meta?.ev;
+            const pg = ev?.page;
+            lines.push(`Event: ${node.label}`);
+            if (node.meta?.count && node.meta.count > 1) lines.push(`Count: ${node.meta.count}`);
+            if (ev?.type) lines.push(`Type: ${ev.type}`);
+            if (ev?.t) {
+              try { lines.push(new Date(ev.t).toLocaleString()); } catch (_) {}
+            }
+            if (pg?.title) lines.push(`Page: ${pg.title}`);
+            if (pg?.post) { const p = pg.post; lines.push(`Post: ${p.year}/${p.slug}`); }
+            if (node.kind === 'thought' && ev?.content) {
+              const snip = String(ev.content).replace(/\s+/g, ' ').trim().slice(0, 100);
+              if (snip) lines.push(`“${snip}${ev.content.length > 100 ? '…' : ''}”`);
+            }
+          }
         tip.textContent = lines.join(' • ');
         tip.style.left = Math.round(clientX + 12) + 'px';
         tip.style.top = Math.round(clientY + 12) + 'px';
@@ -1165,6 +1227,83 @@
 
       hideHistoryTooltip() {
         if (this.$historyTooltip) { this.$historyTooltip.remove(); this.$historyTooltip = null; }
+      }
+
+      // Bottom info panel for pinned node
+      updateHistoryInfo(node, pinned = true) {
+        if (!node) return this.closeHistoryInfo();
+        let box = this.$historyInfo;
+        if (!box) {
+          box = document.createElement('div');
+          box.className = 'history-info';
+          box.innerHTML = `
+            <div class="history-info-toolbar">
+              <div class="left">
+                <div class="history-info-title"></div>
+                <div class="history-info-meta"></div>
+              </div>
+              <div class="right">
+                <button class="btn secondary" data-action="open" style="display:none;">열기</button>
+                <button class="btn" data-action="unpin">고정 해제</button>
+              </div>
+            </div>
+            <div class="history-info-body"></div>
+          `;
+          this.$historyInfo = box;
+          this.shadowRoot.appendChild(box);
+          // actions
+          box.querySelector('[data-action="unpin"]').addEventListener('click', () => {
+            if (this._hist) this._hist.pinnedId = null; this.closeHistoryInfo(); this.drawHistory();
+          });
+          box.querySelector('[data-action="open"]').addEventListener('click', () => {
+            const n = this._histGraph?.nodes?.find(nn => nn.id === this._hist?.pinnedId) || node;
+            if (n && (n.kind === 'post' || n.kind === 'post_node')) {
+              const p = n.meta?.post; if (p) { const href = `#/blog/${p.year}/${p.slug}`; try { window.location.hash = href.replace(/^#/, ''); } catch (_) { window.location.href = href; } this.closeHistory(); }
+            }
+          });
+        }
+        const titleEl = box.querySelector('.history-info-title');
+        const metaEl = box.querySelector('.history-info-meta');
+        const bodyEl = box.querySelector('.history-info-body');
+        const openBtn = box.querySelector('[data-action="open"]');
+
+        if (node.kind === 'post') {
+          const p = node.meta?.post;
+          titleEl.textContent = node.label || `${p?.year}/${p?.slug}`;
+          metaEl.textContent = p ? `${p.year}/${p.slug}` : '';
+          openBtn.style.display = '';
+          // list events for this post
+          const key = p ? `${p.year}/${p.slug}` : '';
+          const rows = (this.state.events || []).filter(ev => ev?.page?.post && `${ev.page.post.year}/${ev.page.post.slug}` === key)
+            .sort((a,b)=> (a.t||0) - (b.t||0))
+            .map(ev => {
+              const dt = new Date(ev.t).toLocaleString();
+              const lbl = ev.label || ev.type;
+              return `<li><span class="dt">${dt}</span><span class="sep">•</span><span class="lbl">${lbl}</span></li>`;
+            }).join('');
+          bodyEl.innerHTML = rows ? `<ul class="history-info-list">${rows}</ul>` : '<div class="small">이 글과 연결된 이벤트가 없습니다.</div>';
+        } else if (node.kind === 'thought') {
+          const ev = node.meta?.ev || {};
+          const firstLine = (ev.label || '').trim();
+          titleEl.textContent = firstLine || 'Thought';
+          const p = ev?.page?.post; const when = ev.t ? new Date(ev.t).toLocaleString() : '';
+          metaEl.textContent = [when, p ? `${p.year}/${p.slug}` : null].filter(Boolean).join(' • ');
+          openBtn.style.display = 'none';
+          const content = (ev.content || '').toString();
+          bodyEl.innerHTML = content ? `<div class="history-info-kv"><div><b>내용</b>${this.markdownToHtml(content)}</div></div>` : '<div class="small">내용 없음</div>';
+        } else {
+          const ev = node.meta?.ev || {};
+          titleEl.textContent = ev.label || ev.type || '이벤트';
+          const p = ev?.page?.post; const when = ev.t ? new Date(ev.t).toLocaleString() : '';
+          metaEl.textContent = [when, p ? `${p.year}/${p.slug}` : null, ev.type ? `type: ${ev.type}` : null].filter(Boolean).join(' • ');
+          openBtn.style.display = 'none';
+          bodyEl.innerHTML = '<div class="small">연결 정보</div>';
+        }
+        return box;
+      }
+
+      closeHistoryInfo() {
+        if (this.$historyInfo) { this.$historyInfo.remove(); this.$historyInfo = null; }
       }
 
 
@@ -1355,6 +1494,21 @@
         this.$memo.dispatchEvent(new Event('input', { bubbles: true }));
         this.toast('선택 내용을 추가했습니다.');
       });
+
+      // memo -> graph thought injection
+      if (this.$memoToGraph) {
+        this.$memoToGraph.addEventListener('click', () => {
+          const raw = (this.$memo.value || '').trim();
+          if (!raw) { this.toast('메모가 비어 있습니다.'); return; }
+          const firstLine = raw.split(/\r?\n/).find(l => l.trim().length > 0) || '';
+          const label = (firstLine || raw).replace(/^\s*#+\s*/, '').slice(0, 60) + (firstLine.length > 60 ? '…' : '');
+          this.logEvent({ type: 'thought', label, content: raw });
+          this.toast('메모를 그래프에 추가했습니다.');
+          if (this.$historyOverlay && this.$historyOverlay.style.display !== 'none') {
+            this.drawHistory();
+          }
+        });
+      }
 
       // Catalyst UI
       if (this.$catalystBtn) {
