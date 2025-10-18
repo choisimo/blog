@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { Env, Comment } from '../types';
 import { success, badRequest, notFound } from '../lib/response';
-import { queryAll, queryOne, execute } from '../lib/d1';
+import { queryAll, execute, queryOne } from '../lib/d1';
 import { requireAdmin } from '../middleware/auth';
 
 const comments = new Hono<{ Bindings: Env }>();
@@ -20,7 +20,7 @@ comments.get('/', async (c) => {
      FROM comments
      WHERE post_id = ? AND status = 'visible'
      ORDER BY created_at ASC`,
-    postId
+    String(postId).trim().slice(0, 256)
   );
 
   return success(c, { comments: items });
@@ -29,7 +29,7 @@ comments.get('/', async (c) => {
 // POST /comments - Create new comment
 comments.post('/', async (c) => {
   const body = await c.req.json().catch(() => ({}));
-  const { postId, author, content, email } = body;
+  const { postId, author, content, email } = body as Record<string, string>;
 
   if (!postId || !author || !content) {
     return badRequest(c, 'postId, author, and content are required');
@@ -42,17 +42,8 @@ comments.post('/', async (c) => {
 
   const db = c.env.DB;
 
-  // Check if post exists
-  const postExists = await queryOne<{ id: string }>(
-    db,
-    'SELECT id FROM posts WHERE id = ? OR slug = ?',
-    postId,
-    postId
-  );
-
-  if (!postExists) {
-    return notFound(c, 'Post not found');
-  }
+  // Use the provided postId directly as the canonical thread key
+  const normalizedPostId = String(postId).trim().slice(0, 256);
 
   const commentId = `comment-${crypto.randomUUID()}`;
   const now = new Date().toISOString();
@@ -62,7 +53,7 @@ comments.post('/', async (c) => {
     `INSERT INTO comments(id, post_id, author, email, content, status, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     commentId,
-    postExists.id,
+    normalizedPostId,
     author.trim().slice(0, 64),
     email ? email.trim().slice(0, 256) : null,
     content.trim().slice(0, 5000),
