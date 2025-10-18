@@ -10,5 +10,5 @@ database_id = "__CLOUDFLARE_D1_DATABASE_ID__"
 
 [env.production]
 d1_databases = [
-  { binding = "DB", id = "__CLOUDFLARE_D1_DATABASE_ID__" }
+  { binding = "DB", database_id = "__CLOUDFLARE_D1_DATABASE_ID__" }
 ]
