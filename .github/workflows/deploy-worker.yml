@@ -25,11 +25,11 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: workers/db-api/package-lock.json
+          cache-dependency-path: workers/package-lock.json
 
       - name: Install dependencies
-        working-directory: workers/db-api
-        run: npm ci
+        working-directory: workers
+        run: npm ci --ignore-scripts
 
       - name: Generate wrangler.toml from template
         working-directory: workers/db-api
