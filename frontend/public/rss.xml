@@ -5,7 +5,7 @@
     <description>A blog about technology, programming, and web development</description>
     <link>http://localhost:3000</link>
     <atom:link href="http://localhost:3000/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Sun, 19 Oct 2025 10:54:09 GMT</lastBuildDate>
+    <lastBuildDate>Sun, 19 Oct 2025 12:28:55 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
       <title>BST TreeInsertion 횟수 구하기 고민한 내용 정리</title>
