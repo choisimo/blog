@@ -31,6 +31,7 @@
     devJs: 'aiMemo.dev.js',
     proposalMd: 'aiMemo.proposalMd',
     fontSize: 'aiMemo.fontSize',
+    closeAfterInject: 'aiMemo.closeAfterInject',
     events: 'aiMemo.events'
   };
 
@@ -48,6 +49,7 @@
         mode: LS.get(KEYS.mode, 'memo'),
         memo: LS.get(KEYS.memo, ''),
         inlineEnabled: !!LS.get(KEYS.inlineEnabled, false),
+        closeAfterInject: !!LS.get(KEYS.closeAfterInject, false),
         devHtml: LS.get(KEYS.devHtml, '<div>Hello AI Memo 👋</div>'),
         devCss: LS.get(
           KEYS.devCss,
@@ -77,6 +79,9 @@
       const update = () => {
         const isDark = document.documentElement.classList.contains('dark');
         this.classList.toggle('dark', isDark);
+        if (this.$historyOverlay && this.$historyOverlay.style.display !== 'none') {
+          this.scheduleHistoryDraw();
+        }
       };
       update();
       const mo = new MutationObserver(update);
@@ -541,8 +546,8 @@
       const doc = document.createElement('div');
       doc.innerHTML = `
         <link rel="stylesheet" href="/ai-memo/ai-memo.css" />
-        <div id="launcher" class="launcher button" title="AI Memo">📝</div>
-        <div id="historyLauncher" class="launcher history button" title="History">📖</div>
+        <div id="launcher" class="launcher button" title="AI Memo" aria-label="AI Memo">📝</div>
+        <div id="historyLauncher" class="launcher history button" title="History" aria-label="History">📖</div>
         <div id="historyOverlay" class="history-overlay" style="display:none;">
           <div class="history-toolbar">
             <div class="left">
@@ -576,19 +581,19 @@
               <div class="row" style="justify-content: space-between; align-items:center; margin-bottom:6px;">
                 <div class="small" style="opacity:0.8">Markdown 지원 • 단축키: Alt+M 토글</div>
                 <div class="row" style="gap:6px;">
-                  <button id="memoBold" class="btn secondary" title="Bold"><strong>B</strong></button>
-                  <button id="memoItalic" class="btn secondary" title="Italic"><em>I</em></button>
-                  <button id="memoCode" class="btn secondary" title="Inline code">{}</button>
-                  <button id="memoH1" class="btn secondary" title="# H1">H1</button>
-                  <button id="memoH2" class="btn secondary" title="## H2">H2</button>
-                  <button id="memoUl" class="btn secondary" title="• bullet list">•</button>
-                  <button id="memoOl" class="btn secondary" title="1. numbered list">1.</button>
+                  <button id="memoBold" class="btn secondary" title="Bold" aria-label="Bold"><strong>B</strong></button>
+                  <button id="memoItalic" class="btn secondary" title="Italic" aria-label="Italic"><em>I</em></button>
+                  <button id="memoCode" class="btn secondary" title="Inline code" aria-label="Inline code">{}</button>
+                  <button id="memoH1" class="btn secondary" title="# H1" aria-label="Heading 1">H1</button>
+                  <button id="memoH2" class="btn secondary" title="## H2" aria-label="Heading 2">H2</button>
+                  <button id="memoUl" class="btn secondary" title="• bullet list" aria-label="Bullet list">•</button>
+                  <button id="memoOl" class="btn secondary" title="1. numbered list" aria-label="Numbered list">1.</button>
                 </div>
               </div>
               <textarea id="memo" class="textarea" placeholder="여기에 메모를 작성하세요"></textarea>
               <div class="row" style="margin-top:6px; gap:6px;">
-                <button id="memoFull" class="btn">전체화면</button>
-                <button id="memoClear" class="btn secondary">지우기</button>
+                <button id="memoFull" class="btn" aria-label="전체화면">전체화면</button>
+                <button id="memoClear" class="btn secondary" aria-label="지우기">지우기</button>
               </div>
             </div>
           </div>
@@ -632,19 +637,26 @@
             <div class="section">
               <label class="label" for="inlineEnabled">문단 끝 ✨ 인라인 확장</label>
               <div class="row">
-                <input id="inlineEnabled" type="checkbox" />
+                <input id="inlineEnabled" type="checkbox" aria-label="문단 끝 인라인 확장" />
                 <div class="small" style="opacity:0.8">글 본문 단락 끝에 ✨ 아이콘을 표시하고 아래로 결과를 펼칩니다.</div>
               </div>
             </div>
-            <div class="section">
-              <label class="label" for="fontSize">폰트 크기</label>
-              <select id="fontSize" class="input">
-                <option value="12">12</option>
-                <option value="13" selected>13</option>
-                <option value="14">14</option>
-                <option value="16">16</option>
-              </select>
-            </div>
+             <div class="section">
+               <label class="label" for="closeAfterInject">주입 후 창 닫기</label>
+               <div class="row">
+                 <input id="closeAfterInject" type="checkbox" aria-label="생각 노드 주입 후 창 닫기" />
+                 <div class="small" style="opacity:0.8">그래프에 주입이 완료되면 메모 패널을 닫습니다.</div>
+               </div>
+             </div>
+             <div class="section">
+               <label class="label" for="fontSize">폰트 크기</label>
+               <select id="fontSize" class="input">
+                 <option value="12">12</option>
+                 <option value="13" selected>13</option>
+                 <option value="14">14</option>
+                 <option value="16">16</option>
+               </select>
+             </div>
           </div>
           <div id="catalystBox" class="row" style="display:none; padding: 8px 12px 0 12px; gap:6px;">
              <input id="catalystInput" class="input" placeholder="어떻게 확장해볼까요? 예: 사용 사례 관점에서 다시 보기" maxlength="160" />
@@ -654,11 +666,11 @@
           <div class="footer">
             <div id="status" class="small">Ready</div>
             <div class="row">
-              <button id="addSelection" class="btn secondary">선택 추가</button>
-              <button id="memoToGraph" class="btn secondary">그래프에 추가 ✨</button>
-              <button id="aiSummary" class="btn">AI 요약</button>
-              <button id="catalyst" class="btn">Catalyst ✨</button>
-              <button id="download" class="btn">메모 다운로드</button>
+              <button id="addSelection" class="btn secondary" aria-label="선택 추가">선택 추가</button>
+              <button id="memoToGraph" class="btn secondary" aria-label="그래프에 추가">그래프에 추가 ✨</button>
+              <button id="aiSummary" class="btn" aria-label="AI 요약">AI 요약</button>
+              <button id="catalyst" class="btn" aria-label="Catalyst">Catalyst ✨</button>
+              <button id="download" class="btn" aria-label="메모 다운로드">메모 다운로드</button>
             </div>
           </div>
           <div id="toast" class="toast"></div>
@@ -688,6 +700,7 @@
       this.$memoPreview = this.shadowRoot.getElementById('memoPreview');
       this.$fontSize = this.shadowRoot.getElementById('fontSize');
       this.$inlineEnabled = this.shadowRoot.getElementById('inlineEnabled');
+      this.$closeAfterInject = this.shadowRoot.getElementById('closeAfterInject');
       this.$memoBold = this.shadowRoot.getElementById('memoBold');
       this.$memoItalic = this.shadowRoot.getElementById('memoItalic');
       this.$memoCode = this.shadowRoot.getElementById('memoCode');
@@ -724,6 +737,8 @@
       if (this.$memoEditor) this.$memoEditor.value = this.state.memo || '';
       if (this.$inlineEnabled)
         this.$inlineEnabled.checked = !!this.state.inlineEnabled;
+      if (this.$closeAfterInject)
+        this.$closeAfterInject.checked = !!this.state.closeAfterInject;
       if (this.$fontSize) {
         const fs = parseInt(this.state.fontSize || 13, 10);
         this.$fontSize.value = String(fs);
@@ -750,6 +765,11 @@
       // dev content
       if (this.$proposalMd)
         this.$proposalMd.value = this.state.proposalMd || '';
+
+      // announce aria labels for important actions (a11y)
+      if (this.$memoToGraph) this.$memoToGraph.setAttribute('aria-label', '그래프에 추가');
+      if (this.$aiSummary) this.$aiSummary.setAttribute('aria-label', 'AI 요약');
+      if (this.$download) this.$download.setAttribute('aria-label', '메모 다운로드');
 
       // mode
       this.$tabs.forEach(t =>
@@ -1100,6 +1120,47 @@
         const graph = this.layoutGraph(this.buildGraph());
         this._histGraph = graph;
 
+        const isDark = this.classList.contains('dark');
+        const theme = isDark ? {
+          edge: 'rgba(148,163,184,0.45)',
+          postFill: '#0f172a',
+          postStroke: 'rgba(255,255,255,0.08)',
+          postLabel: '#e5e7eb',
+          thoughtFill: '#fef08a',
+          thoughtStroke: 'rgba(250,204,21,0.6)',
+          thoughtLabel: '#713f12',
+          aiFill: '#c4b5fd',
+          aiStroke: 'rgba(124,58,237,0.6)',
+          aiLabel: '#eae4ff',
+          eventFill: '#60a5fa',
+          eventStroke: 'rgba(96,165,250,0.4)',
+          eventLabel: '#0b1220',
+          hiDefault: '#93c5fd',
+          hiPost: '#fcd34d',
+          hiThought: '#f59e0b',
+          hiAI: '#c084fc',
+          connector: 'rgba(148,163,184,0.5)'
+        } : {
+          edge: 'rgba(100,116,139,0.6)',
+          postFill: '#111827',
+          postStroke: 'rgba(0,0,0,0.2)',
+          postLabel: '#ffffff',
+          thoughtFill: '#fef08a',
+          thoughtStroke: 'rgba(250,204,21,0.6)',
+          thoughtLabel: '#713f12',
+          aiFill: '#c4b5fd',
+          aiStroke: 'rgba(124,58,237,0.6)',
+          aiLabel: '#1f1147',
+          eventFill: '#1d4ed8',
+          eventStroke: 'rgba(29,78,216,0.3)',
+          eventLabel: '#0b1020',
+          hiDefault: '#93c5fd',
+          hiPost: '#fcd34d',
+          hiThought: '#f59e0b',
+          hiAI: '#c084fc',
+          connector: 'rgba(148,163,184,0.5)'
+        };
+
         // helpers for shapes
         const drawDiamond = (x, y, r, fill, stroke, lw=2) => {
           ctx.beginPath();
@@ -1122,99 +1183,128 @@
           ctx.fillStyle = fill; ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.fill(); ctx.stroke();
         };
 
-        // edges
-        ctx.strokeStyle = 'rgba(100,116,139,0.6)'; ctx.lineWidth = 2; ctx.setLineDash([0]);
+        // draw edges and nodes with theme-aware styles
+        const byId = Object.create(null);
+        for (const n of graph.nodes) byId[n.id] = n;
+
+        const hoveredId = (this._hist && (this._hist.pinnedId || this._hist.hoverId)) || null;
+
+        // edges first (under nodes)
+        ctx.lineCap = 'round';
         for (const e of graph.edges) {
-          const a = graph.nodes.find(n=>n.id===e.a); const b = graph.nodes.find(n=>n.id===e.b); if (!a||!b) continue;
-          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+          const a = byId[e.a];
+          const b = byId[e.b];
+          if (!a || !b) continue;
+          const isActive = hoveredId && (hoveredId === a.id || hoveredId === b.id);
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.strokeStyle = isActive ? theme.connector : theme.edge;
+          ctx.lineWidth = isActive ? 2.4 : 1.4;
+          ctx.stroke();
         }
+
+        // node helpers
+        const drawCircle = (x, y, r, fill, stroke, lw = 2) => {
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fillStyle = fill;
+          ctx.strokeStyle = stroke;
+          ctx.lineWidth = lw;
+          ctx.fill();
+          ctx.stroke();
+        };
+        const strokeRoundedRect = (cx, cy, w, h, rad, color, lw=4) => {
+          const x = cx - w/2, y = cy - h/2; const r = Math.min(rad, w/2, h/2);
+          ctx.beginPath();
+          ctx.moveTo(x + r, y);
+          ctx.arcTo(x + w, y, x + w, y + h, r);
+          ctx.arcTo(x + w, y + h, x, y + h, r);
+          ctx.arcTo(x, y + h, x, y, r);
+          ctx.arcTo(x, y, x + w, y, r);
+          ctx.closePath();
+          ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.stroke();
+        };
+
         // nodes
         for (const n of graph.nodes) {
-          const labelRaw = String(n.label || '');
-          const label = labelRaw.length > 18 ? labelRaw.slice(0, 17) + '…' : labelRaw;
-          if (n.kind === 'post') {
-            ctx.beginPath();
-            ctx.fillStyle = '#111827'; ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 3; ctx.arc(n.x, n.y, n.r, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#fff';
-            ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText(label, n.x, n.y);
-          } else if (n.kind === 'thought') {
-            const w = n.r * 2.6; const h = n.r * 1.6;
-            drawRoundedRect(n.x, n.y, w, h, 10, '#fef08a', 'rgba(250,204,21,0.6)');
-            ctx.fillStyle = '#713f12';
-            ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText(label, n.x, n.y);
+          const r = n.r || 16;
+          let fill = theme.eventFill;
+          let stroke = theme.eventStroke;
+          if (n.kind === 'post') { fill = theme.postFill; stroke = theme.postStroke; }
+          else if (n.kind === 'thought') { fill = theme.thoughtFill; stroke = theme.thoughtStroke; }
+          else if (n.kind === 'ai_summary_done' || n.kind === 'catalyst_run') { fill = theme.aiFill; stroke = theme.aiStroke; }
+
+          if (n.kind === 'thought') {
+            const w = r * 2.6, h = r * 1.6;
+            drawRoundedRect(n.x, n.y, w, h, 10, fill, stroke, 2);
           } else if (n.kind === 'ai_summary_done' || n.kind === 'catalyst_run') {
-            drawDiamond(n.x, n.y, n.r, '#c4b5fd', 'rgba(124,58,237,0.6)');
-            ctx.fillStyle = '#1f1147';
-            ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText(label, n.x, n.y);
+            drawDiamond(n.x, n.y, r, fill, stroke, 2);
           } else {
-            ctx.beginPath(); ctx.fillStyle = '#1d4ed8'; ctx.strokeStyle = 'rgba(29,78,216,0.3)'; ctx.lineWidth = 2; ctx.arc(n.x, n.y, n.r, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#0b1020';
-            ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText(label, n.x, n.y);
+            drawCircle(n.x, n.y, r, fill, stroke, 2);
           }
         }
-         // hover/pinned highlight (shape-aware)
-         const hilite = (node) => {
-           if (!node) return;
-           let color = '#93c5fd';
-           if (node.kind === 'post') color = '#fcd34d';
-           else if (node.kind === 'thought') color = '#f59e0b';
-           else if (node.kind === 'ai_summary_done' || node.kind === 'catalyst_run') color = '#c084fc';
-           ctx.lineWidth = 3;
-           ctx.strokeStyle = color;
-           ctx.setLineDash([6, 4]);
-           const m = 6; // highlight margin
-           if (node.kind === 'thought') {
-             const baseR = node.r || 16;
-             const w = baseR * 2.6 + m * 2;
-             const h = baseR * 1.6 + m * 2;
-             const rad = 12;
-             const x = node.x - w / 2;
-             const y = node.y - h / 2;
-             const r = Math.min(rad, w / 2, h / 2);
-             ctx.beginPath();
-             ctx.moveTo(x + r, y);
-             ctx.arcTo(x + w, y, x + w, y + h, r);
-             ctx.arcTo(x + w, y + h, x, y + h, r);
-             ctx.arcTo(x, y + h, x, y, r);
-             ctx.arcTo(x, y, x + w, y, r);
-             ctx.closePath();
-             ctx.stroke();
-           } else if (node.kind === 'ai_summary_done' || node.kind === 'catalyst_run') {
-             const r = (node.r || 16) + m;
-             ctx.beginPath();
-             ctx.moveTo(node.x, node.y - r);
-             ctx.lineTo(node.x + r, node.y);
-             ctx.lineTo(node.x, node.y + r);
-             ctx.lineTo(node.x - r, node.y);
-             ctx.closePath();
-             ctx.stroke();
-           } else {
-             ctx.beginPath();
-             ctx.arc(node.x, node.y, (node.r || 16) + m, 0, Math.PI * 2);
-             ctx.stroke();
-           }
-           ctx.setLineDash([]);
-           // subtle connector to viewport center (convert to world coords)
-           const rect = this.$historyCanvas.getBoundingClientRect();
-           const sx = rect.width / 2, sy = rect.height / 2;
-           const worldCx = (sx - (this._hist?.tx || 0)) / (this._hist?.scale || 1);
-           const worldCy = (sy - (this._hist?.ty || 0)) / (this._hist?.scale || 1);
-           ctx.beginPath();
-           ctx.strokeStyle = 'rgba(148,163,184,0.5)';
-           ctx.setLineDash([2, 6]);
-           ctx.moveTo(node.x, node.y);
-           ctx.lineTo(worldCx, worldCy);
-           ctx.stroke();
-           ctx.setLineDash([]);
-         };
+
+        // labels
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const truncate = (s, max) => (s && s.length > max) ? s.slice(0, max - 1) + '…' : (s || '');
+        for (const n of graph.nodes) {
+          const r = n.r || 16;
+          let color = theme.eventLabel;
+          let font = '12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+          let y = n.y;
+          if (n.kind === 'post') { color = theme.postLabel; font = 'bold 13px system-ui, -apple-system, Segoe UI, Roboto, sans-serif'; }
+          else if (n.kind === 'thought') { color = theme.thoughtLabel; }
+          else if (n.kind === 'ai_summary_done' || n.kind === 'catalyst_run') { color = theme.aiLabel; }
+
+          ctx.fillStyle = color;
+          ctx.font = font;
+          const label = n.kind === 'post' ? truncate(n.label, 28) : truncate(n.label, 22);
+          ctx.fillText(label, n.x, y);
+        }
+
+        // highlight pinned/hovered and emphasize connectors
+        const hilite = (node) => {
+          if (!node) return;
+          const color = (node.kind === 'post') ? theme.hiPost : (node.kind === 'thought') ? theme.hiThought : ((node.kind === 'ai_summary_done' || node.kind === 'catalyst_run') ? theme.hiAI : theme.hiDefault);
+          // emphasize connectors
+          ctx.save();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 3.2;
+          ctx.globalAlpha = 0.95;
+          for (const e of graph.edges) {
+            if (e.a === node.id || e.b === node.id) {
+              const a = byId[e.a]; const b = byId[e.b];
+              if (!a || !b) continue;
+              ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+            }
+          }
+          ctx.restore();
+
+          // halo around node
+          const r = node.r || 16;
+          ctx.save();
+          ctx.strokeStyle = color;
+          ctx.globalAlpha = 0.6;
+          if (node.kind === 'thought') {
+            const w = r * 2.6 + 12; const h = r * 1.6 + 10;
+            strokeRoundedRect(node.x, node.y, w, h, 12, color, 6);
+          } else if (node.kind === 'ai_summary_done' || node.kind === 'catalyst_run') {
+            const rr = r + 8;
+            ctx.beginPath();
+            ctx.moveTo(node.x, node.y - rr);
+            ctx.lineTo(node.x + rr, node.y);
+            ctx.lineTo(node.x, node.y + rr);
+            ctx.lineTo(node.x - rr, node.y);
+            ctx.closePath();
+            ctx.lineWidth = 6; ctx.stroke();
+          } else {
+            ctx.beginPath(); ctx.arc(node.x, node.y, r + 8, 0, Math.PI * 2); ctx.lineWidth = 6; ctx.stroke();
+          }
+          ctx.restore();
+        };
+
         const pinned = this._hist?.pinnedId && graph.nodes.find(n => n.id === this._hist.pinnedId);
         if (pinned) hilite(pinned); else if (this._hist && this._hist.hoverId) { const hn = graph.nodes.find(n => n.id === this._hist.hoverId); hilite(hn); }
         ctx.restore();
@@ -1450,6 +1540,17 @@
         this.$inlineEnabled.addEventListener('change', onToggleInline);
         this.$inlineEnabled.addEventListener('input', onToggleInline);
       }
+      if (this.$closeAfterInject) {
+        const onToggleClose = () => {
+          const val = !!this.$closeAfterInject.checked;
+          this.state.closeAfterInject = val;
+          LS.set(KEYS.closeAfterInject, val);
+          this.toast(`주입 후 창 닫기 ${val ? '켜짐' : '꺼짐'}`);
+          this.logEvent({ type: 'toggle_close_after_inject', label: val ? 'on' : 'off' });
+        };
+        this.$closeAfterInject.addEventListener('change', onToggleClose);
+        this.$closeAfterInject.addEventListener('input', onToggleClose);
+      }
       if (this.$proposalMd) {
         const persistProposal = () => {
           this.state.proposalMd = this.$proposalMd.value;
@@ -1542,11 +1643,31 @@
           const raw = (this.$memo.value || '').trim();
           if (!raw) { this.toast('메모가 비어 있습니다.'); return; }
           const firstLine = raw.split(/\r?\n/).find(l => l.trim().length > 0) || '';
-          const label = (firstLine || raw).replace(/^\s*#+\s*/, '').slice(0, 60) + (firstLine.length > 60 ? '…' : '');
-          this.logEvent({ type: 'thought', label, content: raw });
+          const labelBase = (firstLine || raw).replace(/^\s*#+\s*/, '');
+          const label = labelBase.slice(0, 60) + (labelBase.length > 60 ? '…' : '');
+
+          // duplicate guard: check last 20 thought events for same content
+          const recent = (this.state.events || []).slice(-50).reverse();
+          const dup = recent.find(ev => ev && ev.type === 'thought' && (ev.content || '').trim() === raw);
+          if (dup) {
+            const ok = confirm('동일한 내용의 생각이 이미 그래프에 있습니다. 다시 추가할까요?');
+            if (!ok) { this.toast('주입을 취소했습니다.'); return; }
+          }
+
+          // build metadata
+          const info = this.getCurrentPostInfo();
+          const anchor = this.getCurrentAnchor();
+          const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+          const meta = { ver: 2, id, source: 'memo', anchor };
+
+          this.logEvent({ type: 'thought', label, content: raw, meta });
           this.toast('메모를 그래프에 추가했습니다.');
           if (this.$historyOverlay && this.$historyOverlay.style.display !== 'none') {
             this.drawHistory();
+          }
+          if (this.state.closeAfterInject) {
+            this.$panel.classList.remove('open');
+            this.updateOpen();
           }
         });
       }
@@ -1878,6 +1999,61 @@
         return null;
       };
       return fromHash() || fromPath();
+    }
+
+    getCurrentAnchor() {
+      try {
+        const scope = document.querySelector('article') ||
+          document.querySelector('main') ||
+          document.querySelector('article.prose') ||
+          document.querySelector('.prose') ||
+          document.getElementById('content') ||
+          document.body;
+        if (!scope) return null;
+
+        const toAnchor = (h) => {
+          let id = (h.id || '').trim();
+          if (!id) {
+            const a = h.querySelector('a[href^="#"]');
+            if (a) {
+              const href = (a.getAttribute('href') || '').trim();
+              if (href.startsWith('#') && href.length > 1) {
+                try { id = decodeURIComponent(href.slice(1)); } catch (_) { id = href.slice(1); }
+              }
+            }
+          }
+          return id ? { el: h, id } : null;
+        };
+
+        let anchors = Array.from(scope.querySelectorAll('h1,h2,h3,h4,h5,h6'))
+          .map(toAnchor)
+          .filter(Boolean);
+
+        if (anchors.length === 0) {
+          anchors = Array.from(scope.querySelectorAll('[id]'))
+            .filter(el => el.id && el.id.length > 0)
+            .map(el => ({ el, id: el.id }));
+        }
+        if (anchors.length === 0) return null;
+
+        anchors.forEach(a => { a.top = a.el.getBoundingClientRect().top; });
+
+        const threshold = Math.round(window.innerHeight * 0.33);
+        let candidate = anchors
+          .filter(a => a.top <= threshold)
+          .sort((a, b) => b.top - a.top)[0];
+        if (!candidate) {
+          candidate = anchors
+            .filter(a => a.top > 0)
+            .sort((a, b) => a.top - b.top)[0];
+        }
+        if (!candidate) candidate = anchors[0];
+
+        const id = (candidate && candidate.id || '').trim();
+        return id ? `#${id}` : null;
+      } catch (_) {
+        return null;
+      }
     }
 
     buildOriginalMarkdownPath(info) {
