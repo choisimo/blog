@@ -60,16 +60,15 @@
         fontSize: LS.get(KEYS.fontSize, 13),
         events: LS.get(KEYS.events, [])
       };
-      this._drag = { active: false, startX: 0, startY: 0, origX: 0, origY: 0 };
       this.root = null; // shadow root container
       this._originalLoaded = false;
     }
 
     connectedCallback() {
       this.render();
+      this.bind();
       this.applyThemeFromPage();
       this.restore();
-      this.bind();
       // If first mount and isOpen, ensure visibility
       this.updateOpen();
       this.updateMode();
