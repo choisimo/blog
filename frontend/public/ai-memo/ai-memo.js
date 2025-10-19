@@ -677,6 +677,10 @@
         </div>
       `;
       this.shadowRoot.appendChild(doc);
+      // Ensure fixed positioning even if stylesheet hasn't loaded yet (or fails)
+      this.injectCriticalStyles();
+      // Robustly ensure full styles get applied in browsers that ignore <link> in shadow DOM
+      this.ensureStylesLoaded();
 
       // cache
       this.$launcher = this.shadowRoot.getElementById('launcher');
@@ -729,6 +733,60 @@
       this.$catalystCancel = this.shadowRoot.getElementById('catalystCancel');
       this.$download = this.shadowRoot.getElementById('download');
       this.$toast = this.shadowRoot.getElementById('toast');
+    }
+
+    // Inject minimal critical styles as a safety net so the UI stays fixed and scoped
+    injectCriticalStyles() {
+      try {
+        const panel = this.shadowRoot && this.shadowRoot.getElementById('panel');
+        if (!panel) return;
+        const cs = getComputedStyle(panel);
+        // If the external CSS applied correctly, .panel should already be fixed
+        if (cs && cs.position === 'fixed') return;
+        // Otherwise, inject a minimal style fallback
+        const style = document.createElement('style');
+        style.setAttribute('data-ai-memo', 'critical');
+        style.textContent = `
+          :host { all: initial; }
+          .launcher { position: fixed; right: 16px; bottom: 96px; z-index: 2147483647; }
+          .launcher.history { bottom: 152px; }
+          .panel { position: fixed; z-index: 2147483647; right: 16px; bottom: 160px; display: none; }
+          .panel.open { display: flex; flex-direction: column; }
+          .history-overlay { position: fixed; inset: 0; z-index: 2147483647; display: none; }
+        `;
+        this.shadowRoot.appendChild(style);
+      } catch (_) {}
+    }
+
+    // Load and attach the full CSS into the shadow root if the external <link> failed
+    ensureStylesLoaded() {
+      try {
+        const root = this.shadowRoot;
+        const panel = root && root.getElementById('panel');
+        if (!panel) return;
+        const ok = () => getComputedStyle(panel).position === 'fixed';
+        if (ok()) return; // already styled
+
+        const attachText = (cssText) => {
+          try {
+            if (root.adoptedStyleSheets && 'replaceSync' in CSSStyleSheet.prototype) {
+              const sheet = new CSSStyleSheet();
+              sheet.replaceSync(cssText);
+              root.adoptedStyleSheets = [...root.adoptedStyleSheets, sheet];
+            } else {
+              const style = document.createElement('style');
+              style.textContent = cssText;
+              root.appendChild(style);
+            }
+          } catch (_) {}
+        };
+
+        // Fetch CSS and inline it
+        fetch('/ai-memo/ai-memo.css')
+          .then((r) => (r.ok ? r.text() : ''))
+          .then((txt) => { if (txt) attachText(txt); })
+          .catch(() => {});
+      } catch (_) {}
     }
 
     restore() {
