@@ -23,8 +23,8 @@ describe('VisitedPostsMinimap', () => {
 
   it('does not render when there are no visited posts', () => {
     wrap(<VisitedPostsMinimap />);
-    // Button labeled History should not be in the document
-    expect(screen.queryByLabelText(/Visited posts minimap/i)).not.toBeInTheDocument();
+    // Should not be present when there are no visited posts
+    expect(screen.queryByLabelText(/open visited posts history/i)).not.toBeInTheDocument();
   });
 
   it('renders when visited posts exist and toggles open state', () => {
@@ -37,7 +37,7 @@ describe('VisitedPostsMinimap', () => {
     );
     wrap(<VisitedPostsMinimap />);
 
-    const btn = screen.getByRole('button', { name: /visited posts minimap/i });
+    const btn = screen.getByRole('button', { name: /open visited posts history/i });
     expect(btn).toBeInTheDocument();
 
     // Initially collapsed, clicking opens list
@@ -45,7 +45,7 @@ describe('VisitedPostsMinimap', () => {
     expect(screen.getByText(/Recently visited/i)).toBeInTheDocument();
 
     // Close via Close button
-    fireEvent.click(screen.getByRole('button', { name: /close minimap/i }));
+    fireEvent.click(screen.getByRole('button', { name: /close history/i }));
     expect(screen.queryByText(/Recently visited/i)).not.toBeInTheDocument();
   });
 
@@ -64,7 +64,7 @@ describe('VisitedPostsMinimap', () => {
     });
 
     // Now the minimap should appear
-    const btn = await screen.findByRole('button', { name: /visited posts minimap/i });
+    const btn = await screen.findByRole('button', { name: /open visited posts history/i });
     expect(btn).toBeInTheDocument();
   });
 
@@ -75,7 +75,7 @@ describe('VisitedPostsMinimap', () => {
     );
     wrap(<VisitedPostsMinimap />);
 
-    fireEvent.click(screen.getByRole('button', { name: /visited posts minimap/i }));
+    fireEvent.click(screen.getByRole('button', { name: /open visited posts history/i }));
 
     // Click the list item button which has text Foo
     fireEvent.click(screen.getByRole('button', { name: /foo/i }));

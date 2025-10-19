@@ -853,6 +853,8 @@
          const onWheel = (e) => {
            e.preventDefault();
            const { offsetX, offsetY, deltaY } = e;
+           // store latest mouse position for hover sync
+           this._hist.mouseX = e.clientX; this._hist.mouseY = e.clientY;
            const factor = deltaY < 0 ? 1.1 : 0.9;
            const { scale, tx, ty } = this._hist;
            const x = (offsetX - tx) / scale; const y = (offsetY - ty) / scale;
@@ -860,13 +862,15 @@
            this._hist.scale = ns;
            this._hist.tx = offsetX - x * ns; this._hist.ty = offsetY - y * ns;
            this.scheduleHistoryDraw();
-           // keep tooltip synced
+           // keep tooltip synced (convert client -> canvas -> world)
            if (this._hist.mouseX != null && this._hist.mouseY != null) {
+             const rect = c.getBoundingClientRect();
+             const mx = this._hist.mouseX - rect.left; const my = this._hist.mouseY - rect.top;
              const g = this._histGraph || this.layoutGraph(this.buildGraph());
-              let hit = null; const xw = (this._hist.mouseX - this._hist.tx)/ns; const yw = (this._hist.mouseY - this._hist.ty)/ns;
-              hit = this.hitTestHistoryNode(g, xw, yw);
-              this._hist.hoverId = hit ? hit.id : null;
-              this.updateHistoryTooltip(hit, this._hist.mouseX, this._hist.mouseY);
+             const xw = (mx - this._hist.tx) / ns; const yw = (my - this._hist.ty) / ns;
+             const hit = this.hitTestHistoryNode(g, xw, yw);
+             this._hist.hoverId = hit ? hit.id : null;
+             this.updateHistoryTooltip(hit, this._hist.mouseX, this._hist.mouseY);
            }
          };
         const onDown = (e) => {
@@ -940,7 +944,7 @@
          c.addEventListener('click', onClick);
          c.addEventListener('dblclick', onDblClick);
          this.$historyClose?.addEventListener('click', () => this.closeHistory());
-         this.$historyReset?.addEventListener('click', () => { if (!confirm('히스토리 기록을 모두 삭제할까요?')) return; this.state.events = []; LS.set(KEYS.events, []); this.drawHistory(); this.toast('기록을 초기화했습니다.'); this.logEvent({ type: 'history_reset', label: '히스토리 초기화' }); });
+          this.$historyReset?.addEventListener('click', () => { if (!confirm('히스토리 기록을 모두 삭제할까요?')) return; this.state.events = []; LS.set(KEYS.events, []); if (this._hist) { this._hist.hoverId = null; this._hist.pinnedId = null; } this.hideHistoryTooltip(); this.closeHistoryInfo(); this.drawHistory(); this.toast('기록을 초기화했습니다.'); this.logEvent({ type: 'history_reset', label: '히스토리 초기화' }); });
          this.$historyExport?.addEventListener('click', () => {
            try {
              const data = { exportedAt: new Date().toISOString(), events: this.state.events || [] };
@@ -1156,24 +1160,61 @@
             ctx.fillText(label, n.x, n.y);
           }
         }
-        // hover/pinned highlight
-        const hilite = (node) => {
-          if (!node) return;
-          ctx.beginPath();
-          let color = '#93c5fd';
-          if (node.kind === 'post') color = '#fcd34d';
-          else if (node.kind === 'thought') color = '#f59e0b';
-          else if (node.kind === 'ai_summary_done' || node.kind === 'catalyst_run') color = '#c084fc';
-          ctx.strokeStyle = color; ctx.lineWidth = 3;
-          ctx.setLineDash([6, 4]);
-          ctx.arc(node.x, node.y, (node.r||16)+6, 0, Math.PI*2);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          // subtle connector to center
-          const rect = this.$historyCanvas.getBoundingClientRect();
-          const cx = rect.width/2, cy = rect.height/2;
-          ctx.beginPath(); ctx.strokeStyle = 'rgba(148,163,184,0.5)'; ctx.setLineDash([2, 6]); ctx.moveTo(node.x, node.y); ctx.lineTo(cx, cy); ctx.stroke(); ctx.setLineDash([]);
-        };
+         // hover/pinned highlight (shape-aware)
+         const hilite = (node) => {
+           if (!node) return;
+           let color = '#93c5fd';
+           if (node.kind === 'post') color = '#fcd34d';
+           else if (node.kind === 'thought') color = '#f59e0b';
+           else if (node.kind === 'ai_summary_done' || node.kind === 'catalyst_run') color = '#c084fc';
+           ctx.lineWidth = 3;
+           ctx.strokeStyle = color;
+           ctx.setLineDash([6, 4]);
+           const m = 6; // highlight margin
+           if (node.kind === 'thought') {
+             const baseR = node.r || 16;
+             const w = baseR * 2.6 + m * 2;
+             const h = baseR * 1.6 + m * 2;
+             const rad = 12;
+             const x = node.x - w / 2;
+             const y = node.y - h / 2;
+             const r = Math.min(rad, w / 2, h / 2);
+             ctx.beginPath();
+             ctx.moveTo(x + r, y);
+             ctx.arcTo(x + w, y, x + w, y + h, r);
+             ctx.arcTo(x + w, y + h, x, y + h, r);
+             ctx.arcTo(x, y + h, x, y, r);
+             ctx.arcTo(x, y, x + w, y, r);
+             ctx.closePath();
+             ctx.stroke();
+           } else if (node.kind === 'ai_summary_done' || node.kind === 'catalyst_run') {
+             const r = (node.r || 16) + m;
+             ctx.beginPath();
+             ctx.moveTo(node.x, node.y - r);
+             ctx.lineTo(node.x + r, node.y);
+             ctx.lineTo(node.x, node.y + r);
+             ctx.lineTo(node.x - r, node.y);
+             ctx.closePath();
+             ctx.stroke();
+           } else {
+             ctx.beginPath();
+             ctx.arc(node.x, node.y, (node.r || 16) + m, 0, Math.PI * 2);
+             ctx.stroke();
+           }
+           ctx.setLineDash([]);
+           // subtle connector to viewport center (convert to world coords)
+           const rect = this.$historyCanvas.getBoundingClientRect();
+           const sx = rect.width / 2, sy = rect.height / 2;
+           const worldCx = (sx - (this._hist?.tx || 0)) / (this._hist?.scale || 1);
+           const worldCy = (sy - (this._hist?.ty || 0)) / (this._hist?.scale || 1);
+           ctx.beginPath();
+           ctx.strokeStyle = 'rgba(148,163,184,0.5)';
+           ctx.setLineDash([2, 6]);
+           ctx.moveTo(node.x, node.y);
+           ctx.lineTo(worldCx, worldCy);
+           ctx.stroke();
+           ctx.setLineDash([]);
+         };
         const pinned = this._hist?.pinnedId && graph.nodes.find(n => n.id === this._hist.pinnedId);
         if (pinned) hilite(pinned); else if (this._hist && this._hist.hoverId) { const hn = graph.nodes.find(n => n.id === this._hist.hoverId); hilite(hn); }
         ctx.restore();
@@ -1202,7 +1243,7 @@
            const p = node.meta?.post;
            lines.push(`Post: ${node.label}`);
            if (p) lines.push(`${p.year}/${p.slug}`);
-           lines.push('Click: center • Double-click: open');
+            lines.push('Click: pin • Double-click: open');
           } else {
             const ev = node.meta?.ev;
             const pg = ev?.page;
