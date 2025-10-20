@@ -38,6 +38,7 @@
   // 기본값 설정
   const DEFAULT_API_URL = 'https://blog-api.immuddelo.workers.dev';
   const DEFAULT_REPO_URL = 'https://github.com/choisimo/blog';
+  const BLOCK_SELECTORS = 'p, pre, code, blockquote, ul, ol, li, table, thead, tbody, tr, th, td, figure, figcaption, h1, h2, h3, h4, h5, h6, section, article, main';
 
   class AIMemoPad extends HTMLElement {
     constructor() {
@@ -62,6 +63,26 @@
       };
       this.root = null; // shadow root container
       this._originalLoaded = false;
+      this.isBlockSelectMode = false;
+      this.highlightedBlock = null;
+      this._turndown = null;
+      this._prevCursor = '';
+      this._boundBlockHighlight = this.handleBlockHighlight.bind(this);
+      this._boundBlockCapture = this.handleBlockCapture.bind(this);
+      this._boundBlockKeydown = this.handleBlockKeydown.bind(this);
+
+      if (window.TurndownService) {
+        this._turndown = new window.TurndownService();
+      } else {
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/turndown/dist/turndown.js';
+        script.onload = () => {
+          if (window.TurndownService) {
+            this._turndown = new window.TurndownService();
+          }
+        };
+        document.head.appendChild(script);
+      }
 
       // Output channel ensures UI writes stay scoped to shadow DOM
       this.out = {
@@ -606,11 +627,7 @@
                   <button id="memoOl" class="btn secondary" title="1. numbered list" aria-label="Numbered list">1.</button>
                 </div>
               </div>
-              <textarea id="memo" class="textarea" placeholder="여기에 메모를 작성하세요"></textarea>
-              <div class="row" style="margin-top:6px; gap:6px;">
-                <button id="memoFull" class="btn" aria-label="전체화면">전체화면</button>
-                <button id="memoClear" class="btn secondary" aria-label="지우기">지우기</button>
-              </div>
+              <textarea id="memo" class="textarea" style="min-height:300px; height:300px;" placeholder="여기에 메모를 작성하세요"></textarea>
             </div>
           </div>
 
@@ -681,11 +698,10 @@
           <div class="footer">
             <div id="status" class="small">Ready</div>
             <div class="row">
-              <button id="addSelection" class="btn secondary" aria-label="선택 추가">선택 추가</button>
-              <button id="memoToGraph" class="btn secondary" aria-label="그래프에 추가">그래프에 추가 ✨</button>
-              <button id="aiSummary" class="btn" aria-label="AI 요약">AI 요약</button>
-              <button id="catalyst" class="btn" aria-label="Catalyst">Catalyst ✨</button>
-              <button id="download" class="btn" aria-label="메모 다운로드">메모 다운로드</button>
+              <button id="addSelection" class="btn secondary" type="button" aria-label="선택 추가">선택 추가</button>
+              <button id="addBlock" class="btn secondary" type="button" aria-label="블록 추가">블록 추가</button>
+              <button id="memoFull" class="btn" type="button" aria-label="전체화면">전체화면</button>
+              <button id="memoClear" class="btn secondary" type="button" aria-label="지우기">지우기</button>
             </div>
           </div>
           <div id="toast" class="toast"></div>
@@ -730,6 +746,7 @@
       this.$memoFull = this.shadowRoot.getElementById('memoFull');
 
       this.$memoClear = this.shadowRoot.getElementById('memoClear');
+      this.$addBlock = this.shadowRoot.getElementById('addBlock');
 
       this.$originalPath = this.shadowRoot.getElementById('originalPath');
       this.$proposalMd = this.shadowRoot.getElementById('proposalMd');
@@ -748,6 +765,130 @@
       this.$catalystCancel = this.shadowRoot.getElementById('catalystCancel');
       this.$download = this.shadowRoot.getElementById('download');
       this.$toast = this.shadowRoot.getElementById('toast');
+    }
+
+    createBlockHighlighter() {
+      if (document.getElementById('ai-memo-highlighter')) return;
+      const overlay = document.createElement('div');
+      overlay.id = 'ai-memo-highlighter';
+      Object.assign(overlay.style, {
+        display: 'none',
+        position: 'absolute',
+        zIndex: '2147483646',
+        backgroundColor: 'rgba(99, 102, 241, 0.18)',
+        border: '1.5px solid rgba(99, 102, 241, 0.7)',
+        borderRadius: '6px',
+        boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.45)',
+        pointerEvents: 'none',
+        transition: 'top 120ms ease, left 120ms ease, width 120ms ease, height 120ms ease',
+        willChange: 'top, left, width, height',
+      });
+      document.body.appendChild(overlay);
+    }
+
+    destroyBlockHighlighter() {
+      const overlay = document.getElementById('ai-memo-highlighter');
+      if (overlay) overlay.remove();
+      this.highlightedBlock = null;
+    }
+
+    toggleBlockSelectMode(force) {
+      const next = typeof force === 'boolean' ? force : !this.isBlockSelectMode;
+      if (next === this.isBlockSelectMode) return;
+      this.isBlockSelectMode = next;
+
+      if (document.body) {
+        document.body.classList.toggle('ai-memo-block-select-active', next);
+        if (!next && this._prevCursor) {
+          document.body.style.cursor = this._prevCursor;
+          this._prevCursor = '';
+        } else if (next) {
+          this._prevCursor = document.body.style.cursor || '';
+          document.body.style.cursor = 'crosshair';
+        }
+      }
+      if (this.$panel) this.$panel.classList.toggle('selecting-block', next);
+
+      if (next) {
+        this.out.tempStatus('추가할 블록을 클릭하세요 (ESC 취소)', 'Ready', 2400);
+        this.createBlockHighlighter();
+        document.addEventListener('mousemove', this._boundBlockHighlight, { capture: true, passive: true });
+        document.addEventListener('click', this._boundBlockCapture, true);
+        document.addEventListener('keydown', this._boundBlockKeydown, true);
+      } else {
+        document.removeEventListener('mousemove', this._boundBlockHighlight, true);
+        document.removeEventListener('click', this._boundBlockCapture, true);
+        document.removeEventListener('keydown', this._boundBlockKeydown, true);
+        this.destroyBlockHighlighter();
+      }
+    }
+
+    handleBlockHighlight(event) {
+      if (!this.isBlockSelectMode) return;
+      this.createBlockHighlighter();
+      const overlay = document.getElementById('ai-memo-highlighter');
+      if (!overlay) return;
+
+      overlay.style.display = 'none';
+      const target = document.elementFromPoint(event.clientX, event.clientY);
+      if (!target || target.closest('ai-memo-pad') || target.id === 'ai-memo-highlighter') {
+        this.highlightedBlock = null;
+        return;
+      }
+
+      const block = target.closest(BLOCK_SELECTORS);
+      if (!block) {
+        this.highlightedBlock = null;
+        return;
+      }
+
+      this.highlightedBlock = block;
+      const rect = block.getBoundingClientRect();
+      overlay.style.display = 'block';
+      overlay.style.top = `${rect.top + window.scrollY}px`;
+      overlay.style.left = `${rect.left + window.scrollX}px`;
+      overlay.style.width = `${rect.width}px`;
+      overlay.style.height = `${rect.height}px`;
+    }
+
+    handleBlockCapture(event) {
+      if (!this.isBlockSelectMode || !this.highlightedBlock) return;
+      if ('button' in event && event.button !== 0) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (!this._turndown) {
+        this.out.toast('Markdown 변환기를 로드 중입니다. 잠시 후 다시 시도하세요.');
+        this.toggleBlockSelectMode(false);
+        return;
+      }
+
+      try {
+        const html = this.highlightedBlock.outerHTML;
+        const markdown = this._turndown.turndown(html || '');
+        if (markdown.trim()) {
+          this.out.append(`\n\n${markdown.trim()}\n`);
+          this.out.toast('선택한 블록을 메모에 추가했습니다.');
+          this.logEvent({ type: 'add_block', label: 'block', content: markdown.slice(0, 2000) });
+        } else {
+          this.out.toast('추가할 내용이 없습니다.');
+        }
+      } catch (err) {
+        console.error('Block capture failed', err);
+        this.out.toast('블록을 추가하지 못했습니다.');
+      }
+
+      this.toggleBlockSelectMode(false);
+    }
+
+    handleBlockKeydown(event) {
+      if (!this.isBlockSelectMode) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        this.out.tempStatus('블록 선택 모드를 종료합니다.', 'Ready', 1400);
+        this.toggleBlockSelectMode(false);
+      }
     }
 
     // Inject minimal critical styles as a safety net so the UI stays fixed and scoped
@@ -1771,52 +1912,54 @@
       }
 
       // unified download menu
-      this.$download.addEventListener('click', () => { 
-        const sel = document.createElement('select');
-        sel.innerHTML = '<option value="txt">일반 텍스트 (.txt)</option><option value="md">Markdown (.md)</option><option value="html">HTML (.html)</option>';
-        sel.style.position = 'absolute';
-        sel.style.right = '12px';
-        sel.style.bottom = '44px';
-        sel.style.zIndex = '2147483647';
-        sel.style.padding = '6px';
-        sel.style.borderRadius = '6px';
-        sel.style.border = '1px solid #e5e7eb';
-        sel.style.background = '#fff';
-        this.$panel.appendChild(sel);
-        const cleanup = () => sel.remove();
-        sel.addEventListener('change', () => {
-          const type = sel.value;
-          const md = this.$memo.value || '';
-          if (type === 'txt') {
-            const blob = new Blob([md], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = 'memo.txt'; document.body.appendChild(a); a.click(); a.remove();
-            URL.revokeObjectURL(url);
-             this.out.toast('memo.txt 다운로드');
-          } else if (type === 'md') {
-            const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = 'memo.md'; document.body.appendChild(a); a.click(); a.remove();
-            URL.revokeObjectURL(url);
-             this.out.toast('memo.md 다운로드');
-          } else if (type === 'html') {
-            const body = this.markdownToHtml(md);
-            const html = '<!doctype html><meta charset="utf-8"/><title>Memo</title><body style="font: 14px/1.6 system-ui, sans-serif; padding: 24px; max-width: 760px; margin: auto;">' + body + '</body>';
-            const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = 'memo.html'; document.body.appendChild(a); a.click(); a.remove();
-            URL.revokeObjectURL(url);
-             this.out.toast('memo.html 다운로드');
-          }
-          cleanup();
+      if (this.$download) {
+        this.$download.addEventListener('click', () => {
+          const sel = document.createElement('select');
+          sel.innerHTML = '<option value="txt">일반 텍스트 (.txt)</option><option value="md">Markdown (.md)</option><option value="html">HTML (.html)</option>';
+          sel.style.position = 'absolute';
+          sel.style.right = '12px';
+          sel.style.bottom = '44px';
+          sel.style.zIndex = '2147483647';
+          sel.style.padding = '6px';
+          sel.style.borderRadius = '6px';
+          sel.style.border = '1px solid #e5e7eb';
+          sel.style.background = '#fff';
+          this.$panel.appendChild(sel);
+          const cleanup = () => sel.remove();
+          sel.addEventListener('change', () => {
+            const type = sel.value;
+            const md = this.$memo.value || '';
+            if (type === 'txt') {
+              const blob = new Blob([md], { type: 'text/plain;charset=utf-8' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url; a.download = 'memo.txt'; document.body.appendChild(a); a.click(); a.remove();
+              URL.revokeObjectURL(url);
+              this.out.toast('memo.txt 다운로드');
+            } else if (type === 'md') {
+              const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url; a.download = 'memo.md'; document.body.appendChild(a); a.click(); a.remove();
+              URL.revokeObjectURL(url);
+              this.out.toast('memo.md 다운로드');
+            } else if (type === 'html') {
+              const body = this.markdownToHtml(md);
+              const html = '<!doctype html><meta charset="utf-8"/><title>Memo</title><body style="font: 14px/1.6 system-ui, sans-serif; padding: 24px; max-width: 760px; margin: auto;">' + body + '</body>';
+              const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url; a.download = 'memo.html'; document.body.appendChild(a); a.click(); a.remove();
+              URL.revokeObjectURL(url);
+              this.out.toast('memo.html 다운로드');
+            }
+            cleanup();
+          });
+          const onBlur = () => cleanup();
+          sel.addEventListener('blur', onBlur);
+          setTimeout(() => sel.focus(), 0);
         });
-        const onBlur = () => cleanup();
-        sel.addEventListener('blur', onBlur);
-        setTimeout(() => sel.focus(), 0);
-      });
+      }
 
        // AI summary
       this.$aiSummary.addEventListener('click', () => {
@@ -1825,7 +1968,9 @@
       });
 
       // track key actions
-      this.$download?.addEventListener('click', () => this.logEvent({ type: 'download_memo', label: '메모 다운로드' }));
+      if (this.$download) {
+        this.$download.addEventListener('click', () => this.logEvent({ type: 'download_memo', label: '메모 다운로드' }));
+      }
        this.$historyLauncher?.addEventListener('click', () => this.logEvent({ type: 'open_history', label: '히스토리 토글' }));
 
 
