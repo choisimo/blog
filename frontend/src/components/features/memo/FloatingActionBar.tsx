@@ -130,10 +130,23 @@ function hideLegacyLaunchers(aiMemoEl: HTMLElement | null) {
   try {
     if (!aiMemoEl) return;
     const shadow = (aiMemoEl as any).shadowRoot as ShadowRoot | undefined;
+    // Hide legacy floating launchers
     const launcher = shadow?.getElementById('launcher') as HTMLElement | null;
     const historyLauncher = shadow?.getElementById('historyLauncher') as HTMLElement | null;
     if (launcher) launcher.style.display = 'none';
     if (historyLauncher) historyLauncher.style.display = 'none';
+
+    // Hide legacy footer actions inside memo panel but keep status line
+    const footer = shadow?.querySelector('.footer') as HTMLElement | null;
+    const footerRow = footer?.querySelector('.row') as HTMLElement | null;
+    if (footerRow) footerRow.style.display = 'none';
+
+    // As extra safety, hide individual buttons if present
+    const ids = ['addSelection', 'memoToGraph', 'aiSummary', 'catalyst', 'download'];
+    ids.forEach((id) => {
+      const el = shadow?.getElementById(id) as HTMLElement | null;
+      if (el) el.style.display = 'none';
+    });
   } catch {}
 }
 
