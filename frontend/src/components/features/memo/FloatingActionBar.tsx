@@ -138,7 +138,7 @@ export default function FloatingActionBar() {
       // Fallback console for environments without an analytics bridge
       if ((import.meta as any).env?.DEV) {
         // eslint-disable-next-line no-console
-        console.debug('[FAB]', type, detail || '');
+        console.log('[FAB]', type, detail || '');
       }
     } catch {}
   }, []);
@@ -210,7 +210,7 @@ export default function FloatingActionBar() {
         {/* Contextual (memo) actions */}
         <div
           className={[
-            'flex items-center gap-1 md:gap-2 transition-all duration-200 motion-reduce:transition-none',
+            'flex flex-1 min-w-0 items-center gap-1 md:gap-2 transition-all duration-200 motion-reduce:transition-none overflow-x-auto whitespace-nowrap pr-1',
             memoOpen ? 'opacity-100 translate-y-0' : 'opacity-0 pointer-events-none translate-y-1',
           ].join(' ')}
           role="group"
@@ -218,23 +218,23 @@ export default function FloatingActionBar() {
         >
           <Button variant="secondary" size="sm" onClick={() => { send('fab_memo_add_selection'); addSelection(); }} aria-label="선택 추가">
             <Plus className="h-4 w-4" />
-            <span className="hidden md:inline ml-1">선택 추가</span>
+            <span className="hidden lg:inline ml-1">선택 추가</span>
           </Button>
           <Button variant="secondary" size="sm" onClick={() => { send('fab_memo_add_graph'); addToGraph(); }} aria-label="그래프에 추가">
             <Share2 className="h-4 w-4" />
-            <span className="hidden md:inline ml-1">그래프에 추가</span>
+            <span className="hidden lg:inline ml-1">그래프에 추가</span>
           </Button>
           <Button variant="default" size="sm" onClick={() => { send('fab_memo_ai_summary'); aiSummary(); }} aria-label="AI 요약">
             <Sparkles className="h-4 w-4" />
-            <span className="hidden md:inline ml-1">AI 요약</span>
+            <span className="hidden lg:inline ml-1">AI 요약</span>
           </Button>
           <Button variant="default" size="sm" onClick={() => { send('fab_memo_catalyst'); catalyst(); }} aria-label="Catalyst">
             <Sparkles className="h-4 w-4" />
-            <span className="hidden md:inline ml-1">Catalyst ✨</span>
+            <span className="hidden lg:inline ml-1">Catalyst ✨</span>
           </Button>
           <Button variant="secondary" size="sm" onClick={() => { send('fab_memo_download'); download(); }} aria-label="메모 다운로드">
             <Download className="h-4 w-4" />
-            <span className="hidden md:inline ml-1">다운로드</span>
+            <span className="hidden lg:inline ml-1">다운로드</span>
           </Button>
         </div>
 
@@ -243,12 +243,12 @@ export default function FloatingActionBar() {
           {/* Memo toggle to ensure there is a way to open/close the panel when legacy launcher is hidden */}
           <Button variant="ghost" size="sm" onClick={() => { send('fab_memo_toggle'); toggleMemo(); }} aria-label="메모">
             <NotebookPen className="h-4 w-4" />
-            <span className="hidden md:inline ml-1">Memo</span>
+            <span className="hidden lg:inline ml-1">Memo</span>
           </Button>
           <div className="relative">
             <Button variant="secondary" size="sm" onClick={openHistory} aria-label="History" aria-haspopup="dialog">
               <Map className="h-4 w-4" />
-              <span className="hidden md:inline ml-1">History</span>
+              <span className="hidden lg:inline ml-1">History</span>
             </Button>
             {hasNew && (
               <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" aria-hidden />
