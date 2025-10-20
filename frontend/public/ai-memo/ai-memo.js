@@ -647,7 +647,6 @@
               <a id="prLink" class="small" target="_blank" rel="noopener" style="display:none;">PR 열기 →</a>
             </div>
           </div>
-          </div>
 
           <div id="settingsBody" class="body">
             <div class="section">
