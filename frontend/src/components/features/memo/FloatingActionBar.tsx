@@ -223,18 +223,27 @@ export default function FloatingActionBar() {
   if (!enabled) return null;
   if (modalOpen) return null; // hide during modal per PRD
 
+  const containerClasses = [
+    'fixed left-1/2 -translate-x-1/2 bottom-[max(16px,env(safe-area-inset-bottom))] z-50 inline-block',
+    memoOpen ? 'w-fit max-w-[calc(100%-24px)] md:max-w-3xl' : 'w-fit max-w-[min(100%-24px,32rem)]',
+    'border border-border/60 rounded-xl shadow-lg px-2 py-2 md:px-3 md:py-3 bg-background/70 backdrop-blur-md backdrop-saturate-150 motion-reduce:transition-none print:hidden',
+  ].join(' ');
+
   return (
     <div
       role="toolbar"
       aria-label="Floating actions"
-      className="fixed left-1/2 -translate-x-1/2 bottom-[max(16px,env(safe-area-inset-bottom))] z-50 w-[calc(100%-24px)] max-w-3xl border border-border/60 rounded-xl shadow-lg px-2 py-2 md:px-3 md:py-3 bg-background/70 backdrop-blur-md backdrop-saturate-150 motion-reduce:transition-none print:hidden"
+      className={containerClasses}
     >
-      <div className="flex items-center justify-between gap-2 w-full">
+      <div className={[
+        'flex items-center justify-between gap-2',
+        memoOpen ? 'w-full' : 'w-auto',
+      ].join(' ')}>
         {/* Contextual (memo) actions */}
         <div
           className={[
-            'flex flex-1 min-w-0 items-center gap-1 md:gap-2 transition-all duration-200 motion-reduce:transition-none overflow-x-auto whitespace-nowrap pr-1',
-            memoOpen ? 'opacity-100 translate-y-0' : 'opacity-0 pointer-events-none translate-y-1',
+            'flex items-center gap-1 md:gap-2 transition-all duration-200 motion-reduce:transition-none overflow-x-auto whitespace-nowrap pr-1',
+            memoOpen ? 'flex-1 opacity-100 translate-y-0' : 'hidden',
           ].join(' ')}
           role="group"
           aria-label="Memo actions"
@@ -262,7 +271,7 @@ export default function FloatingActionBar() {
         </div>
 
         {/* Right-aligned persistent controls */}
-        <div className="ml-auto flex items-center gap-1 md:gap-2 shrink-0" role="group" aria-label="Global actions">
+        <div className={["flex items-center gap-1 md:gap-2 shrink-0", memoOpen ? "ml-auto" : ""].join(" ")} role="group" aria-label="Global actions">
           {/* Memo toggle to ensure there is a way to open/close the panel when legacy launcher is hidden */}
           <Button variant="ghost" size="sm" onClick={() => { send('fab_memo_toggle'); toggleMemo(); }} aria-label="메모">
             <NotebookPen className="h-4 w-4" />
