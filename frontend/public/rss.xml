@@ -5,7 +5,7 @@
     <description>A blog about technology, programming, and web development</description>
     <link>http://localhost:3000</link>
     <atom:link href="http://localhost:3000/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Sun, 19 Oct 2025 12:28:55 GMT</lastBuildDate>
+    <lastBuildDate>Mon, 20 Oct 2025 15:35:02 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
       <title>BST TreeInsertion 횟수 구하기 고민한 내용 정리</title>
@@ -284,6 +284,17 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
       <category>운영체제</category>
     </item>
     <item>
+      <title>Proxmox Thin Provision</title>
+      <description>안녕하세요\! Proxmox에서 ZFS 스토리지 사용 시 자주 발생하는 문제입니다. 화면에 보이는 여유 공간과 ZFS가 실제로 새 디스크를 할당할 수 있는 공간 사이에 차이가 있기 때문에 발생하는 현상입니다.
+
+**결론부터 말씀드리면, ZFS 풀(Pool)에 새 가상 디스크(1.85TB)를 위한 공간 예약(`refreservation`)이 불가능할 만큼의</description>
+      <link>http://localhost:3000/blog/2025/proxmox-thin-provision</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/proxmox-thin-provision</guid>
+      <pubDate>Wed, 01 Jan 2025 00:00:00 GMT</pubDate>
+      <category>General</category>
+
+    </item>
+    <item>
       <title>React Native + Spring Boot + MongoDB로 일기 앱 만들기</title>
       <description>React Native 클라이언트와 Spring Boot 백엔드, Python AI 서버를 연동해서 일기 앱을 만든 경험</description>
       <link>http://localhost:3000/blog/2025/react-native-springboot-mongodb-diary-app</link>
@@ -309,18 +320,6 @@ React의 Hooks는 함수형 컴포넌트에서 상태(state)와 생명주기(lif
       <category>버전관리</category>
       <category>개발도구</category>
       <category>프로젝트관리</category>
-    </item>
-    <item>
-      <title>배낭 문제 (Knapsack Problem)</title>
-      <description>0-1 배낭 문제와 무한 배낭 문제를 동적 계획법으로 해결하는 다양한 방법을 학습합니다.</description>
-      <link>http://localhost:3000/blog/2025/knapsack</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/knapsack</guid>
-      <pubDate>Sat, 21 Dec 2024 00:00:00 GMT</pubDate>
-      <category>Algorithm</category>
-      <category>Knapsack</category>
-      <category>배낭문제</category>
-      <category>동적계획법</category>
-      <category>최적화</category>
     </item>
   </channel>
 </rss>

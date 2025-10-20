@@ -1,5 +1,5 @@
 {
-  "total": 73,
+  "total": 74,
   "items": [
     {
       "path": "/posts/2025/BST-think01.md",
@@ -406,6 +406,21 @@
       "readingTime": "3 min read",
       "published": true,
       "url": "/blog/2025/memory-management-study"
+    },
+    {
+      "path": "/posts/2025/proxmox-thin-provision.md",
+      "year": "2025",
+      "slug": "proxmox-thin-provision",
+      "title": "Proxmox Thin Provision",
+      "description": "안녕하세요\\! Proxmox에서 ZFS 스토리지 사용 시 자주 발생하는 문제입니다. 화면에 보이는 여유 공간과 ZFS가 실제로 새 디스크를 할당할 수 있는 공간 사이에 차이가 있기 때문에 발생하는 현상입니다.\n\n**결론부터 말씀드리면, ZFS 풀(Pool)에 새 가상 디스크(1.85TB)를 위한 공간 예약(`refreservation`)이 불가능할 만큼의",
+      "snippet": "안녕하세요\\! Proxmox에서 ZFS 스토리지 사용 시 자주 발생하는 문제입니다. 화면에 보이는 여유 공간과 ZFS가 실제로 새 디스크를 할당할 수 있는 공간 사이에 차이가 있기 때문에 발생하는 현상입니다.\n\n**결론부터 말씀드리면, ZFS 풀(Pool)에 새 가상 디스크(1.85TB)를 위한 공간 예약(`refreservation`)이 불가능할 만큼의",
+      "date": "2025-01-01",
+      "tags": [],
+      "category": "General",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/proxmox-thin-provision"
     },
     {
       "path": "/posts/2025/react-native-springboot-mongodb-diary-app.md",
@@ -1528,7 +1543,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-10-19T12:28:55.571Z",
+  "generatedAt": "2025-10-20T15:35:02.364Z",
   "years": [
     "2025",
     "2024"

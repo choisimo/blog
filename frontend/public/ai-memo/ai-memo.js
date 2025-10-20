@@ -127,6 +127,7 @@
       return { x: nx, y: ny };
     }
 
+    // Deprecated: prefer using this.out.toast(msg) directly to keep output scoped within the shadow DOM
     toast(msg) { try { this.out.toast(msg); } catch (_) {} }
 
     getArticleText() {
