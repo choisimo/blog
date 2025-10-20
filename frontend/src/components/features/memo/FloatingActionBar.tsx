@@ -136,9 +136,12 @@ function hideLegacyLaunchers(aiMemoEl: HTMLElement | null) {
     if (launcher) launcher.style.display = 'none';
     if (historyLauncher) historyLauncher.style.display = 'none';
 
-    // Hide legacy footer actions inside memo panel but keep status line
+    // Hide legacy footer entirely (status + action row) to avoid bottom-of-screen output
     const footer = shadow?.querySelector('.footer') as HTMLElement | null;
+    const status = shadow?.getElementById('status') as HTMLElement | null;
     const footerRow = footer?.querySelector('.row') as HTMLElement | null;
+    if (footer) footer.style.display = 'none';
+    if (status) status.style.display = 'none';
     if (footerRow) footerRow.style.display = 'none';
 
     // As extra safety, hide individual buttons if present

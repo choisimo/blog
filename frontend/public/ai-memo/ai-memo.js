@@ -62,6 +62,32 @@
       };
       this.root = null; // shadow root container
       this._originalLoaded = false;
+
+      // Output channel ensures UI writes stay scoped to shadow DOM
+      this.out = {
+        getStatus: () => (this.$status ? this.$status.textContent || '' : ''),
+        setStatus: (text) => { try { if (this.$status) this.$status.textContent = String(text ?? ''); } catch (_) {} },
+        tempStatus: (text, restoreTo, delay = 1400) => {
+          try {
+            const prev = typeof restoreTo === 'string' ? restoreTo : (this.$status?.textContent || 'Ready');
+            if (this.$status) this.$status.textContent = String(text ?? '');
+            clearTimeout(this._statusTimer);
+            this._statusTimer = setTimeout(() => { try { if (this.$status) this.$status.textContent = prev; } catch (_) {} }, delay);
+          } catch (_) {}
+        },
+        toast: (msg) => { try { const t = this.$toast; if (!t) return; t.textContent = String(msg || ''); t.classList.add('show'); clearTimeout(this._toastTimer); this._toastTimer = setTimeout(() => t.classList.remove('show'), 1600); } catch (_) {} },
+        append: (block) => {
+          try {
+            const cur = this.$memo?.value || '';
+            const next = cur + String(block || '');
+            if (this.$memo) this.$memo.value = next;
+            if (this.$memoEditor) this.$memoEditor.value = next;
+            if (this.$memoPreview) this.renderMarkdownToPreview(next);
+            if (this.$memo) this.$memo.dispatchEvent(new Event('input', { bubbles: true }));
+            return next;
+          } catch (_) { return null; }
+        }
+      };
     }
 
     connectedCallback() {
@@ -101,14 +127,7 @@
       return { x: nx, y: ny };
     }
 
-    toast(msg) {
-      const t = this.$toast;
-      if (!t) return;
-      t.textContent = msg;
-      t.classList.add('show');
-      clearTimeout(this._toastTimer);
-      this._toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
-    }
+    toast(msg) { try { this.out.toast(msg); } catch (_) {} }
 
     getArticleText() {
       // Try common containers, fall back to body text
@@ -140,10 +159,10 @@
       ].join('\n');
 
       const btn = this.$aiSummary;
-      const prevStatus = this.$status.textContent;
+      const prevStatus = this.out.getStatus();
       try {
         btn.disabled = true;
-        this.$status.textContent = 'AI 요약 중…';
+        this.out.setStatus('AI 요약 중…');
         const backend = window.__APP_CONFIG?.apiBaseUrl || window.APP_CONFIG?.apiBaseUrl || DEFAULT_API_URL;
         const endpoint = `${backend.replace(/\/$/, '')}/api/v1/ai/summarize`;
         const res = await fetch(endpoint, {
@@ -170,27 +189,27 @@
 
         const stamp = new Date().toLocaleString();
         const block = `\n\n[AI 요약 @ ${stamp}]\n${out.trim()}\n`;
-        this.$memo.value = (this.$memo.value || '') + block;
-        this.$memo.dispatchEvent(new Event('input', { bubbles: true }));
-        this.toast('AI 요약이 메모에 추가되었습니다.');
-        this.$status.textContent = '완료';
+        this.out.append(block);
+        this.out.toast('AI 요약이 메모에 추가되었습니다.');
+        this.out.setStatus('완료');
         this.logEvent({ type: 'ai_summary_done', label: 'ok' });
       } catch (err) {
         console.error('Gemini summarize error:', err);
-        this.$status.textContent = '오류';
-        this.toast(err?.message || '요약 중 오류가 발생했습니다.');
+        this.out.setStatus('오류');
+        this.out.toast(err?.message || '요약 중 오류가 발생했습니다.');
         this.logEvent({ type: 'ai_summary_error', label: err?.message || 'error' });
       } finally {
         btn.disabled = false;
         setTimeout(() => {
-          this.$status.textContent = prevStatus || 'Ready';
+          this.out.setStatus(prevStatus || 'Ready');
         }, 1400);
       }
     }
 
+
     async runCatalyst(promptText) {
       const prompt = (promptText || this.$catalystInput?.value || '').trim();
-      if (!prompt) { this.toast('Catalyst 프롬프트를 입력하세요.'); return; }
+      if (!prompt) { this.out.toast('Catalyst 프롬프트를 입력하세요.'); return; }
       const article = this.getArticleText();
       const memo = this.$memo.value || '';
       const limit = (s, max = 8000) => s && s.length > max ? `${s.slice(0, max)}\n…(truncated)` : s;
@@ -202,11 +221,11 @@
       ].join('\n');
 
        const btn = this.$catalystRun || this.$catalystBtn; const inputEl = this.$catalystInput;
-      const prev = this.$status.textContent;
+      const prev = this.out.getStatus();
       try {
          if (btn) btn.disabled = true;
          if (inputEl) inputEl.disabled = true;
-         this.$status.textContent = 'Catalyst 생성 중…';
+         this.out.setStatus('Catalyst 생성 중…');
         const backend = window.__APP_CONFIG?.apiBaseUrl || window.APP_CONFIG?.apiBaseUrl || DEFAULT_API_URL;
         const endpoint = `${backend.replace(/\/$/, '')}/api/v1/ai/summarize`;
         const res = await fetch(endpoint, {
@@ -233,24 +252,21 @@
 
         const stamp = new Date().toLocaleString();
         const block = `\n\n## ${prompt}\n[위 관점 @ ${stamp}]\n${out.trim()}\n`;
-        this.$memo.value = (this.$memo.value || '') + block;
-        if (this.$memoEditor) this.$memoEditor.value = this.$memo.value;
-        if (this.$memoPreview) this.renderMarkdownToPreview(this.$memo.value);
-        this.$memo.dispatchEvent(new Event('input', { bubbles: true }));
-        this.toast('Catalyst 결과가 메모에 추가되었습니다.');
+        this.out.append(block);
+        this.out.toast('Catalyst 결과가 메모에 추가되었습니다.');
         this.logEvent({ type: 'catalyst_run', label: prompt });
          if (this.$catalystInput) this.$catalystInput.value = '';
          if (this.$catalystBox) this.$catalystBox.style.display = 'none';
          if (this.$catalystInput) this.$catalystInput.disabled = false;
-        this.$status.textContent = '완료';
+        this.out.setStatus('완료');
       } catch (err) {
         console.error('Catalyst error:', err);
-        this.$status.textContent = '오류';
-        this.toast(err?.message || 'Catalyst 생성 중 오류가 발생했습니다.');
+        this.out.setStatus('오류');
+        this.out.toast(err?.message || 'Catalyst 생성 중 오류가 발생했습니다.');
       } finally {
          if (btn) btn.disabled = false;
          if (inputEl) inputEl.disabled = false;
-         setTimeout(() => { this.$status.textContent = prev || 'Ready'; }, 1400);
+         setTimeout(() => { this.out.setStatus(prev || 'Ready'); }, 1400);
       }
     }
 
@@ -481,7 +497,7 @@
       if (!this.$preview) return;
       const srcdoc = this.buildSrcdoc(html, css, js, false);
       this.$preview.srcdoc = srcdoc;
-      this.$status.textContent = '미리보기 갱신';
+      this.out.tempStatus('미리보기 갱신', 'Ready');
       const send = () => {
         try {
           this.$preview.contentWindow.postMessage(
@@ -509,7 +525,7 @@
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      this.toast('feature.html 다운로드');
+      this.out.toast('feature.html 다운로드');
     }
 
     openIssue() {
@@ -622,14 +638,14 @@
                 <button id="loadOriginalMd" class="btn secondary">원문 불러오기</button>
                 <button id="proposeNewVersion" class="btn">PR 생성 제안</button>
               </div>
-              </div>
-              <div class="small muted" style="margin-top:6px;">
-                - 원문을 불러온 후 필요한 수정을 하고 PR을 생성하세요. PR에는 원본과의 관계가 frontmatter의 derivedFrom으로 표시됩니다.
-              </div>
+            </div>
+            <div class="small muted" style="margin-top:6px;">
+              - 원문을 불러온 후 필요한 수정을 하고 PR을 생성하세요. PR에는 원본과의 관계가 frontmatter의 derivedFrom으로 표시됩니다.
             </div>
             <div class="section">
               <a id="prLink" class="small" target="_blank" rel="noopener" style="display:none;">PR 열기 →</a>
             </div>
+          </div>
           </div>
 
           <div id="settingsBody" class="body">
@@ -1021,7 +1037,7 @@
          c.addEventListener('click', onClick);
          c.addEventListener('dblclick', onDblClick);
          this.$historyClose?.addEventListener('click', () => this.closeHistory());
-          this.$historyReset?.addEventListener('click', () => { if (!confirm('히스토리 기록을 모두 삭제할까요?')) return; this.state.events = []; LS.set(KEYS.events, []); if (this._hist) { this._hist.hoverId = null; this._hist.pinnedId = null; } this.hideHistoryTooltip(); this.closeHistoryInfo(); this.drawHistory(); this.toast('기록을 초기화했습니다.'); this.logEvent({ type: 'history_reset', label: '히스토리 초기화' }); });
+          this.$historyReset?.addEventListener('click', () => { if (!confirm('히스토리 기록을 모두 삭제할까요?')) return; this.state.events = []; LS.set(KEYS.events, []); if (this._hist) { this._hist.hoverId = null; this._hist.pinnedId = null; } this.hideHistoryTooltip(); this.closeHistoryInfo(); this.drawHistory(); this.out.toast('기록을 초기화했습니다.'); this.logEvent({ type: 'history_reset', label: '히스토리 초기화' }); });
          this.$historyExport?.addEventListener('click', () => {
            try {
              const data = { exportedAt: new Date().toISOString(), events: this.state.events || [] };
@@ -1031,9 +1047,9 @@
              a.href = url; a.download = 'ai-memo-history.json';
              document.body.appendChild(a); a.click(); a.remove();
              URL.revokeObjectURL(url);
-             this.toast('히스토리를 내보냈습니다.');
+             this.out.toast('히스토리를 내보냈습니다.');
              this.logEvent({ type: 'download_history', label: '히스토리 내보내기' });
-           } catch (_) { this.toast('내보내기에 실패했습니다.'); }
+           } catch (_) { this.out.toast('내보내기에 실패했습니다.'); }
          });
          this.$historyImport?.addEventListener('click', () => {
            try {
@@ -1054,18 +1070,18 @@
                  this.state.events = cleaned.slice(-500);
                  LS.set(KEYS.events, this.state.events);
                  this.drawHistory();
-                 this.toast('히스토리를 가져왔습니다.');
+                 this.out.toast('히스토리를 가져왔습니다.');
                  this.logEvent({ type: 'history_import', label: '히스토리 가져오기' });
                } catch (err) {
                  console.error('history import error:', err);
-                 this.toast('가져오기에 실패했습니다.');
+                 this.out.toast('가져오기에 실패했습니다.');
                } finally {
                  input.remove();
                }
              }, { once: true });
              input.click();
            } catch (_) {
-             this.toast('가져오기 시작에 실패했습니다.');
+             this.out.toast('가져오기 시작에 실패했습니다.');
            }
          });
          this._histHandlers = { onWheel, onDown, onMove, onUp, onResize, onKey, onClick, onDblClick };
@@ -1556,9 +1572,7 @@
           if (this.$memoPreview) {
             this.scheduleRenderPreview(this.state.memo);
           }
-          this.$status.textContent = '저장됨';
-         clearTimeout(this._saveTimer);
-         this._saveTimer = setTimeout(() => (this.$status.textContent = 'Ready'), 900);
+          this.out.tempStatus('저장됨', 'Ready', 900);
        };
 
       this.$memo.addEventListener('input', saveMemo);
@@ -1569,9 +1583,7 @@
           LS.set(KEYS.memo, this.state.memo);
           this.scheduleRenderPreview(this.state.memo);
           if (this.$memo.value !== this.state.memo) this.$memo.value = this.state.memo;
-          this.$status.textContent = '저장됨';
-          clearTimeout(this._saveTimer);
-          this._saveTimer = setTimeout(() => (this.$status.textContent = 'Ready'), 900);
+          this.out.tempStatus('저장됨', 'Ready', 900);
         };
         this.$memoEditor.addEventListener('input', saveAndRender);
         this.$memoEditor.addEventListener('change', saveAndRender);
@@ -1591,8 +1603,8 @@
            const val = !!this.$inlineEnabled.checked;
            this.state.inlineEnabled = val;
            LS.set(KEYS.inlineEnabled, val);
-           this.toast(`인라인 ✨ ${val ? '켜짐' : '꺼짐'}`);
-           this.logEvent({ type: 'toggle_inline', label: val ? 'on' : 'off' });
+            this.out.toast(`인라인 ✨ ${val ? '켜짐' : '꺼짐'}`);
+            this.logEvent({ type: 'toggle_inline', label: val ? 'on' : 'off' });
          };
         this.$inlineEnabled.addEventListener('change', onToggleInline);
         this.$inlineEnabled.addEventListener('input', onToggleInline);
@@ -1602,8 +1614,8 @@
           const val = !!this.$closeAfterInject.checked;
           this.state.closeAfterInject = val;
           LS.set(KEYS.closeAfterInject, val);
-          this.toast(`주입 후 창 닫기 ${val ? '켜짐' : '꺼짐'}`);
-          this.logEvent({ type: 'toggle_close_after_inject', label: val ? 'on' : 'off' });
+           this.out.toast(`주입 후 창 닫기 ${val ? '켜짐' : '꺼짐'}`);
+           this.logEvent({ type: 'toggle_close_after_inject', label: val ? 'on' : 'off' });
         };
         this.$closeAfterInject.addEventListener('change', onToggleClose);
         this.$closeAfterInject.addEventListener('input', onToggleClose);
@@ -1662,8 +1674,8 @@
          this.$memoFull?.addEventListener('click', () => {
            const entering = !this.classList.contains('memo-full');
            this.classList.toggle('memo-full');
-           this.toast(entering ? '전체화면' : '일반 모드');
-           this.logEvent({ type: 'toggle_fullscreen', label: entering ? 'enter' : 'exit' });
+            this.out.toast(entering ? '전체화면' : '일반 모드');
+            this.logEvent({ type: 'toggle_fullscreen', label: entering ? 'enter' : 'exit' });
            if (this.$memoPreview) this.renderMarkdownToPreview(this.$memoEditor?.value || this.$memo?.value || '');
          });
 
@@ -1680,25 +1692,21 @@
 
         const sel = window.getSelection();
         const text = sel && sel.toString().trim();
-        if (!text) {
-          this.toast('선택된 텍스트가 없습니다.');
-          return;
-        }
+          if (!text) {
+            this.out.toast('선택된 텍스트가 없습니다.');
+            return;
+          }
         const now = new Date();
-        const entry = `\n> ${text}\n— ${now.toLocaleString()}`;
-        const next = `${(this.$memo.value || '') + entry}\n`;
-        this.$memo.value = next;
-        if (this.$memoEditor) this.$memoEditor.value = next;
-        if (this.$memoPreview) this.renderMarkdownToPreview(next);
-        this.$memo.dispatchEvent(new Event('input', { bubbles: true }));
-        this.toast('선택 내용을 추가했습니다.');
+        const entry = `\n> ${text}\n— ${now.toLocaleString()}\n`;
+        this.out.append(entry);
+        this.out.toast('선택 내용을 추가했습니다.');
       });
 
       // memo -> graph thought injection
       if (this.$memoToGraph) {
         this.$memoToGraph.addEventListener('click', () => {
           const raw = (this.$memo.value || '').trim();
-          if (!raw) { this.toast('메모가 비어 있습니다.'); return; }
+           if (!raw) { this.out.toast('메모가 비어 있습니다.'); return; }
           const firstLine = raw.split(/\r?\n/).find(l => l.trim().length > 0) || '';
           const labelBase = (firstLine || raw).replace(/^\s*#+\s*/, '');
           const label = labelBase.slice(0, 60) + (labelBase.length > 60 ? '…' : '');
@@ -1708,7 +1716,7 @@
           const dup = recent.find(ev => ev && ev.type === 'thought' && (ev.content || '').trim() === raw);
           if (dup) {
             const ok = confirm('동일한 내용의 생각이 이미 그래프에 있습니다. 다시 추가할까요?');
-            if (!ok) { this.toast('주입을 취소했습니다.'); return; }
+            if (!ok) { this.out.toast('주입을 취소했습니다.'); return; }
           }
 
           // build metadata
@@ -1718,7 +1726,7 @@
           const meta = { ver: 2, id, source: 'memo', anchor };
 
           this.logEvent({ type: 'thought', label, content: raw, meta });
-          this.toast('메모를 그래프에 추가했습니다.');
+           this.out.toast('메모를 그래프에 추가했습니다.');
           if (this.$historyOverlay && this.$historyOverlay.style.display !== 'none') {
             this.drawHistory();
           }
@@ -1785,14 +1793,14 @@
             const a = document.createElement('a');
             a.href = url; a.download = 'memo.txt'; document.body.appendChild(a); a.click(); a.remove();
             URL.revokeObjectURL(url);
-            this.toast('memo.txt 다운로드');
+             this.out.toast('memo.txt 다운로드');
           } else if (type === 'md') {
             const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url; a.download = 'memo.md'; document.body.appendChild(a); a.click(); a.remove();
             URL.revokeObjectURL(url);
-            this.toast('memo.md 다운로드');
+             this.out.toast('memo.md 다운로드');
           } else if (type === 'html') {
             const body = this.markdownToHtml(md);
             const html = '<!doctype html><meta charset="utf-8"/><title>Memo</title><body style="font: 14px/1.6 system-ui, sans-serif; padding: 24px; max-width: 760px; margin: auto;">' + body + '</body>';
@@ -1801,7 +1809,7 @@
             const a = document.createElement('a');
             a.href = url; a.download = 'memo.html'; document.body.appendChild(a); a.click(); a.remove();
             URL.revokeObjectURL(url);
-            this.toast('memo.html 다운로드');
+             this.out.toast('memo.html 다운로드');
           }
           cleanup();
         });
@@ -2120,6 +2128,7 @@
     }
 
     async maybeLoadOriginalMarkdown(force = false) {
+      const prev = this.out.getStatus();
       try {
         const info = this.getCurrentPostInfo();
         if (!info) {
@@ -2135,7 +2144,7 @@
 
         const origin = location.origin;
         const url = `${origin}${mdPath}`;
-        if (this.$status) this.$status.textContent = '원문 불러오는 중…';
+        this.out.setStatus('원문 불러오는 중…');
         const res = await fetch(url);
         if (!res.ok) throw new Error(`원문 로드 실패(${res.status})`);
         const text = await res.text();
@@ -2144,31 +2153,34 @@
             this.$proposalMd.value = text;
             this.state.proposalMd = text;
             LS.set(KEYS.proposalMd, text);
-            this.toast(
+            this.out.toast(
               '원문을 불러왔습니다. 내용을 편집한 뒤 PR을 생성하세요.'
             );
           }
         }
         this._originalLoaded = true;
-        if (this.$status) this.$status.textContent = 'Ready';
+        this.out.setStatus('완료');
       } catch (err) {
         console.error('maybeLoadOriginalMarkdown error:', err);
-        if (this.$status) this.$status.textContent = '오류';
-        this.toast(err?.message || '원문을 불러오지 못했습니다.');
+        this.out.setStatus('오류');
+        this.out.toast(err?.message || '원문을 불러오지 못했습니다.');
+      } finally {
+        setTimeout(() => { this.out.setStatus(prev || 'Ready'); }, 1400);
       }
     }
 
     async proposeNewVersion() {
+      const prev = this.out.getStatus();
       try {
         const backend = window.__APP_CONFIG?.apiBaseUrl || window.APP_CONFIG?.apiBaseUrl || DEFAULT_API_URL;
         const info = this.getCurrentPostInfo();
         if (!info) {
-          this.toast('현재 페이지에서 글 정보를 찾을 수 없습니다.');
+          this.out.toast('현재 페이지에서 글 정보를 찾을 수 없습니다.');
           return;
         }
         const md = (this.$proposalMd?.value || '').trim();
         if (!md) {
-          this.toast('제안할 마크다운이 비어 있습니다.');
+          this.out.toast('제안할 마크다운이 비어 있습니다.');
           return;
         }
 
@@ -2187,8 +2199,7 @@
         };
 
         if (this.$proposeNewVersion) this.$proposeNewVersion.disabled = true;
-        const prev = this.$status?.textContent || '';
-        if (this.$status) this.$status.textContent = 'PR 생성 요청 중…';
+        this.out.setStatus('PR 생성 요청 중…');
         const adminToken = LS.get(KEYS.adminToken, '');
         const headers = { 'Content-Type': 'application/json' };
         if (adminToken) headers['Authorization'] = `Bearer ${adminToken}`;
@@ -2207,16 +2218,14 @@
           this.$prLink.href = prUrl;
           this.$prLink.style.display = '';
         }
-        this.toast(prUrl ? 'PR이 생성되었습니다.' : '요청이 완료되었습니다.');
-        if (this.$status) this.$status.textContent = '완료';
-        setTimeout(() => {
-          if (this.$status) this.$status.textContent = prev || 'Ready';
-        }, 1400);
+        this.out.toast(prUrl ? 'PR이 생성되었습니다.' : '요청이 완료되었습니다.');
+        this.out.setStatus('완료');
       } catch (err) {
         console.error('proposeNewVersion error:', err);
-        if (this.$status) this.$status.textContent = '오류';
-        this.toast(err?.message || 'PR 생성 요청에 실패했습니다.');
+        this.out.setStatus('오류');
+        this.out.toast(err?.message || 'PR 생성 요청에 실패했습니다.');
       } finally {
+        setTimeout(() => { this.out.setStatus(prev || 'Ready'); }, 1400);
         if (this.$proposeNewVersion) this.$proposeNewVersion.disabled = false;
       }
     }
