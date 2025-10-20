@@ -1,4 +1,4 @@
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { act } from 'react';
 import App from '../App';
@@ -23,6 +23,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // Ensure any stubbed ai-memo-pad elements are removed between tests
+  document.querySelectorAll('ai-memo-pad').forEach((el) => el.remove());
   cleanup();
 });
 
@@ -45,5 +47,37 @@ describe('FloatingActionBar feature flag', () => {
     await withFab(true);
     const toolbar = screen.queryByRole('toolbar', { name: 'Floating actions' });
     expect(toolbar).not.toBeNull();
+  });
+
+  it('hides FAB while legacy history overlay is open and shows after close', async () => {
+    // Enable FAB
+    window.localStorage.setItem('aiMemo.fab.enabled', 'true');
+
+    // Stub ai-memo web component with a shadow root and a visible history overlay
+    const aiMemo = document.createElement('ai-memo-pad') as any;
+    const shadow = aiMemo.attachShadow ? aiMemo.attachShadow({ mode: 'open' }) : (aiMemo as any).shadowRoot;
+    const overlay = document.createElement('div');
+    overlay.id = 'historyOverlay';
+    overlay.style.display = 'block'; // simulate overlay open
+    shadow.appendChild(overlay);
+    document.body.appendChild(aiMemo);
+
+    // Render app
+    await act(async () => {
+      render(<App />);
+    });
+
+    // FAB should be hidden while overlay is open
+    await waitFor(() => {
+      const toolbar = screen.queryByRole('toolbar', { name: 'Floating actions' });
+      expect(toolbar).toBeNull();
+    });
+
+    // Close overlay and expect FAB to appear
+    overlay.style.display = 'none';
+    await waitFor(() => {
+      const toolbar = screen.queryByRole('toolbar', { name: 'Floating actions' });
+      expect(toolbar).not.toBeNull();
+    });
   });
 });

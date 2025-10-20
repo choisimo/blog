@@ -86,6 +86,28 @@ function useMemoOpen(aiMemoEl: HTMLElement | null): boolean {
   return open;
 }
 
+function useHistoryOverlayOpen(aiMemoEl: HTMLElement | null): boolean {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const shadow = (aiMemoEl as any)?.shadowRoot as ShadowRoot | undefined;
+    if (!shadow) { setOpen(false); return; }
+    const overlay = shadow.getElementById('historyOverlay') as HTMLElement | null;
+    const compute = () => {
+      try {
+        if (!overlay) return setOpen(false);
+        // visible when style.display !== 'none'
+        const visible = overlay.style.display !== 'none';
+        setOpen(!!visible);
+      } catch { setOpen(false); }
+    };
+    compute();
+    const mo = overlay ? new MutationObserver(compute) : null;
+    if (overlay && mo) mo.observe(overlay, { attributes: true, attributeFilter: ['style', 'class'] });
+    return () => { if (mo) mo.disconnect(); };
+  }, [aiMemoEl]);
+  return open;
+}
+
 function useModalPresence(): boolean {
   const [present, setPresent] = useState(false);
   useEffect(() => {
@@ -157,6 +179,7 @@ export default function FloatingActionBar() {
   const enabled = isFabEnabled();
   const aiMemoEl = useAIMemoElement();
   const memoOpen = useMemoOpen(aiMemoEl);
+  const overlayOpen = useHistoryOverlayOpen(aiMemoEl);
   const modalOpen = useModalPresence();
   const [hasNew, clearBadge] = useHistoryBadge();
   const impressionSent = useRef(false);
@@ -192,6 +215,34 @@ export default function FloatingActionBar() {
       mo.observe(shadow, { childList: true, subtree: true });
     }
     return () => mo?.disconnect();
+  }, [enabled, aiMemoEl]);
+
+  // When FAB enabled, ensure legacy memo panel is closed on mount and stays closed unless explicitly toggled via FAB
+  useEffect(() => {
+    if (!enabled || !aiMemoEl) return;
+    try {
+      const shadow = (aiMemoEl as any)?.shadowRoot as ShadowRoot | undefined;
+      const panel = shadow?.getElementById('panel');
+      const closeBtn = shadow?.getElementById('close') as HTMLDivElement | null;
+      const ensureClosed = () => {
+        if (panel && panel.classList.contains('open')) {
+          // prefer using close button to trigger any side effects
+          closeBtn?.click();
+          if (panel.classList.contains('open')) {
+            panel.classList.remove('open');
+          }
+          try { localStorage.setItem('aiMemo.isOpen', 'false'); } catch {}
+        }
+      };
+      // close immediately and re-check a few times in case styles/scripts race
+      ensureClosed();
+      let tries = 0;
+      const id = setInterval(() => { tries += 1; ensureClosed(); if (tries > 10) clearInterval(id); }, 200);
+      // also watch for panel class changes and force close if reopened outside FAB
+      const mo = panel ? new MutationObserver(() => ensureClosed()) : null;
+      if (panel && mo) mo.observe(panel, { attributes: true, attributeFilter: ['class'] });
+      return () => { if (mo) mo.disconnect(); };
+    } catch {}
   }, [enabled, aiMemoEl]);
 
   // impression once
@@ -237,10 +288,10 @@ export default function FloatingActionBar() {
   }, [aiMemoEl, clickShadowBtn, clearBadge, send]);
 
   if (!enabled) return null;
-  if (modalOpen) return null; // hide during modal per PRD
+  if (modalOpen || overlayOpen) return null; // hide during modal and legacy history overlay
 
   const containerClasses = [
-    'fixed left-1/2 -translate-x-1/2 bottom-[max(16px,env(safe-area-inset-bottom))] z-50 inline-block',
+    'fixed left-1/2 -translate-x-1/2 bottom-[max(16px,env(safe-area-inset-bottom,0px))] z-[9999] inline-block',
     memoOpen ? 'w-fit max-w-[calc(100%-24px)] md:max-w-3xl' : 'w-fit max-w-[min(100%-24px,32rem)]',
     'border border-border/60 rounded-xl shadow-lg px-2 py-2 md:px-3 md:py-3 bg-background/70 backdrop-blur-md backdrop-saturate-150 motion-reduce:transition-none print:hidden',
   ].join(' ');
