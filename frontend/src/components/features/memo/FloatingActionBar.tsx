@@ -41,31 +41,45 @@ function useMemoOpen(aiMemoEl: HTMLElement | null): boolean {
     };
     window.addEventListener('storage', onStorage);
 
-    let mo: MutationObserver | null = null;
+    let panelObserver: MutationObserver | null = null;
+    let shadowObserver: MutationObserver | null = null;
     let pollId: number | null = null;
 
-    const attachObserver = () => {
+    const tryAttachPanelObserver = () => {
       const shadow = (aiMemoEl as any)?.shadowRoot as ShadowRoot | undefined;
       const panel = shadow?.getElementById('panel');
-      if (panel) {
-        const check = () => setOpen(panel.classList.contains('open'));
-        check();
-        mo = new MutationObserver(check);
-        mo.observe(panel, { attributes: true, attributeFilter: ['class'] });
-      } else {
-        // Fallback: poll LS briefly to avoid stale initial state
-        let tries = 0;
-        pollId = window.setInterval(() => {
-          tries += 1;
-          try { setOpen(!!JSON.parse(localStorage.getItem('aiMemo.isOpen') || 'false')); } catch {}
-          if (tries > 20) { if (pollId) { clearInterval(pollId); pollId = null; } }
-        }, 250);
-      }
+      if (!panel) return false;
+      const check = () => setOpen(panel.classList.contains('open'));
+      check();
+      panelObserver?.disconnect();
+      panelObserver = new MutationObserver(check);
+      panelObserver.observe(panel, { attributes: true, attributeFilter: ['class'] });
+      return true;
     };
-    attachObserver();
+
+    // Attempt now; if not present, observe shadowRoot subtree and poll LS briefly
+    if (!tryAttachPanelObserver()) {
+      const shadow = (aiMemoEl as any)?.shadowRoot as ShadowRoot | undefined;
+      if (shadow) {
+        shadowObserver = new MutationObserver(() => {
+          if (tryAttachPanelObserver()) {
+            shadowObserver?.disconnect();
+            shadowObserver = null;
+          }
+        });
+        shadowObserver.observe(shadow, { childList: true, subtree: true });
+      }
+      let tries = 0;
+      pollId = window.setInterval(() => {
+        tries += 1;
+        try { setOpen(!!JSON.parse(localStorage.getItem('aiMemo.isOpen') || 'false')); } catch {}
+        if (tries > 20) { if (pollId) { clearInterval(pollId); pollId = null; } }
+      }, 250);
+    }
     return () => {
       window.removeEventListener('storage', onStorage);
-      mo?.disconnect();
+      panelObserver?.disconnect();
+      shadowObserver?.disconnect();
       if (pollId) clearInterval(pollId);
     };
   }, [aiMemoEl]);
@@ -136,14 +150,14 @@ export default function FloatingActionBar() {
       const evt = new CustomEvent('fab:event', { detail: { type, ts: Date.now(), ...(detail || {}) } });
       window.dispatchEvent(evt);
       // Fallback console for environments without an analytics bridge
-      if ((import.meta as any).env?.DEV) {
+      if ((import.meta as any).env?.DEV || (typeof localStorage !== 'undefined' && localStorage.getItem('aiMemo.fab.debug') === 'true')) {
         // eslint-disable-next-line no-console
         console.log('[FAB]', type, detail || '');
       }
     } catch {}
   }, []);
 
-  // prevent duplicates while flag is on (re-apply briefly in case shadow re-renders)
+  // prevent duplicates while flag is on (re-apply briefly in case shadow re-renders) + watch shadow subtree
   useEffect(() => {
     if (!enabled) return;
     let i = 0;
@@ -153,6 +167,15 @@ export default function FloatingActionBar() {
       if (i < 15) setTimeout(tick, 200); // ~3s window
     };
     tick();
+
+    // Observe shadow additions to hide newly added launchers
+    let mo: MutationObserver | null = null;
+    const shadow = (aiMemoEl as any)?.shadowRoot as ShadowRoot | undefined;
+    if (shadow) {
+      mo = new MutationObserver(() => hideLegacyLaunchers(aiMemoEl));
+      mo.observe(shadow, { childList: true, subtree: true });
+    }
+    return () => mo?.disconnect();
   }, [enabled, aiMemoEl]);
 
   // impression once
