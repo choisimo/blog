@@ -152,26 +152,11 @@ function hideLegacyLaunchers(aiMemoEl: HTMLElement | null) {
   try {
     if (!aiMemoEl) return;
     const shadow = (aiMemoEl as any).shadowRoot as ShadowRoot | undefined;
-    // Hide legacy floating launchers
+    // Hide only legacy floating launchers; keep memo UI intact
     const launcher = shadow?.getElementById('launcher') as HTMLElement | null;
     const historyLauncher = shadow?.getElementById('historyLauncher') as HTMLElement | null;
     if (launcher) launcher.style.display = 'none';
     if (historyLauncher) historyLauncher.style.display = 'none';
-
-    // Hide legacy footer entirely (status + action row) to avoid bottom-of-screen output
-    const footer = shadow?.querySelector('.footer') as HTMLElement | null;
-    const status = shadow?.getElementById('status') as HTMLElement | null;
-    const footerRow = footer?.querySelector('.row') as HTMLElement | null;
-    if (footer) footer.style.display = 'none';
-    if (status) status.style.display = 'none';
-    if (footerRow) footerRow.style.display = 'none';
-
-    // As extra safety, hide individual buttons if present
-    const ids = ['addSelection', 'memoToGraph', 'aiSummary', 'catalyst', 'download'];
-    ids.forEach((id) => {
-      const el = shadow?.getElementById(id) as HTMLElement | null;
-      if (el) el.style.display = 'none';
-    });
   } catch {}
 }
 
@@ -217,33 +202,8 @@ export default function FloatingActionBar() {
     return () => mo?.disconnect();
   }, [enabled, aiMemoEl]);
 
-  // When FAB enabled, ensure legacy memo panel is closed on mount and stays closed unless explicitly toggled via FAB
-  useEffect(() => {
-    if (!enabled || !aiMemoEl) return;
-    try {
-      const shadow = (aiMemoEl as any)?.shadowRoot as ShadowRoot | undefined;
-      const panel = shadow?.getElementById('panel');
-      const closeBtn = shadow?.getElementById('close') as HTMLDivElement | null;
-      const ensureClosed = () => {
-        if (panel && panel.classList.contains('open')) {
-          // prefer using close button to trigger any side effects
-          closeBtn?.click();
-          if (panel.classList.contains('open')) {
-            panel.classList.remove('open');
-          }
-          try { localStorage.setItem('aiMemo.isOpen', 'false'); } catch {}
-        }
-      };
-      // close immediately and re-check a few times in case styles/scripts race
-      ensureClosed();
-      let tries = 0;
-      const id = setInterval(() => { tries += 1; ensureClosed(); if (tries > 10) clearInterval(id); }, 200);
-      // also watch for panel class changes and force close if reopened outside FAB
-      const mo = panel ? new MutationObserver(() => ensureClosed()) : null;
-      if (panel && mo) mo.observe(panel, { attributes: true, attributeFilter: ['class'] });
-      return () => { if (mo) mo.disconnect(); };
-    } catch {}
-  }, [enabled, aiMemoEl]);
+  // Allow memo panel to function normally; do not force-close when FAB is enabled
+  // We still hide only the legacy launchers via hideLegacyLaunchers()
 
   // impression once
   useEffect(() => {

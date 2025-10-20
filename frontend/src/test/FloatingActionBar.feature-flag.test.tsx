@@ -49,6 +49,37 @@ describe('FloatingActionBar feature flag', () => {
     expect(toolbar).not.toBeNull();
   });
 
+  it('shows memo action buttons when memo is open under FAB', async () => {
+    // Enable FAB
+    window.localStorage.setItem('aiMemo.fab.enabled', 'true');
+
+    // Stub ai-memo web component with a shadow root and an open panel
+    const aiMemo = document.createElement('ai-memo-pad') as any;
+    const shadow = aiMemo.attachShadow ? aiMemo.attachShadow({ mode: 'open' }) : (aiMemo as any).shadowRoot;
+    const panel = document.createElement('div');
+    panel.id = 'panel';
+    panel.className = 'open';
+    shadow.appendChild(panel);
+    document.body.appendChild(aiMemo);
+
+    // Render app
+    await act(async () => {
+      render(<App />);
+    });
+
+    // Wait for FAB toolbar
+    await waitFor(() => {
+      expect(screen.queryByRole('toolbar', { name: 'Floating actions' })).not.toBeNull();
+    });
+
+    // Expect memo action buttons visible in FAB (queried by aria-label)
+    expect(screen.queryByRole('button', { name: '선택 추가' })).not.toBeNull();
+    expect(screen.queryByRole('button', { name: '그래프에 추가' })).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'AI 요약' })).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Catalyst' })).not.toBeNull();
+    expect(screen.queryByRole('button', { name: '메모 다운로드' })).not.toBeNull();
+  });
+
   it('hides FAB while legacy history overlay is open and shows after close', async () => {
     // Enable FAB
     window.localStorage.setItem('aiMemo.fab.enabled', 'true');
