@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Header, Footer } from './components/organisms';
@@ -14,13 +14,30 @@ import NewPost from './pages/NewPost';
 import NotFound from './pages/NotFound';
 import './App.css';
 import { VisitedPostsMinimap } from '@/components/features/navigation/VisitedPostsMinimap';
+import FloatingActionBar from '@/components/features/memo/FloatingActionBar';
 
 const queryClient = new QueryClient();
 
 function App() {
   console.log('[App] component init');
+  const [fabOn, setFabOn] = useState(false);
   useEffect(() => {
     console.log('[App] mounted');
+    const getFabEnabled = () => {
+      const envFlag = (import.meta as any).env?.VITE_FEATURE_FAB;
+      const envOn = envFlag === true || envFlag === 'true' || envFlag === '1';
+      try {
+        const ls = localStorage.getItem('aiMemo.fab.enabled');
+        if (ls != null) return !!JSON.parse(ls);
+      } catch {}
+      return !!envOn;
+    };
+    setFabOn(getFabEnabled());
+
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || e.key === 'aiMemo.fab.enabled') setFabOn(getFabEnabled());
+    };
+    window.addEventListener('storage', onStorage);
     return () => console.log('[App] unmounted');
   }, []);
   return (
@@ -43,7 +60,8 @@ function App() {
                 </Routes>
               </main>
               <Footer />
-              <VisitedPostsMinimap />
+              {!fabOn && <VisitedPostsMinimap />}
+              <FloatingActionBar />
               <Toaster />
             </div>
           </Router>
