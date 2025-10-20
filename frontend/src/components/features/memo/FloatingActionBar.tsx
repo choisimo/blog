@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Map, NotebookPen, Sparkles, Download, Plus, Share2 } from 'lucide-react';
+import { Map, NotebookPen, Sparkles, Download, Plus, Share2, Layers } from 'lucide-react';
+import VisitedPostsMinimap, { useVisitedPosts } from '@/components/features/navigation/VisitedPostsMinimap';
 
 // Feature flag: build-time + runtime override
 function isFabEnabled(): boolean {
@@ -167,6 +168,7 @@ export default function FloatingActionBar() {
   const overlayOpen = useHistoryOverlayOpen(aiMemoEl);
   const modalOpen = useModalPresence();
   const [hasNew, clearBadge] = useHistoryBadge();
+  const visitedPosts = useVisitedPosts();
   const impressionSent = useRef(false);
 
   const send = useCallback((type: string, detail?: Record<string, any>) => {
@@ -247,8 +249,20 @@ export default function FloatingActionBar() {
     } catch {}
   }, [aiMemoEl, clickShadowBtn, clearBadge, send]);
 
+  const stackViewAvailable = visitedPosts.length > 0;
+  const openStackView = useCallback(() => {
+    try {
+      window.dispatchEvent(new CustomEvent('visitedposts:open'));
+      send('fab_stack_click');
+    } catch {}
+  }, [send]);
+
   if (!enabled) return null;
-  if (modalOpen || overlayOpen) return null; // hide during modal and legacy history overlay
+  if (modalOpen || overlayOpen) return (
+    <>
+      <VisitedPostsMinimap mode="fab" />
+    </>
+  );
 
   const containerClasses = [
     'fixed left-1/2 -translate-x-1/2 bottom-[max(16px,env(safe-area-inset-bottom,0px))] z-[9999] inline-block',
@@ -257,24 +271,25 @@ export default function FloatingActionBar() {
   ].join(' ');
 
   return (
-    <div
-      role="toolbar"
-      aria-label="Floating actions"
-      className={containerClasses}
-    >
-      <div className={[
-        'flex items-center justify-between gap-2',
-        memoOpen ? 'w-full' : 'w-auto',
-      ].join(' ')}>
-        {/* Contextual (memo) actions */}
-        <div
-          className={[
-            'flex items-center gap-1 md:gap-2 transition-all duration-200 motion-reduce:transition-none overflow-x-auto whitespace-nowrap pr-1',
-            memoOpen ? 'flex-1 opacity-100 translate-y-0' : 'hidden',
-          ].join(' ')}
-          role="group"
-          aria-label="Memo actions"
-        >
+    <>
+      <div
+        role="toolbar"
+        aria-label="Floating actions"
+        className={containerClasses}
+      >
+        <div className={[
+          'flex items-center justify-between gap-2',
+          memoOpen ? 'w-full' : 'w-auto',
+        ].join(' ')}>
+          {/* Contextual (memo) actions */}
+          <div
+            className={[
+              'flex items-center gap-1 md:gap-2 transition-all duration-200 motion-reduce:transition-none overflow-x-auto whitespace-nowrap pr-1',
+              memoOpen ? 'flex-1 opacity-100 translate-y-0' : 'hidden',
+            ].join(' ')}
+            role="group"
+            aria-label="Memo actions"
+          >
           <Button variant="secondary" size="sm" onClick={() => { send('fab_memo_add_selection'); addSelection(); }} aria-label="선택 추가">
             <Plus className="h-4 w-4" />
             <span className="hidden lg:inline ml-1">선택 추가</span>
@@ -297,24 +312,32 @@ export default function FloatingActionBar() {
           </Button>
         </div>
 
-        {/* Right-aligned persistent controls */}
-        <div className={["flex items-center gap-1 md:gap-2 shrink-0", memoOpen ? "ml-auto" : ""].join(" ")} role="group" aria-label="Global actions">
-          {/* Memo toggle to ensure there is a way to open/close the panel when legacy launcher is hidden */}
-          <Button variant="ghost" size="sm" onClick={() => { send('fab_memo_toggle'); toggleMemo(); }} aria-label="메모">
-            <NotebookPen className="h-4 w-4" />
-            <span className="hidden lg:inline ml-1">Memo</span>
-          </Button>
-          <div className="relative">
-            <Button variant="secondary" size="sm" onClick={openHistory} aria-label="History" aria-haspopup="dialog">
-              <Map className="h-4 w-4" />
-              <span className="hidden lg:inline ml-1">History</span>
+          {/* Right-aligned persistent controls */}
+          <div className={"flex items-center gap-1 md:gap-2 shrink-0".concat(memoOpen ? " ml-auto" : "")} role="group" aria-label="Global actions">
+            {/* Memo toggle to ensure there is a way to open/close the panel when legacy launcher is hidden */}
+            <Button variant="ghost" size="sm" onClick={() => { send('fab_memo_toggle'); toggleMemo(); }} aria-label="메모">
+              <NotebookPen className="h-4 w-4" />
+              <span className="hidden lg:inline ml-1">Memo</span>
             </Button>
-            {hasNew && (
-              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" aria-hidden />
+            {stackViewAvailable && (
+              <Button variant="ghost" size="sm" onClick={openStackView} aria-label="최근 게시글 리스트">
+                <Layers className="h-4 w-4" />
+                <span className="hidden lg:inline ml-1">Stack</span>
+              </Button>
             )}
+            <div className="relative">
+              <Button variant="secondary" size="sm" onClick={openHistory} aria-label="History" aria-haspopup="dialog">
+                <Map className="h-4 w-4" />
+                <span className="hidden lg:inline ml-1">History</span>
+              </Button>
+              {hasNew && (
+                <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" aria-hidden />
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+      <VisitedPostsMinimap mode="fab" />
+    </>
   );
 }

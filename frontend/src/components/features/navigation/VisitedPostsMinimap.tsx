@@ -16,7 +16,7 @@ export type VisitedPostItem = {
 
 const STORAGE_KEY = 'visited.posts';
 
-function useVisitedPosts() {
+export function useVisitedPosts() {
   const [items, setItems] = useState<VisitedPostItem[]>([]);
 
   const read = () => {
@@ -55,7 +55,13 @@ function FallbackAvatar({ title }: { title: string }) {
   );
 }
 
-export function VisitedPostsMinimap() {
+type VisitedPostsMinimapMode = 'default' | 'fab';
+
+type VisitedPostsMinimapProps = {
+  mode?: VisitedPostsMinimapMode;
+};
+
+export function VisitedPostsMinimap({ mode = 'default' }: VisitedPostsMinimapProps = {}) {
   const items = useVisitedPosts();
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
@@ -64,11 +70,11 @@ export function VisitedPostsMinimap() {
   const listContainerRef = useRef<HTMLDivElement | null>(null);
 
   const topStack = useMemo(() => items.slice(0, 4), [items]);
+  const externalTrigger = mode === 'fab';
 
   const go = (p: VisitedPostItem) => {
     setOpen(false);
     navigate(p.path);
-    // Scroll reset is handled by BlogPost's effect
   };
 
   const clearAll = () => {
@@ -78,11 +84,26 @@ export function VisitedPostsMinimap() {
     } catch {}
   };
 
+  useEffect(() => {
+    if (!externalTrigger) return;
+    const onRequestOpen = () => {
+      if (!items.length) return;
+      setOpen(true);
+      setTimeout(() => listContainerRef.current?.focus(), 0);
+    };
+    window.addEventListener('visitedposts:open', onRequestOpen as EventListener);
+    return () => window.removeEventListener('visitedposts:open', onRequestOpen as EventListener);
+  }, [externalTrigger, items.length]);
+
+  useEffect(() => {
+    if (!items.length && open) setOpen(false);
+  }, [items.length, open]);
+
   if (!items.length) return null;
 
-  return (
-    <div className="fixed bottom-8 right-24 z-50 select-none">
-      <Sheet open={open} onOpenChange={setOpen}>
+  const sheet = (
+    <Sheet open={open} onOpenChange={setOpen}>
+      {!externalTrigger && (
         <SheetTrigger asChild>
           <Button
             variant="secondary"
@@ -91,7 +112,6 @@ export function VisitedPostsMinimap() {
             aria-expanded={open}
             aria-label="Open visited posts history"
             onClick={() => {
-              // Focus the list on open for keyboard users
               setTimeout(() => listContainerRef.current?.focus(), 0);
             }}
           >
@@ -99,90 +119,100 @@ export function VisitedPostsMinimap() {
             History
           </Button>
         </SheetTrigger>
-        <SheetContent
-          side={isMobile ? 'bottom' : 'right'}
-          className={cn(
-            isMobile ? 'h-[90dvh]' : 'w-[380px] h-full',
-            'p-0'
-          )}
-          aria-describedby={undefined}
-          style={isMobile ? { paddingBottom: 'env(safe-area-inset-bottom)' } : undefined}
-        >
-          <SheetHeader className="sticky top-0 z-10 border-b bg-background px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 text-sm font-semibold">
-                <Map className="h-4 w-4" />
-                <SheetTitle>Recently visited</SheetTitle>
-                <div className="relative h-8 w-[96px]" aria-hidden>
-                  {topStack.map((p, i) => (
-                    <div
-                      key={p.path}
-                      className="absolute top-0 h-8 w-8 overflow-hidden rounded-full ring-2 ring-background shadow"
-                      style={{ right: i * 20 }}
-                      title={p.title}
-                    >
-                      {p.coverImage ? (
-                        <img src={p.coverImage} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <FallbackAvatar title={p.title} />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="sm" onClick={clearAll} aria-label="Clear history">Clear</Button>
-                <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close history">
-                  <X className="h-4 w-4" />
-                </Button>
+      )}
+      <SheetContent
+        side={isMobile ? 'bottom' : 'right'}
+        className={cn(
+          isMobile ? 'h-[90dvh]' : 'w-[380px] h-full',
+          'p-0'
+        )}
+        aria-describedby={undefined}
+        style={isMobile ? { paddingBottom: 'env(safe-area-inset-bottom)' } : undefined}
+      >
+        <SheetHeader className="sticky top-0 z-10 border-b bg-background px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 text-sm font-semibold">
+              <Map className="h-4 w-4" />
+              <SheetTitle>Recently visited</SheetTitle>
+              <div className="relative h-8 w-[96px]" aria-hidden>
+                {topStack.map((p, i) => (
+                  <div
+                    key={p.path}
+                    className="absolute top-0 h-8 w-8 overflow-hidden rounded-full ring-2 ring-background shadow"
+                    style={{ right: i * 20 }}
+                    title={p.title}
+                  >
+                    {p.coverImage ? (
+                      <img src={p.coverImage} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <FallbackAvatar title={p.title} />
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
-          </SheetHeader>
-          <div
-            ref={listContainerRef}
-            tabIndex={0}
-            className="max-h-full overflow-y-auto p-2 focus:outline-none"
-            onKeyDown={(e) => {
-              if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, items.length - 1)); }
-              if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex(i => Math.max(i - 1, 0)); }
-              if (e.key === 'Enter') { e.preventDefault(); const p = items[activeIndex]; if (p) go(p); }
-            }}
-            role="region"
-            aria-label="Visited posts list"
-          >
-            <ul className="space-y-1">
-              {items.map((p, idx) => (
-                <li key={p.path}>
-                  <button
-                    onClick={() => go(p)}
-                    className={cn(
-                      'group flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring',
-                      activeIndex === idx && 'ring-2 ring-primary'
-                    )}
-                  >
-                    <div className="h-8 w-8 overflow-hidden rounded">
-                      {p.coverImage ? (
-                        <img src={p.coverImage} alt="" className="h-8 w-8 object-cover" />
-                      ) : (
-                        <FallbackAvatar title={p.title} />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium group-hover:text-primary">{p.title}</div>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        <span>
-                          {p.year}/{p.slug}
-                        </span>
-                      </div>
-                    </div>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" onClick={clearAll} aria-label="Clear history">Clear</Button>
+              <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close history">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-        </SheetContent>
-      </Sheet>
+        </SheetHeader>
+        <div
+          ref={listContainerRef}
+          tabIndex={0}
+          className="max-h-full overflow-y-auto p-2 focus:outline-none"
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, items.length - 1)); }
+            if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex(i => Math.max(i - 1, 0)); }
+            if (e.key === 'Enter') { e.preventDefault(); const p = items[activeIndex]; if (p) go(p); }
+          }}
+          role="region"
+          aria-label="Visited posts list"
+        >
+          <ul className="space-y-1">
+            {items.map((p, idx) => (
+              <li key={p.path}>
+                <button
+                  onClick={() => go(p)}
+                  className={cn(
+                    'group flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring',
+                    activeIndex === idx && 'ring-2 ring-primary'
+                  )}
+                >
+                  <div className="h-8 w-8 overflow-hidden rounded">
+                    {p.coverImage ? (
+                      <img src={p.coverImage} alt="" className="h-8 w-8 object-cover" />
+                    ) : (
+                      <FallbackAvatar title={p.title} />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium group-hover:text-primary">{p.title}</div>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      <span>
+                        {p.year}/{p.slug}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+
+  if (externalTrigger) {
+    return sheet;
+  }
+
+  return (
+    <div className="fixed bottom-8 right-24 z-50 select-none">
+      {sheet}
     </div>
   );
 }
