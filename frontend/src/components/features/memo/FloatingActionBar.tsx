@@ -15,15 +15,16 @@ function isFabEnabled(): boolean {
 function useAIMemoElement(): HTMLElement | null {
   const [el, setEl] = useState<HTMLElement | null>(null);
   useEffect(() => {
+    let active = true;
     const find = () => document.querySelector('ai-memo-pad') as HTMLElement | null;
-    let t: number | undefined;
-    const tryAttach = () => {
+    const loop = () => {
+      if (!active) return;
       const e = find();
       if (e) setEl(e);
-      else t = window.setTimeout(tryAttach, 200);
+      else setTimeout(loop, 200);
     };
-    tryAttach();
-    return () => t && clearTimeout(t);
+    loop();
+    return () => { active = false; };
   }, []);
   return el;
 }
@@ -33,27 +34,39 @@ function useMemoOpen(aiMemoEl: HTMLElement | null): boolean {
     try { return !!JSON.parse(localStorage.getItem('aiMemo.isOpen') || 'false'); } catch { return false; }
   });
   useEffect(() => {
-    // Storage (cross-tab) + shadow panel mutation
-    const onStorage = (e: StorageEvent) => { if (!e.key || e.key === 'aiMemo.isOpen') {
-      try { setOpen(!!JSON.parse(localStorage.getItem('aiMemo.isOpen') || 'false')); } catch {}
-    } };
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || e.key === 'aiMemo.isOpen') {
+        try { setOpen(!!JSON.parse(localStorage.getItem('aiMemo.isOpen') || 'false')); } catch {}
+      }
+    };
     window.addEventListener('storage', onStorage);
 
     let mo: MutationObserver | null = null;
+    let pollId: number | null = null;
+
     const attachObserver = () => {
-      if (!aiMemoEl) return;
-      const shadow = (aiMemoEl as any).shadowRoot as ShadowRoot | undefined;
+      const shadow = (aiMemoEl as any)?.shadowRoot as ShadowRoot | undefined;
       const panel = shadow?.getElementById('panel');
-      if (!panel) return;
-      const check = () => setOpen(panel.classList.contains('open'));
-      check();
-      mo = new MutationObserver(check);
-      mo.observe(panel, { attributes: true, attributeFilter: ['class'] });
+      if (panel) {
+        const check = () => setOpen(panel.classList.contains('open'));
+        check();
+        mo = new MutationObserver(check);
+        mo.observe(panel, { attributes: true, attributeFilter: ['class'] });
+      } else {
+        // Fallback: poll LS briefly to avoid stale initial state
+        let tries = 0;
+        pollId = window.setInterval(() => {
+          tries += 1;
+          try { setOpen(!!JSON.parse(localStorage.getItem('aiMemo.isOpen') || 'false')); } catch {}
+          if (tries > 20) { if (pollId) { clearInterval(pollId); pollId = null; } }
+        }, 250);
+      }
     };
     attachObserver();
     return () => {
       window.removeEventListener('storage', onStorage);
       mo?.disconnect();
+      if (pollId) clearInterval(pollId);
     };
   }, [aiMemoEl]);
   return open;
@@ -103,10 +116,10 @@ function hideLegacyLaunchers(aiMemoEl: HTMLElement | null) {
   try {
     if (!aiMemoEl) return;
     const shadow = (aiMemoEl as any).shadowRoot as ShadowRoot | undefined;
-    const launcher = shadow?.getElementById('launcher');
-    const historyLauncher = shadow?.getElementById('historyLauncher');
-    if (launcher) (launcher as HTMLElement).style.display = 'none';
-    if (historyLauncher) (historyLauncher as HTMLElement).style.display = 'none';
+    const launcher = shadow?.getElementById('launcher') as HTMLElement | null;
+    const historyLauncher = shadow?.getElementById('historyLauncher') as HTMLElement | null;
+    if (launcher) launcher.style.display = 'none';
+    if (historyLauncher) historyLauncher.style.display = 'none';
   } catch {}
 }
 
@@ -130,8 +143,17 @@ export default function FloatingActionBar() {
     } catch {}
   }, []);
 
-  // prevent duplicates while flag is on
-  useEffect(() => { if (enabled) hideLegacyLaunchers(aiMemoEl); }, [enabled, aiMemoEl]);
+  // prevent duplicates while flag is on (re-apply briefly in case shadow re-renders)
+  useEffect(() => {
+    if (!enabled) return;
+    let i = 0;
+    const tick = () => {
+      i += 1;
+      hideLegacyLaunchers(aiMemoEl);
+      if (i < 15) setTimeout(tick, 200); // ~3s window
+    };
+    tick();
+  }, [enabled, aiMemoEl]);
 
   // impression once
   useEffect(() => {
@@ -182,9 +204,9 @@ export default function FloatingActionBar() {
     <div
       role="toolbar"
       aria-label="Floating actions"
-      className="fixed left-1/2 -translate-x-1/2 bottom-[max(16px,env(safe-area-inset-bottom))] z-50 w-[calc(100%-24px)] max-w-3xl border border-border/60 rounded-xl shadow-lg px-2 py-2 md:px-3 md:py-3 bg-background/70 supports-[backdrop-filter]:backdrop-blur-md motion-reduce:transition-none print:hidden"
+      className="fixed left-1/2 -translate-x-1/2 bottom-[max(16px,env(safe-area-inset-bottom))] z-50 w-[calc(100%-24px)] max-w-3xl border border-border/60 rounded-xl shadow-lg px-2 py-2 md:px-3 md:py-3 bg-background/70 backdrop-blur-md backdrop-saturate-150 motion-reduce:transition-none print:hidden"
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 w-full">
         {/* Contextual (memo) actions */}
         <div
           className={[
@@ -217,7 +239,7 @@ export default function FloatingActionBar() {
         </div>
 
         {/* Right-aligned persistent controls */}
-        <div className="ml-auto flex items-center gap-1 md:gap-2" role="group" aria-label="Global actions">
+        <div className="ml-auto flex items-center gap-1 md:gap-2 shrink-0" role="group" aria-label="Global actions">
           {/* Memo toggle to ensure there is a way to open/close the panel when legacy launcher is hidden */}
           <Button variant="ghost" size="sm" onClick={() => { send('fab_memo_toggle'); toggleMemo(); }} aria-label="메모">
             <NotebookPen className="h-4 w-4" />
