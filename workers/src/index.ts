@@ -10,6 +10,7 @@ import auth from './routes/auth';
 import posts from './routes/posts';
 import comments from './routes/comments';
 import ai from './routes/ai';
+import chat from './routes/chat';
 import images from './routes/images';
 import og from './routes/og';
 
@@ -45,6 +46,7 @@ api.route('/auth', auth);
 api.route('/posts', posts);
 api.route('/comments', comments);
 api.route('/ai', ai);
+api.route('/chat', chat);
 api.route('/images', images);
 api.route('/og', og);
 

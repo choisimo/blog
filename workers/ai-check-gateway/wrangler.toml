@@ -1,0 +1,16 @@
+name = "ai-check-gateway"
+main = "src/index.ts"
+compatibility_date = "2025-10-21"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# Comma-separated list of allowed origins
+ALLOWED_ORIGINS = "https://noblog.nodove.com"
+# Backend host to forward to
+REAL_BACKEND_HOST = "ai-serve.nodove.com"
+
+# Note: set SECRET_API_KEY via `wrangler secret put SECRET_API_KEY`
+
+[[routes]]
+pattern = "ai-check.nodove.com/*"
+zone_name = "nodove.com"

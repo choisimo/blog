@@ -1,0 +1,17 @@
+name = "r2-gateway"
+main = "src/index.ts"
+compatibility_date = "2025-10-21"
+
+# R2 bucket binding (replace with your actual bucket name)
+[[r2_buckets]]
+binding = "MY_BUCKET"
+bucket_name = "blog"
+
+# Option A: route via zone + pattern (uncomment and set)
+ [[routes]]
+ pattern = "r2-gateway.immuddelo.workers.dev/*"
+ zone_name = "immuddelo.workers.dev"
+
+# Option B: attach custom domains in dashboard or triggers
+# [triggers]
+# custom_domains = ["assets.mydomain.com"]

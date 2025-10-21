@@ -47,8 +47,11 @@
   width: 420px;
   max-width: min(720px, calc(100vw - 24px));
   height: 560px;
+  height: min(560px, calc(100vh - 48px));
+  height: min(560px, calc(100dvh - 48px));
   /* Fallback to vh, then prefer dvh when available */
   max-height: calc(100vh - 24px);
+  max-height: calc(100dvh - 24px);
   right: 16px; /* default before position restored */
   bottom: 160px; /* default before position restored (keeps ~64px above launcher) */
   display: none;
@@ -349,9 +352,55 @@
   .panel {
     width: min(96vw, 720px);
     height: auto;
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
+    bottom: 24px;
+    bottom: calc(24px + env(safe-area-inset-bottom));
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    border-radius: 12px;
   }
   .textarea { resize: vertical; }
   .split { grid-template-columns: 1fr; }
+  .header {
+    padding: 12px;
+    gap: 6px;
+  }
+  .header .title {
+    font-size: 13px;
+  }
+  .tabs {
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px 8px;
+  }
+  .tab {
+    flex: 1 1 calc(50% - 4px);
+    padding: 8px 0;
+    font-size: 12px;
+  }
+  .body {
+    padding: 12px;
+  }
+  .footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .footer .row {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .footer .row .btn {
+    flex: 1 1 calc(50% - 6px);
+  }
+  #catalystBox {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 /* History overlay */

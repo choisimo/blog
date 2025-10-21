@@ -1,0 +1,10 @@
+name = "ai-api"
+main = "src/index.ts"
+compatibility_date = "2025-10-21"
+compatibility_flags = ["nodejs_compat"]
+
+# Declare secrets: set via `wrangler secret put GEMINI_API_KEY`
+# vars may include CORS origins list if desired
+[vars]
+ALLOWED_ORIGINS = "https://noblog.nodove.com"
+

@@ -10,6 +10,8 @@ export type Env = {
   GEMINI_API_KEY: string;
   ADMIN_USERNAME?: string;
   ADMIN_PASSWORD?: string;
+  AI_SERVE_BASE_URL?: string;
+  AI_SERVE_API_KEY?: string;
 
   // Variables
   ENV: 'development' | 'production';
