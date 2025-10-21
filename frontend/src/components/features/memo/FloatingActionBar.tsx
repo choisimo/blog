@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Map, NotebookPen, Sparkles, Download, Plus, Share2, Layers } from 'lucide-react';
+import { Map, NotebookPen, Sparkles, Layers } from 'lucide-react';
 import VisitedPostsMinimap, { useVisitedPosts } from '@/components/features/navigation/VisitedPostsMinimap';
 import ChatWidget from '@/components/features/chat/ChatWidget';
 
@@ -235,11 +235,6 @@ export default function FloatingActionBar() {
   }, [aiMemoEl]);
 
   const toggleMemo = useCallback(() => clickShadowBtn('launcher'), [clickShadowBtn]);
-  const addSelection = useCallback(() => clickShadowBtn('addSelection'), [clickShadowBtn]);
-  const addToGraph = useCallback(() => clickShadowBtn('memoToGraph'), [clickShadowBtn]);
-  const aiSummary = useCallback(() => clickShadowBtn('aiSummary'), [clickShadowBtn]);
-  const catalyst = useCallback(() => clickShadowBtn('catalyst'), [clickShadowBtn]);
-  const download = useCallback(() => clickShadowBtn('download'), [clickShadowBtn]);
 
   const openHistory = useCallback(() => {
     try {
@@ -283,36 +278,7 @@ export default function FloatingActionBar() {
           'flex items-center justify-between gap-2',
           memoOpen ? 'w-full' : 'w-auto',
         ].join(' ')}>
-          {/* Contextual (memo) actions */}
-          <div
-            className={[
-              'flex items-center gap-1 md:gap-2 transition-all duration-200 motion-reduce:transition-none overflow-x-auto whitespace-nowrap pr-1',
-              memoOpen ? 'flex-1 opacity-100 translate-y-0' : 'hidden',
-            ].join(' ')}
-            role="group"
-            aria-label="Memo actions"
-          >
-          <Button variant="secondary" size="sm" onClick={() => { send('fab_memo_add_selection'); addSelection(); }} aria-label="선택 추가">
-            <Plus className="h-4 w-4" />
-            <span className="hidden lg:inline ml-1">선택 추가</span>
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => { send('fab_memo_add_graph'); addToGraph(); }} aria-label="그래프에 추가">
-            <Share2 className="h-4 w-4" />
-            <span className="hidden lg:inline ml-1">그래프에 추가</span>
-          </Button>
-          <Button variant="default" size="sm" onClick={() => { send('fab_memo_ai_summary'); aiSummary(); }} aria-label="AI 요약">
-            <Sparkles className="h-4 w-4" />
-            <span className="hidden lg:inline ml-1">AI 요약</span>
-          </Button>
-          <Button variant="default" size="sm" onClick={() => { send('fab_memo_catalyst'); catalyst(); }} aria-label="Catalyst">
-            <Sparkles className="h-4 w-4" />
-            <span className="hidden lg:inline ml-1">Catalyst ✨</span>
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => { send('fab_memo_download'); download(); }} aria-label="메모 다운로드">
-            <Download className="h-4 w-4" />
-            <span className="hidden lg:inline ml-1">다운로드</span>
-          </Button>
-        </div>
+          {/* Contextual (memo) actions removed to keep FAB global-only */}
 
           {/* Right-aligned persistent controls */}
             <div className={"flex items-center gap-1 md:gap-2 shrink-0".concat(memoOpen ? " ml-auto" : "")} role="group" aria-label="Global actions">
