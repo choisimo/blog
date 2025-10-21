@@ -12,6 +12,11 @@ export type Env = {
   ADMIN_PASSWORD?: string;
   AI_SERVE_BASE_URL?: string;
   AI_SERVE_API_KEY?: string;
+  // Email + site notification
+  RESEND_API_KEY?: string;
+  NOTIFY_FROM_EMAIL?: string;
+  NOTIFY_TO_EMAILS?: string;
+  PUBLIC_SITE_URL?: string;
 
   // Variables
   ENV: 'development' | 'production';
