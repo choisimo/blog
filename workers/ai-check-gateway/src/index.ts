@@ -2,6 +2,7 @@ type Env = {
   ALLOWED_ORIGINS?: string;
   REAL_BACKEND_HOST: string;
   SECRET_API_KEY: string;
+  SECRET_INTERNAL_KEY: string; // Secret for forwarding to backend
 };
 
 function json(data: unknown, init?: ResponseInit) {
@@ -48,6 +49,13 @@ export default {
       return res;
     }
 
+    // Ensure internal key is configured
+    if (!env.SECRET_INTERNAL_KEY) {
+      const res = json({ error: 'Server misconfiguration: missing SECRET_INTERNAL_KEY' }, { status: 500 });
+      applyCors(res.headers, origin);
+      return res;
+    }
+
     // Rewrite URL to real backend host
     const url = new URL(request.url);
     url.hostname = env.REAL_BACKEND_HOST;
@@ -57,10 +65,10 @@ export default {
     // Forward the request preserving method and body; copy headers except host
     const reqHeaders = new Headers(request.headers);
     reqHeaders.set('Host', env.REAL_BACKEND_HOST);
-    // Optionally forward client IP info
-    // Keep API key header if backend also needs it, otherwise strip
-    // Here we drop it so only gateway verifies the key
+    // Drop any client-provided sensitive headers and inject our internal key
     reqHeaders.delete('X-API-KEY');
+    reqHeaders.delete('X-Internal-Gateway-Key');
+    reqHeaders.set('X-Internal-Gateway-Key', env.SECRET_INTERNAL_KEY);
 
     const forwarded = new Request(url.toString(), {
       method: request.method,
