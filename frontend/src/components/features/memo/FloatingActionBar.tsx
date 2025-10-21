@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button';
 import { Map, NotebookPen, Sparkles, Download, Plus, Share2, Layers } from 'lucide-react';
 import VisitedPostsMinimap, { useVisitedPosts } from '@/components/features/navigation/VisitedPostsMinimap';
+import ChatWidget from '@/components/features/chat/ChatWidget';
 
 // Feature flag: build-time + runtime override
 function isFabEnabled(): boolean {
@@ -170,6 +171,7 @@ export default function FloatingActionBar() {
   const [hasNew, clearBadge] = useHistoryBadge();
   const visitedPosts = useVisitedPosts();
   const impressionSent = useRef(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const send = useCallback((type: string, detail?: Record<string, any>) => {
     try {
@@ -313,31 +315,42 @@ export default function FloatingActionBar() {
         </div>
 
           {/* Right-aligned persistent controls */}
-          <div className={"flex items-center gap-1 md:gap-2 shrink-0".concat(memoOpen ? " ml-auto" : "")} role="group" aria-label="Global actions">
-            {/* Memo toggle to ensure there is a way to open/close the panel when legacy launcher is hidden */}
-            <Button variant="ghost" size="sm" onClick={() => { send('fab_memo_toggle'); toggleMemo(); }} aria-label="메모">
-              <NotebookPen className="h-4 w-4" />
-              <span className="hidden lg:inline ml-1">Memo</span>
-            </Button>
-            {stackViewAvailable && (
-              <Button variant="ghost" size="sm" onClick={openStackView} aria-label="최근 게시글 리스트">
-                <Layers className="h-4 w-4" />
-                <span className="hidden lg:inline ml-1">Stack</span>
+            <div className={"flex items-center gap-1 md:gap-2 shrink-0".concat(memoOpen ? " ml-auto" : "")} role="group" aria-label="Global actions">
+              {/* AI Chat toggle */}
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => { setChatOpen(v => !v); send('fab_ai_chat_toggle'); }}
+                aria-label="AI Chat"
+              >
+                <Sparkles className="h-4 w-4" />
+                <span className="hidden lg:inline ml-1">AI Chat ✨</span>
               </Button>
-            )}
-            <div className="relative">
-              <Button variant="secondary" size="sm" onClick={openHistory} aria-label="History" aria-haspopup="dialog">
-                <Map className="h-4 w-4" />
-                <span className="hidden lg:inline ml-1">History</span>
+              {/* Memo toggle to ensure there is a way to open/close the panel when legacy launcher is hidden */}
+              <Button variant="ghost" size="sm" onClick={() => { send('fab_memo_toggle'); toggleMemo(); }} aria-label="\uba54\ubaa8">
+                <NotebookPen className="h-4 w-4" />
+                <span className="hidden lg:inline ml-1">Memo</span>
               </Button>
-              {hasNew && (
-                <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" aria-hidden />
+              {stackViewAvailable && (
+                <Button variant="ghost" size="sm" onClick={openStackView} aria-label="\ucd5c\uadfc \uac8c\uc2dc\uae00 \ub9ac\uc2a4\ud2b8">
+                  <Layers className="h-4 w-4" />
+                  <span className="hidden lg:inline ml-1">Stack</span>
+                </Button>
               )}
+              <div className="relative">
+                <Button variant="secondary" size="sm" onClick={openHistory} aria-label="History" aria-haspopup="dialog">
+                  <Map className="h-4 w-4" />
+                  <span className="hidden lg:inline ml-1">History</span>
+                </Button>
+                {hasNew && (
+                  <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" aria-hidden />
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <VisitedPostsMinimap mode="fab" />
-    </>
-  );
+        {chatOpen && <ChatWidget onClose={() => setChatOpen(false)} />}
+        <VisitedPostsMinimap mode="fab" />
+      </>
+    );
 }
