@@ -31,7 +31,7 @@ chat.post('/session', async (c: Context<ChatContext>) => {
   }
 
   const title = typeof requestBody?.title === 'string' && requestBody.title.trim().length > 0
-    ? requestBody.title
+    ? (requestBody.title as string)
     : 'Nodove Blog Visitor Session';
 
   const upstreamInit: RequestInit = {
@@ -53,12 +53,12 @@ chat.post('/session', async (c: Context<ChatContext>) => {
     );
   }
 
-  const result = await upstreamResponse.json<unknown>().catch(() => undefined);
+  const result = (await upstreamResponse.json().catch(() => undefined)) as unknown;
   if (!result) {
     return badRequest(c, 'Invalid response when creating chat session');
   }
 
-  return c.json(result, upstreamResponse.status);
+  return c.json(result, upstreamResponse.status as any);
 });
 
 chat.post('/session/:sessionId/message', async (c: Context<ChatContext>) => {
