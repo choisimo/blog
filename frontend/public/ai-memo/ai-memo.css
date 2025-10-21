@@ -241,6 +241,10 @@
   gap: 8px;
   align-items: center;
 }
+#memoBody .section > .row > .row {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
 .btn {
   padding: 8px 10px;
   border-radius: 8px;

@@ -625,6 +625,10 @@
                   <button id="memoH2" class="btn secondary" title="## H2" aria-label="Heading 2">H2</button>
                   <button id="memoUl" class="btn secondary" title="• bullet list" aria-label="Bullet list">•</button>
                   <button id="memoOl" class="btn secondary" title="1. numbered list" aria-label="Numbered list">1.</button>
+                  <button id="addSelection" class="btn secondary" type="button" aria-label="선택 추가">선택 추가</button>
+                  <button id="addBlock" class="btn secondary" type="button" aria-label="블록 추가">블록 추가</button>
+                  <button id="aiSummary" class="btn secondary" type="button" aria-label="AI 요약">AI 요약</button>
+                  <button id="catalyst" class="btn secondary" type="button" aria-label="Catalyst">Catalyst</button>
                 </div>
               </div>
               <textarea id="memo" class="textarea" style="min-height:300px; height:300px;" placeholder="여기에 메모를 작성하세요"></textarea>
@@ -698,8 +702,8 @@
           <div class="footer">
             <div id="status" class="small">Ready</div>
             <div class="row">
-              <button id="addSelection" class="btn secondary" type="button" aria-label="선택 추가">선택 추가</button>
-              <button id="addBlock" class="btn secondary" type="button" aria-label="블록 추가">블록 추가</button>
+              <button id="memoToGraph" class="btn secondary" type="button" aria-label="그래프에 추가">그래프에 추가</button>
+              <button id="download" class="btn secondary" type="button" aria-label="다운로드">다운로드</button>
               <button id="memoFull" class="btn" type="button" aria-label="전체화면">전체화면</button>
               <button id="memoClear" class="btn secondary" type="button" aria-label="지우기">지우기</button>
             </div>
@@ -1829,19 +1833,28 @@
 
       // selection add
       this.$addSel.addEventListener('click', () => {
-        this.logEvent({ type: 'add_selection', label: '선택 추가' });
+        this.logEvent({ type: 'add_selection', label: '\uc120\ud0dd \ucd94\uac00' });
 
         const sel = window.getSelection();
         const text = sel && sel.toString().trim();
           if (!text) {
-            this.out.toast('선택된 텍스트가 없습니다.');
+            this.out.toast('\uc120\ud0dd\ub41c \ud14d\uc2a4\ud2b8\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.');
             return;
           }
         const now = new Date();
-        const entry = `\n> ${text}\n— ${now.toLocaleString()}\n`;
+        const entry = `\n> ${text}\n ${now.toLocaleString()}\n`;
         this.out.append(entry);
-        this.out.toast('선택 내용을 추가했습니다.');
+        this.out.toast('\uc120\ud0dd \ub0b4\uc6a9\uc744 \ucd94\uac00\ud588\uc2b5\ub2c8\ub2e4.');
       });
+
+      // block add (enter block selection mode)
+      if (this.$addBlock) {
+        this.$addBlock.addEventListener('click', () => {
+          this.logEvent({ type: 'enter_block_select', label: '\ube14\ub85d \ucd94\uac00' });
+          this.toggleBlockSelectMode(true);
+        });
+      }
+
 
       // memo -> graph thought injection
       if (this.$memoToGraph) {
