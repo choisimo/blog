@@ -17,6 +17,6 @@ REAL_BACKEND_HOST = "ai-serve.nodove.com"
 [env.production]
 name = "ai-check-gateway"
 
-[[routes]]
+[[env.production.routes]]
 pattern = "ai-check.nodove.com/*"
 zone_name = "nodove.com"
