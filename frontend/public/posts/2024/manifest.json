@@ -11,6 +11,10 @@
     "9.md",
     "_index.md",
     "ai-personalized-learning-system.md",
+    "algorithm-atelier-bfs.md",
+    "algorithm-atelier-binary-search.md",
+    "algorithm-atelier-dijkstra.md",
+    "algorithm-atelier-dp.md",
     "algorithm-guide.md",
     "blade-runner-philosophy.md",
     "brazil-1985-review.md",
@@ -36,7 +40,7 @@
     "week7-8.md",
     "week9-10.md"
   ],
-  "generatedAt": "2025-10-21T16:42:41.504Z",
-  "totalFiles": 35,
+  "generatedAt": "2025-10-22T00:00:00.000Z",
+  "totalFiles": 39,
   "excludedFiles": 0
 }
