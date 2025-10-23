@@ -42,7 +42,7 @@ chat.post('/session', async (c: Context<ChatContext>) => {
       title,
     }),
   };
-
+ 
   const upstreamResponse = await fetch(`${getChatBase(c.env)}/session`, upstreamInit);
 
   if (!upstreamResponse.ok) {
