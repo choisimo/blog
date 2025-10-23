@@ -27,6 +27,7 @@ export default {
       .map((s) => s.trim())
       .filter(Boolean);
     const isAllowed = allowed.includes('*') || (origin && allowed.includes(origin));
+    const isServerToServer = !origin;
 
     // Preflight
     if (request.method === 'OPTIONS') {
@@ -36,7 +37,7 @@ export default {
     }
 
     // Origin check
-    if (!isAllowed) {
+    if (!isAllowed && !isServerToServer) {
       const res = json({ error: 'Forbidden: Invalid origin' }, { status: 403 });
       return res;
     }
@@ -81,8 +82,9 @@ export default {
       const backendRes = await fetch(forwarded);
 
       // Reflect CORS for response
-      if (isAllowed) applyCors(backendRes.headers, origin);
-      return backendRes;
+      const headers = new Headers(backendRes.headers);
+      if (isAllowed && origin) applyCors(headers, origin);
+      return new Response(backendRes.body, { status: backendRes.status, headers });
     } catch (err) {
       const res = json({ error: 'Upstream fetch failed' }, { status: 502 });
       applyCors(res.headers, origin);

@@ -8,7 +8,7 @@ type ChatContext = { Bindings: Env };
 const chat = new Hono<ChatContext>();
 
 function getChatBase(env: Env): string {
-  const base = env.AI_SERVE_BASE_URL || 'https://ai-serve.nodove.com';
+  const base = env.AI_SERVE_BASE_URL || 'https://ai-check.nodove.com';
   return base.replace(/\/$/, '');
 }
 
@@ -17,7 +17,7 @@ function buildHeaders(env: Env): Record<string, string> {
     'Content-Type': 'application/json',
   };
   if (env.AI_SERVE_API_KEY) {
-    headers['X-Api-Key'] = env.AI_SERVE_API_KEY;
+    headers['X-API-KEY'] = env.AI_SERVE_API_KEY;
   }
   return headers;
 }
