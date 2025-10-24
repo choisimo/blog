@@ -1,0 +1,48 @@
+name: RAG Indexing
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/public/posts/**'
+      - 'frontend/public/posts-manifest.json'
+      - 'scripts/rag/**'
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: rag-index-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r scripts/rag/requirements.txt
+
+      - name: Run indexer
+        env:
+          TEI_URL: ${{ secrets.TEI_URL }}
+          CHROMA_URL: ${{ secrets.CHROMA_URL }}
+          CHROMA_COLLECTION: ${{ vars.CHROMA_COLLECTION || 'blog-posts' }}
+          CHUNK_TOKENS: ${{ vars.CHUNK_TOKENS || '512' }}
+          CHUNK_OVERLAP_TOKENS: ${{ vars.CHUNK_OVERLAP_TOKENS || '80' }}
+          EMBED_BATCH: ${{ vars.EMBED_BATCH || '32' }}
+          # Retries/backoff and timeouts (optional)
+          RETRIES_TOTAL: ${{ vars.RETRIES_TOTAL || '5' }}
+          RETRY_BACKOFF_S: ${{ vars.RETRY_BACKOFF_S || '1.0' }}
+          CHROMA_RETRIES: ${{ vars.CHROMA_RETRIES || '4' }}
+          CHROMA_BACKOFF_S: ${{ vars.CHROMA_BACKOFF_S || '1.5' }}
+          EMBED_TIMEOUT_S: ${{ vars.EMBED_TIMEOUT_S || '120' }}
+        run: |
+          python scripts/rag/index_posts.py

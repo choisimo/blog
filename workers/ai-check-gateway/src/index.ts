@@ -74,8 +74,10 @@ export default {
     // Drop any client-provided sensitive headers and inject our internal key
     reqHeaders.delete('X-API-KEY');
     reqHeaders.delete('X-Gateway-Caller-Key');
-    reqHeaders.delete('X-Internal-Gateway-Key');
-    reqHeaders.set('X-Internal-Gateway-Key', env.SECRET_INTERNAL_KEY);
+// 클라이언트가 보낸 관련 헤더는 삭제하고,
+reqHeaders.delete('X-Internal-Gateway-Key');
+// 워커가 직접 내부 인증용 비밀 키를 헤더에 설정합니다.
+reqHeaders.set('X-Internal-Gateway-Key', env.SECRET_INTERNAL_KEY); 
 
     const forwarded = new Request(url.toString(), {
       method: request.method,

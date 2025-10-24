@@ -18,6 +18,7 @@ export type Env = {
   NOTIFY_FROM_EMAIL?: string;
   NOTIFY_TO_EMAILS?: string;
   PUBLIC_SITE_URL?: string;
+  OPENCODE_AUTH_TOKEN?: string;
 
   // Variables
   ENV: 'development' | 'production';

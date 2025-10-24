@@ -1,105 +1,51 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { Env } from '../types';
-import { badRequest } from '../lib/response';
 
 type ChatContext = { Bindings: Env };
 
 const chat = new Hono<ChatContext>();
+async function proxyRequest(c: Context<ChatContext>, path: string) {
+  const aiServeBaseUrl = c.env.AI_SERVE_BASE_URL || 'https://ai-check.nodove.com';
+  const upstreamUrl = `${aiServeBaseUrl}${path}`;
 
-function getChatBase(env: Env): string {
-  const base = env.AI_SERVE_BASE_URL || 'https://ai-check.nodove.com';
-  return base.replace(/\/$/, '');
-}
+  const upstreamHeaders = new Headers(c.req.raw.headers);
+  upstreamHeaders.delete('host');
 
-function buildHeaders(env: Env): Record<string, string> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  // Worker-to-Gateway authentication for server-to-server calls
-  if (env.AI_GATEWAY_CALLER_KEY) {
-    headers['X-Gateway-Caller-Key'] = env.AI_GATEWAY_CALLER_KEY;
+  if (c.env.AI_GATEWAY_CALLER_KEY) {
+    upstreamHeaders.set('X-Gateway-Caller-Key', c.env.AI_GATEWAY_CALLER_KEY);
   }
-  return headers;
-}
-
-chat.post('/session', async (c: Context<ChatContext>) => {
-  let requestBody: Record<string, unknown> | undefined;
-  try {
-    requestBody = await c.req.json<Record<string, unknown>>();
-  } catch {
-    requestBody = undefined;
+  if (c.env.OPENCODE_AUTH_TOKEN) {
+    upstreamHeaders.set('Authorization', `Bearer ${c.env.OPENCODE_AUTH_TOKEN}`);
   }
 
-  const title = typeof requestBody?.title === 'string' && requestBody.title.trim().length > 0
-    ? (requestBody.title as string)
-    : 'Nodove Blog Visitor Session';
-
-  const upstreamInit: RequestInit = {
-    method: 'POST',
-    headers: buildHeaders(c.env),
-    body: JSON.stringify({
-      ...(requestBody || {}),
-      title,
-    }),
-  };
- 
-  const upstreamResponse = await fetch(`${getChatBase(c.env)}/session`, upstreamInit);
-
-  if (!upstreamResponse.ok) {
-    const errorText = await upstreamResponse.text().catch(() => '');
-    return badRequest(
-      c,
-      `Chat session creation failed (${upstreamResponse.status}): ${errorText.slice(0, 200)}`,
-    );
-  }
-
-  const result = (await upstreamResponse.json().catch(() => undefined)) as unknown;
-  if (!result) {
-    return badRequest(c, 'Invalid response when creating chat session');
-  }
-
-  return c.json(result, upstreamResponse.status as any);
-});
-
-chat.post('/session/:sessionId/message', async (c: Context<ChatContext>) => {
-  const sessionId = c.req.param('sessionId');
-  if (!sessionId) {
-    return badRequest(c, 'sessionId is required');
-  }
-
-  const rawBody = await c.req.text();
-  if (!rawBody) {
-    return badRequest(c, 'Request body is required');
-  }
-
-  const upstreamRequest = new Request(
-    `${getChatBase(c.env)}/session/${encodeURIComponent(sessionId)}/message`,
-    {
-      method: 'POST',
-      headers: buildHeaders(c.env),
-      body: rawBody,
-    },
-  );
+  const upstreamRequest = new Request(upstreamUrl, {
+    method: c.req.method,
+    headers: upstreamHeaders,
+    body: c.req.raw.body,
+    redirect: 'manual',
+  });
 
   const upstreamResponse = await fetch(upstreamRequest);
 
   const headers = new Headers(upstreamResponse.headers);
   headers.set('Access-Control-Allow-Origin', '*');
-  headers.set('Access-Control-Expose-Headers', '*');
-
-  if (!upstreamResponse.body) {
-    const fallbackText = await upstreamResponse.text().catch(() => '');
-    return new Response(fallbackText || null, {
-      status: upstreamResponse.status,
-      headers,
-    });
-  }
+  headers.set('Access-Control-Allow-Headers', '*');
 
   return new Response(upstreamResponse.body, {
     status: upstreamResponse.status,
     headers,
   });
+}
+
+// '/session' 경로의 POST 요청은 업스트림 '/session'으로 프록시합니다.
+chat.post('/session', async (c) => {
+  return proxyRequest(c, '/session');
+});
+
+chat.post('/session/:sessionId/message', async (c) => {
+  const { sessionId } = c.req.param();
+  return proxyRequest(c, `/session/${sessionId}/message`);
 });
 
 export default chat;

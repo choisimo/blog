@@ -18,7 +18,7 @@ build/
 # Next.js build output
 next
 out
-
+./code
 # Logs
 logs
 *.log

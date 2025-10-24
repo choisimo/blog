@@ -58,7 +58,26 @@ export async function ensureSession(): Promise<string> {
   return id;
 }
 
-export async function* streamChatMessage(input: { text: string }): AsyncGenerator<string, void, void> {
+export type ChatStreamEvent =
+  | { type: 'text'; text: string }
+  | { type: 'sources'; sources: Array<{ title?: string; url?: string; score?: number; snippet?: string }> }
+  | { type: 'followups'; questions: string[] }
+  | { type: 'context'; page?: { url?: string; title?: string } }
+  | { type: 'done' };
+
+function getPageContext(): { url?: string; title?: string } {
+  const w = typeof window !== 'undefined' ? (window as any) : null;
+  const url = w?.location?.href as string | undefined;
+  const title = w?.document?.title as string | undefined;
+  return { url, title };
+}
+
+export async function* streamChatEvents(input: {
+  text: string;
+  page?: { url?: string; title?: string };
+  signal?: AbortSignal;
+  onFirstToken?: (ms: number) => void;
+}): AsyncGenerator<ChatStreamEvent, void, void> {
   const sessionID = await ensureSession();
   const chatBase = getChatBaseUrl();
   let url = '';
@@ -76,10 +95,12 @@ export async function* streamChatMessage(input: { text: string }): AsyncGenerato
     { type: 'text', text: stylePrompt },
     { type: 'text', text: input.text },
   ];
+  const page = input.page || getPageContext();
   const res = await fetch(url, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ parts }),
+    body: JSON.stringify({ parts, context: { page } }),
+    signal: input.signal,
   });
   if (!res.ok || !res.body) {
     const t = await res.text().catch(() => '');
@@ -103,7 +124,18 @@ export async function* streamChatMessage(input: { text: string }): AsyncGenerato
       const delta = c?.delta?.content ?? c?.message?.content;
       if (typeof delta === 'string') out.push(delta);
     }
+    if (typeof obj.delta === 'string') out.push(obj.delta);
     return out;
+  };
+
+  const started = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  let firstEmitted = false;
+  const markFirst = () => {
+    if (!firstEmitted) {
+      firstEmitted = true;
+      const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      if (typeof input.onFirstToken === 'function') input.onFirstToken(Math.max(0, Math.round(now - started)));
+    }
   };
 
   try {
@@ -122,15 +154,27 @@ export async function* streamChatMessage(input: { text: string }): AsyncGenerato
           buffer = buffer.slice(sep + 2);
           const lines = frame.split('\n');
           const datas: string[] = [];
-          for (const ln of lines) if (ln.startsWith('data:')) datas.push(ln.slice(5).trim());
+          let evt: string | undefined;
+          for (const ln of lines) {
+            if (ln.startsWith('data:')) datas.push(ln.slice(5).trim());
+            else if (ln.startsWith('event:')) evt = ln.slice(6).trim();
+          }
           const data = datas.join('\n');
           if (!data) continue;
+          if (data === '[DONE]' || evt === 'done') { yield { type: 'done' }; continue; }
           try {
             const obj = JSON.parse(data);
             const texts = extractTexts(obj);
-            for (const t of texts) if (t) yield t;
+            for (const t of texts) if (t) { markFirst(); yield { type: 'text', text: t }; }
+            const srcs = obj?.sources;
+            if (Array.isArray(srcs)) yield { type: 'sources', sources: srcs };
+            const fups = obj?.followups || obj?.suggestions;
+            if (Array.isArray(fups)) yield { type: 'followups', questions: fups };
+            const ctx = obj?.context;
+            if (ctx && typeof ctx === 'object') yield { type: 'context', page: ctx.page || ctx };
           } catch {
-            yield data;
+            markFirst();
+            yield { type: 'text', text: data };
           }
         }
       } else if (contentType.includes('ndjson') || contentType.includes('jsonl')) {
@@ -140,18 +184,26 @@ export async function* streamChatMessage(input: { text: string }): AsyncGenerato
           const line = buffer.slice(0, nl).trim();
           buffer = buffer.slice(nl + 1);
           if (!line) continue;
+          if (line === '[DONE]') { yield { type: 'done' }; continue; }
           try {
             const obj = JSON.parse(line);
             const texts = extractTexts(obj);
-            for (const t of texts) if (t) yield t;
+            for (const t of texts) if (t) { markFirst(); yield { type: 'text', text: t }; }
+            const srcs = obj?.sources;
+            if (Array.isArray(srcs)) yield { type: 'sources', sources: srcs };
+            const fups = obj?.followups || obj?.suggestions;
+            if (Array.isArray(fups)) yield { type: 'followups', questions: fups };
+            const ctx = obj?.context;
+            if (ctx && typeof ctx === 'object') yield { type: 'context', page: ctx.page || ctx };
           } catch {
-            yield line;
+            markFirst();
+            yield { type: 'text', text: line };
           }
         }
       } else if (contentType.includes('application/json')) {
-        // wait until end
       } else if (contentType.includes('text/plain')) {
-        yield chunk;
+        markFirst();
+        yield { type: 'text', text: chunk };
         buffer = '';
       }
     }
@@ -160,26 +212,47 @@ export async function* streamChatMessage(input: { text: string }): AsyncGenerato
         try {
           const obj = JSON.parse(buffer);
           const texts = extractTexts(obj);
-          for (const t of texts) if (t) yield t;
+          for (const t of texts) if (t) { markFirst(); yield { type: 'text', text: t }; }
+          const srcs = (obj as any)?.sources;
+          if (Array.isArray(srcs)) yield { type: 'sources', sources: srcs };
+          const fups = (obj as any)?.followups || (obj as any)?.suggestions;
+          if (Array.isArray(fups)) yield { type: 'followups', questions: fups };
+          const ctx = (obj as any)?.context;
+          if (ctx && typeof ctx === 'object') yield { type: 'context', page: (ctx as any).page || ctx };
         } catch {
-          yield buffer;
+          markFirst();
+          yield { type: 'text', text: buffer };
         }
       } else if (contentType.includes('ndjson') || contentType.includes('jsonl')) {
         const lines = buffer.split('\n');
         for (const s of lines) {
           const line = s.trim();
           if (!line) continue;
+          if (line === '[DONE]') { yield { type: 'done' }; continue; }
           try {
             const obj = JSON.parse(line);
             const texts = extractTexts(obj);
-            for (const t of texts) if (t) yield t;
+            for (const t of texts) if (t) { markFirst(); yield { type: 'text', text: t }; }
+            const srcs = obj?.sources;
+            if (Array.isArray(srcs)) yield { type: 'sources', sources: srcs };
+            const fups = obj?.followups || obj?.suggestions;
+            if (Array.isArray(fups)) yield { type: 'followups', questions: fups };
+            const ctx = obj?.context;
+            if (ctx && typeof ctx === 'object') yield { type: 'context', page: ctx.page || ctx };
           } catch {
-            yield line;
+            markFirst();
+            yield { type: 'text', text: line };
           }
         }
       }
     }
   } finally {
     reader.releaseLock();
+  }
+}
+
+export async function* streamChatMessage(input: { text: string }): AsyncGenerator<string, void, void> {
+  for await (const ev of streamChatEvents({ text: input.text })) {
+    if (ev.type === 'text') yield ev.text;
   }
 }
