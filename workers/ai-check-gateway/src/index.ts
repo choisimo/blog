@@ -16,9 +16,13 @@ function applyCors(headers: Headers, origin: string, requestHeaders?: string | n
   headers.set('Access-Control-Allow-Origin', origin);
   headers.set('Vary', 'Origin, Access-Control-Request-Headers, Access-Control-Request-Method');
   headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-  const reqHdrs = (requestHeaders || '').trim();
-  const allow = reqHdrs ? `Content-Type, ${reqHdrs}` : 'Content-Type';
-  headers.set('Access-Control-Allow-Headers', allow);
+  const incoming = (requestHeaders || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const base = ['Content-Type', 'X-API-KEY'];
+  const merged = Array.from(new Set([...base, ...incoming])).join(', ');
+  headers.set('Access-Control-Allow-Headers', merged);
   headers.set('Access-Control-Max-Age', '600');
 }
 

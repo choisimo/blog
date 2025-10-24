@@ -52,7 +52,7 @@ export async function ensureSession(): Promise<string> {
     throw new Error(`Failed to create session: ${res.status} ${t.slice(0, 180)}`);
   }
   const data = (await res.json().catch(() => ({}))) as any;
-  const id = data?.sessionID || data?.data?.sessionID;
+  const id = data?.sessionID || data?.id || data?.data?.sessionID || data?.data?.id;
   if (!id || typeof id !== 'string') throw new Error('Invalid session response');
   try { localStorage.setItem(key, id); } catch {}
   return id;
