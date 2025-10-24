@@ -60,28 +60,40 @@ export default function ChatWidget(props: { onClose?: () => void }) {
   }, [canSend, send]);
 
   return (
-    <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[10000] w-[min(100%-24px,42rem)] rounded-xl border bg-background shadow-lg">
-      <div className="flex items-center justify-between px-4 py-2 border-b">
+    <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[10000] w-[min(100%-24px,42rem)] max-h-[70vh] flex flex-col rounded-xl border bg-background shadow-lg">
+      <div className="flex items-center justify-between px-4 py-2 border-b shrink-0">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-semibold">AI Chat</h3>
         </div>
         <div className="text-xs text-muted-foreground">Experimental</div>
       </div>
-      <div ref={scrollRef} className="max-h-[45vh] overflow-auto px-4 py-3 space-y-3">
+      <div ref={scrollRef} className="flex-1 min-h-[140px] max-h-[50vh] overflow-auto px-4 py-3 space-y-3">
         {messages.length === 0 && (
           <div className="text-xs text-muted-foreground">Ask anything about the post or the site.</div>
         )}
-        {messages.map(m => (
-          <div key={m.id} className={[
-            'text-sm leading-relaxed whitespace-pre-wrap',
-            m.role === 'user' ? 'text-foreground' : m.role === 'assistant' ? 'text-foreground' : 'text-destructive',
-          ].join(' ')}>
-            {m.text}
-          </div>
-        ))}
+        {messages.map(m => {
+          const isUser = m.role === 'user';
+          const isAssistant = m.role === 'assistant';
+          const isSystem = m.role === 'system';
+          return (
+            <div key={m.id} className={[
+              'flex',
+              isUser ? 'justify-end' : 'justify-start',
+            ].join(' ')}>
+              <div className={[
+                'max-w-[85%] whitespace-pre-wrap text-sm leading-relaxed rounded-2xl px-3 py-2',
+                isUser && 'bg-primary text-primary-foreground rounded-br-sm',
+                isAssistant && 'bg-secondary text-secondary-foreground rounded-bl-sm',
+                isSystem && 'bg-destructive/10 text-destructive',
+              ].filter(Boolean).join(' ')}>
+                {m.text}
+              </div>
+            </div>
+          );
+        })}
       </div>
-      <div className="flex items-end gap-2 p-3 border-t">
+      <div className="flex items-end gap-2 p-3 border-t shrink-0">
         <Textarea
           value={input}
           onChange={e => setInput(e.target.value)}

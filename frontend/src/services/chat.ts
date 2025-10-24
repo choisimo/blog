@@ -71,10 +71,15 @@ export async function* streamChatMessage(input: { text: string }): AsyncGenerato
     const base = getApiBaseUrl();
     url = `${base.replace(/\/$/, '')}/api/v1/chat/session/${encodeURIComponent(sessionID)}/message`;
   }
+  const stylePrompt = '다음 지침을 따르세요: 말투는 귀엽고 상냥한 애니메이션 여학생 캐릭터처럼, 존댓말을 유지하고 과하지 않게 가벼운 말끝(예: ~에요, ~일까요?)과 가끔 이모지(^_^, ✨)를 섞습니다. 응답은 간결하고 핵심만 전합니다.';
+  const parts = [
+    { type: 'text', text: stylePrompt },
+    { type: 'text', text: input.text },
+  ];
   const res = await fetch(url, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ parts: [{ type: 'text', text: input.text }] }),
+    body: JSON.stringify({ parts }),
   });
   if (!res.ok || !res.body) {
     const t = await res.text().catch(() => '');
