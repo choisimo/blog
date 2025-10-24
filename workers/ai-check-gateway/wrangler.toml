@@ -6,7 +6,7 @@ account_id = "f6f11e2a4e5178d2f37476785018f761"
 
 [vars]
 # Comma-separated list of allowed origins
-ALLOWED_ORIGINS = "https://noblog.nodove.com"
+ALLOWED_ORIGINS = "https://noblog.nodove.com,https://blog.nodove.com"
 # Backend host to forward to
 REAL_BACKEND_HOST = "ai-serve.nodove.com"
 

@@ -33,7 +33,6 @@ export type StreamEvent =
 
 export async function* streamGenerate(prompt: string, opts?: { temperature?: number }) {
   const base = getApiBaseUrl();
-  if (!base) throw new Error('Backend not configured for streaming');
   const url = new URL(`${base.replace(/\/$/, '')}/api/v1/ai/generate/stream`);
   url.searchParams.set('prompt', prompt);
   if (opts?.temperature !== undefined) url.searchParams.set('temperature', String(opts.temperature));
@@ -50,41 +49,94 @@ export async function* streamGenerate(prompt: string, opts?: { temperature?: num
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  let currentEvent: string | null = null;
+  let dataParts: string[] = [];
+
+  const flushFrame = (): StreamEvent[] => {
+    const events: StreamEvent[] = [];
+    if (dataParts.length === 0) {
+      currentEvent = null;
+      return events;
+    }
+    const dataStr = dataParts.join('\n');
+    dataParts = [];
+    let payload: any = null;
+    try {
+      payload = JSON.parse(dataStr);
+    } catch {
+      payload = dataStr;
+    }
+
+    const e = currentEvent;
+    currentEvent = null;
+
+    if (e === 'open' || (payload && (payload.ok || payload.type === 'open'))) {
+      events.push({ type: 'open' });
+      return events;
+    }
+    if (e === 'done' || (payload && (payload.done || payload.type === 'done'))) {
+      events.push({ type: 'done' });
+      return events;
+    }
+    if (e === 'error' || (payload && (payload.type === 'error' || payload.message))) {
+      const msg = typeof payload === 'string' ? payload : String(payload?.message || 'error');
+      events.push({ type: 'error', message: msg });
+      return events;
+    }
+
+    const token = typeof payload === 'string'
+      ? payload
+      : payload && payload.token !== undefined
+        ? String(payload.token)
+        : undefined;
+    if (token !== undefined && token !== '') {
+      events.push({ type: 'token', token });
+    }
+    return events;
+  };
+
   try {
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
-      let idx;
-      while ((idx = buffer.indexOf('\n\n')) !== -1) {
-        const raw = buffer.slice(0, idx);
-        buffer = buffer.slice(idx + 2);
-        const lines = raw
-          .split('\n')
-          .filter(l => l.trim().length > 0);
-        const dataLines = lines
-          .filter(l => l.startsWith('data:'))
-          .map(l => l.replace(/^data: ?/, ''));
-        const joined = dataLines.join('\n');
-        if (!joined) continue;
-        let payload: any;
-        try {
-          payload = JSON.parse(joined);
-        } catch {
-          payload = { message: joined };
+
+      let newlineIdx: number;
+      while ((newlineIdx = buffer.indexOf('\n')) !== -1) {
+        const line = buffer.slice(0, newlineIdx);
+        buffer = buffer.slice(newlineIdx + 1);
+
+        const l = line.length > 0 && line.charCodeAt(line.length - 1) === 13 /* \r */
+          ? line.slice(0, -1)
+          : line;
+        if (l === '') {
+          const evs = flushFrame();
+          for (const ev of evs) yield ev;
+          continue;
         }
-        const t = payload?.type as string | undefined;
-        if (payload && payload.token !== undefined) {
-          yield { type: 'token', token: String(payload.token) } as StreamEvent;
-        } else if (t === 'open' || payload?.ok) {
-          yield { type: 'open' } as StreamEvent;
-        } else if (t === 'done' || payload?.done) {
-          yield { type: 'done' } as StreamEvent;
-        } else if (t === 'error' || payload?.message) {
-          yield { type: 'error', message: String(payload.message || 'error') } as StreamEvent;
+        if (l.indexOf('event:') === 0) {
+          currentEvent = l.slice(6).trim();
+          continue;
         }
+        if (l.indexOf('data:') === 0) {
+          dataParts.push(l.slice(5).replace(/^\s/, ''));
+          continue;
+        }
+        // ignore other fields (id:, retry:, etc.)
       }
     }
+    // Flush any remaining buffered frame on stream end
+    if (buffer.trim().length > 0) {
+      // handle last line if not terminated by newline
+      const l = buffer.length > 0 && buffer.charCodeAt(buffer.length - 1) === 13 /* \r */
+        ? buffer.slice(0, -1)
+        : buffer;
+      if (l.indexOf('event:') === 0) currentEvent = l.slice(6).trim();
+      else if (l.indexOf('data:') === 0) dataParts.push(l.slice(5).replace(/^\s/, ''));
+      buffer = '';
+    }
+    const evs = flushFrame();
+    for (const ev of evs) yield ev;
   } finally {
     reader.releaseLock();
   }
@@ -130,8 +182,15 @@ async function generateContent(prompt: string): Promise<string> {
   }
 
   // 2) Fallback to browser direct Gemini
+  const isDev = typeof window !== 'undefined' && (
+    // Vite dev or localhost origin
+    (import.meta as any)?.env?.DEV || /^localhost$|^127\.0\.0\.1$/.test(window.location.hostname)
+  );
+  if (!isDev) {
+    throw new Error('AI backend unavailable and browser fallback is disabled in production');
+  }
   const apiKey = getApiKey();
-  if (!apiKey) throw new Error('Missing Gemini API key in aiMemo.apiKey');
+  if (!apiKey) throw new Error('Missing Gemini API key in aiMemo.apiKey (dev only)');
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(
     apiKey

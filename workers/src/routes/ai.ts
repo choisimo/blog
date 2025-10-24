@@ -164,6 +164,74 @@ ai.post('/generate', async (c) => {
   }
 });
 
+// GET /ai/generate/stream - SSE streaming tokens
+ai.get('/generate/stream', async (c) => {
+  const url = new URL(c.req.url);
+  const q = (url.searchParams.get('prompt') || url.searchParams.get('q') || url.searchParams.get('text') || '').toString();
+  const t = Number(url.searchParams.get('temperature'));
+  const temperature = Number.isFinite(t) ? t : 0.2;
+
+  const headers = new Headers({
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+
+  const encoder = new TextEncoder();
+  function frame(event?: string, data?: unknown): Uint8Array {
+    let lines = '';
+    if (event && event.trim()) lines += `event: ${event}\n`;
+    if (data !== undefined) {
+      const payload = typeof data === 'string' ? data : JSON.stringify(data);
+      for (const line of String(payload).split(/\n/)) {
+        lines += `data: ${line}\n`;
+      }
+    }
+    lines += '\n';
+    return encoder.encode(lines);
+  }
+
+  if (!q) {
+    // Respond with a minimal SSE error stream
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(frame('error', { message: 'prompt is required' }));
+        controller.close();
+      },
+    });
+    return new Response(stream, { headers, status: 400 });
+  }
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        controller.enqueue(frame('open', { type: 'open' }));
+
+        // Generate once then chunk to simulate token stream
+        const text = await generateContent(String(q), c.env, { temperature });
+
+        const chunkSize = 80;
+        for (let i = 0; i < text.length; i += chunkSize) {
+          const token = text.slice(i, Math.min(i + chunkSize, text.length));
+          controller.enqueue(frame('token', { token }));
+          // Small delay helps UX without overloading event loop
+          await new Promise((r) => setTimeout(r, 25));
+        }
+
+        controller.enqueue(frame('done', { type: 'done' }));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'generation failed';
+        controller.enqueue(frame('error', { message }));
+      } finally {
+        try { controller.close(); } catch {}
+      }
+    },
+  });
+
+  return new Response(stream, { headers, status: 200 });
+});
+
 // POST /ai/summarize - Summarize article with memo
 ai.post('/summarize', async (c) => {
   const body = await c.req.json().catch(() => ({}));

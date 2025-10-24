@@ -16,8 +16,9 @@ function buildHeaders(env: Env): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  if (env.AI_SERVE_API_KEY) {
-    headers['X-API-KEY'] = env.AI_SERVE_API_KEY;
+  // Worker-to-Gateway authentication for server-to-server calls
+  if (env.AI_GATEWAY_CALLER_KEY) {
+    headers['X-Gateway-Caller-Key'] = env.AI_GATEWAY_CALLER_KEY;
   }
   return headers;
 }

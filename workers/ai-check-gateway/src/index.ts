@@ -1,8 +1,8 @@
 type Env = {
   ALLOWED_ORIGINS?: string;
   REAL_BACKEND_HOST: string;
-  SECRET_API_KEY: string;
   SECRET_INTERNAL_KEY: string; // Secret for forwarding to backend
+  SECRET_CALLER_KEY?: string;   // Secret for worker-to-gateway calls
 };
 
 function json(data: unknown, init?: ResponseInit) {
@@ -15,38 +15,36 @@ function json(data: unknown, init?: ResponseInit) {
 function applyCors(headers: Headers, origin: string) {
   headers.set('Access-Control-Allow-Origin', origin);
   headers.set('Vary', 'Origin');
-  headers.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  headers.set('Access-Control-Allow-Headers', 'Content-Type, X-API-KEY');
+  headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+  headers.set('Access-Control-Allow-Headers', 'Content-Type');
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const origin = request.headers.get('Origin') || '';
+    const callerKey = request.headers.get('X-Gateway-Caller-Key') || '';
     const allowed = (env.ALLOWED_ORIGINS || '')
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
-    const isAllowed = allowed.includes('*') || (origin && allowed.includes(origin));
-    const isServerToServer = !origin;
+    const isBrowserAllowed = !!origin && (allowed.includes('*') || allowed.includes(origin));
+    const isWorkerAllowed = !origin && !!env.SECRET_CALLER_KEY && callerKey === env.SECRET_CALLER_KEY;
 
     // Preflight
     if (request.method === 'OPTIONS') {
+      // Preflight is only meaningful for browser requests with Origin
+      if (!isBrowserAllowed) {
+        const res = json({ error: 'Forbidden: Invalid origin' }, { status: 403 });
+        return res;
+      }
       const res = new Response(null, { status: 204 });
-      if (isAllowed) applyCors(res.headers, origin);
+      applyCors(res.headers, origin);
       return res;
     }
 
     // Origin check
-    if (!isAllowed && !isServerToServer) {
+    if (!(isBrowserAllowed || isWorkerAllowed)) {
       const res = json({ error: 'Forbidden: Invalid origin' }, { status: 403 });
-      return res;
-    }
-
-    // API key check
-    const apiKey = request.headers.get('X-API-KEY');
-    if (!apiKey || apiKey !== env.SECRET_API_KEY) {
-      const res = json({ error: 'Forbidden: Invalid API Key' }, { status: 403 });
-      applyCors(res.headers, origin);
       return res;
     }
 
@@ -68,6 +66,7 @@ export default {
     reqHeaders.set('Host', env.REAL_BACKEND_HOST);
     // Drop any client-provided sensitive headers and inject our internal key
     reqHeaders.delete('X-API-KEY');
+    reqHeaders.delete('X-Gateway-Caller-Key');
     reqHeaders.delete('X-Internal-Gateway-Key');
     reqHeaders.set('X-Internal-Gateway-Key', env.SECRET_INTERNAL_KEY);
 
@@ -83,7 +82,7 @@ export default {
 
       // Reflect CORS for response
       const headers = new Headers(backendRes.headers);
-      if (isAllowed && origin) applyCors(headers, origin);
+      if (isBrowserAllowed && origin) applyCors(headers, origin);
       return new Response(backendRes.body, { status: backendRes.status, headers });
     } catch (err) {
       const res = json({ error: 'Upstream fetch failed' }, { status: 502 });
