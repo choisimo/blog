@@ -12,11 +12,14 @@ function json(data: unknown, init?: ResponseInit) {
   });
 }
 
-function applyCors(headers: Headers, origin: string) {
+function applyCors(headers: Headers, origin: string, requestHeaders?: string | null) {
   headers.set('Access-Control-Allow-Origin', origin);
-  headers.set('Vary', 'Origin');
+  headers.set('Vary', 'Origin, Access-Control-Request-Headers, Access-Control-Request-Method');
   headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-  headers.set('Access-Control-Allow-Headers', 'Content-Type');
+  const reqHdrs = (requestHeaders || '').trim();
+  const allow = reqHdrs ? `Content-Type, ${reqHdrs}` : 'Content-Type';
+  headers.set('Access-Control-Allow-Headers', allow);
+  headers.set('Access-Control-Max-Age', '600');
 }
 
 export default {
@@ -38,7 +41,7 @@ export default {
         return res;
       }
       const res = new Response(null, { status: 204 });
-      applyCors(res.headers, origin);
+      applyCors(res.headers, origin, request.headers.get('Access-Control-Request-Headers'));
       return res;
     }
 
@@ -51,7 +54,7 @@ export default {
     // Ensure internal key is configured
     if (!env.SECRET_INTERNAL_KEY) {
       const res = json({ error: 'Server misconfiguration: missing SECRET_INTERNAL_KEY' }, { status: 500 });
-      applyCors(res.headers, origin);
+      if (isBrowserAllowed && origin) applyCors(res.headers, origin, request.headers.get('Access-Control-Request-Headers'));
       return res;
     }
 
@@ -86,7 +89,7 @@ export default {
       return new Response(backendRes.body, { status: backendRes.status, headers });
     } catch (err) {
       const res = json({ error: 'Upstream fetch failed' }, { status: 502 });
-      applyCors(res.headers, origin);
+      if (isBrowserAllowed && origin) applyCors(res.headers, origin, request.headers.get('Access-Control-Request-Headers'));
       return res;
     }
   },
