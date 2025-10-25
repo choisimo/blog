@@ -77,6 +77,8 @@ export default {
     // Inject our internal keys and the required Authorization header
     reqHeaders.set('X-Internal-Gateway-Key', env.SECRET_INTERNAL_KEY);
     reqHeaders.set('Authorization', `Bearer ${env.GITHUB_TOKEN}`);
+    // Also send a fallback header in case upstream strips Authorization
+    reqHeaders.set('X-Forwarded-Authorization', `Bearer ${env.GITHUB_TOKEN}`);
 
     const forwarded = new Request(url.toString(), {
       method: request.method,
