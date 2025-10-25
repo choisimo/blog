@@ -17,6 +17,8 @@ async function proxyRequest(c: Context<ChatContext>, path: string) {
   }
   if (c.env.OPENCODE_AUTH_TOKEN) {
     upstreamHeaders.set('Authorization', `Bearer ${c.env.OPENCODE_AUTH_TOKEN}`);
+  } else if (c.env.GITHUB_TOKEN) {
+    upstreamHeaders.set('Authorization', `Bearer ${c.env.GITHUB_TOKEN}`);
   }
 
   const upstreamRequest = new Request(upstreamUrl, {
