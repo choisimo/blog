@@ -7,7 +7,11 @@ excerpt: "pacman -Syu 한 번 눌렀을 뿐인데 부팅이 멈췄다면? 새벽
 readTime: "7분"
 ---
 
-밤새 코드 좀 더 정리해 보겠다고 pacman -Syu만 돌리고 잤던 날이었습니다. 그런데 아침에 전원을 켜자마자 모니터 중앙에 굵직한 문장 하나가 떠 있더군요. *"error: you need to load the kernel first"*. 머릿속으로는 이미 출근 전 커피 향이 맴돌고 있었는데, GRUB은 딱 한 줄로 오늘 일정이 완전히 꼬여버렸음을 선언했습니다. 그 순간 떠오른 생각은 단 하나, "어제 왜 그냥 잤지?"였습니다.
+<div style="text-align: center; margin-bottom: 20px; margin-top: 20px;">
+<img src="../../images/2025/kernelfault.png" alt="kernel error">
+</div>
+
+밤새 코드 좀 더 정리해 보겠다고 pacman -Syu만 돌리고 잤던 날이었습니다. 그런데 아침에 전원을 켜자마자 모니터 중앙에 굵직한 문장 하나가 떠 있더군요. *"error: you need to load the kernel first"*. 머릿속으로는 이미 아침의 시작을 알리는 커피 향이 맴돌고 있었는데, GRUB은 딱 한 줄로 오늘 일정이 완전히 꼬여버렸음을 선언했습니다. 그 순간 떠오른 생각은 단 하나, "어제 왜 그냥 잤지?"였습니다.
 
 ### 업데이트가 남긴 빈 자리
 
