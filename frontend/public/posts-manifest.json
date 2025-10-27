@@ -2,48 +2,6 @@
   "total": 99,
   "items": [
     {
-      "path": "/posts/2025/java-stream-api-journal.md",
-      "year": "2025",
-      "slug": "java-stream-api-journal",
-      "title": "람다와 파이프라인 사이, 스트림 API에 빠져들던 밤",
-      "description": "람다 표현식과 스트림 파이프라인을 처음 만났을 때의 놀람, 컬렉터와 병렬 스트림 튜닝까지 기록한 1인칭 에세이",
-      "snippet": "람다 표현식과 스트림 파이프라인을 처음 만났을 때의 놀람, 컬렉터와 병렬 스트림 튜닝까지 기록한 1인칭 에세이",
-      "date": "2025-10-29",
-      "tags": [
-        "Java",
-        "StreamAPI",
-        "Lambda",
-        "FunctionalProgramming",
-        "병렬스트림"
-      ],
-      "category": "Java",
-      "author": "Admin",
-      "readingTime": "3 min read",
-      "published": true,
-      "url": "/blog/2025/java-stream-api-journal"
-    },
-    {
-      "path": "/posts/2025/java-memory-model-journal.md",
-      "year": "2025",
-      "slug": "java-memory-model-journal",
-      "title": "Happens-before를 붙잡기까지, 자바 메모리 모델을 해부한 내 여정",
-      "description": "JMM 명세와 volatile, synchronized, reorder의 경계를 파헤치며 가시성과 순서를 이해한 개발자의 기록",
-      "snippet": "JMM 명세와 volatile, synchronized, reorder의 경계를 파헤치며 가시성과 순서를 이해한 개발자의 기록",
-      "date": "2025-10-28",
-      "tags": [
-        "Java",
-        "메모리모델",
-        "volatile",
-        "HappensBefore",
-        "JMM"
-      ],
-      "category": "Java",
-      "author": "Admin",
-      "readingTime": "3 min read",
-      "published": true,
-      "url": "/blog/2025/java-memory-model-journal"
-    },
-    {
       "path": "/posts/2025/java-concurrency-journal.md",
       "year": "2025",
       "slug": "java-concurrency-journal",
@@ -63,6 +21,48 @@
       "readingTime": "3 min read",
       "published": true,
       "url": "/blog/2025/java-concurrency-journal"
+    },
+    {
+      "path": "/posts/2025/java-memory-model-journal.md",
+      "year": "2025",
+      "slug": "java-memory-model-journal",
+      "title": "Happens-before를 붙잡기까지, 자바 메모리 모델을 해부한 내 여정",
+      "description": "JMM 명세와 volatile, synchronized, reorder의 경계를 파헤치며 가시성과 순서를 이해한 개발자의 기록",
+      "snippet": "JMM 명세와 volatile, synchronized, reorder의 경계를 파헤치며 가시성과 순서를 이해한 개발자의 기록",
+      "date": "2025-10-27",
+      "tags": [
+        "Java",
+        "메모리모델",
+        "volatile",
+        "HappensBefore",
+        "JMM"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/java-memory-model-journal"
+    },
+    {
+      "path": "/posts/2025/java-stream-api-journal.md",
+      "year": "2025",
+      "slug": "java-stream-api-journal",
+      "title": "람다와 파이프라인 사이, 스트림 API에 빠져들던 밤",
+      "description": "람다 표현식과 스트림 파이프라인을 처음 만났을 때의 놀람, 컬렉터와 병렬 스트림 튜닝까지 기록한 1인칭 에세이",
+      "snippet": "람다 표현식과 스트림 파이프라인을 처음 만났을 때의 놀람, 컬렉터와 병렬 스트림 튜닝까지 기록한 1인칭 에세이",
+      "date": "2025-10-27",
+      "tags": [
+        "Java",
+        "StreamAPI",
+        "Lambda",
+        "FunctionalProgramming",
+        "병렬스트림"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/java-stream-api-journal"
     },
     {
       "path": "/posts/2025/shell-powertools-journal.md",
@@ -144,7 +144,7 @@
       ],
       "category": "Java",
       "author": "Admin",
-      "readingTime": "2 min read",
+      "readingTime": "3 min read",
       "published": true,
       "url": "/blog/2025/java-generics-journal"
     },
@@ -386,8 +386,8 @@
       "year": "2025",
       "slug": "tcpip-revolution-journal",
       "title": "TCP/IP 깃발 아래, 내가 본 인터넷의 탄생",
-      "description": "NCP에서 TCP/IP로 넘어가던 그날, 게이트웨이와 호스트 사이를 뛰어다니며 느낀 불안과 감동을 담은 개발자의 일기",
-      "snippet": "NCP에서 TCP/IP로 넘어가던 그날, 게이트웨이와 호스트 사이를 뛰어다니며 느낀 불안과 감동을 담은 개발자의 일기",
+      "description": "NCP에서 TCP/IP로 전환하던 플래그 데이의 긴장과 감동을 되살린 개발자의 일기",
+      "snippet": "NCP에서 TCP/IP로 전환하던 플래그 데이의 긴장과 감동을 되살린 개발자의 일기",
       "date": "2025-10-19",
       "tags": [
         "TCPIP",
@@ -445,111 +445,6 @@
       "readingTime": "3 min read",
       "published": true,
       "url": "/blog/2025/arpanet-resilience-journal"
-    },
-    {
-      "path": "/posts/2025/java-generics-journal.md",
-      "year": "2025",
-      "slug": "java-generics-journal",
-      "title": "타입 변수와 야생의 캐스팅: 제네릭을 길들이던 내 기록",
-      "description": "로 타입과 ClassCastException을 넘어서 제네릭이 가져온 타입 안전성을 몸으로 익힌 개발자 일기",
-      "snippet": "로 타입과 ClassCastException을 넘어서 제네릭이 가져온 타입 안전성을 몸으로 익힌 개발자 일기",
-      "date": "2025-10-25",
-      "tags": [
-        "Java",
-        "Generics",
-        "타입시스템",
-        "Erasure",
-        "컬렉션"
-      ],
-      "category": "Java",
-      "author": "Admin",
-      "readingTime": "10 min read",
-      "published": true,
-      "url": "/blog/2025/java-generics-journal"
-    },
-    {
-      "path": "/posts/2025/java-gc-journal.md",
-      "year": "2025",
-      "slug": "java-gc-journal",
-      "title": "Stop-the-world의 숨결을 들으며, GC와 화해한 나의 기록",
-      "description": "Serial, CMS, G1을 거치며 힙 덤프와 함께 밤을 지새운 개발자가 GC 진화와 전략을 되돌아본 기록",
-      "snippet": "Serial, CMS, G1을 거치며 힙 덤프와 함께 밤을 지새운 개발자가 GC 진화와 전략을 되돌아본 기록",
-      "date": "2025-10-26",
-      "tags": [
-        "Java",
-        "GarbageCollection",
-        "JVM",
-        "G1",
-        "메모리관리"
-      ],
-      "category": "Java",
-      "author": "Admin",
-      "readingTime": "11 min read",
-      "published": true,
-      "url": "/blog/2025/java-gc-journal"
-    },
-    {
-      "path": "/posts/2025/java-concurrency-journal.md",
-      "year": "2025",
-      "slug": "java-concurrency-journal",
-      "title": "스레드 덤프와 데드락 다이어그램, 자바 동시성의 밤을 기록하다",
-      "description": "Thread, synchronized, ExecutorService, ForkJoinPool을 오가며 레이스와 데드락을 추적한 1인칭 동시성 일기",
-      "snippet": "Thread, synchronized, ExecutorService, ForkJoinPool을 오가며 레이스와 데드락을 추적한 1인칭 동시성 일기",
-      "date": "2025-10-27",
-      "tags": [
-        "Java",
-        "Concurrency",
-        "Thread",
-        "ExecutorService",
-        "락"
-      ],
-      "category": "Java",
-      "author": "Admin",
-      "readingTime": "12 min read",
-      "published": true,
-      "url": "/blog/2025/java-concurrency-journal"
-    },
-    {
-      "path": "/posts/2025/java-memory-model-journal.md",
-      "year": "2025",
-      "slug": "java-memory-model-journal",
-      "title": "Happens-before를 붙잡기까지, 자바 메모리 모델을 해부한 내 여정",
-      "description": "volatile, synchronized, reorder의 경계를 실험하며 JMM Happens-before를 체득한 개발자 이야기",
-      "snippet": "volatile, synchronized, reorder의 경계를 실험하며 JMM Happens-before를 체득한 개발자 이야기",
-      "date": "2025-10-27",
-      "tags": [
-        "Java",
-        "메모리모델",
-        "volatile",
-        "HappensBefore",
-        "JMM"
-      ],
-      "category": "Java",
-      "author": "Admin",
-      "readingTime": "12 min read",
-      "published": true,
-      "url": "/blog/2025/java-memory-model-journal"
-    },
-    {
-      "path": "/posts/2025/java-stream-api-journal.md",
-      "year": "2025",
-      "slug": "java-stream-api-journal",
-      "title": "람다와 파이프라인 사이, 스트림 API에 빠져들던 밤",
-      "description": "람다 표현식과 스트림 파이프라인을 도입하며 컬렉터와 병렬 스트림을 튜닝한 1인칭 에세이",
-      "snippet": "람다 표현식과 스트림 파이프라인을 도입하며 컬렉터와 병렬 스트림을 튜닝한 1인칭 에세이",
-      "date": "2025-10-27",
-      "tags": [
-        "Java",
-        "StreamAPI",
-        "Lambda",
-        "FunctionalProgramming",
-        "병렬스트림"
-      ],
-      "category": "Java",
-      "author": "Admin",
-      "readingTime": "11 min read",
-      "published": true,
-      "url": "/blog/2025/java-stream-api-journal"
     },
     {
       "path": "/posts/2025/BST-think01.md",
@@ -999,8 +894,8 @@
       "url": "/blog/2025/memory-management-study"
     },
     {
-      "path": "/posts/2025/react-native-springboot-mongodb-diary-app.md",
-      "year": "2025",
+      "path": "/posts/2024/react-native-springboot-mongodb-diary-app.md",
+      "year": "2024",
       "slug": "react-native-springboot-mongodb-diary-app",
       "title": "React Native + Spring Boot + MongoDB로 일기 앱 만들기",
       "description": "React Native 클라이언트와 Spring Boot 백엔드, Python AI 서버를 연동해서 일기 앱을 만든 경험",
@@ -1018,7 +913,7 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/react-native-springboot-mongodb-diary-app"
+      "url": "/blog/2024/react-native-springboot-mongodb-diary-app"
     },
     {
       "path": "/posts/2025/git-submodule-guide.md",
@@ -1042,8 +937,8 @@
       "url": "/blog/2025/git-submodule-guide"
     },
     {
-      "path": "/posts/2025/knapsack.md",
-      "year": "2025",
+      "path": "/posts/2024/knapsack.md",
+      "year": "2024",
       "slug": "knapsack",
       "title": "배낭 문제 (Knapsack Problem)",
       "description": "0-1 배낭 문제와 무한 배낭 문제를 동적 계획법으로 해결하는 다양한 방법을 학습합니다.",
@@ -1059,11 +954,11 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/knapsack"
+      "url": "/blog/2024/knapsack"
     },
     {
-      "path": "/posts/2025/prime-numbers.md",
-      "year": "2025",
+      "path": "/posts/2024/prime-numbers.md",
+      "year": "2024",
       "slug": "prime-numbers",
       "title": "소수 판별과 소인수분해 알고리즘",
       "description": "효율적인 소수 판별과 소인수분해를 위한 다양한 수학 알고리즘들을 학습합니다.",
@@ -1079,11 +974,11 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/prime-numbers"
+      "url": "/blog/2024/prime-numbers"
     },
     {
-      "path": "/posts/2025/firebase-hosting-guide.md",
-      "year": "2025",
+      "path": "/posts/2024/firebase-hosting-guide.md",
+      "year": "2024",
       "slug": "firebase-hosting-guide",
       "title": "Flutter 웹앱을 Firebase에 무료로 배포하기",
       "description": "Flutter 웹앱을 Firebase Hosting에 배포하는 방법을 실제 경험을 바탕으로 단계별 설명",
@@ -1100,11 +995,11 @@
       "author": "Admin",
       "readingTime": "3 min read",
       "published": true,
-      "url": "/blog/2025/firebase-hosting-guide"
+      "url": "/blog/2024/firebase-hosting-guide"
     },
     {
-      "path": "/posts/2025/dfs.md",
-      "year": "2025",
+      "path": "/posts/2024/dfs.md",
+      "year": "2024",
       "slug": "dfs",
       "title": "깊이 우선 탐색 (DFS, Depth-First Search)",
       "description": "깊이 우선 탐색(DFS) 알고리즘의 원리와 구현, 다양한 응용 문제 해결법을 학습합니다.",
@@ -1121,11 +1016,11 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/dfs"
+      "url": "/blog/2024/dfs"
     },
     {
-      "path": "/posts/2025/lis.md",
-      "year": "2025",
+      "path": "/posts/2024/lis.md",
+      "year": "2024",
       "slug": "lis",
       "title": "최장 증가 부분 수열 (LIS, Longest Increasing Subsequence)",
       "description": "최장 증가 부분 수열(LIS) 문제를 동적 계획법과 이분 탐색으로 효율적으로 해결하는 방법을 학습합니다.",
@@ -1141,11 +1036,11 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/lis"
+      "url": "/blog/2024/lis"
     },
     {
-      "path": "/posts/2025/binary-search.md",
-      "year": "2025",
+      "path": "/posts/2024/binary-search.md",
+      "year": "2024",
       "slug": "binary-search",
       "title": "이진 탐색(Binary Search) 완전 정복",
       "description": "정렬된 배열에서 O(log n) 시간에 원소를 찾는 이진 탐색의 모든 것",
@@ -1161,11 +1056,11 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/binary-search"
+      "url": "/blog/2024/binary-search"
     },
     {
-      "path": "/posts/2025/os-study-notes.md",
-      "year": "2025",
+      "path": "/posts/2024/os-study-notes.md",
+      "year": "2024",
       "slug": "os-study-notes",
       "title": "운영체제 공부하면서 헷갈렸던 핵심 개념들 정리",
       "description": "운영체제 공부하면서 반복해서 헷갈렸던 개념들을 정리해본 개인 노트",
@@ -1182,7 +1077,7 @@
       "author": "Admin",
       "readingTime": "3 min read",
       "published": true,
-      "url": "/blog/2025/os-study-notes"
+      "url": "/blog/2024/os-study-notes"
     },
     {
       "path": "/posts/2025/QueryDSL.md",
@@ -1230,8 +1125,8 @@
       "url": "/blog/2025/ai-models-for-coding"
     },
     {
-      "path": "/posts/2025/gemini-gui-dev-tool-idea.md",
-      "year": "2025",
+      "path": "/posts/2024/gemini-gui-dev-tool-idea.md",
+      "year": "2024",
       "slug": "gemini-gui-dev-tool-idea",
       "title": "Gemini-CLI를 GUI로? 비개발자도 쓸 수 있는 AI 개발도구 아이디어",
       "description": "Gemini-CLI를 Flutter로 감싸서 비개발자도 쉽게 앱을 만들 수 있는 도구를 만들면 어떨까?",
@@ -1249,7 +1144,7 @@
       "author": "Admin",
       "readingTime": "3 min read",
       "published": true,
-      "url": "/blog/2025/gemini-gui-dev-tool-idea"
+      "url": "/blog/2024/gemini-gui-dev-tool-idea"
     },
     {
       "path": "/posts/2024/algorithm-atelier-binary-search.md",
@@ -1336,8 +1231,8 @@
       "url": "/blog/2024/algorithm-atelier-dijkstra"
     },
     {
-      "path": "/posts/2025/bfs.md",
-      "year": "2025",
+      "path": "/posts/2024/bfs.md",
+      "year": "2024",
       "slug": "bfs",
       "title": "BFS (너비 우선 탐색) 완전 정복",
       "description": "큐를 이용한 레벨별 그래프 탐색과 최단 경로 알고리즘의 핵심",
@@ -1354,11 +1249,11 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/bfs"
+      "url": "/blog/2024/bfs"
     },
     {
-      "path": "/posts/2025/arch-linux-gui-setup-experience.md",
-      "year": "2025",
+      "path": "/posts/2024/arch-linux-gui-setup-experience.md",
+      "year": "2024",
       "slug": "arch-linux-gui-setup-experience",
       "title": "아치 리눅스 설치하면서 깨달은 GUI 환경 선택의 중요성",
       "description": "아치 리눅스 설치 과정에서 데스크톱 환경을 선택하면서 느낀 점들과 각 환경의 특징",
@@ -1377,11 +1272,11 @@
       "author": "Admin",
       "readingTime": "4 min read",
       "published": true,
-      "url": "/blog/2025/arch-linux-gui-setup-experience"
+      "url": "/blog/2024/arch-linux-gui-setup-experience"
     },
     {
-      "path": "/posts/2025/kmp.md",
-      "year": "2025",
+      "path": "/posts/2024/kmp.md",
+      "year": "2024",
       "slug": "kmp",
       "title": "KMP 알고리즘 (Knuth-Morris-Pratt)",
       "description": "KMP 알고리즘을 통해 문자열 패턴 매칭을 효율적으로 수행하는 방법과 실패 함수의 원리를 학습합니다.",
@@ -1397,11 +1292,11 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/kmp"
+      "url": "/blog/2024/kmp"
     },
     {
-      "path": "/posts/2025/rabin-karp.md",
-      "year": "2025",
+      "path": "/posts/2024/rabin-karp.md",
+      "year": "2024",
       "slug": "rabin-karp",
       "title": "라빈-카프 알고리즘 (Rabin-Karp Algorithm)",
       "description": "라빈-카프 알고리즘을 통해 해싱을 활용한 효율적인 문자열 패턴 매칭과 롤링 해시 기법을 학습합니다.",
@@ -1417,11 +1312,11 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/rabin-karp"
+      "url": "/blog/2024/rabin-karp"
     },
     {
-      "path": "/posts/2025/arch-linux-uefi-guide.md",
-      "year": "2025",
+      "path": "/posts/2024/arch-linux-uefi-guide.md",
+      "year": "2024",
       "slug": "arch-linux-uefi-guide",
       "title": "아치 리눅스 설치하고 예쁘게 꾸미기",
       "description": "아치 리눅스 UEFI 설치부터 데스크톱 꾸미기까지 실제 경험을 바탕으로 정리",
@@ -1438,11 +1333,11 @@
       "author": "Admin",
       "readingTime": "4 min read",
       "published": true,
-      "url": "/blog/2025/arch-linux-uefi-guide"
+      "url": "/blog/2024/arch-linux-uefi-guide"
     },
     {
-      "path": "/posts/2025/quick-sort.md",
-      "year": "2025",
+      "path": "/posts/2024/quick-sort.md",
+      "year": "2024",
       "slug": "quick-sort",
       "title": "퀵 정렬(Quick Sort) 완전 정복",
       "description": "분할 정복을 이용한 최고 성능의 정렬 알고리즘, 퀵 정렬의 모든 것",
@@ -1458,7 +1353,7 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/quick-sort"
+      "url": "/blog/2024/quick-sort"
     },
     {
       "path": "/posts/2025/dijkstra.md",
@@ -1481,8 +1376,8 @@
       "url": "/blog/2025/dijkstra"
     },
     {
-      "path": "/posts/2025/queue.md",
-      "year": "2025",
+      "path": "/posts/2024/queue.md",
+      "year": "2024",
       "slug": "queue",
       "title": "큐(Queue) 완전 정복",
       "description": "FIFO 구조의 큐 자료구조 개념부터 우선순위 큐까지 완벽 가이드",
@@ -1499,11 +1394,11 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/queue"
+      "url": "/blog/2024/queue"
     },
     {
-      "path": "/posts/2025/stack.md",
-      "year": "2025",
+      "path": "/posts/2024/stack.md",
+      "year": "2024",
       "slug": "stack",
       "title": "스택(Stack) 완전 정복",
       "description": "LIFO 구조의 스택 자료구조 개념부터 실전 활용까지 완벽 가이드",
@@ -1519,7 +1414,7 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/stack"
+      "url": "/blog/2024/stack"
     },
     {
       "path": "/posts/2025/python-ai-chatbot-development.md",
@@ -1542,8 +1437,8 @@
       "url": "/blog/2025/python-ai-chatbot-development"
     },
     {
-      "path": "/posts/2025/react-nextjs-modern-web-development.md",
-      "year": "2025",
+      "path": "/posts/2024/react-nextjs-modern-web-development.md",
+      "year": "2024",
       "slug": "react-nextjs-modern-web-development",
       "title": "React와 Next.js로 모던 웹 개발하기",
       "description": "최신 React 기능과 Next.js의 장점을 활용한 웹 개발 방법론을 소개합니다.",
@@ -1559,11 +1454,11 @@
       "author": "Admin",
       "readingTime": "3 min read",
       "published": true,
-      "url": "/blog/2025/react-nextjs-modern-web-development"
+      "url": "/blog/2024/react-nextjs-modern-web-development"
     },
     {
-      "path": "/posts/2025/docker-kubernetes-guide.md",
-      "year": "2025",
+      "path": "/posts/2024/docker-kubernetes-guide.md",
+      "year": "2024",
       "slug": "docker-kubernetes-guide",
       "title": "Docker와 Kubernetes 삽질기",
       "description": "컨테이너 기술의 핵심인 Docker와 오케스트레이션 도구 Kubernetes 활용법을 다룹니다.",
@@ -1579,7 +1474,7 @@
       "author": "Admin",
       "readingTime": "4 min read",
       "published": true,
-      "url": "/blog/2025/docker-kubernetes-guide"
+      "url": "/blog/2024/docker-kubernetes-guide"
     },
     {
       "path": "/posts/2024/opensource-schedule-management-analysis.md",
@@ -2181,7 +2076,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-10-27T14:23:50.845Z",
+  "generatedAt": "2025-10-27T14:56:01.934Z",
   "years": [
     "2025",
     "2024"
