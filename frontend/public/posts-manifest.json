@@ -232,6 +232,7 @@
       "author": "Admin",
       "readingTime": "3 min read",
       "published": true,
+      "coverImage": "/images/2025/notunmounted.png",
       "url": "/blog/2025/linux-device-mount-journal"
     },
     {
@@ -2085,11 +2086,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-<<<<<<< HEAD
-  "generatedAt": "2025-10-27T15:20:39.305Z",
-=======
-  "generatedAt": "2025-10-27T15:07:01.997Z",
->>>>>>> 6304bfac547c07088659bbc4bf00b725c7a68e85
+  "generatedAt": "2025-10-27T15:26:24.347Z",
   "years": [
     "2025",
     "2024"
