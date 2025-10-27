@@ -49,7 +49,7 @@
         position: LS.get(KEYS.position, { x: null, y: null }),
         mode: LS.get(KEYS.mode, 'memo'),
         memo: LS.get(KEYS.memo, ''),
-        inlineEnabled: !!LS.get(KEYS.inlineEnabled, false),
+        inlineEnabled: !!LS.get(KEYS.inlineEnabled, true),
         closeAfterInject: !!LS.get(KEYS.closeAfterInject, false),
         devHtml: LS.get(KEYS.devHtml, '<div>Hello AI Memo 👋</div>'),
         devCss: LS.get(

@@ -35,9 +35,12 @@ jobs:
           TEI_URL: ${{ secrets.TEI_URL }}
           CHROMA_URL: ${{ secrets.CHROMA_URL }}
           CHROMA_COLLECTION: ${{ vars.CHROMA_COLLECTION || 'blog-posts' }}
+          BASE_COLLECTION_NAME: ${{ vars.BASE_COLLECTION_NAME || 'blog-posts' }}
+          TEI_MODEL_NAME: ${{ vars.TEI_MODEL_NAME || vars.TEI_MODEL || 'all-MiniLM-L6-v2' }}
           CHUNK_TOKENS: ${{ vars.CHUNK_TOKENS || '512' }}
           CHUNK_OVERLAP_TOKENS: ${{ vars.CHUNK_OVERLAP_TOKENS || '80' }}
           EMBED_BATCH: ${{ vars.EMBED_BATCH || '32' }}
+          MAX_WORKERS: ${{ vars.MAX_WORKERS || '6' }}
           # Retries/backoff and timeouts (optional)
           RETRIES_TOTAL: ${{ vars.RETRIES_TOTAL || '5' }}
           RETRY_BACKOFF_S: ${{ vars.RETRY_BACKOFF_S || '1.0' }}
