@@ -104,7 +104,7 @@ export default function SparkInline({
             aria-label='문단 확장'
             aria-expanded={open}
             onClick={() => setOpen(v => !v)}
-            className='ml-2 align-baseline text-xs opacity-60 group-hover:opacity-100 transition-opacity hover:text-primary'
+            className='ml-2 inline-flex items-center justify-center rounded-md align-baseline text-xs opacity-60 group-hover:opacity-100 transition-opacity hover:text-primary min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2'
           >
             ✨
           </button>

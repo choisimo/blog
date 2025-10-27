@@ -34,7 +34,10 @@ jobs:
         env:
           TEI_URL: ${{ secrets.TEI_URL }}
           CHROMA_URL: ${{ secrets.CHROMA_URL }}
-          CHROMA_COLLECTION: ${{ vars.CHROMA_COLLECTION || 'blog-posts' }}
+          # Optional explicit override; leave undefined to use dynamic naming: "${BASE_COLLECTION_NAME}__${TEI_MODEL_NAME}"
+          CHROMA_COLLECTION: ${{ vars.CHROMA_COLLECTION }}
+          BASE_COLLECTION_NAME: ${{ vars.BASE_COLLECTION_NAME || 'blog-posts' }}
+          TEI_MODEL_NAME: ${{ vars.TEI_MODEL_NAME || 'all-MiniLM-L6-v2' }}
           CHUNK_TOKENS: ${{ vars.CHUNK_TOKENS || '512' }}
           CHUNK_OVERLAP_TOKENS: ${{ vars.CHUNK_OVERLAP_TOKENS || '80' }}
           EMBED_BATCH: ${{ vars.EMBED_BATCH || '32' }}
@@ -44,5 +47,7 @@ jobs:
           CHROMA_RETRIES: ${{ vars.CHROMA_RETRIES || '4' }}
           CHROMA_BACKOFF_S: ${{ vars.CHROMA_BACKOFF_S || '1.5' }}
           EMBED_TIMEOUT_S: ${{ vars.EMBED_TIMEOUT_S || '120' }}
+          # Concurrency for parallel indexing
+          MAX_WORKERS: ${{ vars.MAX_WORKERS || '6' }}
         run: |
           python scripts/rag/index_posts.py

@@ -129,7 +129,7 @@ const BlogPost = () => {
     const read = () => {
       try {
         const v = localStorage.getItem('aiMemo.inline.enabled');
-        setInlineEnabled(!!JSON.parse(v || 'false'));
+        setInlineEnabled(!!JSON.parse(v || 'true'));
       } catch {
         setInlineEnabled(false);
       }
