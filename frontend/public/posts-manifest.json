@@ -1,5 +1,5 @@
-{
-  "total": 78,
+  {
+  "total": 87,  
   "items": [
     {
       "path": "/posts/2025/BST-think01.md",
@@ -652,6 +652,177 @@
       "readingTime": "3 min read",
       "published": true,
       "url": "/blog/2025/ai-models-for-coding"
+    },
+    {
+      "path": "/posts/2025/grub-kernel-error-journal.md",
+      "year": "2025",
+      "slug": "grub-kernel-error-journal",
+      "title": "'You need to load the kernel first'와 함께한 새벽의 구조 요청",
+      "description": "pacman -Syu 이후 GRUB이 커널을 찾지 못했을 때, 수동 부팅과 Live USB chroot로 복구한 경험을 일기처럼 정리했습니다.",
+      "snippet": "pacman -Syu 이후 GRUB이 커널을 찾지 못했을 때, 수동 부팅과 Live USB chroot로 복구한 경험을 일기처럼 정리했습니다.",
+      "date": "2025-10-27",
+      "tags": [
+        "Arch Linux",
+        "GRUB",
+        "부팅오류",
+        "시스템복구",
+        "에세이"
+      ],
+      "category": "Linux",
+      "author": "Admin",
+      "readingTime": "7 min read",
+      "published": true,
+      "url": "/blog/2025/grub-kernel-error-journal"
+    },
+    {
+      "path": "/posts/2025/algorithms-through-my-eyes.md",
+      "year": "2025",
+      "slug": "algorithms-through-my-eyes",
+      "title": "알고리즘 공부가 내 사고방식을 바꾼 날들",
+      "description": "기초 알고리즘 수업 노트를 다시 펼쳐 보며, 왜 아직도 빅오와 분할 정복 이야기를 사랑하게 됐는지 돌아봤습니다.",
+      "snippet": "기초 알고리즘 수업 노트를 다시 펼쳐 보며, 왜 아직도 빅오와 분할 정복 이야기를 사랑하게 됐는지 돌아봤습니다.",
+      "date": "2025-10-27",
+      "tags": [
+        "알고리즘",
+        "복잡도",
+        "분할정복",
+        "동적계획법",
+        "탐욕법"
+      ],
+      "category": "Computer Science",
+      "author": "Admin",
+      "readingTime": "8 min read",
+      "published": true,
+      "url": "/blog/2025/algorithms-through-my-eyes"
+    },
+    {
+      "path": "/posts/2025/shell-powertools-journal.md",
+      "year": "2025",
+      "slug": "shell-powertools-journal",
+      "title": "awk와 sed, 그리고 xargs에 빚진 작은 승리들",
+      "description": "파이프라인 하나로 서버를 살린 순간을 떠올리며, 내가 사랑하는 세 가지 쉘 친구들을 일기처럼 적어 봤습니다.",
+      "snippet": "파이프라인 하나로 서버를 살린 순간을 떠올리며, 내가 사랑하는 세 가지 쉘 친구들을 일기처럼 적어 봤습니다.",
+      "date": "2025-10-27",
+      "tags": [
+        "awk",
+        "sed",
+        "xargs",
+        "리눅스쉘",
+        "자동화"
+      ],
+      "category": "Linux",
+      "author": "Admin",
+      "readingTime": "7 min read",
+      "published": true,
+      "url": "/blog/2025/shell-powertools-journal"
+    },
+    {
+      "path": "/posts/2025/linux-device-mount-journal.md",
+      "year": "2025",
+      "slug": "linux-device-mount-journal",
+      "title": "언마운트 이후에도 /dev/sda1이 남아있는 이유를 이해한 밤",
+      "description": "장치 파일과 마운트의 차이를 헤맸던 날, 그리고 USB 허브의 SD 카드를 다시 인식시키기까지의 기록",
+      "snippet": "장치 파일과 마운트의 차이를 헤맸던 날, 그리고 USB 허브의 SD 카드를 다시 인식시키기까지의 기록",
+      "date": "2025-10-27",
+      "tags": [
+        "mount",
+        "umount",
+        "장치파일",
+        "USB",
+        "네트워킹"
+      ],
+      "category": "Linux",
+      "author": "Admin",
+      "readingTime": "8 min read",
+      "published": true,
+      "url": "/blog/2025/linux-device-mount-journal"
+    },
+    {
+      "path": "/posts/2025/java-through-my-bytecode-journal.md",
+      "year": "2025",
+      "slug": "java-through-my-bytecode-journal",
+      "title": "바이트코드 기차를 타고 자바 세계를 일주한 날",
+      "description": "Write once, run anywhere라는 간판을 붙인 자바의 철도를 따라가며, JDK에서 GC까지 몸소 느꼈던 이야기와 살아 있는 코드 메모",
+      "snippet": "Write once, run anywhere라는 간판을 붙인 자바의 철도를 따라가며, JDK에서 GC까지 몸소 느꼈던 이야기와 살아 있는 코드 메모",
+      "date": "2025-10-27",
+      "tags": [
+        "Java",
+        "JVM",
+        "자료형",
+        "연산자",
+        "객체지향"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "12 min read",
+      "published": true,
+      "url": "/blog/2025/java-through-my-bytecode-journal"
+    },
+    {
+      "path": "/posts/2025/java-static-polymorphism-masterclass.md",
+      "year": "2025",
+      "slug": "java-static-polymorphism-masterclass",
+      "title": "static 키워드와 다형성으로 밤을 지새운 어느 개발자의 기록",
+      "description": "정적 영역과 힙 사이에서 헤매던 날, 다형성의 그림자와 씨름한 새벽, 그리고 equals를 다시 쓰며 깨달은 객체지향의 본질",
+      "snippet": "정적 영역과 힙 사이에서 헤매던 날, 다형성의 그림자와 씨름한 새벽, 그리고 equals를 다시 쓰며 깨달은 객체지향의 본질",
+      "date": "2025-10-27",
+      "tags": [
+        "Java",
+        "static",
+        "Polymorphism",
+        "OOP 심화",
+        "JVM 메모리"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "15 min read",
+      "published": true,
+      "url": "/blog/2025/java-static-polymorphism-masterclass"
+    },
+    {
+      "path": "/posts/2025/java-oop-superchallenge.md",
+      "year": "2025",
+      "slug": "java-oop-superchallenge",
+      "title": "JVM 메모리 지도 들고 자바 OOP 최상급 문제를 풀어본 기록",
+      "description": "정적 초기화 블록에서 시작해 super()로 끝나는 여섯 가지 최상급 문제. 그 밤의 디버깅 노트를 그대로 옮겨 붙였습니다.",
+      "snippet": "정적 초기화 블록에서 시작해 super()로 끝나는 여섯 가지 최상급 문제. 그 밤의 디버깅 노트를 그대로 옮겨 붙였습니다.",
+      "date": "2025-10-27",
+      "tags": [
+        "Java",
+        "JVM 메모리",
+        "static",
+        "다형성",
+        "상속",
+        "instanceof"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "18 min read",
+      "published": true,
+      "url": "/blog/2025/java-oop-superchallenge"
+    },
+    {
+      "path": "/posts/2025/algorithm-mental-simulator.md",
+      "year": "2025",
+      "slug": "algorithm-mental-simulator",
+      "title": "알고리즘을 메모리 영화관에서 돌려보는 밤",
+      "description": "Big-O는 교통수단, 병합 정렬은 지도 조각, 해시는 주소 직통. 시뮬레이터형 두뇌로 재생한 알고리즘 18편의 심화 문제와 비유",
+      "snippet": "Big-O는 교통수단, 병합 정렬은 지도 조각, 해시는 주소 직통. 시뮬레이터형 두뇌로 재생한 알고리즘 18편의 심화 문제와 비유",
+      "date": "2025-10-27",
+      "tags": [
+        "알고리즘",
+        "시간복잡도",
+        "정렬",
+        "탐색트리",
+        "해시",
+        "DP",
+        "Greedy"
+      ],
+      "category": "Computer Science",
+      "author": "Admin",
+      "readingTime": "20 min read",
+      "published": true,
+      "url": "/blog/2025/algorithm-mental-simulator"
     },
     {
       "path": "/posts/2025/gemini-gui-dev-tool-idea.md",
