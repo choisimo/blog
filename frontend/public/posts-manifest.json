@@ -1,57 +1,34 @@
 {
-  "total": 86,
+  "total": 94,
   "items": [
     {
-      "path": "/posts/2025/algorithm-mental-simulator.md",
+      "path": "/posts/2025/shell-powertools-journal.md",
       "year": "2025",
-      "slug": "algorithm-mental-simulator",
-      "title": "알고리즘을 메모리 영화관에서 돌려보는 밤",
-      "description": "Big-O는 교통수단, 병합 정렬은 지도 조각, 해시는 주소 직통. 시뮬레이터형 두뇌로 재생한 알고리즘 18편의 심화 문제와 비유",
-      "snippet": "Big-O는 교통수단, 병합 정렬은 지도 조각, 해시는 주소 직통. 시뮬레이터형 두뇌로 재생한 알고리즘 18편의 심화 문제와 비유",
-      "date": "2025-10-18",
+      "slug": "shell-powertools-journal",
+      "title": "awk와 sed, 그리고 xargs에 빚진 작은 승리들",
+      "description": "파이프라인 하나로 서버를 살린 순간을 떠올리며, 내가 사랑하는 세 가지 쉘 친구들을 일기처럼 적어 봤습니다.",
+      "snippet": "파이프라인 하나로 서버를 살린 순간을 떠올리며, 내가 사랑하는 세 가지 쉘 친구들을 일기처럼 적어 봤습니다.",
+      "date": "2025-10-27",
       "tags": [
-        "알고리즘",
-        "시간복잡도",
-        "정렬",
-        "탐색트리",
-        "해시",
-        "DP",
-        "Greedy"
+        "awk",
+        "sed",
+        "xargs",
+        "리눅스쉘",
+        "자동화"
       ],
-      "category": "Computer Science",
+      "category": "Linux",
       "author": "Admin",
-      "readingTime": "6 min read",
+      "readingTime": "4 min read",
       "published": true,
-      "url": "/blog/2025/algorithm-mental-simulator"
-    },
-    {
-      "path": "/posts/2025/algorithms-through-my-eyes.md",
-      "year": "2025",
-      "slug": "algorithms-through-my-eyes",
-      "title": "알고리즘 수업 노트를 다시 펼쳐 보며",
-      "description": "기초 알고리즘 수업 노트를 다시 펼쳐 보며...",
-      "snippet": "기초 알고리즘 수업 노트를 다시 펼쳐 보며...",
-      "date": "2025-10-19",
-      "tags": [
-        "알고리즘",
-        "복잡도",
-        "분할정복",
-        "동적계획법",
-        "탐욕법"
-      ],
-      "category": "Computer Science",
-      "author": "Admin",
-      "readingTime": "5 min read",
-      "published": true,
-      "url": "/blog/2025/algorithms-through-my-eyes"
+      "url": "/blog/2025/shell-powertools-journal"
     },
     {
       "path": "/posts/2025/grub-kernel-error-journal.md",
       "year": "2025",
       "slug": "grub-kernel-error-journal",
       "title": "'You need to load the kernel first'와 함께한 새벽의 구조 요청",
-      "description": "pacman -Syu 이후 GRUB이 커널을 찾지 못했을 때, 수동 부팅과 Live USB chroot로 복구한 경험을 일기처럼 정리했습니다.",
-      "snippet": "pacman -Syu 이후 GRUB이 커널을 찾지 못했을 때, 수동 부팅과 Live USB chroot로 복구한 경험을 일기처럼 정리했습니다.",
+      "description": "pacman -Syu 한 번 눌렀을 뿐인데 부팅이 멈췄다면? 새벽에 겪은 GRUB 구출기를 일기처럼 정리했습니다.",
+      "snippet": "pacman -Syu 한 번 눌렀을 뿐인데 부팅이 멈췄다면? 새벽에 겪은 GRUB 구출기를 일기처럼 정리했습니다.",
       "date": "2025-10-25",
       "tags": [
         "Arch Linux",
@@ -62,9 +39,157 @@
       ],
       "category": "Linux",
       "author": "Admin",
-      "readingTime": "4 min read",
+      "readingTime": "3 min read",
       "published": true,
       "url": "/blog/2025/grub-kernel-error-journal"
+    },
+    {
+      "path": "/posts/2025/6g-sentient-future-journal.md",
+      "year": "2025",
+      "slug": "6g-sentient-future-journal",
+      "title": "6G 연구소의 밤, 지각 있는 네트워크를 그리는 상상",
+      "description": "테라헤르츠 실험과 지능형 표면, AI 네이티브 아키텍처, 통신-감지 통합을 넘나들며 6G의 미래를 환상과 현실 사이에서 탐구한 기록",
+      "snippet": "테라헤르츠 실험과 지능형 표면, AI 네이티브 아키텍처, 통신-감지 통합을 넘나들며 6G의 미래를 환상과 현실 사이에서 탐구한 기록",
+      "date": "2025-10-24",
+      "tags": [
+        "6G",
+        "테라헤르츠",
+        "RIS",
+        "AI네이티브",
+        "JCS"
+      ],
+      "category": "Network",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/6g-sentient-future-journal"
+    },
+    {
+      "path": "/posts/2025/proxmox-thin-provision.md",
+      "year": "2025",
+      "slug": "proxmox-thin-provision",
+      "title": "ZFS 풀 앞에서 멈춰 선 Proxmox, 그 밤의 기록",
+      "description": "1.85TB 디스크를 추가하려다 ZFS가 '공간 없음'을 외친 밤. 스냅샷과 예약 공간 사이에서 배운 얇은 줄타기 경험담",
+      "snippet": "1.85TB 디스크를 추가하려다 ZFS가 '공간 없음'을 외친 밤. 스냅샷과 예약 공간 사이에서 배운 얇은 줄타기 경험담",
+      "date": "2025-10-24",
+      "tags": [
+        "Proxmox",
+        "ZFS",
+        "Thin Provision",
+        "가상화",
+        "스토리지"
+      ],
+      "category": "Linux",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/proxmox-thin-provision"
+    },
+    {
+      "path": "/posts/2025/5g-intelligent-fabric-journal.md",
+      "year": "2025",
+      "slug": "5g-intelligent-fabric-journal",
+      "title": "5G 기지국 그림자에서, 슬라이스와 에지가 만든 새로운 질서",
+      "description": "URLLC, 슬라이스, 에지 노드를 직접 구축하며 5G가 사람과 기계를 동시에 품어내는 과정을 기록했다",
+      "snippet": "URLLC, 슬라이스, 에지 노드를 직접 구축하며 5G가 사람과 기계를 동시에 품어내는 과정을 기록했다",
+      "date": "2025-10-23",
+      "tags": [
+        "5G",
+        "네트워크슬라이싱",
+        "에지컴퓨팅",
+        "URLLC",
+        "제로트러스트"
+      ],
+      "category": "Network",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/5g-intelligent-fabric-journal"
+    },
+    {
+      "path": "/posts/2025/linux-device-mount-journal.md",
+      "year": "2025",
+      "slug": "linux-device-mount-journal",
+      "title": "언마운트 이후에도 /dev/sda1이 남아있는 이유를 이해한 밤",
+      "description": "장치 파일과 마운트의 차이를 헤맸던 날, 그리고 USB 허브의 SD 카드를 다시 인식시키기까지의 기록",
+      "snippet": "장치 파일과 마운트의 차이를 헤맸던 날, 그리고 USB 허브의 SD 카드를 다시 인식시키기까지의 기록",
+      "date": "2025-10-23",
+      "tags": [
+        "mount",
+        "umount",
+        "장치파일",
+        "USB",
+        "네트워킹"
+      ],
+      "category": "Linux",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/linux-device-mount-journal"
+    },
+    {
+      "path": "/posts/2025/java-static-polymorphism-masterclass.md",
+      "year": "2025",
+      "slug": "java-static-polymorphism-masterclass",
+      "title": "static 키워드와 다형성으로 밤을 지새운 어느 개발자의 기록",
+      "description": "정적 영역과 힙 사이에서 헤매던 날, 다형성의 그림자와 씨름한 새벽, 그리고 equals를 다시 쓰며 깨달은 객체지향의 본질",
+      "snippet": "정적 영역과 힙 사이에서 헤매던 날, 다형성의 그림자와 씨름한 새벽, 그리고 equals를 다시 쓰며 깨달은 객체지향의 본질",
+      "date": "2025-10-22",
+      "tags": [
+        "Java",
+        "static",
+        "Polymorphism",
+        "OOP 심화",
+        "JVM 메모리"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "4 min read",
+      "published": true,
+      "url": "/blog/2025/java-static-polymorphism-masterclass"
+    },
+    {
+      "path": "/posts/2025/lte-cloud-native-journal.md",
+      "year": "2025",
+      "slug": "lte-cloud-native-journal",
+      "title": "4G 신호와 클라우드 콘솔 사이, 앱 경제를 실감한 나의 하루",
+      "description": "LTE 필드 테스트와 데이터센터 자동화가 교차하던 2010년대, 앱 경제와 클라우드 네트워크를 동시에 길들인 개발자의 기록",
+      "snippet": "LTE 필드 테스트와 데이터센터 자동화가 교차하던 2010년대, 앱 경제와 클라우드 네트워크를 동시에 길들인 개발자의 기록",
+      "date": "2025-10-22",
+      "tags": [
+        "4G",
+        "LTE",
+        "클라우드컴퓨팅",
+        "SDN",
+        "NFV",
+        "IPv6"
+      ],
+      "category": "Network",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/lte-cloud-native-journal"
+    },
+    {
+      "path": "/posts/2025/broadband-cdn-transition-journal.md",
+      "year": "2025",
+      "slug": "broadband-cdn-transition-journal",
+      "title": "ADSL 불빛과 CDN 랙 사이에서 보낸 2000년대의 밤",
+      "description": "DSL 모뎀의 깜박임, 아카마이 캐시의 열기, 3G 기지국의 소음 속에서 상시 접속 시대를 맞이한 나의 기록",
+      "snippet": "DSL 모뎀의 깜박임, 아카마이 캐시의 열기, 3G 기지국의 소음 속에서 상시 접속 시대를 맞이한 나의 기록",
+      "date": "2025-10-21",
+      "tags": [
+        "광대역",
+        "CDN",
+        "3G",
+        "NAT",
+        "TLS"
+      ],
+      "category": "Network",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/broadband-cdn-transition-journal"
     },
     {
       "path": "/posts/2025/java-oop-superchallenge.md",
@@ -89,27 +214,6 @@
       "url": "/blog/2025/java-oop-superchallenge"
     },
     {
-      "path": "/posts/2025/java-static-polymorphism-masterclass.md",
-      "year": "2025",
-      "slug": "java-static-polymorphism-masterclass",
-      "title": "static 키워드와 다형성으로 밤을 지새운 어느 개발자의 기록",
-      "description": "정적 영역과 힙 사이에서 헤매던 날, 다형성의 그림자와 씨름한 새벽, 그리고 equals를 다시 쓰며 깨달은 객체지향의 본질",
-      "snippet": "정적 영역과 힙 사이에서 헤매던 날, 다형성의 그림자와 씨름한 새벽, 그리고 equals를 다시 쓰며 깨달은 객체지향의 본질",
-      "date": "2025-10-22",
-      "tags": [
-        "Java",
-        "static",
-        "Polymorphism",
-        "OOP 심화",
-        "JVM 메모리"
-      ],
-      "category": "Java",
-      "author": "Admin",
-      "readingTime": "4 min read",
-      "published": true,
-      "url": "/blog/2025/java-static-polymorphism-masterclass"
-    },
-    {
       "path": "/posts/2025/java-through-my-bytecode-journal.md",
       "year": "2025",
       "slug": "java-through-my-bytecode-journal",
@@ -131,116 +235,12 @@
       "url": "/blog/2025/java-through-my-bytecode-journal"
     },
     {
-      "path": "/posts/2025/linux-device-mount-journal.md",
-      "year": "2025",
-      "slug": "linux-device-mount-journal",
-      "title": "언마운트 이후에도 /dev/sda1이 남아있는 이유를 이해한 밤",
-      "description": "장치 파일과 마운트의 차이를 헤맸던 날, 그리고 USB 허브의 SD 카드를 다시 인식시키기까지의 기록",
-      "snippet": "장치 파일과 마운트의 차이를 헤맸던 날, 그리고 USB 허브의 SD 카드를 다시 인식시키기까지의 기록",
-      "date": "2025-10-23",
-      "tags": [
-        "mount",
-        "umount",
-        "장치파일",
-        "USB",
-        "네트워킹"
-      ],
-      "category": "Linux",
-      "author": "Admin",
-      "readingTime": "3 min read",
-      "published": true,
-      "url": "/blog/2025/linux-device-mount-journal"
-    },
-    {
-      "path": "/posts/2025/shell-powertools-journal.md",
-      "year": "2025",
-      "slug": "shell-powertools-journal",
-      "title": "awk와 sed, 그리고 xargs에 빚진 작은 승리들",
-      "description": "터미널 앞에서 sed·awk·xargs로 위기를 넘겼던 밤을 일기처럼 풀어낸 쉘 작업 기록",
-      "snippet": "터미널 앞에서 sed·awk·xargs로 위기를 넘겼던 밤을 일기처럼 풀어낸 쉘 작업 기록",
-      "date": "2025-10-26",
-      "tags": [
-        "awk",
-        "sed",
-        "xargs",
-        "리눅스쉘",
-        "자동화"
-      ],
-      "category": "Linux",
-      "author": "Admin",
-      "readingTime": "7 min read",
-      "published": true,
-      "url": "/blog/2025/shell-powertools-journal"
-    },
-    {
-      "path": "/posts/2025/network-evolution-intro-journal.md",
-      "year": "2025",
-      "slug": "network-evolution-intro-journal",
-      "title": "네트워크 연표를 다시 걷기 전, 내가 세운 질문들",
-      "description": "ARPANET부터 6G까지를 다시 따라가기 전에 분산·추상화·지능이라는 화두를 정리한 서문",
-      "snippet": "ARPANET부터 6G까지를 다시 따라가기 전에 분산·추상화·지능이라는 화두를 정리한 서문",
-      "date": "2025-10-17",
-      "tags": [
-        "네트워크역사",
-        "인터넷진화",
-        "서론",
-        "에세이"
-      ],
-      "category": "Network",
-      "author": "Admin",
-      "readingTime": "6 min read",
-      "published": true,
-      "url": "/blog/2025/network-evolution-intro-journal"
-    },
-    {
-      "path": "/posts/2025/arpanet-resilience-journal.md",
-      "year": "2025",
-      "slug": "arpanet-resilience-journal",
-      "title": "스푸트니크의 그림자 아래, 내가 본 ARPANET의 첫 호흡",
-      "description": "냉전과 패킷 교환, IMP가 얽힌 ARPANET 탄생을 현장에서 재구성한 1인칭 기록",
-      "snippet": "냉전과 패킷 교환, IMP가 얽힌 ARPANET 탄생을 현장에서 재구성한 1인칭 기록",
-      "date": "2025-10-18",
-      "tags": [
-        "ARPANET",
-        "패킷교환",
-        "인터넷역사",
-        "ColdWar",
-        "네트워크아키텍처"
-      ],
-      "category": "Network",
-      "author": "Admin",
-      "readingTime": "10 min read",
-      "published": true,
-      "url": "/blog/2025/arpanet-resilience-journal"
-    },
-    {
-      "path": "/posts/2025/tcpip-revolution-journal.md",
-      "year": "2025",
-      "slug": "tcpip-revolution-journal",
-      "title": "TCP/IP 깃발 아래, 내가 본 인터넷의 탄생",
-      "description": "NCP에서 TCP/IP로 전환하던 플래그 데이의 긴장과 감동을 되살린 개발자의 일기",
-      "snippet": "NCP에서 TCP/IP로 전환하던 플래그 데이의 긴장과 감동을 되살린 개발자의 일기",
-      "date": "2025-10-19",
-      "tags": [
-        "TCPIP",
-        "인터넷역사",
-        "플래그데이",
-        "프로토콜디자인",
-        "인터네트워킹"
-      ],
-      "category": "Network",
-      "author": "Admin",
-      "readingTime": "11 min read",
-      "published": true,
-      "url": "/blog/2025/tcpip-revolution-journal"
-    },
-    {
       "path": "/posts/2025/web-commercialization-journal.md",
       "year": "2025",
       "slug": "web-commercialization-journal",
       "title": "모자이크를 띄운 날, 월드 와이드 웹이 손에 들어왔다",
-      "description": "웹 브라우저, DNS, BGP, CIDR이 만든 1990년대 인터넷 상업화를 현장에서 기록한 에세이",
-      "snippet": "웹 브라우저, DNS, BGP, CIDR이 만든 1990년대 인터넷 상업화를 현장에서 기록한 에세이",
+      "description": "웹 브라우저와 DNS, BGP가 열어젖힌 1990년대 인터넷의 폭발을 현장에서 지켜본 나의 기록",
+      "snippet": "웹 브라우저와 DNS, BGP가 열어젖힌 1990년대 인터넷의 폭발을 현장에서 지켜본 나의 기록",
       "date": "2025-10-20",
       "tags": [
         "월드와이드웹",
@@ -251,94 +251,95 @@
       ],
       "category": "Network",
       "author": "Admin",
-      "readingTime": "12 min read",
+      "readingTime": "3 min read",
       "published": true,
       "url": "/blog/2025/web-commercialization-journal"
     },
     {
-      "path": "/posts/2025/broadband-cdn-transition-journal.md",
+      "path": "/posts/2025/algorithms-through-my-eyes.md",
       "year": "2025",
-      "slug": "broadband-cdn-transition-journal",
-      "title": "ADSL 불빛과 CDN 랙 사이에서 보낸 2000년대의 밤",
-      "description": "광대역, CDN, 3G, NAT, TLS가 얽힌 상시 접속 시대의 전환을 현장에서 기록한 이야기",
-      "snippet": "광대역, CDN, 3G, NAT, TLS가 얽힌 상시 접속 시대의 전환을 현장에서 기록한 이야기",
-      "date": "2025-10-21",
+      "slug": "algorithms-through-my-eyes",
+      "title": "알고리즘 수업 노트를 다시 펼쳐 보며",
+      "description": "기초 알고리즘 수업 노트를 다시 펼쳐 보며...",
+      "snippet": "기초 알고리즘 수업 노트를 다시 펼쳐 보며...",
+      "date": "2025-10-19",
       "tags": [
-        "광대역",
-        "CDN",
-        "3G",
-        "NAT",
-        "TLS"
+        "알고리즘",
+        "복잡도",
+        "분할정복",
+        "동적계획법",
+        "탐욕법"
       ],
-      "category": "Network",
+      "category": "Computer Science",
       "author": "Admin",
-      "readingTime": "11 min read",
+      "readingTime": "5 min read",
       "published": true,
-      "url": "/blog/2025/broadband-cdn-transition-journal"
+      "url": "/blog/2025/algorithms-through-my-eyes"
     },
     {
-      "path": "/posts/2025/lte-cloud-native-journal.md",
+      "path": "/posts/2025/tcpip-revolution-journal.md",
       "year": "2025",
-      "slug": "lte-cloud-native-journal",
-      "title": "4G 신호와 클라우드 콘솔 사이, 앱 경제를 실감한 나의 하루",
-      "description": "LTE 필드 테스트와 클라우드·SDN·NFV 도입이 교차하던 2010년대를 기록한 개발자의 일기",
-      "snippet": "LTE 필드 테스트와 클라우드·SDN·NFV 도입이 교차하던 2010년대를 기록한 개발자의 일기",
-      "date": "2025-10-22",
+      "slug": "tcpip-revolution-journal",
+      "title": "TCP/IP 깃발 아래, 내가 본 인터넷의 탄생",
+      "description": "NCP에서 TCP/IP로 넘어가던 그날, 게이트웨이와 호스트 사이를 뛰어다니며 느낀 불안과 감동을 담은 개발자의 일기",
+      "snippet": "NCP에서 TCP/IP로 넘어가던 그날, 게이트웨이와 호스트 사이를 뛰어다니며 느낀 불안과 감동을 담은 개발자의 일기",
+      "date": "2025-10-19",
       "tags": [
-        "4G",
-        "LTE",
-        "클라우드컴퓨팅",
-        "SDN",
-        "NFV",
-        "IPv6"
+        "TCPIP",
+        "인터넷역사",
+        "플래그데이",
+        "프로토콜디자인",
+        "인터네트워킹"
       ],
       "category": "Network",
       "author": "Admin",
-      "readingTime": "11 min read",
+      "readingTime": "4 min read",
       "published": true,
-      "url": "/blog/2025/lte-cloud-native-journal"
+      "url": "/blog/2025/tcpip-revolution-journal"
     },
     {
-      "path": "/posts/2025/5g-intelligent-fabric-journal.md",
+      "path": "/posts/2025/algorithm-mental-simulator.md",
       "year": "2025",
-      "slug": "5g-intelligent-fabric-journal",
-      "title": "5G 기지국 그림자에서, 슬라이스와 에지가 만든 새로운 질서",
-      "description": "네트워크 슬라이싱, URLLC, 에지 컴퓨팅, 제로 트러스트가 구현된 5G 시대를 현장에서 기록",
-      "snippet": "네트워크 슬라이싱, URLLC, 에지 컴퓨팅, 제로 트러스트가 구현된 5G 시대를 현장에서 기록",
-      "date": "2025-10-23",
+      "slug": "algorithm-mental-simulator",
+      "title": "알고리즘을 메모리 영화관에서 돌려보는 밤",
+      "description": "Big-O는 교통수단, 병합 정렬은 지도 조각, 해시는 주소 직통. 시뮬레이터형 두뇌로 재생한 알고리즘 18편의 심화 문제와 비유",
+      "snippet": "Big-O는 교통수단, 병합 정렬은 지도 조각, 해시는 주소 직통. 시뮬레이터형 두뇌로 재생한 알고리즘 18편의 심화 문제와 비유",
+      "date": "2025-10-18",
       "tags": [
-        "5G",
-        "네트워크슬라이싱",
-        "에지컴퓨팅",
-        "URLLC",
-        "제로트러스트"
+        "알고리즘",
+        "시간복잡도",
+        "정렬",
+        "탐색트리",
+        "해시",
+        "DP",
+        "Greedy"
       ],
-      "category": "Network",
+      "category": "Computer Science",
       "author": "Admin",
-      "readingTime": "11 min read",
+      "readingTime": "6 min read",
       "published": true,
-      "url": "/blog/2025/5g-intelligent-fabric-journal"
+      "url": "/blog/2025/algorithm-mental-simulator"
     },
     {
-      "path": "/posts/2025/6g-sentient-future-journal.md",
+      "path": "/posts/2025/arpanet-resilience-journal.md",
       "year": "2025",
-      "slug": "6g-sentient-future-journal",
-      "title": "6G 연구소의 밤, 지각 있는 네트워크를 그리는 상상",
-      "description": "테라헤르츠, RIS, AI 네이티브 아키텍처, 통신-감지 통합을 탐구한 6G 연구자의 1인칭 기록",
-      "snippet": "테라헤르츠, RIS, AI 네이티브 아키텍처, 통신-감지 통합을 탐구한 6G 연구자의 1인칭 기록",
-      "date": "2025-10-24",
+      "slug": "arpanet-resilience-journal",
+      "title": "스푸트니크의 그림자 아래, 내가 본 ARPANET의 첫 호흡",
+      "description": "냉전의 긴장 속에서 태어난 ARPANET을 따라가며, 패킷 교환과 IMP가 가져온 혁신을 밤새 되짚은 나의 기록",
+      "snippet": "냉전의 긴장 속에서 태어난 ARPANET을 따라가며, 패킷 교환과 IMP가 가져온 혁신을 밤새 되짚은 나의 기록",
+      "date": "2025-10-18",
       "tags": [
-        "6G",
-        "테라헤르츠",
-        "RIS",
-        "AI네이티브",
-        "JCS"
+        "ARPANET",
+        "패킷교환",
+        "인터넷역사",
+        "ColdWar",
+        "네트워크아키텍처"
       ],
       "category": "Network",
       "author": "Admin",
-      "readingTime": "12 min read",
+      "readingTime": "3 min read",
       "published": true,
-      "url": "/blog/2025/6g-sentient-future-journal"
+      "url": "/blog/2025/arpanet-resilience-journal"
     },
     {
       "path": "/posts/2025/BST-think01.md",
@@ -449,6 +450,47 @@
       "readingTime": "1 min read",
       "published": false,
       "url": "/blog/2025/ci-trigger-test"
+    },
+    {
+      "path": "/posts/2025/network-evolution-intro-journal.md",
+      "year": "2025",
+      "slug": "network-evolution-intro-journal",
+      "title": "네트워크 연표를 다시 걷기 전, 내가 세운 질문들",
+      "description": "ARPANET부터 6G까지 다시 추적하기 전에, 지각 있는 연결 구조란 무엇인지 스스로에게 던진 질문을 정리한 나의 서문",
+      "snippet": "ARPANET부터 6G까지 다시 추적하기 전에, 지각 있는 연결 구조란 무엇인지 스스로에게 던진 질문을 정리한 나의 서문",
+      "date": "2025-10-17",
+      "tags": [
+        "네트워크역사",
+        "인터넷진화",
+        "서론",
+        "에세이"
+      ],
+      "category": "Network",
+      "author": "Admin",
+      "readingTime": "2 min read",
+      "published": true,
+      "url": "/blog/2025/network-evolution-intro-journal"
+    },
+    {
+      "path": "/posts/2025/spring-boot-realtime-communication.md",
+      "year": "2025",
+      "slug": "spring-boot-realtime-communication",
+      "title": "SSE와 WebSocket 사이에서, 나의 실시간 통신 여정을 적다",
+      "description": "JavaScript와 Spring Boot로 SSE와 WebSocket을 번갈아 구현하며 Redis와 Kafka를 저울질한 밤의 기록",
+      "snippet": "JavaScript와 Spring Boot로 SSE와 WebSocket을 번갈아 구현하며 Redis와 Kafka를 저울질한 밤의 기록",
+      "date": "2025-09-17",
+      "tags": [
+        "SSE",
+        "WebSocket",
+        "Redis",
+        "Kafka",
+        "실시간통신"
+      ],
+      "category": "Web",
+      "author": "Admin",
+      "readingTime": "5 min read",
+      "published": true,
+      "url": "/blog/2025/spring-boot-realtime-communication"
     },
     {
       "path": "/posts/2025/network-evolution-history.md",
@@ -745,27 +787,6 @@
       "readingTime": "3 min read",
       "published": true,
       "url": "/blog/2025/memory-management-study"
-    },
-    {
-      "path": "/posts/2025/proxmox-thin-provision.md",
-      "year": "2025",
-      "slug": "proxmox-thin-provision",
-      "title": "ZFS 풀 앞에서 멈춰 선 Proxmox, 그 밤의 기록",
-      "description": "1.85TB 디스크를 추가하려던 새벽, ZFS가 'out of space'를 외치며 VM을 멈춰 세웠던 경험. 스냅샷과 예약 공간을 정리하며 다시 일어서기까지의 기록을 남겼습니다.",
-      "snippet": "1.85TB 디스크를 추가하려던 새벽, ZFS가 'out of space'를 외치며 VM을 멈춰 세웠던 경험. 스냅샷과 예약 공간을 정리하며 다시 일어서기까지의 기록을 남겼습니다.",
-      "date": "2025-10-24",
-      "tags": [
-        "Proxmox",
-        "ZFS",
-        "Thin Provision",
-        "가상화",
-        "스토리지"
-      ],
-      "category": "Linux",
-      "author": "Admin",
-      "readingTime": "6 min read",
-      "published": true,
-      "url": "/blog/2025/proxmox-thin-provision"
     },
     {
       "path": "/posts/2025/react-native-springboot-mongodb-diary-app.md",
@@ -1269,27 +1290,6 @@
       "readingTime": "2 min read",
       "published": true,
       "url": "/blog/2025/queue"
-    },
-    {
-      "path": "/posts/2025/spring-boot-realtime-communication.md",
-      "year": "2025",
-      "slug": "spring-boot-realtime-communication",
-      "title": "SSE와 WebSocket 사이에서, 나의 실시간 통신 여정을 적다",
-      "description": "SSE와 WebSocket을 JS와 Spring Boot로 구현하며 Redis Pub/Sub과 Kafka를 비교한 실시간 통신 설계 일기",
-      "snippet": "SSE와 WebSocket을 JS와 Spring Boot로 구현하며 Redis Pub/Sub과 Kafka를 비교한 실시간 통신 설계 일기",
-      "date": "2025-09-17",
-      "tags": [
-        "SSE",
-        "WebSocket",
-        "Redis",
-        "Kafka",
-        "실시간통신"
-      ],
-      "category": "Web",
-      "author": "Admin",
-      "readingTime": "8 min read",
-      "published": true,
-      "url": "/blog/2025/spring-boot-realtime-communication"
     },
     {
       "path": "/posts/2025/stack.md",
@@ -1971,7 +1971,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-10-27T13:24:17.675Z",
+  "generatedAt": "2025-10-27T14:17:31.239Z",
   "years": [
     "2025",
     "2024"
