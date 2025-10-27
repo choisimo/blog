@@ -47,6 +47,25 @@ function extractCoverImage(frontmatter, body, markdownAbsPath) {
   return undefined;
 }
 
+function stripLeadingMedia(content) {
+  if (!content) return content;
+  let result = content.trimStart();
+
+  const leadingBlockPatterns = [
+    /^>\s*\*\*[^\n]*\*\*\s*\n?/,
+    /^>\s*[^\n]*\n?/
+  ];
+
+  leadingBlockPatterns.forEach(pattern => {
+    result = result.replace(pattern, '').trimStart();
+  });
+
+  result = result.replace(/^!\[[^\]]*\]\([^\)]+\)\s*/m, '');
+  result = result.replace(/^<img[^>]*>\s*/im, '');
+
+  return result.trimStart();
+}
+
 function validateMarkdownFile(filePath, filename) {
   // Check for invalid filenames
   if (filename === '.md' || filename.startsWith('.md')) {
@@ -191,13 +210,16 @@ function generateUnifiedManifest(years) {
       const coverImage = extractCoverImage(fm, body, abs);
 
       // Compute snippet and reading time
-      const textOnly = body
+      const cleanedBody = stripLeadingMedia(body);
+      const textOnly = cleanedBody
         // strip code fences
         .replace(/```[\s\S]*?```/g, '')
         // strip html tags if any
         .replace(/<[^>]+>/g, '')
         .trim();
-      const snippet = (fm.description || fm.excerpt || textOnly)
+      const baseSummary = fm.description || fm.excerpt || cleanedBody;
+      const sanitizedSummary = stripLeadingMedia(baseSummary);
+      const snippet = (sanitizedSummary || textOnly)
         .slice(0, 200)
         .trim();
       const words = textOnly.split(/\s+/).filter(Boolean).length;

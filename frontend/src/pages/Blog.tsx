@@ -55,17 +55,24 @@ const Blog = () => {
   const [showAllTags, setShowAllTags] = useState(false);
 
   const skipNextPageResetRef = useRef(true);
+  const skipParamSyncRef = useRef(false);
 
   // Debounce search term to avoid excessive filtering
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // Handle URL parameter updates
   useEffect(() => {
+    if (skipParamSyncRef.current) {
+      skipParamSyncRef.current = false;
+      return;
+    }
+
     if (initialCategory !== selectedCategory) {
       skipNextPageResetRef.current = true;
       setSelectedCategory(initialCategory);
     }
     if (initialPage !== currentPage) {
+      skipNextPageResetRef.current = true;
       setCurrentPage(initialPage);
     }
   }, [initialCategory, initialPage, selectedCategory, currentPage]);
@@ -140,6 +147,7 @@ const Blog = () => {
       return;
     }
     setCurrentPage(1);
+    skipParamSyncRef.current = true;
     setSearchParams(prev => {
       const newParams = new URLSearchParams(prev);
       newParams.set('page', '1');
@@ -165,12 +173,14 @@ const Blog = () => {
     setSelectedTags([]);
     setSortBy('date');
     setCurrentPage(1);
+    skipParamSyncRef.current = true;
     setSearchParams({});
   }, [setSearchParams]);
 
   const handlePageChange = useCallback(
     (page: number) => {
       setCurrentPage(page);
+      skipParamSyncRef.current = true;
       setSearchParams(prev => {
         const newParams = new URLSearchParams(prev);
         newParams.set('page', page.toString());
