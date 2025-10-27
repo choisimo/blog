@@ -152,15 +152,22 @@ def connect_chroma(chroma_url: str) -> chromadb.Client:
     host = u.hostname or 'localhost'
     port = u.port or (443 if u.scheme == 'https' else 8000)
     ssl_enabled = (u.scheme == 'https')
+    # chromadb 0.6 moved the public HTTP client to chromadb.HttpClient.
+    http_client_cls = getattr(chromadb, "HttpClient", None)
+    if http_client_cls is not None:
+        try:
+            return http_client_cls(host=host, port=port, ssl=ssl_enabled)
+        except TypeError:
+            # In case the installed chromadb expects different kwargs (older versions), fall back.
+            pass
+
     settings = Settings(
-        chroma_api_impl="rest",
         chroma_server_host=host,
         chroma_server_http_port=port,
         chroma_server_ssl_enabled=ssl_enabled,
         anonymized_telemetry=False,
     )
-    client = chromadb.Client(settings)
-    return client
+    return chromadb.Client(settings)
 
 
 def get_collection(client: chromadb.Client, name: str):
