@@ -7,6 +7,8 @@ excerpt: "Serial, CMS, G1을 거치며 힙 덤프와 함께 밤을 지새운 개
 readTime: "11분"
 ---
 
+> **이 글은 소설 형식으로 구성된 창작 에세이입니다.**
+
 2007년 어느 날 새벽, 서버 로그에 찍힌 “Full GC (System) pause 5000ms”라는 메시지를 보고 숨이 멎는 줄 알았다. 사용자는 5초 동안 아무 것도 할 수 없었고, 우리는 손에 땀을 쥐고 힙 덤프를 뒤졌다. 그때부터 나의 Garbage Collection 탐험이 시작됐다. 파란색 힙 그래프가 들쭉날쭉한 캔버스처럼 보일 정도로 매일 보며 살았다.
 
 처음에는 Serial GC와 Parallel GC 정도만 알고 있던 내가, CMS(Concurrent Mark-Sweep)의 mark 단계와 remark 단계가 어떻게 다른지 이해하려면 꽤 시간이 걸렸다. stop-the-world가 얼마나 짧아졌는지 확인하고, promotion 실패로 fallback이 일어나면 왜 그런지 분석했다. JVM 옵션에 `-XX:+UseConcMarkSweepGC`를 넣으면서도 “이게 정말 우리 서비스에 도움이 될까?”라는 의심을 떨치지 못했다. 결국 생산 환경에서 CMS가 동작하는 모습을 확인하던 날, 관찰 노트에 “remark 80ms, concurrent sweep 400ms”라고 적어 두었다. 그 숫자들이 내 마음을 진정시켜 주었다.

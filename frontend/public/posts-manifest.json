@@ -411,7 +411,7 @@
       "title": "Happens-before를 붙잡기까지, 자바 메모리 모델을 해부한 내 여정",
       "description": "volatile, synchronized, reorder의 경계를 실험하며 JMM Happens-before를 체득한 개발자 이야기",
       "snippet": "volatile, synchronized, reorder의 경계를 실험하며 JMM Happens-before를 체득한 개발자 이야기",
-      "date": "2025-10-28",
+      "date": "2025-10-27",
       "tags": [
         "Java",
         "메모리모델",
@@ -432,7 +432,7 @@
       "title": "람다와 파이프라인 사이, 스트림 API에 빠져들던 밤",
       "description": "람다 표현식과 스트림 파이프라인을 도입하며 컬렉터와 병렬 스트림을 튜닝한 1인칭 에세이",
       "snippet": "람다 표현식과 스트림 파이프라인을 도입하며 컬렉터와 병렬 스트림을 튜닝한 1인칭 에세이",
-      "date": "2025-10-29",
+      "date": "2025-10-27",
       "tags": [
         "Java",
         "StreamAPI",
@@ -1342,7 +1342,7 @@
       "title": "퀵 정렬(Quick Sort) 완전 정복",
       "description": "분할 정복을 이용한 최고 성능의 정렬 알고리즘, 퀵 정렬의 모든 것",
       "snippet": "분할 정복을 이용한 최고 성능의 정렬 알고리즘, 퀵 정렬의 모든 것",
-      "date": "2024-10-28",
+      "date": "2024-10-27",
       "tags": [
         "퀵정렬",
         "정렬",

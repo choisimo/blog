@@ -1,11 +1,13 @@
 ---
 title: "Happens-before를 붙잡기까지, 자바 메모리 모델을 해부한 내 여정"
-date: "2025-10-28"
+date: "2025-10-27"
 category: "Java"
 tags: ['Java', '메모리모델', 'volatile', 'HappensBefore', 'JMM']
 excerpt: "JMM 명세와 volatile, synchronized, reorder의 경계를 파헤치며 가시성과 순서를 이해한 개발자의 기록"
 readTime: "12분"
 ---
+
+> **이 글은 소설 형식으로 구성된 창작 에세이입니다.**
 
 처음에는 멀티스레드 코드가 이상하게 동작하면 “CPU가 느린가?” 정도만 생각했다. 그러나 `double-checked locking`이 깨져 버리고, `volatile`이 없던 `singleton`이 간헐적으로 초기화되지 않은 상태를 반환하는 모습을 본 순간, 나는 자바 메모리 모델(JMM)이라는 미지의 세계를 파고들어야 했다. 2004년 JSR-133이 등장한 이후의 JMM 명세서를 출력해 노트에 밑줄을 그으며 공부하던 밤, 나는 “happens-before”라는 단어가 단순한 이론이 아니라 생존 가이드라는 사실을 깨달았다.
 

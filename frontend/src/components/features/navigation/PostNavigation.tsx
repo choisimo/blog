@@ -17,6 +17,8 @@ export const PostNavigation = ({
   const location = useLocation();
   const preservedFrom =
     fromState ?? (location.state as { from?: unknown })?.from ?? location;
+  const preservedSearch =
+    (preservedFrom as { search?: string })?.search ?? location.search ?? '';
   const currentIndex = posts.findIndex(post => post.slug === currentPost.slug);
   const previousPost =
     currentIndex < posts.length - 1 ? posts[currentIndex + 1] : null;
@@ -30,7 +32,10 @@ export const PostNavigation = ({
         <Card className='group hover:shadow-md transition-shadow'>
           <CardContent className='p-6'>
             <Link
-              to={`/blog/${previousPost.year}/${previousPost.slug}`}
+              to={{
+                pathname: `/blog/${previousPost.year}/${previousPost.slug}`,
+                search: preservedSearch || undefined,
+              }}
               state={{ from: preservedFrom }}
               className='block'
             >
@@ -50,7 +55,10 @@ export const PostNavigation = ({
         <Card className='group hover:shadow-md transition-shadow'>
           <CardContent className='p-6'>
             <Link
-              to={`/blog/${nextPost.year}/${nextPost.slug}`}
+              to={{
+                pathname: `/blog/${nextPost.year}/${nextPost.slug}`,
+                search: preservedSearch || undefined,
+              }}
               state={{ from: preservedFrom }}
               className='block'
             >

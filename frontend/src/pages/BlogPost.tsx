@@ -45,6 +45,12 @@ const BlogPost = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: unknown })?.from;
+  const preservedFrom =
+    from && typeof from === 'object' && 'pathname' in from
+      ? (from as { pathname: string; search?: string })
+      : undefined;
+  const preservedSearch =
+    preservedFrom?.search ?? (typeof location.search === 'string' ? location.search : '');
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -54,12 +60,10 @@ const BlogPost = () => {
   const [inlineEnabled, setInlineEnabled] = useState<boolean>(true);
 
   const handleBackToBlog = () => {
-    if (from && typeof from === 'object' && 'pathname' in from) {
-      const fromLocation = from as { pathname: string; search?: string };
-      const to = `${fromLocation.pathname}${fromLocation.search || ''}`;
-      navigate(to);
+    if (preservedFrom) {
+      navigate(`${preservedFrom.pathname}${preservedFrom.search || ''}`);
     } else {
-      navigate('/blog');
+      navigate(`/blog${preservedSearch || ''}`);
     }
   };
 
@@ -370,8 +374,11 @@ const BlogPost = () => {
                     {relatedPosts.map(relatedPost => (
                       <Link
                         key={`${relatedPost.year}/${relatedPost.slug}`}
-                        to={`/blog/${relatedPost.year}/${relatedPost.slug}`}
-                        state={from ? { from } : undefined}
+                        to={{
+                          pathname: `/blog/${relatedPost.year}/${relatedPost.slug}`,
+                          search: preservedSearch || undefined,
+                        }}
+                        state={preservedFrom ? { from: preservedFrom } : undefined}
                         className='group'
                         onMouseEnter={() =>
                           prefetchPost(relatedPost.year, relatedPost.slug)

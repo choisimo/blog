@@ -24,6 +24,12 @@ interface BlogCardProps {
 const BlogCard = memo(({ post }: BlogCardProps) => {
   const location = useLocation();
 
+  const search = location.search;
+  const fromState = {
+    pathname: location.pathname,
+    search,
+  } as const;
+
   // Create the proper blog post URL using year and slug
   const postUrl = `/blog/${post.year}/${post.slug}`;
 
@@ -58,8 +64,8 @@ const BlogCard = memo(({ post }: BlogCardProps) => {
         </div>
         <CardTitle className='line-clamp-2 group-hover:text-primary transition-colors leading-tight font-extrabold'>
           <Link
-            to={postUrl}
-            state={{ from: location }}
+            to={{ pathname: postUrl, search: search || undefined }}
+            state={{ from: fromState }}
             className='hover:underline'
             onMouseEnter={() => prefetchPost(post.year, post.slug)}
             onFocus={() => prefetchPost(post.year, post.slug)}
@@ -107,8 +113,8 @@ const BlogCard = memo(({ post }: BlogCardProps) => {
         {/* Read more button */}
         <Button asChild variant='ghost' className='w-full group/button mt-2'>
           <Link
-            to={postUrl}
-            state={{ from: location }}
+            to={{ pathname: postUrl, search: search || undefined }}
+            state={{ from: fromState }}
             onMouseEnter={() => prefetchPost(post.year, post.slug)}
             onFocus={() => prefetchPost(post.year, post.slug)}
           >
