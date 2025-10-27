@@ -104,9 +104,9 @@ export default function SparkInline({
             aria-label='문단 확장'
             aria-expanded={open}
             onClick={() => setOpen(v => !v)}
-            className='ml-2 align-baseline text-xs opacity-60 group-hover:opacity-100 transition-opacity hover:text-primary'
+            className='ml-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-base opacity-60 transition-colors transition-opacity hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 group-hover:opacity-100 md:min-h-[36px] md:min-w-[36px] md:text-sm'
           >
-            ✨
+            <span aria-hidden className='select-none'>✨</span>
           </button>
         )}
       </p>

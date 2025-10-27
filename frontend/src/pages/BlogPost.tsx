@@ -51,7 +51,7 @@ const BlogPost = () => {
   const [error, setError] = useState(false);
   const [post, setPost] = useState<BlogPostType | null>(null);
   const [relatedPosts, setRelatedPosts] = useState<BlogPostType[]>([]);
-  const [inlineEnabled, setInlineEnabled] = useState<boolean>(false);
+  const [inlineEnabled, setInlineEnabled] = useState<boolean>(true);
 
   const handleBackToBlog = () => {
     if (from && typeof from === 'object' && 'pathname' in from) {
@@ -129,9 +129,9 @@ const BlogPost = () => {
     const read = () => {
       try {
         const v = localStorage.getItem('aiMemo.inline.enabled');
-        setInlineEnabled(!!JSON.parse(v || 'false'));
+        setInlineEnabled(!!JSON.parse(v || 'true'));
       } catch {
-        setInlineEnabled(false);
+        setInlineEnabled(true);
       }
     };
     read();

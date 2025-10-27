@@ -1,9 +1,12 @@
 import os
 import json
 import hashlib
+import logging
+from datetime import datetime
 from urllib.parse import urlparse
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any, Dict, List, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 import chromadb
@@ -17,6 +20,10 @@ except Exception:  # pragma: no cover
 import time
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 def read_manifest(manifest_path: Path) -> List[Dict[str, Any]]:
@@ -186,6 +193,64 @@ def chroma_upsert_with_retry(collection, ids: List[str], embeddings: List[List[f
         raise last_err
 
 
+def process_document(
+    file_path: Path,
+    item: Dict[str, Any],
+    tei_url: str,
+    total_retries: int,
+    retry_backoff: float,
+    tokens_per_chunk: int,
+    overlap_tokens: int,
+    embed_batch: int,
+    embed_timeout: int,
+) -> Tuple[str, List[str], List[List[float]], List[Dict[str, Any]], List[str]]:
+    """
+    Worker function to process a single markdown file into chunks and embeddings.
+    Returns a tuple of (doc_id, ids, embeddings, metadatas, documents).
+    """
+    # read file
+    content = file_path.read_text(encoding='utf-8', errors='ignore')
+    text = markdown_to_text(content)
+    chunks = chunk_by_tokens(text, tokens_per_chunk=tokens_per_chunk, overlap_tokens=overlap_tokens)
+    if not chunks:
+        return ("", [], [], [], [])
+
+    doc_id = str(item.get('url') or item.get('path') or file_path.as_posix())
+
+    # Per-worker session to avoid cross-thread Session usage
+    session = create_session(total_retries=total_retries, backoff_factor=retry_backoff)
+    try:
+        embeddings = embed_texts(session, tei_url, chunks, batch_size=embed_batch, timeout=embed_timeout)
+    finally:
+        session.close()
+
+    base_id = doc_id
+    ids = [stable_chunk_id(base_id, i, ch) for i, ch in enumerate(chunks)]
+    metadatas: List[Dict[str, Any]] = []
+    indexed_at = datetime.utcnow().isoformat() + 'Z'
+    source_path = str(file_path)
+
+    for i, ch in enumerate(chunks):
+        metadatas.append({
+            "doc_id": doc_id,
+            "url": item.get('url'),
+            "title": item.get('title'),
+            "path": item.get('path'),
+            "slug": item.get('slug'),
+            "year": item.get('year'),
+            "tags": item.get('tags'),
+            "category": item.get('category'),
+            "date": item.get('date'),
+            "chunk_index": i,
+            "chunk_count": len(chunks),
+            "source": source_path,
+            "chunk_text": ch,
+            "created_at": indexed_at,
+        })
+    documents = chunks
+    return (doc_id, ids, embeddings, metadatas, documents)
+
+
 def main() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     manifest_rel = os.environ.get('POSTS_MANIFEST', 'frontend/public/posts-manifest.json')
@@ -200,7 +265,11 @@ def main() -> None:
     chroma_url = os.environ.get('CHROMA_URL', '').strip()
     if not chroma_url:
         raise SystemExit('Missing CHROMA_URL')
-    collection_name = os.environ.get('CHROMA_COLLECTION', 'blog-posts')
+    # Dynamic collection naming: prefer explicit CHROMA_COLLECTION, else base + model
+    base_collection = os.environ.get('BASE_COLLECTION_NAME', 'blog-posts').strip() or 'blog-posts'
+    tei_model_name = os.environ.get('TEI_MODEL_NAME', os.environ.get('TEI_MODEL', 'all-MiniLM-L6-v2')).strip() or 'all-MiniLM-L6-v2'
+    explicit_collection = os.environ.get('CHROMA_COLLECTION', '').strip()
+    collection_name = explicit_collection if explicit_collection else f"{base_collection}__{tei_model_name}"
 
     client = connect_chroma(chroma_url)
     collection = get_collection(client, collection_name)
@@ -211,29 +280,24 @@ def main() -> None:
     chroma_backoff = float(os.environ.get('CHROMA_BACKOFF_S', '1.5'))
     embed_timeout = int(os.environ.get('EMBED_TIMEOUT_S', '120'))
     embed_batch = int(os.environ.get('EMBED_BATCH', '32'))
-    session = create_session(total_retries=total_retries, backoff_factor=retry_backoff)
-
+    # token chunking params
+    tokens_per_chunk = int(os.environ.get('CHUNK_TOKENS', '512'))
+    overlap_tokens = int(os.environ.get('CHUNK_OVERLAP_TOKENS', '80'))
+    # Concurrency
+    max_workers = int(os.environ.get('MAX_WORKERS', '6'))
+    # Prepare jobs (and perform doc-level deletes up-front in main thread)
+    jobs: List[Tuple[str, Path, Dict[str, Any]]] = []
     for it in items:
         rel_path = str(it.get('path', '')).lstrip('/')
         file_path = (public_dir / rel_path).resolve()
         if not file_path.is_file():
             continue
-        content = file_path.read_text(encoding='utf-8', errors='ignore')
-        text = markdown_to_text(content)
-        # Token-based chunking by default
-        tokens_per_chunk = int(os.environ.get('CHUNK_TOKENS', '512'))
-        overlap_tokens = int(os.environ.get('CHUNK_OVERLAP_TOKENS', '80'))
-        chunks = chunk_by_tokens(text, tokens_per_chunk=tokens_per_chunk, overlap_tokens=overlap_tokens)
-        if not chunks:
-            continue
         doc_id = str(it.get('url') or it.get('path') or file_path.as_posix())
-        # Deletion sweep for this document to ensure idempotency and remove stale chunks
+        # Idempotent delete for this doc (and legacy keys) before re-insert
         try:
             chroma_delete_with_retry(collection, {"doc_id": doc_id}, attempts=chroma_attempts, backoff_s=chroma_backoff)
         except Exception:
-            # best effort; proceed even if delete is not supported
             pass
-        # Fallback: delete by legacy keys if doc_id wasn't set previously
         try:
             if it.get('url'):
                 chroma_delete_with_retry(collection, {"url": it.get('url')}, attempts=chroma_attempts, backoff_s=chroma_backoff)
@@ -244,27 +308,47 @@ def main() -> None:
                 chroma_delete_with_retry(collection, {"path": it.get('path')}, attempts=chroma_attempts, backoff_s=chroma_backoff)
         except Exception:
             pass
+        jobs.append((doc_id, file_path, it))
 
-        base_id = doc_id
-        ids = [stable_chunk_id(base_id, i, ch) for i, ch in enumerate(chunks)]
-        embeddings = embed_texts(session, tei_url, chunks, batch_size=embed_batch, timeout=embed_timeout)
-        metadatas = []
-        for i, ch in enumerate(chunks):
-            metadatas.append({
-                "doc_id": doc_id,
-                "url": it.get('url'),
-                "title": it.get('title'),
-                "path": it.get('path'),
-                "slug": it.get('slug'),
-                "year": it.get('year'),
-                "tags": it.get('tags'),
-                "category": it.get('category'),
-                "date": it.get('date'),
-                "chunk_index": i,
-                "chunk_count": len(chunks),
-            })
-        documents = chunks
-        chroma_upsert_with_retry(collection, ids=ids, embeddings=embeddings, metadatas=metadatas, documents=documents, attempts=chroma_attempts, backoff_s=chroma_backoff)
+    # Run embeddings in parallel; upsert results serially to avoid client thread-safety concerns
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futures = {
+            ex.submit(
+                process_document,
+                file_path,
+                it,
+                tei_url,
+                total_retries,
+                retry_backoff,
+                tokens_per_chunk,
+                overlap_tokens,
+                embed_batch,
+                embed_timeout,
+            ): (doc_id, file_path, it)
+            for doc_id, file_path, it in jobs
+        }
+        for fut in as_completed(futures):
+            ctx_doc_id, ctx_file_path, ctx_item = futures[fut]
+            try:
+                doc_id, ids, embeddings, metadatas, documents = fut.result()
+                if ids and embeddings and metadatas and documents:
+                    chroma_upsert_with_retry(
+                        collection,
+                        ids=ids,
+                        embeddings=embeddings,
+                        metadatas=metadatas,
+                        documents=documents,
+                        attempts=chroma_attempts,
+                        backoff_s=chroma_backoff,
+                    )
+            except Exception as exc:
+                logger.exception(
+                    "Failed to process document %s (path=%s): %s",
+                    ctx_doc_id,
+                    ctx_item.get('path'),
+                    exc,
+                )
+                continue
 
 
 if __name__ == '__main__':
