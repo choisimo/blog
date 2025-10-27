@@ -341,6 +341,111 @@
       "url": "/blog/2025/6g-sentient-future-journal"
     },
     {
+      "path": "/posts/2025/java-generics-journal.md",
+      "year": "2025",
+      "slug": "java-generics-journal",
+      "title": "타입 변수와 야생의 캐스팅: 제네릭을 길들이던 내 기록",
+      "description": "로 타입과 ClassCastException을 넘어서 제네릭이 가져온 타입 안전성을 몸으로 익힌 개발자 일기",
+      "snippet": "로 타입과 ClassCastException을 넘어서 제네릭이 가져온 타입 안전성을 몸으로 익힌 개발자 일기",
+      "date": "2025-10-25",
+      "tags": [
+        "Java",
+        "Generics",
+        "타입시스템",
+        "Erasure",
+        "컬렉션"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "10 min read",
+      "published": true,
+      "url": "/blog/2025/java-generics-journal"
+    },
+    {
+      "path": "/posts/2025/java-gc-journal.md",
+      "year": "2025",
+      "slug": "java-gc-journal",
+      "title": "Stop-the-world의 숨결을 들으며, GC와 화해한 나의 기록",
+      "description": "Serial, CMS, G1을 거치며 힙 덤프와 함께 밤을 지새운 개발자가 GC 진화와 전략을 되돌아본 기록",
+      "snippet": "Serial, CMS, G1을 거치며 힙 덤프와 함께 밤을 지새운 개발자가 GC 진화와 전략을 되돌아본 기록",
+      "date": "2025-10-26",
+      "tags": [
+        "Java",
+        "GarbageCollection",
+        "JVM",
+        "G1",
+        "메모리관리"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "11 min read",
+      "published": true,
+      "url": "/blog/2025/java-gc-journal"
+    },
+    {
+      "path": "/posts/2025/java-concurrency-journal.md",
+      "year": "2025",
+      "slug": "java-concurrency-journal",
+      "title": "스레드 덤프와 데드락 다이어그램, 자바 동시성의 밤을 기록하다",
+      "description": "Thread, synchronized, ExecutorService, ForkJoinPool을 오가며 레이스와 데드락을 추적한 1인칭 동시성 일기",
+      "snippet": "Thread, synchronized, ExecutorService, ForkJoinPool을 오가며 레이스와 데드락을 추적한 1인칭 동시성 일기",
+      "date": "2025-10-27",
+      "tags": [
+        "Java",
+        "Concurrency",
+        "Thread",
+        "ExecutorService",
+        "락"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "12 min read",
+      "published": true,
+      "url": "/blog/2025/java-concurrency-journal"
+    },
+    {
+      "path": "/posts/2025/java-memory-model-journal.md",
+      "year": "2025",
+      "slug": "java-memory-model-journal",
+      "title": "Happens-before를 붙잡기까지, 자바 메모리 모델을 해부한 내 여정",
+      "description": "volatile, synchronized, reorder의 경계를 실험하며 JMM Happens-before를 체득한 개발자 이야기",
+      "snippet": "volatile, synchronized, reorder의 경계를 실험하며 JMM Happens-before를 체득한 개발자 이야기",
+      "date": "2025-10-28",
+      "tags": [
+        "Java",
+        "메모리모델",
+        "volatile",
+        "HappensBefore",
+        "JMM"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "12 min read",
+      "published": true,
+      "url": "/blog/2025/java-memory-model-journal"
+    },
+    {
+      "path": "/posts/2025/java-stream-api-journal.md",
+      "year": "2025",
+      "slug": "java-stream-api-journal",
+      "title": "람다와 파이프라인 사이, 스트림 API에 빠져들던 밤",
+      "description": "람다 표현식과 스트림 파이프라인을 도입하며 컬렉터와 병렬 스트림을 튜닝한 1인칭 에세이",
+      "snippet": "람다 표현식과 스트림 파이프라인을 도입하며 컬렉터와 병렬 스트림을 튜닝한 1인칭 에세이",
+      "date": "2025-10-29",
+      "tags": [
+        "Java",
+        "StreamAPI",
+        "Lambda",
+        "FunctionalProgramming",
+        "병렬스트림"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "11 min read",
+      "published": true,
+      "url": "/blog/2025/java-stream-api-journal"
+    },
+    {
       "path": "/posts/2025/BST-think01.md",
       "year": "2025",
       "slug": "BST-think01",
