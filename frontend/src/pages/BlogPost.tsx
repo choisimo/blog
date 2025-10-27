@@ -50,7 +50,8 @@ const BlogPost = () => {
       ? (from as { pathname: string; search?: string })
       : undefined;
   const preservedSearch =
-    preservedFrom?.search ?? (typeof location.search === 'string' ? location.search : '');
+    preservedFrom?.search ??
+    (typeof location.search === 'string' ? location.search : '');
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -120,7 +121,10 @@ const BlogPost = () => {
         year: post.year,
         slug: post.slug,
       };
-      const deduped = [next, ...items.filter(i => i.path !== path)].slice(0, 12);
+      const deduped = [next, ...items.filter(i => i.path !== path)].slice(
+        0,
+        12
+      );
       localStorage.setItem(key, JSON.stringify(deduped));
       window.dispatchEvent(new CustomEvent('visitedposts:update'));
     } catch {
@@ -378,7 +382,9 @@ const BlogPost = () => {
                           pathname: `/blog/${relatedPost.year}/${relatedPost.slug}`,
                           search: preservedSearch || undefined,
                         }}
-                        state={preservedFrom ? { from: preservedFrom } : undefined}
+                        state={
+                          preservedFrom ? { from: preservedFrom } : undefined
+                        }
                         className='group'
                         onMouseEnter={() =>
                           prefetchPost(relatedPost.year, relatedPost.slug)

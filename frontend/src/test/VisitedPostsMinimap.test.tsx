@@ -9,8 +9,8 @@ const wrap = (ui: React.ReactNode, initialEntries: string[] = ['/']) =>
     <MemoryRouter initialEntries={initialEntries}>
       <ThemeProvider>
         <Routes>
-          <Route path="/" element={<>{ui}</>} />
-          <Route path="/blog/:year/:slug" element={<div>Post Page</div>} />
+          <Route path='/' element={<>{ui}</>} />
+          <Route path='/blog/:year/:slug' element={<div>Post Page</div>} />
         </Routes>
       </ThemeProvider>
     </MemoryRouter>
@@ -24,7 +24,9 @@ describe('VisitedPostsMinimap', () => {
   it('does not render when there are no visited posts', () => {
     wrap(<VisitedPostsMinimap />);
     // Should not be present when there are no visited posts
-    expect(screen.queryByLabelText(/open visited posts history/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(/open visited posts history/i)
+    ).not.toBeInTheDocument();
   });
 
   it('renders when visited posts exist and toggles open state', () => {
@@ -37,7 +39,9 @@ describe('VisitedPostsMinimap', () => {
     );
     wrap(<VisitedPostsMinimap />);
 
-    const btn = screen.getByRole('button', { name: /open visited posts history/i });
+    const btn = screen.getByRole('button', {
+      name: /open visited posts history/i,
+    });
     expect(btn).toBeInTheDocument();
 
     // Initially collapsed, clicking opens list
@@ -56,7 +60,9 @@ describe('VisitedPostsMinimap', () => {
     // Update storage directly
     localStorage.setItem(
       'visited.posts',
-      JSON.stringify([{ path: '/blog/2025/foo', title: 'Foo', year: '2025', slug: 'foo' }])
+      JSON.stringify([
+        { path: '/blog/2025/foo', title: 'Foo', year: '2025', slug: 'foo' },
+      ])
     );
     // Dispatch custom event to trigger refresh and wait for update
     await act(async () => {
@@ -64,18 +70,24 @@ describe('VisitedPostsMinimap', () => {
     });
 
     // Now the minimap should appear
-    const btn = await screen.findByRole('button', { name: /open visited posts history/i });
+    const btn = await screen.findByRole('button', {
+      name: /open visited posts history/i,
+    });
     expect(btn).toBeInTheDocument();
   });
 
   it('navigates to selected post when clicking an item', () => {
     localStorage.setItem(
       'visited.posts',
-      JSON.stringify([{ path: '/blog/2025/foo', title: 'Foo', year: '2025', slug: 'foo' }])
+      JSON.stringify([
+        { path: '/blog/2025/foo', title: 'Foo', year: '2025', slug: 'foo' },
+      ])
     );
     wrap(<VisitedPostsMinimap />);
 
-    fireEvent.click(screen.getByRole('button', { name: /open visited posts history/i }));
+    fireEvent.click(
+      screen.getByRole('button', { name: /open visited posts history/i })
+    );
 
     // Click the list item button which has text Foo
     fireEvent.click(screen.getByRole('button', { name: /foo/i }));

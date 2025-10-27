@@ -9,7 +9,10 @@ export type CreatePostPayload = {
   draft?: boolean;
 };
 
-export async function adminLogin(username: string, password: string): Promise<string> {
+export async function adminLogin(
+  username: string,
+  password: string
+): Promise<string> {
   const base = getApiBaseUrl();
   const res = await fetch(`${base}/api/v1/auth/login`, {
     method: 'POST',
@@ -25,7 +28,10 @@ export async function adminLogin(username: string, password: string): Promise<st
   return token;
 }
 
-export async function createPostPR(payload: CreatePostPayload, token: string): Promise<{ prUrl: string; branch: string; path: string; }> {
+export async function createPostPR(
+  payload: CreatePostPayload,
+  token: string
+): Promise<{ prUrl: string; branch: string; path: string }> {
   const base = getApiBaseUrl();
   const res = await fetch(`${base}/api/v1/admin/create-post-pr`, {
     method: 'POST',
@@ -46,7 +52,10 @@ export async function uploadPostImages(
   params: { year: string | number; slug: string },
   files: File[],
   token: string
-): Promise<{ dir: string; items: Array<{ url: string; variantWebp?: { url: string } | null }> }> {
+): Promise<{
+  dir: string;
+  items: Array<{ url: string; variantWebp?: { url: string } | null }>;
+}> {
   const base = getApiBaseUrl();
   const fd = new FormData();
   fd.append('year', String(params.year));
@@ -62,5 +71,8 @@ export async function uploadPostImages(
   if (!res.ok || !json?.ok) {
     throw new Error(json?.error || 'Failed to upload');
   }
-  return json.data as { dir: string; items: Array<{ url: string; variantWebp?: { url: string } | null }> };
+  return json.data as {
+    dir: string;
+    items: Array<{ url: string; variantWebp?: { url: string } | null }>;
+  };
 }

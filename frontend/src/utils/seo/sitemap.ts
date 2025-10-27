@@ -1,22 +1,22 @@
-import { BlogPost } from "@/types/blog";
-import { getPosts } from "@/data/posts";
+import { BlogPost } from '@/types/blog';
+import { getPosts } from '@/data/posts';
 
 export interface SitemapEntry {
   url: string;
   lastModified: string;
   changeFreq:
-    | "always"
-    | "hourly"
-    | "daily"
-    | "weekly"
-    | "monthly"
-    | "yearly"
-    | "never";
+    | 'always'
+    | 'hourly'
+    | 'daily'
+    | 'weekly'
+    | 'monthly'
+    | 'yearly'
+    | 'never';
   priority: number;
 }
 
 export const generateSitemap = async (): Promise<string> => {
-  const baseUrl = import.meta.env.VITE_SITE_BASE_URL || "http://localhost:3000";
+  const baseUrl = import.meta.env.VITE_SITE_BASE_URL || 'http://localhost:3000';
   const posts = await getPosts();
 
   const entries: SitemapEntry[] = [
@@ -24,25 +24,25 @@ export const generateSitemap = async (): Promise<string> => {
     {
       url: baseUrl,
       lastModified: new Date().toISOString(),
-      changeFreq: "weekly",
+      changeFreq: 'weekly',
       priority: 1.0,
     },
     {
       url: `${baseUrl}/blog`,
       lastModified: new Date().toISOString(),
-      changeFreq: "daily",
+      changeFreq: 'daily',
       priority: 0.9,
     },
     {
       url: `${baseUrl}/about`,
       lastModified: new Date().toISOString(),
-      changeFreq: "monthly",
+      changeFreq: 'monthly',
       priority: 0.7,
     },
     {
       url: `${baseUrl}/contact`,
       lastModified: new Date().toISOString(),
-      changeFreq: "monthly",
+      changeFreq: 'monthly',
       priority: 0.6,
     },
 
@@ -50,7 +50,7 @@ export const generateSitemap = async (): Promise<string> => {
     ...posts.map((post: BlogPost) => ({
       url: `${baseUrl}/blog/${post.year}/${post.slug}`,
       lastModified: new Date(post.date).toISOString(),
-      changeFreq: "monthly" as const,
+      changeFreq: 'monthly' as const,
       priority: 0.8,
     })),
   ];
@@ -59,21 +59,21 @@ export const generateSitemap = async (): Promise<string> => {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${entries
   .map(
-    (entry) => `  <url>
+    entry => `  <url>
     <loc>${entry.url}</loc>
     <lastmod>${entry.lastModified}</lastmod>
     <changefreq>${entry.changeFreq}</changefreq>
     <priority>${entry.priority}</priority>
-  </url>`,
+  </url>`
   )
-  .join("\n")}
+  .join('\n')}
 </urlset>`;
 
   return xmlContent;
 };
 
 export const generateRobotsTxt = (): string => {
-  const baseUrl = import.meta.env.VITE_SITE_BASE_URL || "http://localhost:3000";
+  const baseUrl = import.meta.env.VITE_SITE_BASE_URL || 'http://localhost:3000';
 
   return `User-agent: *
 Allow: /
@@ -83,10 +83,10 @@ Sitemap: ${baseUrl}/sitemap.xml`;
 
 // Generate RSS feed
 export const generateRSSFeed = async (): Promise<string> => {
-  const baseUrl = import.meta.env.VITE_SITE_BASE_URL || "http://localhost:3000";
-  const siteName = "Your Blog Name";
+  const baseUrl = import.meta.env.VITE_SITE_BASE_URL || 'http://localhost:3000';
+  const siteName = 'Your Blog Name';
   const siteDescription =
-    "A blog about technology, programming, and web development";
+    'A blog about technology, programming, and web development';
   const posts = await getPosts();
 
   const rssContent = `<?xml version="1.0" encoding="UTF-8"?>
@@ -109,10 +109,10 @@ ${posts
       <guid isPermaLink="true">${baseUrl}/blog/${post.year}/${post.slug}</guid>
       <pubDate>${new Date(post.date).toUTCString()}</pubDate>
       <category>${post.category}</category>
-${post.tags.map((tag) => `      <category>${tag}</category>`).join("\n")}
-    </item>`,
+${post.tags.map(tag => `      <category>${tag}</category>`).join('\n')}
+    </item>`
   )
-  .join("\n")}
+  .join('\n')}
   </channel>
 </rss>`;
 

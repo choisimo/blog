@@ -2,9 +2,12 @@ import { getApiBaseUrl } from '@/utils/apiBase';
 
 function getChatBaseUrl(): string {
   const w = typeof window !== 'undefined' ? (window as any) : null;
-  const fromRuntime = w?.APP_CONFIG?.chatBaseUrl || w?.__APP_CONFIG?.chatBaseUrl;
+  const fromRuntime =
+    w?.APP_CONFIG?.chatBaseUrl || w?.__APP_CONFIG?.chatBaseUrl;
   if (typeof fromRuntime === 'string' && fromRuntime) return fromRuntime;
-  const fromEnv = (import.meta as any)?.env?.VITE_CHAT_BASE_URL as string | undefined;
+  const fromEnv = (import.meta as any)?.env?.VITE_CHAT_BASE_URL as
+    | string
+    | undefined;
   if (typeof fromEnv === 'string' && fromEnv) return fromEnv;
   return '';
 }
@@ -13,7 +16,9 @@ function getChatApiKey(): string {
   const w = typeof window !== 'undefined' ? (window as any) : null;
   const fromRuntime = w?.APP_CONFIG?.chatApiKey || w?.__APP_CONFIG?.chatApiKey;
   if (typeof fromRuntime === 'string' && fromRuntime) return fromRuntime;
-  const fromEnv = (import.meta as any)?.env?.VITE_CHAT_API_KEY as string | undefined;
+  const fromEnv = (import.meta as any)?.env?.VITE_CHAT_API_KEY as
+    | string
+    | undefined;
   if (typeof fromEnv === 'string' && fromEnv) return fromEnv;
   return '';
 }
@@ -32,7 +37,9 @@ export async function ensureSession(): Promise<string> {
   } catch {}
 
   const chatBase = getChatBaseUrl();
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
   let url = '';
   if (chatBase) {
     url = `${chatBase.replace(/\/$/, '')}/session`;
@@ -49,18 +56,32 @@ export async function ensureSession(): Promise<string> {
   });
   if (!res.ok) {
     const t = await res.text().catch(() => '');
-    throw new Error(`Failed to create session: ${res.status} ${t.slice(0, 180)}`);
+    throw new Error(
+      `Failed to create session: ${res.status} ${t.slice(0, 180)}`
+    );
   }
   const data = (await res.json().catch(() => ({}))) as any;
-  const id = data?.sessionID || data?.id || data?.data?.sessionID || data?.data?.id;
-  if (!id || typeof id !== 'string') throw new Error('Invalid session response');
-  try { localStorage.setItem(key, id); } catch {}
+  const id =
+    data?.sessionID || data?.id || data?.data?.sessionID || data?.data?.id;
+  if (!id || typeof id !== 'string')
+    throw new Error('Invalid session response');
+  try {
+    localStorage.setItem(key, id);
+  } catch {}
   return id;
 }
 
 export type ChatStreamEvent =
   | { type: 'text'; text: string }
-  | { type: 'sources'; sources: Array<{ title?: string; url?: string; score?: number; snippet?: string }> }
+  | {
+      type: 'sources';
+      sources: Array<{
+        title?: string;
+        url?: string;
+        score?: number;
+        snippet?: string;
+      }>;
+    }
   | { type: 'followups'; questions: string[] }
   | { type: 'context'; page?: { url?: string; title?: string } }
   | { type: 'done' };
@@ -81,7 +102,10 @@ export async function* streamChatEvents(input: {
   const sessionID = await ensureSession();
   const chatBase = getChatBaseUrl();
   let url = '';
-  const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'text/event-stream, application/x-ndjson, text/plain' };
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Accept: 'text/event-stream, application/x-ndjson, text/plain',
+  };
   if (chatBase) {
     url = `${chatBase.replace(/\/$/, '')}/session/${encodeURIComponent(sessionID)}/message`;
     const k = getChatApiKey();
@@ -90,7 +114,8 @@ export async function* streamChatEvents(input: {
     const base = getApiBaseUrl();
     url = `${base.replace(/\/$/, '')}/api/v1/chat/session/${encodeURIComponent(sessionID)}/message`;
   }
-  const stylePrompt = '다음 지침을 따르세요: 말투는 귀엽고 상냥한 애니메이션 여캐릭터(botchi)처럼, 존댓말을 유지하고 과하지 않게 가벼운 말끝(예: ~에요, ~일까요?)과 가끔 이모지(^_^, ✨)를 섞습니다. 응답은 간결하고 핵심만 전합니다.';
+  const stylePrompt =
+    '다음 지침을 따르세요: 말투는 귀엽고 상냥한 애니메이션 여캐릭터(botchi)처럼, 존댓말을 유지하고 과하지 않게 가벼운 말끝(예: ~에요, ~일까요?)과 가끔 이모지(^_^, ✨)를 섞습니다. 응답은 간결하고 핵심만 전합니다.';
   const parts = [
     { type: 'text', text: stylePrompt },
     { type: 'text', text: input.text },
@@ -115,26 +140,38 @@ export async function* streamChatEvents(input: {
     const out: string[] = [];
     if (!obj || typeof obj !== 'object') return out;
     if (typeof obj.content === 'string') out.push(obj.content);
-    if (Array.isArray(obj.parts)) for (const p of obj.parts) if (p) {
-      if (typeof (p as any).text === 'string') out.push((p as any).text);
-      else if (typeof (p as any).content === 'string') out.push((p as any).content);
-    }
-    if (obj.message && typeof obj.message.content === 'string') out.push(obj.message.content);
-    if (Array.isArray(obj.choices)) for (const c of obj.choices) {
-      const delta = c?.delta?.content ?? c?.message?.content;
-      if (typeof delta === 'string') out.push(delta);
-    }
+    if (Array.isArray(obj.parts))
+      for (const p of obj.parts)
+        if (p) {
+          if (typeof (p as any).text === 'string') out.push((p as any).text);
+          else if (typeof (p as any).content === 'string')
+            out.push((p as any).content);
+        }
+    if (obj.message && typeof obj.message.content === 'string')
+      out.push(obj.message.content);
+    if (Array.isArray(obj.choices))
+      for (const c of obj.choices) {
+        const delta = c?.delta?.content ?? c?.message?.content;
+        if (typeof delta === 'string') out.push(delta);
+      }
     if (typeof obj.delta === 'string') out.push(obj.delta);
     return out;
   };
 
-  const started = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  const started =
+    typeof performance !== 'undefined' && performance.now
+      ? performance.now()
+      : Date.now();
   let firstEmitted = false;
   const markFirst = () => {
     if (!firstEmitted) {
       firstEmitted = true;
-      const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-      if (typeof input.onFirstToken === 'function') input.onFirstToken(Math.max(0, Math.round(now - started)));
+      const now =
+        typeof performance !== 'undefined' && performance.now
+          ? performance.now()
+          : Date.now();
+      if (typeof input.onFirstToken === 'function')
+        input.onFirstToken(Math.max(0, Math.round(now - started)));
     }
   };
 
@@ -161,40 +198,61 @@ export async function* streamChatEvents(input: {
           }
           const data = datas.join('\n');
           if (!data) continue;
-          if (data === '[DONE]' || evt === 'done') { yield { type: 'done' }; continue; }
+          if (data === '[DONE]' || evt === 'done') {
+            yield { type: 'done' };
+            continue;
+          }
           try {
             const obj = JSON.parse(data);
             const texts = extractTexts(obj);
-            for (const t of texts) if (t) { markFirst(); yield { type: 'text', text: t }; }
+            for (const t of texts)
+              if (t) {
+                markFirst();
+                yield { type: 'text', text: t };
+              }
             const srcs = obj?.sources;
             if (Array.isArray(srcs)) yield { type: 'sources', sources: srcs };
             const fups = obj?.followups || obj?.suggestions;
-            if (Array.isArray(fups)) yield { type: 'followups', questions: fups };
+            if (Array.isArray(fups))
+              yield { type: 'followups', questions: fups };
             const ctx = obj?.context;
-            if (ctx && typeof ctx === 'object') yield { type: 'context', page: ctx.page || ctx };
+            if (ctx && typeof ctx === 'object')
+              yield { type: 'context', page: ctx.page || ctx };
           } catch {
             markFirst();
             yield { type: 'text', text: data };
           }
         }
-      } else if (contentType.includes('ndjson') || contentType.includes('jsonl')) {
+      } else if (
+        contentType.includes('ndjson') ||
+        contentType.includes('jsonl')
+      ) {
         while (true) {
           const nl = buffer.indexOf('\n');
           if (nl < 0) break;
           const line = buffer.slice(0, nl).trim();
           buffer = buffer.slice(nl + 1);
           if (!line) continue;
-          if (line === '[DONE]') { yield { type: 'done' }; continue; }
+          if (line === '[DONE]') {
+            yield { type: 'done' };
+            continue;
+          }
           try {
             const obj = JSON.parse(line);
             const texts = extractTexts(obj);
-            for (const t of texts) if (t) { markFirst(); yield { type: 'text', text: t }; }
+            for (const t of texts)
+              if (t) {
+                markFirst();
+                yield { type: 'text', text: t };
+              }
             const srcs = obj?.sources;
             if (Array.isArray(srcs)) yield { type: 'sources', sources: srcs };
             const fups = obj?.followups || obj?.suggestions;
-            if (Array.isArray(fups)) yield { type: 'followups', questions: fups };
+            if (Array.isArray(fups))
+              yield { type: 'followups', questions: fups };
             const ctx = obj?.context;
-            if (ctx && typeof ctx === 'object') yield { type: 'context', page: ctx.page || ctx };
+            if (ctx && typeof ctx === 'object')
+              yield { type: 'context', page: ctx.page || ctx };
           } catch {
             markFirst();
             yield { type: 'text', text: line };
@@ -212,33 +270,50 @@ export async function* streamChatEvents(input: {
         try {
           const obj = JSON.parse(buffer);
           const texts = extractTexts(obj);
-          for (const t of texts) if (t) { markFirst(); yield { type: 'text', text: t }; }
+          for (const t of texts)
+            if (t) {
+              markFirst();
+              yield { type: 'text', text: t };
+            }
           const srcs = (obj as any)?.sources;
           if (Array.isArray(srcs)) yield { type: 'sources', sources: srcs };
           const fups = (obj as any)?.followups || (obj as any)?.suggestions;
           if (Array.isArray(fups)) yield { type: 'followups', questions: fups };
           const ctx = (obj as any)?.context;
-          if (ctx && typeof ctx === 'object') yield { type: 'context', page: (ctx as any).page || ctx };
+          if (ctx && typeof ctx === 'object')
+            yield { type: 'context', page: (ctx as any).page || ctx };
         } catch {
           markFirst();
           yield { type: 'text', text: buffer };
         }
-      } else if (contentType.includes('ndjson') || contentType.includes('jsonl')) {
+      } else if (
+        contentType.includes('ndjson') ||
+        contentType.includes('jsonl')
+      ) {
         const lines = buffer.split('\n');
         for (const s of lines) {
           const line = s.trim();
           if (!line) continue;
-          if (line === '[DONE]') { yield { type: 'done' }; continue; }
+          if (line === '[DONE]') {
+            yield { type: 'done' };
+            continue;
+          }
           try {
             const obj = JSON.parse(line);
             const texts = extractTexts(obj);
-            for (const t of texts) if (t) { markFirst(); yield { type: 'text', text: t }; }
+            for (const t of texts)
+              if (t) {
+                markFirst();
+                yield { type: 'text', text: t };
+              }
             const srcs = obj?.sources;
             if (Array.isArray(srcs)) yield { type: 'sources', sources: srcs };
             const fups = obj?.followups || obj?.suggestions;
-            if (Array.isArray(fups)) yield { type: 'followups', questions: fups };
+            if (Array.isArray(fups))
+              yield { type: 'followups', questions: fups };
             const ctx = obj?.context;
-            if (ctx && typeof ctx === 'object') yield { type: 'context', page: ctx.page || ctx };
+            if (ctx && typeof ctx === 'object')
+              yield { type: 'context', page: ctx.page || ctx };
           } catch {
             markFirst();
             yield { type: 'text', text: line };
@@ -251,7 +326,9 @@ export async function* streamChatEvents(input: {
   }
 }
 
-export async function* streamChatMessage(input: { text: string }): AsyncGenerator<string, void, void> {
+export async function* streamChatMessage(input: {
+  text: string;
+}): AsyncGenerator<string, void, void> {
   for await (const ev of streamChatEvents({ text: input.text })) {
     if (ev.type === 'text') yield ev.text;
   }

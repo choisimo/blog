@@ -86,7 +86,10 @@ export default function CommentSection({ postId }: { postId: string }) {
               setComments(prev => {
                 const before = (prev || []).filter(Boolean) as any[];
                 const keyOf = (it: any) =>
-                  String(it.id || `${it.createdAt || ''}|${it.author || ''}|${(it.content || '').slice(0, 24)}`);
+                  String(
+                    it.id ||
+                      `${it.createdAt || ''}|${it.author || ''}|${(it.content || '').slice(0, 24)}`
+                  );
                 const seen = new Set(before.map(keyOf));
                 const merged = [...before];
                 for (const it of msg.items) {
@@ -195,7 +198,10 @@ export default function CommentSection({ postId }: { postId: string }) {
       {comments && comments.length > 0 ? (
         <ul className='space-y-3'>
           {comments.map((c, idx) => (
-            <li key={c.id || idx} className='rounded-xl border bg-card/50 backdrop-blur-sm p-4'>
+            <li
+              key={c.id || idx}
+              className='rounded-xl border bg-card/50 backdrop-blur-sm p-4'
+            >
               <div className='mb-1 text-sm font-medium'>{c.author}</div>
               <div className='prose prose-sm dark:prose-invert max-w-none leading-6'>
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -204,7 +210,12 @@ export default function CommentSection({ postId }: { postId: string }) {
               </div>
               {c.website && (
                 <div className='mt-1 text-xs text-muted-foreground'>
-                  <a href={c.website} target='_blank' rel='noreferrer' className='underline-offset-2 hover:underline'>
+                  <a
+                    href={c.website}
+                    target='_blank'
+                    rel='noreferrer'
+                    className='underline-offset-2 hover:underline'
+                  >
                     {c.website}
                   </a>
                 </div>
@@ -225,7 +236,10 @@ export default function CommentSection({ postId }: { postId: string }) {
         )
       )}
 
-      <form onSubmit={onSubmit} className='mt-2 grid gap-4 rounded-2xl border bg-card/60 p-4 backdrop-blur-sm'>
+      <form
+        onSubmit={onSubmit}
+        className='mt-2 grid gap-4 rounded-2xl border bg-card/60 p-4 backdrop-blur-sm'
+      >
         <div className='grid gap-1'>
           <label className='text-sm text-muted-foreground' htmlFor='c-author'>
             Name
@@ -253,14 +267,19 @@ export default function CommentSection({ postId }: { postId: string }) {
         {/* Honeypot field - keep hidden from users */}
         <div className='hidden'>
           <label htmlFor='c-hp'>Do not fill</label>
-          <input id='c-hp' value={hp} onChange={e=>setHp(e.target.value)} />
+          <input id='c-hp' value={hp} onChange={e => setHp(e.target.value)} />
         </div>
         <div className='grid gap-1'>
           <div className='flex items-center justify-between'>
-            <label className='text-sm text-muted-foreground' htmlFor='c-content'>
+            <label
+              className='text-sm text-muted-foreground'
+              htmlFor='c-content'
+            >
               Comment
             </label>
-            <span className='text-xs text-muted-foreground'>Markdown supported: **bold**, *italic*, `code`, lists</span>
+            <span className='text-xs text-muted-foreground'>
+              Markdown supported: **bold**, *italic*, `code`, lists
+            </span>
           </div>
           <textarea
             id='c-content'
@@ -280,7 +299,8 @@ export default function CommentSection({ postId }: { postId: string }) {
           </button>
           {archived && (
             <span className='text-xs text-muted-foreground'>
-              This post has archived comments; new comments will show dynamically.
+              This post has archived comments; new comments will show
+              dynamically.
             </span>
           )}
         </div>

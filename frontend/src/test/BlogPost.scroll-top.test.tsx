@@ -21,14 +21,24 @@ vi.mock('@/data/posts', () => {
     published: true,
   };
   return {
-    getPostBySlug: vi.fn(async (_year: string, slug: string) => ({ ...post, slug })),
-    getPostsPage: vi.fn(async () => ({ items: [], page: 1, pageSize: 6, total: 0, totalPages: 0, hasMore: false })),
+    getPostBySlug: vi.fn(async (_year: string, slug: string) => ({
+      ...post,
+      slug,
+    })),
+    getPostsPage: vi.fn(async () => ({
+      items: [],
+      page: 1,
+      pageSize: 6,
+      total: 0,
+      totalPages: 0,
+      hasMore: false,
+    })),
     prefetchPost: vi.fn(() => Promise.resolve()),
   };
 });
 
 vi.mock('@/components/features/blog/MarkdownRenderer', () => ({
-  default: () => <div data-testid="markdown">Rendered Markdown</div>,
+  default: () => <div data-testid='markdown'>Rendered Markdown</div>,
 }));
 
 const renderRoute = (initialEntries: string[]) =>
@@ -36,7 +46,7 @@ const renderRoute = (initialEntries: string[]) =>
     <MemoryRouter initialEntries={initialEntries}>
       <ThemeProvider>
         <Routes>
-          <Route path="/blog/:year/:slug" element={<BlogPost />} />
+          <Route path='/blog/:year/:slug' element={<BlogPost />} />
         </Routes>
       </ThemeProvider>
     </MemoryRouter>
@@ -60,7 +70,11 @@ describe('BlogPost scroll-to-top', () => {
     renderRoute(['/blog/2025/bar']);
     await screen.findByText(/Test Blog Post/i);
 
-    expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'auto' });
+    expect(window.scrollTo).toHaveBeenCalledWith({
+      top: 0,
+      left: 0,
+      behavior: 'auto',
+    });
   });
 
   it('records visited posts to localStorage on load', async () => {

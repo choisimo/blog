@@ -31,11 +31,15 @@ export type StreamEvent =
   | { type: 'done' }
   | { type: 'error'; message: string };
 
-export async function* streamGenerate(prompt: string, opts?: { temperature?: number }) {
+export async function* streamGenerate(
+  prompt: string,
+  opts?: { temperature?: number }
+) {
   const base = getApiBaseUrl();
   const url = new URL(`${base.replace(/\/$/, '')}/api/v1/ai/generate/stream`);
   url.searchParams.set('prompt', prompt);
-  if (opts?.temperature !== undefined) url.searchParams.set('temperature', String(opts.temperature));
+  if (opts?.temperature !== undefined)
+    url.searchParams.set('temperature', String(opts.temperature));
 
   const res = await fetch(url.toString(), {
     method: 'GET',
@@ -74,21 +78,31 @@ export async function* streamGenerate(prompt: string, opts?: { temperature?: num
       events.push({ type: 'open' });
       return events;
     }
-    if (e === 'done' || (payload && (payload.done || payload.type === 'done'))) {
+    if (
+      e === 'done' ||
+      (payload && (payload.done || payload.type === 'done'))
+    ) {
       events.push({ type: 'done' });
       return events;
     }
-    if (e === 'error' || (payload && (payload.type === 'error' || payload.message))) {
-      const msg = typeof payload === 'string' ? payload : String(payload?.message || 'error');
+    if (
+      e === 'error' ||
+      (payload && (payload.type === 'error' || payload.message))
+    ) {
+      const msg =
+        typeof payload === 'string'
+          ? payload
+          : String(payload?.message || 'error');
       events.push({ type: 'error', message: msg });
       return events;
     }
 
-    const token = typeof payload === 'string'
-      ? payload
-      : payload && payload.token !== undefined
-        ? String(payload.token)
-        : undefined;
+    const token =
+      typeof payload === 'string'
+        ? payload
+        : payload && payload.token !== undefined
+          ? String(payload.token)
+          : undefined;
     if (token !== undefined && token !== '') {
       events.push({ type: 'token', token });
     }
@@ -106,9 +120,10 @@ export async function* streamGenerate(prompt: string, opts?: { temperature?: num
         const line = buffer.slice(0, newlineIdx);
         buffer = buffer.slice(newlineIdx + 1);
 
-        const l = line.length > 0 && line.charCodeAt(line.length - 1) === 13 /* \r */
-          ? line.slice(0, -1)
-          : line;
+        const l =
+          line.length > 0 && line.charCodeAt(line.length - 1) === 13 /* \r */
+            ? line.slice(0, -1)
+            : line;
         if (l === '') {
           const evs = flushFrame();
           for (const ev of evs) yield ev;
@@ -128,11 +143,14 @@ export async function* streamGenerate(prompt: string, opts?: { temperature?: num
     // Flush any remaining buffered frame on stream end
     if (buffer.trim().length > 0) {
       // handle last line if not terminated by newline
-      const l = buffer.length > 0 && buffer.charCodeAt(buffer.length - 1) === 13 /* \r */
-        ? buffer.slice(0, -1)
-        : buffer;
+      const l =
+        buffer.length > 0 &&
+        buffer.charCodeAt(buffer.length - 1) === 13 /* \r */
+          ? buffer.slice(0, -1)
+          : buffer;
       if (l.indexOf('event:') === 0) currentEvent = l.slice(6).trim();
-      else if (l.indexOf('data:') === 0) dataParts.push(l.slice(5).replace(/^\s/, ''));
+      else if (l.indexOf('data:') === 0)
+        dataParts.push(l.slice(5).replace(/^\s/, ''));
       buffer = '';
     }
     const evs = flushFrame();
@@ -182,15 +200,19 @@ async function generateContent(prompt: string): Promise<string> {
   }
 
   // 2) Fallback to browser direct Gemini
-  const isDev = typeof window !== 'undefined' && (
+  const isDev =
+    typeof window !== 'undefined' &&
     // Vite dev or localhost origin
-    (import.meta as any)?.env?.DEV || /^localhost$|^127\.0\.0\.1$/.test(window.location.hostname)
-  );
+    ((import.meta as any)?.env?.DEV ||
+      /^localhost$|^127\.0\.0\.1$/.test(window.location.hostname));
   if (!isDev) {
-    throw new Error('AI backend unavailable and browser fallback is disabled in production');
+    throw new Error(
+      'AI backend unavailable and browser fallback is disabled in production'
+    );
   }
   const apiKey = getApiKey();
-  if (!apiKey) throw new Error('Missing Gemini API key in aiMemo.apiKey (dev only)');
+  if (!apiKey)
+    throw new Error('Missing Gemini API key in aiMemo.apiKey (dev only)');
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(
     apiKey

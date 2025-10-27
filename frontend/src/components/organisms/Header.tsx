@@ -19,7 +19,11 @@ export function Header() {
 
   useEffect(() => {
     const check = () => {
-      try { setHasAdmin(!!localStorage.getItem('admin.token')); } catch { setHasAdmin(false); }
+      try {
+        setHasAdmin(!!localStorage.getItem('admin.token'));
+      } catch {
+        setHasAdmin(false);
+      }
     };
     check();
     const handler = () => check();
@@ -27,7 +31,12 @@ export function Header() {
     return () => window.removeEventListener('admin-auth-changed', handler);
   }, []);
 
-  const navigation = hasAdmin ? [...baseNavigation, { name: 'Admin', href: '/admin/new-post', icon: Shield }] : baseNavigation;
+  const navigation = hasAdmin
+    ? [
+        ...baseNavigation,
+        { name: 'Admin', href: '/admin/new-post', icon: Shield },
+      ]
+    : baseNavigation;
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 

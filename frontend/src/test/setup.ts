@@ -63,9 +63,19 @@ const stubManifest = {
 };
 
 global.fetch = (input: any, init?: any): Promise<Response> => {
-  const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : (input as Request).url;
+  const url =
+    typeof input === 'string'
+      ? input
+      : input instanceof URL
+        ? input.toString()
+        : (input as Request).url;
   if (url.endsWith('/posts-manifest.json')) {
-    return Promise.resolve(new Response(JSON.stringify(stubManifest), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    return Promise.resolve(
+      new Response(JSON.stringify(stubManifest), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
   }
   return originalFetch(input as any, init);
 };

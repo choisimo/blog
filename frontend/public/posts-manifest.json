@@ -20,6 +20,7 @@
       "author": "Admin",
       "readingTime": "3 min read",
       "published": true,
+      "coverImage": "/images/2025/fataldeadlock.png",
       "url": "/blog/2025/java-concurrency-journal"
     },
     {
@@ -125,6 +126,7 @@
       "author": "Admin",
       "readingTime": "3 min read",
       "published": true,
+      "coverImage": "/images/2025/kernelfault.png",
       "url": "/blog/2025/grub-kernel-error-journal"
     },
     {
@@ -337,6 +339,7 @@
       "author": "Admin",
       "readingTime": "4 min read",
       "published": true,
+      "coverImage": "/images/2025/javatrain.png",
       "url": "/blog/2025/java-through-my-bytecode-journal"
     },
     {
@@ -400,6 +403,7 @@
       "author": "Admin",
       "readingTime": "4 min read",
       "published": true,
+      "coverImage": "/images/2025/deadlock.png",
       "url": "/blog/2025/tcpip-revolution-journal"
     },
     {
@@ -444,6 +448,7 @@
       "author": "Admin",
       "readingTime": "3 min read",
       "published": true,
+      "coverImage": "/images/2025/nuclear.png",
       "url": "/blog/2025/arpanet-resilience-journal"
     },
     {
@@ -1760,6 +1765,7 @@
       "author": "Admin",
       "readingTime": "1 min read",
       "published": true,
+      "coverImage": "https://github.com/user-attachments/assets/4682dcc7-88b0-4d63-832a-8cf561be9a82",
       "url": "/blog/2024/3"
     },
     {
@@ -1775,6 +1781,7 @@
       "author": "Admin",
       "readingTime": "1 min read",
       "published": true,
+      "coverImage": "https://github.com/user-attachments/assets/42e76be2-9749-47c2-92a4-a14ea5f91237",
       "url": "/blog/2024/1"
     },
     {
@@ -1962,6 +1969,7 @@
       "author": "Admin",
       "readingTime": "1 min read",
       "published": true,
+      "coverImage": "https://images.unsplash.com/photo-1727200452521-ee63ae8682a8?w=1400&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHw1Mnx8fGVufDB8fHx8fA%3D%3D",
       "url": "/blog/2024/4"
     },
     {
@@ -2016,6 +2024,7 @@
       "author": "Admin",
       "readingTime": "1 min read",
       "published": true,
+      "coverImage": "https://github.com/user-attachments/assets/64b064ef-d713-4e7e-90a8-b9c83ae0e1c8",
       "url": "/blog/2024/2"
     },
     {
@@ -2076,7 +2085,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-10-27T14:56:01.934Z",
+  "generatedAt": "2025-10-27T15:20:39.305Z",
   "years": [
     "2025",
     "2024"

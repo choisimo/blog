@@ -24,7 +24,7 @@ beforeEach(() => {
 
 afterEach(() => {
   // Ensure any stubbed ai-memo-pad elements are removed between tests
-  document.querySelectorAll('ai-memo-pad').forEach((el) => el.remove());
+  document.querySelectorAll('ai-memo-pad').forEach(el => el.remove());
   cleanup();
 });
 
@@ -32,14 +32,18 @@ describe('FloatingActionBar feature flag', () => {
   it('hides VisitedPostsMinimap when FAB enabled', async () => {
     seedVisited();
     await withFab(true);
-    const historyTriggers = screen.queryAllByLabelText('Open visited posts history');
+    const historyTriggers = screen.queryAllByLabelText(
+      'Open visited posts history'
+    );
     expect(historyTriggers.length).toBe(0);
   });
 
   it('shows VisitedPostsMinimap when FAB disabled', async () => {
     seedVisited();
     await withFab(false);
-    const historyTriggers = screen.queryAllByLabelText('Open visited posts history');
+    const historyTriggers = screen.queryAllByLabelText(
+      'Open visited posts history'
+    );
     expect(historyTriggers.length).toBeGreaterThan(0);
   });
 
@@ -55,7 +59,9 @@ describe('FloatingActionBar feature flag', () => {
 
     // Stub ai-memo web component with a shadow root and an open panel
     const aiMemo = document.createElement('ai-memo-pad') as any;
-    const shadow = aiMemo.attachShadow ? aiMemo.attachShadow({ mode: 'open' }) : (aiMemo as any).shadowRoot;
+    const shadow = aiMemo.attachShadow
+      ? aiMemo.attachShadow({ mode: 'open' })
+      : (aiMemo as any).shadowRoot;
     const panel = document.createElement('div');
     panel.id = 'panel';
     panel.className = 'open';
@@ -69,15 +75,21 @@ describe('FloatingActionBar feature flag', () => {
 
     // Wait for FAB toolbar
     await waitFor(() => {
-      expect(screen.queryByRole('toolbar', { name: 'Floating actions' })).not.toBeNull();
+      expect(
+        screen.queryByRole('toolbar', { name: 'Floating actions' })
+      ).not.toBeNull();
     });
 
     // Expect memo action buttons visible in FAB (queried by aria-label)
     expect(screen.queryByRole('button', { name: '선택 추가' })).not.toBeNull();
-    expect(screen.queryByRole('button', { name: '그래프에 추가' })).not.toBeNull();
+    expect(
+      screen.queryByRole('button', { name: '그래프에 추가' })
+    ).not.toBeNull();
     expect(screen.queryByRole('button', { name: 'AI 요약' })).not.toBeNull();
     expect(screen.queryByRole('button', { name: 'Catalyst' })).not.toBeNull();
-    expect(screen.queryByRole('button', { name: '메모 다운로드' })).not.toBeNull();
+    expect(
+      screen.queryByRole('button', { name: '메모 다운로드' })
+    ).not.toBeNull();
   });
 
   it('hides FAB while legacy history overlay is open and shows after close', async () => {
@@ -86,7 +98,9 @@ describe('FloatingActionBar feature flag', () => {
 
     // Stub ai-memo web component with a shadow root and a visible history overlay
     const aiMemo = document.createElement('ai-memo-pad') as any;
-    const shadow = aiMemo.attachShadow ? aiMemo.attachShadow({ mode: 'open' }) : (aiMemo as any).shadowRoot;
+    const shadow = aiMemo.attachShadow
+      ? aiMemo.attachShadow({ mode: 'open' })
+      : (aiMemo as any).shadowRoot;
     const overlay = document.createElement('div');
     overlay.id = 'historyOverlay';
     overlay.style.display = 'block'; // simulate overlay open
@@ -100,14 +114,18 @@ describe('FloatingActionBar feature flag', () => {
 
     // FAB should be hidden while overlay is open
     await waitFor(() => {
-      const toolbar = screen.queryByRole('toolbar', { name: 'Floating actions' });
+      const toolbar = screen.queryByRole('toolbar', {
+        name: 'Floating actions',
+      });
       expect(toolbar).toBeNull();
     });
 
     // Close overlay and expect FAB to appear
     overlay.style.display = 'none';
     await waitFor(() => {
-      const toolbar = screen.queryByRole('toolbar', { name: 'Floating actions' });
+      const toolbar = screen.queryByRole('toolbar', {
+        name: 'Floating actions',
+      });
       expect(toolbar).not.toBeNull();
     });
   });

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BlogCard, BlogCardSkeleton } from '@/components';
 import { Pagination } from '@/components';
@@ -24,6 +24,15 @@ const Blog = () => {
   const categoryParam = searchParams.get('category');
   const pageParam = searchParams.get('page');
 
+  const initialCategory = useMemo(
+    () => categoryParam ?? 'all',
+    [categoryParam]
+  );
+  const initialPage = useMemo(() => {
+    const parsed = pageParam ? parseInt(pageParam, 10) : NaN;
+    return !Number.isNaN(parsed) && parsed > 0 ? parsed : 1;
+  }, [pageParam]);
+
   const [pageData, setPageData] = useState<PostsPage<BlogPost>>({
     items: [],
     page: 1,
@@ -35,31 +44,31 @@ const Blog = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('date');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(initialPage);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [categories, setCategories] = useState<string[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [siteTotalPosts, setSiteTotalPosts] = useState(0);
   const [showAllTags, setShowAllTags] = useState(false);
 
+  const skipNextPageResetRef = useRef(true);
+
   // Debounce search term to avoid excessive filtering
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  // Handle URL parameters
+  // Handle URL parameter updates
   useEffect(() => {
-    if (categoryParam) {
-      setSelectedCategory(categoryParam);
+    if (initialCategory !== selectedCategory) {
+      skipNextPageResetRef.current = true;
+      setSelectedCategory(initialCategory);
     }
-    if (pageParam) {
-      const page = parseInt(pageParam);
-      if (!isNaN(page) && page > 0) {
-        setCurrentPage(page);
-      }
+    if (initialPage !== currentPage) {
+      setCurrentPage(initialPage);
     }
-  }, [categoryParam, pageParam]);
+  }, [initialCategory, initialPage, selectedCategory, currentPage]);
 
   // Load a page of posts (metadata-only) whenever filters/sort/page change
   useEffect(() => {
@@ -126,8 +135,23 @@ const Blog = () => {
 
   // Reset page when filters change
   useEffect(() => {
+    if (skipNextPageResetRef.current) {
+      skipNextPageResetRef.current = false;
+      return;
+    }
     setCurrentPage(1);
-  }, [debouncedSearchTerm, selectedCategory, selectedTags, sortBy]);
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('page', '1');
+      return newParams;
+    });
+  }, [
+    debouncedSearchTerm,
+    selectedCategory,
+    selectedTags,
+    sortBy,
+    setSearchParams,
+  ]);
 
   const handleTagToggle = useCallback((tag: string) => {
     setSelectedTags(prev =>
@@ -180,7 +204,10 @@ const Blog = () => {
           {/* Search (primary) */}
           <div className='bg-card/50 backdrop-blur-sm border rounded-xl p-6 shadow-sm'>
             <div className='relative'>
-              <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' aria-hidden='true' />
+              <Search
+                className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground'
+                aria-hidden='true'
+              />
               <Input
                 type='text'
                 placeholder='Search posts, tags, or content...'
@@ -195,7 +222,10 @@ const Blog = () => {
           {/* Category + Sort (secondary) */}
           <div className='bg-card/50 backdrop-blur-sm border rounded-xl p-4 md:p-6 shadow-sm'>
             <div className='flex flex-col md:flex-row gap-4'>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <Select
+                value={selectedCategory}
+                onValueChange={setSelectedCategory}
+              >
                 <SelectTrigger className='w-full md:w-[240px]'>
                   <SelectValue placeholder='Select category' />
                 </SelectTrigger>
@@ -243,7 +273,9 @@ const Blog = () => {
                 </Button>
               </div>
 
-              {(selectedTags.length > 0 || debouncedSearchTerm || selectedCategory !== 'all') && (
+              {(selectedTags.length > 0 ||
+                debouncedSearchTerm ||
+                selectedCategory !== 'all') && (
                 <Button
                   variant='ghost'
                   size='sm'
@@ -271,7 +303,7 @@ const Blog = () => {
                   aria-label={`Toggle tag ${tag}`}
                   tabIndex={0}
                   onClick={() => handleTagToggle(tag)}
-                  onKeyDown={(e) => {
+                  onKeyDown={e => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
                       handleTagToggle(tag);
@@ -317,9 +349,9 @@ const Blog = () => {
 
         {/* Blog Posts Grid/List */}
         {loading ? (
-            <div
-              className={`grid gap-8 ${viewMode === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}
-            >
+          <div
+            className={`grid gap-8 ${viewMode === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}
+          >
             {Array.from({ length: pageData.pageSize || POSTS_PER_PAGE }).map(
               (_, index) => (
                 <BlogCardSkeleton key={index} />

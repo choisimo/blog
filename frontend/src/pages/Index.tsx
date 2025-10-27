@@ -7,7 +7,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { ArrowRight, BookOpen, Code2, Sparkles, TrendingUp } from 'lucide-react';
+import {
+  ArrowRight,
+  BookOpen,
+  Code2,
+  Sparkles,
+  TrendingUp,
+} from 'lucide-react';
 import { BlogCard, BlogCardSkeleton } from '@/components';
 import { getPosts, getPostsPage, getPostBySlug } from '@/data/posts';
 import type { BlogPost } from '@/types/blog';
@@ -77,10 +83,16 @@ const Index = () => {
           const resolved = await Promise.all(
             picks.map(async p => (await getPostBySlug(p.year, p.slug)) || null)
           );
-          const filtered = resolved.filter((p): p is BlogPost => !!p).slice(0, 3);
+          const filtered = resolved
+            .filter((p): p is BlogPost => !!p)
+            .slice(0, 3);
           setFeaturedPosts(filtered);
         } else {
-          const res = await getPostsPage({ page: 1, pageSize: 3, sort: 'date' });
+          const res = await getPostsPage({
+            page: 1,
+            pageSize: 3,
+            sort: 'date',
+          });
           setFeaturedPosts(res.items);
         }
       } catch {
@@ -119,7 +131,10 @@ const Index = () => {
     window.addEventListener('visitedposts:update', onCustom as EventListener);
     return () => {
       window.removeEventListener('storage', onStorage);
-      window.removeEventListener('visitedposts:update', onCustom as EventListener);
+      window.removeEventListener(
+        'visitedposts:update',
+        onCustom as EventListener
+      );
     };
   }, []);
 
@@ -128,7 +143,12 @@ const Index = () => {
     () => [
       { name: 'AI & ML', icon: Sparkles, count: 12, color: 'text-purple-500' },
       { name: 'Web Dev', icon: Code2, count: 18, color: 'text-blue-500' },
-      { name: 'Algorithms', icon: TrendingUp, count: 15, color: 'text-green-500' },
+      {
+        name: 'Algorithms',
+        icon: TrendingUp,
+        count: 15,
+        color: 'text-green-500',
+      },
       { name: 'DevOps', icon: BookOpen, count: 10, color: 'text-orange-500' },
     ],
     []
@@ -179,7 +199,8 @@ const Index = () => {
           <div className='flex items-center justify-between mb-6'>
             <h2 className='text-3xl font-bold'>Search Results</h2>
             <div className='text-sm text-muted-foreground'>
-              {searchResults.length} match{searchResults.length === 1 ? '' : 'es'}
+              {searchResults.length} match
+              {searchResults.length === 1 ? '' : 'es'}
             </div>
           </div>
           <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
@@ -197,7 +218,9 @@ const Index = () => {
         </div>
         <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
           {featuredLoading
-            ? Array.from({ length: 3 }).map((_, i) => <BlogCardSkeleton key={i} />)
+            ? Array.from({ length: 3 }).map((_, i) => (
+                <BlogCardSkeleton key={i} />
+              ))
             : featuredPosts.map(post => (
                 <BlogCard key={`${post.year}/${post.slug}`} post={post} />
               ))}
@@ -220,11 +243,19 @@ const Index = () => {
             {recentlyViewed.map(item => (
               <Link key={item.path} to={item.path} className='group'>
                 <div className='bg-card border rounded-xl p-6 hover:shadow-lg hover:scale-105 transition-all duration-300'>
-                  <div className='mb-3 text-sm text-muted-foreground'>{item.year}/{item.slug}</div>
-                  <h3 className='font-semibold line-clamp-2 group-hover:text-primary transition-colors mb-2'>{item.title}</h3>
+                  <div className='mb-3 text-sm text-muted-foreground'>
+                    {item.year}/{item.slug}
+                  </div>
+                  <h3 className='font-semibold line-clamp-2 group-hover:text-primary transition-colors mb-2'>
+                    {item.title}
+                  </h3>
                   {item.coverImage ? (
                     <div className='mt-2 h-36 w-full overflow-hidden rounded'>
-                      <img src={item.coverImage} alt='' className='h-full w-full object-cover' />
+                      <img
+                        src={item.coverImage}
+                        alt=''
+                        className='h-full w-full object-cover'
+                      />
                     </div>
                   ) : null}
                 </div>
@@ -236,7 +267,9 @@ const Index = () => {
 
       {/* Categories Section */}
       <section className='mb-16'>
-        <h2 className='text-3xl font-bold mb-8 text-center'>Popular Categories</h2>
+        <h2 className='text-3xl font-bold mb-8 text-center'>
+          Popular Categories
+        </h2>
         <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
           {categories.map(category => (
             <Card
@@ -244,7 +277,9 @@ const Index = () => {
               className='group hover:shadow-xl transition-all cursor-pointer hover:-translate-y-0.5'
             >
               <CardHeader className='text-center'>
-                <category.icon className={`h-8 w-8 mx-auto mb-2 ${category.color} group-hover:text-primary`} />
+                <category.icon
+                  className={`h-8 w-8 mx-auto mb-2 ${category.color} group-hover:text-primary`}
+                />
                 <CardTitle className='text-lg'>{category.name}</CardTitle>
                 <CardDescription>{category.count} posts</CardDescription>
               </CardHeader>
@@ -275,8 +310,12 @@ const Index = () => {
         ) : (
           <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
             {loading
-              ? Array.from({ length: 3 }).map((_, i) => <BlogCardSkeleton key={i} />)
-              : latestPosts.map(post => <BlogCard key={`${post.year}/${post.slug}`} post={post} />)}
+              ? Array.from({ length: 3 }).map((_, i) => (
+                  <BlogCardSkeleton key={i} />
+                ))
+              : latestPosts.map(post => (
+                  <BlogCard key={`${post.year}/${post.slug}`} post={post} />
+                ))}
           </div>
         )}
       </section>

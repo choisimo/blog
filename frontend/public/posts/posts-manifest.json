@@ -1,6 +1,456 @@
 {
-  "total": 74,
+  "total": 99,
   "items": [
+    {
+      "path": "/posts/2025/java-concurrency-journal.md",
+      "year": "2025",
+      "slug": "java-concurrency-journal",
+      "title": "스레드 덤프와 데드락 다이어그램, 자바 동시성의 밤을 기록하다",
+      "description": "Thread, synchronized, ExecutorService, ForkJoinPool을 오가며 레이스와 데드락을 추적했던 내 1인칭 동시성 일기",
+      "snippet": "Thread, synchronized, ExecutorService, ForkJoinPool을 오가며 레이스와 데드락을 추적했던 내 1인칭 동시성 일기",
+      "date": "2025-10-27",
+      "tags": [
+        "Java",
+        "Concurrency",
+        "Thread",
+        "ExecutorService",
+        "락"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "coverImage": "/images/2025/fataldeadlock.png",
+      "url": "/blog/2025/java-concurrency-journal"
+    },
+    {
+      "path": "/posts/2025/java-memory-model-journal.md",
+      "year": "2025",
+      "slug": "java-memory-model-journal",
+      "title": "Happens-before를 붙잡기까지, 자바 메모리 모델을 해부한 내 여정",
+      "description": "JMM 명세와 volatile, synchronized, reorder의 경계를 파헤치며 가시성과 순서를 이해한 개발자의 기록",
+      "snippet": "JMM 명세와 volatile, synchronized, reorder의 경계를 파헤치며 가시성과 순서를 이해한 개발자의 기록",
+      "date": "2025-10-27",
+      "tags": [
+        "Java",
+        "메모리모델",
+        "volatile",
+        "HappensBefore",
+        "JMM"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/java-memory-model-journal"
+    },
+    {
+      "path": "/posts/2025/java-stream-api-journal.md",
+      "year": "2025",
+      "slug": "java-stream-api-journal",
+      "title": "람다와 파이프라인 사이, 스트림 API에 빠져들던 밤",
+      "description": "람다 표현식과 스트림 파이프라인을 처음 만났을 때의 놀람, 컬렉터와 병렬 스트림 튜닝까지 기록한 1인칭 에세이",
+      "snippet": "람다 표현식과 스트림 파이프라인을 처음 만났을 때의 놀람, 컬렉터와 병렬 스트림 튜닝까지 기록한 1인칭 에세이",
+      "date": "2025-10-27",
+      "tags": [
+        "Java",
+        "StreamAPI",
+        "Lambda",
+        "FunctionalProgramming",
+        "병렬스트림"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/java-stream-api-journal"
+    },
+    {
+      "path": "/posts/2025/shell-powertools-journal.md",
+      "year": "2025",
+      "slug": "shell-powertools-journal",
+      "title": "awk와 sed, 그리고 xargs에 빚진 작은 승리들",
+      "description": "파이프라인 하나로 서버를 살린 순간을 떠올리며, 내가 사랑하는 세 가지 쉘 친구들을 일기처럼 적어 봤습니다.",
+      "snippet": "파이프라인 하나로 서버를 살린 순간을 떠올리며, 내가 사랑하는 세 가지 쉘 친구들을 일기처럼 적어 봤습니다.",
+      "date": "2025-10-27",
+      "tags": [
+        "awk",
+        "sed",
+        "xargs",
+        "리눅스쉘",
+        "자동화"
+      ],
+      "category": "Linux",
+      "author": "Admin",
+      "readingTime": "4 min read",
+      "published": true,
+      "url": "/blog/2025/shell-powertools-journal"
+    },
+    {
+      "path": "/posts/2025/java-gc-journal.md",
+      "year": "2025",
+      "slug": "java-gc-journal",
+      "title": "Stop-the-world의 숨결을 들으며, GC와 화해한 나의 기록",
+      "description": "Serial, CMS, G1을 거치며 힙 덤프와 함께 밤을 지새운 개발자가 GC의 진화와 전략을 되돌아본 일기",
+      "snippet": "Serial, CMS, G1을 거치며 힙 덤프와 함께 밤을 지새운 개발자가 GC의 진화와 전략을 되돌아본 일기",
+      "date": "2025-10-26",
+      "tags": [
+        "Java",
+        "GarbageCollection",
+        "JVM",
+        "G1",
+        "메모리관리"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/java-gc-journal"
+    },
+    {
+      "path": "/posts/2025/grub-kernel-error-journal.md",
+      "year": "2025",
+      "slug": "grub-kernel-error-journal",
+      "title": "'You need to load the kernel first'와 함께한 새벽의 구조 요청",
+      "description": "pacman -Syu 한 번 눌렀을 뿐인데 부팅이 멈췄다면? 새벽에 겪은 GRUB 구출기를 일기처럼 정리했습니다.",
+      "snippet": "pacman -Syu 한 번 눌렀을 뿐인데 부팅이 멈췄다면? 새벽에 겪은 GRUB 구출기를 일기처럼 정리했습니다.",
+      "date": "2025-10-25",
+      "tags": [
+        "Arch Linux",
+        "GRUB",
+        "부팅오류",
+        "시스템복구",
+        "에세이"
+      ],
+      "category": "Linux",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "coverImage": "/images/2025/kernelfault.png",
+      "url": "/blog/2025/grub-kernel-error-journal"
+    },
+    {
+      "path": "/posts/2025/java-generics-journal.md",
+      "year": "2025",
+      "slug": "java-generics-journal",
+      "title": "타입 변수와 야생의 캐스팅: 제네릭을 길들이던 내 기록",
+      "description": "로 타입과 ClassCastException에 질려, 제네릭이 도입되던 현장을 지켜보며 타입 안정성을 붙잡은 개발자 일기",
+      "snippet": "로 타입과 ClassCastException에 질려, 제네릭이 도입되던 현장을 지켜보며 타입 안정성을 붙잡은 개발자 일기",
+      "date": "2025-10-25",
+      "tags": [
+        "Java",
+        "Generics",
+        "타입시스템",
+        "Erasure",
+        "컬렉션"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/java-generics-journal"
+    },
+    {
+      "path": "/posts/2025/6g-sentient-future-journal.md",
+      "year": "2025",
+      "slug": "6g-sentient-future-journal",
+      "title": "6G 연구소의 밤, 지각 있는 네트워크를 그리는 상상",
+      "description": "테라헤르츠 실험과 지능형 표면, AI 네이티브 아키텍처, 통신-감지 통합을 넘나들며 6G의 미래를 환상과 현실 사이에서 탐구한 기록",
+      "snippet": "테라헤르츠 실험과 지능형 표면, AI 네이티브 아키텍처, 통신-감지 통합을 넘나들며 6G의 미래를 환상과 현실 사이에서 탐구한 기록",
+      "date": "2025-10-24",
+      "tags": [
+        "6G",
+        "테라헤르츠",
+        "RIS",
+        "AI네이티브",
+        "JCS"
+      ],
+      "category": "Network",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/6g-sentient-future-journal"
+    },
+    {
+      "path": "/posts/2025/proxmox-thin-provision.md",
+      "year": "2025",
+      "slug": "proxmox-thin-provision",
+      "title": "ZFS 풀 앞에서 멈춰 선 Proxmox, 그 밤의 기록",
+      "description": "1.85TB 디스크를 추가하려다 ZFS가 '공간 없음'을 외친 밤. 스냅샷과 예약 공간 사이에서 배운 얇은 줄타기 경험담",
+      "snippet": "1.85TB 디스크를 추가하려다 ZFS가 '공간 없음'을 외친 밤. 스냅샷과 예약 공간 사이에서 배운 얇은 줄타기 경험담",
+      "date": "2025-10-24",
+      "tags": [
+        "Proxmox",
+        "ZFS",
+        "Thin Provision",
+        "가상화",
+        "스토리지"
+      ],
+      "category": "Linux",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/proxmox-thin-provision"
+    },
+    {
+      "path": "/posts/2025/5g-intelligent-fabric-journal.md",
+      "year": "2025",
+      "slug": "5g-intelligent-fabric-journal",
+      "title": "5G 기지국 그림자에서, 슬라이스와 에지가 만든 새로운 질서",
+      "description": "URLLC, 슬라이스, 에지 노드를 직접 구축하며 5G가 사람과 기계를 동시에 품어내는 과정을 기록했다",
+      "snippet": "URLLC, 슬라이스, 에지 노드를 직접 구축하며 5G가 사람과 기계를 동시에 품어내는 과정을 기록했다",
+      "date": "2025-10-23",
+      "tags": [
+        "5G",
+        "네트워크슬라이싱",
+        "에지컴퓨팅",
+        "URLLC",
+        "제로트러스트"
+      ],
+      "category": "Network",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/5g-intelligent-fabric-journal"
+    },
+    {
+      "path": "/posts/2025/linux-device-mount-journal.md",
+      "year": "2025",
+      "slug": "linux-device-mount-journal",
+      "title": "언마운트 이후에도 /dev/sda1이 남아있는 이유를 이해한 밤",
+      "description": "장치 파일과 마운트의 차이를 헤맸던 날, 그리고 USB 허브의 SD 카드를 다시 인식시키기까지의 기록",
+      "snippet": "장치 파일과 마운트의 차이를 헤맸던 날, 그리고 USB 허브의 SD 카드를 다시 인식시키기까지의 기록",
+      "date": "2025-10-23",
+      "tags": [
+        "mount",
+        "umount",
+        "장치파일",
+        "USB",
+        "네트워킹"
+      ],
+      "category": "Linux",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/linux-device-mount-journal"
+    },
+    {
+      "path": "/posts/2025/java-static-polymorphism-masterclass.md",
+      "year": "2025",
+      "slug": "java-static-polymorphism-masterclass",
+      "title": "static 키워드와 다형성으로 밤을 지새운 어느 개발자의 기록",
+      "description": "정적 영역과 힙 사이에서 헤매던 날, 다형성의 그림자와 씨름한 새벽, 그리고 equals를 다시 쓰며 깨달은 객체지향의 본질",
+      "snippet": "정적 영역과 힙 사이에서 헤매던 날, 다형성의 그림자와 씨름한 새벽, 그리고 equals를 다시 쓰며 깨달은 객체지향의 본질",
+      "date": "2025-10-22",
+      "tags": [
+        "Java",
+        "static",
+        "Polymorphism",
+        "OOP 심화",
+        "JVM 메모리"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "4 min read",
+      "published": true,
+      "url": "/blog/2025/java-static-polymorphism-masterclass"
+    },
+    {
+      "path": "/posts/2025/lte-cloud-native-journal.md",
+      "year": "2025",
+      "slug": "lte-cloud-native-journal",
+      "title": "4G 신호와 클라우드 콘솔 사이, 앱 경제를 실감한 나의 하루",
+      "description": "LTE 필드 테스트와 데이터센터 자동화가 교차하던 2010년대, 앱 경제와 클라우드 네트워크를 동시에 길들인 개발자의 기록",
+      "snippet": "LTE 필드 테스트와 데이터센터 자동화가 교차하던 2010년대, 앱 경제와 클라우드 네트워크를 동시에 길들인 개발자의 기록",
+      "date": "2025-10-22",
+      "tags": [
+        "4G",
+        "LTE",
+        "클라우드컴퓨팅",
+        "SDN",
+        "NFV",
+        "IPv6"
+      ],
+      "category": "Network",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/lte-cloud-native-journal"
+    },
+    {
+      "path": "/posts/2025/broadband-cdn-transition-journal.md",
+      "year": "2025",
+      "slug": "broadband-cdn-transition-journal",
+      "title": "ADSL 불빛과 CDN 랙 사이에서 보낸 2000년대의 밤",
+      "description": "DSL 모뎀의 깜박임, 아카마이 캐시의 열기, 3G 기지국의 소음 속에서 상시 접속 시대를 맞이한 나의 기록",
+      "snippet": "DSL 모뎀의 깜박임, 아카마이 캐시의 열기, 3G 기지국의 소음 속에서 상시 접속 시대를 맞이한 나의 기록",
+      "date": "2025-10-21",
+      "tags": [
+        "광대역",
+        "CDN",
+        "3G",
+        "NAT",
+        "TLS"
+      ],
+      "category": "Network",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/broadband-cdn-transition-journal"
+    },
+    {
+      "path": "/posts/2025/java-oop-superchallenge.md",
+      "year": "2025",
+      "slug": "java-oop-superchallenge",
+      "title": "JVM 메모리 지도 들고 자바 OOP 문제를 풀어본 기록",
+      "description": "정적 초기화 블록에서 시작해 super()로 끝나는 여섯 가지  문제들. 그 밤의 디버깅 노트를 그대로 옮겨 붙였습니다.",
+      "snippet": "정적 초기화 블록에서 시작해 super()로 끝나는 여섯 가지  문제들. 그 밤의 디버깅 노트를 그대로 옮겨 붙였습니다.",
+      "date": "2025-10-21",
+      "tags": [
+        "Java",
+        "JVM 메모리",
+        "static",
+        "다형성",
+        "상속",
+        "instanceof"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "4 min read",
+      "published": true,
+      "url": "/blog/2025/java-oop-superchallenge"
+    },
+    {
+      "path": "/posts/2025/java-through-my-bytecode-journal.md",
+      "year": "2025",
+      "slug": "java-through-my-bytecode-journal",
+      "title": "바이트코드 기차를 타고 자바 세계를 일주한 날",
+      "description": "Write once, run anywhere라는 간판을 붙인 자바의 철도를 따라가며, JDK에서 GC까지 몸소 느꼈던 이야기와 살아 있는 코드 메모",
+      "snippet": "Write once, run anywhere라는 간판을 붙인 자바의 철도를 따라가며, JDK에서 GC까지 몸소 느꼈던 이야기와 살아 있는 코드 메모",
+      "date": "2025-10-20",
+      "tags": [
+        "Java",
+        "JVM",
+        "자료형",
+        "연산자",
+        "객체지향"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "4 min read",
+      "published": true,
+      "coverImage": "/images/2025/javatrain.png",
+      "url": "/blog/2025/java-through-my-bytecode-journal"
+    },
+    {
+      "path": "/posts/2025/web-commercialization-journal.md",
+      "year": "2025",
+      "slug": "web-commercialization-journal",
+      "title": "모자이크를 띄운 날, 월드 와이드 웹이 손에 들어왔다",
+      "description": "웹 브라우저와 DNS, BGP가 열어젖힌 1990년대 인터넷의 폭발을 현장에서 지켜본 나의 기록",
+      "snippet": "웹 브라우저와 DNS, BGP가 열어젖힌 1990년대 인터넷의 폭발을 현장에서 지켜본 나의 기록",
+      "date": "2025-10-20",
+      "tags": [
+        "월드와이드웹",
+        "모자이크",
+        "NSFNET",
+        "BGP",
+        "CIDR"
+      ],
+      "category": "Network",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/web-commercialization-journal"
+    },
+    {
+      "path": "/posts/2025/algorithms-through-my-eyes.md",
+      "year": "2025",
+      "slug": "algorithms-through-my-eyes",
+      "title": "알고리즘 수업 노트를 다시 펼쳐 보며",
+      "description": "기초 알고리즘 수업 노트를 다시 펼쳐 보며...",
+      "snippet": "기초 알고리즘 수업 노트를 다시 펼쳐 보며...",
+      "date": "2025-10-19",
+      "tags": [
+        "알고리즘",
+        "복잡도",
+        "분할정복",
+        "동적계획법",
+        "탐욕법"
+      ],
+      "category": "Computer Science",
+      "author": "Admin",
+      "readingTime": "5 min read",
+      "published": true,
+      "url": "/blog/2025/algorithms-through-my-eyes"
+    },
+    {
+      "path": "/posts/2025/tcpip-revolution-journal.md",
+      "year": "2025",
+      "slug": "tcpip-revolution-journal",
+      "title": "TCP/IP 깃발 아래, 내가 본 인터넷의 탄생",
+      "description": "NCP에서 TCP/IP로 전환하던 플래그 데이의 긴장과 감동을 되살린 개발자의 일기",
+      "snippet": "NCP에서 TCP/IP로 전환하던 플래그 데이의 긴장과 감동을 되살린 개발자의 일기",
+      "date": "2025-10-19",
+      "tags": [
+        "TCPIP",
+        "인터넷역사",
+        "플래그데이",
+        "프로토콜디자인",
+        "인터네트워킹"
+      ],
+      "category": "Network",
+      "author": "Admin",
+      "readingTime": "4 min read",
+      "published": true,
+      "coverImage": "/images/2025/deadlock.png",
+      "url": "/blog/2025/tcpip-revolution-journal"
+    },
+    {
+      "path": "/posts/2025/algorithm-mental-simulator.md",
+      "year": "2025",
+      "slug": "algorithm-mental-simulator",
+      "title": "알고리즘을 메모리 영화관에서 돌려보는 밤",
+      "description": "Big-O는 교통수단, 병합 정렬은 지도 조각, 해시는 주소 직통. 시뮬레이터형 두뇌로 재생한 알고리즘 18편의 심화 문제와 비유",
+      "snippet": "Big-O는 교통수단, 병합 정렬은 지도 조각, 해시는 주소 직통. 시뮬레이터형 두뇌로 재생한 알고리즘 18편의 심화 문제와 비유",
+      "date": "2025-10-18",
+      "tags": [
+        "알고리즘",
+        "시간복잡도",
+        "정렬",
+        "탐색트리",
+        "해시",
+        "DP",
+        "Greedy"
+      ],
+      "category": "Computer Science",
+      "author": "Admin",
+      "readingTime": "6 min read",
+      "published": true,
+      "url": "/blog/2025/algorithm-mental-simulator"
+    },
+    {
+      "path": "/posts/2025/arpanet-resilience-journal.md",
+      "year": "2025",
+      "slug": "arpanet-resilience-journal",
+      "title": "스푸트니크의 그림자 아래, 내가 본 ARPANET의 첫 호흡",
+      "description": "냉전의 긴장 속에서 태어난 ARPANET을 따라가며, 패킷 교환과 IMP가 가져온 혁신을 밤새 되짚은 나의 기록",
+      "snippet": "냉전의 긴장 속에서 태어난 ARPANET을 따라가며, 패킷 교환과 IMP가 가져온 혁신을 밤새 되짚은 나의 기록",
+      "date": "2025-10-18",
+      "tags": [
+        "ARPANET",
+        "패킷교환",
+        "인터넷역사",
+        "ColdWar",
+        "네트워크아키텍처"
+      ],
+      "category": "Network",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "coverImage": "/images/2025/nuclear.png",
+      "url": "/blog/2025/arpanet-resilience-journal"
+    },
     {
       "path": "/posts/2025/BST-think01.md",
       "year": "2025",
@@ -110,6 +560,47 @@
       "readingTime": "1 min read",
       "published": false,
       "url": "/blog/2025/ci-trigger-test"
+    },
+    {
+      "path": "/posts/2025/network-evolution-intro-journal.md",
+      "year": "2025",
+      "slug": "network-evolution-intro-journal",
+      "title": "네트워크 연표를 다시 걷기 전, 내가 세운 질문들",
+      "description": "ARPANET부터 6G까지 다시 추적하기 전에, 지각 있는 연결 구조란 무엇인지 스스로에게 던진 질문을 정리한 나의 서문",
+      "snippet": "ARPANET부터 6G까지 다시 추적하기 전에, 지각 있는 연결 구조란 무엇인지 스스로에게 던진 질문을 정리한 나의 서문",
+      "date": "2025-10-17",
+      "tags": [
+        "네트워크역사",
+        "인터넷진화",
+        "서론",
+        "에세이"
+      ],
+      "category": "Network",
+      "author": "Admin",
+      "readingTime": "2 min read",
+      "published": true,
+      "url": "/blog/2025/network-evolution-intro-journal"
+    },
+    {
+      "path": "/posts/2025/spring-boot-realtime-communication.md",
+      "year": "2025",
+      "slug": "spring-boot-realtime-communication",
+      "title": "SSE와 WebSocket 사이에서, 나의 실시간 통신 여정을 적다",
+      "description": "JavaScript와 Spring Boot로 SSE와 WebSocket을 번갈아 구현하며 Redis와 Kafka를 저울질한 밤의 기록",
+      "snippet": "JavaScript와 Spring Boot로 SSE와 WebSocket을 번갈아 구현하며 Redis와 Kafka를 저울질한 밤의 기록",
+      "date": "2025-09-17",
+      "tags": [
+        "SSE",
+        "WebSocket",
+        "Redis",
+        "Kafka",
+        "실시간통신"
+      ],
+      "category": "Web",
+      "author": "Admin",
+      "readingTime": "5 min read",
+      "published": true,
+      "url": "/blog/2025/spring-boot-realtime-communication"
     },
     {
       "path": "/posts/2025/network-evolution-history.md",
@@ -408,23 +899,8 @@
       "url": "/blog/2025/memory-management-study"
     },
     {
-      "path": "/posts/2025/proxmox-thin-provision.md",
-      "year": "2025",
-      "slug": "proxmox-thin-provision",
-      "title": "Proxmox Thin Provision",
-      "description": "안녕하세요\\! Proxmox에서 ZFS 스토리지 사용 시 자주 발생하는 문제입니다. 화면에 보이는 여유 공간과 ZFS가 실제로 새 디스크를 할당할 수 있는 공간 사이에 차이가 있기 때문에 발생하는 현상입니다.\n\n**결론부터 말씀드리면, ZFS 풀(Pool)에 새 가상 디스크(1.85TB)를 위한 공간 예약(`refreservation`)이 불가능할 만큼의",
-      "snippet": "안녕하세요\\! Proxmox에서 ZFS 스토리지 사용 시 자주 발생하는 문제입니다. 화면에 보이는 여유 공간과 ZFS가 실제로 새 디스크를 할당할 수 있는 공간 사이에 차이가 있기 때문에 발생하는 현상입니다.\n\n**결론부터 말씀드리면, ZFS 풀(Pool)에 새 가상 디스크(1.85TB)를 위한 공간 예약(`refreservation`)이 불가능할 만큼의",
-      "date": "2025-01-01",
-      "tags": [],
-      "category": "General",
-      "author": "Admin",
-      "readingTime": "3 min read",
-      "published": true,
-      "url": "/blog/2025/proxmox-thin-provision"
-    },
-    {
-      "path": "/posts/2025/react-native-springboot-mongodb-diary-app.md",
-      "year": "2025",
+      "path": "/posts/2024/react-native-springboot-mongodb-diary-app.md",
+      "year": "2024",
       "slug": "react-native-springboot-mongodb-diary-app",
       "title": "React Native + Spring Boot + MongoDB로 일기 앱 만들기",
       "description": "React Native 클라이언트와 Spring Boot 백엔드, Python AI 서버를 연동해서 일기 앱을 만든 경험",
@@ -442,7 +918,7 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/react-native-springboot-mongodb-diary-app"
+      "url": "/blog/2024/react-native-springboot-mongodb-diary-app"
     },
     {
       "path": "/posts/2025/git-submodule-guide.md",
@@ -466,8 +942,8 @@
       "url": "/blog/2025/git-submodule-guide"
     },
     {
-      "path": "/posts/2025/knapsack.md",
-      "year": "2025",
+      "path": "/posts/2024/knapsack.md",
+      "year": "2024",
       "slug": "knapsack",
       "title": "배낭 문제 (Knapsack Problem)",
       "description": "0-1 배낭 문제와 무한 배낭 문제를 동적 계획법으로 해결하는 다양한 방법을 학습합니다.",
@@ -483,11 +959,11 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/knapsack"
+      "url": "/blog/2024/knapsack"
     },
     {
-      "path": "/posts/2025/prime-numbers.md",
-      "year": "2025",
+      "path": "/posts/2024/prime-numbers.md",
+      "year": "2024",
       "slug": "prime-numbers",
       "title": "소수 판별과 소인수분해 알고리즘",
       "description": "효율적인 소수 판별과 소인수분해를 위한 다양한 수학 알고리즘들을 학습합니다.",
@@ -503,11 +979,11 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/prime-numbers"
+      "url": "/blog/2024/prime-numbers"
     },
     {
-      "path": "/posts/2025/firebase-hosting-guide.md",
-      "year": "2025",
+      "path": "/posts/2024/firebase-hosting-guide.md",
+      "year": "2024",
       "slug": "firebase-hosting-guide",
       "title": "Flutter 웹앱을 Firebase에 무료로 배포하기",
       "description": "Flutter 웹앱을 Firebase Hosting에 배포하는 방법을 실제 경험을 바탕으로 단계별 설명",
@@ -524,11 +1000,11 @@
       "author": "Admin",
       "readingTime": "3 min read",
       "published": true,
-      "url": "/blog/2025/firebase-hosting-guide"
+      "url": "/blog/2024/firebase-hosting-guide"
     },
     {
-      "path": "/posts/2025/dfs.md",
-      "year": "2025",
+      "path": "/posts/2024/dfs.md",
+      "year": "2024",
       "slug": "dfs",
       "title": "깊이 우선 탐색 (DFS, Depth-First Search)",
       "description": "깊이 우선 탐색(DFS) 알고리즘의 원리와 구현, 다양한 응용 문제 해결법을 학습합니다.",
@@ -545,11 +1021,11 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/dfs"
+      "url": "/blog/2024/dfs"
     },
     {
-      "path": "/posts/2025/lis.md",
-      "year": "2025",
+      "path": "/posts/2024/lis.md",
+      "year": "2024",
       "slug": "lis",
       "title": "최장 증가 부분 수열 (LIS, Longest Increasing Subsequence)",
       "description": "최장 증가 부분 수열(LIS) 문제를 동적 계획법과 이분 탐색으로 효율적으로 해결하는 방법을 학습합니다.",
@@ -565,11 +1041,11 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/lis"
+      "url": "/blog/2024/lis"
     },
     {
-      "path": "/posts/2025/binary-search.md",
-      "year": "2025",
+      "path": "/posts/2024/binary-search.md",
+      "year": "2024",
       "slug": "binary-search",
       "title": "이진 탐색(Binary Search) 완전 정복",
       "description": "정렬된 배열에서 O(log n) 시간에 원소를 찾는 이진 탐색의 모든 것",
@@ -585,11 +1061,11 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/binary-search"
+      "url": "/blog/2024/binary-search"
     },
     {
-      "path": "/posts/2025/os-study-notes.md",
-      "year": "2025",
+      "path": "/posts/2024/os-study-notes.md",
+      "year": "2024",
       "slug": "os-study-notes",
       "title": "운영체제 공부하면서 헷갈렸던 핵심 개념들 정리",
       "description": "운영체제 공부하면서 반복해서 헷갈렸던 개념들을 정리해본 개인 노트",
@@ -606,7 +1082,7 @@
       "author": "Admin",
       "readingTime": "3 min read",
       "published": true,
-      "url": "/blog/2025/os-study-notes"
+      "url": "/blog/2024/os-study-notes"
     },
     {
       "path": "/posts/2025/QueryDSL.md",
@@ -654,8 +1130,8 @@
       "url": "/blog/2025/ai-models-for-coding"
     },
     {
-      "path": "/posts/2025/gemini-gui-dev-tool-idea.md",
-      "year": "2025",
+      "path": "/posts/2024/gemini-gui-dev-tool-idea.md",
+      "year": "2024",
       "slug": "gemini-gui-dev-tool-idea",
       "title": "Gemini-CLI를 GUI로? 비개발자도 쓸 수 있는 AI 개발도구 아이디어",
       "description": "Gemini-CLI를 Flutter로 감싸서 비개발자도 쉽게 앱을 만들 수 있는 도구를 만들면 어떨까?",
@@ -673,11 +1149,95 @@
       "author": "Admin",
       "readingTime": "3 min read",
       "published": true,
-      "url": "/blog/2025/gemini-gui-dev-tool-idea"
+      "url": "/blog/2024/gemini-gui-dev-tool-idea"
     },
     {
-      "path": "/posts/2025/bfs.md",
-      "year": "2025",
+      "path": "/posts/2024/algorithm-atelier-binary-search.md",
+      "year": "2024",
+      "slug": "algorithm-atelier-binary-search",
+      "title": "알고리즘 아틀리에: 이분 탐색 — 5단계 직관 학습",
+      "description": "단조성 위에 세운 불변식과 범위 수축 — 답을 직접 찾지 말고 조건을 이분합니다.",
+      "snippet": "단조성 위에 세운 불변식과 범위 수축 — 답을 직접 찾지 말고 조건을 이분합니다.",
+      "date": "2024-11-18",
+      "tags": [
+        "이분탐색",
+        "Binary Search",
+        "단조성",
+        "파라메트릭 서치",
+        "알고리즘 아틀리에"
+      ],
+      "category": "Algorithm",
+      "author": "Admin",
+      "readingTime": "2 min read",
+      "published": true,
+      "url": "/blog/2024/algorithm-atelier-binary-search"
+    },
+    {
+      "path": "/posts/2024/algorithm-atelier-dp.md",
+      "year": "2024",
+      "slug": "algorithm-atelier-dp",
+      "title": "알고리즘 아틀리에: 동적 계획법(DP) — 5단계 직관 학습",
+      "description": "반복되는 하위 문제와 최적 부분 구조를 비유로 깨닫고, 점화식→테이블→코드로 잇습니다.",
+      "snippet": "반복되는 하위 문제와 최적 부분 구조를 비유로 깨닫고, 점화식→테이블→코드로 잇습니다.",
+      "date": "2024-11-17",
+      "tags": [
+        "DP",
+        "동적계획법",
+        "메모이제이션",
+        "점화식",
+        "알고리즘 아틀리에"
+      ],
+      "category": "Algorithm",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2024/algorithm-atelier-dp"
+    },
+    {
+      "path": "/posts/2024/algorithm-atelier-bfs.md",
+      "year": "2024",
+      "slug": "algorithm-atelier-bfs",
+      "title": "알고리즘 아틀리에: BFS — 5단계 직관 학습",
+      "description": "물결 비유로 시작해 큐 기반 레이어 탐색의 원리와 코드를 연결합니다.",
+      "snippet": "물결 비유로 시작해 큐 기반 레이어 탐색의 원리와 코드를 연결합니다.",
+      "date": "2024-11-16",
+      "tags": [
+        "BFS",
+        "그래프",
+        "최단경로(무가중치)",
+        "큐",
+        "알고리즘 아틀리에"
+      ],
+      "category": "Algorithm",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2024/algorithm-atelier-bfs"
+    },
+    {
+      "path": "/posts/2024/algorithm-atelier-dijkstra.md",
+      "year": "2024",
+      "slug": "algorithm-atelier-dijkstra",
+      "title": "알고리즘 아틀리에: 다익스트라 — 5단계 직관 학습",
+      "description": "비유→원리→메커니즘→자료구조→코드로 다익스트라를 직관적으로 체득합니다.",
+      "snippet": "비유→원리→메커니즘→자료구조→코드로 다익스트라를 직관적으로 체득합니다.",
+      "date": "2024-11-15",
+      "tags": [
+        "다익스트라",
+        "최단경로",
+        "그래프",
+        "우선순위 큐",
+        "알고리즘 아틀리에"
+      ],
+      "category": "Algorithm",
+      "author": "Admin",
+      "readingTime": "4 min read",
+      "published": true,
+      "url": "/blog/2024/algorithm-atelier-dijkstra"
+    },
+    {
+      "path": "/posts/2024/bfs.md",
+      "year": "2024",
       "slug": "bfs",
       "title": "BFS (너비 우선 탐색) 완전 정복",
       "description": "큐를 이용한 레벨별 그래프 탐색과 최단 경로 알고리즘의 핵심",
@@ -694,11 +1254,11 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/bfs"
+      "url": "/blog/2024/bfs"
     },
     {
-      "path": "/posts/2025/arch-linux-gui-setup-experience.md",
-      "year": "2025",
+      "path": "/posts/2024/arch-linux-gui-setup-experience.md",
+      "year": "2024",
       "slug": "arch-linux-gui-setup-experience",
       "title": "아치 리눅스 설치하면서 깨달은 GUI 환경 선택의 중요성",
       "description": "아치 리눅스 설치 과정에서 데스크톱 환경을 선택하면서 느낀 점들과 각 환경의 특징",
@@ -717,11 +1277,11 @@
       "author": "Admin",
       "readingTime": "4 min read",
       "published": true,
-      "url": "/blog/2025/arch-linux-gui-setup-experience"
+      "url": "/blog/2024/arch-linux-gui-setup-experience"
     },
     {
-      "path": "/posts/2025/kmp.md",
-      "year": "2025",
+      "path": "/posts/2024/kmp.md",
+      "year": "2024",
       "slug": "kmp",
       "title": "KMP 알고리즘 (Knuth-Morris-Pratt)",
       "description": "KMP 알고리즘을 통해 문자열 패턴 매칭을 효율적으로 수행하는 방법과 실패 함수의 원리를 학습합니다.",
@@ -737,11 +1297,11 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/kmp"
+      "url": "/blog/2024/kmp"
     },
     {
-      "path": "/posts/2025/rabin-karp.md",
-      "year": "2025",
+      "path": "/posts/2024/rabin-karp.md",
+      "year": "2024",
       "slug": "rabin-karp",
       "title": "라빈-카프 알고리즘 (Rabin-Karp Algorithm)",
       "description": "라빈-카프 알고리즘을 통해 해싱을 활용한 효율적인 문자열 패턴 매칭과 롤링 해시 기법을 학습합니다.",
@@ -757,11 +1317,11 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/rabin-karp"
+      "url": "/blog/2024/rabin-karp"
     },
     {
-      "path": "/posts/2025/arch-linux-uefi-guide.md",
-      "year": "2025",
+      "path": "/posts/2024/arch-linux-uefi-guide.md",
+      "year": "2024",
       "slug": "arch-linux-uefi-guide",
       "title": "아치 리눅스 설치하고 예쁘게 꾸미기",
       "description": "아치 리눅스 UEFI 설치부터 데스크톱 꾸미기까지 실제 경험을 바탕으로 정리",
@@ -778,11 +1338,11 @@
       "author": "Admin",
       "readingTime": "4 min read",
       "published": true,
-      "url": "/blog/2025/arch-linux-uefi-guide"
+      "url": "/blog/2024/arch-linux-uefi-guide"
     },
     {
-      "path": "/posts/2025/quick-sort.md",
-      "year": "2025",
+      "path": "/posts/2024/quick-sort.md",
+      "year": "2024",
       "slug": "quick-sort",
       "title": "퀵 정렬(Quick Sort) 완전 정복",
       "description": "분할 정복을 이용한 최고 성능의 정렬 알고리즘, 퀵 정렬의 모든 것",
@@ -798,7 +1358,7 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/quick-sort"
+      "url": "/blog/2024/quick-sort"
     },
     {
       "path": "/posts/2025/dijkstra.md",
@@ -821,8 +1381,8 @@
       "url": "/blog/2025/dijkstra"
     },
     {
-      "path": "/posts/2025/queue.md",
-      "year": "2025",
+      "path": "/posts/2024/queue.md",
+      "year": "2024",
       "slug": "queue",
       "title": "큐(Queue) 완전 정복",
       "description": "FIFO 구조의 큐 자료구조 개념부터 우선순위 큐까지 완벽 가이드",
@@ -839,33 +1399,11 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/queue"
+      "url": "/blog/2024/queue"
     },
     {
-      "path": "/posts/2025/spring-boot-realtime-communication.md",
-      "year": "2025",
-      "slug": "spring-boot-realtime-communication",
-      "title": "Spring Boot로 실시간 통신 구현하면서 겪은 삽질기",
-      "description": "SSE와 WebSocket을 써보면서 각각의 장단점과 실제 사용 시 주의점들을 정리해본 경험담",
-      "snippet": "SSE와 WebSocket을 써보면서 각각의 장단점과 실제 사용 시 주의점들을 정리해본 경험담",
-      "date": "2024-10-19",
-      "tags": [
-        "SpringBoot",
-        "SSE",
-        "WebSocket",
-        "실시간통신",
-        "SseEmitter",
-        "STOMP"
-      ],
-      "category": "Spring Boot",
-      "author": "Admin",
-      "readingTime": "3 min read",
-      "published": true,
-      "url": "/blog/2025/spring-boot-realtime-communication"
-    },
-    {
-      "path": "/posts/2025/stack.md",
-      "year": "2025",
+      "path": "/posts/2024/stack.md",
+      "year": "2024",
       "slug": "stack",
       "title": "스택(Stack) 완전 정복",
       "description": "LIFO 구조의 스택 자료구조 개념부터 실전 활용까지 완벽 가이드",
@@ -881,7 +1419,7 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
-      "url": "/blog/2025/stack"
+      "url": "/blog/2024/stack"
     },
     {
       "path": "/posts/2025/python-ai-chatbot-development.md",
@@ -904,8 +1442,8 @@
       "url": "/blog/2025/python-ai-chatbot-development"
     },
     {
-      "path": "/posts/2025/react-nextjs-modern-web-development.md",
-      "year": "2025",
+      "path": "/posts/2024/react-nextjs-modern-web-development.md",
+      "year": "2024",
       "slug": "react-nextjs-modern-web-development",
       "title": "React와 Next.js로 모던 웹 개발하기",
       "description": "최신 React 기능과 Next.js의 장점을 활용한 웹 개발 방법론을 소개합니다.",
@@ -921,11 +1459,11 @@
       "author": "Admin",
       "readingTime": "3 min read",
       "published": true,
-      "url": "/blog/2025/react-nextjs-modern-web-development"
+      "url": "/blog/2024/react-nextjs-modern-web-development"
     },
     {
-      "path": "/posts/2025/docker-kubernetes-guide.md",
-      "year": "2025",
+      "path": "/posts/2024/docker-kubernetes-guide.md",
+      "year": "2024",
       "slug": "docker-kubernetes-guide",
       "title": "Docker와 Kubernetes 삽질기",
       "description": "컨테이너 기술의 핵심인 Docker와 오케스트레이션 도구 Kubernetes 활용법을 다룹니다.",
@@ -941,7 +1479,7 @@
       "author": "Admin",
       "readingTime": "4 min read",
       "published": true,
-      "url": "/blog/2025/docker-kubernetes-guide"
+      "url": "/blog/2024/docker-kubernetes-guide"
     },
     {
       "path": "/posts/2024/opensource-schedule-management-analysis.md",
@@ -1227,6 +1765,7 @@
       "author": "Admin",
       "readingTime": "1 min read",
       "published": true,
+      "coverImage": "https://github.com/user-attachments/assets/4682dcc7-88b0-4d63-832a-8cf561be9a82",
       "url": "/blog/2024/3"
     },
     {
@@ -1242,6 +1781,7 @@
       "author": "Admin",
       "readingTime": "1 min read",
       "published": true,
+      "coverImage": "https://github.com/user-attachments/assets/42e76be2-9749-47c2-92a4-a14ea5f91237",
       "url": "/blog/2024/1"
     },
     {
@@ -1429,6 +1969,7 @@
       "author": "Admin",
       "readingTime": "1 min read",
       "published": true,
+      "coverImage": "https://images.unsplash.com/photo-1727200452521-ee63ae8682a8?w=1400&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHw1Mnx8fGVufDB8fHx8fA%3D%3D",
       "url": "/blog/2024/4"
     },
     {
@@ -1483,6 +2024,7 @@
       "author": "Admin",
       "readingTime": "1 min read",
       "published": true,
+      "coverImage": "https://github.com/user-attachments/assets/64b064ef-d713-4e7e-90a8-b9c83ae0e1c8",
       "url": "/blog/2024/2"
     },
     {
@@ -1543,7 +2085,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-10-21T16:42:41.525Z",
+  "generatedAt": "2025-10-27T15:20:39.305Z",
   "years": [
     "2025",
     "2024"

@@ -81,7 +81,7 @@ export const parseMarkdownFrontmatter = (content: string): ParsedMarkdown => {
       const key = line.substring(0, colonIndex).trim();
       const rawValue = line.substring(colonIndex + 1).trim();
       const value = parseMarkdownValue(rawValue);
-      
+
       (frontmatter as Record<string, unknown>)[key] = value;
     }
   });
@@ -89,7 +89,9 @@ export const parseMarkdownFrontmatter = (content: string): ParsedMarkdown => {
   return { frontmatter, content: bodyContent };
 };
 
-export const loadPostBySlug = async (slug: string): Promise<BlogPost | null> => {
+export const loadPostBySlug = async (
+  slug: string
+): Promise<BlogPost | null> => {
   try {
     const baseUrl = import.meta.env.BASE_URL || '/';
     const response = await fetch(`${baseUrl}posts/${slug}.md`);
@@ -99,7 +101,8 @@ export const loadPostBySlug = async (slug: string): Promise<BlogPost | null> => 
     }
 
     const content = await response.text();
-    const { frontmatter, content: bodyContent } = parseMarkdownFrontmatter(content);
+    const { frontmatter, content: bodyContent } =
+      parseMarkdownFrontmatter(content);
 
     if (!frontmatter.title) {
       return null;
@@ -111,7 +114,9 @@ export const loadPostBySlug = async (slug: string): Promise<BlogPost | null> => 
         : frontmatter.readTime
       : calculateReadTime(bodyContent);
 
-    const year = frontmatter.date ? new Date(frontmatter.date).getFullYear().toString() : new Date().getFullYear().toString();
+    const year = frontmatter.date
+      ? new Date(frontmatter.date).getFullYear().toString()
+      : new Date().getFullYear().toString();
 
     return {
       id: slug.replace('/', '-'),

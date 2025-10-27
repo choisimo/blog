@@ -5,6 +5,48 @@ import matter from 'gray-matter';
 
 const postsDir = path.join(process.cwd(), 'public', 'posts');
 
+function normalizeImagePath(rawPath, markdownAbsPath) {
+  if (!rawPath) return undefined;
+  if (/^https?:\/\//i.test(rawPath) || rawPath.startsWith('data:')) {
+    return rawPath;
+  }
+
+  const markdownDir = path.dirname(markdownAbsPath);
+  const absolutePath = path.resolve(markdownDir, rawPath);
+  const publicDir = path.join(process.cwd(), 'public');
+  const relativeToPublic = path.relative(publicDir, absolutePath);
+
+  if (relativeToPublic && !relativeToPublic.startsWith('..')) {
+    return `/${relativeToPublic.replace(/\\/g, '/')}`;
+  }
+
+  if (rawPath.startsWith('/')) {
+    return rawPath;
+  }
+
+  const stripped = rawPath.replace(/^\.\/?/, '').replace(/^\.\./, '');
+  return `/${stripped}`;
+}
+
+function extractCoverImage(frontmatter, body, markdownAbsPath) {
+  const fmCover = frontmatter.coverImage || frontmatter.cover;
+  if (fmCover) {
+    return normalizeImagePath(fmCover, markdownAbsPath);
+  }
+
+  const markdownImageMatch = body.match(/!\[[^\]]*\]\(([^)]+)\)/);
+  if (markdownImageMatch?.[1]) {
+    return normalizeImagePath(markdownImageMatch[1], markdownAbsPath);
+  }
+
+  const htmlImageMatch = body.match(/<img[^>]+src=["']([^"']+)["']/i);
+  if (htmlImageMatch?.[1]) {
+    return normalizeImagePath(htmlImageMatch[1], markdownAbsPath);
+  }
+
+  return undefined;
+}
+
 function validateMarkdownFile(filePath, filename) {
   // Check for invalid filenames
   if (filename === '.md' || filename.startsWith('.md')) {
@@ -146,7 +188,7 @@ function generateUnifiedManifest(years) {
       const category = fm.category || 'General';
       const author = fm.author || 'Admin';
       const published = fm.published !== false;
-      const coverImage = fm.coverImage || fm.cover || undefined;
+      const coverImage = extractCoverImage(fm, body, abs);
 
       // Compute snippet and reading time
       const textOnly = body
