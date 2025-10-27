@@ -1,6 +1,69 @@
 {
-  "total": 94,
+  "total": 99,
   "items": [
+    {
+      "path": "/posts/2025/java-stream-api-journal.md",
+      "year": "2025",
+      "slug": "java-stream-api-journal",
+      "title": "람다와 파이프라인 사이, 스트림 API에 빠져들던 밤",
+      "description": "람다 표현식과 스트림 파이프라인을 처음 만났을 때의 놀람, 컬렉터와 병렬 스트림 튜닝까지 기록한 1인칭 에세이",
+      "snippet": "람다 표현식과 스트림 파이프라인을 처음 만났을 때의 놀람, 컬렉터와 병렬 스트림 튜닝까지 기록한 1인칭 에세이",
+      "date": "2025-10-29",
+      "tags": [
+        "Java",
+        "StreamAPI",
+        "Lambda",
+        "FunctionalProgramming",
+        "병렬스트림"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/java-stream-api-journal"
+    },
+    {
+      "path": "/posts/2025/java-memory-model-journal.md",
+      "year": "2025",
+      "slug": "java-memory-model-journal",
+      "title": "Happens-before를 붙잡기까지, 자바 메모리 모델을 해부한 내 여정",
+      "description": "JMM 명세와 volatile, synchronized, reorder의 경계를 파헤치며 가시성과 순서를 이해한 개발자의 기록",
+      "snippet": "JMM 명세와 volatile, synchronized, reorder의 경계를 파헤치며 가시성과 순서를 이해한 개발자의 기록",
+      "date": "2025-10-28",
+      "tags": [
+        "Java",
+        "메모리모델",
+        "volatile",
+        "HappensBefore",
+        "JMM"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/java-memory-model-journal"
+    },
+    {
+      "path": "/posts/2025/java-concurrency-journal.md",
+      "year": "2025",
+      "slug": "java-concurrency-journal",
+      "title": "스레드 덤프와 데드락 다이어그램, 자바 동시성의 밤을 기록하다",
+      "description": "Thread, synchronized, ExecutorService, ForkJoinPool을 오가며 레이스와 데드락을 추적했던 내 1인칭 동시성 일기",
+      "snippet": "Thread, synchronized, ExecutorService, ForkJoinPool을 오가며 레이스와 데드락을 추적했던 내 1인칭 동시성 일기",
+      "date": "2025-10-27",
+      "tags": [
+        "Java",
+        "Concurrency",
+        "Thread",
+        "ExecutorService",
+        "락"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/java-concurrency-journal"
+    },
     {
       "path": "/posts/2025/shell-powertools-journal.md",
       "year": "2025",
@@ -23,6 +86,27 @@
       "url": "/blog/2025/shell-powertools-journal"
     },
     {
+      "path": "/posts/2025/java-gc-journal.md",
+      "year": "2025",
+      "slug": "java-gc-journal",
+      "title": "Stop-the-world의 숨결을 들으며, GC와 화해한 나의 기록",
+      "description": "Serial, CMS, G1을 거치며 힙 덤프와 함께 밤을 지새운 개발자가 GC의 진화와 전략을 되돌아본 일기",
+      "snippet": "Serial, CMS, G1을 거치며 힙 덤프와 함께 밤을 지새운 개발자가 GC의 진화와 전략을 되돌아본 일기",
+      "date": "2025-10-26",
+      "tags": [
+        "Java",
+        "GarbageCollection",
+        "JVM",
+        "G1",
+        "메모리관리"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/java-gc-journal"
+    },
+    {
       "path": "/posts/2025/grub-kernel-error-journal.md",
       "year": "2025",
       "slug": "grub-kernel-error-journal",
@@ -42,6 +126,27 @@
       "readingTime": "3 min read",
       "published": true,
       "url": "/blog/2025/grub-kernel-error-journal"
+    },
+    {
+      "path": "/posts/2025/java-generics-journal.md",
+      "year": "2025",
+      "slug": "java-generics-journal",
+      "title": "타입 변수와 야생의 캐스팅: 제네릭을 길들이던 내 기록",
+      "description": "로 타입과 ClassCastException에 질려, 제네릭이 도입되던 현장을 지켜보며 타입 안정성을 붙잡은 개발자 일기",
+      "snippet": "로 타입과 ClassCastException에 질려, 제네릭이 도입되던 현장을 지켜보며 타입 안정성을 붙잡은 개발자 일기",
+      "date": "2025-10-25",
+      "tags": [
+        "Java",
+        "Generics",
+        "타입시스템",
+        "Erasure",
+        "컬렉션"
+      ],
+      "category": "Java",
+      "author": "Admin",
+      "readingTime": "2 min read",
+      "published": true,
+      "url": "/blog/2025/java-generics-journal"
     },
     {
       "path": "/posts/2025/6g-sentient-future-journal.md",
@@ -2076,7 +2181,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-10-27T14:17:31.239Z",
+  "generatedAt": "2025-10-27T14:23:50.845Z",
   "years": [
     "2025",
     "2024"
