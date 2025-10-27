@@ -1,6 +1,6 @@
 ---
 title: "바이트코드 기차를 타고 자바 세계를 일주한 날"
-date: "2025-10-27"
+date: "2025-10-20"
 category: "Java"
 tags: ['Java', 'JVM', '자료형', '연산자', '객체지향']
 excerpt: "Write once, run anywhere라는 간판을 붙인 자바의 철도를 따라가며, JDK에서 GC까지 몸소 느꼈던 이야기와 살아 있는 코드 메모"

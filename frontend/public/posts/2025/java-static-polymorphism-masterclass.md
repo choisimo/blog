@@ -1,6 +1,6 @@
 ---
 title: "static 키워드와 다형성으로 밤을 지새운 어느 개발자의 기록"
-date: "2025-10-27"
+date: "2025-10-22"
 category: "Java"
 tags: ['Java', 'static', 'Polymorphism', 'OOP 심화', 'JVM 메모리']
 excerpt: "정적 영역과 힙 사이에서 헤매던 날, 다형성의 그림자와 씨름한 새벽, 그리고 equals를 다시 쓰며 깨달은 객체지향의 본질"

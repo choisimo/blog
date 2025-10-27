@@ -1,6 +1,6 @@
 ---
 title: "언마운트 이후에도 /dev/sda1이 남아있는 이유를 이해한 밤"
-date: "2025-10-27"
+date: "2025-10-23"
 category: "Linux"
 tags: ['mount', 'umount', '장치파일', 'USB', '네트워킹']
 excerpt: "장치 파일과 마운트의 차이를 헤맸던 날, 그리고 USB 허브의 SD 카드를 다시 인식시키기까지의 기록"

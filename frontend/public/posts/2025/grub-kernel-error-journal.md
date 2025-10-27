@@ -1,6 +1,6 @@
 ---
 title: "'You need to load the kernel first'와 함께한 새벽의 구조 요청"
-date: "2025-10-27"
+date: "2025-10-25"
 category: "Linux"
 tags: ['Arch Linux', 'GRUB', '부팅오류', '시스템복구', '에세이']
 excerpt: "pacman -Syu 한 번 눌렀을 뿐인데 부팅이 멈췄다면? 새벽에 겪은 GRUB 구출기를 일기처럼 정리했습니다."

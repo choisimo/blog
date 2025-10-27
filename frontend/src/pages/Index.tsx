@@ -145,7 +145,7 @@ const Index = () => {
           </span>
         </h1>
         <p className='text-xl text-muted-foreground max-w-2xl mx-auto'>
-          최신 웹, AI, 개발 인사이트를 빠르게 공유합니다.
+          nodove 의 일상을 자유롭게 기록하는 공간입니다.
         </p>
         <div className='max-w-2xl mx-auto'>
           <SearchBar
