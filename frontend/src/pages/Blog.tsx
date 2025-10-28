@@ -57,6 +57,36 @@ const Blog = () => {
   const skipNextPageResetRef = useRef(true);
   const skipParamSyncRef = useRef(false);
 
+  const updateSearchParams = useCallback(
+    (changes: { page?: number | null; category?: string | null }) => {
+      skipParamSyncRef.current = true;
+      setSearchParams(prev => {
+        const params = new URLSearchParams(prev);
+
+        if (changes.category !== undefined) {
+          const categoryValue = changes.category;
+          if (!categoryValue || categoryValue === 'all') {
+            params.delete('category');
+          } else {
+            params.set('category', categoryValue);
+          }
+        }
+
+        if (changes.page !== undefined) {
+          const pageValue = changes.page ?? 1;
+          if (pageValue <= 1) {
+            params.delete('page');
+          } else {
+            params.set('page', pageValue.toString());
+          }
+        }
+
+        return params;
+      });
+    },
+    [setSearchParams]
+  );
+
   // Debounce search term to avoid excessive filtering
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
@@ -147,18 +177,13 @@ const Blog = () => {
       return;
     }
     setCurrentPage(1);
-    skipParamSyncRef.current = true;
-    setSearchParams(prev => {
-      const newParams = new URLSearchParams(prev);
-      newParams.set('page', '1');
-      return newParams;
-    });
+    updateSearchParams({ page: 1 });
   }, [
     debouncedSearchTerm,
     selectedCategory,
     selectedTags,
     sortBy,
-    setSearchParams,
+    updateSearchParams,
   ]);
 
   const handleTagToggle = useCallback((tag: string) => {
@@ -177,19 +202,24 @@ const Blog = () => {
     setSearchParams({});
   }, [setSearchParams]);
 
+  const handleCategoryChange = useCallback(
+    (category: string) => {
+      skipNextPageResetRef.current = true;
+      setSelectedCategory(category);
+      setCurrentPage(1);
+      updateSearchParams({ category, page: 1 });
+    },
+    [updateSearchParams]
+  );
+
   const handlePageChange = useCallback(
     (page: number) => {
       setCurrentPage(page);
-      skipParamSyncRef.current = true;
-      setSearchParams(prev => {
-        const newParams = new URLSearchParams(prev);
-        newParams.set('page', page.toString());
-        return newParams;
-      });
+      updateSearchParams({ page });
       // Scroll to top when page changes
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
-    [setSearchParams]
+    [updateSearchParams]
   );
 
   return (
