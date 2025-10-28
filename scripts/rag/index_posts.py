@@ -111,6 +111,17 @@ def stable_chunk_id(base: str, idx: int, content: str) -> str:
     return h.hexdigest()
 
 
+def get_cf_access_headers() -> Dict[str, str]:
+    client_id = os.environ.get('CF_ACCESS_CLIENT_ID', '').strip()
+    client_secret = os.environ.get('CF_ACCESS_CLIENT_SECRET', '').strip()
+    headers: Dict[str, str] = {}
+    if client_id:
+        headers['CF-Access-Client-Id'] = client_id
+    if client_secret:
+        headers['CF-Access-Client-Secret'] = client_secret
+    return headers
+
+
 def create_session(total_retries: int = 5, backoff_factor: float = 1.0, status_forcelist: List[int] | None = None) -> requests.Session:
     if status_forcelist is None:
         status_forcelist = [429, 500, 502, 503, 504]
@@ -147,25 +158,44 @@ def embed_texts(session: requests.Session, tei_url: str, inputs: List[str], batc
     return out
 
 
-def connect_chroma(chroma_url: str) -> chromadb.Client:
+def connect_chroma(chroma_url: str, cf_headers: Dict[str, str] | None = None) -> chromadb.Client:
     u = urlparse(chroma_url)
     host = u.hostname or 'localhost'
     port = u.port or (443 if u.scheme == 'https' else 8000)
     ssl_enabled = (u.scheme == 'https')
-    settings = Settings(
-        chroma_server_host=host,
-        chroma_server_http_port=port,
-        chroma_server_ssl_enabled=ssl_enabled,
-        anonymized_telemetry=False,
-    )
+    settings_kwargs: Dict[str, Any] = {
+        'chroma_server_host': host,
+        'chroma_server_http_port': port,
+        'chroma_server_ssl_enabled': ssl_enabled,
+        'anonymized_telemetry': False,
+    }
+    if cf_headers:
+        settings_kwargs['chroma_server_headers'] = cf_headers
+    try:
+        settings = Settings(**settings_kwargs)
+    except TypeError:
+        settings_kwargs.pop('chroma_server_headers', None)
+        settings = Settings(**settings_kwargs)
     # chromadb 0.6 moved the public HTTP client to chromadb.HttpClient.
     http_client_cls = getattr(chromadb, "HttpClient", None)
     if http_client_cls is not None:
+        client_kwargs: Dict[str, Any] = {
+            'host': host,
+            'port': port,
+            'ssl': ssl_enabled,
+            'settings': settings,
+        }
+        if cf_headers:
+            client_kwargs['headers'] = cf_headers
         try:
-            return http_client_cls(host=host, port=port, ssl=ssl_enabled, settings=settings)
+            return http_client_cls(**client_kwargs)
         except TypeError:
-            # In case the installed chromadb expects different kwargs (older versions), fall back.
-            pass
+            client_kwargs.pop('headers', None)
+            try:
+                return http_client_cls(**client_kwargs)
+            except TypeError:
+                # In case the installed chromadb expects different kwargs (older versions), fall back.
+                pass
     return chromadb.Client(settings)
 
 
@@ -209,6 +239,7 @@ def process_document(
     overlap_tokens: int,
     embed_batch: int,
     embed_timeout: int,
+    cf_headers: Dict[str, str] | None,
 ) -> Tuple[str, List[str], List[List[float]], List[Dict[str, Any]], List[str]]:
     """
     Worker function to process a single markdown file into chunks and embeddings.
@@ -225,6 +256,8 @@ def process_document(
 
     # Per-worker session to avoid cross-thread Session usage
     session = create_session(total_retries=total_retries, backoff_factor=retry_backoff)
+    if cf_headers:
+        session.headers.update(cf_headers)
     try:
         embeddings = embed_texts(session, tei_url, chunks, batch_size=embed_batch, timeout=embed_timeout)
     finally:
@@ -277,7 +310,9 @@ def main() -> None:
     explicit_collection = os.environ.get('CHROMA_COLLECTION', '').strip()
     collection_name = explicit_collection if explicit_collection else f"{base_collection}__{tei_model_name}"
 
-    client = connect_chroma(chroma_url)
+    cf_headers = get_cf_access_headers()
+
+    client = connect_chroma(chroma_url, cf_headers=cf_headers if cf_headers else None)
     collection = get_collection(client, collection_name)
     # Configure retries/timeouts from env
     total_retries = int(os.environ.get('RETRIES_TOTAL', '5'))
@@ -330,6 +365,7 @@ def main() -> None:
                 overlap_tokens,
                 embed_batch,
                 embed_timeout,
+                cf_headers,
             ): (doc_id, file_path, it)
             for doc_id, file_path, it in jobs
         }
