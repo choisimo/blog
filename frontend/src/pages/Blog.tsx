@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BlogCard, BlogCardSkeleton } from '@/components';
 import { Pagination } from '@/components';
@@ -54,58 +54,27 @@ const Blog = () => {
   const [siteTotalPosts, setSiteTotalPosts] = useState(0);
   const [showAllTags, setShowAllTags] = useState(false);
 
-  const skipNextPageResetRef = useRef(true);
-  const skipParamSyncRef = useRef(false);
-
-  const updateSearchParams = useCallback(
-    (changes: { page?: number | null; category?: string | null }) => {
-      skipParamSyncRef.current = true;
-      setSearchParams(prev => {
-        const params = new URLSearchParams(prev);
-
-        if (changes.category !== undefined) {
-          const categoryValue = changes.category;
-          if (!categoryValue || categoryValue === 'all') {
-            params.delete('category');
-          } else {
-            params.set('category', categoryValue);
-          }
-        }
-
-        if (changes.page !== undefined) {
-          const pageValue = changes.page ?? 1;
-          if (pageValue <= 1) {
-            params.delete('page');
-          } else {
-            params.set('page', pageValue.toString());
-          }
-        }
-
-        return params;
-      });
-    },
-    [setSearchParams]
-  );
-
   // Debounce search term to avoid excessive filtering
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  // Handle URL parameter updates
-  useEffect(() => {
-    if (skipParamSyncRef.current) {
-      skipParamSyncRef.current = false;
-      return;
-    }
+  const syncStateFromParams = useCallback(
+    (nextCategory: string, nextPage: number) => {
+      setSelectedCategory(nextCategory);
+      setCurrentPage(nextPage);
+    },
+    []
+  );
 
-    if (initialCategory !== selectedCategory) {
-      skipNextPageResetRef.current = true;
-      setSelectedCategory(initialCategory);
+  // Sync URL -> state whenever params change
+  useEffect(() => {
+    const paramsCategory = searchParams.get('category') || 'all';
+    const paramsPageRaw = searchParams.get('page');
+    const paramsPage = paramsPageRaw ? Math.max(1, parseInt(paramsPageRaw, 10)) : 1;
+
+    if (paramsCategory !== selectedCategory || paramsPage !== currentPage) {
+      syncStateFromParams(paramsCategory, paramsPage);
     }
-    if (initialPage !== currentPage) {
-      skipNextPageResetRef.current = true;
-      setCurrentPage(initialPage);
-    }
-  }, [initialCategory, initialPage, selectedCategory, currentPage]);
+  }, [searchParams, selectedCategory, currentPage, syncStateFromParams]);
 
   // Load a page of posts (metadata-only) whenever filters/sort/page change
   useEffect(() => {
@@ -170,22 +139,6 @@ const Blog = () => {
   // Pagination info from server
   const totalPages = pageData.totalPages;
 
-  // Reset page when filters change
-  useEffect(() => {
-    if (skipNextPageResetRef.current) {
-      skipNextPageResetRef.current = false;
-      return;
-    }
-    setCurrentPage(1);
-    updateSearchParams({ page: 1 });
-  }, [
-    debouncedSearchTerm,
-    selectedCategory,
-    selectedTags,
-    sortBy,
-    updateSearchParams,
-  ]);
-
   const handleTagToggle = useCallback((tag: string) => {
     setSelectedTags(prev =>
       prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
@@ -198,28 +151,43 @@ const Blog = () => {
     setSelectedTags([]);
     setSortBy('date');
     setCurrentPage(1);
-    skipParamSyncRef.current = true;
     setSearchParams({});
   }, [setSearchParams]);
 
   const handleCategoryChange = useCallback(
     (category: string) => {
-      skipNextPageResetRef.current = true;
       setSelectedCategory(category);
       setCurrentPage(1);
-      updateSearchParams({ category, page: 1 });
+      setSearchParams(prev => {
+        const params = new URLSearchParams(prev);
+        if (!category || category === 'all') {
+          params.delete('category');
+        } else {
+          params.set('category', category);
+        }
+        params.delete('page');
+        return params;
+      });
     },
-    [updateSearchParams]
+    [setSearchParams]
   );
 
   const handlePageChange = useCallback(
     (page: number) => {
       setCurrentPage(page);
-      updateSearchParams({ page });
+      setSearchParams(prev => {
+        const params = new URLSearchParams(prev);
+        if (page <= 1) {
+          params.delete('page');
+        } else {
+          params.set('page', page.toString());
+        }
+        return params;
+      });
       // Scroll to top when page changes
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
-    [updateSearchParams]
+    [setSearchParams]
   );
 
   return (
