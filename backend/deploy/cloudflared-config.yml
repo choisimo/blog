@@ -30,32 +30,27 @@ autoupdate-freq: 24h
 # Grace period for shutdown
 grace-period: 30s
 
-# Ingress rules (routes)
+# Ingress rules (routes). When running cloudflared alongside other services in Docker,
+# reference the container names instead of localhost so the tunnel can reach them
+# over the shared bridge network.
 ingress:
-  # Main API route
-  - hostname: api.yourdomain.com
-    service: http://localhost:5080
+  # Embedding (TEI) service
+  - hostname: tei.yourdomain.com
+    service: http://embedding-server:80
     originRequest:
-      # Disable TLS verification for localhost
       noTLSVerify: true
-      # Keep connections alive
-      keepAliveConnections: 1
-      # Timeout settings
-      connectTimeout: 30s
-      tcpKeepAlive: 30s
-      # HTTP/2 support
-      http2Origin: false
-      # Disable chunked encoding issues
-      disableChunkedEncoding: false
-      # Headers to pass through
-      httpHostHeader: api.yourdomain.com
 
-  # Health check endpoint with different settings (optional)
-  - hostname: api.yourdomain.com
-    path: /api/v1/healthz
-    service: http://localhost:5080
+  # ChromaDB service
+  - hostname: chroma.yourdomain.com
+    service: http://chromadb:8000
     originRequest:
-      connectTimeout: 5s
+      noTLSVerify: true
+
+  # Backend API service
+  - hostname: api.yourdomain.com
+    service: http://opencode-serve:7012
+    originRequest:
+      noTLSVerify: true
 
   # Catch-all rule (required)
   - service: http_status:404
