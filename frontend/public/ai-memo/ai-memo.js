@@ -1661,6 +1661,8 @@
       const mode = active ? active.dataset.tab : 'memo';
       LS.set(KEYS.mode, mode);
       this.state.mode = mode;
+      if (this.$panel) this.$panel.classList.toggle('preview-mode', mode === 'preview');
+      this.classList.toggle('preview-mode', mode === 'preview');
       if (mode === 'dev') {
         this.maybeLoadOriginalMarkdown();
       }
