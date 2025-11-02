@@ -1,6 +1,27 @@
 {
-  "total": 100,
+  "total": 102,
   "items": [
+    {
+      "path": "/posts/2025/path-new-friend-essay.md",
+      "year": "2025",
+      "slug": "path-new-friend-essay",
+      "title": "PATH에 새 친구를 초대하는 방법",
+      "description": "심볼릭 링크가 말을 안 듣던 날, PATH를 다시 다듬으며 정리한 나만의 에세이.",
+      "snippet": "심볼릭 링크가 말을 안 듣던 날, PATH를 다시 다듬으며 정리한 나만의 에세이.",
+      "date": "2025-11-01",
+      "tags": [
+        "PATH",
+        "리눅스",
+        "환경설정",
+        "터미널",
+        "작업자동화"
+      ],
+      "category": "Linux",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/path-new-friend-essay"
+    },
     {
       "path": "/posts/2025/sorting-algorithms-masterclass.md",
       "year": "2025",
@@ -19,6 +40,27 @@
       "readingTime": "7 min read",
       "published": true,
       "url": "/blog/2025/sorting-algorithms-masterclass"
+    },
+    {
+      "path": "/posts/2025/wine-clipboard-bridge-journal.md",
+      "year": "2025",
+      "slug": "wine-clipboard-bridge-journal",
+      "title": "Wayland 위에서 Wine 카카오톡이 복붙을 잃어버린 날",
+      "description": "EndeavourOS에서 Wine 카카오톡과 호스트 사이 복붙이 끊겼던 사건을 기록하며, 왜 그런지 그리고 어떻게 우회했는지 정리했다.",
+      "snippet": "EndeavourOS에서 Wine 카카오톡과 호스트 사이 복붙이 끊겼던 사건을 기록하며, 왜 그런지 그리고 어떻게 우회했는지 정리했다.",
+      "date": "2025-10-31",
+      "tags": [
+        "Wine",
+        "Wayland",
+        "클립보드",
+        "Hyprland",
+        "wl-clipboard"
+      ],
+      "category": "Linux",
+      "author": "Admin",
+      "readingTime": "5 min read",
+      "published": true,
+      "url": "/blog/2025/wine-clipboard-bridge-journal"
     },
     {
       "path": "/posts/2025/java-concurrency-journal.md",
@@ -2110,7 +2152,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-11-01T02:14:29.674Z",
+  "generatedAt": "2025-11-02T02:31:40.306Z",
   "years": [
     "2025",
     "2024"
