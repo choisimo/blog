@@ -5,6 +5,7 @@
   Exposes: sketch, prism, chain with JSON-first parsing and simple fallbacks.
 */
 import { getApiBaseUrl } from '@/utils/apiBase';
+import { invokeChatTask, isUnifiedTasksEnabled } from '@/services/chat';
 
 export type SketchResult = {
   mood: string;
@@ -290,7 +291,7 @@ export async function sketch(input: {
   const { paragraph, postTitle, persona } = input;
   const prompt = [
     'You are a helpful writing companion. Return STRICT JSON only matching the schema.',
-    '{"mood":"string","bullets":["string", "string", "..."]}',
+    '{"mood":"string","bullets":["string","string","..."]}',
     '',
     `Persona: ${persona || 'default'}`,
     `Post: ${safeTruncate(postTitle || '', 120)}`,
@@ -299,6 +300,29 @@ export async function sketch(input: {
     '',
     'Task: Capture the emotional sketch. Select a concise mood (e.g., curious, excited, skeptical) and 3-6 short bullets in the original language of the text.',
   ].join('\n');
+
+  if (isUnifiedTasksEnabled()) {
+    try {
+      const res = await invokeChatTask<SketchResult>({
+        mode: 'sketch',
+        prompt,
+        payload: { paragraph, postTitle, persona },
+      });
+      const data = res.data || (isRecord(res.raw) ? (res.raw as any).data ?? res.raw : null);
+      if (
+        isRecord(data) &&
+        Array.isArray((data as any).bullets) &&
+        typeof (data as any).mood === 'string'
+      ) {
+        return {
+          mood: String((data as any).mood),
+          bullets: ((data as any).bullets as string[]).slice(0, 10),
+        };
+      }
+    } catch {
+      // fall through to legacy flow
+    }
+  }
 
   try {
     const text = await generateContent(prompt);
@@ -315,7 +339,6 @@ export async function sketch(input: {
     }
     throw new Error('Invalid JSON');
   } catch {
-    // fallback
     const sentences = (paragraph || '')
       .replace(/\n+/g, ' ')
       .split(/[.!?]\s+/)
@@ -344,6 +367,22 @@ export async function prism(input: {
     '',
     'Task: Provide 2-3 facets (titles) with 2-4 concise points each, in the original language.',
   ].join('\n');
+
+  if (isUnifiedTasksEnabled()) {
+    try {
+      const res = await invokeChatTask<PrismResult>({
+        mode: 'prism',
+        prompt,
+        payload: { paragraph, postTitle },
+      });
+      const data = res.data || (isRecord(res.raw) ? (res.raw as any).data ?? res.raw : null);
+      if (isRecord(data) && Array.isArray((data as any).facets)) {
+        return { facets: ((data as any).facets as PrismResult['facets']).slice(0, 4) };
+      }
+    } catch {
+      // fallback
+    }
+  }
 
   try {
     const text = await generateContent(prompt);
@@ -376,6 +415,24 @@ export async function chain(input: {
     '',
     'Task: Generate 3-5 short follow-up questions and a brief why for each, in the original language.',
   ].join('\n');
+
+  if (isUnifiedTasksEnabled()) {
+    try {
+      const res = await invokeChatTask<ChainResult>({
+        mode: 'chain',
+        prompt,
+        payload: { paragraph, postTitle },
+      });
+      const data = res.data || (isRecord(res.raw) ? (res.raw as any).data ?? res.raw : null);
+      if (isRecord(data) && Array.isArray((data as any).questions)) {
+        return {
+          questions: ((data as any).questions as ChainResult['questions']).slice(0, 6),
+        };
+      }
+    } catch {
+      // fallback
+    }
+  }
 
   try {
     const text = await generateContent(prompt);

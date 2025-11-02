@@ -23,8 +23,55 @@ function getChatApiKey(): string {
   return '';
 }
 
+function getBooleanFromUnknown(value: unknown): boolean {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') {
+    const lowered = value.trim().toLowerCase();
+    return lowered === '1' || lowered === 'true' || lowered === 'yes' || lowered === 'on';
+  }
+  return false;
+}
+
+export function isUnifiedTasksEnabled(): boolean {
+  const w = typeof window !== 'undefined' ? (window as any) : null;
+  const runtimeFlag =
+    w?.APP_CONFIG?.aiUnified ?? w?.__APP_CONFIG?.aiUnified ?? undefined;
+  if (runtimeFlag !== undefined) return getBooleanFromUnknown(runtimeFlag);
+
+  const envFlag = (import.meta as any)?.env?.VITE_AI_UNIFIED as
+    | string
+    | boolean
+    | undefined;
+  return getBooleanFromUnknown(envFlag);
+}
+
 export type ChatSession = {
   sessionID: string;
+};
+
+export type ChatTaskMode =
+  | 'catalyst'
+  | 'sketch'
+  | 'prism'
+  | 'chain'
+  | 'summary'
+  | 'custom';
+
+export type InvokeChatTaskInput = {
+  mode: ChatTaskMode;
+  prompt?: string;
+  payload?: Record<string, unknown>;
+  context?: { url?: string; title?: string };
+  signal?: AbortSignal;
+  headers?: Record<string, string>;
+};
+
+export type InvokeChatTaskResult<T = unknown> = {
+  ok: boolean;
+  status: number;
+  data: T | null;
+  raw: unknown;
 };
 
 export async function ensureSession(): Promise<string> {
@@ -91,6 +138,87 @@ function getPageContext(): { url?: string; title?: string } {
   const url = w?.location?.href as string | undefined;
   const title = w?.document?.title as string | undefined;
   return { url, title };
+}
+
+export async function invokeChatTask<T = unknown>(
+  input: InvokeChatTaskInput
+): Promise<InvokeChatTaskResult<T>> {
+  if (!isUnifiedTasksEnabled()) {
+    throw new Error('Unified chat task API is disabled');
+  }
+
+  const sessionID = await ensureSession();
+  const chatBase = getChatBaseUrl();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json, text/plain',
+  };
+  let url = '';
+  if (chatBase) {
+    url = `${chatBase.replace(/\/$/, '')}/session/${encodeURIComponent(
+      sessionID
+    )}/task`;
+    const apiKey = getChatApiKey();
+    if (apiKey) headers['X-API-KEY'] = apiKey;
+  } else {
+    const base = getApiBaseUrl();
+    url = `${base.replace(/\/$/, '')}/api/v1/chat/session/${encodeURIComponent(
+      sessionID
+    )}/task`;
+  }
+
+  if (input.headers) Object.assign(headers, input.headers);
+
+  const body = {
+    mode: input.mode,
+    prompt: input.prompt ?? '',
+    payload: input.payload ?? {},
+    context: input.context ?? getPageContext(),
+  };
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+    signal: input.signal,
+  });
+
+  const text = await res.text().catch(() => '');
+  let parsed: unknown = null;
+  if (text) {
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      parsed = text;
+    }
+  }
+
+  if (!res.ok) {
+    const errorMessage =
+      typeof parsed === 'object' && parsed !== null && 'error' in (parsed as any)
+        ? String((parsed as any).error)
+        : text.slice(0, 180) || `status ${res.status}`;
+    const error = new Error(`Chat task error: ${errorMessage}`);
+    (error as any).status = res.status;
+    (error as any).response = parsed;
+    throw error;
+  }
+
+  const dataCandidate =
+    parsed && typeof parsed === 'object'
+      ? (parsed as any).data ??
+        (parsed as any).result ??
+        (parsed as any).output ??
+        (parsed as any).payload ??
+        parsed
+      : parsed;
+
+  return {
+    ok: true,
+    status: res.status,
+    data: (dataCandidate as T) ?? null,
+    raw: parsed,
+  };
 }
 
 export async function* streamChatEvents(input: {
