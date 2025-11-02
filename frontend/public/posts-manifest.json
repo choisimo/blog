@@ -1,6 +1,26 @@
 {
-  "total": 102,
+  "total": 103,
   "items": [
+    {
+      "path": "/posts/2025/sorting-algorithms-pseudocode-analysis.md",
+      "year": "2025",
+      "slug": "sorting-algorithms-pseudocode-analysis",
+      "title": "정렬 알고리즘 수도 코드 완전 해부: 라인별 분석",
+      "description": "버블 정렬부터 힙 정렬까지, 핵심 수도 코드를 한 줄씩 뜯어보며 왜 그런 로직이 필요한지 한국어로 상세하게 분석합니다.",
+      "snippet": "버블 정렬부터 힙 정렬까지, 핵심 수도 코드를 한 줄씩 뜯어보며 왜 그런 로직이 필요한지 한국어로 상세하게 분석합니다.",
+      "date": "2025-11-02",
+      "tags": [
+        "정렬",
+        "알고리즘",
+        "수도코드",
+        "학습노트"
+      ],
+      "category": "알고리즘",
+      "author": "Admin",
+      "readingTime": "7 min read",
+      "published": true,
+      "url": "/blog/2025/sorting-algorithms-pseudocode-analysis"
+    },
     {
       "path": "/posts/2025/path-new-friend-essay.md",
       "year": "2025",
@@ -2152,7 +2172,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-11-02T02:31:40.306Z",
+  "generatedAt": "2025-11-02T05:05:50.535Z",
   "years": [
     "2025",
     "2024"
