@@ -7,6 +7,7 @@ import { BlogPost, PostsPage } from '@/types/blog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ActiveFilters } from '@/components/features/blog/ActiveFilters';
 import {
   Select,
   SelectContent,
@@ -143,6 +144,10 @@ const Blog = () => {
     setSelectedTags(prev =>
       prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
     );
+  }, []);
+
+  const handleClearTagFilters = useCallback(() => {
+    setSelectedTags([]);
   }, []);
 
   const clearFilters = useCallback(() => {
@@ -296,6 +301,13 @@ const Blog = () => {
               )}
             </div>
           </div>
+
+          {/* Active tag filters */}
+          <ActiveFilters
+            tags={selectedTags}
+            onRemove={handleTagToggle}
+            onClearAll={handleClearTagFilters}
+          />
 
           {/* Tags (collapsible) */}
           <div className='bg-card/50 backdrop-blur-sm border rounded-xl p-4 md:p-6 shadow-sm'>
