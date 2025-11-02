@@ -32,7 +32,9 @@
     proposalMd: 'aiMemo.proposalMd',
     fontSize: 'aiMemo.fontSize',
     closeAfterInject: 'aiMemo.closeAfterInject',
-    events: 'aiMemo.events'
+    events: 'aiMemo.events',
+    layoutMode: 'aiMemo.layoutMode',
+    previewPane: 'aiMemo.previewPane'
   };
 
   // 기본값 설정
@@ -59,7 +61,9 @@
         devJs: LS.get(KEYS.devJs, 'console.log("Hello from user JS");'),
         proposalMd: LS.get(KEYS.proposalMd, ''),
         fontSize: LS.get(KEYS.fontSize, 13),
-        events: LS.get(KEYS.events, [])
+        events: LS.get(KEYS.events, []),
+        layoutMode: LS.get(KEYS.layoutMode, 'split'),
+        previewPane: LS.get(KEYS.previewPane, 'editor')
       };
       this.root = null; // shadow root container
       this._originalLoaded = false;
@@ -70,6 +74,11 @@
       this._boundBlockHighlight = this.handleBlockHighlight.bind(this);
       this._boundBlockCapture = this.handleBlockCapture.bind(this);
       this._boundBlockKeydown = this.handleBlockKeydown.bind(this);
+      this.$previewSplit = null;
+      this.$layoutSplit = null;
+      this.$layoutTabs = null;
+      this.$previewPaneToggle = null;
+      this.$previewPaneButtons = [];
 
       if (window.TurndownService) {
         this._turndown = new window.TurndownService();
@@ -478,6 +487,43 @@
       this.enhanceCodeBlocks();
     }
 
+    applyLayoutMode(mode) {
+      if (!this.$previewSplit) return;
+      const layout = mode === 'tab' ? 'tab' : 'split';
+      this.$previewSplit.setAttribute('data-layout', layout);
+      if (layout === 'split') {
+        this.$previewSplit.setAttribute('data-active-pane', 'editor');
+      }
+      if (this.$layoutSplit && this.$layoutTabs) {
+        this.$layoutSplit.classList.toggle('active', layout === 'split');
+        this.$layoutSplit.setAttribute('aria-pressed', layout === 'split' ? 'true' : 'false');
+        this.$layoutTabs.classList.toggle('active', layout === 'tab');
+        this.$layoutTabs.setAttribute('aria-pressed', layout === 'tab' ? 'true' : 'false');
+      }
+      if (this.$previewPaneToggle) {
+        this.$previewPaneToggle.dataset.visible = layout === 'tab' ? 'true' : 'false';
+      }
+      this.state.layoutMode = layout;
+      LS.set(KEYS.layoutMode, layout);
+    }
+
+    applyPreviewPane(pane) {
+      if (!this.$previewSplit) return;
+      const next = pane === 'preview' ? 'preview' : 'editor';
+      this.$previewSplit.setAttribute('data-active-pane', next);
+      if (Array.isArray(this.$previewPaneButtons)) {
+        this.$previewPaneButtons.forEach(btn => {
+          const active = btn.dataset.pane === next;
+          btn.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+      }
+      this.state.previewPane = next;
+      LS.set(KEYS.previewPane, next);
+      if (next === 'preview' && this.$memoPreview) {
+        this.scheduleRenderPreview(this.$memoEditor?.value || this.$memo?.value || '');
+      }
+    }
+
 
     // debounce preview rendering to keep typing smooth
     scheduleRenderPreview(src) {
@@ -636,12 +682,22 @@
           </div>
 
           <div id="previewBody" class="body">
-            <div class="split">
-              <div class="split-left">
-                <label class="label" for="memo">편집기</label>
+            <div class="preview-layout-bar">
+              <div class="layout-toggle" role="group" aria-label="레이아웃 전환">
+                <button id="layoutSplit" class="layout-btn" type="button" data-layout="split" aria-pressed="false">분할</button>
+                <button id="layoutTabs" class="layout-btn" type="button" data-layout="tab" aria-pressed="false">탭</button>
+              </div>
+              <div id="previewPaneToggle" class="preview-pane-toggle" role="tablist" aria-label="미리보기 전환" data-visible="false">
+                <button type="button" data-pane="editor" role="tab" aria-selected="false">편집</button>
+                <button type="button" data-pane="preview" role="tab" aria-selected="false">미리보기</button>
+              </div>
+            </div>
+            <div class="split" id="previewSplit" data-layout="split" data-active-pane="editor">
+              <div class="split-left" data-pane="editor">
+                <label class="label" for="memoEditor">편집기</label>
                 <textarea id="memoEditor" class="textarea" placeholder="여기에 메모를 작성하세요"></textarea>
               </div>
-              <div class="split-right">
+              <div class="split-right" data-pane="preview">
                 <label class="label">미리보기</label>
                 <div id="memoPreview" class="preview-md"></div>
               </div>
@@ -737,6 +793,13 @@
       this.$memo = this.shadowRoot.getElementById('memo');
       this.$memoEditor = this.shadowRoot.getElementById('memoEditor');
       this.$memoPreview = this.shadowRoot.getElementById('memoPreview');
+      this.$previewSplit = this.shadowRoot.getElementById('previewSplit');
+      this.$layoutSplit = this.shadowRoot.getElementById('layoutSplit');
+      this.$layoutTabs = this.shadowRoot.getElementById('layoutTabs');
+      this.$previewPaneToggle = this.shadowRoot.getElementById('previewPaneToggle');
+      this.$previewPaneButtons = Array.from(
+        this.shadowRoot.querySelectorAll('#previewPaneToggle button')
+      );
       this.$fontSize = this.shadowRoot.getElementById('fontSize');
       this.$inlineEnabled = this.shadowRoot.getElementById('inlineEnabled');
       this.$closeAfterInject = this.shadowRoot.getElementById('closeAfterInject');
@@ -993,15 +1056,7 @@
       this.$tabs.forEach(t =>
         t.classList.toggle('active', t.dataset.tab === this.state.mode)
       );
-      this.$memoBody.classList.toggle('active', this.state.mode === 'memo');
-      this.$previewBody?.classList.toggle('active', this.state.mode === 'preview');
-      this.$devBody.classList.toggle('active', this.state.mode === 'dev');
-      this.$settingsBody?.classList.toggle('active', this.state.mode === 'settings');
-
-      // ensure preview reflects latest (debounced for smoother mount)
-      if (this.state.mode === 'preview' && this.$memoPreview) {
-        this.scheduleRenderPreview(this.$memoEditor?.value || this.$memo?.value || '');
-      }
+      this.updateMode();
      }
 
      // ===== History: event logging & overlay =====
@@ -1661,16 +1716,21 @@
       const mode = active ? active.dataset.tab : 'memo';
       LS.set(KEYS.mode, mode);
       this.state.mode = mode;
-      if (this.$panel) this.$panel.classList.toggle('preview-mode', mode === 'preview');
-      this.classList.toggle('preview-mode', mode === 'preview');
+      const previewMode = mode === 'preview';
+      if (this.$panel) this.$panel.classList.toggle('preview-mode', previewMode);
+      this.classList.toggle('preview-mode', previewMode);
       if (mode === 'dev') {
         this.maybeLoadOriginalMarkdown();
       }
-      if (mode === 'preview') {
-        if (this.$memoEditor && this.$memoPreview) {
-           this.$memoEditor.value = this.$memo.value || '';
-           this.scheduleRenderPreview(this.$memoEditor.value);
-        }
+      if (this.$memoBody) this.$memoBody.classList.toggle('active', mode === 'memo');
+      if (this.$previewBody) this.$previewBody.classList.toggle('active', mode === 'preview');
+      if (this.$devBody) this.$devBody.classList.toggle('active', mode === 'dev');
+      if (this.$settingsBody) this.$settingsBody.classList.toggle('active', mode === 'settings');
+      this.applyLayoutMode(this.state.layoutMode);
+      if (previewMode && this.$memoEditor && this.$memoPreview) {
+        this.$memoEditor.value = this.$memo.value || '';
+        this.applyPreviewPane(this.state.previewPane);
+        this.scheduleRenderPreview(this.$memoEditor.value);
       }
     }
 
@@ -1692,7 +1752,7 @@
       // close
       this.$close.addEventListener('click', () => {
         this.$panel.classList.remove('open');
-        this.updateOpen();
+        this.closeHistory();
       });
 
       // tabs
@@ -1700,14 +1760,33 @@
         tab.addEventListener('click', () => {
           this.$tabs.forEach(t => t.classList.remove('active'));
           tab.classList.add('active');
-          const mode = tab.dataset.tab;
-          this.$memoBody.classList.toggle('active', mode === 'memo');
-          this.$previewBody?.classList.toggle('active', mode === 'preview');
-          this.$devBody.classList.toggle('active', mode === 'dev');
-          this.$settingsBody?.classList.toggle('active', mode === 'settings');
           this.updateMode();
         })
       );
+
+      if (this.$layoutSplit)
+        this.$layoutSplit.addEventListener('click', () => {
+          this.applyLayoutMode('split');
+          this.applyPreviewPane('editor');
+          this.logEvent({ type: 'layout_change', mode: 'split' });
+        });
+
+      if (this.$layoutTabs)
+        this.$layoutTabs.addEventListener('click', () => {
+          this.applyLayoutMode('tab');
+          this.applyPreviewPane(this.state.previewPane || 'editor');
+          this.logEvent({ type: 'layout_change', mode: 'tab' });
+        });
+
+      if (Array.isArray(this.$previewPaneButtons)) {
+        this.$previewPaneButtons.forEach(btn => {
+          btn.addEventListener('click', () => {
+            const pane = btn.dataset.pane || 'editor';
+            this.applyPreviewPane(pane);
+            this.logEvent({ type: 'preview_pane', pane });
+          });
+        });
+      }
 
       // input persistence
        const saveMemo = () => {

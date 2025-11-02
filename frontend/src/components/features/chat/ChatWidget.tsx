@@ -16,6 +16,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { streamChatEvents, ensureSession } from '@/services/chat';
+import ChatMarkdown from './ChatMarkdown';
 
 export type SourceLink = {
   title?: string;
@@ -256,7 +257,7 @@ export default function ChatWidget(props: { onClose?: () => void }) {
             >
               <div
                 className={[
-                  'max-w-[85%] whitespace-pre-wrap text-sm leading-relaxed rounded-2xl px-3 py-2',
+                  'max-w-[85%] text-sm leading-relaxed rounded-2xl px-3 py-2',
                   isUser && 'bg-primary text-primary-foreground rounded-br-sm',
                   isAssistant &&
                     'bg-secondary text-secondary-foreground rounded-bl-sm',
@@ -265,7 +266,11 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                   .filter(Boolean)
                   .join(' ')}
               >
-                {m.text}
+                {isAssistant ? (
+                  <ChatMarkdown content={m.text} />
+                ) : (
+                  <span className='whitespace-pre-wrap'>{m.text}</span>
+                )}
                 {isAssistant &&
                   Array.isArray(m.sources) &&
                   m.sources.length > 0 && (
