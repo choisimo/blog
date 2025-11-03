@@ -15,13 +15,54 @@ export interface SEOData {
   tags?: string[];
 }
 
+export type SEOPageType = 'home' | 'blog' | 'post' | 'about' | 'contact';
+
+export interface GenerateSEOOptions {
+  category?: string | null;
+  ogImageOverride?: string;
+}
+
+const slugifyCategory = (value: string): string =>
+  value
+    .trim()
+    .replace(/[&/]+/g, ' and ')
+    .toLowerCase()
+    .replace(/[^0-9a-z\uac00-\ud7a3]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+const normalizeCategory = (category?: string | null): string | undefined => {
+  if (!category) return undefined;
+  const trimmed = category.trim();
+  if (!trimmed || trimmed.toLowerCase() === 'all') return undefined;
+  return trimmed;
+};
+
+const buildCategoryImagePath = (
+  basePath: string,
+  category?: string
+): string => {
+  if (!category) return `${basePath}/default/seo.png`;
+  const slug = slugifyCategory(category);
+  return slug ? `${basePath}/${slug}/seo.png` : `${basePath}/default/seo.png`;
+};
+
 export const generateSEOData = (
   post?: BlogPost,
-  pageType: 'home' | 'blog' | 'post' | 'about' | 'contact' = 'home'
+  pageType: SEOPageType = 'home',
+  options: GenerateSEOOptions = {}
 ): SEOData => {
   const baseUrl = import.meta.env.VITE_SITE_BASE_URL || 'http://localhost:3000';
   const apiBase = getApiBaseUrl();
-  const siteName = 'Your Blog Name'; // TODO: set your actual site name
+  const siteName = 'nodove-blog'; 
+  const seoImageBase = `${baseUrl}/images/seo`;
+  const defaultOgImage = `${seoImageBase}/default/seo.png`;
+  const category = normalizeCategory(options.category);
+  const categoryOgImage = options.ogImageOverride
+    ? options.ogImageOverride
+    : category
+      ? buildCategoryImagePath(seoImageBase, category)
+      : defaultOgImage;
 
   switch (pageType) {
     case 'post':
@@ -42,12 +83,21 @@ export const generateSEOData = (
 
     case 'blog':
       return {
-        title: `Blog | ${siteName}`,
-        description:
-          'Latest blog posts about technology, programming, and web development',
-        keywords: ['blog', 'technology', 'programming', 'web development'],
-        canonicalUrl: `${baseUrl}/blog`,
-        ogImage: `${baseUrl}/og-blog.png`,
+        title: `${category ? `${category} Posts` : 'Blog'} | ${siteName}`,
+        description: category
+          ? `Latest blog posts and curated resources about ${category}.`
+          : 'Latest blog posts about technology, programming, and web development',
+        keywords: [
+          'blog',
+          'technology',
+          'programming',
+          'web development',
+          ...(category ? [category] : []),
+        ],
+        canonicalUrl: category
+          ? `${baseUrl}/blog?category=${encodeURIComponent(category)}`
+          : `${baseUrl}/blog`,
+        ogImage: categoryOgImage,
         ogType: 'website',
       };
 
@@ -57,7 +107,7 @@ export const generateSEOData = (
         description: 'Learn more about the author and the purpose of this blog',
         keywords: ['about', 'author', 'biography'],
         canonicalUrl: `${baseUrl}/about`,
-        ogImage: `${baseUrl}/og-about.png`,
+        ogImage: categoryOgImage,
         ogType: 'website',
       };
 
@@ -67,7 +117,7 @@ export const generateSEOData = (
         description: 'Get in touch with the blog author',
         keywords: ['contact', 'email', 'reach out'],
         canonicalUrl: `${baseUrl}/contact`,
-        ogImage: `${baseUrl}/og-contact.png`,
+        ogImage: categoryOgImage,
         ogType: 'website',
       };
 
@@ -84,7 +134,7 @@ export const generateSEOData = (
           'tutorials',
         ],
         canonicalUrl: baseUrl,
-        ogImage: `${baseUrl}/og-home.png`,
+        ogImage: categoryOgImage,
         ogType: 'website',
       };
   }
@@ -96,8 +146,8 @@ export const generateStructuredData = (
 ) => {
   const baseUrl = import.meta.env.VITE_SITE_BASE_URL || 'http://localhost:3000';
   const apiBase = getApiBaseUrl();
-  const siteName = 'Your Blog Name'; // TODO: set your actual site name
-  const authorName = 'Your Name'; // TODO: set your actual name
+  const siteName = 'nodove-blog'; // TODO: set your actual site name
+  const authorName = 'nodove'; // TODO: set your actual name
 
   if (pageType === 'post' && post) {
     return {
