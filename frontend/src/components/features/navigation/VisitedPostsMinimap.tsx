@@ -137,7 +137,7 @@ export function VisitedPostsMinimap({
             }}
           >
             <Map className='mr-2 h-4 w-4' />
-            History
+            Insight
           </Button>
         </SheetTrigger>
       )}

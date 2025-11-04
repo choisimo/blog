@@ -1,5 +1,5 @@
 import { render, screen, cleanup, waitFor } from '@testing-library/react';
-import { describe, it, expect, afterEach, beforeEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { act } from 'react';
 import App from '../App';
 
@@ -51,9 +51,41 @@ describe('FloatingActionBar feature flag', () => {
     await withFab(true);
     const toolbar = screen.queryByRole('toolbar', { name: 'Floating actions' });
     expect(toolbar).not.toBeNull();
+    // Insight button label should be visible
+    expect(screen.queryByRole('button', { name: 'Insight' })).not.toBeNull();
   });
 
-  it('shows memo action buttons when memo is open under FAB', async () => {
+  it('falls back to visited-posts minimap when ai-memo is absent', async () => {
+    // Enable FAB with no ai-memo element present
+    seedVisited();
+    await withFab(true);
+
+    // FAB toolbar should be present
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('toolbar', { name: 'Floating actions' })
+      ).not.toBeNull();
+    });
+
+    // Spy on window.dispatchEvent to capture fallback event
+    const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+
+    // Click Insight and expect a visitedposts:open fallback event
+    const insightBtn = screen.getByRole('button', { name: 'Insight' });
+    await act(async () => {
+      insightBtn.click();
+    });
+
+    await waitFor(() => {
+      const calls = (dispatchSpy.mock?.calls || []) as unknown[] as any[];
+      const hasVisitedOpen = calls.some(args => args?.[0]?.type === 'visitedposts:open');
+      expect(hasVisitedOpen).toBe(true);
+    });
+
+    dispatchSpy.mockRestore();
+  });
+
+  it('shows global actions when memo is open under FAB', async () => {
     // Enable FAB
     window.localStorage.setItem('aiMemo.fab.enabled', 'true');
 
@@ -80,16 +112,16 @@ describe('FloatingActionBar feature flag', () => {
       ).not.toBeNull();
     });
 
-    // Expect memo action buttons visible in FAB (queried by aria-label)
-    expect(screen.queryByRole('button', { name: '선택 추가' })).not.toBeNull();
-    expect(
-      screen.queryByRole('button', { name: '그래프에 추가' })
-    ).not.toBeNull();
-    expect(screen.queryByRole('button', { name: 'AI 요약' })).not.toBeNull();
-    expect(screen.queryByRole('button', { name: 'Catalyst' })).not.toBeNull();
-    expect(
-      screen.queryByRole('button', { name: '메모 다운로드' })
-    ).not.toBeNull();
+    // Expect global action buttons are present
+    expect(screen.queryByRole('button', { name: 'AI Chat' })).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Insight' })).not.toBeNull();
+
+    // And legacy contextual memo actions are not present in FAB anymore
+    expect(screen.queryByRole('button', { name: '선택 추가' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '그래프에 추가' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'AI 요약' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Catalyst' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '메모 다운로드' })).toBeNull();
   });
 
   it('hides FAB while legacy history overlay is open and shows after close', async () => {
@@ -128,5 +160,12 @@ describe('FloatingActionBar feature flag', () => {
       });
       expect(toolbar).not.toBeNull();
     });
+
+    // Clicking Insight should call history open on the component
+    const openHistorySpy = vi.fn();
+    (aiMemo as any).openHistory = openHistorySpy;
+    const insightBtn = screen.getByRole('button', { name: 'Insight' });
+    insightBtn.click();
+    expect(openHistorySpy).toHaveBeenCalled();
   });
 });

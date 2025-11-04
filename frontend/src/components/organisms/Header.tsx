@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ThemeToggle } from '@/components/common';
+import { LanguageToggle, ThemeToggle } from '@/components/common';
 import { Menu, X, Home, BookOpen, User, Mail, Shield } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -65,6 +65,7 @@ export function Header() {
             </div>
           </div>
           <div className='flex items-center gap-x-4'>
+            <LanguageToggle />
             <ThemeToggle />
             <div className='flex md:hidden'>
               <Button

@@ -17,10 +17,13 @@ import {
 } from '@/components/ui/select';
 import { Search, X, Grid, List } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
+import useLanguage from '@/hooks/useLanguage';
+import { getAvailableLanguages, resolveLocalizedPost } from '@/utils/blog';
 
 const POSTS_PER_PAGE = 12;
 
 const Blog = () => {
+  const { language } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryParam = searchParams.get('category');
   const pageParam = searchParams.get('page');

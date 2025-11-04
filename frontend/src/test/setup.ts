@@ -1,5 +1,61 @@
 import '@testing-library/jest-dom';
 
+// Provide a stable in-memory localStorage/sessionStorage for tests
+(function ensureStorage() {
+  const makeStorage = () => {
+    const store = new Map<string, string>();
+    return {
+      get length() {
+        return store.size;
+      },
+      clear() {
+        store.clear();
+      },
+      getItem(key: string) {
+        return store.has(key) ? store.get(key)! : null;
+      },
+      key(index: number) {
+        return Array.from(store.keys())[index] ?? null;
+      },
+      removeItem(key: string) {
+        store.delete(key);
+      },
+      setItem(key: string, value: string) {
+        store.set(String(key), String(value));
+      },
+    } as Storage;
+  };
+  try {
+    // If jsdom provided storages are missing or broken, replace them
+    if (!('localStorage' in window) || typeof window.localStorage?.getItem !== 'function') {
+      Object.defineProperty(window, 'localStorage', {
+        value: makeStorage(),
+        configurable: true,
+        writable: true,
+      });
+    }
+    if (!('sessionStorage' in window) || typeof window.sessionStorage?.getItem !== 'function') {
+      Object.defineProperty(window, 'sessionStorage', {
+        value: makeStorage(),
+        configurable: true,
+        writable: true,
+      });
+    }
+  } catch {
+    // As a fallback, force-define
+    Object.defineProperty(window, 'localStorage', {
+      value: makeStorage(),
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(window, 'sessionStorage', {
+      value: makeStorage(),
+      configurable: true,
+      writable: true,
+    });
+  }
+})();
+
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

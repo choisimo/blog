@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 import { Header, Footer } from './components/organisms';
 import { Toaster } from './components/ui/toaster';
 import { TooltipProvider } from './components/ui/tooltip';
@@ -42,31 +43,33 @@ function App() {
   }, []);
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <TooltipProvider>
-          <Router>
-            <div className='min-h-screen flex flex-col bg-background text-foreground'>
-              <Header />
-              <main className='flex-1'>
-                <Routes>
-                  <Route path='/' element={<Index />} />
-                  <Route path='/blog' element={<Blog />} />
-                  <Route path='/blog/:year/:slug' element={<BlogPost />} />
-                  <Route path='/post/:year/:slug' element={<BlogPost />} />
-                  <Route path='/about' element={<About />} />
-                  <Route path='/contact' element={<Contact />} />
-                  <Route path='/admin/new-post' element={<NewPost />} />
-                  <Route path='*' element={<NotFound />} />
-                </Routes>
-              </main>
-              <Footer />
-              {!fabOn && <VisitedPostsMinimap />}
-              <FloatingActionBar />
-              <Toaster />
-            </div>
-          </Router>
-        </TooltipProvider>
-      </ThemeProvider>
+      <LanguageProvider>
+        <ThemeProvider>
+          <TooltipProvider>
+            <Router>
+              <div className='min-h-screen flex flex-col bg-background text-foreground'>
+                <Header />
+                <main className='flex-1'>
+                  <Routes>
+                    <Route path='/' element={<Index />} />
+                    <Route path='/blog' element={<Blog />} />
+                    <Route path='/blog/:year/:slug' element={<BlogPost />} />
+                    <Route path='/post/:year/:slug' element={<BlogPost />} />
+                    <Route path='/about' element={<About />} />
+                    <Route path='/contact' element={<Contact />} />
+                    <Route path='/admin/new-post' element={<NewPost />} />
+                    <Route path='*' element={<NotFound />} />
+                  </Routes>
+                </main>
+                <Footer />
+                {!fabOn && <VisitedPostsMinimap />}
+                <FloatingActionBar />
+                <Toaster />
+              </div>
+            </Router>
+          </TooltipProvider>
+        </ThemeProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }
