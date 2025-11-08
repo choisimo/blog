@@ -1,3 +1,12 @@
+export type SupportedLanguage = 'ko' | 'en';
+
+export interface LocalizedPostFields {
+  title: string;
+  description: string;
+  excerpt?: string;
+  content?: string;
+}
+
 export interface BlogPost {
   id: string;
   title: string;
@@ -9,11 +18,15 @@ export interface BlogPost {
   tags: string[];
   content: string;
   slug: string;
+  language: SupportedLanguage;
   readTime?: number;
   readingTime?: string;
   author?: string;
   published?: boolean;
   coverImage?: string;
+  defaultLanguage?: SupportedLanguage;
+  availableLanguages?: SupportedLanguage[];
+  translations?: Partial<Record<SupportedLanguage, LocalizedPostFields>>;
 }
 
 export interface BlogCategory {

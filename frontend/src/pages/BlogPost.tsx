@@ -5,12 +5,16 @@ import {
   useNavigate,
   useLocation,
 } from 'react-router-dom';
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { ReadingProgress } from '@/components/common/ReadingProgress';
 import { ScrollToTop } from '@/components/common/ScrollToTop';
 import { getPostBySlug, getPostsPage, prefetchPost } from '@/data/posts';
 import { BlogPost as BlogPostType } from '@/types/blog';
-import { formatDate } from '@/utils/blog';
+import {
+  formatDate,
+  getAvailableLanguages,
+  resolveLocalizedPost,
+} from '@/utils/blog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -26,6 +30,7 @@ import {
   User,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import useLanguage from '@/hooks/useLanguage';
 // import SparkInline from '@/components/features/sentio/SparkInline';
 
 const MarkdownRenderer = lazy(
@@ -53,12 +58,45 @@ const BlogPost = () => {
     preservedFrom?.search ??
     (typeof location.search === 'string' ? location.search : '');
   const { toast } = useToast();
+  const { language, setLanguage } = useLanguage();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [post, setPost] = useState<BlogPostType | null>(null);
   const [relatedPosts, setRelatedPosts] = useState<BlogPostType[]>([]);
   const [inlineEnabled, setInlineEnabled] = useState<boolean>(true);
+
+  const localized = useMemo(
+    () => (post ? resolveLocalizedPost(post, language) : null),
+    [post, language]
+  );
+
+  const availableLanguages = useMemo(
+    () => (post ? getAvailableLanguages(post) : []),
+    [post]
+  );
+
+  const readingTimeLabel = useMemo(() => {
+    if (!post) return '';
+    const raw = post.readingTime || (post.readTime ? `${post.readTime} min read` : '');
+    if (!raw) return '';
+    const match = raw.match(/(\d+)/);
+    if (language === 'ko') {
+      const minutes = match ? match[1] : '';
+      if (minutes) return `${minutes}분 읽기`;
+      return raw.includes('분') ? raw : raw.replace('min read', '분 읽기');
+    }
+    if (raw.includes('분')) {
+      const minutes = match ? match[1] : '';
+      if (minutes) return `${minutes} min read`;
+    }
+    return raw;
+  }, [language, post]);
+
+  const backLabel = language === 'ko' ? '블로그로 돌아가기' : 'Back to Blog';
+  const shareLabel = language === 'ko' ? '공유하기' : 'Share';
+  const relatedLabel = language === 'ko' ? '관련 글' : 'Related Posts';
+  const commentsLabel = language === 'ko' ? '댓글' : 'Comments';
 
   const handleBackToBlog = () => {
     if (preservedFrom) {

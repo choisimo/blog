@@ -314,13 +314,24 @@ export default function FloatingActionBar() {
   );
 
   const openHistory = useCallback(() => {
+    let opened = false;
     try {
       const anyEl = aiMemoEl as any;
-      if (anyEl?.openHistory) anyEl.openHistory();
-      else clickShadowBtn('historyLauncher');
-      clearBadge();
-      send('fab_history_click');
+      if (anyEl?.openHistory) {
+        anyEl.openHistory();
+        opened = true;
+      } else if (aiMemoEl) {
+        clickShadowBtn('historyLauncher');
+        opened = true;
+      }
     } catch {}
+    if (!opened) {
+      try {
+        window.dispatchEvent(new CustomEvent('visitedposts:open'));
+      } catch {}
+    }
+    clearBadge();
+    send('fab_history_click');
   }, [aiMemoEl, clickShadowBtn, clearBadge, send]);
 
   const stackViewAvailable = visitedPosts.length > 0;
@@ -394,7 +405,7 @@ export default function FloatingActionBar() {
               aria-label='\uba54\ubaa8'
             >
               <NotebookPen className='h-4 w-4' />
-              <span className='hidden lg:inline ml-1'>Memo</span>
+              <span className='hidden lg:inline ml-1'>메모</span>
             </Button>
             {stackViewAvailable && (
               <Button
@@ -412,11 +423,12 @@ export default function FloatingActionBar() {
                 variant='secondary'
                 size='sm'
                 onClick={openHistory}
-                aria-label='History'
+                aria-label='Insight'
                 aria-haspopup='dialog'
+                title='최근 작업 내역 (Insight)'
               >
                 <Map className='h-4 w-4' />
-                <span className='hidden lg:inline ml-1'>History</span>
+                <span className='hidden lg:inline ml-1'>Insight</span>
               </Button>
               {hasNew && (
                 <span

@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Card,
@@ -11,11 +11,12 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { BlogPost } from '@/types/blog';
-import { formatDate } from '@/utils/blog';
+import { formatDate, resolveLocalizedPost } from '@/utils/blog';
 import { ArrowRight, Clock, User } from 'lucide-react';
 import { DateDisplay, TagList } from '@/components/atoms';
 import { prefetchPost } from '@/data/posts';
 import { OptimizedImage } from '@/components/common/OptimizedImage';
+import useLanguage from '@/hooks/useLanguage';
 
 interface BlogCardProps {
   post: BlogPost;
@@ -23,6 +24,11 @@ interface BlogCardProps {
 
 const BlogCard = memo(({ post }: BlogCardProps) => {
   const location = useLocation();
+  const { language } = useLanguage();
+  const localized = useMemo(
+    () => resolveLocalizedPost(post, language),
+    [language, post]
+  );
 
   const search = location.search;
   const fromState = {
@@ -34,7 +40,28 @@ const BlogCard = memo(({ post }: BlogCardProps) => {
   const postUrl = `/blog/${post.year}/${post.slug}`;
 
   // Display excerpt or description
-  const displayText = post.excerpt || post.description;
+  const displayText = localized.excerpt || localized.description;
+
+  const readingTimeLabel = useMemo(() => {
+    const raw = post.readingTime || (post.readTime ? `${post.readTime} min read` : '');
+    if (!raw) return '';
+    const match = raw.match(/(\d+)/);
+    if (language === 'ko') {
+      const minutes = match ? match[1] : '';
+      if (minutes) return `${minutes}분 읽기`;
+      return raw.includes('분') ? raw : raw.replace('min read', '분 읽기');
+    }
+    // English fallback
+    if (raw.includes('분')) {
+      const minutes = match ? match[1] : '';
+      if (minutes) return `${minutes} min read`;
+    }
+    return raw;
+  }, [language, post.readTime, post.readingTime]);
+
+  const readMoreLabel = language === 'ko' ? '더 읽기' : 'Read more';
+
+  const formattedDate = formatDate(post.date, language);
 
   return (
     <Card className='h-full flex flex-col hover:shadow-lg transition-all duration-300 group border-border/50 hover:border-border'>
@@ -43,7 +70,7 @@ const BlogCard = memo(({ post }: BlogCardProps) => {
         {post.coverImage ? (
           <OptimizedImage
             src={post.coverImage}
-            alt={post.title}
+            alt={localized.title}
             className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'
           />
         ) : (
@@ -71,7 +98,7 @@ const BlogCard = memo(({ post }: BlogCardProps) => {
           <Badge variant='secondary' className='text-xs'>
             {post.category}
           </Badge>
-          <DateDisplay date={formatDate(post.date)} />
+          <DateDisplay date={formattedDate} />
         </div>
         <CardTitle className='line-clamp-2 group-hover:text-primary transition-colors leading-tight font-extrabold'>
           <Link
@@ -81,7 +108,7 @@ const BlogCard = memo(({ post }: BlogCardProps) => {
             onMouseEnter={() => prefetchPost(post.year, post.slug)}
             onFocus={() => prefetchPost(post.year, post.slug)}
           >
-            {post.title}
+            {localized.title}
           </Link>
         </CardTitle>
       </CardHeader>
@@ -97,10 +124,10 @@ const BlogCard = memo(({ post }: BlogCardProps) => {
         <div className='flex items-center justify-between w-full text-xs text-muted-foreground'>
           <div className='flex items-center gap-4'>
             {/* Reading time */}
-            {(post.readingTime || post.readTime) && (
+            {(post.readingTime || post.readTime) && readingTimeLabel && (
               <div className='flex items-center gap-1'>
                 <Clock className='h-3 w-3' />
-                <span>{post.readingTime || `${post.readTime} min read`}</span>
+                <span>{readingTimeLabel}</span>
               </div>
             )}
 
@@ -135,7 +162,7 @@ const BlogCard = memo(({ post }: BlogCardProps) => {
             onMouseEnter={() => prefetchPost(post.year, post.slug)}
             onFocus={() => prefetchPost(post.year, post.slug)}
           >
-            Read more
+            {readMoreLabel}
             <ArrowRight className='ml-2 h-4 w-4 transition-transform group-hover/button:translate-x-1' />
           </Link>
         </Button>

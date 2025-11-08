@@ -1,6 +1,109 @@
 {
-  "total": 99,
+  "total": 126,
   "items": [
+    {
+      "path": "/posts/2025/future-tech-six-insights.md",
+      "year": "2025",
+      "slug": "future-tech-six-insights",
+      "title": "제가 뇌를 리셋하게 만든 미래 기술 문서에서 발견한 6가지 깨달음",
+      "description": "미래 기술 문서들 속에서 발견한 6가지 통찰과 인간 역할의 재정의를 공유합니다.",
+      "snippet": "미래 기술 문서들 속에서 발견한 6가지 통찰과 인간 역할의 재정의를 공유합니다.",
+      "date": "2025-11-04",
+      "tags": [
+        "AI",
+        "DevOps",
+        "Future",
+        "Infrastructure",
+        "Self-Evolving Systems"
+      ],
+      "category": "Tech Essay",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "coverImage": "/images/2025/future-map.jpg",
+      "url": "/blog/2025/future-tech-six-insights"
+    },
+    {
+      "path": "/posts/2025/sorting-algorithms-pseudocode-analysis.md",
+      "year": "2025",
+      "slug": "sorting-algorithms-pseudocode-analysis",
+      "title": "정렬 알고리즘 수도 코드 완전 해부: 라인별 분석",
+      "description": "버블 정렬부터 힙 정렬까지, 핵심 수도 코드를 한 줄씩 뜯어보며 왜 그런 로직이 필요한지 한국어로 상세하게 분석합니다.",
+      "snippet": "버블 정렬부터 힙 정렬까지, 핵심 수도 코드를 한 줄씩 뜯어보며 왜 그런 로직이 필요한지 한국어로 상세하게 분석합니다.",
+      "date": "2025-11-02",
+      "tags": [
+        "정렬",
+        "알고리즘",
+        "수도코드",
+        "학습노트"
+      ],
+      "category": "알고리즘",
+      "author": "Admin",
+      "readingTime": "7 min read",
+      "published": true,
+      "url": "/blog/2025/sorting-algorithms-pseudocode-analysis"
+    },
+    {
+      "path": "/posts/2025/path-new-friend-essay.md",
+      "year": "2025",
+      "slug": "path-new-friend-essay",
+      "title": "PATH에 새 친구를 초대하는 방법",
+      "description": "심볼릭 링크가 말을 안 듣던 날, PATH를 다시 다듬으며 정리한 나만의 에세이.",
+      "snippet": "심볼릭 링크가 말을 안 듣던 날, PATH를 다시 다듬으며 정리한 나만의 에세이.",
+      "date": "2025-11-01",
+      "tags": [
+        "PATH",
+        "리눅스",
+        "환경설정",
+        "터미널",
+        "작업자동화"
+      ],
+      "category": "Linux",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/path-new-friend-essay"
+    },
+    {
+      "path": "/posts/2025/sorting-algorithms-masterclass.md",
+      "year": "2025",
+      "slug": "sorting-algorithms-masterclass",
+      "title": "정렬 알고리즘 완전 정복: 버블 정렬부터 힙 정렬까지",
+      "description": "버블 정렬부터 힙 정렬까지, 핵심 비유와 수도 코드, Java 구현으로 정렬 알고리즘을 완전 정복합니다.",
+      "snippet": "버블 정렬부터 힙 정렬까지, 핵심 비유와 수도 코드, Java 구현으로 정렬 알고리즘을 완전 정복합니다.",
+      "date": "2025-11-01",
+      "tags": [
+        "정렬",
+        "알고리즘",
+        "Java"
+      ],
+      "category": "알고리즘",
+      "author": "Admin",
+      "readingTime": "7 min read",
+      "published": true,
+      "url": "/blog/2025/sorting-algorithms-masterclass"
+    },
+    {
+      "path": "/posts/2025/wine-clipboard-bridge-journal.md",
+      "year": "2025",
+      "slug": "wine-clipboard-bridge-journal",
+      "title": "Wayland 위에서 Wine 카카오톡이 복붙을 잃어버린 날",
+      "description": "EndeavourOS에서 Wine 카카오톡과 호스트 사이 복붙이 끊겼던 사건을 기록하며, 왜 그런지 그리고 어떻게 우회했는지 정리했다.",
+      "snippet": "EndeavourOS에서 Wine 카카오톡과 호스트 사이 복붙이 끊겼던 사건을 기록하며, 왜 그런지 그리고 어떻게 우회했는지 정리했다.",
+      "date": "2025-10-31",
+      "tags": [
+        "Wine",
+        "Wayland",
+        "클립보드",
+        "Hyprland",
+        "wl-clipboard"
+      ],
+      "category": "Linux",
+      "author": "Admin",
+      "readingTime": "5 min read",
+      "published": true,
+      "url": "/blog/2025/wine-clipboard-bridge-journal"
+    },
     {
       "path": "/posts/2025/java-concurrency-journal.md",
       "year": "2025",
@@ -744,6 +847,127 @@
       "url": "/blog/2025/mole-observation-diary"
     },
     {
+      "path": "/posts/2025/integration-04-microservices-deployment.md",
+      "year": "2025",
+      "slug": "integration-04-microservices-deployment",
+      "title": "마이크로서비스 배포 전략 (이벤트 기반)",
+      "description": "준비 중: 이벤트 기반 MSA, 버전 전략, Observability, Rollout 패턴.",
+      "snippet": "준비 중: 이벤트 기반 MSA, 버전 전략, Observability, Rollout 패턴.",
+      "date": "2025-03-05",
+      "tags": [
+        "DevOps",
+        "Microservices",
+        "Deployment",
+        "Kafka",
+        "Kubernetes"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "1 min read",
+      "published": false,
+      "url": "/blog/2025/integration-04-microservices-deployment"
+    },
+    {
+      "path": "/posts/2025/integration-03-k8s-kafka.md",
+      "year": "2025",
+      "slug": "integration-03-k8s-kafka",
+      "title": "Kubernetes에서 Kafka 운영 전략",
+      "description": "준비 중: Strimzi/옵저버빌리티/스토리지/토픽 운영.",
+      "snippet": "준비 중: Strimzi/옵저버빌리티/스토리지/토픽 운영.",
+      "date": "2025-03-04",
+      "tags": [
+        "DevOps",
+        "Kubernetes",
+        "Kafka",
+        "운영"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "1 min read",
+      "published": false,
+      "url": "/blog/2025/integration-03-k8s-kafka"
+    },
+    {
+      "path": "/posts/2025/integration-02-terraform-k8s.md",
+      "year": "2025",
+      "slug": "integration-02-terraform-k8s",
+      "title": "Terraform으로 Kubernetes 클러스터 프로비저닝",
+      "description": "준비 중: Terraform + K8s 클러스터 EKS/모듈 설계 패턴.",
+      "snippet": "준비 중: Terraform + K8s 클러스터 EKS/모듈 설계 패턴.",
+      "date": "2025-03-03",
+      "tags": [
+        "DevOps",
+        "Terraform",
+        "Kubernetes",
+        "Integration"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "1 min read",
+      "published": false,
+      "url": "/blog/2025/integration-02-terraform-k8s"
+    },
+    {
+      "path": "/posts/2025/kubernetes-05-statefulset-storage.md",
+      "year": "2025",
+      "slug": "kubernetes-05-statefulset-storage",
+      "title": "Kubernetes StatefulSet과 스토리지",
+      "description": "준비 중: 상태 저장 워크로드, PV/PVC, Headless Service, 스토리지 클래스.",
+      "snippet": "준비 중: 상태 저장 워크로드, PV/PVC, Headless Service, 스토리지 클래스.",
+      "date": "2025-02-26",
+      "tags": [
+        "DevOps",
+        "Kubernetes",
+        "StatefulSet",
+        "Storage"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "1 min read",
+      "published": false,
+      "url": "/blog/2025/kubernetes-05-statefulset-storage"
+    },
+    {
+      "path": "/posts/2025/kubernetes-04-configmap-secret.md",
+      "year": "2025",
+      "slug": "kubernetes-04-configmap-secret",
+      "title": "Kubernetes ConfigMap & Secret 활용",
+      "description": "준비 중: 환경 구성/민감정보 주입, 볼륨 마운트와 보안 고려.",
+      "snippet": "준비 중: 환경 구성/민감정보 주입, 볼륨 마운트와 보안 고려.",
+      "date": "2025-02-25",
+      "tags": [
+        "DevOps",
+        "Kubernetes",
+        "ConfigMap",
+        "Secret"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "1 min read",
+      "published": false,
+      "url": "/blog/2025/kubernetes-04-configmap-secret"
+    },
+    {
+      "path": "/posts/2025/kubernetes-03-services-networking.md",
+      "year": "2025",
+      "slug": "kubernetes-03-services-networking",
+      "title": "Kubernetes Service와 네트워킹",
+      "description": "준비 중: ClusterIP, NodePort, LoadBalancer, Ingress, DNS 내부 구조.",
+      "snippet": "준비 중: ClusterIP, NodePort, LoadBalancer, Ingress, DNS 내부 구조.",
+      "date": "2025-02-24",
+      "tags": [
+        "DevOps",
+        "Kubernetes",
+        "Service",
+        "Networking"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "1 min read",
+      "published": false,
+      "url": "/blog/2025/kubernetes-03-services-networking"
+    },
+    {
       "path": "/posts/2025/FutureClouding.md",
       "year": "2025",
       "slug": "FutureClouding",
@@ -763,6 +987,146 @@
       "readingTime": "3 min read",
       "published": true,
       "url": "/blog/2025/FutureClouding"
+    },
+    {
+      "path": "/posts/2025/kafka-04-topics-partitions.md",
+      "year": "2025",
+      "slug": "kafka-04-topics-partitions",
+      "title": "Kafka 토픽·파티션·스토리지 관리",
+      "description": "준비 중: 파티션 설계, 리밸런싱, retention/compaction 전략.",
+      "snippet": "준비 중: 파티션 설계, 리밸런싱, retention/compaction 전략.",
+      "date": "2025-02-18",
+      "tags": [
+        "DevOps",
+        "Kafka",
+        "Topic",
+        "Partition"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "1 min read",
+      "published": false,
+      "url": "/blog/2025/kafka-04-topics-partitions"
+    },
+    {
+      "path": "/posts/2025/kafka-03-producer-consumer.md",
+      "year": "2025",
+      "slug": "kafka-03-producer-consumer",
+      "title": "Kafka Producer/Consumer 실습과 신뢰성 패턴",
+      "description": "준비 중: acks, retries, idempotent producer, consumer offset 전략.",
+      "snippet": "준비 중: acks, retries, idempotent producer, consumer offset 전략.",
+      "date": "2025-02-17",
+      "tags": [
+        "DevOps",
+        "Kafka",
+        "Producer",
+        "Consumer"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "1 min read",
+      "published": false,
+      "url": "/blog/2025/kafka-03-producer-consumer"
+    },
+    {
+      "path": "/posts/2025/ansible-04-roles.md",
+      "year": "2025",
+      "slug": "ansible-04-roles",
+      "title": "Ansible Role 설계와 재사용성",
+      "description": "준비 중: Role 디렉토리 구조와 공통 변수/태그 전략.",
+      "snippet": "준비 중: Role 디렉토리 구조와 공통 변수/태그 전략.",
+      "date": "2025-02-12",
+      "tags": [
+        "DevOps",
+        "Ansible",
+        "Role",
+        "구조"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "1 min read",
+      "published": false,
+      "url": "/blog/2025/ansible-04-roles"
+    },
+    {
+      "path": "/posts/2025/ansible-03-playbook-examples.md",
+      "year": "2025",
+      "slug": "ansible-03-playbook-examples",
+      "title": "Ansible Playbook 작성 실습 모음",
+      "description": "준비 중: 재사용성과 역할 분리를 고려한 Playbook 예시.",
+      "snippet": "준비 중: 재사용성과 역할 분리를 고려한 Playbook 예시.",
+      "date": "2025-02-11",
+      "tags": [
+        "DevOps",
+        "Ansible",
+        "Playbook",
+        "실습"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "1 min read",
+      "published": false,
+      "url": "/blog/2025/ansible-03-playbook-examples"
+    },
+    {
+      "path": "/posts/2025/ansible-02-inventory-basics.md",
+      "year": "2025",
+      "slug": "ansible-02-inventory-basics",
+      "title": "Ansible Inventory 심화: 그룹/변수/패턴",
+      "description": "Static/동적 인벤토리, 그룹 중첩, 변수 계층, 패턴 매칭, 환경 분리 전략까지 실전 정리",
+      "snippet": "Static/동적 인벤토리, 그룹 중첩, 변수 계층, 패턴 매칭, 환경 분리 전략까지 실전 정리",
+      "date": "2025-02-10",
+      "tags": [
+        "DevOps",
+        "Ansible",
+        "Inventory",
+        "Pattern"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "2 min read",
+      "published": true,
+      "url": "/blog/2025/ansible-02-inventory-basics"
+    },
+    {
+      "path": "/posts/2025/terraform-04-variables-outputs.md",
+      "year": "2025",
+      "slug": "terraform-04-variables-outputs",
+      "title": "Terraform 변수와 출력 고급 패턴",
+      "description": "변수 타입/검증, locals, dynamic/for_each, map/object, 민감정보, 출력 패턴까지 실무형 레시피로 정리합니다.",
+      "snippet": "변수 타입/검증, locals, dynamic/for_each, map/object, 민감정보, 출력 패턴까지 실무형 레시피로 정리합니다.",
+      "date": "2025-02-04",
+      "tags": [
+        "DevOps",
+        "Terraform",
+        "Variables",
+        "Outputs"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "2 min read",
+      "published": true,
+      "url": "/blog/2025/terraform-04-variables-outputs"
+    },
+    {
+      "path": "/posts/2025/terraform-03-state-management.md",
+      "year": "2025",
+      "slug": "terraform-03-state-management",
+      "title": "Terraform 상태 관리와 모듈화",
+      "description": "Terraform state 원격 백엔드, 잠금(lock), drift 감지, 워크스페이스 전략과 모듈화 베스트 프랙티스를 손에 잡히게 정리합니다.",
+      "snippet": "Terraform state 원격 백엔드, 잠금(lock), drift 감지, 워크스페이스 전략과 모듈화 베스트 프랙티스를 손에 잡히게 정리합니다.",
+      "date": "2025-02-03",
+      "tags": [
+        "DevOps",
+        "Terraform",
+        "State",
+        "Module"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/terraform-03-state-management"
     },
     {
       "path": "/posts/2024/dark-city-existentialism.md",
@@ -821,6 +1185,49 @@
       "url": "/blog/2024/brazil-1985-review"
     },
     {
+      "path": "/posts/2025/integration-01-devops-pipeline.md",
+      "year": "2025",
+      "slug": "integration-01-devops-pipeline",
+      "title": "DevOps 통합 실습: Terraform · Ansible · Kubernetes · Kafka",
+      "description": "네 가지 도구를 연결해 인프라 프로비저닝→설정 자동화→클러스터 구성→Kafka+마이크로서비스 배포까지 단일 파이프라인 시나리오.",
+      "snippet": "네 가지 도구를 연결해 인프라 프로비저닝→설정 자동화→클러스터 구성→Kafka+마이크로서비스 배포까지 단일 파이프라인 시나리오.",
+      "date": "2025-01-20",
+      "tags": [
+        "DevOps",
+        "Terraform",
+        "Ansible",
+        "Kubernetes",
+        "Kafka",
+        "Pipeline"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "2 min read",
+      "published": true,
+      "url": "/blog/2025/integration-01-devops-pipeline"
+    },
+    {
+      "path": "/posts/2025/kubernetes-02-pods-deployments.md",
+      "year": "2025",
+      "slug": "kubernetes-02-pods-deployments",
+      "title": "Kubernetes Pod와 Deployment 핵심 실습",
+      "description": "단일/멀티 컨테이너 Pod, Deployment 생성·스케일·롤링 업데이트·롤백·레이블·셀렉터·Probe까지 실무 핵심 정리.",
+      "snippet": "단일/멀티 컨테이너 Pod, Deployment 생성·스케일·롤링 업데이트·롤백·레이블·셀렉터·Probe까지 실무 핵심 정리.",
+      "date": "2025-01-17",
+      "tags": [
+        "DevOps",
+        "Kubernetes",
+        "Pod",
+        "Deployment",
+        "실습"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "2 min read",
+      "published": true,
+      "url": "/blog/2025/kubernetes-02-pods-deployments"
+    },
+    {
       "path": "/posts/2025/QuantumLayerLLM.md",
       "year": "2025",
       "slug": "QuantumLayerLLM",
@@ -840,6 +1247,154 @@
       "readingTime": "2 min read",
       "published": true,
       "url": "/blog/2025/QuantumLayerLLM"
+    },
+    {
+      "path": "/posts/2025/kubernetes-01-cluster-setup.md",
+      "year": "2025",
+      "slug": "kubernetes-01-cluster-setup",
+      "title": "Kubernetes 로컬 클러스터 설치 (minikube·kind·Docker Desktop)",
+      "description": "minikube, kind, Docker Desktop 세 가지 방법으로 로컬 K8s 클러스터 구성하고 kubectl 기본 명령을 익힌다.",
+      "snippet": "minikube, kind, Docker Desktop 세 가지 방법으로 로컬 K8s 클러스터 구성하고 kubectl 기본 명령을 익힌다.",
+      "date": "2025-01-16",
+      "tags": [
+        "DevOps",
+        "Kubernetes",
+        "Cluster",
+        "minikube",
+        "kind"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "2 min read",
+      "published": true,
+      "url": "/blog/2025/kubernetes-01-cluster-setup"
+    },
+    {
+      "path": "/posts/2025/kafka-02-installation-setup.md",
+      "year": "2025",
+      "slug": "kafka-02-installation-setup",
+      "title": "Kafka 로컬 설치: Docker & 네이티브",
+      "description": "Docker Compose로 3 Broker 클러스터 구성과 네이티브 설치 두 가지 방식 비교, 기본 명령어/Topic/Consumer Group 실습.",
+      "snippet": "Docker Compose로 3 Broker 클러스터 구성과 네이티브 설치 두 가지 방식 비교, 기본 명령어/Topic/Consumer Group 실습.",
+      "date": "2025-01-15",
+      "tags": [
+        "DevOps",
+        "Kafka",
+        "설치",
+        "Docker",
+        "실습"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "2 min read",
+      "published": true,
+      "url": "/blog/2025/kafka-02-installation-setup"
+    },
+    {
+      "path": "/posts/2025/kafka-01-concepts-architecture.md",
+      "year": "2025",
+      "slug": "kafka-01-concepts-architecture",
+      "title": "Kafka 핵심 개념과 아키텍처",
+      "description": "Topic, Partition, Broker, Replication, Producer/Consumer와 Consumer Group까지 Kafka 구조를 시각적으로 이해.",
+      "snippet": "Topic, Partition, Broker, Replication, Producer/Consumer와 Consumer Group까지 Kafka 구조를 시각적으로 이해.",
+      "date": "2025-01-14",
+      "tags": [
+        "DevOps",
+        "Kafka",
+        "Streaming",
+        "아키텍처",
+        "초급"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "2 min read",
+      "published": true,
+      "url": "/blog/2025/kafka-01-concepts-architecture"
+    },
+    {
+      "path": "/posts/2025/ansible-01-installation-setup.md",
+      "year": "2025",
+      "slug": "ansible-01-installation-setup",
+      "title": "Ansible 설치와 첫 Inventory 구성",
+      "description": "패키지 설치부터 SSH 키, Inventory 작성, Ad-hoc 명령(ping, shell) 실행까지 Ansible 입문 필수 흐름.",
+      "snippet": "패키지 설치부터 SSH 키, Inventory 작성, Ad-hoc 명령(ping, shell) 실행까지 Ansible 입문 필수 흐름.",
+      "date": "2025-01-13",
+      "tags": [
+        "DevOps",
+        "Ansible",
+        "자동화",
+        "Inventory",
+        "초급"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "2 min read",
+      "published": true,
+      "url": "/blog/2025/ansible-01-installation-setup"
+    },
+    {
+      "path": "/posts/2025/terraform-02-aws-ec2-example.md",
+      "year": "2025",
+      "slug": "terraform-02-aws-ec2-example",
+      "title": "Terraform로 AWS EC2 배포 실습",
+      "description": "VPC, Subnet, Security Group, EC2, User Data까지 포함한 AWS 웹 서버 인프라를 Terraform으로 단계별 구성.",
+      "snippet": "VPC, Subnet, Security Group, EC2, User Data까지 포함한 AWS 웹 서버 인프라를 Terraform으로 단계별 구성.",
+      "date": "2025-01-10",
+      "tags": [
+        "DevOps",
+        "Terraform",
+        "AWS",
+        "EC2",
+        "실습"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "2 min read",
+      "published": true,
+      "url": "/blog/2025/terraform-02-aws-ec2-example"
+    },
+    {
+      "path": "/posts/2025/terraform-01-basic-setup.md",
+      "year": "2025",
+      "slug": "terraform-01-basic-setup",
+      "title": "Terraform 기본 설정과 첫 리소스",
+      "description": "Terraform 설치부터 첫 local_file 리소스 생성까지 필수 워크플로우(init, plan, apply, destroy)를 단계별로 정리.",
+      "snippet": "Terraform 설치부터 첫 local_file 리소스 생성까지 필수 워크플로우(init, plan, apply, destroy)를 단계별로 정리.",
+      "date": "2025-01-09",
+      "tags": [
+        "DevOps",
+        "Terraform",
+        "IaC",
+        "초급",
+        "실습"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "2 min read",
+      "published": true,
+      "url": "/blog/2025/terraform-01-basic-setup"
+    },
+    {
+      "path": "/posts/2025/devops-toolchain-overview.md",
+      "year": "2025",
+      "slug": "devops-toolchain-overview",
+      "title": "DevOps 시리즈 개요: Terraform · Ansible · Kafka · Kubernetes",
+      "description": "DevOps 시리즈 전체 구조와 학습 로드맵을 한눈에 정리한 개요 글.",
+      "snippet": "DevOps 시리즈 전체 구조와 학습 로드맵을 한눈에 정리한 개요 글.",
+      "date": "2025-01-08",
+      "tags": [
+        "DevOps",
+        "Terraform",
+        "Ansible",
+        "Kafka",
+        "Kubernetes",
+        "Series"
+      ],
+      "category": "DevOps",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/devops-toolchain-overview"
     },
     {
       "path": "/posts/2025/latest.md",
@@ -1521,6 +2076,7 @@
       "author": "Admin",
       "readingTime": "2 min read",
       "published": true,
+      "coverImage": "/images/2025/intelDX2.png",
       "url": "/blog/2024/7"
     },
     {
@@ -1688,7 +2244,7 @@
       ],
       "category": "기술",
       "author": "Admin",
-      "readingTime": "1 min read",
+      "readingTime": "3 min read",
       "published": true,
       "url": "/blog/2024/9"
     },
@@ -1764,9 +2320,9 @@
       "tags": [],
       "category": "기술",
       "author": "Admin",
-      "readingTime": "1 min read",
+      "readingTime": "2 min read",
       "published": true,
-      "coverImage": "https://github.com/user-attachments/assets/4682dcc7-88b0-4d63-832a-8cf561be9a82",
+      "coverImage": "/images/2024/process.png",
       "url": "/blog/2024/3"
     },
     {
@@ -1800,7 +2356,7 @@
       ],
       "category": "기술",
       "author": "Admin",
-      "readingTime": "2 min read",
+      "readingTime": "3 min read",
       "published": true,
       "url": "/blog/2024/8"
     },
@@ -2016,14 +2572,18 @@
       "path": "/posts/2024/2.md",
       "year": "2024",
       "slug": "2",
-      "title": "[Hugo] .Summary 사용법",
-      "description": "Hugo-library .Summary 사용법에 관한 포스트입니다.",
-      "snippet": "Hugo-library .Summary 사용법에 관한 포스트입니다.",
+      "title": "김치캣과 요약문 실험기",
+      "description": "블로그 요약 기능을 테스트하며 만난 길고양이 김치캣의 기록.",
+      "snippet": "블로그 요약 기능을 테스트하며 만난 길고양이 김치캣의 기록.",
       "date": "2024-06-25",
-      "tags": [],
+      "tags": [
+        "블로그",
+        "Hugo",
+        "기록"
+      ],
       "category": "기술",
       "author": "Admin",
-      "readingTime": "1 min read",
+      "readingTime": "2 min read",
       "published": true,
       "coverImage": "https://github.com/user-attachments/assets/64b064ef-d713-4e7e-90a8-b9c83ae0e1c8",
       "url": "/blog/2024/2"
@@ -2086,7 +2646,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-10-27T15:36:45.649Z",
+  "generatedAt": "2025-11-08T09:03:03.872Z",
   "years": [
     "2025",
     "2024"

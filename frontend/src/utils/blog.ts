@@ -1,4 +1,4 @@
-import { BlogPost } from '@/types/blog';
+import { type BlogPost, type SupportedLanguage } from '@/types/blog';
 
 export interface FrontmatterData {
   title?: string;
@@ -14,9 +14,13 @@ export interface ParsedMarkdown {
   content: string;
 }
 
-export const formatDate = (dateString: string): string => {
+export const formatDate = (
+  dateString: string,
+  language: SupportedLanguage = 'ko'
+): string => {
   const date = new Date(dateString);
-  return date.toLocaleDateString('ko-KR', {
+  const locale = language === 'en' ? 'en-US' : 'ko-KR';
+  return date.toLocaleDateString(locale, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -40,6 +44,55 @@ export const createSlug = (title: string): string => {
 export const truncateText = (text: string, maxLength: number): string => {
   if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength).trim()}...`;
+};
+
+export interface LocalizedPostContent {
+  title: string;
+  description: string;
+  excerpt?: string;
+  content: string;
+}
+
+const getFallbackLanguage = (post: BlogPost): SupportedLanguage =>
+  post.defaultLanguage ?? 'ko';
+
+export const getAvailableLanguages = (
+  post: BlogPost
+): SupportedLanguage[] => {
+  const fallback = getFallbackLanguage(post);
+  const available = (post.availableLanguages ?? []).filter(
+    (lang): lang is SupportedLanguage => lang === 'ko' || lang === 'en'
+  );
+  return Array.from(new Set<SupportedLanguage>([fallback, ...available]));
+};
+
+export const resolveLocalizedPost = (
+  post: BlogPost,
+  language: SupportedLanguage
+): LocalizedPostContent => {
+  const fallbackLang = getFallbackLanguage(post);
+  const base: LocalizedPostContent = {
+    title: post.title,
+    description: post.description,
+    excerpt: post.excerpt,
+    content: post.content,
+  };
+
+  if (language === fallbackLang) {
+    return base;
+  }
+
+  const translation = post.translations?.[language];
+  if (!translation) {
+    return base;
+  }
+
+  return {
+    title: translation.title || base.title,
+    description: translation.description || base.description,
+    excerpt: translation.excerpt || base.excerpt,
+    content: translation.content || base.content,
+  };
 };
 
 const parseMarkdownValue = (value: string): unknown => {

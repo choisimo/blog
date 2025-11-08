@@ -1,9 +1,14 @@
 /// <reference types="vite/client" />
 import matter from 'gray-matter';
-import type { BlogPost, PostsPage } from '../types/blog';
+import type {
+  BlogPost,
+  LocalizedPostFields,
+  PostsPage,
+  SupportedLanguage,
+} from '../types/blog';
 
 type ManifestItem = {
-  path: string; // /posts/:year/:file.md
+  path: string; // /posts/:lang/:year/:file.md or legacy /posts/:year/:file.md
   year: string;
   slug: string;
   title: string;
@@ -17,6 +22,7 @@ type ManifestItem = {
   published?: boolean;
   coverImage?: string;
   url?: string;
+  language: SupportedLanguage;
 };
 
 type UnifiedManifest = {
@@ -148,6 +154,7 @@ export class PostService {
       year: it.year,
       published: true,
       coverImage: it.coverImage,
+      language: it.language,
     }));
 
     const pageResult: PostsPage<BlogPost> = {
@@ -231,6 +238,52 @@ export class PostService {
     const filename =
       match?.[2] ?? filePath.split('/').pop()?.replace('.md', '') ?? 'post';
 
+    const rawDefaultLanguage = frontMatter.defaultLanguage;
+    const defaultLanguage: SupportedLanguage =
+      rawDefaultLanguage === 'en' ? 'en' : 'ko';
+
+    const parseLocalizedFields = (
+      fields: unknown
+    ): LocalizedPostFields | undefined => {
+      if (!fields || typeof fields !== 'object') return undefined;
+      const record = fields as Record<string, unknown>;
+      const localized: LocalizedPostFields = {
+        title: typeof record.title === 'string' ? record.title : '',
+        description:
+          typeof record.description === 'string' ? record.description : '',
+      };
+      if (!localized.title) delete localized.title;
+      if (!localized.description) delete localized.description;
+      if (typeof record.excerpt === 'string') localized.excerpt = record.excerpt;
+      if (typeof record.content === 'string') localized.content = record.content;
+      return Object.keys(localized).length ? localized : undefined;
+    };
+
+    const translationEntries: Partial<
+      Record<SupportedLanguage, LocalizedPostFields>
+    > = {};
+    const rawTranslations = frontMatter.translations;
+    if (rawTranslations && typeof rawTranslations === 'object') {
+      Object.entries(rawTranslations as Record<string, unknown>).forEach(
+        ([langKey, value]) => {
+          const normalizedLang =
+            langKey === 'en' ? 'en' : langKey === 'ko' ? 'ko' : null;
+          if (!normalizedLang) return;
+          const localized = parseLocalizedFields(value);
+          if (localized) {
+            translationEntries[normalizedLang] = localized;
+          }
+        }
+      );
+    }
+
+    const availableLanguages = Array.from(
+      new Set<SupportedLanguage>([
+        defaultLanguage,
+        ...Object.keys(translationEntries) as SupportedLanguage[],
+      ])
+    );
+
     return {
       id: filename,
       title:
@@ -252,6 +305,9 @@ export class PostService {
       year,
       published: frontMatter.published !== false,
       coverImage: frontMatter.coverImage,
+      defaultLanguage,
+      availableLanguages,
+      translations: translationEntries,
     };
   }
 
@@ -334,6 +390,9 @@ export class PostService {
         year: it.year,
         published: true,
         coverImage: it.coverImage,
+        defaultLanguage: it.defaultLanguage,
+        availableLanguages: it.availableLanguages,
+        translations: it.translations,
       }));
 
     this.postsCache = posts;
@@ -368,6 +427,9 @@ export class PostService {
         year: parsed.year!,
         published: true,
         coverImage: parsed.coverImage,
+        defaultLanguage: parsed.defaultLanguage,
+        availableLanguages: parsed.availableLanguages,
+        translations: parsed.translations,
       };
     }
 
@@ -390,6 +452,7 @@ export class PostService {
       year: parsed.year!,
       published: true,
       coverImage: parsed.coverImage,
+      language: parsed.language!,
     };
   }
 
