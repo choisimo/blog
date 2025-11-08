@@ -84,24 +84,28 @@ resource "aws_security_group" "web" {
   tags = { Name = "terraform-web-sg" }
 }
 
-# 최신 Ubuntu AMI 조회 (data source)
-data "aws_ami" "ubuntu" {
-  most_recent = true owners = ["099720109477"]
-  filter { name = "name" values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"] }
+# 최신 Fedora Cloud AMI 조회 (data source)
+data "aws_ami" "fedora" {
+  most_recent = true
+  owners      = ["125523088429"] # Fedora Cloud (공식)
+  filter { name = "name" values = ["Fedora-Cloud-Base-*.x86_64-*-HVM-*"] }
   filter { name = "virtualization-type" values = ["hvm"] }
 }
 
 # EC2 Instance + User Data
 resource "aws_instance" "web" {
-  ami = data.aws_ami.ubuntu.id instance_type = var.instance_type key_name = var.key_name
-  subnet_id = aws_subnet.public.id vpc_security_group_ids = [aws_security_group.web.id]
+  ami                         = data.aws_ami.fedora.id
+  instance_type               = var.instance_type
+  key_name                    = var.key_name
+  subnet_id                   = aws_subnet.public.id
+  vpc_security_group_ids      = [aws_security_group.web.id]
   user_data = <<-EOF
               #!/bin/bash
-              apt-get update
-              apt-get install -y nginx
-              echo "<h1>Hello from Terraform!</h1>" > /var/www/html/index.html
-              systemctl start nginx
-              systemctl enable nginx
+              set -euxo pipefail
+              dnf -y update
+              dnf -y install nginx
+              echo "<h1>Hello from Terraform (Fedora)!</h1>" > /usr/share/nginx/html/index.html
+              systemctl enable --now nginx
               EOF
   tags = { Name = var.instance_name }
 }
@@ -112,7 +116,7 @@ resource "aws_instance" "web" {
 output "instance_id" { value = aws_instance.web.id }
 output "instance_public_ip" { value = aws_instance.web.public_ip }
 output "web_url" { value = "http://${aws_instance.web.public_ip}" }
-output "ssh_command" { value = "ssh -i ~/.ssh/${var.key_name}.pem ubuntu@${aws_instance.web.public_ip}" }
+output "ssh_command" { value = "ssh -i ~/.ssh/${var.key_name}.pem fedora@${aws_instance.web.public_ip}" }
 ```
 
 ##  terraform.tfvars 예시
@@ -134,13 +138,13 @@ terraform output
 ```
 instance_public_ip = "3.35.123.45"
 web_url = "http://3.35.123.45"
-ssh_command = "ssh -i ~/.ssh/my-key-pair.pem ubuntu@3.35.123.45"
+ssh_command = "ssh -i ~/.ssh/my-key-pair.pem fedora@3.35.123.45"
 ```
 
 ##  접근 테스트
 ```bash
 curl http://$(terraform output -raw instance_public_ip)
-ssh -i ~/.ssh/my-key-pair.pem ubuntu@$(terraform output -raw instance_public_ip)
+ssh -i ~/.ssh/my-key-pair.pem fedora@$(terraform output -raw instance_public_ip)
 ```
 
 ##  리소스 간 종속성 시각화

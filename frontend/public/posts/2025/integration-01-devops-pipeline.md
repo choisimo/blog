@@ -58,7 +58,7 @@ output "k8s_node_private_ips" { value = module.k8s_nodes.private_ips }
 ```yaml
 all:
   vars:
-    ansible_user: ubuntu
+    ansible_user: fedora
   children:
     k8s_masters:
       hosts:
