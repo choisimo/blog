@@ -472,7 +472,6 @@ export default function FloatingActionBar() {
           </div>
         </div>
       </div>
-    </div>
     {chatOpen && (
       <ChatWidget
         onClose={() => {
@@ -482,4 +481,4 @@ export default function FloatingActionBar() {
       />
     )}
   </>
-);
+);}

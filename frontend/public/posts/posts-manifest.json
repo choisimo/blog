@@ -1,5 +1,5 @@
 {
-  "total": 126,
+  "total": 128,
   "items": [
     {
       "path": "/posts/2025/future-tech-six-insights.md",
@@ -1033,8 +1033,8 @@
       "year": "2025",
       "slug": "ansible-04-roles",
       "title": "Ansible Role 설계와 재사용성",
-      "description": "준비 중: Role 디렉토리 구조와 공통 변수/태그 전략.",
-      "snippet": "준비 중: Role 디렉토리 구조와 공통 변수/태그 전략.",
+      "description": "Role 디렉터리를 생활 속 사례로 풀어내며 재사용성과 협업 패턴을 정리한 실습 에세이.",
+      "snippet": "Role 디렉터리를 생활 속 사례로 풀어내며 재사용성과 협업 패턴을 정리한 실습 에세이.",
       "date": "2025-02-12",
       "tags": [
         "DevOps",
@@ -1044,8 +1044,8 @@
       ],
       "category": "DevOps",
       "author": "Admin",
-      "readingTime": "1 min read",
-      "published": false,
+      "readingTime": "3 min read",
+      "published": true,
       "url": "/blog/2025/ansible-04-roles"
     },
     {
@@ -1053,8 +1053,8 @@
       "year": "2025",
       "slug": "ansible-03-playbook-examples",
       "title": "Ansible Playbook 작성 실습 모음",
-      "description": "준비 중: 재사용성과 역할 분리를 고려한 Playbook 예시.",
-      "snippet": "준비 중: 재사용성과 역할 분리를 고려한 Playbook 예시.",
+      "description": "첫 Playbook을 써 내려가며 겪은 시행착오와 재사용 패턴을 에세이처럼 풀어낸 실습 노트.",
+      "snippet": "첫 Playbook을 써 내려가며 겪은 시행착오와 재사용 패턴을 에세이처럼 풀어낸 실습 노트.",
       "date": "2025-02-11",
       "tags": [
         "DevOps",
@@ -1064,8 +1064,8 @@
       ],
       "category": "DevOps",
       "author": "Admin",
-      "readingTime": "1 min read",
-      "published": false,
+      "readingTime": "3 min read",
+      "published": true,
       "url": "/blog/2025/ansible-03-playbook-examples"
     },
     {
@@ -1084,7 +1084,7 @@
       ],
       "category": "DevOps",
       "author": "Admin",
-      "readingTime": "2 min read",
+      "readingTime": "4 min read",
       "published": true,
       "url": "/blog/2025/ansible-02-inventory-basics"
     },
@@ -1183,6 +1183,27 @@
       "readingTime": "5 min read",
       "published": true,
       "url": "/blog/2024/brazil-1985-review"
+    },
+    {
+      "path": "/posts/2025/BankRuptIn1929.md",
+      "year": "2025",
+      "slug": "BankRuptIn1929",
+      "title": "왜 Bank of America는 있는데, Bank of United States는 없을까?",
+      "description": "1929년 뉴욕 퀸즈에서 한 은행 앞에 몰린 예금자 행렬은 미국 금융사의 결정적 장면으로 남았다. 이름만 보면 국립은행처럼 신뢰를 줬던 Bank of United States는 단 며칠 사이에 무너졌고, 그 여파는 대공황을 더욱 깊게 만들었다. 이 글은 1929년 정점에서 1933년 바닥까지, 기업의 재무 데이터를 따라가며 생존과 몰락의 서사를 재구성한다.",
+      "snippet": "1929년 뉴욕 퀸즈에서 한 은행 앞에 몰린 예금자 행렬은 미국 금융사의 결정적 장면으로 남았다. 이름만 보면 국립은행처럼 신뢰를 줬던 Bank of United States는 단 며칠 사이에 무너졌고, 그 여파는 대공황을 더욱 깊게 만들었다. 이 글은 1929년 정점에서 1933년 바닥까지, 기업의 재무 데이터를 따라가며 생존과 몰락의 서사를 재구성한다.",
+      "date": "2025-01-20",
+      "tags": [
+        "대공황",
+        "기업사",
+        "재무데이터",
+        "은행위기",
+        "생존전략"
+      ],
+      "category": "History",
+      "author": "Admin",
+      "readingTime": "9 min read",
+      "published": true,
+      "url": "/blog/2025/BankRuptIn1929"
     },
     {
       "path": "/posts/2025/integration-01-devops-pipeline.md",
@@ -1286,7 +1307,7 @@
       ],
       "category": "DevOps",
       "author": "Admin",
-      "readingTime": "2 min read",
+      "readingTime": "1 min read",
       "published": true,
       "url": "/blog/2025/kafka-02-installation-setup"
     },
@@ -1328,7 +1349,7 @@
       ],
       "category": "DevOps",
       "author": "Admin",
-      "readingTime": "2 min read",
+      "readingTime": "3 min read",
       "published": true,
       "url": "/blog/2025/ansible-01-installation-setup"
     },
@@ -1432,6 +1453,21 @@
       "readingTime": "3 min read",
       "published": true,
       "url": "/blog/2025/middle-east-ai-conflicts"
+    },
+    {
+      "path": "/posts/2025/AdversialNeuron.md",
+      "year": "2025",
+      "slug": "AdversialNeuron",
+      "title": "AdversialNeuron",
+      "description": "# Adversarial Neuron Ablation for Variant-Sensitive Genomic Embeddings\n\n**nodove**\n\n---\n\n## Abstract\n\nGenomic language models (gLMs) have shown remarkable capability in learning compressed representat",
+      "snippet": "# Adversarial Neuron Ablation for Variant-Sensitive Genomic Embeddings\n\n**nodove**\n\n---\n\n## Abstract\n\nGenomic language models (gLMs) have shown remarkable capability in learning compressed representat",
+      "date": "2025-01-01",
+      "tags": [],
+      "category": "General",
+      "author": "Admin",
+      "readingTime": "11 min read",
+      "published": true,
+      "url": "/blog/2025/AdversialNeuron"
     },
     {
       "path": "/posts/2025/memory-management-study.md",
@@ -2646,7 +2682,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-11-08T09:03:03.872Z",
+  "generatedAt": "2025-11-16T10:33:10.170Z",
   "years": [
     "2025",
     "2024"

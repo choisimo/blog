@@ -2,7 +2,9 @@
   "files": [
     "5g-intelligent-fabric-journal.md",
     "6g-sentient-future-journal.md",
+    "AdversialNeuron.md",
     "BST-think01.md",
+    "BankRuptIn1929.md",
     "FutureClouding.md",
     "Limitation-Of-Transformer.md",
     "QuantumLayerLLM.md",
@@ -69,7 +71,7 @@
     "web-commercialization-journal.md",
     "wine-clipboard-bridge-journal.md"
   ],
-  "generatedAt": "2025-11-08T09:03:03.849Z",
-  "totalFiles": 68,
+  "generatedAt": "2025-11-16T10:33:10.086Z",
+  "totalFiles": 70,
   "excludedFiles": 0
 }
