@@ -471,15 +471,15 @@ export default function FloatingActionBar() {
             </div>
           </div>
         </div>
-      )}
-      {chatOpen && (
-        <ChatWidget
-          onClose={() => {
-            setChatOpen(false);
-            send('fab_ai_chat_close');
-          }}
-        />
-      )}
-    </>
-  );
-}
+      </div>
+    </div>
+    {chatOpen && (
+      <ChatWidget
+        onClose={() => {
+          setChatOpen(false);
+          send('fab_ai_chat_close');
+        }}
+      />
+    )}
+  </>
+);
