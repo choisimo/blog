@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Map, NotebookPen, Sparkles, Layers } from 'lucide-react';
 import VisitedPostsMinimap, {
-  useVisitedPosts,
+  useVisitedPostsState,
 } from '@/components/features/navigation/VisitedPostsMinimap';
 import ChatWidget from '@/components/features/chat/ChatWidget';
+import { useToast } from '@/components/ui/use-toast';
 
 // Feature flag: build-time + runtime override
 function isFabEnabled(): boolean {
@@ -231,9 +232,10 @@ export default function FloatingActionBar() {
   const overlayOpen = useHistoryOverlayOpen(aiMemoEl);
   const modalOpen = useModalPresence();
   const [hasNew, clearBadge] = useHistoryBadge();
-  const visitedPosts = useVisitedPosts();
+  const { items: visitedPosts, storageAvailable } = useVisitedPostsState();
   const impressionSent = useRef(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const { toast } = useToast();
 
   const send = useCallback((type: string, detail?: Record<string, any>) => {
     try {
@@ -334,7 +336,7 @@ export default function FloatingActionBar() {
     send('fab_history_click');
   }, [aiMemoEl, clickShadowBtn, clearBadge, send]);
 
-  const stackViewAvailable = visitedPosts.length > 0;
+  const stackReady = visitedPosts.length > 0 && storageAvailable;
   const openStackView = useCallback(() => {
     try {
       window.dispatchEvent(new CustomEvent('visitedposts:open'));
@@ -342,13 +344,27 @@ export default function FloatingActionBar() {
     } catch {}
   }, [send]);
 
+  const stackDisabledReason = useMemo(() => {
+    if (!storageAvailable)
+      return '이 브라우저에서는 Stack 기능을 사용할 수 없습니다.';
+    if (!visitedPosts.length) return '최근 방문한 글이 없습니다.';
+    return null;
+  }, [storageAvailable, visitedPosts.length]);
+
+  const handleStackClick = useCallback(() => {
+    if (stackDisabledReason) {
+      toast({ title: 'Stack 사용 불가', description: stackDisabledReason });
+      return;
+    }
+    openStackView();
+  }, [openStackView, stackDisabledReason, toast]);
+
   if (!enabled) return null;
+
+  const stackSheet = <VisitedPostsMinimap mode='fab' />;
+
   if (modalOpen || overlayOpen)
-    return (
-      <>
-        <VisitedPostsMinimap mode='fab' />
-      </>
-    );
+    return <>{stackSheet}</>;
 
   const containerClasses = [
     'fixed left-1/2 -translate-x-1/2 bottom-[max(16px,env(safe-area-inset-bottom,0px))] z-[9999] inline-block',
@@ -360,6 +376,7 @@ export default function FloatingActionBar() {
 
   return (
     <>
+      {stackSheet}
       <div
         role='toolbar'
         aria-label='Floating actions'
@@ -379,69 +396,90 @@ export default function FloatingActionBar() {
               memoOpen ? ' ml-auto' : ''
             )}
             role='group'
-            aria-label='Global actions'
           >
-            {/* AI Chat toggle */}
-            <Button
-              variant='default'
-              size='sm'
-              onClick={() => {
-                setChatOpen(v => !v);
-                send('fab_ai_chat_toggle');
-              }}
-              aria-label='AI Chat'
+            {/* Contextual (memo) actions removed to keep FAB global-only */}
+
+            {/* Right-aligned persistent controls */}
+            <div
+              className={'flex items-center gap-1 md:gap-2 shrink-0'.concat(
+                memoOpen ? ' ml-auto' : ''
+              )}
+              role='group'
+              aria-label='Global actions'
             >
-              <Sparkles className='h-4 w-4' />
-              <span className='hidden lg:inline ml-1'>AI Chat ✨</span>
-            </Button>
-            {/* Memo toggle to ensure there is a way to open/close the panel when legacy launcher is hidden */}
-            <Button
-              variant='ghost'
-              size='sm'
-              onClick={() => {
-                send('fab_memo_toggle');
-                toggleMemo();
-              }}
-              aria-label='\uba54\ubaa8'
-            >
-              <NotebookPen className='h-4 w-4' />
-              <span className='hidden lg:inline ml-1'>메모</span>
-            </Button>
-            {stackViewAvailable && (
+              {/* AI Chat toggle */}
+              <Button
+                variant='default'
+                size='sm'
+                onClick={() => {
+                  setChatOpen(v => !v);
+                  send('fab_ai_chat_toggle');
+                }}
+                aria-label='AI Chat'
+              >
+                <Sparkles className='h-4 w-4' />
+                <span className='hidden lg:inline ml-1'>AI Chat ✨</span>
+              </Button>
+              {/* Memo toggle to ensure there is a way to open/close the panel when legacy launcher is hidden */}
               <Button
                 variant='ghost'
                 size='sm'
-                onClick={openStackView}
-                aria-label='\ucd5c\uadfc \uac8c\uc2dc\uae00 \ub9ac\uc2a4\ud2b8'
+                onClick={() => {
+                  send('fab_memo_toggle');
+                  toggleMemo();
+                }}
+                aria-label='\uba54\ubaa8'
+              >
+                <NotebookPen className='h-4 w-4' />
+                <span className='hidden lg:inline ml-1'>메모</span>
+              </Button>
+              <Button
+                variant='ghost'
+                size='sm'
+                onClick={handleStackClick}
+                aria-label='최근 게시글 리스트'
+                aria-disabled={!stackReady}
+                className={[
+                  !stackReady ? 'opacity-60' : '',
+                  'transition-opacity',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
               >
                 <Layers className='h-4 w-4' />
                 <span className='hidden lg:inline ml-1'>Stack</span>
               </Button>
-            )}
-            <div className='relative'>
-              <Button
-                variant='secondary'
-                size='sm'
-                onClick={openHistory}
-                aria-label='Insight'
-                aria-haspopup='dialog'
-                title='최근 작업 내역 (Insight)'
-              >
-                <Map className='h-4 w-4' />
-                <span className='hidden lg:inline ml-1'>Insight</span>
-              </Button>
-              {hasNew && (
-                <span
-                  className='absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary'
-                  aria-hidden
-                />
-              )}
+              <div className='relative'>
+                <Button
+                  variant='secondary'
+                  size='sm'
+                  onClick={openHistory}
+                  aria-label='Insight'
+                  aria-haspopup='dialog'
+                  title='최근 작업 내역 (Insight)'
+                >
+                  <Map className='h-4 w-4' />
+                  <span className='hidden lg:inline ml-1'>Insight</span>
+                </Button>
+                {hasNew && (
+                  <span
+                    className='absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary'
+                    aria-hidden
+                  />
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      {chatOpen && <ChatWidget onClose={() => setChatOpen(false)} />}
-      <VisitedPostsMinimap mode='fab' />
+      )}
+      {chatOpen && (
+        <ChatWidget
+          onClose={() => {
+            setChatOpen(false);
+            send('fab_ai_chat_close');
+          }}
+        />
+      )}
     </>
   );
 }

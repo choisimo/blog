@@ -749,6 +749,15 @@
                  <option value="16">16</option>
                </select>
              </div>
+             <div class="section">
+               <label class="label">패널 위치</label>
+               <div class="row" style="gap:10px; align-items:flex-start;">
+                 <button id="resetPosition" class="btn secondary" type="button">위치 초기화</button>
+                 <div class="small" style="opacity:0.8">
+                   화면이 작거나 패널이 보이지 않을 때 기본 위치로 되돌립니다.
+                 </div>
+               </div>
+             </div>
           </div>
           <div id="catalystBox" class="row" style="display:none; padding: 8px 12px 0 12px; gap:6px;">
              <input id="catalystInput" class="input" placeholder="어떻게 확장해볼까요? 예: 사용 사례 관점에서 다시 보기" maxlength="160" />
@@ -803,6 +812,7 @@
       this.$fontSize = this.shadowRoot.getElementById('fontSize');
       this.$inlineEnabled = this.shadowRoot.getElementById('inlineEnabled');
       this.$closeAfterInject = this.shadowRoot.getElementById('closeAfterInject');
+      this.$resetPosition = this.shadowRoot.getElementById('resetPosition');
       this.$memoBold = this.shadowRoot.getElementById('memoBold');
       this.$memoItalic = this.shadowRoot.getElementById('memoItalic');
       this.$memoCode = this.shadowRoot.getElementById('memoCode');
@@ -1845,6 +1855,24 @@
         };
         this.$closeAfterInject.addEventListener('change', onToggleClose);
         this.$closeAfterInject.addEventListener('input', onToggleClose);
+      }
+      if (this.$resetPosition) {
+        this.$resetPosition.addEventListener('click', () => {
+          try {
+            this.state.position = { x: null, y: null };
+            LS.set(KEYS.position, this.state.position);
+          } catch (_) {}
+          if (this.$panel) {
+            Object.assign(this.$panel.style, {
+              left: '',
+              top: '',
+              right: '',
+              bottom: '',
+            });
+          }
+          this.out.toast('패널 위치를 기본값으로 되돌렸어요.');
+          this.logEvent({ type: 'reset_position', label: 'settings' });
+        });
       }
       if (this.$proposalMd) {
         const persistProposal = () => {

@@ -165,8 +165,11 @@ const BlogPost = () => {
       );
       localStorage.setItem(key, JSON.stringify(deduped));
       window.dispatchEvent(new CustomEvent('visitedposts:update'));
-    } catch {
-      // noop
+    } catch (err) {
+      try {
+        window.dispatchEvent(new CustomEvent('visitedposts:error'));
+      } catch {}
+      console.warn('Failed to persist visited posts', err);
     }
   }, [post]);
 

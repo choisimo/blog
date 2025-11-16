@@ -140,6 +140,41 @@ function getPageContext(): { url?: string; title?: string } {
   return { url, title };
 }
 
+function getArticleTextSnippet(maxChars = 4000): string | null {
+  if (typeof document === 'undefined') return null;
+  try {
+    const pick = (selector: string): string | null => {
+      const el = document.querySelector(selector) as HTMLElement | null;
+      if (!el) return null;
+      const text = (el.innerText || '').trim();
+      return text && text.length > 40 ? text : null;
+    };
+
+    const candidates = [
+      'article',
+      'main article',
+      'article.prose',
+      '.prose article',
+      '.prose',
+      '#content',
+    ];
+    for (const sel of candidates) {
+      const v = pick(sel);
+      if (v) {
+        if (v.length <= maxChars) return v;
+        return `${v.slice(0, maxChars)}\n…(truncated)`;
+      }
+    }
+
+    const bodyText = (document.body?.innerText || '').trim();
+    if (!bodyText) return null;
+    if (bodyText.length <= maxChars) return bodyText;
+    return `${bodyText.slice(0, maxChars)}\n…(truncated)`;
+  } catch {
+    return null;
+  }
+}
+
 export async function invokeChatTask<T = unknown>(
   input: InvokeChatTaskInput
 ): Promise<InvokeChatTaskResult<T>> {
@@ -244,11 +279,25 @@ export async function* streamChatEvents(input: {
   }
   const stylePrompt =
     '다음 지침을 따르세요: 말투는 귀엽고 상냥한 애니메이션 여캐릭터(botchi)처럼, 존댓말을 유지하고 과하지 않게 가벼운 말끝(예: ~에요, ~일까요?)과 가끔 이모지(^_^, ✨)를 섞습니다. 응답은 간결하고 핵심만 전합니다.';
-  const parts = [
-    { type: 'text', text: stylePrompt },
-    { type: 'text', text: input.text },
-  ];
   const page = input.page || getPageContext();
+  const articleSnippet = getArticleTextSnippet(4000);
+  const contextPrompt = articleSnippet
+    ? [
+        '현재 보고 있는 페이지의 본문 일부를 함께 전달할게요.',
+        '이 내용을 참고해서 사용자의 질문에 더 정확하게 답변해 주세요.',
+        '',
+        '[페이지 본문]',
+        articleSnippet,
+        '',
+        '---',
+        '',
+      ].join('\n')
+    : '';
+  const parts: Array<{ type: 'text'; text: string }> = [
+    { type: 'text', text: stylePrompt },
+  ];
+  if (contextPrompt) parts.push({ type: 'text', text: contextPrompt });
+  parts.push({ type: 'text', text: input.text });
   const res = await fetch(url, {
     method: 'POST',
     headers,

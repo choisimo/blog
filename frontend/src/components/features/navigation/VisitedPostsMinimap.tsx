@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { X, Clock, Map } from 'lucide-react';
@@ -22,18 +22,21 @@ export type VisitedPostItem = {
 
 const STORAGE_KEY = 'visited.posts';
 
-export function useVisitedPosts() {
+export function useVisitedPostsState() {
   const [items, setItems] = useState<VisitedPostItem[]>([]);
+  const [storageAvailable, setStorageAvailable] = useState(true);
 
-  const read = () => {
+  const read = useCallback(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       const arr: VisitedPostItem[] = raw ? JSON.parse(raw) : [];
       setItems(Array.isArray(arr) ? arr : []);
+      setStorageAvailable(true);
     } catch {
       setItems([]);
+      setStorageAvailable(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     read();
@@ -41,18 +44,28 @@ export function useVisitedPosts() {
       if (!e.key || e.key === STORAGE_KEY) read();
     };
     const onCustom = () => read();
+    const onStorageError = () => {
+      setItems([]);
+      setStorageAvailable(false);
+    };
     window.addEventListener('storage', onStorage);
     window.addEventListener('visitedposts:update', onCustom as EventListener);
+    window.addEventListener('visitedposts:error', onStorageError);
     return () => {
       window.removeEventListener('storage', onStorage);
       window.removeEventListener(
         'visitedposts:update',
         onCustom as EventListener
       );
+      window.removeEventListener('visitedposts:error', onStorageError);
     };
-  }, []);
+  }, [read]);
 
-  return items;
+  return { items, storageAvailable };
+}
+
+export function useVisitedPosts() {
+  return useVisitedPostsState().items;
 }
 
 function FallbackAvatar({ title }: { title: string }) {
@@ -76,7 +89,7 @@ type VisitedPostsMinimapProps = {
 export function VisitedPostsMinimap({
   mode = 'default',
 }: VisitedPostsMinimapProps = {}) {
-  const items = useVisitedPosts();
+  const { items, storageAvailable } = useVisitedPostsState();
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const [activeIndex, setActiveIndex] = useState(0);
@@ -92,6 +105,7 @@ export function VisitedPostsMinimap({
   };
 
   const clearAll = () => {
+    if (!storageAvailable) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
       window.dispatchEvent(new CustomEvent('visitedposts:update'));
@@ -120,6 +134,7 @@ export function VisitedPostsMinimap({
     if (!items.length && open) setOpen(false);
   }, [items.length, open]);
 
+  if (!storageAvailable && !items.length) return null;
   if (!items.length) return null;
 
   const sheet = (
