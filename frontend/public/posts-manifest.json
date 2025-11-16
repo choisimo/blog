@@ -1,5 +1,5 @@
 {
-  "total": 127,
+  "total": 128,
   "items": [
     {
       "path": "/posts/2025/future-tech-six-insights.md",
@@ -1455,6 +1455,21 @@
       "url": "/blog/2025/middle-east-ai-conflicts"
     },
     {
+      "path": "/posts/2025/AdversialNeuron.md",
+      "year": "2025",
+      "slug": "AdversialNeuron",
+      "title": "AdversialNeuron",
+      "description": "# Adversarial Neuron Ablation for Variant-Sensitive Genomic Embeddings\n\n**nodove**\n\n---\n\n## Abstract\n\nGenomic language models (gLMs) have shown remarkable capability in learning compressed representat",
+      "snippet": "# Adversarial Neuron Ablation for Variant-Sensitive Genomic Embeddings\n\n**nodove**\n\n---\n\n## Abstract\n\nGenomic language models (gLMs) have shown remarkable capability in learning compressed representat",
+      "date": "2025-01-01",
+      "tags": [],
+      "category": "General",
+      "author": "Admin",
+      "readingTime": "11 min read",
+      "published": true,
+      "url": "/blog/2025/AdversialNeuron"
+    },
+    {
       "path": "/posts/2025/memory-management-study.md",
       "year": "2025",
       "slug": "memory-management-study",
@@ -2667,7 +2682,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-11-08T11:23:17.613Z",
+  "generatedAt": "2025-11-15T16:52:47.601Z",
   "years": [
     "2025",
     "2024"
