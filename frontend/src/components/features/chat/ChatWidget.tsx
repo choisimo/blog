@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Sparkles, Send, Loader2, Square } from 'lucide-react';
+import { Sparkles, Send, Loader2, Square, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -15,7 +15,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { streamChatEvents, ensureSession } from '@/services/chat';
+import {
+  streamChatEvents,
+  ensureSession,
+  uploadChatImage,
+  invokeChatAggregate,
+} from '@/services/chat';
 import ChatMarkdown from './ChatMarkdown';
 
 export type SourceLink = {
@@ -32,17 +37,57 @@ export type ChatMessage = {
   followups?: string[];
 };
 
+type ChatSessionMeta = {
+  id: string;
+  title: string;
+  summary: string;
+  createdAt: string;
+  updatedAt: string;
+  messageCount: number;
+  mode: 'article' | 'general';
+  articleUrl?: string;
+  articleTitle?: string;
+};
+
+const CHAT_SESSIONS_INDEX_KEY = 'ai_chat_sessions_index';
+const CHAT_SESSION_STORAGE_PREFIX = 'ai_chat_history_v2_';
+
 export default function ChatWidget(props: { onClose?: () => void }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [persistOptIn, setPersistOptIn] = useState<boolean>(false);
   const [sessionId, setSessionId] = useState<string>('');
+  const [sessionKey, setSessionKey] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    try {
+      const existing =
+        window.localStorage.getItem('ai_chat_current_session_key');
+      if (existing && existing.trim()) return existing;
+    } catch {}
+    const fresh = `sess_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
+    try {
+      window.localStorage.setItem('ai_chat_current_session_key', fresh);
+    } catch {}
+    return fresh;
+  });
+  const [sessions, setSessions] = useState<ChatSessionMeta[]>([]);
+  const [showSessions, setShowSessions] = useState(false);
+  const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
+  const [isAggregatePrompt, setIsAggregatePrompt] = useState(false);
   const [firstTokenMs, setFirstTokenMs] = useState<number | null>(null);
+  const [questionMode, setQuestionMode] = useState<'article' | 'general'>(
+    'article'
+  );
+  const [attachedImage, setAttachedImage] = useState<File | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const canSend = input.trim().length > 0 && !busy;
+  const canSend =
+    (input.trim().length > 0 || attachedImage !== null) && !busy;
 
   useEffect(() => {
     const sc = scrollRef.current;
@@ -59,82 +104,210 @@ export default function ChatWidget(props: { onClose?: () => void }) {
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(CHAT_SESSIONS_INDEX_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) setSessions(parsed);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
     ensureSession()
       .then(id => setSessionId(id))
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (!persistOptIn || !sessionId) return;
+    if (!persistOptIn || !sessionKey) return;
     try {
-      const raw = localStorage.getItem(`ai_chat_history_${sessionId}`);
+      const raw = localStorage.getItem(
+        `${CHAT_SESSION_STORAGE_PREFIX}${sessionKey}`
+      );
       if (raw) {
         const parsed = JSON.parse(raw) as ChatMessage[];
         if (Array.isArray(parsed)) setMessages(parsed);
+      } else {
+        setMessages([]);
       }
     } catch {}
-  }, [persistOptIn, sessionId]);
+  }, [persistOptIn, sessionKey]);
 
   useEffect(() => {
-    if (!persistOptIn || !sessionId) return;
+    if (!persistOptIn || !sessionKey) return;
     try {
       localStorage.setItem(
-        `ai_chat_history_${sessionId}`,
+        `${CHAT_SESSION_STORAGE_PREFIX}${sessionKey}`,
         JSON.stringify(messages)
       );
     } catch {}
-  }, [messages, persistOptIn, sessionId]);
+  }, [messages, persistOptIn, sessionKey]);
 
   const push = useCallback((msg: ChatMessage) => {
     setMessages(prev => [...prev, msg]);
   }, []);
 
+  const loadSession = useCallback(
+    (id: string) => {
+      try {
+        const raw = localStorage.getItem(
+          `${CHAT_SESSION_STORAGE_PREFIX}${id}`
+        );
+        if (raw) {
+          const parsed = JSON.parse(raw) as ChatMessage[];
+          if (Array.isArray(parsed)) {
+            setMessages(parsed);
+          } else {
+            setMessages([]);
+          }
+        } else {
+          setMessages([]);
+        }
+        setFirstTokenMs(null);
+        setAttachedImage(null);
+        setSessionKey(id);
+        try {
+          localStorage.setItem('ai_chat_current_session_key', id);
+        } catch {}
+      } catch {
+        setMessages([]);
+      }
+    },
+    []
+  );
+
+  const toggleSessionSelected = useCallback((id: string) => {
+    setSelectedSessionIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  }, []);
+
+  const aggregateFromSessionIds = useCallback(
+    (ids: string[]) => {
+      const uniqueIds = Array.from(new Set(ids));
+      if (!uniqueIds.length) return;
+      const lines: string[] = ['[참조 세션 요약]'];
+
+      uniqueIds.forEach((id, idx) => {
+        const s = sessions.find(x => x.id === id);
+        if (!s) return;
+        const title = s.title || s.articleTitle || `세션 ${idx + 1}`;
+        const summaryText = s.summary || '(요약 없음)';
+        lines.push(`${idx + 1}) ${title}`, summaryText, '');
+      });
+
+      lines.push(
+        '---',
+        '위 세션들을 모두 고려해서 다음 질문에 답해줘.',
+        '',
+        '(여기에 이어서 궁금한 점을 적어 주세요...)'
+      );
+
+      setInput(lines.join('\n'));
+      setShowSessions(false);
+      setSelectedSessionIds([]);
+      setIsAggregatePrompt(true);
+    },
+    [sessions]
+  );
+
   const send = useCallback(async () => {
     if (!canSend) return;
-    const text = input.trim();
-    setInput('');
-    const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    push({ id, role: 'user', text });
+    const trimmed = input.trim();
+    const imageToUpload = attachedImage;
 
-    const aiId = `${id}_ai`;
     setBusy(true);
     setFirstTokenMs(null);
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+
+    let aiId: string | null = null;
+
     try {
-      let acc = '';
-      push({ id: aiId, role: 'assistant', text: '' });
-      for await (const ev of streamChatEvents({
-        text,
-        signal: controller.signal,
-        onFirstToken: ms => setFirstTokenMs(ms),
-      })) {
-        if (ev.type === 'text') {
-          acc += ev.text;
-          setMessages(prev =>
-            prev.map(m => (m.id === aiId ? { ...m, text: acc } : m))
-          );
-        } else if (ev.type === 'sources') {
-          setMessages(prev =>
-            prev.map(m => (m.id === aiId ? { ...m, sources: ev.sources } : m))
-          );
-        } else if (ev.type === 'followups') {
-          setMessages(prev =>
-            prev.map(m =>
-              m.id === aiId ? { ...m, followups: ev.questions } : m
-            )
-          );
-        } else if (ev.type === 'done') {
+      let uploaded:
+        | {
+            url: string;
+            key: string;
+            size: number;
+            contentType: string;
+          }
+        | null = null;
+
+      if (imageToUpload) {
+        uploaded = await uploadChatImage(imageToUpload, controller.signal);
+      }
+
+      const baseText =
+        trimmed || (imageToUpload ? '첨부한 이미지에 대해 설명해줘.' : '');
+
+      const lines: string[] = [baseText];
+
+      if (uploaded && imageToUpload) {
+        const sizeKb = Math.max(1, Math.round(uploaded.size / 1024));
+        lines.push(
+          '',
+          '[첨부 이미지]',
+          `URL: ${uploaded.url}`,
+          `파일명: ${imageToUpload.name}`,
+          `크기: ${sizeKb}KB`
+        );
+      }
+
+      const text = lines.join('\n');
+      const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      setInput('');
+      setAttachedImage(null);
+      push({ id, role: 'user', text });
+      aiId = `${id}_ai`;
+
+      if (isAggregatePrompt) {
+        setIsAggregatePrompt(false);
+        const aggregated = await invokeChatAggregate({
+          prompt: text,
+          signal: controller.signal,
+        });
+        push({ id: aiId, role: 'assistant', text: aggregated });
+      } else {
+        let acc = '';
+        push({ id: aiId, role: 'assistant', text: '' });
+        for await (const ev of streamChatEvents({
+          text,
+          signal: controller.signal,
+          onFirstToken: ms => setFirstTokenMs(ms),
+          useArticleContext: questionMode === 'article',
+        })) {
+          if (ev.type === 'text') {
+            acc += ev.text;
+            setMessages(prev =>
+              prev.map(m => (m.id === aiId ? { ...m, text: acc } : m))
+            );
+          } else if (ev.type === 'sources') {
+            setMessages(prev =>
+              prev.map(m => (m.id === aiId ? { ...m, sources: ev.sources } : m))
+            );
+          } else if (ev.type === 'followups') {
+            setMessages(prev =>
+              prev.map(m =>
+                m.id === aiId ? { ...m, followups: ev.questions } : m
+              )
+            );
+          } else if (ev.type === 'done') {
+          }
         }
       }
     } catch (e: any) {
       const msg = e?.message || 'Chat failed';
-      push({ id: `${aiId}_err`, role: 'system', text: msg });
+      const errId =
+        aiId != null
+          ? `${aiId}_err`
+          : `${Date.now()}_${Math.random().toString(36).slice(2, 8)}_err`;
+      push({ id: errId, role: 'system', text: msg });
     } finally {
       setBusy(false);
     }
-  }, [canSend, input, push]);
+  }, [attachedImage, canSend, input, isAggregatePrompt, push, questionMode]);
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
@@ -146,12 +319,16 @@ export default function ChatWidget(props: { onClose?: () => void }) {
     }
     setMessages([]);
     setFirstTokenMs(null);
-    if (persistOptIn && sessionId) {
-      try {
-        localStorage.removeItem(`ai_chat_history_${sessionId}`);
-      } catch {}
-    }
-  }, [messages.length, persistOptIn, sessionId]);
+    setAttachedImage(null);
+    setIsAggregatePrompt(false);
+    const nextKey = `sess_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
+    setSessionKey(nextKey);
+    try {
+      localStorage.setItem('ai_chat_current_session_key', nextKey);
+    } catch {}
+  }, [messages.length]);
 
   const summary = useMemo(() => {
     if (messages.length === 0) return '';
@@ -166,6 +343,74 @@ export default function ChatWidget(props: { onClose?: () => void }) {
   const pageTitle = useMemo(() => {
     return typeof document !== 'undefined' ? document.title : '';
   }, []);
+
+  const handleAggregateFromSelected = useCallback(() => {
+    if (!selectedSessionIds.length) return;
+    aggregateFromSessionIds(selectedSessionIds);
+  }, [aggregateFromSessionIds, selectedSessionIds]);
+
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ sessionIds?: string[] }>).detail;
+      const ids = detail?.sessionIds;
+      if (!Array.isArray(ids) || !ids.length) return;
+      const filtered = ids.filter(id => typeof id === 'string');
+      if (!filtered.length) return;
+      aggregateFromSessionIds(filtered);
+    };
+    window.addEventListener('aiChat:aggregateFromGraph', handler as EventListener);
+    return () => {
+      window.removeEventListener(
+        'aiChat:aggregateFromGraph',
+        handler as EventListener
+      );
+    };
+  }, [aggregateFromSessionIds]);
+
+  useEffect(() => {
+    if (!persistOptIn || !sessionKey) return;
+    if (messages.length === 0) return;
+
+    const nowIso = new Date().toISOString();
+    const firstUser = messages.find(m => m.role === 'user' && m.text.trim());
+    const baseTitle = (firstUser?.text || pageTitle || '새 대화')
+      .split('\n')[0]
+      .trim();
+    const title =
+      baseTitle.length > 60 ? `${baseTitle.slice(0, 60)}…` : baseTitle;
+    const articleUrl =
+      typeof window !== 'undefined' ? window.location.href : undefined;
+
+    setSessions(prev => {
+      const existing = prev.find(s => s.id === sessionKey);
+      const createdAt = existing?.createdAt || nowIso;
+      const next: ChatSessionMeta = {
+        id: sessionKey,
+        title: existing?.title || title,
+        summary,
+        createdAt,
+        updatedAt: nowIso,
+        messageCount: messages.length,
+        mode: questionMode,
+        articleUrl: articleUrl || existing?.articleUrl,
+        articleTitle: pageTitle || existing?.articleTitle,
+      };
+      const others = prev.filter(s => s.id !== sessionKey);
+      const updated = [next, ...others];
+      try {
+        localStorage.setItem(
+          CHAT_SESSIONS_INDEX_KEY,
+          JSON.stringify(updated)
+        );
+        if (typeof window !== 'undefined') {
+          try {
+            window.dispatchEvent(new CustomEvent('aiChat:sessionsUpdated'));
+          } catch {}
+        }
+      } catch {}
+      return updated;
+    });
+  }, [messages, summary, questionMode, pageTitle, persistOptIn, sessionKey]);
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -201,6 +446,16 @@ export default function ChatWidget(props: { onClose?: () => void }) {
               </span>
             )}
           </div>
+          <Button
+            type='button'
+            size='sm'
+            variant='ghost'
+            className='h-7 px-2 text-[11px]'
+            disabled={!sessions.length}
+            onClick={() => setShowSessions(v => !v)}
+          >
+            최근 대화
+          </Button>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -231,8 +486,66 @@ export default function ChatWidget(props: { onClose?: () => void }) {
           </TooltipProvider>
         </div>
       </div>
+      {showSessions && sessions.length > 0 && (
+        <div className='border-b bg-muted/40'>
+          <div className='px-3 pt-2 max-h-40 overflow-y-auto text-xs space-y-1'>
+            {sessions.map(s => {
+              const checked = selectedSessionIds.includes(s.id);
+              return (
+                <div
+                  key={s.id}
+                  className='flex items-center gap-2 px-1 py-1 rounded hover:bg-muted'
+                >
+                  <input
+                    type='checkbox'
+                    className='h-3 w-3'
+                    checked={checked}
+                    onChange={() => toggleSessionSelected(s.id)}
+                  />
+                  <button
+                    type='button'
+                    className='flex-1 text-left'
+                    onClick={() => {
+                      loadSession(s.id);
+                      setShowSessions(false);
+                    }}
+                  >
+                    <div className='truncate font-medium'>
+                      {s.title || '제목 없음'}
+                    </div>
+                    <div className='flex items-center gap-1 text-[10px] text-muted-foreground truncate'>
+                      {s.articleTitle && (
+                        <span className='truncate'>{s.articleTitle}</span>
+                      )}
+                      <span>
+                        {new Date(s.updatedAt).toLocaleString()}
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          <div className='px-3 pb-2 pt-1 border-t flex items-center justify-between text-[11px]'>
+            <span className='text-muted-foreground'>
+              선택된 세션: {selectedSessionIds.length}개
+            </span>
+            <Button
+              type='button'
+              size='sm'
+              className='h-7 px-2 text-[11px]'
+              disabled={!selectedSessionIds.length}
+              onClick={handleAggregateFromSelected}
+            >
+              통합 질문하기
+            </Button>
+          </div>
+        </div>
+      )}
       <div className='px-4 py-1 border-b text-[11px] text-muted-foreground'>
-        현재 글 '{pageTitle}' 기반으로 질문 중
+        {questionMode === 'article'
+          ? `현재 글 '${pageTitle}' 기반으로 질문 중`
+          : '일반 대화 모드 — 블로그 전체나 다른 주제로 자유롭게 이야기해 보세요.'}
       </div>
       <div
         ref={scrollRef}
@@ -330,29 +643,109 @@ export default function ChatWidget(props: { onClose?: () => void }) {
           지난 대화 요약: {summary}
         </div>
       )}
-      <div className='flex items-end gap-2 p-3 border-t shrink-0'>
-        <Textarea
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={onKeyDown}
-          rows={2}
-          placeholder='Type your message...'
-          className='flex-1'
-        />
-        {busy ? (
-          <Button onClick={stop} size='sm' variant='secondary' className='h-9'>
-            <Square className='h-4 w-4' />
-            <span className='hidden sm:inline ml-1'>Stop</span>
-          </Button>
-        ) : (
-          <Button onClick={send} disabled={!canSend} size='sm' className='h-9'>
-            <Send className='h-4 w-4' />
-            <span className='hidden sm:inline ml-1'>Send</span>
-          </Button>
+      <div className='border-t shrink-0'>
+        <div className='flex items-center justify-between px-3 pt-2 pb-1 gap-2'>
+          <div className='inline-flex items-center rounded-full border bg-muted p-0.5'>
+            <Button
+              type='button'
+              size='sm'
+              variant={questionMode === 'article' ? 'secondary' : 'ghost'}
+              className='h-6 px-2 text-[11px]'
+              onClick={() => setQuestionMode('article')}
+            >
+              현재 글 기반 질문
+            </Button>
+            <Button
+              type='button'
+              size='sm'
+              variant={questionMode === 'general' ? 'secondary' : 'ghost'}
+              className='h-6 px-2 text-[11px]'
+              onClick={() => setQuestionMode('general')}
+            >
+              일반 대화
+            </Button>
+          </div>
+          <div className='hidden sm:inline text-[11px] text-muted-foreground truncate'>
+            {questionMode === 'article'
+              ? '이 페이지 내용을 참고해서 답변해요.'
+              : '페이지와 무관하게 자유롭게 대화해요.'}
+          </div>
+        </div>
+        {attachedImage && (
+          <div className='px-3 pb-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground'>
+            <span className='inline-flex items-center gap-1 truncate'>
+              <ImageIcon className='h-3 w-3' />
+              <span className='truncate'>이미지 "{attachedImage.name}" 첨부됨</span>
+            </span>
+            <button
+              type='button'
+              className='text-[11px] underline'
+              onClick={() => setAttachedImage(null)}
+            >
+              제거
+            </button>
+          </div>
         )}
-        <Button onClick={clearAll} variant='ghost' size='sm' className='h-9'>
-          새 대화
-        </Button>
+        <div className='flex items-end gap-2 px-3 pb-3'>
+          <Textarea
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={onKeyDown}
+            rows={2}
+            placeholder='Type your message...'
+            className='flex-1'
+          />
+          <div className='flex items-center gap-1'>
+            <input
+              ref={fileInputRef}
+              type='file'
+              accept='image/*'
+              className='hidden'
+              onChange={e => {
+                const file = e.target.files?.[0] ?? null;
+                setAttachedImage(file);
+              }}
+            />
+            <Button
+              type='button'
+              size='sm'
+              variant='outline'
+              className='h-9 px-2'
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <ImageIcon className='h-4 w-4' />
+            </Button>
+            {busy ? (
+              <Button
+                onClick={stop}
+                size='sm'
+                variant='secondary'
+                className='h-9'
+              >
+                <Square className='h-4 w-4' />
+                <span className='hidden sm:inline ml-1'>Stop</span>
+              </Button>
+            ) : (
+              <Button
+                onClick={send}
+                disabled={!canSend}
+                size='sm'
+                className='h-9'
+              >
+                <Send className='h-4 w-4' />
+                <span className='hidden sm:inline ml-1'>Send</span>
+              </Button>
+            )}
+            <Button
+              onClick={clearAll}
+              variant='ghost'
+              size='sm'
+              className='h-9'
+            >
+              새 대화
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

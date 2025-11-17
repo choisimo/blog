@@ -173,6 +173,13 @@ const BlogPost = () => {
     }
   }, [post]);
 
+  useEffect(() => {
+    if (!post) return;
+    if (typeof document === 'undefined') return;
+    const title = (post.title || '').trim();
+    document.title = title || document.title;
+  }, [post]);
+
   // sync inline feature flag from localStorage and storage events
   useEffect(() => {
     const read = () => {

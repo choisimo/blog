@@ -93,6 +93,47 @@ images.post('/upload-direct', requireAdmin, async (c) => {
   }, 201);
 });
 
+// POST /images/chat-upload - Direct upload for AI Chat images (public, origin-guarded)
+images.post('/chat-upload', async c => {
+  const contentType = c.req.header('content-type') || '';
+  if (!contentType.toLowerCase().includes('multipart/form-data')) {
+    return badRequest(c, 'multipart/form-data required');
+  }
+
+  const formData = await c.req.formData();
+  const file = formData.get('file') as File | null;
+
+  if (!file) {
+    return badRequest(c, 'file is required');
+  }
+
+  const r2 = c.env.R2;
+
+  const sanitized = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+  const timestamp = Date.now();
+  const key = `ai-chat/${new Date().getFullYear()}/${timestamp}-${sanitized}`;
+
+  const buffer = await file.arrayBuffer();
+  await r2.put(key, buffer, {
+    httpMetadata: {
+      contentType: file.type || 'application/octet-stream',
+    },
+  });
+
+  const url = `https://assets.blog.nodove.com/${key}`;
+
+  return success(
+    c,
+    {
+      url,
+      key,
+      size: file.size,
+      contentType: file.type || 'application/octet-stream',
+    },
+    201
+  );
+});
+
 // DELETE /images/:key - Delete image from R2 (admin only)
 images.delete('/:key', requireAdmin, async (c) => {
   const key = c.req.param('key');

@@ -261,6 +261,7 @@ export async function* streamChatEvents(input: {
   page?: { url?: string; title?: string };
   signal?: AbortSignal;
   onFirstToken?: (ms: number) => void;
+  useArticleContext?: boolean;
 }): AsyncGenerator<ChatStreamEvent, void, void> {
   const sessionID = await ensureSession();
   const chatBase = getChatBaseUrl();
@@ -280,7 +281,11 @@ export async function* streamChatEvents(input: {
   const stylePrompt =
     '다음 지침을 따르세요: 말투는 귀엽고 상냥한 애니메이션 여캐릭터(botchi)처럼, 존댓말을 유지하고 과하지 않게 가벼운 말끝(예: ~에요, ~일까요?)과 가끔 이모지(^_^, ✨)를 섞습니다. 응답은 간결하고 핵심만 전합니다.';
   const page = input.page || getPageContext();
-  const articleSnippet = getArticleTextSnippet(4000);
+  const shouldUseArticleContext =
+    input.useArticleContext !== undefined ? input.useArticleContext : true;
+  const articleSnippet = shouldUseArticleContext
+    ? getArticleTextSnippet(4000)
+    : null;
   const contextPrompt = articleSnippet
     ? [
         '현재 보고 있는 페이지의 본문 일부를 함께 전달할게요.',
@@ -509,4 +514,93 @@ export async function* streamChatMessage(input: {
   for await (const ev of streamChatEvents({ text: input.text })) {
     if (ev.type === 'text') yield ev.text;
   }
+}
+
+export type ChatImageUploadResult = {
+  url: string;
+  key: string;
+  size: number;
+  contentType: string;
+};
+
+export async function uploadChatImage(
+  file: File,
+  signal?: AbortSignal
+): Promise<ChatImageUploadResult> {
+  const base = getApiBaseUrl();
+  const url = `${base.replace(/\/$/, '')}/api/v1/images/chat-upload`;
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await fetch(url, {
+    method: 'POST',
+    body: formData,
+    signal,
+  });
+
+  const text = await res.text().catch(() => '');
+  let parsed: any = null;
+  if (text) {
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      parsed = null;
+    }
+  }
+
+  if (!res.ok || !parsed?.ok) {
+    const message =
+      (parsed && parsed.error && parsed.error.message) ||
+      text.slice(0, 180) ||
+      `status ${res.status}`;
+    throw new Error(`Chat image upload error: ${message}`);
+  }
+
+  const data = parsed.data;
+  if (!data || typeof data.url !== 'string') {
+    throw new Error('Invalid chat image upload response');
+  }
+  return data as ChatImageUploadResult;
+}
+
+export async function invokeChatAggregate(input: {
+  prompt: string;
+  signal?: AbortSignal;
+}): Promise<string> {
+  const base = getApiBaseUrl();
+  const url = `${base.replace(/\/$/, '')}/api/v1/chat/aggregate`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: input.prompt }),
+    signal: input.signal,
+  });
+
+  const text = await res.text().catch(() => '');
+  let parsed: any = null;
+  if (text) {
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      parsed = null;
+    }
+  }
+
+  if (!res.ok || !parsed?.ok) {
+    const message =
+      (parsed && parsed.error && parsed.error.message) ||
+      text.slice(0, 180) ||
+      `status ${res.status}`;
+    throw new Error(`Chat aggregate error: ${message}`);
+  }
+
+  const data = parsed.data;
+  const value =
+    (data && typeof data.text === 'string' && data.text) ||
+    (typeof data === 'string' ? data : null);
+  if (!value) {
+    throw new Error('Invalid chat aggregate response');
+  }
+  return value;
 }
