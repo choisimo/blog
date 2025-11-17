@@ -17,6 +17,7 @@ account_id = "f6f11e2a4e5178d2f37476785018f761"
 [vars]
 ENV = "development"
 ALLOWED_ORIGINS = "http://localhost:5173,https://noblog.nodove.com,https://blog.nodove.com"
+ASSETS_BASE_URL = "https://assets-b.nodove.com"
 
 # D1 Database binding (development)
 [[d1_databases]]

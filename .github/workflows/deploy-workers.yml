@@ -57,6 +57,9 @@ jobs:
         run: |
           echo "${{ secrets.GEMINI_API_KEY }}" | npx wrangler secret put GEMINI_API_KEY --env production
           echo "${{ secrets.JWT_SECRET }}" | npx wrangler secret put JWT_SECRET --env production
+          if [ -n "${{ secrets.ASSETS_BASE_URL }}" ]; then
+            echo "${{ secrets.ASSETS_BASE_URL }}" | npx wrangler secret put ASSETS_BASE_URL --env production
+          fi
 
       - name: Deploy to Cloudflare Workers (production)
         working-directory: workers

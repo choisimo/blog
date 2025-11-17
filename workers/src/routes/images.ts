@@ -72,7 +72,8 @@ images.post('/upload-direct', requireAdmin, async (c) => {
   });
 
   // Generate public URL (assuming R2 public bucket or custom domain)
-  const url = `https://assets.blog.nodove.com/${key}`; // Update with actual R2 public URL
+  const assetsBase = (c.env.ASSETS_BASE_URL || 'https://assets-b.nodove.com').replace(/\/$/, '');
+  const url = `${assetsBase}/${key}`;
 
   // Save metadata to D1
   const attachmentId = `attach-${crypto.randomUUID()}`;
@@ -129,7 +130,8 @@ images.post('/chat-upload', async c => {
     },
   });
 
-  const url = `https://assets.blog.nodove.com/${key}`;
+  const assetsBase = (c.env.ASSETS_BASE_URL || 'https://assets.blog.nodove.com').replace(/\/$/, '');
+  const url = `${assetsBase}/${key}`;
 
   return success(
     c,
