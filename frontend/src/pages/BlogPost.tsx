@@ -307,7 +307,7 @@ const BlogPost = () => {
               </Button>
 
               {/* Enhanced Header Card */}
-              <div className='bg-card/50 backdrop-blur-sm border rounded-2xl p-8 shadow-lg'>
+              <div className='bg-card/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg md:border md:p-8'>
                 <div className='space-y-6'>
                   {/* Meta Information */}
                   <div className='flex flex-wrap items-center gap-3 text-sm'>
@@ -378,7 +378,7 @@ const BlogPost = () => {
 
             {/* Content Section */}
             <div className='mb-16'>
-              <div className='bg-card/30 backdrop-blur-sm border rounded-2xl p-8 md:p-12 shadow-sm'>
+              <div className='bg-card/30 backdrop-blur-sm rounded-2xl p-4 sm:p-6 md:p-12 shadow-sm md:border'>
                 <div className='prose prose-gray dark:prose-invert max-w-none'>
                   <Suspense
                     fallback={
@@ -417,7 +417,7 @@ const BlogPost = () => {
             {/* Related Posts */}
             {relatedPosts.length > 0 && (
               <div className='mt-16'>
-                <div className='bg-card/30 backdrop-blur-sm border rounded-2xl p-8 shadow-sm'>
+                <div className='bg-card/30 backdrop-blur-sm rounded-2xl p-4 sm:p-6 md:p-8 shadow-sm md:border'>
                   <h2 className='text-2xl font-bold mb-8 flex items-center justify-center'>
                     <BookOpen className='mr-3 h-6 w-6' />
                     Related Posts
@@ -441,7 +441,7 @@ const BlogPost = () => {
                           prefetchPost(relatedPost.year, relatedPost.slug)
                         }
                       >
-                        <div className='bg-card border rounded-xl p-6 hover:shadow-lg hover:scale-105 transition-all duration-300'>
+                        <div className='bg-card rounded-xl p-5 hover:shadow-lg hover:scale-105 transition-all duration-300 md:border'>
                           <Badge variant='secondary' className='mb-3'>
                             {relatedPost.category}
                           </Badge>

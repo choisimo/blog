@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "@cloudflare/playwright": "^1.0.0"
+  }
+}

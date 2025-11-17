@@ -5,7 +5,14 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Sparkles, Send, Loader2, Square, Image as ImageIcon } from 'lucide-react';
+import {
+  Sparkles,
+  Send,
+  Loader2,
+  Square,
+  Image as ImageIcon,
+  X,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -22,6 +29,8 @@ import {
   invokeChatAggregate,
 } from '@/services/chat';
 import ChatMarkdown from './ChatMarkdown';
+import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export type SourceLink = {
   title?: string;
@@ -58,8 +67,14 @@ type ChatSessionMeta = {
 
 const CHAT_SESSIONS_INDEX_KEY = 'ai_chat_sessions_index';
 const CHAT_SESSION_STORAGE_PREFIX = 'ai_chat_history_v2_';
+const QUICK_PROMPTS = [
+  '이 글을 3줄로 요약해줘.',
+  'SEO 키워드 5개 추천해줘.',
+  '블로그 글 제목 3개를 제안해줘.',
+];
 
 export default function ChatWidget(props: { onClose?: () => void }) {
+  const isMobile = useIsMobile();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -96,6 +111,8 @@ export default function ChatWidget(props: { onClose?: () => void }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const lastPromptRef = useRef<string>('');
 
   const canSend =
     (input.trim().length > 0 || attachedImage !== null) && !busy;
@@ -178,6 +195,10 @@ export default function ChatWidget(props: { onClose?: () => void }) {
 
   const push = useCallback((msg: ChatMessage) => {
     setMessages(prev => [...prev, msg]);
+  }, []);
+
+  const focusInput = useCallback(() => {
+    requestAnimationFrame(() => textareaRef.current?.focus());
   }, []);
 
   const loadSession = useCallback(
@@ -296,6 +317,7 @@ export default function ChatWidget(props: { onClose?: () => void }) {
       }
 
       const text = lines.join('\n');
+      lastPromptRef.current = text;
       const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       setInput('');
       setAttachedImage(null);
@@ -465,35 +487,48 @@ export default function ChatWidget(props: { onClose?: () => void }) {
     [canSend, send]
   );
 
+  const placeholder = questionMode === 'article'
+    ? "현재 글 내용에 대해 물어보고 싶은 것을 입력하세요..."
+    : '자유롭게 궁금한 내용을 입력하세요...';
+
   return (
-    <div className='fixed bottom-20 left-1/2 -translate-x-1/2 z-[10000] w-[min(100%-24px,42rem)] max-h-[70vh] flex flex-col rounded-xl border bg-background shadow-lg'>
-      <div className='flex items-center justify-between px-4 py-2 border-b shrink-0'>
-        <div className='flex items-center gap-2'>
-          <Sparkles className='h-4 w-4 text-primary' />
-          <h3 className='text-sm font-semibold'>AI Chat</h3>
-        </div>
-        <div className='flex items-center gap-3'>
-          <div className='text-xs text-muted-foreground'>
-            {busy ? (
-              <span className='inline-flex items-center gap-1'>
-                <Loader2 className='h-3.5 w-3.5 animate-spin' /> 생성 중
-                {firstTokenMs != null && (
-                  <span className='ml-1 text-muted-foreground/70'>
-                    첫 토큰 {firstTokenMs}ms
-                  </span>
-                )}
-              </span>
-            ) : (
-              <span className='text-xs text-muted-foreground'>
-                Experimental
-              </span>
-            )}
+    <div
+      className={cn(
+        'fixed z-[10000] flex flex-col overflow-hidden border bg-background shadow-2xl transition-all',
+        isMobile
+          ? 'inset-0 h-[100dvh] rounded-none safe-area'
+          : 'bottom-20 left-1/2 w-[min(100%-24px,42rem)] max-h-[80vh] -translate-x-1/2 rounded-2xl'
+      )}
+    >
+      <div className='flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between'>
+        <div className='flex items-start gap-3'>
+          <div className='flex h-9 w-9 items-center justify-center rounded-full bg-primary/10'>
+            <Sparkles className='h-4 w-4 text-primary' />
           </div>
+          <div>
+            <h3 className='text-base font-semibold text-foreground'>AI Chat</h3>
+            <div className='text-xs text-muted-foreground'>
+              {busy ? (
+                <span className='inline-flex items-center gap-1'>
+                  <Loader2 className='h-3.5 w-3.5 animate-spin' /> 생성 중
+                  {firstTokenMs != null && (
+                    <span className='ml-1 text-muted-foreground/70'>
+                      첫 토큰 {firstTokenMs}ms
+                    </span>
+                  )}
+                </span>
+              ) : (
+                <span>Experimental</span>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className='flex flex-wrap items-center justify-end gap-2 text-xs'>
           <Button
             type='button'
             size='sm'
-            variant='ghost'
-            className='h-7 px-2 text-[11px]'
+            variant='outline'
+            className='h-8 px-3 text-[12px]'
             disabled={!sessions.length}
             onClick={() => setShowSessions(v => !v)}
           >
@@ -506,8 +541,8 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                   <Button
                     type='button'
                     size='sm'
-                    variant='ghost'
-                    className='h-7 px-2 text-[11px]'
+                    variant='outline'
+                    className='h-8 px-3 text-[12px]'
                   >
                     이미지 메모 ({uploadedImages.length})
                   </Button>
@@ -552,10 +587,8 @@ export default function ChatWidget(props: { onClose?: () => void }) {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className='flex items-center gap-2'>
-                  <span className='text-xs text-muted-foreground'>
-                    기록 저장
-                  </span>
+                <div className='flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] text-muted-foreground'>
+                  <span>기록 저장</span>
                   <Switch
                     checked={persistOptIn}
                     onCheckedChange={v => {
@@ -577,6 +610,18 @@ export default function ChatWidget(props: { onClose?: () => void }) {
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+          {props.onClose && (
+            <Button
+              type='button'
+              size='icon'
+              variant='ghost'
+              className='h-8 w-8'
+              aria-label='창 닫기'
+              onClick={props.onClose}
+            >
+              <X className='h-4 w-4' />
+            </Button>
+          )}
         </div>
       </div>
       {showSessions && sessions.length > 0 && (
@@ -642,11 +687,30 @@ export default function ChatWidget(props: { onClose?: () => void }) {
       </div>
       <div
         ref={scrollRef}
-        className='flex-1 min-h-[140px] max-h-[46vh] overflow-auto px-4 py-3 space-y-3'
+        className={cn(
+          'flex-1 overflow-auto px-4 py-3 space-y-3',
+          isMobile ? 'min-h-[40vh]' : 'min-h-[140px] max-h-[46vh]'
+        )}
       >
         {messages.length === 0 && (
-          <div className='text-xs text-muted-foreground'>
-            블로그와 현재 글에 대해 무엇이든 물어보세요.
+          <div className='space-y-3 rounded-2xl border border-dashed px-4 py-5 text-xs text-muted-foreground'>
+            <p>빠르게 시작하려면 아래 프롬프트를 눌러보세요.</p>
+            <div className='flex flex-wrap gap-2'>
+              {QUICK_PROMPTS.map(prompt => (
+                <Button
+                  key={prompt}
+                  size='sm'
+                  variant='secondary'
+                  className='h-8 text-xs'
+                  onClick={() => {
+                    setInput(prompt);
+                    focusInput();
+                  }}
+                >
+                  {prompt}
+                </Button>
+              ))}
+            </div>
           </div>
         )}
         {messages.map(m => {
@@ -663,7 +727,7 @@ export default function ChatWidget(props: { onClose?: () => void }) {
             >
               <div
                 className={[
-                  'max-w-[85%] text-sm leading-relaxed rounded-2xl px-3 py-2',
+                  'max-w-full text-sm leading-relaxed rounded-2xl px-3 py-2 sm:max-w-[85%]',
                   isUser && 'bg-primary text-primary-foreground rounded-br-sm',
                   isAssistant &&
                     'bg-secondary text-secondary-foreground rounded-bl-sm',
@@ -673,7 +737,14 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                   .join(' ')}
               >
                 {isAssistant ? (
-                  <ChatMarkdown content={m.text} />
+                  m.text.trim() ? (
+                    <ChatMarkdown content={m.text} />
+                  ) : (
+                    <div className='flex items-center gap-2 text-xs text-muted-foreground'>
+                      <Loader2 className='h-3.5 w-3.5 animate-spin' />
+                      답변을 준비하고 있어요…
+                    </div>
+                  )
                 ) : (
                   <span className='whitespace-pre-wrap'>{m.text}</span>
                 )}
@@ -718,7 +789,10 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                             size='sm'
                             variant='secondary'
                             className='h-7 text-xs px-2'
-                            onClick={() => setInput(q)}
+                            onClick={() => {
+                              setInput(q);
+                              focusInput();
+                            }}
                           >
                             {q}
                           </Button>
@@ -726,6 +800,21 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                       </div>
                     </div>
                   )}
+                {isSystem && lastPromptRef.current && (
+                  <div className='mt-2'>
+                    <Button
+                      size='sm'
+                      variant='ghost'
+                      className='h-7 text-xs px-2'
+                      onClick={() => {
+                        setInput(lastPromptRef.current);
+                        focusInput();
+                      }}
+                    >
+                      다시 시도하기
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -736,8 +825,8 @@ export default function ChatWidget(props: { onClose?: () => void }) {
           지난 대화 요약: {summary}
         </div>
       )}
-      <div className='border-t shrink-0'>
-        <div className='flex items-center justify-between px-3 pt-2 pb-1 gap-2'>
+      <div className='border-t shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85'>
+        <div className='flex flex-wrap items-center justify-between gap-2 px-3 pt-2 pb-1 text-[11px]'>
           <div className='inline-flex items-center rounded-full border bg-muted p-0.5'>
             <Button
               type='button'
@@ -758,10 +847,10 @@ export default function ChatWidget(props: { onClose?: () => void }) {
               일반 대화
             </Button>
           </div>
-          <div className='hidden sm:inline text-[11px] text-muted-foreground truncate'>
+          <div className='text-[11px] text-muted-foreground truncate'>
             {questionMode === 'article'
-              ? '이 페이지 내용을 참고해서 답변해요.'
-              : '페이지와 무관하게 자유롭게 대화해요.'}
+              ? "현재 페이지 콘텐츠를 참고해 답변합니다."
+              : '페이지와 무관한 자유 대화 모드입니다.'}
           </div>
         </div>
         {attachedImage && (
@@ -796,14 +885,15 @@ export default function ChatWidget(props: { onClose?: () => void }) {
             </button>
           </div>
         )}
-        <div className='flex items-end gap-2 px-3 pb-3'>
+        <div className='flex items-end gap-2 px-3 pb-3 pt-1'>
           <Textarea
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={onKeyDown}
             rows={2}
-            placeholder='Type your message...'
-            className='flex-1'
+            placeholder={placeholder}
+            ref={textareaRef}
+            className='flex-1 resize-none rounded-2xl border bg-muted/40 px-4 py-3 text-sm focus-visible:ring-0'
           />
           <div className='flex items-center gap-1'>
             <input
@@ -820,8 +910,9 @@ export default function ChatWidget(props: { onClose?: () => void }) {
               type='button'
               size='sm'
               variant='outline'
-              className='h-9 px-2'
+              className='h-10 w-10 px-0'
               onClick={() => fileInputRef.current?.click()}
+              aria-label='이미지 첨부'
             >
               <ImageIcon className='h-4 w-4' />
             </Button>
@@ -830,7 +921,7 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                 onClick={stop}
                 size='sm'
                 variant='secondary'
-                className='h-9'
+                className='h-10 px-3'
               >
                 <Square className='h-4 w-4' />
                 <span className='hidden sm:inline ml-1'>Stop</span>
@@ -840,7 +931,7 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                 onClick={send}
                 disabled={!canSend}
                 size='sm'
-                className='h-9'
+                className='h-10 px-4'
               >
                 <Send className='h-4 w-4' />
                 <span className='hidden sm:inline ml-1'>Send</span>
@@ -850,7 +941,7 @@ export default function ChatWidget(props: { onClose?: () => void }) {
               onClick={clearAll}
               variant='ghost'
               size='sm'
-              className='h-9'
+              className='h-10 px-3'
             >
               새 대화
             </Button>
