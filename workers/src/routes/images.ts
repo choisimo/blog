@@ -16,6 +16,9 @@ images.post('/presign', requireAdmin, async (c) => {
   }
 
   const r2 = c.env.R2;
+  if (!r2) {
+    return badRequest(c, 'R2 bucket is not configured');
+  }
   
   // Generate a unique key for R2
   const sanitized = filename.replace(/[^a-zA-Z0-9._-]/g, '-');
@@ -48,6 +51,9 @@ images.post('/upload-direct', requireAdmin, async (c) => {
   }
 
   const r2 = c.env.R2;
+  if (!r2) {
+    return badRequest(c, 'R2 bucket is not configured');
+  }
   const db = c.env.DB;
 
   // Generate R2 key
@@ -108,6 +114,9 @@ images.post('/chat-upload', async c => {
   }
 
   const r2 = c.env.R2;
+  if (!r2) {
+    return badRequest(c, 'R2 bucket is not configured');
+  }
 
   const sanitized = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
   const timestamp = Date.now();
@@ -138,6 +147,9 @@ images.post('/chat-upload', async c => {
 images.delete('/:key', requireAdmin, async (c) => {
   const key = c.req.param('key');
   const r2 = c.env.R2;
+  if (!r2) {
+    return badRequest(c, 'R2 bucket is not configured');
+  }
   const db = c.env.DB;
 
   // Delete from R2

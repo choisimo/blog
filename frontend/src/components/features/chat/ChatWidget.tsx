@@ -37,6 +37,13 @@ export type ChatMessage = {
   followups?: string[];
 };
 
+type UploadedChatImage = {
+  id: string;
+  url: string;
+  name: string;
+  size: number;
+};
+
 type ChatSessionMeta = {
   id: string;
   title: string;
@@ -82,6 +89,10 @@ export default function ChatWidget(props: { onClose?: () => void }) {
     'article'
   );
   const [attachedImage, setAttachedImage] = useState<File | null>(null);
+  const [attachedPreviewUrl, setAttachedPreviewUrl] = useState<string | null>(
+    null
+  );
+  const [uploadedImages, setUploadedImages] = useState<UploadedChatImage[]>([]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -143,6 +154,27 @@ export default function ChatWidget(props: { onClose?: () => void }) {
       );
     } catch {}
   }, [messages, persistOptIn, sessionKey]);
+
+  useEffect(() => {
+    if (!attachedImage) {
+      setAttachedPreviewUrl(null);
+      return;
+    }
+    let url: string | null = null;
+    try {
+      url = URL.createObjectURL(attachedImage);
+      setAttachedPreviewUrl(url);
+    } catch {
+      setAttachedPreviewUrl(null);
+    }
+    return () => {
+      if (url) {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {}
+      }
+    };
+  }, [attachedImage]);
 
   const push = useCallback((msg: ChatMessage) => {
     setMessages(prev => [...prev, msg]);
@@ -253,12 +285,21 @@ export default function ChatWidget(props: { onClose?: () => void }) {
           `파일명: ${imageToUpload.name}`,
           `크기: ${sizeKb}KB`
         );
+
+        const entry: UploadedChatImage = {
+          id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          url: uploaded.url,
+          name: imageToUpload.name,
+          size: uploaded.size,
+        };
+        setUploadedImages(prev => [entry, ...prev].slice(0, 12));
       }
 
       const text = lines.join('\n');
       const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       setInput('');
       setAttachedImage(null);
+      setAttachedPreviewUrl(null);
       push({ id, role: 'user', text });
       aiId = `${id}_ai`;
 
@@ -320,6 +361,8 @@ export default function ChatWidget(props: { onClose?: () => void }) {
     setMessages([]);
     setFirstTokenMs(null);
     setAttachedImage(null);
+    setAttachedPreviewUrl(null);
+    setUploadedImages([]);
     setIsAggregatePrompt(false);
     const nextKey = `sess_${Date.now()}_${Math.random()
       .toString(36)
@@ -456,6 +499,56 @@ export default function ChatWidget(props: { onClose?: () => void }) {
           >
             최근 대화
           </Button>
+          {uploadedImages.length > 0 && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type='button'
+                    size='sm'
+                    variant='ghost'
+                    className='h-7 px-2 text-[11px]'
+                  >
+                    이미지 메모 ({uploadedImages.length})
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent align='end' side='bottom'>
+                  <div className='max-h-64 max-w-[260px] space-y-2 overflow-y-auto text-[11px]'>
+                    {uploadedImages.map(img => (
+                      <button
+                        key={img.id}
+                        type='button'
+                        className='flex w-full items-center gap-2 rounded border bg-background/80 px-1.5 py-1 hover:bg-accent'
+                        onClick={() => {
+                          try {
+                            window.open(
+                              img.url,
+                              '_blank',
+                              'noopener,noreferrer'
+                            );
+                          } catch {}
+                        }}
+                      >
+                        <div className='h-10 w-10 flex-shrink-0 overflow-hidden rounded bg-muted'>
+                          <img
+                            src={img.url}
+                            alt={img.name}
+                            className='h-full w-full object-cover'
+                          />
+                        </div>
+                        <div className='flex-1 text-left'>
+                          <div className='truncate'>{img.name}</div>
+                          <div className='text-[10px] text-muted-foreground'>
+                            {Math.max(1, Math.round(img.size / 1024))}KB
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -673,9 +766,26 @@ export default function ChatWidget(props: { onClose?: () => void }) {
         </div>
         {attachedImage && (
           <div className='px-3 pb-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground'>
-            <span className='inline-flex items-center gap-1 truncate'>
-              <ImageIcon className='h-3 w-3' />
-              <span className='truncate'>이미지 "{attachedImage.name}" 첨부됨</span>
+            <span className='inline-flex items-center gap-2 truncate'>
+              <div className='h-8 w-8 flex-shrink-0 overflow-hidden rounded bg-muted'>
+                {attachedPreviewUrl ? (
+                  <img
+                    src={attachedPreviewUrl}
+                    alt={attachedImage.name}
+                    className='h-full w-full object-cover'
+                  />
+                ) : (
+                  <ImageIcon className='h-4 w-4 mx-auto my-auto' />
+                )}
+              </div>
+              <span className='inline-flex min-w-0 flex-col'>
+                <span className='inline-flex items-center gap-1 truncate'>
+                  <ImageIcon className='h-3 w-3' />
+                  <span className='truncate'>
+                    이미지 "{attachedImage.name}" 첨부됨
+                  </span>
+                </span>
+              </span>
             </span>
             <button
               type='button'

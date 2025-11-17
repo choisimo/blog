@@ -30,6 +30,10 @@ database_id = "65661464-f6e2-4cdf-8da8-dd63a482fd29"
 # bucket_name = "blog-assets-dev"
 # preview_bucket_name = "blog-assets-dev"
 
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "blog"
+
 # KV namespace binding (development)
 [[kv_namespaces]]
 binding = "KV"
@@ -51,6 +55,10 @@ database_id = "e547f944-71a0-42b6-8af1-abc50f29df80"
 # [[env.production.r2_buckets]]
 # binding = "R2"
 # bucket_name = "blog-assets-prod"
+
+[[env.production.r2_buckets]]
+binding = "R2"
+bucket_name = "blog"
 
 [[env.production.kv_namespaces]]
 binding = "KV"
