@@ -1,6 +1,13 @@
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useLanguage } from '@/contexts/LanguageContext';
 import type { SupportedLanguage } from '@/types/blog';
+import { Globe } from 'lucide-react';
 
 const LABELS: Record<SupportedLanguage, string> = {
   ko: '한국어',
@@ -11,21 +18,31 @@ export function LanguageToggle() {
   const { language, setLanguage } = useLanguage();
 
   return (
-    <div className='flex items-center gap-1' role='group' aria-label='Language toggle'>
-      {(Object.keys(LABELS) as SupportedLanguage[]).map(lang => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button
-          key={lang}
           type='button'
-          variant={language === lang ? 'default' : 'ghost'}
-          size='sm'
-          className='px-3 text-xs'
-          onClick={() => setLanguage(lang)}
-          aria-pressed={language === lang}
+          variant='ghost'
+          size='icon'
+          aria-label={`언어 변경: 현재 ${LABELS[language]}`}
+          className='h-9 w-9'
         >
-          {LABELS[lang]}
+          <Globe className='h-4 w-4' />
         </Button>
-      ))}
-      <span className='sr-only'>Current language: {LABELS[language]}</span>
-    </div>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align='end' className='w-32 text-sm'>
+        {(Object.keys(LABELS) as SupportedLanguage[]).map(lang => (
+          <DropdownMenuItem
+            key={lang}
+            onSelect={() => setLanguage(lang)}
+            aria-checked={language === lang}
+            className='flex items-center justify-between'
+          >
+            <span>{LABELS[lang]}</span>
+            {language === lang && <span className='text-primary text-xs'>•</span>}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

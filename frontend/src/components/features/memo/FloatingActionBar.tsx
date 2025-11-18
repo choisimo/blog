@@ -9,17 +9,26 @@ import { useToast } from '@/components/ui/use-toast';
 
 // Feature flag: build-time + runtime override
 function isFabEnabled(): boolean {
-  const envFlag = (import.meta as any).env?.VITE_FEATURE_FAB;
-  const ls = (() => {
-    try {
-      const v = localStorage.getItem('aiMemo.fab.enabled');
-      return v == null ? null : JSON.parse(v);
-    } catch {
-      return null;
+  let lsValue: boolean | null = null;
+  try {
+    const stored = localStorage.getItem('aiMemo.fab.enabled');
+    if (stored != null) {
+      lsValue = JSON.parse(stored);
     }
-  })();
-  const envOn = envFlag === true || envFlag === 'true' || envFlag === '1';
-  return typeof ls === 'boolean' ? ls : !!envOn;
+  } catch {
+    lsValue = null;
+  }
+
+  if (typeof lsValue === 'boolean') {
+    return lsValue;
+  }
+
+  const envFlag = (import.meta as any).env?.VITE_FEATURE_FAB;
+  if (envFlag != null) {
+    return envFlag === true || envFlag === 'true' || envFlag === '1';
+  }
+
+  return true;
 }
 
 function useAIMemoElement(): HTMLElement | null {
