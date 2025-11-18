@@ -9,11 +9,11 @@ interface PostNavigationProps {
   fromState?: unknown;
 }
 
-export const PostNavigation = ({
+export function PostNavigation({
   currentPost,
   posts,
   fromState,
-}: PostNavigationProps) => {
+}: PostNavigationProps) {
   const location = useLocation();
   const preservedFrom =
     fromState ?? (location.state as { from?: unknown })?.from ?? location;
@@ -75,4 +75,6 @@ export const PostNavigation = ({
       )}
     </div>
   );
-};
+}
+
+export default PostNavigation;

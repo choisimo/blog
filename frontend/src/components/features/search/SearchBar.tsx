@@ -11,11 +11,11 @@ interface SearchBarProps {
   placeholder?: string;
 }
 
-export const SearchBar = ({
+export function SearchBar({
   posts,
   onSearchResults,
   placeholder = '블로그 검색...',
-}: SearchBarProps) => {
+}: SearchBarProps) {
   const [query, setQuery] = useState('');
 
   // Fuse.js 설정
@@ -47,7 +47,6 @@ export const SearchBar = ({
   const handleClear = () => {
     setQuery('');
   };
-
   return (
     <div className='relative w-full'>
       <div className='relative group'>
@@ -86,4 +85,6 @@ export const SearchBar = ({
       )}
     </div>
   );
-};
+}
+
+export default SearchBar;

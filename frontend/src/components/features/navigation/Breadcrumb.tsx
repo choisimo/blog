@@ -12,7 +12,7 @@ interface BreadcrumbProps {
   className?: string;
 }
 
-export const Breadcrumb = ({ items, className }: BreadcrumbProps) => {
+export function Breadcrumb({ items, className }: BreadcrumbProps) {
   return (
     <nav
       className={cn(
@@ -40,4 +40,6 @@ export const Breadcrumb = ({ items, className }: BreadcrumbProps) => {
       ))}
     </nav>
   );
-};
+}
+
+export default Breadcrumb;

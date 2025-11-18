@@ -12,16 +12,24 @@ import {
   Square,
   Image as ImageIcon,
   X,
+  MoreVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   streamChatEvents,
   ensureSession,
@@ -97,6 +105,7 @@ export default function ChatWidget(props: { onClose?: () => void }) {
   });
   const [sessions, setSessions] = useState<ChatSessionMeta[]>([]);
   const [showSessions, setShowSessions] = useState(false);
+  const [showImageDrawer, setShowImageDrawer] = useState(false);
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
   const [isAggregatePrompt, setIsAggregatePrompt] = useState(false);
   const [firstTokenMs, setFirstTokenMs] = useState<number | null>(null);
@@ -196,6 +205,14 @@ export default function ChatWidget(props: { onClose?: () => void }) {
   const push = useCallback((msg: ChatMessage) => {
     setMessages(prev => [...prev, msg]);
   }, []);
+
+  const togglePersistStorage = useCallback(() => {
+    const next = !persistOptIn;
+    setPersistOptIn(next);
+    try {
+      localStorage.setItem('ai_chat_persist_optin', next ? '1' : '0');
+    } catch {}
+  }, [persistOptIn]);
 
   const focusInput = useCallback(() => {
     requestAnimationFrame(() => textareaRef.current?.focus());
@@ -492,462 +509,464 @@ export default function ChatWidget(props: { onClose?: () => void }) {
     : '자유롭게 궁금한 내용을 입력하세요...';
 
   return (
-    <div
-      className={cn(
-        'fixed z-[10000] flex flex-col overflow-hidden border bg-background shadow-2xl transition-all',
-        isMobile
-          ? 'inset-0 h-[100dvh] rounded-none safe-area'
-          : 'bottom-20 left-1/2 w-[min(100%-24px,42rem)] max-h-[80vh] -translate-x-1/2 rounded-2xl'
-      )}
-    >
-      <div className='flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between'>
-        <div className='flex items-start gap-3'>
-          <div className='flex h-9 w-9 items-center justify-center rounded-full bg-primary/10'>
-            <Sparkles className='h-4 w-4 text-primary' />
-          </div>
-          <div>
-            <h3 className='text-base font-semibold text-foreground'>AI Chat</h3>
-            <div className='text-xs text-muted-foreground'>
-              {busy ? (
-                <span className='inline-flex items-center gap-1'>
-                  <Loader2 className='h-3.5 w-3.5 animate-spin' /> 생성 중
-                  {firstTokenMs != null && (
-                    <span className='ml-1 text-muted-foreground/70'>
-                      첫 토큰 {firstTokenMs}ms
-                    </span>
-                  )}
-                </span>
-              ) : (
-                <span>Experimental</span>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className='flex flex-wrap items-center justify-end gap-2 text-xs'>
-          <Button
-            type='button'
-            size='sm'
-            variant='outline'
-            className='h-8 px-3 text-[12px]'
-            disabled={!sessions.length}
-            onClick={() => setShowSessions(v => !v)}
-          >
-            최근 대화
-          </Button>
-          {uploadedImages.length > 0 && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type='button'
-                    size='sm'
-                    variant='outline'
-                    className='h-8 px-3 text-[12px]'
-                  >
-                    이미지 메모 ({uploadedImages.length})
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent align='end' side='bottom'>
-                  <div className='max-h-64 max-w-[260px] space-y-2 overflow-y-auto text-[11px]'>
-                    {uploadedImages.map(img => (
-                      <button
-                        key={img.id}
-                        type='button'
-                        className='flex w-full items-center gap-2 rounded border bg-background/80 px-1.5 py-1 hover:bg-accent'
-                        onClick={() => {
-                          try {
-                            window.open(
-                              img.url,
-                              '_blank',
-                              'noopener,noreferrer'
-                            );
-                          } catch {}
-                        }}
-                      >
-                        <div className='h-10 w-10 flex-shrink-0 overflow-hidden rounded bg-muted'>
-                          <img
-                            src={img.url}
-                            alt={img.name}
-                            className='h-full w-full object-cover'
-                          />
-                        </div>
-                        <div className='flex-1 text-left'>
-                          <div className='truncate'>{img.name}</div>
-                          <div className='text-[10px] text-muted-foreground'>
-                            {Math.max(1, Math.round(img.size / 1024))}KB
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className='flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] text-muted-foreground'>
-                  <span>기록 저장</span>
-                  <Switch
-                    checked={persistOptIn}
-                    onCheckedChange={v => {
-                      setPersistOptIn(!!v);
-                      try {
-                        localStorage.setItem(
-                          'ai_chat_persist_optin',
-                          v ? '1' : '0'
-                        );
-                      } catch {}
-                    }}
-                  />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <div className='max-w-[240px] text-xs'>
-                  브라우저에만 저장됩니다. 언제든 삭제할 수 있어요.
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          {props.onClose && (
-            <Button
-              type='button'
-              size='icon'
-              variant='ghost'
-              className='h-8 w-8'
-              aria-label='창 닫기'
-              onClick={props.onClose}
-            >
-              <X className='h-4 w-4' />
-            </Button>
-          )}
-        </div>
-      </div>
-      {showSessions && sessions.length > 0 && (
-        <div className='border-b bg-muted/40'>
-          <div className='px-3 pt-2 max-h-40 overflow-y-auto text-xs space-y-1'>
-            {sessions.map(s => {
-              const checked = selectedSessionIds.includes(s.id);
-              return (
-                <div
-                  key={s.id}
-                  className='flex items-center gap-2 px-1 py-1 rounded hover:bg-muted'
-                >
-                  <input
-                    type='checkbox'
-                    className='h-3 w-3'
-                    checked={checked}
-                    onChange={() => toggleSessionSelected(s.id)}
-                  />
-                  <button
-                    type='button'
-                    className='flex-1 text-left'
-                    onClick={() => {
-                      loadSession(s.id);
-                      setShowSessions(false);
-                    }}
-                  >
-                    <div className='truncate font-medium'>
-                      {s.title || '제목 없음'}
-                    </div>
-                    <div className='flex items-center gap-1 text-[10px] text-muted-foreground truncate'>
-                      {s.articleTitle && (
-                        <span className='truncate'>{s.articleTitle}</span>
-                      )}
-                      <span>
-                        {new Date(s.updatedAt).toLocaleString()}
-                      </span>
-                    </div>
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          <div className='px-3 pb-2 pt-1 border-t flex items-center justify-between text-[11px]'>
-            <span className='text-muted-foreground'>
-              선택된 세션: {selectedSessionIds.length}개
-            </span>
-            <Button
-              type='button'
-              size='sm'
-              className='h-7 px-2 text-[11px]'
-              disabled={!selectedSessionIds.length}
-              onClick={handleAggregateFromSelected}
-            >
-              통합 질문하기
-            </Button>
-          </div>
-        </div>
-      )}
-      <div className='px-4 py-1 border-b text-[11px] text-muted-foreground'>
-        {questionMode === 'article'
-          ? `현재 글 '${pageTitle}' 기반으로 질문 중`
-          : '일반 대화 모드 — 블로그 전체나 다른 주제로 자유롭게 이야기해 보세요.'}
-      </div>
+    <>
       <div
-        ref={scrollRef}
         className={cn(
-          'flex-1 overflow-auto px-4 py-3 space-y-3',
-          isMobile ? 'min-h-[40vh]' : 'min-h-[140px] max-h-[46vh]'
+          'fixed z-[10000] flex flex-col overflow-hidden border bg-background shadow-2xl transition-all',
+          isMobile
+            ? 'inset-0 h-[100dvh] rounded-none safe-area'
+            : 'bottom-20 left-1/2 w-[min(100%-24px,42rem)] max-h-[80vh] -translate-x-1/2 rounded-2xl'
         )}
       >
-        {messages.length === 0 && (
-          <div className='space-y-3 rounded-2xl border border-dashed px-4 py-5 text-xs text-muted-foreground'>
-            <p>빠르게 시작하려면 아래 프롬프트를 눌러보세요.</p>
-            <div className='flex flex-wrap gap-2'>
-              {QUICK_PROMPTS.map(prompt => (
-                <Button
-                  key={prompt}
-                  size='sm'
-                  variant='secondary'
-                  className='h-8 text-xs'
-                  onClick={() => {
-                    setInput(prompt);
-                    focusInput();
-                  }}
-                >
-                  {prompt}
-                </Button>
-              ))}
+        <div className='flex items-start justify-between border-b bg-background/95 px-4 py-3'>
+          <div className='flex items-center gap-3'>
+            <div className='flex h-10 w-10 items-center justify-center rounded-full bg-primary/10'>
+              <Sparkles className='h-5 w-5 text-primary' />
             </div>
-          </div>
-        )}
-        {messages.map(m => {
-          const isUser = m.role === 'user';
-          const isAssistant = m.role === 'assistant';
-          const isSystem = m.role === 'system';
-          return (
-            <div
-              key={m.id}
-              className={[
-                'flex',
-                isUser ? 'justify-end' : 'justify-start',
-              ].join(' ')}
-            >
-              <div
-                className={[
-                  'max-w-full text-sm leading-relaxed rounded-2xl px-3 py-2 sm:max-w-[85%]',
-                  isUser && 'bg-primary text-primary-foreground rounded-br-sm',
-                  isAssistant &&
-                    'bg-secondary text-secondary-foreground rounded-bl-sm',
-                  isSystem && 'bg-destructive/10 text-destructive',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-              >
-                {isAssistant ? (
-                  m.text.trim() ? (
-                    <ChatMarkdown content={m.text} />
-                  ) : (
-                    <div className='flex items-center gap-2 text-xs text-muted-foreground'>
-                      <Loader2 className='h-3.5 w-3.5 animate-spin' />
-                      답변을 준비하고 있어요…
-                    </div>
-                  )
-                ) : (
-                  <span className='whitespace-pre-wrap'>{m.text}</span>
-                )}
-                {isAssistant &&
-                  Array.isArray(m.sources) &&
-                  m.sources.length > 0 && (
-                    <div className='mt-2 space-y-1'>
-                      <div className='text-[11px] text-muted-foreground'>
-                        참고한 출처
-                      </div>
-                      <ul className='text-xs list-disc pl-4 space-y-1'>
-                        {m.sources.map((s, i) => (
-                          <li key={i}>
-                            {s.url ? (
-                              <a
-                                className='underline'
-                                href={s.url}
-                                target='_blank'
-                                rel='noreferrer'
-                              >
-                                {s.title || s.url}
-                              </a>
-                            ) : (
-                              <span>{s.title || '출처'}</span>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                {isAssistant &&
-                  Array.isArray(m.followups) &&
-                  m.followups.length > 0 && (
-                    <div className='mt-2'>
-                      <div className='text-[11px] text-muted-foreground mb-1'>
-                        연관 질문
-                      </div>
-                      <div className='flex flex-wrap gap-1'>
-                        {m.followups.map((q, i) => (
-                          <Button
-                            key={i}
-                            size='sm'
-                            variant='secondary'
-                            className='h-7 text-xs px-2'
-                            onClick={() => {
-                              setInput(q);
-                              focusInput();
-                            }}
-                          >
-                            {q}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                {isSystem && lastPromptRef.current && (
-                  <div className='mt-2'>
-                    <Button
-                      size='sm'
-                      variant='ghost'
-                      className='h-7 text-xs px-2'
-                      onClick={() => {
-                        setInput(lastPromptRef.current);
-                        focusInput();
-                      }}
-                    >
-                      다시 시도하기
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      {persistOptIn && summary && (
-        <div className='px-4 py-1 border-t text-[11px] text-muted-foreground truncate'>
-          지난 대화 요약: {summary}
-        </div>
-      )}
-      <div className='border-t shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85'>
-        <div className='flex flex-wrap items-center justify-between gap-2 px-3 pt-2 pb-1 text-[11px]'>
-          <div className='inline-flex items-center rounded-full border bg-muted p-0.5'>
-            <Button
-              type='button'
-              size='sm'
-              variant={questionMode === 'article' ? 'secondary' : 'ghost'}
-              className='h-6 px-2 text-[11px]'
-              onClick={() => setQuestionMode('article')}
-            >
-              현재 글 기반 질문
-            </Button>
-            <Button
-              type='button'
-              size='sm'
-              variant={questionMode === 'general' ? 'secondary' : 'ghost'}
-              className='h-6 px-2 text-[11px]'
-              onClick={() => setQuestionMode('general')}
-            >
-              일반 대화
-            </Button>
-          </div>
-          <div className='text-[11px] text-muted-foreground truncate'>
-            {questionMode === 'article'
-              ? "현재 페이지 콘텐츠를 참고해 답변합니다."
-              : '페이지와 무관한 자유 대화 모드입니다.'}
-          </div>
-        </div>
-        {attachedImage && (
-          <div className='px-3 pb-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground'>
-            <span className='inline-flex items-center gap-2 truncate'>
-              <div className='h-8 w-8 flex-shrink-0 overflow-hidden rounded bg-muted'>
-                {attachedPreviewUrl ? (
-                  <img
-                    src={attachedPreviewUrl}
-                    alt={attachedImage.name}
-                    className='h-full w-full object-cover'
-                  />
-                ) : (
-                  <ImageIcon className='h-4 w-4 mx-auto my-auto' />
-                )}
-              </div>
-              <span className='inline-flex min-w-0 flex-col'>
-                <span className='inline-flex items-center gap-1 truncate'>
-                  <ImageIcon className='h-3 w-3' />
-                  <span className='truncate'>
-                    이미지 "{attachedImage.name}" 첨부됨
+            <div>
+              <p className='text-sm font-semibold'>AI Chat</p>
+              <p className='text-xs text-muted-foreground'>
+                {busy ? (
+                  <span className='inline-flex items-center gap-1'>
+                    <Loader2 className='h-3.5 w-3.5 animate-spin' /> 생성 중…
+                    {firstTokenMs != null && (
+                      <span className='ml-1 text-muted-foreground/70'>
+                        첫 토큰 {firstTokenMs}ms
+                      </span>
+                    )}
                   </span>
-                </span>
-              </span>
-            </span>
-            <button
-              type='button'
-              className='text-[11px] underline'
-              onClick={() => setAttachedImage(null)}
-            >
-              제거
-            </button>
+                ) : persistOptIn ? (
+                  '기록 저장 ON'
+                ) : (
+                  '기록 저장 OFF'
+                )}
+              </p>
+            </div>
           </div>
-        )}
-        <div className='flex items-end gap-2 px-3 pb-3 pt-1'>
-          <Textarea
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={onKeyDown}
-            rows={2}
-            placeholder={placeholder}
-            ref={textareaRef}
-            className='flex-1 resize-none rounded-2xl border bg-muted/40 px-4 py-3 text-sm focus-visible:ring-0'
-          />
           <div className='flex items-center gap-1'>
-            <input
-              ref={fileInputRef}
-              type='file'
-              accept='image/*'
-              className='hidden'
-              onChange={e => {
-                const file = e.target.files?.[0] ?? null;
-                setAttachedImage(file);
-              }}
-            />
             <Button
               type='button'
               size='sm'
               variant='outline'
-              className='h-10 w-10 px-0'
-              onClick={() => fileInputRef.current?.click()}
-              aria-label='이미지 첨부'
+              className='hidden h-9 px-3 text-xs sm:inline-flex'
+              disabled={!sessions.length}
+              onClick={() => setShowSessions(v => !v)}
             >
-              <ImageIcon className='h-4 w-4' />
+              최근 대화
             </Button>
-            {busy ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type='button'
+                  size='icon'
+                  variant='ghost'
+                  aria-label='대화 옵션'
+                >
+                  <MoreVertical className='h-4 w-4' />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align='end' className='w-48 text-sm'>
+                <DropdownMenuItem
+                  disabled={!sessions.length}
+                  onSelect={() => setShowSessions(v => !v)}
+                >
+                  최근 대화 보기
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!uploadedImages.length}
+                  onSelect={() => setShowImageDrawer(true)}
+                >
+                  이미지 메모 보기
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={togglePersistStorage}>
+                  {persistOptIn ? '기록 저장 끄기' : '기록 저장 켜기'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={clearAll}>대화 초기화</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {props.onClose && (
               <Button
-                onClick={stop}
-                size='sm'
-                variant='secondary'
-                className='h-10 px-3'
+                type='button'
+                size='icon'
+                variant='ghost'
+                className='h-9 w-9'
+                aria-label='창 닫기'
+                onClick={props.onClose}
               >
-                <Square className='h-4 w-4' />
-                <span className='hidden sm:inline ml-1'>Stop</span>
-              </Button>
-            ) : (
-              <Button
-                onClick={send}
-                disabled={!canSend}
-                size='sm'
-                className='h-10 px-4'
-              >
-                <Send className='h-4 w-4' />
-                <span className='hidden sm:inline ml-1'>Send</span>
+                <X className='h-4 w-4' />
               </Button>
             )}
+          </div>
+        </div>
+
+        {showSessions && sessions.length > 0 && (
+          <div className='border-b bg-muted/40'>
+            <div className='px-3 pt-2 max-h-40 overflow-y-auto text-xs space-y-1'>
+              {sessions.map(s => {
+                const checked = selectedSessionIds.includes(s.id);
+                return (
+                  <div
+                    key={s.id}
+                    className='flex items-center gap-2 px-1 py-1 rounded hover:bg-muted'
+                  >
+                    <input
+                      type='checkbox'
+                      className='h-3 w-3'
+                      checked={checked}
+                      onChange={() => toggleSessionSelected(s.id)}
+                    />
+                    <button
+                      type='button'
+                      className='flex-1 text-left'
+                      onClick={() => {
+                        loadSession(s.id);
+                        setShowSessions(false);
+                      }}
+                    >
+                      <div className='truncate font-medium'>
+                        {s.title || '제목 없음'}
+                      </div>
+                      <div className='flex items-center gap-1 text-[10px] text-muted-foreground truncate'>
+                        {s.articleTitle && (
+                          <span className='truncate'>{s.articleTitle}</span>
+                        )}
+                        <span>{new Date(s.updatedAt).toLocaleString()}</span>
+                      </div>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <div className='px-3 pb-2 pt-1 border-t flex items-center justify-between text-[11px]'>
+              <span className='text-muted-foreground'>
+                선택된 세션: {selectedSessionIds.length}개
+              </span>
+              <Button
+                type='button'
+                size='sm'
+                className='h-7 px-2 text-[11px]'
+                disabled={!selectedSessionIds.length}
+                onClick={handleAggregateFromSelected}
+              >
+                통합 질문하기
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className='flex items-center justify-between border-b px-4 py-2 text-[11px] text-muted-foreground'>
+          <span className='truncate'>
+            {questionMode === 'article'
+              ? `현재 글 '${pageTitle}' 기반`
+              : '일반 대화 모드'}
+          </span>
+          <div className='inline-flex rounded-full border bg-muted/60 p-0.5'>
             <Button
-              onClick={clearAll}
-              variant='ghost'
               size='sm'
-              className='h-10 px-3'
+              type='button'
+              variant={questionMode === 'article' ? 'secondary' : 'ghost'}
+              className='h-6 px-2 text-[11px]'
+              onClick={() => setQuestionMode('article')}
             >
-              새 대화
+              현재 글
+            </Button>
+            <Button
+              size='sm'
+              type='button'
+              variant={questionMode === 'general' ? 'secondary' : 'ghost'}
+              className='h-6 px-2 text-[11px]'
+              onClick={() => setQuestionMode('general')}
+            >
+              일반
             </Button>
           </div>
         </div>
+
+        <div
+          ref={scrollRef}
+          className={cn(
+            'flex-1 overflow-auto px-4 py-3 space-y-3',
+            isMobile ? 'min-h-[40vh]' : 'min-h-[140px] max-h-[46vh]'
+          )}
+        >
+          {messages.length === 0 && (
+            <div className='space-y-3 rounded-2xl border border-dashed px-4 py-5 text-xs text-muted-foreground'>
+              <p>빠르게 시작하려면 아래 프롬프트를 눌러보세요.</p>
+              <div className='flex flex-wrap gap-2'>
+                {QUICK_PROMPTS.map(prompt => (
+                  <Button
+                    key={prompt}
+                    size='sm'
+                    variant='secondary'
+                    className='h-8 text-xs'
+                    onClick={() => {
+                      setInput(prompt);
+                      focusInput();
+                    }}
+                  >
+                    {prompt}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {messages.map(m => {
+            const isUser = m.role === 'user';
+            const isAssistant = m.role === 'assistant';
+            const isSystem = m.role === 'system';
+            return (
+              <div
+                key={m.id}
+                className={cn(
+                  'flex',
+                  isUser ? 'justify-end' : 'justify-start'
+                )}
+              >
+                <div
+                  className={cn(
+                    'max-w-full text-sm leading-relaxed rounded-2xl px-3 py-2 sm:max-w-[85%]',
+                    isUser && 'bg-primary text-primary-foreground rounded-br-sm',
+                    isAssistant &&
+                      'bg-secondary text-secondary-foreground rounded-bl-sm',
+                    isSystem && 'bg-destructive/10 text-destructive'
+                  )}
+                >
+                  {isAssistant ? (
+                    m.text.trim() ? (
+                      <ChatMarkdown content={m.text} />
+                    ) : (
+                      <div className='flex items-center gap-2 text-xs text-muted-foreground'>
+                        <Loader2 className='h-3.5 w-3.5 animate-spin' />
+                        답변을 준비하고 있어요…
+                      </div>
+                    )
+                  ) : (
+                    <span className='whitespace-pre-wrap'>{m.text}</span>
+                  )}
+
+                  {isAssistant &&
+                    Array.isArray(m.sources) &&
+                    m.sources.length > 0 && (
+                      <div className='mt-2 space-y-1'>
+                        <div className='text-[11px] text-muted-foreground'>
+                          참고한 출처
+                        </div>
+                        <ul className='text-xs list-disc pl-4 space-y-1'>
+                          {m.sources.map((s, i) => (
+                            <li key={i}>
+                              {s.url ? (
+                                <a
+                                  className='underline'
+                                  href={s.url}
+                                  target='_blank'
+                                  rel='noreferrer'
+                                >
+                                  {s.title || s.url}
+                                </a>
+                              ) : (
+                                <span>{s.title || '출처'}</span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                  {isAssistant &&
+                    Array.isArray(m.followups) &&
+                    m.followups.length > 0 && (
+                      <div className='mt-2'>
+                        <div className='text-[11px] text-muted-foreground mb-1'>
+                          연관 질문
+                        </div>
+                        <div className='flex flex-wrap gap-1'>
+                          {m.followups.map((q, i) => (
+                            <Button
+                              key={i}
+                              size='sm'
+                              variant='secondary'
+                              className='h-7 text-xs px-2'
+                              onClick={() => {
+                                setInput(q);
+                                focusInput();
+                              }}
+                            >
+                              {q}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                  {isSystem && lastPromptRef.current && (
+                    <div className='mt-2'>
+                      <Button
+                        size='sm'
+                        variant='ghost'
+                        className='h-7 text-xs px-2'
+                        onClick={() => {
+                          setInput(lastPromptRef.current);
+                          focusInput();
+                        }}
+                      >
+                        다시 시도하기
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {persistOptIn && summary && (
+          <div className='px-4 py-1 border-t text-[11px] text-muted-foreground truncate'>
+            지난 대화 요약: {summary}
+          </div>
+        )}
+
+        <div className='border-t bg-background/95 px-3 py-2 space-y-2'>
+          {attachedImage && (
+            <div className='flex items-center justify-between gap-3 rounded-xl border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground'>
+              <span className='inline-flex items-center gap-2 truncate'>
+                <div className='h-9 w-9 flex-shrink-0 overflow-hidden rounded bg-muted'>
+                  {attachedPreviewUrl ? (
+                    <img
+                      src={attachedPreviewUrl}
+                      alt={attachedImage.name}
+                      className='h-full w-full object-cover'
+                    />
+                  ) : (
+                    <ImageIcon className='h-4 w-4 mx-auto my-auto' />
+                  )}
+                </div>
+                <span className='inline-flex min-w-0 flex-col'>
+                  <span className='inline-flex items-center gap-1 truncate'>
+                    <ImageIcon className='h-3 w-3' />
+                    <span className='truncate'>{attachedImage.name}</span>
+                  </span>
+                  <span className='text-[10px] opacity-70'>
+                    {Math.max(1, Math.round(attachedImage.size / 1024))}KB
+                  </span>
+                </span>
+              </span>
+              <button
+                type='button'
+                className='text-[11px] underline'
+                onClick={() => setAttachedImage(null)}
+              >
+                제거
+              </button>
+            </div>
+          )}
+
+          <div className='flex items-end gap-2 px-1 sm:px-3'>
+            <Textarea
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={onKeyDown}
+              rows={2}
+              placeholder={placeholder}
+              ref={textareaRef}
+              className='flex-1 resize-none rounded-2xl border bg-muted/50 px-4 py-3 text-sm focus-visible:ring-0'
+            />
+            <div className='flex items-center gap-1'>
+              <input
+                ref={fileInputRef}
+                type='file'
+                accept='image/*'
+                className='hidden'
+                onChange={e => {
+                  const target = e.target as HTMLInputElement;
+                  const file = target.files?.[0] ?? null;
+                  setAttachedImage(file);
+                }}
+              />
+              <Button
+                type='button'
+                size='icon'
+                variant='outline'
+                className='h-10 w-10'
+                onClick={() => fileInputRef.current?.click()}
+                aria-label='이미지 첨부'
+              >
+                <ImageIcon className='h-4 w-4' />
+              </Button>
+              {busy ? (
+                <Button
+                  onClick={stop}
+                  size='sm'
+                  variant='secondary'
+                  className='h-10 px-3'
+                >
+                  <Square className='h-4 w-4' />
+                </Button>
+              ) : (
+                <Button
+                  onClick={send}
+                  disabled={!canSend}
+                  size='sm'
+                  className='h-10 px-4'
+                >
+                  <Send className='h-4 w-4' />
+                </Button>
+              )}
+              <Button
+                onClick={clearAll}
+                variant='ghost'
+                size='sm'
+                className='h-10 px-3'
+              >
+                새 대화
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+
+      <Dialog open={showImageDrawer} onOpenChange={setShowImageDrawer}>
+        <DialogContent className='max-w-2xl'>
+          <DialogHeader>
+            <DialogTitle>이미지 메모</DialogTitle>
+            <DialogDescription>
+              최근 대화에서 업로드한 이미지를 확인할 수 있어요.
+            </DialogDescription>
+          </DialogHeader>
+          <div className='max-h-[60vh] overflow-y-auto space-y-2 text-sm'>
+            {uploadedImages.length === 0 && (
+              <p className='text-muted-foreground text-sm'>저장된 이미지가 없습니다.</p>
+            )}
+            {uploadedImages.map(img => (
+              <button
+                key={img.id}
+                type='button'
+                className='flex w-full items-center gap-3 rounded-lg border px-2 py-1 text-left hover:bg-muted'
+                onClick={() => {
+                  try {
+                    window.open(img.url, '_blank', 'noopener,noreferrer');
+                  } catch {}
+                }}
+              >
+                <div className='h-12 w-12 overflow-hidden rounded bg-muted'>
+                  <img
+                    src={img.url}
+                    alt={img.name}
+                    className='h-full w-full object-cover'
+                  />
+                </div>
+                <div className='flex-1 truncate'>
+                  <div className='font-medium truncate'>{img.name}</div>
+                  <div className='text-xs text-muted-foreground'>
+                    {Math.max(1, Math.round(img.size / 1024))}KB
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

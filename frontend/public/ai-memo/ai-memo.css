@@ -73,6 +73,29 @@
   flex-direction: column;
 }
 
+@media (max-width: 768px) {
+  .panel {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: calc(100vw - 16px);
+    max-width: 480px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    height: min(100dvh - 48px, 640px);
+    max-height: calc(100dvh - 48px);
+    border-radius: 18px 18px 12px 12px;
+  }
+
+  .header {
+    cursor: default;
+    touch-action: pan-y;
+  }
+
+  .body {
+    padding: 14px;
+  }
+}
+
 .header {
   display: flex;
   align-items: center;
