@@ -1129,11 +1129,16 @@
          if (!rec.label && rec.type) {
            rec.label = rec.type;
          }
-         let arr = Array.isArray(this.state.events) ? this.state.events.slice() : [];
-         arr.push(rec);
-         if (arr.length > 500) arr = arr.slice(arr.length - 500);
-         this.state.events = arr;
-         LS.set(KEYS.events, arr);
+         
+         // Always read fresh from LS to avoid overwriting with stale state
+         let currentEvents = LS.get(KEYS.events, []);
+         if (!Array.isArray(currentEvents)) currentEvents = [];
+         
+         currentEvents.push(rec);
+         if (currentEvents.length > 500) currentEvents = currentEvents.slice(currentEvents.length - 500);
+         
+         this.state.events = currentEvents;
+         LS.set(KEYS.events, currentEvents);
          return rec;
        } catch (_) { return null; }
      }

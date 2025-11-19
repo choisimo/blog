@@ -88,7 +88,7 @@ export class PostService {
     }
     if (requiredTags.length) {
       filtered = filtered.filter(it =>
-        requiredTags.every(t => it.tags?.includes(t))
+        requiredTags.some(t => it.tags?.includes(t))
       );
     }
     if (search) {
