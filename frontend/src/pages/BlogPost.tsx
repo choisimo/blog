@@ -5,7 +5,14 @@ import {
   useNavigate,
   useLocation,
 } from 'react-router-dom';
-import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import {
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { ReadingProgress } from '@/components/common/ReadingProgress';
 import { ScrollToTop } from '@/components/common/ScrollToTop';
 import { getPostBySlug, getPostsPage, prefetchPost } from '@/data/posts';
@@ -28,6 +35,8 @@ import {
   Share2,
   BookOpen,
   User,
+  Languages,
+  MessageCircle,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import useLanguage from '@/hooks/useLanguage';
@@ -92,6 +101,17 @@ const BlogPost = () => {
     }
     return raw;
   }, [language, post]);
+
+  const resolveLanguageName = useCallback((code: string) => {
+    if (code === 'ko') return '한국어';
+    if (code === 'en') return 'English';
+    return code.toUpperCase();
+  }, []);
+
+  const safeAreaPaddingStyle = useMemo(
+    () => ({ paddingBottom: 'calc(120px + env(safe-area-inset-bottom))' }),
+    []
+  );
 
   const backLabel = language === 'ko' ? '블로그로 돌아가기' : 'Back to Blog';
   const shareLabel = language === 'ko' ? '공유하기' : 'Share';
@@ -268,15 +288,15 @@ const BlogPost = () => {
 
   if (loading) {
     return (
-      <div className='container mx-auto px-4 py-12 max-w-4xl'>
-        <div className='space-y-4 animate-pulse'>
-          <div className='h-4 bg-muted rounded w-24'></div>
-          <div className='h-10 bg-muted rounded w-3/4'></div>
-          <div className='h-4 bg-muted rounded w-1/2'></div>
-          <div className='space-y-2 mt-8'>
-            <div className='h-4 bg-muted rounded'></div>
-            <div className='h-4 bg-muted rounded'></div>
-            <div className='h-4 bg-muted rounded w-5/6'></div>
+      <div className='container mx-auto max-w-4xl px-4 py-12'>
+        <div className='space-y-4 animate-pulse rounded-3xl border border-border/60 bg-card/60 p-6 shadow-sm'>
+          <div className='h-4 w-24 rounded bg-muted'></div>
+          <div className='h-10 w-3/4 rounded bg-muted'></div>
+          <div className='h-4 w-1/2 rounded bg-muted'></div>
+          <div className='mt-8 space-y-2'>
+            <div className='h-4 rounded bg-muted'></div>
+            <div className='h-4 rounded bg-muted'></div>
+            <div className='h-4 w-5/6 rounded bg-muted'></div>
           </div>
         </div>
       </div>
@@ -292,172 +312,197 @@ const BlogPost = () => {
   return (
     <>
       <ReadingProgress />
-      <div className='min-h-screen bg-gradient-to-br from-background via-background to-muted/20'>
-        <div className='container mx-auto px-4 pt-8 pb-28 max-w-6xl'>
-          <article className='max-w-4xl mx-auto'>
-            {/* Header Section */}
-            <div className='mb-12'>
-              <Button
-                variant='ghost'
-                onClick={handleBackToBlog}
-                className='mb-8 hover:bg-primary/10'
-              >
-                <ArrowLeft className='mr-2 h-4 w-4' />
-                Back to Blog
-              </Button>
+      <div className='min-h-screen bg-gradient-to-b from-[#f5f6fb] via-background to-background/70 dark:from-[#04050a] dark:via-[#0b0f18] dark:to-[#111827]'>
+        <div
+          className='mx-auto w-full max-w-6xl px-4 pt-6 pb-32 sm:pt-12'
+          style={safeAreaPaddingStyle}
+        >
+          <article className='mx-auto max-w-3xl space-y-12'>
+            <header className='space-y-6'>
+              <div className='flex flex-wrap items-center justify-between gap-3'>
+                <Button
+                  variant='ghost'
+                  onClick={handleBackToBlog}
+                  className='hover:bg-primary/10 dark:text-white'
+                  size='sm'
+                >
+                  <ArrowLeft className='mr-2 h-4 w-4' />
+                  {backLabel}
+                </Button>
+                <Button
+                  onClick={handleShare}
+                  variant='outline'
+                  size='sm'
+                  className='gap-2 rounded-full border-border bg-white/70 text-foreground backdrop-blur hover:bg-primary/10 dark:border-white/10 dark:bg-white/5 dark:text-white'
+                >
+                  <Share2 className='h-4 w-4' />
+                  {shareLabel}
+                </Button>
+              </div>
 
-              {/* Enhanced Header Card */}
-              <div className='bg-card/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg md:border md:p-8'>
-                <div className='space-y-6'>
-                  {/* Meta Information */}
-                  <div className='flex flex-wrap items-center gap-3 text-sm'>
-                    <Badge variant='secondary' className='px-3 py-1'>
-                      {post.category}
-                    </Badge>
-                    <div className='flex items-center text-muted-foreground'>
-                      <Calendar className='h-4 w-4 mr-1.5' />
-                      {formatDate(post.date)}
+              <div className='rounded-[32px] border border-white/60 bg-white/80 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-[#131a26] sm:p-8'>
+                <div className='space-y-5'>
+                  <div className='inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-primary'>
+                    {post.category}
+                  </div>
+
+                  <h1 className='text-3xl font-bold leading-tight tracking-tight text-foreground dark:text-white sm:text-4xl lg:text-5xl'>
+                    {localized?.title ?? post.title}
+                  </h1>
+
+                  {post.description && (
+                    <p className='text-base leading-relaxed text-muted-foreground dark:text-white/70 sm:text-lg'>
+                      {localized?.description ?? post.description}
+                    </p>
+                  )}
+
+                  {post.coverImage && (
+                    <div className='overflow-hidden rounded-3xl border border-white/40 bg-muted shadow-sm dark:border-white/10 dark:bg-white/5'>
+                      <img
+                        src={post.coverImage}
+                        alt={localized?.title ?? post.title}
+                        className='h-64 w-full object-cover sm:h-80'
+                      />
                     </div>
-                    {(post.readingTime || post.readTime) && (
-                      <div className='flex items-center text-muted-foreground'>
-                        <Clock className='h-4 w-4 mr-1.5' />
-                        {post.readingTime || `${post.readTime} min read`}
+                  )}
+
+                  <div className='grid gap-3 text-sm text-muted-foreground sm:grid-cols-3'>
+                    <div className='flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[#0f1724] dark:text-white'>
+                      <Calendar className='h-4 w-4 text-foreground/70' />
+                      <span>{formatDate(post.date)}</span>
+                    </div>
+                    {readingTimeLabel && (
+                      <div className='flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[#0f1724] dark:text-white'>
+                        <Clock className='h-4 w-4 text-foreground/70' />
+                        <span>{readingTimeLabel}</span>
                       </div>
                     )}
                     {post.author && (
-                      <div className='flex items-center text-muted-foreground'>
-                        <User className='h-4 w-4 mr-1.5' />
-                        {post.author}
+                      <div className='flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[#0f1724] dark:text-white'>
+                        <User className='h-4 w-4 text-foreground/70' />
+                        <span>{post.author}</span>
                       </div>
                     )}
                   </div>
 
-                  {/* Title */}
-                  <h1 className='text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent leading-tight'>
-                    {post.title}
-                  </h1>
+                  {availableLanguages.length > 1 && (
+                    <div className='flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-xs font-medium text-muted-foreground dark:border-primary/40 dark:bg-primary/10 dark:text-white/80'>
+                      <Languages className='h-4 w-4 text-primary' />
+                      <span className='uppercase tracking-wide'>
+                        {language === 'ko' ? '읽기 언어' : 'Reading language'}
+                      </span>
+                      <div className='flex flex-wrap gap-2'>
+                        {availableLanguages.map(code => (
+                          <button
+                            key={code}
+                            type='button'
+                            onClick={() => setLanguage(code)}
+                            className={`rounded-full px-3 py-1 text-sm transition-colors ${
+                              language === code
+                                ? 'bg-primary text-primary-foreground shadow-sm'
+                                : 'bg-white/70 text-foreground/70 dark:bg-background/60'
+                            }`}
+                          >
+                            {resolveLanguageName(code)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-                  {/* Description */}
-                  <p className='text-lg md:text-xl text-muted-foreground leading-relaxed'>
-                    {post.description}
-                  </p>
-
-                  {/* Tags */}
                   {post.tags && post.tags.length > 0 && (
-                    <div className='flex flex-wrap items-center gap-2'>
-                      <Tag className='h-4 w-4 text-muted-foreground' />
-                      {post.tags.map((tag: string) => (
-                        <Badge
-                          key={tag}
-                          variant='outline'
-                          className='hover:bg-primary/10'
-                        >
+                    <div className='flex flex-wrap items-center gap-2 text-muted-foreground dark:text-white/70'>
+                      <Tag className='h-4 w-4 text-muted-foreground dark:text-white/70' />
+                      {post.tags.map(tag => (
+                        <Badge key={tag} variant='outline' className='rounded-full px-3 py-1 text-xs dark:border-white/20 dark:text-white'>
                           #{tag}
                         </Badge>
                       ))}
                     </div>
                   )}
-
-                  {/* Actions */}
-                  <div className='flex items-center gap-4 pt-2'>
-                    <Button
-                      onClick={handleShare}
-                      variant='outline'
-                      size='sm'
-                      className='hover:bg-primary/10'
-                    >
-                      <Share2 className='mr-2 h-4 w-4' />
-                      Share
-                    </Button>
-                  </div>
                 </div>
               </div>
-            </div>
+            </header>
 
-            <Separator className='my-12' />
-
-            {/* Content Section */}
-            <div className='mb-16'>
-              <div className='bg-card/30 backdrop-blur-sm rounded-2xl p-4 sm:p-6 md:p-12 shadow-sm md:border'>
-                <div className='prose prose-gray dark:prose-invert max-w-none'>
-                  <Suspense
-                    fallback={
-                      <div
-                        className='space-y-3'
-                        aria-label='Loading article content'
-                      >
-                        <Skeleton className='h-6 w-3/4' />
-                        <Skeleton className='h-4 w-full' />
-                        <Skeleton className='h-4 w-11/12' />
-                        <Skeleton className='h-4 w-10/12' />
-                        <Skeleton className='h-4 w-9/12' />
-                        <Skeleton className='h-4 w-1/2' />
-                      </div>
-                    }
-                  >
-                    <MarkdownRenderer
-                      content={post.content}
-                      inlineEnabled={inlineEnabled}
-                      postTitle={post.title}
-                    />
-                  </Suspense>
-                </div>
+            <section className='rounded-[32px] border border-white/50 bg-card/70 p-4 shadow-soft backdrop-blur-sm dark:border-white/5 dark:bg-[#141927]/90 sm:p-8 -mx-2 sm:mx-0'>
+              <div className='prose prose-gray max-w-none dark:prose-invert'>
+                <Suspense
+                  fallback={
+                    <div className='space-y-3' aria-label='Loading article content'>
+                      <Skeleton className='h-6 w-3/4' />
+                      <Skeleton className='h-4 w-full' />
+                      <Skeleton className='h-4 w-11/12' />
+                      <Skeleton className='h-4 w-10/12' />
+                      <Skeleton className='h-4 w-9/12' />
+                      <Skeleton className='h-4 w-1/2' />
+                    </div>
+                  }
+                >
+                  <MarkdownRenderer
+                    content={localized?.content ?? post.content}
+                    inlineEnabled={inlineEnabled}
+                    postTitle={localized?.title ?? post.title}
+                  />
+                </Suspense>
               </div>
-            </div>
+            </section>
 
-            <Separator className='my-12' />
+            <CommentSection postId={`${post.year}/${post.slug}`} />
 
-            {/* Comments */}
-            <div className='mt-16'>
-              <CommentSection postId={`${post.year}/${post.slug}`} />
-            </div>
-
-            <Separator className='my-12' />
-
-            {/* Related Posts */}
             {relatedPosts.length > 0 && (
-              <div className='mt-16'>
-                <div className='bg-card/30 backdrop-blur-sm rounded-2xl p-4 sm:p-6 md:p-8 shadow-sm md:border'>
-                  <h2 className='text-2xl font-bold mb-8 flex items-center justify-center'>
-                    <BookOpen className='mr-3 h-6 w-6' />
-                    Related Posts
-                  </h2>
-                  <div className='grid gap-6 md:grid-cols-3'>
-                    {relatedPosts.map(relatedPost => (
-                      <Link
-                        key={`${relatedPost.year}/${relatedPost.slug}`}
-                        to={{
-                          pathname: `/blog/${relatedPost.year}/${relatedPost.slug}`,
-                          search: preservedSearch || undefined,
-                        }}
-                        state={
-                          preservedFrom ? { from: preservedFrom } : undefined
-                        }
-                        className='group'
-                        onMouseEnter={() =>
-                          prefetchPost(relatedPost.year, relatedPost.slug)
-                        }
-                        onFocus={() =>
-                          prefetchPost(relatedPost.year, relatedPost.slug)
-                        }
-                      >
-                        <div className='bg-card rounded-xl p-5 hover:shadow-lg hover:scale-105 transition-all duration-300 md:border'>
-                          <Badge variant='secondary' className='mb-3'>
-                            {relatedPost.category}
-                          </Badge>
-                          <h3 className='font-semibold line-clamp-2 group-hover:text-primary transition-colors mb-2'>
-                            {relatedPost.title}
-                          </h3>
-                          <p className='text-sm text-muted-foreground'>
-                            {relatedPost.readingTime ||
-                              `${relatedPost.readTime} min read`}
-                          </p>
-                        </div>
-                      </Link>
-                    ))}
+              <section className='space-y-6'>
+                <div className='flex items-center gap-3'>
+                  <div className='rounded-full bg-secondary/20 p-2 text-secondary-foreground dark:bg-white/10 dark:text-white'>
+                    <BookOpen className='h-5 w-5' />
+                  </div>
+                  <div>
+                    <h2 className='text-xl font-semibold text-foreground dark:text-white'>
+                      {relatedLabel}
+                    </h2>
+                    <p className='text-sm text-muted-foreground dark:text-white/70'>
+                      {language === 'ko'
+                        ? '비슷한 맥락의 글을 더 읽어보세요.'
+                        : 'Continue reading with similar perspectives.'}
+                    </p>
                   </div>
                 </div>
-              </div>
+                <div className='grid gap-4 md:grid-cols-3'>
+                  {relatedPosts.map(relatedPost => (
+                    <Link
+                      key={`${relatedPost.year}/${relatedPost.slug}`}
+                      to={{
+                        pathname: `/blog/${relatedPost.year}/${relatedPost.slug}`,
+                        search: preservedSearch || undefined,
+                      }}
+                      state={
+                        preservedFrom ? { from: preservedFrom } : undefined
+                      }
+                      className='group rounded-2xl border border-border/60 bg-card/70 p-5 shadow-sm transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg dark:border-white/10 dark:bg-[#141b2a]'
+                      onMouseEnter={() =>
+                        prefetchPost(relatedPost.year, relatedPost.slug)
+                      }
+                      onFocus={() =>
+                        prefetchPost(relatedPost.year, relatedPost.slug)
+                      }
+                    >
+                      <Badge variant='secondary' className='mb-3 rounded-full px-3 py-1 text-xs dark:bg-white/10 dark:text-white'>
+                        {relatedPost.category}
+                      </Badge>
+                      <h3 className='text-base font-semibold leading-snug text-foreground dark:text-white group-hover:text-primary'>
+                        {relatedPost.title}
+                      </h3>
+                      <p className='mt-2 line-clamp-2 text-sm text-muted-foreground dark:text-white/70'>
+                        {relatedPost.excerpt || relatedPost.description}
+                      </p>
+                      {(relatedPost.readingTime || relatedPost.readTime) && (
+                        <p className='mt-3 text-xs uppercase tracking-wide text-muted-foreground dark:text-white/60'>
+                          {relatedPost.readingTime || `${relatedPost.readTime} min read`}
+                        </p>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              </section>
             )}
           </article>
         </div>

@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Map, NotebookPen, Sparkles, Layers } from 'lucide-react';
+import { NotebookPen, Sparkles, Layers, Map } from 'lucide-react';
 import VisitedPostsMinimap, {
   useVisitedPostsState,
 } from '@/components/features/navigation/VisitedPostsMinimap';
 import ChatWidget from '@/components/features/chat/ChatWidget';
 import { useToast } from '@/components/ui/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Feature flag: build-time + runtime override
 function isFabEnabled(): boolean {
@@ -265,9 +265,9 @@ export default function FloatingActionBar() {
   const { items: visitedPosts, storageAvailable } = useVisitedPostsState();
   const impressionSent = useRef(false);
   const [chatOpen, setChatOpen] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const scrollHidden = useScrollHide();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const send = useCallback((type: string, detail?: Record<string, any>) => {
     try {
@@ -368,7 +368,6 @@ export default function FloatingActionBar() {
     send('fab_history_click');
   }, [aiMemoEl, clickShadowBtn, clearBadge, send]);
 
-  const stackReady = visitedPosts.length > 0 && storageAvailable;
   const openStackView = useCallback(() => {
     try {
       window.dispatchEvent(new CustomEvent('visitedposts:open'));
@@ -391,10 +390,6 @@ export default function FloatingActionBar() {
     openStackView();
   }, [openStackView, stackDisabledReason, toast]);
 
-  useEffect(() => {
-    if (scrollHidden) setExpanded(false);
-  }, [scrollHidden]);
-
   if (!enabled) return null;
 
   const stackSheet = <VisitedPostsMinimap mode='fab' />;
@@ -403,16 +398,61 @@ export default function FloatingActionBar() {
     return <>{stackSheet}</>;
 
   const containerClasses = [
-    'fixed left-1/2 -translate-x-1/2 bottom-[max(16px,env(safe-area-inset-bottom,0px))] z-[9999] inline-block',
-    memoOpen
-      ? 'w-fit max-w-[calc(100%-24px)] md:max-w-3xl'
-      : 'w-fit max-w-[min(100%-24px,32rem)]',
-    'border border-border/60 rounded-xl shadow-lg px-2 py-2 md:px-3 md:py-3 bg-background/70 backdrop-blur-md backdrop-saturate-150 motion-reduce:transition-none print:hidden',
+    'fixed inset-x-0 z-[9999] px-3 sm:px-4 print:hidden',
+    isMobile
+      ? 'bottom-0 pb-[calc(env(safe-area-inset-bottom,0px))]'
+      : 'bottom-[calc(10px+env(safe-area-inset-bottom,0px))]',
     'transition-transform transition-opacity duration-200 ease-out',
     scrollHidden
       ? 'translate-y-6 opacity-0 pointer-events-none'
       : 'translate-y-0 opacity-100',
   ].join(' ');
+
+  type DockAction = {
+    key: 'chat' | 'memo' | 'stack' | 'insight';
+    label: string;
+    icon: typeof Sparkles;
+    onClick: () => void;
+    disabled?: boolean;
+    title?: string;
+    badge?: boolean;
+  };
+
+  const dockActions: DockAction[] = [
+    {
+      key: 'chat',
+      label: 'Chat',
+      icon: Sparkles,
+      onClick: () => {
+        setChatOpen(true);
+        send('fab_ai_chat_open');
+      },
+    },
+    {
+      key: 'memo',
+      label: 'Memo',
+      icon: NotebookPen,
+      onClick: () => {
+        send('fab_memo_toggle');
+        toggleMemo();
+      },
+    },
+    {
+      key: 'stack',
+      label: 'Stack',
+      icon: Layers,
+      onClick: handleStackClick,
+      disabled: !!stackDisabledReason,
+      title: stackDisabledReason || undefined,
+    },
+    {
+      key: 'insight',
+      label: 'Insight',
+      icon: Map,
+      onClick: openHistory,
+      badge: hasNew,
+    },
+  ];
 
   return (
     <>
@@ -422,89 +462,60 @@ export default function FloatingActionBar() {
         aria-label='Floating actions'
         className={containerClasses}
       >
-        <div className='flex items-center justify-center'>
-          <div className='flex items-center gap-2'>
-            <Button
-              variant='default'
-              size='icon'
-              className='h-11 w-11 md:h-12 md:w-12 rounded-full'
-              onClick={() => {
-                setExpanded(prev => {
-                  const next = !prev;
-                  send(next ? 'fab_expand' : 'fab_collapse');
-                  return next;
-                });
-              }}
-              aria-label={expanded ? '빠른 액션 닫기' : '빠른 액션 열기'}
-              aria-expanded={expanded}
-            >
-              <Sparkles className='h-5 w-5' />
-            </Button>
-            {expanded && (
-              <div className='flex items-center gap-1 md:gap-2'>
-                <Button
-                  variant='outline'
-                  size='icon'
-                  onClick={() => {
-                    setChatOpen(true);
-                    send('fab_ai_chat_open');
-                  }}
-                  aria-label='AI Chat'
-                  className='rounded-full'
-                >
-                  <Sparkles className='h-4 w-4' />
-                </Button>
-                <Button
-                  variant='ghost'
-                  size='icon'
-                  onClick={() => {
-                    send('fab_memo_toggle');
-                    toggleMemo();
-                  }}
-                  aria-label='메모'
-                  className='rounded-full'
-                >
-                  <NotebookPen className='h-4 w-4' />
-                </Button>
-                <Button
-                  variant='ghost'
-                  size='icon'
-                  onClick={handleStackClick}
-                  aria-label='최근 게시글 리스트'
-                  aria-disabled={!stackReady}
+        <nav
+          className={[
+            'mx-auto flex w-full justify-center',
+            isMobile ? 'max-w-none' : 'max-w-md sm:max-w-2xl',
+          ].join(' ')}
+        >
+          <div
+            className={[
+              'flex w-full items-center justify-between gap-1 backdrop-blur-md',
+              isMobile
+                ? 'rounded-none border-t border-border/40 bg-background/95 px-1.5 py-1.5 shadow-[0_-8px_24px_rgba(15,23,42,0.08)]'
+                : 'rounded-[22px] border border-border/40 bg-background/80 px-2 py-2 shadow-lg sm:px-4',
+            ].join(' ')}
+          >
+            {dockActions.map(action => {
+              const Icon = action.icon;
+              const primary = action.key === 'chat';
+              const iconSize = isMobile ? 'h-6 w-6' : 'h-4 w-4';
+              return (
+                <button
+                  key={action.key}
+                  type='button'
+                  onClick={action.onClick}
+                  disabled={action.disabled}
+                  aria-label={action.label}
+                  aria-disabled={action.disabled}
+                  title={action.title}
                   className={[
-                    'rounded-full',
-                    !stackReady ? 'opacity-60' : '',
-                    'transition-opacity',
+                    'group relative flex flex-1 items-center justify-center text-muted-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-60',
+                    isMobile && 'flex-col gap-0.5 text-[11px]',
                   ]
                     .filter(Boolean)
                     .join(' ')}
                 >
-                  <Layers className='h-4 w-4' />
-                </Button>
-                <div className='relative'>
-                  <Button
-                    variant='secondary'
-                    size='icon'
-                    onClick={openHistory}
-                    aria-label='Insight'
-                    aria-haspopup='dialog'
-                    title='최근 작업 내역 (Insight)'
-                    className='rounded-full'
+                  <span
+                    className={[
+                      'flex items-center justify-center rounded-[18px] transition-all duration-150 shadow-sm',
+                      isMobile ? 'h-10 w-10' : 'h-11 w-11',
+                      primary
+                        ? 'bg-primary text-primary-foreground shadow-primary/40'
+                        : 'bg-muted/50 text-foreground/80 group-hover:bg-muted/70',
+                    ].join(' ')}
                   >
-                    <Map className='h-4 w-4' />
-                  </Button>
-                  {hasNew && (
-                    <span
-                      className='absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary'
-                      aria-hidden
-                    />
+                    <Icon className={iconSize} />
+                  </span>
+                  {isMobile && <span>{action.label}</span>}
+                  {action.badge && (
+                    <span className='absolute top-1 right-6 inline-flex h-2 w-2 rounded-full bg-primary' aria-hidden />
                   )}
-                </div>
-              </div>
-            )}
+                </button>
+              );
+            })}
           </div>
-        </div>
+        </nav>
       </div>
       {chatOpen && (
         <ChatWidget

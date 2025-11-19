@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { BlogCard, BlogCardSkeleton } from '@/components';
 import { Pagination } from '@/components';
 import { getPostsPage, getAllCategories, getAllTags } from '@/data/posts';
@@ -7,23 +7,14 @@ import { BlogPost, PostsPage } from '@/types/blog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ActiveFilters } from '@/components/features/blog/ActiveFilters';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Search, X, Grid, List } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
-import useLanguage from '@/hooks/useLanguage';
-import { getAvailableLanguages, resolveLocalizedPost } from '@/utils/blog';
+import { formatDate } from '@/utils/blog';
 
 const POSTS_PER_PAGE = 12;
 
 const Blog = () => {
-  const { language } = useLanguage();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryParam = searchParams.get('category');
   const pageParam = searchParams.get('page');
@@ -198,243 +189,242 @@ const Blog = () => {
     [setSearchParams]
   );
 
+  const featuredPost = pageData.items[0];
+  const spotlightPosts = pageData.items.slice(1, 3);
+  const listPosts = pageData.items.slice(3);
+
   return (
-    <div className='min-h-screen bg-gradient-to-br from-background via-background to-muted/20'>
-      {/* Hero/Header Simplified */}
-      <div className='border-b bg-background'>
-        <div className='container mx-auto px-4 pt-12 pb-28'>
-          <div className='text-center max-w-3xl mx-auto'>
-            <h1 className='text-4xl md:text-5xl font-bold tracking-tight mb-3'>
-              Blog Posts
-            </h1>
-            <p className='text-muted-foreground'>
-              Articles on software development, AI, and technology
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className='container mx-auto px-4 pt-12 pb-28'>
-        {/* Search and Filters (restructured) */}
-        <div className='mb-8 space-y-6'>
-          {/* Search (primary) */}
-          <div className='bg-card border border-border/60 rounded-xl p-6 shadow-none'>
-            <div className='relative'>
-              <Search
-                className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground'
-                aria-hidden='true'
-              />
-              <Input
-                type='text'
-                placeholder='Search posts, tags, or content...'
-                aria-label='Search posts'
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className='pl-10 rounded-xl'
-              />
+    <div className='min-h-screen bg-gradient-to-b from-[#f7f7fb] via-[#f9fafc] to-background dark:from-[#050509] dark:via-[#0d1016] dark:to-[#0d1016]'>
+      <div className='mx-auto w-full max-w-5xl px-4 pb-28 pt-8 sm:pt-12'>
+        <header className='mb-8 space-y-4'>
+          <div className='flex items-center justify-between'>
+            <div>
+              <p className='text-sm uppercase tracking-[0.2em] text-muted-foreground'>
+                Discover
+              </p>
+              <h1 className='text-3xl font-semibold tracking-tight text-foreground dark:text-white'>Blog Posts</h1>
             </div>
           </div>
+          <div className='relative'>
+            <Search className='absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+            <Input
+              type='text'
+              placeholder='Search posts, tags, or content...'
+              aria-label='Search posts'
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className='h-12 rounded-2xl border border-transparent bg-white pl-12 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-primary dark:border-white/10 dark:bg-[#191f29] dark:text-white dark:placeholder:text-white/60'
+            />
+          </div>
+        </header>
 
-          {/* Category + Sort (secondary) */}
-          <div className='bg-card border border-border/60 rounded-xl p-4 md:p-6 shadow-none'>
-            <div className='flex flex-col md:flex-row gap-4'>
-              <Select
-                value={selectedCategory}
-                onValueChange={setSelectedCategory}
+        <section className='mb-8 space-y-3'>
+          <div className='flex flex-wrap items-center gap-2'>
+            {['All', ...categories.slice(0, 5)].map(category => {
+              const isActive =
+                (category === 'All' && selectedCategory === 'all') ||
+                category === selectedCategory;
+              return (
+                <button
+                  key={category}
+                  type='button'
+                  onClick={() =>
+                    category === 'All'
+                      ? setSelectedCategory('all')
+                      : setSelectedCategory(category)
+                  }
+                  className={[
+                    'rounded-full px-4 py-1 text-sm transition-colors',
+                    isActive
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'bg-white text-muted-foreground shadow-sm dark:border dark:border-white/10 dark:bg-[#191f29] dark:text-white/80',
+                  ].join(' ')}
+                >
+                  {category}
+                </button>
+              );
+            })}
+            {categories.length > 5 && (
+              <button
+                type='button'
+                className='text-sm text-muted-foreground underline'
+                onClick={() => setShowAllTags(v => !v)}
+                aria-expanded={showAllTags}
               >
-                <SelectTrigger className='w-full md:w-[240px]'>
-                  <SelectValue placeholder='Select category' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='all'>All Categories</SelectItem>
-                  {categories.map(category => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className='w-full md:w-[200px]'>
-                  <SelectValue placeholder='Sort by' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='date'>Latest First</SelectItem>
-                  <SelectItem value='title'>Title (A-Z)</SelectItem>
-                  <SelectItem value='readTime'>Read Time</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <div className='flex gap-2'>
-                <Button
-                  variant={viewMode === 'grid' ? 'default' : 'outline'}
-                  size='sm'
-                  onClick={() => setViewMode('grid')}
-                  className='px-3'
-                  aria-pressed={viewMode === 'grid'}
-                >
-                  <Grid className='h-4 w-4' aria-hidden='true' />
-                  <span className='sr-only'>Grid view</span>
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'outline'}
-                  size='sm'
-                  onClick={() => setViewMode('list')}
-                  className='px-3'
-                  aria-pressed={viewMode === 'list'}
-                >
-                  <List className='h-4 w-4' aria-hidden='true' />
-                  <span className='sr-only'>List view</span>
-                </Button>
-              </div>
-
-              {(selectedTags.length > 0 ||
-                debouncedSearchTerm ||
-                selectedCategory !== 'all') && (
-                <Button
-                  variant='ghost'
-                  size='sm'
-                  onClick={clearFilters}
-                  className='ml-auto'
-                >
-                  <X className='h-4 w-4 mr-1' />
-                  Clear filters
-                </Button>
-              )}
-            </div>
+                {showAllTags ? 'Hide tags' : 'More tags'}
+              </button>
+            )}
           </div>
-
-          {/* Active tag filters */}
-          <ActiveFilters
-            tags={selectedTags}
-            onRemove={handleTagToggle}
-            onClearAll={handleClearTagFilters}
-          />
-
-          {/* Tags (collapsible) */}
-          <div className='bg-card border border-border/60 rounded-xl p-4 md:p-6 shadow-none'>
-            <div className='flex flex-wrap gap-2 items-center' id='tag-list'>
-              <span className='text-sm font-medium mr-2'>Tags:</span>
-              {(showAllTags ? allTags : allTags.slice(0, 10)).map(tag => (
+          {showAllTags && (
+            <div className='flex flex-wrap gap-2'>
+              {allTags.map(tag => (
                 <Badge
                   key={tag}
-                  variant={selectedTags.includes(tag) ? 'default' : 'secondary'}
-                  className='cursor-pointer rounded-xl bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 hover:bg-primary/10'
-                  role='button'
-                  aria-pressed={selectedTags.includes(tag)}
-                  aria-label={`Toggle tag ${tag}`}
-                  tabIndex={0}
+                  variant={selectedTags.includes(tag) ? 'default' : 'outline'}
+                  className='cursor-pointer rounded-full px-3 py-1 text-xs'
                   onClick={() => handleTagToggle(tag)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      handleTagToggle(tag);
-                    }
-                  }}
                 >
                   #{tag}
                 </Badge>
               ))}
-              {allTags.length > 10 && (
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() => setShowAllTags(v => !v)}
-                  aria-expanded={showAllTags}
-                  aria-controls='tag-list'
-                >
-                  {showAllTags ? 'Less' : `More +${allTags.length - 10}`}
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Results count and pagination info */}
-        <div className='mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
-          <div className='flex items-center gap-4'>
-            <p className='text-sm text-muted-foreground'>
-              Showing {pageData.items.length} of {pageData.total} posts
-            </p>
-            {totalPages > 1 && (
-              <p className='text-sm text-muted-foreground'>
-                Page {currentPage} of {totalPages}
-              </p>
-            )}
-          </div>
-          {loading && (
-            <div className='text-sm text-muted-foreground animate-pulse'>
-              Loading posts...
             </div>
           )}
-        </div>
+        </section>
 
-        {/* Blog Posts Grid/List */}
-        {loading ? (
-          <div
-            className={`grid gap-8 ${viewMode === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}
-          >
-            {Array.from({ length: pageData.pageSize || POSTS_PER_PAGE }).map(
-              (_, index) => (
-                <BlogCardSkeleton key={index} />
-              )
-            )}
-          </div>
-        ) : error ? (
-          <div className='text-center py-12'>
-            <p className='text-red-500 mb-4'>{error}</p>
-            <Button variant='outline' onClick={() => window.location.reload()}>
-              Try again
-            </Button>
-          </div>
-        ) : pageData.items.length > 0 ? (
-          <>
-            <div
-              className={`grid gap-8 ${viewMode === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}
-            >
-              {pageData.items.map(post => (
-                <BlogCard key={post.slug} post={post} />
-              ))}
+        {featuredPost && (
+          <section className='mb-10 space-y-5'>
+            <div className='rounded-[28px] border border-border/40 bg-white p-5 shadow-soft dark:border-white/5 dark:bg-[#1b202b] dark:text-white'>
+              <div className='space-y-4'>
+                <div className='overflow-hidden rounded-3xl bg-muted dark:bg-white/5'>
+                  {featuredPost.coverImage ? (
+                    <img
+                      src={featuredPost.coverImage}
+                      alt={featuredPost.title}
+                      className='h-64 w-full object-cover'
+                    />
+                  ) : (
+                    <div className='flex h-64 items-center justify-center text-muted-foreground'>
+                      <span>No cover</span>
+                    </div>
+                  )}
+                </div>
+                <div className='flex flex-wrap items-center gap-3 text-sm text-muted-foreground'>
+                  <Badge variant='secondary' className='rounded-full px-3 py-1 dark:bg-white/10'>
+                    {featuredPost.category}
+                  </Badge>
+                  <span>{formatDate(featuredPost.date)}</span>
+                  {featuredPost.readingTime && <span>{featuredPost.readingTime}</span>}
+                </div>
+                <Link
+                  to={`/blog/${featuredPost.year}/${featuredPost.slug}`}
+                  className='block space-y-3'
+                  state={{ from: { pathname: location.pathname, search: location.search } }}
+                >
+                  <h2 className='text-2xl font-semibold leading-tight text-foreground dark:text-white'>
+                    {featuredPost.title}
+                  </h2>
+                  <p className='text-muted-foreground dark:text-white/70'>{featuredPost.excerpt || featuredPost.description}</p>
+                </Link>
+              </div>
             </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className='mt-12'>
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={handlePageChange}
-                  className='justify-center'
-                />
+            {spotlightPosts.length > 0 && (
+              <div className='grid gap-4 md:grid-cols-2'>
+                {spotlightPosts.map(post => (
+                  <Link
+                    key={post.slug}
+                    to={`/blog/${post.year}/${post.slug}`}
+                    className='flex gap-4 rounded-2xl border border-border/40 bg-white p-4 shadow-soft dark:border-white/5 dark:bg-[#1a1f2a] dark:text-white'
+                    state={{ from: { pathname: location.pathname, search: location.search } }}
+                  >
+                    <div className='h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl bg-muted dark:bg-white/10'>
+                      {post.coverImage ? (
+                        <img src={post.coverImage} alt={post.title} className='h-full w-full object-cover' />
+                      ) : (
+                        <div className='flex h-full w-full items-center justify-center text-xs text-muted-foreground'>
+                          No image
+                        </div>
+                      )}
+                    </div>
+                    <div className='space-y-2 text-sm'>
+                      <div className='inline-flex items-center rounded-full bg-muted/60 px-2 py-1 text-[11px] uppercase tracking-wide dark:bg-white/10'>
+                        {post.category}
+                      </div>
+                      <h3 className='text-base font-semibold leading-snug text-foreground dark:text-white'>
+                        {post.title}
+                      </h3>
+                      <p className='line-clamp-2 text-muted-foreground dark:text-white/70'>{post.excerpt || post.description}</p>
+                    </div>
+                  </Link>
+                ))}
               </div>
             )}
-          </>
-        ) : (
-          <div className='text-center py-12'>
-            <div className='mb-4'>
-              <Search className='h-16 w-16 mx-auto text-muted-foreground/50 mb-4' />
+          </section>
+        )}
+
+        <section className='space-y-4'>
+          <div className='flex items-center justify-between'>
+            <h2 className='text-lg font-semibold'>All posts</h2>
+            {totalPages > 1 && (
+              <p className='text-sm text-muted-foreground'>Page {currentPage} of {totalPages}</p>
+            )}
+          </div>
+
+          {loading ? (
+            <div className='grid gap-4'>
+              {Array.from({ length: pageData.pageSize || POSTS_PER_PAGE }).map((_, index) => (
+                <BlogCardSkeleton key={index} />
+              ))}
+            </div>
+          ) : error ? (
+            <div className='text-center py-12'>
+              <p className='text-red-500 mb-4'>{error}</p>
+              <Button variant='outline' onClick={() => window.location.reload()}>
+                Try again
+              </Button>
+            </div>
+          ) : pageData.items.length > 0 ? (
+            <div className='space-y-4'>
+              {(listPosts.length > 0 ? listPosts : pageData.items).map(post => (
+                <Link
+                  key={post.slug}
+                  to={`/blog/${post.year}/${post.slug}`}
+                  className='flex gap-4 rounded-2xl border border-border/40 bg-white p-4 shadow-soft dark:border-white/5 dark:bg-[#181d27] dark:text-white'
+                  state={{ from: { pathname: location.pathname, search: location.search } }}
+                >
+                  <div className='h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-muted dark:bg-white/10'>
+                    {post.coverImage ? (
+                      <img src={post.coverImage} alt={post.title} className='h-full w-full object-cover' />
+                    ) : (
+                      <div className='flex h-full w-full items-center justify-center text-xs text-muted-foreground'>
+                        No image
+                      </div>
+                    )}
+                  </div>
+                  <div className='flex-1 space-y-1 text-sm'>
+                    <div className='flex items-center gap-2 text-[11px] uppercase tracking-wide text-muted-foreground dark:text-white/70'>
+                      <span>{post.category}</span>
+                      <span>•</span>
+                      <span>{formatDate(post.date)}</span>
+                    </div>
+                    <h3 className='text-base font-semibold leading-snug text-foreground dark:text-white'>
+                      {post.title}
+                    </h3>
+                    <p className='line-clamp-2 text-muted-foreground dark:text-white/70'>{post.excerpt || post.description}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className='text-center py-12'>
+              <Search className='mx-auto mb-4 h-14 w-14 text-muted-foreground/40' />
               <p className='text-lg font-medium mb-2'>No posts found</p>
               <p className='text-muted-foreground mb-4'>
-                {debouncedSearchTerm ||
-                selectedCategory !== 'all' ||
-                selectedTags.length > 0
+                {debouncedSearchTerm || selectedCategory !== 'all' || selectedTags.length > 0
                   ? 'Try adjusting your search criteria or filters.'
                   : 'No blog posts are available at the moment.'}
               </p>
-            </div>
-            {(debouncedSearchTerm ||
-              selectedCategory !== 'all' ||
-              selectedTags.length > 0) && (
               <Button variant='outline' onClick={clearFilters}>
-                Clear all filters
+                Clear filters
               </Button>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+
+          {totalPages > 1 && (
+            <div className='pt-6'>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+                className='justify-center'
+              />
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );
-};
+}
+;
 
 export default Blog;

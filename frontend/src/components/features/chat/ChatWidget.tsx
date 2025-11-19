@@ -13,6 +13,7 @@ import {
   Image as ImageIcon,
   X,
   MoreVertical,
+  Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,6 +24,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import {
   Dialog,
   DialogContent,
@@ -106,6 +114,7 @@ export default function ChatWidget(props: { onClose?: () => void }) {
   const [sessions, setSessions] = useState<ChatSessionMeta[]>([]);
   const [showSessions, setShowSessions] = useState(false);
   const [showImageDrawer, setShowImageDrawer] = useState(false);
+  const [showActionSheet, setShowActionSheet] = useState(false);
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
   const [isAggregatePrompt, setIsAggregatePrompt] = useState(false);
   const [firstTokenMs, setFirstTokenMs] = useState<number | null>(null);
@@ -213,6 +222,14 @@ export default function ChatWidget(props: { onClose?: () => void }) {
       localStorage.setItem('ai_chat_persist_optin', next ? '1' : '0');
     } catch {}
   }, [persistOptIn]);
+
+  const runMobileAction = useCallback(
+    (fn: () => void) => {
+      fn();
+      setShowActionSheet(false);
+    },
+    []
+  );
 
   const focusInput = useCallback(() => {
     requestAnimationFrame(() => textareaRef.current?.focus());
@@ -544,47 +561,61 @@ export default function ChatWidget(props: { onClose?: () => void }) {
             </div>
           </div>
           <div className='flex items-center gap-1'>
-            <Button
-              type='button'
-              size='sm'
-              variant='outline'
-              className='hidden h-9 px-3 text-xs sm:inline-flex'
-              disabled={!sessions.length}
-              onClick={() => setShowSessions(v => !v)}
-            >
-              최근 대화
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type='button'
-                  size='icon'
-                  variant='ghost'
-                  aria-label='대화 옵션'
-                >
-                  <MoreVertical className='h-4 w-4' />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align='end' className='w-48 text-sm'>
-                <DropdownMenuItem
-                  disabled={!sessions.length}
-                  onSelect={() => setShowSessions(v => !v)}
-                >
-                  최근 대화 보기
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={!uploadedImages.length}
-                  onSelect={() => setShowImageDrawer(true)}
-                >
-                  이미지 메모 보기
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={togglePersistStorage}>
-                  {persistOptIn ? '기록 저장 끄기' : '기록 저장 켜기'}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={clearAll}>대화 초기화</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {!isMobile && (
+              <Button
+                type='button'
+                size='sm'
+                variant='outline'
+                className='hidden h-9 px-3 text-xs sm:inline-flex'
+                disabled={!sessions.length}
+                onClick={() => setShowSessions(v => !v)}
+              >
+                최근 대화
+              </Button>
+            )}
+            {isMobile ? (
+              <Button
+                type='button'
+                size='icon'
+                variant='ghost'
+                aria-label='대화 옵션'
+                onClick={() => setShowActionSheet(true)}
+              >
+                <MoreVertical className='h-4 w-4' />
+              </Button>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type='button'
+                    size='icon'
+                    variant='ghost'
+                    aria-label='대화 옵션'
+                  >
+                    <MoreVertical className='h-4 w-4' />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align='end' className='w-48 text-sm'>
+                  <DropdownMenuItem
+                    disabled={!sessions.length}
+                    onSelect={() => setShowSessions(v => !v)}
+                  >
+                    최근 대화 보기
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!uploadedImages.length}
+                    onSelect={() => setShowImageDrawer(true)}
+                  >
+                    이미지 메모 보기
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={togglePersistStorage}>
+                    {persistOptIn ? '기록 저장 끄기' : '기록 저장 켜기'}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={clearAll}>대화 초기화</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             {props.onClose && (
               <Button
                 type='button'
@@ -691,7 +722,7 @@ export default function ChatWidget(props: { onClose?: () => void }) {
           )}
         >
           {messages.length === 0 && (
-            <div className='space-y-3 rounded-2xl border border-dashed px-4 py-5 text-xs text-muted-foreground'>
+            <div className='space-y-3 rounded-2xl border border-dashed px-4 py-5 text-xs text-muted-foreground mb-4'>
               <p>빠르게 시작하려면 아래 프롬프트를 눌러보세요.</p>
               <div className='flex flex-wrap gap-2'>
                 {QUICK_PROMPTS.map(prompt => (
@@ -827,7 +858,26 @@ export default function ChatWidget(props: { onClose?: () => void }) {
           </div>
         )}
 
-        <div className='border-t bg-background/95 px-3 py-2 space-y-2'>
+        <div
+          className={cn(
+            'border-t bg-background/95 px-3 py-3 mt-3 space-y-3',
+            isMobile && 'pb-[calc(0.75rem+env(safe-area-inset-bottom))]'
+          )}
+        >
+          <div className='flex items-center justify-between gap-3 px-1 text-[11px] text-muted-foreground sm:px-3'>
+            <div className='flex items-center gap-1 text-[11px] text-muted-foreground/80'>
+              <Info className='h-3.5 w-3.5' />
+              <span className='leading-tight'>새 주제를 시작할 땐 새 대화를 눌러주세요.</span>
+            </div>
+            <Button
+              onClick={clearAll}
+              variant='ghost'
+              size='sm'
+              className='h-7 px-2 text-[11px]'
+            >
+              새 대화
+            </Button>
+          </div>
           {attachedImage && (
             <div className='flex items-center justify-between gap-3 rounded-xl border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground'>
               <span className='inline-flex items-center gap-2 truncate'>
@@ -862,65 +912,59 @@ export default function ChatWidget(props: { onClose?: () => void }) {
             </div>
           )}
 
-          <div className='flex items-end gap-2 px-1 sm:px-3'>
-            <Textarea
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={onKeyDown}
-              rows={2}
-              placeholder={placeholder}
-              ref={textareaRef}
-              className='flex-1 resize-none rounded-2xl border bg-muted/50 px-4 py-3 text-sm focus-visible:ring-0'
-            />
-            <div className='flex items-center gap-1'>
-              <input
-                ref={fileInputRef}
-                type='file'
-                accept='image/*'
-                className='hidden'
-                onChange={e => {
-                  const target = e.target as HTMLInputElement;
-                  const file = target.files?.[0] ?? null;
-                  setAttachedImage(file);
-                }}
+          <div className='rounded-3xl border border-border bg-muted/60 px-3 py-2 shadow-inner sm:px-4 sm:py-3'>
+            <div className='flex items-end gap-2'>
+              <Textarea
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={onKeyDown}
+                rows={2}
+                placeholder={placeholder}
+                ref={textareaRef}
+                className='flex-1 resize-none border-0 bg-transparent px-0 py-2 text-sm sm:text-base min-h-[52px] focus-visible:ring-0 focus-visible:ring-offset-0'
               />
-              <Button
-                type='button'
-                size='icon'
-                variant='outline'
-                className='h-10 w-10'
-                onClick={() => fileInputRef.current?.click()}
-                aria-label='이미지 첨부'
-              >
-                <ImageIcon className='h-4 w-4' />
-              </Button>
-              {busy ? (
+              <div className='flex items-center gap-1'>
+                <input
+                  ref={fileInputRef}
+                  type='file'
+                  accept='image/*'
+                  className='hidden'
+                  onChange={e => {
+                    const target = e.target as HTMLInputElement;
+                    const file = target.files?.[0] ?? null;
+                    setAttachedImage(file);
+                  }}
+                />
                 <Button
-                  onClick={stop}
-                  size='sm'
-                  variant='secondary'
-                  className='h-10 px-3'
+                  type='button'
+                  size='icon'
+                  variant='ghost'
+                  className='h-11 w-11 rounded-2xl border border-dashed border-muted-foreground/50 text-muted-foreground hover:border-muted-foreground'
+                  onClick={() => fileInputRef.current?.click()}
+                  aria-label='이미지 첨부'
                 >
-                  <Square className='h-4 w-4' />
+                  <ImageIcon className='h-4 w-4' />
                 </Button>
-              ) : (
-                <Button
-                  onClick={send}
-                  disabled={!canSend}
-                  size='sm'
-                  className='h-10 px-4'
-                >
-                  <Send className='h-4 w-4' />
-                </Button>
-              )}
-              <Button
-                onClick={clearAll}
-                variant='ghost'
-                size='sm'
-                className='h-10 px-3'
-              >
-                새 대화
-              </Button>
+                {busy ? (
+                  <Button
+                    onClick={stop}
+                    size='icon'
+                    variant='secondary'
+                    className='h-12 w-12 rounded-2xl'
+                  >
+                    <Square className='h-4 w-4' />
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={send}
+                    disabled={!canSend}
+                    size='icon'
+                    className='h-12 w-12 rounded-2xl shadow-lg'
+                  >
+                    <Send className='h-4 w-4' />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -931,7 +975,7 @@ export default function ChatWidget(props: { onClose?: () => void }) {
           <DialogHeader>
             <DialogTitle>이미지 메모</DialogTitle>
             <DialogDescription>
-              최근 대화에서 업로드한 이미지를 확인할 수 있어요.
+              최근 대화에서 첨부한 이미지들을 다시 확인할 수 있어요.
             </DialogDescription>
           </DialogHeader>
           <div className='max-h-[60vh] overflow-y-auto space-y-2 text-sm'>
@@ -967,6 +1011,61 @@ export default function ChatWidget(props: { onClose?: () => void }) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Sheet open={showActionSheet} onOpenChange={setShowActionSheet}>
+        <SheetContent
+          side='bottom'
+          className='h-auto max-h-[80vh] rounded-t-3xl px-6 pb-6 pt-4'
+          aria-describedby={undefined}
+        >
+          <SheetHeader className='text-left'>
+            <SheetTitle className='text-base'>대화 옵션</SheetTitle>
+            <SheetDescription>
+              최근 대화 불러오기, 이미지 메모 보기 등 추가 기능을 사용할 수 있어요.
+            </SheetDescription>
+          </SheetHeader>
+          <div className='mt-4 space-y-3 text-sm'>
+            <button
+              type='button'
+              className='flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left'
+              disabled={!sessions.length}
+              onClick={() =>
+                runMobileAction(() => sessions.length && setShowSessions(v => !v))
+              }
+            >
+              <span>최근 대화 보기</span>
+              <span className='text-[11px] text-muted-foreground'>총 {sessions.length}개</span>
+            </button>
+            <button
+              type='button'
+              className='flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left'
+              disabled={!uploadedImages.length}
+              onClick={() =>
+                runMobileAction(() =>
+                  uploadedImages.length && setShowImageDrawer(true)
+                )
+              }
+            >
+              <span>이미지 메모 보기</span>
+              <span className='text-[11px] text-muted-foreground'>최근 {uploadedImages.length}개</span>
+            </button>
+            <button
+              type='button'
+              className='flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left'
+              onClick={() => runMobileAction(togglePersistStorage)}
+            >
+              <span>{persistOptIn ? '기록 저장 끄기' : '기록 저장 켜기'}</span>
+            </button>
+            <button
+              type='button'
+              className='flex w-full items-center justify-between rounded-2xl border border-destructive/40 px-4 py-3 text-left text-destructive'
+              onClick={() => runMobileAction(clearAll)}
+            >
+              <span>대화 초기화</span>
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }

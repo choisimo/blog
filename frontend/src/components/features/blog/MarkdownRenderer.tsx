@@ -3,7 +3,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 import { Copy, Check } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import SparkInline from '@/components/features/sentio/SparkInline';
 
@@ -21,6 +21,22 @@ export const MarkdownRenderer = ({
   postTitle = '',
 }: MarkdownRendererProps) => {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const sanitizedContent = useMemo(() => {
+    if (!postTitle) return content;
+    const normalizedTitle = postTitle.trim().toLowerCase();
+    const lines = content.split(/\r?\n/);
+    while (lines.length) {
+      const first = lines[0].trim();
+      const plain = first.replace(/^#+\s*/, '').trim().toLowerCase();
+      if (plain && plain === normalizedTitle) {
+        lines.shift();
+        continue;
+      }
+      break;
+    }
+    return lines.join('\n');
+  }, [content, postTitle]);
 
   const copyToClipboard = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -233,7 +249,7 @@ export const MarkdownRenderer = ({
           ),
         }}
       >
-        {content}
+        {sanitizedContent}
       </ReactMarkdown>
     </div>
   );

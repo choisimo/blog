@@ -1,6 +1,28 @@
 {
-  "total": 128,
+  "total": 129,
   "items": [
+    {
+      "path": "/posts/2025/nat-gateway-bottleneck-journal.md",
+      "year": "2025",
+      "slug": "nat-gateway-bottleneck-journal",
+      "title": "네트워크 병목과 NAT 게이트웨이의 한계: 한 CS 학생의 속마음",
+      "description": "프라이빗 서브넷과 퍼블릭 서브넷, NAT Gateway와 IGW가 등장하는 전형적인 VPC 그림을 보던 수업 시간. 모두가 보안을 이야기할 때, 내 눈에는 그 구조가 거대한 깔때기 실험처럼 보였다. 이 글은 그 순간 머릿속에서 떠오른 병목에 대한 질문과 직관을 그대로 옮긴 기록이다.",
+      "snippet": "프라이빗 서브넷과 퍼블릭 서브넷, NAT Gateway와 IGW가 등장하는 전형적인 VPC 그림을 보던 수업 시간. 모두가 보안을 이야기할 때, 내 눈에는 그 구조가 거대한 깔때기 실험처럼 보였다. 이 글은 그 순간 머릿속에서 떠오른 병목에 대한 질문과 직관을 그대로 옮긴 기록이다.",
+      "date": "2025-11-19",
+      "tags": [
+        "NAT",
+        "클라우드네트워크",
+        "VPC",
+        "프라이빗서브넷",
+        "병목"
+      ],
+      "category": "Network",
+      "author": "Admin",
+      "readingTime": "5 min read",
+      "published": true,
+      "coverImage": "/images/2025/nat-subnet-vpc.png",
+      "url": "/blog/2025/nat-gateway-bottleneck-journal"
+    },
     {
       "path": "/posts/2025/future-tech-six-insights.md",
       "year": "2025",
@@ -2682,7 +2704,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-11-18T14:28:55.605Z",
+  "generatedAt": "2025-11-19T15:29:15.137Z",
   "years": [
     "2025",
     "2024"

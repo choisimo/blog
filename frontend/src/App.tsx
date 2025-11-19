@@ -49,7 +49,7 @@ function App() {
             <Router>
               <div className='min-h-screen flex flex-col bg-background text-foreground'>
                 <Header />
-                <main className='flex-1'>
+                <main className='flex-1 pb-[110px] lg:pb-[60px]'>
                   <Routes>
                     <Route path='/' element={<Index />} />
                     <Route path='/blog' element={<Blog />} />

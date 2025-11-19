@@ -675,6 +675,7 @@
       const doc = document.createElement('div');
       doc.innerHTML = `
         <link rel="stylesheet" href="/ai-memo/ai-memo.css" />
+        <div class="bottom-app-bar"></div>
         <div id="launcher" class="launcher button" title="AI Memo" aria-label="AI Memo">📝</div>
         <div id="historyLauncher" class="launcher history button" title="History" aria-label="History">📖</div>
         <div id="historyOverlay" class="history-overlay" style="display:none;">
