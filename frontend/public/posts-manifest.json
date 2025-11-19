@@ -20,7 +20,7 @@
       "author": "Admin",
       "readingTime": "5 min read",
       "published": true,
-      "coverImage": "/images/2025/nat-subnet-vpc.png",
+      "coverImage": "/home/nodove/workspace/blog/frontend/public/images/2025/natgateway.png",
       "url": "/blog/2025/nat-gateway-bottleneck-journal"
     },
     {
@@ -2704,7 +2704,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-11-19T16:51:18.495Z",
+  "generatedAt": "2025-11-19T17:08:52.146Z",
   "years": [
     "2025",
     "2024"
