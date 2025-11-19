@@ -175,26 +175,14 @@ export function VisitedPostsMinimap({
 
   const sheet = (
     <Sheet open={open} onOpenChange={setOpen}>
-      {!externalTrigger && (
-        <SheetTrigger asChild>
-          <Button
-            variant='secondary'
-            size='sm'
-            className='shadow-lg backdrop-blur-sm'
-            aria-expanded={open}
-            aria-label='Open visited posts history'
-            onClick={() => {
-              setTimeout(() => listContainerRef.current?.focus(), 0);
-            }}
-          >
-            <Map className='mr-2 h-4 w-4' />
-            Insight
-          </Button>
-        </SheetTrigger>
-      )}
       <SheetContent
         side={isMobile ? 'bottom' : 'right'}
-        className={cn(isMobile ? 'h-[90dvh]' : 'w-[380px] h-full', 'p-0')}
+        className={cn(
+          'p-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:backdrop-blur-lg',
+          isMobile
+            ? 'max-h-[62vh] rounded-t-[32px] border-x border-t border-border/60 shadow-[0_-18px_50px_rgba(15,23,42,0.18)]'
+            : 'h-full w-[400px] border-l border-border/40'
+        )}
         aria-describedby={undefined}
         style={
           isMobile
@@ -202,83 +190,80 @@ export function VisitedPostsMinimap({
             : undefined
         }
       >
-        <SheetHeader className='sticky top-0 z-10 border-b bg-background px-4 py-3'>
-          <div className='flex items-center justify-between'>
-            <div className='flex items-center gap-3 text-sm font-semibold'>
-              <Map className='h-4 w-4' />
-              <SheetTitle>Recently visited</SheetTitle>
-              <div className='relative h-8 w-[96px]' aria-hidden>
-                {topStack.map((p, i) => (
-                  <div
-                    key={p.path}
-                    className='absolute top-0 h-8 w-8 overflow-hidden rounded-full ring-2 ring-background shadow'
-                    style={{ right: i * 20 }}
-                    title={p.title}
-                  >
-                    {p.coverImage ? (
-                      <img
-                        src={p.coverImage}
-                        alt=''
-                        className='h-full w-full object-cover'
-                      />
-                    ) : (
-                      <FallbackAvatar title={p.title} />
+        <SheetHeader className='sticky top-0 z-10 border-b border-border/60 bg-background/98 px-4 pb-3 pt-4'>
+          {isMobile && (
+            <div className='mx-auto mb-3 h-1.5 w-12 rounded-full bg-muted-foreground/30' aria-hidden />
+          )}
+          <div className='flex items-center justify-between gap-3'>
+            <div className='flex-1'>
+              <div className='flex items-center gap-3 text-sm font-semibold'>
+                <Map className='h-4 w-4 text-muted-foreground' />
+                <div className='relative h-8 w-[120px]' aria-hidden>
+                  {topStack.map((p, i) => (
+                    <div
+                      key={p.path}
+                      className='absolute top-0 h-8 w-8 overflow-hidden rounded-full ring-2 ring-background shadow'
+                      style={{ left: i * 24 }}
+                      title={p.title}
+                    >
+                      {p.coverImage ? (
+                        <img
+                          src={p.coverImage}
+                          alt=''
+                          className='h-full w-full object-cover'
+                        />
+                      ) : (
+                        <FallbackAvatar title={p.title} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className='flex items-center gap-1 text-[11px] ml-auto'>
+                  <button
+                    type='button'
+                    className={cn(
+                      'px-2 py-0.5 rounded-full border text-[11px]',
+                      view === 'list'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'text-muted-foreground border-transparent hover:bg-muted'
                     )}
-                  </div>
-                ))}
+                    onClick={() => setView('list')}
+                  >
+                    리스트
+                  </button>
+                  <button
+                    type='button'
+                    className={cn(
+                      'px-2 py-0.5 rounded-full border text-[11px]',
+                      view === 'graph'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'text-muted-foreground border-transparent hover:bg-muted'
+                    )}
+                    onClick={() => setView('graph')}
+                  >
+                    그래프
+                  </button>
+                </div>
               </div>
-              <div className='flex items-center gap-1 text-[11px] ml-2'>
-                <button
-                  type='button'
-                  className={cn(
-                    'px-2 py-0.5 rounded-full border text-[11px]',
-                    view === 'list'
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'text-muted-foreground border-transparent hover:bg-muted'
-                  )}
-                  onClick={() => setView('list')}
-                >
-                  리스트
-                </button>
-                <button
-                  type='button'
-                  className={cn(
-                    'px-2 py-0.5 rounded-full border text-[11px]',
-                    view === 'graph'
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'text-muted-foreground border-transparent hover:bg-muted'
-                  )}
-                  onClick={() => setView('graph')}
-                >
-                  그래프
-                </button>
-              </div>
+              <p className='mt-2 text-[11px] uppercase tracking-[0.25em] text-muted-foreground'>
+                Recently visited
+              </p>
             </div>
-            <div className='flex items-center gap-1'>
-              <Button
-                variant='ghost'
-                size='sm'
-                onClick={clearAll}
-                aria-label='Clear history'
-              >
-                Clear
-              </Button>
-              <Button
-                variant='ghost'
-                size='icon'
-                onClick={() => setOpen(false)}
-                aria-label='Close history'
-              >
-                <X className='h-4 w-4' />
-              </Button>
-            </div>
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={clearAll}
+              aria-label='Clear history'
+            >
+              Clear
+            </Button>
           </div>
         </SheetHeader>
         {view === 'list' ? (
           <div
             ref={listContainerRef}
             tabIndex={0}
-            className='max-h-full overflow-y-auto p-2 focus:outline-none'
+            className='max-h-[calc(62vh-140px)] overflow-y-auto px-3 pb-6 pt-3 focus:outline-none sm:max-h-none'
             onKeyDown={e => {
               if (e.key === 'ArrowDown') {
                 e.preventDefault();
@@ -303,7 +288,7 @@ export function VisitedPostsMinimap({
                   <button
                     onClick={() => go(p)}
                     className={cn(
-                      'group flex w-full items-center gap-3 rounded-md px-3 py-3 md:px-2 md:py-2 text-left hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring',
+                      'group flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring',
                       activeIndex === idx && 'ring-2 ring-primary'
                     )}
                   >
@@ -319,7 +304,7 @@ export function VisitedPostsMinimap({
                       )}
                     </div>
                     <div className='min-w-0'>
-                      <div className='truncate text-sm font-medium group-hover:text-primary'>
+                      <div className='text-sm font-medium leading-snug text-left group-hover:text-primary line-clamp-2'>
                         {p.title}
                       </div>
                       <div className='flex items-center gap-1 text-xs text-muted-foreground'>
@@ -335,7 +320,7 @@ export function VisitedPostsMinimap({
             </ul>
           </div>
         ) : (
-          <div className='max-h-full overflow-y-auto p-2 text-xs space-y-2'>
+          <div className='max-h-[calc(62vh-140px)] overflow-y-auto px-3 pb-6 pt-3 text-xs space-y-2 sm:max-h-none'>
             {items.map(p => {
               const related = chatSessions.filter(s =>
                 s.articleUrl && s.articleUrl.endsWith(p.path)

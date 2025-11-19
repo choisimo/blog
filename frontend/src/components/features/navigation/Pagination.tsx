@@ -49,7 +49,7 @@ const Pagination = ({
   const visiblePages = getVisiblePages();
 
   return (
-    <div className={`flex items-center justify-center space-x-2 ${className}`}>
+    <div className={`flex items-center justify-center gap-2 ${className}`}>
       <Button
         variant='outline'
         size='sm'
@@ -61,11 +61,9 @@ const Pagination = ({
       </Button>
 
       {visiblePages.map((page, index) => (
-        <div key={index}>
+        <div key={index} className='flex h-9 w-9 items-center justify-center'>
           {page === '...' ? (
-            <div className='flex h-9 w-9 items-center justify-center'>
-              <MoreHorizontal className='h-4 w-4' />
-            </div>
+            <MoreHorizontal className='h-4 w-4' />
           ) : (
             <Button
               variant={currentPage === page ? 'default' : 'outline'}
