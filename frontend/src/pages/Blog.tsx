@@ -202,7 +202,7 @@ const Blog = () => {
     <div className='min-h-screen bg-gradient-to-br from-background via-background to-muted/20'>
       {/* Hero/Header Simplified */}
       <div className='border-b bg-background'>
-        <div className='container mx-auto px-4 py-12'>
+        <div className='container mx-auto px-4 pt-12 pb-28'>
           <div className='text-center max-w-3xl mx-auto'>
             <h1 className='text-4xl md:text-5xl font-bold tracking-tight mb-3'>
               Blog Posts
@@ -214,11 +214,11 @@ const Blog = () => {
         </div>
       </div>
 
-      <div className='container mx-auto px-4 py-12'>
+      <div className='container mx-auto px-4 pt-12 pb-28'>
         {/* Search and Filters (restructured) */}
         <div className='mb-8 space-y-6'>
           {/* Search (primary) */}
-          <div className='bg-card/50 backdrop-blur-sm border rounded-xl p-6 shadow-sm'>
+          <div className='bg-card border border-border/60 rounded-xl p-6 shadow-none'>
             <div className='relative'>
               <Search
                 className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground'
@@ -230,13 +230,13 @@ const Blog = () => {
                 aria-label='Search posts'
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className='pl-10'
+                className='pl-10 rounded-xl'
               />
             </div>
           </div>
 
           {/* Category + Sort (secondary) */}
-          <div className='bg-card/50 backdrop-blur-sm border rounded-xl p-4 md:p-6 shadow-sm'>
+          <div className='bg-card border border-border/60 rounded-xl p-4 md:p-6 shadow-none'>
             <div className='flex flex-col md:flex-row gap-4'>
               <Select
                 value={selectedCategory}
@@ -313,14 +313,14 @@ const Blog = () => {
           />
 
           {/* Tags (collapsible) */}
-          <div className='bg-card/50 backdrop-blur-sm border rounded-xl p-4 md:p-6 shadow-sm'>
+          <div className='bg-card border border-border/60 rounded-xl p-4 md:p-6 shadow-none'>
             <div className='flex flex-wrap gap-2 items-center' id='tag-list'>
               <span className='text-sm font-medium mr-2'>Tags:</span>
               {(showAllTags ? allTags : allTags.slice(0, 10)).map(tag => (
                 <Badge
                   key={tag}
                   variant={selectedTags.includes(tag) ? 'default' : 'secondary'}
-                  className='cursor-pointer rounded-full bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 hover:bg-primary/10'
+                  className='cursor-pointer rounded-xl bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 hover:bg-primary/10'
                   role='button'
                   aria-pressed={selectedTags.includes(tag)}
                   aria-label={`Toggle tag ${tag}`}

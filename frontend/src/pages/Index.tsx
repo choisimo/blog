@@ -155,13 +155,13 @@ const Index = () => {
   );
 
   return (
-    <div className='container mx-auto px-4 py-12'>
+    <div className='container mx-auto px-4 pt-12 pb-28'>
       {/* Hero Section */}
       <section className='mb-10 text-center space-y-6'>
         <h1 className='text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight'>
           Welcome to{' '}
           <span className='bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent'>
-            Nodove Blog
+            Nodove
           </span>
         </h1>
         <p className='text-xl text-muted-foreground max-w-2xl mx-auto'>
@@ -178,7 +178,7 @@ const Index = () => {
           />
         </div>
         <div className='flex flex-col sm:flex-row gap-4 justify-center'>
-          <Button asChild size='lg'>
+          <Button asChild size='lg' className='w-auto'>
             <Link to='/blog'>
               <BookOpen className='mr-2 h-5 w-5' />
               Enter Blog

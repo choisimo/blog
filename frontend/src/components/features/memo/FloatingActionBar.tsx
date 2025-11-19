@@ -220,6 +220,27 @@ function useHistoryBadge(): [boolean, () => void] {
   return [hasNew, clear];
 }
 
+function useScrollHide(): boolean {
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    let lastY = window.scrollY || 0;
+    const handleScroll = () => {
+      const y = window.scrollY || 0;
+      const delta = y - lastY;
+      lastY = y;
+      if (Math.abs(delta) < 8) return;
+      if (y < 80) {
+        setHidden(false);
+        return;
+      }
+      setHidden(delta > 0);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+  return hidden;
+}
+
 function hideLegacyLaunchers(aiMemoEl: HTMLElement | null) {
   try {
     if (!aiMemoEl) return;
@@ -244,6 +265,8 @@ export default function FloatingActionBar() {
   const { items: visitedPosts, storageAvailable } = useVisitedPostsState();
   const impressionSent = useRef(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const scrollHidden = useScrollHide();
   const { toast } = useToast();
 
   const send = useCallback((type: string, detail?: Record<string, any>) => {
@@ -368,6 +391,10 @@ export default function FloatingActionBar() {
     openStackView();
   }, [openStackView, stackDisabledReason, toast]);
 
+  useEffect(() => {
+    if (scrollHidden) setExpanded(false);
+  }, [scrollHidden]);
+
   if (!enabled) return null;
 
   const stackSheet = <VisitedPostsMinimap mode='fab' />;
@@ -381,6 +408,10 @@ export default function FloatingActionBar() {
       ? 'w-fit max-w-[calc(100%-24px)] md:max-w-3xl'
       : 'w-fit max-w-[min(100%-24px,32rem)]',
     'border border-border/60 rounded-xl shadow-lg px-2 py-2 md:px-3 md:py-3 bg-background/70 backdrop-blur-md backdrop-saturate-150 motion-reduce:transition-none print:hidden',
+    'transition-transform transition-opacity duration-200 ease-out',
+    scrollHidden
+      ? 'translate-y-6 opacity-0 pointer-events-none'
+      : 'translate-y-0 opacity-100',
   ].join(' ');
 
   return (
@@ -391,103 +422,98 @@ export default function FloatingActionBar() {
         aria-label='Floating actions'
         className={containerClasses}
       >
-        <div
-          className={[
-            'flex items-center justify-between gap-2',
-            memoOpen ? 'w-full' : 'w-auto',
-          ].join(' ')}
-        >
-          {/* Contextual (memo) actions removed to keep FAB global-only */}
-
-          {/* Right-aligned persistent controls */}
-          <div
-            className={'flex items-center gap-1 md:gap-2 shrink-0'.concat(
-              memoOpen ? ' ml-auto' : ''
-            )}
-            role='group'
-          >
-            {/* Contextual (memo) actions removed to keep FAB global-only */}
-
-            {/* Right-aligned persistent controls */}
-            <div
-              className={'flex items-center gap-1 md:gap-2 shrink-0'.concat(
-                memoOpen ? ' ml-auto' : ''
-              )}
-              role='group'
-              aria-label='Global actions'
+        <div className='flex items-center justify-center'>
+          <div className='flex items-center gap-2'>
+            <Button
+              variant='default'
+              size='icon'
+              className='h-11 w-11 md:h-12 md:w-12 rounded-full'
+              onClick={() => {
+                setExpanded(prev => {
+                  const next = !prev;
+                  send(next ? 'fab_expand' : 'fab_collapse');
+                  return next;
+                });
+              }}
+              aria-label={expanded ? '빠른 액션 닫기' : '빠른 액션 열기'}
+              aria-expanded={expanded}
             >
-              {/* AI Chat toggle */}
-              <Button
-                variant='default'
-                size='sm'
-                onClick={() => {
-                  setChatOpen(v => !v);
-                  send('fab_ai_chat_toggle');
-                }}
-                aria-label='AI Chat'
-              >
-                <Sparkles className='h-4 w-4' />
-                <span className='hidden lg:inline ml-1'>AI Chat ✨</span>
-              </Button>
-              {/* Memo toggle to ensure there is a way to open/close the panel when legacy launcher is hidden */}
-              <Button
-                variant='ghost'
-                size='sm'
-                onClick={() => {
-                  send('fab_memo_toggle');
-                  toggleMemo();
-                }}
-                aria-label='\uba54\ubaa8'
-              >
-                <NotebookPen className='h-4 w-4' />
-                <span className='hidden lg:inline ml-1'>메모</span>
-              </Button>
-              <Button
-                variant='ghost'
-                size='sm'
-                onClick={handleStackClick}
-                aria-label='최근 게시글 리스트'
-                aria-disabled={!stackReady}
-                className={[
-                  !stackReady ? 'opacity-60' : '',
-                  'transition-opacity',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-              >
-                <Layers className='h-4 w-4' />
-                <span className='hidden lg:inline ml-1'>Stack</span>
-              </Button>
-              <div className='relative'>
+              <Sparkles className='h-5 w-5' />
+            </Button>
+            {expanded && (
+              <div className='flex items-center gap-1 md:gap-2'>
                 <Button
-                  variant='secondary'
-                  size='sm'
-                  onClick={openHistory}
-                  aria-label='Insight'
-                  aria-haspopup='dialog'
-                  title='최근 작업 내역 (Insight)'
+                  variant='outline'
+                  size='icon'
+                  onClick={() => {
+                    setChatOpen(true);
+                    send('fab_ai_chat_open');
+                  }}
+                  aria-label='AI Chat'
+                  className='rounded-full'
                 >
-                  <Map className='h-4 w-4' />
-                  <span className='hidden lg:inline ml-1'>Insight</span>
+                  <Sparkles className='h-4 w-4' />
                 </Button>
-                {hasNew && (
-                  <span
-                    className='absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary'
-                    aria-hidden
-                  />
-                )}
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  onClick={() => {
+                    send('fab_memo_toggle');
+                    toggleMemo();
+                  }}
+                  aria-label='메모'
+                  className='rounded-full'
+                >
+                  <NotebookPen className='h-4 w-4' />
+                </Button>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  onClick={handleStackClick}
+                  aria-label='최근 게시글 리스트'
+                  aria-disabled={!stackReady}
+                  className={[
+                    'rounded-full',
+                    !stackReady ? 'opacity-60' : '',
+                    'transition-opacity',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  <Layers className='h-4 w-4' />
+                </Button>
+                <div className='relative'>
+                  <Button
+                    variant='secondary'
+                    size='icon'
+                    onClick={openHistory}
+                    aria-label='Insight'
+                    aria-haspopup='dialog'
+                    title='최근 작업 내역 (Insight)'
+                    className='rounded-full'
+                  >
+                    <Map className='h-4 w-4' />
+                  </Button>
+                  {hasNew && (
+                    <span
+                      className='absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary'
+                      aria-hidden
+                    />
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
-    {chatOpen && (
-      <ChatWidget
-        onClose={() => {
-          setChatOpen(false);
-          send('fab_ai_chat_close');
-        }}
-      />
-    )}
-  </>
-);}
+      {chatOpen && (
+        <ChatWidget
+          onClose={() => {
+            setChatOpen(false);
+            send('fab_ai_chat_close');
+          }}
+        />
+      )}
+    </>
+  );
+}
