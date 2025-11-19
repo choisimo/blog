@@ -37,6 +37,24 @@
     previewPane: 'aiMemo.previewPane'
   };
 
+  const NOISY_EVENT_TYPES = new Set([
+    'history_open',
+    'history_close',
+    'history_reset',
+    'download_history',
+    'history_import',
+    'layout_change',
+    'preview_pane',
+    'toggle_inline',
+    'toggle_close_after_inject',
+    'reset_position',
+    'toggle_fullscreen',
+    'catalyst_open',
+    'catalyst_close',
+    'catalyst_cancel',
+    'enter_block_select'
+  ]);
+
   // 기본값 설정
   const DEFAULT_API_URL = 'https://blog-api.immuddelo.workers.dev';
   const DEFAULT_REPO_URL = 'https://github.com/choisimo/blog';
@@ -116,6 +134,23 @@
             if (this.$memo) this.$memo.dispatchEvent(new Event('input', { bubbles: true }));
             return next;
           } catch (_) { return null; }
+        },
+        renderAIDetails: (details) => {
+          try {
+            const aiDetails = this.$aiDetails;
+            if (!aiDetails) return;
+            aiDetails.innerHTML = '';
+            const title = document.createElement('h3');
+            title.textContent = 'AI Q&A Details';
+            aiDetails.appendChild(title);
+            const ul = document.createElement('ul');
+            Object.keys(details).forEach(key => {
+              const li = document.createElement('li');
+              li.textContent = `${key}: ${details[key]}`;
+              ul.appendChild(li);
+            });
+            aiDetails.appendChild(ul);
+          } catch (_) {}
         }
       };
     }
@@ -128,6 +163,17 @@
       // If first mount and isOpen, ensure visibility
       this.updateOpen();
       this.updateMode();
+      window.addEventListener(
+        'aiMemo:log',
+        this._onExternalLog
+      );
+    }
+
+    disconnectedCallback() {
+      window.removeEventListener(
+        'aiMemo:log',
+        this._onExternalLog
+      );
     }
 
     applyThemeFromPage() {
@@ -1072,15 +1118,18 @@
      // ===== History: event logging & overlay =====
      logEvent(evt) {
        try {
+         if (!evt || (evt.type && NOISY_EVENT_TYPES.has(evt.type))) return null;
          const info = this.getCurrentPostInfo();
          const base = {
            t: Date.now(),
            page: { url: location.href, title: document.title, post: info || null },
          };
          const rec = Object.assign(base, evt || {});
+         if (!rec.label && rec.type) {
+           rec.label = rec.type;
+         }
          let arr = Array.isArray(this.state.events) ? this.state.events.slice() : [];
          arr.push(rec);
-         // cap to last 500 events to bound storage
          if (arr.length > 500) arr = arr.slice(arr.length - 500);
          this.state.events = arr;
          LS.set(KEYS.events, arr);
@@ -1942,8 +1991,6 @@
 
       // selection add
       this.$addSel.addEventListener('click', () => {
-        this.logEvent({ type: 'add_selection', label: '\uc120\ud0dd \ucd94\uac00' });
-
         const sel = window.getSelection();
         const text = sel && sel.toString().trim();
           if (!text) {
@@ -1951,9 +1998,10 @@
             return;
           }
         const now = new Date();
-        const entry = `\n> ${text}\n ${now.toLocaleString()}\n`;
+        const entry = `\n> ${text}\n\u0014 ${now.toLocaleString()}\n`;
         this.out.append(entry);
         this.out.toast('\uc120\ud0dd \ub0b4\uc6a9\uc744 \ucd94\uac00\ud588\uc2b5\ub2c8\ub2e4.');
+        this.logEvent({ type: 'selection', label: '\uc120\ud0dd \ucd94\uac00', content: text });
       });
 
       // block add (enter block selection mode)

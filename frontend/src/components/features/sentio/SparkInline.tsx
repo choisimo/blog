@@ -20,6 +20,17 @@ function logEvent(event: Record<string, unknown>) {
   }
 }
 
+function emitAiMemoLog(detail: Record<string, unknown>) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.dispatchEvent(
+      new CustomEvent('aiMemo:log', {
+        detail,
+      })
+    );
+  } catch {}
+}
+
 function extractText(children: React.ReactNode): string {
   const parts: string[] = [];
   const walk = (node: React.ReactNode) => {
@@ -41,6 +52,30 @@ function extractText(children: React.ReactNode): string {
 }
 
 type Mode = 'idle' | 'sketch' | 'prism' | 'chain';
+
+const ModeLabels: Record<Mode, string> = {
+  idle: 'Idle',
+  sketch: 'Sketch',
+  prism: 'Prism',
+  chain: 'Chain',
+};
+
+function formatSketchResult(res: SketchResult): string {
+  const bullets = res.bullets.map(b => `- ${b}`).join('\n');
+  return [`**Mood:** ${res.mood}`, '', bullets].join('\n');
+}
+
+function formatPrismResult(res: PrismResult): string {
+  return res.facets
+    .map(f => `### ${f.title}\n${f.points.map(p => `- ${p}`).join('\n')}`)
+    .join('\n\n');
+}
+
+function formatChainResult(res: ChainResult): string {
+  return res.questions
+    .map(q => `- **${q.q}**${q.why ? ` — ${q.why}` : ''}`)
+    .join('\n');
+}
 
 export default function SparkInline({
   children,
@@ -73,14 +108,35 @@ export default function SparkInline({
         const res = await sketch({ paragraph: text, postTitle });
         setSketchRes(res);
         logEvent({ type: 'sketch', len: text.length });
+        emitAiMemoLog({
+          type: 'ai_qna',
+          mode: 'sketch',
+          question: text,
+          answer: formatSketchResult(res),
+          postTitle,
+        });
       } else if (which === 'prism') {
         const res = await prism({ paragraph: text, postTitle });
         setPrismRes(res);
         logEvent({ type: 'prism', len: text.length });
+        emitAiMemoLog({
+          type: 'ai_qna',
+          mode: 'prism',
+          question: text,
+          answer: formatPrismResult(res),
+          postTitle,
+        });
       } else if (which === 'chain') {
         const res = await chain({ paragraph: text, postTitle });
         setChainRes(res);
         logEvent({ type: 'chain', len: text.length });
+        emitAiMemoLog({
+          type: 'ai_qna',
+          mode: 'chain',
+          question: text,
+          answer: formatChainResult(res),
+          postTitle,
+        });
       }
     } catch (e: unknown) {
       const msg =
