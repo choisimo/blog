@@ -1,0 +1,73 @@
+{
+  "project": "Floating AI Memo UX Revamp",
+  "date": "2025-11-02",
+  "owner": "frontend",
+  "epic": "떠다니는 AI 메모 개선",
+  "tasks": [
+    {
+      "id": "MEMO-1102-001",
+      "title": "Implement memo layout mode state machine",
+      "description": "Introduce persisted layout modes (split-horizontal, tabbed) and initialize from localStorage or viewport.",
+      "locations": [
+        "frontend/public/ai-memo/ai-memo.js"
+      ],
+      "acceptance": [
+        "Layout mode toggles update Shadow DOM classes appropriately.",
+        "Selected mode persists across reloads via localStorage.",
+        "Fullscreen memo mode continues working."
+      ]
+    },
+    {
+      "id": "MEMO-1102-002",
+      "title": "Update memo CSS for horizontal split and responsive behavior",
+      "description": "Refine `.split` styles so desktop uses horizontal panes with balanced widths and mobile stacks vertically.",
+      "locations": [
+        "frontend/public/ai-memo/ai-memo.css"
+      ],
+      "acceptance": [
+        "Desktop shows side-by-side editor/preview with independent scrolling.",
+        "Mobile breakpoint (<640px) stacks panes and hides toggle if needed.",
+        "Spacing and divider styles match PRD guidance."
+      ]
+    },
+    {
+      "id": "MEMO-1102-003",
+      "title": "Add layout toggle control UI",
+      "description": "Insert toggle buttons near memo tabs to switch between split and tab modes with clear affordance.",
+      "locations": [
+        "frontend/public/ai-memo/ai-memo.js",
+        "frontend/public/ai-memo/ai-memo.css"
+      ],
+      "acceptance": [
+        "Toggle buttons reflect current layout and are keyboard-accessible.",
+        "State changes emit telemetry via logEvent.",
+        "UI adapts for mobile (toggle hidden or repositioned)."
+      ]
+    },
+    {
+      "id": "MEMO-1102-004",
+      "title": "Polish Catalyst prompt UX",
+      "description": "Replace modal spinner with inline pulsing icon, disable inputs during run, and surface toast-based messaging.",
+      "locations": [
+        "frontend/public/ai-memo/ai-memo.js",
+        "frontend/public/ai-memo/ai-memo.css"
+      ],
+      "acceptance": [
+        "Catalyst invoke shows pulsing icon and keeps memo usable.",
+        "Success and error toasts replace alert dialogs.",
+        "Busy state prevents duplicate submissions but clears correctly afterward."
+      ]
+    },
+    {
+      "id": "MEMO-1102-005",
+      "title": "Execute memo UX QA checklist",
+      "description": "Validate desktop split, tab persistence, mobile stacking, and Catalyst feedback per PRD.",
+      "locations": ["manual"],
+      "acceptance": [
+        "QA evidence recorded for all checklist items.",
+        "No regressions in memo drag, fullscreen, or history overlay."
+      ]
+    }
+  ],
+  "notes": "Consider optional vertical split removal based on open questions; evaluate resizable divider as stretch goal."
+}
