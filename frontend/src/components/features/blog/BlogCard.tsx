@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { BlogPost } from '@/types/blog';
 import { formatDate, resolveLocalizedPost } from '@/utils/blog';
+import { stripMarkdown } from '@/utils/common';
 import { ArrowRight, Clock, User } from 'lucide-react';
 import { DateDisplay, TagList } from '@/components/atoms';
 import { prefetchPost } from '@/data/posts';
@@ -39,8 +40,11 @@ const BlogCard = memo(({ post }: BlogCardProps) => {
   // Create the proper blog post URL using year and slug
   const postUrl = `/blog/${post.year}/${post.slug}`;
 
-  // Display excerpt or description
-  const displayText = localized.excerpt || localized.description;
+  // Display excerpt or description with markdown stripped
+  const displayText = useMemo(() => {
+    const raw = localized.excerpt || localized.description || '';
+    return stripMarkdown(raw, 150);
+  }, [localized.excerpt, localized.description]);
 
   const readingTimeLabel = useMemo(() => {
     const raw = post.readingTime || (post.readTime ? `${post.readTime} min read` : '');

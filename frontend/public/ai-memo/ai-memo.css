@@ -1,5 +1,6 @@
 /* Floating AI Memo - Shadow DOM scoped styles */
 /* Redesigned for clarity and modern aesthetics */
+/* TUI (Terminal UI) style for terminal theme compatibility */
 
 :host {
   all: initial;
@@ -8,7 +9,8 @@
   --memo-shadow-dark: 0 20px 50px rgba(0, 0, 0, 0.4), 0 8px 20px rgba(0, 0, 0, 0.3);
   --memo-border: rgba(0, 0, 0, 0.06);
   --memo-border-dark: rgba(255, 255, 255, 0.08);
-  --memo-accent: #3b82f6;
+  --memo-accent: #10b981; /* Changed from blue to emerald green for terminal theme */
+  --memo-accent-hover: #059669;
 }
 
 .button {
@@ -202,7 +204,8 @@
 
 :host(.dark) .tab.active {
   background: var(--memo-accent);
-  color: #fff;
+  color: #000;
+  font-weight: 600;
 }
 
 /* Body content */
@@ -304,30 +307,37 @@
   box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
 }
 
-/* Button - Clean minimal style */
+/* Button - TUI (Terminal UI) style */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   padding: 9px 16px;
-  font: 500 13px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  color: #fff;
-  background: #0f172a;
-  border: none;
-  border-radius: 10px;
+  font: 500 13px/1.3 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: #0f172a;
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  border-radius: 0; /* Sharp corners for TUI look */
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.1);
 }
 
 .btn:hover {
-  background: #1e293b;
-  transform: translateY(-1px);
+  border-color: var(--memo-accent);
+  color: var(--memo-accent);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0px rgba(16, 185, 129, 0.2);
 }
 
 .btn:active {
-  transform: scale(0.98) translateY(0);
+  transform: translate(2px, 2px);
+  box-shadow: none;
+  background: var(--memo-accent);
+  color: #fff;
+  border-color: var(--memo-accent);
 }
 
 .btn:disabled {
@@ -339,31 +349,47 @@
 .btn.secondary {
   background: transparent;
   color: #475569;
-  border: 1px solid #e2e8f0;
+  border: 1px dashed #cbd5e1;
+  box-shadow: none;
 }
 
 .btn.secondary:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
+  border-color: var(--memo-accent);
+  border-style: solid;
+  color: var(--memo-accent);
 }
 
 :host(.dark) .btn {
-  background: var(--memo-accent);
+  background: transparent;
+  color: var(--memo-accent);
+  border: 1px solid var(--memo-accent);
+  box-shadow: 2px 2px 0px rgba(16, 185, 129, 0.3);
 }
 
 :host(.dark) .btn:hover {
-  background: #2563eb;
+  background: rgba(16, 185, 129, 0.1);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0px rgba(16, 185, 129, 0.4);
+}
+
+:host(.dark) .btn:active {
+  background: var(--memo-accent);
+  color: #000;
+  transform: translate(2px, 2px);
+  box-shadow: none;
 }
 
 :host(.dark) .btn.secondary {
   background: transparent;
   color: #94a3b8;
-  border-color: rgba(255, 255, 255, 0.15);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  box-shadow: none;
 }
 
 :host(.dark) .btn.secondary:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #e2e8f0;
+  border-color: var(--memo-accent);
+  border-style: solid;
+  color: var(--memo-accent);
 }
 
 /* Row */
@@ -499,7 +525,7 @@
 :host(.dark) .layout-btn.active,
 :host(.dark) .layout-btn[aria-pressed="true"] {
   background: var(--memo-accent);
-  color: #fff;
+  color: #000;
 }
 
 .preview-pane-toggle {
@@ -541,7 +567,7 @@
 
 :host(.dark) .preview-pane-toggle button[aria-selected="true"] {
   background: var(--memo-accent);
-  color: #fff;
+  color: #000;
 }
 
 /* Preview split layout modes */

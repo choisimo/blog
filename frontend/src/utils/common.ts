@@ -83,3 +83,56 @@ export const isValidUrl = (url: string): boolean => {
 export const generateId = (): string => {
   return Math.random().toString(36).substring(2, 9);
 };
+
+/**
+ * Strips markdown syntax from text for clean display in previews.
+ * Removes images, links, code blocks, bold/italic, headers, etc.
+ */
+export const stripMarkdown = (text: string, maxLength = 150): string => {
+  if (!text) return '';
+
+  let cleaned = text
+    // Remove images: ![alt](url) or ![alt][ref]
+    .replace(/!\[.*?\]\(.*?\)/g, '')
+    .replace(/!\[.*?\]\[.*?\]/g, '')
+    // Remove inline links but keep text: [text](url) -> text
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    // Remove reference-style links: [text][ref] -> text
+    .replace(/\[([^\]]*)\]\[[^\]]*\]/g, '$1')
+    // Remove code blocks (fenced)
+    .replace(/```[\s\S]*?```/g, '')
+    // Remove inline code
+    .replace(/`([^`]+)`/g, '$1')
+    // Remove headers
+    .replace(/^#{1,6}\s+/gm, '')
+    // Remove bold/italic (order matters)
+    .replace(/\*\*\*(.+?)\*\*\*/g, '$1')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/___(.+?)___/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/_(.+?)_/g, '$1')
+    // Remove strikethrough
+    .replace(/~~(.+?)~~/g, '$1')
+    // Remove blockquotes
+    .replace(/^>\s?/gm, '')
+    // Remove horizontal rules
+    .replace(/^[-*_]{3,}\s*$/gm, '')
+    // Remove list markers
+    .replace(/^[\s]*[-*+]\s+/gm, '')
+    .replace(/^[\s]*\d+\.\s+/gm, '')
+    // Remove HTML tags
+    .replace(/<[^>]*>/g, '')
+    // Remove extra whitespace and newlines
+    .replace(/\n+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Truncate to maxLength with ellipsis
+  if (cleaned.length > maxLength) {
+    cleaned = cleaned.slice(0, maxLength).trim() + '...';
+  }
+
+  return cleaned;
+};
+
