@@ -5,8 +5,34 @@
     <description>A blog about technology, programming, and web development</description>
     <link>http://localhost:3000</link>
     <atom:link href="http://localhost:3000/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Sun, 16 Nov 2025 10:33:10 GMT</lastBuildDate>
+    <lastBuildDate>Wed, 26 Nov 2025 17:57:52 GMT</lastBuildDate>
     <language>en-US</language>
+    <item>
+      <title>Kafka와 LLM 서버 사이에 버퍼 존을 둔 AI 서버 설계기</title>
+      <description>Kafka와 LLM 서버 사이에 작은 버퍼 존을 두고 Gateway와 Buffer Worker를 나누어 설계한 이유, 그리고 이를 Kafka 토픽·메시지 스키마·docker-compose로 구체화해 가는 과정을 정리했다</description>
+      <link>http://localhost:3000/blog/2025/AI-api-server-temporary-dev</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/AI-api-server-temporary-dev</guid>
+      <pubDate>Thu, 20 Nov 2025 00:00:00 GMT</pubDate>
+      <category>Backend</category>
+      <category>Kafka</category>
+      <category>LLM</category>
+      <category>RAG</category>
+      <category>Gateway</category>
+      <category>백엔드아키텍처</category>
+    </item>
+    <item>
+      <title>네트워크 병목과 NAT 게이트웨이의 한계: 한 CS 학생의 속마음</title>
+      <description>프라이빗 서브넷과 퍼블릭 서브넷, NAT Gateway와 IGW가 등장하는 전형적인 VPC 그림을 보던 수업 시간. 모두가 보안을 이야기할 때, 내 눈에는 그 구조가 거대한 깔때기 실험처럼 보였다. 이 글은 그 순간 머릿속에서 떠오른 병목에 대한 질문과 직관을 그대로 옮긴 기록이다.</description>
+      <link>http://localhost:3000/blog/2025/nat-gateway-bottleneck-journal</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2025/nat-gateway-bottleneck-journal</guid>
+      <pubDate>Wed, 19 Nov 2025 00:00:00 GMT</pubDate>
+      <category>Network</category>
+      <category>NAT</category>
+      <category>클라우드네트워크</category>
+      <category>VPC</category>
+      <category>프라이빗서브넷</category>
+      <category>병목</category>
+    </item>
     <item>
       <title>제가 뇌를 리셋하게 만든 미래 기술 문서에서 발견한 6가지 깨달음</title>
       <description>미래 기술 문서들 속에서 발견한 6가지 통찰과 인간 역할의 재정의를 공유합니다.</description>
@@ -238,33 +264,6 @@
       <category>SDN</category>
       <category>NFV</category>
       <category>IPv6</category>
-    </item>
-    <item>
-      <title>ADSL 불빛과 CDN 랙 사이에서 보낸 2000년대의 밤</title>
-      <description>DSL 모뎀의 깜박임, 아카마이 캐시의 열기, 3G 기지국의 소음 속에서 상시 접속 시대를 맞이한 나의 기록</description>
-      <link>http://localhost:3000/blog/2025/broadband-cdn-transition-journal</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/broadband-cdn-transition-journal</guid>
-      <pubDate>Tue, 21 Oct 2025 00:00:00 GMT</pubDate>
-      <category>Network</category>
-      <category>광대역</category>
-      <category>CDN</category>
-      <category>3G</category>
-      <category>NAT</category>
-      <category>TLS</category>
-    </item>
-    <item>
-      <title>JVM 메모리 지도 들고 자바 OOP 문제를 풀어본 기록</title>
-      <description>정적 초기화 블록에서 시작해 super()로 끝나는 여섯 가지  문제들. 그 밤의 디버깅 노트를 그대로 옮겨 붙였습니다.</description>
-      <link>http://localhost:3000/blog/2025/java-oop-superchallenge</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/java-oop-superchallenge</guid>
-      <pubDate>Tue, 21 Oct 2025 00:00:00 GMT</pubDate>
-      <category>Java</category>
-      <category>Java</category>
-      <category>JVM 메모리</category>
-      <category>static</category>
-      <category>다형성</category>
-      <category>상속</category>
-      <category>instanceof</category>
     </item>
   </channel>
 </rss>

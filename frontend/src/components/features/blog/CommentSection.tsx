@@ -1,9 +1,11 @@
-  import * as React from 'react';
+import * as React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Globe2, Loader2, MessageCircle } from 'lucide-react';
+import { Globe2, Loader2, MessageCircle, Send, User } from 'lucide-react';
 import { getApiBaseUrl } from '@/utils/apiBase';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useTheme } from '@/contexts/ThemeContext';
+import { cn } from '@/lib/utils';
 
 // Load any archived comments bundled at build-time
 // Using a relative glob; keys may vary (relative vs absolute) depending on bundler.
@@ -36,6 +38,7 @@ function getArchivedFor(postId: string): ArchivedPayload | null {
 }
 
 export default function CommentSection({ postId }: { postId: string }) {
+  const { isTerminal } = useTheme();
   const archived = useMemo(() => getArchivedFor(postId), [postId]);
   const [comments, setComments] = useState<CommentItem[] | null>(
     archived?.comments ?? null
@@ -197,31 +200,79 @@ export default function CommentSection({ postId }: { postId: string }) {
 
   return (
     <section aria-label='Comments' className='space-y-6'>
-      <div className='rounded-[28px] border border-border/60 bg-card/70 p-4 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-[#111725]/80 sm:p-6'>
-        <div className='flex flex-wrap items-start justify-between gap-3 border-b border-border/60 pb-4 dark:border-white/10'>
+      <div className={cn(
+        "p-5 sm:p-6 shadow-sm backdrop-blur-sm transition-colors",
+        isTerminal
+          ? "rounded-lg border border-border bg-[hsl(var(--terminal-code-bg))]"
+          : "rounded-[28px] border border-border/40 bg-card/80 dark:border-white/10 dark:bg-[#111725]/80"
+      )}>
+        {/* Header */}
+        <div className={cn(
+          "flex flex-wrap items-start justify-between gap-3 pb-4",
+          isTerminal
+            ? "border-b border-border"
+            : "border-b border-border/40 dark:border-white/10"
+        )}>
           <div className='flex items-start gap-3'>
-            <span className='rounded-2xl bg-primary/10 p-2 text-primary dark:bg-primary/20'>
-              <MessageCircle className='h-5 w-5' />
+            <span className={cn(
+              "p-2.5 rounded-xl",
+              isTerminal
+                ? "bg-primary/20 text-primary"
+                : "bg-gradient-to-br from-primary/15 to-primary/5 text-primary dark:from-primary/20 dark:to-primary/10"
+            )}>
+              <MessageCircle className={cn(
+                "h-5 w-5",
+                isTerminal && "terminal-glow"
+              )} />
             </span>
             <div>
-              <h2 className='text-lg font-semibold text-foreground dark:text-white'>
-                Comments
+              <h2 className={cn(
+                "text-lg font-semibold",
+                isTerminal
+                  ? "font-mono text-primary terminal-glow"
+                  : "text-foreground dark:text-white"
+              )}>
+                {isTerminal ? ">_ Comments" : "Comments"}
               </h2>
-              <p className='text-sm text-muted-foreground dark:text-white/70'>
-                Leave a short reflection or follow-up question.
+              <p className={cn(
+                "text-sm",
+                isTerminal
+                  ? "font-mono text-muted-foreground"
+                  : "text-muted-foreground dark:text-white/60"
+              )}>
+                {isTerminal 
+                  ? "// Leave a short reflection or follow-up question"
+                  : "Leave a short reflection or follow-up question"}
               </p>
             </div>
           </div>
           {error && (
-            <span className='rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-600 dark:bg-red-500/10 dark:text-red-200'>
+            <span className={cn(
+              "rounded-full px-3 py-1 text-xs font-medium",
+              isTerminal
+                ? "bg-destructive/20 text-destructive border border-destructive/30"
+                : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-200"
+            )}>
               {error}
             </span>
           )}
         </div>
 
-        <div className='space-y-4 py-4'>
+        {/* Comments List */}
+        <div className='space-y-4 py-5'>
           {loading && (
-            <p className='text-sm text-muted-foreground'>Loading comments…</p>
+            <div className={cn(
+              "flex items-center gap-2 py-4",
+              isTerminal && "font-mono"
+            )}>
+              <Loader2 className={cn(
+                "h-4 w-4 animate-spin",
+                isTerminal && "text-primary"
+              )} />
+              <span className="text-sm text-muted-foreground">
+                {isTerminal ? "$ loading comments..." : "Loading comments..."}
+              </span>
+            </div>
           )}
 
           {comments && comments.length > 0 && (
@@ -229,17 +280,52 @@ export default function CommentSection({ postId }: { postId: string }) {
               {comments.map((c, idx) => (
                 <li
                   key={c.id || idx}
-                  className='rounded-2xl border border-border/50 bg-background/70 p-4 text-sm leading-relaxed shadow-sm dark:border-white/10 dark:bg-white/5'
+                  className={cn(
+                    "p-4 text-sm leading-relaxed transition-colors",
+                    isTerminal
+                      ? "rounded-lg border border-border bg-background/50 hover:border-primary/30"
+                      : "rounded-2xl border border-border/30 bg-background/60 shadow-sm hover:bg-background/80 dark:border-white/5 dark:bg-white/5 dark:hover:bg-white/8"
+                  )}
                 >
-                  <div className='mb-1 flex items-center justify-between text-[13px] font-semibold text-foreground dark:text-white'>
-                    <span>{c.author}</span>
+                  <div className='mb-2.5 flex items-center justify-between'>
+                    <div className='flex items-center gap-2'>
+                      <span className={cn(
+                        "flex items-center justify-center rounded-full w-7 h-7",
+                        isTerminal
+                          ? "bg-primary/20 text-primary"
+                          : "bg-gradient-to-br from-primary/20 to-primary/10"
+                      )}>
+                        <User className={cn(
+                          "h-3.5 w-3.5",
+                          isTerminal ? "text-primary" : "text-primary"
+                        )} />
+                      </span>
+                      <span className={cn(
+                        "font-semibold",
+                        isTerminal
+                          ? "font-mono text-primary text-sm"
+                          : "text-foreground dark:text-white text-[13px]"
+                      )}>
+                        {c.author}
+                      </span>
+                    </div>
                     {c.createdAt && (
-                      <span className='text-xs font-normal text-muted-foreground dark:text-white/60'>
+                      <span className={cn(
+                        "text-xs font-normal",
+                        isTerminal
+                          ? "font-mono text-muted-foreground"
+                          : "text-muted-foreground/70 dark:text-white/50"
+                      )}>
                         {new Date(c.createdAt).toLocaleDateString()}
                       </span>
                     )}
                   </div>
-                  <div className='prose prose-sm dark:prose-invert max-w-none leading-6'>
+                  <div className={cn(
+                    "prose prose-sm max-w-none leading-relaxed",
+                    isTerminal
+                      ? "font-mono text-foreground prose-p:text-foreground prose-strong:text-primary"
+                      : "dark:prose-invert prose-p:text-foreground/90 dark:prose-p:text-white/85"
+                  )}>
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {c.content}
                     </ReactMarkdown>
@@ -249,8 +335,14 @@ export default function CommentSection({ postId }: { postId: string }) {
                       href={c.website}
                       target='_blank'
                       rel='noreferrer'
-                      className='mt-2 inline-flex items-center text-xs text-primary hover:underline'
+                      className={cn(
+                        "mt-2.5 inline-flex items-center gap-1 text-xs hover:underline",
+                        isTerminal
+                          ? "text-primary hover:text-primary/80"
+                          : "text-primary/80 hover:text-primary"
+                      )}
                     >
+                      <Globe2 className="h-3 w-3" />
                       {c.website}
                     </a>
                   )}
@@ -259,18 +351,37 @@ export default function CommentSection({ postId }: { postId: string }) {
             </ul>
           )}
 
+          {/* Comment Form */}
           <form
             onSubmit={onSubmit}
-            className='grid gap-4 rounded-2xl border border-border/70 bg-background/60 p-4 shadow-inner dark:border-white/10 dark:bg-white/5 sm:p-5'
+            className={cn(
+              "grid gap-4 p-4 sm:p-5",
+              isTerminal
+                ? "rounded-lg border border-border bg-background/30"
+                : "rounded-2xl border border-border/40 bg-gradient-to-br from-background/60 to-background/40 shadow-inner dark:border-white/10 dark:from-white/5 dark:to-transparent"
+            )}
           >
-            <div className='grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-4'>
-              <label className='grid gap-1 text-sm text-muted-foreground' htmlFor='c-author'>
-                <span>Name</span>
+            <div className='grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-4'>
+              <label className='grid gap-1.5' htmlFor='c-author'>
+                <span className={cn(
+                  "text-sm font-medium",
+                  isTerminal
+                    ? "font-mono text-primary"
+                    : "text-foreground/80 dark:text-white/80"
+                )}>
+                  {isTerminal ? "$ name:" : "Name"}
+                </span>
                 <input
                   id='c-author'
-                  className='rounded-xl border border-border/60 bg-white/80 px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-white/10 dark:bg-[#101523] dark:text-white'
+                  className={cn(
+                    "px-3.5 py-2.5 text-sm outline-none transition-all",
+                    isTerminal
+                      ? "rounded-lg border border-border bg-[hsl(var(--terminal-code-bg))] font-mono text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/50"
+                      : "rounded-xl border border-border/50 bg-white/80 text-foreground shadow-sm placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-white/10 dark:bg-[#101523] dark:text-white"
+                  )}
                   value={author}
                   onChange={e => setAuthor(e.target.value)}
+                  placeholder={isTerminal ? "your_name" : "Your name"}
                   required
                 />
               </label>
@@ -285,19 +396,36 @@ export default function CommentSection({ postId }: { postId: string }) {
                   }
                 }}
                 aria-expanded={showWebsiteField}
-                className='inline-flex items-center justify-center rounded-2xl border border-dashed border-border/70 bg-transparent px-4 py-2 text-xs font-medium text-muted-foreground transition hover:border-primary hover:text-primary dark:border-white/20 dark:text-white/70'
+                className={cn(
+                  "inline-flex items-center justify-center px-4 py-2.5 text-xs font-medium transition-all self-end",
+                  isTerminal
+                    ? "rounded-lg border border-dashed border-border bg-transparent font-mono text-muted-foreground hover:border-primary hover:text-primary"
+                    : "rounded-xl border border-dashed border-border/50 bg-transparent text-muted-foreground hover:border-primary/50 hover:bg-primary/5 hover:text-primary dark:border-white/20 dark:text-white/60"
+                )}
               >
                 <Globe2 className='mr-1.5 h-4 w-4' />
                 {showWebsiteField ? 'Hide website' : 'Add website'}
               </button>
             </div>
             {showWebsiteField && (
-              <label className='grid gap-1 text-sm text-muted-foreground transition-all' htmlFor='c-website'>
-                <span className='sr-only'>Website (optional)</span>
+              <label className='grid gap-1.5 animate-in slide-in-from-top-2 duration-200' htmlFor='c-website'>
+                <span className={cn(
+                  "text-sm font-medium",
+                  isTerminal
+                    ? "font-mono text-primary"
+                    : "text-foreground/80 dark:text-white/80"
+                )}>
+                  {isTerminal ? "$ website:" : "Website"}
+                </span>
                 <input
                   id='c-website'
                   ref={websiteInputRef}
-                  className='rounded-xl border border-border/60 bg-white/80 px-3 py-2 text-sm shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-white/10 dark:bg-[#101523] dark:text-white'
+                  className={cn(
+                    "px-3.5 py-2.5 text-sm outline-none transition-all",
+                    isTerminal
+                      ? "rounded-lg border border-border bg-[hsl(var(--terminal-code-bg))] font-mono text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/50"
+                      : "rounded-xl border border-border/50 bg-white/80 text-foreground shadow-sm placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-white/10 dark:bg-[#101523] dark:text-white"
+                  )}
                   value={website}
                   onChange={e => setWebsite(e.target.value)}
                   placeholder='https://example.com'
@@ -309,39 +437,72 @@ export default function CommentSection({ postId }: { postId: string }) {
               <label htmlFor='c-hp'>Do not fill</label>
               <input id='c-hp' value={hp} onChange={e => setHp(e.target.value)} />
             </div>
-            <label className='grid gap-2 text-sm text-muted-foreground' htmlFor='c-content'>
-              <span>Comment</span>
+            <label className='grid gap-2' htmlFor='c-content'>
+              <span className={cn(
+                "text-sm font-medium",
+                isTerminal
+                  ? "font-mono text-primary"
+                  : "text-foreground/80 dark:text-white/80"
+              )}>
+                {isTerminal ? "$ comment:" : "Comment"}
+              </span>
               <div className='relative'>
                 <textarea
                   id='c-content'
-                  className='peer min-h-[140px] w-full rounded-2xl border border-border/60 bg-white/80 px-3 py-3 text-sm leading-6 shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-white/10 dark:bg-[#0d1220] dark:text-white'
+                  className={cn(
+                    "peer min-h-[120px] w-full px-3.5 py-3 text-sm leading-relaxed outline-none transition-all resize-none",
+                    isTerminal
+                      ? "rounded-lg border border-border bg-[hsl(var(--terminal-code-bg))] font-mono text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/50"
+                      : "rounded-2xl border border-border/50 bg-white/80 text-foreground shadow-sm placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-white/10 dark:bg-[#0d1220] dark:text-white"
+                  )}
                   value={content}
                   onChange={e => setContent(e.target.value)}
+                  placeholder={isTerminal ? "// write your thoughts..." : "Share your thoughts..."}
                   required
                 />
-                <span className='pointer-events-none absolute inset-x-3 top-2 text-xs text-muted-foreground/70 transition-opacity peer-focus:opacity-0 dark:text-white/50'>
-                  Markdown supported: **bold**, *italic*, `code`
+                <span className={cn(
+                  "pointer-events-none absolute right-3 bottom-3 text-[10px] transition-opacity peer-focus:opacity-0",
+                  isTerminal
+                    ? "font-mono text-muted-foreground/50"
+                    : "text-muted-foreground/50 dark:text-white/30"
+                )}>
+                  Markdown supported
                 </span>
               </div>
             </label>
             <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
               <button
                 type='submit'
-                className='inline-flex items-center justify-center rounded-2xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition hover:brightness-110 disabled:opacity-60'
+                className={cn(
+                  "inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold transition-all disabled:opacity-60",
+                  isTerminal
+                    ? "rounded-lg border border-primary bg-primary/20 font-mono text-primary hover:bg-primary/30 disabled:hover:bg-primary/20"
+                    : "rounded-xl bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:scale-[1.02] dark:shadow-primary/15"
+                )}
                 disabled={submitting}
               >
                 {submitting ? (
                   <>
-                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                    Sending…
+                    <Loader2 className='h-4 w-4 animate-spin' />
+                    {isTerminal ? "$ sending..." : "Sending..."}
                   </>
                 ) : (
-                  'Post Comment'
+                  <>
+                    <Send className="h-4 w-4" />
+                    {isTerminal ? "$ submit" : "Post Comment"}
+                  </>
                 )}
               </button>
               {archived && (
-                <span className='text-xs text-muted-foreground dark:text-white/60'>
-                  Archived comments are shown above; new ones will appear live.
+                <span className={cn(
+                  "text-xs",
+                  isTerminal
+                    ? "font-mono text-muted-foreground"
+                    : "text-muted-foreground dark:text-white/50"
+                )}>
+                  {isTerminal 
+                    ? "// archived comments shown; new ones appear live"
+                    : "Archived comments are shown above; new ones will appear live."}
                 </span>
               )}
             </div>

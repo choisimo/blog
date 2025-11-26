@@ -180,8 +180,8 @@ export function VisitedPostsMinimap({
         className={cn(
           'p-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:backdrop-blur-lg',
           isMobile
-            ? 'max-h-[62vh] rounded-t-[32px] border-x border-t border-border/60 shadow-[0_-18px_50px_rgba(15,23,42,0.18)]'
-            : 'h-full w-[400px] border-l border-border/40'
+            ? 'max-h-[75vh] rounded-t-[24px] border-x border-t border-border/60 shadow-[0_-18px_50px_rgba(15,23,42,0.18)]'
+            : 'h-full w-[420px] border-l border-border/40'
         )}
         aria-describedby={undefined}
         style={
@@ -190,20 +190,25 @@ export function VisitedPostsMinimap({
             : undefined
         }
       >
-        <SheetHeader className='sticky top-0 z-10 border-b border-border/60 bg-background/98 px-4 pb-3 pt-4'>
+        <SheetHeader className='sticky top-0 z-10 border-b border-border/60 bg-background/98 px-5 pb-4 pt-5'>
           {isMobile && (
-            <div className='mx-auto mb-3 h-1.5 w-12 rounded-full bg-muted-foreground/30' aria-hidden />
+            <div className='mx-auto mb-4 h-1.5 w-12 rounded-full bg-muted-foreground/30' aria-hidden />
           )}
           <div className='flex items-center justify-between gap-3'>
             <div className='flex-1'>
-              <div className='flex items-center gap-3 text-sm font-semibold'>
-                <Map className='h-4 w-4 text-muted-foreground' />
-                <div className='relative h-8 w-[120px]' aria-hidden>
+              <div className='flex items-center gap-3'>
+                <Map className='h-5 w-5 text-muted-foreground' />
+                <SheetTitle className='text-base font-semibold'>
+                  방문 기록
+                </SheetTitle>
+              </div>
+              <div className='flex items-center gap-2 mt-3'>
+                <div className='relative h-8 w-[100px]' aria-hidden>
                   {topStack.map((p, i) => (
                     <div
                       key={p.path}
                       className='absolute top-0 h-8 w-8 overflow-hidden rounded-full ring-2 ring-background shadow'
-                      style={{ left: i * 24 }}
+                      style={{ left: i * 20 }}
                       title={p.title}
                     >
                       {p.coverImage ? (
@@ -218,52 +223,49 @@ export function VisitedPostsMinimap({
                     </div>
                   ))}
                 </div>
-                <div className='flex items-center gap-1 text-[11px] ml-auto'>
-                  <button
-                    type='button'
-                    className={cn(
-                      'px-2 py-0.5 rounded-full border text-[11px]',
-                      view === 'list'
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'text-muted-foreground border-transparent hover:bg-muted'
-                    )}
-                    onClick={() => setView('list')}
-                  >
-                    리스트
-                  </button>
-                  <button
-                    type='button'
-                    className={cn(
-                      'px-2 py-0.5 rounded-full border text-[11px]',
-                      view === 'graph'
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'text-muted-foreground border-transparent hover:bg-muted'
-                    )}
-                    onClick={() => setView('graph')}
-                  >
-                    그래프
-                  </button>
-                </div>
+                <span className='text-xs text-muted-foreground ml-auto'>
+                  {items.length}개
+                </span>
               </div>
-              <p className='mt-2 text-[11px] uppercase tracking-[0.25em] text-muted-foreground'>
-                Recently visited
-              </p>
             </div>
-            <Button
-              variant='ghost'
-              size='sm'
-              onClick={clearAll}
-              aria-label='Clear history'
-            >
-              Clear
-            </Button>
+            <div className='flex items-center gap-2'>
+              <div className='flex items-center gap-1 text-xs bg-muted rounded-full p-0.5'>
+                <button
+                  type='button'
+                  className={cn(
+                    'px-3 py-1.5 rounded-full transition-colors',
+                    view === 'list'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-muted-foreground/10'
+                  )}
+                  onClick={() => setView('list')}
+                >
+                  리스트
+                </button>
+                <button
+                  type='button'
+                  className={cn(
+                    'px-3 py-1.5 rounded-full transition-colors',
+                    view === 'graph'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-muted-foreground/10'
+                  )}
+                  onClick={() => setView('graph')}
+                >
+                  그래프
+                </button>
+              </div>
+            </div>
           </div>
         </SheetHeader>
         {view === 'list' ? (
           <div
             ref={listContainerRef}
             tabIndex={0}
-            className='max-h-[calc(62vh-140px)] overflow-y-auto px-3 pb-6 pt-3 focus:outline-none sm:max-h-none'
+            className={cn(
+              'overflow-y-auto px-4 pb-8 pt-4 focus:outline-none',
+              isMobile ? 'max-h-[calc(75vh-160px)]' : 'flex-1'
+            )}
             onKeyDown={e => {
               if (e.key === 'ArrowDown') {
                 e.preventDefault();
@@ -282,33 +284,35 @@ export function VisitedPostsMinimap({
             role='region'
             aria-label='Visited posts list'
           >
-            <ul className='space-y-1'>
+            <ul className='space-y-2'>
               {items.map((p, idx) => (
                 <li key={p.path}>
                   <button
                     onClick={() => go(p)}
                     className={cn(
-                      'group flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring',
-                      activeIndex === idx && 'ring-2 ring-primary'
+                      'group flex w-full items-center gap-4 rounded-xl px-4 py-4 text-left transition-colors hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring',
+                      activeIndex === idx && 'ring-2 ring-primary bg-primary/5'
                     )}
                   >
-                    <div className='h-8 w-8 overflow-hidden rounded'>
+                    <div className='h-12 w-12 overflow-hidden rounded-lg shrink-0'>
                       {p.coverImage ? (
                         <img
                           src={p.coverImage}
                           alt=''
-                          className='h-8 w-8 object-cover'
+                          className='h-12 w-12 object-cover'
                         />
                       ) : (
-                        <FallbackAvatar title={p.title} />
+                        <div className='flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-primary/80 to-primary text-primary-foreground text-sm font-bold'>
+                          {(p.title || '?').charAt(0).toUpperCase()}
+                        </div>
                       )}
                     </div>
-                    <div className='min-w-0'>
+                    <div className='min-w-0 flex-1'>
                       <div className='text-sm font-medium leading-snug text-left group-hover:text-primary line-clamp-2'>
                         {p.title}
                       </div>
-                      <div className='flex items-center gap-1 text-xs text-muted-foreground'>
-                        <Clock className='h-3 w-3' />
+                      <div className='flex items-center gap-1.5 mt-1 text-xs text-muted-foreground'>
+                        <Clock className='h-3.5 w-3.5' />
                         <span>
                           {p.year}/{p.slug}
                         </span>
@@ -318,9 +322,23 @@ export function VisitedPostsMinimap({
                 </li>
               ))}
             </ul>
+            {/* 기록 지우기 버튼 */}
+            <div className='mt-6 pt-4 border-t'>
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={clearAll}
+                className='w-full h-11'
+              >
+                기록 지우기
+              </Button>
+            </div>
           </div>
         ) : (
-          <div className='max-h-[calc(62vh-140px)] overflow-y-auto px-3 pb-6 pt-3 text-xs space-y-2 sm:max-h-none'>
+          <div className={cn(
+            'overflow-y-auto px-4 pb-8 pt-4 space-y-3',
+            isMobile ? 'max-h-[calc(75vh-160px)]' : 'flex-1'
+          )}>
             {items.map(p => {
               const related = chatSessions.filter(s =>
                 s.articleUrl && s.articleUrl.endsWith(p.path)
@@ -329,23 +347,23 @@ export function VisitedPostsMinimap({
               return (
                 <div
                   key={p.path}
-                  className='rounded-md border bg-card/50 p-2 shadow-sm'
+                  className='rounded-xl border bg-card/50 p-4 shadow-sm'
                 >
                   <div className='text-sm font-semibold truncate'>{p.title}</div>
-                  <div className='text-[11px] text-muted-foreground mb-1'>
+                  <div className='text-xs text-muted-foreground mb-2'>
                     {p.year}/{p.slug}
                   </div>
-                  <ul className='mt-1 ml-1 space-y-1'>
+                  <ul className='mt-2 space-y-2'>
                     {related.map(s => {
                       const checked = selectedSessionIds.includes(s.id);
                       return (
                         <li
                           key={s.id}
-                          className='flex items-center gap-2 leading-snug'
+                          className='flex items-center gap-3 py-2 px-3 rounded-lg bg-muted/40'
                         >
                           <input
                             type='checkbox'
-                            className='h-3 w-3'
+                            className='h-4 w-4 rounded'
                             checked={checked}
                             onChange={() => {
                               setSelectedSessionIds(prev =>
@@ -355,14 +373,16 @@ export function VisitedPostsMinimap({
                               );
                             }}
                           />
-                          <span className='font-medium truncate'>
-                            {s.title || s.articleTitle || 'AI Chat 세션'}
-                          </span>
-                          {s.updatedAt && (
-                            <span className='ml-1 text-[10px] text-muted-foreground'>
-                              {new Date(s.updatedAt).toLocaleString()}
+                          <div className='min-w-0 flex-1'>
+                            <span className='text-sm font-medium truncate block'>
+                              {s.title || s.articleTitle || 'AI Chat 세션'}
                             </span>
-                          )}
+                            {s.updatedAt && (
+                              <span className='text-xs text-muted-foreground'>
+                                {new Date(s.updatedAt).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
                         </li>
                       );
                     })}
@@ -371,20 +391,20 @@ export function VisitedPostsMinimap({
               );
             })}
             {!chatSessions.length && (
-              <div className='text-[11px] text-muted-foreground px-2'>
-                아직 저장된 AI Chat 세션이 없습니다. 대화를 나누고 기록 저장을 켜면
-                여기에서 연결 관계를 볼 수 있어요.
+              <div className='text-sm text-muted-foreground px-2 py-8 text-center'>
+                아직 저장된 AI Chat 세션이 없습니다.<br/>
+                대화를 나누고 기록 저장을 켜면 여기에서 연결 관계를 볼 수 있어요.
               </div>
             )}
             {chatSessions.length > 0 && (
-              <div className='mt-1 flex items-center justify-between border-t pt-2 px-1 text-[11px]'>
-                <span className='text-muted-foreground'>
-                  선택된 세션: {selectedSessionIds.length}개
+              <div className='mt-4 flex items-center justify-between border-t pt-4 px-1'>
+                <span className='text-sm text-muted-foreground'>
+                  선택: {selectedSessionIds.length}개
                 </span>
                 <Button
                   type='button'
                   size='sm'
-                  className='h-7 px-2 text-[11px]'
+                  className='h-10 px-4'
                   disabled={!selectedSessionIds.length}
                   onClick={() => {
                     if (!selectedSessionIds.length) return;

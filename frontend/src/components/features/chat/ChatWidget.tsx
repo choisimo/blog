@@ -98,7 +98,7 @@ export default function ChatWidget(props: { onClose?: () => void }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [persistOptIn, setPersistOptIn] = useState<boolean>(false);
+  const [persistOptIn, setPersistOptIn] = useState<boolean>(true);
   const [sessionId, setSessionId] = useState<string>("");
   const [sessionKey, setSessionKey] = useState<string>(() => {
     if (typeof window === "undefined") return "";
@@ -150,7 +150,8 @@ export default function ChatWidget(props: { onClose?: () => void }) {
       typeof window !== "undefined"
         ? window.localStorage.getItem("ai_chat_persist_optin")
         : null;
-    setPersistOptIn(v === "1");
+    // 기본값은 ON (1), 명시적으로 끈 경우(0)만 OFF
+    setPersistOptIn(v !== "0");
   }, []);
 
   useEffect(() => {
@@ -527,49 +528,55 @@ export default function ChatWidget(props: { onClose?: () => void }) {
       <div
         className={cn(
           "fixed z-[10000] flex flex-col overflow-hidden border bg-background shadow-2xl transition-all",
+          // 모바일: 항상 전체화면
           isMobile
-            ? "inset-0 h-[100dvh] rounded-none safe-area"
+            ? "inset-0 h-[100dvh] rounded-none"
             : "bottom-20 left-1/2 w-[min(100%-24px,42rem)] max-h-[80vh] -translate-x-1/2 rounded-2xl",
-          isTerminal &&
-            "border-border bg-[hsl(var(--terminal-code-bg))] rounded-lg",
+          // 터미널 테마: PC에서는 라운드, 모바일에서는 전체화면
+          isTerminal && !isMobile && "border-border bg-[hsl(var(--terminal-code-bg))] rounded-lg",
+          isTerminal && isMobile && "border-0 bg-[hsl(var(--terminal-code-bg))]",
         )}
       >
-        {/* Terminal-style title bar */}
-        {isTerminal && (
-          <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border bg-[hsl(var(--terminal-titlebar))]">
-            <span className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-close))]" />
-            <span className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]" />
-            <span className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]" />
-            <span className="ml-3 font-mono text-xs text-muted-foreground">
-              ~/ai-chat
-            </span>
-          </div>
-        )}
-
+        {/* Header - 모바일 최적화 */}
         <div
           className={cn(
-            "flex items-start justify-between border-b bg-background/95 px-4 py-3",
-            isTerminal && "bg-transparent border-border",
+            "flex items-center justify-between border-b px-4 py-3 shrink-0",
+            isMobile && "px-4 py-3 safe-area-top",
+            isTerminal
+              ? "bg-[hsl(var(--terminal-titlebar))] border-border"
+              : "bg-background/95 backdrop-blur-sm",
           )}
         >
-          <div className="flex items-center gap-3">
+          {/* Left: Icon + Title */}
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            {/* Terminal window controls (PC only) */}
+            {isTerminal && !isMobile && (
+              <div className="flex items-center gap-1.5 mr-2">
+                <span className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-close))]" />
+                <span className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]" />
+                <span className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]" />
+              </div>
+            )}
             <div
               className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-full bg-primary/10",
+                "flex items-center justify-center rounded-full bg-primary/10 shrink-0",
+                isMobile ? "h-9 w-9" : "h-10 w-10",
                 isTerminal && "bg-primary/20 rounded-lg",
               )}
             >
               <Sparkles
                 className={cn(
-                  "h-5 w-5 text-primary",
+                  "text-primary",
+                  isMobile ? "h-4 w-4" : "h-5 w-5",
                   isTerminal && "terminal-glow",
                 )}
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <p
                 className={cn(
-                  "text-sm font-semibold",
+                  "font-semibold truncate",
+                  isMobile ? "text-sm" : "text-sm",
                   isTerminal && "font-mono text-primary",
                 )}
               >
@@ -577,18 +584,13 @@ export default function ChatWidget(props: { onClose?: () => void }) {
               </p>
               <p
                 className={cn(
-                  "text-xs text-muted-foreground",
+                  "text-xs text-muted-foreground truncate",
                   isTerminal && "font-mono",
                 )}
               >
                 {busy ? (
                   <span className="inline-flex items-center gap-1">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> 생성 중…
-                    {firstTokenMs != null && (
-                      <span className="ml-1 text-muted-foreground/70">
-                        첫 토큰 {firstTokenMs}ms
-                      </span>
-                    )}
+                    <Loader2 className="h-3 w-3 animate-spin" /> 생성 중…
                   </span>
                 ) : persistOptIn ? (
                   "기록 저장 ON"
@@ -598,28 +600,40 @@ export default function ChatWidget(props: { onClose?: () => void }) {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+
+          {/* Right: Actions */}
+          <div className="flex items-center gap-1 shrink-0">
+            {/* PC: 최근 대화 버튼 */}
             {!isMobile && (
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
-                className="hidden h-9 px-3 text-xs sm:inline-flex"
+                className={cn(
+                  "h-8 px-3 text-xs",
+                  isTerminal && "border-primary/30 text-primary hover:bg-primary/10",
+                )}
                 disabled={!sessions.length}
                 onClick={() => setShowSessions((v) => !v)}
               >
                 최근 대화
               </Button>
             )}
+            
+            {/* 옵션 메뉴 */}
             {isMobile ? (
               <Button
                 type="button"
                 size="icon"
                 variant="ghost"
                 aria-label="대화 옵션"
+                className={cn(
+                  "h-10 w-10",
+                  isTerminal && "text-primary hover:bg-primary/10",
+                )}
                 onClick={() => setShowActionSheet(true)}
               >
-                <MoreVertical className="h-4 w-4" />
+                <MoreVertical className="h-5 w-5" />
               </Button>
             ) : (
               <DropdownMenu>
@@ -629,6 +643,10 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                     size="icon"
                     variant="ghost"
                     aria-label="대화 옵션"
+                    className={cn(
+                      "h-9 w-9",
+                      isTerminal && "text-primary hover:bg-primary/10",
+                    )}
                   >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
@@ -656,67 +674,98 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
+            
+            {/* 닫기 버튼 */}
             {props.onClose && (
               <Button
                 type="button"
                 size="icon"
                 variant="ghost"
-                className="h-9 w-9"
+                className={cn(
+                  isMobile ? "h-10 w-10" : "h-9 w-9",
+                  isTerminal && "text-primary hover:bg-primary/10",
+                )}
                 aria-label="창 닫기"
                 onClick={props.onClose}
               >
-                <X className="h-4 w-4" />
+                <X className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
               </Button>
             )}
           </div>
         </div>
 
         {showSessions && sessions.length > 0 && (
-          <div className="border-b bg-muted/40">
-            <div className="px-3 pt-2 max-h-40 overflow-y-auto text-xs space-y-1">
+          <div className={cn(
+            "border-b shrink-0",
+            isTerminal ? "bg-[hsl(var(--terminal-code-bg))] border-border" : "bg-muted/40",
+          )}>
+            <div className={cn(
+              "px-4 pt-3 max-h-48 overflow-y-auto space-y-2",
+              isMobile && "px-4",
+            )}>
               {sessions.map((s) => {
                 const checked = selectedSessionIds.includes(s.id);
                 return (
                   <div
                     key={s.id}
-                    className="flex items-center gap-2 px-1 py-1 rounded hover:bg-muted"
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
+                      isTerminal
+                        ? "border border-primary/20 hover:border-primary/40 hover:bg-primary/5"
+                        : "border hover:bg-muted",
+                    )}
                   >
                     <input
                       type="checkbox"
-                      className="h-3 w-3"
+                      className={cn(
+                        "h-4 w-4 rounded",
+                        isTerminal && "accent-primary",
+                      )}
                       checked={checked}
                       onChange={() => toggleSessionSelected(s.id)}
                     />
                     <button
                       type="button"
-                      className="flex-1 text-left"
+                      className="flex-1 text-left min-w-0"
                       onClick={() => {
                         loadSession(s.id);
                         setShowSessions(false);
                       }}
                     >
-                      <div className="truncate font-medium">
+                      <div className={cn(
+                        "truncate font-medium text-sm",
+                        isTerminal && "font-mono text-foreground",
+                      )}>
                         {s.title || "제목 없음"}
                       </div>
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground truncate">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground truncate mt-0.5">
                         {s.articleTitle && (
-                          <span className="truncate">{s.articleTitle}</span>
+                          <span className="truncate max-w-[120px]">{s.articleTitle}</span>
                         )}
-                        <span>{new Date(s.updatedAt).toLocaleString()}</span>
+                        <span className="shrink-0">{new Date(s.updatedAt).toLocaleDateString()}</span>
                       </div>
                     </button>
                   </div>
                 );
               })}
             </div>
-            <div className="px-3 pb-2 pt-1 border-t flex items-center justify-between text-[11px]">
-              <span className="text-muted-foreground">
-                선택된 세션: {selectedSessionIds.length}개
+            <div className={cn(
+              "px-4 py-3 border-t flex items-center justify-between",
+              isTerminal && "border-border",
+            )}>
+              <span className={cn(
+                "text-xs text-muted-foreground",
+                isTerminal && "font-mono",
+              )}>
+                선택: {selectedSessionIds.length}개
               </span>
               <Button
                 type="button"
                 size="sm"
-                className="h-7 px-2 text-[11px]"
+                className={cn(
+                  "h-8 px-3 text-xs",
+                  isTerminal && "bg-primary/20 text-primary border border-primary/40 hover:bg-primary/30",
+                )}
                 disabled={!selectedSessionIds.length}
                 onClick={handleAggregateFromSelected}
               >
@@ -726,23 +775,24 @@ export default function ChatWidget(props: { onClose?: () => void }) {
           </div>
         )}
 
+        {/* Mode selector - 모바일 최적화 */}
         <div
           className={cn(
-            "flex items-center justify-between border-b px-4 py-2 text-[11px] text-muted-foreground",
-            isTerminal &&
-              "border-border font-mono bg-[hsl(var(--terminal-code-bg))]",
+            "flex items-center justify-between border-b px-4 py-2 shrink-0",
+            isTerminal
+              ? "border-border font-mono bg-[hsl(var(--terminal-code-bg))]"
+              : "bg-background/50",
           )}
         >
-          <span className="truncate">
+          <span className={cn(
+            "text-xs text-muted-foreground truncate max-w-[50%]",
+            isTerminal && "font-mono",
+          )}>
             {isTerminal ? (
               questionMode === "article" ? (
                 <>
                   <span className="text-primary/60">mode:</span>{" "}
-                  <span className="text-primary">article</span>{" "}
-                  <span className="text-muted-foreground/60">
-                    ({pageTitle.slice(0, 30)}
-                    {pageTitle.length > 30 ? "..." : ""})
-                  </span>
+                  <span className="text-primary">article</span>
                 </>
               ) : (
                 <>
@@ -751,9 +801,9 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                 </>
               )
             ) : questionMode === "article" ? (
-              `현재 글 '${pageTitle}' 기반`
+              `현재 글 기반`
             ) : (
-              "일반 대화 모드"
+              "일반 대화"
             )}
           </span>
           <div
@@ -767,7 +817,8 @@ export default function ChatWidget(props: { onClose?: () => void }) {
               type="button"
               variant={questionMode === "article" ? "secondary" : "ghost"}
               className={cn(
-                "h-6 px-2 text-[11px]",
+                "h-7 px-3 text-xs",
+                isMobile && "h-8 px-4",
                 isTerminal && "rounded-none font-mono",
                 isTerminal &&
                   questionMode === "article" &&
@@ -785,7 +836,8 @@ export default function ChatWidget(props: { onClose?: () => void }) {
               type="button"
               variant={questionMode === "general" ? "secondary" : "ghost"}
               className={cn(
-                "h-6 px-2 text-[11px]",
+                "h-7 px-3 text-xs",
+                isMobile && "h-8 px-4",
                 isTerminal && "rounded-none font-mono",
                 isTerminal &&
                   questionMode === "general" &&
@@ -801,20 +853,21 @@ export default function ChatWidget(props: { onClose?: () => void }) {
           </div>
         </div>
 
+        {/* Messages area - 개선된 스크롤 영역 */}
         <div
           ref={scrollRef}
           className={cn(
-            "flex-1 overflow-auto px-4 py-3 space-y-3",
-            isMobile ? "min-h-[40vh]" : "min-h-[140px] max-h-[46vh]",
-            isTerminal && "space-y-2 font-mono text-sm",
+            "flex-1 overflow-auto px-4 py-4 space-y-4",
+            isMobile && "px-4",
+            isTerminal && "space-y-3 font-mono text-sm",
           )}
         >
           {messages.length === 0 && (
             <div
               className={cn(
-                "space-y-3 rounded-2xl border border-dashed px-4 py-5 text-xs text-muted-foreground mb-4",
+                "space-y-4 rounded-2xl border border-dashed px-4 py-6 text-sm text-muted-foreground",
                 isTerminal &&
-                  "rounded-none border-primary/30 bg-[hsl(var(--terminal-code-bg))]",
+                  "rounded-lg border-primary/30 bg-[hsl(var(--terminal-code-bg))]",
               )}
             >
               {isTerminal ? (
@@ -822,23 +875,24 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                   <p className="font-mono text-primary/80">
                     <span className="text-primary">$</span> ./ai-chat --help
                   </p>
-                  <p className="font-mono text-muted-foreground text-[11px] leading-relaxed">
-                    USAGE: Type your question and press Enter to execute.
-                    <br />
-                    TIP: Select a quick command below to get started.
+                  <p className="font-mono text-muted-foreground text-xs leading-relaxed">
+                    질문을 입력하고 Enter를 눌러 실행하세요.
                   </p>
                 </>
               ) : (
-                <p>빠르게 시작하려면 아래 프롬프트를 눌러보세요.</p>
+                <p className="text-center">빠르게 시작하려면 아래 프롬프트를 눌러보세요.</p>
               )}
-              <div className="flex flex-wrap gap-2">
+              <div className={cn(
+                "flex flex-wrap gap-2",
+                isMobile && "flex-col",
+              )}>
                 {QUICK_PROMPTS.map((prompt) => (
                   <Button
-                    key={prompt}
                     size="sm"
                     variant="secondary"
                     className={cn(
-                      "h-8 text-xs",
+                      "text-xs justify-start",
+                      isMobile ? "h-12 px-4 w-full text-sm" : "h-10 px-4",
                       isTerminal &&
                         "rounded-none border border-primary/40 bg-transparent text-primary hover:bg-primary/20 hover:text-primary font-mono",
                     )}
@@ -862,21 +916,21 @@ export default function ChatWidget(props: { onClose?: () => void }) {
             // Terminal style rendering
             if (isTerminal) {
               return (
-                <div key={m.id} className="space-y-1">
+                <div key={m.id} className="space-y-2">
                   {isUser && (
                     <div className="flex items-start gap-2">
-                      <span className="text-primary font-bold select-none shrink-0">
+                      <span className="text-primary font-bold select-none shrink-0 text-sm">
                         user@blog:~$
                       </span>
-                      <span className="whitespace-pre-wrap text-foreground break-words">
+                      <span className="whitespace-pre-wrap text-foreground break-words text-sm">
                         {m.text}
                       </span>
                     </div>
                   )}
                   {isAssistant && (
                     <div className="pl-0 border-l-2 border-primary/30 ml-0">
-                      <div className="flex items-center gap-2 text-[11px] text-primary/70 mb-1 pl-3">
-                        <Terminal className="h-3 w-3" />
+                      <div className="flex items-center gap-2 text-xs text-primary/70 mb-2 pl-3">
+                        <Terminal className="h-3.5 w-3.5" />
                         <span>AI Response</span>
                         {!m.text.trim() && (
                           <span className="inline-flex items-center gap-1 text-muted-foreground">
@@ -885,7 +939,7 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                           </span>
                         )}
                       </div>
-                      <div className="pl-3 text-foreground/90">
+                      <div className="pl-3 text-foreground/90 text-sm">
                         {m.text.trim() ? (
                           <ChatMarkdown content={m.text} />
                         ) : (
@@ -893,9 +947,9 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                         )}
                       </div>
                       {Array.isArray(m.sources) && m.sources.length > 0 && (
-                        <div className="mt-2 pl-3 text-[11px]">
+                        <div className="mt-3 pl-3 text-xs">
                           <span className="text-primary/60"># Sources:</span>
-                          <ul className="mt-1 space-y-0.5">
+                          <ul className="mt-1 space-y-1">
                             {m.sources.map((s, i) => (
                               <li key={i} className="text-muted-foreground">
                                 <span className="text-primary/50">
@@ -919,21 +973,27 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                         </div>
                       )}
                       {Array.isArray(m.followups) && m.followups.length > 0 && (
-                        <div className="mt-2 pl-3">
-                          <span className="text-[11px] text-primary/60">
-                            # Related queries:
+                        <div className="mt-3 pl-3">
+                          <span className="text-xs text-primary/60">
+                            # 연관 질문:
                           </span>
-                          <div className="flex flex-wrap gap-1 mt-1">
+                          <div className={cn(
+                            "flex gap-2 mt-2",
+                            isMobile ? "flex-col" : "flex-wrap",
+                          )}>
                             {m.followups.map((q, i) => (
                               <button
                                 key={i}
-                                className="text-[11px] text-primary/80 hover:text-primary border border-primary/30 px-2 py-0.5 hover:bg-primary/10 transition-colors"
+                                className={cn(
+                                  "text-xs text-primary/80 hover:text-primary border border-primary/30 hover:bg-primary/10 transition-colors text-left",
+                                  isMobile ? "px-4 py-3" : "px-3 py-2",
+                                )}
                                 onClick={() => {
                                   setInput(q);
                                   focusInput();
                                 }}
                               >
-                                <ChevronRight className="inline h-3 w-3 -ml-0.5" />
+                                <ChevronRight className="inline h-3 w-3 -ml-0.5 mr-1" />
                                 {q}
                               </button>
                             ))}
@@ -947,12 +1007,12 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                       <span className="font-bold select-none shrink-0">
                         [ERROR]
                       </span>
-                      <span className="whitespace-pre-wrap break-words">
+                      <span className="whitespace-pre-wrap break-words text-sm">
                         {m.text}
                       </span>
                       {lastPromptRef.current && (
                         <button
-                          className="text-[11px] underline ml-2 hover:text-destructive/80"
+                          className="text-xs underline ml-2 hover:text-destructive/80"
                           onClick={() => {
                             setInput(lastPromptRef.current);
                             focusInput();
@@ -967,7 +1027,7 @@ export default function ChatWidget(props: { onClose?: () => void }) {
               );
             }
 
-            // Default style rendering
+            // Default style rendering - 모바일 최적화
             return (
               <div
                 key={m.id}
@@ -975,11 +1035,12 @@ export default function ChatWidget(props: { onClose?: () => void }) {
               >
                 <div
                   className={cn(
-                    "max-w-full text-sm leading-relaxed rounded-2xl px-3 py-2 sm:max-w-[85%]",
+                    "max-w-full text-sm leading-relaxed px-4 py-3",
+                    isMobile ? "max-w-[90%] rounded-2xl" : "max-w-[85%] rounded-2xl",
                     isUser &&
-                      "bg-primary text-primary-foreground rounded-br-sm",
+                      "bg-primary text-primary-foreground rounded-br-md",
                     isAssistant &&
-                      "bg-secondary text-secondary-foreground rounded-bl-sm",
+                      "bg-secondary text-secondary-foreground rounded-bl-md",
                     isSystem && "bg-destructive/10 text-destructive",
                   )}
                 >
@@ -987,8 +1048,8 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                     m.text.trim() ? (
                       <ChatMarkdown content={m.text} />
                     ) : (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
                         답변을 준비하고 있어요…
                       </div>
                     )
@@ -999,16 +1060,16 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                   {isAssistant &&
                     Array.isArray(m.sources) &&
                     m.sources.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        <div className="text-[11px] text-muted-foreground">
+                      <div className="mt-3 space-y-1.5">
+                        <div className="text-xs text-muted-foreground font-medium">
                           참고한 출처
                         </div>
-                        <ul className="text-xs list-disc pl-4 space-y-1">
+                        <ul className="text-sm list-disc pl-4 space-y-1">
                           {m.sources.map((s, i) => (
                             <li key={i}>
                               {s.url ? (
                                 <a
-                                  className="underline"
+                                  className="underline text-primary"
                                   href={s.url}
                                   target="_blank"
                                   rel="noreferrer"
@@ -1027,17 +1088,23 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                   {isAssistant &&
                     Array.isArray(m.followups) &&
                     m.followups.length > 0 && (
-                      <div className="mt-2">
-                        <div className="text-[11px] text-muted-foreground mb-1">
+                      <div className="mt-3">
+                        <div className="text-xs text-muted-foreground font-medium mb-2">
                           연관 질문
                         </div>
-                        <div className="flex flex-wrap gap-1">
+                        <div className={cn(
+                          "flex gap-2",
+                          isMobile ? "flex-col" : "flex-wrap",
+                        )}>
                           {m.followups.map((q, i) => (
                             <Button
                               key={i}
                               size="sm"
                               variant="secondary"
-                              className="h-7 text-xs px-2"
+                              className={cn(
+                                "text-xs justify-start",
+                                isMobile ? "h-12 px-4 w-full text-sm" : "h-10 px-4",
+                              )}
                               onClick={() => {
                                 setInput(q);
                                 focusInput();
@@ -1051,11 +1118,11 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                     )}
 
                   {isSystem && lastPromptRef.current && (
-                    <div className="mt-2">
+                    <div className="mt-3">
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-7 text-xs px-2"
+                        className="h-9 text-sm px-3"
                         onClick={() => {
                           setInput(lastPromptRef.current);
                           focusInput();
@@ -1074,75 +1141,72 @@ export default function ChatWidget(props: { onClose?: () => void }) {
         {persistOptIn && summary && (
           <div
             className={cn(
-              "px-4 py-1 border-t text-[11px] text-muted-foreground truncate",
+              "px-4 py-2 border-t text-xs text-muted-foreground truncate shrink-0",
               isTerminal &&
                 "font-mono border-border bg-[hsl(var(--terminal-code-bg))]",
             )}
           >
             {isTerminal ? (
               <span>
-                <span className="text-primary/60"># Last output:</span>{" "}
+                <span className="text-primary/60"># Last:</span>{" "}
                 {summary}
               </span>
             ) : (
-              <>지난 대화 요약: {summary}</>
+              <>요약: {summary}</>
             )}
           </div>
         )}
 
+        {/* Input area - 대폭 개선된 모바일 UI */}
         <div
           className={cn(
-            "border-t bg-background/95 px-3 py-3 mt-3 space-y-3",
-            isMobile && "pb-[calc(0.75rem+env(safe-area-inset-bottom))]",
-            isTerminal && "bg-transparent border-border mt-0 py-2",
+            "border-t px-4 py-4 shrink-0",
+            isMobile && "pb-[calc(1rem+env(safe-area-inset-bottom))]",
+            isTerminal ? "bg-[hsl(var(--terminal-code-bg))] border-border" : "bg-background",
           )}
         >
+          {/* 새 대화 버튼 */}
           <div
             className={cn(
-              "flex items-center justify-between gap-3 px-1 text-[11px] text-muted-foreground sm:px-3",
+              "flex items-center justify-between mb-3",
               isTerminal && "font-mono",
             )}
           >
-            <div className="flex items-center gap-1 text-[11px] text-muted-foreground/80">
-              {isTerminal ? (
-                <span className="text-primary/60">
-                  # Type 'clear' or click below to start new session
-                </span>
-              ) : (
-                <>
-                  <Info className="h-3.5 w-3.5" />
-                  <span className="leading-tight">
-                    새 주제를 시작할 땐 새 대화를 눌러주세요.
-                  </span>
-                </>
-              )}
-            </div>
+            <span className={cn(
+              "text-xs text-muted-foreground",
+              isTerminal && "text-primary/60",
+            )}>
+              {isTerminal ? "# 새 주제 시작" : "새 주제를 시작할 땐"}
+            </span>
             <Button
               onClick={clearAll}
               variant="ghost"
               size="sm"
               className={cn(
-                "h-7 px-2 text-[11px]",
+                "h-8 px-3 text-xs",
                 isTerminal &&
-                  "font-mono text-primary/80 hover:text-primary hover:bg-primary/10",
+                  "font-mono text-primary/80 hover:text-primary hover:bg-primary/10 border border-primary/30",
               )}
             >
-              {isTerminal ? "clear" : "새 대화"}
+              {isTerminal ? "$ clear" : "새 대화"}
             </Button>
           </div>
+
+          {/* 첨부 이미지 미리보기 */}
           {attachedImage && (
             <div
               className={cn(
-                "flex items-center justify-between gap-3 rounded-xl border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground",
-                isTerminal &&
-                  "rounded-none border-primary/30 bg-[hsl(var(--terminal-code-bg))] font-mono",
+                "flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 mb-3",
+                isTerminal
+                  ? "rounded-lg border-primary/30 bg-[hsl(var(--terminal-code-bg))] font-mono"
+                  : "bg-muted/30",
               )}
             >
-              <span className="inline-flex items-center gap-2 truncate">
+              <span className="inline-flex items-center gap-3 truncate min-w-0">
                 <div
                   className={cn(
-                    "h-9 w-9 flex-shrink-0 overflow-hidden rounded bg-muted",
-                    isTerminal && "rounded-none border border-primary/20",
+                    "h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg bg-muted",
+                    isTerminal && "rounded border border-primary/20",
                   )}
                 >
                   {attachedPreviewUrl ? (
@@ -1152,58 +1216,60 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <ImageIcon className="h-4 w-4 mx-auto my-auto" />
+                    <ImageIcon className="h-5 w-5 mx-auto my-auto text-muted-foreground" />
                   )}
                 </div>
                 <span className="inline-flex min-w-0 flex-col">
-                  <span className="inline-flex items-center gap-1 truncate">
-                    {isTerminal ? (
-                      <span className="text-primary/60">[attached]</span>
-                    ) : (
-                      <ImageIcon className="h-3 w-3" />
-                    )}
+                  <span className="inline-flex items-center gap-1 truncate text-sm">
+                    {isTerminal && <span className="text-primary/60">[img]</span>}
                     <span className="truncate">{attachedImage.name}</span>
                   </span>
-                  <span className="text-[10px] opacity-70">
+                  <span className="text-xs text-muted-foreground">
                     {Math.max(1, Math.round(attachedImage.size / 1024))}KB
                   </span>
                 </span>
               </span>
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant="ghost"
                 className={cn(
-                  "text-[11px] underline",
-                  isTerminal &&
-                    "text-destructive/80 hover:text-destructive no-underline",
+                  "h-8 px-2 text-xs shrink-0",
+                  isTerminal && "text-destructive hover:bg-destructive/10",
                 )}
                 onClick={() => setAttachedImage(null)}
               >
                 {isTerminal ? "[x]" : "제거"}
-              </button>
+              </Button>
             </div>
           )}
 
-          {/* Terminal-style input area */}
+          {/* Terminal-style input */}
           {isTerminal ? (
-            <div className="bg-[hsl(var(--terminal-code-bg))] border border-border px-3 py-2">
+            <div className="bg-[hsl(var(--terminal-code-bg))] border border-border rounded-lg px-3 py-3">
               <div className="flex items-end gap-2">
-                <span className="text-primary font-mono font-bold select-none shrink-0 py-2">
-                  user@blog:~$
-                </span>
+                {!isMobile && (
+                  <span className="text-primary font-mono font-bold select-none shrink-0 py-2 text-sm">
+                    $
+                  </span>
+                )}
                 <Textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={onKeyDown}
-                  rows={1}
+                  rows={isMobile ? 2 : 1}
                   placeholder={
                     questionMode === "article"
-                      ? "query --context article"
-                      : "query --mode general"
+                      ? "현재 글에 대해 질문하세요..."
+                      : "무엇이든 물어보세요..."
                   }
                   ref={textareaRef}
-                  className="flex-1 resize-none border-0 bg-transparent px-0 py-2 text-sm font-mono text-foreground min-h-[36px] focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50"
+                  className={cn(
+                    "flex-1 resize-none border-0 bg-transparent px-0 py-2 font-mono text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50",
+                    isMobile ? "text-base min-h-[56px]" : "text-sm min-h-[40px]",
+                  )}
                 />
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -1219,58 +1285,69 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                     type="button"
                     size="icon"
                     variant="ghost"
-                    className="h-9 w-9 rounded-none border border-primary/30 text-primary/70 hover:text-primary hover:bg-primary/10 hover:border-primary/50"
+                    className={cn(
+                      "rounded-lg border border-primary/30 text-primary/70 hover:text-primary hover:bg-primary/10 hover:border-primary/50",
+                      isMobile ? "h-11 w-11" : "h-10 w-10",
+                    )}
                     onClick={() => fileInputRef.current?.click()}
                     aria-label="이미지 첨부"
                   >
-                    <ImageIcon className="h-4 w-4" />
+                    <ImageIcon className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
                   </Button>
                   {busy ? (
                     <Button
                       onClick={stop}
                       size="icon"
                       variant="ghost"
-                      className="h-9 w-9 rounded-none border border-destructive/50 text-destructive hover:bg-destructive/10"
+                      className={cn(
+                        "rounded-lg border border-destructive/50 text-destructive hover:bg-destructive/10",
+                        isMobile ? "h-11 w-11" : "h-10 w-10",
+                      )}
                     >
-                      <Square className="h-4 w-4" />
+                      <Square className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
                     </Button>
                   ) : (
                     <Button
                       onClick={send}
                       disabled={!canSend}
                       size="icon"
-                      className="h-9 w-9 rounded-none border border-primary bg-primary/20 text-primary hover:bg-primary/30 disabled:opacity-30"
+                      className={cn(
+                        "rounded-lg border border-primary bg-primary/20 text-primary hover:bg-primary/30 disabled:opacity-30",
+                        isMobile ? "h-11 w-11" : "h-10 w-10",
+                      )}
                     >
-                      <ChevronRight className="h-4 w-4" />
+                      <Send className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
                     </Button>
                   )}
                 </div>
               </div>
-              {busy && (
-                <div className="flex items-center gap-2 mt-2 text-[11px] font-mono text-primary/70">
+              {busy && firstTokenMs != null && (
+                <div className="flex items-center gap-2 mt-2 text-xs font-mono text-primary/70">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  <span>Executing query...</span>
-                  {firstTokenMs != null && (
-                    <span className="text-muted-foreground">
-                      (first token: {firstTokenMs}ms)
-                    </span>
-                  )}
+                  <span>응답 중... (첫 토큰: {firstTokenMs}ms)</span>
                 </div>
               )}
             </div>
           ) : (
-            <div className="rounded-3xl border border-border bg-muted/60 px-3 py-2 shadow-inner sm:px-4 sm:py-3">
-              <div className="flex items-end gap-2">
+            /* Default style input - 개선된 모바일 UI */
+            <div className={cn(
+              "rounded-2xl border border-border bg-muted/40 px-4 py-3 shadow-sm",
+              isMobile && "rounded-xl",
+            )}>
+              <div className="flex items-end gap-3">
                 <Textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={onKeyDown}
-                  rows={2}
+                  rows={isMobile ? 2 : 2}
                   placeholder={placeholder}
                   ref={textareaRef}
-                  className="flex-1 resize-none border-0 bg-transparent px-0 py-2 text-sm sm:text-base min-h-[52px] focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className={cn(
+                    "flex-1 resize-none border-0 bg-transparent px-0 py-2 focus-visible:ring-0 focus-visible:ring-offset-0",
+                    isMobile ? "text-base min-h-[56px]" : "text-sm min-h-[52px]",
+                  )}
                 />
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -1286,29 +1363,38 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                     type="button"
                     size="icon"
                     variant="ghost"
-                    className="h-11 w-11 rounded-2xl border border-dashed border-muted-foreground/50 text-muted-foreground hover:border-muted-foreground"
+                    className={cn(
+                      "rounded-xl border border-dashed border-muted-foreground/40 text-muted-foreground hover:border-muted-foreground hover:text-foreground",
+                      isMobile ? "h-12 w-12" : "h-11 w-11",
+                    )}
                     onClick={() => fileInputRef.current?.click()}
                     aria-label="이미지 첨부"
                   >
-                    <ImageIcon className="h-4 w-4" />
+                    <ImageIcon className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
                   </Button>
                   {busy ? (
                     <Button
                       onClick={stop}
                       size="icon"
                       variant="secondary"
-                      className="h-12 w-12 rounded-2xl"
+                      className={cn(
+                        "rounded-xl",
+                        isMobile ? "h-12 w-12" : "h-11 w-11",
+                      )}
                     >
-                      <Square className="h-4 w-4" />
+                      <Square className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
                     </Button>
                   ) : (
                     <Button
                       onClick={send}
                       disabled={!canSend}
                       size="icon"
-                      className="h-12 w-12 rounded-2xl shadow-lg"
+                      className={cn(
+                        "rounded-xl shadow-lg",
+                        isMobile ? "h-12 w-12" : "h-11 w-11",
+                      )}
                     >
-                      <Send className="h-4 w-4" />
+                      <Send className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
                     </Button>
                   )}
                 </div>
@@ -1365,20 +1451,33 @@ export default function ChatWidget(props: { onClose?: () => void }) {
       <Sheet open={showActionSheet} onOpenChange={setShowActionSheet}>
         <SheetContent
           side="bottom"
-          className="h-auto max-h-[80vh] rounded-t-3xl px-6 pb-6 pt-4"
+          className={cn(
+            "h-auto max-h-[85vh] rounded-t-3xl px-6 pb-8 pt-4",
+            isTerminal && "rounded-t-xl bg-[hsl(var(--terminal-code-bg))] border-primary/30",
+          )}
           aria-describedby={undefined}
         >
-          <SheetHeader className="text-left">
-            <SheetTitle className="text-base">대화 옵션</SheetTitle>
-            <SheetDescription>
-              최근 대화 불러오기, 이미지 메모 보기 등 추가 기능을 사용할 수
-              있어요.
+          <SheetHeader className="text-left pb-4">
+            <SheetTitle className={cn(
+              "text-lg",
+              isTerminal && "font-mono text-primary",
+            )}>
+              {isTerminal ? ">_ 대화 옵션" : "대화 옵션"}
+            </SheetTitle>
+            <SheetDescription className={isTerminal ? "font-mono" : ""}>
+              대화 관리 및 설정
             </SheetDescription>
           </SheetHeader>
-          <div className="mt-4 space-y-3 text-sm">
+          <div className="space-y-3">
             <button
               type="button"
-              className="flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left"
+              className={cn(
+                "flex w-full items-center justify-between rounded-2xl border px-5 py-4 text-left transition-colors",
+                isTerminal
+                  ? "rounded-lg border-primary/30 hover:bg-primary/10 font-mono"
+                  : "hover:bg-muted",
+                !sessions.length && "opacity-50 cursor-not-allowed",
+              )}
               disabled={!sessions.length}
               onClick={() =>
                 runMobileAction(
@@ -1386,14 +1485,23 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                 )
               }
             >
-              <span>최근 대화 보기</span>
-              <span className="text-[11px] text-muted-foreground">
-                총 {sessions.length}개
+              <span className="text-base">최근 대화 보기</span>
+              <span className={cn(
+                "text-sm",
+                isTerminal ? "text-primary/60" : "text-muted-foreground",
+              )}>
+                {sessions.length}개
               </span>
             </button>
             <button
               type="button"
-              className="flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left"
+              className={cn(
+                "flex w-full items-center justify-between rounded-2xl border px-5 py-4 text-left transition-colors",
+                isTerminal
+                  ? "rounded-lg border-primary/30 hover:bg-primary/10 font-mono"
+                  : "hover:bg-muted",
+                !uploadedImages.length && "opacity-50 cursor-not-allowed",
+              )}
               disabled={!uploadedImages.length}
               onClick={() =>
                 runMobileAction(
@@ -1401,24 +1509,49 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                 )
               }
             >
-              <span>이미지 메모 보기</span>
-              <span className="text-[11px] text-muted-foreground">
-                최근 {uploadedImages.length}개
+              <span className="text-base">이미지 메모 보기</span>
+              <span className={cn(
+                "text-sm",
+                isTerminal ? "text-primary/60" : "text-muted-foreground",
+              )}>
+                {uploadedImages.length}개
               </span>
             </button>
             <button
               type="button"
-              className="flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left"
+              className={cn(
+                "flex w-full items-center justify-between rounded-2xl border px-5 py-4 text-left transition-colors",
+                isTerminal
+                  ? "rounded-lg border-primary/30 hover:bg-primary/10 font-mono"
+                  : "hover:bg-muted",
+              )}
               onClick={() => runMobileAction(togglePersistStorage)}
             >
-              <span>{persistOptIn ? "기록 저장 끄기" : "기록 저장 켜기"}</span>
+              <span className="text-base">
+                {persistOptIn ? "기록 저장 끄기" : "기록 저장 켜기"}
+              </span>
+              <span className={cn(
+                "text-sm px-2 py-0.5 rounded-full",
+                persistOptIn
+                  ? isTerminal
+                    ? "bg-primary/20 text-primary"
+                    : "bg-primary/10 text-primary"
+                  : "bg-muted text-muted-foreground",
+              )}>
+                {persistOptIn ? "ON" : "OFF"}
+              </span>
             </button>
             <button
               type="button"
-              className="flex w-full items-center justify-between rounded-2xl border border-destructive/40 px-4 py-3 text-left text-destructive"
+              className={cn(
+                "flex w-full items-center justify-between rounded-2xl border px-5 py-4 text-left transition-colors",
+                isTerminal
+                  ? "rounded-lg border-destructive/40 text-destructive hover:bg-destructive/10 font-mono"
+                  : "border-destructive/40 text-destructive hover:bg-destructive/5",
+              )}
               onClick={() => runMobileAction(clearAll)}
             >
-              <span>대화 초기화</span>
+              <span className="text-base">대화 초기화</span>
             </button>
           </div>
         </SheetContent>
