@@ -145,45 +145,61 @@ export default function CommentInputModal({
       aria-labelledby="comment-modal-title"
     >
       {/* Header - Vim/Nano style */}
+      {/* Header - Vim/Nano style */}
       <header
         className={cn(
-          "flex items-center justify-between px-4 py-3 shrink-0",
+          "flex items-center justify-between px-4 py-2 shrink-0",
           isTerminal
             ? "bg-primary/20 border-b border-primary/30"
-            : "bg-primary/10 border-b border-border"
+            : "bg-card border-b border-border"
         )}
       >
-        <div className="flex items-center gap-3">
-          <span
-            id="comment-modal-title"
+        <span
+          id="comment-modal-title"
+          className={cn(
+            "text-sm font-bold tracking-wide",
+            isTerminal
+              ? "font-mono text-primary terminal-glow"
+              : "text-foreground"
+          )}
+        >
+          {isTerminal ? "-- INSERT --" : "New Comment"}
+        </span>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
             className={cn(
-              "text-sm font-bold tracking-wide",
+              "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
               isTerminal
-                ? "font-mono text-primary terminal-glow"
-                : "text-primary"
+                ? "font-mono border border-border text-muted-foreground hover:border-primary hover:text-primary disabled:opacity-50"
+                : "border border-border text-muted-foreground hover:bg-muted disabled:opacity-50"
             )}
           >
-            {isTerminal ? "-- INSERT MODE --" : "New Comment"}
-          </span>
-          {isTerminal && (
-            <span className="text-xs font-mono text-muted-foreground hidden sm:inline">
-              [ESC to cancel, Ctrl+Enter to submit]
-            </span>
-          )}
+            {isTerminal ? ":q!" : "Cancel"}
+          </button>
+          <button
+            type="submit"
+            form="comment-form"
+            disabled={submitting || !author.trim() || !content.trim()}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all disabled:opacity-50",
+              isTerminal
+                ? "font-mono border border-primary bg-primary/20 text-primary hover:bg-primary/30 disabled:hover:bg-primary/20"
+                : "bg-primary text-primary-foreground hover:bg-primary/90"
+            )}
+          >
+            {submitting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Send className="h-3.5 w-3.5" />
+            )}
+            {isTerminal ? ":wq" : "Submit"}
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className={cn(
-            "p-2 rounded-lg transition-colors",
-            isTerminal
-              ? "text-muted-foreground hover:text-primary hover:bg-primary/10"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted"
-          )}
-          aria-label="Close modal"
-        >
-          <X className="h-5 w-5" />
-        </button>
       </header>
 
       {/* Form Content */}
@@ -315,67 +331,28 @@ export default function CommentInputModal({
           </div>
         </div>
 
-        {/* Footer - Submit area */}
+        {/* Footer - explanatory text */}
         <footer
           className={cn(
-            "shrink-0 px-4 py-3 border-t",
+            "shrink-0 px-4 py-2 border-t",
             isTerminal
               ? "bg-[hsl(var(--terminal-code-bg))] border-border"
               : "bg-muted/30 border-border"
           )}
         >
-          <div className="flex items-center justify-between gap-3">
-            <span
-              className={cn(
-                "text-xs hidden sm:inline",
-                isTerminal
-                  ? "font-mono text-muted-foreground"
-                  : "text-muted-foreground"
-              )}
-            >
-              {isTerminal
-                ? "// :wq to submit, :q! to cancel"
-                : "Markdown formatting supported"
-              }
-            </span>
-            <div className="flex items-center gap-2 ml-auto">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={submitting}
-                className={cn(
-                  "px-4 py-2.5 text-sm font-medium rounded-lg transition-colors",
-                  isTerminal
-                    ? "font-mono border border-border text-muted-foreground hover:border-primary hover:text-primary disabled:opacity-50"
-                    : "border border-border text-muted-foreground hover:bg-muted disabled:opacity-50"
-                )}
-              >
-                {isTerminal ? "[ :q! ]" : "Cancel"}
-              </button>
-              <button
-                type="submit"
-                disabled={submitting || !author.trim() || !content.trim()}
-                className={cn(
-                  "inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg transition-all disabled:opacity-50",
-                  isTerminal
-                    ? "font-mono border border-primary bg-primary/20 text-primary hover:bg-primary/30 disabled:hover:bg-primary/20"
-                    : "bg-primary text-primary-foreground hover:bg-primary/90"
-                )}
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    {isTerminal ? "sending..." : "Sending..."}
-                  </>
-                ) : (
-                  <>
-                    <Send className="h-4 w-4" />
-                    {isTerminal ? "[ :wq ]" : "Submit"}
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+          <span
+            className={cn(
+              "text-xs text-center block",
+              isTerminal
+                ? "font-mono text-muted-foreground"
+                : "text-muted-foreground"
+            )}
+          >
+            {isTerminal
+              ? "[ESC to cancel, Ctrl+Enter to submit]"
+              : "Styling with Markdown is supported."
+            }
+          </span>
         </footer>
       </form>
     </div>

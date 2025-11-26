@@ -299,6 +299,7 @@ const Blog = () => {
                   to={`/blog/${featuredPost.year}/${featuredPost.slug}`}
                   className='block space-y-3'
                   state={{ from: { pathname: location.pathname, search: location.search } }}
+                  data-testid='post-link'
                 >
                   <h2 className='text-2xl font-semibold leading-tight text-foreground dark:text-white'>
                     {featuredPost.title}
@@ -316,6 +317,7 @@ const Blog = () => {
                     to={`/blog/${post.year}/${post.slug}`}
                     className='flex gap-4 rounded-2xl border border-border/40 bg-white p-4 shadow-soft dark:border-white/5 dark:bg-[#1a1f2a] dark:text-white'
                     state={{ from: { pathname: location.pathname, search: location.search } }}
+                    data-testid='post-link'
                   >
                     <div className='h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl bg-muted dark:bg-white/10'>
                       {post.coverImage ? (
@@ -371,6 +373,7 @@ const Blog = () => {
                   to={`/blog/${post.year}/${post.slug}`}
                   className='flex gap-4 rounded-2xl border border-border/40 bg-white p-4 shadow-soft dark:border-white/5 dark:bg-[#181d27] dark:text-white'
                   state={{ from: { pathname: location.pathname, search: location.search } }}
+                  data-testid='post-link'
                 >
                   <div className='h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-muted dark:bg-white/10'>
                     {post.coverImage ? (

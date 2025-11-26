@@ -536,6 +536,31 @@ export default function FloatingActionBar() {
   
   // Shell Commander state (for terminal theme mobile)
   const [shellOpen, setShellOpen] = useState(false);
+
+  // Add viewport height management for mobile keyboard
+  const [viewportHeight, setViewportHeight] = useState('100dvh');
+  useEffect(() => {
+    if (!isMobile || !shellOpen) {
+      document.body.style.overflow = '';
+      return;
+    };
+
+    const handleResize = () => {
+      const vh = window.visualViewport?.height || window.innerHeight;
+      setViewportHeight(`${vh}px`);
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('resize', handleResize);
+    window.visualViewport?.addEventListener('resize', handleResize);
+    handleResize();
+
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('resize', handleResize);
+      window.visualViewport?.removeEventListener('resize', handleResize);
+    };
+  }, [isMobile, shellOpen]);
   const [shellInput, setShellInput] = useState("");
   const [shellOutput, setShellOutput] = useState<string | null>(null);
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
@@ -584,6 +609,13 @@ export default function FloatingActionBar() {
     }
     return () => mo?.disconnect();
   }, [enabled, aiMemoEl]);
+
+  useEffect(() => {
+    if (aiMemoEl) {
+      const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary');
+      aiMemoEl.style.setProperty('--primary-color', primaryColor);
+    }
+  }, [aiMemoEl, isTerminal]);
 
   // Allow memo panel to function normally; do not force-close when FAB is enabled
   // We still hide only the legacy launchers via hideLegacyLaunchers()
@@ -1016,47 +1048,21 @@ export default function FloatingActionBar() {
           {/* Terminal style dock */}
           {isTerminal ? (
             isMobile ? (
-              // 모바일 터미널: 쉘 프롬프트 커맨더
-              <div className="flex w-full items-center gap-2 bg-[hsl(var(--terminal-code-bg))] border-t border-primary/20 px-3 py-2">
-                {shellOpen ? (
-                  // 확장된 프롬프트 입력창
-                  <div className="flex-1 flex items-center gap-1.5">
-                    <span className="text-primary/70 font-mono text-xs shrink-0">
-                      {vfs.currentPath === '/' ? '~' : vfs.currentPath.replace('/blog/', '~/')}
-                    </span>
-                    <span className="text-primary font-mono text-sm font-bold shrink-0">$</span>
-                    <input
-                      ref={shellInputRef}
-                      type="text"
-                      value={shellInput}
-                      onChange={(e) => setShellInput(e.target.value)}
-                      onKeyDown={handleShellKeyDown}
-                      placeholder="ls, cd, find, help..."
-                      className="flex-1 bg-transparent border-none outline-none font-mono text-sm text-foreground placeholder:text-muted-foreground/40"
-                      autoComplete="off"
-                      autoCapitalize="off"
-                      spellCheck={false}
-                    />
+              // Mobile TUI: Shell Bar and Fullscreen Modal
+              <>
+                {/* Collapsed Shell Bar */}
+                {!shellOpen && (
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setShellOpen(true)}
+                    onKeyDown={(e) => e.key === 'Enter' && setShellOpen(true)}
+                    className="flex w-full items-center gap-2 bg-[hsl(var(--terminal-code-bg))] border-t border-primary/20 px-3 py-2"
+                  >
                     <button
                       type="button"
-                      onClick={() => {
-                        setShellOpen(false);
-                        setShellOutput(null);
-                      }}
-                      className="p-1.5 text-muted-foreground hover:text-primary transition-colors"
-                      aria-label="닫기"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  // 축소된 상태: 터미널 아이콘 + 현재 경로
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setShellOpen(true)}
-                      className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 transition-all active:scale-95"
-                      aria-label="명령어 입력"
+                      aria-label="Open command input"
+                      className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/20 text-primary border border-primary/30 transition-all active:scale-95"
                     >
                       <Terminal className="h-5 w-5" />
                     </button>
@@ -1071,9 +1077,93 @@ export default function FloatingActionBar() {
                     {hasNew && (
                       <span className="h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" />
                     )}
-                  </>
+                  </div>
                 )}
-              </div>
+
+                {/* Fullscreen Focus Mode Modal */}
+                {shellOpen && (
+                  <div
+                    className="fixed inset-0 z-[9999] bg-background/80 backdrop-blur-sm animate-in fade-in-0 duration-200"
+                    style={{ height: '100dvh' }}
+                  >
+                    <div
+                      className="absolute inset-0"
+                      onClick={() => setShellOpen(false)}
+                      aria-hidden="true"
+                    />
+                    <div
+                      className="relative flex flex-col bg-[hsl(var(--terminal-code-bg))] border-t border-primary/20"
+                      style={{ height: viewportHeight }}
+                    >
+                      {/* Input field at the top */}
+                      <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 border-b border-border/50">
+                        <span className="text-primary/70 font-mono text-xs shrink-0">
+                          {vfs.currentPath === '/' ? '~' : vfs.currentPath.replace('/blog/', '~/')}
+                        </span>
+                        <span className="text-primary font-mono text-sm font-bold shrink-0">$</span>
+                        <input
+                          ref={shellInputRef}
+                          type="text"
+                          value={shellInput}
+                          onChange={(e) => setShellInput(e.target.value)}
+                          onKeyDown={handleShellKeyDown}
+                          placeholder="Type a command or 'help'"
+                          className="flex-1 bg-transparent border-none outline-none font-mono text-sm text-foreground placeholder:text-muted-foreground/40"
+                          autoComplete="off"
+                          autoCapitalize="off"
+                          spellCheck={false}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShellOpen(false)}
+                          className="p-1.5 text-muted-foreground hover:text-primary transition-colors"
+                          aria-label="Close"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      {/* Command history and suggestions */}
+                      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                        <div className="text-xs font-mono text-primary/70 uppercase tracking-wider">
+                          Recommended
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-center">
+                          {['ls', 'find', 'stack', 'help'].map((cmd) => (
+                            <button
+                              key={cmd}
+                              type="button"
+                              onClick={() => executeShellCommand(cmd)}
+                              className="p-2.5 rounded-lg bg-primary/10 border border-primary/20 font-mono text-sm text-primary hover:bg-primary/20 transition-colors"
+                            >
+                              {cmd}
+                            </button>
+                          ))}
+                        </div>
+                        {commandHistory.length > 0 && (
+                           <>
+                             <div className="pt-2 text-xs font-mono text-primary/70 uppercase tracking-wider">
+                               History
+                             </div>
+                             <div className="flex flex-col-reverse items-start text-left gap-1">
+                               {commandHistory.slice().reverse().map((cmd, idx) => (
+                                 <button
+                                   key={`${cmd}-${idx}`}
+                                   type="button"
+                                   onClick={() => executeShellCommand(cmd)}
+                                   className="p-2 rounded-lg font-mono text-sm text-muted-foreground hover:bg-muted/10 hover:text-foreground w-full text-left"
+                                 >
+                                   {cmd}
+                                 </button>
+                               ))}
+                             </div>
+                           </>
+                         )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               // PC 터미널: 기존 디자인 유지
               <div className="flex w-full items-center justify-between gap-0.5 border border-border bg-[hsl(var(--terminal-code-bg))] backdrop-blur-sm">
