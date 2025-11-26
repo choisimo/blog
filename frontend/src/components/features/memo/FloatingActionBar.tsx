@@ -945,7 +945,7 @@ export default function FloatingActionBar() {
   if (modalOpen || overlayOpen) return <>{stackSheet}</>;
 
   const containerClasses = cn(
-    "fixed inset-x-0 z-[9999] px-3 sm:px-4 print:hidden",
+    "fixed inset-x-0 z-[var(--z-fab-bar)] px-3 sm:px-4 print:hidden",
     isMobile
       ? "bottom-0 pb-[calc(env(safe-area-inset-bottom,0px))]"
       : "bottom-[calc(16px+env(safe-area-inset-bottom,0px))]",
@@ -1009,7 +1009,7 @@ export default function FloatingActionBar() {
       
       {/* Shell output overlay for terminal mobile */}
       {isTerminal && isMobile && shellOutput && (
-        <div className="fixed inset-x-0 bottom-14 z-[9998] px-3 pb-2 animate-in slide-in-from-bottom-2 duration-150">
+        <div className="fixed inset-x-0 bottom-14 z-[var(--z-fab-bar)] px-3 pb-2 animate-in slide-in-from-bottom-2 duration-150">
           <div className="bg-[hsl(var(--terminal-code-bg))] border border-primary/30 rounded-lg shadow-lg shadow-primary/5 overflow-hidden">
             {/* Terminal header */}
             <div className="flex items-center justify-between px-3 py-1.5 bg-primary/10 border-b border-primary/20">
@@ -1083,7 +1083,7 @@ export default function FloatingActionBar() {
                 {/* Fullscreen Focus Mode Modal */}
                 {shellOpen && (
                   <div
-                    className="fixed inset-0 z-[9999] bg-background/80 backdrop-blur-sm animate-in fade-in-0 duration-200"
+                    className="fixed inset-0 z-[var(--z-modal-overlay)] bg-background/80 backdrop-blur-sm animate-in fade-in-0 duration-200"
                     style={{ height: '100dvh' }}
                   >
                     <div

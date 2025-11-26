@@ -5,7 +5,7 @@
     <description>A blog about technology, programming, and web development</description>
     <link>http://localhost:3000</link>
     <atom:link href="http://localhost:3000/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Wed, 26 Nov 2025 19:46:53 GMT</lastBuildDate>
+    <lastBuildDate>Wed, 26 Nov 2025 23:14:16 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
       <title>Kafka와 LLM 서버 사이에 버퍼 존을 둔 AI 서버 설계기</title>

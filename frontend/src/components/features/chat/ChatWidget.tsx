@@ -550,7 +550,7 @@ export default function ChatWidget(props: { onClose?: () => void }) {
     <>
       <div
         className={cn(
-          "fixed z-[10000] flex flex-col overflow-hidden border bg-background shadow-2xl transition-all",
+          "fixed z-[var(--z-chat-widget)] flex flex-col overflow-hidden border bg-background shadow-2xl transition-all",
           // 모바일: 항상 전체화면
           isMobile
             ? "inset-0 h-[100dvh] rounded-none"

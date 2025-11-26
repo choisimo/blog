@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Globe2, Loader2, Send, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface CommentInputModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ export default function CommentInputModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  const isMobile = useIsMobile();
   const modalRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const authorRef = useRef<HTMLInputElement>(null);
@@ -71,13 +73,21 @@ export default function CommentInputModal({
 
   // Handle viewport resize (for mobile keyboard)
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !isMobile) return;
 
     const handleResize = () => {
       if (modalRef.current) {
         // Use visualViewport if available for accurate mobile keyboard handling
         const vh = window.visualViewport?.height || window.innerHeight;
         modalRef.current.style.height = `${vh}px`;
+        
+        // Scroll the focused element into view when keyboard opens
+        const activeEl = document.activeElement;
+        if (activeEl && (activeEl === authorRef.current || activeEl === contentRef.current)) {
+          setTimeout(() => {
+            activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 100);
+        }
       }
     };
 
@@ -92,7 +102,7 @@ export default function CommentInputModal({
       window.removeEventListener('resize', handleResize);
       window.visualViewport?.removeEventListener('resize', handleResize);
     };
-  }, [isOpen]);
+  }, [isOpen, isMobile]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,84 +140,109 @@ export default function CommentInputModal({
 
   if (!isOpen) return null;
 
+  // PC: Center popup with dimmed background
+  // Mobile: Full screen modal
   return (
     <div
-      ref={modalRef}
       className={cn(
-        "fixed inset-0 z-50 flex flex-col",
-        isTerminal
-          ? "bg-[hsl(var(--background))]"
-          : "bg-background"
+        "fixed inset-0 z-[var(--z-modal-overlay)] flex",
+        // PC: center alignment with dimmed overlay
+        !isMobile && "items-center justify-center bg-black/50 backdrop-blur-sm",
+        // Mobile: full screen
+        isMobile && "flex-col"
       )}
-      style={{ height: '100dvh' }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="comment-modal-title"
+      onClick={!isMobile ? (e) => { if (e.target === e.currentTarget) onClose(); } : undefined}
     >
-      {/* Header - Vim/Nano style */}
-      {/* Header - Vim/Nano style */}
-      <header
+      <div
+        ref={modalRef}
         className={cn(
-          "flex items-center justify-between px-4 py-2 shrink-0",
-          isTerminal
-            ? "bg-primary/20 border-b border-primary/30"
-            : "bg-card border-b border-border"
-        )}
-      >
-        <span
-          id="comment-modal-title"
-          className={cn(
-            "text-sm font-bold tracking-wide",
+          "flex flex-col overflow-hidden",
+          // PC styles: centered dialog
+          !isMobile && [
+            "w-full max-w-xl rounded-2xl shadow-2xl",
             isTerminal
-              ? "font-mono text-primary terminal-glow"
-              : "text-foreground"
+              ? "border border-primary/30 bg-[hsl(var(--background))]"
+              : "border border-border bg-background"
+          ],
+          // Mobile styles: full screen
+          isMobile && [
+            "w-full",
+            isTerminal
+              ? "bg-[hsl(var(--background))]"
+              : "bg-background"
+          ]
+        )}
+        style={isMobile ? { height: '100dvh' } : { maxHeight: '85vh' }}
+      >
+        {/* Header - Vim/Nano style */}
+        <header
+          className={cn(
+            "flex items-center justify-between px-4 py-3 shrink-0",
+            isTerminal
+              ? "bg-primary/20 border-b border-primary/30"
+              : "bg-card border-b border-border",
+            // PC: rounded top corners
+            !isMobile && "rounded-t-2xl"
           )}
         >
-          {isTerminal ? "-- INSERT --" : "New Comment"}
-        </span>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
+          <span
+            id="comment-modal-title"
             className={cn(
-              "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+              "text-sm font-bold tracking-wide",
               isTerminal
-                ? "font-mono border border-border text-muted-foreground hover:border-primary hover:text-primary disabled:opacity-50"
-                : "border border-border text-muted-foreground hover:bg-muted disabled:opacity-50"
+                ? "font-mono text-primary terminal-glow"
+                : "text-foreground"
             )}
           >
-            {isTerminal ? ":q!" : "Cancel"}
-          </button>
-          <button
-            type="submit"
-            form="comment-form"
-            disabled={submitting || !author.trim() || !content.trim()}
-            className={cn(
-              "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all disabled:opacity-50",
-              isTerminal
-                ? "font-mono border border-primary bg-primary/20 text-primary hover:bg-primary/30 disabled:hover:bg-primary/20"
-                : "bg-primary text-primary-foreground hover:bg-primary/90"
-            )}
-          >
-            {submitting ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Send className="h-3.5 w-3.5" />
-            )}
-            {isTerminal ? ":wq" : "Submit"}
-          </button>
-        </div>
-      </header>
+            {isTerminal ? "-- INSERT --" : "New Comment"}
+          </span>
 
-      {/* Form Content */}
-      <form
-        onSubmit={handleSubmit}
-        onKeyDown={handleKeyDown}
-        className="flex-1 flex flex-col overflow-hidden"
-      >
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className={cn(
+                "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                isTerminal
+                  ? "font-mono border border-border text-muted-foreground hover:border-primary hover:text-primary disabled:opacity-50"
+                  : "border border-border text-muted-foreground hover:bg-muted disabled:opacity-50"
+              )}
+            >
+              {isTerminal ? ":q!" : "Cancel"}
+            </button>
+            <button
+              type="submit"
+              form="comment-form"
+              disabled={submitting || !author.trim() || !content.trim()}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all disabled:opacity-50",
+                isTerminal
+                  ? "font-mono border border-primary bg-primary/20 text-primary hover:bg-primary/30 disabled:hover:bg-primary/20"
+                  : "bg-primary text-primary-foreground hover:bg-primary/90"
+              )}
+            >
+              {submitting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Send className="h-3.5 w-3.5" />
+              )}
+              {isTerminal ? ":wq" : "Submit"}
+            </button>
+          </div>
+        </header>
+
+        {/* Form Content */}
+        <form
+          id="comment-form"
+          onSubmit={handleSubmit}
+          onKeyDown={handleKeyDown}
+          className="flex-1 flex flex-col overflow-hidden"
+        >
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {/* Error display */}
           {error && (
@@ -337,7 +372,11 @@ export default function CommentInputModal({
             "shrink-0 px-4 py-2 border-t",
             isTerminal
               ? "bg-[hsl(var(--terminal-code-bg))] border-border"
-              : "bg-muted/30 border-border"
+              : "bg-muted/30 border-border",
+            // PC: rounded bottom corners
+            !isMobile && "rounded-b-2xl",
+            // Mobile: safe area padding
+            isMobile && "pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]"
           )}
         >
           <span
@@ -355,6 +394,7 @@ export default function CommentInputModal({
           </span>
         </footer>
       </form>
+      </div>
     </div>
   );
 }

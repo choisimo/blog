@@ -24,6 +24,15 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
+
+    /* Z-Index Layer System */
+    --z-base: 0;
+    --z-floating-content: 40;
+    --z-fab-bar: 50;
+    --z-memo-panel: 60;
+    --z-modal-overlay: 100;
+    --z-chat-widget: 110;
+    --z-toast: 200;
   }
 
   .dark {
@@ -389,7 +398,7 @@
   right: 0;
   bottom: 0;
   pointer-events: none;
-  z-index: 9999;
+  z-index: var(--z-toast); /* Use layered z-index system */
   background: repeating-linear-gradient(
     0deg,
     transparent,
@@ -755,6 +764,40 @@
 
 .tui-card {
   @apply border bg-transparent p-4 shadow-none;
+}
+
+/* ============================================
+   Button Contrast & Visibility Improvements
+   ============================================ */
+
+/* Primary button: ensure text is always readable */
+.btn-primary,
+button[class*="bg-primary"]:not([class*="bg-primary/"]) {
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+/* Terminal theme primary buttons */
+.terminal .btn-primary,
+.terminal button[class*="bg-primary"]:not([class*="bg-primary/"]) {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--background)) !important; /* Dark text on neon green */
+  font-weight: 600;
+}
+
+/* Outline buttons in terminal theme */
+.terminal .btn-outline {
+  background: transparent;
+  border: 1px solid hsl(var(--primary));
+  color: hsl(var(--primary));
+}
+
+.terminal .btn-outline:hover {
+  background: hsl(var(--primary) / 0.1);
+}
+
+/* Ensure FAB dock buttons have proper contrast */
+.terminal [class*="bg-primary/20"] {
+  color: hsl(var(--primary));
 }
 
 /* ============================================
