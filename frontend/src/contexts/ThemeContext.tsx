@@ -1,23 +1,62 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import { toast } from '@/hooks/use-toast';
 
-type Theme = 'light' | 'dark' | 'system';
+type Theme = 'light' | 'dark' | 'system' | 'terminal';
 
 interface ThemeContextType {
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  isTerminal: boolean;
 }
+
+const THEME_LABELS: Record<Theme, string> = {
+  light: 'Light',
+  dark: 'Dark',
+  system: 'System',
+  terminal: 'Terminal',
+};
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
+  const [theme, setThemeState] = useState<Theme>(() => {
     const savedTheme = localStorage.getItem('theme') as Theme;
-    return savedTheme || 'system';
+    return savedTheme || 'terminal';
   });
+  const isInitialMount = useRef(true);
+
+  const isTerminal = theme === 'terminal';
+
+  const setTheme = useCallback((newTheme: Theme) => {
+    setThemeState(newTheme);
+
+    // Show toast notification on theme change (not on initial mount)
+    if (!isInitialMount.current) {
+      const label = THEME_LABELS[newTheme];
+      if (newTheme === 'terminal') {
+        toast({
+          title: `>_ ${label} mode activated`,
+          description: 'Welcome to the matrix',
+        });
+      } else {
+        toast({
+          title: `Theme: ${label}`,
+          description: `Switched to ${label.toLowerCase()} mode`,
+        });
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
+    root.classList.remove('light', 'dark', 'terminal');
 
     if (theme === 'system') {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
@@ -25,11 +64,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         ? 'dark'
         : 'light';
       root.classList.add(systemTheme);
+    } else if (theme === 'terminal') {
+      // Terminal uses dark as base with additional terminal class
+      root.classList.add('dark', 'terminal');
     } else {
       root.classList.add(theme);
     }
 
     localStorage.setItem('theme', theme);
+
+    // Mark initial mount as complete after first theme application
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+    }
   }, [theme]);
 
   useEffect(() => {
@@ -37,7 +84,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const handleChange = () => {
       if (theme === 'system') {
         const root = window.document.documentElement;
-        root.classList.remove('light', 'dark');
+        root.classList.remove('light', 'dark', 'terminal');
         root.classList.add(mediaQuery.matches ? 'dark' : 'light');
       }
     };
@@ -47,7 +94,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [theme]);
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, isTerminal }}>
       {children}
     </ThemeContext.Provider>
   );

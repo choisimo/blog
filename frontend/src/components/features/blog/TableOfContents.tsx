@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface TocItem {
   id: string;
@@ -15,6 +16,7 @@ interface TableOfContentsProps {
 export const TableOfContents = ({ content }: TableOfContentsProps) => {
   const [toc, setToc] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState<string>('');
+  const { isTerminal } = useTheme();
 
   useEffect(() => {
     // Extract headings from markdown content
@@ -77,22 +79,50 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
 
   return (
     <div className='sticky top-8 w-72 hidden xl:block'>
-      <div className='bg-card/50 backdrop-blur-sm border rounded-2xl p-6 shadow-lg'>
-        <h3 className='font-bold mb-4 text-base flex items-center'>
-          <svg
-            className='w-5 h-5 mr-2'
-            fill='none'
-            stroke='currentColor'
-            viewBox='0 0 24 24'
-          >
-            <path
-              strokeLinecap='round'
-              strokeLinejoin='round'
-              strokeWidth={2}
-              d='M4 6h16M4 10h16M4 14h16M4 18h16'
-            />
-          </svg>
-          목차
+      <div
+        className={cn(
+          'bg-card/50 backdrop-blur-sm border rounded-2xl p-6 shadow-lg',
+          isTerminal && 'bg-[hsl(var(--terminal-code-bg))] border-border rounded-lg'
+        )}
+      >
+        {/* Terminal-style header */}
+        {isTerminal && (
+          <div className='flex items-center gap-1.5 mb-4 pb-3 border-b border-border'>
+            <span className='w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-close))]' />
+            <span className='w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]' />
+            <span className='w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]' />
+          </div>
+        )}
+
+        <h3
+          className={cn(
+            'font-bold mb-4 text-base flex items-center',
+            isTerminal && 'font-mono text-primary text-sm'
+          )}
+        >
+          {isTerminal ? (
+            <>
+              <span className='text-muted-foreground mr-2'>$</span>
+              cat TOC
+            </>
+          ) : (
+            <>
+              <svg
+                className='w-5 h-5 mr-2'
+                fill='none'
+                stroke='currentColor'
+                viewBox='0 0 24 24'
+              >
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth={2}
+                  d='M4 6h16M4 10h16M4 14h16M4 18h16'
+                />
+              </svg>
+              목차
+            </>
+          )}
         </h3>
         <ScrollArea className='h-[500px]'>
           <nav className='space-y-2'>
@@ -110,10 +140,19 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
                   item.level === 3 && 'ml-8',
                   item.level === 4 && 'ml-12',
                   item.level === 5 && 'ml-16',
-                  item.level === 6 && 'ml-20'
+                  item.level === 6 && 'ml-20',
+                  isTerminal && 'font-mono text-xs rounded hover:bg-primary/20',
+                  isTerminal && activeId === item.id && 'bg-primary/20 border-l-2 border-primary'
                 )}
               >
-                <span className='block truncate'>{item.title}</span>
+                <span className='block truncate'>
+                  {isTerminal && (
+                    <span className='text-muted-foreground mr-2'>
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                  )}
+                  {item.title}
+                </span>
               </button>
             ))}
           </nav>

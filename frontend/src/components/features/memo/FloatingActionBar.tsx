@@ -1,17 +1,25 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { NotebookPen, Sparkles, Layers, Map } from 'lucide-react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { NotebookPen, Sparkles, Layers, Map } from "lucide-react";
 import VisitedPostsMinimap, {
   useVisitedPostsState,
-} from '@/components/features/navigation/VisitedPostsMinimap';
-import ChatWidget from '@/components/features/chat/ChatWidget';
-import { useToast } from '@/components/ui/use-toast';
-import { useIsMobile } from '@/hooks/use-mobile';
+} from "@/components/features/navigation/VisitedPostsMinimap";
+import ChatWidget from "@/components/features/chat/ChatWidget";
+import { useToast } from "@/components/ui/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useTheme } from "@/contexts/ThemeContext";
+import { cn } from "@/lib/utils";
 
 // Feature flag: build-time + runtime override
 function isFabEnabled(): boolean {
   let lsValue: boolean | null = null;
   try {
-    const stored = localStorage.getItem('aiMemo.fab.enabled');
+    const stored = localStorage.getItem("aiMemo.fab.enabled");
     if (stored != null) {
       lsValue = JSON.parse(stored);
     }
@@ -19,13 +27,13 @@ function isFabEnabled(): boolean {
     lsValue = null;
   }
 
-  if (typeof lsValue === 'boolean') {
+  if (typeof lsValue === "boolean") {
     return lsValue;
   }
 
   const envFlag = (import.meta as any).env?.VITE_FEATURE_FAB;
   if (envFlag != null) {
-    return envFlag === true || envFlag === 'true' || envFlag === '1';
+    return envFlag === true || envFlag === "true" || envFlag === "1";
   }
 
   return true;
@@ -36,7 +44,7 @@ function useAIMemoElement(): HTMLElement | null {
   useEffect(() => {
     let active = true;
     const find = () =>
-      document.querySelector('ai-memo-pad') as HTMLElement | null;
+      document.querySelector("ai-memo-pad") as HTMLElement | null;
     const loop = () => {
       if (!active) return;
       const e = find();
@@ -54,22 +62,22 @@ function useAIMemoElement(): HTMLElement | null {
 function useMemoOpen(aiMemoEl: HTMLElement | null): boolean {
   const [open, setOpen] = useState<boolean>(() => {
     try {
-      return !!JSON.parse(localStorage.getItem('aiMemo.isOpen') || 'false');
+      return !!JSON.parse(localStorage.getItem("aiMemo.isOpen") || "false");
     } catch {
       return false;
     }
   });
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (!e.key || e.key === 'aiMemo.isOpen') {
+      if (!e.key || e.key === "aiMemo.isOpen") {
         try {
           setOpen(
-            !!JSON.parse(localStorage.getItem('aiMemo.isOpen') || 'false')
+            !!JSON.parse(localStorage.getItem("aiMemo.isOpen") || "false"),
           );
         } catch {}
       }
     };
-    window.addEventListener('storage', onStorage);
+    window.addEventListener("storage", onStorage);
 
     let panelObserver: MutationObserver | null = null;
     let shadowObserver: MutationObserver | null = null;
@@ -77,15 +85,15 @@ function useMemoOpen(aiMemoEl: HTMLElement | null): boolean {
 
     const tryAttachPanelObserver = () => {
       const shadow = (aiMemoEl as any)?.shadowRoot as ShadowRoot | undefined;
-      const panel = shadow?.getElementById('panel');
+      const panel = shadow?.getElementById("panel");
       if (!panel) return false;
-      const check = () => setOpen(panel.classList.contains('open'));
+      const check = () => setOpen(panel.classList.contains("open"));
       check();
       panelObserver?.disconnect();
       panelObserver = new MutationObserver(check);
       panelObserver.observe(panel, {
         attributes: true,
-        attributeFilter: ['class'],
+        attributeFilter: ["class"],
       });
       return true;
     };
@@ -107,7 +115,7 @@ function useMemoOpen(aiMemoEl: HTMLElement | null): boolean {
         tries += 1;
         try {
           setOpen(
-            !!JSON.parse(localStorage.getItem('aiMemo.isOpen') || 'false')
+            !!JSON.parse(localStorage.getItem("aiMemo.isOpen") || "false"),
           );
         } catch {}
         if (tries > 20) {
@@ -119,7 +127,7 @@ function useMemoOpen(aiMemoEl: HTMLElement | null): boolean {
       }, 250);
     }
     return () => {
-      window.removeEventListener('storage', onStorage);
+      window.removeEventListener("storage", onStorage);
       panelObserver?.disconnect();
       shadowObserver?.disconnect();
       if (pollId) clearInterval(pollId);
@@ -137,13 +145,13 @@ function useHistoryOverlayOpen(aiMemoEl: HTMLElement | null): boolean {
       return;
     }
     const overlay = shadow.getElementById(
-      'historyOverlay'
+      "historyOverlay",
     ) as HTMLElement | null;
     const compute = () => {
       try {
         if (!overlay) return setOpen(false);
         // visible when style.display !== 'none'
-        const visible = overlay.style.display !== 'none';
+        const visible = overlay.style.display !== "none";
         setOpen(!!visible);
       } catch {
         setOpen(false);
@@ -154,7 +162,7 @@ function useHistoryOverlayOpen(aiMemoEl: HTMLElement | null): boolean {
     if (overlay && mo)
       mo.observe(overlay, {
         attributes: true,
-        attributeFilter: ['style', 'class'],
+        attributeFilter: ["style", "class"],
       });
     return () => {
       if (mo) mo.disconnect();
@@ -186,34 +194,34 @@ function useHistoryBadge(): [boolean, () => void] {
   const recompute = useCallback(() => {
     let count = 0;
     try {
-      const arr = JSON.parse(localStorage.getItem('aiMemo.events') || '[]');
+      const arr = JSON.parse(localStorage.getItem("aiMemo.events") || "[]");
       count = Array.isArray(arr) ? arr.length : 0;
     } catch {}
     let last = 0;
     try {
       last =
-        parseInt(localStorage.getItem('aiMemo.history.lastCount') || '0', 10) ||
+        parseInt(localStorage.getItem("aiMemo.history.lastCount") || "0", 10) ||
         0;
     } catch {}
     setHasNew(count > last);
   }, []);
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (!e.key || e.key === 'aiMemo.events') recompute();
+      if (!e.key || e.key === "aiMemo.events") recompute();
     };
-    window.addEventListener('storage', onStorage);
+    window.addEventListener("storage", onStorage);
     const t = setInterval(recompute, 1500); // local updates within same tab
     recompute();
     return () => {
-      window.removeEventListener('storage', onStorage);
+      window.removeEventListener("storage", onStorage);
       clearInterval(t);
     };
   }, [recompute]);
   const clear = useCallback(() => {
     try {
-      const arr = JSON.parse(localStorage.getItem('aiMemo.events') || '[]');
+      const arr = JSON.parse(localStorage.getItem("aiMemo.events") || "[]");
       const len = Array.isArray(arr) ? arr.length : 0;
-      localStorage.setItem('aiMemo.history.lastCount', String(len));
+      localStorage.setItem("aiMemo.history.lastCount", String(len));
     } catch {}
     setHasNew(false);
   }, []);
@@ -235,8 +243,8 @@ function useScrollHide(): boolean {
       }
       setHidden(delta > 0);
     };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
   return hidden;
 }
@@ -246,12 +254,12 @@ function hideLegacyLaunchers(aiMemoEl: HTMLElement | null) {
     if (!aiMemoEl) return;
     const shadow = (aiMemoEl as any).shadowRoot as ShadowRoot | undefined;
     // Hide only legacy floating launchers; keep memo UI intact
-    const launcher = shadow?.getElementById('launcher') as HTMLElement | null;
+    const launcher = shadow?.getElementById("launcher") as HTMLElement | null;
     const historyLauncher = shadow?.getElementById(
-      'historyLauncher'
+      "historyLauncher",
     ) as HTMLElement | null;
-    if (launcher) launcher.style.display = 'none';
-    if (historyLauncher) historyLauncher.style.display = 'none';
+    if (launcher) launcher.style.display = "none";
+    if (historyLauncher) historyLauncher.style.display = "none";
   } catch {}
 }
 
@@ -268,21 +276,22 @@ export default function FloatingActionBar() {
   const scrollHidden = useScrollHide();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { isTerminal } = useTheme();
 
   const send = useCallback((type: string, detail?: Record<string, any>) => {
     try {
-      const evt = new CustomEvent('fab:event', {
+      const evt = new CustomEvent("fab:event", {
         detail: { type, ts: Date.now(), ...(detail || {}) },
       });
       window.dispatchEvent(evt);
       // Fallback console for environments without an analytics bridge
       if (
         (import.meta as any).env?.DEV ||
-        (typeof localStorage !== 'undefined' &&
-          localStorage.getItem('aiMemo.fab.debug') === 'true')
+        (typeof localStorage !== "undefined" &&
+          localStorage.getItem("aiMemo.fab.debug") === "true")
       ) {
         // eslint-disable-next-line no-console
-        console.log('[FAB]', type, detail || '');
+        console.log("[FAB]", type, detail || "");
       }
     } catch {}
   }, []);
@@ -315,7 +324,7 @@ export default function FloatingActionBar() {
   useEffect(() => {
     if (!enabled || impressionSent.current || modalOpen) return;
     impressionSent.current = true;
-    send('fab_impression');
+    send("fab_impression");
   }, [enabled, modalOpen, send]);
 
   // memo contextual visibility change
@@ -326,7 +335,7 @@ export default function FloatingActionBar() {
       return;
     }
     if (prevMemoOpen.current !== memoOpen) {
-      send(memoOpen ? 'fab_context_show' : 'fab_context_hide');
+      send(memoOpen ? "fab_context_show" : "fab_context_hide");
       prevMemoOpen.current = memoOpen;
     }
   }, [memoOpen, send]);
@@ -339,52 +348,66 @@ export default function FloatingActionBar() {
         btn?.click();
       } catch {}
     },
-    [aiMemoEl]
+    [aiMemoEl],
   );
 
   const toggleMemo = useCallback(
-    () => clickShadowBtn('launcher'),
-    [clickShadowBtn]
+    () => clickShadowBtn("launcher"),
+    [clickShadowBtn],
   );
 
   const openHistory = useCallback(() => {
     let opened = false;
     try {
       const anyEl = aiMemoEl as any;
-      if (anyEl?.openHistory) {
+      // Try calling openHistory method directly on the custom element instance
+      if (typeof anyEl?.openHistory === "function") {
         anyEl.openHistory();
         opened = true;
       } else if (aiMemoEl) {
-        clickShadowBtn('historyLauncher');
-        opened = true;
+        // Fallback: temporarily show the hidden launcher, click it, then hide again
+        const shadow = anyEl?.shadowRoot as ShadowRoot | undefined;
+        const historyLauncher = shadow?.getElementById(
+          "historyLauncher",
+        ) as HTMLElement | null;
+        if (historyLauncher) {
+          const prevDisplay = historyLauncher.style.display;
+          historyLauncher.style.display = "flex";
+          historyLauncher.click();
+          // Restore hidden state after a tick (the click event should have fired)
+          setTimeout(() => {
+            historyLauncher.style.display = prevDisplay || "none";
+          }, 50);
+          opened = true;
+        }
       }
     } catch {}
     if (!opened) {
       try {
-        window.dispatchEvent(new CustomEvent('visitedposts:open'));
+        window.dispatchEvent(new CustomEvent("visitedposts:open"));
       } catch {}
     }
     clearBadge();
-    send('fab_history_click');
-  }, [aiMemoEl, clickShadowBtn, clearBadge, send]);
+    send("fab_history_click");
+  }, [aiMemoEl, clearBadge, send]);
 
   const openStackView = useCallback(() => {
     try {
-      window.dispatchEvent(new CustomEvent('visitedposts:open'));
-      send('fab_stack_click');
+      window.dispatchEvent(new CustomEvent("visitedposts:open"));
+      send("fab_stack_click");
     } catch {}
   }, [send]);
 
   const stackDisabledReason = useMemo(() => {
     if (!storageAvailable)
-      return '이 브라우저에서는 Stack 기능을 사용할 수 없습니다.';
-    if (!visitedPosts.length) return '최근 방문한 글이 없습니다.';
+      return "이 브라우저에서는 Stack 기능을 사용할 수 없습니다.";
+    if (!visitedPosts.length) return "최근 방문한 글이 없습니다.";
     return null;
   }, [storageAvailable, visitedPosts.length]);
 
   const handleStackClick = useCallback(() => {
     if (stackDisabledReason) {
-      toast({ title: 'Stack 사용 불가', description: stackDisabledReason });
+      toast({ title: "Stack 사용 불가", description: stackDisabledReason });
       return;
     }
     openStackView();
@@ -392,24 +415,23 @@ export default function FloatingActionBar() {
 
   if (!enabled) return null;
 
-  const stackSheet = <VisitedPostsMinimap mode='fab' />;
+  const stackSheet = <VisitedPostsMinimap mode="fab" />;
 
-  if (modalOpen || overlayOpen)
-    return <>{stackSheet}</>;
+  if (modalOpen || overlayOpen) return <>{stackSheet}</>;
 
   const containerClasses = [
-    'fixed inset-x-0 z-[9999] px-3 sm:px-4 print:hidden',
+    "fixed inset-x-0 z-[9999] px-3 sm:px-4 print:hidden",
     isMobile
-      ? 'bottom-0 pb-[calc(env(safe-area-inset-bottom,0px))]'
-      : 'bottom-[calc(10px+env(safe-area-inset-bottom,0px))]',
-    'transition-transform transition-opacity duration-200 ease-out',
+      ? "bottom-0 pb-[calc(env(safe-area-inset-bottom,0px))]"
+      : "bottom-[calc(10px+env(safe-area-inset-bottom,0px))]",
+    "transition-transform transition-opacity duration-200 ease-out",
     scrollHidden
-      ? 'translate-y-6 opacity-0 pointer-events-none'
-      : 'translate-y-0 opacity-100',
-  ].join(' ');
+      ? "translate-y-6 opacity-0 pointer-events-none"
+      : "translate-y-0 opacity-100",
+  ].join(" ");
 
   type DockAction = {
-    key: 'chat' | 'memo' | 'stack' | 'insight';
+    key: "chat" | "memo" | "stack" | "insight";
     label: string;
     icon: typeof Sparkles;
     onClick: () => void;
@@ -420,34 +442,34 @@ export default function FloatingActionBar() {
 
   const dockActions: DockAction[] = [
     {
-      key: 'chat',
-      label: 'Chat',
+      key: "chat",
+      label: "Chat",
       icon: Sparkles,
       onClick: () => {
         setChatOpen(true);
-        send('fab_ai_chat_open');
+        send("fab_ai_chat_open");
       },
     },
     {
-      key: 'memo',
-      label: 'Memo',
+      key: "memo",
+      label: "Memo",
       icon: NotebookPen,
       onClick: () => {
-        send('fab_memo_toggle');
+        send("fab_memo_toggle");
         toggleMemo();
       },
     },
     {
-      key: 'stack',
-      label: 'Stack',
+      key: "stack",
+      label: "Stack",
       icon: Layers,
       onClick: handleStackClick,
       disabled: !!stackDisabledReason,
       title: stackDisabledReason || undefined,
     },
     {
-      key: 'insight',
-      label: 'Insight',
+      key: "insight",
+      label: "Insight",
       icon: Map,
       onClick: openHistory,
       badge: hasNew,
@@ -458,70 +480,143 @@ export default function FloatingActionBar() {
     <>
       {stackSheet}
       <div
-        role='toolbar'
-        aria-label='Floating actions'
+        role="toolbar"
+        aria-label="Floating actions"
         className={containerClasses}
       >
         <nav
-          className={[
-            'mx-auto flex w-full justify-center',
-            isMobile ? 'max-w-none' : 'max-w-md sm:max-w-2xl',
-          ].join(' ')}
+          className={cn(
+            "mx-auto flex w-full justify-center",
+            isMobile ? "max-w-none" : "max-w-md sm:max-w-2xl",
+          )}
         >
-          <div
-            className={[
-              'flex w-full items-center justify-between gap-1 backdrop-blur-md',
-              isMobile
-                ? 'rounded-none border-t border-border/40 bg-background/95 px-1.5 py-1.5 shadow-[0_-8px_24px_rgba(15,23,42,0.08)]'
-                : 'rounded-[22px] border border-border/40 bg-background/80 px-2 py-2 shadow-lg sm:px-4',
-            ].join(' ')}
-          >
-            {dockActions.map(action => {
-              const Icon = action.icon;
-              const primary = action.key === 'chat';
-              const iconSize = isMobile ? 'h-6 w-6' : 'h-4 w-4';
-              return (
-                <button
-                  key={action.key}
-                  type='button'
-                  onClick={action.onClick}
-                  disabled={action.disabled}
-                  aria-label={action.label}
-                  aria-disabled={action.disabled}
-                  title={action.title}
-                  className={[
-                    'group relative flex flex-1 items-center justify-center text-muted-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-60',
-                    isMobile && 'flex-col gap-0.5 text-[11px]',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                >
-                  <span
-                    className={[
-                      'flex items-center justify-center rounded-[18px] transition-all duration-150 shadow-sm',
-                      isMobile ? 'h-10 w-10' : 'h-11 w-11',
-                      primary
-                        ? 'bg-primary text-primary-foreground shadow-primary/40'
-                        : 'bg-muted/50 text-foreground/80 group-hover:bg-muted/70',
-                    ].join(' ')}
+          {/* Terminal style dock */}
+          {isTerminal ? (
+            <div className="flex w-full items-center justify-between gap-0.5 border border-border bg-[hsl(var(--terminal-code-bg))] backdrop-blur-sm">
+              {/* Terminal window controls */}
+              <div className="flex items-center gap-1.5 px-3 py-2 border-r border-border/50">
+                <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-close))]" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]" />
+              </div>
+
+              {/* Terminal path */}
+              <div className="hidden sm:flex items-center gap-1 px-3 text-[11px] font-mono text-muted-foreground border-r border-border/50">
+                <span className="text-primary/60">~/</span>
+                <span>actions</span>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5">
+                {dockActions.map((action) => {
+                  const Icon = action.icon;
+                  const primary = action.key === "chat";
+                  return (
+                    <button
+                      key={action.key}
+                      type="button"
+                      onClick={action.onClick}
+                      disabled={action.disabled}
+                      aria-label={action.label}
+                      aria-disabled={action.disabled}
+                      title={action.title}
+                      className={cn(
+                        "group relative flex items-center gap-1.5 px-3 py-2 font-mono text-xs transition-all disabled:cursor-not-allowed disabled:opacity-50",
+                        primary
+                          ? "bg-primary/20 text-primary border border-primary/40 hover:bg-primary/30"
+                          : "text-muted-foreground hover:text-primary hover:bg-primary/10 border border-transparent hover:border-primary/30",
+                        isMobile && "flex-1 flex-col gap-0.5 px-2",
+                      )}
+                    >
+                      <Icon
+                        className={cn(
+                          isMobile ? "h-5 w-5" : "h-4 w-4",
+                          primary && "terminal-glow",
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          "text-[10px] uppercase tracking-wider",
+                          isMobile && "text-[9px]",
+                        )}
+                      >
+                        {action.label}
+                      </span>
+                      {action.badge && (
+                        <span
+                          className="absolute -top-0.5 -right-0.5 inline-flex h-2 w-2 rounded-full bg-primary animate-pulse"
+                          aria-hidden
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Terminal status */}
+              <div className="hidden sm:flex items-center gap-2 px-3 text-[10px] font-mono text-muted-foreground/60 border-l border-border/50">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-pulse" />
+                <span>READY</span>
+              </div>
+            </div>
+          ) : (
+            /* Default style dock */
+            <div
+              className={cn(
+                "flex w-full items-center justify-between gap-1 backdrop-blur-md",
+                isMobile
+                  ? "rounded-none border-t border-border/40 bg-background/95 px-1.5 py-1.5 shadow-[0_-8px_24px_rgba(15,23,42,0.08)]"
+                  : "rounded-[22px] border border-border/40 bg-background/80 px-2 py-2 shadow-lg sm:px-4",
+              )}
+            >
+              {dockActions.map((action) => {
+                const Icon = action.icon;
+                const primary = action.key === "chat";
+                const iconSize = isMobile ? "h-6 w-6" : "h-4 w-4";
+                return (
+                  <button
+                    key={action.key}
+                    type="button"
+                    onClick={action.onClick}
+                    disabled={action.disabled}
+                    aria-label={action.label}
+                    aria-disabled={action.disabled}
+                    title={action.title}
+                    className={cn(
+                      "group relative flex flex-1 items-center justify-center text-muted-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                      isMobile && "flex-col gap-0.5 text-[11px]",
+                    )}
                   >
-                    <Icon className={iconSize} />
-                  </span>
-                  {isMobile && <span>{action.label}</span>}
-                  {action.badge && (
-                    <span className='absolute top-1 right-6 inline-flex h-2 w-2 rounded-full bg-primary' aria-hidden />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                    <span
+                      className={cn(
+                        "flex items-center justify-center rounded-[18px] transition-all duration-150 shadow-sm",
+                        isMobile ? "h-10 w-10" : "h-11 w-11",
+                        primary
+                          ? "bg-primary text-primary-foreground shadow-primary/40"
+                          : "bg-muted/50 text-foreground/80 group-hover:bg-muted/70",
+                      )}
+                    >
+                      <Icon className={iconSize} />
+                    </span>
+                    {isMobile && <span>{action.label}</span>}
+                    {action.badge && (
+                      <span
+                        className="absolute top-1 right-6 inline-flex h-2 w-2 rounded-full bg-primary"
+                        aria-hidden
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </nav>
       </div>
       {chatOpen && (
         <ChatWidget
           onClose={() => {
             setChatOpen(false);
-            send('fab_ai_chat_close');
+            send("fab_ai_chat_close");
           }}
         />
       )}

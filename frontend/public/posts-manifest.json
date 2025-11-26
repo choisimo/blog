@@ -1,6 +1,28 @@
 {
-  "total": 129,
+  "total": 130,
   "items": [
+    {
+      "path": "/posts/2025/AI-api-server-temporary-dev.md",
+      "year": "2025",
+      "slug": "AI-api-server-temporary-dev",
+      "title": "Kafka와 LLM 서버 사이에 버퍼 존을 둔 AI 서버 설계기",
+      "description": "Kafka와 LLM 서버 사이에 작은 버퍼 존을 두고 Gateway와 Buffer Worker를 나누어 설계한 이유, 그리고 이를 Kafka 토픽·메시지 스키마·docker-compose로 구체화해 가는 과정을 정리했다",
+      "snippet": "Kafka와 LLM 서버 사이에 작은 버퍼 존을 두고 Gateway와 Buffer Worker를 나누어 설계한 이유, 그리고 이를 Kafka 토픽·메시지 스키마·docker-compose로 구체화해 가는 과정을 정리했다",
+      "date": "2025-11-20",
+      "tags": [
+        "Kafka",
+        "LLM",
+        "RAG",
+        "Gateway",
+        "백엔드아키텍처"
+      ],
+      "category": "Backend",
+      "author": "Admin",
+      "readingTime": "8 min read",
+      "published": true,
+      "coverImage": "/images/2025/AI-server.png",
+      "url": "/blog/2025/AI-api-server-temporary-dev"
+    },
     {
       "path": "/posts/2025/nat-gateway-bottleneck-journal.md",
       "year": "2025",
@@ -20,7 +42,7 @@
       "author": "Admin",
       "readingTime": "5 min read",
       "published": true,
-      "coverImage": "/home/nodove/workspace/blog/frontend/public/images/2025/natgateway.png",
+      "coverImage": "/images/2025/natgateway.png",
       "url": "/blog/2025/nat-gateway-bottleneck-journal"
     },
     {
@@ -2704,7 +2726,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-11-19T17:08:52.146Z",
+  "generatedAt": "2025-11-26T17:00:03.887Z",
   "years": [
     "2025",
     "2024"

@@ -8,7 +8,7 @@ readTime: "7분"
 ---
 > **이 글은 수업 시간에 떠올린 속마음을 정리한 내용입니다.**
 
-![n](/home/nodove/workspace/blog/frontend/public/images/2025/natgateway.png)
+![n](../../images/2025/natgateway.png)
 
 ## 1. 수업 시간, 처음 본 전형적인 VPC 그림
 

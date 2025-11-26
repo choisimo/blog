@@ -40,6 +40,8 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import useLanguage from '@/hooks/useLanguage';
+import { useTheme } from '@/contexts/ThemeContext';
+import { cn } from '@/lib/utils';
 // import SparkInline from '@/components/features/sentio/SparkInline';
 
 const MarkdownRenderer = lazy(
@@ -68,6 +70,7 @@ const BlogPost = () => {
     (typeof location.search === 'string' ? location.search : '');
   const { toast } = useToast();
   const { language, setLanguage } = useLanguage();
+  const { isTerminal } = useTheme();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -312,52 +315,102 @@ const BlogPost = () => {
   return (
     <>
       <ReadingProgress />
-      <div className='min-h-screen bg-gradient-to-b from-[#f5f6fb] via-background to-background/70 dark:from-[#04050a] dark:via-[#0b0f18] dark:to-[#111827]'>
+      <div
+        className={cn(
+          'min-h-screen bg-gradient-to-b from-[#f5f6fb] via-background to-background/70 dark:from-[#04050a] dark:via-[#0b0f18] dark:to-[#111827]',
+          isTerminal && 'bg-background from-background via-background to-background'
+        )}
+      >
         <div
           className='mx-auto w-full max-w-6xl px-4 pt-6 pb-32 sm:pt-12'
           style={safeAreaPaddingStyle}
         >
-          <article className='mx-auto max-w-3xl space-y-12'>
+          <article
+            className={cn(
+              'mx-auto max-w-3xl space-y-12',
+              isTerminal && 'terminal-card p-4 sm:p-6'
+            )}
+          >
             <header className='space-y-6'>
               <div className='flex flex-wrap items-center justify-between gap-3'>
                 <Button
                   variant='ghost'
                   onClick={handleBackToBlog}
-                  className='hover:bg-primary/10 dark:text-white'
+                  className={cn(
+                    'hover:bg-primary/10 dark:text-white',
+                    isTerminal && 'font-mono text-primary hover:text-primary'
+                  )}
                   size='sm'
                 >
                   <ArrowLeft className='mr-2 h-4 w-4' />
-                  {backLabel}
+                  {isTerminal ? `< ${backLabel}` : backLabel}
                 </Button>
                 <Button
                   onClick={handleShare}
                   variant='outline'
                   size='sm'
-                  className='gap-2 rounded-full border-border bg-white/70 text-foreground backdrop-blur hover:bg-primary/10 dark:border-white/10 dark:bg-white/5 dark:text-white'
+                  className={cn(
+                    'gap-2 rounded-full border-border bg-white/70 text-foreground backdrop-blur hover:bg-primary/10 dark:border-white/10 dark:bg-white/5 dark:text-white',
+                    isTerminal && 'font-mono border-border bg-transparent'
+                  )}
                 >
                   <Share2 className='h-4 w-4' />
                   {shareLabel}
                 </Button>
               </div>
 
-              <div className='rounded-[32px] border border-white/60 bg-white/80 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-[#131a26] sm:p-8'>
+              <div
+                className={cn(
+                  'rounded-[32px] border border-white/60 bg-white/80 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-[#131a26] sm:p-8',
+                  isTerminal && 'rounded-lg border-border bg-card'
+                )}
+              >
                 <div className='space-y-5'>
-                  <div className='inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-primary'>
-                    {post.category}
+                  {/* Terminal-style path indicator */}
+                  {isTerminal && (
+                    <div className='font-mono text-xs text-muted-foreground'>
+                      <span className='text-primary'>cat</span>{' '}
+                      ~/blog/{year}/{slug}.md
+                    </div>
+                  )}
+
+                  <div
+                    className={cn(
+                      'inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-primary',
+                      isTerminal && 'rounded font-mono tracking-wider'
+                    )}
+                  >
+                    {isTerminal && '['}{post.category}{isTerminal && ']'}
                   </div>
 
-                  <h1 className='text-3xl font-bold leading-tight tracking-tight text-foreground dark:text-white sm:text-4xl lg:text-5xl'>
+                  <h1
+                    className={cn(
+                      'text-3xl font-bold leading-tight tracking-tight text-foreground dark:text-white sm:text-4xl lg:text-5xl',
+                      isTerminal && 'font-mono terminal-glow'
+                    )}
+                  >
+                    {isTerminal && '> '}
                     {localized?.title ?? post.title}
                   </h1>
 
                   {post.description && (
-                    <p className='text-base leading-relaxed text-muted-foreground dark:text-white/70 sm:text-lg'>
+                    <p
+                      className={cn(
+                        'text-base leading-relaxed text-muted-foreground dark:text-white/70 sm:text-lg',
+                        isTerminal && 'border-l-2 border-primary/30 pl-4'
+                      )}
+                    >
                       {localized?.description ?? post.description}
                     </p>
                   )}
 
                   {post.coverImage && (
-                    <div className='overflow-hidden rounded-3xl border border-white/40 bg-muted shadow-sm dark:border-white/10 dark:bg-white/5'>
+                    <div
+                      className={cn(
+                        'overflow-hidden rounded-3xl border border-white/40 bg-muted shadow-sm dark:border-white/10 dark:bg-white/5',
+                        isTerminal && 'rounded-lg border-border'
+                      )}
+                    >
                       <img
                         src={post.coverImage}
                         alt={localized?.title ?? post.title}
@@ -366,27 +419,52 @@ const BlogPost = () => {
                     </div>
                   )}
 
-                  <div className='grid gap-3 text-sm text-muted-foreground sm:grid-cols-3'>
-                    <div className='flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[#0f1724] dark:text-white'>
+                  <div
+                    className={cn(
+                      'grid gap-3 text-sm text-muted-foreground sm:grid-cols-3',
+                      isTerminal && 'font-mono text-xs'
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[#0f1724] dark:text-white',
+                        isTerminal && 'rounded bg-[hsl(var(--terminal-code-bg))]'
+                      )}
+                    >
                       <Calendar className='h-4 w-4 text-foreground/70' />
-                      <span>{formatDate(post.date)}</span>
+                      <span>{isTerminal ? `date: ${formatDate(post.date)}` : formatDate(post.date)}</span>
                     </div>
                     {readingTimeLabel && (
-                      <div className='flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[#0f1724] dark:text-white'>
+                      <div
+                        className={cn(
+                          'flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[#0f1724] dark:text-white',
+                          isTerminal && 'rounded bg-[hsl(var(--terminal-code-bg))]'
+                        )}
+                      >
                         <Clock className='h-4 w-4 text-foreground/70' />
-                        <span>{readingTimeLabel}</span>
+                        <span>{isTerminal ? `time: ${readingTimeLabel}` : readingTimeLabel}</span>
                       </div>
                     )}
                     {post.author && (
-                      <div className='flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[#0f1724] dark:text-white'>
+                      <div
+                        className={cn(
+                          'flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[#0f1724] dark:text-white',
+                          isTerminal && 'rounded bg-[hsl(var(--terminal-code-bg))]'
+                        )}
+                      >
                         <User className='h-4 w-4 text-foreground/70' />
-                        <span>{post.author}</span>
+                        <span>{isTerminal ? `author: ${post.author}` : post.author}</span>
                       </div>
                     )}
                   </div>
 
                   {availableLanguages.length > 1 && (
-                    <div className='flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-xs font-medium text-muted-foreground dark:border-primary/40 dark:bg-primary/10 dark:text-white/80'>
+                    <div
+                      className={cn(
+                        'flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-xs font-medium text-muted-foreground dark:border-primary/40 dark:bg-primary/10 dark:text-white/80',
+                        isTerminal && 'rounded-lg font-mono border-solid'
+                      )}
+                    >
                       <Languages className='h-4 w-4 text-primary' />
                       <span className='uppercase tracking-wide'>
                         {language === 'ko' ? '읽기 언어' : 'Reading language'}
@@ -397,11 +475,13 @@ const BlogPost = () => {
                             key={code}
                             type='button'
                             onClick={() => setLanguage(code)}
-                            className={`rounded-full px-3 py-1 text-sm transition-colors ${
+                            className={cn(
+                              'rounded-full px-3 py-1 text-sm transition-colors',
                               language === code
                                 ? 'bg-primary text-primary-foreground shadow-sm'
-                                : 'bg-white/70 text-foreground/70 dark:bg-background/60'
-                            }`}
+                                : 'bg-white/70 text-foreground/70 dark:bg-background/60',
+                              isTerminal && 'rounded font-mono'
+                            )}
                           >
                             {resolveLanguageName(code)}
                           </button>
@@ -411,11 +491,24 @@ const BlogPost = () => {
                   )}
 
                   {post.tags && post.tags.length > 0 && (
-                    <div className='flex flex-wrap items-center gap-2 text-muted-foreground dark:text-white/70'>
+                    <div
+                      className={cn(
+                        'flex flex-wrap items-center gap-2 text-muted-foreground dark:text-white/70',
+                        isTerminal && 'font-mono text-xs'
+                      )}
+                    >
                       <Tag className='h-4 w-4 text-muted-foreground dark:text-white/70' />
+                      {isTerminal && <span className='text-primary'>tags:</span>}
                       {post.tags.map(tag => (
-                        <Badge key={tag} variant='outline' className='rounded-full px-3 py-1 text-xs dark:border-white/20 dark:text-white'>
-                          #{tag}
+                        <Badge
+                          key={tag}
+                          variant='outline'
+                          className={cn(
+                            'rounded-full px-3 py-1 text-xs dark:border-white/20 dark:text-white',
+                            isTerminal && 'rounded border-primary/40 text-primary'
+                          )}
+                        >
+                          {isTerminal ? `[${tag}]` : `#${tag}`}
                         </Badge>
                       ))}
                     </div>
@@ -424,8 +517,18 @@ const BlogPost = () => {
               </div>
             </header>
 
-            <section className='rounded-[32px] border border-white/50 bg-card/70 p-4 shadow-soft backdrop-blur-sm dark:border-white/5 dark:bg-[#141927]/90 sm:p-8 -mx-2 sm:mx-0'>
-              <div className='prose prose-gray max-w-none dark:prose-invert'>
+            <section
+              className={cn(
+                'rounded-[32px] border border-white/50 bg-card/70 p-4 shadow-soft backdrop-blur-sm dark:border-white/5 dark:bg-[#141927]/90 sm:p-8 -mx-2 sm:mx-0',
+                isTerminal && 'rounded-lg border-border bg-[hsl(var(--terminal-code-bg))]'
+              )}
+            >
+              <div
+                className={cn(
+                  'prose prose-gray max-w-none dark:prose-invert',
+                  isTerminal && 'prose-headings:font-mono prose-headings:terminal-glow'
+                )}
+              >
                 <Suspense
                   fallback={
                     <div className='space-y-3' aria-label='Loading article content'>
@@ -452,14 +555,29 @@ const BlogPost = () => {
             {relatedPosts.length > 0 && (
               <section className='space-y-6'>
                 <div className='flex items-center gap-3'>
-                  <div className='rounded-full bg-secondary/20 p-2 text-secondary-foreground dark:bg-white/10 dark:text-white'>
+                  <div
+                    className={cn(
+                      'rounded-full bg-secondary/20 p-2 text-secondary-foreground dark:bg-white/10 dark:text-white',
+                      isTerminal && 'rounded bg-[hsl(var(--terminal-code-bg))]'
+                    )}
+                  >
                     <BookOpen className='h-5 w-5' />
                   </div>
                   <div>
-                    <h2 className='text-xl font-semibold text-foreground dark:text-white'>
-                      {relatedLabel}
+                    <h2
+                      className={cn(
+                        'text-xl font-semibold text-foreground dark:text-white',
+                        isTerminal && 'font-mono text-primary'
+                      )}
+                    >
+                      {isTerminal ? `> ${relatedLabel}` : relatedLabel}
                     </h2>
-                    <p className='text-sm text-muted-foreground dark:text-white/70'>
+                    <p
+                      className={cn(
+                        'text-sm text-muted-foreground dark:text-white/70',
+                        isTerminal && 'font-mono text-xs'
+                      )}
+                    >
                       {language === 'ko'
                         ? '비슷한 맥락의 글을 더 읽어보세요.'
                         : 'Continue reading with similar perspectives.'}
@@ -477,7 +595,10 @@ const BlogPost = () => {
                       state={
                         preservedFrom ? { from: preservedFrom } : undefined
                       }
-                      className='group rounded-2xl border border-border/60 bg-card/70 p-5 shadow-sm transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg dark:border-white/10 dark:bg-[#141b2a]'
+                      className={cn(
+                        'group rounded-2xl border border-border/60 bg-card/70 p-5 shadow-sm transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg dark:border-white/10 dark:bg-[#141b2a]',
+                        isTerminal && 'rounded-lg border-border bg-[hsl(var(--terminal-code-bg))] hover:border-primary'
+                      )}
                       onMouseEnter={() =>
                         prefetchPost(relatedPost.year, relatedPost.slug)
                       }
@@ -485,17 +606,33 @@ const BlogPost = () => {
                         prefetchPost(relatedPost.year, relatedPost.slug)
                       }
                     >
-                      <Badge variant='secondary' className='mb-3 rounded-full px-3 py-1 text-xs dark:bg-white/10 dark:text-white'>
-                        {relatedPost.category}
+                      <Badge
+                        variant='secondary'
+                        className={cn(
+                          'mb-3 rounded-full px-3 py-1 text-xs dark:bg-white/10 dark:text-white',
+                          isTerminal && 'rounded font-mono text-primary bg-transparent border border-primary/40'
+                        )}
+                      >
+                        {isTerminal ? `[${relatedPost.category}]` : relatedPost.category}
                       </Badge>
-                      <h3 className='text-base font-semibold leading-snug text-foreground dark:text-white group-hover:text-primary'>
+                      <h3
+                        className={cn(
+                          'text-base font-semibold leading-snug text-foreground dark:text-white group-hover:text-primary',
+                          isTerminal && 'font-mono'
+                        )}
+                      >
                         {relatedPost.title}
                       </h3>
                       <p className='mt-2 line-clamp-2 text-sm text-muted-foreground dark:text-white/70'>
                         {relatedPost.excerpt || relatedPost.description}
                       </p>
                       {(relatedPost.readingTime || relatedPost.readTime) && (
-                        <p className='mt-3 text-xs uppercase tracking-wide text-muted-foreground dark:text-white/60'>
+                        <p
+                          className={cn(
+                            'mt-3 text-xs uppercase tracking-wide text-muted-foreground dark:text-white/60',
+                            isTerminal && 'font-mono'
+                          )}
+                        >
                           {relatedPost.readingTime || `${relatedPost.readTime} min read`}
                         </p>
                       )}
