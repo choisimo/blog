@@ -735,6 +735,29 @@
 }
 
 /* ============================================
+   Compact TUI System
+   ============================================ */
+
+/* TUI Typography Scaling */
+:root {
+  font-size: clamp(14px, 1.5vw, 15px);
+  line-height: 1.6;
+}
+
+/* TUI Button & Padding Refactoring */
+.btn-tui {
+  @apply border bg-transparent text-foreground hover:bg-primary/10 hover:text-primary;
+  padding: 0.5rem 1rem;
+  height: auto;
+  min-height: 36px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.tui-card {
+  @apply border bg-transparent p-4 shadow-none;
+}
+
+/* ============================================
    Mobile UX Improvements (All Themes)
    ============================================ */
 
@@ -744,13 +767,13 @@
   [role="button"],
   .btn,
   [class*="Button"] {
-    min-height: 44px;
+    min-height: 40px;
   }
   
   /* 모바일 간격 */
   .container,
   .content-container {
-    @apply px-4;
+    @apply px-4; /* 1rem for mobile */
   }
   
   /* 모바일 폰트 크기 */
@@ -758,23 +781,16 @@
   article,
   .content {
     font-size: 1rem;
-    line-height: 1.8;
+    line-height: 1.7;
   }
-  
-  /* 모바일 헤딩 크기 조정 */
-  .prose h1,
-  article h1 {
-    @apply text-2xl;
-  }
-  
-  .prose h2,
-  article h2 {
-    @apply text-xl;
-  }
-  
-  .prose h3,
-  article h3 {
-    @apply text-lg;
+
+  h1, .text-3xl { font-size: 1.75rem; }
+  h2, .text-2xl { font-size: 1.5rem; }
+  h3, .text-xl { font-size: 1.25rem; }
+
+  /* Adjust meta data font size */
+  .meta-text {
+    font-size: clamp(11px, 2vw, 12px);
   }
 }
 
