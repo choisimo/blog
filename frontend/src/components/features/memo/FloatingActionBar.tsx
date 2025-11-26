@@ -539,28 +539,41 @@ export default function FloatingActionBar() {
 
   // Add viewport height management for mobile keyboard
   const [viewportHeight, setViewportHeight] = useState('100dvh');
+  const shellContentRef = useRef<HTMLDivElement>(null);
+  
   useEffect(() => {
-    if (!isMobile || !shellOpen) {
+    // Only lock scroll when shell is open AND on mobile AND terminal theme
+    if (!isMobile || !shellOpen || !isTerminal) {
       document.body.style.overflow = '';
       return;
+    }
+
+    // Use requestAnimationFrame to ensure DOM is ready before locking scroll
+    const lockScroll = () => {
+      // Double-check that shell content is actually rendered
+      if (shellContentRef.current) {
+        document.body.style.overflow = 'hidden';
+      }
     };
+    
+    const rafId = requestAnimationFrame(lockScroll);
 
     const handleResize = () => {
       const vh = window.visualViewport?.height || window.innerHeight;
       setViewportHeight(`${vh}px`);
     };
 
-    document.body.style.overflow = 'hidden';
     window.addEventListener('resize', handleResize);
     window.visualViewport?.addEventListener('resize', handleResize);
     handleResize();
 
     return () => {
+      cancelAnimationFrame(rafId);
       document.body.style.overflow = '';
       window.removeEventListener('resize', handleResize);
       window.visualViewport?.removeEventListener('resize', handleResize);
     };
-  }, [isMobile, shellOpen]);
+  }, [isMobile, shellOpen, isTerminal]);
   const [shellInput, setShellInput] = useState("");
   const [shellOutput, setShellOutput] = useState<string | null>(null);
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
@@ -1083,16 +1096,19 @@ export default function FloatingActionBar() {
                 {/* Fullscreen Focus Mode Modal */}
                 {shellOpen && (
                   <div
-                    className="fixed inset-0 z-[var(--z-modal-overlay)] bg-background/80 backdrop-blur-sm animate-in fade-in-0 duration-200"
+                    ref={shellContentRef}
+                    className="fixed inset-0 z-[9999] flex flex-col bg-background/95 backdrop-blur-sm animate-in fade-in-0 duration-200"
                     style={{ height: '100dvh' }}
                   >
+                    {/* Backdrop - clicking closes the shell */}
                     <div
-                      className="absolute inset-0"
+                      className="absolute inset-0 z-0"
                       onClick={() => setShellOpen(false)}
                       aria-hidden="true"
                     />
+                    {/* Content container - must be above backdrop */}
                     <div
-                      className="relative flex flex-col bg-[hsl(var(--terminal-code-bg))] border-t border-primary/20"
+                      className="relative z-10 flex flex-col bg-[hsl(var(--terminal-code-bg))] border-t border-primary/20"
                       style={{ height: viewportHeight }}
                     >
                       {/* Input field at the top */}
