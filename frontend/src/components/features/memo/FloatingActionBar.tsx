@@ -5,7 +5,8 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { NotebookPen, Sparkles, Layers, Map, MoreHorizontal, X } from "lucide-react";
+import { NotebookPen, Sparkles, Layers, Map, Terminal, X, ChevronRight } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 import VisitedPostsMinimap, {
   useVisitedPostsState,
 } from "@/components/features/navigation/VisitedPostsMinimap";
@@ -14,13 +15,261 @@ import { useToast } from "@/components/ui/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
+
+// Shell command definitions
+type ShellCommand = {
+  name: string;
+  aliases: string[];
+  description: string;
+  action: (args?: string) => void;
+};
+
+// Virtual filesystem types for blog navigation
+type BlogPost = {
+  slug: string;
+  title: string;
+  category: string;
+  date: string;
+  tags: string[];
+  url: string;
+};
+
+type VirtualFS = {
+  currentPath: string;
+  posts: BlogPost[];
+};
+
+// Hook to load posts manifest
+function usePostsManifest(): BlogPost[] {
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  
+  useEffect(() => {
+    fetch('/posts-manifest.json')
+      .then(res => res.json())
+      .then(data => {
+        if (data.items) {
+          setPosts(data.items.filter((p: any) => p.published !== false));
+        }
+      })
+      .catch(() => setPosts([]));
+  }, []);
+  
+  return posts;
+}
+
+// Virtual filesystem hook
+function useVirtualFS(posts: BlogPost[]) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  // Derive current path from URL
+  const currentPath = useMemo(() => {
+    const path = location.pathname;
+    if (path === '/' || path === '') return '/';
+    if (path.startsWith('/blog/')) {
+      // /blog/2025/post-slug -> /blog/2025
+      const parts = path.split('/').filter(Boolean);
+      if (parts.length >= 2) {
+        return '/' + parts.slice(0, 2).join('/');
+      }
+    }
+    return path;
+  }, [location.pathname]);
+
+  // Get available years
+  const years = useMemo(() => {
+    const yearSet = new Set(posts.map(p => p.url.split('/')[2]));
+    return Array.from(yearSet).sort().reverse();
+  }, [posts]);
+
+  // Get categories
+  const categories = useMemo(() => {
+    const catSet = new Set(posts.map(p => p.category));
+    return Array.from(catSet).sort();
+  }, [posts]);
+
+  // Get posts for current directory
+  const getPostsInPath = useCallback((path: string): BlogPost[] => {
+    if (path === '/' || path === '/blog') {
+      return [];
+    }
+    const parts = path.split('/').filter(Boolean);
+    if (parts[0] === 'blog' && parts.length >= 2) {
+      const year = parts[1];
+      return posts.filter(p => p.url.includes(`/blog/${year}/`));
+    }
+    return [];
+  }, [posts]);
+
+  // List directory contents
+  const ls = useCallback((path?: string): string => {
+    const targetPath = path || currentPath;
+    
+    if (targetPath === '/' || targetPath === '') {
+      return 'blog/\n';
+    }
+    
+    if (targetPath === '/blog') {
+      return years.map(y => `${y}/`).join('\n') + '\n';
+    }
+    
+    const parts = targetPath.split('/').filter(Boolean);
+    if (parts[0] === 'blog' && parts.length >= 2) {
+      const year = parts[1];
+      const yearPosts = posts.filter(p => p.url.includes(`/blog/${year}/`));
+      if (yearPosts.length === 0) {
+        return `ls: ${targetPath}: No such directory`;
+      }
+      return yearPosts.map(p => {
+        const slug = p.url.split('/').pop();
+        return `${slug}.md`;
+      }).join('\n');
+    }
+    
+    return `ls: ${targetPath}: No such directory`;
+  }, [currentPath, years, posts]);
+
+  // Change directory
+  const cd = useCallback((path: string): string => {
+    if (!path || path === '~' || path === '/') {
+      navigate('/');
+      return '';
+    }
+    
+    if (path === '..') {
+      const parts = currentPath.split('/').filter(Boolean);
+      if (parts.length <= 1) {
+        navigate('/');
+        return '';
+      }
+      const newPath = '/' + parts.slice(0, -1).join('/');
+      if (newPath === '/blog') {
+        navigate('/');
+        return '';
+      }
+      navigate(newPath);
+      return '';
+    }
+    
+    // Handle absolute paths
+    let targetPath = path;
+    if (!path.startsWith('/')) {
+      // Relative path
+      if (currentPath === '/') {
+        targetPath = '/' + path;
+      } else {
+        targetPath = currentPath + '/' + path;
+      }
+    }
+    
+    // Clean up path
+    targetPath = targetPath.replace(/\/+/g, '/').replace(/\/$/, '') || '/';
+    
+    // Validate path
+    if (targetPath === '/blog') {
+      navigate('/');
+      return '';
+    }
+    
+    const parts = targetPath.split('/').filter(Boolean);
+    if (parts[0] === 'blog' && parts.length >= 2) {
+      const year = parts[1];
+      if (years.includes(year)) {
+        // Navigate to year page (which shows filtered posts)
+        navigate(`/blog?year=${year}`);
+        return '';
+      }
+      return `cd: ${targetPath}: No such directory`;
+    }
+    
+    if (targetPath === '/') {
+      navigate('/');
+      return '';
+    }
+    
+    return `cd: ${targetPath}: No such directory`;
+  }, [currentPath, years, navigate]);
+
+  // Print working directory
+  const pwd = useCallback((): string => {
+    return currentPath || '/';
+  }, [currentPath]);
+
+  // Cat file (navigate to post)
+  const cat = useCallback((filename: string): string => {
+    if (!filename) {
+      return 'cat: missing file operand';
+    }
+    
+    // Remove .md extension if present
+    const slug = filename.replace(/\.md$/, '');
+    
+    // Find matching post
+    const post = posts.find(p => {
+      const postSlug = p.url.split('/').pop();
+      return postSlug === slug || postSlug?.toLowerCase() === slug.toLowerCase();
+    });
+    
+    if (post) {
+      navigate(post.url);
+      return `Opening: ${post.title}`;
+    }
+    
+    return `cat: ${filename}: No such file`;
+  }, [posts, navigate]);
+
+  // Find posts by keyword
+  const find = useCallback((keyword: string): string => {
+    if (!keyword) {
+      return 'find: missing search term';
+    }
+    
+    const kw = keyword.toLowerCase();
+    const matches = posts.filter(p => 
+      p.title.toLowerCase().includes(kw) ||
+      p.slug?.toLowerCase().includes(kw) ||
+      p.tags?.some(t => t.toLowerCase().includes(kw)) ||
+      p.category?.toLowerCase().includes(kw)
+    );
+    
+    if (matches.length === 0) {
+      return `No posts found matching: ${keyword}`;
+    }
+    
+    return matches.slice(0, 10).map(p => {
+      const path = p.url;
+      return `${path}  ${p.title.slice(0, 30)}${p.title.length > 30 ? '...' : ''}`;
+    }).join('\n') + (matches.length > 10 ? `\n... and ${matches.length - 10} more` : '');
+  }, [posts]);
+
+  // Tree view of blog structure
+  const tree = useCallback((): string => {
+    let output = '/\n└── blog/\n';
+    
+    years.forEach((year, yi) => {
+      const isLast = yi === years.length - 1;
+      const prefix = isLast ? '    └── ' : '    ├── ';
+      const yearPosts = posts.filter(p => p.url.includes(`/blog/${year}/`));
+      output += `${prefix}${year}/ (${yearPosts.length} posts)\n`;
+    });
+    
+    return output;
+  }, [years, posts]);
+
+  return {
+    currentPath,
+    years,
+    categories,
+    ls,
+    cd,
+    pwd,
+    cat,
+    find,
+    tree,
+    navigate,
+  };
+}
+
 
 // Feature flag: build-time + runtime override
 function isFabEnabled(): boolean {
@@ -284,6 +533,18 @@ export default function FloatingActionBar() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { isTerminal } = useTheme();
+  
+  // Shell Commander state (for terminal theme mobile)
+  const [shellOpen, setShellOpen] = useState(false);
+  const [shellInput, setShellInput] = useState("");
+  const [shellOutput, setShellOutput] = useState<string | null>(null);
+  const [commandHistory, setCommandHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const shellInputRef = useRef<HTMLInputElement>(null);
+  
+  // Virtual filesystem for Linux-like navigation
+  const posts = usePostsManifest();
+  const vfs = useVirtualFS(posts);
 
   const send = useCallback((type: string, detail?: Record<string, any>) => {
     try {
@@ -420,6 +681,231 @@ export default function FloatingActionBar() {
     openStackView();
   }, [openStackView, stackDisabledReason, toast]);
 
+  // Shell Commands for terminal theme mobile
+  const shellCommands: ShellCommand[] = useMemo(() => [
+    // Feature commands
+    {
+      name: "chat",
+      aliases: ["c", "ai"],
+      description: "AI 채팅 열기",
+      action: () => {
+        setChatOpen(true);
+        send("fab_ai_chat_open");
+        setShellOpen(false);
+        setShellOutput(null);
+      },
+    },
+    {
+      name: "memo",
+      aliases: ["m", "note"],
+      description: "메모장 열기/닫기",
+      action: () => {
+        send("fab_memo_toggle");
+        toggleMemo();
+        setShellOpen(false);
+        setShellOutput(null);
+      },
+    },
+    {
+      name: "stack",
+      aliases: ["s", "history"],
+      description: "방문 기록 스택 보기",
+      action: () => {
+        handleStackClick();
+        setShellOpen(false);
+        setShellOutput(null);
+      },
+    },
+    {
+      name: "insight",
+      aliases: ["i", "map"],
+      description: "인사이트 맵 열기",
+      action: () => {
+        openHistory();
+        setShellOpen(false);
+        setShellOutput(null);
+      },
+    },
+    // Linux-like filesystem commands
+    {
+      name: "ls",
+      aliases: ["dir", "ll"],
+      description: "현재 디렉토리 목록",
+      action: (args?: string) => {
+        const result = vfs.ls(args);
+        setShellOutput(result);
+      },
+    },
+    {
+      name: "cd",
+      aliases: [],
+      description: "디렉토리 이동 (예: cd /blog/2025)",
+      action: (args?: string) => {
+        const result = vfs.cd(args || '/');
+        if (result) {
+          setShellOutput(result);
+        } else {
+          setShellOpen(false);
+          setShellOutput(null);
+        }
+      },
+    },
+    {
+      name: "pwd",
+      aliases: [],
+      description: "현재 경로 표시",
+      action: () => {
+        setShellOutput(vfs.pwd());
+      },
+    },
+    {
+      name: "cat",
+      aliases: ["open", "view"],
+      description: "게시글 열기 (예: cat post-slug.md)",
+      action: (args?: string) => {
+        if (!args) {
+          setShellOutput('cat: missing file operand');
+          return;
+        }
+        const result = vfs.cat(args);
+        if (result.startsWith('Opening:')) {
+          setShellOpen(false);
+          setShellOutput(null);
+        } else {
+          setShellOutput(result);
+        }
+      },
+    },
+    {
+      name: "find",
+      aliases: ["search", "grep"],
+      description: "게시글 검색 (예: find kafka)",
+      action: (args?: string) => {
+        if (!args) {
+          setShellOutput('find: missing search term');
+          return;
+        }
+        setShellOutput(vfs.find(args));
+      },
+    },
+    {
+      name: "tree",
+      aliases: [],
+      description: "블로그 디렉토리 구조 표시",
+      action: () => {
+        setShellOutput(vfs.tree());
+      },
+    },
+    {
+      name: "home",
+      aliases: ["~"],
+      description: "홈으로 이동",
+      action: () => {
+        vfs.navigate('/');
+        setShellOpen(false);
+        setShellOutput(null);
+      },
+    },
+    {
+      name: "clear",
+      aliases: ["cls"],
+      description: "출력 지우기",
+      action: () => {
+        setShellOutput(null);
+        setShellInput("");
+      },
+    },
+  ], [send, toggleMemo, handleStackClick, openHistory, vfs]);
+
+  const executeShellCommand = useCallback((input: string) => {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+
+    // Add to command history
+    setCommandHistory(prev => [...prev.slice(-20), trimmed]);
+    setHistoryIndex(-1);
+
+    // Parse command and arguments
+    const parts = trimmed.split(/\s+/);
+    const cmdName = parts[0].toLowerCase();
+    const args = parts.slice(1).join(' ');
+
+    if (cmdName === "help" || cmdName === "?") {
+      const featureCmds = shellCommands.filter(c => ['chat', 'memo', 'stack', 'insight', 'clear'].includes(c.name));
+      const fsCmds = shellCommands.filter(c => ['ls', 'cd', 'pwd', 'cat', 'find', 'tree', 'home'].includes(c.name));
+      
+      let helpText = "=== Feature Commands ===\n";
+      helpText += featureCmds.map(cmd => `  ${cmd.name.padEnd(8)} ${cmd.description}`).join("\n");
+      helpText += "\n\n=== Filesystem Commands ===\n";
+      helpText += fsCmds.map(cmd => `  ${cmd.name.padEnd(8)} ${cmd.description}`).join("\n");
+      helpText += "\n\n예시:\n  ls              현재 위치 파일 목록\n  cd /blog/2025   2025년 글로 이동\n  find kafka      'kafka' 포함 글 검색\n  cat post.md     게시글 열기";
+      
+      setShellOutput(helpText);
+      setShellInput("");
+      return;
+    }
+
+    const cmd = shellCommands.find(
+      c => c.name === cmdName || c.aliases.includes(cmdName)
+    );
+
+    if (cmd) {
+      cmd.action(args || undefined);
+      setShellInput("");
+    } else {
+      setShellOutput(`bash: ${cmdName}: command not found\nType 'help' for available commands.`);
+      setShellInput("");
+    }
+  }, [shellCommands]);
+
+  const handleShellKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      executeShellCommand(shellInput);
+    } else if (e.key === "Escape") {
+      setShellOpen(false);
+      setShellOutput(null);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (commandHistory.length > 0) {
+        const newIndex = historyIndex < commandHistory.length - 1 ? historyIndex + 1 : historyIndex;
+        setHistoryIndex(newIndex);
+        setShellInput(commandHistory[commandHistory.length - 1 - newIndex] || '');
+      }
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (historyIndex > 0) {
+        const newIndex = historyIndex - 1;
+        setHistoryIndex(newIndex);
+        setShellInput(commandHistory[commandHistory.length - 1 - newIndex] || '');
+      } else if (historyIndex === 0) {
+        setHistoryIndex(-1);
+        setShellInput('');
+      }
+    } else if (e.key === "Tab") {
+      e.preventDefault();
+      // Simple tab completion for commands
+      const trimmed = shellInput.trim().toLowerCase();
+      if (trimmed) {
+        const matches = shellCommands.filter(c => 
+          c.name.startsWith(trimmed) || c.aliases.some(a => a.startsWith(trimmed))
+        );
+        if (matches.length === 1) {
+          setShellInput(matches[0].name + ' ');
+        } else if (matches.length > 1) {
+          setShellOutput(matches.map(m => m.name).join('  '));
+        }
+      }
+    }
+  }, [shellInput, executeShellCommand, commandHistory, historyIndex, shellCommands]);
+
+  // Auto-focus shell input when opened
+  useEffect(() => {
+    if (shellOpen && shellInputRef.current) {
+      shellInputRef.current.focus();
+    }
+  }, [shellOpen]);
+
   if (!enabled) return null;
 
   const stackSheet = <VisitedPostsMinimap mode="fab" />;
@@ -485,13 +971,37 @@ export default function FloatingActionBar() {
     },
   ];
 
-  // 모바일에서 주요 액션 (Chat, Memo) + 나머지는 더보기 메뉴로
-  const primaryActions = dockActions.filter((a) => a.key === "chat" || a.key === "memo");
-  const secondaryActions = dockActions.filter((a) => a.key !== "chat" && a.key !== "memo");
-
   return (
     <>
       {stackSheet}
+      
+      {/* Shell output overlay for terminal mobile */}
+      {isTerminal && isMobile && shellOutput && (
+        <div className="fixed inset-x-0 bottom-14 z-[9998] px-3 pb-2 animate-in slide-in-from-bottom-2 duration-150">
+          <div className="bg-[hsl(var(--terminal-code-bg))] border border-primary/30 rounded-lg shadow-lg shadow-primary/5 overflow-hidden">
+            {/* Terminal header */}
+            <div className="flex items-center justify-between px-3 py-1.5 bg-primary/10 border-b border-primary/20">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-primary/60 animate-pulse" />
+                <span className="font-mono text-[10px] text-primary/80 uppercase tracking-wider">Output</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShellOutput(null)}
+                className="p-0.5 text-muted-foreground hover:text-primary transition-colors"
+                aria-label="닫기"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            {/* Terminal output */}
+            <div className="p-3 max-h-48 overflow-auto">
+              <pre className="font-mono text-xs text-foreground/90 whitespace-pre-wrap leading-relaxed">{shellOutput}</pre>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div
         role="toolbar"
         aria-label="Floating actions"
@@ -505,112 +1015,84 @@ export default function FloatingActionBar() {
         >
           {/* Terminal style dock */}
           {isTerminal ? (
-            <div className={cn(
-              "flex w-full items-center justify-between gap-0.5 border border-border bg-[hsl(var(--terminal-code-bg))] backdrop-blur-sm",
-              isMobile && "rounded-none border-x-0 border-b-0",
-            )}>
-              {/* Terminal window controls (PC only) */}
-              {!isMobile && (
+            isMobile ? (
+              // 모바일 터미널: 쉘 프롬프트 커맨더
+              <div className="flex w-full items-center gap-2 bg-[hsl(var(--terminal-code-bg))] border-t border-primary/20 px-3 py-2">
+                {shellOpen ? (
+                  // 확장된 프롬프트 입력창
+                  <div className="flex-1 flex items-center gap-1.5">
+                    <span className="text-primary/70 font-mono text-xs shrink-0">
+                      {vfs.currentPath === '/' ? '~' : vfs.currentPath.replace('/blog/', '~/')}
+                    </span>
+                    <span className="text-primary font-mono text-sm font-bold shrink-0">$</span>
+                    <input
+                      ref={shellInputRef}
+                      type="text"
+                      value={shellInput}
+                      onChange={(e) => setShellInput(e.target.value)}
+                      onKeyDown={handleShellKeyDown}
+                      placeholder="ls, cd, find, help..."
+                      className="flex-1 bg-transparent border-none outline-none font-mono text-sm text-foreground placeholder:text-muted-foreground/40"
+                      autoComplete="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShellOpen(false);
+                        setShellOutput(null);
+                      }}
+                      className="p-1.5 text-muted-foreground hover:text-primary transition-colors"
+                      aria-label="닫기"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  // 축소된 상태: 터미널 아이콘 + 현재 경로
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setShellOpen(true)}
+                      className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 transition-all active:scale-95"
+                      aria-label="명령어 입력"
+                    >
+                      <Terminal className="h-5 w-5" />
+                    </button>
+                    <div className="flex-1 flex items-center gap-2 min-w-0">
+                      <span className="font-mono text-xs text-primary/60 truncate">
+                        {vfs.currentPath === '/' ? '~' : vfs.currentPath.replace('/blog/', '~/')}
+                      </span>
+                      <span className="text-muted-foreground/40 font-mono text-xs">
+                        $ _
+                      </span>
+                    </div>
+                    {hasNew && (
+                      <span className="h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" />
+                    )}
+                  </>
+                )}
+              </div>
+            ) : (
+              // PC 터미널: 기존 디자인 유지
+              <div className="flex w-full items-center justify-between gap-0.5 border border-border bg-[hsl(var(--terminal-code-bg))] backdrop-blur-sm">
+                {/* Terminal window controls */}
                 <div className="flex items-center gap-1.5 px-3 py-2.5 border-r border-border/50">
                   <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-close))]" />
                   <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]" />
                   <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]" />
                 </div>
-              )}
 
-              {/* Terminal path (PC only) */}
-              {!isMobile && (
+                {/* Terminal path */}
                 <div className="hidden sm:flex items-center gap-1 px-3 text-[11px] font-mono text-muted-foreground border-r border-border/50">
                   <span className="text-primary/60">~/</span>
                   <span>actions</span>
                 </div>
-              )}
 
-              {/* Action buttons */}
-              <div className={cn(
-                "flex-1 flex items-center justify-center gap-1 px-2",
-                isMobile ? "py-2" : "py-1.5",
-              )}>
-                {isMobile ? (
-                  // 모바일: 주요 액션 + 더보기 메뉴
-                  <>
-                    {primaryActions.map((action) => {
-                      const Icon = action.icon;
-                      return (
-                        <button
-                          key={action.key}
-                          type="button"
-                          onClick={action.onClick}
-                          disabled={action.disabled}
-                          aria-label={action.label}
-                          className={cn(
-                            "group relative flex flex-1 flex-col items-center justify-center gap-1 py-3 px-4 font-mono text-xs transition-all",
-                            action.primary
-                              ? "bg-primary/20 text-primary border border-primary/40"
-                              : "text-muted-foreground hover:text-primary hover:bg-primary/10 border border-transparent",
-                          )}
-                        >
-                          <Icon className={cn(
-                            "h-6 w-6",
-                            action.primary && "terminal-glow",
-                          )} />
-                          <span className="text-[10px] uppercase tracking-wider">
-                            {action.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                    {/* 더보기 드롭다운 메뉴 */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          type="button"
-                          className="group relative flex flex-1 flex-col items-center justify-center gap-1 py-3 px-4 font-mono text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 border border-transparent transition-all"
-                          aria-label="더보기"
-                        >
-                          <MoreHorizontal className="h-6 w-6" />
-                          <span className="text-[10px] uppercase tracking-wider">More</span>
-                          {hasNew && (
-                            <span className="absolute top-2 right-4 inline-flex h-2 w-2 rounded-full bg-primary animate-pulse" />
-                          )}
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="end"
-                        className={cn(
-                          "w-48 mb-2",
-                          isTerminal && "bg-[hsl(var(--terminal-code-bg))] border-primary/30 font-mono",
-                        )}
-                      >
-                        {secondaryActions.map((action) => {
-                          const Icon = action.icon;
-                          return (
-                            <DropdownMenuItem
-                              key={action.key}
-                              onClick={action.onClick}
-                              disabled={action.disabled}
-                              className={cn(
-                                "flex items-center gap-3 py-3",
-                                isTerminal && "hover:bg-primary/10 focus:bg-primary/10",
-                              )}
-                            >
-                              <Icon className={cn(
-                                "h-5 w-5",
-                                isTerminal && "text-primary",
-                              )} />
-                              <span>{action.label}</span>
-                              {action.badge && (
-                                <span className="ml-auto inline-flex h-2 w-2 rounded-full bg-primary" />
-                              )}
-                            </DropdownMenuItem>
-                          );
-                        })}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </>
-                ) : (
-                  // PC: 모든 액션 표시
-                  dockActions.map((action) => {
+                {/* Action buttons */}
+                <div className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5">
+                  {dockActions.map((action) => {
                     const Icon = action.icon;
                     return (
                       <button
@@ -645,32 +1127,30 @@ export default function FloatingActionBar() {
                         )}
                       </button>
                     );
-                  })
-                )}
-              </div>
+                  })}
+                </div>
 
-              {/* Terminal status (PC only) */}
-              {!isMobile && (
+                {/* Terminal status */}
                 <div className="hidden sm:flex items-center gap-2 px-3 text-[10px] font-mono text-muted-foreground/60 border-l border-border/50">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-pulse" />
                   <span>READY</span>
                 </div>
-              )}
-            </div>
+              </div>
+            )
           ) : (
-            /* Default style dock - Premium Glass Morphism Design */
+            /* Default style dock - Compact 4-button design */
             <div
               className={cn(
                 "flex w-full items-center backdrop-blur-xl",
                 isMobile
-                  ? "rounded-none border-t border-white/10 bg-gradient-to-t from-background/98 via-background/95 to-background/90 px-2 py-3 shadow-[0_-12px_40px_rgba(0,0,0,0.12)] dark:shadow-[0_-12px_40px_rgba(0,0,0,0.4)]"
+                  ? "rounded-none border-t border-border/30 bg-background/95 px-2 py-1.5 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] dark:bg-background/90 dark:border-white/10"
                   : "rounded-[28px] border border-white/20 bg-background/70 px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.08),_0_2px_8px_rgba(0,0,0,0.04)] dark:border-white/10 dark:bg-background/60 dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)]",
               )}
             >
               {isMobile ? (
-                // 모바일: 세련된 모던 디자인
+                // 모바일: 4개 버튼 간결하게 표시
                 <div className="flex w-full items-center justify-around">
-                  {primaryActions.map((action) => {
+                  {dockActions.map((action) => {
                     const Icon = action.icon;
                     return (
                       <button
@@ -679,69 +1159,31 @@ export default function FloatingActionBar() {
                         onClick={action.onClick}
                         disabled={action.disabled}
                         aria-label={action.label}
-                        className="group relative flex flex-col items-center justify-center gap-1.5 px-4 py-1.5 transition-transform active:scale-95"
+                        className={cn(
+                          "group relative flex flex-col items-center justify-center gap-0.5 py-1.5 px-3 transition-all active:scale-95",
+                          action.disabled && "opacity-40",
+                        )}
                       >
                         <span
                           className={cn(
-                            "flex items-center justify-center rounded-2xl transition-all duration-200",
-                            "h-11 w-11",
+                            "flex items-center justify-center rounded-xl transition-all duration-150",
+                            "h-9 w-9",
                             action.primary
-                              ? "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/25 dark:shadow-primary/20"
-                              : "bg-muted/80 text-foreground/70 group-hover:bg-muted group-hover:text-foreground dark:bg-white/10 dark:text-white/70 dark:group-hover:bg-white/15",
+                              ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
+                              : "bg-muted/60 text-foreground/70 dark:bg-white/10 dark:text-white/70",
                           )}
                         >
-                          <Icon className="h-5 w-5" />
+                          <Icon className="h-4 w-4" />
                         </span>
-                        <span className="text-[11px] font-medium tracking-wide text-muted-foreground/80 dark:text-white/50">
+                        <span className="text-[10px] text-muted-foreground/70 dark:text-white/50">
                           {action.label}
                         </span>
+                        {action.badge && (
+                          <span className="absolute top-0.5 right-2 inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+                        )}
                       </button>
                     );
                   })}
-                  {/* 더보기 드롭다운 */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        className="group relative flex flex-col items-center justify-center gap-1.5 px-4 py-1.5 transition-transform active:scale-95"
-                        aria-label="더보기"
-                      >
-                        <span className="flex items-center justify-center rounded-2xl transition-all duration-200 h-11 w-11 bg-muted/80 text-foreground/70 group-hover:bg-muted group-hover:text-foreground dark:bg-white/10 dark:text-white/70 dark:group-hover:bg-white/15">
-                          <MoreHorizontal className="h-5 w-5" />
-                        </span>
-                        <span className="text-[11px] font-medium tracking-wide text-muted-foreground/80 dark:text-white/50">
-                          More
-                        </span>
-                        {hasNew && (
-                          <span className="absolute top-0.5 right-3 inline-flex h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
-                        )}
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent 
-                      align="end" 
-                      className="w-52 mb-3 rounded-2xl border-white/20 bg-background/95 backdrop-blur-xl p-1.5 shadow-xl dark:border-white/10 dark:bg-background/90"
-                    >
-                      {secondaryActions.map((action) => {
-                        const Icon = action.icon;
-                        return (
-                          <DropdownMenuItem
-                            key={action.key}
-                            onClick={action.onClick}
-                            disabled={action.disabled}
-                            className="flex items-center gap-3 py-2.5 px-3 rounded-xl cursor-pointer transition-colors hover:bg-muted/80 dark:hover:bg-white/10"
-                          >
-                            <span className="flex items-center justify-center rounded-xl h-9 w-9 bg-muted/60 dark:bg-white/10">
-                              <Icon className="h-4 w-4 text-foreground/70 dark:text-white/70" />
-                            </span>
-                            <span className="font-medium text-sm">{action.label}</span>
-                            {action.badge && (
-                              <span className="ml-auto inline-flex h-2 w-2 rounded-full bg-primary animate-pulse" />
-                            )}
-                          </DropdownMenuItem>
-                        );
-                      })}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </div>
               ) : (
                 // PC: 프리미엄 호버 효과와 레이블

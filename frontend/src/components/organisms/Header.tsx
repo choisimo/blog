@@ -1,11 +1,21 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { LanguageToggle, ThemeToggle } from '@/components/common';
-import { Menu, X, Home, BookOpen, User, Mail, Shield } from 'lucide-react';
+import { Menu, X, Home, BookOpen, User, Mail, Shield, Settings, Globe, Moon, Sun, Monitor, Terminal } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { NavigationItem } from '@/components/molecules';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
 
 const baseNavigation = [
   { name: 'Home', href: '/', icon: Home },
@@ -42,7 +52,9 @@ function TerminalPath() {
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hasAdmin, setHasAdmin] = useState<boolean>(false);
-  const { isTerminal } = useTheme();
+  const { theme, setTheme, isTerminal } = useTheme();
+  const { language, setLanguage } = useLanguage();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const check = () => {
@@ -119,9 +131,114 @@ export function Header() {
               ))}
             </div>
           </div>
-          <div className='flex items-center gap-x-4'>
-            <LanguageToggle />
-            <ThemeToggle />
+          <div className='flex items-center gap-x-2 sm:gap-x-4'>
+            {/* PC: 개별 토글 버튼들 */}
+            {!isMobile && (
+              <>
+                <LanguageToggle />
+                <ThemeToggle />
+              </>
+            )}
+            
+            {/* 모바일: 통합 설정 드롭다운 */}
+            {isMobile && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    className={cn(
+                      'h-9 w-9',
+                      isTerminal && 'text-primary hover:text-primary hover:bg-primary/10'
+                    )}
+                    aria-label='설정'
+                  >
+                    <Settings className='h-5 w-5' />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align='end' className='w-48'>
+                  <DropdownMenuLabel className={cn(
+                    'text-xs text-muted-foreground',
+                    isTerminal && 'font-mono'
+                  )}>
+                    {isTerminal ? '$ language' : '언어 설정'}
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onClick={() => setLanguage('ko')}
+                    className='flex items-center justify-between'
+                  >
+                    <span className='flex items-center gap-2'>
+                      <Globe className='h-4 w-4' />
+                      한국어
+                    </span>
+                    {language === 'ko' && <span className='text-primary'>✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setLanguage('en')}
+                    className='flex items-center justify-between'
+                  >
+                    <span className='flex items-center gap-2'>
+                      <Globe className='h-4 w-4' />
+                      English
+                    </span>
+                    {language === 'en' && <span className='text-primary'>✓</span>}
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  
+                  <DropdownMenuLabel className={cn(
+                    'text-xs text-muted-foreground',
+                    isTerminal && 'font-mono'
+                  )}>
+                    {isTerminal ? '$ theme' : '테마 설정'}
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onClick={() => setTheme('light')}
+                    className={cn('flex items-center justify-between', theme === 'light' && 'bg-accent')}
+                  >
+                    <span className='flex items-center gap-2'>
+                      <Sun className='h-4 w-4' />
+                      Light
+                    </span>
+                    {theme === 'light' && <span className='text-primary'>✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setTheme('dark')}
+                    className={cn('flex items-center justify-between', theme === 'dark' && 'bg-accent')}
+                  >
+                    <span className='flex items-center gap-2'>
+                      <Moon className='h-4 w-4' />
+                      Dark
+                    </span>
+                    {theme === 'dark' && <span className='text-primary'>✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setTheme('system')}
+                    className={cn('flex items-center justify-between', theme === 'system' && 'bg-accent')}
+                  >
+                    <span className='flex items-center gap-2'>
+                      <Monitor className='h-4 w-4' />
+                      System
+                    </span>
+                    {theme === 'system' && <span className='text-primary'>✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setTheme('terminal')}
+                    className={cn(
+                      'flex items-center justify-between font-mono',
+                      theme === 'terminal' && 'bg-accent'
+                    )}
+                  >
+                    <span className='flex items-center gap-2'>
+                      <Terminal className={cn('h-4 w-4', theme === 'terminal' && 'text-primary')} />
+                      <span className={cn(theme === 'terminal' && 'text-primary')}>Terminal</span>
+                    </span>
+                    {theme === 'terminal' && <span className='text-primary'>✓</span>}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            
             <div className='flex md:hidden'>
               <Button
                 variant='ghost'

@@ -136,8 +136,31 @@ export default function ChatWidget(props: { onClose?: () => void }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const lastPromptRef = useRef<string>("");
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const canSend = (input.trim().length > 0 || attachedImage !== null) && !busy;
+
+  // 키보드 높이 감지 (모바일 UX 개선)
+  useEffect(() => {
+    if (!isMobile || typeof window === "undefined") return;
+    
+    const vv = window.visualViewport;
+    if (!vv) return;
+    
+    const handleResize = () => {
+      // 키보드가 올라오면 visualViewport.height가 줄어듦
+      const heightDiff = window.innerHeight - vv.height;
+      setKeyboardHeight(heightDiff > 100 ? heightDiff : 0);
+    };
+    
+    vv.addEventListener("resize", handleResize);
+    vv.addEventListener("scroll", handleResize);
+    
+    return () => {
+      vv.removeEventListener("resize", handleResize);
+      vv.removeEventListener("scroll", handleResize);
+    };
+  }, [isMobile]);
 
   useEffect(() => {
     const sc = scrollRef.current;
