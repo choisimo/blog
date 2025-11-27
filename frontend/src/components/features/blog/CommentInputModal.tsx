@@ -148,8 +148,8 @@ export default function CommentInputModal({
         "fixed inset-0 z-[var(--z-modal-overlay)] flex",
         // PC: center alignment with dimmed overlay
         !isMobile && "items-center justify-center bg-black/50 backdrop-blur-sm",
-        // Mobile: full screen
-        isMobile && "flex-col"
+        // Mobile: full screen with background (prevents black screen issue)
+        isMobile && "flex-col bg-background"
       )}
       role="dialog"
       aria-modal="true"

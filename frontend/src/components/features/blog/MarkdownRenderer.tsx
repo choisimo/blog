@@ -3,7 +3,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 import { Copy, Check } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Children, Fragment, isValidElement, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import SparkInline from '@/components/features/sentio/SparkInline';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -187,10 +187,29 @@ export const MarkdownRenderer = ({
               </h6>
             );
           },
-          p: ({ children }) =>
-            inlineEnabled ? (
-              <SparkInline postTitle={postTitle}>{children}</SparkInline>
-            ) : (
+          p: ({ children }) => {
+            if (inlineEnabled) {
+              return <SparkInline postTitle={postTitle}>{children}</SparkInline>;
+            }
+
+            const childArray = Children.toArray(children);
+            const containsMedia = childArray.some(
+              child =>
+                isValidElement(child) &&
+                typeof (child as any).props?.src === 'string'
+            );
+
+            if (containsMedia) {
+              return (
+                <div className='space-y-4 max-w-4xl mx-auto'>
+                  {childArray.map((child, idx) => (
+                    <Fragment key={idx}>{child}</Fragment>
+                  ))}
+                </div>
+              );
+            }
+
+            return (
               <p
                 className={cn(
                   'mb-6 leading-8 text-justify max-w-4xl mx-auto',
@@ -199,7 +218,8 @@ export const MarkdownRenderer = ({
               >
                 {children}
               </p>
-            ),
+            );
+          },
           ul: ({ children }) => (
             <ul
               className={cn(
@@ -304,7 +324,7 @@ export const MarkdownRenderer = ({
             </a>
           ),
           img: ({ src, alt }) => (
-            <div className='my-8 text-center'>
+            <figure className='my-8 text-center'>
               <img
                 src={src}
                 alt={alt}
@@ -314,16 +334,16 @@ export const MarkdownRenderer = ({
                 )}
               />
               {alt && (
-                <p
+                <figcaption
                   className={cn(
                     'text-sm text-muted-foreground mt-2 italic',
                     isTerminal && 'font-mono not-italic'
                   )}
                 >
                   {isTerminal ? `// ${alt}` : alt}
-                </p>
+                </figcaption>
               )}
-            </div>
+            </figure>
           ),
           table: ({ children }) => (
             <div className='overflow-x-auto my-8 max-w-4xl mx-auto'>

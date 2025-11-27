@@ -911,6 +911,7 @@ export default function ChatWidget(props: { onClose?: () => void }) {
               )}>
                 {QUICK_PROMPTS.map((prompt) => (
                   <Button
+                    key={prompt}
                     size="sm"
                     variant="secondary"
                     className={cn(

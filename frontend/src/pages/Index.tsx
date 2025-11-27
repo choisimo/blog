@@ -19,6 +19,8 @@ import { getPosts, getPostsPage, getPostBySlug } from '@/data/posts';
 import type { BlogPost } from '@/types/blog';
 import { SearchBar } from '@/components/features/search/SearchBar';
 import { site } from '@/config/site';
+import { useTheme } from '@/contexts/ThemeContext';
+import { cn } from '@/lib/utils';
 
 // Shape used by visited posts in localStorage
 // Matches VisitedPostsMinimap
@@ -33,6 +35,8 @@ interface VisitedPostItem {
 const STORAGE_KEY = 'visited.posts';
 
 const Index = () => {
+  const { isTerminal } = useTheme();
+  
   // Latest posts state
   const [latestPosts, setLatestPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -178,13 +182,27 @@ const Index = () => {
           />
         </div>
         <div className='flex flex-col sm:flex-row gap-4 justify-center'>
-          <Button asChild size='lg' className='w-auto'>
+          <Button 
+            asChild 
+            size='lg' 
+            className={cn(
+              'w-auto',
+              isTerminal && 'font-mono bg-primary text-primary-foreground border border-primary/40 shadow-[0_0_16px_rgba(0,255,128,0.25)] hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(0,255,128,0.35)]'
+            )}
+          >
             <Link to='/blog'>
               <BookOpen className='mr-2 h-5 w-5' />
               Enter Blog
             </Link>
           </Button>
-          <Button asChild variant='outline' size='lg'>
+          <Button 
+            asChild 
+            variant='outline' 
+            size='lg'
+            className={cn(
+              isTerminal && 'font-mono border-primary text-primary bg-transparent hover:bg-primary/10 hover:text-primary'
+            )}
+          >
             <Link to='/about'>
               Learn More
               <ArrowRight className='ml-2 h-5 w-5' />
@@ -242,11 +260,19 @@ const Index = () => {
           <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
             {recentlyViewed.map(item => (
               <Link key={item.path} to={item.path} className='group'>
-                <div className='bg-card border rounded-xl p-6 hover:shadow-lg hover:scale-105 transition-all duration-300'>
+                <div className={cn(
+                  'bg-card border rounded-xl p-6 hover:shadow-lg hover:scale-105 transition-all duration-300',
+                  isTerminal && 'hover:border-primary/50'
+                )}>
                   <div className='mb-3 text-sm text-muted-foreground'>
                     {item.year}/{item.slug}
                   </div>
-                  <h3 className='font-semibold line-clamp-2 group-hover:text-primary transition-colors mb-2'>
+                  <h3 className={cn(
+                    'font-semibold line-clamp-2 transition-colors mb-2',
+                    isTerminal 
+                      ? 'text-foreground group-hover:text-emerald-300' 
+                      : 'group-hover:text-primary'
+                  )}>
                     {item.title}
                   </h3>
                   {item.coverImage ? (
@@ -274,11 +300,20 @@ const Index = () => {
           {categories.map(category => (
             <Card
               key={category.name}
-              className='group hover:shadow-xl transition-all cursor-pointer hover:-translate-y-0.5'
+              className={cn(
+                'group hover:shadow-xl transition-all cursor-pointer hover:-translate-y-0.5',
+                isTerminal && 'hover:border-primary/50'
+              )}
             >
               <CardHeader className='text-center'>
                 <category.icon
-                  className={`h-8 w-8 mx-auto mb-2 ${category.color} group-hover:text-primary`}
+                  className={cn(
+                    'h-8 w-8 mx-auto mb-2 transition-colors',
+                    category.color,
+                    isTerminal 
+                      ? 'group-hover:text-emerald-300' 
+                      : 'group-hover:text-primary'
+                  )}
                 />
                 <CardTitle className='text-lg'>{category.name}</CardTitle>
                 <CardDescription>{category.count} posts</CardDescription>

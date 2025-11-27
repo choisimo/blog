@@ -795,8 +795,9 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
   background: hsl(var(--primary) / 0.1);
 }
 
-/* Ensure FAB dock buttons have proper contrast */
-.terminal [class*="bg-primary/20"] {
+/* FAB dock buttons - only apply to actual FAB elements, not all bg-primary/20 */
+.terminal [role="toolbar"] [class*="bg-primary/20"],
+.terminal .fab-button[class*="bg-primary/20"] {
   color: hsl(var(--primary));
 }
 

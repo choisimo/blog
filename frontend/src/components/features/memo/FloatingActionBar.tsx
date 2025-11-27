@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { NotebookPen, Sparkles, Layers, Map, Terminal, X, ChevronRight } from "lucide-react";
+import { NotebookPen, Sparkles, Layers, Map, Terminal, X, ChevronRight, ArrowUp } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import VisitedPostsMinimap, {
   useVisitedPostsState,
@@ -76,6 +76,52 @@ function useVirtualFS(posts: BlogPost[]) {
     }
     return path;
   }, [location.pathname]);
+
+  // Get current post info if viewing a post
+  const currentPost = useMemo(() => {
+    const path = location.pathname;
+    if (!path.startsWith('/blog/')) return null;
+    const parts = path.split('/').filter(Boolean);
+    // /blog/2025/post-slug has 3 parts
+    if (parts.length >= 3) {
+      const slug = parts[parts.length - 1];
+      return posts.find(p => {
+        const postSlug = p.url.split('/').pop();
+        return postSlug === slug;
+      }) || null;
+    }
+    return null;
+  }, [location.pathname, posts]);
+
+  // Get shell-style display path (shorter, more readable)
+  const displayPath = useMemo(() => {
+    const path = location.pathname;
+    if (path === '/' || path === '') return '~';
+    
+    // Check different page types
+    if (path === '/blog' || path === '/blog/') return '~/blog';
+    if (path === '/about' || path === '/about/') return '~/about';
+    if (path === '/guestbook' || path === '/guestbook/') return '~/guestbook';
+    
+    if (path.startsWith('/blog/')) {
+      const parts = path.split('/').filter(Boolean);
+      if (parts.length >= 3 && currentPost) {
+        // Viewing a specific post - show year and truncated title
+        const year = parts[1];
+        const title = currentPost.title.length > 20 
+          ? currentPost.title.slice(0, 18) + '..' 
+          : currentPost.title;
+        return `~/${year}/${title}`;
+      } else if (parts.length >= 2) {
+        // Viewing year directory
+        const year = parts[1];
+        return `~/${year}`;
+      }
+    }
+    
+    // Default: show path without leading slash
+    return '~' + path;
+  }, [location.pathname, currentPost]);
 
   // Get available years
   const years = useMemo(() => {
@@ -259,6 +305,8 @@ function useVirtualFS(posts: BlogPost[]) {
 
   return {
     currentPath,
+    displayPath,
+    currentPost,
     years,
     categories,
     ls,
@@ -562,6 +610,17 @@ export default function FloatingActionBar() {
   
   // Shell Commander state (for terminal theme mobile)
   const [shellOpen, setShellOpen] = useState(false);
+  
+  // Scroll to top button visibility (for mobile terminal shell bar)
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); // Initial check
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Add viewport height management for mobile keyboard
   const [viewportHeight, setViewportHeight] = useState('100dvh');
@@ -977,12 +1036,6 @@ export default function FloatingActionBar() {
     }
   }, [shellOpen]);
 
-  if (!enabled) return null;
-
-  const stackSheet = <VisitedPostsMinimap mode="fab" />;
-
-  if (modalOpen || overlayOpen) return <>{stackSheet}</>;
-
   const containerClasses = cn(
     "fixed inset-x-0 z-[var(--z-fab-bar)] px-3 sm:px-4 print:hidden",
     isMobile
@@ -1070,14 +1123,14 @@ export default function FloatingActionBar() {
     }
 
     // 입력 로그 추가
-    const inputLog = `${vfs.currentPath === '/' ? '~' : vfs.currentPath.replace('/blog/', '~/')} $ ${trimmed}`;
+    const inputLog = `${vfs.displayPath} $ ${trimmed}`;
     setShellLogs(prev => [...prev.slice(-50), { type: 'input', text: inputLog }]);
 
     // 명령 실행
     executeShellCommand(trimmed);
 
     // 출력이 있으면 로그에 추가 (shellOutput이 바뀌면 useEffect에서 처리)
-  }, [executeShellCommand, vfs.currentPath]);
+  }, [executeShellCommand, vfs.displayPath]);
 
   // shellOutput이 변경되면 로그에 추가
   useEffect(() => {
@@ -1108,7 +1161,7 @@ export default function FloatingActionBar() {
             {/* Input field at the top */}
             <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 border-b border-border/50 bg-black/20">
               <span className="text-primary/70 font-mono text-xs shrink-0">
-                {vfs.currentPath === '/' ? '~' : vfs.currentPath.replace('/blog/', '~/')}
+                {vfs.displayPath}
               </span>
               <span className="text-primary font-mono text-sm font-bold shrink-0">$</span>
               <input
@@ -1218,6 +1271,13 @@ export default function FloatingActionBar() {
       )
     : null;
 
+  if (!enabled) {
+    return null;
+  }
+
+  const stackSheet = <VisitedPostsMinimap mode="fab" />;
+  const toolbarDisabled = modalOpen || overlayOpen;
+
   return (
     <>
       {stackSheet}
@@ -1263,209 +1323,232 @@ export default function FloatingActionBar() {
         document.body
       )}
       
-      <div
-        role="toolbar"
-        aria-label="Floating actions"
-        className={containerClasses}
-      >
-        <nav
-          className={cn(
-            "mx-auto flex w-full justify-center",
-            isMobile ? "max-w-none" : "max-w-md sm:max-w-2xl",
-          )}
+      {!toolbarDisabled && (
+        <div
+          role="toolbar"
+          aria-label="Floating actions"
+          className={containerClasses}
         >
-          {/* Terminal style dock */}
-          {isTerminal ? (
-            isMobile ? (
-              // Mobile TUI: Shell Bar and Fullscreen Modal
-              <>
-                {/* Collapsed Shell Bar */}
-                {!shellOpen && (
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setShellOpen(true)}
-                    onKeyDown={(e) => e.key === 'Enter' && setShellOpen(true)}
-                    className="flex w-full items-center gap-2 bg-[hsl(var(--terminal-code-bg))] border-t border-primary/20 px-3 py-2"
-                  >
-                    <button
-                      type="button"
-                      aria-label="Open command input"
-                      className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/20 text-primary border border-primary/30 transition-all active:scale-95"
-                    >
-                      <Terminal className="h-5 w-5" />
-                    </button>
-                    <div className="flex-1 flex items-center gap-2 min-w-0">
-                      <span className="font-mono text-xs text-primary/60 truncate">
-                        {vfs.currentPath === '/' ? '~' : vfs.currentPath.replace('/blog/', '~/')}
-                      </span>
-                      <span className="text-muted-foreground/40 font-mono text-xs">
-                        $ _
-                      </span>
-                    </div>
-                    {hasNew && (
-                      <span className="h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" />
-                    )}
-                  </div>
-                )}
-              </>
-            ) : (
-              // PC 터미널: 기존 디자인 유지
-              <div className="flex w-full items-center justify-between gap-0.5 border border-border bg-[hsl(var(--terminal-code-bg))] backdrop-blur-sm">
-                {/* Terminal window controls */}
-                <div className="flex items-center gap-1.5 px-3 py-2.5 border-r border-border/50">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-close))]" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]" />
-                </div>
-
-                {/* Terminal path */}
-                <div className="hidden sm:flex items-center gap-1 px-3 text-[11px] font-mono text-muted-foreground border-r border-border/50">
-                  <span className="text-primary/60">~/</span>
-                  <span>actions</span>
-                </div>
-
-                {/* Action buttons */}
-                <div className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5">
-                  {dockActions.map((action) => {
-                    const Icon = action.icon;
-                    return (
+          <nav
+            className={cn(
+              "mx-auto flex w-full justify-center",
+              isMobile ? "max-w-none" : "max-w-md sm:max-w-2xl",
+            )}
+          >
+            {/* Terminal style dock */}
+            {isTerminal ? (
+              isMobile ? (
+                // Mobile TUI: Shell Bar and Fullscreen Modal
+                <>
+                  {/* Collapsed Shell Bar */}
+                  {!shellOpen && (
+                    <div className="flex w-full items-center gap-2 bg-[hsl(var(--terminal-code-bg))] border-t border-primary/20 px-3 py-2">
+                      {/* Terminal button - opens shell */}
                       <button
-                        key={action.key}
                         type="button"
-                        onClick={action.onClick}
-                        disabled={action.disabled}
-                        aria-label={action.label}
-                        aria-disabled={action.disabled}
-                        title={action.title}
-                        className={cn(
-                          "group relative flex items-center gap-1.5 px-4 py-2.5 font-mono text-xs transition-all disabled:cursor-not-allowed disabled:opacity-50",
-                          action.primary
-                            ? "bg-primary/20 text-primary border border-primary/40 hover:bg-primary/30"
-                            : "text-muted-foreground hover:text-primary hover:bg-primary/10 border border-transparent hover:border-primary/30",
-                        )}
+                        onClick={() => setShellOpen(true)}
+                        aria-label="Open command input"
+                        className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/20 text-primary border border-primary/30 transition-all active:scale-95"
                       >
-                        <Icon
-                          className={cn(
-                            "h-4 w-4",
-                            action.primary && "terminal-glow",
-                          )}
-                        />
-                        <span className="text-[10px] uppercase tracking-wider">
-                          {action.label}
-                        </span>
-                        {action.badge && (
-                          <span
-                            className="absolute -top-0.5 -right-0.5 inline-flex h-2 w-2 rounded-full bg-primary animate-pulse"
-                            aria-hidden
-                          />
-                        )}
+                        <Terminal className="h-5 w-5" />
                       </button>
-                    );
-                  })}
-                </div>
-
-                {/* Terminal status */}
-                <div className="hidden sm:flex items-center gap-2 px-3 text-[10px] font-mono text-muted-foreground/60 border-l border-border/50">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-pulse" />
-                  <span>READY</span>
-                </div>
-              </div>
-            )
-          ) : (
-            /* Default style dock - Compact 4-button design */
-            <div
-              className={cn(
-                "flex w-full items-center backdrop-blur-xl",
-                isMobile
-                  ? "rounded-none border-t border-border/30 bg-background/95 px-2 py-1.5 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] dark:bg-background/90 dark:border-white/10"
-                  : "rounded-[28px] border border-white/20 bg-background/70 px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.08),_0_2px_8px_rgba(0,0,0,0.04)] dark:border-white/10 dark:bg-background/60 dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)]",
-              )}
-            >
-              {isMobile ? (
-                // 모바일: 4개 버튼 간결하게 표시
-                <div className="flex w-full items-center justify-around">
-                  {dockActions.map((action) => {
-                    const Icon = action.icon;
-                    return (
-                      <button
-                        key={action.key}
-                        type="button"
-                        onClick={action.onClick}
-                        disabled={action.disabled}
-                        aria-label={action.label}
-                        className={cn(
-                          "group relative flex flex-col items-center justify-center gap-0.5 py-1.5 px-3 transition-all active:scale-95",
-                          action.disabled && "opacity-40",
-                        )}
+                      
+                      {/* Path display - also opens shell */}
+                      <div 
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setShellOpen(true)}
+                        onKeyDown={(e) => e.key === 'Enter' && setShellOpen(true)}
+                        className="flex-1 flex items-center gap-2 min-w-0 cursor-pointer"
                       >
-                        <span
+                        <span className="font-mono text-xs text-primary/60 truncate">
+                          {vfs.displayPath}
+                        </span>
+                        <span className="text-muted-foreground/40 font-mono text-xs">
+                          $ _
+                        </span>
+                      </div>
+                      
+                      {/* Scroll to top button - only show when scrolled down */}
+                      {showScrollTop && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          aria-label="맨 위로 스크롤"
+                          className="flex items-center justify-center h-8 w-8 rounded-md bg-primary/10 text-primary/80 border border-primary/20 transition-all active:scale-95 hover:bg-primary/20"
+                        >
+                          <ArrowUp className="h-4 w-4" />
+                        </button>
+                      )}
+                      
+                      {/* New badge indicator */}
+                      {hasNew && !showScrollTop && (
+                        <span className="h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" />
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                // PC 터미널: 기존 디자인 유지
+                <div className="flex w-full items-center justify-between gap-0.5 border border-border bg-[hsl(var(--terminal-code-bg))] backdrop-blur-sm">
+                  {/* Terminal window controls */}
+                  <div className="flex items-center gap-1.5 px-3 py-2.5 border-r border-border/50">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-close))]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]" />
+                  </div>
+
+                  {/* Terminal path */}
+                  <div className="hidden sm:flex items-center gap-1 px-3 text-[11px] font-mono text-muted-foreground border-r border-border/50">
+                    <span className="text-primary/60">~/</span>
+                    <span>actions</span>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5">
+                    {dockActions.map((action) => {
+                      const Icon = action.icon;
+                      return (
+                        <button
+                          key={action.key}
+                          type="button"
+                          onClick={action.onClick}
+                          disabled={action.disabled}
+                          aria-label={action.label}
+                          aria-disabled={action.disabled}
+                          title={action.title}
                           className={cn(
-                            "flex items-center justify-center rounded-xl transition-all duration-150",
-                            "h-9 w-9",
+                            "group relative flex items-center gap-1.5 px-4 py-2.5 font-mono text-xs transition-all disabled:cursor-not-allowed disabled:opacity-50",
                             action.primary
-                              ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
-                              : "bg-muted/60 text-foreground/70 dark:bg-white/10 dark:text-white/70",
+                              ? "bg-primary/20 text-primary border border-primary/40 hover:bg-primary/30"
+                              : "text-muted-foreground hover:text-primary hover:bg-primary/10 border border-transparent hover:border-primary/30",
                           )}
                         >
-                          <Icon className="h-4 w-4" />
-                        </span>
-                        <span className="text-[10px] text-muted-foreground/70 dark:text-white/50">
-                          {action.label}
-                        </span>
-                        {action.badge && (
-                          <span className="absolute top-0.5 right-2 inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                // PC: 프리미엄 호버 효과와 레이블
-                <div className="flex items-center justify-center gap-2">
-                  {dockActions.map((action) => {
-                    const Icon = action.icon;
-                    return (
-                      <button
-                        key={action.key}
-                        type="button"
-                        onClick={action.onClick}
-                        disabled={action.disabled}
-                        aria-label={action.label}
-                        aria-disabled={action.disabled}
-                        title={action.title}
-                        className={cn(
-                          "group relative flex items-center gap-2.5 rounded-2xl px-4 py-2.5 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50",
-                          action.primary
-                            ? "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:scale-[1.02]"
-                            : "text-muted-foreground hover:bg-muted/60 hover:text-foreground dark:hover:bg-white/10 dark:hover:text-white",
-                        )}
-                      >
-                        <Icon className={cn(
-                          "h-[18px] w-[18px]",
-                          action.primary && "text-primary-foreground",
-                        )} />
-                        <span className={cn(
-                          "text-sm font-medium tracking-wide",
-                          action.primary ? "text-primary-foreground" : "text-foreground/80 dark:text-white/80",
-                        )}>
-                          {action.label}
-                        </span>
-                        {action.badge && (
-                          <span
-                            className="absolute -top-1 -right-1 inline-flex h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background animate-pulse"
-                            aria-hidden
+                          <Icon
+                            className={cn(
+                              "h-4 w-4",
+                              action.primary && "terminal-glow",
+                            )}
                           />
-                        )}
-                      </button>
-                    );
-                  })}
+                          <span className="text-[10px] uppercase tracking-wider">
+                            {action.label}
+                          </span>
+                          {action.badge && (
+                            <span
+                              className="absolute -top-0.5 -right-0.5 inline-flex h-2 w-2 rounded-full bg-primary animate-pulse"
+                              aria-hidden
+                            />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Terminal status */}
+                  <div className="hidden sm:flex items-center gap-2 px-3 text-[10px] font-mono text-muted-foreground/60 border-l border-border/50">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-pulse" />
+                    <span>READY</span>
+                  </div>
                 </div>
-              )}
-            </div>
-          )}
-        </nav>
-      </div>
+              )
+            ) : (
+              /* Default style dock - Compact 4-button design */
+              <div
+                className={cn(
+                  "flex w-full items-center backdrop-blur-xl",
+                  isMobile
+                    ? "rounded-none border-t border-border/30 bg-background/95 px-2 py-1.5 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] dark:bg-background/90 dark:border-white/10"
+                    : "rounded-[28px] border border-white/20 bg-background/70 px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.08),_0_2px_8px_rgba(0,0,0,0.04)] dark:border-white/10 dark:bg-background/60 dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)]",
+                )}
+              >
+                {isMobile ? (
+                  // 모바일: 4개 버튼 간결하게 표시
+                  <div className="flex w-full items-center justify-around">
+                    {dockActions.map((action) => {
+                      const Icon = action.icon;
+                      return (
+                        <button
+                          key={action.key}
+                          type="button"
+                          onClick={action.onClick}
+                          disabled={action.disabled}
+                          aria-label={action.label}
+                          className={cn(
+                            "group relative flex flex-col items-center justify-center gap-0.5 py-1.5 px-3 transition-all active:scale-95",
+                            action.disabled && "opacity-40",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "flex items-center justify-center rounded-xl transition-all duration-150",
+                              "h-9 w-9",
+                              action.primary
+                                ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
+                                : "bg-muted/60 text-foreground/70 dark:bg-white/10 dark:text-white/70",
+                            )}
+                          >
+                            <Icon className="h-4 w-4" />
+                          </span>
+                          <span className="text-[10px] text-muted-foreground/70 dark:text-white/50">
+                            {action.label}
+                          </span>
+                          {action.badge && (
+                            <span className="absolute top-0.5 right-2 inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  // PC: 프리미엄 호버 효과와 레이블
+                  <div className="flex items-center justify-center gap-2">
+                    {dockActions.map((action) => {
+                      const Icon = action.icon;
+                      return (
+                        <button
+                          key={action.key}
+                          type="button"
+                          onClick={action.onClick}
+                          disabled={action.disabled}
+                          aria-label={action.label}
+                          aria-disabled={action.disabled}
+                          title={action.title}
+                          className={cn(
+                            "group relative flex items-center gap-2.5 rounded-2xl px-4 py-2.5 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50",
+                            action.primary
+                              ? "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:scale-[1.02]"
+                              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground dark:hover:bg-white/10 dark:hover:text-white",
+                          )}
+                        >
+                          <Icon className={cn(
+                            "h-[18px] w-[18px]",
+                            action.primary && "text-primary-foreground",
+                          )} />
+                          <span className={cn(
+                            "text-sm font-medium tracking-wide",
+                            action.primary ? "text-primary-foreground" : "text-foreground/80 dark:text-white/80",
+                          )}>
+                            {action.label}
+                          </span>
+                          {action.badge && (
+                            <span
+                              className="absolute -top-1 -right-1 inline-flex h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background animate-pulse"
+                              aria-hidden
+                            />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </nav>
+        </div>
+      )}
       {chatOpen && (
         <ChatWidget
           onClose={() => {

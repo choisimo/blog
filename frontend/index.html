@@ -23,10 +23,19 @@
       (function() {
         const theme = localStorage.getItem('theme');
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (theme === 'dark' || (!theme && prefersDark)) {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
+        const root = document.documentElement;
+        root.classList.remove('light', 'dark', 'terminal');
+        
+        if (theme === 'terminal') {
+          // Terminal uses dark as base with additional terminal class
+          root.classList.add('dark', 'terminal');
+        } else if (theme === 'dark' || (theme === 'system' && prefersDark) || (!theme && prefersDark)) {
+          root.classList.add('dark');
+        } else if (theme === 'light') {
+          root.classList.add('light');
+        } else if (!theme) {
+          // Default: terminal theme for new visitors
+          root.classList.add('dark', 'terminal');
         }
       })();
     </script>

@@ -2,9 +2,16 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export const ScrollToTop = () => {
   const [isVisible, setIsVisible] = useState(false);
+  const isMobile = useIsMobile();
+  const { isTerminal } = useTheme();
+
+  // Hide on mobile terminal - shell bar has its own scroll-to-top button
+  const shouldHide = isMobile && isTerminal;
 
   useEffect(() => {
     const toggleVisibility = () => {
@@ -25,6 +32,11 @@ export const ScrollToTop = () => {
       behavior: 'smooth',
     });
   };
+
+  // Don't render on mobile terminal (shell bar has integrated scroll-to-top)
+  if (shouldHide) {
+    return null;
+  }
 
   return (
     <Button

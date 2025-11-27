@@ -38,10 +38,37 @@ export function useVisitedPostsState() {
   const read = useCallback(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      const arr: VisitedPostItem[] = raw ? JSON.parse(raw) : [];
-      setItems(Array.isArray(arr) ? arr : []);
+      if (!raw) {
+        setItems([]);
+        setStorageAvailable(true);
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      // Validate that it's an array with proper structure
+      if (!Array.isArray(parsed)) {
+        // Invalid data - reset to empty array
+        localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+        setItems([]);
+        setStorageAvailable(true);
+        return;
+      }
+      // Filter out any malformed items
+      const validItems = parsed.filter(
+        (item: any) =>
+          item &&
+          typeof item === 'object' &&
+          typeof item.path === 'string' &&
+          typeof item.title === 'string'
+      );
+      setItems(validItems);
       setStorageAvailable(true);
-    } catch {
+    } catch (e) {
+      // JSON parse failed or other error - reset storage
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+      } catch {
+        // localStorage completely unavailable
+      }
       setItems([]);
       setStorageAvailable(false);
     }
@@ -128,9 +155,24 @@ export function VisitedPostsMinimap({
     const readSessions = () => {
       try {
         const raw = localStorage.getItem('ai_chat_sessions_index');
-        const arr = raw ? JSON.parse(raw) : [];
-        if (Array.isArray(arr)) setChatSessions(arr);
-        else setChatSessions([]);
+        if (!raw) {
+          setChatSessions([]);
+          return;
+        }
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) {
+          // Invalid data - reset
+          try {
+            localStorage.setItem('ai_chat_sessions_index', JSON.stringify([]));
+          } catch {}
+          setChatSessions([]);
+          return;
+        }
+        // Filter valid sessions
+        const validSessions = parsed.filter(
+          (s: any) => s && typeof s === 'object' && typeof s.id === 'string'
+        );
+        setChatSessions(validSessions);
       } catch {
         setChatSessions([]);
       }
