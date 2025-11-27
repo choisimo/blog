@@ -7,11 +7,9 @@ compatibility_date = "2025-10-21"
 binding = "MY_BUCKET"
 bucket_name = "blog"
 
-# Option A: route via zone + pattern (uncomment and set)
- [[routes]]
- pattern = "r2-gateway.immuddelo.workers.dev/*"
- zone_name = "immuddelo.workers.dev"
+# workers.dev subdomain is automatically enabled
+# No routes needed for Service Binding - it works directly
 
-# Option B: attach custom domains in dashboard or triggers
+# Option: attach custom domains if needed for external access
 # [triggers]
-# custom_domains = ["assets.mydomain.com"]
+# custom_domains = ["r2-assets.nodove.com"]

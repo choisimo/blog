@@ -21,7 +21,6 @@ const JSON_CONTENT_TYPE = { 'Content-Type': 'application/json' } as const;
 const MAX_PAGE_SIZE = 100;
 const DEFAULT_CACHE_TTL_SECONDS = 300;
 const INTERNAL_CALLER_HEADER = 'X-Gateway-Caller-Key';
-const R2_GATEWAY_BASE_URL = 'https://r2-gateway.internal';
 
 type R2GatewayListResponse = {
   ok: boolean;
@@ -47,16 +46,28 @@ function normalizeEtag(value?: string | null) {
   return value?.replace(/"/g, '') ?? null;
 }
 
-function buildGatewayUrl(path: string, searchParams?: Record<string, string | undefined>) {
-  const url = new URL(path, R2_GATEWAY_BASE_URL);
-  if (searchParams) {
-    for (const [key, value] of Object.entries(searchParams)) {
-      if (value !== undefined && value !== null) {
-        url.searchParams.set(key, value);
-      }
+/**
+ * Build a relative URL for Service Binding fetch.
+ * Service Bindings ignore the host, so we use a dummy base URL
+ * and extract the pathname + search params.
+ */
+function buildGatewayPath(path: string, searchParams?: Record<string, string | undefined>): string {
+  // Ensure path starts with /
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  
+  if (!searchParams) {
+    return normalizedPath;
+  }
+  
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (value !== undefined && value !== null) {
+      params.set(key, value);
     }
   }
-  return url;
+  
+  const queryString = params.toString();
+  return queryString ? `${normalizedPath}?${queryString}` : normalizedPath;
 }
 
 async function gatewayFetch(env: Env, path: string, options: GatewayFetchOptions = {}) {
@@ -67,12 +78,18 @@ async function gatewayFetch(env: Env, path: string, options: GatewayFetchOptions
   }
   headers.set(INTERNAL_CALLER_HEADER, env.SECRET_CALLER_KEY);
 
-  const url = buildGatewayUrl(path, searchParams);
-  return env.R2_GATEWAY.fetch(url.toString(), {
+  // Build path with query params for Service Binding
+  const requestPath = buildGatewayPath(path, searchParams);
+  
+  // Service Binding fetch - use Request object with relative-like URL
+  // The host is ignored, only pathname matters
+  const request = new Request(`https://r2-gateway.workers.dev${requestPath}`, {
     method,
     headers,
     body,
   });
+  
+  return env.R2_GATEWAY.fetch(request);
 }
 
 async function parseJsonSafe<T>(response: Response): Promise<T | null> {
@@ -497,6 +514,18 @@ export default {
     const isApiRoute = request.url.includes('/api/memos') || request.url.includes('/api/personas');
 
     if (isApiRoute) {
+      // Check R2 gateway configuration
+      if (!env.SECRET_CALLER_KEY) {
+        const res = makeResponse({
+          ok: false,
+          error: { message: 'Server misconfiguration: SECRET_CALLER_KEY not set for R2 gateway', code: 'MISCONFIGURED' },
+        }, { status: 500 });
+        if (isBrowserAllowed && origin) {
+          applyCors(res.headers, origin, request.headers.get('Access-Control-Request-Headers'));
+        }
+        return res;
+      }
+
       const auth = await verifyAuth(request, env);
       if (!auth?.userId) {
         const res = makeResponse({ ok: false, error: { message: 'Unauthorized' } }, { status: 401 });
