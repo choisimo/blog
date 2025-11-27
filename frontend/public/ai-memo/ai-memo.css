@@ -705,6 +705,7 @@
    ======================================== */
 @media (max-width: 640px) {
   .panel {
+    /* 전체 화면 높이 사용 (100dvh), FAB 바 높이 고려 */
     width: 100% !important;
     max-width: 100% !important;
     height: calc(100dvh - 56px) !important;
@@ -715,14 +716,18 @@
     bottom: 0 !important;
     transform: translateY(100%);
     border-radius: 20px 20px 0 0;
-    padding-bottom: env(safe-area-inset-bottom, 16px);
     overflow: hidden;
     transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
     box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
+    /* 핵심: flex column 레이아웃 */
+    display: flex;
+    flex-direction: column;
   }
 
   .panel.open {
     transform: translateY(0);
+    display: flex;
+    flex-direction: column;
   }
 
   /* Drag handle */
@@ -744,6 +749,7 @@
 
   .header {
     position: relative;
+    flex-shrink: 0;
     padding: 22px 16px 14px;
     gap: 10px;
     cursor: default;
@@ -755,6 +761,7 @@
   }
 
   .tabs {
+    flex-shrink: 0;
     padding: 8px 16px;
     gap: 6px;
     background: transparent;
@@ -766,45 +773,225 @@
     border-radius: 24px;
   }
 
+  /* 본문 영역: 스크롤 담당 */
   .body {
     flex: 1;
+    min-height: 0; /* flex 내에서 스크롤 동작을 위해 필수 */
     padding: 16px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 폼 전체를 중앙에 정렬하는 래퍼 */
+  .body > .section,
+  .body > .split,
+  .body > .preview-layout-bar,
+  .body > .row,
+  .body > #catalystBox {
+    max-width: 640px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+  }
+
+  /* 편집기/미리보기 필드 공통 박스 */
+  .label {
+    display: block;
+    width: 100%;
+    margin-bottom: 8px;
   }
 
   .textarea {
+    width: 100%;
     resize: none;
-    min-height: 120px;
+    min-height: 140px;
     font-size: 16px; /* Prevent iOS zoom */
+    box-sizing: border-box;
   }
 
   .input {
+    width: 100%;
     font-size: 16px; /* Prevent iOS zoom */
     padding: 12px;
+    box-sizing: border-box;
   }
 
+  /* Split layout을 세로 1컬럼으로 변경 */
   .split {
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
     height: auto;
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
   }
 
+  .split-left,
+  .split-right {
+    flex: none;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .split-left .textarea,
+  .split-right .textarea,
+  .split-left .preview-md,
+  .split-right .preview-md {
+    width: 100%;
+    min-height: 160px;
+  }
+
+  /* 미리보기 영역도 동일한 너비/정렬 */
+  .preview-md {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* 하단 버튼 영역 */
   .footer {
+    flex-shrink: 0;
     padding: 14px 16px;
     padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
     gap: 10px;
     background: transparent;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .footer .row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .footer .btn,
+  .footer button {
+    flex: 1 1 calc(50% - 8px);
+    min-width: 80px;
+    max-width: 160px;
   }
 
   .btn {
-    padding: 12px 20px;
-    font-size: 14px;
-    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 13px;
+    border-radius: 8px;
+    box-sizing: border-box;
   }
 
   #catalystBox {
     flex-direction: column;
     align-items: stretch;
+    gap: 8px;
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+  }
+
+  #catalystBox .input {
+    width: 100%;
+  }
+
+  #catalystBox .btn {
+    flex: none;
+    width: 100%;
+    max-width: none;
+  }
+
+  /* 레이아웃 토글 바 */
+  .preview-layout-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  /* 상태 표시 영역 */
+  .footer #status {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+}
+
+/* 더 좁은 모바일 (480px 이하) */
+@media (max-width: 480px) {
+  .panel {
+    border-radius: 16px 16px 0 0;
+  }
+
+  .header {
+    padding: 20px 12px 12px;
+  }
+
+  .tabs {
+    padding: 6px 12px;
+  }
+
+  .tab {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .body {
+    padding: 12px;
+  }
+
+  .footer {
+    padding: 12px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .btn {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .footer .btn,
+  .footer button {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 70px;
+    max-width: 140px;
+  }
+
+  /* 메모 툴바 버튼들 - 모바일에서 줄바꿈 허용 */
+  .section > .row {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  .section > .row .btn.secondary {
+    padding: 6px 8px;
+    font-size: 11px;
+    min-width: auto;
+  }
+
+  /* 텍스트 영역 */
+  .textarea {
+    min-height: 120px;
+  }
+
+  /* 분할 뷰: 완전히 세로로 */
+  .split {
+    gap: 12px;
+  }
+
+  .split-left,
+  .split-right {
+    min-height: auto;
+  }
+
+  .split-left .textarea,
+  .split-right .textarea,
+  .split-left .preview-md,
+  .split-right .preview-md {
+    min-height: 140px;
   }
 }
 

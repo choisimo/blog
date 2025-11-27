@@ -1045,6 +1045,47 @@ export default function FloatingActionBar() {
     },
   ];
 
+  // Shell 명령 실행 로그 (입력 + 출력)
+  const [shellLogs, setShellLogs] = useState<Array<{type: 'input' | 'output', text: string}>>([]);
+  const consoleEndRef = useRef<HTMLDivElement>(null);
+
+  // 로그가 업데이트되면 스크롤을 맨 아래로
+  useEffect(() => {
+    if (consoleEndRef.current) {
+      consoleEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [shellLogs]);
+
+  // 기존 executeShellCommand를 확장하여 로그 기록
+  const executeShellCommandWithLog = useCallback((input: string) => {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+
+    // clear 명령은 로그도 함께 초기화
+    if (trimmed.toLowerCase() === 'clear' || trimmed.toLowerCase() === 'cls') {
+      setShellLogs([]);
+      setShellOutput(null);
+      setShellInput("");
+      return;
+    }
+
+    // 입력 로그 추가
+    const inputLog = `${vfs.currentPath === '/' ? '~' : vfs.currentPath.replace('/blog/', '~/')} $ ${trimmed}`;
+    setShellLogs(prev => [...prev.slice(-50), { type: 'input', text: inputLog }]);
+
+    // 명령 실행
+    executeShellCommand(trimmed);
+
+    // 출력이 있으면 로그에 추가 (shellOutput이 바뀌면 useEffect에서 처리)
+  }, [executeShellCommand, vfs.currentPath]);
+
+  // shellOutput이 변경되면 로그에 추가
+  useEffect(() => {
+    if (shellOutput && shellOpen) {
+      setShellLogs(prev => [...prev.slice(-50), { type: 'output', text: shellOutput }]);
+    }
+  }, [shellOutput, shellOpen]);
+
   // 모바일 쉘 모달을 Portal로 분리 (transform이 걸린 toolbar 밖으로)
   const mobileShellModal = isTerminal && isMobile && shellOpen
     ? createPortal(
@@ -1065,7 +1106,7 @@ export default function FloatingActionBar() {
             style={{ height: viewportHeight }}
           >
             {/* Input field at the top */}
-            <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 border-b border-border/50">
+            <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 border-b border-border/50 bg-black/20">
               <span className="text-primary/70 font-mono text-xs shrink-0">
                 {vfs.currentPath === '/' ? '~' : vfs.currentPath.replace('/blog/', '~/')}
               </span>
@@ -1075,7 +1116,14 @@ export default function FloatingActionBar() {
                 type="text"
                 value={shellInput}
                 onChange={(e) => setShellInput(e.target.value)}
-                onKeyDown={handleShellKeyDown}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    executeShellCommandWithLog(shellInput);
+                  } else {
+                    handleShellKeyDown(e);
+                  }
+                }}
                 placeholder="Type a command or 'help'"
                 className="flex-1 bg-transparent border-none outline-none font-mono text-sm text-foreground placeholder:text-muted-foreground/40"
                 autoComplete="off"
@@ -1084,7 +1132,10 @@ export default function FloatingActionBar() {
               />
               <button
                 type="button"
-                onClick={() => setShellOpen(false)}
+                onClick={() => {
+                  setShellOpen(false);
+                  setShellOutput(null);
+                }}
                 className="p-1.5 text-muted-foreground hover:text-primary transition-colors"
                 aria-label="Close"
               >
@@ -1092,41 +1143,73 @@ export default function FloatingActionBar() {
               </button>
             </div>
 
-            {/* Command history and suggestions */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-3">
-              <div className="text-xs font-mono text-primary/70 uppercase tracking-wider">
-                Recommended
+            {/* Console Output Window - 핵심: 결과를 여기에 표시 */}
+            <div className="flex-1 min-h-0 relative">
+              <div className="absolute inset-0 overflow-y-auto p-3 bg-black/30">
+                {/* 로그가 없을 때 안내 문구 */}
+                {shellLogs.length === 0 && !shellOutput && (
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50 text-center">
+                    <Terminal className="h-8 w-8 mb-2 opacity-30" />
+                    <p className="text-xs font-mono">Run a command to see output here...</p>
+                    <p className="text-[10px] mt-1 opacity-70">Type 'help' for available commands</p>
+                  </div>
+                )}
+
+                {/* 실행 로그 출력 */}
+                {shellLogs.map((log, index) => (
+                  <div
+                    key={index}
+                    className={cn(
+                      "mb-1 font-mono text-xs whitespace-pre-wrap break-all leading-relaxed",
+                      log.type === 'input' 
+                        ? "text-primary/90 font-medium" 
+                        : "text-foreground/80 pl-2 border-l-2 border-primary/20"
+                    )}
+                  >
+                    {log.text}
+                  </div>
+                ))}
+
+                {/* 스크롤 앵커 */}
+                <div ref={consoleEndRef} />
               </div>
-              <div className="grid grid-cols-2 gap-2 text-center">
-                {['ls', 'find', 'stack', 'help'].map((cmd) => (
+            </div>
+
+            {/* Quick Actions Bar - 하단 고정 */}
+            <div className="flex-shrink-0 border-t border-border/30 bg-black/20 p-2.5">
+              <div className="text-[10px] font-mono text-primary/60 uppercase tracking-wider mb-2">
+                Quick Commands
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {['ls', 'find', 'help', 'clear'].map((cmd) => (
                   <button
                     key={cmd}
                     type="button"
-                    onClick={() => executeShellCommand(cmd)}
-                    className="p-2.5 rounded-lg bg-primary/10 border border-primary/20 font-mono text-sm text-primary hover:bg-primary/20 transition-colors"
+                    onClick={() => executeShellCommandWithLog(cmd)}
+                    className="py-2 px-1 rounded bg-primary/10 border border-primary/20 font-mono text-xs text-primary hover:bg-primary/20 active:scale-95 transition-all"
                   >
                     {cmd}
                   </button>
                 ))}
               </div>
               {commandHistory.length > 0 && (
-                <>
-                  <div className="pt-2 text-xs font-mono text-primary/70 uppercase tracking-wider">
+                <div className="mt-2 pt-2 border-t border-border/20">
+                  <div className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-wider mb-1.5">
                     History
                   </div>
-                  <div className="flex flex-col-reverse items-start text-left gap-1">
-                    {commandHistory.slice().reverse().map((cmd, idx) => (
+                  <div className="flex flex-wrap gap-1">
+                    {commandHistory.slice(-4).reverse().map((cmd, idx) => (
                       <button
                         key={`${cmd}-${idx}`}
                         type="button"
-                        onClick={() => executeShellCommand(cmd)}
-                        className="p-2 rounded-lg font-mono text-sm text-muted-foreground hover:bg-muted/10 hover:text-foreground w-full text-left"
+                        onClick={() => executeShellCommandWithLog(cmd)}
+                        className="py-1 px-2 rounded text-[10px] font-mono text-muted-foreground bg-muted/5 hover:bg-muted/10 hover:text-foreground transition-colors truncate max-w-[80px]"
                       >
                         {cmd}
                       </button>
                     ))}
                   </div>
-                </>
+                </div>
               )}
             </div>
           </div>
@@ -1145,21 +1228,31 @@ export default function FloatingActionBar() {
       {/* Shell output overlay for terminal mobile - Portal로 분리 */}
       {isTerminal && isMobile && shellOutput && !shellOpen && createPortal(
         <div className="fixed inset-x-0 bottom-14 z-[9998] px-3 pb-2 animate-in slide-in-from-bottom-2 duration-150">
-          <div className="bg-[hsl(var(--terminal-code-bg))] border border-primary/30 rounded-lg shadow-lg shadow-primary/5 overflow-hidden">
+          <div className="bg-[hsl(var(--terminal-code-bg))] border border-primary/30 rounded-lg shadow-lg shadow-primary/5 overflow-hidden max-h-[50vh]">
             {/* Terminal header */}
             <div className="flex items-center justify-between px-3 py-1.5 bg-primary/10 border-b border-primary/20">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-primary/60 animate-pulse" />
                 <span className="font-mono text-[10px] text-primary/80 uppercase tracking-wider">Output</span>
               </div>
-              <button
-                type="button"
-                onClick={() => setShellOutput(null)}
-                className="p-0.5 text-muted-foreground hover:text-primary transition-colors"
-                aria-label="닫기"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setShellOpen(true)}
+                  className="p-1 text-muted-foreground hover:text-primary transition-colors"
+                  aria-label="확장"
+                >
+                  <ChevronRight className="h-3.5 w-3.5 rotate-90" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShellOutput(null)}
+                  className="p-0.5 text-muted-foreground hover:text-primary transition-colors"
+                  aria-label="닫기"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
             {/* Terminal output */}
             <div className="p-3 max-h-48 overflow-auto">
