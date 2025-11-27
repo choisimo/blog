@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { NotebookPen, Sparkles, Layers, Map, Terminal, X, ChevronRight } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import VisitedPostsMinimap, {
@@ -505,6 +506,30 @@ function useScrollHide(): boolean {
   return hidden;
 }
 
+// FAB 고정/자동숨김 설정 훅
+function useFabPinned(): [boolean, () => void] {
+  const [pinned, setPinned] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("fab.pinned");
+      if (saved != null) setPinned(JSON.parse(saved));
+    } catch {}
+  }, []);
+
+  const togglePinned = useCallback(() => {
+    setPinned((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("fab.pinned", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  return [pinned, togglePinned];
+}
+
 function hideLegacyLaunchers(aiMemoEl: HTMLElement | null) {
   try {
     if (!aiMemoEl) return;
@@ -530,6 +555,7 @@ export default function FloatingActionBar() {
   const impressionSent = useRef(false);
   const [chatOpen, setChatOpen] = useState(false);
   const scrollHidden = useScrollHide();
+  const [fabPinned] = useFabPinned();
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { isTerminal } = useTheme();
@@ -963,9 +989,12 @@ export default function FloatingActionBar() {
       ? "bottom-0 pb-[calc(env(safe-area-inset-bottom,0px))]"
       : "bottom-[calc(16px+env(safe-area-inset-bottom,0px))]",
     "transition-transform transition-opacity duration-200 ease-out",
-    scrollHidden
-      ? "translate-y-6 opacity-0 pointer-events-none"
-      : "translate-y-0 opacity-100",
+    // fabPinned가 true면 자동 숨김 비활성화
+    fabPinned
+      ? "translate-y-0 opacity-100"
+      : scrollHidden
+        ? "translate-y-6 opacity-0 pointer-events-none"
+        : "translate-y-0 opacity-100",
   );
 
   type DockAction = {
@@ -1016,13 +1045,106 @@ export default function FloatingActionBar() {
     },
   ];
 
+  // 모바일 쉘 모달을 Portal로 분리 (transform이 걸린 toolbar 밖으로)
+  const mobileShellModal = isTerminal && isMobile && shellOpen
+    ? createPortal(
+        <div
+          ref={shellContentRef}
+          className="fixed inset-0 z-[9999] flex flex-col bg-background/95 backdrop-blur-sm animate-in fade-in-0 duration-200"
+          style={{ height: viewportHeight }}
+        >
+          {/* Backdrop - clicking closes the shell */}
+          <div
+            className="absolute inset-0 z-0"
+            onClick={() => setShellOpen(false)}
+            aria-hidden="true"
+          />
+          {/* Content container - must be above backdrop */}
+          <div
+            className="relative z-10 flex flex-col bg-[hsl(var(--terminal-code-bg))] border-t border-primary/20"
+            style={{ height: viewportHeight }}
+          >
+            {/* Input field at the top */}
+            <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 border-b border-border/50">
+              <span className="text-primary/70 font-mono text-xs shrink-0">
+                {vfs.currentPath === '/' ? '~' : vfs.currentPath.replace('/blog/', '~/')}
+              </span>
+              <span className="text-primary font-mono text-sm font-bold shrink-0">$</span>
+              <input
+                ref={shellInputRef}
+                type="text"
+                value={shellInput}
+                onChange={(e) => setShellInput(e.target.value)}
+                onKeyDown={handleShellKeyDown}
+                placeholder="Type a command or 'help'"
+                className="flex-1 bg-transparent border-none outline-none font-mono text-sm text-foreground placeholder:text-muted-foreground/40"
+                autoComplete="off"
+                autoCapitalize="off"
+                spellCheck={false}
+              />
+              <button
+                type="button"
+                onClick={() => setShellOpen(false)}
+                className="p-1.5 text-muted-foreground hover:text-primary transition-colors"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Command history and suggestions */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+              <div className="text-xs font-mono text-primary/70 uppercase tracking-wider">
+                Recommended
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-center">
+                {['ls', 'find', 'stack', 'help'].map((cmd) => (
+                  <button
+                    key={cmd}
+                    type="button"
+                    onClick={() => executeShellCommand(cmd)}
+                    className="p-2.5 rounded-lg bg-primary/10 border border-primary/20 font-mono text-sm text-primary hover:bg-primary/20 transition-colors"
+                  >
+                    {cmd}
+                  </button>
+                ))}
+              </div>
+              {commandHistory.length > 0 && (
+                <>
+                  <div className="pt-2 text-xs font-mono text-primary/70 uppercase tracking-wider">
+                    History
+                  </div>
+                  <div className="flex flex-col-reverse items-start text-left gap-1">
+                    {commandHistory.slice().reverse().map((cmd, idx) => (
+                      <button
+                        key={`${cmd}-${idx}`}
+                        type="button"
+                        onClick={() => executeShellCommand(cmd)}
+                        className="p-2 rounded-lg font-mono text-sm text-muted-foreground hover:bg-muted/10 hover:text-foreground w-full text-left"
+                      >
+                        {cmd}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )
+    : null;
+
   return (
     <>
       {stackSheet}
       
-      {/* Shell output overlay for terminal mobile */}
-      {isTerminal && isMobile && shellOutput && (
-        <div className="fixed inset-x-0 bottom-14 z-[var(--z-fab-bar)] px-3 pb-2 animate-in slide-in-from-bottom-2 duration-150">
+      {/* 모바일 쉘 모달 - Portal로 toolbar 외부에 렌더링 */}
+      {mobileShellModal}
+      
+      {/* Shell output overlay for terminal mobile - Portal로 분리 */}
+      {isTerminal && isMobile && shellOutput && !shellOpen && createPortal(
+        <div className="fixed inset-x-0 bottom-14 z-[9998] px-3 pb-2 animate-in slide-in-from-bottom-2 duration-150">
           <div className="bg-[hsl(var(--terminal-code-bg))] border border-primary/30 rounded-lg shadow-lg shadow-primary/5 overflow-hidden">
             {/* Terminal header */}
             <div className="flex items-center justify-between px-3 py-1.5 bg-primary/10 border-b border-primary/20">
@@ -1044,7 +1166,8 @@ export default function FloatingActionBar() {
               <pre className="font-mono text-xs text-foreground/90 whitespace-pre-wrap leading-relaxed">{shellOutput}</pre>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       
       <div
@@ -1090,93 +1213,6 @@ export default function FloatingActionBar() {
                     {hasNew && (
                       <span className="h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" />
                     )}
-                  </div>
-                )}
-
-                {/* Fullscreen Focus Mode Modal */}
-                {shellOpen && (
-                  <div
-                    ref={shellContentRef}
-                    className="fixed inset-0 z-[9999] flex flex-col bg-background/95 backdrop-blur-sm animate-in fade-in-0 duration-200"
-                    style={{ height: '100dvh' }}
-                  >
-                    {/* Backdrop - clicking closes the shell */}
-                    <div
-                      className="absolute inset-0 z-0"
-                      onClick={() => setShellOpen(false)}
-                      aria-hidden="true"
-                    />
-                    {/* Content container - must be above backdrop */}
-                    <div
-                      className="relative z-10 flex flex-col bg-[hsl(var(--terminal-code-bg))] border-t border-primary/20"
-                      style={{ height: viewportHeight }}
-                    >
-                      {/* Input field at the top */}
-                      <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 border-b border-border/50">
-                        <span className="text-primary/70 font-mono text-xs shrink-0">
-                          {vfs.currentPath === '/' ? '~' : vfs.currentPath.replace('/blog/', '~/')}
-                        </span>
-                        <span className="text-primary font-mono text-sm font-bold shrink-0">$</span>
-                        <input
-                          ref={shellInputRef}
-                          type="text"
-                          value={shellInput}
-                          onChange={(e) => setShellInput(e.target.value)}
-                          onKeyDown={handleShellKeyDown}
-                          placeholder="Type a command or 'help'"
-                          className="flex-1 bg-transparent border-none outline-none font-mono text-sm text-foreground placeholder:text-muted-foreground/40"
-                          autoComplete="off"
-                          autoCapitalize="off"
-                          spellCheck={false}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShellOpen(false)}
-                          className="p-1.5 text-muted-foreground hover:text-primary transition-colors"
-                          aria-label="Close"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-
-                      {/* Command history and suggestions */}
-                      <div className="flex-1 overflow-y-auto p-3 space-y-3">
-                        <div className="text-xs font-mono text-primary/70 uppercase tracking-wider">
-                          Recommended
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-center">
-                          {['ls', 'find', 'stack', 'help'].map((cmd) => (
-                            <button
-                              key={cmd}
-                              type="button"
-                              onClick={() => executeShellCommand(cmd)}
-                              className="p-2.5 rounded-lg bg-primary/10 border border-primary/20 font-mono text-sm text-primary hover:bg-primary/20 transition-colors"
-                            >
-                              {cmd}
-                            </button>
-                          ))}
-                        </div>
-                        {commandHistory.length > 0 && (
-                           <>
-                             <div className="pt-2 text-xs font-mono text-primary/70 uppercase tracking-wider">
-                               History
-                             </div>
-                             <div className="flex flex-col-reverse items-start text-left gap-1">
-                               {commandHistory.slice().reverse().map((cmd, idx) => (
-                                 <button
-                                   key={`${cmd}-${idx}`}
-                                   type="button"
-                                   onClick={() => executeShellCommand(cmd)}
-                                   className="p-2 rounded-lg font-mono text-sm text-muted-foreground hover:bg-muted/10 hover:text-foreground w-full text-left"
-                                 >
-                                   {cmd}
-                                 </button>
-                               ))}
-                             </div>
-                           </>
-                         )}
-                      </div>
-                    </div>
                   </div>
                 )}
               </>
