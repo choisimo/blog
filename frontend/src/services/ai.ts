@@ -1,11 +1,9 @@
 /*
   AI client for inline features.
-  Prefers calling the unified backend API if available, and falls back to
-  browser-side Gemini calls using localStorage key 'aiMemo.apiKey'.
-  Exposes: sketch, prism, chain with JSON-first parsing and simple fallbacks.
+  Always calls the nodove.com AI agent API for sketch, prism, chain operations.
+  Uses the same backend as the chat widget for consistent AI responses.
 */
-import { getApiBaseUrl } from '@/utils/apiBase';
-import { invokeChatTask, isUnifiedTasksEnabled } from '@/services/chat';
+import { ensureSession } from '@/services/chat';
 
 export type SketchResult = {
   mood: string;
@@ -26,152 +24,8 @@ export type ChainResult = {
   }>;
 };
 
-export type StreamEvent =
-  | { type: 'open' }
-  | { type: 'token'; token: string }
-  | { type: 'done' }
-  | { type: 'error'; message: string };
-
-export async function* streamGenerate(
-  prompt: string,
-  opts?: { temperature?: number }
-) {
-  const base = getApiBaseUrl();
-  const url = new URL(`${base.replace(/\/$/, '')}/api/v1/ai/generate/stream`);
-  url.searchParams.set('prompt', prompt);
-  if (opts?.temperature !== undefined)
-    url.searchParams.set('temperature', String(opts.temperature));
-
-  const res = await fetch(url.toString(), {
-    method: 'GET',
-    headers: { Accept: 'text/event-stream' },
-  });
-  if (!res.ok || !res.body) {
-    const t = await res.text().catch(() => '');
-    throw new Error(`HTTP ${res.status} ${t.slice(0, 120)}`);
-  }
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let currentEvent: string | null = null;
-  let dataParts: string[] = [];
-
-  const flushFrame = (): StreamEvent[] => {
-    const events: StreamEvent[] = [];
-    if (dataParts.length === 0) {
-      currentEvent = null;
-      return events;
-    }
-    const dataStr = dataParts.join('\n');
-    dataParts = [];
-    let payload: any = null;
-    try {
-      payload = JSON.parse(dataStr);
-    } catch {
-      payload = dataStr;
-    }
-
-    const e = currentEvent;
-    currentEvent = null;
-
-    if (e === 'open' || (payload && (payload.ok || payload.type === 'open'))) {
-      events.push({ type: 'open' });
-      return events;
-    }
-    if (
-      e === 'done' ||
-      (payload && (payload.done || payload.type === 'done'))
-    ) {
-      events.push({ type: 'done' });
-      return events;
-    }
-    if (
-      e === 'error' ||
-      (payload && (payload.type === 'error' || payload.message))
-    ) {
-      const msg =
-        typeof payload === 'string'
-          ? payload
-          : String(payload?.message || 'error');
-      events.push({ type: 'error', message: msg });
-      return events;
-    }
-
-    const token =
-      typeof payload === 'string'
-        ? payload
-        : payload && payload.token !== undefined
-          ? String(payload.token)
-          : undefined;
-    if (token !== undefined && token !== '') {
-      events.push({ type: 'token', token });
-    }
-    return events;
-  };
-
-  try {
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
-      let newlineIdx: number;
-      while ((newlineIdx = buffer.indexOf('\n')) !== -1) {
-        const line = buffer.slice(0, newlineIdx);
-        buffer = buffer.slice(newlineIdx + 1);
-
-        const l =
-          line.length > 0 && line.charCodeAt(line.length - 1) === 13 /* \r */
-            ? line.slice(0, -1)
-            : line;
-        if (l === '') {
-          const evs = flushFrame();
-          for (const ev of evs) yield ev;
-          continue;
-        }
-        if (l.indexOf('event:') === 0) {
-          currentEvent = l.slice(6).trim();
-          continue;
-        }
-        if (l.indexOf('data:') === 0) {
-          dataParts.push(l.slice(5).replace(/^\s/, ''));
-          continue;
-        }
-        // ignore other fields (id:, retry:, etc.)
-      }
-    }
-    // Flush any remaining buffered frame on stream end
-    if (buffer.trim().length > 0) {
-      // handle last line if not terminated by newline
-      const l =
-        buffer.length > 0 &&
-        buffer.charCodeAt(buffer.length - 1) === 13 /* \r */
-          ? buffer.slice(0, -1)
-          : buffer;
-      if (l.indexOf('event:') === 0) currentEvent = l.slice(6).trim();
-      else if (l.indexOf('data:') === 0)
-        dataParts.push(l.slice(5).replace(/^\s/, ''));
-      buffer = '';
-    }
-    const evs = flushFrame();
-    for (const ev of evs) yield ev;
-  } finally {
-    reader.releaseLock();
-  }
-}
-
-const GEMINI_MODEL = 'gemini-2.5-flash';
-
-function getApiKey(): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const v = localStorage.getItem('aiMemo.apiKey');
-    return v ? JSON.parse(v) : null;
-  } catch {
-    return null;
-  }
-}
+// AI Agent API base URL - always use nodove.com AI service
+const AI_AGENT_BASE_URL = 'https://ai-serve.nodove.com';
 
 function safeTruncate(s: string, n: number) {
   if (!s) return s;
@@ -180,76 +34,6 @@ function safeTruncate(s: string, n: number) {
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === 'object';
-}
-
-async function generateContent(prompt: string): Promise<string> {
-  // 1) Try backend first
-  const base = getApiBaseUrl();
-  if (base) {
-    const url = `${base.replace(/\/$/, '')}/api/v1/ai/generate`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, temperature: 0.2 }),
-    });
-    if (res.ok) {
-      const data = await res.json().catch(() => ({}) as any);
-      const text = (data?.data?.text || '').toString();
-      if (text) return text;
-    }
-    // if backend fails, continue to fallback
-  }
-
-  // 2) Fallback to browser direct Gemini
-  const isDev =
-    typeof window !== 'undefined' &&
-    // Vite dev or localhost origin
-    ((import.meta as any)?.env?.DEV ||
-      /^localhost$|^127\.0\.0\.1$/.test(window.location.hostname));
-  if (!isDev) {
-    throw new Error(
-      'AI backend unavailable and browser fallback is disabled in production'
-    );
-  }
-  const apiKey = getApiKey();
-  if (!apiKey)
-    throw new Error('Missing Gemini API key in aiMemo.apiKey (dev only)');
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(
-    apiKey
-  )}`;
-  const body = {
-    contents: [
-      {
-        role: 'user',
-        parts: [{ text: prompt }],
-      },
-    ],
-  };
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const t = await res.text().catch(() => '');
-    throw new Error(`Gemini error(${res.status}) ${t.slice(0, 200)}`);
-  }
-  const data = await res.json();
-  const parts: string[] = (
-    (data?.candidates?.[0]?.content?.parts as Array<unknown> | undefined) || []
-  ).map(p => {
-    if (
-      p &&
-      typeof p === 'object' &&
-      'text' in (p as Record<string, unknown>)
-    ) {
-      const obj = p as Record<string, unknown>;
-      return typeof obj.text === 'string' ? obj.text : '';
-    }
-    return '';
-  });
-  return parts.join('');
 }
 
 function tryParseJson<T = unknown>(text: string): T | null {
@@ -283,6 +67,47 @@ function tryParseJson<T = unknown>(text: string): T | null {
   return null;
 }
 
+// Invoke AI agent task via nodove.com API
+async function invokeAiAgentTask<T>(mode: string, prompt: string, payload: Record<string, unknown>): Promise<T> {
+  const sessionId = await ensureSession();
+  const url = `${AI_AGENT_BASE_URL}/session/${encodeURIComponent(sessionId)}/task`;
+  
+  const body = {
+    mode,
+    prompt,
+    payload,
+    context: {
+      url: typeof window !== 'undefined' ? window.location.href : undefined,
+      title: typeof document !== 'undefined' ? document.title : undefined,
+    },
+  };
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`AI agent error: ${res.status} ${text.slice(0, 180)}`);
+  }
+
+  const result = await res.json();
+  
+  // Extract data from response
+  const data = result?.data ?? result?.result ?? result?.output ?? result?.payload ?? result;
+  
+  if (!data) {
+    throw new Error('Invalid AI agent response: no data');
+  }
+  
+  return data as T;
+}
+
 export async function sketch(input: {
   paragraph: string;
   postTitle?: string;
@@ -301,44 +126,42 @@ export async function sketch(input: {
     'Task: Capture the emotional sketch. Select a concise mood (e.g., curious, excited, skeptical) and 3-6 short bullets in the original language of the text.',
   ].join('\n');
 
-  if (isUnifiedTasksEnabled()) {
-    try {
-      const res = await invokeChatTask<SketchResult>({
-        mode: 'sketch',
-        prompt,
-        payload: { paragraph, postTitle, persona },
-      });
-      const data = res.data || (isRecord(res.raw) ? (res.raw as any).data ?? res.raw : null);
-      if (
-        isRecord(data) &&
-        Array.isArray((data as any).bullets) &&
-        typeof (data as any).mood === 'string'
-      ) {
-        return {
-          mood: String((data as any).mood),
-          bullets: ((data as any).bullets as string[]).slice(0, 10),
-        };
-      }
-    } catch {
-      // fall through to legacy flow
-    }
-  }
-
   try {
-    const text = await generateContent(prompt);
-    const json = tryParseJson(text);
+    const res = await invokeAiAgentTask<SketchResult | { data?: SketchResult }>('sketch', prompt, {
+      paragraph,
+      postTitle,
+      persona,
+    });
+    
+    // Handle nested data structure
+    const data = isRecord(res) && 'data' in res ? (res as any).data : res;
+    
     if (
-      isRecord(json) &&
-      Array.isArray(json.bullets) &&
-      typeof json.mood === 'string'
+      isRecord(data) &&
+      Array.isArray((data as any).bullets) &&
+      typeof (data as any).mood === 'string'
     ) {
       return {
-        mood: json.mood as string,
-        bullets: (json.bullets as string[]).slice(0, 10),
+        mood: String((data as any).mood),
+        bullets: ((data as any).bullets as string[]).slice(0, 10),
       };
     }
-    throw new Error('Invalid JSON');
-  } catch {
+    
+    // Try parsing as JSON string if data is a string
+    if (typeof data === 'string') {
+      const parsed = tryParseJson<SketchResult>(data);
+      if (parsed && Array.isArray(parsed.bullets) && typeof parsed.mood === 'string') {
+        return {
+          mood: parsed.mood,
+          bullets: parsed.bullets.slice(0, 10),
+        };
+      }
+    }
+    
+    throw new Error('Invalid sketch response format');
+  } catch (err) {
+    console.error('Sketch AI call failed:', err);
+    // Return minimal fallback on error
     const sentences = (paragraph || '')
       .replace(/\n+/g, ' ')
       .split(/[.!?]\s+/)
@@ -368,30 +191,30 @@ export async function prism(input: {
     'Task: Provide 2-3 facets (titles) with 2-4 concise points each, in the original language.',
   ].join('\n');
 
-  if (isUnifiedTasksEnabled()) {
-    try {
-      const res = await invokeChatTask<PrismResult>({
-        mode: 'prism',
-        prompt,
-        payload: { paragraph, postTitle },
-      });
-      const data = res.data || (isRecord(res.raw) ? (res.raw as any).data ?? res.raw : null);
-      if (isRecord(data) && Array.isArray((data as any).facets)) {
-        return { facets: ((data as any).facets as PrismResult['facets']).slice(0, 4) };
-      }
-    } catch {
-      // fallback
-    }
-  }
-
   try {
-    const text = await generateContent(prompt);
-    const json = tryParseJson(text);
-    if (isRecord(json) && Array.isArray(json.facets)) {
-      return { facets: (json.facets as PrismResult['facets']).slice(0, 4) };
+    const res = await invokeAiAgentTask<PrismResult | { data?: PrismResult }>('prism', prompt, {
+      paragraph,
+      postTitle,
+    });
+    
+    // Handle nested data structure
+    const data = isRecord(res) && 'data' in res ? (res as any).data : res;
+    
+    if (isRecord(data) && Array.isArray((data as any).facets)) {
+      return { facets: ((data as any).facets as PrismResult['facets']).slice(0, 4) };
     }
-    throw new Error('Invalid JSON');
-  } catch {
+    
+    // Try parsing as JSON string if data is a string
+    if (typeof data === 'string') {
+      const parsed = tryParseJson<PrismResult>(data);
+      if (parsed && Array.isArray(parsed.facets)) {
+        return { facets: parsed.facets.slice(0, 4) };
+      }
+    }
+    
+    throw new Error('Invalid prism response format');
+  } catch (err) {
+    console.error('Prism AI call failed:', err);
     return {
       facets: [
         { title: '핵심 요점', points: [safeTruncate(paragraph, 140)] },
@@ -416,34 +239,32 @@ export async function chain(input: {
     'Task: Generate 3-5 short follow-up questions and a brief why for each, in the original language.',
   ].join('\n');
 
-  if (isUnifiedTasksEnabled()) {
-    try {
-      const res = await invokeChatTask<ChainResult>({
-        mode: 'chain',
-        prompt,
-        payload: { paragraph, postTitle },
-      });
-      const data = res.data || (isRecord(res.raw) ? (res.raw as any).data ?? res.raw : null);
-      if (isRecord(data) && Array.isArray((data as any).questions)) {
-        return {
-          questions: ((data as any).questions as ChainResult['questions']).slice(0, 6),
-        };
-      }
-    } catch {
-      // fallback
-    }
-  }
-
   try {
-    const text = await generateContent(prompt);
-    const json = tryParseJson(text);
-    if (isRecord(json) && Array.isArray(json.questions)) {
+    const res = await invokeAiAgentTask<ChainResult | { data?: ChainResult }>('chain', prompt, {
+      paragraph,
+      postTitle,
+    });
+    
+    // Handle nested data structure
+    const data = isRecord(res) && 'data' in res ? (res as any).data : res;
+    
+    if (isRecord(data) && Array.isArray((data as any).questions)) {
       return {
-        questions: (json.questions as ChainResult['questions']).slice(0, 6),
+        questions: ((data as any).questions as ChainResult['questions']).slice(0, 6),
       };
     }
-    throw new Error('Invalid JSON');
-  } catch {
+    
+    // Try parsing as JSON string if data is a string
+    if (typeof data === 'string') {
+      const parsed = tryParseJson<ChainResult>(data);
+      if (parsed && Array.isArray(parsed.questions)) {
+        return { questions: parsed.questions.slice(0, 6) };
+      }
+    }
+    
+    throw new Error('Invalid chain response format');
+  } catch (err) {
+    console.error('Chain AI call failed:', err);
     return {
       questions: [
         { q: '무엇이 핵심 주장인가?', why: '핵심을 명료화' },

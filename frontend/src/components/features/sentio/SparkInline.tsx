@@ -7,6 +7,9 @@ import {
   PrismResult,
   ChainResult,
 } from '@/services/ai';
+import { cn } from '@/lib/utils';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Sparkles, Loader2, X, Lightbulb, Layers, Link2 } from 'lucide-react';
 
 // Minimal telemetry to localStorage for future learning
 function logEvent(event: Record<string, unknown>) {
@@ -53,11 +56,11 @@ function extractText(children: React.ReactNode): string {
 
 type Mode = 'idle' | 'sketch' | 'prism' | 'chain';
 
-const ModeLabels: Record<Mode, string> = {
-  idle: 'Idle',
-  sketch: 'Sketch',
-  prism: 'Prism',
-  chain: 'Chain',
+const ModeConfig: Record<Mode, { label: string; icon: React.ComponentType<{ className?: string }>; color: string; description: string }> = {
+  idle: { label: 'Idle', icon: Sparkles, color: 'text-muted-foreground', description: '' },
+  sketch: { label: 'Sketch', icon: Lightbulb, color: 'text-amber-500 dark:text-amber-400', description: '감정과 핵심 포인트' },
+  prism: { label: 'Prism', icon: Layers, color: 'text-violet-500 dark:text-violet-400', description: '다각도 분석' },
+  chain: { label: 'Chain', icon: Link2, color: 'text-emerald-500 dark:text-emerald-400', description: '연쇄 질문' },
 };
 
 function formatSketchResult(res: SketchResult): string {
@@ -90,6 +93,8 @@ export default function SparkInline({
   const [sketchRes, setSketchRes] = useState<SketchResult | null>(null);
   const [prismRes, setPrismRes] = useState<PrismResult | null>(null);
   const [chainRes, setChainRes] = useState<ChainResult | null>(null);
+  const [activeMode, setActiveMode] = useState<Mode>('idle');
+  const { isTerminal } = useTheme();
 
   const text = useMemo(() => extractText(children), [children]);
   const hasText = text && text.length > 0;
@@ -99,6 +104,7 @@ export default function SparkInline({
     setOpen(true);
     setError(null);
     setLoading(which);
+    setActiveMode(which);
     // clear previous
     setSketchRes(null);
     setPrismRes(null);
@@ -142,112 +148,267 @@ export default function SparkInline({
       const msg =
         e instanceof Error
           ? e.message
-          : 'AI 호출 실패. 우측 하단 AI 메모에서 키를 설정하세요.';
+          : 'AI 호출 실패';
       setError(msg);
     } finally {
       setLoading('idle');
     }
   };
 
+  const hasResult = sketchRes || prismRes || chainRes;
+  const activeModeConfig = ModeConfig[activeMode];
+
   return (
     <>
-      <p className='mb-4 leading-relaxed inline-block w-full group'>
+      <p className='mb-4 leading-relaxed inline-block w-full group/spark relative'>
         {children}
         {hasText && (
           <button
             type='button'
-            title='문단 확장'
-            aria-label='문단 확장'
+            title='AI로 문단 분석하기'
+            aria-label='AI로 문단 분석하기'
             aria-expanded={open}
             onClick={() => setOpen(v => !v)}
-            className='ml-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-base opacity-60 transition-colors transition-opacity hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 group-hover:opacity-100 md:min-h-[36px] md:min-w-[36px] md:text-sm'
+            className={cn(
+              'ml-2 inline-flex items-center justify-center rounded-full transition-all duration-200',
+              'min-h-[36px] min-w-[36px] md:min-h-[28px] md:min-w-[28px]',
+              'opacity-40 hover:opacity-100 group-hover/spark:opacity-70',
+              'hover:bg-primary/10 hover:scale-110',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
+              isTerminal && 'text-primary',
+            )}
           >
-            <span aria-hidden className='select-none'>
-              ✨
-            </span>
+            <Sparkles className={cn(
+              'h-4 w-4 md:h-3.5 md:w-3.5',
+              open && 'text-primary',
+            )} />
           </button>
         )}
       </p>
+      
       {open && (
         <div
-          className='-mt-2 mb-6 rounded-lg border bg-card/30 p-3 text-sm'
+          className={cn(
+            '-mt-2 mb-6 overflow-hidden transition-all duration-300',
+            // iOS-style card design
+            'rounded-2xl border shadow-sm',
+            isTerminal 
+              ? 'bg-[hsl(var(--terminal-code-bg))] border-primary/20' 
+              : 'bg-card/80 backdrop-blur-sm border-border/60',
+          )}
           role='region'
-          aria-label='AI inline expansion'
+          aria-label='AI 분석 패널'
         >
-          <div className='flex flex-wrap gap-2 mb-2'>
+          {/* Header with mode tabs */}
+          <div className={cn(
+            'flex items-center justify-between px-4 py-3 border-b',
+            isTerminal ? 'border-primary/10 bg-primary/5' : 'border-border/40 bg-muted/30',
+          )}>
+            {/* Mode buttons - iOS segmented control style */}
+            <div className={cn(
+              'inline-flex rounded-xl p-1 gap-1',
+              isTerminal ? 'bg-primary/10' : 'bg-muted/60',
+            )}>
+              {(['sketch', 'prism', 'chain'] as Mode[]).map((mode) => {
+                const config = ModeConfig[mode];
+                const Icon = config.icon;
+                const isActive = activeMode === mode && hasResult;
+                const isLoading = loading === mode;
+                
+                return (
+                  <button
+                    key={mode}
+                    className={cn(
+                      'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200',
+                      'min-h-[32px] min-w-[70px] justify-center',
+                      'disabled:opacity-50 disabled:cursor-not-allowed',
+                      isActive && !isTerminal && 'bg-background shadow-sm text-foreground',
+                      isActive && isTerminal && 'bg-primary/20 text-primary shadow-sm',
+                      !isActive && 'text-muted-foreground hover:text-foreground hover:bg-background/50',
+                      isLoading && 'animate-pulse',
+                    )}
+                    disabled={loading !== 'idle'}
+                    onClick={() => run(mode)}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Icon className={cn('h-3.5 w-3.5', isActive && config.color)} />
+                    )}
+                    <span>{config.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            
+            {/* Close button */}
             <button
-              className='px-2 py-1 rounded border text-xs hover:bg-primary/10'
-              disabled={loading !== 'idle'}
-              onClick={() => run('sketch')}
-            >
-              Sketch
-            </button>
-            <button
-              className='px-2 py-1 rounded border text-xs hover:bg-primary/10'
-              disabled={loading !== 'idle'}
-              onClick={() => run('prism')}
-            >
-              Prism
-            </button>
-            <button
-              className='px-2 py-1 rounded border text-xs hover:bg-primary/10'
-              disabled={loading !== 'idle'}
-              onClick={() => run('chain')}
-            >
-              Chain
-            </button>
-            <button
-              className='ml-auto px-2 py-1 rounded border text-xs hover:bg-muted'
+              className={cn(
+                'flex items-center justify-center rounded-full transition-all duration-200',
+                'h-8 w-8 hover:bg-muted/80',
+                isTerminal && 'hover:bg-primary/10 text-primary/60 hover:text-primary',
+              )}
               onClick={() => setOpen(false)}
+              aria-label='닫기'
             >
-              Close
+              <X className='h-4 w-4' />
             </button>
           </div>
-          {loading !== 'idle' && (
-            <div className='text-muted-foreground'>AI {loading} 중…</div>
-          )}
-          {error && <div className='text-red-500'>{error}</div>}
 
-          {sketchRes && (
-            <div className='mt-2'>
-              <div className='font-semibold'>Mood: {sketchRes.mood}</div>
-              <ul className='list-disc ml-6 mt-1'>
-                {sketchRes.bullets.map((b, i) => (
-                  <li key={i}>{b}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {/* Content area */}
+          <div className='px-4 py-4'>
+            {/* Loading state */}
+            {loading !== 'idle' && (
+              <div className={cn(
+                'flex items-center gap-3 py-6 justify-center',
+                isTerminal ? 'text-primary' : 'text-muted-foreground',
+              )}>
+                <Loader2 className='h-5 w-5 animate-spin' />
+                <span className='text-sm'>
+                  {activeModeConfig.label} 분석 중...
+                </span>
+              </div>
+            )}
+            
+            {/* Error state */}
+            {error && (
+              <div className={cn(
+                'rounded-xl px-4 py-3 text-sm',
+                'bg-destructive/10 text-destructive border border-destructive/20',
+              )}>
+                {error}
+              </div>
+            )}
 
-          {prismRes && (
-            <div className='mt-2 grid gap-2'>
-              {prismRes.facets.map((f, i) => (
-                <div key={i} className=''>
-                  <div className='font-semibold'>{f.title}</div>
-                  <ul className='list-disc ml-6 mt-1'>
-                    {f.points.map((p, j) => (
-                      <li key={j}>{p}</li>
-                    ))}
-                  </ul>
+            {/* Sketch Result - iOS Notes style */}
+            {sketchRes && loading === 'idle' && (
+              <div className='space-y-4 animate-in fade-in-0 slide-in-from-bottom-2 duration-300'>
+                {/* Mood badge */}
+                <div className='flex items-center gap-2'>
+                  <span className={cn(
+                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium',
+                    isTerminal 
+                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' 
+                      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+                  )}>
+                    <Lightbulb className='h-3 w-3' />
+                    {sketchRes.mood}
+                  </span>
                 </div>
-              ))}
-            </div>
-          )}
+                
+                {/* Bullets */}
+                <ul className='space-y-2'>
+                  {sketchRes.bullets.map((b, i) => (
+                    <li 
+                      key={i}
+                      className={cn(
+                        'flex items-start gap-3 text-sm leading-relaxed',
+                        isTerminal ? 'text-foreground/90' : 'text-foreground',
+                      )}
+                    >
+                      <span className={cn(
+                        'flex-shrink-0 w-1.5 h-1.5 rounded-full mt-2',
+                        isTerminal ? 'bg-primary/60' : 'bg-amber-500/60',
+                      )} />
+                      <span>{b}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-          {chainRes && (
-            <div className='mt-2'>
-              <ul className='list-disc ml-6'>
-                {chainRes.questions.map((q, i) => (
-                  <li key={i}>
-                    <span className='font-medium'>{q.q}</span>
-                    {q.why ? (
-                      <span className='text-muted-foreground'> — {q.why}</span>
-                    ) : null}
-                  </li>
+            {/* Prism Result - Card grid style */}
+            {prismRes && loading === 'idle' && (
+              <div className='space-y-3 animate-in fade-in-0 slide-in-from-bottom-2 duration-300'>
+                {prismRes.facets.map((f, i) => (
+                  <div 
+                    key={i} 
+                    className={cn(
+                      'rounded-xl px-4 py-3 border',
+                      isTerminal 
+                        ? 'bg-primary/5 border-primary/20' 
+                        : 'bg-violet-50/50 border-violet-200/50 dark:bg-violet-900/10 dark:border-violet-800/30',
+                    )}
+                  >
+                    <div className={cn(
+                      'font-medium text-sm mb-2 flex items-center gap-2',
+                      isTerminal ? 'text-primary' : 'text-violet-700 dark:text-violet-300',
+                    )}>
+                      <Layers className='h-3.5 w-3.5' />
+                      {f.title}
+                    </div>
+                    <ul className='space-y-1.5'>
+                      {f.points.map((p, j) => (
+                        <li 
+                          key={j}
+                          className='flex items-start gap-2 text-sm leading-relaxed text-foreground/80'
+                        >
+                          <span className={cn(
+                            'flex-shrink-0 w-1 h-1 rounded-full mt-2',
+                            isTerminal ? 'bg-primary/40' : 'bg-violet-400/60',
+                          )} />
+                          <span>{p}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ))}
-              </ul>
-            </div>
-          )}
+              </div>
+            )}
+
+            {/* Chain Result - Question cards */}
+            {chainRes && loading === 'idle' && (
+              <div className='space-y-2.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300'>
+                {chainRes.questions.map((q, i) => (
+                  <div 
+                    key={i}
+                    className={cn(
+                      'rounded-xl px-4 py-3 border transition-colors',
+                      isTerminal 
+                        ? 'bg-primary/5 border-primary/20 hover:bg-primary/10' 
+                        : 'bg-emerald-50/50 border-emerald-200/50 dark:bg-emerald-900/10 dark:border-emerald-800/30 hover:bg-emerald-50 dark:hover:bg-emerald-900/20',
+                    )}
+                  >
+                    <div className={cn(
+                      'font-medium text-sm flex items-start gap-2',
+                      isTerminal ? 'text-primary' : 'text-emerald-700 dark:text-emerald-300',
+                    )}>
+                      <Link2 className='h-3.5 w-3.5 mt-0.5 flex-shrink-0' />
+                      <span>{q.q}</span>
+                    </div>
+                    {q.why && (
+                      <p className='text-xs text-muted-foreground mt-1.5 ml-5'>
+                        {q.why}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Empty state - when opened but no result yet */}
+            {!hasResult && loading === 'idle' && !error && (
+              <div className='py-8 text-center'>
+                <div className={cn(
+                  'inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-3',
+                  isTerminal ? 'bg-primary/10' : 'bg-muted',
+                )}>
+                  <Sparkles className={cn(
+                    'h-6 w-6',
+                    isTerminal ? 'text-primary' : 'text-muted-foreground',
+                  )} />
+                </div>
+                <p className='text-sm text-muted-foreground'>
+                  위 버튼을 눌러 AI 분석을 시작하세요
+                </p>
+                <div className='flex justify-center gap-4 mt-4 text-xs text-muted-foreground/70'>
+                  <span><strong>Sketch</strong> - 핵심 포인트</span>
+                  <span><strong>Prism</strong> - 다각도 분석</span>
+                  <span><strong>Chain</strong> - 연쇄 질문</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </>

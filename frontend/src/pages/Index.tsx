@@ -185,9 +185,10 @@ const Index = () => {
           <Button 
             asChild 
             size='lg' 
+            variant={isTerminal ? 'terminal-active' : 'default'}
             className={cn(
               'w-auto',
-              isTerminal && 'font-mono bg-primary text-primary-foreground border border-primary/40 shadow-[0_0_16px_rgba(0,255,128,0.25)] hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(0,255,128,0.35)]'
+              isTerminal && 'shadow-[0_0_16px_hsl(var(--primary)/0.4)] hover:shadow-[0_0_20px_hsl(var(--primary)/0.5)]'
             )}
           >
             <Link to='/blog'>

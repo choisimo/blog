@@ -882,6 +882,7 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
 /* Terminal theme primary buttons - Dark text on bright neon green */
 .terminal .btn-primary,
 .terminal button[class*="bg-primary"]:not([class*="bg-primary/"]),
+.terminal a[class*="bg-primary"]:not([class*="bg-primary/"]),
 .terminal button[class*="terminal-active"],
 .terminal [class*="terminal-active"] {
   background-color: hsl(var(--primary));

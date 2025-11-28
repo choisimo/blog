@@ -202,15 +202,52 @@ ${userName}님의 댓글에 대해 짧고 통찰력 있게 응답해주세요.
       
       // Add AI comment to the list
       if (fullText.trim()) {
+        const now = new Date().toISOString();
+        const tempId = `ai-${Date.now()}`;
+        
+        // Optimistically add to local state first
         const aiComment: CommentItem = {
-          id: `ai-${Date.now()}`,
+          id: tempId,
           postId,
           author: 'AI Assistant',
           content: fullText.trim(),
           website: null,
-          createdAt: new Date().toISOString(),
+          createdAt: now,
         };
         setComments(prev => [...(prev || []), aiComment]);
+        
+        // Persist to D1 database
+        try {
+          const base = getApiBaseUrl().replace(/\/$/, '');
+          const url = `${base}/api/v1/comments`;
+          const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              postId,
+              author: 'AI Assistant',
+              content: fullText.trim(),
+            }),
+          });
+          
+          if (resp.ok) {
+            const respData = (await resp.json()) as any;
+            const persistedId = respData?.id ?? respData?.data?.id;
+            // Update local state with persisted ID
+            if (persistedId) {
+              setComments(prev => 
+                (prev || []).map(c => 
+                  c.id === tempId ? { ...c, id: persistedId } : c
+                )
+              );
+            }
+          } else {
+            console.warn('Failed to persist AI comment:', resp.status);
+          }
+        } catch (persistErr) {
+          console.warn('Failed to persist AI comment:', persistErr);
+          // Comment still exists in local state - graceful degradation
+        }
       }
     } catch (err) {
       console.error('AI response error:', err);

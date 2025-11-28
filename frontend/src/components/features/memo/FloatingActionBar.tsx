@@ -1029,6 +1029,139 @@ export default function FloatingActionBar() {
     }
   }, [shellInput, executeShellCommand, commandHistory, historyIndex, shellCommands]);
 
+  // Dynamic autocomplete suggestions state
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+
+  // Generate dynamic suggestions based on input
+  const generateSuggestions = useCallback((input: string): string[] => {
+    const trimmed = input.trim().toLowerCase();
+    if (!trimmed) return [];
+
+    const parts = trimmed.split(/\s+/);
+    const cmd = parts[0];
+    const args = parts.slice(1).join(' ');
+
+    // Command completion (no args yet)
+    if (parts.length === 1) {
+      const cmdMatches = shellCommands
+        .filter(c => c.name.startsWith(cmd) || c.aliases.some(a => a.startsWith(cmd)))
+        .map(c => c.name);
+      return cmdMatches.slice(0, 6);
+    }
+
+    // ls command - show directory contents
+    if (cmd === 'ls' || cmd === 'dir' || cmd === 'll') {
+      const lsOutput = vfs.ls(args || undefined);
+      if (!lsOutput.startsWith('ls:')) {
+        const items = lsOutput.split('\n').filter(Boolean).slice(0, 8);
+        return items.map(item => `ls ${args ? args + '/' : ''}${item.replace('/', '')}`);
+      }
+    }
+
+    // cd command - path autocomplete
+    if (cmd === 'cd') {
+      const suggestions: string[] = [];
+      
+      // Always suggest going back
+      suggestions.push('cd ..');
+      suggestions.push('cd ~');
+      
+      // Suggest available years
+      if (!args || args === '/blog' || args.startsWith('/blog/')) {
+        vfs.years.forEach(year => {
+          suggestions.push(`cd /blog/${year}`);
+        });
+      }
+      
+      // If currently in blog directory, suggest year directories
+      if (vfs.currentPath === '/' || vfs.currentPath === '/blog') {
+        vfs.years.forEach(year => {
+          if (!args || year.includes(args)) {
+            suggestions.push(`cd ${year}`);
+          }
+        });
+      }
+      
+      return suggestions.filter(s => s.toLowerCase().includes(args)).slice(0, 6);
+    }
+
+    // cat/open command - file autocomplete
+    if (cmd === 'cat' || cmd === 'open' || cmd === 'view') {
+      const currentPosts = vfs.currentPath.startsWith('/blog/')
+        ? posts.filter(p => p.url.includes(vfs.currentPath.split('/')[2]))
+        : posts;
+      
+      const matches = currentPosts
+        .filter(p => {
+          const slug = p.url.split('/').pop() || '';
+          return !args || slug.toLowerCase().includes(args.toLowerCase()) || 
+                 p.title.toLowerCase().includes(args.toLowerCase());
+        })
+        .slice(0, 6);
+      
+      return matches.map(p => {
+        const slug = p.url.split('/').pop();
+        return `cat ${slug}.md`;
+      });
+    }
+
+    // find/search command - keyword suggestions from post titles and tags
+    if (cmd === 'find' || cmd === 'search' || cmd === 'grep') {
+      if (!args) {
+        // Suggest popular keywords from post titles
+        const keywords = new Set<string>();
+        posts.forEach(p => {
+          // Extract words from title
+          p.title.split(/\s+/).forEach(word => {
+            if (word.length > 2) keywords.add(word.toLowerCase());
+          });
+          // Add tags
+          p.tags?.forEach(tag => keywords.add(tag.toLowerCase()));
+          // Add category
+          if (p.category) keywords.add(p.category.toLowerCase());
+        });
+        return Array.from(keywords).slice(0, 8).map(k => `find ${k}`);
+      } else {
+        // Filter keywords based on input
+        const allKeywords: string[] = [];
+        posts.forEach(p => {
+          p.title.split(/\s+/).forEach(word => {
+            if (word.length > 2 && word.toLowerCase().includes(args)) {
+              allKeywords.push(word.toLowerCase());
+            }
+          });
+          p.tags?.forEach(tag => {
+            if (tag.toLowerCase().includes(args)) allKeywords.push(tag.toLowerCase());
+          });
+        });
+        const unique = [...new Set(allKeywords)];
+        return unique.slice(0, 6).map(k => `find ${k}`);
+      }
+    }
+
+    return [];
+  }, [shellCommands, vfs, posts]);
+
+  // Update suggestions when input changes
+  useEffect(() => {
+    if (!shellOpen) {
+      setSuggestions([]);
+      return;
+    }
+    const newSuggestions = generateSuggestions(shellInput);
+    setSuggestions(newSuggestions);
+    setSelectedSuggestionIndex(-1);
+  }, [shellInput, shellOpen, generateSuggestions]);
+
+  // Handle suggestion selection
+  const selectSuggestion = useCallback((suggestion: string) => {
+    setShellInput(suggestion);
+    setSuggestions([]);
+    setSelectedSuggestionIndex(-1);
+    shellInputRef.current?.focus();
+  }, []);
+
   // Auto-focus shell input when opened
   useEffect(() => {
     if (shellOpen && shellInputRef.current) {
@@ -1114,6 +1247,10 @@ export default function FloatingActionBar() {
     const trimmed = input.trim();
     if (!trimmed) return;
 
+    // Clear suggestions when executing
+    setSuggestions([]);
+    setSelectedSuggestionIndex(-1);
+
     // clear 명령은 로그도 함께 초기화
     if (trimmed.toLowerCase() === 'clear' || trimmed.toLowerCase() === 'cls') {
       setShellLogs([]);
@@ -1131,6 +1268,50 @@ export default function FloatingActionBar() {
 
     // 출력이 있으면 로그에 추가 (shellOutput이 바뀌면 useEffect에서 처리)
   }, [executeShellCommand, vfs.displayPath]);
+
+  // Enhanced key handler with suggestion navigation
+  const handleShellKeyDownWithSuggestions = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (suggestions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => 
+          prev < suggestions.length - 1 ? prev + 1 : 0
+        );
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => 
+          prev > 0 ? prev - 1 : suggestions.length - 1
+        );
+        return;
+      }
+      if (e.key === 'Tab' || (e.key === 'Enter' && selectedSuggestionIndex >= 0)) {
+        e.preventDefault();
+        const selected = selectedSuggestionIndex >= 0 
+          ? suggestions[selectedSuggestionIndex] 
+          : suggestions[0];
+        if (selected) {
+          selectSuggestion(selected);
+        }
+        return;
+      }
+      if (e.key === 'Escape') {
+        setSuggestions([]);
+        setSelectedSuggestionIndex(-1);
+        return;
+      }
+    }
+    
+    // Fall through to original handler
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      executeShellCommandWithLog(shellInput);
+      setSuggestions([]);
+    } else {
+      handleShellKeyDown(e);
+    }
+  }, [suggestions, selectedSuggestionIndex, selectSuggestion, executeShellCommandWithLog, shellInput, handleShellKeyDown]);
 
   // shellOutput이 변경되면 로그에 추가
   useEffect(() => {
@@ -1178,21 +1359,14 @@ export default function FloatingActionBar() {
                 </button>
               </div>
               {/* Input row */}
-              <div className="flex items-center gap-1.5 px-3 pb-2.5">
+              <div className="relative flex items-center gap-1.5 px-3 pb-2.5">
                 <span className="text-primary font-mono text-sm font-bold shrink-0">$</span>
                 <input
                   ref={shellInputRef}
                   type="text"
                   value={shellInput}
                   onChange={(e) => setShellInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      executeShellCommandWithLog(shellInput);
-                    } else {
-                      handleShellKeyDown(e);
-                    }
-                  }}
+                  onKeyDown={handleShellKeyDownWithSuggestions}
                   placeholder="Type a command or 'help'"
                   className="flex-1 min-w-0 bg-transparent border-none outline-none font-mono text-sm text-foreground placeholder:text-muted-foreground/40"
                   autoComplete="off"
@@ -1200,6 +1374,33 @@ export default function FloatingActionBar() {
                   spellCheck={false}
                 />
               </div>
+              
+              {/* Autocomplete suggestions dropdown */}
+              {suggestions.length > 0 && (
+                <div className="absolute left-0 right-0 top-full z-50 mx-3 mb-2 bg-[hsl(var(--terminal-code-bg))] border border-primary/30 rounded-[4px] shadow-lg overflow-hidden">
+                  <div className="text-[9px] font-mono text-primary/50 uppercase tracking-wider px-2 py-1 border-b border-border/30">
+                    // Suggestions (Tab/Enter to select)
+                  </div>
+                  <div className="max-h-40 overflow-y-auto">
+                    {suggestions.map((suggestion, index) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        onClick={() => selectSuggestion(suggestion)}
+                        className={cn(
+                          "w-full text-left px-3 py-1.5 font-mono text-xs transition-colors",
+                          index === selectedSuggestionIndex
+                            ? "bg-primary/20 text-primary"
+                            : "text-foreground/80 hover:bg-primary/10 hover:text-primary"
+                        )}
+                      >
+                        <span className="text-primary/60">$ </span>
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Console Output Window - 핵심: 결과를 여기에 표시 */}
