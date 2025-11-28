@@ -850,31 +850,43 @@
     box-sizing: border-box;
   }
 
-  /* 하단 버튼 영역 */
+  /* 하단 버튼 영역 - 그리드 레이아웃으로 개선 */
   .footer {
     flex-shrink: 0;
-    padding: 14px 16px;
-    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-    gap: 10px;
+    padding: 10px 12px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
     background: transparent;
     display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .footer #status {
+    text-align: center;
+    font-size: 11px;
+    margin-bottom: 4px;
   }
 
   .footer .row {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    width: 100%;
   }
 
   .footer .btn,
   .footer button {
-    flex: 1 1 calc(50% - 8px);
-    min-width: 80px;
-    max-width: 160px;
+    flex: none;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    padding: 10px 4px;
+    font-size: 10px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .btn {
@@ -943,8 +955,19 @@
   }
 
   .footer {
-    padding: 12px;
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    padding: 8px 10px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .footer .row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .footer .btn,
+  .footer button {
+    padding: 8px 4px;
+    font-size: 10px;
   }
 
   .btn {

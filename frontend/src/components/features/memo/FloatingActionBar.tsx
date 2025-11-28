@@ -1158,42 +1158,48 @@ export default function FloatingActionBar() {
             className="relative z-10 flex flex-col bg-[hsl(var(--terminal-code-bg))] border-t border-primary/20"
             style={{ height: viewportHeight }}
           >
-            {/* Input field at the top */}
-            <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 border-b border-border/50 bg-black/20">
-              <span className="text-primary/70 font-mono text-xs shrink-0">
-                {vfs.displayPath}
-              </span>
-              <span className="text-primary font-mono text-sm font-bold shrink-0">$</span>
-              <input
-                ref={shellInputRef}
-                type="text"
-                value={shellInput}
-                onChange={(e) => setShellInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    executeShellCommandWithLog(shellInput);
-                  } else {
-                    handleShellKeyDown(e);
-                  }
-                }}
-                placeholder="Type a command or 'help'"
-                className="flex-1 bg-transparent border-none outline-none font-mono text-sm text-foreground placeholder:text-muted-foreground/40"
-                autoComplete="off"
-                autoCapitalize="off"
-                spellCheck={false}
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  setShellOpen(false);
-                  setShellOutput(null);
-                }}
-                className="p-1.5 text-muted-foreground hover:text-primary transition-colors"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
+            {/* Input field at the top - redesigned for long paths */}
+            <div className="flex-shrink-0 flex flex-col border-b border-border/50 bg-black/20">
+              {/* Path display - separate row */}
+              <div className="flex items-center justify-between px-3 pt-2 pb-1">
+                <span className="text-primary/60 font-mono text-[10px] truncate max-w-[70%]" title={vfs.displayPath}>
+                  {vfs.displayPath}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShellOpen(false);
+                    setShellOutput(null);
+                  }}
+                  className="p-1 text-muted-foreground hover:text-primary transition-colors"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              {/* Input row */}
+              <div className="flex items-center gap-1.5 px-3 pb-2.5">
+                <span className="text-primary font-mono text-sm font-bold shrink-0">$</span>
+                <input
+                  ref={shellInputRef}
+                  type="text"
+                  value={shellInput}
+                  onChange={(e) => setShellInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      executeShellCommandWithLog(shellInput);
+                    } else {
+                      handleShellKeyDown(e);
+                    }
+                  }}
+                  placeholder="Type a command or 'help'"
+                  className="flex-1 min-w-0 bg-transparent border-none outline-none font-mono text-sm text-foreground placeholder:text-muted-foreground/40"
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                />
+              </div>
             </div>
 
             {/* Console Output Window - 핵심: 결과를 여기에 표시 */}
