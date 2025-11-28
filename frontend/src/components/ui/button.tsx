@@ -18,12 +18,21 @@ const buttonVariants = cva(
           'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
         link: 'text-primary underline-offset-4 hover:underline',
+        // Terminal/Cyber-Minimalism variants
+        terminal:
+          'bg-transparent border border-[hsl(var(--terminal-inactive-border,var(--border)))] text-muted-foreground font-mono uppercase tracking-wider hover:border-primary hover:text-primary hover:shadow-[0_0_10px_hsl(var(--primary)/0.4)] hover:[text-shadow:0_0_5px_hsl(var(--primary))]',
+        'terminal-active':
+          'bg-primary text-[hsl(210_50%_2%)] border border-primary font-mono uppercase tracking-wider shadow-[0_0_10px_hsl(var(--primary)/0.4)]',
+        'terminal-danger':
+          'bg-transparent border border-destructive/50 text-destructive font-mono uppercase tracking-wider hover:bg-destructive hover:text-white hover:shadow-[0_0_10px_hsl(var(--destructive)/0.5)]',
       },
       size: {
         default: 'h-10 px-4 py-2 rounded-xl',
         sm: 'h-9 rounded-xl px-3',
         lg: 'h-11 rounded-xl px-8',
         icon: 'h-10 w-10 rounded-xl',
+        // Terminal size: 더 날렵한 radius
+        terminal: 'h-9 px-4 py-2 rounded-[4px] text-xs',
       },
     },
     defaultVariants: {

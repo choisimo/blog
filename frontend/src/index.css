@@ -58,6 +58,7 @@
   }
 
   /* Terminal Theme - CRT / Green Monitor Aesthetic */
+  /* Design Philosophy: "모든 UI는 터미널 명령어와 출력값처럼 보여야 한다" */
   .terminal {
     /* Deep black with slight cyan tint */
     --background: 210 50% 2%;
@@ -90,6 +91,9 @@
     /* Ring for focus states */
     --ring: 150 100% 62%;
     
+    /* Cyber-Minimalism Design Tokens */
+    --radius: 4px; /* 날렵한 사각형 (Radius 2px~4px) */
+    
     /* Terminal-specific custom properties */
     --terminal-glow: 150 100% 62%;
     --terminal-cyan: 190 100% 60%;
@@ -104,6 +108,14 @@
     --terminal-window-btn-close: 0 70% 55%;
     --terminal-window-btn-minimize: 40 90% 55%;
     --terminal-window-btn-maximize: 140 70% 45%;
+    
+    /* Cyber-Minimalism: Glow Effects */
+    --glow-shadow: 0 0 10px hsl(150 100% 62% / 0.4);
+    --glow-shadow-strong: 0 0 15px hsl(150 100% 62% / 0.6);
+    
+    /* Dim states for inactive elements */
+    --terminal-dim: 150 100% 62% / 0.1;
+    --terminal-inactive-border: 200 30% 20%;
   }
 }
 
@@ -585,6 +597,97 @@
 }
 
 /* ============================================
+   Cyber-Minimalism Utility Classes
+   ============================================ */
+
+/* Terminal Panel (Output Window) */
+.terminal .terminal-panel,
+.terminal-panel {
+  background-color: hsl(var(--terminal-panel, var(--card)));
+  border: 1px solid hsl(var(--terminal-inactive-border, var(--border)));
+  border-left: 3px solid hsl(var(--primary));
+  padding: 1.5rem;
+  border-radius: 4px;
+  position: relative;
+}
+
+/* Command Button (Keycap style) */
+.terminal .cmd-btn,
+.cmd-btn {
+  background: transparent;
+  border: 1px solid hsl(var(--terminal-inactive-border, var(--border)));
+  color: hsl(var(--muted-foreground));
+  padding: 0.5rem 1rem;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+  font-weight: bold;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.terminal .cmd-btn:hover,
+.cmd-btn:hover {
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+  box-shadow: var(--glow-shadow, 0 0 10px hsl(150 100% 62% / 0.4));
+  text-shadow: 0 0 5px hsl(var(--primary));
+}
+
+.terminal .cmd-btn.active,
+.cmd-btn.active {
+  background: hsl(var(--primary));
+  color: hsl(210 50% 2%); /* Dark text on neon green */
+  border-color: hsl(var(--primary));
+  box-shadow: var(--glow-shadow, 0 0 10px hsl(150 100% 62% / 0.4));
+}
+
+.terminal .cmd-btn.close,
+.cmd-btn.close {
+  border-color: hsl(var(--destructive) / 0.5);
+  color: hsl(var(--destructive));
+}
+
+.terminal .cmd-btn.close:hover,
+.cmd-btn.close:hover {
+  background: hsl(var(--destructive));
+  color: white; /* White text on red background */
+  border-color: hsl(var(--destructive));
+  box-shadow: 0 0 10px hsl(var(--destructive) / 0.5);
+}
+
+/* Terminal Prompt Style */
+.terminal .prompt-prefix::before {
+  content: '> ';
+  color: hsl(var(--terminal-prompt, var(--primary)));
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Comment Style Title (// prefix) */
+.terminal .section-comment {
+  color: hsl(var(--muted-foreground));
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.95rem;
+  font-weight: normal;
+}
+
+/* Neon Glow Text */
+.terminal .neon-text {
+  color: hsl(var(--primary));
+  text-shadow: 0 0 5px hsl(var(--primary) / 0.5),
+               0 0 10px hsl(var(--primary) / 0.3);
+}
+
+/* Terminal highlight text */
+.terminal .highlight-text {
+  color: hsl(var(--foreground));
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+/* ============================================
    Light/Dark Theme Enhanced Readability
    ============================================ */
 
@@ -776,11 +879,13 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
   color: hsl(var(--primary-foreground)) !important;
 }
 
-/* Terminal theme primary buttons */
+/* Terminal theme primary buttons - Dark text on bright neon green */
 .terminal .btn-primary,
-.terminal button[class*="bg-primary"]:not([class*="bg-primary/"]) {
+.terminal button[class*="bg-primary"]:not([class*="bg-primary/"]),
+.terminal button[class*="terminal-active"],
+.terminal [class*="terminal-active"] {
   background-color: hsl(var(--primary));
-  color: hsl(var(--background)) !important; /* Dark text on neon green */
+  color: hsl(210 50% 2%) !important; /* Force dark text on neon green */
   font-weight: 600;
 }
 
@@ -798,6 +903,38 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
 /* FAB dock buttons - only apply to actual FAB elements, not all bg-primary/20 */
 .terminal [role="toolbar"] [class*="bg-primary/20"],
 .terminal .fab-button[class*="bg-primary/20"] {
+  color: hsl(var(--primary));
+}
+
+/* Terminal active tabs - ensure contrast */
+.terminal [data-state="active"][class*="bg-primary"],
+.terminal button[data-state="active"][class*="terminal"] {
+  color: hsl(210 50% 2%) !important; /* Dark text on neon green */
+}
+
+/* Destructive buttons - ensure red text is visible on dark backgrounds */
+.terminal button[class*="destructive"],
+.terminal [class*="destructive"] {
+  --destructive-text: 0 70% 60%; /* Slightly brighter red for dark mode */
+}
+
+.terminal button[class*="bg-destructive"]:not([class*="bg-destructive/"]) {
+  color: hsl(0 0% 100%) !important; /* White text on red background */
+}
+
+/* Secondary buttons in terminal theme */
+.terminal button[class*="bg-secondary"]:not([class*="bg-secondary/"]) {
+  color: hsl(var(--secondary-foreground));
+}
+
+/* Ghost and outline buttons should have visible text */
+.terminal button[class*="ghost"],
+.terminal button[class*="outline"] {
+  color: hsl(var(--foreground));
+}
+
+.terminal button[class*="ghost"]:hover,
+.terminal button[class*="outline"]:hover {
   color: hsl(var(--primary));
 }
 

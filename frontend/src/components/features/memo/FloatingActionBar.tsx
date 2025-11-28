@@ -1237,7 +1237,7 @@ export default function FloatingActionBar() {
             {/* Quick Actions Bar - 하단 고정 */}
             <div className="flex-shrink-0 border-t border-border/30 bg-black/20 p-2.5">
               <div className="text-[10px] font-mono text-primary/60 uppercase tracking-wider mb-2">
-                Quick Commands
+                // Quick Commands
               </div>
               <div className="grid grid-cols-4 gap-1.5">
                 {['ls', 'find', 'help', 'clear'].map((cmd) => (
@@ -1245,7 +1245,14 @@ export default function FloatingActionBar() {
                     key={cmd}
                     type="button"
                     onClick={() => executeShellCommandWithLog(cmd)}
-                    className="py-2 px-1 rounded bg-primary/10 border border-primary/20 font-mono text-xs text-primary hover:bg-primary/20 active:scale-95 transition-all"
+                    className={cn(
+                      "py-2 px-1 font-mono text-xs uppercase tracking-wider",
+                      "bg-transparent border border-[hsl(var(--terminal-inactive-border,var(--border)))]",
+                      "text-muted-foreground rounded-[4px]",
+                      "hover:border-primary hover:text-primary",
+                      "hover:shadow-[0_0_10px_hsl(var(--primary)/0.4)]",
+                      "active:scale-95 transition-all duration-200"
+                    )}
                   >
                     {cmd}
                   </button>
@@ -1254,7 +1261,7 @@ export default function FloatingActionBar() {
               {commandHistory.length > 0 && (
                 <div className="mt-2 pt-2 border-t border-border/20">
                   <div className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-wider mb-1.5">
-                    History
+                    // History
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {commandHistory.slice(-4).reverse().map((cmd, idx) => (
@@ -1262,7 +1269,13 @@ export default function FloatingActionBar() {
                         key={`${cmd}-${idx}`}
                         type="button"
                         onClick={() => executeShellCommandWithLog(cmd)}
-                        className="py-1 px-2 rounded text-[10px] font-mono text-muted-foreground bg-muted/5 hover:bg-muted/10 hover:text-foreground transition-colors truncate max-w-[80px]"
+                        className={cn(
+                          "py-1 px-2 rounded-[4px] text-[10px] font-mono",
+                          "bg-transparent border border-border/30",
+                          "text-muted-foreground",
+                          "hover:border-primary/50 hover:text-primary/80",
+                          "transition-colors truncate max-w-[80px]"
+                        )}
                       >
                         {cmd}
                       </button>
@@ -1294,12 +1307,12 @@ export default function FloatingActionBar() {
       {/* Shell output overlay for terminal mobile - Portal로 분리 */}
       {isTerminal && isMobile && shellOutput && !shellOpen && createPortal(
         <div className="fixed inset-x-0 bottom-14 z-[9998] px-3 pb-2 animate-in slide-in-from-bottom-2 duration-150">
-          <div className="bg-[hsl(var(--terminal-code-bg))] border border-primary/30 rounded-lg shadow-lg shadow-primary/5 overflow-hidden max-h-[50vh]">
+          <div className="bg-[hsl(var(--terminal-code-bg))] border border-primary/30 rounded-[4px] shadow-lg shadow-primary/5 overflow-hidden max-h-[50vh]">
             {/* Terminal header */}
             <div className="flex items-center justify-between px-3 py-1.5 bg-primary/10 border-b border-primary/20">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-primary/60 animate-pulse" />
-                <span className="font-mono text-[10px] text-primary/80 uppercase tracking-wider">Output</span>
+                <span className="font-mono text-[10px] text-primary/80 uppercase tracking-wider">// Output</span>
               </div>
               <div className="flex items-center gap-1">
                 <button
