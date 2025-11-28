@@ -1,12 +1,13 @@
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Globe2, Loader2, MessageCircle, PenLine, Send, User } from 'lucide-react';
+import { Bot, Globe2, Loader2, MessageCircle, PenLine, Send, Sparkles, User } from 'lucide-react';
 import { getApiBaseUrl } from '@/utils/apiBase';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import CommentInputModal from './CommentInputModal';
+import { streamChatEvents } from '@/services/chat';
 
 // Load any archived comments bundled at build-time
 // Using a relative glob; keys may vary (relative vs absolute) depending on bundler.
@@ -51,6 +52,18 @@ export default function CommentSection({ postId }: { postId: string }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [savedAuthor, setSavedAuthor] = useState('');
   const formShownAt = useRef<number>(Date.now());
+
+  // AI Discussion mode state
+  const [aiDiscussionEnabled, setAiDiscussionEnabled] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return localStorage.getItem('comment.aiDiscussion') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [aiResponding, setAiResponding] = useState(false);
+  const [aiStreamingText, setAiStreamingText] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -134,6 +147,79 @@ export default function CommentSection({ postId }: { postId: string }) {
     };
   }, [postId, archived]);
 
+  // Toggle AI discussion mode
+  const handleToggleAiDiscussion = useCallback(() => {
+    setAiDiscussionEnabled(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('comment.aiDiscussion', String(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  // Generate AI response to a user comment
+  const generateAiResponse = useCallback(async (userComment: string, userName: string) => {
+    if (!aiDiscussionEnabled) return;
+    
+    setAiResponding(true);
+    setAiStreamingText('');
+    
+    const pageTitle = typeof document !== 'undefined' ? document.title : '';
+    const pageUrl = typeof window !== 'undefined' ? window.location.href : '';
+    
+    // Build context from recent comments
+    const recentComments = (comments || []).slice(-5).map(c => 
+      `${c.author}: ${c.content}`
+    ).join('\n');
+    
+    const prompt = `당신은 블로그 글에서 독자들과 토론하는 친근한 AI 어시스턴트예요. 
+현재 페이지: ${pageTitle}
+URL: ${pageUrl}
+
+최근 댓글들:
+${recentComments}
+
+방금 ${userName}님이 남긴 댓글:
+"${userComment}"
+
+${userName}님의 댓글에 대해 짧고 통찰력 있게 응답해주세요. 
+- 2-3문장으로 간결하게
+- 글의 내용과 연결지어 생각을 확장하거나 흥미로운 질문을 던져주세요
+- 존댓말을 사용하고 친근하게 대해주세요`;
+
+    try {
+      let fullText = '';
+      for await (const ev of streamChatEvents({ 
+        text: prompt,
+        useArticleContext: true 
+      })) {
+        if (ev.type === 'text') {
+          fullText += ev.text;
+          setAiStreamingText(fullText);
+        }
+      }
+      
+      // Add AI comment to the list
+      if (fullText.trim()) {
+        const aiComment: CommentItem = {
+          id: `ai-${Date.now()}`,
+          postId,
+          author: 'AI Assistant',
+          content: fullText.trim(),
+          website: null,
+          createdAt: new Date().toISOString(),
+        };
+        setComments(prev => [...(prev || []), aiComment]);
+      }
+    } catch (err) {
+      console.error('AI response error:', err);
+    } finally {
+      setAiResponding(false);
+      setAiStreamingText('');
+    }
+  }, [aiDiscussionEnabled, comments, postId]);
+
   // Comment submission handler for the modal
   const handleCommentSubmit = useCallback(async (data: {
     author: string;
@@ -181,7 +267,15 @@ export default function CommentSection({ postId }: { postId: string }) {
     setSavedAuthor(data.author);
     // Reset form shown time for next submission
     formShownAt.current = Date.now();
-  }, [postId]);
+
+    // Trigger AI response if enabled
+    if (aiDiscussionEnabled) {
+      // Small delay to ensure user comment is visible first
+      setTimeout(() => {
+        generateAiResponse(data.content, data.author);
+      }, 500);
+    }
+  }, [postId, aiDiscussionEnabled, generateAiResponse]);
 
   return (
     <section aria-label='Comments' className='space-y-6'>
@@ -231,16 +325,46 @@ export default function CommentSection({ postId }: { postId: string }) {
               </p>
             </div>
           </div>
-          {error && (
-            <span className={cn(
-              "rounded-full px-3 py-1 text-xs font-medium",
-              isTerminal
-                ? "bg-destructive/20 text-destructive border border-destructive/30"
-                : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-200"
-            )}>
-              {error}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {/* AI Discussion Toggle */}
+            <button
+              type="button"
+              onClick={handleToggleAiDiscussion}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                isTerminal
+                  ? aiDiscussionEnabled
+                    ? "bg-primary/20 text-primary border border-primary/30 font-mono"
+                    : "bg-muted/50 text-muted-foreground border border-border font-mono hover:border-primary/50"
+                  : aiDiscussionEnabled
+                    ? "bg-gradient-to-r from-violet-500/20 to-purple-500/20 text-violet-600 dark:text-violet-400 border border-violet-500/30"
+                    : "bg-muted/50 text-muted-foreground border border-border/50 hover:border-violet-500/30 hover:text-violet-600 dark:hover:text-violet-400"
+              )}
+              title={aiDiscussionEnabled ? "AI 토론 모드 끄기" : "AI 토론 모드 켜기"}
+            >
+              <Bot className={cn(
+                "h-3.5 w-3.5",
+                aiDiscussionEnabled && "animate-pulse"
+              )} />
+              {isTerminal 
+                ? aiDiscussionEnabled ? "AI:ON" : "AI:OFF"
+                : aiDiscussionEnabled ? "AI 토론" : "AI 토론"
+              }
+              {aiDiscussionEnabled && (
+                <Sparkles className="h-3 w-3" />
+              )}
+            </button>
+            {error && (
+              <span className={cn(
+                "rounded-full px-3 py-1 text-xs font-medium",
+                isTerminal
+                  ? "bg-destructive/20 text-destructive border border-destructive/30"
+                  : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-200"
+              )}>
+                {error}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Comments List */}
@@ -265,14 +389,26 @@ export default function CommentSection({ postId }: { postId: string }) {
               "space-y-0",
               isTerminal && "border-l-2 border-primary/30 ml-2"
             )}>
-              {comments.map((c, idx) => (
+              {comments.map((c, idx) => {
+                const isAiComment = c.author === 'AI Assistant' || c.id?.startsWith('ai-');
+                return (
                 <li
                   key={c.id || idx}
                   className={cn(
                     "text-sm leading-relaxed transition-colors",
                     isTerminal
-                      ? "pl-4 py-3 hover:bg-primary/5 relative before:absolute before:left-[-9px] before:top-[18px] before:w-2 before:h-2 before:rounded-full before:bg-primary/50 before:border-2 before:border-background"
-                      : "p-4 rounded-2xl border border-border/30 bg-background/60 shadow-sm hover:bg-background/80 dark:border-white/5 dark:bg-white/5 dark:hover:bg-white/8 mb-3"
+                      ? cn(
+                          "pl-4 py-3 hover:bg-primary/5 relative before:absolute before:left-[-9px] before:top-[18px] before:w-2 before:h-2 before:rounded-full before:border-2 before:border-background",
+                          isAiComment 
+                            ? "before:bg-violet-500 bg-violet-500/5" 
+                            : "before:bg-primary/50"
+                        )
+                      : cn(
+                          "p-4 rounded-2xl border shadow-sm mb-3",
+                          isAiComment
+                            ? "border-violet-500/30 bg-gradient-to-br from-violet-500/5 to-purple-500/5 dark:from-violet-500/10 dark:to-purple-500/10"
+                            : "border-border/30 bg-background/60 hover:bg-background/80 dark:border-white/5 dark:bg-white/5 dark:hover:bg-white/8"
+                        )
                   )}
                 >
                   {/* Terminal mode: Git log style */}
@@ -290,8 +426,18 @@ export default function CommentSection({ postId }: { postId: string }) {
                               })
                             : 'unknown'}]
                         </span>
-                        <span className="text-primary font-semibold">
-                          {c.author}@visitor
+                        <span className={cn(
+                          "font-semibold",
+                          isAiComment ? "text-violet-500" : "text-primary"
+                        )}>
+                          {isAiComment ? (
+                            <span className="inline-flex items-center gap-1">
+                              <Bot className="h-3 w-3" />
+                              AI@assistant
+                            </span>
+                          ) : (
+                            `${c.author}@visitor`
+                          )}
                         </span>
                         <span className="text-muted-foreground">:~$</span>
                       </div>
@@ -322,11 +468,28 @@ export default function CommentSection({ postId }: { postId: string }) {
                     <>
                       <div className='mb-2.5 flex items-center justify-between'>
                         <div className='flex items-center gap-2'>
-                          <span className="flex items-center justify-center rounded-full w-7 h-7 bg-gradient-to-br from-primary/20 to-primary/10">
-                            <User className="h-3.5 w-3.5 text-primary" />
+                          <span className={cn(
+                            "flex items-center justify-center rounded-full w-7 h-7",
+                            isAiComment
+                              ? "bg-gradient-to-br from-violet-500/20 to-purple-500/20"
+                              : "bg-gradient-to-br from-primary/20 to-primary/10"
+                          )}>
+                            {isAiComment ? (
+                              <Bot className="h-3.5 w-3.5 text-violet-500" />
+                            ) : (
+                              <User className="h-3.5 w-3.5 text-primary" />
+                            )}
                           </span>
-                          <span className="font-semibold text-foreground dark:text-white text-[13px]">
+                          <span className={cn(
+                            "font-semibold text-[13px]",
+                            isAiComment
+                              ? "text-violet-600 dark:text-violet-400"
+                              : "text-foreground dark:text-white"
+                          )}>
                             {c.author}
+                            {isAiComment && (
+                              <Sparkles className="inline h-3 w-3 ml-1 text-violet-500" />
+                            )}
                           </span>
                         </div>
                         {c.createdAt && (
@@ -354,8 +517,81 @@ export default function CommentSection({ postId }: { postId: string }) {
                     </>
                   )}
                 </li>
-              ))}
+              );})}
             </ul>
+          )}
+
+          {/* AI Streaming Response */}
+          {aiResponding && aiStreamingText && (
+            <div
+              className={cn(
+                "text-sm leading-relaxed animate-in fade-in-0 slide-in-from-bottom-2 duration-300",
+                isTerminal
+                  ? "pl-4 py-3 ml-2 border-l-2 border-violet-500/50 bg-violet-500/5"
+                  : "p-4 rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-500/5 to-purple-500/5 dark:from-violet-500/10 dark:to-purple-500/10"
+              )}
+            >
+              {isTerminal ? (
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs">
+                    <span className="text-muted-foreground">[typing...]</span>
+                    <span className="text-violet-500 font-semibold inline-flex items-center gap-1">
+                      <Bot className="h-3 w-3 animate-pulse" />
+                      AI@assistant
+                    </span>
+                    <span className="text-muted-foreground">:~$</span>
+                  </div>
+                  <div className="font-mono text-foreground pl-0 sm:pl-4">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p: ({ children }) => <span className="inline">{children}</span>,
+                      }}
+                    >
+                      {aiStreamingText}
+                    </ReactMarkdown>
+                    <span className="inline-block w-2 h-4 bg-violet-500 animate-pulse ml-0.5" />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className='mb-2.5 flex items-center gap-2'>
+                    <span className="flex items-center justify-center rounded-full w-7 h-7 bg-gradient-to-br from-violet-500/20 to-purple-500/20">
+                      <Bot className="h-3.5 w-3.5 text-violet-500 animate-pulse" />
+                    </span>
+                    <span className="font-semibold text-[13px] text-violet-600 dark:text-violet-400">
+                      AI Assistant
+                      <Sparkles className="inline h-3 w-3 ml-1 text-violet-500 animate-pulse" />
+                    </span>
+                    <Loader2 className="h-3 w-3 animate-spin text-violet-500 ml-auto" />
+                  </div>
+                  <div className="prose prose-sm max-w-none leading-relaxed dark:prose-invert prose-p:text-foreground/90 dark:prose-p:text-white/85">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {aiStreamingText}
+                    </ReactMarkdown>
+                    <span className="inline-block w-2 h-4 bg-violet-500 animate-pulse ml-0.5 align-middle" />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* AI Responding Indicator (before text starts) */}
+          {aiResponding && !aiStreamingText && (
+            <div
+              className={cn(
+                "flex items-center gap-2 py-3",
+                isTerminal
+                  ? "pl-4 ml-2 border-l-2 border-violet-500/50 font-mono"
+                  : "px-4"
+              )}
+            >
+              <Bot className="h-4 w-4 text-violet-500 animate-pulse" />
+              <span className="text-sm text-violet-600 dark:text-violet-400">
+                {isTerminal ? "$ AI thinking..." : "AI가 생각하는 중..."}
+              </span>
+              <Loader2 className="h-3 w-3 animate-spin text-violet-500" />
+            </div>
           )}
 
           {/* Comment Form Trigger */}

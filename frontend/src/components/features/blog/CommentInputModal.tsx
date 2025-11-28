@@ -35,12 +35,13 @@ export default function CommentInputModal({
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const authorRef = useRef<HTMLInputElement>(null);
 
-  // Focus management
+  // Focus management - only run when modal opens, not on every author change
   useEffect(() => {
     if (isOpen) {
       // Small delay to ensure modal is rendered
       const timer = setTimeout(() => {
-        if (author.trim()) {
+        // Use initialAuthor to determine focus, not the live author state
+        if (initialAuthor?.trim()) {
           contentRef.current?.focus();
         } else {
           authorRef.current?.focus();
@@ -48,7 +49,7 @@ export default function CommentInputModal({
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, author]);
+  }, [isOpen, initialAuthor]);
 
   // Handle ESC key to close
   useEffect(() => {
