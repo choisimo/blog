@@ -1817,6 +1817,7 @@
       // close
       this.$close.addEventListener('click', () => {
         this.$panel.classList.remove('open');
+        this.updateOpen();
         this.closeHistory();
       });
 

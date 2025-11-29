@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { Env } from '../types';
 import { generateContent, tryParseJson } from '../lib/gemini';
-import { success, badRequest } from '../lib/response';
+import { success, badRequest, error } from '../lib/response';
 
 type ChatContext = { Bindings: Env };
 
@@ -242,7 +242,7 @@ chat.post('/session/:sessionId/task', async (c: Context<ChatContext>) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Task execution failed';
     console.error('Task error:', message);
-    return badRequest(c, message);
+    return error(c, message, 500, 'INTERNAL_ERROR');
   }
 });
 
@@ -275,7 +275,7 @@ chat.post('/aggregate', async (c: Context<ChatContext>) => {
     return success(c, { text });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'aggregate failed';
-    return badRequest(c, message);
+    return error(c, message, 500, 'INTERNAL_ERROR');
   }
 });
 
