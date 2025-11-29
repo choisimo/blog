@@ -1,12 +1,108 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { Env } from '../types';
-import { generateContent } from '../lib/gemini';
+import { generateContent, tryParseJson } from '../lib/gemini';
 import { success, badRequest } from '../lib/response';
 
 type ChatContext = { Bindings: Env };
 
 const chat = new Hono<ChatContext>();
+
+// Task mode types
+type TaskMode = 'sketch' | 'prism' | 'chain' | 'catalyst' | 'summary' | 'custom';
+
+type SketchResult = {
+  mood: string;
+  bullets: string[];
+};
+
+type PrismResult = {
+  facets: Array<{
+    title: string;
+    points: string[];
+  }>;
+};
+
+type ChainResult = {
+  questions: Array<{
+    q: string;
+    why: string;
+  }>;
+};
+
+// Helper to truncate text safely
+function safeTruncate(s: string, n: number): string {
+  if (!s) return s;
+  return s.length > n ? `${s.slice(0, n)}\n…(truncated)` : s;
+}
+
+// Build prompt for each task mode
+function buildTaskPrompt(mode: TaskMode, payload: Record<string, unknown>): string {
+  const paragraph = String(payload.paragraph || payload.content || '');
+  const postTitle = String(payload.postTitle || payload.title || '');
+  
+  switch (mode) {
+    case 'sketch':
+      return [
+        'You are a helpful writing companion. Return STRICT JSON only matching the schema.',
+        '{"mood":"string","bullets":["string","string","..."]}',
+        '',
+        `Post: ${safeTruncate(postTitle, 120)}`,
+        'Paragraph:',
+        safeTruncate(paragraph, 1600),
+        '',
+        'Task: Capture the emotional sketch. Select a concise mood (e.g., curious, excited, skeptical) and 3-6 short bullets in the original language of the text.',
+      ].join('\n');
+
+    case 'prism':
+      return [
+        'Return STRICT JSON only for idea facets.',
+        '{"facets":[{"title":"string","points":["string","string"]}]}',
+        `Post: ${safeTruncate(postTitle, 120)}`,
+        'Paragraph:',
+        safeTruncate(paragraph, 1600),
+        '',
+        'Task: Provide 2-3 facets (titles) with 2-4 concise points each, in the original language.',
+      ].join('\n');
+
+    case 'chain':
+      return [
+        'Return STRICT JSON only for tail questions.',
+        '{"questions":[{"q":"string","why":"string"}]}',
+        `Post: ${safeTruncate(postTitle, 120)}`,
+        'Paragraph:',
+        safeTruncate(paragraph, 1600),
+        '',
+        'Task: Generate 3-5 short follow-up questions and a brief why for each, in the original language.',
+      ].join('\n');
+
+    case 'catalyst':
+    case 'summary':
+    case 'custom':
+    default:
+      // For custom modes, use the prompt directly if provided
+      return payload.prompt ? String(payload.prompt) : paragraph;
+  }
+}
+
+// Parse and validate task result
+function parseTaskResult(mode: TaskMode, text: string): unknown {
+  const parsed = tryParseJson(text);
+  
+  if (!parsed) {
+    // Try extracting JSON from text
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+      const maybeJson = text.slice(start, end + 1);
+      const retried = tryParseJson(maybeJson);
+      if (retried) return retried;
+    }
+    throw new Error('Failed to parse AI response as JSON');
+  }
+  
+  return parsed;
+}
 async function proxyRequest(c: Context<ChatContext>, path: string) {
   const aiServeBaseUrl = c.env.AI_SERVE_BASE_URL || 'https://ai-check.nodove.com';
   const upstreamUrl = `${aiServeBaseUrl}${path}`;
@@ -50,6 +146,48 @@ chat.post('/session', async (c: Context<ChatContext>) => {
 chat.post('/session/:sessionId/message', async (c: Context<ChatContext>) => {
   const { sessionId } = c.req.param();
   return proxyRequest(c, `/session/${sessionId}/message`);
+});
+
+// POST /session/:sessionId/task - Execute AI task (sketch, prism, chain, etc.)
+chat.post('/session/:sessionId/task', async (c: Context<ChatContext>) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { mode, prompt, payload, context } = body as {
+    mode?: string;
+    prompt?: string;
+    payload?: Record<string, unknown>;
+    context?: { url?: string; title?: string };
+  };
+
+  const taskMode = (mode || 'custom') as TaskMode;
+  const taskPayload = payload || {};
+  
+  // If prompt is provided, add it to payload for custom mode
+  if (prompt && !taskPayload.prompt) {
+    taskPayload.prompt = prompt;
+  }
+
+  // Build the appropriate prompt for the mode
+  const aiPrompt = buildTaskPrompt(taskMode, taskPayload);
+  
+  if (!aiPrompt.trim()) {
+    return badRequest(c, 'No content provided for task');
+  }
+
+  try {
+    const text = await generateContent(aiPrompt, c.env, {
+      temperature: 0.3,
+      maxTokens: 1024,
+    });
+    
+    // Parse the result based on mode
+    const data = parseTaskResult(taskMode, text);
+    
+    return success(c, { data, mode: taskMode });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Task execution failed';
+    console.error('Task error:', message);
+    return badRequest(c, message);
+  }
 });
 
 // POST /chat/aggregate - 통합 질문 (여러 세션 요약 + 하나의 응답)

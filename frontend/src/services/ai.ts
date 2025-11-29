@@ -1,9 +1,10 @@
 /*
   AI client for inline features.
-  Always calls the nodove.com AI agent API for sketch, prism, chain operations.
-  Uses the same backend as the chat widget for consistent AI responses.
+  Uses the workers API for sketch, prism, chain operations.
+  Falls back to mock data on error.
 */
 import { ensureSession } from '@/services/chat';
+import { getApiBaseUrl } from '@/utils/apiBase';
 
 export type SketchResult = {
   mood: string;
@@ -23,9 +24,6 @@ export type ChainResult = {
     why: string;
   }>;
 };
-
-// AI Agent API base URL - always use nodove.com AI service
-const AI_AGENT_BASE_URL = 'https://ai-serve.nodove.com';
 
 function safeTruncate(s: string, n: number) {
   if (!s) return s;
@@ -67,10 +65,11 @@ function tryParseJson<T = unknown>(text: string): T | null {
   return null;
 }
 
-// Invoke AI agent task via nodove.com API
+// Invoke AI agent task via workers API
 async function invokeAiAgentTask<T>(mode: string, prompt: string, payload: Record<string, unknown>): Promise<T> {
   const sessionId = await ensureSession();
-  const url = `${AI_AGENT_BASE_URL}/session/${encodeURIComponent(sessionId)}/task`;
+  const base = getApiBaseUrl();
+  const url = `${base.replace(/\/$/, '')}/api/v1/chat/session/${encodeURIComponent(sessionId)}/task`;
   
   const body = {
     mode,

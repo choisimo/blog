@@ -9,7 +9,8 @@ import {
 } from '@/services/ai';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Sparkles, Loader2, X, Lightbulb, Layers, Link2 } from 'lucide-react';
+import { Sparkles, Loader2, X, Lightbulb, Layers, Link2, MessageCircle } from 'lucide-react';
+import DebateRoom, { DebateTopic } from './DebateRoom';
 
 // Minimal telemetry to localStorage for future learning
 function logEvent(event: Record<string, unknown>) {
@@ -94,6 +95,8 @@ export default function SparkInline({
   const [prismRes, setPrismRes] = useState<PrismResult | null>(null);
   const [chainRes, setChainRes] = useState<ChainResult | null>(null);
   const [activeMode, setActiveMode] = useState<Mode>('idle');
+  const [showDebate, setShowDebate] = useState(false);
+  const [debateTopic, setDebateTopic] = useState<DebateTopic | null>(null);
   const { isTerminal } = useTheme();
 
   const text = useMemo(() => extractText(children), [children]);
@@ -353,6 +356,30 @@ export default function SparkInline({
                     </ul>
                   </div>
                 ))}
+                
+                {/* Debate Button */}
+                <button
+                  type='button'
+                  onClick={() => {
+                    setDebateTopic({
+                      title: prismRes.facets[0]?.title || '다각도 분석',
+                      context: text,
+                      facets: prismRes.facets,
+                      originalParagraph: text,
+                    });
+                    setShowDebate(true);
+                  }}
+                  className={cn(
+                    'w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border transition-all',
+                    'hover:scale-[1.01] active:scale-[0.99]',
+                    isTerminal 
+                      ? 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20' 
+                      : 'bg-violet-100/50 border-violet-300/50 text-violet-700 hover:bg-violet-100 dark:bg-violet-900/20 dark:border-violet-700/30 dark:text-violet-300 dark:hover:bg-violet-900/30',
+                  )}
+                >
+                  <MessageCircle className='h-4 w-4' />
+                  <span className='text-sm font-medium'>이 주제로 토론하기</span>
+                </button>
               </div>
             )}
 
@@ -360,10 +387,21 @@ export default function SparkInline({
             {chainRes && loading === 'idle' && (
               <div className='space-y-2.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300'>
                 {chainRes.questions.map((q, i) => (
-                  <div 
+                  <button 
                     key={i}
+                    type='button'
+                    onClick={() => {
+                      // Start debate with this question as the topic
+                      setDebateTopic({
+                        title: q.q,
+                        context: `${text}\n\n질문: ${q.q}${q.why ? `\n이유: ${q.why}` : ''}`,
+                        originalParagraph: text,
+                      });
+                      setShowDebate(true);
+                    }}
                     className={cn(
-                      'rounded-xl px-4 py-3 border transition-colors',
+                      'w-full text-left rounded-xl px-4 py-3 border transition-all',
+                      'hover:scale-[1.01] active:scale-[0.99]',
                       isTerminal 
                         ? 'bg-primary/5 border-primary/20 hover:bg-primary/10' 
                         : 'bg-emerald-50/50 border-emerald-200/50 dark:bg-emerald-900/10 dark:border-emerald-800/30 hover:bg-emerald-50 dark:hover:bg-emerald-900/20',
@@ -381,8 +419,13 @@ export default function SparkInline({
                         {q.why}
                       </p>
                     )}
-                  </div>
+                  </button>
                 ))}
+                
+                {/* Debate prompt */}
+                <p className='text-xs text-center text-muted-foreground pt-2'>
+                  질문을 클릭하여 AI와 토론을 시작하세요
+                </p>
               </div>
             )}
 
@@ -408,6 +451,27 @@ export default function SparkInline({
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Debate Room Modal */}
+      {showDebate && (debateTopic || prismRes) && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in-0 duration-200'>
+          <div className='w-full max-w-lg animate-in zoom-in-95 slide-in-from-bottom-4 duration-300'>
+            <DebateRoom
+              topic={debateTopic || {
+                title: prismRes?.facets[0]?.title || '다각도 분석',
+                context: text,
+                facets: prismRes?.facets,
+                originalParagraph: text,
+              }}
+              postTitle={postTitle}
+              onClose={() => {
+                setShowDebate(false);
+                setDebateTopic(null);
+              }}
+            />
           </div>
         </div>
       )}
