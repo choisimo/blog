@@ -149,6 +149,7 @@ chat.post('/session/:sessionId/message', async (c: Context<ChatContext>) => {
 });
 
 // POST /session/:sessionId/task - Execute AI task (sketch, prism, chain, etc.)
+// Proxies to AIdove API (ai-call.nodove.com/auto-chat) for reliable AI generation
 chat.post('/session/:sessionId/task', async (c: Context<ChatContext>) => {
   const body = await c.req.json().catch(() => ({}));
   const { mode, prompt, payload, context } = body as {
@@ -174,13 +175,66 @@ chat.post('/session/:sessionId/task', async (c: Context<ChatContext>) => {
   }
 
   try {
-    const text = await generateContent(aiPrompt, c.env, {
-      temperature: 0.3,
-      maxTokens: 1024,
+    // Call AIdove API via ai-call gateway
+    const aiCallBaseUrl = c.env.AI_CALL_BASE_URL || 'https://ai-call.nodove.com';
+    const autoChatUrl = `${aiCallBaseUrl.replace(/\/$/, '')}/auto-chat`;
+
+    const autoChatBody = {
+      message: aiPrompt,
+      mode: taskMode,
+      responseFormat: 'json',
+      context: {
+        ...context,
+        taskMode,
+      },
+    };
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    };
+
+    // Forward gateway caller key if available
+    if (c.env.AI_GATEWAY_CALLER_KEY) {
+      headers['X-Gateway-Caller-Key'] = c.env.AI_GATEWAY_CALLER_KEY;
+    }
+
+    const autoChatRes = await fetch(autoChatUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(autoChatBody),
     });
+
+    if (!autoChatRes.ok) {
+      const errorText = await autoChatRes.text().catch(() => '');
+      console.error('AIdove API error:', autoChatRes.status, errorText.slice(0, 200));
+      throw new Error(`AIdove API error: ${autoChatRes.status}`);
+    }
+
+    const autoChatResult = await autoChatRes.json() as { 
+      ok?: boolean;
+      data?: { text?: string; content?: string; response?: string };
+      text?: string;
+      content?: string;
+      response?: string;
+    };
+
+    // Extract text from various response formats
+    const rawText = 
+      autoChatResult?.data?.text || 
+      autoChatResult?.data?.content || 
+      autoChatResult?.data?.response ||
+      autoChatResult?.text || 
+      autoChatResult?.content || 
+      autoChatResult?.response ||
+      (typeof autoChatResult === 'string' ? autoChatResult : '');
+
+    if (!rawText) {
+      throw new Error('No content in AIdove response');
+    }
     
     // Parse the result based on mode
-    const data = parseTaskResult(taskMode, text);
+    const data = parseTaskResult(taskMode, rawText);
     
     return success(c, { data, mode: taskMode });
   } catch (err) {

@@ -13,6 +13,7 @@ export type Env = {
   AI_SERVE_BASE_URL?: string;
   AI_SERVE_API_KEY?: string;
   AI_GATEWAY_CALLER_KEY?: string;
+  AI_CALL_BASE_URL?: string;
   // Email + site notification
   RESEND_API_KEY?: string;
   NOTIFY_FROM_EMAIL?: string;
