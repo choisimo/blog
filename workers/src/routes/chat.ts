@@ -161,14 +161,16 @@ chat.post('/session/:sessionId/task', async (c: Context<ChatContext>) => {
 
   const taskMode = (mode || 'custom') as TaskMode;
   const taskPayload = payload || {};
-  
-  // If prompt is provided, add it to payload for custom mode
-  if (prompt && !taskPayload.prompt) {
-    taskPayload.prompt = prompt;
-  }
 
-  // Build the appropriate prompt for the mode
-  const aiPrompt = buildTaskPrompt(taskMode, taskPayload);
+  // Use prompt directly if provided by frontend, otherwise build from payload
+  // Frontend sends complete prompt for sketch/prism/chain modes
+  let aiPrompt: string;
+  if (prompt && prompt.trim()) {
+    aiPrompt = prompt;
+  } else {
+    // Fallback: build prompt from payload (for backward compatibility)
+    aiPrompt = buildTaskPrompt(taskMode, taskPayload);
+  }
   
   if (!aiPrompt.trim()) {
     return badRequest(c, 'No content provided for task');
