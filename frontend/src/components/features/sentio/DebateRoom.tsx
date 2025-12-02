@@ -41,32 +41,32 @@ type DebateRoomProps = {
 };
 
 const DEBATE_STARTERS = [
-  { label: '이 관점에 동의해요', stance: 'agree' as const, icon: ThumbsUp },
-  { label: '다른 시각이 있어요', stance: 'disagree' as const, icon: ThumbsDown },
-  { label: '더 깊이 알고 싶어요', stance: 'neutral' as const, icon: Lightbulb },
+  { label: '이 부분이 특히 신경 쓰여요', stance: 'agree' as const, icon: ThumbsUp },
+  { label: '이 부분이 조금 불편해요', stance: 'disagree' as const, icon: ThumbsDown },
+  { label: '조금 더 이해하고 정리하고 싶어요', stance: 'neutral' as const, icon: Lightbulb },
 ];
 
 const FOLLOW_UP_PROMPTS = [
-  '구체적인 예시를 들어 설명해줘',
-  '반대 입장에서는 어떻게 생각할까?',
-  '실생활에 어떻게 적용할 수 있을까?',
-  '이 주장의 약점은 뭘까?',
+  '내 상황에 맞게 풀어서 설명해줘',
+  '다른 관점에서 보면 어떻게 느낄 수 있을까?',
+  '앞으로 내가 어떤 선택을 할 수 있을지 같이 정리해줘',
+  '지금 내가 놓치고 있는 포인트가 있다면 알려줘',
 ];
 
 function buildDebateSystemPrompt(topic: DebateTopic, stance?: 'agree' | 'disagree' | 'neutral'): string {
   const lines: string[] = [
-    '당신은 사려 깊은 토론 파트너입니다. 다음 지침을 따르세요:',
+    '당신은 사려 깊은 상담 파트너입니다. 다음 지침을 따르세요:',
     '',
-    '1. 사용자의 의견을 경청하고 논리적으로 응답합니다.',
-    '2. 다양한 관점을 제시하되, 일방적이지 않게 균형을 유지합니다.',
-    '3. 반박할 때는 예의 바르게, 구체적인 근거와 함께 합니다.',
-    '4. 사용자가 새로운 시각을 발견하도록 질문을 던집니다.',
-    '5. 말투는 친근하되 지적인 톤을 유지합니다.',
-    '6. 응답은 간결하게 (2-4문장), 핵심만 전달합니다.',
+    '1. 사용자의 감정과 생각을 먼저 공감하고, 차분하게 응답합니다.',
+    '2. 옳고 그름을 판단하기보다, 사용자가 스스로 정리하고 선택할 수 있도록 도와줍니다.',
+    '3. 조언이 필요할 때에는 예의 바르게, 구체적인 예시와 함께 제안합니다.',
+    '4. 사용자가 새로운 관점이나 선택지를 발견하도록 부드럽게 질문을 던집니다.',
+    '5. 말투는 친근하고 따뜻하게 유지하되, 과도하게 가볍지 않게 균형을 잡습니다.',
+    '6. 응답은 2~4문장 정도로 간결하게, 지금 대화에서 가장 중요한 한두 가지에 집중합니다.',
     '',
     '---',
     '',
-    '[토론 주제]',
+    '[상담 주제]',
     topic.title,
     '',
     '[맥락]',
@@ -74,7 +74,7 @@ function buildDebateSystemPrompt(topic: DebateTopic, stance?: 'agree' | 'disagre
   ];
 
   if (topic.facets && topic.facets.length > 0) {
-    lines.push('', '[관련 관점들]');
+    lines.push('', '[참고할 수 있는 관점들]');
     topic.facets.forEach((f, i) => {
       lines.push(`${i + 1}. ${f.title}`);
       f.points.forEach(p => lines.push(`   - ${p}`));
@@ -82,9 +82,9 @@ function buildDebateSystemPrompt(topic: DebateTopic, stance?: 'agree' | 'disagre
   }
 
   if (stance === 'agree') {
-    lines.push('', '사용자는 이 관점에 동의하는 입장입니다. 동의를 인정하면서도 더 깊은 사고를 유도하세요.');
+    lines.push('', '사용자는 이 내용에 어느 정도 공감하고 있습니다. 그 공감을 바탕으로 조금 더 깊이 이해하고 정리할 수 있도록 도와주세요.');
   } else if (stance === 'disagree') {
-    lines.push('', '사용자는 다른 시각을 가지고 있습니다. 그 시각을 존중하면서 건설적인 토론을 이끌어주세요.');
+    lines.push('', '사용자는 이 내용에 대해 불편함 또는 다른 시각을 가지고 있습니다. 그 감정을 존중하면서 안전한 분위기에서 생각을 풀어낼 수 있도록 도와주세요.');
   }
 
   return lines.join('\n');
@@ -148,10 +148,10 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
 
       const systemPrompt = buildDebateSystemPrompt(topic, stance);
       const starterText = stance === 'agree'
-        ? '이 관점에 동의합니다. 왜 이것이 중요한지 더 알고 싶어요.'
+        ? '이 부분이 특히 신경 쓰여요. 조금 더 이해하고 정리하고 싶어요.'
         : stance === 'disagree'
-        ? '이 관점에 대해 다른 시각이 있어요. 다른 관점에서 생각해볼 수 있을까요?'
-        : '이 주제에 대해 더 깊이 이해하고 싶어요. 핵심 논점이 무엇인가요?';
+        ? '이 부분이 조금 불편해요. 다른 관점에서 생각해볼 수 있을까요?'
+        : '조금 더 이해하고 정리하고 싶어요. 핵심 논점이 무엇인가요?';
 
       let acc = '';
       for await (const ev of streamChatEvents({
@@ -293,7 +293,9 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
       <div
         className={cn(
           'flex items-center justify-between px-4 py-3 border-b shrink-0',
-          isTerminal ? 'border-primary/10 bg-primary/5' : 'border-border/40 bg-muted/30'
+          isTerminal
+            ? 'border-primary/10 bg-primary/5'
+            : 'border-border/40 bg-muted/30'
         )}
       >
         <div className="flex items-center gap-3 min-w-0">
@@ -312,7 +314,7 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
                 isTerminal && 'font-mono text-primary'
               )}
             >
-              AI 토론방
+              AI 상담실
             </h3>
             <p className="text-xs text-muted-foreground truncate max-w-[200px]">
               {topic.title}
@@ -330,7 +332,7 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
                   ? 'hover:bg-primary/10 text-primary/60 hover:text-primary'
                   : 'hover:bg-muted text-muted-foreground hover:text-foreground'
               )}
-              aria-label="토론 초기화"
+              aria-label="상담 초기화"
             >
               <RotateCcw className="h-4 w-4" />
             </button>
@@ -410,7 +412,7 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
             {/* Stance Selection */}
             <div className="space-y-3 pt-2">
               <p className="text-sm text-center text-muted-foreground">
-                어떤 입장에서 토론을 시작할까요?
+                어떤 마음으로 상담을 시작할까요?
               </p>
               <div className="grid grid-cols-1 gap-2">
                 {DEBATE_STARTERS.map(starter => {

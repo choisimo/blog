@@ -378,7 +378,7 @@ export default function SparkInline({
                   )}
                 >
                   <MessageCircle className='h-4 w-4' />
-                  <span className='text-sm font-medium'>이 주제로 토론하기</span>
+                  <span className='text-sm font-medium'>이 주제로 상담 시작하기</span>
                 </button>
               </div>
             )}
@@ -424,7 +424,7 @@ export default function SparkInline({
                 
                 {/* Debate prompt */}
                 <p className='text-xs text-center text-muted-foreground pt-2'>
-                  질문을 클릭하여 AI와 토론을 시작하세요
+                  질문을 클릭하여 AI와 상담을 시작하세요
                 </p>
               </div>
             )}
