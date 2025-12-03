@@ -848,10 +848,10 @@ export default function FloatingActionBar() {
     },
     {
       name: "insight",
-      aliases: ["i", "map"],
-      description: "인사이트 맵 열기",
+      aliases: ["i", "map", "graph"],
+      description: "인사이트 그래프 페이지 열기",
       action: () => {
-        openHistory();
+        vfs.navigate('/insight');
         setShellOpen(false);
         setShellOutput(null);
       },
@@ -1169,14 +1169,17 @@ export default function FloatingActionBar() {
     }
   }, [shellOpen]);
 
+  // Mobile terminal shell bar should always be visible (like iOS Safari bottom bar)
+  const shouldAlwaysShow = isMobile && isTerminal;
+  
   const containerClasses = cn(
     "fixed inset-x-0 z-[var(--z-fab-bar)] px-3 sm:px-4 print:hidden",
     isMobile
       ? "bottom-0 pb-[calc(env(safe-area-inset-bottom,0px))]"
       : "bottom-[calc(16px+env(safe-area-inset-bottom,0px))]",
     "transition-transform transition-opacity duration-200 ease-out",
-    // fabPinned가 true면 자동 숨김 비활성화
-    fabPinned
+    // Mobile terminal shell bar always visible, fabPinned disables auto-hide, otherwise use scrollHidden
+    (shouldAlwaysShow || fabPinned)
       ? "translate-y-0 opacity-100"
       : scrollHidden
         ? "translate-y-6 opacity-0 pointer-events-none"
@@ -1226,7 +1229,11 @@ export default function FloatingActionBar() {
       key: "insight",
       label: "Insight",
       icon: Map,
-      onClick: openHistory,
+      onClick: () => {
+        send("fab_insight_click");
+        clearBadge();
+        vfs.navigate('/insight');
+      },
       badge: hasNew,
     },
   ];

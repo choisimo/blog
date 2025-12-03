@@ -13,6 +13,7 @@ import type { Env } from '../types';
 import { generateContent } from './gemini';
 import type { PromptConfig, TaskMode } from './prompts';
 import { getFallbackData } from './prompts';
+import { getAiCallUrl, getAiGatewayCallerKey } from './config';
 
 export type LLMRequest = {
   system?: string;
@@ -87,11 +88,8 @@ async function callAiCallGateway(
   request: LLMRequest,
   env: Env
 ): Promise<{ ok: boolean; text?: string; error?: string }> {
-  const aiCallBaseUrl = env.AI_CALL_BASE_URL;
-  if (!aiCallBaseUrl) {
-    return { ok: false, error: 'AI_CALL_BASE_URL not configured' };
-  }
-
+  // Get AI Call URL from KV > env > default
+  const aiCallBaseUrl = await getAiCallUrl(env);
   const url = `${aiCallBaseUrl.replace(/\/$/, '')}/auto-chat`;
   
   // system + user 프롬프트 결합
@@ -104,8 +102,10 @@ async function callAiCallGateway(
     Accept: 'application/json',
   };
 
-  if (env.AI_GATEWAY_CALLER_KEY) {
-    headers['X-Gateway-Caller-Key'] = env.AI_GATEWAY_CALLER_KEY;
+  // Get gateway caller key from KV > env
+  const gatewayCallerKey = await getAiGatewayCallerKey(env);
+  if (gatewayCallerKey) {
+    headers['X-Gateway-Caller-Key'] = gatewayCallerKey;
   }
 
   try {
@@ -191,7 +191,8 @@ export async function callLLM(
   const errors: string[] = [];
 
   // 1차: AI Call Gateway 시도
-  if (env.AI_CALL_BASE_URL) {
+  const aiCallUrl = await getAiCallUrl(env);
+  if (aiCallUrl) {
     const result = await callAiCallGateway(request, env);
     if (result.ok && result.text) {
       const parsed = request.responseFormat === 'json' 

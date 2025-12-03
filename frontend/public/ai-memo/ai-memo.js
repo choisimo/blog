@@ -113,14 +113,23 @@
 
       // Output channel ensures UI writes stay scoped to shadow DOM
       this.out = {
-        getStatus: () => (this.$status ? this.$status.textContent || '' : ''),
-        setStatus: (text) => { try { if (this.$status) this.$status.textContent = String(text ?? ''); } catch (_) {} },
+        getStatus: () => {
+          const statusText = this.shadowRoot?.querySelector('.status-text');
+          return statusText ? statusText.textContent || '' : '';
+        },
+        setStatus: (text) => {
+          try {
+            const statusText = this.shadowRoot?.querySelector('.status-text');
+            if (statusText) statusText.textContent = String(text ?? '');
+          } catch (_) {}
+        },
         tempStatus: (text, restoreTo, delay = 1400) => {
           try {
-            const prev = typeof restoreTo === 'string' ? restoreTo : (this.$status?.textContent || 'Ready');
-            if (this.$status) this.$status.textContent = String(text ?? '');
+            const statusText = this.shadowRoot?.querySelector('.status-text');
+            const prev = typeof restoreTo === 'string' ? restoreTo : (statusText?.textContent || 'Ready');
+            if (statusText) statusText.textContent = String(text ?? '');
             clearTimeout(this._statusTimer);
-            this._statusTimer = setTimeout(() => { try { if (this.$status) this.$status.textContent = prev; } catch (_) {} }, delay);
+            this._statusTimer = setTimeout(() => { try { if (statusText) statusText.textContent = prev; } catch (_) {} }, delay);
           } catch (_) {}
         },
         toast: (msg) => { try { const t = this.$toast; if (!t) return; t.textContent = String(msg || ''); t.classList.add('show'); clearTimeout(this._toastTimer); this._toastTimer = setTimeout(() => t.classList.remove('show'), 1600); } catch (_) {} },
@@ -237,9 +246,13 @@
 
       const btn = this.$aiSummary;
       const prevStatus = this.out.getStatus();
+      const statusDot = this.shadowRoot?.querySelector('.status-dot');
+      
       try {
         btn.disabled = true;
+        if (statusDot) statusDot.style.background = '#7c3aed';
         this.out.setStatus('AI 요약 중…');
+        
         const backend = window.__APP_CONFIG?.apiBaseUrl || window.APP_CONFIG?.apiBaseUrl || DEFAULT_API_URL;
         const endpoint = `${backend.replace(/\/$/, '')}/api/v1/ai/summarize`;
         const res = await fetch(endpoint, {
@@ -268,16 +281,19 @@
         const block = `\n\n[AI 요약 @ ${stamp}]\n${out.trim()}\n`;
         this.out.append(block);
         this.out.toast('AI 요약이 메모에 추가되었습니다.');
+        if (statusDot) statusDot.style.background = 'var(--memo-accent)';
         this.out.setStatus('완료');
         this.logEvent({ type: 'ai_summary_done', label: 'ok' });
       } catch (err) {
         console.error('Gemini summarize error:', err);
+        if (statusDot) statusDot.style.background = '#dc2626';
         this.out.setStatus('오류');
         this.out.toast(err?.message || '요약 중 오류가 발생했습니다.');
         this.logEvent({ type: 'ai_summary_error', label: err?.message || 'error' });
       } finally {
         btn.disabled = false;
         setTimeout(() => {
+          if (statusDot) statusDot.style.background = 'var(--memo-accent)';
           this.out.setStatus(prevStatus || 'Ready');
         }, 1400);
       }
@@ -297,12 +313,22 @@
         `- 사용자 프롬프트: "${prompt.replace(/` + "`" + `/g, '\\`')}"`
       ].join('\n');
 
-       const btn = this.$catalystRun || this.$catalystBtn; const inputEl = this.$catalystInput;
+      const btn = this.$catalystRun || this.$catalystBtn; 
+      const inputEl = this.$catalystInput;
+      const catalystPanel = this.$catalystBox;
       const prev = this.out.getStatus();
+      
       try {
-         if (btn) btn.disabled = true;
-         if (inputEl) inputEl.disabled = true;
-         this.out.setStatus('Catalyst 생성 중…');
+        // Set loading state
+        if (btn) btn.disabled = true;
+        if (inputEl) inputEl.disabled = true;
+        if (catalystPanel) catalystPanel.classList.add('loading');
+        
+        // Update status with loading indicator
+        const statusDot = this.shadowRoot?.querySelector('.status-dot');
+        if (statusDot) statusDot.style.background = '#7c3aed';
+        this.out.setStatus('Catalyst 생성 중…');
+        
         const backend = window.__APP_CONFIG?.apiBaseUrl || window.APP_CONFIG?.apiBaseUrl || DEFAULT_API_URL;
         const endpoint = `${backend.replace(/\/$/, '')}/api/v1/ai/summarize`;
         const res = await fetch(endpoint, {
@@ -332,18 +358,28 @@
         this.out.append(block);
         this.out.toast('Catalyst 결과가 메모에 추가되었습니다.');
         this.logEvent({ type: 'catalyst_run', label: prompt });
-         if (this.$catalystInput) this.$catalystInput.value = '';
-         if (this.$catalystBox) this.$catalystBox.style.display = 'none';
-         if (this.$catalystInput) this.$catalystInput.disabled = false;
+        if (this.$catalystInput) this.$catalystInput.value = '';
+        if (this.$catalystBox) this.$catalystBox.style.display = 'none';
+        if (this.$catalystInput) this.$catalystInput.disabled = false;
+        
+        // Success status
+        if (statusDot) statusDot.style.background = 'var(--memo-accent)';
         this.out.setStatus('완료');
       } catch (err) {
         console.error('Catalyst error:', err);
+        const statusDot = this.shadowRoot?.querySelector('.status-dot');
+        if (statusDot) statusDot.style.background = '#dc2626';
         this.out.setStatus('오류');
         this.out.toast(err?.message || 'Catalyst 생성 중 오류가 발생했습니다.');
       } finally {
-         if (btn) btn.disabled = false;
-         if (inputEl) inputEl.disabled = false;
-         setTimeout(() => { this.out.setStatus(prev || 'Ready'); }, 1400);
+        if (btn) btn.disabled = false;
+        if (inputEl) inputEl.disabled = false;
+        if (catalystPanel) catalystPanel.classList.remove('loading');
+        setTimeout(() => { 
+          const statusDot = this.shadowRoot?.querySelector('.status-dot');
+          if (statusDot) statusDot.style.background = 'var(--memo-accent)';
+          this.out.setStatus(prev || 'Ready'); 
+        }, 1400);
       }
     }
 
@@ -707,24 +743,41 @@
           </div>
           <div id="memoBody" class="body">
             <div class="section">
-              <label class="label" for="memo">메모</label>
-              <div class="row" style="justify-content: space-between; align-items:center; margin-bottom:6px;">
-                <div class="small" style="opacity:0.8">Markdown 지원 • 단축키: Alt+M 토글</div>
-                <div class="row" style="gap:6px;">
-                  <button id="memoBold" class="btn secondary" title="Bold" aria-label="Bold"><strong>B</strong></button>
-                  <button id="memoItalic" class="btn secondary" title="Italic" aria-label="Italic"><em>I</em></button>
-                  <button id="memoCode" class="btn secondary" title="Inline code" aria-label="Inline code">{}</button>
-                  <button id="memoH1" class="btn secondary" title="# H1" aria-label="Heading 1">H1</button>
-                  <button id="memoH2" class="btn secondary" title="## H2" aria-label="Heading 2">H2</button>
-                  <button id="memoUl" class="btn secondary" title="• bullet list" aria-label="Bullet list">•</button>
-                  <button id="memoOl" class="btn secondary" title="1. numbered list" aria-label="Numbered list">1.</button>
-                  <button id="addSelection" class="btn secondary" type="button" aria-label="선택 추가">선택 추가</button>
-                  <button id="addBlock" class="btn secondary" type="button" aria-label="블록 추가">블록 추가</button>
-                  <button id="aiSummary" class="btn secondary" type="button" aria-label="AI 요약">AI 요약</button>
-                  <button id="catalyst" class="btn secondary" type="button" aria-label="Catalyst">Catalyst</button>
+              <div class="memo-toolbar">
+                <div class="toolbar-group format-group" role="toolbar" aria-label="서식">
+                  <button id="memoBold" class="toolbar-btn" title="Bold (Ctrl+B)" aria-label="Bold"><span class="icon">B</span></button>
+                  <button id="memoItalic" class="toolbar-btn" title="Italic (Ctrl+I)" aria-label="Italic"><span class="icon italic">I</span></button>
+                  <button id="memoCode" class="toolbar-btn" title="Inline code" aria-label="Inline code"><span class="icon mono">{}</span></button>
+                </div>
+                <div class="toolbar-divider"></div>
+                <div class="toolbar-group heading-group" role="toolbar" aria-label="제목">
+                  <button id="memoH1" class="toolbar-btn" title="제목 1 (#)" aria-label="Heading 1"><span class="icon">H1</span></button>
+                  <button id="memoH2" class="toolbar-btn" title="제목 2 (##)" aria-label="Heading 2"><span class="icon">H2</span></button>
+                </div>
+                <div class="toolbar-divider"></div>
+                <div class="toolbar-group list-group" role="toolbar" aria-label="목록">
+                  <button id="memoUl" class="toolbar-btn" title="글머리 기호 (-)" aria-label="Bullet list"><span class="icon">•─</span></button>
+                  <button id="memoOl" class="toolbar-btn" title="번호 목록 (1.)" aria-label="Numbered list"><span class="icon">1.</span></button>
+                </div>
+                <div class="toolbar-spacer"></div>
+                <div class="toolbar-group action-group" role="toolbar" aria-label="동작">
+                  <button id="addSelection" class="toolbar-btn action" type="button" title="선택한 텍스트 추가" aria-label="선택 추가"><span class="icon">✂</span><span class="label">선택</span></button>
+                  <button id="addBlock" class="toolbar-btn action" type="button" title="블록 선택 모드" aria-label="블록 추가"><span class="icon">▢</span><span class="label">블록</span></button>
+                </div>
+                <div class="toolbar-divider"></div>
+                <div class="toolbar-group ai-group" role="toolbar" aria-label="AI 기능">
+                  <button id="aiSummary" class="toolbar-btn ai" type="button" title="AI로 요약 생성" aria-label="AI 요약"><span class="icon">✦</span><span class="label">요약</span></button>
+                  <button id="catalyst" class="toolbar-btn ai primary" type="button" title="Catalyst 프롬프트" aria-label="Catalyst"><span class="icon">⚡</span><span class="label">Catalyst</span></button>
                 </div>
               </div>
-              <textarea id="memo" class="textarea" style="min-height:300px; height:300px;" placeholder="여기에 메모를 작성하세요"></textarea>
+              <div class="memo-hint">
+                <span class="hint-text">Markdown 지원</span>
+                <span class="hint-divider">•</span>
+                <span class="hint-shortcut"><kbd>Alt</kbd>+<kbd>M</kbd> 토글</span>
+                <span class="hint-divider">•</span>
+                <span class="hint-shortcut"><kbd>/</kbd> 명령어</span>
+              </div>
+              <textarea id="memo" class="textarea" style="min-height:300px; height:300px;" placeholder="여기에 메모를 작성하세요...&#10;&#10;Tip: / 를 입력하면 서식 메뉴가 열립니다"></textarea>
             </div>
           </div>
 
@@ -806,18 +859,39 @@
                </div>
              </div>
           </div>
-          <div id="catalystBox" class="row" style="display:none; padding: 8px 12px 0 12px; gap:6px;">
-             <input id="catalystInput" class="input" placeholder="어떻게 확장해볼까요? 예: 사용 사례 관점에서 다시 보기" maxlength="160" />
-            <button id="catalystRun" class="btn">생성</button>
-            <button id="catalystCancel" class="btn secondary">취소</button>
+          <div id="catalystBox" class="catalyst-panel" style="display:none;">
+             <div class="catalyst-header">
+               <span class="catalyst-icon">⚡</span>
+               <span class="catalyst-title">Catalyst</span>
+             </div>
+             <input id="catalystInput" class="input catalyst-input" placeholder="어떻게 확장해볼까요? 예: 사용 사례 관점에서 다시 보기" maxlength="160" />
+             <div class="catalyst-actions">
+               <button id="catalystCancel" class="btn secondary">취소</button>
+               <button id="catalystRun" class="btn catalyst-run"><span class="catalyst-run-icon">▶</span> 생성</button>
+             </div>
           </div>
           <div class="footer">
-            <div id="status" class="small">Ready</div>
-            <div class="row">
-              <button id="memoToGraph" class="btn secondary" type="button" aria-label="그래프에 추가">그래프에 추가</button>
-              <button id="download" class="btn secondary" type="button" aria-label="다운로드">다운로드</button>
-              <button id="memoFull" class="btn" type="button" aria-label="전체화면">전체화면</button>
-              <button id="memoClear" class="btn secondary" type="button" aria-label="지우기">지우기</button>
+            <div id="status" class="status-bar">
+              <span class="status-dot"></span>
+              <span class="status-text">Ready</span>
+            </div>
+            <div class="footer-actions">
+              <button id="memoToGraph" class="footer-btn" type="button" title="그래프에 추가" aria-label="그래프에 추가">
+                <span class="btn-icon">◉</span>
+                <span class="btn-label">그래프</span>
+              </button>
+              <button id="download" class="footer-btn" type="button" title="다운로드" aria-label="다운로드">
+                <span class="btn-icon">↓</span>
+                <span class="btn-label">저장</span>
+              </button>
+              <button id="memoFull" class="footer-btn" type="button" title="전체화면" aria-label="전체화면">
+                <span class="btn-icon">⛶</span>
+                <span class="btn-label">확대</span>
+              </button>
+              <button id="memoClear" class="footer-btn danger" type="button" title="지우기" aria-label="지우기">
+                <span class="btn-icon">✕</span>
+                <span class="btn-label">지우기</span>
+              </button>
             </div>
           </div>
           <div id="toast" class="toast"></div>

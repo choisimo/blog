@@ -1,4 +1,5 @@
 import type { Env } from '../types';
+import { getAiServeUrl, getAiServeApiKey } from './config';
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const GEMINI_FAILOVER_KEY_PREFIX = 'gemini-failover:';
@@ -8,14 +9,16 @@ async function callFallbackGenerator(
   env: Env,
   temperature: number
 ): Promise<string> {
-  const base = env.AI_SERVE_BASE_URL || 'https://ai-check.nodove.com';
+  // Get AI Serve URL from KV > env > default
+  const base = await getAiServeUrl(env);
   const url = `${base.replace(/\/$/, '')}/ai/generate`;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  if (env.AI_SERVE_API_KEY) {
-    headers['X-API-KEY'] = env.AI_SERVE_API_KEY;
+  const apiKey = await getAiServeApiKey(env);
+  if (apiKey) {
+    headers['X-API-KEY'] = apiKey;
   }
 
   const res = await fetch(url, {
@@ -72,54 +75,97 @@ async function isGeminiInFailover(env: Env): Promise<boolean> {
   }
 }
 
-export async function generateContent(
+/**
+ * Call Gemini API directly
+ */
+async function callGemini(
   prompt: string,
   env: Env,
-  options?: { temperature?: number; maxTokens?: number }
+  temperature: number,
+  maxTokens: number
 ): Promise<string> {
-  const temperature = options?.temperature ?? 0.2;
-  const maxTokens = options?.maxTokens ?? 2048;
-
-  if (!env.GEMINI_API_KEY || (await isGeminiInFailover(env))) {
-    return callFallbackGenerator(prompt, env, temperature);
-  }
-
   const model = 'gemini-2.5-flash';
   const url = `${GEMINI_API_BASE}/${model}:generateContent?key=${env.GEMINI_API_KEY}`;
 
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature,
+        maxOutputTokens: maxTokens,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini API error: ${response.status} ${errorText}`);
+  }
+
+  const data = await response.json<{
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  }>();
+
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new Error('No content in Gemini response');
+  }
+
+  return text;
+}
+
+export type GenerateOptions = {
+  temperature?: number;
+  maxTokens?: number;
+  /** If true, use Gemini as primary instead of custom AI server */
+  preferGemini?: boolean;
+};
+
+/**
+ * Generate content using AI.
+ * By default, uses custom AI server (AI_SERVE_BASE_URL) as primary.
+ * Falls back to Gemini if custom server fails.
+ * Set preferGemini: true to use Gemini as primary with custom server as fallback.
+ */
+export async function generateContent(
+  prompt: string,
+  env: Env,
+  options?: GenerateOptions
+): Promise<string> {
+  const temperature = options?.temperature ?? 0.2;
+  const maxTokens = options?.maxTokens ?? 2048;
+  const preferGemini = options?.preferGemini ?? false;
+
+  // Gemini-first mode (legacy behavior)
+  if (preferGemini && env.GEMINI_API_KEY && !(await isGeminiInFailover(env))) {
+    try {
+      return await callGemini(prompt, env, temperature, maxTokens);
+    } catch (err) {
+      console.error('Gemini failed, falling back to custom AI:', err);
+      await markGeminiFailoverToday(env);
+      return callFallbackGenerator(prompt, env, temperature);
+    }
+  }
+
+  // Custom AI server-first mode (new default)
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature,
-          maxOutputTokens: maxTokens,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      await markGeminiFailoverToday(env);
-      throw new Error(`Gemini API error: ${response.status} ${errorText}`);
-    }
-
-    const data = await response.json<{
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    }>();
-
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) {
-      await markGeminiFailoverToday(env);
-      throw new Error('No content in Gemini response');
-    }
-
-    return text;
+    return await callFallbackGenerator(prompt, env, temperature);
   } catch (err) {
-    await markGeminiFailoverToday(env);
-    return callFallbackGenerator(prompt, env, temperature);
+    console.error('Custom AI server failed:', err);
+    // Try Gemini as fallback if available
+    if (env.GEMINI_API_KEY && !(await isGeminiInFailover(env))) {
+      try {
+        console.log('Falling back to Gemini...');
+        return await callGemini(prompt, env, temperature, maxTokens);
+      } catch (geminiErr) {
+        console.error('Gemini fallback also failed:', geminiErr);
+        await markGeminiFailoverToday(env);
+      }
+    }
+    // Re-throw original error if all fallbacks fail
+    throw err;
   }
 }
 

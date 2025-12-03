@@ -1,15 +1,21 @@
 name = "r2-gateway"
 main = "src/index.ts"
 compatibility_date = "2025-10-21"
+account_id = "f6f11e2a4e5178d2f37476785018f761"
 
-# R2 bucket binding (replace with your actual bucket name)
+# R2 bucket binding
 [[r2_buckets]]
 binding = "MY_BUCKET"
 bucket_name = "blog"
 
-# workers.dev subdomain is automatically enabled
-# No routes needed for Service Binding - it works directly
+# Environment variables
+[vars]
+ALLOWED_ORIGINS = "*"
 
-# Option: attach custom domains if needed for external access
-# [triggers]
-# custom_domains = ["r2-assets.nodove.com"]
+# Custom domain for public access
+# Uncomment and configure if you have a custom domain set up in Cloudflare
+# routes = [
+#   { pattern = "assets-b.nodove.com/*", zone_name = "nodove.com" }
+# ]
+
+# workers.dev subdomain is automatically enabled

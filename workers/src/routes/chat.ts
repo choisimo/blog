@@ -23,6 +23,7 @@ import {
   type TaskPayload 
 } from '../lib/prompts';
 import { executeTask, tryParseJson } from '../lib/llm';
+import { getAiServeUrl, getAiGatewayCallerKey } from '../lib/config';
 
 type ChatContext = { Bindings: Env };
 
@@ -33,14 +34,17 @@ const chat = new Hono<ChatContext>();
  * 챗봇 메시지(SSE 스트리밍) 및 세션 생성에 사용됩니다.
  */
 async function proxyRequest(c: Context<ChatContext>, path: string) {
-  const aiServeBaseUrl = c.env.AI_SERVE_BASE_URL || 'https://ai-check.nodove.com';
+  // Get AI Serve URL from KV > env > default
+  const aiServeBaseUrl = await getAiServeUrl(c.env);
   const upstreamUrl = `${aiServeBaseUrl}${path}`;
 
   const upstreamHeaders = new Headers(c.req.raw.headers);
   upstreamHeaders.delete('host');
 
-  if (c.env.AI_GATEWAY_CALLER_KEY) {
-    upstreamHeaders.set('X-Gateway-Caller-Key', c.env.AI_GATEWAY_CALLER_KEY);
+  // Get gateway caller key from KV > env
+  const gatewayCallerKey = await getAiGatewayCallerKey(c.env);
+  if (gatewayCallerKey) {
+    upstreamHeaders.set('X-Gateway-Caller-Key', gatewayCallerKey);
   }
   if (c.env.OPENCODE_AUTH_TOKEN) {
     upstreamHeaders.set('Authorization', `Bearer ${c.env.OPENCODE_AUTH_TOKEN}`);

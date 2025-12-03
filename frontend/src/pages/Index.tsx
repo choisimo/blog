@@ -26,6 +26,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { OptimizedImage } from '@/components/common/OptimizedImage';
 import { formatDate } from '@/utils/blog';
+import { getEditorPicks, type EditorPick } from '@/services/analytics';
 
 // Shape used by visited posts in localStorage
 // Matches VisitedPostsMinimap
@@ -87,6 +88,27 @@ const Index = () => {
     const loadFeatured = async () => {
       try {
         setFeaturedLoading(true);
+
+        // 1. Try to load from D1 database (analytics-based editor picks)
+        const dbPicks = await getEditorPicks(3);
+        
+        if (dbPicks.length > 0) {
+          // Resolve posts from D1 picks
+          const resolved = await Promise.all(
+            dbPicks.map(async (pick: EditorPick) => {
+              const post = await getPostBySlug(pick.year, pick.post_slug);
+              return post || null;
+            })
+          );
+          const filtered = resolved.filter((p): p is BlogPost => !!p);
+          
+          if (filtered.length > 0) {
+            setFeaturedPosts(filtered);
+            return;
+          }
+        }
+
+        // 2. Fallback: Use static site.featured config
         const picks = site.featured || [];
         if (picks.length > 0) {
           const resolved = await Promise.all(
@@ -95,17 +117,31 @@ const Index = () => {
           const filtered = resolved
             .filter((p): p is BlogPost => !!p)
             .slice(0, 3);
-          setFeaturedPosts(filtered);
-        } else {
+          if (filtered.length > 0) {
+            setFeaturedPosts(filtered);
+            return;
+          }
+        }
+
+        // 3. Final fallback: Latest posts
+        const res = await getPostsPage({
+          page: 1,
+          pageSize: 3,
+          sort: 'date',
+        });
+        setFeaturedPosts(res.items);
+      } catch {
+        // Fallback to latest posts on error
+        try {
           const res = await getPostsPage({
             page: 1,
             pageSize: 3,
             sort: 'date',
           });
           setFeaturedPosts(res.items);
+        } catch {
+          setFeaturedPosts([]);
         }
-      } catch {
-        setFeaturedPosts([]);
       } finally {
         setFeaturedLoading(false);
       }

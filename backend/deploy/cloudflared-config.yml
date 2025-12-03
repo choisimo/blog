@@ -52,6 +52,19 @@ ingress:
     originRequest:
       noTLSVerify: true
 
+  # Terminal WebSocket service
+  # Handles real-time terminal connections via WebSocket
+  - hostname: terminal.yourdomain.com
+    service: http://localhost:8080
+    originRequest:
+      noTLSVerify: true
+      # WebSocket-specific settings
+      http2Origin: false
+      connectTimeout: 30s
+      # Long timeouts for WebSocket connections
+      tcpKeepAlive: 30s
+      keepAliveTimeout: 600s
+
   # Catch-all rule (required)
   - service: http_status:404
 

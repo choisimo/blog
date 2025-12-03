@@ -2,11 +2,19 @@ type Env = {
   MY_BUCKET: R2Bucket;
   INTERNAL_CALLER_KEY?: string;
   ALLOWED_INTERNAL_ORIGINS?: string;
+  ALLOWED_ORIGINS?: string;
 };
 
 const JSON_HEADERS = { "Content-Type": "application/json" } as const;
-const ALLOWED_METHODS = ["GET", "HEAD"];
+const ALLOWED_METHODS = ["GET", "HEAD", "OPTIONS"];
 const MAX_LIST_PAGE_SIZE = 100;
+
+// Public prefixes - these paths are publicly accessible without authentication
+const PUBLIC_PREFIXES = ["ai-chat/", "images/", "posts/", "assets/"];
+
+function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
 
 function sanitizeEtag(etag?: string | null) {
   return etag?.replace(/"/g, "") ?? null;
@@ -19,35 +27,59 @@ function buildJsonResponse(body: unknown, init?: ResponseInit) {
   });
 }
 
+function applyCorsHeaders(headers: Headers, origin: string, env: Env) {
+  const allowedOrigins = (env.ALLOWED_ORIGINS || "*").split(",").map((o) => o.trim());
+  
+  if (allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+    headers.set("Access-Control-Allow-Origin", allowedOrigins.includes("*") ? "*" : origin);
+    headers.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+    headers.set("Access-Control-Allow-Headers", "Content-Type, If-None-Match");
+    headers.set("Access-Control-Max-Age", "86400");
+  }
+}
+
 async function handleAssetRequest(request: Request, env: Env, key: string) {
-  if (!ALLOWED_METHODS.includes(request.method)) {
+  const origin = request.headers.get("Origin") || "*";
+
+  // Handle CORS preflight
+  if (request.method === "OPTIONS") {
+    const response = new Response(null, { status: 204 });
+    applyCorsHeaders(response.headers, origin, env);
+    return response;
+  }
+
+  if (!["GET", "HEAD"].includes(request.method)) {
     return new Response("Method Not Allowed", { status: 405 });
   }
 
   const object = await env.MY_BUCKET.get(key);
   if (!object) {
-    return new Response("객체를 찾을 수 없습니다.", { status: 404 });
+    const notFoundResponse = new Response("Object not found", { status: 404 });
+    applyCorsHeaders(notFoundResponse.headers, origin, env);
+    return notFoundResponse;
   }
 
   const etag = object.httpEtag;
   const ifNoneMatch = request.headers.get("If-None-Match");
   if (ifNoneMatch && etag && ifNoneMatch.replace(/W\//, "") === etag.replace(/W\//, "")) {
-    return new Response(null, {
+    const cachedResponse = new Response(null, {
       status: 304,
       headers: {
         ETag: etag,
-        "Cache-Control": "public, max-age=0, s-maxage=604800, stale-while-revalidate=86400",
+        "Cache-Control": "public, max-age=31536000, immutable",
       },
     });
+    applyCorsHeaders(cachedResponse.headers, origin, env);
+    return cachedResponse;
   }
 
   const headers = new Headers();
   object.writeHttpMetadata(headers);
   headers.set("ETag", etag ?? "");
-  if (!headers.has("Cache-Control")) {
-    headers.set("Cache-Control", "public, max-age=0, s-maxage=604800, stale-while-revalidate=86400");
-  }
+  // Long cache for immutable assets
+  headers.set("Cache-Control", "public, max-age=31536000, immutable");
   headers.set("Accept-Ranges", "bytes");
+  applyCorsHeaders(headers, origin, env);
 
   if (request.method === "HEAD") {
     return new Response(null, { headers });
@@ -182,14 +214,34 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const pathname = url.pathname.replace(/^\/+/, "");
+    const origin = request.headers.get("Origin") || "*";
+
+    // Handle CORS preflight for any path
+    if (request.method === "OPTIONS") {
+      const response = new Response(null, { status: 204 });
+      applyCorsHeaders(response.headers, origin, env);
+      return response;
+    }
+    
+    // Root path - return simple status
     if (!pathname) {
-      return new Response("Missing object key", { status: 400 });
+      const statusResponse = buildJsonResponse({ ok: true, service: "r2-gateway" });
+      applyCorsHeaders(statusResponse.headers, origin, env);
+      return statusResponse;
     }
 
+    // Legacy /assets/* path - strip prefix and serve
     if (pathname.startsWith("assets/")) {
       return handleAssetRequest(request, env, pathname.replace(/^assets\//, ""));
     }
 
+    // Public paths - serve directly without /assets/ prefix
+    // This allows URLs like /ai-chat/2025/image.png to work
+    if (isPublicPath(pathname)) {
+      return handleAssetRequest(request, env, pathname);
+    }
+
+    // Internal API paths - require authentication
     if (pathname.startsWith("internal/")) {
       const [, resource, userId, ...rest] = pathname.split("/");
       if (!resource || !userId) {
@@ -199,9 +251,11 @@ export default {
       return handleInternalRequest(request, env, resource, userId, id);
     }
 
-    return new Response(JSON.stringify({ ok: false, error: "Not Found" }), {
+    const notFoundResponse = new Response(JSON.stringify({ ok: false, error: "Not Found" }), {
       status: 404,
       headers: JSON_HEADERS,
     });
+    applyCorsHeaders(notFoundResponse.headers, origin, env);
+    return notFoundResponse;
   },
 };

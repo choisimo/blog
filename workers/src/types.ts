@@ -101,3 +101,43 @@ export type JwtPayload = {
   iat?: number;
   exp?: number;
 };
+
+// Post Analytics Models
+export type PostView = {
+  id: number;
+  post_slug: string;
+  year: string;
+  view_date: string;
+  view_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PostStats = {
+  id: number;
+  post_slug: string;
+  year: string;
+  total_views: number;
+  views_7d: number;
+  views_30d: number;
+  last_viewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type EditorPick = {
+  id: number;
+  post_slug: string;
+  year: string;
+  title: string;
+  cover_image: string | null;
+  category: string | null;
+  rank: number;
+  score: number;
+  reason: string | null;
+  picked_at: string;
+  expires_at: string | null;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+};

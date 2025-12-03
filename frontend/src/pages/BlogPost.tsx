@@ -37,11 +37,15 @@ import {
   User,
   Languages,
   MessageCircle,
+  Loader2,
+  Sparkles,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import useLanguage from '@/hooks/useLanguage';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
+import { recordView } from '@/services/analytics';
+import { translatePost, getCachedTranslation, type TranslationResult } from '@/services/translate';
 // import SparkInline from '@/components/features/sentio/SparkInline';
 
 const MarkdownRenderer = lazy(
@@ -78,10 +82,36 @@ const BlogPost = () => {
   const [relatedPosts, setRelatedPosts] = useState<BlogPostType[]>([]);
   const [inlineEnabled, setInlineEnabled] = useState<boolean>(true);
 
-  const localized = useMemo(
-    () => (post ? resolveLocalizedPost(post, language) : null),
-    [post, language]
-  );
+  // AI Translation state
+  const [translating, setTranslating] = useState(false);
+  const [aiTranslation, setAiTranslation] = useState<TranslationResult | null>(null);
+  const [translationError, setTranslationError] = useState<string | null>(null);
+
+  // Check if native translation exists for the selected language
+  const hasNativeTranslation = useMemo(() => {
+    if (!post) return false;
+    const defaultLang = post.defaultLanguage || post.language || 'ko';
+    if (language === defaultLang) return true;
+    return !!post.translations?.[language];
+  }, [post, language]);
+
+  // Resolve localized content (prefer AI translation if native not available)
+  const localized = useMemo(() => {
+    if (!post) return null;
+    
+    // If AI translation is available and native translation doesn't exist, use AI
+    if (aiTranslation && !hasNativeTranslation) {
+      return {
+        title: aiTranslation.title,
+        description: aiTranslation.description,
+        excerpt: aiTranslation.description,
+        content: aiTranslation.content,
+      };
+    }
+    
+    // Otherwise use native localization
+    return resolveLocalizedPost(post, language);
+  }, [post, language, aiTranslation, hasNativeTranslation]);
 
   const availableLanguages = useMemo(
     () => (post ? getAvailableLanguages(post) : []),
@@ -167,9 +197,14 @@ const BlogPost = () => {
     loadData();
   }, [year, slug]);
 
-  // After post loads, record it to visited posts
+  // After post loads, record it to visited posts and track view
   useEffect(() => {
     if (!post) return;
+
+    // Record view to D1 analytics (fire and forget)
+    recordView(post.year, post.slug).catch(() => {});
+
+    // Save to local visited posts
     try {
       const key = 'visited.posts';
       const raw = localStorage.getItem(key);
@@ -195,6 +230,71 @@ const BlogPost = () => {
       console.warn('Failed to persist visited posts', err);
     }
   }, [post]);
+
+  // Auto-translate when language changes and no native translation exists
+  useEffect(() => {
+    if (!post || !year || !slug) return;
+    
+    const defaultLang = post.defaultLanguage || post.language || 'ko';
+    
+    // If viewing in default language or native translation exists, clear AI translation
+    if (language === defaultLang || post.translations?.[language]) {
+      setAiTranslation(null);
+      setTranslationError(null);
+      return;
+    }
+
+    // Need AI translation
+    let cancelled = false;
+
+    const loadTranslation = async () => {
+      setTranslating(true);
+      setTranslationError(null);
+
+      try {
+        // First, try to get cached translation
+        const cached = await getCachedTranslation(year, slug, language);
+        
+        if (cached && !cancelled) {
+          setAiTranslation(cached);
+          setTranslating(false);
+          return;
+        }
+
+        // No cache, request AI translation
+        const result = await translatePost({
+          year,
+          slug,
+          targetLang: language,
+          sourceLang: defaultLang,
+          title: post.title,
+          description: post.description,
+          content: post.content,
+        });
+
+        if (!cancelled) {
+          setAiTranslation(result);
+        }
+      } catch (err) {
+        console.error('Translation failed:', err);
+        if (!cancelled) {
+          setTranslationError(
+            err instanceof Error ? err.message : 'Translation failed'
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setTranslating(false);
+        }
+      }
+    };
+
+    loadTranslation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [post, language, year, slug]);
 
   useEffect(() => {
     if (!post) return;
@@ -327,7 +427,7 @@ const BlogPost = () => {
         >
           <article
             className={cn(
-              'mx-auto max-w-3xl space-y-12',
+              'mx-auto max-w-4xl space-y-12',
               isTerminal && 'terminal-card p-4 sm:p-6'
             )}
           >
@@ -458,35 +558,72 @@ const BlogPost = () => {
                     )}
                   </div>
 
-                  {availableLanguages.length > 1 && (
-                    <div
-                      className={cn(
-                        'flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-xs font-medium text-muted-foreground dark:border-primary/40 dark:bg-primary/10 dark:text-white/80',
-                        isTerminal && 'rounded-lg font-mono border-solid'
-                      )}
-                    >
-                      <Languages className='h-4 w-4 text-primary' />
-                      <span className='uppercase tracking-wide'>
-                        {language === 'ko' ? '읽기 언어' : 'Reading language'}
-                      </span>
-                      <div className='flex flex-wrap gap-2'>
-                        {availableLanguages.map(code => (
-                          <button
-                            key={code}
-                            type='button'
-                            onClick={() => setLanguage(code)}
-                            className={cn(
-                              'rounded-full px-3 py-1 text-sm transition-colors',
-                              language === code
-                                ? 'bg-primary text-primary-foreground shadow-sm'
-                                : 'bg-white/70 text-foreground/70 dark:bg-background/60',
-                              isTerminal && 'rounded font-mono'
-                            )}
-                          >
-                            {resolveLanguageName(code)}
-                          </button>
-                        ))}
+                  {/* Language Selection - Always show for translation support */}
+                  <div
+                    className={cn(
+                      'flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-xs font-medium text-muted-foreground dark:border-primary/40 dark:bg-primary/10 dark:text-white/80',
+                      isTerminal && 'rounded-lg font-mono border-solid',
+                      translating && 'animate-pulse'
+                    )}
+                  >
+                    <Languages className='h-4 w-4 text-primary' />
+                    <span className='uppercase tracking-wide'>
+                      {language === 'ko' ? '읽기 언어' : 'Reading language'}
+                    </span>
+                    <div className='flex flex-wrap gap-2'>
+                      {(['ko', 'en'] as const).map(code => (
+                        <button
+                          key={code}
+                          type='button'
+                          onClick={() => setLanguage(code)}
+                          disabled={translating}
+                          className={cn(
+                            'rounded-full px-3 py-1 text-sm transition-colors',
+                            language === code
+                              ? 'bg-primary text-primary-foreground shadow-sm'
+                              : 'bg-white/70 text-foreground/70 dark:bg-background/60 hover:bg-white dark:hover:bg-background/80',
+                            isTerminal && 'rounded font-mono',
+                            translating && 'opacity-50 cursor-not-allowed'
+                          )}
+                        >
+                          {resolveLanguageName(code)}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Translation status indicators */}
+                    {translating && (
+                      <div className='flex items-center gap-1.5 ml-2 text-primary'>
+                        <Loader2 className='h-3.5 w-3.5 animate-spin' />
+                        <span className='text-xs'>
+                          {language === 'ko' ? '번역 중...' : 'Translating...'}
+                        </span>
                       </div>
+                    )}
+                    {aiTranslation && !translating && !hasNativeTranslation && (
+                      <div className='flex items-center gap-1.5 ml-2 text-amber-600 dark:text-amber-400'>
+                        <Sparkles className='h-3.5 w-3.5' />
+                        <span className='text-xs'>
+                          {language === 'ko' ? 'AI 번역' : 'AI Translated'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Translation error message */}
+                  {translationError && (
+                    <div className={cn(
+                      'rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400',
+                      isTerminal && 'font-mono'
+                    )}>
+                      <p className='font-medium mb-1'>
+                        {language === 'ko' ? '번역 실패' : 'Translation Failed'}
+                      </p>
+                      <p className='text-xs opacity-80'>{translationError}</p>
+                      <p className='text-xs mt-1 opacity-60'>
+                        {language === 'ko' 
+                          ? '원본 콘텐츠를 표시합니다.' 
+                          : 'Showing original content.'}
+                      </p>
                     </div>
                   )}
 

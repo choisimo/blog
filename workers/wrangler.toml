@@ -41,6 +41,10 @@ bucket_name = "blog"
 binding = "KV"
 id = "8bb28b36c3cb42da8ed7aca89f8cf0fe"
 
+# Cron triggers for scheduled tasks (daily at 6 AM UTC)
+[triggers]
+crons = ["0 6 * * *"]
+
 # Production environment
 [env.production]
 name = "blog-api-prod"

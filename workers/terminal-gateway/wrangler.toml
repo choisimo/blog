@@ -1,0 +1,32 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "terminal-gateway"
+main = "src/index.ts"
+compatibility_date = "2024-09-01"
+compatibility_flags = ["nodejs_compat"]
+account_id = "f6f11e2a4e5178d2f37476785018f761"
+
+# Secrets (set via wrangler secret put):
+# - ORIGIN_SECRET_KEY: Secret key to authenticate with origin server
+# - JWT_SECRET: Secret key for JWT token verification (same as blog-api)
+
+[vars]
+ENV = "development"
+# Origin server URL (Cloudflare Tunnel will route to this)
+TERMINAL_ORIGIN = "https://terminal-origin.nodove.com"
+
+# KV namespace for rate limiting and session tracking
+[[kv_namespaces]]
+binding = "KV"
+id = "8bb28b36c3cb42da8ed7aca89f8cf0fe"
+
+# Production environment
+[env.production]
+name = "terminal-gateway-prod"
+
+[env.production.vars]
+ENV = "production"
+TERMINAL_ORIGIN = "https://terminal-origin.nodove.com"
+
+[[env.production.kv_namespaces]]
+binding = "KV"
+id = "3d45140577d94404bc5f4bf000b07488"
