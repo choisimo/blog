@@ -1,108 +1,37 @@
+/**
+ * Chat Routes
+ * 
+ * 챗봇 및 Inline AI Task(sketch/prism/chain) 처리를 담당합니다.
+ * 
+ * 엔드포인트:
+ * - POST /session - 새 세션 생성 (프록시)
+ * - POST /session/:id/message - 챗봇 메시지 (프록시, SSE 지원)
+ * - POST /session/:id/task - Inline AI Task (서버 사이드 프롬프트 생성)
+ * - POST /aggregate - 통합 질문 처리
+ */
+
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { Env } from '../types';
-import { generateContent, tryParseJson } from '../lib/gemini';
+import { generateContent } from '../lib/gemini';
 import { success, badRequest, error } from '../lib/response';
+import { 
+  buildTaskPrompt, 
+  isValidTaskMode, 
+  getFallbackData,
+  type TaskMode, 
+  type TaskPayload 
+} from '../lib/prompts';
+import { executeTask, tryParseJson } from '../lib/llm';
 
 type ChatContext = { Bindings: Env };
 
 const chat = new Hono<ChatContext>();
 
-// Task mode types
-type TaskMode = 'sketch' | 'prism' | 'chain' | 'catalyst' | 'summary' | 'custom';
-
-type SketchResult = {
-  mood: string;
-  bullets: string[];
-};
-
-type PrismResult = {
-  facets: Array<{
-    title: string;
-    points: string[];
-  }>;
-};
-
-type ChainResult = {
-  questions: Array<{
-    q: string;
-    why: string;
-  }>;
-};
-
-// Helper to truncate text safely
-function safeTruncate(s: string, n: number): string {
-  if (!s) return s;
-  return s.length > n ? `${s.slice(0, n)}\n…(truncated)` : s;
-}
-
-// Build prompt for each task mode
-function buildTaskPrompt(mode: TaskMode, payload: Record<string, unknown>): string {
-  const paragraph = String(payload.paragraph || payload.content || '');
-  const postTitle = String(payload.postTitle || payload.title || '');
-  
-  switch (mode) {
-    case 'sketch':
-      return [
-        'You are a helpful writing companion. Return STRICT JSON only matching the schema.',
-        '{"mood":"string","bullets":["string","string","..."]}',
-        '',
-        `Post: ${safeTruncate(postTitle, 120)}`,
-        'Paragraph:',
-        safeTruncate(paragraph, 1600),
-        '',
-        'Task: Capture the emotional sketch. Select a concise mood (e.g., curious, excited, skeptical) and 3-6 short bullets in the original language of the text.',
-      ].join('\n');
-
-    case 'prism':
-      return [
-        'Return STRICT JSON only for idea facets.',
-        '{"facets":[{"title":"string","points":["string","string"]}]}',
-        `Post: ${safeTruncate(postTitle, 120)}`,
-        'Paragraph:',
-        safeTruncate(paragraph, 1600),
-        '',
-        'Task: Provide 2-3 facets (titles) with 2-4 concise points each, in the original language.',
-      ].join('\n');
-
-    case 'chain':
-      return [
-        'Return STRICT JSON only for tail questions.',
-        '{"questions":[{"q":"string","why":"string"}]}',
-        `Post: ${safeTruncate(postTitle, 120)}`,
-        'Paragraph:',
-        safeTruncate(paragraph, 1600),
-        '',
-        'Task: Generate 3-5 short follow-up questions and a brief why for each, in the original language.',
-      ].join('\n');
-
-    case 'catalyst':
-    case 'summary':
-    case 'custom':
-    default:
-      // For custom modes, use the prompt directly if provided
-      return payload.prompt ? String(payload.prompt) : paragraph;
-  }
-}
-
-// Parse and validate task result
-function parseTaskResult(mode: TaskMode, text: string): unknown {
-  const parsed = tryParseJson(text);
-  
-  if (!parsed) {
-    // Try extracting JSON from text
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}');
-    if (start >= 0 && end > start) {
-      const maybeJson = text.slice(start, end + 1);
-      const retried = tryParseJson(maybeJson);
-      if (retried) return retried;
-    }
-    throw new Error('Failed to parse AI response as JSON');
-  }
-  
-  return parsed;
-}
+/**
+ * 업스트림 AI 서비스로 요청을 프록시합니다.
+ * 챗봇 메시지(SSE 스트리밍) 및 세션 생성에 사용됩니다.
+ */
 async function proxyRequest(c: Context<ChatContext>, path: string) {
   const aiServeBaseUrl = c.env.AI_SERVE_BASE_URL || 'https://ai-check.nodove.com';
   const upstreamUrl = `${aiServeBaseUrl}${path}`;
@@ -138,115 +67,116 @@ async function proxyRequest(c: Context<ChatContext>, path: string) {
   });
 }
 
-// '/session' 경로의 POST 요청은 업스트림 '/session'으로 프록시합니다.
+/**
+ * POST /session - 새 세션 생성
+ * 업스트림 서비스로 프록시합니다.
+ */
 chat.post('/session', async (c: Context<ChatContext>) => {
   return proxyRequest(c, '/session');
 });
 
+/**
+ * POST /session/:sessionId/message - 챗봇 메시지
+ * SSE 스트리밍을 지원하며, 업스트림 서비스로 프록시합니다.
+ */
 chat.post('/session/:sessionId/message', async (c: Context<ChatContext>) => {
   const { sessionId } = c.req.param();
   return proxyRequest(c, `/session/${sessionId}/message`);
 });
 
-// POST /session/:sessionId/task - Execute AI task (sketch, prism, chain, etc.)
-// Proxies to AIdove API (ai-call.nodove.com/auto-chat) for reliable AI generation
+/**
+ * POST /session/:sessionId/task - Inline AI Task 실행
+ * 
+ * sketch, prism, chain 등의 AI 작업을 처리합니다.
+ * 프론트엔드는 mode와 payload만 전송하고, 프롬프트는 서버에서 생성합니다.
+ * 
+ * Request Body:
+ * {
+ *   mode: 'sketch' | 'prism' | 'chain' | 'catalyst' | 'summary' | 'custom',
+ *   payload: { paragraph, postTitle, persona, ... },
+ *   context?: { url, title }
+ * }
+ * 
+ * Response:
+ * {
+ *   ok: true,
+ *   data: { ... },  // 모드별 결과
+ *   mode: string,
+ *   source: 'ai-call' | 'gemini' | 'fallback'
+ * }
+ */
 chat.post('/session/:sessionId/task', async (c: Context<ChatContext>) => {
   const body = await c.req.json().catch(() => ({}));
-  const { mode, prompt, payload, context } = body as {
+  const { mode, payload, context, prompt: legacyPrompt } = body as {
     mode?: string;
-    prompt?: string;
-    payload?: Record<string, unknown>;
+    payload?: TaskPayload;
     context?: { url?: string; title?: string };
+    prompt?: string; // 하위 호환성을 위해 유지
   };
 
-  const taskMode = (mode || 'custom') as TaskMode;
-  const taskPayload = payload || {};
+  // 모드 검증
+  const taskMode: TaskMode = isValidTaskMode(mode || '') ? mode as TaskMode : 'custom';
+  const taskPayload: TaskPayload = payload || {};
 
-  // Use prompt directly if provided by frontend, otherwise build from payload
-  // Frontend sends complete prompt for sketch/prism/chain modes
-  let aiPrompt: string;
-  if (prompt && prompt.trim()) {
-    aiPrompt = prompt;
-  } else {
-    // Fallback: build prompt from payload (for backward compatibility)
-    aiPrompt = buildTaskPrompt(taskMode, taskPayload);
+  // 하위 호환성: 프론트엔드가 아직 prompt를 보내는 경우
+  // 새로운 프론트엔드는 payload만 보내므로, legacyPrompt가 있으면 custom 모드로 처리
+  if (legacyPrompt && legacyPrompt.trim() && taskMode === 'custom') {
+    taskPayload.prompt = legacyPrompt;
   }
-  
-  if (!aiPrompt.trim()) {
+
+  // payload 검증
+  const content = taskPayload.paragraph || taskPayload.content || taskPayload.prompt || '';
+  if (!content.trim()) {
     return badRequest(c, 'No content provided for task');
   }
 
   try {
-    // Call AIdove API via ai-call gateway
-    const aiCallBaseUrl = c.env.AI_CALL_BASE_URL || 'https://ai-call.nodove.com';
-    const autoChatUrl = `${aiCallBaseUrl.replace(/\/$/, '')}/auto-chat`;
+    // 서버 사이드 프롬프트 생성
+    const promptConfig = buildTaskPrompt(taskMode, taskPayload);
 
-    const autoChatBody = {
-      message: aiPrompt,
-      mode: taskMode,
-      responseFormat: 'json',
-      context: {
-        ...context,
-        taskMode,
-      },
-    };
+    // 통합 LLM 레이어를 통해 실행
+    const result = await executeTask(taskMode, promptConfig, taskPayload, c.env);
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    };
-
-    // Forward gateway caller key if available
-    if (c.env.AI_GATEWAY_CALLER_KEY) {
-      headers['X-Gateway-Caller-Key'] = c.env.AI_GATEWAY_CALLER_KEY;
+    if (result.ok) {
+      return success(c, {
+        data: result.data,
+        mode: taskMode,
+        source: result.source,
+      });
+    } else {
+      // 폴백 데이터 반환 (에러지만 200으로 응답)
+      console.warn('Task execution failed, returning fallback:', result.error);
+      return success(c, {
+        data: result.data,
+        mode: taskMode,
+        source: 'fallback',
+        _fallback: true,
+      });
     }
-
-    const autoChatRes = await fetch(autoChatUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(autoChatBody),
-    });
-
-    if (!autoChatRes.ok) {
-      const errorText = await autoChatRes.text().catch(() => '');
-      console.error('AIdove API error:', autoChatRes.status, errorText.slice(0, 200));
-      throw new Error(`AIdove API error: ${autoChatRes.status}`);
-    }
-
-    const autoChatResult = await autoChatRes.json() as { 
-      ok?: boolean;
-      data?: { text?: string; content?: string; response?: string };
-      text?: string;
-      content?: string;
-      response?: string;
-    };
-
-    // Extract text from various response formats
-    const rawText = 
-      autoChatResult?.data?.text || 
-      autoChatResult?.data?.content || 
-      autoChatResult?.data?.response ||
-      autoChatResult?.text || 
-      autoChatResult?.content || 
-      autoChatResult?.response ||
-      (typeof autoChatResult === 'string' ? autoChatResult : '');
-
-    if (!rawText) {
-      throw new Error('No content in AIdove response');
-    }
-    
-    // Parse the result based on mode
-    const data = parseTaskResult(taskMode, rawText);
-    
-    return success(c, { data, mode: taskMode });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Task execution failed';
     console.error('Task error:', message);
-    return error(c, message, 500, 'INTERNAL_ERROR');
+    
+    // 에러 시에도 폴백 데이터 반환 시도
+    try {
+      const fallbackData = getFallbackData(taskMode, taskPayload);
+      return success(c, {
+        data: fallbackData,
+        mode: taskMode,
+        source: 'fallback',
+        _fallback: true,
+        _error: message,
+      });
+    } catch {
+      return error(c, message, 500, 'INTERNAL_ERROR');
+    }
   }
 });
 
-// POST /chat/aggregate - 통합 질문 (여러 세션 요약 + 하나의 응답)
+/**
+ * POST /aggregate - 통합 질문
+ * 여러 세션의 요약을 받아 하나의 통합된 답변을 생성합니다.
+ */
 chat.post('/aggregate', async (c: Context<ChatContext>) => {
   const body = await c.req.json().catch(() => ({}));
   const { prompt } = body as { prompt?: string };
