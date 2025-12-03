@@ -19,6 +19,7 @@ ENV = "development"
 ALLOWED_ORIGINS = "http://localhost:5173,https://noblog.nodove.com,https://blog.nodove.com"
 ASSETS_BASE_URL = "https://assets-b.nodove.com"
 AI_CALL_BASE_URL = "https://ai-call.nodove.com"
+AI_VISION_BASE_URL = "https://ai-vision.nodove.com"
 
 # D1 Database binding (development)
 [[d1_databases]]
@@ -53,6 +54,7 @@ name = "blog-api-prod"
 ENV = "production"
 ALLOWED_ORIGINS = "https://noblog.nodove.com,https://blog.nodove.com"
 AI_CALL_BASE_URL = "https://ai-call.nodove.com"
+AI_VISION_BASE_URL = "https://ai-vision.nodove.com"
 
 [[env.production.d1_databases]]
 binding = "DB"

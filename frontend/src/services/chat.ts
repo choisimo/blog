@@ -263,6 +263,7 @@ export async function* streamChatEvents(input: {
   onFirstToken?: (ms: number) => void;
   useArticleContext?: boolean;
   imageUrl?: string; // Optional: URL of an attached image for vision models
+  imageAnalysis?: string | null; // Optional: AI vision analysis of the attached image
 }): AsyncGenerator<ChatStreamEvent, void, void> {
   const sessionID = await ensureSession();
   const chatBase = getChatBaseUrl();
@@ -300,17 +301,25 @@ export async function* streamChatEvents(input: {
       ].join('\n')
     : '';
   
-  // Build content parts - support both text and image_url types
-  const parts: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [
+  // Build content parts - text only (AI API only accepts text)
+  const parts: Array<{ type: 'text'; text: string }> = [
     { type: 'text', text: stylePrompt },
   ];
   if (contextPrompt) parts.push({ type: 'text', text: contextPrompt });
   
-  // If an image URL is provided, add it as an image_url content part for vision models
+  // If an image is provided, include analysis and/or link
   if (input.imageUrl) {
-    parts.push({ type: 'image_url', image_url: { url: input.imageUrl } });
-    // Add text prompt after image for better context
-    parts.push({ type: 'text', text: input.text || '이 이미지에 대해 설명해 주세요.' });
+    let imageContext = '';
+    
+    // Include AI vision analysis if available
+    if (input.imageAnalysis) {
+      imageContext += `[첨부된 이미지 분석 결과]\n${input.imageAnalysis}\n\n`;
+    }
+    
+    imageContext += `[이미지 링크: ${input.imageUrl}]\n\n`;
+    imageContext += input.text || '이 이미지에 대해 설명해 주세요.';
+    
+    parts.push({ type: 'text', text: imageContext });
   } else {
     parts.push({ type: 'text', text: input.text });
   }
@@ -533,6 +542,7 @@ export type ChatImageUploadResult = {
   key: string;
   size: number;
   contentType: string;
+  imageAnalysis?: string | null; // AI vision analysis result
 };
 
 export async function uploadChatImage(

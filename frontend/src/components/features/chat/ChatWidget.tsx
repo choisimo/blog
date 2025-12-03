@@ -352,6 +352,7 @@ export default function ChatWidget(props: { onClose?: () => void }) {
         key: string;
         size: number;
         contentType: string;
+        imageAnalysis?: string | null;
       } | null = null;
 
       if (imageToUpload) {
@@ -407,6 +408,7 @@ export default function ChatWidget(props: { onClose?: () => void }) {
           onFirstToken: (ms) => setFirstTokenMs(ms),
           useArticleContext: questionMode === "article",
           imageUrl: uploaded?.url, // Pass image URL for vision model support
+          imageAnalysis: uploaded?.imageAnalysis, // Pass AI vision analysis result
         })) {
           if (ev.type === "text") {
             acc += ev.text;

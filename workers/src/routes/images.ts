@@ -101,6 +101,7 @@ images.post('/upload-direct', requireAdmin, async (c) => {
 });
 
 // POST /images/chat-upload - Direct upload for AI Chat images (public, origin-guarded)
+// Also performs AI vision analysis and returns the description
 images.post('/chat-upload', async c => {
   const contentType = c.req.header('content-type') || '';
   if (!contentType.toLowerCase().includes('multipart/form-data')) {
@@ -133,6 +134,36 @@ images.post('/chat-upload', async c => {
   const assetsBase = (c.env.ASSETS_BASE_URL || 'https://assets.blog.nodove.com').replace(/\/$/, '');
   const url = `${assetsBase}/${key}`;
 
+  // Perform AI vision analysis if vision gateway is configured
+  let imageAnalysis: string | null = null;
+  const visionBase = c.env.AI_VISION_BASE_URL;
+  
+  if (visionBase && file.type?.startsWith('image/')) {
+    try {
+      // Convert to base64 for vision API
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+      
+      const visionRes = await fetch(`${visionBase.replace(/\/$/, '')}/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: base64,
+          mimeType: file.type,
+        }),
+      });
+
+      if (visionRes.ok) {
+        const visionData = await visionRes.json<{ ok: boolean; description?: string }>();
+        if (visionData.ok && visionData.description) {
+          imageAnalysis = visionData.description;
+        }
+      }
+    } catch (err) {
+      // Vision analysis failed, but upload succeeded - continue without analysis
+      console.error('Vision analysis failed:', err);
+    }
+  }
+
   return success(
     c,
     {
@@ -140,6 +171,7 @@ images.post('/chat-upload', async c => {
       key,
       size: file.size,
       contentType: file.type || 'application/octet-stream',
+      imageAnalysis, // AI vision analysis result (null if not available)
     },
     201
   );
