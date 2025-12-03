@@ -180,6 +180,42 @@ function normalizeResponse<T>(
     return raw.data as T;
   }
 
+  // _raw.text 구조 확인 (LLM 응답 파싱 실패 시)
+  if (isRecord(raw) && '_raw' in raw) {
+    const rawData = raw._raw;
+    // _raw가 문자열인 경우
+    if (typeof rawData === 'string') {
+      const parsed = tryParseJson<T>(rawData);
+      if (parsed && validator(parsed)) {
+        return parsed;
+      }
+    }
+    // _raw.text가 문자열인 경우
+    if (isRecord(rawData) && typeof rawData.text === 'string') {
+      const parsed = tryParseJson<T>(rawData.text);
+      if (parsed && validator(parsed)) {
+        return parsed;
+      }
+    }
+  }
+
+  // nested data._raw 구조 확인
+  if (isRecord(raw) && 'data' in raw && isRecord(raw.data) && '_raw' in raw.data) {
+    const rawData = (raw.data as Record<string, unknown>)._raw;
+    if (typeof rawData === 'string') {
+      const parsed = tryParseJson<T>(rawData);
+      if (parsed && validator(parsed)) {
+        return parsed;
+      }
+    }
+    if (isRecord(rawData) && typeof rawData.text === 'string') {
+      const parsed = tryParseJson<T>(rawData.text);
+      if (parsed && validator(parsed)) {
+        return parsed;
+      }
+    }
+  }
+
   // 문자열인 경우 JSON 파싱 시도
   if (typeof raw === 'string') {
     const parsed = tryParseJson<T>(raw);
