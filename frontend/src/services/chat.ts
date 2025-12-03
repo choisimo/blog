@@ -262,6 +262,7 @@ export async function* streamChatEvents(input: {
   signal?: AbortSignal;
   onFirstToken?: (ms: number) => void;
   useArticleContext?: boolean;
+  imageUrl?: string; // Optional: URL of an attached image for vision models
 }): AsyncGenerator<ChatStreamEvent, void, void> {
   const sessionID = await ensureSession();
   const chatBase = getChatBaseUrl();
@@ -298,11 +299,22 @@ export async function* streamChatEvents(input: {
         '',
       ].join('\n')
     : '';
-  const parts: Array<{ type: 'text'; text: string }> = [
+  
+  // Build content parts - support both text and image_url types
+  const parts: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [
     { type: 'text', text: stylePrompt },
   ];
   if (contextPrompt) parts.push({ type: 'text', text: contextPrompt });
-  parts.push({ type: 'text', text: input.text });
+  
+  // If an image URL is provided, add it as an image_url content part for vision models
+  if (input.imageUrl) {
+    parts.push({ type: 'image_url', image_url: { url: input.imageUrl } });
+    // Add text prompt after image for better context
+    parts.push({ type: 'text', text: input.text || '이 이미지에 대해 설명해 주세요.' });
+  } else {
+    parts.push({ type: 'text', text: input.text });
+  }
+  
   const res = await fetch(url, {
     method: 'POST',
     headers,

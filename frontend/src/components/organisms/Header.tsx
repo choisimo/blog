@@ -156,16 +156,26 @@ export function Header() {
                     <Settings className='h-5 w-5' />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align='end' className='w-48'>
+                <DropdownMenuContent 
+                  align='end' 
+                  className={cn(
+                    'w-48',
+                    isTerminal && 'border-primary/40 bg-background/95 backdrop-blur'
+                  )}
+                >
                   <DropdownMenuLabel className={cn(
                     'text-xs text-muted-foreground',
-                    isTerminal && 'font-mono'
+                    isTerminal && 'font-mono text-primary/70'
                   )}>
                     {isTerminal ? '$ language' : '언어 설정'}
                   </DropdownMenuLabel>
                   <DropdownMenuItem
                     onClick={() => setLanguage('ko')}
-                    className='flex items-center justify-between'
+                    className={cn(
+                      'flex items-center justify-between',
+                      isTerminal && 'font-mono hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary',
+                      isTerminal && language === 'ko' && 'bg-primary/15 text-primary'
+                    )}
                   >
                     <span className='flex items-center gap-2'>
                       <Globe className='h-4 w-4' />
@@ -175,7 +185,11 @@ export function Header() {
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setLanguage('en')}
-                    className='flex items-center justify-between'
+                    className={cn(
+                      'flex items-center justify-between',
+                      isTerminal && 'font-mono hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary',
+                      isTerminal && language === 'en' && 'bg-primary/15 text-primary'
+                    )}
                   >
                     <span className='flex items-center gap-2'>
                       <Globe className='h-4 w-4' />
@@ -184,17 +198,21 @@ export function Header() {
                     {language === 'en' && <span className='text-primary'>✓</span>}
                   </DropdownMenuItem>
                   
-                  <DropdownMenuSeparator />
+                  <DropdownMenuSeparator className={cn(isTerminal && 'bg-primary/30')} />
                   
                   <DropdownMenuLabel className={cn(
                     'text-xs text-muted-foreground',
-                    isTerminal && 'font-mono'
+                    isTerminal && 'font-mono text-primary/70'
                   )}>
                     {isTerminal ? '$ theme' : '테마 설정'}
                   </DropdownMenuLabel>
                   <DropdownMenuItem
                     onClick={() => setTheme('light')}
-                    className={cn('flex items-center justify-between', theme === 'light' && 'bg-accent')}
+                    className={cn(
+                      'flex items-center justify-between', 
+                      theme === 'light' && 'bg-accent',
+                      isTerminal && 'font-mono hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary'
+                    )}
                   >
                     <span className='flex items-center gap-2'>
                       <Sun className='h-4 w-4' />
@@ -204,7 +222,11 @@ export function Header() {
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setTheme('dark')}
-                    className={cn('flex items-center justify-between', theme === 'dark' && 'bg-accent')}
+                    className={cn(
+                      'flex items-center justify-between', 
+                      theme === 'dark' && 'bg-accent',
+                      isTerminal && 'font-mono hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary'
+                    )}
                   >
                     <span className='flex items-center gap-2'>
                       <Moon className='h-4 w-4' />
@@ -214,7 +236,11 @@ export function Header() {
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setTheme('system')}
-                    className={cn('flex items-center justify-between', theme === 'system' && 'bg-accent')}
+                    className={cn(
+                      'flex items-center justify-between', 
+                      theme === 'system' && 'bg-accent',
+                      isTerminal && 'font-mono hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary'
+                    )}
                   >
                     <span className='flex items-center gap-2'>
                       <Monitor className='h-4 w-4' />
@@ -226,7 +252,8 @@ export function Header() {
                     onClick={() => setTheme('terminal')}
                     className={cn(
                       'flex items-center justify-between font-mono',
-                      theme === 'terminal' && 'bg-accent'
+                      theme === 'terminal' && 'bg-primary/15',
+                      isTerminal && 'hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary'
                     )}
                   >
                     <span className='flex items-center gap-2'>

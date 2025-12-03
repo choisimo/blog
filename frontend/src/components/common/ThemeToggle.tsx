@@ -65,36 +65,51 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
           <span className='sr-only'>Toggle theme</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align='end'>
+      <DropdownMenuContent 
+        align='end'
+        className={cn(
+          isTerminal && 'border-primary/40 bg-background/95 backdrop-blur'
+        )}
+      >
         <DropdownMenuItem
           onClick={() => handleThemeChange('light')}
-          className={cn(theme === 'light' && 'bg-accent')}
+          className={cn(
+            theme === 'light' && 'bg-accent',
+            isTerminal && 'font-mono hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary'
+          )}
         >
           <Sun className='mr-2 h-4 w-4' />
           <span>Light</span>
-          {theme === 'light' && <span className='ml-auto'>✓</span>}
+          {theme === 'light' && <span className={cn('ml-auto', isTerminal && 'text-primary')}>✓</span>}
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => handleThemeChange('dark')}
-          className={cn(theme === 'dark' && 'bg-accent')}
+          className={cn(
+            theme === 'dark' && 'bg-accent',
+            isTerminal && 'font-mono hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary'
+          )}
         >
           <Moon className='mr-2 h-4 w-4' />
           <span>Dark</span>
-          {theme === 'dark' && <span className='ml-auto'>✓</span>}
+          {theme === 'dark' && <span className={cn('ml-auto', isTerminal && 'text-primary')}>✓</span>}
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => handleThemeChange('system')}
-          className={cn(theme === 'system' && 'bg-accent')}
+          className={cn(
+            theme === 'system' && 'bg-accent',
+            isTerminal && 'font-mono hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary'
+          )}
         >
           <Monitor className='mr-2 h-4 w-4' />
           <span>System</span>
-          {theme === 'system' && <span className='ml-auto'>✓</span>}
+          {theme === 'system' && <span className={cn('ml-auto', isTerminal && 'text-primary')}>✓</span>}
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => handleThemeChange('terminal')}
           className={cn(
-            theme === 'terminal' && 'bg-accent',
-            'font-mono'
+            theme === 'terminal' && 'bg-primary/15',
+            'font-mono',
+            isTerminal && 'hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary'
           )}
         >
           <Terminal

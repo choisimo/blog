@@ -1455,9 +1455,10 @@ export default function FloatingActionBar() {
                     onClick={() => executeShellCommandWithLog(cmd)}
                     className={cn(
                       "py-2 px-1 font-mono text-xs uppercase tracking-wider",
-                      "bg-foreground/90 border border-foreground/20",
-                      "text-background rounded-[4px]",
-                      "hover:bg-foreground hover:shadow-[0_0_10px_hsl(var(--primary)/0.4)]",
+                      "bg-primary/15 border border-primary/40",
+                      "text-primary rounded-[4px]",
+                      "hover:bg-primary/25 hover:border-primary/60 hover:text-primary",
+                      "hover:shadow-[0_0_8px_hsl(var(--primary)/0.3)]",
                       "active:scale-95 transition-all duration-200"
                     )}
                   >
@@ -1478,9 +1479,9 @@ export default function FloatingActionBar() {
                         onClick={() => executeShellCommandWithLog(cmd)}
                         className={cn(
                           "py-1 px-2 rounded-[4px] text-[10px] font-mono",
-                          "bg-foreground/80 border border-foreground/10",
-                          "text-background",
-                          "hover:bg-foreground",
+                          "bg-primary/10 border border-primary/30",
+                          "text-primary/80",
+                          "hover:bg-primary/20 hover:text-primary hover:border-primary/50",
                           "transition-colors truncate max-w-[80px]"
                         )}
                       >
@@ -1568,13 +1569,13 @@ export default function FloatingActionBar() {
                 <>
                   {/* Collapsed Shell Bar */}
                   {!shellOpen && (
-                    <div className="flex w-full items-center gap-2 bg-[hsl(var(--terminal-code-bg))] border-t border-primary/20 px-3 py-2">
+                    <div className="flex w-full items-center gap-2.5 bg-[hsl(var(--terminal-code-bg))] border-t border-primary/30 px-3 py-2.5">
                       {/* Terminal button - opens shell */}
                       <button
                         type="button"
                         onClick={() => setShellOpen(true)}
                         aria-label="Open command input"
-                        className="flex items-center justify-center h-10 w-10 rounded-lg bg-foreground/90 text-background border border-foreground/20 transition-all active:scale-95 shadow-sm"
+                        className="flex items-center justify-center h-10 w-10 rounded-[4px] bg-primary/20 text-primary border border-primary/40 transition-all active:scale-95 hover:bg-primary/30 hover:border-primary/60 hover:shadow-[0_0_12px_hsl(var(--primary)/0.4)]"
                       >
                         <Terminal className="h-5 w-5" />
                       </button>
@@ -1585,12 +1586,12 @@ export default function FloatingActionBar() {
                         tabIndex={0}
                         onClick={() => setShellOpen(true)}
                         onKeyDown={(e) => e.key === 'Enter' && setShellOpen(true)}
-                        className="flex-1 flex items-center gap-2 min-w-0 cursor-pointer"
+                        className="flex-1 flex items-center gap-2 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
                       >
-                        <span className="font-mono text-xs text-primary/60 truncate">
+                        <span className="font-mono text-xs text-primary/70 truncate">
                           {vfs.displayPath}
                         </span>
-                        <span className="text-muted-foreground/40 font-mono text-xs">
+                        <span className="text-primary/40 font-mono text-xs">
                           $ _
                         </span>
                       </div>
@@ -1604,7 +1605,7 @@ export default function FloatingActionBar() {
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }}
                           aria-label="맨 위로 스크롤"
-                          className="flex items-center justify-center h-8 w-8 rounded-md bg-foreground/90 text-background border border-foreground/20 transition-all active:scale-95 hover:bg-foreground shadow-sm"
+                          className="flex items-center justify-center h-8 w-8 rounded-[4px] bg-primary/15 text-primary border border-primary/40 transition-all active:scale-95 hover:bg-primary/25 hover:border-primary/60"
                         >
                           <ArrowUp className="h-4 w-4" />
                         </button>

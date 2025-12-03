@@ -5,7 +5,7 @@
     <description>A blog about technology, programming, and web development</description>
     <link>http://localhost:3000</link>
     <atom:link href="http://localhost:3000/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Wed, 03 Dec 2025 16:11:11 GMT</lastBuildDate>
+    <lastBuildDate>Wed, 03 Dec 2025 16:33:05 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
       <title>쿠버네티스 기본 구조</title>

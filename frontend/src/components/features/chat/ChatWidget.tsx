@@ -92,6 +92,20 @@ const QUICK_PROMPTS = [
   "블로그 글 제목 3개를 제안해줘.",
 ];
 
+// Helper function to extract image URL from message text
+function extractImageFromMessage(text: string): { imageUrl: string | null; cleanText: string } {
+  const imageUrlMatch = text.match(/\[첨부 이미지\]\nURL: (https?:\/\/[^\s\n]+)/);
+  if (imageUrlMatch) {
+    const imageUrl = imageUrlMatch[1];
+    // Remove the image metadata section from the text
+    const cleanText = text
+      .replace(/\n\n\[첨부 이미지\]\nURL: [^\n]+\n파일명: [^\n]+\n크기: [^\n]+/, '')
+      .trim();
+    return { imageUrl, cleanText };
+  }
+  return { imageUrl: null, cleanText: text };
+}
+
 export default function ChatWidget(props: { onClose?: () => void }) {
   const isMobile = useIsMobile();
   const { isTerminal } = useTheme();
@@ -388,10 +402,11 @@ export default function ChatWidget(props: { onClose?: () => void }) {
         let acc = "";
         push({ id: aiId, role: "assistant", text: "" });
         for await (const ev of streamChatEvents({
-          text,
+          text: baseText, // Use the clean text without image metadata for the AI
           signal: controller.signal,
           onFirstToken: (ms) => setFirstTokenMs(ms),
           useArticleContext: questionMode === "article",
+          imageUrl: uploaded?.url, // Pass image URL for vision model support
         })) {
           if (ev.type === "text") {
             acc += ev.text;
@@ -936,19 +951,42 @@ export default function ChatWidget(props: { onClose?: () => void }) {
             const isUser = m.role === "user";
             const isAssistant = m.role === "assistant";
             const isSystem = m.role === "system";
+            
+            // Extract image from user message
+            const { imageUrl, cleanText } = isUser 
+              ? extractImageFromMessage(m.text) 
+              : { imageUrl: null, cleanText: m.text };
 
             // Terminal style rendering
             if (isTerminal) {
               return (
                 <div key={m.id} className="space-y-2">
                   {isUser && (
-                    <div className="flex items-start gap-2">
-                      <span className="text-primary font-bold select-none shrink-0 text-sm">
-                        user@blog:~$
-                      </span>
-                      <span className="whitespace-pre-wrap text-foreground break-words text-sm">
-                        {m.text}
-                      </span>
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2">
+                        <span className="text-primary font-bold select-none shrink-0 text-sm">
+                          user@blog:~$
+                        </span>
+                        <span className="whitespace-pre-wrap text-foreground break-words text-sm">
+                          {cleanText || (imageUrl ? "첨부한 이미지에 대해 설명해줘." : m.text)}
+                        </span>
+                      </div>
+                      {imageUrl && (
+                        <div className="ml-0 mt-2">
+                          <div className="inline-block rounded border border-primary/30 overflow-hidden max-w-[200px] sm:max-w-[280px]">
+                            <img 
+                              src={imageUrl} 
+                              alt="첨부 이미지" 
+                              className="w-full h-auto object-contain max-h-[200px]"
+                              onClick={() => window.open(imageUrl, '_blank')}
+                              style={{ cursor: 'pointer' }}
+                            />
+                          </div>
+                          <div className="text-xs text-primary/60 mt-1 font-mono">
+                            [img] 클릭하여 원본 보기
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                   {isAssistant && (
@@ -1077,6 +1115,25 @@ export default function ChatWidget(props: { onClose?: () => void }) {
                         답변을 준비하고 있어요…
                       </div>
                     )
+                  ) : isUser ? (
+                    <div className="space-y-2">
+                      <span className="whitespace-pre-wrap">
+                        {cleanText || (imageUrl ? "첨부한 이미지에 대해 설명해줘." : m.text)}
+                      </span>
+                      {imageUrl && (
+                        <div className="mt-2">
+                          <div className="inline-block rounded-lg overflow-hidden max-w-[200px] sm:max-w-[240px] border border-primary-foreground/20">
+                            <img 
+                              src={imageUrl} 
+                              alt="첨부 이미지" 
+                              className="w-full h-auto object-contain max-h-[180px]"
+                              onClick={() => window.open(imageUrl, '_blank')}
+                              style={{ cursor: 'pointer' }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <span className="whitespace-pre-wrap">{m.text}</span>
                   )}
