@@ -59,35 +59,36 @@
 
   /* Terminal Theme - CRT / Green Monitor Aesthetic */
   /* Design Philosophy: "모든 UI는 터미널 명령어와 출력값처럼 보여야 한다" */
+  /* Color Balance: Neon green limited to interactive elements only */
   .terminal {
-    /* Deep black with slight cyan tint */
-    --background: 210 50% 2%;
-    /* Light greenish white for readability */
-    --foreground: 140 40% 92%;
-    /* Card backgrounds - slightly lighter than main bg */
-    --card: 200 40% 4%;
-    --card-foreground: 140 40% 92%;
+    /* Deep charcoal with subtle green tint - easier on eyes than pure black */
+    --background: 200 25% 5%;
+    /* Light warm white for body text - better readability */
+    --foreground: 60 10% 92%;
+    /* Card backgrounds - slightly elevated from main bg */
+    --card: 200 20% 7%;
+    --card-foreground: 60 10% 92%;
     /* Popover uses card colors */
-    --popover: 200 40% 4%;
-    --popover-foreground: 140 40% 92%;
-    /* Neon green primary accent */
+    --popover: 200 20% 7%;
+    --popover-foreground: 60 10% 92%;
+    /* Neon green primary accent - use sparingly */
     --primary: 150 100% 62%;
-    --primary-foreground: 210 50% 2%;
-    /* Muted secondary */
-    --secondary: 200 30% 8%;
-    --secondary-foreground: 140 40% 85%;
-    /* Muted text colors */
-    --muted: 200 30% 8%;
-    --muted-foreground: 140 15% 55%;
+    --primary-foreground: 200 25% 5%;
+    /* Muted secondary - softer contrast */
+    --secondary: 200 20% 10%;
+    --secondary-foreground: 60 10% 85%;
+    /* Muted text colors - warm gray for better comfort */
+    --muted: 200 15% 10%;
+    --muted-foreground: 60 5% 55%;
     /* Accent matches primary for consistency */
     --accent: 150 100% 62%;
-    --accent-foreground: 210 50% 2%;
+    --accent-foreground: 200 25% 5%;
     /* Destructive red */
     --destructive: 0 70% 50%;
-    --destructive-foreground: 140 40% 92%;
-    /* Borders */
-    --border: 200 30% 12%;
-    --input: 200 30% 12%;
+    --destructive-foreground: 60 10% 92%;
+    /* Borders - subtle, not competing with content */
+    --border: 200 15% 15%;
+    --input: 200 15% 15%;
     /* Ring for focus states */
     --ring: 150 100% 62%;
     
@@ -98,24 +99,24 @@
     --terminal-glow: 150 100% 62%;
     --terminal-cyan: 190 100% 60%;
     --terminal-amber: 40 100% 55%;
-    --terminal-code-bg: 200 50% 3%;
-    --terminal-code-text: 140 60% 80%;
+    --terminal-code-bg: 200 25% 4%;
+    --terminal-code-text: 60 20% 75%;
     --terminal-prompt: 150 100% 62%;
     --terminal-cursor: 150 100% 62%;
     --terminal-link: 150 100% 62%;
     --terminal-link-hover: 150 80% 75%;
-    --terminal-titlebar: 200 50% 3%;
+    --terminal-titlebar: 200 25% 4%;
     --terminal-window-btn-close: 0 70% 55%;
     --terminal-window-btn-minimize: 40 90% 55%;
     --terminal-window-btn-maximize: 140 70% 45%;
     
-    /* Cyber-Minimalism: Glow Effects */
-    --glow-shadow: 0 0 10px hsl(150 100% 62% / 0.4);
-    --glow-shadow-strong: 0 0 15px hsl(150 100% 62% / 0.6);
+    /* Cyber-Minimalism: Glow Effects - softer for less eye strain */
+    --glow-shadow: 0 0 8px hsl(150 100% 62% / 0.3);
+    --glow-shadow-strong: 0 0 12px hsl(150 100% 62% / 0.5);
     
     /* Dim states for inactive elements */
-    --terminal-dim: 150 100% 62% / 0.1;
-    --terminal-inactive-border: 200 30% 20%;
+    --terminal-dim: 150 100% 62% / 0.08;
+    --terminal-inactive-border: 200 15% 18%;
   }
 }
 
@@ -600,6 +601,37 @@
    Cyber-Minimalism Utility Classes
    ============================================ */
 
+/* Glassmorphism Card Style */
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.terminal .glass-card {
+  background: rgba(20, 25, 30, 0.6);
+  border: 1px solid hsl(var(--border));
+}
+
+.terminal .glass-card:hover {
+  background: rgba(20, 25, 30, 0.8);
+  border-color: hsl(var(--primary) / 0.3);
+  box-shadow: var(--glow-shadow);
+}
+
+/* Terminal Hover Glow Effect for Cards */
+.terminal .glow-card {
+  transition: all 0.3s ease;
+}
+
+.terminal .glow-card:hover {
+  border-color: hsl(var(--primary) / 0.5);
+  box-shadow: 
+    0 0 20px hsl(var(--primary) / 0.15),
+    inset 0 0 20px hsl(var(--primary) / 0.05);
+}
+
 /* Terminal Panel (Output Window) */
 .terminal .terminal-panel,
 .terminal-panel {
@@ -979,6 +1011,16 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
 /* ============================================
    Accessibility Improvements
    ============================================ */
+
+/* Hide scrollbar for carousel */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
 /* 고대비 모드 지원 */
 @media (prefers-contrast: high) {
