@@ -45,13 +45,13 @@ config.get('/', requireAdmin, async (c) => {
  * Body: { value: string }
  */
 config.put('/:key', requireAdmin, async (c) => {
-  const { key } = c.req.param();
+  const key = c.req.param('key');
   const body = await c.req.json().catch(() => ({}));
   const { value } = body as { value?: string };
 
   // Validate key
   const validKeys = Object.keys(CONFIG_KEYS) as Array<keyof typeof CONFIG_KEYS>;
-  if (!validKeys.includes(key as keyof typeof CONFIG_KEYS)) {
+  if (!key || !validKeys.includes(key as keyof typeof CONFIG_KEYS)) {
     return badRequest(c, `Invalid config key: ${key}. Valid keys: ${validKeys.join(', ')}`);
   }
 
@@ -87,11 +87,11 @@ config.put('/:key', requireAdmin, async (c) => {
  * 설정 값을 삭제합니다 (env/default로 폴백)
  */
 config.delete('/:key', requireAdmin, async (c) => {
-  const { key } = c.req.param();
+  const key = c.req.param('key');
 
   // Validate key
   const validKeys = Object.keys(CONFIG_KEYS) as Array<keyof typeof CONFIG_KEYS>;
-  if (!validKeys.includes(key as keyof typeof CONFIG_KEYS)) {
+  if (!key || !validKeys.includes(key as keyof typeof CONFIG_KEYS)) {
     return badRequest(c, `Invalid config key: ${key}. Valid keys: ${validKeys.join(', ')}`);
   }
 

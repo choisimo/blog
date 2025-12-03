@@ -283,53 +283,53 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
   return (
     <div
       className={cn(
-        'flex flex-col h-full max-h-[600px] overflow-hidden rounded-2xl border shadow-lg',
+        'flex flex-col h-full max-h-[80vh] sm:max-h-[600px] overflow-hidden rounded-2xl border shadow-xl',
         isTerminal
-          ? 'bg-[hsl(var(--terminal-code-bg))] border-primary/20'
+          ? 'bg-[hsl(var(--terminal-code-bg))] border-primary/30'
           : 'bg-card border-border'
       )}
     >
       {/* Header */}
       <div
         className={cn(
-          'flex items-center justify-between px-4 py-3 border-b shrink-0',
+          'flex items-center justify-between px-4 py-3.5 border-b shrink-0',
           isTerminal
-            ? 'border-primary/10 bg-primary/5'
-            : 'border-border/40 bg-muted/30'
+            ? 'border-primary/20 bg-primary/10'
+            : 'border-border/40 bg-muted/40'
         )}
       >
         <div className="flex items-center gap-3 min-w-0">
           <div
             className={cn(
-              'flex items-center justify-center h-9 w-9 rounded-full shrink-0',
-              isTerminal ? 'bg-primary/20' : 'bg-primary/10'
+              'flex items-center justify-center h-10 w-10 rounded-full shrink-0',
+              isTerminal ? 'bg-primary/20 border border-primary/30' : 'bg-primary/10'
             )}
           >
-            <Users className={cn('h-4 w-4', isTerminal ? 'text-primary' : 'text-primary')} />
+            <Users className={cn('h-5 w-5', isTerminal ? 'text-primary' : 'text-primary')} />
           </div>
           <div className="min-w-0">
             <h3
               className={cn(
-                'font-semibold text-sm truncate',
+                'font-semibold text-base truncate',
                 isTerminal && 'font-mono text-primary'
               )}
             >
               AI 상담실
             </h3>
-            <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+            <p className="text-xs text-muted-foreground truncate max-w-[200px] sm:max-w-[280px]">
               {topic.title}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           {messages.length > 0 && (
             <button
               type="button"
               onClick={resetDebate}
               className={cn(
-                'flex items-center justify-center h-8 w-8 rounded-full transition-colors',
+                'flex items-center justify-center h-9 w-9 rounded-full transition-colors',
                 isTerminal
-                  ? 'hover:bg-primary/10 text-primary/60 hover:text-primary'
+                  ? 'hover:bg-primary/20 text-primary/70 hover:text-primary'
                   : 'hover:bg-muted text-muted-foreground hover:text-foreground'
               )}
               aria-label="상담 초기화"
@@ -341,9 +341,9 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
             type="button"
             onClick={onClose}
             className={cn(
-              'flex items-center justify-center h-8 w-8 rounded-full transition-colors',
+              'flex items-center justify-center h-9 w-9 rounded-full transition-colors',
               isTerminal
-                ? 'hover:bg-primary/10 text-primary/60 hover:text-primary'
+                ? 'hover:bg-primary/20 text-primary/70 hover:text-primary'
                 : 'hover:bg-muted text-muted-foreground hover:text-foreground'
             )}
             aria-label="닫기"
@@ -354,23 +354,23 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
       </div>
 
       {/* Messages Area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
         {/* Initial Topic Display */}
         {showStarters && (
-          <div className="space-y-4 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+          <div className="space-y-5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
             {/* Topic Card */}
             <div
               className={cn(
                 'rounded-xl px-4 py-4 border',
                 isTerminal
-                  ? 'bg-primary/5 border-primary/20'
-                  : 'bg-muted/30 border-border/60'
+                  ? 'bg-primary/5 border-primary/30'
+                  : 'bg-muted/40 border-border/60'
               )}
             >
               <div className="flex items-start gap-3">
                 <div
                   className={cn(
-                    'flex items-center justify-center h-8 w-8 rounded-lg shrink-0 mt-0.5',
+                    'flex items-center justify-center h-9 w-9 rounded-lg shrink-0 mt-0.5',
                     isTerminal ? 'bg-primary/20' : 'bg-primary/10'
                   )}
                 >
@@ -410,11 +410,11 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
             )}
 
             {/* Stance Selection */}
-            <div className="space-y-3 pt-2">
+            <div className="space-y-4 pt-3">
               <p className="text-sm text-center text-muted-foreground">
                 어떤 마음으로 상담을 시작할까요?
               </p>
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-2.5">
                 {DEBATE_STARTERS.map(starter => {
                   const Icon = starter.icon;
                   return (
@@ -424,26 +424,26 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
                       onClick={() => startDebate(starter.stance)}
                       disabled={busy}
                       className={cn(
-                        'flex items-center gap-3 px-4 py-3 rounded-xl border transition-all',
+                        'flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all',
                         'hover:scale-[1.01] active:scale-[0.99]',
                         isTerminal
-                          ? 'border-primary/20 hover:border-primary/40 hover:bg-primary/5'
-                          : 'border-border hover:border-primary/30 hover:bg-muted/50',
+                          ? 'border-primary/30 hover:border-primary/50 hover:bg-primary/10'
+                          : 'border-border hover:border-primary/40 hover:bg-muted/50',
                         busy && 'opacity-50 cursor-not-allowed'
                       )}
                     >
                       <div
                         className={cn(
-                          'flex items-center justify-center h-8 w-8 rounded-lg',
-                          starter.stance === 'agree' && 'bg-emerald-500/10 text-emerald-500',
-                          starter.stance === 'disagree' && 'bg-orange-500/10 text-orange-500',
-                          starter.stance === 'neutral' && 'bg-blue-500/10 text-blue-500'
+                          'flex items-center justify-center h-9 w-9 rounded-lg',
+                          starter.stance === 'agree' && 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+                          starter.stance === 'disagree' && 'bg-orange-500/15 text-orange-600 dark:text-orange-400',
+                          starter.stance === 'neutral' && 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
                         )}
                       >
                         <Icon className="h-4 w-4" />
                       </div>
-                      <span className="text-sm font-medium">{starter.label}</span>
-                      <ArrowRight className="h-4 w-4 ml-auto text-muted-foreground" />
+                      <span className="text-sm font-medium flex-1 text-left">{starter.label}</span>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
                     </button>
                   );
                 })}
@@ -463,11 +463,11 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
           >
             <div
               className={cn(
-                'max-w-[85%] rounded-2xl px-4 py-3',
+                'max-w-[88%] rounded-2xl px-4 py-3',
                 msg.role === 'user' && 'bg-primary text-primary-foreground rounded-br-md',
                 msg.role === 'ai' &&
                   (isTerminal
-                    ? 'bg-primary/5 border border-primary/20 rounded-bl-md'
+                    ? 'bg-primary/10 border border-primary/30 rounded-bl-md'
                     : 'bg-secondary text-secondary-foreground rounded-bl-md'),
                 msg.role === 'system' && 'bg-muted text-muted-foreground'
               )}
@@ -502,16 +502,16 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
 
         {/* Quick Follow-ups after AI response */}
         {!busy && messages.length > 0 && messages[messages.length - 1]?.role === 'ai' && (
-          <div className="flex flex-wrap gap-2 pt-2">
+          <div className="flex flex-wrap gap-2 pt-3">
             {FOLLOW_UP_PROMPTS.slice(0, 3).map((prompt, i) => (
               <button
                 key={i}
                 type="button"
                 onClick={() => useFollowUp(prompt)}
                 className={cn(
-                  'text-xs px-3 py-1.5 rounded-full transition-colors',
+                  'text-xs px-3 py-2 rounded-full transition-colors',
                   isTerminal
-                    ? 'bg-primary/10 text-primary/80 hover:bg-primary/20 hover:text-primary border border-primary/20'
+                    ? 'bg-primary/15 text-primary/90 hover:bg-primary/25 hover:text-primary border border-primary/30'
                     : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
                 )}
               >
@@ -526,14 +526,14 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
       {!showStarters && (
         <div
           className={cn(
-            'border-t px-4 py-3 shrink-0',
-            isTerminal ? 'border-primary/10 bg-primary/5' : 'border-border/40 bg-muted/20'
+            'border-t px-4 py-4 shrink-0',
+            isTerminal ? 'border-primary/20 bg-primary/5' : 'border-border/40 bg-muted/30'
           )}
         >
           <div
             className={cn(
-              'flex items-end gap-2 rounded-xl border px-3 py-2',
-              isTerminal ? 'border-primary/20 bg-background/50' : 'border-border bg-background'
+              'flex items-end gap-2.5 rounded-xl border px-3 py-2.5',
+              isTerminal ? 'border-primary/30 bg-background/60' : 'border-border bg-background'
             )}
           >
             <textarea
@@ -555,10 +555,10 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
               onClick={sendMessage}
               disabled={!canSend}
               className={cn(
-                'flex items-center justify-center h-9 w-9 rounded-lg transition-colors shrink-0',
+                'flex items-center justify-center h-10 w-10 rounded-lg transition-colors shrink-0',
                 canSend
                   ? isTerminal
-                    ? 'bg-primary/20 text-primary hover:bg-primary/30'
+                    ? 'bg-primary/25 text-primary hover:bg-primary/35 border border-primary/40'
                     : 'bg-primary text-primary-foreground hover:bg-primary/90'
                   : 'bg-muted text-muted-foreground cursor-not-allowed'
               )}

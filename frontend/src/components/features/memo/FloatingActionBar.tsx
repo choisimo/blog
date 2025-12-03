@@ -1455,10 +1455,9 @@ export default function FloatingActionBar() {
                     onClick={() => executeShellCommandWithLog(cmd)}
                     className={cn(
                       "py-2 px-1 font-mono text-xs uppercase tracking-wider",
-                      "bg-transparent border border-[hsl(var(--terminal-inactive-border,var(--border)))]",
-                      "text-muted-foreground rounded-[4px]",
-                      "hover:border-primary hover:text-primary",
-                      "hover:shadow-[0_0_10px_hsl(var(--primary)/0.4)]",
+                      "bg-foreground/90 border border-foreground/20",
+                      "text-background rounded-[4px]",
+                      "hover:bg-foreground hover:shadow-[0_0_10px_hsl(var(--primary)/0.4)]",
                       "active:scale-95 transition-all duration-200"
                     )}
                   >
@@ -1479,9 +1478,9 @@ export default function FloatingActionBar() {
                         onClick={() => executeShellCommandWithLog(cmd)}
                         className={cn(
                           "py-1 px-2 rounded-[4px] text-[10px] font-mono",
-                          "bg-transparent border border-border/30",
-                          "text-muted-foreground",
-                          "hover:border-primary/50 hover:text-primary/80",
+                          "bg-foreground/80 border border-foreground/10",
+                          "text-background",
+                          "hover:bg-foreground",
                           "transition-colors truncate max-w-[80px]"
                         )}
                       >
@@ -1575,7 +1574,7 @@ export default function FloatingActionBar() {
                         type="button"
                         onClick={() => setShellOpen(true)}
                         aria-label="Open command input"
-                        className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/20 text-primary border border-primary/30 transition-all active:scale-95"
+                        className="flex items-center justify-center h-10 w-10 rounded-lg bg-foreground/90 text-background border border-foreground/20 transition-all active:scale-95 shadow-sm"
                       >
                         <Terminal className="h-5 w-5" />
                       </button>
@@ -1605,7 +1604,7 @@ export default function FloatingActionBar() {
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }}
                           aria-label="맨 위로 스크롤"
-                          className="flex items-center justify-center h-8 w-8 rounded-md bg-primary/10 text-primary/80 border border-primary/20 transition-all active:scale-95 hover:bg-primary/20"
+                          className="flex items-center justify-center h-8 w-8 rounded-md bg-foreground/90 text-background border border-foreground/20 transition-all active:scale-95 hover:bg-foreground shadow-sm"
                         >
                           <ArrowUp className="h-4 w-4" />
                         </button>
