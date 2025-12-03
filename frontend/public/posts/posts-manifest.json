@@ -1,6 +1,70 @@
 {
-  "total": 130,
+  "total": 133,
   "items": [
+    {
+      "path": "/posts/2025/k8s-overview.md",
+      "year": "2025",
+      "slug": "k8s-overview",
+      "title": "쿠버네티스 기본 구조",
+      "description": "전통적 배포 방식부터 쿠버네티스 에코시스템까지, 개념을 정리하는 글",
+      "snippet": "전통적 배포 방식부터 쿠버네티스 에코시스템까지, 개념을 정리하는 글",
+      "date": "2025-12-02",
+      "tags": [
+        "Kubernetes",
+        "DevOps",
+        "Cloud Native",
+        "컨테이너 오케스트레이션"
+      ],
+      "category": "Kubernetes",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "coverImage": "/images/2025/k8s/k8s-deployment-era-traditional-virtualized-container.png",
+      "url": "/blog/2025/k8s-overview"
+    },
+    {
+      "path": "/posts/2025/AnimalsMind.md",
+      "year": "2025",
+      "slug": "AnimalsMind",
+      "title": "우리는 DNA의 꼭두각시인가: 이성의 붕괴와 야성적 충동의 역설에 대한 생각",
+      "description": "애덤 스미스의 이성적 인간관에 대한 반박부터 케인스와 민스키의 야성적 충동, 그리고 진화심리학적 관점까지. 인간 본성의 모순에 대한 생각",
+      "snippet": "애덤 스미스의 이성적 인간관에 대한 반박부터 케인스와 민스키의 야성적 충동, 그리고 진화심리학적 관점까지. 인간 본성의 모순에 대한 생각",
+      "date": "2025-12-01",
+      "tags": [
+        "Philosophy",
+        "Economics",
+        "Psychology",
+        "Minsky",
+        "Evolution"
+      ],
+      "category": "Essays",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2025/AnimalsMind"
+    },
+    {
+      "path": "/posts/2025/algorithm_solv.md",
+      "year": "2025",
+      "slug": "algorithm_solv",
+      "title": "알고리즘의 역발상 관점",
+      "description": "피보나치 수열, 행렬 곱셈, 그리디 알고리즘, 문자열 검색, P vs NP까지 — 컴퓨터 과학의 고전 알고리즘을 역발상 관점으로 정리",
+      "snippet": "피보나치 수열, 행렬 곱셈, 그리디 알고리즘, 문자열 검색, P vs NP까지 — 컴퓨터 과학의 고전 알고리즘을 역발상 관점으로 정리",
+      "date": "2025-11-29",
+      "tags": [
+        "알고리즘",
+        "동적 프로그래밍",
+        "그리디",
+        "문자열 알고리즘",
+        "P vs NP"
+      ],
+      "category": "Computer Science",
+      "author": "Admin",
+      "readingTime": "8 min read",
+      "published": true,
+      "coverImage": "/images/2025/algoritm_solv/algorithm-solve-dp-fibonacci.png",
+      "url": "/blog/2025/algorithm_solv"
+    },
     {
       "path": "/posts/2025/AI-api-server-temporary-dev.md",
       "year": "2025",
@@ -2726,7 +2790,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-12-01T14:55:22.729Z",
+  "generatedAt": "2025-12-03T06:59:22.393Z",
   "years": [
     "2025",
     "2024"

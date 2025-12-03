@@ -325,28 +325,42 @@ export const MarkdownRenderer = ({
               {children}
             </a>
           ),
-          img: ({ src, alt }) => (
-            <figure className='my-8 text-center'>
-              <img
-                src={src}
-                alt={alt}
-                className={cn(
-                  'rounded-xl shadow-lg mx-auto max-w-full h-auto',
-                  isTerminal && 'rounded-lg border border-border'
-                )}
-              />
-              {alt && (
-                <figcaption
+          img: ({ src, alt }) => {
+            // 상대 경로를 절대 경로로 변환
+            let resolvedSrc = src;
+            if (src) {
+              if (src.startsWith('../../images/')) {
+                resolvedSrc = src.replace('../../images/', '/images/');
+              } else if (src.startsWith('../images/')) {
+                resolvedSrc = src.replace('../images/', '/images/');
+              } else if (src.startsWith('./images/')) {
+                resolvedSrc = src.replace('./images/', '/images/');
+              }
+            }
+
+            return (
+              <figure className='my-8 text-center'>
+                <img
+                  src={resolvedSrc}
+                  alt={alt}
                   className={cn(
-                    'text-sm text-muted-foreground mt-2 italic',
-                    isTerminal && 'font-mono not-italic'
+                    'rounded-xl shadow-lg mx-auto max-w-full h-auto',
+                    isTerminal && 'rounded-lg border border-border'
                   )}
-                >
-                  {isTerminal ? `// ${alt}` : alt}
-                </figcaption>
-              )}
-            </figure>
-          ),
+                />
+                {alt && (
+                  <figcaption
+                    className={cn(
+                      'text-sm text-muted-foreground mt-2 italic',
+                      isTerminal && 'font-mono not-italic'
+                    )}
+                  >
+                    {isTerminal ? `// ${alt}` : alt}
+                  </figcaption>
+                )}
+              </figure>
+            );
+          },
           table: ({ children }) => (
             <div className='overflow-x-auto my-8 max-w-4xl mx-auto'>
               <table

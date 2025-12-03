@@ -4,6 +4,7 @@
     "6g-sentient-future-journal.md",
     "AI-api-server-temporary-dev.md",
     "AdversialNeuron.md",
+    "AnimalsMind.md",
     "BST-think01.md",
     "BankRuptIn1929.md",
     "FutureClouding.md",
@@ -14,6 +15,7 @@
     "QueryDSL.md",
     "ai-models-for-coding.md",
     "algorithm-mental-simulator.md",
+    "algorithm_solv.md",
     "algorithms-through-my-eyes.md",
     "ansible-01-installation-setup.md",
     "ansible-02-inventory-basics.md",
@@ -40,6 +42,7 @@
     "java-static-polymorphism-masterclass.md",
     "java-stream-api-journal.md",
     "java-through-my-bytecode-journal.md",
+    "k8s-overview.md",
     "kafka-01-concepts-architecture.md",
     "kafka-02-installation-setup.md",
     "kafka-03-producer-consumer.md",
@@ -73,7 +76,7 @@
     "web-commercialization-journal.md",
     "wine-clipboard-bridge-journal.md"
   ],
-  "generatedAt": "2025-12-01T14:55:22.698Z",
-  "totalFiles": 72,
+  "generatedAt": "2025-12-03T06:59:22.366Z",
+  "totalFiles": 75,
   "excludedFiles": 0
 }
