@@ -215,8 +215,6 @@ jobs:
               depends_on:
                 api:
                   condition: service_healthy
-                vas-proxy:
-                  condition: service_healthy
               expose:
                 - "80"
               volumes:
@@ -248,11 +246,13 @@ jobs:
               networks:
                 - backend
               depends_on:
-                vas-proxy:
+                embedding-server:
+                  condition: service_started
+                chromadb:
                   condition: service_healthy
               restart: unless-stopped
               healthcheck:
-                test: ["CMD", "wget", "-q", "--spider", "http://localhost:5080/api/health"]
+                test: ["CMD", "wget", "-q", "--spider", "http://localhost:5080/api/v1/healthz"]
                 interval: 30s
                 timeout: 10s
                 retries: 3
@@ -369,7 +369,7 @@ jobs:
                 DEFAULT_SESSION_TITLE: Auto Session
                 OPENCODE_BEARER_TOKEN_FILE: /app/shared/auto-token.jwt
                 TOKEN_FILE_POLL_INTERVAL: "3000"
-                TOKEN_FILE_MAX_WAIT: "180000"
+                TOKEN_FILE_MAX_WAIT: "300000"
                 MESSAGE_TIMEOUT: "120000"
               expose:
                 - "7016"
@@ -388,9 +388,9 @@ jobs:
               healthcheck:
                 test: ["CMD-SHELL", "wget -q -O- http://localhost:7016/health || exit 1"]
                 interval: 30s
-                timeout: 5s
-                retries: 3
-                start_period: 30s
+                timeout: 10s
+                retries: 5
+                start_period: 120s
 
             # VAS Admin (Token Management)
             vas-admin:
