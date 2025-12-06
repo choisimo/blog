@@ -432,9 +432,9 @@ export default function SparkInline({
 
             {/* Empty state - when opened but no result yet */}
             {!hasResult && loading === 'idle' && !error && (
-              <div className='py-8 text-center'>
+              <div className='py-8 flex flex-col items-center justify-center min-h-[180px]'>
                 <div className={cn(
-                  'inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-3',
+                  'flex items-center justify-center w-12 h-12 rounded-2xl mb-3',
                   isTerminal ? 'bg-primary/10' : 'bg-muted',
                 )}>
                   <Sparkles className={cn(
@@ -442,10 +442,10 @@ export default function SparkInline({
                     isTerminal ? 'text-primary' : 'text-muted-foreground',
                   )} />
                 </div>
-                <p className='text-sm text-muted-foreground'>
+                <p className='text-sm text-muted-foreground text-center'>
                   위 버튼을 눌러 AI 분석을 시작하세요
                 </p>
-                <div className='flex justify-center gap-4 mt-4 text-xs text-muted-foreground/70'>
+                <div className='flex flex-wrap justify-center gap-4 mt-4 text-xs text-muted-foreground/70'>
                   <span><strong>Sketch</strong> - 핵심 포인트</span>
                   <span><strong>Prism</strong> - 다각도 분석</span>
                   <span><strong>Chain</strong> - 연쇄 질문</span>

@@ -188,7 +188,9 @@
     applyThemeFromPage() {
       const update = () => {
         const isDark = document.documentElement.classList.contains('dark');
+        const isTerminal = document.documentElement.classList.contains('terminal');
         this.classList.toggle('dark', isDark);
+        this.classList.toggle('terminal', isTerminal);
         if (this.$historyOverlay && this.$historyOverlay.style.display !== 'none') {
           this.scheduleHistoryDraw();
         }
@@ -380,6 +382,173 @@
           if (statusDot) statusDot.style.background = 'var(--memo-accent)';
           this.out.setStatus(prev || 'Ready'); 
         }, 1400);
+      }
+    }
+
+    // ========================================================================
+    // Cloud Sync & Versioning
+    // ========================================================================
+
+    getUserId() {
+      // Use a persistent user ID (could be enhanced with auth)
+      let userId = LS.get('aiMemo.userId', null);
+      if (!userId) {
+        userId = 'user-' + crypto.randomUUID();
+        LS.set('aiMemo.userId', userId);
+      }
+      return userId;
+    }
+
+    getApiBase() {
+      // Detect API base URL
+      const host = location.host;
+      if (host.includes('localhost') || host.includes('127.0.0.1')) {
+        return 'http://localhost:8787';
+      }
+      return 'https://blog-api.immuddelo.workers.dev';
+    }
+
+    async syncToCloud() {
+      const content = (this.$memo?.value || '').trim();
+      if (!content) {
+        this.out.toast('메모가 비어 있습니다.');
+        return;
+      }
+
+      const userId = this.getUserId();
+      const apiBase = this.getApiBase();
+
+      this.out.setStatus('동기화 중...');
+      const syncBtn = this.$memoSync;
+      if (syncBtn) syncBtn.disabled = true;
+
+      try {
+        const res = await fetch(`${apiBase}/api/v1/memos/${encodeURIComponent(userId)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content,
+            createVersion: true,
+            changeSummary: `Manual sync at ${new Date().toLocaleString()}`
+          })
+        });
+
+        const data = await res.json();
+
+        if (!data.ok) {
+          throw new Error(data.error?.message || 'Sync failed');
+        }
+
+        this.out.toast(`클라우드에 저장됨 (v${data.data?.version || '?'})`);
+        this.logEvent({ type: 'cloud_sync', label: 'success', version: data.data?.version });
+      } catch (err) {
+        console.error('Sync error:', err);
+        this.out.toast(err?.message || '동기화 실패');
+      } finally {
+        if (syncBtn) syncBtn.disabled = false;
+        this.out.setStatus('Ready');
+      }
+    }
+
+    async openVersions() {
+      if (!this.$versionsOverlay || !this.$versionsList) return;
+
+      this.$versionsOverlay.style.display = 'flex';
+      this.$versionsList.innerHTML = '<div class="versions-empty">로딩 중...</div>';
+      this.logEvent({ type: 'versions_open' });
+
+      const userId = this.getUserId();
+      const apiBase = this.getApiBase();
+
+      try {
+        const res = await fetch(`${apiBase}/api/v1/memos/${encodeURIComponent(userId)}/versions?limit=20`);
+        const data = await res.json();
+
+        if (!data.ok || !data.data?.versions?.length) {
+          this.$versionsList.innerHTML = '<div class="versions-empty">저장된 버전이 없습니다.<br><small>동기화 버튼을 눌러 클라우드에 저장하세요.</small></div>';
+          return;
+        }
+
+        const versions = data.data.versions;
+        this.$versionsList.innerHTML = versions.map(v => `
+          <div class="version-item" data-version="${v.version}">
+            <div class="version-info">
+              <span class="version-number">v${v.version}</span>
+              <span class="version-date">${new Date(v.createdAt).toLocaleString()}</span>
+            </div>
+            <div class="version-meta">
+              <span class="version-size">${Math.round(v.contentLength / 1024 * 10) / 10}KB</span>
+              ${v.changeSummary ? `<span class="version-summary">${v.changeSummary}</span>` : ''}
+            </div>
+            <button class="version-restore" data-version="${v.version}">복원</button>
+          </div>
+        `).join('');
+
+        // Add restore click handlers
+        this.$versionsList.querySelectorAll('.version-restore').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const version = parseInt(btn.dataset.version);
+            if (version) this.restoreVersion(version);
+          });
+        });
+
+      } catch (err) {
+        console.error('Versions error:', err);
+        this.$versionsList.innerHTML = '<div class="versions-empty">버전 로딩 실패</div>';
+      }
+    }
+
+    closeVersions() {
+      if (this.$versionsOverlay) {
+        this.$versionsOverlay.style.display = 'none';
+      }
+      this.logEvent({ type: 'versions_close' });
+    }
+
+    async restoreVersion(version) {
+      if (!confirm(`버전 ${version}을(를) 복원할까요?\n현재 메모가 덮어씌워집니다.`)) return;
+
+      const userId = this.getUserId();
+      const apiBase = this.getApiBase();
+
+      this.out.setStatus('복원 중...');
+
+      try {
+        // First get the version content
+        const getRes = await fetch(`${apiBase}/api/v1/memos/${encodeURIComponent(userId)}/versions/${version}`);
+        const getData = await getRes.json();
+
+        if (!getData.ok || !getData.data?.version?.content) {
+          throw new Error('버전 데이터를 가져올 수 없습니다.');
+        }
+
+        // Apply to memo
+        const content = getData.data.version.content;
+        if (this.$memo) this.$memo.value = content;
+        if (this.$memoEditor) this.$memoEditor.value = content;
+        this.state.memo = content;
+        LS.set(KEYS.memo, content);
+
+        if (this.$memoPreview) {
+          this.scheduleRenderPreview(content);
+        }
+
+        // Call restore endpoint to create a new version
+        const restoreRes = await fetch(`${apiBase}/api/v1/memos/${encodeURIComponent(userId)}/restore/${version}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const restoreData = await restoreRes.json();
+
+        this.closeVersions();
+        this.out.toast(`버전 ${version} 복원됨`);
+        this.logEvent({ type: 'version_restore', label: `v${version}`, newVersion: restoreData.data?.version });
+      } catch (err) {
+        console.error('Restore error:', err);
+        this.out.toast(err?.message || '복원 실패');
+      } finally {
+        this.out.setStatus('Ready');
       }
     }
 
@@ -729,6 +898,20 @@
           </div>
           <canvas id="historyCanvas"></canvas>
         </div>
+        <div id="versionsOverlay" class="versions-overlay" style="display:none;">
+          <div class="versions-panel">
+            <div class="versions-header">
+              <strong>버전 기록</strong>
+              <button id="versionsClose" class="btn-close" aria-label="닫기">✕</button>
+            </div>
+            <div id="versionsList" class="versions-list">
+              <div class="versions-empty">로딩 중...</div>
+            </div>
+            <div class="versions-footer">
+              <span class="versions-info">클라우드에 저장된 버전을 복원할 수 있습니다.</span>
+            </div>
+          </div>
+        </div>
         <div id="panel" class="panel">
           <div id="drag" class="header">
             <div class="title">떠다니는 AI 메모</div>
@@ -876,6 +1059,14 @@
               <span class="status-text">Ready</span>
             </div>
             <div class="footer-actions">
+              <button id="memoSync" class="footer-btn" type="button" title="클라우드 동기화" aria-label="클라우드 동기화">
+                <span class="btn-icon">☁</span>
+                <span class="btn-label">동기화</span>
+              </button>
+              <button id="memoVersions" class="footer-btn" type="button" title="버전 기록" aria-label="버전 기록">
+                <span class="btn-icon">⏱</span>
+                <span class="btn-label">버전</span>
+              </button>
               <button id="memoToGraph" class="footer-btn" type="button" title="그래프에 추가" aria-label="그래프에 추가">
                 <span class="btn-icon">◉</span>
                 <span class="btn-label">그래프</span>
@@ -2069,6 +2260,24 @@
            this.$memo.dispatchEvent(new Event('input', { bubbles: true }));
          }
        });
+
+      // Cloud sync button
+      this.$memoSync = this.shadowRoot.getElementById('memoSync');
+      this.$memoSync?.addEventListener('click', () => this.syncToCloud());
+
+      // Versions button
+      this.$memoVersions = this.shadowRoot.getElementById('memoVersions');
+      this.$versionsOverlay = this.shadowRoot.getElementById('versionsOverlay');
+      this.$versionsList = this.shadowRoot.getElementById('versionsList');
+      this.$versionsClose = this.shadowRoot.getElementById('versionsClose');
+
+      this.$memoVersions?.addEventListener('click', () => this.openVersions());
+      this.$versionsClose?.addEventListener('click', () => this.closeVersions());
+
+      // Close versions on overlay click
+      this.$versionsOverlay?.addEventListener('click', (e) => {
+        if (e.target === this.$versionsOverlay) this.closeVersions();
+      });
 
       // selection add
       this.$addSel.addEventListener('click', () => {

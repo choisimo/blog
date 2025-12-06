@@ -3,6 +3,7 @@ import type { Env } from '../types';
 import { success, badRequest, notFound } from '../lib/response';
 import { execute } from '../lib/d1';
 import { requireAdmin } from '../middleware/auth';
+import { getAiServeUrl } from '../lib/config';
 
 const images = new Hono<{ Bindings: Env }>();
 
@@ -134,16 +135,17 @@ images.post('/chat-upload', async c => {
   const assetsBase = (c.env.ASSETS_BASE_URL || 'https://assets.blog.nodove.com').replace(/\/$/, '');
   const url = `${assetsBase}/${key}`;
 
-  // Perform AI vision analysis if vision gateway is configured
+  // Perform AI vision analysis via backend server
   let imageAnalysis: string | null = null;
-  const visionBase = c.env.AI_VISION_BASE_URL;
   
-  if (visionBase && file.type?.startsWith('image/')) {
+  if (file.type?.startsWith('image/')) {
     try {
       // Convert to base64 for vision API
       const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
       
-      const visionRes = await fetch(`${visionBase.replace(/\/$/, '')}/analyze`, {
+      // Call backend vision endpoint
+      const aiServeUrl = await getAiServeUrl(c.env);
+      const visionRes = await fetch(`${aiServeUrl.replace(/\/$/, '')}/api/v1/ai/vision/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

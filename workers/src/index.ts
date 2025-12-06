@@ -16,6 +16,9 @@ import og from './routes/og';
 import analytics from './routes/analytics';
 import translate from './routes/translate';
 import config from './routes/config';
+import rag from './routes/rag';
+import gateway from './routes/gateway';
+import memos from './routes/memos';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -55,6 +58,9 @@ api.route('/og', og);
 api.route('/analytics', analytics);
 api.route('/translate', translate);
 api.route('/config', config);
+api.route('/rag', rag);
+api.route('/gateway', gateway);
+api.route('/memos', memos);
 
 app.route('/api/v1', api);
 

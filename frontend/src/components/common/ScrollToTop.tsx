@@ -42,9 +42,14 @@ export const ScrollToTop = () => {
     <Button
       onClick={scrollToTop}
       size='icon'
+      variant='outline'
       className={cn(
         'fixed bottom-8 right-8 z-50 rounded-full shadow-lg transition-all duration-300',
-        isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
+        isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-0',
+        // Muted styling to differentiate from AI feature buttons
+        isTerminal
+          ? 'border-[hsl(var(--terminal-inactive-border))] bg-background/80 text-[hsl(var(--terminal-glow)/0.6)] hover:text-[hsl(var(--terminal-glow))] hover:bg-background'
+          : 'border-border/60 bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'
       )}
     >
       <ArrowUp className='h-4 w-4' />

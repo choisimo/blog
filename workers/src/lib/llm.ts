@@ -1,19 +1,14 @@
 /**
  * Unified LLM Service
- * 
- * 챗봇과 Inline AI(sketch/prism/chain)가 공유하는 통합 LLM 호출 레이어입니다.
- * 
- * 호출 우선순위:
- * 1. AI Call Gateway (auto-chat) - 챗봇 백엔드
- * 2. Gemini 직접 호출
- * 3. AI Serve Fallback
+ *
+ * 모든 AI 호출은 자체 백엔드 서버를 통해 처리됩니다.
+ * 외부 API(Gemini 등)는 백엔드 서버에서 관리합니다.
  */
 
 import type { Env } from '../types';
-import { generateContent } from './gemini';
 import type { PromptConfig, TaskMode } from './prompts';
 import { getFallbackData } from './prompts';
-import { getAiCallUrl, getAiGatewayCallerKey } from './config';
+import { getApiBaseUrl, getAiServeApiKey, getAiServeUrl } from './config';
 
 export type LLMRequest = {
   system?: string;
@@ -27,7 +22,7 @@ export type LLMResponse = {
   ok: boolean;
   text: string;
   parsed: unknown | null;
-  source: 'ai-call' | 'gemini' | 'fallback';
+  source: 'backend';
   error?: string;
 };
 
@@ -81,19 +76,17 @@ export function tryParseJson<T = unknown>(text: string): T | null {
 }
 
 /**
- * AI Call Gateway (auto-chat) 호출
- * 챗봇 백엔드를 통한 LLM 호출
+ * 백엔드 AI 서버 호출 (/ai/auto-chat 엔드포인트)
+ * 대화형 AI 호출에 사용됩니다.
  */
-async function callAiCallGateway(
+async function callBackendAutoChat(
   request: LLMRequest,
   env: Env
 ): Promise<{ ok: boolean; text?: string; error?: string }> {
-  // Get AI Call URL from KV > env > default
-  const aiCallBaseUrl = await getAiCallUrl(env);
-  const url = `${aiCallBaseUrl.replace(/\/$/, '')}/auto-chat`;
-  
-  // system + user 프롬프트 결합
-  const message = request.system 
+  const backendUrl = await getApiBaseUrl(env);
+  const url = `${backendUrl.replace(/\/$/, '')}/api/v1/ai/auto-chat`;
+
+  const message = request.system
     ? `${request.system}\n\n${request.user}`
     : request.user;
 
@@ -102,10 +95,9 @@ async function callAiCallGateway(
     Accept: 'application/json',
   };
 
-  // Get gateway caller key from KV > env
-  const gatewayCallerKey = await getAiGatewayCallerKey(env);
-  if (gatewayCallerKey) {
-    headers['X-Gateway-Caller-Key'] = gatewayCallerKey;
+  const apiKey = await getAiServeApiKey(env);
+  if (apiKey) {
+    headers['X-Internal-Gateway-Key'] = apiKey;
   }
 
   try {
@@ -113,18 +105,20 @@ async function callAiCallGateway(
       method: 'POST',
       headers,
       body: JSON.stringify({
-        message,
-        responseFormat: request.responseFormat || 'text',
+        messages: [{ role: 'user', content: message }],
         temperature: request.temperature,
       }),
     });
 
     if (!res.ok) {
       const errorText = await res.text().catch(() => '');
-      return { ok: false, error: `AI Call Gateway error: ${res.status} ${errorText.slice(0, 100)}` };
+      return {
+        ok: false,
+        error: `Backend AI error: ${res.status} ${errorText.slice(0, 100)}`,
+      };
     }
 
-    const result = await res.json() as {
+    const result = (await res.json()) as {
       ok?: boolean;
       data?: { text?: string; content?: string; response?: string };
       text?: string;
@@ -132,8 +126,7 @@ async function callAiCallGateway(
       response?: string;
     };
 
-    // 다양한 응답 형식 대응
-    const text = 
+    const text =
       result?.data?.text ||
       result?.data?.content ||
       result?.data?.response ||
@@ -143,92 +136,115 @@ async function callAiCallGateway(
       (typeof result === 'string' ? result : '');
 
     if (!text) {
-      return { ok: false, error: 'No content in AI Call response' };
+      return { ok: false, error: 'No content in Backend AI response' };
     }
 
     return { ok: true, text };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
-    return { ok: false, error: `AI Call Gateway fetch failed: ${message}` };
+    return { ok: false, error: `Backend AI fetch failed: ${message}` };
   }
 }
 
 /**
- * Gemini 직접 호출
+ * 백엔드 AI 서버 호출 (/ai/generate 엔드포인트)
+ * 단순 텍스트 생성에 사용됩니다.
  */
-async function callGemini(
+async function callBackendGenerate(
   request: LLMRequest,
   env: Env
 ): Promise<{ ok: boolean; text?: string; error?: string }> {
+  const base = await getAiServeUrl(env);
+  const url = `${base.replace(/\/$/, '')}/ai/generate`;
+
   const fullPrompt = request.system
     ? `${request.system}\n\n${request.user}`
     : request.user;
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  const apiKey = await getAiServeApiKey(env);
+  if (apiKey) {
+    headers['X-API-KEY'] = apiKey;
+  }
+
   try {
-    const text = await generateContent(fullPrompt, env, {
-      temperature: request.temperature,
-      maxTokens: request.maxTokens,
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        prompt: fullPrompt,
+        temperature: request.temperature,
+        maxTokens: request.maxTokens,
+      }),
     });
+
+    if (!res.ok) {
+      const errorText = await res.text().catch(() => '');
+      return {
+        ok: false,
+        error: `Backend generate error: ${res.status} ${errorText.slice(0, 100)}`,
+      };
+    }
+
+    const result = (await res.json()) as {
+      text?: string;
+      data?: { text?: string };
+    };
+
+    const text = result?.text || result?.data?.text;
+    if (!text) {
+      return { ok: false, error: 'No content in backend generate response' };
+    }
+
     return { ok: true, text };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
-    return { ok: false, error: `Gemini call failed: ${message}` };
+    return { ok: false, error: `Backend generate fetch failed: ${message}` };
   }
 }
 
 /**
  * 통합 LLM 호출 함수
- * 
- * 호출 순서:
- * 1. AI Call Gateway (챗봇 백엔드) - 설정되어 있고 사용 가능한 경우
- * 2. Gemini 직접 호출 - API 키가 있는 경우
- * 3. 모두 실패 시 에러 반환
+ *
+ * 모든 호출은 자체 백엔드 서버를 통해 처리됩니다.
+ * 백엔드 서버가 내부적으로 적절한 AI 모델(Gemini, OpenAI 등)을 선택합니다.
  */
 export async function callLLM(
   request: LLMRequest,
   env: Env
 ): Promise<LLMResponse> {
-  const errors: string[] = [];
+  // /ai/generate 엔드포인트 시도
+  const result = await callBackendGenerate(request, env);
 
-  // 1차: AI Call Gateway 시도
-  const aiCallUrl = await getAiCallUrl(env);
-  if (aiCallUrl) {
-    const result = await callAiCallGateway(request, env);
-    if (result.ok && result.text) {
-      const parsed = request.responseFormat === 'json' 
-        ? tryParseJson(result.text)
-        : null;
-      return {
-        ok: true,
-        text: result.text,
-        parsed,
-        source: 'ai-call',
-      };
-    }
-    if (result.error) {
-      errors.push(result.error);
-      console.warn('AI Call Gateway failed, trying Gemini:', result.error);
-    }
+  if (result.ok && result.text) {
+    const parsed =
+      request.responseFormat === 'json' ? tryParseJson(result.text) : null;
+    return {
+      ok: true,
+      text: result.text,
+      parsed,
+      source: 'backend',
+    };
   }
 
-  // 2차: Gemini 직접 호출
-  if (env.GEMINI_API_KEY) {
-    const result = await callGemini(request, env);
-    if (result.ok && result.text) {
-      const parsed = request.responseFormat === 'json'
-        ? tryParseJson(result.text)
+  // /ai/auto-chat 엔드포인트로 폴백 시도
+  console.warn('Backend generate failed, trying auto-chat:', result.error);
+  const autoChatResult = await callBackendAutoChat(request, env);
+
+  if (autoChatResult.ok && autoChatResult.text) {
+    const parsed =
+      request.responseFormat === 'json'
+        ? tryParseJson(autoChatResult.text)
         : null;
-      return {
-        ok: true,
-        text: result.text,
-        parsed,
-        source: 'gemini',
-      };
-    }
-    if (result.error) {
-      errors.push(result.error);
-      console.warn('Gemini call failed:', result.error);
-    }
+    return {
+      ok: true,
+      text: autoChatResult.text,
+      parsed,
+      source: 'backend',
+    };
   }
 
   // 모든 시도 실패
@@ -236,8 +252,9 @@ export async function callLLM(
     ok: false,
     text: '',
     parsed: null,
-    source: 'fallback',
-    error: errors.join('; ') || 'No LLM provider available',
+    source: 'backend',
+    error:
+      result.error || autoChatResult.error || 'Backend AI server unavailable',
   };
 }
 

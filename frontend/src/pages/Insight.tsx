@@ -1087,14 +1087,16 @@ const Insight = () => {
                     {isTerminal ? `category: ${node.data.category}` : node.data.category}
                   </p>
                 )}
-                <div className='flex gap-2 mt-2'>
+                <div className='flex gap-2 mt-3'>
                   {node.type === 'post' && (
                     <Button
                       size='sm'
                       variant='outline'
                       className={cn(
                         'flex-1',
-                        isTerminal && 'border-[#50fa7b]/30 text-[#50fa7b] hover:bg-[#50fa7b]/10 font-mono'
+                        isTerminal 
+                          ? 'border-[#50fa7b]/40 text-[#50fa7b] hover:bg-[#50fa7b]/10 font-mono' 
+                          : 'border-gray-300 hover:border-primary/60 hover:bg-primary/5'
                       )}
                       onClick={() => setShowPreview(true)}
                     >
@@ -1105,7 +1107,9 @@ const Insight = () => {
                     size='sm'
                     className={cn(
                       'flex-1',
-                      isTerminal && 'bg-[#50fa7b] text-[#052e16] hover:bg-[#50fa7b]/80 font-mono font-semibold'
+                      isTerminal 
+                        ? 'bg-[#50fa7b] text-[#052e16] hover:bg-[#50fa7b]/80 font-mono font-semibold' 
+                        : 'bg-primary text-primary-foreground hover:bg-primary/90'
                     )}
                     onClick={() => {
                       if (node.type === 'post' && node.data) {
@@ -1361,13 +1365,17 @@ const Insight = () => {
                 
                 {/* Footer actions */}
                 <div className={cn(
-                  'p-4 border-t',
-                  isTerminal ? 'border-[#50fa7b]/10' : 'border-gray-100'
+                  'p-4 border-t sticky bottom-0',
+                  isTerminal 
+                    ? 'border-[#50fa7b]/10 bg-[#0d0d14]' 
+                    : 'border-gray-100 bg-white'
                 )}>
                   <Button
                     className={cn(
                       'w-full gap-2',
-                      isTerminal && 'bg-[#50fa7b] text-[#052e16] hover:bg-[#50fa7b]/80 font-mono font-semibold'
+                      isTerminal 
+                        ? 'bg-[#50fa7b] text-[#052e16] hover:bg-[#50fa7b]/80 font-mono font-semibold' 
+                        : 'bg-primary text-primary-foreground hover:bg-primary/90'
                     )}
                     onClick={() => {
                       if (node.type === 'post' && node.data) {

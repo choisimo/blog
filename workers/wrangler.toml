@@ -10,16 +10,23 @@ account_id = "f6f11e2a4e5178d2f37476785018f761"
 # - JWT_SECRET: Secret key for JWT token signing
 # - ADMIN_USERNAME: Admin username (optional)
 # - ADMIN_PASSWORD: Admin password hash (optional)
+# - OPENROUTER_API_KEY: OpenRouter API key for vision fallback (optional)
+# - AI_SERVE_API_KEY: Internal API key for self-hosted AI server (optional)
 #
 # Set secrets with: npx wrangler secret put <SECRET_NAME> [--env production]
 
 # Development environment variables
 [vars]
 ENV = "development"
-ALLOWED_ORIGINS = "http://localhost:5173,https://noblog.nodove.com,https://blog.nodove.com"
+ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:4173,http://localhost:8080,http://localhost:8081,https://noblog.nodove.com,https://blog.nodove.com,https://blog-test.nodove.com"
 ASSETS_BASE_URL = "https://assets-b.nodove.com"
-AI_CALL_BASE_URL = "https://ai-call.nodove.com"
-AI_VISION_BASE_URL = "https://ai-vision.nodove.com"
+# Backend API via Cloudflare Tunnel
+API_BASE_URL = "https://api.nodove.com"
+# AI Agent Configuration for gateway routes
+# Mode: 'backend' (self-hosted), 'external' (direct API), 'auto' (backend first with fallback)
+# These can be overridden at runtime via KV: config:ai_agent_mode, config:ai_agent_backend_url
+# AI_AGENT_MODE = "backend"
+# AI_AGENT_BACKEND_URL = "https://api.nodove.com"
 
 # D1 Database binding (development)
 [[d1_databases]]
@@ -52,9 +59,9 @@ name = "blog-api-prod"
 
 [env.production.vars]
 ENV = "production"
-ALLOWED_ORIGINS = "https://noblog.nodove.com,https://blog.nodove.com"
-AI_CALL_BASE_URL = "https://ai-call.nodove.com"
-AI_VISION_BASE_URL = "https://ai-vision.nodove.com"
+ALLOWED_ORIGINS = "https://noblog.nodove.com,https://blog.nodove.com,https://blog-test.nodove.com"
+# Backend API via Cloudflare Tunnel
+API_BASE_URL = "https://api.nodove.com"
 
 [[env.production.d1_databases]]
 binding = "DB"

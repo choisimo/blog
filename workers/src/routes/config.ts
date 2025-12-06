@@ -13,8 +13,8 @@ import { success, badRequest, error } from '../lib/response';
 import { requireAdmin } from '../middleware/auth';
 import {
   CONFIG_KEYS,
-  setConfig,
-  deleteConfig,
+  setConfigValue,
+  deleteConfigValue,
   getAllConfig,
   clearConfigCache,
 } from '../lib/config';
@@ -70,7 +70,7 @@ config.put('/:key', requireAdmin, async (c) => {
   }
 
   try {
-    await setConfig(c.env.KV, key as keyof typeof CONFIG_KEYS, value.trim());
+    await setConfigValue(c.env.KV, key as keyof typeof CONFIG_KEYS, value.trim());
     return success(c, {
       key,
       value: key.includes('KEY') ? '***' + value.slice(-4) : value,
@@ -96,7 +96,7 @@ config.delete('/:key', requireAdmin, async (c) => {
   }
 
   try {
-    await deleteConfig(c.env.KV, key as keyof typeof CONFIG_KEYS);
+    await deleteConfigValue(c.env.KV, key as keyof typeof CONFIG_KEYS);
     return success(c, {
       key,
       message: `Config ${key} deleted. Will now use env/default value.`,

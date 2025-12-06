@@ -40,3 +40,7 @@ export function forbidden(c: Context, message = 'Forbidden') {
 export function conflict(c: Context, message: string) {
   return error(c, message, 409, 'CONFLICT');
 }
+
+export function serverError(c: Context, message = 'Internal Server Error') {
+  return error(c, message, 500, 'INTERNAL_ERROR');
+}

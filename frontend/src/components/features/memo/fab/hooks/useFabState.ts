@@ -1,0 +1,321 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+
+// Feature flag: build-time + runtime override
+export function isFabEnabled(): boolean {
+  let lsValue: boolean | null = null;
+  try {
+    const stored = localStorage.getItem("aiMemo.fab.enabled");
+    if (stored != null) {
+      lsValue = JSON.parse(stored);
+    }
+  } catch {
+    lsValue = null;
+  }
+
+  if (typeof lsValue === "boolean") {
+    return lsValue;
+  }
+
+  const envFlag = (import.meta as any).env?.VITE_FEATURE_FAB;
+  if (envFlag != null) {
+    return envFlag === true || envFlag === "true" || envFlag === "1";
+  }
+
+  return true;
+}
+
+export function useAIMemoElement(): HTMLElement | null {
+  const [el, setEl] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    let active = true;
+    const find = () =>
+      document.querySelector("ai-memo-pad") as HTMLElement | null;
+    const loop = () => {
+      if (!active) return;
+      const e = find();
+      if (e) setEl(e);
+      else setTimeout(loop, 200);
+    };
+    loop();
+    return () => {
+      active = false;
+    };
+  }, []);
+  return el;
+}
+
+export function useMemoOpen(aiMemoEl: HTMLElement | null): boolean {
+  const [open, setOpen] = useState<boolean>(() => {
+    try {
+      return !!JSON.parse(localStorage.getItem("aiMemo.isOpen") || "false");
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || e.key === "aiMemo.isOpen") {
+        try {
+          setOpen(
+            !!JSON.parse(localStorage.getItem("aiMemo.isOpen") || "false"),
+          );
+        } catch {}
+      }
+    };
+    window.addEventListener("storage", onStorage);
+
+    let panelObserver: MutationObserver | null = null;
+    let shadowObserver: MutationObserver | null = null;
+    let pollId: number | null = null;
+
+    const tryAttachPanelObserver = () => {
+      const shadow = (aiMemoEl as any)?.shadowRoot as ShadowRoot | undefined;
+      const panel = shadow?.getElementById("panel");
+      if (!panel) return false;
+      const check = () => setOpen(panel.classList.contains("open"));
+      check();
+      panelObserver?.disconnect();
+      panelObserver = new MutationObserver(check);
+      panelObserver.observe(panel, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+      return true;
+    };
+
+    // Attempt now; if not present, observe shadowRoot subtree and poll LS briefly
+    if (!tryAttachPanelObserver()) {
+      const shadow = (aiMemoEl as any)?.shadowRoot as ShadowRoot | undefined;
+      if (shadow) {
+        shadowObserver = new MutationObserver(() => {
+          if (tryAttachPanelObserver()) {
+            shadowObserver?.disconnect();
+            shadowObserver = null;
+          }
+        });
+        shadowObserver.observe(shadow, { childList: true, subtree: true });
+      }
+      let tries = 0;
+      pollId = window.setInterval(() => {
+        tries += 1;
+        try {
+          setOpen(
+            !!JSON.parse(localStorage.getItem("aiMemo.isOpen") || "false"),
+          );
+        } catch {}
+        if (tries > 20) {
+          if (pollId) {
+            clearInterval(pollId);
+            pollId = null;
+          }
+        }
+      }, 250);
+    }
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      panelObserver?.disconnect();
+      shadowObserver?.disconnect();
+      if (pollId) clearInterval(pollId);
+    };
+  }, [aiMemoEl]);
+  return open;
+}
+
+export function useHistoryOverlayOpen(aiMemoEl: HTMLElement | null): boolean {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const shadow = (aiMemoEl as any)?.shadowRoot as ShadowRoot | undefined;
+    if (!shadow) {
+      setOpen(false);
+      return;
+    }
+    const overlay = shadow.getElementById(
+      "historyOverlay",
+    ) as HTMLElement | null;
+    const compute = () => {
+      try {
+        if (!overlay) return setOpen(false);
+        // visible when style.display !== 'none'
+        const visible = overlay.style.display !== "none";
+        setOpen(!!visible);
+      } catch {
+        setOpen(false);
+      }
+    };
+    compute();
+    const mo = overlay ? new MutationObserver(compute) : null;
+    if (overlay && mo)
+      mo.observe(overlay, {
+        attributes: true,
+        attributeFilter: ["style", "class"],
+      });
+    return () => {
+      if (mo) mo.disconnect();
+    };
+  }, [aiMemoEl]);
+  return open;
+}
+
+export function useModalPresence(): boolean {
+  const [present, setPresent] = useState(false);
+  useEffect(() => {
+    const sel =
+      '[aria-modal="true"], [role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"], [data-radix-portal] [data-state="open"]';
+    const check = () => setPresent(!!document.querySelector(sel));
+    const mo = new MutationObserver(check);
+    mo.observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+    });
+    check();
+    return () => mo.disconnect();
+  }, []);
+  return present;
+}
+
+export function useHistoryBadge(): [boolean, () => void] {
+  const [hasNew, setHasNew] = useState(false);
+  const recompute = useCallback(() => {
+    let count = 0;
+    try {
+      const arr = JSON.parse(localStorage.getItem("aiMemo.events") || "[]");
+      count = Array.isArray(arr) ? arr.length : 0;
+    } catch {}
+    let last = 0;
+    try {
+      last =
+        parseInt(localStorage.getItem("aiMemo.history.lastCount") || "0", 10) ||
+        0;
+    } catch {}
+    setHasNew(count > last);
+  }, []);
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || e.key === "aiMemo.events") recompute();
+    };
+    window.addEventListener("storage", onStorage);
+    const t = setInterval(recompute, 1500); // local updates within same tab
+    recompute();
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      clearInterval(t);
+    };
+  }, [recompute]);
+  const clear = useCallback(() => {
+    try {
+      const arr = JSON.parse(localStorage.getItem("aiMemo.events") || "[]");
+      const len = Array.isArray(arr) ? arr.length : 0;
+      localStorage.setItem("aiMemo.history.lastCount", String(len));
+    } catch {}
+    setHasNew(false);
+  }, []);
+  return [hasNew, clear];
+}
+
+export function useScrollHide(): boolean {
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    let lastY = window.scrollY || 0;
+    const handleScroll = () => {
+      const y = window.scrollY || 0;
+      const delta = y - lastY;
+      lastY = y;
+      if (Math.abs(delta) < 8) return;
+      if (y < 80) {
+        setHidden(false);
+        return;
+      }
+      setHidden(delta > 0);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+  return hidden;
+}
+
+// FAB pinned/auto-hide setting hook
+export function useFabPinned(): [boolean, () => void] {
+  const [pinned, setPinned] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("fab.pinned");
+      if (saved != null) setPinned(JSON.parse(saved));
+    } catch {}
+  }, []);
+
+  const togglePinned = useCallback(() => {
+    setPinned((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("fab.pinned", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  return [pinned, togglePinned];
+}
+
+export function hideLegacyLaunchers(aiMemoEl: HTMLElement | null) {
+  try {
+    if (!aiMemoEl) return;
+    const shadow = (aiMemoEl as any).shadowRoot as ShadowRoot | undefined;
+    // Hide only legacy floating launchers; keep memo UI intact
+    const launcher = shadow?.getElementById("launcher") as HTMLElement | null;
+    const historyLauncher = shadow?.getElementById(
+      "historyLauncher",
+    ) as HTMLElement | null;
+    if (launcher) launcher.style.display = "none";
+    if (historyLauncher) historyLauncher.style.display = "none";
+  } catch {}
+}
+
+export function useFabAnalytics() {
+  const impressionSent = useRef(false);
+  const prevMemoOpen = useRef<boolean | null>(null);
+
+  const send = useCallback((type: string, detail?: Record<string, any>) => {
+    try {
+      const evt = new CustomEvent("fab:event", {
+        detail: { type, ts: Date.now(), ...(detail || {}) },
+      });
+      window.dispatchEvent(evt);
+      // Fallback console for environments without an analytics bridge
+      if (
+        (import.meta as any).env?.DEV ||
+        (typeof localStorage !== "undefined" &&
+          localStorage.getItem("aiMemo.fab.debug") === "true")
+      ) {
+        // eslint-disable-next-line no-console
+        console.log("[FAB]", type, detail || "");
+      }
+    } catch {}
+  }, []);
+
+  const sendImpression = useCallback(
+    (enabled: boolean, modalOpen: boolean) => {
+      if (!enabled || impressionSent.current || modalOpen) return;
+      impressionSent.current = true;
+      send("fab_impression");
+    },
+    [send],
+  );
+
+  const sendMemoContextChange = useCallback(
+    (memoOpen: boolean) => {
+      if (prevMemoOpen.current === null) {
+        prevMemoOpen.current = memoOpen;
+        return;
+      }
+      if (prevMemoOpen.current !== memoOpen) {
+        send(memoOpen ? "fab_context_show" : "fab_context_hide");
+        prevMemoOpen.current = memoOpen;
+      }
+    },
+    [send],
+  );
+
+  return { send, sendImpression, sendMemoContextChange };
+}

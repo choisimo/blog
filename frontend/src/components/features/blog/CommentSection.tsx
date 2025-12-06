@@ -7,7 +7,9 @@ import remarkGfm from 'remark-gfm';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import CommentInputModal from './CommentInputModal';
+import CommentReactions from './CommentReactions';
 import { streamChatEvents } from '@/services/chat';
+import { fetchReactionsBatch, ReactionCount } from '@/services/reactions';
 
 // Load any archived comments bundled at build-time
 // Using a relative glob; keys may vary (relative vs absolute) depending on bundler.
@@ -48,6 +50,9 @@ export default function CommentSection({ postId }: { postId: string }) {
   const [loading, setLoading] = useState<boolean>(!archived);
   const [error, setError] = useState<string | null>(null);
 
+  // Reactions state: map of commentId -> reactions
+  const [reactionsMap, setReactionsMap] = useState<Record<string, ReactionCount[]>>({});
+
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [savedAuthor, setSavedAuthor] = useState('');
@@ -64,6 +69,21 @@ export default function CommentSection({ postId }: { postId: string }) {
   });
   const [aiResponding, setAiResponding] = useState(false);
   const [aiStreamingText, setAiStreamingText] = useState('');
+
+  // Fetch reactions when comments change
+  useEffect(() => {
+    if (!comments || comments.length === 0) return;
+    
+    const commentIds = comments
+      .map(c => c.id)
+      .filter((id): id is string => !!id);
+    
+    if (commentIds.length === 0) return;
+
+    fetchReactionsBatch(commentIds)
+      .then(reactions => setReactionsMap(reactions))
+      .catch(err => console.warn('Failed to fetch reactions:', err));
+  }, [comments]);
 
   useEffect(() => {
     let cancelled = false;
@@ -158,12 +178,16 @@ export default function CommentSection({ postId }: { postId: string }) {
     });
   }, []);
 
+  // AI response error state
+  const [aiError, setAiError] = useState<string | null>(null);
+
   // Generate AI response to a user comment
   const generateAiResponse = useCallback(async (userComment: string, userName: string) => {
     if (!aiDiscussionEnabled) return;
     
     setAiResponding(true);
     setAiStreamingText('');
+    setAiError(null);
     
     const pageTitle = typeof document !== 'undefined' ? document.title : '';
     const pageUrl = typeof window !== 'undefined' ? window.location.href : '';
@@ -188,11 +212,16 @@ ${userName}님의 댓글에 대해 짧고 통찰력 있게 응답해주세요.
 - 글의 내용과 연결지어 생각을 확장하거나 흥미로운 질문을 던져주세요
 - 존댓말을 사용하고 친근하게 대해주세요`;
 
+    // Create abort controller with 45-second timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
+
     try {
       let fullText = '';
       for await (const ev of streamChatEvents({ 
         text: prompt,
-        useArticleContext: true 
+        useArticleContext: true,
+        signal: controller.signal,
       })) {
         if (ev.type === 'text') {
           fullText += ev.text;
@@ -250,8 +279,17 @@ ${userName}님의 댓글에 대해 짧고 통찰력 있게 응답해주세요.
         }
       }
     } catch (err) {
-      console.error('AI response error:', err);
+      const error = err as Error;
+      console.error('AI response error:', error);
+      
+      // Set user-facing error message
+      if (error.name === 'AbortError') {
+        setAiError('AI 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.');
+      } else {
+        setAiError('AI 응답을 생성하지 못했습니다.');
+      }
     } finally {
+      clearTimeout(timeoutId);
       setAiResponding(false);
       setAiStreamingText('');
     }
@@ -287,18 +325,25 @@ ${userName}님의 댓글에 대해 짧고 통찰력 있게 응답해주세요.
     const respData = (await resp.json()) as any;
     const id = (respData?.id ?? respData?.data?.id) as string | undefined;
 
-    // Optimistic append
-    setComments(prev => [
-      ...(prev || []),
-      {
-        id,
-        postId,
-        author: data.author,
-        content: data.content,
-        website: data.website || null,
-        createdAt: new Date().toISOString(),
-      },
-    ]);
+    // Optimistic append with deduplication
+    setComments(prev => {
+      const existing = prev || [];
+      // Check if comment with this ID already exists (from SSE race condition)
+      if (id && existing.some(c => c.id === id)) {
+        return existing;
+      }
+      return [
+        ...existing,
+        {
+          id,
+          postId,
+          author: data.author,
+          content: data.content,
+          website: data.website || null,
+          createdAt: new Date().toISOString(),
+        },
+      ];
+    });
 
     // Save author name for next comment
     setSavedAuthor(data.author);
@@ -499,6 +544,17 @@ ${userName}님의 댓글에 대해 짧고 통찰력 있게 응답해주세요.
                           {c.website}
                         </a>
                       )}
+                      {/* Comment Reactions */}
+                      {c.id && (
+                        <div className="pl-0 sm:pl-4">
+                          <CommentReactions
+                            commentId={c.id}
+                            initialReactions={reactionsMap[c.id] || []}
+                            isTerminal={isTerminal}
+                            compact
+                          />
+                        </div>
+                      )}
                     </div>
                   ) : (
                     /* Standard mode: Card style */
@@ -550,6 +606,14 @@ ${userName}님의 댓글에 대해 짧고 통찰력 있게 응답해주세요.
                           <Globe2 className="h-3 w-3" />
                           {c.website}
                         </a>
+                      )}
+                      {/* Comment Reactions */}
+                      {c.id && (
+                        <CommentReactions
+                          commentId={c.id}
+                          initialReactions={reactionsMap[c.id] || []}
+                          isTerminal={isTerminal}
+                        />
                       )}
                     </>
                   )}
@@ -628,6 +692,28 @@ ${userName}님의 댓글에 대해 짧고 통찰력 있게 응답해주세요.
                 {isTerminal ? "$ AI thinking..." : "AI가 생각하는 중..."}
               </span>
               <Loader2 className="h-3 w-3 animate-spin text-violet-500" />
+            </div>
+          )}
+
+          {/* AI Error Message */}
+          {aiError && !aiResponding && (
+            <div
+              className={cn(
+                "flex items-center gap-2 py-3 px-4 rounded-lg text-sm",
+                isTerminal
+                  ? "bg-destructive/10 border border-destructive/30 text-destructive font-mono"
+                  : "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400"
+              )}
+            >
+              <Bot className="h-4 w-4 shrink-0" />
+              <span className="flex-1">{aiError}</span>
+              <button
+                type="button"
+                onClick={() => setAiError(null)}
+                className="text-xs underline hover:no-underline opacity-70 hover:opacity-100"
+              >
+                {isTerminal ? "dismiss" : "닫기"}
+              </button>
             </div>
           )}
 

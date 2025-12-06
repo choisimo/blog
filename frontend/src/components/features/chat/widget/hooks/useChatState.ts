@@ -1,0 +1,226 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type {
+  ChatMessage,
+  ChatSessionMeta,
+  UploadedChatImage,
+  QuestionMode,
+} from "../types";
+import {
+  CHAT_SESSIONS_INDEX_KEY,
+  CHAT_SESSION_STORAGE_PREFIX,
+  CURRENT_SESSION_KEY,
+  PERSIST_OPTIN_KEY,
+  generateSessionKey,
+} from "../constants";
+import {
+  streamChatEvents,
+  ensureSession,
+  uploadChatImage,
+  invokeChatAggregate,
+} from "@/services/chat";
+
+export function useChatState(options?: { initialMessage?: string }) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState(options?.initialMessage || "");
+  const [busy, setBusy] = useState(false);
+  const [persistOptIn, setPersistOptIn] = useState<boolean>(true);
+  const [sessionId, setSessionId] = useState<string>("");
+  const [sessionKey, setSessionKey] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      const existing = window.localStorage.getItem(CURRENT_SESSION_KEY);
+      if (existing && existing.trim()) return existing;
+    } catch {}
+    const fresh = generateSessionKey();
+    try {
+      window.localStorage.setItem(CURRENT_SESSION_KEY, fresh);
+    } catch {}
+    return fresh;
+  });
+  const [sessions, setSessions] = useState<ChatSessionMeta[]>([]);
+  const [showSessions, setShowSessions] = useState(false);
+  const [showImageDrawer, setShowImageDrawer] = useState(false);
+  const [showActionSheet, setShowActionSheet] = useState(false);
+  const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
+  const [isAggregatePrompt, setIsAggregatePrompt] = useState(false);
+  const [firstTokenMs, setFirstTokenMs] = useState<number | null>(null);
+  const [questionMode, setQuestionMode] = useState<QuestionMode>("article");
+  const [attachedImage, setAttachedImage] = useState<File | null>(null);
+  const [attachedPreviewUrl, setAttachedPreviewUrl] = useState<string | null>(
+    null,
+  );
+  const [uploadedImages, setUploadedImages] = useState<UploadedChatImage[]>([]);
+
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const lastPromptRef = useRef<string>("");
+
+  const canSend =
+    (input.trim().length > 0 || attachedImage !== null) && !busy;
+
+  // Auto-scroll on new messages
+  useEffect(() => {
+    const sc = scrollRef.current;
+    if (!sc) return;
+    sc.scrollTop = sc.scrollHeight + 1000;
+  }, [messages, busy]);
+
+  // Load persist opt-in preference
+  useEffect(() => {
+    const v =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem(PERSIST_OPTIN_KEY)
+        : null;
+    setPersistOptIn(v !== "0");
+  }, []);
+
+  // Load sessions index
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(CHAT_SESSIONS_INDEX_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) setSessions(parsed);
+    } catch {}
+  }, []);
+
+  // Ensure session ID
+  useEffect(() => {
+    ensureSession()
+      .then((id) => setSessionId(id))
+      .catch(() => {});
+  }, []);
+
+  // Load messages for current session
+  useEffect(() => {
+    if (!persistOptIn || !sessionKey) return;
+    try {
+      const raw = localStorage.getItem(
+        `${CHAT_SESSION_STORAGE_PREFIX}${sessionKey}`,
+      );
+      if (raw) {
+        const parsed = JSON.parse(raw) as ChatMessage[];
+        if (Array.isArray(parsed)) setMessages(parsed);
+      } else {
+        setMessages([]);
+      }
+    } catch {}
+  }, [persistOptIn, sessionKey]);
+
+  // Save messages on change
+  useEffect(() => {
+    if (!persistOptIn || !sessionKey) return;
+    try {
+      localStorage.setItem(
+        `${CHAT_SESSION_STORAGE_PREFIX}${sessionKey}`,
+        JSON.stringify(messages),
+      );
+    } catch {}
+  }, [messages, persistOptIn, sessionKey]);
+
+  // Handle attached image preview
+  useEffect(() => {
+    if (!attachedImage) {
+      setAttachedPreviewUrl(null);
+      return;
+    }
+    let url: string | null = null;
+    try {
+      url = URL.createObjectURL(attachedImage);
+      setAttachedPreviewUrl(url);
+    } catch {
+      setAttachedPreviewUrl(null);
+    }
+    return () => {
+      if (url) {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {}
+      }
+    };
+  }, [attachedImage]);
+
+  const push = useCallback((msg: ChatMessage) => {
+    setMessages((prev) => [...prev, msg]);
+  }, []);
+
+  const togglePersistStorage = useCallback(() => {
+    const next = !persistOptIn;
+    setPersistOptIn(next);
+    try {
+      localStorage.setItem(PERSIST_OPTIN_KEY, next ? "1" : "0");
+    } catch {}
+  }, [persistOptIn]);
+
+  const focusInput = useCallback(() => {
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }, []);
+
+  const summary = useMemo(() => {
+    if (messages.length === 0) return "";
+    const assistants = messages.filter(
+      (m) => m.role === "assistant" && m.text.trim(),
+    );
+    const last = assistants[assistants.length - 1];
+    const txt = last?.text || "";
+    return txt.length > 160 ? `${txt.slice(0, 160)}…` : txt;
+  }, [messages]);
+
+  const pageTitle = useMemo(() => {
+    return typeof document !== "undefined" ? document.title : "";
+  }, []);
+
+  return {
+    // State
+    messages,
+    setMessages,
+    input,
+    setInput,
+    busy,
+    setBusy,
+    persistOptIn,
+    setPersistOptIn,
+    sessionId,
+    sessionKey,
+    setSessionKey,
+    sessions,
+    setSessions,
+    showSessions,
+    setShowSessions,
+    showImageDrawer,
+    setShowImageDrawer,
+    showActionSheet,
+    setShowActionSheet,
+    selectedSessionIds,
+    setSelectedSessionIds,
+    isAggregatePrompt,
+    setIsAggregatePrompt,
+    firstTokenMs,
+    setFirstTokenMs,
+    questionMode,
+    setQuestionMode,
+    attachedImage,
+    setAttachedImage,
+    attachedPreviewUrl,
+    setAttachedPreviewUrl,
+    uploadedImages,
+    setUploadedImages,
+    // Refs
+    scrollRef,
+    abortRef,
+    fileInputRef,
+    textareaRef,
+    lastPromptRef,
+    // Computed
+    canSend,
+    summary,
+    pageTitle,
+    // Functions
+    push,
+    togglePersistStorage,
+    focusInput,
+  };
+}

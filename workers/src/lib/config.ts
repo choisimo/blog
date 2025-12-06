@@ -1,14 +1,14 @@
 /**
  * Dynamic configuration via KV
  *
- * This module provides functions to read/write AI server URLs and other
- * configuration from KV storage. This allows changing AI server domains
- * without redeploying the worker.
+ * 모든 AI 호출은 자체 백엔드 서버를 통해 처리됩니다.
+ * 이 모듈은 KV 스토리지를 통해 런타임에 서버 URL을 변경할 수 있게 합니다.
  *
  * KV Keys:
- * - config:ai_serve_url     - Custom AI server URL (ai-check, ai-serve)
- * - config:ai_call_url      - AI Call gateway URL
- * - config:ai_serve_api_key - API key for AI serve (optional override)
+ * - config:ai_serve_url     - AI 서버 URL (ai-check.nodove.com)
+ * - config:ai_serve_api_key - AI 서버 API 키
+ * - config:api_base_url     - 백엔드 API URL (api.nodove.com)
+ * - config:ai_gateway_caller_key - 게이트웨이 호출자 키
  *
  * Priority:
  * 1. KV value (if set)
@@ -21,15 +21,15 @@ import type { Env } from '../types';
 // KV key constants
 export const CONFIG_KEYS = {
   AI_SERVE_URL: 'config:ai_serve_url',
-  AI_CALL_URL: 'config:ai_call_url',
   AI_SERVE_API_KEY: 'config:ai_serve_api_key',
   AI_GATEWAY_CALLER_KEY: 'config:ai_gateway_caller_key',
+  API_BASE_URL: 'config:api_base_url',
 } as const;
 
 // Default fallback URLs (used if both KV and env are empty)
 const DEFAULTS = {
   AI_SERVE_URL: 'https://ai-check.nodove.com',
-  AI_CALL_URL: 'https://ai-call.nodove.com',
+  API_BASE_URL: 'https://api.nodove.com',
 } as const;
 
 // In-memory cache to reduce KV reads (TTL: 60 seconds)
@@ -102,7 +102,7 @@ async function getOptionalConfig(
 }
 
 /**
- * Get AI Serve URL (for custom AI server like ai-check, ai-serve)
+ * Get AI Serve URL (for AI server like ai-check.nodove.com)
  */
 export async function getAiServeUrl(env: Env): Promise<string> {
   return getConfig(
@@ -110,18 +110,6 @@ export async function getAiServeUrl(env: Env): Promise<string> {
     CONFIG_KEYS.AI_SERVE_URL,
     env.AI_SERVE_BASE_URL,
     DEFAULTS.AI_SERVE_URL
-  );
-}
-
-/**
- * Get AI Call URL (for AI Call gateway)
- */
-export async function getAiCallUrl(env: Env): Promise<string> {
-  return getConfig(
-    env.KV,
-    CONFIG_KEYS.AI_CALL_URL,
-    env.AI_CALL_BASE_URL,
-    DEFAULTS.AI_CALL_URL
   );
 }
 
@@ -144,9 +132,21 @@ export async function getAiGatewayCallerKey(env: Env): Promise<string | undefine
 }
 
 /**
+ * Get Backend API Base URL (via Cloudflare Tunnel)
+ */
+export async function getApiBaseUrl(env: Env): Promise<string> {
+  return getConfig(
+    env.KV,
+    CONFIG_KEYS.API_BASE_URL,
+    env.API_BASE_URL,
+    DEFAULTS.API_BASE_URL
+  );
+}
+
+/**
  * Set a config value in KV
  */
-export async function setConfig(
+export async function setConfigValue(
   kv: KVNamespace,
   key: keyof typeof CONFIG_KEYS,
   value: string
@@ -159,7 +159,7 @@ export async function setConfig(
 /**
  * Delete a config value from KV (will fall back to env/default)
  */
-export async function deleteConfig(
+export async function deleteConfigValue(
   kv: KVNamespace,
   key: keyof typeof CONFIG_KEYS
 ): Promise<void> {
@@ -173,7 +173,7 @@ export async function deleteConfig(
  */
 export async function getAllConfig(env: Env): Promise<{
   aiServeUrl: { value: string; source: 'kv' | 'env' | 'default' };
-  aiCallUrl: { value: string; source: 'kv' | 'env' | 'default' };
+  apiBaseUrl: { value: string; source: 'kv' | 'env' | 'default' };
   aiServeApiKey: { value: string; source: 'kv' | 'env' | 'none' } | null;
   aiGatewayCallerKey: { value: string; source: 'kv' | 'env' | 'none' } | null;
 }> {
@@ -187,13 +187,13 @@ export async function getAllConfig(env: Env): Promise<{
       ? { value: env.AI_SERVE_BASE_URL, source: 'env' as const }
       : { value: DEFAULTS.AI_SERVE_URL, source: 'default' as const };
 
-  // AI Call URL
-  const aiCallKv = await kv.get(CONFIG_KEYS.AI_CALL_URL);
-  const aiCallUrl = aiCallKv
-    ? { value: aiCallKv, source: 'kv' as const }
-    : env.AI_CALL_BASE_URL
-      ? { value: env.AI_CALL_BASE_URL, source: 'env' as const }
-      : { value: DEFAULTS.AI_CALL_URL, source: 'default' as const };
+  // API Base URL (Cloudflare Tunnel)
+  const apiBaseKv = await kv.get(CONFIG_KEYS.API_BASE_URL);
+  const apiBaseUrl = apiBaseKv
+    ? { value: apiBaseKv, source: 'kv' as const }
+    : env.API_BASE_URL
+      ? { value: env.API_BASE_URL, source: 'env' as const }
+      : { value: DEFAULTS.API_BASE_URL, source: 'default' as const };
 
   // AI Serve API Key
   const aiServeApiKeyKv = await kv.get(CONFIG_KEYS.AI_SERVE_API_KEY);
@@ -213,7 +213,7 @@ export async function getAllConfig(env: Env): Promise<{
 
   return {
     aiServeUrl,
-    aiCallUrl,
+    apiBaseUrl,
     aiServeApiKey,
     aiGatewayCallerKey,
   };

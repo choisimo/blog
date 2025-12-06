@@ -141,10 +141,14 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
       timestamp: Date.now(),
     });
 
+    const timeoutId = { current: null as ReturnType<typeof setTimeout> | null };
     try {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
+
+      // Set 30-second timeout
+      timeoutId.current = setTimeout(() => controller.abort(), 30000);
 
       const systemPrompt = buildDebateSystemPrompt(topic, stance);
       const starterText = stance === 'agree'
@@ -167,7 +171,20 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
         }
       }
     } catch (err) {
-      if ((err as Error).name !== 'AbortError') {
+      const error = err as Error;
+      if (error.name === 'AbortError') {
+        // Check if it was a timeout (no content received yet)
+        const aiMsg = messages.find(m => m.id === aiId);
+        if (!aiMsg?.content) {
+          setMessages(prev =>
+            prev.map(m =>
+              m.id === aiId
+                ? { ...m, content: '응답 시간이 초과되었어요. 다시 시도해주세요.' }
+                : m
+            )
+          );
+        }
+      } else {
         setMessages(prev =>
           prev.map(m =>
             m.id === aiId
@@ -177,6 +194,7 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
         );
       }
     } finally {
+      if (timeoutId.current) clearTimeout(timeoutId.current);
       setBusy(false);
     }
   }, [topic, addMessage]);
@@ -205,10 +223,14 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
 
     setBusy(true);
 
+    const timeoutId = { current: null as ReturnType<typeof setTimeout> | null };
     try {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
+
+      // Set 30-second timeout
+      timeoutId.current = setTimeout(() => controller.abort(), 30000);
 
       // Build conversation history
       const history = messages
@@ -242,7 +264,21 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
         }
       }
     } catch (err) {
-      if ((err as Error).name !== 'AbortError') {
+      const error = err as Error;
+      if (error.name === 'AbortError') {
+        // Check if it was a timeout (no content received yet)
+        setMessages(prev => {
+          const aiMsg = prev.find(m => m.id === aiId);
+          if (!aiMsg?.content) {
+            return prev.map(m =>
+              m.id === aiId
+                ? { ...m, content: '응답 시간이 초과되었어요. 다시 시도해주세요.' }
+                : m
+            );
+          }
+          return prev;
+        });
+      } else {
         setMessages(prev =>
           prev.map(m =>
             m.id === aiId
@@ -252,6 +288,7 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
         );
       }
     } finally {
+      if (timeoutId.current) clearTimeout(timeoutId.current);
       setBusy(false);
     }
   }, [canSend, input, messages, topic, currentStance, addMessage]);
@@ -285,7 +322,7 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
       className={cn(
         'flex flex-col h-full max-h-[80vh] sm:max-h-[600px] overflow-hidden rounded-2xl border shadow-xl',
         isTerminal
-          ? 'bg-[hsl(var(--terminal-code-bg))] border-primary/30'
+          ? 'bg-[hsl(var(--terminal-code-bg))] border-primary/30 font-mono shadow-[0_0_30px_hsl(var(--terminal-glow)/0.15)]'
           : 'bg-card border-border'
       )}
     >
@@ -294,11 +331,19 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
         className={cn(
           'flex items-center justify-between px-4 py-3.5 border-b shrink-0',
           isTerminal
-            ? 'border-primary/20 bg-primary/10'
+            ? 'border-primary/20 bg-[hsl(var(--terminal-titlebar))]'
             : 'border-border/40 bg-muted/40'
         )}
       >
-        <div className="flex items-center gap-3 min-w-0">
+        {/* Terminal window buttons */}
+        {isTerminal && (
+          <div className="flex items-center gap-1.5 mr-3">
+            <div className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-close))]" />
+            <div className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]" />
+            <div className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]" />
+          </div>
+        )}
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           <div
             className={cn(
               'flex items-center justify-center h-10 w-10 rounded-full shrink-0',
@@ -311,10 +356,10 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
             <h3
               className={cn(
                 'font-semibold text-base truncate',
-                isTerminal && 'font-mono text-primary'
+                isTerminal && 'font-mono text-primary terminal-glow'
               )}
             >
-              AI 상담실
+              {isTerminal ? '>_ AI 상담실' : 'AI 상담실'}
             </h3>
             <p className="text-xs text-muted-foreground truncate max-w-[200px] sm:max-w-[280px]">
               {topic.title}

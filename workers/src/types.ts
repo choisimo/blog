@@ -7,14 +7,20 @@ export type Env = {
 
   // Secrets
   JWT_SECRET: string;
-  GEMINI_API_KEY: string;
   ADMIN_USERNAME?: string;
   ADMIN_PASSWORD?: string;
-  AI_SERVE_BASE_URL?: string;
+
+  // Backend AI Server (via Cloudflare Tunnel)
+  // 모든 AI 호출은 이 서버를 통해 처리됩니다
+  AI_SERVE_BASE_URL?: string; // e.g., https://ai-check.nodove.com
   AI_SERVE_API_KEY?: string;
   AI_GATEWAY_CALLER_KEY?: string;
-  AI_CALL_BASE_URL?: string;
-  AI_VISION_BASE_URL?: string;
+  API_BASE_URL?: string; // e.g., https://api.nodove.com
+
+  // Legacy: GEMINI_API_KEY는 더 이상 Workers에서 직접 사용하지 않음
+  // 백엔드 서버에서 관리됩니다
+  GEMINI_API_KEY?: string;
+
   // Email + site notification
   RESEND_API_KEY?: string;
   NOTIFY_FROM_EMAIL?: string;

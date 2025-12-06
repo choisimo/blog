@@ -169,6 +169,10 @@ const BlogPost = () => {
       try {
         setLoading(true);
         setError(false);
+        // Reset translation states on route change to prevent stale content
+        setAiTranslation(null);
+        setTranslating(false);
+        setTranslationError(null);
 
         if (!year || !slug) {
           setError(true);

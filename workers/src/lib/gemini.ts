@@ -1,14 +1,41 @@
+/**
+ * AI Content Generation Module
+ *
+ * 모든 AI 호출은 자체 백엔드 서버(ai-check.nodove.com)를 통해 처리됩니다.
+ * 외부 API(Gemini 등)는 백엔드 서버에서 관리하며, Workers에서는 직접 호출하지 않습니다.
+ *
+ * 이 구조의 장점:
+ * 1. API 키 관리 일원화 - 백엔드에서만 관리
+ * 2. 비용 추적 용이 - 백엔드에서 모든 AI 호출 로깅
+ * 3. 모델 전환 유연성 - 백엔드만 수정하면 됨
+ * 4. 장애 대응 - 백엔드에서 폴백 로직 처리
+ */
+
 import type { Env } from '../types';
 import { getAiServeUrl, getAiServeApiKey } from './config';
 
-const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-const GEMINI_FAILOVER_KEY_PREFIX = 'gemini-failover:';
+export type GenerateOptions = {
+  temperature?: number;
+  maxTokens?: number;
+};
 
-async function callFallbackGenerator(
+/**
+ * 백엔드 AI 서버를 통해 콘텐츠를 생성합니다.
+ *
+ * @param prompt - 생성할 프롬프트
+ * @param env - Worker 환경 변수
+ * @param options - 생성 옵션 (temperature, maxTokens)
+ * @returns 생성된 텍스트
+ * @throws 백엔드 서버 오류 시 예외 발생
+ */
+export async function generateContent(
   prompt: string,
   env: Env,
-  temperature: number
+  options?: GenerateOptions
 ): Promise<string> {
+  const temperature = options?.temperature ?? 0.2;
+  const maxTokens = options?.maxTokens ?? 2048;
+
   // Get AI Serve URL from KV > env > default
   const base = await getAiServeUrl(env);
   const url = `${base.replace(/\/$/, '')}/ai/generate`;
@@ -24,161 +51,62 @@ async function callFallbackGenerator(
   const res = await fetch(url, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ prompt, temperature }),
+    body: JSON.stringify({ prompt, temperature, maxTokens }),
   });
 
   if (!res.ok) {
     const txt = await res.text().catch(() => '');
-    throw new Error(`Fallback AI error: ${res.status} ${txt}`);
+    throw new Error(`Backend AI error: ${res.status} ${txt.slice(0, 200)}`);
   }
 
-  const payload = (await res.json().catch(() => null)) as
-    | { text?: string }
-    | null;
-  const text = payload?.text;
+  const payload = (await res.json().catch(() => null)) as {
+    text?: string;
+    data?: { text?: string };
+    ok?: boolean;
+  } | null;
+
+  // 다양한 응답 형식 지원
+  const text = payload?.text || payload?.data?.text;
   if (!text) {
-    throw new Error('Invalid fallback AI response');
+    throw new Error('No content in backend AI response');
   }
   return text;
 }
 
-async function markGeminiFailoverToday(env: Env): Promise<void> {
-  try {
-    const now = new Date();
-    const keyDate = `${now.getUTCFullYear()}-${String(
-      now.getUTCMonth() + 1
-    ).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
-    const key = `${GEMINI_FAILOVER_KEY_PREFIX}${keyDate}`;
-    const tomorrowUtcMidnight = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
-    );
-    const ttlSeconds = Math.max(
-      60,
-      Math.floor((tomorrowUtcMidnight.getTime() - now.getTime()) / 1000)
-    );
-    await env.KV.put(key, '1', { expirationTtl: ttlSeconds });
-  } catch {
-  }
-}
-
-async function isGeminiInFailover(env: Env): Promise<boolean> {
-  try {
-    const now = new Date();
-    const keyDate = `${now.getUTCFullYear()}-${String(
-      now.getUTCMonth() + 1
-    ).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
-    const key = `${GEMINI_FAILOVER_KEY_PREFIX}${keyDate}`;
-    const v = await env.KV.get(key);
-    return v === '1';
-  } catch {
-    return false;
-  }
-}
-
 /**
- * Call Gemini API directly
+ * JSON 파싱 유틸리티
+ * LLM 응답에서 JSON을 추출합니다.
  */
-async function callGemini(
-  prompt: string,
-  env: Env,
-  temperature: number,
-  maxTokens: number
-): Promise<string> {
-  const model = 'gemini-2.5-flash';
-  const url = `${GEMINI_API_BASE}/${model}:generateContent?key=${env.GEMINI_API_KEY}`;
+export function tryParseJson<T = unknown>(text: string): T | null {
+  if (!text || typeof text !== 'string') return null;
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature,
-        maxOutputTokens: maxTokens,
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Gemini API error: ${response.status} ${errorText}`);
+  // 1. 직접 파싱 시도
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    // continue
   }
 
-  const data = await response.json<{
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  }>();
-
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    throw new Error('No content in Gemini response');
-  }
-
-  return text;
-}
-
-export type GenerateOptions = {
-  temperature?: number;
-  maxTokens?: number;
-  /** If true, use Gemini as primary instead of custom AI server */
-  preferGemini?: boolean;
-};
-
-/**
- * Generate content using AI.
- * By default, uses custom AI server (AI_SERVE_BASE_URL) as primary.
- * Falls back to Gemini if custom server fails.
- * Set preferGemini: true to use Gemini as primary with custom server as fallback.
- */
-export async function generateContent(
-  prompt: string,
-  env: Env,
-  options?: GenerateOptions
-): Promise<string> {
-  const temperature = options?.temperature ?? 0.2;
-  const maxTokens = options?.maxTokens ?? 2048;
-  const preferGemini = options?.preferGemini ?? false;
-
-  // Gemini-first mode (legacy behavior)
-  if (preferGemini && env.GEMINI_API_KEY && !(await isGeminiInFailover(env))) {
+  // 2. ```json 코드블록 추출
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenceMatch?.[1]) {
     try {
-      return await callGemini(prompt, env, temperature, maxTokens);
-    } catch (err) {
-      console.error('Gemini failed, falling back to custom AI:', err);
-      await markGeminiFailoverToday(env);
-      return callFallbackGenerator(prompt, env, temperature);
+      return JSON.parse(fenceMatch[1].trim()) as T;
+    } catch {
+      // continue
     }
   }
 
-  // Custom AI server-first mode (new default)
-  try {
-    return await callFallbackGenerator(prompt, env, temperature);
-  } catch (err) {
-    console.error('Custom AI server failed:', err);
-    // Try Gemini as fallback if available
-    if (env.GEMINI_API_KEY && !(await isGeminiInFailover(env))) {
-      try {
-        console.log('Falling back to Gemini...');
-        return await callGemini(prompt, env, temperature, maxTokens);
-      } catch (geminiErr) {
-        console.error('Gemini fallback also failed:', geminiErr);
-        await markGeminiFailoverToday(env);
-      }
+  // 3. 첫 { ~ 마지막 } 서브스트링
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    try {
+      return JSON.parse(text.slice(start, end + 1)) as T;
+    } catch {
+      // continue
     }
-    // Re-throw original error if all fallbacks fail
-    throw err;
   }
-}
 
-export function tryParseJson(text: string): unknown {
-  try {
-    // Try to extract JSON from markdown code blocks
-    const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
-    if (jsonMatch?.[1]) {
-      return JSON.parse(jsonMatch[1]);
-    }
-    // Try direct parse
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
+  return null;
 }
