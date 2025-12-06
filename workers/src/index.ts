@@ -19,6 +19,7 @@ import config from './routes/config';
 import rag from './routes/rag';
 import gateway from './routes/gateway';
 import memos from './routes/memos';
+import memories from './routes/memories';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -61,6 +62,7 @@ api.route('/config', config);
 api.route('/rag', rag);
 api.route('/gateway', gateway);
 api.route('/memos', memos);
+api.route('/memories', memories);
 
 app.route('/api/v1', api);
 

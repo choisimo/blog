@@ -42,6 +42,7 @@ export {
   buildContextPrompt,
   buildImageContext,
   buildRAGContextPrompt,
+  buildMemoryContextPrompt,
 } from './context';
 
 // Stream parsing

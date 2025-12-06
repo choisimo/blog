@@ -14,6 +14,7 @@ import {
   buildContextPrompt,
   buildImageContext,
   buildRAGContextPrompt,
+  buildMemoryContextPrompt,
 } from './context';
 import {
   getParserForContentType,
@@ -131,6 +132,12 @@ export async function* streamChatEvents(
   if (input.ragContext) {
     const ragPrompt = buildRAGContextPrompt(input.ragContext);
     if (ragPrompt) parts.push({ type: 'text', text: ragPrompt });
+  }
+
+  // 사용자 메모리 컨텍스트 추가
+  if (input.memoryContext) {
+    const memoryPrompt = buildMemoryContextPrompt(input.memoryContext);
+    if (memoryPrompt) parts.push({ type: 'text', text: memoryPrompt });
   }
 
   // 아티클 컨텍스트 추가

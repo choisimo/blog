@@ -6,6 +6,7 @@ import {
   invokeChatAggregate,
 } from "@/services/chat";
 import { getRAGContextForChat } from "@/services/rag";
+import { getMemoryContextForChat, extractAndSaveMemories } from "@/services/memory";
 import { CURRENT_SESSION_KEY, generateSessionKey } from "../constants";
 
 type UseChatActionsProps = {
@@ -120,15 +121,38 @@ export function useChatActions({
         });
         push({ id: aiId, role: "assistant", text: aggregated });
       } else {
-        // Fetch RAG context for general (blog-wide) questions
+        // Fetch RAG context and memory context in parallel
         let ragContext: string | null = null;
+        let memoryContext: string | null = null;
+
+        const contextPromises: Promise<void>[] = [];
+
+        // RAG context for general (blog-wide) questions
         if (questionMode === "general") {
-          try {
-            ragContext = await getRAGContextForChat(baseText, 2000);
-          } catch {
-            // RAG search failed, continue without context
-          }
+          contextPromises.push(
+            getRAGContextForChat(baseText, 2000)
+              .then((ctx) => {
+                ragContext = ctx;
+              })
+              .catch(() => {
+                // RAG search failed, continue without context
+              }),
+          );
         }
+
+        // User memory context (always fetch when available)
+        contextPromises.push(
+          getMemoryContextForChat(baseText, 5)
+            .then((ctx) => {
+              memoryContext = ctx;
+            })
+            .catch(() => {
+              // Memory search failed, continue without context
+            }),
+        );
+
+        // Wait for all context fetches
+        await Promise.all(contextPromises);
 
         let acc = "";
         push({ id: aiId, role: "assistant", text: "" });
@@ -140,6 +164,7 @@ export function useChatActions({
           imageUrl: uploaded?.url,
           imageAnalysis: uploaded?.imageAnalysis,
           ragContext,
+          memoryContext,
         })) {
           if (ev.type === "text") {
             acc += ev.text;
@@ -159,6 +184,13 @@ export function useChatActions({
               ),
             );
           }
+        }
+
+        // Extract and save memories from conversation (fire and forget)
+        if (acc) {
+          extractAndSaveMemories(baseText, acc).catch(() => {
+            // Silent fail - memory extraction is optional
+          });
         }
       }
     } catch (e: any) {

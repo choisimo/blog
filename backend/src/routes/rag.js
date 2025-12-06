@@ -1,0 +1,494 @@
+/**
+ * RAG Routes
+ * 
+ * ChromaDB와 TEI 임베딩 서버에 대한 프록시 엔드포인트
+ * Workers에서 터널(api.nodove.com)을 통해 호출합니다.
+ * 
+ * 엔드포인트:
+ * - POST /api/v1/rag/search - 시맨틱 검색 (블로그 포스트)
+ * - POST /api/v1/rag/embed - 텍스트 임베딩 생성
+ * - GET /api/v1/rag/health - RAG 서비스 상태 확인
+ * - POST /api/v1/rag/memories/upsert - 사용자 메모리 임베딩 저장
+ * - POST /api/v1/rag/memories/search - 사용자 메모리 시맨틱 검색
+ * - DELETE /api/v1/rag/memories/:memoryId - 메모리 임베딩 삭제
+ */
+
+import express from 'express';
+import { config } from '../config.js';
+
+const router = express.Router();
+
+// Memory collection prefix (user-specific collections)
+const MEMORY_COLLECTION_PREFIX = 'user-memories-';
+
+/**
+ * TEI 서버에서 텍스트 임베딩 생성
+ * @param {string[]} texts - 임베딩할 텍스트 배열
+ * @returns {Promise<number[][]>} 임베딩 벡터 배열
+ */
+async function getEmbeddings(texts) {
+  const response = await fetch(config.rag.teiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ inputs: texts }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`TEI error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  // TEI returns either { embeddings: [...] } or direct array
+  return data.embeddings || data;
+}
+
+/**
+ * ChromaDB에서 시맨틱 검색
+ * @param {number[]} embedding - 쿼리 임베딩
+ * @param {number} nResults - 반환할 결과 수
+ * @param {string} collectionName - 컬렉션 이름
+ * @param {object} whereFilter - 필터 조건
+ * @returns {Promise<object>} 검색 결과
+ */
+async function queryChroma(embedding, nResults = 5, collectionName = null, whereFilter = null) {
+  const collection = collectionName || config.rag.chromaCollection;
+  const chromaBase = config.rag.chromaUrl;
+
+  // ChromaDB v0.5+ API: POST /api/v1/collections/{collection_name}/query
+  const queryUrl = `${chromaBase}/api/v1/collections/${collection}/query`;
+  
+  const body = {
+    query_embeddings: [embedding],
+    n_results: nResults,
+    include: ['documents', 'metadatas', 'distances'],
+  };
+
+  if (whereFilter) {
+    body.where = whereFilter;
+  }
+
+  const response = await fetch(queryUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`ChromaDB error: ${response.status} - ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * ChromaDB 컬렉션 존재 여부 확인 및 생성
+ * @param {string} collectionName - 컬렉션 이름
+ */
+async function ensureCollection(collectionName) {
+  const chromaBase = config.rag.chromaUrl;
+  
+  // Check if collection exists
+  try {
+    const checkResp = await fetch(`${chromaBase}/api/v1/collections/${collectionName}`, {
+      method: 'GET',
+    });
+    if (checkResp.ok) return; // Collection exists
+  } catch (e) {
+    // Collection doesn't exist, create it
+  }
+
+  // Create collection
+  const createResp = await fetch(`${chromaBase}/api/v1/collections`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: collectionName,
+      metadata: { 'hnsw:space': 'cosine' },
+    }),
+  });
+
+  if (!createResp.ok && createResp.status !== 409) {
+    const errorText = await createResp.text();
+    throw new Error(`Failed to create collection: ${createResp.status} - ${errorText}`);
+  }
+}
+
+/**
+ * ChromaDB에 문서 upsert
+ * @param {string} collectionName - 컬렉션 이름
+ * @param {string[]} ids - 문서 ID 배열
+ * @param {number[][]} embeddings - 임베딩 배열
+ * @param {string[]} documents - 문서 텍스트 배열
+ * @param {object[]} metadatas - 메타데이터 배열
+ */
+async function upsertToChroma(collectionName, ids, embeddings, documents, metadatas) {
+  const chromaBase = config.rag.chromaUrl;
+  
+  await ensureCollection(collectionName);
+
+  const upsertUrl = `${chromaBase}/api/v1/collections/${collectionName}/upsert`;
+  
+  const response = await fetch(upsertUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ids,
+      embeddings,
+      documents,
+      metadatas,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`ChromaDB upsert error: ${response.status} - ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * ChromaDB에서 문서 삭제
+ * @param {string} collectionName - 컬렉션 이름
+ * @param {string[]} ids - 삭제할 문서 ID 배열
+ */
+async function deleteFromChroma(collectionName, ids) {
+  const chromaBase = config.rag.chromaUrl;
+  const deleteUrl = `${chromaBase}/api/v1/collections/${collectionName}/delete`;
+  
+  const response = await fetch(deleteUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`ChromaDB delete error: ${response.status} - ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * POST /search - 시맨틱 검색 (블로그 포스트)
+ * 
+ * Request Body:
+ * {
+ *   query: string,      // 검색 쿼리
+ *   n_results?: number  // 반환할 결과 수 (기본 5)
+ * }
+ * 
+ * Response:
+ * {
+ *   ok: true,
+ *   data: {
+ *     results: [{ document, metadata, distance }]
+ *   }
+ * }
+ */
+router.post('/search', async (req, res) => {
+  try {
+    const { query, n_results = 5 } = req.body;
+
+    if (!query || typeof query !== 'string') {
+      return res.status(400).json({ ok: false, error: 'query is required' });
+    }
+
+    // 1. 쿼리 텍스트를 임베딩으로 변환
+    const [embedding] = await getEmbeddings([query]);
+
+    // 2. ChromaDB에서 유사한 문서 검색
+    const chromaResult = await queryChroma(embedding, n_results);
+
+    // 3. 결과 포맷팅
+    const results = [];
+    if (chromaResult.documents && chromaResult.documents[0]) {
+      const docs = chromaResult.documents[0];
+      const metas = chromaResult.metadatas?.[0] || [];
+      const dists = chromaResult.distances?.[0] || [];
+
+      for (let i = 0; i < docs.length; i++) {
+        results.push({
+          document: docs[i],
+          metadata: metas[i] || {},
+          distance: dists[i] || null,
+        });
+      }
+    }
+
+    res.json({ ok: true, data: { results } });
+  } catch (err) {
+    console.error('RAG search error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * POST /embed - 텍스트 임베딩 생성
+ * 
+ * Request Body:
+ * {
+ *   texts: string[]  // 임베딩할 텍스트 배열
+ * }
+ * 
+ * Response:
+ * {
+ *   ok: true,
+ *   data: {
+ *     embeddings: number[][]
+ *   }
+ * }
+ */
+router.post('/embed', async (req, res) => {
+  try {
+    const { texts } = req.body;
+
+    if (!texts || !Array.isArray(texts) || texts.length === 0) {
+      return res.status(400).json({ ok: false, error: 'texts array is required' });
+    }
+
+    if (texts.length > 32) {
+      return res.status(400).json({ ok: false, error: 'Maximum 32 texts per request' });
+    }
+
+    const embeddings = await getEmbeddings(texts);
+
+    res.json({ ok: true, data: { embeddings } });
+  } catch (err) {
+    console.error('RAG embed error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * GET /health - RAG 서비스 상태 확인
+ */
+router.get('/health', async (req, res) => {
+  const status = {
+    tei: { ok: false, url: config.rag.teiUrl },
+    chroma: { ok: false, url: config.rag.chromaUrl },
+  };
+
+  // TEI 상태 확인
+  try {
+    const teiResp = await fetch(`${config.rag.teiUrl}/health`, { 
+      method: 'GET',
+      signal: AbortSignal.timeout(5000),
+    });
+    status.tei.ok = teiResp.ok;
+  } catch (err) {
+    status.tei.error = err.message;
+  }
+
+  // ChromaDB 상태 확인
+  try {
+    const chromaResp = await fetch(`${config.rag.chromaUrl}/api/v1/heartbeat`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(5000),
+    });
+    status.chroma.ok = chromaResp.ok;
+  } catch (err) {
+    status.chroma.error = err.message;
+  }
+
+  const allOk = status.tei.ok && status.chroma.ok;
+  res.status(allOk ? 200 : 503).json({
+    ok: allOk,
+    services: status,
+    collection: config.rag.chromaCollection,
+  });
+});
+
+// ========================================
+// MEMORY RAG ENDPOINTS
+// ========================================
+
+/**
+ * POST /memories/upsert - 사용자 메모리 임베딩 저장
+ * 
+ * Request Body:
+ * {
+ *   userId: string,
+ *   memories: [{ id, content, memoryType, category }]
+ * }
+ */
+router.post('/memories/upsert', async (req, res) => {
+  try {
+    const { userId, memories } = req.body;
+
+    if (!userId || typeof userId !== 'string') {
+      return res.status(400).json({ ok: false, error: 'userId is required' });
+    }
+
+    if (!memories || !Array.isArray(memories) || memories.length === 0) {
+      return res.status(400).json({ ok: false, error: 'memories array is required' });
+    }
+
+    if (memories.length > 20) {
+      return res.status(400).json({ ok: false, error: 'Maximum 20 memories per request' });
+    }
+
+    // 1. Extract texts for embedding
+    const texts = memories.map(m => m.content);
+    
+    // 2. Generate embeddings
+    const embeddings = await getEmbeddings(texts);
+
+    // 3. Prepare data for ChromaDB
+    const ids = memories.map(m => m.id);
+    const documents = texts;
+    const metadatas = memories.map(m => ({
+      user_id: userId,
+      memory_type: m.memoryType || 'fact',
+      category: m.category || '',
+      created_at: new Date().toISOString(),
+    }));
+
+    // 4. Upsert to user-specific collection
+    const collectionName = `${MEMORY_COLLECTION_PREFIX}${userId}`;
+    await upsertToChroma(collectionName, ids, embeddings, documents, metadatas);
+
+    res.json({ ok: true, data: { upserted: ids.length } });
+  } catch (err) {
+    console.error('Memory upsert error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * POST /memories/search - 사용자 메모리 시맨틱 검색
+ * 
+ * Request Body:
+ * {
+ *   userId: string,
+ *   query: string,
+ *   n_results?: number,
+ *   memoryType?: string,
+ *   category?: string
+ * }
+ */
+router.post('/memories/search', async (req, res) => {
+  try {
+    const { userId, query, n_results = 10, memoryType, category } = req.body;
+
+    if (!userId || typeof userId !== 'string') {
+      return res.status(400).json({ ok: false, error: 'userId is required' });
+    }
+
+    if (!query || typeof query !== 'string') {
+      return res.status(400).json({ ok: false, error: 'query is required' });
+    }
+
+    // 1. Generate query embedding
+    const [embedding] = await getEmbeddings([query]);
+
+    // 2. Build where filter
+    let whereFilter = null;
+    if (memoryType || category) {
+      whereFilter = {};
+      if (memoryType) whereFilter.memory_type = memoryType;
+      if (category) whereFilter.category = category;
+    }
+
+    // 3. Search in user-specific collection
+    const collectionName = `${MEMORY_COLLECTION_PREFIX}${userId}`;
+    
+    let chromaResult;
+    try {
+      chromaResult = await queryChroma(embedding, n_results, collectionName, whereFilter);
+    } catch (err) {
+      // Collection might not exist yet (no memories stored)
+      if (err.message.includes('404') || err.message.includes('not found')) {
+        return res.json({ ok: true, data: { results: [] } });
+      }
+      throw err;
+    }
+
+    // 4. Format results
+    const results = [];
+    if (chromaResult.documents && chromaResult.documents[0]) {
+      const docs = chromaResult.documents[0];
+      const metas = chromaResult.metadatas?.[0] || [];
+      const dists = chromaResult.distances?.[0] || [];
+      const ids = chromaResult.ids?.[0] || [];
+
+      for (let i = 0; i < docs.length; i++) {
+        results.push({
+          id: ids[i],
+          document: docs[i],
+          metadata: metas[i] || {},
+          distance: dists[i] || null,
+          // Convert distance to similarity score (cosine distance: 0 = identical)
+          similarity: dists[i] != null ? Math.max(0, 1 - dists[i]) : null,
+        });
+      }
+    }
+
+    res.json({ ok: true, data: { results } });
+  } catch (err) {
+    console.error('Memory search error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * DELETE /memories/:userId/:memoryId - 메모리 임베딩 삭제
+ */
+router.delete('/memories/:userId/:memoryId', async (req, res) => {
+  try {
+    const { userId, memoryId } = req.params;
+
+    if (!userId || !memoryId) {
+      return res.status(400).json({ ok: false, error: 'userId and memoryId are required' });
+    }
+
+    const collectionName = `${MEMORY_COLLECTION_PREFIX}${userId}`;
+    
+    try {
+      await deleteFromChroma(collectionName, [memoryId]);
+    } catch (err) {
+      // Ignore if collection or document doesn't exist
+      if (!err.message.includes('404') && !err.message.includes('not found')) {
+        throw err;
+      }
+    }
+
+    res.json({ ok: true, data: { deleted: true } });
+  } catch (err) {
+    console.error('Memory delete error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * POST /memories/batch-delete - 여러 메모리 임베딩 일괄 삭제
+ */
+router.post('/memories/batch-delete', async (req, res) => {
+  try {
+    const { userId, memoryIds } = req.body;
+
+    if (!userId || !Array.isArray(memoryIds) || memoryIds.length === 0) {
+      return res.status(400).json({ ok: false, error: 'userId and memoryIds are required' });
+    }
+
+    const collectionName = `${MEMORY_COLLECTION_PREFIX}${userId}`;
+    
+    try {
+      await deleteFromChroma(collectionName, memoryIds);
+    } catch (err) {
+      if (!err.message.includes('404') && !err.message.includes('not found')) {
+        throw err;
+      }
+    }
+
+    res.json({ ok: true, data: { deleted: memoryIds.length } });
+  } catch (err) {
+    console.error('Memory batch-delete error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+export default router;

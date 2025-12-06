@@ -121,3 +121,21 @@ export function buildRAGContextPrompt(ragContext: string | null): string {
     '',
   ].join('\n');
 }
+
+/**
+ * 사용자 메모리 컨텍스트 프롬프트 생성
+ */
+export function buildMemoryContextPrompt(memoryContext: string | null): string {
+  if (!memoryContext) return '';
+
+  return [
+    '[사용자 정보]',
+    '다음은 이전 대화에서 파악한 사용자에 대한 정보입니다.',
+    '답변 시 이 정보를 자연스럽게 활용하되, 명시적으로 언급하지는 마세요:',
+    '',
+    memoryContext,
+    '',
+    '---',
+    '',
+  ].join('\n');
+}
