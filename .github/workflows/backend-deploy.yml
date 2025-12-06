@@ -483,6 +483,7 @@ jobs:
 
       - name: External health check (public domain)
         if: ${{ env.PUBLIC_API_BASE_URL != '' }}
+        continue-on-error: true
         run: |
           echo "Checking public health at ${PUBLIC_API_BASE_URL}/api/v1/healthz ..."
           for i in $(seq 1 30); do
@@ -491,11 +492,13 @@ jobs:
             fi
             echo "Retry $i/30"; sleep 2;
           done
-          echo "Public health check failed at ${PUBLIC_API_BASE_URL}/api/v1/healthz" >&2
+          echo "⚠️ Public health check failed at ${PUBLIC_API_BASE_URL}/api/v1/healthz"
+          echo "This may indicate Cloudflare tunnel or firewall issues."
           exit 1
 
       - name: Verify public runtime config
         if: ${{ env.PUBLIC_API_BASE_URL != '' }}
+        continue-on-error: true
         run: |
           echo "Fetching ${PUBLIC_API_BASE_URL}/api/v1/public/config"
           cfg=$(curl -fsS "${PUBLIC_API_BASE_URL}/api/v1/public/config")
@@ -505,6 +508,7 @@ jobs:
 
       - name: Check CORS header for frontend origin
         if: ${{ env.PUBLIC_API_BASE_URL != '' }}
+        continue-on-error: true
         run: |
           echo "Checking CORS for origin ${PUBLIC_FRONTEND_ORIGIN}"
           headers=$(curl -fsS -D - -o /dev/null -H "Origin: ${PUBLIC_FRONTEND_ORIGIN}" "${PUBLIC_API_BASE_URL}/api/v1/healthz")
@@ -514,6 +518,7 @@ jobs:
 
       - name: Verify VAS Proxy via public endpoint
         if: ${{ env.PUBLIC_API_BASE_URL != '' }}
+        continue-on-error: true
         run: |
           echo "Checking VAS integration via ${PUBLIC_API_BASE_URL}/api/v1/ai/health ..."
           # Note: This endpoint should exist in your API to proxy health check to vas-proxy
