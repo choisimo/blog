@@ -1,7 +1,208 @@
 import { Router } from 'express';
-import { generateContent, tryParseJson } from '../lib/gemini.js';
+import { generateContent, tryParseJson, getAIServeClient } from '../lib/ai-serve.js';
+import { config } from '../config.js';
 
 const router = Router();
+
+// ============================================================================
+// Auto-Chat Endpoint (replaces ai-call-gateway proxy target)
+// POST /api/v1/ai/auto-chat
+// ============================================================================
+
+router.post('/auto-chat', async (req, res, next) => {
+  try {
+    const { messages, temperature, maxTokens } = req.body || {};
+
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        error: { message: 'messages array is required', code: 'INVALID_REQUEST' },
+      });
+    }
+
+    // Use AI Serve client for chat
+    const client = getAIServeClient();
+    const result = await client.chat(messages, {
+      // temperature and maxTokens can be passed if ai-serve supports them
+    });
+
+    return res.json({
+      ok: true,
+      data: {
+        content: result.content,
+        model: result.model,
+        provider: result.provider,
+      },
+    });
+  } catch (err) {
+    console.error('auto-chat error:', err);
+    return next(err);
+  }
+});
+
+// GET /api/v1/ai/health - Health check
+router.get('/health', async (req, res) => {
+  const client = getAIServeClient();
+  const aiServeHealth = await client.health();
+
+  res.json({
+    ok: true,
+    data: {
+      status: aiServeHealth.ok ? 'healthy' : 'degraded',
+      aiServe: aiServeHealth,
+      // Legacy fallback status
+      hasGeminiKey: !!config.gemini.apiKey,
+      hasOpenRouterKey: !!config.openrouter.apiKey,
+      timestamp: new Date().toISOString(),
+    },
+  });
+});
+
+// GET /api/v1/ai/status - Status check
+router.get('/status', async (req, res) => {
+  const client = getAIServeClient();
+  let providers = null;
+
+  try {
+    providers = await client.providers();
+  } catch {
+    // AI Serve might not be available
+  }
+
+  res.json({
+    ok: true,
+    data: {
+      status: 'ok',
+      model: config.aiServe.defaultModel,
+      provider: config.aiServe.defaultProvider,
+      aiServe: {
+        baseUrl: config.aiServe.baseUrl,
+        providers: providers?.providers || [],
+      },
+      features: {
+        chat: true,
+        vision: true,
+        summarize: true,
+        generate: true,
+      },
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+    },
+  });
+});
+
+// ============================================================================
+// Vision Analysis Endpoint (replaces ai-vision-gateway)
+// POST /api/v1/ai/vision/analyze
+// ============================================================================
+
+const DEFAULT_VISION_PROMPT = `이 이미지를 분석해주세요. 다음 내용을 간결하게 설명해주세요:
+1. 이미지에 보이는 주요 요소들
+2. 전체적인 분위기나 맥락
+3. 텍스트가 있다면 해당 내용
+
+한국어로 2-3문장으로 간결하게 요약해주세요.`;
+
+/**
+ * Fetch image from URL and convert to base64
+ */
+async function fetchImageAsBase64(imageUrl) {
+  const response = await fetch(imageUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image: ${response.status}`);
+  }
+
+  const contentType = response.headers.get('content-type') || 'image/jpeg';
+  const arrayBuffer = await response.arrayBuffer();
+  const base64 = Buffer.from(arrayBuffer).toString('base64');
+
+  return { base64, mimeType: contentType };
+}
+
+router.post('/vision/analyze', async (req, res, next) => {
+  try {
+    const { imageUrl, imageBase64, mimeType: inputMimeType, prompt, provider: preferredProvider } = req.body || {};
+
+    let base64Data;
+    let mimeType;
+
+    // Get image data from either base64 or URL
+    if (imageBase64) {
+      base64Data = imageBase64;
+      mimeType = inputMimeType || 'image/jpeg';
+    } else if (imageUrl) {
+      try {
+        const fetched = await fetchImageAsBase64(imageUrl);
+        base64Data = fetched.base64;
+        mimeType = fetched.mimeType;
+      } catch (err) {
+        return res.status(400).json({
+          ok: false,
+          error: { message: err.message || 'Failed to fetch image', code: 'IMAGE_FETCH_ERROR' },
+        });
+      }
+    } else {
+      return res.status(400).json({
+        ok: false,
+        error: { message: 'imageUrl or imageBase64 required', code: 'INVALID_REQUEST' },
+      });
+    }
+
+    const analysisPrompt = prompt || DEFAULT_VISION_PROMPT;
+
+    // Use AI Serve for vision analysis
+    const client = getAIServeClient();
+    try {
+      const description = await client.vision(base64Data, mimeType, analysisPrompt, {
+        model: 'gpt-4o', // Vision-capable model
+      });
+
+      return res.json({
+        ok: true,
+        data: {
+          description,
+          provider: 'ai-serve',
+        },
+      });
+    } catch (err) {
+      console.error('AI Serve vision failed:', err.message);
+      return res.status(502).json({
+        ok: false,
+        error: {
+          message: err.message || 'Vision analysis failed',
+          code: 'VISION_ERROR',
+        },
+      });
+    }
+  } catch (err) {
+    console.error('vision/analyze error:', err);
+    return next(err);
+  }
+});
+
+// GET /api/v1/ai/vision/health - Vision health check
+router.get('/vision/health', async (req, res) => {
+  const client = getAIServeClient();
+  const aiServeHealth = await client.health();
+
+  res.json({
+    ok: true,
+    data: {
+      status: aiServeHealth.ok ? 'ok' : 'degraded',
+      providers: {
+        'ai-serve': aiServeHealth.ok,
+        // Legacy fallback
+        gemini: !!config.gemini.apiKey,
+        openrouter: !!config.openrouter.apiKey,
+      },
+      timestamp: new Date().toISOString(),
+    },
+  });
+});
+
+// ============================================================================
+// Existing Endpoints (summarize, sketch, prism, chain, generate)
+// ============================================================================
 
 function safeTruncate(s, n) {
   if (!s) return s;
@@ -174,7 +375,9 @@ router.post('/chain', async (req, res, next) => {
   }
 });
 
-export default router;
+// ============================================================================
+// Raw Generate Endpoints
+// ============================================================================
 
 // Raw generate endpoint for AI Memo and other generic prompts
 // Request: { prompt: string, temperature?: number }
@@ -284,3 +487,5 @@ router.get('/generate/stream', async (req, res, next) => {
     return next(err);
   }
 });
+
+export default router;

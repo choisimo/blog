@@ -6,6 +6,8 @@ import multer from 'multer';
 import sharp from 'sharp';
 import { config } from '../config.js';
 import requireAdmin from '../middleware/adminAuth.js';
+import { upload as r2Upload, isR2Configured, generateKey } from '../lib/r2.js';
+import { getVASClient } from '../lib/ai-serve.js';
 
 const router = Router();
 
@@ -175,6 +177,74 @@ router.delete('/:year/:slug/:filename', requireAdmin, async (req, res, next) => 
 
     return res.json({ ok: true, data: { deleted: true, path: `/images/${rel}` } });
   } catch (err) {
+    return next(err);
+  }
+});
+
+/**
+ * POST /api/v1/images/chat-upload
+ * Upload image to R2 for AI Chat and perform vision analysis
+ * 
+ * Returns: { url, key, size, contentType, imageAnalysis? }
+ */
+router.post('/chat-upload', upload.single('file'), async (req, res, next) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ ok: false, error: 'file is required' });
+    }
+
+    // Check if R2 is configured
+    if (!isR2Configured()) {
+      return res.status(503).json({
+        ok: false,
+        error: 'R2 storage not configured (set CF_ACCOUNT_ID, CF_API_TOKEN)',
+      });
+    }
+
+    // Generate R2 key
+    const key = generateKey(file.originalname || 'image', 'ai-chat');
+
+    // Upload to R2
+    const result = await r2Upload(key, file.buffer, {
+      contentType: file.mimetype || 'application/octet-stream',
+    });
+
+    // Perform AI vision analysis if it's an image
+    let imageAnalysis = null;
+    if (file.mimetype?.startsWith('image/')) {
+      try {
+        const base64 = file.buffer.toString('base64');
+        const client = getVASClient();
+        
+        const analysisPrompt = `이 이미지를 분석해주세요. 다음 내용을 간결하게 설명해주세요:
+1. 이미지에 보이는 주요 요소들
+2. 전체적인 분위기나 맥락
+3. 텍스트가 있다면 해당 내용
+
+한국어로 2-3문장으로 간결하게 요약해주세요.`;
+
+        imageAnalysis = await client.vision(base64, file.mimetype, analysisPrompt, {
+          model: 'gpt-4o',
+        });
+      } catch (err) {
+        // Vision analysis failed, but upload succeeded - continue without analysis
+        console.error('Vision analysis failed:', err.message);
+      }
+    }
+
+    return res.status(201).json({
+      ok: true,
+      data: {
+        url: result.url,
+        key: result.key,
+        size: result.size,
+        contentType: result.contentType,
+        imageAnalysis,
+      },
+    });
+  } catch (err) {
+    console.error('chat-upload error:', err);
     return next(err);
   }
 });

@@ -7,11 +7,16 @@ import { config, publicRuntimeConfig } from './config.js';
 
 import aiRouter from './routes/ai.js';
 import commentsRouter from './routes/comments.js';
+import analyticsRouter from './routes/analytics.js';
+import chatRouter from './routes/chat.js';
+import translateRouter from './routes/translate.js';
+import userContentRouter from './routes/userContent.js';
 import ogRouter from './routes/og.js';
 import adminRouter from './routes/admin.js';
 import postsRouter from './routes/posts.js';
 import imagesRouter from './routes/images.js';
 import authRouter from './routes/auth.js';
+import ragRouter from './routes/rag.js';
 
 const app = express();
 
@@ -63,11 +68,16 @@ app.get('/api/v1/public/config', (req, res) => {
 // routes
 app.use('/api/v1/ai', aiRouter);
 app.use('/api/v1/comments', commentsRouter);
+app.use('/api/v1/analytics', analyticsRouter);
+app.use('/api/v1/chat', chatRouter);
+app.use('/api/v1/translate', translateRouter);
+app.use('/api', userContentRouter);  // /api/personas, /api/memos
 app.use('/api/v1/og', ogRouter);
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/posts', postsRouter);
 app.use('/api/v1/images', imagesRouter);
 app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/rag', ragRouter);
 
 // not found
 app.use((req, res) => {

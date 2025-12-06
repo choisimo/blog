@@ -1,0 +1,89 @@
+# =============================================================================
+# Docker Compose - Test Environment (blog-test.nodove.com)
+# =============================================================================
+# Frontend-only test deployment that connects to production backend
+#
+# Architecture:
+#   Cloudflare Tunnel → Nginx → Frontend
+#   Frontend → api.nodove.com (production backend via Cloudflare Tunnel)
+#
+# Services:
+#   - cloudflared-test: Cloudflare Tunnel for blog-test.nodove.com
+#   - nginx-test: Reverse proxy
+#   - frontend-test: Frontend SPA
+#
+# Backend:
+#   Uses production backend at https://api.nodove.com
+#   - Backend API: https://api.nodove.com/api/*
+#   - AI Chat API: https://api.nodove.com/ai/*
+#   - VAS Core: https://api.nodove.com/vas/*
+#
+# Setup:
+#   1. Create a tunnel in Cloudflare Zero Trust for blog-test.nodove.com
+#   2. Save tunnel token to .env.test as CLOUDFLARE_TUNNEL_TOKEN_TEST
+#   3. docker compose -f docker-compose.test.yml --env-file .env.test up -d --build
+#
+# URL: https://blog-test.nodove.com
+# Backend: https://api.nodove.com
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Cloudflare Tunnel (Public Entry Point)
+  # ---------------------------------------------------------------------------
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN_TEST}
+    depends_on:
+      - nginx
+    networks:
+      - test-network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Nginx Reverse Proxy
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:alpine
+    depends_on:
+      - frontend
+    expose:
+      - "80"
+    volumes:
+      - ./nginx-test.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - test-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Frontend (Static SPA) - Connects to api.nodove.com
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=https://api.nodove.com
+        - VITE_SITE_BASE_URL=https://blog-test.nodove.com
+    expose:
+      - "80"
+    networks:
+      - test-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  test-network:
+    driver: bridge

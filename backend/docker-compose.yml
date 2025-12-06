@@ -1,16 +1,339 @@
+# =============================================================================
+# Docker Compose - Full Stack with Cloudflare Tunnel + Virtual Agent Service
+# =============================================================================
+#
+# Architecture (Single Entry Point):
+#
+#   ┌─────────────────────────────────────────────────────────────────────────┐
+#   │                         Internet                                        │
+#   │                            │                                            │
+#   │                            ▼                                            │
+#   │                   Cloudflare Tunnel                                     │
+#   │                            │                                            │
+#   │                            ▼                                            │
+#   │  ┌──────────────────────────────────────────────────────────────────┐  │
+#   │  │                    nginx:80 (Single Entry)                       │  │
+#   │  │  /api/*      → api:5080                                          │  │
+#   │  │  /ai/*       → vas-proxy:7016                                    │  │
+#   │  │  /vas/*      → vas-core:7012                                     │  │
+#   │  │  /vas-admin/* → vas-admin:7080                                   │  │
+#   │  │  /terminal/* → terminal-server:8080                              │  │
+#   │  └──────────────────────────────────────────────────────────────────┘  │
+#   │                                                                         │
+#   │  Internal Services (Docker bridge network only):                        │
+#   │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐       │
+#   │  │    api      │ │  vas-core   │ │  vas-proxy  │ │  vas-admin  │       │
+#   │  │   :5080     │ │   :7012     │ │   :7016     │ │   :7080     │       │
+#   │  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘       │
+#   │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐                       │
+#   │  │  terminal   │ │  embedding  │ │  chromadb   │                       │
+#   │  │   :8080     │ │    :80      │ │   :8000     │                       │
+#   │  └─────────────┘ └─────────────┘ └─────────────┘                       │
+#   └─────────────────────────────────────────────────────────────────────────┘
+#
+# Public URL Routes (via api.nodove.com):
+#   https://api.nodove.com/api/*       → Backend API
+#   https://api.nodove.com/ai/*        → VAS Chat API (auto-chat)
+#   https://api.nodove.com/vas/*       → VAS Core (direct)
+#   https://api.nodove.com/vas-admin/* → VAS Admin UI
+#   https://api.nodove.com/terminal/*  → Terminal WebSocket
+#
+# Localhost ports (for self-hosted runner / debugging):
+#   127.0.0.1:8180 → embedding-server:80   (TEI)
+#   127.0.0.1:8100 → chromadb:8000         (Vector DB)
+#   127.0.0.1:7012 → vas-core:7012         (OpenCode API for auth)
+#
+# Setup:
+#   1. Cloudflare Zero Trust에서 터널 생성
+#   2. 터널 Public Hostname 설정: api.nodove.com → http://nginx:80
+#   3. 터널 토큰을 .env 파일에 CLOUDFLARE_TUNNEL_TOKEN으로 저장
+#   4. docker compose up -d
+#   5. GitHub Copilot 인증 (호스트에서):
+#      npm install -g opencode@latest
+#      OPENCODE_API_URL=http://127.0.0.1:7012 opencode auth login
+#      docker compose restart vas-core
+# =============================================================================
+
 services:
-  api:
-    build: .
-    env_file: .env
-    ports:
-      - "5080:5080"
+  # ---------------------------------------------------------------------------
+  # Cloudflare Tunnel (connects to nginx only)
+  # ---------------------------------------------------------------------------
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      nginx:
+        condition: service_healthy
+    networks:
+      - backend
     restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Nginx Reverse Proxy (Single Entry Point)
+  # ---------------------------------------------------------------------------
+  # All external traffic comes through here.
+  # Routes to internal services based on URL path.
+  # ---------------------------------------------------------------------------
   nginx:
     image: nginx:alpine
     depends_on:
-      - api
-    ports:
-      - "8091:80"
+      api:
+        condition: service_healthy
+      vas-proxy:
+        condition: service_healthy
+    expose:
+      - "80"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - backend
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # Backend API Server
+  # ---------------------------------------------------------------------------
+  api:
+    build: .
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - APP_ENV=${APP_ENV:-production}
+      - HOST=0.0.0.0
+      - PORT=5080
+      # VAS endpoints (internal Docker network)
+      - AI_SERVE_BASE_URL=http://vas-proxy:7016
+      - VAS_CORE_URL=http://vas-core:7012
+      - AI_SERVE_DEFAULT_PROVIDER=github-copilot
+      - AI_SERVE_DEFAULT_MODEL=gpt-4.1
+    expose:
+      - "5080"
+    networks:
+      - backend
+    depends_on:
+      vas-proxy:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"const http=require('http'); http.get('http://localhost:5080/api/v1/healthz', (r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # TEI Embedding Server (Internal + localhost for self-hosted runner)
+  # ---------------------------------------------------------------------------
+  embedding-server:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2.3
+    command: --model-id sentence-transformers/all-MiniLM-L6-v2
+    ports:
+      - "127.0.0.1:8180:80"
+    volumes:
+      - tei-data:/data
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # ChromaDB Vector Database (Internal + localhost for self-hosted runner)
+  # ---------------------------------------------------------------------------
+  chromadb:
+    image: chromadb/chroma:0.5.23
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+      - ANONYMIZED_TELEMETRY=FALSE
+    ports:
+      - "127.0.0.1:8100:8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+    networks:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Terminal Server (WebSocket PTY)
+  # ---------------------------------------------------------------------------
+  terminal-server:
+    build:
+      context: ./terminal-server
+    environment:
+      - ORIGIN_SECRET_KEY=${ORIGIN_SECRET_KEY:-default-secret-change-me}
+      - SANDBOX_IMAGE=${SANDBOX_IMAGE:-alpine:latest}
+    expose:
+      - "8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Virtual Agent Service (VAS) Stack
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # VAS Core (OpenCode Engine)
+  # ---------------------------------------------------------------------------
+  vas-core:
+    build:
+      context: ./opencode-serve
+      dockerfile: ai-serve.Dockerfile
+    image: vas-core:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7012:7012"
+    expose:
+      - "7012"
+    environment:
+      NODE_ENV: production
+      OPENCODE_HOST: 0.0.0.0
+      OPENCODE_PORT: 7012
+    command:
+      - /app/node_modules/.bin/opencode
+      - serve
+      - --hostname
+      - 0.0.0.0
+      - --port
+      - "7012"
+    volumes:
+      - vas-data:/home/node/.local/share/opencode
+      - vas-logs:/var/log/opencode
+      - ./opencode-config:/home/node/.config/opencode
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"const http=require('http'); http.get('http://localhost:7012/app', ()=>process.exit(0)).on('error', ()=>process.exit(1));\" "]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+
+  # ---------------------------------------------------------------------------
+  # VAS Bootstrap (Auto JWT Token Generation)
+  # ---------------------------------------------------------------------------
+  vas-bootstrap:
+    image: curlimages/curl:latest
+    restart: "no"
+    user: "0:0"
+    entrypoint: ["/bin/sh", "/app/bootstrap-token.sh"]
+    environment:
+      ADMIN_URL: http://vas-admin:7080
+      TOKEN_FILE: /app/shared/auto-token.jwt
+      MAX_RETRIES: "60"
+      RETRY_INTERVAL: "2"
+    volumes:
+      - ./opencode-serve/bootstrap-token.sh:/app/bootstrap-token.sh:ro
+      - vas-shared:/app/shared
+    networks:
+      - backend
+    depends_on:
+      vas-admin:
+        condition: service_started
+
+  # ---------------------------------------------------------------------------
+  # VAS Proxy (Simplified /auto-chat API)
+  # ---------------------------------------------------------------------------
+  vas-proxy:
+    image: node:20-alpine
+    restart: unless-stopped
+    command: ["node", "/app/auto-chat-proxy.js"]
+    environment:
+      OPENCODE_BASE: http://vas-core:7012
+      PROXY_PORT: 7016
+      DEFAULT_PROVIDER: github-copilot
+      DEFAULT_MODEL: gpt-4.1
+      DEFAULT_SESSION_TITLE: Auto Session
+      OPENCODE_BEARER_TOKEN_FILE: /app/shared/auto-token.jwt
+      TOKEN_FILE_POLL_INTERVAL: "3000"
+      TOKEN_FILE_MAX_WAIT: "180000"
+      MESSAGE_TIMEOUT: "120000"
+    expose:
+      - "7016"
+    volumes:
+      - ./opencode-serve/auto-chat-proxy.js:/app/auto-chat-proxy.js:ro
+      - vas-shared:/app/shared:ro
+    networks:
+      - backend
+    depends_on:
+      vas-core:
+        condition: service_healthy
+      vas-bootstrap:
+        condition: service_completed_successfully
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"const http=require('http'); http.get('http://localhost:7016/health', (r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # VAS Admin (Token Management UI)
+  # ---------------------------------------------------------------------------
+  vas-admin:
+    build:
+      context: ./opencode-serve/go-proxy-admin
+      dockerfile: Dockerfile
+    image: vas-admin:latest
+    restart: unless-stopped
+    expose:
+      - "7080"
+    environment:
+      OPENCODE_BASE: http://vas-core:7012
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-auto-generated-secret-change-in-production}
+      ADMIN_PORT: 7080
+      ADMIN_DB_PATH: /app/data/vas-admin.db
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      AUTO_BOOTSTRAP: "true"
+    volumes:
+      - vas-admin-data:/app/data
+    networks:
+      - backend
+    depends_on:
+      vas-core:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  backend:
+    driver: bridge
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  tei-data:
+    driver: local
+  chroma-data:
+    driver: local
+  vas-data:
+    driver: local
+  vas-logs:
+    driver: local
+  vas-admin-data:
+    driver: local
+  vas-shared:
+    driver: local

@@ -1,84 +1,73 @@
-# Cloudflare Tunnel Configuration
-# Place this file at /etc/cloudflared/config.yml
-# 
-# Prerequisites:
-# 1. Install cloudflared: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/
-# 2. Authenticate: cloudflared tunnel login
-# 3. Create tunnel: cloudflared tunnel create blog-api
-# 4. Route DNS: cloudflared tunnel route dns blog-api api.yourdomain.com
-# 5. Copy credentials: sudo cp ~/.cloudflared/<tunnel-uuid>.json /etc/cloudflared/
-# 6. Update this config with your tunnel name and UUID
-# 7. Start service: sudo systemctl enable --now cloudflared
-
-# Tunnel name (as created with 'cloudflared tunnel create')
-tunnel: blog-api
-
-# Path to credentials file (UUID will be shown after tunnel creation)
-# Replace <tunnel-uuid> with your actual tunnel UUID
-credentials-file: /etc/cloudflared/<tunnel-uuid>.json
-
-# Logging
-loglevel: info
-logfile: /var/log/cloudflared.log
-
-# Metrics server (optional, for monitoring)
-metrics: 127.0.0.1:2000
-
-# Update auto-restart
-autoupdate-freq: 24h
-
-# Grace period for shutdown
-grace-period: 30s
-
-# Ingress rules (routes). When running cloudflared alongside other services in Docker,
-# reference the container names instead of localhost so the tunnel can reach them
-# over the shared bridge network.
-ingress:
-  # Embedding (TEI) service
-  - hostname: tei.yourdomain.com
-    service: http://embedding-server:80
-    originRequest:
-      noTLSVerify: true
-
-  # ChromaDB service
-  - hostname: chroma.yourdomain.com
-    service: http://chromadb:8000
-    originRequest:
-      noTLSVerify: true
-
-  # Backend API service
-  - hostname: api.yourdomain.com
-    service: http://opencode-serve:7012
-    originRequest:
-      noTLSVerify: true
-
-  # Terminal WebSocket service
-  # Handles real-time terminal connections via WebSocket
-  - hostname: terminal.yourdomain.com
-    service: http://localhost:8080
-    originRequest:
-      noTLSVerify: true
-      # WebSocket-specific settings
-      http2Origin: false
-      connectTimeout: 30s
-      # Long timeouts for WebSocket connections
-      tcpKeepAlive: 30s
-      keepAliveTimeout: 600s
-
-  # Catch-all rule (required)
-  - service: http_status:404
-
-# Tunnel-specific settings
-originRequest:
-  # Global connection pool
-  keepAliveConnections: 10
-  # Global timeout
-  connectTimeout: 30s
-  # Expect continue timeout
-  expectContinueTimeout: 90s
-  # Keep alive timeout
-  keepAliveTimeout: 90s
-
-# Warp routing (optional, for private network access)
-# warp-routing:
-#   enabled: false
+# =============================================================================
+# Cloudflare Tunnel 설정 가이드 (Docker + Token 방식)
+# =============================================================================
+#
+# 이 파일은 참고용입니다. 토큰 방식에서는 Cloudflare 대시보드에서 설정합니다.
+#
+# Architecture:
+#   Internet → api.nodove.com → Cloudflare Tunnel → cloudflared (Docker)
+#       → nginx (Docker network) → api (Docker network)
+#
+#   Internet → ai-serve.nodove.com → Cloudflare Tunnel → cloudflared (Docker)
+#       → ai-serve (Docker network, port 4096)
+#
+# Internal services (localhost only, no tunnel):
+#   - TEI:      127.0.0.1:8180
+#   - ChromaDB: 127.0.0.1:8100
+#   - Terminal: 127.0.0.1:8280
+#   - AI Serve: 127.0.0.1:4096 (also exposed via tunnel)
+#
+# =============================================================================
+# 설정 방법
+# =============================================================================
+#
+# 1. Cloudflare Zero Trust 대시보드 접속:
+#    https://one.dash.cloudflare.com/
+#
+# 2. Networks → Tunnels → Create a tunnel
+#
+# 3. Tunnel type: Cloudflared 선택
+#
+# 4. Tunnel 이름 입력: blog-api
+#
+# 5. Install and run a connector 단계에서:
+#    - Docker 탭 선택
+#    - 표시된 토큰 복사 (TUNNEL_TOKEN=... 부분)
+#
+# 6. 토큰을 .env 파일에 저장:
+#    echo "CLOUDFLARE_TUNNEL_TOKEN=<복사한-토큰>" >> backend/.env
+#
+# 7. Public Hostnames 설정:
+#
+#    [Hostname 1 - API Server]
+#    - Domain: api.nodove.com
+#    - Service Type: HTTP
+#    - URL: nginx:80
+#    (Docker 네트워크 내부에서 nginx 서비스 이름으로 접근)
+#
+#    [Hostname 2 - AI Serve (LLM Gateway)]
+#    - Domain: ai-serve.nodove.com
+#    - Service Type: HTTP
+#    - URL: ai-serve:4096
+#    (Docker 네트워크 내부에서 ai-serve 서비스로 접근)
+#
+# 8. Docker Compose 실행:
+#    cd backend && docker compose up -d
+#
+# =============================================================================
+# Ingress 규칙 (Cloudflare 대시보드에서 설정)
+# =============================================================================
+#
+# [Rule 1]
+# Public Hostname: api.nodove.com
+# Service: http://nginx:80
+#
+# [Rule 2]
+# Public Hostname: ai-serve.nodove.com
+# Service: http://ai-serve:4096
+#
+# 추가 설정 (Optional):
+#   - No TLS Verify: Enabled (내부 HTTP 통신)
+#   - HTTP Host Header: (각 도메인에 맞게 설정)
+#
+# =============================================================================

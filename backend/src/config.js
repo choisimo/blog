@@ -9,7 +9,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env'), override: true });
 
 const schema = z.object({
   APP_ENV: z
-    .enum(['development', 'staging', 'production'])
+    .enum(['development', 'staging', 'production', 'test'])
     .default('development'),
   HOST: z.string().default('0.0.0.0'),
   PORT: z.coerce.number().int().positive().default(5080),
@@ -25,8 +25,25 @@ const schema = z.object({
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(60),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
 
+  // Virtual Agent Service (VAS) - Primary AI backend via vas-proxy
+  AI_SERVE_BASE_URL: z.string().default('http://vas-proxy:7016'),
+  VAS_CORE_URL: z.string().default('http://vas-core:7012'),
+  AI_SERVE_DEFAULT_PROVIDER: z.string().default('github-copilot'),
+  AI_SERVE_DEFAULT_MODEL: z.string().default('gpt-4.1'),
+
+  // Legacy: Gemini (fallback if AI Serve unavailable)
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().default('gemini-1.5-flash'),
+  OPENROUTER_API_KEY: z.string().optional(),
+
+  // Cloudflare D1 (for comments/analytics)
+  CF_ACCOUNT_ID: z.string().optional(),
+  CF_API_TOKEN: z.string().optional(),
+  D1_DATABASE_ID: z.string().optional(),
+
+  // Cloudflare R2 (for image storage)
+  R2_BUCKET_NAME: z.string().default('blog'),
+  R2_ASSETS_BASE_URL: z.string().default('https://assets-b.nodove.com'),
 
   FIREBASE_SERVICE_ACCOUNT_JSON: z.string().optional(),
   FIREBASE_PROJECT_ID: z.string().optional(),
@@ -42,6 +59,11 @@ const schema = z.object({
   ADMIN_USERNAME: z.string().optional(),
   ADMIN_PASSWORD: z.string().optional(),
   VERCEL_DEPLOY_HOOK_URL: z.string().optional(),
+
+  // RAG Services (Docker internal URLs)
+  TEI_URL: z.string().default('http://embedding-server:80'),
+  CHROMA_URL: z.string().default('http://chromadb:8000'),
+  CHROMA_COLLECTION: z.string().default('blog-posts-all-MiniLM-L6-v2'),
 });
 
 const raw = schema.parse(process.env);
@@ -70,9 +92,22 @@ export const config = {
     windowMs: raw.RATE_LIMIT_WINDOW_MS,
   },
 
+  // Virtual Agent Service (VAS) - Primary AI backend
+  aiServe: {
+    baseUrl: raw.AI_SERVE_BASE_URL,
+    vasCoreUrl: raw.VAS_CORE_URL,
+    defaultProvider: raw.AI_SERVE_DEFAULT_PROVIDER,
+    defaultModel: raw.AI_SERVE_DEFAULT_MODEL,
+  },
+
+  // Legacy: Gemini (fallback)
   gemini: {
     apiKey: raw.GEMINI_API_KEY,
     model: raw.GEMINI_MODEL,
+  },
+
+  openrouter: {
+    apiKey: raw.OPENROUTER_API_KEY,
   },
 
   firebase: {
@@ -108,6 +143,12 @@ export const config = {
 
   integrations: {
     vercelDeployHookUrl: raw.VERCEL_DEPLOY_HOOK_URL,
+  },
+
+  rag: {
+    teiUrl: raw.TEI_URL,
+    chromaUrl: raw.CHROMA_URL,
+    chromaCollection: raw.CHROMA_COLLECTION,
   },
 };
 

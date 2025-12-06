@@ -1,9 +1,10 @@
 import { Router } from 'express';
-import { getDb, FieldValue } from '../lib/firebase.js';
+import { queryAll, queryOne, execute, isD1Configured } from '../lib/d1.js';
+import crypto from 'crypto';
 
 const router = Router();
 
-// In-memory listener registry (single-process only)
+// In-memory listener registry (single-process only) for SSE
 const listenersByPost = new Map();
 function addListener(postId, send) {
   const key = String(postId);
@@ -35,46 +36,44 @@ function broadcast(postId, payload) {
   }
 }
 
-function toIso(ts) {
-  try {
-    return typeof ts?.toDate === 'function' ? ts.toDate().toISOString() : null;
-  } catch {
-    return null;
+// Middleware to check D1 configuration
+const requireD1 = (req, res, next) => {
+  if (!isD1Configured()) {
+    return res.status(503).json({
+      ok: false,
+      error: 'Comments service not configured (D1 credentials missing)',
+    });
   }
-}
+  next();
+};
 
-router.get('/', async (req, res, next) => {
+/**
+ * GET /comments?postId=xxx - Get comments for a post
+ */
+router.get('/', requireD1, async (req, res, next) => {
   try {
     const postId = req.query.postId;
     if (!postId)
       return res.status(400).json({ ok: false, error: 'postId is required' });
 
-    const db = getDb();
-    const snap = await db
-      .collection('comments')
-      .where('postId', '==', String(postId))
-      .where('archived', '==', false)
-      .get();
+    const items = await queryAll(
+      `SELECT id, post_id, author, content, email, status, created_at, updated_at
+       FROM comments
+       WHERE post_id = ? AND status = 'visible'
+       ORDER BY created_at ASC`,
+      String(postId).trim().slice(0, 256)
+    );
 
-    const comments = [];
-    snap.forEach(doc => {
-      const d = doc.data();
-      comments.push({
-        id: doc.id,
-        postId: d.postId,
-        author: d.author,
-        content: d.content,
-        website: d.website || null,
-        parentId: d.parentId || null,
-        createdAt: toIso(d.createdAt),
-      });
-    });
-
-    comments.sort((a, b) => {
-      const ta = a.createdAt ? Date.parse(a.createdAt) : 0;
-      const tb = b.createdAt ? Date.parse(b.createdAt) : 0;
-      return ta - tb;
-    });
+    // Map to frontend expected format
+    const comments = items.map((d) => ({
+      id: d.id,
+      postId: d.post_id,
+      author: d.author,
+      content: d.content,
+      website: null, // D1 schema uses email, not website
+      parentId: null,
+      createdAt: d.created_at,
+    }));
 
     return res.json({ ok: true, data: { comments } });
   } catch (err) {
@@ -82,9 +81,12 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-router.post('/', async (req, res, next) => {
+/**
+ * POST /comments - Create new comment
+ */
+router.post('/', requireD1, async (req, res, next) => {
   try {
-    const { postId, author, content, website, parentId } = req.body || {};
+    const { postId, author, content, email, website } = req.body || {};
 
     if (!postId || typeof postId !== 'string')
       return res.status(400).json({ ok: false, error: 'postId is required' });
@@ -93,42 +95,52 @@ router.post('/', async (req, res, next) => {
     if (!content || typeof content !== 'string')
       return res.status(400).json({ ok: false, error: 'content is required' });
 
-    // basic antispam: length clamps
-    const doc = {
-      postId: String(postId),
-      author: String(author).trim().slice(0, 64),
-      content: String(content).trim().slice(0, 5000),
-      website: website ? String(website).trim().slice(0, 256) : undefined,
-      parentId: parentId ? String(parentId) : null,
-      createdAt: FieldValue.serverTimestamp(),
-      archived: false,
-    };
+    // Basic validation
+    if (author.length > 64 || content.length > 5000) {
+      return res.status(400).json({ ok: false, error: 'Author or content too long' });
+    }
 
-  const db = getDb();
-  const ref = await db.collection('comments').add(doc);
+    const normalizedPostId = String(postId).trim().slice(0, 256);
+    const commentId = `comment-${crypto.randomUUID()}`;
+    const now = new Date().toISOString();
 
-  // best-effort realtime push to connected SSE clients
-  try {
-    const item = {
-      id: ref.id,
-      postId: String(postId),
-      author: doc.author,
-      content: doc.content,
-      website: doc.website || null,
-      parentId: doc.parentId || null,
-      createdAt: new Date().toISOString(),
-    };
-    broadcast(String(postId), { type: 'append', items: [item] });
-  } catch {}
+    await execute(
+      `INSERT INTO comments(id, post_id, author, email, content, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      commentId,
+      normalizedPostId,
+      author.trim().slice(0, 64),
+      email ? email.trim().slice(0, 256) : null,
+      content.trim().slice(0, 5000),
+      'visible',
+      now,
+      now
+    );
 
-  return res.json({ ok: true, data: { id: ref.id } });
+    // Best-effort realtime push to connected SSE clients
+    try {
+      const item = {
+        id: commentId,
+        postId: normalizedPostId,
+        author: author.trim().slice(0, 64),
+        content: content.trim().slice(0, 5000),
+        website: website || null,
+        parentId: null,
+        createdAt: now,
+      };
+      broadcast(normalizedPostId, { type: 'append', items: [item] });
+    } catch {}
+
+    return res.json({ ok: true, data: { id: commentId } });
   } catch (err) {
     return next(err);
   }
 });
 
-// SSE stream for live comments per post. Emits on new comment creation.
-router.get('/stream', async (req, res, next) => {
+/**
+ * SSE stream for live comments per post
+ */
+router.get('/stream', requireD1, async (req, res, next) => {
   try {
     const postId = req.query.postId;
     if (!postId) {
@@ -158,7 +170,7 @@ router.get('/stream', async (req, res, next) => {
       res.write(`\n`);
     };
 
-    // register listener for instant broadcasts
+    // Register listener for instant broadcasts
     const unsubscribe = addListener(String(postId), send);
     send({ type: 'open' });
 
@@ -167,7 +179,6 @@ router.get('/stream', async (req, res, next) => {
       closed = true;
       clearInterval(ping);
       try {
-        // unregister if present
         if (typeof unsubscribe === 'function') unsubscribe();
       } catch {}
       try {
@@ -176,7 +187,7 @@ router.get('/stream', async (req, res, next) => {
     };
     req.on('close', onClose);
 
-    // heartbeat
+    // Heartbeat
     const ping = setInterval(() => {
       try {
         send({ type: 'ping' });
@@ -185,39 +196,44 @@ router.get('/stream', async (req, res, next) => {
       }
     }, 25000);
 
-    // Poll Firestore for new entries after connection time (best-effort)
-    const db = getDb();
+    // Poll D1 for new entries after connection time
     let lastTs = Date.now();
 
     const poll = async () => {
       if (closed) return;
       try {
-        const snap = await db
-          .collection('comments')
-          .where('postId', '==', String(postId))
-          .where('archived', '==', false)
-          .get();
-        const items = [];
+        const items = await queryAll(
+          `SELECT id, post_id, author, content, email, status, created_at
+           FROM comments
+           WHERE post_id = ? AND status = 'visible'
+           ORDER BY created_at ASC`,
+          String(postId).trim().slice(0, 256)
+        );
+
+        const newItems = [];
         let maxTs = lastTs;
-        snap.forEach(doc => {
-          const d = doc.data();
-          const ts = (typeof d.createdAt?.toDate === 'function' ? d.createdAt.toDate().getTime() : 0) || 0;
+
+        for (const d of items) {
+          const ts = d.created_at ? Date.parse(d.created_at) : 0;
           if (ts > lastTs) {
             maxTs = Math.max(maxTs, ts);
-            items.push({
-              id: doc.id,
-              postId: d.postId,
+            newItems.push({
+              id: d.id,
+              postId: d.post_id,
               author: d.author,
               content: d.content,
-              website: d.website || null,
-              parentId: d.parentId || null,
-              createdAt: d.createdAt?.toDate ? d.createdAt.toDate().toISOString() : null,
+              website: null,
+              parentId: null,
+              createdAt: d.created_at,
             });
           }
-        });
-        if (items.length > 0) {
-          items.sort((a, b) => (a.createdAt && b.createdAt ? Date.parse(a.createdAt) - Date.parse(b.createdAt) : 0));
-          send({ type: 'append', items });
+        }
+
+        if (newItems.length > 0) {
+          newItems.sort((a, b) =>
+            a.createdAt && b.createdAt ? Date.parse(a.createdAt) - Date.parse(b.createdAt) : 0
+          );
+          send({ type: 'append', items: newItems });
           lastTs = maxTs;
         }
       } catch (e) {
@@ -228,6 +244,33 @@ router.get('/stream', async (req, res, next) => {
     };
 
     poll();
+  } catch (err) {
+    return next(err);
+  }
+});
+
+/**
+ * DELETE /comments/:id - Delete comment (admin only)
+ */
+router.delete('/:id', requireD1, async (req, res, next) => {
+  try {
+    const id = req.params.id;
+
+    // TODO: Add admin auth middleware
+
+    const existing = await queryOne('SELECT id FROM comments WHERE id = ?', id);
+    if (!existing) {
+      return res.status(404).json({ ok: false, error: 'Comment not found' });
+    }
+
+    // Soft delete by setting status to 'hidden'
+    await execute(
+      "UPDATE comments SET status = 'hidden', updated_at = ? WHERE id = ?",
+      new Date().toISOString(),
+      id
+    );
+
+    return res.json({ ok: true, data: { deleted: true } });
   } catch (err) {
     return next(err);
   }
