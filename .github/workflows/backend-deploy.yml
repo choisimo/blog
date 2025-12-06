@@ -215,6 +215,8 @@ jobs:
               depends_on:
                 api:
                   condition: service_started
+              ports:
+                - "127.0.0.1:8080:80"
               expose:
                 - "80"
               volumes:
@@ -432,19 +434,28 @@ jobs:
           echo "Bringing up full stack..."
           $DC -f compose.runtime.yml up -d --remove-orphans
 
-          # Wait for services to be healthy
-          echo "Waiting for API health check..."
+          # Wait for services via nginx (port 8080 on host)
+          echo "Waiting for nginx to be ready..."
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/health >/dev/null 2>&1; then
+              echo "nginx Health OK"
+              break
+            fi
+            echo "nginx Retry $i/30"; sleep 2;
+          done
+
+          echo "Waiting for API health check via nginx..."
           for i in $(seq 1 60); do
-            if curl -fsS http://localhost:5080/api/v1/healthz >/dev/null 2>&1; then
+            if curl -fsS http://localhost:8080/api/v1/healthz >/dev/null 2>&1; then
               echo "API Health OK"
               break
             fi
             echo "API Retry $i/60"; sleep 2;
           done
 
-          echo "Waiting for VAS Proxy health check..."
+          echo "Waiting for VAS Proxy health check via nginx..."
           for i in $(seq 1 60); do
-            if curl -fsS http://localhost:7016/health >/dev/null 2>&1; then
+            if curl -fsS http://localhost:8080/ai/health >/dev/null 2>&1; then
               echo "VAS Proxy Health OK"
               break
             fi
@@ -456,9 +467,12 @@ jobs:
           echo "=== Service Status ==="
           $DC -f compose.runtime.yml ps
 
-          # Verify critical services are running
-          if ! curl -fsS http://localhost:5080/api/v1/healthz >/dev/null 2>&1; then
+          # Verify critical services are running via nginx
+          if ! curl -fsS http://localhost:8080/api/v1/healthz >/dev/null 2>&1; then
             echo "FATAL: API health check failed"
+            echo "--- nginx logs ---"
+            $DC -f compose.runtime.yml logs --no-color nginx | tail -n 30
+            echo "--- api logs ---"
             $DC -f compose.runtime.yml logs --no-color api | tail -n 100
             exit 1
           fi
