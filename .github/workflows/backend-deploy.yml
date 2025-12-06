@@ -434,6 +434,12 @@ jobs:
           echo "Bringing up full stack..."
           $DC -f compose.runtime.yml up -d --remove-orphans
 
+          # Force nginx to reload upstream DNS after API container is recreated
+          echo "Reloading nginx to refresh upstream DNS..."
+          sleep 5
+          $DC -f compose.runtime.yml exec -T nginx nginx -s reload 2>/dev/null || \
+            $DC -f compose.runtime.yml restart nginx
+
           # Wait for services via nginx (port 8080 on host)
           echo "Waiting for nginx to be ready..."
           for i in $(seq 1 30); do
