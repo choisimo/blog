@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { Env } from '../types';
 import { queryOne, execute } from '../lib/d1';
 import { success, error } from '../lib/response';
@@ -212,7 +213,7 @@ ${truncatedContent}`;
     const message = err instanceof Error ? err.message : 'Translation failed';
     
     // Provide more specific error messages
-    let statusCode = 500;
+    let statusCode: ContentfulStatusCode = 500;
     let errorMessage = message;
     
     if (message.includes('Backend AI error')) {
