@@ -217,16 +217,40 @@ export function useScrollHide(): boolean {
   const [hidden, setHidden] = useState(false);
   useEffect(() => {
     let lastY = window.scrollY || 0;
+    let accumulatedDelta = 0;
+    const THRESHOLD = 40; // px to accumulate before toggling
+
     const handleScroll = () => {
       const y = window.scrollY || 0;
       const delta = y - lastY;
       lastY = y;
-      if (Math.abs(delta) < 8) return;
+
+      // Near top: always show
       if (y < 80) {
         setHidden(false);
+        accumulatedDelta = 0;
         return;
       }
-      setHidden(delta > 0);
+
+      // Ignore tiny movements
+      if (Math.abs(delta) < 2) return;
+
+      // Accumulate delta in the same direction
+      if ((delta > 0 && accumulatedDelta >= 0) || (delta < 0 && accumulatedDelta <= 0)) {
+        accumulatedDelta += delta;
+      } else {
+        // Direction changed, reset
+        accumulatedDelta = delta;
+      }
+
+      // Trigger hide/show when threshold is reached
+      if (accumulatedDelta > THRESHOLD) {
+        setHidden(true);
+        accumulatedDelta = 0;
+      } else if (accumulatedDelta < -THRESHOLD) {
+        setHidden(false);
+        accumulatedDelta = 0;
+      }
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);

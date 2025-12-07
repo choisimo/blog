@@ -26,7 +26,7 @@ export default function ChatWidget(props: {
 }) {
   const isMobile = useIsMobile();
   const { isTerminal } = useTheme();
-  useKeyboardHeight(isMobile);
+  const keyboardHeight = useKeyboardHeight(isMobile);
 
   // Main state hook
   const state = useChatState({ initialMessage: props.initialMessage });
@@ -103,9 +103,9 @@ export default function ChatWidget(props: {
       <div
         className={cn(
           "fixed z-[var(--z-chat-widget)] flex flex-col overflow-hidden border bg-background shadow-2xl transition-all",
-          // Mobile: always fullscreen
+          // Mobile: always fullscreen (adjusted for keyboard)
           isMobile
-            ? "inset-0 h-[100dvh] rounded-none"
+            ? "inset-0 rounded-none"
             : "bottom-20 left-1/2 w-[min(100%-24px,42rem)] max-h-[80vh] -translate-x-1/2 rounded-2xl",
           // Terminal theme: PC rounded, mobile fullscreen
           isTerminal &&
@@ -115,6 +115,13 @@ export default function ChatWidget(props: {
             isMobile &&
             "border-0 bg-[hsl(var(--terminal-code-bg))]",
         )}
+        style={
+          isMobile && keyboardHeight > 0
+            ? { height: `calc(100dvh - ${keyboardHeight}px)` }
+            : isMobile
+              ? { height: "100dvh" }
+              : undefined
+        }
       >
         {/* Header */}
         <ChatHeader

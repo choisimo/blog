@@ -12,7 +12,9 @@ on:
 
 jobs:
   index:
-    runs-on: ubuntu-latest
+    # Self-hosted runner on the same server as Docker services
+    # This allows direct access to internal services via localhost
+    runs-on: self-hosted
     concurrency:
       group: rag-index-${{ github.ref }}
       cancel-in-progress: false
@@ -32,19 +34,17 @@ jobs:
 
       - name: Run indexer
         env:
-          TEI_URL: ${{ secrets.TEI_URL }}
-          CHROMA_URL: ${{ secrets.CHROMA_URL }}
-          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
-          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}          # Optional explicit override; leave undefined to use dynamic naming: "${BASE_COLLECTION_NAME}__${TEI_MODEL_NAME}"
+          # Internal localhost URLs (bound to 127.0.0.1 in docker-compose)
+          TEI_URL: http://127.0.0.1:8180
+          CHROMA_URL: http://127.0.0.1:8100
+          # No Cloudflare Access needed - direct localhost access
           CHROMA_COLLECTION: ${{ vars.CHROMA_COLLECTION }}
           BASE_COLLECTION_NAME: ${{ vars.BASE_COLLECTION_NAME || 'blog-posts' }}
           TEI_MODEL_NAME: ${{ vars.TEI_MODEL_NAME || vars.TEI_MODEL || 'all-MiniLM-L6-v2' }}
           CHUNK_TOKENS: ${{ vars.CHUNK_TOKENS || '512' }}
           CHUNK_OVERLAP_TOKENS: ${{ vars.CHUNK_OVERLAP_TOKENS || '80' }}
           EMBED_BATCH: ${{ vars.EMBED_BATCH || '32' }}
-          # Concurrency for parallel indexing
           MAX_WORKERS: ${{ vars.MAX_WORKERS || '6' }}
-          # Retries/backoff and timeouts (optional)
           RETRIES_TOTAL: ${{ vars.RETRIES_TOTAL || '5' }}
           RETRY_BACKOFF_S: ${{ vars.RETRY_BACKOFF_S || '1.0' }}
           CHROMA_RETRIES: ${{ vars.CHROMA_RETRIES || '4' }}

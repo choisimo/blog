@@ -16,6 +16,8 @@ AUTH_AUDIENCE = ""
 AUTH_ISSUER = ""
 AUTH_JWT_SECRET = ""
 AUTH_CACHE_TTL_SECONDS = "300"
+# Allowed origins for local development
+ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:4173,http://localhost:8080,http://localhost:8081"
 
 # Secrets (set via Wrangler):
 # wrangler secret put SECRET_API_KEY
@@ -29,7 +31,7 @@ services = [
 
 [env.production.vars]
 # Comma-separated list of allowed origins
-ALLOWED_ORIGINS = "https://noblog.nodove.com, https://blog.nodove.com, http://localhost:5173"
+ALLOWED_ORIGINS = "https://noblog.nodove.com,https://blog.nodove.com,http://localhost:5173,http://localhost:4173,http://localhost:8080,http://localhost:8081"
 # Backend host to forward to
 REAL_BACKEND_HOST = "ai-serve.nodove.com"
 AUTH_JWKS_URL = ""

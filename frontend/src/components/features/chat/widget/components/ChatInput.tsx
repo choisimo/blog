@@ -258,8 +258,10 @@ function TerminalInput({
           }
           ref={textareaRef}
           className={cn(
-            "flex-1 resize-none border-0 bg-transparent px-0 py-2 font-mono text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50",
-            isMobile ? "text-base min-h-[56px]" : "text-sm min-h-[40px]",
+            "flex-1 resize-none border-0 bg-transparent px-0 py-2 font-mono text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 overflow-y-auto",
+            isMobile
+              ? "text-base min-h-[56px] max-h-[96px]"
+              : "text-sm min-h-[40px] max-h-[72px]",
           )}
         />
         <div className="flex items-center gap-2">
@@ -369,8 +371,10 @@ function DefaultInput({
           placeholder={placeholder}
           ref={textareaRef}
           className={cn(
-            "flex-1 resize-none border-0 bg-transparent px-0 py-2 focus-visible:ring-0 focus-visible:ring-offset-0",
-            isMobile ? "text-base min-h-[56px]" : "text-sm min-h-[52px]",
+            "flex-1 resize-none border-0 bg-transparent px-0 py-2 focus-visible:ring-0 focus-visible:ring-offset-0 overflow-y-auto",
+            isMobile
+              ? "text-base min-h-[56px] max-h-[96px]"
+              : "text-sm min-h-[52px] max-h-[72px]",
           )}
         />
         <div className="flex items-center gap-2">

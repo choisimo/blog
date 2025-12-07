@@ -1,26 +1,113 @@
+# =============================================================================
+# Git Ignore - Blog Project
+# =============================================================================
+
+# -----------------------------------------------------------------------------
 # Dependencies
+# -----------------------------------------------------------------------------
 node_modules/
 */node_modules/
+**/node_modules/
 
-# Dir
-post-temp/
-
+# -----------------------------------------------------------------------------
 # Build outputs
+# -----------------------------------------------------------------------------
 dist/
 dist-ssr/
 build/
-# Environment variables
+.next/
+out/
+.nuxt/
+.cache/
+.parcel-cache
+storybook-static/
+
+# -----------------------------------------------------------------------------
+# Environment Variables (SENSITIVE - NEVER COMMIT)
+# -----------------------------------------------------------------------------
 .env
+.env.*
+!.env.example
+!.env.*.example
 .env.local
 .env.development.local
-.env.test.DS_Store
+.env.test.local
+.env.production.local
+*.env.backup*
 
-# Next.js build output
-next
-out
-./code
+# Backend specific env files
+backend/.env
+backend/.env.*
+!backend/.env.example
+!backend/.env.*.example
+
+# Workers specific
+workers/.dev.vars
+workers/.dev.vars.*
+
+# OpenCode Serve specific
+backend/opencode-serve/.env
+backend/opencode-serve/.env.*
+
+# -----------------------------------------------------------------------------
+# Secrets & Credentials (SENSITIVE - NEVER COMMIT)
+# -----------------------------------------------------------------------------
+# Service accounts
+serviceAccount*.json
+**/serviceAccount*.json
+firebase-adminsdk*.json
+**/firebase-adminsdk*.json
+
+# Private keys
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+
+# JWT secrets
+jwt.secret
+*.secret
+
+# API keys files
+api-keys.json
+secrets.json
+credentials.json
+
+# Token files
+*.jwt
+*.token
+auto-token.jwt
+
+# SSH keys
+.ssh/
+ssh_host_*
+
+# -----------------------------------------------------------------------------
+# Wrangler / Cloudflare
+# -----------------------------------------------------------------------------
+.wrangler/
+workers/.wrangler/
+**/node_modules/.cache/wrangler/
+wrangler-account.json
+
+# -----------------------------------------------------------------------------
+# Database files
+# -----------------------------------------------------------------------------
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
+
+# -----------------------------------------------------------------------------
 # Logs
-logs
+# -----------------------------------------------------------------------------
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -28,137 +115,100 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
-# Diagnostic reports (https://nodejs.org/api/report.html)
+# Node diagnostic reports
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-# Runtime data
-pids
+# -----------------------------------------------------------------------------
+# Runtime / Process
+# -----------------------------------------------------------------------------
+pids/
 *.pid
 *.seed
 *.pid.lock
 
-# Backend specifics
-backend/.env
-backend/.env.local
-backend/.env.*.local
-backend/serviceAccount*.json
-backend/.wrangler
-
-# Workers specifics
-workers/.wrangler/
-workers/.dev.vars
-workers/dist/
-**/node_modules/.cache/wrangler/
-.wrangler/
-wrangler-account.json
-
-# Service accounts
-serviceAccount*.json
-
-# Environment variables
-.env
-.env.*
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-*.env.backup*
-
-# React
-.cache/
-
-# Parcel-bundler cache (https://parceljs.org/)
-.cache
-.parcel-cache
-
-# TypeScript cache
-*.tsbuildinfo
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-{{ ... }}
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# dotenv environment variable files
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
-
-# Misc
-.vercel
-.turbo
-.idea
-.vscode
+# -----------------------------------------------------------------------------
+# IDE / Editor
+# -----------------------------------------------------------------------------
+.idea/
+.vscode/
 *.swp
 *.swo
 *~
+*.sublime-workspace
+*.sublime-project
 
-# Coverage directory used by tools like istanbul
-coverage
-*.lcov
-
-# nyc test coverage
-.nyc_output
-
-# IDE
-.idea/
-vscode/wp
-*.swo
-*~
-
-# OS generated files
+# -----------------------------------------------------------------------------
+# OS Generated
+# -----------------------------------------------------------------------------
 .DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
+.Trashes
 ehthumbs.db
 Thumbs.db
+Desktop.ini
+
+# Windows
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# Backup files
+# -----------------------------------------------------------------------------
+# Testing / Coverage
+# -----------------------------------------------------------------------------
+coverage/
+*.lcov
+.nyc_output/
+
+# -----------------------------------------------------------------------------
+# TypeScript
+# -----------------------------------------------------------------------------
+*.tsbuildinfo
+
+# -----------------------------------------------------------------------------
+# Temporary / Backup
+# -----------------------------------------------------------------------------
+*.tmp
+*.temp
 *.backup
 *.bak
 *.old
 *.orig
+post-temp/
 
-# Temporary files
-*.tmp
-*.temp
-
-# Package manager lock files (optional - uncomment if needed)
-# package-lock.json
-# yarn.lock
-# pnpm-lock.yaml
-
-# TypeScript
-*.tsbuildinfo
-
-# Next.js
-.next/
-out/
-
-# Nuxt.js
-.nuxt/
-
-# Gatsby
-.cache/
-
-# Storybook build outputs
-storybook-static/
-
-# Miscellaneous
+# -----------------------------------------------------------------------------
+# Archives
+# -----------------------------------------------------------------------------
 *.zip
 *.tar.gz
 *.rar
-.env
-blog-admin/.env
+*.7z
+
+# -----------------------------------------------------------------------------
+# Docker (sensitive)
+# -----------------------------------------------------------------------------
+docker-compose.override.yml
+docker-compose.local.yml
+
+# -----------------------------------------------------------------------------
+# Misc
+# -----------------------------------------------------------------------------
+.vercel
+.turbo
+.cache/
+.npm/
+.eslintcache
+.stylelintcache
+
+# Python (for scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.so
+.venv/
+venv/
+ENV/

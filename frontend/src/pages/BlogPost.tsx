@@ -85,7 +85,10 @@ const BlogPost = () => {
   // AI Translation state
   const [translating, setTranslating] = useState(false);
   const [aiTranslation, setAiTranslation] = useState<TranslationResult | null>(null);
-  const [translationError, setTranslationError] = useState<string | null>(null);
+  const [translationError, setTranslationError] = useState<{
+    message: string;
+    retryable: boolean;
+  } | null>(null);
 
   // Check if native translation exists for the selected language
   const hasNativeTranslation = useMemo(() => {
@@ -282,9 +285,18 @@ const BlogPost = () => {
       } catch (err) {
         console.error('Translation failed:', err);
         if (!cancelled) {
-          setTranslationError(
-            err instanceof Error ? err.message : 'Translation failed'
-          );
+          const errMsg = err instanceof Error ? err.message : '';
+          const isTimeout = errMsg.includes('504') || errMsg.includes('응답 지연') || errMsg.includes('timeout');
+          const isAiError = errMsg.includes('502') || errMsg.includes('AI 서버');
+          
+          setTranslationError({
+            message: isTimeout 
+              ? 'AI 서버 응답이 지연되고 있습니다.'
+              : isAiError
+                ? 'AI 번역 서버에서 오류가 발생했습니다.'
+                : '번역 중 오류가 발생했습니다.',
+            retryable: isTimeout || isAiError,
+          });
         }
       } finally {
         if (!cancelled) {
@@ -619,15 +631,35 @@ const BlogPost = () => {
                       'rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400',
                       isTerminal && 'font-mono'
                     )}>
-                      <p className='font-medium mb-1'>
-                        {language === 'ko' ? '번역 실패' : 'Translation Failed'}
-                      </p>
-                      <p className='text-xs opacity-80'>{translationError}</p>
-                      <p className='text-xs mt-1 opacity-60'>
-                        {language === 'ko' 
-                          ? '원본 콘텐츠를 표시합니다.' 
-                          : 'Showing original content.'}
-                      </p>
+                      <div className='flex items-start justify-between gap-3'>
+                        <div>
+                          <p className='font-medium mb-1'>
+                            {language === 'ko' ? '번역 실패' : 'Translation Failed'}
+                          </p>
+                          <p className='text-xs opacity-80'>{translationError.message}</p>
+                          <p className='text-xs mt-1 opacity-60'>
+                            {language === 'ko' 
+                              ? '원본 콘텐츠를 표시합니다.' 
+                              : 'Showing original content.'}
+                          </p>
+                        </div>
+                        {translationError.retryable && (
+                          <Button
+                            size='sm'
+                            variant='outline'
+                            onClick={() => {
+                              setTranslationError(null);
+                              setAiTranslation(null);
+                            }}
+                            className={cn(
+                              'shrink-0 text-xs h-8',
+                              isTerminal && 'font-mono border-primary/40 text-primary hover:bg-primary/10'
+                            )}
+                          >
+                            {language === 'ko' ? '다시 시도' : 'Retry'}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   )}
 
