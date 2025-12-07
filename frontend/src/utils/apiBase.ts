@@ -1,5 +1,5 @@
 // Default API URL for production
-const DEFAULT_API_URL = 'https://blog-api.immuddelo.workers.dev';
+const DEFAULT_API_URL = 'https://api.nodove.com';
 
 export function getApiBaseUrl(): string {
   // 1) runtime injected config

@@ -111,23 +111,6 @@ export function ChatHeader({
 
       {/* Right: Actions */}
       <div className="flex items-center gap-1 shrink-0">
-        {/* PC: Recent sessions button */}
-        {!isMobile && (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className={cn(
-              "h-8 px-3 text-xs",
-              isTerminal && "border-primary/30 text-primary hover:bg-primary/10",
-            )}
-            disabled={!sessions.length}
-            onClick={onShowSessions}
-          >
-            최근 대화
-          </Button>
-        )}
-
         {/* Options menu */}
         {isMobile ? (
           <Button

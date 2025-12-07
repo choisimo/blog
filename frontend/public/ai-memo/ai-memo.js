@@ -56,7 +56,7 @@
   ]);
 
   // 기본값 설정
-  const DEFAULT_API_URL = 'https://blog-api.immuddelo.workers.dev';
+  const DEFAULT_API_URL = 'https://api.nodove.com';
   const DEFAULT_REPO_URL = 'https://github.com/choisimo/blog';
   const BLOCK_SELECTORS = 'p, pre, code, blockquote, ul, ol, li, table, thead, tbody, tr, th, td, figure, figcaption, h1, h2, h3, h4, h5, h6, section, article, main';
 
@@ -207,8 +207,13 @@
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const rect = this.$panel.getBoundingClientRect();
-      const w = rect.width;
-      const h = rect.height;
+      // Use actual dimensions or fallback to default panel size (400x520)
+      const w = rect.width > 0 ? rect.width : 400;
+      const h = rect.height > 0 ? rect.height : 520;
+      // If position would be off-screen, return null to use CSS defaults
+      if (x < -w || x > vw + w || y < -h || y > vh + h) {
+        return { x: null, y: null };
+      }
       const nx = Math.max(12, Math.min(vw - w - 12, x));
       const ny = Math.max(12, Math.min(vh - h - 12, y));
       return { x: nx, y: ny };
@@ -1369,18 +1374,30 @@
       // panel open
       this.$panel.classList.toggle('open', !!this.state.isOpen);
 
-      // position
+      // position - only apply if saved position is valid and within viewport
       if (this.state.position.x != null && this.state.position.y != null) {
         const { x, y } = this.clamp(
           this.state.position.x,
           this.state.position.y
         );
-        Object.assign(this.$panel.style, {
-          left: `${x}px`,
-          top: `${y}px`,
-          right: 'auto',
-          bottom: 'auto',
-        });
+        // If clamp returns null, reset to CSS defaults (position was invalid)
+        if (x == null || y == null) {
+          this.state.position = { x: null, y: null };
+          LS.set(KEYS.position, this.state.position);
+          Object.assign(this.$panel.style, {
+            left: '',
+            top: '',
+            right: '',
+            bottom: '',
+          });
+        } else {
+          Object.assign(this.$panel.style, {
+            left: `${x}px`,
+            top: `${y}px`,
+            right: 'auto',
+            bottom: 'auto',
+          });
+        }
       }
 
       // dev content
@@ -2516,15 +2533,27 @@
 
       // viewport clamp on resize
       window.addEventListener('resize', () => {
+        if (!this.$panel.classList.contains('open')) return;
         const rect = this.$panel.getBoundingClientRect();
         const { x, y } = this.clamp(rect.left, rect.top);
-        Object.assign(this.$panel.style, {
-          left: `${x}px`,
-          top: `${y}px`,
-          right: 'auto',
-          bottom: 'auto',
-        });
-        LS.set(KEYS.position, { x, y });
+        if (x == null || y == null) {
+          // Reset to CSS defaults if position is invalid
+          Object.assign(this.$panel.style, {
+            left: '',
+            top: '',
+            right: '',
+            bottom: '',
+          });
+          LS.set(KEYS.position, { x: null, y: null });
+        } else {
+          Object.assign(this.$panel.style, {
+            left: `${x}px`,
+            top: `${y}px`,
+            right: 'auto',
+            bottom: 'auto',
+          });
+          LS.set(KEYS.position, { x, y });
+        }
       });
 
        // keyboard: Esc to close + editor shortcuts
