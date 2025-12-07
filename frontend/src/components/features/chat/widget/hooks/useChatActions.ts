@@ -95,6 +95,15 @@ export function useChatActions({
           `크기: ${sizeKb}KB`,
         );
 
+        // Show AI image analysis result if available
+        if (uploaded.imageAnalysis) {
+          lines.push(
+            "",
+            "📷 **AI 이미지 분석:**",
+            uploaded.imageAnalysis,
+          );
+        }
+
         const entry: UploadedChatImage = {
           id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           url: uploaded.url,

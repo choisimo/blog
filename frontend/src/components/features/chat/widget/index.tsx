@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -27,6 +27,24 @@ export default function ChatWidget(props: {
   const isMobile = useIsMobile();
   const { isTerminal } = useTheme();
   const keyboardHeight = useKeyboardHeight(isMobile);
+
+  // Dynamic max height calculation for PC
+  const [pcMaxHeight, setPcMaxHeight] = useState("80vh");
+
+  useEffect(() => {
+    if (isMobile) return;
+
+    const calculateHeight = () => {
+      const vh = window.innerHeight;
+      // Reserve space for FAB (80px) + some padding, max 85% of viewport
+      const safeMax = Math.min(vh * 0.85, vh - 100);
+      setPcMaxHeight(`${Math.round(safeMax)}px`);
+    };
+
+    calculateHeight();
+    window.addEventListener("resize", calculateHeight);
+    return () => window.removeEventListener("resize", calculateHeight);
+  }, [isMobile]);
 
   // Main state hook
   const state = useChatState({ initialMessage: props.initialMessage });
@@ -106,7 +124,7 @@ export default function ChatWidget(props: {
           // Mobile: always fullscreen (adjusted for keyboard)
           isMobile
             ? "inset-0 rounded-none"
-            : "bottom-20 left-1/2 w-[min(100%-24px,42rem)] max-h-[80vh] -translate-x-1/2 rounded-2xl",
+            : "bottom-20 left-1/2 w-[min(100%-24px,42rem)] -translate-x-1/2 rounded-2xl",
           // Terminal theme: PC rounded, mobile fullscreen
           isTerminal &&
             !isMobile &&
@@ -120,7 +138,7 @@ export default function ChatWidget(props: {
             ? { height: `calc(100dvh - ${keyboardHeight}px)` }
             : isMobile
               ? { height: "100dvh" }
-              : undefined
+              : { maxHeight: pcMaxHeight }
         }
       >
         {/* Header */}

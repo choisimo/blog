@@ -37,6 +37,7 @@ import {
   MobileShellBar,
   TerminalDock,
   DefaultDock,
+  RealTerminalModal,
 } from "./components";
 
 export default function FloatingActionBar() {
@@ -58,6 +59,8 @@ export default function FloatingActionBar() {
 
   // Shell Commander state (for terminal theme mobile)
   const [shellOpen, setShellOpen] = useState(false);
+  // Real terminal mode (Linux container)
+  const [realTerminalOpen, setRealTerminalOpen] = useState(false);
 
   // Scroll to top button visibility (for mobile terminal shell bar)
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -304,7 +307,7 @@ export default function FloatingActionBar() {
       {/* Mobile Shell Modal - Portal */}
       {isTerminal && isMobile && (
         <ShellModal
-          isOpen={shellOpen}
+          isOpen={shellOpen && !realTerminalOpen}
           onClose={() => {
             setShellOpen(false);
             shell.setShellOutput(null);
@@ -323,11 +326,32 @@ export default function FloatingActionBar() {
           consoleEndRef={shell.consoleEndRef}
           executeCommand={shell.executeShellCommandWithLog}
           commandHistory={shell.commandHistory}
+          onSwitchToRealTerminal={() => {
+            setShellOpen(false);
+            setRealTerminalOpen(true);
+            send("fab_real_terminal_open");
+          }}
+        />
+      )}
+
+      {/* Real Terminal Modal - Portal */}
+      {isTerminal && isMobile && (
+        <RealTerminalModal
+          isOpen={realTerminalOpen}
+          onClose={() => {
+            setRealTerminalOpen(false);
+            send("fab_real_terminal_close");
+          }}
+          viewportHeight={viewportHeight}
+          onSwitchToVirtual={() => {
+            setRealTerminalOpen(false);
+            setShellOpen(true);
+          }}
         />
       )}
 
       {/* Shell output overlay for terminal mobile - Portal */}
-      {isTerminal && isMobile && !shellOpen && (
+      {isTerminal && isMobile && !shellOpen && !realTerminalOpen && (
         <ShellOutputOverlay
           output={shell.shellOutput}
           onExpand={() => setShellOpen(true)}

@@ -14,6 +14,7 @@ import { getApiBaseUrl } from '@/utils/apiBase';
 export interface RAGSearchResult {
   id: string;
   content: string;
+  document?: string; // Backend returns 'document' field
   metadata: {
     title?: string;
     slug?: string;
@@ -23,6 +24,7 @@ export interface RAGSearchResult {
     [key: string]: unknown;
   };
   score: number;
+  distance?: number; // Backend returns 'distance' field
   snippet?: string;
 }
 
@@ -98,6 +100,17 @@ export async function semanticSearch(
         ok: false,
         error: data.error || { message: `HTTP ${res.status}` },
       };
+    }
+
+    // Normalize backend response format
+    // Backend returns: { ok, data: { results: [{ document, metadata, distance }] } }
+    // Frontend expects: { ok, data: { results: [{ content, metadata, score }] } }
+    if (data.ok && data.data?.results) {
+      data.data.results = data.data.results.map((r: any) => ({
+        ...r,
+        content: r.content || r.document || '',
+        score: r.score ?? (r.distance != null ? Math.max(0, 1 - r.distance) : 0),
+      }));
     }
 
     return data as RAGSearchResponse;

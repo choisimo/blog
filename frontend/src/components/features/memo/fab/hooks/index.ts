@@ -13,3 +13,4 @@ export {
   useFabAnalytics,
 } from "./useFabState";
 export { useShellCommander } from "./useShellCommander";
+export { useRealTerminal, type UseRealTerminalReturn, type TerminalStatus } from "./useRealTerminal";

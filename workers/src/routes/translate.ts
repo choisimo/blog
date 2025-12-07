@@ -67,6 +67,8 @@ app.post('/', async (c) => {
 
     const { year, slug, targetLang, title, description, content, forceRefresh } = body;
     const sourceLang = body.sourceLang || 'ko';
+    
+    console.log(`[translate] Request: ${year}/${slug} ${sourceLang} -> ${targetLang}`);
 
     // Validate inputs
     if (!year || !slug || !targetLang || !title || !content) {
@@ -115,6 +117,8 @@ app.post('/', async (c) => {
     // Generate translation using AI
     const sourceLangName = LANG_NAMES[sourceLang as SupportedLang] || sourceLang;
     const targetLangName = LANG_NAMES[targetLang as SupportedLang] || targetLang;
+    
+    console.log(`[translate] Cache miss, calling AI for ${year}/${slug}`);
 
     // Translate title
     const titlePrompt = `Translate the following blog post title from ${sourceLangName} to ${targetLangName}. 
@@ -204,9 +208,22 @@ ${truncatedContent}`;
       isAiGenerated: true,
     });
   } catch (err) {
-    console.error('Translation failed:', err);
+    console.error('[translate] Translation failed:', err);
     const message = err instanceof Error ? err.message : 'Translation failed';
-    return error(c, message, 500);
+    
+    // Provide more specific error messages
+    let statusCode = 500;
+    let errorMessage = message;
+    
+    if (message.includes('Backend AI error')) {
+      statusCode = 502;
+      errorMessage = 'AI 서버와 통신 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+    } else if (message.includes('timeout') || message.includes('TIMEOUT')) {
+      statusCode = 504;
+      errorMessage = 'AI 응답 지연 중입니다. 잠시 후 다시 시도해주세요.';
+    }
+    
+    return error(c, errorMessage, statusCode);
   }
 });
 

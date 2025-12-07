@@ -15,12 +15,12 @@ export function TerminalDock({ dockActions, isMobile }: TerminalDockProps) {
 
   // PC Terminal Dock
   return (
-    <div className="flex w-full items-center justify-between gap-0.5 border border-border bg-[hsl(var(--terminal-code-bg))] backdrop-blur-sm">
-      {/* Terminal window controls */}
-      <div className="flex items-center gap-1.5 px-3 py-2.5 border-r border-border/50">
-        <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-close))]" />
-        <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]" />
-        <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]" />
+    <div className="flex w-full items-center gap-0.5 border border-border bg-[hsl(var(--terminal-code-bg))] backdrop-blur-sm">
+      {/* Terminal window controls - macOS style traffic lights */}
+      <div className="flex items-center gap-2 px-3 py-2.5 border-r border-border/50">
+        <span className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-close))]" />
+        <span className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]" />
+        <span className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]" />
       </div>
 
       {/* Terminal path */}
@@ -29,8 +29,8 @@ export function TerminalDock({ dockActions, isMobile }: TerminalDockProps) {
         <span>actions</span>
       </div>
 
-      {/* Action buttons */}
-      <div className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5">
+      {/* Action buttons - centered with proper spacing */}
+      <div className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5">
         {dockActions.map((action) => {
           const Icon = action.icon;
           return (

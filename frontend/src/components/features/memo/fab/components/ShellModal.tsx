@@ -1,8 +1,9 @@
 import React, { useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Terminal, X } from "lucide-react";
+import { Terminal, X, MonitorUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ShellLog } from "../types";
+import { hasAuthToken } from "@/services/terminal";
 
 type ShellModalProps = {
   isOpen: boolean;
@@ -21,6 +22,7 @@ type ShellModalProps = {
   consoleEndRef: React.RefObject<HTMLDivElement>;
   executeCommand: (cmd: string) => void;
   commandHistory: string[];
+  onSwitchToRealTerminal?: () => void;
 };
 
 export function ShellModal({
@@ -40,8 +42,10 @@ export function ShellModal({
   consoleEndRef,
   executeCommand,
   commandHistory,
+  onSwitchToRealTerminal,
 }: ShellModalProps) {
   const shellContentRef = useRef<HTMLDivElement>(null);
+  const canSwitchToReal = onSwitchToRealTerminal && hasAuthToken();
 
   if (!isOpen) return null;
 
@@ -67,19 +71,39 @@ export function ShellModal({
           {/* Path display - separate row */}
           <div className="flex items-center justify-between px-3 pt-2 pb-1">
             <span
-              className="text-primary/60 font-mono text-[10px] truncate max-w-[70%]"
+              className="text-primary/60 font-mono text-[10px] truncate max-w-[50%]"
               title={displayPath}
             >
               {displayPath}
             </span>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1 text-muted-foreground hover:text-primary transition-colors"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Switch to Real Terminal button */}
+              {canSwitchToReal && (
+                <button
+                  type="button"
+                  onClick={onSwitchToRealTerminal}
+                  className={cn(
+                    "flex items-center gap-1 px-2 py-0.5",
+                    "text-[10px] font-mono uppercase tracking-wider",
+                    "bg-primary/10 border border-primary/30 rounded",
+                    "text-primary/70 hover:text-primary hover:bg-primary/20",
+                    "transition-colors"
+                  )}
+                  title="Switch to real Linux terminal"
+                >
+                  <MonitorUp className="h-3 w-3" />
+                  <span>Real Shell</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1 text-muted-foreground hover:text-primary transition-colors"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
           {/* Input row */}
           <div className="relative flex items-center gap-1.5 px-3 pb-2.5">

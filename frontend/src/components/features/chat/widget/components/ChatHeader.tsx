@@ -159,7 +159,7 @@ export function ChatHeader({
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 text-sm">
+            <DropdownMenuContent align="end" className="w-48 text-sm z-[9999]">
               <DropdownMenuItem
                 disabled={!sessions.length}
                 onSelect={onShowSessions}

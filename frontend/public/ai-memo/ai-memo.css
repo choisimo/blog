@@ -9,8 +9,14 @@
   --memo-shadow-dark: 0 20px 50px rgba(0, 0, 0, 0.4), 0 8px 20px rgba(0, 0, 0, 0.3);
   --memo-border: rgba(0, 0, 0, 0.06);
   --memo-border-dark: rgba(255, 255, 255, 0.08);
-  --memo-accent: #10b981; /* Changed from blue to emerald green for terminal theme */
+  --memo-accent: #10b981; /* Emerald green for light theme */
   --memo-accent-hover: #059669;
+}
+
+/* Dark mode: Use Teal for a calmer, more sophisticated look */
+:host(.dark) {
+  --memo-accent: #14b8a6; /* Teal 500 - softer than Emerald on dark backgrounds */
+  --memo-accent-hover: #0d9488; /* Teal 600 */
 }
 
 .button {
@@ -59,13 +65,15 @@
   right: 20px;
   bottom: calc(100px + env(safe-area-inset-bottom, 0px));
   display: none;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   color: #111827;
   border-radius: var(--memo-radius);
-  box-shadow: var(--memo-shadow);
-  border: 1px solid var(--memo-border);
+  box-shadow: 
+    var(--memo-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6); /* Inner highlight for glass depth */
+  border: 1px solid rgba(0, 0, 0, 0.08); /* Slightly stronger border */
   overflow: hidden;
   contain: layout paint style;
 }
@@ -185,6 +193,11 @@
 .tab:hover {
   background: rgba(0, 0, 0, 0.05);
   color: #334155;
+  transform: translateY(-1px); /* Subtle lift on hover */
+}
+
+.tab:active {
+  transform: translateY(0);
 }
 
 .tab.active {
@@ -831,12 +844,14 @@
   background: #f8fafc;
   border-color: var(--memo-accent);
   color: var(--memo-accent);
+  transform: translateY(-1px); /* Subtle lift on hover */
 }
 
 .footer-btn:active {
   background: var(--memo-accent);
   color: #022c22;
   border-color: var(--memo-accent);
+  transform: translateY(0);
 }
 
 .footer-btn .btn-icon {
@@ -1558,7 +1573,7 @@
 
   .footer-actions {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 6px;
     width: 100%;
   }
@@ -1566,17 +1581,20 @@
   .footer-btn {
     flex-direction: column;
     gap: 2px;
-    padding: 10px 6px;
+    padding: 10px 4px;
     min-width: 0;
     border-radius: 8px;
   }
 
   .footer-btn .btn-icon {
-    font-size: 18px;
+    font-size: 16px;
   }
 
   .footer-btn .btn-label {
-    font-size: 10px;
+    font-size: 9px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* Catalyst panel mobile */
@@ -1649,20 +1667,20 @@
   }
 
   .footer-actions {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 4px;
   }
 
   .footer-btn {
-    padding: 8px 4px;
+    padding: 8px 2px;
   }
 
   .footer-btn .btn-icon {
-    font-size: 16px;
+    font-size: 14px;
   }
 
   .footer-btn .btn-label {
-    font-size: 9px;
+    display: none; /* Hide labels on very small screens */
   }
 
   .btn {
@@ -2037,6 +2055,23 @@ body.ai-memo-block-select-active {
   background: rgba(10, 10, 15, 0.98);
   border-color: var(--memo-border-terminal);
   box-shadow: 0 0 40px rgba(80, 250, 123, 0.08), 0 20px 50px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+/* CRT Scanline effect - subtle horizontal lines for retro monitor feel */
+:host(.terminal) .panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(18, 16, 16, 0) 50%,
+    rgba(0, 0, 0, 0.08) 50%
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+  z-index: 10;
+  border-radius: inherit;
 }
 
 :host(.terminal) .header {
@@ -2044,13 +2079,12 @@ body.ai-memo-block-select-active {
   background: rgba(10, 10, 15, 0.9);
 }
 
-/* Terminal window buttons (traffic lights) */
+/* Terminal window buttons (traffic lights) - Fixed position */
 :host(.terminal) .header::after {
   content: '';
   position: absolute;
   left: 16px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 22px; /* Fixed position instead of 50% */
   width: 48px;
   height: 12px;
   background: 
@@ -2107,19 +2141,27 @@ body.ai-memo-block-select-active {
 :host(.terminal) .textarea {
   background: rgba(5, 5, 10, 0.8);
   border-color: var(--memo-border-terminal);
-  color: #e5e7eb;
+  color: #d1d5db; /* Softer text color for better readability */
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  caret-color: var(--memo-accent); /* Neon green cursor */
 }
 
 :host(.terminal) .input:focus,
 :host(.terminal) .textarea:focus {
   border-color: var(--memo-accent);
-  box-shadow: 0 0 0 3px rgba(80, 250, 123, 0.15), var(--memo-glow);
+  box-shadow: 0 0 0 3px rgba(80, 250, 123, 0.12); /* Reduced glow for better focus */
 }
 
 :host(.terminal) .input::placeholder,
 :host(.terminal) .textarea::placeholder {
-  color: rgba(80, 250, 123, 0.4);
+  color: rgba(80, 250, 123, 0.35);
+}
+
+/* Terminal selection highlight */
+:host(.terminal) .input::selection,
+:host(.terminal) .textarea::selection {
+  background: rgba(80, 250, 123, 0.3);
+  color: #fff;
 }
 
 /* Terminal buttons */
@@ -2250,11 +2292,25 @@ body.ai-memo-block-select-active {
 :host(.terminal) .preview-md {
   background: rgba(5, 5, 10, 0.8);
   border-color: var(--memo-border-terminal);
-  color: #e5e7eb;
+  color: #d1d5db; /* Softer text for better readability */
 }
 
 :host(.terminal) .preview-md:empty::before {
-  color: rgba(80, 250, 123, 0.4);
+  color: rgba(80, 250, 123, 0.35);
+}
+
+/* Only apply glow to headings, not body text */
+:host(.terminal) .preview-md h1,
+:host(.terminal) .preview-md h2,
+:host(.terminal) .preview-md h3 {
+  color: var(--memo-accent);
+  text-shadow: 0 0 8px rgba(80, 250, 123, 0.4);
+}
+
+:host(.terminal) .preview-md h4,
+:host(.terminal) .preview-md h5,
+:host(.terminal) .preview-md h6 {
+  color: rgba(80, 250, 123, 0.85);
 }
 
 :host(.terminal) .preview-md a {
@@ -2275,7 +2331,7 @@ body.ai-memo-block-select-active {
 :host(.terminal) .preview-md blockquote {
   border-left-color: var(--memo-accent);
   background: rgba(80, 250, 123, 0.05);
-  color: rgba(80, 250, 123, 0.8);
+  color: #b8bcc4; /* Softer quote text */
 }
 
 /* Terminal layout bar */

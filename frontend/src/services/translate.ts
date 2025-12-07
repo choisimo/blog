@@ -38,6 +38,8 @@ export type TranslationRequest = {
 export async function translatePost(request: TranslationRequest): Promise<TranslationResult> {
   const baseUrl = getApiBaseUrl();
   
+  console.log('[translate] Requesting translation:', request.year, request.slug, request.targetLang);
+  
   const response = await fetch(`${baseUrl}/api/v1/translate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -46,10 +48,13 @@ export async function translatePost(request: TranslationRequest): Promise<Transl
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error((errorData as any)?.error?.message || `Translation failed: ${response.status}`);
+    const message = (errorData as any)?.error?.message || `Translation failed: ${response.status}`;
+    console.error('[translate] API error:', response.status, message);
+    throw new Error(message);
   }
 
   const data = await response.json();
+  console.log('[translate] Success, cached:', (data as any).data?.cached);
   return (data as any).data as TranslationResult;
 }
 

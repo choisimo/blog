@@ -400,12 +400,30 @@
     }
 
     getApiBase() {
-      // Detect API base URL
+      // Priority: runtime config > localStorage > default
+      // This should match frontend/src/utils/apiBase.ts logic
+      
+      // 1) Runtime injected config (window.APP_CONFIG)
+      const w = typeof window !== 'undefined' ? window : null;
+      const fromRuntime = w?.APP_CONFIG?.apiBaseUrl || w?.__APP_CONFIG?.apiBaseUrl;
+      if (typeof fromRuntime === 'string' && fromRuntime) return fromRuntime;
+
+      // 2) localStorage override (developer convenience)
+      try {
+        const v = LS.get('aiMemo.backendUrl');
+        if (typeof v === 'string' && v) return v;
+      } catch {
+        // ignore
+      }
+
+      // 3) Localhost detection
       const host = location.host;
       if (host.includes('localhost') || host.includes('127.0.0.1')) {
         return 'http://localhost:8787';
       }
-      return 'https://blog-api.immuddelo.workers.dev';
+
+      // 4) Default production URL
+      return DEFAULT_API_URL;
     }
 
     async syncToCloud() {

@@ -162,7 +162,7 @@ function normaliseMemo(raw: any): MemoNote {
 
 export async function listPersonas(cursor?: string | null): Promise<ListResponse<Persona>> {
   const params = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
-  const res = await request<any[]>(`/api/personas${params}`);
+  const res = await request<any[]>(`/api/v1/personas${params}`);
   const payload = Array.isArray(res.data) ? res.data : [];
   const personas = payload.map(normalisePersona);
   const cursorValue = (res.cursor ?? null) as string | null;
@@ -172,7 +172,7 @@ export async function listPersonas(cursor?: string | null): Promise<ListResponse
 
 export async function createPersona(input: PersonaPayload): Promise<Persona> {
   const body = JSON.stringify(input);
-  const res = await request<any>('/api/personas', {
+  const res = await request<any>('/api/v1/personas', {
     method: 'POST',
     body,
   });
@@ -186,7 +186,7 @@ export async function updatePersona(
 ): Promise<Persona> {
   const headers: Record<string, string> = {};
   if (etag) headers['If-Match'] = etag;
-  const res = await request<any>(`/api/personas/${encodeURIComponent(id)}`, {
+  const res = await request<any>(`/api/v1/personas/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers,
     body: JSON.stringify(input),
@@ -197,7 +197,7 @@ export async function updatePersona(
 export async function deletePersona(id: string, etag?: string | null): Promise<void> {
   const headers: Record<string, string> = {};
   if (etag) headers['If-Match'] = etag;
-  await request(`/api/personas/${encodeURIComponent(id)}`, {
+  await request(`/api/v1/personas/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     headers,
   }, false);
@@ -205,7 +205,7 @@ export async function deletePersona(id: string, etag?: string | null): Promise<v
 
 export async function listMemos(cursor?: string | null): Promise<ListResponse<MemoNote>> {
   const params = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
-  const res = await request<any[]>(`/api/memos${params}`);
+  const res = await request<any[]>(`/api/v1/memos${params}`);
   const payload = Array.isArray(res.data) ? res.data : [];
   const memos = payload.map(normaliseMemo);
   const cursorValue = (res.cursor ?? null) as string | null;
@@ -214,7 +214,7 @@ export async function listMemos(cursor?: string | null): Promise<ListResponse<Me
 }
 
 export async function createMemo(input: MemoPayload): Promise<MemoNote> {
-  const res = await request<any>('/api/memos', {
+  const res = await request<any>('/api/v1/memos', {
     method: 'POST',
     body: JSON.stringify(input),
   });
@@ -228,7 +228,7 @@ export async function updateMemo(
 ): Promise<MemoNote> {
   const headers: Record<string, string> = {};
   if (etag) headers['If-Match'] = etag;
-  const res = await request<any>(`/api/memos/${encodeURIComponent(id)}`, {
+  const res = await request<any>(`/api/v1/memos/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers,
     body: JSON.stringify(input),
@@ -239,7 +239,7 @@ export async function updateMemo(
 export async function deleteMemo(id: string, etag?: string | null): Promise<void> {
   const headers: Record<string, string> = {};
   if (etag) headers['If-Match'] = etag;
-  await request(`/api/memos/${encodeURIComponent(id)}`, {
+  await request(`/api/v1/memos/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     headers,
   }, false);

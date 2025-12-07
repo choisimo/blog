@@ -230,6 +230,10 @@ export async function uploadChatImage(
   const formData = new FormData();
   formData.append('file', file);
 
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[ChatImage] Uploading to:', url);
+  }
+
   const res = await fetch(url, {
     method: 'POST',
     body: formData,
@@ -258,6 +262,11 @@ export async function uploadChatImage(
   if (!data || typeof data.url !== 'string') {
     throw new Error('Invalid chat image upload response');
   }
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[ChatImage] Upload success, analysis:', data.imageAnalysis ? 'OK' : 'NULL');
+  }
+
   return data as ChatImageUploadResult;
 }
 
