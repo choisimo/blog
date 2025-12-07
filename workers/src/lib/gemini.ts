@@ -12,7 +12,7 @@
  */
 
 import type { Env } from '../types';
-import { getAiServeUrl, getAiServeApiKey } from './config';
+import { getAiServeUrl, getAiServeApiKey, getAiGatewayCallerKey } from './config';
 
 export type GenerateOptions = {
   temperature?: number;
@@ -38,14 +38,21 @@ export async function generateContent(
 
   // Get AI Serve URL from KV > env > default
   const base = await getAiServeUrl(env);
-  const url = `${base.replace(/\/$/, '')}/ai/generate`;
+  const url = `${base.replace(/\/$/, '')}/api/v1/ai/generate`;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'User-Agent': 'Blog-Workers/1.0',
+    'Accept': 'application/json',
   };
   const apiKey = await getAiServeApiKey(env);
   if (apiKey) {
     headers['X-API-KEY'] = apiKey;
+  }
+  // Add Gateway Caller Key for Workers-to-Workers calls through ai-check-gateway
+  const gatewayCallerKey = await getAiGatewayCallerKey(env);
+  if (gatewayCallerKey) {
+    headers['X-Gateway-Caller-Key'] = gatewayCallerKey;
   }
 
   const res = await fetch(url, {

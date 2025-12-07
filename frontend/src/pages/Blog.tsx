@@ -7,11 +7,12 @@ import { BlogPost, PostsPage } from '@/types/blog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search } from 'lucide-react';
+import { Search, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatDate } from '@/utils/blog';
 
 const POSTS_PER_PAGE = 12;
+const TAGS_PER_PAGE = 20;
 
 const Blog = () => {
   const location = useLocation();
@@ -48,9 +49,30 @@ const Blog = () => {
   const [allTags, setAllTags] = useState<string[]>([]);
   const [siteTotalPosts, setSiteTotalPosts] = useState(0);
   const [showAllTags, setShowAllTags] = useState(false);
+  const [tagSearchTerm, setTagSearchTerm] = useState('');
+  const [tagPage, setTagPage] = useState(1);
 
   // Debounce search term to avoid excessive filtering
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const debouncedTagSearch = useDebounce(tagSearchTerm, 200);
+
+  // Filter and paginate tags
+  const filteredTags = useMemo(() => {
+    if (!debouncedTagSearch) return allTags;
+    const lower = debouncedTagSearch.toLowerCase();
+    return allTags.filter(tag => tag.toLowerCase().includes(lower));
+  }, [allTags, debouncedTagSearch]);
+
+  const totalTagPages = Math.ceil(filteredTags.length / TAGS_PER_PAGE);
+  const displayedTags = useMemo(() => {
+    const start = (tagPage - 1) * TAGS_PER_PAGE;
+    return filteredTags.slice(start, start + TAGS_PER_PAGE);
+  }, [filteredTags, tagPage]);
+
+  // Reset tag page when search changes
+  useEffect(() => {
+    setTagPage(1);
+  }, [debouncedTagSearch]);
 
   const syncStateFromParams = useCallback(
     (nextCategory: string, nextPage: number) => {
@@ -244,29 +266,134 @@ const Blog = () => {
                 </button>
               );
             })}
-            {categories.length > 5 && (
+            {allTags.length > 0 && (
               <button
                 type='button'
-                className='text-sm text-muted-foreground underline'
-                onClick={() => setShowAllTags(v => !v)}
+                className='flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors'
+                onClick={() => {
+                  setShowAllTags(v => !v);
+                  if (!showAllTags) {
+                    setTagPage(1);
+                    setTagSearchTerm('');
+                  }
+                }}
                 aria-expanded={showAllTags}
               >
-                {showAllTags ? 'Hide tags' : 'More tags'}
+                {showAllTags ? (
+                  <>
+                    <ChevronUp className='h-4 w-4' />
+                    Hide tags
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className='h-4 w-4' />
+                    More tags ({allTags.length})
+                  </>
+                )}
               </button>
             )}
           </div>
-          {showAllTags && (
-            <div className='flex flex-wrap gap-2'>
-              {allTags.map(tag => (
+
+          {/* Selected tags display */}
+          {selectedTags.length > 0 && (
+            <div className='flex flex-wrap items-center gap-2'>
+              <span className='text-xs text-muted-foreground'>Filtered by:</span>
+              {selectedTags.map(tag => (
                 <Badge
                   key={tag}
-                  variant={selectedTags.includes(tag) ? 'default' : 'outline'}
-                  className='cursor-pointer rounded-full px-3 py-1 text-xs'
+                  variant='default'
+                  className='cursor-pointer rounded-full px-3 py-1 text-xs gap-1'
                   onClick={() => handleTagToggle(tag)}
                 >
                   #{tag}
+                  <X className='h-3 w-3' />
                 </Badge>
               ))}
+              <button
+                type='button'
+                className='text-xs text-muted-foreground underline hover:text-foreground'
+                onClick={handleClearTagFilters}
+              >
+                Clear all
+              </button>
+            </div>
+          )}
+
+          {/* Tags panel with search and pagination */}
+          {showAllTags && (
+            <div className='rounded-2xl border border-border/40 bg-white p-4 shadow-soft dark:border-white/5 dark:bg-[#191f29] space-y-3'>
+              {/* Tag search */}
+              <div className='relative'>
+                <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground' />
+                <Input
+                  type='text'
+                  placeholder='Search tags...'
+                  value={tagSearchTerm}
+                  onChange={e => setTagSearchTerm(e.target.value)}
+                  className='h-9 pl-9 text-sm rounded-lg'
+                />
+                {tagSearchTerm && (
+                  <button
+                    type='button'
+                    className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground'
+                    onClick={() => setTagSearchTerm('')}
+                  >
+                    <X className='h-3.5 w-3.5' />
+                  </button>
+                )}
+              </div>
+
+              {/* Tags grid */}
+              {displayedTags.length > 0 ? (
+                <div className='flex flex-wrap gap-2'>
+                  {displayedTags.map(tag => (
+                    <Badge
+                      key={tag}
+                      variant={selectedTags.includes(tag) ? 'default' : 'outline'}
+                      className='cursor-pointer rounded-full px-3 py-1 text-xs hover:bg-primary/10'
+                      onClick={() => handleTagToggle(tag)}
+                    >
+                      #{tag}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className='text-sm text-muted-foreground text-center py-4'>
+                  No tags found matching "{tagSearchTerm}"
+                </p>
+              )}
+
+              {/* Tag pagination */}
+              {totalTagPages > 1 && (
+                <div className='flex items-center justify-between pt-2 border-t border-border/40'>
+                  <span className='text-xs text-muted-foreground'>
+                    {filteredTags.length} tags found
+                  </span>
+                  <div className='flex items-center gap-2'>
+                    <Button
+                      variant='ghost'
+                      size='sm'
+                      className='h-7 px-2 text-xs'
+                      disabled={tagPage <= 1}
+                      onClick={() => setTagPage(p => Math.max(1, p - 1))}
+                    >
+                      Prev
+                    </Button>
+                    <span className='text-xs text-muted-foreground'>
+                      {tagPage} / {totalTagPages}
+                    </span>
+                    <Button
+                      variant='ghost'
+                      size='sm'
+                      className='h-7 px-2 text-xs'
+                      disabled={tagPage >= totalTagPages}
+                      onClick={() => setTagPage(p => Math.min(totalTagPages, p + 1))}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>

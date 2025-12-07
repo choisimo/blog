@@ -1,11 +1,11 @@
 /**
  * Dynamic configuration via KV
  *
- * 모든 AI 호출은 자체 백엔드 서버를 통해 처리됩니다.
+ * 모든 AI 호출은 자체 백엔드 서버(api.nodove.com)를 통해 처리됩니다.
  * 이 모듈은 KV 스토리지를 통해 런타임에 서버 URL을 변경할 수 있게 합니다.
  *
  * KV Keys:
- * - config:ai_serve_url     - AI 서버 URL (ai-check.nodove.com)
+ * - config:ai_serve_url     - AI 서버 URL (api.nodove.com)
  * - config:ai_serve_api_key - AI 서버 API 키
  * - config:api_base_url     - 백엔드 API URL (api.nodove.com)
  * - config:ai_gateway_caller_key - 게이트웨이 호출자 키
@@ -28,7 +28,7 @@ export const CONFIG_KEYS = {
 
 // Default fallback URLs (used if both KV and env are empty)
 const DEFAULTS = {
-  AI_SERVE_URL: 'https://ai-check.nodove.com',
+  AI_SERVE_URL: 'https://api.nodove.com',
   API_BASE_URL: 'https://api.nodove.com',
 } as const;
 

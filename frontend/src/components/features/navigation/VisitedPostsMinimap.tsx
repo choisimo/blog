@@ -219,6 +219,7 @@ export function VisitedPostsMinimap({
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent
         side={isMobile ? 'bottom' : 'right'}
+        hideClose
         className={cn(
           'p-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:backdrop-blur-lg',
           isMobile
@@ -236,68 +237,65 @@ export function VisitedPostsMinimap({
           {isMobile && (
             <div className='mx-auto mb-4 h-1.5 w-12 rounded-full bg-muted-foreground/30' aria-hidden />
           )}
-          <div className='flex items-center justify-between gap-3'>
-            <div className='flex-1'>
-              <div className='flex items-center gap-3'>
-                <Map className='h-5 w-5 text-muted-foreground' />
-                <SheetTitle className='text-base font-semibold'>
-                  방문 기록
-                </SheetTitle>
-              </div>
-              <div className='flex items-center gap-2 mt-3'>
-                <div className='relative h-8 w-[100px]' aria-hidden>
-                  {topStack.map((p, i) => (
-                    <div
-                      key={p.path}
-                      className='absolute top-0 h-8 w-8 overflow-hidden rounded-full ring-2 ring-background shadow'
-                      style={{ left: i * 20 }}
-                      title={p.title}
-                    >
-                      {p.coverImage ? (
-                        <img
-                          src={p.coverImage}
-                          alt=''
-                          className='h-full w-full object-cover'
-                        />
-                      ) : (
-                        <FallbackAvatar title={p.title} />
-                      )}
-                    </div>
-                  ))}
+          {/* Title row with count */}
+          <div className='flex items-center gap-3'>
+            <Map className='h-5 w-5 text-muted-foreground' />
+            <SheetTitle className='text-base font-semibold'>
+              방문 기록
+            </SheetTitle>
+            <span className='text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full'>
+              {items.length}개
+            </span>
+          </div>
+          {/* Thumbnail stack row */}
+          <div className='flex items-center gap-2 mt-3'>
+            <div className='relative h-8 w-[100px]' aria-hidden>
+              {topStack.map((p, i) => (
+                <div
+                  key={p.path}
+                  className='absolute top-0 h-8 w-8 overflow-hidden rounded-full ring-2 ring-background shadow'
+                  style={{ left: i * 20 }}
+                  title={p.title}
+                >
+                  {p.coverImage ? (
+                    <img
+                      src={p.coverImage}
+                      alt=''
+                      className='h-full w-full object-cover'
+                    />
+                  ) : (
+                    <FallbackAvatar title={p.title} />
+                  )}
                 </div>
-                <span className='text-xs text-muted-foreground ml-auto'>
-                  {items.length}개
-                </span>
-              </div>
+              ))}
             </div>
-            <div className='flex items-center gap-2'>
-              <div className='flex items-center gap-1 text-xs bg-muted rounded-full p-0.5'>
-                <button
-                  type='button'
-                  className={cn(
-                    'px-3 py-1.5 rounded-full transition-colors',
-                    view === 'list'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-muted-foreground/10'
-                  )}
-                  onClick={() => setView('list')}
-                >
-                  리스트
-                </button>
-                <button
-                  type='button'
-                  className={cn(
-                    'px-3 py-1.5 rounded-full transition-colors',
-                    view === 'graph'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-muted-foreground/10'
-                  )}
-                  onClick={() => setView('graph')}
-                >
-                  그래프
-                </button>
-              </div>
-            </div>
+          </div>
+          {/* View toggle buttons */}
+          <div className='flex items-center gap-1 text-xs bg-muted rounded-full p-0.5 mt-3 w-fit'>
+            <button
+              type='button'
+              className={cn(
+                'px-3 py-1.5 rounded-full transition-colors',
+                view === 'list'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted-foreground/10'
+              )}
+              onClick={() => setView('list')}
+            >
+              리스트
+            </button>
+            <button
+              type='button'
+              className={cn(
+                'px-3 py-1.5 rounded-full transition-colors',
+                view === 'graph'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted-foreground/10'
+              )}
+              onClick={() => setView('graph')}
+            >
+              그래프
+            </button>
           </div>
         </SheetHeader>
         {view === 'list' ? (
