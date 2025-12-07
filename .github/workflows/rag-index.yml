@@ -1,0 +1,54 @@
+name: RAG Indexing
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/public/posts/**'
+      - 'frontend/public/posts-manifest.json'
+      - 'scripts/rag/**'
+
+jobs:
+  index:
+    # Self-hosted runner on the same server as Docker services
+    # This allows direct access to internal services via localhost
+    runs-on: self-hosted
+    concurrency:
+      group: rag-index-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r scripts/rag/requirements.txt
+
+      - name: Run indexer
+        env:
+          # Internal localhost URLs (bound to 127.0.0.1 in docker-compose)
+          TEI_URL: http://127.0.0.1:8180
+          CHROMA_URL: http://127.0.0.1:8100
+          # No Cloudflare Access needed - direct localhost access
+          CHROMA_COLLECTION: ${{ vars.CHROMA_COLLECTION }}
+          BASE_COLLECTION_NAME: ${{ vars.BASE_COLLECTION_NAME || 'blog-posts' }}
+          TEI_MODEL_NAME: ${{ vars.TEI_MODEL_NAME || vars.TEI_MODEL || 'all-MiniLM-L6-v2' }}
+          CHUNK_TOKENS: ${{ vars.CHUNK_TOKENS || '512' }}
+          CHUNK_OVERLAP_TOKENS: ${{ vars.CHUNK_OVERLAP_TOKENS || '80' }}
+          EMBED_BATCH: ${{ vars.EMBED_BATCH || '32' }}
+          MAX_WORKERS: ${{ vars.MAX_WORKERS || '6' }}
+          RETRIES_TOTAL: ${{ vars.RETRIES_TOTAL || '5' }}
+          RETRY_BACKOFF_S: ${{ vars.RETRY_BACKOFF_S || '1.0' }}
+          CHROMA_RETRIES: ${{ vars.CHROMA_RETRIES || '4' }}
+          CHROMA_BACKOFF_S: ${{ vars.CHROMA_BACKOFF_S || '1.5' }}
+          EMBED_TIMEOUT_S: ${{ vars.EMBED_TIMEOUT_S || '120' }}
+        run: |
+          python scripts/rag/index_posts.py

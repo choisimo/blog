@@ -1,0 +1,73 @@
+name: Deploy Cloudflare Workers
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'workers/**'
+      - '.github/workflows/deploy-workers.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: workers/package-lock.json
+
+      - name: Install Wrangler 4
+        working-directory: workers
+        run: npm install --save-dev wrangler@4
+
+      - name: Install dependencies
+        working-directory: workers
+        run: npm ci --ignore-scripts
+
+      - name: Type check
+        working-directory: workers
+        run: npm run typecheck
+
+      - name: Verify Cloudflare credentials
+        working-directory: workers
+        run: |
+          echo "Verifying Cloudflare authentication..."
+          echo "Account ID: ${CLOUDFLARE_ACCOUNT_ID:0:8}***"
+          npx wrangler whoami
+
+      - name: Apply D1 migrations (production)
+        working-directory: workers
+        run: npx wrangler d1 migrations apply blog-db-prod --env production --remote
+
+      - name: Set Secrets (production)
+        working-directory: workers
+        run: |
+          echo "${{ secrets.GEMINI_API_KEY }}" | npx wrangler secret put GEMINI_API_KEY --env production
+          echo "${{ secrets.JWT_SECRET }}" | npx wrangler secret put JWT_SECRET --env production
+          if [ -n "${{ secrets.ASSETS_BASE_URL }}" ]; then
+            echo "${{ secrets.ASSETS_BASE_URL }}" | npx wrangler secret put ASSETS_BASE_URL --env production
+          fi
+
+      - name: Deploy to Cloudflare Workers (production)
+        working-directory: workers
+        run: npx wrangler deploy --env production
+
+      - name: Deployment summary
+        run: |
+          echo "✅ Cloudflare Workers deployed successfully"
+          echo "📦 Environment: production"
+          echo "🌍 Endpoint: https://blog-api-prod.immuddelo.workers.dev"
+          echo "🔑 Secrets configured: GEMINI_API_KEY, JWT_SECRET"

@@ -1,0 +1,23 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+set -e
+
+# Security check: prevent committing secrets
+echo "🔐 Checking for sensitive files..."
+FORBIDDEN_FILES=(".env" ".dev.vars" "wrangler-account.json" "serviceAccount.json")
+
+for file in "${FORBIDDEN_FILES[@]}"; do
+  if git diff --cached --name-only | grep -q "$file"; then
+    echo "❌ Error: Attempting to commit sensitive file: $file"
+    echo "   Please remove it: git reset HEAD $file"
+    exit 1
+  fi
+done
+
+echo "✅ Security check passed"
+
+# Run checks in frontend workspace
+npm --prefix frontend run lint:fix
+npm --prefix frontend run type-check
+(cd frontend && npx lint-staged)

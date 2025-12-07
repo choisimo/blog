@@ -1,0 +1,40 @@
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# OpenCode sensitive data
+*.jwt
+*.token
+auth-token.txt
+bootstrap-token.txt
+
+# Service accounts & credentials
+serviceAccount*.json
+credentials*.json
+*.pem
+*.key
+
+# Logs
+logs/
+*.log
+
+# Go build artifacts
+go-proxy-admin/proxy-admin
+go-proxy-admin/*.exe
+
+# Node modules (if any)
+node_modules/
+
+# Docker artifacts
+*.tar.gz
+
+# Runtime data
+data/
+config/
+shared/
+
+# OS
+.DS_Store
+Thumbs.db
