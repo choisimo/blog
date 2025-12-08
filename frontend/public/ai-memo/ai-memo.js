@@ -208,14 +208,18 @@
       const vh = window.innerHeight;
       const rect = this.$panel.getBoundingClientRect();
       // Use actual dimensions or fallback to default panel size (400x520)
-      const w = rect.width > 0 ? rect.width : 400;
-      const h = rect.height > 0 ? rect.height : 520;
-      // If position would be off-screen, return null to use CSS defaults
-      if (x < -w || x > vw + w || y < -h || y > vh + h) {
+      const w = rect.width > 0 ? rect.width : Math.min(400, vw - 32);
+      const h = rect.height > 0 ? rect.height : Math.min(520, vh - 100);
+      // Stricter check: if position would place panel mostly off-screen, return null
+      // Panel must have at least 50% visible or be within reasonable bounds
+      const minVisible = 100; // at least 100px must be visible
+      if (x < -w + minVisible || x > vw - minVisible || y < -h + minVisible || y > vh - minVisible) {
         return { x: null, y: null };
       }
-      const nx = Math.max(12, Math.min(vw - w - 12, x));
-      const ny = Math.max(12, Math.min(vh - h - 12, y));
+      // Clamp to keep panel fully within viewport with padding
+      const padding = 12;
+      const nx = Math.max(padding, Math.min(vw - w - padding, x));
+      const ny = Math.max(padding, Math.min(vh - h - padding, y));
       return { x: nx, y: ny };
     }
 
@@ -1952,6 +1956,25 @@
         const isOpen = this.$panel.classList.contains('open');
         LS.set(KEYS.isOpen, isOpen);
         this.state.isOpen = isOpen;
+        
+        // When opening, verify position is valid for current viewport
+        if (isOpen) {
+          requestAnimationFrame(() => {
+            const rect = this.$panel.getBoundingClientRect();
+            const { x, y } = this.clamp(rect.left, rect.top);
+            if (x == null || y == null) {
+              // Reset to CSS defaults if position is invalid
+              Object.assign(this.$panel.style, {
+                left: '',
+                top: '',
+                right: '',
+                bottom: '',
+              });
+              this.state.position = { x: null, y: null };
+              LS.set(KEYS.position, { x: null, y: null });
+            }
+          });
+        }
       }
 
       updateHistoryTooltip(node, clientX, clientY) {
