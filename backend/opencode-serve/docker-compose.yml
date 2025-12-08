@@ -1,18 +1,24 @@
 services:
-  opencode:
+  # =============================================================================
+  # OpenCode Core - 3 Replicas with Load Balancing
+  # =============================================================================
+  # 각 인스턴스가 독립적으로 LLM 요청을 처리하여 동시성 향상
+  # nginx upstream에서 round-robin 로드밸런싱
+  # =============================================================================
+  
+  opencode-1:
     build:
       context: .
       dockerfile: ai-serve.Dockerfile
     image: opencode-serve:latest
     restart: unless-stopped
-    ports:
-      - "7015:7012"
     environment:
       NODE_ENV: production
       OPENCODE_HOST: 0.0.0.0
       OPENCODE_PORT: 7012
       VECTOR_DB_HOST: chromadb
       VECTOR_DB_PORT: 8000
+      INSTANCE_ID: "1"
     command:
       - /app/node_modules/.bin/opencode
       - serve
@@ -21,12 +27,10 @@ services:
       - --port
       - "7012"
     volumes:
-      # auth.json이 저장되는 실제 경로 (opencode auth login 인증 정보 영구 보존)
-      - opencode-data:/home/node/.local/share/opencode
+      - opencode-data-1:/home/node/.local/share/opencode
       - opencode-logs:/var/log/opencode
       - opencode-config:/home/node/.config/opencode
     healthcheck:
-      # 서버가 실제로 요청에 응답하는지 /app 경로로 확인합니다.
       test: ["CMD-SHELL", "node -e \"const http=require('http'); http.get('http://localhost:7012/app', ()=>process.exit(0)).on('error', ()=>process.exit(1));\" "]
       interval: 30s
       timeout: 5s
@@ -37,6 +41,184 @@ services:
     depends_on:
       - embedding-server
       - chromadb
+    networks:
+      - ai-network
+
+  opencode-2:
+    build:
+      context: .
+      dockerfile: ai-serve.Dockerfile
+    image: opencode-serve:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      OPENCODE_HOST: 0.0.0.0
+      OPENCODE_PORT: 7012
+      VECTOR_DB_HOST: chromadb
+      VECTOR_DB_PORT: 8000
+      INSTANCE_ID: "2"
+    command:
+      - /app/node_modules/.bin/opencode
+      - serve
+      - --hostname
+      - 0.0.0.0
+      - --port
+      - "7012"
+    volumes:
+      - opencode-data-2:/home/node/.local/share/opencode
+      - opencode-logs:/var/log/opencode
+      - opencode-config:/home/node/.config/opencode
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"const http=require('http'); http.get('http://localhost:7012/app', ()=>process.exit(0)).on('error', ()=>process.exit(1));\" "]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - embedding-server
+      - chromadb
+    networks:
+      - ai-network
+
+  opencode-3:
+    build:
+      context: .
+      dockerfile: ai-serve.Dockerfile
+    image: opencode-serve:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      OPENCODE_HOST: 0.0.0.0
+      OPENCODE_PORT: 7012
+      VECTOR_DB_HOST: chromadb
+      VECTOR_DB_PORT: 8000
+      INSTANCE_ID: "3"
+    command:
+      - /app/node_modules/.bin/opencode
+      - serve
+      - --hostname
+      - 0.0.0.0
+      - --port
+      - "7012"
+    volumes:
+      - opencode-data-3:/home/node/.local/share/opencode
+      - opencode-logs:/var/log/opencode
+      - opencode-config:/home/node/.config/opencode
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"const http=require('http'); http.get('http://localhost:7012/app', ()=>process.exit(0)).on('error', ()=>process.exit(1));\" "]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - embedding-server
+      - chromadb
+    networks:
+      - ai-network
+
+  # =============================================================================
+  # Auto-Chat Proxy - 3 Replicas (각 opencode 인스턴스에 대응)
+  # =============================================================================
+  
+  auto-chat-proxy-1:
+    image: node:20-alpine
+    restart: unless-stopped
+    command: ["node", "/app/auto-chat-proxy.js"]
+    environment:
+      OPENCODE_BASE: http://opencode-1:7012
+      PROXY_PORT: 7016
+      DEFAULT_PROVIDER: github-copilot
+      DEFAULT_MODEL: gpt-4.1
+      DEFAULT_SESSION_TITLE: Auto Session
+      OPENCODE_BEARER_TOKEN_FILE: /app/shared/auto-token.jwt
+      TOKEN_FILE_POLL_INTERVAL: "3000"
+      TOKEN_FILE_MAX_WAIT: "180000"
+      MESSAGE_TIMEOUT: "120000"
+      INSTANCE_ID: "1"
+    volumes:
+      - ./auto-chat-proxy.js:/app/auto-chat-proxy.js:ro
+      - shared-tokens:/app/shared:ro
+    depends_on:
+      - opencode-1
+      - token-bootstrap
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:7016/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - ai-network
+
+  auto-chat-proxy-2:
+    image: node:20-alpine
+    restart: unless-stopped
+    command: ["node", "/app/auto-chat-proxy.js"]
+    environment:
+      OPENCODE_BASE: http://opencode-2:7012
+      PROXY_PORT: 7016
+      DEFAULT_PROVIDER: github-copilot
+      DEFAULT_MODEL: gpt-4.1
+      DEFAULT_SESSION_TITLE: Auto Session
+      OPENCODE_BEARER_TOKEN_FILE: /app/shared/auto-token.jwt
+      TOKEN_FILE_POLL_INTERVAL: "3000"
+      TOKEN_FILE_MAX_WAIT: "180000"
+      MESSAGE_TIMEOUT: "120000"
+      INSTANCE_ID: "2"
+    volumes:
+      - ./auto-chat-proxy.js:/app/auto-chat-proxy.js:ro
+      - shared-tokens:/app/shared:ro
+    depends_on:
+      - opencode-2
+      - token-bootstrap
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:7016/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - ai-network
+
+  auto-chat-proxy-3:
+    image: node:20-alpine
+    restart: unless-stopped
+    command: ["node", "/app/auto-chat-proxy.js"]
+    environment:
+      OPENCODE_BASE: http://opencode-3:7012
+      PROXY_PORT: 7016
+      DEFAULT_PROVIDER: github-copilot
+      DEFAULT_MODEL: gpt-4.1
+      DEFAULT_SESSION_TITLE: Auto Session
+      OPENCODE_BEARER_TOKEN_FILE: /app/shared/auto-token.jwt
+      TOKEN_FILE_POLL_INTERVAL: "3000"
+      TOKEN_FILE_MAX_WAIT: "180000"
+      MESSAGE_TIMEOUT: "120000"
+      INSTANCE_ID: "3"
+    volumes:
+      - ./auto-chat-proxy.js:/app/auto-chat-proxy.js:ro
+      - shared-tokens:/app/shared:ro
+    depends_on:
+      - opencode-3
+      - token-bootstrap
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:7016/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - ai-network
 
   # Token bootstrap service - automatically creates JWT token on first startup
   token-bootstrap:
@@ -55,37 +237,8 @@ services:
     depends_on:
       proxy-admin:
         condition: service_started
-
-  auto-chat-proxy:
-    image: node:20-alpine
-    restart: unless-stopped
-    command: ["node", "/app/auto-chat-proxy.js"]
-    environment:
-      OPENCODE_BASE: http://opencode:7012
-      PROXY_PORT: 7016
-      DEFAULT_PROVIDER: github-copilot
-      DEFAULT_MODEL: gpt-4.1
-      DEFAULT_SESSION_TITLE: Auto Session
-      OPENCODE_BEARER_TOKEN_FILE: /app/shared/auto-token.jwt
-      TOKEN_FILE_POLL_INTERVAL: "3000"
-      TOKEN_FILE_MAX_WAIT: "180000"
-      MESSAGE_TIMEOUT: "120000"
-    ports:
-      - "7016:7016"
-    volumes:
-      - ./auto-chat-proxy.js:/app/auto-chat-proxy.js:ro
-      - shared-tokens:/app/shared:ro
-    depends_on:
-      - opencode
-      - token-bootstrap
-    security_opt:
-      - no-new-privileges:true
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://localhost:7016/health || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
+    networks:
+      - ai-network
 
   embedding-server:
     # CPU 환경 기본 이미지 (GPU 사용 시 아래 주석 참고)
@@ -108,6 +261,8 @@ services:
     command: --model-id sentence-transformers/all-MiniLM-L6-v2
     security_opt:
       - no-new-privileges:true
+    networks:
+      - ai-network
 
   chromadb:
     image: chromadb/chroma
@@ -118,6 +273,8 @@ services:
       - chroma-data:/chroma/.chroma/index
     security_opt:
       - no-new-privileges:true
+    networks:
+      - ai-network
 
   proxy-admin:
     build:
@@ -128,7 +285,8 @@ services:
     ports:
       - "7080:7080"
     environment:
-      OPENCODE_BASE: http://opencode:7012
+      # proxy-admin은 opencode-1을 기본으로 사용 (토큰 발급용)
+      OPENCODE_BASE: http://opencode-1:7012
       ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-auto-generated-secret-change-in-production}
       ADMIN_PORT: 7080
       ADMIN_DB_PATH: /app/data/proxy-admin.db
@@ -139,12 +297,45 @@ services:
     volumes:
       - proxy-admin-data:/app/data
     depends_on:
-      - opencode
+      - opencode-1
     security_opt:
       - no-new-privileges:true
+    networks:
+      - ai-network
+
+  # =============================================================================
+  # Nginx Load Balancer - AI 서비스 진입점
+  # =============================================================================
+  nginx-lb:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "7016:7016"  # vas-proxy 로드밸런싱
+      - "7015:7012"  # vas-core 로드밸런싱 (기존 포트 유지)
+    volumes:
+      - ./nginx-lb.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - auto-chat-proxy-1
+      - auto-chat-proxy-2
+      - auto-chat-proxy-3
+      - opencode-1
+      - opencode-2
+      - opencode-3
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:7016/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - ai-network
 
 volumes:
-  opencode-data:
+  opencode-data-1:
+    driver: local
+  opencode-data-2:
+    driver: local
+  opencode-data-3:
     driver: local
   opencode-logs:
     driver: local
@@ -158,3 +349,7 @@ volumes:
     driver: local
   shared-tokens:
     driver: local
+
+networks:
+  ai-network:
+    driver: bridge
