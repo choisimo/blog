@@ -27,32 +27,22 @@
 # -----------------------------------------------------------------------------
 model_list:
   # ---------------------------------------------------------------------------
-  # GitHub Copilot (via VAS Core) - Primary Provider
+  # Primary Models (Default aliases that map to fastest available)
   # ---------------------------------------------------------------------------
-  # Note: GitHub Copilot routes through vas-core for authentication
+  # These aliases are used by the backend API - they map to Gemini for speed/cost
   - model_name: gpt-4.1
     litellm_params:
-      model: openai/gpt-4.1
-      api_base: http://vas-core:7012/v1
-      api_key: os.environ/VAS_API_KEY
+      model: gemini/gemini-1.5-flash
+      api_key: os.environ/GOOGLE_API_KEY
     model_info:
-      description: "GitHub Copilot GPT-4.1 via VAS"
+      description: "Default model - Maps to Gemini 1.5 Flash"
       
   - model_name: gpt-4o
     litellm_params:
-      model: openai/gpt-4o
-      api_base: http://vas-core:7012/v1
-      api_key: os.environ/VAS_API_KEY
+      model: gemini/gemini-1.5-pro
+      api_key: os.environ/GOOGLE_API_KEY
     model_info:
-      description: "GitHub Copilot GPT-4o via VAS"
-
-  - model_name: claude-sonnet-4
-    litellm_params:
-      model: openai/claude-sonnet-4
-      api_base: http://vas-core:7012/v1
-      api_key: os.environ/VAS_API_KEY
-    model_info:
-      description: "GitHub Copilot Claude Sonnet 4 via VAS"
+      description: "High capability model - Maps to Gemini 1.5 Pro"
 
   # ---------------------------------------------------------------------------
   # OpenAI Direct (Optional - when you have your own API key)
@@ -157,11 +147,10 @@ router_settings:
   timeout: 120
   
   # Fallback configuration
-  # If gpt-4.1 fails, try gemini-1.5-flash, then claude-3-haiku
+  # If gpt-4.1 fails, try gemini alternatives
   fallbacks:
-    - gpt-4.1: ["gemini-1.5-flash", "claude-3-haiku"]
-    - gpt-4o: ["gemini-1.5-pro", "claude-3.5-sonnet"]
-    - claude-sonnet-4: ["claude-3.5-sonnet", "gemini-1.5-pro"]
+    - gpt-4.1: ["gemini-1.5-pro", "claude-3-haiku"]
+    - gpt-4o: ["gemini-2.0-flash", "claude-3.5-sonnet"]
 
   # Context window fallbacks (for long contexts)
   context_window_fallbacks:
@@ -206,8 +195,10 @@ general_settings:
   # Master API key for all requests
   master_key: os.environ/LITELLM_MASTER_KEY
   
-  # Database for tracking (optional)
-  # database_url: os.environ/LITELLM_DATABASE_URL
+  # Disable database - we don't need internal usage tracking
+  # Our own D1 database handles usage logging via backend API
+  database_connection_pool_limit: 0
+  disable_spend_logs: true
   
   # Enable Prometheus metrics at /metrics
   # alerting:
