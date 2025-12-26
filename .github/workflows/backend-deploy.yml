@@ -233,6 +233,12 @@ jobs:
               environment:
                 - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-1234}
                 - LITELLM_LOG_LEVEL=INFO
+                - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+                - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+                - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+                # Disable database features - we use D1 for usage tracking
+                - DISABLE_SPEND_LOGS=true
+                - DATABASE_URL=
               expose:
                 - "4000"
               volumes:
