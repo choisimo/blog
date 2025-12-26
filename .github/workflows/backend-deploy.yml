@@ -116,6 +116,9 @@ jobs:
             echo "BACKEND_ENV_FILE secret is missing." >&2; exit 1;
           fi
           printf "%s" "${{ secrets.BACKEND_ENV_FILE }}" > /tmp/backend.env
+          # Append additional secrets that are stored separately
+          echo "" >> /tmp/backend.env
+          echo "CLOUDFLARE_TUNNEL_TOKEN=${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}" >> /tmp/backend.env
 
       - name: Upload artifacts to remote
         run: |
