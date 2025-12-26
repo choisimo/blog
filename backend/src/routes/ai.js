@@ -1,8 +1,190 @@
 import { Router } from 'express';
-import { generateContent, tryParseJson, getAIServeClient } from '../lib/ai-serve.js';
+import { aiService, tryParseJson } from '../lib/ai-service.js';
+import { getLiteLLMClient } from '../lib/litellm-client.js';
 import { config } from '../config.js';
 
 const router = Router();
+
+// ============================================================================
+// Model List Endpoint - Get available AI models from LiteLLM
+// GET /api/v1/ai/models
+// ============================================================================
+
+router.get('/models', async (req, res) => {
+  try {
+    const client = getLiteLLMClient();
+    const models = await client.models();
+    
+    // Get default model from config
+    const defaultModel = config.ai?.gateway?.defaultModel || 
+                        process.env.AI_DEFAULT_MODEL || 
+                        'gemini-1.5-flash';
+    
+    // Transform models to a cleaner format with categories
+    const categorizedModels = categorizeModels(models, defaultModel);
+    
+    res.json({
+      ok: true,
+      data: {
+        models: categorizedModels,
+        default: defaultModel,
+        provider: 'litellm',
+      },
+    });
+  } catch (err) {
+    console.error('Failed to fetch models:', err.message);
+    
+    // Return fallback models if LiteLLM is unavailable
+    res.json({
+      ok: true,
+      data: {
+        models: getFallbackModels(),
+        default: process.env.AI_DEFAULT_MODEL || 'gemini-1.5-flash',
+        provider: 'fallback',
+        warning: 'Using fallback model list - LiteLLM may be unavailable',
+      },
+    });
+  }
+});
+
+/**
+ * Categorize models by provider for better UI organization
+ */
+function categorizeModels(models, defaultModel) {
+  const result = [];
+  
+  for (const model of models) {
+    const id = model.id;
+    const info = getModelInfo(id);
+    
+    result.push({
+      id,
+      name: info.name,
+      provider: info.provider,
+      description: info.description,
+      isDefault: id === defaultModel,
+      capabilities: info.capabilities,
+    });
+  }
+  
+  // Sort: default first, then by provider
+  return result.sort((a, b) => {
+    if (a.isDefault) return -1;
+    if (b.isDefault) return 1;
+    return a.provider.localeCompare(b.provider);
+  });
+}
+
+/**
+ * Get human-readable model info
+ */
+function getModelInfo(modelId) {
+  const modelMap = {
+    // Google Gemini
+    'gemini-1.5-flash': { 
+      name: 'Gemini 1.5 Flash', 
+      provider: 'Google', 
+      description: 'Fast and efficient',
+      capabilities: ['chat', 'vision'],
+    },
+    'gemini-1.5-pro': { 
+      name: 'Gemini 1.5 Pro', 
+      provider: 'Google', 
+      description: 'Most capable Gemini',
+      capabilities: ['chat', 'vision', 'long-context'],
+    },
+    'gemini-2.0-flash': { 
+      name: 'Gemini 2.0 Flash', 
+      provider: 'Google', 
+      description: 'Latest experimental',
+      capabilities: ['chat', 'vision'],
+    },
+    // OpenAI
+    'gpt-4o': { 
+      name: 'GPT-4o', 
+      provider: 'OpenAI', 
+      description: 'Most capable GPT-4',
+      capabilities: ['chat', 'vision'],
+    },
+    'gpt-4o-mini': { 
+      name: 'GPT-4o Mini', 
+      provider: 'OpenAI', 
+      description: 'Fast and affordable',
+      capabilities: ['chat', 'vision'],
+    },
+    'gpt-4-turbo': { 
+      name: 'GPT-4 Turbo', 
+      provider: 'OpenAI', 
+      description: 'High performance',
+      capabilities: ['chat', 'vision'],
+    },
+    'gpt-3.5-turbo': { 
+      name: 'GPT-3.5 Turbo', 
+      provider: 'OpenAI', 
+      description: 'Legacy fast model',
+      capabilities: ['chat'],
+    },
+    // Anthropic
+    'claude-3.5-sonnet': { 
+      name: 'Claude 3.5 Sonnet', 
+      provider: 'Anthropic', 
+      description: 'Best for coding',
+      capabilities: ['chat', 'vision'],
+    },
+    'claude-3-haiku': { 
+      name: 'Claude 3 Haiku', 
+      provider: 'Anthropic', 
+      description: 'Fast responses',
+      capabilities: ['chat'],
+    },
+    // Local
+    'local': { 
+      name: 'Local (Ollama)', 
+      provider: 'Local', 
+      description: 'Llama 3.2 via Ollama',
+      capabilities: ['chat'],
+    },
+    'local/llama3': { 
+      name: 'Llama 3.2', 
+      provider: 'Local', 
+      description: 'Via Ollama',
+      capabilities: ['chat'],
+    },
+    'local/codellama': { 
+      name: 'CodeLlama', 
+      provider: 'Local', 
+      description: 'Code-optimized',
+      capabilities: ['chat', 'code'],
+    },
+    // Aliases
+    'gpt-4.1': { 
+      name: 'GPT-4.1 (Alias)', 
+      provider: 'Alias', 
+      description: 'Maps to Gemini Flash',
+      capabilities: ['chat'],
+    },
+  };
+  
+  return modelMap[modelId] || {
+    name: modelId,
+    provider: 'Unknown',
+    description: '',
+    capabilities: ['chat'],
+  };
+}
+
+/**
+ * Fallback models when LiteLLM is unavailable
+ */
+function getFallbackModels() {
+  return [
+    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'Google', isDefault: true },
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'Google' },
+    { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI' },
+    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI' },
+    { id: 'claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
+  ];
+}
 
 // ============================================================================
 // Auto-Chat Endpoint (replaces ai-call-gateway proxy target)
@@ -11,7 +193,7 @@ const router = Router();
 
 router.post('/auto-chat', async (req, res, next) => {
   try {
-    const { messages, temperature, maxTokens } = req.body || {};
+    const { messages, temperature, maxTokens, model } = req.body || {};
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({
@@ -20,10 +202,11 @@ router.post('/auto-chat', async (req, res, next) => {
       });
     }
 
-    // Use AI Serve client for chat
-    const client = getAIServeClient();
-    const result = await client.chat(messages, {
-      // temperature and maxTokens can be passed if ai-serve supports them
+    // Use unified AI service for chat with optional model selection
+    const result = await aiService.chat(messages, {
+      temperature,
+      maxTokens,
+      model, // Pass selected model to AI service
     });
 
     return res.json({
@@ -42,14 +225,15 @@ router.post('/auto-chat', async (req, res, next) => {
 
 // GET /api/v1/ai/health - Health check
 router.get('/health', async (req, res) => {
-  const client = getAIServeClient();
-  const aiServeHealth = await client.health();
+  const healthResult = await aiService.health();
+  const providerInfo = aiService.getProviderInfo();
 
   res.json({
     ok: true,
     data: {
-      status: aiServeHealth.ok ? 'healthy' : 'degraded',
-      aiServe: aiServeHealth,
+      status: healthResult.ok ? 'healthy' : 'degraded',
+      provider: providerInfo.provider,
+      health: healthResult,
       // Legacy fallback status
       hasGeminiKey: !!config.gemini.apiKey,
       hasOpenRouterKey: !!config.openrouter.apiKey,
@@ -60,30 +244,26 @@ router.get('/health', async (req, res) => {
 
 // GET /api/v1/ai/status - Status check
 router.get('/status', async (req, res) => {
-  const client = getAIServeClient();
-  let providers = null;
-
-  try {
-    providers = await client.providers();
-  } catch {
-    // AI Serve might not be available
-  }
+  const providerInfo = aiService.getProviderInfo();
+  const healthResult = await aiService.health();
 
   res.json({
     ok: true,
     data: {
-      status: 'ok',
-      model: config.aiServe.defaultModel,
-      provider: config.aiServe.defaultProvider,
-      aiServe: {
-        baseUrl: config.aiServe.baseUrl,
-        providers: providers?.providers || [],
+      status: healthResult.ok ? 'ok' : 'degraded',
+      provider: providerInfo.provider,
+      model: providerInfo.config[providerInfo.provider]?.model || config.aiServe?.defaultModel,
+      aiService: {
+        provider: providerInfo.provider,
+        config: providerInfo.config,
       },
       features: {
         chat: true,
         vision: true,
         summarize: true,
         generate: true,
+        stream: true,
+        embeddings: providerInfo.provider === 'litellm',
       },
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
@@ -150,10 +330,10 @@ router.post('/vision/analyze', async (req, res, next) => {
 
     const analysisPrompt = prompt || DEFAULT_VISION_PROMPT;
 
-    // Use AI Serve for vision analysis
-    const client = getAIServeClient();
+    // Use unified AI service for vision analysis
     try {
-      const description = await client.vision(base64Data, mimeType, analysisPrompt, {
+      const description = await aiService.vision(base64Data, analysisPrompt, {
+        mimeType,
         model: 'gpt-4o', // Vision-capable model
       });
 
@@ -161,11 +341,11 @@ router.post('/vision/analyze', async (req, res, next) => {
         ok: true,
         data: {
           description,
-          provider: 'ai-serve',
+          provider: aiService.provider,
         },
       });
     } catch (err) {
-      console.error('AI Serve vision failed:', err.message);
+      console.error('Vision analysis failed:', err.message);
       return res.status(502).json({
         ok: false,
         error: {
@@ -182,15 +362,16 @@ router.post('/vision/analyze', async (req, res, next) => {
 
 // GET /api/v1/ai/vision/health - Vision health check
 router.get('/vision/health', async (req, res) => {
-  const client = getAIServeClient();
-  const aiServeHealth = await client.health();
+  const healthResult = await aiService.health();
+  const providerInfo = aiService.getProviderInfo();
 
   res.json({
     ok: true,
     data: {
-      status: aiServeHealth.ok ? 'ok' : 'degraded',
+      status: healthResult.ok ? 'ok' : 'degraded',
+      provider: providerInfo.provider,
       providers: {
-        'ai-serve': aiServeHealth.ok,
+        [providerInfo.provider]: healthResult.ok,
         // Legacy fallback
         gemini: !!config.gemini.apiKey,
         openrouter: !!config.openrouter.apiKey,
@@ -204,15 +385,6 @@ router.get('/vision/health', async (req, res) => {
 // Existing Endpoints (summarize, sketch, prism, chain, generate)
 // ============================================================================
 
-function safeTruncate(s, n) {
-  if (!s) return s;
-  return s.length > n ? `${s.slice(0, n)}\n…(truncated)` : s;
-}
-
-function isRecord(v) {
-  return v !== null && typeof v === 'object';
-}
-
 router.post('/summarize', async (req, res, next) => {
   try {
     const { text, input, instructions } = req.body || {};
@@ -220,12 +392,13 @@ router.post('/summarize', async (req, res, next) => {
     if (!contentText) {
       return res.status(400).json({ ok: false, error: 'Missing text' });
     }
-    const prompt = instructions
-      ? `${instructions}\n\n---\n\n${contentText}`
-      : `Summarize the following content in Korean, concise but faithful to key points.\n\n${contentText}`;
 
-    const summary = await generateContent(prompt, { temperature: 0.2 });
-    return res.json({ ok: true, data: { summary } });
+    const result = await aiService.task('summary', {
+      content: contentText,
+      prompt: instructions,
+    }, { temperature: 0.2 });
+
+    return res.json({ ok: true, data: { summary: result.data?.summary || result.data?.text || contentText.slice(0, 200) } });
   } catch (err) {
     return next(err);
   }
@@ -239,48 +412,23 @@ router.post('/sketch', async (req, res, next) => {
         .status(400)
         .json({ ok: false, error: 'paragraph is required' });
 
-    const prompt = [
-      'You are a helpful writing companion. Return STRICT JSON only matching the schema.',
-      '{"mood":"string","bullets":["string", "string", "..."]}',
-      '',
-      `Persona: ${persona || 'default'}`,
-      `Post: ${safeTruncate(postTitle || '', 120)}`,
-      'Paragraph:',
-      safeTruncate(paragraph, 1600),
-      '',
-      'Task: Capture the emotional sketch. Select a concise mood (e.g., curious, excited, skeptical) and 3-6 short bullets in the original language of the text.',
-    ].join('\n');
+    const result = await aiService.task('sketch', {
+      paragraph,
+      postTitle,
+      persona,
+    });
 
-    try {
-      const text = await generateContent(prompt, { temperature: 0.3 });
-      const json = tryParseJson(text);
-      if (
-        isRecord(json) &&
-        Array.isArray(json.bullets) &&
-        typeof json.mood === 'string'
-      ) {
-        return res.json({
-          ok: true,
-          data: { mood: json.mood, bullets: json.bullets.slice(0, 10) },
-        });
-      }
-      throw new Error('Invalid JSON');
-    } catch (_) {
-      const sentences = (paragraph || '')
-        .replace(/\n+/g, ' ')
-        .split(/[.!?]\s+/)
-        .map(s => s.trim())
-        .filter(Boolean);
+    if (result.ok && result.data) {
       return res.json({
         ok: true,
         data: {
-          mood: 'curious',
-          bullets: sentences
-            .slice(0, 4)
-            .map(s => (s.length > 140 ? `${s.slice(0, 138)}…` : s)),
+          mood: result.data.mood,
+          bullets: (result.data.bullets || []).slice(0, 10),
         },
       });
     }
+
+    throw new Error('Invalid response');
   } catch (err) {
     return next(err);
   }
@@ -294,37 +442,19 @@ router.post('/prism', async (req, res, next) => {
         .status(400)
         .json({ ok: false, error: 'paragraph is required' });
 
-    const prompt = [
-      'Return STRICT JSON only for idea facets.',
-      '{"facets":[{"title":"string","points":["string","string"]}]}',
-      `Post: ${safeTruncate(postTitle || '', 120)}`,
-      'Paragraph:',
-      safeTruncate(paragraph, 1600),
-      '',
-      'Task: Provide 2-3 facets (titles) with 2-4 concise points each, in the original language.',
-    ].join('\n');
+    const result = await aiService.task('prism', {
+      paragraph,
+      postTitle,
+    });
 
-    try {
-      const text = await generateContent(prompt, { temperature: 0.2 });
-      const json = tryParseJson(text);
-      if (isRecord(json) && Array.isArray(json.facets)) {
-        return res.json({
-          ok: true,
-          data: { facets: json.facets.slice(0, 4) },
-        });
-      }
-      throw new Error('Invalid JSON');
-    } catch (_) {
+    if (result.ok && result.data) {
       return res.json({
         ok: true,
-        data: {
-          facets: [
-            { title: '핵심 요점', points: [safeTruncate(paragraph, 140)] },
-            { title: '생각해볼 점', points: ['관점 A', '관점 B'] },
-          ],
-        },
+        data: { facets: (result.data.facets || []).slice(0, 4) },
       });
     }
+
+    throw new Error('Invalid response');
   } catch (err) {
     return next(err);
   }
@@ -338,38 +468,19 @@ router.post('/chain', async (req, res, next) => {
         .status(400)
         .json({ ok: false, error: 'paragraph is required' });
 
-    const prompt = [
-      'Return STRICT JSON only for tail questions.',
-      '{"questions":[{"q":"string","why":"string"}]}',
-      `Post: ${safeTruncate(postTitle || '', 120)}`,
-      'Paragraph:',
-      safeTruncate(paragraph, 1600),
-      '',
-      'Task: Generate 3-5 short follow-up questions and a brief why for each, in the original language.',
-    ].join('\n');
+    const result = await aiService.task('chain', {
+      paragraph,
+      postTitle,
+    });
 
-    try {
-      const text = await generateContent(prompt, { temperature: 0.2 });
-      const json = tryParseJson(text);
-      if (isRecord(json) && Array.isArray(json.questions)) {
-        return res.json({
-          ok: true,
-          data: { questions: json.questions.slice(0, 6) },
-        });
-      }
-      throw new Error('Invalid JSON');
-    } catch (_) {
+    if (result.ok && result.data) {
       return res.json({
         ok: true,
-        data: {
-          questions: [
-            { q: '무엇이 핵심 주장인가?', why: '핵심을 명료화' },
-            { q: '어떤 가정이 있는가?', why: '숨은 전제 확인' },
-            { q: '적용 예시는?', why: '구체화' },
-          ],
-        },
+        data: { questions: (result.data.questions || []).slice(0, 6) },
       });
     }
+
+    throw new Error('Invalid response');
   } catch (err) {
     return next(err);
   }
@@ -388,7 +499,7 @@ router.post('/generate', async (req, res, next) => {
     if (!prompt || typeof prompt !== 'string') {
       return res.status(400).json({ ok: false, error: 'prompt is required' });
     }
-    const text = await generateContent(String(prompt), {
+    const text = await aiService.generate(String(prompt), {
       temperature: typeof temperature === 'number' ? temperature : 0.2,
     });
     return res.json({ ok: true, data: { text } });
@@ -457,32 +568,20 @@ router.get('/generate/stream', async (req, res, next) => {
       }
     }, 25000);
 
-    // Generate full text, then chunk-stream to client
-    let text = '';
+    // Use streaming from AIService
     try {
-      text = await generateContent(String(q), { temperature });
+      for await (const chunk of aiService.stream(String(q), { temperature })) {
+        if (closed) break;
+        send('token', { token: chunk });
+      }
+      if (!closed) {
+        send('done', { type: 'done' });
+      }
+      return onClose();
     } catch (err) {
       send('error', { message: err?.message || 'generation failed' });
       return onClose();
     }
-
-    const chunkSize = 80;
-    let idx = 0;
-    const total = text.length;
-
-    const tick = () => {
-      if (closed) return;
-      if (idx >= total) {
-        send('done', { type: 'done' });
-        return onClose();
-      }
-      const next = text.slice(idx, Math.min(idx + chunkSize, total));
-      idx += chunkSize;
-      send('token', { token: next });
-      setTimeout(tick, 25);
-    };
-
-    tick();
   } catch (err) {
     return next(err);
   }

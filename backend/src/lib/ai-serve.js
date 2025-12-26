@@ -25,6 +25,43 @@
 
 import { config } from '../config.js';
 
+/**
+ * Structured logger for VAS Client
+ * Provides consistent log format with context
+ */
+const logger = {
+  _format(level, context, message, data = {}) {
+    const timestamp = new Date().toISOString();
+    const logEntry = {
+      timestamp,
+      level,
+      service: 'vas-client',
+      ...context,
+      message,
+      ...data,
+    };
+    return JSON.stringify(logEntry);
+  },
+
+  info(context, message, data) {
+    console.log(this._format('info', context, message, data));
+  },
+
+  warn(context, message, data) {
+    console.warn(this._format('warn', context, message, data));
+  },
+
+  error(context, message, data) {
+    console.error(this._format('error', context, message, data));
+  },
+
+  debug(context, message, data) {
+    if (process.env.DEBUG_VAS === 'true') {
+      console.debug(this._format('debug', context, message, data));
+    }
+  },
+};
+
 // Default configuration - points to nginx-lb (load balancer)
 const AI_SERVE_BASE_URL = process.env.AI_SERVE_BASE_URL || 'http://nginx-lb:7016';
 const VAS_CORE_URL = process.env.VAS_CORE_URL || 'http://nginx-lb:7012';
@@ -121,7 +158,11 @@ export class VASClient {
 
     if (this._circuitState.failures >= CIRCUIT_BREAKER_THRESHOLD) {
       this._circuitState.isOpen = true;
-      console.warn('[VASClient] Circuit breaker opened due to repeated failures');
+      logger.warn(
+        { operation: 'circuit_breaker' },
+        'Circuit breaker opened due to repeated failures',
+        { failures: this._circuitState.failures, threshold: CIRCUIT_BREAKER_THRESHOLD }
+      );
     }
   }
 
@@ -140,13 +181,26 @@ export class VASClient {
    * @returns {Promise<string>} Generated text
    */
   async generate(prompt, options = {}) {
+    const requestId = `gen-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const startTime = Date.now();
+
     if (this._isCircuitOpen()) {
+      logger.warn(
+        { operation: 'generate', requestId },
+        'Request blocked by circuit breaker'
+      );
       throw new Error('AI service temporarily unavailable (circuit breaker open)');
     }
 
     const provider = options.provider || this.defaultProvider;
     const model = options.model || this.defaultModel;
     const timeout = options.timeout || DEFAULT_TIMEOUT;
+
+    logger.debug(
+      { operation: 'generate', requestId },
+      'Starting generation request',
+      { provider, model, promptLength: prompt?.length, timeout }
+    );
 
     try {
       const response = await fetchWithTimeout(
@@ -170,10 +224,33 @@ export class VASClient {
       }
 
       const data = await response.json();
+      const duration = Date.now() - startTime;
+
       this._recordSuccess();
+
+      logger.info(
+        { operation: 'generate', requestId },
+        'Generation completed successfully',
+        { provider, model, duration, responseLength: data.response?.text?.length || 0 }
+      );
+
       return data.response?.text || '';
     } catch (error) {
+      const duration = Date.now() - startTime;
       this._recordFailure();
+
+      logger.error(
+        { operation: 'generate', requestId },
+        'Generation failed',
+        {
+          provider,
+          model,
+          duration,
+          error: error.message,
+          circuitState: this.getCircuitState(),
+        }
+      );
+
       throw error;
     }
   }
@@ -185,13 +262,26 @@ export class VASClient {
    * @returns {Promise<{content: string, model: string, provider: string}>}
    */
   async chat(messages, options = {}) {
+    const requestId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const startTime = Date.now();
+
     if (this._isCircuitOpen()) {
+      logger.warn(
+        { operation: 'chat', requestId },
+        'Request blocked by circuit breaker'
+      );
       throw new Error('AI service temporarily unavailable (circuit breaker open)');
     }
 
     const provider = options.provider || this.defaultProvider;
     const model = options.model || this.defaultModel;
     const timeout = options.timeout || DEFAULT_TIMEOUT;
+
+    logger.debug(
+      { operation: 'chat', requestId },
+      'Starting chat request',
+      { provider, model, messageCount: messages?.length, timeout }
+    );
 
     // For chat with history, format messages into a single prompt
     // vas-proxy creates a new session per request
@@ -229,7 +319,22 @@ export class VASClient {
       }
 
       const data = await response.json();
+      const duration = Date.now() - startTime;
+
       this._recordSuccess();
+
+      logger.info(
+        { operation: 'chat', requestId },
+        'Chat completed successfully',
+        {
+          provider,
+          model,
+          duration,
+          sessionId: data.sessionId,
+          responseLength: data.response?.text?.length || 0,
+        }
+      );
+
       return {
         content: data.response?.text || '',
         model,
@@ -237,7 +342,22 @@ export class VASClient {
         sessionId: data.sessionId,
       };
     } catch (error) {
+      const duration = Date.now() - startTime;
       this._recordFailure();
+
+      logger.error(
+        { operation: 'chat', requestId },
+        'Chat failed',
+        {
+          provider,
+          model,
+          duration,
+          messageCount: messages?.length,
+          error: error.message,
+          circuitState: this.getCircuitState(),
+        }
+      );
+
       throw error;
     }
   }
@@ -251,6 +371,14 @@ export class VASClient {
    * @returns {Promise<string>} Analysis result
    */
   async vision(imageBase64, mimeType, prompt, options = {}) {
+    const requestId = `vision-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    logger.info(
+      { operation: 'vision', requestId },
+      'Starting vision analysis',
+      { mimeType, imageSize: imageBase64?.length, promptLength: prompt?.length }
+    );
+
     // Include image as data URL in the message
     const imageDataUrl = `data:${mimeType};base64,${imageBase64}`;
     const fullPrompt = `[Image: ${imageDataUrl}]\n\n${prompt}`;
@@ -307,6 +435,13 @@ export class VASClient {
     } catch (err) {
       this._healthCache.isHealthy = false;
       this._healthCache.lastCheck = now;
+
+      logger.warn(
+        { operation: 'health' },
+        'Health check failed',
+        { error: err.message }
+      );
+
       return { ok: false, error: err.message };
     }
   }

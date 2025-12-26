@@ -160,7 +160,11 @@ export async function* streamChatEvents(
   const res = await fetch(url, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ parts, context: { page } }),
+    body: JSON.stringify({
+      parts,
+      context: { page },
+      model: input.model, // AI 모델 선택
+    }),
     signal: input.signal,
   });
 

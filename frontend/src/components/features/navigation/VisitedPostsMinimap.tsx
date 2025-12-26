@@ -221,7 +221,9 @@ export function VisitedPostsMinimap({
         side={isMobile ? 'bottom' : 'right'}
         hideClose
         className={cn(
-          'p-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:backdrop-blur-lg',
+          'p-0 bg-background/95',
+          // Only apply backdrop-blur on desktop for performance
+          !isMobile && 'backdrop-blur supports-[backdrop-filter]:backdrop-blur-lg',
           isMobile
             ? 'max-h-[75vh] rounded-t-[24px] border-x border-t border-border/60 shadow-[0_-18px_50px_rgba(15,23,42,0.18)]'
             : 'h-full w-[420px] border-l border-border/40'

@@ -69,6 +69,7 @@ export type StreamChatInput = {
   imageAnalysis?: string | null;
   ragContext?: string | null; // RAG 검색 컨텍스트 (블로그 포스트)
   memoryContext?: string | null; // 사용자 메모리 컨텍스트
+  model?: string; // AI 모델 선택
 };
 
 // ============================================================================

@@ -1,11 +1,24 @@
+import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  MoreHorizontal,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
   className?: string;
+  showFirstLast?: boolean;
+  showPageInfo?: boolean;
+  showQuickJump?: boolean;
+  size?: 'sm' | 'md' | 'lg';
 }
 
 const Pagination = ({
@@ -13,13 +26,28 @@ const Pagination = ({
   totalPages,
   onPageChange,
   className = '',
+  showFirstLast = true,
+  showPageInfo = true,
+  showQuickJump = false,
+  size = 'md',
 }: PaginationProps) => {
+  const [jumpValue, setJumpValue] = useState('');
+  const [isJumpOpen, setIsJumpOpen] = useState(false);
+
   if (totalPages <= 1) return null;
 
+  const sizeClasses = {
+    sm: { button: 'h-8 w-8 text-xs', icon: 'h-3.5 w-3.5', gap: 'gap-1' },
+    md: { button: 'h-10 w-10 text-sm', icon: 'h-4 w-4', gap: 'gap-1.5' },
+    lg: { button: 'h-12 w-12 text-base', icon: 'h-5 w-5', gap: 'gap-2' },
+  };
+
+  const styles = sizeClasses[size];
+
   const getVisiblePages = () => {
-    const delta = 2;
-    const range = [];
-    const rangeWithDots = [];
+    const delta = size === 'sm' ? 1 : 2;
+    const range: (number | string)[] = [];
+    const rangeWithDots: (number | string)[] = [];
 
     for (
       let i = Math.max(2, currentPage - delta);
@@ -30,7 +58,7 @@ const Pagination = ({
     }
 
     if (currentPage - delta > 2) {
-      rangeWithDots.push(1, '...');
+      rangeWithDots.push(1, 'ellipsis-start');
     } else {
       rangeWithDots.push(1);
     }
@@ -38,7 +66,7 @@ const Pagination = ({
     rangeWithDots.push(...range);
 
     if (currentPage + delta < totalPages - 1) {
-      rangeWithDots.push('...', totalPages);
+      rangeWithDots.push('ellipsis-end', totalPages);
     } else if (totalPages > 1) {
       rangeWithDots.push(totalPages);
     }
@@ -46,47 +74,212 @@ const Pagination = ({
     return rangeWithDots;
   };
 
+  const handleJump = useCallback(() => {
+    const page = parseInt(jumpValue, 10);
+    if (!isNaN(page) && page >= 1 && page <= totalPages && page !== currentPage) {
+      onPageChange(page);
+    }
+    setJumpValue('');
+    setIsJumpOpen(false);
+  }, [jumpValue, totalPages, currentPage, onPageChange]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        handleJump();
+      } else if (e.key === 'Escape') {
+        setIsJumpOpen(false);
+        setJumpValue('');
+      }
+    },
+    [handleJump]
+  );
+
   const visiblePages = getVisiblePages();
 
-  return (
-    <div className={`flex items-center justify-center gap-2 ${className}`}>
-      <Button
-        variant='outline'
-        size='sm'
-        onClick={() => onPageChange(currentPage - 1)}
-        disabled={currentPage === 1}
-        className='h-9 w-9 p-0'
-      >
-        <ChevronLeft className='h-4 w-4' />
-      </Button>
+  const NavButton = ({
+    onClick,
+    disabled,
+    children,
+    label,
+    variant = 'outline',
+  }: {
+    onClick: () => void;
+    disabled: boolean;
+    children: React.ReactNode;
+    label: string;
+    variant?: 'outline' | 'ghost';
+  }) => (
+    <Button
+      variant={variant}
+      size='icon'
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className={cn(
+        styles.button,
+        'rounded-xl transition-all duration-200',
+        'disabled:opacity-40 disabled:cursor-not-allowed',
+        'hover:bg-primary/10 hover:border-primary/30 hover:scale-105',
+        'active:scale-95',
+        'focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2'
+      )}
+    >
+      {children}
+    </Button>
+  );
 
-      {visiblePages.map((page, index) => (
-        <div key={index} className='flex h-9 w-9 items-center justify-center'>
-          {page === '...' ? (
-            <MoreHorizontal className='h-4 w-4' />
-          ) : (
-            <Button
-              variant={currentPage === page ? 'default' : 'outline'}
-              size='sm'
-              onClick={() => onPageChange(page as number)}
-              className='h-9 w-9 p-0'
-            >
-              {page}
-            </Button>
+  const PageButton = ({
+    page,
+    isActive,
+  }: {
+    page: number;
+    isActive: boolean;
+  }) => (
+    <Button
+      variant={isActive ? 'default' : 'ghost'}
+      size='icon'
+      onClick={() => onPageChange(page)}
+      aria-label={`Page ${page}`}
+      aria-current={isActive ? 'page' : undefined}
+      className={cn(
+        styles.button,
+        'rounded-xl font-medium transition-all duration-200',
+        isActive
+          ? 'bg-primary text-primary-foreground shadow-md hover:bg-primary/90 scale-105'
+          : 'hover:bg-muted hover:scale-105',
+        'active:scale-95',
+        'focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2'
+      )}
+    >
+      {page}
+    </Button>
+  );
+
+  const EllipsisButton = ({ position }: { position: 'start' | 'end' }) => {
+    if (!showQuickJump) {
+      return (
+        <span
+          className={cn(
+            styles.button,
+            'flex items-center justify-center text-muted-foreground'
+          )}
+          aria-hidden
+        >
+          <MoreHorizontal className={styles.icon} />
+        </span>
+      );
+    }
+
+    return (
+      <div className='relative'>
+        <Button
+          variant='ghost'
+          size='icon'
+          onClick={() => setIsJumpOpen(!isJumpOpen)}
+          aria-label='Jump to page'
+          className={cn(
+            styles.button,
+            'rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted',
+            'transition-all duration-200'
+          )}
+        >
+          <MoreHorizontal className={styles.icon} />
+        </Button>
+        {isJumpOpen && (
+          <div className='absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50'>
+            <div className='bg-popover border border-border rounded-xl shadow-lg p-2 flex gap-1.5'>
+              <Input
+                type='number'
+                min={1}
+                max={totalPages}
+                value={jumpValue}
+                onChange={(e) => setJumpValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder='Go to'
+                className='w-16 h-8 text-xs rounded-lg text-center'
+                autoFocus
+              />
+              <Button
+                size='sm'
+                onClick={handleJump}
+                className='h-8 px-2 text-xs rounded-lg'
+              >
+                Go
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <nav
+      role='navigation'
+      aria-label='Pagination'
+      className={cn('flex flex-col items-center gap-3', className)}
+    >
+      <div className={cn('flex items-center', styles.gap)}>
+        {showFirstLast && (
+          <NavButton
+            onClick={() => onPageChange(1)}
+            disabled={currentPage === 1}
+            label='First page'
+            variant='ghost'
+          >
+            <ChevronsLeft className={styles.icon} />
+          </NavButton>
+        )}
+
+        <NavButton
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          label='Previous page'
+        >
+          <ChevronLeft className={styles.icon} />
+        </NavButton>
+
+        <div className={cn('flex items-center', styles.gap, 'mx-1')}>
+          {visiblePages.map((page, index) =>
+            typeof page === 'string' ? (
+              <EllipsisButton
+                key={page}
+                position={page === 'ellipsis-start' ? 'start' : 'end'}
+              />
+            ) : (
+              <PageButton key={page} page={page} isActive={currentPage === page} />
+            )
           )}
         </div>
-      ))}
 
-      <Button
-        variant='outline'
-        size='sm'
-        onClick={() => onPageChange(currentPage + 1)}
-        disabled={currentPage === totalPages}
-        className='h-9 w-9 p-0'
-      >
-        <ChevronRight className='h-4 w-4' />
-      </Button>
-    </div>
+        <NavButton
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          label='Next page'
+        >
+          <ChevronRight className={styles.icon} />
+        </NavButton>
+
+        {showFirstLast && (
+          <NavButton
+            onClick={() => onPageChange(totalPages)}
+            disabled={currentPage === totalPages}
+            label='Last page'
+            variant='ghost'
+          >
+            <ChevronsRight className={styles.icon} />
+          </NavButton>
+        )}
+      </div>
+
+      {showPageInfo && (
+        <p className='text-xs text-muted-foreground'>
+          Page <span className='font-medium text-foreground'>{currentPage}</span> of{' '}
+          <span className='font-medium text-foreground'>{totalPages}</span>
+        </p>
+      )}
+    </nav>
   );
 };
 

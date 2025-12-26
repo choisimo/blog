@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface TocItem {
   id: string;
@@ -17,6 +18,12 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
   const [toc, setToc] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState<string>('');
   const { isTerminal } = useTheme();
+  const isMobile = useIsMobile();
+  
+  // Refs for scroll optimization
+  const rafRef = useRef<number | null>(null);
+  const lastScrollTime = useRef<number>(0);
+  const THROTTLE_MS = 100; // Throttle scroll events to 100ms
 
   useEffect(() => {
     // Extract headings from markdown content
@@ -49,7 +56,10 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
   }, [content]);
 
   useEffect(() => {
-    const handleScroll = () => {
+    // Skip scroll tracking on mobile for performance
+    if (isMobile) return;
+    
+    const updateActiveHeading = () => {
       const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
       const scrollPosition = window.scrollY + 100;
 
@@ -61,12 +71,35 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
         }
       }
     };
+    
+    const handleScroll = () => {
+      const now = Date.now();
+      
+      // Throttle: skip if called too frequently
+      if (now - lastScrollTime.current < THROTTLE_MS) {
+        return;
+      }
+      lastScrollTime.current = now;
+      
+      // Cancel any pending RAF
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+      
+      // Schedule update in next animation frame
+      rafRef.current = requestAnimationFrame(updateActiveHeading);
+    };
 
-    window.addEventListener('scroll', handleScroll);
-    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    updateActiveHeading(); // Initial check
 
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, [isMobile]);
 
   const scrollToHeading = (id: string) => {
     const element = document.getElementById(id);

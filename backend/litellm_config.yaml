@@ -1,0 +1,214 @@
+# =============================================================================
+# LiteLLM Proxy Configuration
+# =============================================================================
+#
+# LiteLLM provides a unified OpenAI-compatible API for all LLM providers.
+# All backend services call this single endpoint instead of provider-specific APIs.
+#
+# Architecture:
+#   Backend API -> LiteLLM Proxy (port 4000) -> Any LLM Provider
+#
+# Benefits:
+#   - Single endpoint for all providers (OpenAI-compatible)
+#   - Automatic fallback between providers
+#   - Load balancing and rate limiting
+#   - Cost tracking and budget management
+#   - Unified logging and monitoring
+#
+# Usage:
+#   curl http://litellm:4000/v1/chat/completions \
+#     -H "Authorization: Bearer sk-litellm-master-key" \
+#     -d '{"model": "gpt-4", "messages": [...]}'
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Model List - All available models across providers
+# -----------------------------------------------------------------------------
+model_list:
+  # ---------------------------------------------------------------------------
+  # GitHub Copilot (via VAS Core) - Primary Provider
+  # ---------------------------------------------------------------------------
+  # Note: GitHub Copilot routes through vas-core for authentication
+  - model_name: gpt-4.1
+    litellm_params:
+      model: openai/gpt-4.1
+      api_base: http://vas-core:7012/v1
+      api_key: os.environ/VAS_API_KEY
+    model_info:
+      description: "GitHub Copilot GPT-4.1 via VAS"
+      
+  - model_name: gpt-4o
+    litellm_params:
+      model: openai/gpt-4o
+      api_base: http://vas-core:7012/v1
+      api_key: os.environ/VAS_API_KEY
+    model_info:
+      description: "GitHub Copilot GPT-4o via VAS"
+
+  - model_name: claude-sonnet-4
+    litellm_params:
+      model: openai/claude-sonnet-4
+      api_base: http://vas-core:7012/v1
+      api_key: os.environ/VAS_API_KEY
+    model_info:
+      description: "GitHub Copilot Claude Sonnet 4 via VAS"
+
+  # ---------------------------------------------------------------------------
+  # OpenAI Direct (Optional - when you have your own API key)
+  # ---------------------------------------------------------------------------
+  - model_name: openai/gpt-4o
+    litellm_params:
+      model: gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      description: "OpenAI GPT-4o Direct"
+
+  - model_name: openai/gpt-4-turbo
+    litellm_params:
+      model: gpt-4-turbo
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      description: "OpenAI GPT-4 Turbo Direct"
+
+  - model_name: openai/gpt-3.5-turbo
+    litellm_params:
+      model: gpt-3.5-turbo
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      description: "OpenAI GPT-3.5 Turbo Direct"
+
+  # ---------------------------------------------------------------------------
+  # Google Gemini - Fallback Provider
+  # ---------------------------------------------------------------------------
+  - model_name: gemini-1.5-flash
+    litellm_params:
+      model: gemini/gemini-1.5-flash
+      api_key: os.environ/GOOGLE_API_KEY
+    model_info:
+      description: "Google Gemini 1.5 Flash (fast, cheap)"
+
+  - model_name: gemini-1.5-pro
+    litellm_params:
+      model: gemini/gemini-1.5-pro
+      api_key: os.environ/GOOGLE_API_KEY
+    model_info:
+      description: "Google Gemini 1.5 Pro"
+
+  - model_name: gemini-2.0-flash
+    litellm_params:
+      model: gemini/gemini-2.0-flash-exp
+      api_key: os.environ/GOOGLE_API_KEY
+    model_info:
+      description: "Google Gemini 2.0 Flash Experimental"
+
+  # ---------------------------------------------------------------------------
+  # Anthropic Claude (Optional)
+  # ---------------------------------------------------------------------------
+  - model_name: claude-3.5-sonnet
+    litellm_params:
+      model: claude-3-5-sonnet-20241022
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info:
+      description: "Anthropic Claude 3.5 Sonnet"
+
+  - model_name: claude-3-opus
+    litellm_params:
+      model: claude-3-opus-20240229
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info:
+      description: "Anthropic Claude 3 Opus"
+
+  - model_name: claude-3-haiku
+    litellm_params:
+      model: claude-3-haiku-20240307
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info:
+      description: "Anthropic Claude 3 Haiku (fast)"
+
+  # ---------------------------------------------------------------------------
+  # Local LLM (Ollama) - For development/testing
+  # ---------------------------------------------------------------------------
+  - model_name: local/llama3
+    litellm_params:
+      model: ollama/llama3
+      api_base: http://host.docker.internal:11434
+    model_info:
+      description: "Local Llama 3 via Ollama"
+
+  - model_name: local/codellama
+    litellm_params:
+      model: ollama/codellama
+      api_base: http://host.docker.internal:11434
+    model_info:
+      description: "Local CodeLlama via Ollama"
+
+# -----------------------------------------------------------------------------
+# Router Settings - Fallback and Load Balancing
+# -----------------------------------------------------------------------------
+router_settings:
+  # Routing strategy: simple, least-busy, latency-based-routing, cost-based-routing
+  routing_strategy: latency-based-routing
+  
+  # Number of retries before failing
+  num_retries: 3
+  
+  # Timeout for each request (seconds)
+  timeout: 120
+  
+  # Fallback configuration
+  # If gpt-4.1 fails, try gemini-1.5-flash, then claude-3-haiku
+  fallbacks:
+    - gpt-4.1: ["gemini-1.5-flash", "claude-3-haiku"]
+    - gpt-4o: ["gemini-1.5-pro", "claude-3.5-sonnet"]
+    - claude-sonnet-4: ["claude-3.5-sonnet", "gemini-1.5-pro"]
+
+  # Context window fallbacks (for long contexts)
+  context_window_fallbacks:
+    - gpt-4.1: ["gemini-1.5-pro"]  # Gemini has 1M context
+
+  # Allowed failures before marking model as failed
+  allowed_fails: 3
+  
+  # Cooldown time after failures (seconds)
+  cooldown_time: 60
+
+# -----------------------------------------------------------------------------
+# LiteLLM General Settings
+# -----------------------------------------------------------------------------
+litellm_settings:
+  # Enable/disable request/response logging
+  set_verbose: false
+  
+  # Drop unmapped params (for compatibility)
+  drop_params: true
+  
+  # Request timeout (seconds)
+  request_timeout: 120
+  
+  # Enable caching (Redis required for production)
+  cache: false
+  # cache_params:
+  #   type: redis
+  #   host: redis
+  #   port: 6379
+  
+  # Success callbacks for monitoring
+  success_callback: []
+  
+  # Failure callbacks for alerting
+  failure_callback: []
+
+# -----------------------------------------------------------------------------
+# General Settings
+# -----------------------------------------------------------------------------
+general_settings:
+  # Master API key for all requests
+  master_key: os.environ/LITELLM_MASTER_KEY
+  
+  # Database for tracking (optional)
+  # database_url: os.environ/LITELLM_DATABASE_URL
+  
+  # Enable Prometheus metrics at /metrics
+  # alerting:
+  #   - prometheus

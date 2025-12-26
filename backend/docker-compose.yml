@@ -1,8 +1,8 @@
 # =============================================================================
-# Docker Compose - Full Stack with Cloudflare Tunnel + Virtual Agent Service
+# Docker Compose - Full Stack with Cloudflare Tunnel + LiteLLM AI Gateway
 # =============================================================================
 #
-# Architecture (Single Entry Point):
+# Architecture (Single Entry Point + LiteLLM Gateway):
 #
 #   ┌─────────────────────────────────────────────────────────────────────────┐
 #   │                         Internet                                        │
@@ -14,16 +14,24 @@
 #   │  ┌──────────────────────────────────────────────────────────────────┐  │
 #   │  │                    nginx:80 (Single Entry)                       │  │
 #   │  │  /api/*      → api:5080                                          │  │
-#   │  │  /ai/*       → vas-proxy:7016                                    │  │
+#   │  │  /ai/*       → litellm:4000  (NEW: LiteLLM Gateway)              │  │
 #   │  │  /vas/*      → vas-core:7012                                     │  │
 #   │  │  /vas-admin/* → vas-admin:7080                                   │  │
 #   │  │  /terminal/* → terminal-server:8080                              │  │
 #   │  └──────────────────────────────────────────────────────────────────┘  │
 #   │                                                                         │
+#   │  ┌─────────────────────────────────────────────────────────────────┐   │
+#   │  │              LiteLLM AI Gateway (port 4000)                     │   │
+#   │  │  - OpenAI-compatible API for ALL providers                      │   │
+#   │  │  - Automatic fallback: gpt-4 → gemini → claude                  │   │
+#   │  │  - Load balancing, rate limiting, cost tracking                 │   │
+#   │  │  - Routes to: vas-core (GitHub Copilot), OpenAI, Gemini, etc.   │   │
+#   │  └─────────────────────────────────────────────────────────────────┘   │
+#   │                                                                         │
 #   │  Internal Services (Docker bridge network only):                        │
 #   │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐       │
-#   │  │    api      │ │  vas-core   │ │  vas-proxy  │ │  vas-admin  │       │
-#   │  │   :5080     │ │   :7012     │ │   :7016     │ │   :7080     │       │
+#   │  │    api      │ │  vas-core   │ │   litellm   │ │  vas-admin  │       │
+#   │  │   :5080     │ │   :7012     │ │   :4000     │ │   :7080     │       │
 #   │  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘       │
 #   │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐                       │
 #   │  │  terminal   │ │  embedding  │ │  chromadb   │                       │
@@ -33,25 +41,31 @@
 #
 # Public URL Routes (via api.nodove.com):
 #   https://api.nodove.com/api/*       → Backend API
-#   https://api.nodove.com/ai/*        → VAS Chat API (auto-chat)
-#   https://api.nodove.com/vas/*       → VAS Core (direct)
+#   https://api.nodove.com/ai/*        → LiteLLM Gateway (OpenAI-compatible)
+#   https://api.nodove.com/vas/*       → VAS Core (direct, for auth)
 #   https://api.nodove.com/vas-admin/* → VAS Admin UI
 #   https://api.nodove.com/terminal/*  → Terminal WebSocket
 #
 # Localhost ports (for self-hosted runner / debugging):
-#   127.0.0.1:8180 → embedding-server:80   (TEI)
-#   127.0.0.1:8100 → chromadb:8000         (Vector DB)
-#   127.0.0.1:7012 → vas-core:7012         (OpenCode API for auth)
+#   127.0.0.1:4000 → litellm:4000        (LiteLLM Gateway)
+#   127.0.0.1:8180 → embedding-server:80 (TEI)
+#   127.0.0.1:8100 → chromadb:8000       (Vector DB)
+#   127.0.0.1:7012 → vas-core:7012       (OpenCode API for auth)
 #
 # Setup:
 #   1. Cloudflare Zero Trust에서 터널 생성
 #   2. 터널 Public Hostname 설정: api.nodove.com → http://nginx:80
 #   3. 터널 토큰을 .env 파일에 CLOUDFLARE_TUNNEL_TOKEN으로 저장
-#   4. docker compose up -d
-#   5. GitHub Copilot 인증 (호스트에서):
+#   4. API 키 설정 (.env):
+#      - LITELLM_MASTER_KEY=sk-your-master-key
+#      - OPENAI_API_KEY=sk-... (optional)
+#      - GOOGLE_API_KEY=... (optional)
+#      - ANTHROPIC_API_KEY=... (optional)
+#   5. docker compose up -d
+#   6. GitHub Copilot 인증 (호스트에서):
 #      npm install -g opencode@latest
 #      OPENCODE_API_URL=http://127.0.0.1:7012 opencode auth login
-#      docker compose restart vas-core
+#      docker compose restart vas-core litellm
 # =============================================================================
 
 services:
@@ -109,17 +123,19 @@ services:
       - APP_ENV=${APP_ENV:-production}
       - HOST=0.0.0.0
       - PORT=5080
-      # VAS endpoints (internal Docker network)
-      - AI_SERVE_BASE_URL=http://vas-proxy:7016
+      # LiteLLM Gateway (OpenAI-compatible endpoint)
+      - LITELLM_BASE_URL=http://litellm:4000
+      - LITELLM_API_KEY=${LITELLM_MASTER_KEY:-sk-litellm-master-key}
+      # Legacy VAS endpoints (for GitHub Copilot auth)
       - VAS_CORE_URL=http://vas-core:7012
-      - AI_SERVE_DEFAULT_PROVIDER=github-copilot
-      - AI_SERVE_DEFAULT_MODEL=gpt-4.1
+      # Default model settings
+      - AI_DEFAULT_MODEL=gpt-4.1
     expose:
       - "5080"
     networks:
       - backend
     depends_on:
-      vas-proxy:
+      litellm:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -183,17 +199,66 @@ services:
     restart: unless-stopped
 
   # ===========================================================================
-  # Virtual Agent Service (VAS) Stack
+  # LiteLLM AI Gateway (Unified LLM Endpoint)
   # ===========================================================================
+  # Single OpenAI-compatible endpoint for ALL LLM providers.
+  # No more provider-specific code in the backend!
+  # ---------------------------------------------------------------------------
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4000:4000"
+    expose:
+      - "4000"
+    environment:
+      # Master API key for authentication
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-litellm-master-key}
+      # Provider API Keys
+      VAS_API_KEY: ${VAS_API_KEY:-file:///app/shared/auto-token.jwt}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Logging
+      LITELLM_LOG: INFO
+    command:
+      - --config
+      - /app/config.yaml
+      - --port
+      - "4000"
+      - --host
+      - "0.0.0.0"
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml:ro
+      - vas-shared:/app/shared:ro
+    networks:
+      - backend
+    depends_on:
+      ai-engine:
+        condition: service_healthy
+      vas-bootstrap:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:4000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
 
+  # ===========================================================================
+  # AI Engine (GitHub Copilot Authentication)
+  # ===========================================================================
+  # Unified name: ai-engine (was: vas-core, opencode, opencode-serve)
+  # This service handles GitHub Copilot authentication only.
+  # All AI calls go through LiteLLM gateway.
   # ---------------------------------------------------------------------------
-  # VAS Core (OpenCode Engine)
-  # ---------------------------------------------------------------------------
-  vas-core:
+  ai-engine:
     build:
       context: ./opencode-serve
       dockerfile: ai-serve.Dockerfile
-    image: vas-core:latest
+    image: ai-engine:latest
     restart: unless-stopped
     ports:
       - "127.0.0.1:7012:7012"
@@ -215,7 +280,12 @@ services:
       - vas-logs:/var/log/opencode
       - ./opencode-config:/home/node/.config/opencode
     networks:
-      - backend
+      backend:
+        # Aliases for backward compatibility with legacy service names
+        aliases:
+          - vas-core      # Legacy name
+          - opencode      # Legacy name
+          - ai-engine     # New unified name
     healthcheck:
       test: ["CMD-SHELL", "node -e \"const http=require('http'); http.get('http://localhost:7012/app', ()=>process.exit(0)).on('error', ()=>process.exit(1));\" "]
       interval: 30s
@@ -226,7 +296,7 @@ services:
       - no-new-privileges:true
 
   # ---------------------------------------------------------------------------
-  # VAS Bootstrap (Auto JWT Token Generation)
+  # AI Bootstrap (Auto JWT Token Generation)
   # ---------------------------------------------------------------------------
   vas-bootstrap:
     image: curlimages/curl:latest
@@ -234,7 +304,7 @@ services:
     user: "0:0"
     entrypoint: ["/bin/sh", "/app/bootstrap-token.sh"]
     environment:
-      ADMIN_URL: http://vas-admin:7080
+      ADMIN_URL: http://ai-admin:7080
       TOKEN_FILE: /app/shared/auto-token.jwt
       MAX_RETRIES: "60"
       RETRY_INTERVAL: "2"
@@ -244,18 +314,23 @@ services:
     networks:
       - backend
     depends_on:
-      vas-admin:
+      ai-admin:
         condition: service_started
 
   # ---------------------------------------------------------------------------
-  # VAS Proxy (Simplified /auto-chat API)
+  # VAS Proxy (DEPRECATED - replaced by LiteLLM)
+  # ---------------------------------------------------------------------------
+  # Kept for backward compatibility. LiteLLM now handles all routing.
+  # Can be removed once migration is complete.
   # ---------------------------------------------------------------------------
   vas-proxy:
     image: node:20-alpine
     restart: unless-stopped
+    profiles:
+      - legacy  # Only starts with: docker compose --profile legacy up
     command: ["node", "/app/auto-chat-proxy.js"]
     environment:
-      OPENCODE_BASE: http://vas-core:7012
+      OPENCODE_BASE: http://ai-engine:7012
       PROXY_PORT: 7016
       DEFAULT_PROVIDER: github-copilot
       DEFAULT_MODEL: gpt-4.1
@@ -272,7 +347,7 @@ services:
     networks:
       - backend
     depends_on:
-      vas-core:
+      ai-engine:
         condition: service_healthy
       vas-bootstrap:
         condition: service_completed_successfully
@@ -286,18 +361,18 @@ services:
       start_period: 30s
 
   # ---------------------------------------------------------------------------
-  # VAS Admin (Token Management UI)
+  # AI Admin (Token Management UI)
   # ---------------------------------------------------------------------------
-  vas-admin:
+  ai-admin:
     build:
       context: ./opencode-serve/go-proxy-admin
       dockerfile: Dockerfile
-    image: vas-admin:latest
+    image: ai-admin:latest
     restart: unless-stopped
     expose:
       - "7080"
     environment:
-      OPENCODE_BASE: http://vas-core:7012
+      OPENCODE_BASE: http://ai-engine:7012
       ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-auto-generated-secret-change-in-production}
       ADMIN_PORT: 7080
       ADMIN_DB_PATH: /app/data/vas-admin.db
@@ -307,9 +382,12 @@ services:
     volumes:
       - vas-admin-data:/app/data
     networks:
-      - backend
+      backend:
+        aliases:
+          - vas-admin    # Legacy name
+          - ai-admin     # New unified name
     depends_on:
-      vas-core:
+      ai-engine:
         condition: service_healthy
     security_opt:
       - no-new-privileges:true

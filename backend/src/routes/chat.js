@@ -187,7 +187,7 @@ router.post('/session', async (req, res, next) => {
 router.post('/session/:sessionId/message', async (req, res, next) => {
   try {
     const { sessionId } = req.params;
-    const { parts, context } = req.body || {};
+    const { parts, context, model } = req.body || {};
 
     // Get or create session
     let session = getSession(sessionId);
@@ -239,9 +239,9 @@ router.post('/session/:sessionId/message', async (req, res, next) => {
     });
 
     try {
-      // Generate response via VAS
+      // Generate response via VAS with optional model selection
       const client = getVASClient();
-      const result = await client.chat(session.messages);
+      const result = await client.chat(session.messages, { model });
 
       if (closed) return;
 

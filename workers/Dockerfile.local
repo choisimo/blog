@@ -1,0 +1,50 @@
+# =============================================================================
+# Cloudflare Workers Local Emulation Dockerfile
+# =============================================================================
+# Runs wrangler dev in a container for local D1/R2/KV emulation
+#
+# Build from repository root:
+#   docker build -f workers/Dockerfile.local -t workers-local .
+# =============================================================================
+
+# Use debian-based node for workerd compatibility (Alpine doesn't work with workerd)
+FROM node:20-slim
+
+# Install dependencies
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+
+# ---------------------------------------------------------------------------
+# Stage 1: Build shared package
+# ---------------------------------------------------------------------------
+WORKDIR /shared
+COPY shared/package.json shared/package-lock.json* ./
+RUN npm install
+COPY shared/ ./
+RUN npm run build
+
+# ---------------------------------------------------------------------------
+# Stage 2: Setup workers
+# ---------------------------------------------------------------------------
+WORKDIR /app
+
+# Copy package files and update shared path
+COPY workers/package.json workers/package-lock.json* ./
+RUN sed -i 's|"file:../shared"|"file:/shared"|g' package.json
+
+# Install dependencies
+RUN npm install
+
+# Copy source files
+COPY workers/src ./src
+COPY workers/migrations ./migrations
+COPY workers/tsconfig.json workers/wrangler.toml ./
+
+# Create wrangler state directory
+RUN mkdir -p .wrangler/state/v3/d1
+
+# Expose wrangler dev port
+EXPOSE 8787
+
+# Initialize D1 and run wrangler dev
+# Note: --persist is deprecated in newer wrangler versions, using --persist-to instead
+CMD ["sh", "-c", "npx wrangler d1 migrations apply blog-db --local 2>/dev/null || true; exec npx wrangler dev --local --persist-to .wrangler/state --ip 0.0.0.0 --port 8787"]

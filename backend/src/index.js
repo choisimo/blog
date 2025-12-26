@@ -17,6 +17,9 @@ import postsRouter from './routes/posts.js';
 import imagesRouter from './routes/images.js';
 import authRouter from './routes/auth.js';
 import ragRouter from './routes/rag.js';
+import configRouter from './routes/config.js';
+import workersRouter from './routes/workers.js';
+import aiAdminRouter from './routes/aiAdmin.js';
 
 const app = express();
 
@@ -78,6 +81,9 @@ app.use('/api/v1/posts', postsRouter);
 app.use('/api/v1/images', imagesRouter);
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/rag', ragRouter);
+app.use('/api/v1/admin/config', configRouter);
+app.use('/api/v1/admin/workers', workersRouter);
+app.use('/api/v1/admin/ai', aiAdminRouter);
 
 // not found
 app.use((req, res) => {

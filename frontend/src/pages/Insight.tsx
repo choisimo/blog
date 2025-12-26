@@ -3,15 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ZoomIn, ZoomOut, RotateCcw, Network, MessageSquare, FileText, Sparkles, X, Lightbulb, PenLine, Calendar, ExternalLink } from 'lucide-react';
+import { ArrowLeft, ZoomIn, ZoomOut, RotateCcw, Network, MessageSquare, FileText, Sparkles, X, Lightbulb, PenLine, Calendar, ExternalLink, Tag, Search, Filter } from 'lucide-react';
 import { getPosts } from '@/data/posts';
 import { BlogPost } from '@/types/blog';
+import { curiosityTracker, type CuriosityEvent } from '@/services/curiosity';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-type NodeType = 'post' | 'chat' | 'comment' | 'question';
+type NodeType = 'post' | 'chat' | 'comment' | 'question' | 'memo' | 'tag' | 'search';
 
 interface GraphNode {
   id: string;
@@ -22,13 +23,14 @@ interface GraphNode {
   vx: number;
   vy: number;
   data?: any;
+  ts?: number; // timestamp for filtering
 }
 
 interface GraphEdge {
   source: string;
   target: string;
   weight: number;
-  type: 'category' | 'tag' | 'chat' | 'comment';
+  type: 'category' | 'tag' | 'chat' | 'comment' | 'curiosity';
 }
 
 interface ChatSession {
@@ -431,6 +433,25 @@ function GraphCanvas({
             strokeColor = isTerminal ? '#ffb86c' : '#d97706';
             size = 20;
             break;
+          case 'memo':
+            fillColor = isTerminal ? '#ff79c6' : '#ec4899';
+            strokeColor = isTerminal ? '#ff79c6' : '#db2777';
+            size = 20;
+            break;
+          case 'tag':
+            fillColor = isTerminal ? '#f1fa8c' : '#eab308';
+            strokeColor = isTerminal ? '#f1fa8c' : '#ca8a04';
+            size = 18;
+            break;
+          case 'search':
+            fillColor = isTerminal ? '#8be9fd' : '#0ea5e9';
+            strokeColor = isTerminal ? '#8be9fd' : '#0284c7';
+            size = 18;
+            break;
+          default:
+            fillColor = isTerminal ? '#6272a4' : '#64748b';
+            strokeColor = isTerminal ? '#6272a4' : '#475569';
+            size = 20;
         }
         
         if (isSelected || isInPath) {
@@ -466,6 +487,10 @@ function GraphCanvas({
           case 'chat': icon = 'C'; break;
           case 'comment': icon = 'M'; break;
           case 'question': icon = '?'; break;
+          case 'memo': icon = '✎'; break;
+          case 'tag': icon = '#'; break;
+          case 'search': icon = '⌕'; break;
+          default: icon = '•';
         }
         ctx.fillText(icon, n.x, n.y);
         
@@ -560,7 +585,13 @@ const Insight = () => {
   const [relatedContent, setRelatedContent] = useState<RelatedContent>({ chats: [], memos: [], thoughts: [] });
   const [allMemoEvents, setAllMemoEvents] = useState<MemoEvent[]>([]);
   const [allChatSessions, setAllChatSessions] = useState<ChatSession[]>([]);
+  const [allCuriosityEvents, setAllCuriosityEvents] = useState<CuriosityEvent[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Timeline filter state
+  const [timeFilter, setTimeFilter] = useState<'all' | '1d' | '7d' | '30d'>('all');
+  const [typeFilters, setTypeFilters] = useState<Set<NodeType>>(new Set(['post', 'chat', 'memo', 'tag', 'search']));
+  const [showFilters, setShowFilters] = useState(false);
   
   // Load data and build graph
   useEffect(() => {
@@ -600,9 +631,62 @@ const Insight = () => {
           }
         } catch {}
         
+        // Load curiosity events
+        let curiosityEvents: CuriosityEvent[] = [];
+        try {
+          curiosityEvents = curiosityTracker.getEvents();
+          setAllCuriosityEvents(curiosityEvents);
+        } catch {}
+        
         // Build nodes
         const newNodes: GraphNode[] = [];
         const newEdges: GraphEdge[] = [];
+        
+        // Track unique tags and searches from curiosity events
+        const tagNodes = new Map<string, { count: number; linkedPosts: string[]; ts: number }>();
+        const searchNodes = new Map<string, { count: number; ts: number; queryText?: string }>();
+        const memoNodes: { id: string; postId: string; ts: number; snippet?: string }[] = [];
+        
+        // Process curiosity events
+        curiosityEvents.forEach(event => {
+          if (event.type === 'tag_click' && event.context.tag) {
+            const tag = event.context.tag;
+            const existing = tagNodes.get(tag);
+            if (existing) {
+              existing.count++;
+              if (event.context.postId && !existing.linkedPosts.includes(event.context.postId)) {
+                existing.linkedPosts.push(event.context.postId);
+              }
+              if (event.ts > existing.ts) existing.ts = event.ts;
+            } else {
+              tagNodes.set(tag, {
+                count: 1,
+                linkedPosts: event.context.postId ? [event.context.postId] : [],
+                ts: event.ts,
+              });
+            }
+          } else if (event.type === 'search' && event.context.queryHash) {
+            const hash = event.context.queryHash;
+            const existing = searchNodes.get(hash);
+            if (existing) {
+              existing.count++;
+              if (event.ts > existing.ts) existing.ts = event.ts;
+            } else {
+              searchNodes.set(hash, {
+                count: 1,
+                ts: event.ts,
+                queryText: event.context.queryText,
+              });
+            }
+          } else if (event.type === 'memo_create' && event.context.postId) {
+            memoNodes.push({
+              id: event.id,
+              postId: event.context.postId,
+              ts: event.ts,
+              snippet: event.context.snippet,
+            });
+          }
+        });
         
         // Add post nodes (only visited ones for now, or limit to recent)
         const recentPosts = posts.slice(0, 30);
@@ -644,6 +728,87 @@ const Insight = () => {
                 type: 'chat',
               });
             }
+          }
+        });
+        
+        // Add tag nodes from curiosity events
+        tagNodes.forEach((data, tag) => {
+          const tagId = `tag-${tag}`;
+          newNodes.push({
+            id: tagId,
+            type: 'tag',
+            label: `#${tag}`,
+            x: 0,
+            y: 0,
+            vx: 0,
+            vy: 0,
+            ts: data.ts,
+            data: { tag, count: data.count },
+          });
+          
+          // Link tag to related posts
+          data.linkedPosts.forEach(postId => {
+            // postId from curiosity event could be slug or year/slug
+            const parts = postId.split('/');
+            const slug = parts[parts.length - 1];
+            const targetPostId = `post-${slug}`;
+            if (newNodes.find(n => n.id === targetPostId)) {
+              newEdges.push({
+                source: tagId,
+                target: targetPostId,
+                weight: 1,
+                type: 'curiosity',
+              });
+            }
+          });
+        });
+        
+        // Add search nodes from curiosity events (limit to top 10)
+        const sortedSearches = Array.from(searchNodes.entries())
+          .sort((a, b) => b[1].ts - a[1].ts)
+          .slice(0, 10);
+          
+        sortedSearches.forEach(([hash, data]) => {
+          const searchId = `search-${hash}`;
+          newNodes.push({
+            id: searchId,
+            type: 'search',
+            label: data.queryText || `Search #${data.count}`,
+            x: 0,
+            y: 0,
+            vx: 0,
+            vy: 0,
+            ts: data.ts,
+            data: { hash, count: data.count, queryText: data.queryText },
+          });
+        });
+        
+        // Add memo nodes from curiosity events (limit to 15)
+        memoNodes.slice(0, 15).forEach((memo, i) => {
+          const memoId = `memo-${memo.id}`;
+          newNodes.push({
+            id: memoId,
+            type: 'memo',
+            label: memo.snippet?.slice(0, 30) || 'Memo',
+            x: 0,
+            y: 0,
+            vx: 0,
+            vy: 0,
+            ts: memo.ts,
+            data: memo,
+          });
+          
+          // Link memo to its post
+          const parts = memo.postId.split('/');
+          const slug = parts[parts.length - 1];
+          const targetPostId = `post-${slug}`;
+          if (newNodes.find(n => n.id === targetPostId)) {
+            newEdges.push({
+              source: memoId,
+              target: targetPostId,
+              weight: 1,
+              type: 'curiosity',
+            });
           }
         });
         
@@ -792,12 +957,44 @@ const Insight = () => {
   
   const handleMouseUp = () => setIsDragging(false);
   
-  // Stats
+  // Time filter cutoff calculation
+  const timeCutoff = useMemo(() => {
+    const now = Date.now();
+    switch (timeFilter) {
+      case '1d': return now - 24 * 60 * 60 * 1000;
+      case '7d': return now - 7 * 24 * 60 * 60 * 1000;
+      case '30d': return now - 30 * 24 * 60 * 60 * 1000;
+      default: return 0;
+    }
+  }, [timeFilter]);
+  
+  // Filter nodes based on type and time
+  const filteredNodes = useMemo(() => {
+    return nodes.filter(n => {
+      // Type filter
+      if (!typeFilters.has(n.type)) return false;
+      
+      // Time filter (only for curiosity-based nodes with timestamps)
+      if (timeFilter !== 'all' && n.ts && n.ts < timeCutoff) {
+        return false;
+      }
+      
+      return true;
+    });
+  }, [nodes, typeFilters, timeFilter, timeCutoff]);
+  
+  // Filter edges to only include those connecting visible nodes
+  const filteredEdges = useMemo(() => {
+    const visibleNodeIds = new Set(filteredNodes.map(n => n.id));
+    return edges.filter(e => visibleNodeIds.has(e.source) && visibleNodeIds.has(e.target));
+  }, [edges, filteredNodes]);
+  
+  // Stats based on filtered data
   const stats = useMemo(() => ({
-    posts: nodes.filter(n => n.type === 'post').length,
-    chats: nodes.filter(n => n.type === 'chat').length,
-    connections: edges.length,
-  }), [nodes, edges]);
+    posts: filteredNodes.filter(n => n.type === 'post').length,
+    chats: filteredNodes.filter(n => n.type === 'chat').length,
+    connections: filteredEdges.length,
+  }), [filteredNodes, filteredEdges]);
   
   return (
     <div className={cn(
@@ -878,33 +1075,156 @@ const Insight = () => {
         </div>
       </header>
       
-      {/* Stats bar */}
+      {/* Stats bar with filters */}
       <div className={cn(
         'border-b px-4 py-2',
         isTerminal
           ? 'bg-[#0d0d14] border-[#50fa7b]/10'
           : 'bg-gray-50 border-gray-100'
       )}>
-        <div className='max-w-7xl mx-auto flex items-center gap-6 text-xs'>
-          <div className='flex items-center gap-2'>
-            <FileText className={cn('h-3.5 w-3.5', isTerminal ? 'text-[#50fa7b]' : 'text-green-500')} />
-            <span className={isTerminal ? 'font-mono' : ''}>
-              {isTerminal ? `posts: ${stats.posts}` : `${stats.posts} Posts`}
-            </span>
+        <div className='max-w-7xl mx-auto flex items-center justify-between gap-4 text-xs'>
+          <div className='flex items-center gap-4 md:gap-6'>
+            <div className='flex items-center gap-2'>
+              <FileText className={cn('h-3.5 w-3.5', isTerminal ? 'text-[#50fa7b]' : 'text-green-500')} />
+              <span className={isTerminal ? 'font-mono' : ''}>
+                {isTerminal ? `posts: ${stats.posts}` : `${stats.posts} Posts`}
+              </span>
+            </div>
+            <div className='flex items-center gap-2'>
+              <Sparkles className={cn('h-3.5 w-3.5', isTerminal ? 'text-[#bd93f9]' : 'text-purple-500')} />
+              <span className={isTerminal ? 'font-mono' : ''}>
+                {isTerminal ? `chats: ${stats.chats}` : `${stats.chats} AI Chats`}
+              </span>
+            </div>
+            <div className='hidden sm:flex items-center gap-2'>
+              <Network className={cn('h-3.5 w-3.5', isTerminal ? 'text-[#8be9fd]' : 'text-cyan-500')} />
+              <span className={isTerminal ? 'font-mono' : ''}>
+                {isTerminal ? `edges: ${stats.connections}` : `${stats.connections} Connections`}
+              </span>
+            </div>
           </div>
+          
+          {/* Filter controls */}
           <div className='flex items-center gap-2'>
-            <Sparkles className={cn('h-3.5 w-3.5', isTerminal ? 'text-[#bd93f9]' : 'text-purple-500')} />
-            <span className={isTerminal ? 'font-mono' : ''}>
-              {isTerminal ? `chats: ${stats.chats}` : `${stats.chats} AI Chats`}
-            </span>
-          </div>
-          <div className='flex items-center gap-2'>
-            <Network className={cn('h-3.5 w-3.5', isTerminal ? 'text-[#8be9fd]' : 'text-cyan-500')} />
-            <span className={isTerminal ? 'font-mono' : ''}>
-              {isTerminal ? `edges: ${stats.connections}` : `${stats.connections} Connections`}
-            </span>
+            {/* Time filter buttons */}
+            <div className='hidden md:flex items-center gap-1 border rounded-md p-0.5' style={{
+              borderColor: isTerminal ? 'rgba(80, 250, 123, 0.2)' : undefined
+            }}>
+              {(['1d', '7d', '30d', 'all'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setTimeFilter(t)}
+                  className={cn(
+                    'px-2 py-0.5 rounded text-xs transition-colors',
+                    timeFilter === t
+                      ? isTerminal
+                        ? 'bg-[#50fa7b]/20 text-[#50fa7b] font-mono'
+                        : 'bg-primary/10 text-primary font-medium'
+                      : isTerminal
+                        ? 'text-[#50fa7b]/60 hover:bg-[#50fa7b]/10 font-mono'
+                        : 'text-muted-foreground hover:bg-muted'
+                  )}
+                >
+                  {t === 'all' ? 'All' : t}
+                </button>
+              ))}
+            </div>
+            
+            {/* Filter toggle button */}
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={() => setShowFilters(!showFilters)}
+              className={cn(
+                'h-7 px-2 gap-1',
+                isTerminal && 'text-[#50fa7b] hover:bg-[#50fa7b]/10',
+                showFilters && (isTerminal ? 'bg-[#50fa7b]/10' : 'bg-muted')
+              )}
+            >
+              <Filter className='h-3.5 w-3.5' />
+              <span className='hidden sm:inline'>{isTerminal ? 'filter' : 'Filter'}</span>
+            </Button>
           </div>
         </div>
+        
+        {/* Expanded filter panel */}
+        {showFilters && (
+          <div className={cn(
+            'max-w-7xl mx-auto pt-3 mt-2 border-t flex flex-wrap items-center gap-3',
+            isTerminal ? 'border-[#50fa7b]/10' : 'border-gray-200'
+          )}>
+            {/* Mobile time filter */}
+            <div className='md:hidden flex items-center gap-1 border rounded-md p-0.5' style={{
+              borderColor: isTerminal ? 'rgba(80, 250, 123, 0.2)' : undefined
+            }}>
+              {(['1d', '7d', '30d', 'all'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setTimeFilter(t)}
+                  className={cn(
+                    'px-2 py-0.5 rounded text-xs transition-colors',
+                    timeFilter === t
+                      ? isTerminal
+                        ? 'bg-[#50fa7b]/20 text-[#50fa7b] font-mono'
+                        : 'bg-primary/10 text-primary font-medium'
+                      : isTerminal
+                        ? 'text-[#50fa7b]/60 hover:bg-[#50fa7b]/10 font-mono'
+                        : 'text-muted-foreground hover:bg-muted'
+                  )}
+                >
+                  {t === 'all' ? 'All' : t}
+                </button>
+              ))}
+            </div>
+            
+            {/* Node type toggles */}
+            <div className='flex flex-wrap items-center gap-2'>
+              <span className={cn(
+                'text-xs',
+                isTerminal ? 'font-mono text-[#50fa7b]/60' : 'text-muted-foreground'
+              )}>
+                {isTerminal ? 'show:' : 'Show:'}
+              </span>
+              {([
+                { type: 'post' as NodeType, label: 'Post', color: isTerminal ? '#50fa7b' : '#22c55e' },
+                { type: 'chat' as NodeType, label: 'Chat', color: isTerminal ? '#bd93f9' : '#8b5cf6' },
+                { type: 'memo' as NodeType, label: 'Memo', color: isTerminal ? '#ff79c6' : '#ec4899' },
+                { type: 'tag' as NodeType, label: 'Tag', color: isTerminal ? '#f1fa8c' : '#eab308' },
+                { type: 'search' as NodeType, label: 'Search', color: isTerminal ? '#8be9fd' : '#0ea5e9' },
+              ]).map(({ type, label, color }) => (
+                <button
+                  key={type}
+                  onClick={() => {
+                    const newFilters = new Set(typeFilters);
+                    if (newFilters.has(type)) {
+                      newFilters.delete(type);
+                    } else {
+                      newFilters.add(type);
+                    }
+                    setTypeFilters(newFilters);
+                  }}
+                  className={cn(
+                    'flex items-center gap-1.5 px-2 py-1 rounded-full text-xs transition-all',
+                    typeFilters.has(type)
+                      ? 'border-2'
+                      : 'border border-dashed opacity-50'
+                  )}
+                  style={{
+                    borderColor: color,
+                    backgroundColor: typeFilters.has(type) ? `${color}20` : 'transparent',
+                    color: isTerminal ? '#50fa7b' : undefined,
+                  }}
+                >
+                  <div 
+                    className='w-2.5 h-2.5 rounded-full'
+                    style={{ backgroundColor: typeFilters.has(type) ? color : 'transparent', borderColor: color }}
+                  />
+                  <span className={isTerminal ? 'font-mono' : ''}>{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Graph container */}
@@ -933,7 +1253,7 @@ const Insight = () => {
               </p>
             </div>
           </div>
-        ) : nodes.length === 0 ? (
+        ) : filteredNodes.length === 0 ? (
           <div className='absolute inset-0 flex items-center justify-center'>
             <div className={cn(
               'text-center space-y-4 max-w-sm px-4',
@@ -947,30 +1267,52 @@ const Insight = () => {
                 'text-lg font-semibold',
                 isTerminal ? 'text-[#50fa7b]' : ''
               )}>
-                {isTerminal ? '> no_data_found' : 'No data yet'}
+                {nodes.length > 0
+                  ? isTerminal ? '> no_matching_nodes' : 'No matching nodes'
+                  : isTerminal ? '> no_data_found' : 'No data yet'}
               </h2>
               <p className={cn(
                 'text-sm',
                 isTerminal ? 'text-[#50fa7b]/60' : 'text-muted-foreground'
               )}>
-                {isTerminal
-                  ? '// read posts and chat with AI to build your knowledge graph'
-                  : 'Read some posts and chat with AI to start building your insight graph.'}
+                {nodes.length > 0
+                  ? isTerminal
+                    ? '// adjust filters to see more nodes'
+                    : 'Try adjusting your filters to see more content.'
+                  : isTerminal
+                    ? '// read posts and chat with AI to build your knowledge graph'
+                    : 'Read some posts and chat with AI to start building your insight graph.'}
               </p>
-              <Button
-                onClick={() => navigate('/blog')}
-                className={cn(
-                  isTerminal && 'bg-[#50fa7b] text-[#052e16] hover:bg-[#50fa7b]/80 font-semibold'
-                )}
-              >
-                {isTerminal ? '> explore_posts' : 'Explore Posts'}
-              </Button>
+              {nodes.length === 0 && (
+                <Button
+                  onClick={() => navigate('/blog')}
+                  className={cn(
+                    isTerminal && 'bg-[#50fa7b] text-[#052e16] hover:bg-[#50fa7b]/80 font-semibold'
+                  )}
+                >
+                  {isTerminal ? '> explore_posts' : 'Explore Posts'}
+                </Button>
+              )}
+              {nodes.length > 0 && (
+                <Button
+                  variant='outline'
+                  onClick={() => {
+                    setTimeFilter('all');
+                    setTypeFilters(new Set(['post', 'chat', 'memo', 'tag', 'search']));
+                  }}
+                  className={cn(
+                    isTerminal && 'border-[#50fa7b]/40 text-[#50fa7b] hover:bg-[#50fa7b]/10'
+                  )}
+                >
+                  {isTerminal ? '> reset_filters' : 'Reset Filters'}
+                </Button>
+              )}
             </div>
           </div>
         ) : (
           <GraphCanvas
-            nodes={nodes}
-            edges={edges}
+            nodes={filteredNodes}
+            edges={filteredEdges}
             selectedNode={selectedNode}
             hoveredNode={hoveredNode}
             pathNodes={pathNodes}
@@ -1025,6 +1367,33 @@ const Insight = () => {
             )} />
             <span className={isTerminal ? 'font-mono text-[#50fa7b]/80' : 'text-muted-foreground'}>
               Question
+            </span>
+          </div>
+          <div className='flex items-center gap-2'>
+            <div className={cn(
+              'w-4 h-4 rounded-full',
+              isTerminal ? 'bg-[#ff79c6]' : 'bg-pink-500'
+            )} />
+            <span className={isTerminal ? 'font-mono text-[#50fa7b]/80' : 'text-muted-foreground'}>
+              Memo
+            </span>
+          </div>
+          <div className='flex items-center gap-2'>
+            <div className={cn(
+              'w-4 h-4 rounded-full',
+              isTerminal ? 'bg-[#f1fa8c]' : 'bg-yellow-500'
+            )} />
+            <span className={isTerminal ? 'font-mono text-[#50fa7b]/80' : 'text-muted-foreground'}>
+              Tag
+            </span>
+          </div>
+          <div className='flex items-center gap-2'>
+            <div className={cn(
+              'w-4 h-4 rounded-full',
+              isTerminal ? 'bg-[#8be9fd]' : 'bg-sky-500'
+            )} />
+            <span className={isTerminal ? 'font-mono text-[#50fa7b]/80' : 'text-muted-foreground'}>
+              Search
             </span>
           </div>
           <span className={cn(

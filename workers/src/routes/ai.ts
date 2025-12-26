@@ -1,18 +1,14 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { success, badRequest } from '../lib/response';
-import { generateContent, tryParseJson } from '../lib/gemini';
+import { createAIService, tryParseJson } from '../lib/ai-service';
+import type { TaskMode, TaskPayload } from '@blog/shared';
 
 const ai = new Hono<{ Bindings: Env }>();
 
-function safeTruncate(s: string, n: number): string {
-  if (!s) return s;
-  return s.length > n ? `${s.slice(0, n)}\n…(truncated)` : s;
-}
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return v !== null && typeof v === 'object';
-}
+// ============================================================================
+// Task Endpoints (sketch, prism, chain)
+// ============================================================================
 
 // POST /ai/sketch - Generate emotional sketch from paragraph
 ai.post('/sketch', async (c) => {
@@ -23,44 +19,13 @@ ai.post('/sketch', async (c) => {
     return badRequest(c, 'paragraph is required');
   }
 
-  const prompt = [
-    'You are a helpful writing companion. Return STRICT JSON only matching the schema.',
-    '{"mood":"string","bullets":["string", "string", "..."]}',
-    '',
-    `Persona: ${persona || 'default'}`,
-    `Post: ${safeTruncate(postTitle || '', 120)}`,
-    'Paragraph:',
-    safeTruncate(paragraph, 1600),
-    '',
-    'Task: Capture the emotional sketch. Select a concise mood (e.g., curious, excited, skeptical) and 3-6 short bullets in the original language of the text.',
-  ].join('\n');
+  const aiService = createAIService(c.env);
+  const result = await aiService.task('sketch', { paragraph, postTitle, persona });
 
-  try {
-    const text = await generateContent(prompt, c.env, { temperature: 0.3 });
-    const json = tryParseJson(text);
-
-    if (isRecord(json) && Array.isArray(json.bullets) && typeof json.mood === 'string') {
-      return success(c, {
-        mood: json.mood,
-        bullets: json.bullets.slice(0, 10),
-      });
-    }
-
-    // Fallback
-    const sentences = paragraph
-      .replace(/\n+/g, ' ')
-      .split(/[.!?]\s+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    return success(c, {
-      mood: 'curious',
-      bullets: sentences.slice(0, 4).map((s) => (s.length > 140 ? `${s.slice(0, 138)}…` : s)),
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'AI generation failed';
-    return badRequest(c, message);
+  if (!result.ok) {
+    return badRequest(c, result.error || 'AI task failed');
   }
+  return success(c, result.data);
 });
 
 // POST /ai/prism - Generate idea facets
@@ -72,35 +37,13 @@ ai.post('/prism', async (c) => {
     return badRequest(c, 'paragraph is required');
   }
 
-  const prompt = [
-    'Return STRICT JSON only for idea facets.',
-    '{"facets":[{"title":"string","points":["string","string"]}]}',
-    `Post: ${safeTruncate(postTitle || '', 120)}`,
-    'Paragraph:',
-    safeTruncate(paragraph, 1600),
-    '',
-    'Task: Provide 2-3 facets (titles) with 2-4 concise points each, in the original language.',
-  ].join('\n');
+  const aiService = createAIService(c.env);
+  const result = await aiService.task('prism', { paragraph, postTitle });
 
-  try {
-    const text = await generateContent(prompt, c.env, { temperature: 0.2 });
-    const json = tryParseJson(text);
-
-    if (isRecord(json) && Array.isArray(json.facets)) {
-      return success(c, { facets: json.facets.slice(0, 4) });
-    }
-
-    // Fallback
-    return success(c, {
-      facets: [
-        { title: '핵심 요점', points: [safeTruncate(paragraph, 140)] },
-        { title: '생각해볼 점', points: ['관점 A', '관점 B'] },
-      ],
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'AI generation failed';
-    return badRequest(c, message);
+  if (!result.ok) {
+    return badRequest(c, result.error || 'AI task failed');
   }
+  return success(c, result.data);
 });
 
 // POST /ai/chain - Generate follow-up questions
@@ -112,37 +55,18 @@ ai.post('/chain', async (c) => {
     return badRequest(c, 'paragraph is required');
   }
 
-  const prompt = [
-    'Return STRICT JSON only for tail questions.',
-    '{"questions":[{"q":"string","why":"string"}]}',
-    `Post: ${safeTruncate(postTitle || '', 120)}`,
-    'Paragraph:',
-    safeTruncate(paragraph, 1600),
-    '',
-    'Task: Generate 3-5 short follow-up questions and a brief why for each, in the original language.',
-  ].join('\n');
+  const aiService = createAIService(c.env);
+  const result = await aiService.task('chain', { paragraph, postTitle });
 
-  try {
-    const text = await generateContent(prompt, c.env, { temperature: 0.2 });
-    const json = tryParseJson(text);
-
-    if (isRecord(json) && Array.isArray(json.questions)) {
-      return success(c, { questions: json.questions.slice(0, 6) });
-    }
-
-    // Fallback
-    return success(c, {
-      questions: [
-        { q: '무엇이 핵심 주장인가?', why: '핵심을 명료화' },
-        { q: '어떤 가정이 있는가?', why: '숨은 전제 확인' },
-        { q: '적용 예시는?', why: '구체화' },
-      ],
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'AI generation failed';
-    return badRequest(c, message);
+  if (!result.ok) {
+    return badRequest(c, result.error || 'AI task failed');
   }
+  return success(c, result.data);
 });
+
+// ============================================================================
+// Generate Endpoints
+// ============================================================================
 
 // POST /ai/generate - Generic AI generation
 ai.post('/generate', async (c) => {
@@ -153,8 +77,9 @@ ai.post('/generate', async (c) => {
     return badRequest(c, 'prompt is required');
   }
 
+  const aiService = createAIService(c.env);
   try {
-    const text = await generateContent(prompt, c.env, {
+    const text = await aiService.generate(prompt, {
       temperature: typeof temperature === 'number' ? temperature : 0.2,
     });
     return success(c, { text });
@@ -167,7 +92,12 @@ ai.post('/generate', async (c) => {
 // GET /ai/generate/stream - SSE streaming tokens
 ai.get('/generate/stream', async (c) => {
   const url = new URL(c.req.url);
-  const q = (url.searchParams.get('prompt') || url.searchParams.get('q') || url.searchParams.get('text') || '').toString();
+  const q = (
+    url.searchParams.get('prompt') ||
+    url.searchParams.get('q') ||
+    url.searchParams.get('text') ||
+    ''
+  ).toString();
   const t = Number(url.searchParams.get('temperature'));
   const temperature = Number.isFinite(t) ? t : 0.2;
 
@@ -203,13 +133,15 @@ ai.get('/generate/stream', async (c) => {
     return new Response(stream, { headers, status: 400 });
   }
 
+  const aiService = createAIService(c.env);
+
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
         controller.enqueue(frame('open', { type: 'open' }));
 
         // Generate once then chunk to simulate token stream
-        const text = await generateContent(String(q), c.env, { temperature });
+        const text = await aiService.generate(String(q), { temperature });
 
         const chunkSize = 80;
         for (let i = 0; i < text.length; i += chunkSize) {
@@ -224,7 +156,9 @@ ai.get('/generate/stream', async (c) => {
         const message = err instanceof Error ? err.message : 'generation failed';
         controller.enqueue(frame('error', { message }));
       } finally {
-        try { controller.close(); } catch {}
+        try {
+          controller.close();
+        } catch {}
       }
     },
   });
@@ -232,28 +166,109 @@ ai.get('/generate/stream', async (c) => {
   return new Response(stream, { headers, status: 200 });
 });
 
+// ============================================================================
+// Summarize Endpoint
+// ============================================================================
+
 // POST /ai/summarize - Summarize article with memo
 ai.post('/summarize', async (c) => {
   const body = await c.req.json().catch(() => ({}));
-  const { input, instructions } = body;
+  const { input, text, instructions } = body;
+  const content = input || text;
 
-  if (!input || typeof input !== 'string') {
-    return badRequest(c, 'input is required');
+  if (!content || typeof content !== 'string') {
+    return badRequest(c, 'input or text is required');
   }
 
-  const prompt = [
-    instructions || '다음 내용을 요약해주세요:',
-    '',
-    safeTruncate(input, 8000),
-  ].join('\n');
+  const aiService = createAIService(c.env);
+  const result = await aiService.summarize(content, { instructions });
 
+  return success(c, result);
+});
+
+// ============================================================================
+// Chat Endpoint
+// ============================================================================
+
+// POST /ai/auto-chat - Chat completion
+ai.post('/auto-chat', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { messages, temperature, maxTokens } = body;
+
+  if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    return badRequest(c, 'messages array is required');
+  }
+
+  const aiService = createAIService(c.env);
   try {
-    const summary = await generateContent(prompt, c.env, { temperature: 0.2 });
-    return success(c, { summary });
+    const result = await aiService.chat(messages, { temperature, maxTokens });
+    return success(c, {
+      content: result.content,
+      model: result.model,
+      provider: result.provider,
+    });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'AI generation failed';
+    const message = err instanceof Error ? err.message : 'Chat failed';
     return badRequest(c, message);
   }
+});
+
+// ============================================================================
+// Vision Endpoint
+// ============================================================================
+
+// POST /ai/vision/analyze - Vision analysis
+ai.post('/vision/analyze', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { imageUrl, imageBase64, mimeType, prompt } = body;
+
+  if (!imageBase64 && !imageUrl) {
+    return badRequest(c, 'imageBase64 or imageUrl is required');
+  }
+
+  const aiService = createAIService(c.env);
+  try {
+    // If URL provided, we need to fetch and convert (or let backend handle it)
+    const imageData = imageBase64 || imageUrl;
+    const description = await aiService.vision(imageData, prompt || 'Describe this image', {
+      mimeType: mimeType || 'image/jpeg',
+    });
+    return success(c, { description });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Vision analysis failed';
+    return badRequest(c, message);
+  }
+});
+
+// ============================================================================
+// Health & Status Endpoints
+// ============================================================================
+
+// GET /ai/health - Health check
+ai.get('/health', async (c) => {
+  const aiService = createAIService(c.env);
+  const health = await aiService.health();
+
+  return success(c, {
+    status: health.ok ? 'healthy' : 'degraded',
+    provider: health.provider,
+    backend: health.status,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// GET /ai/status - Status check
+ai.get('/status', async (c) => {
+  const aiService = createAIService(c.env);
+  const info = await aiService.getProviderInfo();
+  const health = await aiService.health();
+
+  return success(c, {
+    status: health.ok ? 'ok' : 'degraded',
+    provider: info.provider,
+    features: info.features,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 export default ai;

@@ -46,6 +46,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { recordView } from '@/services/analytics';
 import { translatePost, getCachedTranslation, type TranslationResult } from '@/services/translate';
+import { curiosityTracker } from '@/services/curiosity';
 // import SparkInline from '@/components/features/sentio/SparkInline';
 
 const MarkdownRenderer = lazy(
@@ -210,6 +211,11 @@ const BlogPost = () => {
 
     // Record view to D1 analytics (fire and forget)
     recordView(post.year, post.slug).catch(() => {});
+
+    // Track to Curiosity (Web of Curiosity feature)
+    const postId = `${post.year}/${post.slug}`;
+    const path = `/blog/${post.year}/${post.slug}`;
+    curiosityTracker.trackPostView(postId, path, post.title, post.tags || []);
 
     // Save to local visited posts
     try {
@@ -677,9 +683,13 @@ const BlogPost = () => {
                           key={tag}
                           variant='outline'
                           className={cn(
-                            'rounded-full px-3 py-1 text-xs dark:border-white/20 dark:text-white',
-                            isTerminal && 'rounded border-primary/40 text-primary'
+                            'rounded-full px-3 py-1 text-xs dark:border-white/20 dark:text-white cursor-pointer hover:bg-primary/10 transition-colors',
+                            isTerminal && 'rounded border-primary/40 text-primary hover:bg-primary/20'
                           )}
+                          onClick={() => {
+                            curiosityTracker.trackTagClick(tag, `${post.year}/${post.slug}`);
+                            navigate(`/blog?tag=${encodeURIComponent(tag)}`);
+                          }}
                         >
                           {isTerminal ? `[${tag}]` : `#${tag}`}
                         </Badge>

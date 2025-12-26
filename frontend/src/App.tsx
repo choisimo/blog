@@ -14,6 +14,7 @@ import Contact from './pages/Contact';
 import NewPost from './pages/NewPost';
 import NotFound from './pages/NotFound';
 import Insight from './pages/Insight';
+import AdminConfig from './pages/AdminConfig';
 import './App.css';
 import { VisitedPostsMinimap } from '@/components/features/navigation/VisitedPostsMinimap';
 import FloatingActionBar from '@/components/features/memo/FloatingActionBar';
@@ -60,6 +61,7 @@ function App() {
                     <Route path='/contact' element={<Contact />} />
                     <Route path='/insight' element={<Insight />} />
                     <Route path='/admin/new-post' element={<NewPost />} />
+                    <Route path='/admin/config' element={<AdminConfig />} />
                     <Route path='*' element={<NotFound />} />
                   </Routes>
                 </main>

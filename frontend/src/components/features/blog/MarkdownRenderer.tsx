@@ -263,7 +263,7 @@ export const MarkdownRenderer = ({
             const language = match ? match[1] : '';
 
             return !inline && match ? (
-              <div className='relative group my-8 max-w-4xl mx-auto'>
+              <div className='relative group my-8 max-w-4xl mx-auto overflow-x-auto'>
                 {/* Terminal-style header for code blocks */}
                 {isTerminal && (
                   <div className='flex items-center gap-2 bg-[hsl(var(--terminal-titlebar))] px-4 py-2 rounded-t-xl border border-b-0 border-border font-mono text-xs text-muted-foreground'>
@@ -293,9 +293,10 @@ export const MarkdownRenderer = ({
                   language={language}
                   PreTag='div'
                   className={cn(
-                    'rounded-xl shadow-lg',
+                    'rounded-xl shadow-lg !overflow-x-auto',
                     isTerminal && 'rounded-t-none !rounded-b-xl'
                   )}
+                  wrapLongLines={false}
                 >
                   {codeString}
                 </SyntaxHighlighter>

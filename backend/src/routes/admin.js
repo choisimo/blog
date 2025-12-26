@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { Octokit } from '@octokit/rest';
 import { config } from '../config.js';
-import { getDb, Timestamp } from '../lib/firebase.js';
+import { queryAll, execute, isD1Configured } from '../lib/d1.js';
 import requireAdmin from '../middleware/adminAuth.js'; // centralized admin auth middleware
 import { buildFrontmatterMarkdown } from '../lib/markdown.js';
 
@@ -115,32 +115,47 @@ router.post('/propose-new-version', requireAdmin, async (req, res, next) => {
 });
 
 // Archive old comments into versioned JSON files in the repo and mark them as archived
-// Query param: dryRun=1 to simulate without committing or updating Firestore
+// Query param: dryRun=1 to simulate without committing or updating D1
+// Now uses Cloudflare D1 instead of Firebase Firestore
 router.post('/archive-comments', requireAdmin, async (req, res, next) => {
   try {
+    // Check if D1 is configured
+    if (!isD1Configured()) {
+      return res.status(500).json({
+        ok: false,
+        error: 'D1 database not configured. Set CF_ACCOUNT_ID, CF_API_TOKEN, D1_DATABASE_ID',
+      });
+    }
+
     const dryRun = String(req.query.dryRun || '').trim() === '1';
     const cutoffDays = 90;
     const cutoffDate = new Date(Date.now() - cutoffDays * 24 * 60 * 60 * 1000);
-    const cutoffTs = Timestamp.fromDate(cutoffDate);
+    const cutoffIso = cutoffDate.toISOString();
 
-    const db = getDb();
-    const snap = await db
-      .collection('comments')
-      .where('archived', '==', false)
-      .where('createdAt', '<=', cutoffTs)
-      .get();
+    // Query comments from D1 that are not archived and older than cutoff
+    const comments = await queryAll(
+      `SELECT id, post_id, author, content, website, parent_id, created_at
+       FROM comments 
+       WHERE (archived = 0 OR archived IS NULL) 
+       AND created_at <= ?
+       ORDER BY post_id, created_at ASC`,
+      cutoffIso
+    );
 
-    if (snap.empty) {
-      return res.json({ ok: true, data: { archivedPosts: [], totalComments: 0, message: 'No comments to archive' } });
+    if (comments.length === 0) {
+      return res.json({ 
+        ok: true, 
+        data: { archivedPosts: [], totalComments: 0, message: 'No comments to archive' } 
+      });
     }
 
+    // Group comments by post_id
     const groups = new Map();
-    snap.forEach(doc => {
-      const data = doc.data();
-      const pid = String(data.postId);
+    for (const comment of comments) {
+      const pid = String(comment.post_id);
       if (!groups.has(pid)) groups.set(pid, []);
-      groups.get(pid).push({ id: doc.id, data });
-    });
+      groups.get(pid).push(comment);
+    }
 
     const owner = config.github.owner;
     const repo = config.github.repo;
@@ -161,25 +176,19 @@ router.post('/archive-comments', requireAdmin, async (req, res, next) => {
     let total = 0;
 
     for (const [postId, items] of groups.entries()) {
-      const comments = items
-        .map(({ id, data }) => ({
-          id,
-          postId: data.postId,
-          author: data.author,
-          content: data.content,
-          website: data.website || null,
-          parentId: data.parentId || null,
-          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : null,
-        }))
-        .sort((a, b) => {
-          const ta = a.createdAt ? Date.parse(a.createdAt) : 0;
-          const tb = b.createdAt ? Date.parse(b.createdAt) : 0;
-          return ta - tb;
-        });
+      const formattedComments = items.map((c) => ({
+        id: c.id,
+        postId: c.post_id,
+        author: c.author,
+        content: c.content,
+        website: c.website || null,
+        parentId: c.parent_id || null,
+        createdAt: c.created_at,
+      }));
 
-      total += comments.length;
+      total += formattedComments.length;
       const path = `frontend/src/data/comments/${postId}.json`;
-      const contentStr = `${JSON.stringify({ comments }, null, 2)}\n`;
+      const contentStr = `${JSON.stringify({ comments: formattedComments }, null, 2)}\n`;
 
       if (!dryRun) {
         // get existing sha if any
@@ -195,7 +204,7 @@ router.post('/archive-comments', requireAdmin, async (req, res, next) => {
           owner,
           repo,
           path,
-          message: `chore(archive): comments for ${postId} (${comments.length})`,
+          message: `chore(archive): comments for ${postId} (${formattedComments.length})`,
           content: Buffer.from(contentStr, 'utf8').toString('base64'),
           branch: baseBranch,
           committer:
@@ -209,16 +218,16 @@ router.post('/archive-comments', requireAdmin, async (req, res, next) => {
           sha,
         });
 
-        // Mark archived in Firestore
-        const batch = db.batch();
-        items.forEach(({ id }) => {
-          const ref = db.collection('comments').doc(id);
-          batch.update(ref, { archived: true });
-        });
-        await batch.commit();
+        // Mark archived in D1
+        const ids = items.map(c => c.id);
+        const placeholders = ids.map(() => '?').join(',');
+        await execute(
+          `UPDATE comments SET archived = 1, updated_at = datetime('now') WHERE id IN (${placeholders})`,
+          ...ids
+        );
       }
 
-      results.push({ postId, count: comments.length, path, committed: !dryRun });
+      results.push({ postId, count: formattedComments.length, path, committed: !dryRun });
     }
 
     // Optional deploy hook (compat)

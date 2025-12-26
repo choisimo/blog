@@ -219,8 +219,11 @@ export function useScrollHide(): boolean {
     let lastY = window.scrollY || 0;
     let accumulatedDelta = 0;
     const THRESHOLD = 40; // px to accumulate before toggling
+    let rafId: number | null = null;
+    let lastTime = 0;
+    const THROTTLE_MS = 50; // Throttle to 50ms
 
-    const handleScroll = () => {
+    const updateHideState = () => {
       const y = window.scrollY || 0;
       const delta = y - lastY;
       lastY = y;
@@ -252,8 +255,21 @@ export function useScrollHide(): boolean {
         accumulatedDelta = 0;
       }
     };
+
+    const handleScroll = () => {
+      const now = Date.now();
+      if (now - lastTime < THROTTLE_MS) return;
+      lastTime = now;
+      
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(updateHideState);
+    };
+
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, []);
   return hidden;
 }
