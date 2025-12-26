@@ -20,6 +20,7 @@ import ragRouter from './routes/rag.js';
 import configRouter from './routes/config.js';
 import workersRouter from './routes/workers.js';
 import aiAdminRouter from './routes/aiAdmin.js';
+import agentRouter from './routes/agent.js';
 
 const app = express();
 
@@ -84,6 +85,7 @@ app.use('/api/v1/rag', ragRouter);
 app.use('/api/v1/admin/config', configRouter);
 app.use('/api/v1/admin/workers', workersRouter);
 app.use('/api/v1/admin/ai', aiAdminRouter);
+app.use('/api/v1/agent', agentRouter);
 
 // not found
 app.use((req, res) => {

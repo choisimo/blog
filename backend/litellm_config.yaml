@@ -133,6 +133,44 @@ model_list:
     model_info:
       description: "Local CodeLlama via Ollama"
 
+  # ---------------------------------------------------------------------------
+  # Agent-Optimized Models (Function Calling Support)
+  # ---------------------------------------------------------------------------
+  # These models are specifically optimized for agent use with tool calling
+  
+  - model_name: agent/gpt-4o
+    litellm_params:
+      model: gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      description: "GPT-4o optimized for agent/function calling"
+      supports_function_calling: true
+      supports_parallel_function_calling: true
+
+  - model_name: agent/claude-3.5-sonnet
+    litellm_params:
+      model: claude-3-5-sonnet-20241022
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info:
+      description: "Claude 3.5 Sonnet for agent/tool use"
+      supports_function_calling: true
+
+  - model_name: agent/gemini-1.5-pro
+    litellm_params:
+      model: gemini/gemini-1.5-pro
+      api_key: os.environ/GOOGLE_API_KEY
+    model_info:
+      description: "Gemini 1.5 Pro for agent/function calling"
+      supports_function_calling: true
+
+  - model_name: agent/gemini-1.5-flash
+    litellm_params:
+      model: gemini/gemini-1.5-flash
+      api_key: os.environ/GOOGLE_API_KEY
+    model_info:
+      description: "Gemini 1.5 Flash for fast agent responses"
+      supports_function_calling: true
+
 # -----------------------------------------------------------------------------
 # Router Settings - Fallback and Load Balancing
 # -----------------------------------------------------------------------------
@@ -187,6 +225,13 @@ litellm_settings:
   
   # Failure callbacks for alerting
   failure_callback: []
+  
+  # Function Calling / Tool Use Settings
+  # Enable parallel function calling where supported
+  supports_function_calling: true
+  
+  # Allow tool_choice parameter
+  supports_tool_choice: true
 
 # -----------------------------------------------------------------------------
 # General Settings

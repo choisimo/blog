@@ -1,7 +1,7 @@
 # blog-1120 - Complete Codebase
 
-> Generated at: 2025-12-25T23:12:19.712Z
-> Total files: 525
+> Generated at: 2025-12-26T07:48:17.721Z
+> Total files: 554
 
 ## Table of Contents
 
@@ -14,6 +14,10 @@
 - [backend/scripts](#backend-scripts)
 - [backend/src](#backend-src)
 - [backend/src/lib](#backend-src-lib)
+- [backend/src/lib/agent](#backend-src-lib-agent)
+- [backend/src/lib/agent/memory](#backend-src-lib-agent-memory)
+- [backend/src/lib/agent/prompts](#backend-src-lib-agent-prompts)
+- [backend/src/lib/agent/tools](#backend-src-lib-agent-tools)
 - [backend/src/middleware](#backend-src-middleware)
 - [backend/src/routes](#backend-src-routes)
 - [backend/terminal-server](#backend-terminal-server)
@@ -44,6 +48,7 @@
 - [frontend/src/components/atoms](#frontend-src-components-atoms)
 - [frontend/src/components/common](#frontend-src-components-common)
 - [frontend/src/components/features/admin](#frontend-src-components-features-admin)
+- [frontend/src/components/features/admin/ai](#frontend-src-components-features-admin-ai)
 - [frontend/src/components/features/blog](#frontend-src-components-features-blog)
 - [frontend/src/components/features/chat](#frontend-src-components-features-chat)
 - [frontend/src/components/features/chat/widget](#frontend-src-components-features-chat-widget)
@@ -783,8 +788,7 @@ services:
       # LiteLLM Gateway (OpenAI-compatible endpoint)
       - AI_PROVIDER=litellm
       - LITELLM_BASE_URL=http://litellm:4000
-      # No auth key needed for local LiteLLM (auth disabled for simplicity)
-      - LITELLM_API_KEY=
+      - LITELLM_API_KEY=${LITELLM_MASTER_KEY:-sk-local-dev-key}
       - AI_DEFAULT_MODEL=${AI_DEFAULT_MODEL:-gemini-1.5-flash}
       # Workers for D1/R2
       - WORKERS_BASE_URL=http://workers:8787
@@ -821,6 +825,9 @@ services:
     expose:
       - "4000"
     environment:
+      # Master API key for authentication and Admin UI
+      # Admin UI login: username=admin, password=<this key>
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-local-dev-key}
       # Provider API Keys (set in .env.local)
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -1441,11 +1448,11 @@ litellm_settings:
 # -----------------------------------------------------------------------------
 # General Settings
 # -----------------------------------------------------------------------------
-# For local development, we disable auth to avoid database requirement
-# Security is maintained through Docker network isolation
 general_settings:
-  # No master_key = no authentication required (local dev only!)
-  # master_key: os.environ/LITELLM_MASTER_KEY
+  # Master key for API authentication and Admin UI access
+  # Admin UI: username=admin, password=<LITELLM_MASTER_KEY value>
+  master_key: os.environ/LITELLM_MASTER_KEY
+  # Disable database for local development
   database_url: null
   store_model_in_db: false
   disable_spend_logs: true
@@ -2670,19 +2677,16 @@ If you discover a security vulnerability:
 name: Backend Build & Deploy (SSH Compose)
 
 # =============================================================================
-# Full Stack Deployment with Virtual Agent Service (VAS)
+# Full Stack Deployment with LiteLLM AI Gateway
 # =============================================================================
 # Architecture:
-#   cloudflared -> nginx -> api -> vas-proxy -> vas-core -> LLM
+#   cloudflared -> nginx -> api -> litellm-proxy -> LLM APIs
 #
 # Services deployed:
 #   - api: Node.js backend (built from Dockerfile)
 #   - nginx: Reverse proxy
 #   - cloudflared: Cloudflare Tunnel
-#   - vas-core: OpenCode LLM engine
-#   - vas-admin: Token management UI
-#   - vas-bootstrap: Auto JWT token generator
-#   - vas-proxy: Simplified /auto-chat API
+#   - litellm: AI Gateway for multiple LLM providers
 #   - embedding-server: TEI for RAG
 #   - chromadb: Vector database
 #   - terminal-server: Docker PTY server
@@ -2753,26 +2757,6 @@ jobs:
           load: true
           tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
-      - name: Build VAS Core image
-        if: ${{ github.event.inputs.skip_build != 'true' }}
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend/opencode-serve
-          file: ./backend/opencode-serve/ai-serve.Dockerfile
-          push: false
-          load: true
-          tags: vas-core:${{ env.IMAGE_TAG }}
-
-      - name: Build VAS Admin image
-        if: ${{ github.event.inputs.skip_build != 'true' }}
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend/opencode-serve/go-proxy-admin
-          file: ./backend/opencode-serve/go-proxy-admin/Dockerfile
-          push: false
-          load: true
-          tags: vas-admin:${{ env.IMAGE_TAG }}
-
       - name: Build Terminal Server image
         if: ${{ github.event.inputs.skip_build != 'true' }}
         uses: docker/build-push-action@v5
@@ -2788,8 +2772,6 @@ jobs:
         run: |
           docker save \
             "${IMAGE_NAME}:${IMAGE_TAG}" \
-            "vas-core:${IMAGE_TAG}" \
-            "vas-admin:${IMAGE_TAG}" \
             "terminal-server:${IMAGE_TAG}" \
             | gzip > backend-images.tar.gz
           ls -lh backend-images.tar.gz
@@ -2810,11 +2792,14 @@ jobs:
             echo "BACKEND_ENV_FILE secret is missing." >&2; exit 1;
           fi
           printf "%s" "${{ secrets.BACKEND_ENV_FILE }}" > /tmp/backend.env
+          # Append additional secrets that are stored separately
+          echo "" >> /tmp/backend.env
+          echo "CLOUDFLARE_TUNNEL_TOKEN=${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}" >> /tmp/backend.env
 
       - name: Upload artifacts to remote
         run: |
           test -n "${REMOTE_DIR}" || { echo "REMOTE_DIR secret is missing" >&2; exit 1; }
-          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "mkdir -p ${REMOTE_DIR}/opencode-serve"
+          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "mkdir -p ${REMOTE_DIR}"
 
           # Upload images (if built)
           if [ -f backend-images.tar.gz ]; then
@@ -2825,9 +2810,10 @@ jobs:
           scp -P "${SSH_PORT}" backend/nginx.conf "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/nginx.conf"
           scp -P "${SSH_PORT}" /tmp/backend.env "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/.env"
 
-          # Upload VAS proxy script and bootstrap script
-          scp -P "${SSH_PORT}" backend/opencode-serve/auto-chat-proxy.js "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/opencode-serve/"
-          scp -P "${SSH_PORT}" backend/opencode-serve/bootstrap-token.sh "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/opencode-serve/"
+          # Upload LiteLLM config if exists
+          if [ -f backend/litellm_config.yaml ]; then
+            scp -P "${SSH_PORT}" backend/litellm_config.yaml "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/litellm_config.yaml"
+          fi
 
       - name: Deploy full stack on remote
         env:
@@ -2849,18 +2835,16 @@ jobs:
             rm -f backend-images.tar.gz
           fi
 
-          # Generate runtime compose file with full VAS stack
+          # Generate runtime compose file with LiteLLM architecture
           cat > compose.runtime.yml <<'YML'
           # =======================================================================
-          # Runtime Compose - Single Entry Point Architecture
+          # Runtime Compose - LiteLLM AI Gateway Architecture
           # =======================================================================
           # Cloudflare Tunnel → nginx:80 → Internal Services
           #
           # Routes:
           #   /api/*       → api:5080
-          #   /ai/*        → vas-proxy:7016
-          #   /vas/*       → vas-core:7012
-          #   /vas-admin/* → vas-admin:7080
+          #   /litellm/*   → litellm:4000
           #   /terminal/*  → terminal-server:8080
           # =======================================================================
 
@@ -2908,10 +2892,8 @@ jobs:
                 - APP_ENV=production
                 - HOST=0.0.0.0
                 - PORT=5080
-                - AI_SERVE_BASE_URL=http://vas-proxy:7016
-                - VAS_CORE_URL=http://vas-core:7012
-                - AI_SERVE_DEFAULT_PROVIDER=github-copilot
-                - AI_SERVE_DEFAULT_MODEL=gpt-4.1
+                - LITELLM_BASE_URL=http://litellm:4000
+                - AI_PROVIDER=litellm
               expose:
                 - "5080"
               networks:
@@ -2923,6 +2905,31 @@ jobs:
                 timeout: 10s
                 retries: 5
                 start_period: 60s
+
+            # LiteLLM AI Gateway
+            litellm:
+              image: ghcr.io/berriai/litellm:main-latest
+              env_file: .env
+              environment:
+                - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-1234}
+                - LITELLM_LOG_LEVEL=INFO
+                # Disable database features - we use D1 for usage tracking
+                - DISABLE_SPEND_LOGS=true
+                - DATABASE_URL=
+              expose:
+                - "4000"
+              volumes:
+                - ./litellm_config.yaml:/app/config.yaml:ro
+              command: ["--config", "/app/config.yaml", "--port", "4000"]
+              networks:
+                - backend
+              restart: unless-stopped
+              healthcheck:
+                test: ["CMD", "wget", "-q", "--spider", "http://localhost:4000/health"]
+                interval: 30s
+                timeout: 10s
+                retries: 5
+                start_period: 30s
 
             # TEI Embedding Server
             embedding-server:
@@ -2971,118 +2978,6 @@ jobs:
                 - backend
               restart: unless-stopped
 
-            # VAS Core (OpenCode Engine)
-            vas-core:
-              image: vas-core:IMAGE_TAG_PLACEHOLDER
-              restart: unless-stopped
-              expose:
-                - "7012"
-              environment:
-                NODE_ENV: production
-                OPENCODE_HOST: 0.0.0.0
-                OPENCODE_PORT: 7012
-              command:
-                - /app/node_modules/.bin/opencode
-                - serve
-                - --hostname
-                - 0.0.0.0
-                - --port
-                - "7012"
-              volumes:
-                - vas-data:/home/node/.local/share/opencode
-                - vas-logs:/var/log/opencode
-                - vas-config:/home/node/.config/opencode
-              networks:
-                - backend
-              healthcheck:
-                test: ["CMD-SHELL", "node -e \"const http=require('http'); http.get('http://localhost:7012/app', ()=>process.exit(0)).on('error', ()=>process.exit(1));\" "]
-                interval: 30s
-                timeout: 5s
-                retries: 3
-                start_period: 10s
-              security_opt:
-                - no-new-privileges:true
-
-            # VAS Bootstrap (Auto JWT Token)
-            vas-bootstrap:
-              image: curlimages/curl:latest
-              restart: "no"
-              user: "0:0"
-              entrypoint: ["/bin/sh", "/app/bootstrap-token.sh"]
-              environment:
-                ADMIN_URL: http://vas-admin:7080
-                TOKEN_FILE: /app/shared/auto-token.jwt
-                MAX_RETRIES: "60"
-                RETRY_INTERVAL: "2"
-              volumes:
-                - ./opencode-serve/bootstrap-token.sh:/app/bootstrap-token.sh:ro
-                - vas-shared:/app/shared
-              networks:
-                - backend
-              depends_on:
-                vas-admin:
-                  condition: service_started
-
-            # VAS Proxy (/auto-chat API)
-            vas-proxy:
-              image: node:20-alpine
-              restart: unless-stopped
-              command: ["node", "/app/auto-chat-proxy.js"]
-              environment:
-                OPENCODE_BASE: http://vas-core:7012
-                PROXY_PORT: 7016
-                DEFAULT_PROVIDER: github-copilot
-                DEFAULT_MODEL: gpt-4.1
-                DEFAULT_SESSION_TITLE: Auto Session
-                OPENCODE_BEARER_TOKEN_FILE: /app/shared/auto-token.jwt
-                TOKEN_FILE_POLL_INTERVAL: "3000"
-                TOKEN_FILE_MAX_WAIT: "300000"
-                MESSAGE_TIMEOUT: "120000"
-              expose:
-                - "7016"
-              volumes:
-                - ./opencode-serve/auto-chat-proxy.js:/app/auto-chat-proxy.js:ro
-                - vas-shared:/app/shared:ro
-              networks:
-                - backend
-              depends_on:
-                vas-core:
-                  condition: service_healthy
-                vas-bootstrap:
-                  condition: service_completed_successfully
-              security_opt:
-                - no-new-privileges:true
-              healthcheck:
-                test: ["CMD-SHELL", "wget -q -O- http://localhost:7016/health || exit 1"]
-                interval: 30s
-                timeout: 10s
-                retries: 5
-                start_period: 120s
-
-            # VAS Admin (Token Management)
-            vas-admin:
-              image: vas-admin:IMAGE_TAG_PLACEHOLDER
-              restart: unless-stopped
-              expose:
-                - "7080"
-              environment:
-                OPENCODE_BASE: http://vas-core:7012
-                ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-auto-generated-secret-change-in-production}
-                ADMIN_PORT: 7080
-                ADMIN_DB_PATH: /app/data/vas-admin.db
-                ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
-                ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
-                AUTO_BOOTSTRAP: "true"
-              volumes:
-                - vas-admin-data:/app/data
-              networks:
-                - backend
-              depends_on:
-                vas-core:
-                  condition: service_healthy
-              security_opt:
-                - no-new-privileges:true
-
           networks:
             backend:
               driver: bridge
@@ -3090,11 +2985,6 @@ jobs:
           volumes:
             tei-data:
             chroma-data:
-            vas-data:
-            vas-logs:
-            vas-config:
-            vas-admin-data:
-            vas-shared:
           YML
 
           # Replace image tag placeholder
@@ -3128,13 +3018,13 @@ jobs:
             echo "API Retry $i/60"; sleep 2;
           done
 
-          echo "Waiting for VAS Proxy health check via nginx..."
-          for i in $(seq 1 60); do
-            if curl -fsS http://localhost:8080/ai/health >/dev/null 2>&1; then
-              echo "VAS Proxy Health OK"
+          echo "Waiting for LiteLLM health check..."
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/litellm/health >/dev/null 2>&1; then
+              echo "LiteLLM Health OK"
               break
             fi
-            echo "VAS Proxy Retry $i/60"; sleep 2;
+            echo "LiteLLM Retry $i/30"; sleep 2;
           done
 
           # Final status
@@ -3191,16 +3081,14 @@ jobs:
           printf "%s" "$headers" | awk 'tolower($0) ~ /^access-control-allow-origin:/ {print}' | grep -q "${PUBLIC_FRONTEND_ORIGIN}" || {
             echo "CORS header missing or mismatched for origin ${PUBLIC_FRONTEND_ORIGIN}" >&2; exit 1; }
 
-      - name: Verify VAS Proxy via public endpoint
+      - name: Verify AI Gateway via public endpoint
         if: ${{ env.PUBLIC_API_BASE_URL != '' }}
         continue-on-error: true
         run: |
-          echo "Checking VAS integration via ${PUBLIC_API_BASE_URL}/api/v1/ai/health ..."
-          # Note: This endpoint should exist in your API to proxy health check to vas-proxy
+          echo "Checking AI Gateway integration via ${PUBLIC_API_BASE_URL}/api/v1/ai/health ..."
           response=$(curl -fsS "${PUBLIC_API_BASE_URL}/api/v1/ai/health" 2>&1 || echo '{"error":"endpoint not found"}')
           echo "$response"
-          # Allow this to fail gracefully if endpoint doesn't exist yet
-          echo "VAS public check completed (check logs above for status)"
+          echo "AI Gateway public check completed (check logs above for status)"
 
 ```
 
@@ -4942,32 +4830,22 @@ module.exports = {
 # -----------------------------------------------------------------------------
 model_list:
   # ---------------------------------------------------------------------------
-  # GitHub Copilot (via VAS Core) - Primary Provider
+  # Primary Models (Default aliases that map to fastest available)
   # ---------------------------------------------------------------------------
-  # Note: GitHub Copilot routes through vas-core for authentication
+  # These aliases are used by the backend API - they map to Gemini for speed/cost
   - model_name: gpt-4.1
     litellm_params:
-      model: openai/gpt-4.1
-      api_base: http://vas-core:7012/v1
-      api_key: os.environ/VAS_API_KEY
+      model: gemini/gemini-1.5-flash
+      api_key: os.environ/GOOGLE_API_KEY
     model_info:
-      description: "GitHub Copilot GPT-4.1 via VAS"
+      description: "Default model - Maps to Gemini 1.5 Flash"
       
   - model_name: gpt-4o
     litellm_params:
-      model: openai/gpt-4o
-      api_base: http://vas-core:7012/v1
-      api_key: os.environ/VAS_API_KEY
+      model: gemini/gemini-1.5-pro
+      api_key: os.environ/GOOGLE_API_KEY
     model_info:
-      description: "GitHub Copilot GPT-4o via VAS"
-
-  - model_name: claude-sonnet-4
-    litellm_params:
-      model: openai/claude-sonnet-4
-      api_base: http://vas-core:7012/v1
-      api_key: os.environ/VAS_API_KEY
-    model_info:
-      description: "GitHub Copilot Claude Sonnet 4 via VAS"
+      description: "High capability model - Maps to Gemini 1.5 Pro"
 
   # ---------------------------------------------------------------------------
   # OpenAI Direct (Optional - when you have your own API key)
@@ -5058,6 +4936,44 @@ model_list:
     model_info:
       description: "Local CodeLlama via Ollama"
 
+  # ---------------------------------------------------------------------------
+  # Agent-Optimized Models (Function Calling Support)
+  # ---------------------------------------------------------------------------
+  # These models are specifically optimized for agent use with tool calling
+  
+  - model_name: agent/gpt-4o
+    litellm_params:
+      model: gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      description: "GPT-4o optimized for agent/function calling"
+      supports_function_calling: true
+      supports_parallel_function_calling: true
+
+  - model_name: agent/claude-3.5-sonnet
+    litellm_params:
+      model: claude-3-5-sonnet-20241022
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info:
+      description: "Claude 3.5 Sonnet for agent/tool use"
+      supports_function_calling: true
+
+  - model_name: agent/gemini-1.5-pro
+    litellm_params:
+      model: gemini/gemini-1.5-pro
+      api_key: os.environ/GOOGLE_API_KEY
+    model_info:
+      description: "Gemini 1.5 Pro for agent/function calling"
+      supports_function_calling: true
+
+  - model_name: agent/gemini-1.5-flash
+    litellm_params:
+      model: gemini/gemini-1.5-flash
+      api_key: os.environ/GOOGLE_API_KEY
+    model_info:
+      description: "Gemini 1.5 Flash for fast agent responses"
+      supports_function_calling: true
+
 # -----------------------------------------------------------------------------
 # Router Settings - Fallback and Load Balancing
 # -----------------------------------------------------------------------------
@@ -5072,11 +4988,10 @@ router_settings:
   timeout: 120
   
   # Fallback configuration
-  # If gpt-4.1 fails, try gemini-1.5-flash, then claude-3-haiku
+  # If gpt-4.1 fails, try gemini alternatives
   fallbacks:
-    - gpt-4.1: ["gemini-1.5-flash", "claude-3-haiku"]
-    - gpt-4o: ["gemini-1.5-pro", "claude-3.5-sonnet"]
-    - claude-sonnet-4: ["claude-3.5-sonnet", "gemini-1.5-pro"]
+    - gpt-4.1: ["gemini-1.5-pro", "claude-3-haiku"]
+    - gpt-4o: ["gemini-2.0-flash", "claude-3.5-sonnet"]
 
   # Context window fallbacks (for long contexts)
   context_window_fallbacks:
@@ -5113,6 +5028,13 @@ litellm_settings:
   
   # Failure callbacks for alerting
   failure_callback: []
+  
+  # Function Calling / Tool Use Settings
+  # Enable parallel function calling where supported
+  supports_function_calling: true
+  
+  # Allow tool_choice parameter
+  supports_tool_choice: true
 
 # -----------------------------------------------------------------------------
 # General Settings
@@ -5121,8 +5043,10 @@ general_settings:
   # Master API key for all requests
   master_key: os.environ/LITELLM_MASTER_KEY
   
-  # Database for tracking (optional)
-  # database_url: os.environ/LITELLM_DATABASE_URL
+  # Disable database - we don't need internal usage tracking
+  # Our own D1 database handles usage logging via backend API
+  database_connection_pool_limit: 0
+  disable_spend_logs: true
   
   # Enable Prometheus metrics at /metrics
   # alerting:
@@ -5148,24 +5072,24 @@ general_settings:
     "start": "node src/index.js"
   },
   "dependencies": {
-     "@blog/shared": "file:../shared",
-     "@octokit/rest": "^20.1.1",
-     "cors": "^2.8.5",
-     "dotenv": "^16.4.5",
-     "express": "^4.19.2",
-     "express-rate-limit": "^7.4.0",
-     "firebase-admin": "^12.5.0",
-     "helmet": "^7.2.0",
-     "morgan": "^1.10.0",
-     "zod": "^3.23.8",
-     "gray-matter": "^4.0.3",
-     "slugify": "^1.6.6",
-     "fs-extra": "^11.2.0",
-     "multer": "^1.4.5-lts.1",
-     "sharp": "^0.33.5",
-     "moment": "^2.30.1",
-     "jsonwebtoken": "^9.0.2"
-   }
+    "@blog/shared": "file:../shared",
+    "@octokit/rest": "^20.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "firebase-admin": "^12.5.0",
+    "fs-extra": "^11.2.0",
+    "gray-matter": "^4.0.3",
+    "helmet": "^7.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "moment": "^2.30.1",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "sharp": "^0.33.5",
+    "slugify": "^1.6.6",
+    "zod": "^3.23.8"
+  }
 }
 
 ```
@@ -6051,6 +5975,8 @@ import authRouter from './routes/auth.js';
 import ragRouter from './routes/rag.js';
 import configRouter from './routes/config.js';
 import workersRouter from './routes/workers.js';
+import aiAdminRouter from './routes/aiAdmin.js';
+import agentRouter from './routes/agent.js';
 
 const app = express();
 
@@ -6114,6 +6040,8 @@ app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/rag', ragRouter);
 app.use('/api/v1/admin/config', configRouter);
 app.use('/api/v1/admin/workers', workersRouter);
+app.use('/api/v1/admin/ai', aiAdminRouter);
+app.use('/api/v1/agent', agentRouter);
 
 // not found
 app.use((req, res) => {
@@ -6780,6 +6708,7 @@ import { config } from '../config.js';
 import { getLiteLLMClient, tryParseJson as litellmTryParse } from './litellm-client.js';
 import { getVASClient, tryParseJson as vasTryParse } from './ai-serve.js';
 import { generateContent as geminiGenerate, tryParseJson as geminiTryParse } from './gemini.js';
+import { logAIUsage } from './ai-usage-logger.js';
 
 // ============================================================================
 // Configuration
@@ -6944,6 +6873,17 @@ export class AIService {
         { duration, resultLength: result?.length }
       );
 
+      // Log usage asynchronously (fire and forget)
+      logAIUsage({
+        modelName: options.model || this._getDefaultModel(),
+        requestType: 'completion',
+        promptTokens: this._estimateTokens(prompt),
+        completionTokens: this._estimateTokens(result),
+        latencyMs: duration,
+        status: 'success',
+        metadata: { requestId, provider: this.provider },
+      }).catch(() => {}); // Silently ignore logging errors
+
       return result;
     } catch (error) {
       const duration = Date.now() - startTime;
@@ -6952,6 +6892,18 @@ export class AIService {
         'Generation failed',
         { duration, error: error.message }
       );
+
+      // Log failed request
+      logAIUsage({
+        modelName: options.model || this._getDefaultModel(),
+        requestType: 'completion',
+        promptTokens: this._estimateTokens(prompt),
+        latencyMs: duration,
+        status: 'error',
+        errorMessage: error.message,
+        metadata: { requestId, provider: this.provider },
+      }).catch(() => {});
+
       throw error;
     }
   }
@@ -6979,17 +6931,43 @@ export class AIService {
       switch (this.provider) {
         case 'litellm': {
           const client = this._getClient();
-          const response = await client.chat(messages, {
-            temperature: options.temperature,
-            model: options.model,
-            timeout: options.timeout,
-          });
-          result = {
-            content: response.content,
-            model: response.model,
-            provider: 'litellm',
-            usage: response.usage,
-          };
+          try {
+            const response = await client.chat(messages, {
+              temperature: options.temperature,
+              model: options.model,
+              timeout: options.timeout,
+            });
+            result = {
+              content: response.content,
+              model: response.model,
+              provider: 'litellm',
+              usage: response.usage,
+            };
+          } catch (litellmError) {
+            // Fallback to Gemini if LiteLLM fails and Gemini is configured
+            if (config.gemini?.apiKey) {
+              logger.warn(
+                { operation: 'chat', requestId },
+                'LiteLLM failed, falling back to Gemini',
+                { error: litellmError.message }
+              );
+              const formattedMessages = messages.map(m => {
+                if (m.role === 'system') return `System: ${m.content}`;
+                if (m.role === 'assistant') return `Assistant: ${m.content}`;
+                return `User: ${m.content}`;
+              }).join('\n\n');
+              const response = await geminiGenerate(formattedMessages, {
+                temperature: options.temperature ?? 0.2,
+              });
+              result = {
+                content: response,
+                model: config.gemini?.model || 'gemini-1.5-flash',
+                provider: 'gemini-fallback',
+              };
+            } else {
+              throw litellmError;
+            }
+          }
           break;
         }
 
@@ -7038,6 +7016,17 @@ export class AIService {
         { duration, resultLength: result?.content?.length }
       );
 
+      // Log usage asynchronously with actual token counts if available
+      logAIUsage({
+        modelName: result.model || options.model || this._getDefaultModel(),
+        requestType: 'chat',
+        promptTokens: result.usage?.prompt_tokens || this._estimateTokens(JSON.stringify(messages)),
+        completionTokens: result.usage?.completion_tokens || this._estimateTokens(result.content),
+        latencyMs: duration,
+        status: 'success',
+        metadata: { requestId, provider: this.provider },
+      }).catch(() => {});
+
       return result;
     } catch (error) {
       const duration = Date.now() - startTime;
@@ -7046,6 +7035,18 @@ export class AIService {
         'Chat failed',
         { duration, error: error.message }
       );
+
+      // Log failed request
+      logAIUsage({
+        modelName: options.model || this._getDefaultModel(),
+        requestType: 'chat',
+        promptTokens: this._estimateTokens(JSON.stringify(messages)),
+        latencyMs: duration,
+        status: 'error',
+        errorMessage: error.message,
+        metadata: { requestId, provider: this.provider },
+      }).catch(() => {});
+
       throw error;
     }
   }
@@ -7354,6 +7355,30 @@ export class AIService {
   }
 
   /**
+   * Estimate token count from text (rough approximation: ~4 chars per token)
+   */
+  _estimateTokens(text) {
+    if (!text) return 0;
+    return Math.ceil(text.length / 4);
+  }
+
+  /**
+   * Get default model name based on provider
+   */
+  _getDefaultModel() {
+    switch (this.provider) {
+      case 'litellm':
+        return config.ai?.gateway?.defaultModel || 'gpt-4o-mini';
+      case 'vas':
+        return process.env.AI_SERVE_DEFAULT_MODEL || 'gpt-4o';
+      case 'gemini':
+        return config.gemini?.model || 'gemini-1.5-flash';
+      default:
+        return 'unknown';
+    }
+  }
+
+  /**
    * Health check
    */
   async health(force = false) {
@@ -7438,6 +7463,172 @@ export const aiService = getAIService();
 export { tryParseJson } from './litellm-client.js';
 
 export default AIService;
+
+```
+
+### ai-usage-logger.js
+
+**Path:** `backend/src/lib/ai-usage-logger.js`
+
+```javascript
+/**
+ * AI Usage Logger
+ * 
+ * Logs AI usage to D1 database for monitoring and analytics.
+ * Works asynchronously to not block AI responses.
+ */
+
+import { execute, queryOne, isD1Configured } from './d1.js';
+
+/**
+ * Log an AI usage event to the database
+ * Runs asynchronously and silently fails to not impact AI performance
+ */
+export async function logAIUsage(data) {
+  // Skip if D1 not configured
+  if (!isD1Configured()) {
+    return;
+  }
+
+  try {
+    const {
+      modelName,
+      routeName,
+      requestType = 'chat',
+      promptTokens = 0,
+      completionTokens = 0,
+      latencyMs,
+      status = 'success',
+      errorMessage,
+      userId,
+      metadata,
+    } = data;
+
+    // Lookup model ID by name
+    let modelId = null;
+    if (modelName) {
+      const model = await queryOne(
+        'SELECT id, input_cost_per_1k, output_cost_per_1k FROM ai_models WHERE model_name = ?',
+        modelName
+      );
+      if (model) {
+        modelId = model.id;
+      }
+    }
+
+    // Lookup route ID by name
+    let routeId = null;
+    if (routeName) {
+      const route = await queryOne(
+        'SELECT id FROM ai_routes WHERE name = ?',
+        routeName
+      );
+      if (route) {
+        routeId = route.id;
+      }
+    }
+
+    // Calculate estimated cost
+    let estimatedCost = 0;
+    if (modelId) {
+      const model = await queryOne(
+        'SELECT input_cost_per_1k, output_cost_per_1k FROM ai_models WHERE id = ?',
+        modelId
+      );
+      if (model) {
+        estimatedCost =
+          ((promptTokens || 0) * (model.input_cost_per_1k || 0)) / 1000 +
+          ((completionTokens || 0) * (model.output_cost_per_1k || 0)) / 1000;
+      }
+    }
+
+    const totalTokens = (promptTokens || 0) + (completionTokens || 0);
+    const id = `usage_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    await execute(
+      `INSERT INTO ai_usage_logs (
+        id, model_id, route_id, request_type,
+        prompt_tokens, completion_tokens, total_tokens,
+        estimated_cost, latency_ms, status, error_message, user_id, metadata
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      id,
+      modelId,
+      routeId,
+      requestType,
+      promptTokens,
+      completionTokens,
+      totalTokens,
+      estimatedCost,
+      latencyMs || null,
+      status,
+      errorMessage || null,
+      userId || null,
+      metadata ? JSON.stringify(metadata) : null
+    );
+
+    // Update daily aggregation
+    const today = new Date().toISOString().split('T')[0];
+    if (modelId) {
+      // Try to update existing record
+      const result = await execute(
+        `UPDATE ai_usage_daily SET
+          total_requests = total_requests + 1,
+          total_prompt_tokens = total_prompt_tokens + ?,
+          total_completion_tokens = total_completion_tokens + ?,
+          total_tokens = total_tokens + ?,
+          total_cost = total_cost + ?,
+          success_count = success_count + ?,
+          error_count = error_count + ?,
+          avg_latency_ms = (avg_latency_ms * (total_requests - 1) + ?) / total_requests
+        WHERE date = ? AND model_id = ?`,
+        promptTokens,
+        completionTokens,
+        totalTokens,
+        estimatedCost,
+        status === 'success' ? 1 : 0,
+        status === 'error' ? 1 : 0,
+        latencyMs || 0,
+        today,
+        modelId
+      );
+
+      // Insert if doesn't exist
+      if (result.changes === 0) {
+        await execute(
+          `INSERT INTO ai_usage_daily (
+            date, model_id, total_requests,
+            total_prompt_tokens, total_completion_tokens, total_tokens,
+            total_cost, success_count, error_count, avg_latency_ms
+          ) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`,
+          today,
+          modelId,
+          promptTokens,
+          completionTokens,
+          totalTokens,
+          estimatedCost,
+          status === 'success' ? 1 : 0,
+          status === 'error' ? 1 : 0,
+          latencyMs || 0
+        );
+      }
+    }
+  } catch (err) {
+    // Silently fail - logging should not impact AI performance
+    console.warn('[AIUsage] Failed to log usage:', err.message);
+  }
+}
+
+/**
+ * Create a usage logger middleware/wrapper for AI clients
+ */
+export function createUsageLogger(defaultRouteName) {
+  return async function logUsage(data) {
+    await logAIUsage({
+      routeName: defaultRouteName,
+      ...data,
+    });
+  };
+}
 
 ```
 
@@ -8443,6 +8634,3538 @@ export function generateKey(filename, prefix = 'uploads') {
 
 ---
 
+## backend/src/lib/agent
+
+### coordinator.js
+
+**Path:** `backend/src/lib/agent/coordinator.js`
+
+```javascript
+/**
+ * Agent Coordinator - AI Agent Orchestration Layer
+ * 
+ * Core orchestration engine that manages:
+ *   - Multi-turn conversations with context
+ *   - Tool selection and execution (function calling)
+ *   - Memory management (session/persistent/vector)
+ *   - Task decomposition and planning
+ * 
+ * Architecture:
+ *   Request -> Coordinator -> Tool Selection -> Tool Execution -> Response
+ *                   ↓                                    ↑
+ *              Memory Store <─────────────────────────────┘
+ * 
+ * Usage:
+ *   const coordinator = getAgentCoordinator();
+ *   const response = await coordinator.run({
+ *     sessionId: 'user-123',
+ *     messages: [{ role: 'user', content: 'Search my blog for AI articles' }],
+ *   });
+ */
+
+import { getLiteLLMClient } from '../litellm-client.js';
+import { getToolRegistry } from './tools/index.js';
+import { getSessionMemory } from './memory/session.js';
+import { getPersistentMemory } from './memory/persistent.js';
+import { getVectorMemory } from './memory/vector.js';
+import { SYSTEM_PROMPTS, buildSystemPrompt } from './prompts/system.js';
+
+// ============================================================================
+// Configuration
+// ============================================================================
+
+const DEFAULT_MODEL = process.env.AGENT_MODEL || 'gpt-4.1';
+const MAX_TOOL_ITERATIONS = 10;
+const MAX_CONTEXT_MESSAGES = 20;
+const TOOL_TIMEOUT = 30000;
+
+// ============================================================================
+// Logger
+// ============================================================================
+
+const logger = {
+  _format(level, context, message, data = {}) {
+    return JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level,
+      service: 'agent-coordinator',
+      ...context,
+      message,
+      ...data,
+    });
+  },
+  info(ctx, msg, data) { console.log(this._format('info', ctx, msg, data)); },
+  warn(ctx, msg, data) { console.warn(this._format('warn', ctx, msg, data)); },
+  error(ctx, msg, data) { console.error(this._format('error', ctx, msg, data)); },
+  debug(ctx, msg, data) {
+    if (process.env.DEBUG_AGENT === 'true') {
+      console.debug(this._format('debug', ctx, msg, data));
+    }
+  },
+};
+
+// ============================================================================
+// Agent Coordinator Class
+// ============================================================================
+
+export class AgentCoordinator {
+  constructor(options = {}) {
+    this.llmClient = options.llmClient || getLiteLLMClient();
+    this.toolRegistry = options.toolRegistry || getToolRegistry();
+    this.sessionMemory = options.sessionMemory || getSessionMemory();
+    this.persistentMemory = options.persistentMemory || getPersistentMemory();
+    this.vectorMemory = options.vectorMemory || getVectorMemory();
+    
+    this.defaultModel = options.model || DEFAULT_MODEL;
+    this.maxIterations = options.maxIterations || MAX_TOOL_ITERATIONS;
+    
+    logger.info({ operation: 'init' }, 'AgentCoordinator initialized', {
+      model: this.defaultModel,
+      toolCount: this.toolRegistry.getToolCount(),
+    });
+  }
+
+  /**
+   * Run the agent with a conversation
+   * 
+   * @param {object} params
+   * @param {string} params.sessionId - Unique session identifier
+   * @param {Array} params.messages - Conversation messages
+   * @param {string} [params.mode] - Agent mode (default, research, coding, blog)
+   * @param {object} [params.context] - Additional context (user info, etc.)
+   * @param {object} [params.options] - LLM options (temperature, model)
+   * @returns {Promise<{content: string, toolCalls: Array, usage: object}>}
+   */
+  async run(params) {
+    const {
+      sessionId,
+      messages,
+      mode = 'default',
+      context = {},
+      options = {},
+    } = params;
+
+    const runId = `run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const startTime = Date.now();
+
+    logger.info(
+      { operation: 'run', runId, sessionId },
+      'Starting agent run',
+      { mode, messageCount: messages?.length }
+    );
+
+    try {
+      // 1. Load session memory and history
+      const sessionHistory = await this.sessionMemory.getHistory(sessionId, MAX_CONTEXT_MESSAGES);
+      
+      // 2. Build context-aware system prompt
+      const systemPrompt = await this._buildContextualSystemPrompt(mode, context, sessionId);
+      
+      // 3. Prepare messages with history
+      const fullMessages = this._prepareMessages(systemPrompt, sessionHistory, messages);
+      
+      // 4. Get relevant memories from vector store
+      const relevantMemories = await this._retrieveRelevantMemories(messages, sessionId);
+      if (relevantMemories.length > 0) {
+        fullMessages.splice(1, 0, {
+          role: 'system',
+          content: `Relevant context from memory:\n${relevantMemories.map(m => `- ${m.content}`).join('\n')}`,
+        });
+      }
+
+      // 5. Run agent loop with tools
+      const result = await this._runAgentLoop(fullMessages, {
+        ...options,
+        model: options.model || this.defaultModel,
+        runId,
+      });
+
+      // 6. Save to session memory
+      await this.sessionMemory.addMessages(sessionId, [
+        ...messages,
+        { role: 'assistant', content: result.content },
+      ]);
+
+      // 7. Extract and save important information to persistent memory
+      await this._extractAndSaveMemories(result.content, messages, sessionId);
+
+      const duration = Date.now() - startTime;
+      logger.info(
+        { operation: 'run', runId, sessionId },
+        'Agent run completed',
+        { duration, toolCalls: result.toolCalls?.length || 0 }
+      );
+
+      return {
+        ...result,
+        sessionId,
+        runId,
+        duration,
+      };
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      logger.error(
+        { operation: 'run', runId, sessionId },
+        'Agent run failed',
+        { duration, error: error.message }
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Run agent loop with tool execution
+   */
+  async _runAgentLoop(messages, options) {
+    const { runId, model } = options;
+    const toolCalls = [];
+    let currentMessages = [...messages];
+    let iterations = 0;
+
+    while (iterations < this.maxIterations) {
+      iterations++;
+
+      logger.debug(
+        { operation: 'loop', runId },
+        `Agent iteration ${iterations}`,
+        { messageCount: currentMessages.length }
+      );
+
+      // Call LLM with function calling
+      const response = await this._callLLMWithTools(currentMessages, {
+        model,
+        temperature: options.temperature ?? 0.7,
+      });
+
+      // Check if LLM wants to call tools
+      if (response.toolCalls && response.toolCalls.length > 0) {
+        logger.info(
+          { operation: 'tool_call', runId },
+          'LLM requested tool calls',
+          { tools: response.toolCalls.map(t => t.function.name) }
+        );
+
+        // Execute tools
+        const toolResults = await this._executeTools(response.toolCalls, runId);
+        toolCalls.push(...response.toolCalls.map((tc, i) => ({
+          ...tc,
+          result: toolResults[i],
+        })));
+
+        // Add assistant message with tool calls
+        currentMessages.push({
+          role: 'assistant',
+          content: response.content || null,
+          tool_calls: response.toolCalls,
+        });
+
+        // Add tool results
+        for (let i = 0; i < response.toolCalls.length; i++) {
+          currentMessages.push({
+            role: 'tool',
+            tool_call_id: response.toolCalls[i].id,
+            content: JSON.stringify(toolResults[i]),
+          });
+        }
+
+        // Continue loop to let LLM process tool results
+        continue;
+      }
+
+      // No more tool calls, return final response
+      return {
+        content: response.content,
+        toolCalls,
+        usage: response.usage,
+        model: response.model,
+        iterations,
+      };
+    }
+
+    // Max iterations reached
+    logger.warn(
+      { operation: 'loop', runId },
+      'Max iterations reached',
+      { iterations: this.maxIterations }
+    );
+
+    return {
+      content: 'I apologize, but I was unable to complete the task within the allowed iterations. Please try breaking down your request into smaller steps.',
+      toolCalls,
+      iterations,
+      maxIterationsReached: true,
+    };
+  }
+
+  /**
+   * Call LLM with function calling support
+   */
+  async _callLLMWithTools(messages, options) {
+    const tools = this.toolRegistry.getToolDefinitions();
+    
+    try {
+      const response = await fetch(`${this.llmClient.baseUrl}/v1/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.llmClient.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: options.model || this.defaultModel,
+          messages,
+          tools: tools.length > 0 ? tools : undefined,
+          tool_choice: tools.length > 0 ? 'auto' : undefined,
+          temperature: options.temperature ?? 0.7,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text().catch(() => '');
+        throw new Error(`LLM call failed: ${response.status} ${error}`);
+      }
+
+      const data = await response.json();
+      const choice = data.choices?.[0];
+
+      return {
+        content: choice?.message?.content || '',
+        toolCalls: choice?.message?.tool_calls,
+        usage: data.usage,
+        model: data.model,
+        finishReason: choice?.finish_reason,
+      };
+    } catch (error) {
+      logger.error({ operation: 'llm_call' }, 'LLM call failed', { error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Execute tool calls
+   */
+  async _executeTools(toolCalls, runId) {
+    const results = [];
+
+    for (const toolCall of toolCalls) {
+      const { name, arguments: argsStr } = toolCall.function;
+      const toolId = toolCall.id;
+
+      logger.debug(
+        { operation: 'tool_exec', runId, toolId },
+        `Executing tool: ${name}`
+      );
+
+      try {
+        const args = JSON.parse(argsStr || '{}');
+        const tool = this.toolRegistry.getTool(name);
+
+        if (!tool) {
+          results.push({ error: `Tool not found: ${name}` });
+          continue;
+        }
+
+        // Execute with timeout
+        const result = await Promise.race([
+          tool.execute(args),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Tool execution timeout')), TOOL_TIMEOUT)
+          ),
+        ]);
+
+        results.push(result);
+
+        logger.info(
+          { operation: 'tool_exec', runId, toolId },
+          `Tool ${name} completed`,
+          { resultType: typeof result }
+        );
+      } catch (error) {
+        logger.error(
+          { operation: 'tool_exec', runId, toolId },
+          `Tool ${name} failed`,
+          { error: error.message }
+        );
+        results.push({ error: error.message });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Build contextual system prompt
+   */
+  async _buildContextualSystemPrompt(mode, context, sessionId) {
+    // Get user preferences from persistent memory
+    const userPrefs = await this.persistentMemory.getUserPreferences(sessionId);
+    
+    return buildSystemPrompt({
+      mode,
+      ...context,
+      userPreferences: userPrefs,
+      customInstructions: context.customInstructions,
+    });
+  }
+
+  /**
+   * Prepare messages with history
+   */
+  _prepareMessages(systemPrompt, history, newMessages) {
+    const messages = [{ role: 'system', content: systemPrompt }];
+    
+    // Add history (limited)
+    if (history && history.length > 0) {
+      messages.push(...history.slice(-MAX_CONTEXT_MESSAGES));
+    }
+    
+    // Add new messages
+    messages.push(...newMessages);
+    
+    return messages;
+  }
+
+  /**
+   * Retrieve relevant memories from vector store
+   */
+  async _retrieveRelevantMemories(messages, sessionId) {
+    try {
+      const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
+      if (!lastUserMessage) return [];
+
+      return await this.vectorMemory.search(lastUserMessage.content, {
+        sessionId,
+        limit: 5,
+        minScore: 0.7,
+      });
+    } catch (error) {
+      logger.warn(
+        { operation: 'memory_retrieval' },
+        'Failed to retrieve memories',
+        { error: error.message }
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Extract and save important information to memories
+   */
+  async _extractAndSaveMemories(response, messages, sessionId) {
+    try {
+      // Simple extraction: save user intents and assistant responses
+      const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
+      
+      if (lastUserMessage && response) {
+        // Save to vector memory for semantic search
+        await this.vectorMemory.add({
+          content: `User: ${lastUserMessage.content}\nAssistant: ${response.slice(0, 500)}`,
+          sessionId,
+          timestamp: new Date().toISOString(),
+          type: 'conversation',
+        });
+      }
+    } catch (error) {
+      logger.warn(
+        { operation: 'memory_save' },
+        'Failed to save memories',
+        { error: error.message }
+      );
+    }
+  }
+
+  /**
+   * Stream agent response
+   * 
+   * @param {object} params - Same as run()
+   * @yields {object} Stream events: { type: 'text'|'tool_start'|'tool_end'|'done', data: any }
+   */
+  async *stream(params) {
+    const {
+      sessionId,
+      messages,
+      mode = 'default',
+      context = {},
+      options = {},
+    } = params;
+
+    const runId = `stream-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    logger.info({ operation: 'stream', runId, sessionId }, 'Starting agent stream');
+
+    // Load context
+    const sessionHistory = await this.sessionMemory.getHistory(sessionId, MAX_CONTEXT_MESSAGES);
+    const systemPrompt = await this._buildContextualSystemPrompt(mode, context, sessionId);
+    const fullMessages = this._prepareMessages(systemPrompt, sessionHistory, messages);
+
+    // Get relevant memories
+    const relevantMemories = await this._retrieveRelevantMemories(messages, sessionId);
+    if (relevantMemories.length > 0) {
+      fullMessages.splice(1, 0, {
+        role: 'system',
+        content: `Relevant context:\n${relevantMemories.map(m => `- ${m.content}`).join('\n')}`,
+      });
+    }
+
+    const tools = this.toolRegistry.getToolDefinitions();
+    let currentMessages = [...fullMessages];
+    let iterations = 0;
+    const toolCalls = [];
+
+    while (iterations < this.maxIterations) {
+      iterations++;
+
+      // Stream from LLM
+      const response = await fetch(`${this.llmClient.baseUrl}/v1/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.llmClient.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: options.model || this.defaultModel,
+          messages: currentMessages,
+          tools: tools.length > 0 ? tools : undefined,
+          tool_choice: tools.length > 0 ? 'auto' : undefined,
+          temperature: options.temperature ?? 0.7,
+          stream: true,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`LLM stream failed: ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let accumulatedContent = '';
+      let accumulatedToolCalls = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') continue;
+
+            try {
+              const parsed = JSON.parse(data);
+              const delta = parsed.choices?.[0]?.delta;
+
+              if (delta?.content) {
+                accumulatedContent += delta.content;
+                yield { type: 'text', data: delta.content };
+              }
+
+              if (delta?.tool_calls) {
+                for (const tc of delta.tool_calls) {
+                  if (tc.index !== undefined) {
+                    if (!accumulatedToolCalls[tc.index]) {
+                      accumulatedToolCalls[tc.index] = {
+                        id: tc.id || '',
+                        type: 'function',
+                        function: { name: '', arguments: '' },
+                      };
+                    }
+                    if (tc.id) accumulatedToolCalls[tc.index].id = tc.id;
+                    if (tc.function?.name) accumulatedToolCalls[tc.index].function.name += tc.function.name;
+                    if (tc.function?.arguments) accumulatedToolCalls[tc.index].function.arguments += tc.function.arguments;
+                  }
+                }
+              }
+            } catch {
+              // Skip invalid JSON
+            }
+          }
+        }
+      }
+
+      reader.releaseLock();
+
+      // Handle tool calls
+      if (accumulatedToolCalls.length > 0) {
+        for (const tc of accumulatedToolCalls) {
+          yield { type: 'tool_start', data: { name: tc.function.name, id: tc.id } };
+
+          try {
+            const args = JSON.parse(tc.function.arguments || '{}');
+            const tool = this.toolRegistry.getTool(tc.function.name);
+            const result = tool ? await tool.execute(args) : { error: 'Tool not found' };
+
+            toolCalls.push({ ...tc, result });
+            yield { type: 'tool_end', data: { name: tc.function.name, result } };
+
+            currentMessages.push({
+              role: 'assistant',
+              content: accumulatedContent || null,
+              tool_calls: accumulatedToolCalls,
+            });
+            currentMessages.push({
+              role: 'tool',
+              tool_call_id: tc.id,
+              content: JSON.stringify(result),
+            });
+          } catch (error) {
+            yield { type: 'tool_error', data: { name: tc.function.name, error: error.message } };
+          }
+        }
+        continue; // Continue loop to process tool results
+      }
+
+      // No tool calls, done
+      yield { type: 'done', data: { content: accumulatedContent, toolCalls } };
+
+      // Save to memory
+      await this.sessionMemory.addMessages(sessionId, [
+        ...messages,
+        { role: 'assistant', content: accumulatedContent },
+      ]);
+
+      return;
+    }
+
+    yield { type: 'error', data: { message: 'Max iterations reached' } };
+  }
+
+  /**
+   * Get session info
+   */
+  async getSession(sessionId) {
+    const history = await this.sessionMemory.getHistory(sessionId);
+    const metadata = await this.sessionMemory.getMetadata(sessionId);
+    return { sessionId, history, metadata };
+  }
+
+  /**
+   * Clear session
+   */
+  async clearSession(sessionId) {
+    await this.sessionMemory.clear(sessionId);
+    logger.info({ operation: 'clear_session' }, 'Session cleared', { sessionId });
+  }
+
+  /**
+   * Extract memories from conversation messages
+   * This is a simplified implementation - in production, you'd want to use
+   * the LLM to intelligently extract facts and preferences
+   */
+  async extractMemories(messages) {
+    const memories = [];
+    
+    for (const msg of messages) {
+      if (msg.role === 'user' && msg.content) {
+        // Simple extraction - look for key patterns
+        const content = msg.content;
+        
+        // Extract preferences (e.g., "I prefer...", "I like...")
+        const preferencePatterns = [
+          /I (?:prefer|like|love|enjoy|want)\s+(.+?)(?:\.|$)/gi,
+          /my (?:favorite|preferred)\s+(?:is|are)\s+(.+?)(?:\.|$)/gi,
+        ];
+        
+        for (const pattern of preferencePatterns) {
+          let match;
+          while ((match = pattern.exec(content)) !== null) {
+            memories.push({
+              type: 'preference',
+              content: match[0].trim(),
+              extractedAt: new Date().toISOString(),
+            });
+          }
+        }
+        
+        // Extract facts (e.g., "I am...", "I work...")
+        const factPatterns = [
+          /I (?:am|work|live|have)\s+(.+?)(?:\.|$)/gi,
+          /my (?:name|job|work|company)\s+(?:is|are)\s+(.+?)(?:\.|$)/gi,
+        ];
+        
+        for (const pattern of factPatterns) {
+          let match;
+          while ((match = pattern.exec(content)) !== null) {
+            memories.push({
+              type: 'fact',
+              content: match[0].trim(),
+              extractedAt: new Date().toISOString(),
+            });
+          }
+        }
+      }
+    }
+    
+    return memories;
+  }
+
+  /**
+   * Search memories semantically
+   */
+  async searchMemories(query, options = {}) {
+    const { userId, limit = 10, sessionId } = options;
+    
+    try {
+      const results = await this.vectorMemory.search(query, {
+        sessionId: sessionId || userId,
+        limit,
+        minScore: 0.5,
+      });
+      
+      return results.map(r => ({
+        content: r.content,
+        score: r.score,
+        metadata: r.metadata,
+      }));
+    } catch (error) {
+      logger.warn(
+        { operation: 'search_memories' },
+        'Failed to search memories',
+        { error: error.message }
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Health check
+   */
+  async health() {
+    const llmHealth = await this.llmClient.health();
+    const toolCount = this.toolRegistry.getToolCount();
+
+    return {
+      ok: llmHealth.ok,
+      llm: llmHealth,
+      tools: {
+        count: toolCount,
+        names: this.toolRegistry.getToolNames(),
+      },
+    };
+  }
+}
+
+// ============================================================================
+// Singleton & Exports
+// ============================================================================
+
+let _coordinator = null;
+
+/**
+ * Get the singleton AgentCoordinator instance
+ */
+export function getAgentCoordinator() {
+  if (!_coordinator) {
+    _coordinator = new AgentCoordinator();
+  }
+  return _coordinator;
+}
+
+/**
+ * Create AgentCoordinator with custom options
+ */
+export function createAgentCoordinator(options) {
+  return new AgentCoordinator(options);
+}
+
+export default AgentCoordinator;
+
+```
+
+---
+
+## backend/src/lib/agent/memory
+
+### persistent.js
+
+**Path:** `backend/src/lib/agent/memory/persistent.js`
+
+```javascript
+/**
+ * Persistent Memory - D1-backed long-term storage
+ * 
+ * Provides persistent storage for user preferences, important facts,
+ * and long-term conversation summaries using Cloudflare D1.
+ */
+
+import { query, execute, isD1Configured } from '../../d1.js';
+
+// Configuration
+const TABLE_NAME = 'agent_memories';
+const PREFERENCES_TABLE = 'agent_user_preferences';
+
+/**
+ * Persistent Memory Store
+ */
+class PersistentMemoryStore {
+  constructor(options = {}) {
+    this._d1Available = null;
+  }
+
+  /**
+   * Check if D1 is available
+   */
+  async _isD1Available() {
+    if (this._d1Available !== null) {
+      return this._d1Available;
+    }
+    
+    try {
+      this._d1Available = isD1Configured();
+      return this._d1Available;
+    } catch (error) {
+      this._d1Available = false;
+      return false;
+    }
+  }
+
+  /**
+   * Save a memory
+   * @param {object} memory
+   * @param {string} memory.sessionId
+   * @param {string} memory.type - 'fact', 'preference', 'summary', 'note'
+   * @param {string} memory.content
+   * @param {object} [memory.metadata]
+   */
+  async save(memory) {
+    try {
+      const isAvailable = await this._isD1Available();
+      if (!isAvailable) {
+        console.warn('[PersistentMemory] D1 not available, using fallback');
+        return this._fallbackSave(memory);
+      }
+
+      const id = `mem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      
+      await execute(
+        `INSERT INTO ${TABLE_NAME} (id, session_id, type, content, metadata, created_at)
+         VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+        id,
+        memory.sessionId,
+        memory.type || 'note',
+        memory.content,
+        JSON.stringify(memory.metadata || {}),
+      );
+
+      return { id, ...memory };
+    } catch (error) {
+      console.error('[PersistentMemory] Save failed:', error.message);
+      return this._fallbackSave(memory);
+    }
+  }
+
+  /**
+   * Get memories for a session
+   * @param {string} sessionId
+   * @param {object} options
+   */
+  async getMemories(sessionId, options = {}) {
+    try {
+      const isAvailable = await this._isD1Available();
+      if (!isAvailable) {
+        return this._fallbackGet(sessionId, options);
+      }
+
+      const { type, limit = 50 } = options;
+      
+      let sql = `SELECT * FROM ${TABLE_NAME} WHERE session_id = ?`;
+      const params = [sessionId];
+
+      if (type) {
+        sql += ` AND type = ?`;
+        params.push(type);
+      }
+
+      sql += ` ORDER BY created_at DESC LIMIT ?`;
+      params.push(limit);
+
+      const result = await query(sql, ...params);
+      
+      return (result.results || []).map(row => ({
+        id: row.id,
+        sessionId: row.session_id,
+        type: row.type,
+        content: row.content,
+        metadata: JSON.parse(row.metadata || '{}'),
+        createdAt: row.created_at,
+      }));
+    } catch (error) {
+      console.error('[PersistentMemory] Get failed:', error.message);
+      return this._fallbackGet(sessionId, options);
+    }
+  }
+
+  /**
+   * Search memories by content
+   * @param {string} searchQuery
+   * @param {object} options
+   */
+  async search(searchQuery, options = {}) {
+    try {
+      const isAvailable = await this._isD1Available();
+      if (!isAvailable) {
+        return [];
+      }
+
+      const { sessionId, limit = 20 } = options;
+      
+      let sql = `SELECT * FROM ${TABLE_NAME} WHERE content LIKE ?`;
+      const params = [`%${searchQuery}%`];
+
+      if (sessionId) {
+        sql += ` AND session_id = ?`;
+        params.push(sessionId);
+      }
+
+      sql += ` ORDER BY created_at DESC LIMIT ?`;
+      params.push(limit);
+
+      const result = await query(sql, ...params);
+      
+      return (result.results || []).map(row => ({
+        id: row.id,
+        sessionId: row.session_id,
+        type: row.type,
+        content: row.content,
+        metadata: JSON.parse(row.metadata || '{}'),
+        createdAt: row.created_at,
+      }));
+    } catch (error) {
+      console.error('[PersistentMemory] Search failed:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Delete a memory
+   * @param {string} id
+   */
+  async delete(id) {
+    try {
+      const isAvailable = await this._isD1Available();
+      if (!isAvailable) return;
+
+      await execute(`DELETE FROM ${TABLE_NAME} WHERE id = ?`, id);
+    } catch (error) {
+      console.error('[PersistentMemory] Delete failed:', error.message);
+    }
+  }
+
+  /**
+   * Get user preferences
+   * @param {string} sessionId
+   */
+  async getUserPreferences(sessionId) {
+    try {
+      const isAvailable = await this._isD1Available();
+      if (!isAvailable) {
+        return this._fallbackPreferences.get(sessionId) || {};
+      }
+
+      const result = await query(
+        `SELECT * FROM ${PREFERENCES_TABLE} WHERE session_id = ?`,
+        sessionId
+      );
+
+      if (result.results?.length > 0) {
+        return JSON.parse(result.results[0].preferences || '{}');
+      }
+      return {};
+    } catch (error) {
+      console.error('[PersistentMemory] Get preferences failed:', error.message);
+      return {};
+    }
+  }
+
+  /**
+   * Save user preferences
+   * @param {string} sessionId
+   * @param {object} preferences
+   */
+  async saveUserPreferences(sessionId, preferences) {
+    try {
+      const isAvailable = await this._isD1Available();
+      if (!isAvailable) {
+        this._fallbackPreferences.set(sessionId, preferences);
+        return;
+      }
+
+      await execute(
+        `INSERT INTO ${PREFERENCES_TABLE} (session_id, preferences, updated_at)
+         VALUES (?, ?, datetime('now'))
+         ON CONFLICT(session_id) DO UPDATE SET
+         preferences = excluded.preferences,
+         updated_at = datetime('now')`,
+        sessionId,
+        JSON.stringify(preferences)
+      );
+    } catch (error) {
+      console.error('[PersistentMemory] Save preferences failed:', error.message);
+      this._fallbackPreferences.set(sessionId, preferences);
+    }
+  }
+
+  /**
+   * Clear all memories for a session
+   * @param {string} sessionId
+   */
+  async clearSession(sessionId) {
+    try {
+      const isAvailable = await this._isD1Available();
+      if (!isAvailable) {
+        this._fallbackMemories.delete(sessionId);
+        this._fallbackPreferences.delete(sessionId);
+        return;
+      }
+
+      await execute(`DELETE FROM ${TABLE_NAME} WHERE session_id = ?`, sessionId);
+      await execute(`DELETE FROM ${PREFERENCES_TABLE} WHERE session_id = ?`, sessionId);
+    } catch (error) {
+      console.error('[PersistentMemory] Clear failed:', error.message);
+    }
+  }
+
+  // ============================================================================
+  // Fallback in-memory storage (when D1 is unavailable)
+  // ============================================================================
+
+  _fallbackMemories = new Map();
+  _fallbackPreferences = new Map();
+
+  _fallbackSave(memory) {
+    const id = `mem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const sessionMemories = this._fallbackMemories.get(memory.sessionId) || [];
+    sessionMemories.push({ id, ...memory, createdAt: new Date().toISOString() });
+    this._fallbackMemories.set(memory.sessionId, sessionMemories);
+    return { id, ...memory };
+  }
+
+  _fallbackGet(sessionId, options = {}) {
+    const memories = this._fallbackMemories.get(sessionId) || [];
+    let filtered = [...memories];
+    
+    if (options.type) {
+      filtered = filtered.filter(m => m.type === options.type);
+    }
+    
+    return filtered.slice(0, options.limit || 50).reverse();
+  }
+}
+
+// ============================================================================
+// Singleton & Exports
+// ============================================================================
+
+let _store = null;
+
+/**
+ * Get the singleton PersistentMemoryStore instance
+ */
+export function getPersistentMemory() {
+  if (!_store) {
+    _store = new PersistentMemoryStore();
+  }
+  return _store;
+}
+
+/**
+ * Create a new PersistentMemoryStore instance
+ */
+export function createPersistentMemory(options) {
+  return new PersistentMemoryStore(options);
+}
+
+export default PersistentMemoryStore;
+
+```
+
+### session.js
+
+**Path:** `backend/src/lib/agent/memory/session.js`
+
+```javascript
+/**
+ * Session Memory - In-memory session storage
+ * 
+ * Provides fast, ephemeral storage for conversation history within a session.
+ * Data is lost on server restart. For persistent storage, use persistent.js.
+ */
+
+// Configuration
+const MAX_HISTORY_LENGTH = parseInt(process.env.MAX_SESSION_HISTORY || '100', 10);
+const SESSION_TTL = parseInt(process.env.SESSION_TTL || '3600000', 10); // 1 hour default
+
+/**
+ * Session Memory Store
+ */
+class SessionMemoryStore {
+  constructor() {
+    /** @type {Map<string, {messages: Array, metadata: object, lastAccess: number}>} */
+    this.sessions = new Map();
+    
+    // Cleanup old sessions periodically
+    this._cleanupInterval = setInterval(() => this._cleanup(), 60000);
+  }
+
+  /**
+   * Get conversation history for a session
+   * @param {string} sessionId
+   * @param {number} [limit] - Maximum messages to return
+   * @returns {Promise<Array>}
+   */
+  async getHistory(sessionId, limit) {
+    const session = this.sessions.get(sessionId);
+    if (!session) return [];
+
+    session.lastAccess = Date.now();
+    const messages = session.messages;
+
+    if (limit && messages.length > limit) {
+      return messages.slice(-limit);
+    }
+    return [...messages];
+  }
+
+  /**
+   * Add messages to session history
+   * @param {string} sessionId
+   * @param {Array} messages
+   */
+  async addMessages(sessionId, messages) {
+    let session = this.sessions.get(sessionId);
+    
+    if (!session) {
+      session = {
+        messages: [],
+        metadata: { createdAt: new Date().toISOString() },
+        lastAccess: Date.now(),
+      };
+      this.sessions.set(sessionId, session);
+    }
+
+    session.messages.push(...messages);
+    session.lastAccess = Date.now();
+
+    // Trim if exceeds max length
+    if (session.messages.length > MAX_HISTORY_LENGTH) {
+      session.messages = session.messages.slice(-MAX_HISTORY_LENGTH);
+    }
+  }
+
+  /**
+   * Get session metadata
+   * @param {string} sessionId
+   * @returns {Promise<object>}
+   */
+  async getMetadata(sessionId) {
+    const session = this.sessions.get(sessionId);
+    if (!session) return {};
+    
+    return {
+      ...session.metadata,
+      messageCount: session.messages.length,
+      lastAccess: new Date(session.lastAccess).toISOString(),
+    };
+  }
+
+  /**
+   * Update session metadata
+   * @param {string} sessionId
+   * @param {object} metadata
+   */
+  async updateMetadata(sessionId, metadata) {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      session.metadata = { ...session.metadata, ...metadata };
+      session.lastAccess = Date.now();
+    }
+  }
+
+  /**
+   * Clear a session
+   * @param {string} sessionId
+   */
+  async clear(sessionId) {
+    this.sessions.delete(sessionId);
+  }
+
+  /**
+   * Check if session exists
+   * @param {string} sessionId
+   * @returns {boolean}
+   */
+  exists(sessionId) {
+    return this.sessions.has(sessionId);
+  }
+
+  /**
+   * Get all session IDs
+   * @returns {string[]}
+   */
+  getAllSessionIds() {
+    return Array.from(this.sessions.keys());
+  }
+
+  /**
+   * Get session count
+   * @returns {number}
+   */
+  getSessionCount() {
+    return this.sessions.size;
+  }
+
+  /**
+   * Cleanup expired sessions
+   */
+  _cleanup() {
+    const now = Date.now();
+    const expiredSessions = [];
+
+    for (const [sessionId, session] of this.sessions) {
+      if (now - session.lastAccess > SESSION_TTL) {
+        expiredSessions.push(sessionId);
+      }
+    }
+
+    for (const sessionId of expiredSessions) {
+      this.sessions.delete(sessionId);
+    }
+
+    if (expiredSessions.length > 0) {
+      console.log(`[SessionMemory] Cleaned up ${expiredSessions.length} expired sessions`);
+    }
+  }
+
+  /**
+   * Export session for persistence
+   * @param {string} sessionId
+   * @returns {object|null}
+   */
+  export(sessionId) {
+    const session = this.sessions.get(sessionId);
+    if (!session) return null;
+
+    return {
+      sessionId,
+      messages: [...session.messages],
+      metadata: { ...session.metadata },
+      exportedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Import session from persistence
+   * @param {object} data
+   */
+  import(data) {
+    if (!data.sessionId) return;
+
+    this.sessions.set(data.sessionId, {
+      messages: data.messages || [],
+      metadata: data.metadata || {},
+      lastAccess: Date.now(),
+    });
+  }
+
+  /**
+   * Destroy the store
+   */
+  destroy() {
+    clearInterval(this._cleanupInterval);
+    this.sessions.clear();
+  }
+}
+
+// ============================================================================
+// Singleton & Exports
+// ============================================================================
+
+let _store = null;
+
+/**
+ * Get the singleton SessionMemoryStore instance
+ */
+export function getSessionMemory() {
+  if (!_store) {
+    _store = new SessionMemoryStore();
+  }
+  return _store;
+}
+
+/**
+ * Create a new SessionMemoryStore instance
+ */
+export function createSessionMemory() {
+  return new SessionMemoryStore();
+}
+
+export default SessionMemoryStore;
+
+```
+
+### vector.js
+
+**Path:** `backend/src/lib/agent/memory/vector.js`
+
+```javascript
+/**
+ * Vector Memory - ChromaDB-backed semantic memory
+ * 
+ * Provides semantic search over conversation history and memories
+ * using vector embeddings stored in ChromaDB.
+ */
+
+// Configuration
+const CHROMA_URL = process.env.CHROMA_URL || 'http://chromadb:8000';
+const TEI_URL = process.env.TEI_URL || 'http://embedding-server:80';
+const COLLECTION_NAME = 'agent_memories';
+
+/**
+ * Generate embeddings using TEI server
+ */
+async function generateEmbeddings(text) {
+  try {
+    const response = await fetch(`${TEI_URL}/embed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inputs: text }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`TEI embedding failed: ${response.status}`);
+    }
+
+    const embeddings = await response.json();
+    return Array.isArray(embeddings[0]) ? embeddings[0] : embeddings;
+  } catch (error) {
+    console.error('[VectorMemory] Embedding generation failed:', error.message);
+    return null;
+  }
+}
+
+/**
+ * Vector Memory Store
+ */
+class VectorMemoryStore {
+  constructor() {
+    this._initialized = false;
+    this._fallbackStore = new Map();
+  }
+
+  /**
+   * Initialize ChromaDB collection
+   */
+  async _ensureCollection() {
+    if (this._initialized) return true;
+
+    try {
+      // Check if collection exists
+      const response = await fetch(`${CHROMA_URL}/api/v1/collections/${COLLECTION_NAME}`);
+      
+      if (!response.ok && response.status === 404) {
+        // Create collection
+        const createResponse = await fetch(`${CHROMA_URL}/api/v1/collections`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: COLLECTION_NAME,
+            metadata: { description: 'Agent conversation memories' },
+          }),
+        });
+
+        if (!createResponse.ok) {
+          throw new Error(`Failed to create collection: ${createResponse.status}`);
+        }
+      }
+
+      this._initialized = true;
+      return true;
+    } catch (error) {
+      console.warn('[VectorMemory] ChromaDB initialization failed:', error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Add a memory to vector store
+   * @param {object} memory
+   * @param {string} memory.content - Text content to embed
+   * @param {string} memory.sessionId - Session identifier
+   * @param {string} [memory.type] - Memory type
+   * @param {object} [memory.metadata] - Additional metadata
+   */
+  async add(memory) {
+    const { content, sessionId, type = 'conversation', metadata = {} } = memory;
+
+    if (!content) {
+      console.warn('[VectorMemory] Empty content, skipping');
+      return null;
+    }
+
+    try {
+      const isReady = await this._ensureCollection();
+      if (!isReady) {
+        return this._fallbackAdd(memory);
+      }
+
+      // Generate embedding
+      const embedding = await generateEmbeddings(content);
+      if (!embedding) {
+        return this._fallbackAdd(memory);
+      }
+
+      const id = `vmem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+      // Add to ChromaDB
+      const response = await fetch(`${CHROMA_URL}/api/v1/collections/${COLLECTION_NAME}/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: [id],
+          embeddings: [embedding],
+          documents: [content],
+          metadatas: [{
+            sessionId,
+            type,
+            timestamp: new Date().toISOString(),
+            ...metadata,
+          }],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`ChromaDB add failed: ${response.status}`);
+      }
+
+      return { id, content, sessionId, type };
+    } catch (error) {
+      console.error('[VectorMemory] Add failed:', error.message);
+      return this._fallbackAdd(memory);
+    }
+  }
+
+  /**
+   * Search for similar memories
+   * @param {string} query - Search query
+   * @param {object} options
+   * @param {string} [options.sessionId] - Filter by session
+   * @param {number} [options.limit] - Max results
+   * @param {number} [options.minScore] - Minimum similarity score
+   */
+  async search(query, options = {}) {
+    const { sessionId, limit = 5, minScore = 0.5 } = options;
+
+    if (!query) return [];
+
+    try {
+      const isReady = await this._ensureCollection();
+      if (!isReady) {
+        return this._fallbackSearch(query, options);
+      }
+
+      // Generate query embedding
+      const queryEmbedding = await generateEmbeddings(query);
+      if (!queryEmbedding) {
+        return this._fallbackSearch(query, options);
+      }
+
+      // Build where filter
+      const where = sessionId ? { sessionId } : undefined;
+
+      // Query ChromaDB
+      const response = await fetch(`${CHROMA_URL}/api/v1/collections/${COLLECTION_NAME}/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query_embeddings: [queryEmbedding],
+          n_results: limit,
+          where,
+          include: ['documents', 'metadatas', 'distances'],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`ChromaDB query failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Format results
+      const results = [];
+      const documents = data.documents?.[0] || [];
+      const metadatas = data.metadatas?.[0] || [];
+      const distances = data.distances?.[0] || [];
+
+      for (let i = 0; i < documents.length; i++) {
+        const score = 1 - (distances[i] || 0);
+        if (score >= minScore) {
+          results.push({
+            content: documents[i],
+            metadata: metadatas[i] || {},
+            score,
+          });
+        }
+      }
+
+      return results;
+    } catch (error) {
+      console.error('[VectorMemory] Search failed:', error.message);
+      return this._fallbackSearch(query, options);
+    }
+  }
+
+  /**
+   * Delete memories by session
+   * @param {string} sessionId
+   */
+  async deleteBySession(sessionId) {
+    try {
+      const isReady = await this._ensureCollection();
+      if (!isReady) {
+        this._fallbackStore.delete(sessionId);
+        return;
+      }
+
+      await fetch(`${CHROMA_URL}/api/v1/collections/${COLLECTION_NAME}/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          where: { sessionId },
+        }),
+      });
+
+      this._fallbackStore.delete(sessionId);
+    } catch (error) {
+      console.error('[VectorMemory] Delete failed:', error.message);
+    }
+  }
+
+  /**
+   * Get collection stats
+   */
+  async getStats() {
+    try {
+      const response = await fetch(`${CHROMA_URL}/api/v1/collections/${COLLECTION_NAME}`);
+      if (!response.ok) {
+        return { count: 0, available: false };
+      }
+
+      const data = await response.json();
+      return {
+        count: data.count || 0,
+        available: true,
+        name: COLLECTION_NAME,
+      };
+    } catch (error) {
+      return { count: 0, available: false, error: error.message };
+    }
+  }
+
+  // ============================================================================
+  // Fallback in-memory storage (when ChromaDB is unavailable)
+  // ============================================================================
+
+  _fallbackAdd(memory) {
+    const id = `vmem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const sessionMemories = this._fallbackStore.get(memory.sessionId) || [];
+    sessionMemories.push({
+      id,
+      content: memory.content,
+      type: memory.type || 'conversation',
+      timestamp: new Date().toISOString(),
+      metadata: memory.metadata || {},
+    });
+    this._fallbackStore.set(memory.sessionId, sessionMemories);
+    return { id, ...memory };
+  }
+
+  _fallbackSearch(query, options = {}) {
+    const { sessionId, limit = 5 } = options;
+    const queryLower = query.toLowerCase();
+    const results = [];
+
+    const sessions = sessionId ? [sessionId] : Array.from(this._fallbackStore.keys());
+
+    for (const sid of sessions) {
+      const memories = this._fallbackStore.get(sid) || [];
+      for (const memory of memories) {
+        if (memory.content.toLowerCase().includes(queryLower)) {
+          results.push({
+            content: memory.content,
+            metadata: { ...memory.metadata, sessionId: sid },
+            score: 0.8, // Simple text match
+          });
+        }
+      }
+    }
+
+    return results.slice(0, limit);
+  }
+}
+
+// ============================================================================
+// Singleton & Exports
+// ============================================================================
+
+let _store = null;
+
+/**
+ * Get the singleton VectorMemoryStore instance
+ */
+export function getVectorMemory() {
+  if (!_store) {
+    _store = new VectorMemoryStore();
+  }
+  return _store;
+}
+
+/**
+ * Create a new VectorMemoryStore instance
+ */
+export function createVectorMemory() {
+  return new VectorMemoryStore();
+}
+
+export default VectorMemoryStore;
+
+```
+
+---
+
+## backend/src/lib/agent/prompts
+
+### system.js
+
+**Path:** `backend/src/lib/agent/prompts/system.js`
+
+```javascript
+/**
+ * System Prompts for Agent Coordinator
+ * 
+ * Defines different personas and behaviors for the AI agent
+ * based on context and user needs.
+ */
+
+// ============================================================================
+// Base System Prompt Components
+// ============================================================================
+
+const CORE_IDENTITY = `You are a helpful AI assistant for a personal tech blog called "nodove blog". 
+You have access to various tools to help answer questions, search for information, and assist with tasks.`;
+
+const MEMORY_CONTEXT = `
+## Memory Context
+You have access to user memories and past conversations. Use this context to:
+- Personalize responses based on known preferences
+- Reference relevant past discussions when appropriate
+- Build on previously shared information
+- Maintain consistency across conversations`;
+
+const TOOL_USAGE_GUIDELINES = `
+## Tool Usage Guidelines
+1. **RAG Search**: Use for questions about blog content, technical articles, or documented knowledge
+2. **Web Search**: Use for current events, external information, or topics not in the blog
+3. **Blog Operations**: Use when the user wants to create, edit, or manage blog content
+4. **Code Execution**: Use for running code snippets, calculations, or demonstrations
+5. **MCP Tools**: Use for file system access, advanced integrations, or external services
+
+Always explain what tools you're using and why. Be transparent about your capabilities.`;
+
+const RESPONSE_STYLE = `
+## Response Style
+- Be concise but thorough
+- Use markdown formatting for readability
+- Include code blocks with syntax highlighting when relevant
+- Provide sources and references when available
+- Ask clarifying questions when the request is ambiguous`;
+
+// ============================================================================
+// Mode-Specific Prompts
+// ============================================================================
+
+/**
+ * Default conversational mode
+ */
+const DEFAULT_MODE = `${CORE_IDENTITY}
+
+You are in **general conversation mode**. Help the user with any questions or tasks they have.
+${MEMORY_CONTEXT}
+${TOOL_USAGE_GUIDELINES}
+${RESPONSE_STYLE}
+
+## Behavior
+- Be friendly and approachable
+- Offer to help with follow-up questions
+- Suggest related topics when appropriate
+- Remember context from earlier in the conversation`;
+
+/**
+ * Research mode - for in-depth information gathering
+ */
+const RESEARCH_MODE = `${CORE_IDENTITY}
+
+You are in **research mode**. Your goal is to provide comprehensive, well-researched answers.
+${MEMORY_CONTEXT}
+${TOOL_USAGE_GUIDELINES}
+
+## Research Behavior
+- Use multiple tools to gather information
+- Cross-reference sources for accuracy
+- Cite your sources clearly
+- Organize information hierarchically
+- Highlight key findings and conclusions
+- Note any limitations or uncertainties
+
+## Response Format
+Structure your research findings as:
+1. **Summary**: Brief overview of findings
+2. **Details**: In-depth information organized by topic
+3. **Sources**: List of sources used
+4. **Further Reading**: Suggestions for deeper exploration`;
+
+/**
+ * Coding assistant mode
+ */
+const CODING_MODE = `${CORE_IDENTITY}
+
+You are in **coding assistant mode**. Help the user with programming tasks.
+${MEMORY_CONTEXT}
+${TOOL_USAGE_GUIDELINES}
+
+## Coding Behavior
+- Write clean, well-documented code
+- Follow best practices and conventions
+- Explain your code with inline comments
+- Suggest tests and error handling
+- Consider edge cases and performance
+- Use appropriate design patterns
+
+## Code Style
+- Use consistent naming conventions
+- Keep functions small and focused
+- Add meaningful variable names
+- Include type annotations where appropriate
+- Format code for readability
+
+## Languages & Frameworks
+You're proficient in:
+- JavaScript/TypeScript, Python, Go, Rust
+- React, Vue, Node.js, Express
+- SQL, MongoDB, Redis
+- Docker, Kubernetes, CI/CD
+- And many more...`;
+
+/**
+ * Blog management mode
+ */
+const BLOG_MODE = `${CORE_IDENTITY}
+
+You are in **blog management mode**. Help the user create and manage blog content.
+${MEMORY_CONTEXT}
+${TOOL_USAGE_GUIDELINES}
+
+## Blog Writing Guidelines
+- Write engaging, informative content
+- Use clear headings and structure
+- Include code examples when relevant
+- Add appropriate metadata (tags, categories)
+- Optimize for SEO while maintaining readability
+- Match the blog's existing tone and style
+
+## Content Types
+1. **Technical Tutorials**: Step-by-step guides with code examples
+2. **Concept Explanations**: Deep dives into technical concepts
+3. **Project Showcases**: Demonstrations of completed projects
+4. **Opinion Pieces**: Thoughts on tech trends and practices
+5. **Quick Tips**: Short, actionable advice
+
+## Post Structure
+- **Title**: Clear, descriptive, SEO-friendly
+- **Introduction**: Hook the reader, state the problem
+- **Body**: Organized sections with clear progression
+- **Code Examples**: Working, tested code snippets
+- **Conclusion**: Summary and call to action
+- **Metadata**: Tags, category, description`;
+
+/**
+ * Article Q&A mode - for answering questions about specific blog posts
+ */
+const ARTICLE_QA_MODE = `${CORE_IDENTITY}
+
+You are in **article Q&A mode**. Answer questions about a specific blog article.
+${MEMORY_CONTEXT}
+
+## Article Context
+The user is reading a specific blog article and has questions about it.
+Use RAG search to find relevant context from the article content.
+
+## Q&A Behavior
+- Focus answers on the article content
+- Quote relevant sections when helpful
+- Explain technical concepts mentioned in the article
+- Suggest related articles for further reading
+- Offer to clarify any confusing parts
+
+## Response Style
+- Reference specific parts of the article
+- Use the article's terminology consistently
+- Provide additional context when needed
+- Keep answers focused and relevant`;
+
+/**
+ * Terminal assistant mode - for system administration tasks
+ */
+const TERMINAL_MODE = `${CORE_IDENTITY}
+
+You are in **terminal assistant mode**. Help the user with system administration and command-line tasks.
+${MEMORY_CONTEXT}
+${TOOL_USAGE_GUIDELINES}
+
+## Terminal Behavior
+- Provide safe, tested commands
+- Explain what each command does
+- Warn about potentially dangerous operations
+- Suggest alternatives when appropriate
+- Use proper quoting and escaping
+
+## Safety Guidelines
+- Never suggest commands that could cause data loss without warning
+- Always explain the impact of destructive operations
+- Recommend backup steps before major changes
+- Use \`--dry-run\` flags when available
+- Prefer reversible operations
+
+## Common Tasks
+- File and directory management
+- Process monitoring and control
+- Network diagnostics
+- Package management
+- Git operations
+- Docker management
+- System monitoring`;
+
+// ============================================================================
+// Dynamic Prompt Builder
+// ============================================================================
+
+/**
+ * Build a complete system prompt based on mode and context
+ * @param {object} options
+ * @param {string} [options.mode] - Agent mode (default, research, coding, blog, article, terminal)
+ * @param {string} [options.articleSlug] - Article slug for article Q&A mode
+ * @param {string} [options.articleContent] - Article content for context
+ * @param {Array} [options.memories] - Relevant user memories
+ * @param {object} [options.userPreferences] - User preferences
+ * @param {string} [options.customInstructions] - Additional instructions
+ */
+export function buildSystemPrompt(options = {}) {
+  const {
+    mode = 'default',
+    articleSlug,
+    articleContent,
+    memories = [],
+    userPreferences = {},
+    customInstructions,
+  } = options;
+
+  // Select base prompt by mode
+  let basePrompt;
+  switch (mode) {
+    case 'research':
+      basePrompt = RESEARCH_MODE;
+      break;
+    case 'coding':
+      basePrompt = CODING_MODE;
+      break;
+    case 'blog':
+      basePrompt = BLOG_MODE;
+      break;
+    case 'article':
+      basePrompt = ARTICLE_QA_MODE;
+      break;
+    case 'terminal':
+      basePrompt = TERMINAL_MODE;
+      break;
+    default:
+      basePrompt = DEFAULT_MODE;
+  }
+
+  const parts = [basePrompt];
+
+  // Add article context if in article mode
+  if (mode === 'article' && articleSlug) {
+    parts.push(`\n## Current Article\nSlug: ${articleSlug}`);
+    if (articleContent) {
+      // Truncate if too long
+      const truncated = articleContent.length > 2000
+        ? articleContent.slice(0, 2000) + '...[truncated]'
+        : articleContent;
+      parts.push(`\nContent Summary:\n${truncated}`);
+    }
+  }
+
+  // Add user memories
+  if (memories.length > 0) {
+    const memoryText = memories
+      .map(m => `- ${m.category || m.type}: ${m.content}`)
+      .join('\n');
+    parts.push(`\n## Relevant User Context\n${memoryText}`);
+  }
+
+  // Add user preferences
+  if (Object.keys(userPreferences).length > 0) {
+    const prefText = Object.entries(userPreferences)
+      .map(([k, v]) => `- ${k}: ${v}`)
+      .join('\n');
+    parts.push(`\n## User Preferences\n${prefText}`);
+  }
+
+  // Add custom instructions
+  if (customInstructions) {
+    parts.push(`\n## Additional Instructions\n${customInstructions}`);
+  }
+
+  // Add current timestamp
+  parts.push(`\n## Current Time\n${new Date().toISOString()}`);
+
+  return parts.join('\n');
+}
+
+// ============================================================================
+// Preset Prompts
+// ============================================================================
+
+export const SYSTEM_PROMPTS = {
+  default: DEFAULT_MODE,
+  research: RESEARCH_MODE,
+  coding: CODING_MODE,
+  blog: BLOG_MODE,
+  article: ARTICLE_QA_MODE,
+  terminal: TERMINAL_MODE,
+};
+
+// ============================================================================
+// Tool-Specific Prompts
+// ============================================================================
+
+/**
+ * Prompt for RAG context injection
+ */
+export const RAG_CONTEXT_PROMPT = `
+## Retrieved Context
+The following information was retrieved from the knowledge base and may be relevant to the user's question:
+
+{context}
+
+Use this context to inform your response. If the context doesn't contain relevant information, 
+you may use your general knowledge or other tools to answer.`;
+
+/**
+ * Prompt for web search context
+ */
+export const WEB_SEARCH_CONTEXT_PROMPT = `
+## Web Search Results
+The following information was found from web search:
+
+{results}
+
+Use these results to inform your response. Cite sources when appropriate.`;
+
+/**
+ * Prompt for code execution results
+ */
+export const CODE_EXECUTION_PROMPT = `
+## Code Execution Results
+The code was executed with the following results:
+
+**Language**: {language}
+**Status**: {status}
+**Output**:
+\`\`\`
+{output}
+\`\`\`
+{error}
+
+Explain the results and offer suggestions if there were errors.`;
+
+// ============================================================================
+// Memory Extraction Prompt
+// ============================================================================
+
+/**
+ * Prompt for extracting memorable facts from conversations
+ */
+export const MEMORY_EXTRACTION_PROMPT = `
+Analyze the following conversation and extract any memorable facts, preferences, or information about the user.
+
+## Conversation
+{conversation}
+
+## Instructions
+Extract information in the following categories:
+1. **Personal facts**: Name, occupation, location, etc.
+2. **Preferences**: Likes, dislikes, preferred tools/languages, etc.
+3. **Technical context**: Projects they're working on, technologies they use
+4. **Goals**: What they're trying to achieve
+5. **Important decisions**: Significant choices they've mentioned
+
+Return a JSON array of extracted memories:
+[
+  {
+    "category": "personal|preference|technical|goal|decision",
+    "content": "The extracted fact or preference",
+    "importance": 0.0-1.0  // How important is this to remember?
+  }
+]
+
+Only extract clear, factual information. Do not make assumptions or inferences.
+If no memorable information is found, return an empty array: []`;
+
+// ============================================================================
+// Summary Generation Prompt
+// ============================================================================
+
+/**
+ * Prompt for generating conversation summaries
+ */
+export const CONVERSATION_SUMMARY_PROMPT = `
+Summarize the following conversation in a concise paragraph.
+Focus on the main topics discussed, decisions made, and any action items.
+
+## Conversation
+{conversation}
+
+## Instructions
+- Keep the summary under 200 words
+- Highlight key topics and conclusions
+- Note any unresolved questions
+- Mention important technical details
+- Use neutral, factual language
+
+Return only the summary text, no additional formatting.`;
+
+/**
+ * Prompt for generating session titles
+ */
+export const SESSION_TITLE_PROMPT = `
+Generate a short, descriptive title for this conversation (max 50 characters).
+The title should capture the main topic or purpose of the discussion.
+
+## Conversation Summary
+{summary}
+
+## First Message
+{firstMessage}
+
+Return only the title text, no quotes or additional formatting.`;
+
+// ============================================================================
+// Exports
+// ============================================================================
+
+export default {
+  buildSystemPrompt,
+  SYSTEM_PROMPTS,
+  RAG_CONTEXT_PROMPT,
+  WEB_SEARCH_CONTEXT_PROMPT,
+  CODE_EXECUTION_PROMPT,
+  MEMORY_EXTRACTION_PROMPT,
+  CONVERSATION_SUMMARY_PROMPT,
+  SESSION_TITLE_PROMPT,
+};
+
+```
+
+---
+
+## backend/src/lib/agent/tools
+
+### blog-ops.js
+
+**Path:** `backend/src/lib/agent/tools/blog-ops.js`
+
+```javascript
+/**
+ * Blog Operations Tool - CRUD operations for blog content
+ * 
+ * Provides tools for creating, reading, updating, and managing blog posts,
+ * memos, and other content.
+ */
+
+import { config } from '../../../config.js';
+
+// Configuration
+const API_BASE_URL = process.env.INTERNAL_API_URL || 'http://localhost:5080';
+
+/**
+ * Make authenticated API request
+ */
+async function apiRequest(endpoint, options = {}) {
+  const url = `${API_BASE_URL}${endpoint}`;
+  
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.text().catch(() => '');
+    throw new Error(`API request failed: ${response.status} ${error}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Create Blog Operations Tool
+ */
+export function createBlogOpsTool() {
+  return {
+    name: 'blog_operations',
+    description: 'Perform operations on blog content including searching posts, getting post details, creating memos, and managing content.',
+    parameters: {
+      type: 'object',
+      properties: {
+        operation: {
+          type: 'string',
+          description: 'The operation to perform',
+          enum: [
+            'list_posts',
+            'get_post',
+            'search_posts',
+            'list_categories',
+            'list_tags',
+            'create_memo',
+            'list_memos',
+            'get_stats',
+          ],
+        },
+        // For get_post
+        slug: {
+          type: 'string',
+          description: 'Post slug (for get_post operation)',
+        },
+        // For search_posts and list_posts
+        query: {
+          type: 'string',
+          description: 'Search query (for search_posts operation)',
+        },
+        category: {
+          type: 'string',
+          description: 'Filter by category',
+        },
+        tags: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Filter by tags',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of results',
+          default: 10,
+        },
+        offset: {
+          type: 'number',
+          description: 'Pagination offset',
+          default: 0,
+        },
+        // For create_memo
+        content: {
+          type: 'string',
+          description: 'Memo content (for create_memo operation)',
+        },
+        title: {
+          type: 'string',
+          description: 'Memo title (for create_memo operation)',
+        },
+      },
+      required: ['operation'],
+    },
+
+    async execute(args) {
+      const { operation, slug, query, category, tags, limit, offset, content, title } = args;
+
+      console.log(`[BlogOps] Executing operation: ${operation}`);
+
+      try {
+        switch (operation) {
+          case 'list_posts': {
+            const params = new URLSearchParams();
+            if (category) params.append('category', category);
+            if (tags?.length) tags.forEach(t => params.append('tag', t));
+            if (limit) params.append('limit', limit.toString());
+            if (offset) params.append('offset', offset.toString());
+
+            const result = await apiRequest(`/api/v1/posts?${params}`);
+            return {
+              success: true,
+              operation,
+              count: result.data?.length || 0,
+              posts: (result.data || []).map(p => ({
+                title: p.title,
+                slug: p.slug,
+                category: p.category,
+                date: p.date,
+                excerpt: p.excerpt?.slice(0, 150),
+              })),
+            };
+          }
+
+          case 'get_post': {
+            if (!slug) {
+              return { success: false, error: 'slug is required for get_post' };
+            }
+            const result = await apiRequest(`/api/v1/posts/${slug}`);
+            return {
+              success: true,
+              operation,
+              post: {
+                title: result.data?.title,
+                slug: result.data?.slug,
+                content: result.data?.content?.slice(0, 2000),
+                category: result.data?.category,
+                tags: result.data?.tags,
+                date: result.data?.date,
+              },
+            };
+          }
+
+          case 'search_posts': {
+            if (!query) {
+              return { success: false, error: 'query is required for search_posts' };
+            }
+            const params = new URLSearchParams({ q: query });
+            if (limit) params.append('limit', limit.toString());
+
+            const result = await apiRequest(`/api/v1/posts/search?${params}`);
+            return {
+              success: true,
+              operation,
+              query,
+              count: result.data?.length || 0,
+              posts: (result.data || []).map(p => ({
+                title: p.title,
+                slug: p.slug,
+                excerpt: p.excerpt?.slice(0, 150),
+                score: p.score,
+              })),
+            };
+          }
+
+          case 'list_categories': {
+            const result = await apiRequest('/api/v1/categories');
+            return {
+              success: true,
+              operation,
+              categories: result.data || [],
+            };
+          }
+
+          case 'list_tags': {
+            const result = await apiRequest('/api/v1/tags');
+            return {
+              success: true,
+              operation,
+              tags: result.data || [],
+            };
+          }
+
+          case 'create_memo': {
+            if (!content) {
+              return { success: false, error: 'content is required for create_memo' };
+            }
+            const result = await apiRequest('/api/v1/memos', {
+              method: 'POST',
+              body: JSON.stringify({
+                title: title || 'Untitled Memo',
+                content,
+                type: 'ai_generated',
+              }),
+            });
+            return {
+              success: true,
+              operation,
+              memo: {
+                id: result.data?.id,
+                title: result.data?.title,
+              },
+            };
+          }
+
+          case 'list_memos': {
+            const params = new URLSearchParams();
+            if (limit) params.append('limit', limit.toString());
+            if (offset) params.append('offset', offset.toString());
+
+            const result = await apiRequest(`/api/v1/memos?${params}`);
+            return {
+              success: true,
+              operation,
+              count: result.data?.length || 0,
+              memos: (result.data || []).map(m => ({
+                id: m.id,
+                title: m.title,
+                excerpt: m.content?.slice(0, 100),
+                createdAt: m.createdAt,
+              })),
+            };
+          }
+
+          case 'get_stats': {
+            const result = await apiRequest('/api/v1/stats');
+            return {
+              success: true,
+              operation,
+              stats: result.data,
+            };
+          }
+
+          default:
+            return {
+              success: false,
+              error: `Unknown operation: ${operation}`,
+            };
+        }
+      } catch (error) {
+        console.error(`[BlogOps] Operation failed: ${error.message}`);
+        return {
+          success: false,
+          operation,
+          error: error.message,
+        };
+      }
+    },
+  };
+}
+
+export default createBlogOpsTool;
+
+```
+
+### code-execution.js
+
+**Path:** `backend/src/lib/agent/tools/code-execution.js`
+
+```javascript
+/**
+ * Code Execution Tool - Safe code execution in sandbox
+ * 
+ * Provides secure code execution capabilities using the terminal server
+ * sandbox environment. Supports multiple languages.
+ */
+
+// Configuration
+const TERMINAL_SERVER_URL = process.env.TERMINAL_SERVER_URL || 'http://terminal-server:8080';
+const EXECUTION_TIMEOUT = parseInt(process.env.CODE_EXEC_TIMEOUT || '30000', 10);
+
+/**
+ * Execute code in sandbox
+ */
+async function executeInSandbox(code, language) {
+  const response = await fetch(`${TERMINAL_SERVER_URL}/execute`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      code,
+      language,
+      timeout: EXECUTION_TIMEOUT,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text().catch(() => '');
+    throw new Error(`Execution failed: ${response.status} ${error}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Execute JavaScript code (using Node.js vm module locally)
+ */
+async function executeJavaScript(code) {
+  try {
+    // Try sandbox first
+    return await executeInSandbox(code, 'javascript');
+  } catch {
+    // Fallback to basic evaluation (limited)
+    const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+    
+    // Create a sandboxed context
+    const sandbox = {
+      console: {
+        log: (...args) => output.push(args.map(String).join(' ')),
+        error: (...args) => output.push(`[Error] ${args.map(String).join(' ')}`),
+      },
+      Math,
+      Date,
+      JSON,
+      Array,
+      Object,
+      String,
+      Number,
+      Boolean,
+      parseInt,
+      parseFloat,
+      isNaN,
+      isFinite,
+    };
+
+    const output = [];
+    
+    try {
+      const fn = new AsyncFunction(...Object.keys(sandbox), code);
+      const result = await fn(...Object.values(sandbox));
+      
+      return {
+        success: true,
+        output: output.join('\n'),
+        result: result !== undefined ? String(result) : undefined,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        output: output.join('\n'),
+      };
+    }
+  }
+}
+
+/**
+ * Execute Python code
+ */
+async function executePython(code) {
+  return executeInSandbox(code, 'python');
+}
+
+/**
+ * Execute shell commands
+ */
+async function executeShell(code) {
+  return executeInSandbox(code, 'bash');
+}
+
+/**
+ * Create Code Execution Tool
+ */
+export function createCodeExecutionTool() {
+  return {
+    name: 'code_execution',
+    description: 'Execute code in a sandboxed environment. Supports JavaScript, Python, and shell commands. Use for calculations, data processing, or testing code snippets.',
+    parameters: {
+      type: 'object',
+      properties: {
+        code: {
+          type: 'string',
+          description: 'The code to execute',
+        },
+        language: {
+          type: 'string',
+          description: 'Programming language',
+          enum: ['javascript', 'python', 'bash'],
+          default: 'javascript',
+        },
+      },
+      required: ['code'],
+    },
+
+    async execute(args) {
+      const { code, language = 'javascript' } = args;
+
+      if (!code) {
+        return { success: false, error: 'code is required' };
+      }
+
+      console.log(`[CodeExec] Executing ${language} code (${code.length} chars)`);
+
+      try {
+        let result;
+
+        switch (language) {
+          case 'javascript':
+            result = await executeJavaScript(code);
+            break;
+          case 'python':
+            result = await executePython(code);
+            break;
+          case 'bash':
+            result = await executeShell(code);
+            break;
+          default:
+            return {
+              success: false,
+              error: `Unsupported language: ${language}`,
+            };
+        }
+
+        console.log(`[CodeExec] Execution completed: ${result.success ? 'success' : 'failed'}`);
+
+        return {
+          success: result.success !== false,
+          language,
+          output: result.output?.slice(0, 2000),
+          result: result.result?.slice?.(0, 1000) || result.result,
+          error: result.error,
+        };
+      } catch (error) {
+        console.error(`[CodeExec] Failed: ${error.message}`);
+        return {
+          success: false,
+          language,
+          error: error.message,
+        };
+      }
+    },
+  };
+}
+
+export default createCodeExecutionTool;
+
+```
+
+### index.js
+
+**Path:** `backend/src/lib/agent/tools/index.js`
+
+```javascript
+/**
+ * Tool Registry - Central registry for all available tools
+ * 
+ * Manages tool definitions and execution for the Agent Coordinator.
+ * Tools are defined in OpenAI function calling format.
+ * 
+ * Usage:
+ *   const registry = getToolRegistry();
+ *   registry.register(myTool);
+ *   const tools = registry.getToolDefinitions();
+ */
+
+import { createRAGSearchTool } from './rag-search.js';
+import { createBlogOpsTool } from './blog-ops.js';
+import { createMCPClientTool } from './mcp-client.js';
+import { createWebSearchTool } from './web-search.js';
+import { createCodeExecutionTool } from './code-execution.js';
+
+// ============================================================================
+// Tool Interface
+// ============================================================================
+
+/**
+ * Tool Definition Interface
+ * @typedef {object} Tool
+ * @property {string} name - Unique tool identifier
+ * @property {string} description - Human-readable description
+ * @property {object} parameters - JSON Schema for parameters
+ * @property {function} execute - Async function to execute the tool
+ */
+
+// ============================================================================
+// Tool Registry Class
+// ============================================================================
+
+export class ToolRegistry {
+  constructor() {
+    /** @type {Map<string, Tool>} */
+    this.tools = new Map();
+    this._initialized = false;
+  }
+
+  /**
+   * Initialize with default tools
+   */
+  async initialize() {
+    if (this._initialized) return;
+
+    // Register built-in tools
+    const builtInTools = [
+      createRAGSearchTool(),
+      createBlogOpsTool(),
+      createWebSearchTool(),
+      createCodeExecutionTool(),
+    ];
+
+    for (const tool of builtInTools) {
+      if (tool) {
+        this.register(tool);
+      }
+    }
+
+    // Try to initialize MCP tools (optional)
+    try {
+      const mcpTool = await createMCPClientTool();
+      if (mcpTool) {
+        this.register(mcpTool);
+      }
+    } catch (error) {
+      console.warn('[ToolRegistry] MCP tool initialization failed:', error.message);
+    }
+
+    this._initialized = true;
+    console.log(`[ToolRegistry] Initialized with ${this.tools.size} tools`);
+  }
+
+  /**
+   * Register a tool
+   * @param {Tool} tool
+   */
+  register(tool) {
+    if (!tool.name || !tool.execute) {
+      throw new Error('Tool must have name and execute function');
+    }
+
+    this.tools.set(tool.name, tool);
+    console.log(`[ToolRegistry] Registered tool: ${tool.name}`);
+  }
+
+  /**
+   * Unregister a tool
+   * @param {string} name
+   */
+  unregister(name) {
+    this.tools.delete(name);
+  }
+
+  /**
+   * Get a tool by name
+   * @param {string} name
+   * @returns {Tool|undefined}
+   */
+  getTool(name) {
+    return this.tools.get(name);
+  }
+
+  /**
+   * Get all tool names
+   * @returns {string[]}
+   */
+  getToolNames() {
+    return Array.from(this.tools.keys());
+  }
+
+  /**
+   * Get tool count
+   * @returns {number}
+   */
+  getToolCount() {
+    return this.tools.size;
+  }
+
+  /**
+   * Get tool definitions in OpenAI format
+   * @returns {Array<{type: 'function', function: object}>}
+   */
+  getToolDefinitions() {
+    const definitions = [];
+
+    for (const tool of this.tools.values()) {
+      definitions.push({
+        type: 'function',
+        function: {
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.parameters || {
+            type: 'object',
+            properties: {},
+            required: [],
+          },
+        },
+      });
+    }
+
+    return definitions;
+  }
+
+  /**
+   * Execute a tool by name
+   * @param {string} name
+   * @param {object} args
+   * @returns {Promise<any>}
+   */
+  async execute(name, args) {
+    const tool = this.tools.get(name);
+    if (!tool) {
+      throw new Error(`Tool not found: ${name}`);
+    }
+    return tool.execute(args);
+  }
+}
+
+// ============================================================================
+// Singleton & Exports
+// ============================================================================
+
+let _registry = null;
+
+/**
+ * Get the singleton ToolRegistry instance
+ */
+export function getToolRegistry() {
+  if (!_registry) {
+    _registry = new ToolRegistry();
+    // Initialize asynchronously
+    _registry.initialize().catch(err => {
+      console.error('[ToolRegistry] Initialization error:', err);
+    });
+  }
+  return _registry;
+}
+
+/**
+ * Create a new ToolRegistry instance
+ */
+export function createToolRegistry() {
+  return new ToolRegistry();
+}
+
+export default ToolRegistry;
+
+```
+
+### mcp-client.js
+
+**Path:** `backend/src/lib/agent/tools/mcp-client.js`
+
+```javascript
+/**
+ * MCP Client Tool - Model Context Protocol Integration
+ * 
+ * Connects to MCP servers to access external tools and resources.
+ * Supports filesystem, web search, and custom MCP servers.
+ */
+
+import { spawn } from 'child_process';
+
+// Configuration
+const MCP_CONFIG_PATH = process.env.MCP_CONFIG_PATH || '/.roo/mcp.json';
+
+// MCP Server definitions
+const MCP_SERVERS = {
+  filesystem: {
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-filesystem', process.env.WORKSPACE_PATH || '/workspace'],
+  },
+  // Add more MCP servers as needed
+};
+
+/**
+ * MCP Client class for communicating with MCP servers
+ */
+class MCPClient {
+  constructor(serverConfig) {
+    this.config = serverConfig;
+    this.process = null;
+    this.pendingRequests = new Map();
+    this.requestId = 0;
+    this.ready = false;
+  }
+
+  /**
+   * Start the MCP server process
+   */
+  async start() {
+    return new Promise((resolve, reject) => {
+      try {
+        this.process = spawn(this.config.command, this.config.args, {
+          stdio: ['pipe', 'pipe', 'pipe'],
+          env: { ...process.env, ...this.config.env },
+        });
+
+        let buffer = '';
+
+        this.process.stdout.on('data', (data) => {
+          buffer += data.toString();
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.trim()) {
+              try {
+                const message = JSON.parse(line);
+                this._handleMessage(message);
+              } catch (e) {
+                // Not JSON, ignore
+              }
+            }
+          }
+        });
+
+        this.process.stderr.on('data', (data) => {
+          console.error(`[MCP] stderr: ${data}`);
+        });
+
+        this.process.on('close', (code) => {
+          this.ready = false;
+          console.log(`[MCP] Process exited with code ${code}`);
+        });
+
+        // Send initialize request
+        this._send({
+          jsonrpc: '2.0',
+          id: this._nextId(),
+          method: 'initialize',
+          params: {
+            protocolVersion: '2024-11-05',
+            capabilities: {},
+            clientInfo: {
+              name: 'blog-agent',
+              version: '1.0.0',
+            },
+          },
+        });
+
+        // Wait for initialization
+        setTimeout(() => {
+          this.ready = true;
+          resolve();
+        }, 1000);
+
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  /**
+   * Stop the MCP server process
+   */
+  stop() {
+    if (this.process) {
+      this.process.kill();
+      this.process = null;
+    }
+    this.ready = false;
+  }
+
+  /**
+   * Send a message to the MCP server
+   */
+  _send(message) {
+    if (this.process && this.process.stdin.writable) {
+      this.process.stdin.write(JSON.stringify(message) + '\n');
+    }
+  }
+
+  /**
+   * Get next request ID
+   */
+  _nextId() {
+    return ++this.requestId;
+  }
+
+  /**
+   * Handle incoming message from MCP server
+   */
+  _handleMessage(message) {
+    if (message.id && this.pendingRequests.has(message.id)) {
+      const { resolve, reject } = this.pendingRequests.get(message.id);
+      this.pendingRequests.delete(message.id);
+
+      if (message.error) {
+        reject(new Error(message.error.message));
+      } else {
+        resolve(message.result);
+      }
+    }
+  }
+
+  /**
+   * Call an MCP tool
+   */
+  async callTool(name, args) {
+    return new Promise((resolve, reject) => {
+      const id = this._nextId();
+      this.pendingRequests.set(id, { resolve, reject });
+
+      const timeout = setTimeout(() => {
+        this.pendingRequests.delete(id);
+        reject(new Error('MCP tool call timeout'));
+      }, 30000);
+
+      this._send({
+        jsonrpc: '2.0',
+        id,
+        method: 'tools/call',
+        params: { name, arguments: args },
+      });
+
+      // Clear timeout on resolution
+      this.pendingRequests.get(id).timeout = timeout;
+    });
+  }
+
+  /**
+   * List available tools
+   */
+  async listTools() {
+    return new Promise((resolve, reject) => {
+      const id = this._nextId();
+      this.pendingRequests.set(id, { resolve, reject });
+
+      this._send({
+        jsonrpc: '2.0',
+        id,
+        method: 'tools/list',
+        params: {},
+      });
+    });
+  }
+
+  /**
+   * Read a resource
+   */
+  async readResource(uri) {
+    return new Promise((resolve, reject) => {
+      const id = this._nextId();
+      this.pendingRequests.set(id, { resolve, reject });
+
+      this._send({
+        jsonrpc: '2.0',
+        id,
+        method: 'resources/read',
+        params: { uri },
+      });
+    });
+  }
+}
+
+// Global MCP clients
+const mcpClients = new Map();
+
+/**
+ * Get or create an MCP client
+ */
+async function getMCPClient(serverName) {
+  if (mcpClients.has(serverName)) {
+    const client = mcpClients.get(serverName);
+    if (client.ready) return client;
+  }
+
+  const config = MCP_SERVERS[serverName];
+  if (!config) {
+    throw new Error(`Unknown MCP server: ${serverName}`);
+  }
+
+  const client = new MCPClient(config);
+  await client.start();
+  mcpClients.set(serverName, client);
+  return client;
+}
+
+/**
+ * Create MCP Client Tool
+ */
+export async function createMCPClientTool() {
+  // Check if MCP is enabled
+  if (process.env.DISABLE_MCP === 'true') {
+    console.log('[MCP] MCP is disabled');
+    return null;
+  }
+
+  return {
+    name: 'mcp_tools',
+    description: 'Access external tools and resources via Model Context Protocol (MCP). Can read files, search the web, and interact with various services.',
+    parameters: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          description: 'The MCP action to perform',
+          enum: ['read_file', 'list_files', 'search_files', 'call_tool'],
+        },
+        server: {
+          type: 'string',
+          description: 'The MCP server to use',
+          enum: ['filesystem'],
+          default: 'filesystem',
+        },
+        // For file operations
+        path: {
+          type: 'string',
+          description: 'File or directory path',
+        },
+        pattern: {
+          type: 'string',
+          description: 'Search pattern (glob or regex)',
+        },
+        // For call_tool
+        tool: {
+          type: 'string',
+          description: 'Tool name to call',
+        },
+        args: {
+          type: 'object',
+          description: 'Arguments for the tool',
+        },
+      },
+      required: ['action'],
+    },
+
+    async execute(params) {
+      const { action, server = 'filesystem', path, pattern, tool, args } = params;
+
+      console.log(`[MCP] Executing action: ${action} on server: ${server}`);
+
+      try {
+        const client = await getMCPClient(server);
+
+        switch (action) {
+          case 'read_file': {
+            if (!path) {
+              return { success: false, error: 'path is required' };
+            }
+            const result = await client.readResource(`file://${path}`);
+            return {
+              success: true,
+              action,
+              path,
+              content: result.contents?.[0]?.text?.slice(0, 5000),
+            };
+          }
+
+          case 'list_files': {
+            if (!path) {
+              return { success: false, error: 'path is required' };
+            }
+            const result = await client.callTool('list_directory', { path });
+            return {
+              success: true,
+              action,
+              path,
+              files: result.content?.map(c => c.text),
+            };
+          }
+
+          case 'search_files': {
+            if (!pattern) {
+              return { success: false, error: 'pattern is required' };
+            }
+            const result = await client.callTool('search_files', {
+              path: path || '.',
+              pattern,
+            });
+            return {
+              success: true,
+              action,
+              pattern,
+              matches: result.content?.map(c => c.text),
+            };
+          }
+
+          case 'call_tool': {
+            if (!tool) {
+              return { success: false, error: 'tool is required' };
+            }
+            const result = await client.callTool(tool, args || {});
+            return {
+              success: true,
+              action,
+              tool,
+              result: result.content,
+            };
+          }
+
+          default:
+            return {
+              success: false,
+              error: `Unknown action: ${action}`,
+            };
+        }
+      } catch (error) {
+        console.error(`[MCP] Action failed: ${error.message}`);
+        return {
+          success: false,
+          action,
+          error: error.message,
+        };
+      }
+    },
+  };
+}
+
+/**
+ * Cleanup MCP clients on exit
+ */
+process.on('exit', () => {
+  for (const client of mcpClients.values()) {
+    client.stop();
+  }
+});
+
+export default createMCPClientTool;
+
+```
+
+### rag-search.js
+
+**Path:** `backend/src/lib/agent/tools/rag-search.js`
+
+```javascript
+/**
+ * RAG Search Tool - Semantic search over blog content
+ * 
+ * Provides semantic search capabilities using ChromaDB and TEI embeddings.
+ * Searches blog posts, memos, and other indexed content.
+ */
+
+// Configuration
+const CHROMA_URL = process.env.CHROMA_URL || 'http://chromadb:8000';
+const TEI_URL = process.env.TEI_URL || 'http://embedding-server:80';
+const DEFAULT_COLLECTION = 'blog_posts';
+const DEFAULT_LIMIT = 5;
+
+/**
+ * Generate embeddings using TEI server
+ */
+async function generateEmbeddings(text) {
+  try {
+    const response = await fetch(`${TEI_URL}/embed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inputs: text }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`TEI embedding failed: ${response.status}`);
+    }
+
+    const embeddings = await response.json();
+    return Array.isArray(embeddings[0]) ? embeddings[0] : embeddings;
+  } catch (error) {
+    console.error('[RAGSearch] Embedding generation failed:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Search ChromaDB collection
+ */
+async function searchChromaDB(query, options = {}) {
+  const {
+    collection = DEFAULT_COLLECTION,
+    limit = DEFAULT_LIMIT,
+    where = {},
+  } = options;
+
+  try {
+    // Generate query embedding
+    const queryEmbedding = await generateEmbeddings(query);
+
+    // Query ChromaDB
+    const response = await fetch(`${CHROMA_URL}/api/v1/collections/${collection}/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query_embeddings: [queryEmbedding],
+        n_results: limit,
+        where: Object.keys(where).length > 0 ? where : undefined,
+        include: ['documents', 'metadatas', 'distances'],
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`ChromaDB query failed: ${response.status} ${error}`);
+    }
+
+    const data = await response.json();
+    
+    // Format results
+    const results = [];
+    const documents = data.documents?.[0] || [];
+    const metadatas = data.metadatas?.[0] || [];
+    const distances = data.distances?.[0] || [];
+
+    for (let i = 0; i < documents.length; i++) {
+      results.push({
+        content: documents[i],
+        metadata: metadatas[i] || {},
+        score: 1 - (distances[i] || 0), // Convert distance to similarity score
+      });
+    }
+
+    return results;
+  } catch (error) {
+    console.error('[RAGSearch] ChromaDB search failed:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Create RAG Search Tool
+ */
+export function createRAGSearchTool() {
+  return {
+    name: 'rag_search',
+    description: 'Search blog posts and content using semantic search. Use this to find relevant articles, posts, or information from the blog.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'The search query to find relevant content',
+        },
+        collection: {
+          type: 'string',
+          description: 'The collection to search (default: blog_posts)',
+          enum: ['blog_posts', 'memos', 'comments'],
+          default: 'blog_posts',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of results to return (default: 5)',
+          default: 5,
+        },
+        category: {
+          type: 'string',
+          description: 'Filter by category (optional)',
+        },
+        tags: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Filter by tags (optional)',
+        },
+      },
+      required: ['query'],
+    },
+
+    async execute(args) {
+      const { query, collection, limit, category, tags } = args;
+
+      console.log(`[RAGSearch] Searching for: "${query}"`);
+
+      try {
+        // Build filter
+        const where = {};
+        if (category) {
+          where.category = category;
+        }
+        if (tags && tags.length > 0) {
+          where.tags = { $in: tags };
+        }
+
+        // Perform search
+        const results = await searchChromaDB(query, {
+          collection: collection || DEFAULT_COLLECTION,
+          limit: limit || DEFAULT_LIMIT,
+          where,
+        });
+
+        console.log(`[RAGSearch] Found ${results.length} results`);
+
+        return {
+          success: true,
+          query,
+          count: results.length,
+          results: results.map(r => ({
+            content: r.content?.slice(0, 500) + (r.content?.length > 500 ? '...' : ''),
+            title: r.metadata?.title,
+            slug: r.metadata?.slug,
+            category: r.metadata?.category,
+            tags: r.metadata?.tags,
+            score: r.score?.toFixed(3),
+          })),
+        };
+      } catch (error) {
+        console.error('[RAGSearch] Search failed:', error.message);
+        return {
+          success: false,
+          error: error.message,
+          query,
+        };
+      }
+    },
+  };
+}
+
+/**
+ * Direct search function for use outside of agent
+ */
+export async function ragSearch(query, options = {}) {
+  return searchChromaDB(query, options);
+}
+
+export default createRAGSearchTool;
+
+```
+
+### web-search.js
+
+**Path:** `backend/src/lib/agent/tools/web-search.js`
+
+```javascript
+/**
+ * Web Search Tool - Search the web for information
+ * 
+ * Provides web search capabilities using various search APIs.
+ * Supports DuckDuckGo, Brave Search, and custom search endpoints.
+ */
+
+// Configuration
+const SEARCH_API_URL = process.env.SEARCH_API_URL || 'https://api.duckduckgo.com/';
+const BRAVE_API_KEY = process.env.BRAVE_SEARCH_API_KEY;
+const SERPER_API_KEY = process.env.SERPER_API_KEY;
+
+/**
+ * Search using DuckDuckGo Instant Answer API (free, no key needed)
+ */
+async function searchDuckDuckGo(query) {
+  const params = new URLSearchParams({
+    q: query,
+    format: 'json',
+    no_html: '1',
+    skip_disambig: '1',
+  });
+
+  const response = await fetch(`${SEARCH_API_URL}?${params}`);
+  if (!response.ok) {
+    throw new Error(`DuckDuckGo search failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  
+  const results = [];
+  
+  // Abstract (main answer)
+  if (data.Abstract) {
+    results.push({
+      title: data.Heading || 'Summary',
+      snippet: data.Abstract,
+      url: data.AbstractURL,
+      source: data.AbstractSource,
+    });
+  }
+
+  // Related topics
+  if (data.RelatedTopics) {
+    for (const topic of data.RelatedTopics.slice(0, 5)) {
+      if (topic.Text) {
+        results.push({
+          title: topic.Text.split(' - ')[0],
+          snippet: topic.Text,
+          url: topic.FirstURL,
+        });
+      }
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Search using Brave Search API (requires API key)
+ */
+async function searchBrave(query, options = {}) {
+  if (!BRAVE_API_KEY) {
+    throw new Error('BRAVE_SEARCH_API_KEY not configured');
+  }
+
+  const params = new URLSearchParams({
+    q: query,
+    count: options.limit || 5,
+  });
+
+  const response = await fetch(`https://api.search.brave.com/res/v1/web/search?${params}`, {
+    headers: {
+      'Accept': 'application/json',
+      'X-Subscription-Token': BRAVE_API_KEY,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Brave search failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  
+  return (data.web?.results || []).map(r => ({
+    title: r.title,
+    snippet: r.description,
+    url: r.url,
+  }));
+}
+
+/**
+ * Search using Serper API (Google search, requires API key)
+ */
+async function searchSerper(query, options = {}) {
+  if (!SERPER_API_KEY) {
+    throw new Error('SERPER_API_KEY not configured');
+  }
+
+  const response = await fetch('https://google.serper.dev/search', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-KEY': SERPER_API_KEY,
+    },
+    body: JSON.stringify({
+      q: query,
+      num: options.limit || 5,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Serper search failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  
+  return (data.organic || []).map(r => ({
+    title: r.title,
+    snippet: r.snippet,
+    url: r.link,
+  }));
+}
+
+/**
+ * Fetch and summarize a web page
+ */
+async function fetchWebPage(url) {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; BlogAgent/1.0)',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch: ${response.status}`);
+    }
+
+    const html = await response.text();
+    
+    // Simple HTML to text conversion
+    const text = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return text.slice(0, 5000);
+  } catch (error) {
+    return `Failed to fetch page: ${error.message}`;
+  }
+}
+
+/**
+ * Create Web Search Tool
+ */
+export function createWebSearchTool() {
+  return {
+    name: 'web_search',
+    description: 'Search the web for current information, news, documentation, or any topic. Can also fetch and summarize web pages.',
+    parameters: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          description: 'The action to perform',
+          enum: ['search', 'fetch_page'],
+        },
+        query: {
+          type: 'string',
+          description: 'Search query (for search action)',
+        },
+        url: {
+          type: 'string',
+          description: 'URL to fetch (for fetch_page action)',
+        },
+        engine: {
+          type: 'string',
+          description: 'Search engine to use',
+          enum: ['duckduckgo', 'brave', 'serper'],
+          default: 'duckduckgo',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of results',
+          default: 5,
+        },
+      },
+      required: ['action'],
+    },
+
+    async execute(args) {
+      const { action, query, url, engine = 'duckduckgo', limit = 5 } = args;
+
+      console.log(`[WebSearch] Action: ${action}, Query: ${query || url}`);
+
+      try {
+        switch (action) {
+          case 'search': {
+            if (!query) {
+              return { success: false, error: 'query is required for search' };
+            }
+
+            let results;
+            switch (engine) {
+              case 'brave':
+                results = await searchBrave(query, { limit });
+                break;
+              case 'serper':
+                results = await searchSerper(query, { limit });
+                break;
+              case 'duckduckgo':
+              default:
+                results = await searchDuckDuckGo(query);
+            }
+
+            return {
+              success: true,
+              action,
+              query,
+              engine,
+              count: results.length,
+              results,
+            };
+          }
+
+          case 'fetch_page': {
+            if (!url) {
+              return { success: false, error: 'url is required for fetch_page' };
+            }
+
+            const content = await fetchWebPage(url);
+            return {
+              success: true,
+              action,
+              url,
+              content,
+            };
+          }
+
+          default:
+            return {
+              success: false,
+              error: `Unknown action: ${action}`,
+            };
+        }
+      } catch (error) {
+        console.error(`[WebSearch] Failed: ${error.message}`);
+        return {
+          success: false,
+          action,
+          error: error.message,
+        };
+      }
+    },
+  };
+}
+
+export default createWebSearchTool;
+
+```
+
+---
+
 ## backend/src/middleware
 
 ### adminAuth.js
@@ -8841,6 +12564,541 @@ export default router;
 
 ```
 
+### agent.js
+
+**Path:** `backend/src/routes/agent.js`
+
+```javascript
+/**
+ * Agent Routes
+ * 
+ * AI Agent Orchestration Layer API endpoints
+ * Provides access to the Agent Coordinator for multi-turn conversations,
+ * tool execution, and memory-enhanced interactions.
+ * 
+ * Endpoints:
+ * - POST /api/v1/agent/run - Run agent with message (non-streaming)
+ * - POST /api/v1/agent/stream - Run agent with streaming response
+ * - GET /api/v1/agent/session/:sessionId - Get session details
+ * - DELETE /api/v1/agent/session/:sessionId - Clear session
+ * - GET /api/v1/agent/sessions - List all sessions for a user
+ * - GET /api/v1/agent/health - Agent health check
+ * - GET /api/v1/agent/tools - List available tools
+ */
+
+import express from 'express';
+import { AgentCoordinator, createAgentCoordinator, getAgentCoordinator } from '../lib/agent/coordinator.js';
+import { buildSystemPrompt, SYSTEM_PROMPTS } from '../lib/agent/prompts/system.js';
+import { getSessionMemory } from '../lib/agent/memory/session.js';
+
+const router = express.Router();
+
+/**
+ * Get or create the singleton agent coordinator
+ */
+function getCoordinator() {
+  return getAgentCoordinator();
+}
+
+// ============================================================================
+// RUN ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /run - Run agent with message (non-streaming)
+ * 
+ * Request Body:
+ * {
+ *   message: string,              // User message
+ *   sessionId?: string,           // Session ID (auto-generated if not provided)
+ *   mode?: string,                // Agent mode: default, research, coding, blog, article, terminal
+ *   articleSlug?: string,         // Article slug (for article mode)
+ *   tools?: string[],             // Enabled tools (default: all)
+ *   model?: string,               // Model override
+ *   temperature?: number,         // Temperature override
+ *   maxIterations?: number,       // Max tool iterations
+ *   userId?: string,              // User ID for memory
+ * }
+ * 
+ * Response:
+ * {
+ *   ok: true,
+ *   data: {
+ *     response: string,
+ *     sessionId: string,
+ *     toolsUsed: string[],
+ *     memoryUpdated: boolean,
+ *     model: string,
+ *     tokens: { prompt, completion, total }
+ *   }
+ * }
+ */
+router.post('/run', async (req, res) => {
+  try {
+    const {
+      message,
+      sessionId,
+      mode = 'default',
+      articleSlug,
+      tools,
+      model,
+      temperature,
+      maxIterations,
+      userId = 'default-user',
+    } = req.body;
+
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({
+        ok: false,
+        error: { message: 'message is required', code: 'INVALID_REQUEST' },
+      });
+    }
+
+    const coordinator = getCoordinator();
+
+    // Run agent
+    const result = await coordinator.run({
+      sessionId,
+      messages: [{ role: 'user', content: message }],
+      mode,
+      context: {
+        articleSlug,
+        userId,
+      },
+      options: {
+        model,
+        temperature,
+        maxIterations,
+      },
+    });
+
+    res.json({
+      ok: true,
+      data: {
+        response: result.content,
+        sessionId: result.sessionId || sessionId,
+        toolsUsed: result.toolCalls?.map(tc => tc.function?.name) || [],
+        memoryUpdated: true,
+        model: result.model,
+        tokens: result.usage,
+      },
+    });
+  } catch (err) {
+    console.error('Agent run error:', err);
+    res.status(500).json({
+      ok: false,
+      error: { message: err.message, code: 'INTERNAL_ERROR' },
+    });
+  }
+});
+
+/**
+ * POST /stream - Run agent with streaming response
+ * 
+ * Request Body: Same as /run
+ * 
+ * Response: Server-Sent Events stream
+ * - event: open - Connection established
+ * - event: token - Token chunk
+ * - event: tool_start - Tool execution started
+ * - event: tool_end - Tool execution completed
+ * - event: done - Stream completed
+ * - event: error - Error occurred
+ */
+router.post('/stream', async (req, res) => {
+  // Set SSE headers
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+
+  const send = (event, data) => {
+    try {
+      if (event) res.write(`event: ${event}\n`);
+      if (data !== undefined) {
+        const payload = typeof data === 'string' ? data : JSON.stringify(data);
+        res.write(`data: ${payload}\n`);
+      }
+      res.write('\n');
+    } catch (e) {
+      // Ignore write errors (client disconnected)
+    }
+  };
+
+  let closed = false;
+  const onClose = () => {
+    closed = true;
+    clearInterval(ping);
+    try {
+      res.end();
+    } catch (e) {}
+  };
+
+  req.on('close', onClose);
+  req.on('error', onClose);
+
+  // Keep-alive ping
+  const ping = setInterval(() => {
+    if (!closed) send('ping', {});
+  }, 25000);
+
+  try {
+    const {
+      message,
+      sessionId,
+      mode = 'default',
+      articleSlug,
+      tools,
+      model,
+      temperature,
+      maxIterations,
+      userId = 'default-user',
+    } = req.body;
+
+    if (!message || typeof message !== 'string') {
+      send('error', { message: 'message is required', code: 'INVALID_REQUEST' });
+      return onClose();
+    }
+
+    send('open', { type: 'open' });
+
+    const coordinator = getCoordinator();
+
+    // Stream agent response
+    try {
+      for await (const event of coordinator.stream({
+        sessionId,
+        messages: [{ role: 'user', content: message }],
+        mode,
+        context: {
+          articleSlug,
+          userId,
+        },
+        options: {
+          model,
+          temperature,
+          maxIterations,
+        },
+      })) {
+        if (closed) break;
+
+        switch (event.type) {
+          case 'text':
+            send('token', { token: event.data });
+            break;
+          case 'tool_start':
+            send('tool_start', { tool: event.data.name, id: event.data.id });
+            break;
+          case 'tool_end':
+            send('tool_end', { tool: event.data.name, result: summarizeToolResult(event.data.result) });
+            break;
+          case 'tool_error':
+            send('tool_error', { tool: event.data.name, error: event.data.error });
+            break;
+          case 'done':
+            send('done', {
+              type: 'done',
+              sessionId,
+              toolsUsed: event.data.toolCalls?.map(tc => tc.function?.name) || [],
+              content: event.data.content,
+            });
+            break;
+          case 'error':
+            send('error', { message: event.data.message });
+            break;
+        }
+      }
+    } catch (streamError) {
+      send('error', { message: streamError.message, code: 'STREAM_ERROR' });
+    }
+
+    onClose();
+  } catch (err) {
+    console.error('Agent stream error:', err);
+    send('error', { message: err.message, code: 'INTERNAL_ERROR' });
+    onClose();
+  }
+});
+
+/**
+ * Summarize tool result for streaming (avoid sending too much data)
+ */
+function summarizeToolResult(result) {
+  if (!result) return null;
+  if (typeof result === 'string') {
+    return result.length > 500 ? result.slice(0, 500) + '...' : result;
+  }
+  if (Array.isArray(result)) {
+    return { count: result.length, preview: result.slice(0, 3) };
+  }
+  if (typeof result === 'object') {
+    const str = JSON.stringify(result);
+    if (str.length > 500) {
+      return { summary: 'Object with keys: ' + Object.keys(result).join(', ') };
+    }
+    return result;
+  }
+  return result;
+}
+
+// ============================================================================
+// SESSION MANAGEMENT ENDPOINTS
+// ============================================================================
+
+/**
+ * GET /session/:sessionId - Get session details
+ */
+router.get('/session/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const coordinator = getCoordinator();
+
+    const session = await coordinator.getSession(sessionId);
+    if (!session || !session.history || session.history.length === 0) {
+      return res.status(404).json({
+        ok: false,
+        error: { message: 'Session not found', code: 'NOT_FOUND' },
+      });
+    }
+
+    res.json({
+      ok: true,
+      data: {
+        sessionId,
+        messageCount: session.history?.length || 0,
+        metadata: session.metadata,
+        // Include last few messages for context
+        recentMessages: (session.history || []).slice(-10).map(m => ({
+          role: m.role,
+          content: typeof m.content === 'string' 
+            ? m.content.slice(0, 200) + (m.content.length > 200 ? '...' : '')
+            : '[complex content]',
+          timestamp: m.timestamp,
+        })),
+      },
+    });
+  } catch (err) {
+    console.error('Get session error:', err);
+    res.status(500).json({
+      ok: false,
+      error: { message: err.message, code: 'INTERNAL_ERROR' },
+    });
+  }
+});
+
+/**
+ * DELETE /session/:sessionId - Clear session
+ */
+router.delete('/session/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const coordinator = getCoordinator();
+
+    await coordinator.clearSession(sessionId);
+
+    res.json({
+      ok: true,
+      data: { deleted: true, sessionId },
+    });
+  } catch (err) {
+    console.error('Delete session error:', err);
+    res.status(500).json({
+      ok: false,
+      error: { message: err.message, code: 'INTERNAL_ERROR' },
+    });
+  }
+});
+
+/**
+ * GET /sessions - List all sessions (with pagination)
+ */
+router.get('/sessions', async (req, res) => {
+  try {
+    const { userId = 'default-user', limit = 20, offset = 0 } = req.query;
+    const sessionMemory = getSessionMemory();
+
+    // Note: In-memory store may not support full listing,
+    // this would need persistent store for proper implementation
+    const sessions = await sessionMemory.listSessions?.({
+      userId,
+      limit: parseInt(limit, 10),
+      offset: parseInt(offset, 10),
+    }) || [];
+
+    res.json({
+      ok: true,
+      data: {
+        sessions: sessions || [],
+        total: sessions?.length || 0,
+      },
+    });
+  } catch (err) {
+    console.error('List sessions error:', err);
+    res.status(500).json({
+      ok: false,
+      error: { message: err.message, code: 'INTERNAL_ERROR' },
+    });
+  }
+});
+
+// ============================================================================
+// UTILITY ENDPOINTS
+// ============================================================================
+
+/**
+ * GET /health - Agent health check
+ */
+router.get('/health', async (req, res) => {
+  try {
+    const coordinator = getCoordinator();
+    const health = await coordinator.health();
+
+    res.json({
+      ok: health.ok,
+      data: {
+        status: health.ok ? 'healthy' : 'degraded',
+        llm: health.llm,
+        tools: health.tools,
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (err) {
+    console.error('Agent health error:', err);
+    res.status(500).json({
+      ok: false,
+      data: {
+        status: 'error',
+        error: err.message,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  }
+});
+
+/**
+ * GET /tools - List available tools
+ */
+router.get('/tools', async (req, res) => {
+  try {
+    const coordinator = getCoordinator();
+    const health = await coordinator.health();
+    const toolNames = health.tools?.names || [];
+
+    res.json({
+      ok: true,
+      data: {
+        tools: toolNames.map(name => ({
+          name,
+          enabled: true,
+        })),
+        total: toolNames.length,
+      },
+    });
+  } catch (err) {
+    console.error('List tools error:', err);
+    res.status(500).json({
+      ok: false,
+      error: { message: err.message, code: 'INTERNAL_ERROR' },
+    });
+  }
+});
+
+/**
+ * GET /modes - List available agent modes
+ */
+router.get('/modes', (req, res) => {
+  res.json({
+    ok: true,
+    data: {
+      modes: [
+        { id: 'default', name: 'General', description: 'General conversation and assistance' },
+        { id: 'research', name: 'Research', description: 'In-depth information gathering' },
+        { id: 'coding', name: 'Coding', description: 'Programming assistance' },
+        { id: 'blog', name: 'Blog', description: 'Blog content management' },
+        { id: 'article', name: 'Article Q&A', description: 'Questions about specific articles' },
+        { id: 'terminal', name: 'Terminal', description: 'System administration tasks' },
+      ],
+    },
+  });
+});
+
+// ============================================================================
+// MEMORY ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /memory/extract - Extract memories from conversation
+ */
+router.post('/memory/extract', async (req, res) => {
+  try {
+    const { sessionId, messages } = req.body;
+
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({
+        ok: false,
+        error: { message: 'messages array is required', code: 'INVALID_REQUEST' },
+      });
+    }
+
+    const coordinator = getCoordinator();
+    const memories = await coordinator.extractMemories(messages);
+
+    res.json({
+      ok: true,
+      data: {
+        memories: memories || [],
+        count: memories?.length || 0,
+      },
+    });
+  } catch (err) {
+    console.error('Memory extract error:', err);
+    res.status(500).json({
+      ok: false,
+      error: { message: err.message, code: 'INTERNAL_ERROR' },
+    });
+  }
+});
+
+/**
+ * POST /memory/search - Search memories semantically
+ */
+router.post('/memory/search', async (req, res) => {
+  try {
+    const { query, userId = 'default-user', limit = 10 } = req.body;
+
+    if (!query || typeof query !== 'string') {
+      return res.status(400).json({
+        ok: false,
+        error: { message: 'query is required', code: 'INVALID_REQUEST' },
+      });
+    }
+
+    const coordinator = getCoordinator();
+    const results = await coordinator.searchMemories(query, { userId, limit });
+
+    res.json({
+      ok: true,
+      data: {
+        results: results || [],
+        count: results?.length || 0,
+      },
+    });
+  } catch (err) {
+    console.error('Memory search error:', err);
+    res.status(500).json({
+      ok: false,
+      error: { message: err.message, code: 'INTERNAL_ERROR' },
+    });
+  }
+});
+
+export default router;
+
+```
+
 ### ai.js
 
 **Path:** `backend/src/routes/ai.js`
@@ -8848,9 +13106,191 @@ export default router;
 ```javascript
 import { Router } from 'express';
 import { aiService, tryParseJson } from '../lib/ai-service.js';
+import { getLiteLLMClient } from '../lib/litellm-client.js';
 import { config } from '../config.js';
 
 const router = Router();
+
+// ============================================================================
+// Model List Endpoint - Get available AI models from LiteLLM
+// GET /api/v1/ai/models
+// ============================================================================
+
+router.get('/models', async (req, res) => {
+  try {
+    const client = getLiteLLMClient();
+    const models = await client.models();
+    
+    // Get default model from config
+    const defaultModel = config.ai?.gateway?.defaultModel || 
+                        process.env.AI_DEFAULT_MODEL || 
+                        'gemini-1.5-flash';
+    
+    // Transform models to a cleaner format with categories
+    const categorizedModels = categorizeModels(models, defaultModel);
+    
+    res.json({
+      ok: true,
+      data: {
+        models: categorizedModels,
+        default: defaultModel,
+        provider: 'litellm',
+      },
+    });
+  } catch (err) {
+    console.error('Failed to fetch models:', err.message);
+    
+    // Return fallback models if LiteLLM is unavailable
+    res.json({
+      ok: true,
+      data: {
+        models: getFallbackModels(),
+        default: process.env.AI_DEFAULT_MODEL || 'gemini-1.5-flash',
+        provider: 'fallback',
+        warning: 'Using fallback model list - LiteLLM may be unavailable',
+      },
+    });
+  }
+});
+
+/**
+ * Categorize models by provider for better UI organization
+ */
+function categorizeModels(models, defaultModel) {
+  const result = [];
+  
+  for (const model of models) {
+    const id = model.id;
+    const info = getModelInfo(id);
+    
+    result.push({
+      id,
+      name: info.name,
+      provider: info.provider,
+      description: info.description,
+      isDefault: id === defaultModel,
+      capabilities: info.capabilities,
+    });
+  }
+  
+  // Sort: default first, then by provider
+  return result.sort((a, b) => {
+    if (a.isDefault) return -1;
+    if (b.isDefault) return 1;
+    return a.provider.localeCompare(b.provider);
+  });
+}
+
+/**
+ * Get human-readable model info
+ */
+function getModelInfo(modelId) {
+  const modelMap = {
+    // Google Gemini
+    'gemini-1.5-flash': { 
+      name: 'Gemini 1.5 Flash', 
+      provider: 'Google', 
+      description: 'Fast and efficient',
+      capabilities: ['chat', 'vision'],
+    },
+    'gemini-1.5-pro': { 
+      name: 'Gemini 1.5 Pro', 
+      provider: 'Google', 
+      description: 'Most capable Gemini',
+      capabilities: ['chat', 'vision', 'long-context'],
+    },
+    'gemini-2.0-flash': { 
+      name: 'Gemini 2.0 Flash', 
+      provider: 'Google', 
+      description: 'Latest experimental',
+      capabilities: ['chat', 'vision'],
+    },
+    // OpenAI
+    'gpt-4o': { 
+      name: 'GPT-4o', 
+      provider: 'OpenAI', 
+      description: 'Most capable GPT-4',
+      capabilities: ['chat', 'vision'],
+    },
+    'gpt-4o-mini': { 
+      name: 'GPT-4o Mini', 
+      provider: 'OpenAI', 
+      description: 'Fast and affordable',
+      capabilities: ['chat', 'vision'],
+    },
+    'gpt-4-turbo': { 
+      name: 'GPT-4 Turbo', 
+      provider: 'OpenAI', 
+      description: 'High performance',
+      capabilities: ['chat', 'vision'],
+    },
+    'gpt-3.5-turbo': { 
+      name: 'GPT-3.5 Turbo', 
+      provider: 'OpenAI', 
+      description: 'Legacy fast model',
+      capabilities: ['chat'],
+    },
+    // Anthropic
+    'claude-3.5-sonnet': { 
+      name: 'Claude 3.5 Sonnet', 
+      provider: 'Anthropic', 
+      description: 'Best for coding',
+      capabilities: ['chat', 'vision'],
+    },
+    'claude-3-haiku': { 
+      name: 'Claude 3 Haiku', 
+      provider: 'Anthropic', 
+      description: 'Fast responses',
+      capabilities: ['chat'],
+    },
+    // Local
+    'local': { 
+      name: 'Local (Ollama)', 
+      provider: 'Local', 
+      description: 'Llama 3.2 via Ollama',
+      capabilities: ['chat'],
+    },
+    'local/llama3': { 
+      name: 'Llama 3.2', 
+      provider: 'Local', 
+      description: 'Via Ollama',
+      capabilities: ['chat'],
+    },
+    'local/codellama': { 
+      name: 'CodeLlama', 
+      provider: 'Local', 
+      description: 'Code-optimized',
+      capabilities: ['chat', 'code'],
+    },
+    // Aliases
+    'gpt-4.1': { 
+      name: 'GPT-4.1 (Alias)', 
+      provider: 'Alias', 
+      description: 'Maps to Gemini Flash',
+      capabilities: ['chat'],
+    },
+  };
+  
+  return modelMap[modelId] || {
+    name: modelId,
+    provider: 'Unknown',
+    description: '',
+    capabilities: ['chat'],
+  };
+}
+
+/**
+ * Fallback models when LiteLLM is unavailable
+ */
+function getFallbackModels() {
+  return [
+    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'Google', isDefault: true },
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'Google' },
+    { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI' },
+    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI' },
+    { id: 'claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
+  ];
+}
 
 // ============================================================================
 // Auto-Chat Endpoint (replaces ai-call-gateway proxy target)
@@ -8859,7 +13299,7 @@ const router = Router();
 
 router.post('/auto-chat', async (req, res, next) => {
   try {
-    const { messages, temperature, maxTokens } = req.body || {};
+    const { messages, temperature, maxTokens, model } = req.body || {};
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({
@@ -8868,10 +13308,11 @@ router.post('/auto-chat', async (req, res, next) => {
       });
     }
 
-    // Use unified AI service for chat
+    // Use unified AI service for chat with optional model selection
     const result = await aiService.chat(messages, {
       temperature,
       maxTokens,
+      model, // Pass selected model to AI service
     });
 
     return res.json({
@@ -9249,6 +13690,1308 @@ router.get('/generate/stream', async (req, res, next) => {
     }
   } catch (err) {
     return next(err);
+  }
+});
+
+export default router;
+
+```
+
+### aiAdmin.js
+
+**Path:** `backend/src/routes/aiAdmin.js`
+
+```javascript
+/**
+ * AI Admin API Routes
+ *
+ * Admin endpoints for managing AI providers, models, routes, and usage.
+ * All endpoints require admin authentication.
+ *
+ * Base path: /api/v1/admin/ai
+ */
+
+import { Router } from 'express';
+import { v4 as uuidv4 } from 'uuid';
+import { queryAll, queryOne, execute, isD1Configured } from '../lib/d1.js';
+import requireAdmin from '../middleware/adminAuth.js';
+import { getLiteLLMClient } from '../lib/litellm-client.js';
+
+const router = Router();
+
+// Apply admin auth to all routes
+router.use(requireAdmin);
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+const generateId = (prefix) => `${prefix}_${uuidv4().split('-')[0]}`;
+
+const parseJsonField = (field) => {
+  if (!field) return null;
+  if (typeof field === 'object') return field;
+  try {
+    return JSON.parse(field);
+  } catch {
+    return null;
+  }
+};
+
+// Check D1 middleware
+const checkD1 = (req, res, next) => {
+  if (!isD1Configured()) {
+    return res.status(500).json({
+      ok: false,
+      error: 'D1 database not configured. Set CF_ACCOUNT_ID, CF_API_TOKEN, D1_DATABASE_ID',
+    });
+  }
+  next();
+};
+
+router.use(checkD1);
+
+// ============================================================================
+// Providers CRUD
+// ============================================================================
+
+/**
+ * GET /providers - List all providers
+ */
+router.get('/providers', async (req, res, next) => {
+  try {
+    const providers = await queryAll(`
+      SELECT 
+        p.*,
+        (SELECT COUNT(*) FROM ai_models WHERE provider_id = p.id) as model_count,
+        (SELECT COUNT(*) FROM ai_models WHERE provider_id = p.id AND is_enabled = 1) as enabled_model_count
+      FROM ai_providers p
+      ORDER BY p.display_name
+    `);
+
+    const formatted = providers.map((p) => ({
+      id: p.id,
+      name: p.name,
+      displayName: p.display_name,
+      apiBaseUrl: p.api_base_url,
+      apiKeyEnv: p.api_key_env,
+      isEnabled: !!p.is_enabled,
+      healthStatus: p.health_status,
+      lastHealthCheck: p.last_health_check,
+      modelCount: p.model_count,
+      enabledModelCount: p.enabled_model_count,
+      createdAt: p.created_at,
+      updatedAt: p.updated_at,
+    }));
+
+    res.json({ ok: true, data: { providers: formatted } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /providers/:id - Get single provider
+ */
+router.get('/providers/:id', async (req, res, next) => {
+  try {
+    const provider = await queryOne(
+      'SELECT * FROM ai_providers WHERE id = ?',
+      req.params.id
+    );
+
+    if (!provider) {
+      return res.status(404).json({ ok: false, error: 'Provider not found' });
+    }
+
+    res.json({
+      ok: true,
+      data: {
+        id: provider.id,
+        name: provider.name,
+        displayName: provider.display_name,
+        apiBaseUrl: provider.api_base_url,
+        apiKeyEnv: provider.api_key_env,
+        isEnabled: !!provider.is_enabled,
+        healthStatus: provider.health_status,
+        lastHealthCheck: provider.last_health_check,
+        createdAt: provider.created_at,
+        updatedAt: provider.updated_at,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /providers - Create provider
+ */
+router.post('/providers', async (req, res, next) => {
+  try {
+    const { name, displayName, apiBaseUrl, apiKeyEnv } = req.body;
+
+    if (!name || !displayName) {
+      return res.status(400).json({
+        ok: false,
+        error: 'name and displayName are required',
+      });
+    }
+
+    // Check for duplicate name
+    const existing = await queryOne(
+      'SELECT id FROM ai_providers WHERE name = ?',
+      name
+    );
+    if (existing) {
+      return res.status(409).json({
+        ok: false,
+        error: `Provider with name "${name}" already exists`,
+      });
+    }
+
+    const id = generateId('prov');
+    await execute(
+      `INSERT INTO ai_providers (id, name, display_name, api_base_url, api_key_env)
+       VALUES (?, ?, ?, ?, ?)`,
+      id,
+      name,
+      displayName,
+      apiBaseUrl || null,
+      apiKeyEnv || null
+    );
+
+    const provider = await queryOne('SELECT * FROM ai_providers WHERE id = ?', id);
+
+    res.status(201).json({
+      ok: true,
+      data: {
+        id: provider.id,
+        name: provider.name,
+        displayName: provider.display_name,
+        apiBaseUrl: provider.api_base_url,
+        apiKeyEnv: provider.api_key_env,
+        isEnabled: !!provider.is_enabled,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PUT /providers/:id - Update provider
+ */
+router.put('/providers/:id', async (req, res, next) => {
+  try {
+    const { displayName, apiBaseUrl, apiKeyEnv, isEnabled } = req.body;
+
+    const existing = await queryOne(
+      'SELECT * FROM ai_providers WHERE id = ?',
+      req.params.id
+    );
+    if (!existing) {
+      return res.status(404).json({ ok: false, error: 'Provider not found' });
+    }
+
+    await execute(
+      `UPDATE ai_providers 
+       SET display_name = ?, api_base_url = ?, api_key_env = ?, is_enabled = ?, updated_at = datetime('now')
+       WHERE id = ?`,
+      displayName ?? existing.display_name,
+      apiBaseUrl !== undefined ? apiBaseUrl : existing.api_base_url,
+      apiKeyEnv !== undefined ? apiKeyEnv : existing.api_key_env,
+      isEnabled !== undefined ? (isEnabled ? 1 : 0) : existing.is_enabled,
+      req.params.id
+    );
+
+    const provider = await queryOne(
+      'SELECT * FROM ai_providers WHERE id = ?',
+      req.params.id
+    );
+
+    res.json({
+      ok: true,
+      data: {
+        id: provider.id,
+        name: provider.name,
+        displayName: provider.display_name,
+        apiBaseUrl: provider.api_base_url,
+        apiKeyEnv: provider.api_key_env,
+        isEnabled: !!provider.is_enabled,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * DELETE /providers/:id - Delete provider
+ */
+router.delete('/providers/:id', async (req, res, next) => {
+  try {
+    const existing = await queryOne(
+      'SELECT * FROM ai_providers WHERE id = ?',
+      req.params.id
+    );
+    if (!existing) {
+      return res.status(404).json({ ok: false, error: 'Provider not found' });
+    }
+
+    // Check if has models
+    const modelCount = await queryOne(
+      'SELECT COUNT(*) as count FROM ai_models WHERE provider_id = ?',
+      req.params.id
+    );
+    if (modelCount?.count > 0) {
+      return res.status(400).json({
+        ok: false,
+        error: `Cannot delete provider with ${modelCount.count} models. Delete models first.`,
+      });
+    }
+
+    await execute('DELETE FROM ai_providers WHERE id = ?', req.params.id);
+
+    res.json({ ok: true, data: { deleted: req.params.id } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /providers/:id/health - Check provider health
+ */
+router.post('/providers/:id/health', async (req, res, next) => {
+  try {
+    const provider = await queryOne(
+      'SELECT * FROM ai_providers WHERE id = ?',
+      req.params.id
+    );
+    if (!provider) {
+      return res.status(404).json({ ok: false, error: 'Provider not found' });
+    }
+
+    // Get first enabled model for this provider
+    const model = await queryOne(
+      'SELECT * FROM ai_models WHERE provider_id = ? AND is_enabled = 1 LIMIT 1',
+      req.params.id
+    );
+
+    let healthStatus = 'unknown';
+    let latencyMs = null;
+    let error = null;
+
+    if (model) {
+      try {
+        const client = getLiteLLMClient();
+        const start = Date.now();
+        await client.chat(
+          [{ role: 'user', content: 'Hello' }],
+          { model: model.model_name, timeout: 10000 }
+        );
+        latencyMs = Date.now() - start;
+        healthStatus = 'healthy';
+      } catch (err) {
+        healthStatus = 'down';
+        error = err.message;
+      }
+    }
+
+    // Update provider health status
+    await execute(
+      `UPDATE ai_providers 
+       SET health_status = ?, last_health_check = datetime('now'), updated_at = datetime('now')
+       WHERE id = ?`,
+      healthStatus,
+      req.params.id
+    );
+
+    res.json({
+      ok: true,
+      data: {
+        providerId: req.params.id,
+        status: healthStatus,
+        latencyMs,
+        error,
+        checkedAt: new Date().toISOString(),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================================
+// Models CRUD
+// ============================================================================
+
+/**
+ * GET /models - List all models
+ */
+router.get('/models', async (req, res, next) => {
+  try {
+    const { providerId, enabled } = req.query;
+
+    let sql = `
+      SELECT 
+        m.*,
+        p.name as provider_name,
+        p.display_name as provider_display_name,
+        p.is_enabled as provider_enabled
+      FROM ai_models m
+      JOIN ai_providers p ON m.provider_id = p.id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (providerId) {
+      sql += ' AND m.provider_id = ?';
+      params.push(providerId);
+    }
+    if (enabled !== undefined) {
+      sql += ' AND m.is_enabled = ?';
+      params.push(enabled === 'true' || enabled === '1' ? 1 : 0);
+    }
+
+    sql += ' ORDER BY m.priority DESC, m.display_name';
+
+    const models = await queryAll(sql, ...params);
+
+    const formatted = models.map((m) => ({
+      id: m.id,
+      modelName: m.model_name,
+      displayName: m.display_name,
+      litellmModel: m.litellm_model,
+      description: m.description,
+      provider: {
+        id: m.provider_id,
+        name: m.provider_name,
+        displayName: m.provider_display_name,
+        isEnabled: !!m.provider_enabled,
+      },
+      contextWindow: m.context_window,
+      maxTokens: m.max_tokens,
+      cost: {
+        inputPer1k: m.input_cost_per_1k,
+        outputPer1k: m.output_cost_per_1k,
+      },
+      capabilities: {
+        vision: !!m.supports_vision,
+        streaming: !!m.supports_streaming,
+        functionCalling: !!m.supports_function_calling,
+      },
+      isEnabled: !!m.is_enabled,
+      priority: m.priority,
+      createdAt: m.created_at,
+      updatedAt: m.updated_at,
+    }));
+
+    res.json({ ok: true, data: { models: formatted } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /models/:id - Get single model
+ */
+router.get('/models/:id', async (req, res, next) => {
+  try {
+    const model = await queryOne(
+      `SELECT m.*, p.name as provider_name, p.display_name as provider_display_name
+       FROM ai_models m
+       JOIN ai_providers p ON m.provider_id = p.id
+       WHERE m.id = ?`,
+      req.params.id
+    );
+
+    if (!model) {
+      return res.status(404).json({ ok: false, error: 'Model not found' });
+    }
+
+    res.json({
+      ok: true,
+      data: {
+        id: model.id,
+        modelName: model.model_name,
+        displayName: model.display_name,
+        litellmModel: model.litellm_model,
+        description: model.description,
+        provider: {
+          id: model.provider_id,
+          name: model.provider_name,
+          displayName: model.provider_display_name,
+        },
+        contextWindow: model.context_window,
+        maxTokens: model.max_tokens,
+        cost: {
+          inputPer1k: model.input_cost_per_1k,
+          outputPer1k: model.output_cost_per_1k,
+        },
+        capabilities: {
+          vision: !!model.supports_vision,
+          streaming: !!model.supports_streaming,
+          functionCalling: !!model.supports_function_calling,
+        },
+        isEnabled: !!model.is_enabled,
+        priority: model.priority,
+        createdAt: model.created_at,
+        updatedAt: model.updated_at,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /models - Create model
+ */
+router.post('/models', async (req, res, next) => {
+  try {
+    const {
+      modelName,
+      displayName,
+      providerId,
+      litellmModel,
+      description,
+      contextWindow,
+      maxTokens,
+      inputCostPer1k,
+      outputCostPer1k,
+      supportsVision,
+      supportsStreaming,
+      supportsFunctionCalling,
+      priority,
+    } = req.body;
+
+    if (!modelName || !displayName || !providerId || !litellmModel) {
+      return res.status(400).json({
+        ok: false,
+        error: 'modelName, displayName, providerId, and litellmModel are required',
+      });
+    }
+
+    // Check provider exists
+    const provider = await queryOne(
+      'SELECT id FROM ai_providers WHERE id = ?',
+      providerId
+    );
+    if (!provider) {
+      return res.status(400).json({
+        ok: false,
+        error: `Provider "${providerId}" not found`,
+      });
+    }
+
+    // Check for duplicate model name
+    const existing = await queryOne(
+      'SELECT id FROM ai_models WHERE model_name = ?',
+      modelName
+    );
+    if (existing) {
+      return res.status(409).json({
+        ok: false,
+        error: `Model with name "${modelName}" already exists`,
+      });
+    }
+
+    const id = generateId('model');
+    await execute(
+      `INSERT INTO ai_models (
+        id, provider_id, model_name, display_name, litellm_model, description,
+        context_window, max_tokens, input_cost_per_1k, output_cost_per_1k,
+        supports_vision, supports_streaming, supports_function_calling, priority
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      id,
+      providerId,
+      modelName,
+      displayName,
+      litellmModel,
+      description || null,
+      contextWindow || null,
+      maxTokens || null,
+      inputCostPer1k || null,
+      outputCostPer1k || null,
+      supportsVision ? 1 : 0,
+      supportsStreaming !== false ? 1 : 0,
+      supportsFunctionCalling ? 1 : 0,
+      priority || 0
+    );
+
+    const model = await queryOne('SELECT * FROM ai_models WHERE id = ?', id);
+
+    res.status(201).json({
+      ok: true,
+      data: {
+        id: model.id,
+        modelName: model.model_name,
+        displayName: model.display_name,
+        litellmModel: model.litellm_model,
+        providerId: model.provider_id,
+        isEnabled: !!model.is_enabled,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PUT /models/:id - Update model
+ */
+router.put('/models/:id', async (req, res, next) => {
+  try {
+    const {
+      displayName,
+      litellmModel,
+      description,
+      contextWindow,
+      maxTokens,
+      inputCostPer1k,
+      outputCostPer1k,
+      supportsVision,
+      supportsStreaming,
+      supportsFunctionCalling,
+      isEnabled,
+      priority,
+    } = req.body;
+
+    const existing = await queryOne(
+      'SELECT * FROM ai_models WHERE id = ?',
+      req.params.id
+    );
+    if (!existing) {
+      return res.status(404).json({ ok: false, error: 'Model not found' });
+    }
+
+    await execute(
+      `UPDATE ai_models SET
+        display_name = ?,
+        litellm_model = ?,
+        description = ?,
+        context_window = ?,
+        max_tokens = ?,
+        input_cost_per_1k = ?,
+        output_cost_per_1k = ?,
+        supports_vision = ?,
+        supports_streaming = ?,
+        supports_function_calling = ?,
+        is_enabled = ?,
+        priority = ?,
+        updated_at = datetime('now')
+      WHERE id = ?`,
+      displayName ?? existing.display_name,
+      litellmModel ?? existing.litellm_model,
+      description !== undefined ? description : existing.description,
+      contextWindow !== undefined ? contextWindow : existing.context_window,
+      maxTokens !== undefined ? maxTokens : existing.max_tokens,
+      inputCostPer1k !== undefined ? inputCostPer1k : existing.input_cost_per_1k,
+      outputCostPer1k !== undefined ? outputCostPer1k : existing.output_cost_per_1k,
+      supportsVision !== undefined ? (supportsVision ? 1 : 0) : existing.supports_vision,
+      supportsStreaming !== undefined ? (supportsStreaming ? 1 : 0) : existing.supports_streaming,
+      supportsFunctionCalling !== undefined ? (supportsFunctionCalling ? 1 : 0) : existing.supports_function_calling,
+      isEnabled !== undefined ? (isEnabled ? 1 : 0) : existing.is_enabled,
+      priority !== undefined ? priority : existing.priority,
+      req.params.id
+    );
+
+    const model = await queryOne('SELECT * FROM ai_models WHERE id = ?', req.params.id);
+
+    res.json({
+      ok: true,
+      data: {
+        id: model.id,
+        modelName: model.model_name,
+        displayName: model.display_name,
+        isEnabled: !!model.is_enabled,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * DELETE /models/:id - Delete model
+ */
+router.delete('/models/:id', async (req, res, next) => {
+  try {
+    const existing = await queryOne(
+      'SELECT * FROM ai_models WHERE id = ?',
+      req.params.id
+    );
+    if (!existing) {
+      return res.status(404).json({ ok: false, error: 'Model not found' });
+    }
+
+    // Check if used in routes
+    const routeUsage = await queryOne(
+      `SELECT COUNT(*) as count FROM ai_routes 
+       WHERE primary_model_id = ? 
+         OR fallback_model_ids LIKE ?
+         OR context_window_fallback_ids LIKE ?`,
+      req.params.id,
+      `%${req.params.id}%`,
+      `%${req.params.id}%`
+    );
+    if (routeUsage?.count > 0) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Cannot delete model used in routing rules. Update routes first.',
+      });
+    }
+
+    await execute('DELETE FROM ai_models WHERE id = ?', req.params.id);
+
+    res.json({ ok: true, data: { deleted: req.params.id } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /models/:id/test - Test model
+ */
+router.post('/models/:id/test', async (req, res, next) => {
+  try {
+    const model = await queryOne(
+      'SELECT * FROM ai_models WHERE id = ?',
+      req.params.id
+    );
+    if (!model) {
+      return res.status(404).json({ ok: false, error: 'Model not found' });
+    }
+
+    const { prompt } = req.body;
+    const testPrompt = prompt || 'Say "Hello" in one word.';
+
+    try {
+      const client = getLiteLLMClient();
+      const start = Date.now();
+      const response = await client.chat(
+        [{ role: 'user', content: testPrompt }],
+        { model: model.model_name, timeout: 30000 }
+      );
+      const latencyMs = Date.now() - start;
+
+      res.json({
+        ok: true,
+        data: {
+          success: true,
+          modelId: model.id,
+          modelName: model.model_name,
+          latencyMs,
+          response: response.content?.slice(0, 500),
+          usage: response.usage,
+        },
+      });
+    } catch (err) {
+      res.json({
+        ok: true,
+        data: {
+          success: false,
+          modelId: model.id,
+          modelName: model.model_name,
+          error: err.message,
+        },
+      });
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================================
+// Routes CRUD
+// ============================================================================
+
+/**
+ * GET /routes - List all routes
+ */
+router.get('/routes', async (req, res, next) => {
+  try {
+    const routes = await queryAll(`
+      SELECT 
+        r.*,
+        m.model_name as primary_model_name,
+        m.display_name as primary_model_display_name
+      FROM ai_routes r
+      LEFT JOIN ai_models m ON r.primary_model_id = m.id
+      ORDER BY r.is_default DESC, r.name
+    `);
+
+    const formatted = routes.map((r) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      routingStrategy: r.routing_strategy,
+      primaryModel: r.primary_model_id
+        ? {
+            id: r.primary_model_id,
+            modelName: r.primary_model_name,
+            displayName: r.primary_model_display_name,
+          }
+        : null,
+      fallbackModelIds: parseJsonField(r.fallback_model_ids) || [],
+      contextWindowFallbackIds: parseJsonField(r.context_window_fallback_ids) || [],
+      numRetries: r.num_retries,
+      timeoutSeconds: r.timeout_seconds,
+      isDefault: !!r.is_default,
+      isEnabled: !!r.is_enabled,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    }));
+
+    res.json({ ok: true, data: { routes: formatted } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /routes/:id - Get single route
+ */
+router.get('/routes/:id', async (req, res, next) => {
+  try {
+    const route = await queryOne(
+      `SELECT r.*, m.model_name as primary_model_name, m.display_name as primary_model_display_name
+       FROM ai_routes r
+       LEFT JOIN ai_models m ON r.primary_model_id = m.id
+       WHERE r.id = ?`,
+      req.params.id
+    );
+
+    if (!route) {
+      return res.status(404).json({ ok: false, error: 'Route not found' });
+    }
+
+    res.json({
+      ok: true,
+      data: {
+        id: route.id,
+        name: route.name,
+        description: route.description,
+        routingStrategy: route.routing_strategy,
+        primaryModel: route.primary_model_id
+          ? {
+              id: route.primary_model_id,
+              modelName: route.primary_model_name,
+              displayName: route.primary_model_display_name,
+            }
+          : null,
+        fallbackModelIds: parseJsonField(route.fallback_model_ids) || [],
+        contextWindowFallbackIds: parseJsonField(route.context_window_fallback_ids) || [],
+        numRetries: route.num_retries,
+        timeoutSeconds: route.timeout_seconds,
+        isDefault: !!route.is_default,
+        isEnabled: !!route.is_enabled,
+        createdAt: route.created_at,
+        updatedAt: route.updated_at,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /routes - Create route
+ */
+router.post('/routes', async (req, res, next) => {
+  try {
+    const {
+      name,
+      description,
+      routingStrategy,
+      primaryModelId,
+      fallbackModelIds,
+      contextWindowFallbackIds,
+      numRetries,
+      timeoutSeconds,
+      isDefault,
+    } = req.body;
+
+    if (!name) {
+      return res.status(400).json({
+        ok: false,
+        error: 'name is required',
+      });
+    }
+
+    // Check for duplicate name
+    const existing = await queryOne(
+      'SELECT id FROM ai_routes WHERE name = ?',
+      name
+    );
+    if (existing) {
+      return res.status(409).json({
+        ok: false,
+        error: `Route with name "${name}" already exists`,
+      });
+    }
+
+    // If setting as default, unset other defaults
+    if (isDefault) {
+      await execute('UPDATE ai_routes SET is_default = 0');
+    }
+
+    const id = generateId('route');
+    await execute(
+      `INSERT INTO ai_routes (
+        id, name, description, routing_strategy, primary_model_id,
+        fallback_model_ids, context_window_fallback_ids,
+        num_retries, timeout_seconds, is_default
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      id,
+      name,
+      description || null,
+      routingStrategy || 'latency-based-routing',
+      primaryModelId || null,
+      fallbackModelIds ? JSON.stringify(fallbackModelIds) : null,
+      contextWindowFallbackIds ? JSON.stringify(contextWindowFallbackIds) : null,
+      numRetries || 3,
+      timeoutSeconds || 120,
+      isDefault ? 1 : 0
+    );
+
+    const route = await queryOne('SELECT * FROM ai_routes WHERE id = ?', id);
+
+    res.status(201).json({
+      ok: true,
+      data: {
+        id: route.id,
+        name: route.name,
+        isDefault: !!route.is_default,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PUT /routes/:id - Update route
+ */
+router.put('/routes/:id', async (req, res, next) => {
+  try {
+    const {
+      name,
+      description,
+      routingStrategy,
+      primaryModelId,
+      fallbackModelIds,
+      contextWindowFallbackIds,
+      numRetries,
+      timeoutSeconds,
+      isDefault,
+      isEnabled,
+    } = req.body;
+
+    const existing = await queryOne(
+      'SELECT * FROM ai_routes WHERE id = ?',
+      req.params.id
+    );
+    if (!existing) {
+      return res.status(404).json({ ok: false, error: 'Route not found' });
+    }
+
+    // If setting as default, unset other defaults
+    if (isDefault && !existing.is_default) {
+      await execute('UPDATE ai_routes SET is_default = 0 WHERE id != ?', req.params.id);
+    }
+
+    await execute(
+      `UPDATE ai_routes SET
+        name = ?,
+        description = ?,
+        routing_strategy = ?,
+        primary_model_id = ?,
+        fallback_model_ids = ?,
+        context_window_fallback_ids = ?,
+        num_retries = ?,
+        timeout_seconds = ?,
+        is_default = ?,
+        is_enabled = ?,
+        updated_at = datetime('now')
+      WHERE id = ?`,
+      name ?? existing.name,
+      description !== undefined ? description : existing.description,
+      routingStrategy ?? existing.routing_strategy,
+      primaryModelId !== undefined ? primaryModelId : existing.primary_model_id,
+      fallbackModelIds !== undefined ? JSON.stringify(fallbackModelIds) : existing.fallback_model_ids,
+      contextWindowFallbackIds !== undefined ? JSON.stringify(contextWindowFallbackIds) : existing.context_window_fallback_ids,
+      numRetries ?? existing.num_retries,
+      timeoutSeconds ?? existing.timeout_seconds,
+      isDefault !== undefined ? (isDefault ? 1 : 0) : existing.is_default,
+      isEnabled !== undefined ? (isEnabled ? 1 : 0) : existing.is_enabled,
+      req.params.id
+    );
+
+    const route = await queryOne('SELECT * FROM ai_routes WHERE id = ?', req.params.id);
+
+    res.json({
+      ok: true,
+      data: {
+        id: route.id,
+        name: route.name,
+        isDefault: !!route.is_default,
+        isEnabled: !!route.is_enabled,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * DELETE /routes/:id - Delete route
+ */
+router.delete('/routes/:id', async (req, res, next) => {
+  try {
+    const existing = await queryOne(
+      'SELECT * FROM ai_routes WHERE id = ?',
+      req.params.id
+    );
+    if (!existing) {
+      return res.status(404).json({ ok: false, error: 'Route not found' });
+    }
+
+    if (existing.is_default) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Cannot delete the default route. Set another route as default first.',
+      });
+    }
+
+    await execute('DELETE FROM ai_routes WHERE id = ?', req.params.id);
+
+    res.json({ ok: true, data: { deleted: req.params.id } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================================
+// Usage & Monitoring
+// ============================================================================
+
+/**
+ * GET /usage - Get usage statistics
+ */
+router.get('/usage', async (req, res, next) => {
+  try {
+    const { startDate, endDate, modelId, groupBy } = req.query;
+
+    // Default to last 7 days
+    const end = endDate || new Date().toISOString().split('T')[0];
+    const start = startDate || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    // Summary
+    let summaryQuery = `
+      SELECT 
+        COUNT(*) as total_requests,
+        COALESCE(SUM(total_tokens), 0) as total_tokens,
+        COALESCE(SUM(estimated_cost), 0) as total_cost,
+        COALESCE(AVG(latency_ms), 0) as avg_latency_ms,
+        SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count,
+        SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as error_count
+      FROM ai_usage_logs
+      WHERE date(created_at) >= ? AND date(created_at) <= ?
+    `;
+    const summaryParams = [start, end];
+
+    if (modelId) {
+      summaryQuery += ' AND model_id = ?';
+      summaryParams.push(modelId);
+    }
+
+    const summaryResult = await queryOne(summaryQuery, ...summaryParams);
+
+    // Breakdown
+    let breakdownQuery;
+    let breakdownParams = [start, end];
+
+    if (groupBy === 'model') {
+      breakdownQuery = `
+        SELECT 
+          u.model_id,
+          m.model_name,
+          m.display_name,
+          COUNT(*) as requests,
+          COALESCE(SUM(u.total_tokens), 0) as tokens,
+          COALESCE(SUM(u.estimated_cost), 0) as cost,
+          COALESCE(AVG(u.latency_ms), 0) as avg_latency_ms
+        FROM ai_usage_logs u
+        LEFT JOIN ai_models m ON u.model_id = m.id
+        WHERE date(u.created_at) >= ? AND date(u.created_at) <= ?
+        GROUP BY u.model_id
+        ORDER BY requests DESC
+      `;
+    } else {
+      // Default: group by day
+      breakdownQuery = `
+        SELECT 
+          date(created_at) as date,
+          COUNT(*) as requests,
+          COALESCE(SUM(total_tokens), 0) as tokens,
+          COALESCE(SUM(estimated_cost), 0) as cost,
+          COALESCE(AVG(latency_ms), 0) as avg_latency_ms
+        FROM ai_usage_logs
+        WHERE date(created_at) >= ? AND date(created_at) <= ?
+      `;
+      if (modelId) {
+        breakdownQuery += ' AND model_id = ?';
+        breakdownParams.push(modelId);
+      }
+      breakdownQuery += ' GROUP BY date(created_at) ORDER BY date ASC';
+    }
+
+    const breakdownResult = await queryAll(breakdownQuery, ...breakdownParams);
+
+    res.json({
+      ok: true,
+      data: {
+        period: { start, end },
+        summary: {
+          totalRequests: summaryResult?.total_requests || 0,
+          totalTokens: summaryResult?.total_tokens || 0,
+          totalCost: Math.round((summaryResult?.total_cost || 0) * 10000) / 10000,
+          avgLatencyMs: Math.round(summaryResult?.avg_latency_ms || 0),
+          successCount: summaryResult?.success_count || 0,
+          errorCount: summaryResult?.error_count || 0,
+        },
+        breakdown: breakdownResult.map((r) => ({
+          ...(r.date ? { date: r.date } : {}),
+          ...(r.model_id
+            ? {
+                model: {
+                  id: r.model_id,
+                  modelName: r.model_name,
+                  displayName: r.display_name,
+                },
+              }
+            : {}),
+          requests: r.requests,
+          tokens: r.tokens,
+          cost: Math.round((r.cost || 0) * 10000) / 10000,
+          avgLatencyMs: Math.round(r.avg_latency_ms || 0),
+        })),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /usage/log - Log a usage event (internal use)
+ */
+router.post('/usage/log', async (req, res, next) => {
+  try {
+    const {
+      modelId,
+      routeId,
+      requestType,
+      promptTokens,
+      completionTokens,
+      latencyMs,
+      status,
+      errorMessage,
+      userId,
+      metadata,
+    } = req.body;
+
+    const totalTokens = (promptTokens || 0) + (completionTokens || 0);
+
+    // Calculate estimated cost
+    let estimatedCost = 0;
+    if (modelId) {
+      const model = await queryOne(
+        'SELECT input_cost_per_1k, output_cost_per_1k FROM ai_models WHERE id = ?',
+        modelId
+      );
+      if (model) {
+        estimatedCost =
+          ((promptTokens || 0) * (model.input_cost_per_1k || 0)) / 1000 +
+          ((completionTokens || 0) * (model.output_cost_per_1k || 0)) / 1000;
+      }
+    }
+
+    const id = generateId('usage');
+    await execute(
+      `INSERT INTO ai_usage_logs (
+        id, model_id, route_id, request_type,
+        prompt_tokens, completion_tokens, total_tokens,
+        estimated_cost, latency_ms, status, error_message, user_id, metadata
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      id,
+      modelId || null,
+      routeId || null,
+      requestType || 'chat',
+      promptTokens || 0,
+      completionTokens || 0,
+      totalTokens,
+      estimatedCost,
+      latencyMs || null,
+      status || 'success',
+      errorMessage || null,
+      userId || null,
+      metadata ? JSON.stringify(metadata) : null
+    );
+
+    res.status(201).json({ ok: true, data: { id } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================================
+// LiteLLM Config Sync
+// ============================================================================
+
+/**
+ * POST /reload - Sync database config to LiteLLM
+ * This generates a config object that could be used to update LiteLLM
+ */
+router.post('/reload', async (req, res, next) => {
+  try {
+    // Get all enabled models
+    const models = await queryAll(`
+      SELECT m.*, p.name as provider_name, p.api_base_url, p.api_key_env
+      FROM ai_models m
+      JOIN ai_providers p ON m.provider_id = p.id
+      WHERE m.is_enabled = 1 AND p.is_enabled = 1
+      ORDER BY m.priority DESC
+    `);
+
+    // Get default route
+    const defaultRoute = await queryOne(
+      'SELECT * FROM ai_routes WHERE is_default = 1 AND is_enabled = 1'
+    );
+
+    // Build LiteLLM config
+    const modelList = models.map((m) => ({
+      model_name: m.model_name,
+      litellm_params: {
+        model: m.litellm_model,
+        ...(m.api_base_url ? { api_base: m.api_base_url } : {}),
+        ...(m.api_key_env ? { api_key: `os.environ/${m.api_key_env}` } : {}),
+      },
+      model_info: {
+        description: m.description,
+        context_window: m.context_window,
+        max_tokens: m.max_tokens,
+        input_cost_per_token: m.input_cost_per_1k ? m.input_cost_per_1k / 1000 : undefined,
+        output_cost_per_token: m.output_cost_per_1k ? m.output_cost_per_1k / 1000 : undefined,
+        supports_vision: !!m.supports_vision,
+        supports_streaming: !!m.supports_streaming,
+        supports_function_calling: !!m.supports_function_calling,
+      },
+    }));
+
+    // Build fallbacks from default route
+    let fallbacks = [];
+    if (defaultRoute) {
+      const primaryModel = await queryOne(
+        'SELECT model_name FROM ai_models WHERE id = ?',
+        defaultRoute.primary_model_id
+      );
+      const fallbackIds = parseJsonField(defaultRoute.fallback_model_ids) || [];
+      
+      if (primaryModel && fallbackIds.length > 0) {
+        const fallbackModels = await queryAll(
+          `SELECT model_name FROM ai_models WHERE id IN (${fallbackIds.map(() => '?').join(',')})`,
+          ...fallbackIds
+        );
+        fallbacks.push({
+          [primaryModel.model_name]: fallbackModels.map((m) => m.model_name),
+        });
+      }
+    }
+
+    const litellmConfig = {
+      model_list: modelList,
+      router_settings: {
+        routing_strategy: defaultRoute?.routing_strategy || 'latency-based-routing',
+        num_retries: defaultRoute?.num_retries || 3,
+        timeout: defaultRoute?.timeout_seconds || 120,
+        fallbacks,
+      },
+    };
+
+    // Note: Actually updating LiteLLM requires calling its /config/update endpoint
+    // For now, we just return the config that would be applied
+
+    res.json({
+      ok: true,
+      data: {
+        config: litellmConfig,
+        modelCount: models.length,
+        message: 'Config generated. Use LiteLLM /config/update API to apply.',
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /config/export - Export current config as YAML-compatible JSON
+ */
+router.get('/config/export', async (req, res, next) => {
+  try {
+    const providers = await queryAll('SELECT * FROM ai_providers');
+    const models = await queryAll('SELECT * FROM ai_models');
+    const routes = await queryAll('SELECT * FROM ai_routes');
+
+    res.json({
+      ok: true,
+      data: {
+        exportedAt: new Date().toISOString(),
+        providers: providers.map((p) => ({
+          id: p.id,
+          name: p.name,
+          displayName: p.display_name,
+          apiBaseUrl: p.api_base_url,
+          apiKeyEnv: p.api_key_env,
+          isEnabled: !!p.is_enabled,
+        })),
+        models: models.map((m) => ({
+          id: m.id,
+          providerId: m.provider_id,
+          modelName: m.model_name,
+          displayName: m.display_name,
+          litellmModel: m.litellm_model,
+          description: m.description,
+          contextWindow: m.context_window,
+          maxTokens: m.max_tokens,
+          inputCostPer1k: m.input_cost_per_1k,
+          outputCostPer1k: m.output_cost_per_1k,
+          supportsVision: !!m.supports_vision,
+          supportsStreaming: !!m.supports_streaming,
+          supportsFunctionCalling: !!m.supports_function_calling,
+          isEnabled: !!m.is_enabled,
+          priority: m.priority,
+        })),
+        routes: routes.map((r) => ({
+          id: r.id,
+          name: r.name,
+          description: r.description,
+          routingStrategy: r.routing_strategy,
+          primaryModelId: r.primary_model_id,
+          fallbackModelIds: parseJsonField(r.fallback_model_ids),
+          contextWindowFallbackIds: parseJsonField(r.context_window_fallback_ids),
+          numRetries: r.num_retries,
+          timeoutSeconds: r.timeout_seconds,
+          isDefault: !!r.is_default,
+          isEnabled: !!r.is_enabled,
+        })),
+      },
+    });
+  } catch (err) {
+    next(err);
   }
 });
 
@@ -9723,7 +15466,7 @@ router.post('/session', async (req, res, next) => {
 router.post('/session/:sessionId/message', async (req, res, next) => {
   try {
     const { sessionId } = req.params;
-    const { parts, context } = req.body || {};
+    const { parts, context, model } = req.body || {};
 
     // Get or create session
     let session = getSession(sessionId);
@@ -9775,9 +15518,9 @@ router.post('/session/:sessionId/message', async (req, res, next) => {
     });
 
     try {
-      // Generate response via VAS
+      // Generate response via VAS with optional model selection
       const client = getVASClient();
-      const result = await client.chat(session.messages);
+      const result = await client.chat(session.messages, { model });
 
       if (closed) return;
 
@@ -11641,6 +17384,187 @@ router.post('/memories/batch-delete', async (req, res) => {
     res.json({ ok: true, data: { deleted: memoryIds.length } });
   } catch (err) {
     console.error('Memory batch-delete error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ========================================
+// INDEX MANAGEMENT ENDPOINTS
+// ========================================
+
+/**
+ * POST /index - 문서 인덱싱
+ * 
+ * Request Body:
+ * {
+ *   documents: [{
+ *     id: string,
+ *     content: string,
+ *     metadata?: object
+ *   }],
+ *   collection?: string  // Optional custom collection name
+ * }
+ */
+router.post('/index', async (req, res) => {
+  try {
+    const { documents, collection } = req.body;
+
+    if (!documents || !Array.isArray(documents) || documents.length === 0) {
+      return res.status(400).json({ ok: false, error: 'documents array is required' });
+    }
+
+    if (documents.length > 100) {
+      return res.status(400).json({ ok: false, error: 'Maximum 100 documents per request' });
+    }
+
+    // Validate documents
+    for (const doc of documents) {
+      if (!doc.id || !doc.content) {
+        return res.status(400).json({ ok: false, error: 'Each document must have id and content' });
+      }
+    }
+
+    // 1. Extract texts for embedding
+    const texts = documents.map(d => d.content);
+    
+    // 2. Generate embeddings
+    const embeddings = await getEmbeddings(texts);
+
+    // 3. Prepare data for ChromaDB
+    const ids = documents.map(d => d.id);
+    const metadatas = documents.map(d => ({
+      ...d.metadata,
+      indexed_at: new Date().toISOString(),
+    }));
+
+    // 4. Upsert to collection
+    const collectionName = collection || config.rag.chromaCollection;
+    await upsertToChroma(collectionName, ids, embeddings, texts, metadatas);
+
+    res.json({ ok: true, data: { indexed: ids.length, collection: collectionName } });
+  } catch (err) {
+    console.error('RAG index error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * DELETE /index/:documentId - 인덱스에서 문서 삭제
+ */
+router.delete('/index/:documentId', async (req, res) => {
+  try {
+    const { documentId } = req.params;
+    const { collection } = req.query;
+
+    if (!documentId) {
+      return res.status(400).json({ ok: false, error: 'documentId is required' });
+    }
+
+    const collectionName = collection || config.rag.chromaCollection;
+    
+    try {
+      await deleteFromChroma(collectionName, [documentId]);
+    } catch (err) {
+      if (!err.message.includes('404') && !err.message.includes('not found')) {
+        throw err;
+      }
+    }
+
+    res.json({ ok: true, data: { deleted: true } });
+  } catch (err) {
+    console.error('RAG delete error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * GET /status - 인덱스 상태 확인
+ */
+router.get('/status', async (req, res) => {
+  try {
+    const { collection } = req.query;
+    const collectionName = collection || config.rag.chromaCollection;
+    const chromaBase = config.rag.chromaUrl;
+
+    // Get collection info
+    const collectionResp = await fetch(`${chromaBase}/api/v1/collections/${collectionName}`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!collectionResp.ok) {
+      if (collectionResp.status === 404) {
+        return res.json({
+          ok: true,
+          data: {
+            collection: collectionName,
+            exists: false,
+            count: 0,
+          },
+        });
+      }
+      throw new Error(`ChromaDB error: ${collectionResp.status}`);
+    }
+
+    const collectionData = await collectionResp.json();
+
+    // Get count
+    const countResp = await fetch(`${chromaBase}/api/v1/collections/${collectionName}/count`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(5000),
+    });
+
+    let count = 0;
+    if (countResp.ok) {
+      const countData = await countResp.json();
+      count = countData.count || countData || 0;
+    }
+
+    res.json({
+      ok: true,
+      data: {
+        collection: collectionName,
+        exists: true,
+        count,
+        metadata: collectionData.metadata || {},
+      },
+    });
+  } catch (err) {
+    console.error('RAG status error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * GET /collections - 모든 컬렉션 목록
+ */
+router.get('/collections', async (req, res) => {
+  try {
+    const chromaBase = config.rag.chromaUrl;
+    
+    const response = await fetch(`${chromaBase}/api/v1/collections`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!response.ok) {
+      throw new Error(`ChromaDB error: ${response.status}`);
+    }
+
+    const collections = await response.json();
+
+    res.json({
+      ok: true,
+      data: {
+        collections: collections.map(c => ({
+          name: c.name,
+          metadata: c.metadata || {},
+        })),
+        total: collections.length,
+      },
+    });
+  } catch (err) {
+    console.error('RAG collections error:', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -16206,6 +22130,392 @@ export class MarkdownGenerator {
 
 ## docs
 
+### AI-feature-architecture-1226.md
+
+**Path:** `docs/AI-feature-architecture-1226.md`
+
+```markdown
+# AI 기능 전체 아키텍처 분석
+
+> **작성일**: 2025-12-26  
+> **목적**: 서비스별 AI 사용 현황 정리 및 통합 관리 방안 도출
+
+---
+
+## 1. AI 서비스 아키텍처 개요
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              Frontend (React)                               │
+│  ┌──────────┐ ┌──────────┐ ┌───────────┐ ┌──────────┐ ┌─────────────────┐  │
+│  │ AI Chat  │ │ AI Memo  │ │ Sentio    │ │Translate │ │  Image Analysis │  │
+│  │ Widget   │ │ Pad      │ │(Spark)    │ │          │ │                 │  │
+│  └────┬─────┘ └────┬─────┘ └─────┬─────┘ └────┬─────┘ └────────┬────────┘  │
+│       │            │             │            │                 │           │
+│       │      ┌─────┴─────┐       │            │                 │           │
+│       │      │ ai-memo.js│       │            │                 │           │
+│       │      │(Web Comp) │       │            │                 │           │
+│       │      └─────┬─────┘       │            │                 │           │
+│       └────────────┼─────────────┼────────────┼─────────────────┘           │
+│                    │             │            │                              │
+│  ┌─────────────────┴─────────────┴────────────┴─────────────────────────┐   │
+│  │                    Frontend AI Services                               │   │
+│  │  - services/ai.ts (sketch, prism, chain, summary)                    │   │
+│  │  - services/chat/api.ts (chat session management)                    │   │
+│  └──────────────────────────────────┬───────────────────────────────────┘   │
+└─────────────────────────────────────┼───────────────────────────────────────┘
+                                      │
+                    ┌─────────────────┴─────────────────┐
+                    │         Backend API (Express)     │
+                    │                                   │
+                    │  ┌─────────────────────────────┐  │
+                    │  │      API Routes             │  │
+                    │  │  /api/v1/ai/*              │  │
+                    │  │  /api/v1/chat/*            │  │
+                    │  │  /api/v1/translate/*       │  │
+                    │  │  /api/v1/images/*          │  │
+                    │  └──────────────┬──────────────┘  │
+                    │                 │                 │
+                    │  ┌──────────────┴──────────────┐  │
+                    │  │   Unified AI Service        │  │
+                    │  │   (ai-service.js)           │  │
+                    │  │   - Provider abstraction    │  │
+                    │  │   - Task execution          │  │
+                    │  │   - Fallback handling       │  │
+                    │  └──────────────┬──────────────┘  │
+                    │                 │                 │
+                    │  ┌──────────────┴──────────────┐  │
+                    │  │    LiteLLM Client           │  │
+                    │  │    (litellm-client.js)      │  │
+                    │  │    - Circuit breaker        │  │
+                    │  │    - Health caching         │  │
+                    │  └──────────────┬──────────────┘  │
+                    └─────────────────┼─────────────────┘
+                                      │
+                    ┌─────────────────┴─────────────────┐
+                    │      LiteLLM Proxy (Port 4000)    │
+                    │  - Unified OpenAI-compatible API  │
+                    │  - Automatic fallback routing     │
+                    │  - Load balancing                 │
+                    └─────────────────┬─────────────────┘
+                                      │
+          ┌───────────────────────────┼───────────────────────────┐
+          │                           │                           │
+          ▼                           ▼                           ▼
+┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
+│  VAS (GitHub    │       │  Google Gemini  │       │   Anthropic     │
+│  Copilot)       │       │  API            │       │   Claude API    │
+│  - gpt-4.1      │       │  - gemini-1.5   │       │  - claude-3.5   │
+│  - gpt-4o       │       │  - gemini-2.0   │       │  - claude-3     │
+│  - claude-sonnet│       │                 │       │                 │
+└─────────────────┘       └─────────────────┘       └─────────────────┘
+```
+
+---
+
+## 2. 서비스별 AI 사용 현황
+
+### 2.1 AI Chat Widget
+
+| 항목 | 내용 |
+|------|------|
+| **위치** | `frontend/src/components/features/chat/` |
+| **백엔드** | `/api/v1/chat/session/:id/message` |
+| **기능** | 실시간 대화, 세션 관리, 컨텍스트 유지 |
+| **AI Provider** | VAS (GitHub Copilot) via LiteLLM |
+| **스트리밍** | SSE (Server-Sent Events) |
+
+**주요 흐름:**
+```
+User Input → ensureSession() → POST /chat/session/:id/message
+→ VAS Client → SSE Response → UI Update
+```
+
+### 2.2 AI Memo Pad (Web Component)
+
+| 항목 | 내용 |
+|------|------|
+| **위치** | `frontend/public/ai-memo/ai-memo.js` |
+| **백엔드** | `/api/v1/ai/generate`, `/api/v1/ai/generate/stream` |
+| **기능** | 메모 작성 보조, 요약, Catalyst 제안 |
+| **AI Provider** | AIService (litellm → vas → gemini fallback) |
+| **특징** | Shadow DOM 기반 독립 컴포넌트 |
+
+**주요 기능:**
+- **Draft 저장**: LocalStorage + IndexedDB 동기화
+- **Catalyst**: 창의적 제안 생성 (`runCatalyst()`)
+- **Cloud Sync**: GitHub 기반 메모 저장/불러오기
+- **History**: 버전 관리 및 복원
+
+### 2.3 Sentio (Spark Inline)
+
+| 항목 | 내용 |
+|------|------|
+| **위치** | `frontend/src/components/features/sentio/SparkInline.tsx` |
+| **백엔드** | `/api/v1/chat/session/:id/task` |
+| **기능** | 블로그 포스트 텍스트 분석 (Sketch, Prism, Chain) |
+| **AI Provider** | VAS via Chat Task API |
+
+**Task 유형:**
+| Task | 설명 | 출력 형식 |
+|------|------|----------|
+| `sketch` | 감정(mood) + 핵심 포인트(bullets) | `{ mood, bullets[] }` |
+| `prism` | 다각도 분석 (facets) | `{ facets[{ title, points[] }] }` |
+| `chain` | 후속 질문 생성 | `{ questions[{ q, why }] }` |
+| `summary` | 요약 | `{ summary }` |
+| `catalyst` | 창의적 제안 | `{ suggestions[{ idea, reason }] }` |
+
+### 2.4 Translation Service
+
+| 항목 | 내용 |
+|------|------|
+| **위치** | `backend/src/routes/translate.js` |
+| **백엔드** | `/api/v1/translate` |
+| **기능** | 다국어 번역 (한↔영 등) |
+| **AI Provider** | AIService |
+
+### 2.5 Image Analysis (Vision)
+
+| 항목 | 내용 |
+|------|------|
+| **위치** | `backend/src/routes/ai.js` (`/vision/analyze`) |
+| **백엔드** | `/api/v1/ai/vision/analyze` |
+| **기능** | 이미지 설명 생성 |
+| **AI Provider** | AIService with `gpt-4o` (vision-capable) |
+| **입력** | `imageUrl` 또는 `imageBase64` |
+
+---
+
+## 3. Backend AI Infrastructure
+
+### 3.1 파일 구조
+
+```
+backend/src/
+├── lib/
+│   ├── ai-service.js      # 통합 AI 서비스 (Provider 추상화)
+│   ├── litellm-client.js  # LiteLLM 프록시 클라이언트
+│   ├── ai-serve.js        # VAS (GitHub Copilot) 클라이언트
+│   └── gemini.js          # Google Gemini 직접 클라이언트 (Legacy)
+├── routes/
+│   ├── ai.js              # AI 관련 엔드포인트
+│   ├── chat.js            # 채팅 세션 및 Task 처리
+│   ├── translate.js       # 번역 엔드포인트
+│   └── images.js          # 이미지 관련 (Vision 포함)
+└── config.js              # AI Provider 설정
+```
+
+### 3.2 AIService 클래스 (ai-service.js)
+
+**역할**: Provider 추상화 및 통합 인터페이스
+
+```javascript
+class AIService {
+  // Provider 자동 감지 (litellm > vas > gemini)
+  provider = getActiveProvider();
+  
+  // 주요 메서드
+  generate(prompt, options)     // 텍스트 생성
+  chat(messages, options)       // 대화 완료
+  vision(imageData, prompt)     // 이미지 분석
+  stream(prompt, options)       // 스트리밍 생성
+  embeddings(input, options)    // 임베딩 (LiteLLM only)
+  task(mode, payload)           // 구조화된 Task 실행
+  health()                      // 상태 확인
+}
+```
+
+### 3.3 LiteLLM Client (litellm-client.js)
+
+**역할**: LiteLLM 프록시와 통신
+
+**특징:**
+- **Circuit Breaker**: 5회 실패 시 30초 차단
+- **Health Cache**: 10초 캐싱
+- **Timeout**: 기본 2분, Vision/번역 5분
+
+### 3.4 API Endpoints 요약
+
+| Endpoint | Method | 기능 |
+|----------|--------|------|
+| `/api/v1/ai/models` | GET | 사용 가능한 모델 목록 |
+| `/api/v1/ai/auto-chat` | POST | 채팅 완료 |
+| `/api/v1/ai/health` | GET | AI 서비스 상태 |
+| `/api/v1/ai/status` | GET | 상세 상태 정보 |
+| `/api/v1/ai/summarize` | POST | 텍스트 요약 |
+| `/api/v1/ai/sketch` | POST | Sketch 분석 |
+| `/api/v1/ai/prism` | POST | Prism 분석 |
+| `/api/v1/ai/chain` | POST | Chain 질문 생성 |
+| `/api/v1/ai/generate` | POST | 일반 텍스트 생성 |
+| `/api/v1/ai/generate/stream` | GET | 스트리밍 생성 (SSE) |
+| `/api/v1/ai/vision/analyze` | POST | 이미지 분석 |
+| `/api/v1/chat/session` | POST | 세션 생성 |
+| `/api/v1/chat/session/:id/message` | POST | 메시지 전송 (SSE) |
+| `/api/v1/chat/session/:id/task` | POST | Task 실행 |
+| `/api/v1/translate` | POST | 번역 |
+
+---
+
+## 4. LiteLLM Configuration
+
+### 4.1 설정 파일 위치
+
+- **Production**: `backend/litellm_config.yaml`
+- **Local Dev**: `litellm_config.local.yaml`
+
+### 4.2 지원 모델
+
+| Provider | 모델 | 설명 |
+|----------|------|------|
+| GitHub Copilot (VAS) | `gpt-4.1`, `gpt-4o`, `claude-sonnet-4` | 기본 Provider |
+| OpenAI Direct | `openai/gpt-4o`, `openai/gpt-4-turbo` | 별도 API 키 필요 |
+| Google Gemini | `gemini-1.5-flash`, `gemini-1.5-pro`, `gemini-2.0-flash` | Fallback |
+| Anthropic | `claude-3.5-sonnet`, `claude-3-opus`, `claude-3-haiku` | 선택적 |
+| Local (Ollama) | `local/llama3`, `local/codellama` | 개발용 |
+
+### 4.3 Fallback 전략
+
+```yaml
+fallbacks:
+  - gpt-4.1: ["gemini-1.5-flash", "claude-3-haiku"]
+  - gpt-4o: ["gemini-1.5-pro", "claude-3.5-sonnet"]
+  - claude-sonnet-4: ["claude-3.5-sonnet", "gemini-1.5-pro"]
+
+context_window_fallbacks:
+  - gpt-4.1: ["gemini-1.5-pro"]  # 1M context
+```
+
+---
+
+## 5. Frontend AI Services
+
+### 5.1 파일 구조
+
+```
+frontend/src/
+├── services/
+│   ├── ai.ts              # Sentio Task 호출 (sketch, prism, chain)
+│   └── chat/
+│       ├── api.ts         # Chat API 클라이언트
+│       ├── types.ts       # 타입 정의
+│       └── index.ts       # 세션 관리 (ensureSession)
+├── components/features/
+│   ├── chat/              # AI Chat Widget
+│   ├── sentio/            # Spark Inline (Sketch/Prism/Chain)
+│   └── memo/              # AI Memo 관련 (FAB에서 연동)
+└── public/ai-memo/
+    └── ai-memo.js         # AI Memo Web Component
+```
+
+### 5.2 services/ai.ts
+
+**역할**: Sentio 기능용 Task API 호출
+
+```typescript
+// 주요 함수
+sketch(input)   // → POST /chat/session/:id/task { mode: 'sketch' }
+prism(input)    // → POST /chat/session/:id/task { mode: 'prism' }
+chain(input)    // → POST /chat/session/:id/task { mode: 'chain' }
+summary(input)  // → POST /chat/session/:id/task { mode: 'summary' }
+```
+
+### 5.3 AI Memo Web Component
+
+**역할**: 독립 실행 가능한 메모 패드
+
+**주요 기능:**
+- `runCatalyst()`: AI 기반 창의적 제안
+- `syncToCloud()`: GitHub 저장소 연동
+- `loadHistory()` / `saveHistory()`: 버전 관리
+- Shadow DOM 기반 스타일 격리
+
+---
+
+## 6. 데이터 흐름 예시
+
+### 6.1 Chat Message Flow
+
+```
+1. User types message in ChatWidget
+2. ensureSession() → GET/POST /chat/session
+3. POST /chat/session/:id/message { parts: [...] }
+4. Backend: getVASClient().chat(messages)
+5. SSE stream: { type: 'text', text: chunk }
+6. Frontend: Update UI in real-time
+7. SSE: { type: 'done' }
+```
+
+### 6.2 Sentio Task Flow
+
+```
+1. User selects text in BlogPost
+2. SparkInline component activates
+3. User clicks "Sketch" tab
+4. sketch({ paragraph, postTitle })
+5. → POST /chat/session/:id/task { mode: 'sketch', payload: {...} }
+6. Backend: buildTaskPrompt() → generateContent()
+7. Response: { ok: true, data: { mood, bullets } }
+8. UI: Display mood badge + bullet points
+```
+
+### 6.3 AI Memo Catalyst Flow
+
+```
+1. User writes memo in ai-memo-pad
+2. User clicks "Catalyst" button
+3. runCatalyst() in ai-memo.js
+4. → GET /api/v1/ai/generate/stream?prompt=...
+5. SSE stream: event: token, data: { token: "..." }
+6. UI: Append tokens to suggestions panel
+7. SSE: event: done
+```
+
+---
+
+## 7. 개선 필요 사항
+
+### 7.1 현재 이슈
+
+| 이슈 | 설명 | 우선순위 |
+|------|------|----------|
+| 모델 선택 UI 부재 | 사용자가 모델을 선택할 수 없음 | Medium |
+| 비용 추적 없음 | 사용량/비용 모니터링 불가 | Medium |
+| 세션 메모리 휘발성 | 서버 재시작 시 채팅 히스토리 손실 | High |
+| AI Memo 위치 버그 | FAB이 페이지 레이아웃 밖으로 나옴 | High |
+| 에러 핸들링 일관성 | Provider별 에러 메시지 불일치 | Low |
+
+### 7.2 권장 개선사항
+
+1. **모델 선택 UI**: Chat Widget에 모델 드롭다운 추가
+2. **세션 지속성**: D1 또는 KV를 활용한 세션 저장
+3. **사용량 대시보드**: Admin 패널에 AI 사용 통계 추가
+4. **통합 에러 처리**: AIService 레벨에서 일관된 에러 포맷
+
+---
+
+## 8. 환경 변수 요약
+
+| 변수 | 설명 | 기본값 |
+|------|------|--------|
+| `AI_PROVIDER` | 사용할 Provider (`litellm`, `vas`, `gemini`) | 자동 감지 |
+| `LITELLM_BASE_URL` | LiteLLM 프록시 URL | `http://litellm:4000` |
+| `LITELLM_API_KEY` | LiteLLM Master Key | `sk-litellm-master-key` |
+| `AI_DEFAULT_MODEL` | 기본 모델 | `gpt-4.1` |
+| `AI_SERVE_BASE_URL` | VAS Core URL | - |
+| `GOOGLE_API_KEY` | Gemini API Key | - |
+| `OPENAI_API_KEY` | OpenAI Direct API Key | - |
+| `ANTHROPIC_API_KEY` | Anthropic API Key | - |
+
+---
+
+## 9. 관련 문서
+
+- [AI 모델 관리 계획서](./PRD-ai-model-management-1226.md)
+- [LiteLLM 설정](../backend/litellm_config.yaml)
+- [AI Service 구현](../backend/src/lib/ai-service.js)
+
+```
+
 ### PRD-ai-chat-markdown-1102.md
 
 **Path:** `docs/PRD-ai-chat-markdown-1102.md`
@@ -16490,6 +22800,522 @@ The floating AI Memo widget ships as a Shadow DOM injection that currently split
 - Stylesheet: `frontend/public/ai-memo/ai-memo.css`
 - Controller script: `frontend/public/ai-memo/ai-memo.js`
 - Catalyst telemetry keys: `aiMemo.events`
+
+```
+
+### PRD-ai-model-management-1226.md
+
+**Path:** `docs/PRD-ai-model-management-1226.md`
+
+```markdown
+# AI 모델 관리 시스템 계획서
+
+> **작성일**: 2025-12-26  
+> **상태**: 계획 단계  
+> **우선순위**: Medium
+
+---
+
+## 1. 현재 상태 분석
+
+### 1.1 현재 아키텍처
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Frontend (React)                         │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────────────────┐│
+│  │AI Chat  │  │AI Memo  │  │Catalyst │  │Sketch/Prism/Chain   ││
+│  └────┬────┘  └────┬────┘  └────┬────┘  └──────────┬──────────┘│
+└───────┼────────────┼────────────┼──────────────────┼───────────┘
+        │            │            │                  │
+        ▼            ▼            ▼                  ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     Backend API (Express)                       │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │                    AIService (Unified)                    │  │
+│  │  - Provider auto-detection (litellm > vas > gemini)      │  │
+│  │  - Structured tasks (sketch, prism, chain, summary)      │  │
+│  │  - Streaming, Vision, Embeddings support                 │  │
+│  └──────────────────────┬───────────────────────────────────┘  │
+│                         │                                       │
+│  ┌──────────────────────▼───────────────────────────────────┐  │
+│  │              LiteLLM Client (OpenAI-compatible)          │  │
+│  │  - Circuit breaker                                        │  │
+│  │  - Health check caching                                   │  │
+│  │  - Timeout management                                     │  │
+│  └──────────────────────┬───────────────────────────────────┘  │
+└─────────────────────────┼───────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   LiteLLM Proxy (Port 4000)                     │
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐ │
+│  │ Router Settings                                            │ │
+│  │  - routing_strategy: latency-based-routing                │ │
+│  │  - fallbacks: gpt-4.1 → gemini-1.5-flash → claude-3-haiku │ │
+│  │  - num_retries: 3                                         │ │
+│  └───────────────────────────────────────────────────────────┘ │
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐ │
+│  │ Model List                                                 │ │
+│  │  ├─ GitHub Copilot (VAS): gpt-4.1, gpt-4o, claude-sonnet-4│ │
+│  │  ├─ OpenAI Direct: gpt-4o, gpt-4-turbo, gpt-3.5-turbo    │ │
+│  │  ├─ Google Gemini: gemini-1.5-flash, gemini-1.5-pro      │ │
+│  │  ├─ Anthropic: claude-3.5-sonnet, claude-3-opus          │ │
+│  │  └─ Local (Ollama): llama3, codellama                    │ │
+│  └───────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 1.2 현재 설정 파일
+
+| 파일 | 역할 |
+|------|------|
+| `backend/litellm_config.yaml` | LiteLLM 프록시 설정 (모델 목록, 라우팅, fallback) |
+| `backend/src/lib/litellm-client.js` | OpenAI 호환 LiteLLM 클라이언트 |
+| `backend/src/lib/ai-service.js` | 통합 AI 서비스 (Provider 추상화) |
+| `shared/ai/adapters.ts` | Provider별 응답 형식 어댑터 |
+
+### 1.3 현재 한계점
+
+1. **정적 설정**: `litellm_config.yaml` 수정 시 서비스 재시작 필요
+2. **모델 관리 UI 부재**: 관리자가 모델 추가/삭제/수정 불가
+3. **비용 추적 없음**: 모델별 사용량 및 비용 모니터링 부재
+4. **API 키 관리 분산**: 환경변수로 분산 관리됨
+
+---
+
+## 2. 목표 아키텍처
+
+### 2.1 개선된 아키텍처
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      Admin Dashboard                            │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │              AI Model Management UI                      │   │
+│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌───────────────┐  │   │
+│  │  │ Models  │ │Providers│ │ Routes  │ │   Monitoring  │  │   │
+│  │  └─────────┘ └─────────┘ └─────────┘ └───────────────┘  │   │
+│  └──────────────────────────┬──────────────────────────────┘   │
+└─────────────────────────────┼───────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Backend API (Express)                        │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │              AI Config API (/api/v1/admin/ai)            │  │
+│  │  - GET/POST /models       : 모델 CRUD                    │  │
+│  │  - GET/POST /providers    : Provider 관리                │  │
+│  │  - GET/POST /routes       : 라우팅 규칙 관리             │  │
+│  │  - GET /usage             : 사용량 조회                  │  │
+│  │  - POST /reload           : LiteLLM 설정 리로드          │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │              AI Config Store (D1 Database)               │  │
+│  │  - ai_providers: Provider 정보 (이름, API Key, 상태)     │  │
+│  │  - ai_models: 모델 정보 (이름, provider, 파라미터)       │  │
+│  │  - ai_routes: 라우팅 규칙 (fallback, context_window)     │  │
+│  │  - ai_usage_logs: 사용량 로그 (모델, 토큰, 비용)         │  │
+│  └──────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│               LiteLLM Proxy (Dynamic Config)                    │
+│  - /config/update API로 런타임 설정 변경                        │
+│  - 데이터베이스 기반 모델/라우팅 설정                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 2.2 데이터베이스 스키마
+
+```sql
+-- AI Provider 관리
+CREATE TABLE ai_providers (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,                    -- 'openai', 'anthropic', 'gemini', 'vas'
+  display_name TEXT NOT NULL,            -- 'OpenAI', 'Anthropic Claude'
+  api_base_url TEXT,                     -- Provider API URL
+  api_key_env TEXT,                      -- 환경변수 이름 (보안)
+  is_enabled INTEGER DEFAULT 1,
+  health_status TEXT DEFAULT 'unknown',  -- 'healthy', 'degraded', 'down'
+  last_health_check TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- AI 모델 관리
+CREATE TABLE ai_models (
+  id TEXT PRIMARY KEY,
+  provider_id TEXT NOT NULL REFERENCES ai_providers(id),
+  model_name TEXT NOT NULL,              -- 'gpt-4.1' (LiteLLM에서 사용하는 이름)
+  display_name TEXT NOT NULL,            -- 'GPT-4.1 (GitHub Copilot)'
+  litellm_model TEXT NOT NULL,           -- 'openai/gpt-4.1' (실제 LiteLLM 모델명)
+  description TEXT,
+  context_window INTEGER,                -- 128000
+  max_tokens INTEGER,                    -- 4096
+  input_cost_per_1k REAL,               -- $0.01
+  output_cost_per_1k REAL,              -- $0.03
+  supports_vision INTEGER DEFAULT 0,
+  supports_streaming INTEGER DEFAULT 1,
+  supports_function_calling INTEGER DEFAULT 0,
+  is_enabled INTEGER DEFAULT 1,
+  priority INTEGER DEFAULT 0,            -- 높을수록 우선 사용
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 라우팅 규칙
+CREATE TABLE ai_routes (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,                    -- 'default', 'high-context', 'fast'
+  description TEXT,
+  routing_strategy TEXT DEFAULT 'latency-based-routing',
+  primary_model_id TEXT REFERENCES ai_models(id),
+  fallback_model_ids TEXT,               -- JSON array of model IDs
+  context_window_fallback_ids TEXT,      -- JSON array for long context
+  num_retries INTEGER DEFAULT 3,
+  timeout_seconds INTEGER DEFAULT 120,
+  is_default INTEGER DEFAULT 0,
+  is_enabled INTEGER DEFAULT 1,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 사용량 로그
+CREATE TABLE ai_usage_logs (
+  id TEXT PRIMARY KEY,
+  model_id TEXT REFERENCES ai_models(id),
+  route_id TEXT REFERENCES ai_routes(id),
+  request_type TEXT,                     -- 'chat', 'completion', 'embedding', 'vision'
+  prompt_tokens INTEGER,
+  completion_tokens INTEGER,
+  total_tokens INTEGER,
+  estimated_cost REAL,
+  latency_ms INTEGER,
+  status TEXT,                           -- 'success', 'error', 'timeout'
+  error_message TEXT,
+  user_id TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 일별 사용량 집계
+CREATE TABLE ai_usage_daily (
+  date TEXT NOT NULL,
+  model_id TEXT NOT NULL REFERENCES ai_models(id),
+  total_requests INTEGER DEFAULT 0,
+  total_tokens INTEGER DEFAULT 0,
+  total_cost REAL DEFAULT 0,
+  success_count INTEGER DEFAULT 0,
+  error_count INTEGER DEFAULT 0,
+  avg_latency_ms REAL,
+  PRIMARY KEY (date, model_id)
+);
+```
+
+---
+
+## 3. Admin UI 설계
+
+### 3.1 AI Models 탭
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ AI Models                                           [+ Add Model]│
+├─────────────────────────────────────────────────────────────────┤
+│ ┌─────────────────────────────────────────────────────────────┐ │
+│ │ Filter: [All Providers ▼] [Enabled Only ☑]  Search: [____] │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+│                                                                 │
+│ ┌───────────────────────────────────────────────────────────┐   │
+│ │ 🟢 gpt-4.1                              GitHub Copilot    │   │
+│ │ GPT-4.1 via VAS - Primary model for all AI features       │   │
+│ │ Context: 128K | Vision: ✓ | Streaming: ✓                  │   │
+│ │ Cost: $0.01/1K input, $0.03/1K output                     │   │
+│ │ Today: 1,234 requests | 45.2K tokens | $1.35              │   │
+│ │                                    [Test] [Edit] [Disable]│   │
+│ └───────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│ ┌───────────────────────────────────────────────────────────┐   │
+│ │ 🟢 gemini-1.5-flash                     Google Gemini     │   │
+│ │ Fast, cheap fallback model                                │   │
+│ │ Context: 1M | Vision: ✓ | Streaming: ✓                    │   │
+│ │ Cost: $0.00035/1K input, $0.0014/1K output               │   │
+│ │ Today: 89 requests | 12.1K tokens | $0.02                 │   │
+│ │                                    [Test] [Edit] [Disable]│   │
+│ └───────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│ ┌───────────────────────────────────────────────────────────┐   │
+│ │ 🔴 claude-3.5-sonnet                    Anthropic         │   │
+│ │ API Key not configured                                    │   │
+│ │                                    [Configure] [Remove]   │   │
+│ └───────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 3.2 Routing 탭
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Routing Rules                                      [+ Add Route]│
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│ ┌───────────────────────────────────────────────────────────┐   │
+│ │ ★ Default Route (Active)                                  │   │
+│ │ ┌─────────────────────────────────────────────────────┐   │   │
+│ │ │ Strategy: Latency-Based Routing                     │   │   │
+│ │ │                                                     │   │   │
+│ │ │ Primary: gpt-4.1                                    │   │   │
+│ │ │    ↓ (on failure)                                   │   │   │
+│ │ │ Fallback 1: gemini-1.5-flash                       │   │   │
+│ │ │    ↓ (on failure)                                   │   │   │
+│ │ │ Fallback 2: claude-3-haiku                         │   │   │
+│ │ │                                                     │   │   │
+│ │ │ Retries: 3 | Timeout: 120s                         │   │   │
+│ │ └─────────────────────────────────────────────────────┘   │   │
+│ │                                           [Edit] [Clone]  │   │
+│ └───────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│ ┌───────────────────────────────────────────────────────────┐   │
+│ │ Long Context Route                                        │   │
+│ │ For requests > 32K tokens                                 │   │
+│ │ Primary: gemini-1.5-pro (1M context)                     │   │
+│ │                                [Set as Default] [Edit]    │   │
+│ └───────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 3.3 Usage & Monitoring 탭
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Usage & Monitoring                        Period: [Last 7 Days ▼]│
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│ ┌─────────────────────────────────────────────────────────────┐ │
+│ │ Summary                                                     │ │
+│ │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────────┐│ │
+│ │ │ Requests │ │  Tokens  │ │   Cost   │ │  Avg Latency     ││ │
+│ │ │  8,234   │ │  1.2M    │ │  $24.56  │ │    1.2s          ││ │
+│ │ │  +12%    │ │  +8%     │ │  +15%    │ │    -0.3s         ││ │
+│ │ └──────────┘ └──────────┘ └──────────┘ └──────────────────┘│ │
+│ └─────────────────────────────────────────────────────────────┘ │
+│                                                                 │
+│ ┌─────────────────────────────────────────────────────────────┐ │
+│ │ Usage by Model                                              │ │
+│ │ ████████████████████████░░░░░░░░░░ gpt-4.1 (72%)           │ │
+│ │ ██████░░░░░░░░░░░░░░░░░░░░░░░░░░░░ gemini-1.5-flash (18%)  │ │
+│ │ ███░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ claude-3-haiku (10%)    │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+│                                                                 │
+│ ┌─────────────────────────────────────────────────────────────┐ │
+│ │ Daily Trend Chart                                           │ │
+│ │     ^                                                       │ │
+│ │  2k │    ▄▄                                                │ │
+│ │     │  ▄████▄▄    ▄▄                                       │ │
+│ │  1k │▄████████▄▄▄████▄▄▄▄                                  │ │
+│ │     └────────────────────────────────────────────>         │ │
+│ │      Mon  Tue  Wed  Thu  Fri  Sat  Sun                     │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 4. API 설계
+
+### 4.1 Models API
+
+```typescript
+// GET /api/v1/admin/ai/models
+// 모델 목록 조회
+Response: {
+  models: [{
+    id: string;
+    modelName: string;
+    displayName: string;
+    provider: { id: string; name: string; displayName: string };
+    contextWindow: number;
+    capabilities: { vision: boolean; streaming: boolean; functionCalling: boolean };
+    cost: { inputPer1k: number; outputPer1k: number };
+    isEnabled: boolean;
+    healthStatus: 'healthy' | 'degraded' | 'down' | 'unknown';
+  }]
+}
+
+// POST /api/v1/admin/ai/models
+// 모델 추가
+Request: {
+  modelName: string;
+  displayName: string;
+  providerId: string;
+  litellmModel: string;
+  contextWindow?: number;
+  maxTokens?: number;
+  inputCostPer1k?: number;
+  outputCostPer1k?: number;
+  supportsVision?: boolean;
+}
+
+// PUT /api/v1/admin/ai/models/:id
+// 모델 수정
+
+// DELETE /api/v1/admin/ai/models/:id
+// 모델 삭제
+
+// POST /api/v1/admin/ai/models/:id/test
+// 모델 테스트
+Request: { prompt?: string }
+Response: { success: boolean; latencyMs: number; response?: string; error?: string }
+```
+
+### 4.2 Providers API
+
+```typescript
+// GET /api/v1/admin/ai/providers
+// Provider 목록 조회
+
+// POST /api/v1/admin/ai/providers
+// Provider 추가
+Request: {
+  name: string;           // 'openai', 'anthropic', etc.
+  displayName: string;
+  apiBaseUrl?: string;
+  apiKeyEnv: string;      // 환경변수 이름 (실제 키는 저장하지 않음)
+}
+
+// PUT /api/v1/admin/ai/providers/:id/health
+// Health check 실행
+Response: { status: 'healthy' | 'degraded' | 'down'; latencyMs: number; error?: string }
+```
+
+### 4.3 Routes API
+
+```typescript
+// GET /api/v1/admin/ai/routes
+// 라우팅 규칙 목록
+
+// POST /api/v1/admin/ai/routes
+// 라우팅 규칙 추가
+Request: {
+  name: string;
+  routingStrategy: 'simple' | 'latency-based-routing' | 'cost-based-routing';
+  primaryModelId: string;
+  fallbackModelIds: string[];
+  numRetries?: number;
+  timeoutSeconds?: number;
+  isDefault?: boolean;
+}
+
+// POST /api/v1/admin/ai/reload
+// LiteLLM 설정 리로드 (DB 기반 설정을 YAML로 변환 후 적용)
+```
+
+### 4.4 Usage API
+
+```typescript
+// GET /api/v1/admin/ai/usage
+// 사용량 조회
+Query: { 
+  startDate: string;  // ISO date
+  endDate: string;
+  modelId?: string;
+  groupBy?: 'day' | 'model' | 'route';
+}
+Response: {
+  summary: {
+    totalRequests: number;
+    totalTokens: number;
+    totalCost: number;
+    avgLatencyMs: number;
+  };
+  breakdown: [{
+    date?: string;
+    model?: { id: string; name: string };
+    requests: number;
+    tokens: number;
+    cost: number;
+  }]
+}
+```
+
+---
+
+## 5. 구현 계획
+
+### Phase 1: 기반 구축 (1주)
+
+| 항목 | 설명 |
+|------|------|
+| DB 스키마 | D1 마이그레이션 파일 작성 |
+| Seed 데이터 | 기존 `litellm_config.yaml` 기반 초기 데이터 생성 |
+| Backend API | Models, Providers CRUD API 구현 |
+
+### Phase 2: Admin UI (1주)
+
+| 항목 | 설명 |
+|------|------|
+| Models 탭 | 모델 목록, 추가/수정/삭제, 테스트 기능 |
+| Providers 탭 | Provider 관리, Health check |
+| 통합 | AdminConfig 페이지에 AI 탭 추가 |
+
+### Phase 3: 라우팅 & 모니터링 (1주)
+
+| 항목 | 설명 |
+|------|------|
+| Routes 탭 | 라우팅 규칙 관리 UI |
+| LiteLLM 연동 | 동적 설정 리로드 API |
+| Usage 탭 | 사용량 대시보드, 차트 |
+
+### Phase 4: 고급 기능 (추후)
+
+| 항목 | 설명 |
+|------|------|
+| 예산 관리 | 일/월별 비용 한도 설정 |
+| 알림 | 비용 초과, 장애 알림 (Slack, Email) |
+| A/B 테스트 | 모델 성능 비교 테스트 |
+
+---
+
+## 6. 보안 고려사항
+
+1. **API 키 관리**
+   - API 키는 데이터베이스에 직접 저장하지 않음
+   - 환경변수 이름만 저장하고, 실제 키는 환경변수로 관리
+   - Workers Secrets 또는 Backend .env 파일 사용
+
+2. **접근 제어**
+   - 모든 `/admin/ai/*` 엔드포인트는 `requireAdmin` 미들웨어 적용
+   - JWT 토큰 또는 Bearer 토큰 인증 필수
+
+3. **감사 로그**
+   - 모델/Provider 변경 시 감사 로그 기록
+   - 설정 변경 이력 추적
+
+---
+
+## 7. 예상 효과
+
+| 항목 | Before | After |
+|------|--------|-------|
+| 모델 추가 | YAML 수정 → 서비스 재시작 | UI에서 실시간 추가 |
+| 비용 추적 | 수동 계산 | 자동 집계 및 대시보드 |
+| 장애 대응 | 로그 확인 후 수동 전환 | 자동 fallback + 알림 |
+| Provider 전환 | 코드 수정 필요 | UI에서 활성화/비활성화 |
+
+---
+
+## 8. 참고 자료
+
+- [LiteLLM Documentation](https://docs.litellm.ai/)
+- [LiteLLM Proxy Config](https://docs.litellm.ai/docs/proxy/configs)
+- [LiteLLM Dynamic Config](https://docs.litellm.ai/docs/proxy/config)
+- 기존 설정: `backend/litellm_config.yaml`
+- AI Service: `backend/src/lib/ai-service.js`
 
 ```
 
@@ -21807,7 +28633,7 @@ noblog.nodove.com
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-12-25T23:11:37.196Z",
+  "generatedAt": "2025-12-26T01:00:43.630Z",
   "years": [
     "2025",
     "2024"
@@ -30344,7 +37170,7 @@ body.ai-memo-block-select-active {
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-12-25T23:11:37.196Z",
+  "generatedAt": "2025-12-26T00:59:17.878Z",
   "years": [
     "2025",
     "2024"
@@ -37896,7 +44722,7 @@ LIS는 동적 계획법의 대표적인 문제로, 기본적인 O(N²) 해법부
     "week7-8.md",
     "week9-10.md"
   ],
-  "generatedAt": "2025-12-25T23:11:37.160Z",
+  "generatedAt": "2025-12-26T00:59:17.822Z",
   "totalFiles": 58,
   "excludedFiles": 0
 }
@@ -52840,7 +59666,7 @@ TLS가 웹 전반에 퍼져 나가는 과정도 인상 깊었다. 렛츠 인크�
     "web-commercialization-journal.md",
     "wine-clipboard-bridge-journal.md"
   ],
-  "generatedAt": "2025-12-25T23:11:37.163Z",
+  "generatedAt": "2025-12-26T00:59:17.829Z",
   "totalFiles": 75,
   "excludedFiles": 0
 }
@@ -59510,6 +66336,2447 @@ export { WorkersManager } from './WorkersManager';
 
 ---
 
+## frontend/src/components/features/admin/ai
+
+### AIManager.tsx
+
+**Path:** `frontend/src/components/features/admin/ai/AIManager.tsx`
+
+```tsx
+/**
+ * AI Model Management Dashboard
+ */
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Bot, Cpu, GitBranch, BarChart3 } from 'lucide-react';
+import { ProvidersManager } from './ProvidersManager';
+import { ModelsManager } from './ModelsManager';
+import { RoutesManager } from './RoutesManager';
+import { UsageMonitor } from './UsageMonitor';
+
+export function AIManager() {
+  return (
+    <Tabs defaultValue="models" className="space-y-6">
+      <TabsList className="grid w-full max-w-2xl grid-cols-4">
+        <TabsTrigger value="models" className="flex items-center gap-2">
+          <Bot className="h-4 w-4" />
+          Models
+        </TabsTrigger>
+        <TabsTrigger value="providers" className="flex items-center gap-2">
+          <Cpu className="h-4 w-4" />
+          Providers
+        </TabsTrigger>
+        <TabsTrigger value="routes" className="flex items-center gap-2">
+          <GitBranch className="h-4 w-4" />
+          Routes
+        </TabsTrigger>
+        <TabsTrigger value="monitoring" className="flex items-center gap-2">
+          <BarChart3 className="h-4 w-4" />
+          Monitoring
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="models">
+        <ModelsManager />
+      </TabsContent>
+
+      <TabsContent value="providers">
+        <ProvidersManager />
+      </TabsContent>
+
+      <TabsContent value="routes">
+        <RoutesManager />
+      </TabsContent>
+
+      <TabsContent value="monitoring">
+        <UsageMonitor />
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+```
+
+### ModelsManager.tsx
+
+**Path:** `frontend/src/components/features/admin/ai/ModelsManager.tsx`
+
+```tsx
+/**
+ * AI Models Manager Component
+ */
+
+import { useState, useEffect } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Plus,
+  MoreHorizontal,
+  Play,
+  Pencil,
+  Trash2,
+  Eye,
+  Zap,
+  MessageSquare,
+  Loader2,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+} from 'lucide-react';
+import { useModels, useProviders } from './hooks';
+import type { AIModel, ModelFormData, AIProvider } from './types';
+
+interface ModelFormProps {
+  model?: AIModel;
+  providers: AIProvider[];
+  onSubmit: (data: ModelFormData) => Promise<void>;
+  onCancel: () => void;
+}
+
+function ModelForm({ model, providers, onSubmit, onCancel }: ModelFormProps) {
+  const [formData, setFormData] = useState<ModelFormData>({
+    modelName: model?.modelName || '',
+    displayName: model?.displayName || '',
+    providerId: model?.provider?.id || '',
+    litellmModel: model?.litellmModel || '',
+    description: model?.description || '',
+    contextWindow: model?.contextWindow || undefined,
+    maxTokens: model?.maxTokens || undefined,
+    inputCostPer1k: model?.cost?.inputPer1k || undefined,
+    outputCostPer1k: model?.cost?.outputPer1k || undefined,
+    supportsVision: model?.capabilities?.vision || false,
+    supportsStreaming: model?.capabilities?.streaming ?? true,
+    supportsFunctionCalling: model?.capabilities?.functionCalling || false,
+    priority: model?.priority || 0,
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await onSubmit(formData);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="modelName">Model Name *</Label>
+          <Input
+            id="modelName"
+            value={formData.modelName}
+            onChange={(e) => setFormData({ ...formData, modelName: e.target.value })}
+            placeholder="gpt-4o"
+            disabled={!!model}
+            required
+          />
+          <p className="text-xs text-muted-foreground">Used in API calls</p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="displayName">Display Name *</Label>
+          <Input
+            id="displayName"
+            value={formData.displayName}
+            onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+            placeholder="GPT-4o"
+            required
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="providerId">Provider *</Label>
+          <Select
+            value={formData.providerId}
+            onValueChange={(v) => setFormData({ ...formData, providerId: v })}
+            disabled={!!model}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select provider" />
+            </SelectTrigger>
+            <SelectContent>
+              {providers.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.displayName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="litellmModel">LiteLLM Model *</Label>
+          <Input
+            id="litellmModel"
+            value={formData.litellmModel}
+            onChange={(e) => setFormData({ ...formData, litellmModel: e.target.value })}
+            placeholder="openai/gpt-4o"
+            required
+          />
+          <p className="text-xs text-muted-foreground">Actual model identifier</p>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description">Description</Label>
+        <Input
+          id="description"
+          value={formData.description || ''}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          placeholder="Model description"
+        />
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="contextWindow">Context Window</Label>
+          <Input
+            id="contextWindow"
+            type="number"
+            value={formData.contextWindow || ''}
+            onChange={(e) =>
+              setFormData({ ...formData, contextWindow: e.target.value ? parseInt(e.target.value) : undefined })
+            }
+            placeholder="128000"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="maxTokens">Max Tokens</Label>
+          <Input
+            id="maxTokens"
+            type="number"
+            value={formData.maxTokens || ''}
+            onChange={(e) =>
+              setFormData({ ...formData, maxTokens: e.target.value ? parseInt(e.target.value) : undefined })
+            }
+            placeholder="4096"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="priority">Priority</Label>
+          <Input
+            id="priority"
+            type="number"
+            value={formData.priority || ''}
+            onChange={(e) =>
+              setFormData({ ...formData, priority: e.target.value ? parseInt(e.target.value) : 0 })
+            }
+            placeholder="0"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="inputCost">Input Cost ($/1K tokens)</Label>
+          <Input
+            id="inputCost"
+            type="number"
+            step="0.0001"
+            value={formData.inputCostPer1k || ''}
+            onChange={(e) =>
+              setFormData({ ...formData, inputCostPer1k: e.target.value ? parseFloat(e.target.value) : undefined })
+            }
+            placeholder="0.01"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="outputCost">Output Cost ($/1K tokens)</Label>
+          <Input
+            id="outputCost"
+            type="number"
+            step="0.0001"
+            value={formData.outputCostPer1k || ''}
+            onChange={(e) =>
+              setFormData({ ...formData, outputCostPer1k: e.target.value ? parseFloat(e.target.value) : undefined })
+            }
+            placeholder="0.03"
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-6 py-2">
+        <div className="flex items-center gap-2">
+          <Switch
+            id="vision"
+            checked={formData.supportsVision}
+            onCheckedChange={(v) => setFormData({ ...formData, supportsVision: v })}
+          />
+          <Label htmlFor="vision" className="flex items-center gap-1">
+            <Eye className="h-4 w-4" /> Vision
+          </Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch
+            id="streaming"
+            checked={formData.supportsStreaming}
+            onCheckedChange={(v) => setFormData({ ...formData, supportsStreaming: v })}
+          />
+          <Label htmlFor="streaming" className="flex items-center gap-1">
+            <Zap className="h-4 w-4" /> Streaming
+          </Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch
+            id="functions"
+            checked={formData.supportsFunctionCalling}
+            onCheckedChange={(v) => setFormData({ ...formData, supportsFunctionCalling: v })}
+          />
+          <Label htmlFor="functions" className="flex items-center gap-1">
+            <MessageSquare className="h-4 w-4" /> Functions
+          </Label>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={submitting}>
+          {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {model ? 'Update' : 'Create'} Model
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+interface TestResultProps {
+  result: {
+    success: boolean;
+    modelName: string;
+    latencyMs?: number;
+    response?: string;
+    error?: string;
+  };
+}
+
+function TestResult({ result }: TestResultProps) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        {result.success ? (
+          <CheckCircle className="h-5 w-5 text-green-500" />
+        ) : (
+          <XCircle className="h-5 w-5 text-red-500" />
+        )}
+        <span className="font-medium">
+          {result.success ? 'Test Passed' : 'Test Failed'}
+        </span>
+        {result.latencyMs && (
+          <Badge variant="secondary">{result.latencyMs}ms</Badge>
+        )}
+      </div>
+      {result.response && (
+        <div className="p-3 bg-muted rounded-md">
+          <p className="text-sm font-mono">{result.response}</p>
+        </div>
+      )}
+      {result.error && (
+        <div className="p-3 bg-red-50 dark:bg-red-950 rounded-md">
+          <p className="text-sm text-red-600 dark:text-red-400">{result.error}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ModelsManager() {
+  const { models, loading, error, fetchModels, createModel, updateModel, deleteModel, testModel } =
+    useModels();
+  const { providers, fetchProviders } = useProviders();
+  const [showForm, setShowForm] = useState(false);
+  const [editingModel, setEditingModel] = useState<AIModel | null>(null);
+  const [testingModel, setTestingModel] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<TestResultProps['result'] | null>(null);
+  const [showTestDialog, setShowTestDialog] = useState(false);
+  const [filterProvider, setFilterProvider] = useState<string>('');
+  const [filterEnabled, setFilterEnabled] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    fetchModels();
+    fetchProviders();
+  }, [fetchModels, fetchProviders]);
+
+  const handleCreate = async (data: ModelFormData) => {
+    const result = await createModel(data);
+    if (result.ok) {
+      setShowForm(false);
+    }
+  };
+
+  const handleUpdate = async (data: ModelFormData) => {
+    if (!editingModel) return;
+    const result = await updateModel(editingModel.id, data);
+    if (result.ok) {
+      setEditingModel(null);
+    }
+  };
+
+  const handleToggleEnabled = async (model: AIModel) => {
+    await updateModel(model.id, { isEnabled: !model.isEnabled });
+  };
+
+  const handleDelete = async (model: AIModel) => {
+    if (!confirm(`Delete model "${model.displayName}"?`)) return;
+    await deleteModel(model.id);
+  };
+
+  const handleTest = async (model: AIModel) => {
+    setTestingModel(model.id);
+    setTestResult(null);
+    setShowTestDialog(true);
+    const result = await testModel(model.id);
+    setTestingModel(null);
+    if (result.ok && result.data) {
+      setTestResult(result.data);
+    } else {
+      setTestResult({
+        success: false,
+        modelName: model.modelName,
+        error: result.error,
+      });
+    }
+  };
+
+  const filteredModels = models.filter((m) => {
+    if (filterProvider && m.provider.id !== filterProvider) return false;
+    if (filterEnabled === 'true' && !m.isEnabled) return false;
+    if (filterEnabled === 'false' && m.isEnabled) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return (
+        m.modelName.toLowerCase().includes(q) ||
+        m.displayName.toLowerCase().includes(q) ||
+        m.provider.displayName.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>AI Models</CardTitle>
+            <CardDescription>Manage available AI models and their configurations</CardDescription>
+          </div>
+          <Button onClick={() => setShowForm(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Model
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Filters */}
+        <div className="flex gap-4 flex-wrap">
+          <Input
+            placeholder="Search models..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="max-w-xs"
+          />
+          <Select value={filterProvider} onValueChange={setFilterProvider}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All Providers" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Providers</SelectItem>
+              {providers.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.displayName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterEnabled} onValueChange={setFilterEnabled}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Status</SelectItem>
+              <SelectItem value="true">Enabled Only</SelectItem>
+              <SelectItem value="false">Disabled Only</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {error && (
+          <div className="p-3 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-md flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredModels.map((model) => (
+              <div
+                key={model.id}
+                className={`p-4 border rounded-lg ${
+                  model.isEnabled
+                    ? 'border-border'
+                    : 'border-dashed border-muted-foreground/30 opacity-60'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{model.displayName}</span>
+                      <Badge variant="outline" className="font-mono text-xs">
+                        {model.modelName}
+                      </Badge>
+                      <Badge variant="secondary">{model.provider.displayName}</Badge>
+                      {!model.isEnabled && <Badge variant="destructive">Disabled</Badge>}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {model.description || model.litellmModel}
+                    </p>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      {model.contextWindow && <span>Context: {(model.contextWindow / 1000).toFixed(0)}K</span>}
+                      {model.cost.inputPer1k !== null && (
+                        <span>
+                          Cost: ${model.cost.inputPer1k}/${model.cost.outputPer1k} per 1K
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1">
+                        {model.capabilities.vision && (
+                          <span title="Vision">
+                            <Eye className="h-3 w-3" />
+                          </span>
+                        )}
+                        {model.capabilities.streaming && (
+                          <span title="Streaming">
+                            <Zap className="h-3 w-3" />
+                          </span>
+                        )}
+                        {model.capabilities.functionCalling && (
+                          <span title="Function Calling">
+                            <MessageSquare className="h-3 w-3" />
+                          </span>
+                        )}
+                      </span>
+                      <span>Priority: {model.priority}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleTest(model)}
+                      disabled={testingModel === model.id}
+                    >
+                      {testingModel === model.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Play className="h-4 w-4" />
+                      )}
+                      <span className="ml-1">Test</span>
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditingModel(model)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleToggleEnabled(model)}>
+                          {model.isEnabled ? 'Disable' : 'Enable'}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(model)}
+                          className="text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {filteredModels.length === 0 && (
+              <p className="text-center text-muted-foreground py-8">
+                No models found. Add your first model to get started.
+              </p>
+            )}
+          </div>
+        )}
+      </CardContent>
+
+      {/* Create Dialog */}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add New Model</DialogTitle>
+            <DialogDescription>Configure a new AI model for use in the system</DialogDescription>
+          </DialogHeader>
+          <ModelForm
+            providers={providers}
+            onSubmit={handleCreate}
+            onCancel={() => setShowForm(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingModel} onOpenChange={() => setEditingModel(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Model</DialogTitle>
+            <DialogDescription>Update model configuration</DialogDescription>
+          </DialogHeader>
+          {editingModel && (
+            <ModelForm
+              model={editingModel}
+              providers={providers}
+              onSubmit={handleUpdate}
+              onCancel={() => setEditingModel(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Test Dialog */}
+      <Dialog open={showTestDialog} onOpenChange={setShowTestDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Model Test</DialogTitle>
+            <DialogDescription>Testing model connectivity and response</DialogDescription>
+          </DialogHeader>
+          {testingModel && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          )}
+          {testResult && <TestResult result={testResult} />}
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
+
+```
+
+### ProvidersManager.tsx
+
+**Path:** `frontend/src/components/features/admin/ai/ProvidersManager.tsx`
+
+```tsx
+/**
+ * AI Providers Manager Component
+ */
+
+import { useState, useEffect } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Plus,
+  MoreHorizontal,
+  RefreshCw,
+  Pencil,
+  Trash2,
+  Loader2,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Circle,
+} from 'lucide-react';
+import { useProviders } from './hooks';
+import type { AIProvider, ProviderFormData } from './types';
+
+interface ProviderFormProps {
+  provider?: AIProvider;
+  onSubmit: (data: ProviderFormData) => Promise<void>;
+  onCancel: () => void;
+}
+
+function ProviderForm({ provider, onSubmit, onCancel }: ProviderFormProps) {
+  const [formData, setFormData] = useState<ProviderFormData>({
+    name: provider?.name || '',
+    displayName: provider?.displayName || '',
+    apiBaseUrl: provider?.apiBaseUrl || '',
+    apiKeyEnv: provider?.apiKeyEnv || '',
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await onSubmit(formData);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Name *</Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="openai"
+            disabled={!!provider}
+            required
+          />
+          <p className="text-xs text-muted-foreground">Identifier (lowercase, no spaces)</p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="displayName">Display Name *</Label>
+          <Input
+            id="displayName"
+            value={formData.displayName}
+            onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+            placeholder="OpenAI"
+            required
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="apiBaseUrl">API Base URL</Label>
+        <Input
+          id="apiBaseUrl"
+          value={formData.apiBaseUrl || ''}
+          onChange={(e) => setFormData({ ...formData, apiBaseUrl: e.target.value })}
+          placeholder="https://api.openai.com/v1"
+        />
+        <p className="text-xs text-muted-foreground">Leave empty for default provider URL</p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="apiKeyEnv">API Key Environment Variable</Label>
+        <Input
+          id="apiKeyEnv"
+          value={formData.apiKeyEnv || ''}
+          onChange={(e) => setFormData({ ...formData, apiKeyEnv: e.target.value })}
+          placeholder="OPENAI_API_KEY"
+        />
+        <p className="text-xs text-muted-foreground">
+          Environment variable name containing the API key (for security, we don't store actual keys)
+        </p>
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={submitting}>
+          {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {provider ? 'Update' : 'Create'} Provider
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+function HealthStatusBadge({ status }: { status: AIProvider['healthStatus'] }) {
+  switch (status) {
+    case 'healthy':
+      return (
+        <Badge variant="default" className="bg-green-500">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Healthy
+        </Badge>
+      );
+    case 'degraded':
+      return (
+        <Badge variant="secondary" className="bg-yellow-500 text-white">
+          <AlertCircle className="h-3 w-3 mr-1" />
+          Degraded
+        </Badge>
+      );
+    case 'down':
+      return (
+        <Badge variant="destructive">
+          <XCircle className="h-3 w-3 mr-1" />
+          Down
+        </Badge>
+      );
+    default:
+      return (
+        <Badge variant="outline">
+          <Circle className="h-3 w-3 mr-1" />
+          Unknown
+        </Badge>
+      );
+  }
+}
+
+export function ProvidersManager() {
+  const {
+    providers,
+    loading,
+    error,
+    fetchProviders,
+    createProvider,
+    updateProvider,
+    deleteProvider,
+    checkHealth,
+  } = useProviders();
+  const [showForm, setShowForm] = useState(false);
+  const [editingProvider, setEditingProvider] = useState<AIProvider | null>(null);
+  const [checkingHealth, setCheckingHealth] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchProviders();
+  }, [fetchProviders]);
+
+  const handleCreate = async (data: ProviderFormData) => {
+    const result = await createProvider(data);
+    if (result.ok) {
+      setShowForm(false);
+    }
+  };
+
+  const handleUpdate = async (data: ProviderFormData) => {
+    if (!editingProvider) return;
+    const result = await updateProvider(editingProvider.id, data);
+    if (result.ok) {
+      setEditingProvider(null);
+    }
+  };
+
+  const handleToggleEnabled = async (provider: AIProvider) => {
+    await updateProvider(provider.id, { isEnabled: !provider.isEnabled });
+  };
+
+  const handleDelete = async (provider: AIProvider) => {
+    if (!confirm(`Delete provider "${provider.displayName}"? This cannot be undone.`)) return;
+    await deleteProvider(provider.id);
+  };
+
+  const handleCheckHealth = async (provider: AIProvider) => {
+    setCheckingHealth(provider.id);
+    await checkHealth(provider.id);
+    setCheckingHealth(null);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>AI Providers</CardTitle>
+            <CardDescription>Manage AI service providers and their API configurations</CardDescription>
+          </div>
+          <Button onClick={() => setShowForm(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Provider
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {error && (
+          <div className="p-3 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-md flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {providers.map((provider) => (
+              <div
+                key={provider.id}
+                className={`p-4 border rounded-lg ${
+                  provider.isEnabled
+                    ? 'border-border'
+                    : 'border-dashed border-muted-foreground/30 opacity-60'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{provider.displayName}</span>
+                      <Badge variant="outline" className="font-mono text-xs">
+                        {provider.name}
+                      </Badge>
+                      <HealthStatusBadge status={provider.healthStatus} />
+                      {!provider.isEnabled && <Badge variant="destructive">Disabled</Badge>}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {provider.apiBaseUrl && <p>URL: {provider.apiBaseUrl}</p>}
+                      {provider.apiKeyEnv && <p>API Key: ${provider.apiKeyEnv}</p>}
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span>{provider.enabledModelCount}/{provider.modelCount} models enabled</span>
+                      {provider.lastHealthCheck && (
+                        <span>Last check: {new Date(provider.lastHealthCheck).toLocaleString()}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCheckHealth(provider)}
+                      disabled={checkingHealth === provider.id}
+                    >
+                      {checkingHealth === provider.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                      <span className="ml-1">Health</span>
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditingProvider(provider)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleToggleEnabled(provider)}>
+                          {provider.isEnabled ? 'Disable' : 'Enable'}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(provider)}
+                          className="text-red-600"
+                          disabled={provider.modelCount > 0}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {providers.length === 0 && (
+              <p className="text-center text-muted-foreground py-8">
+                No providers configured. Add your first provider to get started.
+              </p>
+            )}
+          </div>
+        )}
+      </CardContent>
+
+      {/* Create Dialog */}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Provider</DialogTitle>
+            <DialogDescription>Configure a new AI service provider</DialogDescription>
+          </DialogHeader>
+          <ProviderForm onSubmit={handleCreate} onCancel={() => setShowForm(false)} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingProvider} onOpenChange={() => setEditingProvider(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Provider</DialogTitle>
+            <DialogDescription>Update provider configuration</DialogDescription>
+          </DialogHeader>
+          {editingProvider && (
+            <ProviderForm
+              provider={editingProvider}
+              onSubmit={handleUpdate}
+              onCancel={() => setEditingProvider(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
+
+```
+
+### RoutesManager.tsx
+
+**Path:** `frontend/src/components/features/admin/ai/RoutesManager.tsx`
+
+```tsx
+/**
+ * AI Routes Manager Component
+ */
+
+import { useState, useEffect } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Plus,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Loader2,
+  AlertCircle,
+  Star,
+  ArrowDown,
+  Copy,
+} from 'lucide-react';
+import { useRoutes, useModels } from './hooks';
+import type { AIRoute, RouteFormData, AIModel } from './types';
+
+interface RouteFormProps {
+  route?: AIRoute;
+  models: AIModel[];
+  onSubmit: (data: RouteFormData) => Promise<void>;
+  onCancel: () => void;
+}
+
+function RouteForm({ route, models, onSubmit, onCancel }: RouteFormProps) {
+  const [formData, setFormData] = useState<RouteFormData>({
+    name: route?.name || '',
+    description: route?.description || '',
+    routingStrategy: route?.routingStrategy || 'latency-based-routing',
+    primaryModelId: route?.primaryModel?.id || '',
+    fallbackModelIds: route?.fallbackModelIds || [],
+    contextWindowFallbackIds: route?.contextWindowFallbackIds || [],
+    numRetries: route?.numRetries || 3,
+    timeoutSeconds: route?.timeoutSeconds || 120,
+    isDefault: route?.isDefault || false,
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  const enabledModels = models.filter((m) => m.isEnabled);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await onSubmit(formData);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const toggleFallback = (modelId: string) => {
+    const current = formData.fallbackModelIds || [];
+    if (current.includes(modelId)) {
+      setFormData({
+        ...formData,
+        fallbackModelIds: current.filter((id) => id !== modelId),
+      });
+    } else {
+      setFormData({
+        ...formData,
+        fallbackModelIds: [...current, modelId],
+      });
+    }
+  };
+
+  const toggleContextFallback = (modelId: string) => {
+    const current = formData.contextWindowFallbackIds || [];
+    if (current.includes(modelId)) {
+      setFormData({
+        ...formData,
+        contextWindowFallbackIds: current.filter((id) => id !== modelId),
+      });
+    } else {
+      setFormData({
+        ...formData,
+        contextWindowFallbackIds: [...current, modelId],
+      });
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Route Name *</Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="default"
+            disabled={!!route}
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="strategy">Routing Strategy</Label>
+          <Select
+            value={formData.routingStrategy}
+            onValueChange={(v) =>
+              setFormData({
+                ...formData,
+                routingStrategy: v as RouteFormData['routingStrategy'],
+              })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="simple">Simple</SelectItem>
+              <SelectItem value="latency-based-routing">Latency Based</SelectItem>
+              <SelectItem value="cost-based-routing">Cost Based</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description">Description</Label>
+        <Input
+          id="description"
+          value={formData.description || ''}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          placeholder="Route description"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="primaryModel">Primary Model</Label>
+        <Select
+          value={formData.primaryModelId || ''}
+          onValueChange={(v) => setFormData({ ...formData, primaryModelId: v })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select primary model" />
+          </SelectTrigger>
+          <SelectContent>
+            {enabledModels.map((m) => (
+              <SelectItem key={m.id} value={m.id}>
+                {m.displayName} ({m.provider.displayName})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Fallback Models</Label>
+        <p className="text-xs text-muted-foreground mb-2">
+          Select models to use when the primary model fails
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {enabledModels
+            .filter((m) => m.id !== formData.primaryModelId)
+            .map((m) => (
+              <Badge
+                key={m.id}
+                variant={formData.fallbackModelIds?.includes(m.id) ? 'default' : 'outline'}
+                className="cursor-pointer"
+                onClick={() => toggleFallback(m.id)}
+              >
+                {m.displayName}
+              </Badge>
+            ))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Context Window Fallbacks</Label>
+        <p className="text-xs text-muted-foreground mb-2">
+          Select models for long context scenarios
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {enabledModels
+            .filter((m) => (m.contextWindow || 0) > 100000)
+            .map((m) => (
+              <Badge
+                key={m.id}
+                variant={
+                  formData.contextWindowFallbackIds?.includes(m.id) ? 'default' : 'outline'
+                }
+                className="cursor-pointer"
+                onClick={() => toggleContextFallback(m.id)}
+              >
+                {m.displayName} ({((m.contextWindow || 0) / 1000).toFixed(0)}K)
+              </Badge>
+            ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="retries">Retries</Label>
+          <Input
+            id="retries"
+            type="number"
+            value={formData.numRetries}
+            onChange={(e) =>
+              setFormData({ ...formData, numRetries: parseInt(e.target.value) || 3 })
+            }
+            min={0}
+            max={10}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="timeout">Timeout (seconds)</Label>
+          <Input
+            id="timeout"
+            type="number"
+            value={formData.timeoutSeconds}
+            onChange={(e) =>
+              setFormData({ ...formData, timeoutSeconds: parseInt(e.target.value) || 120 })
+            }
+            min={10}
+            max={600}
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="isDefault"
+          checked={formData.isDefault}
+          onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
+          className="h-4 w-4"
+        />
+        <Label htmlFor="isDefault">Set as default route</Label>
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={submitting}>
+          {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {route ? 'Update' : 'Create'} Route
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+export function RoutesManager() {
+  const { routes, loading, error, fetchRoutes, createRoute, updateRoute, deleteRoute } =
+    useRoutes();
+  const { models, fetchModels } = useModels();
+  const [showForm, setShowForm] = useState(false);
+  const [editingRoute, setEditingRoute] = useState<AIRoute | null>(null);
+
+  useEffect(() => {
+    fetchRoutes();
+    fetchModels();
+  }, [fetchRoutes, fetchModels]);
+
+  const handleCreate = async (data: RouteFormData) => {
+    const result = await createRoute(data);
+    if (result.ok) {
+      setShowForm(false);
+    }
+  };
+
+  const handleUpdate = async (data: RouteFormData) => {
+    if (!editingRoute) return;
+    const result = await updateRoute(editingRoute.id, data);
+    if (result.ok) {
+      setEditingRoute(null);
+    }
+  };
+
+  const handleSetDefault = async (route: AIRoute) => {
+    await updateRoute(route.id, { isDefault: true });
+  };
+
+  const handleToggleEnabled = async (route: AIRoute) => {
+    await updateRoute(route.id, { isEnabled: !route.isEnabled });
+  };
+
+  const handleDelete = async (route: AIRoute) => {
+    if (route.isDefault) {
+      alert('Cannot delete the default route. Set another route as default first.');
+      return;
+    }
+    if (!confirm(`Delete route "${route.name}"?`)) return;
+    await deleteRoute(route.id);
+  };
+
+  const handleClone = (route: AIRoute) => {
+    setEditingRoute({
+      ...route,
+      id: '',
+      name: `${route.name}-copy`,
+      isDefault: false,
+    } as AIRoute);
+    setShowForm(true);
+  };
+
+  const getModelName = (modelId: string) => {
+    const model = models.find((m) => m.id === modelId);
+    return model?.displayName || modelId;
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Routing Rules</CardTitle>
+            <CardDescription>Configure model routing and fallback strategies</CardDescription>
+          </div>
+          <Button onClick={() => setShowForm(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Route
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {error && (
+          <div className="p-3 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-md flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {routes.map((route) => (
+              <div
+                key={route.id}
+                className={`p-4 border rounded-lg ${
+                  route.isDefault
+                    ? 'border-primary bg-primary/5'
+                    : route.isEnabled
+                    ? 'border-border'
+                    : 'border-dashed border-muted-foreground/30 opacity-60'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      {route.isDefault && <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />}
+                      <span className="font-medium">{route.name}</span>
+                      <Badge variant="outline">{route.routingStrategy}</Badge>
+                      {!route.isEnabled && <Badge variant="destructive">Disabled</Badge>}
+                    </div>
+                    {route.description && (
+                      <p className="text-sm text-muted-foreground">{route.description}</p>
+                    )}
+
+                    {/* Route Flow Visualization */}
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <span className="font-medium text-muted-foreground">Flow:</span>
+                      {route.primaryModel && (
+                        <Badge variant="secondary">{route.primaryModel.displayName}</Badge>
+                      )}
+                      {route.fallbackModelIds.length > 0 && (
+                        <>
+                          <ArrowDown className="h-4 w-4 text-muted-foreground" />
+                          {route.fallbackModelIds.map((id, idx) => (
+                            <span key={id} className="flex items-center gap-1">
+                              <Badge variant="outline">{getModelName(id)}</Badge>
+                              {idx < route.fallbackModelIds.length - 1 && (
+                                <ArrowDown className="h-3 w-3 text-muted-foreground" />
+                              )}
+                            </span>
+                          ))}
+                        </>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span>Retries: {route.numRetries}</span>
+                      <span>Timeout: {route.timeoutSeconds}s</span>
+                      {route.contextWindowFallbackIds.length > 0 && (
+                        <span>
+                          Long context: {route.contextWindowFallbackIds.map(getModelName).join(', ')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setEditingRoute(route)}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleClone(route)}>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Clone
+                      </DropdownMenuItem>
+                      {!route.isDefault && (
+                        <DropdownMenuItem onClick={() => handleSetDefault(route)}>
+                          <Star className="h-4 w-4 mr-2" />
+                          Set as Default
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={() => handleToggleEnabled(route)}>
+                        {route.isEnabled ? 'Disable' : 'Enable'}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => handleDelete(route)}
+                        className="text-red-600"
+                        disabled={route.isDefault}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            ))}
+            {routes.length === 0 && (
+              <p className="text-center text-muted-foreground py-8">
+                No routes configured. Add your first routing rule to get started.
+              </p>
+            )}
+          </div>
+        )}
+      </CardContent>
+
+      {/* Create Dialog */}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add New Route</DialogTitle>
+            <DialogDescription>Configure a new routing rule</DialogDescription>
+          </DialogHeader>
+          <RouteForm
+            models={models}
+            onSubmit={handleCreate}
+            onCancel={() => setShowForm(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingRoute} onOpenChange={() => setEditingRoute(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Route</DialogTitle>
+            <DialogDescription>Update routing configuration</DialogDescription>
+          </DialogHeader>
+          {editingRoute && (
+            <RouteForm
+              route={editingRoute}
+              models={models}
+              onSubmit={handleUpdate}
+              onCancel={() => setEditingRoute(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
+
+```
+
+### UsageMonitor.tsx
+
+**Path:** `frontend/src/components/features/admin/ai/UsageMonitor.tsx`
+
+```tsx
+/**
+ * AI Usage Monitoring Component
+ */
+
+import { useState, useEffect, useMemo } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Loader2,
+  AlertCircle,
+  TrendingUp,
+  Zap,
+  DollarSign,
+  Clock,
+  CheckCircle,
+  XCircle,
+  RefreshCw,
+  Download,
+} from 'lucide-react';
+import { useUsage, useAIConfig } from './hooks';
+
+function formatNumber(num: number): string {
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+  return num.toString();
+}
+
+function StatCard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  trend,
+}: {
+  title: string;
+  value: string | number;
+  subtitle?: string;
+  icon: React.ElementType;
+  trend?: 'up' | 'down' | 'neutral';
+}) {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground">{title}</p>
+            <p className="text-2xl font-bold">{value}</p>
+            {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+          </div>
+          <div
+            className={`h-10 w-10 rounded-full flex items-center justify-center ${
+              trend === 'up'
+                ? 'bg-green-100 text-green-600 dark:bg-green-950 dark:text-green-400'
+                : trend === 'down'
+                ? 'bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400'
+                : 'bg-muted text-muted-foreground'
+            }`}
+          >
+            <Icon className="h-5 w-5" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function UsageBar({
+  label,
+  value,
+  maxValue,
+  color,
+}: {
+  label: string;
+  value: number;
+  maxValue: number;
+  color?: string;
+}) {
+  const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-sm">
+        <span>{label}</span>
+        <span className="text-muted-foreground">{percentage.toFixed(1)}%</span>
+      </div>
+      <div className="h-2 bg-muted rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all ${color || 'bg-primary'}`}
+          style={{ width: `${Math.min(percentage, 100)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+export function UsageMonitor() {
+  const { usage, loading, error, fetchUsage } = useUsage();
+  const { reloadConfig, exportConfig, loading: configLoading } = useAIConfig();
+  const [period, setPeriod] = useState('7d');
+  const [groupBy, setGroupBy] = useState<'day' | 'model'>('day');
+
+  useEffect(() => {
+    const days = period === '7d' ? 7 : period === '30d' ? 30 : 1;
+    const endDate = new Date().toISOString().split('T')[0];
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split('T')[0];
+    fetchUsage({ startDate, endDate, groupBy });
+  }, [fetchUsage, period, groupBy]);
+
+  const chartData = useMemo(() => {
+    if (!usage?.breakdown) return [];
+    return usage.breakdown;
+  }, [usage]);
+
+  const maxRequests = useMemo(() => {
+    if (groupBy === 'model' && chartData.length > 0) {
+      return Math.max(...chartData.map((d) => d.requests));
+    }
+    return 0;
+  }, [chartData, groupBy]);
+
+  const handleReload = async () => {
+    const result = await reloadConfig();
+    if (result.ok) {
+      alert(`Config generated with ${result.data?.modelCount} models. ${result.data?.message}`);
+    } else {
+      alert(`Error: ${result.error}`);
+    }
+  };
+
+  const handleExport = async () => {
+    const result = await exportConfig();
+    if (result.ok && result.data) {
+      const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ai-config-export-${result.data.exportedAt.split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      alert(`Export failed: ${result.error}`);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Usage & Monitoring</CardTitle>
+              <CardDescription>Track AI usage, costs, and performance</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select value={period} onValueChange={setPeriod}>
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1d">Last 24h</SelectItem>
+                  <SelectItem value="7d">Last 7 days</SelectItem>
+                  <SelectItem value="30d">Last 30 days</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={groupBy} onValueChange={(v) => setGroupBy(v as 'day' | 'model')}>
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="day">By Day</SelectItem>
+                  <SelectItem value="model">By Model</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="icon" onClick={() => fetchUsage()}>
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
+
+      {error && (
+        <div className="p-3 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-md flex items-center gap-2">
+          <AlertCircle className="h-4 w-4" />
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : usage ? (
+        <>
+          {/* Summary Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard
+              title="Total Requests"
+              value={formatNumber(usage.summary.totalRequests)}
+              icon={TrendingUp}
+              trend="neutral"
+            />
+            <StatCard
+              title="Total Tokens"
+              value={formatNumber(usage.summary.totalTokens)}
+              icon={Zap}
+              trend="neutral"
+            />
+            <StatCard
+              title="Total Cost"
+              value={`$${usage.summary.totalCost.toFixed(2)}`}
+              icon={DollarSign}
+              trend={usage.summary.totalCost > 10 ? 'up' : 'neutral'}
+            />
+            <StatCard
+              title="Avg Latency"
+              value={`${usage.summary.avgLatencyMs}ms`}
+              icon={Clock}
+              trend={usage.summary.avgLatencyMs > 2000 ? 'down' : 'neutral'}
+            />
+          </div>
+
+          {/* Success/Error Stats */}
+          <div className="grid grid-cols-2 gap-4">
+            <Card>
+              <CardContent className="p-4 flex items-center gap-4">
+                <CheckCircle className="h-8 w-8 text-green-500" />
+                <div>
+                  <p className="text-2xl font-bold">{usage.summary.successCount}</p>
+                  <p className="text-sm text-muted-foreground">Successful Requests</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 flex items-center gap-4">
+                <XCircle className="h-8 w-8 text-red-500" />
+                <div>
+                  <p className="text-2xl font-bold">{usage.summary.errorCount}</p>
+                  <p className="text-sm text-muted-foreground">Failed Requests</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Breakdown */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">
+                {groupBy === 'day' ? 'Daily Usage' : 'Usage by Model'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {chartData.length > 0 ? (
+                groupBy === 'model' ? (
+                  <div className="space-y-4">
+                    {chartData.map((item, idx) => (
+                      <UsageBar
+                        key={item.model?.id || idx}
+                        label={item.model?.displayName || 'Unknown'}
+                        value={item.requests}
+                        maxValue={maxRequests}
+                        color={
+                          idx === 0
+                            ? 'bg-blue-500'
+                            : idx === 1
+                            ? 'bg-green-500'
+                            : idx === 2
+                            ? 'bg-yellow-500'
+                            : 'bg-gray-400'
+                        }
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2">Date</th>
+                          <th className="text-right p-2">Requests</th>
+                          <th className="text-right p-2">Tokens</th>
+                          <th className="text-right p-2">Cost</th>
+                          <th className="text-right p-2">Avg Latency</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {chartData.map((item, idx) => (
+                          <tr key={item.date || idx} className="border-b">
+                            <td className="p-2">{item.date}</td>
+                            <td className="text-right p-2">{formatNumber(item.requests)}</td>
+                            <td className="text-right p-2">{formatNumber(item.tokens)}</td>
+                            <td className="text-right p-2">${item.cost.toFixed(4)}</td>
+                            <td className="text-right p-2">{item.avgLatencyMs}ms</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  No usage data available for this period.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Config Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Configuration Actions</CardTitle>
+              <CardDescription>Manage LiteLLM configuration sync</CardDescription>
+            </CardHeader>
+            <CardContent className="flex gap-4">
+              <Button onClick={handleReload} disabled={configLoading}>
+                {configLoading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Generate LiteLLM Config
+              </Button>
+              <Button variant="outline" onClick={handleExport}>
+                <Download className="h-4 w-4 mr-2" />
+                Export Config
+              </Button>
+            </CardContent>
+          </Card>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+```
+
+### hooks.ts
+
+**Path:** `frontend/src/components/features/admin/ai/hooks.ts`
+
+```typescript
+/**
+ * AI Admin API Hooks
+ */
+
+import { useState, useCallback } from 'react';
+import type {
+  AIProvider,
+  AIModel,
+  AIRoute,
+  AIUsageData,
+  ProviderFormData,
+  ModelFormData,
+  RouteFormData,
+} from './types';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('adminToken');
+  return {
+    'Content-Type': 'application/json',
+    Authorization: token ? `Bearer ${token}` : '',
+  };
+};
+
+// Generic fetch wrapper
+async function apiFetch<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<{ ok: boolean; data?: T; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/admin/ai${endpoint}`, {
+      ...options,
+      headers: {
+        ...getAuthHeaders(),
+        ...(options.headers || {}),
+      },
+    });
+
+    const json = await res.json();
+
+    if (!res.ok || !json.ok) {
+      return { ok: false, error: json.error || `HTTP ${res.status}` };
+    }
+
+    return { ok: true, data: json.data };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}
+
+// ============================================================================
+// Providers
+// ============================================================================
+
+export function useProviders() {
+  const [providers, setProviders] = useState<AIProvider[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchProviders = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const result = await apiFetch<{ providers: AIProvider[] }>('/providers');
+    if (result.ok && result.data) {
+      setProviders(result.data.providers);
+    } else {
+      setError(result.error || 'Failed to fetch providers');
+    }
+    setLoading(false);
+  }, []);
+
+  const createProvider = useCallback(async (data: ProviderFormData) => {
+    const result = await apiFetch<AIProvider>('/providers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    if (result.ok) {
+      await fetchProviders();
+    }
+    return result;
+  }, [fetchProviders]);
+
+  const updateProvider = useCallback(
+    async (id: string, data: Partial<ProviderFormData & { isEnabled: boolean }>) => {
+      const result = await apiFetch<AIProvider>(`/providers/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      if (result.ok) {
+        await fetchProviders();
+      }
+      return result;
+    },
+    [fetchProviders]
+  );
+
+  const deleteProvider = useCallback(
+    async (id: string) => {
+      const result = await apiFetch<{ deleted: string }>(`/providers/${id}`, {
+        method: 'DELETE',
+      });
+      if (result.ok) {
+        await fetchProviders();
+      }
+      return result;
+    },
+    [fetchProviders]
+  );
+
+  const checkHealth = useCallback(async (id: string) => {
+    const result = await apiFetch<{
+      providerId: string;
+      status: string;
+      latencyMs: number | null;
+      error: string | null;
+    }>(`/providers/${id}/health`, { method: 'POST' });
+    if (result.ok) {
+      await fetchProviders();
+    }
+    return result;
+  }, [fetchProviders]);
+
+  return {
+    providers,
+    loading,
+    error,
+    fetchProviders,
+    createProvider,
+    updateProvider,
+    deleteProvider,
+    checkHealth,
+  };
+}
+
+// ============================================================================
+// Models
+// ============================================================================
+
+export function useModels() {
+  const [models, setModels] = useState<AIModel[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchModels = useCallback(async (providerId?: string, enabled?: boolean) => {
+    setLoading(true);
+    setError(null);
+    const params = new URLSearchParams();
+    if (providerId) params.set('providerId', providerId);
+    if (enabled !== undefined) params.set('enabled', String(enabled));
+    const query = params.toString() ? `?${params}` : '';
+    
+    const result = await apiFetch<{ models: AIModel[] }>(`/models${query}`);
+    if (result.ok && result.data) {
+      setModels(result.data.models);
+    } else {
+      setError(result.error || 'Failed to fetch models');
+    }
+    setLoading(false);
+  }, []);
+
+  const createModel = useCallback(async (data: ModelFormData) => {
+    const result = await apiFetch<AIModel>('/models', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    if (result.ok) {
+      await fetchModels();
+    }
+    return result;
+  }, [fetchModels]);
+
+  const updateModel = useCallback(
+    async (id: string, data: Partial<ModelFormData & { isEnabled: boolean }>) => {
+      const result = await apiFetch<AIModel>(`/models/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      if (result.ok) {
+        await fetchModels();
+      }
+      return result;
+    },
+    [fetchModels]
+  );
+
+  const deleteModel = useCallback(
+    async (id: string) => {
+      const result = await apiFetch<{ deleted: string }>(`/models/${id}`, {
+        method: 'DELETE',
+      });
+      if (result.ok) {
+        await fetchModels();
+      }
+      return result;
+    },
+    [fetchModels]
+  );
+
+  const testModel = useCallback(async (id: string, prompt?: string) => {
+    const result = await apiFetch<{
+      success: boolean;
+      modelId: string;
+      modelName: string;
+      latencyMs?: number;
+      response?: string;
+      error?: string;
+    }>(`/models/${id}/test`, {
+      method: 'POST',
+      body: JSON.stringify({ prompt }),
+    });
+    return result;
+  }, []);
+
+  return {
+    models,
+    loading,
+    error,
+    fetchModels,
+    createModel,
+    updateModel,
+    deleteModel,
+    testModel,
+  };
+}
+
+// ============================================================================
+// Routes
+// ============================================================================
+
+export function useRoutes() {
+  const [routes, setRoutes] = useState<AIRoute[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchRoutes = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const result = await apiFetch<{ routes: AIRoute[] }>('/routes');
+    if (result.ok && result.data) {
+      setRoutes(result.data.routes);
+    } else {
+      setError(result.error || 'Failed to fetch routes');
+    }
+    setLoading(false);
+  }, []);
+
+  const createRoute = useCallback(async (data: RouteFormData) => {
+    const result = await apiFetch<AIRoute>('/routes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    if (result.ok) {
+      await fetchRoutes();
+    }
+    return result;
+  }, [fetchRoutes]);
+
+  const updateRoute = useCallback(
+    async (id: string, data: Partial<RouteFormData & { isEnabled: boolean }>) => {
+      const result = await apiFetch<AIRoute>(`/routes/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      if (result.ok) {
+        await fetchRoutes();
+      }
+      return result;
+    },
+    [fetchRoutes]
+  );
+
+  const deleteRoute = useCallback(
+    async (id: string) => {
+      const result = await apiFetch<{ deleted: string }>(`/routes/${id}`, {
+        method: 'DELETE',
+      });
+      if (result.ok) {
+        await fetchRoutes();
+      }
+      return result;
+    },
+    [fetchRoutes]
+  );
+
+  return {
+    routes,
+    loading,
+    error,
+    fetchRoutes,
+    createRoute,
+    updateRoute,
+    deleteRoute,
+  };
+}
+
+// ============================================================================
+// Usage
+// ============================================================================
+
+export function useUsage() {
+  const [usage, setUsage] = useState<AIUsageData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchUsage = useCallback(
+    async (options?: {
+      startDate?: string;
+      endDate?: string;
+      modelId?: string;
+      groupBy?: 'day' | 'model';
+    }) => {
+      setLoading(true);
+      setError(null);
+      const params = new URLSearchParams();
+      if (options?.startDate) params.set('startDate', options.startDate);
+      if (options?.endDate) params.set('endDate', options.endDate);
+      if (options?.modelId) params.set('modelId', options.modelId);
+      if (options?.groupBy) params.set('groupBy', options.groupBy);
+      const query = params.toString() ? `?${params}` : '';
+
+      const result = await apiFetch<AIUsageData>(`/usage${query}`);
+      if (result.ok && result.data) {
+        setUsage(result.data);
+      } else {
+        setError(result.error || 'Failed to fetch usage');
+      }
+      setLoading(false);
+    },
+    []
+  );
+
+  return {
+    usage,
+    loading,
+    error,
+    fetchUsage,
+  };
+}
+
+// ============================================================================
+// Config
+// ============================================================================
+
+export function useAIConfig() {
+  const [loading, setLoading] = useState(false);
+
+  const reloadConfig = useCallback(async () => {
+    setLoading(true);
+    const result = await apiFetch<{
+      config: unknown;
+      modelCount: number;
+      message: string;
+    }>('/reload', { method: 'POST' });
+    setLoading(false);
+    return result;
+  }, []);
+
+  const exportConfig = useCallback(async () => {
+    const result = await apiFetch<{
+      exportedAt: string;
+      providers: AIProvider[];
+      models: AIModel[];
+      routes: AIRoute[];
+    }>('/config/export');
+    return result;
+  }, []);
+
+  return {
+    loading,
+    reloadConfig,
+    exportConfig,
+  };
+}
+
+```
+
+### index.ts
+
+**Path:** `frontend/src/components/features/admin/ai/index.ts`
+
+```typescript
+export { AIManager } from './AIManager';
+export { ProvidersManager } from './ProvidersManager';
+export { ModelsManager } from './ModelsManager';
+export { RoutesManager } from './RoutesManager';
+export { UsageMonitor } from './UsageMonitor';
+export * from './hooks';
+export * from './types';
+
+```
+
+### types.ts
+
+**Path:** `frontend/src/components/features/admin/ai/types.ts`
+
+```typescript
+/**
+ * AI Model Management Types
+ */
+
+export interface AIProvider {
+  id: string;
+  name: string;
+  displayName: string;
+  apiBaseUrl: string | null;
+  apiKeyEnv: string | null;
+  isEnabled: boolean;
+  healthStatus: 'healthy' | 'degraded' | 'down' | 'unknown';
+  lastHealthCheck: string | null;
+  modelCount: number;
+  enabledModelCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AIModel {
+  id: string;
+  modelName: string;
+  displayName: string;
+  litellmModel: string;
+  description: string | null;
+  provider: {
+    id: string;
+    name: string;
+    displayName: string;
+    isEnabled?: boolean;
+  };
+  contextWindow: number | null;
+  maxTokens: number | null;
+  cost: {
+    inputPer1k: number | null;
+    outputPer1k: number | null;
+  };
+  capabilities: {
+    vision: boolean;
+    streaming: boolean;
+    functionCalling: boolean;
+  };
+  isEnabled: boolean;
+  priority: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AIRoute {
+  id: string;
+  name: string;
+  description: string | null;
+  routingStrategy: 'simple' | 'latency-based-routing' | 'cost-based-routing';
+  primaryModel: {
+    id: string;
+    modelName: string;
+    displayName: string;
+  } | null;
+  fallbackModelIds: string[];
+  contextWindowFallbackIds: string[];
+  numRetries: number;
+  timeoutSeconds: number;
+  isDefault: boolean;
+  isEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AIUsageSummary {
+  totalRequests: number;
+  totalTokens: number;
+  totalCost: number;
+  avgLatencyMs: number;
+  successCount: number;
+  errorCount: number;
+}
+
+export interface AIUsageBreakdown {
+  date?: string;
+  model?: {
+    id: string;
+    modelName: string;
+    displayName: string;
+  };
+  requests: number;
+  tokens: number;
+  cost: number;
+  avgLatencyMs: number;
+}
+
+export interface AIUsageData {
+  period: {
+    start: string;
+    end: string;
+  };
+  summary: AIUsageSummary;
+  breakdown: AIUsageBreakdown[];
+}
+
+// Form types
+export interface ProviderFormData {
+  name: string;
+  displayName: string;
+  apiBaseUrl?: string;
+  apiKeyEnv?: string;
+}
+
+export interface ModelFormData {
+  modelName: string;
+  displayName: string;
+  providerId: string;
+  litellmModel: string;
+  description?: string;
+  contextWindow?: number;
+  maxTokens?: number;
+  inputCostPer1k?: number;
+  outputCostPer1k?: number;
+  supportsVision?: boolean;
+  supportsStreaming?: boolean;
+  supportsFunctionCalling?: boolean;
+  priority?: number;
+}
+
+export interface RouteFormData {
+  name: string;
+  description?: string;
+  routingStrategy?: 'simple' | 'latency-based-routing' | 'cost-based-routing';
+  primaryModelId?: string;
+  fallbackModelIds?: string[];
+  contextWindowFallbackIds?: string[];
+  numRetries?: number;
+  timeoutSeconds?: number;
+  isDefault?: boolean;
+}
+
+```
+
+---
+
 ## frontend/src/components/features/blog
 
 ### ActiveFilters.tsx
@@ -62349,6 +71616,7 @@ import {
   useChatActions,
   useKeyboardHeight,
   useInputKeyDown,
+  useModels,
 } from "./hooks";
 import {
   ChatHeader,
@@ -62388,6 +71656,9 @@ export default function ChatWidget(props: {
 
   // Main state hook
   const state = useChatState({ initialMessage: props.initialMessage });
+
+  // Model selection
+  const modelState = useModels();
 
   // Session management
   const session = useChatSession({
@@ -62432,6 +71703,7 @@ export default function ChatWidget(props: {
     setUploadedImages: state.setUploadedImages,
     messages: state.messages,
     setSessionKey: state.setSessionKey,
+    selectedModel: modelState.selectedModel,
   });
 
   // Keyboard handler
@@ -62495,6 +71767,15 @@ export default function ChatWidget(props: {
           onTogglePersist={state.togglePersistStorage}
           onClearAll={actions.clearAll}
           onClose={props.onClose}
+          // Model selection props
+          models={modelState.models}
+          modelsByProvider={modelState.modelsByProvider}
+          selectedModel={modelState.selectedModel}
+          currentModel={modelState.currentModel}
+          modelsLoading={modelState.loading}
+          modelsError={modelState.error}
+          onModelSelect={modelState.setSelectedModel}
+          onModelsRefresh={modelState.refresh}
         />
 
         {/* Session panel */}
@@ -62910,6 +72191,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { ChatSessionMeta, UploadedChatImage } from "../types";
+import type { AIModel } from "../hooks/useModels";
+import { ModelSelector } from "./ModelSelector";
 
 type ChatHeaderProps = {
   isMobile: boolean;
@@ -62924,6 +72207,15 @@ type ChatHeaderProps = {
   onTogglePersist: () => void;
   onClearAll: () => void;
   onClose?: () => void;
+  // Model selection props
+  models?: AIModel[];
+  modelsByProvider?: Record<string, AIModel[]>;
+  selectedModel?: string;
+  currentModel?: AIModel;
+  modelsLoading?: boolean;
+  modelsError?: string | null;
+  onModelSelect?: (modelId: string) => void;
+  onModelsRefresh?: () => void;
 };
 
 export function ChatHeader({
@@ -62939,6 +72231,15 @@ export function ChatHeader({
   onTogglePersist,
   onClearAll,
   onClose,
+  // Model selection props
+  models = [],
+  modelsByProvider = {},
+  selectedModel = '',
+  currentModel,
+  modelsLoading = false,
+  modelsError = null,
+  onModelSelect,
+  onModelsRefresh,
 }: ChatHeaderProps) {
   return (
     <div
@@ -63006,6 +72307,23 @@ export function ChatHeader({
 
       {/* Right: Actions */}
       <div className="flex items-center gap-1 shrink-0">
+        {/* Model Selector */}
+        {onModelSelect && onModelsRefresh && (
+          <ModelSelector
+            models={models}
+            modelsByProvider={modelsByProvider}
+            selectedModel={selectedModel}
+            currentModel={currentModel}
+            loading={modelsLoading}
+            error={modelsError}
+            onSelect={onModelSelect}
+            onRefresh={onModelsRefresh}
+            isMobile={isMobile}
+            isTerminal={isTerminal}
+            disabled={busy}
+          />
+        )}
+
         {/* Options menu */}
         {isMobile ? (
           <Button
@@ -64287,6 +73605,187 @@ export function ModeSelector({
 
 ```
 
+### ModelSelector.tsx
+
+**Path:** `frontend/src/components/features/chat/widget/components/ModelSelector.tsx`
+
+```tsx
+import React from 'react';
+import { ChevronDown, Cpu, Loader2, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
+import type { AIModel } from '../hooks/useModels';
+
+type ModelSelectorProps = {
+  models: AIModel[];
+  modelsByProvider: Record<string, AIModel[]>;
+  selectedModel: string;
+  currentModel?: AIModel;
+  loading: boolean;
+  error: string | null;
+  onSelect: (modelId: string) => void;
+  onRefresh: () => void;
+  isMobile?: boolean;
+  isTerminal?: boolean;
+  disabled?: boolean;
+};
+
+// Provider icons/colors
+const providerStyles: Record<string, { color: string; bgColor: string }> = {
+  Google: { color: 'text-blue-600', bgColor: 'bg-blue-100 dark:bg-blue-900/30' },
+  OpenAI: { color: 'text-green-600', bgColor: 'bg-green-100 dark:bg-green-900/30' },
+  Anthropic: { color: 'text-orange-600', bgColor: 'bg-orange-100 dark:bg-orange-900/30' },
+  Local: { color: 'text-purple-600', bgColor: 'bg-purple-100 dark:bg-purple-900/30' },
+  Alias: { color: 'text-gray-500', bgColor: 'bg-gray-100 dark:bg-gray-800/50' },
+};
+
+function getProviderStyle(provider: string) {
+  return providerStyles[provider] || { color: 'text-gray-600', bgColor: 'bg-gray-100' };
+}
+
+export function ModelSelector({
+  models,
+  modelsByProvider,
+  selectedModel,
+  currentModel,
+  loading,
+  error,
+  onSelect,
+  onRefresh,
+  isMobile = false,
+  isTerminal = false,
+  disabled = false,
+}: ModelSelectorProps) {
+  const providerOrder = ['Google', 'OpenAI', 'Anthropic', 'Local', 'Alias'];
+  const sortedProviders = Object.keys(modelsByProvider).sort((a, b) => {
+    const aIndex = providerOrder.indexOf(a);
+    const bIndex = providerOrder.indexOf(b);
+    if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
+    if (aIndex === -1) return 1;
+    if (bIndex === -1) return -1;
+    return aIndex - bIndex;
+  });
+
+  const displayName = currentModel?.name || selectedModel || 'Select Model';
+  const displayProvider = currentModel?.provider;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={disabled || loading}
+          className={cn(
+            'h-7 px-2 gap-1.5 text-xs font-normal',
+            isTerminal && 'font-mono text-primary hover:bg-primary/10',
+            isMobile && 'h-8 px-3'
+          )}
+        >
+          {loading ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <Cpu className="h-3 w-3" />
+          )}
+          <span className="max-w-[100px] truncate">
+            {displayName}
+          </span>
+          <ChevronDown className="h-3 w-3 opacity-50" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        className={cn(
+          'w-56 max-h-80 overflow-y-auto z-[9999]',
+          isTerminal && 'font-mono'
+        )}
+      >
+        {/* Error state */}
+        {error && (
+          <>
+            <div className="px-2 py-1.5 text-xs text-destructive">
+              {error}
+            </div>
+            <DropdownMenuSeparator />
+          </>
+        )}
+
+        {/* Grouped models by provider */}
+        {sortedProviders.map((provider, idx) => {
+          const providerModels = modelsByProvider[provider];
+          if (!providerModels?.length) return null;
+
+          const style = getProviderStyle(provider);
+
+          return (
+            <React.Fragment key={provider}>
+              {idx > 0 && <DropdownMenuSeparator />}
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                {provider}
+              </DropdownMenuLabel>
+              {providerModels.map((model) => (
+                <DropdownMenuItem
+                  key={model.id}
+                  onSelect={() => onSelect(model.id)}
+                  className={cn(
+                    'flex items-center gap-2 cursor-pointer',
+                    selectedModel === model.id && 'bg-accent'
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'w-2 h-2 rounded-full shrink-0',
+                      style.bgColor
+                    )}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate text-sm">{model.name}</span>
+                      {model.isDefault && (
+                        <span className="text-[10px] px-1 py-0.5 rounded bg-primary/10 text-primary shrink-0">
+                          default
+                        </span>
+                      )}
+                    </div>
+                    {model.description && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {model.description}
+                      </p>
+                    )}
+                  </div>
+                </DropdownMenuItem>
+              ))}
+            </React.Fragment>
+          );
+        })}
+
+        {/* Refresh button */}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onSelect={(e) => {
+            e.preventDefault();
+            onRefresh();
+          }}
+          className="flex items-center gap-2 text-muted-foreground"
+        >
+          <RefreshCw className={cn('h-3 w-3', loading && 'animate-spin')} />
+          <span className="text-xs">Refresh models</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+```
+
 ### index.ts
 
 **Path:** `frontend/src/components/features/chat/widget/components/index.ts`
@@ -64297,6 +73796,7 @@ export { ChatSessionPanel, ModeSelector } from "./ChatSessionPanel";
 export { ChatMessages } from "./ChatMessages";
 export { ChatInput } from "./ChatInput";
 export { ImageDrawer, MobileActionSheet } from "./ChatDialogs";
+export { ModelSelector } from "./ModelSelector";
 
 ```
 
@@ -64313,6 +73813,8 @@ export { useChatState } from "./useChatState";
 export { useChatSession } from "./useChatSession";
 export { useChatActions } from "./useChatActions";
 export { useKeyboardHeight, useInputKeyDown } from "./useChatKeyboard";
+export { useModels } from "./useModels";
+export type { AIModel, ModelsResponse } from "./useModels";
 
 ```
 
@@ -64353,6 +73855,7 @@ type UseChatActionsProps = {
   setUploadedImages: React.Dispatch<React.SetStateAction<UploadedChatImage[]>>;
   messages: ChatMessage[];
   setSessionKey: (key: string) => void;
+  selectedModel?: string;
 };
 
 export function useChatActions({
@@ -64376,6 +73879,7 @@ export function useChatActions({
   setUploadedImages,
   messages,
   setSessionKey,
+  selectedModel,
 }: UseChatActionsProps) {
   const send = useCallback(async () => {
     if (!canSend) return;
@@ -64497,6 +74001,7 @@ export function useChatActions({
           imageAnalysis: uploaded?.imageAnalysis,
           ragContext,
           memoryContext,
+          model: selectedModel,
         })) {
           if (ev.type === "text") {
             acc += ev.text;
@@ -64552,6 +74057,7 @@ export function useChatActions({
     lastPromptRef,
     setUploadedImages,
     setMessages,
+    selectedModel,
   ]);
 
   const stop = useCallback(() => {
@@ -65077,6 +74583,181 @@ export function useChatState(options?: { initialMessage?: string }) {
     push,
     togglePersistStorage,
     focusInput,
+  };
+}
+
+```
+
+### useModels.ts
+
+**Path:** `frontend/src/components/features/chat/widget/hooks/useModels.ts`
+
+```typescript
+import { useState, useEffect, useCallback } from 'react';
+import { getApiBaseUrl } from '@/utils/apiBase';
+
+export type AIModel = {
+  id: string;
+  name: string;
+  provider: string;
+  description?: string;
+  isDefault?: boolean;
+  capabilities?: string[];
+};
+
+export type ModelsResponse = {
+  models: AIModel[];
+  default: string;
+  provider: string;
+  warning?: string;
+};
+
+const SELECTED_MODEL_KEY = 'chat_selected_model';
+const MODELS_CACHE_KEY = 'chat_models_cache';
+const MODELS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+type CachedModels = {
+  data: ModelsResponse;
+  timestamp: number;
+};
+
+/**
+ * Hook to fetch and manage AI model selection
+ */
+export function useModels() {
+  const [models, setModels] = useState<AIModel[]>([]);
+  const [defaultModel, setDefaultModel] = useState<string>('');
+  const [selectedModel, setSelectedModelState] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    try {
+      return localStorage.getItem(SELECTED_MODEL_KEY) || '';
+    } catch {
+      return '';
+    }
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch models from API
+  const fetchModels = useCallback(async (force = false) => {
+    // Check cache first
+    if (!force && typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem(MODELS_CACHE_KEY);
+        if (cached) {
+          const parsed: CachedModels = JSON.parse(cached);
+          if (Date.now() - parsed.timestamp < MODELS_CACHE_TTL) {
+            setModels(parsed.data.models);
+            setDefaultModel(parsed.data.default);
+            if (!selectedModel) {
+              setSelectedModelState(parsed.data.default);
+            }
+            setLoading(false);
+            return;
+          }
+        }
+      } catch {
+        // Cache miss or invalid, continue to fetch
+      }
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const base = getApiBaseUrl();
+      const url = `${base.replace(/\/$/, '')}/api/v1/ai/models`;
+      
+      const res = await fetch(url);
+      const json = await res.json();
+
+      if (!json.ok) {
+        throw new Error(json.error || 'Failed to fetch models');
+      }
+
+      const data: ModelsResponse = json.data;
+      setModels(data.models);
+      setDefaultModel(data.default);
+      
+      // Set selected model if not already set
+      if (!selectedModel) {
+        setSelectedModelState(data.default);
+      }
+
+      // Cache the response
+      if (typeof window !== 'undefined') {
+        try {
+          const cached: CachedModels = {
+            data,
+            timestamp: Date.now(),
+          };
+          localStorage.setItem(MODELS_CACHE_KEY, JSON.stringify(cached));
+        } catch {
+          // Cache write failed, ignore
+        }
+      }
+    } catch (err: any) {
+      console.error('[useModels] Failed to fetch models:', err);
+      setError(err.message || 'Failed to load models');
+      
+      // Use fallback models on error
+      const fallback: AIModel[] = [
+        { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'Google', isDefault: true },
+        { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI' },
+        { id: 'claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
+      ];
+      setModels(fallback);
+      setDefaultModel('gemini-1.5-flash');
+      if (!selectedModel) {
+        setSelectedModelState('gemini-1.5-flash');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedModel]);
+
+  // Fetch models on mount
+  useEffect(() => {
+    fetchModels();
+  }, [fetchModels]);
+
+  // Set selected model with persistence
+  const setSelectedModel = useCallback((modelId: string) => {
+    setSelectedModelState(modelId);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(SELECTED_MODEL_KEY, modelId);
+      } catch {
+        // Storage write failed, ignore
+      }
+    }
+  }, []);
+
+  // Get the current model object
+  const currentModel = models.find((m) => m.id === selectedModel) || 
+                       models.find((m) => m.isDefault) ||
+                       models[0];
+
+  // Group models by provider for UI
+  const modelsByProvider = models.reduce<Record<string, AIModel[]>>((acc, model) => {
+    const provider = model.provider || 'Other';
+    if (!acc[provider]) {
+      acc[provider] = [];
+    }
+    acc[provider].push(model);
+    return acc;
+  }, {});
+
+  return {
+    models,
+    modelsByProvider,
+    defaultModel,
+    selectedModel: selectedModel || defaultModel,
+    currentModel,
+    setSelectedModel,
+    loading,
+    error,
+    refresh: () => fetchModels(true),
   };
 }
 
@@ -68094,14 +77775,27 @@ export default Breadcrumb;
 **Path:** `frontend/src/components/features/navigation/Pagination.tsx`
 
 ```tsx
+import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  MoreHorizontal,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
   className?: string;
+  showFirstLast?: boolean;
+  showPageInfo?: boolean;
+  showQuickJump?: boolean;
+  size?: 'sm' | 'md' | 'lg';
 }
 
 const Pagination = ({
@@ -68109,13 +77803,28 @@ const Pagination = ({
   totalPages,
   onPageChange,
   className = '',
+  showFirstLast = true,
+  showPageInfo = true,
+  showQuickJump = false,
+  size = 'md',
 }: PaginationProps) => {
+  const [jumpValue, setJumpValue] = useState('');
+  const [isJumpOpen, setIsJumpOpen] = useState(false);
+
   if (totalPages <= 1) return null;
 
+  const sizeClasses = {
+    sm: { button: 'h-8 w-8 text-xs', icon: 'h-3.5 w-3.5', gap: 'gap-1' },
+    md: { button: 'h-10 w-10 text-sm', icon: 'h-4 w-4', gap: 'gap-1.5' },
+    lg: { button: 'h-12 w-12 text-base', icon: 'h-5 w-5', gap: 'gap-2' },
+  };
+
+  const styles = sizeClasses[size];
+
   const getVisiblePages = () => {
-    const delta = 2;
-    const range = [];
-    const rangeWithDots = [];
+    const delta = size === 'sm' ? 1 : 2;
+    const range: (number | string)[] = [];
+    const rangeWithDots: (number | string)[] = [];
 
     for (
       let i = Math.max(2, currentPage - delta);
@@ -68126,7 +77835,7 @@ const Pagination = ({
     }
 
     if (currentPage - delta > 2) {
-      rangeWithDots.push(1, '...');
+      rangeWithDots.push(1, 'ellipsis-start');
     } else {
       rangeWithDots.push(1);
     }
@@ -68134,7 +77843,7 @@ const Pagination = ({
     rangeWithDots.push(...range);
 
     if (currentPage + delta < totalPages - 1) {
-      rangeWithDots.push('...', totalPages);
+      rangeWithDots.push('ellipsis-end', totalPages);
     } else if (totalPages > 1) {
       rangeWithDots.push(totalPages);
     }
@@ -68142,47 +77851,212 @@ const Pagination = ({
     return rangeWithDots;
   };
 
+  const handleJump = useCallback(() => {
+    const page = parseInt(jumpValue, 10);
+    if (!isNaN(page) && page >= 1 && page <= totalPages && page !== currentPage) {
+      onPageChange(page);
+    }
+    setJumpValue('');
+    setIsJumpOpen(false);
+  }, [jumpValue, totalPages, currentPage, onPageChange]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        handleJump();
+      } else if (e.key === 'Escape') {
+        setIsJumpOpen(false);
+        setJumpValue('');
+      }
+    },
+    [handleJump]
+  );
+
   const visiblePages = getVisiblePages();
 
-  return (
-    <div className={`flex items-center justify-center gap-2 ${className}`}>
-      <Button
-        variant='outline'
-        size='sm'
-        onClick={() => onPageChange(currentPage - 1)}
-        disabled={currentPage === 1}
-        className='h-9 w-9 p-0'
-      >
-        <ChevronLeft className='h-4 w-4' />
-      </Button>
+  const NavButton = ({
+    onClick,
+    disabled,
+    children,
+    label,
+    variant = 'outline',
+  }: {
+    onClick: () => void;
+    disabled: boolean;
+    children: React.ReactNode;
+    label: string;
+    variant?: 'outline' | 'ghost';
+  }) => (
+    <Button
+      variant={variant}
+      size='icon'
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className={cn(
+        styles.button,
+        'rounded-xl transition-all duration-200',
+        'disabled:opacity-40 disabled:cursor-not-allowed',
+        'hover:bg-primary/10 hover:border-primary/30 hover:scale-105',
+        'active:scale-95',
+        'focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2'
+      )}
+    >
+      {children}
+    </Button>
+  );
 
-      {visiblePages.map((page, index) => (
-        <div key={index} className='flex h-9 w-9 items-center justify-center'>
-          {page === '...' ? (
-            <MoreHorizontal className='h-4 w-4' />
-          ) : (
-            <Button
-              variant={currentPage === page ? 'default' : 'outline'}
-              size='sm'
-              onClick={() => onPageChange(page as number)}
-              className='h-9 w-9 p-0'
-            >
-              {page}
-            </Button>
+  const PageButton = ({
+    page,
+    isActive,
+  }: {
+    page: number;
+    isActive: boolean;
+  }) => (
+    <Button
+      variant={isActive ? 'default' : 'ghost'}
+      size='icon'
+      onClick={() => onPageChange(page)}
+      aria-label={`Page ${page}`}
+      aria-current={isActive ? 'page' : undefined}
+      className={cn(
+        styles.button,
+        'rounded-xl font-medium transition-all duration-200',
+        isActive
+          ? 'bg-primary text-primary-foreground shadow-md hover:bg-primary/90 scale-105'
+          : 'hover:bg-muted hover:scale-105',
+        'active:scale-95',
+        'focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2'
+      )}
+    >
+      {page}
+    </Button>
+  );
+
+  const EllipsisButton = ({ position }: { position: 'start' | 'end' }) => {
+    if (!showQuickJump) {
+      return (
+        <span
+          className={cn(
+            styles.button,
+            'flex items-center justify-center text-muted-foreground'
+          )}
+          aria-hidden
+        >
+          <MoreHorizontal className={styles.icon} />
+        </span>
+      );
+    }
+
+    return (
+      <div className='relative'>
+        <Button
+          variant='ghost'
+          size='icon'
+          onClick={() => setIsJumpOpen(!isJumpOpen)}
+          aria-label='Jump to page'
+          className={cn(
+            styles.button,
+            'rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted',
+            'transition-all duration-200'
+          )}
+        >
+          <MoreHorizontal className={styles.icon} />
+        </Button>
+        {isJumpOpen && (
+          <div className='absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50'>
+            <div className='bg-popover border border-border rounded-xl shadow-lg p-2 flex gap-1.5'>
+              <Input
+                type='number'
+                min={1}
+                max={totalPages}
+                value={jumpValue}
+                onChange={(e) => setJumpValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder='Go to'
+                className='w-16 h-8 text-xs rounded-lg text-center'
+                autoFocus
+              />
+              <Button
+                size='sm'
+                onClick={handleJump}
+                className='h-8 px-2 text-xs rounded-lg'
+              >
+                Go
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <nav
+      role='navigation'
+      aria-label='Pagination'
+      className={cn('flex flex-col items-center gap-3', className)}
+    >
+      <div className={cn('flex items-center', styles.gap)}>
+        {showFirstLast && (
+          <NavButton
+            onClick={() => onPageChange(1)}
+            disabled={currentPage === 1}
+            label='First page'
+            variant='ghost'
+          >
+            <ChevronsLeft className={styles.icon} />
+          </NavButton>
+        )}
+
+        <NavButton
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          label='Previous page'
+        >
+          <ChevronLeft className={styles.icon} />
+        </NavButton>
+
+        <div className={cn('flex items-center', styles.gap, 'mx-1')}>
+          {visiblePages.map((page, index) =>
+            typeof page === 'string' ? (
+              <EllipsisButton
+                key={page}
+                position={page === 'ellipsis-start' ? 'start' : 'end'}
+              />
+            ) : (
+              <PageButton key={page} page={page} isActive={currentPage === page} />
+            )
           )}
         </div>
-      ))}
 
-      <Button
-        variant='outline'
-        size='sm'
-        onClick={() => onPageChange(currentPage + 1)}
-        disabled={currentPage === totalPages}
-        className='h-9 w-9 p-0'
-      >
-        <ChevronRight className='h-4 w-4' />
-      </Button>
-    </div>
+        <NavButton
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          label='Next page'
+        >
+          <ChevronRight className={styles.icon} />
+        </NavButton>
+
+        {showFirstLast && (
+          <NavButton
+            onClick={() => onPageChange(totalPages)}
+            disabled={currentPage === totalPages}
+            label='Last page'
+            variant='ghost'
+          >
+            <ChevronsRight className={styles.icon} />
+          </NavButton>
+        )}
+      </div>
+
+      {showPageInfo && (
+        <p className='text-xs text-muted-foreground'>
+          Page <span className='font-medium text-foreground'>{currentPage}</span> of{' '}
+          <span className='font-medium text-foreground'>{totalPages}</span>
+        </p>
+      )}
+    </nav>
   );
 };
 
@@ -77346,12 +87220,13 @@ export default About;
 import { useState, useEffect } from 'react';
 import { ConfigManager } from '@/components/features/admin/ConfigManager';
 import { WorkersManager } from '@/components/features/admin/WorkersManager';
+import { AIManager } from '@/components/features/admin/ai';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Lock, Settings, Cloud } from 'lucide-react';
+import { Lock, Settings, Cloud, Bot } from 'lucide-react';
 
 export default function AdminConfig() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -77451,7 +87326,7 @@ export default function AdminConfig() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground">환경변수 및 Cloudflare Workers 관리</p>
+          <p className="text-muted-foreground">환경변수, Workers, AI 모델 관리</p>
         </div>
         <Button variant="outline" onClick={handleLogout}>
           Logout
@@ -77459,7 +87334,7 @@ export default function AdminConfig() {
       </div>
 
       <Tabs defaultValue="config" className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="config" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             환경변수
@@ -77467,6 +87342,10 @@ export default function AdminConfig() {
           <TabsTrigger value="workers" className="flex items-center gap-2">
             <Cloud className="h-4 w-4" />
             Workers
+          </TabsTrigger>
+          <TabsTrigger value="ai" className="flex items-center gap-2">
+            <Bot className="h-4 w-4" />
+            AI Models
           </TabsTrigger>
         </TabsList>
 
@@ -77476,6 +87355,10 @@ export default function AdminConfig() {
 
         <TabsContent value="workers">
           <WorkersManager />
+        </TabsContent>
+
+        <TabsContent value="ai">
+          <AIManager />
         </TabsContent>
       </Tabs>
     </div>
@@ -85954,7 +95837,11 @@ export async function* streamChatEvents(
   const res = await fetch(url, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ parts, context: { page } }),
+    body: JSON.stringify({
+      parts,
+      context: { page },
+      model: input.model, // AI 모델 선택
+    }),
     signal: input.signal,
   });
 
@@ -86933,6 +96820,7 @@ export type StreamChatInput = {
   imageAnalysis?: string | null;
   ragContext?: string | null; // RAG 검색 컨텍스트 (블로그 포스트)
   memoryContext?: string | null; // 사용자 메모리 컨텍스트
+  model?: string; // AI 모델 선택
 };
 
 // ============================================================================
@@ -93220,6 +103108,494 @@ UPDATE config_variables SET options = '["github-copilot","gemini","openai","anth
 
 ```
 
+### 0011_ai_model_management.sql
+
+**Path:** `workers/migrations/0011_ai_model_management.sql`
+
+```sql
+-- =============================================================================
+-- AI Model Management System
+-- Migration: 0011_ai_model_management.sql
+-- =============================================================================
+
+-- AI Provider 관리
+CREATE TABLE IF NOT EXISTS ai_providers (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,              -- 'openai', 'anthropic', 'gemini', 'vas', 'ollama'
+  display_name TEXT NOT NULL,             -- 'OpenAI', 'Anthropic Claude'
+  api_base_url TEXT,                      -- Provider API URL (optional)
+  api_key_env TEXT,                       -- 환경변수 이름 (보안: 실제 키 저장 안함)
+  is_enabled INTEGER DEFAULT 1,
+  health_status TEXT DEFAULT 'unknown',   -- 'healthy', 'degraded', 'down', 'unknown'
+  last_health_check TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- AI 모델 관리
+CREATE TABLE IF NOT EXISTS ai_models (
+  id TEXT PRIMARY KEY,
+  provider_id TEXT NOT NULL,
+  model_name TEXT NOT NULL UNIQUE,        -- 'gpt-4.1' (LiteLLM에서 사용하는 이름)
+  display_name TEXT NOT NULL,             -- 'GPT-4.1 (GitHub Copilot)'
+  litellm_model TEXT NOT NULL,            -- 'openai/gpt-4.1' (실제 LiteLLM 모델명)
+  description TEXT,
+  context_window INTEGER,                 -- 128000
+  max_tokens INTEGER,                     -- 4096
+  input_cost_per_1k REAL,                 -- $0.01
+  output_cost_per_1k REAL,                -- $0.03
+  supports_vision INTEGER DEFAULT 0,
+  supports_streaming INTEGER DEFAULT 1,
+  supports_function_calling INTEGER DEFAULT 0,
+  is_enabled INTEGER DEFAULT 1,
+  priority INTEGER DEFAULT 0,             -- 높을수록 우선 사용
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (provider_id) REFERENCES ai_providers(id) ON DELETE CASCADE
+);
+
+-- 라우팅 규칙
+CREATE TABLE IF NOT EXISTS ai_routes (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,              -- 'default', 'high-context', 'fast'
+  description TEXT,
+  routing_strategy TEXT DEFAULT 'latency-based-routing', -- 'simple', 'latency-based-routing', 'cost-based-routing'
+  primary_model_id TEXT,
+  fallback_model_ids TEXT,                -- JSON array of model IDs
+  context_window_fallback_ids TEXT,       -- JSON array for long context
+  num_retries INTEGER DEFAULT 3,
+  timeout_seconds INTEGER DEFAULT 120,
+  is_default INTEGER DEFAULT 0,
+  is_enabled INTEGER DEFAULT 1,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (primary_model_id) REFERENCES ai_models(id) ON DELETE SET NULL
+);
+
+-- 사용량 로그 (개별 요청)
+CREATE TABLE IF NOT EXISTS ai_usage_logs (
+  id TEXT PRIMARY KEY,
+  model_id TEXT,
+  route_id TEXT,
+  request_type TEXT,                      -- 'chat', 'completion', 'embedding', 'vision'
+  prompt_tokens INTEGER,
+  completion_tokens INTEGER,
+  total_tokens INTEGER,
+  estimated_cost REAL,
+  latency_ms INTEGER,
+  status TEXT,                            -- 'success', 'error', 'timeout'
+  error_message TEXT,
+  user_id TEXT,
+  metadata TEXT,                          -- JSON for additional info
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (model_id) REFERENCES ai_models(id) ON DELETE SET NULL,
+  FOREIGN KEY (route_id) REFERENCES ai_routes(id) ON DELETE SET NULL
+);
+
+-- 일별 사용량 집계
+CREATE TABLE IF NOT EXISTS ai_usage_daily (
+  date TEXT NOT NULL,
+  model_id TEXT NOT NULL,
+  total_requests INTEGER DEFAULT 0,
+  total_prompt_tokens INTEGER DEFAULT 0,
+  total_completion_tokens INTEGER DEFAULT 0,
+  total_tokens INTEGER DEFAULT 0,
+  total_cost REAL DEFAULT 0,
+  success_count INTEGER DEFAULT 0,
+  error_count INTEGER DEFAULT 0,
+  avg_latency_ms REAL,
+  PRIMARY KEY (date, model_id),
+  FOREIGN KEY (model_id) REFERENCES ai_models(id) ON DELETE CASCADE
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_ai_models_provider ON ai_models(provider_id);
+CREATE INDEX IF NOT EXISTS idx_ai_models_enabled ON ai_models(is_enabled);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_logs_created ON ai_usage_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_logs_model ON ai_usage_logs(model_id);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_daily_date ON ai_usage_daily(date);
+
+```
+
+### 0012_ai_model_seed.sql
+
+**Path:** `workers/migrations/0012_ai_model_seed.sql`
+
+```sql
+-- =============================================================================
+-- AI Model Management - Seed Data
+-- Migration: 0012_ai_model_seed.sql
+-- Based on: backend/litellm_config.yaml
+-- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- Providers
+-- -----------------------------------------------------------------------------
+INSERT OR IGNORE INTO ai_providers (id, name, display_name, api_base_url, api_key_env) VALUES
+  ('prov_vas', 'vas', 'GitHub Copilot (VAS)', 'http://vas-core:7012/v1', 'VAS_API_KEY'),
+  ('prov_openai', 'openai', 'OpenAI', 'https://api.openai.com/v1', 'OPENAI_API_KEY'),
+  ('prov_gemini', 'gemini', 'Google Gemini', NULL, 'GOOGLE_API_KEY'),
+  ('prov_anthropic', 'anthropic', 'Anthropic Claude', 'https://api.anthropic.com', 'ANTHROPIC_API_KEY'),
+  ('prov_ollama', 'ollama', 'Ollama (Local)', 'http://host.docker.internal:11434', NULL);
+
+-- -----------------------------------------------------------------------------
+-- Models - GitHub Copilot (VAS)
+-- -----------------------------------------------------------------------------
+INSERT OR IGNORE INTO ai_models (
+  id, provider_id, model_name, display_name, litellm_model, description,
+  context_window, max_tokens, input_cost_per_1k, output_cost_per_1k,
+  supports_vision, supports_streaming, supports_function_calling, priority
+) VALUES
+  ('model_vas_gpt41', 'prov_vas', 'gpt-4.1', 'GPT-4.1 (GitHub Copilot)', 'openai/gpt-4.1',
+   'GitHub Copilot GPT-4.1 via VAS - Primary model', 128000, 4096, 0.01, 0.03, 1, 1, 1, 100),
+
+  ('model_vas_gpt4o', 'prov_vas', 'gpt-4o', 'GPT-4o (GitHub Copilot)', 'openai/gpt-4o',
+   'GitHub Copilot GPT-4o via VAS', 128000, 4096, 0.005, 0.015, 1, 1, 1, 90),
+
+  ('model_vas_claude', 'prov_vas', 'claude-sonnet-4', 'Claude Sonnet 4 (GitHub Copilot)', 'openai/claude-sonnet-4',
+   'GitHub Copilot Claude Sonnet 4 via VAS', 200000, 4096, 0.003, 0.015, 1, 1, 1, 85);
+
+-- -----------------------------------------------------------------------------
+-- Models - OpenAI Direct
+-- -----------------------------------------------------------------------------
+INSERT OR IGNORE INTO ai_models (
+  id, provider_id, model_name, display_name, litellm_model, description,
+  context_window, max_tokens, input_cost_per_1k, output_cost_per_1k,
+  supports_vision, supports_streaming, supports_function_calling, priority
+) VALUES
+  ('model_oai_gpt4o', 'prov_openai', 'openai/gpt-4o', 'GPT-4o (Direct)', 'gpt-4o',
+   'OpenAI GPT-4o Direct', 128000, 4096, 0.005, 0.015, 1, 1, 1, 70),
+
+  ('model_oai_gpt4t', 'prov_openai', 'openai/gpt-4-turbo', 'GPT-4 Turbo (Direct)', 'gpt-4-turbo',
+   'OpenAI GPT-4 Turbo Direct', 128000, 4096, 0.01, 0.03, 1, 1, 1, 60),
+
+  ('model_oai_gpt35', 'prov_openai', 'openai/gpt-3.5-turbo', 'GPT-3.5 Turbo (Direct)', 'gpt-3.5-turbo',
+   'OpenAI GPT-3.5 Turbo Direct - Fast and cheap', 16385, 4096, 0.0005, 0.0015, 0, 1, 1, 50);
+
+-- -----------------------------------------------------------------------------
+-- Models - Google Gemini
+-- -----------------------------------------------------------------------------
+INSERT OR IGNORE INTO ai_models (
+  id, provider_id, model_name, display_name, litellm_model, description,
+  context_window, max_tokens, input_cost_per_1k, output_cost_per_1k,
+  supports_vision, supports_streaming, supports_function_calling, priority
+) VALUES
+  ('model_gem_flash', 'prov_gemini', 'gemini-1.5-flash', 'Gemini 1.5 Flash', 'gemini/gemini-1.5-flash',
+   'Google Gemini 1.5 Flash - Fast and cheap fallback', 1000000, 8192, 0.00035, 0.0014, 1, 1, 1, 80),
+
+  ('model_gem_pro', 'prov_gemini', 'gemini-1.5-pro', 'Gemini 1.5 Pro', 'gemini/gemini-1.5-pro',
+   'Google Gemini 1.5 Pro - Long context specialist', 1000000, 8192, 0.00125, 0.005, 1, 1, 1, 75),
+
+  ('model_gem_flash2', 'prov_gemini', 'gemini-2.0-flash', 'Gemini 2.0 Flash', 'gemini/gemini-2.0-flash-exp',
+   'Google Gemini 2.0 Flash Experimental', 1000000, 8192, 0.00035, 0.0014, 1, 1, 1, 78);
+
+-- -----------------------------------------------------------------------------
+-- Models - Anthropic Claude
+-- -----------------------------------------------------------------------------
+INSERT OR IGNORE INTO ai_models (
+  id, provider_id, model_name, display_name, litellm_model, description,
+  context_window, max_tokens, input_cost_per_1k, output_cost_per_1k,
+  supports_vision, supports_streaming, supports_function_calling, priority
+) VALUES
+  ('model_ant_sonnet', 'prov_anthropic', 'claude-3.5-sonnet', 'Claude 3.5 Sonnet', 'claude-3-5-sonnet-20241022',
+   'Anthropic Claude 3.5 Sonnet - Best balance', 200000, 4096, 0.003, 0.015, 1, 1, 1, 65),
+
+  ('model_ant_opus', 'prov_anthropic', 'claude-3-opus', 'Claude 3 Opus', 'claude-3-opus-20240229',
+   'Anthropic Claude 3 Opus - Most capable', 200000, 4096, 0.015, 0.075, 1, 1, 1, 55),
+
+  ('model_ant_haiku', 'prov_anthropic', 'claude-3-haiku', 'Claude 3 Haiku', 'claude-3-haiku-20240307',
+   'Anthropic Claude 3 Haiku - Fast and cheap', 200000, 4096, 0.00025, 0.00125, 1, 1, 1, 60);
+
+-- -----------------------------------------------------------------------------
+-- Models - Local (Ollama)
+-- -----------------------------------------------------------------------------
+INSERT OR IGNORE INTO ai_models (
+  id, provider_id, model_name, display_name, litellm_model, description,
+  context_window, max_tokens, input_cost_per_1k, output_cost_per_1k,
+  supports_vision, supports_streaming, supports_function_calling, is_enabled, priority
+) VALUES
+  ('model_local_llama', 'prov_ollama', 'local/llama3', 'Llama 3 (Local)', 'ollama/llama3',
+   'Local Llama 3 via Ollama - Development/testing', 8192, 2048, 0, 0, 0, 1, 0, 0, 10),
+
+  ('model_local_code', 'prov_ollama', 'local/codellama', 'CodeLlama (Local)', 'ollama/codellama',
+   'Local CodeLlama via Ollama - Code tasks', 16384, 2048, 0, 0, 0, 1, 0, 0, 10);
+
+-- -----------------------------------------------------------------------------
+-- Routes - Default routing configuration
+-- -----------------------------------------------------------------------------
+INSERT OR IGNORE INTO ai_routes (
+  id, name, description, routing_strategy, primary_model_id,
+  fallback_model_ids, context_window_fallback_ids, num_retries, timeout_seconds, is_default
+) VALUES
+  ('route_default', 'default', 'Default routing - GPT-4.1 primary with Gemini/Claude fallback',
+   'latency-based-routing', 'model_vas_gpt41',
+   '["model_gem_flash", "model_ant_haiku"]',
+   '["model_gem_pro"]',
+   3, 120, 1),
+
+  ('route_fast', 'fast', 'Fast routing - Optimized for speed',
+   'latency-based-routing', 'model_gem_flash',
+   '["model_ant_haiku", "model_oai_gpt35"]',
+   NULL,
+   2, 60, 0),
+
+  ('route_quality', 'quality', 'Quality routing - Best models first',
+   'simple', 'model_vas_gpt4o',
+   '["model_gem_pro", "model_ant_sonnet"]',
+   '["model_gem_pro"]',
+   3, 180, 0),
+
+  ('route_long_context', 'long-context', 'Long context routing - For large documents',
+   'simple', 'model_gem_pro',
+   '["model_ant_sonnet", "model_vas_claude"]',
+   NULL,
+   2, 180, 0);
+
+```
+
+### 0013_agent_orchestration.sql
+
+**Path:** `workers/migrations/0013_agent_orchestration.sql`
+
+```sql
+-- Migration: 0013_agent_orchestration.sql
+-- Purpose: Agent orchestration layer tables for multi-turn conversations,
+--          tool execution history, and enhanced memory management
+
+-- ========================================
+-- Agent Sessions Table
+-- Stores agent conversation sessions with tool execution context
+-- ========================================
+CREATE TABLE IF NOT EXISTS agent_sessions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL DEFAULT 'default-user',
+  title TEXT,                           -- Auto-generated or user-defined title
+  mode TEXT DEFAULT 'default',          -- Agent mode: default, research, coding, blog, article, terminal
+  article_slug TEXT,                    -- If mode is 'article'
+  system_prompt_hash TEXT,              -- Hash of system prompt for cache invalidation
+  message_count INTEGER DEFAULT 0,
+  tool_call_count INTEGER DEFAULT 0,
+  total_tokens INTEGER DEFAULT 0,
+  total_cost REAL DEFAULT 0,
+  last_model TEXT,                      -- Last model used
+  status TEXT DEFAULT 'active',         -- active, archived, deleted
+  last_message_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_sessions_user ON agent_sessions(user_id, status, last_message_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_sessions_mode ON agent_sessions(user_id, mode, status);
+
+-- ========================================
+-- Agent Messages Table
+-- Stores individual messages in agent sessions
+-- ========================================
+CREATE TABLE IF NOT EXISTS agent_messages (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  user_id TEXT NOT NULL DEFAULT 'default-user',
+  role TEXT NOT NULL,                   -- 'user', 'assistant', 'system', 'tool'
+  content TEXT NOT NULL,
+  content_type TEXT DEFAULT 'text',     -- 'text', 'tool_call', 'tool_result', 'error'
+  
+  -- Tool call specific fields
+  tool_name TEXT,                       -- Name of tool called (if role='tool')
+  tool_call_id TEXT,                    -- Unique ID for tool call
+  tool_args TEXT,                       -- JSON: Tool arguments
+  tool_result TEXT,                     -- JSON: Tool execution result
+  tool_duration_ms INTEGER,             -- Tool execution time
+  
+  -- Token tracking
+  prompt_tokens INTEGER,
+  completion_tokens INTEGER,
+  
+  -- Metadata
+  model TEXT,                           -- Model used for this message
+  metadata TEXT,                        -- JSON: Additional metadata
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  
+  FOREIGN KEY (session_id) REFERENCES agent_sessions(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_messages_session ON agent_messages(session_id, created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_agent_messages_tool ON agent_messages(session_id, role, tool_name);
+
+-- ========================================
+-- Agent Tool Executions Table
+-- Detailed log of all tool executions for debugging and analytics
+-- ========================================
+CREATE TABLE IF NOT EXISTS agent_tool_executions (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  message_id TEXT,
+  user_id TEXT NOT NULL DEFAULT 'default-user',
+  tool_name TEXT NOT NULL,
+  tool_version TEXT,
+  
+  -- Execution details
+  input_args TEXT NOT NULL,             -- JSON: Input arguments
+  output_result TEXT,                   -- JSON: Output result
+  error_message TEXT,                   -- Error message if failed
+  status TEXT NOT NULL,                 -- 'pending', 'running', 'success', 'error', 'timeout'
+  
+  -- Timing
+  started_at TEXT NOT NULL DEFAULT (datetime('now')),
+  completed_at TEXT,
+  duration_ms INTEGER,
+  
+  -- Context
+  retry_count INTEGER DEFAULT 0,
+  parent_execution_id TEXT,             -- For nested tool calls
+  
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  
+  FOREIGN KEY (session_id) REFERENCES agent_sessions(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_tool_executions_session ON agent_tool_executions(session_id, started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_tool_executions_tool ON agent_tool_executions(tool_name, status, started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_tool_executions_user ON agent_tool_executions(user_id, started_at DESC);
+
+-- ========================================
+-- Agent User Preferences Table
+-- Stores user-specific agent configuration
+-- ========================================
+CREATE TABLE IF NOT EXISTS agent_user_preferences (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL UNIQUE,
+  
+  -- Default settings
+  default_mode TEXT DEFAULT 'default',
+  default_model TEXT,
+  default_temperature REAL DEFAULT 0.7,
+  
+  -- Tool preferences
+  enabled_tools TEXT,                   -- JSON: Array of enabled tool names
+  disabled_tools TEXT,                  -- JSON: Array of disabled tool names
+  
+  -- Memory preferences
+  memory_enabled INTEGER DEFAULT 1,
+  memory_retention_days INTEGER DEFAULT 90,
+  auto_summarize INTEGER DEFAULT 1,
+  
+  -- UI preferences
+  stream_responses INTEGER DEFAULT 1,
+  show_tool_calls INTEGER DEFAULT 1,
+  
+  -- Custom instructions
+  custom_instructions TEXT,
+  persona TEXT,
+  
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_user_preferences_user ON agent_user_preferences(user_id);
+
+-- ========================================
+-- Agent Knowledge Base Table
+-- Stores indexed knowledge for RAG retrieval
+-- ========================================
+CREATE TABLE IF NOT EXISTS agent_knowledge (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL DEFAULT 'system',
+  source_type TEXT NOT NULL,            -- 'blog_post', 'memo', 'manual', 'web', 'file'
+  source_id TEXT,                       -- Reference to source (e.g., post slug, memo id)
+  source_url TEXT,
+  
+  -- Content
+  title TEXT,
+  content TEXT NOT NULL,
+  content_hash TEXT NOT NULL,           -- For deduplication
+  
+  -- Chunking info
+  chunk_index INTEGER DEFAULT 0,        -- For multi-chunk documents
+  total_chunks INTEGER DEFAULT 1,
+  
+  -- Metadata
+  category TEXT,
+  tags TEXT,                            -- JSON: Array of tags
+  language TEXT DEFAULT 'ko',
+  
+  -- Embedding status
+  embedding_status TEXT DEFAULT 'pending',  -- 'pending', 'indexed', 'failed'
+  embedding_model TEXT,
+  last_indexed_at TEXT,
+  
+  -- Visibility
+  is_public INTEGER DEFAULT 1,
+  
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_knowledge_source ON agent_knowledge(source_type, source_id);
+CREATE INDEX IF NOT EXISTS idx_agent_knowledge_user ON agent_knowledge(user_id, is_public, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_knowledge_embedding ON agent_knowledge(embedding_status, updated_at);
+CREATE INDEX IF NOT EXISTS idx_agent_knowledge_hash ON agent_knowledge(content_hash);
+
+-- ========================================
+-- Agent Feedback Table
+-- Stores user feedback on agent responses for improvement
+-- ========================================
+CREATE TABLE IF NOT EXISTS agent_feedback (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  message_id TEXT NOT NULL,
+  user_id TEXT NOT NULL DEFAULT 'default-user',
+  
+  -- Feedback
+  rating INTEGER,                       -- 1-5 star rating
+  feedback_type TEXT,                   -- 'helpful', 'not_helpful', 'incorrect', 'offensive'
+  comment TEXT,
+  
+  -- Context
+  query TEXT,                           -- Original user query
+  response TEXT,                        -- Agent response
+  tools_used TEXT,                      -- JSON: Tools used in response
+  
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  
+  FOREIGN KEY (session_id) REFERENCES agent_sessions(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_feedback_session ON agent_feedback(session_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_feedback_rating ON agent_feedback(rating, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_feedback_type ON agent_feedback(feedback_type, created_at DESC);
+
+-- ========================================
+-- Views for Analytics
+-- ========================================
+
+-- Daily agent usage summary
+CREATE VIEW IF NOT EXISTS v_agent_daily_usage AS
+SELECT 
+  date(created_at) as date,
+  user_id,
+  COUNT(DISTINCT id) as session_count,
+  SUM(message_count) as total_messages,
+  SUM(tool_call_count) as total_tool_calls,
+  SUM(total_tokens) as total_tokens,
+  SUM(total_cost) as total_cost
+FROM agent_sessions
+WHERE status != 'deleted'
+GROUP BY date(created_at), user_id;
+
+-- Tool usage summary
+CREATE VIEW IF NOT EXISTS v_agent_tool_usage AS
+SELECT 
+  tool_name,
+  COUNT(*) as execution_count,
+  SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count,
+  SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as error_count,
+  AVG(duration_ms) as avg_duration_ms,
+  MAX(duration_ms) as max_duration_ms
+FROM agent_tool_executions
+GROUP BY tool_name;
+
+```
+
 ---
 
 ## workers/r2-gateway
@@ -94162,9 +104538,8 @@ export type EditorPick = {
  */
 
 import type { Env } from '../types';
-import type { TaskMode, TaskPayload } from '@blog/shared';
 import { getAiServeUrl, getAiServeApiKey, getAiGatewayCallerKey } from './config';
-import { buildTaskPrompt, getFallbackData } from './prompts';
+import { buildTaskPrompt, getFallbackData, type TaskMode, type TaskPayload } from './prompts';
 
 // ============================================================================
 // Types
@@ -95521,10 +105896,18 @@ export async function executeTask(
  * 프론트엔드는 mode와 payload만 전송하고, 실제 프롬프트는 여기서 생성됩니다.
  */
 
-import type { TaskMode, TaskPayload } from '@blog/shared';
+// Local type definitions (avoiding external dependency for workers isolation)
+export type TaskMode = 'sketch' | 'prism' | 'chain' | 'catalyst' | 'summary' | 'custom';
 
-// Re-export shared types for backward compatibility
-export type { TaskMode, TaskPayload };
+export interface TaskPayload {
+  paragraph?: string;
+  content?: string;
+  postTitle?: string;
+  title?: string;
+  persona?: string;
+  prompt?: string;
+  [key: string]: unknown;
+}
 
 export type PromptConfig = {
   system: string;
@@ -96108,7 +106491,7 @@ import { Hono } from 'hono';
 import type { Env } from '../types';
 import { success, badRequest } from '../lib/response';
 import { createAIService, tryParseJson } from '../lib/ai-service';
-import type { TaskMode, TaskPayload } from '@blog/shared';
+import type { TaskMode, TaskPayload } from '../lib/prompts';
 
 const ai = new Hono<{ Bindings: Env }>();
 

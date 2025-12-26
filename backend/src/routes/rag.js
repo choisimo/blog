@@ -491,4 +491,185 @@ router.post('/memories/batch-delete', async (req, res) => {
   }
 });
 
+// ========================================
+// INDEX MANAGEMENT ENDPOINTS
+// ========================================
+
+/**
+ * POST /index - 문서 인덱싱
+ * 
+ * Request Body:
+ * {
+ *   documents: [{
+ *     id: string,
+ *     content: string,
+ *     metadata?: object
+ *   }],
+ *   collection?: string  // Optional custom collection name
+ * }
+ */
+router.post('/index', async (req, res) => {
+  try {
+    const { documents, collection } = req.body;
+
+    if (!documents || !Array.isArray(documents) || documents.length === 0) {
+      return res.status(400).json({ ok: false, error: 'documents array is required' });
+    }
+
+    if (documents.length > 100) {
+      return res.status(400).json({ ok: false, error: 'Maximum 100 documents per request' });
+    }
+
+    // Validate documents
+    for (const doc of documents) {
+      if (!doc.id || !doc.content) {
+        return res.status(400).json({ ok: false, error: 'Each document must have id and content' });
+      }
+    }
+
+    // 1. Extract texts for embedding
+    const texts = documents.map(d => d.content);
+    
+    // 2. Generate embeddings
+    const embeddings = await getEmbeddings(texts);
+
+    // 3. Prepare data for ChromaDB
+    const ids = documents.map(d => d.id);
+    const metadatas = documents.map(d => ({
+      ...d.metadata,
+      indexed_at: new Date().toISOString(),
+    }));
+
+    // 4. Upsert to collection
+    const collectionName = collection || config.rag.chromaCollection;
+    await upsertToChroma(collectionName, ids, embeddings, texts, metadatas);
+
+    res.json({ ok: true, data: { indexed: ids.length, collection: collectionName } });
+  } catch (err) {
+    console.error('RAG index error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * DELETE /index/:documentId - 인덱스에서 문서 삭제
+ */
+router.delete('/index/:documentId', async (req, res) => {
+  try {
+    const { documentId } = req.params;
+    const { collection } = req.query;
+
+    if (!documentId) {
+      return res.status(400).json({ ok: false, error: 'documentId is required' });
+    }
+
+    const collectionName = collection || config.rag.chromaCollection;
+    
+    try {
+      await deleteFromChroma(collectionName, [documentId]);
+    } catch (err) {
+      if (!err.message.includes('404') && !err.message.includes('not found')) {
+        throw err;
+      }
+    }
+
+    res.json({ ok: true, data: { deleted: true } });
+  } catch (err) {
+    console.error('RAG delete error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * GET /status - 인덱스 상태 확인
+ */
+router.get('/status', async (req, res) => {
+  try {
+    const { collection } = req.query;
+    const collectionName = collection || config.rag.chromaCollection;
+    const chromaBase = config.rag.chromaUrl;
+
+    // Get collection info
+    const collectionResp = await fetch(`${chromaBase}/api/v1/collections/${collectionName}`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!collectionResp.ok) {
+      if (collectionResp.status === 404) {
+        return res.json({
+          ok: true,
+          data: {
+            collection: collectionName,
+            exists: false,
+            count: 0,
+          },
+        });
+      }
+      throw new Error(`ChromaDB error: ${collectionResp.status}`);
+    }
+
+    const collectionData = await collectionResp.json();
+
+    // Get count
+    const countResp = await fetch(`${chromaBase}/api/v1/collections/${collectionName}/count`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(5000),
+    });
+
+    let count = 0;
+    if (countResp.ok) {
+      const countData = await countResp.json();
+      count = countData.count || countData || 0;
+    }
+
+    res.json({
+      ok: true,
+      data: {
+        collection: collectionName,
+        exists: true,
+        count,
+        metadata: collectionData.metadata || {},
+      },
+    });
+  } catch (err) {
+    console.error('RAG status error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * GET /collections - 모든 컬렉션 목록
+ */
+router.get('/collections', async (req, res) => {
+  try {
+    const chromaBase = config.rag.chromaUrl;
+    
+    const response = await fetch(`${chromaBase}/api/v1/collections`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!response.ok) {
+      throw new Error(`ChromaDB error: ${response.status}`);
+    }
+
+    const collections = await response.json();
+
+    res.json({
+      ok: true,
+      data: {
+        collections: collections.map(c => ({
+          name: c.name,
+          metadata: c.metadata || {},
+        })),
+        total: collections.length,
+      },
+    });
+  } catch (err) {
+    console.error('RAG collections error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 export default router;
