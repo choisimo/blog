@@ -1378,31 +1378,17 @@
       // panel open
       this.$panel.classList.toggle('open', !!this.state.isOpen);
 
-      // position - only apply if saved position is valid and within viewport
-      if (this.state.position.x != null && this.state.position.y != null) {
-        const { x, y } = this.clamp(
-          this.state.position.x,
-          this.state.position.y
-        );
-        // If clamp returns null, reset to CSS defaults (position was invalid)
-        if (x == null || y == null) {
-          this.state.position = { x: null, y: null };
-          LS.set(KEYS.position, this.state.position);
-          Object.assign(this.$panel.style, {
-            left: '',
-            top: '',
-            right: '',
-            bottom: '',
-          });
-        } else {
-          Object.assign(this.$panel.style, {
-            left: `${x}px`,
-            top: `${y}px`,
-            right: 'auto',
-            bottom: 'auto',
-          });
-        }
-      }
+      // position - Reset to CSS defaults to prevent panel appearing outside viewport
+      // Always use CSS default positioning (right: 20px, bottom: 100px) instead of saved position
+      // This ensures panel always starts in a safe visible location
+      this.state.position = { x: null, y: null };
+      LS.set(KEYS.position, { x: null, y: null });
+      Object.assign(this.$panel.style, {
+        left: '',
+        top: '',
+        right: '',
+        bottom: '',
+      });
 
       // dev content
       if (this.$proposalMd)
