@@ -1,19 +1,16 @@
 name: Backend Build & Deploy (SSH Compose)
 
 # =============================================================================
-# Full Stack Deployment with Virtual Agent Service (VAS)
+# Full Stack Deployment with LiteLLM AI Gateway
 # =============================================================================
 # Architecture:
-#   cloudflared -> nginx -> api -> vas-proxy -> vas-core -> LLM
+#   cloudflared -> nginx -> api -> litellm-proxy -> LLM APIs
 #
 # Services deployed:
 #   - api: Node.js backend (built from Dockerfile)
 #   - nginx: Reverse proxy
 #   - cloudflared: Cloudflare Tunnel
-#   - vas-core: OpenCode LLM engine
-#   - vas-admin: Token management UI
-#   - vas-bootstrap: Auto JWT token generator
-#   - vas-proxy: Simplified /auto-chat API
+#   - litellm: AI Gateway for multiple LLM providers
 #   - embedding-server: TEI for RAG
 #   - chromadb: Vector database
 #   - terminal-server: Docker PTY server
@@ -84,26 +81,6 @@ jobs:
           load: true
           tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
-      - name: Build VAS Core image
-        if: ${{ github.event.inputs.skip_build != 'true' }}
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend/opencode-serve
-          file: ./backend/opencode-serve/ai-serve.Dockerfile
-          push: false
-          load: true
-          tags: vas-core:${{ env.IMAGE_TAG }}
-
-      - name: Build VAS Admin image
-        if: ${{ github.event.inputs.skip_build != 'true' }}
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend/opencode-serve/go-proxy-admin
-          file: ./backend/opencode-serve/go-proxy-admin/Dockerfile
-          push: false
-          load: true
-          tags: vas-admin:${{ env.IMAGE_TAG }}
-
       - name: Build Terminal Server image
         if: ${{ github.event.inputs.skip_build != 'true' }}
         uses: docker/build-push-action@v5
@@ -119,8 +96,6 @@ jobs:
         run: |
           docker save \
             "${IMAGE_NAME}:${IMAGE_TAG}" \
-            "vas-core:${IMAGE_TAG}" \
-            "vas-admin:${IMAGE_TAG}" \
             "terminal-server:${IMAGE_TAG}" \
             | gzip > backend-images.tar.gz
           ls -lh backend-images.tar.gz
@@ -145,7 +120,7 @@ jobs:
       - name: Upload artifacts to remote
         run: |
           test -n "${REMOTE_DIR}" || { echo "REMOTE_DIR secret is missing" >&2; exit 1; }
-          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "mkdir -p ${REMOTE_DIR}/opencode-serve"
+          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "mkdir -p ${REMOTE_DIR}"
 
           # Upload images (if built)
           if [ -f backend-images.tar.gz ]; then
@@ -156,9 +131,10 @@ jobs:
           scp -P "${SSH_PORT}" backend/nginx.conf "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/nginx.conf"
           scp -P "${SSH_PORT}" /tmp/backend.env "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/.env"
 
-          # Upload VAS proxy script and bootstrap script
-          scp -P "${SSH_PORT}" backend/opencode-serve/auto-chat-proxy.js "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/opencode-serve/"
-          scp -P "${SSH_PORT}" backend/opencode-serve/bootstrap-token.sh "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/opencode-serve/"
+          # Upload LiteLLM config if exists
+          if [ -f backend/litellm_config.yaml ]; then
+            scp -P "${SSH_PORT}" backend/litellm_config.yaml "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/litellm_config.yaml"
+          fi
 
       - name: Deploy full stack on remote
         env:
@@ -180,18 +156,16 @@ jobs:
             rm -f backend-images.tar.gz
           fi
 
-          # Generate runtime compose file with full VAS stack
+          # Generate runtime compose file with LiteLLM architecture
           cat > compose.runtime.yml <<'YML'
           # =======================================================================
-          # Runtime Compose - Single Entry Point Architecture
+          # Runtime Compose - LiteLLM AI Gateway Architecture
           # =======================================================================
           # Cloudflare Tunnel → nginx:80 → Internal Services
           #
           # Routes:
           #   /api/*       → api:5080
-          #   /ai/*        → vas-proxy:7016
-          #   /vas/*       → vas-core:7012
-          #   /vas-admin/* → vas-admin:7080
+          #   /litellm/*   → litellm:4000
           #   /terminal/*  → terminal-server:8080
           # =======================================================================
 
@@ -239,10 +213,8 @@ jobs:
                 - APP_ENV=production
                 - HOST=0.0.0.0
                 - PORT=5080
-                - AI_SERVE_BASE_URL=http://vas-proxy:7016
-                - VAS_CORE_URL=http://vas-core:7012
-                - AI_SERVE_DEFAULT_PROVIDER=github-copilot
-                - AI_SERVE_DEFAULT_MODEL=gpt-4.1
+                - LITELLM_BASE_URL=http://litellm:4000
+                - AI_PROVIDER=litellm
               expose:
                 - "5080"
               networks:
@@ -254,6 +226,27 @@ jobs:
                 timeout: 10s
                 retries: 5
                 start_period: 60s
+
+            # LiteLLM AI Gateway
+            litellm:
+              image: ghcr.io/berriai/litellm:main-latest
+              environment:
+                - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-1234}
+                - LITELLM_LOG_LEVEL=INFO
+              expose:
+                - "4000"
+              volumes:
+                - ./litellm_config.yaml:/app/config.yaml:ro
+              command: ["--config", "/app/config.yaml", "--port", "4000"]
+              networks:
+                - backend
+              restart: unless-stopped
+              healthcheck:
+                test: ["CMD", "wget", "-q", "--spider", "http://localhost:4000/health"]
+                interval: 30s
+                timeout: 10s
+                retries: 5
+                start_period: 30s
 
             # TEI Embedding Server
             embedding-server:
@@ -302,118 +295,6 @@ jobs:
                 - backend
               restart: unless-stopped
 
-            # VAS Core (OpenCode Engine)
-            vas-core:
-              image: vas-core:IMAGE_TAG_PLACEHOLDER
-              restart: unless-stopped
-              expose:
-                - "7012"
-              environment:
-                NODE_ENV: production
-                OPENCODE_HOST: 0.0.0.0
-                OPENCODE_PORT: 7012
-              command:
-                - /app/node_modules/.bin/opencode
-                - serve
-                - --hostname
-                - 0.0.0.0
-                - --port
-                - "7012"
-              volumes:
-                - vas-data:/home/node/.local/share/opencode
-                - vas-logs:/var/log/opencode
-                - vas-config:/home/node/.config/opencode
-              networks:
-                - backend
-              healthcheck:
-                test: ["CMD-SHELL", "node -e \"const http=require('http'); http.get('http://localhost:7012/app', ()=>process.exit(0)).on('error', ()=>process.exit(1));\" "]
-                interval: 30s
-                timeout: 5s
-                retries: 3
-                start_period: 10s
-              security_opt:
-                - no-new-privileges:true
-
-            # VAS Bootstrap (Auto JWT Token)
-            vas-bootstrap:
-              image: curlimages/curl:latest
-              restart: "no"
-              user: "0:0"
-              entrypoint: ["/bin/sh", "/app/bootstrap-token.sh"]
-              environment:
-                ADMIN_URL: http://vas-admin:7080
-                TOKEN_FILE: /app/shared/auto-token.jwt
-                MAX_RETRIES: "60"
-                RETRY_INTERVAL: "2"
-              volumes:
-                - ./opencode-serve/bootstrap-token.sh:/app/bootstrap-token.sh:ro
-                - vas-shared:/app/shared
-              networks:
-                - backend
-              depends_on:
-                vas-admin:
-                  condition: service_started
-
-            # VAS Proxy (/auto-chat API)
-            vas-proxy:
-              image: node:20-alpine
-              restart: unless-stopped
-              command: ["node", "/app/auto-chat-proxy.js"]
-              environment:
-                OPENCODE_BASE: http://vas-core:7012
-                PROXY_PORT: 7016
-                DEFAULT_PROVIDER: github-copilot
-                DEFAULT_MODEL: gpt-4.1
-                DEFAULT_SESSION_TITLE: Auto Session
-                OPENCODE_BEARER_TOKEN_FILE: /app/shared/auto-token.jwt
-                TOKEN_FILE_POLL_INTERVAL: "3000"
-                TOKEN_FILE_MAX_WAIT: "300000"
-                MESSAGE_TIMEOUT: "120000"
-              expose:
-                - "7016"
-              volumes:
-                - ./opencode-serve/auto-chat-proxy.js:/app/auto-chat-proxy.js:ro
-                - vas-shared:/app/shared:ro
-              networks:
-                - backend
-              depends_on:
-                vas-core:
-                  condition: service_healthy
-                vas-bootstrap:
-                  condition: service_completed_successfully
-              security_opt:
-                - no-new-privileges:true
-              healthcheck:
-                test: ["CMD-SHELL", "wget -q -O- http://localhost:7016/health || exit 1"]
-                interval: 30s
-                timeout: 10s
-                retries: 5
-                start_period: 120s
-
-            # VAS Admin (Token Management)
-            vas-admin:
-              image: vas-admin:IMAGE_TAG_PLACEHOLDER
-              restart: unless-stopped
-              expose:
-                - "7080"
-              environment:
-                OPENCODE_BASE: http://vas-core:7012
-                ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-auto-generated-secret-change-in-production}
-                ADMIN_PORT: 7080
-                ADMIN_DB_PATH: /app/data/vas-admin.db
-                ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
-                ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
-                AUTO_BOOTSTRAP: "true"
-              volumes:
-                - vas-admin-data:/app/data
-              networks:
-                - backend
-              depends_on:
-                vas-core:
-                  condition: service_healthy
-              security_opt:
-                - no-new-privileges:true
-
           networks:
             backend:
               driver: bridge
@@ -421,11 +302,6 @@ jobs:
           volumes:
             tei-data:
             chroma-data:
-            vas-data:
-            vas-logs:
-            vas-config:
-            vas-admin-data:
-            vas-shared:
           YML
 
           # Replace image tag placeholder
@@ -459,13 +335,13 @@ jobs:
             echo "API Retry $i/60"; sleep 2;
           done
 
-          echo "Waiting for VAS Proxy health check via nginx..."
-          for i in $(seq 1 60); do
-            if curl -fsS http://localhost:8080/ai/health >/dev/null 2>&1; then
-              echo "VAS Proxy Health OK"
+          echo "Waiting for LiteLLM health check..."
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/litellm/health >/dev/null 2>&1; then
+              echo "LiteLLM Health OK"
               break
             fi
-            echo "VAS Proxy Retry $i/60"; sleep 2;
+            echo "LiteLLM Retry $i/30"; sleep 2;
           done
 
           # Final status
@@ -522,13 +398,11 @@ jobs:
           printf "%s" "$headers" | awk 'tolower($0) ~ /^access-control-allow-origin:/ {print}' | grep -q "${PUBLIC_FRONTEND_ORIGIN}" || {
             echo "CORS header missing or mismatched for origin ${PUBLIC_FRONTEND_ORIGIN}" >&2; exit 1; }
 
-      - name: Verify VAS Proxy via public endpoint
+      - name: Verify AI Gateway via public endpoint
         if: ${{ env.PUBLIC_API_BASE_URL != '' }}
         continue-on-error: true
         run: |
-          echo "Checking VAS integration via ${PUBLIC_API_BASE_URL}/api/v1/ai/health ..."
-          # Note: This endpoint should exist in your API to proxy health check to vas-proxy
+          echo "Checking AI Gateway integration via ${PUBLIC_API_BASE_URL}/api/v1/ai/health ..."
           response=$(curl -fsS "${PUBLIC_API_BASE_URL}/api/v1/ai/health" 2>&1 || echo '{"error":"endpoint not found"}')
           echo "$response"
-          # Allow this to fail gracefully if endpoint doesn't exist yet
-          echo "VAS public check completed (check logs above for status)"
+          echo "AI Gateway public check completed (check logs above for status)"
