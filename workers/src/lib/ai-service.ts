@@ -15,9 +15,8 @@
  */
 
 import type { Env } from '../types';
-import type { TaskMode, TaskPayload } from '@blog/shared';
 import { getAiServeUrl, getAiServeApiKey, getAiGatewayCallerKey } from './config';
-import { buildTaskPrompt, getFallbackData } from './prompts';
+import { buildTaskPrompt, getFallbackData, type TaskMode, type TaskPayload } from './prompts';
 
 // ============================================================================
 // Types

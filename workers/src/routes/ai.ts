@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import type { Env } from '../types';
 import { success, badRequest } from '../lib/response';
 import { createAIService, tryParseJson } from '../lib/ai-service';
-import type { TaskMode, TaskPayload } from '@blog/shared';
+import type { TaskMode, TaskPayload } from '../lib/prompts';
 
 const ai = new Hono<{ Bindings: Env }>();
 

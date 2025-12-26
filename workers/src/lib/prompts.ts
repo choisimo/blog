@@ -5,10 +5,18 @@
  * 프론트엔드는 mode와 payload만 전송하고, 실제 프롬프트는 여기서 생성됩니다.
  */
 
-import type { TaskMode, TaskPayload } from '@blog/shared';
+// Local type definitions (avoiding external dependency for workers isolation)
+export type TaskMode = 'sketch' | 'prism' | 'chain' | 'catalyst' | 'summary' | 'custom';
 
-// Re-export shared types for backward compatibility
-export type { TaskMode, TaskPayload };
+export interface TaskPayload {
+  paragraph?: string;
+  content?: string;
+  postTitle?: string;
+  title?: string;
+  persona?: string;
+  prompt?: string;
+  [key: string]: unknown;
+}
 
 export type PromptConfig = {
   system: string;
