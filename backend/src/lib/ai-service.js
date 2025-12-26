@@ -256,17 +256,43 @@ export class AIService {
       switch (this.provider) {
         case 'litellm': {
           const client = this._getClient();
-          const response = await client.chat(messages, {
-            temperature: options.temperature,
-            model: options.model,
-            timeout: options.timeout,
-          });
-          result = {
-            content: response.content,
-            model: response.model,
-            provider: 'litellm',
-            usage: response.usage,
-          };
+          try {
+            const response = await client.chat(messages, {
+              temperature: options.temperature,
+              model: options.model,
+              timeout: options.timeout,
+            });
+            result = {
+              content: response.content,
+              model: response.model,
+              provider: 'litellm',
+              usage: response.usage,
+            };
+          } catch (litellmError) {
+            // Fallback to Gemini if LiteLLM fails and Gemini is configured
+            if (config.gemini?.apiKey) {
+              logger.warn(
+                { operation: 'chat', requestId },
+                'LiteLLM failed, falling back to Gemini',
+                { error: litellmError.message }
+              );
+              const formattedMessages = messages.map(m => {
+                if (m.role === 'system') return `System: ${m.content}`;
+                if (m.role === 'assistant') return `Assistant: ${m.content}`;
+                return `User: ${m.content}`;
+              }).join('\n\n');
+              const response = await geminiGenerate(formattedMessages, {
+                temperature: options.temperature ?? 0.2,
+              });
+              result = {
+                content: response,
+                model: config.gemini?.model || 'gemini-1.5-flash',
+                provider: 'gemini-fallback',
+              };
+            } else {
+              throw litellmError;
+            }
+          }
           break;
         }
 
