@@ -1,0 +1,97 @@
+name: Deploy API Gateway Worker
+
+# =============================================================================
+# Cloudflare Workers Deployment - API Gateway
+# =============================================================================
+# Deploys the api-gateway worker that routes traffic to the backend server.
+#
+# Architecture:
+#   Client → Cloudflare Workers (api.nodove.com) → Server:8080 → nginx → services
+#
+# Required secrets:
+#   - CLOUDFLARE_API_TOKEN: API token with Workers permissions
+#   - CLOUDFLARE_ACCOUNT_ID: Cloudflare account ID
+#   - BACKEND_ORIGIN: Backend server origin (e.g., http://YOUR_SERVER_IP:8080)
+# =============================================================================
+
+on:
+  push:
+    paths:
+      - 'workers/api-gateway/**'
+      - '.github/workflows/deploy-api-gateway.yml'
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy API Gateway
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: workers/api-gateway
+        run: npm ci
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: workers/api-gateway
+          command: deploy --env ${{ github.event.inputs.environment || 'production' }}
+          secrets: |
+            BACKEND_ORIGIN
+        env:
+          BACKEND_ORIGIN: ${{ secrets.BACKEND_ORIGIN }}
+
+      - name: Health check
+        run: |
+          echo "Waiting for worker deployment to propagate..."
+          sleep 10
+          
+          echo "Checking worker health at https://api.nodove.com/_health"
+          for i in $(seq 1 10); do
+            response=$(curl -sf "https://api.nodove.com/_health" 2>&1 || echo '{"error":"failed"}')
+            echo "Response: $response"
+            if echo "$response" | grep -q '"ok":true'; then
+              echo "✅ API Gateway Worker is healthy!"
+              exit 0
+            fi
+            echo "Retry $i/10..."
+            sleep 5
+          done
+          
+          echo "⚠️ Health check did not succeed within timeout"
+          echo "Worker may still be propagating or there's a configuration issue"
+          exit 1
+
+      - name: Test API routing
+        continue-on-error: true
+        run: |
+          echo "Testing API routing through worker..."
+          
+          # Test backend API
+          echo "GET /api/v1/healthz"
+          curl -sf "https://api.nodove.com/api/v1/healthz" && echo " ✅" || echo " ❌"
+          
+          # Test CORS
+          echo "Testing CORS headers..."
+          curl -sI -H "Origin: https://noblog.nodove.com" "https://api.nodove.com/api/v1/healthz" | grep -i access-control || echo "CORS headers not found"

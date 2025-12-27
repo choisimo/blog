@@ -1308,25 +1308,36 @@
     }
 
     // Inject minimal critical styles as a safety net so the UI stays fixed and scoped
+    // Always inject these styles to guarantee positioning even before external CSS loads
     injectCriticalStyles() {
       try {
-        const panel = this.shadowRoot && this.shadowRoot.getElementById('panel');
-        if (!panel) return;
-        const cs = getComputedStyle(panel);
-        // If the external CSS applied correctly, .panel should already be fixed
-        if (cs && cs.position === 'fixed') return;
-        // Otherwise, inject a minimal style fallback
+        // Always inject critical styles to ensure fixed positioning is applied immediately
+        // This prevents the panel from appearing in the document flow while CSS loads
+        const existing = this.shadowRoot?.querySelector('style[data-ai-memo="critical"]');
+        if (existing) return; // Already injected
+        
         const style = document.createElement('style');
         style.setAttribute('data-ai-memo', 'critical');
         style.textContent = `
-          :host { all: initial; }
-          .launcher { position: fixed; right: 16px; bottom: 96px; z-index: 2147483647; }
-          .launcher.history { bottom: 152px; }
-          .panel { position: fixed; z-index: 2147483647; right: 16px; bottom: 160px; display: none; }
+          :host { all: initial; display: contents; }
+          .launcher { position: fixed !important; right: 16px; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); z-index: 2147483647; }
+          .launcher.history { bottom: calc(152px + env(safe-area-inset-bottom, 0px)); }
+          .panel { 
+            position: fixed !important; 
+            z-index: 2147483647; 
+            right: 20px; 
+            bottom: calc(100px + env(safe-area-inset-bottom, 0px)); 
+            display: none;
+            width: 400px;
+            max-width: min(480px, calc(100vw - 32px));
+            height: min(520px, calc(100dvh - 100px));
+            max-height: calc(100dvh - 80px);
+          }
           .panel.open { display: flex; flex-direction: column; }
-          .history-overlay { position: fixed; inset: 0; z-index: 2147483647; display: none; }
+          .history-overlay { position: fixed !important; inset: 0; z-index: 2147483647; display: none; }
+          .versions-overlay { position: fixed !important; inset: 0; z-index: 2147483647; display: none; }
         `;
-        this.shadowRoot.appendChild(style);
+        this.shadowRoot.prepend(style); // Prepend so external CSS can override if loaded
       } catch (_) {}
     }
 
@@ -1383,11 +1394,13 @@
       // This ensures panel always starts in a safe visible location
       this.state.position = { x: null, y: null };
       LS.set(KEYS.position, { x: null, y: null });
+      // Explicitly set position to ensure panel is visible even if CSS hasn't loaded
       Object.assign(this.$panel.style, {
         left: '',
         top: '',
-        right: '',
-        bottom: '',
+        right: '20px',
+        bottom: 'calc(100px + env(safe-area-inset-bottom, 0px))',
+        position: 'fixed',
       });
 
       // dev content

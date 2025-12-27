@@ -1,20 +1,18 @@
-name: Backend Build & Deploy (SSH Compose)
+name: Backend Build & Deploy (Workers Gateway)
 
 # =============================================================================
-# Full Stack Deployment with Cloudflare Workers + LiteLLM AI Gateway
+# Full Stack Deployment with Workers Gateway
 # =============================================================================
 # Architecture:
-#   Cloudflare Workers -> Server:8080 -> nginx -> api -> litellm -> LLM APIs
+#   Cloudflare Workers → Server:8080 → nginx → services
 #
 # Services deployed:
-#   - nginx: Reverse proxy (exposed on port 8080)
 #   - api: Node.js backend (built from Dockerfile)
+#   - nginx: Reverse proxy on :8080 (exposed to Workers)
 #   - litellm: AI Gateway for multiple LLM providers
 #   - embedding-server: TEI for RAG
 #   - chromadb: Vector database
 #   - terminal-server: Docker PTY server
-#
-# Note: Cloudflare Workers (api-gateway) is deployed separately via workers workflow
 #
 # Required secrets:
 #   - SSH_HOST, SSH_USER, SSH_PRIVATE_KEY, SSH_PORT (optional)
@@ -128,8 +126,8 @@ jobs:
             scp -P "${SSH_PORT}" backend-images.tar.gz "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/"
           fi
 
-          # Upload config files
-          scp -P "${SSH_PORT}" backend/nginx.conf "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/nginx.conf"
+          # Upload Workers Gateway nginx config
+          scp -P "${SSH_PORT}" backend/nginx-workers.conf "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/nginx.conf"
           scp -P "${SSH_PORT}" /tmp/backend.env "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/.env"
 
           # Upload LiteLLM config if exists
@@ -157,28 +155,34 @@ jobs:
             rm -f backend-images.tar.gz
           fi
 
-          # Generate runtime compose file with Cloudflare Workers architecture
+          # Generate runtime compose file with Workers Gateway architecture
           cat > compose.runtime.yml <<'YML'
           # =======================================================================
-          # Runtime Compose - Cloudflare Workers + LiteLLM AI Gateway
+          # Runtime Compose - Workers Gateway Architecture
           # =======================================================================
-          # Cloudflare Workers → Server:8080 → nginx → Internal Services
+          # Cloudflare Workers → Server:8080 → nginx → Services
           #
           # Routes:
           #   /api/*       → api:5080
           #   /ai/*        → litellm:4000
+          #   /litellm/*   → litellm:4000
           #   /terminal/*  → terminal-server:8080
+          #
+          # Important:
+          #   - No cloudflared container
+          #   - Nginx exposed on 0.0.0.0:8080 (Workers connects here)
+          #   - Firewall must allow Cloudflare IPs only
           # =======================================================================
 
           services:
-            # Nginx Reverse Proxy (Entry Point from Cloudflare Workers)
+            # Nginx Reverse Proxy (Workers Gateway Mode)
             nginx:
               image: nginx:alpine
               depends_on:
                 api:
                   condition: service_started
               ports:
-                - "8080:80"  # Exposed to Cloudflare Workers
+                - "0.0.0.0:8080:80"  # Exposed to Workers
               expose:
                 - "80"
               volumes:
@@ -353,6 +357,7 @@ jobs:
 
           echo ""
           echo "Deployment successful!"
+          echo "IMPORTANT: Ensure firewall allows Cloudflare IPs on port 8080"
           REMOTE_EOF
 
       - name: External health check (public domain)
@@ -367,7 +372,8 @@ jobs:
             echo "Retry $i/30"; sleep 2;
           done
           echo "⚠️ Public health check failed at ${PUBLIC_API_BASE_URL}/api/v1/healthz"
-          echo "This may indicate Cloudflare Workers or firewall issues."
+          echo "This may indicate Workers routing or firewall issues."
+          echo "Ensure: 1) Worker is deployed 2) Firewall allows Cloudflare IPs 3) Custom Domain configured"
           exit 1
 
       - name: Verify public runtime config

@@ -1,93 +1,73 @@
 # =============================================================================
-# Docker Compose - Full Stack with Cloudflare Tunnel + LiteLLM AI Gateway
+# Docker Compose - Full Stack with Cloudflare Workers + LiteLLM AI Gateway
 # =============================================================================
 #
-# Architecture (Single Entry Point + LiteLLM Gateway):
+# Architecture (Cloudflare Workers → nginx:8080 → Services):
 #
 #   ┌─────────────────────────────────────────────────────────────────────────┐
 #   │                         Internet                                        │
 #   │                            │                                            │
 #   │                            ▼                                            │
-#   │                   Cloudflare Tunnel                                     │
+#   │                   Cloudflare Workers                                    │
+#   │                   (api-gateway worker)                                  │
+#   │                            │                                            │
+#   │                            ▼                                            │
+#   │                    Server:8080 (nginx exposed)                          │
 #   │                            │                                            │
 #   │                            ▼                                            │
 #   │  ┌──────────────────────────────────────────────────────────────────┐  │
-#   │  │                    nginx:80 (Single Entry)                       │  │
+#   │  │                    nginx:80 (Docker internal)                    │  │
 #   │  │  /api/*      → api:5080                                          │  │
-#   │  │  /ai/*       → litellm:4000  (NEW: LiteLLM Gateway)              │  │
-#   │  │  /vas/*      → vas-core:7012                                     │  │
-#   │  │  /vas-admin/* → vas-admin:7080                                   │  │
+#   │  │  /ai/*       → litellm:4000  (LiteLLM Gateway)                   │  │
 #   │  │  /terminal/* → terminal-server:8080                              │  │
 #   │  └──────────────────────────────────────────────────────────────────┘  │
 #   │                                                                         │
 #   │  ┌─────────────────────────────────────────────────────────────────┐   │
 #   │  │              LiteLLM AI Gateway (port 4000)                     │   │
 #   │  │  - OpenAI-compatible API for ALL providers                      │   │
-#   │  │  - Automatic fallback: gpt-4 → gemini → claude                  │   │
+#   │  │  - Automatic fallback: gemini → openai → claude                 │   │
 #   │  │  - Load balancing, rate limiting, cost tracking                 │   │
-#   │  │  - Routes to: vas-core (GitHub Copilot), OpenAI, Gemini, etc.   │   │
 #   │  └─────────────────────────────────────────────────────────────────┘   │
 #   │                                                                         │
 #   │  Internal Services (Docker bridge network only):                        │
-#   │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐       │
-#   │  │    api      │ │  vas-core   │ │   litellm   │ │  vas-admin  │       │
-#   │  │   :5080     │ │   :7012     │ │   :4000     │ │   :7080     │       │
-#   │  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘       │
 #   │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐                       │
-#   │  │  terminal   │ │  embedding  │ │  chromadb   │                       │
-#   │  │   :8080     │ │    :80      │ │   :8000     │                       │
+#   │  │    api      │ │   litellm   │ │  terminal   │                       │
+#   │  │   :5080     │ │   :4000     │ │   :8080     │                       │
 #   │  └─────────────┘ └─────────────┘ └─────────────┘                       │
+#   │  ┌─────────────┐ ┌─────────────┐                                       │
+#   │  │  embedding  │ │  chromadb   │                                       │
+#   │  │    :80      │ │   :8000     │                                       │
+#   │  └─────────────┘ └─────────────┘                                       │
 #   └─────────────────────────────────────────────────────────────────────────┘
 #
-# Public URL Routes (via api.nodove.com):
+# Public URL Routes (via api.nodove.com → Cloudflare Workers):
 #   https://api.nodove.com/api/*       → Backend API
 #   https://api.nodove.com/ai/*        → LiteLLM Gateway (OpenAI-compatible)
-#   https://api.nodove.com/vas/*       → VAS Core (direct, for auth)
-#   https://api.nodove.com/vas-admin/* → VAS Admin UI
 #   https://api.nodove.com/terminal/*  → Terminal WebSocket
 #
-# Localhost ports (for self-hosted runner / debugging):
+# Localhost ports (for debugging):
+#   127.0.0.1:8080 → nginx:80            (Main entry point)
 #   127.0.0.1:4000 → litellm:4000        (LiteLLM Gateway)
 #   127.0.0.1:8180 → embedding-server:80 (TEI)
 #   127.0.0.1:8100 → chromadb:8000       (Vector DB)
-#   127.0.0.1:7012 → vas-core:7012       (OpenCode API for auth)
 #
 # Setup:
-#   1. Cloudflare Zero Trust에서 터널 생성
-#   2. 터널 Public Hostname 설정: api.nodove.com → http://nginx:80
-#   3. 터널 토큰을 .env 파일에 CLOUDFLARE_TUNNEL_TOKEN으로 저장
+#   1. Cloudflare Workers에서 api-gateway worker 배포
+#   2. Worker에 BACKEND_ORIGIN 시크릿 설정 (http://YOUR_SERVER_IP:8080)
+#   3. 서버 방화벽에서 포트 8080을 Cloudflare IP만 허용
 #   4. API 키 설정 (.env):
 #      - LITELLM_MASTER_KEY=sk-your-master-key
+#      - GOOGLE_API_KEY=... (Gemini)
 #      - OPENAI_API_KEY=sk-... (optional)
-#      - GOOGLE_API_KEY=... (optional)
 #      - ANTHROPIC_API_KEY=... (optional)
 #   5. docker compose up -d
-#   6. GitHub Copilot 인증 (호스트에서):
-#      npm install -g opencode@latest
-#      OPENCODE_API_URL=http://127.0.0.1:7012 opencode auth login
-#      docker compose restart vas-core litellm
 # =============================================================================
 
 services:
   # ---------------------------------------------------------------------------
-  # Cloudflare Tunnel (connects to nginx only)
+  # Nginx Reverse Proxy (Entry Point from Cloudflare Workers)
   # ---------------------------------------------------------------------------
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    command: tunnel --no-autoupdate run
-    environment:
-      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
-    depends_on:
-      nginx:
-        condition: service_healthy
-    networks:
-      - backend
-    restart: unless-stopped
-
-  # ---------------------------------------------------------------------------
-  # Nginx Reverse Proxy (Single Entry Point)
-  # ---------------------------------------------------------------------------
-  # All external traffic comes through here.
+  # Cloudflare Workers connect to port 8080 on the host.
   # Routes to internal services based on URL path.
   # ---------------------------------------------------------------------------
   nginx:
@@ -95,8 +75,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
-      vas-proxy:
-        condition: service_healthy
+    ports:
+      - "8080:80"  # Exposed to Cloudflare Workers
     expose:
       - "80"
     volumes:

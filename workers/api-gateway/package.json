@@ -1,0 +1,17 @@
+{
+  "name": "blog-api-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloudflare Worker API Gateway for Blog Backend",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:production": "wrangler deploy --env production",
+    "deploy:staging": "wrangler deploy --env staging",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
