@@ -6,14 +6,26 @@ compatibility_flags = ["nodejs_compat"]
 account_id = "f6f11e2a4e5178d2f37476785018f761"
 
 # Secrets (set via wrangler secret put):
+#
+# === Required for Authentication ===
+# - JWT_SECRET: Secret key for JWT token signing (required)
+# - ADMIN_USERNAME: Admin username for login (required)
+# - ADMIN_PASSWORD: Admin password (required)
+# - ADMIN_EMAIL: Admin email for OTP verification (required)
+#
+# === Required for Email OTP ===
+# - RESEND_API_KEY: Resend.com API key for sending OTP emails
+# - NOTIFY_FROM_EMAIL: Email sender address (e.g., "noreply@yourdomain.com")
+#
+# === AI Features (Optional) ===
 # - GEMINI_API_KEY: Google Gemini API key for AI features
-# - JWT_SECRET: Secret key for JWT token signing
-# - ADMIN_USERNAME: Admin username (optional)
-# - ADMIN_PASSWORD: Admin password hash (optional)
-# - OPENROUTER_API_KEY: OpenRouter API key for vision fallback (optional)
-# - AI_SERVE_API_KEY: Internal API key for self-hosted AI server (optional)
+# - OPENROUTER_API_KEY: OpenRouter API key for vision fallback
+# - AI_SERVE_API_KEY: Internal API key for self-hosted AI server
 #
 # Set secrets with: npx wrangler secret put <SECRET_NAME> [--env production]
+#
+# GitHub Actions: Add these as repository secrets, then deploy workflow
+# will automatically set them via wrangler secret put
 
 # Development environment variables
 [vars]

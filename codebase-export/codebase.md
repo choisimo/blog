@@ -1,12 +1,11 @@
-# blog-1120 - Complete Codebase
+# blog - Complete Codebase
 
-> Generated at: 2025-12-26T08:43:43.028Z
-> Total files: 554
+> Generated at: 2025-12-29T03:43:29.774Z
+> Total files: 570
 
 ## Table of Contents
 
 - [.](#-)
-- [.github](#-github)
 - [.github/workflows](#-github-workflows)
 - [.roo](#-roo)
 - [backend](#backend)
@@ -49,6 +48,7 @@
 - [frontend/src/components/common](#frontend-src-components-common)
 - [frontend/src/components/features/admin](#frontend-src-components-features-admin)
 - [frontend/src/components/features/admin/ai](#frontend-src-components-features-admin-ai)
+- [frontend/src/components/features/admin/secrets](#frontend-src-components-features-admin-secrets)
 - [frontend/src/components/features/blog](#frontend-src-components-features-blog)
 - [frontend/src/components/features/chat](#frontend-src-components-features-chat)
 - [frontend/src/components/features/chat/widget](#frontend-src-components-features-chat-widget)
@@ -88,6 +88,8 @@
 - [workers](#workers)
 - [workers/ai-check-gateway](#workers-ai-check-gateway)
 - [workers/ai-check-gateway/src](#workers-ai-check-gateway-src)
+- [workers/api-gateway](#workers-api-gateway)
+- [workers/api-gateway/src](#workers-api-gateway-src)
 - [workers/db-api](#workers-db-api)
 - [workers/db-api/src](#workers-db-api-src)
 - [workers/migrations](#workers-migrations)
@@ -655,316 +657,6 @@ curl http://localhost:4000/v1/models -H "Authorization: Bearer sk-local-dev-key"
 │   └── migrations/             # D1 Migrations
 └── shared/                     # Shared TypeScript Types
 ```
-
-```
-
-### docker-compose.local.yml
-
-**Path:** `docker-compose.local.yml`
-
-```yaml
-# =============================================================================
-# Docker Compose - Local Development (Full Stack)
-# =============================================================================
-#
-# Production과 동일한 구조로 로컬에서 전체 서비스 실행
-#
-# Quick Start:
-#   cp .env.local.example .env.local
-#   # .env.local 편집: GOOGLE_API_KEY 또는 OPENAI_API_KEY 설정
-#   docker compose -f docker-compose.local.yml up --build
-#
-# Architecture:
-#
-#   ┌─────────────────────────────────────────────────────────────────────────┐
-#   │                      Local Development Stack                             │
-#   │                                                                          │
-#   │  ┌──────────────────────────────────────────────────────────────────┐   │
-#   │  │                   nginx:8080 (Gateway)                            │   │
-#   │  │  /                → frontend:80          (React SPA)              │   │
-#   │  │  /api/*           → backend:5080         (Blog API)               │   │
-#   │  │  /ai/*            → litellm:4000         (LiteLLM Gateway)        │   │
-#   │  │  /workers/*       → workers:8787         (CF Workers Emulation)   │   │
-#   │  │  /terminal/*      → terminal-server:8080 (WebSocket PTY)          │   │
-#   │  └──────────────────────────────────────────────────────────────────┘   │
-#   │                                                                          │
-#   │  ┌─────────────────────────────────────────────────────────────────┐   │
-#   │  │              LiteLLM AI Gateway (port 4000)                      │   │
-#   │  │  - OpenAI-compatible API for ALL providers                       │   │
-#   │  │  - Supports: OpenAI, Gemini, Anthropic, Ollama (local)           │   │
-#   │  │  - Automatic fallback and load balancing                         │   │
-#   │  └─────────────────────────────────────────────────────────────────┘   │
-#   │                                                                          │
-#   │  Services:                                                               │
-#   │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐      │
-#   │  │ frontend │ │ backend  │ │ litellm  │ │ workers  │ │ terminal │      │
-#   │  │   :80    │ │  :5080   │ │  :4000   │ │  :8787   │ │  :8080   │      │
-#   │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘      │
-#   └─────────────────────────────────────────────────────────────────────────┘
-#
-# Access Points:
-#   http://localhost:8080           → Main Entry (Blog UI)
-#   http://localhost:8080/api/*     → Backend API
-#   http://localhost:8080/ai/*      → LiteLLM Gateway (OpenAI-compatible)
-#   http://localhost:8080/workers/* → Workers API (D1, Comments, etc.)
-#
-# Direct Access (for debugging):
-#   http://localhost:5080           → Backend API
-#   http://localhost:4000           → LiteLLM Gateway
-#   http://localhost:8787           → Workers API
-#   http://localhost:5173           → Frontend (Vite HMR - optional)
-#
-# =============================================================================
-
-services:
-  # ---------------------------------------------------------------------------
-  # Nginx Gateway (Single Entry Point)
-  # ---------------------------------------------------------------------------
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "8080:80"
-    volumes:
-      - ./nginx.local.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on:
-      frontend:
-        condition: service_healthy
-      backend:
-        condition: service_healthy
-      litellm:
-        condition: service_healthy
-    networks:
-      - local-dev
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-  # ---------------------------------------------------------------------------
-  # Frontend (React SPA)
-  # ---------------------------------------------------------------------------
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        # Note: VITE_API_BASE_URL should NOT include /api/v1 - that's appended by the code
-        VITE_API_BASE_URL: http://localhost:8080
-        VITE_WORKERS_BASE_URL: http://localhost:8080/workers
-        VITE_TERMINAL_WS_URL: ws://localhost:8080/terminal
-        VITE_SITE_BASE_URL: http://localhost:8080
-    expose:
-      - "80"
-    networks:
-      - local-dev
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-  # ---------------------------------------------------------------------------
-  # Backend API Server
-  # ---------------------------------------------------------------------------
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    env_file:
-      - path: .env.local
-        required: false
-    environment:
-      - APP_ENV=development
-      - HOST=0.0.0.0
-      - PORT=5080
-      - LOG_LEVEL=debug
-      # URLs
-      - SITE_BASE_URL=http://localhost:8080
-      - API_BASE_URL=http://localhost:8080/api/v1
-      - ALLOWED_ORIGINS=http://localhost:8080,http://localhost:5173,http://localhost:3000
-      # LiteLLM Gateway (OpenAI-compatible endpoint)
-      - AI_PROVIDER=litellm
-      - LITELLM_BASE_URL=http://litellm:4000
-      - LITELLM_API_KEY=${LITELLM_MASTER_KEY:-sk-local-dev-key}
-      - AI_DEFAULT_MODEL=${AI_DEFAULT_MODEL:-gemini-1.5-flash}
-      # Workers for D1/R2
-      - WORKERS_BASE_URL=http://workers:8787
-    expose:
-      - "5080"
-    ports:
-      - "5080:5080"
-    volumes:
-      - ./frontend/public:/app/public:ro
-    networks:
-      - local-dev
-    depends_on:
-      litellm:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "node -e \"const http=require('http'); http.get('http://localhost:5080/api/v1/healthz', (r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-
-  # ===========================================================================
-  # LiteLLM AI Gateway (Unified LLM Endpoint)
-  # ===========================================================================
-  # Single OpenAI-compatible endpoint for ALL LLM providers.
-  # Supports: Gemini, OpenAI, Anthropic, Ollama (local)
-  # ---------------------------------------------------------------------------
-  litellm:
-    image: ghcr.io/berriai/litellm:main-latest
-    restart: unless-stopped
-    ports:
-      - "4000:4000"
-    expose:
-      - "4000"
-    environment:
-      # Master API key for authentication and Admin UI
-      # Admin UI login: username=admin, password=<this key>
-      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-local-dev-key}
-      # Provider API Keys (set in .env.local)
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      # Logging
-      LITELLM_LOG: DEBUG
-    command:
-      - --config
-      - /app/config.yaml
-      - --port
-      - "4000"
-      - --host
-      - "0.0.0.0"
-    volumes:
-      - ./litellm_config.local.yaml:/app/config.yaml:ro
-    networks:
-      - local-dev
-    healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness')\""]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
-  # ---------------------------------------------------------------------------
-  # Cloudflare Workers Emulation (Wrangler Dev)
-  # ---------------------------------------------------------------------------
-  workers:
-    build:
-      context: .
-      dockerfile: workers/Dockerfile.local
-    environment:
-      - NODE_ENV=development
-    expose:
-      - "8787"
-    ports:
-      - "8787:8787"
-    volumes:
-      - workers_d1_data:/app/.wrangler/state
-    networks:
-      - local-dev
-    restart: unless-stopped
-
-  # ---------------------------------------------------------------------------
-  # Terminal Server (WebSocket PTY)
-  # ---------------------------------------------------------------------------
-  terminal-server:
-    build:
-      context: ./backend/terminal-server
-      dockerfile: Dockerfile
-    environment:
-      - ORIGIN_SECRET_KEY=${ORIGIN_SECRET_KEY:-local-dev-secret}
-      - SANDBOX_IMAGE=${SANDBOX_IMAGE:-alpine:latest}
-      - ALLOWED_ORIGINS=http://localhost:8080,http://localhost:5173
-    expose:
-      - "8080"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - local-dev
-    restart: unless-stopped
-
-  # ===========================================================================
-  # Optional Services (uncomment as needed)
-  # ===========================================================================
-
-  # ---------------------------------------------------------------------------
-  # TEI Embedding Server (for RAG features)
-  # ---------------------------------------------------------------------------
-  # embedding-server:
-  #   image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2.3
-  #   command: --model-id sentence-transformers/all-MiniLM-L6-v2
-  #   ports:
-  #     - "8180:80"
-  #   volumes:
-  #     - tei-data:/data
-  #   networks:
-  #     - local-dev
-  #   restart: unless-stopped
-
-  # ---------------------------------------------------------------------------
-  # ChromaDB Vector Database (for RAG features)
-  # ---------------------------------------------------------------------------
-  # chromadb:
-  #   image: chromadb/chroma:0.5.23
-  #   environment:
-  #     - IS_PERSISTENT=TRUE
-  #     - PERSIST_DIRECTORY=/chroma/chroma
-  #     - ANONYMIZED_TELEMETRY=FALSE
-  #   ports:
-  #     - "8100:8000"
-  #   volumes:
-  #     - chroma-data:/chroma/chroma
-  #   networks:
-  #     - local-dev
-  #   restart: unless-stopped
-
-  # ---------------------------------------------------------------------------
-  # Frontend Dev Server (Vite HMR) - Alternative to built frontend
-  # ---------------------------------------------------------------------------
-  # Uncomment this and comment out 'frontend' service for hot reload
-  # frontend-dev:
-  #   image: node:20-alpine
-  #   working_dir: /app
-  #   command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
-  #   ports:
-  #     - "5173:5173"
-  #   volumes:
-  #     - ./frontend:/app
-  #     - frontend_node_modules:/app/node_modules
-  #   environment:
-  #     # Note: VITE_API_BASE_URL should NOT include /api/v1 - that's appended by the code
-  #     - VITE_API_BASE_URL=http://localhost:8080
-  #     - VITE_WORKERS_BASE_URL=http://localhost:8080/workers
-  #     - VITE_TERMINAL_WS_URL=ws://localhost:8080/terminal
-  #   networks:
-  #     - local-dev
-
-# =============================================================================
-# Networks
-# =============================================================================
-networks:
-  local-dev:
-    driver: bridge
-
-# =============================================================================
-# Volumes
-# =============================================================================
-volumes:
-  workers_d1_data:
-    driver: local
-  frontend_node_modules:
-    driver: local
-  # tei-data:
-  #   driver: local
-  # chroma-data:
-  #   driver: local
 
 ```
 
@@ -2124,568 +1816,24 @@ main "$@"
 
 ---
 
-## .github
-
-### GITHUB_SECRETS_SETUP.md
-
-**Path:** `.github/GITHUB_SECRETS_SETUP.md`
-
-```markdown
-# GitHub Secrets 설정 가이드
-
-GitHub Actions 배포를 위한 Secret 설정 방법입니다.
-
-## 목차
-- [Part 1: Cloudflare Workers 배포](#part-1-cloudflare-workers-배포)
-- [Part 2: Backend 서버 배포 (SSH)](#part-2-backend-서버-배포-ssh)
-
----
-
-# Part 1: Cloudflare Workers 배포
-
-## 필요한 Secrets
-
-다음 5개의 Secret을 설정해야 합니다:
-1. `CLOUDFLARE_ACCOUNT_ID` - Cloudflare 계정 ID
-2. `CLOUDFLARE_API_TOKEN` - Cloudflare API 토큰
-3. `GEMINI_API_KEY` - Google Gemini API 키
-4. `JWT_SECRET` - JWT 서명용 비밀 키
-5. `VITE_API_BASE_URL` - 프론트엔드가 사용할 백엔드 API 기본 URL (프로덕션 권장)
-
----
-
-## 1. CLOUDFLARE_ACCOUNT_ID 설정
-
-### 계정 ID 확인 방법
-1. https://dash.cloudflare.com 로그인
-2. 오른쪽 사이드바에서 **Account ID** 확인
-3. 또는 `wrangler.toml`에서 확인:
-   ```toml
-   account_id = "f6f11e2a4e5178d2f37476785018f761"
-   ```
-
-### GitHub Secret 설정
-1. GitHub Repository → **Settings** → **Secrets and variables** → **Actions**
-2. **New repository secret** 클릭
-3. Name: `CLOUDFLARE_ACCOUNT_ID`
-4. Value: 계정 ID 입력 (예: `f6f11e2a4e5178d2f37476785018f761`)
-5. **Add secret** 클릭
-
----
-
-## 2. CLOUDFLARE_API_TOKEN 설정
-
-### API Token 생성
-1. https://dash.cloudflare.com/profile/api-tokens 방문
-2. **Create Token** 클릭
-3. **Edit Cloudflare Workers** 템플릿 선택
-4. 또는 **Custom token**으로 다음 권한 설정:
-   - **Account**: 
-     - D1: Edit
-     - Workers Scripts: Edit
-   - **Zone**: 
-     - Workers Routes: Edit (선택사항)
-
-5. **Continue to summary** → **Create Token**
-6. 생성된 토큰 복사 (다시 볼 수 없으니 주의!)
-
-### 필수 권한 확인
-생성한 API Token이 다음 권한을 포함해야 합니다:
-- ✅ Account - D1: Edit
-- ✅ Account - Workers Scripts: Edit
-- ✅ Account - Account Settings: Read
-
-### GitHub Secret 설정
-1. GitHub Repository → **Settings** → **Secrets and variables** → **Actions**
-2. **New repository secret** 클릭
-3. Name: `CLOUDFLARE_API_TOKEN`
-4. Value: 생성한 API Token 붙여넣기
-5. **Add secret** 클릭
-
----
-
-## 3. GEMINI_API_KEY 설정
-
-### API Key 발급
-1. https://aistudio.google.com/app/apikey 방문
-2. **Create API Key** 클릭
-3. 키 복사 (AIza로 시작하는 문자열)
-
-### GitHub Secret 설정
-1. GitHub Repository → **Settings** → **Secrets and variables** → **Actions**
-2. **New repository secret** 클릭
-3. Name: `GEMINI_API_KEY`
-4. Value: 발급받은 API Key
-5. **Add secret** 클릭
-
----
-
-## 4. JWT_SECRET 설정
-
-### Secret 생성
-로컬에서 안전한 랜덤 문자열 생성:
-```bash
-openssl rand -base64 32
-```
-
-출력 예시:
-```
-DtRlOC1noMuWlWTZw2e3Ob58zx1j7av5vJuv0RPz3GY=
-```
-
-### GitHub Secret 설정
-1. GitHub Repository → **Settings** → **Secrets and variables** → **Actions**
-2. **New repository secret** 클릭
-3. Name: `JWT_SECRET`
-4. Value: 생성한 랜덤 문자열
-5. **Add secret** 클릭
-
----
-
-## ✅ 설정 확인
-
-### 모든 Secret이 설정되었는지 확인
-GitHub Repository → **Settings** → **Secrets and variables** → **Actions**에서:
-- [x] CLOUDFLARE_ACCOUNT_ID
-- [x] CLOUDFLARE_API_TOKEN
-- [x] GEMINI_API_KEY
-- [x] JWT_SECRET
-- [x] VITE_API_BASE_URL
-
-### 로컬 테스트
-로컬에서 API Token이 올바른지 테스트:
-```bash
-cd workers
-export CLOUDFLARE_API_TOKEN="your-api-token"
-export CLOUDFLARE_ACCOUNT_ID="your-account-id"
-npx wrangler whoami
-```
-
-성공 응답 예시:
-```
-Getting User settings...
-👋 You are logged in with an API Token, associated with the email '***@example.com'!
-```
-
----
-
-## 🚨 트러블슈팅
-
-### 7403 에러: "account is not authorized"
-**원인**: API Token 권한 부족 또는 Account ID 불일치
-
-**해결**:
-1. Cloudflare Dashboard에서 Account ID 재확인
-2. API Token에 D1 Edit 권한이 있는지 확인
-3. 필요시 Token 재생성하여 다시 설정
-
-### Secret이 반영되지 않음
-**해결**: Secret 변경 후 새 workflow를 트리거해야 합니다
-```bash
-git commit --allow-empty -m "chore: trigger workflow"
-git push
-```
-
-### API Token 테스트 실패
-**해결**: Token이 만료되었거나 권한이 부족한 경우 재발급
-1. https://dash.cloudflare.com/profile/api-tokens
-2. 기존 Token 삭제
-3. 새 Token 생성
-4. GitHub Secret 업데이트
-
-### 프론트엔드가 잘못된 API로 호출함
-**원인**: `VITE_API_BASE_URL` Secret 미설정으로 기본값(`blog-api.immuddelo.workers.dev`) 사용
-
-**해결**:
-- Repository Secret에 `VITE_API_BASE_URL` 추가 (예: `https://blog-api-prod.immuddelo.workers.dev`)
-- 또는 사용자 정의 도메인을 사용 중이면 해당 URL로 설정
-
----
-
-## 📚 참고 문서
-
-- [Cloudflare API Tokens](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/)
-- [Wrangler Authentication](https://developers.cloudflare.com/workers/wrangler/ci-cd/)
-- [GitHub Actions Secrets](https://docs.github.com/en/actions/security-guides/encrypted-secrets)
-
----
-
-# Part 2: Backend 서버 배포 (SSH)
-
-Backend API + VAS (Virtual Agent Service) 스택을 원격 서버에 배포합니다.
-
-## 아키텍처
-
-```
-GitHub Actions (ubuntu-latest)
-       │
-       │ SSH (port 11223)
-       ▼
-┌─────────────────────────────────────────────────────────┐
-│  Remote Server (Fedora 43)                              │
-│  suhak.nodove.com                                       │
-│                                                         │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │
-│  │ cloudflared │───▶│    nginx    │───▶│     api     │ │
-│  │  (tunnel)   │    │  (reverse)  │    │  (Node.js)  │ │
-│  └─────────────┘    └─────────────┘    └──────┬──────┘ │
-│                                               │        │
-│                                               ▼        │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │
-│  │  vas-admin  │───▶│  vas-proxy  │───▶│  vas-core   │ │
-│  │ (token UI)  │    │ (/auto-chat)│    │ (OpenCode)  │ │
-│  └─────────────┘    └─────────────┘    └─────────────┘ │
-│                                                         │
-│  + embedding-server, chromadb, terminal-server          │
-└─────────────────────────────────────────────────────────┘
-```
-
-## 필요한 Secrets
-
-### SSH 접속 정보
-
-| Secret | 값 | 설명 |
-|--------|-----|------|
-| `SSH_HOST` | `suhak.nodove.com` | 원격 서버 호스트 |
-| `SSH_PORT` | `11223` | SSH 포트 |
-| `SSH_USER` | `nodove` | SSH 사용자명 |
-| `SSH_PRIVATE_KEY` | (아래 참조) | SSH 개인키 전체 내용 |
-| `REMOTE_DIR` | `/home/nodove/blog-backend` | 배포 디렉토리 |
-| `PUBLIC_API_BASE_URL` | `https://api.nodove.com` | 공개 API URL |
-| `BACKEND_ENV_FILE` | (아래 참조) | .env 파일 전체 내용 |
-
----
-
-## 1. SSH_PRIVATE_KEY 설정
-
-### 개인키 내용 확인
-```bash
-cat ~/.ssh/pmx.ed25519
-```
-
-출력 예시:
-```
------BEGIN OPENSSH PRIVATE KEY-----
-b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAA...
-...
------END OPENSSH PRIVATE KEY-----
-```
-
-### GitHub Secret 설정
-1. GitHub Repository → **Settings** → **Secrets and variables** → **Actions**
-2. **New repository secret** 클릭
-3. Name: `SSH_PRIVATE_KEY`
-4. Value: 개인키 전체 내용 붙여넣기 (BEGIN/END 포함)
-5. **Add secret** 클릭
-
----
-
-## 2. SSH 접속 정보 설정
-
-| Secret Name | Value |
-|-------------|-------|
-| `SSH_HOST` | `suhak.nodove.com` |
-| `SSH_PORT` | `11223` |
-| `SSH_USER` | `nodove` |
-| `REMOTE_DIR` | `/home/nodove/blog-backend` |
-| `PUBLIC_API_BASE_URL` | `https://api.nodove.com` |
-
-각각 동일한 방법으로 추가합니다.
-
----
-
-## 3. BACKEND_ENV_FILE 설정
-
-`.env` 파일 전체 내용을 Secret으로 저장합니다.
-
-### 필수 환경변수 템플릿
-
-```env
-# ===================================
-# 기본 서버 설정
-# ===================================
-APP_ENV=production
-HOST=0.0.0.0
-PORT=5080
-LOG_LEVEL=info
-
-# ===================================
-# Cloudflare Tunnel (필수)
-# ===================================
-# Zero Trust Dashboard에서 터널 생성 후 토큰 복사
-# https://one.dash.cloudflare.com/ → Access → Tunnels
-CLOUDFLARE_TUNNEL_TOKEN=eyJhIjoiZjZmMTF...
-
-# ===================================
-# CORS 설정
-# ===================================
-ALLOWED_ORIGINS=https://noblog.nodove.com,https://blog.nodove.com,http://localhost:5173
-
-# ===================================
-# VAS (Virtual Agent Service) 설정
-# ===================================
-# Admin JWT Secret (랜덤 생성: openssl rand -base64 32)
-ADMIN_JWT_SECRET=your-secure-random-secret-here
-
-# Admin 계정 (자동 생성용)
-ADMIN_EMAIL=admin@nodove.com
-ADMIN_PASSWORD=your-admin-password
-
-# ===================================
-# Terminal Server 설정
-# ===================================
-ORIGIN_SECRET_KEY=your-origin-secret-key
-SANDBOX_IMAGE=alpine:latest
-
-# ===================================
-# GitHub 설정 (Admin PR 생성용)
-# ===================================
-GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-GITHUB_REPO_OWNER=choisimo
-GITHUB_REPO_NAME=blog
-GIT_USER_NAME=CI Bot
-GIT_USER_EMAIL=ci@nodove.com
-
-# ===================================
-# Admin 보호 설정
-# ===================================
-ADMIN_BEARER_TOKEN=your_secure_random_token_here
-
-# ===================================
-# AI 기능 설정 (선택사항 - VAS 사용시 불필요)
-# ===================================
-# Gemini API (VAS로 대체됨, 백업용)
-GEMINI_API_KEY=
-GEMINI_MODEL=gemini-1.5-flash
-
-# ===================================
-# Firebase 설정 (댓글 기능)
-# ===================================
-FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
-```
-
-### GitHub Secret 설정
-1. 위 템플릿을 복사하여 실제 값으로 채우기
-2. GitHub Repository → **Settings** → **Secrets and variables** → **Actions**
-3. **New repository secret** 클릭
-4. Name: `BACKEND_ENV_FILE`
-5. Value: 완성된 .env 내용 전체 붙여넣기
-6. **Add secret** 클릭
-
----
-
-## 4. Cloudflare Tunnel 토큰 발급
-
-### 터널 생성 방법
-1. https://one.dash.cloudflare.com/ 로그인
-2. **Access** → **Tunnels** → **Create a tunnel**
-3. Tunnel name: `blog-backend` (또는 원하는 이름)
-4. **Save tunnel**
-5. 토큰 복사 (eyJ...로 시작하는 긴 문자열)
-
-### Public Hostname 설정
-터널 설정에서 다음 hostname을 추가:
-
-| Public hostname | Service |
-|-----------------|---------|
-| `api.nodove.com` | `http://nginx:80` |
-| `ai-serve.nodove.com` | `http://vas-core:7012` (선택사항) |
-
----
-
-## ✅ Backend Secrets 체크리스트
-
-GitHub Repository → **Settings** → **Secrets and variables** → **Actions**에서:
-
-- [ ] `SSH_HOST` = `suhak.nodove.com`
-- [ ] `SSH_PORT` = `11223`
-- [ ] `SSH_USER` = `nodove`
-- [ ] `SSH_PRIVATE_KEY` = (개인키 전체 내용)
-- [ ] `REMOTE_DIR` = `/home/nodove/blog-backend`
-- [ ] `PUBLIC_API_BASE_URL` = `https://api.nodove.com`
-- [ ] `BACKEND_ENV_FILE` = (.env 전체 내용)
-
----
-
-## 🚀 첫 배포 후 추가 작업
-
-### GitHub Copilot 인증 (VAS 사용시 필수)
-
-배포 완료 후, 원격 서버에서 GitHub Copilot 인증을 해야 합니다:
-
-```bash
-ssh -p 11223 nodove@suhak.nodove.com
-cd ~/blog-backend
-docker compose -f compose.runtime.yml exec vas-core opencode auth login
-```
-
-브라우저에서 GitHub 인증 후 터미널에서 완료됩니다.
-
-### 인증 확인
-```bash
-docker compose -f compose.runtime.yml exec vas-core opencode auth status
-```
-
----
-
-## 🚨 Backend 트러블슈팅
-
-### SSH 연결 실패
-**원인**: SSH 키 또는 호스트 설정 오류
-
-**확인**:
-```bash
-# 로컬에서 테스트
-ssh -p 11223 -i ~/.ssh/pmx.ed25519 nodove@suhak.nodove.com "hostname"
-```
-
-### VAS Proxy 헬스체크 실패
-**원인**: GitHub Copilot 인증 미완료
-
-**해결**: 위의 "GitHub Copilot 인증" 섹션 참조
-
-### Cloudflare Tunnel 연결 안됨
-**원인**: 토큰 오류 또는 터널 설정 문제
-
-**확인**:
-```bash
-ssh -p 11223 nodove@suhak.nodove.com
-cd ~/blog-backend
-docker compose -f compose.runtime.yml logs cloudflared
-```
-
-### 배포 디렉토리 권한 오류
-**해결**:
-```bash
-ssh -p 11223 nodove@suhak.nodove.com "mkdir -p ~/blog-backend && chmod 755 ~/blog-backend"
-```
-
----
-
-## 📚 참고 문서
-
-- [Cloudflare Tunnels](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/)
-- [Docker Compose](https://docs.docker.com/compose/)
-- [GitHub Actions SSH Deploy](https://github.com/webfactory/ssh-agent)
-
-```
-
-### SECURITY.md
-
-**Path:** `.github/SECURITY.md`
-
-```markdown
-# Security Policy
-
-## 🔐 Sensitive Information
-
-This repository follows strict security practices:
-
-### ✅ Safe to Commit
-- `wrangler.toml` - Contains only resource IDs (D1, KV, R2)
-- `.dev.vars.example` - Template files with placeholder values
-- Source code with environment variable references
-
-### ❌ NEVER Commit
-- `.env` - Environment variables
-- `.dev.vars` - Actual development secrets
-- `wrangler-account.json` - Cloudflare account information
-- Service account JSON files
-- API keys, tokens, passwords
-- Private keys or certificates
-
-### 🛡️ Secret Management
-
-**Development Secrets** (Local):
-- Store in `.dev.vars` (gitignored)
-- Never commit actual values
-
-**Production Secrets** (Cloudflare):
-- Set via `wrangler secret put` CLI
-- Or use GitHub Actions secrets for CI/CD
-
-**GitHub Actions Secrets**:
-- `CLOUDFLARE_ACCOUNT_ID`
-- `CLOUDFLARE_API_TOKEN`
-- `VITE_API_BASE_URL`
-
-### 🚨 If Secrets Are Exposed
-
-1. **Immediately rotate all exposed credentials**
-   ```bash
-   # Rotate Cloudflare API token
-   wrangler secret put JWT_SECRET --env production
-   wrangler secret put ADMIN_PASSWORD --env production
-   ```
-
-2. **Remove from Git history**
-   ```bash
-   git filter-branch --force --index-filter \
-     "git rm --cached --ignore-unmatch PATH_TO_FILE" \
-     --prune-empty --tag-name-filter cat -- --all
-   ```
-
-3. **Force push (⚠️ destructive)**
-   ```bash
-   git push origin --force --all
-   ```
-
-4. **Notify team and audit access logs**
-
-## 📋 Security Checklist
-
-Before every commit:
-- [ ] No `.env` or `.dev.vars` files
-- [ ] No API keys or passwords in code
-- [ ] All secrets use environment variables
-- [ ] `.gitignore` properly configured
-- [ ] Run `git diff --cached` to review changes
-
-## 🔍 Automated Checks
-
-Pre-commit hook checks for:
-- Common secret patterns
-- Environment files
-- Service account files
-
-## 📞 Reporting Security Issues
-
-If you discover a security vulnerability:
-1. **DO NOT** open a public issue
-2. Email: [security contact]
-3. Include detailed description and steps to reproduce
-
-## 🔄 Regular Security Maintenance
-
-- [ ] Rotate secrets every 90 days
-- [ ] Review access logs monthly
-- [ ] Update dependencies regularly
-- [ ] Audit `.gitignore` quarterly
-
-```
-
----
-
 ## .github/workflows
 
-### backend-deploy.yml
+### backend-deploy-workers.yml
 
-**Path:** `.github/workflows/backend-deploy.yml`
+**Path:** `.github/workflows/backend-deploy-workers.yml`
 
 ```yaml
-name: Backend Build & Deploy (SSH Compose)
+name: Backend Build & Deploy (Workers Gateway)
 
 # =============================================================================
-# Full Stack Deployment with LiteLLM AI Gateway
+# Full Stack Deployment with Workers Gateway
 # =============================================================================
 # Architecture:
-#   cloudflared -> nginx -> api -> litellm-proxy -> LLM APIs
+#   Cloudflare Workers → Server:8080 → nginx → services
 #
 # Services deployed:
 #   - api: Node.js backend (built from Dockerfile)
-#   - nginx: Reverse proxy
-#   - cloudflared: Cloudflare Tunnel
+#   - nginx: Reverse proxy on :8080 (exposed to Workers)
 #   - litellm: AI Gateway for multiple LLM providers
 #   - embedding-server: TEI for RAG
 #   - chromadb: Vector database
@@ -2792,9 +1940,422 @@ jobs:
             echo "BACKEND_ENV_FILE secret is missing." >&2; exit 1;
           fi
           printf "%s" "${{ secrets.BACKEND_ENV_FILE }}" > /tmp/backend.env
-          # Append additional secrets that are stored separately
-          echo "" >> /tmp/backend.env
-          echo "CLOUDFLARE_TUNNEL_TOKEN=${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}" >> /tmp/backend.env
+
+      - name: Upload artifacts to remote
+        run: |
+          test -n "${REMOTE_DIR}" || { echo "REMOTE_DIR secret is missing" >&2; exit 1; }
+          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "mkdir -p ${REMOTE_DIR}"
+
+          # Upload images (if built)
+          if [ -f backend-images.tar.gz ]; then
+            scp -P "${SSH_PORT}" backend-images.tar.gz "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/"
+          fi
+
+          # Upload Workers Gateway nginx config
+          scp -P "${SSH_PORT}" backend/nginx-workers.conf "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/nginx.conf"
+          scp -P "${SSH_PORT}" /tmp/backend.env "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/.env"
+
+          # Upload LiteLLM config if exists
+          if [ -f backend/litellm_config.yaml ]; then
+            scp -P "${SSH_PORT}" backend/litellm_config.yaml "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/litellm_config.yaml"
+          fi
+
+      - name: Deploy full stack on remote
+        env:
+          SHA: ${{ github.sha }}
+          SKIP_BUILD: ${{ github.event.inputs.skip_build }}
+        run: |
+          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "REMOTE_DIR='${REMOTE_DIR}' SHA='${SHA}' bash -s" <<'REMOTE_EOF'
+          set -euo pipefail
+          DC="docker compose"
+          if ! $DC version >/dev/null 2>&1; then DC="docker-compose"; fi
+          cd "${REMOTE_DIR}"
+          IMAGE_TAG="${SHA}"
+          IMAGE_NAME="blog-backend"
+
+          # Load images if present
+          if [ -f backend-images.tar.gz ]; then
+            echo "Loading images on remote..."
+            gzip -dc backend-images.tar.gz | docker load
+            rm -f backend-images.tar.gz
+          fi
+
+          # Generate runtime compose file with Workers Gateway architecture
+          cat > compose.runtime.yml <<'YML'
+          # =======================================================================
+          # Runtime Compose - Workers Gateway Architecture
+          # =======================================================================
+          # Cloudflare Workers → Server:8080 → nginx → Services
+          #
+          # Routes:
+          #   /api/*       → api:5080
+          #   /ai/*        → litellm:4000
+          #   /litellm/*   → litellm:4000
+          #   /terminal/*  → terminal-server:8080
+          #
+          # Important:
+          #   - No cloudflared container
+          #   - Nginx exposed on 0.0.0.0:8080 (Workers connects here)
+          #   - Firewall must allow Cloudflare IPs only
+          # =======================================================================
+
+          services:
+            # Nginx Reverse Proxy (Workers Gateway Mode)
+            nginx:
+              image: nginx:alpine
+              depends_on:
+                api:
+                  condition: service_started
+              ports:
+                - "0.0.0.0:8080:80"  # Exposed to Workers
+              expose:
+                - "80"
+              volumes:
+                - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+              networks:
+                - backend
+              restart: unless-stopped
+              healthcheck:
+                test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
+                start_period: 10s
+
+            # Backend API Server
+            api:
+              image: blog-backend:IMAGE_TAG_PLACEHOLDER
+              env_file: .env
+              environment:
+                - APP_ENV=production
+                - HOST=0.0.0.0
+                - PORT=5080
+                - LITELLM_BASE_URL=http://litellm:4000
+                - AI_PROVIDER=litellm
+              expose:
+                - "5080"
+              networks:
+                - backend
+              restart: unless-stopped
+              healthcheck:
+                test: ["CMD", "wget", "-q", "--spider", "http://localhost:5080/api/v1/healthz"]
+                interval: 30s
+                timeout: 10s
+                retries: 5
+                start_period: 60s
+
+            # LiteLLM AI Gateway
+            litellm:
+              image: ghcr.io/berriai/litellm:main-latest
+              env_file: .env
+              environment:
+                - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-1234}
+                - LITELLM_LOG_LEVEL=INFO
+                # Disable database features - we use D1 for usage tracking
+                - DISABLE_SPEND_LOGS=true
+                - DATABASE_URL=
+              expose:
+                - "4000"
+              volumes:
+                - ./litellm_config.yaml:/app/config.yaml:ro
+              command: ["--config", "/app/config.yaml", "--port", "4000"]
+              networks:
+                - backend
+              restart: unless-stopped
+              healthcheck:
+                test: ["CMD", "wget", "-q", "--spider", "http://localhost:4000/health"]
+                interval: 30s
+                timeout: 10s
+                retries: 5
+                start_period: 30s
+
+            # TEI Embedding Server
+            embedding-server:
+              image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2.3
+              command: --model-id sentence-transformers/all-MiniLM-L6-v2
+              ports:
+                - "127.0.0.1:8180:80"
+              volumes:
+                - tei-data:/data
+              networks:
+                - backend
+              restart: unless-stopped
+
+            # ChromaDB
+            chromadb:
+              image: chromadb/chroma:0.5.23
+              environment:
+                - IS_PERSISTENT=TRUE
+                - PERSIST_DIRECTORY=/chroma/chroma
+                - ANONYMIZED_TELEMETRY=FALSE
+              ports:
+                - "127.0.0.1:8100:8000"
+              volumes:
+                - chroma-data:/chroma/chroma
+              networks:
+                - backend
+              restart: unless-stopped
+              healthcheck:
+                test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/api/v1/heartbeat"]
+                interval: 30s
+                timeout: 10s
+                retries: 5
+                start_period: 60s
+
+            # Terminal Server
+            terminal-server:
+              image: terminal-server:IMAGE_TAG_PLACEHOLDER
+              environment:
+                - ORIGIN_SECRET_KEY=${ORIGIN_SECRET_KEY:-default-secret-change-me}
+                - SANDBOX_IMAGE=${SANDBOX_IMAGE:-alpine:latest}
+              expose:
+                - "8080"
+              volumes:
+                - /var/run/docker.sock:/var/run/docker.sock:ro
+              networks:
+                - backend
+              restart: unless-stopped
+
+          networks:
+            backend:
+              driver: bridge
+
+          volumes:
+            tei-data:
+            chroma-data:
+          YML
+
+          # Replace image tag placeholder
+          sed -i "s/IMAGE_TAG_PLACEHOLDER/${IMAGE_TAG}/g" compose.runtime.yml
+
+          echo "Bringing up full stack..."
+          $DC -f compose.runtime.yml up -d --remove-orphans
+
+          # Force nginx to reload upstream DNS after API container is recreated
+          echo "Reloading nginx to refresh upstream DNS..."
+          sleep 5
+          $DC -f compose.runtime.yml exec -T nginx nginx -s reload 2>/dev/null || \
+            $DC -f compose.runtime.yml restart nginx
+
+          # Wait for services via nginx (port 8080 on host)
+          echo "Waiting for nginx to be ready..."
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/health >/dev/null 2>&1; then
+              echo "nginx Health OK"
+              break
+            fi
+            echo "nginx Retry $i/30"; sleep 2;
+          done
+
+          echo "Waiting for API health check via nginx..."
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/api/v1/healthz >/dev/null 2>&1; then
+              echo "API Health OK"
+              break
+            fi
+            echo "API Retry $i/60"; sleep 2;
+          done
+
+          echo "Waiting for LiteLLM health check..."
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/litellm/health >/dev/null 2>&1; then
+              echo "LiteLLM Health OK"
+              break
+            fi
+            echo "LiteLLM Retry $i/30"; sleep 2;
+          done
+
+          # Final status
+          echo ""
+          echo "=== Service Status ==="
+          $DC -f compose.runtime.yml ps
+
+          # Verify critical services are running via nginx
+          if ! curl -fsS http://localhost:8080/api/v1/healthz >/dev/null 2>&1; then
+            echo "FATAL: API health check failed"
+            echo "--- nginx logs ---"
+            $DC -f compose.runtime.yml logs --no-color nginx | tail -n 30
+            echo "--- api logs ---"
+            $DC -f compose.runtime.yml logs --no-color api | tail -n 100
+            exit 1
+          fi
+
+          echo ""
+          echo "Deployment successful!"
+          echo "IMPORTANT: Ensure firewall allows Cloudflare IPs on port 8080"
+          REMOTE_EOF
+
+      - name: External health check (public domain)
+        if: ${{ env.PUBLIC_API_BASE_URL != '' }}
+        continue-on-error: true
+        run: |
+          echo "Checking public health at ${PUBLIC_API_BASE_URL}/api/v1/healthz ..."
+          for i in $(seq 1 30); do
+            if curl -fsS "${PUBLIC_API_BASE_URL}/api/v1/healthz" >/dev/null; then
+              echo "Public health OK"; exit 0;
+            fi
+            echo "Retry $i/30"; sleep 2;
+          done
+          echo "⚠️ Public health check failed at ${PUBLIC_API_BASE_URL}/api/v1/healthz"
+          echo "This may indicate Workers routing or firewall issues."
+          echo "Ensure: 1) Worker is deployed 2) Firewall allows Cloudflare IPs 3) Custom Domain configured"
+          exit 1
+
+      - name: Verify public runtime config
+        if: ${{ env.PUBLIC_API_BASE_URL != '' }}
+        continue-on-error: true
+        run: |
+          echo "Fetching ${PUBLIC_API_BASE_URL}/api/v1/public/config"
+          cfg=$(curl -fsS "${PUBLIC_API_BASE_URL}/api/v1/public/config")
+          echo "$cfg"
+          echo "$cfg" | grep -q '"ok":\s*true' || { echo 'Config ok=false' >&2; exit 1; }
+          echo "$cfg" | grep -q "\"apiBaseUrl\":\s*\"${PUBLIC_API_BASE_URL}\"" || { echo 'apiBaseUrl mismatch' >&2; exit 1; }
+
+      - name: Check CORS header for frontend origin
+        if: ${{ env.PUBLIC_API_BASE_URL != '' }}
+        continue-on-error: true
+        run: |
+          echo "Checking CORS for origin ${PUBLIC_FRONTEND_ORIGIN}"
+          headers=$(curl -fsS -D - -o /dev/null -H "Origin: ${PUBLIC_FRONTEND_ORIGIN}" "${PUBLIC_API_BASE_URL}/api/v1/healthz")
+          echo "$headers"
+          printf "%s" "$headers" | awk 'tolower($0) ~ /^access-control-allow-origin:/ {print}' | grep -q "${PUBLIC_FRONTEND_ORIGIN}" || {
+            echo "CORS header missing or mismatched for origin ${PUBLIC_FRONTEND_ORIGIN}" >&2; exit 1; }
+
+      - name: Verify AI Gateway via public endpoint
+        if: ${{ env.PUBLIC_API_BASE_URL != '' }}
+        continue-on-error: true
+        run: |
+          echo "Checking AI Gateway integration via ${PUBLIC_API_BASE_URL}/api/v1/ai/health ..."
+          response=$(curl -fsS "${PUBLIC_API_BASE_URL}/api/v1/ai/health" 2>&1 || echo '{"error":"endpoint not found"}')
+          echo "$response"
+          echo "AI Gateway public check completed (check logs above for status)"
+
+```
+
+### backend-deploy.yml
+
+**Path:** `.github/workflows/backend-deploy.yml`
+
+```yaml
+name: Backend Build & Deploy (SSH Compose)
+
+# =============================================================================
+# Full Stack Deployment with Cloudflare Workers + LiteLLM AI Gateway
+# =============================================================================
+# Architecture:
+#   Cloudflare Workers -> Server:8080 -> nginx -> api -> litellm -> LLM APIs
+#
+# Services deployed:
+#   - nginx: Reverse proxy (exposed on port 8080)
+#   - api: Node.js backend (built from Dockerfile)
+#   - litellm: AI Gateway for multiple LLM providers
+#   - embedding-server: TEI for RAG
+#   - chromadb: Vector database
+#   - terminal-server: Docker PTY server
+#
+# Note: Cloudflare Workers (api-gateway) is deployed separately via workers workflow
+#
+# Required secrets:
+#   - SSH_HOST, SSH_USER, SSH_PRIVATE_KEY, SSH_PORT (optional)
+#   - REMOTE_DIR: Remote deployment directory
+#   - BACKEND_ENV_FILE: Full .env file contents
+#   - PUBLIC_API_BASE_URL: Public API URL for health checks
+# =============================================================================
+
+on:
+  push:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-deploy.yml'
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Ref (branch/sha) to deploy'
+        required: false
+        default: ''
+      skip_build:
+        description: 'Skip build, only pull and restart (for config changes)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      IMAGE_NAME: blog-backend
+      IMAGE_TAG: ${{ github.sha }}
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+      REMOTE_DIR: ${{ secrets.REMOTE_DIR }}
+      PUBLIC_API_BASE_URL: ${{ secrets.PUBLIC_API_BASE_URL }}
+      PUBLIC_FRONTEND_ORIGIN: https://noblog.nodove.com
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - name: Set up Docker Buildx
+        if: ${{ github.event.inputs.skip_build != 'true' }}
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend API image (local load)
+        if: ${{ github.event.inputs.skip_build != 'true' }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: false
+          load: true
+          tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+
+      - name: Build Terminal Server image
+        if: ${{ github.event.inputs.skip_build != 'true' }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/terminal-server
+          file: ./backend/terminal-server/Dockerfile
+          push: false
+          load: true
+          tags: terminal-server:${{ env.IMAGE_TAG }}
+
+      - name: Save images artifact (gzip)
+        if: ${{ github.event.inputs.skip_build != 'true' }}
+        run: |
+          docker save \
+            "${IMAGE_NAME}:${IMAGE_TAG}" \
+            "terminal-server:${IMAGE_TAG}" \
+            | gzip > backend-images.tar.gz
+          ls -lh backend-images.tar.gz
+
+      - name: Start ssh-agent and add key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add remote host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${SSH_PORT}" -H "${SSH_HOST}" >> ~/.ssh/known_hosts
+
+      - name: Prepare .env from secret
+        run: |
+          if [ -z "${{ secrets.BACKEND_ENV_FILE }}" ]; then
+            echo "BACKEND_ENV_FILE secret is missing." >&2; exit 1;
+          fi
+          printf "%s" "${{ secrets.BACKEND_ENV_FILE }}" > /tmp/backend.env
 
       - name: Upload artifacts to remote
         run: |
@@ -2835,41 +2396,28 @@ jobs:
             rm -f backend-images.tar.gz
           fi
 
-          # Generate runtime compose file with LiteLLM architecture
+          # Generate runtime compose file with Cloudflare Workers architecture
           cat > compose.runtime.yml <<'YML'
           # =======================================================================
-          # Runtime Compose - LiteLLM AI Gateway Architecture
+          # Runtime Compose - Cloudflare Workers + LiteLLM AI Gateway
           # =======================================================================
-          # Cloudflare Tunnel → nginx:80 → Internal Services
+          # Cloudflare Workers → Server:8080 → nginx → Internal Services
           #
           # Routes:
           #   /api/*       → api:5080
-          #   /litellm/*   → litellm:4000
+          #   /ai/*        → litellm:4000
           #   /terminal/*  → terminal-server:8080
           # =======================================================================
 
           services:
-            # Cloudflare Tunnel (connects to nginx only)
-            cloudflared:
-              image: cloudflare/cloudflared:latest
-              command: tunnel --no-autoupdate run
-              environment:
-                - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
-              depends_on:
-                nginx:
-                  condition: service_started
-              networks:
-                - backend
-              restart: unless-stopped
-
-            # Nginx Reverse Proxy (Single Entry Point)
+            # Nginx Reverse Proxy (Entry Point from Cloudflare Workers)
             nginx:
               image: nginx:alpine
               depends_on:
                 api:
                   condition: service_started
               ports:
-                - "127.0.0.1:8080:80"
+                - "8080:80"  # Exposed to Cloudflare Workers
               expose:
                 - "80"
               volumes:
@@ -3058,7 +2606,7 @@ jobs:
             echo "Retry $i/30"; sleep 2;
           done
           echo "⚠️ Public health check failed at ${PUBLIC_API_BASE_URL}/api/v1/healthz"
-          echo "This may indicate Cloudflare tunnel or firewall issues."
+          echo "This may indicate Cloudflare Workers or firewall issues."
           exit 1
 
       - name: Verify public runtime config
@@ -3138,6 +2686,111 @@ jobs:
         run: |
           echo "✅ ai-check-gateway deployed successfully"
           echo "🌍 Route configured in workers/ai-check-gateway/wrangler.toml"
+
+```
+
+### deploy-api-gateway.yml
+
+**Path:** `.github/workflows/deploy-api-gateway.yml`
+
+```yaml
+name: Deploy API Gateway Worker
+
+# =============================================================================
+# Cloudflare Workers Deployment - API Gateway
+# =============================================================================
+# Deploys the api-gateway worker that routes traffic to the backend server.
+#
+# Architecture:
+#   Client → Cloudflare Workers (api.nodove.com) → Server:8080 → nginx → services
+#
+# Required secrets:
+#   - CLOUDFLARE_API_TOKEN: API token with Workers permissions
+#   - CLOUDFLARE_ACCOUNT_ID: Cloudflare account ID
+#   - BACKEND_ORIGIN: Backend server origin (e.g., http://YOUR_SERVER_IP:8080)
+# =============================================================================
+
+on:
+  push:
+    paths:
+      - 'workers/api-gateway/**'
+      - '.github/workflows/deploy-api-gateway.yml'
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy API Gateway
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: workers/api-gateway
+        run: npm ci
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: workers/api-gateway
+          command: deploy --env ${{ github.event.inputs.environment || 'production' }}
+          secrets: |
+            BACKEND_ORIGIN
+        env:
+          BACKEND_ORIGIN: ${{ secrets.BACKEND_ORIGIN }}
+
+      - name: Health check
+        run: |
+          echo "Waiting for worker deployment to propagate..."
+          sleep 10
+          
+          echo "Checking worker health at https://api.nodove.com/_health"
+          for i in $(seq 1 10); do
+            response=$(curl -sf "https://api.nodove.com/_health" 2>&1 || echo '{"error":"failed"}')
+            echo "Response: $response"
+            if echo "$response" | grep -q '"ok":true'; then
+              echo "✅ API Gateway Worker is healthy!"
+              exit 0
+            fi
+            echo "Retry $i/10..."
+            sleep 5
+          done
+          
+          echo "⚠️ Health check did not succeed within timeout"
+          echo "Worker may still be propagating or there's a configuration issue"
+          exit 1
+
+      - name: Test API routing
+        continue-on-error: true
+        run: |
+          echo "Testing API routing through worker..."
+          
+          # Test backend API
+          echo "GET /api/v1/healthz"
+          curl -sf "https://api.nodove.com/api/v1/healthz" && echo " ✅" || echo " ❌"
+          
+          # Test CORS
+          echo "Testing CORS headers..."
+          curl -sI -H "Origin: https://noblog.nodove.com" "https://api.nodove.com/api/v1/healthz" | grep -i access-control || echo "CORS headers not found"
 
 ```
 
@@ -4293,95 +3946,75 @@ networks:
 
 ```yaml
 # =============================================================================
-# Docker Compose - Full Stack with Cloudflare Tunnel + LiteLLM AI Gateway
+# Docker Compose - Full Stack with Cloudflare Workers + LiteLLM AI Gateway
 # =============================================================================
 #
-# Architecture (Single Entry Point + LiteLLM Gateway):
+# Architecture (Cloudflare Workers → nginx:8080 → Services):
 #
 #   ┌─────────────────────────────────────────────────────────────────────────┐
 #   │                         Internet                                        │
 #   │                            │                                            │
 #   │                            ▼                                            │
-#   │                   Cloudflare Tunnel                                     │
+#   │                   Cloudflare Workers                                    │
+#   │                   (api-gateway worker)                                  │
+#   │                            │                                            │
+#   │                            ▼                                            │
+#   │                    Server:8080 (nginx exposed)                          │
 #   │                            │                                            │
 #   │                            ▼                                            │
 #   │  ┌──────────────────────────────────────────────────────────────────┐  │
-#   │  │                    nginx:80 (Single Entry)                       │  │
+#   │  │                    nginx:80 (Docker internal)                    │  │
 #   │  │  /api/*      → api:5080                                          │  │
-#   │  │  /ai/*       → litellm:4000  (NEW: LiteLLM Gateway)              │  │
-#   │  │  /vas/*      → vas-core:7012                                     │  │
-#   │  │  /vas-admin/* → vas-admin:7080                                   │  │
+#   │  │  /ai/*       → litellm:4000  (LiteLLM Gateway)                   │  │
 #   │  │  /terminal/* → terminal-server:8080                              │  │
 #   │  └──────────────────────────────────────────────────────────────────┘  │
 #   │                                                                         │
 #   │  ┌─────────────────────────────────────────────────────────────────┐   │
 #   │  │              LiteLLM AI Gateway (port 4000)                     │   │
 #   │  │  - OpenAI-compatible API for ALL providers                      │   │
-#   │  │  - Automatic fallback: gpt-4 → gemini → claude                  │   │
+#   │  │  - Automatic fallback: gemini → openai → claude                 │   │
 #   │  │  - Load balancing, rate limiting, cost tracking                 │   │
-#   │  │  - Routes to: vas-core (GitHub Copilot), OpenAI, Gemini, etc.   │   │
 #   │  └─────────────────────────────────────────────────────────────────┘   │
 #   │                                                                         │
 #   │  Internal Services (Docker bridge network only):                        │
-#   │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐       │
-#   │  │    api      │ │  vas-core   │ │   litellm   │ │  vas-admin  │       │
-#   │  │   :5080     │ │   :7012     │ │   :4000     │ │   :7080     │       │
-#   │  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘       │
 #   │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐                       │
-#   │  │  terminal   │ │  embedding  │ │  chromadb   │                       │
-#   │  │   :8080     │ │    :80      │ │   :8000     │                       │
+#   │  │    api      │ │   litellm   │ │  terminal   │                       │
+#   │  │   :5080     │ │   :4000     │ │   :8080     │                       │
 #   │  └─────────────┘ └─────────────┘ └─────────────┘                       │
+#   │  ┌─────────────┐ ┌─────────────┐                                       │
+#   │  │  embedding  │ │  chromadb   │                                       │
+#   │  │    :80      │ │   :8000     │                                       │
+#   │  └─────────────┘ └─────────────┘                                       │
 #   └─────────────────────────────────────────────────────────────────────────┘
 #
-# Public URL Routes (via api.nodove.com):
+# Public URL Routes (via api.nodove.com → Cloudflare Workers):
 #   https://api.nodove.com/api/*       → Backend API
 #   https://api.nodove.com/ai/*        → LiteLLM Gateway (OpenAI-compatible)
-#   https://api.nodove.com/vas/*       → VAS Core (direct, for auth)
-#   https://api.nodove.com/vas-admin/* → VAS Admin UI
 #   https://api.nodove.com/terminal/*  → Terminal WebSocket
 #
-# Localhost ports (for self-hosted runner / debugging):
+# Localhost ports (for debugging):
+#   127.0.0.1:8080 → nginx:80            (Main entry point)
 #   127.0.0.1:4000 → litellm:4000        (LiteLLM Gateway)
 #   127.0.0.1:8180 → embedding-server:80 (TEI)
 #   127.0.0.1:8100 → chromadb:8000       (Vector DB)
-#   127.0.0.1:7012 → vas-core:7012       (OpenCode API for auth)
 #
 # Setup:
-#   1. Cloudflare Zero Trust에서 터널 생성
-#   2. 터널 Public Hostname 설정: api.nodove.com → http://nginx:80
-#   3. 터널 토큰을 .env 파일에 CLOUDFLARE_TUNNEL_TOKEN으로 저장
+#   1. Cloudflare Workers에서 api-gateway worker 배포
+#   2. Worker에 BACKEND_ORIGIN 시크릿 설정 (http://YOUR_SERVER_IP:8080)
+#   3. 서버 방화벽에서 포트 8080을 Cloudflare IP만 허용
 #   4. API 키 설정 (.env):
 #      - LITELLM_MASTER_KEY=sk-your-master-key
+#      - GOOGLE_API_KEY=... (Gemini)
 #      - OPENAI_API_KEY=sk-... (optional)
-#      - GOOGLE_API_KEY=... (optional)
 #      - ANTHROPIC_API_KEY=... (optional)
 #   5. docker compose up -d
-#   6. GitHub Copilot 인증 (호스트에서):
-#      npm install -g opencode@latest
-#      OPENCODE_API_URL=http://127.0.0.1:7012 opencode auth login
-#      docker compose restart vas-core litellm
 # =============================================================================
 
 services:
   # ---------------------------------------------------------------------------
-  # Cloudflare Tunnel (connects to nginx only)
+  # Nginx Reverse Proxy (Entry Point from Cloudflare Workers)
   # ---------------------------------------------------------------------------
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    command: tunnel --no-autoupdate run
-    environment:
-      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
-    depends_on:
-      nginx:
-        condition: service_healthy
-    networks:
-      - backend
-    restart: unless-stopped
-
-  # ---------------------------------------------------------------------------
-  # Nginx Reverse Proxy (Single Entry Point)
-  # ---------------------------------------------------------------------------
-  # All external traffic comes through here.
+  # Cloudflare Workers connect to port 8080 on the host.
   # Routes to internal services based on URL path.
   # ---------------------------------------------------------------------------
   nginx:
@@ -4389,8 +4022,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
-      vas-proxy:
-        condition: service_healthy
+    ports:
+      - "8080:80"  # Exposed to Cloudflare Workers
     expose:
       - "80"
     volumes:
@@ -28633,7 +28266,7 @@ noblog.nodove.com
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-12-26T07:57:25.815Z",
+  "generatedAt": "2025-12-27T07:26:44.793Z",
   "years": [
     "2025",
     "2024"
@@ -32730,25 +32363,36 @@ body.ai-memo-block-select-active {
     }
 
     // Inject minimal critical styles as a safety net so the UI stays fixed and scoped
+    // Always inject these styles to guarantee positioning even before external CSS loads
     injectCriticalStyles() {
       try {
-        const panel = this.shadowRoot && this.shadowRoot.getElementById('panel');
-        if (!panel) return;
-        const cs = getComputedStyle(panel);
-        // If the external CSS applied correctly, .panel should already be fixed
-        if (cs && cs.position === 'fixed') return;
-        // Otherwise, inject a minimal style fallback
+        // Always inject critical styles to ensure fixed positioning is applied immediately
+        // This prevents the panel from appearing in the document flow while CSS loads
+        const existing = this.shadowRoot?.querySelector('style[data-ai-memo="critical"]');
+        if (existing) return; // Already injected
+        
         const style = document.createElement('style');
         style.setAttribute('data-ai-memo', 'critical');
         style.textContent = `
-          :host { all: initial; }
-          .launcher { position: fixed; right: 16px; bottom: 96px; z-index: 2147483647; }
-          .launcher.history { bottom: 152px; }
-          .panel { position: fixed; z-index: 2147483647; right: 16px; bottom: 160px; display: none; }
+          :host { all: initial; display: contents; }
+          .launcher { position: fixed !important; right: 16px; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); z-index: 2147483647; }
+          .launcher.history { bottom: calc(152px + env(safe-area-inset-bottom, 0px)); }
+          .panel { 
+            position: fixed !important; 
+            z-index: 2147483647; 
+            right: 20px; 
+            bottom: calc(100px + env(safe-area-inset-bottom, 0px)); 
+            display: none;
+            width: 400px;
+            max-width: min(480px, calc(100vw - 32px));
+            height: min(520px, calc(100dvh - 100px));
+            max-height: calc(100dvh - 80px);
+          }
           .panel.open { display: flex; flex-direction: column; }
-          .history-overlay { position: fixed; inset: 0; z-index: 2147483647; display: none; }
+          .history-overlay { position: fixed !important; inset: 0; z-index: 2147483647; display: none; }
+          .versions-overlay { position: fixed !important; inset: 0; z-index: 2147483647; display: none; }
         `;
-        this.shadowRoot.appendChild(style);
+        this.shadowRoot.prepend(style); // Prepend so external CSS can override if loaded
       } catch (_) {}
     }
 
@@ -32800,31 +32444,19 @@ body.ai-memo-block-select-active {
       // panel open
       this.$panel.classList.toggle('open', !!this.state.isOpen);
 
-      // position - only apply if saved position is valid and within viewport
-      if (this.state.position.x != null && this.state.position.y != null) {
-        const { x, y } = this.clamp(
-          this.state.position.x,
-          this.state.position.y
-        );
-        // If clamp returns null, reset to CSS defaults (position was invalid)
-        if (x == null || y == null) {
-          this.state.position = { x: null, y: null };
-          LS.set(KEYS.position, this.state.position);
-          Object.assign(this.$panel.style, {
-            left: '',
-            top: '',
-            right: '',
-            bottom: '',
-          });
-        } else {
-          Object.assign(this.$panel.style, {
-            left: `${x}px`,
-            top: `${y}px`,
-            right: 'auto',
-            bottom: 'auto',
-          });
-        }
-      }
+      // position - Reset to CSS defaults to prevent panel appearing outside viewport
+      // Always use CSS default positioning (right: 20px, bottom: 100px) instead of saved position
+      // This ensures panel always starts in a safe visible location
+      this.state.position = { x: null, y: null };
+      LS.set(KEYS.position, { x: null, y: null });
+      // Explicitly set position to ensure panel is visible even if CSS hasn't loaded
+      Object.assign(this.$panel.style, {
+        left: '',
+        top: '',
+        right: '20px',
+        bottom: 'calc(100px + env(safe-area-inset-bottom, 0px))',
+        position: 'fixed',
+      });
 
       // dev content
       if (this.$proposalMd)
@@ -68243,9 +67875,12 @@ export function UsageMonitor() {
 ```typescript
 /**
  * AI Admin API Hooks
+ *
+ * Uses new auth store with automatic token refresh
  */
 
 import { useState, useCallback } from 'react';
+import { useAuthStore } from '@/stores/useAuthStore';
 import type {
   AIProvider,
   AIModel,
@@ -68258,27 +67893,67 @@ import type {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('adminToken');
-  return {
-    'Content-Type': 'application/json',
-    Authorization: token ? `Bearer ${token}` : '',
-  };
-};
+// ============================================================================
+// API Fetch Wrapper with Auto Token Refresh
+// ============================================================================
 
-// Generic fetch wrapper
+/**
+ * Generic fetch wrapper with automatic token refresh
+ */
 async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<{ ok: boolean; data?: T; error?: string }> {
+  const { getValidAccessToken, clearAuth } = useAuthStore.getState();
+
   try {
+    // Get valid access token (auto-refreshes if needed)
+    const token = await getValidAccessToken();
+
+    if (!token) {
+      return { ok: false, error: 'Not authenticated. Please log in again.' };
+    }
+
     const res = await fetch(`${API_BASE}/api/v1/admin/ai${endpoint}`, {
       ...options,
       headers: {
-        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
         ...(options.headers || {}),
       },
     });
+
+    // Handle 401 - token might be invalid
+    if (res.status === 401) {
+      // Try to refresh token once more
+      const newToken = await getValidAccessToken();
+      if (!newToken) {
+        clearAuth();
+        return { ok: false, error: 'Session expired. Please log in again.' };
+      }
+
+      // Retry with new token
+      const retryRes = await fetch(`${API_BASE}/api/v1/admin/ai${endpoint}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${newToken}`,
+          ...(options.headers || {}),
+        },
+      });
+
+      if (!retryRes.ok) {
+        if (retryRes.status === 401) {
+          clearAuth();
+          return { ok: false, error: 'Session expired. Please log in again.' };
+        }
+        const json = await retryRes.json().catch(() => ({}));
+        return { ok: false, error: json.error || `HTTP ${retryRes.status}` };
+      }
+
+      const json = await retryRes.json();
+      return { ok: true, data: json.data };
+    }
 
     const json = await res.json();
 
@@ -68313,16 +67988,19 @@ export function useProviders() {
     setLoading(false);
   }, []);
 
-  const createProvider = useCallback(async (data: ProviderFormData) => {
-    const result = await apiFetch<AIProvider>('/providers', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    if (result.ok) {
-      await fetchProviders();
-    }
-    return result;
-  }, [fetchProviders]);
+  const createProvider = useCallback(
+    async (data: ProviderFormData) => {
+      const result = await apiFetch<AIProvider>('/providers', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      if (result.ok) {
+        await fetchProviders();
+      }
+      return result;
+    },
+    [fetchProviders]
+  );
 
   const updateProvider = useCallback(
     async (id: string, data: Partial<ProviderFormData & { isEnabled: boolean }>) => {
@@ -68351,18 +68029,21 @@ export function useProviders() {
     [fetchProviders]
   );
 
-  const checkHealth = useCallback(async (id: string) => {
-    const result = await apiFetch<{
-      providerId: string;
-      status: string;
-      latencyMs: number | null;
-      error: string | null;
-    }>(`/providers/${id}/health`, { method: 'POST' });
-    if (result.ok) {
-      await fetchProviders();
-    }
-    return result;
-  }, [fetchProviders]);
+  const checkHealth = useCallback(
+    async (id: string) => {
+      const result = await apiFetch<{
+        providerId: string;
+        status: string;
+        latencyMs: number | null;
+        error: string | null;
+      }>(`/providers/${id}/health`, { method: 'POST' });
+      if (result.ok) {
+        await fetchProviders();
+      }
+      return result;
+    },
+    [fetchProviders]
+  );
 
   return {
     providers,
@@ -68392,7 +68073,7 @@ export function useModels() {
     if (providerId) params.set('providerId', providerId);
     if (enabled !== undefined) params.set('enabled', String(enabled));
     const query = params.toString() ? `?${params}` : '';
-    
+
     const result = await apiFetch<{ models: AIModel[] }>(`/models${query}`);
     if (result.ok && result.data) {
       setModels(result.data.models);
@@ -68402,16 +68083,19 @@ export function useModels() {
     setLoading(false);
   }, []);
 
-  const createModel = useCallback(async (data: ModelFormData) => {
-    const result = await apiFetch<AIModel>('/models', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    if (result.ok) {
-      await fetchModels();
-    }
-    return result;
-  }, [fetchModels]);
+  const createModel = useCallback(
+    async (data: ModelFormData) => {
+      const result = await apiFetch<AIModel>('/models', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      if (result.ok) {
+        await fetchModels();
+      }
+      return result;
+    },
+    [fetchModels]
+  );
 
   const updateModel = useCallback(
     async (id: string, data: Partial<ModelFormData & { isEnabled: boolean }>) => {
@@ -68488,16 +68172,19 @@ export function useRoutes() {
     setLoading(false);
   }, []);
 
-  const createRoute = useCallback(async (data: RouteFormData) => {
-    const result = await apiFetch<AIRoute>('/routes', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    if (result.ok) {
-      await fetchRoutes();
-    }
-    return result;
-  }, [fetchRoutes]);
+  const createRoute = useCallback(
+    async (data: RouteFormData) => {
+      const result = await apiFetch<AIRoute>('/routes', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      if (result.ok) {
+        await fetchRoutes();
+      }
+      return result;
+    },
+    [fetchRoutes]
+  );
 
   const updateRoute = useCallback(
     async (id: string, data: Partial<RouteFormData & { isEnabled: boolean }>) => {
@@ -68771,6 +68458,1608 @@ export interface RouteFormData {
   numRetries?: number;
   timeoutSeconds?: number;
   isDefault?: boolean;
+}
+
+```
+
+---
+
+## frontend/src/components/features/admin/secrets
+
+### AuditLogViewer.tsx
+
+**Path:** `frontend/src/components/features/admin/secrets/AuditLogViewer.tsx`
+
+```tsx
+/**
+ * Audit Log Viewer
+ */
+
+import { useState, useEffect } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useAuditLog } from './hooks';
+import type { SecretAuditLog } from './types';
+
+export function AuditLogViewer() {
+  const { logs, loading, error, pagination, fetchLogs } = useAuditLog();
+  const [actionFilter, setActionFilter] = useState<string>('all');
+  const [page, setPage] = useState(0);
+  const pageSize = 20;
+
+  useEffect(() => {
+    fetchLogs({
+      action: actionFilter === 'all' ? undefined : actionFilter,
+      limit: pageSize,
+      offset: page * pageSize,
+    });
+  }, [fetchLogs, actionFilter, page]);
+
+  const getActionBadge = (action: SecretAuditLog['action']) => {
+    const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+      created: 'default',
+      updated: 'secondary',
+      rotated: 'secondary',
+      deleted: 'destructive',
+      accessed: 'outline',
+    };
+    return <Badge variant={variants[action] || 'outline'}>{action}</Badge>;
+  };
+
+  const totalPages = Math.ceil(pagination.total / pageSize);
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Audit Log</CardTitle>
+            <CardDescription>History of all secret changes and access</CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={actionFilter} onValueChange={setActionFilter}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="All actions" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All actions</SelectItem>
+                <SelectItem value="created">Created</SelectItem>
+                <SelectItem value="updated">Updated</SelectItem>
+                <SelectItem value="rotated">Rotated</SelectItem>
+                <SelectItem value="deleted">Deleted</SelectItem>
+                <SelectItem value="accessed">Accessed</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() =>
+                fetchLogs({
+                  action: actionFilter === 'all' ? undefined : actionFilter,
+                  limit: pageSize,
+                  offset: page * pageSize,
+                })
+              }
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {error && (
+          <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm mb-4">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-2">
+          {logs.map((log) => (
+            <div
+              key={log.id}
+              className="flex items-center justify-between p-3 border rounded-lg"
+            >
+              <div className="flex items-center gap-4">
+                {getActionBadge(log.action)}
+                <div>
+                  <code className="text-sm font-mono">{log.key_name || log.secret_id}</code>
+                  {log.changed_by && (
+                    <span className="text-xs text-muted-foreground ml-2">by {log.changed_by}</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                {log.ip_address && <span>{log.ip_address}</span>}
+                <span>{new Date(log.created_at).toLocaleString()}</span>
+              </div>
+            </div>
+          ))}
+
+          {logs.length === 0 && !loading && (
+            <p className="text-center text-muted-foreground py-8">No audit logs found</p>
+          )}
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4 pt-4 border-t">
+            <span className="text-sm text-muted-foreground">
+              Showing {page * pageSize + 1} - {Math.min((page + 1) * pageSize, pagination.total)} of{' '}
+              {pagination.total}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => p - 1)}
+                disabled={page === 0}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+              <span className="text-sm">
+                Page {page + 1} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => p + 1)}
+                disabled={page >= totalPages - 1}
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+```
+
+### SecretsListManager.tsx
+
+**Path:** `frontend/src/components/features/admin/secrets/SecretsListManager.tsx`
+
+```tsx
+/**
+ * Secrets List Manager - CRUD UI for secrets
+ */
+
+import { useState, useEffect, useCallback } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Switch } from '@/components/ui/switch';
+import {
+  Plus,
+  Search,
+  Eye,
+  EyeOff,
+  Copy,
+  Trash2,
+  Edit,
+  RefreshCw,
+  Wand2,
+  CheckCircle,
+  XCircle,
+  Key,
+} from 'lucide-react';
+import { useSecrets, useCategories } from './hooks';
+import type { SecretCategory, SecretPublic, SecretFormData } from './types';
+
+interface SecretsListManagerProps {
+  categories: SecretCategory[];
+}
+
+export function SecretsListManager({ categories: initialCategories }: SecretsListManagerProps) {
+  const {
+    secrets,
+    loading,
+    error,
+    fetchSecrets,
+    createSecret,
+    updateSecret,
+    deleteSecret,
+    revealSecret,
+    generateValue,
+  } = useSecrets();
+
+  const { categories, fetchCategories } = useCategories();
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [selectedSecret, setSelectedSecret] = useState<SecretPublic | null>(null);
+  const [revealedValues, setRevealedValues] = useState<Record<string, string>>({});
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Form state
+  const [formData, setFormData] = useState<SecretFormData>({
+    categoryId: '',
+    keyName: '',
+    displayName: '',
+    description: '',
+    value: '',
+    isRequired: false,
+    isSensitive: true,
+    valueType: 'string',
+    envFallback: '',
+  });
+  const [formError, setFormError] = useState('');
+  const [formLoading, setFormLoading] = useState(false);
+
+  useEffect(() => {
+    fetchSecrets();
+    if (initialCategories.length === 0) {
+      fetchCategories();
+    }
+  }, [fetchSecrets, fetchCategories, initialCategories.length]);
+
+  const effectiveCategories = initialCategories.length > 0 ? initialCategories : categories;
+
+  // Filter secrets
+  const filteredSecrets = secrets.filter((secret) => {
+    const matchesSearch =
+      searchTerm === '' ||
+      secret.key_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      secret.display_name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || secret.category_id === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
+  // Group by category
+  const groupedSecrets = filteredSecrets.reduce(
+    (acc, secret) => {
+      const cat = secret.category_name || 'Uncategorized';
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(secret);
+      return acc;
+    },
+    {} as Record<string, SecretPublic[]>
+  );
+
+  const handleReveal = useCallback(
+    async (secret: SecretPublic) => {
+      if (revealedValues[secret.id]) {
+        // Hide
+        setRevealedValues((prev) => {
+          const next = { ...prev };
+          delete next[secret.id];
+          return next;
+        });
+        return;
+      }
+
+      const result = await revealSecret(secret.id);
+      if (result.ok && result.data) {
+        setRevealedValues((prev) => ({
+          ...prev,
+          [secret.id]: result.data!.value,
+        }));
+        // Auto-hide after 30 seconds
+        setTimeout(() => {
+          setRevealedValues((prev) => {
+            const next = { ...prev };
+            delete next[secret.id];
+            return next;
+          });
+        }, 30000);
+      }
+    },
+    [revealSecret, revealedValues]
+  );
+
+  const handleCopy = useCallback(async (secret: SecretPublic) => {
+    let value = revealedValues[secret.id];
+
+    if (!value) {
+      const result = await revealSecret(secret.id);
+      if (result.ok && result.data) {
+        value = result.data.value;
+      }
+    }
+
+    if (value) {
+      await navigator.clipboard.writeText(value);
+      setCopiedId(secret.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
+  }, [revealSecret, revealedValues]);
+
+  const handleCreate = async () => {
+    setFormError('');
+    setFormLoading(true);
+
+    const result = await createSecret(formData);
+    if (result.ok) {
+      setIsCreateOpen(false);
+      resetForm();
+    } else {
+      setFormError(result.error || 'Failed to create secret');
+    }
+
+    setFormLoading(false);
+  };
+
+  const handleUpdate = async () => {
+    if (!selectedSecret) return;
+    setFormError('');
+    setFormLoading(true);
+
+    const result = await updateSecret(selectedSecret.id, {
+      displayName: formData.displayName,
+      description: formData.description,
+      value: formData.value || undefined,
+      isRequired: formData.isRequired,
+      isSensitive: formData.isSensitive,
+      valueType: formData.valueType,
+      envFallback: formData.envFallback,
+    });
+
+    if (result.ok) {
+      setIsEditOpen(false);
+      resetForm();
+    } else {
+      setFormError(result.error || 'Failed to update secret');
+    }
+
+    setFormLoading(false);
+  };
+
+  const handleDelete = async () => {
+    if (!selectedSecret) return;
+    setFormLoading(true);
+
+    const result = await deleteSecret(selectedSecret.id);
+    if (result.ok) {
+      setIsDeleteOpen(false);
+      setSelectedSecret(null);
+    }
+
+    setFormLoading(false);
+  };
+
+  const handleGenerate = async () => {
+    const result = await generateValue('apiKey', undefined, 'sk');
+    if (result.ok && result.data) {
+      setFormData((prev) => ({ ...prev, value: result.data!.value }));
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      categoryId: effectiveCategories[0]?.id || '',
+      keyName: '',
+      displayName: '',
+      description: '',
+      value: '',
+      isRequired: false,
+      isSensitive: true,
+      valueType: 'string',
+      envFallback: '',
+    });
+    setFormError('');
+    setSelectedSecret(null);
+  };
+
+  const openEdit = (secret: SecretPublic) => {
+    setSelectedSecret(secret);
+    setFormData({
+      categoryId: secret.category_id,
+      keyName: secret.key_name,
+      displayName: secret.display_name,
+      description: secret.description || '',
+      value: '', // Don't pre-fill value
+      isRequired: !!secret.is_required,
+      isSensitive: !!secret.is_sensitive,
+      valueType: secret.value_type,
+      envFallback: secret.env_fallback || '',
+    });
+    setIsEditOpen(true);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Toolbar */}
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search secrets..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="All categories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All categories</SelectItem>
+            {effectiveCategories.map((cat) => (
+              <SelectItem key={cat.id} value={cat.id}>
+                {cat.display_name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button onClick={() => fetchSecrets()} variant="outline" size="icon">
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+        </Button>
+        <Button onClick={() => setIsCreateOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Secret
+        </Button>
+      </div>
+
+      {error && (
+        <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* Secrets List */}
+      <div className="space-y-6">
+        {Object.entries(groupedSecrets).map(([category, categorySecrets]) => (
+          <Card key={category}>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">{category}</CardTitle>
+              <CardDescription>{categorySecrets.length} secrets</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {categorySecrets.map((secret) => (
+                  <div
+                    key={secret.id}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="flex-shrink-0">
+                        {secret.has_value ? (
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                        ) : (
+                          <XCircle className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <code className="text-sm font-mono">{secret.key_name}</code>
+                          {secret.is_required ? (
+                            <Badge variant="outline" className="text-xs">
+                              Required
+                            </Badge>
+                          ) : null}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {secret.display_name}
+                        </p>
+                      </div>
+                      {secret.has_value && (
+                        <div className="flex-shrink-0 font-mono text-sm text-muted-foreground">
+                          {revealedValues[secret.id] ? (
+                            <span className="text-foreground">{revealedValues[secret.id]}</span>
+                          ) : (
+                            '••••••••••••••••'
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 ml-4">
+                      {secret.has_value && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleReveal(secret)}
+                            title={revealedValues[secret.id] ? 'Hide' : 'Reveal'}
+                          >
+                            {revealedValues[secret.id] ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleCopy(secret)}
+                            title="Copy"
+                          >
+                            {copiedId === secret.id ? (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEdit(secret)}
+                        title="Edit"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setSelectedSecret(secret);
+                          setIsDeleteOpen(true);
+                        }}
+                        title="Delete"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+
+        {filteredSecrets.length === 0 && !loading && (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <Key className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">No secrets found</p>
+              <Button className="mt-4" onClick={() => setIsCreateOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add First Secret
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Create Dialog */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add New Secret</DialogTitle>
+            <DialogDescription>
+              Create a new encrypted secret. The value will be encrypted at rest.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Select
+                  value={formData.categoryId}
+                  onValueChange={(v) => setFormData((prev) => ({ ...prev, categoryId: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {effectiveCategories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.display_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Value Type</Label>
+                <Select
+                  value={formData.valueType}
+                  onValueChange={(v) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      valueType: v as SecretFormData['valueType'],
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="string">String</SelectItem>
+                    <SelectItem value="url">URL</SelectItem>
+                    <SelectItem value="json">JSON</SelectItem>
+                    <SelectItem value="number">Number</SelectItem>
+                    <SelectItem value="boolean">Boolean</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Key Name</Label>
+              <Input
+                placeholder="OPENAI_API_KEY"
+                value={formData.keyName}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    keyName: e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_'),
+                  }))
+                }
+                className="font-mono"
+              />
+              <p className="text-xs text-muted-foreground">Uppercase with underscores</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Display Name</Label>
+              <Input
+                placeholder="OpenAI API Key"
+                value={formData.displayName}
+                onChange={(e) => setFormData((prev) => ({ ...prev, displayName: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description (optional)</Label>
+              <Textarea
+                placeholder="Used for AI chat completions..."
+                value={formData.description}
+                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                rows={2}
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Value</Label>
+                <Button type="button" variant="outline" size="sm" onClick={handleGenerate}>
+                  <Wand2 className="h-3 w-3 mr-1" />
+                  Generate
+                </Button>
+              </div>
+              <Input
+                type="password"
+                placeholder="Enter secret value..."
+                value={formData.value}
+                onChange={(e) => setFormData((prev) => ({ ...prev, value: e.target.value }))}
+                className="font-mono"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={formData.isRequired}
+                  onCheckedChange={(v) => setFormData((prev) => ({ ...prev, isRequired: v }))}
+                />
+                <Label>Required</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={formData.isSensitive}
+                  onCheckedChange={(v) => setFormData((prev) => ({ ...prev, isSensitive: v }))}
+                />
+                <Label>Sensitive</Label>
+              </div>
+            </div>
+            {formError && <p className="text-sm text-destructive">{formError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreate} disabled={formLoading || !formData.keyName}>
+              {formLoading ? 'Creating...' : 'Create Secret'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Secret</DialogTitle>
+            <DialogDescription>
+              Update secret settings. Leave value empty to keep current value.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Key Name</Label>
+              <Input value={formData.keyName} disabled className="font-mono bg-muted" />
+            </div>
+            <div className="space-y-2">
+              <Label>Display Name</Label>
+              <Input
+                value={formData.displayName}
+                onChange={(e) => setFormData((prev) => ({ ...prev, displayName: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={formData.description}
+                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                rows={2}
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>New Value (optional)</Label>
+                <Button type="button" variant="outline" size="sm" onClick={handleGenerate}>
+                  <Wand2 className="h-3 w-3 mr-1" />
+                  Generate
+                </Button>
+              </div>
+              <Input
+                type="password"
+                placeholder="Leave empty to keep current value..."
+                value={formData.value}
+                onChange={(e) => setFormData((prev) => ({ ...prev, value: e.target.value }))}
+                className="font-mono"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={formData.isRequired}
+                  onCheckedChange={(v) => setFormData((prev) => ({ ...prev, isRequired: v }))}
+                />
+                <Label>Required</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={formData.isSensitive}
+                  onCheckedChange={(v) => setFormData((prev) => ({ ...prev, isSensitive: v }))}
+                />
+                <Label>Sensitive</Label>
+              </div>
+            </div>
+            {formError && <p className="text-sm text-destructive">{formError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdate} disabled={formLoading}>
+              {formLoading ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Secret</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete{' '}
+              <code className="font-mono">{selectedSecret?.key_name}</code>? This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {formLoading ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+```
+
+### SecretsManager.tsx
+
+**Path:** `frontend/src/components/features/admin/secrets/SecretsManager.tsx`
+
+```tsx
+/**
+ * Secrets Manager - Main Component
+ *
+ * Centralized secrets/API keys management UI
+ */
+
+import { useState, useEffect } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Key,
+  Shield,
+  Clock,
+  AlertTriangle,
+  CheckCircle,
+  RefreshCw,
+  List,
+  History,
+} from 'lucide-react';
+import { useSecretsOverview } from './hooks';
+import { SecretsListManager } from './SecretsListManager';
+import { AuditLogViewer } from './AuditLogViewer';
+
+export function SecretsManager() {
+  const { overview, health, loading, error, fetchOverview } = useSecretsOverview();
+  const [activeTab, setActiveTab] = useState('overview');
+
+  useEffect(() => {
+    fetchOverview();
+  }, [fetchOverview]);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'healthy':
+        return 'bg-green-500';
+      case 'unhealthy':
+        return 'bg-red-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <Key className="h-5 w-5" />
+            Secrets Management
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Centralized management for API keys, tokens, and secrets
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={fetchOverview} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+
+      {error && (
+        <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* Status Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Encryption Status */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Encryption
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <div className={`h-2 w-2 rounded-full ${getStatusColor(health?.status || 'unknown')}`} />
+              <span className="text-lg font-semibold capitalize">
+                {health?.encryption || 'Unknown'}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Total Secrets */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Key className="h-4 w-4" />
+              Total Secrets
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold">{overview?.stats?.total ?? '-'}</span>
+              <span className="text-sm text-muted-foreground">
+                ({overview?.stats?.configured ?? 0} configured)
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Missing Required */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              Missing Required
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              {(overview?.stats?.missing_required ?? 0) > 0 ? (
+                <>
+                  <Badge variant="destructive">{overview?.stats?.missing_required}</Badge>
+                  <span className="text-sm text-muted-foreground">need attention</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <span className="text-sm text-muted-foreground">All configured</span>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Expiring Soon */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Expiring Soon
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              {(overview?.stats?.expiring_soon ?? 0) > 0 ? (
+                <>
+                  <Badge variant="secondary">{overview?.stats?.expiring_soon}</Badge>
+                  <span className="text-sm text-muted-foreground">in next 7 days</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <span className="text-sm text-muted-foreground">None expiring</span>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <Key className="h-4 w-4" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="secrets" className="flex items-center gap-2">
+            <List className="h-4 w-4" />
+            All Secrets
+          </TabsTrigger>
+          <TabsTrigger value="audit" className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            Audit Log
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          {/* Categories */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Categories</CardTitle>
+              <CardDescription>Secrets organized by category</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {overview?.categories?.map((cat) => (
+                  <div
+                    key={cat.id}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
+                    onClick={() => {
+                      setActiveTab('secrets');
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Key className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{cat.display_name}</p>
+                        <p className="text-xs text-muted-foreground">{cat.description}</p>
+                      </div>
+                    </div>
+                    <Badge variant="secondary">{cat.secret_count}</Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Recent Activity */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+              <CardDescription>Latest changes to secrets</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {overview?.recentActivity && overview.recentActivity.length > 0 ? (
+                <div className="space-y-3">
+                  {overview.recentActivity.map((log) => (
+                    <div
+                      key={log.id}
+                      className="flex items-center justify-between py-2 border-b last:border-0"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Badge
+                          variant={
+                            log.action === 'deleted'
+                              ? 'destructive'
+                              : log.action === 'created'
+                                ? 'default'
+                                : 'secondary'
+                          }
+                        >
+                          {log.action}
+                        </Badge>
+                        <span className="font-mono text-sm">{log.key_name || log.secret_id}</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(log.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No recent activity</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Secrets List Tab */}
+        <TabsContent value="secrets">
+          <SecretsListManager categories={overview?.categories ?? []} />
+        </TabsContent>
+
+        {/* Audit Log Tab */}
+        <TabsContent value="audit">
+          <AuditLogViewer />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+```
+
+### hooks.ts
+
+**Path:** `frontend/src/components/features/admin/secrets/hooks.ts`
+
+```typescript
+/**
+ * Secrets Management API Hooks
+ */
+
+import { useState, useCallback } from 'react';
+import { useAuthStore } from '@/stores/useAuthStore';
+import type {
+  SecretCategory,
+  SecretPublic,
+  SecretAuditLog,
+  SecretFormData,
+  SecretsOverview,
+  SecretsHealth,
+} from './types';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+
+// ============================================================================
+// API Fetch Wrapper
+// ============================================================================
+
+async function apiFetch<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<{ ok: boolean; data?: T; error?: string }> {
+  const { getValidAccessToken, clearAuth } = useAuthStore.getState();
+
+  try {
+    const token = await getValidAccessToken();
+
+    if (!token) {
+      return { ok: false, error: 'Not authenticated. Please log in again.' };
+    }
+
+    const res = await fetch(`${API_BASE}/api/v1/admin/secrets${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        ...(options.headers || {}),
+      },
+    });
+
+    if (res.status === 401) {
+      const newToken = await getValidAccessToken();
+      if (!newToken) {
+        clearAuth();
+        return { ok: false, error: 'Session expired. Please log in again.' };
+      }
+
+      const retryRes = await fetch(`${API_BASE}/api/v1/admin/secrets${endpoint}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${newToken}`,
+          ...(options.headers || {}),
+        },
+      });
+
+      if (!retryRes.ok) {
+        if (retryRes.status === 401) {
+          clearAuth();
+          return { ok: false, error: 'Session expired. Please log in again.' };
+        }
+        const json = await retryRes.json().catch(() => ({}));
+        return { ok: false, error: json.error || `HTTP ${retryRes.status}` };
+      }
+
+      const json = await retryRes.json();
+      return { ok: true, data: json.data };
+    }
+
+    const json = await res.json();
+
+    if (!res.ok || !json.ok) {
+      return { ok: false, error: json.error || `HTTP ${res.status}` };
+    }
+
+    return { ok: true, data: json.data };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}
+
+// ============================================================================
+// Categories Hook
+// ============================================================================
+
+export function useCategories() {
+  const [categories, setCategories] = useState<SecretCategory[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchCategories = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const result = await apiFetch<{ categories: SecretCategory[] }>('/categories');
+    if (result.ok && result.data) {
+      setCategories(result.data.categories);
+    } else {
+      setError(result.error || 'Failed to fetch categories');
+    }
+    setLoading(false);
+  }, []);
+
+  const createCategory = useCallback(
+    async (data: { name: string; displayName: string; description?: string; icon?: string }) => {
+      const result = await apiFetch<{ category: SecretCategory }>('/categories', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      if (result.ok) {
+        await fetchCategories();
+      }
+      return result;
+    },
+    [fetchCategories]
+  );
+
+  return {
+    categories,
+    loading,
+    error,
+    fetchCategories,
+    createCategory,
+  };
+}
+
+// ============================================================================
+// Secrets Hook
+// ============================================================================
+
+export function useSecrets() {
+  const [secrets, setSecrets] = useState<SecretPublic[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchSecrets = useCallback(async (categoryId?: string) => {
+    setLoading(true);
+    setError(null);
+    const query = categoryId ? `?categoryId=${categoryId}` : '';
+    const result = await apiFetch<{ secrets: SecretPublic[] }>(`/${query}`);
+    if (result.ok && result.data) {
+      setSecrets(result.data.secrets);
+    } else {
+      setError(result.error || 'Failed to fetch secrets');
+    }
+    setLoading(false);
+  }, []);
+
+  const createSecret = useCallback(
+    async (data: SecretFormData) => {
+      const result = await apiFetch<{ secret: SecretPublic }>('/', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      if (result.ok) {
+        await fetchSecrets();
+      }
+      return result;
+    },
+    [fetchSecrets]
+  );
+
+  const updateSecret = useCallback(
+    async (id: string, data: Partial<SecretFormData>) => {
+      const result = await apiFetch<{ secret: SecretPublic }>(`/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      if (result.ok) {
+        await fetchSecrets();
+      }
+      return result;
+    },
+    [fetchSecrets]
+  );
+
+  const deleteSecret = useCallback(
+    async (id: string) => {
+      const result = await apiFetch<{ deleted: string }>(`/${id}`, {
+        method: 'DELETE',
+      });
+      if (result.ok) {
+        await fetchSecrets();
+      }
+      return result;
+    },
+    [fetchSecrets]
+  );
+
+  const revealSecret = useCallback(async (id: string) => {
+    const result = await apiFetch<{ id: string; keyName: string; value: string }>(`/${id}/reveal`, {
+      method: 'POST',
+    });
+    return result;
+  }, []);
+
+  const generateValue = useCallback(
+    async (type: 'secret' | 'apiKey' | 'uuid' = 'secret', length?: number, prefix?: string) => {
+      const result = await apiFetch<{ value: string; type: string }>('/generate', {
+        method: 'POST',
+        body: JSON.stringify({ type, length, prefix }),
+      });
+      return result;
+    },
+    []
+  );
+
+  return {
+    secrets,
+    loading,
+    error,
+    fetchSecrets,
+    createSecret,
+    updateSecret,
+    deleteSecret,
+    revealSecret,
+    generateValue,
+  };
+}
+
+// ============================================================================
+// Audit Log Hook
+// ============================================================================
+
+export function useAuditLog() {
+  const [logs, setLogs] = useState<SecretAuditLog[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({ total: 0, limit: 50, offset: 0 });
+
+  const fetchLogs = useCallback(
+    async (options?: { secretId?: string; action?: string; limit?: number; offset?: number }) => {
+      setLoading(true);
+      setError(null);
+
+      const params = new URLSearchParams();
+      if (options?.secretId) params.set('secretId', options.secretId);
+      if (options?.action) params.set('action', options.action);
+      if (options?.limit) params.set('limit', String(options.limit));
+      if (options?.offset) params.set('offset', String(options.offset));
+
+      const query = params.toString() ? `?${params}` : '';
+      const result = await apiFetch<{
+        logs: SecretAuditLog[];
+        pagination: { total: number; limit: number; offset: number };
+      }>(`/audit${query}`);
+
+      if (result.ok && result.data) {
+        setLogs(result.data.logs);
+        setPagination(result.data.pagination);
+      } else {
+        setError(result.error || 'Failed to fetch audit logs');
+      }
+      setLoading(false);
+    },
+    []
+  );
+
+  return {
+    logs,
+    loading,
+    error,
+    pagination,
+    fetchLogs,
+  };
+}
+
+// ============================================================================
+// Overview & Health Hook
+// ============================================================================
+
+export function useSecretsOverview() {
+  const [overview, setOverview] = useState<SecretsOverview | null>(null);
+  const [health, setHealth] = useState<SecretsHealth | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchOverview = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    const [overviewResult, healthResult] = await Promise.all([
+      apiFetch<SecretsOverview>('/overview'),
+      apiFetch<SecretsHealth>('/health'),
+    ]);
+
+    if (overviewResult.ok && overviewResult.data) {
+      setOverview(overviewResult.data);
+    }
+    if (healthResult.ok && healthResult.data) {
+      setHealth(healthResult.data);
+    }
+    if (!overviewResult.ok && !healthResult.ok) {
+      setError(overviewResult.error || healthResult.error || 'Failed to fetch overview');
+    }
+
+    setLoading(false);
+  }, []);
+
+  return {
+    overview,
+    health,
+    loading,
+    error,
+    fetchOverview,
+  };
+}
+
+// ============================================================================
+// Import/Export Hook
+// ============================================================================
+
+export function useSecretsExport() {
+  const [loading, setLoading] = useState(false);
+
+  const exportSecrets = useCallback(async (includeValues = false) => {
+    const query = includeValues ? '?includeValues=true' : '';
+    const result = await apiFetch<{
+      exportedAt: string;
+      categories: SecretCategory[];
+      secrets: SecretPublic[];
+    }>(`/export${query}`);
+    return result;
+  }, []);
+
+  const importSecrets = useCallback(
+    async (
+      secrets: Array<{
+        categoryId: string;
+        keyName: string;
+        displayName: string;
+        value?: string;
+      }>,
+      overwrite = false
+    ) => {
+      setLoading(true);
+      const result = await apiFetch<{
+        created: number;
+        updated: number;
+        skipped: number;
+        errors: string[];
+      }>('/import', {
+        method: 'POST',
+        body: JSON.stringify({ secrets, overwrite }),
+      });
+      setLoading(false);
+      return result;
+    },
+    []
+  );
+
+  return {
+    loading,
+    exportSecrets,
+    importSecrets,
+  };
+}
+
+```
+
+### index.ts
+
+**Path:** `frontend/src/components/features/admin/secrets/index.ts`
+
+```typescript
+/**
+ * Secrets Management Module
+ */
+
+export { SecretsManager } from './SecretsManager';
+export { SecretsListManager } from './SecretsListManager';
+export { AuditLogViewer } from './AuditLogViewer';
+export * from './hooks';
+export * from './types';
+
+```
+
+### types.ts
+
+**Path:** `frontend/src/components/features/admin/secrets/types.ts`
+
+```typescript
+/**
+ * Secrets Management Types
+ */
+
+// Category
+export interface SecretCategory {
+  id: string;
+  name: string;
+  display_name: string;
+  description: string | null;
+  icon: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+  secret_count?: number;
+}
+
+// Secret (public view - no encrypted values)
+export interface SecretPublic {
+  id: string;
+  category_id: string;
+  key_name: string;
+  display_name: string;
+  description: string | null;
+  is_required: number;
+  is_sensitive: number;
+  value_type: 'string' | 'number' | 'boolean' | 'json' | 'url';
+  validation_pattern: string | null;
+  default_value: string | null;
+  env_fallback: string | null;
+  last_rotated_at: string | null;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  updated_by: string | null;
+  has_value: boolean;
+  masked_value?: string;
+  category_name?: string;
+}
+
+// Audit log entry
+export interface SecretAuditLog {
+  id: number;
+  secret_id: string;
+  action: 'created' | 'updated' | 'deleted' | 'rotated' | 'accessed';
+  old_value_hash: string | null;
+  new_value_hash: string | null;
+  changed_by: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  metadata: string | null;
+  created_at: string;
+  key_name?: string | null;
+}
+
+// Form data for creating/updating secrets
+export interface SecretFormData {
+  categoryId: string;
+  keyName: string;
+  displayName: string;
+  description?: string;
+  value?: string;
+  isRequired?: boolean;
+  isSensitive?: boolean;
+  valueType?: 'string' | 'number' | 'boolean' | 'json' | 'url';
+  validationPattern?: string;
+  defaultValue?: string;
+  envFallback?: string;
+  expiresAt?: string;
+}
+
+// Overview data
+export interface SecretsOverview {
+  categories: (SecretCategory & { secret_count: number })[];
+  stats: {
+    total: number;
+    configured: number;
+    missing_required: number;
+    expiring_soon: number;
+  };
+  recentActivity: SecretAuditLog[];
+}
+
+// Health status
+export interface SecretsHealth {
+  status: 'healthy' | 'unhealthy';
+  encryption: 'ok' | 'failed';
+  stats: {
+    totalSecrets: number;
+    withValue: number;
+    expired: number;
+  };
 }
 
 ```
@@ -87217,67 +88506,375 @@ export default About;
 **Path:** `frontend/src/pages/AdminConfig.tsx`
 
 ```tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ConfigManager } from '@/components/features/admin/ConfigManager';
 import { WorkersManager } from '@/components/features/admin/WorkersManager';
 import { AIManager } from '@/components/features/admin/ai';
+import { SecretsManager } from '@/components/features/admin/secrets';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Lock, Settings, Cloud, Bot } from 'lucide-react';
+import { Lock, Settings, Cloud, Bot, Key, Mail, ArrowLeft, RefreshCw } from 'lucide-react';
+import {
+  login,
+  verifyOtp,
+  resendOtp,
+  getMe,
+  type LoginResponse,
+} from '@/services/auth';
+import {
+  useAuthStore,
+  migrateFromLegacyStorage,
+  scheduleTokenRefresh,
+} from '@/stores/useAuthStore';
 
-export default function AdminConfig() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [token, setToken] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+// ============================================================================
+// Auth Step Types
+// ============================================================================
 
-  useEffect(() => {
-    const storedToken = localStorage.getItem('adminToken');
-    if (storedToken) {
-      verifyToken(storedToken);
-    } else {
-      setLoading(false);
-    }
-  }, []);
+type AuthStep = 'credentials' | 'otp' | 'authenticated';
 
-  const verifyToken = async (tokenToVerify: string) => {
+// ============================================================================
+// Credentials Form Component
+// ============================================================================
+
+interface CredentialsFormProps {
+  onSuccess: (response: LoginResponse) => void;
+  onError: (error: string) => void;
+}
+
+function CredentialsForm({ onSuccess, onError }: CredentialsFormProps) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username || !password) return;
+
+    setLoading(true);
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || ''}/api/v1/admin/config/categories`,
-        {
-          headers: { Authorization: `Bearer ${tokenToVerify}` },
-        }
-      );
-      if (res.ok) {
-        localStorage.setItem('adminToken', tokenToVerify);
-        setIsAuthenticated(true);
-      } else {
-        localStorage.removeItem('adminToken');
-        setError('Invalid or expired token');
-      }
-    } catch {
-      setError('Failed to verify token');
+      const response = await login(username, password);
+      onSuccess(response);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader className="text-center">
+        <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+          <Lock className="h-6 w-6 text-primary" />
+        </div>
+        <CardTitle>Admin Authentication</CardTitle>
+        <CardDescription>Enter your admin credentials to continue</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="username">Username</Label>
+            <Input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Enter username"
+              autoFocus
+              autoComplete="username"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter password"
+              autoComplete="current-password"
+            />
+          </div>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={!username || !password || loading}
+          >
+            {loading ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                Verifying...
+              </>
+            ) : (
+              'Continue'
+            )}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================================
+// OTP Form Component
+// ============================================================================
+
+interface OtpFormProps {
+  sessionId: string;
+  message: string;
+  expiresAt: string;
+  devOtp?: string;
+  onSuccess: () => void;
+  onError: (error: string) => void;
+  onBack: () => void;
+}
+
+function OtpForm({
+  sessionId,
+  message,
+  expiresAt,
+  devOtp,
+  onSuccess,
+  onError,
+  onBack,
+}: OtpFormProps) {
+  const [otp, setOtp] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [currentMessage, setCurrentMessage] = useState(message);
+  const [currentExpiresAt, setCurrentExpiresAt] = useState(expiresAt);
+  const [currentDevOtp, setCurrentDevOtp] = useState(devOtp);
+  const { setTokens } = useAuthStore();
+
+  // Calculate time remaining
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+
+  useEffect(() => {
+    const updateTimer = () => {
+      const expires = new Date(currentExpiresAt).getTime();
+      const now = Date.now();
+      const remaining = Math.max(0, Math.floor((expires - now) / 1000));
+      setTimeRemaining(remaining);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [currentExpiresAt]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    if (!otp || otp.length !== 6) return;
+
     setLoading(true);
-    await verifyToken(token);
+    try {
+      const response = await verifyOtp(sessionId, otp);
+      setTokens(response.accessToken, response.refreshToken, response.user);
+      scheduleTokenRefresh();
+      onSuccess();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Verification failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('adminToken');
-    setIsAuthenticated(false);
-    setToken('');
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      const response = await resendOtp(sessionId);
+      setCurrentMessage(response.message);
+      setCurrentExpiresAt(response.expiresAt);
+      setCurrentDevOtp(response._dev_otp);
+      setOtp('');
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Failed to resend code');
+    } finally {
+      setResending(false);
+    }
   };
 
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const isExpired = timeRemaining === 0;
+
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader className="text-center">
+        <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+          <Mail className="h-6 w-6 text-primary" />
+        </div>
+        <CardTitle>Verify Your Identity</CardTitle>
+        <CardDescription>{currentMessage}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="otp">Verification Code</Label>
+            <Input
+              id="otp"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+              placeholder="000000"
+              autoFocus
+              className="text-center text-2xl tracking-widest"
+            />
+            {currentDevOtp && (
+              <p className="text-xs text-muted-foreground text-center">
+                Dev mode OTP: <code className="font-mono bg-muted px-1">{currentDevOtp}</code>
+              </p>
+            )}
+          </div>
+
+          {timeRemaining !== null && (
+            <p
+              className={`text-sm text-center ${
+                isExpired ? 'text-destructive' : 'text-muted-foreground'
+              }`}
+            >
+              {isExpired
+                ? 'Code expired. Please request a new one.'
+                : `Code expires in ${formatTime(timeRemaining)}`}
+            </p>
+          )}
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={otp.length !== 6 || loading || isExpired}
+          >
+            {loading ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                Verifying...
+              </>
+            ) : (
+              'Verify Code'
+            )}
+          </Button>
+
+          <div className="flex items-center justify-between pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onBack}
+              className="text-muted-foreground"
+            >
+              <ArrowLeft className="mr-1 h-4 w-4" />
+              Back
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleResend}
+              disabled={resending}
+              className="text-muted-foreground"
+            >
+              {resending ? (
+                <>
+                  <RefreshCw className="mr-1 h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                'Resend Code'
+              )}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
+export default function AdminConfig() {
+  const [step, setStep] = useState<AuthStep>('credentials');
+  const [loginResponse, setLoginResponse] = useState<LoginResponse | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  const { isAuthenticated, getValidAccessToken, logout, user } = useAuthStore();
+
+  // Check authentication on mount
+  useEffect(() => {
+    migrateFromLegacyStorage();
+
+    const checkAuth = async () => {
+      if (isAuthenticated()) {
+        // Verify token is still valid
+        const token = await getValidAccessToken();
+        if (token) {
+          try {
+            await getMe(token);
+            setStep('authenticated');
+            scheduleTokenRefresh();
+          } catch {
+            // Token invalid, clear and show login
+            await logout();
+            setStep('credentials');
+          }
+        } else {
+          setStep('credentials');
+        }
+      }
+      setLoading(false);
+    };
+
+    checkAuth();
+  }, [isAuthenticated, getValidAccessToken, logout]);
+
+  const handleLoginSuccess = useCallback((response: LoginResponse) => {
+    setLoginResponse(response);
+    setError('');
+    setStep('otp');
+  }, []);
+
+  const handleOtpSuccess = useCallback(() => {
+    setError('');
+    setStep('authenticated');
+  }, []);
+
+  const handleError = useCallback((errorMessage: string) => {
+    setError(errorMessage);
+  }, []);
+
+  const handleBack = useCallback(() => {
+    setStep('credentials');
+    setLoginResponse(null);
+    setError('');
+  }, []);
+
+  const handleLogout = useCallback(async () => {
+    await logout();
+    setStep('credentials');
+    setLoginResponse(null);
+    setError('');
+  }, [logout]);
+
+  // Loading state
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -87286,47 +88883,47 @@ export default function AdminConfig() {
     );
   }
 
-  if (!isAuthenticated) {
+  // Credentials step
+  if (step === 'credentials') {
     return (
-      <div className="flex items-center justify-center min-h-[50vh] p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <Lock className="h-6 w-6 text-primary" />
-            </div>
-            <CardTitle>Admin Authentication</CardTitle>
-            <CardDescription>Enter your admin bearer token to access configuration</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="token">Bearer Token</Label>
-                <Input
-                  id="token"
-                  type="password"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  placeholder="Enter your admin token"
-                  autoFocus
-                />
-              </div>
-              {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button type="submit" className="w-full" disabled={!token}>
-                Authenticate
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+      <div className="flex flex-col items-center justify-center min-h-[50vh] p-4">
+        <CredentialsForm onSuccess={handleLoginSuccess} onError={handleError} />
+        {error && (
+          <p className="mt-4 text-sm text-destructive text-center">{error}</p>
+        )}
       </div>
     );
   }
 
+  // OTP step
+  if (step === 'otp' && loginResponse) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] p-4">
+        <OtpForm
+          sessionId={loginResponse.sessionId}
+          message={loginResponse.message}
+          expiresAt={loginResponse.expiresAt}
+          devOtp={loginResponse._dev_otp}
+          onSuccess={handleOtpSuccess}
+          onError={handleError}
+          onBack={handleBack}
+        />
+        {error && (
+          <p className="mt-4 text-sm text-destructive text-center">{error}</p>
+        )}
+      </div>
+    );
+  }
+
+  // Authenticated - show admin dashboard
   return (
     <div className="container mx-auto py-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground">환경변수, Workers, AI 모델 관리</p>
+          <p className="text-muted-foreground">
+            {user?.email ? `Logged in as ${user.email}` : '환경변수, Workers, AI 모델 관리'}
+          </p>
         </div>
         <Button variant="outline" onClick={handleLogout}>
           Logout
@@ -87334,10 +88931,14 @@ export default function AdminConfig() {
       </div>
 
       <Tabs defaultValue="config" className="space-y-6">
-        <TabsList className="grid w-full max-w-lg grid-cols-3">
+        <TabsList className="grid w-full max-w-2xl grid-cols-4">
           <TabsTrigger value="config" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             환경변수
+          </TabsTrigger>
+          <TabsTrigger value="secrets" className="flex items-center gap-2">
+            <Key className="h-4 w-4" />
+            Secrets
           </TabsTrigger>
           <TabsTrigger value="workers" className="flex items-center gap-2">
             <Cloud className="h-4 w-4" />
@@ -87351,6 +88952,10 @@ export default function AdminConfig() {
 
         <TabsContent value="config">
           <ConfigManager />
+        </TabsContent>
+
+        <TabsContent value="secrets">
+          <SecretsManager />
         </TabsContent>
 
         <TabsContent value="workers">
@@ -92694,6 +94299,256 @@ export async function getTrendingPosts(limit: number = 5, days: number = 7): Pro
 
 ```
 
+### auth.ts
+
+**Path:** `frontend/src/services/auth.ts`
+
+```typescript
+/**
+ * Admin Authentication Service
+ *
+ * 2-Step OTP Authentication Flow:
+ * 1. login(username, password) → sessionId
+ * 2. verifyOtp(sessionId, otp) → { accessToken, refreshToken }
+ *
+ * Features:
+ * - Access token (15min) / Refresh token (7 days)
+ * - Auto token refresh before expiration
+ * - Secure token storage with Zustand persist
+ */
+
+import { getApiBaseUrl } from '@/utils/apiBase';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface LoginResponse {
+  sessionId: string;
+  message: string;
+  expiresAt: string;
+  _dev_otp?: string; // Only in development mode
+}
+
+export interface VerifyOtpResponse {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+  user: {
+    username: string;
+    email: string;
+    role: string;
+  };
+}
+
+export interface RefreshTokenResponse {
+  accessToken: string;
+  tokenType: string;
+  expiresIn: number;
+}
+
+export interface UserInfo {
+  username: string;
+  email: string;
+  role: string;
+  emailVerified: boolean;
+}
+
+export interface ApiResponse<T> {
+  ok: boolean;
+  data?: T;
+  error?: string;
+}
+
+// ============================================================================
+// API Functions
+// ============================================================================
+
+const getBaseUrl = () => getApiBaseUrl();
+
+/**
+ * Step 1: Login with credentials → Sends OTP to admin email
+ */
+export async function login(
+  username: string,
+  password: string
+): Promise<LoginResponse> {
+  const res = await fetch(`${getBaseUrl()}/api/v1/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+
+  const json: ApiResponse<LoginResponse> = await res.json().catch(() => ({
+    ok: false,
+    error: 'Invalid response',
+  }));
+
+  if (!res.ok || !json.ok || !json.data) {
+    throw new Error(json.error || 'Login failed');
+  }
+
+  return json.data;
+}
+
+/**
+ * Step 2: Verify OTP → Returns access + refresh tokens
+ */
+export async function verifyOtp(
+  sessionId: string,
+  otp: string
+): Promise<VerifyOtpResponse> {
+  const res = await fetch(`${getBaseUrl()}/api/v1/auth/verify-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId, otp }),
+  });
+
+  const json: ApiResponse<VerifyOtpResponse> = await res.json().catch(() => ({
+    ok: false,
+    error: 'Invalid response',
+  }));
+
+  if (!res.ok || !json.ok || !json.data) {
+    throw new Error(json.error || 'OTP verification failed');
+  }
+
+  return json.data;
+}
+
+/**
+ * Resend OTP for existing session
+ */
+export async function resendOtp(
+  sessionId: string
+): Promise<{ message: string; expiresAt: string; _dev_otp?: string }> {
+  const res = await fetch(`${getBaseUrl()}/api/v1/auth/resend-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId }),
+  });
+
+  const json = await res.json().catch(() => ({
+    ok: false,
+    error: 'Invalid response',
+  }));
+
+  if (!res.ok || !json.ok || !json.data) {
+    throw new Error(json.error || 'Failed to resend OTP');
+  }
+
+  return json.data;
+}
+
+/**
+ * Refresh access token using refresh token
+ */
+export async function refreshAccessToken(
+  refreshToken: string
+): Promise<RefreshTokenResponse> {
+  const res = await fetch(`${getBaseUrl()}/api/v1/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  const json: ApiResponse<RefreshTokenResponse> = await res
+    .json()
+    .catch(() => ({
+      ok: false,
+      error: 'Invalid response',
+    }));
+
+  if (!res.ok || !json.ok || !json.data) {
+    throw new Error(json.error || 'Token refresh failed');
+  }
+
+  return json.data;
+}
+
+/**
+ * Logout (invalidate refresh token)
+ */
+export async function logout(refreshToken?: string): Promise<void> {
+  try {
+    await fetch(`${getBaseUrl()}/api/v1/auth/logout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+  } catch {
+    // Ignore logout errors
+  }
+}
+
+/**
+ * Get current user info
+ */
+export async function getMe(accessToken: string): Promise<UserInfo> {
+  const res = await fetch(`${getBaseUrl()}/api/v1/auth/me`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  const json: ApiResponse<{ user: UserInfo }> = await res
+    .json()
+    .catch(() => ({
+      ok: false,
+      error: 'Invalid response',
+    }));
+
+  if (!res.ok || !json.ok || !json.data) {
+    throw new Error(json.error || 'Failed to get user info');
+  }
+
+  return json.data.user;
+}
+
+// ============================================================================
+// Token Utilities
+// ============================================================================
+
+/**
+ * Parse JWT payload without verification (for expiration check)
+ */
+export function parseJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(payload);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check if token is expired or will expire within bufferSeconds
+ */
+export function isTokenExpired(token: string, bufferSeconds = 60): boolean {
+  const payload = parseJwtPayload(token);
+  if (!payload || typeof payload.exp !== 'number') return true;
+
+  const expiresAt = payload.exp * 1000; // Convert to milliseconds
+  const now = Date.now();
+  const buffer = bufferSeconds * 1000;
+
+  return now >= expiresAt - buffer;
+}
+
+/**
+ * Get token expiration time in milliseconds
+ */
+export function getTokenExpiration(token: string): number | null {
+  const payload = parseJwtPayload(token);
+  if (!payload || typeof payload.exp !== 'number') return null;
+  return payload.exp * 1000;
+}
+
+```
+
 ### chat.ts
 
 **Path:** `frontend/src/services/chat.ts`
@@ -96860,52 +98715,275 @@ export type ContentPart = {
 **Path:** `frontend/src/stores/useAuthStore.ts`
 
 ```typescript
+/**
+ * Admin Authentication Store
+ *
+ * Manages access/refresh tokens with:
+ * - Persistent storage
+ * - Auto token refresh
+ * - Token expiration tracking
+ */
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import {
+  refreshAccessToken,
+  isTokenExpired,
+  getTokenExpiration,
+  logout as logoutApi,
+  type UserInfo,
+} from '@/services/auth';
 
-export type AuthState = {
-  token: string | null;
-  setToken: (token: string | null) => void;
-  clearToken: () => void;
-};
+// ============================================================================
+// Types
+// ============================================================================
 
-const STORAGE_KEY = 'aiMemo.auth';
+export interface AuthState {
+  // Token state
+  accessToken: string | null;
+  refreshToken: string | null;
+  user: UserInfo | null;
+
+  // Loading state
+  isRefreshing: boolean;
+
+  // Actions
+  setTokens: (accessToken: string, refreshToken: string, user?: UserInfo) => void;
+  setUser: (user: UserInfo | null) => void;
+  clearAuth: () => void;
+  logout: () => Promise<void>;
+
+  // Token management
+  getValidAccessToken: () => Promise<string | null>;
+  isAuthenticated: () => boolean;
+}
+
+// ============================================================================
+// Store
+// ============================================================================
+
+const STORAGE_KEY = 'admin.auth';
+
+// Refresh lock to prevent concurrent refreshes
+let refreshPromise: Promise<string | null> | null = null;
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    set => ({
-      token: null,
-      setToken: token => set({ token: token?.trim() || null }),
-      clearToken: () => set({ token: null }),
+    (set, get) => ({
+      // Initial state
+      accessToken: null,
+      refreshToken: null,
+      user: null,
+      isRefreshing: false,
+
+      /**
+       * Set both tokens after successful OTP verification
+       */
+      setTokens: (accessToken, refreshToken, user) => {
+        set({ accessToken, refreshToken, user: user ?? get().user });
+      },
+
+      /**
+       * Update user info
+       */
+      setUser: (user) => {
+        set({ user });
+      },
+
+      /**
+       * Clear all auth state (local only, no API call)
+       */
+      clearAuth: () => {
+        set({
+          accessToken: null,
+          refreshToken: null,
+          user: null,
+          isRefreshing: false,
+        });
+      },
+
+      /**
+       * Full logout: API call + clear state
+       */
+      logout: async () => {
+        const { refreshToken } = get();
+        try {
+          await logoutApi(refreshToken ?? undefined);
+        } finally {
+          get().clearAuth();
+        }
+      },
+
+      /**
+       * Get a valid access token, refreshing if necessary
+       * Returns null if unable to get a valid token (user should re-authenticate)
+       */
+      getValidAccessToken: async () => {
+        const { accessToken, refreshToken } = get();
+
+        // No tokens at all
+        if (!accessToken && !refreshToken) {
+          return null;
+        }
+
+        // Access token exists and is still valid
+        if (accessToken && !isTokenExpired(accessToken, 60)) {
+          return accessToken;
+        }
+
+        // No refresh token available
+        if (!refreshToken) {
+          get().clearAuth();
+          return null;
+        }
+
+        // Check if refresh token itself is expired
+        if (isTokenExpired(refreshToken, 0)) {
+          get().clearAuth();
+          return null;
+        }
+
+        // Use existing refresh promise if one is in progress
+        if (refreshPromise) {
+          return refreshPromise;
+        }
+
+        // Start refresh
+        set({ isRefreshing: true });
+
+        refreshPromise = (async () => {
+          try {
+            const result = await refreshAccessToken(refreshToken);
+            set({
+              accessToken: result.accessToken,
+              isRefreshing: false,
+            });
+            return result.accessToken;
+          } catch (error) {
+            console.error('Token refresh failed:', error);
+            get().clearAuth();
+            return null;
+          } finally {
+            refreshPromise = null;
+          }
+        })();
+
+        return refreshPromise;
+      },
+
+      /**
+       * Check if user is authenticated (has valid tokens)
+       */
+      isAuthenticated: () => {
+        const { accessToken, refreshToken } = get();
+
+        // Has valid access token
+        if (accessToken && !isTokenExpired(accessToken, 0)) {
+          return true;
+        }
+
+        // Has valid refresh token (can get new access token)
+        if (refreshToken && !isTokenExpired(refreshToken, 0)) {
+          return true;
+        }
+
+        return false;
+      },
     }),
     {
       name: STORAGE_KEY,
-      partialize: state => ({ token: state.token }),
+      partialize: (state) => ({
+        accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
+        user: state.user,
+      }),
     }
   )
 );
 
-export function bootstrapAuthTokenFromLegacyStorage(): void {
+// ============================================================================
+// Helper Hooks & Functions
+// ============================================================================
+
+/**
+ * Get auth headers for API calls
+ * This is a simple sync function - use getValidAccessToken for auto-refresh
+ */
+export function getAuthHeaders(): Record<string, string> {
+  const { accessToken } = useAuthStore.getState();
+  return accessToken
+    ? {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      }
+    : { 'Content-Type': 'application/json' };
+}
+
+/**
+ * Get auth headers with auto-refresh (async)
+ */
+export async function getAuthHeadersAsync(): Promise<Record<string, string>> {
+  const token = await useAuthStore.getState().getValidAccessToken();
+  return token
+    ? {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      }
+    : { 'Content-Type': 'application/json' };
+}
+
+/**
+ * Schedule token refresh before expiration
+ * Call this after login to set up auto-refresh
+ */
+export function scheduleTokenRefresh(): () => void {
+  const { accessToken } = useAuthStore.getState();
+
+  if (!accessToken) return () => {};
+
+  const expiration = getTokenExpiration(accessToken);
+  if (!expiration) return () => {};
+
+  // Refresh 1 minute before expiration
+  const refreshAt = expiration - 60 * 1000;
+  const delay = Math.max(0, refreshAt - Date.now());
+
+  const timeoutId = setTimeout(async () => {
+    await useAuthStore.getState().getValidAccessToken();
+    // Schedule next refresh
+    scheduleTokenRefresh();
+  }, delay);
+
+  return () => clearTimeout(timeoutId);
+}
+
+// ============================================================================
+// Legacy Support
+// ============================================================================
+
+/**
+ * Migrate from old adminToken storage to new auth store
+ */
+export function migrateFromLegacyStorage(): void {
   try {
-    const legacyKeys = ['aiMemo.authToken', 'aiMemo.jwt', 'auth.token', 'aiMemoAuthToken'];
-    for (const key of legacyKeys) {
-      const raw = localStorage.getItem(key) ?? sessionStorage.getItem(key);
-      if (!raw) continue;
-      try {
-        const parsed = JSON.parse(raw);
-        if (typeof parsed === 'string' && parsed.trim()) {
-          useAuthStore.getState().setToken(parsed.trim());
-          return;
-        }
-      } catch {
-        if (raw.trim()) {
-          useAuthStore.getState().setToken(raw.trim());
-          return;
-        }
+    // Check for old adminToken
+    const legacyToken = localStorage.getItem('adminToken');
+    if (legacyToken) {
+      // Remove legacy token - user will need to re-authenticate with new OTP flow
+      localStorage.removeItem('adminToken');
+      console.log('Legacy adminToken removed. Please log in again with the new OTP flow.');
+    }
+
+    // Check for old aiMemo.auth storage
+    const oldAuthKeys = ['aiMemo.auth', 'aiMemo.authToken', 'aiMemo.jwt', 'auth.token'];
+    for (const key of oldAuthKeys) {
+      const value = localStorage.getItem(key);
+      if (value) {
+        localStorage.removeItem(key);
       }
     }
   } catch {
-    // ignore storage access errors
+    // Ignore storage errors
   }
 }
 
@@ -101643,14 +103721,26 @@ compatibility_flags = ["nodejs_compat"]
 account_id = "f6f11e2a4e5178d2f37476785018f761"
 
 # Secrets (set via wrangler secret put):
+#
+# === Required for Authentication ===
+# - JWT_SECRET: Secret key for JWT token signing (required)
+# - ADMIN_USERNAME: Admin username for login (required)
+# - ADMIN_PASSWORD: Admin password (required)
+# - ADMIN_EMAIL: Admin email for OTP verification (required)
+#
+# === Required for Email OTP ===
+# - RESEND_API_KEY: Resend.com API key for sending OTP emails
+# - NOTIFY_FROM_EMAIL: Email sender address (e.g., "noreply@yourdomain.com")
+#
+# === AI Features (Optional) ===
 # - GEMINI_API_KEY: Google Gemini API key for AI features
-# - JWT_SECRET: Secret key for JWT token signing
-# - ADMIN_USERNAME: Admin username (optional)
-# - ADMIN_PASSWORD: Admin password hash (optional)
-# - OPENROUTER_API_KEY: OpenRouter API key for vision fallback (optional)
-# - AI_SERVE_API_KEY: Internal API key for self-hosted AI server (optional)
+# - OPENROUTER_API_KEY: OpenRouter API key for vision fallback
+# - AI_SERVE_API_KEY: Internal API key for self-hosted AI server
 #
 # Set secrets with: npx wrangler secret put <SECRET_NAME> [--env production]
+#
+# GitHub Actions: Add these as repository secrets, then deploy workflow
+# will automatically set them via wrangler secret put
 
 # Development environment variables
 [vars]
@@ -102413,6 +104503,408 @@ export default {
       }
       return res;
     }
+  },
+};
+
+```
+
+---
+
+## workers/api-gateway
+
+### README.md
+
+**Path:** `workers/api-gateway/README.md`
+
+```markdown
+# Cloudflare Workers API Gateway
+
+이 Worker는 백엔드 API에 대한 프록시로 작동하며, Cloudflare Tunnel 대신 사용됩니다.
+
+## 아키텍처
+
+```
+┌─────────────────┐
+│ Cloudflare      │
+│ Workers        │
+│ (API Gateway)  │
+└────────┬────────┘
+         │ HTTPS (Custom Domain)
+         ▼
+┌─────────────────┐
+│ Server Nginx    │
+│ :8080           │
+└────────┬────────┘
+         │ Docker Network
+    ┌────┼────┬────┬────┐
+    ▼    ▼    ▼    ▼
+  api  litellm  terminal  etc
+```
+
+## 설정
+
+### 1. Worker 환경 변수 설정
+
+```bash
+cd workers/api-gateway
+
+# 백엔드 서버 Origin 설정 (시크릿)
+npx wrangler secret put BACKEND_ORIGIN
+# Enter: http://YOUR_SERVER_PUBLIC_IP:8080
+```
+
+### 2. wrangler.toml 확인
+
+```toml
+[vars]
+ALLOWED_ORIGINS = "https://noblog.nodove.com,https://nodove.com,http://localhost:5173"
+```
+
+### 3. 배포
+
+```bash
+npm install
+npx wrangler deploy
+# 또는 production 환경:
+npx wrangler deploy --env production
+```
+
+## 서버 설정
+
+### 1. Nginx 포트 변경 (80 → 8080)
+
+`backend/nginx.conf`에서:
+
+```nginx
+server {
+    listen 8080;  # 80에서 8080으로 변경
+    server_name _;  # server_name 제거 (Workers가 Host 헤더 설정)
+    # ... 나머지 설정 유지
+}
+```
+
+### 2. 방화벽 설정 (Cloudflare IP만 허용)
+
+```bash
+# Cloudflare IP ranges 가져오기
+curl -s https://www.cloudflare.com/ips-v4 > /tmp/cloudflare-ips.txt
+
+# 방화벽 규칙 추가 (firewalld)
+for ip in $(cat /tmp/cloudflare-ips.txt); do
+  sudo firewall-cmd --permanent --add-rich-rule="rule family='ipv4' source address='$ip' port protocol='tcp' port='8080' accept"
+done
+
+sudo firewall-cmd --reload
+```
+
+또는 ufw 사용 시:
+
+```bash
+for ip in $(cat /tmp/cloudflare-ips.txt); do
+  sudo ufw allow from $ip to any port 8080 proto tcp
+done
+```
+
+### 3. Docker Compose 포트 노출
+
+`compose.runtime.yml`에서 nginx 포트 변경:
+
+```yaml
+nginx:
+  ports:
+    - "0.0.0.0:8080:80"  # 호스트 8080 포트에 노출
+```
+
+### 4. Cloudflare 터널 제거
+
+```bash
+ssh [SSH_USER]@[SSH_HOST]
+cd [REMOTE_DIR]
+
+# 터널 컨테이너 제거
+docker compose -f compose.runtime.yml down cloudflared
+docker compose -f compose.runtime.yml up -d --remove-orphans
+```
+
+## GitHub Actions 업데이트
+
+`.github/workflows/backend-deploy.yml`에서 터널 관련 부분 제거:
+
+```yaml
+# Cloudflare Tunnel 컨테이너 제거
+# cloudflared:
+#   image: cloudflare/cloudflared:latest
+#   ...
+```
+
+## 장점
+
+✅ **터널 데몬 불필요** - 서버 리소스 절약  
+✅ **단일 진입점** - Workers에서 모든 요청 처리  
+✅ **추가 기능** - Workers에서 인증, 속도 제한, 캐싱 가능  
+✅ **더 나은 디버깅** - Workers 로그와 서버 로그 분리  
+✅ **단순화된 아키텍처** - 복잡한 Ingress Rules 제거
+
+## 테스트
+
+```bash
+# Workers 테스트
+curl https://api.nodove.com/api/v1/healthz
+
+# CORS 테스트
+curl -H "Origin: https://noblog.nodove.com" \
+  -I https://api.nodove.com/api/v1/healthz
+```
+
+## 문제 해결
+
+### CORS 에러
+
+Worker의 `ALLOWED_ORIGINS` 변수에 정확한 도메인 설정:
+
+```bash
+npx wrangler secret put ALLOWED_ORIGINS
+# https://noblog.nodove.com,https://nodove.com
+```
+
+### 서버 접속 불가
+
+방화벽에서 Cloudflare IP 허용 확인:
+
+```bash
+sudo firewall-cmd --list-all
+```
+
+### Workers 로그 확인
+
+```bash
+npx wrangler tail
+```
+
+```
+
+### package.json
+
+**Path:** `workers/api-gateway/package.json`
+
+```json
+{
+  "name": "blog-api-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloudflare Worker API Gateway for Blog Backend",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:production": "wrangler deploy --env production",
+    "deploy:staging": "wrangler deploy --env staging",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
+
+```
+
+### wrangler.toml
+
+**Path:** `workers/api-gateway/wrangler.toml`
+
+```toml
+name = "blog-api-gateway"
+main = "src/index.js"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Custom Domain for API
+routes = [
+  { pattern = "api.nodove.com/*", zone_name = "nodove.com" }
+]
+
+# Environment variables
+[vars]
+ALLOWED_ORIGINS = "https://noblog.nodove.com,https://nodove.com,http://localhost:5173"
+
+# Secrets (set via: wrangler secret put BACKEND_ORIGIN)
+# BACKEND_ORIGIN = "http://YOUR_SERVER_IP:8080"
+
+# Production environment
+[env.production]
+routes = [
+  { pattern = "api.nodove.com/*", zone_name = "nodove.com" }
+]
+
+# Staging environment (optional)
+[env.staging]
+name = "blog-api-gateway-staging"
+routes = [
+  { pattern = "api-staging.nodove.com/*", zone_name = "nodove.com" }
+]
+
+```
+
+---
+
+## workers/api-gateway/src
+
+### index.js
+
+**Path:** `workers/api-gateway/src/index.js`
+
+```javascript
+/**
+ * Blog API Gateway Worker
+ * 
+ * Routes requests to backend server via Cloudflare Workers.
+ * Replaces Cloudflare Tunnel for simpler architecture.
+ * 
+ * Environment Variables (set in wrangler.toml or Cloudflare Dashboard):
+ *   - BACKEND_ORIGIN: Backend server origin (e.g., http://YOUR_IP:8080)
+ *   - ALLOWED_ORIGINS: Comma-separated list of allowed CORS origins
+ * 
+ * Architecture:
+ *   Client → Cloudflare Workers → Server:8080 → nginx → services
+ */
+
+// Default allowed origins for CORS
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://noblog.nodove.com',
+  'https://nodove.com',
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
+
+/**
+ * Build CORS headers based on request origin
+ */
+function getCorsHeaders(request, env) {
+  const origin = request.headers.get('Origin') || '';
+  const allowedOrigins = env.ALLOWED_ORIGINS 
+    ? env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+    : DEFAULT_ALLOWED_ORIGINS;
+  
+  // Check if origin is allowed
+  const allowOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+  
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Max-Age': '86400',
+  };
+}
+
+/**
+ * Handle CORS preflight requests
+ */
+function handleOptions(request, env) {
+  const corsHeaders = getCorsHeaders(request, env);
+  return new Response(null, {
+    status: 204,
+    headers: corsHeaders,
+  });
+}
+
+/**
+ * Forward request to backend
+ */
+async function forwardRequest(request, env, ctx) {
+  const backendOrigin = env.BACKEND_ORIGIN;
+  
+  if (!backendOrigin) {
+    return new Response(
+      JSON.stringify({ 
+        error: 'Configuration error', 
+        message: 'BACKEND_ORIGIN not configured' 
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+
+  const url = new URL(request.url);
+  const backendUrl = new URL(url.pathname + url.search, backendOrigin);
+
+  // Prepare headers for backend
+  const headers = new Headers(request.headers);
+  headers.delete('Host');
+  headers.set('X-Forwarded-For', request.headers.get('CF-Connecting-IP') || '');
+  headers.set('X-Forwarded-Proto', 'https');
+  headers.set('X-Real-IP', request.headers.get('CF-Connecting-IP') || '');
+  headers.set('X-Request-ID', crypto.randomUUID());
+
+  try {
+    const response = await fetch(backendUrl.toString(), {
+      method: request.method,
+      headers,
+      body: request.body,
+      // Preserve request body for non-GET requests
+      duplex: request.method !== 'GET' && request.method !== 'HEAD' ? 'half' : undefined,
+    });
+
+    // Clone response and add CORS headers
+    const corsHeaders = getCorsHeaders(request, env);
+    const responseHeaders = new Headers(response.headers);
+    
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      responseHeaders.set(key, value);
+    });
+
+    // Handle streaming responses (SSE)
+    if (response.headers.get('Content-Type')?.includes('text/event-stream')) {
+      return new Response(response.body, {
+        status: response.status,
+        headers: responseHeaders,
+      });
+    }
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: responseHeaders,
+    });
+  } catch (error) {
+    console.error('Backend request failed:', error);
+    
+    const corsHeaders = getCorsHeaders(request, env);
+    return new Response(
+      JSON.stringify({ 
+        error: 'Backend unavailable',
+        message: 'Could not connect to backend server',
+      }),
+      {
+        status: 503,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      }
+    );
+  }
+}
+
+export default {
+  async fetch(request, env, ctx) {
+    // Handle CORS preflight
+    if (request.method === 'OPTIONS') {
+      return handleOptions(request, env);
+    }
+
+    // Health check endpoint (for Cloudflare)
+    const url = new URL(request.url);
+    if (url.pathname === '/_health') {
+      return new Response(JSON.stringify({ ok: true, worker: 'api-gateway' }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Forward all other requests to backend
+    return forwardRequest(request, env, ctx);
   },
 };
 
@@ -103596,6 +106088,190 @@ GROUP BY tool_name;
 
 ```
 
+### 0014_secrets_management.sql
+
+**Path:** `workers/migrations/0014_secrets_management.sql`
+
+```sql
+-- =============================================================================
+-- Centralized Secrets Management
+-- Migration: 0014_secrets_management.sql
+-- =============================================================================
+
+-- Secrets 카테고리
+-- 키를 논리적으로 그룹화하여 관리
+CREATE TABLE IF NOT EXISTS secret_categories (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,              -- 'ai', 'auth', 'email', 'github', 'cloudflare'
+  display_name TEXT NOT NULL,             -- 'AI Providers', 'Authentication'
+  description TEXT,
+  icon TEXT,                              -- 'bot', 'lock', 'mail', etc.
+  sort_order INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Centralized Secrets Storage
+-- 암호화된 시크릿 값 저장
+CREATE TABLE IF NOT EXISTS secrets (
+  id TEXT PRIMARY KEY,
+  category_id TEXT NOT NULL,
+  key_name TEXT NOT NULL UNIQUE,          -- 'OPENAI_API_KEY', 'JWT_SECRET'
+  display_name TEXT NOT NULL,             -- 'OpenAI API Key'
+  description TEXT,
+  encrypted_value TEXT,                   -- AES-256-GCM 암호화된 값
+  iv TEXT,                                -- Initialization Vector (Base64)
+  is_required INTEGER DEFAULT 0,          -- 필수 여부
+  is_sensitive INTEGER DEFAULT 1,         -- UI에서 마스킹 여부
+  value_type TEXT DEFAULT 'string',       -- 'string', 'number', 'boolean', 'json', 'url'
+  validation_pattern TEXT,                -- 정규식 검증 패턴
+  default_value TEXT,                     -- 암호화되지 않은 기본값 (비민감 설정용)
+  env_fallback TEXT,                      -- 환경변수 폴백 이름
+  last_rotated_at TEXT,                   -- 마지막 키 교체 일시
+  expires_at TEXT,                        -- 만료 일시 (선택)
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  created_by TEXT,                        -- 생성자
+  updated_by TEXT,                        -- 수정자
+  FOREIGN KEY (category_id) REFERENCES secret_categories(id) ON DELETE RESTRICT
+);
+
+-- Secrets Audit Log
+-- 시크릿 변경 이력 추적
+CREATE TABLE IF NOT EXISTS secrets_audit_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  secret_id TEXT NOT NULL,
+  action TEXT NOT NULL,                   -- 'created', 'updated', 'deleted', 'rotated', 'accessed'
+  old_value_hash TEXT,                    -- 이전 값의 SHA-256 해시 (값 자체 X)
+  new_value_hash TEXT,                    -- 새 값의 SHA-256 해시
+  changed_by TEXT,                        -- 변경자 (username or 'system')
+  ip_address TEXT,
+  user_agent TEXT,
+  metadata TEXT,                          -- JSON for additional context
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Secret References
+-- 어떤 서비스/모듈이 어떤 시크릿을 사용하는지 추적
+CREATE TABLE IF NOT EXISTS secret_references (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  secret_id TEXT NOT NULL,
+  reference_type TEXT NOT NULL,           -- 'ai_provider', 'route', 'service', 'integration'
+  reference_id TEXT NOT NULL,             -- 해당 타입의 ID
+  reference_name TEXT,                    -- 읽기 쉬운 이름
+  is_active INTEGER DEFAULT 1,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (secret_id) REFERENCES secrets(id) ON DELETE CASCADE,
+  UNIQUE(secret_id, reference_type, reference_id)
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_secrets_category ON secrets(category_id);
+CREATE INDEX IF NOT EXISTS idx_secrets_key_name ON secrets(key_name);
+CREATE INDEX IF NOT EXISTS idx_secrets_audit_secret ON secrets_audit_log(secret_id);
+CREATE INDEX IF NOT EXISTS idx_secrets_audit_created ON secrets_audit_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_secret_refs_secret ON secret_references(secret_id);
+CREATE INDEX IF NOT EXISTS idx_secret_refs_type ON secret_references(reference_type, reference_id);
+
+-- =============================================================================
+-- Seed Data: Default Categories
+-- =============================================================================
+
+INSERT OR IGNORE INTO secret_categories (id, name, display_name, description, icon, sort_order) VALUES
+  ('cat_ai', 'ai', 'AI Providers', 'API keys for AI service providers (OpenAI, Anthropic, Google, etc.)', 'bot', 1),
+  ('cat_auth', 'auth', 'Authentication', 'JWT secrets, admin credentials, and auth tokens', 'lock', 2),
+  ('cat_email', 'email', 'Email & Notifications', 'Email service API keys and notification settings', 'mail', 3),
+  ('cat_github', 'github', 'GitHub Integration', 'GitHub tokens and repository access', 'github', 4),
+  ('cat_cloudflare', 'cloudflare', 'Cloudflare', 'Cloudflare API tokens and configuration', 'cloud', 5),
+  ('cat_database', 'database', 'Database', 'Database credentials and connection strings', 'database', 6),
+  ('cat_general', 'general', 'General', 'Other configuration values and secrets', 'settings', 99);
+
+-- =============================================================================
+-- Update ai_providers to reference secrets table
+-- =============================================================================
+
+-- ai_providers.api_key_env를 secrets.key_name과 연결
+-- 기존 api_key_env 컬럼은 유지하되, secret_id 컬럼 추가
+ALTER TABLE ai_providers ADD COLUMN secret_id TEXT REFERENCES secrets(id) ON DELETE SET NULL;
+
+```
+
+### 0015_secrets_seed.sql
+
+**Path:** `workers/migrations/0015_secrets_seed.sql`
+
+```sql
+-- =============================================================================
+-- Seed Secrets from Environment Variables
+-- Migration: 0015_secrets_seed.sql
+--
+-- This migration pre-populates the secrets table with common keys.
+-- Actual values will be set via Admin UI or API.
+-- =============================================================================
+
+-- AI Provider Keys
+INSERT OR IGNORE INTO secrets (id, category_id, key_name, display_name, description, is_required, is_sensitive, value_type, env_fallback) VALUES
+  ('sec_openai_api_key', 'cat_ai', 'OPENAI_API_KEY', 'OpenAI API Key', 'API key for OpenAI GPT models', 0, 1, 'string', 'OPENAI_API_KEY'),
+  ('sec_anthropic_api_key', 'cat_ai', 'ANTHROPIC_API_KEY', 'Anthropic API Key', 'API key for Claude models', 0, 1, 'string', 'ANTHROPIC_API_KEY'),
+  ('sec_google_api_key', 'cat_ai', 'GOOGLE_API_KEY', 'Google API Key', 'API key for Google Gemini models', 0, 1, 'string', 'GOOGLE_API_KEY'),
+  ('sec_gemini_api_key', 'cat_ai', 'GEMINI_API_KEY', 'Gemini API Key', 'Alternative key for Google Gemini (same as GOOGLE_API_KEY)', 0, 1, 'string', 'GEMINI_API_KEY'),
+  ('sec_openrouter_api_key', 'cat_ai', 'OPENROUTER_API_KEY', 'OpenRouter API Key', 'API key for OpenRouter multi-model gateway', 0, 1, 'string', 'OPENROUTER_API_KEY'),
+  ('sec_vas_api_key', 'cat_ai', 'VAS_API_KEY', 'GitHub Copilot VAS Key', 'API key for GitHub Copilot VAS models', 0, 1, 'string', 'VAS_API_KEY'),
+  ('sec_litellm_master_key', 'cat_ai', 'LITELLM_MASTER_KEY', 'LiteLLM Master Key', 'Master key for LiteLLM gateway authentication', 0, 1, 'string', 'LITELLM_MASTER_KEY'),
+  ('sec_ai_serve_api_key', 'cat_ai', 'AI_SERVE_API_KEY', 'AI Serve API Key', 'Internal API key for AI backend server', 0, 1, 'string', 'AI_SERVE_API_KEY'),
+  ('sec_ai_gateway_caller_key', 'cat_ai', 'AI_GATEWAY_CALLER_KEY', 'AI Gateway Caller Key', 'Key for authenticating calls to AI gateway', 0, 1, 'string', 'AI_GATEWAY_CALLER_KEY');
+
+-- Authentication Secrets
+INSERT OR IGNORE INTO secrets (id, category_id, key_name, display_name, description, is_required, is_sensitive, value_type, env_fallback) VALUES
+  ('sec_jwt_secret', 'cat_auth', 'JWT_SECRET', 'JWT Secret', 'Secret key for signing JWT tokens (required)', 1, 1, 'string', 'JWT_SECRET'),
+  ('sec_admin_username', 'cat_auth', 'ADMIN_USERNAME', 'Admin Username', 'Username for admin login', 1, 0, 'string', 'ADMIN_USERNAME'),
+  ('sec_admin_password', 'cat_auth', 'ADMIN_PASSWORD', 'Admin Password', 'Password for admin login', 1, 1, 'string', 'ADMIN_PASSWORD'),
+  ('sec_admin_email', 'cat_auth', 'ADMIN_EMAIL', 'Admin Email', 'Email address for OTP verification', 1, 0, 'string', 'ADMIN_EMAIL'),
+  ('sec_admin_bearer_token', 'cat_auth', 'ADMIN_BEARER_TOKEN', 'Admin Bearer Token', 'Legacy bearer token for admin API', 0, 1, 'string', 'ADMIN_BEARER_TOKEN'),
+  ('sec_origin_secret_key', 'cat_auth', 'ORIGIN_SECRET_KEY', 'Origin Secret Key', 'Secret key for WebSocket origin verification', 0, 1, 'string', 'ORIGIN_SECRET_KEY'),
+  ('sec_opencode_auth_token', 'cat_auth', 'OPENCODE_AUTH_TOKEN', 'OpenCode Auth Token', 'Authentication token for OpenCode integration', 0, 1, 'string', 'OPENCODE_AUTH_TOKEN');
+
+-- Email & Notification Secrets
+INSERT OR IGNORE INTO secrets (id, category_id, key_name, display_name, description, is_required, is_sensitive, value_type, env_fallback) VALUES
+  ('sec_resend_api_key', 'cat_email', 'RESEND_API_KEY', 'Resend API Key', 'API key for Resend email service', 0, 1, 'string', 'RESEND_API_KEY'),
+  ('sec_notify_from_email', 'cat_email', 'NOTIFY_FROM_EMAIL', 'Notification From Email', 'Email address for sending notifications', 0, 0, 'string', 'NOTIFY_FROM_EMAIL'),
+  ('sec_notify_to_emails', 'cat_email', 'NOTIFY_TO_EMAILS', 'Notification Recipients', 'Comma-separated list of notification recipient emails', 0, 0, 'string', 'NOTIFY_TO_EMAILS');
+
+-- GitHub Integration
+INSERT OR IGNORE INTO secrets (id, category_id, key_name, display_name, description, is_required, is_sensitive, value_type, env_fallback) VALUES
+  ('sec_github_token', 'cat_github', 'GITHUB_TOKEN', 'GitHub Token', 'Personal access token for GitHub API (repo, PR creation)', 0, 1, 'string', 'GITHUB_TOKEN');
+
+-- Cloudflare Configuration
+INSERT OR IGNORE INTO secrets (id, category_id, key_name, display_name, description, is_required, is_sensitive, value_type, env_fallback) VALUES
+  ('sec_cf_account_id', 'cat_cloudflare', 'CF_ACCOUNT_ID', 'Cloudflare Account ID', 'Cloudflare account identifier', 0, 0, 'string', 'CF_ACCOUNT_ID'),
+  ('sec_cf_api_token', 'cat_cloudflare', 'CF_API_TOKEN', 'Cloudflare API Token', 'API token for Cloudflare operations', 0, 1, 'string', 'CF_API_TOKEN');
+
+-- General/URLs Configuration
+INSERT OR IGNORE INTO secrets (id, category_id, key_name, display_name, description, is_required, is_sensitive, value_type, env_fallback) VALUES
+  ('sec_api_base_url', 'cat_general', 'API_BASE_URL', 'API Base URL', 'Base URL for API endpoints', 0, 0, 'url', 'API_BASE_URL'),
+  ('sec_public_site_url', 'cat_general', 'PUBLIC_SITE_URL', 'Public Site URL', 'Public-facing website URL', 0, 0, 'url', 'PUBLIC_SITE_URL'),
+  ('sec_assets_base_url', 'cat_general', 'ASSETS_BASE_URL', 'Assets Base URL', 'Base URL for static assets (R2, etc.)', 0, 0, 'url', 'ASSETS_BASE_URL'),
+  ('sec_ai_serve_base_url', 'cat_general', 'AI_SERVE_BASE_URL', 'AI Serve Base URL', 'URL for AI backend server', 0, 0, 'url', 'AI_SERVE_BASE_URL'),
+  ('sec_litellm_base_url', 'cat_general', 'LITELLM_BASE_URL', 'LiteLLM Base URL', 'URL for LiteLLM gateway', 0, 0, 'url', 'LITELLM_BASE_URL');
+
+-- Database (informational only - actual D1 binding is via wrangler)
+INSERT OR IGNORE INTO secrets (id, category_id, key_name, display_name, description, is_required, is_sensitive, value_type, env_fallback) VALUES
+  ('sec_d1_database_id', 'cat_database', 'D1_DATABASE_ID', 'D1 Database ID', 'Cloudflare D1 database identifier', 0, 0, 'string', 'D1_DATABASE_ID');
+
+-- =============================================================================
+-- Link AI Providers to Secrets
+-- =============================================================================
+
+-- Update existing ai_providers to use secret_id
+UPDATE ai_providers SET secret_id = 'sec_openai_api_key' WHERE name = 'openai' AND secret_id IS NULL;
+UPDATE ai_providers SET secret_id = 'sec_anthropic_api_key' WHERE name = 'anthropic' AND secret_id IS NULL;
+UPDATE ai_providers SET secret_id = 'sec_gemini_api_key' WHERE name = 'gemini' AND secret_id IS NULL;
+UPDATE ai_providers SET secret_id = 'sec_google_api_key' WHERE name = 'google' AND secret_id IS NULL;
+UPDATE ai_providers SET secret_id = 'sec_vas_api_key' WHERE name = 'vas' AND secret_id IS NULL;
+UPDATE ai_providers SET secret_id = 'sec_openrouter_api_key' WHERE name = 'openrouter' AND secret_id IS NULL;
+
+```
+
 ---
 
 ## workers/r2-gateway
@@ -104192,6 +106868,8 @@ import rag from './routes/rag';
 import gateway from './routes/gateway';
 import memos from './routes/memos';
 import memories from './routes/memories';
+import adminAi from './routes/admin-ai';
+import secrets from './routes/secrets';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -104235,6 +106913,8 @@ api.route('/rag', rag);
 api.route('/gateway', gateway);
 api.route('/memos', memos);
 api.route('/memories', memories);
+api.route('/admin/ai', adminAi);
+api.route('/admin/secrets', secrets);
 
 app.route('/api/v1', api);
 
@@ -104370,6 +107050,7 @@ export type Env = {
   JWT_SECRET: string;
   ADMIN_USERNAME?: string;
   ADMIN_PASSWORD?: string;
+  ADMIN_EMAIL?: string; // Admin email for OTP verification (GitHub Secrets)
 
   // Backend AI Server (via Cloudflare Tunnel)
   // 모든 AI 호출은 이 서버를 통해 처리됩니다
@@ -104394,6 +107075,9 @@ export type Env = {
   // Variables
   ENV: 'development' | 'production';
   ALLOWED_ORIGINS: string;
+
+  // Secrets encryption key (optional, falls back to JWT_SECRET)
+  SECRETS_ENCRYPTION_KEY?: string;
 };
 
 // Context extending Hono's context with our Env
@@ -104466,8 +107150,22 @@ export type JwtPayload = {
   sub: string;
   role: string;
   username: string;
+  email?: string;
+  emailVerified?: boolean;
+  type?: 'access' | 'refresh';
   iat?: number;
   exp?: number;
+};
+
+// Auth Session for OTP verification
+export type AuthSession = {
+  id: string;
+  username: string;
+  email: string;
+  otp_hash: string;
+  otp_expires_at: string;
+  is_verified: number;
+  created_at: string;
 };
 
 // Post Analytics Models
@@ -104508,6 +107206,156 @@ export type EditorPick = {
   is_active: number;
   created_at: string;
   updated_at: string;
+};
+
+// ============================================================================
+// AI Model Management Types
+// ============================================================================
+
+export type AIProvider = {
+  id: string;
+  name: string;
+  display_name: string;
+  api_base_url: string | null;
+  api_key_env: string | null;
+  is_enabled: number;
+  health_status: 'healthy' | 'degraded' | 'down' | 'unknown';
+  last_health_check: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AIModel = {
+  id: string;
+  provider_id: string;
+  model_name: string;
+  display_name: string;
+  litellm_model: string;
+  description: string | null;
+  context_window: number | null;
+  max_tokens: number | null;
+  input_cost_per_1k: number | null;
+  output_cost_per_1k: number | null;
+  supports_vision: number;
+  supports_streaming: number;
+  supports_function_calling: number;
+  is_enabled: number;
+  priority: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AIRoute = {
+  id: string;
+  name: string;
+  description: string | null;
+  routing_strategy: 'simple' | 'latency-based-routing' | 'cost-based-routing';
+  primary_model_id: string | null;
+  fallback_model_ids: string | null; // JSON array
+  context_window_fallback_ids: string | null; // JSON array
+  num_retries: number;
+  timeout_seconds: number;
+  is_default: number;
+  is_enabled: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AIUsageLog = {
+  id: string;
+  model_id: string | null;
+  route_id: string | null;
+  request_type: 'chat' | 'completion' | 'embedding' | 'vision';
+  prompt_tokens: number | null;
+  completion_tokens: number | null;
+  total_tokens: number | null;
+  estimated_cost: number | null;
+  latency_ms: number | null;
+  status: 'success' | 'error' | 'timeout';
+  error_message: string | null;
+  user_id: string | null;
+  metadata: string | null;
+  created_at: string;
+};
+
+export type AIUsageDaily = {
+  date: string;
+  model_id: string;
+  total_requests: number;
+  total_prompt_tokens: number;
+  total_completion_tokens: number;
+  total_tokens: number;
+  total_cost: number;
+  success_count: number;
+  error_count: number;
+  avg_latency_ms: number | null;
+};
+
+// ============================================================================
+// Secrets Management Types
+// ============================================================================
+
+export type SecretCategory = {
+  id: string;
+  name: string;
+  display_name: string;
+  description: string | null;
+  icon: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Secret = {
+  id: string;
+  category_id: string;
+  key_name: string;
+  display_name: string;
+  description: string | null;
+  encrypted_value: string | null;
+  iv: string | null;
+  is_required: number;
+  is_sensitive: number;
+  value_type: 'string' | 'number' | 'boolean' | 'json' | 'url';
+  validation_pattern: string | null;
+  default_value: string | null;
+  env_fallback: string | null;
+  last_rotated_at: string | null;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  updated_by: string | null;
+};
+
+export type SecretAuditLog = {
+  id: number;
+  secret_id: string;
+  action: 'created' | 'updated' | 'deleted' | 'rotated' | 'accessed';
+  old_value_hash: string | null;
+  new_value_hash: string | null;
+  changed_by: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  metadata: string | null;
+  created_at: string;
+};
+
+export type SecretReference = {
+  id: number;
+  secret_id: string;
+  reference_type: 'ai_provider' | 'route' | 'service' | 'integration';
+  reference_id: string;
+  reference_name: string | null;
+  is_active: number;
+  created_at: string;
+};
+
+// API Response types for secrets
+export type SecretPublic = Omit<Secret, 'encrypted_value' | 'iv'> & {
+  has_value: boolean;
+  masked_value?: string;
+  category_name?: string;
 };
 
 ```
@@ -105186,6 +108034,263 @@ export function setCorsHeaders(c: Context, origin?: string) {
 
 ```
 
+### crypto.ts
+
+**Path:** `workers/src/lib/crypto.ts`
+
+```typescript
+/**
+ * Secrets Encryption Utilities
+ *
+ * Uses AES-256-GCM encryption with Web Crypto API
+ * Compatible with Cloudflare Workers runtime
+ *
+ * Security:
+ * - Master key derived from SECRETS_ENCRYPTION_KEY env var (or JWT_SECRET as fallback)
+ * - Each secret has unique IV (Initialization Vector)
+ * - PBKDF2 key derivation with salt
+ */
+
+// Constants
+const ALGORITHM = 'AES-GCM';
+const KEY_LENGTH = 256;
+const IV_LENGTH = 12; // 96 bits for AES-GCM
+const SALT_LENGTH = 16;
+const PBKDF2_ITERATIONS = 100000;
+
+// Cache for derived keys (per request context)
+let cachedKey: CryptoKey | null = null;
+let cachedKeySource: string | null = null;
+
+/**
+ * Derive encryption key from master secret using PBKDF2
+ */
+async function deriveKey(masterSecret: string, salt: Uint8Array): Promise<CryptoKey> {
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(masterSecret),
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  );
+
+  return crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: salt as unknown as BufferSource,
+      iterations: PBKDF2_ITERATIONS,
+      hash: 'SHA-256',
+    },
+    keyMaterial,
+    { name: ALGORITHM, length: KEY_LENGTH },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+/**
+ * Get or create encryption key from environment
+ */
+async function getEncryptionKey(env: {
+  SECRETS_ENCRYPTION_KEY?: string;
+  JWT_SECRET: string;
+}): Promise<CryptoKey> {
+  // Use dedicated encryption key or fall back to JWT_SECRET
+  const masterSecret = env.SECRETS_ENCRYPTION_KEY || env.JWT_SECRET;
+
+  // Return cached key if same source
+  if (cachedKey && cachedKeySource === masterSecret) {
+    return cachedKey;
+  }
+
+  // Use a fixed salt derived from the master secret for consistent key derivation
+  // This allows decryption with the same master secret
+  const encoder = new TextEncoder();
+  const saltSource = await crypto.subtle.digest('SHA-256', encoder.encode(masterSecret + ':salt'));
+  const salt = new Uint8Array(saltSource).slice(0, SALT_LENGTH);
+
+  cachedKey = await deriveKey(masterSecret, salt);
+  cachedKeySource = masterSecret;
+
+  return cachedKey;
+}
+
+/**
+ * Generate a random IV for encryption
+ */
+function generateIV(): Uint8Array {
+  return crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+}
+
+/**
+ * Encrypt a secret value
+ *
+ * @param plaintext - The secret value to encrypt
+ * @param env - Environment with encryption key
+ * @returns Object with encrypted value and IV (both Base64 encoded)
+ */
+export async function encryptSecret(
+  plaintext: string,
+  env: { SECRETS_ENCRYPTION_KEY?: string; JWT_SECRET: string }
+): Promise<{ encryptedValue: string; iv: string }> {
+  const key = await getEncryptionKey(env);
+  const iv = generateIV();
+  const encoder = new TextEncoder();
+
+  const encryptedBuffer = await crypto.subtle.encrypt(
+    { name: ALGORITHM, iv: iv as unknown as BufferSource },
+    key,
+    encoder.encode(plaintext)
+  );
+
+  return {
+    encryptedValue: arrayBufferToBase64(encryptedBuffer),
+    iv: arrayBufferToBase64(iv),
+  };
+}
+
+/**
+ * Decrypt a secret value
+ *
+ * @param encryptedValue - Base64 encoded encrypted value
+ * @param iv - Base64 encoded IV
+ * @param env - Environment with encryption key
+ * @returns Decrypted plaintext
+ */
+export async function decryptSecret(
+  encryptedValue: string,
+  iv: string,
+  env: { SECRETS_ENCRYPTION_KEY?: string; JWT_SECRET: string }
+): Promise<string> {
+  const key = await getEncryptionKey(env);
+  const ivBuffer = base64ToArrayBuffer(iv);
+  const encryptedBuffer = base64ToArrayBuffer(encryptedValue);
+
+  const decryptedBuffer = await crypto.subtle.decrypt(
+    { name: ALGORITHM, iv: ivBuffer as unknown as BufferSource },
+    key,
+    encryptedBuffer as unknown as BufferSource
+  );
+
+  const decoder = new TextDecoder();
+  return decoder.decode(decryptedBuffer);
+}
+
+/**
+ * Hash a value using SHA-256 (for audit logging)
+ * Returns first 16 characters of hex hash
+ */
+export async function hashValue(value: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(value));
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
+}
+
+/**
+ * Validate a secret value against its hash
+ */
+export async function validateHash(value: string, expectedHash: string): Promise<boolean> {
+  const actualHash = await hashValue(value);
+  return actualHash === expectedHash;
+}
+
+/**
+ * Mask a secret value for display
+ */
+export function maskSecret(value: string, visibleChars = 4): string {
+  if (!value || value.length <= visibleChars * 2) {
+    return '*'.repeat(8);
+  }
+  const start = value.substring(0, visibleChars);
+  const end = value.substring(value.length - visibleChars);
+  const masked = '*'.repeat(Math.min(value.length - visibleChars * 2, 20));
+  return `${start}${masked}${end}`;
+}
+
+/**
+ * Generate a secure random secret
+ */
+export function generateSecret(length = 32): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const array = crypto.getRandomValues(new Uint8Array(length));
+  return Array.from(array, (byte) => chars[byte % chars.length]).join('');
+}
+
+/**
+ * Generate a secure API key with prefix
+ */
+export function generateApiKey(prefix = 'sk'): string {
+  const randomPart = generateSecret(32);
+  return `${prefix}-${randomPart}`;
+}
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i] ?? 0);
+  }
+  return btoa(binary);
+}
+
+function base64ToArrayBuffer(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// ============================================================================
+// Re-encryption utilities (for key rotation)
+// ============================================================================
+
+/**
+ * Re-encrypt a secret with a new key
+ * Used during key rotation
+ */
+export async function reEncryptSecret(
+  encryptedValue: string,
+  iv: string,
+  oldEnv: { SECRETS_ENCRYPTION_KEY?: string; JWT_SECRET: string },
+  newEnv: { SECRETS_ENCRYPTION_KEY?: string; JWT_SECRET: string }
+): Promise<{ encryptedValue: string; iv: string }> {
+  // Decrypt with old key
+  const plaintext = await decryptSecret(encryptedValue, iv, oldEnv);
+
+  // Clear cached key to force new key derivation
+  cachedKey = null;
+  cachedKeySource = null;
+
+  // Encrypt with new key
+  return encryptSecret(plaintext, newEnv);
+}
+
+/**
+ * Validate that decryption works (for health checks)
+ */
+export async function validateEncryption(
+  env: { SECRETS_ENCRYPTION_KEY?: string; JWT_SECRET: string }
+): Promise<boolean> {
+  try {
+    const testValue = 'encryption-test-' + Date.now();
+    const { encryptedValue, iv } = await encryptSecret(testValue, env);
+    const decrypted = await decryptSecret(encryptedValue, iv, env);
+    return decrypted === testValue;
+  } catch {
+    return false;
+  }
+}
+
+```
+
 ### d1.ts
 
 **Path:** `workers/src/lib/d1.ts`
@@ -105479,6 +108584,11 @@ import type { Env, JwtPayload } from '../types';
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
+// Token expiration times
+export const ACCESS_TOKEN_EXPIRY = 15 * 60; // 15 minutes
+export const REFRESH_TOKEN_EXPIRY = 7 * 24 * 3600; // 7 days
+export const OTP_EXPIRY = 10 * 60; // 10 minutes
+
 function base64UrlEncode(data: Uint8Array): string {
   const base64 = btoa(String.fromCharCode(...data));
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
@@ -105503,12 +108613,19 @@ async function hmacSign(message: string, secret: string): Promise<string> {
   return base64UrlEncode(new Uint8Array(signature));
 }
 
-export async function signJwt(payload: Omit<JwtPayload, 'iat' | 'exp'>, env: Env): Promise<string> {
+/**
+ * Sign a JWT token with custom expiry
+ */
+export async function signJwt(
+  payload: Omit<JwtPayload, 'iat' | 'exp'>,
+  env: Env,
+  expiresIn: number = ACCESS_TOKEN_EXPIRY
+): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const fullPayload: JwtPayload = {
     ...payload,
     iat: now,
-    exp: now + 12 * 3600, // 12 hours
+    exp: now + expiresIn,
   };
 
   const header = { alg: 'HS256', typ: 'JWT' };
@@ -105521,6 +108638,9 @@ export async function signJwt(payload: Omit<JwtPayload, 'iat' | 'exp'>, env: Env
   return `${message}.${signature}`;
 }
 
+/**
+ * Verify and decode a JWT token
+ */
 export async function verifyJwt(token: string, env: Env): Promise<JwtPayload> {
   const parts = token.split('.');
   if (parts.length !== 3) throw new Error('Invalid token format');
@@ -105544,6 +108664,59 @@ export async function verifyJwt(token: string, env: Env): Promise<JwtPayload> {
   }
 
   return payload;
+}
+
+/**
+ * Generate access token (short-lived)
+ */
+export async function generateAccessToken(
+  payload: { sub: string; role: string; username: string; email?: string; emailVerified?: boolean },
+  env: Env
+): Promise<string> {
+  return signJwt(
+    {
+      ...payload,
+      type: 'access',
+    },
+    env,
+    ACCESS_TOKEN_EXPIRY
+  );
+}
+
+/**
+ * Generate refresh token (long-lived)
+ */
+export async function generateRefreshToken(
+  payload: { sub: string; role: string; username: string },
+  env: Env
+): Promise<string> {
+  return signJwt(
+    {
+      ...payload,
+      type: 'refresh',
+    },
+    env,
+    REFRESH_TOKEN_EXPIRY
+  );
+}
+
+/**
+ * Generate a cryptographically secure OTP
+ */
+export function generateOtp(length: number = 6): string {
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  // Convert to numbers 0-9
+  return Array.from(array, (byte) => (byte % 10).toString()).join('');
+}
+
+/**
+ * Generate a secure random token (for session IDs, etc)
+ */
+export function generateSecureToken(length: number = 32): string {
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  return base64UrlEncode(array);
 }
 
 ```
@@ -106324,6 +109497,243 @@ export function serverError(c: Context, message = 'Internal Server Error') {
 
 ```
 
+### secrets.ts
+
+**Path:** `workers/src/lib/secrets.ts`
+
+```typescript
+/**
+ * Secrets Service
+ *
+ * Helper functions to retrieve secrets from centralized storage
+ * with fallback to environment variables
+ */
+
+import { decryptSecret } from './crypto';
+import type { Env, Secret } from '../types';
+
+// In-memory cache for secrets (per-request)
+const secretsCache = new Map<string, { value: string; expiresAt: number }>();
+const CACHE_TTL_MS = 60 * 1000; // 1 minute
+
+/**
+ * Get a secret value by key name
+ *
+ * Priority:
+ * 1. In-memory cache (if not expired)
+ * 2. Database (encrypted)
+ * 3. Environment variable fallback
+ * 4. Default value (if provided)
+ */
+export async function getSecret(
+  env: Env,
+  keyName: string,
+  defaultValue?: string
+): Promise<string | null> {
+  // 1. Check cache
+  const cached = secretsCache.get(keyName);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value;
+  }
+
+  try {
+    // 2. Try database
+    const secret = await env.DB.prepare(
+      `SELECT encrypted_value, iv, env_fallback, default_value
+       FROM secrets WHERE key_name = ? AND (expires_at IS NULL OR expires_at > datetime('now'))`
+    )
+      .bind(keyName)
+      .first<Pick<Secret, 'encrypted_value' | 'iv' | 'env_fallback' | 'default_value'>>();
+
+    if (secret?.encrypted_value && secret?.iv) {
+      const value = await decryptSecret(secret.encrypted_value, secret.iv, env);
+      // Cache the decrypted value
+      secretsCache.set(keyName, {
+        value,
+        expiresAt: Date.now() + CACHE_TTL_MS,
+      });
+      return value;
+    }
+
+    // 3. Try environment variable fallback
+    const envKey = secret?.env_fallback || keyName;
+    const envValue = (env as unknown as Record<string, string | undefined>)[envKey];
+    if (envValue) {
+      return envValue;
+    }
+
+    // 4. Use default value from DB or parameter
+    return secret?.default_value || defaultValue || null;
+  } catch (error) {
+    console.error(`Failed to get secret ${keyName}:`, error);
+
+    // Fallback to environment variable on error
+    const envValue = (env as unknown as Record<string, string | undefined>)[keyName];
+    return envValue || defaultValue || null;
+  }
+}
+
+/**
+ * Get multiple secrets at once (more efficient for batch operations)
+ */
+export async function getSecrets(
+  env: Env,
+  keyNames: string[]
+): Promise<Record<string, string | null>> {
+  const result: Record<string, string | null> = {};
+
+  // Check which keys are in cache
+  const uncachedKeys: string[] = [];
+  for (const key of keyNames) {
+    const cached = secretsCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) {
+      result[key] = cached.value;
+    } else {
+      uncachedKeys.push(key);
+    }
+  }
+
+  if (uncachedKeys.length === 0) {
+    return result;
+  }
+
+  try {
+    // Fetch uncached secrets from database
+    const placeholders = uncachedKeys.map(() => '?').join(',');
+    const secrets = await env.DB.prepare(
+      `SELECT key_name, encrypted_value, iv, env_fallback, default_value
+       FROM secrets WHERE key_name IN (${placeholders})
+       AND (expires_at IS NULL OR expires_at > datetime('now'))`
+    )
+      .bind(...uncachedKeys)
+      .all<
+        Pick<Secret, 'key_name' | 'encrypted_value' | 'iv' | 'env_fallback' | 'default_value'>
+      >();
+
+    const secretMap = new Map(secrets.results.map((s) => [s.key_name, s]));
+
+    for (const keyName of uncachedKeys) {
+      const secret = secretMap.get(keyName);
+
+      if (secret?.encrypted_value && secret?.iv) {
+        try {
+          const value = await decryptSecret(secret.encrypted_value, secret.iv, env);
+          result[keyName] = value;
+          secretsCache.set(keyName, {
+            value,
+            expiresAt: Date.now() + CACHE_TTL_MS,
+          });
+          continue;
+        } catch {
+          // Decryption failed, try fallback
+        }
+      }
+
+      // Try environment variable
+      const envKey = secret?.env_fallback || keyName;
+      const envValue = (env as unknown as Record<string, string | undefined>)[envKey];
+
+      result[keyName] = envValue || secret?.default_value || null;
+    }
+  } catch (error) {
+    console.error('Failed to get secrets:', error);
+
+    // Fallback to environment variables
+    for (const keyName of uncachedKeys) {
+      result[keyName] = (env as unknown as Record<string, string | undefined>)[keyName] || null;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Clear the secrets cache (call when secrets are updated)
+ */
+export function clearSecretsCache(keyName?: string): void {
+  if (keyName) {
+    secretsCache.delete(keyName);
+  } else {
+    secretsCache.clear();
+  }
+}
+
+/**
+ * Get AI provider API key
+ * Convenience function for AI-related operations
+ */
+export async function getAIProviderKey(
+  env: Env,
+  providerId: string
+): Promise<string | null> {
+  // First try to get the secret_id from ai_providers
+  const provider = await env.DB.prepare(
+    `SELECT secret_id, api_key_env FROM ai_providers WHERE id = ? AND is_enabled = 1`
+  )
+    .bind(providerId)
+    .first<{ secret_id: string | null; api_key_env: string | null }>();
+
+  if (!provider) {
+    return null;
+  }
+
+  // If secret_id is set, use centralized secrets
+  if (provider.secret_id) {
+    const secret = await env.DB.prepare(
+      `SELECT key_name FROM secrets WHERE id = ?`
+    )
+      .bind(provider.secret_id)
+      .first<{ key_name: string }>();
+
+    if (secret) {
+      return getSecret(env, secret.key_name);
+    }
+  }
+
+  // Fallback to api_key_env (old method)
+  if (provider.api_key_env) {
+    return getSecret(env, provider.api_key_env);
+  }
+
+  return null;
+}
+
+/**
+ * Check if required secrets are configured
+ */
+export async function checkRequiredSecrets(env: Env): Promise<{
+  configured: string[];
+  missing: string[];
+}> {
+  const result = await env.DB.prepare(
+    `SELECT key_name, encrypted_value, env_fallback
+     FROM secrets WHERE is_required = 1`
+  ).all<{ key_name: string; encrypted_value: string | null; env_fallback: string | null }>();
+
+  const configured: string[] = [];
+  const missing: string[] = [];
+
+  for (const secret of result.results) {
+    if (secret.encrypted_value) {
+      configured.push(secret.key_name);
+    } else {
+      // Check env fallback
+      const envKey = secret.env_fallback || secret.key_name;
+      const envValue = (env as unknown as Record<string, string | undefined>)[envKey];
+
+      if (envValue) {
+        configured.push(secret.key_name);
+      } else {
+        missing.push(secret.key_name);
+      }
+    }
+  }
+
+  return { configured, missing };
+}
+
+```
+
 ---
 
 ## workers/src/middleware
@@ -106336,8 +109746,11 @@ export function serverError(c: Context, message = 'Internal Server Error') {
 import { Context, Next } from 'hono';
 import type { Env } from '../types';
 import { verifyJwt } from '../lib/jwt';
-import { unauthorized } from '../lib/response';
+import { unauthorized, forbidden } from '../lib/response';
 
+/**
+ * Require any authenticated user
+ */
 export async function requireAuth(c: Context, next: Next) {
   const env = c.env as Env;
   const authHeader = c.req.header('Authorization');
@@ -106353,6 +109766,12 @@ export async function requireAuth(c: Context, next: Next) {
 
   try {
     const payload = await verifyJwt(token, env);
+
+    // Reject refresh tokens - only access tokens allowed
+    if (payload.type === 'refresh') {
+      return unauthorized(c, 'Invalid token type');
+    }
+
     // Store user info in context for downstream handlers
     c.set('user', payload);
     await next();
@@ -106362,6 +109781,14 @@ export async function requireAuth(c: Context, next: Next) {
   }
 }
 
+/**
+ * Require admin role with email verification
+ *
+ * This middleware ensures:
+ * 1. Valid access token (not refresh token)
+ * 2. User has 'admin' role
+ * 3. Email has been verified via OTP
+ */
 export async function requireAdmin(c: Context, next: Next) {
   const env = c.env as Env;
   const authHeader = c.req.header('Authorization');
@@ -106377,9 +109804,59 @@ export async function requireAdmin(c: Context, next: Next) {
 
   try {
     const payload = await verifyJwt(token, env);
-    if (payload.role !== 'admin') {
-      return unauthorized(c, 'Admin role required');
+
+    // Reject refresh tokens - only access tokens allowed
+    if (payload.type === 'refresh') {
+      return unauthorized(c, 'Invalid token type. Use access token.');
     }
+
+    // Check admin role
+    if (payload.role !== 'admin') {
+      return forbidden(c, 'Admin role required');
+    }
+
+    // Check email verification
+    if (!payload.emailVerified) {
+      return forbidden(c, 'Email verification required');
+    }
+
+    // Store user info in context
+    c.set('user', payload);
+    await next();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Invalid token';
+    return unauthorized(c, message);
+  }
+}
+
+/**
+ * Require admin role (without email verification requirement)
+ * Use this for less sensitive admin operations if needed
+ */
+export async function requireAdminBasic(c: Context, next: Next) {
+  const env = c.env as Env;
+  const authHeader = c.req.header('Authorization');
+
+  if (!authHeader) {
+    return unauthorized(c, 'Missing Authorization header');
+  }
+
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  if (!token) {
+    return unauthorized(c, 'Invalid Authorization header format');
+  }
+
+  try {
+    const payload = await verifyJwt(token, env);
+
+    if (payload.type === 'refresh') {
+      return unauthorized(c, 'Invalid token type');
+    }
+
+    if (payload.role !== 'admin') {
+      return forbidden(c, 'Admin role required');
+    }
+
     c.set('user', payload);
     await next();
   } catch (err) {
@@ -106481,6 +109958,1329 @@ export async function loggerMiddleware(c: Context, next: Next) {
 ---
 
 ## workers/src/routes
+
+### admin-ai.ts
+
+**Path:** `workers/src/routes/admin-ai.ts`
+
+```typescript
+/**
+ * Admin AI Configuration Routes
+ *
+ * AI 모델, Provider, 라우팅 설정을 관리하는 Admin 전용 API입니다.
+ * D1 데이터베이스의 ai_providers, ai_models, ai_routes 테이블을 관리합니다.
+ *
+ * 모든 엔드포인트는 admin 권한이 필요합니다.
+ */
+
+import { Hono } from 'hono';
+import type { Env } from '../types';
+import { success, error, badRequest, notFound } from '../lib/response';
+import { requireAdmin } from '../middleware/auth';
+
+const adminAi = new Hono<{ Bindings: Env }>();
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface AIProvider {
+  id: string;
+  name: string;
+  display_name: string;
+  api_base_url: string | null;
+  api_key_env: string | null;
+  is_enabled: number;
+  health_status: string;
+  last_health_check: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface AIModel {
+  id: string;
+  provider_id: string;
+  model_name: string;
+  display_name: string;
+  litellm_model: string;
+  description: string | null;
+  context_window: number | null;
+  max_tokens: number | null;
+  input_cost_per_1k: number | null;
+  output_cost_per_1k: number | null;
+  supports_vision: number;
+  supports_streaming: number;
+  supports_function_calling: number;
+  is_enabled: number;
+  priority: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface AIRoute {
+  id: string;
+  name: string;
+  description: string | null;
+  routing_strategy: string;
+  primary_model_id: string | null;
+  fallback_model_ids: string | null;
+  context_window_fallback_ids: string | null;
+  num_retries: number;
+  timeout_seconds: number;
+  is_default: number;
+  is_enabled: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface AIUsageLog {
+  id: string;
+  model_id: string | null;
+  route_id: string | null;
+  request_type: string | null;
+  prompt_tokens: number | null;
+  completion_tokens: number | null;
+  total_tokens: number | null;
+  estimated_cost: number | null;
+  latency_ms: number | null;
+  status: string | null;
+  error_message: string | null;
+  user_id: string | null;
+  metadata: string | null;
+  created_at: string;
+}
+
+interface AIUsageDaily {
+  date: string;
+  model_id: string;
+  total_requests: number;
+  total_prompt_tokens: number;
+  total_completion_tokens: number;
+  total_tokens: number;
+  total_cost: number;
+  success_count: number;
+  error_count: number;
+  avg_latency_ms: number | null;
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+function generateId(prefix: string): string {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+// ============================================================================
+// Provider Endpoints
+// ============================================================================
+
+/**
+ * GET /admin/ai/providers
+ * 모든 AI Provider 목록 조회
+ */
+adminAi.get('/providers', requireAdmin, async (c) => {
+  try {
+    const result = await c.env.DB.prepare(
+      `SELECT * FROM ai_providers ORDER BY display_name ASC`
+    ).all<AIProvider>();
+
+    return success(c, {
+      providers: result.results || [],
+      total: result.results?.length || 0,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch providers';
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * GET /admin/ai/providers/:id
+ * 특정 Provider 조회
+ */
+adminAi.get('/providers/:id', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+
+  try {
+    const provider = await c.env.DB.prepare(
+      `SELECT * FROM ai_providers WHERE id = ?`
+    )
+      .bind(id)
+      .first<AIProvider>();
+
+    if (!provider) {
+      return notFound(c, `Provider not found: ${id}`);
+    }
+
+    // Get models for this provider
+    const models = await c.env.DB.prepare(
+      `SELECT * FROM ai_models WHERE provider_id = ? ORDER BY priority DESC`
+    )
+      .bind(id)
+      .all<AIModel>();
+
+    return success(c, {
+      provider,
+      models: models.results || [],
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch provider';
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * POST /admin/ai/providers
+ * 새 Provider 생성
+ */
+adminAi.post('/providers', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { name, display_name, api_base_url, api_key_env } = body as {
+    name?: string;
+    display_name?: string;
+    api_base_url?: string;
+    api_key_env?: string;
+  };
+
+  if (!name || !display_name) {
+    return badRequest(c, 'name and display_name are required');
+  }
+
+  const id = `prov_${name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+
+  try {
+    await c.env.DB.prepare(
+      `INSERT INTO ai_providers (id, name, display_name, api_base_url, api_key_env)
+       VALUES (?, ?, ?, ?, ?)`
+    )
+      .bind(id, name, display_name, api_base_url || null, api_key_env || null)
+      .run();
+
+    const provider = await c.env.DB.prepare(
+      `SELECT * FROM ai_providers WHERE id = ?`
+    )
+      .bind(id)
+      .first<AIProvider>();
+
+    return success(c, { provider }, 201);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to create provider';
+    if (message.includes('UNIQUE constraint')) {
+      return badRequest(c, `Provider with name '${name}' already exists`);
+    }
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * PUT /admin/ai/providers/:id
+ * Provider 업데이트
+ */
+adminAi.put('/providers/:id', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  const { display_name, api_base_url, api_key_env, is_enabled } = body as {
+    display_name?: string;
+    api_base_url?: string;
+    api_key_env?: string;
+    is_enabled?: boolean;
+  };
+
+  try {
+    const existing = await c.env.DB.prepare(
+      `SELECT * FROM ai_providers WHERE id = ?`
+    )
+      .bind(id)
+      .first<AIProvider>();
+
+    if (!existing) {
+      return notFound(c, `Provider not found: ${id}`);
+    }
+
+    await c.env.DB.prepare(
+      `UPDATE ai_providers SET
+        display_name = COALESCE(?, display_name),
+        api_base_url = COALESCE(?, api_base_url),
+        api_key_env = COALESCE(?, api_key_env),
+        is_enabled = COALESCE(?, is_enabled),
+        updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`
+    )
+      .bind(
+        display_name || null,
+        api_base_url !== undefined ? api_base_url : null,
+        api_key_env !== undefined ? api_key_env : null,
+        is_enabled !== undefined ? (is_enabled ? 1 : 0) : null,
+        id
+      )
+      .run();
+
+    const provider = await c.env.DB.prepare(
+      `SELECT * FROM ai_providers WHERE id = ?`
+    )
+      .bind(id)
+      .first<AIProvider>();
+
+    return success(c, { provider });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to update provider';
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * PUT /admin/ai/providers/:id/health
+ * Provider 헬스 상태 업데이트 (외부 호출 결과 저장)
+ */
+adminAi.put('/providers/:id/health', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  const { status } = body as { status?: string };
+
+  if (!status || !['healthy', 'degraded', 'down', 'unknown'].includes(status)) {
+    return badRequest(c, 'status must be one of: healthy, degraded, down, unknown');
+  }
+
+  try {
+    await c.env.DB.prepare(
+      `UPDATE ai_providers SET
+        health_status = ?,
+        last_health_check = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`
+    )
+      .bind(status, id)
+      .run();
+
+    return success(c, { id, health_status: status });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to update health status';
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * DELETE /admin/ai/providers/:id
+ * Provider 삭제 (연관 모델도 삭제됨)
+ */
+adminAi.delete('/providers/:id', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+
+  try {
+    const existing = await c.env.DB.prepare(
+      `SELECT * FROM ai_providers WHERE id = ?`
+    )
+      .bind(id)
+      .first<AIProvider>();
+
+    if (!existing) {
+      return notFound(c, `Provider not found: ${id}`);
+    }
+
+    await c.env.DB.prepare(`DELETE FROM ai_providers WHERE id = ?`).bind(id).run();
+
+    return success(c, { deleted: true, id });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to delete provider';
+    return error(c, message, 500);
+  }
+});
+
+// ============================================================================
+// Model Endpoints
+// ============================================================================
+
+/**
+ * GET /admin/ai/models
+ * 모든 AI 모델 목록 조회
+ */
+adminAi.get('/models', requireAdmin, async (c) => {
+  const providerId = c.req.query('provider_id');
+  const enabledOnly = c.req.query('enabled') === 'true';
+
+  try {
+    let query = `
+      SELECT m.*, p.name as provider_name, p.display_name as provider_display_name
+      FROM ai_models m
+      JOIN ai_providers p ON m.provider_id = p.id
+    `;
+    const conditions: string[] = [];
+    const params: (string | number)[] = [];
+
+    if (providerId) {
+      conditions.push('m.provider_id = ?');
+      params.push(providerId);
+    }
+
+    if (enabledOnly) {
+      conditions.push('m.is_enabled = 1');
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    query += ' ORDER BY m.priority DESC, m.display_name ASC';
+
+    const stmt = c.env.DB.prepare(query);
+    const result = params.length > 0 ? await stmt.bind(...params).all() : await stmt.all();
+
+    return success(c, {
+      models: result.results || [],
+      total: result.results?.length || 0,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch models';
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * GET /admin/ai/models/:id
+ * 특정 모델 조회
+ */
+adminAi.get('/models/:id', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+
+  try {
+    const model = await c.env.DB.prepare(
+      `SELECT m.*, p.name as provider_name, p.display_name as provider_display_name
+       FROM ai_models m
+       JOIN ai_providers p ON m.provider_id = p.id
+       WHERE m.id = ?`
+    )
+      .bind(id)
+      .first();
+
+    if (!model) {
+      return notFound(c, `Model not found: ${id}`);
+    }
+
+    return success(c, { model });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch model';
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * POST /admin/ai/models
+ * 새 모델 생성
+ */
+adminAi.post('/models', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const {
+    provider_id,
+    model_name,
+    display_name,
+    litellm_model,
+    description,
+    context_window,
+    max_tokens,
+    input_cost_per_1k,
+    output_cost_per_1k,
+    supports_vision,
+    supports_streaming,
+    supports_function_calling,
+    priority,
+  } = body as {
+    provider_id?: string;
+    model_name?: string;
+    display_name?: string;
+    litellm_model?: string;
+    description?: string;
+    context_window?: number;
+    max_tokens?: number;
+    input_cost_per_1k?: number;
+    output_cost_per_1k?: number;
+    supports_vision?: boolean;
+    supports_streaming?: boolean;
+    supports_function_calling?: boolean;
+    priority?: number;
+  };
+
+  if (!provider_id || !model_name || !display_name || !litellm_model) {
+    return badRequest(c, 'provider_id, model_name, display_name, and litellm_model are required');
+  }
+
+  const id = generateId('model');
+
+  try {
+    // Verify provider exists
+    const provider = await c.env.DB.prepare(
+      `SELECT id FROM ai_providers WHERE id = ?`
+    )
+      .bind(provider_id)
+      .first();
+
+    if (!provider) {
+      return badRequest(c, `Provider not found: ${provider_id}`);
+    }
+
+    await c.env.DB.prepare(
+      `INSERT INTO ai_models (
+        id, provider_id, model_name, display_name, litellm_model,
+        description, context_window, max_tokens, input_cost_per_1k, output_cost_per_1k,
+        supports_vision, supports_streaming, supports_function_calling, priority
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(
+        id,
+        provider_id,
+        model_name,
+        display_name,
+        litellm_model,
+        description || null,
+        context_window || null,
+        max_tokens || null,
+        input_cost_per_1k || null,
+        output_cost_per_1k || null,
+        supports_vision ? 1 : 0,
+        supports_streaming !== false ? 1 : 0, // default true
+        supports_function_calling ? 1 : 0,
+        priority || 0
+      )
+      .run();
+
+    const model = await c.env.DB.prepare(`SELECT * FROM ai_models WHERE id = ?`)
+      .bind(id)
+      .first<AIModel>();
+
+    return success(c, { model }, 201);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to create model';
+    if (message.includes('UNIQUE constraint')) {
+      return badRequest(c, `Model with name '${model_name}' already exists`);
+    }
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * PUT /admin/ai/models/:id
+ * 모델 업데이트
+ */
+adminAi.put('/models/:id', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+
+  try {
+    const existing = await c.env.DB.prepare(`SELECT * FROM ai_models WHERE id = ?`)
+      .bind(id)
+      .first<AIModel>();
+
+    if (!existing) {
+      return notFound(c, `Model not found: ${id}`);
+    }
+
+    const {
+      display_name,
+      litellm_model,
+      description,
+      context_window,
+      max_tokens,
+      input_cost_per_1k,
+      output_cost_per_1k,
+      supports_vision,
+      supports_streaming,
+      supports_function_calling,
+      is_enabled,
+      priority,
+    } = body as Partial<{
+      display_name: string;
+      litellm_model: string;
+      description: string;
+      context_window: number;
+      max_tokens: number;
+      input_cost_per_1k: number;
+      output_cost_per_1k: number;
+      supports_vision: boolean;
+      supports_streaming: boolean;
+      supports_function_calling: boolean;
+      is_enabled: boolean;
+      priority: number;
+    }>;
+
+    // Build dynamic update query
+    const updates: string[] = [];
+    const values: (string | number | null)[] = [];
+
+    if (display_name !== undefined) {
+      updates.push('display_name = ?');
+      values.push(display_name);
+    }
+    if (litellm_model !== undefined) {
+      updates.push('litellm_model = ?');
+      values.push(litellm_model);
+    }
+    if (description !== undefined) {
+      updates.push('description = ?');
+      values.push(description || null);
+    }
+    if (context_window !== undefined) {
+      updates.push('context_window = ?');
+      values.push(context_window);
+    }
+    if (max_tokens !== undefined) {
+      updates.push('max_tokens = ?');
+      values.push(max_tokens);
+    }
+    if (input_cost_per_1k !== undefined) {
+      updates.push('input_cost_per_1k = ?');
+      values.push(input_cost_per_1k);
+    }
+    if (output_cost_per_1k !== undefined) {
+      updates.push('output_cost_per_1k = ?');
+      values.push(output_cost_per_1k);
+    }
+    if (supports_vision !== undefined) {
+      updates.push('supports_vision = ?');
+      values.push(supports_vision ? 1 : 0);
+    }
+    if (supports_streaming !== undefined) {
+      updates.push('supports_streaming = ?');
+      values.push(supports_streaming ? 1 : 0);
+    }
+    if (supports_function_calling !== undefined) {
+      updates.push('supports_function_calling = ?');
+      values.push(supports_function_calling ? 1 : 0);
+    }
+    if (is_enabled !== undefined) {
+      updates.push('is_enabled = ?');
+      values.push(is_enabled ? 1 : 0);
+    }
+    if (priority !== undefined) {
+      updates.push('priority = ?');
+      values.push(priority);
+    }
+
+    if (updates.length === 0) {
+      return badRequest(c, 'No fields to update');
+    }
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(id);
+
+    await c.env.DB.prepare(
+      `UPDATE ai_models SET ${updates.join(', ')} WHERE id = ?`
+    )
+      .bind(...values)
+      .run();
+
+    const model = await c.env.DB.prepare(`SELECT * FROM ai_models WHERE id = ?`)
+      .bind(id)
+      .first<AIModel>();
+
+    return success(c, { model });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to update model';
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * DELETE /admin/ai/models/:id
+ * 모델 삭제
+ */
+adminAi.delete('/models/:id', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+
+  try {
+    const existing = await c.env.DB.prepare(`SELECT * FROM ai_models WHERE id = ?`)
+      .bind(id)
+      .first<AIModel>();
+
+    if (!existing) {
+      return notFound(c, `Model not found: ${id}`);
+    }
+
+    await c.env.DB.prepare(`DELETE FROM ai_models WHERE id = ?`).bind(id).run();
+
+    return success(c, { deleted: true, id });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to delete model';
+    return error(c, message, 500);
+  }
+});
+
+// ============================================================================
+// Route Endpoints
+// ============================================================================
+
+/**
+ * GET /admin/ai/routes
+ * 모든 라우팅 규칙 목록
+ */
+adminAi.get('/routes', requireAdmin, async (c) => {
+  try {
+    const result = await c.env.DB.prepare(
+      `SELECT r.*, m.model_name as primary_model_name, m.display_name as primary_model_display_name
+       FROM ai_routes r
+       LEFT JOIN ai_models m ON r.primary_model_id = m.id
+       ORDER BY r.is_default DESC, r.name ASC`
+    ).all();
+
+    return success(c, {
+      routes: result.results || [],
+      total: result.results?.length || 0,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch routes';
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * GET /admin/ai/routes/:id
+ * 특정 라우팅 규칙 조회
+ */
+adminAi.get('/routes/:id', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+
+  try {
+    const route = await c.env.DB.prepare(
+      `SELECT r.*, m.model_name as primary_model_name
+       FROM ai_routes r
+       LEFT JOIN ai_models m ON r.primary_model_id = m.id
+       WHERE r.id = ?`
+    )
+      .bind(id)
+      .first();
+
+    if (!route) {
+      return notFound(c, `Route not found: ${id}`);
+    }
+
+    return success(c, { route });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch route';
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * POST /admin/ai/routes
+ * 새 라우팅 규칙 생성
+ */
+adminAi.post('/routes', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const {
+    name,
+    description,
+    routing_strategy,
+    primary_model_id,
+    fallback_model_ids,
+    context_window_fallback_ids,
+    num_retries,
+    timeout_seconds,
+    is_default,
+  } = body as {
+    name?: string;
+    description?: string;
+    routing_strategy?: string;
+    primary_model_id?: string;
+    fallback_model_ids?: string[];
+    context_window_fallback_ids?: string[];
+    num_retries?: number;
+    timeout_seconds?: number;
+    is_default?: boolean;
+  };
+
+  if (!name) {
+    return badRequest(c, 'name is required');
+  }
+
+  const id = generateId('route');
+
+  try {
+    // If setting as default, unset other defaults
+    if (is_default) {
+      await c.env.DB.prepare(
+        `UPDATE ai_routes SET is_default = 0, updated_at = CURRENT_TIMESTAMP WHERE is_default = 1`
+      ).run();
+    }
+
+    await c.env.DB.prepare(
+      `INSERT INTO ai_routes (
+        id, name, description, routing_strategy, primary_model_id,
+        fallback_model_ids, context_window_fallback_ids, num_retries, timeout_seconds, is_default
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(
+        id,
+        name,
+        description || null,
+        routing_strategy || 'latency-based-routing',
+        primary_model_id || null,
+        fallback_model_ids ? JSON.stringify(fallback_model_ids) : null,
+        context_window_fallback_ids ? JSON.stringify(context_window_fallback_ids) : null,
+        num_retries ?? 3,
+        timeout_seconds ?? 120,
+        is_default ? 1 : 0
+      )
+      .run();
+
+    const route = await c.env.DB.prepare(`SELECT * FROM ai_routes WHERE id = ?`)
+      .bind(id)
+      .first<AIRoute>();
+
+    return success(c, { route }, 201);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to create route';
+    if (message.includes('UNIQUE constraint')) {
+      return badRequest(c, `Route with name '${name}' already exists`);
+    }
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * PUT /admin/ai/routes/:id
+ * 라우팅 규칙 업데이트
+ */
+adminAi.put('/routes/:id', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+
+  try {
+    const existing = await c.env.DB.prepare(`SELECT * FROM ai_routes WHERE id = ?`)
+      .bind(id)
+      .first<AIRoute>();
+
+    if (!existing) {
+      return notFound(c, `Route not found: ${id}`);
+    }
+
+    const {
+      name,
+      description,
+      routing_strategy,
+      primary_model_id,
+      fallback_model_ids,
+      context_window_fallback_ids,
+      num_retries,
+      timeout_seconds,
+      is_default,
+      is_enabled,
+    } = body as Partial<{
+      name: string;
+      description: string;
+      routing_strategy: string;
+      primary_model_id: string;
+      fallback_model_ids: string[];
+      context_window_fallback_ids: string[];
+      num_retries: number;
+      timeout_seconds: number;
+      is_default: boolean;
+      is_enabled: boolean;
+    }>;
+
+    // If setting as default, unset other defaults
+    if (is_default) {
+      await c.env.DB.prepare(
+        `UPDATE ai_routes SET is_default = 0, updated_at = CURRENT_TIMESTAMP WHERE is_default = 1 AND id != ?`
+      )
+        .bind(id)
+        .run();
+    }
+
+    const updates: string[] = [];
+    const values: (string | number | null)[] = [];
+
+    if (name !== undefined) {
+      updates.push('name = ?');
+      values.push(name);
+    }
+    if (description !== undefined) {
+      updates.push('description = ?');
+      values.push(description || null);
+    }
+    if (routing_strategy !== undefined) {
+      updates.push('routing_strategy = ?');
+      values.push(routing_strategy);
+    }
+    if (primary_model_id !== undefined) {
+      updates.push('primary_model_id = ?');
+      values.push(primary_model_id || null);
+    }
+    if (fallback_model_ids !== undefined) {
+      updates.push('fallback_model_ids = ?');
+      values.push(JSON.stringify(fallback_model_ids));
+    }
+    if (context_window_fallback_ids !== undefined) {
+      updates.push('context_window_fallback_ids = ?');
+      values.push(JSON.stringify(context_window_fallback_ids));
+    }
+    if (num_retries !== undefined) {
+      updates.push('num_retries = ?');
+      values.push(num_retries);
+    }
+    if (timeout_seconds !== undefined) {
+      updates.push('timeout_seconds = ?');
+      values.push(timeout_seconds);
+    }
+    if (is_default !== undefined) {
+      updates.push('is_default = ?');
+      values.push(is_default ? 1 : 0);
+    }
+    if (is_enabled !== undefined) {
+      updates.push('is_enabled = ?');
+      values.push(is_enabled ? 1 : 0);
+    }
+
+    if (updates.length === 0) {
+      return badRequest(c, 'No fields to update');
+    }
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(id);
+
+    await c.env.DB.prepare(`UPDATE ai_routes SET ${updates.join(', ')} WHERE id = ?`)
+      .bind(...values)
+      .run();
+
+    const route = await c.env.DB.prepare(`SELECT * FROM ai_routes WHERE id = ?`)
+      .bind(id)
+      .first<AIRoute>();
+
+    return success(c, { route });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to update route';
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * DELETE /admin/ai/routes/:id
+ * 라우팅 규칙 삭제
+ */
+adminAi.delete('/routes/:id', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+
+  try {
+    const existing = await c.env.DB.prepare(`SELECT * FROM ai_routes WHERE id = ?`)
+      .bind(id)
+      .first<AIRoute>();
+
+    if (!existing) {
+      return notFound(c, `Route not found: ${id}`);
+    }
+
+    if (existing.is_default) {
+      return badRequest(c, 'Cannot delete the default route. Set another route as default first.');
+    }
+
+    await c.env.DB.prepare(`DELETE FROM ai_routes WHERE id = ?`).bind(id).run();
+
+    return success(c, { deleted: true, id });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to delete route';
+    return error(c, message, 500);
+  }
+});
+
+// ============================================================================
+// Usage Endpoints
+// ============================================================================
+
+/**
+ * GET /admin/ai/usage
+ * 사용량 통계 조회
+ */
+adminAi.get('/usage', requireAdmin, async (c) => {
+  const startDate = c.req.query('start_date');
+  const endDate = c.req.query('end_date');
+  const modelId = c.req.query('model_id');
+  const groupBy = c.req.query('group_by') || 'day'; // 'day', 'model'
+
+  try {
+    // Default date range: last 7 days
+    const end = endDate || new Date().toISOString().split('T')[0];
+    const start =
+      startDate ||
+      new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    // Summary stats
+    const summaryQuery = `
+      SELECT 
+        COUNT(*) as total_requests,
+        SUM(total_tokens) as total_tokens,
+        SUM(estimated_cost) as total_cost,
+        AVG(latency_ms) as avg_latency_ms,
+        SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count,
+        SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as error_count
+      FROM ai_usage_logs
+      WHERE date(created_at) >= ? AND date(created_at) <= ?
+      ${modelId ? 'AND model_id = ?' : ''}
+    `;
+
+    const summaryStmt = c.env.DB.prepare(summaryQuery);
+    const summary = modelId
+      ? await summaryStmt.bind(start, end, modelId).first()
+      : await summaryStmt.bind(start, end).first();
+
+    // Breakdown by group
+    let breakdownQuery: string;
+    if (groupBy === 'model') {
+      breakdownQuery = `
+        SELECT 
+          m.model_name,
+          m.display_name,
+          COUNT(*) as requests,
+          SUM(l.total_tokens) as tokens,
+          SUM(l.estimated_cost) as cost,
+          AVG(l.latency_ms) as avg_latency_ms
+        FROM ai_usage_logs l
+        LEFT JOIN ai_models m ON l.model_id = m.id
+        WHERE date(l.created_at) >= ? AND date(l.created_at) <= ?
+        GROUP BY l.model_id
+        ORDER BY requests DESC
+      `;
+    } else {
+      breakdownQuery = `
+        SELECT 
+          date(created_at) as date,
+          COUNT(*) as requests,
+          SUM(total_tokens) as tokens,
+          SUM(estimated_cost) as cost,
+          AVG(latency_ms) as avg_latency_ms
+        FROM ai_usage_logs
+        WHERE date(created_at) >= ? AND date(created_at) <= ?
+        ${modelId ? 'AND model_id = ?' : ''}
+        GROUP BY date(created_at)
+        ORDER BY date ASC
+      `;
+    }
+
+    const breakdownStmt = c.env.DB.prepare(breakdownQuery);
+    const breakdown =
+      groupBy === 'day' && modelId
+        ? await breakdownStmt.bind(start, end, modelId).all()
+        : await breakdownStmt.bind(start, end).all();
+
+    return success(c, {
+      summary: {
+        total_requests: summary?.total_requests || 0,
+        total_tokens: summary?.total_tokens || 0,
+        total_cost: summary?.total_cost || 0,
+        avg_latency_ms: summary?.avg_latency_ms || 0,
+        success_count: summary?.success_count || 0,
+        error_count: summary?.error_count || 0,
+      },
+      breakdown: breakdown.results || [],
+      period: { start, end },
+      group_by: groupBy,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch usage';
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * POST /admin/ai/usage/log
+ * 사용량 로그 기록 (LiteLLM callback에서 호출)
+ */
+adminAi.post('/usage/log', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const {
+    model_id,
+    route_id,
+    request_type,
+    prompt_tokens,
+    completion_tokens,
+    total_tokens,
+    estimated_cost,
+    latency_ms,
+    status,
+    error_message,
+    user_id,
+    metadata,
+  } = body as Partial<AIUsageLog>;
+
+  const id = generateId('usage');
+
+  try {
+    await c.env.DB.prepare(
+      `INSERT INTO ai_usage_logs (
+        id, model_id, route_id, request_type, prompt_tokens, completion_tokens,
+        total_tokens, estimated_cost, latency_ms, status, error_message, user_id, metadata
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(
+        id,
+        model_id || null,
+        route_id || null,
+        request_type || 'chat',
+        prompt_tokens || null,
+        completion_tokens || null,
+        total_tokens || null,
+        estimated_cost || null,
+        latency_ms || null,
+        status || 'success',
+        error_message || null,
+        user_id || null,
+        metadata ? JSON.stringify(metadata) : null
+      )
+      .run();
+
+    // Update daily aggregates
+    const today = new Date().toISOString().split('T')[0];
+    if (model_id) {
+      await c.env.DB.prepare(
+        `INSERT INTO ai_usage_daily (date, model_id, total_requests, total_prompt_tokens, total_completion_tokens, total_tokens, total_cost, success_count, error_count)
+         VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(date, model_id) DO UPDATE SET
+           total_requests = total_requests + 1,
+           total_prompt_tokens = total_prompt_tokens + excluded.total_prompt_tokens,
+           total_completion_tokens = total_completion_tokens + excluded.total_completion_tokens,
+           total_tokens = total_tokens + excluded.total_tokens,
+           total_cost = total_cost + excluded.total_cost,
+           success_count = success_count + excluded.success_count,
+           error_count = error_count + excluded.error_count`
+      )
+        .bind(
+          today,
+          model_id,
+          prompt_tokens || 0,
+          completion_tokens || 0,
+          total_tokens || 0,
+          estimated_cost || 0,
+          status === 'success' ? 1 : 0,
+          status === 'error' ? 1 : 0
+        )
+        .run();
+    }
+
+    return success(c, { logged: true, id }, 201);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to log usage';
+    return error(c, message, 500);
+  }
+});
+
+// ============================================================================
+// Config Generation Endpoint
+// ============================================================================
+
+/**
+ * GET /admin/ai/config/litellm
+ * DB 설정을 기반으로 LiteLLM YAML 설정 생성
+ */
+adminAi.get('/config/litellm', requireAdmin, async (c) => {
+  try {
+    // Get all enabled models with their providers
+    const models = await c.env.DB.prepare(
+      `SELECT m.*, p.name as provider_name, p.api_base_url, p.api_key_env
+       FROM ai_models m
+       JOIN ai_providers p ON m.provider_id = p.id
+       WHERE m.is_enabled = 1 AND p.is_enabled = 1
+       ORDER BY m.priority DESC`
+    ).all<AIModel & { provider_name: string; api_base_url: string | null; api_key_env: string | null }>();
+
+    // Get default route
+    const defaultRoute = await c.env.DB.prepare(
+      `SELECT * FROM ai_routes WHERE is_default = 1 AND is_enabled = 1`
+    ).first<AIRoute>();
+
+    // Get all enabled routes for fallback config
+    const routes = await c.env.DB.prepare(
+      `SELECT * FROM ai_routes WHERE is_enabled = 1`
+    ).all<AIRoute>();
+
+    // Build model_list
+    const modelList = (models.results || []).map((m) => {
+      const entry: Record<string, unknown> = {
+        model_name: m.model_name,
+        litellm_params: {
+          model: m.litellm_model,
+        },
+        model_info: {
+          description: m.description || m.display_name,
+        },
+      };
+
+      // Add api_key reference if provider has one
+      if (m.api_key_env) {
+        (entry.litellm_params as Record<string, unknown>).api_key = `os.environ/${m.api_key_env}`;
+      }
+
+      // Add api_base if provider has one (for Ollama, etc)
+      if (m.api_base_url) {
+        (entry.litellm_params as Record<string, unknown>).api_base = m.api_base_url;
+      }
+
+      return entry;
+    });
+
+    // Build fallbacks from routes
+    const fallbacks: Record<string, string[]>[] = [];
+    for (const route of routes.results || []) {
+      if (route.fallback_model_ids) {
+        const primaryModel = await c.env.DB.prepare(
+          `SELECT model_name FROM ai_models WHERE id = ?`
+        )
+          .bind(route.primary_model_id)
+          .first<{ model_name: string }>();
+
+        const fallbackIds = JSON.parse(route.fallback_model_ids) as string[];
+        const fallbackModels = await c.env.DB.prepare(
+          `SELECT model_name FROM ai_models WHERE id IN (${fallbackIds.map(() => '?').join(',')})`
+        )
+          .bind(...fallbackIds)
+          .all<{ model_name: string }>();
+
+        if (primaryModel && fallbackModels.results?.length) {
+          fallbacks.push({
+            [primaryModel.model_name]: fallbackModels.results.map((m) => m.model_name),
+          });
+        }
+      }
+    }
+
+    // Build context_window_fallbacks
+    const contextFallbacks: Record<string, string[]>[] = [];
+    for (const route of routes.results || []) {
+      if (route.context_window_fallback_ids) {
+        const primaryModel = await c.env.DB.prepare(
+          `SELECT model_name FROM ai_models WHERE id = ?`
+        )
+          .bind(route.primary_model_id)
+          .first<{ model_name: string }>();
+
+        const fallbackIds = JSON.parse(route.context_window_fallback_ids) as string[];
+        const fallbackModels = await c.env.DB.prepare(
+          `SELECT model_name FROM ai_models WHERE id IN (${fallbackIds.map(() => '?').join(',')})`
+        )
+          .bind(...fallbackIds)
+          .all<{ model_name: string }>();
+
+        if (primaryModel && fallbackModels.results?.length) {
+          contextFallbacks.push({
+            [primaryModel.model_name]: fallbackModels.results.map((m) => m.model_name),
+          });
+        }
+      }
+    }
+
+    // Build final config
+    const config = {
+      model_list: modelList,
+      router_settings: {
+        routing_strategy: defaultRoute?.routing_strategy || 'latency-based-routing',
+        num_retries: defaultRoute?.num_retries || 3,
+        timeout: defaultRoute?.timeout_seconds || 120,
+        ...(fallbacks.length > 0 && { fallbacks }),
+        ...(contextFallbacks.length > 0 && { context_window_fallbacks: contextFallbacks }),
+        allowed_fails: 3,
+        cooldown_time: 60,
+      },
+      litellm_settings: {
+        set_verbose: false,
+        drop_params: true,
+        request_timeout: defaultRoute?.timeout_seconds || 120,
+        cache: false,
+        success_callback: [],
+        failure_callback: [],
+        supports_function_calling: true,
+        supports_tool_choice: true,
+      },
+      general_settings: {
+        master_key: 'os.environ/LITELLM_MASTER_KEY',
+        database_connection_pool_limit: 0,
+        disable_spend_logs: true,
+      },
+    };
+
+    // Return as JSON (caller can convert to YAML if needed)
+    return success(c, {
+      config,
+      generated_at: new Date().toISOString(),
+      model_count: modelList.length,
+      route_count: routes.results?.length || 0,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to generate config';
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * GET /admin/ai/overview
+ * Dashboard overview - 전체 현황 요약
+ */
+adminAi.get('/overview', requireAdmin, async (c) => {
+  try {
+    // Provider stats
+    const providerStats = await c.env.DB.prepare(
+      `SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN is_enabled = 1 THEN 1 ELSE 0 END) as enabled,
+        SUM(CASE WHEN health_status = 'healthy' THEN 1 ELSE 0 END) as healthy,
+        SUM(CASE WHEN health_status = 'degraded' THEN 1 ELSE 0 END) as degraded,
+        SUM(CASE WHEN health_status = 'down' THEN 1 ELSE 0 END) as down
+       FROM ai_providers`
+    ).first();
+
+    // Model stats
+    const modelStats = await c.env.DB.prepare(
+      `SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN is_enabled = 1 THEN 1 ELSE 0 END) as enabled,
+        SUM(CASE WHEN supports_vision = 1 THEN 1 ELSE 0 END) as vision_capable,
+        SUM(CASE WHEN supports_function_calling = 1 THEN 1 ELSE 0 END) as function_calling_capable
+       FROM ai_models`
+    ).first();
+
+    // Route stats
+    const routeStats = await c.env.DB.prepare(
+      `SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN is_enabled = 1 THEN 1 ELSE 0 END) as enabled
+       FROM ai_routes`
+    ).first();
+
+    // Today's usage
+    const today = new Date().toISOString().split('T')[0];
+    const todayUsage = await c.env.DB.prepare(
+      `SELECT 
+        SUM(total_requests) as requests,
+        SUM(total_tokens) as tokens,
+        SUM(total_cost) as cost
+       FROM ai_usage_daily WHERE date = ?`
+    )
+      .bind(today)
+      .first();
+
+    // Default route info
+    const defaultRoute = await c.env.DB.prepare(
+      `SELECT r.name, m.model_name as primary_model
+       FROM ai_routes r
+       LEFT JOIN ai_models m ON r.primary_model_id = m.id
+       WHERE r.is_default = 1`
+    ).first();
+
+    return success(c, {
+      providers: providerStats,
+      models: modelStats,
+      routes: routeStats,
+      today_usage: {
+        requests: todayUsage?.requests || 0,
+        tokens: todayUsage?.tokens || 0,
+        cost: todayUsage?.cost || 0,
+      },
+      default_route: defaultRoute,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch overview';
+    return error(c, message, 500);
+  }
+});
+
+export default adminAi;
+
+```
 
 ### ai.ts
 
@@ -107103,48 +111903,333 @@ export default app;
 **Path:** `workers/src/routes/auth.ts`
 
 ```typescript
+/**
+ * Enhanced Auth Routes with Email OTP Verification
+ *
+ * Flow:
+ * 1. POST /auth/login - Verify credentials, send OTP to admin email
+ * 2. POST /auth/verify-otp - Verify OTP, issue access + refresh tokens
+ * 3. POST /auth/refresh - Use refresh token to get new access token
+ * 4. POST /auth/logout - Invalidate refresh token
+ * 5. GET /auth/me - Get current user info
+ *
+ * Security:
+ * - Admin credentials from GitHub Secrets (env vars)
+ * - OTP sent to admin email (ADMIN_EMAIL)
+ * - Access token: 15 minutes
+ * - Refresh token: 7 days (stored in KV for revocation)
+ * - OTP: 10 minutes, single use
+ */
+
 import { Hono } from 'hono';
-import type { Env } from '../types';
-import { success, badRequest, unauthorized } from '../lib/response';
-import { signJwt, verifyJwt } from '../lib/jwt';
+import type { Env, AuthSession } from '../types';
+import { success, badRequest, unauthorized, error } from '../lib/response';
+import {
+  verifyJwt,
+  generateAccessToken,
+  generateRefreshToken,
+  generateOtp,
+  generateSecureToken,
+  OTP_EXPIRY,
+  REFRESH_TOKEN_EXPIRY,
+} from '../lib/jwt';
 
 const auth = new Hono<{ Bindings: Env }>();
 
-// POST /auth/login
+// KV key prefixes
+const KV_AUTH_SESSION_PREFIX = 'auth:session:';
+const KV_REFRESH_TOKEN_PREFIX = 'auth:refresh:';
+
+/**
+ * Hash a string using SHA-256 (for OTP storage)
+ */
+async function hashString(str: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(str);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Send OTP email via Resend
+ */
+async function sendOtpEmail(env: Env, email: string, otp: string): Promise<boolean> {
+  const apiKey = env.RESEND_API_KEY;
+  const from = env.NOTIFY_FROM_EMAIL;
+
+  if (!apiKey || !from) {
+    console.error('Missing email configuration for OTP');
+    return false;
+  }
+
+  const html = `
+    <div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #0f172a; max-width: 400px; margin: 0 auto; padding: 20px;">
+      <h2 style="margin: 0 0 16px; color: #1e293b;">Admin Login Verification</h2>
+      <p style="margin: 0 0 16px; color: #475569;">Your one-time verification code is:</p>
+      <div style="background: #f1f5f9; border-radius: 8px; padding: 16px; text-align: center; margin: 0 0 16px;">
+        <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #0f172a;">${otp}</span>
+      </div>
+      <p style="margin: 0 0 8px; color: #64748b; font-size: 14px;">This code expires in 10 minutes.</p>
+      <p style="margin: 0; color: #94a3b8; font-size: 12px;">If you didn't request this code, please ignore this email.</p>
+    </div>
+  `;
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from,
+        to: [email],
+        subject: `Admin Login: Your verification code is ${otp}`,
+        html,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.error('Failed to send OTP email:', res.status, err);
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    console.error('Error sending OTP email:', err);
+    return false;
+  }
+}
+
+/**
+ * POST /auth/login
+ * Step 1: Verify credentials and send OTP to admin email
+ */
 auth.post('/login', async (c) => {
   const body = await c.req.json().catch(() => ({}));
-  const { username, password } = body;
+  const { username, password } = body as { username?: string; password?: string };
 
   if (!username || !password) {
     return badRequest(c, 'username and password required');
   }
 
-  // For migration compatibility, check env vars first
-  // TODO: After migration, check D1 users table
+  // Verify admin credentials from env (GitHub Secrets)
   const adminUsername = c.env.ADMIN_USERNAME;
   const adminPassword = c.env.ADMIN_PASSWORD;
+  const adminEmail = c.env.ADMIN_EMAIL;
 
   if (!adminUsername || !adminPassword) {
-    return unauthorized(c, 'Authentication not configured');
+    return error(c, 'Authentication not configured', 500);
   }
 
   if (username !== adminUsername || password !== adminPassword) {
+    // Add delay to prevent timing attacks
+    await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 500));
     return unauthorized(c, 'Invalid credentials');
   }
 
-  const token = await signJwt(
-    {
-      sub: 'admin',
-      role: 'admin',
-      username: adminUsername,
-    },
-    c.env
+  if (!adminEmail) {
+    return error(c, 'Admin email not configured for OTP verification', 500);
+  }
+
+  // Generate OTP and session
+  const otp = generateOtp(6);
+  const sessionId = generateSecureToken(32);
+  const otpHash = await hashString(otp);
+  const expiresAt = new Date(Date.now() + OTP_EXPIRY * 1000).toISOString();
+
+  // Store session in KV
+  const session: AuthSession = {
+    id: sessionId,
+    username: adminUsername,
+    email: adminEmail,
+    otp_hash: otpHash,
+    otp_expires_at: expiresAt,
+    is_verified: 0,
+    created_at: new Date().toISOString(),
+  };
+
+  await c.env.KV.put(
+    `${KV_AUTH_SESSION_PREFIX}${sessionId}`,
+    JSON.stringify(session),
+    { expirationTtl: OTP_EXPIRY + 60 } // Add 1 minute buffer
   );
 
-  return success(c, { token });
+  // Send OTP email
+  const emailSent = await sendOtpEmail(c.env, adminEmail, otp);
+
+  if (!emailSent) {
+    // In development, return OTP for testing (NOT for production!)
+    if (c.env.ENV !== 'production') {
+      return success(c, {
+        sessionId,
+        message: 'OTP generated (dev mode)',
+        expiresAt,
+        _dev_otp: otp, // Only in development!
+      });
+    }
+    return error(c, 'Failed to send verification email', 500);
+  }
+
+  // Mask email for response
+  const maskedEmail = adminEmail.replace(/(.{2})(.*)(@.*)/, '$1***$3');
+
+  return success(c, {
+    sessionId,
+    message: `Verification code sent to ${maskedEmail}`,
+    expiresAt,
+  });
 });
 
-// GET /auth/me
+/**
+ * POST /auth/verify-otp
+ * Step 2: Verify OTP and issue tokens
+ */
+auth.post('/verify-otp', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { sessionId, otp } = body as { sessionId?: string; otp?: string };
+
+  if (!sessionId || !otp) {
+    return badRequest(c, 'sessionId and otp required');
+  }
+
+  // Get session from KV
+  const sessionData = await c.env.KV.get(`${KV_AUTH_SESSION_PREFIX}${sessionId}`);
+  if (!sessionData) {
+    return unauthorized(c, 'Invalid or expired session');
+  }
+
+  const session: AuthSession = JSON.parse(sessionData);
+
+  // Check if already verified (prevent replay)
+  if (session.is_verified) {
+    return unauthorized(c, 'Session already verified');
+  }
+
+  // Check OTP expiration
+  if (new Date(session.otp_expires_at) < new Date()) {
+    await c.env.KV.delete(`${KV_AUTH_SESSION_PREFIX}${sessionId}`);
+    return unauthorized(c, 'Verification code expired');
+  }
+
+  // Verify OTP
+  const otpHash = await hashString(otp);
+  if (otpHash !== session.otp_hash) {
+    // Add delay to prevent brute force
+    await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 500));
+    return unauthorized(c, 'Invalid verification code');
+  }
+
+  // Mark session as verified and delete it (single use)
+  await c.env.KV.delete(`${KV_AUTH_SESSION_PREFIX}${sessionId}`);
+
+  // Generate tokens
+  const tokenPayload = {
+    sub: 'admin',
+    role: 'admin',
+    username: session.username,
+    email: session.email,
+    emailVerified: true,
+  };
+
+  const accessToken = await generateAccessToken(tokenPayload, c.env);
+  const refreshToken = await generateRefreshToken(tokenPayload, c.env);
+
+  // Store refresh token in KV for revocation capability
+  const refreshTokenId = generateSecureToken(16);
+  await c.env.KV.put(
+    `${KV_REFRESH_TOKEN_PREFIX}${refreshTokenId}`,
+    JSON.stringify({
+      token: refreshToken,
+      username: session.username,
+      createdAt: new Date().toISOString(),
+    }),
+    { expirationTtl: REFRESH_TOKEN_EXPIRY }
+  );
+
+  return success(c, {
+    accessToken,
+    refreshToken,
+    tokenType: 'Bearer',
+    expiresIn: 15 * 60, // 15 minutes in seconds
+    user: {
+      username: session.username,
+      email: session.email,
+      role: 'admin',
+    },
+  });
+});
+
+/**
+ * POST /auth/refresh
+ * Use refresh token to get new access token
+ */
+auth.post('/refresh', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { refreshToken } = body as { refreshToken?: string };
+
+  if (!refreshToken) {
+    return badRequest(c, 'refreshToken required');
+  }
+
+  try {
+    // Verify refresh token
+    const payload = await verifyJwt(refreshToken, c.env);
+
+    if (payload.type !== 'refresh') {
+      return unauthorized(c, 'Invalid token type');
+    }
+
+    // Generate new access token
+    const accessToken = await generateAccessToken(
+      {
+        sub: payload.sub,
+        role: payload.role,
+        username: payload.username,
+        email: payload.email,
+        emailVerified: true,
+      },
+      c.env
+    );
+
+    return success(c, {
+      accessToken,
+      tokenType: 'Bearer',
+      expiresIn: 15 * 60,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Invalid refresh token';
+    return unauthorized(c, message);
+  }
+});
+
+/**
+ * POST /auth/logout
+ * Invalidate refresh token (client should also discard tokens)
+ */
+auth.post('/logout', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { refreshToken } = body as { refreshToken?: string };
+
+  if (refreshToken) {
+    try {
+      // We could store revoked tokens in KV if needed
+      // For now, just acknowledge logout
+      // The refresh token will naturally expire
+    } catch {
+      // Ignore errors during logout
+    }
+  }
+
+  return success(c, { message: 'Logged out successfully' });
+});
+
+/**
+ * GET /auth/me
+ * Get current user info from access token
+ */
 auth.get('/me', async (c) => {
   const authHeader = c.req.header('Authorization');
   if (!authHeader) {
@@ -107158,11 +112243,86 @@ auth.get('/me', async (c) => {
 
   try {
     const claims = await verifyJwt(token, c.env);
-    return success(c, { claims });
+
+    // Ensure it's an access token and email is verified
+    if (claims.type === 'refresh') {
+      return unauthorized(c, 'Invalid token type');
+    }
+
+    return success(c, {
+      user: {
+        username: claims.username,
+        email: claims.email,
+        role: claims.role,
+        emailVerified: claims.emailVerified,
+      },
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unauthorized';
     return unauthorized(c, message);
   }
+});
+
+/**
+ * POST /auth/resend-otp
+ * Resend OTP for an existing session
+ */
+auth.post('/resend-otp', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { sessionId } = body as { sessionId?: string };
+
+  if (!sessionId) {
+    return badRequest(c, 'sessionId required');
+  }
+
+  // Get session from KV
+  const sessionData = await c.env.KV.get(`${KV_AUTH_SESSION_PREFIX}${sessionId}`);
+  if (!sessionData) {
+    return unauthorized(c, 'Invalid or expired session');
+  }
+
+  const session: AuthSession = JSON.parse(sessionData);
+
+  // Check if already verified
+  if (session.is_verified) {
+    return badRequest(c, 'Session already verified');
+  }
+
+  // Generate new OTP
+  const otp = generateOtp(6);
+  const otpHash = await hashString(otp);
+  const expiresAt = new Date(Date.now() + OTP_EXPIRY * 1000).toISOString();
+
+  // Update session
+  session.otp_hash = otpHash;
+  session.otp_expires_at = expiresAt;
+
+  await c.env.KV.put(
+    `${KV_AUTH_SESSION_PREFIX}${sessionId}`,
+    JSON.stringify(session),
+    { expirationTtl: OTP_EXPIRY + 60 }
+  );
+
+  // Send new OTP email
+  const emailSent = await sendOtpEmail(c.env, session.email, otp);
+
+  if (!emailSent) {
+    if (c.env.ENV !== 'production') {
+      return success(c, {
+        message: 'New OTP generated (dev mode)',
+        expiresAt,
+        _dev_otp: otp,
+      });
+    }
+    return error(c, 'Failed to send verification email', 500);
+  }
+
+  const maskedEmail = session.email.replace(/(.{2})(.*)(@.*)/, '$1***$3');
+
+  return success(c, {
+    message: `New verification code sent to ${maskedEmail}`,
+    expiresAt,
+  });
 });
 
 export default auth;
@@ -109855,6 +115015,907 @@ rag.get('/health', async (c) => {
 });
 
 export default rag;
+
+```
+
+### secrets.ts
+
+**Path:** `workers/src/routes/secrets.ts`
+
+```typescript
+/**
+ * Secrets Management API Routes
+ *
+ * Centralized secrets management with:
+ * - AES-256-GCM encryption at rest
+ * - Audit logging for all changes
+ * - Category-based organization
+ * - Secure value retrieval
+ */
+
+import { Hono } from 'hono';
+import type { Env, Secret, SecretCategory, SecretPublic, SecretAuditLog } from '../types';
+import { success, badRequest, notFound, error } from '../lib/response';
+import { requireAdmin } from '../middleware/auth';
+import {
+  encryptSecret,
+  decryptSecret,
+  hashValue,
+  maskSecret,
+  generateSecret,
+  generateApiKey,
+  validateEncryption,
+} from '../lib/crypto';
+
+const secrets = new Hono<{ Bindings: Env }>();
+
+// All routes require admin authentication
+secrets.use('*', requireAdmin);
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+function generateId(): string {
+  return 'sec_' + crypto.randomUUID().replace(/-/g, '').substring(0, 24);
+}
+
+/**
+ * Log an audit event for a secret
+ */
+async function logAudit(
+  db: D1Database,
+  secretId: string,
+  action: SecretAuditLog['action'],
+  options: {
+    oldValueHash?: string | null;
+    newValueHash?: string | null;
+    changedBy?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    metadata?: Record<string, unknown>;
+  } = {}
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO secrets_audit_log 
+       (secret_id, action, old_value_hash, new_value_hash, changed_by, ip_address, user_agent, metadata)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .bind(
+      secretId,
+      action,
+      options.oldValueHash ?? null,
+      options.newValueHash ?? null,
+      options.changedBy ?? 'admin',
+      options.ipAddress ?? null,
+      options.userAgent ?? null,
+      options.metadata ? JSON.stringify(options.metadata) : null
+    )
+    .run();
+}
+
+/**
+ * Transform Secret to SecretPublic (remove encrypted values, add metadata)
+ */
+function toPublic(secret: Secret, categoryName?: string): SecretPublic {
+  return {
+    id: secret.id,
+    category_id: secret.category_id,
+    key_name: secret.key_name,
+    display_name: secret.display_name,
+    description: secret.description,
+    is_required: secret.is_required,
+    is_sensitive: secret.is_sensitive,
+    value_type: secret.value_type,
+    validation_pattern: secret.validation_pattern,
+    default_value: secret.default_value,
+    env_fallback: secret.env_fallback,
+    last_rotated_at: secret.last_rotated_at,
+    expires_at: secret.expires_at,
+    created_at: secret.created_at,
+    updated_at: secret.updated_at,
+    created_by: secret.created_by,
+    updated_by: secret.updated_by,
+    has_value: !!(secret.encrypted_value && secret.iv),
+    category_name: categoryName,
+  };
+}
+
+// ============================================================================
+// Categories
+// ============================================================================
+
+/**
+ * GET /categories - List all categories
+ */
+secrets.get('/categories', async (c) => {
+  const result = await c.env.DB.prepare(
+    `SELECT * FROM secret_categories ORDER BY sort_order ASC`
+  ).all<SecretCategory>();
+
+  return success(c, { categories: result.results });
+});
+
+/**
+ * POST /categories - Create a category
+ */
+secrets.post('/categories', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { name, displayName, description, icon, sortOrder } = body as {
+    name?: string;
+    displayName?: string;
+    description?: string;
+    icon?: string;
+    sortOrder?: number;
+  };
+
+  if (!name || !displayName) {
+    return badRequest(c, 'name and displayName are required');
+  }
+
+  const id = 'cat_' + name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+  try {
+    await c.env.DB.prepare(
+      `INSERT INTO secret_categories (id, name, display_name, description, icon, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    )
+      .bind(id, name, displayName, description ?? null, icon ?? null, sortOrder ?? 50)
+      .run();
+
+    const category = await c.env.DB.prepare(
+      `SELECT * FROM secret_categories WHERE id = ?`
+    )
+      .bind(id)
+      .first<SecretCategory>();
+
+    return success(c, { category }, 201);
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('UNIQUE')) {
+      return badRequest(c, 'Category with this name already exists');
+    }
+    throw err;
+  }
+});
+
+// ============================================================================
+// Secrets CRUD
+// ============================================================================
+
+/**
+ * GET / - List all secrets (without values)
+ */
+secrets.get('/', async (c) => {
+  const categoryId = c.req.query('categoryId');
+  const includeExpired = c.req.query('includeExpired') === 'true';
+
+  let query = `
+    SELECT s.*, c.name as category_name
+    FROM secrets s
+    LEFT JOIN secret_categories c ON s.category_id = c.id
+    WHERE 1=1
+  `;
+  const params: (string | null)[] = [];
+
+  if (categoryId) {
+    query += ' AND s.category_id = ?';
+    params.push(categoryId);
+  }
+
+  if (!includeExpired) {
+    query += ' AND (s.expires_at IS NULL OR s.expires_at > datetime("now"))';
+  }
+
+  query += ' ORDER BY c.sort_order ASC, s.key_name ASC';
+
+  const result = await c.env.DB.prepare(query)
+    .bind(...params)
+    .all<Secret & { category_name: string }>();
+
+  const secretsPublic = result.results.map((s) => toPublic(s, s.category_name));
+
+  return success(c, { secrets: secretsPublic });
+});
+
+/**
+ * GET /:id - Get a single secret (without value unless ?reveal=true)
+ */
+secrets.get('/:id', async (c) => {
+  const { id } = c.req.param();
+  const reveal = c.req.query('reveal') === 'true';
+
+  const secret = await c.env.DB.prepare(
+    `SELECT s.*, c.name as category_name
+     FROM secrets s
+     LEFT JOIN secret_categories c ON s.category_id = c.id
+     WHERE s.id = ? OR s.key_name = ?`
+  )
+    .bind(id, id)
+    .first<Secret & { category_name: string }>();
+
+  if (!secret) {
+    return notFound(c, 'Secret not found');
+  }
+
+  const result = toPublic(secret, secret.category_name);
+
+  // Optionally reveal masked value (for copying)
+  if (reveal && secret.encrypted_value && secret.iv) {
+    try {
+      const decrypted = await decryptSecret(secret.encrypted_value, secret.iv, c.env);
+      result.masked_value = secret.is_sensitive ? maskSecret(decrypted, 6) : decrypted;
+
+      // Log access
+      await logAudit(c.env.DB, secret.id, 'accessed', {
+        changedBy: 'admin',
+        ipAddress: c.req.header('CF-Connecting-IP'),
+        userAgent: c.req.header('User-Agent'),
+      });
+    } catch {
+      // Decryption failed - likely wrong key
+      result.masked_value = '[decryption failed]';
+    }
+  }
+
+  return success(c, { secret: result });
+});
+
+/**
+ * POST / - Create a new secret
+ */
+secrets.post('/', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const {
+    categoryId,
+    keyName,
+    displayName,
+    description,
+    value,
+    isRequired,
+    isSensitive,
+    valueType,
+    validationPattern,
+    defaultValue,
+    envFallback,
+    expiresAt,
+  } = body as {
+    categoryId?: string;
+    keyName?: string;
+    displayName?: string;
+    description?: string;
+    value?: string;
+    isRequired?: boolean;
+    isSensitive?: boolean;
+    valueType?: string;
+    validationPattern?: string;
+    defaultValue?: string;
+    envFallback?: string;
+    expiresAt?: string;
+  };
+
+  if (!categoryId || !keyName || !displayName) {
+    return badRequest(c, 'categoryId, keyName, and displayName are required');
+  }
+
+  // Validate key name format (uppercase with underscores)
+  if (!/^[A-Z][A-Z0-9_]*$/.test(keyName)) {
+    return badRequest(c, 'keyName must be uppercase with underscores (e.g., OPENAI_API_KEY)');
+  }
+
+  const id = generateId();
+  let encryptedValue: string | null = null;
+  let iv: string | null = null;
+  let valueHash: string | null = null;
+
+  // Encrypt value if provided
+  if (value) {
+    const encrypted = await encryptSecret(value, c.env);
+    encryptedValue = encrypted.encryptedValue;
+    iv = encrypted.iv;
+    valueHash = await hashValue(value);
+  }
+
+  try {
+    await c.env.DB.prepare(
+      `INSERT INTO secrets (
+        id, category_id, key_name, display_name, description,
+        encrypted_value, iv, is_required, is_sensitive, value_type,
+        validation_pattern, default_value, env_fallback, expires_at,
+        created_by, updated_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(
+        id,
+        categoryId,
+        keyName,
+        displayName,
+        description ?? null,
+        encryptedValue,
+        iv,
+        isRequired ? 1 : 0,
+        isSensitive !== false ? 1 : 0, // Default true
+        valueType ?? 'string',
+        validationPattern ?? null,
+        defaultValue ?? null,
+        envFallback ?? keyName, // Default fallback to same key name
+        expiresAt ?? null,
+        'admin',
+        'admin'
+      )
+      .run();
+
+    // Log creation
+    await logAudit(c.env.DB, id, 'created', {
+      newValueHash: valueHash,
+      changedBy: 'admin',
+      ipAddress: c.req.header('CF-Connecting-IP'),
+      userAgent: c.req.header('User-Agent'),
+    });
+
+    const secret = await c.env.DB.prepare(`SELECT * FROM secrets WHERE id = ?`)
+      .bind(id)
+      .first<Secret>();
+
+    return success(c, { secret: toPublic(secret!) }, 201);
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('UNIQUE')) {
+      return badRequest(c, 'Secret with this key name already exists');
+    }
+    throw err;
+  }
+});
+
+/**
+ * PUT /:id - Update a secret
+ */
+secrets.put('/:id', async (c) => {
+  const { id } = c.req.param();
+  const body = await c.req.json().catch(() => ({}));
+
+  const existing = await c.env.DB.prepare(`SELECT * FROM secrets WHERE id = ? OR key_name = ?`)
+    .bind(id, id)
+    .first<Secret>();
+
+  if (!existing) {
+    return notFound(c, 'Secret not found');
+  }
+
+  const {
+    displayName,
+    description,
+    value,
+    isRequired,
+    isSensitive,
+    valueType,
+    validationPattern,
+    defaultValue,
+    envFallback,
+    expiresAt,
+  } = body as {
+    displayName?: string;
+    description?: string;
+    value?: string;
+    isRequired?: boolean;
+    isSensitive?: boolean;
+    valueType?: string;
+    validationPattern?: string;
+    defaultValue?: string;
+    envFallback?: string;
+    expiresAt?: string;
+  };
+
+  // Build update query
+  const updates: string[] = [];
+  const values: (string | number | null)[] = [];
+
+  if (displayName !== undefined) {
+    updates.push('display_name = ?');
+    values.push(displayName);
+  }
+  if (description !== undefined) {
+    updates.push('description = ?');
+    values.push(description);
+  }
+  if (isRequired !== undefined) {
+    updates.push('is_required = ?');
+    values.push(isRequired ? 1 : 0);
+  }
+  if (isSensitive !== undefined) {
+    updates.push('is_sensitive = ?');
+    values.push(isSensitive ? 1 : 0);
+  }
+  if (valueType !== undefined) {
+    updates.push('value_type = ?');
+    values.push(valueType);
+  }
+  if (validationPattern !== undefined) {
+    updates.push('validation_pattern = ?');
+    values.push(validationPattern);
+  }
+  if (defaultValue !== undefined) {
+    updates.push('default_value = ?');
+    values.push(defaultValue);
+  }
+  if (envFallback !== undefined) {
+    updates.push('env_fallback = ?');
+    values.push(envFallback);
+  }
+  if (expiresAt !== undefined) {
+    updates.push('expires_at = ?');
+    values.push(expiresAt);
+  }
+
+  let oldValueHash: string | null = null;
+  let newValueHash: string | null = null;
+
+  // Handle value update
+  if (value !== undefined) {
+    // Get old value hash for audit
+    if (existing.encrypted_value && existing.iv) {
+      try {
+        const oldValue = await decryptSecret(existing.encrypted_value, existing.iv, c.env);
+        oldValueHash = await hashValue(oldValue);
+      } catch {
+        // Ignore decryption errors
+      }
+    }
+
+    if (value === '' || value === null) {
+      // Clear value
+      updates.push('encrypted_value = ?', 'iv = ?');
+      values.push(null, null);
+    } else {
+      // Encrypt new value
+      const encrypted = await encryptSecret(value, c.env);
+      updates.push('encrypted_value = ?', 'iv = ?', 'last_rotated_at = ?');
+      values.push(encrypted.encryptedValue, encrypted.iv, new Date().toISOString());
+      newValueHash = await hashValue(value);
+    }
+  }
+
+  if (updates.length === 0) {
+    return badRequest(c, 'No fields to update');
+  }
+
+  updates.push('updated_at = ?', 'updated_by = ?');
+  values.push(new Date().toISOString(), 'admin');
+  values.push(existing.id);
+
+  await c.env.DB.prepare(
+    `UPDATE secrets SET ${updates.join(', ')} WHERE id = ?`
+  )
+    .bind(...values)
+    .run();
+
+  // Log update
+  await logAudit(c.env.DB, existing.id, value !== undefined ? 'rotated' : 'updated', {
+    oldValueHash,
+    newValueHash,
+    changedBy: 'admin',
+    ipAddress: c.req.header('CF-Connecting-IP'),
+    userAgent: c.req.header('User-Agent'),
+  });
+
+  const updated = await c.env.DB.prepare(`SELECT * FROM secrets WHERE id = ?`)
+    .bind(existing.id)
+    .first<Secret>();
+
+  return success(c, { secret: toPublic(updated!) });
+});
+
+/**
+ * DELETE /:id - Delete a secret
+ */
+secrets.delete('/:id', async (c) => {
+  const { id } = c.req.param();
+
+  const existing = await c.env.DB.prepare(`SELECT * FROM secrets WHERE id = ? OR key_name = ?`)
+    .bind(id, id)
+    .first<Secret>();
+
+  if (!existing) {
+    return notFound(c, 'Secret not found');
+  }
+
+  // Check for references
+  const refs = await c.env.DB.prepare(
+    `SELECT COUNT(*) as count FROM secret_references WHERE secret_id = ? AND is_active = 1`
+  )
+    .bind(existing.id)
+    .first<{ count: number }>();
+
+  if (refs && refs.count > 0) {
+    return badRequest(c, `Cannot delete: secret is referenced by ${refs.count} active resource(s)`);
+  }
+
+  // Log deletion before deleting
+  await logAudit(c.env.DB, existing.id, 'deleted', {
+    changedBy: 'admin',
+    ipAddress: c.req.header('CF-Connecting-IP'),
+    userAgent: c.req.header('User-Agent'),
+    metadata: { keyName: existing.key_name },
+  });
+
+  await c.env.DB.prepare(`DELETE FROM secrets WHERE id = ?`).bind(existing.id).run();
+
+  return success(c, { deleted: existing.id, keyName: existing.key_name });
+});
+
+// ============================================================================
+// Value Operations
+// ============================================================================
+
+/**
+ * POST /:id/reveal - Get decrypted value (for copying)
+ */
+secrets.post('/:id/reveal', async (c) => {
+  const { id } = c.req.param();
+
+  const secret = await c.env.DB.prepare(`SELECT * FROM secrets WHERE id = ? OR key_name = ?`)
+    .bind(id, id)
+    .first<Secret>();
+
+  if (!secret) {
+    return notFound(c, 'Secret not found');
+  }
+
+  if (!secret.encrypted_value || !secret.iv) {
+    return badRequest(c, 'Secret has no value set');
+  }
+
+  try {
+    const value = await decryptSecret(secret.encrypted_value, secret.iv, c.env);
+
+    // Log access
+    await logAudit(c.env.DB, secret.id, 'accessed', {
+      changedBy: 'admin',
+      ipAddress: c.req.header('CF-Connecting-IP'),
+      userAgent: c.req.header('User-Agent'),
+      metadata: { action: 'reveal' },
+    });
+
+    return success(c, {
+      id: secret.id,
+      keyName: secret.key_name,
+      value,
+    });
+  } catch {
+    return error(c, 'Failed to decrypt secret. Encryption key may have changed.', 500);
+  }
+});
+
+/**
+ * POST /generate - Generate a new secure value
+ */
+secrets.post('/generate', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { type = 'secret', length = 32, prefix } = body as {
+    type?: 'secret' | 'apiKey' | 'uuid';
+    length?: number;
+    prefix?: string;
+  };
+
+  let value: string;
+
+  switch (type) {
+    case 'apiKey':
+      value = generateApiKey(prefix || 'sk');
+      break;
+    case 'uuid':
+      value = crypto.randomUUID();
+      break;
+    default:
+      value = generateSecret(Math.min(Math.max(length, 16), 128));
+  }
+
+  return success(c, { value, type });
+});
+
+// ============================================================================
+// Bulk Operations
+// ============================================================================
+
+/**
+ * GET /export - Export all secrets (for backup, without actual values)
+ */
+secrets.get('/export', async (c) => {
+  const includeValues = c.req.query('includeValues') === 'true';
+
+  const [categoriesResult, secretsResult] = await Promise.all([
+    c.env.DB.prepare(`SELECT * FROM secret_categories ORDER BY sort_order`).all<SecretCategory>(),
+    c.env.DB.prepare(`SELECT * FROM secrets ORDER BY category_id, key_name`).all<Secret>(),
+  ]);
+
+  let secretsExport: Array<SecretPublic & { value?: string }> = secretsResult.results.map((s) =>
+    toPublic(s)
+  );
+
+  // Optionally include decrypted values (for migration/backup)
+  if (includeValues) {
+    secretsExport = await Promise.all(
+      secretsResult.results.map(async (s) => {
+        const pub = toPublic(s);
+        if (s.encrypted_value && s.iv) {
+          try {
+            (pub as SecretPublic & { value?: string }).value = await decryptSecret(
+              s.encrypted_value,
+              s.iv,
+              c.env
+            );
+          } catch {
+            // Skip if decryption fails
+          }
+        }
+        return pub;
+      })
+    );
+
+    // Log bulk access
+    await logAudit(c.env.DB, 'BULK_EXPORT', 'accessed', {
+      changedBy: 'admin',
+      ipAddress: c.req.header('CF-Connecting-IP'),
+      userAgent: c.req.header('User-Agent'),
+      metadata: { count: secretsResult.results.length },
+    });
+  }
+
+  return success(c, {
+    exportedAt: new Date().toISOString(),
+    categories: categoriesResult.results,
+    secrets: secretsExport,
+  });
+});
+
+/**
+ * POST /import - Import secrets from backup
+ */
+secrets.post('/import', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { secrets: importSecrets, overwrite = false } = body as {
+    secrets?: Array<{
+      categoryId: string;
+      keyName: string;
+      displayName: string;
+      description?: string;
+      value?: string;
+      isRequired?: boolean;
+      isSensitive?: boolean;
+      valueType?: string;
+      envFallback?: string;
+    }>;
+    overwrite?: boolean;
+  };
+
+  if (!importSecrets || !Array.isArray(importSecrets)) {
+    return badRequest(c, 'secrets array is required');
+  }
+
+  const results = {
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    errors: [] as string[],
+  };
+
+  for (const item of importSecrets) {
+    try {
+      const existing = await c.env.DB.prepare(`SELECT id FROM secrets WHERE key_name = ?`)
+        .bind(item.keyName)
+        .first<{ id: string }>();
+
+      if (existing && !overwrite) {
+        results.skipped++;
+        continue;
+      }
+
+      const id = existing?.id || generateId();
+      let encryptedValue: string | null = null;
+      let iv: string | null = null;
+
+      if (item.value) {
+        const encrypted = await encryptSecret(item.value, c.env);
+        encryptedValue = encrypted.encryptedValue;
+        iv = encrypted.iv;
+      }
+
+      if (existing) {
+        // Update
+        await c.env.DB.prepare(
+          `UPDATE secrets SET 
+           display_name = ?, description = ?, encrypted_value = ?, iv = ?,
+           is_required = ?, is_sensitive = ?, value_type = ?, env_fallback = ?,
+           updated_at = ?, updated_by = ?
+           WHERE id = ?`
+        )
+          .bind(
+            item.displayName,
+            item.description ?? null,
+            encryptedValue,
+            iv,
+            item.isRequired ? 1 : 0,
+            item.isSensitive !== false ? 1 : 0,
+            item.valueType ?? 'string',
+            item.envFallback ?? item.keyName,
+            new Date().toISOString(),
+            'admin',
+            id
+          )
+          .run();
+        results.updated++;
+      } else {
+        // Create
+        await c.env.DB.prepare(
+          `INSERT INTO secrets (
+           id, category_id, key_name, display_name, description,
+           encrypted_value, iv, is_required, is_sensitive, value_type,
+           env_fallback, created_by, updated_by
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+          .bind(
+            id,
+            item.categoryId,
+            item.keyName,
+            item.displayName,
+            item.description ?? null,
+            encryptedValue,
+            iv,
+            item.isRequired ? 1 : 0,
+            item.isSensitive !== false ? 1 : 0,
+            item.valueType ?? 'string',
+            item.envFallback ?? item.keyName,
+            'admin',
+            'admin'
+          )
+          .run();
+        results.created++;
+      }
+    } catch (err) {
+      results.errors.push(`${item.keyName}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  }
+
+  return success(c, results);
+});
+
+// ============================================================================
+// Audit Log
+// ============================================================================
+
+/**
+ * GET /audit - Get audit log
+ */
+secrets.get('/audit', async (c) => {
+  const secretId = c.req.query('secretId');
+  const action = c.req.query('action');
+  const limit = Math.min(parseInt(c.req.query('limit') || '50'), 200);
+  const offset = parseInt(c.req.query('offset') || '0');
+
+  let query = `
+    SELECT a.*, s.key_name
+    FROM secrets_audit_log a
+    LEFT JOIN secrets s ON a.secret_id = s.id
+    WHERE 1=1
+  `;
+  const params: (string | number)[] = [];
+
+  if (secretId) {
+    query += ' AND a.secret_id = ?';
+    params.push(secretId);
+  }
+
+  if (action) {
+    query += ' AND a.action = ?';
+    params.push(action);
+  }
+
+  query += ' ORDER BY a.created_at DESC LIMIT ? OFFSET ?';
+  params.push(limit, offset);
+
+  const result = await c.env.DB.prepare(query)
+    .bind(...params)
+    .all<SecretAuditLog & { key_name: string | null }>();
+
+  // Get total count
+  let countQuery = 'SELECT COUNT(*) as total FROM secrets_audit_log WHERE 1=1';
+  const countParams: string[] = [];
+  if (secretId) {
+    countQuery += ' AND secret_id = ?';
+    countParams.push(secretId);
+  }
+  if (action) {
+    countQuery += ' AND action = ?';
+    countParams.push(action);
+  }
+
+  const countResult = await c.env.DB.prepare(countQuery)
+    .bind(...countParams)
+    .first<{ total: number }>();
+
+  return success(c, {
+    logs: result.results,
+    pagination: {
+      total: countResult?.total ?? 0,
+      limit,
+      offset,
+    },
+  });
+});
+
+// ============================================================================
+// Health & Status
+// ============================================================================
+
+/**
+ * GET /health - Check encryption health
+ */
+secrets.get('/health', async (c) => {
+  const isHealthy = await validateEncryption(c.env);
+
+  // Count secrets
+  const stats = await c.env.DB.prepare(
+    `SELECT 
+      COUNT(*) as total,
+      SUM(CASE WHEN encrypted_value IS NOT NULL THEN 1 ELSE 0 END) as with_value,
+      SUM(CASE WHEN expires_at IS NOT NULL AND expires_at < datetime('now') THEN 1 ELSE 0 END) as expired
+     FROM secrets`
+  ).first<{ total: number; with_value: number; expired: number }>();
+
+  return success(c, {
+    status: isHealthy ? 'healthy' : 'unhealthy',
+    encryption: isHealthy ? 'ok' : 'failed',
+    stats: {
+      totalSecrets: stats?.total ?? 0,
+      withValue: stats?.with_value ?? 0,
+      expired: stats?.expired ?? 0,
+    },
+  });
+});
+
+/**
+ * GET /overview - Get secrets overview for dashboard
+ */
+secrets.get('/overview', async (c) => {
+  const [categoriesResult, statsResult, recentAuditResult] = await Promise.all([
+    c.env.DB.prepare(
+      `SELECT c.*, COUNT(s.id) as secret_count
+       FROM secret_categories c
+       LEFT JOIN secrets s ON c.id = s.category_id
+       GROUP BY c.id
+       ORDER BY c.sort_order`
+    ).all<SecretCategory & { secret_count: number }>(),
+
+    c.env.DB.prepare(
+      `SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN encrypted_value IS NOT NULL THEN 1 ELSE 0 END) as configured,
+        SUM(CASE WHEN is_required = 1 AND encrypted_value IS NULL THEN 1 ELSE 0 END) as missing_required,
+        SUM(CASE WHEN expires_at IS NOT NULL AND expires_at < datetime('now', '+7 days') THEN 1 ELSE 0 END) as expiring_soon
+       FROM secrets`
+    ).first<{
+      total: number;
+      configured: number;
+      missing_required: number;
+      expiring_soon: number;
+    }>(),
+
+    c.env.DB.prepare(
+      `SELECT a.*, s.key_name
+       FROM secrets_audit_log a
+       LEFT JOIN secrets s ON a.secret_id = s.id
+       ORDER BY a.created_at DESC
+       LIMIT 10`
+    ).all<SecretAuditLog & { key_name: string | null }>(),
+  ]);
+
+  return success(c, {
+    categories: categoriesResult.results,
+    stats: statsResult,
+    recentActivity: recentAuditResult.results,
+  });
+});
+
+export default secrets;
 
 ```
 

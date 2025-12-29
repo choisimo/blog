@@ -20,6 +20,8 @@ import rag from './routes/rag';
 import gateway from './routes/gateway';
 import memos from './routes/memos';
 import memories from './routes/memories';
+import adminAi from './routes/admin-ai';
+import secrets from './routes/secrets';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -63,6 +65,8 @@ api.route('/rag', rag);
 api.route('/gateway', gateway);
 api.route('/memos', memos);
 api.route('/memories', memories);
+api.route('/admin/ai', adminAi);
+api.route('/admin/secrets', secrets);
 
 app.route('/api/v1', api);
 
