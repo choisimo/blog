@@ -9,6 +9,7 @@ export type Env = {
   JWT_SECRET: string;
   ADMIN_USERNAME?: string;
   ADMIN_PASSWORD?: string;
+  ADMIN_EMAIL?: string; // Admin email for OTP verification (GitHub Secrets)
 
   // Backend AI Server (via Cloudflare Tunnel)
   // 모든 AI 호출은 이 서버를 통해 처리됩니다
@@ -33,6 +34,9 @@ export type Env = {
   // Variables
   ENV: 'development' | 'production';
   ALLOWED_ORIGINS: string;
+
+  // Secrets encryption key (optional, falls back to JWT_SECRET)
+  SECRETS_ENCRYPTION_KEY?: string;
 };
 
 // Context extending Hono's context with our Env
@@ -105,8 +109,22 @@ export type JwtPayload = {
   sub: string;
   role: string;
   username: string;
+  email?: string;
+  emailVerified?: boolean;
+  type?: 'access' | 'refresh';
   iat?: number;
   exp?: number;
+};
+
+// Auth Session for OTP verification
+export type AuthSession = {
+  id: string;
+  username: string;
+  email: string;
+  otp_hash: string;
+  otp_expires_at: string;
+  is_verified: number;
+  created_at: string;
 };
 
 // Post Analytics Models
@@ -147,4 +165,154 @@ export type EditorPick = {
   is_active: number;
   created_at: string;
   updated_at: string;
+};
+
+// ============================================================================
+// AI Model Management Types
+// ============================================================================
+
+export type AIProvider = {
+  id: string;
+  name: string;
+  display_name: string;
+  api_base_url: string | null;
+  api_key_env: string | null;
+  is_enabled: number;
+  health_status: 'healthy' | 'degraded' | 'down' | 'unknown';
+  last_health_check: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AIModel = {
+  id: string;
+  provider_id: string;
+  model_name: string;
+  display_name: string;
+  litellm_model: string;
+  description: string | null;
+  context_window: number | null;
+  max_tokens: number | null;
+  input_cost_per_1k: number | null;
+  output_cost_per_1k: number | null;
+  supports_vision: number;
+  supports_streaming: number;
+  supports_function_calling: number;
+  is_enabled: number;
+  priority: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AIRoute = {
+  id: string;
+  name: string;
+  description: string | null;
+  routing_strategy: 'simple' | 'latency-based-routing' | 'cost-based-routing';
+  primary_model_id: string | null;
+  fallback_model_ids: string | null; // JSON array
+  context_window_fallback_ids: string | null; // JSON array
+  num_retries: number;
+  timeout_seconds: number;
+  is_default: number;
+  is_enabled: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AIUsageLog = {
+  id: string;
+  model_id: string | null;
+  route_id: string | null;
+  request_type: 'chat' | 'completion' | 'embedding' | 'vision';
+  prompt_tokens: number | null;
+  completion_tokens: number | null;
+  total_tokens: number | null;
+  estimated_cost: number | null;
+  latency_ms: number | null;
+  status: 'success' | 'error' | 'timeout';
+  error_message: string | null;
+  user_id: string | null;
+  metadata: string | null;
+  created_at: string;
+};
+
+export type AIUsageDaily = {
+  date: string;
+  model_id: string;
+  total_requests: number;
+  total_prompt_tokens: number;
+  total_completion_tokens: number;
+  total_tokens: number;
+  total_cost: number;
+  success_count: number;
+  error_count: number;
+  avg_latency_ms: number | null;
+};
+
+// ============================================================================
+// Secrets Management Types
+// ============================================================================
+
+export type SecretCategory = {
+  id: string;
+  name: string;
+  display_name: string;
+  description: string | null;
+  icon: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Secret = {
+  id: string;
+  category_id: string;
+  key_name: string;
+  display_name: string;
+  description: string | null;
+  encrypted_value: string | null;
+  iv: string | null;
+  is_required: number;
+  is_sensitive: number;
+  value_type: 'string' | 'number' | 'boolean' | 'json' | 'url';
+  validation_pattern: string | null;
+  default_value: string | null;
+  env_fallback: string | null;
+  last_rotated_at: string | null;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  updated_by: string | null;
+};
+
+export type SecretAuditLog = {
+  id: number;
+  secret_id: string;
+  action: 'created' | 'updated' | 'deleted' | 'rotated' | 'accessed';
+  old_value_hash: string | null;
+  new_value_hash: string | null;
+  changed_by: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  metadata: string | null;
+  created_at: string;
+};
+
+export type SecretReference = {
+  id: number;
+  secret_id: string;
+  reference_type: 'ai_provider' | 'route' | 'service' | 'integration';
+  reference_id: string;
+  reference_name: string | null;
+  is_active: number;
+  created_at: string;
+};
+
+// API Response types for secrets
+export type SecretPublic = Omit<Secret, 'encrypted_value' | 'iv'> & {
+  has_value: boolean;
+  masked_value?: string;
+  category_name?: string;
 };

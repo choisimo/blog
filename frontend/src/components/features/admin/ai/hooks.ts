@@ -1,8 +1,11 @@
 /**
  * AI Admin API Hooks
+ *
+ * Uses new auth store with automatic token refresh
  */
 
 import { useState, useCallback } from 'react';
+import { useAuthStore } from '@/stores/useAuthStore';
 import type {
   AIProvider,
   AIModel,
@@ -15,27 +18,67 @@ import type {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('adminToken');
-  return {
-    'Content-Type': 'application/json',
-    Authorization: token ? `Bearer ${token}` : '',
-  };
-};
+// ============================================================================
+// API Fetch Wrapper with Auto Token Refresh
+// ============================================================================
 
-// Generic fetch wrapper
+/**
+ * Generic fetch wrapper with automatic token refresh
+ */
 async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<{ ok: boolean; data?: T; error?: string }> {
+  const { getValidAccessToken, clearAuth } = useAuthStore.getState();
+
   try {
+    // Get valid access token (auto-refreshes if needed)
+    const token = await getValidAccessToken();
+
+    if (!token) {
+      return { ok: false, error: 'Not authenticated. Please log in again.' };
+    }
+
     const res = await fetch(`${API_BASE}/api/v1/admin/ai${endpoint}`, {
       ...options,
       headers: {
-        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
         ...(options.headers || {}),
       },
     });
+
+    // Handle 401 - token might be invalid
+    if (res.status === 401) {
+      // Try to refresh token once more
+      const newToken = await getValidAccessToken();
+      if (!newToken) {
+        clearAuth();
+        return { ok: false, error: 'Session expired. Please log in again.' };
+      }
+
+      // Retry with new token
+      const retryRes = await fetch(`${API_BASE}/api/v1/admin/ai${endpoint}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${newToken}`,
+          ...(options.headers || {}),
+        },
+      });
+
+      if (!retryRes.ok) {
+        if (retryRes.status === 401) {
+          clearAuth();
+          return { ok: false, error: 'Session expired. Please log in again.' };
+        }
+        const json = await retryRes.json().catch(() => ({}));
+        return { ok: false, error: json.error || `HTTP ${retryRes.status}` };
+      }
+
+      const json = await retryRes.json();
+      return { ok: true, data: json.data };
+    }
 
     const json = await res.json();
 
@@ -70,16 +113,19 @@ export function useProviders() {
     setLoading(false);
   }, []);
 
-  const createProvider = useCallback(async (data: ProviderFormData) => {
-    const result = await apiFetch<AIProvider>('/providers', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    if (result.ok) {
-      await fetchProviders();
-    }
-    return result;
-  }, [fetchProviders]);
+  const createProvider = useCallback(
+    async (data: ProviderFormData) => {
+      const result = await apiFetch<AIProvider>('/providers', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      if (result.ok) {
+        await fetchProviders();
+      }
+      return result;
+    },
+    [fetchProviders]
+  );
 
   const updateProvider = useCallback(
     async (id: string, data: Partial<ProviderFormData & { isEnabled: boolean }>) => {
@@ -108,18 +154,21 @@ export function useProviders() {
     [fetchProviders]
   );
 
-  const checkHealth = useCallback(async (id: string) => {
-    const result = await apiFetch<{
-      providerId: string;
-      status: string;
-      latencyMs: number | null;
-      error: string | null;
-    }>(`/providers/${id}/health`, { method: 'POST' });
-    if (result.ok) {
-      await fetchProviders();
-    }
-    return result;
-  }, [fetchProviders]);
+  const checkHealth = useCallback(
+    async (id: string) => {
+      const result = await apiFetch<{
+        providerId: string;
+        status: string;
+        latencyMs: number | null;
+        error: string | null;
+      }>(`/providers/${id}/health`, { method: 'POST' });
+      if (result.ok) {
+        await fetchProviders();
+      }
+      return result;
+    },
+    [fetchProviders]
+  );
 
   return {
     providers,
@@ -149,7 +198,7 @@ export function useModels() {
     if (providerId) params.set('providerId', providerId);
     if (enabled !== undefined) params.set('enabled', String(enabled));
     const query = params.toString() ? `?${params}` : '';
-    
+
     const result = await apiFetch<{ models: AIModel[] }>(`/models${query}`);
     if (result.ok && result.data) {
       setModels(result.data.models);
@@ -159,16 +208,19 @@ export function useModels() {
     setLoading(false);
   }, []);
 
-  const createModel = useCallback(async (data: ModelFormData) => {
-    const result = await apiFetch<AIModel>('/models', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    if (result.ok) {
-      await fetchModels();
-    }
-    return result;
-  }, [fetchModels]);
+  const createModel = useCallback(
+    async (data: ModelFormData) => {
+      const result = await apiFetch<AIModel>('/models', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      if (result.ok) {
+        await fetchModels();
+      }
+      return result;
+    },
+    [fetchModels]
+  );
 
   const updateModel = useCallback(
     async (id: string, data: Partial<ModelFormData & { isEnabled: boolean }>) => {
@@ -245,16 +297,19 @@ export function useRoutes() {
     setLoading(false);
   }, []);
 
-  const createRoute = useCallback(async (data: RouteFormData) => {
-    const result = await apiFetch<AIRoute>('/routes', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    if (result.ok) {
-      await fetchRoutes();
-    }
-    return result;
-  }, [fetchRoutes]);
+  const createRoute = useCallback(
+    async (data: RouteFormData) => {
+      const result = await apiFetch<AIRoute>('/routes', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      if (result.ok) {
+        await fetchRoutes();
+      }
+      return result;
+    },
+    [fetchRoutes]
+  );
 
   const updateRoute = useCallback(
     async (id: string, data: Partial<RouteFormData & { isEnabled: boolean }>) => {

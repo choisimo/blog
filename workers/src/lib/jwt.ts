@@ -6,6 +6,11 @@ import type { Env, JwtPayload } from '../types';
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
+// Token expiration times
+export const ACCESS_TOKEN_EXPIRY = 15 * 60; // 15 minutes
+export const REFRESH_TOKEN_EXPIRY = 7 * 24 * 3600; // 7 days
+export const OTP_EXPIRY = 10 * 60; // 10 minutes
+
 function base64UrlEncode(data: Uint8Array): string {
   const base64 = btoa(String.fromCharCode(...data));
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
@@ -30,12 +35,19 @@ async function hmacSign(message: string, secret: string): Promise<string> {
   return base64UrlEncode(new Uint8Array(signature));
 }
 
-export async function signJwt(payload: Omit<JwtPayload, 'iat' | 'exp'>, env: Env): Promise<string> {
+/**
+ * Sign a JWT token with custom expiry
+ */
+export async function signJwt(
+  payload: Omit<JwtPayload, 'iat' | 'exp'>,
+  env: Env,
+  expiresIn: number = ACCESS_TOKEN_EXPIRY
+): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const fullPayload: JwtPayload = {
     ...payload,
     iat: now,
-    exp: now + 12 * 3600, // 12 hours
+    exp: now + expiresIn,
   };
 
   const header = { alg: 'HS256', typ: 'JWT' };
@@ -48,6 +60,9 @@ export async function signJwt(payload: Omit<JwtPayload, 'iat' | 'exp'>, env: Env
   return `${message}.${signature}`;
 }
 
+/**
+ * Verify and decode a JWT token
+ */
 export async function verifyJwt(token: string, env: Env): Promise<JwtPayload> {
   const parts = token.split('.');
   if (parts.length !== 3) throw new Error('Invalid token format');
@@ -71,4 +86,57 @@ export async function verifyJwt(token: string, env: Env): Promise<JwtPayload> {
   }
 
   return payload;
+}
+
+/**
+ * Generate access token (short-lived)
+ */
+export async function generateAccessToken(
+  payload: { sub: string; role: string; username: string; email?: string; emailVerified?: boolean },
+  env: Env
+): Promise<string> {
+  return signJwt(
+    {
+      ...payload,
+      type: 'access',
+    },
+    env,
+    ACCESS_TOKEN_EXPIRY
+  );
+}
+
+/**
+ * Generate refresh token (long-lived)
+ */
+export async function generateRefreshToken(
+  payload: { sub: string; role: string; username: string },
+  env: Env
+): Promise<string> {
+  return signJwt(
+    {
+      ...payload,
+      type: 'refresh',
+    },
+    env,
+    REFRESH_TOKEN_EXPIRY
+  );
+}
+
+/**
+ * Generate a cryptographically secure OTP
+ */
+export function generateOtp(length: number = 6): string {
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  // Convert to numbers 0-9
+  return Array.from(array, (byte) => (byte % 10).toString()).join('');
+}
+
+/**
+ * Generate a secure random token (for session IDs, etc)
+ */
+export function generateSecureToken(length: number = 32): string {
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  return base64UrlEncode(array);
 }
