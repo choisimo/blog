@@ -517,6 +517,11 @@ jobs:
     needs: [deploy]
     if: ${{ github.event.inputs.environment != 'staging' }}
 
+    env:
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -529,12 +534,12 @@ jobs:
       - name: Add host to known_hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -p "${{ secrets.SSH_PORT || '22' }}" -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+          ssh-keyscan -p "${{ env.SSH_PORT }}" -H "${{ env.SSH_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Import workflows to n8n
         continue-on-error: true
         run: |
-          ssh -p "${{ secrets.SSH_PORT || '22' }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" << 'IMPORT_SCRIPT'
+          ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" << 'IMPORT_SCRIPT'
           set -euo pipefail
           cd ~/blog-stack
 
