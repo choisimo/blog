@@ -21,6 +21,7 @@ import configRouter from './routes/config.js';
 import workersRouter from './routes/workers.js';
 import aiAdminRouter from './routes/aiAdmin.js';
 import agentRouter from './routes/agent.js';
+import { createAidoveProxy } from './lib/aidove-proxy.js';
 
 const app = express();
 
@@ -86,6 +87,14 @@ app.use('/api/v1/admin/config', configRouter);
 app.use('/api/v1/admin/workers', workersRouter);
 app.use('/api/v1/admin/ai', aiAdminRouter);
 app.use('/api/v1/agent', agentRouter);
+
+// Aidove OpenAI-compatible proxy (for LiteLLM custom endpoint)
+// Exposes: /aidove/v1/chat/completions, /aidove/v1/models, /aidove/health
+if (process.env.AIDOVE_WEBHOOK_URL) {
+  const aidoveProxy = createAidoveProxy();
+  app.use('/aidove', aidoveProxy);
+  console.log('[api] Aidove proxy enabled at /aidove');
+}
 
 // not found
 app.use((req, res) => {

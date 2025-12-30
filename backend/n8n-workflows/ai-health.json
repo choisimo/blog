@@ -1,0 +1,132 @@
+{
+  "name": "AI Health Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "ai/health",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "ai-health-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "status",
+              "name": "status",
+              "type": "string",
+              "value": "ok"
+            },
+            {
+              "id": "service",
+              "name": "service",
+              "type": "string",
+              "value": "n8n-ai-gateway"
+            },
+            {
+              "id": "timestamp",
+              "name": "timestamp",
+              "type": "string",
+              "value": "={{ new Date().toISOString() }}"
+            },
+            {
+              "id": "version",
+              "name": "version",
+              "type": "string",
+              "value": "1.0.0"
+            },
+            {
+              "id": "endpoints",
+              "name": "endpoints",
+              "type": "object",
+              "value": "={{ { chat: '/webhook/ai/chat', generate: '/webhook/ai/generate', vision: '/webhook/ai/vision', translate: '/webhook/ai/translate', task: '/webhook/ai/task', embeddings: '/webhook/ai/embeddings', health: '/webhook/ai/health' } }}"
+            },
+            {
+              "id": "models",
+              "name": "models",
+              "type": "array",
+              "value": "={{ [{ id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'Google' }, { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'Google' }, { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI' }, { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI' }] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-health",
+      "name": "Set Health Info",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, status: $json.status, service: $json.service, timestamp: $json.timestamp, version: $json.version, endpoints: $json.endpoints, models: $json.models }) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-cache"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set Health Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Health Info": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "AI",
+      "id": "ai-tag"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2024-12-30T00:00:00.000Z",
+  "versionId": "1"
+}

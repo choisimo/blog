@@ -1,0 +1,502 @@
+{
+  "name": "Buffer Zone - Event Receiver",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "buffer-events/:sinkId",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Event Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300],
+      "webhookId": "buffer-events-webhook"
+    },
+    {
+      "parameters": {
+        "content": "## Buffer Zone - Event Receiver\n\nBuffer Zone에서 발생한 이벤트를 수신하여 처리.\n\n**Webhook URL:** `https://workflow.nodove.com/webhook/buffer-events/{sinkId}`\n\n**Event Types:**\n- `workflow.completed`: 워크플로우 완료\n- `workflow.failed`: 워크플로우 실패\n- `chat.completed`: 채팅 완료\n- `rag.completed`: RAG 검색 완료\n\n**Event Payload:**\n```json\n{\n  \"type\": \"workflow.completed\",\n  \"timestamp\": \"2025-12-30T04:00:00Z\",\n  \"data\": {\n    \"profile\": \"order-approval\",\n    \"sessionId\": \"sess_abc123\",\n    \"result\": \"approved\",\n    \"reason\": \"amount under threshold\"\n  }\n}\n```\n\n**Use Cases:**\n- Slack/Discord 알림\n- 데이터베이스 로깅\n- 다른 워크플로우 트리거\n- 외부 시스템 연동",
+        "height": 580,
+        "width": 400
+      },
+      "id": "sticky-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [180, -320]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "sinkId",
+              "name": "sinkId",
+              "value": "={{ $json.params?.sinkId || 'default' }}",
+              "type": "string"
+            },
+            {
+              "id": "eventType",
+              "name": "eventType",
+              "value": "={{ $json.body?.type || $json.type }}",
+              "type": "string"
+            },
+            {
+              "id": "timestamp",
+              "name": "timestamp",
+              "value": "={{ $json.body?.timestamp || $json.timestamp || new Date().toISOString() }}",
+              "type": "string"
+            },
+            {
+              "id": "data",
+              "name": "data",
+              "value": "={{ $json.body?.data || $json.data || {} }}",
+              "type": "object"
+            },
+            {
+              "id": "receivedAt",
+              "name": "receivedAt",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "parse-event",
+      "name": "Parse Event",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "rules": [
+            {
+              "outputKey": "workflow-completed",
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.eventType }}",
+                    "rightValue": "workflow.completed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true
+            },
+            {
+              "outputKey": "workflow-failed",
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.eventType }}",
+                    "rightValue": "workflow.failed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true
+            },
+            {
+              "outputKey": "chat-completed",
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.eventType }}",
+                    "rightValue": "chat.completed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true
+            },
+            {
+              "outputKey": "rag-completed",
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.eventType }}",
+                    "rightValue": "rag.completed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true
+            }
+          ],
+          "fallbackOutput": {
+            "output": "extra"
+          }
+        },
+        "options": {
+          "allMatchingOutputs": false
+        }
+      },
+      "id": "route-event",
+      "name": "Route by Event Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "content": "### Workflow Completed Handler\n\n성공적으로 완료된 워크플로우 처리\n- 로깅\n- 알림 전송\n- 후속 작업 트리거"
+      },
+      "id": "note-workflow-completed",
+      "name": "Note - Workflow Completed",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [880, 40]
+    },
+    {
+      "parameters": {
+        "content": "### Workflow Failed Handler\n\n실패한 워크플로우 처리\n- 에러 로깅\n- 관리자 알림\n- 재시도 로직"
+      },
+      "id": "note-workflow-failed",
+      "name": "Note - Workflow Failed",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [880, 240]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "logEntry",
+              "name": "logEntry",
+              "value": "={{ { sinkId: $json.sinkId, eventType: $json.eventType, timestamp: $json.timestamp, data: $json.data, processedAt: new Date().toISOString(), status: 'success' } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-workflow-completed",
+      "name": "Log Workflow Completed",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [920, 100]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "logEntry",
+              "name": "logEntry",
+              "value": "={{ { sinkId: $json.sinkId, eventType: $json.eventType, timestamp: $json.timestamp, data: $json.data, processedAt: new Date().toISOString(), status: 'failed', requiresAttention: true } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-workflow-failed",
+      "name": "Log Workflow Failed",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [920, 300]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "logEntry",
+              "name": "logEntry",
+              "value": "={{ { sinkId: $json.sinkId, eventType: $json.eventType, timestamp: $json.timestamp, data: $json.data, processedAt: new Date().toISOString(), status: 'chat' } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-chat-completed",
+      "name": "Log Chat Completed",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [920, 500]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "logEntry",
+              "name": "logEntry",
+              "value": "={{ { sinkId: $json.sinkId, eventType: $json.eventType, timestamp: $json.timestamp, data: $json.data, processedAt: new Date().toISOString(), status: 'rag' } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-rag-completed",
+      "name": "Log RAG Completed",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [920, 700]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "logEntry",
+              "name": "logEntry",
+              "value": "={{ { sinkId: $json.sinkId, eventType: $json.eventType, timestamp: $json.timestamp, data: $json.data, processedAt: new Date().toISOString(), status: 'unknown' } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-unknown",
+      "name": "Log Unknown Event",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [920, 900]
+    },
+    {
+      "parameters": {},
+      "id": "merge-logs",
+      "name": "Merge Logs",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1140, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"accepted\",\n  \"id\": \"evt_{{ $execution.id }}\",\n  \"eventType\": {{ JSON.stringify($json.logEntry?.eventType) }},\n  \"processedAt\": {{ JSON.stringify($json.logEntry?.processedAt) }}\n}",
+        "options": {
+          "responseCode": 202,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "ack-response",
+      "name": "Acknowledge Event",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1360, 500]
+    }
+  ],
+  "connections": {
+    "Event Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Event": {
+      "main": [
+        [
+          {
+            "node": "Route by Event Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Event Type": {
+      "main": [
+        [
+          {
+            "node": "Log Workflow Completed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Workflow Failed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Chat Completed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log RAG Completed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Unknown Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Workflow Completed": {
+      "main": [
+        [
+          {
+            "node": "Merge Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Workflow Failed": {
+      "main": [
+        [
+          {
+            "node": "Merge Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Chat Completed": {
+      "main": [
+        [
+          {
+            "node": "Merge Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log RAG Completed": {
+      "main": [
+        [
+          {
+            "node": "Merge Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Unknown Event": {
+      "main": [
+        [
+          {
+            "node": "Merge Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Logs": {
+      "main": [
+        [
+          {
+            "node": "Acknowledge Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "buffer-zone",
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z"
+    },
+    {
+      "name": "events",
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z"
+    },
+    {
+      "name": "webhook",
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

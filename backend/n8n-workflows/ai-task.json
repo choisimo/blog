@@ -1,0 +1,286 @@
+{
+  "name": "AI Task Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai/task",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "ai-task-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "mode",
+              "name": "mode",
+              "type": "string",
+              "value": "={{ $json.body.mode || 'custom' }}"
+            },
+            {
+              "id": "paragraph",
+              "name": "paragraph",
+              "type": "string",
+              "value": "={{ $json.body.payload?.paragraph || $json.body.payload?.content || '' }}"
+            },
+            {
+              "id": "postTitle",
+              "name": "postTitle",
+              "type": "string",
+              "value": "={{ $json.body.payload?.postTitle || '' }}"
+            },
+            {
+              "id": "persona",
+              "name": "persona",
+              "type": "string",
+              "value": "={{ $json.body.payload?.persona || 'default' }}"
+            },
+            {
+              "id": "temperature",
+              "name": "temperature",
+              "type": "number",
+              "value": "={{ $json.body.temperature || 0.2 }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-params",
+      "name": "Set Parameters",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.mode }}", "rightValue": "sketch", "operator": { "type": "string", "operation": "equals" }}],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "sketch"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.mode }}", "rightValue": "prism", "operator": { "type": "string", "operation": "equals" }}],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "prism"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.mode }}", "rightValue": "chain", "operator": { "type": "string", "operation": "equals" }}],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "chain"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.mode }}", "rightValue": "summary", "operator": { "type": "string", "operation": "equals" }}],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "summary"
+            }
+          ],
+          "fallbackOutput": { "renameOutput": true, "outputKey": "custom" }
+        },
+        "options": {}
+      },
+      "id": "switch",
+      "name": "Switch by Mode",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "prompt",
+              "name": "prompt",
+              "type": "string",
+              "value": "You are a helpful writing companion. Return STRICT JSON only matching the schema.\n{\"mood\":\"string\",\"bullets\":[\"string\", \"string\", \"...\"]}\n\nPersona: {{ $json.persona }}\nPost: {{ $json.postTitle.slice(0, 120) }}\nParagraph:\n{{ $json.paragraph.slice(0, 1600) }}\n\nTask: Capture the emotional sketch. Select a concise mood (e.g., curious, excited, skeptical) and 3-6 short bullets in the original language of the text."
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "sketch-prompt",
+      "name": "Sketch Prompt",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [900, 100]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "prompt",
+              "name": "prompt",
+              "type": "string",
+              "value": "Return STRICT JSON only for idea facets.\n{\"facets\":[{\"title\":\"string\",\"points\":[\"string\",\"string\"]}]}\n\nPost: {{ $json.postTitle.slice(0, 120) }}\nParagraph:\n{{ $json.paragraph.slice(0, 1600) }}\n\nTask: Provide 2-3 facets (titles) with 2-4 concise points each, in the original language."
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "prism-prompt",
+      "name": "Prism Prompt",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [900, 240]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "prompt",
+              "name": "prompt",
+              "type": "string",
+              "value": "Return STRICT JSON only for tail questions.\n{\"questions\":[{\"q\":\"string\",\"why\":\"string\"}]}\n\nPost: {{ $json.postTitle.slice(0, 120) }}\nParagraph:\n{{ $json.paragraph.slice(0, 1600) }}\n\nTask: Generate 3-5 short follow-up questions and a brief why for each, in the original language."
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "chain-prompt",
+      "name": "Chain Prompt",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [900, 380]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "prompt",
+              "name": "prompt",
+              "type": "string",
+              "value": "Summarize the following content in Korean, concise but faithful to key points.\n\n{{ $json.paragraph }}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "summary-prompt",
+      "name": "Summary Prompt",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [900, 520]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "modelId": {
+          "__rl": true,
+          "value": "gemini-1.5-flash",
+          "mode": "id"
+        },
+        "messages": {
+          "values": [
+            { "content": "={{ $json.prompt }}" }
+          ]
+        },
+        "options": {
+          "temperature": "={{ $json.temperature }}"
+        }
+      },
+      "id": "gemini-call",
+      "name": "Gemini Call",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [1140, 300],
+      "credentials": {
+        "googleGeminiApi": {
+          "id": "gemini-credentials",
+          "name": "Google Gemini API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.message?.content || $input.first().json.text || '';\nconst mode = $('Set Parameters').first().json.mode;\n\n// Try to parse JSON from response\nlet data = null;\ntry {\n  data = JSON.parse(text);\n} catch {\n  // Try code fence\n  const fence = text.match(/```(?:json)?\\s*([\\s\\S]*?)```/i);\n  if (fence?.[1]) {\n    try { data = JSON.parse(fence[1].trim()); } catch {}\n  }\n  // Try substring\n  if (!data) {\n    const start = text.indexOf('{');\n    const end = text.lastIndexOf('}');\n    if (start >= 0 && end > start) {\n      try { data = JSON.parse(text.slice(start, end + 1)); } catch {}\n    }\n  }\n}\n\n// Fallback if parsing failed\nif (!data) {\n  if (mode === 'summary') {\n    data = { summary: text };\n  } else if (mode === 'sketch') {\n    data = { mood: 'curious', bullets: ['Unable to parse response'] };\n  } else if (mode === 'prism') {\n    data = { facets: [{ title: '요약', points: [text.slice(0, 200)] }] };\n  } else if (mode === 'chain') {\n    data = { questions: [{ q: '추가 질문 생성 실패', why: '' }] };\n  } else {\n    data = { text };\n  }\n}\n\nreturn { json: { data, mode, source: 'n8n' } };"
+      },
+      "id": "parse-response",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1360, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1580, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Set Parameters", "type": "main", "index": 0 }]]
+    },
+    "Set Parameters": {
+      "main": [[{ "node": "Switch by Mode", "type": "main", "index": 0 }]]
+    },
+    "Switch by Mode": {
+      "main": [
+        [{ "node": "Sketch Prompt", "type": "main", "index": 0 }],
+        [{ "node": "Prism Prompt", "type": "main", "index": 0 }],
+        [{ "node": "Chain Prompt", "type": "main", "index": 0 }],
+        [{ "node": "Summary Prompt", "type": "main", "index": 0 }],
+        [{ "node": "Gemini Call", "type": "main", "index": 0 }]
+      ]
+    },
+    "Sketch Prompt": {
+      "main": [[{ "node": "Gemini Call", "type": "main", "index": 0 }]]
+    },
+    "Prism Prompt": {
+      "main": [[{ "node": "Gemini Call", "type": "main", "index": 0 }]]
+    },
+    "Chain Prompt": {
+      "main": [[{ "node": "Gemini Call", "type": "main", "index": 0 }]]
+    },
+    "Summary Prompt": {
+      "main": [[{ "node": "Gemini Call", "type": "main", "index": 0 }]]
+    },
+    "Gemini Call": {
+      "main": [[{ "node": "Parse Response", "type": "main", "index": 0 }]]
+    },
+    "Parse Response": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "AI", "id": "ai-tag" }]
+}

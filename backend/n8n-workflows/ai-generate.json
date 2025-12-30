@@ -1,0 +1,195 @@
+{
+  "name": "AI Generate Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai/generate",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "ai-generate-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "prompt",
+              "name": "prompt",
+              "type": "string",
+              "value": "={{ $json.body.prompt }}"
+            },
+            {
+              "id": "systemPrompt",
+              "name": "systemPrompt",
+              "type": "string",
+              "value": "={{ $json.body.systemPrompt || '' }}"
+            },
+            {
+              "id": "model",
+              "name": "model",
+              "type": "string",
+              "value": "={{ $json.body.model || 'gemini-1.5-flash' }}"
+            },
+            {
+              "id": "temperature",
+              "name": "temperature",
+              "type": "number",
+              "value": "={{ $json.body.temperature || 0.2 }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-params",
+      "name": "Set Parameters",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "messages",
+              "name": "messages",
+              "type": "array",
+              "value": "={{ $json.systemPrompt ? [{ role: 'system', content: $json.systemPrompt }, { role: 'user', content: $json.prompt }] : [{ role: 'user', content: $json.prompt }] }}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "build-messages",
+      "name": "Build Messages",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "gemini-check",
+              "leftValue": "={{ $json.model }}",
+              "rightValue": "gemini",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "router",
+      "name": "Route by Model",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "modelId": {
+          "__rl": true,
+          "value": "={{ $json.model }}",
+          "mode": "id"
+        },
+        "messages": {
+          "values": "={{ $json.messages }}"
+        },
+        "options": {
+          "temperature": "={{ $json.temperature }}"
+        }
+      },
+      "id": "gemini",
+      "name": "Gemini",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [1120, 200],
+      "credentials": {
+        "googleGeminiApi": {
+          "id": "gemini-credentials",
+          "name": "Google Gemini API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "={{ $json.model }}",
+        "messages": {
+          "values": "={{ $json.messages }}"
+        },
+        "options": {
+          "temperature": "={{ $json.temperature }}"
+        }
+      },
+      "id": "openai",
+      "name": "OpenAI",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.6,
+      "position": [1120, 400],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-credentials",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ text: $json.message?.content || $json.text || $json.output || '', model: $('Set Parameters').item.json.model, provider: 'n8n' }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1340, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Set Parameters", "type": "main", "index": 0 }]]
+    },
+    "Set Parameters": {
+      "main": [[{ "node": "Build Messages", "type": "main", "index": 0 }]]
+    },
+    "Build Messages": {
+      "main": [[{ "node": "Route by Model", "type": "main", "index": 0 }]]
+    },
+    "Route by Model": {
+      "main": [
+        [{ "node": "Gemini", "type": "main", "index": 0 }],
+        [{ "node": "OpenAI", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gemini": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    },
+    "OpenAI": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "AI", "id": "ai-tag" }]
+}
