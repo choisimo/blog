@@ -439,11 +439,11 @@ services:
       # Execution
       - EXECUTIONS_TIMEOUT_MAX=7200
       - NODE_OPTIONS=--max-old-space-size=4096
-      # Webhook & Editor URL
-      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-https://blog-bw.nodove.com}
+      # Webhook & Editor URL (all using blog-bw.nodove.com)
+      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-https://blog-bw.nodove.com/}
       - N8N_HOST=${N8N_HOST:-blog-bw.nodove.com}
       - N8N_PROTOCOL=https
-      - N8N_EDITOR_BASE_URL=https://blog-bw.nodove.com
+      - N8N_EDITOR_BASE_URL=${N8N_EDITOR_BASE_URL:-https://blog-bw.nodove.com}
       # AI Provider API Keys (for n8n AI nodes)
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}

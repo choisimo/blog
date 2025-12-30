@@ -250,13 +250,14 @@ jobs:
           ADMIN_EMAIL=${{ vars.ADMIN_EMAIL || 'admin@nodove.com' }}
           ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
 
-          # n8n
+          # n8n (all URLs use blog-bw.nodove.com)
           N8N_USER=${{ vars.N8N_USER || 'admin' }}
           N8N_PASS=${{ secrets.N8N_PASS }}
           N8N_ENCRYPTION_KEY=${{ secrets.N8N_ENCRYPTION_KEY }}
           N8N_API_KEY=${{ secrets.N8N_API_KEY }}
-          N8N_WEBHOOK_URL=${{ vars.N8N_WEBHOOK_URL || 'https://workflow.nodove.com/' }}
-          N8N_HOST=${{ vars.N8N_HOST || 'workflow.nodove.com' }}
+          N8N_WEBHOOK_URL=${{ vars.N8N_WEBHOOK_URL || 'https://blog-bw.nodove.com/' }}
+          N8N_HOST=${{ vars.N8N_HOST || 'blog-bw.nodove.com' }}
+          N8N_EDITOR_BASE_URL=${{ vars.N8N_EDITOR_BASE_URL || 'https://blog-bw.nodove.com' }}
           N8N_WORKER_REPLICAS=${{ vars.N8N_WORKER_REPLICAS || '2' }}
 
           # Cloudflare
@@ -491,17 +492,19 @@ jobs:
             sleep 3
           done
 
+          N8N_URL="${{ vars.N8N_WEBHOOK_URL || 'https://blog-bw.nodove.com/' }}"
           echo ""
-          echo "Checking n8n at ${{ vars.N8N_WEBHOOK_URL }}healthz ..."
-          curl -sf "${{ vars.N8N_WEBHOOK_URL }}healthz" && echo "n8n Webhook: OK" || echo "n8n Webhook: FAILED (may require auth)"
+          echo "Checking n8n at ${N8N_URL}healthz ..."
+          curl -sf "${N8N_URL}healthz" && echo "n8n Webhook: OK" || echo "n8n Webhook: FAILED (may require auth)"
 
       - name: Notify deployment result
         if: always()
         run: |
+          N8N_URL="${{ vars.N8N_WEBHOOK_URL || 'https://blog-bw.nodove.com/' }}"
           if [ "${{ job.status }}" == "success" ]; then
             echo "✅ Deployment successful!"
             echo "  - API: ${{ vars.API_BASE_URL }}"
-            echo "  - n8n: ${{ vars.N8N_WEBHOOK_URL }}"
+            echo "  - n8n: ${N8N_URL}"
             echo "  - Image: ghcr.io/${{ github.repository_owner }}/blog-api:${{ env.IMAGE_TAG }}"
           else
             echo "❌ Deployment failed"
