@@ -378,6 +378,17 @@ jobs:
           # Login to GHCR
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
+          # Clean up any orphaned containers with conflicting names
+          echo ""
+          echo "=== Cleaning Up Old Containers ==="
+          # Stop and remove any containers with blog- prefix that might conflict
+          docker ps -a --filter "name=blog-" --format "{{.Names}}" | while read name; do
+            if [ -n "$name" ]; then
+              echo "Removing orphaned container: $name"
+              docker rm -f "$name" 2>/dev/null || true
+            fi
+          done
+
           # Pull latest images
           echo ""
           echo "=== Pulling Images ==="
@@ -386,7 +397,7 @@ jobs:
           # Start/Update services
           echo ""
           echo "=== Starting Services ==="
-          $DC -f docker-compose.yml up -d --remove-orphans
+          $DC -f docker-compose.yml up -d --remove-orphans --force-recreate
 
           # Wait for critical services
           echo ""
