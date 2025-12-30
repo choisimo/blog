@@ -2,16 +2,22 @@
  * Unified AI Service
  *
  * Provider-agnostic AI interface that supports multiple backends:
- *   - LiteLLM (OpenAI-compatible gateway) - Recommended
- *   - VAS (GitHub Copilot) - Legacy
- *   - Gemini (Direct API) - Legacy
+ *   - n8n (Webhook-based workflows) - Recommended for easy management
+ *   - LiteLLM (OpenAI-compatible gateway) - Legacy
+ *   - Gemini (Direct API) - Legacy fallback
  *
  * Architecture:
- *   Route -> AIService -> Provider Client -> External API
+ *   Route -> AIService -> n8n Webhook -> AI Provider (via n8n nodes)
  *
  * Configuration priority:
- *   1. AI_PROVIDER env var ('litellm', 'vas', 'gemini')
- *   2. Default: 'litellm' if LITELLM_BASE_URL is set, otherwise 'vas'
+ *   1. AI_PROVIDER env var ('n8n', 'litellm', 'gemini')
+ *   2. Default: 'n8n' if N8N_WEBHOOK_URL is set, otherwise 'gemini'
+ *
+ * Benefits of n8n:
+ *   - Visual workflow management (no code changes for AI routing)
+ *   - Easy provider switching via n8n UI
+ *   - Built-in retry, error handling, and logging
+ *   - Centralized prompt management
  *
  * Usage:
  *   import { aiService } from './lib/ai-service.js';
@@ -30,10 +36,18 @@
  */
 
 import { config } from '../config.js';
-import { getLiteLLMClient, tryParseJson as litellmTryParse } from './litellm-client.js';
-import { getVASClient, tryParseJson as vasTryParse } from './ai-serve.js';
+import { getN8NClient, tryParseJson as n8nTryParse } from './n8n-client.js';
 import { generateContent as geminiGenerate, tryParseJson as geminiTryParse } from './gemini.js';
 import { logAIUsage } from './ai-usage-logger.js';
+
+// Legacy imports (kept for backward compatibility)
+let getLiteLLMClient, litellmTryParse, getVASClient, vasTryParse;
+try {
+  ({ getLiteLLMClient, tryParseJson: litellmTryParse } = await import('./litellm-client.js'));
+} catch { getLiteLLMClient = null; litellmTryParse = null; }
+try {
+  ({ getVASClient, tryParseJson: vasTryParse } = await import('./ai-serve.js'));
+} catch { getVASClient = null; vasTryParse = null; }
 
 // ============================================================================
 // Configuration
@@ -46,13 +60,18 @@ function getActiveProvider() {
   const explicit = process.env.AI_PROVIDER?.toLowerCase();
   
   if (explicit) {
-    if (['litellm', 'vas', 'gemini', 'openai'].includes(explicit)) {
-      return explicit === 'openai' ? 'litellm' : explicit;
+    if (['n8n', 'litellm', 'vas', 'gemini', 'openai'].includes(explicit)) {
+      if (explicit === 'openai') return 'litellm';
+      return explicit;
     }
     console.warn(`[AIService] Unknown AI_PROVIDER "${explicit}", using default`);
   }
   
-  // Auto-detect based on available configuration
+  // Auto-detect based on available configuration (n8n first)
+  if (process.env.N8N_WEBHOOK_URL || process.env.N8N_BASE_URL) {
+    return 'n8n';
+  }
+  
   if (config.ai?.gateway?.baseUrl || process.env.LITELLM_BASE_URL) {
     return 'litellm';
   }
@@ -65,7 +84,7 @@ function getActiveProvider() {
     return 'gemini';
   }
   
-  return 'litellm'; // Default
+  return 'n8n'; // Default to n8n
 }
 
 // ============================================================================
@@ -115,11 +134,14 @@ export class AIService {
     if (this._client) return this._client;
     
     switch (this.provider) {
+      case 'n8n':
+        this._client = getN8NClient();
+        break;
       case 'litellm':
-        this._client = getLiteLLMClient();
+        this._client = getLiteLLMClient?.();
         break;
       case 'vas':
-        this._client = getVASClient();
+        this._client = getVASClient?.();
         break;
       case 'gemini':
         // Gemini uses direct function, no client object
@@ -153,6 +175,17 @@ export class AIService {
       let result;
 
       switch (this.provider) {
+        case 'n8n': {
+          const client = this._getClient();
+          result = await client.generate(prompt, {
+            temperature: options.temperature,
+            model: options.model,
+            systemPrompt: options.systemPrompt,
+            timeout: options.timeout,
+          });
+          break;
+        }
+
         case 'litellm': {
           const client = this._getClient();
           result = await client.generate(prompt, {
@@ -254,6 +287,48 @@ export class AIService {
       let result;
 
       switch (this.provider) {
+        case 'n8n': {
+          const client = this._getClient();
+          try {
+            const response = await client.chat(messages, {
+              temperature: options.temperature,
+              model: options.model,
+              timeout: options.timeout,
+            });
+            result = {
+              content: response.content,
+              model: response.model,
+              provider: 'n8n',
+              usage: response.usage,
+            };
+          } catch (n8nError) {
+            // Fallback to Gemini if n8n fails and Gemini is configured
+            if (config.gemini?.apiKey) {
+              logger.warn(
+                { operation: 'chat', requestId },
+                'n8n failed, falling back to Gemini',
+                { error: n8nError.message }
+              );
+              const formattedMessages = messages.map(m => {
+                if (m.role === 'system') return `System: ${m.content}`;
+                if (m.role === 'assistant') return `Assistant: ${m.content}`;
+                return `User: ${m.content}`;
+              }).join('\n\n');
+              const response = await geminiGenerate(formattedMessages, {
+                temperature: options.temperature ?? 0.2,
+              });
+              result = {
+                content: response,
+                model: config.gemini?.model || 'gemini-1.5-flash',
+                provider: 'gemini-fallback',
+              };
+            } else {
+              throw n8nError;
+            }
+          }
+          break;
+        }
+
         case 'litellm': {
           const client = this._getClient();
           try {
@@ -388,6 +463,15 @@ export class AIService {
     const mimeType = options.mimeType || 'image/jpeg';
 
     switch (this.provider) {
+      case 'n8n': {
+        const client = this._getClient();
+        return client.vision(imageData, prompt, {
+          mimeType,
+          model: options.model || 'gpt-4o',
+          timeout: options.timeout,
+        });
+      }
+
       case 'litellm': {
         const client = this._getClient();
         // Construct image URL
@@ -429,8 +513,15 @@ export class AIService {
    * @yields {string} Text chunks
    */
   async *stream(prompt, options = {}) {
+    // n8n and other providers simulate streaming by chunking the response
+    if (this.provider === 'n8n') {
+      const client = this._getClient();
+      yield* client.stream(prompt, options);
+      return;
+    }
+
     if (this.provider !== 'litellm') {
-      // For non-LiteLLM providers, generate full text and chunk it
+      // For non-LiteLLM/n8n providers, generate full text and chunk it
       const text = await this.generate(prompt, options);
       const chunkSize = 80;
       for (let i = 0; i < text.length; i += chunkSize) {
@@ -463,6 +554,11 @@ export class AIService {
    * @returns {Promise<number[][]>}
    */
   async embeddings(input, options = {}) {
+    if (this.provider === 'n8n') {
+      const client = this._getClient();
+      return client.embeddings(input, options);
+    }
+
     if (this.provider !== 'litellm') {
       throw new Error(`Embeddings not supported for provider: ${this.provider}`);
     }
@@ -643,10 +739,12 @@ export class AIService {
   tryParseJson(text) {
     // Use provider-specific parser or generic one
     switch (this.provider) {
+      case 'n8n':
+        return n8nTryParse(text);
       case 'litellm':
-        return litellmTryParse(text);
+        return litellmTryParse?.(text) || this._genericTryParseJson(text);
       case 'vas':
-        return vasTryParse(text);
+        return vasTryParse?.(text) || this._genericTryParseJson(text);
       case 'gemini':
         return geminiTryParse(text);
       default:
@@ -692,6 +790,8 @@ export class AIService {
    */
   _getDefaultModel() {
     switch (this.provider) {
+      case 'n8n':
+        return process.env.AI_DEFAULT_MODEL || 'gemini-1.5-flash';
       case 'litellm':
         return config.ai?.gateway?.defaultModel || 'gpt-4o-mini';
       case 'vas':
@@ -708,14 +808,19 @@ export class AIService {
    */
   async health(force = false) {
     switch (this.provider) {
-      case 'litellm': {
+      case 'n8n': {
         const client = this._getClient();
         return client.health(force);
       }
 
+      case 'litellm': {
+        const client = this._getClient();
+        return client?.health?.(force) || { ok: false, error: 'LiteLLM client not available' };
+      }
+
       case 'vas': {
         const client = this._getClient();
-        return client.health(force);
+        return client?.health?.(force) || { ok: false, error: 'VAS client not available' };
       }
 
       case 'gemini': {
@@ -739,6 +844,10 @@ export class AIService {
     return {
       provider: this.provider,
       config: {
+        n8n: {
+          baseUrl: process.env.N8N_WEBHOOK_URL || process.env.N8N_BASE_URL,
+          model: process.env.AI_DEFAULT_MODEL || 'gemini-1.5-flash',
+        },
         litellm: {
           baseUrl: config.ai?.gateway?.baseUrl,
           model: config.ai?.gateway?.defaultModel,

@@ -1,0 +1,259 @@
+{
+  "name": "AI Vision Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai/vision",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "ai-vision-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "image",
+              "name": "image",
+              "type": "string",
+              "value": "={{ $json.body.image }}"
+            },
+            {
+              "id": "prompt",
+              "name": "prompt",
+              "type": "string",
+              "value": "={{ $json.body.prompt || 'Describe this image in detail.' }}"
+            },
+            {
+              "id": "mimeType",
+              "name": "mimeType",
+              "type": "string",
+              "value": "={{ $json.body.mimeType || 'image/jpeg' }}"
+            },
+            {
+              "id": "model",
+              "name": "model",
+              "type": "string",
+              "value": "={{ $json.body.model || 'gpt-4o' }}"
+            },
+            {
+              "id": "requestId",
+              "name": "requestId",
+              "type": "string",
+              "value": "={{ $json.body._meta?.requestId || 'n8n-vision-' + Date.now() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-params",
+      "name": "Set Parameters",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "imageUrl",
+              "name": "imageUrl",
+              "type": "string",
+              "value": "={{ $json.image.startsWith('data:') ? $json.image : ($json.image.startsWith('http') ? $json.image : 'data:' + $json.mimeType + ';base64,' + $json.image) }}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "prepare-image",
+      "name": "Prepare Image URL",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "operation": "message",
+        "model": "={{ $json.model }}",
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.prompt }}",
+              "role": "user"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 4096
+        }
+      },
+      "id": "openai-vision",
+      "name": "OpenAI Vision",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.6,
+      "position": [900, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-credentials",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "description",
+              "name": "description",
+              "type": "string",
+              "value": "={{ $json.message?.content || $json.text || $json.output || '' }}"
+            },
+            {
+              "id": "model",
+              "name": "model",
+              "type": "string",
+              "value": "={{ $('Set Parameters').item.json.model }}"
+            },
+            {
+              "id": "provider",
+              "name": "provider",
+              "type": "string",
+              "value": "openai"
+            },
+            {
+              "id": "requestId",
+              "name": "requestId",
+              "type": "string",
+              "value": "={{ $('Set Parameters').item.json.requestId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-response",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ description: $json.description, text: $json.description, content: $json.description, model: $json.model, provider: $json.provider, requestId: $json.requestId }) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ error: $json.error?.message || 'Vision analysis failed', code: 'VISION_ERROR' }) }}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "id": "error-response",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1340, 500]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set Parameters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Parameters": {
+      "main": [
+        [
+          {
+            "node": "Prepare Image URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Image URL": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Vision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Vision": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "AI",
+      "id": "ai-tag"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2024-12-30T00:00:00.000Z",
+  "versionId": "1"
+}

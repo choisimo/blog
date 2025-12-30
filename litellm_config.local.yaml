@@ -24,6 +24,26 @@
 model_list:
 
   # ---------------------------------------------------------------------------
+  # Aidove Models (n8n Webhook RAG Pipeline)
+  # ---------------------------------------------------------------------------
+  # Routes through Aidove proxy for RAG and custom AI workflows
+  - model_name: aidove
+    litellm_params:
+      model: openai/aidove
+      api_base: http://localhost:5080/aidove
+      api_key: none
+    model_info:
+      description: "Aidove n8n Webhook - RAG/Agent model (local)"
+      
+  - model_name: aidove-rag
+    litellm_params:
+      model: openai/aidove-rag
+      api_base: http://localhost:5080/aidove
+      api_key: none
+    model_info:
+      description: "Aidove n8n Webhook - RAG-optimized (local)"
+
+  # ---------------------------------------------------------------------------
   # Google Gemini (Recommended for local dev - free tier available)
   # ---------------------------------------------------------------------------
   - model_name: gemini-1.5-flash

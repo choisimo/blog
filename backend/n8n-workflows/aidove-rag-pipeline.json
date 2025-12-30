@@ -1,0 +1,419 @@
+{
+  "name": "Aidove RAG Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "aidove-rag",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300],
+      "webhookId": "aidove-rag-webhook"
+    },
+    {
+      "parameters": {
+        "content": "## Aidove RAG Pipeline\n\nRetrieval-Augmented Generation workflow with vector search.\n\n**Webhook URL:** `https://workflow.nodove.com/webhook/aidove-rag`\n\n**Features:**\n- Vector similarity search via ChromaDB/Pinecone\n- Blog post context retrieval\n- Conversation memory with sessionId\n- Source citation in responses\n\n**Request Format:**\n```json\n{\n  \"chatInput\": \"user question\",\n  \"sessionId\": \"user-session-id\",\n  \"metadata\": {\n    \"collection\": \"blog-posts\",\n    \"topK\": 5\n  }\n}\n```",
+        "height": 420,
+        "width": 360
+      },
+      "id": "sticky-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [180, -120]
+    },
+    {
+      "parameters": {
+        "operation": "extractText",
+        "text": "={{ $json.chatInput }}",
+        "options": {}
+      },
+      "id": "extract-query",
+      "name": "Extract Query",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [440, 300],
+      "parameters_override": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "query",
+              "name": "query",
+              "value": "={{ $json.chatInput }}",
+              "type": "string"
+            },
+            {
+              "id": "sessionId",
+              "name": "sessionId",
+              "value": "={{ $json.sessionId || $json.metadata?.requestId || 'default' }}",
+              "type": "string"
+            },
+            {
+              "id": "collection",
+              "name": "collection",
+              "value": "={{ $json.metadata?.collection || 'blog-posts-all-MiniLM-L6-v2' }}",
+              "type": "string"
+            },
+            {
+              "id": "topK",
+              "name": "topK",
+              "value": "={{ $json.metadata?.topK || 5 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CHROMA_URL || 'http://chromadb:8000' }}/api/v1/collections/{{ $json.collection }}/query",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query_texts\": [\"{{ $json.query }}\"],\n  \"n_results\": {{ $json.topK }},\n  \"include\": [\"documents\", \"metadatas\", \"distances\"]\n}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "vector-search",
+      "name": "Vector Search (ChromaDB)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "context",
+              "name": "context",
+              "value": "={{ $json.documents?.[0]?.map((doc, i) => `[${i+1}] ${doc}`).join('\\n\\n') || 'No relevant documents found.' }}",
+              "type": "string"
+            },
+            {
+              "id": "sources",
+              "name": "sources",
+              "value": "={{ $json.metadatas?.[0]?.map(m => m.source || m.title || 'Unknown').filter((v, i, a) => a.indexOf(v) === i) || [] }}",
+              "type": "string"
+            },
+            {
+              "id": "query",
+              "name": "query",
+              "value": "={{ $('Extract Query').item.json.query }}",
+              "type": "string"
+            },
+            {
+              "id": "sessionId",
+              "name": "sessionId",
+              "value": "={{ $('Extract Query').item.json.sessionId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-context",
+      "name": "Format Context",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "inputText": "={{ $json.query }}",
+        "options": {
+          "systemMessage": "You are Aidove, a knowledgeable AI assistant for the Nodove blog. Answer questions using the provided context from blog posts.\n\n## Instructions:\n1. Use the provided context to answer the user's question accurately\n2. If the context doesn't contain relevant information, say so honestly\n3. Cite sources when referencing specific blog posts\n4. Respond in the same language as the user's question\n5. Be concise but comprehensive\n\n## Context from Blog Posts:\n{{ $json.context }}\n\n## Sources:\n{{ $json.sources.join(', ') }}",
+          "maxTokens": 2048,
+          "temperature": 0.3
+        }
+      },
+      "id": "openai-rag",
+      "name": "OpenAI RAG Chat",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [1100, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-credentials",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.sessionId }}",
+        "contextWindowLength": 10
+      },
+      "id": "memory-buffer",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.2,
+      "position": [1100, 500]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "ai-agent",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1320, 300]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "output",
+              "name": "output",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "sources",
+              "name": "sources",
+              "value": "={{ $('Format Context').item.json.sources }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "prepare-response",
+      "name": "Prepare Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1540, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"output\": $json.output, \"sources\": $json.sources, \"rag\": true } }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "webhook-response",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1760, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"output\": \"I couldn't find relevant information in the blog posts. Could you rephrase your question?\", \"error\": false, \"rag\": true, \"fallback\": true } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "fallback-response",
+      "name": "Fallback Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1100, 600]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-context",
+              "leftValue": "={{ $json.context }}",
+              "rightValue": "No relevant documents found.",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-context",
+      "name": "Has Context?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [880, 500]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Query": {
+      "main": [
+        [
+          {
+            "node": "Vector Search (ChromaDB)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vector Search (ChromaDB)": {
+      "main": [
+        [
+          {
+            "node": "Format Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Context": {
+      "main": [
+        [
+          {
+            "node": "Has Context?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "OpenAI RAG Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Context?": {
+      "main": [
+        [
+          {
+            "node": "OpenAI RAG Chat",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallback Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI RAG Chat": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memory Buffer Window": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Prepare Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "aidove",
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z"
+    },
+    {
+      "name": "rag",
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z"
+    },
+    {
+      "name": "vector-search",
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

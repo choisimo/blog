@@ -1,0 +1,520 @@
+name: Deploy Blog + n8n Workflow Stack
+
+# =============================================================================
+# Blog Backend + n8n Workflow CI/CD Pipeline
+# =============================================================================
+#
+# Architecture:
+#   GitHub Actions → Build Images → Push to GHCR → SSH Deploy → docker compose up
+#
+# Services Deployed:
+#   - Blog API (ghcr.io/choisimo/blog-api)
+#   - AI Engine (ghcr.io/choisimo/ai-engine)
+#   - AI Admin (ghcr.io/choisimo/ai-admin)
+#   - Terminal Server (ghcr.io/choisimo/blog-terminal)
+#   - n8n + Workers
+#   - LiteLLM, PostgreSQL, Redis, MongoDB, Qdrant, ChromaDB, etc.
+#
+# Deployment Directory: /opt/blog-stack
+#
+# Required Secrets: See README-CICD.md
+# =============================================================================
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'shared/**'
+      - '.github/workflows/deploy-blog-workflow.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+      skip_build:
+        description: 'Skip build, only deploy (for config changes)'
+        required: false
+        default: false
+        type: boolean
+      image_tag:
+        description: 'Custom image tag (default: git SHA)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: deploy-blog-workflow-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  DEPLOY_DIR: /opt/blog-stack
+
+jobs:
+  # ===========================================================================
+  # Job 1: Build and Push Docker Images
+  # ===========================================================================
+  build-and-push:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.skip_build != 'true' }}
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+      sha_short: ${{ steps.vars.outputs.sha_short }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up variables
+        id: vars
+        run: |
+          SHA_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "sha_short=${SHA_SHORT}" >> $GITHUB_OUTPUT
+          echo "SHA Short: ${SHA_SHORT}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker meta - API
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/blog-api
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=${{ github.event.inputs.image_tag }},enable=${{ github.event.inputs.image_tag != '' }}
+
+      # Build Blog API
+      - name: Build and push Blog API
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Build Terminal Server
+      - name: Build and push Terminal Server
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/terminal-server
+          file: ./backend/terminal-server/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/blog-terminal:${{ steps.vars.outputs.sha_short }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/blog-terminal:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Build AI Engine (if exists)
+      - name: Check AI Engine Dockerfile
+        id: check_ai_engine
+        run: |
+          if [ -f "backend/opencode-serve/ai-serve.Dockerfile" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push AI Engine
+        if: steps.check_ai_engine.outputs.exists == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/opencode-serve
+          file: ./backend/opencode-serve/ai-serve.Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/ai-engine:${{ steps.vars.outputs.sha_short }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/ai-engine:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Build AI Admin (if exists)
+      - name: Check AI Admin Dockerfile
+        id: check_ai_admin
+        run: |
+          if [ -f "backend/opencode-serve/go-proxy-admin/Dockerfile" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push AI Admin
+        if: steps.check_ai_admin.outputs.exists == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/opencode-serve/go-proxy-admin
+          file: ./backend/opencode-serve/go-proxy-admin/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/ai-admin:${{ steps.vars.outputs.sha_short }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/ai-admin:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ===========================================================================
+  # Job 2: Deploy to Server
+  # ===========================================================================
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    if: always() && (needs.build-and-push.result == 'success' || github.event.inputs.skip_build == 'true')
+
+    env:
+      SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+      SSH_USER: ${{ secrets.PROD_SSH_USER }}
+      SSH_PORT: ${{ secrets.PROD_SSH_PORT || '22' }}
+      IMAGE_TAG: ${{ needs.build-and-push.outputs.sha_short || github.event.inputs.image_tag || 'latest' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${{ env.SSH_PORT }}" -H "${{ env.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Generate .env file
+        run: |
+          cat > /tmp/blog-stack.env << 'ENVEOF'
+          # =============================================================================
+          # Blog + n8n Workflow Stack Environment Variables
+          # Generated by GitHub Actions at ${{ github.event.head_commit.timestamp }}
+          # Commit: ${{ github.sha }}
+          # =============================================================================
+
+          # Application
+          APP_ENV=${{ vars.APP_ENV || 'production' }}
+          IMAGE_TAG=${{ env.IMAGE_TAG }}
+          GITHUB_REPOSITORY_OWNER=${{ github.repository_owner }}
+
+          # URLs
+          SITE_BASE_URL=${{ vars.SITE_BASE_URL || 'https://noblog.nodove.com' }}
+          API_BASE_URL=${{ vars.API_BASE_URL || 'https://api.nodove.com' }}
+
+          # PostgreSQL
+          POSTGRES_DB=${{ vars.POSTGRES_DB || 'blog' }}
+          POSTGRES_USER=${{ vars.POSTGRES_USER || 'bloguser' }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+
+          # Redis
+          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+
+          # MongoDB
+          MONGO_USER=${{ vars.MONGO_USER || 'mongouser' }}
+          MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD }}
+          MONGO_DB=${{ vars.MONGO_DB || 'blog' }}
+
+          # Qdrant
+          QDRANT_API_KEY=${{ secrets.QDRANT_API_KEY }}
+
+          # AI Configuration
+          AI_DEFAULT_MODEL=${{ vars.AI_DEFAULT_MODEL || 'gpt-4.1' }}
+          LITELLM_MASTER_KEY=${{ secrets.LITELLM_MASTER_KEY }}
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
+          ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+          VAS_API_KEY=
+
+          # AI Admin
+          ADMIN_JWT_SECRET=${{ secrets.ADMIN_JWT_SECRET }}
+          ADMIN_EMAIL=${{ vars.ADMIN_EMAIL || 'admin@nodove.com' }}
+          ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+
+          # n8n
+          N8N_USER=${{ vars.N8N_USER || 'admin' }}
+          N8N_PASS=${{ secrets.N8N_PASS }}
+          N8N_ENCRYPTION_KEY=${{ secrets.N8N_ENCRYPTION_KEY }}
+          N8N_API_KEY=${{ secrets.N8N_API_KEY }}
+          N8N_WEBHOOK_URL=${{ vars.N8N_WEBHOOK_URL || 'https://workflow.nodove.com/' }}
+          N8N_HOST=${{ vars.N8N_HOST || 'workflow.nodove.com' }}
+          N8N_WORKER_REPLICAS=${{ vars.N8N_WORKER_REPLICAS || '2' }}
+
+          # Cloudflare
+          CF_ACCOUNT_ID=${{ vars.CF_ACCOUNT_ID }}
+          CF_API_TOKEN=${{ secrets.CF_API_TOKEN }}
+          D1_DATABASE_ID=${{ vars.D1_DATABASE_ID }}
+          R2_BUCKET_NAME=${{ vars.R2_BUCKET_NAME || 'blog' }}
+          R2_ASSETS_BASE_URL=${{ vars.R2_ASSETS_BASE_URL || 'https://assets-b.nodove.com' }}
+
+          # GitHub
+          GITHUB_TOKEN=${{ secrets.GH_PAT_TOKEN }}
+          GITHUB_REPO_OWNER=${{ vars.GITHUB_REPO_OWNER || 'choisimo' }}
+          GITHUB_REPO_NAME=${{ vars.GITHUB_REPO_NAME || 'blog' }}
+
+          # Admin Auth
+          ADMIN_BEARER_TOKEN=${{ secrets.ADMIN_BEARER_TOKEN }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          ADMIN_USERNAME=${{ vars.ADMIN_USERNAME || 'admin' }}
+
+          # Terminal Server
+          ORIGIN_SECRET_KEY=${{ secrets.ORIGIN_SECRET_KEY }}
+          SANDBOX_IMAGE=${{ vars.SANDBOX_IMAGE || 'alpine:latest' }}
+
+          # MinIO
+          MINIO_USER=${{ vars.MINIO_USER || 'minioadmin' }}
+          MINIO_PASSWORD=${{ secrets.MINIO_PASSWORD }}
+
+          # Firecrawl
+          FIRECRAWL_API_TOKEN=${{ secrets.FIRECRAWL_API_TOKEN }}
+
+          # Monitoring (optional)
+          GRAFANA_PASSWORD=${{ secrets.GRAFANA_PASSWORD }}
+          PGADMIN_EMAIL=${{ vars.PGADMIN_EMAIL || 'admin@nodove.com' }}
+          PGADMIN_PASSWORD=${{ secrets.PGADMIN_PASSWORD }}
+          ENVEOF
+
+      - name: Upload files to server
+        run: |
+          # Create deployment directory
+          ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
+            "mkdir -p ${{ env.DEPLOY_DIR }}/{scripts,n8n-workflows,n8n_files,opencode-config}"
+
+          # Upload .env
+          scp -P "${{ env.SSH_PORT }}" /tmp/blog-stack.env \
+            "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:${{ env.DEPLOY_DIR }}/.env"
+
+          # Upload compose file
+          scp -P "${{ env.SSH_PORT }}" backend/docker-compose.blog-workflow.yml \
+            "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:${{ env.DEPLOY_DIR }}/docker-compose.yml"
+
+          # Upload nginx config
+          scp -P "${{ env.SSH_PORT }}" backend/nginx-blog-workflow.conf \
+            "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:${{ env.DEPLOY_DIR }}/nginx-blog-workflow.conf"
+
+          # Upload LiteLLM config
+          if [ -f backend/litellm_config.yaml ]; then
+            scp -P "${{ env.SSH_PORT }}" backend/litellm_config.yaml \
+              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:${{ env.DEPLOY_DIR }}/litellm_config.yaml"
+          fi
+
+          # Upload bootstrap script
+          if [ -f backend/opencode-serve/bootstrap-token.sh ]; then
+            scp -P "${{ env.SSH_PORT }}" backend/opencode-serve/bootstrap-token.sh \
+              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:${{ env.DEPLOY_DIR }}/scripts/bootstrap-token.sh"
+          fi
+
+          # Upload n8n workflows
+          if [ -d backend/n8n-workflows ]; then
+            scp -P "${{ env.SSH_PORT }}" -r backend/n8n-workflows/* \
+              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:${{ env.DEPLOY_DIR }}/n8n-workflows/" || true
+          fi
+
+      - name: Deploy stack on server
+        run: |
+          ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" << 'DEPLOY_SCRIPT'
+          set -euo pipefail
+
+          DEPLOY_DIR="${{ env.DEPLOY_DIR }}"
+          cd "$DEPLOY_DIR"
+
+          echo "=== Deployment Started ==="
+          echo "Directory: $DEPLOY_DIR"
+          echo "Image Tag: ${{ env.IMAGE_TAG }}"
+          date
+
+          # Determine compose command
+          DC="docker compose"
+          if ! $DC version >/dev/null 2>&1; then
+            DC="docker-compose"
+          fi
+
+          # Login to GHCR
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+          # Pull latest images
+          echo ""
+          echo "=== Pulling Images ==="
+          $DC -f docker-compose.yml pull
+
+          # Start/Update services
+          echo ""
+          echo "=== Starting Services ==="
+          $DC -f docker-compose.yml up -d --remove-orphans
+
+          # Wait for critical services
+          echo ""
+          echo "=== Health Checks ==="
+
+          # Wait for PostgreSQL
+          echo "Waiting for PostgreSQL..."
+          for i in $(seq 1 30); do
+            if $DC -f docker-compose.yml exec -T postgres pg_isready -U bloguser >/dev/null 2>&1; then
+              echo "PostgreSQL: OK"
+              break
+            fi
+            echo "PostgreSQL: Retry $i/30"
+            sleep 2
+          done
+
+          # Wait for Redis
+          echo "Waiting for Redis..."
+          for i in $(seq 1 20); do
+            if $DC -f docker-compose.yml exec -T redis redis-cli ping >/dev/null 2>&1; then
+              echo "Redis: OK"
+              break
+            fi
+            echo "Redis: Retry $i/20"
+            sleep 2
+          done
+
+          # Wait for API
+          echo "Waiting for API..."
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8080/api/v1/healthz >/dev/null 2>&1; then
+              echo "API: OK"
+              break
+            fi
+            echo "API: Retry $i/60"
+            sleep 3
+          done
+
+          # Wait for n8n
+          echo "Waiting for n8n..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:5678/healthz >/dev/null 2>&1; then
+              echo "n8n: OK"
+              break
+            fi
+            echo "n8n: Retry $i/30"
+            sleep 3
+          done
+
+          # Final status
+          echo ""
+          echo "=== Service Status ==="
+          $DC -f docker-compose.yml ps
+
+          # Verify critical endpoints
+          echo ""
+          echo "=== Endpoint Verification ==="
+          
+          API_STATUS=$(curl -sf http://localhost:8080/api/v1/healthz && echo "OK" || echo "FAILED")
+          echo "API Health: $API_STATUS"
+
+          LITELLM_STATUS=$(curl -sf http://localhost:4000/health && echo "OK" || echo "FAILED")
+          echo "LiteLLM Health: $LITELLM_STATUS"
+
+          N8N_STATUS=$(curl -sf http://localhost:5678/healthz && echo "OK" || echo "FAILED")
+          echo "n8n Health: $N8N_STATUS"
+
+          if [ "$API_STATUS" != "OK" ]; then
+            echo ""
+            echo "=== API Logs (last 50 lines) ==="
+            $DC -f docker-compose.yml logs --tail=50 api
+            exit 1
+          fi
+
+          echo ""
+          echo "=== Deployment Completed Successfully ==="
+          date
+          DEPLOY_SCRIPT
+
+      - name: Verify public endpoints
+        if: ${{ vars.API_BASE_URL != '' }}
+        continue-on-error: true
+        run: |
+          echo "Checking public API at ${{ vars.API_BASE_URL }}/api/v1/healthz ..."
+          for i in $(seq 1 30); do
+            if curl -sf "${{ vars.API_BASE_URL }}/api/v1/healthz" >/dev/null; then
+              echo "Public API: OK"
+              break
+            fi
+            echo "Retry $i/30"
+            sleep 3
+          done
+
+          echo ""
+          echo "Checking n8n at ${{ vars.N8N_WEBHOOK_URL }}healthz ..."
+          curl -sf "${{ vars.N8N_WEBHOOK_URL }}healthz" && echo "n8n Webhook: OK" || echo "n8n Webhook: FAILED (may require auth)"
+
+      - name: Notify deployment result
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Deployment successful!"
+            echo "  - API: ${{ vars.API_BASE_URL }}"
+            echo "  - n8n: ${{ vars.N8N_WEBHOOK_URL }}"
+            echo "  - Image: ghcr.io/${{ github.repository_owner }}/blog-api:${{ env.IMAGE_TAG }}"
+          else
+            echo "❌ Deployment failed"
+            echo "Check the logs above for details"
+          fi
+
+  # ===========================================================================
+  # Job 3: Import n8n Workflows (Optional)
+  # ===========================================================================
+  import-workflows:
+    name: Import n8n Workflows
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: ${{ github.event.inputs.environment != 'staging' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${{ secrets.PROD_SSH_PORT || '22' }}" -H "${{ secrets.PROD_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Import workflows to n8n
+        continue-on-error: true
+        run: |
+          ssh -p "${{ secrets.PROD_SSH_PORT || '22' }}" "${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}" << 'IMPORT_SCRIPT'
+          set -euo pipefail
+          cd /opt/blog-stack
+
+          DC="docker compose"
+          if ! $DC version >/dev/null 2>&1; then DC="docker-compose"; fi
+
+          echo "=== Importing n8n Workflows ==="
+
+          # Import each workflow file
+          for workflow in n8n-workflows/*.json; do
+            if [ -f "$workflow" ]; then
+              name=$(basename "$workflow" .json)
+              echo "Importing: $name"
+              $DC -f docker-compose.yml exec -T n8n \
+                n8n import:workflow --input="/workflows/$(basename $workflow)" 2>/dev/null || \
+                echo "  Warning: Failed to import $name (may already exist)"
+            fi
+          done
+
+          echo "=== Workflow Import Complete ==="
+          IMPORT_SCRIPT

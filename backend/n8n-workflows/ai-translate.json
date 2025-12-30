@@ -1,0 +1,257 @@
+{
+  "name": "AI Translate Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai/translate",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "ai-translate-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "title",
+              "name": "title",
+              "type": "string",
+              "value": "={{ $json.body.title || '' }}"
+            },
+            {
+              "id": "description",
+              "name": "description",
+              "type": "string",
+              "value": "={{ $json.body.description || '' }}"
+            },
+            {
+              "id": "content",
+              "name": "content",
+              "type": "string",
+              "value": "={{ $json.body.content || '' }}"
+            },
+            {
+              "id": "sourceLang",
+              "name": "sourceLang",
+              "type": "string",
+              "value": "={{ $json.body.sourceLang || 'ko' }}"
+            },
+            {
+              "id": "targetLang",
+              "name": "targetLang",
+              "type": "string",
+              "value": "={{ $json.body.targetLang || 'en' }}"
+            },
+            {
+              "id": "model",
+              "name": "model",
+              "type": "string",
+              "value": "={{ $json.body.model || 'gemini-1.5-flash' }}"
+            },
+            {
+              "id": "requestId",
+              "name": "requestId",
+              "type": "string",
+              "value": "={{ $json.body._meta?.requestId || 'n8n-translate-' + Date.now() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-params",
+      "name": "Set Parameters",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "systemPrompt",
+              "name": "systemPrompt",
+              "type": "string",
+              "value": "You are a professional translator. Translate the content accurately while preserving the original meaning, tone, and formatting (including markdown). Do not add explanations or notes."
+            },
+            {
+              "id": "userPrompt",
+              "name": "userPrompt",
+              "type": "string",
+              "value": "={{ 'Translate the following from ' + $json.sourceLang + ' to ' + $json.targetLang + '. Return ONLY a JSON object with translated fields.\\n\\n' + JSON.stringify({ title: $json.title, description: $json.description, content: $json.content }) }}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "prepare-prompt",
+      "name": "Prepare Prompt",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "modelId": {
+          "__rl": true,
+          "value": "={{ $json.model }}",
+          "mode": "id"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.systemPrompt }}",
+              "role": "system"
+            },
+            {
+              "content": "={{ $json.userPrompt }}",
+              "role": "user"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxOutputTokens": 8192
+        }
+      },
+      "id": "gemini-translate",
+      "name": "Google Gemini Translate",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "credentials": {
+        "googleGeminiApi": {
+          "id": "gemini-credentials",
+          "name": "Google Gemini API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the AI response to extract translated content\nconst response = $input.first().json;\nconst text = response.message?.content || response.text || response.output || '';\nconst params = $('Set Parameters').first().json;\n\n// Try to parse JSON from the response\nlet translated = {};\n\ntry {\n  // Try direct JSON parse\n  translated = JSON.parse(text);\n} catch (e) {\n  // Try to extract JSON from markdown code block\n  const jsonMatch = text.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n  if (jsonMatch) {\n    try {\n      translated = JSON.parse(jsonMatch[1].trim());\n    } catch (e2) {\n      // Fallback: try to find JSON object in text\n      const start = text.indexOf('{');\n      const end = text.lastIndexOf('}');\n      if (start >= 0 && end > start) {\n        try {\n          translated = JSON.parse(text.slice(start, end + 1));\n        } catch (e3) {\n          // Use original text as content if all parsing fails\n          translated = { content: text };\n        }\n      }\n    }\n  } else {\n    translated = { content: text };\n  }\n}\n\nreturn {\n  title: translated.title || params.title,\n  description: translated.description || params.description,\n  content: translated.content || text,\n  model: params.model,\n  provider: 'google',\n  sourceLang: params.sourceLang,\n  targetLang: params.targetLang,\n  requestId: params.requestId,\n  isAiGenerated: true\n};"
+      },
+      "id": "parse-response",
+      "name": "Parse Translation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ error: $json.error?.message || 'Translation failed', code: 'TRANSLATE_ERROR' }) }}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "id": "error-response",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1340, 500]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set Parameters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Parameters": {
+      "main": [
+        [
+          {
+            "node": "Prepare Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Prompt": {
+      "main": [
+        [
+          {
+            "node": "Google Gemini Translate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Translate": {
+      "main": [
+        [
+          {
+            "node": "Parse Translation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Translation": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "AI",
+      "id": "ai-tag"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2024-12-30T00:00:00.000Z",
+  "versionId": "1"
+}

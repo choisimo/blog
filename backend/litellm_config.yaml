@@ -27,6 +27,28 @@
 # -----------------------------------------------------------------------------
 model_list:
   # ---------------------------------------------------------------------------
+  # Aidove Models (n8n Webhook RAG Pipeline)
+  # ---------------------------------------------------------------------------
+  # These models route through the Aidove proxy which wraps n8n workflows
+  # Perfect for RAG, custom agents, and workflow-based AI processing
+  
+  - model_name: aidove
+    litellm_params:
+      model: openai/aidove
+      api_base: http://backend:5080/aidove
+      api_key: none
+    model_info:
+      description: "Aidove n8n Webhook - Default RAG/Agent model"
+      
+  - model_name: aidove-rag
+    litellm_params:
+      model: openai/aidove-rag
+      api_base: http://backend:5080/aidove
+      api_key: none
+    model_info:
+      description: "Aidove n8n Webhook - RAG-optimized model"
+
+  # ---------------------------------------------------------------------------
   # Primary Models (Default aliases that map to fastest available)
   # ---------------------------------------------------------------------------
   # These aliases are used by the backend API - they map to Gemini for speed/cost
