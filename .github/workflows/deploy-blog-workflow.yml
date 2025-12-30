@@ -295,9 +295,10 @@ jobs:
 
       - name: Upload files to server
         run: |
-          # Create deployment directory
+          # Create deployment directory with sudo
           ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
-            "mkdir -p ${{ env.DEPLOY_DIR }}/{scripts,n8n-workflows,n8n_files,opencode-config,ssl}"
+            "sudo mkdir -p ${{ env.DEPLOY_DIR }}/{scripts,n8n-workflows,n8n_files,opencode-config,ssl} && \
+             sudo chown -R \$USER:\$USER ${{ env.DEPLOY_DIR }}"
 
           # Upload .env
           scp -P "${{ env.SSH_PORT }}" /tmp/blog-stack.env \
