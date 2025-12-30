@@ -300,11 +300,6 @@ services:
       - vas_shared:/app/shared:ro
     networks:
       - blog-network
-    depends_on:
-      ai-engine:
-        condition: service_healthy
-      vas-bootstrap:
-        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:4000/health || exit 1"]
       interval: 30s
