@@ -12,14 +12,30 @@ routes = [
 [vars]
 ALLOWED_ORIGINS = "https://noblog.nodove.com,https://nodove.com,http://localhost:5173"
 
-# Secrets (set via: wrangler secret put BACKEND_ORIGIN)
-# BACKEND_ORIGIN = "http://YOUR_SERVER_IP:8080"
+# =============================================================================
+# Secrets (set via wrangler secret put)
+# =============================================================================
+# Required:
+#   - BACKEND_ORIGIN: Backend server URL (e.g., http://YOUR_SERVER_IP:8080)
+#   - BACKEND_SECRET_KEY: Shared secret for backend authentication
+#
+# Set secrets with:
+#   npx wrangler secret put BACKEND_ORIGIN
+#   npx wrangler secret put BACKEND_SECRET_KEY
+#
+# For production:
+#   npx wrangler secret put BACKEND_ORIGIN --env production
+#   npx wrangler secret put BACKEND_SECRET_KEY --env production
+# =============================================================================
 
 # Production environment
 [env.production]
 routes = [
   { pattern = "api.nodove.com/*", zone_name = "nodove.com" }
 ]
+
+[env.production.vars]
+ALLOWED_ORIGINS = "https://noblog.nodove.com,https://nodove.com"
 
 # Staging environment (optional)
 [env.staging]

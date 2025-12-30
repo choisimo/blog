@@ -128,8 +128,8 @@ jobs:
             scp -P "${SSH_PORT}" backend-images.tar.gz "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/"
           fi
 
-          # Upload config files
-          scp -P "${SSH_PORT}" backend/nginx.conf "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/nginx.conf"
+          # Upload config files (use consolidated nginx config)
+          scp -P "${SSH_PORT}" backend/nginx/nginx.conf "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/nginx.conf"
           scp -P "${SSH_PORT}" /tmp/backend.env "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/.env"
 
           # Upload LiteLLM config if exists
