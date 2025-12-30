@@ -57,7 +57,7 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  DEPLOY_DIR: /opt/blog-stack
+  DEPLOY_DIR: blog-stack
 
 jobs:
   # ===========================================================================
@@ -295,48 +295,47 @@ jobs:
 
       - name: Upload files to server
         run: |
-          # Create deployment directory with sudo
+          # Create deployment directory in user's home
           ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
-            "sudo mkdir -p ${{ env.DEPLOY_DIR }}/{scripts,n8n-workflows,n8n_files,opencode-config,ssl} && \
-             sudo chown -R \$USER:\$USER ${{ env.DEPLOY_DIR }}"
+            "mkdir -p ~/${{ env.DEPLOY_DIR }}/{scripts,n8n-workflows,n8n_files,opencode-config,ssl}"
 
           # Upload .env
           scp -P "${{ env.SSH_PORT }}" /tmp/blog-stack.env \
-            "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:${{ env.DEPLOY_DIR }}/.env"
+            "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:~/${{ env.DEPLOY_DIR }}/.env"
 
           # Upload compose file
           scp -P "${{ env.SSH_PORT }}" backend/docker-compose.blog-workflow.yml \
-            "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:${{ env.DEPLOY_DIR }}/docker-compose.yml"
+            "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:~/${{ env.DEPLOY_DIR }}/docker-compose.yml"
 
           # Upload nginx configs
           scp -P "${{ env.SSH_PORT }}" backend/nginx-blog-workflow.conf \
-            "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:${{ env.DEPLOY_DIR }}/nginx-blog-workflow.conf"
+            "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:~/${{ env.DEPLOY_DIR }}/nginx-blog-workflow.conf"
           
           scp -P "${{ env.SSH_PORT }}" backend/nginx-https.conf \
-            "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:${{ env.DEPLOY_DIR }}/nginx-https.conf"
+            "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:~/${{ env.DEPLOY_DIR }}/nginx-https.conf"
 
           # Upload LiteLLM config
           if [ -f backend/litellm_config.yaml ]; then
             scp -P "${{ env.SSH_PORT }}" backend/litellm_config.yaml \
-              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:${{ env.DEPLOY_DIR }}/litellm_config.yaml"
+              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:~/${{ env.DEPLOY_DIR }}/litellm_config.yaml"
           fi
 
           # Upload bootstrap script
           if [ -f backend/opencode-serve/bootstrap-token.sh ]; then
             scp -P "${{ env.SSH_PORT }}" backend/opencode-serve/bootstrap-token.sh \
-              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:${{ env.DEPLOY_DIR }}/scripts/bootstrap-token.sh"
+              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:~/${{ env.DEPLOY_DIR }}/scripts/bootstrap-token.sh"
           fi
 
           # Upload n8n workflows
           if [ -d backend/n8n-workflows ]; then
             scp -P "${{ env.SSH_PORT }}" -r backend/n8n-workflows/* \
-              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:${{ env.DEPLOY_DIR }}/n8n-workflows/" || true
+              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:~/${{ env.DEPLOY_DIR }}/n8n-workflows/" || true
           fi
 
       - name: Setup SSL certificates
         run: |
           ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" << 'SSL_SCRIPT'
-          DEPLOY_DIR="${{ env.DEPLOY_DIR }}"
+          DEPLOY_DIR="$HOME/${{ env.DEPLOY_DIR }}"
           
           # Create SSL directory
           mkdir -p "$DEPLOY_DIR/ssl"
@@ -362,7 +361,7 @@ jobs:
           ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" << 'DEPLOY_SCRIPT'
           set -euo pipefail
 
-          DEPLOY_DIR="${{ env.DEPLOY_DIR }}"
+          DEPLOY_DIR="$HOME/${{ env.DEPLOY_DIR }}"
           cd "$DEPLOY_DIR"
 
           echo "=== Deployment Started ==="
@@ -526,7 +525,7 @@ jobs:
         run: |
           ssh -p "${{ secrets.SSH_PORT || '22' }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" << 'IMPORT_SCRIPT'
           set -euo pipefail
-          cd /opt/blog-stack
+          cd ~/blog-stack
 
           DC="docker compose"
           if ! $DC version >/dev/null 2>&1; then DC="docker-compose"; fi
