@@ -77,6 +77,9 @@ GitHub Repository > Settings > Secrets and variables > Actions > Secrets
 | `N8N_API_KEY` | n8n API 키 (선택) | `n8n-api-key-xxx` |
 | **Cloudflare** |
 | `CF_API_TOKEN` | Cloudflare API 토큰 | `xxxxx` |
+| **SSL Certificates** |
+| `SSL_CERT` | Cloudflare Origin Certificate (cert.pem 내용) | `-----BEGIN CERTIFICATE...` |
+| `SSL_KEY` | SSL Private Key (key.pem 내용) | `-----BEGIN PRIVATE KEY...` |
 | **기타** |
 | `GH_PAT_TOKEN` | GitHub PAT (PR 생성용) | `ghp_xxx` |
 | `ORIGIN_SECRET_KEY` | Terminal Server 시크릿 | `terminal-secret` |

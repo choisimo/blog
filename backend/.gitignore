@@ -11,6 +11,7 @@
 *.token
 serviceAccount*.json
 credentials*.json
+ssl/
 
 # Logs
 logs/

@@ -184,9 +184,9 @@ jobs:
     if: always() && (needs.build-and-push.result == 'success' || github.event.inputs.skip_build == 'true')
 
     env:
-      SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
-      SSH_USER: ${{ secrets.PROD_SSH_USER }}
-      SSH_PORT: ${{ secrets.PROD_SSH_PORT || '22' }}
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
       IMAGE_TAG: ${{ needs.build-and-push.outputs.sha_short || github.event.inputs.image_tag || 'latest' }}
 
     steps:
@@ -196,7 +196,7 @@ jobs:
       - name: Setup SSH Agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Add host to known_hosts
         run: |
@@ -241,7 +241,7 @@ jobs:
           AI_DEFAULT_MODEL=${{ vars.AI_DEFAULT_MODEL || 'gpt-4.1' }}
           LITELLM_MASTER_KEY=${{ secrets.LITELLM_MASTER_KEY }}
           OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-          GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
+          GOOGLE_API_KEY=${{ secrets.GEMINI_API_KEY }}
           ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
           VAS_API_KEY=
 
@@ -260,11 +260,11 @@ jobs:
           N8N_WORKER_REPLICAS=${{ vars.N8N_WORKER_REPLICAS || '2' }}
 
           # Cloudflare
-          CF_ACCOUNT_ID=${{ vars.CF_ACCOUNT_ID }}
-          CF_API_TOKEN=${{ secrets.CF_API_TOKEN }}
-          D1_DATABASE_ID=${{ vars.D1_DATABASE_ID }}
+          CF_ACCOUNT_ID=${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_API_TOKEN=${{ secrets.CLOUDFLARE_API_TOKEN }}
+          D1_DATABASE_ID=${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
           R2_BUCKET_NAME=${{ vars.R2_BUCKET_NAME || 'blog' }}
-          R2_ASSETS_BASE_URL=${{ vars.R2_ASSETS_BASE_URL || 'https://assets-b.nodove.com' }}
+          R2_ASSETS_BASE_URL=${{ secrets.ASSETS_BASE_URL || 'https://assets-b.nodove.com' }}
 
           # GitHub
           GITHUB_TOKEN=${{ secrets.GH_PAT_TOKEN }}
@@ -297,7 +297,7 @@ jobs:
         run: |
           # Create deployment directory
           ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
-            "mkdir -p ${{ env.DEPLOY_DIR }}/{scripts,n8n-workflows,n8n_files,opencode-config}"
+            "mkdir -p ${{ env.DEPLOY_DIR }}/{scripts,n8n-workflows,n8n_files,opencode-config,ssl}"
 
           # Upload .env
           scp -P "${{ env.SSH_PORT }}" /tmp/blog-stack.env \
@@ -307,9 +307,12 @@ jobs:
           scp -P "${{ env.SSH_PORT }}" backend/docker-compose.blog-workflow.yml \
             "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:${{ env.DEPLOY_DIR }}/docker-compose.yml"
 
-          # Upload nginx config
+          # Upload nginx configs
           scp -P "${{ env.SSH_PORT }}" backend/nginx-blog-workflow.conf \
             "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:${{ env.DEPLOY_DIR }}/nginx-blog-workflow.conf"
+          
+          scp -P "${{ env.SSH_PORT }}" backend/nginx-https.conf \
+            "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:${{ env.DEPLOY_DIR }}/nginx-https.conf"
 
           # Upload LiteLLM config
           if [ -f backend/litellm_config.yaml ]; then
@@ -328,6 +331,30 @@ jobs:
             scp -P "${{ env.SSH_PORT }}" -r backend/n8n-workflows/* \
               "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:${{ env.DEPLOY_DIR }}/n8n-workflows/" || true
           fi
+
+      - name: Setup SSL certificates
+        run: |
+          ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" << 'SSL_SCRIPT'
+          DEPLOY_DIR="${{ env.DEPLOY_DIR }}"
+          
+          # Create SSL directory
+          mkdir -p "$DEPLOY_DIR/ssl"
+          
+          # Write SSL certificate from secrets
+          cat > "$DEPLOY_DIR/ssl/cert.pem" << 'CERT_EOF'
+          ${{ secrets.SSL_CERT }}
+          CERT_EOF
+          
+          cat > "$DEPLOY_DIR/ssl/key.pem" << 'KEY_EOF'
+          ${{ secrets.SSL_KEY }}
+          KEY_EOF
+          
+          # Set proper permissions
+          chmod 644 "$DEPLOY_DIR/ssl/cert.pem"
+          chmod 600 "$DEPLOY_DIR/ssl/key.pem"
+          
+          echo "SSL certificates configured"
+          SSL_SCRIPT
 
       - name: Deploy stack on server
         run: |
@@ -486,17 +513,17 @@ jobs:
       - name: Setup SSH Agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Add host to known_hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -p "${{ secrets.PROD_SSH_PORT || '22' }}" -H "${{ secrets.PROD_SSH_HOST }}" >> ~/.ssh/known_hosts
+          ssh-keyscan -p "${{ secrets.SSH_PORT || '22' }}" -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Import workflows to n8n
         continue-on-error: true
         run: |
-          ssh -p "${{ secrets.PROD_SSH_PORT || '22' }}" "${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}" << 'IMPORT_SCRIPT'
+          ssh -p "${{ secrets.SSH_PORT || '22' }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" << 'IMPORT_SCRIPT'
           set -euo pipefail
           cd /opt/blog-stack
 
