@@ -59,8 +59,10 @@ jobs:
           command: deploy --env ${{ github.event.inputs.environment || 'production' }}
           secrets: |
             BACKEND_ORIGIN
+            BACKEND_SECRET_KEY
         env:
           BACKEND_ORIGIN: ${{ secrets.BACKEND_ORIGIN }}
+          BACKEND_SECRET_KEY: ${{ secrets.BACKEND_SECRET_KEY }}
 
       - name: Health check
         run: |

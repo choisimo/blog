@@ -308,12 +308,9 @@ jobs:
           scp -P "${{ env.SSH_PORT }}" backend/docker-compose.blog-workflow.yml \
             "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:~/${{ env.DEPLOY_DIR }}/docker-compose.yml"
 
-          # Upload nginx configs
-          scp -P "${{ env.SSH_PORT }}" backend/nginx-blog-workflow.conf \
-            "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:~/${{ env.DEPLOY_DIR }}/nginx-blog-workflow.conf"
-          
-          scp -P "${{ env.SSH_PORT }}" backend/nginx-https.conf \
-            "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:~/${{ env.DEPLOY_DIR }}/nginx-https.conf"
+          # Upload nginx config (consolidated)
+          scp -P "${{ env.SSH_PORT }}" backend/nginx/nginx.conf \
+            "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:~/${{ env.DEPLOY_DIR }}/nginx.conf"
 
           # Upload LiteLLM config
           if [ -f backend/litellm_config.yaml ]; then
