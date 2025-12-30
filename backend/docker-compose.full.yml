@@ -1,0 +1,493 @@
+# =============================================================================
+# Docker Compose - Blog Backend Full Stack with n8n Workflows
+# =============================================================================
+#
+# Architecture:
+#   ┌─────────────────────────────────────────────────────────────────────────┐
+#   │                          External Access                          │
+#   │  8080 → nginx → api:5080 (Backend API)                        │
+#   │  5678 → n8n:5678 (Workflow Engine)                           │
+#   │  7012 → ai-engine:7012 (GitHub Copilot Auth)                    │
+#   │  7080 → ai-admin:7080 (AI Admin UI)                             │
+#   │  8100 → chromadb:8000 (Vector DB)                               │
+#   └─────────────────────────────────────────────────────────────────────────┘
+#
+# Services:
+#   - postgres: PostgreSQL for n8n
+#   - redis: Redis for n8n queue
+#   - chromadb: Vector DB for RAG
+#   - embedding-server: TEI for embeddings
+#   - ai-engine: GitHub Copilot authentication (opencode-serve)
+#   - ai-admin: Token management UI (go-proxy-admin)
+#   - n8n: Workflow engine
+#   - api: Blog backend API
+#   - nginx: Reverse proxy
+#   - workflow-import: Import workflows to n8n (one-time)
+#
+# Setup:
+#   1. Create .env file from .env.example
+#   2. docker compose build
+#   3. docker compose up -d
+#   4. docker compose run --rm workflow-import
+# =============================================================================
+version: '3.8'
+
+services:
+  # ===========================================================================
+  # INFRASTRUCTURE - Databases & Caches
+  # ===========================================================================
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: blog-postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-n8n}
+      - POSTGRES_USER=${POSTGRES_USER:-n8n}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-n8n_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-n8n}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    container_name: blog-redis
+    restart: unless-stopped
+    env_file:
+      - .env
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_password}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - backend
+
+  # ===========================================================================
+  # AI INFRASTRUCTURE
+  # ===========================================================================
+
+  chromadb:
+    image: chromadb/chroma:0.5.23
+    container_name: blog-chromadb
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8100:8000"
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+      - ANONYMIZED_TELEMETRY=FALSE
+    volumes:
+      - chroma_data:/chroma/chroma
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - backend
+
+  embedding-server:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2.3
+    container_name: blog-embedding
+    restart: unless-stopped
+    command: --model-id sentence-transformers/all-MiniLM-L6-v2
+    ports:
+      - "127.0.0.1:8180:80"
+    volumes:
+      - tei_data:/data
+    networks:
+      - backend
+
+  # ===========================================================================
+  # AI ENGINE (opencode-serve)
+  # ===========================================================================
+
+  ai-engine:
+    build:
+      context: ${OPENCODE_SERVE_PATH:-../secret-documentations/opencode-serve}
+      dockerfile: ai-serve.Dockerfile
+    image: ai-engine:latest
+    container_name: blog-ai-engine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7012:7012"
+    expose:
+      - "7012"
+    environment:
+      NODE_ENV: production
+      OPENCODE_HOST: 0.0.0.0
+      OPENCODE_PORT: 7012
+    command:
+      - /app/node_modules/.bin/opencode
+      - serve
+      - --hostname
+      - 0.0.0.0
+      - --port
+      - "7012"
+    volumes:
+      - vas_data:/home/node/.local/share/opencode
+      - vas_logs:/var/log/opencode
+      - opencode_config:/home/node/.config/opencode
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"const http=require('http'); http.get('http://localhost:7012/app', ()=>process.exit(0)).on('error', ()=>process.exit(1));\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+
+  ai-admin:
+    build:
+      context: ${OPENCODE_SERVE_PATH:-../secret-documentations/opencode-serve}/go-proxy-admin
+      dockerfile: Dockerfile
+    image: ai-admin:latest
+    container_name: blog-ai-admin
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7080:7080"
+    expose:
+      - "7080"
+    environment:
+      OPENCODE_BASE: http://ai-engine:7012
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-auto-generated-secret-change-in-production}
+      ADMIN_PORT: 7080
+      ADMIN_DB_PATH: /app/data/vas-admin.db
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin_password}
+      AUTO_BOOTSTRAP: "true"
+    volumes:
+      - vas_admin_data:/app/data
+    networks:
+      - backend
+    depends_on:
+      ai-engine:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+
+  # ===========================================================================
+  # N8N WORKFLOW ENGINE
+  # ===========================================================================
+
+  n8n:
+    image: n8nio/n8n:1.70.3
+    container_name: blog-n8n
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5678:5678"
+    env_file:
+      - .env
+    environment:
+      # Database
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB:-n8n}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER:-n8n}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD:-n8n_password}
+      # Redis Queue
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+      - QUEUE_BULL_REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
+      - QUEUE_BULL_REDIS_DB=0
+      # Queue Mode
+      - EXECUTIONS_MODE=queue
+      - N8N_RUNNERS_ENABLED=true
+      - OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true
+      - QUEUE_HEALTH_CHECK_ACTIVE=true
+      # Authentication
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASS:-n8n_password}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-change_this_to_a_random_string_min_32_chars}
+      # Execution
+      - EXECUTIONS_TIMEOUT_MAX=7200
+      - NODE_OPTIONS=--max-old-space-size=4096
+      # Webhook
+      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://localhost:5678}
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_PROTOCOL=http
+      # AI Provider API Keys (for n8n AI nodes)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      # Integration URLs
+      - BLOG_API_URL=http://api:5080
+      - BUFFER_ZONE_URL=http://ai-admin:7080
+      - LITELLM_URL=http://litellm:4000
+      - CHROMADB_URL=http://chromadb:8000
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - n8n_files:/files
+      - ./n8n-workflows:/workflows-import:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  n8n-worker:
+    image: n8nio/n8n:1.70.3
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB:-n8n}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER:-n8n}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD:-n8n_password}
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+      - QUEUE_BULL_REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
+      - QUEUE_BULL_REDIS_DB=0
+      - EXECUTIONS_MODE=queue
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-change_this_to_a_random_string_min_32_chars}
+      - EXECUTIONS_TIMEOUT_MAX=7200
+      - NODE_OPTIONS=--max-old-space-size=2048
+      - BLOG_API_URL=http://api:5080
+      - BUFFER_ZONE_URL=http://ai-admin:7080
+      - CHROMADB_URL=http://chromadb:8000
+    command: ["worker"]
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - n8n_files:/files
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+
+  # ===========================================================================
+  # BLOG BACKEND API
+  # ===========================================================================
+
+  api:
+    build: .
+    image: blog-api:latest
+    container_name: blog-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=${APP_ENV:-production}
+      - HOST=0.0.0.0
+      - PORT=5080
+      # AI Provider - n8n is primary
+      - AI_PROVIDER=n8n
+      - N8N_WEBHOOK_URL=http://n8n:5678
+      - N8N_BASE_URL=http://n8n:5678
+      - N8N_API_KEY=${N8N_API_KEY:-}
+      # Vector DB
+      - CHROMADB_URL=http://chromadb:8000
+      - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
+      # Default model
+      - AI_DEFAULT_MODEL=${AI_DEFAULT_MODEL:-gemini-1.5-flash}
+    expose:
+      - "5080"
+    networks:
+      - backend
+    depends_on:
+      n8n:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"const http=require('http'); http.get('http://localhost:5080/api/v1/healthz', (r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ===========================================================================
+  # NGINX - Internal reverse proxy (HTTP only)
+  # ===========================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: blog-nginx
+    restart: unless-stopped
+    profiles:
+      - internal
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    expose:
+      - "80"
+    volumes:
+      - ./nginx-full.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ===========================================================================
+  # NGINX HTTPS - External reverse proxy with SSL
+  # ===========================================================================
+  # SSL 인증서 설정:
+  #   mkdir -p ssl
+  #   # Cloudflare Origin Certificate 또는 Let's Encrypt 인증서 복사
+  #   cp /path/to/cert.pem ssl/cert.pem
+  #   cp /path/to/key.pem ssl/key.pem
+  # ===========================================================================
+  nginx-https:
+    image: nginx:alpine
+    container_name: blog-nginx-https
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx-https.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ===========================================================================
+  # CADDY - Reverse Proxy with Auto HTTPS (Optional)
+  # ===========================================================================
+  # Enable with: docker compose -f docker-compose.full.yml --profile caddy up -d
+  # ===========================================================================
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: blog-caddy
+    restart: unless-stopped
+    profiles:
+      - caddy
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - backend
+
+  # ===========================================================================
+  # WORKFLOW IMPORT SERVICE (One-time import)
+  # ===========================================================================
+  # Usage: docker compose run --rm workflow-import
+  # ===========================================================================
+
+  workflow-import:
+    image: n8nio/n8n:1.70.3
+    container_name: blog-workflow-import
+    restart: "no"
+    env_file:
+      - .env
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB:-n8n}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER:-n8n}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD:-n8n_password}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-change_this_to_a_random_string_min_32_chars}
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n-workflows:/workflows:ro
+    networks:
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        echo "Importing workflows via n8n CLI..."
+        mkdir -p /tmp/workflows
+        for file in /workflows/*.json; do
+          if [ -f "$$file" ]; then
+            filename=$$(basename "$$file")
+            echo "  Importing: $$filename"
+            # Add required fields and wrap in array for n8n import
+            cat "$$file" | sed 's/^{/{"active": false, "id": null,/' > /tmp/workflows/temp.json
+            echo "[" > /tmp/workflows/$$filename
+            cat /tmp/workflows/temp.json >> /tmp/workflows/$$filename
+            echo "]" >> /tmp/workflows/$$filename
+            n8n import:workflow --input="/tmp/workflows/$$filename" && echo "    Success" || echo "    Failed"
+          fi
+        done
+        echo ""
+        echo "Import completed!"
+        echo "Workflows available at: http://localhost:5678/workflows"
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  backend:
+    driver: bridge
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  chroma_data:
+    driver: local
+  tei_data:
+    driver: local
+  vas_data:
+    driver: local
+  vas_logs:
+    driver: local
+  vas_admin_data:
+    driver: local
+  opencode_config:
+    driver: local
+  n8n_data:
+    driver: local
+  n8n_files:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local

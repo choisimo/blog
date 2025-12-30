@@ -1,0 +1,37 @@
+# Caddyfile for blog-b.nodove.com
+# Place this file in /home/nodove/workspace/blog/backend/Caddyfile
+
+blog-b.nodove.com {
+    # API endpoints
+    handle /api/* {
+        reverse_proxy nginx:80
+    }
+
+    # n8n webhooks
+    handle /webhook/* {
+        reverse_proxy nginx:80
+    }
+
+    # n8n UI
+    handle /n8n/* {
+        reverse_proxy nginx:80
+    }
+
+    # Health check
+    handle /health {
+        reverse_proxy nginx:80
+    }
+
+    # Default - return 404
+    handle {
+        respond "Not Found" 404
+    }
+
+    # Enable gzip
+    encode gzip
+
+    # Logging
+    log {
+        output file /var/log/caddy/access.log
+    }
+}

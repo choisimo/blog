@@ -163,8 +163,28 @@ services:
       retries: 3
       start_period: 10s
 
+  # HTTPS nginx for blog-b.nodove.com and blog-bw.nodove.com
+  nginx-https:
+    image: nginx:alpine
+    container_name: blog-nginx-https
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx-https.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    networks:
+      - blog-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null --no-check-certificate https://127.0.0.1/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
   api:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/blog-api:${IMAGE_TAG:-latest}
+    image: blog-api:latest
     container_name: blog-api
     restart: unless-stopped
     env_file:
@@ -212,11 +232,11 @@ services:
       n8n:
         condition: service_started
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:5080/api/v1/healthz || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:5080/api/v1/healthz || exit 1"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 15s
+      retries: 5
+      start_period: 30s
 
   embedding-server:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2.3
@@ -231,7 +251,7 @@ services:
       - blog-network
 
   terminal-server:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/blog-terminal:${IMAGE_TAG:-latest}
+    image: blog-terminal:latest
     container_name: blog-terminal
     restart: unless-stopped
     env_file:
@@ -295,7 +315,7 @@ services:
       - no-new-privileges:true
 
   ai-engine:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/ai-engine:${IMAGE_TAG:-latest}
+    image: ai-engine:latest
     container_name: blog-ai-engine
     restart: unless-stopped
     ports:
@@ -353,7 +373,7 @@ services:
         condition: service_started
 
   ai-admin:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/ai-admin:${IMAGE_TAG:-latest}
+    image: ai-admin:latest
     container_name: blog-ai-admin
     restart: unless-stopped
     expose:
@@ -386,7 +406,7 @@ services:
   # ===========================================================================
 
   n8n:
-    image: n8nio/n8n:1.70.3
+    image: n8nio/n8n:2.1.4
     container_name: blog-n8n
     restart: unless-stopped
     ports:
@@ -421,10 +441,11 @@ services:
       # Execution
       - EXECUTIONS_TIMEOUT_MAX=7200
       - NODE_OPTIONS=--max-old-space-size=4096
-      # Webhook
-      - WEBHOOK_URL=${N8N_WEBHOOK_URL}
-      - N8N_HOST=${N8N_HOST}
+      # Webhook & Editor URL
+      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-https://blog-bw.nodove.com}
+      - N8N_HOST=${N8N_HOST:-blog-bw.nodove.com}
       - N8N_PROTOCOL=https
+      - N8N_EDITOR_BASE_URL=https://blog-bw.nodove.com
       # AI Provider API Keys (for n8n AI nodes)
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
@@ -449,7 +470,7 @@ services:
       - blog-network
 
   n8n-worker:
-    image: n8nio/n8n:1.70.3
+    image: n8nio/n8n:2.1.4
     restart: unless-stopped
     env_file:
       - .env
