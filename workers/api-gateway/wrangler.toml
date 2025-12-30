@@ -30,6 +30,7 @@ ALLOWED_ORIGINS = "https://noblog.nodove.com,https://nodove.com,http://localhost
 
 # Production environment
 [env.production]
+name = "blog-api-gateway"
 routes = [
   { pattern = "api.nodove.com/*", zone_name = "nodove.com" }
 ]
