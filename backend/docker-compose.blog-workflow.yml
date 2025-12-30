@@ -184,7 +184,7 @@ services:
       start_period: 15s
 
   api:
-    image: blog-api:latest
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/blog-api:${IMAGE_TAG:-latest}
     container_name: blog-api
     restart: unless-stopped
     env_file:
@@ -251,7 +251,7 @@ services:
       - blog-network
 
   terminal-server:
-    image: blog-terminal:latest
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/blog-terminal:${IMAGE_TAG:-latest}
     container_name: blog-terminal
     restart: unless-stopped
     env_file:
@@ -315,7 +315,7 @@ services:
       - no-new-privileges:true
 
   ai-engine:
-    image: ai-engine:latest
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/ai-engine:${IMAGE_TAG:-latest}
     container_name: blog-ai-engine
     restart: unless-stopped
     ports:
@@ -373,7 +373,7 @@ services:
         condition: service_started
 
   ai-admin:
-    image: ai-admin:latest
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/ai-admin:${IMAGE_TAG:-latest}
     container_name: blog-ai-admin
     restart: unless-stopped
     expose:
