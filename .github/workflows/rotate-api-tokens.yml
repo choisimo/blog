@@ -1,0 +1,286 @@
+name: Rotate API Tokens
+
+# =============================================================================
+# API Token Rotation Workflow
+# =============================================================================
+# JWT 토큰을 주기적으로 또는 수동으로 로테이션하여 보안 강화
+#
+# 동작:
+#   1. Blog API에서 새 JWT 토큰 생성
+#   2. n8n Credentials 업데이트
+#   3. Cloudflare Workers Secrets 업데이트
+#
+# 사용법:
+#   - 수동 실행: Actions > Rotate API Tokens > Run workflow
+#   - 자동 실행: 매주 일요일 03:00 UTC (한국시간 12:00)
+# =============================================================================
+
+on:
+  # 수동 트리거
+  workflow_dispatch:
+    inputs:
+      force_rotation:
+        description: 'Force token rotation even if recent'
+        required: false
+        default: false
+        type: boolean
+      skip_workers:
+        description: 'Skip Cloudflare Workers update'
+        required: false
+        default: false
+        type: boolean
+      skip_n8n:
+        description: 'Skip n8n credentials update'
+        required: false
+        default: false
+        type: boolean
+
+  # 정기 실행 (매주 일요일 03:00 UTC)
+  schedule:
+    - cron: '0 3 * * 0'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rotate-api-tokens
+  cancel-in-progress: false
+
+env:
+  DEPLOY_DIR: blog-stack
+
+jobs:
+  rotate-tokens:
+    name: Rotate API Tokens
+    runs-on: ubuntu-latest
+
+    env:
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${{ env.SSH_PORT }}" -H "${{ env.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Check service availability
+        id: health_check
+        run: |
+          ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" << 'HEALTH_SCRIPT'
+          set -euo pipefail
+          
+          echo "=== Service Health Check ==="
+          
+          # Check Blog API
+          if curl -sf "http://localhost:5080/api/v1/healthz" > /dev/null 2>&1; then
+            echo "Blog API: OK"
+          else
+            echo "Blog API: UNAVAILABLE"
+            exit 1
+          fi
+          
+          # Check n8n
+          if curl -sf "http://localhost:5678/healthz" > /dev/null 2>&1; then
+            echo "n8n: OK"
+          else
+            echo "n8n: UNAVAILABLE (will skip n8n update)"
+          fi
+          
+          echo ""
+          HEALTH_SCRIPT
+
+      - name: Generate new API token
+        id: generate_token
+        run: |
+          TOKEN=$(ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" << 'TOKEN_SCRIPT'
+          set -euo pipefail
+          
+          echo "=== Generating New JWT Token ===" >&2
+          
+          # Login to Blog API
+          RESPONSE=$(curl -sf "http://localhost:5080/api/v1/auth/login" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "username": "${{ vars.ADMIN_USERNAME || 'admin' }}",
+              "password": "${{ secrets.ADMIN_PASSWORD }}"
+            }' 2>/dev/null)
+          
+          TOKEN=$(echo "$RESPONSE" | jq -r '.data.token // .token // empty')
+          
+          if [ -z "$TOKEN" ]; then
+            echo "ERROR: Failed to generate token" >&2
+            exit 1
+          fi
+          
+          # Output token (will be captured)
+          echo "$TOKEN"
+          TOKEN_SCRIPT
+          )
+          
+          if [ -z "$TOKEN" ]; then
+            echo "::error::Failed to generate API token"
+            exit 1
+          fi
+          
+          echo "token=${TOKEN}" >> $GITHUB_OUTPUT
+          echo "Token generated successfully: ${TOKEN:0:20}..."
+
+      - name: Update n8n Credentials
+        if: ${{ github.event.inputs.skip_n8n != 'true' }}
+        run: |
+          ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" << 'N8N_SCRIPT'
+          set -euo pipefail
+          
+          TOKEN="${{ steps.generate_token.outputs.token }}"
+          N8N_USER="${{ vars.N8N_USER || 'admin' }}"
+          N8N_PASS="${{ secrets.N8N_PASS }}"
+          
+          echo "=== Updating n8n Credentials ==="
+          
+          # Check if n8n is available
+          if ! curl -sf "http://localhost:5678/healthz" > /dev/null 2>&1; then
+            echo "WARN: n8n is not available, skipping"
+            exit 0
+          fi
+          
+          # Get existing credential ID
+          CRED_ID=$(curl -sf "http://localhost:5678/api/v1/credentials" \
+            -u "${N8N_USER}:${N8N_PASS}" \
+            -H "Accept: application/json" 2>/dev/null | \
+            jq -r '.data[] | select(.name == "Blog API Auth") | .id' 2>/dev/null || echo "")
+          
+          CRED_DATA=$(cat <<EOF
+          {
+            "name": "Blog API Auth",
+            "type": "httpHeaderAuth",
+            "data": {
+              "name": "Authorization",
+              "value": "Bearer ${TOKEN}"
+            }
+          }
+          EOF
+          )
+          
+          if [ -n "$CRED_ID" ]; then
+            echo "Updating existing credential (ID: $CRED_ID)..."
+            curl -sf "http://localhost:5678/api/v1/credentials/${CRED_ID}" \
+              -X PATCH \
+              -u "${N8N_USER}:${N8N_PASS}" \
+              -H "Content-Type: application/json" \
+              -d "$CRED_DATA" > /dev/null 2>&1 || {
+              echo "WARN: Failed to update credential"
+            }
+          else
+            echo "Creating new credential..."
+            curl -sf "http://localhost:5678/api/v1/credentials" \
+              -X POST \
+              -u "${N8N_USER}:${N8N_PASS}" \
+              -H "Content-Type: application/json" \
+              -d "$CRED_DATA" > /dev/null 2>&1 || {
+              echo "WARN: Failed to create credential"
+            }
+          fi
+          
+          # Also update Buffer Zone API Auth if exists
+          BUFFER_CRED_ID=$(curl -sf "http://localhost:5678/api/v1/credentials" \
+            -u "${N8N_USER}:${N8N_PASS}" \
+            -H "Accept: application/json" 2>/dev/null | \
+            jq -r '.data[] | select(.name == "Buffer Zone API Auth") | .id' 2>/dev/null || echo "")
+          
+          if [ -n "$BUFFER_CRED_ID" ]; then
+            echo "Updating Buffer Zone API Auth..."
+            BUFFER_DATA=$(cat <<EOF
+            {
+              "name": "Buffer Zone API Auth",
+              "type": "httpHeaderAuth",
+              "data": {
+                "name": "Authorization",
+                "value": "Bearer ${TOKEN}"
+              }
+            }
+          EOF
+            )
+            curl -sf "http://localhost:5678/api/v1/credentials/${BUFFER_CRED_ID}" \
+              -X PATCH \
+              -u "${N8N_USER}:${N8N_PASS}" \
+              -H "Content-Type: application/json" \
+              -d "$BUFFER_DATA" > /dev/null 2>&1 || echo "WARN: Failed to update Buffer Zone credential"
+          fi
+          
+          echo "n8n credentials updated successfully"
+          N8N_SCRIPT
+
+      - name: Setup Node.js for Workers
+        if: ${{ github.event.inputs.skip_workers != 'true' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: workers/package-lock.json
+
+      - name: Install Wrangler
+        if: ${{ github.event.inputs.skip_workers != 'true' }}
+        working-directory: workers
+        run: npm install --save-dev wrangler@4
+
+      - name: Update Cloudflare Workers Secrets
+        if: ${{ github.event.inputs.skip_workers != 'true' }}
+        working-directory: workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "=== Updating Cloudflare Workers Secrets ==="
+          
+          API_TOKEN="${{ steps.generate_token.outputs.token }}"
+          
+          # Update API Gateway
+          echo "Updating blog-api-gateway..."
+          echo "$API_TOKEN" | npx wrangler secret put BLOG_API_TOKEN --name blog-api-gateway --env production 2>/dev/null || \
+            echo "WARN: Failed to update blog-api-gateway"
+          
+          # Update AI Check Gateway
+          echo "Updating ai-check-gateway..."
+          echo "$API_TOKEN" | npx wrangler secret put BLOG_API_TOKEN --name ai-check-gateway --env production 2>/dev/null || \
+            echo "WARN: Failed to update ai-check-gateway"
+          
+          echo "Workers secrets updated successfully"
+
+      - name: Log rotation event
+        run: |
+          ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" << 'LOG_SCRIPT'
+          set -euo pipefail
+          
+          LOG_FILE=~/blog-stack/logs/token-rotation.log
+          mkdir -p ~/blog-stack/logs
+          
+          echo "[$(date -Iseconds)] Token rotated successfully" >> "$LOG_FILE"
+          echo "  - Trigger: ${{ github.event_name }}" >> "$LOG_FILE"
+          echo "  - Actor: ${{ github.actor }}" >> "$LOG_FILE"
+          echo "  - n8n: ${{ github.event.inputs.skip_n8n != 'true' && 'updated' || 'skipped' }}" >> "$LOG_FILE"
+          echo "  - Workers: ${{ github.event.inputs.skip_workers != 'true' && 'updated' || 'skipped' }}" >> "$LOG_FILE"
+          echo "" >> "$LOG_FILE"
+          
+          # Keep only last 100 entries
+          tail -n 500 "$LOG_FILE" > "${LOG_FILE}.tmp" && mv "${LOG_FILE}.tmp" "$LOG_FILE"
+          LOG_SCRIPT
+
+      - name: Summary
+        run: |
+          echo "## Token Rotation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: Success" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **n8n Credentials**: ${{ github.event.inputs.skip_n8n != 'true' && 'Updated' || 'Skipped' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workers Secrets**: ${{ github.event.inputs.skip_workers != 'true' && 'Updated' || 'Skipped' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp**: $(date -Iseconds)" >> $GITHUB_STEP_SUMMARY

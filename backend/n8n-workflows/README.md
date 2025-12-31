@@ -30,17 +30,59 @@
 
 ## 1. 크레덴셜 설정
 
-### 1.1 Buffer Zone API 인증 설정
+### 1.1 자동 설정 (권장)
+
+**배포 시 자동으로 설정됩니다!** GitHub Actions를 통해 배포하면:
+
+1. Blog API에서 JWT 토큰 자동 생성
+2. n8n Credentials 자동 등록/업데이트
+3. Cloudflare Workers secrets 자동 설정
+
+```
+GitHub Push → Build → Deploy → Setup Credentials (자동)
+                                    ├── JWT 토큰 생성
+                                    ├── n8n Credentials 설정
+                                    └── Workers Secrets 설정
+```
+
+#### 토큰 로테이션
+
+토큰은 **매주 일요일 03:00 UTC**에 자동 로테이션됩니다.
+수동 로테이션: **Actions > Rotate API Tokens > Run workflow**
+
+### 1.2 수동 설정 (로컬 개발용)
 
 n8n에서 **Settings > Credentials > Add Credential**로 이동하여 `HTTP Header Auth`를 추가합니다.
 
 | 필드 | 값 |
 |------|-----|
-| **Name** | `Buffer Zone API Auth` |
+| **Name** | `Blog API Auth` 또는 `Buffer Zone API Auth` |
 | **Header Name** | `Authorization` |
 | **Header Value** | `Bearer {YOUR_JWT_TOKEN}` |
 
-> JWT 토큰은 ai-admin 서비스에서 발급받습니다.
+> JWT 토큰 발급: `POST /api/v1/auth/login`
+
+```bash
+# 로컬에서 토큰 발급
+curl -X POST http://localhost:5080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "YOUR_PASSWORD"}'
+```
+
+또는 자동화 스크립트 사용:
+
+```bash
+# 전체 자동 설정
+export ADMIN_USERNAME=admin ADMIN_PASSWORD=secret
+export N8N_USER=admin N8N_PASS=secret
+./backend/scripts/setup-api-credentials.sh --all
+
+# 토큰만 생성
+./backend/scripts/setup-api-credentials.sh --generate-token
+
+# n8n Credentials만 설정
+./backend/scripts/setup-api-credentials.sh --setup-n8n
+```
 
 ### 1.2 환경 변수 설정
 
@@ -294,16 +336,18 @@ curl http://localhost:7080/health
 
 | 문제 | 원인 | 해결 |
 |------|------|------|
-| 401 Unauthorized | JWT 토큰 만료/잘못됨 | ai-admin에서 새 토큰 발급 |
+| 401 Unauthorized | JWT 토큰 만료/잘못됨 | `Actions > Rotate API Tokens` 실행 |
 | 502 Bad Gateway | Buffer Zone 서비스 다운 | `docker restart blog-ai-admin` |
 | Timeout | LLM 응답 지연 | timeout 값 증가 (기본 120s) |
 | Empty response | 입력 파라미터 누락 | 요청 JSON 형식 확인 |
 
 ## 6. 보안 권장사항
 
-1. **JWT 토큰 관리**
-   - 프로덕션에서는 토큰 로테이션 설정
-   - 환경 변수로 관리, 코드에 하드코딩 금지
+1. **JWT 토큰 관리 (자동화됨)**
+   - 배포 시 자동 생성 및 배포
+   - 매주 자동 로테이션 (schedule: 매주 일요일)
+   - 수동 로테이션: `Actions > Rotate API Tokens`
+   - GitHub Secrets로 안전하게 관리
 
 2. **네트워크 격리**
    - Buffer Zone API는 내부 네트워크에서만 접근
@@ -316,6 +360,7 @@ curl http://localhost:7080/health
 4. **로깅**
    - 민감한 정보(API 키, 사용자 데이터) 로깅 금지
    - 감사 로그 활성화
+   - 토큰 로테이션 로그: `~/blog-stack/logs/token-rotation.log`
 
 ## 7. 참고 자료
 

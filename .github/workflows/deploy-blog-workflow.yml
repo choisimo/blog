@@ -509,13 +509,175 @@ jobs:
           fi
 
   # ===========================================================================
-  # Job 3: Import n8n Workflows (Optional)
+  # Job 3: Setup API Credentials (Auto Token Generation & Distribution)
+  # ===========================================================================
+  setup-credentials:
+    name: Setup API Credentials
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: always() && needs.deploy.result == 'success'
+
+    env:
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${{ env.SSH_PORT }}" -H "${{ env.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload credentials setup script
+        run: |
+          scp -P "${{ env.SSH_PORT }}" backend/scripts/setup-api-credentials.sh \
+            "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:~/${{ env.DEPLOY_DIR }}/scripts/"
+
+      - name: Generate API Token and Setup n8n Credentials
+        run: |
+          ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" << 'CRED_SCRIPT'
+          set -euo pipefail
+          cd ~/blog-stack
+
+          echo "=== API Credentials Auto-Setup ==="
+          date
+
+          # Environment for credential setup
+          export BLOG_API_URL="http://localhost:5080"
+          export N8N_URL="http://localhost:5678"
+          export ADMIN_USERNAME="${{ vars.ADMIN_USERNAME || 'admin' }}"
+          export ADMIN_PASSWORD="${{ secrets.ADMIN_PASSWORD }}"
+          export N8N_USER="${{ vars.N8N_USER || 'admin' }}"
+          export N8N_PASS="${{ secrets.N8N_PASS }}"
+          export JWT_SECRET="${{ secrets.JWT_SECRET }}"
+          export TOKEN_FILE="/tmp/blog-api-token.jwt"
+
+          # Make script executable
+          chmod +x scripts/setup-api-credentials.sh
+
+          # Generate JWT token from Blog API
+          echo ""
+          echo "=== Step 1: Generate JWT Token ==="
+          API_TOKEN=$(scripts/setup-api-credentials.sh --generate-token)
+          
+          if [ -z "$API_TOKEN" ]; then
+            echo "ERROR: Failed to generate API token"
+            exit 1
+          fi
+          echo "Token generated: ${API_TOKEN:0:20}..."
+
+          # Setup n8n Credentials
+          echo ""
+          echo "=== Step 2: Setup n8n Credentials ==="
+          scripts/setup-api-credentials.sh --setup-n8n "$API_TOKEN" || {
+            echo "WARN: n8n credential setup failed, may need manual configuration"
+          }
+
+          # Save token for workers setup (will be used by GitHub Actions)
+          echo "$API_TOKEN" > /tmp/blog-api-token.jwt
+
+          echo ""
+          echo "=== Credentials Setup Complete ==="
+          CRED_SCRIPT
+
+      - name: Retrieve generated token
+        id: get_token
+        run: |
+          TOKEN=$(ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
+            "cat /tmp/blog-api-token.jwt 2>/dev/null || echo ''")
+          
+          if [ -n "$TOKEN" ]; then
+            echo "token=${TOKEN}" >> $GITHUB_OUTPUT
+            echo "Token retrieved successfully"
+          else
+            echo "No token found, workers will use fallback secrets"
+          fi
+
+      - name: Setup Node.js for Workers
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: workers/package-lock.json
+
+      - name: Install Wrangler
+        working-directory: workers
+        run: npm install --save-dev wrangler@4
+
+      - name: Setup Cloudflare Workers Secrets
+        if: steps.get_token.outputs.token != ''
+        working-directory: workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "=== Setting up Cloudflare Workers Secrets ==="
+          
+          API_TOKEN="${{ steps.get_token.outputs.token }}"
+          
+          # API Gateway - set BLOG_API_TOKEN for backend authentication
+          echo "Setting secrets for blog-api-gateway..."
+          echo "$API_TOKEN" | npx wrangler secret put BLOG_API_TOKEN --name blog-api-gateway --env production 2>/dev/null || \
+            echo "WARN: Failed to set BLOG_API_TOKEN for api-gateway"
+          
+          # AI Check Gateway - set AUTH_JWT_SECRET for token validation
+          echo "Setting secrets for ai-check-gateway..."
+          echo "${{ secrets.JWT_SECRET }}" | npx wrangler secret put AUTH_JWT_SECRET --name ai-check-gateway --env production 2>/dev/null || \
+            echo "WARN: Failed to set AUTH_JWT_SECRET for ai-check-gateway"
+          
+          # Also set the API token for ai-check-gateway if it needs to call Blog API
+          echo "$API_TOKEN" | npx wrangler secret put BLOG_API_TOKEN --name ai-check-gateway --env production 2>/dev/null || \
+            echo "WARN: Failed to set BLOG_API_TOKEN for ai-check-gateway"
+          
+          echo "=== Workers Secrets Setup Complete ==="
+
+      - name: Verify credentials setup
+        run: |
+          ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" << 'VERIFY_SCRIPT'
+          set -euo pipefail
+          cd ~/blog-stack
+          
+          echo "=== Verifying Credentials Setup ==="
+          
+          # Check n8n credentials
+          N8N_USER="${{ vars.N8N_USER || 'admin' }}"
+          N8N_PASS="${{ secrets.N8N_PASS }}"
+          
+          CRED_CHECK=$(curl -sf "http://localhost:5678/api/v1/credentials" \
+            -u "${N8N_USER}:${N8N_PASS}" \
+            -H "Accept: application/json" 2>/dev/null | jq -r '.data | length' || echo "0")
+          
+          echo "n8n Credentials count: $CRED_CHECK"
+          
+          # List credential names
+          curl -sf "http://localhost:5678/api/v1/credentials" \
+            -u "${N8N_USER}:${N8N_PASS}" \
+            -H "Accept: application/json" 2>/dev/null | \
+            jq -r '.data[].name' 2>/dev/null || echo "Could not list credentials"
+          
+          # Cleanup temp token
+          rm -f /tmp/blog-api-token.jwt
+          
+          echo ""
+          echo "=== Verification Complete ==="
+          VERIFY_SCRIPT
+
+  # ===========================================================================
+  # Job 4: Import n8n Workflows (Optional)
   # ===========================================================================
   import-workflows:
     name: Import n8n Workflows
     runs-on: ubuntu-latest
-    needs: [deploy]
-    if: ${{ github.event.inputs.environment != 'staging' }}
+    needs: [deploy, setup-credentials]
+    if: always() && needs.deploy.result == 'success'
 
     env:
       SSH_HOST: ${{ secrets.SSH_HOST }}
