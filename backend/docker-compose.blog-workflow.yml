@@ -301,7 +301,6 @@ services:
   ai-engine:
     image: ghcr.io/choisimo/ai-engine:latest
     container_name: blog-ai-engine
-    profiles: ["ai"]
     restart: unless-stopped
     ports:
       - "127.0.0.1:7012:7012"
@@ -334,57 +333,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-    security_opt:
-      - no-new-privileges:true
-
-  vas-bootstrap:
-    image: curlimages/curl:latest
-    container_name: blog-vas-bootstrap
-    profiles: ["ai"]
-    restart: "no"
-    user: "0:0"
-    entrypoint: ["/bin/sh", "/app/bootstrap-token.sh"]
-    environment:
-      ADMIN_URL: http://ai-admin:7080
-      TOKEN_FILE: /app/shared/auto-token.jwt
-      MAX_RETRIES: "60"
-      RETRY_INTERVAL: "2"
-    volumes:
-      - ./scripts/bootstrap-token.sh:/app/bootstrap-token.sh:ro
-      - vas_shared:/app/shared
-    networks:
-      - blog-network
-    depends_on:
-      ai-admin:
-        condition: service_started
-
-  ai-admin:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/ai-admin:${IMAGE_TAG:-latest}
-    container_name: blog-ai-admin
-    profiles: ["ai"]
-    restart: unless-stopped
-    expose:
-      - "7080"
-    env_file:
-      - .env
-    environment:
-      OPENCODE_BASE: http://ai-engine:7012
-      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
-      ADMIN_PORT: 7080
-      ADMIN_DB_PATH: /app/data/vas-admin.db
-      ADMIN_EMAIL: ${ADMIN_EMAIL}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-      AUTO_BOOTSTRAP: "true"
-    volumes:
-      - vas_admin_data:/app/data
-    networks:
-      blog-network:
-        aliases:
-          - vas-admin
-          - ai-admin
-    depends_on:
-      ai-engine:
-        condition: service_healthy
     security_opt:
       - no-new-privileges:true
 
@@ -633,8 +581,6 @@ volumes:
   tei_data:
   vas_data:
   vas_logs:
-  vas_admin_data:
-  vas_shared:
   n8n_data:
   minio_data:
   prometheus_data:

@@ -151,29 +151,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Build AI Admin (if exists)
-      - name: Check AI Admin Dockerfile
-        id: check_ai_admin
-        run: |
-          if [ -f "backend/opencode-serve/go-proxy-admin/Dockerfile" ]; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Build and push AI Admin
-        if: steps.check_ai_admin.outputs.exists == 'true'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend/opencode-serve/go-proxy-admin
-          file: ./backend/opencode-serve/go-proxy-admin/Dockerfile
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/ai-admin:${{ steps.vars.outputs.sha_short }}
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/ai-admin:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   # ===========================================================================
   # Job 2: Deploy to Server
   # ===========================================================================
@@ -437,10 +414,10 @@ jobs:
           echo "=== Pulling AI Engine Image ==="
           docker pull ghcr.io/choisimo/ai-engine:latest
 
-          # Start/Update services (including ai profile)
+          # Start/Update services
           echo ""
           echo "=== Starting Services ==="
-          $DC -f docker-compose.yml --profile ai up -d --remove-orphans --force-recreate
+          $DC -f docker-compose.yml up -d --remove-orphans --force-recreate
 
           # Wait for critical services
           echo ""
