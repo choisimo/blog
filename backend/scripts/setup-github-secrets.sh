@@ -130,7 +130,7 @@ set_var() {
 # Application
 set_var "APP_ENV" "production"
 set_var "SITE_BASE_URL" "https://noblog.nodove.com"
-set_var "API_BASE_URL" "https://blog-b.nodove.com"
+set_var "API_BASE_URL" "https://api.nodove.com"
 
 # Database
 set_var "POSTGRES_DB" "blog"

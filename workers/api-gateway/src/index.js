@@ -85,6 +85,10 @@ async function forwardRequest(request, env, ctx) {
   const headers = new Headers(request.headers);
   headers.delete('Host');
   
+  // Set Host header to blog-b.nodove.com for proper nginx routing
+  // This ensures requests go to the backend API server, not n8n
+  headers.set('Host', 'blog-b.nodove.com');
+  
   // Security: Add backend authentication key
   if (backendSecretKey) {
     headers.set('X-Backend-Key', backendSecretKey);

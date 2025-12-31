@@ -1,19 +1,30 @@
-# Caddyfile for blog-b.nodove.com
+# Caddyfile for blog backend services
 # Place this file in /home/nodove/workspace/blog/backend/Caddyfile
+#
+# Domain Routing:
+#   blog-b.nodove.com  -> Backend API, LiteLLM, Terminal
+#   blog-bw.nodove.com -> n8n Workflow Engine
 
+# =============================================================================
+# blog-b.nodove.com - Backend API, LiteLLM, Terminal
+# =============================================================================
 blog-b.nodove.com {
     # API endpoints
     handle /api/* {
         reverse_proxy nginx:80
     }
 
-    # n8n webhooks
-    handle /webhook/* {
+    # LiteLLM AI Gateway
+    handle /ai/* {
         reverse_proxy nginx:80
     }
 
-    # n8n UI
-    handle /n8n/* {
+    handle /litellm/* {
+        reverse_proxy nginx:80
+    }
+
+    # Terminal WebSocket
+    handle /terminal/* {
         reverse_proxy nginx:80
     }
 
@@ -32,6 +43,38 @@ blog-b.nodove.com {
 
     # Logging
     log {
-        output file /var/log/caddy/access.log
+        output file /var/log/caddy/blog-b-access.log
+    }
+}
+
+# =============================================================================
+# blog-bw.nodove.com - n8n Workflow Engine
+# =============================================================================
+blog-bw.nodove.com {
+    # n8n webhooks (public access)
+    handle /webhook/* {
+        reverse_proxy nginx:80
+    }
+
+    handle /webhook-test/* {
+        reverse_proxy nginx:80
+    }
+
+    # Health check
+    handle /health {
+        reverse_proxy nginx:80
+    }
+
+    # n8n UI and API - proxy everything else to nginx
+    handle {
+        reverse_proxy nginx:80
+    }
+
+    # Enable gzip
+    encode gzip
+
+    # Logging
+    log {
+        output file /var/log/caddy/blog-bw-access.log
     }
 }
