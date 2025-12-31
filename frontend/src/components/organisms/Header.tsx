@@ -41,10 +41,10 @@ function TerminalPath() {
   const path = location.pathname === '/' ? '~' : `~${location.pathname}`;
 
   return (
-    <div className='hidden sm:flex items-center gap-2 font-mono text-xs text-muted-foreground'>
-      <span className='text-primary'>user@blog:</span>
-      <span>{path}</span>
-      <span className='terminal-cursor' />
+    <div className='hidden sm:flex items-center gap-2 font-mono text-xs text-muted-foreground max-w-[200px] lg:max-w-[400px]'>
+      <span className='text-primary flex-shrink-0'>user@blog:</span>
+      <span className='truncate' title={path}>{path}</span>
+      <span className='terminal-cursor flex-shrink-0' />
     </div>
   );
 }
