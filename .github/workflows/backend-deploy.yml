@@ -171,18 +171,17 @@ jobs:
           # Generate runtime compose file with SSL support
           cat > compose.runtime.yml <<'YML'
           # =======================================================================
-          # Runtime Compose - Cloudflare Full SSL + LiteLLM AI Gateway
+          # Runtime Compose - Cloudflare Full SSL + LiteLLM AI Gateway + n8n
           # =======================================================================
           # Cloudflare (Full SSL) → Server:8443 → nginx (SSL) → Internal Services
+          #
+          # Domains:
+          #   blog-b.nodove.com  → Backend API, LiteLLM, Terminal
+          #   blog-bw.nodove.com → n8n Workflow Engine
           #
           # Ports:
           #   80/8080  - HTTP (health checks, internal)
           #   443/8443 - HTTPS (Cloudflare Full SSL)
-          #
-          # Routes:
-          #   /api/*       → api:5080
-          #   /ai/*        → litellm:4000
-          #   /terminal/*  → terminal-server:8080
           # =======================================================================
 
           services:
@@ -191,6 +190,8 @@ jobs:
               image: nginx:alpine
               depends_on:
                 api:
+                  condition: service_started
+                n8n:
                   condition: service_started
               ports:
                 - "80:80"       # HTTP
@@ -303,6 +304,32 @@ jobs:
                 - backend
               restart: unless-stopped
 
+            # n8n Workflow Engine (blog-bw.nodove.com)
+            n8n:
+              image: n8nio/n8n:latest
+              env_file: .env
+              environment:
+                - N8N_HOST=blog-bw.nodove.com
+                - N8N_PORT=5678
+                - N8N_PROTOCOL=https
+                - WEBHOOK_URL=https://blog-bw.nodove.com/
+                - N8N_EDITOR_BASE_URL=https://blog-bw.nodove.com/
+                - GENERIC_TIMEZONE=Asia/Seoul
+                - TZ=Asia/Seoul
+              expose:
+                - "5678"
+              volumes:
+                - n8n-data:/home/node/.n8n
+              networks:
+                - backend
+              restart: unless-stopped
+              healthcheck:
+                test: ["CMD", "wget", "-q", "--spider", "http://localhost:5678/healthz"]
+                interval: 30s
+                timeout: 10s
+                retries: 5
+                start_period: 30s
+
           networks:
             backend:
               driver: bridge
@@ -310,6 +337,7 @@ jobs:
           volumes:
             tei-data:
             chroma-data:
+            n8n-data:
           YML
 
           # Replace image tag placeholder
