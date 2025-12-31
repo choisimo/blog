@@ -467,6 +467,17 @@ jobs:
             sleep 3
           done
 
+          # Wait for AI Engine
+          echo "Waiting for AI Engine..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:7012/app >/dev/null 2>&1 || wget -q --spider http://localhost:7012/app 2>/dev/null; then
+              echo "AI Engine: OK"
+              break
+            fi
+            echo "AI Engine: Retry $i/30"
+            sleep 3
+          done
+
           # Final status
           echo ""
           echo "=== Service Status ==="
@@ -484,6 +495,9 @@ jobs:
 
           N8N_STATUS=$(curl -sf http://localhost:5678/healthz && echo "OK" || echo "FAILED")
           echo "n8n Health: $N8N_STATUS"
+
+          AI_ENGINE_STATUS=$(curl -sf http://localhost:7012/app && echo "OK" || wget -q --spider http://localhost:7012/app 2>/dev/null && echo "OK" || echo "FAILED")
+          echo "AI Engine Health: $AI_ENGINE_STATUS"
 
           if [ "$API_STATUS" != "OK" ]; then
             echo ""

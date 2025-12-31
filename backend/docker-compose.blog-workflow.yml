@@ -272,7 +272,6 @@ services:
       - .env
     environment:
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
-      VAS_API_KEY: ${VAS_API_KEY:-file:///app/shared/auto-token.jwt}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
@@ -286,7 +285,6 @@ services:
       - "0.0.0.0"
     volumes:
       - ./litellm_config.yaml:/app/config.yaml:ro
-      - vas_shared:/app/shared:ro
     networks:
       - blog-network
     healthcheck:
@@ -394,7 +392,7 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       # Integration URLs
       - BLOG_API_URL=http://api:5080
-      - BUFFER_ZONE_URL=http://ai-admin:7080
+      - AI_ENGINE_URL=http://ai-engine:7012
       - LITELLM_URL=http://litellm:4000
       - QDRANT_URL=http://qdrant:6333
       - CHROMADB_URL=http://chromadb:8000
@@ -438,7 +436,7 @@ services:
       - NODE_OPTIONS=--max-old-space-size=2048
       # Integration
       - BLOG_API_URL=http://api:5080
-      - BUFFER_ZONE_URL=http://ai-admin:7080
+      - AI_ENGINE_URL=http://ai-engine:7012
       - LITELLM_URL=http://litellm:4000
       - QDRANT_URL=http://qdrant:6333
     command: ["worker"]
