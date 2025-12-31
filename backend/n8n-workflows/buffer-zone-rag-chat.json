@@ -19,7 +19,7 @@
     },
     {
       "parameters": {
-        "content": "## Buffer Zone - RAG Chat\n\nBuffer Zone API를 통한 RAG(검색 증강) 기반 LLM 채팅.\n\n**Webhook URL:** `https://workflow.nodove.com/webhook/buffer-rag-chat`\n\n**Features:**\n- Qdrant/ChromaDB 벡터 검색\n- 블로그 포스트 컨텍스트 주입\n- 소스 인용 지원\n\n**Request:**\n```json\n{\n  \"message\": \"이 블로그의 아키텍처는?\",\n  \"ragProfile\": \"blog-posts\",\n  \"topK\": 5,\n  \"filters\": { \"category\": \"tech\" },\n  \"modelId\": \"gpt-4.1\"\n}\n```\n\n**Response:**\n```json\n{\n  \"sessionId\": \"sess_xxx\",\n  \"message\": \"AI 응답\",\n  \"retrievedChunks\": [...],\n  \"sources\": [\"post-1\", \"post-2\"]\n}\n```",
+        "content": "## Buffer Zone - RAG Chat\n\nBuffer Zone API를 통한 RAG(검색 증강) 기반 LLM 채팅.\n\n**Webhook URL:** `https://blog-bw.nodove.com/webhook/buffer-rag-chat`\n\n**Features:**\n- Qdrant/ChromaDB 벡터 검색\n- 블로그 포스트 컨텍스트 주입\n- 소스 인용 지원\n\n**Request:**\n```json\n{\n  \"message\": \"이 블로그의 아키텍처는?\",\n  \"ragProfile\": \"blog-posts\",\n  \"topK\": 5,\n  \"filters\": { \"category\": \"tech\" },\n  \"modelId\": \"gpt-4.1\"\n}\n```\n\n**Response:**\n```json\n{\n  \"sessionId\": \"sess_xxx\",\n  \"message\": \"AI 응답\",\n  \"retrievedChunks\": [...],\n  \"sources\": [\"post-1\", \"post-2\"]\n}\n```",
         "height": 540,
         "width": 380
       },

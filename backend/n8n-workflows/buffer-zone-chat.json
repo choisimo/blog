@@ -19,7 +19,7 @@
     },
     {
       "parameters": {
-        "content": "## Buffer Zone - Basic Chat\n\nBuffer Zone API를 통한 일반 LLM 채팅 워크플로우.\n\n**Webhook URL:** `https://workflow.nodove.com/webhook/buffer-chat`\n\n**Request:**\n```json\n{\n  \"message\": \"사용자 메시지\",\n  \"modelId\": \"gpt-4.1\",\n  \"providerId\": \"openai\",\n  \"context\": { \"locale\": \"ko-KR\" },\n  \"metadata\": { \"client\": \"n8n\" }\n}\n```\n\n**Response:**\n```json\n{\n  \"sessionId\": \"sess_xxx\",\n  \"message\": \"AI 응답\",\n  \"modelId\": \"gpt-4.1\",\n  \"providerId\": \"openai\"\n}\n```",
+        "content": "## Buffer Zone - Basic Chat\n\nBuffer Zone API를 통한 일반 LLM 채팅 워크플로우.\n\n**Webhook URL:** `https://blog-bw.nodove.com/webhook/buffer-chat`\n\n**Request:**\n```json\n{\n  \"message\": \"사용자 메시지\",\n  \"modelId\": \"gpt-4.1\",\n  \"providerId\": \"openai\",\n  \"context\": { \"locale\": \"ko-KR\" },\n  \"metadata\": { \"client\": \"n8n\" }\n}\n```\n\n**Response:**\n```json\n{\n  \"sessionId\": \"sess_xxx\",\n  \"message\": \"AI 응답\",\n  \"modelId\": \"gpt-4.1\",\n  \"providerId\": \"openai\"\n}\n```",
         "height": 440,
         "width": 360
       },

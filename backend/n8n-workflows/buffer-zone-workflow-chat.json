@@ -19,7 +19,7 @@
     },
     {
       "parameters": {
-        "content": "## Buffer Zone - Workflow Profile Chat\n\n사전 정의된 워크플로우 프로필 기반 LLM 채팅.\n\n**Webhook URL:** `https://workflow.nodove.com/webhook/buffer-workflow/{profile}`\n\n**Profiles:**\n- `blog-summary`: 블로그 포스트 요약\n- `code-review`: 코드 리뷰\n- `translate`: 번역\n- `order-approval`: 주문 승인\n\n**Request:**\n```json\n{\n  \"message\": \"이 코드 리뷰해줘\",\n  \"variables\": {\n    \"code\": \"function foo() {...}\",\n    \"language\": \"typescript\"\n  },\n  \"eventSinkId\": \"n8n-main\"\n}\n```\n\n**Response:**\n```json\n{\n  \"sessionId\": \"sess_xxx\",\n  \"message\": \"AI 응답\",\n  \"workflowProfile\": \"code-review\",\n  \"workflowResult\": { \"issues\": [...] }\n}\n```",
+        "content": "## Buffer Zone - Workflow Profile Chat\n\n사전 정의된 워크플로우 프로필 기반 LLM 채팅.\n\n**Webhook URL:** `https://blog-bw.nodove.com/webhook/buffer-workflow/{profile}`\n\n**Profiles:**\n- `blog-summary`: 블로그 포스트 요약\n- `code-review`: 코드 리뷰\n- `translate`: 번역\n- `order-approval`: 주문 승인\n\n**Request:**\n```json\n{\n  \"message\": \"이 코드 리뷰해줘\",\n  \"variables\": {\n    \"code\": \"function foo() {...}\",\n    \"language\": \"typescript\"\n  },\n  \"eventSinkId\": \"n8n-main\"\n}\n```\n\n**Response:**\n```json\n{\n  \"sessionId\": \"sess_xxx\",\n  \"message\": \"AI 응답\",\n  \"workflowProfile\": \"code-review\",\n  \"workflowResult\": { \"issues\": [...] }\n}\n```",
         "height": 580,
         "width": 400
       },

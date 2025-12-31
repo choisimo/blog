@@ -19,7 +19,7 @@
     },
     {
       "parameters": {
-        "content": "## Buffer Zone - Event Receiver\n\nBuffer Zone에서 발생한 이벤트를 수신하여 처리.\n\n**Webhook URL:** `https://workflow.nodove.com/webhook/buffer-events/{sinkId}`\n\n**Event Types:**\n- `workflow.completed`: 워크플로우 완료\n- `workflow.failed`: 워크플로우 실패\n- `chat.completed`: 채팅 완료\n- `rag.completed`: RAG 검색 완료\n\n**Event Payload:**\n```json\n{\n  \"type\": \"workflow.completed\",\n  \"timestamp\": \"2025-12-30T04:00:00Z\",\n  \"data\": {\n    \"profile\": \"order-approval\",\n    \"sessionId\": \"sess_abc123\",\n    \"result\": \"approved\",\n    \"reason\": \"amount under threshold\"\n  }\n}\n```\n\n**Use Cases:**\n- Slack/Discord 알림\n- 데이터베이스 로깅\n- 다른 워크플로우 트리거\n- 외부 시스템 연동",
+        "content": "## Buffer Zone - Event Receiver\n\nBuffer Zone에서 발생한 이벤트를 수신하여 처리.\n\n**Webhook URL:** `https://blog-bw.nodove.com/webhook/buffer-events/{sinkId}`\n\n**Event Types:**\n- `workflow.completed`: 워크플로우 완료\n- `workflow.failed`: 워크플로우 실패\n- `chat.completed`: 채팅 완료\n- `rag.completed`: RAG 검색 완료\n\n**Event Payload:**\n```json\n{\n  \"type\": \"workflow.completed\",\n  \"timestamp\": \"2025-12-30T04:00:00Z\",\n  \"data\": {\n    \"profile\": \"order-approval\",\n    \"sessionId\": \"sess_abc123\",\n    \"result\": \"approved\",\n    \"reason\": \"amount under threshold\"\n  }\n}\n```\n\n**Use Cases:**\n- Slack/Discord 알림\n- 데이터베이스 로깅\n- 다른 워크플로우 트리거\n- 외부 시스템 연동",
         "height": 580,
         "width": 400
       },

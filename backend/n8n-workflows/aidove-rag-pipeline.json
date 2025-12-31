@@ -19,7 +19,7 @@
     },
     {
       "parameters": {
-        "content": "## Aidove RAG Pipeline\n\nRetrieval-Augmented Generation workflow with vector search.\n\n**Webhook URL:** `https://workflow.nodove.com/webhook/aidove-rag`\n\n**Features:**\n- Vector similarity search via ChromaDB/Pinecone\n- Blog post context retrieval\n- Conversation memory with sessionId\n- Source citation in responses\n\n**Request Format:**\n```json\n{\n  \"chatInput\": \"user question\",\n  \"sessionId\": \"user-session-id\",\n  \"metadata\": {\n    \"collection\": \"blog-posts\",\n    \"topK\": 5\n  }\n}\n```",
+        "content": "## Aidove RAG Pipeline\n\nRetrieval-Augmented Generation workflow with vector search.\n\n**Webhook URL:** `https://blog-bw.nodove.com/webhook/aidove-rag`\n\n**Features:**\n- Vector similarity search via ChromaDB/Pinecone\n- Blog post context retrieval\n- Conversation memory with sessionId\n- Source citation in responses\n\n**Request Format:**\n```json\n{\n  \"chatInput\": \"user question\",\n  \"sessionId\": \"user-session-id\",\n  \"metadata\": {\n    \"collection\": \"blog-posts\",\n    \"topK\": 5\n  }\n}\n```",
         "height": 420,
         "width": 360
       },

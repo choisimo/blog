@@ -107,8 +107,8 @@ GitHub Repository > Settings > Secrets and variables > Actions > Variables
 | `AI_DEFAULT_MODEL` | 기본 AI 모델 | `gpt-4.1` |
 | **n8n** |
 | `N8N_USER` | n8n 로그인 ID | `admin` |
-| `N8N_WEBHOOK_URL` | n8n 웹훅 공개 URL | `https://workflow.nodove.com/` |
-| `N8N_HOST` | n8n 호스트명 | `workflow.nodove.com` |
+| `N8N_WEBHOOK_URL` | n8n 웹훅 공개 URL | `https://blog-bw.nodove.com/` |
+| `N8N_HOST` | n8n 호스트명 | `blog-bw.nodove.com` |
 | `N8N_WORKER_REPLICAS` | Worker 수 | `2` |
 | **Cloudflare** |
 | `CF_ACCOUNT_ID` | Cloudflare Account ID | `xxxxx` |
@@ -252,7 +252,7 @@ docker compose top
 |--------|----------|----------|
 | API | `http://localhost:8080/api/v1/healthz` | `https://api.nodove.com/api/v1/healthz` |
 | LiteLLM | `http://localhost:4000/health` | `https://api.nodove.com/ai/health` |
-| n8n | `http://localhost:5678/healthz` | `https://workflow.nodove.com/healthz` |
+| n8n | `http://localhost:5678/healthz` | `https://blog-bw.nodove.com/healthz` |
 
 ## 7. 문제 해결
 

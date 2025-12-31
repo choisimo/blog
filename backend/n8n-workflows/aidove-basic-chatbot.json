@@ -71,7 +71,7 @@
     },
     {
       "parameters": {
-        "content": "## Aidove Basic Chatbot\n\nSimple chatbot workflow for general AI conversations.\n\n**Webhook URL:** `https://workflow.nodove.com/webhook/aidove`\n\n**Request Format:**\n```json\n{\n  \"chatInput\": \"user message\",\n  \"sessionId\": \"optional-session-id\",\n  \"metadata\": { ... }\n}\n```\n\n**Response Format:**\n```json\n{\n  \"output\": \"AI response text\"\n}\n```",
+        "content": "## Aidove Basic Chatbot\n\nSimple chatbot workflow for general AI conversations.\n\n**Webhook URL:** `https://blog-bw.nodove.com/webhook/aidove`\n\n**Request Format:**\n```json\n{\n  \"chatInput\": \"user message\",\n  \"sessionId\": \"optional-session-id\",\n  \"metadata\": { ... }\n}\n```\n\n**Response Format:**\n```json\n{\n  \"output\": \"AI response text\"\n}\n```",
         "height": 340,
         "width": 320
       },

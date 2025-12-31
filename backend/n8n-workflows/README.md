@@ -76,7 +76,7 @@ backend/n8n-workflows/
 
 ### 2.2 n8n UI에서 임포트
 
-1. n8n UI 접속 (https://workflow.nodove.com)
+1. n8n UI 접속 (https://blog-bw.nodove.com)
 2. **Workflows > Import from File** 클릭
 3. 원하는 JSON 파일 선택
 4. 크레덴셜 연결 확인
@@ -96,7 +96,7 @@ docker exec -it blog-n8n n8n import:workflow --input=/workflows/buffer-zone-even
 
 ### 3.1 Buffer Zone - Basic Chat
 
-**Webhook URL:** `https://workflow.nodove.com/webhook/buffer-chat`
+**Webhook URL:** `https://blog-bw.nodove.com/webhook/buffer-chat`
 
 **요청 예시:**
 ```json
@@ -128,7 +128,7 @@ docker exec -it blog-n8n n8n import:workflow --input=/workflows/buffer-zone-even
 
 ### 3.2 Buffer Zone - RAG Chat
 
-**Webhook URL:** `https://workflow.nodove.com/webhook/buffer-rag-chat`
+**Webhook URL:** `https://blog-bw.nodove.com/webhook/buffer-rag-chat`
 
 **요청 예시:**
 ```json
@@ -165,7 +165,7 @@ docker exec -it blog-n8n n8n import:workflow --input=/workflows/buffer-zone-even
 
 ### 3.3 Buffer Zone - Workflow Profile Chat
 
-**Webhook URL:** `https://workflow.nodove.com/webhook/buffer-workflow/{profile}`
+**Webhook URL:** `https://blog-bw.nodove.com/webhook/buffer-workflow/{profile}`
 
 **지원 프로필:**
 - `blog-summary` - 블로그 포스트 요약
@@ -203,7 +203,7 @@ docker exec -it blog-n8n n8n import:workflow --input=/workflows/buffer-zone-even
 
 ### 3.4 Buffer Zone - Event Receiver
 
-**Webhook URL:** `https://workflow.nodove.com/webhook/buffer-events/{sinkId}`
+**Webhook URL:** `https://blog-bw.nodove.com/webhook/buffer-events/{sinkId}`
 
 Buffer Zone에서 발생한 이벤트를 수신하여 후속 처리를 수행합니다.
 
