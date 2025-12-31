@@ -376,16 +376,56 @@ jobs:
           # Login to GHCR
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-          # Clean up any orphaned containers with conflicting names
+          # =====================================================
+          # Clean up any processes using required ports
+          # =====================================================
+          echo ""
+          echo "=== Checking Port Conflicts ==="
+          
+          # Check and free port 80
+          if lsof -i :80 -t >/dev/null 2>&1; then
+            echo "Port 80 is in use, checking what's using it..."
+            lsof -i :80 || true
+            
+            # Try to find and stop the container using port 80
+            CONTAINER_80=$(docker ps --filter "publish=80" --format "{{.Names}}" 2>/dev/null | head -1)
+            if [ -n "$CONTAINER_80" ]; then
+              echo "Stopping container using port 80: $CONTAINER_80"
+              docker stop "$CONTAINER_80" 2>/dev/null || true
+              docker rm -f "$CONTAINER_80" 2>/dev/null || true
+            fi
+          fi
+          
+          # Check and free port 443
+          if lsof -i :443 -t >/dev/null 2>&1; then
+            echo "Port 443 is in use, checking what's using it..."
+            CONTAINER_443=$(docker ps --filter "publish=443" --format "{{.Names}}" 2>/dev/null | head -1)
+            if [ -n "$CONTAINER_443" ]; then
+              echo "Stopping container using port 443: $CONTAINER_443"
+              docker stop "$CONTAINER_443" 2>/dev/null || true
+              docker rm -f "$CONTAINER_443" 2>/dev/null || true
+            fi
+          fi
+
+          # =====================================================
+          # Clean up any orphaned containers
+          # =====================================================
           echo ""
           echo "=== Cleaning Up Old Containers ==="
-          # Stop and remove any containers with blog- prefix that might conflict
+          
+          # Stop existing blog-stack compose project
+          $DC -f docker-compose.yml down --remove-orphans 2>/dev/null || true
+          
+          # Also try stopping any stray containers with blog- prefix
           docker ps -a --filter "name=blog-" --format "{{.Names}}" | while read name; do
             if [ -n "$name" ]; then
-              echo "Removing orphaned container: $name"
+              echo "Removing container: $name"
               docker rm -f "$name" 2>/dev/null || true
             fi
           done
+          
+          # Remove any dangling networks
+          docker network prune -f 2>/dev/null || true
 
           # Pull latest images
           echo ""
