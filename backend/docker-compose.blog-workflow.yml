@@ -433,6 +433,13 @@ services:
       - N8N_HOST=${N8N_HOST:-blog-bw.nodove.com}
       - N8N_PROTOCOL=https
       - N8N_EDITOR_BASE_URL=${N8N_EDITOR_BASE_URL:-https://blog-bw.nodove.com}
+      # Proxy & Security Settings (behind nginx)
+      - N8N_TRUST_PROXY=true
+      - N8N_SECURE_COOKIE=true
+      # CORS settings for websocket connections
+      - N8N_PUSH_BACKEND=websocket
+      # Disable endpoint validation for reverse proxy
+      - N8N_ENDPOINT_REST=rest
       # AI Provider API Keys (for n8n AI nodes)
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
