@@ -1,20 +1,23 @@
 name: Backend Build & Deploy (SSH Compose)
 
 # =============================================================================
-# Full Stack Deployment with Cloudflare Workers + LiteLLM AI Gateway
+# Full Stack Deployment with Cloudflare Full SSL + LiteLLM AI Gateway
 # =============================================================================
 # Architecture:
-#   Cloudflare Workers -> Server:8080 -> nginx -> api -> litellm -> LLM APIs
+#   Cloudflare (SSL Full) -> Server:8443 -> nginx (SSL) -> Internal Services
 #
 # Services deployed:
-#   - nginx: Reverse proxy (exposed on port 8080)
+#   - nginx: Reverse proxy with SSL (ports 80, 8080, 443, 8443)
 #   - api: Node.js backend (built from Dockerfile)
 #   - litellm: AI Gateway for multiple LLM providers
 #   - embedding-server: TEI for RAG
 #   - chromadb: Vector database
 #   - terminal-server: Docker PTY server
 #
-# Note: Cloudflare Workers (api-gateway) is deployed separately via workers workflow
+# SSL Configuration:
+#   - Self-signed certificate generated on first deploy
+#   - Cloudflare Full SSL mode (HTTPS between Cloudflare and origin)
+#   - OPNsense NAT: External 8443 -> Internal 443
 #
 # Required secrets:
 #   - SSH_HOST, SSH_USER, SSH_PRIVATE_KEY, SSH_PORT (optional)
@@ -121,16 +124,19 @@ jobs:
       - name: Upload artifacts to remote
         run: |
           test -n "${REMOTE_DIR}" || { echo "REMOTE_DIR secret is missing" >&2; exit 1; }
-          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "mkdir -p ${REMOTE_DIR}"
+          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "mkdir -p ${REMOTE_DIR} ${REMOTE_DIR}/ssl"
 
           # Upload images (if built)
           if [ -f backend-images.tar.gz ]; then
             scp -P "${SSH_PORT}" backend-images.tar.gz "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/"
           fi
 
-          # Upload config files (use consolidated nginx config)
+          # Upload config files (use consolidated nginx config with SSL)
           scp -P "${SSH_PORT}" backend/nginx/nginx.conf "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/nginx.conf"
           scp -P "${SSH_PORT}" /tmp/backend.env "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/.env"
+          
+          # Upload SSL certificate generation script
+          scp -P "${SSH_PORT}" backend/scripts/generate-ssl-cert.sh "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/generate-ssl-cert.sh"
 
           # Upload LiteLLM config if exists
           if [ -f backend/litellm_config.yaml ]; then
@@ -157,12 +163,21 @@ jobs:
             rm -f backend-images.tar.gz
           fi
 
-          # Generate runtime compose file with Cloudflare Workers architecture
+          # Generate SSL certificate if not exists
+          echo "Checking SSL certificate..."
+          chmod +x generate-ssl-cert.sh 2>/dev/null || true
+          ./generate-ssl-cert.sh ./ssl
+
+          # Generate runtime compose file with SSL support
           cat > compose.runtime.yml <<'YML'
           # =======================================================================
-          # Runtime Compose - Cloudflare Workers + LiteLLM AI Gateway
+          # Runtime Compose - Cloudflare Full SSL + LiteLLM AI Gateway
           # =======================================================================
-          # Cloudflare Workers → Server:8080 → nginx → Internal Services
+          # Cloudflare (Full SSL) → Server:8443 → nginx (SSL) → Internal Services
+          #
+          # Ports:
+          #   80/8080  - HTTP (health checks, internal)
+          #   443/8443 - HTTPS (Cloudflare Full SSL)
           #
           # Routes:
           #   /api/*       → api:5080
@@ -171,18 +186,20 @@ jobs:
           # =======================================================================
 
           services:
-            # Nginx Reverse Proxy (Entry Point from Cloudflare Workers)
+            # Nginx Reverse Proxy with SSL
             nginx:
               image: nginx:alpine
               depends_on:
                 api:
                   condition: service_started
               ports:
-                - "8080:80"  # Exposed to Cloudflare Workers
-              expose:
-                - "80"
+                - "80:80"       # HTTP
+                - "8080:80"     # HTTP alternative
+                - "443:443"     # HTTPS
+                - "8443:8443"   # HTTPS alternative (Cloudflare Origin -> 8443)
               volumes:
                 - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+                - ./ssl:/etc/nginx/ssl:ro
               networks:
                 - backend
               restart: unless-stopped
@@ -222,7 +239,6 @@ jobs:
               environment:
                 - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-1234}
                 - LITELLM_LOG_LEVEL=INFO
-                # Disable database features - we use D1 for usage tracking
                 - DISABLE_SPEND_LOGS=true
                 - DATABASE_URL=
               expose:
@@ -308,14 +324,24 @@ jobs:
           $DC -f compose.runtime.yml exec -T nginx nginx -s reload 2>/dev/null || \
             $DC -f compose.runtime.yml restart nginx
 
-          # Wait for services via nginx (port 8080 on host)
-          echo "Waiting for nginx to be ready..."
+          # Wait for services via nginx (port 8080 on host - HTTP)
+          echo "Waiting for nginx to be ready (HTTP)..."
           for i in $(seq 1 30); do
             if curl -fsS http://localhost:8080/health >/dev/null 2>&1; then
-              echo "nginx Health OK"
+              echo "nginx HTTP Health OK"
               break
             fi
             echo "nginx Retry $i/30"; sleep 2;
+          done
+
+          # Wait for nginx HTTPS
+          echo "Waiting for nginx to be ready (HTTPS)..."
+          for i in $(seq 1 30); do
+            if curl -fsS --insecure https://localhost:8443/health >/dev/null 2>&1; then
+              echo "nginx HTTPS Health OK"
+              break
+            fi
+            echo "nginx HTTPS Retry $i/30"; sleep 2;
           done
 
           echo "Waiting for API health check via nginx..."
@@ -351,8 +377,17 @@ jobs:
             exit 1
           fi
 
+          # Verify SSL is working
+          if curl -fsS --insecure https://localhost:8443/health 2>&1 | grep -q '"ssl":true'; then
+            echo "SSL verification OK"
+          else
+            echo "WARNING: SSL health check returned unexpected response"
+          fi
+
           echo ""
           echo "Deployment successful!"
+          echo "HTTP:  http://localhost:8080"
+          echo "HTTPS: https://localhost:8443"
           REMOTE_EOF
 
       - name: External health check (public domain)

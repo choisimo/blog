@@ -143,8 +143,9 @@ services:
   # BLOG SERVICES (Pre-built images from GHCR)
   # ===========================================================================
 
-  # Nginx Reverse Proxy (consolidated config)
+  # Nginx Reverse Proxy (consolidated config with SSL)
   # Routes: /api/* -> api, /ai/* -> litellm, /terminal/* -> terminal-server, /webhook/* -> n8n
+  # SSL: Cloudflare Full Mode via port 8443 -> 443
   nginx:
     image: nginx:alpine
     container_name: blog-nginx
@@ -153,10 +154,13 @@ services:
       api:
         condition: service_healthy
     ports:
-      - "8080:80"   # Main API gateway port
-      - "80:80"     # HTTP redirect (optional)
+      - "80:80"       # HTTP (health checks, internal)
+      - "8080:80"     # HTTP alternative
+      - "443:443"     # HTTPS (SSL)
+      - "8443:8443"   # HTTPS alternative (Cloudflare Origin Rule -> 8443)
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
     environment:
       - BACKEND_SECRET_KEY=${BACKEND_SECRET_KEY:-}
     networks:
