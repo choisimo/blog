@@ -299,7 +299,7 @@ services:
       - no-new-privileges:true
 
   ai-engine:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/ai-engine:${IMAGE_TAG:-latest}
+    image: ghcr.io/choisimo/ai-engine:latest
     container_name: blog-ai-engine
     profiles: ["ai"]
     restart: unless-stopped
