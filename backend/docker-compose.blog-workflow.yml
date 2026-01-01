@@ -192,7 +192,7 @@ services:
       start_period: 10s
 
   api:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/blog-api:${IMAGE_TAG:-latest}
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/blog-api:latest
     container_name: blog-api
     restart: unless-stopped
     env_file:
@@ -259,7 +259,7 @@ services:
       - blog-network
 
   terminal-server:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/blog-terminal:${IMAGE_TAG:-latest}
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/blog-terminal:latest
     container_name: blog-terminal
     restart: unless-stopped
     env_file:
@@ -279,7 +279,7 @@ services:
 
 # AI Engine - OpenCode Serve (for n8n workflow integration)
   ai-engine:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/ai-engine:${IMAGE_TAG:-latest}
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/ai-engine:latest
     container_name: ai-engine
     restart: unless-stopped
     environment:
