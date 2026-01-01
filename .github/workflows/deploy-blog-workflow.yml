@@ -887,7 +887,7 @@ jobs:
     if: always() && needs.deploy.result == 'success'
 
     env:
-      API_BASE_URL: ${{ vars.API_BASE_URL || 'https://api.nodove.com' }}
+      API_BASE_URL: ${{ vars.API_BASE_URL || 'https://blog-b.nodove.com' }}
       N8N_WEBHOOK_URL: ${{ vars.N8N_WEBHOOK_URL || 'https://blog-bw.nodove.com' }}
       SITE_BASE_URL: ${{ vars.SITE_BASE_URL || 'https://noblog.nodove.com' }}
 
