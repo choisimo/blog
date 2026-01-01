@@ -55,7 +55,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: deploy-blog-workflow-${{ github.ref }}
+  group: backend-deploy-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -311,20 +311,45 @@ jobs:
           # Create SSL directory
           mkdir -p "$DEPLOY_DIR/ssl"
           
-          # Write SSL certificate from secrets
-          cat > "$DEPLOY_DIR/ssl/cert.pem" << 'CERT_EOF'
+          # Check if SSL secrets are provided
+          if [ -n "${{ secrets.SSL_CERT }}" ] && [ -n "${{ secrets.SSL_KEY }}" ]; then
+            echo "Using SSL certificates from secrets..."
+            
+            # Write SSL certificate from secrets (use nginx expected names)
+            cat > "$DEPLOY_DIR/ssl/origin.crt" << 'CERT_EOF'
           ${{ secrets.SSL_CERT }}
           CERT_EOF
-          
-          cat > "$DEPLOY_DIR/ssl/key.pem" << 'KEY_EOF'
+            
+            cat > "$DEPLOY_DIR/ssl/origin.key" << 'KEY_EOF'
           ${{ secrets.SSL_KEY }}
           KEY_EOF
+            
+            # Set proper permissions
+            chmod 644 "$DEPLOY_DIR/ssl/origin.crt"
+            chmod 600 "$DEPLOY_DIR/ssl/origin.key"
+            
+            echo "SSL certificates configured from secrets"
+          else
+            echo "No SSL secrets found, generating self-signed certificate..."
+            
+            # Generate self-signed certificate if it doesn't exist
+            if [ ! -f "$DEPLOY_DIR/ssl/origin.crt" ] || [ ! -f "$DEPLOY_DIR/ssl/origin.key" ]; then
+              openssl req -x509 -nodes -days 5475 -newkey rsa:2048 \
+                -keyout "$DEPLOY_DIR/ssl/origin.key" \
+                -out "$DEPLOY_DIR/ssl/origin.crt" \
+                -subj "/CN=*.nodove.com/O=Nodove/C=KR" \
+                -addext "subjectAltName=DNS:*.nodove.com,DNS:nodove.com" \
+                2>/dev/null
+              
+              chmod 600 "$DEPLOY_DIR/ssl/origin.key"
+              chmod 644 "$DEPLOY_DIR/ssl/origin.crt"
+              echo "Self-signed SSL certificate generated"
+            else
+              echo "SSL certificates already exist"
+            fi
+          fi
           
-          # Set proper permissions
-          chmod 644 "$DEPLOY_DIR/ssl/cert.pem"
-          chmod 600 "$DEPLOY_DIR/ssl/key.pem"
-          
-          echo "SSL certificates configured"
+          ls -la "$DEPLOY_DIR/ssl/"
           SSL_SCRIPT
 
       - name: Deploy stack on server
@@ -350,46 +375,45 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
           # =====================================================
-          # Clean up any processes using required ports
+          # Clean up ALL conflicting compose projects and containers
           # =====================================================
+          echo ""
+          echo "=== Comprehensive Cleanup ==="
+          
+          # Stop all compose projects that might conflict
+          echo "Stopping any existing compose projects..."
+          for compose_file in docker-compose.yml compose.runtime.yml docker-compose.blog-workflow.yml; do
+            if [ -f "$compose_file" ]; then
+              echo "Stopping services from $compose_file..."
+              $DC -f "$compose_file" down --remove-orphans 2>/dev/null || true
+            fi
+          done
+          
+          # Also check in other potential directories
+          for dir in ~/blog-backend /opt/blog-stack /opt/blog-backend; do
+            for compose_file in compose.runtime.yml docker-compose.yml; do
+              if [ -f "$dir/$compose_file" ]; then
+                echo "Stopping services from $dir/$compose_file..."
+                (cd "$dir" && $DC -f "$compose_file" down --remove-orphans 2>/dev/null) || true
+              fi
+            done
+          done
+          
+          # Stop any containers using critical ports
           echo ""
           echo "=== Checking Port Conflicts ==="
-          
-          # Check and free port 80
-          if lsof -i :80 -t >/dev/null 2>&1; then
-            echo "Port 80 is in use, checking what's using it..."
-            lsof -i :80 || true
-            
-            # Try to find and stop the container using port 80
-            CONTAINER_80=$(docker ps --filter "publish=80" --format "{{.Names}}" 2>/dev/null | head -1)
-            if [ -n "$CONTAINER_80" ]; then
-              echo "Stopping container using port 80: $CONTAINER_80"
-              docker stop "$CONTAINER_80" 2>/dev/null || true
-              docker rm -f "$CONTAINER_80" 2>/dev/null || true
+          for port in 80 443 8080 8443 5432 6379 27017 5678; do
+            CONTAINER=$(docker ps --filter "publish=$port" --format "{{.Names}}" 2>/dev/null | head -1)
+            if [ -n "$CONTAINER" ]; then
+              echo "Stopping container using port $port: $CONTAINER"
+              docker stop "$CONTAINER" 2>/dev/null || true
+              docker rm -f "$CONTAINER" 2>/dev/null || true
             fi
-          fi
+          done
           
-          # Check and free port 443
-          if lsof -i :443 -t >/dev/null 2>&1; then
-            echo "Port 443 is in use, checking what's using it..."
-            CONTAINER_443=$(docker ps --filter "publish=443" --format "{{.Names}}" 2>/dev/null | head -1)
-            if [ -n "$CONTAINER_443" ]; then
-              echo "Stopping container using port 443: $CONTAINER_443"
-              docker stop "$CONTAINER_443" 2>/dev/null || true
-              docker rm -f "$CONTAINER_443" 2>/dev/null || true
-            fi
-          fi
-
-          # =====================================================
-          # Clean up any orphaned containers
-          # =====================================================
+          # Stop any containers with blog- or similar prefixes
           echo ""
           echo "=== Cleaning Up Old Containers ==="
-          
-          # Stop existing blog-stack compose project
-          $DC -f docker-compose.yml down --remove-orphans 2>/dev/null || true
-          
-          # Also try stopping any stray containers with blog- prefix
           docker ps -a --filter "name=blog-" --format "{{.Names}}" | while read name; do
             if [ -n "$name" ]; then
               echo "Removing container: $name"
@@ -403,12 +427,12 @@ jobs:
           # Pull latest images
           echo ""
           echo "=== Pulling Images ==="
-          $DC -f docker-compose.yml pull
+          $DC -f docker-compose.yml pull || true
           
-          # Pull ai-engine image separately (always pull latest)
+          # Pull ai-engine image separately (always pull latest, continue on failure)
           echo ""
           echo "=== Pulling AI Engine Image ==="
-          docker pull ghcr.io/choisimo/ai-engine:latest
+          docker pull ghcr.io/choisimo/ai-engine:latest 2>/dev/null || echo "WARN: Could not pull ai-engine image, will use cached or skip"
 
           # Start/Update services
           echo ""
@@ -563,7 +587,17 @@ jobs:
       - name: Add host to known_hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -p "${{ env.SSH_PORT }}" -H "${{ env.SSH_HOST }}" >> ~/.ssh/known_hosts
+          chmod 700 ~/.ssh
+          # Use timeout and retry for ssh-keyscan
+          for i in 1 2 3; do
+            if ssh-keyscan -p "${{ env.SSH_PORT }}" -H "${{ env.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null; then
+              echo "ssh-keyscan succeeded on attempt $i"
+              break
+            fi
+            echo "ssh-keyscan attempt $i failed, retrying..."
+            sleep 5
+          done
+          chmod 600 ~/.ssh/known_hosts
 
       - name: Upload credentials setup script
         run: |
@@ -805,7 +839,17 @@ jobs:
       - name: Add host to known_hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -p "${{ env.SSH_PORT }}" -H "${{ env.SSH_HOST }}" >> ~/.ssh/known_hosts
+          chmod 700 ~/.ssh
+          # Use timeout and retry for ssh-keyscan
+          for i in 1 2 3; do
+            if ssh-keyscan -p "${{ env.SSH_PORT }}" -H "${{ env.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null; then
+              echo "ssh-keyscan succeeded on attempt $i"
+              break
+            fi
+            echo "ssh-keyscan attempt $i failed, retrying..."
+            sleep 5
+          done
+          chmod 600 ~/.ssh/known_hosts
 
       - name: Import workflows to n8n
         continue-on-error: true

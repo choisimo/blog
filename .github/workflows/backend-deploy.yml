@@ -170,6 +170,34 @@ jobs:
           chmod +x generate-ssl-cert.sh 2>/dev/null || true
           ./generate-ssl-cert.sh ./ssl
 
+          # =====================================================
+          # Stop conflicting services before starting new ones
+          # =====================================================
+          echo ""
+          echo "=== Cleaning Up Conflicting Services ==="
+          
+          # Stop any existing compose projects that might conflict
+          for compose_file in compose.runtime.yml docker-compose.yml docker-compose.blog-workflow.yml; do
+            if [ -f "$compose_file" ]; then
+              echo "Stopping services from $compose_file..."
+              $DC -f "$compose_file" down --remove-orphans 2>/dev/null || true
+            fi
+          done
+          
+          # Stop any containers using conflicting ports
+          echo "Checking for port conflicts..."
+          for port in 80 443 8080 8443 8180 8100; do
+            CONTAINER=$(docker ps --filter "publish=$port" --format "{{.Names}}" 2>/dev/null | head -1)
+            if [ -n "$CONTAINER" ]; then
+              echo "Stopping container using port $port: $CONTAINER"
+              docker stop "$CONTAINER" 2>/dev/null || true
+              docker rm -f "$CONTAINER" 2>/dev/null || true
+            fi
+          done
+          
+          # Cleanup dangling networks
+          docker network prune -f 2>/dev/null || true
+
           # Generate runtime compose file with SSL support
           cat > compose.runtime.yml <<'YML'
           # =======================================================================
@@ -240,27 +268,27 @@ jobs:
                 retries: 5
                 start_period: 60s
 
-            # TEI Embedding Server
+            # TEI Embedding Server (internal only, no host port binding)
             embedding-server:
               image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2.3
               command: --model-id sentence-transformers/all-MiniLM-L6-v2
-              ports:
-                - "127.0.0.1:8180:80"
+              expose:
+                - "80"
               volumes:
                 - tei-data:/data
               networks:
                 - backend
               restart: unless-stopped
 
-            # ChromaDB
+            # ChromaDB (internal only, no host port binding)
             chromadb:
               image: chromadb/chroma:0.5.23
               environment:
                 - IS_PERSISTENT=TRUE
                 - PERSIST_DIRECTORY=/chroma/chroma
                 - ANONYMIZED_TELEMETRY=FALSE
-              ports:
-                - "127.0.0.1:8100:8000"
+              expose:
+                - "8000"
               volumes:
                 - chroma-data:/chroma/chroma
               networks:

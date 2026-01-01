@@ -126,8 +126,8 @@ services:
     image: chromadb/chroma:0.5.23
     container_name: blog-chromadb
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:8100:8000"
+    expose:
+      - "8000"
     environment:
       - IS_PERSISTENT=TRUE
       - PERSIST_DIRECTORY=/chroma/chroma
@@ -251,8 +251,8 @@ services:
     container_name: blog-embedding
     restart: unless-stopped
     command: --model-id sentence-transformers/all-MiniLM-L6-v2
-    ports:
-      - "127.0.0.1:8180:80"
+    expose:
+      - "80"
     volumes:
       - tei_data:/data
     networks:
@@ -269,6 +269,10 @@ services:
       - SANDBOX_IMAGE=${SANDBOX_IMAGE:-alpine:latest}
     expose:
       - "8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - blog-network
 
 # ===========================================================================
 # AI SERVICES
