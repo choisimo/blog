@@ -1,6 +1,29 @@
 {
-  "total": 133,
+  "total": 134,
   "items": [
+    {
+      "path": "/posts/2025/감동을_잃어버린_그대들에게.md",
+      "year": "2025",
+      "slug": "감동을_잃어버린_그대들에게",
+      "title": "감동을 잃어버린 그대들에게",
+      "description": "효율성이라는 알고리즘에 갇혀, 비효율적인 낭만을 잃어버린 우리 시대에 대한 회고.",
+      "snippet": "효율성이라는 알고리즘에 갇혀, 비효율적인 낭만을 잃어버린 우리 시대에 대한 회고.",
+      "date": "2025-12-29",
+      "tags": [
+        "디지털 휴머니즘",
+        "쾌락 중독",
+        "최적화의 비극",
+        "인간 소외",
+        "기술 철학",
+        "문제 정의"
+      ],
+      "category": "Tech & Philosophy",
+      "author": "Admin",
+      "readingTime": "5 min read",
+      "published": true,
+      "coverImage": "/images/2025/공허.png",
+      "url": "/blog/2025/감동을_잃어버린_그대들에게"
+    },
     {
       "path": "/posts/2025/k8s-overview.md",
       "year": "2025",
@@ -2790,7 +2813,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2025-12-29T03:47:04.308Z",
+  "generatedAt": "2025-12-31T20:06:00.154Z",
   "years": [
     "2025",
     "2024"
