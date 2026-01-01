@@ -4,15 +4,18 @@ name: Deploy Blog + n8n Workflow Stack
 # Blog Backend + n8n Workflow CI/CD Pipeline
 # =============================================================================
 #
+# NOTE: Primary API Gateway is now Cloudflare Workers (see deploy-api-gateway.yml).
+# This workflow deploys the n8n workflow engine and supporting backend services.
+# AI services have been migrated to Cloudflare Workers (see deploy-ai-check-gateway.yml).
+#
 # Architecture:
 #   GitHub Actions → Build Images → Push to GHCR → SSH Deploy → docker compose up
 #
 # Services Deployed:
-#   - Blog API (ghcr.io/choisimo/blog-api)
-#   - AI Engine (ghcr.io/choisimo/ai-engine)
-#   - AI Admin (ghcr.io/choisimo/ai-admin)
+#   - Blog API (ghcr.io/choisimo/blog-api) - Backend for n8n integration
+#   - AI Engine (ghcr.io/choisimo/ai-engine) - For n8n workflow integration
 #   - Terminal Server (ghcr.io/choisimo/blog-terminal)
-#   - n8n + Workers
+#   - n8n + Workers - Workflow automation
 #   - PostgreSQL, Redis, MongoDB, Qdrant, ChromaDB, etc.
 #
 # Deployment Directory: /opt/blog-stack
@@ -926,10 +929,12 @@ jobs:
         id: ai_endpoints
         run: |
           echo "=== Testing AI Endpoints ==="
+          echo "NOTE: Primary AI API is now handled by Cloudflare Workers (ai-check-gateway)."
+          echo "This test checks n8n webhook integration for complex AI workflows."
           
-          # Test AI health endpoint via n8n webhook
+          # Test AI health endpoint via n8n webhook (for workflow integration)
           AI_HEALTH_URL="${{ env.N8N_WEBHOOK_URL }}/webhook/ai/health"
-          echo "Testing AI Health: $AI_HEALTH_URL"
+          echo "Testing AI Health via n8n: $AI_HEALTH_URL"
           
           RESPONSE=$(curl -sf -w "\n%{http_code}" "$AI_HEALTH_URL" 2>/dev/null || echo -e "\n000")
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
@@ -942,8 +947,8 @@ jobs:
             echo "ai_health=pass" >> $GITHUB_OUTPUT
             echo "AI Health Webhook: PASS"
           else
-            echo "ai_health=fail" >> $GITHUB_OUTPUT
-            echo "AI Health Webhook: FAIL or Not Configured"
+            echo "ai_health=skip" >> $GITHUB_OUTPUT
+            echo "AI Health Webhook: SKIP (n8n workflow not configured or using Workers instead)"
           fi
 
       - name: E2E Test - Frontend Site

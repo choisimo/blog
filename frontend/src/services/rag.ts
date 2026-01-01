@@ -270,3 +270,152 @@ export async function getRAGContextForChat(
     ...contextParts,
   ].join('\n');
 }
+
+// ============================================================================
+// Admin RAG Management Functions
+// ============================================================================
+
+export interface RAGCollection {
+  name: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface RAGCollectionStatus {
+  collection: string;
+  exists: boolean;
+  count: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RAGCollectionsResponse {
+  ok: boolean;
+  data?: {
+    collections: RAGCollection[];
+    total: number;
+  };
+  error?: string;
+}
+
+export interface RAGStatusResponse {
+  ok: boolean;
+  data?: RAGCollectionStatus;
+  error?: string;
+}
+
+export interface RAGIndexDocument {
+  id: string;
+  content: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RAGIndexResponse {
+  ok: boolean;
+  data?: {
+    indexed: number;
+    collection: string;
+  };
+  error?: string;
+}
+
+/**
+ * 모든 ChromaDB 컬렉션 목록 조회
+ */
+export async function getCollections(): Promise<RAGCollectionsResponse> {
+  const base = getApiBaseUrl();
+  const url = `${base.replace(/\/$/, '')}/api/v1/rag/collections`;
+
+  try {
+    const res = await fetch(url, { method: 'GET' });
+    const data = await res.json();
+
+    if (!res.ok) {
+      return { ok: false, error: data.error || `HTTP ${res.status}` };
+    }
+
+    return data as RAGCollectionsResponse;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch collections';
+    return { ok: false, error: message };
+  }
+}
+
+/**
+ * 특정 컬렉션 상태 조회
+ */
+export async function getCollectionStatus(collection?: string): Promise<RAGStatusResponse> {
+  const base = getApiBaseUrl();
+  const url = collection
+    ? `${base.replace(/\/$/, '')}/api/v1/rag/status?collection=${encodeURIComponent(collection)}`
+    : `${base.replace(/\/$/, '')}/api/v1/rag/status`;
+
+  try {
+    const res = await fetch(url, { method: 'GET' });
+    const data = await res.json();
+
+    if (!res.ok) {
+      return { ok: false, error: data.error || `HTTP ${res.status}` };
+    }
+
+    return data as RAGStatusResponse;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch status';
+    return { ok: false, error: message };
+  }
+}
+
+/**
+ * 문서 인덱싱
+ */
+export async function indexDocuments(
+  documents: RAGIndexDocument[],
+  collection?: string
+): Promise<RAGIndexResponse> {
+  const base = getApiBaseUrl();
+  const url = `${base.replace(/\/$/, '')}/api/v1/rag/index`;
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ documents, collection }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      return { ok: false, error: data.error || `HTTP ${res.status}` };
+    }
+
+    return data as RAGIndexResponse;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to index documents';
+    return { ok: false, error: message };
+  }
+}
+
+/**
+ * 인덱스에서 문서 삭제
+ */
+export async function deleteFromIndex(
+  documentId: string,
+  collection?: string
+): Promise<{ ok: boolean; error?: string }> {
+  const base = getApiBaseUrl();
+  const url = collection
+    ? `${base.replace(/\/$/, '')}/api/v1/rag/index/${encodeURIComponent(documentId)}?collection=${encodeURIComponent(collection)}`
+    : `${base.replace(/\/$/, '')}/api/v1/rag/index/${encodeURIComponent(documentId)}`;
+
+  try {
+    const res = await fetch(url, { method: 'DELETE' });
+    const data = await res.json();
+
+    if (!res.ok) {
+      return { ok: false, error: data.error || `HTTP ${res.status}` };
+    }
+
+    return { ok: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to delete from index';
+    return { ok: false, error: message };
+  }
+}

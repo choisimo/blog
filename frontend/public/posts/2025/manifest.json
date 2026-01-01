@@ -74,9 +74,10 @@
     "terraform-03-state-management.md",
     "terraform-04-variables-outputs.md",
     "web-commercialization-journal.md",
-    "wine-clipboard-bridge-journal.md"
+    "wine-clipboard-bridge-journal.md",
+    "감동을_잃어버린_그대들에게.md"
   ],
-  "generatedAt": "2025-12-26T07:57:25.784Z",
-  "totalFiles": 75,
+  "generatedAt": "2026-01-01T20:20:58.659Z",
+  "totalFiles": 76,
   "excludedFiles": 0
 }

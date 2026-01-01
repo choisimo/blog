@@ -1,15 +1,22 @@
 name: Backend Build & Deploy (SSH Compose)
 
 # =============================================================================
-# Full Stack Deployment with Cloudflare Full SSL + n8n AI Gateway
+# Backend Services Deployment (Docker Compose via SSH)
 # =============================================================================
+#
+# NOTE: Primary API Gateway is now Cloudflare Workers (see deploy-api-gateway.yml).
+# This workflow deploys backend services for local/n8n integration.
+# For production API traffic, use Cloudflare Workers as the entry point.
+#
 # Architecture:
-#   Cloudflare (SSL Full) -> Server:8443 -> nginx (SSL) -> Internal Services
+#   Cloudflare Workers (API Gateway) → Server:8080 → nginx → Internal Services
+#   OR
+#   Cloudflare (SSL Full) → Server:8443 → nginx (SSL) → Internal Services
 #
 # Services deployed:
 #   - nginx: Reverse proxy with SSL (ports 80, 8080, 443, 8443)
 #   - api: Node.js backend (built from Dockerfile)
-#   - n8n: AI Gateway via webhooks
+#   - n8n: Workflow engine for complex AI tasks
 #   - embedding-server: TEI for RAG
 #   - chromadb: Vector database
 #   - terminal-server: Docker PTY server
@@ -166,13 +173,18 @@ jobs:
           # Generate runtime compose file with SSL support
           cat > compose.runtime.yml <<'YML'
           # =======================================================================
-          # Runtime Compose - Cloudflare Full SSL + n8n AI Gateway
+          # Runtime Compose - Backend Services for n8n Integration
           # =======================================================================
+          # NOTE: Primary API Gateway is Cloudflare Workers (workers/api-gateway/).
+          # This compose file is for backend services and n8n workflow integration.
+          #
+          # Cloudflare Workers → Server:8080 → nginx → Internal Services
+          # OR
           # Cloudflare (Full SSL) → Server:8443 → nginx (SSL) → Internal Services
           #
           # Domains:
           #   blog-b.nodove.com  → Backend API, Terminal
-          #   blog-bw.nodove.com → n8n Workflow Engine (AI Gateway)
+          #   blog-bw.nodove.com → n8n Workflow Engine
           #
           # Ports:
           #   80/8080  - HTTP (health checks, internal)
@@ -275,7 +287,8 @@ jobs:
                 - backend
               restart: unless-stopped
 
-            # n8n Workflow Engine (blog-bw.nodove.com) - Primary AI Gateway
+            # n8n Workflow Engine (blog-bw.nodove.com) - Complex AI Workflows
+            # NOTE: Simple AI API requests are handled by Cloudflare Workers (ai-check-gateway).
             n8n:
               image: n8nio/n8n:latest
               env_file: .env
@@ -428,7 +441,8 @@ jobs:
         if: ${{ env.PUBLIC_API_BASE_URL != '' }}
         continue-on-error: true
         run: |
-          echo "Checking AI Gateway integration via ${PUBLIC_API_BASE_URL}/api/v1/ai/health ..."
+          echo "Checking AI endpoint via ${PUBLIC_API_BASE_URL}/api/v1/ai/health ..."
+          echo "NOTE: Primary AI API is now handled by Cloudflare Workers (ai-check-gateway)."
           response=$(curl -fsS "${PUBLIC_API_BASE_URL}/api/v1/ai/health" 2>&1 || echo '{"error":"endpoint not found"}')
           echo "$response"
-          echo "AI Gateway public check completed (check logs above for status)"
+          echo "AI endpoint check completed (check logs above for status)"

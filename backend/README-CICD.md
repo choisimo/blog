@@ -1,5 +1,18 @@
 # Blog + n8n Workflow CI/CD 가이드
 
+> **⚠️ 아키텍처 마이그레이션 안내**
+>
+> 현재 프로덕션 환경은 **Cloudflare Workers 기반**으로 마이그레이션되었습니다.
+>
+> - **API Gateway 배포**: `.github/workflows/deploy-api-gateway.yml`
+> - **Workers 배포**: `.github/workflows/deploy-workers.yml`
+> - **AI 서비스**: `workers/ai-check-gateway/` (DB 기반 모델 관리)
+>
+> 이 문서는 **n8n Workflow 스택** 및 **Docker 기반 레거시 서비스** 배포를 위한 참고용입니다.
+> Cloudflare Workers 배포는 `workers/api-gateway/README.md`를 참고하세요.
+
+---
+
 이 문서는 GitHub Actions를 통한 Blog Backend + n8n Workflow 스택의 자동 배포 설정을 설명합니다.
 
 ## 아키텍처 개요
@@ -248,11 +261,13 @@ docker compose top
 
 ### 헬스체크 엔드포인트
 
-| 서비스 | 내부 URL | 외부 URL |
-|--------|----------|----------|
-| API | `http://localhost:8080/api/v1/healthz` | `https://api.nodove.com/api/v1/healthz` |
-| LiteLLM | `http://localhost:4000/health` | `https://api.nodove.com/ai/health` |
-| n8n | `http://localhost:5678/healthz` | `https://blog-bw.nodove.com/healthz` |
+| 서비스 | 내부 URL | 외부 URL | 비고 |
+|--------|----------|----------|------|
+| API | `http://localhost:8080/api/v1/healthz` | `https://api.nodove.com/api/v1/healthz` | |
+| n8n | `http://localhost:5678/healthz` | `https://blog-bw.nodove.com/healthz` | |
+
+> **참고**: AI 서비스는 현재 Cloudflare Workers 기반 `ai-check-gateway`로 마이그레이션되었습니다.
+> AI 모델 설정은 DB 기반으로 관리됩니다 (`workers/migrations/0011_ai_model_management.sql`).
 
 ## 7. 문제 해결
 

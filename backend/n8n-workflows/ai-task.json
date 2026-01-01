@@ -1,5 +1,5 @@
 {
-  "name": "AI Task Webhook",
+  "name": "AI Task Webhook (OpenCode)",
   "nodes": [
     {
       "parameters": {
@@ -19,36 +19,12 @@
       "parameters": {
         "assignments": {
           "assignments": [
-            {
-              "id": "mode",
-              "name": "mode",
-              "type": "string",
-              "value": "={{ $json.body.mode || 'custom' }}"
-            },
-            {
-              "id": "paragraph",
-              "name": "paragraph",
-              "type": "string",
-              "value": "={{ $json.body.payload?.paragraph || $json.body.payload?.content || '' }}"
-            },
-            {
-              "id": "postTitle",
-              "name": "postTitle",
-              "type": "string",
-              "value": "={{ $json.body.payload?.postTitle || '' }}"
-            },
-            {
-              "id": "persona",
-              "name": "persona",
-              "type": "string",
-              "value": "={{ $json.body.payload?.persona || 'default' }}"
-            },
-            {
-              "id": "temperature",
-              "name": "temperature",
-              "type": "number",
-              "value": "={{ $json.body.temperature || 0.2 }}"
-            }
+            { "id": "mode", "name": "mode", "type": "string", "value": "={{ $json.body.mode || 'custom' }}" },
+            { "id": "paragraph", "name": "paragraph", "type": "string", "value": "={{ $json.body.payload?.paragraph || $json.body.payload?.content || '' }}" },
+            { "id": "postTitle", "name": "postTitle", "type": "string", "value": "={{ $json.body.payload?.postTitle || '' }}" },
+            { "id": "persona", "name": "persona", "type": "string", "value": "={{ $json.body.payload?.persona || 'default' }}" },
+            { "id": "temperature", "name": "temperature", "type": "number", "value": "={{ $json.body.temperature || 0.2 }}" },
+            { "id": "model", "name": "model", "type": "string", "value": "={{ $json.body.model || $env.OPENCODE_DEFAULT_MODEL || 'gpt-4.1' }}" }
           ]
         },
         "options": {}
@@ -66,7 +42,9 @@
             {
               "conditions": {
                 "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
-                "conditions": [{ "leftValue": "={{ $json.mode }}", "rightValue": "sketch", "operator": { "type": "string", "operation": "equals" }}],
+                "conditions": [
+                  { "leftValue": "={{ $json.mode }}", "rightValue": "sketch", "operator": { "type": "string", "operation": "equals" } }
+                ],
                 "combinator": "and"
               },
               "renameOutput": true,
@@ -75,7 +53,9 @@
             {
               "conditions": {
                 "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
-                "conditions": [{ "leftValue": "={{ $json.mode }}", "rightValue": "prism", "operator": { "type": "string", "operation": "equals" }}],
+                "conditions": [
+                  { "leftValue": "={{ $json.mode }}", "rightValue": "prism", "operator": { "type": "string", "operation": "equals" } }
+                ],
                 "combinator": "and"
               },
               "renameOutput": true,
@@ -84,7 +64,9 @@
             {
               "conditions": {
                 "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
-                "conditions": [{ "leftValue": "={{ $json.mode }}", "rightValue": "chain", "operator": { "type": "string", "operation": "equals" }}],
+                "conditions": [
+                  { "leftValue": "={{ $json.mode }}", "rightValue": "chain", "operator": { "type": "string", "operation": "equals" } }
+                ],
                 "combinator": "and"
               },
               "renameOutput": true,
@@ -93,7 +75,9 @@
             {
               "conditions": {
                 "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
-                "conditions": [{ "leftValue": "={{ $json.mode }}", "rightValue": "summary", "operator": { "type": "string", "operation": "equals" }}],
+                "conditions": [
+                  { "leftValue": "={{ $json.mode }}", "rightValue": "summary", "operator": { "type": "string", "operation": "equals" } }
+                ],
                 "combinator": "and"
               },
               "renameOutput": true,
@@ -196,42 +180,53 @@
     },
     {
       "parameters": {
-        "resource": "chat",
-        "modelId": {
-          "__rl": true,
-          "value": "gemini-1.5-flash",
-          "mode": "id"
-        },
-        "messages": {
-          "values": [
-            { "content": "={{ $json.prompt }}" }
+        "assignments": {
+          "assignments": [
+            { "id": "message", "name": "message", "type": "string", "value": "={{ $json.prompt }}" },
+            { "id": "providerID", "name": "providerID", "type": "string", "value": "={{ $env.OPENCODE_DEFAULT_PROVIDER || 'github-copilot' }}" },
+            { "id": "modelID", "name": "modelID", "type": "string", "value": "={{ $('Set Parameters').item.json.model }}" },
+            { "id": "title", "name": "title", "type": "string", "value": "={{ 'n8n-task-' + $('Set Parameters').item.json.mode + '-' + Date.now() }}" }
           ]
         },
-        "options": {
-          "temperature": "={{ $json.temperature }}"
-        }
+        "includeOtherFields": true,
+        "options": {}
       },
-      "id": "gemini-call",
-      "name": "Gemini Call",
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-      "typeVersion": 1,
-      "position": [1140, 300],
-      "credentials": {
-        "googleGeminiApi": {
-          "id": "gemini-credentials",
-          "name": "Google Gemini API"
-        }
-      }
+      "id": "build-opencode-request",
+      "name": "Build OpenCode Request",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1140, 300]
     },
     {
       "parameters": {
-        "jsCode": "const text = $input.first().json.message?.content || $input.first().json.text || '';\nconst mode = $('Set Parameters').first().json.mode;\n\n// Try to parse JSON from response\nlet data = null;\ntry {\n  data = JSON.parse(text);\n} catch {\n  // Try code fence\n  const fence = text.match(/```(?:json)?\\s*([\\s\\S]*?)```/i);\n  if (fence?.[1]) {\n    try { data = JSON.parse(fence[1].trim()); } catch {}\n  }\n  // Try substring\n  if (!data) {\n    const start = text.indexOf('{');\n    const end = text.lastIndexOf('}');\n    if (start >= 0 && end > start) {\n      try { data = JSON.parse(text.slice(start, end + 1)); } catch {}\n    }\n  }\n}\n\n// Fallback if parsing failed\nif (!data) {\n  if (mode === 'summary') {\n    data = { summary: text };\n  } else if (mode === 'sketch') {\n    data = { mood: 'curious', bullets: ['Unable to parse response'] };\n  } else if (mode === 'prism') {\n    data = { facets: [{ title: '요약', points: [text.slice(0, 200)] }] };\n  } else if (mode === 'chain') {\n    data = { questions: [{ q: '추가 질문 생성 실패', why: '' }] };\n  } else {\n    data = { text };\n  }\n}\n\nreturn { json: { data, mode, source: 'n8n' } };"
+        "method": "POST",
+        "url": "={{ ($env.OPENCODE_BASE_URL || 'http://opencode-backend:7016') + '/chat' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": {{ JSON.stringify($json.message) }},\n  \"providerID\": {{ JSON.stringify($json.providerID) }},\n  \"modelID\": {{ JSON.stringify($json.modelID) }},\n  \"title\": {{ JSON.stringify($json.title) }}\n}",
+        "options": { "timeout": 180000, "response": { "response": { "fullResponse": true } } }
+      },
+      "id": "opencode-chat",
+      "name": "OpenCode Chat",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1360, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.body?.response?.text || '';\nconst mode = $('Set Parameters').first().json.mode;\n\nlet data = null;\ntry {\n  data = JSON.parse(text);\n} catch {\n  const fence = text.match(/```(?:json)?\\s*([\\s\\S]*?)```/i);\n  if (fence?.[1]) {\n    try { data = JSON.parse(fence[1].trim()); } catch {}\n  }\n  if (!data) {\n    const start = text.indexOf('{');\n    const end = text.lastIndexOf('}');\n    if (start >= 0 && end > start) {\n      try { data = JSON.parse(text.slice(start, end + 1)); } catch {}\n    }\n  }\n}\n\nif (!data) {\n  if (mode === 'summary') {\n    data = { summary: text };\n  } else if (mode === 'sketch') {\n    data = { mood: 'curious', bullets: ['Unable to parse response'] };\n  } else if (mode === 'prism') {\n    data = { facets: [{ title: '요약', points: [text.slice(0, 200)] }] };\n  } else if (mode === 'chain') {\n    data = { questions: [{ q: '추가 질문 생성 실패', why: '' }] };\n  } else {\n    data = { text };\n  }\n}\n\nreturn { json: { ok: true, data, mode, source: 'opencode' } };"
       },
       "id": "parse-response",
       "name": "Parse Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1360, 300]
+      "position": [1580, 300]
     },
     {
       "parameters": {
@@ -243,44 +238,33 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1580, 300]
+      "position": [1800, 300]
     }
   ],
   "connections": {
-    "Webhook": {
-      "main": [[{ "node": "Set Parameters", "type": "main", "index": 0 }]]
-    },
-    "Set Parameters": {
-      "main": [[{ "node": "Switch by Mode", "type": "main", "index": 0 }]]
-    },
+    "Webhook": { "main": [[{ "node": "Set Parameters", "type": "main", "index": 0 }]] },
+    "Set Parameters": { "main": [[{ "node": "Switch by Mode", "type": "main", "index": 0 }]] },
     "Switch by Mode": {
       "main": [
         [{ "node": "Sketch Prompt", "type": "main", "index": 0 }],
         [{ "node": "Prism Prompt", "type": "main", "index": 0 }],
         [{ "node": "Chain Prompt", "type": "main", "index": 0 }],
         [{ "node": "Summary Prompt", "type": "main", "index": 0 }],
-        [{ "node": "Gemini Call", "type": "main", "index": 0 }]
+        [{ "node": "Sketch Prompt", "type": "main", "index": 0 }]
       ]
     },
-    "Sketch Prompt": {
-      "main": [[{ "node": "Gemini Call", "type": "main", "index": 0 }]]
-    },
-    "Prism Prompt": {
-      "main": [[{ "node": "Gemini Call", "type": "main", "index": 0 }]]
-    },
-    "Chain Prompt": {
-      "main": [[{ "node": "Gemini Call", "type": "main", "index": 0 }]]
-    },
-    "Summary Prompt": {
-      "main": [[{ "node": "Gemini Call", "type": "main", "index": 0 }]]
-    },
-    "Gemini Call": {
-      "main": [[{ "node": "Parse Response", "type": "main", "index": 0 }]]
-    },
-    "Parse Response": {
-      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
-    }
+    "Sketch Prompt": { "main": [[{ "node": "Build OpenCode Request", "type": "main", "index": 0 }]] },
+    "Prism Prompt": { "main": [[{ "node": "Build OpenCode Request", "type": "main", "index": 0 }]] },
+    "Chain Prompt": { "main": [[{ "node": "Build OpenCode Request", "type": "main", "index": 0 }]] },
+    "Summary Prompt": { "main": [[{ "node": "Build OpenCode Request", "type": "main", "index": 0 }]] },
+    "Build OpenCode Request": { "main": [[{ "node": "OpenCode Chat", "type": "main", "index": 0 }]] },
+    "OpenCode Chat": { "main": [[{ "node": "Parse Response", "type": "main", "index": 0 }]] },
+    "Parse Response": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "AI", "id": "ai-tag" }]
+  "staticData": null,
+  "tags": [{ "name": "AI", "id": "ai-tag" }],
+  "triggerCount": 0,
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "versionId": "1"
 }

@@ -19,30 +19,10 @@
       "parameters": {
         "assignments": {
           "assignments": [
-            {
-              "id": "status",
-              "name": "status",
-              "type": "string",
-              "value": "ok"
-            },
-            {
-              "id": "service",
-              "name": "service",
-              "type": "string",
-              "value": "n8n-ai-gateway"
-            },
-            {
-              "id": "timestamp",
-              "name": "timestamp",
-              "type": "string",
-              "value": "={{ new Date().toISOString() }}"
-            },
-            {
-              "id": "version",
-              "name": "version",
-              "type": "string",
-              "value": "1.0.0"
-            },
+            { "id": "status", "name": "status", "type": "string", "value": "ok" },
+            { "id": "service", "name": "service", "type": "string", "value": "n8n-ai-gateway" },
+            { "id": "timestamp", "name": "timestamp", "type": "string", "value": "={{ new Date().toISOString() }}" },
+            { "id": "version", "name": "version", "type": "string", "value": "1.0.0" },
             {
               "id": "endpoints",
               "name": "endpoints",
@@ -53,7 +33,7 @@
               "id": "models",
               "name": "models",
               "type": "array",
-              "value": "={{ [{ id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'Google' }, { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'Google' }, { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI' }, { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI' }] }}"
+              "value": "={{ [{ id: 'gpt-4.1', name: 'GPT-4.1 (OpenCode)', provider: 'OpenCode' }, { id: 'gpt-4o', name: 'GPT-4o (Vision)', provider: 'OpenCode' }] }}"
             }
           ]
         },
@@ -73,14 +53,8 @@
           "responseCode": 200,
           "responseHeaders": {
             "entries": [
-              {
-                "name": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "name": "Cache-Control",
-                "value": "no-cache"
-              }
+              { "name": "Content-Type", "value": "application/json" },
+              { "name": "Cache-Control", "value": "no-cache" }
             ]
           }
         }
@@ -93,40 +67,13 @@
     }
   ],
   "connections": {
-    "Webhook": {
-      "main": [
-        [
-          {
-            "node": "Set Health Info",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Set Health Info": {
-      "main": [
-        [
-          {
-            "node": "Respond",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
+    "Webhook": { "main": [[{ "node": "Set Health Info", "type": "main", "index": 0 }]] },
+    "Set Health Info": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
   },
-  "settings": {
-    "executionOrder": "v1"
-  },
+  "settings": { "executionOrder": "v1" },
   "staticData": null,
-  "tags": [
-    {
-      "name": "AI",
-      "id": "ai-tag"
-    }
-  ],
+  "tags": [{ "name": "AI", "id": "ai-tag" }],
   "triggerCount": 0,
-  "updatedAt": "2024-12-30T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
   "versionId": "1"
 }

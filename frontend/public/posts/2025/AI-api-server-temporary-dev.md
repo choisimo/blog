@@ -6,6 +6,17 @@ tags: ['Kafka', 'LLM', 'RAG', 'Gateway', '백엔드아키텍처']
 excerpt: "Kafka와 LLM 서버 사이에 작은 버퍼 존을 두고 Gateway와 Buffer Worker를 나누어 설계한 이유, 그리고 이를 Kafka 토픽·메시지 스키마·docker-compose로 구체화해 가는 과정을 정리했다"
 readTime: "8분"
 ---
+
+> **📝 히스토리 문서 안내**
+>
+> 이 문서는 **초기 개발 단계의 설계 기록**입니다.
+> 현재 AI 서비스 아키텍처는 **Cloudflare Workers 기반**으로 구현되어 있습니다.
+>
+> 최신 구현체는 다음을 참고하세요:
+> - `workers/ai-check-gateway/` - AI 서비스 게이트웨이
+> - `workers/db-api/` - D1 기반 데이터베이스 API
+> - `workers/migrations/0011_ai_model_management.sql` - AI 모델 관리
+
 ![diagram](../../images/2025/AI-server.png)
 
 차가운 새벽 공기가 방 안까지 스며들던 어느 날, 나는 모니터 속 작은 다이어그램 하나를 한참 동안 바라보고 있었다. 이미 잘 돌아가고 있는 로컬 LLM 서버가 있고, 옆에는 Kafka, 그 뒤에는 RAG와 embedding 서버, 그리고 여러 워커들이 어지럽게 얽혀 있는 그림이었다.

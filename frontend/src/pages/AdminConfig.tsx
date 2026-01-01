@@ -3,6 +3,9 @@ import { ConfigManager } from '@/components/features/admin/ConfigManager';
 import { WorkersManager } from '@/components/features/admin/WorkersManager';
 import { AIManager } from '@/components/features/admin/ai';
 import { SecretsManager } from '@/components/features/admin/secrets';
+import { RAGManager } from '@/components/features/admin/rag';
+import { SystemHealth } from '@/components/features/admin/health';
+import { AnalyticsManager } from '@/components/features/admin/analytics';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,7 +17,7 @@ import {
 } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Lock, Settings, Cloud, Bot, Key, Mail, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Lock, Settings, Cloud, Bot, Key, Mail, ArrowLeft, RefreshCw, Database, Activity, BarChart3 } from 'lucide-react';
 import {
   login,
   verifyOtp,
@@ -171,7 +174,12 @@ function OtpForm({
     setLoading(true);
     try {
       const response = await verifyOtp(sessionId, otp);
-      setTokens(response.accessToken, response.refreshToken, response.user);
+      // Convert VerifyOtpResponse.user to UserInfo format
+      const userInfo = {
+        ...response.user,
+        emailVerified: true, // OTP verified means email is verified
+      };
+      setTokens(response.accessToken, response.refreshToken, userInfo);
       scheduleTokenRefresh();
       onSuccess();
     } catch (err) {
@@ -422,8 +430,24 @@ export default function AdminConfig() {
         </Button>
       </div>
 
-      <Tabs defaultValue="config" className="space-y-6">
-        <TabsList className="grid w-full max-w-2xl grid-cols-4">
+      <Tabs defaultValue="health" className="space-y-6">
+        <TabsList className="grid w-full max-w-4xl grid-cols-7">
+          <TabsTrigger value="health" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            상태
+          </TabsTrigger>
+          <TabsTrigger value="rag" className="flex items-center gap-2">
+            <Database className="h-4 w-4" />
+            RAG
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            통계
+          </TabsTrigger>
+          <TabsTrigger value="ai" className="flex items-center gap-2">
+            <Bot className="h-4 w-4" />
+            AI
+          </TabsTrigger>
           <TabsTrigger value="config" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             환경변수
@@ -436,11 +460,23 @@ export default function AdminConfig() {
             <Cloud className="h-4 w-4" />
             Workers
           </TabsTrigger>
-          <TabsTrigger value="ai" className="flex items-center gap-2">
-            <Bot className="h-4 w-4" />
-            AI Models
-          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="health">
+          <SystemHealth />
+        </TabsContent>
+
+        <TabsContent value="rag">
+          <RAGManager />
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <AnalyticsManager />
+        </TabsContent>
+
+        <TabsContent value="ai">
+          <AIManager />
+        </TabsContent>
 
         <TabsContent value="config">
           <ConfigManager />
@@ -452,10 +488,6 @@ export default function AdminConfig() {
 
         <TabsContent value="workers">
           <WorkersManager />
-        </TabsContent>
-
-        <TabsContent value="ai">
-          <AIManager />
         </TabsContent>
       </Tabs>
     </div>

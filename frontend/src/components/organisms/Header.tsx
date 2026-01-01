@@ -59,7 +59,10 @@ export function Header() {
   useEffect(() => {
     const check = () => {
       try {
-        setHasAdmin(!!localStorage.getItem('admin.token'));
+        // Check both new auth system (admin.auth) and legacy token (admin.token)
+        const hasNewAuth = !!localStorage.getItem('admin.auth');
+        const hasLegacyToken = !!localStorage.getItem('admin.token');
+        setHasAdmin(hasNewAuth || hasLegacyToken);
       } catch {
         setHasAdmin(false);
       }
@@ -67,13 +70,17 @@ export function Header() {
     check();
     const handler = () => check();
     window.addEventListener('admin-auth-changed', handler);
-    return () => window.removeEventListener('admin-auth-changed', handler);
+    window.addEventListener('storage', handler);
+    return () => {
+      window.removeEventListener('admin-auth-changed', handler);
+      window.removeEventListener('storage', handler);
+    };
   }, []);
 
   const navigation = hasAdmin
     ? [
         ...baseNavigation,
-        { name: 'Admin', href: '/admin/new-post', icon: Shield },
+        { name: 'Admin', href: '/admin/config', icon: Shield },
       ]
     : baseNavigation;
 

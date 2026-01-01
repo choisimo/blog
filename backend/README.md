@@ -1,5 +1,20 @@
 # Backend API Server (Blog)
 
+> **⚠️ 아키텍처 마이그레이션 안내**
+>
+> 현재 시스템은 **Cloudflare Workers 기반**으로 마이그레이션되었습니다.
+>
+> - **API Gateway**: `workers/api-gateway/` - Cloudflare Tunnel 대신 Workers가 단일 진입점 역할
+> - **데이터베이스**: `workers/db-api/` - Cloudflare D1 기반 API
+> - **시크릿 관리**: DB 기반 동적 시크릿 관리 (`workers/migrations/0014_secrets_management.sql`)
+> - **AI 모델 관리**: DB 기반 설정 (`workers/migrations/0011_ai_model_management.sql`)
+>
+> 최신 배포 및 설정은 `workers/` 디렉토리와 `.github/workflows/deploy-*.yml` 파일을 참고하세요.
+>
+> 이 문서는 **로컬 개발 환경** 및 **Docker 기반 레거시 배포**를 위한 참고용으로 유지됩니다.
+
+---
+
 블로그의 API 서버입니다. 게시글 Markdown 관리(CRUD), 통합/연도별 매니페스트 생성, 이미지 업로드/관리, 댓글, AI 기능, OG 이미지 생성 등을 제공합니다.
 
 - 런타임: Node.js 20+
@@ -7,21 +22,23 @@
 - 포트: `5080` (기본)
 - 주요 경로: `/api/v1/*`
 
-## 🚀 빠른 시작 (Quick Start)
+## 빠른 시작 (Quick Start)
 
-비개발자도 쉽게 설치할 수 있는 자동화 스크립트를 제공합니다:
+로컬 개발 환경 설정:
 
 ```bash
 # 저장소 클론 후 백엔드 디렉토리로 이동
 cd backend
 
-# 빠른 설치 스크립트 실행
-bash scripts/setup.sh --pm2 --cloudflare  # Cloudflare Tunnel 사용
-# 또는
-bash scripts/setup.sh --systemd --nginx   # Nginx + Let's Encrypt 사용
+# 환경 변수 설정
+cp -n .env.example .env
+
+# 의존성 설치 및 실행
+npm ci
+npm run dev
 ```
 
-자세한 연동 가이드: [PRD 문서](../docs/PRD-fe-be-integration.md)
+> **프로덕션 배포**는 아래 "프로덕션 배포" 섹션을 참고하세요.
 
 ## 콘텐츠 경로(중요)
 코드는 리포지토리 루트를 기준으로 정적 자산 디렉터리를 계산합니다.
@@ -185,23 +202,33 @@ docker run --rm -it \
 
 ## 프로덕션 배포
 
-### 옵션 1: PM2 + Cloudflare Tunnel (추천)
+> **참고**: 프로덕션 환경에서는 Cloudflare Workers 기반 배포를 권장합니다.
+> `workers/api-gateway/README.md`를 참고하세요.
+
+### 옵션 1: Cloudflare Workers (권장)
+```bash
+cd workers/api-gateway
+npm install
+npx wrangler deploy --env production
+```
+자세한 내용은 `workers/api-gateway/README.md` 참고.
+
+### 옵션 2: PM2 + Docker (레거시)
 ```bash
 cd backend
-bash scripts/setup.sh --pm2 --cloudflare
+bash scripts/setup.sh --pm2
 ```
 
-### 옵션 2: systemd + Nginx
+### 옵션 3: systemd + Nginx (레거시)
 ```bash
 cd backend
 bash scripts/setup.sh --systemd --nginx
 ```
 
-### 수동 설정
+### 수동 설정 (레거시)
 - PM2 설정: `ecosystem.config.js`
 - systemd 서비스: `deploy/blog-backend.service`
 - Nginx 설정: `deploy/nginx-blog-api.conf`
-- Cloudflare 설정: `deploy/cloudflared-config.yml`
 
 ## GitHub Actions 연동
 

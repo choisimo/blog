@@ -1,14 +1,12 @@
 {
-  "name": "AI Embeddings Webhook",
+  "name": "AI Embeddings Webhook (TEI)",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
         "path": "ai/embeddings",
         "responseMode": "responseNode",
-        "options": {
-          "rawBody": false
-        }
+        "options": { "rawBody": false }
       },
       "id": "webhook-trigger",
       "name": "Webhook",
@@ -21,24 +19,9 @@
       "parameters": {
         "assignments": {
           "assignments": [
-            {
-              "id": "input",
-              "name": "input",
-              "type": "array",
-              "value": "={{ Array.isArray($json.body.input) ? $json.body.input : [$json.body.input] }}"
-            },
-            {
-              "id": "model",
-              "name": "model",
-              "type": "string",
-              "value": "={{ $json.body.model || 'text-embedding-ada-002' }}"
-            },
-            {
-              "id": "requestId",
-              "name": "requestId",
-              "type": "string",
-              "value": "={{ $json.body._meta?.requestId || 'n8n-embed-' + Date.now() }}"
-            }
+            { "id": "input", "name": "input", "type": "array", "value": "={{ Array.isArray($json.body.input) ? $json.body.input : [$json.body.input] }}" },
+            { "id": "model", "name": "model", "type": "string", "value": "={{ $json.body.model || 'all-MiniLM-L6-v2' }}" },
+            { "id": "requestId", "name": "requestId", "type": "string", "value": "={{ $json.body._meta?.requestId || 'n8n-embed-' + Date.now() }}" }
           ]
         },
         "options": {}
@@ -51,160 +34,54 @@
     },
     {
       "parameters": {
-        "resource": "embedding",
-        "model": "={{ $json.model }}",
-        "input": "={{ $json.input.join('\\n---\\n') }}"
+        "method": "POST",
+        "url": "={{ ($env.TEI_URL || 'http://embedding-server:80') }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"inputs\": {{ JSON.stringify($json.input) }}\n}",
+        "options": { "timeout": 120000 }
       },
-      "id": "openai-embeddings",
-      "name": "OpenAI Embeddings",
-      "type": "n8n-nodes-base.openAi",
-      "typeVersion": 1.6,
-      "position": [680, 300],
-      "credentials": {
-        "openAiApi": {
-          "id": "openai-credentials",
-          "name": "OpenAI API"
-        }
-      }
+      "id": "tei-embed",
+      "name": "TEI Embed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "embeddings",
-              "name": "embeddings",
-              "type": "array",
-              "value": "={{ $json.data?.map(d => d.embedding) || [$json.embedding] || [] }}"
-            },
-            {
-              "id": "model",
-              "name": "model",
-              "type": "string",
-              "value": "={{ $('Set Parameters').item.json.model }}"
-            },
-            {
-              "id": "provider",
-              "name": "provider",
-              "type": "string",
-              "value": "openai"
-            },
-            {
-              "id": "requestId",
-              "name": "requestId",
-              "type": "string",
-              "value": "={{ $('Set Parameters').item.json.requestId }}"
-            },
-            {
-              "id": "usage",
-              "name": "usage",
-              "type": "object",
-              "value": "={{ $json.usage || {} }}"
-            }
-          ]
-        },
-        "options": {}
+        "jsCode": "const meta = $('Set Parameters').first().json;\nconst body = $input.first().json;\nconst embeddings = body.embeddings || body.data || body;\nreturn { json: { embeddings, data: embeddings, model: meta.model, provider: 'tei', requestId: meta.requestId, usage: body.usage || {} } };"
       },
       "id": "format-response",
       "name": "Format Response",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [900, 300]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ embeddings: $json.embeddings, data: $json.embeddings, model: $json.model, provider: $json.provider, requestId: $json.requestId, usage: $json.usage }) }}",
-        "options": {
-          "responseCode": 200,
-          "responseHeaders": {
-            "entries": [
-              {
-                "name": "Content-Type",
-                "value": "application/json"
-              }
-            ]
-          }
-        }
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": { "responseCode": 200, "responseHeaders": { "entries": [{ "name": "Content-Type", "value": "application/json" }] } }
       },
       "id": "respond",
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [1120, 300]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ error: $json.error?.message || 'Embeddings generation failed', code: 'EMBEDDINGS_ERROR' }) }}",
-        "options": {
-          "responseCode": 500
-        }
-      },
-      "id": "error-response",
-      "name": "Error Response",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [1120, 500]
     }
   ],
   "connections": {
-    "Webhook": {
-      "main": [
-        [
-          {
-            "node": "Set Parameters",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Set Parameters": {
-      "main": [
-        [
-          {
-            "node": "OpenAI Embeddings",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "OpenAI Embeddings": {
-      "main": [
-        [
-          {
-            "node": "Format Response",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Format Response": {
-      "main": [
-        [
-          {
-            "node": "Respond",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
+    "Webhook": { "main": [[{ "node": "Set Parameters", "type": "main", "index": 0 }]] },
+    "Set Parameters": { "main": [[{ "node": "TEI Embed", "type": "main", "index": 0 }]] },
+    "TEI Embed": { "main": [[{ "node": "Format Response", "type": "main", "index": 0 }]] },
+    "Format Response": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
   },
-  "settings": {
-    "executionOrder": "v1"
-  },
+  "settings": { "executionOrder": "v1" },
   "staticData": null,
-  "tags": [
-    {
-      "name": "AI",
-      "id": "ai-tag"
-    }
-  ],
+  "tags": [{ "name": "AI", "id": "ai-tag" }],
   "triggerCount": 0,
-  "updatedAt": "2024-12-30T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
   "versionId": "1"
 }
