@@ -191,6 +191,9 @@ services:
       - N8N_WEBHOOK_URL=http://n8n:5678
       - N8N_BASE_URL=http://n8n:5678
       - N8N_API_KEY=${N8N_API_KEY:-}
+      # OpenCode Engine & Proxy
+      - OPENCODE_ENGINE_URL=http://opencode-engine:7012
+      - OPENCODE_PROXY_URL=http://opencode-proxy:7080
       # Legacy AI Gateway (fallback)
       - LITELLM_BASE_URL=http://litellm:4000
       - LITELLM_API_KEY=${LITELLM_MASTER_KEY}
@@ -296,29 +299,16 @@ services:
     security_opt:
       - no-new-privileges:true
 
-  ai-engine:
-    image: ghcr.io/choisimo/ai-engine:latest
-    container_name: blog-ai-engine
+  # OpenCode Engine - AI Backend Core
+  opencode-engine:
+    image: ghcr.io/choisimo/opencode-serve:e494223
+    container_name: opencode-engine
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:7012:7012"
+    environment:
+      - OPENCODE_HOST=0.0.0.0
+      - OPENCODE_PORT=7012
     expose:
       - "7012"
-    environment:
-      NODE_ENV: production
-      OPENCODE_HOST: 0.0.0.0
-      OPENCODE_PORT: 7012
-    command:
-      - /app/node_modules/.bin/opencode
-      - serve
-      - --hostname
-      - 0.0.0.0
-      - --port
-      - "7012"
-    volumes:
-      - vas_data:/home/node/.local/share/opencode
-      - vas_logs:/var/log/opencode
-      - ./opencode-config:/home/node/.config/opencode
     networks:
       blog-network:
         aliases:
@@ -331,8 +321,31 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-    security_opt:
-      - no-new-privileges:true
+
+  # OpenCode Proxy - Token Management & Rate Limiting
+  opencode-proxy:
+    image: ghcr.io/choisimo/opencode-proxy-admin:e494223
+    container_name: opencode-proxy
+    restart: unless-stopped
+    ports:
+      - "${PROXY_HOST_PORT:-7080}:7080"
+    environment:
+      - OPENCODE_BASE=${OPENCODE_BASE:-http://opencode-engine:7012}
+      - ADMIN_JWT_SECRET=${ADMIN_JWT_SECRET:-change-me}
+      - ADMIN_PORT=${ADMIN_PORT:-7080}
+      - ADMIN_DB_PATH=${ADMIN_DB_PATH:-/app/data/proxy-admin.db}
+    volumes:
+      - opencode_proxy_data:/app/data
+    depends_on:
+      - opencode-engine
+    networks:
+      - blog-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7080/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # ===========================================================================
   # N8N WORKFLOW ENGINE (Primary AI Gateway)
@@ -392,7 +405,8 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       # Integration URLs
       - BLOG_API_URL=http://api:5080
-      - AI_ENGINE_URL=http://ai-engine:7012
+      - AI_ENGINE_URL=http://opencode-engine:7012
+      - OPENCODE_PROXY_URL=http://opencode-proxy:7080
       - LITELLM_URL=http://litellm:4000
       - QDRANT_URL=http://qdrant:6333
       - CHROMADB_URL=http://chromadb:8000
@@ -436,7 +450,8 @@ services:
       - NODE_OPTIONS=--max-old-space-size=2048
       # Integration
       - BLOG_API_URL=http://api:5080
-      - AI_ENGINE_URL=http://ai-engine:7012
+      - AI_ENGINE_URL=http://opencode-engine:7012
+      - OPENCODE_PROXY_URL=http://opencode-proxy:7080
       - LITELLM_URL=http://litellm:4000
       - QDRANT_URL=http://qdrant:6333
     command: ["worker"]
@@ -577,8 +592,7 @@ volumes:
   chroma_data:
   elasticsearch_data:
   tei_data:
-  vas_data:
-  vas_logs:
+  opencode_proxy_data:
   n8n_data:
   minio_data:
   prometheus_data:
