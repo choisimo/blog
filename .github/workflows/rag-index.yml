@@ -1,7 +1,32 @@
 name: RAG Indexing
 
+# =============================================================================
+# RAG Indexing Workflow
+# =============================================================================
+#
+# This workflow indexes blog posts into ChromaDB for RAG (Retrieval-Augmented 
+# Generation) capabilities. It runs on GitHub-hosted runners and connects to 
+# the server via SSH to execute the indexing script.
+#
+# Prerequisites:
+#   - Docker services running: embedding-server, chromadb
+#   - Python 3.11+ on the server (or use Docker)
+#
+# Approach:
+#   - Uses GitHub-hosted runner for reliability
+#   - Connects to server via SSH
+#   - Runs indexing inside Docker network via docker exec or direct Python
+#
+# =============================================================================
+
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      force_reindex:
+        description: 'Force re-index all posts (delete existing vectors first)'
+        required: false
+        default: false
+        type: boolean
   push:
     branches:
       - main
@@ -10,45 +35,191 @@ on:
       - 'frontend/public/posts-manifest.json'
       - 'scripts/rag/**'
 
+concurrency:
+  group: rag-index-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   index:
-    # Self-hosted runner on the same server as Docker services
-    # This allows direct access to internal services via localhost
-    runs-on: self-hosted
-    concurrency:
-      group: rag-index-${{ github.ref }}
-      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    
+    env:
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
         with:
-          python-version: '3.11'
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Install dependencies
+      - name: Add host to known_hosts
         run: |
-          python -m pip install --upgrade pip
-          pip install -r scripts/rag/requirements.txt
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          for i in 1 2 3; do
+            if ssh-keyscan -p "${{ env.SSH_PORT }}" -H "${{ env.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null; then
+              echo "ssh-keyscan succeeded on attempt $i"
+              break
+            fi
+            echo "ssh-keyscan attempt $i failed, retrying..."
+            sleep 5
+          done
+          chmod 600 ~/.ssh/known_hosts
 
-      - name: Run indexer
+      - name: Upload RAG scripts to server
+        run: |
+          # Create temp directory on server
+          ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
+            "mkdir -p ~/rag-indexing/scripts"
+
+          # Upload the indexing script and requirements
+          scp -P "${{ env.SSH_PORT }}" -r scripts/rag/* \
+            "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:~/rag-indexing/scripts/"
+
+          # Upload posts manifest and posts directory
+          scp -P "${{ env.SSH_PORT }}" frontend/public/posts-manifest.json \
+            "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:~/rag-indexing/"
+
+          # Create posts directory structure
+          ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
+            "mkdir -p ~/rag-indexing/posts"
+
+          # Upload posts (recursive)
+          scp -P "${{ env.SSH_PORT }}" -r frontend/public/posts/* \
+            "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:~/rag-indexing/posts/" || echo "No posts to upload"
+
+      - name: Run RAG Indexing via Docker
         env:
-          # Internal localhost URLs (bound to 127.0.0.1 in docker-compose)
-          TEI_URL: http://127.0.0.1:8180
-          CHROMA_URL: http://127.0.0.1:8100
-          # No Cloudflare Access needed - direct localhost access
           CHROMA_COLLECTION: ${{ vars.CHROMA_COLLECTION }}
           BASE_COLLECTION_NAME: ${{ vars.BASE_COLLECTION_NAME || 'blog-posts' }}
-          TEI_MODEL_NAME: ${{ vars.TEI_MODEL_NAME || vars.TEI_MODEL || 'all-MiniLM-L6-v2' }}
+          TEI_MODEL_NAME: ${{ vars.TEI_MODEL_NAME || 'all-MiniLM-L6-v2' }}
           CHUNK_TOKENS: ${{ vars.CHUNK_TOKENS || '512' }}
           CHUNK_OVERLAP_TOKENS: ${{ vars.CHUNK_OVERLAP_TOKENS || '80' }}
           EMBED_BATCH: ${{ vars.EMBED_BATCH || '32' }}
-          MAX_WORKERS: ${{ vars.MAX_WORKERS || '6' }}
-          RETRIES_TOTAL: ${{ vars.RETRIES_TOTAL || '5' }}
-          RETRY_BACKOFF_S: ${{ vars.RETRY_BACKOFF_S || '1.0' }}
-          CHROMA_RETRIES: ${{ vars.CHROMA_RETRIES || '4' }}
-          CHROMA_BACKOFF_S: ${{ vars.CHROMA_BACKOFF_S || '1.5' }}
-          EMBED_TIMEOUT_S: ${{ vars.EMBED_TIMEOUT_S || '120' }}
+          MAX_WORKERS: ${{ vars.MAX_WORKERS || '4' }}
+          FORCE_REINDEX: ${{ github.event.inputs.force_reindex || 'false' }}
         run: |
-          python scripts/rag/index_posts.py
+          ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" << 'RAG_SCRIPT'
+          set -euo pipefail
+          
+          echo "=== RAG Indexing Started ==="
+          date
+          
+          cd ~/rag-indexing
+          
+          # Check if Docker services are running
+          DC="docker compose"
+          if ! $DC version >/dev/null 2>&1; then DC="docker-compose"; fi
+          
+          COMPOSE_DIR="$HOME/blog-stack"
+          if [ ! -f "$COMPOSE_DIR/docker-compose.yml" ]; then
+            echo "ERROR: docker-compose.yml not found in $COMPOSE_DIR"
+            exit 1
+          fi
+          
+          cd "$COMPOSE_DIR"
+          
+          # Check service health
+          echo "=== Checking Service Health ==="
+          
+          EMBEDDING_OK=false
+          CHROMA_OK=false
+          
+          # Check embedding-server via docker network
+          if $DC exec -T embedding-server wget -q --spider http://localhost:80/health 2>/dev/null || \
+             $DC exec -T embedding-server curl -sf http://localhost:80/health >/dev/null 2>&1; then
+            EMBEDDING_OK=true
+            echo "Embedding server: OK"
+          else
+            # Try alternate health check
+            if docker exec blog-embedding wget -q --spider http://localhost:80/health 2>/dev/null; then
+              EMBEDDING_OK=true
+              echo "Embedding server: OK (via container name)"
+            else
+              echo "Embedding server: NOT READY"
+            fi
+          fi
+          
+          # Check chromadb
+          if $DC exec -T chromadb wget -q --spider http://localhost:8000/api/v1/heartbeat 2>/dev/null || \
+             $DC exec -T chromadb curl -sf http://localhost:8000/api/v1/heartbeat >/dev/null 2>&1; then
+            CHROMA_OK=true
+            echo "ChromaDB: OK"
+          else
+            if docker exec blog-chromadb wget -q --spider http://localhost:8000/api/v1/heartbeat 2>/dev/null; then
+              CHROMA_OK=true
+              echo "ChromaDB: OK (via container name)"
+            else
+              echo "ChromaDB: NOT READY"
+            fi
+          fi
+          
+          if [ "$EMBEDDING_OK" != "true" ] || [ "$CHROMA_OK" != "true" ]; then
+            echo ""
+            echo "ERROR: Required services not ready"
+            echo "Make sure embedding-server and chromadb containers are running"
+            $DC ps
+            exit 1
+          fi
+          
+          # Run indexing using a Python container within the Docker network
+          echo ""
+          echo "=== Running RAG Indexer ==="
+          
+          # Create a temporary Python script runner
+          docker run --rm \
+            --network blog-stack_blog-network \
+            -v ~/rag-indexing:/workspace:ro \
+            -e TEI_URL=http://embedding-server:80 \
+            -e CHROMA_URL=http://chromadb:8000 \
+            -e POSTS_MANIFEST=/workspace/posts-manifest.json \
+            -e BASE_COLLECTION_NAME="${BASE_COLLECTION_NAME:-blog-posts}" \
+            -e TEI_MODEL_NAME="${TEI_MODEL_NAME:-all-MiniLM-L6-v2}" \
+            -e CHROMA_COLLECTION="${CHROMA_COLLECTION:-}" \
+            -e CHUNK_TOKENS="${CHUNK_TOKENS:-512}" \
+            -e CHUNK_OVERLAP_TOKENS="${CHUNK_OVERLAP_TOKENS:-80}" \
+            -e EMBED_BATCH="${EMBED_BATCH:-32}" \
+            -e MAX_WORKERS="${MAX_WORKERS:-4}" \
+            python:3.11-slim \
+            bash -c "
+              pip install -q requests chromadb beautifulsoup4 markdown tiktoken 2>/dev/null
+              cd /workspace
+              # Adjust the script to work with mounted paths
+              python scripts/index_posts.py
+            "
+          
+          echo ""
+          echo "=== RAG Indexing Completed ==="
+          date
+          RAG_SCRIPT
+
+      - name: Verify indexing
+        continue-on-error: true
+        run: |
+          ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" << 'VERIFY_SCRIPT'
+          cd ~/blog-stack
+          
+          DC="docker compose"
+          if ! $DC version >/dev/null 2>&1; then DC="docker-compose"; fi
+          
+          echo "=== Verifying ChromaDB Collections ==="
+          
+          # Query ChromaDB for collections
+          $DC exec -T chromadb wget -q -O - http://localhost:8000/api/v1/collections 2>/dev/null | head -c 500 || \
+            echo "Could not query collections"
+          
+          echo ""
+          echo "=== Service Status ==="
+          $DC ps | grep -E "(embedding|chroma)" || true
+          VERIFY_SCRIPT
+
+      - name: Cleanup
+        if: always()
+        run: |
+          ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
+            "rm -rf ~/rag-indexing" 2>/dev/null || true

@@ -1,8 +1,12 @@
 name: Deploy Blog + n8n Workflow Stack
 
 # =============================================================================
-# Blog Backend + n8n Workflow CI/CD Pipeline
+# Blog Backend + n8n Workflow CI/CD Pipeline (PRIMARY BACKEND DEPLOYMENT)
 # =============================================================================
+#
+# This is the PRIMARY workflow for deploying backend services.
+# Previously, backend-deploy.yml was also used but has been deprecated to avoid
+# conflicts (same triggers, different compose files, port conflicts).
 #
 # NOTE: Primary API Gateway is now Cloudflare Workers (see deploy-api-gateway.yml).
 # This workflow deploys the n8n workflow engine and supporting backend services.
@@ -18,7 +22,7 @@ name: Deploy Blog + n8n Workflow Stack
 #   - n8n + Workers - Workflow automation
 #   - PostgreSQL, Redis, MongoDB, Qdrant, ChromaDB, etc.
 #
-# Deployment Directory: /opt/blog-stack
+# Deployment Directory: ~/blog-stack
 #
 # Required Secrets: See README-CICD.md
 # =============================================================================

@@ -1,44 +1,33 @@
-name: Backend Build & Deploy (SSH Compose)
+name: Backend Build & Deploy (SSH Compose) [DEPRECATED]
 
 # =============================================================================
-# Backend Services Deployment (Docker Compose via SSH)
+# DEPRECATED: This workflow is superseded by deploy-blog-workflow.yml
 # =============================================================================
 #
-# NOTE: Primary API Gateway is now Cloudflare Workers (see deploy-api-gateway.yml).
-# This workflow deploys backend services for local/n8n integration.
-# For production API traffic, use Cloudflare Workers as the entry point.
+# This workflow has been deprecated in favor of deploy-blog-workflow.yml which
+# provides a more complete deployment with:
+#   - GHCR image registry (faster, cached)
+#   - Full service stack (postgres, redis, mongodb, qdrant, etc.)
+#   - n8n workflow import
+#   - Credentials auto-setup
+#   - Comprehensive E2E testing
 #
-# Architecture:
-#   Cloudflare Workers (API Gateway) → Server:8080 → nginx → Internal Services
-#   OR
-#   Cloudflare (SSL Full) → Server:8443 → nginx (SSL) → Internal Services
+# The two workflows had overlapping triggers and caused conflicts.
+# Use deploy-blog-workflow.yml for all backend deployments.
 #
-# Services deployed:
-#   - nginx: Reverse proxy with SSL (ports 80, 8080, 443, 8443)
-#   - api: Node.js backend (built from Dockerfile)
-#   - n8n: Workflow engine for complex AI tasks
-#   - embedding-server: TEI for RAG
-#   - chromadb: Vector database
-#   - terminal-server: Docker PTY server
-#
-# SSL Configuration:
-#   - Self-signed certificate generated on first deploy
-#   - Cloudflare Full SSL mode (HTTPS between Cloudflare and origin)
-#   - OPNsense NAT: External 8443 -> Internal 443
-#
-# Required secrets:
-#   - SSH_HOST, SSH_USER, SSH_PRIVATE_KEY, SSH_PORT (optional)
-#   - REMOTE_DIR: Remote deployment directory
-#   - BACKEND_ENV_FILE: Full .env file contents
-#   - PUBLIC_API_BASE_URL: Public API URL for health checks
+# To run this workflow manually, uncomment the on: section below.
 # =============================================================================
+
+# DISABLED - Use deploy-blog-workflow.yml instead
+# on:
+#   push:
+#     paths:
+#       - 'backend/**'
+#       - '.github/workflows/backend-deploy.yml'
+#     branches: [ main ]
+#   workflow_dispatch:
 
 on:
-  push:
-    paths:
-      - 'backend/**'
-      - '.github/workflows/backend-deploy.yml'
-    branches: [ main ]
   workflow_dispatch:
     inputs:
       ref:
