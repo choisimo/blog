@@ -11,7 +11,7 @@ import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { queryAll, queryOne, execute, isD1Configured } from '../lib/d1.js';
 import requireAdmin from '../middleware/adminAuth.js';
-import { getLiteLLMClient } from '../lib/litellm-client.js';
+import { getN8NClient } from '../lib/n8n-client.js';
 
 const router = Router();
 
@@ -280,7 +280,7 @@ router.post('/providers/:id/health', async (req, res, next) => {
 
     if (model) {
       try {
-        const client = getLiteLLMClient();
+        const client = getN8NClient();
         const start = Date.now();
         await client.chat(
           [{ role: 'user', content: 'Hello' }],
@@ -358,7 +358,7 @@ router.get('/models', async (req, res, next) => {
       id: m.id,
       modelName: m.model_name,
       displayName: m.display_name,
-      litellmModel: m.litellm_model,
+      n8nModel: m.litellm_model, // DB column name kept for compatibility
       description: m.description,
       provider: {
         id: m.provider_id,
@@ -409,15 +409,32 @@ router.get('/models/:id', async (req, res, next) => {
     res.json({
       ok: true,
       data: {
-        id: model.id,
-        modelName: model.model_name,
-        displayName: model.display_name,
-        litellmModel: model.litellm_model,
-        description: model.description,
-        provider: {
-          id: model.provider_id,
-          name: model.provider_name,
-          displayName: model.provider_display_name,
+        model: {
+          id: model.id,
+          modelName: model.model_name,
+          displayName: model.display_name,
+          n8nModel: model.litellm_model, // DB column name kept for compatibility
+          description: model.description,
+          provider: {
+            id: model.provider_id,
+            name: model.provider_name,
+            displayName: model.provider_display_name,
+          },
+          contextWindow: model.context_window,
+          maxTokens: model.max_tokens,
+          cost: {
+            inputPer1k: model.input_cost_per_1k,
+            outputPer1k: model.output_cost_per_1k,
+          },
+          capabilities: {
+            vision: !!model.supports_vision,
+            streaming: !!model.supports_streaming,
+            functionCalling: !!model.supports_function_calling,
+          },
+          isEnabled: !!model.is_enabled,
+          priority: model.priority,
+          createdAt: model.created_at,
+          updatedAt: model.updated_at,
         },
         contextWindow: model.context_window,
         maxTokens: model.max_tokens,
@@ -450,7 +467,7 @@ router.post('/models', async (req, res, next) => {
       modelName,
       displayName,
       providerId,
-      litellmModel,
+      n8nModel,
       description,
       contextWindow,
       maxTokens,
@@ -462,10 +479,10 @@ router.post('/models', async (req, res, next) => {
       priority,
     } = req.body;
 
-    if (!modelName || !displayName || !providerId || !litellmModel) {
+    if (!modelName || !displayName || !providerId || !n8nModel) {
       return res.status(400).json({
         ok: false,
-        error: 'modelName, displayName, providerId, and litellmModel are required',
+        error: 'modelName, displayName, providerId, and n8nModel are required',
       });
     }
 
@@ -504,7 +521,7 @@ router.post('/models', async (req, res, next) => {
       providerId,
       modelName,
       displayName,
-      litellmModel,
+      n8nModel,
       description || null,
       contextWindow || null,
       maxTokens || null,
@@ -541,7 +558,7 @@ router.put('/models/:id', async (req, res, next) => {
   try {
     const {
       displayName,
-      litellmModel,
+      n8nModel,
       description,
       contextWindow,
       maxTokens,
@@ -579,7 +596,7 @@ router.put('/models/:id', async (req, res, next) => {
         updated_at = datetime('now')
       WHERE id = ?`,
       displayName ?? existing.display_name,
-      litellmModel ?? existing.litellm_model,
+      n8nModel ?? existing.litellm_model,
       description !== undefined ? description : existing.description,
       contextWindow !== undefined ? contextWindow : existing.context_window,
       maxTokens !== undefined ? maxTokens : existing.max_tokens,
@@ -664,7 +681,7 @@ router.post('/models/:id/test', async (req, res, next) => {
     const testPrompt = prompt || 'Say "Hello" in one word.';
 
     try {
-      const client = getLiteLLMClient();
+      const client = getN8NClient();
       const start = Date.now();
       const response = await client.chat(
         [{ role: 'user', content: testPrompt }],
@@ -1144,12 +1161,12 @@ router.post('/usage/log', async (req, res, next) => {
 });
 
 // ============================================================================
-// LiteLLM Config Sync
+// n8n Config Sync
 // ============================================================================
 
 /**
- * POST /reload - Sync database config to LiteLLM
- * This generates a config object that could be used to update LiteLLM
+ * POST /reload - Sync database config to n8n
+ * This generates a config object that could be used to update n8n workflows
  */
 router.post('/reload', async (req, res, next) => {
   try {
@@ -1167,10 +1184,10 @@ router.post('/reload', async (req, res, next) => {
       'SELECT * FROM ai_routes WHERE is_default = 1 AND is_enabled = 1'
     );
 
-    // Build LiteLLM config
+    // Build n8n config
     const modelList = models.map((m) => ({
       model_name: m.model_name,
-      litellm_params: {
+      n8n_params: {
         model: m.litellm_model,
         ...(m.api_base_url ? { api_base: m.api_base_url } : {}),
         ...(m.api_key_env ? { api_key: `os.environ/${m.api_key_env}` } : {}),
@@ -1207,7 +1224,7 @@ router.post('/reload', async (req, res, next) => {
       }
     }
 
-    const litellmConfig = {
+    const n8nConfig = {
       model_list: modelList,
       router_settings: {
         routing_strategy: defaultRoute?.routing_strategy || 'latency-based-routing',
@@ -1217,15 +1234,15 @@ router.post('/reload', async (req, res, next) => {
       },
     };
 
-    // Note: Actually updating LiteLLM requires calling its /config/update endpoint
+    // Note: Actually updating n8n requires updating workflow configurations
     // For now, we just return the config that would be applied
 
     res.json({
       ok: true,
       data: {
-        config: litellmConfig,
+        config: n8nConfig,
         modelCount: models.length,
-        message: 'Config generated. Use LiteLLM /config/update API to apply.',
+        message: 'Config generated. Update n8n workflows to apply.',
       },
     });
   } catch (err) {
@@ -1259,7 +1276,7 @@ router.get('/config/export', async (req, res, next) => {
           providerId: m.provider_id,
           modelName: m.model_name,
           displayName: m.display_name,
-          litellmModel: m.litellm_model,
+          n8nModel: m.litellm_model,
           description: m.description,
           contextWindow: m.context_window,
           maxTokens: m.max_tokens,

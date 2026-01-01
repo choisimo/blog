@@ -56,7 +56,7 @@ export interface ProviderAdapter {
 }
 
 // ============================================================================
-// OpenAI Adapter (also works for LiteLLM, Azure OpenAI)
+// OpenAI Adapter (also works for n8n OpenAI-compatible responses, Azure OpenAI)
 // ============================================================================
 
 export const OpenAIAdapter: ProviderAdapter = {
@@ -342,7 +342,7 @@ function extractContent(
 
 const adapters: Map<string, ProviderAdapter> = new Map([
   ['openai', OpenAIAdapter],
-  ['litellm', OpenAIAdapter], // LiteLLM uses OpenAI format
+  ['n8n', OpenAIAdapter],     // n8n uses OpenAI format
   ['azure', OpenAIAdapter],   // Azure OpenAI uses same format
   ['anthropic', AnthropicAdapter],
   ['claude', AnthropicAdapter],

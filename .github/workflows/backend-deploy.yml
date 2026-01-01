@@ -1,7 +1,7 @@
 name: Backend Build & Deploy (SSH Compose)
 
 # =============================================================================
-# Full Stack Deployment with Cloudflare Full SSL + LiteLLM AI Gateway
+# Full Stack Deployment with Cloudflare Full SSL + n8n AI Gateway
 # =============================================================================
 # Architecture:
 #   Cloudflare (SSL Full) -> Server:8443 -> nginx (SSL) -> Internal Services
@@ -9,7 +9,7 @@ name: Backend Build & Deploy (SSH Compose)
 # Services deployed:
 #   - nginx: Reverse proxy with SSL (ports 80, 8080, 443, 8443)
 #   - api: Node.js backend (built from Dockerfile)
-#   - litellm: AI Gateway for multiple LLM providers
+#   - n8n: AI Gateway via webhooks
 #   - embedding-server: TEI for RAG
 #   - chromadb: Vector database
 #   - terminal-server: Docker PTY server
@@ -138,11 +138,6 @@ jobs:
           # Upload SSL certificate generation script
           scp -P "${SSH_PORT}" backend/scripts/generate-ssl-cert.sh "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/generate-ssl-cert.sh"
 
-          # Upload LiteLLM config if exists
-          if [ -f backend/litellm_config.yaml ]; then
-            scp -P "${SSH_PORT}" backend/litellm_config.yaml "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/litellm_config.yaml"
-          fi
-
       - name: Deploy full stack on remote
         env:
           SHA: ${{ github.sha }}
@@ -171,13 +166,13 @@ jobs:
           # Generate runtime compose file with SSL support
           cat > compose.runtime.yml <<'YML'
           # =======================================================================
-          # Runtime Compose - Cloudflare Full SSL + LiteLLM AI Gateway + n8n
+          # Runtime Compose - Cloudflare Full SSL + n8n AI Gateway
           # =======================================================================
           # Cloudflare (Full SSL) → Server:8443 → nginx (SSL) → Internal Services
           #
           # Domains:
-          #   blog-b.nodove.com  → Backend API, LiteLLM, Terminal
-          #   blog-bw.nodove.com → n8n Workflow Engine
+          #   blog-b.nodove.com  → Backend API, Terminal
+          #   blog-bw.nodove.com → n8n Workflow Engine (AI Gateway)
           #
           # Ports:
           #   80/8080  - HTTP (health checks, internal)
@@ -219,8 +214,8 @@ jobs:
                 - APP_ENV=production
                 - HOST=0.0.0.0
                 - PORT=5080
-                - LITELLM_BASE_URL=http://litellm:4000
-                - AI_PROVIDER=litellm
+                - N8N_BASE_URL=http://n8n:5678
+                - AI_PROVIDER=n8n
               expose:
                 - "5080"
               networks:
@@ -232,30 +227,6 @@ jobs:
                 timeout: 10s
                 retries: 5
                 start_period: 60s
-
-            # LiteLLM AI Gateway
-            litellm:
-              image: ghcr.io/berriai/litellm:main-latest
-              env_file: .env
-              environment:
-                - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-1234}
-                - LITELLM_LOG_LEVEL=INFO
-                - DISABLE_SPEND_LOGS=true
-                - DATABASE_URL=
-              expose:
-                - "4000"
-              volumes:
-                - ./litellm_config.yaml:/app/config.yaml:ro
-              command: ["--config", "/app/config.yaml", "--port", "4000"]
-              networks:
-                - backend
-              restart: unless-stopped
-              healthcheck:
-                test: ["CMD", "wget", "-q", "--spider", "http://localhost:4000/health"]
-                interval: 30s
-                timeout: 10s
-                retries: 5
-                start_period: 30s
 
             # TEI Embedding Server
             embedding-server:
@@ -304,7 +275,7 @@ jobs:
                 - backend
               restart: unless-stopped
 
-            # n8n Workflow Engine (blog-bw.nodove.com)
+            # n8n Workflow Engine (blog-bw.nodove.com) - Primary AI Gateway
             n8n:
               image: n8nio/n8n:latest
               env_file: .env
@@ -381,13 +352,13 @@ jobs:
             echo "API Retry $i/60"; sleep 2;
           done
 
-          echo "Waiting for LiteLLM health check..."
+          echo "Waiting for n8n health check..."
           for i in $(seq 1 30); do
-            if curl -fsS http://localhost:8080/litellm/health >/dev/null 2>&1; then
-              echo "LiteLLM Health OK"
+            if curl -fsS http://localhost:5678/healthz >/dev/null 2>&1; then
+              echo "n8n Health OK"
               break
             fi
-            echo "LiteLLM Retry $i/30"; sleep 2;
+            echo "n8n Retry $i/30"; sleep 2;
           done
 
           # Final status

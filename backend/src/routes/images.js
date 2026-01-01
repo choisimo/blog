@@ -7,7 +7,7 @@ import sharp from 'sharp';
 import { config } from '../config.js';
 import requireAdmin from '../middleware/adminAuth.js';
 import { upload as r2Upload, isR2Configured, generateKey } from '../lib/r2.js';
-import { getVASClient } from '../lib/ai-serve.js';
+import { getN8NClient } from '../lib/n8n-client.js';
 
 const router = Router();
 
@@ -185,6 +185,12 @@ router.delete('/:year/:slug/:filename', requireAdmin, async (req, res, next) => 
  * POST /api/v1/images/chat-upload
  * Upload image to R2 for AI Chat and perform vision analysis
  * 
+ * Architecture:
+ *   1. Upload image to R2 storage
+ *   2. Get public R2 URL
+ *   3. Pass URL to n8n vision workflow (n8n fetches image from R2)
+ *   4. Return upload info + vision analysis
+ * 
  * Returns: { url, key, size, contentType, imageAnalysis? }
  */
 router.post('/chat-upload', upload.single('file'), async (req, res, next) => {
@@ -211,11 +217,11 @@ router.post('/chat-upload', upload.single('file'), async (req, res, next) => {
     });
 
     // Perform AI vision analysis if it's an image
+    // Use R2 URL instead of base64 - n8n will fetch the image directly
     let imageAnalysis = null;
     if (file.mimetype?.startsWith('image/')) {
       try {
-        const base64 = file.buffer.toString('base64');
-        const client = getVASClient();
+        const client = getN8NClient();
         
         const analysisPrompt = `이 이미지를 분석해주세요. 다음 내용을 간결하게 설명해주세요:
 1. 이미지에 보이는 주요 요소들
@@ -224,7 +230,9 @@ router.post('/chat-upload', upload.single('file'), async (req, res, next) => {
 
 한국어로 2-3문장으로 간결하게 요약해주세요.`;
 
-        imageAnalysis = await client.vision(base64, file.mimetype, analysisPrompt, {
+        // Pass R2 URL to n8n - n8n workflow will fetch the image
+        imageAnalysis = await client.vision(result.url, analysisPrompt, {
+          mimeType: file.mimetype,
           model: 'gpt-4o',
         });
       } catch (err) {

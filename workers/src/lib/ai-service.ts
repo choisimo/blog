@@ -5,7 +5,7 @@
  * 이 모듈은 백엔드의 ai-service.js와 동일한 인터페이스를 제공합니다.
  *
  * Architecture:
- *   Workers Route -> AIService -> Backend API -> Provider (LiteLLM/VAS/Gemini)
+ *   Workers Route -> AIService -> Backend API -> Provider (n8n/OpenCode/Gemini)
  *
  * Features:
  *   - Provider-agnostic interface (backend handles provider selection)

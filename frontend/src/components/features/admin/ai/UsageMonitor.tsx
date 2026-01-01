@@ -324,7 +324,7 @@ export function UsageMonitor() {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Configuration Actions</CardTitle>
-              <CardDescription>Manage LiteLLM configuration sync</CardDescription>
+              <CardDescription>Manage n8n workflow configuration sync</CardDescription>
             </CardHeader>
             <CardContent className="flex gap-4">
               <Button onClick={handleReload} disabled={configLoading}>
@@ -333,7 +333,7 @@ export function UsageMonitor() {
                 ) : (
                   <RefreshCw className="h-4 w-4 mr-2" />
                 )}
-                Generate LiteLLM Config
+                Generate n8n Config
               </Button>
               <Button variant="outline" onClick={handleExport}>
                 <Download className="h-4 w-4 mr-2" />

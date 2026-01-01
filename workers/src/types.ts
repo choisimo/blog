@@ -189,7 +189,7 @@ export type AIModel = {
   provider_id: string;
   model_name: string;
   display_name: string;
-  litellm_model: string;
+  model_identifier: string;
   description: string | null;
   context_window: number | null;
   max_tokens: number | null;

@@ -2,24 +2,15 @@
 # Place this file in /home/nodove/workspace/blog/backend/Caddyfile
 #
 # Domain Routing:
-#   blog-b.nodove.com  -> Backend API, LiteLLM, Terminal
+#   blog-b.nodove.com  -> Backend API, Terminal
 #   blog-bw.nodove.com -> n8n Workflow Engine
 
 # =============================================================================
-# blog-b.nodove.com - Backend API, LiteLLM, Terminal
+# blog-b.nodove.com - Backend API, Terminal
 # =============================================================================
 blog-b.nodove.com {
     # API endpoints
     handle /api/* {
-        reverse_proxy nginx:80
-    }
-
-    # LiteLLM AI Gateway
-    handle /ai/* {
-        reverse_proxy nginx:80
-    }
-
-    handle /litellm/* {
         reverse_proxy nginx:80
     }
 

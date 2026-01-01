@@ -1,189 +1,147 @@
 import { Router } from 'express';
 import { aiService, tryParseJson } from '../lib/ai-service.js';
-import { getLiteLLMClient } from '../lib/litellm-client.js';
+import { getN8NClient } from '../lib/n8n-client.js';
 import { config } from '../config.js';
+// DB access for dynamic model management
+import { queryAll, isD1Configured } from '../lib/d1.js';
 
 const router = Router();
 
 // ============================================================================
-// Model List Endpoint - Get available AI models from LiteLLM
+// Model List Endpoint - Get available AI models (DB-first, with fallbacks)
 // GET /api/v1/ai/models
+// 
+// Priority: 1. Database (ai_models table) -> 2. n8n -> 3. Static fallback
 // ============================================================================
 
 router.get('/models', async (req, res) => {
+  const defaultModel = config.ai?.gateway?.defaultModel || 
+                      process.env.AI_DEFAULT_MODEL || 
+                      'gemini-1.5-flash';
+
+  // 1. Try Database first (Source of Truth)
+  if (isD1Configured()) {
+    try {
+      const sql = `
+        SELECT 
+          m.id, m.model_name, m.display_name, m.description, 
+          m.supports_vision, m.supports_streaming, m.supports_function_calling,
+          m.context_window, m.priority,
+          p.name as provider_name, p.display_name as provider_display_name
+        FROM ai_models m
+        LEFT JOIN ai_providers p ON m.provider_id = p.id
+        WHERE m.is_enabled = 1
+        ORDER BY m.priority DESC, m.display_name ASC
+      `;
+      
+      const dbModels = await queryAll(sql);
+
+      if (dbModels.length > 0) {
+        const formattedModels = dbModels.map(m => ({
+          id: m.id,
+          name: m.display_name || m.model_name,
+          provider: m.provider_display_name || m.provider_name || 'Unknown',
+          description: m.description || '',
+          isDefault: m.id === defaultModel,
+          capabilities: buildCapabilities(m),
+          contextWindow: m.context_window,
+        }));
+
+        // Sort: default first, then by priority (already sorted by DB), then by provider
+        formattedModels.sort((a, b) => {
+          if (a.isDefault) return -1;
+          if (b.isDefault) return 1;
+          return 0; // preserve DB order (by priority)
+        });
+
+        return res.json({
+          ok: true,
+          data: {
+            models: formattedModels,
+            default: defaultModel,
+            provider: 'database',
+          },
+        });
+      }
+    } catch (dbErr) {
+      console.warn('DB model lookup failed, falling back to n8n:', dbErr.message);
+    }
+  }
+
+  // 2. Fallback to n8n client
   try {
-    const client = getLiteLLMClient();
+    const client = getN8NClient();
     const models = await client.models();
     
-    // Get default model from config
-    const defaultModel = config.ai?.gateway?.defaultModel || 
-                        process.env.AI_DEFAULT_MODEL || 
-                        'gemini-1.5-flash';
-    
-    // Transform models to a cleaner format with categories
-    const categorizedModels = categorizeModels(models, defaultModel);
-    
-    res.json({
+    // Format n8n models
+    const n8nModels = models.map(m => ({
+      id: m.id,
+      name: m.name || m.id,
+      provider: m.provider || 'n8n',
+      description: 'Loaded from n8n workflow',
+      isDefault: m.id === defaultModel,
+      capabilities: ['chat'],
+    }));
+
+    // Sort: default first
+    n8nModels.sort((a, b) => {
+      if (a.isDefault) return -1;
+      if (b.isDefault) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    return res.json({
       ok: true,
       data: {
-        models: categorizedModels,
+        models: n8nModels,
         default: defaultModel,
-        provider: 'litellm',
+        provider: 'n8n',
       },
     });
   } catch (err) {
-    console.error('Failed to fetch models:', err.message);
-    
-    // Return fallback models if LiteLLM is unavailable
-    res.json({
-      ok: true,
-      data: {
-        models: getFallbackModels(),
-        default: process.env.AI_DEFAULT_MODEL || 'gemini-1.5-flash',
-        provider: 'fallback',
-        warning: 'Using fallback model list - LiteLLM may be unavailable',
-      },
-    });
+    console.error('Failed to fetch models from n8n:', err.message);
   }
+
+  // 3. Final fallback - static model list
+  res.json({
+    ok: true,
+    data: {
+      models: getFallbackModels(defaultModel),
+      default: defaultModel,
+      provider: 'fallback',
+      warning: 'Using fallback model list - Database and n8n may be unavailable',
+    },
+  });
 });
 
 /**
- * Categorize models by provider for better UI organization
+ * Build capabilities array from DB model flags
  */
-function categorizeModels(models, defaultModel) {
-  const result = [];
-  
-  for (const model of models) {
-    const id = model.id;
-    const info = getModelInfo(id);
-    
-    result.push({
-      id,
-      name: info.name,
-      provider: info.provider,
-      description: info.description,
-      isDefault: id === defaultModel,
-      capabilities: info.capabilities,
-    });
-  }
-  
-  // Sort: default first, then by provider
-  return result.sort((a, b) => {
-    if (a.isDefault) return -1;
-    if (b.isDefault) return 1;
-    return a.provider.localeCompare(b.provider);
-  });
+function buildCapabilities(model) {
+  const caps = ['chat']; // All models support chat
+  if (model.supports_vision) caps.push('vision');
+  if (model.supports_streaming) caps.push('streaming');
+  if (model.supports_function_calling) caps.push('function-calling');
+  if (model.context_window >= 100000) caps.push('long-context');
+  return caps;
 }
 
 /**
- * Get human-readable model info
+ * Fallback models when DB and n8n are unavailable
  */
-function getModelInfo(modelId) {
-  const modelMap = {
-    // Google Gemini
-    'gemini-1.5-flash': { 
-      name: 'Gemini 1.5 Flash', 
-      provider: 'Google', 
-      description: 'Fast and efficient',
-      capabilities: ['chat', 'vision'],
-    },
-    'gemini-1.5-pro': { 
-      name: 'Gemini 1.5 Pro', 
-      provider: 'Google', 
-      description: 'Most capable Gemini',
-      capabilities: ['chat', 'vision', 'long-context'],
-    },
-    'gemini-2.0-flash': { 
-      name: 'Gemini 2.0 Flash', 
-      provider: 'Google', 
-      description: 'Latest experimental',
-      capabilities: ['chat', 'vision'],
-    },
-    // OpenAI
-    'gpt-4o': { 
-      name: 'GPT-4o', 
-      provider: 'OpenAI', 
-      description: 'Most capable GPT-4',
-      capabilities: ['chat', 'vision'],
-    },
-    'gpt-4o-mini': { 
-      name: 'GPT-4o Mini', 
-      provider: 'OpenAI', 
-      description: 'Fast and affordable',
-      capabilities: ['chat', 'vision'],
-    },
-    'gpt-4-turbo': { 
-      name: 'GPT-4 Turbo', 
-      provider: 'OpenAI', 
-      description: 'High performance',
-      capabilities: ['chat', 'vision'],
-    },
-    'gpt-3.5-turbo': { 
-      name: 'GPT-3.5 Turbo', 
-      provider: 'OpenAI', 
-      description: 'Legacy fast model',
-      capabilities: ['chat'],
-    },
-    // Anthropic
-    'claude-3.5-sonnet': { 
-      name: 'Claude 3.5 Sonnet', 
-      provider: 'Anthropic', 
-      description: 'Best for coding',
-      capabilities: ['chat', 'vision'],
-    },
-    'claude-3-haiku': { 
-      name: 'Claude 3 Haiku', 
-      provider: 'Anthropic', 
-      description: 'Fast responses',
-      capabilities: ['chat'],
-    },
-    // Local
-    'local': { 
-      name: 'Local (Ollama)', 
-      provider: 'Local', 
-      description: 'Llama 3.2 via Ollama',
-      capabilities: ['chat'],
-    },
-    'local/llama3': { 
-      name: 'Llama 3.2', 
-      provider: 'Local', 
-      description: 'Via Ollama',
-      capabilities: ['chat'],
-    },
-    'local/codellama': { 
-      name: 'CodeLlama', 
-      provider: 'Local', 
-      description: 'Code-optimized',
-      capabilities: ['chat', 'code'],
-    },
-    // Aliases
-    'gpt-4.1': { 
-      name: 'GPT-4.1 (Alias)', 
-      provider: 'Alias', 
-      description: 'Maps to Gemini Flash',
-      capabilities: ['chat'],
-    },
-  };
-  
-  return modelMap[modelId] || {
-    name: modelId,
-    provider: 'Unknown',
-    description: '',
-    capabilities: ['chat'],
-  };
-}
-
-/**
- * Fallback models when LiteLLM is unavailable
- */
-function getFallbackModels() {
-  return [
-    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'Google', isDefault: true },
-    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'Google' },
-    { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI' },
-    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI' },
-    { id: 'claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
+function getFallbackModels(defaultModel) {
+  const fallbackList = [
+    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'Google', capabilities: ['chat', 'vision'] },
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'Google', capabilities: ['chat', 'vision', 'long-context'] },
+    { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', capabilities: ['chat', 'vision'] },
+    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', capabilities: ['chat', 'vision'] },
+    { id: 'claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', capabilities: ['chat', 'vision'] },
   ];
+  
+  return fallbackList.map(m => ({
+    ...m,
+    isDefault: m.id === defaultModel,
+  }));
 }
 
 // ============================================================================
@@ -263,7 +221,7 @@ router.get('/status', async (req, res) => {
         summarize: true,
         generate: true,
         stream: true,
-        embeddings: providerInfo.provider === 'litellm',
+        embeddings: providerInfo.provider === 'n8n',
       },
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
@@ -282,19 +240,46 @@ const DEFAULT_VISION_PROMPT = `이 이미지를 분석해주세요. 다음 내�
 3. 텍스트가 있다면 해당 내용
 
 한국어로 2-3문장으로 간결하게 요약해주세요.`;
-
 /**
- * Fetch image from URL and convert to base64
+ * Fetch image from URL with SSRF protection and size limits
  */
 async function fetchImageAsBase64(imageUrl) {
-  const response = await fetch(imageUrl);
+  const parsedUrl = new URL(imageUrl);
+  
+  // 1. 프로토콜 제한 (http, https만 허용)
+  if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+    throw new Error('Invalid protocol');
+  }
+
+  // 2. (옵션) 내부망 IP 접근 차단 로직 추가 권장 (프로덕션 환경)
+  // 예: ipaddr.js 라이브러리 등을 사용하여 private IP 대역 차단
+
+  const response = await fetch(imageUrl, {
+    // 3. 타임아웃 설정 (AbortSignal)
+    signal: AbortSignal.timeout(5000), 
+    // 4. 리다이렉트 제한 (무한 루프 방지)
+    redirect: 'error' 
+  });
+
   if (!response.ok) {
     throw new Error(`Failed to fetch image: ${response.status}`);
   }
 
+  // 5. 콘텐츠 크기 제한 (예: 10MB)
+  const MAX_SIZE = 10 * 1024 * 1024;
+  const contentLength = response.headers.get('content-length');
+  if (contentLength && parseInt(contentLength) > MAX_SIZE) {
+    throw new Error('Image too large');
+  }
+
+  // 스트림으로 읽으면서 크기 체크 (Content-Length가 없는 경우 대비)
+  const buffer = await response.arrayBuffer(); 
+  if (buffer.byteLength > MAX_SIZE) {
+    throw new Error('Image too large');
+  }
+
   const contentType = response.headers.get('content-type') || 'image/jpeg';
-  const arrayBuffer = await response.arrayBuffer();
-  const base64 = Buffer.from(arrayBuffer).toString('base64');
+  const base64 = Buffer.from(buffer).toString('base64');
 
   return { base64, mimeType: contentType };
 }
@@ -303,24 +288,40 @@ router.post('/vision/analyze', async (req, res, next) => {
   try {
     const { imageUrl, imageBase64, mimeType: inputMimeType, prompt, provider: preferredProvider } = req.body || {};
 
-    let base64Data;
+    let imageData;
     let mimeType;
+    let imageType; // 'url' or 'base64'
 
-    // Get image data from either base64 or URL
-    if (imageBase64) {
-      base64Data = imageBase64;
-      mimeType = inputMimeType || 'image/jpeg';
-    } else if (imageUrl) {
-      try {
-        const fetched = await fetchImageAsBase64(imageUrl);
-        base64Data = fetched.base64;
-        mimeType = fetched.mimeType;
-      } catch (err) {
-        return res.status(400).json({
-          ok: false,
-          error: { message: err.message || 'Failed to fetch image', code: 'IMAGE_FETCH_ERROR' },
-        });
+    // Prefer URL if provided (n8n will fetch from R2 directly)
+    // This is more efficient than converting to base64
+    if (imageUrl) {
+      // Check if it's an R2 URL or other accessible URL
+      const isR2Url = imageUrl.includes('assets-b.nodove.com') || 
+                      imageUrl.includes('r2.cloudflarestorage.com');
+      
+      if (isR2Url) {
+        // Pass R2 URL directly - n8n workflow will fetch
+        imageData = imageUrl;
+        mimeType = inputMimeType || 'image/jpeg';
+        imageType = 'url';
+      } else {
+        // For non-R2 URLs, fetch and convert to base64 (for compatibility)
+        try {
+          const fetched = await fetchImageAsBase64(imageUrl);
+          imageData = fetched.base64;
+          mimeType = fetched.mimeType;
+          imageType = 'base64';
+        } catch (err) {
+          return res.status(400).json({
+            ok: false,
+            error: { message: err.message || 'Failed to fetch image', code: 'IMAGE_FETCH_ERROR' },
+          });
+        }
       }
+    } else if (imageBase64) {
+      imageData = imageBase64;
+      mimeType = inputMimeType || 'image/jpeg';
+      imageType = 'base64';
     } else {
       return res.status(400).json({
         ok: false,
@@ -331,8 +332,9 @@ router.post('/vision/analyze', async (req, res, next) => {
     const analysisPrompt = prompt || DEFAULT_VISION_PROMPT;
 
     // Use unified AI service for vision analysis
+    // aiService.vision handles both URL and base64 formats
     try {
-      const description = await aiService.vision(base64Data, analysisPrompt, {
+      const description = await aiService.vision(imageData, analysisPrompt, {
         mimeType,
         model: 'gpt-4o', // Vision-capable model
       });
@@ -342,6 +344,7 @@ router.post('/vision/analyze', async (req, res, next) => {
         data: {
           description,
           provider: aiService.provider,
+          imageType, // Let client know how image was processed
         },
       });
     } catch (err) {
@@ -552,10 +555,13 @@ router.get('/generate/stream', async (req, res, next) => {
 
     let closed = false;
     const onClose = () => {
+      if (closed) return; // Prevent double-close
       closed = true;
       clearInterval(ping);
       try {
-        res.end();
+        if (!res.writableEnded) {
+          res.end();
+        }
       } catch {}
     };
     req.on('close', onClose);

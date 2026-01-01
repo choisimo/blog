@@ -36,7 +36,7 @@ interface AIModel {
   provider_id: string;
   model_name: string;
   display_name: string;
-  litellm_model: string;
+  model_identifier: string;
   description: string | null;
   context_window: number | null;
   max_tokens: number | null;
@@ -408,7 +408,7 @@ adminAi.post('/models', requireAdmin, async (c) => {
     provider_id,
     model_name,
     display_name,
-    litellm_model,
+    model_identifier,
     description,
     context_window,
     max_tokens,
@@ -422,7 +422,7 @@ adminAi.post('/models', requireAdmin, async (c) => {
     provider_id?: string;
     model_name?: string;
     display_name?: string;
-    litellm_model?: string;
+    model_identifier?: string;
     description?: string;
     context_window?: number;
     max_tokens?: number;
@@ -434,8 +434,8 @@ adminAi.post('/models', requireAdmin, async (c) => {
     priority?: number;
   };
 
-  if (!provider_id || !model_name || !display_name || !litellm_model) {
-    return badRequest(c, 'provider_id, model_name, display_name, and litellm_model are required');
+  if (!provider_id || !model_name || !display_name || !model_identifier) {
+    return badRequest(c, 'provider_id, model_name, display_name, and model_identifier are required');
   }
 
   const id = generateId('model');
@@ -454,7 +454,7 @@ adminAi.post('/models', requireAdmin, async (c) => {
 
     await c.env.DB.prepare(
       `INSERT INTO ai_models (
-        id, provider_id, model_name, display_name, litellm_model,
+        id, provider_id, model_name, display_name, model_identifier,
         description, context_window, max_tokens, input_cost_per_1k, output_cost_per_1k,
         supports_vision, supports_streaming, supports_function_calling, priority
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -464,7 +464,7 @@ adminAi.post('/models', requireAdmin, async (c) => {
         provider_id,
         model_name,
         display_name,
-        litellm_model,
+        model_identifier,
         description || null,
         context_window || null,
         max_tokens || null,
@@ -510,7 +510,7 @@ adminAi.put('/models/:id', requireAdmin, async (c) => {
 
     const {
       display_name,
-      litellm_model,
+      model_identifier,
       description,
       context_window,
       max_tokens,
@@ -523,7 +523,7 @@ adminAi.put('/models/:id', requireAdmin, async (c) => {
       priority,
     } = body as Partial<{
       display_name: string;
-      litellm_model: string;
+  model_identifier: string;
       description: string;
       context_window: number;
       max_tokens: number;
@@ -544,9 +544,9 @@ adminAi.put('/models/:id', requireAdmin, async (c) => {
       updates.push('display_name = ?');
       values.push(display_name);
     }
-    if (litellm_model !== undefined) {
-      updates.push('litellm_model = ?');
-      values.push(litellm_model);
+    if (model_identifier !== undefined) {
+      updates.push('model_identifier = ?');
+      values.push(model_identifier);
     }
     if (description !== undefined) {
       updates.push('description = ?');
@@ -1014,7 +1014,7 @@ adminAi.get('/usage', requireAdmin, async (c) => {
 
 /**
  * POST /admin/ai/usage/log
- * 사용량 로그 기록 (LiteLLM callback에서 호출)
+ * 사용량 로그 기록 (AI 서비스 callback에서 호출)
  */
 adminAi.post('/usage/log', requireAdmin, async (c) => {
   const body = await c.req.json().catch(() => ({}));
@@ -1099,10 +1099,11 @@ adminAi.post('/usage/log', requireAdmin, async (c) => {
 // ============================================================================
 
 /**
- * GET /admin/ai/config/litellm
- * DB 설정을 기반으로 LiteLLM YAML 설정 생성
+ * GET /admin/ai/config/export
+ * DB 설정을 기반으로 AI 라우터 설정 JSON 생성
+ * (n8n이 primary gateway - 이 포맷은 참조/백업 용도)
  */
-adminAi.get('/config/litellm', requireAdmin, async (c) => {
+adminAi.get('/config/export', requireAdmin, async (c) => {
   try {
     // Get all enabled models with their providers
     const models = await c.env.DB.prepare(
@@ -1123,12 +1124,12 @@ adminAi.get('/config/litellm', requireAdmin, async (c) => {
       `SELECT * FROM ai_routes WHERE is_enabled = 1`
     ).all<AIRoute>();
 
-    // Build model_list
+    // Build model_list (OpenAI-compatible format)
     const modelList = (models.results || []).map((m) => {
       const entry: Record<string, unknown> = {
         model_name: m.model_name,
-        litellm_params: {
-          model: m.litellm_model,
+        model_params: {
+          model: m.model_identifier,
         },
         model_info: {
           description: m.description || m.display_name,
@@ -1137,12 +1138,12 @@ adminAi.get('/config/litellm', requireAdmin, async (c) => {
 
       // Add api_key reference if provider has one
       if (m.api_key_env) {
-        (entry.litellm_params as Record<string, unknown>).api_key = `os.environ/${m.api_key_env}`;
+        (entry.model_params as Record<string, unknown>).api_key = `os.environ/${m.api_key_env}`;
       }
 
       // Add api_base if provider has one (for Ollama, etc)
       if (m.api_base_url) {
-        (entry.litellm_params as Record<string, unknown>).api_base = m.api_base_url;
+        (entry.model_params as Record<string, unknown>).api_base = m.api_base_url;
       }
 
       return entry;
@@ -1210,7 +1211,7 @@ adminAi.get('/config/litellm', requireAdmin, async (c) => {
         allowed_fails: 3,
         cooldown_time: 60,
       },
-      litellm_settings: {
+      gateway_settings: {
         set_verbose: false,
         drop_params: true,
         request_timeout: defaultRoute?.timeout_seconds || 120,
@@ -1221,7 +1222,7 @@ adminAi.get('/config/litellm', requireAdmin, async (c) => {
         supports_tool_choice: true,
       },
       general_settings: {
-        master_key: 'os.environ/LITELLM_MASTER_KEY',
+        master_key: 'os.environ/AI_GATEWAY_MASTER_KEY',
         database_connection_pool_limit: 0,
         disable_spend_logs: true,
       },

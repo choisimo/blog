@@ -26,19 +26,31 @@ const schema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
 
   // ==========================================================================
-  // AI Gateway (LiteLLM) - Primary AI endpoint
+  // AI Gateway (n8n) - Primary AI endpoint
   // ==========================================================================
-  LITELLM_BASE_URL: z.string().default('http://litellm:4000'),
-  LITELLM_API_KEY: z.string().default('sk-litellm-master-key'),
-  AI_DEFAULT_MODEL: z.string().default('gpt-4.1'),
+  N8N_BASE_URL: z.string().default('http://n8n:5678'),
+  N8N_WEBHOOK_URL: z.string().default('http://n8n:5678'),
+  N8N_API_KEY: z.string().optional(),
+  AI_DEFAULT_MODEL: z.string().default('gemini-1.5-flash'),
 
   // AI Engine (VAS Core) - For GitHub Copilot authentication only
   AI_ENGINE_URL: z.string().default('http://ai-engine:7012'),
 
-  // Legacy: Gemini direct access (deprecated - use LiteLLM instead)
+  // ==========================================================================
+  // OpenCode Serve - Primary AI endpoint (@opencode-ai/sdk based)
+  // ==========================================================================
+  OPENCODE_BASE_URL: z.string().default('http://opencode-backend:7016'),
+  OPENCODE_API_KEY: z.string().optional(),
+  OPENCODE_DEFAULT_PROVIDER: z.string().default('github-copilot'),
+  OPENCODE_DEFAULT_MODEL: z.string().default('gpt-4.1'),
+
+  // Direct provider API keys (used by n8n AI nodes)
   GEMINI_API_KEY: z.string().optional(),
-  GEMINI_MODEL: z.string().default('gemini-1.5-flash'),
-  OPENROUTER_API_KEY: z.string().optional(),
+  OPENAI_API_KEY: z.string().optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
+
+  // JWT Configuration
+  JWT_EXPIRES_IN: z.string().default('12h'),
 
   // ==========================================================================
   // Cloudflare D1 (Primary database for all data)
@@ -106,29 +118,33 @@ export const config = {
   },
 
   // ==========================================================================
-  // AI Gateway (LiteLLM) - Primary AI endpoint
+  // AI Gateway (n8n) - Primary AI endpoint
   // ==========================================================================
   ai: {
-    // LiteLLM Gateway (OpenAI-compatible)
+    // n8n Gateway (Webhook-based)
     gateway: {
-      baseUrl: raw.LITELLM_BASE_URL,
-      apiKey: raw.LITELLM_API_KEY,
+      baseUrl: raw.N8N_BASE_URL,
+      webhookUrl: raw.N8N_WEBHOOK_URL,
+      apiKey: raw.N8N_API_KEY,
       defaultModel: raw.AI_DEFAULT_MODEL,
     },
     // AI Engine (for GitHub Copilot auth only)
     engine: {
       url: raw.AI_ENGINE_URL,
     },
-  },
-
-  // Legacy: Gemini direct (deprecated - use ai.gateway instead)
-  gemini: {
-    apiKey: raw.GEMINI_API_KEY,
-    model: raw.GEMINI_MODEL,
-  },
-
-  openrouter: {
-    apiKey: raw.OPENROUTER_API_KEY,
+    // OpenCode Backend (Primary - @opencode-ai/sdk based API)
+    opencode: {
+      baseUrl: raw.OPENCODE_BASE_URL,
+      apiKey: raw.OPENCODE_API_KEY,
+      defaultProvider: raw.OPENCODE_DEFAULT_PROVIDER,
+      defaultModel: raw.OPENCODE_DEFAULT_MODEL,
+    },
+    // Direct provider keys (used by n8n)
+    providers: {
+      gemini: raw.GEMINI_API_KEY,
+      openai: raw.OPENAI_API_KEY,
+      anthropic: raw.ANTHROPIC_API_KEY,
+    },
   },
 
   // ==========================================================================
@@ -156,7 +172,7 @@ export const config = {
 
   auth: {
     jwtSecret: raw.JWT_SECRET,
-    jwtExpiresIn: '12h',
+    jwtExpiresIn: raw.JWT_EXPIRES_IN,
   },
 
   content: {

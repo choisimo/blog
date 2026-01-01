@@ -88,7 +88,7 @@ app.use('/api/v1/admin/workers', workersRouter);
 app.use('/api/v1/admin/ai', aiAdminRouter);
 app.use('/api/v1/agent', agentRouter);
 
-// Aidove OpenAI-compatible proxy (for LiteLLM custom endpoint)
+// Aidove OpenAI-compatible proxy (for external services)
 // Exposes: /aidove/v1/chat/completions, /aidove/v1/models, /aidove/health
 if (process.env.AIDOVE_WEBHOOK_URL) {
   const aidoveProxy = createAidoveProxy();

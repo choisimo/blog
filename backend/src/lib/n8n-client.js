@@ -1,24 +1,62 @@
 /**
  * n8n Workflow AI Client
  *
- * Routes all AI operations through n8n webhooks for centralized management.
- * n8n handles provider selection, fallbacks, rate limiting, and logging.
+ * Hybrid architecture for AI operations:
+ * 
+ * 1. LLM Calls (chat, generate):
+ *    - Primary: OpenCode backend (opencode-backend:7016)
+ *    - Fallback: n8n webhooks (for backwards compatibility)
+ * 
+ * 2. Vision Analysis (always n8n):
+ *    - Images stored in R2 storage
+ *    - n8n workflow fetches image from R2 URL
+ *    - n8n processes with vision-capable model (GPT-4o, Claude, etc.)
+ *    - Returns analysis result
+ * 
+ * 3. Non-LLM Operations (always via n8n):
+ *    - translate: Uses n8n translation workflow
+ *    - task: Uses n8n task workflows (sketch, prism, chain, etc.)
+ *    - embeddings: Proxied to TEI server via n8n
+ * 
+ * 4. Workflow Orchestration:
+ *    - n8n handles complex multi-step workflows
+ *    - AI model calls within workflows can be proxied to OpenCode
  *
  * Architecture:
- *   Backend API -> n8n Webhook -> AI Provider (via n8n nodes)
+ *   ┌─────────────────────────────────────────────────────────────┐
+ *   │                     N8NClient (Hybrid)                      │
+ *   ├─────────────────────────────────────────────────────────────┤
+ *   │                                                             │
+ *   │  LLM Calls ──────────────► OpenCode Backend (:7016)        │
+ *   │  (chat, generate)               │                          │
+ *   │                                 ▼                          │
+ *   │                           OpenCode Serve (:7012)           │
+ *   │                                 │                          │
+ *   │                                 ▼                          │
+ *   │                           LLM Provider                     │
+ *   │                                                             │
+ *   │  Vision ────────────────► n8n Webhook (:5678)              │
+ *   │  (R2 URL -> n8n -> GPT-4o/Claude)                          │
+ *   │                                                             │
+ *   │  Non-LLM Calls ─────────► n8n Webhooks (:5678)             │
+ *   │  (translate, task, etc.)                                   │
+ *   │                                                             │
+ *   │  Embeddings ────────────► TEI Server (via n8n or direct)   │
+ *   │                                                             │
+ *   └─────────────────────────────────────────────────────────────┘
  *
- * Benefits:
- *   - Visual workflow management (no code changes for AI routing)
- *   - Easy provider switching via n8n UI
- *   - Built-in retry, error handling, and logging
- *   - Centralized prompt management
- *   - Easy A/B testing of different models/prompts
+ * Configuration:
+ *   USE_OPENCODE_FOR_LLM=true  - Route chat/generate through OpenCode (default)
+ *   USE_OPENCODE_FOR_LLM=false - Use n8n for all AI calls (legacy mode)
  *
  * Usage:
  *   import { getN8NClient } from './n8n-client.js';
  *   const client = getN8NClient();
  *   const response = await client.chat([{ role: 'user', content: 'Hello!' }]);
+ *   const analysis = await client.vision('https://r2-url/image.jpg', 'Describe this image');
  */
+
+import { getOpenCodeClient } from './opencode-client.js';
 
 /**
  * Structured logger
@@ -49,9 +87,13 @@ const N8N_BASE_URL = process.env.N8N_WEBHOOK_URL || process.env.N8N_BASE_URL || 
 const N8N_API_KEY = process.env.N8N_API_KEY || '';
 const DEFAULT_MODEL = process.env.AI_DEFAULT_MODEL || 'gemini-1.5-flash';
 
+// OpenCode hybrid mode configuration
+const USE_OPENCODE_FOR_LLM = process.env.USE_OPENCODE_FOR_LLM !== 'false'; // Default: true
+
 // Webhook endpoints (configured in n8n)
 const WEBHOOKS = {
   chat: '/webhook/ai/chat',
+  customLLM: '/webhook/custom-llm/chat',
   generate: '/webhook/ai/generate',
   vision: '/webhook/ai/vision',
   translate: '/webhook/ai/translate',
@@ -93,13 +135,44 @@ async function fetchWithTimeout(url, options = {}, timeout = DEFAULT_TIMEOUT) {
 }
 
 /**
- * n8n Webhook AI Client
+ * n8n Webhook AI Client (Hybrid Mode)
+ * 
+ * Supports routing LLM calls through OpenCode backend while keeping
+ * n8n for workflow orchestration and non-LLM tasks.
  */
 export class N8NClient {
   constructor(options = {}) {
     this.baseUrl = options.baseUrl || N8N_BASE_URL;
     this.apiKey = options.apiKey || N8N_API_KEY;
     this.defaultModel = options.model || DEFAULT_MODEL;
+    
+    // Hybrid mode: use OpenCode for LLM calls
+    this.useOpenCodeForLLM = options.useOpenCodeForLLM ?? USE_OPENCODE_FOR_LLM;
+    this._openCodeClient = null;
+    
+    if (this.useOpenCodeForLLM) {
+      try {
+        this._openCodeClient = getOpenCodeClient();
+        logger.info({ operation: 'init' }, 'N8N Client initialized (hybrid mode)', {
+          baseUrl: this.baseUrl,
+          defaultModel: this.defaultModel,
+          llmBackend: 'opencode',
+        });
+      } catch (error) {
+        logger.warn({ operation: 'init' }, 'Failed to initialize OpenCode client, falling back to n8n', {
+          error: error.message,
+        });
+        this.useOpenCodeForLLM = false;
+      }
+    }
+    
+    if (!this.useOpenCodeForLLM) {
+      logger.info({ operation: 'init' }, 'N8N Client initialized (legacy mode)', {
+        baseUrl: this.baseUrl,
+        defaultModel: this.defaultModel,
+        llmBackend: 'n8n',
+      });
+    }
 
     // Circuit breaker state
     this._circuitState = {
@@ -114,11 +187,6 @@ export class N8NClient {
       isHealthy: false,
       cacheDuration: 30000, // 30 seconds
     };
-
-    logger.info({ operation: 'init' }, 'N8N Client initialized', {
-      baseUrl: this.baseUrl,
-      defaultModel: this.defaultModel,
-    });
   }
 
   /**
@@ -249,11 +317,39 @@ export class N8NClient {
 
   /**
    * Chat completion
+   * Routes to OpenCode in hybrid mode, falls back to n8n on error.
+   * 
    * @param {Array<{role: string, content: string}>} messages
    * @param {object} options - { model, temperature, maxTokens, timeout }
    * @returns {Promise<{content: string, model: string, provider: string}>}
    */
   async chat(messages, options = {}) {
+    // Try OpenCode first in hybrid mode
+    if (this.useOpenCodeForLLM && this._openCodeClient) {
+      try {
+        const result = await this._openCodeClient.chat(messages, {
+          model: options.model || this.defaultModel,
+          timeout: options.timeout,
+        });
+        
+        return {
+          content: result.content || '',
+          model: result.model || options.model || this.defaultModel,
+          provider: 'opencode',
+          sessionId: result.sessionId,
+          usage: result.usage,
+        };
+      } catch (error) {
+        logger.warn(
+          { operation: 'chat' },
+          'OpenCode chat failed, falling back to n8n',
+          { error: error.message }
+        );
+        // Fall through to n8n
+      }
+    }
+
+    // Use n8n (fallback or legacy mode)
     const result = await this._request('chat', {
       messages,
       model: options.model || this.defaultModel,
@@ -269,13 +365,48 @@ export class N8NClient {
     };
   }
 
+/**
+ * 
+ * @param {*} messages 
+ * @param {*} options 
+ * @returns 
+ */
+async customLLMChat(messages, options = {}) {
+  return this._call(WEBHOOKS.customLLM, {
+    messages,
+    model: options.model || 'llama3',
+    temperature: options.temperature || 0.7,
+  });
+}
+
   /**
    * Simple text generation
+   * Routes to OpenCode in hybrid mode, falls back to n8n on error.
+   * 
    * @param {string} prompt
    * @param {object} options
    * @returns {Promise<string>}
    */
   async generate(prompt, options = {}) {
+    // Try OpenCode first in hybrid mode
+    if (this.useOpenCodeForLLM && this._openCodeClient) {
+      try {
+        return await this._openCodeClient.generate(prompt, {
+          model: options.model || this.defaultModel,
+          systemPrompt: options.systemPrompt,
+          timeout: options.timeout,
+        });
+      } catch (error) {
+        logger.warn(
+          { operation: 'generate' },
+          'OpenCode generate failed, falling back to n8n',
+          { error: error.message }
+        );
+        // Fall through to n8n
+      }
+    }
+
+    // Use n8n (fallback or legacy mode)
     const result = await this._request('generate', {
       prompt,
       model: options.model || this.defaultModel,
@@ -288,20 +419,55 @@ export class N8NClient {
 
   /**
    * Vision analysis
-   * @param {string} imageData - Base64 or URL
-   * @param {string} prompt
-   * @param {object} options
+   * 
+   * IMPORTANT: Vision always uses n8n workflow (not OpenCode).
+   * This is because images are stored in R2, and n8n workflow can:
+   * 1. Fetch the image from R2 URL directly
+   * 2. Process with vision-capable models (GPT-4o, Claude, etc.)
+   * 3. Return analysis results
+   * 
+   * Supports both:
+   * - R2 URL (preferred): n8n fetches image directly from URL
+   * - Base64 data: Legacy support, sent directly to n8n
+   * 
+   * @param {string} imageData - R2 URL (https://...) or Base64 encoded image
+   * @param {string} prompt - Analysis prompt
+   * @param {object} options - { mimeType, model, timeout }
    * @returns {Promise<string>}
    */
   async vision(imageData, prompt, options = {}) {
-    const result = await this._request('vision', {
-      image: imageData,
+    // Vision ALWAYS uses n8n workflow (no OpenCode)
+    // This ensures consistent behavior with R2 image URLs
+    
+    const isUrl = imageData.startsWith('http://') || imageData.startsWith('https://');
+    
+    const payload = {
       prompt,
       mimeType: options.mimeType || 'image/jpeg',
       model: options.model || 'gpt-4o',
-    }, { timeout: options.timeout || LONG_TIMEOUT });
+    };
 
-    return result.description || result.text || result.content || '';
+    if (isUrl) {
+      // Send URL - n8n will fetch the image
+      payload.imageUrl = imageData;
+      payload.type = 'url';
+    } else {
+      // Send base64 data directly (legacy support)
+      payload.image = imageData;
+      payload.type = 'base64';
+    }
+
+    logger.debug(
+      { operation: 'vision' },
+      'Vision analysis request',
+      { type: payload.type, model: payload.model, promptLength: prompt?.length }
+    );
+
+    const result = await this._request('vision', payload, { 
+      timeout: options.timeout || LONG_TIMEOUT 
+    });
+
+    return result.description || result.text || result.content || result.analysis || '';
   }
 
   /**
@@ -426,10 +592,28 @@ export class N8NClient {
 
   /**
    * Streaming generation (via SSE or chunked)
-   * Note: n8n webhook doesn't support native streaming,
-   * so we return an async generator that chunks the response
+   * Routes to OpenCode in hybrid mode.
+   * Note: Both n8n and OpenCode use simulated streaming (chunked response).
    */
   async *stream(prompt, options = {}) {
+    // Try OpenCode first in hybrid mode
+    if (this.useOpenCodeForLLM && this._openCodeClient) {
+      try {
+        for await (const chunk of this._openCodeClient.stream(prompt, options)) {
+          yield chunk;
+        }
+        return;
+      } catch (error) {
+        logger.warn(
+          { operation: 'stream' },
+          'OpenCode stream failed, falling back to n8n',
+          { error: error.message }
+        );
+        // Fall through to n8n
+      }
+    }
+
+    // Use n8n (fallback or legacy mode)
     // Generate full text first
     const text = await this.generate(prompt, options);
 
@@ -443,6 +627,7 @@ export class N8NClient {
 
   /**
    * Health check
+   * Returns combined health status for n8n and OpenCode (in hybrid mode).
    */
   async health(force = false) {
     const now = Date.now();
@@ -455,6 +640,13 @@ export class N8NClient {
       };
     }
 
+    const healthResult = {
+      ok: false,
+      n8n: { ok: false },
+      opencode: { ok: false, enabled: this.useOpenCodeForLLM },
+    };
+
+    // Check n8n health
     try {
       const response = await fetchWithTimeout(
         this._buildUrl('health'),
@@ -465,29 +657,38 @@ export class N8NClient {
         HEALTH_CHECK_TIMEOUT
       );
 
-      const isHealthy = response.ok;
-      let status = {};
-
-      if (isHealthy) {
+      healthResult.n8n.ok = response.ok;
+      if (response.ok) {
         try {
-          status = await response.json();
+          healthResult.n8n.status = await response.json();
         } catch {
-          status = { status: 'ok' };
+          healthResult.n8n.status = { status: 'ok' };
         }
       }
-
-      this._healthCache.isHealthy = isHealthy;
-      this._healthCache.lastCheck = now;
-      this._healthCache.status = status;
-
-      return { ok: isHealthy, status };
     } catch (error) {
-      this._healthCache.isHealthy = false;
-      this._healthCache.lastCheck = now;
-
-      logger.warn({ operation: 'health' }, 'Health check failed', { error: error.message });
-      return { ok: false, error: error.message };
+      healthResult.n8n.error = error.message;
     }
+
+    // Check OpenCode health (if in hybrid mode)
+    if (this.useOpenCodeForLLM && this._openCodeClient) {
+      try {
+        const openCodeHealth = await this._openCodeClient.health(force);
+        healthResult.opencode.ok = openCodeHealth.ok;
+        healthResult.opencode.status = openCodeHealth.status;
+      } catch (error) {
+        healthResult.opencode.error = error.message;
+      }
+    }
+
+    // Overall health: n8n must be up, OpenCode is optional but preferred
+    healthResult.ok = healthResult.n8n.ok && 
+      (!this.useOpenCodeForLLM || healthResult.opencode.ok);
+
+    this._healthCache.isHealthy = healthResult.ok;
+    this._healthCache.lastCheck = now;
+    this._healthCache.status = healthResult;
+
+    return healthResult;
   }
 
   /**
@@ -522,6 +723,44 @@ export class N8NClient {
       threshold: CIRCUIT_BREAKER_THRESHOLD,
       resetTime: CIRCUIT_BREAKER_RESET_TIME,
     };
+  }
+
+  /**
+   * Get current backend configuration
+   */
+  getBackendInfo() {
+    return {
+      mode: this.useOpenCodeForLLM ? 'hybrid' : 'legacy',
+      n8nUrl: this.baseUrl,
+      openCodeEnabled: this.useOpenCodeForLLM,
+      openCodeUrl: this._openCodeClient?.baseUrl || null,
+      defaultModel: this.defaultModel,
+    };
+  }
+
+  /**
+   * Force switch to n8n-only mode (useful for fallback scenarios)
+   */
+  disableOpenCode() {
+    this.useOpenCodeForLLM = false;
+    logger.info({ operation: 'mode_switch' }, 'Switched to n8n-only mode');
+  }
+
+  /**
+   * Re-enable OpenCode for LLM calls
+   */
+  enableOpenCode() {
+    if (!this._openCodeClient) {
+      try {
+        this._openCodeClient = getOpenCodeClient();
+      } catch (error) {
+        logger.error({ operation: 'mode_switch' }, 'Failed to enable OpenCode', { error: error.message });
+        return false;
+      }
+    }
+    this.useOpenCodeForLLM = true;
+    logger.info({ operation: 'mode_switch' }, 'Switched to hybrid mode (OpenCode enabled)');
+    return true;
   }
 }
 

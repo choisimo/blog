@@ -21,7 +21,7 @@ export interface AIModel {
   id: string;
   modelName: string;
   displayName: string;
-  litellmModel: string;
+  modelIdentifier: string;
   description: string | null;
   provider: {
     id: string;
@@ -109,7 +109,7 @@ export interface ModelFormData {
   modelName: string;
   displayName: string;
   providerId: string;
-  litellmModel: string;
+  modelIdentifier: string;
   description?: string;
   contextWindow?: number;
   maxTokens?: number;

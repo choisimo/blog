@@ -12,6 +12,11 @@
  *                   ↓                                    ↑
  *              Memory Store <─────────────────────────────┘
  * 
+ * AI Provider:
+ *   - LLM calls: OpenCode Backend (http://opencode-backend:7016)
+ *   - RAG/Embeddings: TEI + ChromaDB (via existing containers)
+ *   - n8n: Workflow orchestration only (AI model calls proxied to OpenCode)
+ * 
  * Usage:
  *   const coordinator = getAgentCoordinator();
  *   const response = await coordinator.run({
@@ -20,7 +25,7 @@
  *   });
  */
 
-import { getLiteLLMClient } from '../litellm-client.js';
+import { getOpenCodeClient } from '../opencode-client.js';
 import { getToolRegistry } from './tools/index.js';
 import { getSessionMemory } from './memory/session.js';
 import { getPersistentMemory } from './memory/persistent.js';
@@ -67,7 +72,7 @@ const logger = {
 
 export class AgentCoordinator {
   constructor(options = {}) {
-    this.llmClient = options.llmClient || getLiteLLMClient();
+    this.llmClient = options.llmClient || getOpenCodeClient();
     this.toolRegistry = options.toolRegistry || getToolRegistry();
     this.sessionMemory = options.sessionMemory || getSessionMemory();
     this.persistentMemory = options.persistentMemory || getPersistentMemory();
@@ -78,6 +83,7 @@ export class AgentCoordinator {
     
     logger.info({ operation: 'init' }, 'AgentCoordinator initialized', {
       model: this.defaultModel,
+      provider: 'opencode',
       toolCount: this.toolRegistry.getToolCount(),
     });
   }
@@ -256,45 +262,174 @@ export class AgentCoordinator {
 
   /**
    * Call LLM with function calling support
+   * 
+   * Since OpenCode's /chat endpoint doesn't support OpenAI-style function calling,
+   * we implement prompt-based tool calling:
+   * 1. Include tool definitions in a system message
+   * 2. Parse LLM response for tool call requests (JSON format)
+   * 3. Return parsed tool calls for execution
    */
   async _callLLMWithTools(messages, options) {
     const tools = this.toolRegistry.getToolDefinitions();
     
     try {
-      const response = await fetch(`${this.llmClient.baseUrl}/v1/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.llmClient.apiKey}`,
-        },
-        body: JSON.stringify({
+      // Build messages with tool instructions
+      const messagesWithTools = this._injectToolInstructions(messages, tools);
+      
+      // Format messages for OpenCode /chat endpoint
+      const formattedPrompt = this._formatMessagesForOpenCode(messagesWithTools);
+      
+      // Call OpenCode chat endpoint
+      const response = await this.llmClient.chat(
+        [{ role: 'user', content: formattedPrompt }],
+        {
           model: options.model || this.defaultModel,
-          messages,
-          tools: tools.length > 0 ? tools : undefined,
-          tool_choice: tools.length > 0 ? 'auto' : undefined,
-          temperature: options.temperature ?? 0.7,
-        }),
-      });
+          title: `agent-${Date.now()}`,
+        }
+      );
 
-      if (!response.ok) {
-        const error = await response.text().catch(() => '');
-        throw new Error(`LLM call failed: ${response.status} ${error}`);
-      }
-
-      const data = await response.json();
-      const choice = data.choices?.[0];
+      // Parse response for tool calls
+      const parsedResponse = this._parseToolCallsFromResponse(response.content);
 
       return {
-        content: choice?.message?.content || '',
-        toolCalls: choice?.message?.tool_calls,
-        usage: data.usage,
-        model: data.model,
-        finishReason: choice?.finish_reason,
+        content: parsedResponse.content,
+        toolCalls: parsedResponse.toolCalls,
+        usage: null, // OpenCode doesn't return usage stats in same format
+        model: options.model || this.defaultModel,
+        finishReason: parsedResponse.toolCalls?.length > 0 ? 'tool_calls' : 'stop',
+        sessionId: response.sessionId,
       };
     } catch (error) {
       logger.error({ operation: 'llm_call' }, 'LLM call failed', { error: error.message });
       throw error;
     }
+  }
+
+  /**
+   * Inject tool definitions into messages as a system instruction
+   */
+  _injectToolInstructions(messages, tools) {
+    if (!tools || tools.length === 0) {
+      return messages;
+    }
+
+    const toolsDescription = tools.map(t => {
+      const func = t.function;
+      const params = func.parameters?.properties || {};
+      const required = func.parameters?.required || [];
+      
+      const paramsStr = Object.entries(params)
+        .map(([name, schema]) => {
+          const req = required.includes(name) ? '(required)' : '(optional)';
+          return `    - ${name} ${req}: ${schema.description || schema.type}`;
+        })
+        .join('\n');
+      
+      return `- ${func.name}: ${func.description}\n  Parameters:\n${paramsStr}`;
+    }).join('\n\n');
+
+    const toolInstructions = `
+You have access to the following tools. To use a tool, respond with a JSON block in this exact format:
+
+\`\`\`tool_call
+{
+  "tool": "tool_name",
+  "arguments": { "param1": "value1", "param2": "value2" }
+}
+\`\`\`
+
+You can make multiple tool calls by including multiple tool_call blocks.
+After receiving tool results, synthesize them into a helpful response.
+If you don't need to use any tools, just respond normally without the tool_call block.
+
+Available tools:
+${toolsDescription}
+`;
+
+    // Find existing system message or create one
+    const result = [...messages];
+    const systemIndex = result.findIndex(m => m.role === 'system');
+    
+    if (systemIndex >= 0) {
+      result[systemIndex] = {
+        ...result[systemIndex],
+        content: result[systemIndex].content + '\n\n' + toolInstructions,
+      };
+    } else {
+      result.unshift({
+        role: 'system',
+        content: toolInstructions,
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * Format messages array into a single prompt for OpenCode's /chat endpoint
+   */
+  _formatMessagesForOpenCode(messages) {
+    return messages.map(m => {
+      const role = m.role === 'assistant' ? 'Assistant' 
+                 : m.role === 'system' ? 'System'
+                 : m.role === 'tool' ? 'Tool Result'
+                 : 'User';
+      
+      let content = m.content || '';
+      
+      // For tool messages, include the tool_call_id
+      if (m.role === 'tool' && m.tool_call_id) {
+        content = `[Tool: ${m.tool_call_id}]\n${content}`;
+      }
+      
+      return `${role}:\n${content}`;
+    }).join('\n\n---\n\n');
+  }
+
+  /**
+   * Parse tool calls from LLM response text
+   * Looks for ```tool_call ... ``` blocks
+   */
+  _parseToolCallsFromResponse(responseText) {
+    if (!responseText) {
+      return { content: '', toolCalls: null };
+    }
+
+    const toolCallRegex = /```tool_call\s*([\s\S]*?)```/g;
+    const toolCalls = [];
+    let match;
+    let cleanContent = responseText;
+
+    while ((match = toolCallRegex.exec(responseText)) !== null) {
+      try {
+        const parsed = JSON.parse(match[1].trim());
+        
+        if (parsed.tool && parsed.arguments !== undefined) {
+          toolCalls.push({
+            id: `call_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            type: 'function',
+            function: {
+              name: parsed.tool,
+              arguments: JSON.stringify(parsed.arguments),
+            },
+          });
+        }
+        
+        // Remove tool_call block from content
+        cleanContent = cleanContent.replace(match[0], '').trim();
+      } catch (e) {
+        logger.warn(
+          { operation: 'parse_tool_call' },
+          'Failed to parse tool call block',
+          { block: match[1], error: e.message }
+        );
+      }
+    }
+
+    return {
+      content: cleanContent,
+      toolCalls: toolCalls.length > 0 ? toolCalls : null,
+    };
   }
 
   /**
@@ -433,6 +568,12 @@ export class AgentCoordinator {
   /**
    * Stream agent response
    * 
+   * Since OpenCode backend doesn't have native SSE streaming for chat,
+   * we use a simulated streaming approach:
+   * 1. Get full response from OpenCode
+   * 2. Chunk and yield content progressively
+   * 3. Handle tool calls between iterations
+   * 
    * @param {object} params - Same as run()
    * @yields {object} Stream events: { type: 'text'|'tool_start'|'tool_end'|'done', data: any }
    */
@@ -471,83 +612,44 @@ export class AgentCoordinator {
     while (iterations < this.maxIterations) {
       iterations++;
 
-      // Stream from LLM
-      const response = await fetch(`${this.llmClient.baseUrl}/v1/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.llmClient.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: options.model || this.defaultModel,
-          messages: currentMessages,
-          tools: tools.length > 0 ? tools : undefined,
-          tool_choice: tools.length > 0 ? 'auto' : undefined,
-          temperature: options.temperature ?? 0.7,
-          stream: true,
-        }),
-      });
+      // Inject tool instructions and format for OpenCode
+      const messagesWithTools = this._injectToolInstructions(currentMessages, tools);
+      const formattedPrompt = this._formatMessagesForOpenCode(messagesWithTools);
 
-      if (!response.ok) {
-        throw new Error(`LLM stream failed: ${response.status}`);
+      // Call OpenCode (non-streaming, then simulate streaming)
+      let response;
+      try {
+        response = await this.llmClient.chat(
+          [{ role: 'user', content: formattedPrompt }],
+          {
+            model: options.model || this.defaultModel,
+            title: `agent-stream-${runId}`,
+          }
+        );
+      } catch (error) {
+        yield { type: 'error', data: { message: error.message } };
+        return;
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let accumulatedContent = '';
-      let accumulatedToolCalls = [];
+      const fullContent = response.content || '';
+      
+      // Parse for tool calls
+      const parsed = this._parseToolCallsFromResponse(fullContent);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') continue;
-
-            try {
-              const parsed = JSON.parse(data);
-              const delta = parsed.choices?.[0]?.delta;
-
-              if (delta?.content) {
-                accumulatedContent += delta.content;
-                yield { type: 'text', data: delta.content };
-              }
-
-              if (delta?.tool_calls) {
-                for (const tc of delta.tool_calls) {
-                  if (tc.index !== undefined) {
-                    if (!accumulatedToolCalls[tc.index]) {
-                      accumulatedToolCalls[tc.index] = {
-                        id: tc.id || '',
-                        type: 'function',
-                        function: { name: '', arguments: '' },
-                      };
-                    }
-                    if (tc.id) accumulatedToolCalls[tc.index].id = tc.id;
-                    if (tc.function?.name) accumulatedToolCalls[tc.index].function.name += tc.function.name;
-                    if (tc.function?.arguments) accumulatedToolCalls[tc.index].function.arguments += tc.function.arguments;
-                  }
-                }
-              }
-            } catch {
-              // Skip invalid JSON
-            }
-          }
+      // Simulate streaming by chunking the content
+      if (parsed.content) {
+        const chunkSize = 40;
+        for (let i = 0; i < parsed.content.length; i += chunkSize) {
+          const chunk = parsed.content.slice(i, Math.min(i + chunkSize, parsed.content.length));
+          yield { type: 'text', data: chunk };
+          // Small delay to simulate streaming
+          await new Promise(r => setTimeout(r, 15));
         }
       }
 
-      reader.releaseLock();
-
       // Handle tool calls
-      if (accumulatedToolCalls.length > 0) {
-        for (const tc of accumulatedToolCalls) {
+      if (parsed.toolCalls && parsed.toolCalls.length > 0) {
+        for (const tc of parsed.toolCalls) {
           yield { type: 'tool_start', data: { name: tc.function.name, id: tc.id } };
 
           try {
@@ -558,10 +660,10 @@ export class AgentCoordinator {
             toolCalls.push({ ...tc, result });
             yield { type: 'tool_end', data: { name: tc.function.name, result } };
 
+            // Add to messages for next iteration
             currentMessages.push({
               role: 'assistant',
-              content: accumulatedContent || null,
-              tool_calls: accumulatedToolCalls,
+              content: parsed.content || null,
             });
             currentMessages.push({
               role: 'tool',
@@ -575,13 +677,13 @@ export class AgentCoordinator {
         continue; // Continue loop to process tool results
       }
 
-      // No tool calls, done
-      yield { type: 'done', data: { content: accumulatedContent, toolCalls } };
+      // No tool calls, we're done
+      yield { type: 'done', data: { content: parsed.content, toolCalls } };
 
       // Save to memory
       await this.sessionMemory.addMessages(sessionId, [
         ...messages,
-        { role: 'assistant', content: accumulatedContent },
+        { role: 'assistant', content: parsed.content },
       ]);
 
       return;

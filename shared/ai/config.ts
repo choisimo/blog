@@ -2,11 +2,11 @@
  * Centralized AI Configuration
  * 
  * 모든 AI 서비스 설정을 중앙에서 관리합니다.
- * LiteLLM Gateway를 통해 모든 Provider에 접근합니다.
+ * n8n Workflow Engine을 통해 모든 Provider에 접근합니다.
  * 환경변수로 오버라이드 가능합니다.
  */
 
-import type { AIConfig, ProviderId, ProviderConfig } from '../types/ai';
+import type { AIConfig, ProviderId, ProviderConfig };
 
 // ============================================================================
 // Environment Variable Helpers
@@ -31,36 +31,36 @@ function getEnvBoolean(key: string, defaultValue: boolean): boolean {
 }
 
 // ============================================================================
-// LiteLLM Gateway Configuration (Primary)
+// n8n Workflow Engine Configuration (Primary)
 // ============================================================================
 
-export const LITELLM_CONFIG = {
-  // Base URL for LiteLLM proxy (OpenAI-compatible)
-  baseUrl: getEnv('LITELLM_BASE_URL', 'http://litellm:4000'),
+export const N8N_CONFIG = {
+  // Base URL for n8n webhooks
+  baseUrl: getEnv('N8N_WEBHOOK_URL', 'http://n8n:5678'),
   
-  // Master API key for authentication
-  apiKey: getEnv('LITELLM_MASTER_KEY', 'sk-litellm-master-key'),
+  // API key for authentication (optional)
+  apiKey: getEnv('N8N_API_KEY', ''),
   
-  // Default model (will be routed by LiteLLM)
-  defaultModel: getEnv('AI_DEFAULT_MODEL', 'gpt-4.1'),
+  // Default model (will be routed by n8n workflow)
+  defaultModel: getEnv('AI_DEFAULT_MODEL', 'gemini-1.5-flash'),
   
   // Timeout settings
   timeout: getEnvNumber('AI_TIMEOUT_MS', 120000),
   longTimeout: getEnvNumber('AI_LONG_TIMEOUT_MS', 300000),
   
-  // Retry settings (LiteLLM handles fallbacks automatically)
+  // Retry settings (n8n handles retries in workflows)
   retryAttempts: getEnvNumber('AI_RETRY_ATTEMPTS', 2),
 };
 
 // ============================================================================
-// Provider Definitions (Reference - actual routing handled by LiteLLM)
+// Provider Definitions (Reference - actual routing handled by n8n workflows)
 // ============================================================================
 
 export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   'github-copilot': {
     id: 'github-copilot',
     name: 'GitHub Copilot',
-    baseUrl: 'auto', // Routed through LiteLLM → vas-core
+    baseUrl: 'auto', // Routed through n8n → opencode-engine
     models: ['gpt-4.1', 'gpt-4o', 'gpt-4-turbo', 'o1-mini', 'claude-sonnet-4'],
     features: {
       chat: true,
@@ -73,7 +73,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   openai: {
     id: 'openai',
     name: 'OpenAI',
-    baseUrl: 'https://api.openai.com/v1', // Routed through LiteLLM
+    baseUrl: 'https://api.openai.com/v1', // Routed through n8n
     models: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
     features: {
       chat: true,
@@ -86,7 +86,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   gemini: {
     id: 'gemini',
     name: 'Google Gemini',
-    baseUrl: 'https://generativelanguage.googleapis.com/v1beta', // Routed through LiteLLM
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta', // Routed through n8n
     models: ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-exp'],
     features: {
       chat: true,
@@ -99,7 +99,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   anthropic: {
     id: 'anthropic',
     name: 'Anthropic Claude',
-    baseUrl: 'https://api.anthropic.com/v1', // Routed through LiteLLM
+    baseUrl: 'https://api.anthropic.com/v1', // Routed through n8n
     models: ['claude-3-5-sonnet', 'claude-3-opus', 'claude-3-haiku'],
     features: {
       chat: true,
@@ -112,7 +112,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   local: {
     id: 'local',
     name: 'Local LLM',
-    baseUrl: getEnv('AI_LOCAL_URL', 'http://localhost:11434'), // Routed through LiteLLM
+    baseUrl: getEnv('AI_LOCAL_URL', 'http://localhost:11434'), // Routed through n8n
     models: ['llama3', 'codellama', 'mistral'],
     features: {
       chat: true,
@@ -131,9 +131,9 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
 export const DEFAULT_AI_CONFIG: AIConfig = {
   providers: Object.values(PROVIDERS),
   routing: {
-    defaultProvider: getEnv('AI_DEFAULT_PROVIDER', 'github-copilot') as ProviderId,
-    defaultModel: getEnv('AI_DEFAULT_MODEL', 'gpt-4.1'),
-    fallbackProviders: ['gemini'], // LiteLLM handles fallbacks automatically
+    defaultProvider: getEnv('AI_DEFAULT_PROVIDER', 'gemini') as ProviderId,
+    defaultModel: getEnv('AI_DEFAULT_MODEL', 'gemini-1.5-flash'),
+    fallbackProviders: ['gemini'], // n8n handles fallbacks in workflows
     timeout: getEnvNumber('AI_TIMEOUT_MS', 120000),
     retryAttempts: getEnvNumber('AI_RETRY_ATTEMPTS', 2),
   },
@@ -195,9 +195,9 @@ export function isModelAvailable(providerId: ProviderId, model: string): boolean
 // ============================================================================
 
 export const AI_URLS = {
-  // LiteLLM Gateway (Primary - use this for all AI calls)
-  litellm: LITELLM_CONFIG.baseUrl,
-  litellmApi: `${LITELLM_CONFIG.baseUrl}/v1`,
+  // n8n Workflow Engine (Primary - use this for all AI calls)
+  n8n: N8N_CONFIG.baseUrl,
+  n8nApi: `${N8N_CONFIG.baseUrl}/webhook`,
   
   // Legacy VAS endpoints (for GitHub Copilot auth only)
   vasCore: getEnv('VAS_CORE_URL', 'http://vas-core:7012'),
@@ -212,8 +212,8 @@ export const AI_URLS = {
 // ============================================================================
 
 export const TIMEOUTS = {
-  default: LITELLM_CONFIG.timeout,
-  long: LITELLM_CONFIG.longTimeout,
+  default: N8N_CONFIG.timeout,
+  long: N8N_CONFIG.longTimeout,
   health: getEnvNumber('AI_HEALTH_TIMEOUT_MS', 5000),
   stream: getEnvNumber('AI_STREAM_TIMEOUT_MS', 180000),
 };
@@ -222,21 +222,21 @@ export const TIMEOUTS = {
 // Model Aliases (for convenience)
 // ============================================================================
 // Use these in your code instead of provider-specific names
-// LiteLLM will route to the correct provider automatically
+// n8n workflows will route to the correct provider automatically
 
 export const MODELS = {
   // Default models
-  default: LITELLM_CONFIG.defaultModel,
+  default: N8N_CONFIG.defaultModel,
   
   // Fast models (for quick responses)
   fast: 'gemini-1.5-flash',
   
   // Smart models (for complex tasks)
-  smart: 'gpt-4.1',
+  smart: 'gpt-4o',
   smartVision: 'gpt-4o',
   
   // Coding models
-  code: 'gpt-4.1',
+  code: 'gpt-4o',
   
   // Long context models
   longContext: 'gemini-1.5-pro',

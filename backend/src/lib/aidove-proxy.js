@@ -2,10 +2,10 @@
  * Aidove Webhook Proxy - OpenAI Compatible Wrapper
  *
  * Converts OpenAI-compatible requests to Aidove webhook format,
- * enabling LiteLLM to route requests through n8n/Aidove workflows.
+ * enabling external services to route requests through n8n/Aidove workflows.
  *
  * Architecture:
- *   LiteLLM -> Aidove Proxy (this) -> n8n Webhook -> AI Agent/RAG Pipeline
+ *   External Service -> Aidove Proxy (this) -> n8n Webhook -> AI Agent/RAG Pipeline
  *
  * Supported Models & Webhooks:
  *   - aidove      : Basic chatbot (AIDOVE_WEBHOOK_URL)

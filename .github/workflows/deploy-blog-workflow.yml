@@ -13,7 +13,7 @@ name: Deploy Blog + n8n Workflow Stack
 #   - AI Admin (ghcr.io/choisimo/ai-admin)
 #   - Terminal Server (ghcr.io/choisimo/blog-terminal)
 #   - n8n + Workers
-#   - LiteLLM, PostgreSQL, Redis, MongoDB, Qdrant, ChromaDB, etc.
+#   - PostgreSQL, Redis, MongoDB, Qdrant, ChromaDB, etc.
 #
 # Deployment Directory: /opt/blog-stack
 #
@@ -215,8 +215,7 @@ jobs:
           QDRANT_API_KEY=${{ secrets.QDRANT_API_KEY }}
 
           # AI Configuration
-          AI_DEFAULT_MODEL=${{ vars.AI_DEFAULT_MODEL || 'gpt-4.1' }}
-          LITELLM_MASTER_KEY=${{ secrets.LITELLM_MASTER_KEY }}
+          AI_DEFAULT_MODEL=${{ vars.AI_DEFAULT_MODEL || 'gemini-1.5-flash' }}
           OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
           GOOGLE_API_KEY=${{ secrets.GEMINI_API_KEY }}
           ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
@@ -288,12 +287,6 @@ jobs:
           # Upload nginx config (consolidated)
           scp -P "${{ env.SSH_PORT }}" backend/nginx/nginx.conf \
             "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:~/${{ env.DEPLOY_DIR }}/nginx.conf"
-
-          # Upload LiteLLM config
-          if [ -f backend/litellm_config.yaml ]; then
-            scp -P "${{ env.SSH_PORT }}" backend/litellm_config.yaml \
-              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:~/${{ env.DEPLOY_DIR }}/litellm_config.yaml"
-          fi
 
           # Upload bootstrap script
           if [ -f backend/opencode-serve/bootstrap-token.sh ]; then
@@ -489,9 +482,6 @@ jobs:
           
           API_STATUS=$(curl -sf http://localhost:8080/api/v1/healthz && echo "OK" || echo "FAILED")
           echo "API Health: $API_STATUS"
-
-          LITELLM_STATUS=$(curl -sf http://localhost:4000/health && echo "OK" || echo "FAILED")
-          echo "LiteLLM Health: $LITELLM_STATUS"
 
           N8N_STATUS=$(curl -sf http://localhost:5678/healthz && echo "OK" || echo "FAILED")
           echo "n8n Health: $N8N_STATUS"

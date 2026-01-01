@@ -66,7 +66,7 @@ function ModelForm({ model, providers, onSubmit, onCancel }: ModelFormProps) {
     modelName: model?.modelName || '',
     displayName: model?.displayName || '',
     providerId: model?.provider?.id || '',
-    litellmModel: model?.litellmModel || '',
+    modelIdentifier: model?.modelIdentifier || '',
     description: model?.description || '',
     contextWindow: model?.contextWindow || undefined,
     maxTokens: model?.maxTokens || undefined,
@@ -137,11 +137,11 @@ function ModelForm({ model, providers, onSubmit, onCancel }: ModelFormProps) {
           </Select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="litellmModel">LiteLLM Model *</Label>
+          <Label htmlFor="modelIdentifier">Model Identifier *</Label>
           <Input
-            id="litellmModel"
-            value={formData.litellmModel}
-            onChange={(e) => setFormData({ ...formData, litellmModel: e.target.value })}
+            id="modelIdentifier"
+            value={formData.modelIdentifier}
+            onChange={(e) => setFormData({ ...formData, modelIdentifier: e.target.value })}
             placeholder="openai/gpt-4o"
             required
           />
@@ -468,7 +468,7 @@ export function ModelsManager() {
                       {!model.isEnabled && <Badge variant="destructive">Disabled</Badge>}
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {model.description || model.litellmModel}
+                      {model.description || model.modelIdentifier}
                     </p>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
                       {model.contextWindow && <span>Context: {(model.contextWindow / 1000).toFixed(0)}K</span>}
