@@ -10,6 +10,71 @@ import { buildFrontmatterMarkdown } from '../lib/markdown.js';
 
 const router = Router();
 
+// Cache for remote posts manifest
+let cachedManifest = null;
+let manifestCacheTime = 0;
+const MANIFEST_CACHE_TTL = 60 * 1000; // 1 minute
+
+/**
+ * Fetch posts manifest from frontend (Cloudflare Pages)
+ */
+async function fetchRemoteManifest() {
+  const now = Date.now();
+  if (cachedManifest && (now - manifestCacheTime) < MANIFEST_CACHE_TTL) {
+    return cachedManifest;
+  }
+
+  const manifestUrl = `${config.siteBaseUrl}/posts-manifest.json`;
+  try {
+    const response = await fetch(manifestUrl, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch manifest: ${response.status}`);
+    }
+    cachedManifest = await response.json();
+    manifestCacheTime = now;
+    return cachedManifest;
+  } catch (err) {
+    console.error('[posts] Failed to fetch remote manifest:', err.message);
+    // Return cached even if expired, or empty
+    return cachedManifest || { total: 0, items: [], years: [] };
+  }
+}
+
+/**
+ * Fetch single post content from frontend
+ */
+async function fetchRemotePost(year, slug) {
+  const postUrl = `${config.siteBaseUrl}/posts/${year}/${slug}.md`;
+  try {
+    const response = await fetch(postUrl, {
+      headers: { 'Accept': 'text/markdown, text/plain, */*' },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) {
+      return null;
+    }
+    return await response.text();
+  } catch (err) {
+    console.error(`[posts] Failed to fetch post ${year}/${slug}:`, err.message);
+    return null;
+  }
+}
+
+/**
+ * Check if filesystem source is available
+ */
+function isFilesystemAvailable() {
+  try {
+    const { postsDir } = config.content;
+    return fs.existsSync(postsDir);
+  } catch {
+    return false;
+  }
+}
+
 
 function validateFilename(filename) {
   const validFilenamePattern = /^[a-zA-Z0-9][a-zA-Z0-9\-_]*\.md$/;
@@ -134,30 +199,67 @@ function generateUnifiedManifest() {
 
 router.get('/', async (req, res, next) => {
   try {
-    const { postsDir } = config.content;
-    const years = listYears(postsDir);
     const q = req.query || {};
     const year = (q.year || '').toString();
     const includeDrafts = String(q.includeDrafts || 'false') === 'true';
+    const limit = parseInt(q.limit) || 0;
+    const offset = parseInt(q.offset) || 0;
 
-    let items = [];
-    const yearsToScan = year && /^\d{4}$/.test(year) ? [year] : years;
-    for (const y of yearsToScan) {
-      const dir = path.join(postsDir, y);
-      if (!fs.existsSync(dir)) continue;
-      for (const file of fs.readdirSync(dir).filter(f => f.endsWith('.md'))) {
-        if (!validateFilename(file)) continue;
-        const abs = path.join(dir, file);
-        const raw = fs.readFileSync(abs, 'utf8');
-        const { data: fm, content } = matter(raw);
-        if (fm.published === false && !includeDrafts) continue;
-        items.push(computeItem(y, file, fm, content));
+    // Try filesystem first, fallback to remote manifest
+    if (isFilesystemAvailable()) {
+      const { postsDir } = config.content;
+      const years = listYears(postsDir);
+      let items = [];
+      const yearsToScan = year && /^\d{4}$/.test(year) ? [year] : years;
+      
+      for (const y of yearsToScan) {
+        const dir = path.join(postsDir, y);
+        if (!fs.existsSync(dir)) continue;
+        for (const file of fs.readdirSync(dir).filter(f => f.endsWith('.md'))) {
+          if (!validateFilename(file)) continue;
+          const abs = path.join(dir, file);
+          const raw = fs.readFileSync(abs, 'utf8');
+          const { data: fm, content } = matter(raw);
+          if (fm.published === false && !includeDrafts) continue;
+          items.push(computeItem(y, file, fm, content));
+        }
       }
+
+      items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      // Apply pagination
+      if (limit > 0) {
+        items = items.slice(offset, offset + limit);
+      }
+      
+      return res.json({ ok: true, data: { items }, source: 'filesystem' });
     }
 
-    // basic sort by date desc
-    items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    return res.json({ ok: true, data: { items } });
+    // Fallback: fetch from remote frontend
+    const manifest = await fetchRemoteManifest();
+    let items = manifest.items || [];
+
+    // Filter by year if specified
+    if (year && /^\d{4}$/.test(year)) {
+      items = items.filter(item => item.year === year);
+    }
+
+    // Filter drafts
+    if (!includeDrafts) {
+      items = items.filter(item => item.published !== false);
+    }
+
+    // Apply pagination
+    const total = items.length;
+    if (limit > 0) {
+      items = items.slice(offset, offset + limit);
+    }
+
+    return res.json({ 
+      ok: true, 
+      data: { items, total, years: manifest.years || [] }, 
+      source: 'remote' 
+    });
   } catch (err) {
     return next(err);
   }
@@ -170,13 +272,27 @@ router.get('/:year/:slug', async (req, res, next) => {
       return res.status(400).json({ ok: false, error: 'Invalid year' });
 
     const file = `${slug}.md`;
-    const abs = path.join(config.content.postsDir, year, file);
-    if (!fs.existsSync(abs))
+    
+    // Try filesystem first
+    if (isFilesystemAvailable()) {
+      const abs = path.join(config.content.postsDir, year, file);
+      if (fs.existsSync(abs)) {
+        const raw = fs.readFileSync(abs, 'utf8');
+        const { data: fm, content } = matter(raw);
+        const item = computeItem(year, file, fm, content);
+        return res.json({ ok: true, data: { item, markdown: raw }, source: 'filesystem' });
+      }
+    }
+
+    // Fallback: fetch from remote frontend
+    const markdown = await fetchRemotePost(year, slug);
+    if (!markdown) {
       return res.status(404).json({ ok: false, error: 'Not found' });
-    const raw = fs.readFileSync(abs, 'utf8');
-    const { data: fm, content } = matter(raw);
+    }
+
+    const { data: fm, content } = matter(markdown);
     const item = computeItem(year, file, fm, content);
-    return res.json({ ok: true, data: { item, markdown: raw } });
+    return res.json({ ok: true, data: { item, markdown }, source: 'remote' });
   } catch (err) {
     return next(err);
   }

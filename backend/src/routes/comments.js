@@ -49,12 +49,18 @@ const requireD1 = (req, res, next) => {
 
 /**
  * GET /comments?postId=xxx - Get comments for a post
+ * Also supports: ?postSlug=xxx or ?slug=xxx for convenience
  */
 router.get('/', requireD1, async (req, res, next) => {
   try {
-    const postId = req.query.postId;
+    // Support multiple parameter names for flexibility
+    const postId = req.query.postId || req.query.postSlug || req.query.slug;
     if (!postId)
-      return res.status(400).json({ ok: false, error: 'postId is required' });
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'postId, postSlug, or slug is required',
+        hint: 'Use ?postId=<id> or ?postSlug=<slug> to get comments for a post'
+      });
 
     const items = await queryAll(
       `SELECT id, post_id, author, content, email, status, created_at, updated_at
@@ -75,7 +81,7 @@ router.get('/', requireD1, async (req, res, next) => {
       createdAt: d.created_at,
     }));
 
-    return res.json({ ok: true, data: { comments } });
+    return res.json({ ok: true, data: { comments, total: comments.length } });
   } catch (err) {
     return next(err);
   }
@@ -86,10 +92,17 @@ router.get('/', requireD1, async (req, res, next) => {
  */
 router.post('/', requireD1, async (req, res, next) => {
   try {
-    const { postId, author, content, email, website } = req.body || {};
+    const { postId, postSlug, slug, author, content, email, website } = req.body || {};
+    
+    // Support multiple field names for post identifier
+    const postIdentifier = postId || postSlug || slug;
 
-    if (!postId || typeof postId !== 'string')
-      return res.status(400).json({ ok: false, error: 'postId is required' });
+    if (!postIdentifier || typeof postIdentifier !== 'string')
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'postId, postSlug, or slug is required',
+        hint: 'Provide postId or postSlug in the request body'
+      });
     if (!author || typeof author !== 'string')
       return res.status(400).json({ ok: false, error: 'author is required' });
     if (!content || typeof content !== 'string')
@@ -100,7 +113,7 @@ router.post('/', requireD1, async (req, res, next) => {
       return res.status(400).json({ ok: false, error: 'Author or content too long' });
     }
 
-    const normalizedPostId = String(postId).trim().slice(0, 256);
+    const normalizedPostId = String(postIdentifier).trim().slice(0, 256);
     const commentId = `comment-${crypto.randomUUID()}`;
     const now = new Date().toISOString();
 

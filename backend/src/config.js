@@ -89,6 +89,16 @@ const schema = z.object({
   TEI_URL: z.string().default('http://embedding-server:80'),
   CHROMA_URL: z.string().default('http://chromadb:8000'),
   CHROMA_COLLECTION: z.string().default('blog-posts-all-MiniLM-L6-v2'),
+
+  // ==========================================================================
+  // Content Paths (configurable for Docker)
+  // ==========================================================================
+  CONTENT_PUBLIC_DIR: z.string().optional(),
+  CONTENT_POSTS_DIR: z.string().optional(),
+  CONTENT_IMAGES_DIR: z.string().optional(),
+  
+  // Posts source: 'filesystem' | 'github' | 'r2'
+  POSTS_SOURCE: z.enum(['filesystem', 'github', 'r2']).default('filesystem'),
 });
 
 const raw = schema.parse(process.env);
@@ -97,9 +107,10 @@ const allowedOrigins = raw.ALLOWED_ORIGINS.split(',')
   .map(s => s.trim())
   .filter(Boolean);
 
-const publicDir = path.join(repoRoot, 'frontend', 'public');
-const postsDir = path.join(publicDir, 'posts');
-const imagesDir = path.join(publicDir, 'images');
+// Content paths - use environment variables if set, otherwise compute from repoRoot
+const publicDir = raw.CONTENT_PUBLIC_DIR || path.join(repoRoot, 'frontend', 'public');
+const postsDir = raw.CONTENT_POSTS_DIR || path.join(publicDir, 'posts');
+const imagesDir = raw.CONTENT_IMAGES_DIR || path.join(publicDir, 'images');
 
 export const config = {
   appEnv: raw.APP_ENV,
@@ -180,6 +191,7 @@ export const config = {
     publicDir,
     postsDir,
     imagesDir,
+    postsSource: raw.POSTS_SOURCE,
   },
 
   integrations: {
