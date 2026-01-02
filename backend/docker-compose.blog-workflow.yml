@@ -248,7 +248,7 @@ services:
       start_period: 30s
 
   embedding-server:
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2.3
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest
     container_name: blog-embedding
     restart: unless-stopped
     command: --model-id sentence-transformers/all-MiniLM-L6-v2
