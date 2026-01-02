@@ -210,9 +210,10 @@ services:
       - N8N_WEBHOOK_URL=http://n8n:5678
       - N8N_BASE_URL=http://n8n:5678
       - N8N_API_KEY=${N8N_API_KEY:-}
-      # AI Engine (OpenCode)
-      - AI_ENGINE_URL=http://ai-engine:7012
-      - OPENCODE_ENGINE_URL=http://ai-engine:7012
+      # OpenCode AI Services
+      - OPENCODE_BACKEND_URL=http://opencode-backend:7016
+      - OPENCODE_SERVE_URL=http://opencode-serve:7012
+      - AI_ENGINE_URL=http://opencode-serve:7012
       # Vector DB
       - QDRANT_URL=http://qdrant:6333
       - QDRANT_API_KEY=${QDRANT_API_KEY}
@@ -275,16 +276,53 @@ services:
       - blog-network
 
 # ===========================================================================
-# AI SERVICES
+# AI SERVICES - OpenCode Backend & Serve
 # ===========================================================================
-# NOTE: Primary AI API gateway is now Cloudflare Workers (workers/ai-check-gateway/).
-# The ai-engine below is for n8n workflow integration only.
-# AI model configuration is managed via DB (workers/migrations/0011_ai_model_management.sql).
+# OpenCode Backend: API server for AI orchestration (port 7016)
+# OpenCode Serve: AI model serving (port 7012)
+#
+# These replace the deprecated ai-engine and LiteLLM setup.
+# Images are pre-built and stored in GHCR.
 
-# AI Engine - OpenCode Serve (for n8n workflow integration)
-  ai-engine:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/ai-engine:latest
-    container_name: ai-engine
+  # OpenCode Backend - AI API Server
+  opencode-backend:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/opencode-backend:latest
+    container_name: opencode-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - HOST=0.0.0.0
+      - PORT=7016
+      - OPENCODE_SERVE_URL=http://opencode-serve:7012
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - MONGODB_URL=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DB}?authSource=admin
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    expose:
+      - "7016"
+    networks:
+      blog-network:
+        aliases:
+          - opencode-backend
+          - ai-backend
+    depends_on:
+      redis:
+        condition: service_healthy
+      opencode-serve:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7016/health || curl -sf http://localhost:7016/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # OpenCode Serve - AI Model Serving
+  opencode-serve:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/opencode-serve:latest
+    container_name: opencode-serve
     restart: unless-stopped
     environment:
       - OPENCODE_HOST=0.0.0.0
@@ -294,9 +332,10 @@ services:
     networks:
       blog-network:
         aliases:
-          - vas-core
+          - opencode-serve
           - opencode
           - opencode-engine
+          - ai-engine
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://localhost:7012/app || exit 1"]
       interval: 30s
@@ -364,7 +403,9 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       # Integration URLs
       - BLOG_API_URL=http://api:5080
-      - AI_ENGINE_URL=http://ai-engine:7012
+      - OPENCODE_BACKEND_URL=http://opencode-backend:7016
+      - OPENCODE_SERVE_URL=http://opencode-serve:7012
+      - AI_ENGINE_URL=http://opencode-serve:7012
       - QDRANT_URL=http://qdrant:6333
       - CHROMADB_URL=http://chromadb:8000
       - ELASTICSEARCH_URL=http://elasticsearch:9200
@@ -407,7 +448,9 @@ services:
       - NODE_OPTIONS=--max-old-space-size=2048
       # Integration
       - BLOG_API_URL=http://api:5080
-      - AI_ENGINE_URL=http://ai-engine:7012
+      - OPENCODE_BACKEND_URL=http://opencode-backend:7016
+      - OPENCODE_SERVE_URL=http://opencode-serve:7012
+      - AI_ENGINE_URL=http://opencode-serve:7012
       - QDRANT_URL=http://qdrant:6333
     command: ["worker"]
     volumes:

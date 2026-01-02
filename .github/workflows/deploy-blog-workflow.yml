@@ -17,7 +17,8 @@ name: Deploy Blog + n8n Workflow Stack
 #
 # Services Deployed:
 #   - Blog API (ghcr.io/choisimo/blog-api) - Backend for n8n integration
-#   - AI Engine (ghcr.io/choisimo/ai-engine) - For n8n workflow integration
+#   - OpenCode Backend (ghcr.io/choisimo/opencode-backend) - AI API orchestration
+#   - OpenCode Serve (ghcr.io/choisimo/opencode-serve) - AI model serving
 #   - Terminal Server (ghcr.io/choisimo/blog-terminal)
 #   - n8n + Workers - Workflow automation
 #   - PostgreSQL, Redis, MongoDB, Qdrant, ChromaDB, etc.
@@ -135,28 +136,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Build AI Engine (if exists)
-      - name: Check AI Engine Dockerfile
-        id: check_ai_engine
-        run: |
-          if [ -f "backend/opencode-serve/ai-serve.Dockerfile" ]; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Build and push AI Engine
-        if: steps.check_ai_engine.outputs.exists == 'true'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend/opencode-serve
-          file: ./backend/opencode-serve/ai-serve.Dockerfile
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/ai-engine:${{ steps.vars.outputs.sha_short }}
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/ai-engine:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      # Note: OpenCode Backend and OpenCode Serve images are managed separately
+      # and pulled directly from GHCR during deployment.
+      # Images: ghcr.io/choisimo/opencode-backend:latest
+      #         ghcr.io/choisimo/opencode-serve:latest
 
   # ===========================================================================
   # Job 2: Deploy to Server
@@ -433,10 +416,11 @@ jobs:
           echo "=== Pulling Images ==="
           $DC -f docker-compose.yml pull || true
           
-          # Pull ai-engine image separately (always pull latest, continue on failure)
+          # Pull OpenCode images separately (always pull latest, continue on failure)
           echo ""
-          echo "=== Pulling AI Engine Image ==="
-          docker pull ghcr.io/choisimo/ai-engine:latest 2>/dev/null || echo "WARN: Could not pull ai-engine image, will use cached or skip"
+          echo "=== Pulling OpenCode Images ==="
+          docker pull ghcr.io/choisimo/opencode-backend:latest 2>/dev/null || echo "WARN: Could not pull opencode-backend image"
+          docker pull ghcr.io/choisimo/opencode-serve:latest 2>/dev/null || echo "WARN: Could not pull opencode-serve image"
 
           # Start/Update services
           echo ""
@@ -491,14 +475,24 @@ jobs:
             sleep 3
           done
 
-          # Wait for AI Engine
-          echo "Waiting for AI Engine..."
+          # Wait for OpenCode Services
+          echo "Waiting for OpenCode Serve..."
           for i in $(seq 1 30); do
             if curl -sf http://localhost:7012/app >/dev/null 2>&1 || wget -q --spider http://localhost:7012/app 2>/dev/null; then
-              echo "AI Engine: OK"
+              echo "OpenCode Serve: OK"
               break
             fi
-            echo "AI Engine: Retry $i/30"
+            echo "OpenCode Serve: Retry $i/30"
+            sleep 3
+          done
+
+          echo "Waiting for OpenCode Backend..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:7016/health >/dev/null 2>&1 || wget -q --spider http://localhost:7016/health 2>/dev/null; then
+              echo "OpenCode Backend: OK"
+              break
+            fi
+            echo "OpenCode Backend: Retry $i/30"
             sleep 3
           done
 
@@ -517,8 +511,11 @@ jobs:
           N8N_STATUS=$(curl -sf http://localhost:5678/healthz && echo "OK" || echo "FAILED")
           echo "n8n Health: $N8N_STATUS"
 
-          AI_ENGINE_STATUS=$(curl -sf http://localhost:7012/app && echo "OK" || wget -q --spider http://localhost:7012/app 2>/dev/null && echo "OK" || echo "FAILED")
-          echo "AI Engine Health: $AI_ENGINE_STATUS"
+          OPENCODE_SERVE_STATUS=$(curl -sf http://localhost:7012/app && echo "OK" || wget -q --spider http://localhost:7012/app 2>/dev/null && echo "OK" || echo "FAILED")
+          echo "OpenCode Serve Health: $OPENCODE_SERVE_STATUS"
+
+          OPENCODE_BACKEND_STATUS=$(curl -sf http://localhost:7016/health && echo "OK" || echo "FAILED")
+          echo "OpenCode Backend Health: $OPENCODE_BACKEND_STATUS"
 
           if [ "$API_STATUS" != "OK" ]; then
             echo ""
