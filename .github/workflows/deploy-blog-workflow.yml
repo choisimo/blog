@@ -475,26 +475,22 @@ jobs:
             sleep 3
           done
 
-          # Wait for OpenCode Services
-          echo "Waiting for OpenCode Serve..."
-          for i in $(seq 1 30); do
-            if curl -sf http://localhost:7012/app >/dev/null 2>&1 || wget -q --spider http://localhost:7012/app 2>/dev/null; then
-              echo "OpenCode Serve: OK"
-              break
-            fi
-            echo "OpenCode Serve: Retry $i/30"
-            sleep 3
-          done
+          # Wait for OpenCode Services (optional - these may not have standard health endpoints)
+          echo "Checking OpenCode Serve status..."
+          OPENCODE_SERVE_RUNNING=$($DC -f docker-compose.yml ps opencode-serve --format "{{.State}}" 2>/dev/null || echo "unknown")
+          if [ "$OPENCODE_SERVE_RUNNING" = "running" ]; then
+            echo "OpenCode Serve: Running"
+          else
+            echo "OpenCode Serve: $OPENCODE_SERVE_RUNNING (non-critical)"
+          fi
 
-          echo "Waiting for OpenCode Backend..."
-          for i in $(seq 1 30); do
-            if curl -sf http://localhost:7016/health >/dev/null 2>&1 || wget -q --spider http://localhost:7016/health 2>/dev/null; then
-              echo "OpenCode Backend: OK"
-              break
-            fi
-            echo "OpenCode Backend: Retry $i/30"
-            sleep 3
-          done
+          echo "Checking OpenCode Backend status..."
+          OPENCODE_BACKEND_RUNNING=$($DC -f docker-compose.yml ps opencode-backend --format "{{.State}}" 2>/dev/null || echo "unknown")
+          if [ "$OPENCODE_BACKEND_RUNNING" = "running" ]; then
+            echo "OpenCode Backend: Running"
+          else
+            echo "OpenCode Backend: $OPENCODE_BACKEND_RUNNING (non-critical)"
+          fi
 
           # Final status
           echo ""
@@ -511,11 +507,12 @@ jobs:
           N8N_STATUS=$(curl -sf http://localhost:5678/healthz && echo "OK" || echo "FAILED")
           echo "n8n Health: $N8N_STATUS"
 
-          OPENCODE_SERVE_STATUS=$(curl -sf http://localhost:7012/app && echo "OK" || wget -q --spider http://localhost:7012/app 2>/dev/null && echo "OK" || echo "FAILED")
-          echo "OpenCode Serve Health: $OPENCODE_SERVE_STATUS"
+          # Check OpenCode services via docker (they use expose, not ports)
+          OPENCODE_SERVE_STATUS=$($DC -f docker-compose.yml ps opencode-serve --format "{{.State}}" 2>/dev/null || echo "not found")
+          echo "OpenCode Serve Status: $OPENCODE_SERVE_STATUS"
 
-          OPENCODE_BACKEND_STATUS=$(curl -sf http://localhost:7016/health && echo "OK" || echo "FAILED")
-          echo "OpenCode Backend Health: $OPENCODE_BACKEND_STATUS"
+          OPENCODE_BACKEND_STATUS=$($DC -f docker-compose.yml ps opencode-backend --format "{{.State}}" 2>/dev/null || echo "not found")
+          echo "OpenCode Backend Status: $OPENCODE_BACKEND_STATUS"
 
           if [ "$API_STATUS" != "OK" ]; then
             echo ""
