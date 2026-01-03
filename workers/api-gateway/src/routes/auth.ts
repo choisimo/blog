@@ -21,6 +21,7 @@ import type { Env, AuthSession } from '../types';
 import { success, badRequest, unauthorized, error } from '../lib/response';
 import {
   verifyJwt,
+  signJwt,
   generateAccessToken,
   generateRefreshToken,
   generateOtp,
@@ -34,6 +35,9 @@ const auth = new Hono<{ Bindings: Env }>();
 // KV key prefixes
 const KV_AUTH_SESSION_PREFIX = 'auth:session:';
 const KV_REFRESH_TOKEN_PREFIX = 'auth:refresh:';
+
+// Anonymous token expiry (30 days)
+const ANONYMOUS_TOKEN_EXPIRY = 30 * 24 * 3600;
 
 /**
  * Hash a string using SHA-256 (for OTP storage)
@@ -418,6 +422,119 @@ auth.post('/resend-otp', async (c) => {
     message: `New verification code sent to ${maskedEmail}`,
     expiresAt,
   });
+});
+
+/**
+ * POST /auth/anonymous
+ * Issue an anonymous JWT token for unauthenticated users
+ * This allows anonymous users to use features like memos, personas, etc.
+ * The token contains a unique anonymous user ID that persists across sessions
+ */
+auth.post('/anonymous', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { existingId } = body as { existingId?: string };
+
+  // Use existing anonymous ID or generate a new one
+  let anonymousId: string;
+  
+  if (existingId && typeof existingId === 'string' && existingId.startsWith('anon-')) {
+    // Validate existing ID format (anon-{uuid})
+    const uuidPart = existingId.slice(5);
+    if (/^[a-f0-9-]{36}$/.test(uuidPart)) {
+      anonymousId = existingId;
+    } else {
+      anonymousId = `anon-${crypto.randomUUID()}`;
+    }
+  } else {
+    anonymousId = `anon-${crypto.randomUUID()}`;
+  }
+
+  // Generate a long-lived token for anonymous users
+  const token = await signJwt(
+    {
+      sub: anonymousId,
+      role: 'anonymous',
+      username: 'Anonymous',
+      type: 'access',
+    },
+    c.env,
+    ANONYMOUS_TOKEN_EXPIRY
+  );
+
+  return success(c, {
+    token,
+    userId: anonymousId,
+    tokenType: 'Bearer',
+    expiresIn: ANONYMOUS_TOKEN_EXPIRY,
+    isAnonymous: true,
+  });
+});
+
+/**
+ * POST /auth/anonymous/refresh
+ * Refresh an anonymous token (extends expiration)
+ */
+auth.post('/anonymous/refresh', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader) {
+    return unauthorized(c, 'Missing Authorization header');
+  }
+
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  if (!token) {
+    return unauthorized(c, 'Invalid Authorization format');
+  }
+
+  try {
+    const payload = await verifyJwt(token, c.env);
+    
+    // Only refresh anonymous tokens
+    if (payload.role !== 'anonymous' || !payload.sub?.startsWith('anon-')) {
+      return badRequest(c, 'Not an anonymous token');
+    }
+
+    // Generate new token with same anonymous ID
+    const newToken = await signJwt(
+      {
+        sub: payload.sub,
+        role: 'anonymous',
+        username: 'Anonymous',
+        type: 'access',
+      },
+      c.env,
+      ANONYMOUS_TOKEN_EXPIRY
+    );
+
+    return success(c, {
+      token: newToken,
+      userId: payload.sub,
+      tokenType: 'Bearer',
+      expiresIn: ANONYMOUS_TOKEN_EXPIRY,
+      isAnonymous: true,
+    });
+  } catch (err) {
+    // Token expired or invalid - issue new anonymous token
+    const anonymousId = `anon-${crypto.randomUUID()}`;
+    const newToken = await signJwt(
+      {
+        sub: anonymousId,
+        role: 'anonymous',
+        username: 'Anonymous',
+        type: 'access',
+      },
+      c.env,
+      ANONYMOUS_TOKEN_EXPIRY
+    );
+
+    return success(c, {
+      token: newToken,
+      userId: anonymousId,
+      tokenType: 'Bearer',
+      expiresIn: ANONYMOUS_TOKEN_EXPIRY,
+      isAnonymous: true,
+      renewed: true,
+    });
+  }
 });
 
 export default auth;

@@ -240,3 +240,125 @@ export function getTokenExpiration(token: string): number | null {
   if (!payload || typeof payload.exp !== 'number') return null;
   return payload.exp * 1000;
 }
+
+// ============================================================================
+// Anonymous Token
+// ============================================================================
+
+const ANON_TOKEN_KEY = 'anon.token';
+
+export interface AnonymousTokenResponse {
+  token: string;
+  expiresAt: string;
+  userId: string;
+}
+
+/**
+ * Request anonymous JWT token (30-day validity)
+ */
+export async function requestAnonymousToken(): Promise<AnonymousTokenResponse> {
+  const res = await fetch(`${getBaseUrl()}/api/v1/auth/anonymous`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  const json: ApiResponse<AnonymousTokenResponse> = await res.json().catch(() => ({
+    ok: false,
+    error: 'Invalid response',
+  }));
+
+  if (!res.ok || !json.ok || !json.data) {
+    throw new Error(json.error || 'Failed to get anonymous token');
+  }
+
+  return json.data;
+}
+
+/**
+ * Refresh anonymous token
+ */
+export async function refreshAnonymousToken(token: string): Promise<AnonymousTokenResponse> {
+  const res = await fetch(`${getBaseUrl()}/api/v1/auth/anonymous/refresh`, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  const json: ApiResponse<AnonymousTokenResponse> = await res.json().catch(() => ({
+    ok: false,
+    error: 'Invalid response',
+  }));
+
+  if (!res.ok || !json.ok || !json.data) {
+    throw new Error(json.error || 'Failed to refresh anonymous token');
+  }
+
+  return json.data;
+}
+
+/**
+ * Get stored anonymous token
+ */
+export function getStoredAnonymousToken(): string | null {
+  try {
+    return localStorage.getItem(ANON_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Store anonymous token
+ */
+export function storeAnonymousToken(token: string): void {
+  try {
+    localStorage.setItem(ANON_TOKEN_KEY, token);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+/**
+ * Clear anonymous token
+ */
+export function clearAnonymousToken(): void {
+  try {
+    localStorage.removeItem(ANON_TOKEN_KEY);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+/**
+ * Get a valid anonymous token, requesting/refreshing if needed
+ */
+export async function getValidAnonymousToken(): Promise<string> {
+  const existing = getStoredAnonymousToken();
+  
+  // No token - request new one
+  if (!existing) {
+    const result = await requestAnonymousToken();
+    storeAnonymousToken(result.token);
+    return result.token;
+  }
+  
+  // Check if token is still valid (with 1 day buffer)
+  if (!isTokenExpired(existing, 86400)) {
+    return existing;
+  }
+  
+  // Try to refresh
+  try {
+    const result = await refreshAnonymousToken(existing);
+    storeAnonymousToken(result.token);
+    return result.token;
+  } catch {
+    // Refresh failed - request new token
+    clearAnonymousToken();
+    const result = await requestAnonymousToken();
+    storeAnonymousToken(result.token);
+    return result.token;
+  }
+}

@@ -1,5 +1,31 @@
 import { getApiBaseUrl } from '@/utils/apiBase';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { 
+  parseJwtPayload, 
+  isTokenExpired,
+  getStoredAnonymousToken,
+  getValidAnonymousToken 
+} from '@/services/auth';
+
+/**
+ * Get current user ID from JWT token
+ * Falls back to 'default-user' if not authenticated
+ */
+function getCurrentUserId(): string {
+  const token = useAuthStore.getState().accessToken;
+  if (!token) return 'default-user';
+  
+  const payload = parseJwtPayload(token);
+  if (!payload) return 'default-user';
+  
+  // JWT sub claim contains user ID (e.g., 'admin')
+  const sub = payload.sub;
+  if (typeof sub === 'string' && sub.trim()) {
+    return sub.trim();
+  }
+  
+  return 'default-user';
+}
 
 export type Persona = {
   id: string;
@@ -66,10 +92,19 @@ export type CreateMemoInput = Omit<MemoPayload, 'id'>;
 export type UpdateMemoInput = Omit<MemoPayload, 'id'>;
 
 function getAuthToken(): string | null {
-  const authToken = useAuthStore.getState().token;
-  if (authToken && authToken.trim()) {
+  // First try admin token from auth store
+  const authToken = useAuthStore.getState().accessToken;
+  if (authToken && authToken.trim() && !isTokenExpired(authToken, 60)) {
     return authToken.trim();
   }
+  
+  // Fall back to anonymous token (sync check only)
+  const anonToken = getStoredAnonymousToken();
+  if (anonToken && anonToken.trim() && !isTokenExpired(anonToken, 86400)) {
+    return anonToken.trim();
+  }
+  
+  // Check legacy storage
   if (typeof window === 'undefined') return null;
   const candidates = [
     'aiMemo.authToken',
@@ -92,6 +127,20 @@ function getAuthToken(): string | null {
   return null;
 }
 
+/**
+ * Get auth token, requesting anonymous token if needed (async)
+ */
+async function getAuthTokenAsync(): Promise<string> {
+  // First try admin token from auth store
+  const authToken = useAuthStore.getState().accessToken;
+  if (authToken && authToken.trim() && !isTokenExpired(authToken, 60)) {
+    return authToken.trim();
+  }
+  
+  // Get or request anonymous token
+  return getValidAnonymousToken();
+}
+
 async function request<T>(
   path: string,
   init?: RequestInit,
@@ -104,7 +153,9 @@ async function request<T>(
   if (!headers.has('Content-Type') && init?.body) {
     headers.set('Content-Type', 'application/json');
   }
-  const token = getAuthToken();
+  
+  // Get token asynchronously (will request anonymous token if needed)
+  const token = await getAuthTokenAsync();
   if (token) headers.set('Authorization', `Bearer ${token}`);
   if (!headers.has('Accept')) headers.set('Accept', 'application/json');
 
@@ -205,7 +256,7 @@ export async function deletePersona(id: string, etag?: string | null): Promise<v
 
 export async function listMemos(cursor?: string | null): Promise<ListResponse<MemoNote>> {
   const params = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
-  const res = await request<any[]>(`/api/v1/memos${params}`);
+  const res = await request<any[]>(`/api/v1/user-content/memos${params}`);
   const payload = Array.isArray(res.data) ? res.data : [];
   const memos = payload.map(normaliseMemo);
   const cursorValue = (res.cursor ?? null) as string | null;
@@ -214,7 +265,7 @@ export async function listMemos(cursor?: string | null): Promise<ListResponse<Me
 }
 
 export async function createMemo(input: MemoPayload): Promise<MemoNote> {
-  const res = await request<any>('/api/v1/memos', {
+  const res = await request<any>('/api/v1/user-content/memos', {
     method: 'POST',
     body: JSON.stringify(input),
   });
@@ -228,7 +279,7 @@ export async function updateMemo(
 ): Promise<MemoNote> {
   const headers: Record<string, string> = {};
   if (etag) headers['If-Match'] = etag;
-  const res = await request<any>(`/api/v1/memos/${encodeURIComponent(id)}`, {
+  const res = await request<any>(`/api/v1/user-content/memos/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers,
     body: JSON.stringify(input),
@@ -239,7 +290,7 @@ export async function updateMemo(
 export async function deleteMemo(id: string, etag?: string | null): Promise<void> {
   const headers: Record<string, string> = {};
   if (etag) headers['If-Match'] = etag;
-  await request(`/api/v1/memos/${encodeURIComponent(id)}`, {
+  await request(`/api/v1/user-content/memos/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     headers,
   }, false);

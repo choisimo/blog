@@ -35,6 +35,7 @@ import memories from './routes/memories';
 import adminAi from './routes/admin-ai';
 import secrets from './routes/secrets';
 import personas from './routes/personas';
+import userContent from './routes/user-content';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -212,6 +213,7 @@ api.route('/memories', memories);
 api.route('/admin/ai', adminAi);
 api.route('/admin/secrets', secrets);
 api.route('/personas', personas);
+api.route('/user-content', userContent);
 
 app.route('/api/v1', api);
 
