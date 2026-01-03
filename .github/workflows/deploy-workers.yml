@@ -1,17 +1,48 @@
-name: Deploy Cloudflare Workers
+name: "[DEPRECATED] Deploy Legacy Blog API Worker"
+
+# =============================================================================
+# ⚠️ DEPRECATED - This workflow is no longer used
+# =============================================================================
+# This workflow deployed the old blog-api/blog-api-prod workers.
+# These have been replaced by the unified blog-api-gateway.
+#
+# New workflow: deploy-api-gateway.yml
+# New worker: workers/api-gateway/
+#
+# This file is kept for reference only and will be removed in a future cleanup.
+# =============================================================================
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'workers/**'
-      - '.github/workflows/deploy-workers.yml'
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "CONFIRM" to deploy legacy worker (not recommended)'
+        required: true
 
 jobs:
-  deploy:
+  deprecated-notice:
     runs-on: ubuntu-latest
+    steps:
+      - name: Deprecation Warning
+        run: |
+          echo "⚠️ WARNING: This workflow is DEPRECATED"
+          echo ""
+          echo "The blog-api and blog-api-prod workers have been replaced by:"
+          echo "  → blog-api-gateway (unified worker)"
+          echo ""
+          echo "Please use the new workflow instead:"
+          echo "  → .github/workflows/deploy-api-gateway.yml"
+          echo ""
+          echo "To deploy the new unified gateway:"
+          echo "  1. Go to Actions → 'Deploy Blog API Gateway (Unified)'"
+          echo "  2. Click 'Run workflow'"
+          echo ""
+          exit 1
+
+  deploy-legacy:
+    runs-on: ubuntu-latest
+    needs: deprecated-notice
+    if: ${{ github.event.inputs.confirm == 'CONFIRM' }}
     permissions:
       contents: read
     env:
@@ -41,33 +72,14 @@ jobs:
         working-directory: workers
         run: npm run typecheck
 
-      - name: Verify Cloudflare credentials
-        working-directory: workers
-        run: |
-          echo "Verifying Cloudflare authentication..."
-          echo "Account ID: ${CLOUDFLARE_ACCOUNT_ID:0:8}***"
-          npx wrangler whoami
-
-      - name: Apply D1 migrations (production)
-        working-directory: workers
-        run: npx wrangler d1 migrations apply blog-db-prod --env production --remote
-
-      - name: Set Secrets (production)
-        working-directory: workers
-        run: |
-          echo "${{ secrets.GEMINI_API_KEY }}" | npx wrangler secret put GEMINI_API_KEY --env production
-          echo "${{ secrets.JWT_SECRET }}" | npx wrangler secret put JWT_SECRET --env production
-          if [ -n "${{ secrets.ASSETS_BASE_URL }}" ]; then
-            echo "${{ secrets.ASSETS_BASE_URL }}" | npx wrangler secret put ASSETS_BASE_URL --env production
-          fi
-
       - name: Deploy to Cloudflare Workers (production)
         working-directory: workers
         run: npx wrangler deploy --env production
 
       - name: Deployment summary
         run: |
-          echo "✅ Cloudflare Workers deployed successfully"
+          echo "⚠️ LEGACY worker deployed"
           echo "📦 Environment: production"
           echo "🌍 Endpoint: https://blog-api-prod.immuddelo.workers.dev"
-          echo "🔑 Secrets configured: GEMINI_API_KEY, JWT_SECRET"
+          echo ""
+          echo "Please migrate to blog-api-gateway as soon as possible!"

@@ -480,17 +480,6 @@ services:
     networks:
       - blog-network
 
-  firecrawl:
-    image: trieve/firecrawl:latest
-    container_name: blog-firecrawl
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      - API_BEARER_TOKEN=${FIRECRAWL_API_TOKEN}
-    networks:
-      - blog-network
-
   # ===========================================================================
   # MONITORING (Optional - enable with --profile monitoring)
   # ===========================================================================

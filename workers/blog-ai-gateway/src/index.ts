@@ -1,11 +1,32 @@
-// workers/ai-check-gateway/src/index.ts
+// workers/blog-ai-gateway/src/index.ts
+// Blog AI Gateway - Routes AI requests to configured backend servers
 
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { z } from 'zod';
 
+// =============================================================================
+// Types
+// =============================================================================
+
+type AIAgentConfig = {
+  name: string;
+  host: string;
+  priority: number;
+};
+
 type Env = {
   ALLOWED_ORIGINS?: string;
+
+  // AI Agent Configuration (new)
+  AI_AGENT_PRIMARY_HOST?: string;
+  AI_AGENT_FALLBACK_HOST?: string;
+  AI_AGENT_TIMEOUT_MS?: string;
+  AI_AGENT_RETRY_COUNT?: string;
+  AI_AGENTS?: string; // JSON array of AIAgentConfig
+
+  // Legacy (deprecated, use AI_AGENT_PRIMARY_HOST)
   REAL_BACKEND_HOST: string;
+
   SECRET_INTERNAL_KEY: string;
   SECRET_CALLER_KEY?: string;
   GITHUB_TOKEN?: string;
@@ -16,6 +37,53 @@ type Env = {
   AUTH_ISSUER?: string;
   AUTH_CACHE_TTL_SECONDS?: string;
 };
+
+// =============================================================================
+// AI Agent Server Selection
+// =============================================================================
+
+function getAIAgentHosts(env: Env): string[] {
+  // Try to parse AI_AGENTS JSON array first
+  if (env.AI_AGENTS) {
+    try {
+      const agents: AIAgentConfig[] = JSON.parse(env.AI_AGENTS);
+      if (Array.isArray(agents) && agents.length > 0) {
+        return agents
+          .sort((a, b) => a.priority - b.priority)
+          .map((a) => a.host)
+          .filter(Boolean);
+      }
+    } catch (e) {
+      console.warn('Failed to parse AI_AGENTS:', e);
+    }
+  }
+
+  // Fall back to individual host variables
+  const hosts: string[] = [];
+  if (env.AI_AGENT_PRIMARY_HOST) {
+    hosts.push(env.AI_AGENT_PRIMARY_HOST);
+  }
+  if (env.AI_AGENT_FALLBACK_HOST) {
+    hosts.push(env.AI_AGENT_FALLBACK_HOST);
+  }
+
+  // Legacy fallback
+  if (hosts.length === 0 && env.REAL_BACKEND_HOST) {
+    hosts.push(env.REAL_BACKEND_HOST);
+  }
+
+  return hosts;
+}
+
+function getAIAgentTimeoutMs(env: Env): number {
+  const timeout = parseInt(env.AI_AGENT_TIMEOUT_MS || '30000', 10);
+  return Number.isFinite(timeout) && timeout > 0 ? timeout : 30000;
+}
+
+function getAIAgentRetryCount(env: Env): number {
+  const retries = parseInt(env.AI_AGENT_RETRY_COUNT || '1', 10);
+  return Number.isFinite(retries) && retries >= 0 ? retries : 1;
+}
 
 const JSON_CONTENT_TYPE = { 'Content-Type': 'application/json' } as const;
 const MAX_PAGE_SIZE = 100;
@@ -450,30 +518,77 @@ async function routeApi(request: Request, env: Env, userId: string) {
   return makeResponse({ ok: false, error: { message: 'Not Found', code: 'NOT_FOUND' } }, { status: 404 });
 }
 
-async function proxyToBackend(request: Request, env: Env) {
-  const url = new URL(request.url);
-  url.hostname = env.REAL_BACKEND_HOST;
-  url.protocol = 'https:';
+async function proxyToBackend(request: Request, env: Env): Promise<Response> {
+  const hosts = getAIAgentHosts(env);
+  if (hosts.length === 0) {
+    return makeResponse(
+      { ok: false, error: { message: 'No AI agent servers configured', code: 'NO_BACKEND' } },
+      { status: 503 }
+    );
+  }
 
-  const headers = new Headers(request.headers);
-  headers.set('Host', env.REAL_BACKEND_HOST);
-  headers.delete('X-API-KEY');
-  headers.delete('X-Gateway-Caller-Key');
-  headers.delete('X-Internal-Gateway-Key');
-  headers.delete('Authorization');
+  const timeoutMs = getAIAgentTimeoutMs(env);
+  const maxRetries = getAIAgentRetryCount(env);
+  const requestBody = ['GET', 'HEAD'].includes(request.method) ? undefined : await request.blob();
 
-  headers.set('X-Internal-Gateway-Key', env.SECRET_INTERNAL_KEY);
-  headers.set('Authorization', `Bearer ${env.GITHUB_TOKEN}`);
-  headers.set('X-Forwarded-Authorization', `Bearer ${env.GITHUB_TOKEN}`);
+  let lastError: Error | null = null;
 
-  const forwarded = new Request(url.toString(), {
-    method: request.method,
-    headers,
-    body: ['GET', 'HEAD'].includes(request.method) ? undefined : await request.blob(),
-    redirect: 'manual',
-  });
+  for (const host of hosts) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const url = new URL(request.url);
+        url.hostname = host;
+        url.protocol = 'https:';
 
-  return fetch(forwarded);
+        const headers = new Headers(request.headers);
+        headers.set('Host', host);
+        headers.delete('X-API-KEY');
+        headers.delete('X-Gateway-Caller-Key');
+        headers.delete('X-Internal-Gateway-Key');
+        headers.delete('Authorization');
+
+        headers.set('X-Internal-Gateway-Key', env.SECRET_INTERNAL_KEY);
+        if (env.GITHUB_TOKEN) {
+          headers.set('Authorization', `Bearer ${env.GITHUB_TOKEN}`);
+          headers.set('X-Forwarded-Authorization', `Bearer ${env.GITHUB_TOKEN}`);
+        }
+        headers.set('X-AI-Gateway-Host', host);
+        headers.set('X-AI-Gateway-Attempt', String(attempt + 1));
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+        const forwarded = new Request(url.toString(), {
+          method: request.method,
+          headers,
+          body: requestBody,
+          redirect: 'manual',
+          signal: controller.signal,
+        });
+
+        const response = await fetch(forwarded);
+        clearTimeout(timeoutId);
+
+        // If successful or client error (4xx), return immediately
+        if (response.ok || (response.status >= 400 && response.status < 500)) {
+          return response;
+        }
+
+        // Server error (5xx) - try next attempt/host
+        lastError = new Error(`Server returned ${response.status}`);
+        console.warn(`AI agent ${host} returned ${response.status}, attempt ${attempt + 1}`);
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        console.warn(`AI agent ${host} failed, attempt ${attempt + 1}:`, lastError.message);
+      }
+    }
+  }
+
+  console.error('All AI agent servers failed:', lastError?.message);
+  return makeResponse(
+    { ok: false, error: { message: 'All AI agent servers unavailable', code: 'UPSTREAM_FAILED' } },
+    { status: 502 }
+  );
 }
 
 export default {

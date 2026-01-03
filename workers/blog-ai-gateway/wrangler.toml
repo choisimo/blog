@@ -1,0 +1,85 @@
+name = "blog-ai-gateway"
+main = "src/index.ts"
+compatibility_date = "2025-10-22"
+compatibility_flags = ["nodejs_compat"]
+account_id = "f6f11e2a4e5178d2f37476785018f761"
+
+# Service binding to dedicated R2 gateway worker
+services = [
+  { binding = "R2_GATEWAY", service = "r2-gateway" }
+]
+
+# =============================================================================
+# Sub AI Agent Servers Configuration
+# =============================================================================
+# You can configure multiple AI agent backend servers.
+# The gateway will route requests to the appropriate server based on configuration.
+#
+# AI_AGENTS format: JSON array of server configs
+# Example: [{"name":"default","host":"ai-serve.nodove.com","priority":1},{"name":"backup","host":"ai-backup.nodove.com","priority":2}]
+#
+# Or use individual variables for simpler setup:
+#   - AI_AGENT_PRIMARY_HOST: Primary AI server hostname
+#   - AI_AGENT_FALLBACK_HOST: Fallback AI server hostname (optional)
+#   - AI_AGENT_TIMEOUT_MS: Request timeout in milliseconds (default: 30000)
+#   - AI_AGENT_RETRY_COUNT: Number of retries on failure (default: 1)
+# =============================================================================
+
+[vars]
+# AI Agent Configuration
+AI_AGENT_PRIMARY_HOST = ""
+AI_AGENT_FALLBACK_HOST = ""
+AI_AGENT_TIMEOUT_MS = "30000"
+AI_AGENT_RETRY_COUNT = "1"
+AI_AGENTS = ""
+
+# Authentication
+AUTH_JWKS_URL = ""
+AUTH_AUDIENCE = ""
+AUTH_ISSUER = ""
+AUTH_JWT_SECRET = ""
+AUTH_CACHE_TTL_SECONDS = "300"
+
+# Allowed origins for local development
+ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:4173,http://localhost:8080,http://localhost:8081"
+
+# Secrets (set via Wrangler):
+# wrangler secret put SECRET_API_KEY
+# wrangler secret put SECRET_INTERNAL_KEY
+
+[env.production]
+name = "blog-ai-gateway"
+services = [
+  { binding = "R2_GATEWAY", service = "r2-gateway", environment = "production" }
+]
+
+[env.production.vars]
+# AI Agent Configuration (Production)
+AI_AGENT_PRIMARY_HOST = "ai-serve.nodove.com"
+AI_AGENT_FALLBACK_HOST = ""
+AI_AGENT_TIMEOUT_MS = "30000"
+AI_AGENT_RETRY_COUNT = "2"
+AI_AGENTS = ""
+
+# Legacy: REAL_BACKEND_HOST (deprecated, use AI_AGENT_PRIMARY_HOST)
+REAL_BACKEND_HOST = "ai-serve.nodove.com"
+
+# Allowed origins
+ALLOWED_ORIGINS = "https://noblog.nodove.com,https://blog.nodove.com,http://localhost:5173,http://localhost:4173,http://localhost:8080,http://localhost:8081"
+
+# Authentication
+AUTH_JWKS_URL = ""
+AUTH_AUDIENCE = ""
+AUTH_ISSUER = ""
+AUTH_JWT_SECRET = ""
+AUTH_CACHE_TTL_SECONDS = "300"
+
+# Routes - using new domain blog-ai.nodove.com (old: ai-check.nodove.com)
+[[env.production.routes]]
+pattern = "blog-ai.nodove.com/*"
+zone_name = "nodove.com"
+
+# Keep old route for backward compatibility (can be removed after migration)
+[[env.production.routes]]
+pattern = "ai-check.nodove.com/*"
+zone_name = "nodove.com"
