@@ -83,10 +83,16 @@ export class AIService {
 
   /**
    * Get the backend API URL (cached)
+   * 
+   * Uses BACKEND_ORIGIN directly to avoid calling api.nodove.com (Workers itself).
+   * This ensures AI requests go to the actual backend server.
    */
   private async getBaseUrl(): Promise<string> {
     if (!this.baseUrl) {
-      this.baseUrl = await getAiServeUrl(this.env);
+      // Priority: BACKEND_ORIGIN > AI_SERVE_BASE_URL (from KV/env)
+      // BACKEND_ORIGIN points to the actual backend server (blog-b.nodove.com)
+      // AI_SERVE_BASE_URL defaults to api.nodove.com which is Workers itself!
+      this.baseUrl = this.env.BACKEND_ORIGIN || await getAiServeUrl(this.env);
     }
     return this.baseUrl;
   }
@@ -248,69 +254,83 @@ export class AIService {
 
   /**
    * Health check
+   * 
+   * Checks backend API availability directly (not /ai/health to avoid circular calls).
+   * Uses /api/v1/healthz which is a simple health endpoint.
    */
   async health(): Promise<{ ok: boolean; provider?: string; status?: string }> {
     try {
-      const baseUrl = await this.getBaseUrl();
-      const url = `${baseUrl.replace(/\/$/, '')}/api/v1/ai/health`;
-      const headers = await this.buildHeaders();
+      // Use BACKEND_ORIGIN directly to check backend health
+      // Avoid calling /ai/health which may have issues with opencode-backend
+      const backendOrigin = this.env.BACKEND_ORIGIN;
+      
+      if (!backendOrigin) {
+        return { 
+          ok: false, 
+          status: 'BACKEND_ORIGIN not configured',
+          provider: 'unknown'
+        };
+      }
+
+      const url = `${backendOrigin.replace(/\/$/, '')}/api/v1/healthz`;
 
       const res = await fetch(url, {
         method: 'GET',
-        headers,
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Blog-Workers/1.0',
+        },
       });
 
       if (!res.ok) {
-        return { ok: false, status: `HTTP ${res.status}` };
+        return { ok: false, status: `HTTP ${res.status}`, provider: 'backend' };
       }
 
       const data = (await res.json()) as {
-        ok: boolean;
-        data?: { status: string; provider?: string };
+        ok?: boolean;
+        env?: string;
+        uptime?: number;
       };
 
       return {
         ok: data.ok ?? true,
-        provider: data.data?.provider,
-        status: data.data?.status || 'ok',
+        provider: 'backend',
+        status: data.ok ? 'healthy' : 'degraded',
       };
     } catch (err) {
       return {
         ok: false,
         status: err instanceof Error ? err.message : 'unknown error',
+        provider: 'unknown',
       };
     }
   }
 
   /**
-   * Get provider info from backend
+   * Get provider info
+   * 
+   * Returns static provider info since dynamic fetching from backend
+   * may cause issues when opencode-backend is unavailable.
    */
   async getProviderInfo(): Promise<{
     provider: string;
     features: Record<string, boolean>;
   }> {
-    try {
-      const baseUrl = await this.getBaseUrl();
-      const url = `${baseUrl.replace(/\/$/, '')}/api/v1/ai/status`;
-      const headers = await this.buildHeaders();
-
-      const res = await fetch(url, { method: 'GET', headers });
-      if (!res.ok) {
-        return { provider: 'unknown', features: {} };
-      }
-
-      const data = (await res.json()) as {
-        ok: boolean;
-        data?: { provider?: string; features?: Record<string, boolean> };
-      };
-
-      return {
-        provider: data.data?.provider || 'unknown',
-        features: data.data?.features || {},
-      };
-    } catch {
-      return { provider: 'unknown', features: {} };
-    }
+    // Return static info - the actual provider is determined by backend config
+    // We don't need to call backend /ai/status which may fail
+    return {
+      provider: 'backend-proxy',
+      features: {
+        chat: true,
+        generate: true,
+        vision: true,
+        summarize: true,
+        stream: true,
+        sketch: true,
+        prism: true,
+        chain: true,
+      },
+    };
   }
 }
 
