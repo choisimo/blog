@@ -259,7 +259,7 @@ jobs:
 
             # TEI Embedding Server (internal only, no host port binding)
             embedding-server:
-              image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2.3
+              image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest
               command: --model-id sentence-transformers/all-MiniLM-L6-v2
               expose:
                 - "80"
