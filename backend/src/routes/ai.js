@@ -145,7 +145,7 @@ function getFallbackModels(defaultModel) {
 }
 
 // ============================================================================
-// Auto-Chat Endpoint (replaces ai-call-gateway proxy target)
+// Auto-Chat Endpoint
 // POST /api/v1/ai/auto-chat
 // ============================================================================
 
@@ -193,8 +193,8 @@ router.get('/health', async (req, res) => {
       provider: providerInfo.provider,
       health: healthResult,
       // Legacy fallback status
-      hasGeminiKey: !!config.gemini.apiKey,
-      hasOpenRouterKey: !!config.openrouter.apiKey,
+      hasGeminiKey: !!config.ai?.providers?.gemini,
+      hasOpenRouterKey: false, // OpenRouter not configured
       timestamp: new Date().toISOString(),
     },
   });
@@ -210,7 +210,7 @@ router.get('/status', async (req, res) => {
     data: {
       status: healthResult.ok ? 'ok' : 'degraded',
       provider: providerInfo.provider,
-      model: providerInfo.config[providerInfo.provider]?.model || config.aiServe?.defaultModel,
+      model: providerInfo.config[providerInfo.provider]?.model || config.ai?.gateway?.defaultModel,
       aiService: {
         provider: providerInfo.provider,
         config: providerInfo.config,
@@ -230,7 +230,7 @@ router.get('/status', async (req, res) => {
 });
 
 // ============================================================================
-// Vision Analysis Endpoint (replaces ai-vision-gateway)
+// Vision Analysis Endpoint
 // POST /api/v1/ai/vision/analyze
 // ============================================================================
 
@@ -376,8 +376,8 @@ router.get('/vision/health', async (req, res) => {
       providers: {
         [providerInfo.provider]: healthResult.ok,
         // Legacy fallback
-        gemini: !!config.gemini.apiKey,
-        openrouter: !!config.openrouter.apiKey,
+        gemini: !!config.ai?.providers?.gemini,
+        openrouter: false, // OpenRouter not configured
       },
       timestamp: new Date().toISOString(),
     },

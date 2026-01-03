@@ -245,18 +245,6 @@ setup_workers_secrets() {
         fi
     fi
     
-    # AI Check Gateway secrets
-    if [ -d "ai-check-gateway" ]; then
-        log_info "Setting secrets for ai-check-gateway..."
-        echo "$token" | npx wrangler secret put BLOG_API_TOKEN --name ai-check-gateway 2>/dev/null || \
-            log_warn "Failed to set BLOG_API_TOKEN for ai-check-gateway"
-        
-        if [ -n "${JWT_SECRET:-}" ]; then
-            echo "${JWT_SECRET}" | npx wrangler secret put AUTH_JWT_SECRET --name ai-check-gateway 2>/dev/null || \
-                log_warn "Failed to set AUTH_JWT_SECRET for ai-check-gateway"
-        fi
-    fi
-    
     log_success "Cloudflare Workers secrets configured"
 }
 

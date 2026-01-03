@@ -4,7 +4,6 @@
 #
 # NOTE: Primary API Gateway is now Cloudflare Workers (workers/api-gateway/).
 # This compose file is for n8n workflow engine and supporting services only.
-# AI services have been migrated to Cloudflare Workers (workers/ai-check-gateway/).
 #
 # This file is designed for CI/CD deployment via GitHub Actions.
 # All custom services use pre-built images from GHCR.
@@ -323,7 +322,6 @@ services:
 # N8N WORKFLOW ENGINE
 # ===========================================================================
 # n8n handles complex AI workflows and integrations.
-# Simple AI API requests are handled by Cloudflare Workers (workers/ai-check-gateway/).
 
   n8n:
     image: n8nio/n8n:latest

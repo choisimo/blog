@@ -249,11 +249,6 @@ jobs:
           echo "$API_TOKEN" | npx wrangler secret put BLOG_API_TOKEN --name blog-api-gateway --env production 2>/dev/null || \
             echo "WARN: Failed to update blog-api-gateway"
           
-          # Update AI Check Gateway
-          echo "Updating ai-check-gateway..."
-          echo "$API_TOKEN" | npx wrangler secret put BLOG_API_TOKEN --name ai-check-gateway --env production 2>/dev/null || \
-            echo "WARN: Failed to update ai-check-gateway"
-          
           echo "Workers secrets updated successfully"
 
       - name: Log rotation event

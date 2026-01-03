@@ -11,19 +11,11 @@ const WORKERS_ROOT = path.join(config.content.repoRoot, 'workers');
 
 const WORKERS_CONFIG = [
   {
-    id: 'blog-api',
-    name: 'Blog API',
-    description: '메인 블로그 API Worker',
-    path: '',
-    wranglerPath: 'wrangler.toml',
-    hasProduction: true,
-  },
-  {
-    id: 'ai-check-gateway',
-    name: 'AI Check Gateway',
-    description: 'AI 서비스 게이트웨이',
-    path: 'ai-check-gateway',
-    wranglerPath: 'ai-check-gateway/wrangler.toml',
+    id: 'api-gateway',
+    name: 'Blog API Gateway',
+    description: '메인 블로그 API Worker (blog-api-gateway)',
+    path: 'api-gateway',
+    wranglerPath: 'api-gateway/wrangler.toml',
     hasProduction: true,
   },
   {
@@ -32,7 +24,7 @@ const WORKERS_CONFIG = [
     description: 'R2 스토리지 게이트웨이',
     path: 'r2-gateway',
     wranglerPath: 'r2-gateway/wrangler.toml',
-    hasProduction: false,
+    hasProduction: true,
   },
   {
     id: 'terminal-gateway',
@@ -45,14 +37,17 @@ const WORKERS_CONFIG = [
 ];
 
 const KNOWN_SECRETS = [
-  { key: 'JWT_SECRET', description: 'JWT 서명 키', workers: ['blog-api', 'terminal-gateway'] },
-  { key: 'GEMINI_API_KEY', description: 'Google Gemini API 키', workers: ['blog-api'] },
-  { key: 'ADMIN_USERNAME', description: '관리자 사용자명', workers: ['blog-api'] },
-  { key: 'ADMIN_PASSWORD', description: '관리자 비밀번호', workers: ['blog-api'] },
-  { key: 'OPENROUTER_API_KEY', description: 'OpenRouter API 키', workers: ['blog-api'] },
-  { key: 'AI_SERVE_API_KEY', description: 'AI Serve 내부 API 키', workers: ['blog-api'] },
-  { key: 'SECRET_API_KEY', description: 'AI Gateway API 키', workers: ['ai-check-gateway'] },
-  { key: 'SECRET_INTERNAL_KEY', description: 'AI Gateway 내부 키', workers: ['ai-check-gateway'] },
+  { key: 'JWT_SECRET', description: 'JWT 서명 키', workers: ['api-gateway', 'terminal-gateway'] },
+  { key: 'GEMINI_API_KEY', description: 'Google Gemini API 키', workers: ['api-gateway'] },
+  { key: 'ADMIN_USERNAME', description: '관리자 사용자명', workers: ['api-gateway'] },
+  { key: 'ADMIN_PASSWORD', description: '관리자 비밀번호', workers: ['api-gateway'] },
+  { key: 'ADMIN_EMAIL', description: '관리자 이메일 (OTP)', workers: ['api-gateway'] },
+  { key: 'OPENROUTER_API_KEY', description: 'OpenRouter API 키', workers: ['api-gateway'] },
+  { key: 'AI_SERVE_API_KEY', description: 'AI Serve 내부 API 키', workers: ['api-gateway'] },
+  { key: 'BACKEND_ORIGIN', description: '백엔드 서버 URL', workers: ['api-gateway'] },
+  { key: 'BACKEND_SECRET_KEY', description: '백엔드 인증 키', workers: ['api-gateway'] },
+  { key: 'RESEND_API_KEY', description: 'Resend.com API 키', workers: ['api-gateway'] },
+  { key: 'INTERNAL_CALLER_KEY', description: 'R2 내부 호출 키', workers: ['r2-gateway'] },
   { key: 'ORIGIN_SECRET_KEY', description: 'Origin 인증 키', workers: ['terminal-gateway'] },
 ];
 

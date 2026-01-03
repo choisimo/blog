@@ -769,15 +769,6 @@ jobs:
           echo "$API_TOKEN" | npx wrangler secret put BLOG_API_TOKEN --name blog-api-gateway --env production 2>/dev/null || \
             echo "WARN: Failed to set BLOG_API_TOKEN for api-gateway"
           
-          # AI Check Gateway - set AUTH_JWT_SECRET for token validation
-          echo "Setting secrets for ai-check-gateway..."
-          echo "${{ secrets.JWT_SECRET }}" | npx wrangler secret put AUTH_JWT_SECRET --name ai-check-gateway --env production 2>/dev/null || \
-            echo "WARN: Failed to set AUTH_JWT_SECRET for ai-check-gateway"
-          
-          # Also set the API token for ai-check-gateway if it needs to call Blog API
-          echo "$API_TOKEN" | npx wrangler secret put BLOG_API_TOKEN --name ai-check-gateway --env production 2>/dev/null || \
-            echo "WARN: Failed to set BLOG_API_TOKEN for ai-check-gateway"
-          
           echo "=== Workers Secrets Setup Complete ==="
 
       - name: Verify credentials setup
