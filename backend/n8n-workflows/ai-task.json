@@ -200,7 +200,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ ($env.OPENCODE_BASE_URL || 'http://opencode-backend:7016') + '/chat' }}",
+        "url": "={{ ($env.OPENCODE_BACKEND_URL || $env.OPENCODE_BASE_URL || 'http://opencode-backend:7016') + '/chat' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
