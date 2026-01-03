@@ -1,7 +1,7 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "blog-api-gateway"
 main = "src/index.ts"
-compatibility_date = "2024-12-01"
+compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 account_id = "f6f11e2a4e5178d2f37476785018f761"
 
@@ -45,6 +45,7 @@ API_BASE_URL = "https://api.nodove.com"
 binding = "DB"
 database_name = "blog-db"
 database_id = "65661464-f6e2-4cdf-8da8-dd63a482fd29"
+migrations_dir = "../migrations"
 
 # R2 Storage binding
 [[r2_buckets]]

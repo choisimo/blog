@@ -1,7 +1,12 @@
+#:schema node_modules/wrangler/config-schema.json
 name = "r2-gateway"
 main = "src/index.ts"
-compatibility_date = "2025-10-21"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
 account_id = "f6f11e2a4e5178d2f37476785018f761"
+
+# Secrets (set via wrangler secret put):
+# - INTERNAL_CALLER_KEY: Key for internal service-to-service calls
 
 # R2 bucket binding
 [[r2_buckets]]
@@ -12,10 +17,22 @@ bucket_name = "blog"
 [vars]
 ALLOWED_ORIGINS = "*"
 
-# Custom domain for public access
-# Uncomment and configure if you have a custom domain set up in Cloudflare
+# Observability
+[observability]
+enabled = true
+
+# Production environment
+[env.production]
+name = "r2-gateway"
+workers_dev = true
+# Custom domain routes (requires Zone permissions in API token)
 # routes = [
 #   { pattern = "assets-b.nodove.com/*", zone_name = "nodove.com" }
 # ]
 
-# workers.dev subdomain is automatically enabled
+[[env.production.r2_buckets]]
+binding = "MY_BUCKET"
+bucket_name = "blog"
+
+[env.production.vars]
+ALLOWED_ORIGINS = "https://noblog.nodove.com,https://blog.nodove.com,https://blog-test.nodove.com,https://api.nodove.com"

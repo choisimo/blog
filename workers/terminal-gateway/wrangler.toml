@@ -1,7 +1,7 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "terminal-gateway"
 main = "src/index.ts"
-compatibility_date = "2024-09-01"
+compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 account_id = "f6f11e2a4e5178d2f37476785018f761"
 

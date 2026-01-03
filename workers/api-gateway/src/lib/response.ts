@@ -2,8 +2,23 @@ import { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { ApiResponse } from '../types';
 
-export function success<T>(c: Context, data: T, status: ContentfulStatusCode = 200) {
-  return c.json<ApiResponse<T>>({ ok: true, data }, { status });
+export type PaginationMeta = {
+  cursor?: string | null;
+  hasMore?: boolean;
+};
+
+export function success<T>(
+  c: Context,
+  data: T,
+  status: ContentfulStatusCode = 200,
+  pagination?: PaginationMeta
+) {
+  const response: ApiResponse<T> & PaginationMeta = { ok: true, data };
+  if (pagination) {
+    if (pagination.cursor !== undefined) response.cursor = pagination.cursor;
+    if (pagination.hasMore !== undefined) response.hasMore = pagination.hasMore;
+  }
+  return c.json(response, { status });
 }
 
 export function error(
