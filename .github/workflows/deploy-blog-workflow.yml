@@ -941,6 +941,152 @@ jobs:
             echo "API Posts: FAIL"
           fi
 
+      - name: E2E Test - Comments Data Flow
+        id: comments_flow
+        run: |
+          echo "=== Testing Comments Data Flow ==="
+          API="${{ env.API_BASE_URL }}/api/v1"
+          
+          # Step 1: Create a test comment
+          echo "Step 1: Creating test comment..."
+          CREATE_RESP=$(curl -sf -X POST "$API/comments" \
+            -H "Content-Type: application/json" \
+            -d '{"postId":"e2e-flow-test","author":"E2E Bot","content":"Automated test","email":"e2e@test.local"}' \
+            2>/dev/null || echo '{"ok":false}')
+          
+          if echo "$CREATE_RESP" | grep -q '"ok":true'; then
+            COMMENT_ID=$(echo "$CREATE_RESP" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+            echo "Comment created: $COMMENT_ID"
+            
+            # Step 2: Verify comment exists
+            echo "Step 2: Verifying comment..."
+            VERIFY_RESP=$(curl -sf "$API/comments?postId=e2e-flow-test" 2>/dev/null || echo '{}')
+            if echo "$VERIFY_RESP" | grep -q "$COMMENT_ID"; then
+              echo "Comment verified"
+              
+              # Step 3: Delete comment
+              echo "Step 3: Deleting comment..."
+              DELETE_RESP=$(curl -sf -X DELETE "$API/comments/$COMMENT_ID" 2>/dev/null || echo '{}')
+              if echo "$DELETE_RESP" | grep -q '"ok":true'; then
+                echo "result=pass" >> $GITHUB_OUTPUT
+                echo "Comments Data Flow: PASS"
+              else
+                echo "result=fail" >> $GITHUB_OUTPUT
+                echo "Comments Data Flow: FAIL (delete failed)"
+              fi
+            else
+              echo "result=fail" >> $GITHUB_OUTPUT
+              echo "Comments Data Flow: FAIL (verify failed)"
+            fi
+          else
+            echo "result=fail" >> $GITHUB_OUTPUT
+            echo "Comments Data Flow: FAIL (create failed)"
+            echo "Response: $CREATE_RESP"
+          fi
+
+      - name: E2E Test - Analytics Data Flow
+        id: analytics_flow
+        run: |
+          echo "=== Testing Analytics Data Flow ==="
+          API="${{ env.API_BASE_URL }}/api/v1"
+          
+          # Step 1: Record a view
+          echo "Step 1: Recording view..."
+          VIEW_RESP=$(curl -sf -X POST "$API/analytics/view" \
+            -H "Content-Type: application/json" \
+            -d '{"year":"2025","slug":"k8s-overview"}' \
+            2>/dev/null || echo '{"ok":false}')
+          
+          if echo "$VIEW_RESP" | grep -q '"ok":true'; then
+            echo "View recorded"
+            
+            # Step 2: Get stats
+            echo "Step 2: Getting stats..."
+            STATS_RESP=$(curl -sf "$API/analytics/stats/2025/k8s-overview" 2>/dev/null || echo '{}')
+            if echo "$STATS_RESP" | grep -q '"ok":true'; then
+              VIEWS=$(echo "$STATS_RESP" | grep -o '"total_views":[0-9]*' | head -1 | cut -d: -f2)
+              echo "Total views: $VIEWS"
+              
+              # Step 3: Check trending
+              echo "Step 3: Checking trending..."
+              TRENDING_RESP=$(curl -sf "$API/analytics/trending" 2>/dev/null || echo '{}')
+              if echo "$TRENDING_RESP" | grep -q '"ok":true'; then
+                echo "result=pass" >> $GITHUB_OUTPUT
+                echo "Analytics Data Flow: PASS"
+              else
+                echo "result=warn" >> $GITHUB_OUTPUT
+                echo "Analytics Data Flow: WARN (trending endpoint issue)"
+              fi
+            else
+              echo "result=fail" >> $GITHUB_OUTPUT
+              echo "Analytics Data Flow: FAIL (stats failed)"
+            fi
+          else
+            echo "result=fail" >> $GITHUB_OUTPUT
+            echo "Analytics Data Flow: FAIL (view record failed)"
+          fi
+
+      - name: E2E Test - AI & RAG Services
+        id: ai_rag_test
+        run: |
+          echo "=== Testing AI & RAG Services ==="
+          API="${{ env.API_BASE_URL }}/api/v1"
+          
+          # AI Health
+          echo "Testing AI health..."
+          AI_HEALTH=$(curl -sf "$API/ai/health" 2>/dev/null || echo '{}')
+          AI_STATUS=$(echo "$AI_HEALTH" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
+          echo "AI Status: $AI_STATUS"
+          
+          # AI Models
+          echo "Testing AI models..."
+          AI_MODELS=$(curl -sf "$API/ai/models" 2>/dev/null || echo '{}')
+          if echo "$AI_MODELS" | grep -q '"ok":true'; then
+            MODEL_COUNT=$(echo "$AI_MODELS" | grep -o '"id":"model_' | wc -l)
+            echo "Available models: $MODEL_COUNT"
+          fi
+          
+          # RAG Health
+          echo "Testing RAG health..."
+          RAG_HEALTH=$(curl -sf "$API/rag/health" 2>/dev/null || echo '{}')
+          if echo "$RAG_HEALTH" | grep -q '"ok":true'; then
+            echo "RAG services: OK"
+            echo "rag_status=pass" >> $GITHUB_OUTPUT
+          else
+            echo "RAG services: Degraded"
+            echo "rag_status=warn" >> $GITHUB_OUTPUT
+          fi
+          
+          # Agent Health
+          echo "Testing Agent health..."
+          AGENT_HEALTH=$(curl -sf "$API/agent/health" 2>/dev/null || echo '{}')
+          AGENT_STATUS=$(echo "$AGENT_HEALTH" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
+          echo "Agent Status: $AGENT_STATUS"
+          
+          # Overall result
+          if echo "$AI_HEALTH" | grep -q '"ok":true'; then
+            echo "result=pass" >> $GITHUB_OUTPUT
+          else
+            echo "result=warn" >> $GITHUB_OUTPUT
+          fi
+
+      - name: E2E Test - OG Image Generation
+        id: og_test
+        run: |
+          echo "=== Testing OG Image Generation ==="
+          OG_URL="${{ env.API_BASE_URL }}/api/v1/og?title=E2E%20Test&subtitle=GitHub%20Actions"
+          echo "Testing: $OG_URL"
+          
+          RESPONSE=$(curl -sf "$OG_URL" 2>/dev/null || echo "")
+          
+          if echo "$RESPONSE" | grep -q '<svg'; then
+            echo "result=pass" >> $GITHUB_OUTPUT
+            echo "OG Image: PASS (SVG generated)"
+          else
+            echo "result=fail" >> $GITHUB_OUTPUT
+            echo "OG Image: FAIL"
+          fi
+
       - name: E2E Test - CORS Preflight
         id: cors_test
         run: |
@@ -1096,47 +1242,94 @@ jobs:
         if: always()
         run: |
           echo ""
-          echo "=========================================="
-          echo "       E2E TEST REPORT SUMMARY"
-          echo "=========================================="
+          echo "╔════════════════════════════════════════════════════════════╗"
+          echo "║           COMPREHENSIVE E2E TEST REPORT                    ║"
+          echo "╚════════════════════════════════════════════════════════════╝"
           echo ""
           echo "Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           echo "Environment: ${{ vars.APP_ENV || 'production' }}"
           echo ""
-          echo "┌─────────────────────────────────────────┐"
-          echo "│ Service Health Checks                   │"
-          echo "├─────────────────────────────────────────┤"
-          printf "│ %-25s %13s │\n" "API Health:" "${{ steps.api_health.outputs.result == 'pass' && '✅ PASS' || '❌ FAIL' }}"
-          printf "│ %-25s %13s │\n" "API Posts Endpoint:" "${{ steps.api_posts.outputs.result == 'pass' && '✅ PASS' || '❌ FAIL' }}"
-          printf "│ %-25s %13s │\n" "CORS Preflight:" "${{ steps.cors_test.outputs.result == 'pass' && '✅ PASS' || '❌ FAIL' }}"
-          printf "│ %-25s %13s │\n" "n8n Health:" "${{ steps.n8n_health.outputs.result == 'pass' && '✅ PASS' || '⚠️ SKIP' }}"
-          printf "│ %-25s %13s │\n" "AI Health Webhook:" "${{ steps.ai_endpoints.outputs.ai_health == 'pass' && '✅ PASS' || '⚠️ SKIP' }}"
-          printf "│ %-25s %13s │\n" "Frontend Site:" "${{ steps.frontend.outputs.result == 'pass' && '✅ PASS' || '❌ FAIL' }}"
-          printf "│ %-25s %13s │\n" "SSL Certificate:" "${{ steps.ssl_check.outputs.result == 'pass' && '✅ PASS' || '❌ FAIL' }}"
-          printf "│ %-25s %13s │\n" "Response Time:" "${{ steps.response_time.outputs.result == 'pass' && '✅ PASS' || (steps.response_time.outputs.result == 'warn' && '⚠️ SLOW' || '❌ FAIL') }}"
-          echo "└─────────────────────────────────────────┘"
+          echo "┌────────────────────────────────────────────────────────────┐"
+          echo "│ CORE API HEALTH                                            │"
+          echo "├────────────────────────────────────────────────────────────┤"
+          printf "│ %-35s %21s │\n" "API Health:" "${{ steps.api_health.outputs.result == 'pass' && '✅ PASS' || '❌ FAIL' }}"
+          printf "│ %-35s %21s │\n" "API Posts Endpoint:" "${{ steps.api_posts.outputs.result == 'pass' && '✅ PASS' || '❌ FAIL' }}"
+          printf "│ %-35s %21s │\n" "CORS Preflight:" "${{ steps.cors_test.outputs.result == 'pass' && '✅ PASS' || '❌ FAIL' }}"
+          printf "│ %-35s %21s │\n" "Response Time:" "${{ steps.response_time.outputs.result == 'pass' && '✅ PASS' || (steps.response_time.outputs.result == 'warn' && '⚠️ SLOW' || '❌ FAIL') }}"
+          echo "├────────────────────────────────────────────────────────────┤"
+          echo "│ DATA FLOW TESTS                                            │"
+          echo "├────────────────────────────────────────────────────────────┤"
+          printf "│ %-35s %21s │\n" "Comments (Create/Verify/Delete):" "${{ steps.comments_flow.outputs.result == 'pass' && '✅ PASS' || '❌ FAIL' }}"
+          printf "│ %-35s %21s │\n" "Analytics (View/Stats/Trending):" "${{ steps.analytics_flow.outputs.result == 'pass' && '✅ PASS' || (steps.analytics_flow.outputs.result == 'warn' && '⚠️ WARN' || '❌ FAIL') }}"
+          echo "├────────────────────────────────────────────────────────────┤"
+          echo "│ AI & RAG SERVICES                                          │"
+          echo "├────────────────────────────────────────────────────────────┤"
+          printf "│ %-35s %21s │\n" "AI Services:" "${{ steps.ai_rag_test.outputs.result == 'pass' && '✅ PASS' || (steps.ai_rag_test.outputs.result == 'warn' && '⚠️ DEGRADED' || '❌ FAIL') }}"
+          printf "│ %-35s %21s │\n" "RAG Services:" "${{ steps.ai_rag_test.outputs.rag_status == 'pass' && '✅ PASS' || '⚠️ DEGRADED' }}"
+          printf "│ %-35s %21s │\n" "OG Image Generation:" "${{ steps.og_test.outputs.result == 'pass' && '✅ PASS' || '❌ FAIL' }}"
+          echo "├────────────────────────────────────────────────────────────┤"
+          echo "│ EXTERNAL SERVICES                                          │"
+          echo "├────────────────────────────────────────────────────────────┤"
+          printf "│ %-35s %21s │\n" "n8n Health:" "${{ steps.n8n_health.outputs.result == 'pass' && '✅ PASS' || '⚠️ SKIP' }}"
+          printf "│ %-35s %21s │\n" "AI Webhook (n8n):" "${{ steps.ai_endpoints.outputs.ai_health == 'pass' && '✅ PASS' || '⚠️ SKIP' }}"
+          printf "│ %-35s %21s │\n" "Frontend Site:" "${{ steps.frontend.outputs.result == 'pass' && '✅ PASS' || '❌ FAIL' }}"
+          printf "│ %-35s %21s │\n" "SSL Certificate:" "${{ steps.ssl_check.outputs.result == 'pass' && '✅ PASS' || '❌ FAIL' }}"
+          echo "└────────────────────────────────────────────────────────────┘"
           echo ""
           echo "Endpoints Tested:"
-          echo "  - API: ${{ env.API_BASE_URL }}"
-          echo "  - n8n: ${{ env.N8N_WEBHOOK_URL }}"
-          echo "  - Frontend: ${{ env.SITE_BASE_URL }}"
+          echo "  - API Base:     ${{ env.API_BASE_URL }}"
+          echo "  - n8n Webhooks: ${{ env.N8N_WEBHOOK_URL }}"
+          echo "  - Frontend:     ${{ env.SITE_BASE_URL }}"
           echo ""
-          echo "=========================================="
+          echo "Data Flow Verification:"
+          echo "  - Comments:  Create → Verify → Delete (full cycle)"
+          echo "  - Analytics: Record View → Get Stats → Check Trending"
+          echo ""
+          echo "════════════════════════════════════════════════════════════"
 
       - name: Fail if critical tests failed
         if: always()
         run: |
+          CRITICAL_FAIL=0
+          
           if [ "${{ steps.api_health.outputs.result }}" != "pass" ]; then
             echo "CRITICAL: API Health check failed!"
-            exit 1
+            CRITICAL_FAIL=1
+          fi
+          
+          if [ "${{ steps.api_posts.outputs.result }}" != "pass" ]; then
+            echo "CRITICAL: API Posts endpoint failed!"
+            CRITICAL_FAIL=1
           fi
           
           if [ "${{ steps.cors_test.outputs.result }}" != "pass" ]; then
-            echo "WARNING: CORS preflight test failed - frontend may have issues"
+            echo "CRITICAL: CORS preflight test failed - frontend will have issues!"
+            CRITICAL_FAIL=1
+          fi
+          
+          if [ "${{ steps.comments_flow.outputs.result }}" != "pass" ]; then
+            echo "CRITICAL: Comments data flow failed!"
+            CRITICAL_FAIL=1
+          fi
+          
+          if [ "${{ steps.analytics_flow.outputs.result }}" == "fail" ]; then
+            echo "WARNING: Analytics data flow failed"
+          fi
+          
+          if [ "${{ steps.og_test.outputs.result }}" != "pass" ]; then
+            echo "WARNING: OG image generation failed"
           fi
           
           if [ "${{ steps.ssl_check.outputs.result }}" != "pass" ]; then
             echo "WARNING: SSL check failed, but continuing..."
           fi
           
+          if [ "$CRITICAL_FAIL" -eq 1 ]; then
+            echo ""
+            echo "One or more critical tests failed. Deployment verification incomplete."
+            exit 1
+          fi
+          
+          echo ""
           echo "All critical E2E tests passed!"
+          echo "Backend API is fully operational."
