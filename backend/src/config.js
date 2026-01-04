@@ -46,6 +46,7 @@ const schema = z.object({
 
   // Direct provider API keys (used by n8n AI nodes)
   GEMINI_API_KEY: z.string().optional(),
+  GOOGLE_API_KEY: z.string().optional(),  // Alternative name for Gemini API key
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
 
@@ -208,7 +209,7 @@ export const config = {
   // Shortcut references for legacy compatibility
   // ==========================================================================
   gemini: {
-    apiKey: raw.GEMINI_API_KEY,
+    apiKey: raw.GEMINI_API_KEY || raw.GOOGLE_API_KEY,
     model: raw.AI_DEFAULT_MODEL || 'gemini-1.5-flash',
   },
 };
