@@ -62,9 +62,10 @@ const logger = {
   },
 };
 
-// Default configuration - points to nginx-lb (load balancer)
-const AI_SERVE_BASE_URL = process.env.AI_SERVE_BASE_URL || 'http://nginx-lb:7016';
-const VAS_CORE_URL = process.env.VAS_CORE_URL || 'http://nginx-lb:7012';
+// Default configuration - points to ai-server-backend (OpenCode-compatible)
+// Legacy nginx-lb removed; use OPENCODE_BASE_URL or AI_SERVE_BASE_URL
+const AI_SERVE_BASE_URL = process.env.AI_SERVE_BASE_URL || process.env.OPENCODE_BASE_URL || 'http://ai-server-backend:7016';
+const VAS_CORE_URL = process.env.VAS_CORE_URL || process.env.OPENCODE_BASE_URL || 'http://ai-server-backend:7016';
 const AI_SERVE_DEFAULT_PROVIDER = process.env.AI_SERVE_DEFAULT_PROVIDER || 'github-copilot';
 const AI_SERVE_DEFAULT_MODEL = process.env.AI_SERVE_DEFAULT_MODEL || 'gpt-4.1';
 
