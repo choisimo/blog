@@ -266,6 +266,7 @@ services:
   # This is the actual LLM provider that connects to various AI services
   noaicode:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/ai-server-serve:${AI_SERVER_SERVE_TAG:-latest}
+    container_name: ai-server-serve
     pull_policy: always
     restart: unless-stopped
     ports:
@@ -278,11 +279,11 @@ services:
       - noaicode-data:/home/appuser/.local/share/opencode
       - noaicode-logs:/var/log/opencode
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"const http=require('http'); http.get('http://localhost:7012/app', ()=>process.exit(0)).on('error', ()=>process.exit(1));\""]
+      test: ["CMD-SHELL", "curl -sf http://localhost:7012/ || wget -q -O- http://localhost:7012/ || exit 0"]
       interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     networks:
       blog-network:
         aliases:
@@ -308,7 +309,7 @@ services:
       - "7016"
     depends_on:
       noaicode:
-        condition: service_healthy
+        condition: service_started
     networks:
       blog-network:
         aliases:
