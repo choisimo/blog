@@ -262,8 +262,37 @@ services:
 # AI SERVICES - Remote OpenCode Serve + Local AI Backend Adapter
 # ===========================================================================
 
+  # AI Server Serve - OpenCode LLM Backend (port 7012 internal)
+  # This is the actual LLM provider that connects to various AI services
+  noaicode:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/ai-server-serve:${AI_SERVER_SERVE_TAG:-latest}
+    pull_policy: always
+    restart: unless-stopped
+    ports:
+      - "${AI_SERVER_SERVE_PORT:-7015}:7012"
+    environment:
+      NODE_ENV: production
+      NOAICODE_HOST: 0.0.0.0
+      NOAICODE_PORT: 7012
+    volumes:
+      - noaicode-data:/home/appuser/.local/share/opencode
+      - noaicode-logs:/var/log/opencode
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"const http=require('http'); http.get('http://localhost:7012/app', ()=>process.exit(0)).on('error', ()=>process.exit(1));\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      blog-network:
+        aliases:
+          - ai-server-serve
+          - ai-serve
+    security_opt:
+      - no-new-privileges:true
+
   # AI Server Backend - Adapter API Server (port 7016)
-  # Connects to remote ai-server-serve via NOAICODE_BASE_URL
+  # Connects to ai-server-serve (noaicode) via internal Docker network
   ai-server-backend:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/ai-server-backend:${AI_SERVER_BACKEND_TAG:-latest}
     container_name: ai-server-backend
@@ -272,14 +301,14 @@ services:
       - .env
     environment:
       - PORT=7016
-      - NOAICODE_BASE_URL=${AI_SERVER_SERVE_URL}
-      - DEFAULT_PROVIDER=${OPENCODE_DEFAULT_PROVIDER:-github-copilot}
-      - DEFAULT_MODEL=${OPENCODE_DEFAULT_MODEL:-gpt-4.1}
-      - FALLBACK_PROVIDER=${OPENCODE_FALLBACK_PROVIDER:-opencode}
-      - FALLBACK_MODEL=${OPENCODE_FALLBACK_MODEL:-big-pickle}
+      # Connect to ai-server-serve via internal network (not external URL)
+      - NOAICODE_BASE_URL=http://ai-server-serve:7012
       - ENABLE_CHAT_UI=false
     expose:
       - "7016"
+    depends_on:
+      noaicode:
+        condition: service_healthy
     networks:
       blog-network:
         aliases:
@@ -346,8 +375,8 @@ services:
       # Integration URLs
       - BLOG_API_URL=http://api:5080
       - OPENCODE_BASE_URL=http://ai-server-backend:7016
-      - OPENCODE_SERVE_URL=${AI_SERVER_SERVE_URL}
-      - AI_ENGINE_URL=${AI_SERVER_SERVE_URL}
+      - OPENCODE_SERVE_URL=http://ai-server-serve:7012
+      - AI_ENGINE_URL=http://ai-server-serve:7012
       - QDRANT_URL=http://qdrant:6333
       - CHROMADB_URL=http://chromadb:8000
       - ELASTICSEARCH_URL=http://elasticsearch:9200
@@ -393,8 +422,8 @@ services:
       # Integration
       - BLOG_API_URL=http://api:5080
       - OPENCODE_BASE_URL=http://ai-server-backend:7016
-      - OPENCODE_SERVE_URL=${AI_SERVER_SERVE_URL}
-      - AI_ENGINE_URL=${AI_SERVER_SERVE_URL}
+      - OPENCODE_SERVE_URL=http://ai-server-serve:7012
+      - AI_ENGINE_URL=http://ai-server-serve:7012
       - QDRANT_URL=http://qdrant:6333
     command: ["worker"]
     volumes:
@@ -527,6 +556,8 @@ volumes:
   tei_data:
   n8n_data:
   minio_data:
+  noaicode-data:
+  noaicode-logs:
   prometheus_data:
   grafana_data:
   pgadmin_data:
