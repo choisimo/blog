@@ -41,7 +41,8 @@ async function proxyRequest(c: Context<ChatContext>, path: string) {
   if (!backendOrigin) {
     return error(c, 'BACKEND_ORIGIN not configured', 500, 'CONFIGURATION_ERROR');
   }
-  const upstreamUrl = `${backendOrigin}${path}`;
+  // Backend expects full path: /api/v1/chat/...
+  const upstreamUrl = `${backendOrigin}/api/v1/chat${path}`;
 
   const upstreamHeaders = new Headers(c.req.raw.headers);
   upstreamHeaders.delete('host');
