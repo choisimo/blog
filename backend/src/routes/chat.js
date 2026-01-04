@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { getVASClient, generateContent, tryParseJson } from '../lib/ai-serve.js';
+import { getOpenCodeClient } from '../lib/opencode-client.js';
+import { generateContent, tryParseJson } from '../lib/ai-serve.js';
 
 const router = Router();
 
@@ -239,8 +240,8 @@ router.post('/session/:sessionId/message', async (req, res, next) => {
     });
 
     try {
-      // Generate response via VAS with optional model selection
-      const client = getVASClient();
+      // Generate response via OpenCode client with optional model selection
+      const client = getOpenCodeClient();
       const result = await client.chat(session.messages, { model });
 
       if (closed) return;
@@ -320,7 +321,7 @@ router.post('/session/:sessionId/task', async (req, res, next) => {
         ok: true,
         data,
         mode: taskMode,
-        source: 'vas',
+        source: 'opencode',
       });
     } catch (err) {
       console.warn('Task execution failed, returning fallback:', err.message);
