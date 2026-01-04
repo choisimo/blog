@@ -203,6 +203,14 @@ export const config = {
     chromaUrl: raw.CHROMA_URL,
     chromaCollection: raw.CHROMA_COLLECTION,
   },
+
+  // ==========================================================================
+  // Shortcut references for legacy compatibility
+  // ==========================================================================
+  gemini: {
+    apiKey: raw.GEMINI_API_KEY,
+    model: raw.AI_DEFAULT_MODEL || 'gemini-1.5-flash',
+  },
 };
 
 export function publicRuntimeConfig() {
