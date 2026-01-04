@@ -22,6 +22,8 @@ export type GenerateOptions = {
 /**
  * 백엔드 AI 서버를 통해 콘텐츠를 생성합니다.
  *
+ * @deprecated Use createAIService(env).generate() from ai-service.ts instead
+ * 
  * @param prompt - 생성할 프롬프트
  * @param env - Worker 환경 변수
  * @param options - 생성 옵션 (temperature, maxTokens)
@@ -36,8 +38,8 @@ export async function generateContent(
   const temperature = options?.temperature ?? 0.2;
   const maxTokens = options?.maxTokens ?? 2048;
 
-  // Get AI Serve URL from KV > env > default
-  const base = await getAiServeUrl(env);
+  // Use BACKEND_ORIGIN to avoid circular calls (api.nodove.com -> api.nodove.com)
+  const base = env.BACKEND_ORIGIN || await getAiServeUrl(env);
   const url = `${base.replace(/\/$/, '')}/api/v1/ai/generate`;
 
   const headers: Record<string, string> = {

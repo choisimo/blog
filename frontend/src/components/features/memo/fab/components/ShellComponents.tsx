@@ -72,7 +72,17 @@ export function MobileShellBar({
   hasNew,
 }: MobileShellBarProps) {
   return (
-    <div className="flex w-full items-center gap-2.5 bg-[hsl(var(--terminal-code-bg))] border-t border-primary/30 px-3 py-2.5">
+    <div
+      className={cn(
+        "flex w-full items-center gap-2.5",
+        "bg-[hsl(var(--terminal-code-bg))]",
+        "border-t border-primary/30",
+        "px-3 py-2.5",
+        "pb-[calc(10px+env(safe-area-inset-bottom,0px))]",
+        "transition-transform duration-200 ease-out",
+        "data-[hidden=true]:translate-y-[110%]",
+      )}
+    >
       {/* Terminal button - opens shell */}
       <button
         type="button"

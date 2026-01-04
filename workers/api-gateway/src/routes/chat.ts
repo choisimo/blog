@@ -13,7 +13,7 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { Env } from '../types';
-import { generateContent } from '../lib/gemini';
+import { createAIService } from '../lib/ai-service';
 import { success, badRequest, error } from '../lib/response';
 import { 
   buildTaskPrompt, 
@@ -22,8 +22,8 @@ import {
   type TaskMode, 
   type TaskPayload 
 } from '../lib/prompts';
-import { executeTask, tryParseJson } from '../lib/llm';
-import { getAiServeUrl, getAiGatewayCallerKey } from '../lib/config';
+import { executeTask } from '../lib/llm';
+import { getAiGatewayCallerKey } from '../lib/config';
 
 type ChatContext = { Bindings: Env };
 
@@ -32,14 +32,20 @@ const chat = new Hono<ChatContext>();
 /**
  * 업스트림 AI 서비스로 요청을 프록시합니다.
  * 챗봇 메시지(SSE 스트리밍) 및 세션 생성에 사용됩니다.
+ * 
+ * Uses BACKEND_ORIGIN to avoid circular calls (api.nodove.com -> api.nodove.com).
  */
 async function proxyRequest(c: Context<ChatContext>, path: string) {
-  // Get AI Serve URL from KV > env > default
-  const aiServeBaseUrl = await getAiServeUrl(c.env);
-  const upstreamUrl = `${aiServeBaseUrl}${path}`;
+  // Use BACKEND_ORIGIN directly to avoid calling Workers itself
+  const backendOrigin = c.env.BACKEND_ORIGIN;
+  if (!backendOrigin) {
+    return error(c, 'BACKEND_ORIGIN not configured', 500, 'CONFIGURATION_ERROR');
+  }
+  const upstreamUrl = `${backendOrigin}${path}`;
 
   const upstreamHeaders = new Headers(c.req.raw.headers);
   upstreamHeaders.delete('host');
+  upstreamHeaders.set('Host', 'blog-b.nodove.com');
 
   // Get gateway caller key from KV > env
   const gatewayCallerKey = await getAiGatewayCallerKey(c.env);
@@ -203,7 +209,8 @@ chat.post('/aggregate', async (c: Context<ChatContext>) => {
   ].join('\n');
 
   try {
-    const text = await generateContent(systemPrompt, c.env, {
+    const aiService = createAIService(c.env);
+    const text = await aiService.generate(systemPrompt, {
       temperature: 0.2,
     });
     return success(c, { text });

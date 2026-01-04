@@ -8,11 +8,14 @@ const DEFAULT_API_URL = 'https://api.nodove.com';
 function normalizeBaseUrl(url: string): string {
   let normalized = url.trim();
 
-  // Migrate legacy AI endpoint domain to unified gateway
-  // Some clients stored ai-check.nodove.com in localStorage (aiMemo.backendUrl)
-  // which would cause chat session calls to go to /session on the legacy host.
+  // Migrate legacy domains to unified gateway
+  // Some clients stored legacy URLs in localStorage (aiMemo.backendUrl)
   if (normalized.includes('ai-check.nodove.com')) {
     normalized = normalized.replace('ai-check.nodove.com', 'api.nodove.com');
+  }
+  // Direct backend URL should also be migrated to go through Workers
+  if (normalized.includes('blog-b.nodove.com')) {
+    normalized = normalized.replace('blog-b.nodove.com', 'api.nodove.com');
   }
 
   // Remove trailing slash

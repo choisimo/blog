@@ -8,7 +8,7 @@
 import type { Env } from '../types';
 import type { PromptConfig, TaskMode } from './prompts';
 import { getFallbackData } from './prompts';
-import { getApiBaseUrl, getAiServeApiKey, getAiServeUrl } from './config';
+import { getApiBaseUrl, getAiServeApiKey } from './config';
 
 export type LLMRequest = {
   system?: string;
@@ -78,12 +78,15 @@ export function tryParseJson<T = unknown>(text: string): T | null {
 /**
  * 백엔드 AI 서버 호출 (/ai/auto-chat 엔드포인트)
  * 대화형 AI 호출에 사용됩니다.
+ * 
+ * Uses BACKEND_ORIGIN to avoid circular calls (api.nodove.com -> api.nodove.com).
  */
 async function callBackendAutoChat(
   request: LLMRequest,
   env: Env
 ): Promise<{ ok: boolean; text?: string; error?: string }> {
-  const backendUrl = await getApiBaseUrl(env);
+  // Use BACKEND_ORIGIN directly to avoid calling Workers itself
+  const backendUrl = env.BACKEND_ORIGIN || await getApiBaseUrl(env);
   const url = `${backendUrl.replace(/\/$/, '')}/api/v1/ai/auto-chat`;
 
   const message = request.system
@@ -149,13 +152,16 @@ async function callBackendAutoChat(
 /**
  * 백엔드 AI 서버 호출 (/ai/generate 엔드포인트)
  * 단순 텍스트 생성에 사용됩니다.
+ * 
+ * Uses BACKEND_ORIGIN to avoid circular calls (api.nodove.com -> api.nodove.com).
  */
 async function callBackendGenerate(
   request: LLMRequest,
   env: Env
 ): Promise<{ ok: boolean; text?: string; error?: string }> {
-  const base = await getAiServeUrl(env);
-  const url = `${base.replace(/\/$/, '')}/ai/generate`;
+  // Use BACKEND_ORIGIN directly to avoid calling Workers itself
+  const base = env.BACKEND_ORIGIN || await getApiBaseUrl(env);
+  const url = `${base.replace(/\/$/, '')}/api/v1/ai/generate`;
 
   const fullPrompt = request.system
     ? `${request.system}\n\n${request.user}`

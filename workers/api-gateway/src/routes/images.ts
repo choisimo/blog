@@ -3,7 +3,7 @@ import type { Env } from '../types';
 import { success, badRequest, notFound } from '../lib/response';
 import { execute } from '../lib/d1';
 import { requireAdmin } from '../middleware/auth';
-import { getAiServeUrl } from '../lib/config';
+import { createAIService } from '../lib/ai-service';
 
 const images = new Hono<{ Bindings: Env }>();
 
@@ -143,23 +143,11 @@ images.post('/chat-upload', async c => {
       // Convert to base64 for vision API
       const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
       
-      // Call backend vision endpoint
-      const aiServeUrl = await getAiServeUrl(c.env);
-      const visionRes = await fetch(`${aiServeUrl.replace(/\/$/, '')}/api/v1/ai/vision/analyze`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageBase64: base64,
-          mimeType: file.type,
-        }),
+      // Use AIService for vision analysis (uses BACKEND_ORIGIN to avoid circular calls)
+      const aiService = createAIService(c.env);
+      imageAnalysis = await aiService.vision(base64, 'Describe this image briefly', {
+        mimeType: file.type,
       });
-
-      if (visionRes.ok) {
-        const visionData = await visionRes.json<{ ok: boolean; description?: string }>();
-        if (visionData.ok && visionData.description) {
-          imageAnalysis = visionData.description;
-        }
-      }
     } catch (err) {
       // Vision analysis failed, but upload succeeded - continue without analysis
       console.error('Vision analysis failed:', err);

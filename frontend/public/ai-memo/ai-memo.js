@@ -63,9 +63,13 @@
   function normalizeBaseUrl(url) {
     let normalized = String(url || '').trim();
 
-    // Migrate legacy domain to unified gateway
+    // Migrate legacy domains to unified gateway
     if (normalized.includes('ai-check.nodove.com')) {
       normalized = normalized.replace('ai-check.nodove.com', 'api.nodove.com');
+    }
+    // Direct backend URL should also be migrated to go through Workers
+    if (normalized.includes('blog-b.nodove.com')) {
+      normalized = normalized.replace('blog-b.nodove.com', 'api.nodove.com');
     }
 
     while (normalized.endsWith('/')) {

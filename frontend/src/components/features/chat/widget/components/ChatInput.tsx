@@ -57,7 +57,8 @@ export function ChatInput({
   return (
     <div
       className={cn(
-        "border-t px-4 py-4 shrink-0",
+        "border-t shrink-0",
+        isTerminal && isMobile ? "px-2 py-3" : "px-4 py-4",
         isMobile && "pb-[calc(1rem+env(safe-area-inset-bottom))]",
         isTerminal
           ? "bg-[hsl(var(--terminal-code-bg))] border-border"
@@ -239,7 +240,15 @@ function TerminalInput({
   onFileSelect: (file: File | null) => void;
 }) {
   return (
-    <div className="bg-[hsl(var(--terminal-code-bg))] border border-border rounded-lg px-3 py-3">
+    <div
+      className={cn(
+        "bg-[hsl(var(--terminal-code-bg))]",
+        isMobile
+          ? "border-0 rounded-none"
+          : "border border-border rounded-lg focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/50",
+        isMobile ? "px-1 py-1" : "px-3 py-3",
+      )}
+    >
       <div className="flex items-end gap-2">
         {!isMobile && (
           <span className="text-primary font-mono font-bold select-none shrink-0 py-2 text-sm">
@@ -258,10 +267,12 @@ function TerminalInput({
           }
           ref={textareaRef}
           className={cn(
-            "flex-1 resize-none border-0 bg-transparent px-0 py-2 font-mono text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 overflow-y-auto",
+            "flex-1 resize-none border-0 bg-transparent py-2 font-mono text-foreground",
+            "focus-visible:ring-0 focus-visible:ring-offset-0",
+            "placeholder:text-muted-foreground/60 overflow-y-auto",
             isMobile
-              ? "text-base min-h-[56px] max-h-[96px]"
-              : "text-sm min-h-[40px] max-h-[72px]",
+              ? "px-2 text-base min-h-[56px] max-h-[96px]"
+              : "px-1 text-sm min-h-[40px] max-h-[72px]",
           )}
         />
         <div className="flex items-center gap-2">

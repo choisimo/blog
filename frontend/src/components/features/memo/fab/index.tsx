@@ -383,6 +383,7 @@ export default function FloatingActionBar() {
                     onShellOpen={() => setShellOpen(true)}
                     showScrollTop={showScrollTop}
                     hasNew={hasNew}
+                    data-hidden={scrollHidden}
                   />
                 )
               ) : (

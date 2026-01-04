@@ -3,7 +3,7 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { Env } from '../types';
 import { queryOne, execute } from '../lib/d1';
 import { success, error } from '../lib/response';
-import { generateContent } from '../lib/gemini';
+import { createAIService } from '../lib/ai-service';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -121,13 +121,16 @@ app.post('/', async (c) => {
     
     console.log(`[translate] Cache miss, calling AI for ${year}/${slug}`);
 
+    // Create AI service instance (uses BACKEND_ORIGIN to avoid circular calls)
+    const aiService = createAIService(c.env);
+
     // Translate title
     const titlePrompt = `Translate the following blog post title from ${sourceLangName} to ${targetLangName}. 
 Return ONLY the translated title, nothing else.
 
 Title: ${title}`;
 
-    const translatedTitle = await generateContent(titlePrompt, c.env, {
+    const translatedTitle = await aiService.generate(titlePrompt, {
       temperature: 0.1,
       maxTokens: 256,
     });
@@ -140,7 +143,7 @@ Return ONLY the translated description, nothing else.
 
 Description: ${description}`;
 
-      translatedDescription = await generateContent(descPrompt, c.env, {
+      translatedDescription = await aiService.generate(descPrompt, {
         temperature: 0.1,
         maxTokens: 512,
       });
@@ -161,7 +164,7 @@ IMPORTANT RULES:
 Content:
 ${truncatedContent}`;
 
-    const translatedContent = await generateContent(contentPrompt, c.env, {
+    const translatedContent = await aiService.generate(contentPrompt, {
       temperature: 0.2,
       maxTokens: 16000,
     });
