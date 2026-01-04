@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getN8NClient } from '../lib/n8n-client.js';
+import { aiService } from '../lib/ai-service.js';
 import { generateContent, tryParseJson } from '../lib/ai-serve.js';
 
 const router = Router();
@@ -240,9 +240,8 @@ router.post('/session/:sessionId/message', async (req, res, next) => {
     });
 
     try {
-      // Generate response via N8N client (hybrid: OpenCode -> n8n fallback)
-      const client = getN8NClient();
-      const result = await client.chat(session.messages, { model });
+      // Generate response via unified AI service (with fallback chain)
+      const result = await aiService.chat(session.messages, { model });
 
       if (closed) return;
 
@@ -321,7 +320,7 @@ router.post('/session/:sessionId/task', async (req, res, next) => {
         ok: true,
         data,
         mode: taskMode,
-        source: 'n8n',
+        source: 'ai-service',
       });
     } catch (err) {
       console.warn('Task execution failed, returning fallback:', err.message);
