@@ -4,6 +4,7 @@
 
 import { useState, useCallback } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { getApiBaseUrl } from '@/utils/apiBase';
 import type {
   SecretCategory,
   SecretPublic,
@@ -12,8 +13,6 @@ import type {
   SecretsOverview,
   SecretsHealth,
 } from './types';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 // ============================================================================
 // API Fetch Wrapper
@@ -24,6 +23,7 @@ async function apiFetch<T>(
   options: RequestInit = {}
 ): Promise<{ ok: boolean; data?: T; error?: string }> {
   const { getValidAccessToken, clearAuth } = useAuthStore.getState();
+  const API_BASE = getApiBaseUrl();
 
   try {
     const token = await getValidAccessToken();

@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
+import { getApiBaseUrl } from '@/utils/apiBase';
 import { Eye, EyeOff, Download, Save, RefreshCw, Copy, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface ConfigVariable {
@@ -35,8 +36,6 @@ interface ConfigValue {
   default: string;
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
-
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
   const token = localStorage.getItem('adminToken') || '';
   return fetch(url, {
@@ -55,6 +54,8 @@ export function ConfigManager() {
   const [editedValues, setEditedValues] = useState<Record<string, string>>({});
   const [visibleSecrets, setVisibleSecrets] = useState<Set<string>>(new Set());
   const [hasChanges, setHasChanges] = useState(false);
+  
+  const API_BASE = getApiBaseUrl();
 
   const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
     queryKey: ['config-categories'],

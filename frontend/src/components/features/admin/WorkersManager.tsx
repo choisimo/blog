@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/components/ui/use-toast';
+import { getApiBaseUrl } from '@/utils/apiBase';
 import {
   Cloud,
   Database,
@@ -55,8 +56,6 @@ interface SecretInfo {
   workers: string[];
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
-
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
   const token = localStorage.getItem('adminToken') || '';
   return fetch(url, {
@@ -76,6 +75,8 @@ export function WorkersManager() {
   const [deployEnv, setDeployEnv] = useState<'development' | 'production'>('production');
   const [secretInputs, setSecretInputs] = useState<Record<string, string>>({});
   const [visibleSecrets, setVisibleSecrets] = useState<Set<string>>(new Set());
+  
+  const API_BASE = getApiBaseUrl();
 
   const { data: workersData, isLoading: workersLoading } = useQuery({
     queryKey: ['workers-list'],

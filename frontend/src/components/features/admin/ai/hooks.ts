@@ -6,6 +6,7 @@
 
 import { useState, useCallback } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { getApiBaseUrl } from '@/utils/apiBase';
 import type {
   AIProvider,
   AIModel,
@@ -15,8 +16,6 @@ import type {
   ModelFormData,
   RouteFormData,
 } from './types';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 // ============================================================================
 // API Fetch Wrapper with Auto Token Refresh
@@ -30,6 +29,7 @@ async function apiFetch<T>(
   options: RequestInit = {}
 ): Promise<{ ok: boolean; data?: T; error?: string }> {
   const { getValidAccessToken, clearAuth } = useAuthStore.getState();
+  const API_BASE = getApiBaseUrl();
 
   try {
     // Get valid access token (auto-refreshes if needed)

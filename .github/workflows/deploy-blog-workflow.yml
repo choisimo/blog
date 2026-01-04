@@ -186,7 +186,10 @@ jobs:
 
           # URLs
           SITE_BASE_URL=${{ vars.SITE_BASE_URL || 'https://noblog.nodove.com' }}
-          API_BASE_URL=${{ vars.API_BASE_URL || 'https://api.nodove.com' }}
+          API_BASE_URL=${{ vars.API_BASE_URL || 'https://blog-b.nodove.com' }}
+          
+          # CORS - Allow frontend origins
+          ALLOWED_ORIGINS=${{ vars.ALLOWED_ORIGINS || 'https://noblog.nodove.com,https://blog.nodove.com' }}
 
           # PostgreSQL
           POSTGRES_DB=${{ vars.POSTGRES_DB || 'blog' }}
@@ -938,6 +941,30 @@ jobs:
             echo "API Posts: FAIL"
           fi
 
+      - name: E2E Test - CORS Preflight
+        id: cors_test
+        run: |
+          echo "=== Testing CORS Preflight ==="
+          CORS_URL="${{ env.API_BASE_URL }}/api/v1/comments"
+          echo "Testing OPTIONS: $CORS_URL"
+          echo "Origin: ${{ env.SITE_BASE_URL }}"
+          
+          # Test OPTIONS preflight request
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X OPTIONS "$CORS_URL" \
+            -H "Origin: ${{ env.SITE_BASE_URL }}" \
+            -H "Access-Control-Request-Method: POST" \
+            -H "Access-Control-Request-Headers: content-type" 2>/dev/null || echo "000")
+          
+          echo "HTTP Status: $HTTP_CODE"
+          
+          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "204" ]; then
+            echo "result=pass" >> $GITHUB_OUTPUT
+            echo "CORS Preflight: PASS"
+          else
+            echo "result=fail" >> $GITHUB_OUTPUT
+            echo "CORS Preflight: FAIL (HTTP $HTTP_CODE)"
+          fi
+
       - name: E2E Test - n8n Health
         id: n8n_health
         run: |
@@ -1081,6 +1108,7 @@ jobs:
           echo "├─────────────────────────────────────────┤"
           printf "│ %-25s %13s │\n" "API Health:" "${{ steps.api_health.outputs.result == 'pass' && '✅ PASS' || '❌ FAIL' }}"
           printf "│ %-25s %13s │\n" "API Posts Endpoint:" "${{ steps.api_posts.outputs.result == 'pass' && '✅ PASS' || '❌ FAIL' }}"
+          printf "│ %-25s %13s │\n" "CORS Preflight:" "${{ steps.cors_test.outputs.result == 'pass' && '✅ PASS' || '❌ FAIL' }}"
           printf "│ %-25s %13s │\n" "n8n Health:" "${{ steps.n8n_health.outputs.result == 'pass' && '✅ PASS' || '⚠️ SKIP' }}"
           printf "│ %-25s %13s │\n" "AI Health Webhook:" "${{ steps.ai_endpoints.outputs.ai_health == 'pass' && '✅ PASS' || '⚠️ SKIP' }}"
           printf "│ %-25s %13s │\n" "Frontend Site:" "${{ steps.frontend.outputs.result == 'pass' && '✅ PASS' || '❌ FAIL' }}"
@@ -1101,6 +1129,10 @@ jobs:
           if [ "${{ steps.api_health.outputs.result }}" != "pass" ]; then
             echo "CRITICAL: API Health check failed!"
             exit 1
+          fi
+          
+          if [ "${{ steps.cors_test.outputs.result }}" != "pass" ]; then
+            echo "WARNING: CORS preflight test failed - frontend may have issues"
           fi
           
           if [ "${{ steps.ssl_check.outputs.result }}" != "pass" ]; then
