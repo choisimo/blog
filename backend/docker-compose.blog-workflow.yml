@@ -190,16 +190,10 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
       - MONGODB_URL=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DB}?authSource=admin
-      # AI Provider - gemini for direct Google API (most reliable fallback)
-      - AI_PROVIDER=gemini
-      - N8N_WEBHOOK_URL=http://n8n:5678
-      - N8N_BASE_URL=http://n8n:5678
-      - N8N_API_KEY=${N8N_API_KEY:-}
-      # OpenCode-compatible backend endpoint (primary AI provider)
+      # AI Provider - all AI requests go through ai-server-backend → ai-server-serve
       - OPENCODE_BASE_URL=http://ai-server-backend:7016
-      # Gemini fallback (when OpenCode fails)
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
-      - GEMINI_API_KEY=${GOOGLE_API_KEY:-}
+      - OPENCODE_DEFAULT_PROVIDER=${OPENCODE_DEFAULT_PROVIDER:-github-copilot}
+      - OPENCODE_DEFAULT_MODEL=${OPENCODE_DEFAULT_MODEL:-gpt-4.1}
       # Vector DB
       - QDRANT_URL=http://qdrant:6333
       - QDRANT_API_KEY=${QDRANT_API_KEY}
@@ -213,8 +207,6 @@ services:
       # Admin
       - ADMIN_BEARER_TOKEN=${ADMIN_BEARER_TOKEN}
       - JWT_SECRET=${JWT_SECRET}
-      # Default model
-      - AI_DEFAULT_MODEL=${AI_DEFAULT_MODEL:-gemini-2.0-flash}
     expose:
       - "5080"
     networks:

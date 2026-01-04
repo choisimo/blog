@@ -26,29 +26,13 @@ const schema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
 
   // ==========================================================================
-  // AI Gateway (n8n) - Primary AI endpoint
+  // AI - OpenCode (Primary and ONLY AI endpoint)
+  // All AI requests: Blog API → ai-server-backend:7016 → ai-server-serve:7012 → LLM
   // ==========================================================================
-  N8N_BASE_URL: z.string().default('http://n8n:5678'),
-  N8N_WEBHOOK_URL: z.string().default('http://n8n:5678'),
-  N8N_API_KEY: z.string().optional(),
-  AI_DEFAULT_MODEL: z.string().default('gemini-1.5-flash'),
-
-  // AI Engine (VAS Core) - For GitHub Copilot authentication only
-  AI_ENGINE_URL: z.string().default('http://ai-engine:7012'),
-
-  // ==========================================================================
-  // OpenCode Serve - Primary AI endpoint (@opencode-ai/sdk based)
-  // ==========================================================================
-  OPENCODE_BASE_URL: z.string().default('http://opencode-backend:7016'),
+  OPENCODE_BASE_URL: z.string().default('http://ai-server-backend:7016'),
   OPENCODE_API_KEY: z.string().optional(),
   OPENCODE_DEFAULT_PROVIDER: z.string().default('github-copilot'),
   OPENCODE_DEFAULT_MODEL: z.string().default('gpt-4.1'),
-
-  // Direct provider API keys (used by n8n AI nodes)
-  GEMINI_API_KEY: z.string().optional(),
-  GOOGLE_API_KEY: z.string().optional(),  // Alternative name for Gemini API key
-  OPENAI_API_KEY: z.string().optional(),
-  ANTHROPIC_API_KEY: z.string().optional(),
 
   // JWT Configuration
   JWT_EXPIRES_IN: z.string().default('12h'),
@@ -67,8 +51,6 @@ const schema = z.object({
   // ==========================================================================
   // Firebase (DEPRECATED - Use D1 instead)
   // ==========================================================================
-  // These are kept for backward compatibility during migration.
-  // Remove after confirming all data is migrated to D1.
   FIREBASE_SERVICE_ACCOUNT_JSON: z.string().optional(),
   FIREBASE_PROJECT_ID: z.string().optional(),
 
@@ -130,32 +112,14 @@ export const config = {
   },
 
   // ==========================================================================
-  // AI Gateway (n8n) - Primary AI endpoint
+  // AI - OpenCode (Primary and ONLY AI endpoint)
   // ==========================================================================
   ai: {
-    // n8n Gateway (Webhook-based)
-    gateway: {
-      baseUrl: raw.N8N_BASE_URL,
-      webhookUrl: raw.N8N_WEBHOOK_URL,
-      apiKey: raw.N8N_API_KEY,
-      defaultModel: raw.AI_DEFAULT_MODEL,
-    },
-    // AI Engine (for GitHub Copilot auth only)
-    engine: {
-      url: raw.AI_ENGINE_URL,
-    },
-    // OpenCode Backend (Primary - @opencode-ai/sdk based API)
     opencode: {
       baseUrl: raw.OPENCODE_BASE_URL,
       apiKey: raw.OPENCODE_API_KEY,
       defaultProvider: raw.OPENCODE_DEFAULT_PROVIDER,
       defaultModel: raw.OPENCODE_DEFAULT_MODEL,
-    },
-    // Direct provider keys (used by n8n)
-    providers: {
-      gemini: raw.GEMINI_API_KEY,
-      openai: raw.OPENAI_API_KEY,
-      anthropic: raw.ANTHROPIC_API_KEY,
     },
   },
 
@@ -203,14 +167,6 @@ export const config = {
     teiUrl: raw.TEI_URL,
     chromaUrl: raw.CHROMA_URL,
     chromaCollection: raw.CHROMA_COLLECTION,
-  },
-
-  // ==========================================================================
-  // Shortcut references for legacy compatibility
-  // ==========================================================================
-  gemini: {
-    apiKey: raw.GEMINI_API_KEY || raw.GOOGLE_API_KEY,
-    model: raw.AI_DEFAULT_MODEL || 'gemini-2.0-flash',
   },
 };
 

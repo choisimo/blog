@@ -1,23 +1,14 @@
 /**
  * Unified AI Service
  *
- * Provider-agnostic AI interface that supports multiple backends:
- *   - n8n (Webhook-based workflows) - Primary, recommended for easy management
- *   - VAS (OpenCode Engine) - Direct AI server access
- *   - Gemini (Direct API) - Fallback
+ * All AI requests are routed through ai-server-backend → ai-server-serve.
+ * This provides a consistent interface regardless of the underlying LLM provider.
  *
  * Architecture:
- *   Route -> AIService -> n8n Webhook -> AI Provider (via n8n nodes)
+ *   Blog API → ai-server-backend:7016 → ai-server-serve:7012 → LLM Provider
  *
- * Configuration priority:
- *   1. AI_PROVIDER env var ('n8n', 'vas', 'gemini')
- *   2. Default: 'n8n' if N8N_WEBHOOK_URL is set, otherwise 'gemini'
- *
- * Benefits of n8n:
- *   - Visual workflow management (no code changes for AI routing)
- *   - Easy provider switching via n8n UI
- *   - Built-in retry, error handling, and logging
- *   - Centralized prompt management
+ * The ai-server-serve handles provider selection (GitHub Copilot, OpenAI, Anthropic, etc.)
+ * Configuration is managed through ai-server-serve, not this service.
  *
  * Usage:
  *   import { aiService } from './lib/ai-service.js';
@@ -35,64 +26,16 @@
  *   const result = await aiService.task('sketch', { paragraph: '...' });
  */
 
-import { config } from '../config.js';
-import { getN8NClient, tryParseJson as n8nTryParse } from './n8n-client.js';
-import { generateContent as geminiGenerate, tryParseJson as geminiTryParse } from './gemini.js';
 import { logAIUsage } from './ai-usage-logger.js';
 
-// Optional VAS (OpenCode) client import
-let getVASClient, vasTryParse;
-try {
-  ({ getVASClient, tryParseJson: vasTryParse } = await import('./ai-serve.js'));
-} catch { getVASClient = null; vasTryParse = null; }
-
-// Optional OpenCode client import
+// OpenCode client for ai-server-backend communication
 let getOpenCodeClient, opencodeTryParse;
 try {
   ({ getOpenCodeClient, tryParseJson: opencodeTryParse } = await import('./opencode-client.js'));
-} catch { getOpenCodeClient = null; opencodeTryParse = null; }
-
-// ============================================================================
-// Configuration
-// ============================================================================
-
-/**
- * Determine the active AI provider based on environment
- * Priority: explicit AI_PROVIDER > auto-detect (opencode > n8n > vas > gemini)
- */
-function getActiveProvider() {
-  const explicit = process.env.AI_PROVIDER?.toLowerCase();
-  
-  if (explicit) {
-    // Map legacy providers to 'n8n' (n8n handles all routing now)
-    if (explicit === 'openai') {
-      console.info('[AIService] Redirecting legacy provider to n8n');
-      return 'n8n';
-    }
-    if (['opencode', 'n8n', 'vas', 'gemini'].includes(explicit)) {
-      return explicit;
-    }
-    console.warn(`[AIService] Unknown AI_PROVIDER "${explicit}", using default`);
-  }
-  
-  // Auto-detect based on available configuration (opencode first)
-  if (process.env.OPENCODE_BASE_URL) {
-    return 'opencode';
-  }
-  
-  if (process.env.N8N_WEBHOOK_URL || process.env.N8N_BASE_URL) {
-    return 'n8n';
-  }
-  
-  if (process.env.AI_SERVE_BASE_URL || process.env.VAS_CORE_URL) {
-    return 'vas';
-  }
-  
-  if (config.gemini?.apiKey) {
-    return 'gemini';
-  }
-  
-  return 'opencode'; // Default to opencode
+} catch (err) {
+  console.error('[AIService] Failed to import opencode-client:', err.message);
+  getOpenCodeClient = null;
+  opencodeTryParse = null;
 }
 
 // ============================================================================
@@ -126,39 +69,25 @@ const logger = {
 
 export class AIService {
   constructor() {
-    this.provider = getActiveProvider();
     this._client = null;
     
     logger.info(
       { operation: 'init' },
-      `AIService initialized with provider: ${this.provider}`
+      'AIService initialized (opencode-only mode)'
     );
   }
 
   /**
-   * Get or create the appropriate client
+   * Get the OpenCode client
    */
   _getClient() {
     if (this._client) return this._client;
     
-    switch (this.provider) {
-      case 'opencode':
-        this._client = getOpenCodeClient?.();
-        break;
-      case 'n8n':
-        this._client = getN8NClient();
-        break;
-      case 'vas':
-        this._client = getVASClient?.();
-        break;
-      case 'gemini':
-        // Gemini uses direct function, no client object
-        this._client = null;
-        break;
-      default:
-        throw new Error(`Unknown AI provider: ${this.provider}`);
+    if (!getOpenCodeClient) {
+      throw new Error('OpenCode client not available. Check opencode-client.js import.');
     }
     
+    this._client = getOpenCodeClient();
     return this._client;
   }
 
@@ -174,67 +103,23 @@ export class AIService {
     const startTime = Date.now();
 
     logger.debug(
-      { operation: 'generate', requestId, provider: this.provider },
+      { operation: 'generate', requestId },
       'Starting generation',
       { promptLength: prompt?.length }
     );
 
     try {
-      let result;
-
-      switch (this.provider) {
-        case 'opencode': {
-          const client = this._getClient();
-          result = await client.generate(prompt, {
-            temperature: options.temperature,
-            model: options.model,
-            systemPrompt: options.systemPrompt,
-            timeout: options.timeout,
-          });
-          break;
-        }
-
-        case 'n8n': {
-          const client = this._getClient();
-          result = await client.generate(prompt, {
-            temperature: options.temperature,
-            model: options.model,
-            systemPrompt: options.systemPrompt,
-            timeout: options.timeout,
-          });
-          break;
-        }
-
-        case 'vas': {
-          const client = this._getClient();
-          // VAS doesn't support system prompt directly, prepend to prompt
-          const fullPrompt = options.systemPrompt
-            ? `${options.systemPrompt}\n\n${prompt}`
-            : prompt;
-          result = await client.generate(fullPrompt, {
-            model: options.model,
-            timeout: options.timeout,
-          });
-          break;
-        }
-
-        case 'gemini': {
-          const fullPrompt = options.systemPrompt
-            ? `${options.systemPrompt}\n\n${prompt}`
-            : prompt;
-          result = await geminiGenerate(fullPrompt, {
-            temperature: options.temperature ?? 0.2,
-          });
-          break;
-        }
-
-        default:
-          throw new Error(`Unsupported provider: ${this.provider}`);
-      }
+      const client = this._getClient();
+      const result = await client.generate(prompt, {
+        temperature: options.temperature,
+        model: options.model,
+        systemPrompt: options.systemPrompt,
+        timeout: options.timeout,
+      });
 
       const duration = Date.now() - startTime;
       logger.info(
-        { operation: 'generate', requestId, provider: this.provider },
+        { operation: 'generate', requestId },
         'Generation completed',
         { duration, resultLength: result?.length }
       );
@@ -247,14 +132,14 @@ export class AIService {
         completionTokens: this._estimateTokens(result),
         latencyMs: duration,
         status: 'success',
-        metadata: { requestId, provider: this.provider },
+        metadata: { requestId },
       }).catch(() => {}); // Silently ignore logging errors
 
       return result;
     } catch (error) {
       const duration = Date.now() - startTime;
       logger.error(
-        { operation: 'generate', requestId, provider: this.provider },
+        { operation: 'generate', requestId },
         'Generation failed',
         { duration, error: error.message }
       );
@@ -267,7 +152,7 @@ export class AIService {
         latencyMs: duration,
         status: 'error',
         errorMessage: error.message,
-        metadata: { requestId, provider: this.provider },
+        metadata: { requestId },
       }).catch(() => {});
 
       throw error;
@@ -286,160 +171,37 @@ export class AIService {
     const startTime = Date.now();
 
     logger.debug(
-      { operation: 'chat', requestId, provider: this.provider },
+      { operation: 'chat', requestId },
       'Starting chat',
       { messageCount: messages?.length }
     );
 
     try {
-      let result;
+      const client = this._getClient();
+      const response = await client.chat(messages, {
+        temperature: options.temperature,
+        model: options.model,
+        timeout: options.timeout,
+      });
 
-      switch (this.provider) {
-        case 'opencode': {
-          const client = this._getClient();
-          try {
-            const response = await client.chat(messages, {
-              temperature: options.temperature,
-              model: options.model,
-              timeout: options.timeout,
-            });
-            result = {
-              content: response.content,
-              model: response.model,
-              provider: 'opencode',
-              usage: response.usage,
-            };
-          } catch (opencodeError) {
-            // Fallback to n8n if opencode fails and n8n is configured
-            if (process.env.N8N_WEBHOOK_URL || process.env.N8N_BASE_URL) {
-              logger.warn(
-                { operation: 'chat', requestId },
-                'opencode failed, falling back to n8n',
-                { error: opencodeError.message }
-              );
-              const n8nClient = getN8NClient();
-              const fallbackResponse = await n8nClient.chat(messages, {
-                temperature: options.temperature,
-                model: options.model,
-                timeout: options.timeout,
-              });
-              result = {
-                content: fallbackResponse.content,
-                model: fallbackResponse.model,
-                provider: 'n8n-fallback',
-                usage: fallbackResponse.usage,
-              };
-            } else if (config.gemini?.apiKey) {
-              logger.warn(
-                { operation: 'chat', requestId },
-                'opencode failed, falling back to Gemini',
-                { error: opencodeError.message }
-              );
-              const formattedMessages = messages.map(m => {
-                if (m.role === 'system') return `System: ${m.content}`;
-                if (m.role === 'assistant') return `Assistant: ${m.content}`;
-                return `User: ${m.content}`;
-              }).join('\n\n');
-              const response = await geminiGenerate(formattedMessages, {
-                temperature: options.temperature ?? 0.2,
-              });
-              result = {
-                content: response,
-                model: config.gemini?.model || 'gemini-2.0-flash',
-                provider: 'gemini-fallback',
-              };
-            } else {
-              throw opencodeError;
-            }
-          }
-          break;
-        }
+      const result = {
+        content: response.content,
+        model: response.model,
+        provider: 'opencode',
+        usage: response.usage,
+        sessionId: response.sessionId,
+      };
 
-        case 'n8n': {
-          const client = this._getClient();
-          try {
-            const response = await client.chat(messages, {
-              temperature: options.temperature,
-              model: options.model,
-              timeout: options.timeout,
-            });
-            result = {
-              content: response.content,
-              model: response.model,
-              provider: 'n8n',
-              usage: response.usage,
-            };
-          } catch (n8nError) {
-            // Fallback to Gemini if n8n fails and Gemini is configured
-            if (config.gemini?.apiKey) {
-              logger.warn(
-                { operation: 'chat', requestId },
-                'n8n failed, falling back to Gemini',
-                { error: n8nError.message }
-              );
-              const formattedMessages = messages.map(m => {
-                if (m.role === 'system') return `System: ${m.content}`;
-                if (m.role === 'assistant') return `Assistant: ${m.content}`;
-                return `User: ${m.content}`;
-              }).join('\n\n');
-              const response = await geminiGenerate(formattedMessages, {
-                temperature: options.temperature ?? 0.2,
-              });
-              result = {
-                content: response,
-                model: config.gemini?.model || 'gemini-2.0-flash',
-                provider: 'gemini-fallback',
-              };
-            } else {
-              throw n8nError;
-            }
-          }
-          break;
-        }
-
-        case 'vas': {
-          const client = this._getClient();
-          const response = await client.chat(messages, {
-            model: options.model,
-            timeout: options.timeout,
-          });
-          result = {
-            content: response.content,
-            model: response.model,
-            provider: 'vas',
-          };
-          break;
-        }
-
-        case 'gemini': {
-          // Gemini: format messages into a single prompt
-          const formattedMessages = messages.map(m => {
-            if (m.role === 'system') return `System: ${m.content}`;
-            if (m.role === 'assistant') return `Assistant: ${m.content}`;
-            return `User: ${m.content}`;
-          }).join('\n\n');
-
-          const response = await geminiGenerate(formattedMessages, {
-            temperature: options.temperature ?? 0.2,
-          });
-
-          result = {
-            content: response,
-            model: config.gemini?.model || 'gemini-2.0-flash',
-            provider: 'gemini',
-          };
-          break;
-        }
-
-        default:
-          throw new Error(`Unsupported provider: ${this.provider}`);
+      // Validate response - throw error if empty
+      if (!result.content || result.content.trim() === '') {
+        throw new Error('AI returned empty response');
       }
 
       const duration = Date.now() - startTime;
       logger.info(
-        { operation: 'chat', requestId, provider: this.provider },
+        { operation: 'chat', requestId },
         'Chat completed',
-        { duration, resultLength: result?.content?.length }
+        { duration, resultLength: result.content?.length }
       );
 
       // Log usage asynchronously with actual token counts if available
@@ -450,14 +212,14 @@ export class AIService {
         completionTokens: result.usage?.completion_tokens || this._estimateTokens(result.content),
         latencyMs: duration,
         status: 'success',
-        metadata: { requestId, provider: this.provider },
+        metadata: { requestId },
       }).catch(() => {});
 
       return result;
     } catch (error) {
       const duration = Date.now() - startTime;
       logger.error(
-        { operation: 'chat', requestId, provider: this.provider },
+        { operation: 'chat', requestId },
         'Chat failed',
         { duration, error: error.message }
       );
@@ -470,7 +232,7 @@ export class AIService {
         latencyMs: duration,
         status: 'error',
         errorMessage: error.message,
-        metadata: { requestId, provider: this.provider },
+        metadata: { requestId },
       }).catch(() => {});
 
       throw error;
@@ -480,20 +242,12 @@ export class AIService {
   /**
    * Vision analysis with image
    * 
-   * For R2-stored images, pass the URL directly. n8n workflow will fetch
-   * the image from R2 and process it with vision-capable models.
-   * 
-   * Architecture:
-   *   Image URL/Base64 -> n8n workflow -> Vision Model (GPT-4o, Claude, etc.)
-   *                                   -> Analysis Result
-   *
    * @param {string} imageData - R2 URL (https://...) or Base64 encoded image
    * @param {string} prompt - Analysis prompt
    * @param {object} options - { mimeType, model, timeout }
    * @returns {Promise<string>} Analysis result
    */
   async vision(imageData, prompt, options = {}) {
-    const mimeType = options.mimeType || 'image/jpeg';
     const requestId = `vision-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const startTime = Date.now();
     
@@ -506,44 +260,12 @@ export class AIService {
     );
 
     try {
-      let result;
-
-      // Vision always goes through n8n workflow for consistent R2 URL handling
-      // n8n workflow can fetch images directly from R2 URLs
-      switch (this.provider) {
-        case 'opencode':
-        case 'n8n': {
-          // Both opencode and n8n providers use n8n workflow for vision
-          const client = getN8NClient();
-          result = await client.vision(imageData, prompt, {
-            mimeType,
-            model: options.model || 'gpt-4o',
-            timeout: options.timeout,
-          });
-          break;
-        }
-
-        case 'vas': {
-          const client = this._getClient();
-          // VAS client expects different signature
-          result = await client.vision(imageData, mimeType, prompt, {
-            model: options.model,
-            timeout: options.timeout,
-          });
-          break;
-        }
-
-        case 'gemini':
-        default:
-          // Fallback to n8n for vision
-          const n8nClient = getN8NClient();
-          result = await n8nClient.vision(imageData, prompt, {
-            mimeType,
-            model: options.model || 'gpt-4o',
-            timeout: options.timeout,
-          });
-          break;
-      }
+      const client = this._getClient();
+      const result = await client.vision(imageData, prompt, {
+        mimeType: options.mimeType || 'image/jpeg',
+        model: options.model || 'gpt-4o',
+        timeout: options.timeout,
+      });
 
       const duration = Date.now() - startTime;
       logger.info(
@@ -572,41 +294,8 @@ export class AIService {
    * @yields {string} Text chunks
    */
   async *stream(prompt, options = {}) {
-    // opencode, n8n and VAS providers support streaming via their clients
-    if (this.provider === 'opencode' || this.provider === 'n8n' || this.provider === 'vas') {
-      const client = this._getClient();
-      yield* client.stream(prompt, options);
-      return;
-    }
-
-    // For non-streaming providers, generate full text and chunk it
-    const text = await this.generate(prompt, options);
-    const chunkSize = 80;
-    for (let i = 0; i < text.length; i += chunkSize) {
-      yield text.slice(i, Math.min(i + chunkSize, text.length));
-      await new Promise(r => setTimeout(r, 25));
-    }
-  }
-
-  /**
-   * Embeddings generation
-   *
-   * @param {string|string[]} input
-   * @param {object} options
-   * @returns {Promise<number[][]>}
-   */
-  async embeddings(input, options = {}) {
-    if (this.provider === 'opencode') {
-      const client = this._getClient();
-      return client.embeddings(input, options);
-    }
-
-    if (this.provider === 'n8n') {
-      const client = this._getClient();
-      return client.embeddings(input, options);
-    }
-
-    throw new Error(`Embeddings not supported for provider: ${this.provider}`);
+    const client = this._getClient();
+    yield* client.stream(prompt, options);
   }
 
   /**
@@ -779,22 +468,6 @@ export class AIService {
    * Try to parse JSON from AI response
    */
   tryParseJson(text) {
-    // Use provider-specific parser or generic one
-    switch (this.provider) {
-      case 'opencode':
-        return opencodeTryParse?.(text) || this._genericTryParseJson(text);
-      case 'n8n':
-        return n8nTryParse(text);
-      case 'vas':
-        return vasTryParse?.(text) || this._genericTryParseJson(text);
-      case 'gemini':
-        return geminiTryParse(text);
-      default:
-        return this._genericTryParseJson(text);
-    }
-  }
-
-  _genericTryParseJson(text) {
     if (!text) return null;
 
     try {
@@ -828,54 +501,21 @@ export class AIService {
   }
 
   /**
-   * Get default model name based on provider
+   * Get default model name
    */
   _getDefaultModel() {
-    switch (this.provider) {
-      case 'opencode':
-        return process.env.OPENCODE_DEFAULT_MODEL || 'gpt-4.1';
-      case 'n8n':
-        return process.env.AI_DEFAULT_MODEL || 'gemini-2.0-flash';
-      case 'vas':
-        return process.env.AI_SERVE_DEFAULT_MODEL || 'gpt-4o';
-      case 'gemini':
-        return config.gemini?.model || 'gemini-2.0-flash';
-      default:
-        return 'unknown';
-    }
+    return process.env.OPENCODE_DEFAULT_MODEL || process.env.AI_DEFAULT_MODEL || 'gpt-4.1';
   }
 
   /**
    * Health check
    */
   async health(force = false) {
-    switch (this.provider) {
-      case 'opencode': {
-        const client = this._getClient();
-        return client?.health?.(force) || { ok: false, error: 'OpenCode client not available' };
-      }
-
-      case 'n8n': {
-        const client = this._getClient();
-        return client.health(force);
-      }
-
-      case 'vas': {
-        const client = this._getClient();
-        return client?.health?.(force) || { ok: false, error: 'VAS client not available' };
-      }
-
-      case 'gemini': {
-        // Gemini: simple check if API key exists
-        return {
-          ok: !!config.gemini?.apiKey,
-          provider: 'gemini',
-          status: config.gemini?.apiKey ? 'configured' : 'missing_key',
-        };
-      }
-
-      default:
-        return { ok: false, error: `Unknown provider: ${this.provider}` };
+    try {
+      const client = this._getClient();
+      return client.health?.(force) || { ok: false, error: 'Health check not available' };
+    } catch (error) {
+      return { ok: false, error: error.message };
     }
   }
 
@@ -884,26 +524,11 @@ export class AIService {
    */
   getProviderInfo() {
     return {
-      provider: this.provider,
+      provider: 'opencode',
       config: {
-        opencode: {
-          baseUrl: process.env.OPENCODE_BASE_URL || 'http://opencode-backend:7016',
-          provider: process.env.OPENCODE_DEFAULT_PROVIDER || 'github-copilot',
-          model: process.env.OPENCODE_DEFAULT_MODEL || 'gpt-4.1',
-          hasKey: !!process.env.OPENCODE_API_KEY,
-        },
-        n8n: {
-          baseUrl: process.env.N8N_WEBHOOK_URL || process.env.N8N_BASE_URL,
-          model: process.env.AI_DEFAULT_MODEL || 'gemini-2.0-flash',
-        },
-        vas: {
-          baseUrl: process.env.AI_SERVE_BASE_URL,
-          model: process.env.AI_SERVE_DEFAULT_MODEL,
-        },
-        gemini: {
-          model: config.gemini?.model,
-          hasKey: !!config.gemini?.apiKey,
-        },
+        baseUrl: process.env.OPENCODE_BASE_URL || 'http://ai-server-backend:7016',
+        defaultProvider: process.env.OPENCODE_DEFAULT_PROVIDER || 'github-copilot',
+        defaultModel: process.env.OPENCODE_DEFAULT_MODEL || 'gpt-4.1',
       },
     };
   }
@@ -925,19 +550,12 @@ export function getAIService() {
   return _service;
 }
 
-/**
- * Create AIService with specific provider (for testing)
- */
-export function createAIService(provider) {
-  process.env.AI_PROVIDER = provider;
-  _service = null;
-  return getAIService();
-}
-
 // Default singleton instance
 export const aiService = getAIService();
 
-// Legacy compatibility exports - use n8n tryParseJson
-export { tryParseJson } from './n8n-client.js';
+// Export tryParseJson for backward compatibility
+export function tryParseJson(text) {
+  return aiService.tryParseJson(text);
+}
 
 export default AIService;

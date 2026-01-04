@@ -1,6 +1,5 @@
 import { Router } from 'express';
-import { aiService } from '../lib/ai-service.js';
-import { generateContent, tryParseJson } from '../lib/ai-serve.js';
+import { aiService, tryParseJson } from '../lib/ai-service.js';
 
 const router = Router();
 
@@ -300,8 +299,8 @@ router.post('/session/:sessionId/task', async (req, res, next) => {
       // Build prompt
       const { prompt, temperature } = buildTaskPrompt(taskMode, taskPayload);
 
-      // Execute via VAS
-      const text = await generateContent(prompt, { temperature });
+      // Execute via aiService
+      const text = await aiService.generate(prompt, { temperature });
 
       // Parse response based on mode
       let data;
@@ -363,7 +362,7 @@ router.post('/aggregate', async (req, res, next) => {
       prompt.trim(),
     ].join('\n');
 
-    const text = await generateContent(systemPrompt, { temperature: 0.2 });
+    const text = await aiService.generate(systemPrompt, { temperature: 0.2 });
     return res.json({ ok: true, data: { text } });
   } catch (err) {
     return next(err);

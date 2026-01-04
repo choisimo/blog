@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { queryOne, execute, isD1Configured } from '../lib/d1.js';
-import { generateContent } from '../lib/ai-serve.js';
+import { aiService } from '../lib/ai-service.js';
 
 const router = Router();
 
@@ -116,7 +116,7 @@ Return ONLY the translated title, nothing else.
 
 Title: ${title}`;
 
-    const translatedTitle = await generateContent(titlePrompt, { temperature: 0.1 });
+    const translatedTitle = await aiService.generate(titlePrompt, { temperature: 0.1 });
 
     // Translate description if provided
     let translatedDescription = '';
@@ -126,7 +126,7 @@ Return ONLY the translated description, nothing else.
 
 Description: ${description}`;
 
-      translatedDescription = await generateContent(descPrompt, { temperature: 0.1 });
+      translatedDescription = await aiService.generate(descPrompt, { temperature: 0.1 });
     }
 
     // Translate content
@@ -144,7 +144,7 @@ IMPORTANT RULES:
 Content:
 ${truncatedContent}`;
 
-    const translatedContent = await generateContent(contentPrompt, { temperature: 0.2 });
+    const translatedContent = await aiService.generate(contentPrompt, { temperature: 0.2 });
 
     // Clean up the responses
     const cleanTitle = translatedTitle.trim().replace(/^["']|["']$/g, '');
