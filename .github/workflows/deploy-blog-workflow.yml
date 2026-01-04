@@ -208,7 +208,8 @@ jobs:
           QDRANT_API_KEY=${{ secrets.QDRANT_API_KEY }}
 
           # AI Configuration
-          AI_DEFAULT_MODEL=${{ vars.AI_DEFAULT_MODEL || 'gemini-1.5-flash' }}
+          AI_DEFAULT_MODEL=${{ vars.AI_DEFAULT_MODEL || 'gemini-2.0-flash' }}
+          AI_SERVER_SERVE_URL=${{ vars.AI_SERVER_SERVE_URL || 'https://ai.nodove.com' }}
           OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
           GOOGLE_API_KEY=${{ secrets.GEMINI_API_KEY }}
           ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
