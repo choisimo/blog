@@ -30,7 +30,6 @@ type UseChatActionsProps = {
   setUploadedImages: React.Dispatch<React.SetStateAction<UploadedChatImage[]>>;
   messages: ChatMessage[];
   setSessionKey: (key: string) => void;
-  selectedModel?: string;
 };
 
 export function useChatActions({
@@ -54,7 +53,6 @@ export function useChatActions({
   setUploadedImages,
   messages,
   setSessionKey,
-  selectedModel,
 }: UseChatActionsProps) {
   const send = useCallback(async () => {
     if (!canSend) return;
@@ -176,7 +174,6 @@ export function useChatActions({
           imageAnalysis: uploaded?.imageAnalysis,
           ragContext,
           memoryContext,
-          model: selectedModel,
         })) {
           if (ev.type === "text") {
             acc += ev.text;
@@ -232,7 +229,6 @@ export function useChatActions({
     lastPromptRef,
     setUploadedImages,
     setMessages,
-    selectedModel,
   ]);
 
   const stop = useCallback(() => {

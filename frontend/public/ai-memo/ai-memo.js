@@ -60,6 +60,23 @@
   const DEFAULT_REPO_URL = 'https://github.com/choisimo/blog';
   const BLOCK_SELECTORS = 'p, pre, code, blockquote, ul, ol, li, table, thead, tbody, tr, th, td, figure, figcaption, h1, h2, h3, h4, h5, h6, section, article, main';
 
+  function normalizeBaseUrl(url) {
+    let normalized = String(url || '').trim();
+
+    // Migrate legacy domain to unified gateway
+    if (normalized.includes('ai-check.nodove.com')) {
+      normalized = normalized.replace('ai-check.nodove.com', 'api.nodove.com');
+    }
+
+    while (normalized.endsWith('/')) {
+      normalized = normalized.slice(0, -1);
+    }
+    if (normalized.endsWith('/api')) {
+      normalized = normalized.slice(0, -4);
+    }
+    return normalized;
+  }
+
   class AIMemoPad extends HTMLElement {
     constructor() {
       super();
@@ -415,12 +432,20 @@
       // 1) Runtime injected config (window.APP_CONFIG)
       const w = typeof window !== 'undefined' ? window : null;
       const fromRuntime = w?.APP_CONFIG?.apiBaseUrl || w?.__APP_CONFIG?.apiBaseUrl;
-      if (typeof fromRuntime === 'string' && fromRuntime) return fromRuntime;
+      if (typeof fromRuntime === 'string' && fromRuntime) return normalizeBaseUrl(fromRuntime);
 
       // 2) localStorage override (developer convenience)
       try {
         const v = LS.get('aiMemo.backendUrl');
-        if (typeof v === 'string' && v) return v;
+        if (typeof v === 'string' && v) {
+          const normalized = normalizeBaseUrl(v);
+          if (normalized !== v) {
+            try {
+              LS.set('aiMemo.backendUrl', normalized);
+            } catch (_) {}
+          }
+          return normalized;
+        }
       } catch {
         // ignore
       }
@@ -428,11 +453,11 @@
       // 3) Localhost detection
       const host = location.host;
       if (host.includes('localhost') || host.includes('127.0.0.1')) {
-        return 'http://localhost:8787';
+        return normalizeBaseUrl('http://localhost:8787');
       }
 
       // 4) Default production URL
-      return DEFAULT_API_URL;
+      return normalizeBaseUrl(DEFAULT_API_URL);
     }
 
     async syncToCloud() {

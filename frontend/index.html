@@ -50,8 +50,6 @@
       // If not set, getApiBaseUrl() will fall back to localStorage or null
       window.APP_CONFIG = Object.assign({}, window.APP_CONFIG || {}, {
         apiBaseUrl: import.meta.env.VITE_API_BASE_URL || null,
-        chatBaseUrl: import.meta.env.VITE_CHAT_BASE_URL || null,
-        chatApiKey: import.meta.env.VITE_CHAT_API_KEY || null,
       });
     </script>
     <script type="module" src="/src/main.tsx"></script>

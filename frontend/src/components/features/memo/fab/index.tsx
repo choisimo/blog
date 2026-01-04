@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
+import { useUIStrings } from "@/utils/i18n";
 
 import type { DockAction } from "./types";
 import {
@@ -56,6 +57,7 @@ export default function FloatingActionBar() {
   const isMobile = useIsMobile();
   const { isTerminal } = useTheme();
   const { send, sendImpression, sendMemoContextChange } = useFabAnalytics();
+  const str = useUIStrings();
 
   // Shell Commander state (for terminal theme mobile)
   const [shellOpen, setShellOpen] = useState(false);
@@ -162,18 +164,18 @@ export default function FloatingActionBar() {
 
   const stackDisabledReason = useMemo(() => {
     if (!storageAvailable)
-      return "이 브라우저에서는 Stack 기능을 사용할 수 없습니다.";
-    if (!visitedPosts.length) return "최근 방문한 글이 없습니다.";
+      return str.stack.unavailable;
+    if (!visitedPosts.length) return str.stack.noVisited;
     return null;
-  }, [storageAvailable, visitedPosts.length]);
+  }, [storageAvailable, visitedPosts.length, str.stack]);
 
   const handleStackClick = useCallback(() => {
     if (stackDisabledReason) {
-      toast({ title: "Stack 사용 불가", description: stackDisabledReason });
+      toast({ title: str.stack.title, description: stackDisabledReason });
       return;
     }
     openStackView();
-  }, [openStackView, stackDisabledReason, toast]);
+  }, [openStackView, stackDisabledReason, toast, str.stack.title]);
 
   // Shell Commander hook
   const shell = useShellCommander({
@@ -255,7 +257,7 @@ export default function FloatingActionBar() {
   const dockActions: DockAction[] = [
     {
       key: "chat",
-      label: "Chat",
+      label: str.nav.chat,
       icon: Sparkles,
       onClick: () => {
         setChatOpen(true);
@@ -265,7 +267,7 @@ export default function FloatingActionBar() {
     },
     {
       key: "memo",
-      label: "Memo",
+      label: str.nav.memo,
       icon: NotebookPen,
       onClick: () => {
         send("fab_memo_toggle");
@@ -274,7 +276,7 @@ export default function FloatingActionBar() {
     },
     {
       key: "stack",
-      label: "Stack",
+      label: str.nav.stack,
       icon: Layers,
       onClick: handleStackClick,
       disabled: !!stackDisabledReason,
@@ -282,7 +284,7 @@ export default function FloatingActionBar() {
     },
     {
       key: "insight",
-      label: "Insight",
+      label: str.nav.insight,
       icon: Map,
       onClick: () => {
         send("fab_insight_click");

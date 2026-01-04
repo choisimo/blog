@@ -9,7 +9,6 @@ import {
   useChatActions,
   useKeyboardHeight,
   useInputKeyDown,
-  useModels,
 } from "./hooks";
 import {
   ChatHeader,
@@ -49,9 +48,6 @@ export default function ChatWidget(props: {
 
   // Main state hook
   const state = useChatState({ initialMessage: props.initialMessage });
-
-  // Model selection
-  const modelState = useModels();
 
   // Session management
   const session = useChatSession({
@@ -96,7 +92,6 @@ export default function ChatWidget(props: {
     setUploadedImages: state.setUploadedImages,
     messages: state.messages,
     setSessionKey: state.setSessionKey,
-    selectedModel: modelState.selectedModel,
   });
 
   // Keyboard handler
@@ -160,15 +155,6 @@ export default function ChatWidget(props: {
           onTogglePersist={state.togglePersistStorage}
           onClearAll={actions.clearAll}
           onClose={props.onClose}
-          // Model selection props
-          models={modelState.models}
-          modelsByProvider={modelState.modelsByProvider}
-          selectedModel={modelState.selectedModel}
-          currentModel={modelState.currentModel}
-          modelsLoading={modelState.loading}
-          modelsError={modelState.error}
-          onModelSelect={modelState.setSelectedModel}
-          onModelsRefresh={modelState.refresh}
         />
 
         {/* Session panel */}

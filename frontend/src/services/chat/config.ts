@@ -11,16 +11,6 @@ import { getApiBaseUrl } from '@/utils/apiBase';
  * 우선순위: runtime config > env > API base URL
  */
 export function getChatBaseUrl(): string {
-  const w = typeof window !== 'undefined' ? (window as any) : null;
-  const fromRuntime =
-    w?.APP_CONFIG?.chatBaseUrl || w?.__APP_CONFIG?.chatBaseUrl;
-  if (typeof fromRuntime === 'string' && fromRuntime) return fromRuntime;
-
-  const fromEnv = (import.meta as any)?.env?.VITE_CHAT_BASE_URL as
-    | string
-    | undefined;
-  if (typeof fromEnv === 'string' && fromEnv) return fromEnv;
-
   return '';
 }
 
@@ -28,15 +18,6 @@ export function getChatBaseUrl(): string {
  * Chat API 키 가져오기
  */
 export function getChatApiKey(): string {
-  const w = typeof window !== 'undefined' ? (window as any) : null;
-  const fromRuntime = w?.APP_CONFIG?.chatApiKey || w?.__APP_CONFIG?.chatApiKey;
-  if (typeof fromRuntime === 'string' && fromRuntime) return fromRuntime;
-
-  const fromEnv = (import.meta as any)?.env?.VITE_CHAT_API_KEY as
-    | string
-    | undefined;
-  if (typeof fromEnv === 'string' && fromEnv) return fromEnv;
-
   return '';
 }
 
@@ -73,15 +54,6 @@ export function isUnifiedTasksEnabled(): boolean {
  * Chat 엔드포인트 URL 생성 헬퍼
  */
 export function buildChatUrl(path: string, sessionId?: string): string {
-  const chatBase = getChatBaseUrl();
-
-  if (chatBase) {
-    const base = chatBase.replace(/\/$/, '');
-    return sessionId
-      ? `${base}/session/${encodeURIComponent(sessionId)}${path}`
-      : `${base}${path}`;
-  }
-
   const apiBase = getApiBaseUrl().replace(/\/$/, '');
   return sessionId
     ? `${apiBase}/api/v1/chat/session/${encodeURIComponent(sessionId)}${path}`
@@ -102,11 +74,6 @@ export function buildChatHeaders(
     headers['Accept'] = 'text/event-stream, application/x-ndjson, text/plain';
   } else {
     headers['Accept'] = 'application/json, text/plain';
-  }
-
-  const apiKey = getChatApiKey();
-  if (apiKey && getChatBaseUrl()) {
-    headers['X-API-KEY'] = apiKey;
   }
 
   return headers;

@@ -15,8 +15,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { ChatSessionMeta, UploadedChatImage } from "../types";
-import type { AIModel } from "../hooks/useModels";
-import { ModelSelector } from "./ModelSelector";
 
 type ChatHeaderProps = {
   isMobile: boolean;
@@ -31,15 +29,6 @@ type ChatHeaderProps = {
   onTogglePersist: () => void;
   onClearAll: () => void;
   onClose?: () => void;
-  // Model selection props
-  models?: AIModel[];
-  modelsByProvider?: Record<string, AIModel[]>;
-  selectedModel?: string;
-  currentModel?: AIModel;
-  modelsLoading?: boolean;
-  modelsError?: string | null;
-  onModelSelect?: (modelId: string) => void;
-  onModelsRefresh?: () => void;
 };
 
 export function ChatHeader({
@@ -55,15 +44,6 @@ export function ChatHeader({
   onTogglePersist,
   onClearAll,
   onClose,
-  // Model selection props
-  models = [],
-  modelsByProvider = {},
-  selectedModel = '',
-  currentModel,
-  modelsLoading = false,
-  modelsError = null,
-  onModelSelect,
-  onModelsRefresh,
 }: ChatHeaderProps) {
   return (
     <div
@@ -131,23 +111,6 @@ export function ChatHeader({
 
       {/* Right: Actions */}
       <div className="flex items-center gap-1 shrink-0">
-        {/* Model Selector */}
-        {onModelSelect && onModelsRefresh && (
-          <ModelSelector
-            models={models}
-            modelsByProvider={modelsByProvider}
-            selectedModel={selectedModel}
-            currentModel={currentModel}
-            loading={modelsLoading}
-            error={modelsError}
-            onSelect={onModelSelect}
-            onRefresh={onModelsRefresh}
-            isMobile={isMobile}
-            isTerminal={isTerminal}
-            disabled={busy}
-          />
-        )}
-
         {/* Options menu */}
         {isMobile ? (
           <Button

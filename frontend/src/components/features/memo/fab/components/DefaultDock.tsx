@@ -18,8 +18,8 @@ export function DefaultDock({ dockActions, isMobile }: DefaultDockProps) {
       )}
     >
       {isMobile ? (
-        // Mobile: 4 buttons displayed compactly
-        <div className="flex w-full items-center justify-around">
+        // Mobile: Grid layout for pixel-perfect equal spacing
+        <div className="grid w-full grid-cols-4 place-items-center">
           {dockActions.map((action) => {
             const Icon = action.icon;
             return (
