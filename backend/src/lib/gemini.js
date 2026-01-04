@@ -2,7 +2,7 @@ import { config } from '../config.js';
 
 export async function generateContent(prompt, { temperature = 0.2 } = {}) {
   const apiKey = config.gemini.apiKey;
-  const model = config.gemini.model || 'gemini-1.5-flash';
+  const model = config.gemini.model || 'gemini-2.0-flash';
   if (!apiKey) {
     const err = new Error('Server not configured: GEMINI_API_KEY missing');
     err.status = 500;

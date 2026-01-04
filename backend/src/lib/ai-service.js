@@ -345,7 +345,7 @@ export class AIService {
               });
               result = {
                 content: response,
-                model: config.gemini?.model || 'gemini-1.5-flash',
+                model: config.gemini?.model || 'gemini-2.0-flash',
                 provider: 'gemini-fallback',
               };
             } else {
@@ -387,7 +387,7 @@ export class AIService {
               });
               result = {
                 content: response,
-                model: config.gemini?.model || 'gemini-1.5-flash',
+                model: config.gemini?.model || 'gemini-2.0-flash',
                 provider: 'gemini-fallback',
               };
             } else {
@@ -425,7 +425,7 @@ export class AIService {
 
           result = {
             content: response,
-            model: config.gemini?.model || 'gemini-1.5-flash',
+            model: config.gemini?.model || 'gemini-2.0-flash',
             provider: 'gemini',
           };
           break;
@@ -835,11 +835,11 @@ export class AIService {
       case 'opencode':
         return process.env.OPENCODE_DEFAULT_MODEL || 'gpt-4.1';
       case 'n8n':
-        return process.env.AI_DEFAULT_MODEL || 'gemini-1.5-flash';
+        return process.env.AI_DEFAULT_MODEL || 'gemini-2.0-flash';
       case 'vas':
         return process.env.AI_SERVE_DEFAULT_MODEL || 'gpt-4o';
       case 'gemini':
-        return config.gemini?.model || 'gemini-1.5-flash';
+        return config.gemini?.model || 'gemini-2.0-flash';
       default:
         return 'unknown';
     }
@@ -894,7 +894,7 @@ export class AIService {
         },
         n8n: {
           baseUrl: process.env.N8N_WEBHOOK_URL || process.env.N8N_BASE_URL,
-          model: process.env.AI_DEFAULT_MODEL || 'gemini-1.5-flash',
+          model: process.env.AI_DEFAULT_MODEL || 'gemini-2.0-flash',
         },
         vas: {
           baseUrl: process.env.AI_SERVE_BASE_URL,

@@ -210,7 +210,7 @@ export const config = {
   // ==========================================================================
   gemini: {
     apiKey: raw.GEMINI_API_KEY || raw.GOOGLE_API_KEY,
-    model: raw.AI_DEFAULT_MODEL || 'gemini-1.5-flash',
+    model: raw.AI_DEFAULT_MODEL || 'gemini-2.0-flash',
   },
 };
 
