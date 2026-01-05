@@ -197,6 +197,13 @@
         'aiMemo:log',
         this._onExternalLog
       );
+      // Save memo state before page unload
+      this._boundBeforeUnload = () => {
+        if (this.state.memo) {
+          LS.set(KEYS.memo, this.state.memo);
+        }
+      };
+      window.addEventListener('beforeunload', this._boundBeforeUnload);
     }
 
     disconnectedCallback() {
@@ -204,6 +211,7 @@
         'aiMemo:log',
         this._onExternalLog
       );
+      window.removeEventListener('beforeunload', this._boundBeforeUnload);
     }
 
     applyThemeFromPage() {
@@ -835,11 +843,31 @@
     }
 
     // Render preview and enhance code blocks
+    // Code highlighting is deferred using requestIdleCallback for better performance
     renderMarkdownToPreview(src) {
       if (!this.$memoPreview) return;
       const html = this.markdownToHtml(src);
       this.$memoPreview.innerHTML = html;
-      this.enhanceCodeBlocks();
+      // Defer code highlighting to idle time to avoid blocking main thread
+      this.scheduleCodeHighlight();
+    }
+
+    // Schedule code block enhancement during idle time
+    scheduleCodeHighlight() {
+      // Cancel any pending highlight task
+      if (this._highlightIdleId) {
+        (typeof cancelIdleCallback === 'function' ? cancelIdleCallback : clearTimeout)(this._highlightIdleId);
+      }
+      const doHighlight = () => {
+        this._highlightIdleId = null;
+        this.enhanceCodeBlocks();
+      };
+      // Use requestIdleCallback if available, otherwise fall back to setTimeout
+      if (typeof requestIdleCallback === 'function') {
+        this._highlightIdleId = requestIdleCallback(doHighlight, { timeout: 500 });
+      } else {
+        this._highlightIdleId = setTimeout(doHighlight, 50);
+      }
     }
 
     applyLayoutMode(mode) {
@@ -875,14 +903,36 @@
       this.state.previewPane = next;
       LS.set(KEYS.previewPane, next);
       if (next === 'preview' && this.$memoPreview) {
-        this.scheduleRenderPreview(this.$memoEditor?.value || this.$memo?.value || '');
+        // Render any pending content or current content
+        const src = this._pendingPreviewSrc || this.$memoEditor?.value || this.$memo?.value || '';
+        this._pendingPreviewSrc = null;
+        this.renderMarkdownToPreview(src);
       }
     }
 
 
+    // Check if preview pane is actually visible
+    isPreviewVisible() {
+      // Preview is visible when:
+      // 1. In preview mode with split layout, or
+      // 2. In preview mode with tab layout AND preview pane is active
+      const mode = this.state.mode;
+      if (mode !== 'preview') return false;
+      const layout = this.state.layoutMode;
+      if (layout === 'split') return true;
+      // tab layout: check active pane
+      return this.state.previewPane === 'preview';
+    }
+
     // debounce preview rendering to keep typing smooth
+    // Only render if preview is actually visible
     scheduleRenderPreview(src) {
       clearTimeout(this._renderTimer);
+      // Skip rendering if preview is not visible
+      if (!this.isPreviewVisible()) {
+        this._pendingPreviewSrc = src; // Store for later render when tab becomes active
+        return;
+      }
       this._renderTimer = setTimeout(() => this.renderMarkdownToPreview(src), 100);
     }
 
@@ -1537,6 +1587,11 @@
          
          this.state.events = currentEvents;
          LS.set(KEYS.events, currentEvents);
+         
+         // Invalidate graph cache since events changed
+         this._graphCache = null;
+         this._graphCacheKey = null;
+         
          return rec;
        } catch (_) { return null; }
      }
@@ -1700,7 +1755,7 @@
          c.addEventListener('click', onClick);
          c.addEventListener('dblclick', onDblClick);
          this.$historyClose?.addEventListener('click', () => this.closeHistory());
-          this.$historyReset?.addEventListener('click', () => { if (!confirm('히스토리 기록을 모두 삭제할까요?')) return; this.state.events = []; LS.set(KEYS.events, []); if (this._hist) { this._hist.hoverId = null; this._hist.pinnedId = null; } this.hideHistoryTooltip(); this.closeHistoryInfo(); this.drawHistory(); this.out.toast('기록을 초기화했습니다.'); this.logEvent({ type: 'history_reset', label: '히스토리 초기화' }); });
+          this.$historyReset?.addEventListener('click', () => { if (!confirm('히스토리 기록을 모두 삭제할까요?')) return; this.state.events = []; LS.set(KEYS.events, []); this._graphCache = null; this._graphCacheKey = null; if (this._hist) { this._hist.hoverId = null; this._hist.pinnedId = null; } this.hideHistoryTooltip(); this.closeHistoryInfo(); this.drawHistory(); this.out.toast('기록을 초기화했습니다.'); this.logEvent({ type: 'history_reset', label: '히스토리 초기화' }); });
          this.$historyExport?.addEventListener('click', () => {
            try {
              const data = { exportedAt: new Date().toISOString(), events: this.state.events || [] };
@@ -1729,10 +1784,13 @@
                  const events = Array.isArray(parsed?.events) ? parsed.events : (Array.isArray(parsed) ? parsed : []);
                  if (!Array.isArray(events)) throw new Error('올바른 형식이 아닙니다.');
                  // sanitize and cap
-                 const cleaned = events.filter(e => e && typeof e === 'object' && typeof e.t === 'number');
-                 this.state.events = cleaned.slice(-500);
-                 LS.set(KEYS.events, this.state.events);
-                 this.drawHistory();
+                  const cleaned = events.filter(e => e && typeof e === 'object' && typeof e.t === 'number');
+                  this.state.events = cleaned.slice(-500);
+                  LS.set(KEYS.events, this.state.events);
+                  // Invalidate graph cache
+                  this._graphCache = null;
+                  this._graphCacheKey = null;
+                  this.drawHistory();
                  this.out.toast('히스토리를 가져왔습니다.');
                  this.logEvent({ type: 'history_import', label: '히스토리 가져오기' });
                } catch (err) {
@@ -1768,6 +1826,13 @@
 
        buildGraph() {
          const events = Array.isArray(this.state.events) ? this.state.events : [];
+         
+         // Cache check: use cached graph if events haven't changed
+         const eventsKey = events.length + ':' + (events[events.length - 1]?.t || 0);
+         if (this._graphCache && this._graphCacheKey === eventsKey) {
+           return this._graphCache;
+         }
+         
          const postMap = new Map();
          const nodes = []; const edges = [];
          const keyOfPost = (p) => p ? `${p.year}/${p.slug}` : 'unknown';
@@ -1801,14 +1866,27 @@
          }
          // sort nodes for stable rendering (posts under, events above)
          nodes.sort((a,b)=> (a.kind==='post'&&b.kind!=='post') ? -1 : (a.kind!=='post'&&b.kind==='post') ? 1 : (a.id > b.id ? 1 : -1));
-         return { nodes, edges };
+         
+         const graph = { nodes, edges };
+         // Cache the result
+         this._graphCache = graph;
+         this._graphCacheKey = eventsKey;
+         return graph;
        }
 
       layoutGraph(graph) {
+        // Cache check: use cached layout if graph and viewport haven't changed
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const layoutKey = `${graph.nodes.length}:${vw}:${vh}`;
+        if (this._layoutCache && this._layoutCacheKey === layoutKey && this._layoutCacheGraph === graph) {
+          return this._layoutCache;
+        }
+        
         const { nodes, edges } = graph; const C = { postR: 36, evR: 16 };
         const byKind = (k) => nodes.filter(n => n.kind === k || (k==='event' && n.kind!=='post'));
         const posts = byKind('post'); const events = nodes.filter(n => n.kind!=='post');
-        const cx = window.innerWidth/2, cy = window.innerHeight/2;
+        const cx = vw/2, cy = vh/2;
         posts.forEach((n,i)=>{ n.x = cx + (i- (posts.length-1)/2)*140; n.y = cy; n.r = C.postR; });
         // place events around their post in small rings
         const postPos = new Map(posts.map(p => [p.meta.post.year+'/'+p.meta.post.slug, p]));
@@ -1826,6 +1904,11 @@
             n.x = pnode.x + Math.cos(ang)*rad; n.y = pnode.y + Math.sin(ang)*rad; n.r = C.evR;
           });
         }
+        
+        // Cache the result
+        this._layoutCache = graph;
+        this._layoutCacheKey = layoutKey;
+        this._layoutCacheGraph = graph;
         return graph;
       }
 
@@ -2272,33 +2355,72 @@
         });
       }
 
-      // input persistence
-       const saveMemo = () => {
-         this.state.memo = this.$memo.value;
-         LS.set(KEYS.memo, this.state.memo);
-         if (this.$memoEditor && this.$memoEditor.value !== this.state.memo) {
-           this.$memoEditor.value = this.state.memo;
+      // input persistence - debounced localStorage saving
+       // Use memory state during typing, persist to LS on idle/blur
+       let memoSaveTimer = null;
+       const MEMO_SAVE_DELAY = 1000; // Save to LS 1 second after typing stops
+       
+       const updateMemoState = (value) => {
+         this.state.memo = value;
+         if (this.$memoEditor && this.$memoEditor.value !== value) {
+           this.$memoEditor.value = value;
          }
-          if (this.$memoPreview) {
-            this.scheduleRenderPreview(this.state.memo);
-          }
-          this.out.tempStatus('저장됨', 'Ready', 900);
+         if (this.$memoPreview) {
+           this.scheduleRenderPreview(value);
+         }
+       };
+       
+       const scheduleMemoSave = () => {
+         clearTimeout(memoSaveTimer);
+         memoSaveTimer = setTimeout(() => {
+           LS.set(KEYS.memo, this.state.memo);
+           this.out.tempStatus('저장됨', 'Ready', 900);
+         }, MEMO_SAVE_DELAY);
+       };
+       
+       const saveMemoImmediately = () => {
+         clearTimeout(memoSaveTimer);
+         LS.set(KEYS.memo, this.state.memo);
+       };
+       
+       const saveMemo = () => {
+         updateMemoState(this.$memo.value);
+         scheduleMemoSave();
        };
 
       this.$memo.addEventListener('input', saveMemo);
       this.$memo.addEventListener('change', saveMemo);
+      // Save immediately on blur
+      this.$memo.addEventListener('blur', saveMemoImmediately);
       if (this.$memoEditor) {
+        let editorSaveTimer = null;
+        const EDITOR_SAVE_DELAY = 1000;
+        
+        const scheduleEditorSave = () => {
+          clearTimeout(editorSaveTimer);
+          editorSaveTimer = setTimeout(() => {
+            LS.set(KEYS.memo, this.state.memo);
+            this.out.tempStatus('저장됨', 'Ready', 900);
+          }, EDITOR_SAVE_DELAY);
+        };
+        
+        const saveEditorImmediately = () => {
+          clearTimeout(editorSaveTimer);
+          LS.set(KEYS.memo, this.state.memo);
+        };
+        
         const saveAndRender = () => {
           this.state.memo = this.$memoEditor.value;
-          LS.set(KEYS.memo, this.state.memo);
           this.scheduleRenderPreview(this.state.memo);
           if (this.$memo.value !== this.state.memo) this.$memo.value = this.state.memo;
-          this.out.tempStatus('저장됨', 'Ready', 900);
+          scheduleEditorSave();
         };
         this.$memoEditor.addEventListener('input', saveAndRender);
         this.$memoEditor.addEventListener('change', saveAndRender);
+        this.$memoEditor.addEventListener('blur', saveEditorImmediately);
 
-        // scroll sync: editor -> preview
+        // scroll sync: editor -> preview (throttled to 1 rAF per frame)
+        let scrollTicking = false;
         const sync = () => {
           if (!this.$memoPreview) return;
           const ta = this.$memoEditor;
@@ -2306,7 +2428,14 @@
           const target = (this.$memoPreview.scrollHeight - this.$memoPreview.clientHeight) * ratio;
           this.$memoPreview.scrollTop = target;
         };
-        this.$memoEditor.addEventListener('scroll', () => requestAnimationFrame(sync));
+        this.$memoEditor.addEventListener('scroll', () => {
+          if (scrollTicking) return;
+          scrollTicking = true;
+          requestAnimationFrame(() => {
+            sync();
+            scrollTicking = false;
+          });
+        });
       }
        if (this.$inlineEnabled) {
          const onToggleInline = () => {

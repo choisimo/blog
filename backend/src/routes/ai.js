@@ -8,6 +8,92 @@ import { queryAll, isD1Configured } from '../lib/d1.js';
 const router = Router();
 
 // ============================================================================
+// RAG Integration Helper
+// ============================================================================
+
+/**
+ * Search RAG for relevant blog posts
+ * @param {string} query - Search query
+ * @param {number} nResults - Number of results to return
+ * @returns {Promise<Array|null>} Search results or null if RAG unavailable
+ */
+async function searchBlogPosts(query, nResults = 5) {
+  try {
+    // Call internal RAG search endpoint
+    const response = await fetch(`http://localhost:${process.env.PORT || 5080}/api/v1/rag/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, n_results: nResults }),
+      signal: AbortSignal.timeout(5000),
+    });
+    
+    if (!response.ok) {
+      console.warn('RAG search failed:', response.status);
+      return null;
+    }
+    
+    const data = await response.json();
+    return data.ok ? data.data?.results : null;
+  } catch (err) {
+    console.warn('RAG search error:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Detect if user message is asking for blog post recommendations
+ * @param {string} message - User message
+ * @returns {boolean}
+ */
+function shouldUseRAG(message) {
+  if (!message) return false;
+  
+  const lowerMsg = message.toLowerCase();
+  
+  // Korean keywords for blog/post recommendations
+  const koreanKeywords = [
+    '게시글', '포스트', '글', '추천', '관련', '찾아', '알려', '보여',
+    '블로그', '게시물', '작성', '읽', '검색', '주제',
+  ];
+  
+  // English keywords
+  const englishKeywords = [
+    'post', 'blog', 'article', 'recommend', 'find', 'search',
+    'show me', 'related', 'about', 'topic', 'written',
+  ];
+  
+  // Check for keywords
+  const hasKoreanKeyword = koreanKeywords.some(kw => lowerMsg.includes(kw));
+  const hasEnglishKeyword = englishKeywords.some(kw => lowerMsg.includes(kw));
+  
+  return hasKoreanKeyword || hasEnglishKeyword;
+}
+
+/**
+ * Format RAG results as context for LLM
+ * @param {Array} results - RAG search results
+ * @returns {string} Formatted context
+ */
+function formatRAGContext(results) {
+  if (!results || results.length === 0) return '';
+  
+  const posts = results.map((r, i) => {
+    const meta = r.metadata || {};
+    return `${i + 1}. "${meta.title}" (${meta.date || 'no date'})
+   - URL: ${meta.url || '/blog/' + meta.slug}
+   - Category: ${meta.category || 'N/A'}
+   - Tags: ${meta.tags || 'N/A'}
+   - Summary: ${r.document?.substring(0, 200) || 'N/A'}`;
+  }).join('\n\n');
+  
+  return `아래는 사용자의 질문과 관련된 블로그 게시글 목록입니다. 이 정보를 바탕으로 답변해주세요:
+
+${posts}
+
+위 게시글들을 참고하여 사용자에게 적절한 게시글을 추천해주세요. 제목, URL, 간단한 설명을 포함하여 안내해주세요.`;
+}
+
+// ============================================================================
 // Model List Endpoint - Get available AI models (DB-first, with fallbacks)
 // GET /api/v1/ai/models
 // 
@@ -145,7 +231,7 @@ function getFallbackModels(defaultModel) {
 }
 
 // ============================================================================
-// Auto-Chat Endpoint
+// Auto-Chat Endpoint with RAG Integration
 // POST /api/v1/ai/auto-chat
 // ============================================================================
 
@@ -160,8 +246,39 @@ router.post('/auto-chat', async (req, res, next) => {
       });
     }
 
+    // Get the last user message for RAG search
+    const lastUserMessage = messages.slice().reverse().find(m => m.role === 'user')?.content;
+    
+    // Check if we should use RAG for this query
+    let enrichedMessages = [...messages];
+    let usedRAG = false;
+    
+    if (lastUserMessage && shouldUseRAG(lastUserMessage)) {
+      // Search for relevant blog posts
+      const ragResults = await searchBlogPosts(lastUserMessage, 5);
+      
+      if (ragResults && ragResults.length > 0) {
+        // Format RAG results as context
+        const context = formatRAGContext(ragResults);
+        
+        // Inject context as a system message
+        const systemMsg = enrichedMessages.find(m => m.role === 'system');
+        if (systemMsg) {
+          // Append to existing system message
+          systemMsg.content = `${systemMsg.content}\n\n${context}`;
+        } else {
+          // Add new system message with context
+          enrichedMessages.unshift({
+            role: 'system',
+            content: `당신은 nodove 블로그의 AI 어시스턴트입니다. 사용자의 질문에 친절하게 답변해주세요.\n\n${context}`,
+          });
+        }
+        usedRAG = true;
+      }
+    }
+
     // Use unified AI service for chat with optional model selection
-    const result = await aiService.chat(messages, {
+    const result = await aiService.chat(enrichedMessages, {
       temperature,
       maxTokens,
       model, // Pass selected model to AI service
@@ -173,6 +290,7 @@ router.post('/auto-chat', async (req, res, next) => {
         content: result.content,
         model: result.model,
         provider: result.provider,
+        usedRAG, // Let client know if RAG was used
       },
     });
   } catch (err) {

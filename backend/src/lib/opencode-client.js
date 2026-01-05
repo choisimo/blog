@@ -263,20 +263,29 @@ export class OpenCodeClient {
         throw new Error(`OpenCode chat failed: ${response.status} ${errorText}`);
       }
 
-      const data = await response.json();
+      const rawData = await response.json();
       const duration = Date.now() - startTime;
 
       this._recordSuccess();
+
+      // Unwrap the { data: {...}, meta: {...} } envelope from ai-server-backend
+      // This handles both wrapped responses and direct responses for compatibility
+      const data = rawData.data || rawData;
 
       // Debug: log raw response structure
       logger.debug(
         { operation: 'chat', requestId },
         'Raw response from opencode-backend',
-        { dataKeys: Object.keys(data || {}), responseKeys: Object.keys(data?.response || {}) }
+        { 
+          rawDataKeys: Object.keys(rawData || {}), 
+          dataKeys: Object.keys(data || {}), 
+          responseKeys: Object.keys(data?.response || {}),
+          hasDataWrapper: !!rawData.data 
+        }
       );
 
       // Response format varies - try multiple extraction paths:
-      // 1. { response: { text: '...' } } - expected format
+      // 1. { response: { text: '...' } } - expected format from ai-server-backend
       // 2. { response: '...' } - simple string response
       // 3. { content: '...' } - direct content
       // 4. { text: '...' } - direct text
@@ -305,7 +314,7 @@ export class OpenCodeClient {
         logger.warn(
           { operation: 'chat', requestId },
           'Could not extract content from response',
-          { dataStructure: JSON.stringify(data).slice(0, 500) }
+          { dataStructure: JSON.stringify(rawData).slice(0, 500) }
         );
       }
 
