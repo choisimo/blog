@@ -218,15 +218,30 @@ export function useScrollHide(): boolean {
   useEffect(() => {
     let lastY = window.scrollY || 0;
     let accumulatedDelta = 0;
-    const THRESHOLD = 40; // px to accumulate before toggling
+    const THRESHOLD = 30; // px to accumulate before toggling (reduced for snappier response)
     let rafId: number | null = null;
     let lastTime = 0;
-    const THROTTLE_MS = 50; // Throttle to 50ms
+    const THROTTLE_MS = 40; // Throttle to 40ms for smoother detection
+
+    const isNearBottom = () => {
+      const scrollY = window.scrollY || 0;
+      const windowHeight = window.innerHeight;
+      const documentHeight = document.documentElement.scrollHeight;
+      // Consider "near bottom" if within 100px of the end
+      return scrollY + windowHeight >= documentHeight - 100;
+    };
 
     const updateHideState = () => {
       const y = window.scrollY || 0;
       const delta = y - lastY;
       lastY = y;
+
+      // Near bottom: always show (footer role)
+      if (isNearBottom()) {
+        setHidden(false);
+        accumulatedDelta = 0;
+        return;
+      }
 
       // Near top: always show
       if (y < 80) {
@@ -235,8 +250,8 @@ export function useScrollHide(): boolean {
         return;
       }
 
-      // Ignore tiny movements
-      if (Math.abs(delta) < 2) return;
+      // Ignore tiny movements (prevents jitter)
+      if (Math.abs(delta) < 3) return;
 
       // Accumulate delta in the same direction
       if ((delta > 0 && accumulatedDelta >= 0) || (delta < 0 && accumulatedDelta <= 0)) {

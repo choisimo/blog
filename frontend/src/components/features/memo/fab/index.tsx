@@ -246,11 +246,12 @@ export default function FloatingActionBar() {
     isMobile
       ? "bottom-0 pb-[calc(env(safe-area-inset-bottom,0px))]"
       : "bottom-[calc(16px+env(safe-area-inset-bottom,0px))]",
-    "transition-transform transition-opacity duration-200 ease-out",
+    // Smooth slide animation with longer duration for better UX
+    "transition-all duration-300 ease-out",
     shouldAlwaysShow || fabPinned
       ? "translate-y-0 opacity-100"
       : scrollHidden
-        ? "translate-y-6 opacity-0 pointer-events-none"
+        ? "translate-y-[200%] opacity-0 pointer-events-none" // Slide completely off-screen
         : "translate-y-0 opacity-100",
   );
 

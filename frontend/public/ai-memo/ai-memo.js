@@ -562,6 +562,54 @@
       this.logEvent({ type: 'versions_close' });
     }
 
+    async loadVersionsInline() {
+      if (!this.$versionsInlineList) return;
+
+      this.$versionsInlineList.innerHTML = '<div class="versions-empty">로딩 중...</div>';
+      this.logEvent({ type: 'versions_tab_load' });
+
+      const userId = this.getUserId();
+      const apiBase = this.getApiBase();
+
+      try {
+        const res = await fetch(`${apiBase}/api/v1/memos/${encodeURIComponent(userId)}/versions?limit=20`);
+        const data = await res.json();
+
+        if (!data.ok || !data.data?.versions?.length) {
+          this.$versionsInlineList.innerHTML = '<div class="versions-empty">저장된 버전이 없습니다.<br><small>동기화 버튼을 눌러 클라우드에 저장하세요.</small></div>';
+          return;
+        }
+
+        const versions = data.data.versions;
+        this.$versionsInlineList.innerHTML = versions.map(v => `
+          <div class="version-item" data-version="${v.version}">
+            <div class="version-info">
+              <span class="version-number">v${v.version}</span>
+              <span class="version-date">${new Date(v.createdAt).toLocaleString()}</span>
+            </div>
+            <div class="version-meta">
+              <span class="version-size">${Math.round(v.contentLength / 1024 * 10) / 10}KB</span>
+              ${v.changeSummary ? `<span class="version-summary">${v.changeSummary}</span>` : ''}
+            </div>
+            <button class="version-restore" data-version="${v.version}">복원</button>
+          </div>
+        `).join('');
+
+        // Add restore click handlers
+        this.$versionsInlineList.querySelectorAll('.version-restore').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const version = parseInt(btn.dataset.version);
+            if (version) this.restoreVersion(version);
+          });
+        });
+
+      } catch (err) {
+        console.error('Versions inline error:', err);
+        this.$versionsInlineList.innerHTML = '<div class="versions-empty">버전 로딩 실패</div>';
+      }
+    }
+
     async restoreVersion(version) {
       if (!confirm(`버전 ${version}을(를) 복원할까요?\n현재 메모가 덮어씌워집니다.`)) return;
 
@@ -977,6 +1025,7 @@
           <div class="tabs">
             <div class="tab" data-tab="memo">메모</div>
             <div class="tab" data-tab="preview">미리보기</div>
+            <div class="tab" data-tab="versions">버전</div>
             <div class="tab" data-tab="dev">새 버전 제안</div>
             <div class="tab" data-tab="settings">설정</div>
           </div>
@@ -1098,6 +1147,22 @@
                </div>
              </div>
           </div>
+
+          <div id="versionsBody" class="body">
+            <div class="section">
+              <div class="versions-inline-header">
+                <label class="label">클라우드 버전</label>
+                <button id="versionsRefresh" class="btn secondary" type="button">새로고침</button>
+              </div>
+              <div id="versionsInlineList" class="versions-inline-list">
+                <div class="versions-empty">버전 탭을 선택하면 로딩됩니다.</div>
+              </div>
+              <div class="versions-inline-footer">
+                <span class="small muted">클라우드에 저장된 버전을 선택하여 복원할 수 있습니다.</span>
+              </div>
+            </div>
+          </div>
+
           <div id="catalystBox" class="catalyst-panel" style="display:none;">
              <div class="catalyst-header">
                <span class="catalyst-icon">⚡</span>
@@ -1167,6 +1232,7 @@
       this.$previewBody = this.shadowRoot.getElementById('previewBody');
       this.$devBody = this.shadowRoot.getElementById('devBody');
       this.$settingsBody = this.shadowRoot.getElementById('settingsBody');
+      this.$versionsBody = this.shadowRoot.getElementById('versionsBody');
       this.$memo = this.shadowRoot.getElementById('memo');
       this.$memoEditor = this.shadowRoot.getElementById('memoEditor');
       this.$memoPreview = this.shadowRoot.getElementById('memoPreview');
@@ -2142,6 +2208,7 @@
       if (this.$previewBody) this.$previewBody.classList.toggle('active', mode === 'preview');
       if (this.$devBody) this.$devBody.classList.toggle('active', mode === 'dev');
       if (this.$settingsBody) this.$settingsBody.classList.toggle('active', mode === 'settings');
+      if (this.$versionsBody) this.$versionsBody.classList.toggle('active', mode === 'versions');
       this.applyLayoutMode(this.state.layoutMode);
       if (previewMode && this.$memoEditor && this.$memoPreview) {
         this.$memoEditor.value = this.$memo.value || '';
@@ -2351,13 +2418,27 @@
       this.$memoSync = this.shadowRoot.getElementById('memoSync');
       this.$memoSync?.addEventListener('click', () => this.syncToCloud());
 
-      // Versions button
+      // Versions - inline tab view (preferred) and overlay (fallback)
       this.$memoVersions = this.shadowRoot.getElementById('memoVersions');
       this.$versionsOverlay = this.shadowRoot.getElementById('versionsOverlay');
       this.$versionsList = this.shadowRoot.getElementById('versionsList');
       this.$versionsClose = this.shadowRoot.getElementById('versionsClose');
+      this.$versionsInlineList = this.shadowRoot.getElementById('versionsInlineList');
+      this.$versionsRefresh = this.shadowRoot.getElementById('versionsRefresh');
 
-      this.$memoVersions?.addEventListener('click', () => this.openVersions());
+      // Versions button now switches to versions tab instead of overlay
+      this.$memoVersions?.addEventListener('click', () => {
+        this.state.mode = 'versions';
+        LS.set(KEYS.mode, 'versions');
+        this.$tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === 'versions'));
+        this.updateMode();
+        this.loadVersionsInline();
+      });
+      
+      // Refresh button in versions tab
+      this.$versionsRefresh?.addEventListener('click', () => this.loadVersionsInline());
+      
+      // Keep overlay close handlers for backwards compatibility
       this.$versionsClose?.addEventListener('click', () => this.closeVersions());
 
       // Close versions on overlay click

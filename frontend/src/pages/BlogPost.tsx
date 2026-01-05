@@ -47,6 +47,7 @@ import { cn } from '@/lib/utils';
 import { recordView } from '@/services/analytics';
 import { translatePost, getCachedTranslation, type TranslationResult } from '@/services/translate';
 import { curiosityTracker } from '@/services/curiosity';
+import { useUIStrings } from '@/utils/i18n/uiStrings';
 // import SparkInline from '@/components/features/sentio/SparkInline';
 
 const MarkdownRenderer = lazy(
@@ -76,6 +77,7 @@ const BlogPost = () => {
   const { toast } = useToast();
   const { language, setLanguage } = useLanguage();
   const { isTerminal } = useTheme();
+  const str = useUIStrings();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -149,11 +151,6 @@ const BlogPost = () => {
     () => ({ paddingBottom: 'calc(120px + env(safe-area-inset-bottom))' }),
     []
   );
-
-  const backLabel = language === 'ko' ? '블로그로 돌아가기' : 'Back to Blog';
-  const shareLabel = language === 'ko' ? '공유하기' : 'Share';
-  const relatedLabel = language === 'ko' ? '관련 글' : 'Related Posts';
-  const commentsLabel = language === 'ko' ? '댓글' : 'Comments';
 
   const handleBackToBlog = () => {
     if (preservedFrom) {
@@ -465,7 +462,7 @@ const BlogPost = () => {
                   size='sm'
                 >
                   <ArrowLeft className='mr-2 h-4 w-4' />
-                  {isTerminal ? `< ${backLabel}` : backLabel}
+                  {isTerminal ? `< ${str.blog.backToBlog}` : str.blog.backToBlog}
                 </Button>
                 <Button
                   onClick={handleShare}
@@ -477,7 +474,7 @@ const BlogPost = () => {
                   )}
                 >
                   <Share2 className='h-4 w-4' />
-                  {shareLabel}
+                  {str.blog.share}
                 </Button>
               </div>
 
@@ -590,7 +587,7 @@ const BlogPost = () => {
                   >
                     <Languages className='h-4 w-4 text-primary' />
                     <span className='uppercase tracking-wide'>
-                      {language === 'ko' ? '읽기 언어' : 'Reading language'}
+                      {str.blog.readingLanguage}
                     </span>
                     <div className='flex flex-wrap gap-2'>
                       {(['ko', 'en'] as const).map(code => (
@@ -617,7 +614,7 @@ const BlogPost = () => {
                       <div className='flex items-center gap-1.5 ml-2 text-primary'>
                         <Loader2 className='h-3.5 w-3.5 animate-spin' />
                         <span className='text-xs'>
-                          {language === 'ko' ? '번역 중...' : 'Translating...'}
+                          {str.blog.translating}
                         </span>
                       </div>
                     )}
@@ -625,7 +622,7 @@ const BlogPost = () => {
                       <div className='flex items-center gap-1.5 ml-2 text-amber-600 dark:text-amber-400'>
                         <Sparkles className='h-3.5 w-3.5' />
                         <span className='text-xs'>
-                          {language === 'ko' ? 'AI 번역' : 'AI Translated'}
+                          {str.blog.aiTranslated}
                         </span>
                       </div>
                     )}
@@ -640,13 +637,11 @@ const BlogPost = () => {
                       <div className='flex items-start justify-between gap-3'>
                         <div>
                           <p className='font-medium mb-1'>
-                            {language === 'ko' ? '번역 실패' : 'Translation Failed'}
+                            {str.blog.translationFailed}
                           </p>
                           <p className='text-xs opacity-80'>{translationError.message}</p>
                           <p className='text-xs mt-1 opacity-60'>
-                            {language === 'ko' 
-                              ? '원본 콘텐츠를 표시합니다.' 
-                              : 'Showing original content.'}
+                            {str.blog.showingOriginal}
                           </p>
                         </div>
                         {translationError.retryable && (
@@ -662,7 +657,7 @@ const BlogPost = () => {
                               isTerminal && 'font-mono border-primary/40 text-primary hover:bg-primary/10'
                             )}
                           >
-                            {language === 'ko' ? '다시 시도' : 'Retry'}
+                            {str.common.retry}
                           </Button>
                         )}
                       </div>
@@ -747,24 +742,22 @@ const BlogPost = () => {
                     <BookOpen className='h-5 w-5' />
                   </div>
                   <div>
-                    <h2
-                      className={cn(
-                        'text-xl font-semibold text-foreground dark:text-white',
-                        isTerminal && 'font-mono text-primary'
-                      )}
-                    >
-                      {isTerminal ? `> ${relatedLabel}` : relatedLabel}
-                    </h2>
-                    <p
-                      className={cn(
-                        'text-sm text-muted-foreground dark:text-white/70',
-                        isTerminal && 'font-mono text-xs'
-                      )}
-                    >
-                      {language === 'ko'
-                        ? '비슷한 맥락의 글을 더 읽어보세요.'
-                        : 'Continue reading with similar perspectives.'}
-                    </p>
+<h2
+                        className={cn(
+                          'text-xl font-semibold text-foreground dark:text-white',
+                          isTerminal && 'font-mono text-primary'
+                        )}
+                      >
+                        {isTerminal ? `> ${str.blog.relatedPosts}` : str.blog.relatedPosts}
+                      </h2>
+                      <p
+                        className={cn(
+                          'text-sm text-muted-foreground dark:text-white/70',
+                          isTerminal && 'font-mono text-xs'
+                        )}
+                      >
+                        {str.blog.relatedPostsDesc}
+                      </p>
                   </div>
                 </div>
                 <div className='grid gap-4 md:grid-cols-3'>

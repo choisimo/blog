@@ -8,8 +8,11 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Github, Linkedin, Mail, Globe } from 'lucide-react';
+import { useUIStrings } from '@/utils/i18n/uiStrings';
 
 const About = () => {
+  const str = useUIStrings();
+
   const skills = [
     'React',
     'TypeScript',
@@ -27,40 +30,23 @@ const About = () => {
     <div className='container mx-auto px-4 py-12 max-w-4xl'>
       <div className='space-y-8'>
         <div className='text-center space-y-4'>
-          <h1 className='text-4xl font-bold tracking-tight'>About Me</h1>
-          <p className='text-xl text-muted-foreground'>
-            Software Developer | Tech Enthusiast | Problem Solver
-          </p>
+          <h1 className='text-4xl font-bold tracking-tight'>{str.about.title}</h1>
+          <p className='text-xl text-muted-foreground'>{str.about.subtitle}</p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Hi, I'm Nodove 👋</CardTitle>
-            <CardDescription>
-              Passionate about building innovative solutions
-            </CardDescription>
+            <CardTitle>{str.about.greeting}</CardTitle>
+            <CardDescription>{str.about.greetingSubtitle}</CardDescription>
           </CardHeader>
           <CardContent className='space-y-6'>
             <div className='prose prose-neutral dark:prose-invert max-w-none'>
-              <p>
-                I'm a software developer with a passion for creating efficient,
-                scalable, and user-friendly applications. With expertise in both
-                frontend and backend technologies, I enjoy tackling complex
-                problems and turning ideas into reality.
-              </p>
-              <p>
-                Through this blog, I share my experiences, insights, and
-                learnings from various projects and technologies. Whether it's
-                about the latest AI models, web development frameworks, or
-                DevOps practices, I aim to provide valuable content that helps
-                fellow developers in their journey.
-              </p>
+              <p>{str.about.bio1}</p>
+              <p>{str.about.bio2}</p>
             </div>
 
             <div>
-              <h3 className='text-lg font-semibold mb-3'>
-                Skills & Technologies
-              </h3>
+              <h3 className='text-lg font-semibold mb-3'>{str.about.skills}</h3>
               <div className='flex flex-wrap gap-2'>
                 {skills.map(skill => (
                   <Badge key={skill} variant='secondary'>
@@ -71,7 +57,7 @@ const About = () => {
             </div>
 
             <div>
-              <h3 className='text-lg font-semibold mb-3'>Connect with me</h3>
+              <h3 className='text-lg font-semibold mb-3'>{str.about.connect}</h3>
               <div className='flex flex-wrap gap-3'>
                 <Button variant='outline' size='sm' asChild>
                   <a
@@ -116,15 +102,10 @@ const About = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>My Mission</CardTitle>
+            <CardTitle>{str.about.mission}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className='text-muted-foreground'>
-              To contribute to the tech community by sharing knowledge, creating
-              useful tools, and helping others grow in their software
-              development journey. I believe in continuous learning and the
-              power of collaboration to drive innovation forward.
-            </p>
+            <p className='text-muted-foreground'>{str.about.missionText}</p>
           </CardContent>
         </Card>
       </div>
