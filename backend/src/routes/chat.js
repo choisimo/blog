@@ -302,6 +302,9 @@ router.post('/session/:sessionId/task', async (req, res, next) => {
       // Execute via aiService
       const text = await aiService.generate(prompt, { temperature });
 
+      // Debug: log raw AI response
+      console.log(`[Task:${taskMode}] Raw AI response (first 500 chars):`, text?.slice(0, 500));
+
       // Parse response based on mode
       let data;
       if (taskMode === 'custom' || taskMode === 'summary') {
@@ -310,7 +313,9 @@ router.post('/session/:sessionId/task', async (req, res, next) => {
         const json = tryParseJson(text);
         if (json) {
           data = json;
+          console.log(`[Task:${taskMode}] Successfully parsed JSON:`, JSON.stringify(data).slice(0, 200));
         } else {
+          console.warn(`[Task:${taskMode}] JSON parse failed for response:`, text?.slice(0, 300));
           throw new Error('Invalid JSON response');
         }
       }

@@ -48,10 +48,10 @@
 │  │        │            │            │            │                         ││
 │  │        └────────────┴────────────┴────────────┘                         ││
 │  │                              │                                           ││
-│  │   ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐     ││
-│  │   │postgres │  │  redis  │  │ mongodb │  │ qdrant  │  │chromadb │     ││
-│  │   │  :5432  │  │  :6379  │  │  :27017 │  │  :6333  │  │  :8100  │     ││
-│  │   └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘     ││
+│  │   ┌─────────┐  ┌─────────┐  ┌─────────┐                                ││
+│  │   │postgres │  │  redis  │  │chromadb │                                ││
+│  │   │  :5432  │  │  :6379  │  │  :8000  │                                ││
+│  │   └─────────┘  └─────────┘  └─────────┘                                ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -72,8 +72,6 @@ GitHub Repository > Settings > Secrets and variables > Actions > Secrets
 | **데이터베이스** |
 | `POSTGRES_PASSWORD` | PostgreSQL 비밀번호 | `secure-pg-pass-123` |
 | `REDIS_PASSWORD` | Redis 비밀번호 | `secure-redis-pass` |
-| `MONGO_PASSWORD` | MongoDB 비밀번호 | `secure-mongo-pass` |
-| `QDRANT_API_KEY` | Qdrant API 키 | `qdrant-api-key-xxx` |
 | **AI 서비스** |
 | `LITELLM_MASTER_KEY` | LiteLLM 마스터 키 | `sk-litellm-xxx` |
 | `OPENAI_API_KEY` | OpenAI API 키 (선택) | `sk-xxx` |
@@ -114,8 +112,6 @@ GitHub Repository > Settings > Secrets and variables > Actions > Variables
 | **데이터베이스** |
 | `POSTGRES_DB` | PostgreSQL DB명 | `blog` |
 | `POSTGRES_USER` | PostgreSQL 사용자 | `bloguser` |
-| `MONGO_USER` | MongoDB 사용자 | `mongouser` |
-| `MONGO_DB` | MongoDB DB명 | `blog` |
 | **AI** |
 | `AI_DEFAULT_MODEL` | 기본 AI 모델 | `gpt-4.1` |
 | **n8n** |

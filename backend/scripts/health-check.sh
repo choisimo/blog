@@ -65,7 +65,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --host HOST           API host (default: localhost)"
             echo "  --help, -h            Show this help"
             echo ""
-            echo "Services: api, n8n, litellm, postgres, redis, mongodb, nginx, qdrant, chroma"
+            echo "Services: api, n8n, litellm, postgres, redis, nginx, chroma"
             exit 0
             ;;
         *)
@@ -209,29 +209,6 @@ check_redis() {
     RESULTS["redis"]="$status|redis:6379|redis-cli ping"
 }
 
-check_mongodb() {
-    local start_time=$(date +%s)
-    local status=""
-    
-    while true; do
-        if docker compose -f "$STACK_DIR/docker-compose.yml" exec -T mongodb mongosh --quiet --eval "db.adminCommand('ping')" 2>/dev/null | grep -q "ok"; then
-            status="healthy"
-            break
-        fi
-        
-        local elapsed=$(($(date +%s) - start_time))
-        if [ "$elapsed" -ge "$MAX_WAIT" ]; then
-            status="unhealthy"
-            OVERALL_STATUS="unhealthy"
-            break
-        fi
-        
-        sleep 2
-    done
-    
-    RESULTS["mongodb"]="$status|mongodb:27017|mongosh ping"
-}
-
 # Run checks
 run_checks() {
     if [ -n "$SPECIFIC_SERVICE" ]; then
@@ -251,14 +228,8 @@ run_checks() {
             redis)
                 check_redis
                 ;;
-            mongodb)
-                check_mongodb
-                ;;
             nginx)
                 check_http "nginx" "http://${API_HOST}:${NGINX_PORT}/"
-                ;;
-            qdrant)
-                check_http "qdrant" "http://${API_HOST}:6333/health"
                 ;;
             chroma)
                 check_http "chroma" "http://${API_HOST}:8000/api/v1/heartbeat"
@@ -276,7 +247,6 @@ run_checks() {
         # Infrastructure
         check_postgres &
         check_redis &
-        check_mongodb &
         wait
         
         # HTTP services
@@ -286,8 +256,7 @@ run_checks() {
         check_http "nginx" "http://${API_HOST}:${NGINX_PORT}/" &
         wait
         
-        # Vector DBs (optional)
-        check_http "qdrant" "http://${API_HOST}:6333/health" &
+        # Vector DBs (ChromaDB only)
         check_http "chroma" "http://${API_HOST}:8000/api/v1/heartbeat" &
         wait
     fi

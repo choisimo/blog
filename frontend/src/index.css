@@ -4,25 +4,72 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 226 70% 55%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* ============================================
+       Light Theme - Soft Gray Foundation
+       설계 원칙: "부드럽게 + 명확하게"
+       - Pure White 금지 → 옅은 회색톤 배경
+       - 텍스트 대비 WCAG 4.5:1 이상
+       - 명확한 계층 구조 (3단 surface)
+       ============================================ */
+    
+    /* Surface 계층 (3단) - Glare 감소 */
+    --background: 220 14% 96%;          /* #F4F5F7 - 옅은 회색 배경, 눈부심 방지 */
+    --foreground: 224 71% 4%;           /* #0A0F1A - 진한 텍스트 (대비 강화) */
+    
+    --card: 0 0% 100%;                  /* #FFFFFF - 카드는 흰색 (배경과 구분) */
+    --card-foreground: 224 71% 4%;
+    
+    --popover: 0 0% 100%;               /* 팝오버/모달 - 최상위 */
+    --popover-foreground: 224 71% 4%;
+    
+    /* Surface 확장 토큰 */
+    --surface: 0 0% 100%;               /* 카드/섹션 기본 */
+    --surface-2: 220 14% 96%;           /* 입력, 툴바, 서브 패널 */
+    --surface-elevated: 0 0% 100%;      /* 모달/팝오버 */
+    --overlay: 224 71% 4% / 0.5;        /* 모달 뒤 dim */
+    
+    /* Primary - 채도 낮춤 (시선 약탈 방지) */
+    --primary: 226 55% 50%;             /* #4A6BB5 - 덜 자극적인 파랑 */
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary - 구분감 있는 회색 */
+    --secondary: 220 13% 91%;           /* #E5E7EB */
+    --secondary-foreground: 224 71% 4%;
+    
+    /* Muted - 텍스트 위계 강화 */
+    --muted: 220 13% 91%;
+    --muted-foreground: 220 9% 46%;     /* #6B7280 - 대비 3.8:1 (보조 텍스트) */
+    
+    /* Accent */
+    --accent: 220 13% 91%;
+    --accent-foreground: 224 71% 4%;
+    
+    /* Semantic Colors */
+    --destructive: 0 72% 51%;           /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;              /* #F59E0B */
+    --warning-foreground: 0 0% 100%;
+    --success: 142 71% 45%;             /* #22C55E */
+    --success-foreground: 0 0% 100%;
+    
+    /* Border - 확실한 경계선 */
+    --border: 220 13% 86%;              /* #D1D5DB - 더 진한 보더 */
+    --border-strong: 220 13% 69%;       /* #9CA3AF - 강조 경계 */
+    --input: 220 13% 86%;
+    --divider: 220 13% 91%;             /* 리스트 구분선 */
+    
+    /* Focus/Ring - 명확한 피드백 */
+    --ring: 226 55% 50%;                /* primary와 동일 */
+    
+    /* 텍스트 위계 (4단) */
+    --text-strong: 224 71% 4%;          /* 제목 - #0A0F1A */
+    --text: 224 25% 18%;                /* 본문 - #232B3B */
+    --text-muted: 220 9% 46%;           /* 보조 - #6B7280 */
+    --text-subtle: 220 9% 64%;          /* placeholder - #9CA3AF */
+    
+    /* Selection */
+    --selection: 226 55% 50% / 0.15;
+    
     --radius: 0.5rem;
 
     /* Z-Index Layer System */
@@ -36,25 +83,71 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 226 70% 60%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    /* ============================================
+       Dark Theme - Deep Blue-Gray Foundation
+       설계 원칙: Light 테마와 동일한 계층 구조
+       - 3단 Surface 계층 유지
+       - 4단 텍스트 위계 유지
+       - WCAG 대비율 준수
+       ============================================ */
+    
+    /* Surface 계층 (3단) - 눈 피로 감소를 위한 따뜻한 톤 */
+    --background: 224 71% 4%;            /* #070B14 - 깊은 배경 */
+    --foreground: 210 40% 96%;           /* #F1F5F9 - 밝은 텍스트 */
+    
+    --card: 224 50% 8%;                  /* #0F1629 - 카드 배경 (배경보다 밝음) */
+    --card-foreground: 210 40% 96%;
+    
+    --popover: 224 50% 10%;              /* #131B2E - 팝오버/모달 (최상위) */
+    --popover-foreground: 210 40% 96%;
+    
+    /* Surface 확장 토큰 */
+    --surface: 224 50% 8%;               /* 카드/섹션 기본 */
+    --surface-2: 224 50% 6%;             /* 입력, 툴바, 서브 패널 */
+    --surface-elevated: 224 50% 12%;     /* 모달/팝오버 */
+    --overlay: 0 0% 0% / 0.6;            /* 모달 뒤 dim */
+    
+    /* Primary - 밝고 접근성 좋은 파랑 */
+    --primary: 226 70% 60%;              /* #5B7FE8 - 밝은 파랑 */
+    --primary-foreground: 224 71% 4%;    /* 어두운 텍스트 (대비) */
+    
+    /* Secondary - 눈에 띄는 구분감 */
+    --secondary: 217.2 32.6% 17.5%;      /* #1E293B */
+    --secondary-foreground: 210 40% 96%;
+    
+    /* Muted - 텍스트 위계 강화 */
     --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 60%;   /* #8B9AB8 - 대비 4.5:1+ */
+    
+    /* Accent */
+    --accent: 217.2 32.6% 20%;
+    --accent-foreground: 210 40% 96%;
+    
+    /* Semantic Colors - 어두운 배경에서 잘 보이는 밝기 */
+    --destructive: 0 72% 55%;            /* #E53E3E - 밝은 빨강 */
+    --destructive-foreground: 0 0% 100%;
+    --warning: 38 92% 55%;               /* #F6AD55 */
+    --warning-foreground: 0 0% 0%;
+    --success: 142 71% 50%;              /* #48BB78 */
+    --success-foreground: 0 0% 0%;
+    
+    /* Border - 확실한 경계선 (Light보다 미묘함) */
+    --border: 217.2 32.6% 20%;           /* #2D3748 */
+    --border-strong: 217.2 32.6% 30%;    /* #4A5568 */
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --divider: 217.2 32.6% 15%;          /* 리스트 구분선 */
+    
+    /* Focus/Ring */
+    --ring: 226 70% 60%;                 /* primary와 동일 */
+    
+    /* 텍스트 위계 (4단) */
+    --text-strong: 210 40% 98%;          /* 제목 - #F7FAFC */
+    --text: 210 40% 92%;                 /* 본문 - #E2E8F0 */
+    --text-muted: 215 20.2% 60%;         /* 보조 - #8B9AB8 */
+    --text-subtle: 215 20.2% 45%;        /* placeholder - #6B7999 */
+    
+    /* Selection */
+    --selection: 226 70% 60% / 0.25;
   }
 
   /* Terminal Theme - CRT / Green Monitor Aesthetic */
@@ -959,11 +1052,174 @@
   @apply ring-2 ring-primary/30 border-primary;
 }
 
-/* Light 테마 세부 조정 */
+/* ============================================
+   Light Theme - Enhanced Readability
+   "부드럽게 + 명확하게" 원칙 적용
+   ============================================ */
+
+/* Light 테마 - 이미 :root에서 정의됨, .light는 명시적 토글용 */
 .light {
-  /* 더 나은 대비를 위한 텍스트 색상 */
-  --foreground: 222.2 84% 6%;
-  --muted-foreground: 215.4 16.3% 40%;
+  /* Surface 계층 재확인 */
+  --background: 220 14% 96%;
+  --foreground: 224 71% 4%;
+  --card: 0 0% 100%;
+  --card-foreground: 224 71% 4%;
+  
+  /* 강화된 텍스트 대비 */
+  --muted-foreground: 220 9% 40%;       /* 더 진한 보조 텍스트 */
+  
+  /* 확실한 보더 */
+  --border: 220 13% 82%;
+  --border-strong: 220 13% 65%;
+}
+
+/* Light 테마 Selection */
+.light ::selection,
+:root:not(.dark):not(.terminal) ::selection {
+  background: hsl(226 55% 50% / 0.2);
+  color: hsl(224 71% 4%);
+}
+
+/* Light 테마 카드 스타일 - 배경과 확실한 구분 */
+:root:not(.dark):not(.terminal) .card,
+.light .card,
+:root:not(.dark):not(.terminal) [data-slot="card"],
+.light [data-slot="card"] {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 1px 3px hsl(220 13% 10% / 0.04),
+              0 1px 2px hsl(220 13% 10% / 0.02);
+}
+
+:root:not(.dark):not(.terminal) .card:hover,
+.light .card:hover {
+  box-shadow: 0 4px 12px hsl(220 13% 10% / 0.08),
+              0 2px 4px hsl(220 13% 10% / 0.04);
+}
+
+/* Light 테마 입력 필드 - 명확한 경계 */
+:root:not(.dark):not(.terminal) input,
+:root:not(.dark):not(.terminal) textarea,
+:root:not(.dark):not(.terminal) select,
+.light input,
+.light textarea,
+.light select {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+}
+
+:root:not(.dark):not(.terminal) input:focus,
+:root:not(.dark):not(.terminal) textarea:focus,
+:root:not(.dark):not(.terminal) select:focus,
+.light input:focus,
+.light textarea:focus,
+.light select:focus {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
+}
+
+/* Light 테마 placeholder - 확실한 대비 */
+:root:not(.dark):not(.terminal) input::placeholder,
+:root:not(.dark):not(.terminal) textarea::placeholder,
+.light input::placeholder,
+.light textarea::placeholder {
+  color: hsl(220 9% 55%);
+  opacity: 1;
+}
+
+/* Light 테마 버튼 hover/active 상태 강화 */
+:root:not(.dark):not(.terminal) button:hover,
+.light button:hover {
+  background-color: hsl(var(--accent));
+}
+
+:root:not(.dark):not(.terminal) button:active,
+.light button:active {
+  transform: translateY(1px);
+}
+
+/* Light 테마 Primary 버튼 */
+:root:not(.dark):not(.terminal) .bg-primary,
+.light .bg-primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+:root:not(.dark):not(.terminal) .bg-primary:hover,
+.light .bg-primary:hover {
+  background: hsl(226 55% 45%);
+}
+
+/* Light 테마 모달/다이얼로그 */
+:root:not(.dark):not(.terminal) [role="dialog"],
+:root:not(.dark):not(.terminal) [data-radix-dialog-content],
+.light [role="dialog"],
+.light [data-radix-dialog-content] {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 10px 40px hsl(220 13% 10% / 0.15),
+              0 4px 12px hsl(220 13% 10% / 0.1);
+}
+
+/* Light 테마 드롭다운/팝오버 */
+:root:not(.dark):not(.terminal) [data-radix-popper-content-wrapper] [role="menu"],
+:root:not(.dark):not(.terminal) [data-radix-popover-content],
+.light [data-radix-popper-content-wrapper] [role="menu"],
+.light [data-radix-popover-content] {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 4px 16px hsl(220 13% 10% / 0.12),
+              0 2px 6px hsl(220 13% 10% / 0.06);
+}
+
+/* Light 테마 테이블 */
+:root:not(.dark):not(.terminal) table th,
+.light table th {
+  background: hsl(var(--secondary));
+  border-bottom: 2px solid hsl(var(--border));
+}
+
+:root:not(.dark):not(.terminal) table td,
+.light table td {
+  border-bottom: 1px solid hsl(var(--divider, var(--border)));
+}
+
+:root:not(.dark):not(.terminal) table tr:hover,
+.light table tr:hover {
+  background: hsl(var(--secondary) / 0.5);
+}
+
+/* Light 테마 스크롤바 */
+:root:not(.dark):not(.terminal) ::-webkit-scrollbar-track,
+.light ::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+:root:not(.dark):not(.terminal) ::-webkit-scrollbar-thumb,
+.light ::-webkit-scrollbar-thumb {
+  background: hsl(220 13% 75%);
+  border-radius: 5px;
+}
+
+:root:not(.dark):not(.terminal) ::-webkit-scrollbar-thumb:hover,
+.light ::-webkit-scrollbar-thumb:hover {
+  background: hsl(220 13% 65%);
+}
+
+/* Light 테마 뱃지/칩 */
+:root:not(.dark):not(.terminal) .badge,
+:root:not(.dark):not(.terminal) [data-slot="badge"],
+.light .badge,
+.light [data-slot="badge"] {
+  border: 1px solid hsl(var(--border));
+}
+
+/* Light 테마 구분선 */
+:root:not(.dark):not(.terminal) hr,
+:root:not(.dark):not(.terminal) [role="separator"],
+.light hr,
+.light [role="separator"] {
+  border-color: hsl(var(--border));
 }
 
 /* Dark 테마 세부 조정 */
@@ -974,6 +1230,121 @@
   /* 더 나은 가독성을 위한 텍스트 색상 */
   --foreground: 210 40% 96%;
   --muted-foreground: 215 20.2% 60%;
+}
+
+/* ============================================
+   Dark Theme - Enhanced Readability
+   Light 테마와 동일한 원칙 적용
+   ============================================ */
+
+/* Dark 테마 Selection */
+.dark ::selection {
+  background: hsl(226 70% 60% / 0.3);
+  color: hsl(210 40% 98%);
+}
+
+/* Dark 테마 카드 스타일 - 배경과 확실한 구분 */
+.dark .card,
+.dark [data-slot="card"] {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 1px 3px hsl(0 0% 0% / 0.2),
+              0 1px 2px hsl(0 0% 0% / 0.15);
+}
+
+.dark .card:hover {
+  box-shadow: 0 4px 12px hsl(0 0% 0% / 0.3),
+              0 2px 4px hsl(0 0% 0% / 0.2);
+}
+
+/* Dark 테마 입력 필드 - 명확한 경계 */
+.dark input,
+.dark textarea,
+.dark select {
+  background: hsl(var(--surface-2, var(--card)));
+  border-color: hsl(var(--border));
+}
+
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.2);
+}
+
+/* Dark 테마 placeholder */
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: hsl(var(--text-subtle, 215 20.2% 45%));
+  opacity: 1;
+}
+
+/* Dark 테마 Primary 버튼 */
+.dark .bg-primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.dark .bg-primary:hover {
+  background: hsl(226 70% 55%);
+}
+
+/* Dark 테마 모달/다이얼로그 */
+.dark [role="dialog"],
+.dark [data-radix-dialog-content] {
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 10px 40px hsl(0 0% 0% / 0.4),
+              0 4px 12px hsl(0 0% 0% / 0.3);
+}
+
+/* Dark 테마 드롭다운/팝오버 */
+.dark [data-radix-popper-content-wrapper] [role="menu"],
+.dark [data-radix-popover-content] {
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 4px 16px hsl(0 0% 0% / 0.35),
+              0 2px 6px hsl(0 0% 0% / 0.25);
+}
+
+/* Dark 테마 테이블 */
+.dark table th {
+  background: hsl(var(--secondary));
+  border-bottom: 2px solid hsl(var(--border));
+}
+
+.dark table td {
+  border-bottom: 1px solid hsl(var(--divider, var(--border)));
+}
+
+.dark table tr:hover {
+  background: hsl(var(--secondary) / 0.5);
+}
+
+/* Dark 테마 스크롤바 */
+.dark ::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(var(--border-strong, 217.2 32.6% 30%));
+  border-radius: 5px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(217.2 32.6% 40%);
+}
+
+/* Dark 테마 뱃지/칩 */
+.dark .badge,
+.dark [data-slot="badge"] {
+  border: 1px solid hsl(var(--border));
+}
+
+/* Dark 테마 구분선 */
+.dark hr,
+.dark [role="separator"] {
+  border-color: hsl(var(--border));
 }
 
 /* 기본 테마 prose 스타일 개선 */

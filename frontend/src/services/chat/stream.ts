@@ -13,6 +13,9 @@ export function extractTexts(obj: any): string[] {
   const out: string[] = [];
   if (!obj || typeof obj !== 'object') return out;
 
+  // 직접 text (백엔드 SSE 형식: { type: 'text', text: '...' })
+  if (typeof obj.text === 'string') out.push(obj.text);
+
   // 직접 content
   if (typeof obj.content === 'string') out.push(obj.content);
 

@@ -268,14 +268,54 @@ export class OpenCodeClient {
 
       this._recordSuccess();
 
-      // Response format: { sessionId, messageId, response: { text, raw } }
+      // Debug: log raw response structure
+      logger.debug(
+        { operation: 'chat', requestId },
+        'Raw response from opencode-backend',
+        { dataKeys: Object.keys(data || {}), responseKeys: Object.keys(data?.response || {}) }
+      );
+
+      // Response format varies - try multiple extraction paths:
+      // 1. { response: { text: '...' } } - expected format
+      // 2. { response: '...' } - simple string response
+      // 3. { content: '...' } - direct content
+      // 4. { text: '...' } - direct text
+      // 5. { message: { content: '...' } } - OpenAI format
+      // 6. { choices: [{ message: { content: '...' } }] } - OpenAI chat format
+      let content = '';
+      
+      if (data.response?.text) {
+        content = data.response.text;
+      } else if (typeof data.response === 'string') {
+        content = data.response;
+      } else if (typeof data.content === 'string') {
+        content = data.content;
+      } else if (typeof data.text === 'string') {
+        content = data.text;
+      } else if (data.message?.content) {
+        content = data.message.content;
+      } else if (Array.isArray(data.choices) && data.choices[0]?.message?.content) {
+        content = data.choices[0].message.content;
+      } else if (data.response?.content) {
+        content = data.response.content;
+      }
+
+      // Log if content extraction failed
+      if (!content && data) {
+        logger.warn(
+          { operation: 'chat', requestId },
+          'Could not extract content from response',
+          { dataStructure: JSON.stringify(data).slice(0, 500) }
+        );
+      }
+
       const result = {
-        content: data.response?.text || '',
+        content,
         model,
         provider: 'opencode',
         sessionId: data.sessionId,
         messageId: data.messageId,
-        raw: data.response?.raw,
+        raw: data.response?.raw || data,
       };
 
       logger.info(

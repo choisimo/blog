@@ -183,7 +183,7 @@ echo -e "${YELLOW}[4/7] Creating stack directory structure...${NC}"
 mkdir -p "$STACK_DIR"/{config,data,logs,scripts,backups}
 
 # Create subdirectories for data persistence
-mkdir -p "$STACK_DIR"/data/{postgres,redis,mongodb,qdrant,chroma,elasticsearch,n8n,minio}
+mkdir -p "$STACK_DIR"/data/{postgres,redis,chroma,n8n,minio}
 mkdir -p "$STACK_DIR"/data/nginx/{conf.d,ssl}
 mkdir -p "$STACK_DIR"/logs/{nginx,api,n8n}
 
@@ -335,10 +335,6 @@ POSTGRES_DB=blog
 
 # === Redis ===
 REDIS_PASSWORD=your-redis-password
-
-# === MongoDB ===
-MONGO_INITDB_ROOT_USERNAME=admin
-MONGO_INITDB_ROOT_PASSWORD=your-mongo-password
 
 # === n8n ===
 N8N_BASIC_AUTH_USER=admin

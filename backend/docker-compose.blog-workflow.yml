@@ -69,44 +69,6 @@ services:
     networks:
       - blog-network
 
-  mongodb:
-    image: mongo:7
-    container_name: blog-mongodb
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:27017:27017"
-    env_file:
-      - .env
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
-      - MONGO_INITDB_DATABASE=${MONGO_DB}
-    volumes:
-      - mongo_data:/data/db
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh --quiet
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    networks:
-      - blog-network
-
-  qdrant:
-    image: qdrant/qdrant:v1.7.4
-    container_name: blog-qdrant
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:6333:6333"
-    env_file:
-      - .env
-    environment:
-      - QDRANT__SERVICE__API_KEY=${QDRANT_API_KEY}
-    volumes:
-      - qdrant_data:/qdrant/storage
-    networks:
-      - blog-network
-
   chromadb:
     image: chromadb/chroma:0.5.23
     container_name: blog-chromadb
@@ -126,22 +88,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
-    container_name: blog-elasticsearch
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:9200:9200"
-    environment:
-      - discovery.type=single-node
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
-      - xpack.security.enabled=false
-      - xpack.security.http.ssl.enabled=false
-    volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
-    networks:
-      - blog-network
 
   # ===========================================================================
   # BLOG SERVICES (Pre-built images from GHCR)
@@ -189,14 +135,11 @@ services:
       # Database connections (use internal Docker DNS)
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
-      - MONGODB_URL=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DB}?authSource=admin
       # AI Provider - all AI requests go through ai-server-backend → ai-server-serve
       - OPENCODE_BASE_URL=http://ai-server-backend:7016
       - OPENCODE_DEFAULT_PROVIDER=${OPENCODE_DEFAULT_PROVIDER:-github-copilot}
       - OPENCODE_DEFAULT_MODEL=${OPENCODE_DEFAULT_MODEL:-gpt-4.1}
-      # Vector DB
-      - QDRANT_URL=http://qdrant:6333
-      - QDRANT_API_KEY=${QDRANT_API_KEY}
+      # Vector DB (ChromaDB for embeddings)
       - CHROMADB_URL=http://chromadb:8000
       # Cloudflare
       - CF_ACCOUNT_ID=${CF_ACCOUNT_ID}
@@ -334,8 +277,6 @@ services:
       - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
       - DB_POSTGRESDB_USER=${POSTGRES_USER}
       - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
-      # MongoDB
-      - DB_MONGODB_CONNECTION_URL=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DB}?authSource=admin
       # Redis Queue
       - QUEUE_BULL_REDIS_HOST=redis
       - QUEUE_BULL_REDIS_PORT=6379
@@ -375,9 +316,7 @@ services:
       - OPENCODE_BASE_URL=http://ai-server-backend:7016
       - OPENCODE_SERVE_URL=http://ai-server-serve:7012
       - AI_ENGINE_URL=http://ai-server-serve:7012
-      - QDRANT_URL=http://qdrant:6333
       - CHROMADB_URL=http://chromadb:8000
-      - ELASTICSEARCH_URL=http://elasticsearch:9200
     volumes:
       - n8n_data:/home/node/.n8n
       - ./n8n_files:/files
@@ -405,8 +344,6 @@ services:
       - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
       - DB_POSTGRESDB_USER=${POSTGRES_USER}
       - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
-      # MongoDB
-      - DB_MONGODB_CONNECTION_URL=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DB}?authSource=admin
       # Redis Queue
       - QUEUE_BULL_REDIS_HOST=redis
       - QUEUE_BULL_REDIS_PORT=6379
@@ -422,7 +359,7 @@ services:
       - OPENCODE_BASE_URL=http://ai-server-backend:7016
       - OPENCODE_SERVE_URL=http://ai-server-serve:7012
       - AI_ENGINE_URL=http://ai-server-serve:7012
-      - QDRANT_URL=http://qdrant:6333
+      - CHROMADB_URL=http://chromadb:8000
     command: ["worker"]
     volumes:
       - n8n_data:/home/node/.n8n
@@ -547,10 +484,7 @@ networks:
 volumes:
   postgres_data:
   redis_data:
-  mongo_data:
-  qdrant_data:
   chroma_data:
-  elasticsearch_data:
   tei_data:
   n8n_data:
   minio_data:

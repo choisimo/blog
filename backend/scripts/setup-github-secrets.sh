@@ -63,8 +63,6 @@ echo ""
 echo "--- Database Secrets ---"
 set_secret "POSTGRES_PASSWORD" "PostgreSQL password"
 set_secret "REDIS_PASSWORD" "Redis password"
-set_secret "MONGO_PASSWORD" "MongoDB password"
-set_secret "QDRANT_API_KEY" "Qdrant API key"
 
 # AI Service Secrets
 echo ""
@@ -135,8 +133,6 @@ set_var "API_BASE_URL" "https://api.nodove.com"
 # Database
 set_var "POSTGRES_DB" "blog"
 set_var "POSTGRES_USER" "bloguser"
-set_var "MONGO_USER" "mongouser"
-set_var "MONGO_DB" "blog"
 
 # AI
 set_var "AI_DEFAULT_MODEL" "gpt-4.1"
