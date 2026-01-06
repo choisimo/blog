@@ -140,14 +140,14 @@ images.post('/chat-upload', async c => {
   
   if (file.type?.startsWith('image/')) {
     try {
-      // Convert to base64 for vision API
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-      
-      // Use AIService for vision analysis (uses BACKEND_ORIGIN to avoid circular calls)
+      // Use R2 URL directly for vision API instead of base64
+      // This is more efficient and avoids memory issues with large images
       const aiService = createAIService(c.env);
-      imageAnalysis = await aiService.vision(base64, 'Describe this image briefly', {
-        mimeType: file.type,
-      });
+      imageAnalysis = await aiService.visionWithUrl(
+        url, // Use the R2 URL we just uploaded
+        '이 이미지를 간결하게 설명해주세요. 주요 요소, 분위기, 텍스트가 있다면 내용을 포함해주세요.',
+        { mimeType: file.type }
+      );
     } catch (err) {
       // Vision analysis failed, but upload succeeded - continue without analysis
       console.error('Vision analysis failed:', err);

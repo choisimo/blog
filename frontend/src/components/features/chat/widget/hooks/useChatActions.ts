@@ -142,9 +142,15 @@ export function useChatActions({
             getRAGContextForChat(baseText, 2000)
               .then((ctx) => {
                 ragContext = ctx;
+                if (process.env.NODE_ENV === "development" && ctx) {
+                  console.log("[RAG] Context fetched:", ctx.slice(0, 200));
+                }
               })
-              .catch(() => {
+              .catch((err) => {
                 // RAG search failed, continue without context
+                if (process.env.NODE_ENV === "development") {
+                  console.warn("[RAG] Search failed:", err?.message || err);
+                }
               }),
           );
         }
@@ -155,8 +161,11 @@ export function useChatActions({
             .then((ctx) => {
               memoryContext = ctx;
             })
-            .catch(() => {
+            .catch((err) => {
               // Memory search failed, continue without context
+              if (process.env.NODE_ENV === "development") {
+                console.warn("[Memory] Search failed:", err?.message || err);
+              }
             }),
         );
 

@@ -44,6 +44,25 @@ function truncateForTranslation(content, maxChars = 30000) {
 }
 
 /**
+ * Generate text via AI with a fallback:
+ * 1) Try once
+ * 2) If empty/whitespace, retry once
+ * 3) If still empty, return provided fallback (usually original text)
+ */
+async function generateWithFallback(prompt, options = {}, { fallback = '', minLength = 1 }) {
+  const clean = (txt) => (txt || '').trim().replace(/^["']|["']$/g, '');
+
+  const first = clean(await aiService.generate(prompt, options));
+  if (first && first.length >= minLength) return { text: first, usedFallback: false };
+
+  const second = clean(await aiService.generate(prompt, options));
+  if (second && second.length >= minLength) return { text: second, usedFallback: false };
+
+  const fb = clean(fallback);
+  return { text: fb, usedFallback: true };
+}
+
+/**
  * POST /api/v1/translate
  * Translate a blog post to target language
  */
@@ -116,7 +135,11 @@ Return ONLY the translated title, nothing else.
 
 Title: ${title}`;
 
-    const translatedTitle = await aiService.generate(titlePrompt, { temperature: 0.1 });
+    const { text: translatedTitle } = await generateWithFallback(
+      titlePrompt,
+      { temperature: 0.1 },
+      { fallback: title, minLength: 1 }
+    );
 
     // Translate description if provided
     let translatedDescription = '';
@@ -126,7 +149,12 @@ Return ONLY the translated description, nothing else.
 
 Description: ${description}`;
 
-      translatedDescription = await aiService.generate(descPrompt, { temperature: 0.1 });
+      const descResult = await generateWithFallback(
+        descPrompt,
+        { temperature: 0.1 },
+        { fallback: description, minLength: 1 }
+      );
+      translatedDescription = descResult.text;
     }
 
     // Translate content
@@ -144,11 +172,15 @@ IMPORTANT RULES:
 Content:
 ${truncatedContent}`;
 
-    const translatedContent = await aiService.generate(contentPrompt, { temperature: 0.2 });
+    const { text: translatedContent } = await generateWithFallback(
+      contentPrompt,
+      { temperature: 0.2 },
+      { fallback: content, minLength: 10 }
+    );
 
     // Clean up the responses
     const cleanTitle = translatedTitle.trim().replace(/^["']|["']$/g, '');
-    const cleanDescription = translatedDescription.trim().replace(/^["']|["']$/g, '');
+    const cleanDescription = (translatedDescription || '').trim().replace(/^["']|["']$/g, '');
     const cleanContent = translatedContent.trim();
 
     // Cache the translation

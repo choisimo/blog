@@ -190,7 +190,7 @@ export class AIService {
   }
 
   /**
-   * Vision analysis with image
+   * Vision analysis with base64 image data
    */
   async vision(
     imageData: string,
@@ -202,7 +202,26 @@ export class AIService {
       mimeType: options.mimeType || 'image/jpeg',
       prompt,
       model: options.model,
-    }, { timeout: options.timeout });
+    }, { timeout: options.timeout || 60000 });
+
+    return result.description;
+  }
+
+  /**
+   * Vision analysis with image URL (preferred for R2 images)
+   * More efficient than base64 for large images
+   */
+  async visionWithUrl(
+    imageUrl: string,
+    prompt: string,
+    options: VisionOptions = {}
+  ): Promise<string> {
+    const result = await this.request<{ description: string }>('/vision/analyze', {
+      imageUrl,
+      mimeType: options.mimeType || 'image/jpeg',
+      prompt,
+      model: options.model,
+    }, { timeout: options.timeout || 60000 });
 
     return result.description;
   }

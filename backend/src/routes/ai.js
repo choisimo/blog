@@ -4,93 +4,161 @@ import { getN8NClient } from '../lib/n8n-client.js';
 import { config } from '../config.js';
 // DB access for dynamic model management
 import { queryAll, isD1Configured } from '../lib/d1.js';
+// Hybrid RAG search with RRF
+import { hybridSearch, recordSearchFeedback } from '../lib/hybrid-rag.js';
 
 const router = Router();
 
 // ============================================================================
-// RAG Integration Helper
+// RAG Integration Helper (Enhanced with Hybrid Search)
 // ============================================================================
 
 /**
- * Search RAG for relevant blog posts
+ * Search RAG for relevant blog posts using hybrid search (semantic + keyword with RRF)
+ * Always attempts to find relevant context, regardless of query content.
+ * 
  * @param {string} query - Search query
  * @param {number} nResults - Number of results to return
- * @returns {Promise<Array|null>} Search results or null if RAG unavailable
+ * @param {Object} options - Additional options (userId, sessionType)
+ * @returns {Promise<Object>} Search results with metadata
  */
-async function searchBlogPosts(query, nResults = 5) {
+async function searchBlogPosts(query, nResults = 5, options = {}) {
+  const result = {
+    results: null,
+    metadata: null,
+    error: null,
+    source: 'hybrid',  // 'hybrid', 'fallback', 'failed'
+  };
+  
   try {
-    // Call internal RAG search endpoint
+    // Try hybrid search first (semantic + keyword with RRF)
+    const hybridResult = await hybridSearch(query, {
+      nResults,
+      userId: options.userId,
+      sessionType: options.sessionType || 'chat',
+      minScore: 0.25,  // Lower threshold to include more potentially relevant results
+    });
+    
+    if (hybridResult.results && hybridResult.results.length > 0) {
+      result.results = hybridResult.results;
+      result.metadata = hybridResult.metadata;
+      return result;
+    }
+    
+    // Fallback to direct RAG endpoint if hybrid returns empty
+    result.source = 'fallback';
     const response = await fetch(`http://localhost:${process.env.PORT || 5080}/api/v1/rag/search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, n_results: nResults }),
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(8000),  // Increased timeout
     });
     
     if (!response.ok) {
-      console.warn('RAG search failed:', response.status);
-      return null;
+      result.error = `RAG endpoint returned ${response.status}`;
+      result.source = 'failed';
+      return result;
     }
     
     const data = await response.json();
-    return data.ok ? data.data?.results : null;
+    if (data.ok && data.data?.results?.length > 0) {
+      result.results = data.data.results;
+      result.metadata = { source: 'fallback', query };
+    } else {
+      result.error = 'No results from fallback search';
+      result.source = 'failed';
+    }
+    
+    return result;
   } catch (err) {
     console.warn('RAG search error:', err.message);
-    return null;
+    result.error = err.message;
+    result.source = 'failed';
+    return result;
   }
 }
 
 /**
- * Detect if user message is asking for blog post recommendations
- * @param {string} message - User message
- * @returns {boolean}
+ * Analyze query to determine intent type
+ * Used for adjusting RAG behavior and logging
  */
-function shouldUseRAG(message) {
-  if (!message) return false;
+function analyzeQueryIntent(message) {
+  if (!message) return { type: 'general', confidence: 0.5 };
   
   const lowerMsg = message.toLowerCase();
   
-  // Korean keywords for blog/post recommendations
-  const koreanKeywords = [
-    '게시글', '포스트', '글', '추천', '관련', '찾아', '알려', '보여',
-    '블로그', '게시물', '작성', '읽', '검색', '주제',
+  // High-confidence blog/post related keywords
+  const postKeywords = [
+    '게시글', '포스트', '글', '블로그', '게시물', '작성',
+    'post', 'blog', 'article', 'written',
   ];
   
-  // English keywords
-  const englishKeywords = [
-    'post', 'blog', 'article', 'recommend', 'find', 'search',
-    'show me', 'related', 'about', 'topic', 'written',
+  // Search/recommendation keywords
+  const searchKeywords = [
+    '추천', '관련', '찾아', '알려', '보여', '검색', '주제',
+    'recommend', 'find', 'search', 'show me', 'related', 'about', 'topic',
   ];
   
-  // Check for keywords
-  const hasKoreanKeyword = koreanKeywords.some(kw => lowerMsg.includes(kw));
-  const hasEnglishKeyword = englishKeywords.some(kw => lowerMsg.includes(kw));
+  // Question keywords
+  const questionKeywords = [
+    '뭐', '무엇', '어떤', '어떻게', '왜', '어디', '언제',
+    'what', 'how', 'why', 'where', 'when', 'which',
+  ];
   
-  return hasKoreanKeyword || hasEnglishKeyword;
+  const hasPostKeyword = postKeywords.some(kw => lowerMsg.includes(kw));
+  const hasSearchKeyword = searchKeywords.some(kw => lowerMsg.includes(kw));
+  const hasQuestionKeyword = questionKeywords.some(kw => lowerMsg.includes(kw));
+  
+  if (hasPostKeyword && hasSearchKeyword) {
+    return { type: 'post_search', confidence: 0.95 };
+  } else if (hasPostKeyword) {
+    return { type: 'post_related', confidence: 0.8 };
+  } else if (hasSearchKeyword) {
+    return { type: 'search', confidence: 0.7 };
+  } else if (hasQuestionKeyword) {
+    return { type: 'question', confidence: 0.6 };
+  }
+  
+  return { type: 'general', confidence: 0.5 };
 }
 
 /**
- * Format RAG results as context for LLM
+ * Format RAG results as context for LLM with enhanced instructions
  * @param {Array} results - RAG search results
+ * @param {Object} metadata - Search metadata
  * @returns {string} Formatted context
  */
-function formatRAGContext(results) {
+function formatRAGContext(results, metadata = {}) {
   if (!results || results.length === 0) return '';
   
   const posts = results.map((r, i) => {
     const meta = r.metadata || {};
-    return `${i + 1}. "${meta.title}" (${meta.date || 'no date'})
-   - URL: ${meta.url || '/blog/' + meta.slug}
+    const scoring = r.scoring ? ` [관련도: ${(r.similarity * 100).toFixed(0)}%]` : '';
+    return `${i + 1}. "${meta.title || 'Untitled'}"${scoring}
+   - URL: ${meta.url || '/blog/' + (meta.slug || 'unknown')}
    - Category: ${meta.category || 'N/A'}
    - Tags: ${meta.tags || 'N/A'}
-   - Summary: ${r.document?.substring(0, 200) || 'N/A'}`;
+   - Date: ${meta.date || 'N/A'}
+   - Content Preview: ${(r.document || r.snippet || '').substring(0, 250)}...`;
   }).join('\n\n');
   
-  return `아래는 사용자의 질문과 관련된 블로그 게시글 목록입니다. 이 정보를 바탕으로 답변해주세요:
+  // Enhanced system context with stronger instructions
+  return `
+=== 블로그 컨텍스트 (RAG 검색 결과) ===
+검색 방식: ${metadata.source || 'hybrid'} (의미 검색 + 키워드 매칭)
+${metadata.latency ? `검색 시간: ${metadata.latency.total}ms` : ''}
+
+아래는 사용자의 질문과 **의미적으로 관련된** 블로그 게시글입니다:
 
 ${posts}
 
-위 게시글들을 참고하여 사용자에게 적절한 게시글을 추천해주세요. 제목, URL, 간단한 설명을 포함하여 안내해주세요.`;
+=== 중요 지침 ===
+1. **반드시** 위 검색된 게시글 정보를 최우선으로 활용하여 답변하세요.
+2. 검색된 게시글이 질문과 관련이 있다면, 해당 게시글의 제목과 URL을 포함하여 안내하세요.
+3. 게시글 정보에 없는 내용은 추측하지 말고, "블로그에서 관련 내용을 찾지 못했습니다"라고 말해주세요.
+4. 사용자가 특정 주제를 물어볼 때, 관련 게시글이 있다면 링크와 함께 간단히 소개해주세요.
+5. 항상 정확한 URL 형식(/blog/slug-name)을 사용하세요.
+===================`;
 }
 
 // ============================================================================
@@ -231,13 +299,19 @@ function getFallbackModels(defaultModel) {
 }
 
 // ============================================================================
-// Auto-Chat Endpoint with RAG Integration
+// Auto-Chat Endpoint with Always-On Hybrid RAG Integration
 // POST /api/v1/ai/auto-chat
+// 
+// Enhanced features:
+// - Always attempts RAG search (no keyword trigger required)
+// - Hybrid search: semantic + keyword with RRF fusion
+// - Detailed RAG status in response
+// - Enhanced system prompt for better context utilization
 // ============================================================================
 
 router.post('/auto-chat', async (req, res, next) => {
   try {
-    const { messages, temperature, maxTokens, model } = req.body || {};
+    const { messages, temperature, maxTokens, model, userId, disableRAG } = req.body || {};
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({
@@ -249,31 +323,88 @@ router.post('/auto-chat', async (req, res, next) => {
     // Get the last user message for RAG search
     const lastUserMessage = messages.slice().reverse().find(m => m.role === 'user')?.content;
     
-    // Check if we should use RAG for this query
-    let enrichedMessages = [...messages];
-    let usedRAG = false;
+    // RAG status tracking
+    const ragStatus = {
+      attempted: false,
+      used: false,
+      source: null,           // 'hybrid', 'fallback', 'failed'
+      resultsCount: 0,
+      error: null,
+      intent: null,
+      sessionId: null,
+      latency: null,
+    };
     
-    if (lastUserMessage && shouldUseRAG(lastUserMessage)) {
-      // Search for relevant blog posts
-      const ragResults = await searchBlogPosts(lastUserMessage, 5);
+    let enrichedMessages = [...messages];
+    
+    // Always attempt RAG search unless explicitly disabled
+    if (lastUserMessage && !disableRAG) {
+      ragStatus.attempted = true;
       
-      if (ragResults && ragResults.length > 0) {
-        // Format RAG results as context
-        const context = formatRAGContext(ragResults);
+      // Analyze query intent for logging
+      ragStatus.intent = analyzeQueryIntent(lastUserMessage);
+      
+      try {
+        // Search for relevant blog posts using hybrid search
+        const ragResult = await searchBlogPosts(lastUserMessage, 7, {
+          userId,
+          sessionType: 'chat',
+        });
         
-        // Inject context as a system message
-        const systemMsg = enrichedMessages.find(m => m.role === 'system');
-        if (systemMsg) {
-          // Append to existing system message
-          systemMsg.content = `${systemMsg.content}\n\n${context}`;
-        } else {
-          // Add new system message with context
-          enrichedMessages.unshift({
-            role: 'system',
-            content: `당신은 nodove 블로그의 AI 어시스턴트입니다. 사용자의 질문에 친절하게 답변해주세요.\n\n${context}`,
-          });
+        ragStatus.source = ragResult.source;
+        ragStatus.error = ragResult.error;
+        
+        if (ragResult.metadata) {
+          ragStatus.sessionId = ragResult.metadata.sessionId;
+          ragStatus.latency = ragResult.metadata.latency;
         }
-        usedRAG = true;
+        
+        if (ragResult.results && ragResult.results.length > 0) {
+          ragStatus.used = true;
+          ragStatus.resultsCount = ragResult.results.length;
+          
+          // Format RAG results as context with enhanced instructions
+          const context = formatRAGContext(ragResult.results, ragResult.metadata);
+          
+          // Find or create system message
+          const systemMsgIndex = enrichedMessages.findIndex(m => m.role === 'system');
+          
+          // Enhanced base system prompt
+          const baseSystemPrompt = `당신은 nodove 블로그의 AI 어시스턴트입니다. 
+사용자의 질문에 친절하고 정확하게 답변해주세요.
+블로그 컨텍스트가 제공되면, 해당 정보를 **최우선으로** 활용하여 답변하세요.
+추측하거나 없는 정보를 만들어내지 마세요.`;
+          
+          if (systemMsgIndex >= 0) {
+            // Append context to existing system message
+            enrichedMessages[systemMsgIndex].content = 
+              `${enrichedMessages[systemMsgIndex].content}\n\n${context}`;
+          } else {
+            // Add new system message with context
+            enrichedMessages.unshift({
+              role: 'system',
+              content: `${baseSystemPrompt}\n\n${context}`,
+            });
+          }
+        } else if (!ragResult.error) {
+          // No results but no error - add generic system prompt
+          ragStatus.error = 'No relevant results found';
+          
+          const systemMsgIndex = enrichedMessages.findIndex(m => m.role === 'system');
+          if (systemMsgIndex < 0) {
+            enrichedMessages.unshift({
+              role: 'system',
+              content: `당신은 nodove 블로그의 AI 어시스턴트입니다.
+사용자의 질문에 친절하게 답변해주세요.
+현재 질문과 직접적으로 관련된 블로그 게시글을 찾지 못했습니다.
+블로그 내용에 대한 구체적인 질문이라면, "관련 게시글을 찾지 못했습니다"라고 안내해주세요.`,
+            });
+          }
+        }
+      } catch (ragErr) {
+        console.error('RAG search error in auto-chat:', ragErr.message);
+        ragStatus.error = ragErr.message;
+        ragStatus.source = 'failed';
       }
     }
 
@@ -281,7 +412,7 @@ router.post('/auto-chat', async (req, res, next) => {
     const result = await aiService.chat(enrichedMessages, {
       temperature,
       maxTokens,
-      model, // Pass selected model to AI service
+      model,
     });
 
     return res.json({
@@ -290,12 +421,59 @@ router.post('/auto-chat', async (req, res, next) => {
         content: result.content,
         model: result.model,
         provider: result.provider,
-        usedRAG, // Let client know if RAG was used
+        // Enhanced RAG status information
+        rag: {
+          used: ragStatus.used,
+          attempted: ragStatus.attempted,
+          source: ragStatus.source,
+          resultsCount: ragStatus.resultsCount,
+          error: ragStatus.error,
+          intent: ragStatus.intent,
+          sessionId: ragStatus.sessionId,
+          latency: ragStatus.latency,
+        },
+        // Legacy field for backward compatibility
+        usedRAG: ragStatus.used,
       },
     });
   } catch (err) {
     console.error('auto-chat error:', err);
     return next(err);
+  }
+});
+
+// ============================================================================
+// RAG Feedback Endpoint
+// POST /api/v1/ai/rag-feedback
+// ============================================================================
+
+router.post('/rag-feedback', async (req, res) => {
+  try {
+    const { sessionId, resultId, feedbackType, feedbackValue, userId, positionClicked, timeToClickMs } = req.body;
+    
+    if (!sessionId || !feedbackType) {
+      return res.status(400).json({
+        ok: false,
+        error: { message: 'sessionId and feedbackType are required', code: 'INVALID_REQUEST' },
+      });
+    }
+    
+    const success = await recordSearchFeedback(sessionId, resultId, feedbackType, feedbackValue, {
+      userId,
+      positionClicked,
+      timeToClickMs,
+    });
+    
+    return res.json({
+      ok: true,
+      data: { recorded: success },
+    });
+  } catch (err) {
+    console.error('rag-feedback error:', err);
+    return res.status(500).json({
+      ok: false,
+      error: { message: err.message, code: 'FEEDBACK_ERROR' },
+    });
   }
 });
 
@@ -457,11 +635,23 @@ router.post('/vision/analyze', async (req, res, next) => {
         model: 'gpt-4o', // Vision-capable model
       });
 
+      // Validate response - ensure we got actual content
+      if (!description || (typeof description === 'string' && description.trim() === '')) {
+        console.warn('Vision analysis returned empty description');
+        return res.status(502).json({
+          ok: false,
+          error: {
+            message: 'Vision analysis returned empty response',
+            code: 'VISION_EMPTY_RESPONSE',
+          },
+        });
+      }
+
       return res.json({
         ok: true,
         data: {
           description,
-          provider: aiService.provider,
+          provider: aiService.getProviderInfo().provider,
           imageType, // Let client know how image was processed
         },
       });

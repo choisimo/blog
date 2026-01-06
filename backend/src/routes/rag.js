@@ -6,6 +6,7 @@
  * 
  * 엔드포인트:
  * - POST /api/v1/rag/search - 시맨틱 검색 (블로그 포스트)
+ * - POST /api/v1/rag/hybrid - 하이브리드 검색 (시맨틱 + 키워드 + RRF)
  * - POST /api/v1/rag/embed - 텍스트 임베딩 생성
  * - GET /api/v1/rag/health - RAG 서비스 상태 확인
  * - POST /api/v1/rag/memories/upsert - 사용자 메모리 임베딩 저장
@@ -15,6 +16,7 @@
 
 import express from 'express';
 import { config } from '../config.js';
+import { hybridSearch, recordSearchFeedback } from '../lib/hybrid-rag.js';
 
 const router = express.Router();
 
@@ -261,10 +263,30 @@ router.post('/search', async (req, res) => {
     }
 
     // 1. 쿼리 텍스트를 임베딩으로 변환
-    const [embedding] = await getEmbeddings([query]);
+    let embedding;
+    try {
+      [embedding] = await getEmbeddings([query]);
+    } catch (embErr) {
+      console.error('RAG embedding error:', embErr.message);
+      return res.status(503).json({ 
+        ok: false, 
+        error: `Embedding service unavailable: ${embErr.message}`,
+        code: 'EMBEDDING_ERROR',
+      });
+    }
 
     // 2. ChromaDB에서 유사한 문서 검색
-    const chromaResult = await queryChroma(embedding, n_results);
+    let chromaResult;
+    try {
+      chromaResult = await queryChroma(embedding, n_results);
+    } catch (chromaErr) {
+      console.error('RAG ChromaDB error:', chromaErr.message);
+      return res.status(503).json({ 
+        ok: false, 
+        error: `ChromaDB unavailable: ${chromaErr.message}`,
+        code: 'CHROMA_ERROR',
+      });
+    }
 
     // 3. 결과 포맷팅
     const results = [];
@@ -278,14 +300,16 @@ router.post('/search', async (req, res) => {
           document: docs[i],
           metadata: metas[i] || {},
           distance: dists[i] || null,
+          // Add similarity score for easier client-side use
+          similarity: dists[i] != null ? Math.max(0, 1 - dists[i]) : null,
         });
       }
     }
 
-    res.json({ ok: true, data: { results } });
+    res.json({ ok: true, data: { results, query } });
   } catch (err) {
     console.error('RAG search error:', err.message);
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: err.message, code: 'SEARCH_ERROR' });
   }
 });
 
@@ -733,6 +757,120 @@ router.get('/collections', async (req, res) => {
     });
   } catch (err) {
     console.error('RAG collections error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ========================================
+// HYBRID SEARCH ENDPOINTS
+// ========================================
+
+/**
+ * POST /hybrid - 하이브리드 검색 (시맨틱 + 키워드 + RRF)
+ * 
+ * Request Body:
+ * {
+ *   query: string,           // 검색 쿼리
+ *   n_results?: number,      // 반환할 결과 수 (기본 5)
+ *   user_id?: string,        // 사용자 ID (개인화용)
+ *   session_type?: string,   // 세션 타입 ('chat', 'search', 'recommendation')
+ *   semantic_weight?: number, // 시맨틱 가중치 (기본 0.6)
+ *   keyword_weight?: number,  // 키워드 가중치 (기본 0.4)
+ *   min_score?: number,      // 최소 유사도 (기본 0.25)
+ * }
+ * 
+ * Response:
+ * {
+ *   ok: true,
+ *   data: {
+ *     results: [{ document, metadata, similarity, rrfScore, scoring }],
+ *     metadata: { sessionId, weights, latency, ... }
+ *   }
+ * }
+ */
+router.post('/hybrid', async (req, res) => {
+  try {
+    const { 
+      query, 
+      n_results = 5, 
+      user_id, 
+      session_type = 'search',
+      semantic_weight,
+      keyword_weight,
+      min_score,
+    } = req.body;
+
+    if (!query || typeof query !== 'string') {
+      return res.status(400).json({ ok: false, error: 'query is required' });
+    }
+
+    const result = await hybridSearch(query, {
+      nResults: n_results,
+      userId: user_id,
+      sessionType: session_type,
+      semanticWeight: semantic_weight,
+      keywordWeight: keyword_weight,
+      minScore: min_score,
+    });
+
+    res.json({ 
+      ok: true, 
+      data: result,
+    });
+  } catch (err) {
+    console.error('RAG hybrid search error:', err.message);
+    res.status(500).json({ ok: false, error: err.message, code: 'HYBRID_SEARCH_ERROR' });
+  }
+});
+
+/**
+ * POST /feedback - 검색 결과 피드백 기록
+ * 
+ * Request Body:
+ * {
+ *   session_id: string,      // 검색 세션 ID
+ *   result_id?: number,      // 결과 ID
+ *   feedback_type: string,   // 'click', 'like', 'dislike', 'report'
+ *   feedback_value?: number, // 피드백 값
+ *   user_id?: string,
+ *   position_clicked?: number,
+ *   time_to_click_ms?: number,
+ * }
+ */
+router.post('/feedback', async (req, res) => {
+  try {
+    const { 
+      session_id, 
+      result_id, 
+      feedback_type, 
+      feedback_value = 1,
+      user_id,
+      position_clicked,
+      time_to_click_ms,
+    } = req.body;
+
+    if (!session_id || !feedback_type) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'session_id and feedback_type are required' 
+      });
+    }
+
+    const success = await recordSearchFeedback(
+      session_id, 
+      result_id, 
+      feedback_type, 
+      feedback_value,
+      {
+        userId: user_id,
+        positionClicked: position_clicked,
+        timeToClickMs: time_to_click_ms,
+      }
+    );
+
+    res.json({ ok: true, data: { recorded: success } });
+  } catch (err) {
+    console.error('RAG feedback error:', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { queryAll, queryOne, execute, isD1Configured } from '../lib/d1.js';
+import { requireAdmin } from '../middleware/adminAuth.js';
 import crypto from 'crypto';
 
 const router = Router();
@@ -265,11 +266,9 @@ router.get('/stream', requireD1, async (req, res, next) => {
 /**
  * DELETE /comments/:id - Delete comment (admin only)
  */
-router.delete('/:id', requireD1, async (req, res, next) => {
+router.delete('/:id', requireD1, requireAdmin, async (req, res, next) => {
   try {
     const id = req.params.id;
-
-    // TODO: Add admin auth middleware
 
     const existing = await queryOne('SELECT id FROM comments WHERE id = ?', id);
     if (!existing) {

@@ -100,7 +100,10 @@ posts.post('/', requireAdmin, async (c) => {
 
   const db = c.env.DB;
   const postId = `post-${crypto.randomUUID()}`;
-  const authorId = 'admin-default'; // TODO: Get from authenticated user
+
+  // Get author ID from authenticated user context (set by requireAdmin middleware)
+  const user = c.get('user') as { sub: string; username: string } | undefined;
+  const authorId = user?.sub || user?.username || 'admin';
 
   const now = new Date().toISOString();
 

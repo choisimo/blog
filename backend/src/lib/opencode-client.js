@@ -389,7 +389,7 @@ export class OpenCodeClient {
 
   /**
    * Vision analysis with image
-   * Formats the image as part of the message content
+   * Formats the image as a multimodal message content
    *
    * @param {string} imageData - Base64 encoded image or URL
    * @param {string} prompt - Analysis prompt
@@ -404,23 +404,108 @@ export class OpenCodeClient {
     // Determine if imageData is URL or base64
     const isUrl = imageData.startsWith('http://') || imageData.startsWith('https://');
 
-    // Format message with image for vision analysis
-    let message;
+    // Build multimodal content array for vision-capable models
+    // OpenAI/GPT-4o format: content as array of parts
+    const content = [
+      {
+        type: 'text',
+        text: prompt,
+      },
+    ];
+
     if (isUrl) {
-      message = `[Image URL: ${imageData}]\n\n${prompt}`;
+      content.push({
+        type: 'image_url',
+        image_url: {
+          url: imageData,
+          detail: 'auto',
+        },
+      });
     } else {
-      const imageDataUrl = `data:${mimeType};base64,${imageData}`;
-      message = `[Image: ${imageDataUrl}]\n\n${prompt}`;
+      // Base64 image
+      const dataUrl = `data:${mimeType};base64,${imageData}`;
+      content.push({
+        type: 'image_url',
+        image_url: {
+          url: dataUrl,
+          detail: 'auto',
+        },
+      });
     }
 
-    const result = await this.chat([{ role: 'user', content: message }], {
-      provider,
-      model,
-      timeout: options.timeout || LONG_TIMEOUT,
-      title: `vision-analysis-${Date.now()}`,
-    });
+    const requestId = `vision-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const startTime = Date.now();
+    const timeout = options.timeout || LONG_TIMEOUT;
 
-    return result.content;
+    logger.debug(
+      { operation: 'vision', requestId },
+      'Starting vision analysis',
+      { isUrl, model, provider }
+    );
+
+    try {
+      // Send multimodal message
+      const response = await fetchWithTimeout(
+        `${this.baseUrl}/chat`,
+        {
+          method: 'POST',
+          headers: this._getHeaders(),
+          body: JSON.stringify({
+            message: content, // Multimodal content array
+            providerID: provider,
+            modelID: model,
+            title: `vision-analysis-${Date.now()}`,
+          }),
+        },
+        timeout
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        throw new Error(`OpenCode vision failed: ${response.status} ${errorText}`);
+      }
+
+      const rawData = await response.json();
+      const data = rawData.data || rawData;
+
+      // Extract content from response
+      let result = '';
+      if (data.response?.text) {
+        result = data.response.text;
+      } else if (typeof data.response === 'string') {
+        result = data.response;
+      } else if (typeof data.content === 'string') {
+        result = data.content;
+      } else if (typeof data.text === 'string') {
+        result = data.text;
+      } else if (data.message?.content) {
+        result = data.message.content;
+      } else if (Array.isArray(data.choices) && data.choices[0]?.message?.content) {
+        result = data.choices[0].message.content;
+      }
+
+      const duration = Date.now() - startTime;
+      this._recordSuccess();
+
+      logger.info(
+        { operation: 'vision', requestId },
+        'Vision analysis completed',
+        { duration, resultLength: result?.length || 0 }
+      );
+
+      return result;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      this._recordFailure();
+
+      logger.error(
+        { operation: 'vision', requestId },
+        'Vision analysis failed',
+        { duration, error: error.message }
+      );
+
+      throw error;
+    }
   }
 
   /**
