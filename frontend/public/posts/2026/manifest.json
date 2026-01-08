@@ -1,6 +1,11 @@
 {
-  "files": [],
-  "generatedAt": "2026-01-05T00:58:07.961Z",
-  "totalFiles": 0,
+  "files": [
+    "IO-redirection-파이프-스트림_처리.md",
+    "귀차니즘_원격서버_접속_방안.md",
+    "무속-사이비-변질된-집단화에-대한-고찰.md",
+    "소설1-쿠르스크-전차장들.md"
+  ],
+  "generatedAt": "2026-01-08T22:07:58.707Z",
+  "totalFiles": 4,
   "excludedFiles": 0
 }
