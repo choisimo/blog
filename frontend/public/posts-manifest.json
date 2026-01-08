@@ -1604,6 +1604,7 @@
       "author": "Admin",
       "readingTime": "4 min read",
       "published": true,
+      "coverImage": "/images/2026/귀차니즘.png",
       "url": "/blog/2026/귀차니즘_원격서버_접속_방안"
     },
     {
@@ -1626,6 +1627,7 @@
       "author": "Admin",
       "readingTime": "6 min read",
       "published": true,
+      "coverImage": "/images/2026/museums-victoria-WGeO6dW5GZM-unsplash.jpg",
       "url": "/blog/2026/IO-redirection-파이프-스트림_처리"
     },
     {
@@ -1684,6 +1686,7 @@
       "author": "Admin",
       "readingTime": "7 min read",
       "published": true,
+      "coverImage": "/images/2026/무속-사이비.png",
       "url": "/blog/2026/무속-사이비-변질된-집단화에-대한-고찰"
     },
     {
@@ -2878,7 +2881,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-01-08T21:28:20.581Z",
+  "generatedAt": "2026-01-08T21:41:58.560Z",
   "years": [
     "2026",
     "2025",
