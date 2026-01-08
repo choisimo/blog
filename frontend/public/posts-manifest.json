@@ -1,5 +1,5 @@
 {
-  "total": 137,
+  "total": 138,
   "items": [
     {
       "path": "/posts/2025/감동을_잃어버린_그대들에게.md",
@@ -1586,6 +1586,28 @@
       "url": "/blog/2025/middle-east-ai-conflicts"
     },
     {
+      "path": "/posts/2026/소설1-쿠르스크-전차장들.md",
+      "year": "2026",
+      "slug": "소설1-쿠르스크-전차장들",
+      "title": "쿠르스크 초원의 전차전",
+      "description": "1943년 쿠르스크. 강철 안에 갇힌 두 전차장이 발견한 것은 적이 아닌, 자신과 똑같이 두려워하는 한 사람이었다.",
+      "snippet": "1943년 쿠르스크. 강철 안에 갇힌 두 전차장이 발견한 것은 적이 아닌, 자신과 똑같이 두려워하는 한 사람이었다.",
+      "date": "2025-01-04",
+      "tags": [
+        "단편소설",
+        "전쟁",
+        "역사",
+        "인간성",
+        "쿠르스크 전투"
+      ],
+      "category": "Fiction",
+      "author": "Admin",
+      "readingTime": "13 min read",
+      "published": true,
+      "coverImage": "/images/2026/kursk/kursk-1-foggy-dawn.jpg",
+      "url": "/blog/2026/소설1-쿠르스크-전차장들"
+    },
+    {
       "path": "/posts/2026/귀차니즘_원격서버_접속_방안.md",
       "year": "2026",
       "slug": "귀차니즘_원격서버_접속_방안",
@@ -2881,7 +2903,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-01-08T21:41:58.560Z",
+  "generatedAt": "2026-01-08T22:00:42.193Z",
   "years": [
     "2026",
     "2025",
