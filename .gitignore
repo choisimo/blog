@@ -218,3 +218,13 @@ ENV/
 # -----------------------------------------------------------------------------
 codebase-export/
 export-*.md
+
+.sisyphus/
+session-*.md
+screenshots/e2e-mobile/
+screenshots/스크린샷_*.png
+
+.roo/*
+!.roo/mcp.json
+
+linked-post

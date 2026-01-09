@@ -4,9 +4,22 @@
  * Tests all major features of the blog frontend
  */
 
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { chromium } from 'playwright';
 
-const BASE_URL = 'http://localhost:8080';
+const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:8080';
+const SCREENSHOTS_ENABLED =
+  process.env.E2E_SCREENSHOTS === '1' || process.argv.includes('--screenshots');
+const THEME = process.env.E2E_THEME || '';
+const LANGUAGE = process.env.E2E_LANGUAGE || '';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const RUN_ID = new Date().toISOString().replace(/[:.]/g, '-');
+const SCREENSHOTS_DIR =
+  process.env.E2E_SCREENSHOTS_DIR ||
+  path.resolve(__dirname, '..', 'screenshots', 'e2e-mobile', RUN_ID);
 
 // Test results collector
 const results = [];
@@ -14,6 +27,25 @@ function log(status, test, message = '') {
   const icon = status === 'PASS' ? '\x1b[32m✓\x1b[0m' : status === 'FAIL' ? '\x1b[31m✗\x1b[0m' : '\x1b[33m⚠\x1b[0m';
   console.log(`${icon} ${test}${message ? `: ${message}` : ''}`);
   results.push({ status, test, message });
+}
+
+function safeFilename(name) {
+  const base = (name || '')
+    .trim()
+    .replace(/[\\/:*?"<>|]/g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 120);
+  return base || 'screenshot';
+}
+
+async function screenshot(page, name) {
+  if (!SCREENSHOTS_ENABLED) return;
+  fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
+  const filePath = path.join(SCREENSHOTS_DIR, `${safeFilename(name)}.png`);
+  await page.screenshot({ path: filePath, fullPage: true });
+  console.log(`Screenshot: ${filePath}`);
 }
 
 async function wait(ms) {
@@ -28,11 +60,39 @@ async function runTests() {
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
-  
-  const context = await browser.newContext({
-    viewport: { width: 1280, height: 800 },
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) E2E-Test'
-  });
+
+  const contextOptions = {
+    viewport: SCREENSHOTS_ENABLED
+      ? { width: 390, height: 844 }
+      : { width: 1280, height: 800 },
+    userAgent: SCREENSHOTS_ENABLED
+      ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+      : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) E2E-Test',
+    reducedMotion: 'reduce',
+  };
+  if (SCREENSHOTS_ENABLED) {
+    contextOptions.deviceScaleFactor = 2;
+    contextOptions.isMobile = true;
+    contextOptions.hasTouch = true;
+  }
+  const context = await browser.newContext(contextOptions);
+
+  if (SCREENSHOTS_ENABLED) {
+    await context.addInitScript(
+      ({ theme, language }) => {
+        try {
+          localStorage.setItem('aiMemo.fab.enabled', 'true');
+        } catch {}
+        try {
+          if (theme) localStorage.setItem('theme', theme);
+        } catch {}
+        try {
+          if (language) localStorage.setItem('site.language', language);
+        } catch {}
+      },
+      { theme: THEME, language: LANGUAGE }
+    );
+  }
   
   const page = await context.newPage();
 
@@ -45,8 +105,33 @@ async function runTests() {
     try {
       await page.goto(BASE_URL, { waitUntil: 'networkidle', timeout: 30000 });
       log('PASS', 'Home page loads');
+      await screenshot(page, 'home');
     } catch (e) {
       log('FAIL', 'Home page loads', e.message);
+    }
+
+    if (SCREENSHOTS_ENABLED) {
+      try {
+        const menuButton = page.locator('button[aria-label="Toggle main menu"]').first();
+        if (await menuButton.isVisible()) {
+          await menuButton.click();
+          await wait(400);
+          await screenshot(page, 'home-menu-open');
+          await menuButton.click();
+          await wait(200);
+        }
+      } catch {}
+
+      try {
+        const settingsButton = page.locator('button[aria-label="설정"]').first();
+        if (await settingsButton.isVisible()) {
+          await settingsButton.click();
+          await wait(300);
+          await screenshot(page, 'home-settings-open');
+          await page.keyboard.press('Escape');
+          await wait(200);
+        }
+      } catch {}
     }
 
     // Check header exists
@@ -76,8 +161,22 @@ async function runTests() {
       await page.goto(`${BASE_URL}/#/blog`, { waitUntil: 'networkidle', timeout: 30000 });
       await wait(1000);
       log('PASS', 'Blog page loads');
+      await screenshot(page, 'blog');
     } catch (e) {
       log('FAIL', 'Blog page loads', e.message);
+    }
+
+    if (SCREENSHOTS_ENABLED) {
+      try {
+        const moreTagsBtn = page.getByRole('button', { name: /More tags/i }).first();
+        if (await moreTagsBtn.isVisible()) {
+          await moreTagsBtn.click();
+          await wait(500);
+          await screenshot(page, 'blog-tags-open');
+          await page.keyboard.press('Escape');
+          await wait(200);
+        }
+      } catch {}
     }
 
     // Check for blog posts list
@@ -108,8 +207,48 @@ async function runTests() {
       const article = await page.locator('article, main').first();
       await article.waitFor({ state: 'visible', timeout: 5000 });
       log('PASS', 'Blog post page loads');
+      await screenshot(page, 'blog-post');
     } catch (e) {
       log('FAIL', 'Blog post page loads', e.message);
+    }
+
+    if (SCREENSHOTS_ENABLED) {
+      try {
+        await page.goto(BASE_URL, { waitUntil: 'networkidle', timeout: 30000 });
+        await wait(800);
+        await screenshot(page, 'home-after-visit');
+
+        const chatButton = page
+          .locator('button[aria-label="채팅"], button[aria-label="Chat"]')
+          .first();
+        if (await chatButton.isVisible()) {
+          await chatButton.click();
+          await wait(800);
+          await screenshot(page, 'home-chat-open');
+          const closeButton = page
+            .locator(
+              'button[aria-label*="close" i], button[aria-label*="Close" i], button[aria-label*="닫기" i]'
+            )
+            .first();
+          if (await closeButton.isVisible()) {
+            await closeButton.click();
+            await wait(300);
+          } else {
+            await page.keyboard.press('Escape');
+            await wait(300);
+          }
+        }
+
+        await page.evaluate(() => {
+          try {
+            window.dispatchEvent(new CustomEvent('visitedposts:open'));
+          } catch {}
+        });
+        await wait(600);
+        await screenshot(page, 'home-visited-open');
+        await page.keyboard.press('Escape');
+        await wait(300);
+      } catch {}
     }
 
     // ========================================
@@ -121,6 +260,7 @@ async function runTests() {
       await page.goto(`${BASE_URL}/#/about`, { waitUntil: 'networkidle', timeout: 30000 });
       await wait(1000);
       log('PASS', 'About page loads');
+      await screenshot(page, 'about');
     } catch (e) {
       log('FAIL', 'About page loads', e.message);
     }
@@ -134,6 +274,7 @@ async function runTests() {
       await page.goto(`${BASE_URL}/#/contact`, { waitUntil: 'networkidle', timeout: 30000 });
       await wait(1000);
       log('PASS', 'Contact page loads');
+      await screenshot(page, 'contact');
     } catch (e) {
       log('FAIL', 'Contact page loads', e.message);
     }
@@ -147,8 +288,27 @@ async function runTests() {
       await page.goto(`${BASE_URL}/#/insight`, { waitUntil: 'networkidle', timeout: 30000 });
       await wait(1500);
       log('PASS', 'Insight page loads');
+      await screenshot(page, 'insight');
     } catch (e) {
       log('FAIL', 'Insight page loads', e.message);
+    }
+
+    if (SCREENSHOTS_ENABLED) {
+      try {
+        await page.goto(`${BASE_URL}/#/admin/new-post`, { waitUntil: 'networkidle', timeout: 30000 });
+        await wait(1200);
+        await screenshot(page, 'admin-new-post');
+      } catch {}
+      try {
+        await page.goto(`${BASE_URL}/#/admin/config`, { waitUntil: 'networkidle', timeout: 30000 });
+        await wait(1200);
+        await screenshot(page, 'admin-config');
+      } catch {}
+      try {
+        await page.goto(`${BASE_URL}/#/non-existent-page-12345`, { waitUntil: 'networkidle', timeout: 30000 });
+        await wait(800);
+        await screenshot(page, 'not-found');
+      } catch {}
     }
 
     // ========================================

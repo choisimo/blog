@@ -1689,9 +1689,9 @@
       "url": "/blog/2025/memory-management-study"
     },
     {
-      "path": "/posts/2026/pseudo.md",
+      "path": "/posts/2026/current-crowd.md",
       "year": "2026",
-      "slug": "pseudo",
+      "slug": "current-crowd",
       "title": "무속, 사이비 : 자유의 환상과 개인화의 비극",
       "description": "극단적 개인화가 낳은 소외, 그리고 사이비 집단이라는 달콤한 도피처. 우리는 왜 자유를 두려워하는가.",
       "snippet": "극단적 개인화가 낳은 소외, 그리고 사이비 집단이라는 달콤한 도피처. 우리는 왜 자유를 두려워하는가.",
@@ -1709,7 +1709,7 @@
       "readingTime": "7 min read",
       "published": true,
       "coverImage": "/images/2026/무속-사이비.png",
-      "url": "/blog/2026/pseudo"
+      "url": "/blog/2026/current-crowd"
     },
     {
       "path": "/posts/2024/react-native-springboot-mongodb-diary-app.md",
@@ -2903,7 +2903,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-01-08T22:22:08.018Z",
+  "generatedAt": "2026-01-09T12:58:02.234Z",
   "years": [
     "2026",
     "2025",

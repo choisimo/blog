@@ -23,7 +23,7 @@ export function NavigationItem({
   const isActive = location.pathname === href;
 
   const baseClasses = isMobile
-    ? 'flex items-center gap-3 rounded-md px-3 py-2 text-base font-medium transition-colors'
+    ? 'flex items-center gap-3 rounded-md px-4 py-3 text-base font-medium transition-colors min-h-[44px]'
     : 'flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary';
 
   const activeClasses = isMobile

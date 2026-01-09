@@ -1538,12 +1538,19 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
    ============================================ */
 
 @media (max-width: 767px) {
-  /* 모바일 버튼 최소 크기 */
+  /* 모바일 버튼 최소 크기 - 터치 타겟 44px 보장 */
   button,
   [role="button"],
   .btn,
   [class*="Button"] {
-    min-height: 40px;
+    min-height: 44px;
+  }
+  
+  /* 아이콘 전용 버튼은 width도 보장 */
+  button[class*="icon"],
+  [role="button"][class*="icon"],
+  button[aria-label]:not([class*="w-"]) {
+    min-width: 44px;
   }
   
   /* 모바일 간격 */
@@ -1567,6 +1574,13 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
   /* Adjust meta data font size */
   .meta-text {
     font-size: clamp(11px, 2vw, 12px);
+  }
+  
+  /* Input/Select 높이 강화 - 모바일 48px 권장 */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+  select,
+  textarea {
+    min-height: 48px;
   }
   
   /* Mobile performance: reduce backdrop-filter intensity */

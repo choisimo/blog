@@ -37,13 +37,13 @@ export function DefaultDock({ dockActions, isMobile }: DefaultDockProps) {
                 <span
                   className={cn(
                     "flex items-center justify-center rounded-xl transition-all duration-150",
-                    "h-9 w-9",
+                    "h-11 w-11",
                     action.primary
                       ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
                       : "bg-muted/60 text-foreground/70 dark:bg-white/10 dark:text-white/70",
                   )}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-5 w-5" />
                 </span>
                 <span className="text-[10px] text-muted-foreground/70 dark:text-white/50">
                   {action.label}

@@ -302,7 +302,7 @@ const Blog = () => {
                 <Badge
                   key={tag}
                   variant='default'
-                  className='cursor-pointer rounded-full px-3 py-1 text-xs gap-1'
+                  className='cursor-pointer rounded-full px-4 py-2 text-sm gap-1 min-h-[36px] flex items-center'
                   onClick={() => handleTagToggle(tag)}
                 >
                   #{tag}
@@ -311,7 +311,7 @@ const Blog = () => {
               ))}
               <button
                 type='button'
-                className='text-xs text-muted-foreground underline hover:text-foreground'
+                className='text-xs text-muted-foreground underline hover:text-foreground min-h-[36px] flex items-center'
                 onClick={handleClearTagFilters}
               >
                 Clear all
@@ -350,7 +350,7 @@ const Blog = () => {
                     <Badge
                       key={tag}
                       variant={selectedTags.includes(tag) ? 'default' : 'outline'}
-                      className='cursor-pointer rounded-full px-3 py-1 text-xs hover:bg-primary/10'
+                      className='cursor-pointer rounded-full px-4 py-2 text-sm hover:bg-primary/10 min-h-[36px] flex items-center'
                       onClick={() => handleTagToggle(tag)}
                     >
                       #{tag}
@@ -437,7 +437,7 @@ const Blog = () => {
             </div>
 
             {spotlightPosts.length > 0 && (
-              <div className='grid gap-4 md:grid-cols-2'>
+              <div className='grid gap-5 md:grid-cols-2'>
                 {spotlightPosts.map(post => (
                   <Link
                     key={post.slug}
@@ -471,7 +471,7 @@ const Blog = () => {
           </section>
         )}
 
-        <section className='space-y-4'>
+        <section className='space-y-5'>
           <div className='flex items-center justify-between'>
             <h2 className='text-lg font-semibold'>All posts</h2>
             {totalPages > 1 && (
@@ -493,7 +493,7 @@ const Blog = () => {
               </Button>
             </div>
           ) : pageData.items.length > 0 ? (
-            <div className='space-y-4'>
+            <div className='space-y-5'>
               {(listPosts.length > 0 ? listPosts : pageData.items).map(post => (
                 <Link
                   key={post.slug}

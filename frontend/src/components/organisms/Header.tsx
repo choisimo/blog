@@ -155,7 +155,7 @@ export function Header() {
                     variant='ghost'
                     size='icon'
                     className={cn(
-                      'h-9 w-9',
+                      'h-11 w-11',
                       isTerminal && 'text-primary hover:text-primary hover:bg-primary/10'
                     )}
                     aria-label='설정'
@@ -279,7 +279,10 @@ export function Header() {
                 size='icon'
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 aria-label='Toggle main menu'
-                className={cn(isTerminal && 'text-primary hover:text-primary')}
+                className={cn(
+                  'h-11 w-11',
+                  isTerminal && 'text-primary hover:text-primary'
+                )}
               >
                 <span className='sr-only'>Open main menu</span>
                 {mobileMenuOpen ? (
