@@ -5,7 +5,7 @@
     <description>A blog about technology, programming, and web development</description>
     <link>http://localhost:3000</link>
     <atom:link href="http://localhost:3000/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Fri, 09 Jan 2026 12:58:02 GMT</lastBuildDate>
+    <lastBuildDate>Fri, 09 Jan 2026 15:51:26 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
       <title>감동을 잃어버린 그대들에게</title>

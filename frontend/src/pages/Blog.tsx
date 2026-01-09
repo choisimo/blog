@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatDate } from '@/utils/blog';
+import { OptimizedImage } from '@/components/common/OptimizedImage';
 
 const POSTS_PER_PAGE = 12;
 const TAGS_PER_PAGE = 20;
@@ -252,8 +253,8 @@ const Blog = () => {
                   type='button'
                   onClick={() =>
                     category === 'All'
-                      ? setSelectedCategory('all')
-                      : setSelectedCategory(category)
+                      ? handleCategoryChange('all')
+                      : handleCategoryChange(category)
                   }
                   className={[
                     'rounded-full px-4 py-1 text-sm transition-colors',
@@ -404,7 +405,7 @@ const Blog = () => {
               <div className='space-y-4'>
                 <div className='overflow-hidden rounded-3xl bg-muted dark:bg-white/5'>
                   {featuredPost.coverImage ? (
-                    <img
+                    <OptimizedImage
                       src={featuredPost.coverImage}
                       alt={featuredPost.title}
                       className='h-64 w-full object-cover'
@@ -448,7 +449,11 @@ const Blog = () => {
                   >
                     <div className='h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl bg-muted dark:bg-white/10'>
                       {post.coverImage ? (
-                        <img src={post.coverImage} alt={post.title} className='h-full w-full object-cover' />
+                        <OptimizedImage
+                          src={post.coverImage}
+                          alt={post.title}
+                          className='h-full w-full object-cover'
+                        />
                       ) : (
                         <div className='flex h-full w-full items-center justify-center text-xs text-muted-foreground'>
                           No image
@@ -504,7 +509,11 @@ const Blog = () => {
                 >
                   <div className='h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-muted dark:bg-white/10'>
                     {post.coverImage ? (
-                      <img src={post.coverImage} alt={post.title} className='h-full w-full object-cover' />
+                      <OptimizedImage
+                        src={post.coverImage}
+                        alt={post.title}
+                        className='h-full w-full object-cover'
+                      />
                     ) : (
                       <div className='flex h-full w-full items-center justify-center text-xs text-muted-foreground'>
                         No image

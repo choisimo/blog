@@ -22,7 +22,10 @@ type ManifestItem = {
   published?: boolean;
   coverImage?: string;
   url?: string;
-  language: SupportedLanguage;
+  language?: SupportedLanguage;
+  defaultLanguage?: SupportedLanguage;
+  availableLanguages?: SupportedLanguage[];
+  translations?: Partial<Record<SupportedLanguage, LocalizedPostFields>>;
 };
 
 type UnifiedManifest = {
@@ -84,12 +87,15 @@ export class PostService {
 
     let filtered = items.filter(it => it.published !== false);
     if (category) {
-      filtered = filtered.filter(it => it.category === category);
+      const categoryLower = category.toLowerCase();
+      filtered = filtered.filter(it => (it.category || '').toLowerCase() === categoryLower);
     }
     if (requiredTags.length) {
-      filtered = filtered.filter(it =>
-        requiredTags.some(t => it.tags?.includes(t))
-      );
+      const requiredLower = requiredTags.map(t => t.toLowerCase());
+      filtered = filtered.filter(it => {
+        const itemTagsLower = (it.tags || []).map(t => t.toLowerCase());
+        return requiredLower.some(t => itemTagsLower.includes(t));
+      });
     }
     if (search) {
       filtered = filtered.filter(
@@ -154,7 +160,7 @@ export class PostService {
       year: it.year,
       published: true,
       coverImage: it.coverImage,
-      language: it.language,
+      language: it.language ?? 'ko',
     }));
 
     const pageResult: PostsPage<BlogPost> = {
@@ -189,9 +195,10 @@ export class PostService {
   > {
     try {
       const base = this.getBasePath();
-      const response = await fetch(`${base}/posts-manifest.json`, {
+      const manifestUrl = `${base}/posts-manifest.json${import.meta.env.PROD ? `?v=${Date.now()}` : ''}`;
+      const response = await fetch(manifestUrl, {
         // Favor fresh-ish metadata but allow cached when offline
-        cache: 'force-cache',
+        cache: 'no-cache',
       });
       if (!response.ok) {
         throw new Error('Failed to load posts manifest');
@@ -303,8 +310,9 @@ export class PostService {
       readingTime: readingTimeText,
       slug: filename,
       year,
+      language: defaultLanguage,
       published: frontMatter.published !== false,
-      coverImage: frontMatter.coverImage,
+      coverImage: frontMatter.coverImage || frontMatter.cover,
       defaultLanguage,
       availableLanguages,
       translations: translationEntries,
@@ -346,6 +354,7 @@ export class PostService {
           readingTime: parsed.readingTime,
           published: true,
           coverImage: parsed.coverImage,
+          language: (parsed.language as SupportedLanguage) || 'ko',
           url: `/blog/${parsed.year}/${parsed.slug}`,
         });
       } catch (e) {
@@ -390,6 +399,7 @@ export class PostService {
         year: it.year,
         published: true,
         coverImage: it.coverImage,
+        language: it.language ?? 'ko',
         defaultLanguage: it.defaultLanguage,
         availableLanguages: it.availableLanguages,
         translations: it.translations,
@@ -426,10 +436,11 @@ export class PostService {
         slug: parsed.slug!,
         year: parsed.year!,
         published: true,
-        coverImage: parsed.coverImage,
+        coverImage: parsed.coverImage ?? item.coverImage,
         defaultLanguage: parsed.defaultLanguage,
         availableLanguages: parsed.availableLanguages,
         translations: parsed.translations,
+        language: parsed.language ?? parsed.defaultLanguage ?? 'ko',
       };
     }
 
@@ -451,8 +462,8 @@ export class PostService {
       slug: parsed.slug!,
       year: parsed.year!,
       published: true,
-      coverImage: parsed.coverImage,
-      language: parsed.language!,
+      coverImage: parsed.coverImage ?? item.coverImage,
+      language: (parsed.language ?? parsed.defaultLanguage ?? 'ko') as SupportedLanguage,
     };
   }
 

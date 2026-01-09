@@ -6,7 +6,11 @@ export function usePostsManifest(): BlogPost[] {
   const [posts, setPosts] = useState<BlogPost[]>([]);
 
   useEffect(() => {
-    fetch("/posts-manifest.json")
+    const base = (import.meta as any).env?.BASE_URL ? String((import.meta as any).env.BASE_URL) : '/';
+    const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
+    const url = `${normalizedBase}/posts-manifest.json?ts=${Date.now()}`;
+
+    fetch(url, { cache: 'no-cache' })
       .then((res) => res.json())
       .then((data) => {
         if (data.items) {

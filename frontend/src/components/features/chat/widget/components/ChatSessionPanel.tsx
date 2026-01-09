@@ -132,43 +132,69 @@ export function ModeSelector({
   isTerminal,
   isMobile,
 }: ModeSelectorProps) {
+  if (isTerminal) {
+    return (
+      <div
+        className={cn(
+          "flex items-center justify-between border-b px-4 py-2 shrink-0",
+          "border-border font-mono bg-[hsl(var(--terminal-code-bg))]",
+        )}
+      >
+        <span className="text-xs text-muted-foreground/60">Mode:</span>
+        <div className="flex items-center gap-2 text-xs">
+          <button
+            type="button"
+            onClick={() => onModeChange("article")}
+            className={cn(
+              "flex items-center gap-1 px-2 py-1.5 border transition-all",
+              questionMode === "article"
+                ? "border-solid border-primary/60 text-primary bg-primary/10"
+                : "border-dotted border-muted-foreground/30 text-muted-foreground hover:border-primary/40 hover:text-primary/70",
+            )}
+          >
+            <span className="text-terminal-amber">[</span>
+            <span className={questionMode === "article" ? "text-primary crt-text-glow" : "opacity-0"}>X</span>
+            <span className="text-terminal-amber">]</span>
+            <span className="ml-1">Article</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onModeChange("general")}
+            className={cn(
+              "flex items-center gap-1 px-2 py-1.5 border transition-all",
+              questionMode === "general"
+                ? "border-solid border-primary/60 text-primary bg-primary/10"
+                : "border-dotted border-muted-foreground/30 text-muted-foreground hover:border-primary/40 hover:text-primary/70",
+            )}
+          >
+            <span className="text-terminal-amber">[</span>
+            <span className={questionMode === "general" ? "text-primary crt-text-glow" : "opacity-0"}>X</span>
+            <span className="text-terminal-amber">]</span>
+            <span className="ml-1">General</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
         "flex items-center justify-between border-b px-4 py-2 shrink-0",
-        isTerminal
-          ? "border-border font-mono bg-[hsl(var(--terminal-code-bg))]"
-          : "bg-background/50",
+        "bg-background/50",
       )}
     >
       <span
         className={cn(
           "text-xs text-muted-foreground truncate max-w-[50%]",
-          isTerminal && "font-mono",
         )}
       >
-        {isTerminal ? (
-          questionMode === "article" ? (
-            <>
-              <span className="text-primary/60">mode:</span>{" "}
-              <span className="text-primary">article</span>
-            </>
-          ) : (
-            <>
-              <span className="text-primary/60">mode:</span>{" "}
-              <span className="text-primary">general</span>
-            </>
-          )
-        ) : questionMode === "article" ? (
-          `현재 글 기반`
-        ) : (
-          "일반 대화"
-        )}
+        {questionMode === "article" ? "현재 글 기반" : "일반 대화"}
       </span>
       <div
         className={cn(
-          "inline-flex rounded-full border bg-muted/60 p-0.5",
-          isTerminal && "rounded-none bg-transparent border-primary/30",
+          "inline-flex rounded-full border bg-muted/40 p-0.5 shadow-sm",
+          "focus-within:ring-2 focus-within:ring-primary/30 focus-within:ring-offset-2 focus-within:ring-offset-background/30",
         )}
       >
         <Button
@@ -176,38 +202,32 @@ export function ModeSelector({
           type="button"
           variant={questionMode === "article" ? "secondary" : "ghost"}
           className={cn(
-            "h-7 px-3 text-xs",
+            "h-7 px-3 text-xs rounded-full transition-colors",
             isMobile && "h-8 px-4",
-            isTerminal && "rounded-none font-mono",
-            isTerminal &&
-              questionMode === "article" &&
-              "bg-primary/20 text-primary",
-            isTerminal &&
-              questionMode !== "article" &&
-              "text-muted-foreground hover:text-primary hover:bg-primary/10",
+            questionMode === "article" &&
+              "bg-background/80 text-foreground shadow border border-border/60",
+            questionMode !== "article" &&
+              "bg-transparent text-muted-foreground hover:text-foreground hover:bg-background/30 border border-transparent",
           )}
           onClick={() => onModeChange("article")}
         >
-          {isTerminal ? "--article" : "현재 글"}
+          현재 글
         </Button>
         <Button
           size="sm"
           type="button"
           variant={questionMode === "general" ? "secondary" : "ghost"}
           className={cn(
-            "h-7 px-3 text-xs",
+            "h-7 px-3 text-xs rounded-full transition-colors",
             isMobile && "h-8 px-4",
-            isTerminal && "rounded-none font-mono",
-            isTerminal &&
-              questionMode === "general" &&
-              "bg-primary/20 text-primary",
-            isTerminal &&
-              questionMode !== "general" &&
-              "text-muted-foreground hover:text-primary hover:bg-primary/10",
+            questionMode === "general" &&
+              "bg-background/80 text-foreground shadow border border-border/60",
+            questionMode !== "general" &&
+              "bg-transparent text-muted-foreground hover:text-foreground hover:bg-background/30 border border-transparent",
           )}
           onClick={() => onModeChange("general")}
         >
-          {isTerminal ? "--general" : "일반"}
+          일반
         </Button>
       </div>
     </div>

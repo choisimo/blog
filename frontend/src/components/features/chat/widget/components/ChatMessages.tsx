@@ -126,26 +126,50 @@ function EmptyState({
   isMobile: boolean;
   onPromptClick: (prompt: string) => void;
 }) {
+  if (isTerminal) {
+    const asciiArt = [
+      "┌────────────────────────┐",
+      "│   ▄▄▄   ▄▄▄▄▄   ▄▄▄    │ ",
+      "│  █   █  █   █  █   █   │ ",
+      "│         █▄▄▄█          │ ",
+      "│                        │ ",
+      "└────────────────────────┘ ",
+      "",
+      " Hello! I'm nodove-bot",
+      " Google it yourself. ",
+      "(Seriously, don't ask me.)",
+    ].join("\n");
+
+    return (
+      <div className="terminal-empty-panel">
+        <div className="terminal-empty-grid">
+          <pre className="terminal-ascii-art" aria-hidden="true">
+            {asciiArt}
+          </pre>
+          <div className="terminal-empty-text">
+            <p className="terminal-empty-title">$ ./ai-chat --help</p>
+            <div className="terminal-command-grid" aria-label="추천 프롬프트">
+              {QUICK_PROMPTS.map((prompt, index) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  className="terminal-command-btn crt-cli-btn"
+                  onClick={() => onPromptClick(prompt)}
+                >
+                  <span className="crt-text-amber font-bold">[{index + 1}]</span>
+                  <span>{prompt}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={cn(
-        "space-y-4 rounded-2xl border border-dashed px-4 py-6 text-sm text-muted-foreground",
-        isTerminal &&
-          "rounded-lg border-primary/30 bg-[hsl(var(--terminal-code-bg))]",
-      )}
-    >
-      {isTerminal ? (
-        <>
-          <p className="font-mono text-primary/80">
-            <span className="text-primary">$</span> ./ai-chat --help
-          </p>
-          <p className="font-mono text-muted-foreground text-xs leading-relaxed">
-            질문을 입력하고 Enter를 눌러 실행하세요.
-          </p>
-        </>
-      ) : (
-        <p className="text-center">빠르게 시작하려면 아래 프롬프트를 눌러보세요.</p>
-      )}
+    <div className="space-y-4 rounded-2xl border border-dashed px-4 py-6 text-sm text-muted-foreground">
+      <p className="text-center">빠르게 시작하려면 아래 프롬프트를 눌러보세요.</p>
       <div className={cn("flex flex-wrap gap-2", isMobile && "flex-col")}>
         {QUICK_PROMPTS.map((prompt) => (
           <Button
@@ -155,12 +179,10 @@ function EmptyState({
             className={cn(
               "text-xs justify-start",
               isMobile ? "h-12 px-4 w-full text-sm" : "h-10 px-4",
-              isTerminal &&
-                "rounded-none border border-primary/40 bg-transparent text-primary hover:bg-primary/20 hover:text-primary font-mono",
             )}
             onClick={() => onPromptClick(prompt)}
           >
-            {isTerminal ? `> ${prompt}` : prompt}
+            {prompt}
           </Button>
         ))}
       </div>
@@ -211,22 +233,32 @@ function TerminalMessage({
         </div>
       )}
       {isAssistant && (
-        <div className="pl-0 border-l-2 border-primary/30 ml-0">
-          <div className="flex items-center gap-2 text-xs text-primary/70 mb-2 pl-3">
+        <div className="ai-response-container">
+          <div className="ai-response-header">
             <Terminal className="h-3.5 w-3.5" />
             <span>AI Response</span>
             {!m.text.trim() && (
-              <span className="inline-flex items-center gap-1 text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                processing...
+              <span className="streaming-indicator">
+                <span className="streaming-dots">
+                  <span>.</span>
+                  <span>.</span>
+                  <span>.</span>
+                </span>
+                processing
               </span>
             )}
           </div>
-          <div className="pl-3 text-foreground/90 text-sm">
+          <div className="text-foreground/90 text-sm typewriter-container">
             {m.text.trim() ? (
-              <ChatMarkdown content={m.text} />
+              <>
+                <ChatMarkdown content={m.text} />
+                {/* Show cursor while still streaming (no sources yet means still streaming) */}
+                {!m.sources?.length && !m.followups?.length && (
+                  <span className="typewriter-cursor" />
+                )}
+              </>
             ) : (
-              <span className="terminal-cursor" />
+              <span className="crt-block-cursor" aria-label="waiting" />
             )}
           </div>
           <Sources sources={m.sources} isTerminal onSourceClick={onSourceClick} />

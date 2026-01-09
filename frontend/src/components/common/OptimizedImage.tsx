@@ -24,6 +24,26 @@ export const OptimizedImage = ({
   onLoad,
   onError,
 }: OptimizedImageProps) => {
+  const resolvedSrc = (() => {
+    if (!src) return src;
+    if (/^(https?:)?\/\//i.test(src) || /^(data|blob):/i.test(src)) return src;
+
+    const base = (import.meta as any).env?.BASE_URL
+      ? String((import.meta as any).env.BASE_URL)
+      : '/';
+    const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
+    if (!normalizedBase || normalizedBase === '/') return src;
+
+    // If already prefixed with BASE_URL, keep as-is.
+    if (src.startsWith(`${normalizedBase}/`)) return src;
+
+    // Root-relative assets need BASE_URL prefix for subpath deployments.
+    if (src.startsWith('/')) return `${normalizedBase}${src}`;
+
+    // Relative assets should be resolved under BASE_URL.
+    return `${normalizedBase}/${src}`;
+  })();
+
   const [imageSrc, setImageSrc] = useState(placeholder);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -69,7 +89,7 @@ export const OptimizedImage = ({
     const img = new Image();
 
     img.onload = () => {
-      setImageSrc(src);
+      setImageSrc(resolvedSrc);
       setIsLoading(false);
       setHasError(false);
       onLoad?.();
@@ -81,13 +101,13 @@ export const OptimizedImage = ({
       onError?.();
     };
 
-    img.src = src;
+    img.src = resolvedSrc;
 
     return () => {
       img.onload = null;
       img.onerror = null;
     };
-  }, [isInView, src, onLoad, onError]);
+  }, [isInView, resolvedSrc, onLoad, onError]);
 
   if (hasError) {
     return (
@@ -119,7 +139,7 @@ export const OptimizedImage = ({
   }
 
   return (
-    <div className='relative overflow-hidden rounded'>
+    <div className='relative overflow-hidden rounded w-full h-full'>
       <img
         ref={imgRef}
         src={imageSrc}
@@ -128,7 +148,8 @@ export const OptimizedImage = ({
         height={height}
         className={cn(
           'transition-all duration-500 ease-in-out',
-          isLoading ? 'opacity-0 scale-105 blur-sm' : 'opacity-100 scale-100 blur-0',
+          isLoading && 'scale-105 blur-sm',
+          !isLoading && 'scale-100 blur-0',
           className
         )}
         loading={loading}

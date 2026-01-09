@@ -128,7 +128,7 @@ export default function ChatWidget(props: {
           // Terminal theme: PC rounded, mobile fullscreen
           isTerminal &&
             !isMobile &&
-            "border-border bg-[hsl(var(--terminal-code-bg))] rounded-lg",
+            "border-border bg-[hsl(var(--terminal-code-bg))] rounded-lg terminal-crt",
           isTerminal &&
             isMobile &&
             "border-0 bg-[hsl(var(--terminal-code-bg))]",

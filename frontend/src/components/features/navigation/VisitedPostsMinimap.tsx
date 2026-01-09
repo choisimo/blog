@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { X, Clock, Map } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
+import { OptimizedImage } from '@/components/common/OptimizedImage';
+import { Clock, Map as MapIcon } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -241,7 +243,7 @@ export function VisitedPostsMinimap({
           )}
           {/* Title row with count */}
           <div className='flex items-center gap-3'>
-            <Map className='h-5 w-5 text-muted-foreground' />
+            <MapIcon className='h-5 w-5 text-muted-foreground' />
             <SheetTitle className='text-base font-semibold'>
               방문 기록
             </SheetTitle>
@@ -260,7 +262,7 @@ export function VisitedPostsMinimap({
                   title={p.title}
                 >
                   {p.coverImage ? (
-                    <img
+                    <OptimizedImage
                       src={p.coverImage}
                       alt=''
                       className='h-full w-full object-cover'
@@ -338,7 +340,7 @@ export function VisitedPostsMinimap({
                   >
                     <div className='h-12 w-12 overflow-hidden rounded-lg shrink-0'>
                       {p.coverImage ? (
-                        <img
+                        <OptimizedImage
                           src={p.coverImage}
                           alt=''
                           className='h-12 w-12 object-cover'

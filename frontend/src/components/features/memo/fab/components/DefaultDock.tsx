@@ -11,7 +11,7 @@ export function DefaultDock({ dockActions, isMobile }: DefaultDockProps) {
   return (
     <div
       className={cn(
-        "flex w-full items-center backdrop-blur-xl",
+        "flex w-full items-center justify-center backdrop-blur-xl",
         isMobile
           ? "rounded-none border-t border-border/30 bg-background/95 px-2 py-1.5 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] dark:bg-background/90 dark:border-white/10"
           : "rounded-[28px] border border-white/20 bg-background/70 px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.08),_0_2px_8px_rgba(0,0,0,0.04)] dark:border-white/10 dark:bg-background/60 dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)]",

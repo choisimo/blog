@@ -863,11 +863,7 @@ const Insight = () => {
     if (selectedNode === id) {
       // Double-click: open preview panel for posts
       const node = nodes.find(n => n.id === id);
-      if (node?.type === 'post') {
-        setShowPreview(true);
-      } else if (node?.type === 'post' && node.data) {
-        navigate(`/blog/${node.data.year}/${node.data.slug}`);
-      }
+      if (node?.type === 'post') setShowPreview(true);
       return;
     }
     
@@ -1498,7 +1494,7 @@ const Insight = () => {
       {/* Full preview panel with aggregated content */}
       {showPreview && selectedNode && (
         <div className={cn(
-          'fixed inset-4 md:left-auto md:right-4 md:top-20 md:bottom-20 md:w-[400px] rounded-xl border shadow-xl overflow-hidden flex flex-col',
+          'fixed inset-4 md:left-auto md:right-4 md:top-44 md:bottom-20 md:w-[400px] rounded-xl border shadow-xl overflow-hidden flex flex-col',
           isTerminal
             ? 'bg-[#0d0d14] border-[#50fa7b]/20'
             : 'bg-white border-gray-200'

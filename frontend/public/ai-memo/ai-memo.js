@@ -1214,15 +1214,38 @@
           </div>
 
           <div id="catalystBox" class="catalyst-panel" style="display:none;">
-             <div class="catalyst-header">
-               <span class="catalyst-icon">⚡</span>
-               <span class="catalyst-title">Catalyst</span>
-             </div>
-             <input id="catalystInput" class="input catalyst-input" placeholder="어떻게 확장해볼까요? 예: 사용 사례 관점에서 다시 보기" maxlength="160" />
-             <div class="catalyst-actions">
-               <button id="catalystCancel" class="btn secondary">취소</button>
-               <button id="catalystRun" class="btn catalyst-run"><span class="catalyst-run-icon">▶</span> 생성</button>
-             </div>
+            <div class="catalyst-card">
+              <div class="catalyst-header">
+                <span class="catalyst-pill">
+                  <span class="catalyst-icon">⚡</span>
+                  <span class="catalyst-title">Catalyst</span>
+                </span>
+                <span class="catalyst-status">실험 기능</span>
+              </div>
+              <p class="catalyst-subtext">
+                AI에게 확장 프롬프트를 전달해 요약, 인사이트, 액션 아이템 등을 빠르게 받아보세요.
+              </p>
+              <label class="catalyst-input-label" for="catalystInput">프롬프트</label>
+              <div class="catalyst-input-shell">
+                <span class="catalyst-input-indicator">/</span>
+                <input
+                  id="catalystInput"
+                  class="input catalyst-input"
+                  placeholder="어떻게 확장해볼까요? 예: 사용 사례 관점에서 다시 보기"
+                  maxlength="160"
+                />
+                <span class="catalyst-input-hint">최대 160자</span>
+              </div>
+              <div class="catalyst-suggestions" aria-label="추천 프롬프트">
+                <button type="button" class="catalyst-suggestion">사용 사례 정리</button>
+                <button type="button" class="catalyst-suggestion">톤 조정</button>
+                <button type="button" class="catalyst-suggestion">액션 아이템</button>
+              </div>
+              <div class="catalyst-actions">
+                <button id="catalystCancel" class="btn secondary">취소</button>
+                <button id="catalystRun" class="btn catalyst-run"><span class="catalyst-run-icon">▶</span> 생성</button>
+              </div>
+            </div>
           </div>
           <div class="footer">
             <div id="status" class="status-bar">
@@ -1230,29 +1253,23 @@
               <span class="status-text">Ready</span>
             </div>
             <div class="footer-actions">
-              <button id="memoSync" class="footer-btn" type="button" title="클라우드 동기화" aria-label="클라우드 동기화">
+              <button id="memoSync" class="footer-btn" type="button" title="클라우드 동기화" aria-label="클라우드 동기화" data-tooltip="클라우드 동기화">
                 <span class="btn-icon">☁</span>
-                <span class="btn-label">동기화</span>
               </button>
-              <button id="memoVersions" class="footer-btn" type="button" title="버전 기록" aria-label="버전 기록">
+              <button id="memoVersions" class="footer-btn" type="button" title="버전 기록" aria-label="버전 기록" data-tooltip="버전 기록">
                 <span class="btn-icon">⏱</span>
-                <span class="btn-label">버전</span>
               </button>
-              <button id="memoToGraph" class="footer-btn" type="button" title="그래프에 추가" aria-label="그래프에 추가">
+              <button id="memoToGraph" class="footer-btn" type="button" title="그래프에 추가" aria-label="그래프에 추가" data-tooltip="그래프에 추가">
                 <span class="btn-icon">◉</span>
-                <span class="btn-label">그래프</span>
               </button>
-              <button id="download" class="footer-btn" type="button" title="다운로드" aria-label="다운로드">
+              <button id="download" class="footer-btn" type="button" title="다운로드" aria-label="메모 다운로드" data-tooltip="메모 다운로드">
                 <span class="btn-icon">↓</span>
-                <span class="btn-label">저장</span>
               </button>
-              <button id="memoFull" class="footer-btn" type="button" title="전체화면" aria-label="전체화면">
+              <button id="memoFull" class="footer-btn" type="button" title="전체화면" aria-label="전체화면" data-tooltip="전체화면 전환">
                 <span class="btn-icon">⛶</span>
-                <span class="btn-label">확대</span>
               </button>
-              <button id="memoClear" class="footer-btn danger" type="button" title="지우기" aria-label="지우기">
+              <button id="memoClear" class="footer-btn danger" type="button" title="지우기" aria-label="지우기" data-tooltip="메모 지우기">
                 <span class="btn-icon">✕</span>
-                <span class="btn-label">지우기</span>
               </button>
             </div>
           </div>
@@ -1324,6 +1341,9 @@
       this.$catalystInput = this.shadowRoot.getElementById('catalystInput');
       this.$catalystRun = this.shadowRoot.getElementById('catalystRun');
       this.$catalystCancel = this.shadowRoot.getElementById('catalystCancel');
+      this.$catalystSuggestions = Array.from(
+        this.shadowRoot.querySelectorAll('.catalyst-suggestion')
+      );
       this.$download = this.shadowRoot.getElementById('download');
       this.$toast = this.shadowRoot.getElementById('toast');
     }
@@ -2664,6 +2684,19 @@
         this.$catalystInput.addEventListener('keydown', (e) => {
           if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.runCatalyst(); }
           if (e.key === 'Escape') { e.preventDefault(); this.$catalystCancel?.click(); }
+        });
+      }
+      if (Array.isArray(this.$catalystSuggestions) && this.$catalystSuggestions.length) {
+        this.$catalystSuggestions.forEach(btn => {
+          btn.addEventListener('click', () => {
+            const text = btn.textContent?.trim();
+            if (!text || !this.$catalystInput) return;
+            this.$catalystInput.value = text;
+            this.$catalystInput.focus();
+            this.$catalystInput.dispatchEvent(new Event('input', { bubbles: true }));
+            this.out.tempStatus('추천 프롬프트 적용됨', 'Ready', 900);
+            this.logEvent({ type: 'catalyst_prompt_prefill', label: text });
+          });
         });
       }
 

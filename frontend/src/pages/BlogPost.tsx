@@ -44,6 +44,7 @@ import { useToast } from '@/components/ui/use-toast';
 import useLanguage from '@/hooks/useLanguage';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
+import { OptimizedImage } from '@/components/common/OptimizedImage';
 import { recordView } from '@/services/analytics';
 import { translatePost, getCachedTranslation, type TranslationResult } from '@/services/translate';
 import { curiosityTracker } from '@/services/curiosity';
@@ -530,7 +531,7 @@ const BlogPost = () => {
                         isTerminal && 'rounded-lg border-border'
                       )}
                     >
-                      <img
+                      <OptimizedImage
                         src={post.coverImage}
                         alt={localized?.title ?? post.title}
                         className='h-64 w-full object-cover sm:h-80'

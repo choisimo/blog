@@ -645,7 +645,7 @@ const Index = () => {
                 )}>
                   {item.coverImage ? (
                     <div className='aspect-[16/9] overflow-hidden'>
-                      <img
+                      <OptimizedImage
                         src={item.coverImage}
                         alt=''
                         className='h-full w-full object-cover group-hover:scale-105 transition-transform duration-300'

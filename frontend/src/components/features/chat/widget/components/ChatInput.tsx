@@ -251,8 +251,12 @@ function TerminalInput({
     >
       <div className="flex items-end gap-2">
         {!isMobile && (
-          <span className="text-primary font-mono font-bold select-none shrink-0 py-2 text-sm">
-            $
+          <span className="font-mono select-none shrink-0 py-2 text-sm flex items-center gap-0.5">
+            <span className="text-muted-foreground/60">user</span>
+            <span className="text-muted-foreground/40">@</span>
+            <span className="text-primary/70">ai-chat</span>
+            <span className="text-muted-foreground/40">:~</span>
+            <span className="text-primary font-bold crt-text-glow">$</span>
           </span>
         )}
         <Textarea
@@ -271,8 +275,8 @@ function TerminalInput({
             "focus-visible:ring-0 focus-visible:ring-offset-0",
             "placeholder:text-muted-foreground/60 overflow-y-auto",
             isMobile
-              ? "px-2 text-base min-h-[56px] max-h-[96px]"
-              : "px-1 text-sm min-h-[40px] max-h-[72px]",
+              ? "px-2 text-sm min-h-[56px] max-h-[96px]"
+              : "px-1 text-[12px] leading-tight min-h-[40px] max-h-[72px]",
           )}
         />
         <div className="flex items-center gap-2">
