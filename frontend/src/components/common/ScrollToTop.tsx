@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowUp } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, throttle } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -10,21 +10,25 @@ export const ScrollToTop = () => {
   const isMobile = useIsMobile();
   const { isTerminal } = useTheme();
 
-  // Hide on mobile terminal - shell bar has its own scroll-to-top button
   const shouldHide = isMobile && isTerminal;
 
-  useEffect(() => {
-    const toggleVisibility = () => {
-      if (window.scrollY > 300) {
-        setIsVisible(true);
-      } else {
-        setIsVisible(false);
-      }
-    };
-
-    window.addEventListener('scroll', toggleVisibility);
-    return () => window.removeEventListener('scroll', toggleVisibility);
+  const toggleVisibility = useCallback(() => {
+    if (window.scrollY > 300) {
+      setIsVisible(true);
+    } else {
+      setIsVisible(false);
+    }
   }, []);
+
+  const throttledToggle = useMemo(
+    () => throttle(toggleVisibility, 100),
+    [toggleVisibility]
+  );
+
+  useEffect(() => {
+    window.addEventListener('scroll', throttledToggle);
+    return () => window.removeEventListener('scroll', throttledToggle);
+  }, [throttledToggle]);
 
   const scrollToTop = () => {
     window.scrollTo({

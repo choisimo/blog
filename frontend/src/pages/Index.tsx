@@ -183,21 +183,26 @@ const Index = () => {
     };
   }, []);
 
-  // Featured categories (static placeholders)
-  const categories = useMemo(
-    () => [
-      { name: 'AI & ML', icon: Sparkles, count: 12, color: 'text-purple-500' },
-      { name: 'Web Dev', icon: Code2, count: 18, color: 'text-blue-500' },
-      {
-        name: 'Algorithms',
-        icon: TrendingUp,
-        count: 15,
-        color: 'text-green-500',
-      },
-      { name: 'DevOps', icon: BookOpen, count: 10, color: 'text-orange-500' },
-    ],
-    []
-  );
+  // Featured categories with dynamic counts from allPosts
+  const categories = useMemo(() => {
+    const categoryMap: Record<string, number> = {};
+    for (const post of allPosts) {
+      const cat = post.category || 'General';
+      categoryMap[cat] = (categoryMap[cat] || 0) + 1;
+    }
+
+    const baseCategories = [
+      { name: 'AI & ML', icon: Sparkles, color: 'text-purple-500' },
+      { name: 'Web Dev', icon: Code2, color: 'text-blue-500' },
+      { name: 'Algorithms', icon: TrendingUp, color: 'text-green-500' },
+      { name: 'DevOps', icon: BookOpen, color: 'text-orange-500' },
+    ];
+
+    return baseCategories.map(cat => ({
+      ...cat,
+      count: categoryMap[cat.name] || 0,
+    }));
+  }, [allPosts]);
 
   // Hero featured post (first from Editor's Picks)
   const heroFeatured = featuredPosts[0];
