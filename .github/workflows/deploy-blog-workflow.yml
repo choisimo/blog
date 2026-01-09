@@ -34,6 +34,7 @@ on:
     paths:
       - 'backend/**'
       - 'shared/**'
+      - 'frontend/public/posts/**'
       - '.github/workflows/deploy-blog-workflow.yml'
   workflow_dispatch:
     inputs:
