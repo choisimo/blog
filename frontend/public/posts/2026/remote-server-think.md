@@ -1,7 +1,7 @@
 ---
 title: "게으름의 미학"
 
-date: "2025-01-03"
+date: "2026-01-03"
 
 category: "Tech & Philosophy"
 

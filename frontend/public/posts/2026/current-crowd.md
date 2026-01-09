@@ -1,7 +1,7 @@
 ---
 title: "무속, 사이비 : 자유의 환상과 개인화의 비극"
 
-date: "2025-01-01"
+date: "2026-01-01"
 
 category: "Tech & Philosophy"  
 

@@ -5,8 +5,62 @@
     <description>A blog about technology, programming, and web development</description>
     <link>http://localhost:3000</link>
     <atom:link href="http://localhost:3000/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Fri, 09 Jan 2026 15:51:26 GMT</lastBuildDate>
+    <lastBuildDate>Fri, 09 Jan 2026 21:31:47 GMT</lastBuildDate>
     <language>en-US</language>
+    <item>
+      <title>쿠르스크 초원의 전차전</title>
+      <description>1943년 쿠르스크. 강철 안에 갇힌 두 전차장이 발견한 것은 적이 아닌, 자신과 똑같이 두려워하는 한 사람이었다.</description>
+      <link>http://localhost:3000/blog/2026/nobel1-kursk-tanks</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2026/nobel1-kursk-tanks</guid>
+      <pubDate>Sun, 04 Jan 2026 00:00:00 GMT</pubDate>
+      <category>Fiction</category>
+      <category>단편소설</category>
+      <category>전쟁</category>
+      <category>역사</category>
+      <category>인간성</category>
+      <category>쿠르스크 전투</category>
+    </item>
+    <item>
+      <title>게으름의 미학</title>
+      <description>나의 귀찮음이 만들어낸 부지런한 컨테이너</description>
+      <link>http://localhost:3000/blog/2026/remote-server-think</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2026/remote-server-think</guid>
+      <pubDate>Sat, 03 Jan 2026 00:00:00 GMT</pubDate>
+      <category>Tech &amp; Philosophy</category>
+      <category>시스템 설계</category>
+      <category>자동화</category>
+      <category>DevOps</category>
+      <category>개발 철학</category>
+      <category>생산성</category>
+    </item>
+    <item>
+      <title>모든 것은 파일이다</title>
+      <description>cat | grep 이라는 단순한 명령어 뒤에 숨겨진 커널의 정교한 메커니즘. 모든 것을 파일로 추상화한 유닉스 철학의 고마움</description>
+      <link>http://localhost:3000/blog/2026/io-redirection-pipeline</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2026/io-redirection-pipeline</guid>
+      <pubDate>Fri, 02 Jan 2026 00:00:00 GMT</pubDate>
+      <category>Tech &amp; Philosophy</category>
+      <category>시스템 프로그래밍</category>
+      <category>리눅스</category>
+      <category>커널</category>
+      <category>파이프</category>
+      <category>I/O</category>
+      <category>아키텍처</category>
+    </item>
+    <item>
+      <title>무속, 사이비 : 자유의 환상과 개인화의 비극</title>
+      <description>극단적 개인화가 낳은 소외, 그리고 사이비 집단이라는 달콤한 도피처. 우리는 왜 자유를 두려워하는가.</description>
+      <link>http://localhost:3000/blog/2026/current-crowd</link>
+      <guid isPermaLink="true">http://localhost:3000/blog/2026/current-crowd</guid>
+      <pubDate>Thu, 01 Jan 2026 00:00:00 GMT</pubDate>
+      <category>Tech &amp; Philosophy</category>
+      <category>디지털 휴머니즘</category>
+      <category>쾌락 중독</category>
+      <category>최적화의 비극</category>
+      <category>인간 소외</category>
+      <category>기술 철학</category>
+      <category>문제 정의</category>
+    </item>
     <item>
       <title>감동을 잃어버린 그대들에게</title>
       <description>효율성이라는 알고리즘에 갇혀, 비효율적인 낭만을 잃어버린 우리 시대에 대한 회고.</description>
@@ -211,58 +265,6 @@
       <category>JVM</category>
       <category>G1</category>
       <category>메모리관리</category>
-    </item>
-    <item>
-      <title>&apos;You need to load the kernel first&apos;와 함께한 새벽의 구조 요청</title>
-      <description>pacman -Syu 한 번 눌렀을 뿐인데 부팅이 멈췄다면? 새벽에 겪은 GRUB 구출기를 일기처럼 정리했습니다.</description>
-      <link>http://localhost:3000/blog/2025/grub-kernel-error-journal</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/grub-kernel-error-journal</guid>
-      <pubDate>Sat, 25 Oct 2025 00:00:00 GMT</pubDate>
-      <category>Linux</category>
-      <category>Arch Linux</category>
-      <category>GRUB</category>
-      <category>부팅오류</category>
-      <category>시스템복구</category>
-      <category>에세이</category>
-    </item>
-    <item>
-      <title>타입 변수와 야생의 캐스팅: 제네릭을 길들이던 내 기록</title>
-      <description>로 타입과 ClassCastException에 질려, 제네릭이 도입되던 현장을 지켜보며 타입 안정성을 붙잡은 개발자 일기</description>
-      <link>http://localhost:3000/blog/2025/java-generics-journal</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/java-generics-journal</guid>
-      <pubDate>Sat, 25 Oct 2025 00:00:00 GMT</pubDate>
-      <category>Java</category>
-      <category>Java</category>
-      <category>Generics</category>
-      <category>타입시스템</category>
-      <category>Erasure</category>
-      <category>컬렉션</category>
-    </item>
-    <item>
-      <title>6G 연구소의 밤, 지각 있는 네트워크를 그리는 상상</title>
-      <description>테라헤르츠 실험과 지능형 표면, AI 네이티브 아키텍처, 통신-감지 통합을 넘나들며 6G의 미래를 환상과 현실 사이에서 탐구한 기록</description>
-      <link>http://localhost:3000/blog/2025/6g-sentient-future-journal</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/6g-sentient-future-journal</guid>
-      <pubDate>Fri, 24 Oct 2025 00:00:00 GMT</pubDate>
-      <category>Network</category>
-      <category>6G</category>
-      <category>테라헤르츠</category>
-      <category>RIS</category>
-      <category>AI네이티브</category>
-      <category>JCS</category>
-    </item>
-    <item>
-      <title>ZFS 풀 앞에서 멈춰 선 Proxmox, 그 밤의 기록</title>
-      <description>1.85TB 디스크를 추가하려다 ZFS가 &apos;공간 없음&apos;을 외친 밤. 스냅샷과 예약 공간 사이에서 배운 얇은 줄타기 경험담</description>
-      <link>http://localhost:3000/blog/2025/proxmox-thin-provision</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/proxmox-thin-provision</guid>
-      <pubDate>Fri, 24 Oct 2025 00:00:00 GMT</pubDate>
-      <category>Linux</category>
-      <category>Proxmox</category>
-      <category>ZFS</category>
-      <category>Thin Provision</category>
-      <category>가상화</category>
-      <category>스토리지</category>
     </item>
   </channel>
 </rss>

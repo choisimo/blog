@@ -1,7 +1,7 @@
 ---
 title: "쿠르스크 초원의 전차전"
 
-date: "2025-01-04"
+date: "2026-01-04"
 
 category: "Fiction"
 
