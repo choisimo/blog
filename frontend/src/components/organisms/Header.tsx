@@ -1,13 +1,16 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { LanguageToggle, ThemeToggle } from '@/components/common';
-import { Menu, X, Home, BookOpen, User, Mail, Shield, Settings, Globe, Moon, Sun, Monitor, Terminal } from 'lucide-react';
+import { Menu, X, Home, BookOpen, User, Mail, Shield, Settings, Globe, Moon, Sun, Monitor, Terminal, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { NavigationItem } from '@/components/molecules';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { usePostsIndex } from '@/hooks/usePostsIndex';
+import { HeaderSearchBar } from '@/components/features/search/HeaderSearchBar';
+import { MiniTerminal } from '@/components/features/terminal';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +19,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 const baseNavigation = [
   { name: 'Home', href: '/', icon: Home },
@@ -55,6 +63,7 @@ export function Header() {
   const { theme, setTheme, isTerminal } = useTheme();
   const { language, setLanguage } = useLanguage();
   const isMobile = useIsMobile();
+  const { posts } = usePostsIndex();
 
   useEffect(() => {
     const check = () => {
@@ -138,8 +147,30 @@ export function Header() {
               ))}
             </div>
           </div>
+
+          <div className='hidden md:block flex-1 max-w-xs lg:max-w-sm mx-4'>
+            <HeaderSearchBar posts={posts} />
+          </div>
+
           <div className='flex items-center gap-x-2 sm:gap-x-4'>
-            {/* PC: 개별 토글 버튼들 */}
+            {isTerminal && !isMobile && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    className='text-primary hover:text-primary hover:bg-primary/10'
+                    aria-label='Open terminal'
+                  >
+                    <Terminal className='h-5 w-5' />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className='w-96 p-0' align='end'>
+                  <MiniTerminal />
+                </PopoverContent>
+              </Popover>
+            )}
+            
             {!isMobile && (
               <>
                 <LanguageToggle />

@@ -17,7 +17,7 @@ import {
   Sparkles,
   TrendingUp,
 } from 'lucide-react';
-import { BlogCard, BlogCardSkeleton } from '@/components';
+import { BlogCard, BlogCardSkeleton, PostCard } from '@/components';
 import { getPosts, getPostsPage, getPostBySlug } from '@/data/posts';
 import type { BlogPost } from '@/types/blog';
 import { SearchBar } from '@/components/features/search/SearchBar';
@@ -414,7 +414,7 @@ const Index = () => {
           </div>
           <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
             {searchResults.slice(0, 9).map(post => (
-              <BlogCard key={`${post.year}/${post.slug}`} post={post} />
+              <PostCard key={`${post.year}/${post.slug}`} post={post} variant="grid" />
             ))}
           </div>
         </section>

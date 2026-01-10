@@ -142,6 +142,38 @@ export const parseMarkdownFrontmatter = (content: string): ParsedMarkdown => {
   return { frontmatter, content: bodyContent };
 };
 
+/**
+ * Parse description markdown to HTML, removing images and converting basic markdown
+ * Used for post summary/excerpt display
+ */
+export const parseDescriptionMarkdown = (text: string): string => {
+  if (!text) return '';
+  
+  let result = text
+    // Remove image markdown: ![alt](src) or ![alt]
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '')
+    .replace(/!\[[^\]]*\]/g, '')
+    // Remove standalone image URLs that look like paths
+    .replace(/\(\/images\/[^)]+\)/g, '')
+    // Convert bold: **text** or __text__
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/__([^_]+)__/g, '<strong>$1</strong>')
+    // Convert italic: *text* or _text_
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    .replace(/_([^_]+)_/g, '<em>$1</em>')
+    // Convert inline code: `code`
+    .replace(/`([^`]+)`/g, '<code class="bg-muted px-1 py-0.5 rounded text-sm">$1</code>')
+    // Convert headers to bold (### Header -> <strong>Header</strong>)
+    .replace(/^#{1,6}\s+(.+)$/gm, '<strong>$1</strong>')
+    // Convert links: [text](url)
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-primary hover:underline">$1</a>')
+    // Clean up extra whitespace from removed images
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  
+  return result;
+};
+
 export const loadPostBySlug = async (
   slug: string
 ): Promise<BlogPost | null> => {

@@ -21,12 +21,14 @@ import {
   formatDate,
   getAvailableLanguages,
   resolveLocalizedPost,
+  parseDescriptionMarkdown,
 } from '@/utils/blog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CommentSection } from '@/components/features/blog';
+import { CommentSection, TableOfContents } from '@/components/features/blog';
+import { Breadcrumb } from '@/components/features/navigation/Breadcrumb';
 import {
   ArrowLeft,
   Calendar,
@@ -49,7 +51,6 @@ import { recordView } from '@/services/analytics';
 import { translatePost, getCachedTranslation, type TranslationResult } from '@/services/translate';
 import { curiosityTracker } from '@/services/curiosity';
 import { useUIStrings } from '@/utils/i18n/uiStrings';
-// import SparkInline from '@/components/features/sentio/SparkInline';
 
 const MarkdownRenderer = lazy(
   () => import('@/components/features/blog/MarkdownRenderer')
@@ -452,6 +453,14 @@ const BlogPost = () => {
             )}
           >
             <header className='space-y-6'>
+              <Breadcrumb
+                items={[
+                  { label: 'Blog', href: '/blog' },
+                  { label: post.category, href: `/blog?category=${encodeURIComponent(post.category)}` },
+                  { label: localized?.title ?? post.title },
+                ]}
+                className={cn(isTerminal && 'font-mono text-xs')}
+              />
               <div className='flex flex-wrap items-center justify-between gap-3'>
                 <Button
                   variant='ghost'
@@ -519,24 +528,10 @@ const BlogPost = () => {
                         'text-base leading-relaxed text-muted-foreground dark:text-white/70 sm:text-lg',
                         isTerminal && 'border-l-2 border-primary/30 pl-4'
                       )}
-                    >
-                      {localized?.description ?? post.description}
-                    </p>
-                  )}
-
-                  {post.coverImage && (
-                    <div
-                      className={cn(
-                        'overflow-hidden rounded-3xl border border-white/40 bg-muted shadow-sm dark:border-white/10 dark:bg-white/5',
-                        isTerminal && 'rounded-lg border-border'
-                      )}
-                    >
-                      <OptimizedImage
-                        src={post.coverImage}
-                        alt={localized?.title ?? post.title}
-                        className='h-64 w-full object-cover sm:h-80'
-                      />
-                    </div>
+                      dangerouslySetInnerHTML={{
+                        __html: parseDescriptionMarkdown(localized?.description ?? post.description)
+                      }}
+                    />
                   )}
 
                   <div
@@ -696,38 +691,42 @@ const BlogPost = () => {
               </div>
             </header>
 
-            <section
-              className={cn(
-                'rounded-[32px] border border-white/50 bg-card/70 p-4 shadow-soft backdrop-blur-sm dark:border-white/5 dark:bg-[#141927]/90 sm:p-8 -mx-2 sm:mx-0',
-                isTerminal && 'rounded-lg border-border bg-[hsl(var(--terminal-code-bg))]'
-              )}
-            >
-              <div
+            <div className='flex gap-8'>
+              <section
                 className={cn(
-                  'prose prose-gray max-w-none dark:prose-invert',
-                  isTerminal && 'prose-headings:font-mono prose-headings:terminal-glow'
+                  'flex-1 min-w-0 rounded-[32px] border border-white/50 bg-card/70 p-4 shadow-soft backdrop-blur-sm dark:border-white/5 dark:bg-[#141927]/90 sm:p-8 -mx-2 sm:mx-0',
+                  isTerminal && 'rounded-lg border-border bg-[hsl(var(--terminal-code-bg))]'
                 )}
               >
-                <Suspense
-                  fallback={
-                    <div className='space-y-3' aria-label='Loading article content'>
-                      <Skeleton className='h-6 w-3/4' />
-                      <Skeleton className='h-4 w-full' />
-                      <Skeleton className='h-4 w-11/12' />
-                      <Skeleton className='h-4 w-10/12' />
-                      <Skeleton className='h-4 w-9/12' />
-                      <Skeleton className='h-4 w-1/2' />
-                    </div>
-                  }
+                <div
+                  className={cn(
+                    'prose prose-gray max-w-none dark:prose-invert',
+                    isTerminal && 'prose-headings:font-mono prose-headings:terminal-glow'
+                  )}
                 >
-                  <MarkdownRenderer
-                    content={localized?.content ?? post.content}
-                    inlineEnabled={inlineEnabled}
-                    postTitle={localized?.title ?? post.title}
-                  />
-                </Suspense>
-              </div>
-            </section>
+                  <Suspense
+                    fallback={
+                      <div className='space-y-3' aria-label='Loading article content'>
+                        <Skeleton className='h-6 w-3/4' />
+                        <Skeleton className='h-4 w-full' />
+                        <Skeleton className='h-4 w-11/12' />
+                        <Skeleton className='h-4 w-10/12' />
+                        <Skeleton className='h-4 w-9/12' />
+                        <Skeleton className='h-4 w-1/2' />
+                      </div>
+                    }
+                  >
+                    <MarkdownRenderer
+                      content={localized?.content ?? post.content}
+                      inlineEnabled={inlineEnabled}
+                      postTitle={localized?.title ?? post.title}
+                    />
+                  </Suspense>
+                </div>
+              </section>
+
+              <TableOfContents content={localized?.content ?? post.content} />
+            </div>
 
             <CommentSection postId={`${post.year}/${post.slug}`} />
 
