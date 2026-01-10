@@ -10,8 +10,8 @@
     <item>
       <title>쿠르스크 초원의 전차전</title>
       <description>1943년 쿠르스크. 강철 안에 갇힌 두 전차장이 발견한 것은 적이 아닌, 자신과 똑같이 두려워하는 한 사람이었다.</description>
-      <link>http://localhost:3000/blog/2026/nobel1-kursk-tanks</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/nobel1-kursk-tanks</guid>
+      <link>https://noblog.nodove.com/blog/2026/nobel1-kursk-tanks</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/nobel1-kursk-tanks</guid>
       <pubDate>Sun, 04 Jan 2026 00:00:00 GMT</pubDate>
       <category>Fiction</category>
       <category>단편소설</category>
@@ -23,8 +23,8 @@
     <item>
       <title>게으름의 미학</title>
       <description>나의 귀찮음이 만들어낸 부지런한 컨테이너</description>
-      <link>http://localhost:3000/blog/2026/remote-server-think</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/remote-server-think</guid>
+      <link>https://noblog.nodove.com/blog/2026/remote-server-think</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/remote-server-think</guid>
       <pubDate>Sat, 03 Jan 2026 00:00:00 GMT</pubDate>
       <category>Tech &amp; Philosophy</category>
       <category>시스템 설계</category>
@@ -36,8 +36,8 @@
     <item>
       <title>모든 것은 파일이다</title>
       <description>cat | grep 이라는 단순한 명령어 뒤에 숨겨진 커널의 정교한 메커니즘. 모든 것을 파일로 추상화한 유닉스 철학의 고마움</description>
-      <link>http://localhost:3000/blog/2026/io-redirection-pipeline</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/io-redirection-pipeline</guid>
+      <link>https://noblog.nodove.com/blog/2026/io-redirection-pipeline</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/io-redirection-pipeline</guid>
       <pubDate>Fri, 02 Jan 2026 00:00:00 GMT</pubDate>
       <category>Tech &amp; Philosophy</category>
       <category>시스템 프로그래밍</category>
@@ -50,8 +50,8 @@
     <item>
       <title>무속, 사이비 : 자유의 환상과 개인화의 비극</title>
       <description>극단적 개인화가 낳은 소외, 그리고 사이비 집단이라는 달콤한 도피처. 우리는 왜 자유를 두려워하는가.</description>
-      <link>http://localhost:3000/blog/2026/current-crowd</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/current-crowd</guid>
+      <link>https://noblog.nodove.com/blog/2026/current-crowd</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/current-crowd</guid>
       <pubDate>Thu, 01 Jan 2026 00:00:00 GMT</pubDate>
       <category>Tech &amp; Philosophy</category>
       <category>디지털 휴머니즘</category>
@@ -64,8 +64,8 @@
     <item>
       <title>감동을 잃어버린 그대들에게</title>
       <description>효율성이라는 알고리즘에 갇혀, 비효율적인 낭만을 잃어버린 우리 시대에 대한 회고.</description>
-      <link>http://localhost:3000/blog/2025/감동을_잃어버린_그대들에게</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/감동을_잃어버린_그대들에게</guid>
+      <link>https://noblog.nodove.com/blog/2025/감동을_잃어버린_그대들에게</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/감동을_잃어버린_그대들에게</guid>
       <pubDate>Mon, 29 Dec 2025 00:00:00 GMT</pubDate>
       <category>Tech &amp; Philosophy</category>
       <category>디지털 휴머니즘</category>
@@ -78,8 +78,8 @@
     <item>
       <title>쿠버네티스 기본 구조</title>
       <description>전통적 배포 방식부터 쿠버네티스 에코시스템까지, 개념을 정리하는 글</description>
-      <link>http://localhost:3000/blog/2025/k8s-overview</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/k8s-overview</guid>
+      <link>https://noblog.nodove.com/blog/2025/k8s-overview</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/k8s-overview</guid>
       <pubDate>Tue, 02 Dec 2025 00:00:00 GMT</pubDate>
       <category>Kubernetes</category>
       <category>Kubernetes</category>
@@ -90,8 +90,8 @@
     <item>
       <title>우리는 DNA의 꼭두각시인가: 이성의 붕괴와 야성적 충동의 역설에 대한 생각</title>
       <description>애덤 스미스의 이성적 인간관에 대한 반박부터 케인스와 민스키의 야성적 충동, 그리고 진화심리학적 관점까지. 인간 본성의 모순에 대한 생각</description>
-      <link>http://localhost:3000/blog/2025/AnimalsMind</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/AnimalsMind</guid>
+      <link>https://noblog.nodove.com/blog/2025/AnimalsMind</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/AnimalsMind</guid>
       <pubDate>Mon, 01 Dec 2025 00:00:00 GMT</pubDate>
       <category>Essays</category>
       <category>Philosophy</category>
@@ -103,8 +103,8 @@
     <item>
       <title>알고리즘의 역발상 관점</title>
       <description>피보나치 수열, 행렬 곱셈, 그리디 알고리즘, 문자열 검색, P vs NP까지 — 컴퓨터 과학의 고전 알고리즘을 역발상 관점으로 정리</description>
-      <link>http://localhost:3000/blog/2025/algorithm_solv</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/algorithm_solv</guid>
+      <link>https://noblog.nodove.com/blog/2025/algorithm_solv</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/algorithm_solv</guid>
       <pubDate>Sat, 29 Nov 2025 00:00:00 GMT</pubDate>
       <category>Computer Science</category>
       <category>알고리즘</category>
@@ -116,8 +116,8 @@
     <item>
       <title>Kafka와 LLM 서버 사이에 버퍼 존을 둔 AI 서버 설계기</title>
       <description>Kafka와 LLM 서버 사이에 작은 버퍼 존을 두고 Gateway와 Buffer Worker를 나누어 설계한 이유, 그리고 이를 Kafka 토픽·메시지 스키마·docker-compose로 구체화해 가는 과정을 정리했다</description>
-      <link>http://localhost:3000/blog/2025/AI-api-server-temporary-dev</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/AI-api-server-temporary-dev</guid>
+      <link>https://noblog.nodove.com/blog/2025/AI-api-server-temporary-dev</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/AI-api-server-temporary-dev</guid>
       <pubDate>Thu, 20 Nov 2025 00:00:00 GMT</pubDate>
       <category>Backend</category>
       <category>Kafka</category>
@@ -129,8 +129,8 @@
     <item>
       <title>네트워크 병목과 NAT 게이트웨이의 한계: 한 CS 학생의 속마음</title>
       <description>프라이빗 서브넷과 퍼블릭 서브넷, NAT Gateway와 IGW가 등장하는 전형적인 VPC 그림을 보던 수업 시간. 모두가 보안을 이야기할 때, 내 눈에는 그 구조가 거대한 깔때기 실험처럼 보였다. 이 글은 그 순간 머릿속에서 떠오른 병목에 대한 질문과 직관을 그대로 옮긴 기록이다.</description>
-      <link>http://localhost:3000/blog/2025/nat-gateway-bottleneck-journal</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/nat-gateway-bottleneck-journal</guid>
+      <link>https://noblog.nodove.com/blog/2025/nat-gateway-bottleneck-journal</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/nat-gateway-bottleneck-journal</guid>
       <pubDate>Wed, 19 Nov 2025 00:00:00 GMT</pubDate>
       <category>Network</category>
       <category>NAT</category>
@@ -142,8 +142,8 @@
     <item>
       <title>제가 뇌를 리셋하게 만든 미래 기술 문서에서 발견한 6가지 깨달음</title>
       <description>미래 기술 문서들 속에서 발견한 6가지 통찰과 인간 역할의 재정의를 공유합니다.</description>
-      <link>http://localhost:3000/blog/2025/future-tech-six-insights</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/future-tech-six-insights</guid>
+      <link>https://noblog.nodove.com/blog/2025/future-tech-six-insights</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/future-tech-six-insights</guid>
       <pubDate>Tue, 04 Nov 2025 00:00:00 GMT</pubDate>
       <category>Tech Essay</category>
       <category>AI</category>
@@ -155,8 +155,8 @@
     <item>
       <title>정렬 알고리즘 수도 코드 완전 해부: 라인별 분석</title>
       <description>버블 정렬부터 힙 정렬까지, 핵심 수도 코드를 한 줄씩 뜯어보며 왜 그런 로직이 필요한지 한국어로 상세하게 분석합니다.</description>
-      <link>http://localhost:3000/blog/2025/sorting-algorithms-pseudocode-analysis</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/sorting-algorithms-pseudocode-analysis</guid>
+      <link>https://noblog.nodove.com/blog/2025/sorting-algorithms-pseudocode-analysis</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/sorting-algorithms-pseudocode-analysis</guid>
       <pubDate>Sun, 02 Nov 2025 00:00:00 GMT</pubDate>
       <category>알고리즘</category>
       <category>정렬</category>
@@ -167,8 +167,8 @@
     <item>
       <title>PATH에 새 친구를 초대하는 방법</title>
       <description>심볼릭 링크가 말을 안 듣던 날, PATH를 다시 다듬으며 정리한 나만의 에세이.</description>
-      <link>http://localhost:3000/blog/2025/path-new-friend-essay</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/path-new-friend-essay</guid>
+      <link>https://noblog.nodove.com/blog/2025/path-new-friend-essay</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/path-new-friend-essay</guid>
       <pubDate>Sat, 01 Nov 2025 00:00:00 GMT</pubDate>
       <category>Linux</category>
       <category>PATH</category>
@@ -180,8 +180,8 @@
     <item>
       <title>정렬 알고리즘 완전 정복: 버블 정렬부터 힙 정렬까지</title>
       <description>버블 정렬부터 힙 정렬까지, 핵심 비유와 수도 코드, Java 구현으로 정렬 알고리즘을 완전 정복합니다.</description>
-      <link>http://localhost:3000/blog/2025/sorting-algorithms-masterclass</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/sorting-algorithms-masterclass</guid>
+      <link>https://noblog.nodove.com/blog/2025/sorting-algorithms-masterclass</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/sorting-algorithms-masterclass</guid>
       <pubDate>Sat, 01 Nov 2025 00:00:00 GMT</pubDate>
       <category>알고리즘</category>
       <category>정렬</category>
@@ -191,8 +191,8 @@
     <item>
       <title>Wayland 위에서 Wine 카카오톡이 복붙을 잃어버린 날</title>
       <description>EndeavourOS에서 Wine 카카오톡과 호스트 사이 복붙이 끊겼던 사건을 기록하며, 왜 그런지 그리고 어떻게 우회했는지 정리했다.</description>
-      <link>http://localhost:3000/blog/2025/wine-clipboard-bridge-journal</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/wine-clipboard-bridge-journal</guid>
+      <link>https://noblog.nodove.com/blog/2025/wine-clipboard-bridge-journal</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/wine-clipboard-bridge-journal</guid>
       <pubDate>Fri, 31 Oct 2025 00:00:00 GMT</pubDate>
       <category>Linux</category>
       <category>Wine</category>
@@ -204,8 +204,8 @@
     <item>
       <title>스레드 덤프와 데드락 다이어그램, 자바 동시성의 밤을 기록하다</title>
       <description>Thread, synchronized, ExecutorService, ForkJoinPool을 오가며 레이스와 데드락을 추적했던 내 1인칭 동시성 일기</description>
-      <link>http://localhost:3000/blog/2025/java-concurrency-journal</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/java-concurrency-journal</guid>
+      <link>https://noblog.nodove.com/blog/2025/java-concurrency-journal</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/java-concurrency-journal</guid>
       <pubDate>Mon, 27 Oct 2025 00:00:00 GMT</pubDate>
       <category>Java</category>
       <category>Java</category>
@@ -217,8 +217,8 @@
     <item>
       <title>Happens-before를 붙잡기까지, 자바 메모리 모델을 해부한 내 여정</title>
       <description>JMM 명세와 volatile, synchronized, reorder의 경계를 파헤치며 가시성과 순서를 이해한 개발자의 기록</description>
-      <link>http://localhost:3000/blog/2025/java-memory-model-journal</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/java-memory-model-journal</guid>
+      <link>https://noblog.nodove.com/blog/2025/java-memory-model-journal</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/java-memory-model-journal</guid>
       <pubDate>Mon, 27 Oct 2025 00:00:00 GMT</pubDate>
       <category>Java</category>
       <category>Java</category>
@@ -230,8 +230,8 @@
     <item>
       <title>람다와 파이프라인 사이, 스트림 API에 빠져들던 밤</title>
       <description>람다 표현식과 스트림 파이프라인을 처음 만났을 때의 놀람, 컬렉터와 병렬 스트림 튜닝까지 기록한 1인칭 에세이</description>
-      <link>http://localhost:3000/blog/2025/java-stream-api-journal</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/java-stream-api-journal</guid>
+      <link>https://noblog.nodove.com/blog/2025/java-stream-api-journal</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/java-stream-api-journal</guid>
       <pubDate>Mon, 27 Oct 2025 00:00:00 GMT</pubDate>
       <category>Java</category>
       <category>Java</category>
@@ -243,8 +243,8 @@
     <item>
       <title>awk와 sed, 그리고 xargs에 빚진 작은 승리들</title>
       <description>파이프라인 하나로 서버를 살린 순간을 떠올리며, 내가 사랑하는 세 가지 쉘 친구들을 일기처럼 적어 봤습니다.</description>
-      <link>http://localhost:3000/blog/2025/shell-powertools-journal</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/shell-powertools-journal</guid>
+      <link>https://noblog.nodove.com/blog/2025/shell-powertools-journal</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/shell-powertools-journal</guid>
       <pubDate>Mon, 27 Oct 2025 00:00:00 GMT</pubDate>
       <category>Linux</category>
       <category>awk</category>
@@ -256,8 +256,8 @@
     <item>
       <title>Stop-the-world의 숨결을 들으며, GC와 화해한 나의 기록</title>
       <description>Serial, CMS, G1을 거치며 힙 덤프와 함께 밤을 지새운 개발자가 GC의 진화와 전략을 되돌아본 일기</description>
-      <link>http://localhost:3000/blog/2025/java-gc-journal</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/java-gc-journal</guid>
+      <link>https://noblog.nodove.com/blog/2025/java-gc-journal</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/java-gc-journal</guid>
       <pubDate>Sun, 26 Oct 2025 00:00:00 GMT</pubDate>
       <category>Java</category>
       <category>Java</category>
