@@ -111,7 +111,7 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
   if (toc.length === 0) return null;
 
   return (
-    <div className='sticky top-8 w-72 hidden xl:block'>
+    <div className='sticky top-24 w-72'>
       <div
         className={cn(
           'bg-card/50 backdrop-blur-sm border rounded-2xl p-6 shadow-lg',

@@ -443,15 +443,16 @@ const BlogPost = () => {
         )}
       >
         <div
-          className='mx-auto w-full max-w-6xl px-4 pt-6 pb-32 sm:pt-12'
+          className='mx-auto w-full max-w-7xl px-4 pt-6 pb-32 sm:pt-12'
           style={safeAreaPaddingStyle}
         >
-          <article
-            className={cn(
-              'mx-auto max-w-4xl space-y-12',
-              isTerminal && 'terminal-card p-4 sm:p-6'
-            )}
-          >
+          <div className='relative flex justify-center gap-8'>
+            <article
+              className={cn(
+                'w-full max-w-4xl space-y-12',
+                isTerminal && 'terminal-card p-4 sm:p-6'
+              )}
+            >
             <header className='space-y-6'>
               <Breadcrumb
                 items={[
@@ -691,42 +692,38 @@ const BlogPost = () => {
               </div>
             </header>
 
-            <div className='flex gap-8'>
-              <section
+            <section
+              className={cn(
+                'rounded-[32px] border border-white/50 bg-card/70 p-4 shadow-soft backdrop-blur-sm dark:border-white/5 dark:bg-[#141927]/90 sm:p-8 -mx-2 sm:mx-0',
+                isTerminal && 'rounded-lg border-border bg-[hsl(var(--terminal-code-bg))]'
+              )}
+            >
+              <div
                 className={cn(
-                  'flex-1 min-w-0 rounded-[32px] border border-white/50 bg-card/70 p-4 shadow-soft backdrop-blur-sm dark:border-white/5 dark:bg-[#141927]/90 sm:p-8 -mx-2 sm:mx-0',
-                  isTerminal && 'rounded-lg border-border bg-[hsl(var(--terminal-code-bg))]'
+                  'prose prose-gray max-w-none dark:prose-invert',
+                  isTerminal && 'prose-headings:font-mono prose-headings:terminal-glow'
                 )}
               >
-                <div
-                  className={cn(
-                    'prose prose-gray max-w-none dark:prose-invert',
-                    isTerminal && 'prose-headings:font-mono prose-headings:terminal-glow'
-                  )}
+                <Suspense
+                  fallback={
+                    <div className='space-y-3' aria-label='Loading article content'>
+                      <Skeleton className='h-6 w-3/4' />
+                      <Skeleton className='h-4 w-full' />
+                      <Skeleton className='h-4 w-11/12' />
+                      <Skeleton className='h-4 w-10/12' />
+                      <Skeleton className='h-4 w-9/12' />
+                      <Skeleton className='h-4 w-1/2' />
+                    </div>
+                  }
                 >
-                  <Suspense
-                    fallback={
-                      <div className='space-y-3' aria-label='Loading article content'>
-                        <Skeleton className='h-6 w-3/4' />
-                        <Skeleton className='h-4 w-full' />
-                        <Skeleton className='h-4 w-11/12' />
-                        <Skeleton className='h-4 w-10/12' />
-                        <Skeleton className='h-4 w-9/12' />
-                        <Skeleton className='h-4 w-1/2' />
-                      </div>
-                    }
-                  >
-                    <MarkdownRenderer
-                      content={localized?.content ?? post.content}
-                      inlineEnabled={inlineEnabled}
-                      postTitle={localized?.title ?? post.title}
-                    />
-                  </Suspense>
-                </div>
-              </section>
-
-              <TableOfContents content={localized?.content ?? post.content} />
-            </div>
+                  <MarkdownRenderer
+                    content={localized?.content ?? post.content}
+                    inlineEnabled={inlineEnabled}
+                    postTitle={localized?.title ?? post.title}
+                  />
+                </Suspense>
+              </div>
+            </section>
 
             <CommentSection postId={`${post.year}/${post.slug}`} />
 
@@ -818,6 +815,11 @@ const BlogPost = () => {
               </section>
             )}
           </article>
+          
+          <aside className='hidden xl:block'>
+            <TableOfContents content={localized?.content ?? post.content} />
+          </aside>
+        </div>
         </div>
       </div>
       <ScrollToTop />

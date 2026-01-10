@@ -5,7 +5,7 @@
     <description>A blog about technology, programming, and web development</description>
     <link>http://localhost:3000</link>
     <atom:link href="http://localhost:3000/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Fri, 09 Jan 2026 22:59:44 GMT</lastBuildDate>
+    <lastBuildDate>Sat, 10 Jan 2026 03:01:37 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
       <title>쿠르스크 초원의 전차전</title>

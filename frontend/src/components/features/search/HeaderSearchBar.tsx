@@ -8,6 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { Search, X, Terminal, ArrowRight, Clock, FileText } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { MiniTerminal } from '@/components/features/terminal';
 
 interface HeaderSearchBarProps {
   posts: BlogPost[];
@@ -110,10 +116,20 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
       <div ref={containerRef} className={cn('relative', className)}>
         <div className="relative group font-mono">
           <div className="flex items-center border border-border bg-[hsl(var(--terminal-code-bg))]">
-            <div className="flex items-center gap-1.5 px-3 py-2 border-r border-border/50 text-primary select-none shrink-0">
-              <Terminal className="w-4 h-4" />
-              <span className="text-xs font-bold">grep</span>
-            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button 
+                  className="flex items-center gap-1.5 px-3 py-2 border-r border-border/50 text-primary select-none shrink-0 hover:bg-primary/10 transition-colors cursor-pointer"
+                  aria-label="Open terminal"
+                >
+                  <Terminal className="w-4 h-4" />
+                  <span className="text-xs font-bold">grep</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className='w-96 p-0' align='start'>
+                <MiniTerminal />
+              </PopoverContent>
+            </Popover>
             <Input
               ref={inputRef}
               type="text"
