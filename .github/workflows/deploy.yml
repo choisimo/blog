@@ -63,16 +63,65 @@ jobs:
       
     - name: Auto-commit generated files
       if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-      uses: stefanzweifel/git-auto-commit-action@v5
-      with:
-        commit_message: "chore(ci): update manifests and SEO artifacts"
-        file_pattern: |
-          frontend/public/posts-manifest.json
-          frontend/public/posts/posts-manifest.json
-          frontend/public/posts/**/manifest.json
-          frontend/public/sitemap.xml
-          frontend/public/rss.xml
-          frontend/public/robots.txt
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        
+        # Stage generated files
+        git add -f \
+          frontend/public/posts-manifest.json \
+          frontend/public/posts/posts-manifest.json \
+          frontend/public/posts/**/manifest.json \
+          frontend/public/sitemap.xml \
+          frontend/public/rss.xml \
+          frontend/public/robots.txt 2>/dev/null || true
+        
+        # Check if there are staged changes
+        if git diff --cached --quiet; then
+          echo "No changes to commit"
+          exit 0
+        fi
+        
+        git commit -m "chore(ci): update manifests and SEO artifacts"
+        
+        # Push with retry (handles race condition when main diverges)
+        MAX_RETRIES=3
+        for i in $(seq 1 $MAX_RETRIES); do
+          echo "Push attempt $i/$MAX_RETRIES"
+          git fetch origin main
+          git rebase origin/main || {
+            echo "Rebase failed, trying merge..."
+            git rebase --abort 2>/dev/null || true
+            git merge --no-edit origin/main || {
+              echo "Merge also failed, resetting and re-applying..."
+              git reset --hard origin/main
+              # Re-generate and re-commit
+              npm --prefix frontend run generate-manifests
+              npm --prefix frontend run generate-seo
+              git add -f \
+                frontend/public/posts-manifest.json \
+                frontend/public/posts/posts-manifest.json \
+                frontend/public/posts/**/manifest.json \
+                frontend/public/sitemap.xml \
+                frontend/public/rss.xml \
+                frontend/public/robots.txt 2>/dev/null || true
+              if ! git diff --cached --quiet; then
+                git commit -m "chore(ci): update manifests and SEO artifacts"
+              fi
+            }
+          }
+          
+          if git push origin main; then
+            echo "Push successful on attempt $i"
+            exit 0
+          fi
+          
+          echo "Push failed, retrying in 3 seconds..."
+          sleep 3
+        done
+        
+        echo "::error::Failed to push after $MAX_RETRIES attempts"
+        exit 1
       
     - name: Build (frontend)
       run: npm --prefix frontend run build
