@@ -1958,6 +1958,28 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
   scrollbar-width: none;
 }
 
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-track-transparent::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thumb-muted-foreground\/20::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.2);
+  border-radius: 3px;
+}
+
+.hover\:scrollbar-thumb-muted-foreground\/40:hover::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.4);
+}
+
 /* 고대비 모드 지원 */
 @media (prefers-contrast: high) {
   :root {

@@ -78,9 +78,9 @@ const BlogCard = memo(({ post }: BlogCardProps) => {
             className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'
           />
         ) : (
-          <div className='w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-900'>
+          <div className='w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50'>
             <svg
-              className='w-10 h-10 text-slate-400 dark:text-slate-500'
+              className='w-10 h-10 text-muted-foreground/50'
               viewBox='0 0 24 24'
               fill='none'
               stroke='currentColor'

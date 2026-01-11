@@ -225,9 +225,9 @@ const Index = () => {
           Hero Section - Split Layout with Featured Post
           ============================================ */}
       <section className='mb-16'>
-        <div className='grid lg:grid-cols-12 gap-8 items-center'>
+        <div className='grid gap-6 md:grid-cols-12 md:gap-8 items-center'>
           {/* Left: Typography & CTA */}
-          <div className='lg:col-span-5 space-y-6 text-left'>
+          <div className='md:col-span-5 space-y-6 text-left'>
             <div className='space-y-2'>
               <p className={cn(
                 'text-sm font-medium tracking-widest uppercase',
@@ -307,7 +307,7 @@ const Index = () => {
           </div>
 
           {/* Right: Featured Post Card (Large) */}
-          <div className='lg:col-span-7'>
+          <div className='md:col-span-7'>
             {featuredLoading ? (
               <div className={cn(
                 'aspect-[16/10] rounded-2xl animate-pulse',
@@ -336,7 +336,7 @@ const Index = () => {
                       'w-full h-full',
                       isTerminal 
                         ? 'bg-gradient-to-br from-card to-background' 
-                        : 'bg-gradient-to-br from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-900'
+                        : 'bg-gradient-to-br from-muted to-muted/50'
                     )} />
                   )}
                   
@@ -465,7 +465,7 @@ const Index = () => {
                       'w-full h-full',
                       isTerminal 
                         ? 'bg-gradient-to-br from-primary/5 to-card' 
-                        : 'bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900'
+                        : 'bg-gradient-to-br from-muted/80 to-muted'
                     )} />
                   )}
                   
@@ -627,8 +627,7 @@ const Index = () => {
           {/* Carousel Container */}
           <div 
             ref={carouselRef}
-            className='flex gap-4 overflow-x-auto scrollbar-hide pb-4 -mx-4 px-4 snap-x snap-mandatory'
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            className='flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 snap-x snap-mandatory scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40'
           >
             {recentlyViewed.map(item => (
               <Link 
@@ -829,7 +828,7 @@ const Index = () => {
                       {post.title}
                     </h3>
                     {post.description && (
-                      <p className='text-sm text-muted-foreground line-clamp-2 hidden md:block'>
+                      <p className='text-sm text-muted-foreground line-clamp-1 sm:line-clamp-2'>
                         {post.description}
                       </p>
                     )}

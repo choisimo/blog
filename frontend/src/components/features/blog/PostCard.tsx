@@ -123,7 +123,7 @@ const PostCard = memo(({
           <Link
             to={{ pathname: postUrl, search: location.search || undefined }}
             state={{ from: fromState }}
-            className="shrink-0 w-32 h-24 rounded-lg overflow-hidden"
+            className="shrink-0 w-24 h-18 sm:w-32 sm:h-24 rounded-lg overflow-hidden"
             onMouseEnter={() => prefetchPost(post.year, post.slug)}
           >
             <OptimizedImage
