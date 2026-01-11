@@ -11,7 +11,7 @@
  */
 
 import { Hono } from 'hono';
-import type { Env } from './types';
+import type { HonoEnv } from './types';
 import { corsMiddleware } from './middleware/cors';
 import { loggerMiddleware } from './middleware/logger';
 import { tracingMiddleware } from './middleware/tracing';
@@ -37,8 +37,9 @@ import adminAi from './routes/admin-ai';
 import secrets from './routes/secrets';
 import personas from './routes/personas';
 import userContent from './routes/user-content';
+import type { Env } from './types';
 
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<HonoEnv>();
 
 // =============================================================================
 // Configuration
@@ -198,7 +199,7 @@ app.get('/public/config', (c) => {
 // Mount API Routes under /api/v1
 // =============================================================================
 
-const api = new Hono<{ Bindings: Env }>();
+const api = new Hono<HonoEnv>();
 api.route('/auth', auth);
 api.route('/posts', posts);
 api.route('/comments', comments);

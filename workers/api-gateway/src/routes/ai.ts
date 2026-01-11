@@ -1,10 +1,10 @@
 import { Hono } from 'hono';
-import type { Env } from '../types';
+import type { HonoEnv, Env } from '../types';
 import { success, badRequest } from '../lib/response';
 import { createAIService, tryParseJson } from '../lib/ai-service';
 import type { TaskMode, TaskPayload } from '../lib/prompts';
 
-const ai = new Hono<{ Bindings: Env }>();
+const ai = new Hono<HonoEnv>();
 
 // ============================================================================
 // Task Endpoints (sketch, prism, chain)

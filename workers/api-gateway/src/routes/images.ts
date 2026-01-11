@@ -1,11 +1,11 @@
 import { Hono } from 'hono';
-import type { Env } from '../types';
+import type { HonoEnv, Env } from '../types';
 import { success, badRequest, notFound } from '../lib/response';
 import { execute } from '../lib/d1';
 import { requireAdmin } from '../middleware/auth';
 import { createAIService } from '../lib/ai-service';
 
-const images = new Hono<{ Bindings: Env }>();
+const images = new Hono<HonoEnv>();
 
 // POST /images/presign - Generate presigned URL for R2 upload (admin only)
 images.post('/presign', requireAdmin, async (c) => {

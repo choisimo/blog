@@ -366,3 +366,14 @@ export type TraceData = {
   path: string;
   method: string;
 };
+
+export type Variables = {
+  trace: TraceData;
+  traceId: string;
+  user: JwtPayload;
+};
+
+export type HonoEnv = {
+  Bindings: Env;
+  Variables: Variables;
+};

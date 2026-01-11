@@ -1,5 +1,5 @@
 import { Context, Next } from 'hono';
-import type { Env } from '../types';
+import type { HonoEnv } from '../types';
 
 export const TRACE_ID_HEADER = 'X-Trace-ID';
 
@@ -21,7 +21,7 @@ export interface TraceData {
   method: string;
 }
 
-export async function tracingMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
+export async function tracingMiddleware(c: Context<HonoEnv>, next: Next) {
   const incomingTraceId = c.req.header(TRACE_ID_HEADER) || c.req.header('x-trace-id');
   const traceId = incomingTraceId || generateTraceId();
   const spanId = generateSpanId();

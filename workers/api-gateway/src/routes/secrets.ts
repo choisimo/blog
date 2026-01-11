@@ -9,7 +9,7 @@
  */
 
 import { Hono } from 'hono';
-import type { Env, Secret, SecretCategory, SecretPublic, SecretAuditLog } from '../types';
+import type { HonoEnv, Env, Secret, SecretCategory, SecretPublic, SecretAuditLog } from '../types';
 import { success, badRequest, notFound, error } from '../lib/response';
 import { requireAdmin } from '../middleware/auth';
 import {
@@ -22,7 +22,7 @@ import {
   validateEncryption,
 } from '../lib/crypto';
 
-const secrets = new Hono<{ Bindings: Env }>();
+const secrets = new Hono<HonoEnv>();
 
 // All routes require admin authentication
 secrets.use('*', requireAdmin);

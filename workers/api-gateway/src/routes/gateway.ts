@@ -13,12 +13,12 @@
  */
 
 import { Hono } from 'hono';
-import type { Env } from '../types';
+import type { HonoEnv, Env } from '../types';
 import { success, badRequest, serverError } from '../lib/response';
 import { getApiBaseUrl, getAiServeApiKey } from '../lib/config';
 import { requireAdmin } from '../middleware/auth';
 
-const gateway = new Hono<{ Bindings: Env }>();
+const gateway = new Hono<HonoEnv>();
 
 // ============================================================================
 // Configuration helpers

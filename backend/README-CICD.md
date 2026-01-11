@@ -1,240 +1,321 @@
-# Blog + n8n Workflow CI/CD 가이드
+# Backend CI/CD Pipeline
 
-> **⚠️ 아키텍처 마이그레이션 안내**
->
-> 현재 프로덕션 환경은 **Cloudflare Workers 기반**으로 마이그레이션되었습니다.
->
-> - **API Gateway 배포**: `.github/workflows/deploy-api-gateway.yml`
-> - **Workers 배포**: `.github/workflows/deploy-workers.yml`
-> - **AI 서비스**: `workers/ai-check-gateway/` (DB 기반 모델 관리)
->
-> 이 문서는 **n8n Workflow 스택** 및 **Docker 기반 레거시 서비스** 배포를 위한 참고용입니다.
-> Cloudflare Workers 배포는 `workers/api-gateway/README.md`를 참고하세요.
+## 1. Service Overview (개요)
+
+### 목적
+Backend CI/CD Pipeline은 **GitHub Actions 기반 자동 배포 시스템**입니다. Docker 이미지 빌드, GHCR(GitHub Container Registry) 푸시, SSH를 통한 프로덕션 서버 배포를 자동화합니다.
+
+> **⚠️ 아키텍처 노트**
+> - **API Gateway**: Cloudflare Workers (`deploy-api-gateway.yml`)
+> - **Backend + n8n**: 이 문서 (`deploy-blog-workflow.yml`)
+> - Workers와 Backend는 **별도 배포 파이프라인**을 사용합니다.
+
+### 배포 대상 서비스
+
+| 서비스 | 이미지 | 설명 |
+|--------|--------|------|
+| **Blog API** | `ghcr.io/{owner}/blog-api` | Node.js 백엔드 서버 |
+| **Terminal Server** | `ghcr.io/{owner}/blog-terminal` | WebSocket 터미널 |
+| **OpenCode Backend** | `ghcr.io/{owner}/opencode-backend` | AI API 오케스트레이션 |
+| **OpenCode Serve** | `ghcr.io/{owner}/opencode-serve` | AI 모델 서빙 |
+| **n8n** | `n8nio/n8n:latest` | Workflow 자동화 |
+| **PostgreSQL** | `postgres:15` | 메인 데이터베이스 |
+| **Redis** | `redis:7-alpine` | 캐시/세션 |
+| **ChromaDB** | `chromadb/chroma` | 벡터 데이터베이스 |
 
 ---
 
-이 문서는 GitHub Actions를 통한 Blog Backend + n8n Workflow 스택의 자동 배포 설정을 설명합니다.
+## 2. Architecture & Data Flow (구조 및 흐름)
 
-## 아키텍처 개요
+### Pipeline Architecture
 
-```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                           GitHub Actions Pipeline                             │
-│                                                                               │
-│  ┌─────────────┐     ┌─────────────┐     ┌─────────────────────────────────┐│
-│  │   Trigger   │────▶│    Build    │────▶│           Deploy                ││
-│  │  (push/PR)  │     │  & Push     │     │     (SSH to Server)             ││
-│  └─────────────┘     │  to GHCR    │     │                                 ││
-│                      └─────────────┘     │  1. Generate .env               ││
-│                                          │  2. Upload compose/configs      ││
-│                                          │  3. docker compose pull         ││
-│                                          │  4. docker compose up -d        ││
-│                                          │  5. Health checks               ││
-│                                          └─────────────────────────────────┘│
-└──────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                         Production Server                                     │
-│                         /opt/blog-stack/                                      │
-│                                                                               │
-│  ┌─────────────────────────────────────────────────────────────────────────┐│
-│  │                         docker-compose.yml                               ││
-│  │                                                                          ││
-│  │   ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐     ││
-│  │   │ nginx   │  │   api   │  │ litellm │  │   n8n   │  │ workers │     ││
-│  │   │  :8080  │  │  :5080  │  │  :4000  │  │  :5678  │  │  (x2)   │     ││
-│  │   └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘  └─────────┘     ││
-│  │        │            │            │            │                         ││
-│  │        └────────────┴────────────┴────────────┘                         ││
-│  │                              │                                           ││
-│  │   ┌─────────┐  ┌─────────┐  ┌─────────┐                                ││
-│  │   │postgres │  │  redis  │  │chromadb │                                ││
-│  │   │  :5432  │  │  :6379  │  │  :8000  │                                ││
-│  │   └─────────┘  └─────────┘  └─────────┘                                ││
-│  └─────────────────────────────────────────────────────────────────────────┘│
-└──────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph "GitHub"
+        PUSH[Push to main]
+        DISPATCH[Manual Dispatch]
+    end
+
+    subgraph "GitHub Actions"
+        BUILD[Build Images]
+        PUSH_REG[Push to GHCR]
+        DEPLOY[Deploy via SSH]
+    end
+
+    subgraph "Production Server"
+        COMPOSE[docker compose]
+        SERVICES[Services]
+    end
+
+    PUSH --> BUILD
+    DISPATCH --> BUILD
+    BUILD --> PUSH_REG
+    PUSH_REG --> DEPLOY
+    DEPLOY -->|SSH| COMPOSE
+    COMPOSE --> SERVICES
 ```
 
-## 1. GitHub Secrets 설정
+### Deployment Flow
 
-### 필수 Secrets (민감 정보)
+```mermaid
+sequenceDiagram
+    participant GH as GitHub Actions
+    participant GHCR as Container Registry
+    participant SSH as SSH Connection
+    participant SRV as Production Server
 
-GitHub Repository > Settings > Secrets and variables > Actions > Secrets
-
-| Secret Name | 설명 | 예시 |
-|-------------|------|------|
-| **SSH 접속** |
-| `PROD_SSH_HOST` | 배포 서버 IP/호스트 | `123.45.67.89` |
-| `PROD_SSH_USER` | SSH 사용자명 | `deploy` |
-| `PROD_SSH_KEY` | SSH Private Key (전체 내용) | `-----BEGIN OPENSSH...` |
-| `PROD_SSH_PORT` | SSH 포트 (선택, 기본 22) | `22` |
-| **데이터베이스** |
-| `POSTGRES_PASSWORD` | PostgreSQL 비밀번호 | `secure-pg-pass-123` |
-| `REDIS_PASSWORD` | Redis 비밀번호 | `secure-redis-pass` |
-| **AI 서비스** |
-| `LITELLM_MASTER_KEY` | LiteLLM 마스터 키 | `sk-litellm-xxx` |
-| `OPENAI_API_KEY` | OpenAI API 키 (선택) | `sk-xxx` |
-| `GOOGLE_API_KEY` | Google/Gemini API 키 (선택) | `AIza...` |
-| `ANTHROPIC_API_KEY` | Anthropic API 키 (선택) | `sk-ant-xxx` |
-| **관리자 인증** |
-| `ADMIN_JWT_SECRET` | Admin JWT 시크릿 | `random-32-char-secret` |
-| `ADMIN_PASSWORD` | 관리자 비밀번호 | `secure-admin-pass` |
-| `ADMIN_BEARER_TOKEN` | API Bearer 토큰 | `bearer-token-xxx` |
-| `JWT_SECRET` | 일반 JWT 시크릿 | `another-secret-key` |
-| **n8n** |
-| `N8N_PASS` | n8n 로그인 비밀번호 | `n8n-secure-pass` |
-| `N8N_ENCRYPTION_KEY` | n8n 암호화 키 (32자) | `32-char-encryption-key-here!!` |
-| `N8N_API_KEY` | n8n API 키 (선택) | `n8n-api-key-xxx` |
-| **Cloudflare** |
-| `CF_API_TOKEN` | Cloudflare API 토큰 | `xxxxx` |
-| **SSL Certificates** |
-| `SSL_CERT` | Cloudflare Origin Certificate (cert.pem 내용) | `-----BEGIN CERTIFICATE...` |
-| `SSL_KEY` | SSL Private Key (key.pem 내용) | `-----BEGIN PRIVATE KEY...` |
-| **기타** |
-| `GH_PAT_TOKEN` | GitHub PAT (PR 생성용) | `ghp_xxx` |
-| `ORIGIN_SECRET_KEY` | Terminal Server 시크릿 | `terminal-secret` |
-| `MINIO_PASSWORD` | MinIO 비밀번호 | `minio-secure-pass` |
-| `FIRECRAWL_API_TOKEN` | Firecrawl API 토큰 | `fc-token-xxx` |
-| `GRAFANA_PASSWORD` | Grafana 비밀번호 (선택) | `grafana-pass` |
-| `PGADMIN_PASSWORD` | pgAdmin 비밀번호 (선택) | `pgadmin-pass` |
-
-### Variables (비민감 설정값)
-
-GitHub Repository > Settings > Secrets and variables > Actions > Variables
-
-| Variable Name | 설명 | 기본값 |
-|---------------|------|--------|
-| **애플리케이션** |
-| `APP_ENV` | 환경 (production/staging) | `production` |
-| `SITE_BASE_URL` | 프론트엔드 URL | `https://noblog.nodove.com` |
-| `API_BASE_URL` | API 공개 URL | `https://api.nodove.com` |
-| **데이터베이스** |
-| `POSTGRES_DB` | PostgreSQL DB명 | `blog` |
-| `POSTGRES_USER` | PostgreSQL 사용자 | `bloguser` |
-| **AI** |
-| `AI_DEFAULT_MODEL` | 기본 AI 모델 | `gpt-4.1` |
-| **n8n** |
-| `N8N_USER` | n8n 로그인 ID | `admin` |
-| `N8N_WEBHOOK_URL` | n8n 웹훅 공개 URL | `https://blog-bw.nodove.com/` |
-| `N8N_HOST` | n8n 호스트명 | `blog-bw.nodove.com` |
-| `N8N_WORKER_REPLICAS` | Worker 수 | `2` |
-| **Cloudflare** |
-| `CF_ACCOUNT_ID` | Cloudflare Account ID | `xxxxx` |
-| `D1_DATABASE_ID` | D1 Database ID | `xxxxx` |
-| `R2_BUCKET_NAME` | R2 버킷명 | `blog` |
-| `R2_ASSETS_BASE_URL` | R2 에셋 URL | `https://assets-b.nodove.com` |
-| **GitHub** |
-| `GITHUB_REPO_OWNER` | 저장소 소유자 | `choisimo` |
-| `GITHUB_REPO_NAME` | 저장소 이름 | `blog` |
-| **기타** |
-| `ADMIN_EMAIL` | 관리자 이메일 | `admin@nodove.com` |
-| `ADMIN_USERNAME` | 관리자 ID | `admin` |
-| `MINIO_USER` | MinIO 사용자 | `minioadmin` |
-| `SANDBOX_IMAGE` | Terminal Sandbox 이미지 | `alpine:latest` |
-| `PGADMIN_EMAIL` | pgAdmin 이메일 | `admin@nodove.com` |
-
-## 2. 서버 사전 준비
-
-### 2.1 필수 소프트웨어
-
-```bash
-# Docker & Docker Compose 설치
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-
-# 배포 디렉토리 생성
-sudo mkdir -p /opt/blog-stack
-sudo chown $USER:$USER /opt/blog-stack
+    GH->>GH: Checkout code
+    GH->>GH: Build Docker images
+    GH->>GHCR: Push images (sha, latest)
+    GH->>SSH: Connect via SSH key
+    GH->>SRV: Generate .env file
+    GH->>SRV: Upload compose files
+    SRV->>GHCR: docker compose pull
+    SRV->>SRV: docker compose up -d
+    SRV->>SRV: Health checks
+    GH->>GH: Verify public endpoints
 ```
 
-### 2.2 방화벽 설정
+### Server Architecture
 
-```bash
-# UFW 예시
-sudo ufw allow 22/tcp      # SSH
-sudo ufw allow 8080/tcp    # Nginx (Cloudflare Only)
-sudo ufw enable
+```mermaid
+flowchart TB
+    subgraph "Cloudflare"
+        CF_PROXY[Cloudflare Proxy]
+    end
+
+    subgraph "Production Server /opt/blog-stack"
+        NGINX[nginx :8080/:8443]
+        
+        subgraph "Application"
+            API[Blog API :5080]
+            TERM[Terminal :8080]
+            N8N[n8n :5678]
+        end
+        
+        subgraph "AI Services"
+            OC_BE[OpenCode Backend :7016]
+            OC_SRV[OpenCode Serve :7012]
+        end
+        
+        subgraph "Data"
+            PG[(PostgreSQL :5432)]
+            REDIS[(Redis :6379)]
+            CHROMA[(ChromaDB :8000)]
+        end
+    end
+
+    CF_PROXY -->|blog-b.nodove.com| NGINX
+    CF_PROXY -->|blog-bw.nodove.com| NGINX
+    NGINX --> API
+    NGINX --> TERM
+    NGINX --> N8N
+    API --> OC_BE
+    OC_BE --> OC_SRV
+    API --> PG
+    API --> REDIS
+    API --> CHROMA
 ```
 
-### 2.3 SSH 키 설정
+---
 
-```bash
-# 서버에서 실행
-mkdir -p ~/.ssh
-chmod 700 ~/.ssh
+## 3. Pipeline Specification (파이프라인 명세)
 
-# GitHub Actions용 deploy key 추가
-echo "DEPLOY_PUBLIC_KEY_HERE" >> ~/.ssh/authorized_keys
-chmod 600 ~/.ssh/authorized_keys
+### Trigger Conditions
+
+| 트리거 | 경로 | 설명 |
+|--------|------|------|
+| **push** | `backend/**` | 백엔드 코드 변경 |
+| **push** | `shared/**` | 공유 라이브러리 변경 |
+| **push** | `frontend/public/posts/**` | 게시글 변경 |
+| **push** | `.github/workflows/deploy-blog-workflow.yml` | 워크플로우 변경 |
+| **workflow_dispatch** | - | 수동 실행 |
+
+### Manual Dispatch Options
+
+| 옵션 | 설명 | 기본값 |
+|------|------|--------|
+| `environment` | 배포 환경 (production/staging) | `production` |
+| `skip_build` | 빌드 스킵 (설정만 변경 시) | `false` |
+| `image_tag` | 커스텀 이미지 태그 | Git SHA |
+
+### Jobs
+
+| Job | 설명 | 조건 |
+|-----|------|------|
+| `build-and-push` | 이미지 빌드 및 GHCR 푸시 | `skip_build != true` |
+| `deploy` | 서버 배포 | 빌드 성공 또는 `skip_build` |
+| `e2e-tests` | E2E 테스트 | 배포 성공 |
+
+---
+
+## 4. Configuration (설정)
+
+### GitHub Secrets (필수)
+
+```yaml
+# ============================================
+# SSH 접속
+# ============================================
+SSH_HOST: "123.45.67.89"          # 배포 서버 IP
+SSH_USER: "deploy"                 # SSH 사용자명
+SSH_PRIVATE_KEY: |                 # SSH Private Key
+  -----BEGIN OPENSSH PRIVATE KEY-----
+  ...
+  -----END OPENSSH PRIVATE KEY-----
+SSH_PORT: "22"                     # SSH 포트 (선택)
+
+# ============================================
+# 데이터베이스
+# ============================================
+POSTGRES_PASSWORD: "secure-pass"   # PostgreSQL 비밀번호
+REDIS_PASSWORD: "redis-pass"       # Redis 비밀번호
+
+# ============================================
+# AI 서비스
+# ============================================
+OPENAI_API_KEY: "sk-xxx"           # OpenAI API 키
+ANTHROPIC_API_KEY: "sk-ant-xxx"    # Anthropic API 키
+GOOGLE_API_KEY: "AIza..."          # Google/Gemini API 키
+
+# ============================================
+# 인증
+# ============================================
+JWT_SECRET: "jwt-secret"           # JWT 서명 키
+ADMIN_PASSWORD: "admin-pass"       # 관리자 비밀번호
+ADMIN_BEARER_TOKEN: "bearer-xxx"   # API Bearer 토큰
+
+# ============================================
+# n8n
+# ============================================
+N8N_PASS: "n8n-pass"               # n8n 로그인 비밀번호
+N8N_ENCRYPTION_KEY: "32-chars..."  # n8n 암호화 키 (32자)
+
+# ============================================
+# SSL (Cloudflare Origin Certificate)
+# ============================================
+SSL_CERT: |                        # cert.pem 내용
+  -----BEGIN CERTIFICATE-----
+  ...
+SSL_KEY: |                         # key.pem 내용
+  -----BEGIN PRIVATE KEY-----
+  ...
 ```
 
-## 3. 배포 트리거
+### GitHub Variables (비민감)
 
-### 자동 배포 (Push)
+```yaml
+# 애플리케이션
+APP_ENV: "production"
+SITE_BASE_URL: "https://noblog.nodove.com"
+API_BASE_URL: "https://blog-b.nodove.com"
+ALLOWED_ORIGINS: "https://noblog.nodove.com,https://blog.nodove.com"
 
-다음 경로에 변경이 있으면 자동 배포:
-- `backend/**`
-- `shared/**`
-- `.github/workflows/deploy-blog-workflow.yml`
+# 데이터베이스
+POSTGRES_DB: "blog"
+POSTGRES_USER: "bloguser"
 
-### 수동 배포
+# n8n
+N8N_USER: "admin"
+N8N_HOST: "blog-bw.nodove.com"
+N8N_WEBHOOK_URL: "https://blog-bw.nodove.com/"
 
-GitHub Actions > Deploy Blog + n8n Workflow Stack > Run workflow
+# Cloudflare
+CF_ACCOUNT_ID: "xxxxx"
+D1_DATABASE_ID: "xxxxx"
+R2_BUCKET_NAME: "blog"
+```
 
-옵션:
-- `environment`: production / staging
-- `skip_build`: 빌드 스킵 (설정만 변경 시)
-- `image_tag`: 커스텀 이미지 태그
+---
 
-## 4. 서버 디렉토리 구조
+## 5. Deployment Directory (서버 디렉토리)
+
+### Structure
 
 ```
 /opt/blog-stack/
 ├── docker-compose.yml           # 메인 compose 파일
-├── .env                         # 환경변수 (GitHub Actions가 생성)
+├── .env                         # 환경변수 (Actions가 생성)
 ├── nginx-blog-workflow.conf     # Nginx 설정
 ├── litellm_config.yaml          # LiteLLM 설정
+├── ssl/
+│   ├── cert.pem                 # SSL 인증서
+│   └── key.pem                  # SSL 키
 ├── scripts/
-│   └── bootstrap-token.sh       # VAS 토큰 부트스트랩
+│   └── bootstrap-token.sh       # 토큰 부트스트랩
 ├── n8n-workflows/               # n8n 워크플로우 JSON
 │   ├── buffer-zone-chat.json
-│   ├── buffer-zone-rag-chat.json
 │   └── ...
 ├── n8n_files/                   # n8n 파일 저장소
 └── opencode-config/             # AI Engine 설정
 ```
 
-## 5. 롤백 방법
+### Docker Compose Services
 
-### 이전 버전으로 롤백
+```yaml
+services:
+  nginx:
+    ports: ["80:80", "8080:80", "443:443", "8443:8443"]
+    
+  api:
+    image: ghcr.io/{owner}/blog-api:{sha}
+    expose: ["5080"]
+    
+  opencode-backend:
+    image: ghcr.io/{owner}/opencode-backend:latest
+    expose: ["7016"]
+    
+  opencode-serve:
+    image: ghcr.io/{owner}/opencode-serve:latest
+    expose: ["7012"]
+    
+  n8n:
+    image: n8nio/n8n:latest
+    expose: ["5678"]
+    
+  postgres:
+    image: postgres:15
+    expose: ["5432"]
+    
+  redis:
+    image: redis:7-alpine
+    expose: ["6379"]
+    
+  chromadb:
+    image: chromadb/chroma:0.5.23
+    expose: ["8000"]
+```
+
+---
+
+## 6. Operations (운영)
+
+### Manual Deployment
 
 ```bash
-# 서버에서 실행
+# GitHub Actions에서 수동 실행
+# 1. Actions > Deploy Blog + n8n Workflow Stack
+# 2. Run workflow 클릭
+# 3. 옵션 선택 후 실행
+```
+
+### Rollback
+
+```bash
+# 방법 1: GitHub Actions에서 롤백
+# 1. Run workflow > image_tag에 이전 SHA 입력
+# 2. skip_build 체크
+# 3. Run workflow
+
+# 방법 2: 서버에서 직접 롤백
 cd /opt/blog-stack
-
-# 이전 이미지 태그로 변경
 export IMAGE_TAG=abc1234  # 이전 커밋 SHA
-
-# .env 파일의 IMAGE_TAG 수정
 sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/" .env
-
-# 재배포
 docker compose pull
 docker compose up -d
 ```
 
-### GitHub Actions에서 롤백
-
-1. Actions > Deploy Blog + n8n Workflow Stack
-2. Run workflow 클릭
-3. `image_tag`에 롤백할 SHA 입력
-4. `skip_build` 체크
-5. Run workflow
-
-## 6. 모니터링
-
-### 로그 확인
+### Monitoring
 
 ```bash
 cd /opt/blog-stack
@@ -242,57 +323,97 @@ cd /opt/blog-stack
 # 전체 로그
 docker compose logs -f
 
-# 특정 서비스
+# 특정 서비스 로그
 docker compose logs -f api
 docker compose logs -f n8n
-docker compose logs -f litellm
-```
+docker compose logs -f opencode-backend
 
-### 서비스 상태
-
-```bash
+# 서비스 상태
 docker compose ps
-docker compose top
 ```
 
-### 헬스체크 엔드포인트
+### Health Checks
 
-| 서비스 | 내부 URL | 외부 URL | 비고 |
-|--------|----------|----------|------|
-| API | `http://localhost:8080/api/v1/healthz` | `https://api.nodove.com/api/v1/healthz` | |
-| n8n | `http://localhost:5678/healthz` | `https://blog-bw.nodove.com/healthz` | |
+| 서비스 | 내부 URL | 외부 URL |
+|--------|----------|----------|
+| API | `http://localhost:8080/api/v1/healthz` | `https://blog-b.nodove.com/api/v1/healthz` |
+| n8n | `http://localhost:5678/healthz` | `https://blog-bw.nodove.com/healthz` |
+| Nginx | `http://localhost:8080/health` | - |
 
-> **참고**: AI 서비스는 현재 Cloudflare Workers 기반 `ai-check-gateway`로 마이그레이션되었습니다.
-> AI 모델 설정은 DB 기반으로 관리됩니다 (`workers/migrations/0011_ai_model_management.sql`).
+---
 
-## 7. 문제 해결
+## 7. Troubleshooting (문제 해결)
 
-### 이미지 Pull 실패
+### Common Issues
+
+| 문제 | 원인 | 해결 |
+|------|------|------|
+| 이미지 Pull 실패 | GHCR 인증 만료 | `docker login ghcr.io` 재실행 |
+| 포트 충돌 | 기존 컨테이너 점유 | `docker compose down`, 충돌 컨테이너 제거 |
+| SSH 연결 실패 | 키 불일치 | `authorized_keys` 확인 |
+| Health check 실패 | 서비스 시작 지연 | 로그 확인 후 재시작 |
+| SSL 오류 | 인증서 만료/불일치 | `SSL_CERT`, `SSL_KEY` 재설정 |
+
+### Debug Commands
 
 ```bash
-# GHCR 로그인
-echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
-```
+# 서버 접속
+ssh -p ${SSH_PORT} ${SSH_USER}@${SSH_HOST}
 
-### 컨테이너 시작 실패
-
-```bash
-# 상세 로그 확인
-docker compose logs SERVICE_NAME
-
-# 컨테이너 상태 확인
+# 컨테이너 상태
 docker compose ps -a
 
-# 재시작
-docker compose restart SERVICE_NAME
-```
+# 상세 로그
+docker compose logs SERVICE_NAME --tail 100
 
-### 데이터베이스 연결 실패
+# 네트워크 확인
+docker network ls
+docker network inspect blog-stack_backend
 
-```bash
-# PostgreSQL 접속 테스트
+# 포트 확인
+netstat -tlnp | grep -E '(80|443|5080|5678)'
+
+# PostgreSQL 연결 테스트
 docker compose exec postgres psql -U bloguser -d blog -c "SELECT 1"
 
-# Redis 접속 테스트
+# Redis 연결 테스트
 docker compose exec redis redis-cli -a $REDIS_PASSWORD ping
 ```
+
+### E2E Test Failures
+
+E2E 테스트는 다음 항목을 검증합니다:
+
+1. **Health Check** - API 응답 확인
+2. **Auth Flow** - 로그인 (OTP 검증 스킵)
+3. **Comments** - 생성 → 조회 → (삭제는 Admin 권한 필요로 스킵)
+4. **AI Endpoints** - AI 서비스 연결 확인
+
+실패 시 Actions 로그에서 상세 내용을 확인하세요.
+
+---
+
+## Quick Reference
+
+### Workflow Files
+
+| 파일 | 설명 | 상태 |
+|------|------|------|
+| `deploy-blog-workflow.yml` | 메인 Backend 배포 | ✅ Active |
+| `backend-deploy.yml` | 레거시 배포 | ❌ Deprecated |
+| `deploy-api-gateway.yml` | Workers API Gateway | ✅ Active |
+
+### 배포 체크리스트
+
+1. [ ] GitHub Secrets 설정 완료
+2. [ ] 서버 SSH 접속 가능
+3. [ ] 서버에 Docker/Docker Compose 설치
+4. [ ] 방화벽 포트 개방 (22, 80, 443, 8080, 8443)
+5. [ ] 도메인 DNS 설정 (Cloudflare)
+6. [ ] SSL 인증서 발급 (Cloudflare Origin Certificate)
+
+### 관련 문서
+
+- [Backend README](./README.md) - 백엔드 서버 개요
+- [Workers 문서](../workers/README.md) - API Gateway
+- [API Gateway](../workers/api-gateway/README.md) - 주 진입점

@@ -8,12 +8,12 @@
  */
 
 import { Hono } from 'hono';
-import type { Env } from '../types';
+import type { HonoEnv, Env } from '../types';
 import { success, error, badRequest, notFound } from '../lib/response';
 import { requireAdmin } from '../middleware/auth';
 import { createAIService } from '../lib/ai-service';
 
-const adminAi = new Hono<{ Bindings: Env }>();
+const adminAi = new Hono<HonoEnv>();
 
 // ============================================================================
 // Types

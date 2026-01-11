@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
-import type { Env } from '../types';
+import type { HonoEnv, Env } from '../types';
 
-const og = new Hono<{ Bindings: Env }>();
+const og = new Hono<HonoEnv>();
 
 function escapeXml(unsafe = ''): string {
   return String(unsafe)

@@ -1,10 +1,10 @@
 import { Hono } from 'hono';
-import type { Env, Post, JwtPayload } from '../types';
+import type { HonoEnv, Post, JwtPayload } from '../types';
 import { success, badRequest, notFound } from '../lib/response';
 import { queryAll, queryOne, execute } from '../lib/d1';
 import { requireAdmin } from '../middleware/auth';
 
-const posts = new Hono<{ Bindings: Env }>();
+const posts = new Hono<HonoEnv>();
 
 // GET /posts - List all posts (with optional filters)
 posts.get('/', async (c) => {
@@ -102,7 +102,7 @@ posts.post('/', requireAdmin, async (c) => {
   const postId = `post-${crypto.randomUUID()}`;
   
   // Get authenticated user ID from JWT payload (set by requireAdmin middleware)
-  const user = c.get('user') as JwtPayload;
+  const user = c.get('user');
   const authorId = user.sub;
 
   const now = new Date().toISOString();

@@ -8,12 +8,12 @@
  */
 
 import { Hono } from 'hono';
-import type { Env } from '../types';
+import type { HonoEnv, Env } from '../types';
 import { success, badRequest, notFound, unauthorized } from '../lib/response';
 import { queryAll, execute, queryOne } from '../lib/d1';
 import { verifyJwt } from '../lib/jwt';
 
-const userContent = new Hono<{ Bindings: Env }>();
+const userContent = new Hono<HonoEnv>();
 
 // Types
 interface MemoNote {

@@ -1,11 +1,11 @@
 import { Hono } from 'hono';
-import type { Env, Comment } from '../types';
+import type { HonoEnv, Env, Comment } from '../types';
 import { success, badRequest, notFound } from '../lib/response';
 import { queryAll, execute, queryOne } from '../lib/d1';
 import { requireAdmin } from '../middleware/auth';
 import { isOriginAllowed } from '../lib/cors';
 
-const comments = new Hono<{ Bindings: Env }>();
+const comments = new Hono<HonoEnv>();
 
 // GET /comments?postId=xxx - Get comments for a post
 comments.get('/', async (c) => {

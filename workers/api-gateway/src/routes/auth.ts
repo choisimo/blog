@@ -17,7 +17,7 @@
  */
 
 import { Hono } from 'hono';
-import type { Env, AuthSession } from '../types';
+import type { HonoEnv, Env, AuthSession } from '../types';
 import { success, badRequest, unauthorized, error } from '../lib/response';
 import {
   verifyJwt,
@@ -30,7 +30,7 @@ import {
   REFRESH_TOKEN_EXPIRY,
 } from '../lib/jwt';
 
-const auth = new Hono<{ Bindings: Env }>();
+const auth = new Hono<HonoEnv>();
 
 // KV key prefixes
 const KV_AUTH_SESSION_PREFIX = 'auth:session:';

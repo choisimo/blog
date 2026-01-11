@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
-import type { Env, PostStats, EditorPick } from '../types';
+import type { HonoEnv, Env, PostStats, EditorPick } from '../types';
 import { queryOne, queryAll, execute } from '../lib/d1';
 import { success, error } from '../lib/response';
 
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<HonoEnv>();
 
 /**
  * POST /api/v1/analytics/view

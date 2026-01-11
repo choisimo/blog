@@ -8,7 +8,7 @@
  */
 
 import { Hono } from 'hono';
-import type { Env } from '../types';
+import type { HonoEnv, Env } from '../types';
 import { success, badRequest, error } from '../lib/response';
 import { requireAdmin } from '../middleware/auth';
 import {
@@ -19,7 +19,7 @@ import {
   clearConfigCache,
 } from '../lib/config';
 
-const config = new Hono<{ Bindings: Env }>();
+const config = new Hono<HonoEnv>();
 
 /**
  * GET /config

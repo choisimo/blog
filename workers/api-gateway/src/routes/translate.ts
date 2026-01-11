@@ -1,11 +1,11 @@
 import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
-import type { Env } from '../types';
+import type { HonoEnv, Env } from '../types';
 import { queryOne, execute } from '../lib/d1';
 import { success, error } from '../lib/response';
 import { createAIService } from '../lib/ai-service';
 
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<HonoEnv>();
 
 // Supported languages
 const SUPPORTED_LANGS = ['ko', 'en'] as const;

@@ -1,127 +1,337 @@
-# Backend API Server (Blog)
+# Backend API Server
 
-> **⚠️ 아키텍처 마이그레이션 안내**
->
-> 현재 시스템은 **Cloudflare Workers 기반**으로 마이그레이션되었습니다.
->
-> - **API Gateway**: `workers/api-gateway/` - Cloudflare Tunnel 대신 Workers가 단일 진입점 역할
-> - **데이터베이스**: `workers/db-api/` - Cloudflare D1 기반 API
-> - **시크릿 관리**: DB 기반 동적 시크릿 관리 (`workers/migrations/0014_secrets_management.sql`)
-> - **AI 모델 관리**: DB 기반 설정 (`workers/migrations/0011_ai_model_management.sql`)
->
-> 최신 배포 및 설정은 `workers/` 디렉토리와 `.github/workflows/deploy-*.yml` 파일을 참고하세요.
->
-> 이 문서는 **로컬 개발 환경** 및 **Docker 기반 레거시 배포**를 위한 참고용으로 유지됩니다.
+## 1. Service Overview (개요)
+
+### 목적
+Backend API Server는 블로그 플랫폼의 **Origin 서버**입니다. Cloudflare Workers API Gateway가 처리하지 않는 요청을 담당하며, 파일 시스템 기반 콘텐츠 관리, AI 서비스 연동, OG 이미지 생성 등을 제공합니다.
+
+> **⚠️ 아키텍처 노트**
+> - **주 진입점**: Cloudflare Workers API Gateway (`workers/api-gateway/`)
+> - **이 서버**: API Gateway의 백엔드 프록시 대상
+> - 대부분의 API 요청은 Workers D1/R2/KV에서 처리됩니다.
+
+### 주요 기능
+
+| 기능 | 설명 | 상태 |
+|------|------|------|
+| **Posts API** | 파일 시스템 기반 게시글 CRUD, 매니페스트 생성 | Legacy |
+| **Images API** | 이미지 업로드/관리, Sharp 리사이징 | Legacy |
+| **AI API** | OpenCode/n8n 기반 AI 기능 (요약, 분석) | Active |
+| **RAG API** | ChromaDB 기반 벡터 검색 및 질의응답 | Active |
+| **Agent API** | Multi-tool AI Agent orchestration | Active |
+| **OG Image** | Sharp 기반 Open Graph 이미지 동적 생성 | Active |
+| **Comments API** | 댓글 관리 (D1 연동) | Migrated to Workers |
+| **Analytics API** | 조회수/트렌딩 (D1 연동) | Migrated to Workers |
+
+### 기술 스택
+- **Runtime**: Node.js 20+
+- **Framework**: Express 4
+- **Port**: `5080` (기본)
+- **Image Processing**: Sharp
+- **AI Backend**: OpenCode Server (ai-server-backend:7016)
+- **Vector DB**: ChromaDB + TEI Embedding Server
 
 ---
 
-블로그의 API 서버입니다. 게시글 Markdown 관리(CRUD), 통합/연도별 매니페스트 생성, 이미지 업로드/관리, 댓글, AI 기능, OG 이미지 생성 등을 제공합니다.
+## 2. Architecture & Data Flow (구조 및 흐름)
 
-- 런타임: Node.js 20+
-- 프레임워크: Express 4
-- 포트: `5080` (기본)
-- 주요 경로: `/api/v1/*`
+### System Architecture
 
-## 빠른 시작 (Quick Start)
+```mermaid
+flowchart TB
+    subgraph "Cloudflare Edge"
+        API_GW[API Gateway<br/>api.nodove.com]
+    end
 
-로컬 개발 환경 설정:
+    subgraph "Origin Server (Docker)"
+        BE[Backend Server<br/>blog-b.nodove.com:5080]
+        
+        subgraph "Services"
+            AI_SRV[AI Server<br/>ai-server-backend:7016]
+            TEI[TEI Embedding<br/>embedding-server:80]
+            CHROMA[ChromaDB<br/>chromadb:8000]
+        end
+    end
 
-```bash
-# 저장소 클론 후 백엔드 디렉토리로 이동
-cd backend
+    subgraph "Storage"
+        FS[File System<br/>frontend/public/]
+        R2[(R2 Bucket)]
+    end
 
-# 환경 변수 설정
-cp -n .env.example .env
-
-# 의존성 설치 및 실행
-npm ci
-npm run dev
+    API_GW -->|Proxy<br/>X-Backend-Key| BE
+    BE --> AI_SRV
+    BE --> TEI
+    BE --> CHROMA
+    BE --> FS
+    BE -.->|Optional| R2
 ```
 
-> **프로덕션 배포**는 아래 "프로덕션 배포" 섹션을 참고하세요.
+### Request Flow (API Gateway Proxy)
 
-## 콘텐츠 경로(중요)
-코드는 리포지토리 루트를 기준으로 정적 자산 디렉터리를 계산합니다.
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant GW as API Gateway
+    participant BE as Backend Server
+    participant AI as AI Server
 
-- 리포지토리 루트: `repoRoot = path.resolve(process.cwd(), '..')` (기본적으로 `backend/` 한 단계 위)
-- 정적 루트: `frontend/public`
-- 게시글 디렉터리: `frontend/public/posts`
-- 이미지 디렉터리: `frontend/public/images`
-
-도커 컨테이너에서 실행 시 위 경로가 컨테이너 내부에도 존재해야 합니다. 운영·개발 모두에서 변경 사항을 호스트에 보존하려면 컨테이너에 `../frontend/public -> /frontend/public` 바인드 마운트를 권장합니다. 자세한 내용은 아래 Docker 섹션 참고.
-
-## 주요 기능
-- **Posts API** (게시글 관리)
-  - `GET /api/v1/posts?year=YYYY&includeDrafts=true|false`
-  - `GET /api/v1/posts/:year/:slug`
-  - `POST /api/v1/posts` (admin)
-  - `PUT /api/v1/posts/:year/:slug` (admin)
-  - `DELETE /api/v1/posts/:year/:slug` (admin)
-  - `POST /api/v1/posts/regenerate-manifests` (admin)
-- **Images API** (이미지 관리)
-  - `POST /api/v1/images/upload` (admin, multipart form, 필드명 `files`)
-  - `GET /api/v1/images?year=YYYY&slug=slug` 또는 `?dir=sub/dir`
-  - `DELETE /api/v1/images/:year/:slug/:filename` (admin)
-- **Comments API** (댓글)
-  - `GET /api/v1/comments?postId=...`
-  - `POST /api/v1/comments` {postId, author, content, website?}
-- **AI API** (AI 기능)
-  - `POST /api/v1/ai/summarize` {text|input, instructions?}
-  - `POST /api/v1/ai/generate` {prompt, temperature?}
-  - `POST /api/v1/ai/{sketch|prism|chain}` {paragraph, postTitle?}
-- **OG Image** (Open Graph 이미지 생성)
-  - `GET /api/v1/og?title=...&subtitle=...&theme=dark|light`
-- **Admin API** (관리자 기능)
-  - `POST /api/v1/admin/propose-new-version` (GitHub PR 생성)
-  - `POST /api/v1/admin/archive-comments` (댓글 아카이빙)
-- **공용**
-  - `GET /api/v1/healthz` (헬스체크)
-  - `GET /api/v1/public/config` (프론트에서 필요한 공개설정)
-
-## 환경 변수
-
-프로덕션용 설정 템플릿: `backend/.env.production.example`
-
-- 기본: `.env.production.example`을 `.env`로 복사·수정 (`cp backend/.env.production.example backend/.env`)
-- 선택: 로컬 전용 오버라이드가 필요하면 `backend/.env`를 추가로 둘 수 있습니다.
-
-- 서버/네트워킹
-  - `APP_ENV` (`development|staging|production`) 기본 `development`
-  - `HOST` 기본 `0.0.0.0`
-  - `PORT` 기본 `5080`
-  - `TRUST_PROXY` 프록시 홉 수. 기본 `1`
-  - `ALLOWED_ORIGINS` CORS 허용 원본(콤마 구분)
-  - `API_BASE_URL`, `SITE_BASE_URL`
-  - 레이트 리밋: `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_MS`
-- 인증
-  - `ADMIN_BEARER_TOKEN` 관리자 보호 라우트 토큰. 미설정 시 로컬 개발 편의를 위해 보호가 비활성화됩니다(운영에서는 반드시 설정!).
-  - (선택) `JWT_SECRET`, `JWT_EXPIRES_IN`을 설정하면 `/api/v1/auth/login` 에서 JWT 발급 후 동일 토큰을 Admin 라우트 보호에 사용할 수 있습니다. 중앙 미들웨어: `src/middleware/adminAuth.js`
-- 통합(옵션)
-  - Gemini: `GEMINI_API_KEY`, `GEMINI_MODEL`
-  - Firebase: `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_PROJECT_ID`
-  - GitHub(PR 생성용): `GITHUB_TOKEN`, `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME`, `GIT_USER_NAME`, `GIT_USER_EMAIL`
-
-## 로컬(네이티브) 실행
-사전 준비: Node.js 20+, npm 10+, `frontend/public` 존재(없으면 자동 생성되지만, 리포지토리 구조를 유지하는 것이 좋습니다)
-
-```bash
-cd backend
-cp -n .env.example .env
-# 필요 시 ADMIN_BEARER_TOKEN 설정
-npm ci
-npm run dev
-# http://localhost:5080/api/v1/healthz 확인
+    C->>GW: POST /api/v1/ai/sketch
+    GW->>GW: Route not handled locally
+    GW->>BE: Proxy request<br/>+ X-Backend-Key
+    BE->>AI: POST /v1/chat/completions
+    AI-->>BE: AI Response
+    BE-->>GW: { ok: true, result: ... }
+    GW-->>C: Forward response
 ```
 
-## Docker로 실행
-### 1) docker compose (리버스 프록시 포함)
-`backend/docker-compose.yml`은 API와 nginx를 올립니다.
+### Content Path Resolution
+
+```mermaid
+flowchart LR
+    subgraph "Path Resolution"
+        CWD[process.cwd()<br/>= /app (Docker)]
+        ROOT[repoRoot<br/>= /app/.. = /]
+        PUBLIC[publicDir<br/>= /frontend/public]
+        POSTS[postsDir<br/>= /frontend/public/posts]
+        IMAGES[imagesDir<br/>= /frontend/public/images]
+    end
+
+    CWD --> ROOT
+    ROOT --> PUBLIC
+    PUBLIC --> POSTS
+    PUBLIC --> IMAGES
+```
+
+**Docker에서의 경로 매핑:**
+```
+Host: ./frontend/public  →  Container: /frontend/public
+```
+
+---
+
+## 3. API Specification (인터페이스 명세)
+
+### Health & Config
+
+| Method | Endpoint | Output | Description |
+|--------|----------|--------|-------------|
+| `GET` | `/api/v1/healthz` | `{ ok, env, uptime }` | 헬스체크 |
+| `GET` | `/api/v1/public/config` | `{ siteBaseUrl, apiBaseUrl, env }` | 공개 설정 |
+
+### AI Routes (`/api/v1/ai`)
+
+| Method | Endpoint | Input | Output | Description |
+|--------|----------|-------|--------|-------------|
+| `POST` | `/summarize` | `{ text, instructions? }` | `{ result }` | 텍스트 요약 |
+| `POST` | `/generate` | `{ prompt, temperature? }` | `{ result }` | 텍스트 생성 |
+| `POST` | `/sketch` | `{ paragraph, postTitle? }` | `{ result }` | 개념 스케치 |
+| `POST` | `/prism` | `{ paragraph, postTitle? }` | `{ result }` | 다각도 분석 |
+| `POST` | `/chain` | `{ paragraph, postTitle? }` | `{ result }` | 연쇄 사고 분석 |
+
+### RAG Routes (`/api/v1/rag`)
+
+| Method | Endpoint | Input | Output | Description |
+|--------|----------|-------|--------|-------------|
+| `POST` | `/query` | `{ query, topK? }` | `{ results, answer }` | 벡터 검색 + 답변 생성 |
+| `POST` | `/embed` | `{ text }` | `{ embedding }` | 텍스트 임베딩 |
+| `GET` | `/status` | - | `{ indexed, lastUpdated }` | 인덱스 상태 |
+
+### Agent Routes (`/api/v1/agent`)
+
+| Method | Endpoint | Input | Output | Description |
+|--------|----------|-------|--------|-------------|
+| `POST` | `/chat` | `{ message, sessionId? }` | `{ response, actions }` | Agent 대화 |
+| `POST` | `/execute` | `{ tool, params }` | `{ result }` | 도구 직접 실행 |
+| `GET` | `/tools` | - | `{ tools[] }` | 사용 가능한 도구 목록 |
+
+### Posts Routes (`/api/v1/posts`) - Legacy
+
+| Method | Endpoint | Input | Output | Auth |
+|--------|----------|-------|--------|------|
+| `GET` | `/` | `?year=&includeDrafts=` | `{ posts[] }` | - |
+| `GET` | `/:year/:slug` | - | `{ post }` | - |
+| `POST` | `/` | `{ title, slug, content, ... }` | `{ id }` | Admin |
+| `PUT` | `/:year/:slug` | `{ title, content, ... }` | `{ ok }` | Admin |
+| `DELETE` | `/:year/:slug` | - | `{ ok }` | Admin |
+| `POST` | `/regenerate-manifests` | - | `{ ok }` | Admin |
+
+### Images Routes (`/api/v1/images`) - Legacy
+
+| Method | Endpoint | Input | Output | Auth |
+|--------|----------|-------|--------|------|
+| `POST` | `/upload` | `multipart/form-data` (files) | `{ urls[] }` | Admin |
+| `GET` | `/` | `?year=&slug=` or `?dir=` | `{ files[] }` | - |
+| `DELETE` | `/:year/:slug/:filename` | - | `{ ok }` | Admin |
+
+### OG Image (`/api/v1/og`)
+
+| Method | Endpoint | Input | Output | Description |
+|--------|----------|-------|--------|-------------|
+| `GET` | `/` | `?title=&subtitle=&theme=dark|light` | `image/png` | OG 이미지 생성 |
+
+### Response Format
+
+```typescript
+// Success
+{ "ok": true, "data": { ... } }
+
+// Error
+{ "ok": false, "error": "Error message" }
+```
+
+---
+
+## 4. Key Business Logic (핵심 로직 상세)
+
+### AI Service Architecture
+
+```
+Request Flow:
+1. Client → API Gateway → Backend /api/v1/ai/*
+2. Backend → OpenCode Server (ai-server-backend:7016)
+3. OpenCode → AI Serve (ai-server-serve:7012)
+4. AI Serve → LLM Provider (GitHub Copilot / OpenRouter / etc.)
+```
+
+**OpenCode 설정:**
+```javascript
+config.ai.opencode = {
+  baseUrl: 'http://ai-server-backend:7016',
+  defaultProvider: 'github-copilot',
+  defaultModel: 'gpt-4.1'
+}
+```
+
+### RAG (Retrieval-Augmented Generation)
+
+```
+Query Flow:
+1. 사용자 질의 → TEI Embedding Server → 벡터 변환
+2. 벡터 → ChromaDB → 유사 문서 검색 (topK)
+3. 관련 문서 + 질의 → LLM → 컨텍스트 기반 답변
+```
+
+**ChromaDB 설정:**
+```javascript
+config.rag = {
+  teiUrl: 'http://embedding-server:80',
+  chromaUrl: 'http://chromadb:8000',
+  chromaCollection: 'blog-posts-all-MiniLM-L6-v2'
+}
+```
+
+### Agent Tool Orchestration
+
+```
+사용 가능한 도구:
+├── web-search     - 웹 검색 (Exa AI)
+├── rag-search     - 블로그 포스트 검색
+├── blog-ops       - 블로그 운영 (게시글 관리)
+├── code-execution - 코드 실행 (샌드박스)
+└── mcp-client     - MCP 서버 연동
+```
+
+### Manifest Generation (Legacy)
+
+게시글 CRUD 시 자동으로 매니페스트가 갱신됩니다:
+
+```
+frontend/public/
+├── posts-manifest.json           # 통합 매니페스트
+└── posts/
+    ├── posts-manifest.json       # 복사본
+    └── {year}/
+        └── manifest.json         # 연도별 매니페스트
+```
+
+---
+
+## 5. Dependencies & Environment (의존성)
+
+### Required Environment Variables
+
+```bash
+# ============================================
+# Server
+# ============================================
+APP_ENV=production              # development | staging | production
+HOST=0.0.0.0
+PORT=5080
+TRUST_PROXY=1                   # Nginx/Cloudflare 앞에서 동작 시
+ALLOWED_ORIGINS=https://noblog.nodove.com,https://api.nodove.com
+
+# ============================================
+# AI - OpenCode (필수)
+# ============================================
+OPENCODE_BASE_URL=http://ai-server-backend:7016
+OPENCODE_API_KEY=your-api-key
+OPENCODE_DEFAULT_PROVIDER=github-copilot
+OPENCODE_DEFAULT_MODEL=gpt-4.1
+
+# ============================================
+# RAG (선택)
+# ============================================
+TEI_URL=http://embedding-server:80
+CHROMA_URL=http://chromadb:8000
+CHROMA_COLLECTION=blog-posts-all-MiniLM-L6-v2
+
+# ============================================
+# Admin Auth
+# ============================================
+ADMIN_BEARER_TOKEN=your-secure-token
+JWT_SECRET=your-jwt-secret
+JWT_EXPIRES_IN=12h
+
+# ============================================
+# Content Paths (Docker 환경)
+# ============================================
+CONTENT_PUBLIC_DIR=/frontend/public
+CONTENT_POSTS_DIR=/frontend/public/posts
+CONTENT_IMAGES_DIR=/frontend/public/images
+POSTS_SOURCE=filesystem           # filesystem | github | r2
+
+# ============================================
+# GitHub Integration (선택)
+# ============================================
+GITHUB_TOKEN=ghp_...
+GITHUB_REPO_OWNER=your-username
+GITHUB_REPO_NAME=blog
+```
+
+### Docker Services (docker-compose)
+
+| Service | Port | Description |
+|---------|------|-------------|
+| `api` | 5080 | Backend API Server |
+| `nginx` | 80 | Reverse Proxy |
+| `ai-server-backend` | 7016 | AI Request Router |
+| `ai-server-serve` | 7012 | LLM Provider Connector |
+| `embedding-server` | 80 | TEI Embedding Server |
+| `chromadb` | 8000 | Vector Database |
+
+---
+
+## 6. Deployment (배포)
+
+### Local Development
 
 ```bash
 cd backend
 cp -n .env.example .env
-# 호스트의 정적 자산(프론트 빌드 소스)을 컨테이너에 마운트해 변경사항을 보존
-# docker-compose.override.yml 생성(권장):
+npm ci
+npm run dev
+# http://localhost:5080/api/v1/healthz
+```
+
+### Docker Compose
+
+```bash
+cd backend
+
+# .env 설정
+cp -n .env.production.example .env
+
+# 볼륨 마운트 설정 (권장)
 cat > docker-compose.override.yml <<'YAML'
 services:
   api:
@@ -132,119 +342,151 @@ services:
       - "8091:80"
 YAML
 
+# 실행
 docker compose up --build
-# nginx 프록시 경유:    http://localhost:8091/api/v1/healthz
-# 백엔드에 직결(포트): http://localhost:5080/api/v1/healthz
+
+# Health check
+curl http://localhost:8091/api/v1/healthz
 ```
 
-주의: 기본 `nginx.conf`는 `client_max_body_size 2m`입니다. 이미지 업로드 시 413이 난다면 `25m` 등으로 늘리세요.
+### Production (PM2)
+
+```bash
+cd backend
+npm ci --production
+pm2 start ecosystem.config.js --env production
+```
+
+### Production (systemd)
+
+```bash
+# 서비스 설치
+sudo cp deploy/blog-backend.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable blog-backend
+sudo systemctl start blog-backend
+```
+
+---
+
+## 7. Edge Cases & Troubleshooting (운영 가이드)
+
+### 예상 에러 상황
+
+| 상황 | HTTP Code | 원인 | 해결 |
+|------|-----------|------|------|
+| 401 Unauthorized | 401 | Bearer Token 불일치 | `ADMIN_BEARER_TOKEN` 확인 |
+| 413 Payload Too Large | 413 | 업로드 용량 초과 | Nginx `client_max_body_size` 증가 |
+| CORS Error | - | Origin 미허용 | `ALLOWED_ORIGINS`에 추가 |
+| AI 요청 실패 | 500/502 | OpenCode 서버 연결 실패 | `OPENCODE_BASE_URL` 및 서버 상태 확인 |
+| RAG 검색 실패 | 500 | ChromaDB 연결 실패 | `CHROMA_URL` 및 서버 상태 확인 |
+| 매니페스트 미갱신 | - | 파일 권한 문제 | 볼륨 마운트 경로/권한 확인 |
+
+### 제약 사항
+
+1. **파일 시스템 의존**: Posts/Images API는 파일 시스템 접근 필요
+2. **Docker 볼륨**: 컨텐츠 영속성을 위해 반드시 볼륨 마운트 필요
+3. **AI 서버 의존**: AI 기능은 ai-server-backend 필수
+4. **메모리**: Sharp 이미지 처리 시 메모리 사용량 주의
+
+### 디버깅
+
+```bash
+# 로컬 개발 (watch mode)
+npm run dev
+
+# 로그 확인 (Docker)
+docker compose logs -f api
+
+# 로그 확인 (PM2)
+pm2 logs blog-backend
+
+# Health check
+curl http://localhost:5080/api/v1/healthz
+
+# AI 서버 연결 테스트
+curl http://localhost:5080/api/v1/ai/status
+
+# RAG 상태 확인
+curl http://localhost:5080/api/v1/rag/status
+```
+
+### Nginx 설정 (업로드 용량)
 
 ```nginx
 # backend/nginx.conf
 server {
-  client_max_body_size 25m; # 필요 시 조정
-  ...
+    client_max_body_size 25m;  # 이미지 업로드 용량
+    
+    location / {
+        proxy_pass http://api:5080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
 }
 ```
 
-### 2) 단일 docker run (에페메럴/테스트)
-`frontend/public` 대신 임시 디렉터리를 마운트하여 안전하게 실험할 수 있습니다.
+---
 
-```bash
-TMP=$(mktemp -d)
-# 임시 디렉터리에 posts/images가 생성됩니다
-docker run --rm -it \
-  -p 5080:5080 \
-  --env-file backend/.env \
-  -v "$TMP:/frontend/public" \
-  -w /app \
-  node:20-alpine sh -lc '
-    apk add --no-cache nodejs npm && \
-    cd /app && \
-    mkdir -p /app && \
-    # 애플리케이션 이미지 사용을 권장. 예시는 이해를 위한 baseline.
-    exit 0
-  '
-# 권장: 프로젝트 이미지로 빌드/실행
-# docker build -t blog-backend:local backend
-# docker run --rm -p 5080:5080 --env-file backend/.env -v "$TMP:/frontend/public" blog-backend:local
+## Quick Reference
+
+### Directory Structure
+
+```
+backend/
+├── src/
+│   ├── index.js              # 엔트리포인트 (Express app)
+│   ├── config.js             # 환경변수 파싱 (Zod)
+│   ├── routes/
+│   │   ├── ai.js             # AI API
+│   │   ├── rag.js            # RAG API
+│   │   ├── agent.js          # Agent API
+│   │   ├── posts.js          # Posts API (Legacy)
+│   │   ├── images.js         # Images API (Legacy)
+│   │   ├── og.js             # OG Image 생성
+│   │   ├── comments.js       # Comments (D1 연동)
+│   │   ├── analytics.js      # Analytics (D1 연동)
+│   │   └── ...
+│   ├── lib/
+│   │   ├── ai-service.js     # AI 서비스 클라이언트
+│   │   ├── opencode-client.js# OpenCode API 클라이언트
+│   │   ├── d1.js             # D1 API 클라이언트
+│   │   ├── r2.js             # R2 API 클라이언트
+│   │   ├── jwt.js            # JWT 유틸리티
+│   │   └── agent/            # Agent 시스템
+│   │       ├── coordinator.js
+│   │       ├── tools/
+│   │       ├── memory/
+│   │       └── prompts/
+│   └── middleware/
+│       └── adminAuth.js      # Admin 인증 미들웨어
+├── deploy/
+│   ├── blog-backend.service  # systemd 서비스
+│   └── nginx-blog-api.conf   # Nginx 설정
+├── docker-compose.yml
+├── Dockerfile
+├── ecosystem.config.js       # PM2 설정
+└── package.json
 ```
 
-## 매니페스트 생성/정합성
-- 게시글 작성/수정/삭제 시:
-  - 연도별 `frontend/public/posts/<year>/manifest.json` 갱신
-  - 통합 `frontend/public/posts-manifest.json` 및 `frontend/public/posts/posts-manifest.json` 갱신
-- 프론트의 `scripts/generate-manifests.js`와 구조 호환(필드: `title`, `slug`, `date`, `tags`, `readingTime`, `coverImage`, ...)
+### API Route Mounting
 
-## 엔드포인트 요약
-- Health: `GET /api/v1/healthz`
-- Public config: `GET /api/v1/public/config`
-- Posts
-  - List: `GET /api/v1/posts?year=&includeDrafts=`
-  - Get: `GET /api/v1/posts/:year/:slug`
-  - Create: `POST /api/v1/posts` (admin)
-  - Update: `PUT /api/v1/posts/:year/:slug` (admin)
-  - Delete: `DELETE /api/v1/posts/:year/:slug` (admin)
-  - Regenerate manifests: `POST /api/v1/posts/regenerate-manifests` (admin)
-- Images
-  - Upload: `POST /api/v1/images/upload` (admin, multipart: `files=@...` 여러개 허용)
-  - List: `GET /api/v1/images?year=YYYY&slug=slug` 또는 `GET /api/v1/images?dir=covers`
-  - Delete: `DELETE /api/v1/images/:year/:slug/:filename` (admin)
-
-## 보안 & 운영 팁
-- Admin 보호 구조: `src/middleware/adminAuth.js`가 모든 (posts/images/admin 등) 쓰기/민감 라우트에서 재사용됩니다. 이전 개별 파일 내 inline 검사 로직은 제거되었습니다.
-- JWT 유틸: `src/lib/jwt.js`에 `signJwt`, `verifyJwt`, `isAdminClaims` 제공. Auth 라우트(`/api/v1/auth/*`)는 이를 사용하여 일관성 유지.
-- 운영 환경에서는 반드시 `ADMIN_BEARER_TOKEN`을 설정하여 쓰기 라우트를 보호하세요.
-- CORS는 `ALLOWED_ORIGINS`에서 엄격히 제한하세요.
-- 리버스 프록시(Nginx/Cloud) 앞에서는 `TRUST_PROXY`를 올바르게 설정하세요.
-- 업로드 용량 제한은 프록시(Nginx)와 Express 양쪽에서 고려하세요.
-- Docker로 실행 시 볼륨 마운트로 `frontend/public`을 호스트에 보존하는 구성을 권장합니다.
-
-## 프로덕션 배포
-
-> **참고**: 프로덕션 환경에서는 Cloudflare Workers 기반 배포를 권장합니다.
-> `workers/api-gateway/README.md`를 참고하세요.
-
-### 옵션 1: Cloudflare Workers (권장)
-```bash
-cd workers/api-gateway
-npm install
-npx wrangler deploy --env production
-```
-자세한 내용은 `workers/api-gateway/README.md` 참고.
-
-### 옵션 2: PM2 + Docker (레거시)
-```bash
-cd backend
-bash scripts/setup.sh --pm2
+```javascript
+// src/index.js
+app.use('/api/v1/ai', aiRouter);
+app.use('/api/v1/rag', ragRouter);
+app.use('/api/v1/agent', agentRouter);
+app.use('/api/v1/posts', postsRouter);
+app.use('/api/v1/images', imagesRouter);
+app.use('/api/v1/og', ogRouter);
+app.use('/api/v1/comments', commentsRouter);
+app.use('/api/v1/analytics', analyticsRouter);
+app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/admin', adminRouter);
 ```
 
-### 옵션 3: systemd + Nginx (레거시)
-```bash
-cd backend
-bash scripts/setup.sh --systemd --nginx
-```
+### 관련 문서
 
-### 수동 설정 (레거시)
-- PM2 설정: `ecosystem.config.js`
-- systemd 서비스: `deploy/blog-backend.service`
-- Nginx 설정: `deploy/nginx-blog-api.conf`
-
-## GitHub Actions 연동
-
-1. 리포지토리 Settings → Secrets → Actions
-2. `VITE_API_BASE_URL` Secret 추가
-3. 값: 백엔드의 공개 HTTPS URL (예: `https://api.yourdomain.com`)
-4. main 브랜치 푸시 시 자동으로 프론트엔드가 빌드/배포되며 API URL이 주입됨
-
-## 트러블슈팅
-- 401 Unauthorized: `Authorization: Bearer <token>` 헤더 확인, 토큰 값 일치 여부 확인
-- 413 Payload Too Large: Nginx `client_max_body_size` 증가, Express `express.json({ limit })` 조정 검토
-- CORS 오류: `ALLOWED_ORIGINS`에 호출 원본 추가
-- 매니페스트가 갱신되지 않음: 쓰기 연산 후 에러 로그 확인, 파일 권한/볼륨 마운트 경로 확인
-- Mixed Content: `VITE_API_BASE_URL`이 HTTPS로 설정되었는지 확인
-- PR 생성 실패: GitHub 토큰 권한, 리포지토리 설정 확인
-
-## 관련 문서
-- [Frontend-Backend 연동 PRD](../docs/PRD-fe-be-integration.md) - 상세한 설치 및 연동 가이드
-- [아키텍처 문서](../docs/ARCHITECTURE.md) - 전체 시스템 구조
+- [Workers API Gateway](../workers/api-gateway/README.md) - 주 진입점
+- [Workers 통합 문서](../workers/README.md) - Edge Computing 레이어
+- [CI/CD 문서](./README-CICD.md) - 배포 파이프라인
