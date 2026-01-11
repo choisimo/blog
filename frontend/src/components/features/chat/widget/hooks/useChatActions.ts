@@ -235,9 +235,9 @@ export function useChatActions({
     abortRef.current?.abort();
   }, [abortRef]);
 
-  const clearAll = useCallback(() => {
-    if (messages.length > 0) {
-      if (!window.confirm("대화를 삭제할까요?")) return;
+  const clearAll = useCallback((skipConfirm = false) => {
+    if (messages.length > 0 && !skipConfirm) {
+      return false;
     }
     setMessages([]);
     setFirstTokenMs(null);
@@ -250,6 +250,7 @@ export function useChatActions({
     try {
       localStorage.setItem(CURRENT_SESSION_KEY, nextKey);
     } catch {}
+    return true;
   }, [
     messages.length,
     setMessages,

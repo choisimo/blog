@@ -23,6 +23,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -49,6 +59,7 @@ import {
 } from 'lucide-react';
 import { useRoutes, useModels } from './hooks';
 import type { AIRoute, RouteFormData, AIModel } from './types';
+import { toast } from '@/hooks/use-toast';
 
 interface RouteFormProps {
   route?: AIRoute;
@@ -282,6 +293,7 @@ export function RoutesManager() {
   const { models, fetchModels } = useModels();
   const [showForm, setShowForm] = useState(false);
   const [editingRoute, setEditingRoute] = useState<AIRoute | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AIRoute | null>(null);
 
   useEffect(() => {
     fetchRoutes();
@@ -311,13 +323,22 @@ export function RoutesManager() {
     await updateRoute(route.id, { isEnabled: !route.isEnabled });
   };
 
-  const handleDelete = async (route: AIRoute) => {
+  const handleDeleteClick = (route: AIRoute) => {
     if (route.isDefault) {
-      alert('Cannot delete the default route. Set another route as default first.');
+      toast({
+        variant: 'destructive',
+        title: 'Cannot Delete',
+        description: 'Cannot delete the default route. Set another route as default first.',
+      });
       return;
     }
-    if (!confirm(`Delete route "${route.name}"?`)) return;
-    await deleteRoute(route.id);
+    setDeleteTarget(route);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    await deleteRoute(deleteTarget.id);
+    setDeleteTarget(null);
   };
 
   const handleClone = (route: AIRoute) => {
@@ -443,7 +464,7 @@ export function RoutesManager() {
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        onClick={() => handleDelete(route)}
+                        onClick={() => handleDeleteClick(route)}
                         className="text-red-600"
                         disabled={route.isDefault}
                       >
@@ -496,6 +517,23 @@ export function RoutesManager() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Route</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete route "{deleteTarget?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

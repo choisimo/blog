@@ -24,6 +24,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -325,6 +335,7 @@ export function ModelsManager() {
   const [filterProvider, setFilterProvider] = useState<string>('');
   const [filterEnabled, setFilterEnabled] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<AIModel | null>(null);
 
   useEffect(() => {
     fetchModels();
@@ -350,9 +361,14 @@ export function ModelsManager() {
     await updateModel(model.id, { isEnabled: !model.isEnabled });
   };
 
-  const handleDelete = async (model: AIModel) => {
-    if (!confirm(`Delete model "${model.displayName}"?`)) return;
-    await deleteModel(model.id);
+  const handleDeleteClick = (model: AIModel) => {
+    setDeleteTarget(model);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    await deleteModel(deleteTarget.id);
+    setDeleteTarget(null);
   };
 
   const handleTest = async (model: AIModel) => {
@@ -527,7 +543,7 @@ export function ModelsManager() {
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          onClick={() => handleDelete(model)}
+                          onClick={() => handleDeleteClick(model)}
                           className="text-red-600"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
@@ -596,6 +612,23 @@ export function ModelsManager() {
           {testResult && <TestResult result={testResult} />}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Model</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete model "{deleteTarget?.displayName}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

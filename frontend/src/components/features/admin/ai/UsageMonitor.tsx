@@ -31,6 +31,7 @@ import {
   Download,
 } from 'lucide-react';
 import { useUsage, useAIConfig } from './hooks';
+import { toast } from '@/hooks/use-toast';
 
 function formatNumber(num: number): string {
   if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -135,9 +136,16 @@ export function UsageMonitor() {
   const handleReload = async () => {
     const result = await reloadConfig();
     if (result.ok) {
-      alert(`Config generated with ${result.data?.modelCount} models. ${result.data?.message}`);
+      toast({
+        title: 'Config Generated',
+        description: `Generated with ${result.data?.modelCount} models. ${result.data?.message}`,
+      });
     } else {
-      alert(`Error: ${result.error}`);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: result.error,
+      });
     }
   };
 
@@ -152,7 +160,11 @@ export function UsageMonitor() {
       a.click();
       URL.revokeObjectURL(url);
     } else {
-      alert(`Export failed: ${result.error}`);
+      toast({
+        variant: 'destructive',
+        title: 'Export Failed',
+        description: result.error,
+      });
     }
   };
 

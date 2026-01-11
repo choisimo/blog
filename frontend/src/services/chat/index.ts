@@ -15,7 +15,10 @@ export type {
   ChatImageUploadResult,
   PageContext,
   ContentPart,
+  ChatErrorCode,
 } from './types';
+
+export { ChatError } from './types';
 
 // Config
 export {

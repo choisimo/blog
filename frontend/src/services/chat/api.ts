@@ -28,6 +28,7 @@ import type {
   ChatImageUploadResult,
   ContentPart,
 } from './types';
+import { ChatError } from './types';
 
 // ============================================================================
 // Chat Task API
@@ -74,14 +75,7 @@ export async function invokeChatTask<T = unknown>(
   }
 
   if (!res.ok) {
-    const errorMessage =
-      typeof parsed === 'object' && parsed !== null && 'error' in (parsed as any)
-        ? String((parsed as any).error)
-        : text.slice(0, 180) || `status ${res.status}`;
-    const error = new Error(`Chat task error: ${errorMessage}`);
-    (error as any).status = res.status;
-    (error as any).response = parsed;
-    throw error;
+    throw ChatError.fromResponse(res.status, parsed);
   }
 
   const dataCandidate =
@@ -169,7 +163,9 @@ export async function* streamChatEvents(
 
   if (!res.ok || !res.body) {
     const t = await res.text().catch(() => '');
-    throw new Error(`Chat error: ${res.status} ${t.slice(0, 180)}`);
+    let parsed: unknown = null;
+    try { parsed = JSON.parse(t); } catch {}
+    throw ChatError.fromResponse(res.status, parsed || t);
   }
 
   // 스트림 파싱
@@ -254,16 +250,12 @@ export async function uploadChatImage(
   }
 
   if (!res.ok || !parsed?.ok) {
-    const message =
-      (parsed && parsed.error && parsed.error.message) ||
-      text.slice(0, 180) ||
-      `status ${res.status}`;
-    throw new Error(`Chat image upload error: ${message}`);
+    throw ChatError.fromResponse(res.status, parsed || text);
   }
 
   const data = parsed.data;
   if (!data || typeof data.url !== 'string') {
-    throw new Error('Invalid chat image upload response');
+    throw new ChatError('Invalid chat image upload response', 'PARSE_ERROR');
   }
 
   if (process.env.NODE_ENV === 'development') {
@@ -305,11 +297,7 @@ export async function invokeChatAggregate(input: {
   }
 
   if (!res.ok || !parsed?.ok) {
-    const message =
-      (parsed && parsed.error && parsed.error.message) ||
-      text.slice(0, 180) ||
-      `status ${res.status}`;
-    throw new Error(`Chat aggregate error: ${message}`);
+    throw ChatError.fromResponse(res.status, parsed || text);
   }
 
   const data = parsed.data;
@@ -318,7 +306,7 @@ export async function invokeChatAggregate(input: {
     (typeof data === 'string' ? data : null);
 
   if (!value) {
-    throw new Error('Invalid chat aggregate response');
+    throw new ChatError('Invalid chat aggregate response', 'PARSE_ERROR');
   }
   return value;
 }

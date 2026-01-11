@@ -2,6 +2,16 @@ import React, { useCallback, useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "@/contexts/ThemeContext";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import {
   useChatState,
@@ -27,6 +37,7 @@ export default function ChatWidget(props: {
   const isMobile = useIsMobile();
   const { isTerminal } = useTheme();
   const keyboardHeight = useKeyboardHeight(isMobile);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   // Dynamic max height calculation for PC
   const [pcMaxHeight, setPcMaxHeight] = useState("80vh");
@@ -116,6 +127,18 @@ export default function ChatWidget(props: {
     [state],
   );
 
+  const handleClearAll = useCallback(() => {
+    const cleared = actions.clearAll();
+    if (!cleared) {
+      setShowClearConfirm(true);
+    }
+  }, [actions]);
+
+  const handleClearConfirm = useCallback(() => {
+    actions.clearAll(true);
+    setShowClearConfirm(false);
+  }, [actions]);
+
   return (
     <>
       <div
@@ -153,7 +176,7 @@ export default function ChatWidget(props: {
           onShowActionSheet={() => state.setShowActionSheet(true)}
           onShowImageDrawer={() => state.setShowImageDrawer(true)}
           onTogglePersist={state.togglePersistStorage}
-          onClearAll={actions.clearAll}
+          onClearAll={handleClearAll}
           onClose={props.onClose}
         />
 
@@ -225,7 +248,7 @@ export default function ChatWidget(props: {
           onKeyDown={onKeyDown}
           onSend={actions.send}
           onStop={actions.stop}
-          onClearAll={actions.clearAll}
+          onClearAll={handleClearAll}
           onFileSelect={state.setAttachedImage}
           attachedImage={state.attachedImage}
           attachedPreviewUrl={state.attachedPreviewUrl}
@@ -263,9 +286,26 @@ export default function ChatWidget(props: {
           state.setShowImageDrawer(true);
         }}
         onTogglePersist={state.togglePersistStorage}
-        onClearAll={actions.clearAll}
+        onClearAll={handleClearAll}
         isTerminal={isTerminal}
       />
+
+      <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>대화 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              대화 내용을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

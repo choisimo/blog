@@ -54,7 +54,7 @@ export const generateSEOData = (
 ): SEOData => {
   const baseUrl = import.meta.env.VITE_SITE_BASE_URL || 'http://localhost:3000';
   const apiBase = getApiBaseUrl();
-  const siteName = 'nodove-blog'; 
+  const siteName = import.meta.env.VITE_SITE_NAME || 'nodove-blog';
   const seoImageBase = `${baseUrl}/images/seo`;
   const defaultOgImage = `${seoImageBase}/default/seo.png`;
   const category = normalizeCategory(options.category);
@@ -146,8 +146,8 @@ export const generateStructuredData = (
 ) => {
   const baseUrl = import.meta.env.VITE_SITE_BASE_URL || 'http://localhost:3000';
   const apiBase = getApiBaseUrl();
-  const siteName = 'nodove-blog'; // TODO: set your actual site name
-  const authorName = 'nodove'; // TODO: set your actual name
+  const siteName = import.meta.env.VITE_SITE_NAME || 'nodove-blog';
+  const authorName = import.meta.env.VITE_AUTHOR_NAME || 'nodove';
 
   if (pageType === 'post' && post) {
     return {

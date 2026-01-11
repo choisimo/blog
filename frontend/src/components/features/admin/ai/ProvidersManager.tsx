@@ -23,6 +23,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -180,6 +190,7 @@ export function ProvidersManager() {
   const [showForm, setShowForm] = useState(false);
   const [editingProvider, setEditingProvider] = useState<AIProvider | null>(null);
   const [checkingHealth, setCheckingHealth] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AIProvider | null>(null);
 
   useEffect(() => {
     fetchProviders();
@@ -204,9 +215,14 @@ export function ProvidersManager() {
     await updateProvider(provider.id, { isEnabled: !provider.isEnabled });
   };
 
-  const handleDelete = async (provider: AIProvider) => {
-    if (!confirm(`Delete provider "${provider.displayName}"? This cannot be undone.`)) return;
-    await deleteProvider(provider.id);
+  const handleDeleteClick = (provider: AIProvider) => {
+    setDeleteTarget(provider);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    await deleteProvider(deleteTarget.id);
+    setDeleteTarget(null);
   };
 
   const handleCheckHealth = async (provider: AIProvider) => {
@@ -303,7 +319,7 @@ export function ProvidersManager() {
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          onClick={() => handleDelete(provider)}
+                          onClick={() => handleDeleteClick(provider)}
                           className="text-red-600"
                           disabled={provider.modelCount > 0}
                         >
@@ -352,6 +368,23 @@ export function ProvidersManager() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Provider</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete provider "{deleteTarget?.displayName}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import type { Env, Post } from '../types';
+import type { Env, Post, JwtPayload } from '../types';
 import { success, badRequest, notFound } from '../lib/response';
 import { queryAll, queryOne, execute } from '../lib/d1';
 import { requireAdmin } from '../middleware/auth';
@@ -100,7 +100,10 @@ posts.post('/', requireAdmin, async (c) => {
 
   const db = c.env.DB;
   const postId = `post-${crypto.randomUUID()}`;
-  const authorId = 'admin-default'; // TODO: Get from authenticated user
+  
+  // Get authenticated user ID from JWT payload (set by requireAdmin middleware)
+  const user = c.get('user') as JwtPayload;
+  const authorId = user.sub;
 
   const now = new Date().toISOString();
 
