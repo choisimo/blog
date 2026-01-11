@@ -166,14 +166,27 @@ export function useModalPresence(): boolean {
     const sel =
       '[aria-modal="true"], [role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"], [data-radix-portal] [data-state="open"]';
     const check = () => setPresent(!!document.querySelector(sel));
-    const mo = new MutationObserver(check);
+
+    let rafId: number | null = null;
+    const debouncedCheck = () => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        check();
+      });
+    };
+
+    const mo = new MutationObserver(debouncedCheck);
     mo.observe(document.body, {
-      subtree: true,
       childList: true,
-      attributes: true,
+      subtree: true,
+      attributeFilter: ["aria-modal", "role", "data-state"],
     });
     check();
-    return () => mo.disconnect();
+    return () => {
+      mo.disconnect();
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, []);
   return present;
 }
@@ -186,7 +199,7 @@ export function useHistoryBadge(): [boolean, () => void] {
       const arr = JSON.parse(localStorage.getItem("aiMemo.events") || "[]");
       count = Array.isArray(arr) ? arr.length : 0;
     } catch {
-      count = Array.isArray([]) ? 0 : 0;
+      count = 0;
     }
     let last = 0;
     try {
@@ -202,12 +215,20 @@ export function useHistoryBadge(): [boolean, () => void] {
     const onStorage = (e: StorageEvent) => {
       if (!e.key || e.key === "aiMemo.events") recompute();
     };
+    const onMemoEvent = () => recompute();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") recompute();
+    };
+
     window.addEventListener("storage", onStorage);
-    const t = setInterval(recompute, 1500); // local updates within same tab
+    window.addEventListener("aiMemo:eventsChanged", onMemoEvent);
+    document.addEventListener("visibilitychange", onVisibility);
+
     recompute();
     return () => {
       window.removeEventListener("storage", onStorage);
-      clearInterval(t);
+      window.removeEventListener("aiMemo:eventsChanged", onMemoEvent);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [recompute]);
   const clear = useCallback(() => {

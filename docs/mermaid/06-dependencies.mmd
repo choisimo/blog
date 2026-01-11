@@ -1,0 +1,28 @@
+graph LR
+    subgraph "명시적 의존성"
+        AI_SVC[AI Service]
+        OC[OpenCode Client]
+        RAG[RAG Service]
+        DB[(Database)]
+    end
+    
+    subgraph "숨겨진 의존성"
+        ENV[환경 변수]
+        SECRET[Secrets Manager]
+        CACHE[Redis Cache]
+        METRICS[Metrics Collector]
+        LOGGER[Logger Service]
+    end
+    
+    AI_SVC --> OC
+    AI_SVC --> RAG
+    AI_SVC --> DB
+    
+    AI_SVC -.-> ENV
+    AI_SVC -.-> SECRET
+    AI_SVC -.-> CACHE
+    AI_SVC -.-> METRICS
+    AI_SVC -.-> LOGGER
+    
+    OC -.-> SECRET
+    OC -.-> METRICS

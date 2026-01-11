@@ -1,0 +1,66 @@
+graph TB
+    subgraph "Frontend Layer"
+        FE[React Frontend<br/>frontend/src/services/ai.ts]
+        AdminUI[AI Admin Dashboard<br/>frontend/src/components/features/admin/ai/]
+    end
+
+    subgraph "Edge Layer - Cloudflare Workers"
+        GW[API Gateway<br/>workers/api-gateway/]
+        GW_AI[AI Routes<br/>src/routes/ai.ts]
+        GW_CHAT[Chat Routes<br/>src/routes/chat.ts]
+        GW_ADMIN[Admin AI Routes<br/>src/routes/admin-ai.ts]
+    end
+
+    subgraph "Backend Layer - Docker"
+        BE[Backend API<br/>backend/src/]
+        BE_AI[AI Routes<br/>src/routes/ai.js]
+        BE_SVC[AI Service<br/>src/lib/ai-service.js]
+        OC_CLIENT[OpenCode Client<br/>src/lib/opencode-client.js]
+    end
+
+    subgraph "AI Engine Layer"
+        OC_BE[OpenCode Backend<br/>:7016]
+        OC_ENGINE[OpenCode Engine<br/>:7012]
+    end
+
+    subgraph "LLM Providers"
+        GH[GitHub Copilot<br/>Primary]
+        OAI[OpenAI]
+        GEM[Gemini]
+        ANT[Anthropic]
+        LOC[Local/Ollama]
+    end
+
+    subgraph "Shared Libraries"
+        SHARED[shared/ai/]
+        CONFIG[config.ts]
+        ADAPTERS[adapters.ts]
+        CLIENT[client.ts]
+        TYPES[types/ai.ts]
+    end
+
+    FE --> GW
+    AdminUI --> GW
+    GW --> GW_AI
+    GW --> GW_CHAT
+    GW --> GW_ADMIN
+    GW_AI --> BE_AI
+    GW_CHAT --> BE_AI
+    GW_ADMIN --> BE_AI
+    BE_AI --> BE_SVC
+    BE_SVC --> OC_CLIENT
+    OC_CLIENT --> OC_BE
+    OC_BE --> OC_ENGINE
+    OC_ENGINE --> GH
+    OC_ENGINE --> OAI
+    OC_ENGINE --> GEM
+    OC_ENGINE --> ANT
+    OC_ENGINE --> LOC
+
+    SHARED --> CONFIG
+    SHARED --> ADAPTERS
+    SHARED --> CLIENT
+    SHARED --> TYPES
+    
+    BE_SVC -.-> SHARED
+    GW_AI -.-> SHARED

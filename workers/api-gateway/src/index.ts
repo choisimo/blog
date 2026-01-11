@@ -14,6 +14,7 @@ import { Hono } from 'hono';
 import type { Env } from './types';
 import { corsMiddleware } from './middleware/cors';
 import { loggerMiddleware } from './middleware/logger';
+import { tracingMiddleware } from './middleware/tracing';
 import { errorHandler } from './middleware/error';
 import { success } from './lib/response';
 
@@ -160,6 +161,8 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
 
 app.use('*', corsMiddleware);
 app.use('*', loggerMiddleware);
+app.use('/api/v1/ai/*', tracingMiddleware);
+app.use('/api/v1/chat/*', tracingMiddleware);
 
 // =============================================================================
 // Health & Status Endpoints

@@ -1,13 +1,5 @@
-/**
- * Shared AI Module
- * 
- * 모든 AI 관련 타입, 설정, 유틸리티를 내보냅니다.
- */
-
-// Types
 export * from './types/ai';
 
-// Configuration
 export { 
   getAIConfig, 
   setAIConfig, 
@@ -20,7 +12,6 @@ export {
   TIMEOUTS,
 } from './ai/config';
 
-// Client
 export {
   type IAIClient,
   type ITaskClient,
@@ -32,8 +23,25 @@ export {
   TimeoutError,
 } from './ai/client';
 
-// Logger
 export {
   aiLogger,
   generateRequestId,
 } from './ai/logger';
+
+export {
+  TRACE_ID_HEADER,
+  type SpanType,
+  type TraceStatus,
+  type TraceSpan,
+  type Trace,
+  type TraceContext,
+  generateTraceId,
+  generateSpanId,
+  getTraceIdFromHeaders,
+  ensureTraceId,
+  createSpan,
+  completeSpan,
+  isValidTraceId,
+  getTraceTimestamp,
+  createTraceContext,
+} from './tracing';

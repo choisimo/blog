@@ -15,7 +15,7 @@ import {
 } from 'react';
 import { ReadingProgress } from '@/components/common/ReadingProgress';
 import { ScrollToTop } from '@/components/common/ScrollToTop';
-import { getPostBySlug, getPostsPage, prefetchPost } from '@/data/posts';
+import { getPostBySlug, getPostsPage, prefetchPost, getPostsBySeries } from '@/data/posts';
 import { BlogPost as BlogPostType } from '@/types/blog';
 import {
   formatDate,
@@ -25,7 +25,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CommentSection, TableOfContents } from '@/components/features/blog';
+import { CommentSection, TableOfContents, SeriesNavigation } from '@/components/features/blog';
 import { Breadcrumb } from '@/components/features/navigation/Breadcrumb';
 import {
   ArrowLeft,
@@ -81,6 +81,7 @@ const BlogPost = () => {
   const [error, setError] = useState(false);
   const [post, setPost] = useState<BlogPostType | null>(null);
   const [relatedPosts, setRelatedPosts] = useState<BlogPostType[]>([]);
+  const [seriesPosts, setSeriesPosts] = useState<BlogPostType[]>([]);
   const [inlineEnabled, setInlineEnabled] = useState<boolean>(true);
 
   // AI Translation state
@@ -379,6 +380,26 @@ const BlogPost = () => {
       cancelled = true;
     };
   }, [post]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadSeriesPosts = async () => {
+      if (!post?.series) {
+        setSeriesPosts([]);
+        return;
+      }
+      try {
+        const posts = await getPostsBySeries(post.series);
+        if (!cancelled) setSeriesPosts(posts);
+      } catch {
+        if (!cancelled) setSeriesPosts([]);
+      }
+    };
+    loadSeriesPosts();
+    return () => {
+      cancelled = true;
+    };
+  }, [post?.series]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -715,6 +736,10 @@ const BlogPost = () => {
                 </Suspense>
               </div>
             </section>
+
+            {post.series && seriesPosts.length > 1 && (
+              <SeriesNavigation currentPost={post} seriesPosts={seriesPosts} />
+            )}
 
             <CommentSection postId={`${post.year}/${post.slug}`} />
 

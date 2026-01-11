@@ -314,9 +314,55 @@ export type SecretReference = {
   created_at: string;
 };
 
-// API Response types for secrets
 export type SecretPublic = Omit<Secret, 'encrypted_value' | 'iv'> & {
   has_value: boolean;
   masked_value?: string;
   category_name?: string;
+};
+
+export type AITrace = {
+  id: string;
+  trace_id: string;
+  span_id: string;
+  parent_span_id: string | null;
+  span_type: string;
+  start_time_ms: number;
+  end_time_ms: number | null;
+  latency_ms: number | null;
+  status: 'pending' | 'success' | 'error' | 'timeout';
+  model_id: string | null;
+  provider_id: string | null;
+  route_id: string | null;
+  user_id: string | null;
+  request_path: string | null;
+  request_method: string | null;
+  response_status: number | null;
+  error_message: string | null;
+  tokens_used: number | null;
+  estimated_cost: number | null;
+  metadata: string | null;
+  created_at: string;
+};
+
+export type AITraceSummary = {
+  trace_id: string;
+  total_spans: number;
+  total_latency_ms: number | null;
+  status: 'pending' | 'success' | 'error' | 'timeout';
+  root_span_type: string | null;
+  model_id: string | null;
+  provider_id: string | null;
+  user_id: string | null;
+  request_path: string | null;
+  error_message: string | null;
+  created_at: string;
+  completed_at: string | null;
+};
+
+export type TraceData = {
+  traceId: string;
+  spanId: string;
+  startTimeMs: number;
+  path: string;
+  method: string;
 };

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { getApiBaseUrl } from '@/utils/apiBase';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { Eye, EyeOff, Download, Save, RefreshCw, Copy, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface ConfigVariable {
@@ -36,13 +37,21 @@ interface ConfigValue {
   default: string;
 }
 
-async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  const token = localStorage.getItem('adminToken') || '';
+/**
+ * Fetch with authentication using auth store
+ * Uses getValidAccessToken for auto-refresh capability
+ */
+async function fetchWithAuth(
+  url: string,
+  getToken: () => Promise<string | null>,
+  options: RequestInit = {}
+) {
+  const token = await getToken();
   return fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   });
@@ -50,6 +59,7 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
 
 export function ConfigManager() {
   const { toast } = useToast();
+  const { getValidAccessToken } = useAuthStore();
   const [activeTab, setActiveTab] = useState('app');
   const [editedValues, setEditedValues] = useState<Record<string, string>>({});
   const [visibleSecrets, setVisibleSecrets] = useState<Set<string>>(new Set());
@@ -60,7 +70,7 @@ export function ConfigManager() {
   const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
     queryKey: ['config-categories'],
     queryFn: async () => {
-      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/config/categories`);
+      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/config/categories`, getValidAccessToken);
       if (!res.ok) throw new Error('Failed to fetch categories');
       const json = await res.json();
       return json.data.categories as ConfigCategory[];
@@ -70,7 +80,7 @@ export function ConfigManager() {
   const { data: configData, isLoading: configLoading, refetch: refetchConfig } = useQuery({
     queryKey: ['config-current'],
     queryFn: async () => {
-      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/config/current`);
+      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/config/current`, getValidAccessToken);
       if (!res.ok) throw new Error('Failed to fetch config');
       const json = await res.json();
       return json.data.config as Record<string, ConfigValue>;
@@ -79,7 +89,7 @@ export function ConfigManager() {
 
   const exportMutation = useMutation({
     mutationFn: async (format: string) => {
-      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/config/export`, {
+      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/config/export`, getValidAccessToken, {
         method: 'POST',
         body: JSON.stringify({ format, includeSecrets: false }),
       });
@@ -104,7 +114,7 @@ export function ConfigManager() {
 
   const saveMutation = useMutation({
     mutationFn: async (variables: Record<string, string>) => {
-      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/config/save-env`, {
+      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/config/save-env`, getValidAccessToken, {
         method: 'POST',
         body: JSON.stringify({ variables, target: 'backend' }),
       });

@@ -183,6 +183,18 @@ export const getAllTags = async (): Promise<string[]> => {
   }
 };
 
+export const getPostsBySeries = async (series: string): Promise<BlogPost[]> => {
+  try {
+    const posts = await PostService.getAllPosts();
+    return posts.filter(
+      post => post.series && post.series.toLowerCase() === series.toLowerCase()
+    );
+  } catch (error) {
+    console.error(`Error loading posts for series ${series}:`, error);
+    return [];
+  }
+};
+
 // Clear cache (useful for development)
 export const clearPostsCache = (): void => {
   PostService.clearCache();

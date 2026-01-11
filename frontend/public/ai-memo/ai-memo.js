@@ -212,6 +212,18 @@
         this._onExternalLog
       );
       window.removeEventListener('beforeunload', this._boundBeforeUnload);
+      this.cleanupHistoryInteractions();
+    }
+
+    cleanupHistoryInteractions() {
+      if (!this._histListeners) return;
+      const { onMove, onUp, onResize, onKey } = this._histListeners;
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('keydown', onKey);
+      this._histListeners = null;
+      this._histBound = false;
     }
 
     applyThemeFromPage() {
@@ -1598,7 +1610,6 @@
            rec.label = rec.type;
          }
          
-         // Always read fresh from LS to avoid overwriting with stale state
          let currentEvents = LS.get(KEYS.events, []);
          if (!Array.isArray(currentEvents)) currentEvents = [];
          
@@ -1608,9 +1619,10 @@
          this.state.events = currentEvents;
          LS.set(KEYS.events, currentEvents);
          
-         // Invalidate graph cache since events changed
          this._graphCache = null;
          this._graphCacheKey = null;
+         
+         window.dispatchEvent(new CustomEvent('aiMemo:eventsChanged'));
          
          return rec;
        } catch (_) { return null; }
@@ -1684,7 +1696,6 @@
          const onWheel = (e) => {
            e.preventDefault();
            const { offsetX, offsetY, deltaY } = e;
-           // store latest mouse position for hover sync
            this._hist.mouseX = e.clientX; this._hist.mouseY = e.clientY;
            const factor = deltaY < 0 ? 1.1 : 0.9;
            const { scale, tx, ty } = this._hist;
@@ -1693,7 +1704,6 @@
            this._hist.scale = ns;
            this._hist.tx = offsetX - x * ns; this._hist.ty = offsetY - y * ns;
            this.scheduleHistoryDraw();
-           // keep tooltip synced (convert client -> canvas -> world)
            if (this._hist.mouseX != null && this._hist.mouseY != null) {
              const rect = c.getBoundingClientRect();
              const mx = this._hist.mouseX - rect.left; const my = this._hist.mouseY - rect.top;
@@ -1714,7 +1724,6 @@
           if (this._hist.dragging) {
             const dx = e.clientX - this._hist.lx; const dy = e.clientY - this._hist.ly; this._hist.lx = e.clientX; this._hist.ly = e.clientY; this._hist.tx += dx; this._hist.ty += dy; this.scheduleHistoryDraw();
           } else {
-            // hover detection when not dragging
             const rect = c.getBoundingClientRect();
             const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
             const x = (mx - this._hist.tx) / (this._hist.scale||1);
@@ -1732,6 +1741,7 @@
         };
         const onUp = () => { this._hist.dragging = false; c.classList.remove('grabbing'); };
        const onKey = (e) => { if (e.key === 'Escape') this.closeHistory(); };
+       this._histListeners = { onMove, onUp, onResize, onKey };
        c.addEventListener('wheel', onWheel, { passive: false });
        c.addEventListener('pointerdown', onDown);
        window.addEventListener('pointermove', onMove);

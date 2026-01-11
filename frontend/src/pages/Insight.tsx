@@ -337,7 +337,7 @@ function GraphCanvas({
     return () => observer.disconnect();
   }, []);
   
-  // Draw the graph
+  // Draw the graph - renders ONCE per dependency change (no infinite loop)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -350,7 +350,8 @@ function GraphCanvas({
     canvas.height = canvasSize.height * dpr;
     ctx.scale(dpr, dpr);
     
-    const draw = () => {
+    // Use single rAF for smooth rendering, but only ONE frame per state change
+    animationRef.current = requestAnimationFrame(() => {
       // Clear
       ctx.fillStyle = isTerminal ? '#0a0a0f' : '#fafafa';
       ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
@@ -505,11 +506,9 @@ function GraphCanvas({
       });
       
       ctx.restore();
-      
-      animationRef.current = requestAnimationFrame(draw);
-    };
+      // NO recursive requestAnimationFrame call - renders only once per state change
+    });
     
-    draw();
     return () => cancelAnimationFrame(animationRef.current);
   }, [nodes, edges, selectedNode, hoveredNode, pathNodes, zoom, offset, isTerminal, canvasSize]);
   

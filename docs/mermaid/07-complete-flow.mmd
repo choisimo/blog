@@ -1,0 +1,47 @@
+sequenceDiagram
+    autonumber
+    
+    participant U as User
+    participant F as Frontend<br/>(React)
+    participant W as Workers<br/>(Cloudflare)
+    participant B as Backend<br/>(Express)
+    participant S as AI Service
+    participant O as OpenCode<br/>Client
+    participant OB as OpenCode<br/>Backend
+    participant OE as OpenCode<br/>Engine
+    participant L as LLM<br/>Provider
+
+    Note over U,L: 1. 요청 초기화 단계
+    U->>F: 사용자 입력
+    F->>F: 입력 검증 & 요청 객체 생성
+    F->>W: HTTP Request + JWT
+    
+    Note over U,L: 2. Edge 처리 단계
+    W->>W: JWT 검증
+    W->>W: Rate Limiting 체크
+    W->>B: Proxy Request
+    
+    Note over U,L: 3. Backend 처리 단계
+    B->>B: 요청 파싱 & 검증
+    B->>S: 서비스 호출
+    
+    Note over U,L: 4. AI 처리 단계
+    S->>S: Provider 선택
+    S->>S: RAG 컨텍스트 검색 (선택적)
+    S->>S: 프롬프트 구성
+    S->>O: OpenCode 호출
+    O->>OB: 백엔드 API 호출
+    OB->>OE: 엔진 호출
+    OE->>L: LLM API 호출
+    
+    Note over U,L: 5. 응답 처리 단계
+    L-->>OE: LLM 응답
+    OE-->>OB: 정규화된 응답
+    OB-->>O: 응답 전달
+    O-->>S: 응답 반환
+    S->>S: 후처리 & 검증
+    S-->>B: 서비스 응답
+    B-->>W: HTTP 응답
+    W-->>F: 최종 응답
+    F->>F: UI 렌더링
+    F->>U: 결과 표시

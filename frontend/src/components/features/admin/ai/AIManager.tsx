@@ -1,18 +1,20 @@
-/**
- * AI Model Management Dashboard
- */
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Bot, Cpu, GitBranch, BarChart3 } from 'lucide-react';
+import { Bot, Cpu, GitBranch, BarChart3, Activity, FlaskConical } from 'lucide-react';
 import { ProvidersManager } from './ProvidersManager';
 import { ModelsManager } from './ModelsManager';
 import { RoutesManager } from './RoutesManager';
 import { UsageMonitor } from './UsageMonitor';
+import { TraceViewer } from './TraceViewer';
+import { Playground } from './Playground';
 
 export function AIManager() {
   return (
-    <Tabs defaultValue="models" className="space-y-6">
-      <TabsList className="grid w-full max-w-2xl grid-cols-4">
+    <Tabs defaultValue="playground" className="space-y-6">
+      <TabsList className="grid w-full max-w-4xl grid-cols-6">
+        <TabsTrigger value="playground" className="flex items-center gap-2">
+          <FlaskConical className="h-4 w-4" />
+          Playground
+        </TabsTrigger>
         <TabsTrigger value="models" className="flex items-center gap-2">
           <Bot className="h-4 w-4" />
           Models
@@ -29,7 +31,15 @@ export function AIManager() {
           <BarChart3 className="h-4 w-4" />
           Monitoring
         </TabsTrigger>
+        <TabsTrigger value="traces" className="flex items-center gap-2">
+          <Activity className="h-4 w-4" />
+          Traces
+        </TabsTrigger>
       </TabsList>
+
+      <TabsContent value="playground">
+        <Playground />
+      </TabsContent>
 
       <TabsContent value="models">
         <ModelsManager />
@@ -45,6 +55,10 @@ export function AIManager() {
 
       <TabsContent value="monitoring">
         <UsageMonitor />
+      </TabsContent>
+
+      <TabsContent value="traces">
+        <TraceViewer />
       </TabsContent>
     </Tabs>
   );

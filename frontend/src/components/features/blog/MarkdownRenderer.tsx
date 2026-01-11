@@ -7,6 +7,7 @@ import { Copy, Check } from 'lucide-react';
 import { Children, Fragment, isValidElement, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import SparkInline from '@/components/features/sentio/SparkInline';
+import { ClickableImage } from './ImageLightbox';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 
@@ -273,6 +274,14 @@ export const MarkdownRenderer = ({
                     <span className='ml-2 text-primary'>{language}</span>
                   </div>
                 )}
+                {/* Non-terminal language badge */}
+                {!isTerminal && language && (
+                  <div className='absolute left-4 top-3 z-10'>
+                    <span className='px-2 py-1 text-xs font-medium rounded bg-primary/10 text-primary border border-primary/20'>
+                      {language}
+                    </span>
+                  </div>
+                )}
                 <Button
                   size='icon'
                   variant='ghost'
@@ -294,7 +303,8 @@ export const MarkdownRenderer = ({
                   PreTag='div'
                   className={cn(
                     'rounded-xl shadow-lg !overflow-x-auto',
-                    isTerminal && 'rounded-t-none !rounded-b-xl'
+                    isTerminal && 'rounded-t-none !rounded-b-xl',
+                    !isTerminal && language && '!pt-10'
                   )}
                   wrapLongLines={false}
                 >
@@ -326,42 +336,9 @@ export const MarkdownRenderer = ({
               {children}
             </a>
           ),
-          img: ({ src, alt }) => {
-            // 상대 경로를 절대 경로로 변환
-            let resolvedSrc = src;
-            if (src) {
-              if (src.startsWith('../../images/')) {
-                resolvedSrc = src.replace('../../images/', '/images/');
-              } else if (src.startsWith('../images/')) {
-                resolvedSrc = src.replace('../images/', '/images/');
-              } else if (src.startsWith('./images/')) {
-                resolvedSrc = src.replace('./images/', '/images/');
-              }
-            }
-
-            return (
-              <figure className='my-8 text-center'>
-                <img
-                  src={resolvedSrc}
-                  alt={alt}
-                  className={cn(
-                    'rounded-xl shadow-lg mx-auto max-w-full h-auto',
-                    isTerminal && 'rounded-lg border border-border'
-                  )}
-                />
-                {alt && (
-                  <figcaption
-                    className={cn(
-                      'text-sm text-muted-foreground mt-2 italic',
-                      isTerminal && 'font-mono not-italic'
-                    )}
-                  >
-                    {isTerminal ? `// ${alt}` : alt}
-                  </figcaption>
-                )}
-              </figure>
-            );
-          },
+          img: ({ src, alt }) => (
+            <ClickableImage src={src || ''} alt={alt} isTerminal={isTerminal} />
+          ),
           table: ({ children }) => (
             <div className='overflow-x-auto my-8 max-w-4xl mx-auto'>
               <table

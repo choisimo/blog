@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/components/ui/use-toast';
 import { getApiBaseUrl } from '@/utils/apiBase';
+import { useAuthStore } from '@/stores/useAuthStore';
 import {
   Cloud,
   Database,
@@ -55,13 +56,17 @@ interface SecretInfo {
   workers: string[];
 }
 
-async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  const token = localStorage.getItem('adminToken') || '';
+async function fetchWithAuth(
+  url: string,
+  getToken: () => Promise<string | null>,
+  options: RequestInit = {}
+) {
+  const token = await getToken();
   return fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   });
@@ -69,6 +74,7 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
 
 export function WorkersManager() {
   const { toast } = useToast();
+  const { getValidAccessToken } = useAuthStore();
   const [deployEnv, setDeployEnv] = useState<'development' | 'production'>('production');
   const [secretInputs, setSecretInputs] = useState<Record<string, string>>({});
   const [visibleSecrets, setVisibleSecrets] = useState<Set<string>>(new Set());
@@ -78,7 +84,7 @@ export function WorkersManager() {
   const { data: workersData, isLoading: workersLoading } = useQuery({
     queryKey: ['workers-list'],
     queryFn: async () => {
-      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/workers/list`);
+      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/workers/list`, getValidAccessToken);
       if (!res.ok) throw new Error('Failed to fetch workers');
       const json = await res.json();
       return json.data.workers as WorkerConfig[];
@@ -88,7 +94,7 @@ export function WorkersManager() {
   const { data: secretsData } = useQuery({
     queryKey: ['workers-secrets'],
     queryFn: async () => {
-      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/workers/secrets`);
+      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/workers/secrets`, getValidAccessToken);
       if (!res.ok) throw new Error('Failed to fetch secrets');
       const json = await res.json();
       return json.data.secrets as SecretInfo[];
@@ -98,7 +104,7 @@ export function WorkersManager() {
   const { data: d1Data } = useQuery({
     queryKey: ['workers-d1'],
     queryFn: async () => {
-      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/workers/d1/databases`);
+      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/workers/d1/databases`, getValidAccessToken);
       const json = await res.json();
       return json.data.databases || [];
     },
@@ -107,7 +113,7 @@ export function WorkersManager() {
   const { data: kvData } = useQuery({
     queryKey: ['workers-kv'],
     queryFn: async () => {
-      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/workers/kv/namespaces`);
+      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/workers/kv/namespaces`, getValidAccessToken);
       const json = await res.json();
       return json.data.namespaces || [];
     },
@@ -116,7 +122,7 @@ export function WorkersManager() {
   const { data: r2Data } = useQuery({
     queryKey: ['workers-r2'],
     queryFn: async () => {
-      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/workers/r2/buckets`);
+      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/workers/r2/buckets`, getValidAccessToken);
       const json = await res.json();
       return json.data.buckets || [];
     },
@@ -124,7 +130,7 @@ export function WorkersManager() {
 
   const deployMutation = useMutation({
     mutationFn: async ({ workerId, env, dryRun }: { workerId: string; env: string; dryRun: boolean }) => {
-      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/workers/${workerId}/deploy`, {
+      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/workers/${workerId}/deploy`, getValidAccessToken, {
         method: 'POST',
         body: JSON.stringify({ env, dryRun }),
       });
@@ -151,7 +157,7 @@ export function WorkersManager() {
 
   const secretMutation = useMutation({
     mutationFn: async ({ workerId, key, value, env }: { workerId: string; key: string; value: string; env: string }) => {
-      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/workers/${workerId}/secret`, {
+      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/workers/${workerId}/secret`, getValidAccessToken, {
         method: 'POST',
         body: JSON.stringify({ key, value, env }),
       });

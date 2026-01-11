@@ -6,3 +6,4 @@ export { default as CommentSection } from './CommentSection';
 export { default as CommentInputModal } from './CommentInputModal';
 export { PostCard } from './PostCard';
 export { BlogSidebar } from './BlogSidebar';
+export { default as SeriesNavigation } from './SeriesNavigation';

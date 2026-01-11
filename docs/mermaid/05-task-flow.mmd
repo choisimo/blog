@@ -1,0 +1,25 @@
+sequenceDiagram
+    participant FE as Frontend
+    participant BE as Backend API
+    participant SVC as AI Service
+    participant OC as OpenCode Client
+
+    FE->>BE: POST /ai/sketch
+    Note right of FE: { content: "블로그 포스트 내용" }
+    
+    BE->>SVC: handleSketch(content)
+    
+    SVC->>SVC: Task 프롬프트 로드
+    Note right of SVC: prompts/sketch.txt
+    
+    SVC->>SVC: 프롬프트 템플릿 적용
+    Note right of SVC: {{content}} 치환
+    
+    SVC->>OC: generate(prompt, { format: 'json' })
+    OC-->>SVC: JSON 응답
+    
+    SVC->>SVC: 결과 파싱 및 검증
+    Note right of SVC: { emotion, keyPoints, tags }
+    
+    SVC-->>BE: SketchResponse
+    BE-->>FE: JSON 응답

@@ -27,6 +27,10 @@ export interface BlogPost {
   defaultLanguage?: SupportedLanguage;
   availableLanguages?: SupportedLanguage[];
   translations?: Partial<Record<SupportedLanguage, LocalizedPostFields>>;
+  /** Series identifier for grouping related posts (e.g., "java-basics", "network-history") */
+  series?: string;
+  /** Order within the series (1-based) */
+  seriesOrder?: number;
 }
 
 export interface BlogCategory {

@@ -18,6 +18,8 @@ import type { Env } from '../types';
 import { getAiServeUrl, getAiServeApiKey, getAiGatewayCallerKey } from './config';
 import { buildTaskPrompt, getFallbackData, type TaskMode, type TaskPayload } from './prompts';
 
+export const TRACE_ID_HEADER = 'X-Trace-ID';
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -76,9 +78,15 @@ export type TaskResult<T = unknown> = {
 export class AIService {
   private env: Env;
   private baseUrl: string | null = null;
+  private traceId: string | null = null;
 
-  constructor(env: Env) {
+  constructor(env: Env, traceId?: string) {
     this.env = env;
+    this.traceId = traceId || null;
+  }
+
+  setTraceId(traceId: string): void {
+    this.traceId = traceId;
   }
 
   /**
@@ -106,6 +114,10 @@ export class AIService {
       'User-Agent': 'Blog-Workers/1.0',
       Accept: 'application/json',
     };
+
+    if (this.traceId) {
+      headers[TRACE_ID_HEADER] = this.traceId;
+    }
 
     const apiKey = await getAiServeApiKey(this.env);
     if (apiKey) {
@@ -380,11 +392,8 @@ export function tryParseJson<T = unknown>(text: string): T | null {
 // Factory Function
 // ============================================================================
 
-/**
- * Create an AIService instance for the given environment
- */
-export function createAIService(env: Env): AIService {
-  return new AIService(env);
+export function createAIService(env: Env, traceId?: string): AIService {
+  return new AIService(env, traceId);
 }
 
 // ============================================================================

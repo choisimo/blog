@@ -50,6 +50,8 @@ import {
   XCircle,
   AlertCircle,
   Circle,
+  Power,
+  PowerOff,
 } from 'lucide-react';
 import { useProviders } from './hooks';
 import type { AIProvider, ProviderFormData } from './types';
@@ -186,11 +188,15 @@ export function ProvidersManager() {
     updateProvider,
     deleteProvider,
     checkHealth,
+    killSwitchProvider,
+    enableProvider,
   } = useProviders();
   const [showForm, setShowForm] = useState(false);
   const [editingProvider, setEditingProvider] = useState<AIProvider | null>(null);
   const [checkingHealth, setCheckingHealth] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AIProvider | null>(null);
+  const [killSwitchTarget, setKillSwitchTarget] = useState<AIProvider | null>(null);
+  const [killingProvider, setKillingProvider] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProviders();
@@ -229,6 +235,20 @@ export function ProvidersManager() {
     setCheckingHealth(provider.id);
     await checkHealth(provider.id);
     setCheckingHealth(null);
+  };
+
+  const handleKillSwitch = async () => {
+    if (!killSwitchTarget) return;
+    setKillingProvider(killSwitchTarget.id);
+    await killSwitchProvider(killSwitchTarget.id);
+    setKillingProvider(null);
+    setKillSwitchTarget(null);
+  };
+
+  const handleEnable = async (provider: AIProvider) => {
+    setKillingProvider(provider.id);
+    await enableProvider(provider.id);
+    setKillingProvider(null);
   };
 
   return (
@@ -303,6 +323,36 @@ export function ProvidersManager() {
                       )}
                       <span className="ml-1">Health</span>
                     </Button>
+                    {provider.isEnabled ? (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setKillSwitchTarget(provider)}
+                        disabled={killingProvider === provider.id}
+                      >
+                        {killingProvider === provider.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <PowerOff className="h-4 w-4" />
+                        )}
+                        <span className="ml-1">Kill</span>
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleEnable(provider)}
+                        disabled={killingProvider === provider.id}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        {killingProvider === provider.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Power className="h-4 w-4" />
+                        )}
+                        <span className="ml-1">Enable</span>
+                      </Button>
+                    )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">
@@ -381,6 +431,43 @@ export function ProvidersManager() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!killSwitchTarget} onOpenChange={() => setKillSwitchTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <PowerOff className="h-5 w-5" />
+              Emergency Kill Switch
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                You are about to <strong>immediately disable</strong> the provider "{killSwitchTarget?.displayName}".
+              </p>
+              <p>
+                This will:
+              </p>
+              <ul className="list-disc list-inside text-sm">
+                <li>Stop all AI requests to this provider</li>
+                <li>Mark the provider as "Down"</li>
+                <li>Force requests to use fallback providers</li>
+              </ul>
+              <p className="text-yellow-600 font-medium">
+                Use this only in emergencies (e.g., API key compromised, provider outage).
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleKillSwitch}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              <PowerOff className="h-4 w-4 mr-2" />
+              Confirm Kill Switch
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

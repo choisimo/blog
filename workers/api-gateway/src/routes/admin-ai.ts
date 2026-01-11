@@ -11,6 +11,7 @@ import { Hono } from 'hono';
 import type { Env } from '../types';
 import { success, error, badRequest, notFound } from '../lib/response';
 import { requireAdmin } from '../middleware/auth';
+import { createAIService } from '../lib/ai-service';
 
 const adminAi = new Hono<{ Bindings: Env }>();
 
@@ -294,10 +295,70 @@ adminAi.put('/providers/:id/health', requireAdmin, async (c) => {
   }
 });
 
-/**
- * DELETE /admin/ai/providers/:id
- * Provider 삭제 (연관 모델도 삭제됨)
- */
+adminAi.post('/providers/:id/kill-switch', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+
+  try {
+    const existing = await c.env.DB.prepare(`SELECT * FROM ai_providers WHERE id = ?`)
+      .bind(id)
+      .first<AIProvider>();
+
+    if (!existing) {
+      return notFound(c, `Provider not found: ${id}`);
+    }
+
+    const enabledCount = await c.env.DB.prepare(
+      `SELECT COUNT(*) as count FROM ai_providers WHERE is_enabled = 1 AND id != ?`
+    )
+      .bind(id)
+      .first<{ count: number }>();
+
+    if (!enabledCount || enabledCount.count === 0) {
+      return badRequest(c, 'Cannot disable the last enabled provider');
+    }
+
+    await c.env.DB.prepare(
+      `UPDATE ai_providers SET is_enabled = 0, health_status = 'down', updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+    )
+      .bind(id)
+      .run();
+
+    await c.env.KV.delete('config:ai_providers');
+
+    return success(c, { killed: true, id, provider_name: existing.name });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to kill switch provider';
+    return error(c, message, 500);
+  }
+});
+
+adminAi.post('/providers/:id/enable', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+
+  try {
+    const existing = await c.env.DB.prepare(`SELECT * FROM ai_providers WHERE id = ?`)
+      .bind(id)
+      .first<AIProvider>();
+
+    if (!existing) {
+      return notFound(c, `Provider not found: ${id}`);
+    }
+
+    await c.env.DB.prepare(
+      `UPDATE ai_providers SET is_enabled = 1, health_status = 'unknown', updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+    )
+      .bind(id)
+      .run();
+
+    await c.env.KV.delete('config:ai_providers');
+
+    return success(c, { enabled: true, id, provider_name: existing.name });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to enable provider';
+    return error(c, message, 500);
+  }
+});
+
 adminAi.delete('/providers/:id', requireAdmin, async (c) => {
   const id = c.req.param('id');
 
@@ -1309,6 +1370,813 @@ adminAi.get('/overview', requireAdmin, async (c) => {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to fetch overview';
+    return error(c, message, 500);
+  }
+});
+
+adminAi.get('/traces', requireAdmin, async (c) => {
+  const limit = Math.min(parseInt(c.req.query('limit') || '50', 10), 200);
+  const offset = parseInt(c.req.query('offset') || '0', 10);
+  const status = c.req.query('status');
+  const traceId = c.req.query('trace_id');
+  const startDate = c.req.query('start_date');
+  const endDate = c.req.query('end_date');
+
+  try {
+    let query = `SELECT * FROM ai_trace_summary WHERE 1=1`;
+    const params: (string | number)[] = [];
+
+    if (status) {
+      query += ` AND status = ?`;
+      params.push(status);
+    }
+    if (traceId) {
+      query += ` AND trace_id LIKE ?`;
+      params.push(`%${traceId}%`);
+    }
+    if (startDate) {
+      query += ` AND created_at >= ?`;
+      params.push(startDate);
+    }
+    if (endDate) {
+      query += ` AND created_at <= ?`;
+      params.push(endDate);
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+
+    const result = await c.env.DB.prepare(query).bind(...params).all();
+
+    const countQuery = `SELECT COUNT(*) as total FROM ai_trace_summary WHERE 1=1${
+      status ? ' AND status = ?' : ''
+    }${traceId ? ' AND trace_id LIKE ?' : ''}${startDate ? ' AND created_at >= ?' : ''}${
+      endDate ? ' AND created_at <= ?' : ''
+    }`;
+    const countParams = params.slice(0, -2);
+    const countResult = await c.env.DB.prepare(countQuery)
+      .bind(...countParams)
+      .first<{ total: number }>();
+
+    return success(c, {
+      traces: result.results || [],
+      total: countResult?.total || 0,
+      limit,
+      offset,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch traces';
+    return error(c, message, 500);
+  }
+});
+
+adminAi.get('/traces/:traceId', requireAdmin, async (c) => {
+  const traceId = c.req.param('traceId');
+
+  try {
+    const summary = await c.env.DB.prepare(
+      `SELECT * FROM ai_trace_summary WHERE trace_id = ?`
+    )
+      .bind(traceId)
+      .first();
+
+    if (!summary) {
+      return notFound(c, `Trace not found: ${traceId}`);
+    }
+
+    const spans = await c.env.DB.prepare(
+      `SELECT * FROM ai_traces WHERE trace_id = ? ORDER BY start_time_ms ASC`
+    )
+      .bind(traceId)
+      .all();
+
+    return success(c, {
+      summary,
+      spans: spans.results || [],
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch trace';
+    return error(c, message, 500);
+  }
+});
+
+adminAi.get('/traces/stats/summary', requireAdmin, async (c) => {
+  const hours = parseInt(c.req.query('hours') || '24', 10);
+  const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+
+  try {
+    const stats = await c.env.DB.prepare(
+      `SELECT 
+        COUNT(*) as total_traces,
+        SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count,
+        SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as error_count,
+        SUM(CASE WHEN status = 'timeout' THEN 1 ELSE 0 END) as timeout_count,
+        AVG(total_latency_ms) as avg_latency_ms,
+        MAX(total_latency_ms) as max_latency_ms,
+        MIN(total_latency_ms) as min_latency_ms
+       FROM ai_trace_summary
+       WHERE created_at >= ?`
+    )
+      .bind(since)
+      .first();
+
+    const bySpanType = await c.env.DB.prepare(
+      `SELECT span_type, COUNT(*) as count, AVG(latency_ms) as avg_latency
+       FROM ai_traces
+       WHERE created_at >= ?
+       GROUP BY span_type
+       ORDER BY count DESC`
+    )
+      .bind(since)
+      .all();
+
+    return success(c, {
+      period_hours: hours,
+      since,
+      stats: stats || {},
+      by_span_type: bySpanType.results || [],
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch trace stats';
+    return error(c, message, 500);
+  }
+});
+
+// ============================================================================
+// Playground Endpoints
+// ============================================================================
+
+interface PlaygroundHistory {
+  id: string;
+  user_id: string | null;
+  title: string | null;
+  system_prompt: string | null;
+  user_prompt: string;
+  model_id: string | null;
+  model_name: string | null;
+  provider_id: string | null;
+  provider_name: string | null;
+  response: string | null;
+  prompt_tokens: number | null;
+  completion_tokens: number | null;
+  total_tokens: number | null;
+  latency_ms: number | null;
+  estimated_cost: number | null;
+  temperature: number;
+  max_tokens: number | null;
+  status: string;
+  error_message: string | null;
+  metadata: string | null;
+  created_at: string;
+}
+
+interface PromptTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string;
+  system_prompt: string | null;
+  user_prompt_template: string;
+  variables: string | null;
+  default_model_id: string | null;
+  default_temperature: number;
+  default_max_tokens: number | null;
+  is_public: number;
+  usage_count: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * POST /admin/ai/playground/run
+ * Execute prompt against one or more models
+ */
+adminAi.post('/playground/run', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const {
+    system_prompt,
+    user_prompt,
+    model_ids,
+    temperature = 0.7,
+    max_tokens,
+    title,
+  } = body as {
+    system_prompt?: string;
+    user_prompt?: string;
+    model_ids?: string[];
+    temperature?: number;
+    max_tokens?: number;
+    title?: string;
+  };
+
+  if (!user_prompt) {
+    return badRequest(c, 'user_prompt is required');
+  }
+
+  if (!model_ids || model_ids.length === 0) {
+    return badRequest(c, 'At least one model_id is required');
+  }
+
+  // Limit to 5 models for comparison
+  if (model_ids.length > 5) {
+    return badRequest(c, 'Maximum 5 models allowed for comparison');
+  }
+
+  try {
+    // Get model info for all requested models
+    const placeholders = model_ids.map(() => '?').join(',');
+    const models = await c.env.DB.prepare(
+      `SELECT m.*, p.name as provider_name, p.api_base_url, p.api_key_env
+       FROM ai_models m
+       JOIN ai_providers p ON m.provider_id = p.id
+       WHERE m.id IN (${placeholders}) AND m.is_enabled = 1 AND p.is_enabled = 1`
+    )
+      .bind(...model_ids)
+      .all<AIModel & { provider_name: string; api_base_url: string | null; api_key_env: string | null }>();
+
+    if (!models.results || models.results.length === 0) {
+      return badRequest(c, 'No enabled models found with given IDs');
+    }
+
+    const aiService = createAIService(c.env);
+    const results: Array<{
+      model_id: string;
+      model_name: string;
+      provider_name: string;
+      response: string | null;
+      prompt_tokens: number | null;
+      completion_tokens: number | null;
+      total_tokens: number | null;
+      latency_ms: number;
+      estimated_cost: number | null;
+      status: 'success' | 'error';
+      error_message: string | null;
+      history_id: string;
+    }> = [];
+
+    // Execute prompts in parallel
+    const executions = models.results.map(async (model) => {
+      const historyId = generateId('ph');
+      const startTime = Date.now();
+
+      try {
+        // Build messages array for chat
+        const messages: Array<{ role: 'system' | 'user'; content: string }> = [];
+        if (system_prompt) {
+          messages.push({ role: 'system', content: system_prompt });
+        }
+        messages.push({ role: 'user', content: user_prompt });
+
+        // Call AI through backend
+        const chatResult = await aiService.chat(messages, {
+          model: model.model_identifier,
+          temperature,
+          maxTokens: max_tokens || model.max_tokens || undefined,
+          timeout: 120000, // 2 minutes timeout
+        });
+
+        const latencyMs = Date.now() - startTime;
+        const promptTokens = chatResult.usage?.prompt_tokens || null;
+        const completionTokens = chatResult.usage?.completion_tokens || null;
+        const totalTokens = chatResult.usage?.total_tokens || null;
+
+        // Calculate estimated cost
+        let estimatedCost: number | null = null;
+        if (model.input_cost_per_1k && model.output_cost_per_1k && promptTokens && completionTokens) {
+          estimatedCost =
+            (promptTokens / 1000) * model.input_cost_per_1k +
+            (completionTokens / 1000) * model.output_cost_per_1k;
+        }
+
+        // Save to history
+        await c.env.DB.prepare(
+          `INSERT INTO ai_playground_history (
+            id, title, system_prompt, user_prompt, model_id, model_name, provider_id, provider_name,
+            response, prompt_tokens, completion_tokens, total_tokens, latency_ms, estimated_cost,
+            temperature, max_tokens, status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+          .bind(
+            historyId,
+            title || `Playground ${new Date().toLocaleString()}`,
+            system_prompt || null,
+            user_prompt,
+            model.id,
+            model.display_name,
+            model.provider_id,
+            model.provider_name,
+            chatResult.content,
+            promptTokens,
+            completionTokens,
+            totalTokens,
+            latencyMs,
+            estimatedCost,
+            temperature,
+            max_tokens || null,
+            'success'
+          )
+          .run();
+
+        return {
+          model_id: model.id,
+          model_name: model.display_name,
+          provider_name: model.provider_name,
+          response: chatResult.content,
+          prompt_tokens: promptTokens,
+          completion_tokens: completionTokens,
+          total_tokens: totalTokens,
+          latency_ms: latencyMs,
+          estimated_cost: estimatedCost,
+          status: 'success' as const,
+          error_message: null,
+          history_id: historyId,
+        };
+      } catch (err) {
+        const latencyMs = Date.now() - startTime;
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+
+        // Save error to history
+        await c.env.DB.prepare(
+          `INSERT INTO ai_playground_history (
+            id, title, system_prompt, user_prompt, model_id, model_name, provider_id, provider_name,
+            latency_ms, temperature, max_tokens, status, error_message
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+          .bind(
+            historyId,
+            title || `Playground ${new Date().toLocaleString()}`,
+            system_prompt || null,
+            user_prompt,
+            model.id,
+            model.display_name,
+            model.provider_id,
+            model.provider_name,
+            latencyMs,
+            temperature,
+            max_tokens || null,
+            'error',
+            errorMessage
+          )
+          .run();
+
+        return {
+          model_id: model.id,
+          model_name: model.display_name,
+          provider_name: model.provider_name,
+          response: null,
+          prompt_tokens: null,
+          completion_tokens: null,
+          total_tokens: null,
+          latency_ms: latencyMs,
+          estimated_cost: null,
+          status: 'error' as const,
+          error_message: errorMessage,
+          history_id: historyId,
+        };
+      }
+    });
+
+    const executionResults = await Promise.all(executions);
+    results.push(...executionResults);
+
+    return success(c, {
+      results,
+      input: {
+        system_prompt,
+        user_prompt,
+        temperature,
+        max_tokens,
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to execute playground';
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * GET /admin/ai/playground/history
+ * List execution history
+ */
+adminAi.get('/playground/history', requireAdmin, async (c) => {
+  const limit = Math.min(parseInt(c.req.query('limit') || '50', 10), 200);
+  const offset = parseInt(c.req.query('offset') || '0', 10);
+  const modelId = c.req.query('model_id');
+  const status = c.req.query('status');
+
+  try {
+    let query = `SELECT * FROM ai_playground_history WHERE 1=1`;
+    const params: (string | number)[] = [];
+
+    if (modelId) {
+      query += ` AND model_id = ?`;
+      params.push(modelId);
+    }
+    if (status) {
+      query += ` AND status = ?`;
+      params.push(status);
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+
+    const result = await c.env.DB.prepare(query).bind(...params).all<PlaygroundHistory>();
+
+    // Get total count
+    let countQuery = `SELECT COUNT(*) as total FROM ai_playground_history WHERE 1=1`;
+    const countParams: string[] = [];
+    if (modelId) {
+      countQuery += ` AND model_id = ?`;
+      countParams.push(modelId);
+    }
+    if (status) {
+      countQuery += ` AND status = ?`;
+      countParams.push(status);
+    }
+
+    const countResult = countParams.length > 0
+      ? await c.env.DB.prepare(countQuery).bind(...countParams).first<{ total: number }>()
+      : await c.env.DB.prepare(countQuery).first<{ total: number }>();
+
+    return success(c, {
+      history: result.results || [],
+      total: countResult?.total || 0,
+      limit,
+      offset,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch history';
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * GET /admin/ai/playground/history/:id
+ * Get single execution detail
+ */
+adminAi.get('/playground/history/:id', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+
+  try {
+    const history = await c.env.DB.prepare(
+      `SELECT * FROM ai_playground_history WHERE id = ?`
+    )
+      .bind(id)
+      .first<PlaygroundHistory>();
+
+    if (!history) {
+      return notFound(c, `History not found: ${id}`);
+    }
+
+    return success(c, { history });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch history';
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * DELETE /admin/ai/playground/history/:id
+ * Delete execution from history
+ */
+adminAi.delete('/playground/history/:id', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+
+  try {
+    const existing = await c.env.DB.prepare(
+      `SELECT id FROM ai_playground_history WHERE id = ?`
+    )
+      .bind(id)
+      .first();
+
+    if (!existing) {
+      return notFound(c, `History not found: ${id}`);
+    }
+
+    await c.env.DB.prepare(`DELETE FROM ai_playground_history WHERE id = ?`)
+      .bind(id)
+      .run();
+
+    return success(c, { deleted: true, id });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to delete history';
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * DELETE /admin/ai/playground/history
+ * Clear all history (with optional filters)
+ */
+adminAi.delete('/playground/history', requireAdmin, async (c) => {
+  const olderThanDays = parseInt(c.req.query('older_than_days') || '0', 10);
+
+  try {
+    let query = `DELETE FROM ai_playground_history`;
+    const params: string[] = [];
+
+    if (olderThanDays > 0) {
+      const cutoffDate = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000).toISOString();
+      query += ` WHERE created_at < ?`;
+      params.push(cutoffDate);
+    }
+
+    const result = params.length > 0
+      ? await c.env.DB.prepare(query).bind(...params).run()
+      : await c.env.DB.prepare(query).run();
+
+    return success(c, {
+      deleted: true,
+      rows_affected: result.meta.changes,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to clear history';
+    return error(c, message, 500);
+  }
+});
+
+// ============================================================================
+// Prompt Templates Endpoints
+// ============================================================================
+
+/**
+ * GET /admin/ai/prompt-templates
+ * List all prompt templates
+ */
+adminAi.get('/prompt-templates', requireAdmin, async (c) => {
+  const category = c.req.query('category');
+
+  try {
+    let query = `SELECT * FROM ai_prompt_templates WHERE 1=1`;
+    const params: string[] = [];
+
+    if (category) {
+      query += ` AND category = ?`;
+      params.push(category);
+    }
+
+    query += ` ORDER BY usage_count DESC, name ASC`;
+
+    const result = params.length > 0
+      ? await c.env.DB.prepare(query).bind(...params).all<PromptTemplate>()
+      : await c.env.DB.prepare(query).all<PromptTemplate>();
+
+    return success(c, {
+      templates: result.results || [],
+      total: result.results?.length || 0,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch templates';
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * POST /admin/ai/prompt-templates
+ * Create a new prompt template
+ */
+adminAi.post('/prompt-templates', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const {
+    name,
+    description,
+    category = 'general',
+    system_prompt,
+    user_prompt_template,
+    variables,
+    default_model_id,
+    default_temperature = 0.7,
+    default_max_tokens,
+    is_public = false,
+  } = body as {
+    name?: string;
+    description?: string;
+    category?: string;
+    system_prompt?: string;
+    user_prompt_template?: string;
+    variables?: string[];
+    default_model_id?: string;
+    default_temperature?: number;
+    default_max_tokens?: number;
+    is_public?: boolean;
+  };
+
+  if (!name || !user_prompt_template) {
+    return badRequest(c, 'name and user_prompt_template are required');
+  }
+
+  const id = generateId('pt');
+
+  try {
+    await c.env.DB.prepare(
+      `INSERT INTO ai_prompt_templates (
+        id, name, description, category, system_prompt, user_prompt_template,
+        variables, default_model_id, default_temperature, default_max_tokens, is_public
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(
+        id,
+        name,
+        description || null,
+        category,
+        system_prompt || null,
+        user_prompt_template,
+        variables ? JSON.stringify(variables) : null,
+        default_model_id || null,
+        default_temperature,
+        default_max_tokens || null,
+        is_public ? 1 : 0
+      )
+      .run();
+
+    const template = await c.env.DB.prepare(
+      `SELECT * FROM ai_prompt_templates WHERE id = ?`
+    )
+      .bind(id)
+      .first<PromptTemplate>();
+
+    return success(c, { template }, 201);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to create template';
+    if (message.includes('UNIQUE constraint')) {
+      return badRequest(c, `Template with name '${name}' already exists`);
+    }
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * PUT /admin/ai/prompt-templates/:id
+ * Update a prompt template
+ */
+adminAi.put('/prompt-templates/:id', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+
+  try {
+    const existing = await c.env.DB.prepare(
+      `SELECT * FROM ai_prompt_templates WHERE id = ?`
+    )
+      .bind(id)
+      .first<PromptTemplate>();
+
+    if (!existing) {
+      return notFound(c, `Template not found: ${id}`);
+    }
+
+    const {
+      name,
+      description,
+      category,
+      system_prompt,
+      user_prompt_template,
+      variables,
+      default_model_id,
+      default_temperature,
+      default_max_tokens,
+      is_public,
+    } = body as Partial<{
+      name: string;
+      description: string;
+      category: string;
+      system_prompt: string;
+      user_prompt_template: string;
+      variables: string[];
+      default_model_id: string;
+      default_temperature: number;
+      default_max_tokens: number;
+      is_public: boolean;
+    }>;
+
+    const updates: string[] = [];
+    const values: (string | number | null)[] = [];
+
+    if (name !== undefined) {
+      updates.push('name = ?');
+      values.push(name);
+    }
+    if (description !== undefined) {
+      updates.push('description = ?');
+      values.push(description || null);
+    }
+    if (category !== undefined) {
+      updates.push('category = ?');
+      values.push(category);
+    }
+    if (system_prompt !== undefined) {
+      updates.push('system_prompt = ?');
+      values.push(system_prompt || null);
+    }
+    if (user_prompt_template !== undefined) {
+      updates.push('user_prompt_template = ?');
+      values.push(user_prompt_template);
+    }
+    if (variables !== undefined) {
+      updates.push('variables = ?');
+      values.push(JSON.stringify(variables));
+    }
+    if (default_model_id !== undefined) {
+      updates.push('default_model_id = ?');
+      values.push(default_model_id || null);
+    }
+    if (default_temperature !== undefined) {
+      updates.push('default_temperature = ?');
+      values.push(default_temperature);
+    }
+    if (default_max_tokens !== undefined) {
+      updates.push('default_max_tokens = ?');
+      values.push(default_max_tokens);
+    }
+    if (is_public !== undefined) {
+      updates.push('is_public = ?');
+      values.push(is_public ? 1 : 0);
+    }
+
+    if (updates.length === 0) {
+      return badRequest(c, 'No fields to update');
+    }
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(id);
+
+    await c.env.DB.prepare(
+      `UPDATE ai_prompt_templates SET ${updates.join(', ')} WHERE id = ?`
+    )
+      .bind(...values)
+      .run();
+
+    const template = await c.env.DB.prepare(
+      `SELECT * FROM ai_prompt_templates WHERE id = ?`
+    )
+      .bind(id)
+      .first<PromptTemplate>();
+
+    return success(c, { template });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to update template';
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * DELETE /admin/ai/prompt-templates/:id
+ * Delete a prompt template
+ */
+adminAi.delete('/prompt-templates/:id', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+
+  try {
+    const existing = await c.env.DB.prepare(
+      `SELECT id FROM ai_prompt_templates WHERE id = ?`
+    )
+      .bind(id)
+      .first();
+
+    if (!existing) {
+      return notFound(c, `Template not found: ${id}`);
+    }
+
+    await c.env.DB.prepare(`DELETE FROM ai_prompt_templates WHERE id = ?`)
+      .bind(id)
+      .run();
+
+    return success(c, { deleted: true, id });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to delete template';
+    return error(c, message, 500);
+  }
+});
+
+/**
+ * POST /admin/ai/prompt-templates/:id/use
+ * Increment usage count and return template
+ */
+adminAi.post('/prompt-templates/:id/use', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+
+  try {
+    const template = await c.env.DB.prepare(
+      `SELECT * FROM ai_prompt_templates WHERE id = ?`
+    )
+      .bind(id)
+      .first<PromptTemplate>();
+
+    if (!template) {
+      return notFound(c, `Template not found: ${id}`);
+    }
+
+    await c.env.DB.prepare(
+      `UPDATE ai_prompt_templates SET usage_count = usage_count + 1 WHERE id = ?`
+    )
+      .bind(id)
+      .run();
+
+    return success(c, {
+      template: { ...template, usage_count: template.usage_count + 1 },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to use template';
     return error(c, message, 500);
   }
 });

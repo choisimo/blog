@@ -1,0 +1,29 @@
+sequenceDiagram
+    participant FE as Frontend
+    participant GW as Workers Gateway
+    participant BE as Backend API
+    participant SVC as AI Service
+    participant LLM as LLM Provider
+
+    FE->>GW: GET /ai/generate/stream?prompt=...
+    Note right of FE: EventSource 연결
+    
+    GW->>BE: SSE 연결 수립
+    BE->>SVC: createStream(prompt, options)
+    SVC->>LLM: 스트리밍 요청
+    
+    loop 청크 수신
+        LLM-->>SVC: 텍스트 청크
+        SVC->>SVC: 청크 포맷팅
+        Note right of SVC: data: {"chunk": "...", "done": false}
+        SVC-->>BE: SSE 이벤트
+        BE-->>GW: SSE 전달
+        GW-->>FE: SSE 이벤트
+        FE->>FE: 점진적 렌더링
+    end
+    
+    LLM-->>SVC: 완료 신호
+    SVC-->>BE: data: {"done": true, "usage": {...}}
+    BE-->>GW: 완료 이벤트
+    GW-->>FE: 완료 이벤트
+    FE->>FE: 연결 종료
