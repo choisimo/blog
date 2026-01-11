@@ -50,7 +50,9 @@ export function ImageDrawer({
               onClick={() => {
                 try {
                   window.open(img.url, "_blank", "noopener,noreferrer");
-                } catch {}
+                } catch {
+                  void 0;
+                }
               }}
             >
               <div className="h-12 w-12 overflow-hidden rounded bg-muted">

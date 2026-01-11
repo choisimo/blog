@@ -130,7 +130,7 @@ export const stripMarkdown = (text: string, maxLength = 150): string => {
 
   // Truncate to maxLength with ellipsis
   if (cleaned.length > maxLength) {
-    cleaned = cleaned.slice(0, maxLength).trim() + '...';
+    cleaned = `${cleaned.slice(0, maxLength).trim()}...`;
   }
 
   return cleaned;

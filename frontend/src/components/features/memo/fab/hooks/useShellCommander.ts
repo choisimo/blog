@@ -299,7 +299,7 @@ export function useShellCommander({
           const items = lsOutput.split("\n").filter(Boolean).slice(0, 8);
           return items.map(
             (item) =>
-              `ls ${args ? args + "/" : ""}${item.replace("/", "")}`,
+              `ls ${args ? `${args}/` : ""}${item.replace("/", "")}`,
           );
         }
       }
@@ -444,7 +444,7 @@ export function useShellCommander({
               c.aliases.some((a) => a.startsWith(trimmed)),
           );
           if (matches.length === 1) {
-            setShellInput(matches[0].name + " ");
+            setShellInput(`${matches[0].name} `);
           } else if (matches.length > 1) {
             setShellOutput(matches.map((m) => m.name).join("  "));
           }

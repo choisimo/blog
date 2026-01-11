@@ -40,7 +40,9 @@ export default function NewPost() {
     try {
       const saved = localStorage.getItem('admin.token');
       if (saved) setToken(saved);
-    } catch {}
+    } catch {
+      void 0;
+    }
   }, []);
 
   const doLogin = useMutation({
@@ -50,7 +52,9 @@ export default function NewPost() {
       try {
         localStorage.setItem('admin.token', t);
         window.dispatchEvent(new Event('admin-auth-changed'));
-      } catch {}
+      } catch {
+        void 0;
+      }
       return t;
     },
     onSuccess: () =>
@@ -68,7 +72,7 @@ export default function NewPost() {
     try {
       localStorage.removeItem('admin.token');
       window.dispatchEvent(new Event('admin-auth-changed'));
-    } catch {}
+    } catch { void 0; }
   };
 
   const createPr = useMutation({
@@ -95,7 +99,7 @@ export default function NewPost() {
       toast({ title: 'PR 생성됨', description: data.prUrl });
       try {
         window.open(data.prUrl, '_blank');
-      } catch {}
+      } catch { void 0; }
     },
     onError: (e: any) =>
       toast({
@@ -142,8 +146,8 @@ export default function NewPost() {
   const insertAtCursor = (text: string) => {
     setContent(prev =>
       prev
-        ? prev + (prev.endsWith('\n') ? '' : '\n') + text + '\n'
-        : text + '\n'
+        ? `${prev}${prev.endsWith('\n') ? '' : '\n'}${text}\n`
+        : `${text}\n`
     );
   };
 

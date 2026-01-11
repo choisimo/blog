@@ -163,17 +163,18 @@ export function MiniTerminal({ className, onClose }: MiniTerminalProps) {
           setInput('');
         }
         break;
-      case 'Tab':
+      case 'Tab': {
         e.preventDefault();
         const partial = input.toLowerCase();
         const matches = Object.keys(commands).filter(c => c.startsWith(partial));
         if (matches.length === 1) {
-          setInput(matches[0] + ' ');
+          setInput(`${matches[0]} `);
         } else if (matches.length > 1) {
           appendOutput(`$ ${input}`);
           appendOutput(matches.join('  '));
         }
         break;
+      }
       case 'Escape':
         onClose?.();
         break;

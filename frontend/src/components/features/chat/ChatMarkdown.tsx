@@ -49,23 +49,22 @@ function sanitizeStreamingMarkdown(content: string): string {
   // Count unclosed code fences
   const codeFenceMatches = result.match(/```/g);
   if (codeFenceMatches && codeFenceMatches.length % 2 === 1) {
-    // Odd number of fences - close the last one
-    result = result + '\n```';
+    result = `${result}\n\`\`\``;
   }
   
   // Handle incomplete inline code
   const inlineCodeMatches = result.match(/(?<!`)`(?!`)/g);
   if (inlineCodeMatches && inlineCodeMatches.length % 2 === 1) {
-    result = result + '`';
+    result = `${result}\``;
   }
   
   // Handle incomplete bold/italic markers at the end
   // Only if the marker appears at the very end without closing
   if (/\*\*[^*]+$/.test(result) && !/\*\*[^*]+\*\*/.test(result.slice(-50))) {
-    result = result + '**';
+    result = `${result}**`;
   }
   if (/(?<!\*)\*[^*]+$/.test(result) && !/(?<!\*)\*[^*]+\*(?!\*)/.test(result.slice(-30))) {
-    result = result + '*';
+    result = `${result}*`;
   }
   
   return result;

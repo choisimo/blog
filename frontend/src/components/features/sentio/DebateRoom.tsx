@@ -1,21 +1,19 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   X,
   Send,
   Loader2,
   MessageSquare,
-  Sparkles,
   ThumbsUp,
   ThumbsDown,
   RotateCcw,
   Lightbulb,
   Users,
   ArrowRight,
-  ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
-import { streamChatEvents, ensureSession } from '@/services/chat';
+import { streamChatEvents } from '@/services/chat';
 import { PrismResult } from '@/services/ai';
 import ChatMarkdown from '@/components/features/chat/ChatMarkdown';
 
@@ -90,7 +88,7 @@ function buildDebateSystemPrompt(topic: DebateTopic, stance?: 'agree' | 'disagre
   return lines.join('\n');
 }
 
-export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProps) {
+export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
   const { isTerminal } = useTheme();
   const [messages, setMessages] = useState<DebateMessage[]>([]);
   const [input, setInput] = useState('');
@@ -312,7 +310,7 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
     setBusy(false);
   }, []);
 
-  const useFollowUp = useCallback((prompt: string) => {
+  const handleFollowUp = useCallback((prompt: string) => {
     setInput(prompt);
     inputRef.current?.focus();
   }, []);
@@ -552,7 +550,7 @@ export default function DebateRoom({ topic, onClose, postTitle }: DebateRoomProp
               <button
                 key={i}
                 type="button"
-                onClick={() => useFollowUp(prompt)}
+                onClick={() => handleFollowUp(prompt)}
                 className={cn(
                   'text-xs px-3 py-2 rounded-full transition-colors',
                   isTerminal

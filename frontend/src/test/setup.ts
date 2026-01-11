@@ -88,8 +88,7 @@ global.ResizeObserver = class {
 } as unknown as typeof ResizeObserver;
 
 // Mock window.scrollTo to avoid jsdom not-implemented errors
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-window.scrollTo = (() => {}) as any;
+window.scrollTo = (() => { void 0; }) as any;
 
 // Stub fetch for posts-manifest.json in tests that render the app shell
 const originalFetch = global.fetch;

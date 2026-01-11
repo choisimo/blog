@@ -135,7 +135,6 @@ export default function CommentReactions({
   // Sort reactions by count
   const sortedReactions = [...reactions].sort((a, b) => b.count - a.count);
   const hasReactions = sortedReactions.length > 0;
-  const totalCount = sortedReactions.reduce((sum, r) => sum + r.count, 0);
 
   // Shared: Emoji picker content
   const renderEmojiPicker = (variant: 'terminal' | 'default') => (

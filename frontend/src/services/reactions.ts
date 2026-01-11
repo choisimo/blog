@@ -119,5 +119,5 @@ export function getUserReactions(commentId: string): Set<ReactionEmoji> {
 export function setUserReactions(commentId: string, emojis: Set<ReactionEmoji>): void {
   try {
     localStorage.setItem(`comment.reactions.${commentId}`, JSON.stringify([...emojis]));
-  } catch {}
+  } catch { void 0; }
 }

@@ -149,7 +149,7 @@ export const parseMarkdownFrontmatter = (content: string): ParsedMarkdown => {
 export const parseDescriptionMarkdown = (text: string): string => {
   if (!text) return '';
   
-  let result = text
+  const result = text
     // Remove image markdown: ![alt](src) or ![alt]
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, '')
     .replace(/!\[[^\]]*\]/g, '')

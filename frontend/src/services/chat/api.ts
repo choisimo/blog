@@ -164,7 +164,7 @@ export async function* streamChatEvents(
   if (!res.ok || !res.body) {
     const t = await res.text().catch(() => '');
     let parsed: unknown = null;
-    try { parsed = JSON.parse(t); } catch {}
+    try { parsed = JSON.parse(t); } catch { void 0; }
     throw ChatError.fromResponse(res.status, parsed || t);
   }
 

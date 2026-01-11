@@ -17,7 +17,7 @@ import {
   Sparkles,
   TrendingUp,
 } from 'lucide-react';
-import { BlogCard, BlogCardSkeleton, PostCard } from '@/components';
+import { BlogCardSkeleton, PostCard } from '@/components';
 import { getPosts, getPostsPage, getPostBySlug } from '@/data/posts';
 import type { BlogPost } from '@/types/blog';
 import { SearchBar } from '@/components/features/search/SearchBar';
@@ -69,7 +69,7 @@ const Index = () => {
         setError(null);
         const res = await getPostsPage({ page: 1, pageSize: 3, sort: 'date' });
         if (!cancelled) setLatestPosts(res.items);
-      } catch (e) {
+      } catch {
         if (!cancelled) setError('Failed to load latest posts.');
       } finally {
         if (!cancelled) setLoading(false);

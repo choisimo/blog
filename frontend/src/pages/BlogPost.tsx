@@ -19,13 +19,11 @@ import { getPostBySlug, getPostsPage, prefetchPost } from '@/data/posts';
 import { BlogPost as BlogPostType } from '@/types/blog';
 import {
   formatDate,
-  getAvailableLanguages,
   resolveLocalizedPost,
   parseDescriptionMarkdown,
 } from '@/utils/blog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CommentSection, TableOfContents } from '@/components/features/blog';
 import { Breadcrumb } from '@/components/features/navigation/Breadcrumb';
@@ -38,7 +36,6 @@ import {
   BookOpen,
   User,
   Languages,
-  MessageCircle,
   Loader2,
   Sparkles,
 } from 'lucide-react';
@@ -46,7 +43,6 @@ import { useToast } from '@/components/ui/use-toast';
 import useLanguage from '@/hooks/useLanguage';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
-import { OptimizedImage } from '@/components/common/OptimizedImage';
 import { recordView } from '@/services/analytics';
 import { translatePost, getCachedTranslation, type TranslationResult } from '@/services/translate';
 import { curiosityTracker } from '@/services/curiosity';
@@ -120,11 +116,6 @@ const BlogPost = () => {
     // Otherwise use native localization
     return resolveLocalizedPost(post, language);
   }, [post, language, aiTranslation, hasNativeTranslation]);
-
-  const availableLanguages = useMemo(
-    () => (post ? getAvailableLanguages(post) : []),
-    [post]
-  );
 
   const readingTimeLabel = useMemo(() => {
     if (!post) return '';
@@ -238,7 +229,7 @@ const BlogPost = () => {
     } catch (err) {
       try {
         window.dispatchEvent(new CustomEvent('visitedposts:error'));
-      } catch {}
+      } catch { void 0; }
       console.warn('Failed to persist visited posts', err);
     }
   }, [post]);

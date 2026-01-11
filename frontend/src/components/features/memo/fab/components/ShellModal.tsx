@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef } from "react";
 import { createPortal } from "react-dom";
 import { Terminal, X, MonitorUp } from "lucide-react";
 import { cn } from "@/lib/utils";

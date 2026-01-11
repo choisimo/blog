@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   sketch,
@@ -33,7 +33,9 @@ function emitAiMemoLog(detail: Record<string, unknown>) {
         detail,
       })
     );
-  } catch {}
+  } catch {
+    void 0;
+  }
 }
 
 function extractText(children: React.ReactNode): string {

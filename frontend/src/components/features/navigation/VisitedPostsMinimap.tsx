@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { OptimizedImage } from '@/components/common/OptimizedImage';
 import { Clock, Map as MapIcon } from 'lucide-react';
@@ -10,7 +9,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -64,7 +62,7 @@ export function useVisitedPostsState() {
       );
       setItems(validItems);
       setStorageAvailable(true);
-    } catch (e) {
+    } catch {
       // JSON parse failed or other error - reset storage
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
@@ -150,7 +148,9 @@ export function VisitedPostsMinimap({
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
       window.dispatchEvent(new CustomEvent('visitedposts:update'));
-    } catch {}
+    } catch {
+      void 0;
+    }
   };
 
   useEffect(() => {
@@ -166,7 +166,9 @@ export function VisitedPostsMinimap({
           // Invalid data - reset
           try {
             localStorage.setItem('ai_chat_sessions_index', JSON.stringify([]));
-          } catch {}
+          } catch {
+            void 0;
+          }
           setChatSessions([]);
           return;
         }
@@ -458,7 +460,9 @@ export function VisitedPostsMinimap({
                           detail: { sessionIds: selectedSessionIds },
                         })
                       );
-                    } catch {}
+                    } catch {
+                      void 0;
+                    }
                   }}
                 >
                   통합 질문하기

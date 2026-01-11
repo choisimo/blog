@@ -59,7 +59,9 @@ export function useMemoOpen(aiMemoEl: HTMLElement | null): boolean {
           setOpen(
             !!JSON.parse(localStorage.getItem("aiMemo.isOpen") || "false"),
           );
-        } catch {}
+        } catch {
+          void 0;
+        }
       }
     };
     window.addEventListener("storage", onStorage);
@@ -102,7 +104,9 @@ export function useMemoOpen(aiMemoEl: HTMLElement | null): boolean {
           setOpen(
             !!JSON.parse(localStorage.getItem("aiMemo.isOpen") || "false"),
           );
-        } catch {}
+        } catch {
+          void 0;
+        }
         if (tries > 20) {
           if (pollId) {
             clearInterval(pollId);
@@ -181,13 +185,17 @@ export function useHistoryBadge(): [boolean, () => void] {
     try {
       const arr = JSON.parse(localStorage.getItem("aiMemo.events") || "[]");
       count = Array.isArray(arr) ? arr.length : 0;
-    } catch {}
+    } catch {
+      count = Array.isArray([]) ? 0 : 0;
+    }
     let last = 0;
     try {
       last =
         parseInt(localStorage.getItem("aiMemo.history.lastCount") || "0", 10) ||
         0;
-    } catch {}
+    } catch {
+      void 0;
+    }
     setHasNew(count > last);
   }, []);
   useEffect(() => {
@@ -207,7 +215,9 @@ export function useHistoryBadge(): [boolean, () => void] {
       const arr = JSON.parse(localStorage.getItem("aiMemo.events") || "[]");
       const len = Array.isArray(arr) ? arr.length : 0;
       localStorage.setItem("aiMemo.history.lastCount", String(len));
-    } catch {}
+    } catch {
+      void 0;
+    }
     setHasNew(false);
   }, []);
   return [hasNew, clear];
@@ -297,7 +307,9 @@ export function useFabPinned(): [boolean, () => void] {
     try {
       const saved = localStorage.getItem("fab.pinned");
       if (saved != null) setPinned(JSON.parse(saved));
-    } catch {}
+    } catch {
+      void 0;
+    }
   }, []);
 
   const togglePinned = useCallback(() => {
@@ -305,7 +317,9 @@ export function useFabPinned(): [boolean, () => void] {
       const next = !prev;
       try {
         localStorage.setItem("fab.pinned", JSON.stringify(next));
-      } catch {}
+      } catch {
+        void 0;
+      }
       return next;
     });
   }, []);
@@ -324,7 +338,9 @@ export function hideLegacyLaunchers(aiMemoEl: HTMLElement | null) {
     ) as HTMLElement | null;
     if (launcher) launcher.style.display = "none";
     if (historyLauncher) historyLauncher.style.display = "none";
-  } catch {}
+  } catch {
+    void 0;
+  }
 }
 
 export function useFabAnalytics() {
@@ -337,16 +353,16 @@ export function useFabAnalytics() {
         detail: { type, ts: Date.now(), ...(detail || {}) },
       });
       window.dispatchEvent(evt);
-      // Fallback console for environments without an analytics bridge
       if (
         (import.meta as any).env?.DEV ||
         (typeof localStorage !== "undefined" &&
           localStorage.getItem("aiMemo.fab.debug") === "true")
       ) {
-        // eslint-disable-next-line no-console
         console.log("[FAB]", type, detail || "");
       }
-    } catch {}
+    } catch {
+      void 0;
+    }
   }, []);
 
   const sendImpression = useCallback(

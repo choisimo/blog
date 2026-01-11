@@ -2,7 +2,6 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { NotebookPen, Sparkles, Layers, Map } from "lucide-react";
@@ -113,7 +112,9 @@ export default function FloatingActionBar() {
         const shadow = (aiMemoEl as any)?.shadowRoot as ShadowRoot | undefined;
         const btn = shadow?.getElementById(id) as HTMLButtonElement | null;
         btn?.click();
-      } catch {}
+      } catch {
+        void 0;
+      }
     },
     [aiMemoEl],
   );
@@ -145,21 +146,30 @@ export default function FloatingActionBar() {
           opened = true;
         }
       }
-    } catch {}
+    } catch {
+      void 0;
+    }
     if (!opened) {
       try {
         window.dispatchEvent(new CustomEvent("visitedposts:open"));
-      } catch {}
+      } catch {
+        void 0;
+      }
     }
     clearBadge();
     send("fab_history_click");
   }, [aiMemoEl, clearBadge, send]);
 
+  // Suppress unused variable warning - openHistory is kept for future use
+  void openHistory;
+
   const openStackView = useCallback(() => {
     try {
       window.dispatchEvent(new CustomEvent("visitedposts:open"));
       send("fab_stack_click");
-    } catch {}
+    } catch {
+      void 0;
+    }
   }, [send]);
 
   const stackDisabledReason = useMemo(() => {

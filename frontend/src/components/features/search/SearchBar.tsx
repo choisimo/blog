@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { X, Search, Terminal, ChevronRight } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
-import { cn } from "@/lib/utils";
 
 interface SearchBarProps {
   posts: BlogPost[];

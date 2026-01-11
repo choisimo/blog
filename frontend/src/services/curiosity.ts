@@ -69,17 +69,6 @@ const DEFAULT_SETTINGS: CuriositySettings = {
   retentionDays: 90,
 };
 
-// Events that should NOT be tracked (UI noise)
-const NOISY_EVENTS = new Set([
-  'panel_open',
-  'panel_close',
-  'scroll',
-  'hover',
-  'focus',
-  'blur',
-  'resize',
-]);
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Utility Functions
 // ─────────────────────────────────────────────────────────────────────────────
@@ -110,9 +99,7 @@ function inferReferrer(): CuriosityEventMeta['ref'] {
     if (url.host.includes('google') || url.host.includes('bing') || url.host.includes('naver')) {
       return 'search';
     }
-  } catch {
-    // Invalid URL
-  }
+  } catch { void 0; }
 
   return 'direct';
 }
@@ -202,7 +189,7 @@ class CuriosityStorage {
     this.settings = { ...this.settings, ...updates };
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
-    } catch {}
+    } catch { void 0; }
   }
 
   clearEvents(): void {

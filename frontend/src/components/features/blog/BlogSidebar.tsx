@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';

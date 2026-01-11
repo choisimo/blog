@@ -23,7 +23,6 @@ import {
   Server,
   Database,
   Brain,
-  Zap,
 } from 'lucide-react';
 import { getApiBaseUrl } from '@/utils/apiBase';
 import { useAuthStore } from '@/stores/useAuthStore';

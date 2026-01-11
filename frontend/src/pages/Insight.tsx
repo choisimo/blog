@@ -3,9 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ZoomIn, ZoomOut, RotateCcw, Network, MessageSquare, FileText, Sparkles, X, Lightbulb, PenLine, Calendar, ExternalLink, Tag, Search, Filter } from 'lucide-react';
+import { ArrowLeft, ZoomIn, ZoomOut, RotateCcw, Network, MessageSquare, FileText, Sparkles, X, Lightbulb, PenLine, Calendar, ExternalLink, Filter } from 'lucide-react';
 import { getPosts } from '@/data/posts';
-import { BlogPost } from '@/types/blog';
 import { curiosityTracker, type CuriosityEvent } from '@/services/curiosity';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -72,12 +71,14 @@ interface RelatedContent {
 function buildAdjacencyList(nodes: GraphNode[], edges: GraphEdge[]): Map<string, Map<string, number>> {
   const adj = new Map<string, Map<string, number>>();
   
-  nodes.forEach(n => adj.set(n.id, new Map()));
+  for (const n of nodes) {
+    adj.set(n.id, new Map());
+  }
   
-  edges.forEach(e => {
+  for (const e of edges) {
     adj.get(e.source)?.set(e.target, e.weight);
     adj.get(e.target)?.set(e.source, e.weight);
-  });
+  }
   
   return adj;
 }
@@ -496,7 +497,7 @@ function GraphCanvas({
         
         // Draw label
         if (isSelected || isHovered || zoom > 0.8) {
-          const label = n.label.length > 20 ? n.label.slice(0, 20) + '...' : n.label;
+          const label = n.label.length > 20 ? `${n.label.slice(0, 20)}...` : n.label;
           ctx.font = `${11 / zoom}px monospace`;
           ctx.fillStyle = isTerminal ? 'rgba(80, 250, 123, 0.9)' : 'rgba(0, 0, 0, 0.8)';
           ctx.fillText(label, n.x, n.y + size / 2 + 12 / zoom);
@@ -585,7 +586,7 @@ const Insight = () => {
   const [relatedContent, setRelatedContent] = useState<RelatedContent>({ chats: [], memos: [], thoughts: [] });
   const [allMemoEvents, setAllMemoEvents] = useState<MemoEvent[]>([]);
   const [allChatSessions, setAllChatSessions] = useState<ChatSession[]>([]);
-  const [allCuriosityEvents, setAllCuriosityEvents] = useState<CuriosityEvent[]>([]);
+  const [, setAllCuriosityEvents] = useState<CuriosityEvent[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Timeline filter state
@@ -609,7 +610,9 @@ const Insight = () => {
           if (raw) {
             chatSessions = JSON.parse(raw).filter((s: any) => s && s.id);
           }
-        } catch {}
+        } catch {
+          void 0;
+        }
         setAllChatSessions(chatSessions);
         
         // Load memo events from localStorage
@@ -619,24 +622,25 @@ const Insight = () => {
           if (raw) {
             memoEvents = JSON.parse(raw).filter((e: any) => e && typeof e.t === 'number');
           }
-        } catch {}
+        } catch {
+          void 0;
+        }
         setAllMemoEvents(memoEvents);
         
         // Load visited posts
-        let visitedPosts: any[] = [];
         try {
           const raw = localStorage.getItem('visited.posts');
           if (raw) {
-            visitedPosts = JSON.parse(raw);
+            JSON.parse(raw);
           }
-        } catch {}
+        } catch { void 0; }
         
         // Load curiosity events
         let curiosityEvents: CuriosityEvent[] = [];
         try {
           curiosityEvents = curiosityTracker.getEvents();
           setAllCuriosityEvents(curiosityEvents);
-        } catch {}
+        } catch { void 0; }
         
         // Build nodes
         const newNodes: GraphNode[] = [];
@@ -690,7 +694,7 @@ const Insight = () => {
         
         // Add post nodes (only visited ones for now, or limit to recent)
         const recentPosts = posts.slice(0, 30);
-        recentPosts.forEach((p, i) => {
+        recentPosts.forEach((p) => {
           newNodes.push({
             id: `post-${p.slug}`,
             type: 'post',
@@ -704,7 +708,7 @@ const Insight = () => {
         });
         
         // Add chat session nodes
-        chatSessions.slice(0, 20).forEach((s, i) => {
+        chatSessions.slice(0, 20).forEach((s) => {
           newNodes.push({
             id: `chat-${s.id}`,
             type: 'chat',
@@ -784,7 +788,7 @@ const Insight = () => {
         });
         
         // Add memo nodes from curiosity events (limit to 15)
-        memoNodes.slice(0, 15).forEach((memo, i) => {
+        memoNodes.slice(0, 15).forEach((memo) => {
           const memoId = `memo-${memo.id}`;
           newNodes.push({
             id: memoId,

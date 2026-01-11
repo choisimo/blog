@@ -15,7 +15,7 @@ export function useVirtualFS(posts: BlogPost[]) {
       // /blog/2025/post-slug -> /blog/2025
       const parts = path.split("/").filter(Boolean);
       if (parts.length >= 2) {
-        return "/" + parts.slice(0, 2).join("/");
+        return `/${parts.slice(0, 2).join("/")}`;
       }
     }
     return path;
@@ -56,18 +56,17 @@ export function useVirtualFS(posts: BlogPost[]) {
         const year = parts[1];
         const title =
           currentPost.title.length > 20
-            ? currentPost.title.slice(0, 18) + ".."
+            ? `${currentPost.title.slice(0, 18)}..`
             : currentPost.title;
         return `~/${year}/${title}`;
       } else if (parts.length >= 2) {
         // Viewing year directory
-        const year = parts[1];
-        return `~/${year}`;
+        return `~/${parts[1]}`;
       }
     }
 
     // Default: show path without leading slash
-    return "~" + path;
+    return `~${path}`;
   }, [location.pathname, currentPost]);
 
   // Get available years
@@ -108,7 +107,7 @@ export function useVirtualFS(posts: BlogPost[]) {
       }
 
       if (targetPath === "/blog") {
-        return years.map((y) => `${y}/`).join("\n") + "\n";
+        return `${years.map((y) => `${y}/`).join("\n")}\n`;
       }
 
       const parts = targetPath.split("/").filter(Boolean);
@@ -145,7 +144,7 @@ export function useVirtualFS(posts: BlogPost[]) {
           navigate("/");
           return "";
         }
-        const newPath = "/" + parts.slice(0, -1).join("/");
+        const newPath = `/${parts.slice(0, -1).join("/")}`;
         if (newPath === "/blog") {
           navigate("/");
           return "";
@@ -159,9 +158,9 @@ export function useVirtualFS(posts: BlogPost[]) {
       if (!path.startsWith("/")) {
         // Relative path
         if (currentPath === "/") {
-          targetPath = "/" + path;
+          targetPath = `/${path}`;
         } else {
-          targetPath = currentPath + "/" + path;
+          targetPath = `${currentPath}/${path}`;
         }
       }
 

@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import type { ChatMessage, UploadedChatImage } from "../types";
 import {
   streamChatEvents,
@@ -16,7 +16,6 @@ type UseChatActionsProps = {
   attachedImage: File | null;
   setAttachedImage: (file: File | null) => void;
   setAttachedPreviewUrl: (url: string | null) => void;
-  busy: boolean;
   setBusy: (busy: boolean) => void;
   setFirstTokenMs: (ms: number | null) => void;
   abortRef: React.MutableRefObject<AbortController | null>;
@@ -26,7 +25,6 @@ type UseChatActionsProps = {
   setIsAggregatePrompt: (value: boolean) => void;
   questionMode: "article" | "general";
   lastPromptRef: React.MutableRefObject<string>;
-  uploadedImages: UploadedChatImage[];
   setUploadedImages: React.Dispatch<React.SetStateAction<UploadedChatImage[]>>;
   messages: ChatMessage[];
   setSessionKey: (key: string) => void;
@@ -39,7 +37,6 @@ export function useChatActions({
   attachedImage,
   setAttachedImage,
   setAttachedPreviewUrl,
-  busy,
   setBusy,
   setFirstTokenMs,
   abortRef,
@@ -49,7 +46,6 @@ export function useChatActions({
   setIsAggregatePrompt,
   questionMode,
   lastPromptRef,
-  uploadedImages,
   setUploadedImages,
   messages,
   setSessionKey,
@@ -249,7 +245,9 @@ export function useChatActions({
     setSessionKey(nextKey);
     try {
       localStorage.setItem(CURRENT_SESSION_KEY, nextKey);
-    } catch {}
+    } catch {
+      void 0;
+    }
     return true;
   }, [
     messages.length,

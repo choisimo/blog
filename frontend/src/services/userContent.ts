@@ -1,31 +1,9 @@
 import { getApiBaseUrl } from '@/utils/apiBase';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { 
-  parseJwtPayload, 
   isTokenExpired,
-  getStoredAnonymousToken,
   getValidAnonymousToken 
 } from '@/services/auth';
-
-/**
- * Get current user ID from JWT token
- * Falls back to 'default-user' if not authenticated
- */
-function getCurrentUserId(): string {
-  const token = useAuthStore.getState().accessToken;
-  if (!token) return 'default-user';
-  
-  const payload = parseJwtPayload(token);
-  if (!payload) return 'default-user';
-  
-  // JWT sub claim contains user ID (e.g., 'admin')
-  const sub = payload.sub;
-  if (typeof sub === 'string' && sub.trim()) {
-    return sub.trim();
-  }
-  
-  return 'default-user';
-}
 
 export type Persona = {
   id: string;
@@ -90,42 +68,6 @@ export type CreatePersonaInput = Omit<PersonaPayload, 'id'>;
 export type UpdatePersonaInput = Omit<PersonaPayload, 'id'>;
 export type CreateMemoInput = Omit<MemoPayload, 'id'>;
 export type UpdateMemoInput = Omit<MemoPayload, 'id'>;
-
-function getAuthToken(): string | null {
-  // First try admin token from auth store
-  const authToken = useAuthStore.getState().accessToken;
-  if (authToken && authToken.trim() && !isTokenExpired(authToken, 60)) {
-    return authToken.trim();
-  }
-  
-  // Fall back to anonymous token (sync check only)
-  const anonToken = getStoredAnonymousToken();
-  if (anonToken && anonToken.trim() && !isTokenExpired(anonToken, 86400)) {
-    return anonToken.trim();
-  }
-  
-  // Check legacy storage
-  if (typeof window === 'undefined') return null;
-  const candidates = [
-    'aiMemo.authToken',
-    'aiMemo.jwt',
-    'auth.token',
-    'aiMemoAuthToken',
-  ];
-  for (const key of candidates) {
-    try {
-      const raw = localStorage.getItem(key) ?? sessionStorage.getItem(key);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (typeof parsed === 'string' && parsed.trim()) return parsed.trim();
-        if (typeof raw === 'string' && raw.trim()) return raw.trim();
-      }
-    } catch {
-      // ignore JSON parse errors
-    }
-  }
-  return null;
-}
 
 /**
  * Get auth token, requesting anonymous token if needed (async)

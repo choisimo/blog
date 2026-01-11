@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -157,8 +157,6 @@ export function ConfigManager() {
 
   const renderField = (variable: ConfigVariable) => {
     const value = getValue(variable.key);
-    const configValue = configData?.[variable.key];
-    const isSecret = variable.isSecret;
     const isVisible = visibleSecrets.has(variable.key);
 
     switch (variable.type) {
@@ -185,7 +183,7 @@ export function ConfigManager() {
               type={isVisible ? 'text' : 'password'}
               value={value}
               onChange={(e) => updateValue(variable.key, e.target.value)}
-              placeholder={configValue?.isSet ? '••••••••' : 'Not set'}
+              placeholder={configData?.[variable.key]?.isSet ? '••••••••' : 'Not set'}
               className="flex-1"
             />
             <Button variant="outline" size="icon" onClick={() => toggleSecretVisibility(variable.key)}>

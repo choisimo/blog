@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Bot, Globe2, Loader2, MessageCircle, PenLine, Send, Sparkles, User } from 'lucide-react';
+import { Bot, Globe2, Loader2, MessageCircle, PenLine, Sparkles, User } from 'lucide-react';
 import { getApiBaseUrl } from '@/utils/apiBase';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -120,8 +120,8 @@ export default function CommentSection({ postId }: { postId: string }) {
             const msg = JSON.parse(ev.data);
             if (msg && msg.type === 'append' && Array.isArray(msg.items)) {
               setComments(prev => {
-                const before = (prev || []).filter(Boolean) as any[];
-                const keyOf = (it: any) =>
+                const before = (prev || []).filter(Boolean) as CommentItem[];
+                const keyOf = (it: CommentItem) =>
                   String(
                     it.id ||
                       `${it.createdAt || ''}|${it.author || ''}|${(it.content || '').slice(0, 24)}`
@@ -144,7 +144,9 @@ export default function CommentSection({ postId }: { postId: string }) {
                 return merged;
               });
             }
-          } catch {}
+          } catch {
+            void 0;
+          }
         };
         es.onerror = () => {
           es?.close();
@@ -173,7 +175,9 @@ export default function CommentSection({ postId }: { postId: string }) {
       const next = !prev;
       try {
         localStorage.setItem('comment.aiDiscussion', String(next));
-      } catch {}
+      } catch {
+        void 0;
+      }
       return next;
     });
   }, []);

@@ -4,7 +4,6 @@ import {
   CHAT_SESSIONS_INDEX_KEY,
   CHAT_SESSION_STORAGE_PREFIX,
   CURRENT_SESSION_KEY,
-  generateSessionKey,
 } from "../constants";
 
 type UseChatSessionProps = {
@@ -65,7 +64,9 @@ export function useChatSession({
         setSessionKey(id);
         try {
           localStorage.setItem(CURRENT_SESSION_KEY, id);
-        } catch {}
+        } catch {
+          void 0;
+        }
       } catch {
         setMessages([]);
       }
@@ -180,9 +181,13 @@ export function useChatSession({
         if (typeof window !== "undefined") {
           try {
             window.dispatchEvent(new CustomEvent("aiChat:sessionsUpdated"));
-          } catch {}
+          } catch {
+            void 0;
+          }
         }
-      } catch {}
+      } catch {
+        void 0;
+      }
       return updated;
     });
   }, [messages, summary, questionMode, pageTitle, persistOptIn, sessionKey, setSessions]);

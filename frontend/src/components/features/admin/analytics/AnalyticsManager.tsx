@@ -57,11 +57,7 @@ interface TrendingPost {
   total_views: number;
 }
 
-interface OverallStats {
-  totalViews: number;
-  totalPosts: number;
-  avgViewsPerPost: number;
-}
+
 
 // ============================================================================
 // API Functions

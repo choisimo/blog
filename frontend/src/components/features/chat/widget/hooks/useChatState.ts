@@ -12,12 +12,7 @@ import {
   PERSIST_OPTIN_KEY,
   generateSessionKey,
 } from "../constants";
-import {
-  streamChatEvents,
-  ensureSession,
-  uploadChatImage,
-  invokeChatAggregate,
-} from "@/services/chat";
+import { ensureSession } from "@/services/chat";
 
 export function useChatState(options?: { initialMessage?: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -30,11 +25,15 @@ export function useChatState(options?: { initialMessage?: string }) {
     try {
       const existing = window.localStorage.getItem(CURRENT_SESSION_KEY);
       if (existing && existing.trim()) return existing;
-    } catch {}
+    } catch {
+      void 0;
+    }
     const fresh = generateSessionKey();
     try {
       window.localStorage.setItem(CURRENT_SESSION_KEY, fresh);
-    } catch {}
+    } catch {
+      void 0;
+    }
     return fresh;
   });
   const [sessions, setSessions] = useState<ChatSessionMeta[]>([]);
@@ -84,14 +83,18 @@ export function useChatState(options?: { initialMessage?: string }) {
       if (!raw) return;
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) setSessions(parsed);
-    } catch {}
+    } catch {
+      void 0;
+    }
   }, []);
 
   // Ensure session ID
   useEffect(() => {
     ensureSession()
       .then((id) => setSessionId(id))
-      .catch(() => {});
+      .catch(() => {
+        void 0;
+      });
   }, []);
 
   // Load messages for current session
@@ -107,7 +110,9 @@ export function useChatState(options?: { initialMessage?: string }) {
       } else {
         setMessages([]);
       }
-    } catch {}
+    } catch {
+      void 0;
+    }
   }, [persistOptIn, sessionKey]);
 
   // Save messages on change
@@ -118,7 +123,9 @@ export function useChatState(options?: { initialMessage?: string }) {
         `${CHAT_SESSION_STORAGE_PREFIX}${sessionKey}`,
         JSON.stringify(messages),
       );
-    } catch {}
+    } catch {
+      void 0;
+    }
   }, [messages, persistOptIn, sessionKey]);
 
   // Handle attached image preview
@@ -138,7 +145,9 @@ export function useChatState(options?: { initialMessage?: string }) {
       if (url) {
         try {
           URL.revokeObjectURL(url);
-        } catch {}
+        } catch {
+          void 0;
+        }
       }
     };
   }, [attachedImage]);
@@ -152,7 +161,9 @@ export function useChatState(options?: { initialMessage?: string }) {
     setPersistOptIn(next);
     try {
       localStorage.setItem(PERSIST_OPTIN_KEY, next ? "1" : "0");
-    } catch {}
+    } catch {
+      void 0;
+    }
   }, [persistOptIn]);
 
   const focusInput = useCallback(() => {

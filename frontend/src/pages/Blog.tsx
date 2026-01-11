@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { BlogCard, BlogCardSkeleton } from '@/components';
+import { BlogCardSkeleton } from '@/components';
 import { Pagination } from '@/components';
 import { getPostsPage, getAllCategories, getAllTags } from '@/data/posts';
 import { BlogPost, PostsPage } from '@/types/blog';
@@ -45,10 +45,10 @@ const Blog = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('date');
   const [currentPage, setCurrentPage] = useState(initialPage);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [,] = useState<'grid' | 'list'>('grid');
   const [categories, setCategories] = useState<string[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]);
-  const [siteTotalPosts, setSiteTotalPosts] = useState(0);
+  const [, setSiteTotalPosts] = useState(0);
   const [showAllTags, setShowAllTags] = useState(false);
   const [tagSearchTerm, setTagSearchTerm] = useState('');
   const [tagPage, setTagPage] = useState(1);

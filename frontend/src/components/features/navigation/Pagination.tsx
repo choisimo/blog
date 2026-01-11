@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -33,6 +33,27 @@ const Pagination = ({
 }: PaginationProps) => {
   const [jumpValue, setJumpValue] = useState('');
   const [isJumpOpen, setIsJumpOpen] = useState(false);
+
+  const handleJump = useCallback(() => {
+    const page = parseInt(jumpValue, 10);
+    if (!isNaN(page) && page >= 1 && page <= totalPages && page !== currentPage) {
+      onPageChange(page);
+    }
+    setJumpValue('');
+    setIsJumpOpen(false);
+  }, [jumpValue, totalPages, currentPage, onPageChange]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        handleJump();
+      } else if (e.key === 'Escape') {
+        setIsJumpOpen(false);
+        setJumpValue('');
+      }
+    },
+    [handleJump]
+  );
 
   if (totalPages <= 1) return null;
 
@@ -73,27 +94,6 @@ const Pagination = ({
 
     return rangeWithDots;
   };
-
-  const handleJump = useCallback(() => {
-    const page = parseInt(jumpValue, 10);
-    if (!isNaN(page) && page >= 1 && page <= totalPages && page !== currentPage) {
-      onPageChange(page);
-    }
-    setJumpValue('');
-    setIsJumpOpen(false);
-  }, [jumpValue, totalPages, currentPage, onPageChange]);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        handleJump();
-      } else if (e.key === 'Escape') {
-        setIsJumpOpen(false);
-        setJumpValue('');
-      }
-    },
-    [handleJump]
-  );
 
   const visiblePages = getVisiblePages();
 
@@ -156,7 +156,7 @@ const Pagination = ({
     </Button>
   );
 
-  const EllipsisButton = ({ position }: { position: 'start' | 'end' }) => {
+  const EllipsisButton = ({ position: _position }: { position: 'start' | 'end' }) => {
     if (!showQuickJump) {
       return (
         <span
@@ -241,7 +241,7 @@ const Pagination = ({
         </NavButton>
 
         <div className={cn('flex items-center', styles.gap, 'mx-1')}>
-          {visiblePages.map((page, index) =>
+          {visiblePages.map((page) =>
             typeof page === 'string' ? (
               <EllipsisButton
                 key={page}
