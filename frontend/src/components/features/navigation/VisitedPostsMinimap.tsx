@@ -11,6 +11,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { loadSessionsIndex, storeSessionsIndex } from '@/services/chat';
 
 export type VisitedPostItem = {
   path: string; // "/blog/:year/:slug"
@@ -156,23 +157,12 @@ export function VisitedPostsMinimap({
   useEffect(() => {
     const readSessions = () => {
       try {
-        const raw = localStorage.getItem('ai_chat_sessions_index');
-        if (!raw) {
-          setChatSessions([]);
-          return;
-        }
-        const parsed = JSON.parse(raw);
+        const parsed = loadSessionsIndex();
         if (!Array.isArray(parsed)) {
-          // Invalid data - reset
-          try {
-            localStorage.setItem('ai_chat_sessions_index', JSON.stringify([]));
-          } catch {
-            void 0;
-          }
+          storeSessionsIndex([]);
           setChatSessions([]);
           return;
         }
-        // Filter valid sessions
         const validSessions = parsed.filter(
           (s: any) => s && typeof s === 'object' && typeof s.id === 'string'
         );

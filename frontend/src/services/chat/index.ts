@@ -29,13 +29,31 @@ export {
   buildChatHeaders,
 } from './config';
 
-// Session
 export {
-  ensureSession,
+  SESSION_ID_KEY,
+  SESSIONS_INDEX_KEY,
+  SESSION_MESSAGES_PREFIX,
+  PERSIST_OPTIN_KEY,
+  generateLocalSessionId,
   getStoredSessionId,
   storeSessionId,
   clearStoredSessionId,
+  getSessionMessagesKey,
+  storeSessionMessages,
+  loadSessionMessages,
+  clearSessionMessages,
+  loadSessionsIndex,
+  storeSessionsIndex,
+  updateSessionInIndex,
+  removeSessionFromIndex,
+  isPersistEnabled,
+  setPersistEnabled,
+  createBackendSession,
+  ensureSession,
+  startNewSession,
+  switchToSession,
 } from './session';
+export type { ChatSessionMeta } from './session';
 
 // Context
 export {

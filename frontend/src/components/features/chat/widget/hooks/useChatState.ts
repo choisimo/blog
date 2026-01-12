@@ -5,37 +5,33 @@ import type {
   UploadedChatImage,
   QuestionMode,
 } from "../types";
+import { PERSIST_OPTIN_KEY } from "../constants";
 import {
-  CHAT_SESSIONS_INDEX_KEY,
-  CHAT_SESSION_STORAGE_PREFIX,
-  CURRENT_SESSION_KEY,
-  PERSIST_OPTIN_KEY,
-  generateSessionKey,
-} from "../constants";
-import { ensureSession } from "@/services/chat";
+  getStoredSessionId,
+  storeSessionId,
+  generateLocalSessionId,
+  SESSION_MESSAGES_PREFIX,
+  loadSessionsIndex,
+} from "@/services/chat";
 
 export function useChatState(options?: { initialMessage?: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState(options?.initialMessage || "");
   const [busy, setBusy] = useState(false);
   const [persistOptIn, setPersistOptIn] = useState<boolean>(true);
-  const [sessionId, setSessionId] = useState<string>("");
+
   const [sessionKey, setSessionKey] = useState<string>(() => {
     if (typeof window === "undefined") return "";
-    try {
-      const existing = window.localStorage.getItem(CURRENT_SESSION_KEY);
-      if (existing && existing.trim()) return existing;
-    } catch {
-      void 0;
-    }
-    const fresh = generateSessionKey();
-    try {
-      window.localStorage.setItem(CURRENT_SESSION_KEY, fresh);
-    } catch {
-      void 0;
-    }
+    const existing = getStoredSessionId();
+    if (existing) return existing;
+
+    const fresh = generateLocalSessionId();
+    storeSessionId(fresh);
     return fresh;
   });
+
+  const sessionId = sessionKey;
+
   const [sessions, setSessions] = useState<ChatSessionMeta[]>([]);
   const [showSessions, setShowSessions] = useState(false);
   const [showImageDrawer, setShowImageDrawer] = useState(false);
@@ -78,23 +74,7 @@ export function useChatState(options?: { initialMessage?: string }) {
   // Load sessions index
   useEffect(() => {
     if (typeof window === "undefined") return;
-    try {
-      const raw = window.localStorage.getItem(CHAT_SESSIONS_INDEX_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) setSessions(parsed);
-    } catch {
-      void 0;
-    }
-  }, []);
-
-  // Ensure session ID
-  useEffect(() => {
-    ensureSession()
-      .then((id) => setSessionId(id))
-      .catch(() => {
-        void 0;
-      });
+    setSessions(loadSessionsIndex());
   }, []);
 
   // Load messages for current session
@@ -102,7 +82,7 @@ export function useChatState(options?: { initialMessage?: string }) {
     if (!persistOptIn || !sessionKey) return;
     try {
       const raw = localStorage.getItem(
-        `${CHAT_SESSION_STORAGE_PREFIX}${sessionKey}`,
+        `${SESSION_MESSAGES_PREFIX}${sessionKey}`,
       );
       if (raw) {
         const parsed = JSON.parse(raw) as ChatMessage[];
@@ -115,12 +95,11 @@ export function useChatState(options?: { initialMessage?: string }) {
     }
   }, [persistOptIn, sessionKey]);
 
-  // Save messages on change
   useEffect(() => {
     if (!persistOptIn || !sessionKey) return;
     try {
       localStorage.setItem(
-        `${CHAT_SESSION_STORAGE_PREFIX}${sessionKey}`,
+        `${SESSION_MESSAGES_PREFIX}${sessionKey}`,
         JSON.stringify(messages),
       );
     } catch {

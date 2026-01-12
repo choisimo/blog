@@ -1,3 +1,5 @@
+export type { ChatSessionMeta } from "@/services/chat";
+
 export type SourceLink = {
   title?: string;
   url?: string;
@@ -18,18 +20,6 @@ export type UploadedChatImage = {
   url: string;
   name: string;
   size: number;
-};
-
-export type ChatSessionMeta = {
-  id: string;
-  title: string;
-  summary: string;
-  createdAt: string;
-  updatedAt: string;
-  messageCount: number;
-  mode: "article" | "general";
-  articleUrl?: string;
-  articleTitle?: string;
 };
 
 export type QuestionMode = "article" | "general";

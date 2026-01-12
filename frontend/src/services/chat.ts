@@ -8,7 +8,6 @@
  */
 
 export {
-  // Types
   type ChatSession,
   type ChatTaskMode,
   type InvokeChatTaskInput,
@@ -16,11 +15,30 @@ export {
   type ChatStreamEvent,
   type StreamChatInput,
   type ChatImageUploadResult,
-  // Config
+  type ChatSessionMeta,
   isUnifiedTasksEnabled,
-  // Session
+  SESSION_ID_KEY,
+  SESSIONS_INDEX_KEY,
+  SESSION_MESSAGES_PREFIX,
+  PERSIST_OPTIN_KEY,
+  generateLocalSessionId,
+  getStoredSessionId,
+  storeSessionId,
+  clearStoredSessionId,
+  getSessionMessagesKey,
+  storeSessionMessages,
+  loadSessionMessages,
+  clearSessionMessages,
+  loadSessionsIndex,
+  storeSessionsIndex,
+  updateSessionInIndex,
+  removeSessionFromIndex,
+  isPersistEnabled,
+  setPersistEnabled,
+  createBackendSession,
   ensureSession,
-  // API
+  startNewSession,
+  switchToSession,
   invokeChatTask,
   streamChatEvents,
   streamChatMessage,

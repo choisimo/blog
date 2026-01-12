@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, ZoomIn, ZoomOut, RotateCcw, Network, MessageSquare, FileText, Sparkles, X, Lightbulb, PenLine, Calendar, ExternalLink, Filter } from 'lucide-react';
 import { getPosts } from '@/data/posts';
 import { curiosityTracker, type CuriosityEvent } from '@/services/curiosity';
+import { loadSessionsIndex } from '@/services/chat';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -605,10 +606,7 @@ const Insight = () => {
         // Load AI chat sessions from localStorage
         let chatSessions: ChatSession[] = [];
         try {
-          const raw = localStorage.getItem('ai_chat_sessions_index');
-          if (raw) {
-            chatSessions = JSON.parse(raw).filter((s: any) => s && s.id);
-          }
+          chatSessions = loadSessionsIndex().filter((s: any) => s && s.id);
         } catch {
           void 0;
         }

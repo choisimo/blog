@@ -1,10 +1,12 @@
 import { useCallback, useEffect } from "react";
 import type { ChatMessage, ChatSessionMeta, QuestionMode } from "../types";
 import {
-  CHAT_SESSIONS_INDEX_KEY,
-  CHAT_SESSION_STORAGE_PREFIX,
-  CURRENT_SESSION_KEY,
-} from "../constants";
+  SESSIONS_INDEX_KEY,
+  SESSION_MESSAGES_PREFIX,
+  switchToSession,
+  loadSessionMessages,
+  storeSessionsIndex,
+} from "@/services/chat";
 
 type UseChatSessionProps = {
   sessionKey: string;
@@ -47,29 +49,12 @@ export function useChatSession({
 }: UseChatSessionProps) {
   const loadSession = useCallback(
     (id: string) => {
-      try {
-        const raw = localStorage.getItem(`${CHAT_SESSION_STORAGE_PREFIX}${id}`);
-        if (raw) {
-          const parsed = JSON.parse(raw) as ChatMessage[];
-          if (Array.isArray(parsed)) {
-            setMessages(parsed);
-          } else {
-            setMessages([]);
-          }
-        } else {
-          setMessages([]);
-        }
-        setFirstTokenMs(null);
-        setAttachedImage(null);
-        setSessionKey(id);
-        try {
-          localStorage.setItem(CURRENT_SESSION_KEY, id);
-        } catch {
-          void 0;
-        }
-      } catch {
-        setMessages([]);
-      }
+      const loaded = loadSessionMessages<ChatMessage>(id);
+      setMessages(loaded);
+      setFirstTokenMs(null);
+      setAttachedImage(null);
+      setSessionKey(id);
+      switchToSession(id);
     },
     [setMessages, setFirstTokenMs, setAttachedImage, setSessionKey],
   );
@@ -176,17 +161,14 @@ export function useChatSession({
       };
       const others = prev.filter((s) => s.id !== sessionKey);
       const updated = [next, ...others];
-      try {
-        localStorage.setItem(CHAT_SESSIONS_INDEX_KEY, JSON.stringify(updated));
-        if (typeof window !== "undefined") {
-          try {
-            window.dispatchEvent(new CustomEvent("aiChat:sessionsUpdated"));
-          } catch {
-            void 0;
-          }
+      storeSessionsIndex(updated);
+      
+      if (typeof window !== "undefined") {
+        try {
+          window.dispatchEvent(new CustomEvent("aiChat:sessionsUpdated"));
+        } catch {
+          void 0;
         }
-      } catch {
-        void 0;
       }
       return updated;
     });

@@ -4,10 +4,10 @@ import {
   streamChatEvents,
   uploadChatImage,
   invokeChatAggregate,
+  startNewSession,
 } from "@/services/chat";
 import { getRAGContextForChat } from "@/services/rag";
 import { getMemoryContextForChat, extractAndSaveMemories } from "@/services/memory";
-import { CURRENT_SESSION_KEY, generateSessionKey } from "../constants";
 
 type UseChatActionsProps = {
   canSend: boolean;
@@ -231,7 +231,7 @@ export function useChatActions({
     abortRef.current?.abort();
   }, [abortRef]);
 
-  const clearAll = useCallback((skipConfirm = false) => {
+  const clearAll = useCallback(async (skipConfirm = false) => {
     if (messages.length > 0 && !skipConfirm) {
       return false;
     }
@@ -241,13 +241,9 @@ export function useChatActions({
     setAttachedPreviewUrl(null);
     setUploadedImages([]);
     setIsAggregatePrompt(false);
-    const nextKey = generateSessionKey();
+    
+    const nextKey = await startNewSession();
     setSessionKey(nextKey);
-    try {
-      localStorage.setItem(CURRENT_SESSION_KEY, nextKey);
-    } catch {
-      void 0;
-    }
     return true;
   }, [
     messages.length,
