@@ -203,7 +203,8 @@ function buildRobotsWithSitemap(existing = '') {
   return `User-agent: *\nAllow: /\n\n${sitemapLine}\n`;
 }
 
-function escapeXml(str = '') {
+function escapeXml(input) {
+  const str = String(input ?? '');
   return str
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -215,18 +216,23 @@ function escapeXml(str = '') {
 function generateRSS(posts) {
   const items = posts
     .slice(0, 20)
-    .map(
-      p =>
+    .map(p => {
+      const tags = Array.isArray(p.tags) ? p.tags : [];
+      const tagLines = tags
+        .filter(t => t)
+        .map(t => `      <category>${escapeXml(t)}</category>`)
+        .join('\n');
+      return (
         `    <item>\n` +
         `      <title>${escapeXml(p.title)}</title>\n` +
         `      <description>${escapeXml(p.description)}</description>\n` +
         `      <link>${BASE_URL}/blog/${p.year}/${p.slug}</link>\n` +
         `      <guid isPermaLink="true">${BASE_URL}/blog/${p.year}/${p.slug}</guid>\n` +
         `      <pubDate>${new Date(p.date).toUTCString()}</pubDate>\n` +
-        `      <category>${escapeXml(p.category)}</category>\n${p.tags
-          .map(t => `      <category>${escapeXml(t)}</category>`)
-          .join('\n')}\n    </item>`
-    )
+        `      <category>${escapeXml(p.category)}</category>\n` +
+        `${tagLines ? tagLines + '\n' : ''}    </item>`
+      );
+    })
     .join('\n');
 
   const rss =

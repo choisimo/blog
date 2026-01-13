@@ -18,6 +18,7 @@ dotenv.config({ path: path.join(repoRoot, '.env') });
 dotenv.config({ path: path.join(repoRoot, 'frontend', '.env'), override: true });
 
 const BASE_URL = process.env.SITE_BASE_URL || process.env.VITE_SITE_BASE_URL || 'https://noblog.nodove.com';
+const API_BASE_URL = process.env.VITE_API_BASE_URL || 'https://api.nodove.com';
 const SITE_NAME = 'Nodove Blog';
 
 function ensureDir(dir) {
@@ -47,18 +48,24 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-function resolveImageUrl(coverImage) {
-  if (!coverImage) return `${BASE_URL}/og-default.png`;
-  if (coverImage.startsWith('http')) return coverImage;
-  return `${BASE_URL}${coverImage.startsWith('/') ? '' : '/'}${coverImage}`;
+function resolveImageUrl(coverImage, title, category) {
+  if (coverImage) {
+    if (coverImage.startsWith('http')) return coverImage;
+    return `${BASE_URL}${coverImage.startsWith('/') ? '' : '/'}${coverImage}`;
+  }
+  const params = new URLSearchParams({
+    title: title || 'Blog Post',
+    subtitle: category || '',
+  });
+  return `${API_BASE_URL}/api/v1/og?${params.toString()}`;
 }
 
 function generatePostHtml(template, post) {
   const title = escapeHtml(post.title);
   const description = escapeHtml(post.description || post.snippet || '');
   const url = `${BASE_URL}/blog/${post.year}/${post.slug}`;
-  const image = resolveImageUrl(post.coverImage);
   const category = escapeHtml(post.category || 'Blog');
+  const image = resolveImageUrl(post.coverImage, post.title, post.category);
   const date = post.date || new Date().toISOString();
   const author = escapeHtml(post.author || 'Admin');
   const tags = Array.isArray(post.tags) ? post.tags.map(t => escapeHtml(t)).join(', ') : '';
@@ -73,13 +80,16 @@ function generatePostHtml(template, post) {
   }
 
   const ogTags = `
-    <!-- Open Graph / Facebook -->
+    <!-- Open Graph / Facebook / KakaoTalk -->
     <meta property="og:type" content="article" />
     <meta property="og:url" content="${url}" />
     <meta property="og:title" content="${title}" />
     <meta property="og:description" content="${description}" />
     <meta property="og:image" content="${image}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:site_name" content="${SITE_NAME}" />
+    <meta property="og:locale" content="ko_KR" />
     <meta property="article:published_time" content="${date}" />
     <meta property="article:author" content="${author}" />
     <meta property="article:section" content="${category}" />
@@ -119,6 +129,8 @@ function generateStaticPages(template) {
     const pageDir = path.join(DIST_DIR, page.path);
     ensureDir(pageDir);
 
+    const pageImage = `${API_BASE_URL}/api/v1/og?title=${encodeURIComponent(page.title)}&subtitle=${encodeURIComponent(SITE_NAME)}`;
+
     let html = template;
     html = html.replace(/<title>[^<]*<\/title>/, `<title>${page.title} | ${SITE_NAME}</title>`);
 
@@ -127,8 +139,15 @@ function generateStaticPages(template) {
     <meta property="og:url" content="${BASE_URL}/${page.path}" />
     <meta property="og:title" content="${page.title} | ${SITE_NAME}" />
     <meta property="og:description" content="${page.description}" />
+    <meta property="og:image" content="${pageImage}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:site_name" content="${SITE_NAME}" />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${page.title} | ${SITE_NAME}" />
+    <meta name="twitter:description" content="${page.description}" />
+    <meta name="twitter:image" content="${pageImage}" />
     <link rel="canonical" href="${BASE_URL}/${page.path}" />
 `;
 
