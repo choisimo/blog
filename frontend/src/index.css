@@ -13,37 +13,37 @@
        - 읽기에 최적화된 타이포그래피
        ============================================ */
     
-    /* Surface 계층 (3단) - Warm Off-white */
-    --background: 40 33% 97%;           /* #FAF8F5 - Warm Off-white 배경 */
-    --foreground: 220 13% 26%;          /* #374151 - 부드러운 차콜 (눈 피로 감소) */
+    /* Surface 계층 (3단) - Cream/Sepia 톤 (눈 피로 대폭 감소) */
+    --background: 45 30% 92%;           /* #EDE8DF - Cream 배경 */
+    --foreground: 220 15% 20%;          /* #2D3748 - 진한 차콜 */
     
-    --card: 40 33% 99%;                 /* #FEFDFB - Warm White 카드 */
-    --card-foreground: 220 13% 26%;
+    --card: 45 25% 95%;                 /* #F5F2EC - Warm 카드 */
+    --card-foreground: 220 15% 20%;
     
-    --popover: 40 33% 99%;              /* 팝오버/모달 - Warm White */
-    --popover-foreground: 220 13% 26%;
+    --popover: 45 25% 95%;
+    --popover-foreground: 220 15% 20%;
     
     /* Surface 확장 토큰 */
-    --surface: 40 33% 99%;              /* 카드/섹션 기본 - Warm White */
-    --surface-2: 40 20% 96%;            /* 입력, 툴바, 서브 패널 */
-    --surface-elevated: 0 0% 100%;      /* 모달/팝오버 */
-    --overlay: 220 13% 20% / 0.4;       /* 모달 뒤 dim - 더 부드럽게 */
+    --surface: 45 25% 95%;
+    --surface-2: 45 20% 90%;
+    --surface-elevated: 45 20% 97%;
+    --overlay: 220 15% 15% / 0.5;
     
     /* Primary - Warm 톤에 어울리는 딥 블루 */
     --primary: 220 70% 45%;             /* #2563EB 계열 - Warm에 어울리는 파랑 */
     --primary-foreground: 0 0% 100%;
     
-    /* Secondary - Warm 회색 */
-    --secondary: 30 10% 92%;            /* Warm gray */
-    --secondary-foreground: 220 13% 26%;
+    /* Secondary */
+    --secondary: 40 15% 88%;
+    --secondary-foreground: 220 15% 20%;
     
-    /* Muted - 부드러운 보조 텍스트 */
-    --muted: 30 10% 92%;
-    --muted-foreground: 220 9% 50%;     /* #6B7280 - 부드러운 보조 텍스트 */
+    /* Muted */
+    --muted: 40 15% 88%;
+    --muted-foreground: 220 10% 45%;
     
-    /* Accent - Warm 톤 */
-    --accent: 30 15% 93%;
-    --accent-foreground: 220 13% 26%;
+    /* Accent */
+    --accent: 40 18% 90%;
+    --accent-foreground: 220 15% 20%;
     
     /* Semantic Colors - 조금 더 부드럽게 */
     --destructive: 0 65% 50%;           /* 살짝 채도 낮춤 */
@@ -53,20 +53,20 @@
     --success: 142 60% 45%;             /* 살짝 채도 낮춤 */
     --success-foreground: 0 0% 100%;
     
-    /* Border - Warm 톤 경계선 */
-    --border: 30 10% 88%;               /* Warm gray border */
-    --border-strong: 30 8% 75%;         /* 강조 경계 */
-    --input: 30 10% 88%;
-    --divider: 30 10% 92%;              /* 리스트 구분선 */
+    /* Border */
+    --border: 40 15% 82%;
+    --border-strong: 40 12% 70%;
+    --input: 40 15% 82%;
+    --divider: 40 15% 86%;
     
-    /* Focus/Ring - 부드러운 피드백 */
-    --ring: 220 70% 45%;                /* primary와 동일 */
+    /* Focus/Ring */
+    --ring: 220 70% 45%;
     
-    /* 텍스트 위계 (4단) - 부드러운 대비 */
-    --text-strong: 220 15% 20%;         /* 제목 - 진한 차콜 */
-    --text: 220 13% 26%;                /* 본문 - 부드러운 차콜 */
-    --text-muted: 220 9% 50%;           /* 보조 - 중간 회색 */
-    --text-subtle: 220 9% 62%;          /* placeholder - 연한 회색 */
+    /* 텍스트 위계 (4단) */
+    --text-strong: 220 20% 15%;
+    --text: 220 15% 20%;
+    --text-muted: 220 10% 45%;
+    --text-subtle: 220 8% 58%;
     
     /* Selection - 부드러운 하이라이트 */
     --selection: 220 70% 45% / 0.12;
@@ -1385,20 +1385,20 @@
 
 /* Light 테마 - 이미 :root에서 정의됨, .light는 명시적 토글용 */
 .light {
-  --background: 40 33% 97%;
-  --foreground: 220 13% 26%;
-  --card: 40 33% 99%;
-  --card-foreground: 220 13% 26%;
-  --muted-foreground: 220 9% 50%;
-  --border: 30 10% 88%;
-  --border-strong: 30 8% 75%;
+  --background: 45 30% 92%;
+  --foreground: 220 15% 20%;
+  --card: 45 25% 95%;
+  --card-foreground: 220 15% 20%;
+  --muted-foreground: 220 10% 45%;
+  --border: 40 15% 82%;
+  --border-strong: 40 12% 70%;
 }
 
 /* Light 테마 Selection */
 .light ::selection,
 :root:not(.dark):not(.terminal) ::selection {
-  background: hsl(220 70% 45% / 0.15);
-  color: hsl(220 13% 26%);
+  background: hsl(220 70% 45% / 0.18);
+  color: hsl(220 15% 20%);
 }
 
 /* Light 테마 카드 스타일 - Flat design, 미니멀 shadow */
