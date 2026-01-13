@@ -75,9 +75,12 @@ og.get('/', async (c) => {
       const pngData = resvg.render();
       const pngBuffer = pngData.asPng();
 
-      c.header('Content-Type', 'image/png');
-      c.header('Cache-Control', 'public, max-age=86400');
-      return c.body(pngBuffer);
+      return new Response(pngBuffer, {
+        headers: {
+          'Content-Type': 'image/png',
+          'Cache-Control': 'public, max-age=86400',
+        },
+      });
     } catch {
       c.header('Content-Type', 'image/svg+xml');
       c.header('Cache-Control', 'public, max-age=86400');
