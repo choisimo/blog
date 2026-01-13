@@ -1,6 +1,28 @@
 {
-  "total": 138,
+  "total": 140,
   "items": [
+    {
+      "path": "/posts/2026/shellscript-analyze-1.md",
+      "year": "2026",
+      "slug": "shellscript-analyze-1",
+      "title": "쉘 스크립트의 공백: 리눅스 철학이 숨겨진 한 줄의 코드",
+      "description": "[ 명령어 앞의 공백 하나가 왜 필요한지, 리눅스 철학을 통해 이해하기",
+      "snippet": "[ 명령어 앞의 공백 하나가 왜 필요한지, 리눅스 철학을 통해 이해하기",
+      "date": "2026-01-06",
+      "tags": [
+        "쉘 스크립트",
+        "리눅스",
+        "시스템 프로그래밍",
+        "커널",
+        "개발 철학"
+      ],
+      "category": "Tech & Philosophy",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "coverImage": "/images/2026/shellscript-analyze-1/1768261006592.png",
+      "url": "/blog/2026/shellscript-analyze-1"
+    },
     {
       "path": "/posts/2026/nobel1-kursk-tanks.md",
       "year": "2026",
@@ -113,6 +135,36 @@
       "published": true,
       "coverImage": "/images/2025/공허.png",
       "url": "/blog/2025/감동을_잃어버린_그대들에게"
+    },
+    {
+      "path": "/posts/2026/proxmox-network-add.md",
+      "year": "2026",
+      "slug": "proxmox-network-add",
+      "title": "Proxmox 네트워크 추가하기",
+      "description": "Proxmox 네트워크 추가하기",
+      "snippet": "Proxmox 네트워크 추가하기",
+      "date": "2025-12-28",
+      "tags": [
+        "vmbr",
+        "vmbr_local",
+        "proxmox",
+        "vmbr0",
+        "vmbr1",
+        "bridge",
+        "STP",
+        "VLAN",
+        "VLAN aware"
+      ],
+      "category": [
+        "네트워크",
+        "proxmox",
+        "lxc"
+      ],
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "coverImage": "/images/2026/proxmox-network-add/1768261969281.png",
+      "url": "/blog/2026/proxmox-network-add"
     },
     {
       "path": "/posts/2025/k8s-overview.md",
@@ -2903,7 +2955,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-01-12T04:41:33.996Z",
+  "generatedAt": "2026-01-13T00:46:01.489Z",
   "years": [
     "2026",
     "2025",

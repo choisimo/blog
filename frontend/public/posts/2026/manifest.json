@@ -3,9 +3,11 @@
     "current-crowd.md",
     "io-redirection-pipeline.md",
     "nobel1-kursk-tanks.md",
-    "remote-server-think.md"
+    "proxmox-network-add.md",
+    "remote-server-think.md",
+    "shellscript-analyze-1.md"
   ],
-  "generatedAt": "2026-01-12T04:41:33.937Z",
-  "totalFiles": 4,
+  "generatedAt": "2026-01-13T00:46:01.435Z",
+  "totalFiles": 6,
   "excludedFiles": 0
 }
