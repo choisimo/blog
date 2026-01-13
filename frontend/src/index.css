@@ -5,70 +5,71 @@
 @layer base {
   :root {
     /* ============================================
-       Light Theme - Soft Gray Foundation
-       설계 원칙: "부드럽게 + 명확하게"
-       - Pure White 금지 → 옅은 회색톤 배경
-       - 텍스트 대비 WCAG 4.5:1 이상
-       - 명확한 계층 구조 (3단 surface)
+       Light Theme - Warm Editorial Design (Claude Style)
+       설계 원칙: "따뜻하게 + 부드럽게"
+       - Warm Off-white 배경 → 눈의 피로 감소
+       - 부드러운 텍스트 대비 (차콜 계열)
+       - Flat design, 미니멀한 장식
+       - 읽기에 최적화된 타이포그래피
        ============================================ */
     
-    /* Surface 계층 (3단) - Glare 감소 */
-    --background: 220 14% 96%;          /* #F4F5F7 - 옅은 회색 배경, 눈부심 방지 */
-    --foreground: 224 71% 4%;           /* #0A0F1A - 진한 텍스트 (대비 강화) */
+    /* Surface 계층 (3단) - Warm Off-white */
+    --background: 40 33% 97%;           /* #FAF8F5 - Warm Off-white 배경 */
+    --foreground: 220 13% 26%;          /* #374151 - 부드러운 차콜 (눈 피로 감소) */
     
-    --card: 0 0% 100%;                  /* #FFFFFF - 카드는 흰색 (배경과 구분) */
-    --card-foreground: 224 71% 4%;
+    --card: 40 33% 99%;                 /* #FEFDFB - Warm White 카드 */
+    --card-foreground: 220 13% 26%;
     
-    --popover: 0 0% 100%;               /* 팝오버/모달 - 최상위 */
-    --popover-foreground: 224 71% 4%;
+    --popover: 40 33% 99%;              /* 팝오버/모달 - Warm White */
+    --popover-foreground: 220 13% 26%;
     
     /* Surface 확장 토큰 */
-    --surface: 0 0% 100%;               /* 카드/섹션 기본 */
-    --surface-2: 220 14% 96%;           /* 입력, 툴바, 서브 패널 */
+    --surface: 40 33% 99%;              /* 카드/섹션 기본 - Warm White */
+    --surface-2: 40 20% 96%;            /* 입력, 툴바, 서브 패널 */
     --surface-elevated: 0 0% 100%;      /* 모달/팝오버 */
-    --overlay: 224 71% 4% / 0.5;        /* 모달 뒤 dim */
+    --overlay: 220 13% 20% / 0.4;       /* 모달 뒤 dim - 더 부드럽게 */
     
-    /* Primary - 채도 낮춤 (시선 약탈 방지) */
-    --primary: 226 55% 50%;             /* #4A6BB5 - 덜 자극적인 파랑 */
+    /* Primary - Warm 톤에 어울리는 딥 블루 */
+    --primary: 220 70% 45%;             /* #2563EB 계열 - Warm에 어울리는 파랑 */
     --primary-foreground: 0 0% 100%;
     
-    /* Secondary - 구분감 있는 회색 */
-    --secondary: 220 13% 91%;           /* #E5E7EB */
-    --secondary-foreground: 224 71% 4%;
+    /* Secondary - Warm 회색 */
+    --secondary: 30 10% 92%;            /* Warm gray */
+    --secondary-foreground: 220 13% 26%;
     
-    /* Muted - 텍스트 위계 강화 */
-    --muted: 220 13% 91%;
-    --muted-foreground: 220 9% 46%;     /* #6B7280 - 대비 3.8:1 (보조 텍스트) */
+    /* Muted - 부드러운 보조 텍스트 */
+    --muted: 30 10% 92%;
+    --muted-foreground: 220 9% 50%;     /* #6B7280 - 부드러운 보조 텍스트 */
     
-    /* Accent */
-    --accent: 220 13% 91%;
-    --accent-foreground: 224 71% 4%;
+    /* Accent - Warm 톤 */
+    --accent: 30 15% 93%;
+    --accent-foreground: 220 13% 26%;
     
-    /* Semantic Colors */
-    --destructive: 0 72% 51%;           /* #DC2626 */
+    /* Semantic Colors - 조금 더 부드럽게 */
+    --destructive: 0 65% 50%;           /* 살짝 채도 낮춤 */
     --destructive-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;              /* #F59E0B */
+    --warning: 38 85% 50%;              /* 살짝 채도 낮춤 */
     --warning-foreground: 0 0% 100%;
-    --success: 142 71% 45%;             /* #22C55E */
+    --success: 142 60% 45%;             /* 살짝 채도 낮춤 */
     --success-foreground: 0 0% 100%;
     
-    /* Border - 확실한 경계선 */
-    --border: 220 13% 86%;              /* #D1D5DB - 더 진한 보더 */
-    --border-strong: 220 13% 69%;       /* #9CA3AF - 강조 경계 */
-    --input: 220 13% 86%;
-    --divider: 220 13% 91%;             /* 리스트 구분선 */
+    /* Border - Warm 톤 경계선 */
+    --border: 30 10% 88%;               /* Warm gray border */
+    --border-strong: 30 8% 75%;         /* 강조 경계 */
+    --input: 30 10% 88%;
+    --divider: 30 10% 92%;              /* 리스트 구분선 */
     
-    /* Focus/Ring - 명확한 피드백 */
-    --ring: 226 55% 50%;                /* primary와 동일 */
+    /* Focus/Ring - 부드러운 피드백 */
+    --ring: 220 70% 45%;                /* primary와 동일 */
     
-    /* 텍스트 위계 (4단) */
-    --text-strong: 224 71% 4%;          /* 제목 - #0A0F1A */
-    --text: 224 25% 18%;                /* 본문 - #232B3B */
-    --text-muted: 220 9% 46%;           /* 보조 - #6B7280 */
-    --text-subtle: 220 9% 64%;          /* placeholder - #9CA3AF */
+    /* 텍스트 위계 (4단) - 부드러운 대비 */
+    --text-strong: 220 15% 20%;         /* 제목 - 진한 차콜 */
+    --text: 220 13% 26%;                /* 본문 - 부드러운 차콜 */
+    --text-muted: 220 9% 50%;           /* 보조 - 중간 회색 */
+    --text-subtle: 220 9% 62%;          /* placeholder - 연한 회색 */
     
-    /* Selection */
-    --selection: 226 55% 50% / 0.15;
+    /* Selection - 부드러운 하이라이트 */
+    --selection: 220 70% 45% / 0.12;
     
     --radius: 0.5rem;
 
@@ -1382,49 +1383,37 @@
   @apply ring-2 ring-primary/30 border-primary;
 }
 
-/* ============================================
-   Light Theme - Enhanced Readability
-   "부드럽게 + 명확하게" 원칙 적용
-   ============================================ */
-
 /* Light 테마 - 이미 :root에서 정의됨, .light는 명시적 토글용 */
 .light {
-  /* Surface 계층 재확인 */
-  --background: 220 14% 96%;
-  --foreground: 224 71% 4%;
-  --card: 0 0% 100%;
-  --card-foreground: 224 71% 4%;
-  
-  /* 강화된 텍스트 대비 */
-  --muted-foreground: 220 9% 40%;       /* 더 진한 보조 텍스트 */
-  
-  /* 확실한 보더 */
-  --border: 220 13% 82%;
-  --border-strong: 220 13% 65%;
+  --background: 40 33% 97%;
+  --foreground: 220 13% 26%;
+  --card: 40 33% 99%;
+  --card-foreground: 220 13% 26%;
+  --muted-foreground: 220 9% 50%;
+  --border: 30 10% 88%;
+  --border-strong: 30 8% 75%;
 }
 
 /* Light 테마 Selection */
 .light ::selection,
 :root:not(.dark):not(.terminal) ::selection {
-  background: hsl(226 55% 50% / 0.2);
-  color: hsl(224 71% 4%);
+  background: hsl(220 70% 45% / 0.15);
+  color: hsl(220 13% 26%);
 }
 
-/* Light 테마 카드 스타일 - 배경과 확실한 구분 */
+/* Light 테마 카드 스타일 - Flat design, 미니멀 shadow */
 :root:not(.dark):not(.terminal) .card,
 .light .card,
 :root:not(.dark):not(.terminal) [data-slot="card"],
 .light [data-slot="card"] {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
-  box-shadow: 0 1px 3px hsl(220 13% 10% / 0.04),
-              0 1px 2px hsl(220 13% 10% / 0.02);
+  box-shadow: 0 1px 2px hsl(30 10% 30% / 0.03);
 }
 
 :root:not(.dark):not(.terminal) .card:hover,
 .light .card:hover {
-  box-shadow: 0 4px 12px hsl(220 13% 10% / 0.08),
-              0 2px 4px hsl(220 13% 10% / 0.04);
+  box-shadow: 0 2px 8px hsl(30 10% 30% / 0.06);
 }
 
 /* Light 테마 입력 필드 - 명확한 경계 */
