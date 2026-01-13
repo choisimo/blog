@@ -6,7 +6,7 @@
   "scripts": {
     "predev": "npm run generate-manifests",
     "dev": "vite --config config/vite.config.ts",
-    "prebuild": "npm run generate-manifests && npm run generate-seo",
+    "prebuild": "npm run generate-manifests && npm run generate-seo && npm run optimize-images",
     "build": "vite build --config config/vite.config.ts",
     "postbuild": "node scripts/generate-static-html.js",
     "build:dev": "vite build --mode development --config config/vite.config.ts",
@@ -30,7 +30,8 @@
     "prepare": "husky",
     "korean:scan": "node scripts/korean-normalize.js",
     "korean:fix": "node scripts/korean-normalize.js --fix --remove-zero-width",
-    "korean:scan:ci": "node scripts/korean-normalize.js --ci --silent"
+    "korean:scan:ci": "node scripts/korean-normalize.js --ci --silent",
+    "optimize-images": "node scripts/optimize-images.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -133,7 +134,8 @@
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",
     "vite": "^5.4.1",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "sharp": "^0.33.5"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [

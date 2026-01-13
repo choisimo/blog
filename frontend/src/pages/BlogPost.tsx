@@ -727,6 +727,7 @@ const BlogPost = () => {
                     content={localized?.content ?? post.content}
                     inlineEnabled={inlineEnabled}
                     postTitle={localized?.title ?? post.title}
+                    postPath={`${post.year}/${post.slug}`}
                   />
                 </Suspense>
               </div>

@@ -206,6 +206,7 @@
       "author": "Admin",
       "readingTime": "3 min read",
       "published": true,
+      "coverImage": "/posts/2025/image/AnimalsMind/1768277771709.png",
       "url": "/blog/2025/AnimalsMind"
     },
     {
@@ -291,7 +292,7 @@
       ],
       "category": "Tech Essay",
       "author": "Admin",
-      "readingTime": "3 min read",
+      "readingTime": "4 min read",
       "published": true,
       "coverImage": "/images/2025/future-map.jpg",
       "url": "/blog/2025/future-tech-six-insights"
@@ -335,6 +336,7 @@
       "author": "Admin",
       "readingTime": "3 min read",
       "published": true,
+      "coverImage": "/posts/2025/image/path-new-friend-essay/1768279427689.png",
       "url": "/blog/2025/path-new-friend-essay"
     },
     {
@@ -460,6 +462,7 @@
       "author": "Admin",
       "readingTime": "4 min read",
       "published": true,
+      "coverImage": "/posts/2025/image/shell-powertools-journal/1768278855958.png",
       "url": "/blog/2025/shell-powertools-journal"
     },
     {
@@ -1257,8 +1260,9 @@
       ],
       "category": "기술",
       "author": "Admin",
-      "readingTime": "3 min read",
+      "readingTime": "2 min read",
       "published": true,
+      "coverImage": "/posts/2025/image/FutureClouding/1768279253056.png",
       "url": "/blog/2025/FutureClouding"
     },
     {
@@ -1761,6 +1765,7 @@
       "author": "Admin",
       "readingTime": "3 min read",
       "published": true,
+      "coverImage": "/posts/2025/image/memory-management-study/1768280399652.png",
       "url": "/blog/2025/memory-management-study"
     },
     {
@@ -2955,7 +2960,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-01-13T03:35:13.393Z",
+  "generatedAt": "2026-01-13T05:28:56.928Z",
   "years": [
     "2026",
     "2025",

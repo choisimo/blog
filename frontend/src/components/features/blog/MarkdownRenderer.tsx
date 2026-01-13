@@ -43,6 +43,7 @@ interface MarkdownRendererProps {
   className?: string;
   inlineEnabled?: boolean;
   postTitle?: string;
+  postPath?: string; // e.g., "2025/future-tech-six-insights" for resolving relative image paths
 }
 
 export const MarkdownRenderer = ({
@@ -50,6 +51,7 @@ export const MarkdownRenderer = ({
   className = '',
   inlineEnabled = false,
   postTitle = '',
+  postPath = '',
 }: MarkdownRendererProps) => {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const { isTerminal } = useTheme();
@@ -337,7 +339,7 @@ export const MarkdownRenderer = ({
             </a>
           ),
           img: ({ src, alt }) => (
-            <ClickableImage src={src || ''} alt={alt} isTerminal={isTerminal} />
+            <ClickableImage src={src || ''} alt={alt} isTerminal={isTerminal} postPath={postPath} />
           ),
           table: ({ children }) => (
             <div className='overflow-x-auto my-8 max-w-4xl mx-auto'>
