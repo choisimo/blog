@@ -63,7 +63,7 @@ export function ShellModal({
       />
       {/* Content container - must be above backdrop */}
       <div
-        className="relative z-10 flex flex-col bg-[hsl(var(--terminal-code-bg))] border-t border-primary/20"
+        className="relative z-10 flex flex-col bg-[hsl(var(--terminal-code-bg))] border-t border-primary/20 w-full max-w-full overflow-x-hidden"
         style={{ height: viewportHeight }}
       >
         {/* Input field at the top - redesigned for long paths */}

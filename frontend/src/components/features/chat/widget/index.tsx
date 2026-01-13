@@ -144,9 +144,9 @@ export default function ChatWidget(props: {
       <div
         className={cn(
           "fixed z-[var(--z-chat-widget)] flex flex-col overflow-hidden border bg-background shadow-2xl transition-all",
-          // Mobile: always fullscreen (adjusted for keyboard)
+          // Mobile: always fullscreen (adjusted for keyboard) with overflow protection
           isMobile
-            ? "inset-0 rounded-none"
+            ? "inset-0 rounded-none max-w-full w-full overflow-x-hidden"
             : "bottom-20 left-1/2 w-[min(100%-24px,42rem)] -translate-x-1/2 rounded-2xl",
           // Terminal theme: PC rounded, mobile fullscreen
           isTerminal &&

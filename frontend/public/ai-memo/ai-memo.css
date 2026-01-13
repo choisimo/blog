@@ -1606,6 +1606,16 @@
     font-weight: 600;
   }
 
+  /* Mobile close button - larger touch target (min 44x44px for accessibility) */
+  .header .close {
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+    border-radius: 12px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
   .tabs {
     flex-shrink: 0;
     padding: 8px 16px;

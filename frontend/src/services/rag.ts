@@ -237,38 +237,56 @@ export async function findRelatedPosts(
  */
 export async function getRAGContextForChat(
   userQuery: string,
-  maxTokens = 2000
+  maxTokens = 2000,
+  timeoutMs = 8000
 ): Promise<string | null> {
-  const response = await semanticSearch(userQuery, { n_results: 3 });
+  // Create abort controller with timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-  if (!response.ok || !response.data || response.data.results.length === 0) {
-    return null;
-  }
+  try {
+    const response = await semanticSearch(userQuery, { 
+      n_results: 3,
+      signal: controller.signal,
+    });
 
-  const contextParts: string[] = [];
-  let currentLength = 0;
+    if (!response.ok || !response.data || response.data.results.length === 0) {
+      return null;
+    }
 
-  for (const result of response.data.results) {
-    const entry = [
-      `[${result.metadata.title || 'Untitled'}]`,
-      result.content.slice(0, 800),
-      `(관련도: ${(result.score * 100).toFixed(1)}%)`,
+    const contextParts: string[] = [];
+    let currentLength = 0;
+
+    for (const result of response.data.results) {
+      const entry = [
+        `[${result.metadata.title || 'Untitled'}]`,
+        result.content.slice(0, 800),
+        `(관련도: ${(result.score * 100).toFixed(1)}%)`,
+        '',
+      ].join('\n');
+
+      if (currentLength + entry.length > maxTokens * 4) break; // rough char estimate
+      contextParts.push(entry);
+      currentLength += entry.length;
+    }
+
+    if (contextParts.length === 0) return null;
+
+    return [
+      '[블로그 관련 문서]',
+      '다음은 질문과 관련된 블로그 글입니다. 답변 시 참고하세요:',
       '',
+      ...contextParts,
     ].join('\n');
-
-    if (currentLength + entry.length > maxTokens * 4) break; // rough char estimate
-    contextParts.push(entry);
-    currentLength += entry.length;
+  } catch (err) {
+    // Timeout or network error - return null to continue without RAG context
+    if (import.meta.env?.DEV) {
+      console.warn('[RAG] Context fetch failed or timed out:', err);
+    }
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  if (contextParts.length === 0) return null;
-
-  return [
-    '[블로그 관련 문서]',
-    '다음은 질문과 관련된 블로그 글입니다. 답변 시 참고하세요:',
-    '',
-    ...contextParts,
-  ].join('\n');
 }
 
 // ============================================================================

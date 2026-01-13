@@ -254,7 +254,7 @@ export default function FloatingActionBar() {
   const containerClasses = cn(
     "fixed inset-x-0 z-[var(--z-fab-bar)] px-3 sm:px-4 print:hidden",
     isMobile
-      ? "bottom-0 pb-[calc(env(safe-area-inset-bottom,0px))]"
+      ? "bottom-0 pb-[calc(env(safe-area-inset-bottom,0px))] max-w-full overflow-x-hidden"
       : "bottom-[calc(16px+env(safe-area-inset-bottom,0px))]",
     // Smooth slide animation with longer duration for better UX
     "transition-all duration-300 ease-out",
