@@ -54,6 +54,11 @@ jobs:
         
     - name: Install dependencies (frontend)
       run: npm --prefix frontend ci
+
+    - name: Organize images (move to proper directories)
+      run: |
+        chmod +x ./scripts/organize-images.sh
+        ./scripts/organize-images.sh
       
     - name: Generate manifests (frontend)
       run: npm --prefix frontend run generate-manifests
@@ -67,11 +72,13 @@ jobs:
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
         
-        # Stage generated files
+        # Stage generated files and organized images
         git add -f \
           frontend/public/posts-manifest.json \
           frontend/public/posts/posts-manifest.json \
           frontend/public/posts/**/manifest.json \
+          frontend/public/posts/**/*.md \
+          frontend/public/images/ \
           frontend/public/sitemap.xml \
           frontend/public/rss.xml \
           frontend/public/robots.txt 2>/dev/null || true
@@ -82,7 +89,7 @@ jobs:
           exit 0
         fi
         
-        git commit -m "chore(ci): update manifests and SEO artifacts"
+        git commit -m "chore(ci): update manifests, SEO artifacts and organize images"
         
         # Push with retry (handles race condition when main diverges)
         MAX_RETRIES=3
@@ -98,15 +105,18 @@ jobs:
               # Re-generate and re-commit
               npm --prefix frontend run generate-manifests
               npm --prefix frontend run generate-seo
+              ./scripts/organize-images.sh
               git add -f \
                 frontend/public/posts-manifest.json \
                 frontend/public/posts/posts-manifest.json \
                 frontend/public/posts/**/manifest.json \
+                frontend/public/posts/**/*.md \
+                frontend/public/images/ \
                 frontend/public/sitemap.xml \
                 frontend/public/rss.xml \
                 frontend/public/robots.txt 2>/dev/null || true
               if ! git diff --cached --quiet; then
-                git commit -m "chore(ci): update manifests and SEO artifacts"
+                git commit -m "chore(ci): update manifests, SEO artifacts and organize images"
               fi
             }
           }
