@@ -39,8 +39,9 @@ function loadManifest() {
 }
 
 function escapeHtml(str) {
-  if (!str) return '';
-  return str
+  if (str == null) return '';
+  if (Array.isArray(str)) return str.map(s => escapeHtml(s)).join(', ');
+  return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
