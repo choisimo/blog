@@ -45,7 +45,8 @@ function buildOgImageUrl(env: Env, title: string, subtitle?: string): string {
 export async function resolvePostMeta(url: URL, env: Env): Promise<PostMeta> {
   const pathname = url.pathname;
 
-  const blogPostMatch = pathname.match(/^\/blog\/(\d{4})\/([^/]+)\/?$/);
+  // Support both /blog/ and /posts/ URL patterns
+  const blogPostMatch = pathname.match(/^\/(?:blog|posts)\/(\d{4})\/([^/]+)\/?$/);
   if (blogPostMatch) {
     const [, year, slug] = blogPostMatch;
     const manifest = await fetchManifest(env);
@@ -83,7 +84,7 @@ export async function resolvePostMeta(url: URL, env: Env): Promise<PostMeta> {
     };
   }
 
-  if (pathname === '/blog' || pathname === '/blog/') {
+  if (pathname === '/blog' || pathname === '/blog/' || pathname === '/posts' || pathname === '/posts/') {
     return {
       title: `Blog | ${env.SITE_NAME}`,
       description: '기술, 개발, 생각에 대한 글들',
