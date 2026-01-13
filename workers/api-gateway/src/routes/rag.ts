@@ -14,7 +14,6 @@ import type { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { Env } from '../types';
 import { success, error } from '../lib/response';
-import { getApiBaseUrl } from '../lib/config';
 
 type RagContext = { Bindings: Env };
 
@@ -22,14 +21,21 @@ const rag = new Hono<RagContext>();
 
 /**
  * Backend RAG API로 요청을 프록시합니다.
+ * 
+ * IMPORTANT: BACKEND_ORIGIN을 직접 사용해야 합니다.
+ * getApiBaseUrl()은 기본값이 api.nodove.com (Workers 자신)이므로
+ * 무한 루프가 발생합니다 (Cloudflare error 1033).
  */
 async function proxyToBackend(
   c: Context<RagContext>,
   path: string,
   method: 'GET' | 'POST' = 'POST'
 ) {
-  const apiBaseUrl = await getApiBaseUrl(c.env);
-  const upstreamUrl = `${apiBaseUrl}/api/v1/rag${path}`;
+  const backendOrigin = c.env.BACKEND_ORIGIN;
+  if (!backendOrigin) {
+    return error(c, 'BACKEND_ORIGIN not configured', 500, 'CONFIG_ERROR');
+  }
+  const upstreamUrl = `${backendOrigin}/api/v1/rag${path}`;
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
