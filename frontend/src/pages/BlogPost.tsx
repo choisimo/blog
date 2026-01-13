@@ -100,11 +100,14 @@ const BlogPost = () => {
     return !!post.translations?.[language];
   }, [post, language]);
 
-  // Resolve localized content (prefer AI translation if native not available)
   const localized = useMemo(() => {
     if (!post) return null;
     
-    // If AI translation is available and native translation doesn't exist, use AI
+    const postMatchesUrl = post.year === year && post.slug === slug;
+    if (!postMatchesUrl) {
+      return resolveLocalizedPost(post, language);
+    }
+    
     if (aiTranslation && !hasNativeTranslation) {
       return {
         title: aiTranslation.title,
@@ -114,9 +117,8 @@ const BlogPost = () => {
       };
     }
     
-    // Otherwise use native localization
     return resolveLocalizedPost(post, language);
-  }, [post, language, aiTranslation, hasNativeTranslation]);
+  }, [post, language, aiTranslation, hasNativeTranslation, year, slug]);
 
   const readingTimeLabel = useMemo(() => {
     if (!post) return '';
@@ -239,16 +241,19 @@ const BlogPost = () => {
   useEffect(() => {
     if (!post || !year || !slug) return;
     
+    const postMatchesUrl = post.year === year && post.slug === slug;
+    if (!postMatchesUrl) {
+      return;
+    }
+    
     const defaultLang = post.defaultLanguage || post.language || 'ko';
     
-    // If viewing in default language or native translation exists, clear AI translation
     if (language === defaultLang || post.translations?.[language]) {
       setAiTranslation(null);
       setTranslationError(null);
       return;
     }
 
-    // Need AI translation
     let cancelled = false;
 
     const loadTranslation = async () => {
@@ -256,7 +261,6 @@ const BlogPost = () => {
       setTranslationError(null);
 
       try {
-        // First, try to get cached translation
         const cached = await getCachedTranslation(year, slug, language);
         
         if (cached && !cancelled) {
@@ -265,7 +269,6 @@ const BlogPost = () => {
           return;
         }
 
-        // No cache, request AI translation
         const result = await translatePost({
           year,
           slug,

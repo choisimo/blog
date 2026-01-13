@@ -52,15 +52,15 @@ flowchart LR
 
 ### A) 인증(Auth) — Workers에서 “직접” 처리
 
-| 메서드 | 엔드포인트(URI)                    | 역할                  | 필수 파라미터                     | 인증/권한   |
-| :----: | :--------------------------------- | :-------------------- | :-------------------------------- | :---------- |
+| 메서드 | 엔드포인트(URI)                  | 역할                  | 필수 파라미터                   | 인증/권한   |
+| :----: | :------------------------------- | :-------------------- | :------------------------------ | :---------- |
 |  POST  | `/api/v1/auth/login`             | OTP 로그인 시작       | `{ email }`                     | 없음        |
 |  POST  | `/api/v1/auth/verify-otp`        | OTP 검증 후 토큰 발급 | `{ email, otp }`                | 없음        |
 |  POST  | `/api/v1/auth/resend-otp`        | OTP 재전송            | `{ email }`                     | 없음        |
-|  POST  | `/api/v1/auth/refresh`           | 토큰 갱신             | refresh token(쿠키/헤더)          | 사용자      |
-|  POST  | `/api/v1/auth/logout`            | 로그아웃              | -                                 | 사용자      |
-|  GET  | `/api/v1/auth/me`                | 내 정보               | -                                 | 사용자      |
-|  POST  | `/api/v1/auth/anonymous`         | 익명 JWT 발급         | -                                 | 없음        |
+|  POST  | `/api/v1/auth/refresh`           | 토큰 갱신             | refresh token(쿠키/헤더)        | 사용자      |
+|  POST  | `/api/v1/auth/logout`            | 로그아웃              | -                               | 사용자      |
+|  GET   | `/api/v1/auth/me`                | 내 정보               | -                               | 사용자      |
+|  POST  | `/api/v1/auth/anonymous`         | 익명 JWT 발급         | -                               | 없음        |
 |  POST  | `/api/v1/auth/anonymous/refresh` | 익명 JWT 갱신         | `Authorization: Bearer <token>` | 익명 사용자 |
 
 - **프론트 근거**: [frontend/src/services/auth.ts](cci:7://file:///home/nodove/workspace/blog/frontend/src/services/auth.ts:0:0-0:0) ([requestAnonymousToken()](cci:1://file:///home/nodove/workspace/blog/frontend/src/services/auth.ts:255:0-274:1), [refreshAnonymousToken()](cci:1://file:///home/nodove/workspace/blog/frontend/src/services/auth.ts:276:0-298:1))
@@ -68,12 +68,12 @@ flowchart LR
 
 ### B) Chat / Inline AI Task — Workers가 “백엔드로 프록시”
 
-|    메서드    | 엔드포인트(URI)                          | 역할                                   | 필수 파라미터                | 인증/권한        |
-| :----------: | :--------------------------------------- | :------------------------------------- | :--------------------------- | :--------------- |
-| POST/GET/... | `/api/v1/chat/session`                 | 세션 생성/조회/관리                    | 세션 관련 body               | 주로 사용자/관리 |
+|    메서드    | 엔드포인트(URI)                        | 역할                                   | 필수 파라미터              | 인증/권한        |
+| :----------: | :------------------------------------- | :------------------------------------- | :------------------------- | :--------------- |
+| POST/GET/... | `/api/v1/chat/session`                 | 세션 생성/조회/관리                    | 세션 관련 body             | 주로 사용자/관리 |
 |     POST     | `/api/v1/chat/session/:id/message`     | 채팅 메시지 전송(스트리밍)             | `{ messages, ... }`        | 사용자           |
 |     POST     | `/api/v1/chat/session/:sessionId/task` | 인라인 태스크 실행                     | `{ taskType, input, ... }` | 사용자           |
-|     POST     | `/api/v1/chat/aggregate`               | 집계/요약성 작업(게이트웨이 로직 포함) | body                         | 사용자/관리      |
+|     POST     | `/api/v1/chat/aggregate`               | 집계/요약성 작업(게이트웨이 로직 포함) | body                       | 사용자/관리      |
 
 - **프론트 근거**:
   - `frontend/src/services/ai.ts` → `invokeTask()`가 `/api/v1/chat/session/:sessionId/task`
@@ -85,14 +85,14 @@ flowchart LR
 
 ### C) AI (스케치/프리즘/체인/비전/생성) — “겉보기는 Workers 처리지만 실제 AI 실행은 Backend로”
 
-| 메서드 | 엔드포인트(URI)           | 역할          | 필수 파라미터 | 인증/권한     |
-| :----: | :------------------------ | :------------ | :------------ | :------------ |
+| 메서드 | 엔드포인트(URI)         | 역할          | 필수 파라미터 | 인증/권한     |
+| :----: | :---------------------- | :------------ | :------------ | :------------ |
 |  POST  | `/api/v1/ai/sketch`     | 스케치형 생성 | body          | 관리자/사용자 |
 |  POST  | `/api/v1/ai/prism`      | prism 작업    | body          | 관리자/사용자 |
 |  POST  | `/api/v1/ai/chain`      | chain 작업    | body          | 관리자/사용자 |
 |  POST  | `/api/v1/ai/generate`   | 텍스트 생성   | body          | 관리자/사용자 |
 |  POST  | `/api/v1/ai/vision/...` | 이미지 분석   | body          | 관리자/사용자 |
-|  GET  | `/api/v1/ai/health`     | AI 헬스       | -             | -             |
+|  GET   | `/api/v1/ai/health`     | AI 헬스       | -             | -             |
 
 - **Workers 근거**: `workers/api-gateway/src/routes/ai.ts`
   - 주석/구현상 “Workers 내부 AI service”를 호출하지만,
@@ -101,8 +101,8 @@ flowchart LR
 
 ### D) Translate — Workers 내부 캐시(D1) + AI 호출은 Backend 경유
 
-| 메서드 | 엔드포인트(URI)       | 역할            | 필수 파라미터               | 인증/권한   |
-| :----: | :-------------------- | :-------------- | :-------------------------- | :---------- |
+| 메서드 | 엔드포인트(URI)     | 역할            | 필수 파라미터             | 인증/권한   |
+| :----: | :------------------ | :-------------- | :------------------------ | :---------- |
 |  POST  | `/api/v1/translate` | 번역(캐시 포함) | `{ text, from, to, ... }` | 사용자/관리 |
 
 - **프론트 근거**: `frontend/src/services/translate.ts`
@@ -112,12 +112,12 @@ flowchart LR
 
 ### E) RAG — Workers는 프록시, Backend가 RAG 스택 호출
 
-|     메서드     | 엔드포인트(URI)        | 역할               | 필수 파라미터                    | 인증/권한        |
-| :-------------: | :--------------------- | :----------------- | :------------------------------- | :--------------- |
-|      POST      | `/api/v1/rag/search` | 시맨틱 검색        | `{ query, n_results, filter }` | 보통 없음/환경별 |
-|      POST      | `/api/v1/rag/embed`  | 임베딩 생성        | `{ texts }`                    | 보통 없음/환경별 |
-|       GET       | `/api/v1/rag/health` | RAG 헬스           | -                                | -                |
-| GET/POST/DELETE | `/api/v1/rag/*`      | 인덱스/컬렉션 관리 | body/path                        | 관리자(대부분)   |
+|     메서드      | 엔드포인트(URI)      | 역할               | 필수 파라미터                  | 인증/권한        |
+| :-------------: | :------------------- | :----------------- | :----------------------------- | :--------------- |
+|      POST       | `/api/v1/rag/search` | 시맨틱 검색        | `{ query, n_results, filter }` | 보통 없음/환경별 |
+|      POST       | `/api/v1/rag/embed`  | 임베딩 생성        | `{ texts }`                    | 보통 없음/환경별 |
+|       GET       | `/api/v1/rag/health` | RAG 헬스           | -                              | -                |
+| GET/POST/DELETE | `/api/v1/rag/*`      | 인덱스/컬렉션 관리 | body/path                      | 관리자(대부분)   |
 
 - **프론트 근거**: [frontend/src/services/rag.ts](cci:7://file:///home/nodove/workspace/blog/frontend/src/services/rag.ts:0:0-0:0)
 - **Workers 근거**: `workers/api-gateway/src/routes/rag.ts` (backend로 프록시)
@@ -125,10 +125,10 @@ flowchart LR
 
 ### F) Images — Workers에서 일부 처리, Backend에도 이미지 라우트 존재(특히 chat-upload/vision 연계)
 
-| 메서드 | 엔드포인트(URI)                | 역할                           | 필수 파라미터           | 인증/권한   |
-| :----: | :----------------------------- | :----------------------------- | :---------------------- | :---------- |
+| 메서드 | 엔드포인트(URI)              | 역할                           | 필수 파라미터         | 인증/권한   |
+| :----: | :--------------------------- | :----------------------------- | :-------------------- | :---------- |
 |  POST  | `/api/v1/images/chat-upload` | 채팅 이미지 업로드 + 분석 결과 | `multipart/form-data` | 사용자/관리 |
-| (기타) | `/api/v1/images/*`           | 업로드/목록/삭제 등            | -                       | 관리자 위주 |
+| (기타) | `/api/v1/images/*`           | 업로드/목록/삭제 등            | -                     | 관리자 위주 |
 
 - **프론트 근거**: [frontend/src/services/chat/api.ts](cci:7://file:///home/nodove/workspace/blog/frontend/src/services/chat/api.ts:0:0-0:0) → [uploadChatImage()](cci:1://file:///home/nodove/workspace/blog/frontend/src/services/chat/api.ts:219:0-265:1)가 `/api/v1/images/chat-upload`
 - **Backend 근거**: [backend/src/routes/images.js](cci:7://file:///home/nodove/workspace/blog/backend/src/routes/images.js:0:0-0:0)
@@ -136,8 +136,8 @@ flowchart LR
 
 ### G) Comments / Reactions / Analytics / Memos / Memories / Personas / User-Content — Workers가 D1로 직접 처리
 
-|    메서드    | 엔드포인트(URI)                  | 역할                    | 인증/권한        |
-| :----------: | :------------------------------- | :---------------------- | :--------------- |
+|    메서드    | 엔드포인트(URI)                | 역할                    | 인증/권한        |
+| :----------: | :----------------------------- | :---------------------- | :--------------- |
 | GET/POST/... | `/api/v1/comments/*`           | 댓글 CRUD/리액션/스트림 | 일부 관리자 필요 |
 | GET/POST/... | `/api/v1/analytics/*`          | 트래킹/통계             | 관리자           |
 | GET/POST/... | `/api/v1/memos/*`              | 메모/버전 관리          | 사용자           |
@@ -153,9 +153,9 @@ flowchart LR
 
 ### H) Posts API(서버형) + Posts static(파일형)
 
-|       메서드       | 엔드포인트(URI)                         | 역할               | 인증/권한     |
-| :-----------------: | :-------------------------------------- | :----------------- | :------------ |
-| GET/POST/PUT/DELETE | `/api/v1/posts/*`                     | D1 기반 posts CRUD | 쓰기는 관리자 |
+|       메서드        | 엔드포인트(URI)                     | 역할               | 인증/권한     |
+| :-----------------: | :---------------------------------- | :----------------- | :------------ |
+| GET/POST/PUT/DELETE | `/api/v1/posts/*`                   | D1 기반 posts CRUD | 쓰기는 관리자 |
 |         GET         | `/posts/index.json`, `/posts/...md` | 정적 콘텐츠 fetch  | 없음          |
 
 - **Workers 근거**: [workers/api-gateway/src/routes/posts.ts](cci:7://file:///home/nodove/workspace/blog/workers/api-gateway/src/routes/posts.ts:0:0-0:0) (D1 기반 posts API)
@@ -163,8 +163,8 @@ flowchart LR
 
 ### I) Terminal (WebSocket) — 별도 Worker(terminal-gateway) 또는 API Gateway 프록시
 
-| 메서드 | 엔드포인트(URI)                  | 역할              | 인증/권한 |
-| :----: | :------------------------------- | :---------------- | :-------- |
+| 메서드 | 엔드포인트(URI)                | 역할              | 인증/권한 |
+| :----: | :----------------------------- | :---------------- | :-------- |
 |   WS   | `/terminal` (terminal-gateway) | 웹소켓 게이트웨이 | JWT 필요  |
 
 - **Workers(별도) 근거**: [workers/terminal-gateway/src/index.ts](cci:7://file:///home/nodove/workspace/blog/workers/terminal-gateway/src/index.ts:0:0-0:0)
@@ -191,12 +191,14 @@ flowchart LR
    - **Input 형태(예시)**: `invokeTask(sessionId, { taskType, input, ... })`
    - **Transformation**
      - 프론트에서 task payload를 구성하고 fetch로 전송
+
 2. **진입 (Workers API Gateway)**
 
    - **파일**: `workers/api-gateway/src/routes/chat.ts`
    - **Action**
      - 해당 엔드포인트는 **Workers가 직접 처리하지 않고 Backend로 프록시**
      - “백엔드 origin”으로 보내는 이유: Worker 자신을 다시 호출하는 순환 방지(설정: `BACKEND_ORIGIN` 계열)
+
 3. **비즈니스 로직 (Backend)**
 
    - **파일**: [backend/src/routes/chat.js](cci:7://file:///home/nodove/workspace/blog/backend/src/routes/chat.js:0:0-0:0)
@@ -204,12 +206,14 @@ flowchart LR
      - task 요청을 파싱하고 내부 AI 호출로 위임
    - **핵심 호출**
      - `aiService` 사용 (파일: [backend/src/lib/ai-service.js](cci:7://file:///home/nodove/workspace/blog/backend/src/lib/ai-service.js:0:0-0:0))
+
 4. **AI 실행(실제 LLM/워크플로우)**
 
    - **파일**: [backend/src/lib/ai-service.js](cci:7://file:///home/nodove/workspace/blog/backend/src/lib/ai-service.js:0:0-0:0)
    - **주요 라우팅**
      - “LLM 기반 생성/대화”는 주로 [opencode-client.js](cci:7://file:///home/nodove/workspace/blog/backend/src/lib/opencode-client.js:0:0-0:0) 통해 **OpenCode backend(ai-server-backend)** 로
      - 일부 작업/정책에 따라 n8n fallback 가능
+
 5. **Response**
 
    - **Backend → Workers → Frontend**
@@ -225,16 +229,19 @@ flowchart LR
    - **요청**: `POST /api/v1/chat/session/:id/message`
    - **Output 처리**
      - `chat/stream.ts`에서 SSE/NDJSON을 파싱해 UI에 반영
+
 2. **Workers**
 
    - **파일**: `workers/api-gateway/src/routes/chat.ts`
    - **Action**: Backend로 프록시(스트림 바디를 그대로 전달)
+
 3. **Backend**
 
    - **파일**: [backend/src/routes/chat.js](cci:7://file:///home/nodove/workspace/blog/backend/src/routes/chat.js:0:0-0:0)
    - **Action**
      - SSE 헤더 세팅 후, [aiService.chat(...)](cci:1://file:///home/nodove/workspace/blog/shared/services.ts:184:4-184:50) 등으로 토큰/청크 생성
      - 스트림으로 `res.write(...)` 형태로 전달
+
 4. **AI**
 
    - **Backend `aiService` → OpenCode**가 주력
@@ -249,6 +256,7 @@ flowchart LR
    - **함수**: [uploadChatImage(file)](cci:1://file:///home/nodove/workspace/blog/frontend/src/services/chat/api.ts:219:0-265:1)
    - **Input**: `FormData` (multipart)
    - **요청**: `POST /api/v1/images/chat-upload`
+
 2. **Backend(핵심)**
 
    - **파일**: [backend/src/routes/images.js](cci:7://file:///home/nodove/workspace/blog/backend/src/routes/images.js:0:0-0:0)
@@ -257,6 +265,7 @@ flowchart LR
      - 그 후 **비전 분석 호출을 [n8nClient.vision(...)](cci:1://file:///home/nodove/workspace/blog/backend/src/lib/ai-service.js:241:2-286:3)으로 수행**
    - **결론**
      - “이미지 비전 분석”은 코드 근거상 **n8n 호출이 실사용**되는 대표 케이스
+
 3. **n8n**
 
    - **파일**: [backend/src/lib/n8n-client.js](cci:7://file:///home/nodove/workspace/blog/backend/src/lib/n8n-client.js:0:0-0:0)
@@ -277,10 +286,12 @@ flowchart LR
        - `content: r.content || r.document || ''`
        - `score: r.score ?? (r.distance != null ? Math.max(0, 1 - r.distance) : 0)`
      - 이 정규화는 [frontend/src/services/rag.ts](cci:7://file:///home/nodove/workspace/blog/frontend/src/services/rag.ts:0:0-0:0) 내부 map에서 발생
+
 2. **Workers**
 
    - **파일**: `workers/api-gateway/src/routes/rag.ts`
    - **Action**: backend로 프록시
+
 3. **Backend**
 
    - **파일**: [backend/src/routes/rag.js](cci:7://file:///home/nodove/workspace/blog/backend/src/routes/rag.js:0:0-0:0)
@@ -294,12 +305,14 @@ flowchart LR
 
    - **파일**: `frontend/src/services/translate.ts`
    - **요청**: `POST /api/v1/translate`
+
 2. **Workers**
 
    - **파일**: `workers/api-gateway/src/routes/translate.ts`
    - **핵심 로직**
      - D1에서 캐시 조회/저장
      - 캐시 미스 시 AI 호출(Workers 내부 ai-service → backend `/api/v1/ai/*`)
+
 3. **Backend**
 
    - **파일**: [backend/src/routes/ai.js](cci:7://file:///home/nodove/workspace/blog/backend/src/routes/ai.js:0:0-0:0) + [backend/src/lib/ai-service.js](cci:7://file:///home/nodove/workspace/blog/backend/src/lib/ai-service.js:0:0-0:0)

@@ -10,9 +10,13 @@ async function fetchManifest(env: Env): Promise<Manifest | null> {
   }
 
   try {
-    const manifestUrl = `${env.GITHUB_PAGES_ORIGIN}/posts-manifest.json`;
+    const cacheBuster = Math.floor(now / CACHE_TTL);
+    const manifestUrl = `${env.GITHUB_PAGES_ORIGIN}/posts-manifest.json?v=${cacheBuster}`;
     const response = await fetch(manifestUrl, {
-      headers: { 'User-Agent': 'SEO-Gateway/1.0' },
+      headers: { 
+        'User-Agent': 'SEO-Gateway/1.0',
+        'Cache-Control': 'no-cache',
+      },
     });
 
     if (!response.ok) return null;
