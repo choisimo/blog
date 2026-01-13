@@ -10,6 +10,12 @@ import {
   Lightbulb,
   Users,
   ArrowRight,
+  GraduationCap,
+  Swords,
+  Compass,
+  BarChart3,
+  Sparkles,
+  HelpCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -51,10 +57,62 @@ const FOLLOW_UP_PROMPTS = [
   '지금 내가 놓치고 있는 포인트가 있다면 알려줘',
 ];
 
-function buildDebateSystemPrompt(topic: DebateTopic, stance?: 'agree' | 'disagree' | 'neutral'): string {
+type AIPersona = {
+  id: string;
+  name: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+  systemPromptPrefix: string;
+  color: string;
+};
+
+const AI_PERSONAS: AIPersona[] = [
+  {
+    id: 'mentor',
+    name: '멘토',
+    icon: GraduationCap,
+    description: '경험과 지혜로 조언하는 따뜻한 멘토',
+    systemPromptPrefix: '당신은 10년 이상의 경험을 가진 따뜻한 멘토입니다. 사용자의 고민에 공감하면서도 경험에서 우러나온 실질적인 조언을 제공합니다. 격려와 지지를 아끼지 않으며, 사용자가 스스로 답을 찾을 수 있도록 안내합니다.',
+    color: 'from-amber-500 to-orange-500',
+  },
+  {
+    id: 'debater',
+    name: '토론자',
+    icon: Swords,
+    description: '논리적으로 반박하며 생각을 날카롭게',
+    systemPromptPrefix: '당신은 소크라테스식 문답을 하는 날카로운 토론자입니다. 사용자의 주장에 건설적인 반론을 제기하고, 논리의 허점을 부드럽게 지적합니다. 목표는 이기는 것이 아니라 더 깊은 이해에 도달하는 것입니다.',
+    color: 'from-red-500 to-pink-500',
+  },
+  {
+    id: 'explorer',
+    name: '탐험가',
+    icon: Compass,
+    description: '새로운 관점과 가능성을 제시하는 호기심쟁이',
+    systemPromptPrefix: '당신은 창의적인 관점을 제시하는 호기심 많은 탐험가입니다. 주제를 다양한 각도에서 바라보고, 예상치 못한 연결고리를 찾아냅니다. "만약에...?" 질문을 통해 사용자의 상상력을 자극합니다.',
+    color: 'from-blue-500 to-cyan-500',
+  },
+  {
+    id: 'analyst',
+    name: '분석가',
+    icon: BarChart3,
+    description: '데이터와 논리로 상황을 분석하는 냉철한 분석가',
+    systemPromptPrefix: '당신은 데이터와 논리를 기반으로 상황을 분석하는 냉철한 분석가입니다. 감정보다는 사실에 집중하고, 장단점을 객관적으로 정리합니다. 복잡한 문제를 구조화하여 명확하게 설명합니다.',
+    color: 'from-emerald-500 to-teal-500',
+  },
+];
+
+function buildDebateSystemPrompt(
+  topic: DebateTopic, 
+  stance?: 'agree' | 'disagree' | 'neutral',
+  persona?: AIPersona
+): string {
+  const baseInstructions = persona?.systemPromptPrefix || 
+    '당신은 사려 깊은 상담 파트너입니다.';
+  
   const lines: string[] = [
-    '당신은 사려 깊은 상담 파트너입니다. 다음 지침을 따르세요:',
+    baseInstructions,
     '',
+    '다음 지침을 따르세요:',
     '1. 사용자의 감정과 생각을 먼저 공감하고, 차분하게 응답합니다.',
     '2. 옳고 그름을 판단하기보다, 사용자가 스스로 정리하고 선택할 수 있도록 도와줍니다.',
     '3. 조언이 필요할 때에는 예의 바르게, 구체적인 예시와 함께 제안합니다.',
@@ -94,7 +152,8 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [currentStance, setCurrentStance] = useState<'agree' | 'disagree' | 'neutral' | null>(null);
-  const [showStarters, setShowStarters] = useState(true);
+  const [selectedPersona, setSelectedPersona] = useState<AIPersona | null>(null);
+  const [selectionStep, setSelectionStep] = useState<'persona' | 'stance' | 'chat'>('persona');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -117,9 +176,14 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
     setMessages(prev => [...prev, msg]);
   }, []);
 
+  const selectPersona = useCallback((persona: AIPersona) => {
+    setSelectedPersona(persona);
+    setSelectionStep('stance');
+  }, []);
+
   const startDebate = useCallback(async (stance: 'agree' | 'disagree' | 'neutral') => {
     setCurrentStance(stance);
-    setShowStarters(false);
+    setSelectionStep('chat');
     setBusy(true);
 
     const userMsg: DebateMessage = {
@@ -148,7 +212,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
       // Set 30-second timeout
       timeoutId.current = setTimeout(() => controller.abort(), 30000);
 
-      const systemPrompt = buildDebateSystemPrompt(topic, stance);
+      const systemPrompt = buildDebateSystemPrompt(topic, stance, selectedPersona || undefined);
       const starterText = stance === 'agree'
         ? '이 부분이 특히 신경 쓰여요. 조금 더 이해하고 정리하고 싶어요.'
         : stance === 'disagree'
@@ -195,7 +259,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
       if (timeoutId.current) clearTimeout(timeoutId.current);
       setBusy(false);
     }
-  }, [topic, addMessage]);
+  }, [topic, addMessage, selectedPersona]);
 
   const sendMessage = useCallback(async () => {
     if (!canSend) return;
@@ -236,7 +300,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
         .map(m => `${m.role === 'user' ? '사용자' : 'AI'}: ${m.content}`)
         .join('\n\n');
 
-      const systemPrompt = buildDebateSystemPrompt(topic, currentStance || undefined);
+      const systemPrompt = buildDebateSystemPrompt(topic, currentStance || undefined, selectedPersona || undefined);
       const fullPrompt = [
         systemPrompt,
         '',
@@ -289,7 +353,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
       if (timeoutId.current) clearTimeout(timeoutId.current);
       setBusy(false);
     }
-  }, [canSend, input, messages, topic, currentStance, addMessage]);
+  }, [canSend, input, messages, topic, currentStance, selectedPersona, addMessage]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -305,7 +369,8 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
     abortRef.current?.abort();
     setMessages([]);
     setCurrentStance(null);
-    setShowStarters(true);
+    setSelectedPersona(null);
+    setSelectionStep('persona');
     setInput('');
     setBusy(false);
   }, []);
@@ -398,8 +463,8 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
 
       {/* Messages Area */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
-        {/* Initial Topic Display */}
-        {showStarters && (
+        {/* Step 1: Persona Selection */}
+        {selectionStep === 'persona' && (
           <div className="space-y-5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
             {/* Topic Card */}
             <div
@@ -427,6 +492,97 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
                       : topic.context}
                   </p>
                 </div>
+              </div>
+            </div>
+
+            {/* Persona Selection */}
+            <div className="space-y-4 pt-2">
+              <div className="text-center space-y-1">
+                <p className="text-sm font-medium flex items-center justify-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <span>어떤 AI와 상담할까요?</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  각 AI는 다른 관점과 스타일로 대화합니다
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {AI_PERSONAS.map(persona => {
+                  const Icon = persona.icon;
+                  return (
+                    <button
+                      key={persona.id}
+                      type="button"
+                      onClick={() => selectPersona(persona)}
+                      className={cn(
+                        'flex flex-col items-center gap-2 px-4 py-4 rounded-xl border transition-all',
+                        'hover:scale-[1.02] active:scale-[0.98]',
+                        isTerminal
+                          ? 'border-primary/30 hover:border-primary/50 hover:bg-primary/10'
+                          : 'border-border hover:border-primary/40 hover:bg-muted/50'
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          'flex items-center justify-center h-12 w-12 rounded-full bg-gradient-to-br',
+                          persona.color,
+                          'text-white shadow-lg'
+                        )}
+                      >
+                        <Icon className="h-6 w-6" />
+                      </div>
+                      <div className="text-center">
+                        <span className="text-sm font-medium block">{persona.name}</span>
+                        <span className="text-xs text-muted-foreground line-clamp-2">
+                          {persona.description}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Stance Selection */}
+        {selectionStep === 'stance' && selectedPersona && (
+          <div className="space-y-5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+            {/* Selected Persona Display */}
+            <div
+              className={cn(
+                'rounded-xl px-4 py-4 border',
+                isTerminal
+                  ? 'bg-primary/5 border-primary/30'
+                  : 'bg-muted/40 border-border/60'
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={cn(
+                    'flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br shrink-0',
+                    selectedPersona.color,
+                    'text-white shadow-md'
+                  )}
+                >
+                  <selectedPersona.icon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-medium text-sm">{selectedPersona.name}와 상담</h4>
+                  <p className="text-xs text-muted-foreground">{selectedPersona.description}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectionStep('persona')}
+                  className={cn(
+                    'text-xs px-2.5 py-1.5 rounded-lg transition-colors',
+                    isTerminal
+                      ? 'text-primary/70 hover:text-primary hover:bg-primary/10'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  )}
+                >
+                  변경
+                </button>
               </div>
             </div>
 
@@ -566,7 +722,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
       </div>
 
       {/* Input Area */}
-      {!showStarters && (
+      {selectionStep === 'chat' && (
         <div
           className={cn(
             'border-t px-4 py-4 shrink-0',

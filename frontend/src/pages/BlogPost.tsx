@@ -47,6 +47,7 @@ import { recordView } from '@/services/analytics';
 import { translatePost, type TranslationResult } from '@/services/translate';
 import { curiosityTracker } from '@/services/curiosity';
 import { useUIStrings } from '@/utils/i18n/uiStrings';
+import { findRelatedPosts as findRAGRelatedPosts } from '@/services/rag';
 
 const MarkdownRenderer = lazy(
   () => import('@/components/features/blog/MarkdownRenderer')
@@ -341,16 +342,46 @@ const BlogPost = () => {
     const loadRelated = async () => {
       if (!post) return;
       try {
-        const byCategory = await getPostsPage({
-          page: 1,
-          pageSize: 6,
-          category: post.category,
-          sort: 'date',
-        });
-        const candidates = byCategory.items.filter(
-          p => `${p.year}/${p.slug}` !== `${post.year}/${post.slug}`
-        );
-        let selected = candidates.slice(0, 3);
+        let selected: BlogPostType[] = [];
+
+        try {
+          const ragResults = await findRAGRelatedPosts({
+            title: post.title,
+            content: post.content?.slice(0, 500) || '',
+            slug: post.slug,
+          }, 4);
+          
+          if (ragResults.length >= 2) {
+            const ragPostPromises = ragResults.map(async (r) => {
+              const postYear = r.metadata.year as string;
+              const postSlug = r.metadata.slug as string;
+              if (postYear && postSlug) {
+                return await getPostBySlug(postYear, postSlug);
+              }
+              return null;
+            });
+            const ragPosts = (await Promise.all(ragPostPromises)).filter(
+              (p): p is BlogPostType => !!p
+            );
+            selected = ragPosts.slice(0, 3);
+          }
+        } catch {
+        }
+
+        if (selected.length < 3) {
+          const byCategory = await getPostsPage({
+            page: 1,
+            pageSize: 6,
+            category: post.category,
+            sort: 'date',
+          });
+          const candidates = byCategory.items.filter(
+            p => `${p.year}/${p.slug}` !== `${post.year}/${post.slug}` &&
+              !selected.some(s => s.year === p.year && s.slug === p.slug)
+          );
+          selected = selected.concat(candidates).slice(0, 3);
+        }
+
         if (selected.length < 3 && post.tags && post.tags.length) {
           const byTag = await getPostsPage({
             page: 1,
@@ -365,6 +396,21 @@ const BlogPost = () => {
           );
           selected = selected.concat(more).slice(0, 3);
         }
+
+        if (selected.length < 3) {
+          const latest = await getPostsPage({
+            page: 1,
+            pageSize: 6,
+            sort: 'date',
+          });
+          const more = latest.items.filter(
+            p =>
+              `${p.year}/${p.slug}` !== `${post.year}/${post.slug}` &&
+              !selected.some(s => s.year === p.year && s.slug === p.slug)
+          );
+          selected = selected.concat(more).slice(0, 3);
+        }
+
         if (!cancelled) setRelatedPosts(selected);
       } catch {
         if (!cancelled) setRelatedPosts([]);

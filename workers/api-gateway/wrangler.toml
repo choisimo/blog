@@ -80,6 +80,7 @@ API_BASE_URL = "https://api.nodove.com"
 binding = "DB"
 database_name = "blog-db-prod"
 database_id = "e547f944-71a0-42b6-8af1-abc50f29df80"
+migrations_dir = "../migrations"
 
 [[env.production.r2_buckets]]
 binding = "R2"

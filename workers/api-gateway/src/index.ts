@@ -37,6 +37,9 @@ import adminAi from './routes/admin-ai';
 import secrets from './routes/secrets';
 import personas from './routes/personas';
 import userContent from './routes/user-content';
+import search from './routes/search';
+import user from './routes/user';
+import debate from './routes/debate';
 import type { Env } from './types';
 
 const app = new Hono<HonoEnv>();
@@ -218,6 +221,9 @@ api.route('/admin/ai', adminAi);
 api.route('/admin/secrets', secrets);
 api.route('/personas', personas);
 api.route('/user-content', userContent);
+api.route('/search', search);
+api.route('/user', user);
+api.route('/debate', debate);
 
 app.route('/api/v1', api);
 

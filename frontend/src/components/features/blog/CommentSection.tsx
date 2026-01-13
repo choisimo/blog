@@ -10,6 +10,7 @@ import CommentInputModal from './CommentInputModal';
 import CommentReactions from './CommentReactions';
 import { streamChatEvents } from '@/services/chat';
 import { fetchReactionsBatch, ReactionCount } from '@/services/reactions';
+import { getRAGContextForChat } from '@/services/rag';
 
 // Load any archived comments bundled at build-time
 // Using a relative glob; keys may vary (relative vs absolute) depending on bundler.
@@ -196,31 +197,33 @@ export default function CommentSection({ postId }: { postId: string }) {
     const pageTitle = typeof document !== 'undefined' ? document.title : '';
     const pageUrl = typeof window !== 'undefined' ? window.location.href : '';
     
-    // Build context from recent comments
     const recentComments = (comments || []).slice(-5).map(c => 
       `${c.author}: ${c.content}`
     ).join('\n');
+
+    const ragContextPromise = getRAGContextForChat(userComment, 1500, 5000);
     
-    const prompt = `당신은 블로그 글에서 독자들과 토론하는 친근한 AI 어시스턴트예요. 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+    try {
+      const ragContext = await ragContextPromise;
+      
+      const prompt = `당신은 블로그 글에서 독자들과 토론하는 친근한 AI 어시스턴트예요. 
 현재 페이지: ${pageTitle}
 URL: ${pageUrl}
 
-최근 댓글들:
+${ragContext ? `[관련 블로그 지식]\n${ragContext}\n\n` : ''}최근 댓글들:
 ${recentComments}
 
 방금 ${userName}님이 남긴 댓글:
 "${userComment}"
 
-${userName}님의 댓글에 대해 짧고 통찰력 있게 응답해주세요. 
+${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 댓글에 대해 짧고 통찰력 있게 응답해주세요. 
 - 2-3문장으로 간결하게
 - 글의 내용과 연결지어 생각을 확장하거나 흥미로운 질문을 던져주세요
 - 존댓말을 사용하고 친근하게 대해주세요`;
 
-    // Create abort controller with 45-second timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 45000);
-
-    try {
       let fullText = '';
       for await (const ev of streamChatEvents({ 
         text: prompt,

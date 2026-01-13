@@ -27,6 +27,8 @@ import { cn } from '@/lib/utils';
 import { OptimizedImage } from '@/components/common/OptimizedImage';
 import { formatDate } from '@/utils/blog';
 import { getEditorPicks, type EditorPick } from '@/services/analytics';
+import { getCategoryCounts } from '@/utils/categoryNormalize';
+import TerminalCategories from '@/components/features/navigation/TerminalCategories';
 
 // Shape used by visited posts in localStorage
 // Matches VisitedPostsMinimap
@@ -183,13 +185,9 @@ const Index = () => {
     };
   }, []);
 
-  // Featured categories with dynamic counts from allPosts
+  // Featured categories with dynamic counts from allPosts (normalized)
   const categories = useMemo(() => {
-    const categoryMap: Record<string, number> = {};
-    for (const post of allPosts) {
-      const cat = post.category || 'General';
-      categoryMap[cat] = (categoryMap[cat] || 0) + 1;
-    }
+    const categoryMap = getCategoryCounts(allPosts);
 
     const baseCategories = [
       { name: 'AI & ML', icon: Sparkles, color: 'text-purple-500' },
@@ -680,7 +678,7 @@ const Index = () => {
       )}
 
       {/* ============================================
-          Categories Section - Compact Grid
+          Categories Section - Compact Grid / Terminal Tree
           ============================================ */}
       <section className='mb-16'>
         <h2 className={cn(
@@ -689,38 +687,44 @@ const Index = () => {
         )}>
           {isTerminal ? '// categories' : 'Popular Categories'}
         </h2>
-        <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
-          {categories.map(category => (
-            <Card
-              key={category.name}
-              className={cn(
-                'group cursor-pointer transition-all duration-300',
-                isTerminal 
-                  ? 'bg-card/30 backdrop-blur-sm border-border hover:border-primary/50 hover:bg-card/50' 
-                  : 'hover:shadow-lg hover:-translate-y-0.5'
-              )}
-            >
-              <CardHeader className='text-center py-4 px-3'>
-                <category.icon
+        
+        {isTerminal ? (
+          <div className="max-w-2xl mx-auto">
+            <TerminalCategories categories={categories} />
+          </div>
+        ) : (
+          <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
+            {categories.map(category => (
+              <Link
+                key={category.name}
+                to={`/blog?category=${encodeURIComponent(category.name)}`}
+              >
+                <Card
                   className={cn(
-                    'h-6 w-6 mx-auto mb-2 transition-colors',
-                    isTerminal ? 'text-primary' : category.color,
-                    'group-hover:scale-110 transition-transform'
+                    'group cursor-pointer transition-all duration-300',
+                    'hover:shadow-lg hover:-translate-y-0.5'
                   )}
-                />
-                <CardTitle className={cn(
-                  'text-sm font-medium',
-                  isTerminal && 'font-mono'
-                )}>
-                  {category.name}
-                </CardTitle>
-                <CardDescription className='text-xs'>
-                  {category.count} posts
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
+                >
+                  <CardHeader className='text-center py-4 px-3'>
+                    <category.icon
+                      className={cn(
+                        'h-6 w-6 mx-auto mb-2 transition-colors',
+                        category.color,
+                        'group-hover:scale-110 transition-transform'
+                      )}
+                    />
+                    <CardTitle className='text-sm font-medium'>
+                      {category.name}
+                    </CardTitle>
+                    <CardDescription className='text-xs'>
+                      {category.count} posts
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* ============================================
