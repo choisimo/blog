@@ -5,8 +5,21 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Mon, 12 Jan 2026 04:41:34 GMT</lastBuildDate>
+    <lastBuildDate>Tue, 13 Jan 2026 01:15:03 GMT</lastBuildDate>
     <language>en-US</language>
+    <item>
+      <title>쉘 스크립트의 공백: 리눅스 철학이 숨겨진 한 줄의 코드</title>
+      <description>[ 명령어 앞의 공백 하나가 왜 필요한지, 리눅스 철학을 통해 이해하기</description>
+      <link>https://noblog.nodove.com/blog/2026/shellscript-analyze-1</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/shellscript-analyze-1</guid>
+      <pubDate>Tue, 06 Jan 2026 00:00:00 GMT</pubDate>
+      <category>Tech &amp; Philosophy</category>
+      <category>쉘 스크립트</category>
+      <category>리눅스</category>
+      <category>시스템 프로그래밍</category>
+      <category>커널</category>
+      <category>개발 철학</category>
+    </item>
     <item>
       <title>쿠르스크 초원의 전차전</title>
       <description>1943년 쿠르스크. 강철 안에 갇힌 두 전차장이 발견한 것은 적이 아닌, 자신과 똑같이 두려워하는 한 사람이었다.</description>
@@ -74,6 +87,23 @@
       <category>인간 소외</category>
       <category>기술 철학</category>
       <category>문제 정의</category>
+    </item>
+    <item>
+      <title>Proxmox 네트워크 추가하기</title>
+      <description>Proxmox 네트워크 추가하기</description>
+      <link>https://noblog.nodove.com/blog/2026/proxmox-network-add</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/proxmox-network-add</guid>
+      <pubDate>Sun, 28 Dec 2025 00:00:00 GMT</pubDate>
+      <category>네트워크,proxmox,lxc</category>
+      <category>vmbr</category>
+      <category>vmbr_local</category>
+      <category>proxmox</category>
+      <category>vmbr0</category>
+      <category>vmbr1</category>
+      <category>bridge</category>
+      <category>STP</category>
+      <category>VLAN</category>
+      <category>VLAN aware</category>
     </item>
     <item>
       <title>쿠버네티스 기본 구조</title>
@@ -239,32 +269,6 @@
       <category>Lambda</category>
       <category>FunctionalProgramming</category>
       <category>병렬스트림</category>
-    </item>
-    <item>
-      <title>awk와 sed, 그리고 xargs에 빚진 작은 승리들</title>
-      <description>파이프라인 하나로 서버를 살린 순간을 떠올리며, 내가 사랑하는 세 가지 쉘 친구들을 일기처럼 적어 봤습니다.</description>
-      <link>https://noblog.nodove.com/blog/2025/shell-powertools-journal</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/shell-powertools-journal</guid>
-      <pubDate>Mon, 27 Oct 2025 00:00:00 GMT</pubDate>
-      <category>Linux</category>
-      <category>awk</category>
-      <category>sed</category>
-      <category>xargs</category>
-      <category>리눅스쉘</category>
-      <category>자동화</category>
-    </item>
-    <item>
-      <title>Stop-the-world의 숨결을 들으며, GC와 화해한 나의 기록</title>
-      <description>Serial, CMS, G1을 거치며 힙 덤프와 함께 밤을 지새운 개발자가 GC의 진화와 전략을 되돌아본 일기</description>
-      <link>https://noblog.nodove.com/blog/2025/java-gc-journal</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/java-gc-journal</guid>
-      <pubDate>Sun, 26 Oct 2025 00:00:00 GMT</pubDate>
-      <category>Java</category>
-      <category>Java</category>
-      <category>GarbageCollection</category>
-      <category>JVM</category>
-      <category>G1</category>
-      <category>메모리관리</category>
     </item>
   </channel>
 </rss>
