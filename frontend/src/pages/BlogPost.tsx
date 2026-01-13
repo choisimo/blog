@@ -44,7 +44,7 @@ import useLanguage from '@/hooks/useLanguage';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { recordView } from '@/services/analytics';
-import { translatePost, getCachedTranslation, type TranslationResult } from '@/services/translate';
+import { translatePost, type TranslationResult } from '@/services/translate';
 import { curiosityTracker } from '@/services/curiosity';
 import { useUIStrings } from '@/utils/i18n/uiStrings';
 
@@ -261,14 +261,6 @@ const BlogPost = () => {
       setTranslationError(null);
 
       try {
-        const cached = await getCachedTranslation(year, slug, language);
-        
-        if (cached && !cancelled) {
-          setAiTranslation(cached);
-          setTranslating(false);
-          return;
-        }
-
         const result = await translatePost({
           year,
           slug,
