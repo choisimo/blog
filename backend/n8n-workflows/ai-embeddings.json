@@ -2,86 +2,176 @@
   "name": "AI Embeddings Webhook (TEI)",
   "nodes": [
     {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "ai/embeddings",
-        "responseMode": "responseNode",
-        "options": { "rawBody": false }
-      },
       "id": "webhook-trigger",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [240, 300],
-      "webhookId": "ai-embeddings-webhook"
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "ai-embeddings-webhook",
+      "parameters": {
+        "path": "ai/embeddings",
+        "options": {
+          "rawBody": false
+        },
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      },
+      "typeVersion": 2
     },
     {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            { "id": "input", "name": "input", "type": "array", "value": "={{ Array.isArray($json.body.input) ? $json.body.input : [$json.body.input] }}" },
-            { "id": "model", "name": "model", "type": "string", "value": "={{ $json.body.model || 'all-MiniLM-L6-v2' }}" },
-            { "id": "requestId", "name": "requestId", "type": "string", "value": "={{ $json.body._meta?.requestId || 'n8n-embed-' + Date.now() }}" }
-          ]
-        },
-        "options": {}
-      },
       "id": "set-params",
       "name": "Set Parameters",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [460, 300]
+      "position": [
+        460,
+        300
+      ],
+      "parameters": {
+        "options": {},
+        "assignments": {
+          "assignments": [
+            {
+              "id": "input",
+              "name": "input",
+              "type": "array",
+              "value": "={{ Array.isArray($json.body.input) ? $json.body.input : [$json.body.input] }}"
+            },
+            {
+              "id": "model",
+              "name": "model",
+              "type": "string",
+              "value": "={{ $json.body.model || 'all-MiniLM-L6-v2' }}"
+            },
+            {
+              "id": "requestId",
+              "name": "requestId",
+              "type": "string",
+              "value": "={{ $json.body._meta?.requestId || 'n8n-embed-' + Date.now() }}"
+            }
+          ]
+        }
+      },
+      "typeVersion": 3.4
     },
     {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ ($env.TEI_URL || 'http://embedding-server:80') }}",
-        "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"inputs\": {{ JSON.stringify($json.input) }}\n}",
-        "options": { "timeout": 120000 }
-      },
       "id": "tei-embed",
       "name": "TEI Embed",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [680, 300]
+      "position": [
+        680,
+        300
+      ],
+      "parameters": {
+        "url": "={{ ($env.TEI_URL || 'http://embedding-server:80') }}",
+        "method": "POST",
+        "options": {
+          "timeout": 120000
+        },
+        "jsonBody": "={\n  \"inputs\": {{ JSON.stringify($json.input) }}\n}",
+        "sendBody": true,
+        "sendHeaders": true,
+        "specifyBody": "json",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "typeVersion": 4.2
     },
     {
-      "parameters": {
-        "jsCode": "const meta = $('Set Parameters').first().json;\nconst body = $input.first().json;\nconst embeddings = body.embeddings || body.data || body;\nreturn { json: { embeddings, data: embeddings, model: meta.model, provider: 'tei', requestId: meta.requestId, usage: body.usage || {} } };"
-      },
       "id": "format-response",
       "name": "Format Response",
       "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [900, 300]
+      "position": [
+        900,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const meta = $('Set Parameters').first().json;\nconst body = $input.first().json;\nconst embeddings = body.embeddings || body.data || body;\nreturn { json: { embeddings, data: embeddings, model: meta.model, provider: 'tei', requestId: meta.requestId, usage: body.usage || {} } };"
+      },
+      "typeVersion": 2
     },
     {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify($json) }}",
-        "options": { "responseCode": 200, "responseHeaders": { "entries": [{ "name": "Content-Type", "value": "application/json" }] } }
-      },
       "id": "respond",
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [1120, 300]
+      "position": [
+        1120,
+        300
+      ],
+      "parameters": {
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "typeVersion": 1.1
     }
   ],
   "connections": {
-    "Webhook": { "main": [[{ "node": "Set Parameters", "type": "main", "index": 0 }]] },
-    "Set Parameters": { "main": [[{ "node": "TEI Embed", "type": "main", "index": 0 }]] },
-    "TEI Embed": { "main": [[{ "node": "Format Response", "type": "main", "index": 0 }]] },
-    "Format Response": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set Parameters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Parameters": {
+      "main": [
+        [
+          {
+            "node": "TEI Embed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TEI Embed": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
-  "staticData": null,
-  "tags": [{ "name": "AI", "id": "ai-tag" }],
-  "triggerCount": 0,
-  "updatedAt": "2026-01-01T00:00:00.000Z",
-  "versionId": "1"
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": true,
+  "triggerCount": 1
 }

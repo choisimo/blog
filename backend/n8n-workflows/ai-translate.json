@@ -2,42 +2,93 @@
   "name": "AI Translate Webhook (OpenCode)",
   "nodes": [
     {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "ai/translate",
-        "responseMode": "responseNode",
-        "options": { "rawBody": false }
-      },
       "id": "webhook-trigger",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [240, 300],
-      "webhookId": "ai-translate-webhook"
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "ai-translate-webhook",
+      "parameters": {
+        "path": "ai/translate",
+        "options": {
+          "rawBody": false
+        },
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      },
+      "typeVersion": 2
     },
     {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            { "id": "title", "name": "title", "type": "string", "value": "={{ $json.body.title || '' }}" },
-            { "id": "description", "name": "description", "type": "string", "value": "={{ $json.body.description || '' }}" },
-            { "id": "content", "name": "content", "type": "string", "value": "={{ $json.body.content || '' }}" },
-            { "id": "sourceLang", "name": "sourceLang", "type": "string", "value": "={{ $json.body.sourceLang || 'ko' }}" },
-            { "id": "targetLang", "name": "targetLang", "type": "string", "value": "={{ $json.body.targetLang || 'en' }}" },
-            { "id": "model", "name": "model", "type": "string", "value": "={{ $json.body.model || $env.OPENCODE_DEFAULT_MODEL || 'gpt-4.1' }}" },
-            { "id": "requestId", "name": "requestId", "type": "string", "value": "={{ $json.body._meta?.requestId || 'n8n-translate-' + Date.now() }}" }
-          ]
-        },
-        "options": {}
-      },
       "id": "set-params",
       "name": "Set Parameters",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [460, 300]
+      "position": [
+        460,
+        300
+      ],
+      "parameters": {
+        "options": {},
+        "assignments": {
+          "assignments": [
+            {
+              "id": "title",
+              "name": "title",
+              "type": "string",
+              "value": "={{ $json.body.title || '' }}"
+            },
+            {
+              "id": "description",
+              "name": "description",
+              "type": "string",
+              "value": "={{ $json.body.description || '' }}"
+            },
+            {
+              "id": "content",
+              "name": "content",
+              "type": "string",
+              "value": "={{ $json.body.content || '' }}"
+            },
+            {
+              "id": "sourceLang",
+              "name": "sourceLang",
+              "type": "string",
+              "value": "={{ $json.body.sourceLang || 'ko' }}"
+            },
+            {
+              "id": "targetLang",
+              "name": "targetLang",
+              "type": "string",
+              "value": "={{ $json.body.targetLang || 'en' }}"
+            },
+            {
+              "id": "model",
+              "name": "model",
+              "type": "string",
+              "value": "={{ $json.body.model || $env.OPENCODE_DEFAULT_MODEL || 'gpt-4.1' }}"
+            },
+            {
+              "id": "requestId",
+              "name": "requestId",
+              "type": "string",
+              "value": "={{ $json.body._meta?.requestId || 'n8n-translate-' + Date.now() }}"
+            }
+          ]
+        }
+      },
+      "typeVersion": 3.4
     },
     {
+      "id": "build-opencode-request",
+      "name": "Build OpenCode Request",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        680,
+        300
+      ],
       "parameters": {
+        "options": {},
         "assignments": {
           "assignments": [
             {
@@ -46,71 +97,155 @@
               "type": "string",
               "value": "={{ 'System: You are a professional translator. Translate accurately while preserving meaning, tone, and formatting (including markdown). Do not add explanations or notes.\\n\\nUser: Translate the following from ' + $json.sourceLang + ' to ' + $json.targetLang + '. Return ONLY a JSON object with translated fields.\\n\\n' + JSON.stringify({ title: $json.title, description: $json.description, content: $json.content }) }}"
             },
-            { "id": "providerID", "name": "providerID", "type": "string", "value": "={{ $env.OPENCODE_DEFAULT_PROVIDER || 'github-copilot' }}" },
-            { "id": "modelID", "name": "modelID", "type": "string", "value": "={{ $json.model }}" },
-            { "id": "titleReq", "name": "titleReq", "type": "string", "value": "={{ 'n8n-translate-' + Date.now() }}" }
+            {
+              "id": "providerID",
+              "name": "providerID",
+              "type": "string",
+              "value": "={{ $env.OPENCODE_DEFAULT_PROVIDER || 'github-copilot' }}"
+            },
+            {
+              "id": "modelID",
+              "name": "modelID",
+              "type": "string",
+              "value": "={{ $json.model }}"
+            },
+            {
+              "id": "titleReq",
+              "name": "titleReq",
+              "type": "string",
+              "value": "={{ 'n8n-translate-' + Date.now() }}"
+            }
           ]
         },
-        "includeOtherFields": true,
-        "options": {}
+        "includeOtherFields": true
       },
-      "id": "build-opencode-request",
-      "name": "Build OpenCode Request",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [680, 300]
+      "typeVersion": 3.4
     },
     {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ ($env.OPENCODE_BACKEND_URL || $env.OPENCODE_BASE_URL || 'http://opencode-backend:7016') + '/chat' }}",
-        "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"message\": {{ JSON.stringify($json.message) }},\n  \"providerID\": {{ JSON.stringify($json.providerID) }},\n  \"modelID\": {{ JSON.stringify($json.modelID) }},\n  \"title\": {{ JSON.stringify($json.titleReq) }}\n}",
-        "options": { "timeout": 300000, "response": { "response": { "fullResponse": true } } }
-      },
       "id": "opencode-chat",
       "name": "OpenCode Chat",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [900, 300]
+      "position": [
+        900,
+        300
+      ],
+      "parameters": {
+        "url": "={{ ($env.OPENCODE_BACKEND_URL || $env.OPENCODE_BASE_URL || 'http://ai-server-backend:7016') + '/chat' }}",
+        "method": "POST",
+        "options": {
+          "timeout": 300000,
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        },
+        "jsonBody": "={\n  \"message\": {{ JSON.stringify($json.message) }},\n  \"providerID\": {{ JSON.stringify($json.providerID) }},\n  \"modelID\": {{ JSON.stringify($json.modelID) }},\n  \"title\": {{ JSON.stringify($json.titleReq) }}\n}",
+        "sendBody": true,
+        "sendHeaders": true,
+        "specifyBody": "json",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "typeVersion": 4.2
     },
     {
-      "parameters": {
-        "jsCode": "const original = $('Set Parameters').first().json;\nconst text = $input.first().json.body?.response?.text || '';\n\nlet parsed = null;\ntry {\n  parsed = JSON.parse(text);\n} catch {\n  const fence = text.match(/```(?:json)?\\s*([\\s\\S]*?)```/i);\n  if (fence?.[1]) {\n    try { parsed = JSON.parse(fence[1].trim()); } catch {}\n  }\n  if (!parsed) {\n    const start = text.indexOf('{');\n    const end = text.lastIndexOf('}');\n    if (start >= 0 && end > start) {\n      try { parsed = JSON.parse(text.slice(start, end + 1)); } catch {}\n    }\n  }\n}\n\nreturn {\n  json: {\n    title: parsed?.title || original.title || '',\n    description: parsed?.description || original.description || '',\n    content: parsed?.content || original.content || '',\n    isAiGenerated: true,\n    model: original.model,\n    provider: 'opencode',\n    requestId: original.requestId\n  }\n};"
-      },
       "id": "parse-response",
       "name": "Parse Response",
       "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1120, 300]
+      "position": [
+        1120,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const original = $('Set Parameters').first().json;\nconst text = $input.first().json.body?.data?.response?.text || $input.first().json.body?.response?.text || '';\n\nlet parsed = null;\ntry {\n  parsed = JSON.parse(text);\n} catch {\n  const fence = text.match(/```(?:json)?\\s*([\\s\\S]*?)```/i);\n  if (fence?.[1]) {\n    try { parsed = JSON.parse(fence[1].trim()); } catch {}\n  }\n  if (!parsed) {\n    const start = text.indexOf('{');\n    const end = text.lastIndexOf('}');\n    if (start >= 0 && end > start) {\n      try { parsed = JSON.parse(text.slice(start, end + 1)); } catch {}\n    }\n  }\n}\n\nreturn {\n  json: {\n    title: parsed?.title || original.title || '',\n    description: parsed?.description || original.description || '',\n    content: parsed?.content || original.content || '',\n    isAiGenerated: true,\n    model: original.model,\n    provider: 'opencode',\n    requestId: original.requestId\n  }\n};"
+      },
+      "typeVersion": 2
     },
     {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify($json) }}",
-        "options": { "responseCode": 200 }
-      },
       "id": "respond",
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [1340, 300]
+      "position": [
+        1340,
+        300
+      ],
+      "parameters": {
+        "options": {
+          "responseCode": 200
+        },
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "typeVersion": 1.1
     }
   ],
   "connections": {
-    "Webhook": { "main": [[{ "node": "Set Parameters", "type": "main", "index": 0 }]] },
-    "Set Parameters": { "main": [[{ "node": "Build OpenCode Request", "type": "main", "index": 0 }]] },
-    "Build OpenCode Request": { "main": [[{ "node": "OpenCode Chat", "type": "main", "index": 0 }]] },
-    "OpenCode Chat": { "main": [[{ "node": "Parse Response", "type": "main", "index": 0 }]] },
-    "Parse Response": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set Parameters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Parameters": {
+      "main": [
+        [
+          {
+            "node": "Build OpenCode Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build OpenCode Request": {
+      "main": [
+        [
+          {
+            "node": "OpenCode Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenCode Chat": {
+      "main": [
+        [
+          {
+            "node": "Parse Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Response": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
-  "staticData": null,
-  "tags": [{ "name": "AI", "id": "ai-tag" }],
-  "triggerCount": 0,
-  "updatedAt": "2026-01-01T00:00:00.000Z",
-  "versionId": "1"
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": true,
+  "triggerCount": 1
 }

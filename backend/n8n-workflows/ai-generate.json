@@ -2,40 +2,79 @@
   "name": "AI Generate Webhook (OpenCode)",
   "nodes": [
     {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "ai/generate",
-        "responseMode": "responseNode",
-        "options": {}
-      },
       "id": "webhook",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [240, 300],
-      "webhookId": "ai-generate-webhook"
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "ai-generate-webhook",
+      "parameters": {
+        "path": "ai/generate",
+        "options": {},
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      },
+      "typeVersion": 2
     },
     {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            { "id": "prompt", "name": "prompt", "type": "string", "value": "={{ $json.body.prompt }}" },
-            { "id": "systemPrompt", "name": "systemPrompt", "type": "string", "value": "={{ $json.body.systemPrompt || '' }}" },
-            { "id": "model", "name": "model", "type": "string", "value": "={{ $json.body.model || $env.OPENCODE_DEFAULT_MODEL || 'gpt-4.1' }}" },
-            { "id": "temperature", "name": "temperature", "type": "number", "value": "={{ $json.body.temperature || 0.2 }}" },
-            { "id": "requestId", "name": "requestId", "type": "string", "value": "={{ $json.body._meta?.requestId || 'n8n-generate-' + Date.now() }}" }
-          ]
-        },
-        "options": {}
-      },
       "id": "set-params",
       "name": "Set Parameters",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [460, 300]
+      "position": [
+        460,
+        300
+      ],
+      "parameters": {
+        "options": {},
+        "assignments": {
+          "assignments": [
+            {
+              "id": "prompt",
+              "name": "prompt",
+              "type": "string",
+              "value": "={{ $json.body.prompt }}"
+            },
+            {
+              "id": "systemPrompt",
+              "name": "systemPrompt",
+              "type": "string",
+              "value": "={{ $json.body.systemPrompt || '' }}"
+            },
+            {
+              "id": "model",
+              "name": "model",
+              "type": "string",
+              "value": "={{ $json.body.model || $env.OPENCODE_DEFAULT_MODEL || 'gpt-4.1' }}"
+            },
+            {
+              "id": "temperature",
+              "name": "temperature",
+              "type": "number",
+              "value": "={{ $json.body.temperature || 0.2 }}"
+            },
+            {
+              "id": "requestId",
+              "name": "requestId",
+              "type": "string",
+              "value": "={{ $json.body._meta?.requestId || 'n8n-generate-' + Date.now() }}"
+            }
+          ]
+        }
+      },
+      "typeVersion": 3.4
     },
     {
+      "id": "build-opencode-request",
+      "name": "Build OpenCode Request",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        680,
+        300
+      ],
       "parameters": {
+        "options": {},
         "assignments": {
           "assignments": [
             {
@@ -44,127 +83,254 @@
               "type": "string",
               "value": "={{ $json.systemPrompt ? ('System: ' + $json.systemPrompt + '\\n\\nUser: ' + $json.prompt) : $json.prompt }}"
             },
-            { "id": "providerID", "name": "providerID", "type": "string", "value": "={{ $env.OPENCODE_DEFAULT_PROVIDER || 'github-copilot' }}" },
-            { "id": "modelID", "name": "modelID", "type": "string", "value": "={{ $json.model }}" },
-            { "id": "title", "name": "title", "type": "string", "value": "={{ 'n8n-generate-' + Date.now() }}" }
+            {
+              "id": "providerID",
+              "name": "providerID",
+              "type": "string",
+              "value": "={{ $env.OPENCODE_DEFAULT_PROVIDER || 'github-copilot' }}"
+            },
+            {
+              "id": "modelID",
+              "name": "modelID",
+              "type": "string",
+              "value": "={{ $json.model }}"
+            },
+            {
+              "id": "title",
+              "name": "title",
+              "type": "string",
+              "value": "={{ 'n8n-generate-' + Date.now() }}"
+            }
           ]
         },
-        "includeOtherFields": true,
-        "options": {}
+        "includeOtherFields": true
       },
-      "id": "build-opencode-request",
-      "name": "Build OpenCode Request",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [680, 300]
+      "typeVersion": 3.4
     },
     {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ ($env.OPENCODE_BACKEND_URL || $env.OPENCODE_BASE_URL || 'http://opencode-backend:7016') + '/chat' }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Authorization", "value": "={{ $env.OPENCODE_API_KEY ? 'Bearer ' + $env.OPENCODE_API_KEY : '' }}" }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"message\": {{ JSON.stringify($json.message) }},\n  \"providerID\": {{ JSON.stringify($json.providerID) }},\n  \"modelID\": {{ JSON.stringify($json.modelID) }},\n  \"title\": {{ JSON.stringify($json.title) }}\n}",
-        "options": {
-          "timeout": 120000,
-          "response": { "response": { "fullResponse": true } }
-        }
-      },
       "id": "opencode-chat",
       "name": "OpenCode Chat",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [900, 300]
+      "position": [
+        900,
+        300
+      ],
+      "parameters": {
+        "url": "={{ ($env.OPENCODE_BACKEND_URL || $env.OPENCODE_BASE_URL || 'http://ai-server-backend:7016') + '/chat' }}",
+        "method": "POST",
+        "options": {
+          "timeout": 120000,
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        },
+        "jsonBody": "={\n  \"message\": {{ JSON.stringify($json.message) }},\n  \"providerID\": {{ JSON.stringify($json.providerID) }},\n  \"modelID\": {{ JSON.stringify($json.modelID) }},\n  \"title\": {{ JSON.stringify($json.title) }}\n}",
+        "sendBody": true,
+        "sendHeaders": true,
+        "specifyBody": "json",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ $env.OPENCODE_API_KEY ? 'Bearer ' + $env.OPENCODE_API_KEY : '' }}"
+            }
+          ]
+        }
+      },
+      "typeVersion": 4.2
     },
     {
-      "parameters": {
-        "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
-          "conditions": [
-            {
-              "id": "is-success",
-              "leftValue": "={{ $json.statusCode }}",
-              "rightValue": 200,
-              "operator": { "type": "number", "operation": "equals" }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
       "id": "check-success",
       "name": "Success?",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [1120, 300]
+      "position": [
+        1120,
+        300
+      ],
+      "parameters": {
+        "options": {},
+        "conditions": {
+          "options": {
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "is-success",
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              },
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200
+            }
+          ]
+        }
+      },
+      "typeVersion": 2
     },
     {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            { "id": "text", "name": "text", "type": "string", "value": "={{ $json.body?.response?.text || '' }}" },
-            { "id": "model", "name": "model", "type": "string", "value": "={{ $('Set Parameters').item.json.model }}" },
-            { "id": "provider", "name": "provider", "type": "string", "value": "opencode" },
-            { "id": "requestId", "name": "requestId", "type": "string", "value": "={{ $('Set Parameters').item.json.requestId }}" }
-          ]
-        },
-        "options": {}
-      },
       "id": "format-response",
       "name": "Format Response",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [1340, 200]
+      "position": [
+        1340,
+        200
+      ],
+      "parameters": {
+        "options": {},
+        "assignments": {
+          "assignments": [
+            {
+              "id": "text",
+              "name": "text",
+              "type": "string",
+              "value": "={{ $json.body?.data?.response?.text || $json.body?.response?.text || '' }}"
+            },
+            {
+              "id": "model",
+              "name": "model",
+              "type": "string",
+              "value": "={{ $('Set Parameters').item.json.model }}"
+            },
+            {
+              "id": "provider",
+              "name": "provider",
+              "type": "string",
+              "value": "opencode"
+            },
+            {
+              "id": "requestId",
+              "name": "requestId",
+              "type": "string",
+              "value": "={{ $('Set Parameters').item.json.requestId }}"
+            }
+          ]
+        }
+      },
+      "typeVersion": 3.4
     },
     {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ text: $json.text, content: $json.text, response: $json.text, model: $json.model, provider: $json.provider, requestId: $json.requestId }) }}",
-        "options": { "responseCode": 200 }
-      },
       "id": "respond",
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [1560, 200]
+      "position": [
+        1560,
+        200
+      ],
+      "parameters": {
+        "options": {
+          "responseCode": 200
+        },
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ text: $json.text, content: $json.text, response: $json.text, model: $json.model, provider: $json.provider, requestId: $json.requestId }) }}"
+      },
+      "typeVersion": 1.1
     },
     {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ error: $json.body?.error || $json.body || 'Generate failed', code: 'GENERATE_ERROR' }) }}",
-        "options": { "responseCode": 500 }
-      },
       "id": "error-response",
       "name": "Error Response",
       "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [1560, 400]
+      "position": [
+        1560,
+        400
+      ],
+      "parameters": {
+        "options": {
+          "responseCode": 500
+        },
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ error: $json.body?.error || $json.body || 'Generate failed', code: 'GENERATE_ERROR' }) }}"
+      },
+      "typeVersion": 1.1
     }
   ],
   "connections": {
-    "Webhook": { "main": [[{ "node": "Set Parameters", "type": "main", "index": 0 }]] },
-    "Set Parameters": { "main": [[{ "node": "Build OpenCode Request", "type": "main", "index": 0 }]] },
-    "Build OpenCode Request": { "main": [[{ "node": "OpenCode Chat", "type": "main", "index": 0 }]] },
-    "OpenCode Chat": { "main": [[{ "node": "Success?", "type": "main", "index": 0 }]] },
-    "Success?": {
+    "Webhook": {
       "main": [
-        [{ "node": "Format Response", "type": "main", "index": 0 }],
-        [{ "node": "Error Response", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Set Parameters",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Format Response": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+    "Set Parameters": {
+      "main": [
+        [
+          {
+            "node": "Build OpenCode Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build OpenCode Request": {
+      "main": [
+        [
+          {
+            "node": "OpenCode Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenCode Chat": {
+      "main": [
+        [
+          {
+            "node": "Success?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success?": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
-  "staticData": null,
-  "tags": [{ "name": "AI", "id": "ai-tag" }],
-  "triggerCount": 0,
-  "updatedAt": "2026-01-01T00:00:00.000Z",
-  "versionId": "1"
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": true,
+  "triggerCount": 1
 }

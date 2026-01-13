@@ -84,10 +84,12 @@ services:
     networks:
       - blog-network
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/api/v1/heartbeat"]
+      # ChromaDB image doesn't have wget, use curl instead
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/api/v1/heartbeat || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
 
   # ===========================================================================
   # BLOG SERVICES (Pre-built images from GHCR)
