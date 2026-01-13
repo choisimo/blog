@@ -150,8 +150,9 @@ function getReverseMap(): Record<string, string> {
  * normalizeCategoryName('frontend') // 'Web Dev'
  * normalizeCategoryName('Unknown Category') // 'Unknown Category'
  */
-export function normalizeCategoryName(category: string): string {
-  if (!category) return 'General';
+export function normalizeCategoryName(category: unknown): string {
+  // Handle null, undefined, or non-string values
+  if (!category || typeof category !== 'string') return 'General';
 
   const lower = category.toLowerCase().trim();
   const reverseMap = getReverseMap();
