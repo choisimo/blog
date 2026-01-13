@@ -11,7 +11,7 @@ readTime: "3분"
 
 ## 처음엔 단순했던 메모리 관리
 
-![1768280399652](image/memory-management-study/1768280399652.png)
+![1768280399652](/images/2025/memory-management-study/1768280399652.png)
 
 초기 컴퓨터는 메모리 관리가 단순했다. 그냥 프로세스를 메모리에 연속으로 쭉 넣는 방식이었다.
 
