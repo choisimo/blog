@@ -32,6 +32,7 @@ export type DockAction = {
   title?: string;
   badge?: boolean;
   primary?: boolean;
+  hidden?: boolean;
 };
 
 export type ShellLog = {

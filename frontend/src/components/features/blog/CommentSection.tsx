@@ -11,6 +11,7 @@ import CommentReactions from './CommentReactions';
 import { streamChatEvents } from '@/services/chat';
 import { fetchReactionsBatch, ReactionCount } from '@/services/reactions';
 import { getRAGContextForChat } from '@/services/rag';
+import { useFeatureFlags } from '@/stores/useFeatureFlagsStore';
 
 // Load any archived comments bundled at build-time
 // Using a relative glob; keys may vary (relative vs absolute) depending on bundler.
@@ -44,6 +45,7 @@ function getArchivedFor(postId: string): ArchivedPayload | null {
 
 export default function CommentSection({ postId }: { postId: string }) {
   const { isTerminal } = useTheme();
+  const { flags: featureFlags } = useFeatureFlags();
   const archived = useMemo(() => getArchivedFor(postId), [postId]);
   const [comments, setComments] = useState<CommentItem[] | null>(
     archived?.comments ?? null
@@ -415,7 +417,7 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 �
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* AI Discussion Toggle */}
+            {featureFlags.aiEnabled && (
             <button
               type="button"
               onClick={handleToggleAiDiscussion}
@@ -443,6 +445,7 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 �
                 <Sparkles className="h-3 w-3" />
               )}
             </button>
+            )}
             {error && (
               <span className={cn(
                 "rounded-full px-3 py-1 text-xs font-medium",

@@ -23,9 +23,12 @@ import {
   Server,
   Database,
   Brain,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react';
 import { getApiBaseUrl } from '@/utils/apiBase';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useFeatureFlagsStore, type FeatureFlags } from '@/stores/useFeatureFlagsStore';
 
 // ============================================================================
 // Types
@@ -350,6 +353,75 @@ function AIProvidersCard({
 }
 
 // ============================================================================
+// Feature Flags Card Component
+// ============================================================================
+
+const FEATURE_LABELS: Record<keyof FeatureFlags, string> = {
+  aiEnabled: 'AI 서비스',
+  ragEnabled: 'RAG 검색',
+  terminalEnabled: '터미널',
+  aiInline: '인라인 AI',
+  commentsEnabled: '댓글',
+};
+
+function FeatureFlagsCard() {
+  const { flags, isLoading, fetchFlags } = useFeatureFlagsStore();
+
+  const handleRefresh = useCallback(() => {
+    useFeatureFlagsStore.setState({ lastFetched: null });
+    fetchFlags();
+  }, [fetchFlags]);
+
+  const entries = Object.entries(flags) as [keyof FeatureFlags, boolean][];
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ToggleRight className="h-5 w-5 text-orange-500" />
+            <div>
+              <CardTitle className="text-base">Feature Flags</CardTitle>
+              <CardDescription className="text-xs">
+                기능 활성화 상태
+              </CardDescription>
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2">
+          {entries.map(([key, enabled]) => (
+            <div
+              key={key}
+              className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
+            >
+              <p className="text-sm font-medium">{FEATURE_LABELS[key]}</p>
+              <Badge variant={enabled ? 'default' : 'secondary'} className={enabled ? 'bg-green-500 hover:bg-green-600' : ''}>
+                {enabled ? (
+                  <>
+                    <ToggleRight className="h-3 w-3 mr-1" />
+                    활성화
+                  </>
+                ) : (
+                  <>
+                    <ToggleLeft className="h-3 w-3 mr-1" />
+                    비활성화
+                  </>
+                )}
+              </Badge>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================================
 // Main Component
 // ============================================================================
 
@@ -508,7 +580,7 @@ export function SystemHealth() {
       </Card>
 
       {/* Service Cards Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <ServiceCard
           icon={<Server className="h-5 w-5 text-blue-500" />}
           title="Core Services"
@@ -532,6 +604,8 @@ export function SystemHealth() {
           checkingProvider={checkingProvider}
           loading={providersLoading}
         />
+
+        <FeatureFlagsCard />
       </div>
     </div>
   );

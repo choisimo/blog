@@ -19,6 +19,9 @@ import AdminConfig from './pages/AdminConfig';
 import './App.css';
 import { VisitedPostsMinimap } from '@/components/features/navigation/VisitedPostsMinimap';
 import FloatingActionBar from '@/components/features/memo/FloatingActionBar';
+import { initFeatureFlags } from '@/stores/useFeatureFlagsStore';
+
+initFeatureFlags();
 
 const queryClient = new QueryClient();
 

@@ -14,6 +14,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 import { useUIStrings } from "@/utils/i18n";
+import { useFeatureFlags } from "@/stores/useFeatureFlagsStore";
 
 import type { DockAction } from "./types";
 import {
@@ -57,6 +58,7 @@ export default function FloatingActionBar() {
   const { isTerminal } = useTheme();
   const { send, sendImpression, sendMemoContextChange } = useFabAnalytics();
   const str = useUIStrings();
+  const { flags: featureFlags } = useFeatureFlags();
 
   // Shell Commander state (for terminal theme mobile)
   const [shellOpen, setShellOpen] = useState(false);
@@ -265,7 +267,7 @@ export default function FloatingActionBar() {
         : "translate-y-0 opacity-100",
   );
 
-  const dockActions: DockAction[] = [
+  const allDockActions: DockAction[] = [
     {
       key: "chat",
       label: str.nav.chat,
@@ -275,6 +277,7 @@ export default function FloatingActionBar() {
         send("fab_ai_chat_open");
       },
       primary: true,
+      hidden: !featureFlags.aiEnabled,
     },
     {
       key: "memo",
@@ -305,6 +308,8 @@ export default function FloatingActionBar() {
       badge: hasNew,
     },
   ];
+
+  const dockActions = allDockActions.filter(action => !action.hidden);
 
   if (!enabled) {
     return null;
