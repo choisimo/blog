@@ -62,10 +62,6 @@ SECRETS=(
     ["ANTHROPIC_API_KEY"]="Anthropic API key (optional)"
     ["GEMINI_API_KEY"]="Google Gemini API key (optional)"
     
-    # Firebase (optional)
-    ["FIREBASE_PROJECT_ID"]="Firebase project ID"
-    ["FIREBASE_SERVICE_ACCOUNT_JSON"]="Firebase service account JSON"
-    
     # Cloudflare Workers (optional)
     ["CF_ACCOUNT_ID"]="Cloudflare account ID"
     ["CF_API_TOKEN"]="Cloudflare API token"
@@ -265,7 +261,7 @@ set_secrets() {
         echo -e "${YELLOW}$key${NC}: ${SECRETS[$key]}"
         
         # Special handling for multi-line secrets
-        if [[ $key == "SERVER_SSH_KEY" ]] || [[ $key == "FIREBASE_SERVICE_ACCOUNT_JSON" ]]; then
+        if [[ $key == "SERVER_SSH_KEY" ]]; then
             echo "Enter path to file containing the value:"
             read -r filepath
             if [ -f "$filepath" ]; then

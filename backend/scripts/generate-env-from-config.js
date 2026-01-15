@@ -103,6 +103,16 @@ const CONFIG_SCHEMA = {
       { key: 'CONSUL_PORT', value: () => config.consul?.port },
     ],
   },
+  features: {
+    name: 'Feature Flags',
+    vars: [
+      { key: 'FEATURE_AI_ENABLED', value: () => config.features?.aiEnabled ? 'true' : 'false' },
+      { key: 'FEATURE_RAG_ENABLED', value: () => config.features?.ragEnabled ? 'true' : 'false' },
+      { key: 'FEATURE_TERMINAL_ENABLED', value: () => config.features?.terminalEnabled ? 'true' : 'false' },
+      { key: 'FEATURE_AI_INLINE', value: () => config.features?.aiInline ? 'true' : 'false' },
+      { key: 'FEATURE_COMMENTS_ENABLED', value: () => config.features?.commentsEnabled ? 'true' : 'false' },
+    ],
+  },
 };
 
 function generateEnvContent(includeSecrets = false) {

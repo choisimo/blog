@@ -158,7 +158,6 @@ if [ ! -f ".env" ] || [ "$backup_env" = "y" ]; then
     echo ""
     echo "Optional configurations (press Enter to skip):"
     prompt_input "Gemini API Key" GEMINI_API_KEY ""
-    prompt_input "Firebase Project ID" FIREBASE_PROJECT_ID ""
     
     # Create .env file
     cat > .env << EOF
@@ -185,8 +184,6 @@ ADMIN_BEARER_TOKEN=${ADMIN_TOKEN}
 # Optional Services
 GEMINI_API_KEY=${GEMINI_API_KEY}
 GEMINI_MODEL=gemini-1.5-flash
-FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
-FIREBASE_SERVICE_ACCOUNT_JSON=
 
 # Rate Limiting
 RATE_LIMIT_MAX=100

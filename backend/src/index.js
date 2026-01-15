@@ -3,7 +3,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
-import { config, publicRuntimeConfig } from './config.js';
+import { config, publicRuntimeConfig, loadAndApplyConsulConfig } from './config.js';
 
 import aiRouter from './routes/ai.js';
 import commentsRouter from './routes/comments.js';
@@ -23,7 +23,10 @@ import aiAdminRouter from './routes/aiAdmin.js';
 import agentRouter from './routes/agent.js';
 import { createAidoveProxy } from './lib/aidove-proxy.js';
 
-const app = express();
+async function startServer() {
+  await loadAndApplyConsulConfig();
+  
+  const app = express();
 
 // trust proxy (for correct IP in rate-limit, etc.)
 app.set('trust proxy', config.trustProxy);
@@ -112,4 +115,11 @@ const port = config.port;
 const host = config.host;
 app.listen(port, host, () => {
   console.log(`[api] listening on http://${host}:${port}`);
+  console.log(`[api] features: ai=${config.features.aiEnabled}, rag=${config.features.ragEnabled}, comments=${config.features.commentsEnabled}`);
+});
+}
+
+startServer().catch(err => {
+  console.error('[api] Failed to start server:', err);
+  process.exit(1);
 });

@@ -322,6 +322,34 @@ export async function initConfig() {
   return _config;
 }
 
+export async function loadAndApplyConsulConfig() {
+  if (!USE_CONSUL) {
+    console.log('[config] Consul disabled, using environment variables');
+    return config;
+  }
+
+  try {
+    const asyncConfig = await initConfig();
+    
+    Object.assign(config, {
+      siteBaseUrl: asyncConfig.siteBaseUrl,
+      apiBaseUrl: asyncConfig.apiBaseUrl,
+      allowedOrigins: asyncConfig.allowedOrigins,
+      ai: asyncConfig.ai,
+      rag: asyncConfig.rag,
+      redis: asyncConfig.redis,
+      services: asyncConfig.services,
+      features: asyncConfig.features,
+    });
+    
+    console.log('[config] Consul config applied successfully');
+    return config;
+  } catch (err) {
+    console.warn(`[config] Failed to apply Consul config: ${err.message}`);
+    return config;
+  }
+}
+
 const syncConfig = schema.parse(process.env);
 const repoRoot = path.resolve(process.cwd(), '..');
 const allowedOrigins = syncConfig.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean);
