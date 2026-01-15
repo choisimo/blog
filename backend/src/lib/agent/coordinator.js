@@ -25,7 +25,7 @@
  *   });
  */
 
-import { getOpenCodeClient } from '../opencode-client.js';
+import { getAIService } from '../ai-service.js';
 import { getToolRegistry } from './tools/index.js';
 import { getSessionMemory } from './memory/session.js';
 import { getPersistentMemory } from './memory/persistent.js';
@@ -72,7 +72,7 @@ const logger = {
 
 export class AgentCoordinator {
   constructor(options = {}) {
-    this.llmClient = options.llmClient || getOpenCodeClient();
+    this._aiService = options.aiService || getAIService();
     this.toolRegistry = options.toolRegistry || getToolRegistry();
     this.sessionMemory = options.sessionMemory || getSessionMemory();
     this.persistentMemory = options.persistentMemory || getPersistentMemory();
@@ -83,7 +83,7 @@ export class AgentCoordinator {
     
     logger.info({ operation: 'init' }, 'AgentCoordinator initialized', {
       model: this.defaultModel,
-      provider: 'opencode',
+      provider: 'ai-service',
       toolCount: this.toolRegistry.getToolCount(),
     });
   }
@@ -276,15 +276,14 @@ export class AgentCoordinator {
       // Build messages with tool instructions
       const messagesWithTools = this._injectToolInstructions(messages, tools);
       
-      // Format messages for OpenCode /chat endpoint
-      const formattedPrompt = this._formatMessagesForOpenCode(messagesWithTools);
+      // Format messages for chat endpoint
+      const formattedPrompt = this._formatMessagesForChat(messagesWithTools);
       
-      // Call OpenCode chat endpoint
-      const response = await this.llmClient.chat(
+      // Call AIService chat endpoint
+      const response = await this._aiService.chat(
         [{ role: 'user', content: formattedPrompt }],
         {
           model: options.model || this.defaultModel,
-          title: `agent-${Date.now()}`,
         }
       );
 
@@ -294,8 +293,8 @@ export class AgentCoordinator {
       return {
         content: parsedResponse.content,
         toolCalls: parsedResponse.toolCalls,
-        usage: null, // OpenCode doesn't return usage stats in same format
-        model: options.model || this.defaultModel,
+        usage: response.usage,
+        model: response.model || options.model || this.defaultModel,
         finishReason: parsedResponse.toolCalls?.length > 0 ? 'tool_calls' : 'stop',
         sessionId: response.sessionId,
       };
@@ -366,9 +365,9 @@ ${toolsDescription}
   }
 
   /**
-   * Format messages array into a single prompt for OpenCode's /chat endpoint
+   * Format messages array into a single prompt for chat endpoint
    */
-  _formatMessagesForOpenCode(messages) {
+  _formatMessagesForChat(messages) {
     return messages.map(m => {
       const role = m.role === 'assistant' ? 'Assistant' 
                  : m.role === 'system' ? 'System'
@@ -614,16 +613,15 @@ ${toolsDescription}
 
       // Inject tool instructions and format for OpenCode
       const messagesWithTools = this._injectToolInstructions(currentMessages, tools);
-      const formattedPrompt = this._formatMessagesForOpenCode(messagesWithTools);
+      const formattedPrompt = this._formatMessagesForChat(messagesWithTools);
 
-      // Call OpenCode (non-streaming, then simulate streaming)
+      // Call AIService (non-streaming, then simulate streaming)
       let response;
       try {
-        response = await this.llmClient.chat(
+        response = await this._aiService.chat(
           [{ role: 'user', content: formattedPrompt }],
           {
             model: options.model || this.defaultModel,
-            title: `agent-stream-${runId}`,
           }
         );
       } catch (error) {
@@ -793,7 +791,7 @@ ${toolsDescription}
    * Health check
    */
   async health() {
-    const llmHealth = await this.llmClient.health();
+    const llmHealth = await this._aiService.health();
     const toolCount = this.toolRegistry.getToolCount();
 
     return {

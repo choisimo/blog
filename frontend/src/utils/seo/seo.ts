@@ -52,7 +52,7 @@ export const generateSEOData = (
   pageType: SEOPageType = 'home',
   options: GenerateSEOOptions = {}
 ): SEOData => {
-  const baseUrl = import.meta.env.VITE_SITE_BASE_URL || 'http://localhost:3000';
+  const baseUrl = import.meta.env.VITE_SITE_BASE_URL || 'https://noblog.nodove.com';
   const apiBase = getApiBaseUrl();
   const siteName = import.meta.env.VITE_SITE_NAME || 'nodove-blog';
   const seoImageBase = `${baseUrl}/images/seo`;
@@ -144,7 +144,7 @@ export const generateStructuredData = (
   post?: BlogPost,
   pageType: string = 'home'
 ) => {
-  const baseUrl = import.meta.env.VITE_SITE_BASE_URL || 'http://localhost:3000';
+  const baseUrl = import.meta.env.VITE_SITE_BASE_URL || 'https://noblog.nodove.com';
   const apiBase = getApiBaseUrl();
   const siteName = import.meta.env.VITE_SITE_NAME || 'nodove-blog';
   const authorName = import.meta.env.VITE_AUTHOR_NAME || 'nodove';

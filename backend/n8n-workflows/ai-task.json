@@ -133,7 +133,7 @@
         300
       ],
       "parameters": {
-        "url": "={{ ($env.OPENCODE_BACKEND_URL || $env.OPENCODE_BASE_URL || 'http://ai-server-backend:7016') + '/chat' }}",
+        "url": "={{ ($env.OPENCODE_BACKEND_URL || $env.AI_GATEWAY_URL || $env.OPENCODE_BASE_URL || 'http://ai-gateway:7000') + '/chat' }}",
         "method": "POST",
         "sendBody": true,
         "specifyBody": "json",

@@ -19,8 +19,11 @@ import express from 'express';
 import { AgentCoordinator, createAgentCoordinator, getAgentCoordinator } from '../lib/agent/coordinator.js';
 import { buildSystemPrompt, SYSTEM_PROMPTS } from '../lib/agent/prompts/system.js';
 import { getSessionMemory } from '../lib/agent/memory/session.js';
+import { requireFeature } from '../middleware/featureFlags.js';
 
 const router = express.Router();
+
+router.use(requireFeature('ai'));
 
 /**
  * Get or create the singleton agent coordinator

@@ -190,20 +190,25 @@
       this.bind();
       this.applyThemeFromPage();
       this.restore();
-      // If first mount and isOpen, ensure visibility
       this.updateOpen();
       this.updateMode();
       window.addEventListener(
         'aiMemo:log',
         this._onExternalLog
       );
-      // Save memo state before page unload
       this._boundBeforeUnload = () => {
         if (this.state.memo) {
           LS.set(KEYS.memo, this.state.memo);
         }
       };
       window.addEventListener('beforeunload', this._boundBeforeUnload);
+      
+      this._isKeyboardVisible = false;
+      this._viewportHeight = window.visualViewport?.height || window.innerHeight;
+      this._boundHandleViewportResize = this.handleViewportResize.bind(this);
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', this._boundHandleViewportResize);
+      }
     }
 
     disconnectedCallback() {
@@ -213,6 +218,44 @@
       );
       window.removeEventListener('beforeunload', this._boundBeforeUnload);
       this.cleanupHistoryInteractions();
+      
+      if (window.visualViewport && this._boundHandleViewportResize) {
+        window.visualViewport.removeEventListener('resize', this._boundHandleViewportResize);
+      }
+      this.restoreBodyScroll();
+    }
+
+    handleViewportResize() {
+      if (!window.visualViewport) return;
+      const currentHeight = window.visualViewport.height;
+      const windowHeight = window.innerHeight;
+      const heightDiff = windowHeight - currentHeight;
+      const keyboardThreshold = 150;
+      
+      const wasKeyboardVisible = this._isKeyboardVisible;
+      this._isKeyboardVisible = heightDiff > keyboardThreshold;
+      
+      if (wasKeyboardVisible !== this._isKeyboardVisible) {
+        this.$panel?.classList.toggle('keyboard-active', this._isKeyboardVisible);
+      }
+    }
+
+    lockBodyScroll() {
+      if (this._bodyScrollLocked) return;
+      this._bodyScrollLocked = true;
+      this._originalBodyOverflow = document.body.style.overflow;
+      this._originalBodyPosition = document.body.style.position;
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+    }
+
+    restoreBodyScroll() {
+      if (!this._bodyScrollLocked) return;
+      this._bodyScrollLocked = false;
+      document.body.style.overflow = this._originalBodyOverflow || '';
+      document.body.style.position = this._originalBodyPosition || '';
+      document.body.style.width = '';
     }
 
     cleanupHistoryInteractions() {
@@ -2164,7 +2207,11 @@
         LS.set(KEYS.isOpen, isOpen);
         this.state.isOpen = isOpen;
         
-        // When opening, verify position is valid for current viewport
+        const isMobile = window.innerWidth <= 640;
+        if (isMobile) {
+          isOpen ? this.lockBodyScroll() : this.restoreBodyScroll();
+        }
+        
         if (isOpen) {
           requestAnimationFrame(() => {
             const rect = this.$panel.getBoundingClientRect();

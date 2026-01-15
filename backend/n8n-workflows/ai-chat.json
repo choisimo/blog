@@ -1,5 +1,5 @@
 {
-  "name": "AI Chat Webhook (OpenCode)",
+  "name": "AI Chat Webhook (OpenAI Compatible)",
   "nodes": [
     {
       "id": "webhook-trigger",
@@ -42,7 +42,7 @@
               "id": "model",
               "name": "model",
               "type": "string",
-              "value": "={{ $json.body.model || $env.OPENCODE_DEFAULT_MODEL || 'gpt-4.1' }}"
+              "value": "={{ $json.body.model || $env.OPENAI_DEFAULT_MODEL || $env.OPENCODE_DEFAULT_MODEL || 'gpt-4.1' }}"
             },
             {
               "id": "temperature",
@@ -54,13 +54,7 @@
               "id": "maxTokens",
               "name": "maxTokens",
               "type": "number",
-              "value": "={{ $json.body.maxTokens || 4096 }}"
-            },
-            {
-              "id": "sessionId",
-              "name": "sessionId",
-              "type": "string",
-              "value": "={{ $json.body.sessionId || '' }}"
+              "value": "={{ $json.body.maxTokens || $json.body.max_tokens || 4096 }}"
             },
             {
               "id": "requestId",
@@ -74,57 +68,15 @@
       "typeVersion": 3.4
     },
     {
-      "id": "build-opencode-request",
-      "name": "Build OpenCode Request",
-      "type": "n8n-nodes-base.set",
+      "id": "openai-chat",
+      "name": "OpenAI Chat Completions",
+      "type": "n8n-nodes-base.httpRequest",
       "position": [
         680,
         300
       ],
       "parameters": {
-        "options": {},
-        "assignments": {
-          "assignments": [
-            {
-              "id": "message",
-              "name": "message",
-              "type": "string",
-              "value": "={{ $json.messages?.length === 1 ? $json.messages[0].content : ($json.messages || []).map(m => (m.role === 'assistant' ? 'Assistant' : m.role === 'system' ? 'System' : 'User') + ': ' + m.content).join('\\n\\n') }}"
-            },
-            {
-              "id": "providerID",
-              "name": "providerID",
-              "type": "string",
-              "value": "={{ $env.OPENCODE_DEFAULT_PROVIDER || 'github-copilot' }}"
-            },
-            {
-              "id": "modelID",
-              "name": "modelID",
-              "type": "string",
-              "value": "={{ $json.model }}"
-            },
-            {
-              "id": "title",
-              "name": "title",
-              "type": "string",
-              "value": "={{ 'n8n-chat-' + Date.now() }}"
-            }
-          ]
-        },
-        "includeOtherFields": true
-      },
-      "typeVersion": 3.4
-    },
-    {
-      "id": "opencode-chat",
-      "name": "OpenCode Chat",
-      "type": "n8n-nodes-base.httpRequest",
-      "position": [
-        900,
-        300
-      ],
-      "parameters": {
-        "url": "={{ ($env.OPENCODE_BACKEND_URL || $env.OPENCODE_BASE_URL || 'http://ai-server-backend:7016') + '/chat' }}",
+        "url": "={{ (($env.AI_GATEWAY_URL || $env.OPENAI_API_BASE_URL || $env.OPENCODE_BASE_URL || 'http://ai-gateway:7000').replace(/\\/v1\\/?$/, '')) + '/v1/chat/completions' }}",
         "method": "POST",
         "options": {
           "timeout": 120000,
@@ -134,7 +86,7 @@
             }
           }
         },
-        "jsonBody": "={\n  \"message\": {{ JSON.stringify($json.message) }},\n  \"providerID\": {{ JSON.stringify($json.providerID) }},\n  \"modelID\": {{ JSON.stringify($json.modelID) }},\n  \"title\": {{ JSON.stringify($json.title) }},\n  \"sessionId\": {{ $json.sessionId ? JSON.stringify($json.sessionId) : 'null' }}\n}",
+        "jsonBody": "={\n  \"model\": {{ JSON.stringify($json.model) }},\n  \"messages\": {{ JSON.stringify($json.messages) }},\n  \"temperature\": {{ $json.temperature }},\n  \"max_tokens\": {{ $json.maxTokens }}\n}",
         "sendBody": true,
         "sendHeaders": true,
         "specifyBody": "json",
@@ -146,7 +98,7 @@
             },
             {
               "name": "Authorization",
-              "value": "={{ $env.OPENCODE_API_KEY ? 'Bearer ' + $env.OPENCODE_API_KEY : '' }}"
+              "value": "={{ 'Bearer ' + ($env.AI_API_KEY || $env.OPENAI_API_KEY || $env.OPENCODE_API_KEY || 'sk-noaicode') }}"
             }
           ]
         }
@@ -158,7 +110,7 @@
       "name": "Success?",
       "type": "n8n-nodes-base.if",
       "position": [
-        1120,
+        900,
         300
       ],
       "parameters": {
@@ -190,7 +142,7 @@
       "name": "Format Response",
       "type": "n8n-nodes-base.set",
       "position": [
-        1340,
+        1120,
         200
       ],
       "parameters": {
@@ -201,25 +153,25 @@
               "id": "content",
               "name": "content",
               "type": "string",
-              "value": "={{ $json.body?.data?.response?.text || $json.body?.response?.text || '' }}"
+              "value": "={{ $json.body?.choices?.[0]?.message?.content || $json.body?.data?.choices?.[0]?.message?.content || '' }}"
             },
             {
               "id": "model",
               "name": "model",
               "type": "string",
-              "value": "={{ $('Set Parameters').item.json.model }}"
+              "value": "={{ $json.body?.model || $('Set Parameters').item.json.model }}"
             },
             {
               "id": "provider",
               "name": "provider",
               "type": "string",
-              "value": "opencode"
+              "value": "openai-compat"
             },
             {
-              "id": "sessionId",
-              "name": "sessionId",
-              "type": "string",
-              "value": "={{ $json.body?.sessionId || '' }}"
+              "id": "usage",
+              "name": "usage",
+              "type": "object",
+              "value": "={{ $json.body?.usage || {} }}"
             },
             {
               "id": "requestId",
@@ -291,25 +243,14 @@
       "main": [
         [
           {
-            "node": "Build OpenCode Request",
+            "node": "OpenAI Chat Completions",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Build OpenCode Request": {
-      "main": [
-        [
-          {
-            "node": "OpenCode Chat",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "OpenCode Chat": {
+    "OpenAI Chat Completions": {
       "main": [
         [
           {

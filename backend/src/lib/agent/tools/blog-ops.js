@@ -7,14 +7,13 @@
 
 import { config } from '../../../config.js';
 
-// Configuration
-const API_BASE_URL = process.env.INTERNAL_API_URL || 'http://localhost:5080';
+const getApiBaseUrl = () => config.services?.backendUrl || process.env.INTERNAL_API_URL || `http://localhost:${config.port || 5080}`;
 
 /**
  * Make authenticated API request
  */
 async function apiRequest(endpoint, options = {}) {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const url = `${getApiBaseUrl()}${endpoint}`;
   
   const response = await fetch(url, {
     ...options,

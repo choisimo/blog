@@ -2,38 +2,31 @@ import { Router } from 'express';
 import { aiService, tryParseJson } from '../lib/ai-service.js';
 import { getN8NClient } from '../lib/n8n-client.js';
 import { config } from '../config.js';
-// DB access for dynamic model management
 import { queryAll, isD1Configured } from '../lib/d1.js';
+import { getAITaskQueue } from '../lib/ai-task-queue.js';
+import { isRedisAvailable } from '../lib/redis-client.js';
+import { getAIRateLimiter, rateLimitMiddleware } from '../lib/ai-rate-limiter.js';
+import { ragSearch } from '../lib/agent/tools/rag-search.js';
+import { requireFeature } from '../middleware/featureFlags.js';
 
 const router = Router();
+
+router.use(requireFeature('ai'));
 
 // ============================================================================
 // RAG Integration Helper
 // ============================================================================
 
-/**
- * Search RAG for relevant blog posts
- * @param {string} query - Search query
- * @param {number} nResults - Number of results to return
- * @returns {Promise<Array|null>} Search results or null if RAG unavailable
- */
 async function searchBlogPosts(query, nResults = 5) {
   try {
-    // Call internal RAG search endpoint
-    const response = await fetch(`http://localhost:${process.env.PORT || 5080}/api/v1/rag/search`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, n_results: nResults }),
-      signal: AbortSignal.timeout(5000),
-    });
+    const results = await ragSearch(query, { limit: nResults });
+    if (!results || results.length === 0) return null;
     
-    if (!response.ok) {
-      console.warn('RAG search failed:', response.status);
-      return null;
-    }
-    
-    const data = await response.json();
-    return data.ok ? data.data?.results : null;
+    return results.map(r => ({
+      document: r.content,
+      metadata: r.metadata || {},
+      score: r.score,
+    }));
   } catch (err) {
     console.warn('RAG search error:', err.message);
     return null;
@@ -235,7 +228,7 @@ function getFallbackModels(defaultModel) {
 // POST /api/v1/ai/auto-chat
 // ============================================================================
 
-router.post('/auto-chat', async (req, res, next) => {
+router.post('/auto-chat', rateLimitMiddleware(), async (req, res, next) => {
   try {
     const { messages, temperature, maxTokens, model } = req.body || {};
 
@@ -347,6 +340,113 @@ router.get('/status', async (req, res) => {
   });
 });
 
+// GET /api/v1/ai/queue-stats - Queue statistics
+router.get('/queue-stats', async (req, res) => {
+  const redisAvailable = await isRedisAvailable();
+  
+  if (!redisAvailable) {
+    return res.json({
+      ok: true,
+      data: {
+        enabled: false,
+        message: 'Async queue not available (Redis offline)',
+      },
+    });
+  }
+
+  const queue = getAITaskQueue();
+  const stats = await queue.getQueueStats();
+
+  res.json({
+    ok: true,
+    data: {
+      enabled: true,
+      asyncMode: process.env.AI_ASYNC_MODE === 'true',
+      ...stats,
+      timestamp: new Date().toISOString(),
+    },
+  });
+});
+
+// GET /api/v1/ai/dlq - Get Dead Letter Queue tasks
+router.get('/dlq', async (req, res) => {
+  const redisAvailable = await isRedisAvailable();
+  
+  if (!redisAvailable) {
+    return res.status(503).json({
+      ok: false,
+      error: { message: 'Redis unavailable', code: 'REDIS_UNAVAILABLE' },
+    });
+  }
+
+  const count = parseInt(req.query.count, 10) || 10;
+  const queue = getAITaskQueue();
+  const tasks = await queue.getDLQTasks(count);
+
+  res.json({
+    ok: true,
+    data: { tasks, count: tasks.length },
+  });
+});
+
+// POST /api/v1/ai/dlq/:messageId/reprocess - Reprocess a DLQ task
+router.post('/dlq/:messageId/reprocess', async (req, res) => {
+  const redisAvailable = await isRedisAvailable();
+  
+  if (!redisAvailable) {
+    return res.status(503).json({
+      ok: false,
+      error: { message: 'Redis unavailable', code: 'REDIS_UNAVAILABLE' },
+    });
+  }
+
+  const { messageId } = req.params;
+  const queue = getAITaskQueue();
+  
+  try {
+    const result = await queue.reprocessDLQTask(messageId);
+    res.json({ ok: true, data: result });
+  } catch (err) {
+    res.status(404).json({
+      ok: false,
+      error: { message: err.message, code: 'DLQ_TASK_NOT_FOUND' },
+    });
+  }
+});
+
+// DELETE /api/v1/ai/dlq - Purge all DLQ tasks
+router.delete('/dlq', async (req, res) => {
+  const redisAvailable = await isRedisAvailable();
+  
+  if (!redisAvailable) {
+    return res.status(503).json({
+      ok: false,
+      error: { message: 'Redis unavailable', code: 'REDIS_UNAVAILABLE' },
+    });
+  }
+
+  const queue = getAITaskQueue();
+  const result = await queue.purgeDLQ();
+  
+  res.json({ ok: true, data: result });
+});
+
+// GET /api/v1/ai/rate-limit - Get rate limit status for current client
+router.get('/rate-limit', async (req, res) => {
+  const limiter = getAIRateLimiter();
+  const identifier = req.ip || req.headers['x-forwarded-for'] || 'anonymous';
+  const quota = await limiter.getRemainingQuota(identifier);
+
+  res.json({
+    ok: true,
+    data: {
+      ...quota,
+      windowMs: limiter.windowMs,
+      identifier: identifier.slice(0, 8) + '...',
+    },
+  });
+});
+
 // ============================================================================
 // Vision Analysis Endpoint
 // POST /api/v1/ai/vision/analyze
@@ -402,7 +502,7 @@ async function fetchImageAsBase64(imageUrl) {
   return { base64, mimeType: contentType };
 }
 
-router.post('/vision/analyze', async (req, res, next) => {
+router.post('/vision/analyze', rateLimitMiddleware(), async (req, res, next) => {
   try {
     const { imageUrl, imageBase64, mimeType: inputMimeType, prompt, provider: preferredProvider } = req.body || {};
 
@@ -413,8 +513,8 @@ router.post('/vision/analyze', async (req, res, next) => {
     // Prefer URL if provided (n8n will fetch from R2 directly)
     // This is more efficient than converting to base64
     if (imageUrl) {
-      // Check if it's an R2 URL or other accessible URL
-      const isR2Url = imageUrl.includes('assets-b.nodove.com') || 
+      const assetsBaseUrl = config.r2?.assetsBaseUrl || 'assets-b.nodove.com';
+      const isR2Url = imageUrl.includes(assetsBaseUrl.replace(/^https?:\/\//, '')) || 
                       imageUrl.includes('r2.cloudflarestorage.com');
       
       if (isR2Url) {
@@ -614,7 +714,7 @@ router.post('/chain', async (req, res, next) => {
 // Raw generate endpoint for AI Memo and other generic prompts
 // Request: { prompt: string, temperature?: number }
 // Response: { ok: true, data: { text: string } }
-router.post('/generate', async (req, res, next) => {
+router.post('/generate', rateLimitMiddleware(), async (req, res, next) => {
   try {
     const { prompt, temperature } = req.body || {};
     if (!prompt || typeof prompt !== 'string') {

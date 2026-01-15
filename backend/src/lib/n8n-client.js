@@ -56,7 +56,9 @@
  *   const analysis = await client.vision('https://r2-url/image.jpg', 'Describe this image');
  */
 
-import { getOpenCodeClient } from './opencode-client.js';
+import { getAIService } from './ai-service.js';
+import { fetchWithTimeout } from './fetch-utils.js';
+import { config } from '../config.js';
 
 /**
  * Structured logger
@@ -82,10 +84,15 @@ const logger = {
   },
 };
 
-// Configuration
-const N8N_BASE_URL = process.env.N8N_WEBHOOK_URL || process.env.N8N_BASE_URL || 'http://n8n:5678';
+// Configuration (from config.js which supports Consul KV with env fallback)
+const getN8NBaseUrl = () => 
+  config.services?.n8nWebhookUrl || 
+  config.services?.n8nBaseUrl || 
+  process.env.N8N_WEBHOOK_URL || 
+  process.env.N8N_BASE_URL || 
+  'http://n8n:5678';
 const N8N_API_KEY = process.env.N8N_API_KEY || '';
-const DEFAULT_MODEL = process.env.AI_DEFAULT_MODEL || 'gemini-1.5-flash';
+const DEFAULT_MODEL = config.ai?.defaultModel || process.env.AI_DEFAULT_MODEL || 'gemini-1.5-flash';
 
 // OpenCode hybrid mode configuration
 const USE_OPENCODE_FOR_LLM = process.env.USE_OPENCODE_FOR_LLM !== 'false'; // Default: true
@@ -112,29 +119,6 @@ const CIRCUIT_BREAKER_THRESHOLD = 5;
 const CIRCUIT_BREAKER_RESET_TIME = 60000; // 1 minute
 
 /**
- * Fetch with timeout
- */
-async function fetchWithTimeout(url, options = {}, timeout = DEFAULT_TIMEOUT) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    return response;
-  } catch (error) {
-    if (error.name === 'AbortError') {
-      throw new Error(`n8n request timeout after ${timeout}ms`);
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
-/**
  * n8n Webhook AI Client (Hybrid Mode)
  * 
  * Supports routing LLM calls through OpenCode backend while keeping
@@ -142,24 +126,24 @@ async function fetchWithTimeout(url, options = {}, timeout = DEFAULT_TIMEOUT) {
  */
 export class N8NClient {
   constructor(options = {}) {
-    this.baseUrl = options.baseUrl || N8N_BASE_URL;
+    this.baseUrl = options.baseUrl || getN8NBaseUrl();
     this.apiKey = options.apiKey || N8N_API_KEY;
     this.defaultModel = options.model || DEFAULT_MODEL;
     
-    // Hybrid mode: use OpenCode for LLM calls
+    // Hybrid mode: use AIService for LLM calls (OpenAI SDK compatible)
     this.useOpenCodeForLLM = options.useOpenCodeForLLM ?? USE_OPENCODE_FOR_LLM;
-    this._openCodeClient = null;
+    this._aiService = null;
     
     if (this.useOpenCodeForLLM) {
       try {
-        this._openCodeClient = getOpenCodeClient();
+        this._aiService = getAIService();
         logger.info({ operation: 'init' }, 'N8N Client initialized (hybrid mode)', {
           baseUrl: this.baseUrl,
           defaultModel: this.defaultModel,
-          llmBackend: 'opencode',
+          llmBackend: 'ai-service',
         });
       } catch (error) {
-        logger.warn({ operation: 'init' }, 'Failed to initialize OpenCode client, falling back to n8n', {
+        logger.warn({ operation: 'init' }, 'Failed to initialize AIService, falling back to n8n', {
           error: error.message,
         });
         this.useOpenCodeForLLM = false;
@@ -324,10 +308,10 @@ export class N8NClient {
    * @returns {Promise<{content: string, model: string, provider: string}>}
    */
   async chat(messages, options = {}) {
-    // Try OpenCode first in hybrid mode
-    if (this.useOpenCodeForLLM && this._openCodeClient) {
+    // Try AIService first in hybrid mode
+    if (this.useOpenCodeForLLM && this._aiService) {
       try {
-        const result = await this._openCodeClient.chat(messages, {
+        const result = await this._aiService.chat(messages, {
           model: options.model || this.defaultModel,
           timeout: options.timeout,
         });
@@ -335,14 +319,14 @@ export class N8NClient {
         return {
           content: result.content || '',
           model: result.model || options.model || this.defaultModel,
-          provider: 'opencode',
+          provider: 'ai-service',
           sessionId: result.sessionId,
           usage: result.usage,
         };
       } catch (error) {
         logger.warn(
           { operation: 'chat' },
-          'OpenCode chat failed, falling back to n8n',
+          'AIService chat failed, falling back to n8n',
           { error: error.message }
         );
         // Fall through to n8n
@@ -388,10 +372,10 @@ async customLLMChat(messages, options = {}) {
    * @returns {Promise<string>}
    */
   async generate(prompt, options = {}) {
-    // Try OpenCode first in hybrid mode
-    if (this.useOpenCodeForLLM && this._openCodeClient) {
+    // Try AIService first in hybrid mode
+    if (this.useOpenCodeForLLM && this._aiService) {
       try {
-        return await this._openCodeClient.generate(prompt, {
+        return await this._aiService.generate(prompt, {
           model: options.model || this.defaultModel,
           systemPrompt: options.systemPrompt,
           timeout: options.timeout,
@@ -399,7 +383,7 @@ async customLLMChat(messages, options = {}) {
       } catch (error) {
         logger.warn(
           { operation: 'generate' },
-          'OpenCode generate failed, falling back to n8n',
+          'AIService generate failed, falling back to n8n',
           { error: error.message }
         );
         // Fall through to n8n
@@ -596,17 +580,17 @@ async customLLMChat(messages, options = {}) {
    * Note: Both n8n and OpenCode use simulated streaming (chunked response).
    */
   async *stream(prompt, options = {}) {
-    // Try OpenCode first in hybrid mode
-    if (this.useOpenCodeForLLM && this._openCodeClient) {
+    // Try AIService first in hybrid mode
+    if (this.useOpenCodeForLLM && this._aiService) {
       try {
-        for await (const chunk of this._openCodeClient.stream(prompt, options)) {
+        for await (const chunk of this._aiService.stream(prompt, options)) {
           yield chunk;
         }
         return;
       } catch (error) {
         logger.warn(
           { operation: 'stream' },
-          'OpenCode stream failed, falling back to n8n',
+          'AIService stream failed, falling back to n8n',
           { error: error.message }
         );
         // Fall through to n8n
@@ -643,7 +627,7 @@ async customLLMChat(messages, options = {}) {
     const healthResult = {
       ok: false,
       n8n: { ok: false },
-      opencode: { ok: false, enabled: this.useOpenCodeForLLM },
+      aiService: { ok: false, enabled: this.useOpenCodeForLLM },
     };
 
     // Check n8n health
@@ -669,20 +653,20 @@ async customLLMChat(messages, options = {}) {
       healthResult.n8n.error = error.message;
     }
 
-    // Check OpenCode health (if in hybrid mode)
-    if (this.useOpenCodeForLLM && this._openCodeClient) {
+    // Check AIService health (if in hybrid mode)
+    if (this.useOpenCodeForLLM && this._aiService) {
       try {
-        const openCodeHealth = await this._openCodeClient.health(force);
-        healthResult.opencode.ok = openCodeHealth.ok;
-        healthResult.opencode.status = openCodeHealth.status;
+        const aiServiceHealth = await this._aiService.health(force);
+        healthResult.aiService.ok = aiServiceHealth.ok;
+        healthResult.aiService.status = aiServiceHealth.status;
       } catch (error) {
-        healthResult.opencode.error = error.message;
+        healthResult.aiService.error = error.message;
       }
     }
 
-    // Overall health: n8n must be up, OpenCode is optional but preferred
+    // Overall health: n8n must be up, AIService is optional but preferred
     healthResult.ok = healthResult.n8n.ok && 
-      (!this.useOpenCodeForLLM || healthResult.opencode.ok);
+      (!this.useOpenCodeForLLM || healthResult.aiService.ok);
 
     this._healthCache.isHealthy = healthResult.ok;
     this._healthCache.lastCheck = now;
@@ -732,8 +716,8 @@ async customLLMChat(messages, options = {}) {
     return {
       mode: this.useOpenCodeForLLM ? 'hybrid' : 'legacy',
       n8nUrl: this.baseUrl,
-      openCodeEnabled: this.useOpenCodeForLLM,
-      openCodeUrl: this._openCodeClient?.baseUrl || null,
+      aiServiceEnabled: this.useOpenCodeForLLM,
+      aiServiceProvider: this._aiService?.getProviderInfo?.()?.provider || null,
       defaultModel: this.defaultModel,
     };
   }
@@ -747,19 +731,19 @@ async customLLMChat(messages, options = {}) {
   }
 
   /**
-   * Re-enable OpenCode for LLM calls
+   * Re-enable AIService for LLM calls
    */
   enableOpenCode() {
-    if (!this._openCodeClient) {
+    if (!this._aiService) {
       try {
-        this._openCodeClient = getOpenCodeClient();
+        this._aiService = getAIService();
       } catch (error) {
-        logger.error({ operation: 'mode_switch' }, 'Failed to enable OpenCode', { error: error.message });
+        logger.error({ operation: 'mode_switch' }, 'Failed to enable AIService', { error: error.message });
         return false;
       }
     }
     this.useOpenCodeForLLM = true;
-    logger.info({ operation: 'mode_switch' }, 'Switched to hybrid mode (OpenCode enabled)');
+    logger.info({ operation: 'mode_switch' }, 'Switched to hybrid mode (AIService enabled)');
     return true;
   }
 }

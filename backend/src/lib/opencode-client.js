@@ -26,6 +26,7 @@
  */
 
 import { config } from '../config.js';
+import { fetchWithTimeout } from './fetch-utils.js';
 
 /**
  * Structured logger for OpenCode Client
@@ -63,11 +64,12 @@ const logger = {
   },
 };
 
-// Default configuration - points to opencode-backend container (port 7016)
-const OPENCODE_BASE_URL = process.env.OPENCODE_BASE_URL || 'http://opencode-backend:7016';
-const OPENCODE_API_KEY = process.env.OPENCODE_API_KEY || '';
-const OPENCODE_DEFAULT_PROVIDER = process.env.OPENCODE_DEFAULT_PROVIDER || 'github-copilot';
-const OPENCODE_DEFAULT_MODEL = process.env.OPENCODE_DEFAULT_MODEL || 'gpt-4.1';
+// Configuration (from config.js which supports Consul KV with env fallback)
+const getAIGatewayUrl = () => config.ai?.gatewayUrl || process.env.AI_GATEWAY_URL || 'http://ai-gateway:7000';
+const getOpenCodeBaseUrl = () => config.ai?.opencode?.baseUrl || process.env.OPENCODE_BASE_URL || getAIGatewayUrl();
+const OPENCODE_API_KEY = config.ai?.opencode?.apiKey || process.env.AI_API_KEY || process.env.OPENCODE_API_KEY || '';
+const OPENCODE_DEFAULT_PROVIDER = config.ai?.opencode?.defaultProvider || process.env.AI_DEFAULT_PROVIDER || process.env.OPENCODE_DEFAULT_PROVIDER || 'github-copilot';
+const OPENCODE_DEFAULT_MODEL = config.ai?.opencode?.defaultModel || process.env.AI_DEFAULT_MODEL || process.env.OPENCODE_DEFAULT_MODEL || 'gpt-4.1';
 
 // Timeout settings (in milliseconds)
 const DEFAULT_TIMEOUT = 120000; // 2 minutes for normal requests
@@ -79,36 +81,12 @@ const CIRCUIT_BREAKER_THRESHOLD = 5;
 const CIRCUIT_BREAKER_RESET_TIME = 30000; // 30 seconds
 
 /**
- * Fetch with timeout support using AbortController
- */
-async function fetchWithTimeout(url, options = {}, timeout = DEFAULT_TIMEOUT) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    return response;
-  } catch (error) {
-    if (error.name === 'AbortError') {
-      throw new Error(`Request timeout after ${timeout}ms: ${url}`);
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
-/**
  * OpenCode API Client
  * Communicates with opencode-backend (Node.js SDK based server)
  */
 export class OpenCodeClient {
   constructor(options = {}) {
-    // opencode-backend URL (port 7016)
-    this.baseUrl = options.baseUrl || OPENCODE_BASE_URL;
+    this.baseUrl = options.baseUrl || getOpenCodeBaseUrl();
     this.apiKey = options.apiKey || OPENCODE_API_KEY;
     this.defaultProvider = options.provider || OPENCODE_DEFAULT_PROVIDER;
     this.defaultModel = options.model || OPENCODE_DEFAULT_MODEL;

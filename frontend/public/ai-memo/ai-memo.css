@@ -96,7 +96,7 @@
 }
 
 :host(.dark) .panel {
-  background: rgba(15, 23, 42, 0.95);
+  background: rgba(15, 23, 42, 1); /* Fully opaque to prevent background bleed-through */
   color: #e5e7eb;
   border-color: var(--memo-border-dark);
   box-shadow: var(--memo-shadow-dark);
@@ -1551,7 +1551,6 @@
    ======================================== */
 @media (max-width: 640px) {
   .panel {
-    /* 전체 화면 높이 사용, safe area만 고려 */
     width: 100% !important;
     max-width: 100% !important;
     height: calc(100dvh - env(safe-area-inset-bottom, 0px)) !important;
@@ -1565,7 +1564,6 @@
     overflow: hidden;
     transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
     box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
-    /* 핵심: flex column 레이아웃 */
     display: flex;
     flex-direction: column;
   }
@@ -1574,6 +1572,50 @@
     transform: translateY(0);
     display: flex;
     flex-direction: column;
+  }
+
+  /* Keyboard active state - maximize content area */
+  .panel.keyboard-active .header .title {
+    display: none;
+  }
+
+  .panel.keyboard-active .tabs {
+    padding: 4px 12px;
+  }
+
+  .panel.keyboard-active .tab {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .panel.keyboard-active .memo-hint {
+    display: none;
+  }
+
+  .panel.keyboard-active .memo-toolbar {
+    padding: 4px 6px;
+    margin-bottom: 6px;
+  }
+
+  .panel.keyboard-active .body {
+    padding: 8px 12px;
+  }
+
+  .panel.keyboard-active .footer {
+    padding: 6px 10px;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .panel.keyboard-active .footer-actions {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .panel.keyboard-active .footer-btn:nth-child(n+5) {
+    display: none;
+  }
+
+  .panel.keyboard-active .status-bar {
+    display: none;
   }
 
   /* Drag handle */

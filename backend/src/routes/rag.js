@@ -15,8 +15,11 @@
 
 import express from 'express';
 import { config } from '../config.js';
+import { requireFeature } from '../middleware/featureFlags.js';
 
 const router = express.Router();
+
+router.use(requireFeature('rag'));
 
 // Memory collection prefix (user-specific collections)
 const MEMORY_COLLECTION_PREFIX = 'user-memories-';

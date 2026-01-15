@@ -5,9 +5,10 @@
  * using vector embeddings stored in ChromaDB.
  */
 
-// Configuration
-const CHROMA_URL = process.env.CHROMA_URL || 'http://chromadb:8000';
-const TEI_URL = process.env.TEI_URL || 'http://embedding-server:80';
+import { config } from '../../../config.js';
+
+const getChromaUrl = () => config.rag?.chromaUrl || process.env.CHROMA_URL || 'http://chromadb:8000';
+const getTeiUrl = () => config.rag?.teiUrl || process.env.TEI_URL || 'http://embedding-server:80';
 const COLLECTION_NAME = 'agent_memories';
 
 /**
@@ -15,7 +16,7 @@ const COLLECTION_NAME = 'agent_memories';
  */
 async function generateEmbeddings(text) {
   try {
-    const response = await fetch(`${TEI_URL}/embed`, {
+    const response = await fetch(`${getTeiUrl()}/embed`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ inputs: text }),
@@ -49,12 +50,10 @@ class VectorMemoryStore {
     if (this._initialized) return true;
 
     try {
-      // Check if collection exists
-      const response = await fetch(`${CHROMA_URL}/api/v1/collections/${COLLECTION_NAME}`);
+      const response = await fetch(`${getChromaUrl()}/api/v1/collections/${COLLECTION_NAME}`);
       
       if (!response.ok && response.status === 404) {
-        // Create collection
-        const createResponse = await fetch(`${CHROMA_URL}/api/v1/collections`, {
+        const createResponse = await fetch(`${getChromaUrl()}/api/v1/collections`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -106,8 +105,7 @@ class VectorMemoryStore {
 
       const id = `vmem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-      // Add to ChromaDB
-      const response = await fetch(`${CHROMA_URL}/api/v1/collections/${COLLECTION_NAME}/add`, {
+      const response = await fetch(`${getChromaUrl()}/api/v1/collections/${COLLECTION_NAME}/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -159,11 +157,9 @@ class VectorMemoryStore {
         return this._fallbackSearch(query, options);
       }
 
-      // Build where filter
       const where = sessionId ? { sessionId } : undefined;
 
-      // Query ChromaDB
-      const response = await fetch(`${CHROMA_URL}/api/v1/collections/${COLLECTION_NAME}/query`, {
+      const response = await fetch(`${getChromaUrl()}/api/v1/collections/${COLLECTION_NAME}/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -216,7 +212,7 @@ class VectorMemoryStore {
         return;
       }
 
-      await fetch(`${CHROMA_URL}/api/v1/collections/${COLLECTION_NAME}/delete`, {
+      await fetch(`${getChromaUrl()}/api/v1/collections/${COLLECTION_NAME}/delete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -235,7 +231,7 @@ class VectorMemoryStore {
    */
   async getStats() {
     try {
-      const response = await fetch(`${CHROMA_URL}/api/v1/collections/${COLLECTION_NAME}`);
+      const response = await fetch(`${getChromaUrl()}/api/v1/collections/${COLLECTION_NAME}`);
       if (!response.ok) {
         return { count: 0, available: false };
       }

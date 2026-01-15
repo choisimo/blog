@@ -2,8 +2,11 @@ import { Router } from 'express';
 import { queryAll, queryOne, execute, isD1Configured } from '../lib/d1.js';
 import crypto from 'crypto';
 import requireAdmin from '../middleware/adminAuth.js';
+import { requireFeature } from '../middleware/featureFlags.js';
 
 const router = Router();
+
+router.use(requireFeature('comments'));
 
 // In-memory listener registry (single-process only) for SSE
 const listenersByPost = new Map();

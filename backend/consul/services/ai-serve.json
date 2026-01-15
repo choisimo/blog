@@ -1,0 +1,16 @@
+{
+  "service": {
+    "id": "ai-server-serve",
+    "name": "ai-serve",
+    "tags": ["ai", "opencode", "llm"],
+    "port": 7012,
+    "check": {
+      "http": "http://ai-server-serve:7012/health",
+      "interval": "20s",
+      "timeout": "15s"
+    },
+    "meta": {
+      "type": "llm-provider"
+    }
+  }
+}

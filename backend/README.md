@@ -16,7 +16,7 @@ Backend API Server는 블로그 플랫폼의 **Origin 서버**입니다. Cloudfl
 |------|------|------|
 | **Posts API** | 파일 시스템 기반 게시글 CRUD, 매니페스트 생성 | Legacy |
 | **Images API** | 이미지 업로드/관리, Sharp 리사이징 | Legacy |
-| **AI API** | OpenCode/n8n 기반 AI 기능 (요약, 분석) | Active |
+| **AI API** | OpenAI SDK 호환 AI 기능 (요약, 분석) | Active |
 | **RAG API** | ChromaDB 기반 벡터 검색 및 질의응답 | Active |
 | **Agent API** | Multi-tool AI Agent orchestration | Active |
 | **OG Image** | Sharp 기반 Open Graph 이미지 동적 생성 | Active |
@@ -28,7 +28,7 @@ Backend API Server는 블로그 플랫폼의 **Origin 서버**입니다. Cloudfl
 - **Framework**: Express 4
 - **Port**: `5080` (기본)
 - **Image Processing**: Sharp
-- **AI Backend**: OpenCode Server (ai-server-backend:7016)
+- **AI Backend**: OpenAI SDK Compatible Server (ai-server-backend:7016)
 - **Vector DB**: ChromaDB + TEI Embedding Server
 
 ---
@@ -188,18 +188,21 @@ Host: ./frontend/public  →  Container: /frontend/public
 ```
 Request Flow:
 1. Client → API Gateway → Backend /api/v1/ai/*
-2. Backend → OpenCode Server (ai-server-backend:7016)
-3. OpenCode → AI Serve (ai-server-serve:7012)
-4. AI Serve → LLM Provider (GitHub Copilot / OpenRouter / etc.)
+2. Backend (AIService) → ai-server-backend:7016 (OpenAI SDK Compatible)
+3. ai-server-backend → ai-server-serve:7012
+4. ai-server-serve → LLM Provider (GitHub Copilot / OpenRouter / etc.)
 ```
 
-**OpenCode 설정:**
+**AIService 설정 (OpenAI SDK 호환):**
 ```javascript
-config.ai.opencode = {
-  baseUrl: 'http://ai-server-backend:7016',
-  defaultProvider: 'github-copilot',
-  defaultModel: 'gpt-4.1'
-}
+// Primary: OpenAI SDK Compatible Client
+OPENAI_API_BASE_URL=http://ai-server-backend:7016/v1
+OPENAI_API_KEY=your-api-key
+OPENAI_DEFAULT_MODEL=gpt-4.1
+
+// Fallback: Legacy OpenCode (optional)
+OPENCODE_BASE_URL=http://ai-server-backend:7016
+OPENCODE_API_KEY=your-api-key
 ```
 
 ### RAG (Retrieval-Augmented Generation)
@@ -261,12 +264,15 @@ TRUST_PROXY=1                   # Nginx/Cloudflare 앞에서 동작 시
 ALLOWED_ORIGINS=https://noblog.nodove.com,https://api.nodove.com
 
 # ============================================
-# AI - OpenCode (필수)
+# AI - OpenAI SDK Compatible (권장)
 # ============================================
+OPENAI_API_BASE_URL=http://ai-server-backend:7016/v1
+OPENAI_API_KEY=your-api-key
+OPENAI_DEFAULT_MODEL=gpt-4.1
+
+# Legacy Fallback (선택)
 OPENCODE_BASE_URL=http://ai-server-backend:7016
 OPENCODE_API_KEY=your-api-key
-OPENCODE_DEFAULT_PROVIDER=github-copilot
-OPENCODE_DEFAULT_MODEL=gpt-4.1
 
 # ============================================
 # RAG (선택)
@@ -296,7 +302,68 @@ POSTS_SOURCE=filesystem           # filesystem | github | r2
 GITHUB_TOKEN=ghp_...
 GITHUB_REPO_OWNER=your-username
 GITHUB_REPO_NAME=blog
+
+# ============================================
+# Consul Service Discovery (선택)
+# ============================================
+USE_CONSUL=false                  # true to enable Consul KV
+CONSUL_HOST=consul
+CONSUL_PORT=8500
 ```
+
+### Consul Configuration (Optional)
+
+Consul을 사용하면 중앙 집중식 설정 관리가 가능합니다. 환경변수보다 Consul KV가 우선 적용되며, Consul이 불가능할 경우 환경변수로 자동 fallback됩니다.
+
+```bash
+# Consul 서버 시작
+docker compose -f docker-compose.consul.yml up -d
+
+# KV 초기화
+./scripts/consul/seed-kv.sh
+
+# 설정 확인
+./scripts/consul/blog-config list
+```
+
+**Consul KV Schema:**
+```
+blog/
+├── config/
+│   ├── domains/{frontend,api,assets,terminal,n8n}
+│   ├── cors/allowed_origins (JSON array)
+│   └── features/
+│       ├── ai_enabled        # AI 서비스 활성화 (default: true)
+│       ├── rag_enabled       # RAG 검색 활성화 (default: true)
+│       ├── terminal_enabled  # 터미널 서비스 활성화 (default: true)
+│       ├── ai_inline         # 인라인 AI 기능 활성화 (default: true)
+│       └── comments_enabled  # 댓글 기능 활성화 (default: true)
+├── services/
+│   └── {service-name}/
+│       ├── url
+│       ├── health_path
+│       └── timeout
+```
+
+**Feature Flags 사용법:**
+
+Feature flags는 환경변수 또는 Consul KV로 설정할 수 있습니다:
+
+```bash
+# 환경변수로 설정
+FEATURE_AI_ENABLED=false
+FEATURE_RAG_ENABLED=true
+FEATURE_COMMENTS_ENABLED=true
+
+# Consul CLI로 동적 변경
+./scripts/consul/blog-config set config/features/ai_enabled false
+./scripts/consul/blog-config set config/features/rag_enabled true
+
+# 설정 확인
+./scripts/consul/blog-config get config/features/ai_enabled
+```
+
+비활성화된 기능에 접근 시 503 응답과 함께 `FEATURE_DISABLED` 에러 코드가 반환됩니다.
 
 ### Docker Services (docker-compose)
 
@@ -304,7 +371,7 @@ GITHUB_REPO_NAME=blog
 |---------|------|-------------|
 | `api` | 5080 | Backend API Server |
 | `nginx` | 80 | Reverse Proxy |
-| `ai-server-backend` | 7016 | AI Request Router |
+| `ai-server-backend` | 7016 | AI Request Router (OpenAI SDK Compatible) |
 | `ai-server-serve` | 7012 | LLM Provider Connector |
 | `embedding-server` | 80 | TEI Embedding Server |
 | `chromadb` | 8000 | Vector Database |
@@ -378,7 +445,7 @@ sudo systemctl start blog-backend
 | 401 Unauthorized | 401 | Bearer Token 불일치 | `ADMIN_BEARER_TOKEN` 확인 |
 | 413 Payload Too Large | 413 | 업로드 용량 초과 | Nginx `client_max_body_size` 증가 |
 | CORS Error | - | Origin 미허용 | `ALLOWED_ORIGINS`에 추가 |
-| AI 요청 실패 | 500/502 | OpenCode 서버 연결 실패 | `OPENCODE_BASE_URL` 및 서버 상태 확인 |
+| AI 요청 실패 | 500/502 | AI 서버 연결 실패 | `OPENAI_API_BASE_URL` 및 서버 상태 확인 |
 | RAG 검색 실패 | 500 | ChromaDB 연결 실패 | `CHROMA_URL` 및 서버 상태 확인 |
 | 매니페스트 미갱신 | - | 파일 권한 문제 | 볼륨 마운트 경로/권한 확인 |
 
@@ -448,8 +515,9 @@ backend/
 │   │   ├── analytics.js      # Analytics (D1 연동)
 │   │   └── ...
 │   ├── lib/
-│   │   ├── ai-service.js     # AI 서비스 클라이언트
-│   │   ├── opencode-client.js# OpenCode API 클라이언트
+│   │   ├── ai-service.js     # Unified AI 서비스 (OpenAI SDK 호환)
+│   │   ├── openai-compat-client.js # OpenAI SDK 호환 클라이언트
+│   │   ├── opencode-client.js# Legacy OpenCode API 클라이언트 (fallback)
 │   │   ├── d1.js             # D1 API 클라이언트
 │   │   ├── r2.js             # R2 API 클라이언트
 │   │   ├── jwt.js            # JWT 유틸리티

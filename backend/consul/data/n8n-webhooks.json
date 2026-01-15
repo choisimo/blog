@@ -1,0 +1,9 @@
+{
+  "chat": "/webhook/ai/chat",
+  "vision": "/webhook/ai/vision",
+  "task": "/webhook/ai/task",
+  "translate": "/webhook/ai/translate",
+  "generate": "/webhook/ai/generate",
+  "embeddings": "/webhook/ai/embeddings",
+  "health": "/webhook/ai/health"
+}

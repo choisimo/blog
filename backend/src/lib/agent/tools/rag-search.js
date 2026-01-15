@@ -5,9 +5,10 @@
  * Searches blog posts, memos, and other indexed content.
  */
 
-// Configuration
-const CHROMA_URL = process.env.CHROMA_URL || 'http://chromadb:8000';
-const TEI_URL = process.env.TEI_URL || 'http://embedding-server:80';
+import { config } from '../../../config.js';
+
+const getChromaUrl = () => config.rag?.chromaUrl || process.env.CHROMA_URL || 'http://chromadb:8000';
+const getTeiUrl = () => config.rag?.teiUrl || process.env.TEI_URL || 'http://embedding-server:80';
 const DEFAULT_COLLECTION = 'blog_posts';
 const DEFAULT_LIMIT = 5;
 
@@ -16,7 +17,7 @@ const DEFAULT_LIMIT = 5;
  */
 async function generateEmbeddings(text) {
   try {
-    const response = await fetch(`${TEI_URL}/embed`, {
+    const response = await fetch(`${getTeiUrl()}/embed`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ inputs: text }),
@@ -49,7 +50,7 @@ async function searchChromaDB(query, options = {}) {
     const queryEmbedding = await generateEmbeddings(query);
 
     // Query ChromaDB
-    const response = await fetch(`${CHROMA_URL}/api/v1/collections/${collection}/query`, {
+    const response = await fetch(`${getChromaUrl()}/api/v1/collections/${collection}/query`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

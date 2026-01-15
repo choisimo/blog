@@ -5,15 +5,16 @@
  * sandbox environment. Supports multiple languages.
  */
 
-// Configuration
-const TERMINAL_SERVER_URL = process.env.TERMINAL_SERVER_URL || 'http://terminal-server:8080';
+import { config } from '../../../config.js';
+
+const getTerminalServerUrl = () => config.services?.terminalServerUrl || process.env.TERMINAL_SERVER_URL || 'http://terminal-server:8080';
 const EXECUTION_TIMEOUT = parseInt(process.env.CODE_EXEC_TIMEOUT || '30000', 10);
 
 /**
  * Execute code in sandbox
  */
 async function executeInSandbox(code, language) {
-  const response = await fetch(`${TERMINAL_SERVER_URL}/execute`, {
+  const response = await fetch(`${getTerminalServerUrl()}/execute`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

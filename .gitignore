@@ -218,6 +218,7 @@ ENV/
 # -----------------------------------------------------------------------------
 codebase-export/
 export-*.md
+docs/*.pdf
 
 .sisyphus/
 session-*.md

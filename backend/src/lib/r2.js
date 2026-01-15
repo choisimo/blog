@@ -7,12 +7,15 @@
  * API: https://api.cloudflare.com/client/v4/accounts/{account_id}/r2/buckets/{bucket_name}/objects/{key}
  */
 
-// Get credentials from environment
+import { config } from '../config.js';
+
 const getCredentials = () => {
   const accountId = process.env.CF_ACCOUNT_ID;
   const apiToken = process.env.CF_API_TOKEN;
   const bucketName = process.env.R2_BUCKET_NAME || 'blog';
-  const assetsBaseUrl = process.env.R2_ASSETS_BASE_URL || 'https://assets-b.nodove.com';
+  const assetsBaseUrl = config.r2?.assetsBaseUrl 
+    || process.env.R2_ASSETS_BASE_URL 
+    || 'https://assets-b.nodove.com';
 
   if (!accountId || !apiToken) {
     throw new Error('R2 credentials not configured. Set CF_ACCOUNT_ID, CF_API_TOKEN');

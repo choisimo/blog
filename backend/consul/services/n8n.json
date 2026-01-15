@@ -1,0 +1,16 @@
+{
+  "service": {
+    "id": "blog-n8n",
+    "name": "n8n",
+    "tags": ["workflow", "automation", "webhook"],
+    "port": 5678,
+    "check": {
+      "http": "http://n8n:5678/healthz",
+      "interval": "30s",
+      "timeout": "10s"
+    },
+    "meta": {
+      "type": "workflow-engine"
+    }
+  }
+}

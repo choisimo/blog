@@ -27,8 +27,20 @@
  */
 
 import { logAIUsage } from './ai-usage-logger.js';
+import { enqueueAITask, waitForAIResult } from './ai-task-queue.js';
+import { config } from '../config.js';
 
-// OpenCode client for ai-server-backend communication
+// OpenAI SDK compatible client (primary)
+let getOpenAIClient, OpenAICompatClient;
+try {
+  ({ getOpenAIClient, default: OpenAICompatClient } = await import('./openai-compat-client.js'));
+} catch (err) {
+  console.error('[AIService] Failed to import openai-compat-client:', err.message);
+  getOpenAIClient = null;
+  OpenAICompatClient = null;
+}
+
+// Legacy OpenCode client (fallback)
 let getOpenCodeClient, opencodeTryParse;
 try {
   ({ getOpenCodeClient, tryParseJson: opencodeTryParse } = await import('./opencode-client.js'));
@@ -69,33 +81,108 @@ const logger = {
 
 export class AIService {
   constructor() {
-    this._client = null;
+    this._openaiClient = null;
+    this._legacyClient = null;
+    this._useOpenAI = !!getOpenAIClient; // Prefer OpenAI SDK if available
+    
+    // Hybrid mode: use Redis async queue when available and enabled
+    this._useAsyncQueue = process.env.AI_ASYNC_MODE === 'true';
+    this._redisChecked = false;
+    this._redisAvailable = false;
     
     logger.info(
       { operation: 'init' },
-      'AIService initialized (opencode-only mode)'
+      `AIService initialized (mode: ${this._useOpenAI ? 'openai-sdk' : 'legacy-opencode'}, async: ${this._useAsyncQueue})`
     );
   }
 
   /**
-   * Get the OpenCode client
+   * Check if Redis is available for async processing
+   * @returns {Promise<boolean>}
    */
-  _getClient() {
-    if (this._client) return this._client;
+  async _checkRedisAvailable() {
+    if (this._redisChecked) {
+      return this._redisAvailable;
+    }
+    
+    try {
+      const { isRedisAvailable } = await import('./redis-client.js');
+      this._redisAvailable = await isRedisAvailable();
+    } catch {
+      this._redisAvailable = false;
+    }
+    
+    this._redisChecked = true;
+    logger.debug(
+      { operation: 'redis-check' },
+      `Redis availability: ${this._redisAvailable}`
+    );
+    return this._redisAvailable;
+  }
+
+  /**
+   * Determine if async queue should be used for this request
+   * @param {object} options - Request options
+   * @returns {Promise<boolean>}
+   */
+  async _shouldUseAsyncQueue(options = {}) {
+    // Explicit sync mode overrides everything
+    if (options.sync === true) {
+      return false;
+    }
+    
+    // Async mode must be enabled
+    if (!this._useAsyncQueue) {
+      return false;
+    }
+    
+    // Redis must be available
+    return this._checkRedisAvailable();
+  }
+
+  /**
+   * Get the OpenAI SDK compatible client (primary)
+   */
+  _getOpenAIClient() {
+    if (this._openaiClient) return this._openaiClient;
+    
+    if (!getOpenAIClient) {
+      throw new Error('OpenAI client not available. Check openai-compat-client.js import.');
+    }
+    
+    this._openaiClient = getOpenAIClient();
+    return this._openaiClient;
+  }
+
+  /**
+   * Get the legacy OpenCode client (fallback)
+   */
+  _getLegacyClient() {
+    if (this._legacyClient) return this._legacyClient;
     
     if (!getOpenCodeClient) {
       throw new Error('OpenCode client not available. Check opencode-client.js import.');
     }
     
-    this._client = getOpenCodeClient();
-    return this._client;
+    this._legacyClient = getOpenCodeClient();
+    return this._legacyClient;
+  }
+
+  /**
+   * Get the appropriate client based on configuration
+   */
+  _getClient() {
+    if (this._useOpenAI) {
+      return this._getOpenAIClient();
+    }
+    return this._getLegacyClient();
   }
 
   /**
    * Generate text from a prompt
    *
    * @param {string} prompt - The prompt text
-   * @param {object} options - { temperature, model, systemPrompt, timeout }
+   * @param {object} options - { temperature, model, systemPrompt, timeout, sync }
    * @returns {Promise<string>} Generated text
    */
   async generate(prompt, options = {}) {
@@ -108,6 +195,16 @@ export class AIService {
       { promptLength: prompt?.length }
     );
 
+    const useAsync = await this._shouldUseAsyncQueue(options);
+    
+    if (useAsync) {
+      return this._generateAsync(prompt, options, requestId, startTime);
+    }
+
+    return this._generateSync(prompt, options, requestId, startTime);
+  }
+
+  async _generateSync(prompt, options, requestId, startTime) {
     try {
       const client = this._getClient();
       const result = await client.generate(prompt, {
@@ -124,7 +221,6 @@ export class AIService {
         { duration, resultLength: result?.length }
       );
 
-      // Log usage asynchronously (fire and forget)
       logAIUsage({
         modelName: options.model || this._getDefaultModel(),
         requestType: 'completion',
@@ -133,7 +229,7 @@ export class AIService {
         latencyMs: duration,
         status: 'success',
         metadata: { requestId },
-      }).catch(() => {}); // Silently ignore logging errors
+      }).catch(() => {});
 
       return result;
     } catch (error) {
@@ -144,7 +240,6 @@ export class AIService {
         { duration, error: error.message }
       );
 
-      // Log failed request
       logAIUsage({
         modelName: options.model || this._getDefaultModel(),
         requestType: 'completion',
@@ -159,11 +254,49 @@ export class AIService {
     }
   }
 
+  async _generateAsync(prompt, options, requestId, startTime) {
+    logger.info(
+      { operation: 'generate', requestId, mode: 'async' },
+      'Enqueueing async generation'
+    );
+
+    const taskId = await enqueueAITask({
+      type: 'generate',
+      payload: { prompt, options },
+      priority: options.priority || 'normal',
+    });
+
+    const result = await waitForAIResult(taskId, options.timeout || 120000);
+    
+    if (!result.ok) {
+      throw new Error(result.error || 'Async generation failed');
+    }
+
+    const duration = Date.now() - startTime;
+    logger.info(
+      { operation: 'generate', requestId, mode: 'async' },
+      'Async generation completed',
+      { duration, resultLength: result.data?.length }
+    );
+
+    logAIUsage({
+      modelName: options.model || this._getDefaultModel(),
+      requestType: 'completion',
+      promptTokens: this._estimateTokens(prompt),
+      completionTokens: this._estimateTokens(result.data),
+      latencyMs: duration,
+      status: 'success',
+      metadata: { requestId, async: true },
+    }).catch(() => {});
+
+    return result.data;
+  }
+
   /**
    * Chat completion with message history
    *
    * @param {Array<{role: string, content: string}>} messages
-   * @param {object} options - { temperature, model, timeout }
+   * @param {object} options - { temperature, model, timeout, sync }
    * @returns {Promise<{content: string, model: string, provider: string}>}
    */
   async chat(messages, options = {}) {
@@ -176,6 +309,16 @@ export class AIService {
       { messageCount: messages?.length }
     );
 
+    const useAsync = await this._shouldUseAsyncQueue(options);
+    
+    if (useAsync) {
+      return this._chatAsync(messages, options, requestId, startTime);
+    }
+
+    return this._chatSync(messages, options, requestId, startTime);
+  }
+
+  async _chatSync(messages, options, requestId, startTime) {
     try {
       const client = this._getClient();
       const response = await client.chat(messages, {
@@ -192,7 +335,6 @@ export class AIService {
         sessionId: response.sessionId,
       };
 
-      // Validate response - throw error if empty
       if (!result.content || result.content.trim() === '') {
         throw new Error('AI returned empty response');
       }
@@ -204,7 +346,6 @@ export class AIService {
         { duration, resultLength: result.content?.length }
       );
 
-      // Log usage asynchronously with actual token counts if available
       logAIUsage({
         modelName: result.model || options.model || this._getDefaultModel(),
         requestType: 'chat',
@@ -224,7 +365,6 @@ export class AIService {
         { duration, error: error.message }
       );
 
-      // Log failed request
       logAIUsage({
         modelName: options.model || this._getDefaultModel(),
         requestType: 'chat',
@@ -237,6 +377,44 @@ export class AIService {
 
       throw error;
     }
+  }
+
+  async _chatAsync(messages, options, requestId, startTime) {
+    logger.info(
+      { operation: 'chat', requestId, mode: 'async' },
+      'Enqueueing async chat'
+    );
+
+    const taskId = await enqueueAITask({
+      type: 'chat',
+      payload: { messages, options },
+      priority: options.priority || 'normal',
+    });
+
+    const result = await waitForAIResult(taskId, options.timeout || 120000);
+    
+    if (!result.ok) {
+      throw new Error(result.error || 'Async chat failed');
+    }
+
+    const duration = Date.now() - startTime;
+    logger.info(
+      { operation: 'chat', requestId, mode: 'async' },
+      'Async chat completed',
+      { duration, resultLength: result.data?.content?.length }
+    );
+
+    logAIUsage({
+      modelName: result.data?.model || options.model || this._getDefaultModel(),
+      requestType: 'chat',
+      promptTokens: this._estimateTokens(JSON.stringify(messages)),
+      completionTokens: this._estimateTokens(result.data?.content),
+      latencyMs: duration,
+      status: 'success',
+      metadata: { requestId, async: true },
+    }).catch(() => {});
+
+    return result.data;
   }
 
   /**
@@ -500,11 +678,8 @@ export class AIService {
     return Math.ceil(text.length / 4);
   }
 
-  /**
-   * Get default model name
-   */
   _getDefaultModel() {
-    return process.env.OPENCODE_DEFAULT_MODEL || process.env.AI_DEFAULT_MODEL || 'gpt-4.1';
+    return config.ai?.defaultModel || process.env.OPENCODE_DEFAULT_MODEL || process.env.AI_DEFAULT_MODEL || 'gpt-4.1';
   }
 
   /**
@@ -519,16 +694,15 @@ export class AIService {
     }
   }
 
-  /**
-   * Get current provider info
-   */
   getProviderInfo() {
+    const aiGatewayUrl = config.ai?.gatewayUrl || process.env.AI_GATEWAY_URL || 'http://ai-gateway:7000';
     return {
-      provider: 'opencode',
+      provider: 'ai-service',
       config: {
-        baseUrl: process.env.OPENCODE_BASE_URL || 'http://ai-server-backend:7016',
-        defaultProvider: process.env.OPENCODE_DEFAULT_PROVIDER || 'github-copilot',
-        defaultModel: process.env.OPENCODE_DEFAULT_MODEL || 'gpt-4.1',
+        gatewayUrl: aiGatewayUrl,
+        baseUrl: process.env.OPENAI_API_BASE_URL || `${aiGatewayUrl}/v1`,
+        defaultProvider: config.ai?.defaultProvider || process.env.AI_DEFAULT_PROVIDER || 'github-copilot',
+        defaultModel: config.ai?.defaultModel || process.env.AI_DEFAULT_MODEL || 'gpt-4.1',
       },
     };
   }
