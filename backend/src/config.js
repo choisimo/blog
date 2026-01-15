@@ -85,8 +85,7 @@ async function loadConsulConfig() {
     ['config/features/comments_enabled', 'FEATURE_COMMENTS_ENABLED'],
     
     // AI services
-    ['services/ai-gateway/url', 'AI_GATEWAY_URL'],
-    ['services/ai-backend/url', 'AI_BACKEND_URL'],
+    ['services/ai/url', 'AI_SERVER_URL'],
     
     // RAG services
     ['services/embedding/url', 'TEI_URL'],
@@ -134,17 +133,11 @@ const schema = z.object({
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(60),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
 
-  AI_GATEWAY_URL: z.string().default('http://ai-gateway:7000'),
+  AI_SERVER_URL: z.string().optional(),
   OPENAI_API_BASE_URL: z.string().optional(),
   AI_API_KEY: z.string().optional(),
   AI_DEFAULT_MODEL: z.string().default('gpt-4.1'),
-  AI_DEFAULT_PROVIDER: z.string().default('github-copilot'),
   AI_ASYNC_MODE: z.enum(['true', 'false']).default('false'),
-  
-  OPENCODE_BASE_URL: z.string().optional(),
-  OPENCODE_API_KEY: z.string().optional(),
-  OPENCODE_DEFAULT_PROVIDER: z.string().optional(),
-  OPENCODE_DEFAULT_MODEL: z.string().optional(),
 
   JWT_EXPIRES_IN: z.string().default('12h'),
 
@@ -177,7 +170,6 @@ const schema = z.object({
   N8N_WEBHOOK_URL: z.string().optional(),
   TERMINAL_SERVER_URL: z.string().default('http://terminal-server:8080'),
   TERMINAL_GATEWAY_URL: z.string().default('https://terminal.nodove.com'),
-  AI_BACKEND_URL: z.string().default('http://ai-server-backend:7016'),
 
   CONTENT_PUBLIC_DIR: z.string().optional(),
   CONTENT_POSTS_DIR: z.string().optional(),
@@ -229,17 +221,10 @@ async function buildConfig() {
     },
 
     ai: {
-      gatewayUrl: raw.AI_GATEWAY_URL,
+      baseUrl: raw.AI_SERVER_URL || raw.OPENAI_API_BASE_URL,
       apiKey: raw.AI_API_KEY,
       defaultModel: raw.AI_DEFAULT_MODEL,
-      defaultProvider: raw.AI_DEFAULT_PROVIDER,
       asyncMode: raw.AI_ASYNC_MODE === 'true',
-      opencode: {
-        baseUrl: raw.OPENCODE_BASE_URL || raw.AI_GATEWAY_URL,
-        apiKey: raw.OPENCODE_API_KEY || raw.AI_API_KEY,
-        defaultProvider: raw.OPENCODE_DEFAULT_PROVIDER || raw.AI_DEFAULT_PROVIDER,
-        defaultModel: raw.OPENCODE_DEFAULT_MODEL || raw.AI_DEFAULT_MODEL,
-      },
     },
 
     github: {
@@ -294,7 +279,6 @@ async function buildConfig() {
       n8nWebhookUrl: raw.N8N_WEBHOOK_URL || raw.N8N_BASE_URL,
       terminalServerUrl: raw.TERMINAL_SERVER_URL,
       terminalGatewayUrl: raw.TERMINAL_GATEWAY_URL,
-      aiBackendUrl: raw.AI_BACKEND_URL,
     },
 
     consul: {
@@ -369,17 +353,10 @@ export const config = {
     windowMs: syncConfig.RATE_LIMIT_WINDOW_MS,
   },
   ai: {
-    gatewayUrl: syncConfig.AI_GATEWAY_URL,
+    baseUrl: syncConfig.AI_SERVER_URL || syncConfig.OPENAI_API_BASE_URL,
     apiKey: syncConfig.AI_API_KEY,
     defaultModel: syncConfig.AI_DEFAULT_MODEL,
-    defaultProvider: syncConfig.AI_DEFAULT_PROVIDER,
     asyncMode: syncConfig.AI_ASYNC_MODE === 'true',
-    opencode: {
-      baseUrl: syncConfig.OPENCODE_BASE_URL || syncConfig.AI_GATEWAY_URL,
-      apiKey: syncConfig.OPENCODE_API_KEY || syncConfig.AI_API_KEY,
-      defaultProvider: syncConfig.OPENCODE_DEFAULT_PROVIDER || syncConfig.AI_DEFAULT_PROVIDER,
-      defaultModel: syncConfig.OPENCODE_DEFAULT_MODEL || syncConfig.AI_DEFAULT_MODEL,
-    },
   },
   github: {
     token: syncConfig.GITHUB_TOKEN,
@@ -425,7 +402,6 @@ export const config = {
     n8nWebhookUrl: syncConfig.N8N_WEBHOOK_URL || syncConfig.N8N_BASE_URL,
     terminalServerUrl: syncConfig.TERMINAL_SERVER_URL,
     terminalGatewayUrl: syncConfig.TERMINAL_GATEWAY_URL,
-    aiBackendUrl: syncConfig.AI_BACKEND_URL,
   },
   consul: {
     enabled: USE_CONSUL,
@@ -462,8 +438,6 @@ export async function getServiceUrl(serviceName) {
   
   const fallbacks = {
     'backend': config.services?.backendUrl || `http://localhost:${config.port}`,
-    'ai-gateway': config.ai.gatewayUrl,
-    'ai-backend': config.services?.aiBackendUrl || 'http://ai-server-backend:7016',
     'chromadb': config.rag.chromaUrl,
     'embedding': config.rag.teiUrl,
     'redis': config.redis?.url || 'redis://localhost:6379',

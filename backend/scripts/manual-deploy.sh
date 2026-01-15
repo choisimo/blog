@@ -82,7 +82,7 @@ get_compose_cmd() {
 cmd_setup() {
   log_info "Setting up deployment directory: $DEPLOY_DIR"
 
-  mkdir -p "$DEPLOY_DIR"/{ssl,scripts,n8n-workflows,n8n_files,opencode-config}
+  mkdir -p "$DEPLOY_DIR"/{ssl,scripts,n8n-workflows,n8n_files}
 
   if [ -f "$BACKEND_DIR/docker-compose.blog-workflow.yml" ]; then
     cp "$BACKEND_DIR/docker-compose.blog-workflow.yml" "$DEPLOY_DIR/docker-compose.yml"
@@ -325,6 +325,8 @@ cmd_env_check() {
   )
 
   OPTIONAL_VARS=(
+    "AI_SERVER_URL"
+    "AI_API_KEY"
     "OPENAI_API_KEY"
     "GOOGLE_API_KEY"
     "ANTHROPIC_API_KEY"

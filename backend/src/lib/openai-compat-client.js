@@ -2,15 +2,15 @@
  * OpenAI SDK Compatible Client
  *
  * Uses OpenAI SDK to communicate with OpenAI-compatible AI servers.
- * This allows using any OpenAI-compatible endpoint (ai-server-backend, LiteLLM, etc.)
+ * This allows using any OpenAI-compatible endpoint (OpenAI, LiteLLM, etc.)
  *
  * Architecture:
- *   Blog Backend -> OpenAI SDK -> ai-server-backend:7016/v1 -> ai-server-serve:7012 -> LLM
+ *   Blog Backend -> OpenAI SDK -> OpenAI-compatible server -> LLM
  *
  * Configuration (priority order):
- *   1. Consul KV (if USE_CONSUL=true) - services/ai-gateway/url
- *   2. Environment variables - AI_GATEWAY_URL, OPENAI_API_BASE_URL
- *   3. config.js defaults
+ *   1. Consul KV (if USE_CONSUL=true) - services/ai/url
+ *   2. Environment variables - OPENAI_API_BASE_URL, AI_SERVER_URL
+ *   3. Default fallback (OpenAI public endpoint)
  *
  * Usage:
  *   import { getOpenAIClient, openaiChat, openaiGenerate } from './openai-compat-client.js';
@@ -34,22 +34,19 @@ import { config } from '../config.js';
 // Configuration (from config.js which supports Consul KV with env fallback)
 // ============================================================================
 
-const getAIGatewayUrl = () => config.ai?.gatewayUrl || process.env.AI_GATEWAY_URL || 'http://ai-gateway:7000';
-const getOpenAIBaseUrl = () => {
-  const baseUrl = process.env.OPENAI_API_BASE_URL 
-    || process.env.OPENCODE_BASE_URL 
-    || `${getAIGatewayUrl()}/v1`;
-  return baseUrl;
-};
-const OPENAI_API_KEY = config.ai?.apiKey 
-  || process.env.AI_API_KEY 
-  || process.env.OPENAI_API_KEY 
-  || process.env.OPENCODE_API_KEY 
-  || 'sk-noaicode';
-const OPENAI_DEFAULT_MODEL = config.ai?.defaultModel 
-  || process.env.AI_DEFAULT_MODEL 
-  || process.env.OPENAI_DEFAULT_MODEL 
-  || process.env.OPENCODE_DEFAULT_MODEL 
+const getOpenAIBaseUrl = () => (
+  config.ai?.baseUrl
+  || process.env.AI_SERVER_URL
+  || process.env.OPENAI_API_BASE_URL
+  || 'https://api.openai.com/v1'
+);
+const OPENAI_API_KEY = config.ai?.apiKey
+  || process.env.AI_API_KEY
+  || process.env.OPENAI_API_KEY
+  || '';
+const OPENAI_DEFAULT_MODEL = config.ai?.defaultModel
+  || process.env.AI_DEFAULT_MODEL
+  || process.env.OPENAI_DEFAULT_MODEL
   || 'gpt-4.1';
 
 // Timeout settings

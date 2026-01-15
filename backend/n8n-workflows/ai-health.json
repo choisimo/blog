@@ -40,7 +40,7 @@
               "id": "service",
               "name": "service",
               "type": "string",
-              "value": "n8n-ai-gateway"
+              "value": "n8n-ai-service"
             },
             {
               "id": "timestamp",
@@ -64,7 +64,7 @@
               "id": "models",
               "name": "models",
               "type": "array",
-              "value": "={{ [{ id: 'gpt-4.1', name: 'GPT-4.1 (OpenCode)', provider: 'OpenCode' }, { id: 'gpt-4o', name: 'GPT-4o (Vision)', provider: 'OpenCode' }] }}"
+              "value": "={{ [{ id: 'gpt-4.1', name: 'GPT-4.1', provider: 'OpenAI-Compatible' }, { id: 'gpt-4o', name: 'GPT-4o (Vision)', provider: 'OpenAI-Compatible' }] }}"
             }
           ]
         }

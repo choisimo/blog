@@ -479,24 +479,6 @@ export function createAidoveProxy(options = {}) {
     }
   });
 
-  // ---------------------------------------------------------------------------
-  // Legacy Completions (for compatibility)
-  // @deprecated Use /v1/chat/completions instead
-  // ---------------------------------------------------------------------------
-  router.post('/v1/completions', async (req, res) => {
-    logger.warn({}, 'Deprecated: /v1/completions endpoint used. Migrate to /v1/chat/completions');
-    const { prompt, model, stream } = req.body;
-
-    // Convert to chat format and forward
-    req.body = {
-      ...req.body,
-      messages: [{ role: 'user', content: prompt }],
-    };
-
-    // Reuse chat completions handler
-    return router.handle(req, res);
-  });
-
   return router;
 }
 

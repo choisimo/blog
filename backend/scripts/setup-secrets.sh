@@ -39,7 +39,6 @@ SECRETS=(
     # Database
     ["POSTGRES_PASSWORD"]="PostgreSQL password"
     ["REDIS_PASSWORD"]="Redis password"
-    ["MONGO_PASSWORD"]="MongoDB root password"
     
     # n8n
     ["N8N_BASIC_AUTH_USER"]="n8n admin username"
@@ -58,6 +57,7 @@ SECRETS=(
     
     # AI Services
     ["LITELLM_MASTER_KEY"]="LiteLLM master key"
+    ["AI_API_KEY"]="AI server API key (OpenAI-compatible)"
     ["OPENAI_API_KEY"]="OpenAI API key (optional)"
     ["ANTHROPIC_API_KEY"]="Anthropic API key (optional)"
     ["GEMINI_API_KEY"]="Google Gemini API key (optional)"
@@ -82,6 +82,7 @@ VARIABLES=(
     ["API_DOMAIN"]="API domain (e.g., api.yourdomain.com)"
     ["WORKFLOW_DOMAIN"]="n8n workflow domain (e.g., workflow.yourdomain.com)"
     ["FRONTEND_DOMAIN"]="Frontend domain (e.g., blog.yourdomain.com)"
+    ["AI_SERVER_URL"]="OpenAI-compatible AI server URL"
     ["IMAGE_TAG"]="Docker image tag (default: latest)"
 )
 
@@ -175,7 +176,6 @@ generate_secrets() {
 # === Database Passwords ===
 POSTGRES_PASSWORD=$(generate_random 16)
 REDIS_PASSWORD=$(generate_random 16)
-MONGO_PASSWORD=$(generate_random 16)
 
 # === n8n ===
 N8N_BASIC_AUTH_USER=admin
@@ -203,6 +203,7 @@ MINIO_ROOT_PASSWORD=$(generate_random 16)
 # GIT_USER_NAME=Your Name
 # GIT_USER_EMAIL=your@email.com
 
+# AI_API_KEY=sk-your-ai-key
 # OPENAI_API_KEY=sk-your-openai-key
 # ANTHROPIC_API_KEY=sk-ant-your-anthropic-key
 # GEMINI_API_KEY=your-gemini-key
@@ -211,6 +212,7 @@ MINIO_ROOT_PASSWORD=$(generate_random 16)
 # API_DOMAIN=api.yourdomain.com
 # WORKFLOW_DOMAIN=workflow.yourdomain.com
 # FRONTEND_DOMAIN=blog.yourdomain.com
+# AI_SERVER_URL=https://api.openai.com/v1
 # IMAGE_TAG=latest
 EOF
 

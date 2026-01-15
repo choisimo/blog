@@ -32,13 +32,10 @@ const CONFIG_SCHEMA = {
   ai: {
     name: 'AI Services',
     vars: [
-      { key: 'AI_GATEWAY_URL', value: () => config.ai?.gatewayUrl },
-      { key: 'AI_BACKEND_URL', value: () => config.services?.aiBackendUrl },
+      { key: 'AI_SERVER_URL', value: () => config.ai?.baseUrl },
       { key: 'AI_DEFAULT_MODEL', value: () => config.ai?.defaultModel },
-      { key: 'AI_DEFAULT_PROVIDER', value: () => config.ai?.defaultProvider },
       { key: 'AI_API_KEY', value: () => config.ai?.apiKey, secret: true },
-      { key: 'OPENCODE_BASE_URL', value: () => config.ai?.opencode?.baseUrl },
-      { key: 'OPENCODE_API_KEY', value: () => config.ai?.opencode?.apiKey, secret: true },
+      { key: 'AI_ASYNC_MODE', value: () => config.ai?.asyncMode ? 'true' : 'false' },
     ],
   },
   services: {

@@ -68,6 +68,7 @@ set_secret "REDIS_PASSWORD" "Redis password"
 echo ""
 echo "--- AI Service Secrets ---"
 set_secret "LITELLM_MASTER_KEY" "LiteLLM master key"
+set_secret "AI_API_KEY" "AI server API key (OpenAI-compatible)"
 set_secret "OPENAI_API_KEY" "OpenAI API key (optional)"
 set_secret "GOOGLE_API_KEY" "Google/Gemini API key (optional)"
 set_secret "ANTHROPIC_API_KEY" "Anthropic API key (optional)"
@@ -136,6 +137,7 @@ set_var "POSTGRES_USER" "bloguser"
 
 # AI
 set_var "AI_DEFAULT_MODEL" "gpt-4.1"
+set_var "AI_SERVER_URL" "https://api.openai.com/v1"
 
 # n8n
 set_var "N8N_USER" "admin"

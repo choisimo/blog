@@ -7,28 +7,12 @@ const BATCH_SIZE = parseInt(process.env.AI_WORKER_BATCH_SIZE, 10) || 1;
 const BLOCK_TIME = parseInt(process.env.AI_WORKER_BLOCK_TIME, 10) || 5000;
 
 let openaiClient = null;
-let legacyClient = null;
-
-async function getOpenAIClient() {
-  if (openaiClient) return openaiClient;
-  const { getOpenAIClient: getClient } = await import('../lib/openai-compat-client.js');
-  openaiClient = getClient();
-  return openaiClient;
-}
-
-async function getLegacyClient() {
-  if (legacyClient) return legacyClient;
-  const { getOpenCodeClient } = await import('../lib/opencode-client.js');
-  legacyClient = getOpenCodeClient();
-  return legacyClient;
-}
 
 async function getClient() {
-  try {
-    return await getOpenAIClient();
-  } catch {
-    return getLegacyClient();
-  }
+  if (openaiClient) return openaiClient;
+  const { getOpenAIClient } = await import('../lib/openai-compat-client.js');
+  openaiClient = getOpenAIClient();
+  return openaiClient;
 }
 
 async function handleGenerateTask(task) {
@@ -58,7 +42,7 @@ async function handleChatTask(task) {
   return {
     content: response.content,
     model: response.model,
-    provider: 'opencode',
+    provider: response.provider || 'openai-compat',
     usage: response.usage,
     sessionId: response.sessionId,
   };

@@ -43,7 +43,6 @@ const KNOWN_SECRETS = [
   { key: 'ADMIN_PASSWORD', description: '관리자 비밀번호', workers: ['api-gateway'] },
   { key: 'ADMIN_EMAIL', description: '관리자 이메일 (OTP)', workers: ['api-gateway'] },
   { key: 'OPENROUTER_API_KEY', description: 'OpenRouter API 키', workers: ['api-gateway'] },
-  { key: 'AI_SERVE_API_KEY', description: 'AI Serve 내부 API 키', workers: ['api-gateway'] },
   { key: 'BACKEND_ORIGIN', description: '백엔드 서버 URL', workers: ['api-gateway'] },
   { key: 'BACKEND_SECRET_KEY', description: '백엔드 인증 키', workers: ['api-gateway'] },
   { key: 'RESEND_API_KEY', description: 'Resend.com API 키', workers: ['api-gateway'] },

@@ -13,9 +13,9 @@
  *              Memory Store <─────────────────────────────┘
  * 
  * AI Provider:
- *   - LLM calls: OpenCode Backend (http://opencode-backend:7016)
+ *   - LLM calls: OpenAI-compatible server (AI_SERVER_URL or OPENAI_API_BASE_URL)
  *   - RAG/Embeddings: TEI + ChromaDB (via existing containers)
- *   - n8n: Workflow orchestration only (AI model calls proxied to OpenCode)
+ *   - n8n: Workflow orchestration only (AI model calls via OpenAI-compatible server)
  * 
  * Usage:
  *   const coordinator = getAgentCoordinator();
@@ -263,8 +263,8 @@ export class AgentCoordinator {
   /**
    * Call LLM with function calling support
    * 
-   * Since OpenCode's /chat endpoint doesn't support OpenAI-style function calling,
-   * we implement prompt-based tool calling:
+   * We implement prompt-based tool calling for maximum compatibility across
+   * OpenAI-compatible providers:
    * 1. Include tool definitions in a system message
    * 2. Parse LLM response for tool call requests (JSON format)
    * 3. Return parsed tool calls for execution
@@ -567,9 +567,8 @@ ${toolsDescription}
   /**
    * Stream agent response
    * 
-   * Since OpenCode backend doesn't have native SSE streaming for chat,
-   * we use a simulated streaming approach:
-   * 1. Get full response from OpenCode
+   * Use a simulated streaming approach:
+   * 1. Get full response from the OpenAI-compatible server
    * 2. Chunk and yield content progressively
    * 3. Handle tool calls between iterations
    * 
@@ -611,7 +610,7 @@ ${toolsDescription}
     while (iterations < this.maxIterations) {
       iterations++;
 
-      // Inject tool instructions and format for OpenCode
+      // Inject tool instructions and format for prompt-based tool calling
       const messagesWithTools = this._injectToolInstructions(currentMessages, tools);
       const formattedPrompt = this._formatMessagesForChat(messagesWithTools);
 

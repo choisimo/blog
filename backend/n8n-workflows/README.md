@@ -4,18 +4,18 @@
 
 ## 목차
 
-1. [AI 워크플로우 (OpenCode)](#1-ai-워크플로우-opencode)
+1. [AI 워크플로우 (OpenAI Compatible)](#1-ai-워크플로우-openai-compatible)
 2. [Buffer Zone 워크플로우](#2-buffer-zone-워크플로우)
 3. [크레덴셜 설정](#3-크레덴셜-설정)
 4. [모니터링 및 디버깅](#4-모니터링-및-디버깅)
 
 ---
 
-## 1. AI 워크플로우 (OpenCode)
+## 1. AI 워크플로우 (OpenAI Compatible)
 
 ### 1.1 개요
 
-AI 워크플로우는 OpenCode(ai-server-backend)를 통해 LLM 기능을 제공합니다.
+AI 워크플로우는 OpenAI SDK 호환 서버(AI_SERVER_URL)를 통해 LLM 기능을 제공합니다.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -28,14 +28,8 @@ AI 워크플로우는 OpenCode(ai-server-backend)를 통해 LLM 기능을 제공
 │                              │                                   │
 │                              ▼                                   │
 │              ┌───────────────────────────┐                      │
-│              │   ai-server-backend:7016  │                      │
-│              │   (OpenCode Adapter)      │                      │
-│              └─────────────┬─────────────┘                      │
-│                            │                                     │
-│                            ▼                                     │
-│              ┌───────────────────────────┐                      │
-│              │   ai-server-serve:7012    │                      │
-│              │   (LLM Provider)          │                      │
+│              │ OpenAI-Compatible Server  │                      │
+│              │ (AI_SERVER_URL)           │                      │
 │              └───────────────────────────┘                      │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -130,13 +124,12 @@ docker-compose.yml의 n8n 및 n8n-worker 서비스에 다음 환경 변수가 �
 ```yaml
 environment:
   # AI 서버 연결 (필수)
-  - OPENCODE_BASE_URL=http://ai-server-backend:7016
-  - OPENCODE_SERVE_URL=http://ai-server-serve:7012
-  
-  # 기본 모델 설정 (선택)
-  - OPENCODE_DEFAULT_PROVIDER=github-copilot
-  - OPENCODE_DEFAULT_MODEL=gpt-4.1
-  
+  - AI_SERVER_URL=https://api.openai.com/v1
+  - AI_API_KEY=your-api-key
+  - AI_DEFAULT_MODEL=gpt-4.1
+  # Optional alias if your provider uses this variable
+  - OPENAI_API_BASE_URL=
+
   # 환경 변수 접근 허용 (필수!)
   - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
 ```
@@ -209,7 +202,7 @@ curl -X POST https://blog-bw.nodove.com/webhook/ai/embeddings \
 {
   "content": "AI 응답 텍스트",
   "model": "gpt-4.1",
-  "provider": "opencode",
+  "provider": "openai-compat",
   "requestId": "n8n-1234567890"
 }
 ```
@@ -336,9 +329,9 @@ ORDER BY ee.id DESC LIMIT 10;"
 | 문제 | 원인 | 해결 |
 |------|------|------|
 | `access to env vars denied` | `N8N_BLOCK_ENV_ACCESS_IN_NODE` 미설정 | docker-compose.yml에 환경변수 추가 후 워커 재시작 |
-| 빈 응답 | 응답 경로 불일치 | 워크플로우의 응답 경로가 `$json.body?.data?.response?.text` 확인 |
+| 빈 응답 | 응답 경로 불일치 | 워크플로우의 응답 경로가 `$json.body?.choices?.[0]?.message?.content` 확인 |
 | 401 Unauthorized | JWT 토큰 만료 | `Actions > Rotate API Tokens` 실행 |
-| 502 Bad Gateway | AI 서버 다운 | `docker restart ai-server-backend` |
+| 502 Bad Gateway | AI 서버 다운 | `AI_SERVER_URL` 설정 및 서버 상태 확인 |
 | Timeout | LLM 응답 지연 | timeout 값 증가 (기본 120s) |
 
 ### 4.4 워크플로우 수동 업데이트 (DB 직접 수정)
@@ -365,5 +358,5 @@ docker compose restart n8n-worker
 ## 5. 참고 자료
 
 - [n8n 공식 문서](https://docs.n8n.io/)
-- [OpenCode API 문서](../docs/AI_SERVICE_ANATOMY_MAP.md)
+- [OpenAI API 문서](https://platform.openai.com/docs/api-reference)
 - [Buffer Zone API OpenAPI 스펙](./openapi-buffer-zone.json)

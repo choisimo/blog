@@ -136,12 +136,9 @@ services:
       - PORT=5080
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
-      - AI_GATEWAY_URL=http://ai-gateway:7000
-      - OPENAI_API_BASE_URL=http://ai-gateway:7000/v1
-      - OPENCODE_BASE_URL=http://ai-gateway:7000
+      - AI_SERVER_URL=${AI_SERVER_URL}
       - AI_API_KEY=${AI_API_KEY:-}
       - AI_DEFAULT_MODEL=${AI_DEFAULT_MODEL:-gpt-4.1}
-      - AI_DEFAULT_PROVIDER=${AI_DEFAULT_PROVIDER:-github-copilot}
       - CHROMADB_URL=http://chromadb:8000
       - CF_ACCOUNT_ID=${CF_ACCOUNT_ID}
       - CF_API_TOKEN=${CF_API_TOKEN}
@@ -161,8 +158,6 @@ services:
         condition: service_healthy
       n8n:
         condition: service_started
-      ai-gateway:
-        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:5080/api/v1/healthz || exit 1"]
       interval: 30s
@@ -197,100 +192,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - blog-network
-
-# ===========================================================================
-# AI SERVICES - Remote OpenCode Serve + Local AI Backend Adapter
-# ===========================================================================
-
-  # -------------------------------------------------------------------------
-  # AI Gateway (Internal Reverse Proxy)
-  # -------------------------------------------------------------------------
-  # All internal services should use http://ai-gateway:7000 instead of
-  # direct URLs like http://ai-server-backend:7016
-  #
-  # Benefits:
-  #   - Service location abstraction
-  #   - Single point for rate limiting
-  #   - Easier service migration
-  #   - Centralized logging
-  ai-gateway:
-    image: nginx:alpine
-    container_name: ai-gateway
-    restart: unless-stopped
-    expose:
-      - "7000"
-    volumes:
-      - ./nginx-ai-gateway.conf:/etc/nginx/conf.d/default.conf:ro
-    networks:
-      blog-network:
-        aliases:
-          - ai-gateway
-          - ai
-    depends_on:
-      ai-server-backend:
-        condition: service_started
-      noaicode:
-        condition: service_started
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:7000/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-
-  # AI Server Serve - OpenCode LLM Backend (port 7012 internal)
-  # This is the actual LLM provider that connects to various AI services
-  noaicode:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/ai-server-serve:${AI_SERVER_SERVE_TAG:-latest}
-    container_name: ai-server-serve
-    pull_policy: always
-    restart: unless-stopped
-    ports:
-      - "${AI_SERVER_SERVE_PORT:-7015}:7012"
-    environment:
-      NODE_ENV: production
-      NOAICODE_HOST: 0.0.0.0
-      NOAICODE_PORT: 7012
-    volumes:
-      - noaicode-data:/home/appuser/.local/share/opencode
-      - noaicode-logs:/var/log/opencode
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:7012/ || wget -q -O- http://localhost:7012/ || exit 0"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    networks:
-      blog-network:
-        aliases:
-          - ai-server-serve
-          - ai-serve
-    security_opt:
-      - no-new-privileges:true
-
-  # AI Server Backend - Adapter API Server (port 7016)
-  # Connects to ai-server-serve (noaicode) via internal Docker network
-  ai-server-backend:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/ai-server-backend:${AI_SERVER_BACKEND_TAG:-latest}
-    container_name: ai-server-backend
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      - PORT=7016
-      # Connect to ai-server-serve via internal network (not external URL)
-      - NOAICODE_BASE_URL=http://ai-server-serve:7012
-      - ENABLE_CHAT_UI=false
-    expose:
-      - "7016"
-    depends_on:
-      noaicode:
-        condition: service_started
-    networks:
-      blog-network:
-        aliases:
-          - ai-server-backend
-          - ai-backend
 
 # ===========================================================================
 # N8N WORKFLOW ENGINE
@@ -349,11 +250,8 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       # Integration URLs
       - BLOG_API_URL=http://api:5080
-      - AI_GATEWAY_URL=http://ai-gateway:7000
-      - OPENAI_API_BASE_URL=http://ai-gateway:7000/v1
-      - OPENCODE_BASE_URL=http://ai-gateway:7000
-      - OPENCODE_SERVE_URL=http://ai-gateway:7000/serve
-      - AI_ENGINE_URL=http://ai-gateway:7000/serve
+      - AI_SERVER_URL=${AI_SERVER_URL}
+      - AI_API_KEY=${AI_API_KEY:-}
       - CHROMADB_URL=http://chromadb:8000
     volumes:
       - n8n_data:/home/node/.n8n
@@ -363,8 +261,6 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      ai-gateway:
         condition: service_healthy
     networks:
       - blog-network
@@ -394,11 +290,8 @@ services:
       - NODE_OPTIONS=--max-old-space-size=2048
       # Integration
       - BLOG_API_URL=http://api:5080
-      - AI_GATEWAY_URL=http://ai-gateway:7000
-      - OPENAI_API_BASE_URL=http://ai-gateway:7000/v1
-      - OPENCODE_BASE_URL=http://ai-gateway:7000
-      - OPENCODE_SERVE_URL=http://ai-gateway:7000/serve
-      - AI_ENGINE_URL=http://ai-gateway:7000/serve
+      - AI_SERVER_URL=${AI_SERVER_URL}
+      - AI_API_KEY=${AI_API_KEY:-}
       - CHROMADB_URL=http://chromadb:8000
     command: ["worker"]
     volumes:
@@ -408,8 +301,6 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      ai-gateway:
         condition: service_healthy
     deploy:
       replicas: ${N8N_WORKER_REPLICAS:-2}
@@ -510,8 +401,6 @@ volumes:
   tei_data:
   n8n_data:
   minio_data:
-  noaicode-data:
-  noaicode-logs:
   prometheus_data:
   grafana_data:
   pgadmin_data:

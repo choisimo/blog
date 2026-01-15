@@ -1,14 +1,13 @@
 /**
  * Unified AI Service
  *
- * All AI requests are routed through ai-server-backend → ai-server-serve.
+ * All AI requests are routed through an OpenAI SDK compatible server.
  * This provides a consistent interface regardless of the underlying LLM provider.
  *
  * Architecture:
- *   Blog API → ai-server-backend:7016 → ai-server-serve:7012 → LLM Provider
+ *   Blog API → OpenAI-compatible server → LLM Provider
  *
- * The ai-server-serve handles provider selection (GitHub Copilot, OpenAI, Anthropic, etc.)
- * Configuration is managed through ai-server-serve, not this service.
+ * Configuration is managed via OPENAI_API_BASE_URL or AI_SERVER_URL.
  *
  * Usage:
  *   import { aiService } from './lib/ai-service.js';
@@ -30,7 +29,7 @@ import { logAIUsage } from './ai-usage-logger.js';
 import { enqueueAITask, waitForAIResult } from './ai-task-queue.js';
 import { config } from '../config.js';
 
-// OpenAI SDK compatible client (primary)
+// OpenAI SDK compatible client
 let getOpenAIClient, OpenAICompatClient;
 try {
   ({ getOpenAIClient, default: OpenAICompatClient } = await import('./openai-compat-client.js'));
@@ -38,16 +37,6 @@ try {
   console.error('[AIService] Failed to import openai-compat-client:', err.message);
   getOpenAIClient = null;
   OpenAICompatClient = null;
-}
-
-// Legacy OpenCode client (fallback)
-let getOpenCodeClient, opencodeTryParse;
-try {
-  ({ getOpenCodeClient, tryParseJson: opencodeTryParse } = await import('./opencode-client.js'));
-} catch (err) {
-  console.error('[AIService] Failed to import opencode-client:', err.message);
-  getOpenCodeClient = null;
-  opencodeTryParse = null;
 }
 
 // ============================================================================
@@ -82,17 +71,17 @@ const logger = {
 export class AIService {
   constructor() {
     this._openaiClient = null;
-    this._legacyClient = null;
-    this._useOpenAI = !!getOpenAIClient; // Prefer OpenAI SDK if available
-    
-    // Hybrid mode: use Redis async queue when available and enabled
     this._useAsyncQueue = process.env.AI_ASYNC_MODE === 'true';
     this._redisChecked = false;
     this._redisAvailable = false;
     
+    if (!getOpenAIClient) {
+      throw new Error('OpenAI client not available. Check openai-compat-client.js import.');
+    }
+    
     logger.info(
       { operation: 'init' },
-      `AIService initialized (mode: ${this._useOpenAI ? 'openai-sdk' : 'legacy-opencode'}, async: ${this._useAsyncQueue})`
+      `AIService initialized (async: ${this._useAsyncQueue})`
     );
   }
 
@@ -141,41 +130,19 @@ export class AIService {
   }
 
   /**
-   * Get the OpenAI SDK compatible client (primary)
+   * Get the OpenAI SDK compatible client
    */
   _getOpenAIClient() {
     if (this._openaiClient) return this._openaiClient;
-    
-    if (!getOpenAIClient) {
-      throw new Error('OpenAI client not available. Check openai-compat-client.js import.');
-    }
-    
     this._openaiClient = getOpenAIClient();
     return this._openaiClient;
   }
 
   /**
-   * Get the legacy OpenCode client (fallback)
-   */
-  _getLegacyClient() {
-    if (this._legacyClient) return this._legacyClient;
-    
-    if (!getOpenCodeClient) {
-      throw new Error('OpenCode client not available. Check opencode-client.js import.');
-    }
-    
-    this._legacyClient = getOpenCodeClient();
-    return this._legacyClient;
-  }
-
-  /**
-   * Get the appropriate client based on configuration
+   * Get the client for AI operations
    */
   _getClient() {
-    if (this._useOpenAI) {
-      return this._getOpenAIClient();
-    }
-    return this._getLegacyClient();
+    return this._getOpenAIClient();
   }
 
   /**
@@ -330,7 +297,7 @@ export class AIService {
       const result = {
         content: response.content,
         model: response.model,
-        provider: 'opencode',
+        provider: response.provider || 'openai-compat',
         usage: response.usage,
         sessionId: response.sessionId,
       };
@@ -679,7 +646,10 @@ export class AIService {
   }
 
   _getDefaultModel() {
-    return config.ai?.defaultModel || process.env.OPENCODE_DEFAULT_MODEL || process.env.AI_DEFAULT_MODEL || 'gpt-4.1';
+    return config.ai?.defaultModel
+      || process.env.AI_DEFAULT_MODEL
+      || process.env.OPENAI_DEFAULT_MODEL
+      || 'gpt-4.1';
   }
 
   /**
@@ -695,13 +665,15 @@ export class AIService {
   }
 
   getProviderInfo() {
-    const aiGatewayUrl = config.ai?.gatewayUrl || process.env.AI_GATEWAY_URL || 'http://ai-gateway:7000';
+    const baseUrl = config.ai?.baseUrl
+      || process.env.OPENAI_API_BASE_URL
+      || process.env.AI_SERVER_URL
+      || 'https://api.openai.com/v1';
+
     return {
-      provider: 'ai-service',
+      provider: 'openai-compat',
       config: {
-        gatewayUrl: aiGatewayUrl,
-        baseUrl: process.env.OPENAI_API_BASE_URL || `${aiGatewayUrl}/v1`,
-        defaultProvider: config.ai?.defaultProvider || process.env.AI_DEFAULT_PROVIDER || 'github-copilot',
+        baseUrl,
         defaultModel: config.ai?.defaultModel || process.env.AI_DEFAULT_MODEL || 'gpt-4.1',
       },
     };

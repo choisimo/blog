@@ -46,7 +46,7 @@
               "id": "model",
               "name": "model",
               "type": "string",
-              "value": "={{ $json.body.model || $env.OPENAI_DEFAULT_MODEL || $env.OPENCODE_DEFAULT_MODEL || 'gpt-4.1' }}"
+              "value": "={{ $json.body.model || $env.AI_DEFAULT_MODEL || $env.OPENAI_DEFAULT_MODEL || 'gpt-4.1' }}"
             },
             {
               "id": "temperature",
@@ -74,7 +74,7 @@
         300
       ],
       "parameters": {
-        "url": "={{ (($env.AI_GATEWAY_URL || $env.OPENAI_API_BASE_URL || $env.OPENCODE_BASE_URL || 'http://ai-gateway:7000').replace(/\\/v1\\/?$/, '')) + '/v1/chat/completions' }}",
+        "url": "={{ (($env.AI_SERVER_URL || $env.OPENAI_API_BASE_URL || 'https://api.openai.com/v1').replace(/\\/v1\\/?$/, '')) + '/v1/chat/completions' }}",
         "method": "POST",
         "options": {
           "timeout": 120000,
@@ -96,7 +96,7 @@
             },
             {
               "name": "Authorization",
-              "value": "={{ 'Bearer ' + ($env.AI_API_KEY || $env.OPENAI_API_KEY || $env.OPENCODE_API_KEY || 'sk-noaicode') }}"
+              "value": "={{ 'Bearer ' + ($env.AI_API_KEY || $env.OPENAI_API_KEY || '') }}"
             }
           ]
         }

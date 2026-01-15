@@ -1,5 +1,5 @@
 {
-  "name": "AI Vision Webhook (OpenCode)",
+  "name": "AI Vision Webhook (OpenAI Compatible)",
   "nodes": [
     {
       "id": "webhook-trigger",
@@ -80,8 +80,8 @@
       "typeVersion": 3.4
     },
     {
-      "id": "build-opencode-request",
-      "name": "Build OpenCode Request",
+      "id": "build-openai-request",
+      "name": "Build OpenAI Request",
       "type": "n8n-nodes-base.set",
       "position": [
         680,
@@ -92,28 +92,22 @@
         "assignments": {
           "assignments": [
             {
-              "id": "message",
-              "name": "message",
-              "type": "string",
-              "value": "={{ $json.type === 'url' ? ('[Image URL: ' + $json.imageUrl + ']\\n\\n' + $json.prompt) : ('[Image: data:' + $json.mimeType + ';base64,' + $json.image + ']\\n\\n' + $json.prompt) }}"
+              "id": "imagePayload",
+              "name": "imagePayload",
+              "type": "object",
+              "value": "={{ $json.type === 'url' ? { type: 'image_url', image_url: { url: $json.imageUrl } } : { type: 'image_url', image_url: { url: 'data:' + $json.mimeType + ';base64,' + $json.image } } }}"
             },
             {
-              "id": "providerID",
-              "name": "providerID",
-              "type": "string",
-              "value": "={{ $env.OPENCODE_DEFAULT_PROVIDER || 'github-copilot' }}"
+              "id": "messages",
+              "name": "messages",
+              "type": "array",
+              "value": "={{ [{ role: 'user', content: [$json.imagePayload, { type: 'text', text: $json.prompt }] }] }}"
             },
             {
-              "id": "modelID",
-              "name": "modelID",
+              "id": "model",
+              "name": "model",
               "type": "string",
               "value": "={{ $json.model }}"
-            },
-            {
-              "id": "titleReq",
-              "name": "titleReq",
-              "type": "string",
-              "value": "={{ 'n8n-vision-' + Date.now() }}"
             }
           ]
         },
@@ -122,25 +116,23 @@
       "typeVersion": 3.4
     },
     {
-      "id": "opencode-chat",
-      "name": "OpenCode Chat",
+      "id": "openai-chat",
+      "name": "OpenAI Chat Completions",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
         900,
         300
       ],
       "parameters": {
-        "url": "={{ ($env.OPENCODE_BACKEND_URL || $env.AI_GATEWAY_URL || $env.OPENCODE_BASE_URL || 'http://ai-gateway:7000') + '/chat' }}",
+        "url": "={{ (($env.AI_SERVER_URL || $env.OPENAI_API_BASE_URL || 'https://api.openai.com/v1').replace(/\\/v1\\/?$/, '')) + '/v1/chat/completions' }}",
         "method": "POST",
         "options": {
           "timeout": 300000,
           "response": {
-            "response": {
-              "fullResponse": true
-            }
+            "fullResponse": true
           }
         },
-        "jsonBody": "={\n  \"message\": {{ JSON.stringify($json.message) }},\n  \"providerID\": {{ JSON.stringify($json.providerID) }},\n  \"modelID\": {{ JSON.stringify($json.modelID) }},\n  \"title\": {{ JSON.stringify($json.titleReq) }}\n}",
+        "jsonBody": "={\n  \"model\": {{ JSON.stringify($json.model) }},\n  \"messages\": {{ JSON.stringify($json.messages) }}\n}",
         "sendBody": true,
         "sendHeaders": true,
         "specifyBody": "json",
@@ -149,6 +141,10 @@
             {
               "name": "Content-Type",
               "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + ($env.AI_API_KEY || $env.OPENAI_API_KEY || '') }}"
             }
           ]
         }
@@ -171,7 +167,7 @@
               "id": "description",
               "name": "description",
               "type": "string",
-              "value": "={{ $json.body?.data?.response?.text || $json.body?.response?.text || '' }}"
+              "value": "={{ $json.body?.choices?.[0]?.message?.content || $json.body?.data?.choices?.[0]?.message?.content || '' }}"
             },
             {
               "id": "model",
@@ -183,7 +179,7 @@
               "id": "provider",
               "name": "provider",
               "type": "string",
-              "value": "opencode"
+              "value": "openai-compat"
             },
             {
               "id": "requestId",
@@ -230,25 +226,25 @@
       "main": [
         [
           {
-            "node": "Build OpenCode Request",
+            "node": "Build OpenAI Request",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Build OpenCode Request": {
+    "Build OpenAI Request": {
       "main": [
         [
           {
-            "node": "OpenCode Chat",
+            "node": "OpenAI Chat Completions",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "OpenCode Chat": {
+    "OpenAI Chat Completions": {
       "main": [
         [
           {

@@ -27,8 +27,6 @@ Backend CI/CD Pipeline은 **GitHub Actions 기반 이미지 빌드 시스템**�
 
 | 이미지 | 설명 |
 |--------|------|
-| `ghcr.io/{owner}/opencode-backend` | AI API 오케스트레이션 |
-| `ghcr.io/{owner}/opencode-serve` | AI 모델 서빙 |
 | `n8nio/n8n:latest` | Workflow 자동화 |
 | `postgres:15` | 메인 데이터베이스 |
 | `redis:7-alpine` | 캐시/세션 |
@@ -220,7 +218,8 @@ POSTGRES_PASSWORD: "secure-pass"
 REDIS_PASSWORD: "redis-pass"
 
 # AI 서비스
-OPENAI_API_KEY: "sk-xxx"
+AI_API_KEY: "sk-xxx"
+OPENAI_API_KEY: "sk-optional"
 ANTHROPIC_API_KEY: "sk-ant-xxx"
 GOOGLE_API_KEY: "AIza..."
 
@@ -256,6 +255,10 @@ POSTGRES_USER: "bloguser"
 N8N_USER: "admin"
 N8N_HOST: "blog-bw.nodove.com"
 N8N_WEBHOOK_URL: "https://blog-bw.nodove.com/"
+
+# AI
+AI_SERVER_URL: "https://api.openai.com/v1"
+AI_DEFAULT_MODEL: "gpt-4.1"
 ```
 
 ---

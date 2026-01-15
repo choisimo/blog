@@ -1,5 +1,5 @@
 {
-  "name": "AI Task Webhook (OpenCode)",
+  "name": "AI Task Webhook (OpenAI Compatible)",
   "nodes": [
     {
       "id": "webhook",
@@ -52,7 +52,7 @@
               "id": "model",
               "name": "model",
               "type": "string",
-              "value": "={{ $json.body.model || $env.OPENCODE_DEFAULT_MODEL || 'gpt-4.1' }}"
+              "value": "={{ $json.body.model || $env.AI_DEFAULT_MODEL || $env.OPENAI_DEFAULT_MODEL || 'gpt-4.1' }}"
             }
           ]
         }
@@ -83,8 +83,8 @@
       "typeVersion": 3.4
     },
     {
-      "id": "build-opencode-request",
-      "name": "Build OpenCode Request",
+      "id": "build-openai-request",
+      "name": "Build OpenAI Request",
       "type": "n8n-nodes-base.set",
       "position": [
         900,
@@ -96,20 +96,14 @@
         "assignments": {
           "assignments": [
             {
-              "id": "message",
-              "name": "message",
-              "type": "string",
-              "value": "={{ $json.prompt }}"
+              "id": "messages",
+              "name": "messages",
+              "type": "array",
+              "value": "={{ [{ role: 'user', content: $json.prompt }] }}"
             },
             {
-              "id": "providerID",
-              "name": "providerID",
-              "type": "string",
-              "value": "={{ $env.OPENCODE_DEFAULT_PROVIDER || 'github-copilot' }}"
-            },
-            {
-              "id": "modelID",
-              "name": "modelID",
+              "id": "model",
+              "name": "model",
               "type": "string",
               "value": "={{ $(\"Set Parameters\").item.json.model }}"
             },
@@ -125,25 +119,29 @@
       "typeVersion": 3.4
     },
     {
-      "id": "opencode-chat",
-      "name": "OpenCode Chat",
+      "id": "openai-chat",
+      "name": "OpenAI Chat Completions",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
         1120,
         300
       ],
       "parameters": {
-        "url": "={{ ($env.OPENCODE_BACKEND_URL || $env.AI_GATEWAY_URL || $env.OPENCODE_BASE_URL || 'http://ai-gateway:7000') + '/chat' }}",
+        "url": "={{ (($env.AI_SERVER_URL || $env.OPENAI_API_BASE_URL || 'https://api.openai.com/v1').replace(/\\/v1\\/?$/, '')) + '/v1/chat/completions' }}",
         "method": "POST",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\"message\": {{ JSON.stringify($json.message) }}, \"providerID\": {{ JSON.stringify($json.providerID) }}, \"modelID\": {{ JSON.stringify($json.modelID) }}, \"title\": {{ JSON.stringify($json.title) }}}",
+        "jsonBody": "={\"model\": {{ JSON.stringify($json.model) }}, \"messages\": {{ JSON.stringify($json.messages) }}}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "Content-Type",
               "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + ($env.AI_API_KEY || $env.OPENAI_API_KEY || '') }}"
             }
           ]
         },
@@ -167,7 +165,7 @@
         300
       ],
       "parameters": {
-        "jsCode": "const text = $input.first().json.body?.data?.response?.text || $input.first().json.body?.response?.text || '';\nconst mode = $(\"Set Parameters\").first().json.mode;\n\nlet data = null;\ntry {\n  data = JSON.parse(text);\n} catch {\n  const fence = text.match(/```(?:json)?\\s*([\\s\\S]*?)```/i);\n  if (fence?.[1]) {\n    try { data = JSON.parse(fence[1].trim()); } catch {}\n  }\n  if (!data) {\n    const start = text.indexOf('{');\n    const end = text.lastIndexOf('}');\n    if (start >= 0 && end > start) {\n      try { data = JSON.parse(text.slice(start, end + 1)); } catch {}\n    }\n  }\n}\n\nif (!data) {\n  data = mode === 'summary' ? { summary: text } : { text };\n}\n\nreturn { json: { ok: true, data, mode, source: 'opencode' } };"
+        "jsCode": "const text = $input.first().json.body?.choices?.[0]?.message?.content || $input.first().json.body?.data?.choices?.[0]?.message?.content || '';\nconst mode = $(\"Set Parameters\").first().json.mode;\n\nlet data = null;\ntry {\n  data = JSON.parse(text);\n} catch {\n  const fence = text.match(/```(?:json)?\\s*([\\s\\S]*?)```/i);\n  if (fence?.[1]) {\n    try { data = JSON.parse(fence[1].trim()); } catch {}\n  }\n  if (!data) {\n    const start = text.indexOf('{');\n    const end = text.lastIndexOf('}');\n    if (start >= 0 && end > start) {\n      try { data = JSON.parse(text.slice(start, end + 1)); } catch {}\n    }\n  }\n}\n\nif (!data) {\n  data = mode === 'summary' ? { summary: text } : { text };\n}\n\nreturn { json: { ok: true, data, mode, source: 'openai-compat' } };"
       },
       "typeVersion": 2
     },
@@ -216,25 +214,25 @@
       "main": [
         [
           {
-            "node": "Build OpenCode Request",
+            "node": "Build OpenAI Request",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Build OpenCode Request": {
+    "Build OpenAI Request": {
       "main": [
         [
           {
-            "node": "OpenCode Chat",
+            "node": "OpenAI Chat Completions",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "OpenCode Chat": {
+    "OpenAI Chat Completions": {
       "main": [
         [
           {

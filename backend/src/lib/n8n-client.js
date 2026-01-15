@@ -1,17 +1,15 @@
 /**
  * n8n Workflow AI Client
  *
- * Hybrid architecture for AI operations:
+ * Unified architecture for AI operations using AIService:
  * 
  * 1. LLM Calls (chat, generate):
- *    - Primary: OpenCode backend (opencode-backend:7016)
- *    - Fallback: n8n webhooks (for backwards compatibility)
+ *    - Always use AIService (OpenAI SDK compatible)
+ *    - n8n fallback only when AIService is unavailable
  * 
- * 2. Vision Analysis (always n8n):
- *    - Images stored in R2 storage
- *    - n8n workflow fetches image from R2 URL
- *    - n8n processes with vision-capable model (GPT-4o, Claude, etc.)
- *    - Returns analysis result
+ * 2. Vision Analysis:
+ *    - Primary: AIService
+ *    - Fallback: n8n webhooks (for R2 URL image processing)
  * 
  * 3. Non-LLM Operations (always via n8n):
  *    - translate: Uses n8n translation workflow
@@ -20,23 +18,19 @@
  * 
  * 4. Workflow Orchestration:
  *    - n8n handles complex multi-step workflows
- *    - AI model calls within workflows can be proxied to OpenCode
  *
  * Architecture:
  *   ┌─────────────────────────────────────────────────────────────┐
- *   │                     N8NClient (Hybrid)                      │
+ *   │                        N8NClient                            │
  *   ├─────────────────────────────────────────────────────────────┤
  *   │                                                             │
- *   │  LLM Calls ──────────────► OpenCode Backend (:7016)        │
- *   │  (chat, generate)               │                          │
+ *   │  LLM Calls ──────────────► AIService                       │
+ *   │  (chat, generate, vision)       │                          │
  *   │                                 ▼                          │
- *   │                           OpenCode Serve (:7012)           │
+ *   │                           OpenAI SDK Compatible            │
  *   │                                 │                          │
  *   │                                 ▼                          │
  *   │                           LLM Provider                     │
- *   │                                                             │
- *   │  Vision ────────────────► n8n Webhook (:5678)              │
- *   │  (R2 URL -> n8n -> GPT-4o/Claude)                          │
  *   │                                                             │
  *   │  Non-LLM Calls ─────────► n8n Webhooks (:5678)             │
  *   │  (translate, task, etc.)                                   │
@@ -44,10 +38,6 @@
  *   │  Embeddings ────────────► TEI Server (via n8n or direct)   │
  *   │                                                             │
  *   └─────────────────────────────────────────────────────────────┘
- *
- * Configuration:
- *   USE_OPENCODE_FOR_LLM=true  - Route chat/generate through OpenCode (default)
- *   USE_OPENCODE_FOR_LLM=false - Use n8n for all AI calls (legacy mode)
  *
  * Usage:
  *   import { getN8NClient } from './n8n-client.js';
@@ -94,9 +84,6 @@ const getN8NBaseUrl = () =>
 const N8N_API_KEY = process.env.N8N_API_KEY || '';
 const DEFAULT_MODEL = config.ai?.defaultModel || process.env.AI_DEFAULT_MODEL || 'gemini-1.5-flash';
 
-// OpenCode hybrid mode configuration
-const USE_OPENCODE_FOR_LLM = process.env.USE_OPENCODE_FOR_LLM !== 'false'; // Default: true
-
 // Webhook endpoints (configured in n8n)
 const WEBHOOKS = {
   chat: '/webhook/ai/chat',
@@ -119,57 +106,40 @@ const CIRCUIT_BREAKER_THRESHOLD = 5;
 const CIRCUIT_BREAKER_RESET_TIME = 60000; // 1 minute
 
 /**
- * n8n Webhook AI Client (Hybrid Mode)
+ * n8n Webhook AI Client
  * 
- * Supports routing LLM calls through OpenCode backend while keeping
- * n8n for workflow orchestration and non-LLM tasks.
+ * Uses AIService for LLM calls with n8n fallback for workflow tasks.
  */
 export class N8NClient {
   constructor(options = {}) {
     this.baseUrl = options.baseUrl || getN8NBaseUrl();
     this.apiKey = options.apiKey || N8N_API_KEY;
     this.defaultModel = options.model || DEFAULT_MODEL;
-    
-    // Hybrid mode: use AIService for LLM calls (OpenAI SDK compatible)
-    this.useOpenCodeForLLM = options.useOpenCodeForLLM ?? USE_OPENCODE_FOR_LLM;
     this._aiService = null;
     
-    if (this.useOpenCodeForLLM) {
-      try {
-        this._aiService = getAIService();
-        logger.info({ operation: 'init' }, 'N8N Client initialized (hybrid mode)', {
-          baseUrl: this.baseUrl,
-          defaultModel: this.defaultModel,
-          llmBackend: 'ai-service',
-        });
-      } catch (error) {
-        logger.warn({ operation: 'init' }, 'Failed to initialize AIService, falling back to n8n', {
-          error: error.message,
-        });
-        this.useOpenCodeForLLM = false;
-      }
-    }
-    
-    if (!this.useOpenCodeForLLM) {
-      logger.info({ operation: 'init' }, 'N8N Client initialized (legacy mode)', {
+    try {
+      this._aiService = getAIService();
+      logger.info({ operation: 'init' }, 'N8N Client initialized', {
         baseUrl: this.baseUrl,
         defaultModel: this.defaultModel,
-        llmBackend: 'n8n',
+        llmBackend: 'ai-service',
+      });
+    } catch (error) {
+      logger.warn({ operation: 'init' }, 'Failed to initialize AIService, using n8n only', {
+        error: error.message,
       });
     }
 
-    // Circuit breaker state
     this._circuitState = {
       failures: 0,
       lastFailure: 0,
       isOpen: false,
     };
 
-    // Health cache
     this._healthCache = {
       lastCheck: 0,
       isHealthy: false,
-      cacheDuration: 30000, // 30 seconds
+      cacheDuration: 30000,
     };
   }
 
@@ -301,15 +271,14 @@ export class N8NClient {
 
   /**
    * Chat completion
-   * Routes to OpenCode in hybrid mode, falls back to n8n on error.
+   * Routes to AIService when available, falls back to n8n on error.
    * 
    * @param {Array<{role: string, content: string}>} messages
    * @param {object} options - { model, temperature, maxTokens, timeout }
    * @returns {Promise<{content: string, model: string, provider: string}>}
    */
   async chat(messages, options = {}) {
-    // Try AIService first in hybrid mode
-    if (this.useOpenCodeForLLM && this._aiService) {
+    if (this._aiService) {
       try {
         const result = await this._aiService.chat(messages, {
           model: options.model || this.defaultModel,
@@ -329,11 +298,9 @@ export class N8NClient {
           'AIService chat failed, falling back to n8n',
           { error: error.message }
         );
-        // Fall through to n8n
       }
     }
 
-    // Use n8n (fallback or legacy mode)
     const result = await this._request('chat', {
       messages,
       model: options.model || this.defaultModel,
@@ -365,15 +332,14 @@ async customLLMChat(messages, options = {}) {
 
   /**
    * Simple text generation
-   * Routes to OpenCode in hybrid mode, falls back to n8n on error.
+   * Routes to AIService when available, falls back to n8n on error.
    * 
    * @param {string} prompt
    * @param {object} options
    * @returns {Promise<string>}
    */
   async generate(prompt, options = {}) {
-    // Try AIService first in hybrid mode
-    if (this.useOpenCodeForLLM && this._aiService) {
+    if (this._aiService) {
       try {
         return await this._aiService.generate(prompt, {
           model: options.model || this.defaultModel,
@@ -386,11 +352,9 @@ async customLLMChat(messages, options = {}) {
           'AIService generate failed, falling back to n8n',
           { error: error.message }
         );
-        // Fall through to n8n
       }
     }
 
-    // Use n8n (fallback or legacy mode)
     const result = await this._request('generate', {
       prompt,
       model: options.model || this.defaultModel,
@@ -404,7 +368,7 @@ async customLLMChat(messages, options = {}) {
   /**
    * Vision analysis
    * 
-   * IMPORTANT: Vision always uses n8n workflow (not OpenCode).
+   * IMPORTANT: Vision always uses n8n workflow (not AIService).
    * This is because images are stored in R2, and n8n workflow can:
    * 1. Fetch the image from R2 URL directly
    * 2. Process with vision-capable models (GPT-4o, Claude, etc.)
@@ -420,7 +384,7 @@ async customLLMChat(messages, options = {}) {
    * @returns {Promise<string>}
    */
   async vision(imageData, prompt, options = {}) {
-    // Vision ALWAYS uses n8n workflow (no OpenCode)
+    // Vision ALWAYS uses n8n workflow (no direct AIService)
     // This ensures consistent behavior with R2 image URLs
     
     const isUrl = imageData.startsWith('http://') || imageData.startsWith('https://');
@@ -576,12 +540,11 @@ async customLLMChat(messages, options = {}) {
 
   /**
    * Streaming generation (via SSE or chunked)
-   * Routes to OpenCode in hybrid mode.
-   * Note: Both n8n and OpenCode use simulated streaming (chunked response).
+   * Routes to AIService when available.
+   * Note: Both n8n and AIService use simulated streaming (chunked response).
    */
   async *stream(prompt, options = {}) {
-    // Try AIService first in hybrid mode
-    if (this.useOpenCodeForLLM && this._aiService) {
+    if (this._aiService) {
       try {
         for await (const chunk of this._aiService.stream(prompt, options)) {
           yield chunk;
@@ -593,15 +556,11 @@ async customLLMChat(messages, options = {}) {
           'AIService stream failed, falling back to n8n',
           { error: error.message }
         );
-        // Fall through to n8n
       }
     }
 
-    // Use n8n (fallback or legacy mode)
-    // Generate full text first
     const text = await this.generate(prompt, options);
 
-    // Stream in chunks
     const chunkSize = 80;
     for (let i = 0; i < text.length; i += chunkSize) {
       yield text.slice(i, Math.min(i + chunkSize, text.length));
@@ -611,7 +570,7 @@ async customLLMChat(messages, options = {}) {
 
   /**
    * Health check
-   * Returns combined health status for n8n and OpenCode (in hybrid mode).
+   * Returns combined health status for n8n and AIService.
    */
   async health(force = false) {
     const now = Date.now();
@@ -627,10 +586,9 @@ async customLLMChat(messages, options = {}) {
     const healthResult = {
       ok: false,
       n8n: { ok: false },
-      aiService: { ok: false, enabled: this.useOpenCodeForLLM },
+      aiService: { ok: false },
     };
 
-    // Check n8n health
     try {
       const response = await fetchWithTimeout(
         this._buildUrl('health'),
@@ -653,8 +611,7 @@ async customLLMChat(messages, options = {}) {
       healthResult.n8n.error = error.message;
     }
 
-    // Check AIService health (if in hybrid mode)
-    if (this.useOpenCodeForLLM && this._aiService) {
+    if (this._aiService) {
       try {
         const aiServiceHealth = await this._aiService.health(force);
         healthResult.aiService.ok = aiServiceHealth.ok;
@@ -664,9 +621,7 @@ async customLLMChat(messages, options = {}) {
       }
     }
 
-    // Overall health: n8n must be up, AIService is optional but preferred
-    healthResult.ok = healthResult.n8n.ok && 
-      (!this.useOpenCodeForLLM || healthResult.aiService.ok);
+    healthResult.ok = healthResult.n8n.ok || healthResult.aiService.ok;
 
     this._healthCache.isHealthy = healthResult.ok;
     this._healthCache.lastCheck = now;
@@ -714,37 +669,11 @@ async customLLMChat(messages, options = {}) {
    */
   getBackendInfo() {
     return {
-      mode: this.useOpenCodeForLLM ? 'hybrid' : 'legacy',
       n8nUrl: this.baseUrl,
-      aiServiceEnabled: this.useOpenCodeForLLM,
+      aiServiceEnabled: !!this._aiService,
       aiServiceProvider: this._aiService?.getProviderInfo?.()?.provider || null,
       defaultModel: this.defaultModel,
     };
-  }
-
-  /**
-   * Force switch to n8n-only mode (useful for fallback scenarios)
-   */
-  disableOpenCode() {
-    this.useOpenCodeForLLM = false;
-    logger.info({ operation: 'mode_switch' }, 'Switched to n8n-only mode');
-  }
-
-  /**
-   * Re-enable AIService for LLM calls
-   */
-  enableOpenCode() {
-    if (!this._aiService) {
-      try {
-        this._aiService = getAIService();
-      } catch (error) {
-        logger.error({ operation: 'mode_switch' }, 'Failed to enable AIService', { error: error.message });
-        return false;
-      }
-    }
-    this.useOpenCodeForLLM = true;
-    logger.info({ operation: 'mode_switch' }, 'Switched to hybrid mode (AIService enabled)');
-    return true;
   }
 }
 

@@ -348,7 +348,9 @@ GITHUB_REPO_OWNER=your-github-username
 GITHUB_REPO_NAME=blog
 ADMIN_BEARER_TOKEN=your-admin-token
 
-# === LiteLLM ===
+# === AI (OpenAI-compatible) ===
+AI_SERVER_URL=https://api.openai.com/v1
+AI_API_KEY=sk-your-ai-key
 LITELLM_MASTER_KEY=sk-your-litellm-key
 OPENAI_API_KEY=sk-your-openai-key
 ANTHROPIC_API_KEY=sk-your-anthropic-key

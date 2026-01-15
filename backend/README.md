@@ -28,7 +28,7 @@ Backend API Server는 블로그 플랫폼의 **Origin 서버**입니다. Cloudfl
 - **Framework**: Express 4
 - **Port**: `5080` (기본)
 - **Image Processing**: Sharp
-- **AI Backend**: OpenAI SDK Compatible Server (ai-server-backend:7016)
+- **AI Backend**: OpenAI-compatible server (AI_SERVER_URL)
 - **Vector DB**: ChromaDB + TEI Embedding Server
 
 ---
@@ -47,7 +47,7 @@ flowchart TB
         BE[Backend Server<br/>blog-b.nodove.com:5080]
         
         subgraph "Services"
-            AI_SRV[AI Server<br/>ai-server-backend:7016]
+            AI_SRV[AI Server<br/>OpenAI-compatible endpoint]
             TEI[TEI Embedding<br/>embedding-server:80]
             CHROMA[ChromaDB<br/>chromadb:8000]
         end
@@ -188,21 +188,17 @@ Host: ./frontend/public  →  Container: /frontend/public
 ```
 Request Flow:
 1. Client → API Gateway → Backend /api/v1/ai/*
-2. Backend (AIService) → ai-server-backend:7016 (OpenAI SDK Compatible)
-3. ai-server-backend → ai-server-serve:7012
-4. ai-server-serve → LLM Provider (GitHub Copilot / OpenRouter / etc.)
+2. Backend (AIService) → OpenAI-compatible server (AI_SERVER_URL)
 ```
 
 **AIService 설정 (OpenAI SDK 호환):**
 ```javascript
-// Primary: OpenAI SDK Compatible Client
-OPENAI_API_BASE_URL=http://ai-server-backend:7016/v1
-OPENAI_API_KEY=your-api-key
-OPENAI_DEFAULT_MODEL=gpt-4.1
+AI_SERVER_URL=https://api.openai.com/v1
+AI_API_KEY=your-api-key
+AI_DEFAULT_MODEL=gpt-4.1
 
-// Fallback: Legacy OpenCode (optional)
-OPENCODE_BASE_URL=http://ai-server-backend:7016
-OPENCODE_API_KEY=your-api-key
+# Optional alias if your provider uses this variable
+OPENAI_API_BASE_URL=
 ```
 
 ### RAG (Retrieval-Augmented Generation)
@@ -266,13 +262,12 @@ ALLOWED_ORIGINS=https://noblog.nodove.com,https://api.nodove.com
 # ============================================
 # AI - OpenAI SDK Compatible (권장)
 # ============================================
-OPENAI_API_BASE_URL=http://ai-server-backend:7016/v1
-OPENAI_API_KEY=your-api-key
-OPENAI_DEFAULT_MODEL=gpt-4.1
+AI_SERVER_URL=https://api.openai.com/v1
+AI_API_KEY=your-api-key
+AI_DEFAULT_MODEL=gpt-4.1
 
-# Legacy Fallback (선택)
-OPENCODE_BASE_URL=http://ai-server-backend:7016
-OPENCODE_API_KEY=your-api-key
+# Optional alias if your provider uses this variable
+OPENAI_API_BASE_URL=
 
 # ============================================
 # RAG (선택)
@@ -371,8 +366,6 @@ FEATURE_COMMENTS_ENABLED=true
 |---------|------|-------------|
 | `api` | 5080 | Backend API Server |
 | `nginx` | 80 | Reverse Proxy |
-| `ai-server-backend` | 7016 | AI Request Router (OpenAI SDK Compatible) |
-| `ai-server-serve` | 7012 | LLM Provider Connector |
 | `embedding-server` | 80 | TEI Embedding Server |
 | `chromadb` | 8000 | Vector Database |
 
@@ -445,7 +438,7 @@ sudo systemctl start blog-backend
 | 401 Unauthorized | 401 | Bearer Token 불일치 | `ADMIN_BEARER_TOKEN` 확인 |
 | 413 Payload Too Large | 413 | 업로드 용량 초과 | Nginx `client_max_body_size` 증가 |
 | CORS Error | - | Origin 미허용 | `ALLOWED_ORIGINS`에 추가 |
-| AI 요청 실패 | 500/502 | AI 서버 연결 실패 | `OPENAI_API_BASE_URL` 및 서버 상태 확인 |
+| AI 요청 실패 | 500/502 | AI 서버 연결 실패 | `AI_SERVER_URL` 및 서버 상태 확인 |
 | RAG 검색 실패 | 500 | ChromaDB 연결 실패 | `CHROMA_URL` 및 서버 상태 확인 |
 | 매니페스트 미갱신 | - | 파일 권한 문제 | 볼륨 마운트 경로/권한 확인 |
 
@@ -453,7 +446,7 @@ sudo systemctl start blog-backend
 
 1. **파일 시스템 의존**: Posts/Images API는 파일 시스템 접근 필요
 2. **Docker 볼륨**: 컨텐츠 영속성을 위해 반드시 볼륨 마운트 필요
-3. **AI 서버 의존**: AI 기능은 ai-server-backend 필수
+3. **AI 서버 의존**: AI 기능은 AI_SERVER_URL 설정 필요
 4. **메모리**: Sharp 이미지 처리 시 메모리 사용량 주의
 
 ### 디버깅
@@ -517,7 +510,6 @@ backend/
 │   ├── lib/
 │   │   ├── ai-service.js     # Unified AI 서비스 (OpenAI SDK 호환)
 │   │   ├── openai-compat-client.js # OpenAI SDK 호환 클라이언트
-│   │   ├── opencode-client.js# Legacy OpenCode API 클라이언트 (fallback)
 │   │   ├── d1.js             # D1 API 클라이언트
 │   │   ├── r2.js             # R2 API 클라이언트
 │   │   ├── jwt.js            # JWT 유틸리티

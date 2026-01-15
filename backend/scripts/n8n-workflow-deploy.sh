@@ -379,10 +379,10 @@ To complete the setup, configure these variables in n8n UI:
    ┌────────────────────────────┬──────────────────────────────────────┐
    │ Variable Name              │ Value                                │
    ├────────────────────────────┼──────────────────────────────────────┤
-   │ OPENCODE_BACKEND_URL       │ http://ai-server-backend:7016        │
-   │ OPENCODE_BASE_URL          │ http://ai-server-backend:7016        │
-   │ OPENCODE_DEFAULT_PROVIDER  │ github-copilot                       │
-   │ OPENCODE_DEFAULT_MODEL     │ gpt-4.1                              │
+   │ AI_SERVER_URL              │ https://api.openai.com/v1            │
+   │ AI_API_KEY                 │ your-api-key                         │
+   │ AI_DEFAULT_MODEL           │ gpt-4.1                              │
+   │ OPENAI_API_BASE_URL        │ (optional alias)                     │
    │ TEI_URL                    │ http://embedding-server:80           │
    └────────────────────────────┴──────────────────────────────────────┘
 

@@ -94,9 +94,9 @@ ${posts}
 // ============================================================================
 
 router.get('/models', async (req, res) => {
-  const defaultModel = config.ai?.gateway?.defaultModel || 
-                      process.env.AI_DEFAULT_MODEL || 
-                      'gemini-1.5-flash';
+  const defaultModel = config.ai?.defaultModel ||
+    process.env.AI_DEFAULT_MODEL ||
+    'gpt-4.1';
 
   // 1. Try Database first (Source of Truth)
   if (isD1Configured()) {
@@ -303,9 +303,7 @@ router.get('/health', async (req, res) => {
       status: healthResult.ok ? 'healthy' : 'degraded',
       provider: providerInfo.provider,
       health: healthResult,
-      // Legacy fallback status
-      hasGeminiKey: !!config.ai?.providers?.gemini,
-      hasOpenRouterKey: false, // OpenRouter not configured
+      hasApiKey: !!config.ai?.apiKey,
       timestamp: new Date().toISOString(),
     },
   });
@@ -321,7 +319,7 @@ router.get('/status', async (req, res) => {
     data: {
       status: healthResult.ok ? 'ok' : 'degraded',
       provider: providerInfo.provider,
-      model: providerInfo.config[providerInfo.provider]?.model || config.ai?.gateway?.defaultModel,
+      model: providerInfo.config?.defaultModel || config.ai?.defaultModel,
       aiService: {
         provider: providerInfo.provider,
         config: providerInfo.config,
@@ -332,7 +330,7 @@ router.get('/status', async (req, res) => {
         summarize: true,
         generate: true,
         stream: true,
-        embeddings: providerInfo.provider === 'n8n',
+        embeddings: false,
       },
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
@@ -593,9 +591,6 @@ router.get('/vision/health', async (req, res) => {
       provider: providerInfo.provider,
       providers: {
         [providerInfo.provider]: healthResult.ok,
-        // Legacy fallback
-        gemini: !!config.ai?.providers?.gemini,
-        openrouter: false, // OpenRouter not configured
       },
       timestamp: new Date().toISOString(),
     },

@@ -36,14 +36,9 @@ const CONFIG_CATEGORIES = [
     name: 'AI Services',
     description: 'AI 모델 및 서비스 설정',
     variables: [
-      { key: 'AI_GATEWAY_URL', type: 'url', default: 'http://ai-gateway:7000', description: 'AI Gateway URL' },
-      { key: 'AI_BACKEND_URL', type: 'url', default: 'http://ai-server-backend:7016', description: 'AI Backend URL' },
-      { key: 'AI_DEFAULT_PROVIDER', type: 'select', options: ['github-copilot', 'gemini', 'openai', 'anthropic', 'local'], description: '기본 AI 제공자' },
-      { key: 'AI_DEFAULT_MODEL', type: 'text', default: 'gpt-4.1', description: '기본 AI 모델' },
+      { key: 'AI_SERVER_URL', type: 'url', default: 'https://api.openai.com/v1', description: 'OpenAI SDK 호환 서버 URL' },
       { key: 'AI_API_KEY', type: 'password', isSecret: true, description: 'AI API Key' },
-      { key: 'GEMINI_API_KEY', type: 'password', isSecret: true, description: 'Gemini API Key' },
-      { key: 'GEMINI_MODEL', type: 'text', default: 'gemini-1.5-flash', description: 'Gemini 모델' },
-      { key: 'OPENROUTER_API_KEY', type: 'password', isSecret: true, description: 'OpenRouter API Key' },
+      { key: 'AI_DEFAULT_MODEL', type: 'text', default: 'gpt-4.1', description: '기본 AI 모델' },
     ],
   },
   {

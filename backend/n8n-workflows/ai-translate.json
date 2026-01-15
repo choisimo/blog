@@ -1,5 +1,5 @@
 {
-  "name": "AI Translate Webhook (OpenCode)",
+  "name": "AI Translate Webhook (OpenAI Compatible)",
   "nodes": [
     {
       "id": "webhook-trigger",
@@ -66,7 +66,7 @@
               "id": "model",
               "name": "model",
               "type": "string",
-              "value": "={{ $json.body.model || $env.OPENCODE_DEFAULT_MODEL || 'gpt-4.1' }}"
+              "value": "={{ $json.body.model || $env.AI_DEFAULT_MODEL || $env.OPENAI_DEFAULT_MODEL || 'gpt-4.1' }}"
             },
             {
               "id": "requestId",
@@ -80,8 +80,8 @@
       "typeVersion": 3.4
     },
     {
-      "id": "build-opencode-request",
-      "name": "Build OpenCode Request",
+      "id": "build-openai-request",
+      "name": "Build OpenAI Request",
       "type": "n8n-nodes-base.set",
       "position": [
         680,
@@ -92,28 +92,16 @@
         "assignments": {
           "assignments": [
             {
-              "id": "message",
-              "name": "message",
-              "type": "string",
-              "value": "={{ 'System: You are a professional translator. Translate accurately while preserving meaning, tone, and formatting (including markdown). Do not add explanations or notes.\\n\\nUser: Translate the following from ' + $json.sourceLang + ' to ' + $json.targetLang + '. Return ONLY a JSON object with translated fields.\\n\\n' + JSON.stringify({ title: $json.title, description: $json.description, content: $json.content }) }}"
+              "id": "messages",
+              "name": "messages",
+              "type": "array",
+              "value": "={{ [{ role: 'system', content: 'You are a professional translator. Translate accurately while preserving meaning, tone, and formatting (including markdown). Do not add explanations or notes. Return ONLY a JSON object with translated fields.' }, { role: 'user', content: 'Translate the following from ' + $json.sourceLang + ' to ' + $json.targetLang + '.\\n\\n' + JSON.stringify({ title: $json.title, description: $json.description, content: $json.content }) }] }}"
             },
             {
-              "id": "providerID",
-              "name": "providerID",
-              "type": "string",
-              "value": "={{ $env.OPENCODE_DEFAULT_PROVIDER || 'github-copilot' }}"
-            },
-            {
-              "id": "modelID",
-              "name": "modelID",
+              "id": "model",
+              "name": "model",
               "type": "string",
               "value": "={{ $json.model }}"
-            },
-            {
-              "id": "titleReq",
-              "name": "titleReq",
-              "type": "string",
-              "value": "={{ 'n8n-translate-' + Date.now() }}"
             }
           ]
         },
@@ -122,15 +110,15 @@
       "typeVersion": 3.4
     },
     {
-      "id": "opencode-chat",
-      "name": "OpenCode Chat",
+      "id": "openai-chat",
+      "name": "OpenAI Chat Completions",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
         900,
         300
       ],
       "parameters": {
-        "url": "={{ ($env.OPENCODE_BACKEND_URL || $env.AI_GATEWAY_URL || $env.OPENCODE_BASE_URL || 'http://ai-gateway:7000') + '/chat' }}",
+        "url": "={{ (($env.AI_SERVER_URL || $env.OPENAI_API_BASE_URL || 'https://api.openai.com/v1').replace(/\\/v1\\/?$/, '')) + '/v1/chat/completions' }}",
         "method": "POST",
         "options": {
           "timeout": 300000,
@@ -140,7 +128,7 @@
             }
           }
         },
-        "jsonBody": "={\n  \"message\": {{ JSON.stringify($json.message) }},\n  \"providerID\": {{ JSON.stringify($json.providerID) }},\n  \"modelID\": {{ JSON.stringify($json.modelID) }},\n  \"title\": {{ JSON.stringify($json.titleReq) }}\n}",
+        "jsonBody": "={\n  \"model\": {{ JSON.stringify($json.model) }},\n  \"messages\": {{ JSON.stringify($json.messages) }}\n}",
         "sendBody": true,
         "sendHeaders": true,
         "specifyBody": "json",
@@ -149,6 +137,10 @@
             {
               "name": "Content-Type",
               "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + ($env.AI_API_KEY || $env.OPENAI_API_KEY || '') }}"
             }
           ]
         }
@@ -164,7 +156,7 @@
         300
       ],
       "parameters": {
-        "jsCode": "const original = $('Set Parameters').first().json;\nconst text = $input.first().json.body?.data?.response?.text || $input.first().json.body?.response?.text || '';\n\nlet parsed = null;\ntry {\n  parsed = JSON.parse(text);\n} catch {\n  const fence = text.match(/```(?:json)?\\s*([\\s\\S]*?)```/i);\n  if (fence?.[1]) {\n    try { parsed = JSON.parse(fence[1].trim()); } catch {}\n  }\n  if (!parsed) {\n    const start = text.indexOf('{');\n    const end = text.lastIndexOf('}');\n    if (start >= 0 && end > start) {\n      try { parsed = JSON.parse(text.slice(start, end + 1)); } catch {}\n    }\n  }\n}\n\nreturn {\n  json: {\n    title: parsed?.title || original.title || '',\n    description: parsed?.description || original.description || '',\n    content: parsed?.content || original.content || '',\n    isAiGenerated: true,\n    model: original.model,\n    provider: 'opencode',\n    requestId: original.requestId\n  }\n};"
+        "jsCode": "const original = $('Set Parameters').first().json;\nconst text = $input.first().json.body?.choices?.[0]?.message?.content || $input.first().json.body?.data?.choices?.[0]?.message?.content || '';\n\nlet parsed = null;\ntry {\n  parsed = JSON.parse(text);\n} catch {\n  const fence = text.match(/```(?:json)?\\s*([\\s\\S]*?)```/i);\n  if (fence?.[1]) {\n    try { parsed = JSON.parse(fence[1].trim()); } catch {}\n  }\n  if (!parsed) {\n    const start = text.indexOf('{');\n    const end = text.lastIndexOf('}');\n    if (start >= 0 && end > start) {\n      try { parsed = JSON.parse(text.slice(start, end + 1)); } catch {}\n    }\n  }\n}\n\nreturn {\n  json: {\n    title: parsed?.title || original.title || '',\n    description: parsed?.description || original.description || '',\n    content: parsed?.content || original.content || '',\n    isAiGenerated: true,\n    model: original.model,\n    provider: 'openai-compat',\n    requestId: original.requestId\n  }\n};"
       },
       "typeVersion": 2
     },
@@ -202,25 +194,25 @@
       "main": [
         [
           {
-            "node": "Build OpenCode Request",
+            "node": "Build OpenAI Request",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Build OpenCode Request": {
+    "Build OpenAI Request": {
       "main": [
         [
           {
-            "node": "OpenCode Chat",
+            "node": "OpenAI Chat Completions",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "OpenCode Chat": {
+    "OpenAI Chat Completions": {
       "main": [
         [
           {

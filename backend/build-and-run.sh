@@ -96,32 +96,21 @@ if [ ! -f "${BACKEND_DIR}/${NGINX_CONF}" ]; then
 fi
 
 # =============================================================================
-# Step 4: Check opencode-serve path
-# =============================================================================
-
-OPENCODE_PATH=$(grep "OPENCODE_SERVE_PATH" "${ENV_FILE}" | cut -d'=' -f2)
-if [ ! -d "${OPENCODE_PATH}" ]; then
-    log_warn "opencode-serve path not found: ${OPENCODE_PATH}"
-    log_warn "Using relative path for ai-engine build..."
-    sed -i 's|^OPENCODE_SERVE_PATH=.*$|OPENCODE_SERVE_PATH=../secret-documentations/opencode-serve|' "${ENV_FILE}"
-fi
-
-# =============================================================================
-# Step 5: Build services
+# Step 4: Build services
 # =============================================================================
 
 log_info "Building Docker images..."
 docker compose -f "${BACKEND_DIR}/${DOCKER_COMPOSE}" build
 
 # =============================================================================
-# Step 6: Start services
+# Step 5: Start services
 # =============================================================================
 
 log_info "Starting services..."
 docker compose -f "${BACKEND_DIR}/${DOCKER_COMPOSE}" up -d
 
 # =============================================================================
-# Step 7: Wait for services to be healthy
+# Step 6: Wait for services to be healthy
 # =============================================================================
 
 log_info "Waiting for services to be ready..."
