@@ -40,11 +40,6 @@ SECRETS=(
     ["POSTGRES_PASSWORD"]="PostgreSQL password"
     ["REDIS_PASSWORD"]="Redis password"
     
-    # n8n
-    ["N8N_BASIC_AUTH_USER"]="n8n admin username"
-    ["N8N_BASIC_AUTH_PASSWORD"]="n8n admin password"
-    ["N8N_ENCRYPTION_KEY"]="n8n encryption key (32+ chars)"
-    
     # GitHub
     ["GH_TOKEN"]="GitHub Personal Access Token (repo permissions)"
     ["GITHUB_REPO_OWNER"]="GitHub username/organization"
@@ -62,15 +57,6 @@ SECRETS=(
     ["ANTHROPIC_API_KEY"]="Anthropic API key (optional)"
     ["GEMINI_API_KEY"]="Google Gemini API key (optional)"
     
-    # Cloudflare Workers (optional)
-    ["CF_ACCOUNT_ID"]="Cloudflare account ID"
-    ["CF_API_TOKEN"]="Cloudflare API token"
-    
-    # R2 Storage (optional)
-    ["R2_ACCESS_KEY_ID"]="R2 access key ID"
-    ["R2_SECRET_ACCESS_KEY"]="R2 secret access key"
-    ["R2_BUCKET_NAME"]="R2 bucket name"
-    
     # MinIO
     ["MINIO_ROOT_USER"]="MinIO admin username"
     ["MINIO_ROOT_PASSWORD"]="MinIO admin password"
@@ -80,7 +66,7 @@ SECRETS=(
 declare -A VARIABLES
 VARIABLES=(
     ["API_DOMAIN"]="API domain (e.g., api.yourdomain.com)"
-    ["WORKFLOW_DOMAIN"]="n8n workflow domain (e.g., workflow.yourdomain.com)"
+    ["WORKFLOW_DOMAIN"]="Workflow domain (e.g., workflow.yourdomain.com)"
     ["FRONTEND_DOMAIN"]="Frontend domain (e.g., blog.yourdomain.com)"
     ["AI_SERVER_URL"]="OpenAI-compatible AI server URL"
     ["IMAGE_TAG"]="Docker image tag (default: latest)"
@@ -167,7 +153,7 @@ generate_secrets() {
     
     cat > "$OUTPUT_FILE" << EOF
 # ===================================
-# Generated Secrets for Blog + n8n Stack
+# Generated Secrets
 # Generated on: $(date)
 # ===================================
 # IMPORTANT: Store these securely and add to GitHub Secrets
@@ -176,11 +162,6 @@ generate_secrets() {
 # === Database Passwords ===
 POSTGRES_PASSWORD=$(generate_random 16)
 REDIS_PASSWORD=$(generate_random 16)
-
-# === n8n ===
-N8N_BASIC_AUTH_USER=admin
-N8N_BASIC_AUTH_PASSWORD=$(generate_random 16)
-N8N_ENCRYPTION_KEY=$(generate_random 32)
 
 # === Admin ===
 ADMIN_BEARER_TOKEN=$(generate_random 32)
@@ -292,7 +273,7 @@ set_secrets() {
 export_secrets_list() {
     OUTPUT_FILE="${1:-secrets-list.txt}"
     
-    echo "# Required GitHub Secrets for Blog + n8n Stack" > "$OUTPUT_FILE"
+    echo "# Required GitHub Secrets" > "$OUTPUT_FILE"
     echo "# Generated on: $(date)" >> "$OUTPUT_FILE"
     echo "" >> "$OUTPUT_FILE"
     

@@ -7,7 +7,7 @@
 -- 키를 논리적으로 그룹화하여 관리
 CREATE TABLE IF NOT EXISTS secret_categories (
   id TEXT PRIMARY KEY,
-  name TEXT NOT NULL UNIQUE,              -- 'ai', 'auth', 'email', 'github', 'cloudflare'
+  name TEXT NOT NULL UNIQUE,              -- 'ai', 'auth', 'email', 'github'
   display_name TEXT NOT NULL,             -- 'AI Providers', 'Authentication'
   description TEXT,
   icon TEXT,                              -- 'bot', 'lock', 'mail', etc.
@@ -87,7 +87,6 @@ INSERT OR IGNORE INTO secret_categories (id, name, display_name, description, ic
   ('cat_auth', 'auth', 'Authentication', 'JWT secrets, admin credentials, and auth tokens', 'lock', 2),
   ('cat_email', 'email', 'Email & Notifications', 'Email service API keys and notification settings', 'mail', 3),
   ('cat_github', 'github', 'GitHub Integration', 'GitHub tokens and repository access', 'github', 4),
-  ('cat_cloudflare', 'cloudflare', 'Cloudflare', 'Cloudflare API tokens and configuration', 'cloud', 5),
   ('cat_database', 'database', 'Database', 'Database credentials and connection strings', 'database', 6),
   ('cat_general', 'general', 'General', 'Other configuration values and secrets', 'settings', 99);
 

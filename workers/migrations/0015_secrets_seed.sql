@@ -38,22 +38,13 @@ INSERT OR IGNORE INTO secrets (id, category_id, key_name, display_name, descript
 INSERT OR IGNORE INTO secrets (id, category_id, key_name, display_name, description, is_required, is_sensitive, value_type, env_fallback) VALUES
   ('sec_github_token', 'cat_github', 'GITHUB_TOKEN', 'GitHub Token', 'Personal access token for GitHub API (repo, PR creation)', 0, 1, 'string', 'GITHUB_TOKEN');
 
--- Cloudflare Configuration
-INSERT OR IGNORE INTO secrets (id, category_id, key_name, display_name, description, is_required, is_sensitive, value_type, env_fallback) VALUES
-  ('sec_cf_account_id', 'cat_cloudflare', 'CF_ACCOUNT_ID', 'Cloudflare Account ID', 'Cloudflare account identifier', 0, 0, 'string', 'CF_ACCOUNT_ID'),
-  ('sec_cf_api_token', 'cat_cloudflare', 'CF_API_TOKEN', 'Cloudflare API Token', 'API token for Cloudflare operations', 0, 1, 'string', 'CF_API_TOKEN');
-
 -- General/URLs Configuration
 INSERT OR IGNORE INTO secrets (id, category_id, key_name, display_name, description, is_required, is_sensitive, value_type, env_fallback) VALUES
   ('sec_api_base_url', 'cat_general', 'API_BASE_URL', 'API Base URL', 'Base URL for API endpoints', 0, 0, 'url', 'API_BASE_URL'),
   ('sec_public_site_url', 'cat_general', 'PUBLIC_SITE_URL', 'Public Site URL', 'Public-facing website URL', 0, 0, 'url', 'PUBLIC_SITE_URL'),
-  ('sec_assets_base_url', 'cat_general', 'ASSETS_BASE_URL', 'Assets Base URL', 'Base URL for static assets (R2, etc.)', 0, 0, 'url', 'ASSETS_BASE_URL'),
+  ('sec_assets_base_url', 'cat_general', 'ASSETS_BASE_URL', 'Assets Base URL', 'Base URL for static assets', 0, 0, 'url', 'ASSETS_BASE_URL'),
   ('sec_ai_serve_base_url', 'cat_general', 'AI_SERVE_BASE_URL', 'AI Serve Base URL', 'URL for AI backend server', 0, 0, 'url', 'AI_SERVE_BASE_URL'),
   ('sec_litellm_base_url', 'cat_general', 'LITELLM_BASE_URL', 'LiteLLM Base URL', 'URL for LiteLLM gateway', 0, 0, 'url', 'LITELLM_BASE_URL');
-
--- Database (informational only - actual D1 binding is via wrangler)
-INSERT OR IGNORE INTO secrets (id, category_id, key_name, display_name, description, is_required, is_sensitive, value_type, env_fallback) VALUES
-  ('sec_d1_database_id', 'cat_database', 'D1_DATABASE_ID', 'D1 Database ID', 'Cloudflare D1 database identifier', 0, 0, 'string', 'D1_DATABASE_ID');
 
 -- =============================================================================
 -- Link AI Providers to Secrets

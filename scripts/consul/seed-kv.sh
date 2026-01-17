@@ -42,7 +42,6 @@ put_kv "config/domains/frontend" "https://noblog.nodove.com"
 put_kv "config/domains/api" "https://api.nodove.com"
 put_kv "config/domains/assets" "https://assets-b.nodove.com"
 put_kv "config/domains/terminal" "https://terminal.nodove.com"
-put_kv "config/domains/n8n" "https://blog-bw.nodove.com"
 
 echo ""
 echo "🔗 Service Endpoints..."
@@ -74,9 +73,6 @@ put_kv "services/postgres/host" "postgres"
 put_kv "services/postgres/port" "5432"
 put_kv "services/postgres/database" "blog"
 
-put_kv "services/n8n/internal_url" "http://n8n:5678"
-put_kv "services/n8n/webhook_url" "https://blog-bw.nodove.com"
-
 put_kv "services/terminal/url" "http://terminal:8080"
 put_kv "services/terminal/origin" "https://terminal-origin.nodove.com"
 
@@ -84,7 +80,6 @@ echo ""
 echo "📄 Complex Configuration (JSON)..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 put_kv_file "config/cors/allowed_origins" "${SCRIPT_DIR}/../consul/data/cors-origins.json"
-put_kv_file "services/n8n/webhooks" "${SCRIPT_DIR}/../consul/data/n8n-webhooks.json"
 
 echo ""
 echo "🚀 Feature Flags..."

@@ -4,8 +4,8 @@ graph TB
         AdminUI[AI Admin Dashboard<br/>frontend/src/components/features/admin/ai/]
     end
 
-    subgraph "Edge Layer - Cloudflare Workers"
-        GW[API Gateway<br/>workers/api-gateway/]
+    subgraph "Gateway Layer"
+        GW[API Gateway]
         GW_AI[AI Routes<br/>src/routes/ai.ts]
         GW_CHAT[Chat Routes<br/>src/routes/chat.ts]
         GW_ADMIN[Admin AI Routes<br/>src/routes/admin-ai.ts]

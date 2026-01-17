@@ -30,7 +30,6 @@ NC='\033[0m' # No Color
 # Service URLs
 GATEWAY_URL="http://localhost:8080"
 BACKEND_URL="http://localhost:5080"
-LITELLM_URL="http://localhost:4000"
 WORKERS_URL="http://localhost:8787"
 FRONTEND_URL="http://localhost:5173"
 
@@ -163,28 +162,6 @@ setup_environment() {
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# LiteLLM Gateway Configuration
-# -----------------------------------------------------------------------------
-LITELLM_MASTER_KEY=${master_key}
-
-# Default AI model
-# Cloud: gemini-1.5-flash, gpt-4o-mini, claude-3-haiku (requires API key)
-# Local: local, local/llama3 (requires Ollama)
-AI_DEFAULT_MODEL=gemini-1.5-flash
-
-# -----------------------------------------------------------------------------
-# AI Provider API Keys (Add at least one for cloud AI)
-# -----------------------------------------------------------------------------
-# Google Gemini (recommended - free tier available)
-GOOGLE_API_KEY=
-
-# OpenAI
-OPENAI_API_KEY=
-
-# Anthropic Claude
-ANTHROPIC_API_KEY=
-
-# -----------------------------------------------------------------------------
 # Terminal Service
 # -----------------------------------------------------------------------------
 ORIGIN_SECRET_KEY=${origin_secret}
@@ -248,7 +225,6 @@ EOF
         echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo ""
         echo -e "  ${CYAN}Auto-generated credentials:${NC}"
-        echo -e "    LiteLLM Master Key: ${YELLOW}$(grep LITELLM_MASTER_KEY "$env_file" | cut -d= -f2)${NC}"
         echo -e "    Admin Username:     ${YELLOW}admin${NC}"
         echo -e "    Admin Password:     ${YELLOW}admin123${NC}"
         echo ""
@@ -306,14 +282,6 @@ check_all_services() {
         all_ok=false
     fi
     
-    # LiteLLM
-    if curl -sf "$LITELLM_URL/health/liveliness" > /dev/null 2>&1; then
-        log_success "LiteLLM Gateway: $LITELLM_URL"
-    else
-        log_error "LiteLLM not responding: $LITELLM_URL"
-        all_ok=false
-    fi
-    
     # Workers
     if curl -sf "$WORKERS_URL" > /dev/null 2>&1; then
         log_success "Workers API: $WORKERS_URL"
@@ -343,7 +311,6 @@ start_docker_mode() {
     log_step "Waiting for services to be ready..."
     
     # Wait for main services
-    wait_for_service "LiteLLM" "$LITELLM_URL/health/liveliness" 60 || true
     wait_for_service "Backend" "$BACKEND_URL/api/v1/healthz" 60 || true
     wait_for_service "Gateway" "$GATEWAY_URL/health" 30 || true
     
@@ -371,13 +338,12 @@ start_hybrid_mode() {
         exit 1
     fi
     
-    # Start Docker services (backend, litellm, nginx)
-    log_info "Starting Docker services (backend, litellm)..."
+    # Start Docker services (backend, nginx)
+    log_info "Starting Docker services (backend, nginx)..."
     cd "$PROJECT_ROOT"
-    docker compose -f docker-compose.local.yml up -d backend litellm nginx
+    docker compose -f docker-compose.local.yml up -d backend nginx
     
     # Wait for backend services
-    wait_for_service "LiteLLM" "$LITELLM_URL/health/liveliness" 60
     wait_for_service "Backend" "$BACKEND_URL/api/v1/healthz" 60
     
     # Initialize PID file
@@ -495,41 +461,28 @@ print_status() {
     echo -e "${CYAN}Access Points:${NC}"
     echo "  Main UI:        $GATEWAY_URL"
     echo "  Backend API:    $GATEWAY_URL/api/v1/"
-    echo "  LiteLLM API:    $GATEWAY_URL/ai/v1/"
     echo "  Workers API:    $GATEWAY_URL/workers/"
     echo ""
     echo "  Direct Backend: $BACKEND_URL"
-    echo "  Direct LiteLLM: $LITELLM_URL"
     echo "  Direct Workers: $WORKERS_URL"
 }
 
 # -----------------------------------------------------------------------------
 # Print Final Instructions
 # -----------------------------------------------------------------------------
-print_litellm_credentials() {
-    # Credentials are now shown in setup_environment() on first run
-    # This function is kept for backward compatibility but does nothing
-    :
-}
-
 print_instructions() {
-    # Show LiteLLM credentials on first run
-    print_litellm_credentials
-    
     echo ""
     echo -e "${GREEN}=============================================================================${NC}"
     echo -e "${GREEN}                    All Services Started Successfully!${NC}"
     echo -e "${GREEN}=============================================================================${NC}"
     echo ""
     echo -e "${CYAN}Access Points:${NC}"
-    echo "  🌐 Main UI:        $GATEWAY_URL"
-    echo "  📡 Backend API:    $GATEWAY_URL/api/v1/"
-    echo "  🤖 LiteLLM API:    $GATEWAY_URL/ai/v1/"
-    echo "  ⚡ Workers API:    $GATEWAY_URL/workers/"
+    echo "  Main UI:        $GATEWAY_URL"
+    echo "  Backend API:    $GATEWAY_URL/api/v1/"
+    echo "  Workers API:    $GATEWAY_URL/workers/"
     echo ""
     echo -e "${CYAN}Direct Access (debugging):${NC}"
     echo "  Backend:  $BACKEND_URL"
-    echo "  LiteLLM:  $LITELLM_URL"
     echo "  Workers:  $WORKERS_URL"
     if [ "$MODE" = "hybrid" ]; then
         echo "  Frontend: $FRONTEND_URL (Vite HMR)"

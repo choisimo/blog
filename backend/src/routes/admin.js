@@ -115,15 +115,14 @@ router.post('/propose-new-version', requireAdmin, async (req, res, next) => {
 });
 
 // Archive old comments into versioned JSON files in the repo and mark them as archived
-// Query param: dryRun=1 to simulate without committing or updating D1
-// Uses Cloudflare D1 for data storage
+// Query param: dryRun=1 to simulate without committing or updating database
 router.post('/archive-comments', requireAdmin, async (req, res, next) => {
   try {
     // Check if D1 is configured
     if (!isD1Configured()) {
       return res.status(500).json({
         ok: false,
-        error: 'D1 database not configured. Set CF_ACCOUNT_ID, CF_API_TOKEN, D1_DATABASE_ID',
+        error: 'Database not configured',
       });
     }
 

@@ -7,10 +7,9 @@ import sharp from 'sharp';
 import { config } from '../config.js';
 import requireAdmin from '../middleware/adminAuth.js';
 import { upload as r2Upload, isR2Configured, generateKey } from '../lib/r2.js';
-import { getN8NClient } from '../lib/n8n-client.js';
+import { aiService } from '../lib/ai-service.js';
 
 const router = Router();
-
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -183,12 +182,12 @@ router.delete('/:year/:slug/:filename', requireAdmin, async (req, res, next) => 
 
 /**
  * POST /api/v1/images/chat-upload
- * Upload image to R2 for AI Chat and perform vision analysis
+ * Upload image for AI Chat and perform vision analysis
  * 
  * Architecture:
- *   1. Upload image to R2 storage
- *   2. Get public R2 URL
- *   3. Pass URL to n8n vision workflow (n8n fetches image from R2)
+ *   1. Upload image to storage
+ *   2. Get public URL
+ *   3. Call AI vision analysis using the URL
  *   4. Return upload info + vision analysis
  * 
  * Returns: { url, key, size, contentType, imageAnalysis? }
@@ -200,29 +199,19 @@ router.post('/chat-upload', upload.single('file'), async (req, res, next) => {
       return res.status(400).json({ ok: false, error: 'file is required' });
     }
 
-    // Check if R2 is configured
-    if (!isR2Configured()) {
-      return res.status(503).json({
-        ok: false,
-        error: 'R2 storage not configured (set CF_ACCOUNT_ID, CF_API_TOKEN)',
-      });
-    }
-
-    // Generate R2 key
+    // Generate key
     const key = generateKey(file.originalname || 'image', 'ai-chat');
 
-    // Upload to R2
+    // Upload
     const result = await r2Upload(key, file.buffer, {
       contentType: file.mimetype || 'application/octet-stream',
     });
 
     // Perform AI vision analysis if it's an image
-    // Use R2 URL instead of base64 - n8n will fetch the image directly
+    // Prefer URL instead of base64
     let imageAnalysis = null;
     if (file.mimetype?.startsWith('image/')) {
       try {
-        const client = getN8NClient();
-        
         const analysisPrompt = `이 이미지를 분석해주세요. 다음 내용을 간결하게 설명해주세요:
 1. 이미지에 보이는 주요 요소들
 2. 전체적인 분위기나 맥락
@@ -230,8 +219,7 @@ router.post('/chat-upload', upload.single('file'), async (req, res, next) => {
 
 한국어로 2-3문장으로 간결하게 요약해주세요.`;
 
-        // Pass R2 URL to n8n - n8n workflow will fetch the image
-        imageAnalysis = await client.vision(result.url, analysisPrompt, {
+        imageAnalysis = await aiService.vision(result.url, analysisPrompt, {
           mimeType: file.mimetype,
           model: 'gpt-4o',
         });

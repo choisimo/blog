@@ -420,12 +420,11 @@ export function WorkersManager() {
         <TabsContent value="secrets" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Key className="h-5 w-5" />
+              <CardTitle>
                 Worker Secrets
               </CardTitle>
               <CardDescription>
-                Secrets are encrypted and stored securely by Cloudflare. Set secrets for each worker.
+                Secrets are encrypted and stored securely. Set secrets for each worker.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

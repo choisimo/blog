@@ -3,28 +3,29 @@
 ## 1. Service Overview (개요)
 
 ### 목적
+
 AI 서비스는 블로그 플랫폼에 **지능형 기능을 제공하는 핵심 서브시스템**입니다. 대화형 AI, 텍스트 분석, 이미지 인식, RAG 기반 질의응답 등 다양한 AI 기능을 통합 인터페이스로 제공합니다.
 
 ### 주요 기능
 
-| 기능 | 설명 | 엔드포인트 |
-|------|------|-----------|
-| **Task Analysis** | 감정 분석, 다각도 분석, 후속 질문 생성 | `/ai/sketch`, `/ai/prism`, `/ai/chain` |
-| **Text Generation** | 프롬프트 기반 텍스트 생성 | `/ai/generate` |
-| **Streaming** | SSE 기반 실시간 토큰 스트리밍 | `/ai/generate/stream` |
-| **Vision** | 이미지 분석 및 설명 생성 | `/ai/vision/analyze` |
-| **RAG Chat** | 컨텍스트 기반 질의응답 | `/ai/auto-chat` |
-| **Summarization** | 텍스트 요약 | `/ai/summarize` |
+| 기능                | 설명                                   | 엔드포인트                             |
+| ------------------- | -------------------------------------- | -------------------------------------- |
+| **Task Analysis**   | 감정 분석, 다각도 분석, 후속 질문 생성 | `/ai/sketch`, `/ai/prism`, `/ai/chain` |
+| **Text Generation** | 프롬프트 기반 텍스트 생성              | `/ai/generate`                         |
+| **Streaming**       | SSE 기반 실시간 토큰 스트리밍          | `/ai/generate/stream`                  |
+| **Vision**          | 이미지 분석 및 설명 생성               | `/ai/vision/analyze`                   |
+| **RAG Chat**        | 컨텍스트 기반 질의응답                 | `/ai/auto-chat`                        |
+| **Summarization**   | 텍스트 요약                            | `/ai/summarize`                        |
 
 ### 지원 Provider
 
-| Provider | 모델 | Streaming | Vision |
-|----------|------|-----------|--------|
-| **GitHub Copilot** | gpt-4.1, claude-sonnet-4, gemini-2.0-flash | ✅ | ✅ |
-| **OpenAI** | gpt-4o, gpt-4o-mini, o1-preview | ✅ | ✅ |
-| **Anthropic** | claude-sonnet-4, claude-3-5-sonnet | ✅ | ✅ |
-| **Gemini** | gemini-2.0-flash, gemini-2.0-flash-thinking | ✅ | ✅ |
-| **Local (Ollama)** | llama3.2, qwen2.5 | ✅ | ❌ |
+| Provider           | 모델                                        | Streaming | Vision |
+| ------------------ | ------------------------------------------- | --------- | ------ |
+| **GitHub Copilot** | gpt-4.1, claude-sonnet-4, gemini-2.0-flash  | ✅        | ✅     |
+| **OpenAI**         | gpt-4o, gpt-4o-mini, o1-preview             | ✅        | ✅     |
+| **Anthropic**      | claude-sonnet-4, claude-3-5-sonnet          | ✅        | ✅     |
+| **Gemini**         | gemini-2.0-flash, gemini-2.0-flash-thinking | ✅        | ✅     |
+| **Local (Ollama)** | llama3.2, qwen2.5                           | ✅        | ❌     |
 
 ---
 
@@ -38,9 +39,9 @@ flowchart TB
         FE[Frontend React]
     end
 
-    subgraph "Cloudflare Edge"
-        API_GW[API Gateway<br/>api.nodove.com]
-        AI_SVC[AI Service<br/>workers/api-gateway/src/lib/ai-service.ts]
+    subgraph "Gateway"
+        API_GW[API Gateway]
+        AI_SVC[AI Service]
     end
 
     subgraph "Origin Server"
@@ -110,13 +111,13 @@ sequenceDiagram
     C->>GW: GET /ai/generate/stream?prompt=...
     GW->>BE: Proxy SSE request
     BE->>AI: Stream request
-    
+
     loop Token Stream
         AI-->>BE: data: { content: "token" }
         BE-->>GW: SSE chunk
         GW-->>C: SSE chunk
     end
-    
+
     AI-->>BE: data: { done: true, usage: {...} }
     BE-->>GW: SSE end
     GW-->>C: Connection close
@@ -128,69 +129,69 @@ sequenceDiagram
 
 ### Public Endpoints (`/api/v1/ai`)
 
-| Method | Endpoint | Input | Output | Description |
-|--------|----------|-------|--------|-------------|
-| `POST` | `/sketch` | `{ paragraph, postTitle?, persona? }` | `{ emotion, keyPoints, tags }` | 감정/핵심 요점 추출 |
-| `POST` | `/prism` | `{ paragraph, postTitle? }` | `{ perspectives[], consensus? }` | 다각도 관점 분석 |
-| `POST` | `/chain` | `{ paragraph, postTitle? }` | `{ questions[] }` | 후속 질문 생성 |
-| `POST` | `/generate` | `{ prompt, temperature? }` | `{ text }` | 텍스트 생성 |
-| `GET` | `/generate/stream` | `?prompt=&model=` | SSE stream | 스트리밍 생성 |
-| `POST` | `/summarize` | `{ text, instructions? }` | `{ summary }` | 텍스트 요약 |
-| `POST` | `/vision/analyze` | `{ imageUrl?, imageBase64? }` | `{ description }` | 이미지 분석 |
-| `POST` | `/auto-chat` | `{ message, sessionId?, context? }` | `{ content, model }` | RAG 통합 채팅 |
-| `GET` | `/models` | - | `{ models[] }` | 사용 가능 모델 목록 |
-| `GET` | `/health` | - | `{ ok, providers }` | 서비스 상태 |
+| Method | Endpoint           | Input                                 | Output                           | Description         |
+| ------ | ------------------ | ------------------------------------- | -------------------------------- | ------------------- |
+| `POST` | `/sketch`          | `{ paragraph, postTitle?, persona? }` | `{ emotion, keyPoints, tags }`   | 감정/핵심 요점 추출 |
+| `POST` | `/prism`           | `{ paragraph, postTitle? }`           | `{ perspectives[], consensus? }` | 다각도 관점 분석    |
+| `POST` | `/chain`           | `{ paragraph, postTitle? }`           | `{ questions[] }`                | 후속 질문 생성      |
+| `POST` | `/generate`        | `{ prompt, temperature? }`            | `{ text }`                       | 텍스트 생성         |
+| `GET`  | `/generate/stream` | `?prompt=&model=`                     | SSE stream                       | 스트리밍 생성       |
+| `POST` | `/summarize`       | `{ text, instructions? }`             | `{ summary }`                    | 텍스트 요약         |
+| `POST` | `/vision/analyze`  | `{ imageUrl?, imageBase64? }`         | `{ description }`                | 이미지 분석         |
+| `POST` | `/auto-chat`       | `{ message, sessionId?, context? }`   | `{ content, model }`             | RAG 통합 채팅       |
+| `GET`  | `/models`          | -                                     | `{ models[] }`                   | 사용 가능 모델 목록 |
+| `GET`  | `/health`          | -                                     | `{ ok, providers }`              | 서비스 상태         |
 
 ### Admin Endpoints (`/api/v1/admin/ai`)
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| `GET` | `/providers` | Provider 목록 조회 | Admin |
-| `POST` | `/providers` | Provider 생성 | Admin |
-| `PUT` | `/providers/:id` | Provider 수정 | Admin |
-| `DELETE` | `/providers/:id` | Provider 삭제 | Admin |
-| `GET` | `/models` | 모델 목록 조회 | Admin |
-| `POST` | `/models` | 모델 생성 | Admin |
-| `GET` | `/usage` | 사용량 통계 | Admin |
+| Method   | Endpoint         | Description        | Auth  |
+| -------- | ---------------- | ------------------ | ----- |
+| `GET`    | `/providers`     | Provider 목록 조회 | Admin |
+| `POST`   | `/providers`     | Provider 생성      | Admin |
+| `PUT`    | `/providers/:id` | Provider 수정      | Admin |
+| `DELETE` | `/providers/:id` | Provider 삭제      | Admin |
+| `GET`    | `/models`        | 모델 목록 조회     | Admin |
+| `POST`   | `/models`        | 모델 생성          | Admin |
+| `GET`    | `/usage`         | 사용량 통계        | Admin |
 
 ### Request/Response Schema
 
 ```typescript
 // Task Request (sketch, prism, chain)
 interface TaskRequest {
-  paragraph: string;       // 분석할 텍스트 (필수)
-  postTitle?: string;      // 게시글 제목 (컨텍스트)
-  persona?: string;        // 분석 페르소나
+  paragraph: string; // 분석할 텍스트 (필수)
+  postTitle?: string; // 게시글 제목 (컨텍스트)
+  persona?: string; // 분석 페르소나
 }
 
 // Sketch Response
 interface SketchResponse {
   emotion: {
-    primary: string;       // 주요 감정
-    secondary?: string;    // 부차적 감정
-    intensity: number;     // 강도 (1-10)
+    primary: string; // 주요 감정
+    secondary?: string; // 부차적 감정
+    intensity: number; // 강도 (1-10)
   };
-  keyPoints: string[];     // 핵심 요점 (3-5개)
-  tags: string[];          // 자동 생성 태그
+  keyPoints: string[]; // 핵심 요점 (3-5개)
+  tags: string[]; // 자동 생성 태그
 }
 
 // Prism Response
 interface PrismResponse {
   perspectives: Array<{
-    viewpoint: string;     // 관점명
-    analysis: string;      // 분석 내용
-    confidence: number;    // 신뢰도 (0-1)
+    viewpoint: string; // 관점명
+    analysis: string; // 분석 내용
+    confidence: number; // 신뢰도 (0-1)
   }>;
-  consensus?: string;      // 공통 결론
-  controversy?: string;    // 논쟁점
+  consensus?: string; // 공통 결론
+  controversy?: string; // 논쟁점
 }
 
 // Chain Response
 interface ChainResponse {
   questions: Array<{
-    question: string;      // 후속 질문
-    rationale: string;     // 질문 이유
-    depth: 'shallow' | 'medium' | 'deep';
+    question: string; // 후속 질문
+    rationale: string; // 질문 이유
+    depth: "shallow" | "medium" | "deep";
   }>;
 }
 ```
@@ -209,25 +210,28 @@ async function selectProvider(request: AIRequest): Promise<Provider> {
     const provider = findProviderByModel(request.model);
     if (provider && isHealthy(provider)) return provider;
   }
-  
+
   // 2. 기능 기반 선택 (vision, streaming)
   if (request.capability) {
-    const candidates = providers.filter(p => 
-      p.capabilities.includes(request.capability) && isHealthy(p)
+    const candidates = providers.filter(
+      (p) => p.capabilities.includes(request.capability) && isHealthy(p),
     );
     return selectByPriority(candidates, request.priority);
   }
-  
+
   // 3. 기본 Provider (GitHub Copilot)
-  return getDefaultProvider();  // 'github-copilot'
+  return getDefaultProvider(); // 'github-copilot'
 }
 
 function selectByPriority(providers, priority) {
   switch (priority) {
-    case 'cost':    return providers.sort((a, b) => a.costPerToken - b.costPerToken)[0];
-    case 'speed':   return providers.sort((a, b) => a.avgLatency - b.avgLatency)[0];
-    case 'quality': 
-    default:        return providers.sort((a, b) => b.qualityScore - a.qualityScore)[0];
+    case "cost":
+      return providers.sort((a, b) => a.costPerToken - b.costPerToken)[0];
+    case "speed":
+      return providers.sort((a, b) => a.avgLatency - b.avgLatency)[0];
+    case "quality":
+    default:
+      return providers.sort((a, b) => b.qualityScore - a.qualityScore)[0];
   }
 }
 ```
@@ -241,14 +245,14 @@ async function buildContextualPrompt(query: string, options: ContextOptions) {
   const embedding = await generateEmbedding(query);
   const contexts = await vectorStore.search(embedding, {
     limit: options.maxResults || 5,
-    threshold: options.minSimilarity || 0.7
+    threshold: options.minSimilarity || 0.7,
   });
-  
+
   // 2. 컨텍스트 주입된 프롬프트 생성
-  const contextText = contexts.map(c => 
-    `[Source: ${c.title}]\n${c.content}`
-  ).join('\n\n---\n\n');
-  
+  const contextText = contexts
+    .map((c) => `[Source: ${c.title}]\n${c.content}`)
+    .join("\n\n---\n\n");
+
   return `Based on the following context, answer the question.
 
 Context:
@@ -289,7 +293,7 @@ that would deepen understanding.
 
 Content: {paragraph}
 
-Generate 3-5 questions with rationale.`
+Generate 3-5 questions with rationale.`,
 };
 ```
 
@@ -299,30 +303,30 @@ Generate 3-5 questions with rationale.`
 // workers/api-gateway/src/lib/ai-service.ts
 async function executeWithFallback<T>(
   operation: () => Promise<T>,
-  options: FallbackOptions
+  options: FallbackOptions,
 ): Promise<T> {
   const { maxRetries = 3, fallbackProviders = [] } = options;
   let currentProvider = options.provider;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await operation();
     } catch (error) {
       // Rate limit: 지수 백오프
-      if (error.code === 'RATE_LIMITED') {
+      if (error.code === "RATE_LIMITED") {
         await sleep(1000 * Math.pow(2, attempt));
         continue;
       }
-      
+
       // Provider 장애: Fallback
-      if (error.code === 'PROVIDER_UNAVAILABLE') {
+      if (error.code === "PROVIDER_UNAVAILABLE") {
         if (fallbackProviders.length > 0) {
           currentProvider = fallbackProviders.shift();
           markUnhealthy(options.provider);
           continue;
         }
       }
-      
+
       // 복구 불가: Fallback 데이터 반환
       return getFallbackData(options.taskType);
     }
@@ -336,15 +340,15 @@ async function executeWithFallback<T>(
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OPENCODE_BASE_URL` | OpenCode 엔진 URL | `http://ai-server-backend:7016` |
-| `OPENCODE_API_KEY` | OpenCode API 키 | - |
-| `AI_DEFAULT_PROVIDER` | 기본 Provider | `github-copilot` |
-| `AI_DEFAULT_MODEL` | 기본 모델 | `gpt-4.1` |
-| `AI_MAX_TOKENS` | 최대 토큰 | `4096` |
-| `AI_TIMEOUT_MS` | 타임아웃 | `30000` |
-| `RAG_SIMILARITY_THRESHOLD` | RAG 유사도 임계값 | `0.7` |
+| Variable                   | Description       | Default                         |
+| -------------------------- | ----------------- | ------------------------------- |
+| `OPENCODE_BASE_URL`        | OpenCode 엔진 URL | `http://ai-server-backend:7016` |
+| `OPENCODE_API_KEY`         | OpenCode API 키   | -                               |
+| `AI_DEFAULT_PROVIDER`      | 기본 Provider     | `github-copilot`                |
+| `AI_DEFAULT_MODEL`         | 기본 모델         | `gpt-4.1`                       |
+| `AI_MAX_TOKENS`            | 최대 토큰         | `4096`                          |
+| `AI_TIMEOUT_MS`            | 타임아웃          | `30000`                         |
+| `RAG_SIMILARITY_THRESHOLD` | RAG 유사도 임계값 | `0.7`                           |
 
 ### Service Dependencies
 
@@ -353,23 +357,23 @@ graph LR
     AI_SVC[AI Service] --> OC[OpenCode Backend]
     AI_SVC --> KV[Cloudflare KV]
     AI_SVC --> RAG[RAG Service]
-    
+
     OC --> OC_SERVE[OpenCode Serve]
     OC_SERVE --> PROVIDERS[LLM Providers]
-    
+
     RAG --> TEI[TEI Embedding]
     RAG --> CHROMA[ChromaDB]
 ```
 
 ### Database Tables (D1)
 
-| Table | Description |
-|-------|-------------|
-| `ai_providers` | Provider 설정 (name, endpoint, api_key 등) |
-| `ai_models` | 모델 설정 (provider_id, model_id, capabilities) |
-| `ai_routes` | 라우팅 규칙 (task_type → model) |
-| `ai_usage` | 사용량 통계 (tokens, requests, costs) |
-| `ai_traces` | 요청 추적 (trace_id, latency, success) |
+| Table          | Description                                     |
+| -------------- | ----------------------------------------------- |
+| `ai_providers` | Provider 설정 (name, endpoint, api_key 등)      |
+| `ai_models`    | 모델 설정 (provider_id, model_id, capabilities) |
+| `ai_routes`    | 라우팅 규칙 (task_type → model)                 |
+| `ai_usage`     | 사용량 통계 (tokens, requests, costs)           |
+| `ai_traces`    | 요청 추적 (trace_id, latency, success)          |
 
 ---
 
@@ -377,23 +381,23 @@ graph LR
 
 ### Error Codes
 
-| Code | Description | Resolution |
-|------|-------------|------------|
-| `PROVIDER_UNAVAILABLE` | Provider 연결 실패 | Fallback provider 사용, 상태 확인 |
-| `RATE_LIMITED` | 요청 한도 초과 | 백오프 후 재시도, 다른 provider 사용 |
-| `CONTENT_TOO_LONG` | 입력 길이 초과 | 텍스트 분할 또는 요약 후 재요청 |
-| `UNSUPPORTED_MODEL` | 지원하지 않는 모델 | 모델 목록 확인, 기본 모델 사용 |
-| `RESPONSE_TIMEOUT` | 응답 시간 초과 | 타임아웃 증가, 더 작은 요청으로 분할 |
+| Code                   | Description        | Resolution                           |
+| ---------------------- | ------------------ | ------------------------------------ |
+| `PROVIDER_UNAVAILABLE` | Provider 연결 실패 | Fallback provider 사용, 상태 확인    |
+| `RATE_LIMITED`         | 요청 한도 초과     | 백오프 후 재시도, 다른 provider 사용 |
+| `CONTENT_TOO_LONG`     | 입력 길이 초과     | 텍스트 분할 또는 요약 후 재요청      |
+| `UNSUPPORTED_MODEL`    | 지원하지 않는 모델 | 모델 목록 확인, 기본 모델 사용       |
+| `RESPONSE_TIMEOUT`     | 응답 시간 초과     | 타임아웃 증가, 더 작은 요청으로 분할 |
 
 ### Performance Metrics
 
-| Metric | Value | Description |
-|--------|-------|-------------|
-| **평균 응답 시간** | 2-5초 | 비스트리밍 모드 |
-| **첫 토큰 시간 (TTFT)** | ~500ms | 스트리밍 모드 |
-| **동시 요청** | 100+ | Workers 한도 |
-| **토큰 처리율** | ~50 tokens/sec | 스트리밍 출력 |
-| **RAG 검색 시간** | ~100ms | 벡터 검색 |
+| Metric                  | Value          | Description     |
+| ----------------------- | -------------- | --------------- |
+| **평균 응답 시간**      | 2-5초          | 비스트리밍 모드 |
+| **첫 토큰 시간 (TTFT)** | ~500ms         | 스트리밍 모드   |
+| **동시 요청**           | 100+           | Workers 한도    |
+| **토큰 처리율**         | ~50 tokens/sec | 스트리밍 출력   |
+| **RAG 검색 시간**       | ~100ms         | 벡터 검색       |
 
 ### Debugging
 
@@ -455,13 +459,13 @@ curl -H "X-Trace-ID: debug-$(date +%s)" \
 
 ### Common Modification Scenarios
 
-| 작업 | 수정 파일 |
-|------|-----------|
-| 새 Task 추가 | `workers/.../routes/ai.ts`, `workers/.../lib/prompts.ts` |
-| Provider 추가 | `shared/ai/config.ts`, `backend/.../lib/ai-service.js` |
+| 작업           | 수정 파일                                                      |
+| -------------- | -------------------------------------------------------------- |
+| 새 Task 추가   | `workers/.../routes/ai.ts`, `workers/.../lib/prompts.ts`       |
+| Provider 추가  | `shared/ai/config.ts`, `backend/.../lib/ai-service.js`         |
 | 응답 형식 변경 | `workers/.../lib/ai-service.ts`, `frontend/.../services/ai.ts` |
-| 프롬프트 수정 | `workers/.../lib/prompts.ts` |
-| Admin UI 수정 | `frontend/.../components/features/admin/ai/` |
+| 프롬프트 수정  | `workers/.../lib/prompts.ts`                                   |
+| Admin UI 수정  | `frontend/.../components/features/admin/ai/`                   |
 
 ---
 

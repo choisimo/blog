@@ -17,11 +17,14 @@ import postsRouter from './routes/posts.js';
 import imagesRouter from './routes/images.js';
 import authRouter from './routes/auth.js';
 import ragRouter from './routes/rag.js';
+import memoriesRouter from './routes/memories.js';
+import memosRouter from './routes/memos.js';
+import userRouter from './routes/user.js';
+import searchRouter from './routes/search.js';
 import configRouter from './routes/config.js';
 import workersRouter from './routes/workers.js';
 import aiAdminRouter from './routes/aiAdmin.js';
 import agentRouter from './routes/agent.js';
-import { createAidoveProxy } from './lib/aidove-proxy.js';
 
 async function startServer() {
   await loadAndApplyConsulConfig();
@@ -79,25 +82,23 @@ app.use('/api/v1/comments', commentsRouter);
 app.use('/api/v1/analytics', analyticsRouter);
 app.use('/api/v1/chat', chatRouter);
 app.use('/api/v1/translate', translateRouter);
+app.use('/api/v1/memos', memosRouter);
 app.use('/api', userContentRouter);  // /api/personas, /api/memos
+app.use('/api/v1', userContentRouter);
+app.use('/api/v1/user-content', userContentRouter);
 app.use('/api/v1/og', ogRouter);
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/posts', postsRouter);
 app.use('/api/v1/images', imagesRouter);
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/rag', ragRouter);
+app.use('/api/v1/memories', memoriesRouter);
+app.use('/api/v1/user', userRouter);
+app.use('/api/v1/search', searchRouter);
 app.use('/api/v1/admin/config', configRouter);
 app.use('/api/v1/admin/workers', workersRouter);
 app.use('/api/v1/admin/ai', aiAdminRouter);
 app.use('/api/v1/agent', agentRouter);
-
-// Aidove OpenAI-compatible proxy (for external services)
-// Exposes: /aidove/v1/chat/completions, /aidove/v1/models, /aidove/health
-if (process.env.AIDOVE_WEBHOOK_URL) {
-  const aidoveProxy = createAidoveProxy();
-  app.use('/aidove', aidoveProxy);
-  console.log('[api] Aidove proxy enabled at /aidove');
-}
 
 // not found
 app.use((req, res) => {

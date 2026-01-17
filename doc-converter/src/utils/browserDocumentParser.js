@@ -2,7 +2,7 @@ import mammoth from 'mammoth/mammoth.browser';
 import * as pdfjsLib from 'pdfjs-dist';
 
 // PDF.js worker 설정
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
 
 export class BrowserDocumentParser {
   constructor() {

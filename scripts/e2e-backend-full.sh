@@ -720,7 +720,7 @@ if [[ -n "$TOKEN" ]]; then
   if [[ "$CODE" == "200" ]]; then
     log_pass "GET /admin/workers/list"
   else
-    log_warn "GET /admin/workers/list (requires Cloudflare config)"
+    log_warn "GET /admin/workers/list (requires legacy config)"
   fi
 else
   log_skip "Admin endpoints (no auth token)"

@@ -15,9 +15,9 @@
 // ============================================================================
 
 function getEnv(key: string, defaultValue: string): string {
-  if (typeof process !== 'undefined' && process.env) {
-    return process.env[key] || defaultValue;
-  }
+  const env = (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } })
+    .process?.env;
+  if (env) return env[key] || defaultValue;
   return defaultValue;
 }
 
@@ -35,7 +35,6 @@ function getEnvNumber(key: string, defaultValue: number): number {
 
 export const SERVICE_NAMES = {
   // AI Services
-  AI_GATEWAY: 'n8n',            // n8n Workflow Engine (Primary AI Gateway)
   AI_ENGINE: 'ai-engine',       // VAS Core (GitHub Copilot Auth) - 기존 vas-core/opencode 통일
   AI_ADMIN: 'ai-admin',         // VAS Admin UI - 기존 vas-admin
   
@@ -57,7 +56,6 @@ export const SERVICE_NAMES = {
 
 export const PORTS = {
   // AI Services
-  AI_GATEWAY: getEnvNumber('PORT_AI_GATEWAY', 5678),  // n8n port
   AI_ENGINE: getEnvNumber('PORT_AI_ENGINE', 7012),
   AI_ADMIN: getEnvNumber('PORT_AI_ADMIN', 7080),
   
@@ -73,7 +71,6 @@ export const PORTS = {
   NGINX: getEnvNumber('PORT_NGINX', 80),
   
   // Local Development (localhost binding)
-  LOCAL_AI_GATEWAY: getEnvNumber('PORT_LOCAL_AI_GATEWAY', 5678),  // n8n port
   LOCAL_AI_ENGINE: getEnvNumber('PORT_LOCAL_AI_ENGINE', 7012),
   LOCAL_EMBEDDING: getEnvNumber('PORT_LOCAL_EMBEDDING', 8180),
   LOCAL_VECTOR_DB: getEnvNumber('PORT_LOCAL_VECTOR_DB', 8100),
@@ -110,15 +107,6 @@ function createEndpoint(
 
 // Docker 내부 서비스 엔드포인트
 export const SERVICES = {
-  // AI Gateway (n8n) - Primary AI endpoint
-  AI_GATEWAY: createEndpoint(
-    SERVICE_NAMES.AI_GATEWAY,
-    'SERVICE_AI_GATEWAY_HOST',
-    'n8n',
-    PORTS.AI_GATEWAY,
-    '/healthz'
-  ),
-  
   // AI Engine (VAS Core) - GitHub Copilot authentication
   AI_ENGINE: createEndpoint(
     SERVICE_NAMES.AI_ENGINE,
@@ -179,15 +167,6 @@ export const SERVICES = {
 // ============================================================================
 
 export const URLS = {
-  // n8n Workflow Engine (Primary AI Gateway)
-  n8n: {
-    base: getEnv('N8N_WEBHOOK_URL', SERVICES.AI_GATEWAY.url),
-    chat: () => `${URLS.n8n.base}/webhook/ai/chat`,
-    generate: () => `${URLS.n8n.base}/webhook/ai/generate`,
-    models: () => `${URLS.n8n.base}/webhook/ai/models`,
-    health: () => `${URLS.n8n.base}/webhook/ai/health`,
-  },
-  
   // AI Engine (for auth only)
   aiEngine: {
     base: getEnv('AI_ENGINE_URL', SERVICES.AI_ENGINE.url),
@@ -207,7 +186,7 @@ export const URLS = {
     vectorDb: getEnv('CHROMA_URL', SERVICES.VECTOR_DB.url),
   },
   
-  // Public URLs (Cloudflare Tunnel)
+  // Public URLs
   public: {
     api: getEnv('PUBLIC_API_URL', 'https://api.nodove.com'),
     site: getEnv('PUBLIC_SITE_URL', 'https://noblog.nodove.com'),
@@ -221,10 +200,7 @@ export const URLS = {
 
 export const LEGACY_MAPPINGS = {
   // 기존 → 새 시스템
-  'AI_SERVE_BASE_URL': URLS.n8n.base,
   'VAS_CORE_URL': URLS.aiEngine.base,
-  'VAS_PROXY_URL': URLS.n8n.base, // vas-proxy는 n8n으로 대체됨
-  'LITELLM_BASE_URL': URLS.n8n.base, // LiteLLM도 n8n으로 대체됨
   'TEI_URL': URLS.rag.embedding,
   'CHROMA_URL': URLS.rag.vectorDb,
 } as const;

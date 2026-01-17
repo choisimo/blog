@@ -1,68 +1,15 @@
-name: Deploy SEO Gateway Worker
+name: "[DEPRECATED] Deploy SEO Gateway"
 
 on:
-  push:
-    paths:
-      - 'workers/seo-gateway/**'
-      - '.github/workflows/deploy-seo-gateway.yml'
-    branches:
-      - main
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Deployment environment'
-        required: true
-        default: 'production'
-        type: choice
-        options:
-          - production
-          - staging
 
 jobs:
-  deploy:
+  deprecated:
     runs-on: ubuntu-latest
-    name: Deploy SEO Gateway
-    env:
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-    
+    name: Deprecated
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: workers/seo-gateway/package-lock.json
-
-      - name: Install dependencies
-        working-directory: workers/seo-gateway
-        run: npm ci
-
-      - name: Type check
-        working-directory: workers/seo-gateway
-        run: npx tsc --noEmit
-        continue-on-error: true
-
-      - name: Deploy to Cloudflare Workers
-        working-directory: workers/seo-gateway
-        run: npx wrangler deploy --env ${{ github.event.inputs.environment || 'production' }}
-
-      - name: Test SEO Gateway
-        continue-on-error: true
+      - name: Deprecation notice
         run: |
-          echo "Waiting for worker deployment to propagate..."
-          sleep 10
-          
-          echo "Testing SEO debug endpoint..."
-          curl -sf "https://noblog.nodove.com/api/seo-debug?path=/blog/2025/test" || echo "Debug endpoint not yet available"
-          
-          echo "Testing crawler detection..."
-          response=$(curl -sf -A "facebookexternalhit/1.1" "https://noblog.nodove.com/" -I 2>&1 || echo "")
-          if echo "$response" | grep -q "X-SEO-Gateway: active"; then
-            echo "✅ SEO Gateway is active for crawlers!"
-          else
-            echo "⚠️ SEO Gateway header not found (may still be propagating)"
-          fi
+          echo "This workflow is deprecated and intentionally disabled."
+          echo "Use containerized deployment instead."
+          exit 1

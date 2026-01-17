@@ -50,7 +50,7 @@ INSERT OR IGNORE INTO config_categories (id, name, description, display_order) V
   ('app', 'Application', '서버 기본 설정', 1),
   ('cors', 'CORS & URLs', 'CORS 허용 도메인 및 URL 설정', 2),
   ('ai', 'AI Services', 'AI 모델 및 VAS 서비스 설정', 3),
-  ('cloudflare', 'Cloudflare', 'D1, R2, Workers 설정', 4),
+  ('assets', 'Assets', '정적 자산 URL 설정', 4),
   ('github', 'GitHub', 'GitHub 통합 설정', 5),
   ('rag', 'RAG Services', 'TEI, ChromaDB 설정', 6),
   ('auth', 'Authentication', '인증 및 보안 설정', 7);
@@ -69,6 +69,9 @@ INSERT OR IGNORE INTO config_variables (id, category_id, key, type, default_valu
   ('v_api_base_url', 'cors', 'API_BASE_URL', 'url', 'http://localhost:5080', 0, 'API 기본 URL', 2),
   ('v_site_base_url', 'cors', 'SITE_BASE_URL', 'url', 'https://noblog.nodove.com', 0, '사이트 기본 URL', 3),
   
+  -- Assets category
+  ('v_assets_base_url', 'assets', 'ASSETS_BASE_URL', 'url', NULL, 0, 'Assets Base URL', 1),
+  
   -- AI category
   ('v_ai_serve_base_url', 'ai', 'AI_SERVE_BASE_URL', 'url', 'http://vas-proxy:7016', 0, 'VAS Proxy URL', 1),
   ('v_vas_core_url', 'ai', 'VAS_CORE_URL', 'url', 'http://vas-core:7012', 0, 'VAS Core URL', 2),
@@ -76,13 +79,6 @@ INSERT OR IGNORE INTO config_variables (id, category_id, key, type, default_valu
   ('v_ai_default_model', 'ai', 'AI_SERVE_DEFAULT_MODEL', 'text', 'gpt-4.1', 0, '기본 AI 모델', 4),
   ('v_gemini_api_key', 'ai', 'GEMINI_API_KEY', 'password', NULL, 1, 'Gemini API Key', 5),
   ('v_openrouter_api_key', 'ai', 'OPENROUTER_API_KEY', 'password', NULL, 1, 'OpenRouter API Key', 6),
-  
-  -- Cloudflare category
-  ('v_cf_account_id', 'cloudflare', 'CF_ACCOUNT_ID', 'text', NULL, 0, 'Cloudflare Account ID', 1),
-  ('v_cf_api_token', 'cloudflare', 'CF_API_TOKEN', 'password', NULL, 1, 'Cloudflare API Token', 2),
-  ('v_d1_database_id', 'cloudflare', 'D1_DATABASE_ID', 'text', NULL, 0, 'D1 Database ID', 3),
-  ('v_r2_bucket_name', 'cloudflare', 'R2_BUCKET_NAME', 'text', 'blog', 0, 'R2 Bucket 이름', 4),
-  ('v_r2_assets_base_url', 'cloudflare', 'R2_ASSETS_BASE_URL', 'url', 'https://assets-b.nodove.com', 0, 'R2 Assets URL', 5),
   
   -- GitHub category
   ('v_github_token', 'github', 'GITHUB_TOKEN', 'password', NULL, 1, 'GitHub Personal Access Token', 1),

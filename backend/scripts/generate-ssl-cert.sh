@@ -1,9 +1,9 @@
 #!/bin/bash
 # =============================================================================
-# SSL Certificate Generator for Cloudflare Full Mode
+# SSL Certificate Generator
 # =============================================================================
 #
-# Generates a self-signed certificate for use with Cloudflare Full SSL mode.
+# Generates a self-signed certificate for reverse proxies / gateways.
 # The certificate is valid for 15 years and covers *.nodove.com and nodove.com.
 #
 # Usage:

@@ -16,7 +16,7 @@ let manifestCacheTime = 0;
 const MANIFEST_CACHE_TTL = 60 * 1000; // 1 minute
 
 /**
- * Fetch posts manifest from frontend (Cloudflare Pages)
+ * Fetch posts manifest from frontend
  */
 async function fetchRemoteManifest() {
   const now = Date.now();

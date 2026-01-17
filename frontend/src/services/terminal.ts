@@ -1,10 +1,10 @@
 /**
  * Terminal Service
  *
- * WebSocket-based real Linux terminal connection via Workers gateway.
+ * WebSocket-based real Linux terminal connection via gateway.
  *
  * Architecture:
- * Frontend -> Cloudflare Workers (terminal-gateway) -> Backend (terminal-server) -> Docker container
+ * Frontend -> Gateway -> Backend (terminal-server) -> Docker container
  */
 
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -56,7 +56,7 @@ function getTerminalGatewayUrl(): string {
 
 function getAuthToken(): string | null {
   // Try Zustand store first
-  const authToken = useAuthStore.getState().token;
+  const authToken = useAuthStore.getState().accessToken;
   if (authToken && authToken.trim()) {
     return authToken.trim();
   }

@@ -4,7 +4,7 @@
 # Blog Backend Quick Setup Script
 # ===================================
 # This script helps set up the blog backend on Ubuntu
-# Usage: bash setup.sh [--pm2|--systemd] [--cloudflare|--nginx]
+# Usage: bash setup.sh [--pm2|--systemd] [--nginx]
 
 set -e  # Exit on error
 
@@ -16,7 +16,7 @@ NC='\033[0m' # No Color
 
 # Default values
 SERVICE_MANAGER="pm2"  # or "systemd"
-PROXY_METHOD="cloudflare"  # or "nginx"
+PROXY_METHOD="nginx"
 WORKING_DIR=$(pwd)
 NODE_VERSION="20"
 
@@ -31,19 +31,14 @@ while [[ $# -gt 0 ]]; do
             SERVICE_MANAGER="systemd"
             shift
             ;;
-        --cloudflare)
-            PROXY_METHOD="cloudflare"
-            shift
-            ;;
         --nginx)
             PROXY_METHOD="nginx"
             shift
             ;;
         --help)
-            echo "Usage: $0 [--pm2|--systemd] [--cloudflare|--nginx]"
+            echo "Usage: $0 [--pm2|--systemd] [--nginx]"
             echo "  --pm2         Use PM2 for process management (default)"
             echo "  --systemd     Use systemd for process management"
-            echo "  --cloudflare  Use Cloudflare Tunnel for HTTPS (default)"
             echo "  --nginx       Use Nginx + Let's Encrypt for HTTPS"
             exit 0
             ;;
@@ -261,31 +256,7 @@ fi
 # Step 6: Setup HTTPS proxy
 echo -e "${YELLOW}Step 6: Setting up HTTPS proxy ($PROXY_METHOD)...${NC}"
 
-if [ "$PROXY_METHOD" = "cloudflare" ]; then
-    echo ""
-    echo -e "${YELLOW}Cloudflare Tunnel Setup Instructions:${NC}"
-    echo "1. Install cloudflared (if not installed):"
-    echo "   curl -fsSL https://pkg.cloudflare.com/install.sh | sudo bash"
-    echo "   sudo apt-get install -y cloudflared"
-    echo ""
-    echo "2. Authenticate with Cloudflare:"
-    echo "   cloudflared tunnel login"
-    echo ""
-    echo "3. Create tunnel:"
-    echo "   cloudflared tunnel create blog-api"
-    echo ""
-    echo "4. Route your domain:"
-    echo "   cloudflared tunnel route dns blog-api api.yourdomain.com"
-    echo ""
-    echo "5. Copy the config file:"
-    echo "   sudo cp deploy/cloudflared-config.yml /etc/cloudflared/config.yml"
-    echo "   # Edit the file to add your tunnel UUID"
-    echo ""
-    echo "6. Start the tunnel service:"
-    echo "   sudo systemctl enable --now cloudflared"
-    echo ""
-    
-elif [ "$PROXY_METHOD" = "nginx" ]; then
+if [ "$PROXY_METHOD" = "nginx" ]; then
     # Check if Nginx is installed
     if ! command_exists nginx; then
         echo "Installing Nginx..."
@@ -325,11 +296,7 @@ echo "Next steps:"
 echo "1. Add VITE_API_BASE_URL to GitHub repository secrets:"
 echo "   - Go to: https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/settings/secrets/actions"
 echo "   - Add new secret: VITE_API_BASE_URL"
-if [ "$PROXY_METHOD" = "nginx" ]; then
-    echo "   - Value: https://${API_DOMAIN}"
-else
-    echo "   - Value: https://api.yourdomain.com (your Cloudflare tunnel domain)"
-fi
+echo "   - Value: https://${API_DOMAIN}"
 echo ""
 echo "2. Trigger a GitHub Pages deployment:"
 echo "   - Push to main branch or manually trigger the workflow"

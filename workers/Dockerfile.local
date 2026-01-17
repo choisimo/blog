@@ -27,17 +27,22 @@ RUN npm run build
 # ---------------------------------------------------------------------------
 WORKDIR /app
 
-# Copy package files and update shared path
-COPY workers/package.json workers/package-lock.json* ./
-RUN sed -i 's|"file:../shared"|"file:/shared"|g' package.json
+# Copy api-gateway package files and update shared path
+COPY workers/api-gateway/package.json ./
+RUN sed -i 's|"file:../../shared"|"file:/shared"|g' package.json
 
-# Install dependencies
-RUN npm install
+# Install dependencies (skip lock file to avoid conflicts)
+RUN npm cache clean --force && npm install --legacy-peer-deps
 
-# Copy source files
-COPY workers/src ./src
+# Copy api-gateway source files (main worker for blog)
+COPY workers/api-gateway/src ./src
+COPY workers/api-gateway/tsconfig.json workers/api-gateway/wrangler.toml ./
+
+# Copy migrations from workers/migrations (shared migrations directory)
 COPY workers/migrations ./migrations
-COPY workers/tsconfig.json workers/wrangler.toml ./
+
+# Fix migrations_dir path for Docker context (../migrations -> ./migrations)
+RUN sed -i 's|migrations_dir = "../migrations"|migrations_dir = "./migrations"|g' wrangler.toml
 
 # Create wrangler state directory
 RUN mkdir -p .wrangler/state/v3/d1
@@ -45,6 +50,19 @@ RUN mkdir -p .wrangler/state/v3/d1
 # Expose wrangler dev port
 EXPOSE 8787
 
-# Initialize D1 and run wrangler dev
-# Note: --persist is deprecated in newer wrangler versions, using --persist-to instead
-CMD ["sh", "-c", "npx wrangler d1 migrations apply blog-db --local 2>/dev/null || true; exec npx wrangler dev --local --persist-to .wrangler/state --ip 0.0.0.0 --port 8787"]
+# Create startup script that generates .dev.vars from env and runs wrangler
+RUN echo '#!/bin/sh\n\
+# Generate .dev.vars from environment variables for wrangler secrets\n\
+echo "BACKEND_ORIGIN=${BACKEND_ORIGIN:-http://localhost:5080}" > .dev.vars\n\
+echo "BACKEND_SECRET_KEY=${BACKEND_SECRET_KEY:-local-secret}" >> .dev.vars\n\
+echo "JWT_SECRET=${JWT_SECRET:-local-jwt-secret}" >> .dev.vars\n\
+echo "ADMIN_USERNAME=${ADMIN_USERNAME:-admin}" >> .dev.vars\n\
+echo "ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}" >> .dev.vars\n\
+echo "ADMIN_EMAIL=${ADMIN_EMAIL:-admin@localhost}" >> .dev.vars\n\
+\n\
+# Apply migrations and start wrangler\n\
+npx wrangler d1 migrations apply blog-db --local 2>/dev/null || true\n\
+exec npx wrangler dev --local --persist-to .wrangler/state --ip 0.0.0.0 --port 8787\n\
+' > /app/start.sh && chmod +x /app/start.sh
+
+CMD ["/app/start.sh"]

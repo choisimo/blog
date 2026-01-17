@@ -1,7 +1,7 @@
 /**
  * Terminal Server - Main Entry Point
  *
- * HTTP + WebSocket server that handles terminal connections from Cloudflare Workers.
+ * HTTP + WebSocket server that handles terminal connections from a gateway.
  * Only accepts connections with valid Origin Secret.
  *
  * Features:
@@ -96,7 +96,7 @@ server.on('upgrade', (request, socket, head) => {
     return;
   }
 
-  // Extract user info from headers (set by Cloudflare Worker)
+  // Extract user info from headers (set by gateway)
   const userId = request.headers['x-user-id'] as string;
   const clientIP = request.headers['x-client-ip'] as string;
   const requestId = request.headers['x-request-id'] as string;

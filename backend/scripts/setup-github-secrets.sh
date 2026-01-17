@@ -81,18 +81,6 @@ set_secret "ADMIN_PASSWORD" "Admin password"
 set_secret "ADMIN_BEARER_TOKEN" "API bearer token"
 set_secret "JWT_SECRET" "JWT secret"
 
-# n8n Secrets
-echo ""
-echo "--- n8n Secrets ---"
-set_secret "N8N_PASS" "n8n login password"
-set_secret "N8N_ENCRYPTION_KEY" "n8n encryption key (32 chars)"
-set_secret "N8N_API_KEY" "n8n API key (optional)"
-
-# Cloudflare Secrets
-echo ""
-echo "--- Cloudflare Secrets ---"
-set_secret "CF_API_TOKEN" "Cloudflare API token"
-
 # SSL Certificates
 echo ""
 echo "--- SSL Certificates ---"
@@ -139,17 +127,8 @@ set_var "POSTGRES_USER" "bloguser"
 set_var "AI_DEFAULT_MODEL" "gpt-4.1"
 set_var "AI_SERVER_URL" "https://api.openai.com/v1"
 
-# n8n
-set_var "N8N_USER" "admin"
-set_var "N8N_WEBHOOK_URL" "https://blog-bw.nodove.com/"
-set_var "N8N_HOST" "blog-bw.nodove.com"
-set_var "N8N_WORKER_REPLICAS" "2"
-
-# Cloudflare (fill in your values)
-# set_var "CF_ACCOUNT_ID" "your-account-id"
-# set_var "D1_DATABASE_ID" "your-d1-id"
-set_var "R2_BUCKET_NAME" "blog"
-set_var "R2_ASSETS_BASE_URL" "https://assets-b.nodove.com"
+# Assets
+set_var "ASSETS_BASE_URL" "https://assets-b.nodove.com"
 
 # GitHub
 set_var "GITHUB_REPO_OWNER" "choisimo"

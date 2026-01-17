@@ -1,69 +1,118 @@
 /**
- * Cloudflare D1 HTTP API Client
+ * SQLite database client
  *
- * Uses Cloudflare's REST API to access D1 databases.
- * Requires: CF_ACCOUNT_ID, CF_API_TOKEN, D1_DATABASE_ID
+ * Uses SQLite to access databases.
+ * Requires: SQLITE_PATH or DB_PATH
  *
- * API: POST https://api.cloudflare.com/client/v4/accounts/{account_id}/d1/database/{database_id}/query
+ * API: SQLite queries
  */
 
 import { config } from '../config.js';
 
-// Get credentials from environment
-const getCredentials = () => {
-  const accountId = process.env.CF_ACCOUNT_ID;
-  const apiToken = process.env.CF_API_TOKEN;
-  const databaseId = process.env.D1_DATABASE_ID;
+import fs from 'node:fs';
+import path from 'node:path';
+import Database from 'better-sqlite3';
 
-  if (!accountId || !apiToken || !databaseId) {
-    throw new Error(
-      'D1 credentials not configured. Set CF_ACCOUNT_ID, CF_API_TOKEN, D1_DATABASE_ID'
-    );
+let _db;
+let _migrationsReady = false;
+
+function getDbPath() {
+  const fromEnv = process.env.SQLITE_PATH || process.env.DB_PATH;
+  if (fromEnv && String(fromEnv).trim()) return String(fromEnv).trim();
+  return path.join(config.content.repoRoot, '.data', 'blog.db');
+}
+
+function ensureDirForFile(filePath) {
+  const dir = path.dirname(filePath);
+  fs.mkdirSync(dir, { recursive: true });
+}
+
+function splitSqlStatements(sqlText) {
+  const trimmed = String(sqlText || '').trim();
+  if (!trimmed) return [];
+  return [trimmed];
+}
+
+function ensureMigrations(db) {
+  if (_migrationsReady) return;
+
+  db.pragma('foreign_keys = ON');
+  db.pragma('journal_mode = WAL');
+
+  db.exec(
+    'CREATE TABLE IF NOT EXISTS schema_migrations (filename TEXT PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT (datetime(\'now\')));'
+  );
+
+  const migrationsDir =
+    process.env.SQLITE_MIGRATIONS_DIR || path.join(config.content.repoRoot, 'workers', 'migrations');
+  if (!fs.existsSync(migrationsDir)) {
+    _migrationsReady = true;
+    return;
   }
 
-  return { accountId, apiToken, databaseId };
-};
+  const applied = new Set(
+    db.prepare('SELECT filename FROM schema_migrations ORDER BY filename ASC').all().map((r) => r.filename)
+  );
+  const files = fs
+    .readdirSync(migrationsDir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort((a, b) => a.localeCompare(b));
+
+  const insertApplied = db.prepare('INSERT OR IGNORE INTO schema_migrations(filename) VALUES (?)');
+
+  for (const filename of files) {
+    if (applied.has(filename)) continue;
+    const abs = path.join(migrationsDir, filename);
+    const sql = fs.readFileSync(abs, 'utf8');
+    const statements = splitSqlStatements(sql);
+    const tx = db.transaction(() => {
+      for (const stmt of statements) {
+        db.exec(stmt);
+      }
+      insertApplied.run(filename);
+    });
+    tx();
+  }
+
+  _migrationsReady = true;
+}
+
+function getDb() {
+  if (_db) return _db;
+  const dbPath = getDbPath();
+  ensureDirForFile(dbPath);
+  _db = new Database(dbPath);
+  ensureMigrations(_db);
+  return _db;
+}
+
+function isSelectQuery(sql) {
+  const s = String(sql || '').trim().toLowerCase();
+  return s.startsWith('select') || s.startsWith('with') || s.startsWith('pragma');
+}
 
 /**
- * Execute a SQL query against D1
+ * Execute a SQL query
  * @param {string} sql - SQL query
  * @param {...any} params - Query parameters
  * @returns {Promise<{results: any[], meta: any}>}
  */
 export async function query(sql, ...params) {
-  const { accountId, apiToken, databaseId } = getCredentials();
+  const db = getDb();
+  const statement = db.prepare(String(sql));
 
-  const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${databaseId}/query`;
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      sql,
-      params: params.length > 0 ? params : undefined,
-    }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`D1 API error (${response.status}): ${text}`);
+  if (isSelectQuery(sql)) {
+    const results = statement.all(...params);
+    return { results, meta: {} };
   }
 
-  const data = await response.json();
-
-  if (!data.success) {
-    const errorMsg = data.errors?.map((e) => e.message).join(', ') || 'Unknown error';
-    throw new Error(`D1 query failed: ${errorMsg}`);
-  }
-
-  // D1 API returns array of results (one per statement)
-  const result = data.result?.[0];
+  const info = statement.run(...params);
   return {
-    results: result?.results || [],
-    meta: result?.meta || {},
+    results: [],
+    meta: {
+      changes: info.changes,
+      last_row_id: typeof info.lastInsertRowid === 'bigint' ? Number(info.lastInsertRowid) : info.lastInsertRowid,
+    },
   };
 }
 
@@ -104,12 +153,12 @@ export async function execute(sql, ...params) {
 }
 
 /**
- * Check if D1 is configured and available
+ * Check if database is configured and available
  * @returns {boolean}
  */
-export function isD1Configured() {
+export function isConfigured() {
   try {
-    getCredentials();
+    getDb();
     return true;
   } catch {
     return false;
@@ -117,7 +166,7 @@ export function isD1Configured() {
 }
 
 /**
- * Test D1 connection
+ * Test database connection
  * @returns {Promise<boolean>}
  */
 export async function testConnection() {
@@ -125,7 +174,7 @@ export async function testConnection() {
     await queryOne('SELECT 1 as test');
     return true;
   } catch (err) {
-    console.error('D1 connection test failed:', err.message);
+    console.error('DB connection test failed:', err.message);
     return false;
   }
 }

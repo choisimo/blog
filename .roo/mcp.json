@@ -24,13 +24,6 @@
         "--headless=",
         "--viewport-size="
       ]
-    },
-    "cloudflare": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@cloudflare/mcp-server-cloudflare"
-      ]
     }
   }
 }

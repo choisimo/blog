@@ -3,27 +3,30 @@
 ## 1. Service Overview (개요)
 
 ### 목적
-Backend API Server는 블로그 플랫폼의 **Origin 서버**입니다. Cloudflare Workers API Gateway가 처리하지 않는 요청을 담당하며, 파일 시스템 기반 콘텐츠 관리, AI 서비스 연동, OG 이미지 생성 등을 제공합니다.
+
+Backend API Server는 블로그 플랫폼의 **Origin 서버**입니다. Gateway가 처리하지 않는 요청을 담당하며, 파일 시스템 기반 콘텐츠 관리, AI 서비스 연동, OG 이미지 생성 등을 제공합니다.
 
 > **⚠️ 아키텍처 노트**
-> - **주 진입점**: Cloudflare Workers API Gateway (`workers/api-gateway/`)
+>
+> - **주 진입점**: Gateway
 > - **이 서버**: API Gateway의 백엔드 프록시 대상
-> - 대부분의 API 요청은 Workers D1/R2/KV에서 처리됩니다.
+> - API 요청은 서버/게이트웨이 구성에 따라 처리됩니다.
 
 ### 주요 기능
 
-| 기능 | 설명 | 상태 |
-|------|------|------|
-| **Posts API** | 파일 시스템 기반 게시글 CRUD, 매니페스트 생성 | Legacy |
-| **Images API** | 이미지 업로드/관리, Sharp 리사이징 | Legacy |
-| **AI API** | OpenAI SDK 호환 AI 기능 (요약, 분석) | Active |
-| **RAG API** | ChromaDB 기반 벡터 검색 및 질의응답 | Active |
-| **Agent API** | Multi-tool AI Agent orchestration | Active |
-| **OG Image** | Sharp 기반 Open Graph 이미지 동적 생성 | Active |
-| **Comments API** | 댓글 관리 (D1 연동) | Migrated to Workers |
-| **Analytics API** | 조회수/트렌딩 (D1 연동) | Migrated to Workers |
+| 기능              | 설명                                          | 상태   |
+| ----------------- | --------------------------------------------- | ------ |
+| **Posts API**     | 파일 시스템 기반 게시글 CRUD, 매니페스트 생성 | Legacy |
+| **Images API**    | 이미지 업로드/관리, Sharp 리사이징            | Legacy |
+| **AI API**        | OpenAI SDK 호환 AI 기능 (요약, 분석)          | Active |
+| **RAG API**       | ChromaDB 기반 벡터 검색 및 질의응답           | Active |
+| **Agent API**     | Multi-tool AI Agent orchestration             | Active |
+| **OG Image**      | Sharp 기반 Open Graph 이미지 동적 생성        | Active |
+| **Comments API**  | 댓글 관리                                     | Active |
+| **Analytics API** | 조회수/트렌딩                                 | Active |
 
 ### 기술 스택
+
 - **Runtime**: Node.js 20+
 - **Framework**: Express 4
 - **Port**: `5080` (기본)
@@ -39,13 +42,13 @@ Backend API Server는 블로그 플랫폼의 **Origin 서버**입니다. Cloudfl
 
 ```mermaid
 flowchart TB
-    subgraph "Cloudflare Edge"
-        API_GW[API Gateway<br/>api.nodove.com]
+    subgraph "Gateway"
+        API_GW[API Gateway]
     end
 
     subgraph "Origin Server (Docker)"
         BE[Backend Server<br/>blog-b.nodove.com:5080]
-        
+
         subgraph "Services"
             AI_SRV[AI Server<br/>OpenAI-compatible endpoint]
             TEI[TEI Embedding<br/>embedding-server:80]
@@ -103,6 +106,7 @@ flowchart LR
 ```
 
 **Docker에서의 경로 매핑:**
+
 ```
 Host: ./frontend/public  →  Container: /frontend/public
 ```
@@ -113,61 +117,61 @@ Host: ./frontend/public  →  Container: /frontend/public
 
 ### Health & Config
 
-| Method | Endpoint | Output | Description |
-|--------|----------|--------|-------------|
-| `GET` | `/api/v1/healthz` | `{ ok, env, uptime }` | 헬스체크 |
-| `GET` | `/api/v1/public/config` | `{ siteBaseUrl, apiBaseUrl, env }` | 공개 설정 |
+| Method | Endpoint                | Output                             | Description |
+| ------ | ----------------------- | ---------------------------------- | ----------- |
+| `GET`  | `/api/v1/healthz`       | `{ ok, env, uptime }`              | 헬스체크    |
+| `GET`  | `/api/v1/public/config` | `{ siteBaseUrl, apiBaseUrl, env }` | 공개 설정   |
 
 ### AI Routes (`/api/v1/ai`)
 
-| Method | Endpoint | Input | Output | Description |
-|--------|----------|-------|--------|-------------|
-| `POST` | `/summarize` | `{ text, instructions? }` | `{ result }` | 텍스트 요약 |
-| `POST` | `/generate` | `{ prompt, temperature? }` | `{ result }` | 텍스트 생성 |
-| `POST` | `/sketch` | `{ paragraph, postTitle? }` | `{ result }` | 개념 스케치 |
-| `POST` | `/prism` | `{ paragraph, postTitle? }` | `{ result }` | 다각도 분석 |
-| `POST` | `/chain` | `{ paragraph, postTitle? }` | `{ result }` | 연쇄 사고 분석 |
+| Method | Endpoint     | Input                       | Output       | Description    |
+| ------ | ------------ | --------------------------- | ------------ | -------------- |
+| `POST` | `/summarize` | `{ text, instructions? }`   | `{ result }` | 텍스트 요약    |
+| `POST` | `/generate`  | `{ prompt, temperature? }`  | `{ result }` | 텍스트 생성    |
+| `POST` | `/sketch`    | `{ paragraph, postTitle? }` | `{ result }` | 개념 스케치    |
+| `POST` | `/prism`     | `{ paragraph, postTitle? }` | `{ result }` | 다각도 분석    |
+| `POST` | `/chain`     | `{ paragraph, postTitle? }` | `{ result }` | 연쇄 사고 분석 |
 
 ### RAG Routes (`/api/v1/rag`)
 
-| Method | Endpoint | Input | Output | Description |
-|--------|----------|-------|--------|-------------|
-| `POST` | `/query` | `{ query, topK? }` | `{ results, answer }` | 벡터 검색 + 답변 생성 |
-| `POST` | `/embed` | `{ text }` | `{ embedding }` | 텍스트 임베딩 |
-| `GET` | `/status` | - | `{ indexed, lastUpdated }` | 인덱스 상태 |
+| Method | Endpoint  | Input              | Output                     | Description           |
+| ------ | --------- | ------------------ | -------------------------- | --------------------- |
+| `POST` | `/query`  | `{ query, topK? }` | `{ results, answer }`      | 벡터 검색 + 답변 생성 |
+| `POST` | `/embed`  | `{ text }`         | `{ embedding }`            | 텍스트 임베딩         |
+| `GET`  | `/status` | -                  | `{ indexed, lastUpdated }` | 인덱스 상태           |
 
 ### Agent Routes (`/api/v1/agent`)
 
-| Method | Endpoint | Input | Output | Description |
-|--------|----------|-------|--------|-------------|
-| `POST` | `/chat` | `{ message, sessionId? }` | `{ response, actions }` | Agent 대화 |
-| `POST` | `/execute` | `{ tool, params }` | `{ result }` | 도구 직접 실행 |
-| `GET` | `/tools` | - | `{ tools[] }` | 사용 가능한 도구 목록 |
+| Method | Endpoint   | Input                     | Output                  | Description           |
+| ------ | ---------- | ------------------------- | ----------------------- | --------------------- |
+| `POST` | `/chat`    | `{ message, sessionId? }` | `{ response, actions }` | Agent 대화            |
+| `POST` | `/execute` | `{ tool, params }`        | `{ result }`            | 도구 직접 실행        |
+| `GET`  | `/tools`   | -                         | `{ tools[] }`           | 사용 가능한 도구 목록 |
 
 ### Posts Routes (`/api/v1/posts`) - Legacy
 
-| Method | Endpoint | Input | Output | Auth |
-|--------|----------|-------|--------|------|
-| `GET` | `/` | `?year=&includeDrafts=` | `{ posts[] }` | - |
-| `GET` | `/:year/:slug` | - | `{ post }` | - |
-| `POST` | `/` | `{ title, slug, content, ... }` | `{ id }` | Admin |
-| `PUT` | `/:year/:slug` | `{ title, content, ... }` | `{ ok }` | Admin |
-| `DELETE` | `/:year/:slug` | - | `{ ok }` | Admin |
-| `POST` | `/regenerate-manifests` | - | `{ ok }` | Admin |
+| Method   | Endpoint                | Input                           | Output        | Auth  |
+| -------- | ----------------------- | ------------------------------- | ------------- | ----- |
+| `GET`    | `/`                     | `?year=&includeDrafts=`         | `{ posts[] }` | -     |
+| `GET`    | `/:year/:slug`          | -                               | `{ post }`    | -     |
+| `POST`   | `/`                     | `{ title, slug, content, ... }` | `{ id }`      | Admin |
+| `PUT`    | `/:year/:slug`          | `{ title, content, ... }`       | `{ ok }`      | Admin |
+| `DELETE` | `/:year/:slug`          | -                               | `{ ok }`      | Admin |
+| `POST`   | `/regenerate-manifests` | -                               | `{ ok }`      | Admin |
 
 ### Images Routes (`/api/v1/images`) - Legacy
 
-| Method | Endpoint | Input | Output | Auth |
-|--------|----------|-------|--------|------|
-| `POST` | `/upload` | `multipart/form-data` (files) | `{ urls[] }` | Admin |
-| `GET` | `/` | `?year=&slug=` or `?dir=` | `{ files[] }` | - |
-| `DELETE` | `/:year/:slug/:filename` | - | `{ ok }` | Admin |
+| Method   | Endpoint                 | Input                         | Output        | Auth  |
+| -------- | ------------------------ | ----------------------------- | ------------- | ----- |
+| `POST`   | `/upload`                | `multipart/form-data` (files) | `{ urls[] }`  | Admin |
+| `GET`    | `/`                      | `?year=&slug=` or `?dir=`     | `{ files[] }` | -     |
+| `DELETE` | `/:year/:slug/:filename` | -                             | `{ ok }`      | Admin |
 
 ### OG Image (`/api/v1/og`)
 
-| Method | Endpoint | Input | Output | Description |
-|--------|----------|-------|--------|-------------|
-| `GET` | `/` | `?title=&subtitle=&theme=dark|light` | `image/png` | OG 이미지 생성 |
+| Method | Endpoint | Input                         | Output | Description |
+| ------ | -------- | ----------------------------- | ------ | ----------- | -------------- |
+| `GET`  | `/`      | `?title=&subtitle=&theme=dark | light` | `image/png` | OG 이미지 생성 |
 
 ### Response Format
 
@@ -192,6 +196,7 @@ Request Flow:
 ```
 
 **AIService 설정 (OpenAI SDK 호환):**
+
 ```javascript
 AI_SERVER_URL=https://api.openai.com/v1
 AI_API_KEY=your-api-key
@@ -211,12 +216,13 @@ Query Flow:
 ```
 
 **ChromaDB 설정:**
+
 ```javascript
 config.rag = {
-  teiUrl: 'http://embedding-server:80',
-  chromaUrl: 'http://chromadb:8000',
-  chromaCollection: 'blog-posts-all-MiniLM-L6-v2'
-}
+  teiUrl: "http://embedding-server:80",
+  chromaUrl: "http://chromadb:8000",
+  chromaCollection: "blog-posts-all-MiniLM-L6-v2",
+};
 ```
 
 ### Agent Tool Orchestration
@@ -256,7 +262,7 @@ frontend/public/
 APP_ENV=production              # development | staging | production
 HOST=0.0.0.0
 PORT=5080
-TRUST_PROXY=1                   # Nginx/Cloudflare 앞에서 동작 시
+TRUST_PROXY=1                   # Reverse proxy 앞에서 동작 시
 ALLOWED_ORIGINS=https://noblog.nodove.com,https://api.nodove.com
 
 # ============================================
@@ -322,10 +328,11 @@ docker compose -f docker-compose.consul.yml up -d
 ```
 
 **Consul KV Schema:**
+
 ```
 blog/
 ├── config/
-│   ├── domains/{frontend,api,assets,terminal,n8n}
+│   ├── domains/{frontend,api,assets,terminal}
 │   ├── cors/allowed_origins (JSON array)
 │   └── features/
 │       ├── ai_enabled        # AI 서비스 활성화 (default: true)
@@ -362,12 +369,12 @@ FEATURE_COMMENTS_ENABLED=true
 
 ### Docker Services (docker-compose)
 
-| Service | Port | Description |
-|---------|------|-------------|
-| `api` | 5080 | Backend API Server |
-| `nginx` | 80 | Reverse Proxy |
-| `embedding-server` | 80 | TEI Embedding Server |
-| `chromadb` | 8000 | Vector Database |
+| Service            | Port | Description          |
+| ------------------ | ---- | -------------------- |
+| `api`              | 5080 | Backend API Server   |
+| `nginx`            | 80   | Reverse Proxy        |
+| `embedding-server` | 80   | TEI Embedding Server |
+| `chromadb`         | 8000 | Vector Database      |
 
 ---
 
@@ -433,14 +440,14 @@ sudo systemctl start blog-backend
 
 ### 예상 에러 상황
 
-| 상황 | HTTP Code | 원인 | 해결 |
-|------|-----------|------|------|
-| 401 Unauthorized | 401 | Bearer Token 불일치 | `ADMIN_BEARER_TOKEN` 확인 |
-| 413 Payload Too Large | 413 | 업로드 용량 초과 | Nginx `client_max_body_size` 증가 |
-| CORS Error | - | Origin 미허용 | `ALLOWED_ORIGINS`에 추가 |
-| AI 요청 실패 | 500/502 | AI 서버 연결 실패 | `AI_SERVER_URL` 및 서버 상태 확인 |
-| RAG 검색 실패 | 500 | ChromaDB 연결 실패 | `CHROMA_URL` 및 서버 상태 확인 |
-| 매니페스트 미갱신 | - | 파일 권한 문제 | 볼륨 마운트 경로/권한 확인 |
+| 상황                  | HTTP Code | 원인                | 해결                              |
+| --------------------- | --------- | ------------------- | --------------------------------- |
+| 401 Unauthorized      | 401       | Bearer Token 불일치 | `ADMIN_BEARER_TOKEN` 확인         |
+| 413 Payload Too Large | 413       | 업로드 용량 초과    | Nginx `client_max_body_size` 증가 |
+| CORS Error            | -         | Origin 미허용       | `ALLOWED_ORIGINS`에 추가          |
+| AI 요청 실패          | 500/502   | AI 서버 연결 실패   | `AI_SERVER_URL` 및 서버 상태 확인 |
+| RAG 검색 실패         | 500       | ChromaDB 연결 실패  | `CHROMA_URL` 및 서버 상태 확인    |
+| 매니페스트 미갱신     | -         | 파일 권한 문제      | 볼륨 마운트 경로/권한 확인        |
 
 ### 제약 사항
 
@@ -477,7 +484,7 @@ curl http://localhost:5080/api/v1/rag/status
 # backend/nginx.conf
 server {
     client_max_body_size 25m;  # 이미지 업로드 용량
-    
+
     location / {
         proxy_pass http://api:5080;
         proxy_set_header Host $host;
@@ -533,16 +540,16 @@ backend/
 
 ```javascript
 // src/index.js
-app.use('/api/v1/ai', aiRouter);
-app.use('/api/v1/rag', ragRouter);
-app.use('/api/v1/agent', agentRouter);
-app.use('/api/v1/posts', postsRouter);
-app.use('/api/v1/images', imagesRouter);
-app.use('/api/v1/og', ogRouter);
-app.use('/api/v1/comments', commentsRouter);
-app.use('/api/v1/analytics', analyticsRouter);
-app.use('/api/v1/auth', authRouter);
-app.use('/api/v1/admin', adminRouter);
+app.use("/api/v1/ai", aiRouter);
+app.use("/api/v1/rag", ragRouter);
+app.use("/api/v1/agent", agentRouter);
+app.use("/api/v1/posts", postsRouter);
+app.use("/api/v1/images", imagesRouter);
+app.use("/api/v1/og", ogRouter);
+app.use("/api/v1/comments", commentsRouter);
+app.use("/api/v1/analytics", analyticsRouter);
+app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/admin", adminRouter);
 ```
 
 ### 관련 문서

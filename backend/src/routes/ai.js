@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { aiService, tryParseJson } from '../lib/ai-service.js';
-import { getN8NClient } from '../lib/n8n-client.js';
 import { config } from '../config.js';
 import { queryAll, isD1Configured } from '../lib/d1.js';
 import { getAITaskQueue } from '../lib/ai-task-queue.js';
@@ -90,7 +89,7 @@ ${posts}
 // Model List Endpoint - Get available AI models (DB-first, with fallbacks)
 // GET /api/v1/ai/models
 // 
-// Priority: 1. Database (ai_models table) -> 2. n8n -> 3. Static fallback
+// Priority: 1. Database (ai_models table) -> 2. Static fallback
 // ============================================================================
 
 router.get('/models', async (req, res) => {
@@ -143,42 +142,8 @@ router.get('/models', async (req, res) => {
         });
       }
     } catch (dbErr) {
-      console.warn('DB model lookup failed, falling back to n8n:', dbErr.message);
+      console.warn('DB model lookup failed, using fallback list:', dbErr.message);
     }
-  }
-
-  // 2. Fallback to n8n client
-  try {
-    const client = getN8NClient();
-    const models = await client.models();
-    
-    // Format n8n models
-    const n8nModels = models.map(m => ({
-      id: m.id,
-      name: m.name || m.id,
-      provider: m.provider || 'n8n',
-      description: 'Loaded from n8n workflow',
-      isDefault: m.id === defaultModel,
-      capabilities: ['chat'],
-    }));
-
-    // Sort: default first
-    n8nModels.sort((a, b) => {
-      if (a.isDefault) return -1;
-      if (b.isDefault) return 1;
-      return a.name.localeCompare(b.name);
-    });
-
-    return res.json({
-      ok: true,
-      data: {
-        models: n8nModels,
-        default: defaultModel,
-        provider: 'n8n',
-      },
-    });
-  } catch (err) {
-    console.error('Failed to fetch models from n8n:', err.message);
   }
 
   // 3. Final fallback - static model list
@@ -188,7 +153,7 @@ router.get('/models', async (req, res) => {
       models: getFallbackModels(defaultModel),
       default: defaultModel,
       provider: 'fallback',
-      warning: 'Using fallback model list - Database and n8n may be unavailable',
+      warning: 'Using fallback model list - Database may be unavailable',
     },
   });
 });
@@ -206,7 +171,7 @@ function buildCapabilities(model) {
 }
 
 /**
- * Fallback models when DB and n8n are unavailable
+ * Fallback models when DB is unavailable
  */
 function getFallbackModels(defaultModel) {
   const fallbackList = [
@@ -508,20 +473,19 @@ router.post('/vision/analyze', rateLimitMiddleware(), async (req, res, next) => 
     let mimeType;
     let imageType; // 'url' or 'base64'
 
-    // Prefer URL if provided (n8n will fetch from R2 directly)
-    // This is more efficient than converting to base64
+    // Prefer URL if provided
+    // For trusted asset URLs we can pass through directly (more efficient than converting to base64)
     if (imageUrl) {
-      const assetsBaseUrl = config.r2?.assetsBaseUrl || 'assets-b.nodove.com';
-      const isR2Url = imageUrl.includes(assetsBaseUrl.replace(/^https?:\/\//, '')) || 
-                      imageUrl.includes('r2.cloudflarestorage.com');
+      const assetsBaseUrl = config.assetsBaseUrl || `${String(config.siteBaseUrl || '').replace(/\/$/, '')}/images`;
+      const isTrustedAssetUrl = imageUrl.includes(String(assetsBaseUrl).replace(/^https?:\/\//, ''));
       
-      if (isR2Url) {
-        // Pass R2 URL directly - n8n workflow will fetch
+      if (isTrustedAssetUrl) {
+        // Pass trusted URL directly
         imageData = imageUrl;
         mimeType = inputMimeType || 'image/jpeg';
         imageType = 'url';
       } else {
-        // For non-R2 URLs, fetch and convert to base64 (for compatibility)
+        // For other URLs, fetch and convert to base64 (for compatibility)
         try {
           const fetched = await fetchImageAsBase64(imageUrl);
           imageData = fetched.base64;

@@ -1,127 +1,22 @@
-name: Deploy Blog API Gateway (Unified)
+name: "[DEPRECATED] Deploy Legacy Edge Gateway"
 
 # =============================================================================
-# Cloudflare Workers Deployment - Unified Blog API Gateway
+# DEPRECATED
 # =============================================================================
-# Deploys the unified blog-api-gateway worker with:
-# - All API routes (D1, R2, KV based)
-# - Backend proxy for additional routes
-# - Cron triggers for scheduled tasks
-#
-# Architecture:
-#   Client → Cloudflare Workers (api.nodove.com) → Internal Routes OR → Backend Server
-#
-# Required secrets:
-#   - CLOUDFLARE_API_TOKEN: API token with Workers permissions
-#   - CLOUDFLARE_ACCOUNT_ID: Cloudflare account ID
-#   - JWT_SECRET: JWT signing key
-#   - BACKEND_ORIGIN: Backend server origin (for proxy routes)
-#   - BACKEND_SECRET_KEY: Shared secret for backend authentication
+# This workflow is kept for historical reference only.
+# The project is migrating to full containerized deployment.
 # =============================================================================
 
 on:
-  push:
-    paths:
-      - 'workers/api-gateway/**'
-      - '.github/workflows/deploy-api-gateway.yml'
-    branches:
-      - main
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Deployment environment'
-        required: true
-        default: 'production'
-        type: choice
-        options:
-          - production
-          - staging
+
 
 jobs:
-  deploy:
+  deprecated:
     runs-on: ubuntu-latest
-    name: Deploy Blog API Gateway
-    env:
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-    
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: workers/api-gateway/package-lock.json
-
-      - name: Install dependencies
-        working-directory: workers/api-gateway
-        run: npm ci
-
-      - name: Type check
-        working-directory: workers/api-gateway
-        run: npm run typecheck
-        continue-on-error: true
-
-      - name: Apply D1 migrations (production)
-        if: ${{ github.event.inputs.environment == 'production' || github.event.inputs.environment == '' }}
-        working-directory: workers/api-gateway
-        run: npx wrangler d1 migrations apply blog-db-prod --env production --remote
-        continue-on-error: true
-
-      - name: Set Secrets (production)
-        if: ${{ github.event.inputs.environment == 'production' || github.event.inputs.environment == '' }}
-        working-directory: workers/api-gateway
+      - name: Deprecation notice
         run: |
-          echo "${{ secrets.JWT_SECRET }}" | npx wrangler secret put JWT_SECRET --env production
-          echo "${{ secrets.BACKEND_ORIGIN }}" | npx wrangler secret put BACKEND_ORIGIN --env production
-          echo "${{ secrets.BACKEND_SECRET_KEY }}" | npx wrangler secret put BACKEND_SECRET_KEY --env production
-          if [ -n "${{ secrets.GEMINI_API_KEY }}" ]; then
-            echo "${{ secrets.GEMINI_API_KEY }}" | npx wrangler secret put GEMINI_API_KEY --env production
-          fi
-          if [ -n "${{ secrets.ADMIN_USERNAME }}" ]; then
-            echo "${{ secrets.ADMIN_USERNAME }}" | npx wrangler secret put ADMIN_USERNAME --env production
-          fi
-          if [ -n "${{ secrets.ADMIN_PASSWORD }}" ]; then
-            echo "${{ secrets.ADMIN_PASSWORD }}" | npx wrangler secret put ADMIN_PASSWORD --env production
-          fi
-
-      - name: Deploy to Cloudflare Workers
-        working-directory: workers/api-gateway
-        run: npx wrangler deploy --env ${{ github.event.inputs.environment || 'production' }}
-
-      - name: Health check
-        run: |
-          echo "Waiting for worker deployment to propagate..."
-          sleep 10
-          
-          echo "Checking worker health at https://api.nodove.com/_health"
-          for i in $(seq 1 10); do
-            response=$(curl -sf "https://api.nodove.com/_health" 2>&1 || echo '{"error":"failed"}')
-            echo "Response: $response"
-            if echo "$response" | grep -q '"ok":true'; then
-              echo "✅ API Gateway Worker is healthy!"
-              exit 0
-            fi
-            echo "Retry $i/10..."
-            sleep 5
-          done
-          
-          echo "⚠️ Health check did not succeed within timeout"
-          echo "Worker may still be propagating or there's a configuration issue"
+          echo "This workflow is deprecated and intentionally disabled."
+          echo "Use containerized deployment instead."
           exit 1
-
-      - name: Test API routing
-        continue-on-error: true
-        run: |
-          echo "Testing API routing through worker..."
-          
-          # Test backend API
-          echo "GET /api/v1/healthz"
-          curl -sf "https://api.nodove.com/api/v1/healthz" && echo " ✅" || echo " ❌"
-          
-          # Test CORS
-          echo "Testing CORS headers..."
-          curl -sI -H "Origin: https://noblog.nodove.com" "https://api.nodove.com/api/v1/healthz" | grep -i access-control || echo "CORS headers not found"

@@ -11,7 +11,7 @@ import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { queryAll, queryOne, execute, isD1Configured } from '../lib/d1.js';
 import requireAdmin from '../middleware/adminAuth.js';
-import { getN8NClient } from '../lib/n8n-client.js';
+import { aiService } from '../lib/ai-service.js';
 
 const router = Router();
 
@@ -39,7 +39,7 @@ const checkD1 = (req, res, next) => {
   if (!isD1Configured()) {
     return res.status(500).json({
       ok: false,
-      error: 'D1 database not configured. Set CF_ACCOUNT_ID, CF_API_TOKEN, D1_DATABASE_ID',
+      error: 'Database not configured',
     });
   }
   next();
@@ -280,9 +280,8 @@ router.post('/providers/:id/health', async (req, res, next) => {
 
     if (model) {
       try {
-        const client = getN8NClient();
         const start = Date.now();
-        await client.chat(
+        await aiService.chat(
           [{ role: 'user', content: 'Hello' }],
           { model: model.model_name, timeout: 10000 }
         );
@@ -358,7 +357,7 @@ router.get('/models', async (req, res, next) => {
       id: m.id,
       modelName: m.model_name,
       displayName: m.display_name,
-      n8nModel: m.litellm_model, // DB column name kept for compatibility
+      modelIdentifier: m.litellm_model,
       description: m.description,
       provider: {
         id: m.provider_id,
@@ -413,7 +412,7 @@ router.get('/models/:id', async (req, res, next) => {
           id: model.id,
           modelName: model.model_name,
           displayName: model.display_name,
-          n8nModel: model.litellm_model, // DB column name kept for compatibility
+          modelIdentifier: model.litellm_model,
           description: model.description,
           provider: {
             id: model.provider_id,
@@ -467,7 +466,7 @@ router.post('/models', async (req, res, next) => {
       modelName,
       displayName,
       providerId,
-      n8nModel,
+      modelIdentifier,
       description,
       contextWindow,
       maxTokens,
@@ -479,10 +478,12 @@ router.post('/models', async (req, res, next) => {
       priority,
     } = req.body;
 
-    if (!modelName || !displayName || !providerId || !n8nModel) {
+    const litellmModel = modelIdentifier;
+
+    if (!modelName || !displayName || !providerId || !litellmModel) {
       return res.status(400).json({
         ok: false,
-        error: 'modelName, displayName, providerId, and n8nModel are required',
+        error: 'modelName, displayName, providerId, and modelIdentifier are required',
       });
     }
 
@@ -521,7 +522,7 @@ router.post('/models', async (req, res, next) => {
       providerId,
       modelName,
       displayName,
-      n8nModel,
+      litellmModel,
       description || null,
       contextWindow || null,
       maxTokens || null,
@@ -541,6 +542,7 @@ router.post('/models', async (req, res, next) => {
         id: model.id,
         modelName: model.model_name,
         displayName: model.display_name,
+        modelIdentifier: model.litellm_model,
         litellmModel: model.litellm_model,
         providerId: model.provider_id,
         isEnabled: !!model.is_enabled,
@@ -558,7 +560,7 @@ router.put('/models/:id', async (req, res, next) => {
   try {
     const {
       displayName,
-      n8nModel,
+      modelIdentifier,
       description,
       contextWindow,
       maxTokens,
@@ -579,6 +581,8 @@ router.put('/models/:id', async (req, res, next) => {
       return res.status(404).json({ ok: false, error: 'Model not found' });
     }
 
+    const litellmModel = modelIdentifier;
+
     await execute(
       `UPDATE ai_models SET
         display_name = ?,
@@ -596,7 +600,7 @@ router.put('/models/:id', async (req, res, next) => {
         updated_at = datetime('now')
       WHERE id = ?`,
       displayName ?? existing.display_name,
-      n8nModel ?? existing.litellm_model,
+      litellmModel ?? existing.litellm_model,
       description !== undefined ? description : existing.description,
       contextWindow !== undefined ? contextWindow : existing.context_window,
       maxTokens !== undefined ? maxTokens : existing.max_tokens,
@@ -681,9 +685,8 @@ router.post('/models/:id/test', async (req, res, next) => {
     const testPrompt = prompt || 'Say "Hello" in one word.';
 
     try {
-      const client = getN8NClient();
       const start = Date.now();
-      const response = await client.chat(
+      const response = await aiService.chat(
         [{ role: 'user', content: testPrompt }],
         { model: model.model_name, timeout: 30000 }
       );
@@ -1160,96 +1163,6 @@ router.post('/usage/log', async (req, res, next) => {
   }
 });
 
-// ============================================================================
-// n8n Config Sync
-// ============================================================================
-
-/**
- * POST /reload - Sync database config to n8n
- * This generates a config object that could be used to update n8n workflows
- */
-router.post('/reload', async (req, res, next) => {
-  try {
-    // Get all enabled models
-    const models = await queryAll(`
-      SELECT m.*, p.name as provider_name, p.api_base_url, p.api_key_env
-      FROM ai_models m
-      JOIN ai_providers p ON m.provider_id = p.id
-      WHERE m.is_enabled = 1 AND p.is_enabled = 1
-      ORDER BY m.priority DESC
-    `);
-
-    // Get default route
-    const defaultRoute = await queryOne(
-      'SELECT * FROM ai_routes WHERE is_default = 1 AND is_enabled = 1'
-    );
-
-    // Build n8n config
-    const modelList = models.map((m) => ({
-      model_name: m.model_name,
-      n8n_params: {
-        model: m.litellm_model,
-        ...(m.api_base_url ? { api_base: m.api_base_url } : {}),
-        ...(m.api_key_env ? { api_key: `os.environ/${m.api_key_env}` } : {}),
-      },
-      model_info: {
-        description: m.description,
-        context_window: m.context_window,
-        max_tokens: m.max_tokens,
-        input_cost_per_token: m.input_cost_per_1k ? m.input_cost_per_1k / 1000 : undefined,
-        output_cost_per_token: m.output_cost_per_1k ? m.output_cost_per_1k / 1000 : undefined,
-        supports_vision: !!m.supports_vision,
-        supports_streaming: !!m.supports_streaming,
-        supports_function_calling: !!m.supports_function_calling,
-      },
-    }));
-
-    // Build fallbacks from default route
-    let fallbacks = [];
-    if (defaultRoute) {
-      const primaryModel = await queryOne(
-        'SELECT model_name FROM ai_models WHERE id = ?',
-        defaultRoute.primary_model_id
-      );
-      const fallbackIds = parseJsonField(defaultRoute.fallback_model_ids) || [];
-      
-      if (primaryModel && fallbackIds.length > 0) {
-        const fallbackModels = await queryAll(
-          `SELECT model_name FROM ai_models WHERE id IN (${fallbackIds.map(() => '?').join(',')})`,
-          ...fallbackIds
-        );
-        fallbacks.push({
-          [primaryModel.model_name]: fallbackModels.map((m) => m.model_name),
-        });
-      }
-    }
-
-    const n8nConfig = {
-      model_list: modelList,
-      router_settings: {
-        routing_strategy: defaultRoute?.routing_strategy || 'latency-based-routing',
-        num_retries: defaultRoute?.num_retries || 3,
-        timeout: defaultRoute?.timeout_seconds || 120,
-        fallbacks,
-      },
-    };
-
-    // Note: Actually updating n8n requires updating workflow configurations
-    // For now, we just return the config that would be applied
-
-    res.json({
-      ok: true,
-      data: {
-        config: n8nConfig,
-        modelCount: models.length,
-        message: 'Config generated. Update n8n workflows to apply.',
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
 /**
  * GET /config/export - Export current config as YAML-compatible JSON
  */
@@ -1276,7 +1189,7 @@ router.get('/config/export', async (req, res, next) => {
           providerId: m.provider_id,
           modelName: m.model_name,
           displayName: m.display_name,
-          n8nModel: m.litellm_model,
+          modelIdentifier: m.litellm_model,
           description: m.description,
           contextWindow: m.context_window,
           maxTokens: m.max_tokens,

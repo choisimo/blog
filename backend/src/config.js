@@ -73,7 +73,7 @@ async function loadConsulConfig() {
     // Domain configuration
     ['config/domains/frontend', 'SITE_BASE_URL'],
     ['config/domains/api', 'API_BASE_URL'],
-    ['config/domains/assets', 'R2_ASSETS_BASE_URL'],
+    ['config/domains/assets', 'ASSETS_BASE_URL'],
     ['config/domains/terminal', 'TERMINAL_GATEWAY_URL'],
     ['config/cors/allowed_origins', 'ALLOWED_ORIGINS'],
     
@@ -96,10 +96,6 @@ async function loadConsulConfig() {
     ['services/redis/url', 'REDIS_URL'],
     ['services/backend/url', 'INTERNAL_API_URL'],
     ['services/terminal/url', 'TERMINAL_SERVER_URL'],
-    
-    // N8N workflow service
-    ['services/n8n/internal_url', 'N8N_BASE_URL'],
-    ['services/n8n/webhook_url', 'N8N_WEBHOOK_URL'],
   ];
 
   const config = {};
@@ -141,12 +137,7 @@ const schema = z.object({
 
   JWT_EXPIRES_IN: z.string().default('12h'),
 
-  CF_ACCOUNT_ID: z.string().optional(),
-  CF_API_TOKEN: z.string().optional(),
-  D1_DATABASE_ID: z.string().optional(),
-
-  R2_BUCKET_NAME: z.string().default('blog'),
-  R2_ASSETS_BASE_URL: z.string().default('https://assets-b.nodove.com'),
+  ASSETS_BASE_URL: z.string().optional(),
 
   GITHUB_TOKEN: z.string().optional(),
   GITHUB_REPO_OWNER: z.string().optional(),
@@ -166,15 +157,13 @@ const schema = z.object({
   REDIS_URL: z.string().optional(),
 
   INTERNAL_API_URL: z.string().optional(),
-  N8N_BASE_URL: z.string().default('http://n8n:5678'),
-  N8N_WEBHOOK_URL: z.string().optional(),
   TERMINAL_SERVER_URL: z.string().default('http://terminal-server:8080'),
   TERMINAL_GATEWAY_URL: z.string().default('https://terminal.nodove.com'),
 
   CONTENT_PUBLIC_DIR: z.string().optional(),
   CONTENT_POSTS_DIR: z.string().optional(),
   CONTENT_IMAGES_DIR: z.string().optional(),
-  POSTS_SOURCE: z.enum(['filesystem', 'github', 'r2']).default('filesystem'),
+  POSTS_SOURCE: z.enum(['filesystem', 'github']).default('filesystem'),
   
   USE_CONSUL: z.string().optional(),
   CONSUL_HOST: z.string().optional(),
@@ -203,6 +192,7 @@ async function buildConfig() {
   const publicDir = raw.CONTENT_PUBLIC_DIR || path.join(repoRoot, 'frontend', 'public');
   const postsDir = raw.CONTENT_POSTS_DIR || path.join(publicDir, 'posts');
   const imagesDir = raw.CONTENT_IMAGES_DIR || path.join(publicDir, 'images');
+  const assetsBaseUrl = raw.ASSETS_BASE_URL;
 
   return {
     appEnv: raw.APP_ENV,
@@ -254,6 +244,8 @@ async function buildConfig() {
       postsSource: raw.POSTS_SOURCE,
     },
 
+    assetsBaseUrl,
+
     integrations: {
       vercelDeployHookUrl: raw.VERCEL_DEPLOY_HOOK_URL,
     },
@@ -268,15 +260,8 @@ async function buildConfig() {
       url: raw.REDIS_URL,
     },
 
-    r2: {
-      bucketName: raw.R2_BUCKET_NAME,
-      assetsBaseUrl: raw.R2_ASSETS_BASE_URL,
-    },
-
     services: {
       backendUrl: raw.INTERNAL_API_URL || `http://localhost:${raw.PORT}`,
-      n8nBaseUrl: raw.N8N_BASE_URL,
-      n8nWebhookUrl: raw.N8N_WEBHOOK_URL || raw.N8N_BASE_URL,
       terminalServerUrl: raw.TERMINAL_SERVER_URL,
       terminalGatewayUrl: raw.TERMINAL_GATEWAY_URL,
     },
@@ -319,6 +304,7 @@ export async function loadAndApplyConsulConfig() {
       siteBaseUrl: asyncConfig.siteBaseUrl,
       apiBaseUrl: asyncConfig.apiBaseUrl,
       allowedOrigins: asyncConfig.allowedOrigins,
+      assetsBaseUrl: asyncConfig.assetsBaseUrl,
       ai: asyncConfig.ai,
       rag: asyncConfig.rag,
       redis: asyncConfig.redis,
@@ -348,6 +334,7 @@ export const config = {
   siteBaseUrl: syncConfig.SITE_BASE_URL,
   apiBaseUrl: syncConfig.API_BASE_URL,
   allowedOrigins,
+  assetsBaseUrl: syncConfig.ASSETS_BASE_URL,
   rateLimit: {
     max: syncConfig.RATE_LIMIT_MAX,
     windowMs: syncConfig.RATE_LIMIT_WINDOW_MS,
@@ -392,14 +379,8 @@ export const config = {
   redis: {
     url: syncConfig.REDIS_URL,
   },
-  r2: {
-    bucketName: syncConfig.R2_BUCKET_NAME,
-    assetsBaseUrl: syncConfig.R2_ASSETS_BASE_URL,
-  },
   services: {
     backendUrl: syncConfig.INTERNAL_API_URL || `http://localhost:${syncConfig.PORT}`,
-    n8nBaseUrl: syncConfig.N8N_BASE_URL,
-    n8nWebhookUrl: syncConfig.N8N_WEBHOOK_URL || syncConfig.N8N_BASE_URL,
     terminalServerUrl: syncConfig.TERMINAL_SERVER_URL,
     terminalGatewayUrl: syncConfig.TERMINAL_GATEWAY_URL,
   },
@@ -441,7 +422,6 @@ export async function getServiceUrl(serviceName) {
     'chromadb': config.rag.chromaUrl,
     'embedding': config.rag.teiUrl,
     'redis': config.redis?.url || 'redis://localhost:6379',
-    'n8n': config.services?.n8nBaseUrl || 'http://n8n:5678',
     'terminal': config.services?.terminalServerUrl || 'http://terminal-server:8080',
   };
   

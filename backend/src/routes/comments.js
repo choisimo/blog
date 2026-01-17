@@ -8,6 +8,19 @@ const router = Router();
 
 router.use(requireFeature('comments'));
 
+// ----------------------------------------------------------------------------
+// Reactions
+// ----------------------------------------------------------------------------
+function normalizeEmoji(v) {
+  return String(v || '').trim().slice(0, 8);
+}
+function normalizeFingerprint(v) {
+  return String(v || '').trim().slice(0, 128);
+}
+function normalizeCommentId(v) {
+  return String(v || '').trim().slice(0, 128);
+}
+
 // In-memory listener registry (single-process only) for SSE
 const listenersByPost = new Map();
 function addListener(postId, send) {
@@ -45,11 +58,104 @@ const requireD1 = (req, res, next) => {
   if (!isD1Configured()) {
     return res.status(503).json({
       ok: false,
-      error: 'Comments service not configured (D1 credentials missing)',
+      error: 'Comments service not configured',
     });
   }
   next();
 };
+
+/**
+ * GET /comments/reactions/batch?commentIds=a,b,c
+ * Returns { reactions: { [commentId]: [{emoji,count}] } }
+ */
+router.get('/reactions/batch', requireD1, async (req, res, next) => {
+  try {
+    const raw = String(req.query.commentIds || '').trim();
+    const ids = raw
+      .split(',')
+      .map((s) => normalizeCommentId(s))
+      .filter(Boolean)
+      .slice(0, 200);
+
+    if (ids.length === 0) return res.json({ ok: true, data: { reactions: {} } });
+
+    const placeholders = ids.map(() => '?').join(',');
+    const rows = await queryAll(
+      `SELECT comment_id, emoji, COUNT(*) as cnt
+       FROM comment_reactions
+       WHERE comment_id IN (${placeholders})
+       GROUP BY comment_id, emoji`,
+      ...ids
+    );
+
+    const reactions = {};
+    for (const id of ids) reactions[id] = [];
+    for (const r of rows) {
+      const cid = String(r.comment_id);
+      if (!reactions[cid]) reactions[cid] = [];
+      reactions[cid].push({ emoji: r.emoji, count: r.cnt });
+    }
+
+    return res.json({ ok: true, data: { reactions } });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+/**
+ * POST /comments/:id/reactions
+ * Body: { emoji, fingerprint }
+ */
+router.post('/:id/reactions', requireD1, async (req, res, next) => {
+  try {
+    const commentId = normalizeCommentId(req.params.id);
+    const emoji = normalizeEmoji(req.body?.emoji);
+    const fingerprint = normalizeFingerprint(req.body?.fingerprint);
+    if (!commentId) return res.status(400).json({ ok: false, error: 'commentId is required' });
+    if (!emoji) return res.status(400).json({ ok: false, error: 'emoji is required' });
+    if (!fingerprint) return res.status(400).json({ ok: false, error: 'fingerprint is required' });
+
+    const id = `react-${crypto.randomUUID()}`;
+    await execute(
+      `INSERT OR IGNORE INTO comment_reactions (id, comment_id, emoji, user_fingerprint)
+       VALUES (?, ?, ?, ?)`,
+      id,
+      commentId,
+      emoji,
+      fingerprint
+    );
+
+    return res.json({ ok: true, data: { added: true } });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+/**
+ * DELETE /comments/:id/reactions
+ * Body: { emoji, fingerprint }
+ */
+router.delete('/:id/reactions', requireD1, async (req, res, next) => {
+  try {
+    const commentId = normalizeCommentId(req.params.id);
+    const emoji = normalizeEmoji(req.body?.emoji);
+    const fingerprint = normalizeFingerprint(req.body?.fingerprint);
+    if (!commentId) return res.status(400).json({ ok: false, error: 'commentId is required' });
+    if (!emoji) return res.status(400).json({ ok: false, error: 'emoji is required' });
+    if (!fingerprint) return res.status(400).json({ ok: false, error: 'fingerprint is required' });
+
+    await execute(
+      `DELETE FROM comment_reactions WHERE comment_id = ? AND emoji = ? AND user_fingerprint = ?`,
+      commentId,
+      emoji,
+      fingerprint
+    );
+
+    return res.json({ ok: true, data: { removed: true } });
+  } catch (err) {
+    return next(err);
+  }
+});
 
 /**
  * GET /comments?postId=xxx - Get comments for a post
@@ -59,12 +165,13 @@ router.get('/', requireD1, async (req, res, next) => {
   try {
     // Support multiple parameter names for flexibility
     const postId = req.query.postId || req.query.postSlug || req.query.slug;
-    if (!postId)
-      return res.status(400).json({ 
-        ok: false, 
+    if (!postId) {
+      return res.status(400).json({
+        ok: false,
         error: 'postId, postSlug, or slug is required',
-        hint: 'Use ?postId=<id> or ?postSlug=<slug> to get comments for a post'
+        hint: 'Use ?postId=<id> or ?postSlug=<slug> to get comments for a post',
       });
+    }
 
     const items = await queryAll(
       `SELECT id, post_id, author, content, email, status, created_at, updated_at

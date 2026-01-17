@@ -15,7 +15,7 @@
  * AI Provider:
  *   - LLM calls: OpenAI-compatible server (AI_SERVER_URL or OPENAI_API_BASE_URL)
  *   - RAG/Embeddings: TEI + ChromaDB (via existing containers)
- *   - n8n: Workflow orchestration only (AI model calls via OpenAI-compatible server)
+ *   - AI orchestration: handled by backend AI service
  * 
  * Usage:
  *   const coordinator = getAgentCoordinator();

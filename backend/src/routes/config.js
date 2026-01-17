@@ -42,15 +42,11 @@ const CONFIG_CATEGORIES = [
     ],
   },
   {
-    id: 'cloudflare',
-    name: 'Cloudflare',
-    description: 'D1, R2, Workers 설정',
+    id: 'assets',
+    name: 'Assets',
+    description: '정적 자산 URL 설정',
     variables: [
-      { key: 'CF_ACCOUNT_ID', type: 'text', description: 'Cloudflare Account ID' },
-      { key: 'CF_API_TOKEN', type: 'password', isSecret: true, description: 'Cloudflare API Token' },
-      { key: 'D1_DATABASE_ID', type: 'text', description: 'D1 Database ID' },
-      { key: 'R2_BUCKET_NAME', type: 'text', default: 'blog', description: 'R2 Bucket 이름' },
-      { key: 'R2_ASSETS_BASE_URL', type: 'url', default: 'https://assets-b.nodove.com', description: 'R2 Assets URL' },
+      { key: 'ASSETS_BASE_URL', type: 'url', description: 'Assets Base URL (e.g. https://example.com/images)' },
     ],
   },
   {

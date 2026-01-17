@@ -108,7 +108,7 @@ function UsageBar({
 
 export function UsageMonitor() {
   const { usage, loading, error, fetchUsage } = useUsage();
-  const { reloadConfig, exportConfig, loading: configLoading } = useAIConfig();
+  const { exportConfig } = useAIConfig();
   const [period, setPeriod] = useState('7d');
   const [groupBy, setGroupBy] = useState<'day' | 'model'>('day');
 
@@ -132,22 +132,6 @@ export function UsageMonitor() {
     }
     return 0;
   }, [chartData, groupBy]);
-
-  const handleReload = async () => {
-    const result = await reloadConfig();
-    if (result.ok) {
-      toast({
-        title: 'Config Generated',
-        description: `Generated with ${result.data?.modelCount} models. ${result.data?.message}`,
-      });
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: result.error,
-      });
-    }
-  };
 
   const handleExport = async () => {
     const result = await exportConfig();
@@ -336,17 +320,9 @@ export function UsageMonitor() {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Configuration Actions</CardTitle>
-              <CardDescription>Manage n8n workflow configuration sync</CardDescription>
+              <CardDescription>Export current configuration</CardDescription>
             </CardHeader>
             <CardContent className="flex gap-4">
-              <Button onClick={handleReload} disabled={configLoading}>
-                {configLoading ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                )}
-                Generate n8n Config
-              </Button>
               <Button variant="outline" onClick={handleExport}>
                 <Download className="h-4 w-4 mr-2" />
                 Export Config

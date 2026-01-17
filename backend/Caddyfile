@@ -3,7 +3,6 @@
 #
 # Domain Routing:
 #   blog-b.nodove.com  -> Backend API, Terminal
-#   blog-bw.nodove.com -> n8n Workflow Engine
 
 # =============================================================================
 # blog-b.nodove.com - Backend API, Terminal
@@ -35,37 +34,5 @@ blog-b.nodove.com {
     # Logging
     log {
         output file /var/log/caddy/blog-b-access.log
-    }
-}
-
-# =============================================================================
-# blog-bw.nodove.com - n8n Workflow Engine
-# =============================================================================
-blog-bw.nodove.com {
-    # n8n webhooks (public access)
-    handle /webhook/* {
-        reverse_proxy nginx:80
-    }
-
-    handle /webhook-test/* {
-        reverse_proxy nginx:80
-    }
-
-    # Health check
-    handle /health {
-        reverse_proxy nginx:80
-    }
-
-    # n8n UI and API - proxy everything else to nginx
-    handle {
-        reverse_proxy nginx:80
-    }
-
-    # Enable gzip
-    encode gzip
-
-    # Logging
-    log {
-        output file /var/log/caddy/blog-bw-access.log
     }
 }

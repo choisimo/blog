@@ -84,7 +84,6 @@ def get_all_service_urls() -> Dict[str, Optional[str]]:
         "chromadb",
         "embedding",
         "redis",
-        "n8n",
         "terminal",
     ]
 

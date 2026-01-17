@@ -1,0 +1,220 @@
+# =============================================================================
+# LiteLLM Proxy Configuration
+# =============================================================================
+# LiteLLM acts as the unified LLM Gateway for all AI operations.
+# All model routing, fallback, and rate limiting is handled here.
+#
+# Usage:
+#   litellm --config litellm_config.yaml --port 4000
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Model Definitions with Logical Aliases
+# -----------------------------------------------------------------------------
+# Orchestrator requests models by alias (e.g., "chat-default")
+# LiteLLM routes to the appropriate provider/model
+
+model_list:
+  # =========================================================================
+  # Chat Models (Primary)
+  # =========================================================================
+  
+  # Default chat model - balanced cost/performance
+  - model_name: chat-default
+    litellm_params:
+      model: openai/gpt-4.1
+      api_key: os.environ/OPENAI_API_KEY
+      timeout: 120
+      max_retries: 2
+    model_info:
+      description: "Default chat model - GPT-4.1"
+      tier: standard
+
+  # Cheap/fast model for simple tasks
+  - model_name: chat-fast
+    litellm_params:
+      model: openai/gpt-4.1-mini
+      api_key: os.environ/OPENAI_API_KEY
+      timeout: 60
+      max_retries: 2
+    model_info:
+      description: "Fast/cheap model for simple tasks"
+      tier: economy
+
+  # Premium model for complex reasoning
+  - model_name: chat-premium
+    litellm_params:
+      model: openai/gpt-4.1
+      api_key: os.environ/OPENAI_API_KEY
+      timeout: 180
+      max_retries: 2
+    model_info:
+      description: "Premium model for complex tasks"
+      tier: premium
+
+  # =========================================================================
+  # Reasoning Models (for complex analysis)
+  # =========================================================================
+  
+  - model_name: reasoning
+    litellm_params:
+      model: openai/o3-mini
+      api_key: os.environ/OPENAI_API_KEY
+      timeout: 300
+      max_retries: 1
+    model_info:
+      description: "Reasoning model for complex analysis"
+      tier: premium
+
+  # =========================================================================
+  # Vision Models
+  # =========================================================================
+  
+  - model_name: vision-default
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
+      timeout: 300
+      max_retries: 2
+    model_info:
+      description: "Vision model for image analysis"
+      tier: standard
+
+  # =========================================================================
+  # Embedding Models
+  # =========================================================================
+  
+  - model_name: embed-default
+    litellm_params:
+      model: openai/text-embedding-3-small
+      api_key: os.environ/OPENAI_API_KEY
+      timeout: 60
+    model_info:
+      description: "Default embedding model"
+      tier: economy
+
+  - model_name: embed-local
+    litellm_params:
+      model: huggingface/sentence-transformers/all-MiniLM-L6-v2
+      api_base: os.environ/TEI_URL
+      timeout: 30
+    model_info:
+      description: "Local TEI embedding server"
+      tier: free
+
+  # =========================================================================
+  # Fallback Providers (Google Gemini)
+  # =========================================================================
+  
+  - model_name: chat-default
+    litellm_params:
+      model: gemini/gemini-1.5-flash
+      api_key: os.environ/GOOGLE_API_KEY
+      timeout: 120
+      max_retries: 2
+    model_info:
+      description: "Fallback: Gemini 1.5 Flash"
+      tier: fallback
+
+  - model_name: chat-premium
+    litellm_params:
+      model: gemini/gemini-1.5-pro
+      api_key: os.environ/GOOGLE_API_KEY
+      timeout: 180
+      max_retries: 2
+    model_info:
+      description: "Fallback: Gemini 1.5 Pro"
+      tier: fallback
+
+  - model_name: vision-default
+    litellm_params:
+      model: gemini/gemini-1.5-flash
+      api_key: os.environ/GOOGLE_API_KEY
+      timeout: 300
+      max_retries: 2
+    model_info:
+      description: "Fallback: Gemini Vision"
+      tier: fallback
+
+  # =========================================================================
+  # Fallback Providers (Anthropic Claude)
+  # =========================================================================
+  
+  - model_name: chat-premium
+    litellm_params:
+      model: anthropic/claude-sonnet-4-20250514
+      api_key: os.environ/ANTHROPIC_API_KEY
+      timeout: 180
+      max_retries: 2
+    model_info:
+      description: "Fallback: Claude Sonnet"
+      tier: fallback
+
+# -----------------------------------------------------------------------------
+# Router Settings
+# -----------------------------------------------------------------------------
+router_settings:
+  # Routing strategy: simple, least-busy, latency-based-routing, cost-based-routing
+  routing_strategy: simple
+  
+  # Fallback configuration
+  num_retries: 2
+  retry_after: 5
+  timeout: 120
+  
+  # Allowed fails before marking deployment as failed
+  allowed_fails: 3
+  
+  # Cooldown time after failure (seconds)
+  cooldown_time: 60
+
+# -----------------------------------------------------------------------------
+# General Settings
+# -----------------------------------------------------------------------------
+general_settings:
+  # Master key for admin operations (optional)
+  master_key: os.environ/LITELLM_MASTER_KEY
+  
+  # Database for tracking (optional - uses SQLite by default)
+  # database_url: os.environ/LITELLM_DATABASE_URL
+  
+  # Enable request/response logging
+  store_prompts_in_spend_logs: false
+  
+  # Alerting (optional)
+  # alerting: ["slack"]
+  # alerting_threshold: 300
+
+# -----------------------------------------------------------------------------
+# Litellm Settings
+# -----------------------------------------------------------------------------
+litellm_settings:
+  # Drop unmapped params (prevents errors with provider-specific params)
+  drop_params: true
+  
+  # Set default model if none specified
+  default_team_settings:
+    default_model: chat-default
+  
+  # Request timeout (seconds)
+  request_timeout: 120
+  
+  # Enable caching (optional)
+  cache: false
+  # cache_params:
+  #   type: redis
+  #   host: os.environ/REDIS_HOST
+  #   port: 6379
+  #   password: os.environ/REDIS_PASSWORD
+
+# -----------------------------------------------------------------------------
+# Environment Variables Required
+# -----------------------------------------------------------------------------
+# OPENAI_API_KEY      - OpenAI API key
+# GOOGLE_API_KEY      - Google Gemini API key (optional, for fallback)
+# ANTHROPIC_API_KEY   - Anthropic Claude API key (optional, for fallback)
+# TEI_URL             - Text Embeddings Inference server URL
+# LITELLM_MASTER_KEY  - Master key for admin operations (optional)
+# REDIS_HOST          - Redis host for caching (optional)
+# REDIS_PASSWORD      - Redis password (optional)

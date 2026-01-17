@@ -1,40 +1,47 @@
 /**
- * Cloudflare R2 HTTP API Client
+ * Local asset storage
  *
- * Uses Cloudflare's REST API to access R2 storage.
- * Requires: CF_ACCOUNT_ID, CF_API_TOKEN, R2_BUCKET_NAME
- *
- * API: https://api.cloudflare.com/client/v4/accounts/{account_id}/r2/buckets/{bucket_name}/objects/{key}
+ * Stores uploaded files on the local filesystem under CONTENT_IMAGES_DIR.
  */
 
 import { config } from '../config.js';
 
-const getCredentials = () => {
-  const accountId = process.env.CF_ACCOUNT_ID;
-  const apiToken = process.env.CF_API_TOKEN;
-  const bucketName = process.env.R2_BUCKET_NAME || 'blog';
-  const assetsBaseUrl = config.r2?.assetsBaseUrl 
-    || process.env.R2_ASSETS_BASE_URL 
-    || 'https://assets-b.nodove.com';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 
-  if (!accountId || !apiToken) {
-    throw new Error('R2 credentials not configured. Set CF_ACCOUNT_ID, CF_API_TOKEN');
+function normalizeKey(key) {
+  const raw = String(key || '').replace(/^\/+/, '');
+  const normalized = path.posix.normalize(raw);
+  if (!normalized || normalized === '.' || normalized.startsWith('..') || normalized.includes('/../')) {
+    throw new Error('Invalid key');
   }
+  return normalized;
+}
 
-  return { accountId, apiToken, bucketName, assetsBaseUrl };
-};
+function getAssetsBaseUrl() {
+  const fromConfig = config.assetsBaseUrl;
+  if (fromConfig && String(fromConfig).trim()) {
+    return String(fromConfig).trim().replace(/\/$/, '');
+  }
+  const site = String(config.siteBaseUrl || '').replace(/\/$/, '');
+  return `${site}/images`;
+}
+
+function getLocalPathForKey(key) {
+  const k = normalizeKey(key);
+  return {
+    key: k,
+    abs: path.join(config.content.imagesDir, k),
+    url: `${getAssetsBaseUrl()}/${k}`,
+  };
+}
 
 /**
  * Check if R2 is configured
  * @returns {boolean}
  */
 export function isR2Configured() {
-  try {
-    getCredentials();
-    return true;
-  } catch {
-    return false;
-  }
+  return true;
 }
 
 /**
@@ -45,36 +52,15 @@ export function isR2Configured() {
  * @returns {Promise<{key: string, url: string, size: number}>}
  */
 export async function upload(key, data, options = {}) {
-  const { accountId, apiToken, bucketName, assetsBaseUrl } = getCredentials();
-
-  const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/r2/buckets/${bucketName}/objects/${encodeURIComponent(key)}`;
-
-  const headers = {
-    Authorization: `Bearer ${apiToken}`,
-  };
-
-  if (options.contentType) {
-    headers['Content-Type'] = options.contentType;
-  }
-
-  const response = await fetch(url, {
-    method: 'PUT',
-    headers,
-    body: data,
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`R2 upload failed (${response.status}): ${text}`);
-  }
-
-  const size = data.byteLength || data.length || 0;
-  const publicUrl = `${assetsBaseUrl.replace(/\/$/, '')}/${key}`;
+  const loc = getLocalPathForKey(key);
+  await fs.mkdir(path.dirname(loc.abs), { recursive: true });
+  const buf = Buffer.isBuffer(data) ? data : Buffer.from(data);
+  await fs.writeFile(loc.abs, buf);
 
   return {
-    key,
-    url: publicUrl,
-    size,
+    key: loc.key,
+    url: loc.url,
+    size: buf.byteLength,
     contentType: options.contentType || 'application/octet-stream',
   };
 }
@@ -85,22 +71,12 @@ export async function upload(key, data, options = {}) {
  * @returns {Promise<{deleted: boolean}>}
  */
 export async function deleteObject(key) {
-  const { accountId, apiToken, bucketName } = getCredentials();
-
-  const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/r2/buckets/${bucketName}/objects/${encodeURIComponent(key)}`;
-
-  const response = await fetch(url, {
-    method: 'DELETE',
-    headers: {
-      Authorization: `Bearer ${apiToken}`,
-    },
-  });
-
-  if (!response.ok && response.status !== 404) {
-    const text = await response.text();
-    throw new Error(`R2 delete failed (${response.status}): ${text}`);
+  const loc = getLocalPathForKey(key);
+  try {
+    await fs.unlink(loc.abs);
+  } catch (err) {
+    if (err?.code !== 'ENOENT') throw err;
   }
-
   return { deleted: true };
 }
 
@@ -110,32 +86,19 @@ export async function deleteObject(key) {
  * @returns {Promise<object|null>}
  */
 export async function head(key) {
-  const { accountId, apiToken, bucketName } = getCredentials();
-
-  const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/r2/buckets/${bucketName}/objects/${encodeURIComponent(key)}`;
-
-  const response = await fetch(url, {
-    method: 'HEAD',
-    headers: {
-      Authorization: `Bearer ${apiToken}`,
-    },
-  });
-
-  if (response.status === 404) {
-    return null;
+  const loc = getLocalPathForKey(key);
+  try {
+    const stat = await fs.stat(loc.abs);
+    return {
+      key: loc.key,
+      size: stat.size,
+      contentType: null,
+      etag: null,
+    };
+  } catch (err) {
+    if (err?.code === 'ENOENT') return null;
+    throw err;
   }
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`R2 head failed (${response.status}): ${text}`);
-  }
-
-  return {
-    key,
-    size: parseInt(response.headers.get('content-length') || '0', 10),
-    contentType: response.headers.get('content-type'),
-    etag: response.headers.get('etag'),
-  };
 }
 
 /**

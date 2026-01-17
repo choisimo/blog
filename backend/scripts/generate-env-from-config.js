@@ -26,6 +26,7 @@ const CONFIG_SCHEMA = {
     vars: [
       { key: 'SITE_BASE_URL', value: () => config.siteBaseUrl },
       { key: 'API_BASE_URL', value: () => config.apiBaseUrl },
+      { key: 'ASSETS_BASE_URL', value: () => config.assetsBaseUrl },
       { key: 'ALLOWED_ORIGINS', value: () => config.allowedOrigins.join(',') },
     ],
   },
@@ -42,20 +43,8 @@ const CONFIG_SCHEMA = {
     name: 'Service URLs',
     vars: [
       { key: 'INTERNAL_API_URL', value: () => config.services?.backendUrl },
-      { key: 'N8N_BASE_URL', value: () => config.services?.n8nBaseUrl },
-      { key: 'N8N_WEBHOOK_URL', value: () => config.services?.n8nWebhookUrl },
       { key: 'TERMINAL_SERVER_URL', value: () => config.services?.terminalServerUrl },
       { key: 'TERMINAL_GATEWAY_URL', value: () => config.services?.terminalGatewayUrl },
-    ],
-  },
-  cloudflare: {
-    name: 'Cloudflare',
-    vars: [
-      { key: 'CF_ACCOUNT_ID', value: () => process.env.CF_ACCOUNT_ID },
-      { key: 'CF_API_TOKEN', value: () => process.env.CF_API_TOKEN, secret: true },
-      { key: 'D1_DATABASE_ID', value: () => process.env.D1_DATABASE_ID },
-      { key: 'R2_BUCKET_NAME', value: () => config.r2?.bucketName },
-      { key: 'R2_ASSETS_BASE_URL', value: () => config.r2?.assetsBaseUrl },
     ],
   },
   github: {

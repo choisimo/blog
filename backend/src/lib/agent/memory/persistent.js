@@ -1,8 +1,8 @@
 /**
- * Persistent Memory - D1-backed long-term storage
+ * Persistent Memory - database-backed long-term storage
  * 
  * Provides persistent storage for user preferences, important facts,
- * and long-term conversation summaries using Cloudflare D1.
+ * and long-term conversation summaries.
  */
 
 import { query, execute, isD1Configured } from '../../d1.js';
@@ -20,7 +20,7 @@ class PersistentMemoryStore {
   }
 
   /**
-   * Check if D1 is available
+   * Check if DB is available
    */
   async _isD1Available() {
     if (this._d1Available !== null) {
@@ -48,7 +48,7 @@ class PersistentMemoryStore {
     try {
       const isAvailable = await this._isD1Available();
       if (!isAvailable) {
-        console.warn('[PersistentMemory] D1 not available, using fallback');
+        console.warn('[PersistentMemory] DB not available, using fallback');
         return this._fallbackSave(memory);
       }
 

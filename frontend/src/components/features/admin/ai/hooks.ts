@@ -432,17 +432,6 @@ export function useUsage() {
 export function useAIConfig() {
   const [loading, setLoading] = useState(false);
 
-  const reloadConfig = useCallback(async () => {
-    setLoading(true);
-    const result = await apiFetch<{
-      config: unknown;
-      modelCount: number;
-      message: string;
-    }>('/reload', { method: 'POST' });
-    setLoading(false);
-    return result;
-  }, []);
-
   const exportConfig = useCallback(async () => {
     const result = await apiFetch<{
       exportedAt: string;
@@ -455,7 +444,6 @@ export function useAIConfig() {
 
   return {
     loading,
-    reloadConfig,
     exportConfig,
   };
 }

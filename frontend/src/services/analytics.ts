@@ -1,6 +1,6 @@
 /**
  * Analytics Service
- * Handles view tracking and editor picks from Cloudflare D1
+ * Handles view tracking and editor picks
  */
 import { getApiBaseUrl } from '@/utils/apiBase';
 

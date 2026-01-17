@@ -2,20 +2,19 @@
  * Centralized AI Configuration
  * 
  * 모든 AI 서비스 설정을 중앙에서 관리합니다.
- * n8n Workflow Engine을 통해 모든 Provider에 접근합니다.
  * 환경변수로 오버라이드 가능합니다.
  */
 
-import type { AIConfig, ProviderId, ProviderConfig };
+import type { AIConfig, ProviderId, ProviderConfig } from '../types/ai';
 
 // ============================================================================
 // Environment Variable Helpers
 // ============================================================================
 
 function getEnv(key: string, defaultValue: string): string {
-  if (typeof process !== 'undefined' && process.env) {
-    return process.env[key] || defaultValue;
-  }
+  const env = (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } })
+    .process?.env;
+  if (env) return env[key] || defaultValue;
   return defaultValue;
 }
 
@@ -31,36 +30,14 @@ function getEnvBoolean(key: string, defaultValue: boolean): boolean {
 }
 
 // ============================================================================
-// n8n Workflow Engine Configuration (Primary)
-// ============================================================================
-
-export const N8N_CONFIG = {
-  // Base URL for n8n webhooks
-  baseUrl: getEnv('N8N_WEBHOOK_URL', 'http://n8n:5678'),
-  
-  // API key for authentication (optional)
-  apiKey: getEnv('N8N_API_KEY', ''),
-  
-  // Default model (will be routed by n8n workflow)
-  defaultModel: getEnv('AI_DEFAULT_MODEL', 'gemini-1.5-flash'),
-  
-  // Timeout settings
-  timeout: getEnvNumber('AI_TIMEOUT_MS', 120000),
-  longTimeout: getEnvNumber('AI_LONG_TIMEOUT_MS', 300000),
-  
-  // Retry settings (n8n handles retries in workflows)
-  retryAttempts: getEnvNumber('AI_RETRY_ATTEMPTS', 2),
-};
-
-// ============================================================================
-// Provider Definitions (Reference - actual routing handled by n8n workflows)
+// Provider Definitions
 // ============================================================================
 
 export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   'github-copilot': {
     id: 'github-copilot',
     name: 'GitHub Copilot',
-    baseUrl: 'auto', // Routed through n8n → opencode-engine
+    baseUrl: 'auto',
     models: ['gpt-4.1', 'gpt-4o', 'gpt-4-turbo', 'o1-mini', 'claude-sonnet-4'],
     features: {
       chat: true,
@@ -73,7 +50,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   openai: {
     id: 'openai',
     name: 'OpenAI',
-    baseUrl: 'https://api.openai.com/v1', // Routed through n8n
+    baseUrl: 'https://api.openai.com/v1',
     models: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
     features: {
       chat: true,
@@ -86,7 +63,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   gemini: {
     id: 'gemini',
     name: 'Google Gemini',
-    baseUrl: 'https://generativelanguage.googleapis.com/v1beta', // Routed through n8n
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
     models: ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-exp'],
     features: {
       chat: true,
@@ -99,7 +76,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   anthropic: {
     id: 'anthropic',
     name: 'Anthropic Claude',
-    baseUrl: 'https://api.anthropic.com/v1', // Routed through n8n
+    baseUrl: 'https://api.anthropic.com/v1',
     models: ['claude-3-5-sonnet', 'claude-3-opus', 'claude-3-haiku'],
     features: {
       chat: true,
@@ -112,7 +89,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   local: {
     id: 'local',
     name: 'Local LLM',
-    baseUrl: getEnv('AI_LOCAL_URL', 'http://localhost:11434'), // Routed through n8n
+    baseUrl: getEnv('AI_LOCAL_URL', 'http://localhost:11434'),
     models: ['llama3', 'codellama', 'mistral'],
     features: {
       chat: true,
@@ -133,7 +110,7 @@ export const DEFAULT_AI_CONFIG: AIConfig = {
   routing: {
     defaultProvider: getEnv('AI_DEFAULT_PROVIDER', 'gemini') as ProviderId,
     defaultModel: getEnv('AI_DEFAULT_MODEL', 'gemini-1.5-flash'),
-    fallbackProviders: ['gemini'], // n8n handles fallbacks in workflows
+    fallbackProviders: ['gemini'],
     timeout: getEnvNumber('AI_TIMEOUT_MS', 120000),
     retryAttempts: getEnvNumber('AI_RETRY_ATTEMPTS', 2),
   },
@@ -195,10 +172,6 @@ export function isModelAvailable(providerId: ProviderId, model: string): boolean
 // ============================================================================
 
 export const AI_URLS = {
-  // n8n Workflow Engine (Primary - use this for all AI calls)
-  n8n: N8N_CONFIG.baseUrl,
-  n8nApi: `${N8N_CONFIG.baseUrl}/webhook`,
-  
   // Legacy VAS endpoints (for GitHub Copilot auth only)
   vasCore: getEnv('VAS_CORE_URL', 'http://vas-core:7012'),
   vasAdmin: getEnv('VAS_ADMIN_URL', 'http://vas-admin:7080'),
@@ -212,8 +185,8 @@ export const AI_URLS = {
 // ============================================================================
 
 export const TIMEOUTS = {
-  default: N8N_CONFIG.timeout,
-  long: N8N_CONFIG.longTimeout,
+  default: getEnvNumber('AI_TIMEOUT_MS', 120000),
+  long: getEnvNumber('AI_LONG_TIMEOUT_MS', 300000),
   health: getEnvNumber('AI_HEALTH_TIMEOUT_MS', 5000),
   stream: getEnvNumber('AI_STREAM_TIMEOUT_MS', 180000),
 };
@@ -222,11 +195,10 @@ export const TIMEOUTS = {
 // Model Aliases (for convenience)
 // ============================================================================
 // Use these in your code instead of provider-specific names
-// n8n workflows will route to the correct provider automatically
 
 export const MODELS = {
   // Default models
-  default: N8N_CONFIG.defaultModel,
+  default: getEnv('AI_DEFAULT_MODEL', 'gemini-1.5-flash'),
   
   // Fast models (for quick responses)
   fast: 'gemini-1.5-flash',
