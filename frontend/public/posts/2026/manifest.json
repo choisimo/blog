@@ -1,5 +1,6 @@
 {
   "files": [
+    "LLM providers 추상화방안.md",
     "current-crowd.md",
     "io-redirection-pipeline.md",
     "nobel1-kursk-tanks.md",
@@ -7,7 +8,7 @@
     "remote-server-think.md",
     "shellscript-analyze-1.md"
   ],
-  "generatedAt": "2026-01-15T07:56:03.602Z",
-  "totalFiles": 6,
+  "generatedAt": "2026-01-17T08:54:41.044Z",
+  "totalFiles": 7,
   "excludedFiles": 0
 }

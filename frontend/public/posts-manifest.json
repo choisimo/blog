@@ -1,6 +1,28 @@
 {
-  "total": 140,
+  "total": 141,
   "items": [
+    {
+      "path": "/posts/2026/LLM providers 추상화방안.md",
+      "year": "2026",
+      "slug": "LLM providers 추상화방안",
+      "title": "LLM Providers 추상화방안",
+      "description": "LiteLLM 프록시로 LLM 호출",
+      "snippet": "LiteLLM 프록시로 LLM 호출",
+      "date": "2026-01-17",
+      "tags": [
+        "LLM",
+        "Architecture",
+        "LiteLLM",
+        "LangChain",
+        "MCP",
+        "RAG"
+      ],
+      "category": "LLM",
+      "author": "Admin",
+      "readingTime": "2 min read",
+      "published": true,
+      "url": "/blog/2026/LLM providers 추상화방안"
+    },
     {
       "path": "/posts/2026/shellscript-analyze-1.md",
       "year": "2026",
@@ -2960,7 +2982,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-01-15T07:56:03.631Z",
+  "generatedAt": "2026-01-17T08:54:41.099Z",
   "years": [
     "2026",
     "2025",
