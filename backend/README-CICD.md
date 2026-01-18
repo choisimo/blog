@@ -21,10 +21,19 @@ Backend CI/CD Pipeline은 **GitHub Actions 기반 이미지 빌드 시스템**�
 
 ### 배포 대상 이미지
 
-| 이미지                          | 설명                | 빌드 트리거                       |
-| ------------------------------- | ------------------- | --------------------------------- |
-| `ghcr.io/{owner}/blog-api`      | Node.js 백엔드 서버 | `backend/**` 변경                 |
-| `ghcr.io/{owner}/blog-terminal` | WebSocket 터미널    | `backend/terminal-server/**` 변경 |
+|이미지|설명|빌드 트리거|
+|---|---|---|
+|`ghcr.io/{owner}/blog-api`|Node.js 백엔드 서버|`backend/**` 변경|
+|`ghcr.io/{owner}/ai-server-backend`|AI 오케스트레이터 (FastAPI)|`ai-orchestrator/**` 변경|
+|`ghcr.io/{owner}/blog-terminal`|WebSocket 터미널|`backend/terminal-server/**` 변경|
+
+### 추가 GHCR 이미지 (옵션)
+
+|이미지|설명|워크플로우|
+|---|---|---|
+|`ghcr.io/{owner}/blog-frontend`|React SPA (NGINX 정적 서빙)|`build-extra-images.yml`|
+|`ghcr.io/{owner}/blog-terminal-sandbox`|터미널 샌드박스 컨테이너|`build-extra-images.yml`|
+|`ghcr.io/{owner}/blog-workers-local`|Workers 로컬 에뮬레이터 이미지|`build-extra-images.yml`|
 
 ### 외부 이미지 (빌드 안 함)
 
@@ -69,11 +78,12 @@ flowchart LR
 
 ### 워크플로우 분리
 
-| 워크플로우                 | 목적                        | 트리거                  |
-| -------------------------- | --------------------------- | ----------------------- |
-| `deploy-blog-workflow.yml` | 이미지 빌드 & GHCR 푸시     | `backend/**` push, 수동 |
-| `sync-backend-env.yml`     | `.env` 및 SSL 인증서 동기화 | 수동만                  |
-| `deploy-api-gateway.yml`   | (deprecated)                | 수동만                  |
+|워크플로우|목적|트리거|
+|---|---|---|
+|`deploy-blog-workflow.yml`|이미지 빌드 & GHCR 푸시|`backend/**` push, 수동|
+|`build-extra-images.yml`|프론트/샌드박스/로컬 워커|`frontend/**` push, 수동|
+|`sync-backend-env.yml`|`.env` 및 SSL 인증서 동기화|수동만|
+|`deploy-api-gateway.yml`|(deprecated)|수동만|
 
 ---
 
@@ -81,15 +91,16 @@ flowchart LR
 
 ### deploy-blog-workflow.yml (이미지 빌드)
 
-#### Trigger Conditions
+#### Deploy Workflow Triggers
 
-| 트리거                | 경로         | 설명                 |
-| --------------------- | ------------ | -------------------- |
-| **push**              | `backend/**` | 백엔드 코드 변경     |
-| **push**              | `shared/**`  | 공유 라이브러리 변경 |
-| **workflow_dispatch** | -            | 수동 실행            |
+| 트리거                | 경로                  | 설명                    |
+| --------------------- | --------------------- | ----------------------- |
+| **push**              | `backend/**`          | 백엔드 코드 변경        |
+| **push**              | `shared/**`           | 공유 라이브러리 변경    |
+| **push**              | `ai-orchestrator/**`  | AI 오케스트레이터 변경  |
+| **workflow_dispatch** | -                     | 수동 실행               |
 
-#### Manual Dispatch Options
+#### Manual Dispatch Options (deploy-blog-workflow.yml)
 
 | 옵션        | 설명               | 기본값  |
 | ----------- | ------------------ | ------- |
@@ -100,19 +111,32 @@ flowchart LR
 ```bash
 ghcr.io/{owner}/blog-api:{sha}
 ghcr.io/{owner}/blog-api:latest
+ghcr.io/{owner}/ai-server-backend:{sha}
+ghcr.io/{owner}/ai-server-backend:latest
 ghcr.io/{owner}/blog-terminal:{sha}
 ghcr.io/{owner}/blog-terminal:latest
 ```
 
+#### build-extra-images.yml 결과물
+
+```bash
+ghcr.io/{owner}/blog-frontend:{sha}
+ghcr.io/{owner}/blog-frontend:latest
+ghcr.io/{owner}/blog-terminal-sandbox:{sha}
+ghcr.io/{owner}/blog-terminal-sandbox:latest
+ghcr.io/{owner}/blog-workers-local:{sha}
+ghcr.io/{owner}/blog-workers-local:latest
+```
+
 ### sync-backend-env.yml (환경 변수 동기화)
 
-#### Trigger Conditions
+#### Sync Workflow Triggers
 
 | 트리거                | 설명        |
 | --------------------- | ----------- |
 | **workflow_dispatch** | 수동 실행만 |
 
-#### Manual Dispatch Options
+#### Manual Dispatch Options (sync-backend-env.yml)
 
 | 옵션                  | 설명                                | 기본값  |
 | --------------------- | ----------------------------------- | ------- |
@@ -186,7 +210,7 @@ AI_DEFAULT_MODEL: "gpt-4.1"
 
 ### 배포 디렉토리
 
-```
+```text
 ~/blog-stack/
 ├── docker-compose.yml           # 메인 compose 파일
 ├── .env                         # 환경변수 (GitHub Actions가 동기화)
@@ -199,7 +223,7 @@ AI_DEFAULT_MODEL: "gpt-4.1"
 
 ### 소스 코드 디렉토리
 
-```
+```text
 ~/blog/                          # git clone한 저장소
 ├── backend/
 │   ├── scripts/
@@ -240,6 +264,8 @@ git push origin main
 
 # 3. 서버 관리자: 배포 (서버에서)
 # docker pull ghcr.io/<owner>/blog-api:latest
+# docker pull ghcr.io/<owner>/ai-server-backend:latest
+# docker pull ghcr.io/<owner>/blog-terminal:latest
 # docker compose up -d
 
 # 4. 환경 변수 변경 시
@@ -293,6 +319,7 @@ docker compose exec redis redis-cli -a $REDIS_PASSWORD ping
 | 파일                       | 설명                | 상태          |
 | -------------------------- | ------------------- | ------------- |
 | `deploy-blog-workflow.yml` | 이미지 빌드 전용    | ✅ Active     |
+| `build-extra-images.yml`   | 추가 이미지 빌드    | ✅ Active     |
 | `sync-backend-env.yml`     | 환경 변수 동기화    | ✅ Active     |
 | `deploy-api-gateway.yml`   | Workers API Gateway | ✅ Active     |
 | `backend-deploy.yml`       | 레거시 배포         | ❌ Deprecated |

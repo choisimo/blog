@@ -1,18 +1,14 @@
 """LiteLLM client wrapper for unified LLM access.
 
 All LLM calls go through LiteLLM with logical model aliases:
-- chat-default: Balanced cost/performance (GPT-4.1)
-- chat-fast: Economy model (GPT-4.1-mini)
-- chat-premium: High-quality reasoning (GPT-4.1 with fallbacks)
-- vision-default: Vision model (GPT-4o)
-- embed-default: OpenAI embeddings
-- embed-local: Local TEI server
+- chat-default: Default chat model (OpenAI-compatible gateway)
+- vision-default: Vision-capable model (OpenAI-compatible gateway)
+- embed-default: Embedding model (OpenAI-compatible gateway)
 """
 
 from functools import lru_cache
 
 import litellm
-from litellm import Router
 
 from app.config import get_settings
 

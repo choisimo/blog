@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 import matter from 'gray-matter';
 import type {
   BlogPost,
@@ -42,6 +41,16 @@ export class PostService {
   private static contentCache: Map<string, string> = new Map(); // key: year/slug -> markdown content
   private static pageCache: Map<string, PostsPage<BlogPost>> = new Map();
 
+  private static asString(value: unknown): string {
+    if (typeof value === 'string') return value;
+    if (value === null || value === undefined) return '';
+    return String(value);
+  }
+
+  private static asLower(value: unknown): string {
+    return this.asString(value).toLowerCase();
+  }
+
   // Query for paginated metadata
   static readonly DEFAULT_PAGE_SIZE = 12;
   static readonly SORTS = ['date', 'title', 'readTime'] as const;
@@ -65,7 +74,7 @@ export class PostService {
       ...q,
       tags: (q.tags || []).slice().sort(),
       category: q.category || 'all',
-      search: (q.search || '').trim().toLowerCase(),
+      search: this.asString(q.search).trim().toLowerCase(),
       sort: q.sort || 'date',
     };
     return JSON.stringify(normalized);
@@ -80,44 +89,45 @@ export class PostService {
       sort?: 'date' | 'title' | 'readTime';
     }
   ): ManifestItem[] {
-    const search = (q.search || '').trim().toLowerCase();
+    const search = this.asString(q.search).trim().toLowerCase();
     const category =
       q.category && q.category !== 'all' ? q.category : undefined;
     const requiredTags = (q.tags || []).filter(Boolean);
 
     let filtered = items.filter(it => it.published !== false);
     if (category) {
-      const categoryLower = category.toLowerCase();
-      filtered = filtered.filter(it => (it.category || '').toLowerCase() === categoryLower);
+      const categoryLower = this.asLower(category);
+      filtered = filtered.filter(it => this.asLower(it.category) === categoryLower);
     }
     if (requiredTags.length) {
-      const requiredLower = requiredTags.map(t => t.toLowerCase());
+      const requiredLower = requiredTags.map(t => this.asLower(t));
       filtered = filtered.filter(it => {
-        const itemTagsLower = (it.tags || []).map(t => t.toLowerCase());
+        const itemTags = Array.isArray(it.tags) ? it.tags : [];
+        const itemTagsLower = itemTags.map(t => this.asLower(t));
         return requiredLower.some(t => itemTagsLower.includes(t));
       });
     }
     if (search) {
       filtered = filtered.filter(
         it =>
-          it.title.toLowerCase().includes(search) ||
-          (it.description || '').toLowerCase().includes(search) ||
-          (it.snippet || '').toLowerCase().includes(search) ||
-          (it.category || '').toLowerCase().includes(search) ||
-          (it.tags || []).some(t => t.toLowerCase().includes(search))
+          this.asLower(it.title).includes(search) ||
+          this.asLower(it.description).includes(search) ||
+          this.asLower(it.snippet).includes(search) ||
+          this.asLower(it.category).includes(search) ||
+          (Array.isArray(it.tags) ? it.tags : []).some(t => this.asLower(t).includes(search))
       );
     }
 
     const sortKey = q.sort || 'date';
     filtered.sort((a, b) => {
-      if (sortKey === 'title') return a.title.localeCompare(b.title);
+      if (sortKey === 'title') return this.asString(a.title).localeCompare(this.asString(b.title));
       if (sortKey === 'readTime') {
         // readingTime like "5 min read" -> parse leading int
         const parse = (s?: string) => (s ? parseInt(String(s), 10) || 0 : 0);
         return parse(a.readingTime) - parse(b.readingTime);
       }
       // default by date desc
-      return new Date(b.date).getTime() - new Date(a.date).getTime();
+      return new Date(this.asString(b.date)).getTime() - new Date(this.asString(a.date)).getTime();
     });
 
     return filtered;
@@ -147,14 +157,14 @@ export class PostService {
 
     const resultItems: BlogPost[] = slice.map(it => ({
       id: it.slug,
-      title: it.title,
-      description: it.description,
+      title: this.asString(it.title),
+      description: this.asString(it.description),
       excerpt: it.snippet || it.description,
       content: '',
-      date: it.date,
-      author: it.author || 'Admin',
-      tags: it.tags || [],
-      category: it.category,
+      date: this.asString(it.date),
+      author: this.asString(it.author) || 'Admin',
+      tags: (Array.isArray(it.tags) ? it.tags : []).filter(Boolean).map(t => this.asString(t)),
+      category: this.asString(it.category),
       readingTime: it.readingTime,
       slug: it.slug,
       year: it.year,
@@ -386,14 +396,14 @@ export class PostService {
       .filter(it => it.published !== false)
       .map(it => ({
         id: it.slug,
-        title: it.title,
-        description: it.description,
+        title: this.asString(it.title),
+        description: this.asString(it.description),
         excerpt: it.snippet || it.description,
         content: '', // lazy-loaded on demand
-        date: it.date,
-        author: it.author || 'Admin',
-        tags: it.tags || [],
-        category: it.category,
+        date: this.asString(it.date),
+        author: this.asString(it.author) || 'Admin',
+        tags: (Array.isArray(it.tags) ? it.tags : []).filter(Boolean).map(t => this.asString(t)),
+        category: this.asString(it.category),
         readingTime: it.readingTime,
         slug: it.slug,
         year: it.year,

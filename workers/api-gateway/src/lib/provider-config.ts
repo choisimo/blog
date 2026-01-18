@@ -27,11 +27,11 @@ const PROVIDER_CACHE_TTL = 60;
 
 const DEFAULT_PROVIDERS: DynamicProvider[] = [
   {
-    id: 'prov_gemini',
-    name: 'gemini',
-    displayName: 'Google Gemini',
-    apiBaseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-    apiKeyEnv: 'GEMINI_API_KEY',
+    id: 'prov_litellm',
+    name: 'litellm',
+    displayName: 'LiteLLM Gateway',
+    apiBaseUrl: 'http://litellm:4000/v1',
+    apiKeyEnv: null,
     isEnabled: true,
     healthStatus: 'unknown',
     lastHealthCheck: null,

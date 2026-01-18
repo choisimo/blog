@@ -1,0 +1,265 @@
+# =============================================================================
+# Blog Backend Docker Compose
+# =============================================================================
+# Services:
+#   - api:              Node.js Backend API Server
+#   - litellm:          LiteLLM Proxy (Unified AI Gateway)
+#   - nginx:            Reverse Proxy (SSL termination)
+#   - frontend:         React SPA (NGINX static server)
+#   - terminal-server:  WebSocket Terminal Server
+#   - workers-local:    Workers local emulator (wrangler dev)
+#   - chromadb:         Vector Database for RAG
+#   - embedding-server: TEI Embedding Server
+#
+# Usage:
+#   docker compose up -d                    # Start all services
+#   docker compose up -d api litellm nginx  # Start core services only
+#   docker compose logs -f litellm          # View LiteLLM logs
+#
+# Environment:
+#   - Copy .env.example to .env and configure
+#   - GITHUB_TOKEN is required for LiteLLM (GitHub Models)
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Backend API Server
+  # ---------------------------------------------------------------------------
+  api:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/blog-api:${BLOG_API_TAG:-latest}
+    container_name: blog-api
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - AI_SERVER_URL=http://litellm:4000/v1
+      - LITELLM_URL=http://litellm:4000
+      - TEI_URL=http://embedding-server:80
+      - CHROMA_URL=http://chromadb:8000
+    volumes:
+      - ../frontend/public:/frontend/public
+    networks:
+      - blog-network
+    depends_on:
+      litellm:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5080/api/v1/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    labels:
+      - "com.blog.service=api"
+      - "com.blog.description=Backend API Server"
+
+  # ---------------------------------------------------------------------------
+  # LiteLLM Proxy - Unified AI Gateway
+  # ---------------------------------------------------------------------------
+  # Routes all AI requests through GitHub Models using GITHUB_TOKEN
+  # Exposes OpenAI-compatible API at http://litellm:4000/v1
+  # ---------------------------------------------------------------------------
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: blog-litellm
+    command: >
+      --config /app/config.yaml
+      --port 4000
+      --detailed_debug
+    volumes:
+      - ../ai-orchestrator/litellm_config.yaml:/app/config.yaml:ro
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    ports:
+      - "127.0.0.1:4000:4000"
+    networks:
+      - blog-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    labels:
+      - "com.blog.service=litellm"
+      - "com.blog.description=LiteLLM AI Gateway (GitHub Models)"
+
+  # ---------------------------------------------------------------------------
+  # Nginx Reverse Proxy
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:alpine
+    container_name: blog-nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8443:8443"
+    networks:
+      - blog-network
+    depends_on:
+      - api
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    labels:
+      - "com.blog.service=nginx"
+      - "com.blog.description=Reverse Proxy with SSL"
+
+  # ---------------------------------------------------------------------------
+  # Frontend (React SPA)
+  # ---------------------------------------------------------------------------
+  frontend:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/blog-frontend:${BLOG_FRONTEND_TAG:-latest}
+    container_name: blog-frontend
+    ports:
+      - "127.0.0.1:8081:80"
+    networks:
+      - blog-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    labels:
+      - "com.blog.service=frontend"
+      - "com.blog.description=Frontend React SPA (NGINX)"
+
+  # ---------------------------------------------------------------------------
+  # Terminal Server (WebSocket)
+  # ---------------------------------------------------------------------------
+  terminal-server:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/blog-terminal:${BLOG_TERMINAL_TAG:-latest}
+    container_name: blog-terminal
+    environment:
+      - NODE_ENV=production
+      - ORIGIN_SECRET_KEY=${ORIGIN_SECRET_KEY}
+      - SANDBOX_IMAGE=${SANDBOX_IMAGE:-ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/blog-terminal-sandbox:latest}
+    networks:
+      - blog-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    labels:
+      - "com.blog.service=terminal"
+      - "com.blog.description=WebSocket Terminal Server"
+
+  # ---------------------------------------------------------------------------
+  # AI Orchestrator (FastAPI)
+  # ---------------------------------------------------------------------------
+  ai-orchestrator:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/ai-server-backend:${AI_SERVER_BACKEND_TAG:-latest}
+    container_name: blog-ai-orchestrator
+    environment:
+      - AI_SERVER_URL=http://litellm:4000/v1
+      - LITELLM_URL=http://litellm:4000
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+    networks:
+      - blog-network
+    depends_on:
+      litellm:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    labels:
+      - "com.blog.service=ai-orchestrator"
+      - "com.blog.description=AI Orchestrator (FastAPI)"
+
+  # ---------------------------------------------------------------------------
+  # Workers Local Emulator (Wrangler)
+  # ---------------------------------------------------------------------------
+  workers-local:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/blog-workers-local:${BLOG_WORKERS_LOCAL_TAG:-latest}
+    container_name: blog-workers-local
+    env_file: .env
+    environment:
+      - BACKEND_ORIGIN=http://api:5080
+    ports:
+      - "127.0.0.1:8787:8787"
+    networks:
+      - blog-network
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      - "com.blog.service=workers-local"
+      - "com.blog.description=Workers local emulator (wrangler dev)"
+
+  # ---------------------------------------------------------------------------
+  # ChromaDB - Vector Database for RAG
+  # ---------------------------------------------------------------------------
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: blog-chromadb
+    volumes:
+      - chromadb-data:/chroma/chroma
+    environment:
+      - ANONYMIZED_TELEMETRY=false
+      - ALLOW_RESET=false
+    networks:
+      - blog-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    labels:
+      - "com.blog.service=chromadb"
+      - "com.blog.description=Vector Database for RAG"
+
+  # ---------------------------------------------------------------------------
+  # TEI Embedding Server
+  # ---------------------------------------------------------------------------
+  embedding-server:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2
+    container_name: blog-embedding
+    command: --model-id sentence-transformers/all-MiniLM-L6-v2
+    volumes:
+      - embedding-cache:/data
+    networks:
+      - blog-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    labels:
+      - "com.blog.service=embedding"
+      - "com.blog.description=Text Embedding Inference Server"
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  blog-network:
+    name: blog-network
+    driver: bridge
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  chromadb-data:
+    name: blog-chromadb-data
+  embedding-cache:
+    name: blog-embedding-cache

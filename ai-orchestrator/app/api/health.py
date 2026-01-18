@@ -40,8 +40,7 @@ async def health_check() -> HealthResponse:
         },
         models=[
             {"id": "chat-default", "name": "Chat Default", "provider": "LiteLLM"},
-            {"id": "chat-fast", "name": "Chat Fast", "provider": "LiteLLM"},
-            {"id": "chat-premium", "name": "Chat Premium", "provider": "LiteLLM"},
             {"id": "vision-default", "name": "Vision Default", "provider": "LiteLLM"},
+            {"id": "embed-default", "name": "Embed Default", "provider": "LiteLLM"},
         ],
     )

@@ -9,7 +9,7 @@
 // Provider & Model Types
 // ============================================================================
 
-export type ProviderId = 'github-copilot' | 'openai' | 'gemini' | 'anthropic' | 'local';
+export type ProviderId = 'litellm' | 'local';
 
 export interface ProviderConfig {
   id: ProviderId;

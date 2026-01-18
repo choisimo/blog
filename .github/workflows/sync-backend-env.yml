@@ -114,7 +114,7 @@ jobs:
 
           # Terminal Server
           ORIGIN_SECRET_KEY=${{ secrets.ORIGIN_SECRET_KEY }}
-          SANDBOX_IMAGE=${{ vars.SANDBOX_IMAGE || 'alpine:latest' }}
+          SANDBOX_IMAGE=${{ vars.SANDBOX_IMAGE || format('ghcr.io/{0}/blog-terminal-sandbox:latest', github.repository_owner) }}
 
           # MinIO
           MINIO_USER=${{ vars.MINIO_USER || 'minioadmin' }}

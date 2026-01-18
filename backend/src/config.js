@@ -129,9 +129,8 @@ const schema = z.object({
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(60),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
 
-  AI_SERVER_URL: z.string().optional(),
-  OPENAI_API_BASE_URL: z.string().optional(),
-  AI_API_KEY: z.string().optional(),
+  AI_SERVER_URL: z.string().default('http://litellm:4000/v1'),
+  LITELLM_URL: z.string().default('http://litellm:4000'),
   AI_DEFAULT_MODEL: z.string().default('gpt-4.1'),
   AI_ASYNC_MODE: z.enum(['true', 'false']).default('false'),
 
@@ -211,10 +210,10 @@ async function buildConfig() {
     },
 
     ai: {
-      baseUrl: raw.AI_SERVER_URL || raw.OPENAI_API_BASE_URL,
-      apiKey: raw.AI_API_KEY,
+      baseUrl: raw.AI_SERVER_URL || (raw.LITELLM_URL ? raw.LITELLM_URL + '/v1' : 'http://litellm:4000/v1'),
       defaultModel: raw.AI_DEFAULT_MODEL,
       asyncMode: raw.AI_ASYNC_MODE === 'true',
+      litellmUrl: raw.LITELLM_URL || 'http://litellm:4000',
     },
 
     github: {
@@ -340,10 +339,10 @@ export const config = {
     windowMs: syncConfig.RATE_LIMIT_WINDOW_MS,
   },
   ai: {
-    baseUrl: syncConfig.AI_SERVER_URL || syncConfig.OPENAI_API_BASE_URL,
-    apiKey: syncConfig.AI_API_KEY,
+    baseUrl: syncConfig.AI_SERVER_URL || (syncConfig.LITELLM_URL ? syncConfig.LITELLM_URL + '/v1' : 'http://litellm:4000/v1'),
     defaultModel: syncConfig.AI_DEFAULT_MODEL,
     asyncMode: syncConfig.AI_ASYNC_MODE === 'true',
+    litellmUrl: syncConfig.LITELLM_URL || 'http://litellm:4000',
   },
   github: {
     token: syncConfig.GITHUB_TOKEN,

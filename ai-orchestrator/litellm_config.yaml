@@ -1,220 +1,166 @@
 # =============================================================================
 # LiteLLM Proxy Configuration
 # =============================================================================
-# LiteLLM acts as the unified LLM Gateway for all AI operations.
-# All model routing, fallback, and rate limiting is handled here.
+# https://docs.litellm.ai/docs/proxy/configs
 #
-# Usage:
-#   litellm --config litellm_config.yaml --port 4000
-#
+# LiteLLM is the unified AI gateway. All model requests route through here.
+# GitHub Token provides authentication to GitHub Models.
 # =============================================================================
 
-# -----------------------------------------------------------------------------
-# Model Definitions with Logical Aliases
-# -----------------------------------------------------------------------------
-# Orchestrator requests models by alias (e.g., "chat-default")
-# LiteLLM routes to the appropriate provider/model
-
 model_list:
-  # =========================================================================
-  # Chat Models (Primary)
-  # =========================================================================
-  
-  # Default chat model - balanced cost/performance
-  - model_name: chat-default
+  # ===========================================================================
+  # GitHub Models - GPT Series
+  # ===========================================================================
+  - model_name: gpt-4o
     litellm_params:
-      model: openai/gpt-4.1
+      model: github/gpt-4o
+      api_key: os.environ/GITHUB_TOKEN
+    model_info:
+      max_tokens: 128000
+      input_cost_per_token: 0.000005
+      output_cost_per_token: 0.000015
+
+  - model_name: gpt-4o-mini
+    litellm_params:
+      model: github/gpt-4o-mini
+      api_key: os.environ/GITHUB_TOKEN
+    model_info:
+      max_tokens: 128000
+      input_cost_per_token: 0.00000015
+      output_cost_per_token: 0.0000006
+
+  - model_name: gpt-4.1
+    litellm_params:
+      model: github/gpt-4.1
+      api_key: os.environ/GITHUB_TOKEN
+    model_info:
+      max_tokens: 128000
+      input_cost_per_token: 0.000002
+      output_cost_per_token: 0.000008
+
+  - model_name: gpt-4.1-mini
+    litellm_params:
+      model: github/gpt-4.1-mini
+      api_key: os.environ/GITHUB_TOKEN
+    model_info:
+      max_tokens: 128000
+      input_cost_per_token: 0.0000004
+      output_cost_per_token: 0.0000016
+
+  - model_name: gpt-4.1-nano
+    litellm_params:
+      model: github/gpt-4.1-nano
+      api_key: os.environ/GITHUB_TOKEN
+    model_info:
+      max_tokens: 128000
+      input_cost_per_token: 0.0000001
+      output_cost_per_token: 0.0000004
+
+  # ===========================================================================
+  # GitHub Models - Claude Series (Anthropic via GitHub)
+  # ===========================================================================
+  - model_name: claude-sonnet-4
+    litellm_params:
+      model: github/claude-sonnet-4-20250514
+      api_key: os.environ/GITHUB_TOKEN
+    model_info:
+      max_tokens: 200000
+      input_cost_per_token: 0.000003
+      output_cost_per_token: 0.000015
+
+  - model_name: claude-3.5-sonnet
+    litellm_params:
+      model: github/claude-3.5-sonnet
+      api_key: os.environ/GITHUB_TOKEN
+    model_info:
+      max_tokens: 200000
+      input_cost_per_token: 0.000003
+      output_cost_per_token: 0.000015
+
+  # ===========================================================================
+  # GitHub Models - Gemini Series (Google via GitHub)
+  # ===========================================================================
+  - model_name: gemini-2.0-flash
+    litellm_params:
+      model: github/gemini-2.0-flash
+      api_key: os.environ/GITHUB_TOKEN
+    model_info:
+      max_tokens: 1048576
+      input_cost_per_token: 0.000000075
+      output_cost_per_token: 0.0000003
+
+  # ===========================================================================
+  # Embedding Models (OpenAI Direct - if OPENAI_API_KEY is set)
+  # ===========================================================================
+  - model_name: text-embedding-3-small
+    litellm_params:
+      model: text-embedding-3-small
       api_key: os.environ/OPENAI_API_KEY
-      timeout: 120
-      max_retries: 2
     model_info:
-      description: "Default chat model - GPT-4.1"
-      tier: standard
+      max_tokens: 8191
+      input_cost_per_token: 0.00000002
 
-  # Cheap/fast model for simple tasks
-  - model_name: chat-fast
+  - model_name: text-embedding-3-large
     litellm_params:
-      model: openai/gpt-4.1-mini
+      model: text-embedding-3-large
       api_key: os.environ/OPENAI_API_KEY
-      timeout: 60
-      max_retries: 2
     model_info:
-      description: "Fast/cheap model for simple tasks"
-      tier: economy
+      max_tokens: 8191
+      input_cost_per_token: 0.00000013
 
-  # Premium model for complex reasoning
-  - model_name: chat-premium
-    litellm_params:
-      model: openai/gpt-4.1
-      api_key: os.environ/OPENAI_API_KEY
-      timeout: 180
-      max_retries: 2
-    model_info:
-      description: "Premium model for complex tasks"
-      tier: premium
-
-  # =========================================================================
-  # Reasoning Models (for complex analysis)
-  # =========================================================================
-  
-  - model_name: reasoning
-    litellm_params:
-      model: openai/o3-mini
-      api_key: os.environ/OPENAI_API_KEY
-      timeout: 300
-      max_retries: 1
-    model_info:
-      description: "Reasoning model for complex analysis"
-      tier: premium
-
-  # =========================================================================
-  # Vision Models
-  # =========================================================================
-  
-  - model_name: vision-default
-    litellm_params:
-      model: openai/gpt-4o
-      api_key: os.environ/OPENAI_API_KEY
-      timeout: 300
-      max_retries: 2
-    model_info:
-      description: "Vision model for image analysis"
-      tier: standard
-
-  # =========================================================================
-  # Embedding Models
-  # =========================================================================
-  
-  - model_name: embed-default
-    litellm_params:
-      model: openai/text-embedding-3-small
-      api_key: os.environ/OPENAI_API_KEY
-      timeout: 60
-    model_info:
-      description: "Default embedding model"
-      tier: economy
-
-  - model_name: embed-local
-    litellm_params:
-      model: huggingface/sentence-transformers/all-MiniLM-L6-v2
-      api_base: os.environ/TEI_URL
-      timeout: 30
-    model_info:
-      description: "Local TEI embedding server"
-      tier: free
-
-  # =========================================================================
-  # Fallback Providers (Google Gemini)
-  # =========================================================================
-  
-  - model_name: chat-default
-    litellm_params:
-      model: gemini/gemini-1.5-flash
-      api_key: os.environ/GOOGLE_API_KEY
-      timeout: 120
-      max_retries: 2
-    model_info:
-      description: "Fallback: Gemini 1.5 Flash"
-      tier: fallback
-
-  - model_name: chat-premium
-    litellm_params:
-      model: gemini/gemini-1.5-pro
-      api_key: os.environ/GOOGLE_API_KEY
-      timeout: 180
-      max_retries: 2
-    model_info:
-      description: "Fallback: Gemini 1.5 Pro"
-      tier: fallback
-
-  - model_name: vision-default
-    litellm_params:
-      model: gemini/gemini-1.5-flash
-      api_key: os.environ/GOOGLE_API_KEY
-      timeout: 300
-      max_retries: 2
-    model_info:
-      description: "Fallback: Gemini Vision"
-      tier: fallback
-
-  # =========================================================================
-  # Fallback Providers (Anthropic Claude)
-  # =========================================================================
-  
-  - model_name: chat-premium
-    litellm_params:
-      model: anthropic/claude-sonnet-4-20250514
-      api_key: os.environ/ANTHROPIC_API_KEY
-      timeout: 180
-      max_retries: 2
-    model_info:
-      description: "Fallback: Claude Sonnet"
-      tier: fallback
-
-# -----------------------------------------------------------------------------
+# =============================================================================
 # Router Settings
-# -----------------------------------------------------------------------------
+# =============================================================================
 router_settings:
-  # Routing strategy: simple, least-busy, latency-based-routing, cost-based-routing
-  routing_strategy: simple
-  
-  # Fallback configuration
-  num_retries: 2
+  # Retry settings
+  num_retries: 3
   retry_after: 5
+  
+  # Timeout settings (seconds)
   timeout: 120
   
-  # Allowed fails before marking deployment as failed
-  allowed_fails: 3
+  # Load balancing strategy
+  routing_strategy: simple-shuffle
   
-  # Cooldown time after failure (seconds)
-  cooldown_time: 60
+  # Fallback examples (enable if needed)
+  # fallbacks:
+  #   - model_name: gpt-4o
+  #     fallback_models: [claude-sonnet-4, gemini-2.0-flash]
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # General Settings
-# -----------------------------------------------------------------------------
+# =============================================================================
 general_settings:
-  # Master key for admin operations (optional)
+  # Master key (for proxy access)
   master_key: os.environ/LITELLM_MASTER_KEY
   
-  # Database for tracking (optional - uses SQLite by default)
-  # database_url: os.environ/LITELLM_DATABASE_URL
+  # Logging
+  set_verbose: false
   
-  # Enable request/response logging
-  store_prompts_in_spend_logs: false
-  
-  # Alerting (optional)
-  # alerting: ["slack"]
-  # alerting_threshold: 300
-
-# -----------------------------------------------------------------------------
-# Litellm Settings
-# -----------------------------------------------------------------------------
-litellm_settings:
-  # Drop unmapped params (prevents errors with provider-specific params)
-  drop_params: true
-  
-  # Set default model if none specified
-  default_team_settings:
-    default_model: chat-default
-  
-  # Request timeout (seconds)
-  request_timeout: 120
-  
-  # Enable caching (optional)
+  # Caching (Redis - enable if needed)
   cache: false
   # cache_params:
   #   type: redis
-  #   host: os.environ/REDIS_HOST
+  #   host: redis
   #   port: 6379
-  #   password: os.environ/REDIS_PASSWORD
+  
+  # Cost tracking (PostgreSQL - optional)
+  # database_url: os.environ/DATABASE_URL
 
-# -----------------------------------------------------------------------------
+# =============================================================================
+# LiteLLM Settings
+# =============================================================================
+litellm_settings:
+  # Drop unsupported params automatically
+  drop_params: true
+  
+  # Success/failure callbacks (optional)
+  # success_callback: ["langfuse"]
+  # failure_callback: ["langfuse"]
+
+# =============================================================================
 # Environment Variables Required
-# -----------------------------------------------------------------------------
-# OPENAI_API_KEY      - OpenAI API key
-# GOOGLE_API_KEY      - Google Gemini API key (optional, for fallback)
-# ANTHROPIC_API_KEY   - Anthropic Claude API key (optional, for fallback)
-# TEI_URL             - Text Embeddings Inference server URL
-# LITELLM_MASTER_KEY  - Master key for admin operations (optional)
-# REDIS_HOST          - Redis host for caching (optional)
-# REDIS_PASSWORD      - Redis password (optional)
+# =============================================================================
+# GITHUB_TOKEN         - GitHub Personal Access Token for GitHub Models
+# LITELLM_MASTER_KEY   - Master key for admin operations (optional)
+# OPENAI_API_KEY       - Only needed for embedding models (optional)

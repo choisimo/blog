@@ -34,11 +34,20 @@ function getEnvBoolean(key: string, defaultValue: boolean): boolean {
 // ============================================================================
 
 export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
-  'github-copilot': {
-    id: 'github-copilot',
-    name: 'GitHub Copilot',
-    baseUrl: 'auto',
-    models: ['gpt-4.1', 'gpt-4o', 'gpt-4-turbo', 'o1-mini', 'claude-sonnet-4'],
+  'litellm': {
+    id: 'litellm' as ProviderId,
+    name: 'LiteLLM Gateway',
+    baseUrl: getEnv('AI_SERVER_URL', 'http://litellm:4000/v1'),
+    models: [
+      'gpt-4o',
+      'gpt-4o-mini',
+      'gpt-4.1',
+      'gpt-4.1-mini',
+      'gpt-4.1-nano',
+      'claude-sonnet-4',
+      'claude-3.5-sonnet',
+      'gemini-2.0-flash',
+    ],
     features: {
       chat: true,
       streaming: true,
@@ -46,45 +55,6 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
       functionCalling: true,
     },
     enabled: true,
-  },
-  openai: {
-    id: 'openai',
-    name: 'OpenAI',
-    baseUrl: 'https://api.openai.com/v1',
-    models: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
-    features: {
-      chat: true,
-      streaming: true,
-      vision: true,
-      functionCalling: true,
-    },
-    enabled: getEnvBoolean('AI_OPENAI_ENABLED', false),
-  },
-  gemini: {
-    id: 'gemini',
-    name: 'Google Gemini',
-    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-    models: ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-exp'],
-    features: {
-      chat: true,
-      streaming: true,
-      vision: true,
-      functionCalling: true,
-    },
-    enabled: true,
-  },
-  anthropic: {
-    id: 'anthropic',
-    name: 'Anthropic Claude',
-    baseUrl: 'https://api.anthropic.com/v1',
-    models: ['claude-3-5-sonnet', 'claude-3-opus', 'claude-3-haiku'],
-    features: {
-      chat: true,
-      streaming: true,
-      vision: true,
-      functionCalling: false,
-    },
-    enabled: getEnvBoolean('AI_ANTHROPIC_ENABLED', false),
   },
   local: {
     id: 'local',
@@ -108,9 +78,9 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
 export const DEFAULT_AI_CONFIG: AIConfig = {
   providers: Object.values(PROVIDERS),
   routing: {
-    defaultProvider: getEnv('AI_DEFAULT_PROVIDER', 'gemini') as ProviderId,
-    defaultModel: getEnv('AI_DEFAULT_MODEL', 'gemini-1.5-flash'),
-    fallbackProviders: ['gemini'],
+    defaultProvider: getEnv('AI_DEFAULT_PROVIDER', 'litellm') as ProviderId,
+    defaultModel: getEnv('AI_DEFAULT_MODEL', 'gpt-4.1'),
+    fallbackProviders: ['local'],
     timeout: getEnvNumber('AI_TIMEOUT_MS', 120000),
     retryAttempts: getEnvNumber('AI_RETRY_ATTEMPTS', 2),
   },
@@ -197,22 +167,18 @@ export const TIMEOUTS = {
 // Use these in your code instead of provider-specific names
 
 export const MODELS = {
-  // Default models
-  default: getEnv('AI_DEFAULT_MODEL', 'gemini-1.5-flash'),
+  default: getEnv('AI_DEFAULT_MODEL', 'gpt-4.1'),
   
-  // Fast models (for quick responses)
-  fast: 'gemini-1.5-flash',
+  fast: 'gpt-4o-mini',
   
-  // Smart models (for complex tasks)
   smart: 'gpt-4o',
   smartVision: 'gpt-4o',
   
-  // Coding models
-  code: 'gpt-4o',
+  code: 'gpt-4.1',
   
-  // Long context models
-  longContext: 'gemini-1.5-pro',
+  longContext: 'gemini-2.0-flash',
   
-  // Cost-effective models
-  cheap: 'gemini-1.5-flash',
+  cheap: 'gpt-4.1-nano',
+  
+  claude: 'claude-sonnet-4',
 };

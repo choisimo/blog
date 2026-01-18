@@ -24,7 +24,7 @@ export interface ContainerInfo {
 }
 
 const DEFAULT_CONFIG: Omit<ContainerConfig, 'userId'> = {
-  image: 'blog-terminal-sandbox',
+  image: process.env.SANDBOX_IMAGE || 'blog-terminal-sandbox',
   cpus: '0.5',
   memory: '128m',
   pidsLimit: 50,

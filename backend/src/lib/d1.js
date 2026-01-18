@@ -166,6 +166,12 @@ export function isConfigured() {
 }
 
 /**
+ * Alias for isConfigured (backwards compatibility)
+ * @returns {boolean}
+ */
+export const isD1Configured = isConfigured;
+
+/**
  * Test database connection
  * @returns {Promise<boolean>}
  */

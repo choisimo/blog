@@ -37,16 +37,14 @@ import { config } from '../config.js';
 const getOpenAIBaseUrl = () => (
   config.ai?.baseUrl
   || process.env.AI_SERVER_URL
-  || process.env.OPENAI_API_BASE_URL
-  || 'https://api.openai.com/v1'
+  || (process.env.LITELLM_URL ? process.env.LITELLM_URL + '/v1' : null)
+  || 'http://litellm:4000/v1'
 );
 const OPENAI_API_KEY = config.ai?.apiKey
   || process.env.AI_API_KEY
-  || process.env.OPENAI_API_KEY
-  || '';
+  || 'sk-litellm';
 const OPENAI_DEFAULT_MODEL = config.ai?.defaultModel
   || process.env.AI_DEFAULT_MODEL
-  || process.env.OPENAI_DEFAULT_MODEL
   || 'gpt-4.1';
 
 // Timeout settings
