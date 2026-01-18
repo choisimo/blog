@@ -24,11 +24,23 @@ router.use(requireFeature('rag'));
 // Memory collection prefix (user-specific collections)
 const MEMORY_COLLECTION_PREFIX = 'user-memories-';
 
+// ChromaDB v2 API configuration
+const CHROMA_TENANT = 'default_tenant';
+const CHROMA_DATABASE = 'default_database';
+
 // Cache for collection name -> UUID mapping
 const collectionUUIDCache = new Map();
 
 /**
- * Get collection UUID by name (ChromaDB v0.5+ requires UUID for most operations)
+ * Get ChromaDB v2 collections base URL
+ * @returns {string} Base URL for collections API
+ */
+function getChromaCollectionsBase() {
+  return `${config.rag.chromaUrl}/api/v2/tenants/${CHROMA_TENANT}/databases/${CHROMA_DATABASE}/collections`;
+}
+
+/**
+ * Get collection UUID by name (ChromaDB v2 requires UUID for most operations)
  * @param {string} collectionName - 컬렉션 이름
  * @returns {Promise<string>} Collection UUID
  */
@@ -38,10 +50,10 @@ async function getCollectionUUID(collectionName) {
     return collectionUUIDCache.get(collectionName);
   }
 
-  const chromaBase = config.rag.chromaUrl;
+  const collectionsUrl = getChromaCollectionsBase();
   
   // List all collections and find by name
-  const listResp = await fetch(`${chromaBase}/api/v1/collections`, {
+  const listResp = await fetch(collectionsUrl, {
     method: 'GET',
   });
   
@@ -92,16 +104,14 @@ async function getEmbeddings(texts) {
  */
 async function queryChroma(embedding, nResults = 5, collectionName = null, whereFilter = null) {
   const collection = collectionName || config.rag.chromaCollection;
-  const chromaBase = config.rag.chromaUrl;
+  const collectionsBase = getChromaCollectionsBase();
 
-  // Get collection UUID (ChromaDB v0.5+ requires UUID)
   const collectionUUID = await getCollectionUUID(collection);
   if (!collectionUUID) {
     throw new Error(`Collection not found: ${collection}`);
   }
 
-  // ChromaDB v0.5+ API: POST /api/v1/collections/{collection_uuid}/query
-  const queryUrl = `${chromaBase}/api/v1/collections/${collectionUUID}/query`;
+  const queryUrl = `${collectionsBase}/${collectionUUID}/query`;
   
   const body = {
     query_embeddings: [embedding],
@@ -133,16 +143,14 @@ async function queryChroma(embedding, nResults = 5, collectionName = null, where
  * @returns {Promise<string>} Collection UUID
  */
 async function ensureCollection(collectionName) {
-  const chromaBase = config.rag.chromaUrl;
+  const collectionsBase = getChromaCollectionsBase();
   
-  // Check if collection exists
   let uuid = await getCollectionUUID(collectionName);
   if (uuid) {
     return uuid;
   }
 
-  // Create collection
-  const createResp = await fetch(`${chromaBase}/api/v1/collections`, {
+  const createResp = await fetch(collectionsBase, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -156,7 +164,6 @@ async function ensureCollection(collectionName) {
     throw new Error(`Failed to create collection: ${createResp.status} - ${errorText}`);
   }
 
-  // Get UUID from created collection or re-fetch
   if (createResp.ok) {
     const created = await createResp.json();
     if (created.id) {
@@ -165,7 +172,6 @@ async function ensureCollection(collectionName) {
     }
   }
 
-  // Re-fetch to get UUID (in case of 409 conflict)
   uuid = await getCollectionUUID(collectionName);
   if (!uuid) {
     throw new Error(`Failed to get UUID for collection: ${collectionName}`);
@@ -182,12 +188,11 @@ async function ensureCollection(collectionName) {
  * @param {object[]} metadatas - 메타데이터 배열
  */
 async function upsertToChroma(collectionName, ids, embeddings, documents, metadatas) {
-  const chromaBase = config.rag.chromaUrl;
+  const collectionsBase = getChromaCollectionsBase();
   
-  // Ensure collection exists and get UUID (ChromaDB v0.5+ requires UUID)
   const collectionUUID = await ensureCollection(collectionName);
 
-  const upsertUrl = `${chromaBase}/api/v1/collections/${collectionUUID}/upsert`;
+  const upsertUrl = `${collectionsBase}/${collectionUUID}/upsert`;
   
   const response = await fetch(upsertUrl, {
     method: 'POST',
@@ -214,15 +219,14 @@ async function upsertToChroma(collectionName, ids, embeddings, documents, metada
  * @param {string[]} ids - 삭제할 문서 ID 배열
  */
 async function deleteFromChroma(collectionName, ids) {
-  const chromaBase = config.rag.chromaUrl;
+  const collectionsBase = getChromaCollectionsBase();
   
-  // Get collection UUID (ChromaDB v0.5+ requires UUID)
   const collectionUUID = await getCollectionUUID(collectionName);
   if (!collectionUUID) {
     throw new Error(`Collection not found: ${collectionName}`);
   }
 
-  const deleteUrl = `${chromaBase}/api/v1/collections/${collectionUUID}/delete`;
+  const deleteUrl = `${collectionsBase}/${collectionUUID}/delete`;
   
   const response = await fetch(deleteUrl, {
     method: 'POST',
@@ -338,7 +342,6 @@ router.get('/health', async (req, res) => {
     chroma: { ok: false, url: config.rag.chromaUrl },
   };
 
-  // TEI 상태 확인
   try {
     const teiResp = await fetch(`${config.rag.teiUrl}/health`, { 
       method: 'GET',
@@ -349,9 +352,8 @@ router.get('/health', async (req, res) => {
     status.tei.error = err.message;
   }
 
-  // ChromaDB 상태 확인
   try {
-    const chromaResp = await fetch(`${config.rag.chromaUrl}/api/v1/heartbeat`, {
+    const chromaResp = await fetch(`${config.rag.chromaUrl}/api/v2/heartbeat`, {
       method: 'GET',
       signal: AbortSignal.timeout(5000),
     });
@@ -653,34 +655,33 @@ router.get('/status', async (req, res) => {
   try {
     const { collection } = req.query;
     const collectionName = collection || config.rag.chromaCollection;
-    const chromaBase = config.rag.chromaUrl;
+    const collectionsBase = getChromaCollectionsBase();
 
-    // Get collection info using NAME (ChromaDB GET accepts name)
-    const collectionResp = await fetch(`${chromaBase}/api/v1/collections/${collectionName}`, {
+    const collectionsResp = await fetch(collectionsBase, {
       method: 'GET',
       signal: AbortSignal.timeout(5000),
     });
 
-    if (!collectionResp.ok) {
-      if (collectionResp.status === 404 || collectionResp.status === 500) {
-        // Collection doesn't exist
-        return res.json({
-          ok: true,
-          data: {
-            collection: collectionName,
-            exists: false,
-            count: 0,
-          },
-        });
-      }
-      throw new Error(`ChromaDB error: ${collectionResp.status}`);
+    if (!collectionsResp.ok) {
+      throw new Error(`ChromaDB error: ${collectionsResp.status}`);
     }
 
-    const collectionData = await collectionResp.json();
-    const collectionUUID = collectionData.id;
+    const collections = await collectionsResp.json();
+    const collectionData = collections.find(c => c.name === collectionName);
 
-    // Get count using UUID (ChromaDB requires UUID for count)
-    const countResp = await fetch(`${chromaBase}/api/v1/collections/${collectionUUID}/count`, {
+    if (!collectionData) {
+      return res.json({
+        ok: true,
+        data: {
+          collection: collectionName,
+          exists: false,
+          count: 0,
+        },
+      });
+    }
+
+    const collectionUUID = collectionData.id;
+    const countResp = await fetch(`${collectionsBase}/${collectionUUID}/count`, {
       method: 'GET',
       signal: AbortSignal.timeout(5000),
     });
@@ -711,9 +712,9 @@ router.get('/status', async (req, res) => {
  */
 router.get('/collections', async (req, res) => {
   try {
-    const chromaBase = config.rag.chromaUrl;
+    const collectionsBase = getChromaCollectionsBase();
     
-    const response = await fetch(`${chromaBase}/api/v1/collections`, {
+    const response = await fetch(collectionsBase, {
       method: 'GET',
       signal: AbortSignal.timeout(5000),
     });

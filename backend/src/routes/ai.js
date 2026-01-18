@@ -175,11 +175,12 @@ function buildCapabilities(model) {
  */
 function getFallbackModels(defaultModel) {
   const fallbackList = [
-    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'Google', capabilities: ['chat', 'vision'] },
-    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'Google', capabilities: ['chat', 'vision', 'long-context'] },
-    { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', capabilities: ['chat', 'vision'] },
-    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', capabilities: ['chat', 'vision'] },
-    { id: 'claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', capabilities: ['chat', 'vision'] },
+    { id: 'gpt-4.1', name: 'GPT-4.1', provider: 'GitHub', capabilities: ['chat', 'vision'] },
+    { id: 'gpt-4o', name: 'GPT-4o', provider: 'GitHub', capabilities: ['chat', 'vision'] },
+    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'GitHub', capabilities: ['chat', 'vision'] },
+    { id: 'claude-sonnet-4', name: 'Claude Sonnet 4', provider: 'GitHub', capabilities: ['chat', 'vision', 'long-context'] },
+    { id: 'claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'GitHub', capabilities: ['chat', 'vision'] },
+    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'GitHub', capabilities: ['chat', 'vision', 'long-context'] },
   ];
   
   return fallbackList.map(m => ({

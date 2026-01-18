@@ -266,14 +266,25 @@ TRUST_PROXY=1                   # Reverse proxy 앞에서 동작 시
 ALLOWED_ORIGINS=https://noblog.nodove.com,https://api.nodove.com
 
 # ============================================
-# AI - OpenAI SDK Compatible (권장)
+# AI - LiteLLM Gateway (Docker 배포 시)
 # ============================================
-AI_SERVER_URL=https://api.openai.com/v1
-AI_API_KEY=your-api-key
+AI_SERVER_URL=http://litellm:4000/v1
+LITELLM_URL=http://litellm:4000
+LITELLM_MASTER_KEY=your-master-key      # LiteLLM 인증 키
+AI_API_KEY=your-master-key              # Backend → LiteLLM 인증
 AI_DEFAULT_MODEL=gpt-4.1
+GITHUB_TOKEN=ghp_...                    # GitHub Models용 토큰
 
-# Optional alias if your provider uses this variable
-OPENAI_API_BASE_URL=
+# ============================================
+# Redis (비동기 작업 큐, 캐싱)
+# ============================================
+REDIS_URL=redis://redis:6379
+
+# ============================================
+# SQLite Database (Docker 환경)
+# ============================================
+SQLITE_PATH=/app/.data/blog.db
+SQLITE_MIGRATIONS_DIR=/app/migrations
 
 # ============================================
 # RAG (선택)
@@ -369,12 +380,17 @@ FEATURE_COMMENTS_ENABLED=true
 
 ### Docker Services (docker-compose)
 
-| Service            | Port | Description          |
-| ------------------ | ---- | -------------------- |
-| `api`              | 5080 | Backend API Server   |
-| `nginx`            | 80   | Reverse Proxy        |
-| `embedding-server` | 80   | TEI Embedding Server |
-| `chromadb`         | 8000 | Vector Database      |
+| Service            | Port | Description                    |
+| ------------------ | ---- | ------------------------------ |
+| `api`              | 5080 | Backend API Server             |
+| `nginx`            | 80   | Reverse Proxy                  |
+| `litellm`          | 4000 | LiteLLM AI Gateway             |
+| `redis`            | 6379 | Cache and Async Task Queue     |
+| `chromadb`         | 8000 | Vector Database (RAG)          |
+| `embedding-server` | 80   | TEI Embedding Server           |
+| `frontend`         | 80   | React SPA (NGINX)              |
+| `terminal-server`  | 8080 | WebSocket Terminal Server      |
+| `ai-orchestrator`  | 7016 | AI Orchestrator (FastAPI)      |
 
 ---
 
@@ -396,21 +412,24 @@ npm run dev
 cd backend
 
 # .env 설정
-cp -n .env.production.example .env
+cp -n .env.example .env
+# .env 파일을 편집하여 필수 변수 설정:
+# - GITHUB_TOKEN (GitHub Models 인증용)
+# - LITELLM_MASTER_KEY (LiteLLM 인증용)
+# - AI_API_KEY (동일하게 설정)
 
-# 볼륨 마운트 설정 (권장)
-cat > docker-compose.override.yml <<'YAML'
-services:
-  api:
-    volumes:
-      - ../frontend/public:/frontend/public
-  nginx:
-    ports:
-      - "8091:80"
-YAML
+# SSL 인증서 설정 (자체 서명 또는 Cloudflare Origin)
+mkdir -p nginx/ssl
+# 자체 서명 인증서 생성 (개발용):
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout nginx/ssl/origin.key -out nginx/ssl/origin.crt \
+  -subj "/CN=localhost"
+
+# 데이터 디렉토리 생성
+mkdir -p ../.data
 
 # 실행
-docker compose up --build
+docker compose up -d
 
 # Health check
 curl http://localhost:8091/api/v1/healthz

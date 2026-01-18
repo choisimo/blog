@@ -7,11 +7,15 @@
 # Secrets & credentials
 *.pem
 *.key
+*.crt
 *.jwt
 *.token
 serviceAccount*.json
 credentials*.json
-ssl/
+
+# SSL certificates (keep directory structure)
+nginx/ssl/*
+!nginx/ssl/.gitkeep
 
 # Logs
 logs/
