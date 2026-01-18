@@ -252,7 +252,10 @@ services:
   embedding-server:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2
     container_name: blog-embedding
-    command: --model-id sentence-transformers/all-MiniLM-L6-v2
+    command: >
+      --model-id sentence-transformers/all-MiniLM-L6-v2
+      --max-input-length 512
+      --max-batch-tokens 16384
     volumes:
       - embedding-cache:/data
     networks:
