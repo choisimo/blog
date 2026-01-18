@@ -9,6 +9,7 @@
  *   if (!flags.aiEnabled) return <DisabledMessage />;
  */
 
+import { useEffect, useRef } from 'react';
 import { create } from 'zustand';
 import { getApiBaseUrl } from '@/utils/apiBase';
 
@@ -139,7 +140,7 @@ export const useFeatureFlagsStore = create<FeatureFlagsState>((set, get) => ({
       set({
         isLoading: false,
         error: err instanceof Error ? err.message : 'Unknown error',
-        // Keep current flags (defaults) on error
+        lastFetched: Date.now(),
       });
     }
   },
@@ -178,14 +179,14 @@ export const useFeatureFlagsStore = create<FeatureFlagsState>((set, get) => ({
  */
 export function useFeatureFlags() {
   const { flags, isLoading, error, fetchFlags } = useFeatureFlagsStore();
+  const hasFetched = useRef(false);
 
-  // Auto-fetch on mount (will use cache if fresh)
-  if (typeof window !== 'undefined') {
-    // Use queueMicrotask to avoid React render loop
-    queueMicrotask(() => {
+  useEffect(() => {
+    if (!hasFetched.current) {
+      hasFetched.current = true;
       fetchFlags();
-    });
-  }
+    }
+  }, [fetchFlags]);
 
   return { flags, isLoading, error };
 }
