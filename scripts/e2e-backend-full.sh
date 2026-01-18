@@ -607,6 +607,31 @@ else
 fi
 
 # =============================================================================
+# SECTION 10.5: AI Search Providers (Perplexity/Tavily)
+# =============================================================================
+echo ""
+echo -e "${BLUE}[10.5/16] AI SEARCH PROVIDERS${NC}"
+echo "---------------------------------------------"
+
+# Test Agent web_search tool with Tavily (default)
+RESP=$(http_post "${API_BASE}/agent/run" '{"message":"Search the web for: current Kubernetes version","mode":"research","tools":["web_search"]}')
+PARSED=$(parse_response "$RESP")
+BODY="${PARSED%|*}"
+CODE="${PARSED#*|}"
+if [[ "$CODE" == "200" ]] && check_ok "$BODY"; then
+  TOOLS_USED=$(echo "$BODY" | grep -o '"toolsUsed":\[[^]]*\]' | head -1)
+  if echo "$TOOLS_USED" | grep -q "web_search"; then
+    log_pass "Agent web_search tool (Tavily)"
+  else
+    log_warn "Agent web_search tool (tool not invoked)"
+  fi
+elif [[ "$CODE" == "503" ]]; then
+  log_skip "Agent web_search tool (AI unavailable)"
+else
+  log_warn "Agent web_search tool (code: $CODE)"
+fi
+
+# =============================================================================
 # SECTION 11: Chat Endpoints
 # =============================================================================
 echo ""
