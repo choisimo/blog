@@ -99,7 +99,7 @@ jobs:
             VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL || 'https://api.nodove.com' }}
             VITE_SITE_BASE_URL=https://noblog.nodove.com
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=max,ignore-error=true
 
       - name: Build and push Terminal Sandbox
         uses: docker/build-push-action@v5
@@ -110,7 +110,7 @@ jobs:
           tags: ${{ steps.meta-sandbox.outputs.tags }}
           labels: ${{ steps.meta-sandbox.outputs.labels }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=max,ignore-error=true
 
       - name: Build and push Workers Local
         uses: docker/build-push-action@v5
@@ -121,7 +121,7 @@ jobs:
           tags: ${{ steps.meta-workers.outputs.tags }}
           labels: ${{ steps.meta-workers.outputs.labels }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=max,ignore-error=true
 
   notify:
     name: Build Complete

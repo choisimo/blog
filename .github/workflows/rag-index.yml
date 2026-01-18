@@ -161,10 +161,13 @@ jobs:
           
           if [ "$EMBEDDING_OK" != "true" ] || [ "$CHROMA_OK" != "true" ]; then
             echo ""
-            echo "ERROR: Required services not ready"
+            echo "WARNING: Required services not ready"
             echo "Make sure embedding-server and chromadb containers are running"
-            $DC ps
-            exit 1
+            $DC ps 2>/dev/null || echo "No compose services found"
+            echo ""
+            echo "Skipping RAG indexing - services unavailable"
+            echo "This is expected if RAG services are not deployed on this server."
+            exit 0
           fi
           
           # Run indexing using a Python container within the Docker network

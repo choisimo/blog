@@ -155,6 +155,11 @@ const schema = z.object({
   CHROMA_COLLECTION: z.string().default('blog-posts-all-MiniLM-L6-v2'),
   REDIS_URL: z.string().optional(),
 
+  PERPLEXITY_API_KEY: z.string().optional(),
+  TAVILY_API_KEY: z.string().optional(),
+  BRAVE_SEARCH_API_KEY: z.string().optional(),
+  SERPER_API_KEY: z.string().optional(),
+
   INTERNAL_API_URL: z.string().optional(),
   TERMINAL_SERVER_URL: z.string().default('http://terminal-server:8080'),
   TERMINAL_GATEWAY_URL: z.string().default('https://terminal.nodove.com'),
@@ -257,6 +262,13 @@ async function buildConfig() {
 
     redis: {
       url: raw.REDIS_URL,
+    },
+
+    search: {
+      perplexityApiKey: raw.PERPLEXITY_API_KEY,
+      tavilyApiKey: raw.TAVILY_API_KEY,
+      braveApiKey: raw.BRAVE_SEARCH_API_KEY,
+      serperApiKey: raw.SERPER_API_KEY,
     },
 
     services: {
@@ -377,6 +389,12 @@ export const config = {
   },
   redis: {
     url: syncConfig.REDIS_URL,
+  },
+  search: {
+    perplexityApiKey: syncConfig.PERPLEXITY_API_KEY,
+    tavilyApiKey: syncConfig.TAVILY_API_KEY,
+    braveApiKey: syncConfig.BRAVE_SEARCH_API_KEY,
+    serperApiKey: syncConfig.SERPER_API_KEY,
   },
   services: {
     backendUrl: syncConfig.INTERNAL_API_URL || `http://localhost:${syncConfig.PORT}`,

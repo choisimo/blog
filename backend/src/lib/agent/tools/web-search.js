@@ -2,13 +2,109 @@
  * Web Search Tool - Search the web for information
  * 
  * Provides web search capabilities using various search APIs.
- * Supports DuckDuckGo, Brave Search, and custom search endpoints.
+ * Supports Perplexity, Tavily, DuckDuckGo, Brave Search, and custom search endpoints.
  */
 
 // Configuration
 const SEARCH_API_URL = process.env.SEARCH_API_URL || 'https://api.duckduckgo.com/';
 const BRAVE_API_KEY = process.env.BRAVE_SEARCH_API_KEY;
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
+const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
+const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
+
+/**
+ * Search using Perplexity API (AI-powered search with citations)
+ */
+async function searchPerplexity(query, options = {}) {
+  if (!PERPLEXITY_API_KEY) {
+    throw new Error('PERPLEXITY_API_KEY not configured');
+  }
+
+  const response = await fetch('https://api.perplexity.ai/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: options.model || 'sonar',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a helpful search assistant. Provide accurate, well-cited information.',
+        },
+        {
+          role: 'user',
+          content: query,
+        },
+      ],
+      return_citations: true,
+      search_domain_filter: options.domains || [],
+      search_recency_filter: options.recency || 'month',
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Perplexity search failed: ${response.status} - ${error}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || '';
+  const citations = data.citations || [];
+
+  return {
+    answer: content,
+    citations: citations.map((url, i) => ({
+      title: `Source ${i + 1}`,
+      url,
+      snippet: '',
+    })),
+  };
+}
+
+/**
+ * Search using Tavily API (search-optimized for AI agents)
+ */
+async function searchTavily(query, options = {}) {
+  if (!TAVILY_API_KEY) {
+    throw new Error('TAVILY_API_KEY not configured');
+  }
+
+  const response = await fetch('https://api.tavily.com/search', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      api_key: TAVILY_API_KEY,
+      query,
+      search_depth: options.searchDepth || 'advanced',
+      include_answer: true,
+      include_raw_content: options.includeRawContent || false,
+      max_results: options.limit || 5,
+      include_domains: options.includeDomains || [],
+      exclude_domains: options.excludeDomains || [],
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Tavily search failed: ${response.status} - ${error}`);
+  }
+
+  const data = await response.json();
+
+  return {
+    answer: data.answer || '',
+    results: (data.results || []).map(r => ({
+      title: r.title,
+      snippet: r.content,
+      url: r.url,
+      score: r.score,
+    })),
+  };
+}
 
 /**
  * Search using DuckDuckGo Instant Answer API (free, no key needed)
@@ -159,18 +255,18 @@ async function fetchWebPage(url) {
 export function createWebSearchTool() {
   return {
     name: 'web_search',
-    description: 'Search the web for current information, news, documentation, or any topic. Can also fetch and summarize web pages.',
+    description: 'Search the web for current information using AI-powered search (perplexity/tavily) or traditional engines. Perplexity provides AI-synthesized answers with citations. Tavily is optimized for AI agent use cases.',
     parameters: {
       type: 'object',
       properties: {
         action: {
           type: 'string',
           description: 'The action to perform',
-          enum: ['search', 'fetch_page'],
+          enum: ['search', 'fetch_page', 'ai_search'],
         },
         query: {
           type: 'string',
-          description: 'Search query (for search action)',
+          description: 'Search query (for search/ai_search action)',
         },
         url: {
           type: 'string',
@@ -178,33 +274,54 @@ export function createWebSearchTool() {
         },
         engine: {
           type: 'string',
-          description: 'Search engine to use',
-          enum: ['duckduckgo', 'brave', 'serper'],
-          default: 'duckduckgo',
+          description: 'Search engine: perplexity (AI search with citations), tavily (AI-optimized), duckduckgo (free), brave, serper (Google)',
+          enum: ['perplexity', 'tavily', 'duckduckgo', 'brave', 'serper'],
+          default: 'tavily',
         },
         limit: {
           type: 'number',
-          description: 'Maximum number of results',
+          description: 'Maximum number of results (for traditional engines)',
           default: 5,
+        },
+        searchDepth: {
+          type: 'string',
+          description: 'Search depth for Tavily: basic or advanced',
+          enum: ['basic', 'advanced'],
+          default: 'advanced',
         },
       },
       required: ['action'],
     },
 
     async execute(args) {
-      const { action, query, url, engine = 'duckduckgo', limit = 5 } = args;
+      const { action, query, url, engine = 'tavily', limit = 5, searchDepth = 'advanced' } = args;
 
-      console.log(`[WebSearch] Action: ${action}, Query: ${query || url}`);
+      console.log(`[WebSearch] Action: ${action}, Engine: ${engine}, Query: ${query || url}`);
 
       try {
         switch (action) {
+          case 'ai_search':
           case 'search': {
             if (!query) {
               return { success: false, error: 'query is required for search' };
             }
 
             let results;
+            let answer = null;
+
             switch (engine) {
+              case 'perplexity': {
+                const pplxResult = await searchPerplexity(query);
+                answer = pplxResult.answer;
+                results = pplxResult.citations;
+                break;
+              }
+              case 'tavily': {
+                const tavilyResult = await searchTavily(query, { limit, searchDepth });
+                answer = tavilyResult.answer;
+                results = tavilyResult.results;
+                break;
+              }
               case 'brave':
                 results = await searchBrave(query, { limit });
                 break;
@@ -221,8 +338,9 @@ export function createWebSearchTool() {
               action,
               query,
               engine,
-              count: results.length,
-              results,
+              answer,
+              count: results?.length || 0,
+              results: results || [],
             };
           }
 

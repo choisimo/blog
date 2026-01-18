@@ -85,7 +85,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=max,ignore-error=true
 
       - name: Build and push AI Server Backend
         uses: docker/build-push-action@v5
@@ -96,7 +96,7 @@ jobs:
           tags: ${{ steps.meta-ai.outputs.tags }}
           labels: ${{ steps.meta-ai.outputs.labels }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=max,ignore-error=true
 
       - name: Build and push Terminal Server
         uses: docker/build-push-action@v5
@@ -108,7 +108,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/blog-terminal:${{ steps.vars.outputs.sha_short }}
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/blog-terminal:latest
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=max,ignore-error=true
 
   notify:
     name: Build Complete
