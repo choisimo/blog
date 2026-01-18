@@ -24,6 +24,7 @@ import {
 } from '../lib/prompts';
 import { executeTask } from '../lib/llm';
 import { getAiGatewayCallerKey } from '../lib/config';
+import { getCorsHeadersForRequest } from '../lib/cors';
 
 type ChatContext = { Bindings: Env };
 
@@ -69,8 +70,10 @@ async function proxyRequest(c: Context<ChatContext>, path: string) {
   const upstreamResponse = await fetch(upstreamRequest);
 
   const headers = new Headers(upstreamResponse.headers);
-  headers.set('Access-Control-Allow-Origin', '*');
-  headers.set('Access-Control-Allow-Headers', '*');
+  const corsHeaders = getCorsHeadersForRequest(c.req.raw, c.env);
+  Object.entries(corsHeaders).forEach(([key, value]) => {
+    headers.set(key, value);
+  });
 
   return new Response(upstreamResponse.body, {
     status: upstreamResponse.status,

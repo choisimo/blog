@@ -17,6 +17,7 @@ import { loggerMiddleware } from './middleware/logger';
 import { tracingMiddleware } from './middleware/tracing';
 import { errorHandler } from './middleware/error';
 import { success } from './lib/response';
+import { getCorsHeadersForRequest } from './lib/cors';
 
 // Import routes
 import auth from './routes/auth';
@@ -48,38 +49,7 @@ const app = new Hono<HonoEnv>();
 // Configuration
 // =============================================================================
 
-const DEFAULT_ALLOWED_ORIGINS = [
-  'https://noblog.nodove.com',
-  'https://blog.nodove.com',
-  'https://nodove.com',
-  'http://localhost:5173',
-  'http://localhost:3000',
-];
-
-function getAllowedOrigins(env: Env): string[] {
-  if (env.ALLOWED_ORIGINS) {
-    return env.ALLOWED_ORIGINS.split(',').map((o) => o.trim());
-  }
-  return DEFAULT_ALLOWED_ORIGINS;
-}
-
-// =============================================================================
-// CORS Headers Helper
-// =============================================================================
-
-function getCorsHeaders(request: Request, env: Env): Record<string, string> {
-  const origin = request.headers.get('Origin') || '';
-  const allowedOrigins = getAllowedOrigins(env);
-  const allowOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
-
-  return {
-    'Access-Control-Allow-Origin': allowOrigin,
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, X-API-Key',
-    'Access-Control-Allow-Credentials': 'true',
-    'Access-Control-Max-Age': '86400',
-  };
-}
+// NOTE: CORS helpers live in ./lib/cors.
 
 // =============================================================================
 // Backend Proxy (for routes not handled by Workers)
@@ -88,6 +58,7 @@ function getCorsHeaders(request: Request, env: Env): Record<string, string> {
 async function proxyToBackend(request: Request, env: Env): Promise<Response> {
   const backendOrigin = env.BACKEND_ORIGIN;
   if (!backendOrigin) {
+    const corsHeaders = getCorsHeadersForRequest(request, env);
     return new Response(
       JSON.stringify({
         error: 'Configuration error',
@@ -95,7 +66,7 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
       }),
       {
         status: 500,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
       }
     );
   }
@@ -127,8 +98,15 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
       duplex: request.method !== 'GET' && request.method !== 'HEAD' ? 'half' : undefined,
     });
 
-    const corsHeaders = getCorsHeaders(request, env);
+    const corsHeaders = getCorsHeadersForRequest(request, env);
     const responseHeaders = new Headers(response.headers);
+
+    // Prevent upstream CORS headers from causing Origin mismatch issues
+    responseHeaders.delete('Access-Control-Allow-Origin');
+    responseHeaders.delete('Access-Control-Allow-Credentials');
+    responseHeaders.delete('Access-Control-Allow-Methods');
+    responseHeaders.delete('Access-Control-Allow-Headers');
+    responseHeaders.delete('Access-Control-Max-Age');
 
     Object.entries(corsHeaders).forEach(([key, value]) => {
       responseHeaders.set(key, value);
@@ -142,7 +120,7 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
   } catch (error) {
     console.error('Backend request failed:', error);
 
-    const corsHeaders = getCorsHeaders(request, env);
+    const corsHeaders = getCorsHeadersForRequest(request, env);
     return new Response(
       JSON.stringify({
         error: 'Backend unavailable',
