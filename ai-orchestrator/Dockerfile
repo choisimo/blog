@@ -37,6 +37,11 @@ RUN uv venv /opt/venv && \
 # -----------------------------------------------------------------------------
 FROM python:3.12-slim AS runtime
 
+# Labels for GitHub Container Registry
+LABEL org.opencontainers.image.source="https://github.com/choisimo/blog"
+LABEL org.opencontainers.image.description="AI Orchestrator - LiteLLM + LangChain based AI service"
+LABEL org.opencontainers.image.licenses="MIT"
+
 WORKDIR /app
 
 # Create non-root user
