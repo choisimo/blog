@@ -746,6 +746,7 @@ const BlogPost = () => {
             </header>
 
             <section
+              data-toc-boundary
               className={cn(
                 'rounded-[32px] border border-white/50 bg-card/70 p-4 shadow-soft backdrop-blur-sm dark:border-white/5 dark:bg-[#141927]/90 sm:p-8 -mx-2 sm:mx-0',
                 isTerminal && 'rounded-lg border-border bg-[hsl(var(--terminal-code-bg))]'
@@ -874,7 +875,7 @@ const BlogPost = () => {
             )}
           </article>
           
-          <aside className='hidden xl:block'>
+          <aside className='hidden xl:block relative'>
             <TableOfContents content={localized?.content ?? post.content} />
           </aside>
         </div>

@@ -9,6 +9,7 @@ import {
   MoreHorizontal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface PaginationProps {
   currentPage: number;
@@ -31,6 +32,7 @@ const Pagination = ({
   showQuickJump = false,
   size = 'md',
 }: PaginationProps) => {
+  const { isTerminal } = useTheme();
   const [jumpValue, setJumpValue] = useState('');
   const [isJumpOpen, setIsJumpOpen] = useState(false);
 
@@ -129,6 +131,13 @@ const Pagination = ({
     </Button>
   );
 
+  const activePageClasses = isTerminal
+    ? 'bg-green-400 text-black font-bold shadow-[0_0_8px_rgba(153,230,53,0.6)] scale-105 hover:bg-green-500 hover:text-black'
+    : 'bg-primary text-primary-foreground shadow-md scale-105 hover:bg-primary/90';
+  const focusRingClass = isTerminal
+    ? 'focus-visible:ring-green-400'
+    : 'focus-visible:ring-primary/40';
+
   const PageButton = ({
     page,
     isActive,
@@ -136,24 +145,25 @@ const Pagination = ({
     page: number;
     isActive: boolean;
   }) => (
-    <Button
-      variant={isActive ? 'default' : 'ghost'}
-      size='icon'
-      onClick={() => onPageChange(page)}
-      aria-label={`Page ${page}`}
-      aria-current={isActive ? 'page' : undefined}
-      className={cn(
-        styles.button,
-        'rounded-xl font-medium transition-all duration-200',
-        isActive
-          ? 'bg-primary text-primary-foreground shadow-md hover:bg-primary/90 scale-105'
-          : 'hover:bg-muted hover:scale-105',
-        'active:scale-95',
-        'focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2'
-      )}
-    >
-      {page}
-    </Button>
+<Button
+  variant={isActive ? 'default' : 'ghost'}
+  size='icon'
+  onClick={() => onPageChange(page)}
+  aria-label={`Page ${page}`}
+  aria-current={isActive ? 'page' : undefined}
+  className={cn(
+    styles.button,
+    'rounded-xl transition-all duration-200',
+    // 선택된 상태 (isActive) 디자인 변경
+    isActive ? activePageClasses : 'font-medium hover:bg-muted hover:scale-105',
+    'active:scale-95',
+    // 포커스 링도 테마에 맞춰 라임색으로 변경 (선택 사항)
+    'focus-visible:ring-2 focus-visible:ring-offset-2',
+    focusRingClass
+  )}
+>
+  {page}
+</Button>
   );
 
   const EllipsisButton = ({ position: _position }: { position: 'start' | 'end' }) => {

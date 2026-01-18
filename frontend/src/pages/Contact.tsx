@@ -111,7 +111,12 @@ const Contact = () => {
                     required
                   />
                 </div>
-                <Button type='submit' className='w-full sm:w-auto'>
+                <Button
+                  type='submit'
+                  className={
+                    'w-full sm:w-auto bg-black-700 text-white font-bold scale-105 hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2'
+                  }
+                >
                   <Send className='mr-2 h-4 w-4' />
                   Send Message
                 </Button>

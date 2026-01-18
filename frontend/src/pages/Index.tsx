@@ -29,6 +29,7 @@ import { formatDate } from '@/utils/blog';
 import { getEditorPicks, type EditorPick } from '@/services/analytics';
 import { getCategoryCounts } from '@/utils/categoryNormalize';
 import TerminalCategories from '@/components/features/navigation/TerminalCategories';
+import { AIConsole } from '@/components/features/console';
 
 // Shape used by visited posts in localStorage
 // Matches VisitedPostsMinimap
@@ -202,9 +203,6 @@ const Index = () => {
     }));
   }, [allPosts]);
 
-  // Hero featured post (first from Editor's Picks)
-  const heroFeatured = featuredPosts[0];
-
   // Carousel scroll handlers
   const carouselRef = useRef<HTMLDivElement>(null);
   const scrollCarousel = (direction: 'left' | 'right') => {
@@ -304,91 +302,9 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Right: Featured Post Card (Large) */}
+          {/* Right: AI Console (RAG-powered) */}
           <div className='md:col-span-7'>
-            {featuredLoading ? (
-              <div className={cn(
-                'aspect-[16/10] rounded-2xl animate-pulse',
-                isTerminal ? 'bg-card border border-border' : 'bg-muted'
-              )} />
-            ) : heroFeatured ? (
-              <Link 
-                to={`/blog/${heroFeatured.year}/${heroFeatured.slug}`}
-                className='group block'
-              >
-                <div className={cn(
-                  'relative aspect-[16/10] rounded-2xl overflow-hidden',
-                  isTerminal 
-                    ? 'border border-border hover:border-primary/50 transition-all duration-300' 
-                    : 'shadow-lg hover:shadow-xl transition-all duration-300'
-                )}>
-                  {/* Background Image */}
-                  {heroFeatured.coverImage ? (
-                    <OptimizedImage
-                      src={heroFeatured.coverImage}
-                      alt={heroFeatured.title}
-                      className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-500'
-                    />
-                  ) : (
-                    <div className={cn(
-                      'w-full h-full',
-                      isTerminal 
-                        ? 'bg-gradient-to-br from-card to-background' 
-                        : 'bg-gradient-to-br from-muted to-muted/50'
-                    )} />
-                  )}
-                  
-                  {/* Overlay Gradient */}
-                  <div className={cn(
-                    'absolute inset-0',
-                    isTerminal 
-                      ? 'bg-gradient-to-t from-background via-background/60 to-transparent' 
-                      : 'bg-gradient-to-t from-black/80 via-black/40 to-transparent'
-                  )} />
-                  
-                  {/* Content */}
-                  <div className='absolute bottom-0 left-0 right-0 p-6 md:p-8'>
-                    <div className='flex items-center gap-3 mb-3'>
-                      <span className={cn(
-                        'px-3 py-1 text-xs font-medium rounded-full',
-                        isTerminal 
-                          ? 'bg-primary/20 text-primary border border-primary/30' 
-                          : 'bg-white/20 text-white backdrop-blur-sm'
-                      )}>
-                        {heroFeatured.category}
-                      </span>
-                      <span className={cn(
-                        'text-sm',
-                        isTerminal ? 'text-muted-foreground' : 'text-white/70'
-                      )}>
-                        {formatDate(heroFeatured.date)}
-                      </span>
-                    </div>
-                    <h2 className={cn(
-                      'text-2xl md:text-3xl font-bold mb-2 line-clamp-2',
-                      isTerminal 
-                        ? 'text-foreground group-hover:text-primary transition-colors' 
-                        : 'text-white'
-                    )}>
-                      {heroFeatured.title}
-                    </h2>
-                    {heroFeatured.description && (
-                      <p className={cn(
-                        'text-sm md:text-base line-clamp-2 max-w-2xl',
-                        isTerminal ? 'text-muted-foreground' : 'text-white/80'
-                      )}>
-                        {heroFeatured.description}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Terminal Glow Effect on Hover */}
-                  {isTerminal && (
-                    <div className='absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none border-2 border-primary/30 rounded-2xl shadow-[inset_0_0_30px_hsl(var(--primary)/0.1)]' />
-                  )}
-                </div>
-              </Link>
-            ) : null}
+            <AIConsole className="aspect-[16/10] h-auto" />
           </div>
         </div>
       </section>
@@ -687,44 +603,52 @@ const Index = () => {
         )}>
           {isTerminal ? '// categories' : 'Popular Categories'}
         </h2>
-        
-        {isTerminal ? (
-          <div className="max-w-2xl mx-auto">
-            <TerminalCategories categories={categories} />
-          </div>
-        ) : (
-          <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
-            {categories.map(category => (
-              <Link
-                key={category.name}
-                to={`/blog?category=${encodeURIComponent(category.name)}`}
-              >
-                <Card
-                  className={cn(
-                    'group cursor-pointer transition-all duration-300',
-                    'hover:shadow-lg hover:-translate-y-0.5'
-                  )}
-                >
-                  <CardHeader className='text-center py-4 px-3'>
-                    <category.icon
+
+        <div className='grid gap-6 md:grid-cols-12 md:gap-8 items-start'>
+          <div className='md:col-span-7'>
+            {isTerminal ? (
+              <div className='w-full'>
+                <TerminalCategories categories={categories} />
+              </div>
+            ) : (
+              <div className='grid grid-cols-2 md:grid-cols-3 gap-3'>
+                {categories.map(category => (
+                  <Link
+                    key={category.name}
+                    to={`/blog?category=${encodeURIComponent(category.name)}`}
+                  >
+                    <Card
                       className={cn(
-                        'h-6 w-6 mx-auto mb-2 transition-colors',
-                        category.color,
-                        'group-hover:scale-110 transition-transform'
+                        'group cursor-pointer transition-all duration-300',
+                        'hover:shadow-lg hover:-translate-y-0.5'
                       )}
-                    />
-                    <CardTitle className='text-sm font-medium'>
-                      {category.name}
-                    </CardTitle>
-                    <CardDescription className='text-xs'>
-                      {category.count} posts
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
-            ))}
+                    >
+                      <CardHeader className='text-center py-4 px-3'>
+                        <category.icon
+                          className={cn(
+                            'h-6 w-6 mx-auto mb-2 transition-colors',
+                            category.color,
+                            'group-hover:scale-110 transition-transform'
+                          )}
+                        />
+                        <CardTitle className='text-sm font-medium'>
+                          {category.name}
+                        </CardTitle>
+                        <CardDescription className='text-xs'>
+                          {category.count} posts
+                        </CardDescription>
+                      </CardHeader>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+
+          <div className='md:col-span-5'>
+            <CategorySuggestionsPanel isTerminal={isTerminal} />
+          </div>
+        </div>
       </section>
 
       {/* ============================================
@@ -859,3 +783,73 @@ const Index = () => {
 };
 
 export default Index;
+
+function CategorySuggestionsPanel({ isTerminal }: { isTerminal: boolean }) {
+  return (
+    <div
+      className={cn(
+        'rounded-2xl border p-5',
+        isTerminal
+          ? 'border-primary/30 bg-[hsl(var(--terminal-code-bg))] font-mono'
+          : 'border-border/60 bg-card/60 backdrop-blur'
+      )}
+    >
+      <div className='flex items-center justify-between gap-3 mb-4'>
+        <div className='min-w-0'>
+          <div
+            className={cn(
+              'text-sm font-semibold',
+              isTerminal ? 'text-primary' : 'text-foreground'
+            )}
+          >
+            {isTerminal ? '$ suggested_features' : 'Suggested features'}
+          </div>
+          <div
+            className={cn(
+              'text-xs text-muted-foreground',
+              isTerminal && 'text-primary/60'
+            )}
+          >
+            {isTerminal ? 'right-pane idea list' : 'Ideas for the right pane'}
+          </div>
+        </div>
+        <TrendingUp className={cn('h-4 w-4', isTerminal ? 'text-primary' : 'text-muted-foreground')} />
+      </div>
+
+      <div className={cn('space-y-2', isTerminal && 'text-sm')}> 
+        <div className='flex items-start gap-2'>
+          <span className={cn('mt-0.5', isTerminal ? 'text-primary' : 'text-muted-foreground')}>1)</span>
+          <div className='min-w-0'>
+            <div className={cn('font-medium', isTerminal ? 'text-foreground' : 'text-foreground')}>Trending / Hot Posts</div>
+            <div className='text-xs text-muted-foreground'>최근 조회/댓글 기반 TOP N</div>
+          </div>
+        </div>
+        <div className='flex items-start gap-2'>
+          <span className={cn('mt-0.5', isTerminal ? 'text-primary' : 'text-muted-foreground')}>2)</span>
+          <div className='min-w-0'>
+            <div className={cn('font-medium', isTerminal ? 'text-foreground' : 'text-foreground')}>Continue Reading</div>
+            <div className='text-xs text-muted-foreground'>최근 본 글 / 마지막 스크롤 위치 복귀</div>
+          </div>
+        </div>
+        <div className='flex items-start gap-2'>
+          <span className={cn('mt-0.5', isTerminal ? 'text-primary' : 'text-muted-foreground')}>3)</span>
+          <div className='min-w-0'>
+            <div className={cn('font-medium', isTerminal ? 'text-foreground' : 'text-foreground')}>Weekly Digest</div>
+            <div className='text-xs text-muted-foreground'>이번 주 새 글 + 요약(메일/RSS)</div>
+          </div>
+        </div>
+        <div className='flex items-start gap-2'>
+          <span className={cn('mt-0.5', isTerminal ? 'text-primary' : 'text-muted-foreground')}>4)</span>
+          <div className='min-w-0'>
+            <div className={cn('font-medium', isTerminal ? 'text-foreground' : 'text-foreground')}>AI Quick Actions</div>
+            <div className='text-xs text-muted-foreground'>"이 블로그에서 X 찾아줘" 프롬프트 버튼</div>
+          </div>
+        </div>
+      </div>
+
+      <div className={cn('mt-4 pt-3 border-t text-xs', isTerminal ? 'border-primary/20 text-primary/70' : 'border-border/60 text-muted-foreground')}>
+        {isTerminal ? 'hint: future widgets can live here' : 'This area can host future widgets.'}
+      </div>
+    </div>
+  );
+}

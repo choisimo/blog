@@ -24,6 +24,8 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 # Copy dependency files
 COPY pyproject.toml ./
+COPY README.md ./
+COPY app ./app
 
 # Create virtual environment and install dependencies
 RUN uv venv /opt/venv && \

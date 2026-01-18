@@ -19,11 +19,17 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
   const [activeId, setActiveId] = useState<string>('');
   const { isTerminal } = useTheme();
   const isMobile = useIsMobile();
+  const [isPinnedToBoundary, setIsPinnedToBoundary] = useState(false);
+  const [pinnedTop, setPinnedTop] = useState<number>(0);
   
   // Refs for scroll optimization
   const rafRef = useRef<number | null>(null);
   const lastScrollTime = useRef<number>(0);
   const THROTTLE_MS = 100; // Throttle scroll events to 100ms
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const scrollAreaRef = useRef<HTMLDivElement | null>(null);
+  const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const STICKY_TOP_PX = 96; // top-24
 
   useEffect(() => {
     // Extract headings from markdown content
@@ -58,18 +64,52 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
   useEffect(() => {
     // Skip scroll tracking on mobile for performance
     if (isMobile) return;
-    
-    const updateActiveHeading = () => {
-      const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
-      const scrollPosition = window.scrollY + 100;
 
+    const updateActiveHeading = () => {
+      const boundaryEl = document.querySelector('[data-toc-boundary]');
+      const headings = boundaryEl?.querySelectorAll(
+        'h1, h2, h3, h4, h5, h6'
+      );
+      if (!headings || headings.length === 0) return;
+
+      const scrollPosition = window.scrollY + 100;
       for (let i = headings.length - 1; i >= 0; i--) {
         const heading = headings[i] as HTMLElement;
-        if (heading.offsetTop <= scrollPosition) {
+        if (heading.id && heading.offsetTop <= scrollPosition) {
           setActiveId(heading.id);
           break;
         }
       }
+    };
+
+    const updateTocPosition = () => {
+      const boundaryEl = document.querySelector('[data-toc-boundary]') as HTMLElement | null;
+      const tocEl = containerRef.current;
+      const offsetParent = tocEl?.offsetParent as HTMLElement | null;
+      if (!boundaryEl || !tocEl || !offsetParent) {
+        setIsPinnedToBoundary(false);
+        return;
+      }
+
+      const boundaryBottom = boundaryEl.getBoundingClientRect().bottom + window.scrollY;
+      const offsetParentTop = offsetParent.getBoundingClientRect().top + window.scrollY;
+      const tocHeight = tocEl.getBoundingClientRect().height;
+
+      const stickyTopInDocument = window.scrollY + STICKY_TOP_PX;
+      const wouldOverflowBoundary = stickyTopInDocument + tocHeight > boundaryBottom;
+
+      if (wouldOverflowBoundary) {
+        const topWithinParent = boundaryBottom - offsetParentTop - tocHeight;
+        setPinnedTop(Math.max(0, topWithinParent));
+        setIsPinnedToBoundary(true);
+      } else {
+        setIsPinnedToBoundary(false);
+      }
+    };
+
+    const updateOnScroll = () => {
+      updateActiveHeading();
+      updateTocPosition();
     };
     
     const handleScroll = () => {
@@ -87,19 +127,53 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
       }
       
       // Schedule update in next animation frame
-      rafRef.current = requestAnimationFrame(updateActiveHeading);
+      rafRef.current = requestAnimationFrame(updateOnScroll);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    updateActiveHeading(); // Initial check
+    updateOnScroll(); // Initial check
+
+    const handleResize = () => {
+      updateTocPosition();
+    };
+    window.addEventListener('resize', handleResize);
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleResize);
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
       }
     };
   }, [isMobile]);
+
+  useEffect(() => {
+    if (isMobile || !activeId) return;
+
+    const tocRoot = scrollAreaRef.current;
+    const activeItem = itemRefs.current[activeId];
+    if (!tocRoot || !activeItem) return;
+
+    const viewport = tocRoot.querySelector(
+      '[data-radix-scroll-area-viewport]'
+    ) as HTMLElement | null;
+    if (!viewport) return;
+
+    const viewportRect = viewport.getBoundingClientRect();
+    const itemRect = activeItem.getBoundingClientRect();
+    const itemOffset = itemRect.top - viewportRect.top + viewport.scrollTop;
+    const viewportHeight = viewportRect.height;
+    const upperThreshold = viewport.scrollTop + viewportHeight * 0.2;
+    const lowerThreshold = viewport.scrollTop + viewportHeight * 0.8;
+
+    if (itemOffset < upperThreshold || itemOffset > lowerThreshold) {
+      const target = itemOffset - viewportHeight * 0.35;
+      viewport.scrollTo({
+        top: Math.max(0, target),
+        behavior: 'smooth',
+      });
+    }
+  }, [activeId, isMobile]);
 
   const scrollToHeading = (id: string) => {
     const element = document.getElementById(id);
@@ -111,7 +185,14 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
   if (toc.length === 0) return null;
 
   return (
-    <div className='sticky top-24 w-72'>
+    <div
+      ref={containerRef}
+      className={cn(
+        'w-72',
+        isPinnedToBoundary ? 'absolute' : 'sticky top-24'
+      )}
+      style={isPinnedToBoundary ? { top: pinnedTop } : undefined}
+    >
       <div
         className={cn(
           'bg-card/50 backdrop-blur-sm border rounded-2xl p-6 shadow-lg',
@@ -157,11 +238,18 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
             </>
           )}
         </h3>
-        <ScrollArea className='h-[500px]'>
+        <ScrollArea ref={scrollAreaRef} className='h-[500px]'>
           <nav className='space-y-2'>
             {toc.map((item, index) => (
               <button
                 key={`${item.id}-${index}`}
+                ref={node => {
+                  if (node) {
+                    itemRefs.current[item.id] = node;
+                  } else {
+                    delete itemRefs.current[item.id];
+                  }
+                }}
                 onClick={() => scrollToHeading(item.id)}
                 className={cn(
                   'block w-full text-left text-sm py-2 px-3 rounded-lg hover:bg-primary/10 transition-all duration-200',

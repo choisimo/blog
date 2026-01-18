@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { LanguageToggle, ThemeToggle } from '@/components/common';
 import { Menu, X, Home, BookOpen, User, Mail, Shield, Settings, Globe, Moon, Sun, Monitor, Terminal } from 'lucide-react';
@@ -33,20 +33,6 @@ function TerminalWindowButtons() {
       <span className='w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-close))]' />
       <span className='w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]' />
       <span className='w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]' />
-    </div>
-  );
-}
-
-// Terminal path display component
-function TerminalPath() {
-  const location = useLocation();
-  const path = location.pathname === '/' ? '~' : `~${location.pathname}`;
-
-  return (
-    <div className='hidden sm:flex items-center gap-2 font-mono text-xs text-muted-foreground max-w-[200px] lg:max-w-[400px]'>
-      <span className='text-primary flex-shrink-0'>user@blog:</span>
-      <span className='truncate' title={path}>{path}</span>
-      <span className='terminal-cursor flex-shrink-0' />
     </div>
   );
 }
@@ -123,9 +109,6 @@ export function Header() {
                 {isTerminal ? '>_Nodove' : 'Nodove'}
               </span>
             </Link>
-
-            {/* Terminal path - only show in terminal mode */}
-            {isTerminal && <TerminalPath />}
 
             <div className='hidden md:flex md:gap-x-8'>
               {navigation.map(item => (

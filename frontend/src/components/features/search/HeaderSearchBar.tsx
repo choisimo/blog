@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Fuse from 'fuse.js';
 import { BlogPost } from '@/types/blog';
 import { Input } from '@/components/ui/input';
@@ -26,8 +26,13 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const terminalPrefixRef = useRef<HTMLDivElement>(null);
+  const [terminalPrefixWidth, setTerminalPrefixWidth] = useState(0);
   const navigate = useNavigate();
+  const location = useLocation();
   const { isTerminal } = useTheme();
+
+  const terminalPath = location.pathname === '/' ? '~' : `~${location.pathname}`;
 
   const fuse = useMemo(
     () =>
@@ -107,6 +112,23 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
   }, []);
 
   useEffect(() => {
+    if (!isTerminal) return;
+    const el = terminalPrefixRef.current;
+    if (!el) return;
+
+    const update = () => {
+      setTerminalPrefixWidth(el.getBoundingClientRect().width);
+    };
+    update();
+
+    const ro = new ResizeObserver(() => update());
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+    };
+  }, [isTerminal, terminalPath]);
+
+  useEffect(() => {
     setIsOpen(query.trim().length > 0);
     setSelectedIndex(0);
   }, [query]);
@@ -130,16 +152,27 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
                 <MiniTerminal />
               </PopoverContent>
             </Popover>
-            <Input
-              ref={inputRef}
-              type="text"
-              placeholder='/ to search'
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onFocus={() => query.trim() && setIsOpen(true)}
-              className="flex-1 h-9 border-0 bg-transparent px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-0 focus-visible:ring-offset-0"
-            />
+            <div className="relative flex-1">
+              <div
+                ref={terminalPrefixRef}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs text-muted-foreground"
+              >
+                <span className="text-primary flex-shrink-0">user@blog:</span>
+                <span className="max-w-[180px] truncate" title={terminalPath}>{terminalPath}</span>
+                <span className="terminal-cursor flex-shrink-0" />
+              </div>
+              <Input
+                ref={inputRef}
+                type="text"
+                placeholder='/ to search'
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onFocus={() => query.trim() && setIsOpen(true)}
+                className="h-9 border-0 bg-transparent pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-0 focus-visible:ring-offset-0"
+                style={{ paddingLeft: terminalPrefixWidth ? terminalPrefixWidth + 24 : undefined }}
+              />
+            </div>
             {query && (
               <Button
                 variant="ghost"
