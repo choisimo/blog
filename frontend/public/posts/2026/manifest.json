@@ -1,5 +1,6 @@
 {
   "files": [
+    "Algorithm.md",
     "LLM providers 추상화방안.md",
     "current-crowd.md",
     "io-redirection-pipeline.md",
@@ -8,7 +9,7 @@
     "remote-server-think.md",
     "shellscript-analyze-1.md"
   ],
-  "generatedAt": "2026-01-20T11:23:38.249Z",
-  "totalFiles": 7,
+  "generatedAt": "2026-01-20T11:51:06.156Z",
+  "totalFiles": 8,
   "excludedFiles": 0
 }

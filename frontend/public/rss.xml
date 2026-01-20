@@ -5,8 +5,19 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Tue, 20 Jan 2026 11:23:38 GMT</lastBuildDate>
+    <lastBuildDate>Tue, 20 Jan 2026 11:51:06 GMT</lastBuildDate>
     <language>en-US</language>
+    <item>
+      <title>Algorithm</title>
+      <description>알고리즘 리스트</description>
+      <link>https://noblog.nodove.com/blog/2026/Algorithm</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/Algorithm</guid>
+      <pubDate>Tue, 20 Jan 2026 00:00:00 GMT</pubDate>
+      <category>algorithm</category>
+      <category>algorithm</category>
+      <category>CS</category>
+      <category>math</category>
+    </item>
     <item>
       <title>LLM Providers 추상화방안</title>
       <description>LiteLLM 프록시로 LLM 호출</description>
@@ -257,19 +268,6 @@
       <category>Thread</category>
       <category>ExecutorService</category>
       <category>락</category>
-    </item>
-    <item>
-      <title>Happens-before를 붙잡기까지, 자바 메모리 모델을 해부한 내 여정</title>
-      <description>JMM 명세와 volatile, synchronized, reorder의 경계를 파헤치며 가시성과 순서를 이해한 개발자의 기록</description>
-      <link>https://noblog.nodove.com/blog/2025/java-memory-model-journal</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/java-memory-model-journal</guid>
-      <pubDate>Mon, 27 Oct 2025 00:00:00 GMT</pubDate>
-      <category>Java</category>
-      <category>Java</category>
-      <category>메모리모델</category>
-      <category>volatile</category>
-      <category>HappensBefore</category>
-      <category>JMM</category>
     </item>
   </channel>
 </rss>

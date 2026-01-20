@@ -1,6 +1,25 @@
 {
-  "total": 141,
+  "total": 142,
   "items": [
+    {
+      "path": "/posts/2026/Algorithm.md",
+      "year": "2026",
+      "slug": "Algorithm",
+      "title": "Algorithm",
+      "description": "알고리즘 리스트",
+      "snippet": "알고리즘 리스트",
+      "date": "2026-01-20",
+      "tags": [
+        "algorithm",
+        "CS",
+        "math"
+      ],
+      "category": "algorithm",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2026/Algorithm"
+    },
     {
       "path": "/posts/2026/LLM providers 추상화방안.md",
       "year": "2026",
@@ -399,6 +418,7 @@
       "author": "Admin",
       "readingTime": "5 min read",
       "published": true,
+      "coverImage": "/images/2025/wine-clipboard-bridge-journal/1768909026526.png",
       "url": "/blog/2025/wine-clipboard-bridge-journal"
     },
     {
@@ -2982,7 +3002,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-01-20T11:23:38.303Z",
+  "generatedAt": "2026-01-20T11:51:06.213Z",
   "years": [
     "2026",
     "2025",
