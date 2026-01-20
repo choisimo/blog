@@ -35,6 +35,9 @@ type PerplexityResponse = {
 };
 
 async function getTavilyApiKey(env: Env): Promise<string | null> {
+  if (env.TAVILY_API_KEY) return env.TAVILY_API_KEY;
+  if ((env as any).tavily_api_key) return (env as any).tavily_api_key;
+
   try {
     const kvValue = await env.KV.get(CONFIG_KEYS.TAVILY_API_KEY);
     if (kvValue) return kvValue;
@@ -42,11 +45,13 @@ async function getTavilyApiKey(env: Env): Promise<string | null> {
     if (legacy) return legacy;
   } catch {}
 
-  if (env.TAVILY_API_KEY) return env.TAVILY_API_KEY;
   return null;
 }
 
 async function getPerplexityApiKey(env: Env): Promise<string | null> {
+  if (env.PERPLEXITY_API_KEY) return env.PERPLEXITY_API_KEY;
+  if ((env as any).perplexity_api_key) return (env as any).perplexity_api_key;
+
   try {
     const kvValue = await env.KV.get(CONFIG_KEYS.PERPLEXITY_API_KEY);
     if (kvValue) return kvValue;
@@ -54,7 +59,6 @@ async function getPerplexityApiKey(env: Env): Promise<string | null> {
     if (legacy) return legacy;
   } catch {}
 
-  if (env.PERPLEXITY_API_KEY) return env.PERPLEXITY_API_KEY;
   return null;
 }
 

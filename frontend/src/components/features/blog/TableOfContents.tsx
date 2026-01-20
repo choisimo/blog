@@ -19,19 +19,16 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
   const [activeId, setActiveId] = useState<string>('');
   const { isTerminal } = useTheme();
   const isMobile = useIsMobile();
-  const [isPinnedToBoundary, setIsPinnedToBoundary] = useState(false);
-  const [pinnedTop, setPinnedTop] = useState<number>(0);
   const [isStuck, setIsStuck] = useState(false);
   const [animateDropIn, setAnimateDropIn] = useState(false);
   
-  // Refs for scroll optimization
   const rafRef = useRef<number | null>(null);
   const lastScrollTime = useRef<number>(0);
-  const THROTTLE_MS = 100; // Throttle scroll events to 100ms
+  const THROTTLE_MS = 100;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const STICKY_TOP_PX = 96; // top-24
+  const STICKY_TOP_PX = 96;
   const isStuckRef = useRef(false);
   const dropInTimeoutRef = useRef<number | null>(null);
 
@@ -89,11 +86,8 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
     };
 
     const updateTocPosition = () => {
-      const boundaryEl = document.querySelector('[data-toc-boundary]') as HTMLElement | null;
       const tocEl = containerRef.current;
-      const offsetParent = tocEl?.offsetParent as HTMLElement | null;
-      if (!boundaryEl || !tocEl || !offsetParent) {
-        setIsPinnedToBoundary(false);
+      if (!tocEl) {
         if (isStuckRef.current) {
           isStuckRef.current = false;
           setIsStuck(false);
@@ -101,40 +95,20 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
         return;
       }
 
-      const boundaryBottom = boundaryEl.getBoundingClientRect().bottom + window.scrollY;
-      const offsetParentTop = offsetParent.getBoundingClientRect().top + window.scrollY;
-      const tocHeight = tocEl.getBoundingClientRect().height;
+      const stuckNow = tocEl.getBoundingClientRect().top <= STICKY_TOP_PX + 1;
+      if (stuckNow !== isStuckRef.current) {
+        isStuckRef.current = stuckNow;
+        setIsStuck(stuckNow);
 
-      const stickyTopInDocument = window.scrollY + STICKY_TOP_PX;
-      const wouldOverflowBoundary = stickyTopInDocument + tocHeight > boundaryBottom;
-
-      if (wouldOverflowBoundary) {
-        const topWithinParent = boundaryBottom - offsetParentTop - tocHeight;
-        setPinnedTop(Math.max(0, topWithinParent));
-        setIsPinnedToBoundary(true);
-
-        if (isStuckRef.current) {
-          isStuckRef.current = false;
-          setIsStuck(false);
-        }
-      } else {
-        setIsPinnedToBoundary(false);
-
-        const stuckNow = tocEl.getBoundingClientRect().top <= STICKY_TOP_PX + 1;
-        if (stuckNow !== isStuckRef.current) {
-          isStuckRef.current = stuckNow;
-          setIsStuck(stuckNow);
-
-          if (stuckNow) {
-            setAnimateDropIn(true);
-            if (dropInTimeoutRef.current) {
-              window.clearTimeout(dropInTimeoutRef.current);
-            }
-            dropInTimeoutRef.current = window.setTimeout(() => {
-              setAnimateDropIn(false);
-              dropInTimeoutRef.current = null;
-            }, 220);
+        if (stuckNow) {
+          setAnimateDropIn(true);
+          if (dropInTimeoutRef.current) {
+            window.clearTimeout(dropInTimeoutRef.current);
           }
+          dropInTimeoutRef.current = window.setTimeout(() => {
+            setAnimateDropIn(false);
+            dropInTimeoutRef.current = null;
+          }, 220);
         }
       }
     };
@@ -166,16 +140,11 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
     updateOnScroll();
     requestAnimationFrame(updateOnScroll);
 
-    const boundaryEl = document.querySelector(
-      '[data-toc-boundary]'
-    ) as HTMLElement | null;
-
-    if (typeof ResizeObserver !== 'undefined' && boundaryEl) {
+    if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
       resizeObserver = new ResizeObserver(() => {
         updateTocPosition();
       });
-      resizeObserver.observe(boundaryEl);
-      if (containerRef.current) resizeObserver.observe(containerRef.current);
+      resizeObserver.observe(containerRef.current);
     }
 
     const handleResize = () => {
@@ -239,16 +208,12 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
   return (
     <div
       ref={containerRef}
-      className={cn(
-        'w-72',
-        isPinnedToBoundary ? 'absolute' : 'sticky top-24'
-      )}
-      style={isPinnedToBoundary ? { top: pinnedTop } : undefined}
+      className="w-72 sticky top-24"
     >
       <div
         className={cn(
           'bg-card/50 backdrop-blur-sm border rounded-2xl p-6 shadow-lg',
-          animateDropIn && !isPinnedToBoundary && isStuck && 'animate-in slide-in-from-top-2 fade-in duration-200',
+          animateDropIn && isStuck && 'animate-in slide-in-from-top-2 fade-in duration-200',
           isTerminal && 'bg-[hsl(var(--terminal-code-bg))] border-border rounded-lg'
         )}
       >

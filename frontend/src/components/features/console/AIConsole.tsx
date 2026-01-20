@@ -11,7 +11,7 @@ import { Terminal, Trash2, X, Minimize2, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTheme } from '@/contexts/ThemeContext';
-import { semanticSearch, type RAGSearchResult } from '@/services/rag';
+import { hybridSearch, type HybridSearchResult } from '@/services/rag';
 import { searchWeb } from '@/services/webSearch';
 import { streamChatEvents } from '@/services/chat';
 import { useConsoleState } from './useConsoleState';
@@ -31,7 +31,7 @@ function generateId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function ragResultToCitation(result: RAGSearchResult, index: number): Citation {
+function ragResultToCitation(result: HybridSearchResult, index: number): Citation {
   return {
     id: result.id || `cite-${index}`,
     title: result.metadata?.title || 'Untitled',
@@ -41,7 +41,7 @@ function ragResultToCitation(result: RAGSearchResult, index: number): Citation {
     slug: result.metadata?.slug,
     year: result.metadata?.year,
     snippet: result.content?.slice(0, 200) || result.snippet || '',
-    score: result.score ?? 0,
+    score: result.rrfScore ?? result.score ?? 0,
     category: result.metadata?.category,
   };
 }
@@ -90,7 +90,7 @@ export const AIConsole = memo(function AIConsole({
       const searchTrace: TraceEvent = {
         id: searchTraceId,
         type: 'search',
-        label: state.mode === 'web' ? 'Web Search' : state.mode === 'rag' ? 'Semantic Search' : 'Prepare',
+        label: state.mode === 'web' ? 'Web Search' : state.mode === 'rag' ? 'Hybrid Search' : 'Prepare',
         detail: `Query: "${query.slice(0, 50)}${query.length > 50 ? '...' : ''}"`,
         timestamp: Date.now(),
         status: 'running',
@@ -99,7 +99,7 @@ export const AIConsole = memo(function AIConsole({
 
       const searchStart = Date.now();
       if (state.mode === 'rag') {
-        const ragResponse = await semanticSearch(query, {
+        const ragResponse = await hybridSearch(query, {
           n_results: 5,
           signal: abortController.signal,
         });
@@ -112,15 +112,18 @@ export const AIConsole = memo(function AIConsole({
             duration: searchDuration,
             detail: ragResponse.error?.message || 'Search failed',
           });
-          throw new Error(ragResponse.error?.message || 'RAG search failed');
+          throw new Error(ragResponse.error?.message || 'Hybrid search failed');
         }
 
         citations = ragResponse.data.results.map(ragResultToCitation);
         actions.setCitations(citations);
+        
+        const semanticCount = ragResponse.data.results.filter(r => r.sources.includes('semantic')).length;
+        const keywordCount = ragResponse.data.results.filter(r => r.sources.includes('keyword')).length;
         actions.updateTrace(searchTraceId, {
           status: 'done',
           duration: searchDuration,
-          detail: `Found ${citations.length} results`,
+          detail: `Found ${citations.length} (semantic: ${semanticCount}, keyword: ${keywordCount})`,
         });
       } else if (state.mode === 'web') {
         const webResponse = await searchWeb(query, { maxResults: 5, searchDepth: 'basic' });

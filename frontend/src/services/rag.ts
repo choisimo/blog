@@ -1,11 +1,12 @@
 /**
  * RAG (Retrieval-Augmented Generation) Service
  *
- * ChromaDB 기반 시맨틱 검색 및 임베딩 생성 서비스
- * Backend의 /api/v1/rag 엔드포인트를 호출합니다.
+ * Hybrid search combining semantic (ChromaDB) and keyword (manifest) search
+ * using Reciprocal Rank Fusion (RRF) for optimal results.
  */
 
 import { getApiBaseUrl } from '@/utils/apiBase';
+import { PostService } from './postService';
 
 // ============================================================================
 // Types
@@ -192,6 +193,108 @@ export async function checkRAGHealth(): Promise<RAGHealthResponse> {
     const message = err instanceof Error ? err.message : 'Health check failed';
     return { ok: false, error: { message, code: 'NETWORK_ERROR' } };
   }
+}
+
+// ============================================================================
+// Hybrid Search with RRF (Reciprocal Rank Fusion)
+// ============================================================================
+
+const RRF_K = 60;
+
+function computeRRFScore(ranks: number[]): number {
+  return ranks.reduce((sum, rank) => sum + 1 / (RRF_K + rank), 0);
+}
+
+export interface HybridSearchResult extends RAGSearchResult {
+  rrfScore: number;
+  sources: ('semantic' | 'keyword')[];
+}
+
+export async function hybridSearch(
+  query: string,
+  options: {
+    n_results?: number;
+    signal?: AbortSignal;
+  } = {}
+): Promise<{ ok: boolean; data?: { results: HybridSearchResult[] }; error?: { message: string } }> {
+  const { n_results = 5, signal } = options;
+  const fetchCount = Math.max(n_results * 2, 10);
+
+  const [semanticPromise, keywordPromise] = [
+    semanticSearch(query, { n_results: fetchCount, signal }),
+    PostService.searchPosts(query),
+  ];
+
+  const [semanticResult, keywordPosts] = await Promise.all([
+    semanticPromise.catch(() => ({ ok: false as const, data: undefined })),
+    keywordPromise.catch(() => [] as Awaited<ReturnType<typeof PostService.searchPosts>>),
+  ]);
+
+  const rankMap = new Map<string, { semanticRank?: number; keywordRank?: number; result: RAGSearchResult }>();
+
+  if (semanticResult.ok && semanticResult.data?.results) {
+    semanticResult.data.results.forEach((r, idx) => {
+      const key = r.metadata.slug || r.id;
+      const existing = rankMap.get(key);
+      if (existing) {
+        existing.semanticRank = idx + 1;
+      } else {
+        rankMap.set(key, { semanticRank: idx + 1, result: r });
+      }
+    });
+  }
+
+  keywordPosts.forEach((post, idx) => {
+    const key = post.slug;
+    const existing = rankMap.get(key);
+    if (existing) {
+      existing.keywordRank = idx + 1;
+    } else {
+      rankMap.set(key, {
+        keywordRank: idx + 1,
+        result: {
+          id: post.id,
+          content: post.excerpt || post.description || '',
+          metadata: {
+            title: post.title,
+            slug: post.slug,
+            year: post.year,
+            category: post.category,
+            tags: post.tags,
+          },
+          score: 0,
+        },
+      });
+    }
+  });
+
+  const fused: HybridSearchResult[] = [];
+  for (const [, entry] of rankMap) {
+    const ranks: number[] = [];
+    const sources: ('semantic' | 'keyword')[] = [];
+    if (entry.semanticRank !== undefined) {
+      ranks.push(entry.semanticRank);
+      sources.push('semantic');
+    }
+    if (entry.keywordRank !== undefined) {
+      ranks.push(entry.keywordRank);
+      sources.push('keyword');
+    }
+    const rrfScore = computeRRFScore(ranks);
+    fused.push({
+      ...entry.result,
+      rrfScore,
+      sources,
+      score: rrfScore,
+    });
+  }
+
+  fused.sort((a, b) => b.rrfScore - a.rrfScore);
+
+  return {
+    ok: true,
+    data: { results: fused.slice(0, n_results) },
+  };
 }
 
 // ============================================================================
