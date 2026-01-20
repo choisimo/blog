@@ -50,6 +50,7 @@ export interface ConsoleState {
 export type ConsoleAction =
   | { type: 'SET_INPUT'; payload: string }
   | { type: 'SET_MODE'; payload: ConsoleMode }
+  | { type: 'LOAD_MESSAGES'; payload: ConsoleMessage[] }
   | { type: 'ADD_USER_MESSAGE'; payload: { id: string; content: string } }
   | { type: 'ADD_ASSISTANT_MESSAGE'; payload: { id: string } }
   | { type: 'APPEND_ASSISTANT_CONTENT'; payload: { id: string; chunk: string } }

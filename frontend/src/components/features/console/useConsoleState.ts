@@ -1,12 +1,82 @@
 /**
  * AI Console State Management Hook
+ * 
+ * Supports shared session with ChatWidget via localStorage
  */
 
-import { useReducer, useCallback, useRef } from 'react';
-import type { ConsoleState, ConsoleAction, ConsoleMode, Citation, TraceEvent } from './types';
+import { useReducer, useCallback, useRef, useEffect } from 'react';
+import type { ConsoleState, ConsoleAction, ConsoleMode, Citation, TraceEvent, ConsoleMessage } from './types';
+import {
+  SESSION_MESSAGES_PREFIX,
+  getStoredSessionId,
+} from '@/services/chat';
+
+const CONSOLE_MESSAGES_KEY = 'ai_console_messages';
+
+function loadPersistedMessages(): ConsoleMessage[] {
+  try {
+    const raw = localStorage.getItem(CONSOLE_MESSAGES_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+    
+    const chatMessages = loadChatWidgetSession();
+    if (chatMessages.length > 0) {
+      return chatMessages;
+    }
+  } catch {
+    void 0;
+  }
+  return [];
+}
+
+function persistMessages(messages: ConsoleMessage[]): void {
+  try {
+    localStorage.setItem(CONSOLE_MESSAGES_KEY, JSON.stringify(messages));
+  } catch {
+    void 0;
+  }
+}
+
+function convertChatToConsole(chatMsg: { id: string; role: 'user' | 'assistant' | 'system'; text: string; sources?: Array<{ title?: string; url?: string; snippet?: string; score?: number }> }): ConsoleMessage {
+  return {
+    id: chatMsg.id,
+    role: chatMsg.role,
+    content: chatMsg.text,
+    timestamp: Date.now(),
+    citations: chatMsg.sources?.map((s, i) => ({
+      id: `src-${i}`,
+      title: s.title || 'Untitled',
+      url: s.url,
+      snippet: s.snippet || '',
+      score: s.score || 0,
+    })),
+  };
+}
+
+function loadChatWidgetSession(): ConsoleMessage[] {
+  try {
+    const sessionId = getStoredSessionId();
+    if (!sessionId) return [];
+    
+    const raw = localStorage.getItem(`${SESSION_MESSAGES_PREFIX}${sessionId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.map(convertChatToConsole);
+      }
+    }
+  } catch {
+    void 0;
+  }
+  return [];
+}
 
 const initialState: ConsoleState = {
-  messages: [],
+  messages: loadPersistedMessages(),
   citations: [],
   traces: [],
   input: '',
@@ -22,6 +92,9 @@ function consoleReducer(state: ConsoleState, action: ConsoleAction): ConsoleStat
 
     case 'SET_MODE':
       return { ...state, mode: action.payload };
+
+    case 'LOAD_MESSAGES':
+      return { ...state, messages: action.payload };
 
     case 'ADD_USER_MESSAGE':
       return {
@@ -106,6 +179,24 @@ export function useConsoleState() {
   const [state, dispatch] = useReducer(consoleReducer, initialState);
   const abortRef = useRef<AbortController | null>(null);
 
+  useEffect(() => {
+    if (state.messages.length > 0) {
+      persistMessages(state.messages);
+    }
+  }, [state.messages]);
+
+  useEffect(() => {
+    const handleSessionUpdate = () => {
+      const chatMessages = loadChatWidgetSession();
+      if (chatMessages.length > 0 && state.messages.length === 0) {
+        dispatch({ type: 'LOAD_MESSAGES', payload: chatMessages } as ConsoleAction);
+      }
+    };
+
+    window.addEventListener('aiChat:sessionsUpdated', handleSessionUpdate);
+    return () => window.removeEventListener('aiChat:sessionsUpdated', handleSessionUpdate);
+  }, [state.messages.length]);
+
   const setInput = useCallback((value: string) => {
     dispatch({ type: 'SET_INPUT', payload: value });
   }, []);
@@ -152,6 +243,11 @@ export function useConsoleState() {
 
   const clearAll = useCallback(() => {
     dispatch({ type: 'CLEAR_ALL' });
+    try {
+      localStorage.removeItem(CONSOLE_MESSAGES_KEY);
+    } catch {
+      void 0;
+    }
   }, []);
 
   const abort = useCallback(() => {
@@ -166,6 +262,13 @@ export function useConsoleState() {
     abortRef.current = new AbortController();
     return abortRef.current;
   }, [abort]);
+
+  const syncFromChatWidget = useCallback(() => {
+    const chatMessages = loadChatWidgetSession();
+    if (chatMessages.length > 0) {
+      dispatch({ type: 'LOAD_MESSAGES', payload: chatMessages });
+    }
+  }, []);
 
   return {
     state,
@@ -184,6 +287,7 @@ export function useConsoleState() {
       clearAll,
       abort,
       createAbortController,
+      syncFromChatWidget,
     },
   };
 }

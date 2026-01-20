@@ -11,6 +11,7 @@ const dictionary = {
       memo: "메모",
       stack: "스택",
       insight: "인사이트",
+      debate: "토론",
     },
     about: {
       title: "소개",
@@ -65,6 +66,7 @@ const dictionary = {
       memo: "Memo",
       stack: "Stack",
       insight: "Insight",
+      debate: "Debate",
     },
     about: {
       title: "About Me",

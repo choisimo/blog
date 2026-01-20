@@ -49,9 +49,10 @@ function ragResultToCitation(result: HybridSearchResult, index: number): Citatio
 function buildRAGContextString(citations: Citation[]): string {
   if (citations.length === 0) return '';
 
-  const parts = citations.map((c, i) => 
-    `[${i + 1}] ${c.title}\n${c.snippet}`
-  );
+  const parts = citations.map((c, i) => {
+    const url = c.url ? `(${c.url})` : '';
+    return `[${i + 1}] ${c.title} ${url}\n${c.snippet}`;
+  });
 
   return parts.join('\n\n');
 }
@@ -100,7 +101,7 @@ export const AIConsole = memo(function AIConsole({
       const searchStart = Date.now();
       if (state.mode === 'rag') {
         const ragResponse = await hybridSearch(query, {
-          n_results: 5,
+          n_results: 8,
           signal: abortController.signal,
         });
 
