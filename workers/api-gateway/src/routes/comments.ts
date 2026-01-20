@@ -95,14 +95,84 @@ comments.get('/stream', async (c) => {
         controller.enqueue(encoder.encode(payload));
       };
 
-      send({ type: 'hello', postId, ts: Date.now() });
+      const db = c.env.DB;
       const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-      for (let i = 0; i < 8; i++) {
-        await sleep(15000);
-        send({ type: 'ping', ts: Date.now() });
+
+      let closed = false;
+      const signal = c.req.raw.signal;
+      const onAbort = () => {
+        closed = true;
+        try {
+          controller.close();
+        } catch {
+          void 0;
+        }
+      };
+      if (signal) {
+        if (signal.aborted) {
+          onAbort();
+          return;
+        }
+        signal.addEventListener('abort', onAbort, { once: true });
       }
 
-      controller.close();
+      send({ type: 'open', postId, ts: Date.now() });
+
+      let lastTs = Date.now();
+      let lastPing = 0;
+      while (!closed) {
+        try {
+          const items = await queryAll<Comment>(
+            db,
+            `SELECT id, post_id, author, content, email, status, created_at, updated_at
+             FROM comments
+             WHERE post_id = ? AND status = 'visible'
+             ORDER BY created_at ASC`,
+            String(postId).trim().slice(0, 256)
+          );
+
+          const newItems: Array<{ id: string; postId: string; author: string; content: string; website: null; parentId: null; createdAt: string }> = [];
+          let maxTs = lastTs;
+          for (const d of items) {
+            const createdAt = (d as any).created_at || (d as any).createdAt;
+            const ts = createdAt ? Date.parse(createdAt) : 0;
+            if (ts > lastTs) {
+              maxTs = Math.max(maxTs, ts);
+              newItems.push({
+                id: d.id,
+                postId: (d as any).post_id || postId,
+                author: d.author,
+                content: d.content,
+                website: null,
+                parentId: null,
+                createdAt,
+              });
+            }
+          }
+
+          if (newItems.length > 0) {
+            newItems.sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+            send({ type: 'append', items: newItems });
+            lastTs = maxTs;
+          }
+
+          const now = Date.now();
+          if (now - lastPing > 25000) {
+            send({ type: 'ping', ts: now });
+            lastPing = now;
+          }
+        } catch (e: any) {
+          send({ type: 'error', message: e?.message || 'poll failed' });
+        }
+
+        await sleep(5000);
+      }
+
+      try {
+        if (signal) signal.removeEventListener('abort', onAbort);
+      } catch {
+        void 0;
+      }
     },
   });
 

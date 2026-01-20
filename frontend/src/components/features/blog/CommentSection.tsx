@@ -91,27 +91,34 @@ export default function CommentSection({ postId }: { postId: string }) {
   useEffect(() => {
     let cancelled = false;
     let es: EventSource | null = null;
+
+    // If archived comments exist, use them as initial state but still enable live updates.
     if (archived) {
       setLoading(false);
       setComments(archived.comments);
-      return () => void 0;
     }
 
     async function load() {
       try {
-        setLoading(true);
+        // If we already have archived comments, don't show loading spinner.
+        if (!archived) setLoading(true);
         setError(null);
         const base = getApiBaseUrl().replace(/\/$/, '');
         const url = `${base}/api/v1/comments?postId=${encodeURIComponent(
           postId
         )}`;
-        const resp = await fetch(url);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = (await resp.json()) as any;
-        const list = Array.isArray(data?.comments)
-          ? data.comments
-          : data?.data?.comments || [];
-        if (!cancelled) setComments(list || []);
+
+        // For non-archived pages, fetch initial list.
+        // For archived pages, keep the bundled list and rely on SSE for new items.
+        if (!archived) {
+          const resp = await fetch(url);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const data = (await resp.json()) as any;
+          const list = Array.isArray(data?.comments)
+            ? data.comments
+            : data?.data?.comments || [];
+          if (!cancelled) setComments(list || []);
+        }
 
         // Try to open SSE stream for live updates (best-effort)
         const sseUrl = `${base}/api/v1/comments/stream?postId=${encodeURIComponent(
@@ -156,9 +163,9 @@ export default function CommentSection({ postId }: { postId: string }) {
           es = null;
         };
       } catch (e: any) {
-        if (!cancelled) setError(e?.message || 'Failed to load comments');
+        if (!cancelled && !archived) setError(e?.message || 'Failed to load comments');
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && !archived) setLoading(false);
       }
     }
 

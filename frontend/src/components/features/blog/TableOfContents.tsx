@@ -21,6 +21,8 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
   const isMobile = useIsMobile();
   const [isPinnedToBoundary, setIsPinnedToBoundary] = useState(false);
   const [pinnedTop, setPinnedTop] = useState<number>(0);
+  const [isStuck, setIsStuck] = useState(false);
+  const [animateDropIn, setAnimateDropIn] = useState(false);
   
   // Refs for scroll optimization
   const rafRef = useRef<number | null>(null);
@@ -30,6 +32,8 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const STICKY_TOP_PX = 96; // top-24
+  const isStuckRef = useRef(false);
+  const dropInTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     // Extract headings from markdown content
@@ -90,6 +94,10 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
       const offsetParent = tocEl?.offsetParent as HTMLElement | null;
       if (!boundaryEl || !tocEl || !offsetParent) {
         setIsPinnedToBoundary(false);
+        if (isStuckRef.current) {
+          isStuckRef.current = false;
+          setIsStuck(false);
+        }
         return;
       }
 
@@ -104,8 +112,30 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
         const topWithinParent = boundaryBottom - offsetParentTop - tocHeight;
         setPinnedTop(Math.max(0, topWithinParent));
         setIsPinnedToBoundary(true);
+
+        if (isStuckRef.current) {
+          isStuckRef.current = false;
+          setIsStuck(false);
+        }
       } else {
         setIsPinnedToBoundary(false);
+
+        const stuckNow = tocEl.getBoundingClientRect().top <= STICKY_TOP_PX + 1;
+        if (stuckNow !== isStuckRef.current) {
+          isStuckRef.current = stuckNow;
+          setIsStuck(stuckNow);
+
+          if (stuckNow) {
+            setAnimateDropIn(true);
+            if (dropInTimeoutRef.current) {
+              window.clearTimeout(dropInTimeoutRef.current);
+            }
+            dropInTimeoutRef.current = window.setTimeout(() => {
+              setAnimateDropIn(false);
+              dropInTimeoutRef.current = null;
+            }, 220);
+          }
+        }
       }
     };
 
@@ -158,6 +188,10 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
       window.removeEventListener('resize', handleResize);
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
+      }
+      if (dropInTimeoutRef.current) {
+        window.clearTimeout(dropInTimeoutRef.current);
+        dropInTimeoutRef.current = null;
       }
       if (resizeObserver) {
         resizeObserver.disconnect();
@@ -214,6 +248,7 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
       <div
         className={cn(
           'bg-card/50 backdrop-blur-sm border rounded-2xl p-6 shadow-lg',
+          animateDropIn && !isPinnedToBoundary && isStuck && 'animate-in slide-in-from-top-2 fade-in duration-200',
           isTerminal && 'bg-[hsl(var(--terminal-code-bg))] border-border rounded-lg'
         )}
       >
