@@ -113,7 +113,7 @@ export async function* streamChatEvents(
   input: StreamChatInput
 ): AsyncGenerator<ChatStreamEvent, void, void> {
   const sessionID = await ensureSession();
-  const { page, parts } = buildStreamPayload(input);
+  const { page, parts, enableRag } = buildStreamPayload(input);
 
   if (shouldUseChatWebSocket()) {
     let gotEvent = false;
@@ -124,6 +124,7 @@ export async function* streamChatEvents(
         page,
         signal: input.signal,
         onFirstToken: input.onFirstToken,
+        enableRag,
       })) {
         gotEvent = true;
         yield event;
@@ -143,13 +144,13 @@ export async function* streamChatEvents(
   const url = buildChatUrl('/message', sessionID);
   const headers = buildChatHeaders('stream');
 
-  // 요청 전송
   const res = await fetch(url, {
     method: 'POST',
     headers,
     body: JSON.stringify({
       parts,
       context: { page },
+      enableRag,
     }),
     signal: input.signal,
   });
@@ -198,6 +199,7 @@ export async function* streamChatEvents(
 function buildStreamPayload(input: StreamChatInput): {
   page: { url?: string; title?: string };
   parts: ContentPart[];
+  enableRag: boolean;
 } {
   const page = input.page || getPageContext();
   const shouldUseArticleContext =
@@ -232,7 +234,7 @@ function buildStreamPayload(input: StreamChatInput): {
     parts.push({ type: 'text', text: input.text });
   }
 
-  return { page, parts };
+  return { page, parts, enableRag: input.enableRag ?? false };
 }
 
 async function* streamChatEventsWebSocket(input: {
@@ -241,6 +243,7 @@ async function* streamChatEventsWebSocket(input: {
   page: { url?: string; title?: string };
   signal?: AbortSignal;
   onFirstToken?: (ms: number) => void;
+  enableRag?: boolean;
 }): AsyncGenerator<ChatStreamEvent, void, void> {
   const url = buildChatWebSocketUrl(input.sessionId);
   const ws = new WebSocket(url);
@@ -297,6 +300,7 @@ async function* streamChatEventsWebSocket(input: {
         sessionId: input.sessionId,
         parts: input.parts,
         context: { page: input.page },
+        enableRag: input.enableRag,
       })
     );
   };

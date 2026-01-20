@@ -224,6 +224,30 @@ router.post('/stream', async (req, res) => {
             send('tool_start', { tool: event.data.name, id: event.data.id });
             break;
           case 'tool_end':
+            if (event.data.result?.results && Array.isArray(event.data.result.results)) {
+              let sources = [];
+
+              if (event.data.name === 'web_search') {
+                sources = event.data.result.results.map(r => ({
+                  title: r.title || 'Web Result',
+                  url: r.url,
+                  snippet: r.snippet,
+                  score: r.score
+                }));
+              } else if (event.data.name === 'rag_search') {
+                sources = event.data.result.results.map(r => ({
+                  title: r.title || r.slug,
+                  url: r.slug ? `/posts/${r.slug}` : undefined,
+                  snippet: r.content?.slice(0, 150) + '...',
+                  score: parseFloat(r.score)
+                }));
+              }
+
+              if (sources.length > 0) {
+                send('sources', { sources });
+              }
+            }
+
             send('tool_end', { tool: event.data.name, result: summarizeToolResult(event.data.result) });
             break;
           case 'tool_error':

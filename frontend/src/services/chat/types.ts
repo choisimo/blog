@@ -145,8 +145,9 @@ export type StreamChatInput = {
   useArticleContext?: boolean;
   imageUrl?: string;
   imageAnalysis?: string | null;
-  ragContext?: string | null; // RAG 검색 컨텍스트 (블로그 포스트)
-  memoryContext?: string | null; // 사용자 메모리 컨텍스트
+  ragContext?: string | null;
+  memoryContext?: string | null;
+  enableRag?: boolean;
 };
 
 // ============================================================================

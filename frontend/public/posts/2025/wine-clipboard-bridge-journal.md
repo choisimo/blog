@@ -6,6 +6,10 @@ tags: ['Wine','Wayland','클립보드','Hyprland','wl-clipboard']
 excerpt: "EndeavourOS에서 Wine 카카오톡과 호스트 사이 복붙이 끊겼던 사건을 기록하며, 왜 그런지 그리고 어떻게 우회했는지 정리했다."
 readTime: "8분"
 ---
+
+
+![1768909026526](image/wine-clipboard-bridge-journal/1768909026526.png)
+
 EndeavourOS를 설치한 뒤 메신저 세팅까지 마쳤을 때만 해도 마음이 한결 가벼웠다. 그런데 금요일 오전, 카카오톡 창에서 복사한 문장을 호스트 쪽 에디터로 붙여넣는 순간 텍스트가 사라져 버렸다. 반대로 리눅스에서 복사한 주소를 Wine 속 카카오톡 입력창에 붙여넣으면 텔레파시처럼 조용히 실패했다. “같은 창 안에서는 잘 되는데 왜 바깥으로 나오면 말을 안 듣지?” 이상하게도 Wine 안에서는 복붙이 멀쩡했기에 더 혼란스러웠다.
 
 먼저 의심한 건 쓰고 있는 Hyprland와 Wayland 조합이었다. 예전에 Xorg를 쓸 때는 이런 문제가 없었는데, Wayland로 넘어오면서 클립보드 인프라가 확 달라졌다는 이야기를 들었기 때문이다. X11에는 PRIMARY, CLIPBOARD 같은 선택 버퍼가 따로 있고, 프로그램이 종료되면 클립보드 소유자가 사라지는 구조라 매니저가 없으면 내용이 비어버린다. Wayland에서는 이 역할을 컴포지터가 맡는데, XWayland 앱과 네이티브 Wayland 앱 사이에는 여전히 브리지 계층이 필요하다. Wine은 Windows의 클립보드를 Linux 선택 시스템에 매핑해야 하고, 이 과정에서 Wayland 지원은 비교적 최근 버전까지 계속 손봐 왔다.
@@ -20,7 +24,7 @@ Reddit을 조금 뒤져 보니 Hyprland에서 XWayland와 Wayland 사이 클립�
 wl-paste -t text -w xclip -selection clipboard
 ```
 
-이 명령은 Wayland에서 텍스트를 복사하면 그 내용을 X클립보드(CLIPBOARD)에 전달하고, Wine(XWayland) 쪽이 이를 읽어갈 수 있게 해 준다. 반대로 역방향 브리지를 위해서는 `xclip -selection clipboard -o | wl-copy` 같은 파이프를 만들어 두면 리눅스 → Wine 방향도 연결된다. 이 방식은 임시방편이지만, 그날 당장 메신저에서 주소를 복사해 브라우저에 붙여넣어야 했던 저는 큰 숨을 돌릴 수 있었다.
+이 명령은 Wayland에서 텍스트를 복사하면 그 내용을 X클립보드(CLIPBOARD)에 전달하고, Wine(XWayland) 쪽이 이를 읽어갈 수 있게 해 준다. 반대로 역방향 브리지를 위해서는 `xclip -selection clipboard -o | wl-copy` 같은 파이프를 만들어 두면 리눅스 → Wine 방향도 연결된다. 이 방식은 임시방편이지만, 그날 당장 메신저에서 주소를 복사해 브라우저에 붙여넣어야 했던 나는 한숨 돌릴 수 있었다.
 
 다만 처음에는 이 명령이 통하지 않았다. 터미널에 `XDG_RUNTIME_DIR is invalid or not set` 같은 메시지가 뜨고, `Failed to connect to a Wayland server`라는 경고가 연달아 나왔다. 원인은 간단했다. 아마 습관처럼 `sudo`를 붙여 실행했기에, 루트 환경에서는 Wayland 세션 정보(`XDG_RUNTIME_DIR`, `WAYLAND_DISPLAY`)가 비어 있기 때문이다. 결국 브리지는 루트 권한이 아니라, Wayland 세션을 열고 있는 사용자 계정으로 실행해야 한다. 다시 말해 데스크톱에서 바로 터미널을 켜고, `sudo` 없이 `wl-paste`를 띄우면 문제가 사라진다. 꼭 권한 상승이 필요하다면 `sudo -E`로 환경 변수를 넘기거나, 아예 `systemd --user` 서비스로 등록해 로그인할 때 자동 실행되도록 하는 편이 훨씬 안정적이다.
 

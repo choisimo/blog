@@ -6,7 +6,6 @@ import {
   invokeChatAggregate,
   startNewSession,
 } from "@/services/chat";
-import { getRAGContextForChat } from "@/services/rag";
 import { getMemoryContextForChat, extractAndSaveMemories } from "@/services/memory";
 
 type UseChatActionsProps = {
@@ -126,38 +125,13 @@ export function useChatActions({
         });
         push({ id: aiId, role: "assistant", text: aggregated });
       } else {
-        // Fetch RAG context and memory context in parallel
-        let ragContext: string | null = null;
         let memoryContext: string | null = null;
 
-        const contextPromises: Promise<void>[] = [];
-
-        // RAG context for general (blog-wide) questions
-        if (questionMode === "general") {
-          contextPromises.push(
-            getRAGContextForChat(baseText, 2000)
-              .then((ctx) => {
-                ragContext = ctx;
-              })
-              .catch(() => {
-                // RAG search failed, continue without context
-              }),
-          );
+        try {
+          memoryContext = await getMemoryContextForChat(baseText, 5);
+        } catch {
+          // Memory search failed, continue without context
         }
-
-        // User memory context (always fetch when available)
-        contextPromises.push(
-          getMemoryContextForChat(baseText, 5)
-            .then((ctx) => {
-              memoryContext = ctx;
-            })
-            .catch(() => {
-              // Memory search failed, continue without context
-            }),
-        );
-
-        // Wait for all context fetches
-        await Promise.all(contextPromises);
 
         let acc = "";
         push({ id: aiId, role: "assistant", text: "" });
@@ -168,8 +142,8 @@ export function useChatActions({
           useArticleContext: questionMode === "article",
           imageUrl: uploaded?.url,
           imageAnalysis: uploaded?.imageAnalysis,
-          ragContext,
           memoryContext,
+          enableRag: questionMode === "general",
         })) {
           if (ev.type === "text") {
             acc += ev.text;

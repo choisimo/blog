@@ -1,8 +1,124 @@
 import { Router } from 'express';
 import { WebSocketServer } from 'ws';
 import { aiService, tryParseJson } from '../lib/ai-service.js';
+import { config } from '../config.js';
 
 const router = Router();
+
+const CHROMA_TENANT = 'default_tenant';
+const CHROMA_DATABASE = 'default_database';
+const ragCollectionCache = new Map();
+
+function getChromaCollectionsBase() {
+  return `${config.rag.chromaUrl}/api/v2/tenants/${CHROMA_TENANT}/databases/${CHROMA_DATABASE}/collections`;
+}
+
+async function getCollectionUUID(collectionName) {
+  if (ragCollectionCache.has(collectionName)) {
+    return ragCollectionCache.get(collectionName);
+  }
+  
+  try {
+    const collectionsUrl = getChromaCollectionsBase();
+    const listResp = await fetch(collectionsUrl, { method: 'GET' });
+    
+    if (!listResp.ok) return null;
+    
+    const collections = await listResp.json();
+    const collection = collections.find(c => c.name === collectionName);
+    
+    if (collection) {
+      ragCollectionCache.set(collectionName, collection.id);
+      return collection.id;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+async function getEmbeddings(texts) {
+  const response = await fetch(config.rag.teiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ inputs: texts }),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`TEI error: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  return data.embeddings || data;
+}
+
+async function queryChroma(embedding, nResults = 5) {
+  const collectionName = config.rag.chromaCollection;
+  const collectionsBase = getChromaCollectionsBase();
+  
+  const collectionUUID = await getCollectionUUID(collectionName);
+  if (!collectionUUID) {
+    throw new Error(`Collection not found: ${collectionName}`);
+  }
+  
+  const queryUrl = `${collectionsBase}/${collectionUUID}/query`;
+  const response = await fetch(queryUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query_embeddings: [embedding],
+      n_results: nResults,
+      include: ['documents', 'metadatas', 'distances'],
+    }),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`ChromaDB error: ${response.status}`);
+  }
+  
+  return response.json();
+}
+
+async function performRAGSearch(query, topK = 5) {
+  try {
+    const [embedding] = await getEmbeddings([query]);
+    const chromaResult = await queryChroma(embedding, topK);
+    
+    const sources = [];
+    const contextParts = [];
+    
+    if (chromaResult.documents && chromaResult.documents[0]) {
+      const docs = chromaResult.documents[0];
+      const metas = chromaResult.metadatas?.[0] || [];
+      const dists = chromaResult.distances?.[0] || [];
+      
+      for (let i = 0; i < docs.length; i++) {
+        const meta = metas[i] || {};
+        const distance = dists[i];
+        const score = distance != null ? Math.max(0, 1 - distance) : null;
+        
+        sources.push({
+          title: meta.title || meta.post_title || 'Untitled',
+          url: meta.slug ? `/posts/${meta.year || new Date().getFullYear()}/${meta.slug}` : undefined,
+          score,
+          snippet: docs[i]?.slice(0, 200) || '',
+        });
+        
+        const title = meta.title || meta.post_title || '';
+        contextParts.push(`[${i + 1}] ${title ? `"${title}": ` : ''}${docs[i]}`);
+      }
+    }
+    
+    const context = contextParts.length > 0
+      ? `다음은 관련 블로그 포스트에서 발췌한 내용입니다:\n\n${contextParts.join('\n\n')}\n\n위 내용을 참고하여 답변해주세요.`
+      : null;
+    
+    return { context, sources };
+  } catch (err) {
+    console.warn('RAG search failed:', err.message);
+    return { context: null, sources: [] };
+  }
+}
 
 // In-memory session storage (for simplicity - use Redis in production)
 const sessions = new Map();
@@ -310,7 +426,7 @@ router.post('/session', async (req, res, next) => {
 router.post('/session/:sessionId/message', async (req, res, next) => {
   try {
     const { sessionId } = req.params;
-    const { parts, context, model } = req.body || {};
+    const { parts, context, model, enableRag } = req.body || {};
 
     // Get or create session
     let session = getSession(sessionId);
@@ -362,15 +478,41 @@ router.post('/session/:sessionId/message', async (req, res, next) => {
     });
 
     try {
-      // Generate response via unified AI service (with fallback chain)
-      const result = await aiService.chat(session.messages, { model });
+      let ragContext = null;
+      let ragSources = [];
+
+      if (enableRag) {
+        const userQuery = parts
+          ?.filter((p) => p.type === 'text')
+          ?.map((p) => p.text)
+          ?.find((t) => t && !t.startsWith('[') && t.length > 5) || userMessage;
+        
+        const ragResult = await performRAGSearch(userQuery, 5);
+        ragContext = ragResult.context;
+        ragSources = ragResult.sources;
+
+        if (ragSources.length > 0) {
+          send({ type: 'sources', sources: ragSources });
+        }
+      }
+
+      const messagesWithContext = [...session.messages];
+      if (ragContext) {
+        const lastIdx = messagesWithContext.length - 1;
+        if (lastIdx >= 0 && messagesWithContext[lastIdx].role === 'user') {
+          messagesWithContext[lastIdx] = {
+            ...messagesWithContext[lastIdx],
+            content: `${ragContext}\n\n---\n\n사용자 질문: ${messagesWithContext[lastIdx].content}`,
+          };
+        }
+      }
+
+      const result = await aiService.chat(messagesWithContext, { model });
 
       if (closed) return;
 
-      // Stream the response
       const text = result.content || '';
       
-      // Send text in chunks
       const chunkSize = 50;
       for (let i = 0; i < text.length; i += chunkSize) {
         if (closed) break;
@@ -379,10 +521,8 @@ router.post('/session/:sessionId/message', async (req, res, next) => {
         await new Promise((r) => setTimeout(r, 20));
       }
 
-      // Store assistant response
       session.messages.push({ role: 'assistant', content: text });
 
-      // Send done event
       send({ type: 'done' });
     } catch (err) {
       console.error('Chat streaming error:', err);
