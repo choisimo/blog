@@ -108,6 +108,42 @@ async function queryChroma(embedding, nResults = 5, collectionName = null, where
 
   const collectionUUID = await getCollectionUUID(collection);
   if (!collectionUUID) {
+    const maybeLegacy = typeof collection === 'string' && collection.includes('__')
+      ? collection.replace(/__/g, '-')
+      : typeof collection === 'string'
+        ? collection.replace(/-/g, '__')
+        : null;
+
+    if (maybeLegacy && maybeLegacy !== collection) {
+      const fallbackUUID = await getCollectionUUID(maybeLegacy);
+      if (fallbackUUID) {
+        const queryUrl = `${collectionsBase}/${fallbackUUID}/query`;
+
+        const body = {
+          query_embeddings: [embedding],
+          n_results: nResults,
+          include: ['documents', 'metadatas', 'distances'],
+        };
+
+        if (whereFilter) {
+          body.where = whereFilter;
+        }
+
+        const response = await fetch(queryUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`ChromaDB error: ${response.status} - ${errorText}`);
+        }
+
+        return response.json();
+      }
+    }
+
     throw new Error(`Collection not found: ${collection}`);
   }
 

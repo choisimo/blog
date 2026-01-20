@@ -77,7 +77,8 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent 
-        className="max-w-[95vw] max-h-[95vh] w-auto h-auto p-0 bg-black/95 border-none overflow-hidden"
+        hideClose
+        className="w-[100vw] h-[100vh] max-w-[100vw] max-h-[100vh] sm:w-auto sm:h-auto sm:max-w-[95vw] sm:max-h-[95vh] p-0 bg-black/95 border-none overflow-hidden rounded-none sm:rounded-lg"
         onPointerDownOutside={() => handleOpenChange(false)}
       >
         <VisuallyHidden>
@@ -123,7 +124,7 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
         </div>
 
         <div 
-          className="flex items-center justify-center w-full h-full min-h-[50vh] p-8 cursor-zoom-out"
+          className="flex items-center justify-center w-full h-full min-h-[50vh] p-3 sm:p-8 cursor-zoom-out"
           onClick={() => handleOpenChange(false)}
         >
           {!imageLoaded && (
@@ -135,7 +136,7 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
             src={src}
             alt={alt || ''}
             className={cn(
-              'max-w-full max-h-[85vh] object-contain transition-all duration-300',
+              'max-w-full max-h-[85vh] sm:max-h-[85vh] object-contain transition-all duration-300',
               'select-none',
               imageLoaded ? 'opacity-100' : 'opacity-0'
             )}

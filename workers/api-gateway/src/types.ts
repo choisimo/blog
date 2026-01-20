@@ -7,6 +7,8 @@ export type Env = {
 
   // Secrets
   JWT_SECRET: string;
+  TAVILY_API_KEY?: string;
+  PERPLEXITY_API_KEY?: string;
   ADMIN_USERNAME?: string;
   ADMIN_PASSWORD?: string;
   ADMIN_EMAIL?: string; // Admin email for OTP verification (GitHub Secrets)

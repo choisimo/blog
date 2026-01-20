@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTheme } from '@/contexts/ThemeContext';
 import { semanticSearch, type RAGSearchResult } from '@/services/rag';
+import { searchWeb } from '@/services/webSearch';
 import { streamChatEvents } from '@/services/chat';
 import { useConsoleState } from './useConsoleState';
 import { ConsoleMessages } from './ConsoleMessages';
@@ -65,6 +66,8 @@ export const AIConsole = memo(function AIConsole({
   const { isTerminal } = useTheme();
   const { state, actions } = useConsoleState();
 
+  const modeLabel = state.mode === 'rag' ? 'RAG' : state.mode === 'web' ? 'Web' : 'Agent';
+
   const handleSubmit = useCallback(async () => {
     const query = state.input.trim();
     if (!query || state.isProcessing) return;
@@ -79,12 +82,15 @@ export const AIConsole = memo(function AIConsole({
 
     const abortController = actions.createAbortController();
 
+    let citations: Citation[] = [];
+    let webAnswer: string | undefined;
+
     try {
-      // Phase 1: RAG Search
+      // Phase 1: Search (mode-dependent)
       const searchTrace: TraceEvent = {
         id: searchTraceId,
         type: 'search',
-        label: 'Semantic Search',
+        label: state.mode === 'web' ? 'Web Search' : state.mode === 'rag' ? 'Semantic Search' : 'Prepare',
         detail: `Query: "${query.slice(0, 50)}${query.length > 50 ? '...' : ''}"`,
         timestamp: Date.now(),
         status: 'running',
@@ -92,43 +98,91 @@ export const AIConsole = memo(function AIConsole({
       actions.addTrace(searchTrace);
 
       const searchStart = Date.now();
-      const ragResponse = await semanticSearch(query, {
-        n_results: 5,
-        signal: abortController.signal,
-      });
-
-      const searchDuration = Date.now() - searchStart;
-
-      if (!ragResponse.ok || !ragResponse.data) {
-        actions.updateTrace(searchTraceId, {
-          status: 'error',
-          duration: searchDuration,
-          detail: ragResponse.error?.message || 'Search failed',
+      if (state.mode === 'rag') {
+        const ragResponse = await semanticSearch(query, {
+          n_results: 5,
+          signal: abortController.signal,
         });
-        throw new Error(ragResponse.error?.message || 'RAG search failed');
-      }
 
-      const citations = ragResponse.data.results.map(ragResultToCitation);
-      actions.setCitations(citations);
-      actions.updateTrace(searchTraceId, {
-        status: 'done',
-        duration: searchDuration,
-        detail: `Found ${citations.length} results`,
-      });
+        const searchDuration = Date.now() - searchStart;
+
+        if (!ragResponse.ok || !ragResponse.data) {
+          actions.updateTrace(searchTraceId, {
+            status: 'error',
+            duration: searchDuration,
+            detail: ragResponse.error?.message || 'Search failed',
+          });
+          throw new Error(ragResponse.error?.message || 'RAG search failed');
+        }
+
+        citations = ragResponse.data.results.map(ragResultToCitation);
+        actions.setCitations(citations);
+        actions.updateTrace(searchTraceId, {
+          status: 'done',
+          duration: searchDuration,
+          detail: `Found ${citations.length} results`,
+        });
+      } else if (state.mode === 'web') {
+        const webResponse = await searchWeb(query, { maxResults: 5, searchDepth: 'basic' });
+        const searchDuration = Date.now() - searchStart;
+        webAnswer = webResponse.answer;
+
+        citations = (webResponse.results || []).map((r, idx) => ({
+          id: r.url || `web-${idx}`,
+          title: r.title || 'Untitled',
+          url: r.url,
+          snippet: r.snippet || '',
+          score: r.score ?? 0,
+        }));
+
+        actions.setCitations(citations);
+        actions.updateTrace(searchTraceId, {
+          status: 'done',
+          duration: searchDuration,
+          detail: `Found ${citations.length} results`,
+        });
+      } else {
+        actions.setCitations([]);
+        actions.updateTrace(searchTraceId, {
+          status: 'done',
+          duration: Date.now() - searchStart,
+          detail: 'Skipped',
+        });
+      }
 
       // Phase 2: Generate Response
       const genTrace: TraceEvent = {
         id: generateTraceId,
         type: 'generate',
-        label: 'Generate Response',
+        label: state.mode === 'web' ? 'Present Results' : 'Generate Response',
         timestamp: Date.now(),
         status: 'running',
       };
       actions.addTrace(genTrace);
       actions.addAssistantMessage(assistantMsgId);
 
-      const ragContext = buildRAGContextString(citations);
       const genStart = Date.now();
+
+      if (state.mode === 'web') {
+        const lines = citations.map((c, i) => {
+          const url = c.url ? `\n${c.url}` : '';
+          const snippet = c.snippet ? `\n${c.snippet}` : '';
+          return `${i + 1}. ${c.title}${url}${snippet}`;
+        });
+        const content = [webAnswer?.trim(), lines.join('\n\n')].filter(Boolean).join('\n\n');
+        if (content) {
+          actions.appendAssistantContent(assistantMsgId, content);
+        }
+        const genDuration = Date.now() - genStart;
+        actions.updateTrace(generateTraceId, {
+          status: 'done',
+          duration: genDuration,
+        });
+        actions.finishAssistantMessage(assistantMsgId);
+        return;
+      }
+
+      const ragContext = state.mode === 'rag' ? buildRAGContextString(citations) : '';
 
       for await (const event of streamChatEvents({
         text: query,
@@ -159,7 +213,7 @@ export const AIConsole = memo(function AIConsole({
     } finally {
       actions.setProcessing(false);
     }
-  }, [state.input, state.isProcessing, actions]);
+  }, [state.input, state.isProcessing, state.mode, actions]);
 
   const handleStop = useCallback(() => {
     actions.abort();
@@ -215,7 +269,7 @@ export const AIConsole = memo(function AIConsole({
               ? 'text-primary bg-primary/10 border border-primary/20'
               : 'text-muted-foreground bg-muted'
           )}>
-            RAG
+            {modeLabel}
           </span>
         </div>
 
@@ -266,7 +320,7 @@ export const AIConsole = memo(function AIConsole({
       {!isMinimized && (
         <>
           {/* Messages */}
-          <ConsoleMessages messages={state.messages} isMobile={isMobile} isTerminal={isTerminal} className="flex-1 min-h-0" />
+          <ConsoleMessages messages={state.messages} isMobile={isMobile} isTerminal={isTerminal} scrollKey={state.traces.length} className="flex-1 min-h-0" />
 
           {/* Trace */}
           <ConsoleTrace traces={state.traces} />

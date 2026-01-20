@@ -65,6 +65,8 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
     // Skip scroll tracking on mobile for performance
     if (isMobile) return;
 
+    let resizeObserver: ResizeObserver | null = null;
+
     const updateActiveHeading = () => {
       const boundaryEl = document.querySelector('[data-toc-boundary]');
       const headings = boundaryEl?.querySelectorAll(
@@ -131,7 +133,20 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    updateOnScroll(); // Initial check
+    updateOnScroll();
+    requestAnimationFrame(updateOnScroll);
+
+    const boundaryEl = document.querySelector(
+      '[data-toc-boundary]'
+    ) as HTMLElement | null;
+
+    if (typeof ResizeObserver !== 'undefined' && boundaryEl) {
+      resizeObserver = new ResizeObserver(() => {
+        updateTocPosition();
+      });
+      resizeObserver.observe(boundaryEl);
+      if (containerRef.current) resizeObserver.observe(containerRef.current);
+    }
 
     const handleResize = () => {
       updateTocPosition();
@@ -143,6 +158,9 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
       window.removeEventListener('resize', handleResize);
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
+      }
+      if (resizeObserver) {
+        resizeObserver.disconnect();
       }
     };
   }, [isMobile]);

@@ -74,14 +74,14 @@ export const ConsoleTrace = memo(function ConsoleTrace({
   if (traces.length === 0) return null;
 
   return (
-    <div className={cn('border-t border-zinc-800/50', className)}>
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-950/50 border-b border-zinc-800/30">
+    <div className={cn('border-t border-zinc-800/60 bg-zinc-950/70', className)}>
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-950/80 border-b border-zinc-800/40">
         <div className="w-1.5 h-1.5 rounded-full bg-amber-500/60" />
         <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
           Trace
         </span>
       </div>
-      <div className="max-h-32 overflow-y-auto bg-zinc-950/30">
+      <div className="max-h-28 overflow-y-auto bg-zinc-950/60">
         {traces.map(trace => (
           <TraceItem key={trace.id} trace={trace} />
         ))}

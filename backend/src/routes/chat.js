@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { WebSocketServer } from 'ws';
 import { aiService, tryParseJson } from '../lib/ai-service.js';
 
 const router = Router();
@@ -115,6 +116,128 @@ function buildTaskPrompt(mode, payload) {
         temperature: 0.2,
       };
   }
+}
+
+// ----------------------------------------------------------------------------
+// WebSocket Chat Streaming
+// ----------------------------------------------------------------------------
+export function initChatWebSocket(server) {
+  if (!server?.on) return null;
+
+  const wss = new WebSocketServer({ noServer: true });
+
+  server.on('upgrade', (request, socket, head) => {
+    try {
+      const url = new URL(request.url || '/', `http://${request.headers.host}`);
+      if (url.pathname !== '/api/v1/chat/ws') return;
+
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit('connection', ws, request, url);
+      });
+    } catch {
+      socket.destroy();
+    }
+  });
+
+  wss.on('connection', (ws, _request, url) => {
+    let busy = false;
+    let closed = false;
+
+    const send = (payload) => {
+      if (ws.readyState === ws.OPEN) {
+        ws.send(JSON.stringify(payload));
+      }
+    };
+
+    ws.on('message', async (data) => {
+      if (busy || closed) {
+        send({ type: 'error', error: 'busy' });
+        return;
+      }
+
+      let payload = null;
+      try {
+        const raw = typeof data === 'string' ? data : data.toString();
+        payload = JSON.parse(raw);
+      } catch {
+        send({ type: 'error', error: 'invalid_json' });
+        return;
+      }
+
+      if (!payload || payload.type !== 'message') {
+        if (payload?.type === 'ping') {
+          send({ type: 'pong' });
+          return;
+        }
+        send({ type: 'error', error: 'invalid_type' });
+        return;
+      }
+
+      busy = true;
+      try {
+        let sessionId = payload.sessionId || url?.searchParams?.get('sessionId');
+        let session = sessionId ? getSession(sessionId) : null;
+
+        if (!session) {
+          sessionId = createSession(payload.title);
+          session = getSession(sessionId);
+        }
+
+        let userMessage = '';
+        if (Array.isArray(payload.parts)) {
+          userMessage = payload.parts
+            .filter((p) => p?.type === 'text')
+            .map((p) => p.text)
+            .join('\n');
+        } else if (typeof payload.parts === 'string') {
+          userMessage = payload.parts;
+        } else if (typeof payload.text === 'string') {
+          userMessage = payload.text;
+        }
+
+        if (!userMessage.trim()) {
+          send({ type: 'error', error: 'No message content' });
+          return;
+        }
+
+        const pageContext = payload.context?.page || payload.context;
+        if (pageContext?.url || pageContext?.title) {
+          userMessage = `[Context: ${pageContext.title || ''} - ${pageContext.url || ''}]\n\n${userMessage}`;
+        }
+
+        session.messages.push({ role: 'user', content: userMessage });
+        send({ type: 'session', sessionId });
+
+        const result = await aiService.chat(session.messages, { model: payload.model });
+        const text = result.content || '';
+        const chunkSize = 50;
+
+        for (let i = 0; i < text.length; i += chunkSize) {
+          if (closed || ws.readyState !== ws.OPEN) break;
+          const chunk = text.slice(i, i + chunkSize);
+          send({ type: 'text', text: chunk });
+          await new Promise((r) => setTimeout(r, 20));
+        }
+
+        session.messages.push({ role: 'assistant', content: text });
+        send({ type: 'done' });
+      } catch (err) {
+        send({ type: 'error', error: err?.message || 'chat failed' });
+      } finally {
+        busy = false;
+      }
+    });
+
+    ws.on('close', () => {
+      closed = true;
+    });
+
+    ws.on('error', () => {
+      closed = true;
+    });
+  });
+
+  return wss;
 }
 
 /**

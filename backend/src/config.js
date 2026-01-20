@@ -152,7 +152,7 @@ const schema = z.object({
 
   TEI_URL: z.string().default('http://embedding-server:80'),
   CHROMA_URL: z.string().default('http://chromadb:8000'),
-  CHROMA_COLLECTION: z.string().default('blog-posts-all-MiniLM-L6-v2'),
+  CHROMA_COLLECTION: z.string().default('blog-posts__all-MiniLM-L6-v2'),
   REDIS_URL: z.string().optional(),
 
   PERPLEXITY_API_KEY: z.string().optional(),

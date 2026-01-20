@@ -8,7 +8,7 @@ import { config, publicRuntimeConfig, loadAndApplyConsulConfig } from './config.
 import aiRouter from './routes/ai.js';
 import commentsRouter from './routes/comments.js';
 import analyticsRouter from './routes/analytics.js';
-import chatRouter from './routes/chat.js';
+import chatRouter, { initChatWebSocket } from './routes/chat.js';
 import translateRouter from './routes/translate.js';
 import userContentRouter from './routes/userContent.js';
 import ogRouter from './routes/og.js';
@@ -114,10 +114,11 @@ app.use((err, req, res, next) => {
 
 const port = config.port;
 const host = config.host;
-app.listen(port, host, () => {
+const server = app.listen(port, host, () => {
   console.log(`[api] listening on http://${host}:${port}`);
   console.log(`[api] features: ai=${config.features.aiEnabled}, rag=${config.features.ragEnabled}, comments=${config.features.commentsEnabled}`);
 });
+initChatWebSocket(server);
 }
 
 startServer().catch(err => {

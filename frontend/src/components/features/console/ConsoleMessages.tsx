@@ -15,6 +15,7 @@ interface ConsoleMessagesProps {
   messages: ConsoleMessage[];
   isMobile?: boolean;
   isTerminal?: boolean;
+  scrollKey?: unknown;
   className?: string;
 }
 
@@ -122,13 +123,16 @@ export const ConsoleMessages = memo(function ConsoleMessages({
   messages,
   isMobile,
   isTerminal,
+  scrollKey,
   className,
 }: ConsoleMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    requestAnimationFrame(() => {
+      bottomRef.current?.scrollIntoView({ block: 'end' });
+    });
+  }, [messages, scrollKey]);
 
   if (messages.length === 0) {
     return (

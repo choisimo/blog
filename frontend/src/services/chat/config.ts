@@ -11,14 +11,68 @@ import { getApiBaseUrl } from '@/utils/apiBase';
  * 우선순위: runtime config > env > API base URL
  */
 export function getChatBaseUrl(): string {
-  return '';
+  const w = typeof window !== 'undefined' ? (window as any) : null;
+  const runtime = w?.APP_CONFIG?.chatBaseUrl ?? w?.__APP_CONFIG?.chatBaseUrl;
+  if (typeof runtime === 'string' && runtime) return runtime;
+
+  const env = (import.meta as any)?.env?.VITE_CHAT_BASE_URL as string | undefined;
+  if (typeof env === 'string' && env) return env;
+
+  return getApiBaseUrl();
 }
 
 /**
  * Chat API 키 가져오기
  */
 export function getChatApiKey(): string {
+  const w = typeof window !== 'undefined' ? (window as any) : null;
+  const runtime = w?.APP_CONFIG?.chatApiKey ?? w?.__APP_CONFIG?.chatApiKey;
+  if (typeof runtime === 'string' && runtime) return runtime;
+
+  const env = (import.meta as any)?.env?.VITE_CHAT_API_KEY as string | undefined;
+  if (typeof env === 'string' && env) return env;
+
   return '';
+}
+
+/**
+ * Chat WebSocket base URL (optional override)
+ */
+export function getChatWebSocketBaseUrl(): string | null {
+  if (typeof window !== 'undefined') {
+    try {
+      const override = localStorage.getItem('aiMemo.chatWsBaseUrl');
+      if (override) {
+        const parsed = JSON.parse(override);
+        if (typeof parsed === 'string' && parsed) return parsed;
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }
+
+  const w = typeof window !== 'undefined' ? (window as any) : null;
+  const runtime = w?.APP_CONFIG?.chatWsBaseUrl ?? w?.__APP_CONFIG?.chatWsBaseUrl;
+  if (typeof runtime === 'string' && runtime) return runtime;
+
+  const env = (import.meta as any)?.env?.VITE_CHAT_WS_URL as string | undefined;
+  if (typeof env === 'string' && env) return env;
+
+  return null;
+}
+
+/**
+ * Determine if WebSocket chat should be attempted
+ */
+export function shouldUseChatWebSocket(): boolean {
+  if (getChatWebSocketBaseUrl()) return true;
+  try {
+    const base = getChatBaseUrl();
+    const url = new URL(base);
+    return ['localhost', '127.0.0.1'].includes(url.hostname);
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -54,10 +108,22 @@ export function isUnifiedTasksEnabled(): boolean {
  * Chat 엔드포인트 URL 생성 헬퍼
  */
 export function buildChatUrl(path: string, sessionId?: string): string {
-  const apiBase = getApiBaseUrl().replace(/\/$/, '');
+  const apiBase = getChatBaseUrl().replace(/\/$/, '');
   return sessionId
     ? `${apiBase}/api/v1/chat/session/${encodeURIComponent(sessionId)}${path}`
     : `${apiBase}/api/v1/chat${path}`;
+}
+
+/**
+ * Chat WebSocket URL builder
+ */
+export function buildChatWebSocketUrl(sessionId?: string): string {
+  const overrideBase = getChatWebSocketBaseUrl();
+  const base = (overrideBase || getChatBaseUrl()).replace(/\/$/, '');
+  const wsBase = base.replace(/^http:\/\//, 'ws://').replace(/^https:\/\//, 'wss://');
+  const url = new URL(`${wsBase}/api/v1/chat/ws`);
+  if (sessionId) url.searchParams.set('sessionId', sessionId);
+  return url.toString();
 }
 
 /**
