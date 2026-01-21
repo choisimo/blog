@@ -3,6 +3,8 @@
  * 
  * Provides semantic search capabilities using ChromaDB and TEI embeddings.
  * Searches blog posts, memos, and other indexed content.
+ * 
+ * Uses ChromaDB v2 API for compatibility with current server setup.
  */
 
 import { config } from '../../../config.js';
@@ -10,13 +12,51 @@ import { expandQuery, getCombinedQueries } from '../../query-expander.js';
 
 const getChromaUrl = () => config.rag?.chromaUrl || process.env.CHROMA_URL || 'http://chromadb:8000';
 const getTeiUrl = () => config.rag?.teiUrl || process.env.TEI_URL || 'http://embedding-server:80';
-const DEFAULT_COLLECTION = 'blog_posts';
+const getDefaultCollection = () => config.rag?.chromaCollection || process.env.CHROMA_COLLECTION || 'blog-posts-all-MiniLM-L6-v2';
 const DEFAULT_LIMIT = 5;
 const RRF_K = 60;
 
+// ChromaDB v2 API configuration
+const CHROMA_TENANT = 'default_tenant';
+const CHROMA_DATABASE = 'default_database';
+
+// Cache for collection name -> UUID mapping
+const collectionUUIDCache = new Map();
+
 /**
- * Generate embeddings using TEI server
+ * Get ChromaDB v2 collections base URL
  */
+function getChromaCollectionsBase() {
+  return `${getChromaUrl()}/api/v2/tenants/${CHROMA_TENANT}/databases/${CHROMA_DATABASE}/collections`;
+}
+
+/**
+ * Get collection UUID by name (ChromaDB v2 requires UUID for most operations)
+ */
+async function getCollectionUUID(collectionName) {
+  if (collectionUUIDCache.has(collectionName)) {
+    return collectionUUIDCache.get(collectionName);
+  }
+
+  const collectionsUrl = getChromaCollectionsBase();
+  
+  const listResp = await fetch(collectionsUrl, { method: 'GET' });
+  
+  if (!listResp.ok) {
+    throw new Error(`Failed to list collections: ${listResp.status}`);
+  }
+  
+  const collections = await listResp.json();
+  const collection = collections.find(c => c.name === collectionName);
+  
+  if (collection) {
+    collectionUUIDCache.set(collectionName, collection.id);
+    return collection.id;
+  }
+  
+  return null;
+}
+
 async function generateEmbeddings(text) {
   try {
     const response = await fetch(`${getTeiUrl()}/embed`, {
@@ -37,16 +77,47 @@ async function generateEmbeddings(text) {
   }
 }
 
-/**
- * Search ChromaDB collection
- */
+async function queryChromaV2(collectionUUID, embedding, nResults, whereFilter) {
+  const collectionsBase = getChromaCollectionsBase();
+  const queryUrl = `${collectionsBase}/${collectionUUID}/query`;
+  
+  const body = {
+    query_embeddings: [embedding],
+    n_results: nResults,
+    include: ['documents', 'metadatas', 'distances'],
+  };
+
+  if (whereFilter && Object.keys(whereFilter).length > 0) {
+    body.where = whereFilter;
+  }
+
+  const response = await fetch(queryUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`ChromaDB query failed: ${response.status} - ${errorText}`);
+  }
+
+  return response.json();
+}
+
 async function searchWithExpansion(query, options = {}) {
   const {
-    collection = DEFAULT_COLLECTION,
+    collection = getDefaultCollection(),
     limit = DEFAULT_LIMIT,
     where = {},
     expand = true,
   } = options;
+
+  const collectionUUID = await getCollectionUUID(collection);
+  if (!collectionUUID) {
+    console.warn(`[RAGSearch] Collection not found: ${collection}`);
+    return { results: [], expansion: null };
+  }
 
   let queriesToSearch = [query];
   let expansion = null;
@@ -68,26 +139,14 @@ async function searchWithExpansion(query, options = {}) {
     const q = queriesToSearch[qIdx];
     try {
       const queryEmbedding = await generateEmbeddings(q);
-      const response = await fetch(`${getChromaUrl()}/api/v1/collections/${collection}/query`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query_embeddings: [queryEmbedding],
-          n_results: fetchPerQuery,
-          where: Object.keys(where).length > 0 ? where : undefined,
-          include: ['documents', 'metadatas', 'distances'],
-        }),
-      });
-
-      if (!response.ok) continue;
-
-      const data = await response.json();
+      const data = await queryChromaV2(collectionUUID, queryEmbedding, fetchPerQuery, where);
+      
       const documents = data.documents?.[0] || [];
       const metadatas = data.metadatas?.[0] || [];
       const distances = data.distances?.[0] || [];
 
       for (let rank = 0; rank < documents.length; rank++) {
-        const docId = metadatas[rank]?.slug || metadatas[rank]?.id || `doc_${rank}`;
+        const docId = metadatas[rank]?.slug || metadatas[rank]?.doc_id || metadatas[rank]?.id || `doc_${rank}`;
 
         if (!rankMap.has(docId)) {
           rankMap.set(docId, {
@@ -118,13 +177,6 @@ async function searchWithExpansion(query, options = {}) {
   return { results: results.slice(0, limit), expansion };
 }
 
-async function searchChromaDB(query, options = {}) {
-  return searchWithExpansion(query, options);
-}
-
-/**
- * Create RAG Search Tool
- */
 export function createRAGSearchTool() {
   return {
     name: 'rag_search',
@@ -138,9 +190,7 @@ export function createRAGSearchTool() {
         },
         collection: {
           type: 'string',
-          description: 'The collection to search (default: blog_posts)',
-          enum: ['blog_posts', 'memos', 'comments'],
-          default: 'blog_posts',
+          description: 'The collection to search (uses config default if not specified)',
         },
         limit: {
           type: 'number',
@@ -175,7 +225,7 @@ export function createRAGSearchTool() {
         }
 
         const { results, expansion } = await searchWithExpansion(query, {
-          collection: collection || DEFAULT_COLLECTION,
+          collection: collection || getDefaultCollection(),
           limit: limit || DEFAULT_LIMIT,
           where,
           expand,
