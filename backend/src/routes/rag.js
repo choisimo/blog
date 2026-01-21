@@ -16,6 +16,7 @@
 import express from 'express';
 import { config } from '../config.js';
 import { requireFeature } from '../middleware/featureFlags.js';
+import { expandQuery, getCombinedQueries } from '../lib/query-expander.js';
 
 const router = express.Router();
 
@@ -283,49 +284,116 @@ async function deleteFromChroma(collectionName, ids) {
  * 
  * Request Body:
  * {
- *   query: string,      // 검색 쿼리
- *   n_results?: number  // 반환할 결과 수 (기본 5)
+ *   query: string,           // 검색 쿼리
+ *   n_results?: number,      // 반환할 결과 수 (기본 5)
+ *   expand?: boolean,        // 쿼리 확장 사용 여부 (기본 true)
+ *   expandedOnly?: boolean   // 확장 정보만 반환 (디버깅용)
  * }
  * 
  * Response:
  * {
  *   ok: true,
  *   data: {
- *     results: [{ document, metadata, distance }]
+ *     results: [{ document, metadata, distance, score }],
+ *     expansion?: { translations, keywords, expandedQueries }
  *   }
  * }
  */
 router.post('/search', async (req, res) => {
   try {
-    const { query, n_results = 5 } = req.body;
+    const { query, n_results = 5, expand = true, expandedOnly = false } = req.body;
 
     if (!query || typeof query !== 'string') {
       return res.status(400).json({ ok: false, error: 'query is required' });
     }
 
-    // 1. 쿼리 텍스트를 임베딩으로 변환
-    const [embedding] = await getEmbeddings([query]);
+    let expansion = null;
+    let queriesToSearch = [query];
 
-    // 2. ChromaDB에서 유사한 문서 검색
-    const chromaResult = await queryChroma(embedding, n_results);
+    if (expand) {
+      try {
+        expansion = await expandQuery(query, { timeout: 4000 });
+        queriesToSearch = getCombinedQueries(expansion, 4);
+      } catch (expandErr) {
+        console.warn('Query expansion failed, using original query:', expandErr.message);
+      }
+    }
 
-    // 3. 결과 포맷팅
-    const results = [];
-    if (chromaResult.documents && chromaResult.documents[0]) {
+    if (expandedOnly) {
+      return res.json({
+        ok: true,
+        data: {
+          expansion: expansion || { original: query, translations: [], keywords: [], expandedQueries: [] },
+          queriesToSearch,
+        },
+      });
+    }
+
+    const RRF_K = 60;
+    const rankMap = new Map();
+    const fetchPerQuery = Math.ceil(n_results * 2);
+
+    const searchPromises = queriesToSearch.map(async (q, queryIndex) => {
+      try {
+        const [embedding] = await getEmbeddings([q]);
+        const chromaResult = await queryChroma(embedding, fetchPerQuery);
+        return { queryIndex, chromaResult };
+      } catch (err) {
+        console.warn(`Search failed for query "${q}":`, err.message);
+        return { queryIndex, chromaResult: null };
+      }
+    });
+
+    const searchResults = await Promise.all(searchPromises);
+
+    for (const { queryIndex, chromaResult } of searchResults) {
+      if (!chromaResult?.documents?.[0]) continue;
+
       const docs = chromaResult.documents[0];
       const metas = chromaResult.metadatas?.[0] || [];
       const dists = chromaResult.distances?.[0] || [];
 
-      for (let i = 0; i < docs.length; i++) {
-        results.push({
-          document: docs[i],
-          metadata: metas[i] || {},
-          distance: dists[i] || null,
-        });
+      for (let rank = 0; rank < docs.length; rank++) {
+        const docId = metas[rank]?.slug || metas[rank]?.id || `doc_${rank}`;
+        
+        if (!rankMap.has(docId)) {
+          rankMap.set(docId, {
+            document: docs[rank],
+            metadata: metas[rank] || {},
+            distance: dists[rank] || null,
+            ranks: [],
+          });
+        }
+        
+        rankMap.get(docId).ranks.push(rank + 1);
       }
     }
 
-    res.json({ ok: true, data: { results } });
+    const fusedResults = [];
+    for (const [docId, entry] of rankMap) {
+      const rrfScore = entry.ranks.reduce((sum, r) => sum + 1 / (RRF_K + r), 0);
+      fusedResults.push({
+        document: entry.document,
+        metadata: entry.metadata,
+        distance: entry.distance,
+        score: rrfScore,
+      });
+    }
+
+    fusedResults.sort((a, b) => b.score - a.score);
+    const finalResults = fusedResults.slice(0, n_results);
+
+    const responseData = { results: finalResults };
+    if (expansion && !expansion.fallback) {
+      responseData.expansion = {
+        language: expansion.language,
+        translations: expansion.translations,
+        keywords: expansion.keywords,
+        expandedQueries: expansion.expandedQueries,
+      };
+    }
+
+    res.json({ ok: true, data: responseData });
   } catch (err) {
     console.error('RAG search error:', err.message);
     res.status(500).json({ ok: false, error: err.message });
