@@ -37,7 +37,7 @@ export function ChatSessionPanel({
     >
       <div
         className={cn(
-          "px-4 pt-3 max-h-48 overflow-y-auto space-y-2",
+          "px-4 pt-3 max-h-48 overflow-y-auto overscroll-contain space-y-2",
           isMobile && "px-4",
         )}
       >

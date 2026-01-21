@@ -130,7 +130,7 @@ export function ShellModal({
               <div className="text-[9px] font-mono text-primary/50 uppercase tracking-wider px-2 py-1 border-b border-border/30">
                 // Suggestions (Tab/Enter to select)
               </div>
-              <div className="max-h-40 overflow-y-auto">
+              <div className="max-h-40 overflow-y-auto overscroll-contain">
                 {suggestions.map((suggestion, index) => (
                   <button
                     key={suggestion}
@@ -154,7 +154,7 @@ export function ShellModal({
 
         {/* Console Output Window */}
         <div className="flex-1 min-h-0 relative">
-          <div className="absolute inset-0 overflow-y-auto p-3 bg-black/30">
+          <div className="absolute inset-0 overflow-y-auto overscroll-contain p-3 bg-black/30">
             {/* Empty state */}
             {shellLogs.length === 0 && !shellOutput && (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50 text-center">

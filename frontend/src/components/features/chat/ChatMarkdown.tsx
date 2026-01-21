@@ -200,7 +200,7 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({ content, isStreaming }
               style={isTerminal ? terminalChatTheme : oneDark}
               language={match[1]}
               PreTag='div'
-              className='!bg-transparent !p-4 text-[12px] !m-0 overflow-auto max-h-[400px]'
+              className='!bg-transparent !p-4 text-[12px] !m-0 overflow-auto overscroll-contain max-h-[400px]'
               wrapLongLines={false}
             >
               {codeString}
@@ -230,7 +230,7 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({ content, isStreaming }
               {isCopied ? <Check className='h-3 w-3' /> : <Copy className='h-3 w-3' />}
             </button>
             <pre className={cn(
-              'p-4 text-[12px] overflow-auto max-h-[400px]',
+              'p-4 text-[12px] overflow-auto overscroll-contain max-h-[400px]',
               isTerminal ? 'text-primary/90 font-mono' : 'text-white/90'
             )}>
               {codeString}

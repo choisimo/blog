@@ -127,7 +127,7 @@ export const ConsoleTrace = memo(function ConsoleTrace({
       </button>
       
       {isExpanded && (
-        <div className="max-h-32 overflow-y-auto bg-zinc-950/60 border-t border-zinc-800/40">
+        <div className="max-h-32 overflow-y-auto overscroll-contain bg-zinc-950/60 border-t border-zinc-800/40">
           {traces.map(trace => (
             <TraceItem key={trace.id} trace={trace} />
           ))}

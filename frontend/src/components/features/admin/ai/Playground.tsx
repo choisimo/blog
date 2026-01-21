@@ -182,7 +182,7 @@ function HistoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto overscroll-contain">
         <DialogHeader>
           <DialogTitle>{history.title || 'Execution Detail'}</DialogTitle>
         </DialogHeader>

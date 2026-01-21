@@ -462,7 +462,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
       </div>
 
       {/* Messages Area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain px-4 py-5 space-y-5">
         {/* Step 1: Persona Selection */}
         {selectionStep === 'persona' && (
           <div className="space-y-5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">

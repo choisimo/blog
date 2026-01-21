@@ -188,7 +188,7 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
         </div>
 
         {isOpen && results.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 border border-border bg-[hsl(var(--terminal-code-bg))] shadow-lg z-50 max-h-80 overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 mt-1 border border-border bg-[hsl(var(--terminal-code-bg))] shadow-lg z-50 max-h-80 overflow-y-auto overscroll-contain">
             <div className="px-3 py-2 border-b border-border/50 text-xs text-muted-foreground">
               <span className="text-primary">$</span> found {results.length} result{results.length !== 1 && 's'}
             </div>
@@ -261,7 +261,7 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
       </div>
 
       {isOpen && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-border/60 bg-card/95 backdrop-blur-sm shadow-xl z-50 max-h-80 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-border/60 bg-card/95 backdrop-blur-sm shadow-xl z-50 max-h-80 overflow-y-auto overscroll-contain">
           {results.map((post, idx) => (
             <button
               key={`${post.year}/${post.slug}`}

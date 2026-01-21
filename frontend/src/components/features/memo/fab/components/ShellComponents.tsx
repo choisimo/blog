@@ -47,7 +47,7 @@ export function ShellOutputOverlay({
           </div>
         </div>
         {/* Terminal output */}
-        <div className="p-3 max-h-48 overflow-auto">
+        <div className="p-3 max-h-48 overflow-auto overscroll-contain">
           <pre className="font-mono text-xs text-foreground/90 whitespace-pre-wrap leading-relaxed">
             {output}
           </pre>

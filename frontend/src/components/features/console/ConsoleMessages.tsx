@@ -176,7 +176,7 @@ export const ConsoleMessages = memo(function ConsoleMessages({
   }
 
   return (
-    <div className={cn('flex-1 overflow-y-auto', className)}>
+    <div className={cn('flex-1 overflow-y-auto overscroll-contain', className)}>
       <div className="divide-y divide-zinc-800/30">
         {messages.map(message => {
           switch (message.role) {

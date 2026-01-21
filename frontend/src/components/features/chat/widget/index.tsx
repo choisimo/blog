@@ -206,7 +206,7 @@ export default function ChatWidget(props: {
         <div
           ref={state.scrollRef}
           className={cn(
-            "flex-1 overflow-auto px-4 py-4 space-y-4",
+            "flex-1 overflow-auto overscroll-contain px-4 py-4 space-y-4",
             isMobile && "px-4",
             isTerminal && "space-y-3 font-mono text-sm",
           )}

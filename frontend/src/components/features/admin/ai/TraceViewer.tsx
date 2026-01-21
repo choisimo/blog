@@ -151,7 +151,7 @@ function TraceDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto overscroll-contain">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />
@@ -213,7 +213,7 @@ function TraceDetailDialog({
 
             <div>
               <h4 className="font-medium mb-2">Span Details</h4>
-              <div className="space-y-2 max-h-60 overflow-auto">
+              <div className="space-y-2 max-h-60 overflow-auto overscroll-contain">
                 {detail.spans.map((span) => (
                   <div
                     key={span.id}

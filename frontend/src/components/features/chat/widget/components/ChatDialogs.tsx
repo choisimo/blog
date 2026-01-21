@@ -36,7 +36,7 @@ export function ImageDrawer({
             최근 대화에서 첨부한 이미지들을 다시 확인할 수 있어요.
           </DialogDescription>
         </DialogHeader>
-        <div className="max-h-[60vh] overflow-y-auto space-y-2 text-sm">
+        <div className="max-h-[60vh] overflow-y-auto overscroll-contain space-y-2 text-sm">
           {uploadedImages.length === 0 && (
             <p className="text-muted-foreground text-sm">
               저장된 이미지가 없습니다.

@@ -299,7 +299,7 @@ export function VisitedPostsMinimap({
             ref={listContainerRef}
             tabIndex={0}
             className={cn(
-              'overflow-y-auto px-4 pb-8 pt-4 focus:outline-none',
+              'overflow-y-auto overscroll-contain px-4 pb-8 pt-4 focus:outline-none',
               isMobile ? 'max-h-[calc(75vh-160px)]' : 'flex-1'
             )}
             onKeyDown={e => {
@@ -372,7 +372,7 @@ export function VisitedPostsMinimap({
           </div>
         ) : (
           <div className={cn(
-            'overflow-y-auto px-4 pb-8 pt-4 space-y-3',
+            'overflow-y-auto overscroll-contain px-4 pb-8 pt-4 space-y-3',
             isMobile ? 'max-h-[calc(75vh-160px)]' : 'flex-1'
           )}>
             {items.map(p => {

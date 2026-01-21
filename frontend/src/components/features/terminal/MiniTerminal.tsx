@@ -209,7 +209,7 @@ export function MiniTerminal({ className, onClose }: MiniTerminalProps) {
         <span className="flex-1 text-center text-muted-foreground text-[10px]">mini-terminal</span>
       </div>
 
-      <div ref={outputRef} className="h-48 overflow-y-auto p-3 space-y-0.5">
+      <div ref={outputRef} className="h-48 overflow-y-auto overscroll-contain p-3 space-y-0.5">
         {output.map((line, i) => (
           <div 
             key={i} 
