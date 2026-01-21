@@ -7,6 +7,7 @@
 
 import { getApiBaseUrl } from '@/utils/apiBase';
 import { PostService } from './postService';
+import { expandQueryWithSynonyms, getRelatedKeywords } from './synonyms';
 
 // ============================================================================
 // Types
@@ -207,30 +208,39 @@ function computeRRFScore(ranks: number[]): number {
 
 export interface HybridSearchResult extends RAGSearchResult {
   rrfScore: number;
-  sources: ('semantic' | 'keyword')[];
+  sources: ('semantic' | 'keyword' | 'expanded')[];
+}
+
+export interface EnhancedHybridSearchOptions {
+  n_results?: number;
+  signal?: AbortSignal;
+  enableQueryExpansion?: boolean;
+  maxExpandedQueries?: number;
 }
 
 export async function hybridSearch(
   query: string,
-  options: {
-    n_results?: number;
-    signal?: AbortSignal;
-  } = {}
+  options: EnhancedHybridSearchOptions = {}
 ): Promise<{ ok: boolean; data?: { results: HybridSearchResult[] }; error?: { message: string } }> {
-  const { n_results = 5, signal } = options;
+  const { 
+    n_results = 5, 
+    signal, 
+    enableQueryExpansion = true,
+    maxExpandedQueries = 3 
+  } = options;
   const fetchCount = Math.max(n_results * 2, 10);
 
-  const [semanticPromise, keywordPromise] = [
-    semanticSearch(query, { n_results: fetchCount, signal }),
-    PostService.searchPosts(query),
-  ];
+  const rankMap = new Map<string, { 
+    semanticRank?: number; 
+    keywordRank?: number; 
+    expandedRank?: number;
+    result: RAGSearchResult 
+  }>();
 
   const [semanticResult, keywordPosts] = await Promise.all([
-    semanticPromise.catch(() => ({ ok: false as const, data: undefined })),
-    keywordPromise.catch(() => [] as Awaited<ReturnType<typeof PostService.searchPosts>>),
+    semanticSearch(query, { n_results: fetchCount, signal }).catch(() => ({ ok: false as const, data: undefined })),
+    PostService.searchPosts(query).catch(() => [] as Awaited<ReturnType<typeof PostService.searchPosts>>),
   ]);
-
-  const rankMap = new Map<string, { semanticRank?: number; keywordRank?: number; result: RAGSearchResult }>();
 
   if (semanticResult.ok && semanticResult.data?.results) {
     semanticResult.data.results.forEach((r, idx) => {
@@ -268,10 +278,68 @@ export async function hybridSearch(
     }
   });
 
+  if (enableQueryExpansion && rankMap.size < n_results) {
+    const expandedQueries = expandQueryWithSynonyms(query).slice(1, maxExpandedQueries + 1);
+    
+    if (expandedQueries.length > 0) {
+      const expandedSearches = await Promise.all(
+        expandedQueries.map(eq => 
+          semanticSearch(eq, { n_results: 5, signal }).catch(() => ({ ok: false as const, data: undefined }))
+        )
+      );
+      
+      let expandedRankOffset = 0;
+      for (const expandedResult of expandedSearches) {
+        if (expandedResult.ok && expandedResult.data?.results) {
+          expandedResult.data.results.forEach((r, idx) => {
+            const key = r.metadata.slug || r.id;
+            if (!rankMap.has(key)) {
+              rankMap.set(key, { 
+                expandedRank: expandedRankOffset + idx + 1, 
+                result: r 
+              });
+            }
+          });
+        }
+        expandedRankOffset += 5;
+      }
+    }
+  }
+
+  if (enableQueryExpansion && rankMap.size < n_results) {
+    const relatedKeywords = getRelatedKeywords(query).slice(0, 5);
+    
+    for (const keyword of relatedKeywords) {
+      if (rankMap.size >= n_results * 2) break;
+      
+      const keywordResults = await PostService.searchPosts(keyword).catch(() => []);
+      keywordResults.slice(0, 3).forEach((post, idx) => {
+        const key = post.slug;
+        if (!rankMap.has(key)) {
+          rankMap.set(key, {
+            expandedRank: 100 + idx,
+            result: {
+              id: post.id,
+              content: post.excerpt || post.description || '',
+              metadata: {
+                title: post.title,
+                slug: post.slug,
+                year: post.year,
+                category: post.category,
+                tags: post.tags,
+              },
+              score: 0,
+            },
+          });
+        }
+      });
+    }
+  }
+
   const fused: HybridSearchResult[] = [];
   for (const [, entry] of rankMap) {
     const ranks: number[] = [];
-    const sources: ('semantic' | 'keyword')[] = [];
+    const sources: ('semantic' | 'keyword' | 'expanded')[] = [];
     if (entry.semanticRank !== undefined) {
       ranks.push(entry.semanticRank);
       sources.push('semantic');
@@ -279,6 +347,10 @@ export async function hybridSearch(
     if (entry.keywordRank !== undefined) {
       ranks.push(entry.keywordRank);
       sources.push('keyword');
+    }
+    if (entry.expandedRank !== undefined) {
+      ranks.push(entry.expandedRank);
+      sources.push('expanded');
     }
     const rrfScore = computeRRFScore(ranks);
     fused.push({
@@ -332,7 +404,7 @@ export async function findRelatedPosts(
 }
 
 /**
- * AI 챗봇용 컨텍스트 검색
+ * AI 챗봇용 컨텍스트 검색 (개선된 하이브리드 검색 사용)
  *
  * @param userQuery - 사용자 질문
  * @param maxTokens - 대략적인 최대 토큰 수 (문자 기준 근사치)
@@ -343,14 +415,15 @@ export async function getRAGContextForChat(
   maxTokens = 2000,
   timeoutMs = 8000
 ): Promise<string | null> {
-  // Create abort controller with timeout
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await semanticSearch(userQuery, { 
-      n_results: 3,
+    const response = await hybridSearch(userQuery, { 
+      n_results: 5,
       signal: controller.signal,
+      enableQueryExpansion: true,
+      maxExpandedQueries: 2,
     });
 
     if (!response.ok || !response.data || response.data.results.length === 0) {
@@ -361,14 +434,20 @@ export async function getRAGContextForChat(
     let currentLength = 0;
 
     for (const result of response.data.results) {
+      const sourceLabel = result.sources.includes('semantic') && result.sources.includes('keyword') 
+        ? '시맨틱+키워드' 
+        : result.sources.includes('expanded')
+        ? '확장검색'
+        : result.sources[0] || 'unknown';
+      
       const entry = [
         `[${result.metadata.title || 'Untitled'}]`,
         result.content.slice(0, 800),
-        `(관련도: ${(result.score * 100).toFixed(1)}%)`,
+        `(검색: ${sourceLabel}, 관련도: ${(result.rrfScore * 100).toFixed(1)}%)`,
         '',
       ].join('\n');
 
-      if (currentLength + entry.length > maxTokens * 4) break; // rough char estimate
+      if (currentLength + entry.length > maxTokens * 4) break;
       contextParts.push(entry);
       currentLength += entry.length;
     }
@@ -382,7 +461,6 @@ export async function getRAGContextForChat(
       ...contextParts,
     ].join('\n');
   } catch (err) {
-    // Timeout or network error - return null to continue without RAG context
     if (import.meta.env?.DEV) {
       console.warn('[RAG] Context fetch failed or timed out:', err);
     }

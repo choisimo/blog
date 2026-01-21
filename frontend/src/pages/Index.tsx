@@ -26,7 +26,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { OptimizedImage } from '@/components/common/OptimizedImage';
 import { formatDate } from '@/utils/blog';
-import { getEditorPicks, type EditorPick } from '@/services/analytics';
+import { getEditorPicks, getRealtimeVisitors, startHeartbeat, stopHeartbeat, type EditorPick } from '@/services/analytics';
 import { getCategoryCounts } from '@/utils/categoryNormalize';
 import TerminalCategories from '@/components/features/navigation/TerminalCategories';
 import { AIConsole } from '@/components/features/console';
@@ -50,6 +50,9 @@ const Index = () => {
   const [latestPosts, setLatestPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Realtime visitor count
+  const [activeVisitors, setActiveVisitors] = useState<number>(0);
 
   // All posts for search
   const [allPosts, setAllPosts] = useState<BlogPost[]>([]);
@@ -183,6 +186,24 @@ const Index = () => {
         'visitedposts:update',
         onCustom as EventListener
       );
+    };
+  }, []);
+
+  // Realtime visitor tracking
+  useEffect(() => {
+    startHeartbeat();
+    
+    // Fetch initial count
+    getRealtimeVisitors().then(setActiveVisitors);
+    
+    // Refresh count every 30 seconds
+    const interval = setInterval(() => {
+      getRealtimeVisitors().then(setActiveVisitors);
+    }, 30000);
+    
+    return () => {
+      stopHeartbeat();
+      clearInterval(interval);
     };
   }, []);
 
@@ -646,7 +667,7 @@ const Index = () => {
           </div>
 
           <div className='md:col-span-5'>
-            <CategorySuggestionsPanel isTerminal={isTerminal} />
+            <CategorySuggestionsPanel isTerminal={isTerminal} activeVisitors={activeVisitors} />
           </div>
         </div>
       </section>
@@ -784,7 +805,7 @@ const Index = () => {
 
 export default Index;
 
-function CategorySuggestionsPanel({ isTerminal }: { isTerminal: boolean }) {
+function CategorySuggestionsPanel({ isTerminal, activeVisitors }: { isTerminal: boolean; activeVisitors: number }) {
   return (
     <div
       className={cn(
@@ -813,7 +834,26 @@ function CategorySuggestionsPanel({ isTerminal }: { isTerminal: boolean }) {
             {isTerminal ? 'right-pane idea list' : 'Ideas for the right pane'}
           </div>
         </div>
-        <TrendingUp className={cn('h-4 w-4', isTerminal ? 'text-primary' : 'text-muted-foreground')} />
+        <div className='flex items-center gap-2'>
+          {activeVisitors > 0 && (
+            <div
+              className={cn(
+                'flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium',
+                isTerminal
+                  ? 'bg-primary/20 text-primary border border-primary/30'
+                  : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+              )}
+              title="현재 접속자 수"
+            >
+              <span className={cn(
+                'w-1.5 h-1.5 rounded-full animate-pulse',
+                isTerminal ? 'bg-primary' : 'bg-emerald-500'
+              )} />
+              {activeVisitors}
+            </div>
+          )}
+          <TrendingUp className={cn('h-4 w-4', isTerminal ? 'text-primary' : 'text-muted-foreground')} />
+        </div>
       </div>
 
       <div className={cn('space-y-2', isTerminal && 'text-sm')}> 

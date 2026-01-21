@@ -323,4 +323,50 @@ app.post('/update-editor-picks', async (c) => {
   }
 });
 
+/**
+ * POST /api/v1/analytics/heartbeat
+ * Record visitor heartbeat for realtime visitor count
+ * Uses KV with 60-second TTL for active visitors
+ */
+app.post('/heartbeat', async (c) => {
+  try {
+    const body = await c.req.json<{ visitorId?: string }>().catch(() => ({ visitorId: undefined }));
+    const kv = c.env.KV;
+    
+    // Generate or use provided visitor ID
+    const visitorId = body.visitorId || crypto.randomUUID();
+    const key = `visitor:${visitorId}`;
+    
+    // Store with 60-second TTL
+    await kv.put(key, Date.now().toString(), { expirationTtl: 60 });
+    
+    return success(c, { visitorId, recorded: true });
+  } catch (err) {
+    console.error('Failed to record heartbeat:', err);
+    return error(c, 'Failed to record heartbeat', 500);
+  }
+});
+
+/**
+ * GET /api/v1/analytics/realtime
+ * Get current active visitor count
+ */
+app.get('/realtime', async (c) => {
+  try {
+    const kv = c.env.KV;
+    
+    // List all visitor keys (KV list with prefix)
+    const list = await kv.list({ prefix: 'visitor:' });
+    const activeCount = list.keys.length;
+    
+    return success(c, { 
+      activeVisitors: activeCount,
+      timestamp: Date.now()
+    });
+  } catch (err) {
+    console.error('Failed to get realtime count:', err);
+    return error(c, 'Failed to get realtime count', 500);
+  }
+});
+
 export default app;

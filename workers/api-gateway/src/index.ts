@@ -41,6 +41,7 @@ import userContent from './routes/user-content';
 import search from './routes/search';
 import user from './routes/user';
 import debate from './routes/debate';
+import subscribe from './routes/subscribe';
 import type { Env } from './types';
 
 const app = new Hono<HonoEnv>();
@@ -202,6 +203,7 @@ api.route('/user-content', userContent);
 api.route('/search', search);
 api.route('/user', user);
 api.route('/debate', debate);
+api.route('/subscribe', subscribe);
 
 app.route('/api/v1', api);
 

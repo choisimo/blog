@@ -26,19 +26,21 @@ initFeatureFlags();
 const queryClient = new QueryClient();
 
 function App() {
-  const [fabOn, setFabOn] = useState(false);
+  const [fabOn, setFabOn] = useState(true);
   
   useEffect(() => {
     const getFabEnabled = () => {
-      const envFlag = (import.meta as any).env?.VITE_FEATURE_FAB;
-      const envOn = envFlag === true || envFlag === 'true' || envFlag === '1';
       try {
         const ls = localStorage.getItem('aiMemo.fab.enabled');
         if (ls != null) return !!JSON.parse(ls);
-      } catch {
-        return !!envOn;
+      } catch {}
+      
+      const envFlag = (import.meta as any).env?.VITE_FEATURE_FAB;
+      if (envFlag != null) {
+        return envFlag === true || envFlag === 'true' || envFlag === '1';
       }
-      return !!envOn;
+      
+      return true;
     };
     setFabOn(getFabEnabled());
 

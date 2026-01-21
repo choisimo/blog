@@ -5,7 +5,7 @@
     <description>A blog about technology, programming, and web development</description>
     <link>http://localhost:3000</link>
     <atom:link href="http://localhost:3000/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Wed, 21 Jan 2026 10:27:29 GMT</lastBuildDate>
+    <lastBuildDate>Wed, 21 Jan 2026 12:21:19 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
       <title>Algorithm</title>

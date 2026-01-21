@@ -119,3 +119,88 @@ export async function getTrendingPosts(limit: number = 5, days: number = 7): Pro
     return [];
   }
 }
+
+// ============================================================================
+// Realtime Visitor Tracking
+// ============================================================================
+
+const VISITOR_ID_KEY = 'analytics.visitorId';
+let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Get or create a persistent visitor ID
+ */
+function getVisitorId(): string {
+  if (typeof window === 'undefined') return '';
+  
+  let visitorId = localStorage.getItem(VISITOR_ID_KEY);
+  if (!visitorId) {
+    visitorId = crypto.randomUUID();
+    localStorage.setItem(VISITOR_ID_KEY, visitorId);
+  }
+  return visitorId;
+}
+
+/**
+ * Send heartbeat to track active visitor
+ */
+export async function sendHeartbeat(): Promise<boolean> {
+  try {
+    const baseUrl = getApiBaseUrl();
+    const visitorId = getVisitorId();
+    
+    const response = await fetch(`${baseUrl}/api/v1/analytics/heartbeat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visitorId }),
+    });
+
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Start heartbeat interval (call on app mount)
+ */
+export function startHeartbeat(): void {
+  if (heartbeatInterval) return;
+  
+  // Send initial heartbeat
+  sendHeartbeat();
+  
+  // Send heartbeat every 30 seconds
+  heartbeatInterval = setInterval(() => {
+    sendHeartbeat();
+  }, 30000);
+}
+
+/**
+ * Stop heartbeat interval (call on app unmount)
+ */
+export function stopHeartbeat(): void {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
+  }
+}
+
+/**
+ * Get current active visitor count
+ */
+export async function getRealtimeVisitors(): Promise<number> {
+  try {
+    const baseUrl = getApiBaseUrl();
+    const response = await fetch(`${baseUrl}/api/v1/analytics/realtime`);
+
+    if (!response.ok) {
+      return 0;
+    }
+
+    const data = await response.json();
+    return data.data?.activeVisitors || 0;
+  } catch {
+    return 0;
+  }
+}
