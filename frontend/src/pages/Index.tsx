@@ -325,7 +325,7 @@ const Index = () => {
 
           {/* Right: AI Console (RAG-powered) */}
           <div className='md:col-span-7'>
-            <AIConsole className="aspect-[16/10] h-auto" />
+            <AIConsole className="min-h-[420px] md:aspect-[16/10] md:min-h-0 md:h-auto" />
           </div>
         </div>
       </section>

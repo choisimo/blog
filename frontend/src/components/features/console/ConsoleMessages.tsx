@@ -137,8 +137,8 @@ export const ConsoleMessages = memo(function ConsoleMessages({
   if (messages.length === 0) {
     return (
       <div className={cn(
-        'flex-1 flex flex-col items-center justify-start pt-4 pb-8',
-        isMobile ? 'px-4' : 'px-8',
+        'flex-1 flex flex-col items-center justify-center',
+        isMobile ? 'px-4 py-6 min-h-[200px]' : 'px-8 pt-4 pb-8',
         className
       )}>
         <div className={cn('text-center space-y-3', isMobile ? 'max-w-[280px]' : 'max-w-md')}>
@@ -176,7 +176,11 @@ export const ConsoleMessages = memo(function ConsoleMessages({
   }
 
   return (
-    <div className={cn('flex-1 overflow-y-auto overscroll-contain', className)}>
+    <div className={cn(
+      'flex-1 overflow-y-auto overscroll-contain',
+      isMobile && 'min-h-[180px]',
+      className
+    )}>
       <div className="divide-y divide-zinc-800/30">
         {messages.map(message => {
           switch (message.role) {

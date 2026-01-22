@@ -231,6 +231,7 @@ export const AIConsole = memo(function AIConsole({
         isTerminal 
           ? 'bg-[hsl(var(--terminal-code-bg))] border border-border shadow-2xl shadow-black/50'
           : 'bg-card border border-border shadow-lg',
+        isMobile && 'h-full',
         className
       )}
     >
