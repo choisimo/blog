@@ -89,7 +89,6 @@ export default function ChatWidget(props: {
     attachedImage: state.attachedImage,
     setAttachedImage: state.setAttachedImage,
     setAttachedPreviewUrl: state.setAttachedPreviewUrl,
-    busy: state.busy,
     setBusy: state.setBusy,
     setFirstTokenMs: state.setFirstTokenMs,
     abortRef: state.abortRef,
@@ -99,7 +98,6 @@ export default function ChatWidget(props: {
     setIsAggregatePrompt: state.setIsAggregatePrompt,
     questionMode: state.questionMode,
     lastPromptRef: state.lastPromptRef,
-    uploadedImages: state.uploadedImages,
     setUploadedImages: state.setUploadedImages,
     messages: state.messages,
     setSessionKey: state.setSessionKey,
@@ -127,8 +125,8 @@ export default function ChatWidget(props: {
     [state],
   );
 
-  const handleClearAll = useCallback(() => {
-    const cleared = actions.clearAll();
+  const handleClearAll = useCallback(async () => {
+    const cleared = await actions.clearAll();
     if (!cleared) {
       setShowClearConfirm(true);
     }

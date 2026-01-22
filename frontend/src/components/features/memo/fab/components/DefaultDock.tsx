@@ -18,8 +18,8 @@ export function DefaultDock({ dockActions, isMobile }: DefaultDockProps) {
       )}
     >
       {isMobile ? (
-        // Mobile: Grid layout for pixel-perfect equal spacing
-        <div className="grid w-full grid-cols-4 place-items-center">
+        // Mobile: Flex layout with equal spacing - always single row
+        <div className="flex w-full items-center justify-around">
           {dockActions.map((action) => {
             const Icon = action.icon;
             return (
@@ -30,14 +30,14 @@ export function DefaultDock({ dockActions, isMobile }: DefaultDockProps) {
                 disabled={action.disabled}
                 aria-label={action.label}
                 className={cn(
-                  "group relative flex flex-col items-center justify-center gap-0.5 py-1.5 px-3 transition-all active:scale-95",
+                  "group relative flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 min-w-0 flex-1 transition-all active:scale-95",
                   action.disabled && "opacity-40",
                 )}
               >
                 <span
                   className={cn(
                     "flex items-center justify-center rounded-xl transition-all duration-150",
-                    "h-11 w-11",
+                    "h-10 w-10",
                     action.primary
                       ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
                       : "bg-muted/60 text-foreground/70 dark:bg-white/10 dark:text-white/70",

@@ -68,6 +68,7 @@ export default function DebateArena({
   const [votes, setVotes] = useState<Record<number, { attacker: number; defender: number }>>({});
   const [userVote, setUserVote] = useState<Record<number, 'attacker' | 'defender'>>({});
   const [winner, setWinner] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoPlayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -89,6 +90,7 @@ export default function DebateArena({
     if (!topic.trim()) return;
 
     setIsLoading(true);
+    setError(null);
     try {
       const baseUrl = getApiBaseUrl();
       const response = await fetch(`${baseUrl}/api/v1/debate/sessions`, {
@@ -101,7 +103,7 @@ export default function DebateArena({
       });
 
       if (response.ok) {
-        const data = await response.json() as { ok: boolean; data?: DebateSession };
+        const data = await response.json() as { ok: boolean; data?: DebateSession; error?: { message?: string } };
         if (data.ok && data.data) {
           setSession(data.data);
           setMessages([]);
@@ -109,10 +111,16 @@ export default function DebateArena({
           setVotes({});
           setUserVote({});
           setWinner(null);
+        } else {
+          setError(data.error?.message || '토론 세션 생성에 실패했습니다.');
         }
+      } else {
+        const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } };
+        setError(errorData.error?.message || `서버 오류: ${response.status}`);
       }
     } catch (err) {
       console.error('Failed to start debate:', err);
+      setError('네트워크 오류가 발생했습니다. 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
     }
@@ -122,6 +130,7 @@ export default function DebateArena({
     if (!session || isLoading) return;
 
     setIsLoading(true);
+    setError(null);
     try {
       const baseUrl = getApiBaseUrl();
       const response = await fetch(`${baseUrl}/api/v1/debate/sessions/${session.sessionId}/round`, {
@@ -129,15 +138,21 @@ export default function DebateArena({
       });
 
       if (response.ok) {
-        const data = await response.json() as { ok: boolean; data?: { roundNumber: number; messages: DebateMessage[] } };
+        const data = await response.json() as { ok: boolean; data?: { roundNumber: number; messages: DebateMessage[] }; error?: { message?: string } };
         if (data.ok && data.data) {
           const { roundNumber, messages: newMessages } = data.data;
           setCurrentRound(roundNumber);
           setMessages((prev) => [...prev, ...newMessages]);
+        } else {
+          setError(data.error?.message || '라운드 생성에 실패했습니다.');
         }
+      } else {
+        const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } };
+        setError(errorData.error?.message || `서버 오류: ${response.status}`);
       }
     } catch (err) {
       console.error('Failed to generate round:', err);
+      setError('네트워크 오류가 발생했습니다. 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
     }
