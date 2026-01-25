@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { OptimizedImage } from '@/components/common/OptimizedImage';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useIsBookmarked } from '@/hooks/useBookmarks';
 import { useTilt } from '@/hooks/useTilt';
+import { useSwipe } from '@/hooks/useSwipe';
 import useLanguage from '@/hooks/useLanguage';
 import { cn } from '@/lib/utils';
 
@@ -49,6 +50,35 @@ const PostCard = memo(({
   const { isTerminal } = useTheme();
   const { bookmarked, toggleBookmark } = useIsBookmarked(`${post.year}/${post.slug}`);
   const tiltRef = useTilt<HTMLDivElement>({ max: 8, scale: 1.02, glare: !isTerminal });
+  const [swipeHint, setSwipeHint] = useState(false);
+
+  // Swipe gesture for mobile bookmark toggle
+  const { ref: swipeRef, deltaX, swiping } = useSwipe<HTMLDivElement>({
+    threshold: 60,
+    onSwipeRight: () => {
+      if (showBookmark) {
+        toggleBookmark();
+        setSwipeHint(true);
+        setTimeout(() => setSwipeHint(false), 1000);
+      }
+    },
+  });
+
+  // Calculate swipe visual offset (capped at 80px)
+  const swipeOffset = swiping === 'right' ? Math.min(deltaX, 80) : 0;
+  const swipeProgress = swipeOffset / 80;
+
+  // Combine refs for tilt and swipe
+  const combinedRef = useCallback((node: HTMLDivElement | null) => {
+    // Set tiltRef
+    if (tiltRef && 'current' in tiltRef) {
+      (tiltRef as { current: HTMLDivElement | null }).current = node;
+    }
+    // Set swipeRef
+    if (swipeRef && 'current' in swipeRef) {
+      (swipeRef as { current: HTMLDivElement | null }).current = node;
+    }
+  }, [tiltRef, swipeRef]);
 
   const localized = useMemo(() => resolveLocalizedPost(post, language), [language, post]);
 
@@ -111,14 +141,24 @@ const PostCard = memo(({
   if (variant === 'list') {
     return (
       <article
-        ref={showTilt ? tiltRef : undefined}
+        ref={showTilt ? combinedRef : swipeRef}
         className={cn(
           'group flex gap-4 p-4 rounded-xl border border-border/50 bg-card transition-all',
           'hover:shadow-lg hover:border-primary/30',
           isTerminal && 'border-border bg-[hsl(var(--terminal-code-bg))] hover:border-primary hover:shadow-[0_0_15px_hsl(var(--primary)/0.2)]',
+          swipeProgress > 0 && 'bg-primary/10',
+          swipeHint && 'ring-2 ring-primary/50',
           className
         )}
+        style={swipeOffset > 0 ? { transform: `translateX(${swipeOffset * 0.3}px)` } : undefined}
       >
+        {/* Swipe hint indicator */}
+        {swipeProgress > 0.3 && (
+          <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1 text-primary text-xs font-medium">
+            <Bookmark className="w-4 h-4" />
+            <span>{bookmarked ? 'Remove' : 'Save'}</span>
+          </div>
+        )}
         {post.coverImage && (
           <Link
             to={{ pathname: postUrl, search: location.search || undefined }}
@@ -178,15 +218,25 @@ const PostCard = memo(({
 
   return (
     <article
-      ref={showTilt ? tiltRef : undefined}
+      ref={showTilt ? combinedRef : swipeRef}
       className={cn(
         'group relative flex flex-col rounded-2xl border border-border/50 bg-card overflow-hidden transition-all',
         'hover:shadow-xl hover:border-primary/30',
         isTerminal && 'rounded-lg border-border bg-[hsl(var(--terminal-code-bg))] hover:border-primary hover:shadow-[0_0_20px_hsl(var(--primary)/0.3)]',
         isFeatured && 'md:flex-row',
+        swipeProgress > 0 && 'bg-primary/10',
+        swipeHint && 'ring-2 ring-primary/50',
         className
       )}
+      style={swipeOffset > 0 ? { transform: `translateX(${swipeOffset * 0.3}px)` } : undefined}
     >
+      {/* Swipe hint indicator */}
+      {swipeProgress > 0.3 && (
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1 text-primary text-xs font-medium bg-card/90 px-2 py-1 rounded-lg">
+          <Bookmark className="w-4 h-4" />
+          <span>{bookmarked ? 'Remove' : 'Save'}</span>
+        </div>
+      )}
       <Link
         to={{ pathname: postUrl, search: location.search || undefined }}
         state={{ from: fromState }}

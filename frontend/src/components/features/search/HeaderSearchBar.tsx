@@ -5,7 +5,7 @@ import { BlogPost } from '@/types/blog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, X, Terminal, ArrowRight, Clock, FileText } from 'lucide-react';
+import { Search, X, Terminal, ArrowRight, Clock, FileText, History, Trash2 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import {
@@ -14,6 +14,11 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { MiniTerminal } from '@/components/features/terminal';
+import {
+  getRecentQueries,
+  addSearchQuery,
+  removeSearchQuery,
+} from '@/services/searchHistory';
 
 interface HeaderSearchBarProps {
   posts: BlogPost[];
@@ -28,6 +33,8 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalPrefixRef = useRef<HTMLDivElement>(null);
   const [terminalPrefixWidth, setTerminalPrefixWidth] = useState(0);
+  const [recentQueries, setRecentQueries] = useState<string[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { isTerminal } = useTheme();
@@ -54,12 +61,26 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
     return fuse.search(query).slice(0, 5).map(r => r.item);
   }, [query, fuse]);
 
+  // Load recent queries on mount
+  useEffect(() => {
+    setRecentQueries(getRecentQueries());
+
+    const handleUpdate = () => setRecentQueries(getRecentQueries());
+    window.addEventListener('searchHistory:update', handleUpdate);
+    return () => window.removeEventListener('searchHistory:update', handleUpdate);
+  }, []);
+
   const handleSelect = useCallback((post: BlogPost) => {
+    // Save the search query to history
+    if (query.trim()) {
+      addSearchQuery(query.trim());
+    }
     navigate(`/blog/${post.year}/${post.slug}`);
     setQuery('');
     setIsOpen(false);
+    setShowHistory(false);
     setSelectedIndex(0);
-  }, [navigate]);
+  }, [navigate, query]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!isOpen || results.length === 0) return;
@@ -82,11 +103,23 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
       case 'Escape':
         e.preventDefault();
         setIsOpen(false);
+        setShowHistory(false);
         setQuery('');
         inputRef.current?.blur();
         break;
     }
   }, [isOpen, results, selectedIndex, handleSelect]);
+
+  const handleRecentSelect = useCallback((recentQuery: string) => {
+    setQuery(recentQuery);
+    setShowHistory(false);
+    inputRef.current?.focus();
+  }, []);
+
+  const handleRemoveRecent = useCallback((recentQuery: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    removeSearchQuery(recentQuery);
+  }, []);
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -130,8 +163,17 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
 
   useEffect(() => {
     setIsOpen(query.trim().length > 0);
+    setShowHistory(false);
     setSelectedIndex(0);
   }, [query]);
+
+  const handleFocus = useCallback(() => {
+    if (query.trim()) {
+      setIsOpen(true);
+    } else if (recentQueries.length > 0) {
+      setShowHistory(true);
+    }
+  }, [query, recentQueries.length]);
 
   if (isTerminal) {
     return (
@@ -140,7 +182,7 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
           <div className="flex items-center border border-border bg-[hsl(var(--terminal-code-bg))]">
             <Popover>
               <PopoverTrigger asChild>
-                <button 
+                <button
                   className="flex items-center gap-1.5 px-3 py-2 border-r border-border/50 text-primary select-none shrink-0 hover:bg-primary/10 transition-colors cursor-pointer"
                   aria-label="Open terminal"
                 >
@@ -168,7 +210,7 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                onFocus={() => query.trim() && setIsOpen(true)}
+                onFocus={handleFocus}
                 className="h-9 border-0 bg-transparent pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-0 focus-visible:ring-offset-0"
                 style={{ paddingLeft: terminalPrefixWidth ? terminalPrefixWidth + 24 : undefined }}
               />
@@ -227,6 +269,35 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
             <span className="text-primary">$</span> grep: no matches found
           </div>
         )}
+
+        {/* Search History for Terminal Theme */}
+        {showHistory && !isOpen && recentQueries.length > 0 && (
+          <div className="absolute top-full left-0 right-0 mt-1 border border-border bg-[hsl(var(--terminal-code-bg))] shadow-lg z-50 max-h-60 overflow-y-auto overscroll-contain">
+            <div className="px-3 py-2 border-b border-border/50 text-xs text-muted-foreground flex items-center gap-2">
+              <History className="w-3 h-3 text-primary" />
+              <span className="text-primary">$</span> history
+            </div>
+            {recentQueries.map((recentQuery, idx) => (
+              <button
+                key={`recent-${idx}`}
+                onClick={() => handleRecentSelect(recentQuery)}
+                className="w-full text-left px-3 py-2.5 flex items-center justify-between gap-2 hover:bg-primary/10 transition-colors border-b border-border/30 last:border-0"
+              >
+                <span className="flex items-center gap-2 text-sm truncate">
+                  <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  {recentQuery}
+                </span>
+                <button
+                  onClick={(e) => handleRemoveRecent(recentQuery, e)}
+                  className="p-1 hover:bg-destructive/20 hover:text-destructive rounded transition-colors shrink-0"
+                  aria-label="Remove from history"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -244,7 +315,7 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
           value={query}
           onChange={e => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={() => query.trim() && setIsOpen(true)}
+          onFocus={handleFocus}
           className="pl-10 pr-10 h-10 rounded-xl border border-border/60 bg-background shadow-none focus:border-primary/60 focus:ring-0 transition-colors duration-200 placeholder:text-muted-foreground/60"
         />
         {query && (
@@ -307,6 +378,35 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
         <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-border/60 bg-card/95 backdrop-blur-sm shadow-xl z-50 px-4 py-6 text-center">
           <Search className="w-8 h-8 mx-auto text-muted-foreground/50 mb-2" />
           <p className="text-sm text-muted-foreground">No results for "{query}"</p>
+        </div>
+      )}
+
+      {/* Search History for Default Theme */}
+      {showHistory && !isOpen && recentQueries.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-border/60 bg-card/95 backdrop-blur-sm shadow-xl z-50 max-h-60 overflow-y-auto overscroll-contain">
+          <div className="px-4 py-2 border-b border-border/30 text-xs text-muted-foreground flex items-center gap-2">
+            <History className="w-3.5 h-3.5" />
+            Recent Searches
+          </div>
+          {recentQueries.map((recentQuery, idx) => (
+            <button
+              key={`recent-${idx}`}
+              onClick={() => handleRecentSelect(recentQuery)}
+              className="w-full text-left px-4 py-3 flex items-center justify-between gap-3 hover:bg-muted/50 transition-colors border-b border-border/30 last:border-0"
+            >
+              <span className="flex items-center gap-3 text-sm truncate">
+                <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
+                {recentQuery}
+              </span>
+              <button
+                onClick={(e) => handleRemoveRecent(recentQuery, e)}
+                className="p-1.5 hover:bg-destructive/10 hover:text-destructive rounded-md transition-colors shrink-0"
+                aria-label="Remove from history"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </button>
+          ))}
         </div>
       )}
     </div>
