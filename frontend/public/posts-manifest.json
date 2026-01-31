@@ -1,5 +1,5 @@
 {
-  "total": 142,
+  "total": 143,
   "items": [
     {
       "path": "/posts/2026/Algorithm.md",
@@ -41,6 +41,28 @@
       "readingTime": "2 min read",
       "published": true,
       "url": "/blog/2026/LLM providers 추상화방안"
+    },
+    {
+      "path": "/posts/2026/vim-architecture-functionality-commands-integration.md",
+      "year": "2026",
+      "slug": "vim-architecture-functionality-commands-integration",
+      "title": "Vim Architecture, Functionality, Commands, and Integration",
+      "description": "Vim의 아키텍처부터 핵심 기능, 필수 명령어, 그리고 다양한 개발 환경과의 통합까지 심층적으로 탐구합니다",
+      "snippet": "Vim의 아키텍처부터 핵심 기능, 필수 명령어, 그리고 다양한 개발 환경과의 통합까지 심층적으로 탐구합니다",
+      "date": "2026-01-15",
+      "tags": [
+        "Vim",
+        "Neovim",
+        "Editor",
+        "CLI",
+        "Productivity",
+        "개발도구"
+      ],
+      "category": "기술",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2026/vim-architecture-functionality-commands-integration"
     },
     {
       "path": "/posts/2026/shellscript-analyze-1.md",
@@ -3002,7 +3024,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-01-25T15:08:16.069Z",
+  "generatedAt": "2026-01-31T10:02:55.483Z",
   "years": [
     "2026",
     "2025",

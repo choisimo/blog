@@ -5,7 +5,7 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Sun, 25 Jan 2026 15:08:16 GMT</lastBuildDate>
+    <lastBuildDate>Sat, 31 Jan 2026 10:02:55 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
       <title>Algorithm</title>
@@ -31,6 +31,20 @@
       <category>LangChain</category>
       <category>MCP</category>
       <category>RAG</category>
+    </item>
+    <item>
+      <title>Vim Architecture, Functionality, Commands, and Integration</title>
+      <description>Vim의 아키텍처부터 핵심 기능, 필수 명령어, 그리고 다양한 개발 환경과의 통합까지 심층적으로 탐구합니다</description>
+      <link>https://noblog.nodove.com/blog/2026/vim-architecture-functionality-commands-integration</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/vim-architecture-functionality-commands-integration</guid>
+      <pubDate>Thu, 15 Jan 2026 00:00:00 GMT</pubDate>
+      <category>기술</category>
+      <category>Vim</category>
+      <category>Neovim</category>
+      <category>Editor</category>
+      <category>CLI</category>
+      <category>Productivity</category>
+      <category>개발도구</category>
     </item>
     <item>
       <title>쉘 스크립트의 공백: 리눅스 철학이 숨겨진 한 줄의 코드</title>
@@ -255,19 +269,6 @@
       <category>클립보드</category>
       <category>Hyprland</category>
       <category>wl-clipboard</category>
-    </item>
-    <item>
-      <title>스레드 덤프와 데드락 다이어그램, 자바 동시성의 밤을 기록하다</title>
-      <description>Thread, synchronized, ExecutorService, ForkJoinPool을 오가며 레이스와 데드락을 추적했던 내 1인칭 동시성 일기</description>
-      <link>https://noblog.nodove.com/blog/2025/java-concurrency-journal</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/java-concurrency-journal</guid>
-      <pubDate>Mon, 27 Oct 2025 00:00:00 GMT</pubDate>
-      <category>Java</category>
-      <category>Java</category>
-      <category>Concurrency</category>
-      <category>Thread</category>
-      <category>ExecutorService</category>
-      <category>락</category>
     </item>
   </channel>
 </rss>

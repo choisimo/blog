@@ -7,9 +7,10 @@
     "nobel1-kursk-tanks.md",
     "proxmox-network-add.md",
     "remote-server-think.md",
-    "shellscript-analyze-1.md"
+    "shellscript-analyze-1.md",
+    "vim-architecture-functionality-commands-integration.md"
   ],
-  "generatedAt": "2026-01-25T15:08:16.008Z",
-  "totalFiles": 8,
+  "generatedAt": "2026-01-31T10:02:55.425Z",
+  "totalFiles": 9,
   "excludedFiles": 0
 }
