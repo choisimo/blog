@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { LanguageToggle, ThemeToggle } from '@/components/common';
-import { Menu, X, Home, BookOpen, User, Mail, Shield, Settings, Globe, Moon, Sun, Monitor, Terminal } from 'lucide-react';
+import { Menu, X, Home, BookOpen, User, Mail, Shield, Settings, Globe, Moon, Sun, Monitor, Terminal, Library } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { NavigationItem } from '@/components/molecules';
@@ -22,6 +22,7 @@ import {
 const baseNavigation = [
   { name: 'Home', href: '/', icon: Home },
   { name: 'Blog', href: '/blog', icon: BookOpen },
+  { name: 'Docs', href: 'https://docs.nodove.com/', icon: Library },
   { name: 'About', href: '/about', icon: User },
   { name: 'Contact', href: '/contact', icon: Mail },
 ];
@@ -68,9 +69,9 @@ export function Header() {
 
   const navigation = hasAdmin
     ? [
-        ...baseNavigation,
-        { name: 'Admin', href: '/admin/config', icon: Shield },
-      ]
+      ...baseNavigation,
+      { name: 'Admin', href: '/admin/config', icon: Shield },
+    ]
     : baseNavigation;
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
@@ -136,7 +137,7 @@ export function Header() {
                 <ThemeToggle />
               </>
             )}
-            
+
             {/* 모바일: 통합 설정 드롭다운 */}
             {isMobile && (
               <DropdownMenu>
@@ -153,8 +154,8 @@ export function Header() {
                     <Settings className='h-5 w-5' />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent 
-                  align='end' 
+                <DropdownMenuContent
+                  align='end'
                   className={cn(
                     'w-48',
                     isTerminal && 'border-primary/40 bg-background/95 backdrop-blur'
@@ -194,9 +195,9 @@ export function Header() {
                     </span>
                     {language === 'en' && <span className='text-primary'>✓</span>}
                   </DropdownMenuItem>
-                  
+
                   <DropdownMenuSeparator className={cn(isTerminal && 'bg-primary/30')} />
-                  
+
                   <DropdownMenuLabel className={cn(
                     'text-xs text-muted-foreground',
                     isTerminal && 'font-mono text-primary/70'
@@ -206,7 +207,7 @@ export function Header() {
                   <DropdownMenuItem
                     onClick={() => setTheme('light')}
                     className={cn(
-                      'flex items-center justify-between', 
+                      'flex items-center justify-between',
                       theme === 'light' && 'bg-accent',
                       isTerminal && 'font-mono hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary'
                     )}
@@ -220,7 +221,7 @@ export function Header() {
                   <DropdownMenuItem
                     onClick={() => setTheme('dark')}
                     className={cn(
-                      'flex items-center justify-between', 
+                      'flex items-center justify-between',
                       theme === 'dark' && 'bg-accent',
                       isTerminal && 'font-mono hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary'
                     )}
@@ -234,7 +235,7 @@ export function Header() {
                   <DropdownMenuItem
                     onClick={() => setTheme('system')}
                     className={cn(
-                      'flex items-center justify-between', 
+                      'flex items-center justify-between',
                       theme === 'system' && 'bg-accent',
                       isTerminal && 'font-mono hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary'
                     )}
@@ -262,7 +263,7 @@ export function Header() {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            
+
             <div className='flex md:hidden'>
               <Button
                 variant='ghost'

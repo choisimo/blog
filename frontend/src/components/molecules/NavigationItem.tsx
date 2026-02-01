@@ -34,6 +34,21 @@ export function NavigationItem({
     ? 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
     : 'text-muted-foreground';
 
+  if (href.startsWith('http')) {
+    return (
+      <a
+        href={href}
+        target='_blank'
+        rel='noopener noreferrer'
+        className={cn(baseClasses, inactiveClasses, className)}
+        onClick={onClick}
+      >
+        <Icon className={isMobile ? 'h-5 w-5' : 'h-4 w-4'} />
+        {name}
+      </a>
+    );
+  }
+
   return (
     <Link
       to={href}

@@ -233,3 +233,4 @@ screenshots/스크린샷_*.png
 !.roo/mcp.json
 
 linked-post
+.agent/**
