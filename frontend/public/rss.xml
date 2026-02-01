@@ -5,8 +5,33 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Sat, 31 Jan 2026 10:02:55 GMT</lastBuildDate>
+    <lastBuildDate>Sun, 01 Feb 2026 07:00:45 GMT</lastBuildDate>
     <language>en-US</language>
+    <item>
+      <title>Proxmox &amp; OPNsense VLAN 추가 및 설정 가이드</title>
+      <description>Proxmox VE에서 OPNsense VM에 새로운 가상 네트워크 인터페이스(vNIC)를 추가하고, VLAN 104 네트워크로 설정하는 단계별 가이드입니다.</description>
+      <link>https://noblog.nodove.com/blog/2026/proxmox-opnsense-vlan-104-guide</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/proxmox-opnsense-vlan-104-guide</guid>
+      <pubDate>Mon, 26 Jan 2026 00:00:00 GMT</pubDate>
+      <category>Guide</category>
+      <category>Proxmox</category>
+      <category>OPNsense</category>
+      <category>VLAN</category>
+      <category>Network</category>
+      <category>Virtualization</category>
+    </item>
+    <item>
+      <title>개인화된 가독성: 텍스트를 넘어 이해를 설계하다</title>
+      <description>도구는 차가울지 몰라도, 그 도구가 전하는 이해는 따뜻해야 합니다. 사용자의 맥락에 맞춰 숨 쉬는 문서를 만드는 기술적 여정에 대하여.</description>
+      <link>https://noblog.nodove.com/blog/2026/personalized-readability-ux</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/personalized-readability-ux</guid>
+      <pubDate>Sun, 25 Jan 2026 00:00:00 GMT</pubDate>
+      <category>Essay</category>
+      <category>UX</category>
+      <category>AI</category>
+      <category>Interaction Design</category>
+      <category>Readability</category>
+    </item>
     <item>
       <title>Algorithm</title>
       <description>알고리즘 리스트</description>
@@ -19,18 +44,18 @@
       <category>math</category>
     </item>
     <item>
-      <title>LLM Providers 추상화방안</title>
-      <description>LiteLLM 프록시로 LLM 호출</description>
-      <link>https://noblog.nodove.com/blog/2026/LLM providers 추상화방안</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/LLM providers 추상화방안</guid>
+      <title>Understanding State Space Models and Mamba</title>
+      <description>Transformer의 대안으로 떠오르는 SSM과 Mamba의 원리를 깊이 있게 설명합니다. 인지 과학적 은유부터 Induction Heads 메커니즘까지.</description>
+      <link>https://noblog.nodove.com/blog/2026/understanding-ssm-and-mamba</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/understanding-ssm-and-mamba</guid>
       <pubDate>Sat, 17 Jan 2026 00:00:00 GMT</pubDate>
-      <category>LLM</category>
-      <category>LLM</category>
+      <category>AI</category>
+      <category>SSM</category>
+      <category>Mamba</category>
       <category>Architecture</category>
-      <category>LiteLLM</category>
-      <category>LangChain</category>
-      <category>MCP</category>
-      <category>RAG</category>
+      <category>DeepLearning</category>
+      <category>Transformer</category>
+      <category>Math</category>
     </item>
     <item>
       <title>Vim Architecture, Functionality, Commands, and Integration</title>
@@ -245,30 +270,6 @@
       <category>환경설정</category>
       <category>터미널</category>
       <category>작업자동화</category>
-    </item>
-    <item>
-      <title>정렬 알고리즘 완전 정복: 버블 정렬부터 힙 정렬까지</title>
-      <description>버블 정렬부터 힙 정렬까지, 핵심 비유와 수도 코드, Java 구현으로 정렬 알고리즘을 완전 정복합니다.</description>
-      <link>https://noblog.nodove.com/blog/2025/sorting-algorithms-masterclass</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/sorting-algorithms-masterclass</guid>
-      <pubDate>Sat, 01 Nov 2025 00:00:00 GMT</pubDate>
-      <category>알고리즘</category>
-      <category>정렬</category>
-      <category>알고리즘</category>
-      <category>Java</category>
-    </item>
-    <item>
-      <title>Wayland 위에서 Wine 카카오톡이 복붙을 잃어버린 날</title>
-      <description>EndeavourOS에서 Wine 카카오톡과 호스트 사이 복붙이 끊겼던 사건을 기록하며, 왜 그런지 그리고 어떻게 우회했는지 정리했다.</description>
-      <link>https://noblog.nodove.com/blog/2025/wine-clipboard-bridge-journal</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/wine-clipboard-bridge-journal</guid>
-      <pubDate>Fri, 31 Oct 2025 00:00:00 GMT</pubDate>
-      <category>Linux</category>
-      <category>Wine</category>
-      <category>Wayland</category>
-      <category>클립보드</category>
-      <category>Hyprland</category>
-      <category>wl-clipboard</category>
     </item>
   </channel>
 </rss>
