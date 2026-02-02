@@ -64,9 +64,11 @@ const CONFIG_CATEGORIES = [
   {
     id: 'rag',
     name: 'RAG Services',
-    description: 'TEI, ChromaDB 설정',
+    description: 'Embedding, ChromaDB 설정',
     variables: [
-      { key: 'TEI_URL', type: 'url', default: 'http://embedding-server:80', description: 'TEI Embedding Server URL' },
+      { key: 'AI_EMBEDDING_URL', type: 'url', default: 'https://api.openai.com/v1', description: 'OpenAI-compatible Embedding URL' },
+      { key: 'AI_EMBEDDING_API_KEY', type: 'password', isSecret: true, description: 'Embedding API Key (optional)' },
+      { key: 'AI_EMBED_MODEL', type: 'text', default: 'text-embedding-3-small', description: 'Embedding Model' },
       { key: 'CHROMA_URL', type: 'url', default: 'http://chromadb:8000', description: 'ChromaDB URL' },
       { key: 'CHROMA_COLLECTION', type: 'text', default: 'blog-posts-all-MiniLM-L6-v2', description: 'ChromaDB Collection' },
     ],

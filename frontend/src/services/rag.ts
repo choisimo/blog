@@ -8,6 +8,7 @@
 import { getApiBaseUrl } from '@/utils/apiBase';
 import { PostService } from './postService';
 import { expandQueryWithSynonyms, getRelatedKeywords } from './synonyms';
+import { RAG_DEFAULTS } from '@/config/defaults';
 
 // ============================================================================
 // Types
@@ -54,7 +55,7 @@ export interface RAGHealthResponse {
   data?: {
     status: 'ok' | 'error';
     chromadb: boolean;
-    tei: boolean;
+    embedding: boolean;
     timestamp: string;
   };
   error?: { message: string; code?: string };
@@ -172,7 +173,7 @@ export async function generateEmbeddings(
 /**
  * RAG 서비스 상태 확인
  *
- * @returns 서비스 상태 (ChromaDB, TEI 연결 상태)
+ * @returns 서비스 상태 (ChromaDB, Embedding 연결 상태)
  */
 export async function checkRAGHealth(): Promise<RAGHealthResponse> {
   const base = getApiBaseUrl();
@@ -403,17 +404,10 @@ export async function findRelatedPosts(
   ).slice(0, limit);
 }
 
-/**
- * AI 챗봇용 컨텍스트 검색 (개선된 하이브리드 검색 사용)
- *
- * @param userQuery - 사용자 질문
- * @param maxTokens - 대략적인 최대 토큰 수 (문자 기준 근사치)
- * @returns 챗봇에 주입할 컨텍스트 문자열
- */
 export async function getRAGContextForChat(
   userQuery: string,
-  maxTokens = 2000,
-  timeoutMs = 8000
+  maxTokens = RAG_DEFAULTS.CONTEXT_MAX_TOKENS,
+  timeoutMs = RAG_DEFAULTS.CONTEXT_TIMEOUT_MS
 ): Promise<string | null> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);

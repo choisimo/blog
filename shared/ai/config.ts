@@ -34,10 +34,10 @@ function getEnvBoolean(key: string, defaultValue: boolean): boolean {
 // ============================================================================
 
 export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
-  'litellm': {
-    id: 'litellm' as ProviderId,
-    name: 'LiteLLM Gateway',
-    baseUrl: getEnv('AI_SERVER_URL', 'http://litellm:4000/v1'),
+  openai: {
+    id: 'openai' as ProviderId,
+    name: 'OpenAI-Compatible',
+    baseUrl: getEnv('AI_SERVER_URL', 'https://api.openai.com/v1'),
     models: [
       'gpt-4o',
       'gpt-4o-mini',
@@ -78,7 +78,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
 export const DEFAULT_AI_CONFIG: AIConfig = {
   providers: Object.values(PROVIDERS),
   routing: {
-    defaultProvider: getEnv('AI_DEFAULT_PROVIDER', 'litellm') as ProviderId,
+    defaultProvider: getEnv('AI_DEFAULT_PROVIDER', 'openai') as ProviderId,
     defaultModel: getEnv('AI_DEFAULT_MODEL', 'gpt-4.1'),
     fallbackProviders: ['local'],
     timeout: getEnvNumber('AI_TIMEOUT_MS', 120000),
@@ -136,19 +136,6 @@ export function isModelAvailable(providerId: ProviderId, model: string): boolean
   const provider = getProvider(providerId);
   return provider?.enabled === true && provider.models.includes(model);
 }
-
-// ============================================================================
-// URL Configuration
-// ============================================================================
-
-export const AI_URLS = {
-  // Legacy VAS endpoints (for GitHub Copilot auth only)
-  vasCore: getEnv('VAS_CORE_URL', 'http://vas-core:7012'),
-  vasAdmin: getEnv('VAS_ADMIN_URL', 'http://vas-admin:7080'),
-  
-  // Workers API
-  workersApi: getEnv('WORKERS_API_URL', 'https://api.nodove.com'),
-};
 
 // ============================================================================
 // Timeout Configuration

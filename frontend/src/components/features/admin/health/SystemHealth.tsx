@@ -74,7 +74,7 @@ async function checkBackendHealth(): Promise<{ ok: boolean; latencyMs: number }>
   }
 }
 
-async function checkRAGHealth(): Promise<{ tei: boolean; chroma: boolean; latencyMs: number }> {
+async function checkRAGHealth(): Promise<{ embedding: boolean; chroma: boolean; latencyMs: number }> {
   const base = getApiBaseUrl();
   const start = Date.now();
   
@@ -86,17 +86,17 @@ async function checkRAGHealth(): Promise<{ tei: boolean; chroma: boolean; latenc
     const latencyMs = Date.now() - start;
     
     if (!res.ok) {
-      return { tei: false, chroma: false, latencyMs };
+      return { embedding: false, chroma: false, latencyMs };
     }
     
     const data = await res.json();
     return {
-      tei: data.services?.tei?.ok ?? data.data?.tei ?? false,
+      embedding: data.services?.embedding?.ok ?? data.data?.embedding ?? false,
       chroma: data.services?.chroma?.ok ?? data.data?.chromadb ?? false,
       latencyMs,
     };
   } catch {
-    return { tei: false, chroma: false, latencyMs: 0 };
+    return { embedding: false, chroma: false, latencyMs: 0 };
   }
 }
 
@@ -436,7 +436,7 @@ export function SystemHealth() {
 
   // RAG services state
   const [ragServices, setRagServices] = useState<ServiceStatus[]>([
-    { name: 'tei', displayName: 'TEI (Embedding)', status: 'unknown' },
+    { name: 'embedding', displayName: 'Embedding', status: 'unknown' },
     { name: 'chroma', displayName: 'ChromaDB', status: 'unknown' },
   ]);
   const [ragLoading, setRagLoading] = useState(false);
@@ -477,9 +477,9 @@ export function SystemHealth() {
     
     setRagServices([
       {
-        name: 'tei',
-        displayName: 'TEI (Embedding)',
-        status: result.tei ? 'healthy' : 'down',
+        name: 'embedding',
+        displayName: 'Embedding',
+        status: result.embedding ? 'healthy' : 'down',
         latencyMs: result.latencyMs,
       },
       {

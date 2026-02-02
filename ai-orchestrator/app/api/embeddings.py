@@ -43,13 +43,16 @@ async def embeddings(request: EmbeddingsRequest) -> EmbeddingsResponse:
             timeout=60,
         )
 
-        embeddings_data = [item["embedding"] for item in response.data]
+        embeddings_data = [
+            item.embedding if hasattr(item, "embedding") else item["embedding"]
+            for item in response.data
+        ]
 
         return EmbeddingsResponse(
             embeddings=embeddings_data,
             data=embeddings_data,
             model=response.model or model,
-            provider="litellm",
+            provider="openai",
             requestId=request_id,
             usage=response.usage.model_dump() if response.usage else None,
         )

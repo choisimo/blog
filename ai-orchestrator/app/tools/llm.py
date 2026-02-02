@@ -1,21 +1,19 @@
-"""LiteLLM client wrapper for unified LLM access.
+"""OpenAI-compatible client wrapper for unified LLM access.
 
-All LLM calls go through LiteLLM with logical model aliases:
-- chat-default: Default chat model (OpenAI-compatible gateway)
-- vision-default: Vision-capable model (OpenAI-compatible gateway)
-- embed-default: Embedding model (OpenAI-compatible gateway)
+All LLM calls go through an OpenAI-compatible endpoint with default models
+configured via DEFAULT_CHAT_MODEL, DEFAULT_VISION_MODEL, and AI_EMBED_MODEL.
 """
 
 from functools import lru_cache
 
-import litellm
+from openai import AsyncOpenAI
 
 from app.config import get_settings
 
 
 class LLMClient:
-    """Unified LLM client using LiteLLM.
-    
+    """Unified LLM client using an OpenAI-compatible API.
+
     Provides async methods for:
     - acompletion: Chat completions
     - aembedding: Text embeddings
@@ -23,18 +21,19 @@ class LLMClient:
 
     def __init__(self) -> None:
         settings = get_settings()
-        
-        # Configure LiteLLM
-        litellm.drop_params = True
-        litellm.set_verbose = settings.debug
-        
-        # Set API base URL if using LiteLLM proxy
-        if settings.litellm_base_url:
-            self.base_url = settings.litellm_base_url
-            self.api_key = settings.litellm_api_key or "sk-placeholder"
-        else:
-            self.base_url = None
-            self.api_key = None
+        self.base_url = settings.openai_api_base_url or settings.ai_server_url
+        self.api_key = settings.ai_api_key or settings.openai_api_key or "sk-placeholder"
+        self.embedding_base_url = settings.embedding_base_url or self.base_url
+        self.embedding_api_key = settings.embedding_api_key or self.api_key
+
+        self.client = AsyncOpenAI(
+            api_key=self.api_key,
+            base_url=self.base_url,
+        )
+        self.embedding_client = AsyncOpenAI(
+            api_key=self.embedding_api_key,
+            base_url=self.embedding_base_url,
+        )
 
     async def acompletion(
         self,
@@ -45,18 +44,18 @@ class LLMClient:
         timeout: int = 120,
         **kwargs,
     ):
-        """Async chat completion via LiteLLM.
-        
+        """Async chat completion via OpenAI-compatible endpoint.
+
         Args:
-            model: Model alias (e.g., "chat-default") or full model name
+            model: Model name
             messages: List of message dicts with role and content
             temperature: Sampling temperature (0-2)
             max_tokens: Maximum tokens in response
             timeout: Request timeout in seconds
-            **kwargs: Additional LiteLLM parameters
-            
+            **kwargs: Additional OpenAI parameters
+
         Returns:
-            LiteLLM response object with choices[0].message.content
+            OpenAI response object with choices[0].message.content
         """
         params = {
             "model": model,
@@ -69,12 +68,7 @@ class LLMClient:
         if max_tokens:
             params["max_tokens"] = max_tokens
             
-        # If using LiteLLM proxy, set base URL
-        if self.base_url:
-            params["api_base"] = self.base_url
-            params["api_key"] = self.api_key
-            
-        return await litellm.acompletion(**params)
+        return await self.client.chat.completions.create(**params)
 
     async def aembedding(
         self,
@@ -83,16 +77,16 @@ class LLMClient:
         timeout: int = 60,
         **kwargs,
     ):
-        """Async text embedding via LiteLLM.
-        
+        """Async text embedding via OpenAI-compatible endpoint.
+
         Args:
-            model: Model alias (e.g., "embed-default") or full model name
+            model: Model name
             input: Text or list of texts to embed
             timeout: Request timeout in seconds
-            **kwargs: Additional LiteLLM parameters
-            
+            **kwargs: Additional OpenAI parameters
+
         Returns:
-            LiteLLM response object with data[].embedding
+            OpenAI response object with data[].embedding
         """
         params = {
             "model": model,
@@ -101,12 +95,7 @@ class LLMClient:
             **kwargs,
         }
         
-        # If using LiteLLM proxy, set base URL
-        if self.base_url:
-            params["api_base"] = self.base_url
-            params["api_key"] = self.api_key
-            
-        return await litellm.aembedding(**params)
+        return await self.embedding_client.embeddings.create(**params)
 
 
 @lru_cache

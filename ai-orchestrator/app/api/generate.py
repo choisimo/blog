@@ -59,7 +59,7 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
             content=content,
             response=content,
             model=response.model or model,
-            provider="litellm",
+            provider="openai",
             requestId=request_id,
         )
     except Exception as e:

@@ -8,6 +8,7 @@
  */
 
 import { getApiBaseUrl } from '@/utils/apiBase';
+import { MEMORY_DEFAULTS } from '@/config/defaults';
 
 // ============================================================================
 // Types
@@ -512,16 +513,9 @@ export async function deleteChatSession(sessionId: string): Promise<void> {
 // Context Building for Chat
 // ============================================================================
 
-/**
- * 채팅 컨텍스트용 메모리 컨텍스트 가져오기
- *
- * @param userQuery - 사용자 질문
- * @param maxTokens - 대략적인 최대 토큰 수
- * @returns 챗봇에 주입할 메모리 컨텍스트 문자열
- */
 export async function getMemoryContextForChat(
   userQuery: string,
-  maxTokens = 1500
+  maxTokens = MEMORY_DEFAULTS.CONTEXT_MAX_TOKENS
 ): Promise<string | null> {
   const results = await searchMemories(userQuery, { n_results: 10 });
 
@@ -529,16 +523,14 @@ export async function getMemoryContextForChat(
 
   const contextParts: string[] = [];
   let currentLength = 0;
-  const CHARS_PER_TOKEN = 4;
 
   for (const result of results) {
-    // 유사도가 낮은 결과는 제외 (0.3 이하)
-    if (result.similarity < 0.3) continue;
+    if (result.similarity < MEMORY_DEFAULTS.SIMILARITY_THRESHOLD) continue;
 
     const memType = result.metadata.memory_type || 'fact';
     const category = result.metadata.category ? `/${result.metadata.category}` : '';
     const entry = `[${memType}${category}] ${result.document}`;
-    const entryTokens = Math.ceil(entry.length / CHARS_PER_TOKEN);
+    const entryTokens = Math.ceil(entry.length / MEMORY_DEFAULTS.CHARS_PER_TOKEN);
 
     if (currentLength + entryTokens > maxTokens) break;
 

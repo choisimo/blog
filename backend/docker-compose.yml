@@ -3,22 +3,19 @@
 # =============================================================================
 # Services:
 #   - api:              Node.js Backend API Server
-#   - litellm:          LiteLLM Proxy (Unified AI Gateway)
 #   - nginx:            Reverse Proxy (SSL termination)
 #   - frontend:         React SPA (NGINX static server)
 #   - terminal-server:  WebSocket Terminal Server
 #   - workers-local:    Workers local emulator (wrangler dev)
 #   - chromadb:         Vector Database for RAG
-#   - embedding-server: TEI Embedding Server
 #
 # Usage:
 #   docker compose up -d                    # Start all services
-#   docker compose up -d api litellm nginx  # Start core services only
-#   docker compose logs -f litellm          # View LiteLLM logs
+#   docker compose up -d api nginx           # Start core services only
 #
 # Environment:
 #   - Copy .env.example to .env and configure
-#   - GITHUB_TOKEN is required for LiteLLM (GitHub Models)
+#   - Configure AI_SERVER_URL + AI_API_KEY for OpenAI-compatible AI
 # =============================================================================
 
 services:
@@ -31,9 +28,6 @@ services:
     env_file: .env
     environment:
       - NODE_ENV=production
-      - AI_SERVER_URL=http://litellm:4000/v1
-      - LITELLM_URL=http://litellm:4000
-      - TEI_URL=http://embedding-server:80
       - CHROMA_URL=http://chromadb:8000
       - SQLITE_PATH=/app/.data/blog.db
       - SQLITE_MIGRATIONS_DIR=/app/migrations
@@ -45,8 +39,6 @@ services:
     networks:
       - blog-network
     depends_on:
-      litellm:
-        condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
@@ -59,46 +51,6 @@ services:
     labels:
       - "com.blog.service=api"
       - "com.blog.description=Backend API Server"
-
-  # ---------------------------------------------------------------------------
-  # LiteLLM Proxy - Unified AI Gateway
-  # ---------------------------------------------------------------------------
-  # Routes all AI requests through GitHub Models using GITHUB_TOKEN
-  # Exposes OpenAI-compatible API at http://litellm:4000/v1
-  # ---------------------------------------------------------------------------
-  litellm:
-    image: ghcr.io/berriai/litellm:main-latest
-    container_name: blog-litellm
-    command: >
-      --config /app/config.yaml
-      --port 4000
-      --detailed_debug
-    volumes:
-      - ../ai-orchestrator/litellm_config.yaml:/app/config.yaml:ro
-    environment:
-      - GITHUB_TOKEN=${GITHUB_TOKEN}
-      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-    ports:
-      - "127.0.0.1:${LITELLM_HOST_PORT:-4400}:4000"
-    networks:
-      - blog-network
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/readiness').read()",
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
-    labels:
-      - "com.blog.service=litellm"
-      - "com.blog.description=LiteLLM AI Gateway (GitHub Models)"
 
   # ---------------------------------------------------------------------------
   # Nginx Reverse Proxy
@@ -172,32 +124,6 @@ services:
       - "com.blog.description=WebSocket Terminal Server"
 
   # ---------------------------------------------------------------------------
-  # AI Orchestrator (FastAPI)
-  # ---------------------------------------------------------------------------
-  ai-orchestrator:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/ai-server-backend:${AI_SERVER_BACKEND_TAG:-latest}
-    container_name: blog-ai-orchestrator
-    environment:
-      - AI_SERVER_URL=http://litellm:4000/v1
-      - LITELLM_URL=http://litellm:4000
-      - GITHUB_TOKEN=${GITHUB_TOKEN}
-    networks:
-      - blog-network
-    depends_on:
-      litellm:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:7016/v1/models"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
-    labels:
-      - "com.blog.service=ai-orchestrator"
-      - "com.blog.description=AI Orchestrator (FastAPI)"
-
-  # ---------------------------------------------------------------------------
   # Workers Local Emulator (Wrangler)
   # ---------------------------------------------------------------------------
   workers-local:
@@ -247,31 +173,6 @@ services:
       - "com.blog.description=Vector Database for RAG"
 
   # ---------------------------------------------------------------------------
-  # TEI Embedding Server
-  # ---------------------------------------------------------------------------
-  embedding-server:
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2
-    container_name: blog-embedding
-    command: >
-      --model-id sentence-transformers/all-MiniLM-L6-v2
-      --max-input-length 512
-      --max-batch-tokens 16384
-    volumes:
-      - embedding-cache:/data
-    networks:
-      - blog-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    restart: unless-stopped
-    labels:
-      - "com.blog.service=embedding"
-      - "com.blog.description=Text Embedding Inference Server"
-
-  # ---------------------------------------------------------------------------
   # Redis - Optional caching and async task queue
   # ---------------------------------------------------------------------------
   redis:
@@ -306,7 +207,5 @@ networks:
 volumes:
   chromadb-data:
     name: blog-chromadb-data
-  embedding-cache:
-    name: blog-embedding-cache
   redis-data:
     name: blog-redis-data

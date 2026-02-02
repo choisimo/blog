@@ -47,7 +47,7 @@ import {
 // ============================================================================
 
 interface HealthStatus {
-  tei: { ok: boolean; error?: string };
+  embedding: { ok: boolean; error?: string };
   chroma: { ok: boolean; error?: string };
 }
 
@@ -61,14 +61,17 @@ function RAGHealthStatus() {
       const response = await checkRAGHealth();
       if (response.ok && response.data) {
         setHealth({
-          tei: { ok: response.data.tei },
+          embedding: { ok: response.data.embedding },
           chroma: { ok: response.data.chromadb },
         });
       } else {
         // Parse from the raw response format
         const raw = response as any;
         if (raw.services) {
-          setHealth(raw.services);
+          setHealth({
+            embedding: raw.services.embedding,
+            chroma: raw.services.chroma,
+          });
         }
       }
     } catch {
@@ -95,7 +98,7 @@ function RAGHealthStatus() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-base">RAG 서비스 상태</CardTitle>
-            <CardDescription>TEI 임베딩 서버 및 ChromaDB 연결 상태</CardDescription>
+            <CardDescription>Embedding 엔드포인트 및 ChromaDB 연결 상태</CardDescription>
           </div>
           <Button variant="ghost" size="sm" onClick={fetchHealth} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -111,8 +114,8 @@ function RAGHealthStatus() {
         ) : health ? (
           <div className="flex gap-6">
             <div className="flex items-center gap-2">
-              <StatusIcon ok={health.tei.ok} />
-              <span className="text-sm">TEI (Embedding)</span>
+              <StatusIcon ok={health.embedding.ok} />
+              <span className="text-sm">Embedding</span>
             </div>
             <div className="flex items-center gap-2">
               <StatusIcon ok={health.chroma.ok} />

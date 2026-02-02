@@ -45,13 +45,16 @@ function getTerminalGatewayUrl(): string {
     // ignore
   }
 
-  // Environment variable
-  if (import.meta.env.VITE_TERMINAL_GATEWAY_URL) {
-    return import.meta.env.VITE_TERMINAL_GATEWAY_URL;
+  // Environment variable (REQUIRED - no hardcoded fallback)
+  const envUrl = import.meta.env.VITE_TERMINAL_GATEWAY_URL;
+  if (typeof envUrl === 'string' && envUrl) {
+    return envUrl;
   }
 
-  // Default production URL
-  return 'wss://terminal.nodove.com';
+  throw new Error(
+    '[terminal] VITE_TERMINAL_GATEWAY_URL is not configured. ' +
+    'Set this environment variable to enable terminal functionality.'
+  );
 }
 
 function getAuthToken(): string | null {

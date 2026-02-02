@@ -39,8 +39,8 @@ async def health_check() -> HealthResponse:
             "rag_query": "/ai/rag/query",
         },
         models=[
-            {"id": "chat-default", "name": "Chat Default", "provider": "LiteLLM"},
-            {"id": "vision-default", "name": "Vision Default", "provider": "LiteLLM"},
-            {"id": "embed-default", "name": "Embed Default", "provider": "LiteLLM"},
+            {"id": settings.default_chat_model, "name": "Chat Default", "provider": "OpenAI-Compatible"},
+            {"id": settings.default_vision_model, "name": "Vision Default", "provider": "OpenAI-Compatible"},
+            {"id": settings.default_embed_model, "name": "Embed Default", "provider": "OpenAI-Compatible"},
         ],
     )

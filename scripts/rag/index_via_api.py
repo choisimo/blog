@@ -20,7 +20,7 @@ from urllib.error import HTTPError, URLError
 
 # Configuration
 BACKEND_URL = os.environ.get("BACKEND_URL", "https://blog-b.nodove.com").rstrip("/")
-BATCH_SIZE = int(os.environ.get("BATCH_SIZE", "20"))  # TEI max is 32, use 20 for safety
+BATCH_SIZE = int(os.environ.get("BATCH_SIZE", "20"))  # Keep batches small for embedding endpoint safety
 MAX_CONTENT_CHARS = int(os.environ.get("MAX_CONTENT_CHARS", "800"))  # ~200 tokens
 INDEX_ENDPOINT = f"{BACKEND_URL}/api/v1/rag/index"
 

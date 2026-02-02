@@ -122,6 +122,13 @@ def get_cf_access_headers() -> Dict[str, str]:
     return headers
 
 
+def normalize_openai_base_url(url: str) -> str:
+    base = url.strip().rstrip('/')
+    if not base.endswith('/v1'):
+        base = f"{base}/v1"
+    return base
+
+
 def create_session(total_retries: int = 5, backoff_factor: float = 1.0, status_forcelist: List[int] | None = None) -> requests.Session:
     if status_forcelist is None:
         status_forcelist = [429, 500, 502, 503, 504]
@@ -142,16 +149,38 @@ def create_session(total_retries: int = 5, backoff_factor: float = 1.0, status_f
     return sess
 
 
-def embed_texts(session: requests.Session, tei_url: str, inputs: List[str], batch_size: int = 32, timeout: int = 120) -> List[List[float]]:
+def embed_texts(
+    session: requests.Session,
+    embedding_url: str,
+    embedding_api_key: str,
+    embedding_model: str,
+    inputs: List[str],
+    batch_size: int = 32,
+    timeout: int = 120,
+) -> List[List[float]]:
     out: List[List[float]] = []
+    base_url = normalize_openai_base_url(embedding_url)
+    endpoint = f"{base_url}/embeddings"
+    headers = {"Content-Type": "application/json"}
+    if embedding_api_key:
+        headers["Authorization"] = f"Bearer {embedding_api_key}"
     for i in range(0, len(inputs), batch_size):
         batch = inputs[i:i + batch_size]
-        resp = session.post(tei_url, json={"inputs": batch}, timeout=timeout)
+        resp = session.post(
+            endpoint,
+            json={"model": embedding_model, "input": batch},
+            headers=headers,
+            timeout=timeout,
+        )
         resp.raise_for_status()
         data = resp.json()
-        embs = data.get('embeddings')
-        if not isinstance(embs, list):
-            raise RuntimeError('Invalid TEI response')
+        if isinstance(data, dict) and isinstance(data.get('data'), list):
+            embs = [item.get('embedding') for item in data['data']]
+        else:
+            embs = data.get('embeddings') if isinstance(data, dict) else None
+
+        if not isinstance(embs, list) or not embs:
+            raise RuntimeError('Invalid embedding response')
         if len(embs) != len(batch):
             raise RuntimeError('Mismatched embedding count')
         out.extend(embs)
@@ -232,7 +261,9 @@ def chroma_upsert_with_retry(collection, ids: List[str], embeddings: List[List[f
 def process_document(
     file_path: Path,
     item: Dict[str, Any],
-    tei_url: str,
+    embedding_url: str,
+    embedding_api_key: str,
+    embedding_model: str,
     total_retries: int,
     retry_backoff: float,
     tokens_per_chunk: int,
@@ -259,7 +290,15 @@ def process_document(
     if cf_headers:
         session.headers.update(cf_headers)
     try:
-        embeddings = embed_texts(session, tei_url, chunks, batch_size=embed_batch, timeout=embed_timeout)
+        embeddings = embed_texts(
+            session,
+            embedding_url,
+            embedding_api_key,
+            embedding_model,
+            chunks,
+            batch_size=embed_batch,
+            timeout=embed_timeout,
+        )
     finally:
         session.close()
 
@@ -298,17 +337,19 @@ def main() -> None:
 
     items = read_manifest(manifest_path)
 
-    tei_url = os.environ.get('TEI_URL', '').strip()
-    if not tei_url:
-        raise SystemExit('Missing TEI_URL')
+    embedding_url = os.environ.get('AI_EMBEDDING_URL', '').strip() or os.environ.get('AI_SERVER_URL', '').strip()
+    if not embedding_url:
+        raise SystemExit('Missing AI_EMBEDDING_URL or AI_SERVER_URL')
+    embedding_api_key = os.environ.get('AI_EMBEDDING_API_KEY', '').strip() or os.environ.get('AI_API_KEY', '').strip() or os.environ.get('OPENAI_API_KEY', '').strip()
+    embedding_model = os.environ.get('AI_EMBED_MODEL', 'text-embedding-3-small').strip() or 'text-embedding-3-small'
     chroma_url = os.environ.get('CHROMA_URL', '').strip()
     if not chroma_url:
         raise SystemExit('Missing CHROMA_URL')
     # Dynamic collection naming: prefer explicit CHROMA_COLLECTION, else base + model
     base_collection = os.environ.get('BASE_COLLECTION_NAME', 'blog-posts').strip() or 'blog-posts'
-    tei_model_name = os.environ.get('TEI_MODEL_NAME', os.environ.get('TEI_MODEL', 'all-MiniLM-L6-v2')).strip() or 'all-MiniLM-L6-v2'
+    embedding_model_name = os.environ.get('EMBED_MODEL_NAME', embedding_model).strip() or embedding_model
     explicit_collection = os.environ.get('CHROMA_COLLECTION', '').strip()
-    collection_name = explicit_collection if explicit_collection else f"{base_collection}__{tei_model_name}"
+    collection_name = explicit_collection if explicit_collection else f"{base_collection}__{embedding_model_name}"
 
     cf_headers = get_cf_access_headers()
 
@@ -358,7 +399,9 @@ def main() -> None:
                 process_document,
                 file_path,
                 it,
-                tei_url,
+                embedding_url,
+                embedding_api_key,
+                embedding_model,
                 total_retries,
                 retry_backoff,
                 tokens_per_chunk,

@@ -1,3 +1,3 @@
 # ai-orchestrator
 
-LiteLLM + LangChain based AI Orchestrator service.
+OpenAI-compatible + LangChain based AI Orchestrator service.

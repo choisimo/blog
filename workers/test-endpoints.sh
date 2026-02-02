@@ -1,7 +1,7 @@
 #!/bin/bash
 # Test all API endpoints
 
-API_URL="${1:-https://blog-api-prod.immuddelo.workers.dev}"
+API_URL="${1:-https://api.nodove.com}"
 echo "Testing API endpoints at: $API_URL"
 echo "================================================"
 

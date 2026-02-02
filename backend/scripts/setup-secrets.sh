@@ -51,7 +51,6 @@ SECRETS=(
     ["ADMIN_BEARER_TOKEN"]="Admin API authentication token"
     
     # AI Services
-    ["LITELLM_MASTER_KEY"]="LiteLLM master key"
     ["AI_API_KEY"]="AI server API key (OpenAI-compatible)"
     ["OPENAI_API_KEY"]="OpenAI API key (optional)"
     ["ANTHROPIC_API_KEY"]="Anthropic API key (optional)"
@@ -165,9 +164,6 @@ REDIS_PASSWORD=$(generate_random 16)
 
 # === Admin ===
 ADMIN_BEARER_TOKEN=$(generate_random 32)
-
-# === LiteLLM ===
-LITELLM_MASTER_KEY=sk-$(generate_random 24)
 
 # === MinIO ===
 MINIO_ROOT_USER=admin

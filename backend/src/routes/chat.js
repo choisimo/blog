@@ -2,15 +2,22 @@ import { Router } from 'express';
 import { WebSocketServer } from 'ws';
 import { aiService, tryParseJson } from '../lib/ai-service.js';
 import { config } from '../config.js';
+import { openaiEmbeddings } from '../lib/openai-compat-client.js';
+import {
+  CHROMA,
+  AI_TEMPERATURES,
+  TEXT_LIMITS,
+  STREAMING,
+  VALID_TASK_MODES,
+  FALLBACK_DATA,
+} from '../config/constants.js';
 
 const router = Router();
 
-const CHROMA_TENANT = 'default_tenant';
-const CHROMA_DATABASE = 'default_database';
 const ragCollectionCache = new Map();
 
 function getChromaCollectionsBase() {
-  return `${config.rag.chromaUrl}/api/v2/tenants/${CHROMA_TENANT}/databases/${CHROMA_DATABASE}/collections`;
+  return `${config.rag.chromaUrl}/api/v2/tenants/${CHROMA.TENANT}/databases/${CHROMA.DATABASE}/collections`;
 }
 
 async function getCollectionUUID(collectionName) {
@@ -38,18 +45,13 @@ async function getCollectionUUID(collectionName) {
 }
 
 async function getEmbeddings(texts) {
-  const response = await fetch(config.rag.teiUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ inputs: texts }),
+  const result = await openaiEmbeddings(texts, {
+    model: config.rag.embeddingModel,
+    baseUrl: config.rag.embeddingUrl,
+    apiKey: config.rag.embeddingApiKey,
   });
-  
-  if (!response.ok) {
-    throw new Error(`TEI error: ${response.status}`);
-  }
-  
-  const data = await response.json();
-  return data.embeddings || data;
+
+  return result.embeddings;
 }
 
 async function queryChroma(embedding, nResults = 5) {
@@ -147,7 +149,6 @@ function getSession(sessionId) {
 /**
  * Helper: Validate task mode
  */
-const VALID_TASK_MODES = ['sketch', 'prism', 'chain', 'catalyst', 'summary', 'custom'];
 function isValidTaskMode(mode) {
   return VALID_TASK_MODES.includes(mode);
 }
@@ -167,14 +168,14 @@ function buildTaskPrompt(mode, payload) {
           'You are a helpful writing companion. Return STRICT JSON only matching the schema.',
           '{"mood":"string","bullets":["string", "string", "..."]}',
           '',
-          `Persona: ${persona || 'default'}`,
-          `Post: ${title.slice(0, 120)}`,
+          `Persona: ${persona || FALLBACK_DATA.PERSONA}`,
+          `Post: ${title.slice(0, TEXT_LIMITS.TASK_TITLE)}`,
           'Paragraph:',
-          text.slice(0, 1600),
+          text.slice(0, TEXT_LIMITS.TASK_PARAGRAPH),
           '',
           'Task: Capture the emotional sketch. Select a concise mood (e.g., curious, excited, skeptical) and 3-6 short bullets in the original language of the text.',
         ].join('\n'),
-        temperature: 0.3,
+        temperature: AI_TEMPERATURES.SKETCH,
       };
 
     case 'prism':
@@ -182,13 +183,13 @@ function buildTaskPrompt(mode, payload) {
         prompt: [
           'Return STRICT JSON only for idea facets.',
           '{"facets":[{"title":"string","points":["string","string"]}]}',
-          `Post: ${title.slice(0, 120)}`,
+          `Post: ${title.slice(0, TEXT_LIMITS.TASK_TITLE)}`,
           'Paragraph:',
-          text.slice(0, 1600),
+          text.slice(0, TEXT_LIMITS.TASK_PARAGRAPH),
           '',
           'Task: Provide 2-3 facets (titles) with 2-4 concise points each, in the original language.',
         ].join('\n'),
-        temperature: 0.2,
+        temperature: AI_TEMPERATURES.PRISM,
       };
 
     case 'chain':
@@ -196,19 +197,19 @@ function buildTaskPrompt(mode, payload) {
         prompt: [
           'Return STRICT JSON only for tail questions.',
           '{"questions":[{"q":"string","why":"string"}]}',
-          `Post: ${title.slice(0, 120)}`,
+          `Post: ${title.slice(0, TEXT_LIMITS.TASK_TITLE)}`,
           'Paragraph:',
-          text.slice(0, 1600),
+          text.slice(0, TEXT_LIMITS.TASK_PARAGRAPH),
           '',
           'Task: Generate 3-5 short follow-up questions and a brief why for each, in the original language.',
         ].join('\n'),
-        temperature: 0.2,
+        temperature: AI_TEMPERATURES.CHAIN,
       };
 
     case 'summary':
       return {
         prompt: `Summarize the following content in Korean, concise but faithful to key points.\n\n${text}`,
-        temperature: 0.2,
+        temperature: AI_TEMPERATURES.SUMMARY,
       };
 
     case 'catalyst':
@@ -216,20 +217,20 @@ function buildTaskPrompt(mode, payload) {
         prompt: [
           'Return STRICT JSON for catalyst suggestions.',
           '{"suggestions":[{"idea":"string","reason":"string"}]}',
-          `Post: ${title.slice(0, 120)}`,
+          `Post: ${title.slice(0, TEXT_LIMITS.TASK_TITLE)}`,
           'Content:',
-          text.slice(0, 1600),
+          text.slice(0, TEXT_LIMITS.TASK_PARAGRAPH),
           '',
           'Task: Provide 2-4 creative suggestions or alternative perspectives, in the original language.',
         ].join('\n'),
-        temperature: 0.4,
+        temperature: AI_TEMPERATURES.CATALYST,
       };
 
     case 'custom':
     default:
       return {
         prompt: text,
-        temperature: 0.2,
+        temperature: AI_TEMPERATURES.CUSTOM,
       };
   }
 }
@@ -326,13 +327,13 @@ export function initChatWebSocket(server) {
 
         const result = await aiService.chat(session.messages, { model: payload.model });
         const text = result.content || '';
-        const chunkSize = 50;
+        const chunkSize = STREAMING.WS_CHUNK_SIZE;
 
         for (let i = 0; i < text.length; i += chunkSize) {
           if (closed || ws.readyState !== ws.OPEN) break;
           const chunk = text.slice(i, i + chunkSize);
           send({ type: 'text', text: chunk });
-          await new Promise((r) => setTimeout(r, 20));
+          await new Promise((r) => setTimeout(r, STREAMING.WS_CHUNK_DELAY));
         }
 
         session.messages.push({ role: 'assistant', content: text });
@@ -370,26 +371,19 @@ function getFallbackData(mode, payload) {
   switch (mode) {
     case 'sketch':
       return {
-        mood: 'curious',
-        bullets: sentences.slice(0, 4).map((s) => (s.length > 140 ? `${s.slice(0, 138)}...` : s)),
+        mood: FALLBACK_DATA.MOOD,
+        bullets: sentences.slice(0, 4).map((s) => (s.length > TEXT_LIMITS.BULLET_TEXT ? `${s.slice(0, TEXT_LIMITS.BULLET_TEXT - 2)}...` : s)),
       };
     case 'prism':
       return {
-        facets: [
-          { title: '핵심 요점', points: [text.slice(0, 140)] },
-          { title: '생각해볼 점', points: ['관점 A', '관점 B'] },
-        ],
+        facets: FALLBACK_DATA.FACETS,
       };
     case 'chain':
       return {
-        questions: [
-          { q: '무엇이 핵심 주장인가?', why: '핵심을 명료화' },
-          { q: '어떤 가정이 있는가?', why: '숨은 전제 확인' },
-          { q: '적용 예시는?', why: '구체화' },
-        ],
+        questions: FALLBACK_DATA.QUESTIONS,
       };
     case 'summary':
-      return { summary: text.slice(0, 300) + (text.length > 300 ? '...' : '') };
+      return { summary: text.slice(0, FALLBACK_DATA.SUMMARY_LENGTH) + (text.length > FALLBACK_DATA.SUMMARY_LENGTH ? '...' : '') };
     case 'catalyst':
       return {
         suggestions: [
@@ -513,12 +507,12 @@ router.post('/session/:sessionId/message', async (req, res, next) => {
 
       const text = result.content || '';
       
-      const chunkSize = 50;
+      const chunkSize = STREAMING.CHUNK_SIZE;
       for (let i = 0; i < text.length; i += chunkSize) {
         if (closed) break;
         const chunk = text.slice(i, i + chunkSize);
         send({ type: 'text', text: chunk });
-        await new Promise((r) => setTimeout(r, 20));
+        await new Promise((r) => setTimeout(r, STREAMING.CHUNK_DELAY));
       }
 
       session.messages.push({ role: 'assistant', content: text });
@@ -630,7 +624,7 @@ router.post('/aggregate', async (req, res, next) => {
       prompt.trim(),
     ].join('\n');
 
-    const text = await aiService.generate(systemPrompt, { temperature: 0.2 });
+    const text = await aiService.generate(systemPrompt, { temperature: AI_TEMPERATURES.AGGREGATE });
     return res.json({ ok: true, data: { text } });
   } catch (err) {
     return next(err);

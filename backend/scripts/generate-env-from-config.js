@@ -70,7 +70,9 @@ const CONFIG_SCHEMA = {
   rag: {
     name: 'RAG Services',
     vars: [
-      { key: 'TEI_URL', value: () => config.rag?.teiUrl },
+      { key: 'AI_EMBEDDING_URL', value: () => config.rag?.embeddingUrl },
+      { key: 'AI_EMBEDDING_API_KEY', value: () => config.rag?.embeddingApiKey, secret: true },
+      { key: 'AI_EMBED_MODEL', value: () => config.rag?.embeddingModel },
       { key: 'CHROMA_URL', value: () => config.rag?.chromaUrl },
       { key: 'CHROMA_COLLECTION', value: () => config.rag?.chromaCollection },
     ],

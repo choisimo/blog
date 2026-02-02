@@ -74,7 +74,7 @@ async def vision(request: VisionRequest) -> VisionResponse:
             text=content,
             content=content,
             model=response.model or model,
-            provider="litellm",
+            provider="openai",
             requestId=request_id,
         )
     except HTTPException:

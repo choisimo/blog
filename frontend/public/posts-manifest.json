@@ -1,6 +1,67 @@
 {
-  "total": 143,
+  "total": 146,
   "items": [
+    {
+      "path": "/posts/2026/Container Network Interface.md",
+      "year": "2026",
+      "slug": "Container Network Interface",
+      "title": "Container Network Interface",
+      "description": "Networking without NAT, the CNI's role in remote container networking, and more.",
+      "snippet": "Networking without NAT, the CNI's role in remote container networking, and more.",
+      "date": "2026-02-01",
+      "tags": [
+        "Network",
+        "Container",
+        "CNI"
+      ],
+      "category": "Network, Container, CNI",
+      "author": "Admin",
+      "readingTime": "5 min read",
+      "published": true,
+      "coverImage": "/posts/2026/images/2026/CNI/bridge.png",
+      "url": "/blog/2026/Container Network Interface"
+    },
+    {
+      "path": "/posts/2026/proxmox-opnsense-vlan-104-guide.md",
+      "year": "2026",
+      "slug": "proxmox-opnsense-vlan-104-guide",
+      "title": "Proxmox & OPNsense VLAN 추가 및 설정 가이드",
+      "description": "Proxmox VE에서 OPNsense VM에 새로운 가상 네트워크 인터페이스(vNIC)를 추가하고, VLAN 104 네트워크로 설정하는 단계별 가이드입니다.",
+      "snippet": "Proxmox VE에서 OPNsense VM에 새로운 가상 네트워크 인터페이스(vNIC)를 추가하고, VLAN 104 네트워크로 설정하는 단계별 가이드입니다.",
+      "date": "2026-01-26",
+      "tags": [
+        "Proxmox",
+        "OPNsense",
+        "VLAN",
+        "Network",
+        "Virtualization"
+      ],
+      "category": "Guide",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2026/proxmox-opnsense-vlan-104-guide"
+    },
+    {
+      "path": "/posts/2026/personalized-readability-ux.md",
+      "year": "2026",
+      "slug": "personalized-readability-ux",
+      "title": "개인화된 가독성: 텍스트를 넘어 이해를 설계하다",
+      "description": "도구는 차가울지 몰라도, 그 도구가 전하는 이해는 따뜻해야 합니다. 사용자의 맥락에 맞춰 숨 쉬는 문서를 만드는 기술적 여정에 대하여.",
+      "snippet": "도구는 차가울지 몰라도, 그 도구가 전하는 이해는 따뜻해야 합니다. 사용자의 맥락에 맞춰 숨 쉬는 문서를 만드는 기술적 여정에 대하여.",
+      "date": "2026-01-25",
+      "tags": [
+        "UX",
+        "AI",
+        "Interaction Design",
+        "Readability"
+      ],
+      "category": "Essay",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "url": "/blog/2026/personalized-readability-ux"
+    },
     {
       "path": "/posts/2026/Algorithm.md",
       "year": "2026",
@@ -21,26 +82,27 @@
       "url": "/blog/2026/Algorithm"
     },
     {
-      "path": "/posts/2026/LLM providers 추상화방안.md",
+      "path": "/posts/2026/understanding-ssm-and-mamba.md",
       "year": "2026",
-      "slug": "LLM providers 추상화방안",
-      "title": "LLM Providers 추상화방안",
-      "description": "LiteLLM 프록시로 LLM 호출",
-      "snippet": "LiteLLM 프록시로 LLM 호출",
+      "slug": "understanding-ssm-and-mamba",
+      "title": "Understanding State Space Models and Mamba",
+      "description": "Transformer의 대안으로 떠오르는 SSM과 Mamba의 원리를 깊이 있게 설명합니다. 인지 과학적 은유부터 Induction Heads 메커니즘까지.",
+      "snippet": "Transformer의 대안으로 떠오르는 SSM과 Mamba의 원리를 깊이 있게 설명합니다. 인지 과학적 은유부터 Induction Heads 메커니즘까지.",
       "date": "2026-01-17",
       "tags": [
-        "LLM",
+        "SSM",
+        "Mamba",
         "Architecture",
-        "LiteLLM",
-        "LangChain",
-        "MCP",
-        "RAG"
+        "DeepLearning",
+        "Transformer",
+        "Math"
       ],
-      "category": "LLM",
+      "category": "AI",
       "author": "Admin",
-      "readingTime": "2 min read",
+      "readingTime": "4 min read",
       "published": true,
-      "url": "/blog/2026/LLM providers 추상화방안"
+      "coverImage": "/posts/2026/image.png",
+      "url": "/blog/2026/understanding-ssm-and-mamba"
     },
     {
       "path": "/posts/2026/vim-architecture-functionality-commands-integration.md",
@@ -3024,7 +3086,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-01-31T10:02:55.483Z",
+  "generatedAt": "2026-02-02T15:10:50.607Z",
   "years": [
     "2026",
     "2025",

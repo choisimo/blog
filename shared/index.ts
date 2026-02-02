@@ -8,7 +8,6 @@ export {
   isModelAvailable,
   PROVIDERS,
   DEFAULT_AI_CONFIG,
-  AI_URLS,
   TIMEOUTS,
 } from './ai/config';
 

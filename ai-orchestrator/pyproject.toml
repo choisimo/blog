@@ -1,7 +1,7 @@
 [project]
 name = "ai-orchestrator"
 version = "1.0.0"
-description = "LiteLLM + LangChain based AI Orchestrator"
+description = "OpenAI-compatible + LangChain based AI Orchestrator"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
@@ -11,7 +11,7 @@ dependencies = [
     "uvicorn[standard]>=0.32.0",
     "pydantic>=2.10.0",
     "pydantic-settings>=2.6.0",
-    "litellm>=1.55.0",
+    "openai>=1.54.0",
     "langchain>=0.3.0",
     "langchain-community>=0.3.0",
     "langchain-openai>=0.2.0",

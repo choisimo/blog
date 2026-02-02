@@ -1,13 +1,6 @@
-/**
- * AI Client for Inline Features
- * 
- * Thin Client 구조:
- * - 프론트엔드는 mode와 payload만 전송
- * - 프롬프트 생성 및 LLM 호출은 Workers에서 처리
- * - 에러 시 클라이언트 사이드 폴백 제공
- */
 import { ensureSession } from '@/services/chat';
 import { getApiBaseUrl } from '@/utils/apiBase';
+import { TEXT_LIMITS, FALLBACK_DATA } from '@/config/defaults';
 
 // ============================================================================
 // Types
@@ -102,9 +95,6 @@ function tryParseJson<T = unknown>(text: string): T | null {
   return null;
 }
 
-/**
- * 텍스트 안전 자르기 (폴백용)
- */
 function safeTruncate(s: string, maxLength: number): string {
   if (!s) return '';
   return s.length > maxLength ? `${s.slice(0, maxLength - 1)}...` : s;
@@ -260,11 +250,11 @@ function createSketchFallback(paragraph: string): SketchResult {
     .slice(0, 4);
 
   return {
-    mood: 'reflective',
+    mood: FALLBACK_DATA.MOOD,
     bullets:
       sentences.length > 0
-        ? sentences.map(s => safeTruncate(s, 100))
-        : ['내용을 분석할 수 없습니다.'],
+        ? sentences.map(s => safeTruncate(s, TEXT_LIMITS.SKETCH_BULLET))
+        : [...FALLBACK_DATA.SKETCH.BULLETS_ERROR],
   };
 }
 
@@ -272,12 +262,12 @@ function createPrismFallback(paragraph: string): PrismResult {
   return {
     facets: [
       {
-        title: '핵심 요점',
-        points: [safeTruncate(paragraph, 140) || '분석 중 오류 발생'],
+        title: FALLBACK_DATA.PRISM.FACETS[0].title,
+        points: [safeTruncate(paragraph, TEXT_LIMITS.PRISM_TRUNCATE) || FALLBACK_DATA.PRISM.FACETS[0].points[0]],
       },
       {
-        title: '생각해볼 점',
-        points: ['다양한 관점에서 검토 필요', '추가 맥락 확인 권장'],
+        title: FALLBACK_DATA.PRISM.FACETS[1].title,
+        points: [...FALLBACK_DATA.PRISM.FACETS[1].points],
       },
     ],
   };
@@ -285,11 +275,7 @@ function createPrismFallback(paragraph: string): PrismResult {
 
 function createChainFallback(): ChainResult {
   return {
-    questions: [
-      { q: '이 주장의 핵심 근거는 무엇인가?', why: '논리적 기반 확인' },
-      { q: '어떤 전제나 가정이 깔려 있는가?', why: '숨겨진 전제 파악' },
-      { q: '실제로 어떻게 적용할 수 있는가?', why: '실용적 가치 탐색' },
-    ],
+    questions: FALLBACK_DATA.CHAIN.QUESTIONS.map(q => ({ ...q })),
   };
 }
 
@@ -413,8 +399,8 @@ export async function summary(input: {
   } catch (err) {
     console.error('Summary AI call failed:', err);
     return {
-      summary: safeTruncate(paragraph, 200) || '요약을 생성할 수 없습니다.',
-      keyPoints: ['원본 텍스트를 확인해주세요.'],
+      summary: safeTruncate(paragraph, TEXT_LIMITS.SUMMARY_TRUNCATE) || FALLBACK_DATA.SUMMARY.ERROR_MESSAGE,
+      keyPoints: [...FALLBACK_DATA.SUMMARY.KEY_POINTS],
     };
   }
 }

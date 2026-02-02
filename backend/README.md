@@ -32,7 +32,7 @@ Backend API Server는 블로그 플랫폼의 **Origin 서버**입니다. Gateway
 - **Port**: `5080` (기본)
 - **Image Processing**: Sharp
 - **AI Backend**: OpenAI-compatible server (AI_SERVER_URL)
-- **Vector DB**: ChromaDB + TEI Embedding Server
+- **Vector DB**: ChromaDB + OpenAI-compatible Embeddings
 
 ---
 
@@ -51,7 +51,7 @@ flowchart TB
 
         subgraph "Services"
             AI_SRV[AI Server<br/>OpenAI-compatible endpoint]
-            TEI[TEI Embedding<br/>embedding-server:80]
+            EMBED[Embedding API<br/>OpenAI-compatible endpoint]
             CHROMA[ChromaDB<br/>chromadb:8000]
         end
     end
@@ -63,7 +63,7 @@ flowchart TB
 
     API_GW -->|Proxy<br/>X-Backend-Key| BE
     BE --> AI_SRV
-    BE --> TEI
+    BE --> EMBED
     BE --> CHROMA
     BE --> FS
     BE -.->|Optional| R2
@@ -210,7 +210,7 @@ OPENAI_API_BASE_URL=
 
 ```
 Query Flow:
-1. 사용자 질의 → TEI Embedding Server → 벡터 변환
+1. 사용자 질의 → OpenAI-compatible Embedding API → 벡터 변환
 2. 벡터 → ChromaDB → 유사 문서 검색 (topK)
 3. 관련 문서 + 질의 → LLM → 컨텍스트 기반 답변
 ```
@@ -219,7 +219,8 @@ Query Flow:
 
 ```javascript
 config.rag = {
-  teiUrl: "http://embedding-server:80",
+  embeddingUrl: "https://api.openai.com/v1",
+  embeddingModel: "text-embedding-3-small",
   chromaUrl: "http://chromadb:8000",
   chromaCollection: "blog-posts-all-MiniLM-L6-v2",
 };
@@ -266,14 +267,12 @@ TRUST_PROXY=1                   # Reverse proxy 앞에서 동작 시
 ALLOWED_ORIGINS=https://noblog.nodove.com,https://api.nodove.com
 
 # ============================================
-# AI - LiteLLM Gateway (Docker 배포 시)
+# AI - OpenAI-Compatible
 # ============================================
-AI_SERVER_URL=http://litellm:4000/v1
-LITELLM_URL=http://litellm:4000
-LITELLM_MASTER_KEY=your-master-key      # LiteLLM 인증 키
-AI_API_KEY=your-master-key              # Backend → LiteLLM 인증
+AI_SERVER_URL=https://api.openai.com/v1
+AI_API_KEY=your-api-key
+OPENAI_API_KEY=optional-openai-key
 AI_DEFAULT_MODEL=gpt-4.1
-GITHUB_TOKEN=ghp_...                    # GitHub Models용 토큰
 
 # ============================================
 # Redis (비동기 작업 큐, 캐싱)
@@ -289,7 +288,9 @@ SQLITE_MIGRATIONS_DIR=/app/migrations
 # ============================================
 # RAG (선택)
 # ============================================
-TEI_URL=http://embedding-server:80
+AI_EMBEDDING_URL=https://api.openai.com/v1
+AI_EMBEDDING_API_KEY=your-embedding-key
+AI_EMBED_MODEL=text-embedding-3-small
 CHROMA_URL=http://chromadb:8000
 CHROMA_COLLECTION=blog-posts-all-MiniLM-L6-v2
 
@@ -384,13 +385,10 @@ FEATURE_COMMENTS_ENABLED=true
 | ------------------ | ---- | ------------------------------ |
 | `api`              | 5080 | Backend API Server             |
 | `nginx`            | 80   | Reverse Proxy                  |
-| `litellm`          | 4000 | LiteLLM AI Gateway             |
 | `redis`            | 6379 | Cache and Async Task Queue     |
 | `chromadb`         | 8000 | Vector Database (RAG)          |
-| `embedding-server` | 80   | TEI Embedding Server           |
 | `frontend`         | 80   | React SPA (NGINX)              |
 | `terminal-server`  | 8080 | WebSocket Terminal Server      |
-| `ai-orchestrator`  | 7016 | AI Orchestrator (FastAPI)      |
 
 ---
 
@@ -414,9 +412,8 @@ cd backend
 # .env 설정
 cp -n .env.example .env
 # .env 파일을 편집하여 필수 변수 설정:
-# - GITHUB_TOKEN (GitHub Models 인증용)
-# - LITELLM_MASTER_KEY (LiteLLM 인증용)
-# - AI_API_KEY (동일하게 설정)
+# - AI_SERVER_URL (OpenAI-compatible API URL)
+# - AI_API_KEY (AI API key)
 
 # SSL 인증서 설정 (자체 서명 또는 Cloudflare Origin)
 mkdir -p nginx/ssl
@@ -514,6 +511,84 @@ server {
 
 ---
 
+## 8. Architecture (MVC + Repository Pattern)
+
+### Layer Architecture
+
+The backend follows an MVC-inspired architecture with separate layers for configuration, repositories, services, and routes.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         Routes (Controllers)                     │
+│  Thin HTTP handlers - validation, response formatting            │
+├─────────────────────────────────────────────────────────────────┤
+│                         Services (Business Logic)                │
+│  Domain logic, orchestration, external API integration           │
+├─────────────────────────────────────────────────────────────────┤
+│                         Repositories (Data Access)               │
+│  Database queries, storage operations, caching                   │
+├─────────────────────────────────────────────────────────────────┤
+│                         Config Layer                             │
+│  Environment validation, constants, feature flags                │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Backward Compatibility
+
+Original files in `lib/` now contain re-export shims marked with `@deprecated` JSDoc. This ensures:
+- Existing imports continue to work
+- New code should import from `services/` or `repositories/`
+- Gradual migration without breaking changes
+
+```javascript
+// lib/ai-service.js (re-export shim)
+/**
+ * @deprecated Import from '../services/ai/ai.service.js' instead
+ */
+export * from '../services/ai/ai.service.js';
+```
+
+### Service Layer Details
+
+| Service | Location | Responsibility |
+|---------|----------|----------------|
+| **AI Service** | `services/ai/ai.service.js` | Unified AI completions (text, vision, JSON) |
+| **OpenAI Client** | `services/ai/openai-client.service.js` | OpenAI SDK-compatible API client |
+| **Task Queue** | `services/ai/task-queue.service.js` | Async AI task queue management |
+| **Query Expander** | `services/ai/query-expander.service.js` | RAG query expansion/reformulation |
+| **Rate Limiter** | `services/ai/rate-limiter.service.js` | AI API rate limiting |
+| **Agent Coordinator** | `services/agent/coordinator.service.js` | Multi-tool agent orchestration |
+| **Posts Service** | `services/posts.service.js` | Post CRUD, manifest generation |
+| **Chat Service** | `services/chat.service.js` | Session management, RAG search |
+| **Image Service** | `services/image.service.js` | Image processing with Sharp |
+| **Comments Service** | `services/comments.service.js` | Comment normalization, SSE broadcast |
+| **Model Service** | `services/model.service.js` | Model capabilities, fallbacks |
+
+### Repository Layer Details
+
+| Repository | Location | Responsibility |
+|------------|----------|----------------|
+| **D1 Repository** | `repositories/base/d1.repository.js` | Cloudflare D1 database access |
+| **R2 Repository** | `repositories/r2.repository.js` | Cloudflare R2 storage access |
+| **AI Usage Repository** | `repositories/ai-usage.repository.js` | AI usage logging/tracking |
+| **Vector Repository** | `repositories/memory/vector.repository.js` | Vector embeddings storage |
+| **Session Repository** | `repositories/memory/session.repository.js` | Chat session persistence |
+| **Persistent Repository** | `repositories/memory/persistent.repository.js` | Long-term memory storage |
+| **Posts Repository** | `repositories/posts.repository.js` | Post data access |
+| **Comments Repository** | `repositories/comments.repository.js` | Comment data access |
+
+### Agent Tools
+
+| Tool | Location | Responsibility |
+|------|----------|----------------|
+| **RAG Search** | `services/agent/tools/rag-search.tool.js` | Blog content vector search |
+| **Web Search** | `services/agent/tools/web-search.tool.js` | External web search (Exa AI) |
+| **MCP Client** | `services/agent/tools/mcp-client.tool.js` | Model Context Protocol integration |
+| **Blog Ops** | `services/agent/tools/blog-ops.tool.js` | Blog management operations |
+| **Code Execution** | `services/agent/tools/code-execution.tool.js` | Sandboxed code execution |
+
+---
+
 ## Quick Reference
 
 ### Directory Structure
@@ -521,37 +596,83 @@ server {
 ```
 backend/
 ├── src/
-│   ├── index.js              # 엔트리포인트 (Express app)
-│   ├── config.js             # 환경변수 파싱 (Zod)
-│   ├── routes/
+│   ├── index.js              # Entry point (Express app)
+│   ├── config.js             # Environment parsing (Zod) - legacy
+│   │
+│   ├── config/               # Configuration layer (NEW)
+│   │   ├── index.js          # Main config export
+│   │   ├── constants.js      # Application constants
+│   │   ├── schema.js         # Zod validation schemas
+│   │   └── env.js            # Environment variable loader
+│   │
+│   ├── middleware/           # Express middleware (NEW)
+│   │   ├── adminAuth.js      # Admin authentication
+│   │   ├── errorHandler.js   # Global error handler
+│   │   ├── validation.js     # Request validation
+│   │   └── rateLimit.js      # Rate limiting
+│   │
+│   ├── repositories/         # Data access layer (NEW)
+│   │   ├── base/
+│   │   │   └── d1.repository.js      # D1 database client
+│   │   ├── memory/
+│   │   │   ├── vector.repository.js  # Vector storage
+│   │   │   ├── session.repository.js # Session storage
+│   │   │   └── persistent.repository.js
+│   │   ├── r2.repository.js          # R2 storage
+│   │   ├── ai-usage.repository.js    # AI usage logging
+│   │   ├── posts.repository.js       # Posts data access
+│   │   └── comments.repository.js    # Comments data access
+│   │
+│   ├── services/             # Business logic layer (NEW)
+│   │   ├── ai/
+│   │   │   ├── ai.service.js         # Unified AI service
+│   │   │   ├── openai-client.service.js
+│   │   │   ├── task-queue.service.js
+│   │   │   ├── query-expander.service.js
+│   │   │   └── rate-limiter.service.js
+│   │   ├── agent/
+│   │   │   ├── coordinator.service.js
+│   │   │   └── tools/
+│   │   │       ├── index.js
+│   │   │       ├── rag-search.tool.js
+│   │   │       ├── web-search.tool.js
+│   │   │       ├── mcp-client.tool.js
+│   │   │       ├── blog-ops.tool.js
+│   │   │       └── code-execution.tool.js
+│   │   ├── posts.service.js          # Post business logic
+│   │   ├── chat.service.js           # Chat/session logic
+│   │   ├── image.service.js          # Image processing
+│   │   ├── comments.service.js       # Comment logic + SSE
+│   │   └── model.service.js          # Model capabilities
+│   │
+│   ├── routes/               # HTTP route handlers
 │   │   ├── ai.js             # AI API
 │   │   ├── rag.js            # RAG API
 │   │   ├── agent.js          # Agent API
-│   │   ├── posts.js          # Posts API (Legacy)
-│   │   ├── images.js         # Images API (Legacy)
-│   │   ├── og.js             # OG Image 생성
-│   │   ├── comments.js       # Comments (D1 연동)
-│   │   ├── analytics.js      # Analytics (D1 연동)
+│   │   ├── posts.js          # Posts API
+│   │   ├── images.js         # Images API
+│   │   ├── og.js             # OG Image generation
+│   │   ├── comments.js       # Comments API
+│   │   ├── analytics.js      # Analytics API
 │   │   └── ...
-│   ├── lib/
-│   │   ├── ai-service.js     # Unified AI 서비스 (OpenAI SDK 호환)
-│   │   ├── openai-compat-client.js # OpenAI SDK 호환 클라이언트
-│   │   ├── d1.js             # D1 API 클라이언트
-│   │   ├── r2.js             # R2 API 클라이언트
-│   │   ├── jwt.js            # JWT 유틸리티
-│   │   └── agent/            # Agent 시스템
-│   │       ├── coordinator.js
-│   │       ├── tools/
-│   │       ├── memory/
-│   │       └── prompts/
-│   └── middleware/
-│       └── adminAuth.js      # Admin 인증 미들웨어
+│   │
+│   └── lib/                  # Legacy (re-exports to services/)
+│       ├── ai-service.js     # → services/ai/ai.service.js
+│       ├── openai-compat-client.js # → services/ai/openai-client.service.js
+│       ├── d1.js             # → repositories/base/d1.repository.js
+│       ├── r2.js             # → repositories/r2.repository.js
+│       └── agent/            # → services/agent/
+│           ├── coordinator.js
+│           ├── tools/
+│           ├── memory/
+│           └── prompts/
+│
 ├── deploy/
-│   ├── blog-backend.service  # systemd 서비스
-│   └── nginx-blog-api.conf   # Nginx 설정
+│   ├── blog-backend.service  # systemd service
+│   └── nginx-blog-api.conf   # Nginx config
 ├── docker-compose.yml
 ├── Dockerfile
-├── ecosystem.config.js       # PM2 설정
+├── ecosystem.config.js       # PM2 config
 └── package.json
 ```
 
@@ -571,8 +692,26 @@ app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/admin", adminRouter);
 ```
 
-### 관련 문서
+### Import Patterns (New vs Legacy)
 
-- [Workers API Gateway](../workers/api-gateway/README.md) - 주 진입점
-- [Workers 통합 문서](../workers/README.md) - Edge Computing 레이어
-- [CI/CD 문서](./README-CICD.md) - 배포 파이프라인
+```javascript
+// NEW: Import from services layer (recommended)
+import { aiComplete, aiCompleteJSON } from './services/ai/ai.service.js';
+import { listPosts, createPost } from './services/posts.service.js';
+import { performRAGSearch } from './services/chat.service.js';
+import { getModelCapabilities } from './services/model.service.js';
+
+// NEW: Import from repositories layer
+import { d1Query, d1Execute } from './repositories/base/d1.repository.js';
+import { r2Get, r2Put } from './repositories/r2.repository.js';
+
+// LEGACY: These still work but are deprecated
+import { aiComplete } from './lib/ai-service.js';  // @deprecated
+import { d1Query } from './lib/d1.js';             // @deprecated
+```
+
+### Related Documentation
+
+- [Workers API Gateway](../workers/api-gateway/README.md) - Main entry point
+- [Workers Overview](../workers/README.md) - Edge Computing layer
+- [CI/CD Documentation](./README-CICD.md) - Deployment pipeline

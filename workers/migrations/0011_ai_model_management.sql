@@ -21,9 +21,9 @@ CREATE TABLE IF NOT EXISTS ai_providers (
 CREATE TABLE IF NOT EXISTS ai_models (
   id TEXT PRIMARY KEY,
   provider_id TEXT NOT NULL,
-  model_name TEXT NOT NULL UNIQUE,        -- 'gpt-4.1' (LiteLLM에서 사용하는 이름)
+  model_name TEXT NOT NULL UNIQUE,        -- 'gpt-4.1' (사용자/시스템에서 사용하는 이름)
   display_name TEXT NOT NULL,             -- 'GPT-4.1 (GitHub Copilot)'
-  litellm_model TEXT NOT NULL,            -- 'openai/gpt-4.1' (실제 LiteLLM 모델명)
+  model_identifier TEXT NOT NULL,         -- 'openai/gpt-4.1' (Provider별 모델 ID)
   description TEXT,
   context_window INTEGER,                 -- 128000
   max_tokens INTEGER,                     -- 4096

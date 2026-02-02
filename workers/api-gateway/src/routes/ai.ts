@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { HonoEnv, Env } from '../types';
 import { success, badRequest } from '../lib/response';
 import { createAIService, tryParseJson } from '../lib/ai-service';
+import { AI_TEMPERATURES, STREAMING } from '../config/defaults';
 import type { TaskMode, TaskPayload } from '../lib/prompts';
 
 const ai = new Hono<HonoEnv>();
@@ -80,7 +81,7 @@ ai.post('/generate', async (c) => {
   const aiService = createAIService(c.env);
   try {
     const text = await aiService.generate(prompt, {
-      temperature: typeof temperature === 'number' ? temperature : 0.2,
+      temperature: typeof temperature === 'number' ? temperature : AI_TEMPERATURES.GENERATE,
     });
     return success(c, { text });
   } catch (err) {
@@ -99,7 +100,7 @@ ai.get('/generate/stream', async (c) => {
     ''
   ).toString();
   const t = Number(url.searchParams.get('temperature'));
-  const temperature = Number.isFinite(t) ? t : 0.2;
+  const temperature = Number.isFinite(t) ? t : AI_TEMPERATURES.GENERATE;
 
   const headers = new Headers({
     'Content-Type': 'text/event-stream',
@@ -140,15 +141,13 @@ ai.get('/generate/stream', async (c) => {
       try {
         controller.enqueue(frame('open', { type: 'open' }));
 
-        // Generate once then chunk to simulate token stream
         const text = await aiService.generate(String(q), { temperature });
 
-        const chunkSize = 80;
+        const chunkSize = STREAMING.CHUNK_SIZE;
         for (let i = 0; i < text.length; i += chunkSize) {
           const token = text.slice(i, Math.min(i + chunkSize, text.length));
           controller.enqueue(frame('token', { token }));
-          // Small delay helps UX without overloading event loop
-          await new Promise((r) => setTimeout(r, 25));
+          await new Promise((r) => setTimeout(r, STREAMING.CHUNK_DELAY));
         }
 
         controller.enqueue(frame('done', { type: 'done' }));

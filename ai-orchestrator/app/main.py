@@ -18,7 +18,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="AI Orchestrator",
-        description="LiteLLM + LangChain based AI Orchestration Service",
+        description="OpenAI-compatible + LangChain based AI Orchestration Service",
         version="1.0.0",
         lifespan=lifespan,
         docs_url="/docs" if settings.app_env != "production" else None,

@@ -15,13 +15,14 @@ class Settings(BaseSettings):
     port: int = Field(default=8000, alias="PORT")
     debug: bool = Field(default=False, alias="DEBUG")
 
-    litellm_base_url: str = Field(default="http://litellm:4000", alias="LITELLM_BASE_URL")
-    litellm_api_key: str = Field(default="", alias="LITELLM_API_KEY")
-    litellm_master_key: str = Field(default="", alias="LITELLM_MASTER_KEY")
+    ai_server_url: str = Field(default="https://api.openai.com/v1", alias="AI_SERVER_URL")
+    openai_api_base_url: str | None = Field(default=None, alias="OPENAI_API_BASE_URL")
+    ai_api_key: str = Field(default="", alias="AI_API_KEY")
+    openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
 
-    default_chat_model: str = Field(default="chat-default", alias="DEFAULT_CHAT_MODEL")
-    default_vision_model: str = Field(default="vision-default", alias="DEFAULT_VISION_MODEL")
-    default_embed_model: str = Field(default="embed-default", alias="DEFAULT_EMBED_MODEL")
+    default_chat_model: str = Field(default="gpt-4.1", alias="DEFAULT_CHAT_MODEL")
+    default_vision_model: str = Field(default="gpt-4o", alias="DEFAULT_VISION_MODEL")
+    default_embed_model: str = Field(default="text-embedding-3-small", alias="AI_EMBED_MODEL")
 
     redis_url: str = Field(default="redis://redis:6379", alias="REDIS_URL")
     redis_password: str = Field(default="", alias="REDIS_PASSWORD")
@@ -29,7 +30,8 @@ class Settings(BaseSettings):
     chroma_url: str = Field(default="http://chromadb:8000", alias="CHROMA_URL")
     chroma_collection: str = Field(default="blog-posts", alias="CHROMA_COLLECTION")
 
-    tei_url: str = Field(default="http://embedding-server:80", alias="TEI_URL")
+    embedding_base_url: str = Field(default="", alias="AI_EMBEDDING_URL")
+    embedding_api_key: str = Field(default="", alias="AI_EMBEDDING_API_KEY")
 
     postgres_url: str = Field(default="", alias="DATABASE_URL")
 

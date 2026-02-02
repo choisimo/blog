@@ -21,10 +21,7 @@ export function getChatBaseUrl(): string {
   return getApiBaseUrl();
 }
 
-/**
- * Chat API 키 가져오기
- */
-export function getChatApiKey(): string {
+export function getChatApiKey(): string | null {
   const w = typeof window !== 'undefined' ? (window as any) : null;
   const runtime = w?.APP_CONFIG?.chatApiKey ?? w?.__APP_CONFIG?.chatApiKey;
   if (typeof runtime === 'string' && runtime) return runtime;
@@ -32,7 +29,9 @@ export function getChatApiKey(): string {
   const env = (import.meta as any)?.env?.VITE_CHAT_API_KEY as string | undefined;
   if (typeof env === 'string' && env) return env;
 
-  return '';
+  // Return null instead of empty string to indicate "not configured"
+  // Callers should handle null appropriately (skip auth header or fail explicitly)
+  return null;
 }
 
 /**

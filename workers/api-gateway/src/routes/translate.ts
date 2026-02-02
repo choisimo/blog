@@ -4,6 +4,7 @@ import type { HonoEnv, Env } from '../types';
 import { queryOne, execute } from '../lib/d1';
 import { success, error } from '../lib/response';
 import { createAIService } from '../lib/ai-service';
+import { AI_TEMPERATURES, MAX_TOKENS, TEXT_LIMITS, ERROR_MESSAGES } from '../config/defaults';
 
 const app = new Hono<HonoEnv>();
 
@@ -43,8 +44,7 @@ function hashContent(content: string): string {
   return hash.toString(16);
 }
 
-// Truncate content for translation (to stay within token limits)
-function truncateForTranslation(content: string, maxChars: number = 30000): string {
+function truncateForTranslation(content: string, maxChars: number = TEXT_LIMITS.TRANSLATE_CONTENT): string {
   if (content.length <= maxChars) return content;
   return content.slice(0, maxChars) + '\n\n[... content truncated for translation ...]';
 }
@@ -131,8 +131,8 @@ Return ONLY the translated title, nothing else.
 Title: ${title}`;
 
     const translatedTitle = await aiService.generate(titlePrompt, {
-      temperature: 0.1,
-      maxTokens: 256,
+      temperature: AI_TEMPERATURES.TRANSLATE,
+      maxTokens: MAX_TOKENS.TRANSLATE_TITLE,
     });
 
     // Translate description if provided
@@ -144,8 +144,8 @@ Return ONLY the translated description, nothing else.
 Description: ${description}`;
 
       translatedDescription = await aiService.generate(descPrompt, {
-        temperature: 0.1,
-        maxTokens: 512,
+        temperature: AI_TEMPERATURES.TRANSLATE,
+        maxTokens: MAX_TOKENS.TRANSLATE_DESC,
       });
     }
 
@@ -165,8 +165,8 @@ Content:
 ${truncatedContent}`;
 
     const translatedContent = await aiService.generate(contentPrompt, {
-      temperature: 0.2,
-      maxTokens: 16000,
+      temperature: AI_TEMPERATURES.TRANSLATE_CONTENT,
+      maxTokens: MAX_TOKENS.TRANSLATE_CONTENT,
     });
 
     // Clean up the responses
@@ -221,10 +221,10 @@ ${truncatedContent}`;
     
     if (message.includes('Backend AI error')) {
       statusCode = 502;
-      errorMessage = 'AI 서버와 통신 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+      errorMessage = ERROR_MESSAGES.AI_SERVER_ERROR;
     } else if (message.includes('timeout') || message.includes('TIMEOUT')) {
       statusCode = 504;
-      errorMessage = 'AI 응답 지연 중입니다. 잠시 후 다시 시도해주세요.';
+      errorMessage = ERROR_MESSAGES.AI_TIMEOUT;
     }
     
     return error(c, errorMessage, statusCode);

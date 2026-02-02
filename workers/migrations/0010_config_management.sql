@@ -52,7 +52,7 @@ INSERT OR IGNORE INTO config_categories (id, name, description, display_order) V
   ('ai', 'AI Services', 'AI 모델 및 VAS 서비스 설정', 3),
   ('assets', 'Assets', '정적 자산 URL 설정', 4),
   ('github', 'GitHub', 'GitHub 통합 설정', 5),
-  ('rag', 'RAG Services', 'TEI, ChromaDB 설정', 6),
+  ('rag', 'RAG Services', 'Embedding, ChromaDB 설정', 6),
   ('auth', 'Authentication', '인증 및 보안 설정', 7);
 
 -- Seed default variables (without values - populated from current env)
@@ -88,9 +88,11 @@ INSERT OR IGNORE INTO config_variables (id, category_id, key, type, default_valu
   ('v_git_user_email', 'github', 'GIT_USER_EMAIL', 'text', NULL, 0, 'Git User Email', 5),
   
   -- RAG category
-  ('v_tei_url', 'rag', 'TEI_URL', 'url', 'http://embedding-server:80', 0, 'TEI Embedding Server URL', 1),
-  ('v_chroma_url', 'rag', 'CHROMA_URL', 'url', 'http://chromadb:8000', 0, 'ChromaDB URL', 2),
-  ('v_chroma_collection', 'rag', 'CHROMA_COLLECTION', 'text', 'blog-posts-all-MiniLM-L6-v2', 0, 'ChromaDB Collection', 3),
+  ('v_ai_embedding_url', 'rag', 'AI_EMBEDDING_URL', 'url', 'https://api.openai.com/v1', 0, 'Embedding Endpoint URL', 1),
+  ('v_ai_embedding_api_key', 'rag', 'AI_EMBEDDING_API_KEY', 'password', NULL, 1, 'Embedding API Key', 2),
+  ('v_ai_embed_model', 'rag', 'AI_EMBED_MODEL', 'text', 'text-embedding-3-small', 0, 'Embedding Model', 3),
+  ('v_chroma_url', 'rag', 'CHROMA_URL', 'url', 'http://chromadb:8000', 0, 'ChromaDB URL', 4),
+  ('v_chroma_collection', 'rag', 'CHROMA_COLLECTION', 'text', 'blog-posts-all-MiniLM-L6-v2', 0, 'ChromaDB Collection', 5),
   
   -- Auth category
   ('v_admin_bearer_token', 'auth', 'ADMIN_BEARER_TOKEN', 'password', NULL, 1, 'Admin Bearer Token', 1),

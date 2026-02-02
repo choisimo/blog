@@ -64,60 +64,63 @@ jobs:
           # NOTE: Backend code is managed manually by server admin via git clone
 
           # Application
-          APP_ENV=${{ vars.APP_ENV || 'production' }}
+          APP_ENV=${{ secrets.APP_ENV || 'production' }}
           GITHUB_REPOSITORY_OWNER=${{ github.repository_owner }}
 
           # URLs
-          SITE_BASE_URL=${{ vars.SITE_BASE_URL || 'https://noblog.nodove.com' }}
-          API_BASE_URL=${{ vars.API_BASE_URL || 'https://blog-b.nodove.com' }}
-          ALLOWED_ORIGINS=${{ vars.ALLOWED_ORIGINS || 'https://noblog.nodove.com,https://blog.nodove.com' }}
-          ASSETS_BASE_URL=${{ vars.ASSETS_BASE_URL || '' }}
+          SITE_BASE_URL=${{ secrets.SITE_BASE_URL || 'https://noblog.nodove.com' }}
+          API_BASE_URL=${{ secrets.API_BASE_URL || 'https://blog-b.nodove.com' }}
+          ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS || 'https://noblog.nodove.com,https://blog.nodove.com' }}
+          ASSETS_BASE_URL=${{ secrets.ASSETS_BASE_URL || '' }}
 
           # PostgreSQL
-          POSTGRES_DB=${{ vars.POSTGRES_DB || 'blog' }}
-          POSTGRES_USER=${{ vars.POSTGRES_USER || 'bloguser' }}
+          POSTGRES_DB=${{ secrets.POSTGRES_DB || 'blog' }}
+          POSTGRES_USER=${{ secrets.POSTGRES_USER || 'bloguser' }}
           POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
 
           # Redis
           REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
 
           # MongoDB
-          MONGO_USER=${{ vars.MONGO_USER || 'mongouser' }}
+          MONGO_USER=${{ secrets.MONGO_USER || 'mongouser' }}
           MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD }}
-          MONGO_DB=${{ vars.MONGO_DB || 'blog' }}
+          MONGO_DB=${{ secrets.MONGO_DB || 'blog' }}
 
           # Qdrant
           QDRANT_API_KEY=${{ secrets.QDRANT_API_KEY }}
 
           # AI Configuration
-          AI_DEFAULT_MODEL=${{ vars.AI_DEFAULT_MODEL || 'gemini-2.0-flash' }}
-          AI_SERVER_SERVE_URL=${{ vars.AI_SERVER_SERVE_URL || 'https://ai.nodove.com' }}
-          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          AI_DEFAULT_MODEL=${{ secrets.AI_DEFAULT_MODEL || 'gpt-4.1' }}
+          AI_SERVER_URL=${{ secrets.AI_SERVER_URL || 'https://api.openai.com/v1' }}
+          AI_API_KEY=${{ secrets.AI_API_KEY || secrets.OPENAI_API_KEY }}
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY || secrets.AI_API_KEY }}
+          AI_EMBEDDING_URL=${{ secrets.AI_EMBEDDING_URL || secrets.AI_SERVER_URL || 'https://api.openai.com/v1' }}
+          AI_EMBEDDING_API_KEY=${{ secrets.AI_EMBEDDING_API_KEY || secrets.AI_API_KEY || secrets.OPENAI_API_KEY }}
+          AI_EMBED_MODEL=${{ secrets.AI_EMBED_MODEL || 'text-embedding-3-small' }}
           GOOGLE_API_KEY=${{ secrets.GEMINI_API_KEY }}
           ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
           VAS_API_KEY=
 
           # AI Admin
-          ADMIN_JWT_SECRET=${{ secrets.ADMIN_JWT_SECRET }}
-          ADMIN_EMAIL=${{ vars.ADMIN_EMAIL || 'admin@nodove.com' }}
+          ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL || 'admin@nodove.com' }}
           ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
 
           # GitHub
           GITHUB_TOKEN=${{ secrets.GH_PAT_TOKEN }}
-          GITHUB_REPO_OWNER=${{ vars.GITHUB_REPO_OWNER || 'choisimo' }}
-          GITHUB_REPO_NAME=${{ vars.GITHUB_REPO_NAME || 'blog' }}
+          GITHUB_REPO_OWNER=${{ secrets.GITHUB_REPO_OWNER || 'choisimo' }}
+          GITHUB_REPO_NAME=${{ secrets.GITHUB_REPO_NAME || 'blog' }}
 
           # Admin Auth
           ADMIN_BEARER_TOKEN=${{ secrets.ADMIN_BEARER_TOKEN }}
           JWT_SECRET=${{ secrets.JWT_SECRET }}
-          ADMIN_USERNAME=${{ vars.ADMIN_USERNAME || 'admin' }}
+          ADMIN_USERNAME=${{ secrets.ADMIN_USERNAME || 'admin' }}
 
           # Terminal Server
           ORIGIN_SECRET_KEY=${{ secrets.ORIGIN_SECRET_KEY }}
-          SANDBOX_IMAGE=${{ vars.SANDBOX_IMAGE || format('ghcr.io/{0}/blog-terminal-sandbox:latest', github.repository_owner) }}
+          SANDBOX_IMAGE=${{ secrets.SANDBOX_IMAGE || format('ghcr.io/{0}/blog-terminal-sandbox:latest', github.repository_owner) }}
 
           # MinIO
-          MINIO_USER=${{ vars.MINIO_USER || 'minioadmin' }}
+          MINIO_USER=${{ secrets.MINIO_USER || 'minioadmin' }}
           MINIO_PASSWORD=${{ secrets.MINIO_PASSWORD }}
 
           # Firecrawl
@@ -125,7 +128,7 @@ jobs:
 
           # Monitoring
           GRAFANA_PASSWORD=${{ secrets.GRAFANA_PASSWORD }}
-          PGADMIN_EMAIL=${{ vars.PGADMIN_EMAIL || 'admin@nodove.com' }}
+          PGADMIN_EMAIL=${{ secrets.PGADMIN_EMAIL || 'admin@nodove.com' }}
           PGADMIN_PASSWORD=${{ secrets.PGADMIN_PASSWORD }}
           ENVEOF
 

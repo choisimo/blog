@@ -109,7 +109,7 @@ async def translate(request: TranslateRequest) -> TranslateResponse:
             content=parsed.get("content", request.content),
             isAiGenerated=True,
             model=response.model or model,
-            provider="litellm",
+            provider="openai",
             requestId=request_id,
         )
     except Exception as e:

@@ -1,7 +1,7 @@
 -- =============================================================================
 -- AI Model Management - Seed Data
 -- Migration: 0012_ai_model_seed.sql
--- Based on: backend/litellm_config.yaml
+-- Based on AI provider configuration
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -9,14 +9,14 @@
 -- -----------------------------------------------------------------------------
 INSERT OR IGNORE INTO ai_providers (id, name, display_name, api_base_url, api_key_env) VALUES
   ('prov_github', 'github', 'GitHub Models', 'https://models.inference.ai.azure.com', 'GITHUB_TOKEN'),
-  ('prov_openai', 'openai', 'OpenAI', 'https://api.openai.com/v1', 'OPENAI_API_KEY'),
+  ('prov_openai', 'openai', 'OpenAI', 'https://api.openai.com/v1', 'AI_API_KEY'),
   ('prov_ollama', 'ollama', 'Ollama (Local)', 'http://host.docker.internal:11434', NULL);
 
 -- -----------------------------------------------------------------------------
 -- Models - GitHub Models (Primary)
 -- -----------------------------------------------------------------------------
 INSERT OR IGNORE INTO ai_models (
-  id, provider_id, model_name, display_name, litellm_model, description,
+  id, provider_id, model_name, display_name, model_identifier, description,
   context_window, max_tokens, input_cost_per_1k, output_cost_per_1k,
   supports_vision, supports_streaming, supports_function_calling, priority
 ) VALUES
@@ -48,7 +48,7 @@ INSERT OR IGNORE INTO ai_models (
 -- Models - OpenAI Direct (Embeddings only)
 -- -----------------------------------------------------------------------------
 INSERT OR IGNORE INTO ai_models (
-  id, provider_id, model_name, display_name, litellm_model, description,
+  id, provider_id, model_name, display_name, model_identifier, description,
   context_window, max_tokens, input_cost_per_1k, output_cost_per_1k,
   supports_vision, supports_streaming, supports_function_calling, priority
 ) VALUES
@@ -59,7 +59,7 @@ INSERT OR IGNORE INTO ai_models (
 -- Models - Local (Ollama)
 -- -----------------------------------------------------------------------------
 INSERT OR IGNORE INTO ai_models (
-  id, provider_id, model_name, display_name, litellm_model, description,
+  id, provider_id, model_name, display_name, model_identifier, description,
   context_window, max_tokens, input_cost_per_1k, output_cost_per_1k,
   supports_vision, supports_streaming, supports_function_calling, is_enabled, priority
 ) VALUES

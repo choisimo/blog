@@ -9,7 +9,8 @@ name: RAG Indexing
 # the server via SSH to execute the indexing script.
 #
 # Prerequisites:
-#   - Docker services running: embedding-server, chromadb
+#   - Docker service running: chromadb
+#   - OpenAI-compatible embedding endpoint reachable (AI_EMBEDDING_URL)
 #   - Python 3.11+ on the server (or use Docker)
 #
 # Approach:
@@ -95,13 +96,17 @@ jobs:
 
       - name: Run RAG Indexing via Docker
         env:
-          CHROMA_COLLECTION: ${{ vars.CHROMA_COLLECTION }}
-          BASE_COLLECTION_NAME: ${{ vars.BASE_COLLECTION_NAME || 'blog-posts' }}
-          TEI_MODEL_NAME: ${{ vars.TEI_MODEL_NAME || 'all-MiniLM-L6-v2' }}
-          CHUNK_TOKENS: ${{ vars.CHUNK_TOKENS || '512' }}
-          CHUNK_OVERLAP_TOKENS: ${{ vars.CHUNK_OVERLAP_TOKENS || '80' }}
-          EMBED_BATCH: ${{ vars.EMBED_BATCH || '32' }}
-          MAX_WORKERS: ${{ vars.MAX_WORKERS || '4' }}
+          CHROMA_COLLECTION: ${{ secrets.CHROMA_COLLECTION }}
+          BASE_COLLECTION_NAME: ${{ secrets.BASE_COLLECTION_NAME || 'blog-posts' }}
+          AI_EMBEDDING_URL: ${{ secrets.AI_EMBEDDING_URL || secrets.AI_SERVER_URL || 'https://api.openai.com/v1' }}
+          AI_EMBED_MODEL: ${{ secrets.AI_EMBED_MODEL || 'text-embedding-3-small' }}
+          AI_EMBEDDING_API_KEY: ${{ secrets.AI_EMBEDDING_API_KEY || secrets.AI_API_KEY || secrets.OPENAI_API_KEY }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY || secrets.OPENAI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || secrets.AI_API_KEY }}
+          CHUNK_TOKENS: ${{ secrets.CHUNK_TOKENS || '512' }}
+          CHUNK_OVERLAP_TOKENS: ${{ secrets.CHUNK_OVERLAP_TOKENS || '80' }}
+          EMBED_BATCH: ${{ secrets.EMBED_BATCH || '32' }}
+          MAX_WORKERS: ${{ secrets.MAX_WORKERS || '4' }}
           FORCE_REINDEX: ${{ github.event.inputs.force_reindex || 'false' }}
         run: |
           ssh -p "${{ env.SSH_PORT }}" "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" << 'RAG_SCRIPT'
@@ -127,23 +132,7 @@ jobs:
           # Check service health
           echo "=== Checking Service Health ==="
           
-          EMBEDDING_OK=false
           CHROMA_OK=false
-          
-          # Check embedding-server via docker network
-          if $DC exec -T embedding-server wget -q --spider http://localhost:80/health 2>/dev/null || \
-             $DC exec -T embedding-server curl -sf http://localhost:80/health >/dev/null 2>&1; then
-            EMBEDDING_OK=true
-            echo "Embedding server: OK"
-          else
-            # Try alternate health check
-            if docker exec blog-embedding wget -q --spider http://localhost:80/health 2>/dev/null; then
-              EMBEDDING_OK=true
-              echo "Embedding server: OK (via container name)"
-            else
-              echo "Embedding server: NOT READY"
-            fi
-          fi
           
           # Check chromadb
           if $DC exec -T chromadb wget -q --spider http://localhost:8000/api/v1/heartbeat 2>/dev/null || \
@@ -159,10 +148,11 @@ jobs:
             fi
           fi
           
-          if [ "$EMBEDDING_OK" != "true" ] || [ "$CHROMA_OK" != "true" ]; then
+          if [ "$CHROMA_OK" != "true" ]; then
             echo ""
             echo "WARNING: Required services not ready"
-            echo "Make sure embedding-server and chromadb containers are running"
+            echo "Make sure chromadb container is running"
+            echo "Ensure AI_EMBEDDING_URL is reachable if using external embeddings"
             $DC ps 2>/dev/null || echo "No compose services found"
             echo ""
             echo "Skipping RAG indexing - services unavailable"
@@ -178,11 +168,15 @@ jobs:
           docker run --rm \
             --network blog-stack_blog-network \
             -v ~/rag-indexing:/workspace:ro \
-            -e TEI_URL=http://embedding-server:80 \
+            -e AI_EMBEDDING_URL="${AI_EMBEDDING_URL}" \
+            -e AI_EMBEDDING_API_KEY="${AI_EMBEDDING_API_KEY}" \
+            -e AI_API_KEY="${AI_API_KEY}" \
+            -e OPENAI_API_KEY="${OPENAI_API_KEY}" \
+            -e AI_EMBED_MODEL="${AI_EMBED_MODEL}" \
+            -e EMBED_MODEL_NAME="${AI_EMBED_MODEL}" \
             -e CHROMA_URL=http://chromadb:8000 \
             -e POSTS_MANIFEST=/workspace/posts-manifest.json \
             -e BASE_COLLECTION_NAME="${BASE_COLLECTION_NAME:-blog-posts}" \
-            -e TEI_MODEL_NAME="${TEI_MODEL_NAME:-all-MiniLM-L6-v2}" \
             -e CHROMA_COLLECTION="${CHROMA_COLLECTION:-}" \
             -e CHUNK_TOKENS="${CHUNK_TOKENS:-512}" \
             -e CHUNK_OVERLAP_TOKENS="${CHUNK_OVERLAP_TOKENS:-80}" \
@@ -218,7 +212,7 @@ jobs:
           
           echo ""
           echo "=== Service Status ==="
-          $DC ps | grep -E "(embedding|chroma)" || true
+          $DC ps | grep -E "chroma" || true
           VERIFY_SCRIPT
 
       - name: Cleanup

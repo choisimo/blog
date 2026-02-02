@@ -511,7 +511,7 @@ CODE="${PARSED#*|}"
 if [[ "$CODE" == "200" ]] && check_ok "$BODY"; then
   log_pass "POST /rag/embed"
 else
-  log_warn "POST /rag/embed (TEI may be unavailable)"
+  log_warn "POST /rag/embed (embedding endpoint may be unavailable)"
 fi
 
 # =============================================================================

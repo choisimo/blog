@@ -28,7 +28,7 @@ export const CONFIG_KEYS = {
 
 // Default fallback URLs (used if both KV and env are empty)
 const DEFAULTS = {
-  AI_SERVE_URL: 'http://litellm:4000',
+  AI_SERVE_URL: 'https://blog-b.nodove.com',
   API_BASE_URL: 'https://api.nodove.com',
 } as const;
 

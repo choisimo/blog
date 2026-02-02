@@ -15,6 +15,7 @@ import type { Context } from 'hono';
 import type { Env } from '../types';
 import { createAIService } from '../lib/ai-service';
 import { success, badRequest, error } from '../lib/response';
+import { AI_TEMPERATURES } from '../config/defaults';
 import { 
   buildTaskPrompt, 
   isValidTaskMode, 
@@ -215,7 +216,7 @@ chat.post('/aggregate', async (c: Context<ChatContext>) => {
   try {
     const aiService = createAIService(c.env);
     const text = await aiService.generate(systemPrompt, {
-      temperature: 0.2,
+      temperature: AI_TEMPERATURES.AGGREGATE,
     });
     return success(c, { text });
   } catch (err) {

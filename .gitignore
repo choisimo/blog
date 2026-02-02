@@ -234,3 +234,17 @@ screenshots/스크린샷_*.png
 
 linked-post
 .agent/**
+
+# -----------------------------------------------------------------------------
+# Sensitive files
+# -----------------------------------------------------------------------------
+gh_variables.env
+gh_secrets.env
+.gh_env.local
+.env.backend.local
+.env.wrangler.local
+.env
+
+.roo
+.husky
+.ruff_cache

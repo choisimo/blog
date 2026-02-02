@@ -63,8 +63,9 @@ put_kv "services/chromadb/url" "http://chromadb:8000"
 put_kv "services/chromadb/collection" "blog-posts-all-MiniLM-L6-v2"
 put_kv "services/chromadb/health_path" "/api/v1/heartbeat"
 
-put_kv "services/embedding/url" "http://embedding-server:80"
-put_kv "services/embedding/model" "all-MiniLM-L6-v2"
+put_kv "services/embedding/url" "https://api.openai.com/v1"
+put_kv "services/embedding/api_key" ""
+put_kv "services/embedding/model" "text-embedding-3-small"
 
 put_kv "services/redis/url" "redis://redis:6379"
 put_kv "services/redis/db" "0"

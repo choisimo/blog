@@ -59,7 +59,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
         return ChatResponse(
             content=content,
             model=response.model or model,
-            provider="litellm",
+            provider="openai",
             requestId=request_id,
             usage=response.usage.model_dump() if response.usage else None,
         )

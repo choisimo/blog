@@ -12,6 +12,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { queryAll, queryOne, execute, isD1Configured } from '../lib/d1.js';
 import requireAdmin from '../middleware/adminAuth.js';
 import { aiService } from '../lib/ai-service.js';
+import {
+  AI_ROUTE_DEFAULTS,
+  HEALTH_CHECK,
+  USAGE,
+} from '../config/constants.js';
 
 const router = Router();
 
@@ -274,7 +279,7 @@ router.post('/providers/:id/health', async (req, res, next) => {
       req.params.id
     );
 
-    let healthStatus = 'unknown';
+    let healthStatus = HEALTH_CHECK.STATUS_UNKNOWN;
     let latencyMs = null;
     let error = null;
 
@@ -282,8 +287,8 @@ router.post('/providers/:id/health', async (req, res, next) => {
       try {
         const start = Date.now();
         await aiService.chat(
-          [{ role: 'user', content: 'Hello' }],
-          { model: model.model_name, timeout: 10000 }
+          [{ role: 'user', content: HEALTH_CHECK.PROMPT }],
+          { model: model.model_name, timeout: HEALTH_CHECK.TIMEOUT }
         );
         latencyMs = Date.now() - start;
         healthStatus = 'healthy';
@@ -357,7 +362,7 @@ router.get('/models', async (req, res, next) => {
       id: m.id,
       modelName: m.model_name,
       displayName: m.display_name,
-      modelIdentifier: m.litellm_model,
+      modelIdentifier: m.model_identifier,
       description: m.description,
       provider: {
         id: m.provider_id,
@@ -412,7 +417,7 @@ router.get('/models/:id', async (req, res, next) => {
           id: model.id,
           modelName: model.model_name,
           displayName: model.display_name,
-          modelIdentifier: model.litellm_model,
+          modelIdentifier: model.model_identifier,
           description: model.description,
           provider: {
             id: model.provider_id,
@@ -478,9 +483,9 @@ router.post('/models', async (req, res, next) => {
       priority,
     } = req.body;
 
-    const litellmModel = modelIdentifier;
+    const modelIdentifierValue = modelIdentifier;
 
-    if (!modelName || !displayName || !providerId || !litellmModel) {
+    if (!modelName || !displayName || !providerId || !modelIdentifierValue) {
       return res.status(400).json({
         ok: false,
         error: 'modelName, displayName, providerId, and modelIdentifier are required',
@@ -514,7 +519,7 @@ router.post('/models', async (req, res, next) => {
     const id = generateId('model');
     await execute(
       `INSERT INTO ai_models (
-        id, provider_id, model_name, display_name, litellm_model, description,
+        id, provider_id, model_name, display_name, model_identifier, description,
         context_window, max_tokens, input_cost_per_1k, output_cost_per_1k,
         supports_vision, supports_streaming, supports_function_calling, priority
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -522,7 +527,7 @@ router.post('/models', async (req, res, next) => {
       providerId,
       modelName,
       displayName,
-      litellmModel,
+      modelIdentifierValue,
       description || null,
       contextWindow || null,
       maxTokens || null,
@@ -542,8 +547,7 @@ router.post('/models', async (req, res, next) => {
         id: model.id,
         modelName: model.model_name,
         displayName: model.display_name,
-        modelIdentifier: model.litellm_model,
-        litellmModel: model.litellm_model,
+        modelIdentifier: model.model_identifier,
         providerId: model.provider_id,
         isEnabled: !!model.is_enabled,
       },
@@ -581,12 +585,12 @@ router.put('/models/:id', async (req, res, next) => {
       return res.status(404).json({ ok: false, error: 'Model not found' });
     }
 
-    const litellmModel = modelIdentifier;
+    const modelIdentifierValue = modelIdentifier;
 
     await execute(
       `UPDATE ai_models SET
         display_name = ?,
-        litellm_model = ?,
+        model_identifier = ?,
         description = ?,
         context_window = ?,
         max_tokens = ?,
@@ -600,7 +604,7 @@ router.put('/models/:id', async (req, res, next) => {
         updated_at = datetime('now')
       WHERE id = ?`,
       displayName ?? existing.display_name,
-      litellmModel ?? existing.litellm_model,
+      modelIdentifierValue ?? existing.model_identifier,
       description !== undefined ? description : existing.description,
       contextWindow !== undefined ? contextWindow : existing.context_window,
       maxTokens !== undefined ? maxTokens : existing.max_tokens,
@@ -682,13 +686,13 @@ router.post('/models/:id/test', async (req, res, next) => {
     }
 
     const { prompt } = req.body;
-    const testPrompt = prompt || 'Say "Hello" in one word.';
+    const testPrompt = prompt || HEALTH_CHECK.MODEL_TEST_PROMPT;
 
     try {
       const start = Date.now();
       const response = await aiService.chat(
         [{ role: 'user', content: testPrompt }],
-        { model: model.model_name, timeout: 30000 }
+        { model: model.model_name, timeout: HEALTH_CHECK.MODEL_TEST_TIMEOUT }
       );
       const latencyMs = Date.now() - start;
 
@@ -699,7 +703,7 @@ router.post('/models/:id/test', async (req, res, next) => {
           modelId: model.id,
           modelName: model.model_name,
           latencyMs,
-          response: response.content?.slice(0, 500),
+          response: response.content?.slice(0, HEALTH_CHECK.RESPONSE_LIMIT),
           usage: response.usage,
         },
       });
@@ -863,12 +867,12 @@ router.post('/routes', async (req, res, next) => {
       id,
       name,
       description || null,
-      routingStrategy || 'latency-based-routing',
+      routingStrategy || AI_ROUTE_DEFAULTS.ROUTING_STRATEGY,
       primaryModelId || null,
       fallbackModelIds ? JSON.stringify(fallbackModelIds) : null,
       contextWindowFallbackIds ? JSON.stringify(contextWindowFallbackIds) : null,
-      numRetries || 3,
-      timeoutSeconds || 120,
+      numRetries || AI_ROUTE_DEFAULTS.NUM_RETRIES,
+      timeoutSeconds || AI_ROUTE_DEFAULTS.TIMEOUT_SECONDS,
       isDefault ? 1 : 0
     );
 
@@ -1002,7 +1006,7 @@ router.get('/usage', async (req, res, next) => {
 
     // Default to last 7 days
     const end = endDate || new Date().toISOString().split('T')[0];
-    const start = startDate || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const start = startDate || new Date(Date.now() - USAGE.DEFAULT_PERIOD_MS).toISOString().split('T')[0];
 
     // Summary
     let summaryQuery = `
@@ -1189,7 +1193,7 @@ router.get('/config/export', async (req, res, next) => {
           providerId: m.provider_id,
           modelName: m.model_name,
           displayName: m.display_name,
-          modelIdentifier: m.litellm_model,
+          modelIdentifier: m.model_identifier,
           description: m.description,
           contextWindow: m.context_window,
           maxTokens: m.max_tokens,

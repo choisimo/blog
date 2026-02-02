@@ -9,7 +9,7 @@
 // Provider & Model Types
 // ============================================================================
 
-export type ProviderId = 'litellm' | 'local';
+export type ProviderId = 'openai' | 'local';
 
 export interface ProviderConfig {
   id: ProviderId;

@@ -106,7 +106,7 @@ async def task(request: TaskRequest) -> TaskResponse:
         if not parsed:
             parsed = FALLBACK_DATA.get(mode, {"text": content})
 
-        return TaskResponse(ok=True, data=parsed, mode=mode, source="litellm")
+        return TaskResponse(ok=True, data=parsed, mode=mode, source="openai")
 
     except Exception as e:
         logger.error("task_error", error=str(e), mode=request.mode, request_id=request_id)

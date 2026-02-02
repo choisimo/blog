@@ -2,7 +2,7 @@
 # =============================================================================
 # Server Setup Script - Run on PMX-102-1 Server
 # =============================================================================
-# This script updates the TEI server configuration and sets up API keys
+# This script ensures OpenAI-compatible embedding settings and sets up API keys
 # for Perplexity and Tavily AI search integration.
 #
 # Usage:
@@ -33,14 +33,14 @@ cd "${COMPOSE_DIR}"
 # =============================================================================
 # Step 1: Pull latest docker-compose.yml changes
 # =============================================================================
-echo "[1/4] Pulling latest changes from git..."
+echo "[1/3] Pulling latest changes from git..."
 git pull origin main || echo "WARN: Could not pull from git. Manual update may be needed."
 
 # =============================================================================
 # Step 2: Add API keys to .env (if not already present)
 # =============================================================================
 echo ""
-echo "[2/4] Checking API keys in .env..."
+echo "[2/3] Checking API keys in .env..."
 
 # Perplexity API Key
 if grep -q "PERPLEXITY_API_KEY" "$BACKEND_ENV" 2>/dev/null; then
@@ -63,40 +63,43 @@ else
 fi
 
 # =============================================================================
-# Step 3: Restart TEI Embedding Server with new configuration
+# Step 3: Ensure embedding configuration is present
 # =============================================================================
 echo ""
-echo "[3/4] Restarting TEI Embedding Server..."
+echo "[3/3] Ensuring embedding settings exist..."
 
 DC="docker compose"
 if ! $DC version >/dev/null 2>&1; then 
     DC="docker-compose"
 fi
 
-# Pull latest images
-$DC pull embedding-server
+# Embedding endpoint URL
+if grep -q "AI_EMBEDDING_URL" "$BACKEND_ENV" 2>/dev/null; then
+    echo "  - AI_EMBEDDING_URL already exists"
+else
+    echo "  - Adding AI_EMBEDDING_URL"
+    echo "AI_EMBEDDING_URL=https://api.openai.com/v1" >> "$BACKEND_ENV"
+fi
 
-# Restart embedding server
-$DC up -d embedding-server
+# Embedding model
+if grep -q "AI_EMBED_MODEL" "$BACKEND_ENV" 2>/dev/null; then
+    echo "  - AI_EMBED_MODEL already exists"
+else
+    echo "  - Adding AI_EMBED_MODEL"
+    echo "AI_EMBED_MODEL=text-embedding-3-small" >> "$BACKEND_ENV"
+fi
 
-# Wait for health check
-echo "  - Waiting for TEI server to be healthy..."
-for i in {1..30}; do
-    if $DC exec -T embedding-server curl -sf http://localhost:80/health >/dev/null 2>&1; then
-        echo "  - TEI server is healthy!"
-        break
-    fi
-    if [ $i -eq 30 ]; then
-        echo "  - WARN: TEI server health check timeout. Check logs with: $DC logs embedding-server"
-    fi
-    sleep 2
-done
+# Optional embedding API key override
+if grep -q "AI_EMBEDDING_API_KEY" "$BACKEND_ENV" 2>/dev/null; then
+    echo "  - AI_EMBEDDING_API_KEY already exists"
+else
+    echo "  - Adding AI_EMBEDDING_API_KEY"
+    echo "AI_EMBEDDING_API_KEY=" >> "$BACKEND_ENV"
+    echo "  - NOTE: Set AI_EMBEDDING_API_KEY if embeddings use a different key"
+fi
 
-# =============================================================================
-# Step 4: Restart Backend API to pick up new env vars
-# =============================================================================
 echo ""
-echo "[4/4] Restarting Backend API..."
+echo "Restarting Backend API to pick up new env vars..."
 $DC up -d api
 
 # Wait for health check
@@ -120,15 +123,10 @@ echo "============================================="
 echo "   Verification"
 echo "============================================="
 
-# Check TEI max-input-length
-echo ""
-echo "TEI Server Configuration:"
-$DC exec -T embedding-server cat /proc/1/cmdline 2>/dev/null | tr '\0' ' ' | grep -o -- '--max-input-length [0-9]*' || echo "  - Could not verify TEI config"
-
 # Check service status
 echo ""
 echo "Service Status:"
-$DC ps | grep -E "(embedding|api|chromadb)" || true
+$DC ps | grep -E "(api|chromadb)" || true
 
 # =============================================================================
 # Next Steps

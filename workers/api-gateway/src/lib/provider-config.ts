@@ -27,11 +27,11 @@ const PROVIDER_CACHE_TTL = 60;
 
 const DEFAULT_PROVIDERS: DynamicProvider[] = [
   {
-    id: 'prov_litellm',
-    name: 'litellm',
-    displayName: 'LiteLLM Gateway',
-    apiBaseUrl: 'http://litellm:4000/v1',
-    apiKeyEnv: null,
+    id: 'prov_openai_compat',
+    name: 'openai',
+    displayName: 'OpenAI-Compatible',
+    apiBaseUrl: 'https://api.openai.com/v1',
+    apiKeyEnv: 'AI_API_KEY',
     isEnabled: true,
     healthStatus: 'unknown',
     lastHealthCheck: null,

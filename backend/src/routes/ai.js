@@ -7,6 +7,16 @@ import { isRedisAvailable } from '../lib/redis-client.js';
 import { getAIRateLimiter, rateLimitMiddleware } from '../lib/ai-rate-limiter.js';
 import { ragSearch } from '../lib/agent/tools/rag-search.js';
 import { requireFeature } from '../middleware/featureFlags.js';
+import {
+  AI_MODELS,
+  RAG_KEYWORDS,
+  RAG_PROMPTS,
+  VISION_PROMPTS,
+  IMAGE,
+  TIMEOUTS,
+  CONTEXT,
+  AI_TEMPERATURES,
+} from '../config/constants.js';
 
 const router = Router();
 
@@ -43,16 +53,10 @@ function shouldUseRAG(message) {
   const lowerMsg = message.toLowerCase();
   
   // Korean keywords for blog/post recommendations
-  const koreanKeywords = [
-    '게시글', '포스트', '글', '추천', '관련', '찾아', '알려', '보여',
-    '블로그', '게시물', '작성', '읽', '검색', '주제',
-  ];
+  const koreanKeywords = RAG_KEYWORDS.KOREAN;
   
   // English keywords
-  const englishKeywords = [
-    'post', 'blog', 'article', 'recommend', 'find', 'search',
-    'show me', 'related', 'about', 'topic', 'written',
-  ];
+  const englishKeywords = RAG_KEYWORDS.ENGLISH;
   
   // Check for keywords
   const hasKoreanKeyword = koreanKeywords.some(kw => lowerMsg.includes(kw));
@@ -78,11 +82,11 @@ function formatRAGContext(results) {
    - Summary: ${r.document?.substring(0, 200) || 'N/A'}`;
   }).join('\n\n');
   
-  return `아래는 사용자의 질문과 관련된 블로그 게시글 목록입니다. 이 정보를 바탕으로 답변해주세요:
+  return `${RAG_PROMPTS.CONTEXT_TEMPLATE}
 
 ${posts}
 
-위 게시글들을 참고하여 사용자에게 적절한 게시글을 추천해주세요. 제목, URL, 간단한 설명을 포함하여 안내해주세요.`;
+${RAG_PROMPTS.RECOMMENDATION_INSTRUCTION}`;
 }
 
 // ============================================================================
@@ -95,7 +99,7 @@ ${posts}
 router.get('/models', async (req, res) => {
   const defaultModel = config.ai?.defaultModel ||
     process.env.AI_DEFAULT_MODEL ||
-    'gpt-4.1';
+    AI_MODELS.DEFAULT;
 
   // 1. Try Database first (Source of Truth)
   if (isD1Configured()) {
@@ -166,7 +170,7 @@ function buildCapabilities(model) {
   if (model.supports_vision) caps.push('vision');
   if (model.supports_streaming) caps.push('streaming');
   if (model.supports_function_calling) caps.push('function-calling');
-  if (model.context_window >= 100000) caps.push('long-context');
+  if (model.context_window >= CONTEXT.LONG_THRESHOLD) caps.push('long-context');
   return caps;
 }
 
@@ -174,7 +178,7 @@ function buildCapabilities(model) {
  * Fallback models when DB is unavailable
  */
 function getFallbackModels(defaultModel) {
-  const fallbackList = [
+  const fallbackList = AI_MODELS.STATIC_FALLBACK_LIST || [
     { id: 'gpt-4.1', name: 'GPT-4.1', provider: 'GitHub', capabilities: ['chat', 'vision'] },
     { id: 'gpt-4o', name: 'GPT-4o', provider: 'GitHub', capabilities: ['chat', 'vision'] },
     { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'GitHub', capabilities: ['chat', 'vision'] },
@@ -229,7 +233,7 @@ router.post('/auto-chat', rateLimitMiddleware(), async (req, res, next) => {
           // Add new system message with context
           enrichedMessages.unshift({
             role: 'system',
-            content: `당신은 nodove 블로그의 AI 어시스턴트입니다. 사용자의 질문에 친절하게 답변해주세요.\n\n${context}`,
+            content: `${RAG_PROMPTS.BLOG_ASSISTANT}\n\n${context}`,
           });
         }
         usedRAG = true;
@@ -416,12 +420,6 @@ router.get('/rate-limit', async (req, res) => {
 // POST /api/v1/ai/vision/analyze
 // ============================================================================
 
-const DEFAULT_VISION_PROMPT = `이 이미지를 분석해주세요. 다음 내용을 간결하게 설명해주세요:
-1. 이미지에 보이는 주요 요소들
-2. 전체적인 분위기나 맥락
-3. 텍스트가 있다면 해당 내용
-
-한국어로 2-3문장으로 간결하게 요약해주세요.`;
 /**
  * Fetch image from URL with SSRF protection and size limits
  */
@@ -438,7 +436,7 @@ async function fetchImageAsBase64(imageUrl) {
 
   const response = await fetch(imageUrl, {
     // 3. 타임아웃 설정 (AbortSignal)
-    signal: AbortSignal.timeout(5000), 
+    signal: AbortSignal.timeout(TIMEOUTS.IMAGE_FETCH), 
     // 4. 리다이렉트 제한 (무한 루프 방지)
     redirect: 'error' 
   });
@@ -448,19 +446,18 @@ async function fetchImageAsBase64(imageUrl) {
   }
 
   // 5. 콘텐츠 크기 제한 (예: 10MB)
-  const MAX_SIZE = 10 * 1024 * 1024;
   const contentLength = response.headers.get('content-length');
-  if (contentLength && parseInt(contentLength) > MAX_SIZE) {
+  if (contentLength && parseInt(contentLength) > IMAGE.MAX_SIZE) {
     throw new Error('Image too large');
   }
 
   // 스트림으로 읽으면서 크기 체크 (Content-Length가 없는 경우 대비)
   const buffer = await response.arrayBuffer(); 
-  if (buffer.byteLength > MAX_SIZE) {
+  if (buffer.byteLength > IMAGE.MAX_SIZE) {
     throw new Error('Image too large');
   }
 
-  const contentType = response.headers.get('content-type') || 'image/jpeg';
+  const contentType = response.headers.get('content-type') || IMAGE.DEFAULT_MIME;
   const base64 = Buffer.from(buffer).toString('base64');
 
   return { base64, mimeType: contentType };
@@ -483,7 +480,7 @@ router.post('/vision/analyze', rateLimitMiddleware(), async (req, res, next) => 
       if (isTrustedAssetUrl) {
         // Pass trusted URL directly
         imageData = imageUrl;
-        mimeType = inputMimeType || 'image/jpeg';
+        mimeType = inputMimeType || IMAGE.DEFAULT_MIME;
         imageType = 'url';
       } else {
         // For other URLs, fetch and convert to base64 (for compatibility)
@@ -501,7 +498,7 @@ router.post('/vision/analyze', rateLimitMiddleware(), async (req, res, next) => 
       }
     } else if (imageBase64) {
       imageData = imageBase64;
-      mimeType = inputMimeType || 'image/jpeg';
+      mimeType = inputMimeType || IMAGE.DEFAULT_MIME;
       imageType = 'base64';
     } else {
       return res.status(400).json({
@@ -510,14 +507,14 @@ router.post('/vision/analyze', rateLimitMiddleware(), async (req, res, next) => 
       });
     }
 
-    const analysisPrompt = prompt || DEFAULT_VISION_PROMPT;
+    const analysisPrompt = prompt || VISION_PROMPTS.DEFAULT;
 
     // Use unified AI service for vision analysis
     // aiService.vision handles both URL and base64 formats
     try {
       const description = await aiService.vision(imageData, analysisPrompt, {
         mimeType,
-        model: 'gpt-4o', // Vision-capable model
+        model: AI_MODELS.VISION, // Vision-capable model
       });
 
       return res.json({
@@ -577,7 +574,7 @@ router.post('/summarize', async (req, res, next) => {
     const result = await aiService.task('summary', {
       content: contentText,
       prompt: instructions,
-    }, { temperature: 0.2 });
+    }, { temperature: AI_TEMPERATURES.SUMMARY });
 
     return res.json({ ok: true, data: { summary: result.data?.summary || result.data?.text || contentText.slice(0, 200) } });
   } catch (err) {
@@ -681,7 +678,7 @@ router.post('/generate', rateLimitMiddleware(), async (req, res, next) => {
       return res.status(400).json({ ok: false, error: 'prompt is required' });
     }
     const text = await aiService.generate(String(prompt), {
-      temperature: typeof temperature === 'number' ? temperature : 0.2,
+      temperature: typeof temperature === 'number' ? temperature : AI_TEMPERATURES.GENERATE,
     });
     return res.json({ ok: true, data: { text } });
   } catch (err) {
@@ -695,7 +692,7 @@ router.get('/generate/stream', async (req, res, next) => {
   try {
     const q = (req.query.prompt || req.query.q || req.query.text || '').toString();
     const t = Number(req.query.temperature);
-    const temperature = Number.isFinite(t) ? t : 0.2;
+    const temperature = Number.isFinite(t) ? t : AI_TEMPERATURES.GENERATE;
 
     if (!q) {
       res.writeHead(400, {

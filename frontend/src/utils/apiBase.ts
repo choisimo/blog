@@ -1,28 +1,17 @@
-// Default API URL for production
-const DEFAULT_API_URL = 'https://api.nodove.com';
-
-/**
- * Normalize URL: remove trailing slash and /api suffix
- * This ensures consistent base URL regardless of how it was configured
- */
 function normalizeBaseUrl(url: string): string {
   let normalized = url.trim();
 
   // Migrate legacy domains to unified gateway
-  // Some clients stored legacy URLs in localStorage (aiMemo.backendUrl)
   if (normalized.includes('ai-check.nodove.com')) {
     normalized = normalized.replace('ai-check.nodove.com', 'api.nodove.com');
   }
-  // Direct backend URL should also be migrated to go through Workers
   if (normalized.includes('blog-b.nodove.com')) {
     normalized = normalized.replace('blog-b.nodove.com', 'api.nodove.com');
   }
 
-  // Remove trailing slash
   while (normalized.endsWith('/')) {
     normalized = normalized.slice(0, -1);
   }
-  // Remove trailing /api to prevent double /api/api paths
   if (normalized.endsWith('/api')) {
     normalized = normalized.slice(0, -4);
   }
@@ -41,7 +30,7 @@ export function getApiBaseUrl(): string {
     source = 'runtime';
   }
 
-  // 2) Vite env
+  // 2) Vite env (REQUIRED in production - no hardcoded fallback)
   if (!baseUrl) {
     const fromEnv = import.meta?.env?.VITE_API_BASE_URL as string | undefined;
     if (typeof fromEnv === 'string' && fromEnv) {
@@ -50,7 +39,7 @@ export function getApiBaseUrl(): string {
     }
   }
 
-  // 3) AI Memo localStorage (developer convenience)
+  // 3) AI Memo localStorage (developer convenience only)
   if (!baseUrl) {
     try {
       const v = localStorage.getItem('aiMemo.backendUrl');
@@ -66,15 +55,16 @@ export function getApiBaseUrl(): string {
     }
   }
 
-  // 4) Default production URL
+  // 4) Fail explicitly if no configuration found
   if (!baseUrl) {
-    baseUrl = DEFAULT_API_URL;
-    source = 'default';
+    throw new Error(
+      '[apiBase] VITE_API_BASE_URL is not configured. ' +
+      'Set this environment variable or provide runtime config (APP_CONFIG.apiBaseUrl).'
+    );
   }
 
   const normalized = normalizeBaseUrl(baseUrl);
 
-  // If legacy value came from localStorage, persist the migrated value
   if (source === 'localStorage' && typeof window !== 'undefined' && normalized !== baseUrl) {
     try {
       localStorage.setItem('aiMemo.backendUrl', JSON.stringify(normalized));
@@ -83,7 +73,6 @@ export function getApiBaseUrl(): string {
     }
   }
 
-  // If runtime injected config is legacy, also normalize it in-memory
   if (source === 'runtime' && typeof window !== 'undefined' && normalized !== baseUrl) {
     try {
       const w2 = window as any;

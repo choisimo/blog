@@ -93,7 +93,7 @@ jobs:
           RESPONSE=$(curl -sf "http://localhost:5080/api/v1/auth/login" \
             -H "Content-Type: application/json" \
             -d '{
-              "username": "${{ vars.ADMIN_USERNAME || 'admin' }}",
+              "username": "${{ secrets.ADMIN_USERNAME || 'admin' }}",
               "password": "${{ secrets.ADMIN_PASSWORD }}"
             }' 2>/dev/null)
           

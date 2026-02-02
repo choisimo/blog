@@ -25,7 +25,7 @@ class RAGResult:
 
 
 async def get_embedding(text: str) -> list[float]:
-    """Get embedding vector for text using TEI server.
+    """Get embedding vector for text using OpenAI-compatible endpoint.
     
     Args:
         text: Text to embed
@@ -34,21 +34,17 @@ async def get_embedding(text: str) -> list[float]:
         Embedding vector as list of floats
     """
     settings = get_settings()
-    
-    async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.post(
-            f"{settings.tei_url}/embed",
-            json={"inputs": text},
-        )
-        response.raise_for_status()
-        
-        # TEI returns [[embedding]] for single input
-        result = response.json()
-        if isinstance(result, list) and len(result) > 0:
-            if isinstance(result[0], list):
-                return result[0]
-            return result
-        raise ValueError("Unexpected embedding response format")
+    client = get_llm_client()
+
+    response = await client.aembedding(
+        model=settings.default_embed_model,
+        input=text,
+    )
+
+    if not response.data:
+        raise ValueError("Empty embedding response")
+
+    return response.data[0].embedding
 
 
 async def search_chroma(

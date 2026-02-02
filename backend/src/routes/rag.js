@@ -1,7 +1,7 @@
 /**
  * RAG Routes
  * 
- * ChromaDB와 TEI 임베딩 서버에 대한 프록시 엔드포인트
+ * ChromaDB와 OpenAI-compatible 임베딩 엔드포인트에 대한 프록시
  * Workers에서 터널(api.nodove.com)을 통해 호출합니다.
  * 
  * 엔드포인트:
@@ -17,6 +17,7 @@ import express from 'express';
 import { config } from '../config.js';
 import { requireFeature } from '../middleware/featureFlags.js';
 import { expandQuery, getCombinedQueries } from '../lib/query-expander.js';
+import { getOpenAIEmbeddingClient, openaiEmbeddings } from '../lib/openai-compat-client.js';
 
 const router = express.Router();
 
@@ -74,25 +75,18 @@ async function getCollectionUUID(collectionName) {
 }
 
 /**
- * TEI 서버에서 텍스트 임베딩 생성
+ * OpenAI-compatible 임베딩 엔드포인트에서 텍스트 임베딩 생성
  * @param {string[]} texts - 임베딩할 텍스트 배열
  * @returns {Promise<number[][]>} 임베딩 벡터 배열
  */
 async function getEmbeddings(texts) {
-  const response = await fetch(config.rag.teiUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ inputs: texts }),
+  const result = await openaiEmbeddings(texts, {
+    model: config.rag.embeddingModel,
+    baseUrl: config.rag.embeddingUrl,
+    apiKey: config.rag.embeddingApiKey,
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`TEI error: ${response.status} - ${errorText}`);
-  }
-
-  const data = await response.json();
-  // TEI returns either { embeddings: [...] } or direct array
-  return data.embeddings || data;
+  return result.embeddings;
 }
 
 /**
@@ -442,18 +436,22 @@ router.post('/embed', async (req, res) => {
  */
 router.get('/health', async (req, res) => {
   const status = {
-    tei: { ok: false, url: config.rag.teiUrl },
+    embedding: { ok: false, url: config.rag.embeddingUrl },
     chroma: { ok: false, url: config.rag.chromaUrl },
   };
 
   try {
-    const teiResp = await fetch(`${config.rag.teiUrl}/health`, { 
-      method: 'GET',
-      signal: AbortSignal.timeout(5000),
+    const embeddingClient = getOpenAIEmbeddingClient({
+      baseUrl: config.rag.embeddingUrl,
+      apiKey: config.rag.embeddingApiKey,
     });
-    status.tei.ok = teiResp.ok;
+    const embeddingHealth = await embeddingClient.health();
+    status.embedding.ok = embeddingHealth.ok;
+    if (!embeddingHealth.ok) {
+      status.embedding.error = embeddingHealth.error || 'Embedding endpoint unavailable';
+    }
   } catch (err) {
-    status.tei.error = err.message;
+    status.embedding.error = err.message;
   }
 
   try {
@@ -466,10 +464,13 @@ router.get('/health', async (req, res) => {
     status.chroma.error = err.message;
   }
 
-  const allOk = status.tei.ok && status.chroma.ok;
+  const allOk = status.embedding.ok && status.chroma.ok;
   res.status(allOk ? 200 : 503).json({
     ok: allOk,
-    services: status,
+    services: {
+      embedding: status.embedding,
+      chroma: status.chroma,
+    },
     collection: config.rag.chromaCollection,
   });
 });
