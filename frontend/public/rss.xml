@@ -5,13 +5,13 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Tue, 03 Feb 2026 07:21:03 GMT</lastBuildDate>
+    <lastBuildDate>Tue, 03 Feb 2026 11:13:23 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
       <title>Container Network Interface</title>
       <description>Networking without NAT, the CNI&apos;s role in remote container networking, and more.</description>
-      <link>http://localhost:3000/blog/2026/Container Network Interface</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/Container Network Interface</guid>
+      <link>https://noblog.nodove.com/blog/2026/Container Network Interface</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/Container Network Interface</guid>
       <pubDate>Sun, 01 Feb 2026 00:00:00 GMT</pubDate>
       <category>Network, Container, CNI</category>
       <category>Network</category>
@@ -21,8 +21,8 @@
     <item>
       <title>Proxmox &amp; OPNsense VLAN 추가 및 설정 가이드</title>
       <description>Proxmox VE에서 OPNsense VM에 새로운 가상 네트워크 인터페이스(vNIC)를 추가하고, VLAN 104 네트워크로 설정하는 단계별 가이드입니다.</description>
-      <link>http://localhost:3000/blog/2026/proxmox-opnsense-vlan-104-guide</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/proxmox-opnsense-vlan-104-guide</guid>
+      <link>https://noblog.nodove.com/blog/2026/proxmox-opnsense-vlan-104-guide</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/proxmox-opnsense-vlan-104-guide</guid>
       <pubDate>Mon, 26 Jan 2026 00:00:00 GMT</pubDate>
       <category>Guide</category>
       <category>Proxmox</category>
@@ -34,8 +34,8 @@
     <item>
       <title>개인화된 가독성: 텍스트를 넘어 이해를 설계하다</title>
       <description>도구는 차가울지 몰라도, 그 도구가 전하는 이해는 따뜻해야 합니다. 사용자의 맥락에 맞춰 숨 쉬는 문서를 만드는 기술적 여정에 대하여.</description>
-      <link>http://localhost:3000/blog/2026/personalized-readability-ux</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/personalized-readability-ux</guid>
+      <link>https://noblog.nodove.com/blog/2026/personalized-readability-ux</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/personalized-readability-ux</guid>
       <pubDate>Sun, 25 Jan 2026 00:00:00 GMT</pubDate>
       <category>Essay</category>
       <category>UX</category>
@@ -46,8 +46,8 @@
     <item>
       <title>Algorithm</title>
       <description>알고리즘 리스트</description>
-      <link>http://localhost:3000/blog/2026/Algorithm</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/Algorithm</guid>
+      <link>https://noblog.nodove.com/blog/2026/Algorithm</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/Algorithm</guid>
       <pubDate>Tue, 20 Jan 2026 00:00:00 GMT</pubDate>
       <category>algorithm</category>
       <category>algorithm</category>
@@ -57,8 +57,8 @@
     <item>
       <title>Understanding State Space Models and Mamba</title>
       <description>Transformer의 대안으로 떠오르는 SSM과 Mamba의 원리를 깊이 있게 설명합니다. 인지 과학적 은유부터 Induction Heads 메커니즘까지.</description>
-      <link>http://localhost:3000/blog/2026/understanding-ssm-and-mamba</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/understanding-ssm-and-mamba</guid>
+      <link>https://noblog.nodove.com/blog/2026/understanding-ssm-and-mamba</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/understanding-ssm-and-mamba</guid>
       <pubDate>Sat, 17 Jan 2026 00:00:00 GMT</pubDate>
       <category>AI</category>
       <category>SSM</category>
@@ -71,8 +71,8 @@
     <item>
       <title>Vim Architecture, Functionality, Commands, and Integration</title>
       <description>Vim의 아키텍처부터 핵심 기능, 필수 명령어, 그리고 다양한 개발 환경과의 통합까지 심층적으로 탐구합니다</description>
-      <link>http://localhost:3000/blog/2026/vim-architecture-functionality-commands-integration</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/vim-architecture-functionality-commands-integration</guid>
+      <link>https://noblog.nodove.com/blog/2026/vim-architecture-functionality-commands-integration</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/vim-architecture-functionality-commands-integration</guid>
       <pubDate>Thu, 15 Jan 2026 00:00:00 GMT</pubDate>
       <category>기술</category>
       <category>Vim</category>
@@ -85,8 +85,8 @@
     <item>
       <title>쉘 스크립트의 공백: 리눅스 철학이 숨겨진 한 줄의 코드</title>
       <description>[ 명령어 앞의 공백 하나가 왜 필요한지, 리눅스 철학을 통해 이해하기</description>
-      <link>http://localhost:3000/blog/2026/shellscript-analyze-1</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/shellscript-analyze-1</guid>
+      <link>https://noblog.nodove.com/blog/2026/shellscript-analyze-1</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/shellscript-analyze-1</guid>
       <pubDate>Tue, 06 Jan 2026 00:00:00 GMT</pubDate>
       <category>Tech &amp; Philosophy</category>
       <category>쉘 스크립트</category>
@@ -98,8 +98,8 @@
     <item>
       <title>쿠르스크 초원의 전차전</title>
       <description>1943년 쿠르스크. 강철 안에 갇힌 두 전차장이 발견한 것은 적이 아닌, 자신과 똑같이 두려워하는 한 사람이었다.</description>
-      <link>http://localhost:3000/blog/2026/nobel1-kursk-tanks</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/nobel1-kursk-tanks</guid>
+      <link>https://noblog.nodove.com/blog/2026/nobel1-kursk-tanks</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/nobel1-kursk-tanks</guid>
       <pubDate>Sun, 04 Jan 2026 00:00:00 GMT</pubDate>
       <category>Fiction</category>
       <category>단편소설</category>
@@ -111,8 +111,8 @@
     <item>
       <title>게으름의 미학</title>
       <description>나의 귀찮음이 만들어낸 부지런한 컨테이너</description>
-      <link>http://localhost:3000/blog/2026/remote-server-think</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/remote-server-think</guid>
+      <link>https://noblog.nodove.com/blog/2026/remote-server-think</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/remote-server-think</guid>
       <pubDate>Sat, 03 Jan 2026 00:00:00 GMT</pubDate>
       <category>Tech &amp; Philosophy</category>
       <category>시스템 설계</category>
@@ -124,8 +124,8 @@
     <item>
       <title>모든 것은 파일이다</title>
       <description>cat | grep 이라는 단순한 명령어 뒤에 숨겨진 커널의 정교한 메커니즘. 모든 것을 파일로 추상화한 유닉스 철학의 고마움</description>
-      <link>http://localhost:3000/blog/2026/io-redirection-pipeline</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/io-redirection-pipeline</guid>
+      <link>https://noblog.nodove.com/blog/2026/io-redirection-pipeline</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/io-redirection-pipeline</guid>
       <pubDate>Fri, 02 Jan 2026 00:00:00 GMT</pubDate>
       <category>Tech &amp; Philosophy</category>
       <category>시스템 프로그래밍</category>
@@ -138,8 +138,8 @@
     <item>
       <title>무속, 사이비 : 자유의 환상과 개인화의 비극</title>
       <description>극단적 개인화가 낳은 소외, 그리고 사이비 집단이라는 달콤한 도피처. 우리는 왜 자유를 두려워하는가.</description>
-      <link>http://localhost:3000/blog/2026/current-crowd</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/current-crowd</guid>
+      <link>https://noblog.nodove.com/blog/2026/current-crowd</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/current-crowd</guid>
       <pubDate>Thu, 01 Jan 2026 00:00:00 GMT</pubDate>
       <category>Tech &amp; Philosophy</category>
       <category>디지털 휴머니즘</category>
@@ -152,8 +152,8 @@
     <item>
       <title>감동을 잃어버린 그대들에게</title>
       <description>효율성이라는 알고리즘에 갇혀, 비효율적인 낭만을 잃어버린 우리 시대에 대한 회고.</description>
-      <link>http://localhost:3000/blog/2025/감동을_잃어버린_그대들에게</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/감동을_잃어버린_그대들에게</guid>
+      <link>https://noblog.nodove.com/blog/2025/감동을_잃어버린_그대들에게</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/감동을_잃어버린_그대들에게</guid>
       <pubDate>Mon, 29 Dec 2025 00:00:00 GMT</pubDate>
       <category>Tech &amp; Philosophy</category>
       <category>디지털 휴머니즘</category>
@@ -166,8 +166,8 @@
     <item>
       <title>Proxmox 네트워크 추가하기</title>
       <description>Proxmox 네트워크 추가하기</description>
-      <link>http://localhost:3000/blog/2026/proxmox-network-add</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/proxmox-network-add</guid>
+      <link>https://noblog.nodove.com/blog/2026/proxmox-network-add</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/proxmox-network-add</guid>
       <pubDate>Sun, 28 Dec 2025 00:00:00 GMT</pubDate>
       <category>네트워크,proxmox,lxc</category>
       <category>vmbr</category>
@@ -183,8 +183,8 @@
     <item>
       <title>쿠버네티스 기본 구조</title>
       <description>전통적 배포 방식부터 쿠버네티스 에코시스템까지, 개념을 정리하는 글</description>
-      <link>http://localhost:3000/blog/2025/k8s-overview</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/k8s-overview</guid>
+      <link>https://noblog.nodove.com/blog/2025/k8s-overview</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/k8s-overview</guid>
       <pubDate>Tue, 02 Dec 2025 00:00:00 GMT</pubDate>
       <category>Kubernetes</category>
       <category>Kubernetes</category>
@@ -195,8 +195,8 @@
     <item>
       <title>우리는 DNA의 꼭두각시인가: 이성의 붕괴와 야성적 충동의 역설에 대한 생각</title>
       <description>애덤 스미스의 이성적 인간관에 대한 반박부터 케인스와 민스키의 야성적 충동, 그리고 진화심리학적 관점까지. 인간 본성의 모순에 대한 생각</description>
-      <link>http://localhost:3000/blog/2025/AnimalsMind</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/AnimalsMind</guid>
+      <link>https://noblog.nodove.com/blog/2025/AnimalsMind</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/AnimalsMind</guid>
       <pubDate>Mon, 01 Dec 2025 00:00:00 GMT</pubDate>
       <category>Essays</category>
       <category>Philosophy</category>
@@ -208,8 +208,8 @@
     <item>
       <title>알고리즘의 역발상 관점</title>
       <description>피보나치 수열, 행렬 곱셈, 그리디 알고리즘, 문자열 검색, P vs NP까지 — 컴퓨터 과학의 고전 알고리즘을 역발상 관점으로 정리</description>
-      <link>http://localhost:3000/blog/2025/algorithm_solv</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/algorithm_solv</guid>
+      <link>https://noblog.nodove.com/blog/2025/algorithm_solv</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/algorithm_solv</guid>
       <pubDate>Sat, 29 Nov 2025 00:00:00 GMT</pubDate>
       <category>Computer Science</category>
       <category>알고리즘</category>
@@ -221,8 +221,8 @@
     <item>
       <title>Kafka와 LLM 서버 사이에 버퍼 존을 둔 AI 서버 설계기</title>
       <description>Kafka와 LLM 서버 사이에 작은 버퍼 존을 두고 Gateway와 Buffer Worker를 나누어 설계한 이유, 그리고 이를 Kafka 토픽·메시지 스키마·docker-compose로 구체화해 가는 과정을 정리했다</description>
-      <link>http://localhost:3000/blog/2025/AI-api-server-temporary-dev</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/AI-api-server-temporary-dev</guid>
+      <link>https://noblog.nodove.com/blog/2025/AI-api-server-temporary-dev</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/AI-api-server-temporary-dev</guid>
       <pubDate>Thu, 20 Nov 2025 00:00:00 GMT</pubDate>
       <category>Backend</category>
       <category>Kafka</category>
@@ -234,8 +234,8 @@
     <item>
       <title>네트워크 병목과 NAT 게이트웨이의 한계: 한 CS 학생의 속마음</title>
       <description>프라이빗 서브넷과 퍼블릭 서브넷, NAT Gateway와 IGW가 등장하는 전형적인 VPC 그림을 보던 수업 시간. 모두가 보안을 이야기할 때, 내 눈에는 그 구조가 거대한 깔때기 실험처럼 보였다. 이 글은 그 순간 머릿속에서 떠오른 병목에 대한 질문과 직관을 그대로 옮긴 기록이다.</description>
-      <link>http://localhost:3000/blog/2025/nat-gateway-bottleneck-journal</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/nat-gateway-bottleneck-journal</guid>
+      <link>https://noblog.nodove.com/blog/2025/nat-gateway-bottleneck-journal</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/nat-gateway-bottleneck-journal</guid>
       <pubDate>Wed, 19 Nov 2025 00:00:00 GMT</pubDate>
       <category>Network</category>
       <category>NAT</category>
@@ -247,8 +247,8 @@
     <item>
       <title>제가 뇌를 리셋하게 만든 미래 기술 문서에서 발견한 6가지 깨달음</title>
       <description>미래 기술 문서들 속에서 발견한 6가지 통찰과 인간 역할의 재정의를 공유합니다.</description>
-      <link>http://localhost:3000/blog/2025/future-tech-six-insights</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/future-tech-six-insights</guid>
+      <link>https://noblog.nodove.com/blog/2025/future-tech-six-insights</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/future-tech-six-insights</guid>
       <pubDate>Tue, 04 Nov 2025 00:00:00 GMT</pubDate>
       <category>Tech Essay</category>
       <category>AI</category>
@@ -260,8 +260,8 @@
     <item>
       <title>정렬 알고리즘 수도 코드 완전 해부: 라인별 분석</title>
       <description>버블 정렬부터 힙 정렬까지, 핵심 수도 코드를 한 줄씩 뜯어보며 왜 그런 로직이 필요한지 한국어로 상세하게 분석합니다.</description>
-      <link>http://localhost:3000/blog/2025/sorting-algorithms-pseudocode-analysis</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2025/sorting-algorithms-pseudocode-analysis</guid>
+      <link>https://noblog.nodove.com/blog/2025/sorting-algorithms-pseudocode-analysis</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/sorting-algorithms-pseudocode-analysis</guid>
       <pubDate>Sun, 02 Nov 2025 00:00:00 GMT</pubDate>
       <category>알고리즘</category>
       <category>정렬</category>
