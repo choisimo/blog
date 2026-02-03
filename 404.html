@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Page Not Found - nodove blog</title>
+    <meta name="description" content="페이지를 찾을 수 없습니다. 홈페이지로 돌아가세요." />
+    <script>
+      // Preserve the original path and redirect to hash-based route for SPA
+      (function () {
+        var l = window.location;
+        var path = l.pathname || '/';
+        var search = l.search || '';
+        var hash = l.hash || '';
+        // Redirect to '/#/path?query#hash' so HashRouter can handle it
+        var redirectUrl = '/#' + path + search + hash;
+        l.replace(redirectUrl);
+      })();
+    </script>
+  </head>
+  <body>
+    <div style="text-align: center; padding: 50px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+      <h1>404 - 페이지를 찾을 수 없습니다</h1>
+      <p>홈페이지로 리다이렉트하는 중...</p>
+    </div>
+  </body>
+</html>
