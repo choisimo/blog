@@ -202,7 +202,7 @@ services:
     image: surrealdb/surrealdb:v2
     container_name: blog-surrealdb
     user: "0:0"
-    command: start --user root --pass ${SURREALDB_ROOT_PASSWORD:-surrealdb} surrealkv:/data/database
+    command: start --user root --pass ${SURREALDB_ROOT_PASSWORD:-surrealdb} --bind 0.0.0.0:8000 rocksdb:/data/database.db
     volumes:
       - surrealdb-data:/data
     networks:
@@ -226,9 +226,9 @@ services:
     container_name: blog-open-notebook
     environment:
       # SurrealDB connection
-      - SURREAL_ADDRESS=ws://surrealdb:8000/rpc
+      - SURREAL_URL=ws://surrealdb:8000/rpc
       - SURREAL_USER=root
-      - SURREAL_PASS=${SURREALDB_ROOT_PASSWORD:-surrealdb}
+      - SURREAL_PASSWORD=${SURREALDB_ROOT_PASSWORD:-surrealdb}
       - SURREAL_NAMESPACE=open_notebook
       - SURREAL_DATABASE=open_notebook
       # OpenAI-compatible API for LLM

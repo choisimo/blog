@@ -43,12 +43,15 @@ export const configSchema = z.object({
 
   AI_EMBEDDING_URL: z.string().default('https://api.openai.com/v1'),
   AI_EMBEDDING_API_KEY: z.string().optional(),
-  AI_EMBED_MODEL: z.string().default(AI_MODELS.EMBEDDING),
+  AI_EMBED_MODEL: z.string().default('multilingual-e5-large'),
   CHROMA_URL: z.string().default('http://chromadb:8000'),
   CHROMA_COLLECTION: z.string().default('blog-posts__all-MiniLM-L6-v2'),
   REDIS_URL: z.string().optional(),
 
   BACKEND_KEY: z.string().optional(),
+
+  OPEN_NOTEBOOK_URL: z.string().default('http://open-notebook:8501'),
+  OPEN_NOTEBOOK_ENABLED: z.enum(['true', 'false']).default('false'),
 
   PERPLEXITY_API_KEY: z.string().optional(),
   TAVILY_API_KEY: z.string().optional(),

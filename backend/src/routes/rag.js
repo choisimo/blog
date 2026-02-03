@@ -11,6 +11,9 @@
  * - POST /api/v1/rag/memories/upsert - 사용자 메모리 임베딩 저장
  * - POST /api/v1/rag/memories/search - 사용자 메모리 시맨틱 검색
  * - DELETE /api/v1/rag/memories/:memoryId - 메모리 임베딩 삭제
+ * - POST /api/v1/rag/notebook/search - Open Notebook 검색
+ * - POST /api/v1/rag/notebook/ask - Open Notebook RAG 질의응답
+ * - GET /api/v1/rag/notebook/notebooks - Open Notebook 목록
  */
 
 import express from 'express';
@@ -18,6 +21,7 @@ import { config } from '../config.js';
 import { requireFeature } from '../middleware/featureFlags.js';
 import { expandQuery, getCombinedQueries } from '../lib/query-expander.js';
 import { getOpenAIEmbeddingClient, openaiEmbeddings } from '../lib/openai-compat-client.js';
+import openNotebook from '../services/open-notebook.service.js';
 
 const router = express.Router();
 
@@ -438,6 +442,7 @@ router.get('/health', async (req, res) => {
   const status = {
     embedding: { ok: false, url: config.rag.embeddingUrl },
     chroma: { ok: false, url: config.rag.chromaUrl },
+    openNotebook: { ok: false, enabled: openNotebook.isEnabled() },
   };
 
   try {
@@ -464,12 +469,26 @@ router.get('/health', async (req, res) => {
     status.chroma.error = err.message;
   }
 
-  const allOk = status.embedding.ok && status.chroma.ok;
-  res.status(allOk ? 200 : 503).json({
+  if (openNotebook.isEnabled()) {
+    try {
+      const notebookHealth = await openNotebook.healthCheck();
+      status.openNotebook.ok = notebookHealth.ok;
+      if (!notebookHealth.ok) {
+        status.openNotebook.error = notebookHealth.error;
+      }
+    } catch (err) {
+      status.openNotebook.error = err.message;
+    }
+  }
+
+  const coreOk = status.embedding.ok && status.chroma.ok;
+  const allOk = coreOk && (!openNotebook.isEnabled() || status.openNotebook.ok);
+  res.status(coreOk ? 200 : 503).json({
     ok: allOk,
     services: {
       embedding: status.embedding,
       chroma: status.chroma,
+      openNotebook: status.openNotebook,
     },
     collection: config.rag.chromaCollection,
   });
@@ -843,6 +862,85 @@ router.get('/collections', async (req, res) => {
   } catch (err) {
     console.error('RAG collections error:', err.message);
     res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/notebook/search', async (req, res) => {
+  if (!openNotebook.isEnabled()) {
+    return res.status(503).json({ ok: false, error: 'Open Notebook is not enabled' });
+  }
+
+  try {
+    const { query, limit = 5, notebookId } = req.body;
+
+    if (!query || typeof query !== 'string') {
+      return res.status(400).json({ ok: false, error: 'query is required' });
+    }
+
+    const results = await openNotebook.search(query, { limit, notebookId });
+
+    res.json({ ok: true, data: { results } });
+  } catch (err) {
+    console.error('Open Notebook search error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/notebook/ask', async (req, res) => {
+  if (!openNotebook.isEnabled()) {
+    return res.status(503).json({ ok: false, error: 'Open Notebook is not enabled' });
+  }
+
+  try {
+    const { query, notebookId, includeContext = true } = req.body;
+
+    if (!query || typeof query !== 'string') {
+      return res.status(400).json({ ok: false, error: 'query is required' });
+    }
+
+    const result = await openNotebook.ask(query, { notebookId, includeContext });
+
+    res.json({ ok: true, data: result });
+  } catch (err) {
+    console.error('Open Notebook ask error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.get('/notebook/notebooks', async (req, res) => {
+  if (!openNotebook.isEnabled()) {
+    return res.status(503).json({ ok: false, error: 'Open Notebook is not enabled' });
+  }
+
+  try {
+    const notebooks = await openNotebook.listNotebooks();
+
+    res.json({ ok: true, data: { notebooks } });
+  } catch (err) {
+    console.error('Open Notebook list error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.get('/notebook/health', async (req, res) => {
+  if (!openNotebook.isEnabled()) {
+    return res.json({ 
+      ok: false, 
+      enabled: false,
+      error: 'Open Notebook is not enabled' 
+    });
+  }
+
+  try {
+    const health = await openNotebook.healthCheck();
+
+    res.json({ 
+      ok: health.ok, 
+      enabled: true,
+      ...health 
+    });
+  } catch (err) {
+    res.json({ ok: false, enabled: true, error: err.message });
   }
 });
 

@@ -96,11 +96,17 @@ async function callBackendAutoChat(
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
+    'User-Agent': 'Blog-Workers/1.0',
   };
+
+  // Backend authentication - required for all AI requests
+  if (env.BACKEND_SECRET_KEY) {
+    headers['X-Backend-Key'] = env.BACKEND_SECRET_KEY;
+  }
 
   const apiKey = await getAiServeApiKey(env);
   if (apiKey) {
-    headers['X-Internal-Gateway-Key'] = apiKey;
+    headers['X-API-KEY'] = apiKey;
   }
 
   try {
@@ -169,7 +175,12 @@ async function callBackendGenerate(
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'User-Agent': 'Blog-Workers/1.0',
   };
+
+  if (env.BACKEND_SECRET_KEY) {
+    headers['X-Backend-Key'] = env.BACKEND_SECRET_KEY;
+  }
 
   const apiKey = await getAiServeApiKey(env);
   if (apiKey) {

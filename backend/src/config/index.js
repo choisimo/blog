@@ -104,6 +104,7 @@ async function buildConfig() {
       backendUrl: raw.INTERNAL_API_URL || `http://localhost:${raw.PORT}`,
       terminalServerUrl: raw.TERMINAL_SERVER_URL,
       terminalGatewayUrl: raw.TERMINAL_GATEWAY_URL,
+      openNotebookUrl: raw.OPEN_NOTEBOOK_URL,
     },
 
     consul: {
@@ -118,6 +119,7 @@ async function buildConfig() {
       terminalEnabled: raw.FEATURE_TERMINAL_ENABLED === 'true',
       aiInline: raw.FEATURE_AI_INLINE === 'true',
       commentsEnabled: raw.FEATURE_COMMENTS_ENABLED === 'true',
+      openNotebookEnabled: raw.OPEN_NOTEBOOK_ENABLED === 'true',
     },
   };
 }
@@ -203,6 +205,7 @@ export const config = {
     backendUrl: syncConfig.INTERNAL_API_URL || `http://localhost:${syncConfig.PORT}`,
     terminalServerUrl: syncConfig.TERMINAL_SERVER_URL,
     terminalGatewayUrl: syncConfig.TERMINAL_GATEWAY_URL,
+    openNotebookUrl: syncConfig.OPEN_NOTEBOOK_URL,
   },
   consul: {
     enabled: CONSUL.ENABLED,
@@ -215,6 +218,7 @@ export const config = {
     terminalEnabled: syncConfig.FEATURE_TERMINAL_ENABLED === 'true',
     aiInline: syncConfig.FEATURE_AI_INLINE === 'true',
     commentsEnabled: syncConfig.FEATURE_COMMENTS_ENABLED === 'true',
+    openNotebookEnabled: syncConfig.OPEN_NOTEBOOK_ENABLED === 'true',
   },
 };
 
