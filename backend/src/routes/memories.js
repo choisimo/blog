@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import { queryAll, queryOne, execute, isD1Configured } from '../lib/d1.js';
+import { requireUserAuth, requireUserOwnership } from '../middleware/userAuth.js';
 
 const router = Router();
 
@@ -20,10 +21,9 @@ function clampInt(v, def, min, max) {
   return Math.max(min, Math.min(max, n));
 }
 
-router.get('/:userId', requireDb, async (req, res, next) => {
+router.get('/:userId', requireDb, requireUserAuth, requireUserOwnership('userId'), async (req, res, next) => {
   try {
-    const userId = String(req.params.userId || '').trim().slice(0, 128);
-    if (!userId) return res.status(400).json({ ok: false, error: 'userId is required' });
+    const userId = req.userId;
 
     const type = req.query.type ? String(req.query.type).trim().slice(0, 32) : null;
     const category = req.query.category ? String(req.query.category).trim().slice(0, 64) : null;
@@ -85,10 +85,9 @@ router.get('/:userId', requireDb, async (req, res, next) => {
   }
 });
 
-router.post('/:userId', requireDb, async (req, res, next) => {
+router.post('/:userId', requireDb, requireUserAuth, requireUserOwnership('userId'), async (req, res, next) => {
   try {
-    const userId = String(req.params.userId || '').trim().slice(0, 128);
-    if (!userId) return res.status(400).json({ ok: false, error: 'userId is required' });
+    const userId = req.userId;
 
     const body = req.body || {};
     const content = String(body.content || '').trim();
@@ -122,10 +121,9 @@ router.post('/:userId', requireDb, async (req, res, next) => {
   }
 });
 
-router.post('/:userId/batch', requireDb, async (req, res, next) => {
+router.post('/:userId/batch', requireDb, requireUserAuth, requireUserOwnership('userId'), async (req, res, next) => {
   try {
-    const userId = String(req.params.userId || '').trim().slice(0, 128);
-    if (!userId) return res.status(400).json({ ok: false, error: 'userId is required' });
+    const userId = req.userId;
 
     const memories = Array.isArray(req.body?.memories) ? req.body.memories : [];
     if (memories.length === 0) {
@@ -165,11 +163,11 @@ router.post('/:userId/batch', requireDb, async (req, res, next) => {
   }
 });
 
-router.delete('/:userId/:memoryId', requireDb, async (req, res, next) => {
+router.delete('/:userId/:memoryId', requireDb, requireUserAuth, requireUserOwnership('userId'), async (req, res, next) => {
   try {
-    const userId = String(req.params.userId || '').trim().slice(0, 128);
+    const userId = req.userId;
     const memoryId = String(req.params.memoryId || '').trim().slice(0, 128);
-    if (!userId || !memoryId) return res.status(400).json({ ok: false, error: 'userId and memoryId are required' });
+    if (!memoryId) return res.status(400).json({ ok: false, error: 'memoryId is required' });
 
     const existing = await queryOne(
       `SELECT id FROM user_memories WHERE id = ? AND user_id = ? AND is_active = 1`,

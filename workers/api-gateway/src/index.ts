@@ -208,14 +208,6 @@ api.route('/subscribe', subscribe);
 app.route('/api/v1', api);
 
 // =============================================================================
-// Terminal Proxy (forward to backend nginx which handles terminal-server)
-// =============================================================================
-
-app.all('/terminal/*', async (c) => {
-  return proxyToBackend(c.req.raw, c.env);
-});
-
-// =============================================================================
 // Fallback: Proxy to Backend for unhandled routes
 // =============================================================================
 

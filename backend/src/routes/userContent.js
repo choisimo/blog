@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { queryAll, queryOne, execute, isD1Configured } from '../lib/d1.js';
+import { requireUserAuth } from '../middleware/userAuth.js';
 import crypto from 'crypto';
 
 const router = Router();
 
-// Middleware to check D1 configuration
 const requireD1 = (req, res, next) => {
   if (!isD1Configured()) {
     return res.status(503).json({
@@ -12,18 +12,6 @@ const requireD1 = (req, res, next) => {
       error: 'User content service not configured (D1 credentials missing)',
     });
   }
-  next();
-};
-
-// Simple auth check - Bearer token validation
-// In production, integrate with your actual auth system
-const requireAuth = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ ok: false, error: 'Unauthorized' });
-  }
-  // For now, accept any token - integrate with JWT validation in production
-  req.userId = 'default-user';
   next();
 };
 
@@ -35,7 +23,7 @@ const requireAuth = (req, res, next) => {
  * GET /api/personas
  * List all personas for the authenticated user
  */
-router.get('/personas', requireD1, requireAuth, async (req, res, next) => {
+router.get('/personas', requireD1, requireUserAuth, async (req, res, next) => {
   try {
     const cursor = req.query.cursor;
     const limit = Math.min(parseInt(req.query.limit) || 50, 100);
@@ -77,7 +65,7 @@ router.get('/personas', requireD1, requireAuth, async (req, res, next) => {
  * POST /api/personas
  * Create a new persona
  */
-router.post('/personas', requireD1, requireAuth, async (req, res, next) => {
+router.post('/personas', requireD1, requireUserAuth, async (req, res, next) => {
   try {
     const { name, prompt, tags } = req.body || {};
 
@@ -124,7 +112,7 @@ router.post('/personas', requireD1, requireAuth, async (req, res, next) => {
  * PUT /api/personas/:id
  * Update a persona
  */
-router.put('/personas/:id', requireD1, requireAuth, async (req, res, next) => {
+router.put('/personas/:id', requireD1, requireUserAuth, async (req, res, next) => {
   try {
     const { id } = req.params;
     const { name, prompt, tags } = req.body || {};
@@ -180,7 +168,7 @@ router.put('/personas/:id', requireD1, requireAuth, async (req, res, next) => {
  * DELETE /api/personas/:id
  * Delete a persona
  */
-router.delete('/personas/:id', requireD1, requireAuth, async (req, res, next) => {
+router.delete('/personas/:id', requireD1, requireUserAuth, async (req, res, next) => {
   try {
     const { id } = req.params;
 
@@ -211,7 +199,7 @@ router.delete('/personas/:id', requireD1, requireAuth, async (req, res, next) =>
  * GET /api/memos
  * List all memos for the authenticated user
  */
-router.get('/memos', requireD1, requireAuth, async (req, res, next) => {
+router.get('/memos', requireD1, requireUserAuth, async (req, res, next) => {
   try {
     const cursor = req.query.cursor;
     const limit = Math.min(parseInt(req.query.limit) || 50, 100);
@@ -254,7 +242,7 @@ router.get('/memos', requireD1, requireAuth, async (req, res, next) => {
  * POST /api/memos
  * Create a new memo
  */
-router.post('/memos', requireD1, requireAuth, async (req, res, next) => {
+router.post('/memos', requireD1, requireUserAuth, async (req, res, next) => {
   try {
     const { originalContent, userNote, tags, source } = req.body || {};
 
@@ -301,7 +289,7 @@ router.post('/memos', requireD1, requireAuth, async (req, res, next) => {
  * PUT /api/memos/:id
  * Update a memo
  */
-router.put('/memos/:id', requireD1, requireAuth, async (req, res, next) => {
+router.put('/memos/:id', requireD1, requireUserAuth, async (req, res, next) => {
   try {
     const { id } = req.params;
     const { originalContent, userNote, tags, source } = req.body || {};
@@ -360,7 +348,7 @@ router.put('/memos/:id', requireD1, requireAuth, async (req, res, next) => {
  * DELETE /api/memos/:id
  * Delete a memo
  */
-router.delete('/memos/:id', requireD1, requireAuth, async (req, res, next) => {
+router.delete('/memos/:id', requireD1, requireUserAuth, async (req, res, next) => {
   try {
     const { id } = req.params;
 

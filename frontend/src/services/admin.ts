@@ -9,6 +9,73 @@ export type CreatePostPayload = {
   draft?: boolean;
 };
 
+export type LoginResponse = {
+  sessionId: string;
+  message: string;
+  expiresAt: string;
+  _dev_otp?: string;
+};
+
+export type VerifyOtpResponse = {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+  user: {
+    username: string;
+    email: string;
+    role: string;
+  };
+};
+
+export async function adminLoginStep1(
+  username: string,
+  password: string
+): Promise<LoginResponse> {
+  const base = getApiBaseUrl();
+  const res = await fetch(`${base}/api/v1/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json?.ok) {
+    throw new Error(json?.error?.message || json?.error || 'Login failed');
+  }
+  return json.data as LoginResponse;
+}
+
+export async function adminLoginStep2(
+  sessionId: string,
+  otp: string
+): Promise<VerifyOtpResponse> {
+  const base = getApiBaseUrl();
+  const res = await fetch(`${base}/api/v1/auth/verify-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId, otp }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json?.ok) {
+    throw new Error(json?.error?.message || json?.error || 'OTP verification failed');
+  }
+  return json.data as VerifyOtpResponse;
+}
+
+export async function adminResendOtp(sessionId: string): Promise<{ message: string; expiresAt: string }> {
+  const base = getApiBaseUrl();
+  const res = await fetch(`${base}/api/v1/auth/resend-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json?.ok) {
+    throw new Error(json?.error?.message || json?.error || 'Failed to resend OTP');
+  }
+  return json.data as { message: string; expiresAt: string };
+}
+
 export async function adminLogin(
   username: string,
   password: string

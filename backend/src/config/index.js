@@ -65,6 +65,8 @@ async function buildConfig() {
       jwtExpiresIn: raw.JWT_EXPIRES_IN,
     },
 
+    backendKey: raw.BACKEND_KEY,
+
     content: {
       repoRoot,
       publicDir,
@@ -170,6 +172,7 @@ export const config = {
     jwtSecret: syncConfig.JWT_SECRET,
     jwtExpiresIn: syncConfig.JWT_EXPIRES_IN,
   },
+  backendKey: syncConfig.BACKEND_KEY,
   content: {
     repoRoot,
     publicDir,

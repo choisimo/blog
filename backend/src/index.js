@@ -4,6 +4,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import { config, publicRuntimeConfig, loadAndApplyConsulConfig } from './config.js';
+import { requireBackendKey } from './middleware/backendAuth.js';
 
 import aiRouter from './routes/ai.js';
 import commentsRouter from './routes/comments.js';
@@ -55,6 +56,18 @@ app.use(cors(corsOptions));
 // logging
 app.use(morgan('combined'));
 
+// Backend key validation (must come after public endpoints like healthz)
+// Routes defined BEFORE this middleware are publicly accessible
+app.get('/api/v1/healthz', (req, res) => {
+  res.json({ ok: true, env: config.appEnv, uptime: process.uptime() });
+});
+app.get('/api/v1/public/config', (req, res) => {
+  res.json({ ok: true, data: publicRuntimeConfig() });
+});
+
+// All routes below require valid X-Backend-Key from Gateway
+app.use(requireBackendKey);
+
 // parsers
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));
@@ -67,14 +80,6 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 app.use(limiter);
-
-// health & public config
-app.get('/api/v1/healthz', (req, res) => {
-  res.json({ ok: true, env: config.appEnv, uptime: process.uptime() });
-});
-app.get('/api/v1/public/config', (req, res) => {
-  res.json({ ok: true, data: publicRuntimeConfig() });
-});
 
 // routes
 app.use('/api/v1/ai', aiRouter);

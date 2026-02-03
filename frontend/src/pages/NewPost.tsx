@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import {
-  adminLogin,
+  adminLoginStep1,
+  adminLoginStep2,
+  adminResendOtp,
   createPostPR,
   type CreatePostPayload,
   uploadPostImages,
@@ -14,11 +16,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import MarkdownRenderer from '@/components/features/blog/MarkdownRenderer';
 
+type LoginStep = 'credentials' | 'otp' | 'authenticated';
+
 export default function NewPost() {
   const { toast } = useToast();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [loginStep, setLoginStep] = useState<LoginStep>('credentials');
   const [token, setToken] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState<string | null>(null);
 
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
@@ -35,30 +43,32 @@ export default function NewPost() {
     Array<{ url: string; variantWebp?: { url: string } | null }>
   >([]);
 
-  // Restore token from localStorage on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem('admin.token');
-      if (saved) setToken(saved);
+      const savedRefresh = localStorage.getItem('admin.refreshToken');
+      if (saved) {
+        setToken(saved);
+        setLoginStep('authenticated');
+      }
+      if (savedRefresh) setRefreshToken(savedRefresh);
     } catch {
       void 0;
     }
   }, []);
 
-  const doLogin = useMutation({
+  const doLoginStep1 = useMutation({
     mutationFn: async () => {
-      const t = await adminLogin(username, password);
-      setToken(t);
-      try {
-        localStorage.setItem('admin.token', t);
-        window.dispatchEvent(new Event('admin-auth-changed'));
-      } catch {
-        void 0;
+      const result = await adminLoginStep1(username, password);
+      setSessionId(result.sessionId);
+      setLoginStep('otp');
+      if (result._dev_otp) {
+        setOtp(result._dev_otp);
       }
-      return t;
+      return result;
     },
-    onSuccess: () =>
-      toast({ title: '로그인 성공', description: '관리자 인증 완료' }),
+    onSuccess: (data) =>
+      toast({ title: 'OTP 전송됨', description: data.message }),
     onError: (e: any) =>
       toast({
         title: '로그인 실패',
@@ -67,12 +77,64 @@ export default function NewPost() {
       }),
   });
 
+  const doLoginStep2 = useMutation({
+    mutationFn: async () => {
+      if (!sessionId) throw new Error('세션이 없습니다');
+      const result = await adminLoginStep2(sessionId, otp);
+      setToken(result.accessToken);
+      setRefreshToken(result.refreshToken);
+      setLoginStep('authenticated');
+      try {
+        localStorage.setItem('admin.token', result.accessToken);
+        localStorage.setItem('admin.refreshToken', result.refreshToken);
+        window.dispatchEvent(new Event('admin-auth-changed'));
+      } catch {
+        void 0;
+      }
+      return result;
+    },
+    onSuccess: () =>
+      toast({ title: '로그인 성공', description: '관리자 인증 완료' }),
+    onError: (e: any) =>
+      toast({
+        title: 'OTP 인증 실패',
+        description: e?.message || '인증 실패',
+        variant: 'destructive',
+      }),
+  });
+
+  const doResendOtp = useMutation({
+    mutationFn: async () => {
+      if (!sessionId) throw new Error('세션이 없습니다');
+      return await adminResendOtp(sessionId);
+    },
+    onSuccess: (data) =>
+      toast({ title: 'OTP 재전송', description: data.message }),
+    onError: (e: any) =>
+      toast({
+        title: 'OTP 재전송 실패',
+        description: e?.message || '실패',
+        variant: 'destructive',
+      }),
+  });
+
   const logout = () => {
     setToken(null);
+    setRefreshToken(null);
+    setSessionId(null);
+    setOtp('');
+    setLoginStep('credentials');
     try {
       localStorage.removeItem('admin.token');
+      localStorage.removeItem('admin.refreshToken');
       window.dispatchEvent(new Event('admin-auth-changed'));
     } catch { void 0; }
+  };
+
+  const backToCredentials = () => {
+    setSessionId(null);
+    setOtp('');
+    setLoginStep('credentials');
   };
 
   const createPr = useMutation({
@@ -130,7 +192,6 @@ export default function NewPost() {
         title: '업로드 완료',
         description: `${res.items.length}개 업로드됨`,
       });
-      // Clear selection
       input.value = '';
     } catch (e: any) {
       toast({
@@ -162,6 +223,93 @@ export default function NewPost() {
     return [lines.join('\n'), content].filter(Boolean).join('\n');
   }, [title, coverImage, tags, category, published, content]);
 
+  const renderLoginSection = () => {
+    if (loginStep === 'authenticated') {
+      return (
+        <div className='flex items-center gap-3'>
+          <span className='text-sm text-green-600'>로그인됨</span>
+          <Button variant='secondary' onClick={logout}>
+            로그아웃
+          </Button>
+        </div>
+      );
+    }
+
+    if (loginStep === 'otp') {
+      return (
+        <div className='space-y-4'>
+          <div className='p-4 bg-muted rounded-md'>
+            <p className='text-sm text-muted-foreground mb-2'>
+              이메일로 전송된 인증 코드를 입력하세요
+            </p>
+            <div className='flex gap-3'>
+              <Input
+                value={otp}
+                onChange={e => setOtp(e.target.value)}
+                placeholder='000000'
+                maxLength={6}
+                className='w-32 text-center text-lg tracking-widest'
+              />
+              <Button
+                onClick={() => doLoginStep2.mutate()}
+                disabled={doLoginStep2.isPending || otp.length < 6}
+              >
+                {doLoginStep2.isPending ? '인증 중…' : '인증'}
+              </Button>
+            </div>
+          </div>
+          <div className='flex gap-3'>
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={() => doResendOtp.mutate()}
+              disabled={doResendOtp.isPending}
+            >
+              {doResendOtp.isPending ? '재전송 중…' : 'OTP 재전송'}
+            </Button>
+            <Button variant='ghost' size='sm' onClick={backToCredentials}>
+              처음으로
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+          <div>
+            <Label htmlFor='username'>관리자 아이디</Label>
+            <Input
+              id='username'
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              placeholder='admin'
+            />
+          </div>
+          <div>
+            <Label htmlFor='password'>관리자 비밀번호</Label>
+            <Input
+              id='password'
+              type='password'
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder='••••••'
+            />
+          </div>
+        </div>
+        <div className='flex items-center gap-3'>
+          <Button
+            onClick={() => doLoginStep1.mutate()}
+            disabled={doLoginStep1.isPending || !username || !password}
+          >
+            {doLoginStep1.isPending ? '로그인 중…' : '로그인'}
+          </Button>
+        </div>
+      </>
+    );
+  };
+
   return (
     <div className='container mx-auto px-4 py-8 max-w-5xl'>
       <Card>
@@ -169,47 +317,7 @@ export default function NewPost() {
           <CardTitle>게시글 작성 (PR 생성)</CardTitle>
         </CardHeader>
         <CardContent className='space-y-6'>
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-            <div>
-              <Label htmlFor='username'>관리자 아이디</Label>
-              <Input
-                id='username'
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                placeholder='admin'
-              />
-            </div>
-            <div>
-              <Label htmlFor='password'>관리자 비밀번호</Label>
-              <Input
-                id='password'
-                type='password'
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder='••••••'
-              />
-            </div>
-          </div>
-          <div className='flex items-center gap-3'>
-            <Button
-              onClick={() => doLogin.mutate()}
-              disabled={doLogin.isPending}
-            >
-              {doLogin.isPending
-                ? '로그인 중…'
-                : token
-                  ? '다시 로그인'
-                  : '로그인'}
-            </Button>
-            {token && (
-              <>
-                <span className='text-sm text-green-600'>로그인됨</span>
-                <Button variant='secondary' onClick={logout}>
-                  로그아웃
-                </Button>
-              </>
-            )}
-          </div>
+          {renderLoginSection()}
 
           <hr className='my-4' />
 

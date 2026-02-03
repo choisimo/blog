@@ -48,6 +48,8 @@ export const configSchema = z.object({
   CHROMA_COLLECTION: z.string().default('blog-posts__all-MiniLM-L6-v2'),
   REDIS_URL: z.string().optional(),
 
+  BACKEND_KEY: z.string().optional(),
+
   PERPLEXITY_API_KEY: z.string().optional(),
   TAVILY_API_KEY: z.string().optional(),
   BRAVE_SEARCH_API_KEY: z.string().optional(),

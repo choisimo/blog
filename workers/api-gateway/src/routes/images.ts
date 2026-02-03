@@ -1,11 +1,22 @@
 import { Hono } from 'hono';
 import type { HonoEnv, Env } from '../types';
-import { success, badRequest, notFound } from '../lib/response';
+import { success, badRequest, notFound, error } from '../lib/response';
 import { execute } from '../lib/d1';
 import { requireAdmin } from '../middleware/auth';
 import { createAIService } from '../lib/ai-service';
 
 const images = new Hono<HonoEnv>();
+
+const CHAT_UPLOAD_MAX_SIZE = 10 * 1024 * 1024; // 10MB
+const CHAT_UPLOAD_ALLOWED_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+];
+const KV_RATE_LIMIT_PREFIX = 'ratelimit:chat-upload:';
+const CHAT_UPLOAD_RATE_LIMIT = 20;
+const CHAT_UPLOAD_RATE_WINDOW = 60;
 
 // POST /images/presign - Generate presigned URL for R2 upload (admin only)
 images.post('/presign', requireAdmin, async (c) => {
@@ -101,9 +112,28 @@ images.post('/upload-direct', requireAdmin, async (c) => {
   }, 201);
 });
 
-// POST /images/chat-upload - Direct upload for AI Chat images (public, origin-guarded)
-// Also performs AI vision analysis and returns the description
+// POST /images/chat-upload - Direct upload for AI Chat images (origin-guarded, rate-limited)
 images.post('/chat-upload', async c => {
+  const origin = c.req.header('origin') || '';
+  const allowedOrigins = (c.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+  
+  if (origin && allowedOrigins.length > 0 && !allowedOrigins.includes(origin)) {
+    return error(c, 'Forbidden - Invalid origin', 403);
+  }
+
+  const kv = c.env.KV;
+  if (kv) {
+    const clientIP = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
+    const rateLimitKey = `${KV_RATE_LIMIT_PREFIX}${clientIP}`;
+    const currentCount = parseInt(await kv.get(rateLimitKey) || '0', 10);
+    
+    if (currentCount >= CHAT_UPLOAD_RATE_LIMIT) {
+      return error(c, 'Too many requests - Rate limit exceeded', 429);
+    }
+    
+    await kv.put(rateLimitKey, String(currentCount + 1), { expirationTtl: CHAT_UPLOAD_RATE_WINDOW });
+  }
+
   const contentType = c.req.header('content-type') || '';
   if (!contentType.toLowerCase().includes('multipart/form-data')) {
     return badRequest(c, 'multipart/form-data required');
@@ -114,6 +144,14 @@ images.post('/chat-upload', async c => {
 
   if (!file) {
     return badRequest(c, 'file is required');
+  }
+
+  if (file.size > CHAT_UPLOAD_MAX_SIZE) {
+    return badRequest(c, `File too large - maximum ${CHAT_UPLOAD_MAX_SIZE / 1024 / 1024}MB allowed`);
+  }
+
+  if (!CHAT_UPLOAD_ALLOWED_TYPES.includes(file.type)) {
+    return badRequest(c, `Invalid file type - allowed: ${CHAT_UPLOAD_ALLOWED_TYPES.join(', ')}`);
   }
 
   const r2 = c.env.R2;
@@ -135,21 +173,16 @@ images.post('/chat-upload', async c => {
   const assetsBase = (c.env.ASSETS_BASE_URL || 'https://assets.blog.nodove.com').replace(/\/$/, '');
   const url = `${assetsBase}/${key}`;
 
-  // Perform AI vision analysis via backend server
   let imageAnalysis: string | null = null;
   
   if (file.type?.startsWith('image/')) {
     try {
-      // Convert to base64 for vision API
       const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-      
-      // Use AIService for vision analysis (uses BACKEND_ORIGIN to avoid circular calls)
       const aiService = createAIService(c.env);
       imageAnalysis = await aiService.vision(base64, 'Describe this image briefly', {
         mimeType: file.type,
       });
     } catch (err) {
-      // Vision analysis failed, but upload succeeded - continue without analysis
       console.error('Vision analysis failed:', err);
     }
   }
@@ -161,7 +194,7 @@ images.post('/chat-upload', async c => {
       key,
       size: file.size,
       contentType: file.type || 'application/octet-stream',
-      imageAnalysis, // AI vision analysis result (null if not available)
+      imageAnalysis,
     },
     201
   );

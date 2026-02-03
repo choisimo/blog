@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import { queryAll, queryOne, execute, isD1Configured } from '../lib/d1.js';
+import { requireUserAuth, requireUserOwnership } from '../middleware/userAuth.js';
 
 const router = Router();
 
@@ -34,10 +35,9 @@ async function ensureMemoRow(userId) {
   return queryOne(`SELECT * FROM memo_content WHERE user_id = ?`, userId);
 }
 
-router.get('/:userId', requireDb, async (req, res, next) => {
+router.get('/:userId', requireDb, requireUserAuth, requireUserOwnership('userId'), async (req, res, next) => {
   try {
-    const userId = String(req.params.userId || '').trim().slice(0, 128);
-    if (!userId) return res.status(400).json({ ok: false, error: { message: 'userId is required' } });
+    const userId = req.userId;
 
     const row = await ensureMemoRow(userId);
 
@@ -59,10 +59,9 @@ router.get('/:userId', requireDb, async (req, res, next) => {
   }
 });
 
-router.put('/:userId', requireDb, async (req, res, next) => {
+router.put('/:userId', requireDb, requireUserAuth, requireUserOwnership('userId'), async (req, res, next) => {
   try {
-    const userId = String(req.params.userId || '').trim().slice(0, 128);
-    if (!userId) return res.status(400).json({ ok: false, error: { message: 'userId is required' } });
+    const userId = req.userId;
 
     const { content, createVersion = false, changeSummary } = req.body || {};
     const newContent = String(content ?? '');
@@ -104,10 +103,9 @@ router.put('/:userId', requireDb, async (req, res, next) => {
   }
 });
 
-router.get('/:userId/versions', requireDb, async (req, res, next) => {
+router.get('/:userId/versions', requireDb, requireUserAuth, requireUserOwnership('userId'), async (req, res, next) => {
   try {
-    const userId = String(req.params.userId || '').trim().slice(0, 128);
-    if (!userId) return res.status(400).json({ ok: false, error: { message: 'userId is required' } });
+    const userId = req.userId;
 
     const limit = clampInt(req.query.limit, 20, 1, 50);
     const offset = clampInt(req.query.offset, 0, 0, 10000);
@@ -152,9 +150,9 @@ router.get('/:userId/versions', requireDb, async (req, res, next) => {
   }
 });
 
-router.get('/:userId/versions/:version', requireDb, async (req, res, next) => {
+router.get('/:userId/versions/:version', requireDb, requireUserAuth, requireUserOwnership('userId'), async (req, res, next) => {
   try {
-    const userId = String(req.params.userId || '').trim().slice(0, 128);
+    const userId = req.userId;
     const version = clampInt(req.params.version, 0, 1, 1_000_000);
 
     const row = await ensureMemoRow(userId);
@@ -190,9 +188,9 @@ router.get('/:userId/versions/:version', requireDb, async (req, res, next) => {
   }
 });
 
-router.post('/:userId/restore/:version', requireDb, async (req, res, next) => {
+router.post('/:userId/restore/:version', requireDb, requireUserAuth, requireUserOwnership('userId'), async (req, res, next) => {
   try {
-    const userId = String(req.params.userId || '').trim().slice(0, 128);
+    const userId = req.userId;
     const version = clampInt(req.params.version, 0, 1, 1_000_000);
 
     const row = await ensureMemoRow(userId);
@@ -224,10 +222,9 @@ router.post('/:userId/restore/:version', requireDb, async (req, res, next) => {
   }
 });
 
-router.delete('/:userId', requireDb, async (req, res, next) => {
+router.delete('/:userId', requireDb, requireUserAuth, requireUserOwnership('userId'), async (req, res, next) => {
   try {
-    const userId = String(req.params.userId || '').trim().slice(0, 128);
-    if (!userId) return res.status(400).json({ ok: false, error: { message: 'userId is required' } });
+    const userId = req.userId;
 
     const row = await queryOne(`SELECT id FROM memo_content WHERE user_id = ?`, userId);
     if (!row) return res.json({ ok: true });
