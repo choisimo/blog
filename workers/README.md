@@ -109,7 +109,7 @@ flowchart LR
     API_GW -->|Unknown routes| PROXY
     
     R2_GW -->|GET ai-chat/, images/, posts/| PUB
-    R2_GW -->|X-Gateway-Caller-Key| INT
+    R2_GW -->|X-Internal-Key| INT
     
     TERM_GW -->|JWT Valid| WS
 ```
@@ -182,7 +182,7 @@ flowchart LR
 | **Rate Limiting** | IP당 5회/분 연결 제한 |
 | **Single Session** | 사용자당 1개 세션만 허용 |
 | **Geo-blocking** | 특정 국가 차단 (CN, RU, KP) |
-| **Origin 인증** | X-Origin-Secret 헤더 주입 |
+| **Backend 인증** | X-Backend-Key 헤더 주입 |
 
 **Request Flow:**
 ```mermaid
@@ -200,7 +200,7 @@ sequenceDiagram
         GW-->>C: 409 Session already active
     else No session
         GW->>KV: Create session
-        GW->>TERM: Proxy WebSocket<br/>+ X-Origin-Secret
+        GW->>TERM: Proxy WebSocket<br/>+ X-Backend-Key
         TERM-->>C: WebSocket established
     end
 ```
@@ -268,7 +268,10 @@ npx wrangler secret put ADMIN_EMAIL --env production
 
 # 필수 - 백엔드 프록시
 npx wrangler secret put BACKEND_ORIGIN --env production
-npx wrangler secret put BACKEND_SECRET_KEY --env production
+npx wrangler secret put BACKEND_KEY --env production
+
+# 필수 - R2 Gateway 호출
+npx wrangler secret put INTERNAL_KEY --env production
 
 # 선택 - Email OTP
 npx wrangler secret put RESEND_API_KEY --env production
@@ -283,14 +286,14 @@ npx wrangler secret put AI_SERVE_API_KEY --env production
 # R2 Gateway Secrets
 # ============================================
 cd workers/r2-gateway
-npx wrangler secret put INTERNAL_CALLER_KEY --env production
+npx wrangler secret put INTERNAL_KEY --env production
 
 # ============================================
 # Terminal Gateway Secrets
 # ============================================
 cd workers/terminal-gateway
 npx wrangler secret put JWT_SECRET --env production
-npx wrangler secret put ORIGIN_SECRET_KEY --env production
+npx wrangler secret put BACKEND_KEY --env production
 ```
 
 ### Environment Variables

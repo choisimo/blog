@@ -24,7 +24,6 @@ import {
   type TaskPayload 
 } from '../lib/prompts';
 import { executeTask } from '../lib/llm';
-import { getAiGatewayCallerKey } from '../lib/config';
 import { getCorsHeadersForRequest } from '../lib/cors';
 
 type ChatContext = { Bindings: Env };
@@ -50,10 +49,9 @@ async function proxyRequest(c: Context<ChatContext>, path: string) {
   upstreamHeaders.delete('host');
   upstreamHeaders.set('Host', 'blog-b.nodove.com');
 
-  // Get gateway caller key from KV > env
-  const gatewayCallerKey = await getAiGatewayCallerKey(c.env);
-  if (gatewayCallerKey) {
-    upstreamHeaders.set('X-Gateway-Caller-Key', gatewayCallerKey);
+  // Use BACKEND_SECRET_KEY for backend authentication
+  if (c.env.BACKEND_SECRET_KEY) {
+    upstreamHeaders.set('X-Backend-Key', c.env.BACKEND_SECRET_KEY);
   }
   if (c.env.OPENCODE_AUTH_TOKEN) {
     upstreamHeaders.set('Authorization', `Bearer ${c.env.OPENCODE_AUTH_TOKEN}`);

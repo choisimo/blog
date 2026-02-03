@@ -15,7 +15,7 @@
  */
 
 import type { Env } from '../types';
-import { getAiServeUrl, getAiServeApiKey, getAiGatewayCallerKey } from './config';
+import { getAiServeUrl, getAiServeApiKey } from './config';
 import { buildTaskPrompt, getFallbackData, type TaskMode, type TaskPayload } from './prompts';
 
 export const TRACE_ID_HEADER = 'X-Trace-ID';
@@ -124,9 +124,8 @@ export class AIService {
       headers['X-API-KEY'] = apiKey;
     }
 
-    const gatewayCallerKey = await getAiGatewayCallerKey(this.env);
-    if (gatewayCallerKey) {
-      headers['X-Gateway-Caller-Key'] = gatewayCallerKey;
+    if (this.env.BACKEND_SECRET_KEY) {
+      headers['X-Backend-Key'] = this.env.BACKEND_SECRET_KEY;
     }
 
     return headers;

@@ -15,8 +15,7 @@ INSERT OR IGNORE INTO secrets (id, category_id, key_name, display_name, descript
   ('sec_gemini_api_key', 'cat_ai', 'GEMINI_API_KEY', 'Gemini API Key', 'Alternative key for Google Gemini (same as GOOGLE_API_KEY)', 0, 1, 'string', 'GEMINI_API_KEY'),
   ('sec_openrouter_api_key', 'cat_ai', 'OPENROUTER_API_KEY', 'OpenRouter API Key', 'API key for OpenRouter multi-model gateway', 0, 1, 'string', 'OPENROUTER_API_KEY'),
   ('sec_vas_api_key', 'cat_ai', 'VAS_API_KEY', 'GitHub Copilot VAS Key', 'API key for GitHub Copilot VAS models', 0, 1, 'string', 'VAS_API_KEY'),
-  ('sec_ai_serve_api_key', 'cat_ai', 'AI_SERVE_API_KEY', 'AI Serve API Key', 'Internal API key for AI backend server', 0, 1, 'string', 'AI_SERVE_API_KEY'),
-  ('sec_ai_gateway_caller_key', 'cat_ai', 'AI_GATEWAY_CALLER_KEY', 'AI Gateway Caller Key', 'Key for authenticating calls to AI gateway', 0, 1, 'string', 'AI_GATEWAY_CALLER_KEY');
+  ('sec_ai_serve_api_key', 'cat_ai', 'AI_SERVE_API_KEY', 'AI Serve API Key', 'Internal API key for AI backend server', 0, 1, 'string', 'AI_SERVE_API_KEY');
 
 -- Authentication Secrets
 INSERT OR IGNORE INTO secrets (id, category_id, key_name, display_name, description, is_required, is_sensitive, value_type, env_fallback) VALUES
@@ -25,7 +24,8 @@ INSERT OR IGNORE INTO secrets (id, category_id, key_name, display_name, descript
   ('sec_admin_password', 'cat_auth', 'ADMIN_PASSWORD', 'Admin Password', 'Password for admin login', 1, 1, 'string', 'ADMIN_PASSWORD'),
   ('sec_admin_email', 'cat_auth', 'ADMIN_EMAIL', 'Admin Email', 'Email address for OTP verification', 1, 0, 'string', 'ADMIN_EMAIL'),
   ('sec_admin_bearer_token', 'cat_auth', 'ADMIN_BEARER_TOKEN', 'Admin Bearer Token', 'Legacy bearer token for admin API', 0, 1, 'string', 'ADMIN_BEARER_TOKEN'),
-  ('sec_origin_secret_key', 'cat_auth', 'ORIGIN_SECRET_KEY', 'Origin Secret Key', 'Secret key for WebSocket origin verification', 0, 1, 'string', 'ORIGIN_SECRET_KEY'),
+  ('sec_backend_key', 'cat_auth', 'BACKEND_KEY', 'Backend Key', 'Shared secret for Workers to Backend authentication (X-Backend-Key header)', 0, 1, 'string', 'BACKEND_KEY'),
+  ('sec_internal_key', 'cat_auth', 'INTERNAL_KEY', 'Internal Key', 'Secret for Worker-to-Worker authentication (X-Internal-Key header)', 0, 1, 'string', 'INTERNAL_KEY'),
   ('sec_opencode_auth_token', 'cat_auth', 'OPENCODE_AUTH_TOKEN', 'OpenCode Auth Token', 'Authentication token for OpenCode integration', 0, 1, 'string', 'OPENCODE_AUTH_TOKEN');
 
 -- Email & Notification Secrets

@@ -51,3 +51,5 @@ coverage/
 
 # Docker artifacts (local)
 *.tar.gz
+
+!*env.example

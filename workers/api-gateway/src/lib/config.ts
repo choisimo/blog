@@ -22,7 +22,6 @@ import type { Env } from '../types';
 export const CONFIG_KEYS = {
   AI_SERVE_URL: 'config:ai_serve_url',
   AI_SERVE_API_KEY: 'config:ai_serve_api_key',
-  AI_GATEWAY_CALLER_KEY: 'config:ai_gateway_caller_key',
   API_BASE_URL: 'config:api_base_url',
 } as const;
 
@@ -121,17 +120,6 @@ export async function getAiServeApiKey(env: Env): Promise<string | undefined> {
 }
 
 /**
- * Get AI Gateway Caller Key (optional)
- */
-export async function getAiGatewayCallerKey(env: Env): Promise<string | undefined> {
-  return getOptionalConfig(
-    env.KV,
-    CONFIG_KEYS.AI_GATEWAY_CALLER_KEY,
-    env.AI_GATEWAY_CALLER_KEY
-  );
-}
-
-/**
  * Get Backend API Base URL (via Cloudflare Tunnel)
  */
 export async function getApiBaseUrl(env: Env): Promise<string> {
@@ -175,7 +163,6 @@ export async function getAllConfig(env: Env): Promise<{
   aiServeUrl: { value: string; source: 'kv' | 'env' | 'default' };
   apiBaseUrl: { value: string; source: 'kv' | 'env' | 'default' };
   aiServeApiKey: { value: string; source: 'kv' | 'env' | 'none' } | null;
-  aiGatewayCallerKey: { value: string; source: 'kv' | 'env' | 'none' } | null;
 }> {
   const kv = env.KV;
 
@@ -203,19 +190,10 @@ export async function getAllConfig(env: Env): Promise<{
       ? { value: '***' + env.AI_SERVE_API_KEY.slice(-4), source: 'env' as const }
       : null;
 
-  // AI Gateway Caller Key
-  const aiGatewayKeyKv = await kv.get(CONFIG_KEYS.AI_GATEWAY_CALLER_KEY);
-  const aiGatewayCallerKey = aiGatewayKeyKv
-    ? { value: '***' + aiGatewayKeyKv.slice(-4), source: 'kv' as const }
-    : env.AI_GATEWAY_CALLER_KEY
-      ? { value: '***' + env.AI_GATEWAY_CALLER_KEY.slice(-4), source: 'env' as const }
-      : null;
-
   return {
     aiServeUrl,
     apiBaseUrl,
     aiServeApiKey,
-    aiGatewayCallerKey,
   };
 }
 

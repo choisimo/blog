@@ -21,7 +21,6 @@ export type Env = {
   // 모든 AI 호출은 이 서버를 통해 처리됩니다
   AI_SERVE_BASE_URL?: string; // e.g., https://ai-check.nodove.com
   AI_SERVE_API_KEY?: string;
-  AI_GATEWAY_CALLER_KEY?: string;
   API_BASE_URL?: string; // e.g., https://api.nodove.com
 
   // Legacy: GEMINI_API_KEY는 더 이상 Workers에서 직접 사용하지 않음

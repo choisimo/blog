@@ -21,7 +21,10 @@ routes = [
 #
 # Required for Backend Proxy:
 #   - BACKEND_ORIGIN: Backend server URL (e.g., http://YOUR_SERVER_IP:8080)
-#   - BACKEND_SECRET_KEY: Shared secret for backend authentication
+#   - BACKEND_KEY: Shared secret for backend authentication (X-Backend-Key header)
+#
+# Required for R2 Gateway (internal calls):
+#   - INTERNAL_KEY: Key for authenticating with R2 Gateway (X-Internal-Key header)
 #
 # AI Features (Optional):
 #   - GEMINI_API_KEY: Google Gemini API key

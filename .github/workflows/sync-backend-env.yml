@@ -115,8 +115,8 @@ jobs:
           JWT_SECRET=${{ secrets.JWT_SECRET }}
           ADMIN_USERNAME=${{ secrets.ADMIN_USERNAME || 'admin' }}
 
-          # Terminal Server
-          ORIGIN_SECRET_KEY=${{ secrets.ORIGIN_SECRET_KEY }}
+          # Terminal Server (Backend Authentication)
+          BACKEND_KEY=${{ secrets.BACKEND_KEY }}
           SANDBOX_IMAGE=${{ secrets.SANDBOX_IMAGE || format('ghcr.io/{0}/blog-terminal-sandbox:latest', github.repository_owner) }}
 
           # MinIO

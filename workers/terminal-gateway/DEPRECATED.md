@@ -10,7 +10,7 @@
 2. **Rate Limiting**: IP 기반 연결 제한 (KV 사용)
 3. **Single Session**: 사용자당 1개 세션만 허용 (KV 사용)
 4. **Geo-blocking**: 특정 국가에서의 접근 차단
-5. **Secret Key Injection**: `X-Origin-Secret` 헤더 주입
+5. **Secret Key Injection**: `X-Backend-Key` 헤더 주입
 
 ## 폐기 조건
 

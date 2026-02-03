@@ -94,7 +94,7 @@ export default {
     const originHeaders = new Headers(request.headers);
 
     // Inject secret key for origin authentication
-    originHeaders.set('X-Origin-Secret', env.ORIGIN_SECRET_KEY);
+    originHeaders.set('X-Backend-Key', env.BACKEND_KEY);
     originHeaders.set('X-User-ID', userId);
     originHeaders.set('X-User-Email', user.email || '');
     originHeaders.set('X-Client-IP', clientIP);

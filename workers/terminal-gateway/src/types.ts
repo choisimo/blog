@@ -8,7 +8,7 @@ export interface Env {
   TERMINAL_ORIGIN: string;
 
   // Secrets
-  ORIGIN_SECRET_KEY: string;
+  BACKEND_KEY: string;
   JWT_SECRET: string;
 
   // KV Namespace

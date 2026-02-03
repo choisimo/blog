@@ -1,21 +1,37 @@
 # =============================================================================
 # Blog Backend Docker Compose
 # =============================================================================
+# Backend API Server for blog-b.nodove.com
+#
+# Architecture:
+#   noblog.nodove.com (Frontend) -> api.nodove.com (Workers) -> blog-b.nodove.com (This)
+#
 # Services:
 #   - api:              Node.js Backend API Server
 #   - nginx:            Reverse Proxy (SSL termination)
-#   - frontend:         React SPA (NGINX static server)
 #   - terminal-server:  WebSocket Terminal Server
 #   - workers-local:    Workers local emulator (wrangler dev)
 #   - chromadb:         Vector Database for RAG
+#   - redis:            Cache and async task queue
 #
 # Usage:
-#   docker compose up -d                    # Start all services
-#   docker compose up -d api nginx           # Start core services only
+#   docker compose up -d                      # Start all services
+#   docker compose up -d api nginx redis      # Start core services only
+#   docker compose logs -f api                # View API logs
 #
 # Environment:
 #   - Copy .env.example to .env and configure
-#   - Configure AI_SERVER_URL + AI_API_KEY for OpenAI-compatible AI
+#   - Required: AI_SERVER_URL, AI_API_KEY for AI features
+#   - Required: SSL certificates in nginx/ssl/
+#
+# SSL Setup:
+#   mkdir -p nginx/ssl
+#   # Option 1: Self-signed (development)
+#   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+#     -keyout nginx/ssl/origin.key -out nginx/ssl/origin.crt \
+#     -subj "/CN=blog-b.nodove.com"
+#   # Option 2: Cloudflare Origin Certificate (production)
+#   # Download from Cloudflare Dashboard -> SSL/TLS -> Origin Server
 # =============================================================================
 
 services:
@@ -23,7 +39,7 @@ services:
   # Backend API Server
   # ---------------------------------------------------------------------------
   api:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/blog-api:${BLOG_API_TAG:-latest}
+    image: blog-api:latest
     container_name: blog-api
     env_file: .env
     environment:
@@ -81,36 +97,15 @@ services:
       - "com.blog.description=Reverse Proxy with SSL"
 
   # ---------------------------------------------------------------------------
-  # Frontend (React SPA)
-  # ---------------------------------------------------------------------------
-  frontend:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/blog-frontend:${BLOG_FRONTEND_TAG:-latest}
-    container_name: blog-frontend
-    ports:
-      - "127.0.0.1:8081:80"
-    networks:
-      - blog-network
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80/"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    restart: unless-stopped
-    labels:
-      - "com.blog.service=frontend"
-      - "com.blog.description=Frontend React SPA (NGINX)"
-
-  # ---------------------------------------------------------------------------
   # Terminal Server (WebSocket)
   # ---------------------------------------------------------------------------
   terminal-server:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/blog-terminal:${BLOG_TERMINAL_TAG:-latest}
+    image: blog-terminal:latest
     container_name: blog-terminal
     environment:
       - NODE_ENV=production
-      - ORIGIN_SECRET_KEY=${ORIGIN_SECRET_KEY}
-      - SANDBOX_IMAGE=${SANDBOX_IMAGE:-ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/blog-terminal-sandbox:latest}
+      - BACKEND_KEY=${BACKEND_KEY}
+      - SANDBOX_IMAGE=${SANDBOX_IMAGE:-alpine:latest}
     networks:
       - blog-network
     healthcheck:
@@ -127,7 +122,7 @@ services:
   # Workers Local Emulator (Wrangler)
   # ---------------------------------------------------------------------------
   workers-local:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-choisimo}/blog-workers-local:${BLOG_WORKERS_LOCAL_TAG:-latest}
+    image: blog-workers-local:latest
     container_name: blog-workers-local
     env_file: .env
     environment:
@@ -173,7 +168,7 @@ services:
       - "com.blog.description=Vector Database for RAG"
 
   # ---------------------------------------------------------------------------
-  # Redis - Optional caching and async task queue
+  # Redis - Caching and async task queue
   # ---------------------------------------------------------------------------
   redis:
     image: redis:7-alpine

@@ -43,7 +43,7 @@ flowchart LR
     CACHE -->|Cache Miss| GW
     GW --> R2
     
-    API -->|X-Gateway-Caller-Key| GW
+    API -->|X-Internal-Key| GW
     GW -->|Internal CRUD| R2
 ```
 
@@ -110,7 +110,7 @@ Accept-Ranges: bytes
 
 ### Internal Endpoints (인증 필요)
 
-인증 방법: `X-Gateway-Caller-Key` 헤더 또는 허용된 Referer
+인증 방법: `X-Internal-Key` 헤더 또는 허용된 Referer
 
 | Method | Path | Input | Output | Description |
 |--------|------|-------|--------|-------------|
@@ -163,8 +163,8 @@ URL 분석:
 ```typescript
 function isInternalCall(request: Request, env: Env): boolean {
   // 방법 1: API 키 검증
-  const key = request.headers.get("X-Gateway-Caller-Key");
-  if (env.INTERNAL_CALLER_KEY && key === env.INTERNAL_CALLER_KEY) {
+  const key = request.headers.get("X-Internal-Key");
+  if (env.INTERNAL_KEY && key === env.INTERNAL_KEY) {
     return true;
   }
   
@@ -211,7 +211,7 @@ If-Match: "old_etag"
 
 | Secret | Description | Required |
 |--------|-------------|----------|
-| `INTERNAL_CALLER_KEY` | 내부 서비스 인증 키 | Internal API |
+| `INTERNAL_KEY` | 내부 서비스 인증 키 (X-Internal-Key) | Internal API |
 
 ### Environment Variables
 
@@ -229,7 +229,7 @@ If-Match: "old_etag"
 | 상황 | HTTP Code | 원인 | 해결 |
 |------|-----------|------|------|
 | 오브젝트 없음 | 404 | R2에 해당 키 없음 | 키 경로 확인 |
-| 접근 거부 | 403 | Internal API 인증 실패 | `X-Gateway-Caller-Key` 확인 |
+| 접근 거부 | 403 | Internal API 인증 실패 | `X-Internal-Key` 확인 |
 | ETag 불일치 | 412 | 동시 수정 충돌 | 최신 데이터 다시 조회 후 재시도 |
 | 메서드 불허 | 405 | 지원하지 않는 HTTP 메서드 | GET/HEAD/OPTIONS만 허용 (Public) |
 | CORS 에러 | - | Origin 불일치 | `ALLOWED_ORIGINS` 설정 확인 |
@@ -251,7 +251,7 @@ curl -I https://assets-b.nodove.com/images/cover.jpg
 curl -H "If-None-Match: \"abc123\"" https://assets-b.nodove.com/images/cover.jpg
 
 # Internal API 테스트
-curl -H "X-Gateway-Caller-Key: your-key" \
+curl -H "X-Internal-Key: your-key" \
   "https://assets-b.nodove.com/internal/memories/user1/"
 
 # 실시간 로그
@@ -270,7 +270,7 @@ npx wrangler deploy
 npx wrangler deploy --env production
 
 # Secrets 설정
-npx wrangler secret put INTERNAL_CALLER_KEY --env production
+npx wrangler secret put INTERNAL_KEY --env production
 ```
 
 ---

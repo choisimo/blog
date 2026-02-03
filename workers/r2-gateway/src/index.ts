@@ -1,6 +1,6 @@
 type Env = {
   MY_BUCKET: R2Bucket;
-  INTERNAL_CALLER_KEY?: string;
+  INTERNAL_KEY?: string;
   ALLOWED_INTERNAL_ORIGINS?: string;
   ALLOWED_ORIGINS?: string;
 };
@@ -89,8 +89,8 @@ async function handleAssetRequest(request: Request, env: Env, key: string) {
 }
 
 function isInternalCall(request: Request, env: Env): boolean {
-  const key = request.headers.get("X-Gateway-Caller-Key") || "";
-  if (env.INTERNAL_CALLER_KEY && key === env.INTERNAL_CALLER_KEY) {
+  const key = request.headers.get("X-Internal-Key") || "";
+  if (env.INTERNAL_KEY && key === env.INTERNAL_KEY) {
     return true;
   }
   const referer = request.headers.get("Referer") || "";

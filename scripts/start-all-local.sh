@@ -162,9 +162,11 @@ setup_environment() {
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# Terminal Service
+# Terminal Service (Backend Authentication)
 # -----------------------------------------------------------------------------
-ORIGIN_SECRET_KEY=${origin_secret}
+# BACKEND_KEY: Used by Workers (API Gateway, Terminal Gateway) to authenticate with Backend
+# Header: X-Backend-Key
+BACKEND_KEY=${origin_secret}
 SANDBOX_IMAGE=alpine:latest
 
 # -----------------------------------------------------------------------------

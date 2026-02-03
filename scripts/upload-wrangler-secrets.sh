@@ -86,7 +86,7 @@ upload_api_gateway() {
     
     # Required - Backend Proxy
     set_secret "." "BACKEND_ORIGIN" "$(get_value BACKEND_ORIGIN)" && ((count++)) || true
-    set_secret "." "BACKEND_SECRET_KEY" "$(get_value BACKEND_SECRET_KEY)" && ((count++)) || true
+    set_secret "." "BACKEND_KEY" "$(get_value BACKEND_KEY)" && ((count++)) || true
     
     # Optional - Email OTP
     set_secret "." "RESEND_API_KEY" "$(get_value RESEND_API_KEY)" && ((count++)) || true
@@ -108,8 +108,8 @@ upload_r2_gateway() {
     
     local count=0
     
-    # Required - Internal API Authentication
-    set_secret "." "INTERNAL_CALLER_KEY" "$(get_value INTERNAL_CALLER_KEY)" && ((count++)) || true
+    # Required - Internal API Authentication (Worker-to-Worker)
+    set_secret "." "INTERNAL_KEY" "$(get_value INTERNAL_KEY)" && ((count++)) || true
     
     cd - > /dev/null
     log_info "Uploaded $count secrets for R2 Gateway"
@@ -125,8 +125,8 @@ upload_terminal_gateway() {
     # Required - Authentication (same JWT as API Gateway)
     set_secret "." "JWT_SECRET" "$(get_value JWT_SECRET)" && ((count++)) || true
     
-    # Required - Origin Server Authentication
-    set_secret "." "ORIGIN_SECRET_KEY" "$(get_value ORIGIN_SECRET_KEY)" && ((count++)) || true
+    # Required - Backend Authentication (same BACKEND_KEY as API Gateway)
+    set_secret "." "BACKEND_KEY" "$(get_value BACKEND_KEY)" && ((count++)) || true
     
     cd - > /dev/null
     log_info "Uploaded $count secrets for Terminal Gateway"

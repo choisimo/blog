@@ -6,7 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 account_id = "f6f11e2a4e5178d2f37476785018f761"
 
 # Secrets (set via wrangler secret put):
-# - INTERNAL_CALLER_KEY: Key for internal service-to-service calls
+# - INTERNAL_KEY: Key for internal service-to-service calls (X-Internal-Key header)
 
 # R2 bucket binding
 [[r2_buckets]]

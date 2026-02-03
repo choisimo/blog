@@ -12,7 +12,7 @@
  */
 
 import type { Env } from '../types';
-import { getAiServeUrl, getAiServeApiKey, getAiGatewayCallerKey } from './config';
+import { getAiServeUrl, getAiServeApiKey } from './config';
 
 export type GenerateOptions = {
   temperature?: number;
@@ -51,10 +51,8 @@ export async function generateContent(
   if (apiKey) {
     headers['X-API-KEY'] = apiKey;
   }
-  // Add Gateway Caller Key for Workers-to-Workers calls through ai-check-gateway
-  const gatewayCallerKey = await getAiGatewayCallerKey(env);
-  if (gatewayCallerKey) {
-    headers['X-Gateway-Caller-Key'] = gatewayCallerKey;
+  if (env.BACKEND_SECRET_KEY) {
+    headers['X-Backend-Key'] = env.BACKEND_SECRET_KEY;
   }
 
   const res = await fetch(url, {

@@ -19,14 +19,14 @@ import { createPtyBridge, parseTerminalSize } from './pty-bridge.js';
 
 // Configuration
 const PORT = parseInt(process.env.PORT || '8080', 10);
-const ORIGIN_SECRET = process.env.ORIGIN_SECRET_KEY;
+const BACKEND_KEY = process.env.BACKEND_KEY;
 const SESSION_TIMEOUT = parseInt(
   process.env.SESSION_TIMEOUT || String(10 * 60 * 1000),
   10
 ); // 10 minutes default
 
-if (!ORIGIN_SECRET) {
-  console.error('ORIGIN_SECRET_KEY environment variable is required');
+if (!BACKEND_KEY) {
+  console.error('BACKEND_KEY environment variable is required');
   process.exit(1);
 }
 
@@ -87,9 +87,9 @@ server.on('upgrade', (request, socket, head) => {
     return;
   }
 
-  // Verify origin secret
-  const clientSecret = request.headers['x-origin-secret'];
-  if (clientSecret !== ORIGIN_SECRET) {
+  // Verify backend key
+  const clientSecret = request.headers['x-backend-key'];
+  if (clientSecret !== BACKEND_KEY) {
     console.warn('Unauthorized connection attempt - invalid secret');
     socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
     socket.destroy();

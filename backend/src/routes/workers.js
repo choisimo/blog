@@ -44,10 +44,9 @@ const KNOWN_SECRETS = [
   { key: 'ADMIN_EMAIL', description: '관리자 이메일 (OTP)', workers: ['api-gateway'] },
   { key: 'OPENROUTER_API_KEY', description: 'OpenRouter API 키', workers: ['api-gateway'] },
   { key: 'BACKEND_ORIGIN', description: '백엔드 서버 URL', workers: ['api-gateway'] },
-  { key: 'BACKEND_SECRET_KEY', description: '백엔드 인증 키', workers: ['api-gateway'] },
+  { key: 'BACKEND_KEY', description: 'Workers → Backend 인증 키 (X-Backend-Key)', workers: ['api-gateway', 'terminal-gateway'] },
   { key: 'RESEND_API_KEY', description: 'Resend.com API 키', workers: ['api-gateway'] },
-  { key: 'INTERNAL_CALLER_KEY', description: 'R2 내부 호출 키', workers: ['r2-gateway'] },
-  { key: 'ORIGIN_SECRET_KEY', description: 'Origin 인증 키', workers: ['terminal-gateway'] },
+  { key: 'INTERNAL_KEY', description: 'API GW → R2 GW 인증 키 (X-Internal-Key)', workers: ['api-gateway', 'r2-gateway'] },
 ];
 
 router.get('/list', requireAdmin, async (req, res) => {

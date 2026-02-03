@@ -218,7 +218,8 @@ Workers에서 처리하지 않는 라우트는 자동으로 백엔드 서버로 
 | `ADMIN_PASSWORD` | 관리자 비밀번호 | ✅ |
 | `ADMIN_EMAIL` | OTP 수신 이메일 | ✅ |
 | `BACKEND_ORIGIN` | 백엔드 서버 URL | ✅ |
-| `BACKEND_SECRET_KEY` | 백엔드 인증 키 | ✅ |
+| `BACKEND_KEY` | 백엔드 인증 키 (X-Backend-Key) | ✅ |
+| `INTERNAL_KEY` | R2 Gateway 인증 키 (X-Internal-Key) | R2 Internal API |
 | `RESEND_API_KEY` | Resend 이메일 API 키 | Email OTP |
 | `NOTIFY_FROM_EMAIL` | 발신자 이메일 | Email OTP |
 | `AI_SERVE_API_KEY` | AI 서버 인증 키 | AI 기능 |

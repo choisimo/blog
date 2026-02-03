@@ -6,7 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 account_id = "f6f11e2a4e5178d2f37476785018f761"
 
 # Secrets (set via wrangler secret put):
-# - ORIGIN_SECRET_KEY: Secret key to authenticate with origin server
+# - BACKEND_KEY: Secret key to authenticate with backend server (shared with API Gateway)
 # - JWT_SECRET: Secret key for JWT token verification (same as blog-api)
 
 [vars]
