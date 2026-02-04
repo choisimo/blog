@@ -1,5 +1,0 @@
-chromadb==0.6.3
-requests>=2.32.0
-beautifulsoup4>=4.12.3
-markdown>=3.6
-tiktoken>=0.7.0

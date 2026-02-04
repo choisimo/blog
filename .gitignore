@@ -36,18 +36,18 @@ storybook-static/
 *.env.backup*
 
 # Backend specific env files
-backend/.env
-backend/.env.*
-!backend/.env.example
-!backend/.env.*.example
+blog-backend/backend/.env
+blog-backend/backend/.env.*
+!blog-backend/backend/.env.example
+!blog-backend/backend/.env.*.example
 
 # Workers specific
-workers/.dev.vars
-workers/.dev.vars.*
+blog-backend/workers/.dev.vars
+blog-backend/workers/.dev.vars.*
 
 # OpenCode Serve specific
-backend/opencode-serve/.env
-backend/opencode-serve/.env.*
+blog-backend/backend/opencode-serve/.env
+blog-backend/backend/opencode-serve/.env.*
 
 # -----------------------------------------------------------------------------
 # Secrets & Credentials (SENSITIVE - NEVER COMMIT)
@@ -90,7 +90,7 @@ ssh_host_*
 # Wrangler
 # -----------------------------------------------------------------------------
 .wrangler/
-workers/.wrangler/
+blog-backend/workers/.wrangler/
 **/node_modules/.cache/wrangler/
 wrangler-account.json
 
