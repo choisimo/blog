@@ -1,0 +1,37 @@
+services:
+  consul:
+    image: hashicorp/consul:1.18
+    container_name: blog-consul
+    command: >
+      agent -server -bootstrap-expect=1 
+      -ui -client=0.0.0.0 
+      -datacenter=blog-dc
+      -config-dir=/consul/config
+    ports:
+      - "127.0.0.1:8500:8500"
+      - "127.0.0.1:8600:8600/udp"
+    volumes:
+      - consul-data:/consul/data
+      - ./consul/config:/consul/config:ro
+      - ./consul/services:/consul/services:ro
+    environment:
+      CONSUL_BIND_INTERFACE: eth0
+    networks:
+      - blog-network
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    labels:
+      - "com.blog.service=consul"
+      - "com.blog.description=Service Discovery and Configuration"
+
+volumes:
+  consul-data:
+    name: blog-consul-data
+
+networks:
+  blog-network:
+    external: true
