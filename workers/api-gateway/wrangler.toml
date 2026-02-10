@@ -1,0 +1,112 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "blog-api-gateway"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+account_id = "f6f11e2a4e5178d2f37476785018f761"
+
+# Custom Domain for API
+routes = [
+  { pattern = "api.nodove.com/*", zone_name = "nodove.com" }
+]
+
+# =============================================================================
+# Secrets (set via wrangler secret put)
+# =============================================================================
+# Required for Authentication:
+#   - JWT_SECRET: Secret key for JWT token signing
+#   - ADMIN_USERNAME: Admin username for login
+#   - ADMIN_PASSWORD: Admin password
+#   - ADMIN_EMAIL: Admin email for OTP verification
+#
+# Required for Backend Proxy:
+#   - BACKEND_ORIGIN: Backend server URL (e.g., http://YOUR_SERVER_IP:8080)
+#   - BACKEND_KEY: Shared secret for backend authentication (X-Backend-Key header)
+#
+# Required for R2 Gateway (internal calls):
+#   - INTERNAL_KEY: Key for authenticating with R2 Gateway (X-Internal-Key header)
+#
+# AI Features (Optional):
+#   - GEMINI_API_KEY: Google Gemini API key
+#   - OPENROUTER_API_KEY: OpenRouter API key
+#   - AI_API_KEY: Internal API key for self-hosted AI server
+#   - AI_SERVER_URL: Self-hosted AI server URL
+#
+# Email OTP (Optional):
+#   - RESEND_API_KEY: Resend.com API key for sending OTP emails
+#   - NOTIFY_FROM_EMAIL: Email sender address
+# =============================================================================
+
+# Development environment variables
+[vars]
+ENV = "development"
+ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:4173,http://localhost:8080,http://localhost:8081,https://noblog.nodove.com,https://blog.nodove.com,https://blog-test.nodove.com"
+ASSETS_BASE_URL = "https://assets-b.nodove.com"
+API_BASE_URL = "https://api.nodove.com"
+
+# D1 Database binding (development)
+[[d1_databases]]
+binding = "DB"
+database_name = "blog-db"
+database_id = "65661464-f6e2-4cdf-8da8-dd63a482fd29"
+migrations_dir = "../migrations"
+
+# R2 Storage binding
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "blog"
+
+# KV namespace binding
+[[kv_namespaces]]
+binding = "KV"
+id = "8bb28b36c3cb42da8ed7aca89f8cf0fe"
+
+# Cron triggers for scheduled tasks (daily at 6 AM UTC)
+[triggers]
+crons = ["0 6 * * *"]
+
+# =============================================================================
+# Production environment
+# =============================================================================
+[env.production]
+name = "blog-api-gateway"
+routes = [
+  { pattern = "api.nodove.com/*", zone_name = "nodove.com" }
+]
+
+[env.production.vars]
+ENV = "production"
+ALLOWED_ORIGINS = "https://noblog.nodove.com,https://blog.nodove.com,https://blog-test.nodove.com"
+ASSETS_BASE_URL = "https://assets-b.nodove.com"
+API_BASE_URL = "https://api.nodove.com"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "blog-db-prod"
+database_id = "e547f944-71a0-42b6-8af1-abc50f29df80"
+migrations_dir = "../migrations"
+
+[[env.production.r2_buckets]]
+binding = "R2"
+bucket_name = "blog"
+
+[[env.production.kv_namespaces]]
+binding = "KV"
+id = "3d45140577d94404bc5f4bf000b07488"
+
+# Observability
+[observability]
+enabled = true
+
+# =============================================================================
+# Staging environment (optional)
+# =============================================================================
+[env.staging]
+name = "blog-api-gateway-staging"
+routes = [
+  { pattern = "api-staging.nodove.com/*", zone_name = "nodove.com" }
+]
+
+[env.staging.vars]
+ENV = "staging"
+ALLOWED_ORIGINS = "https://blog-test.nodove.com,http://localhost:5173"
