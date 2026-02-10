@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { LanguageToggle, ThemeToggle } from '@/components/common';
-import { Menu, X, Home, BookOpen, User, Mail, Shield, Settings, Globe, Moon, Sun, Monitor, Terminal, Library } from 'lucide-react';
+import { Menu, X, Home, FolderKanban, BookOpen, User, Shield, Settings, Globe, Moon, Sun, Monitor, Terminal, Library } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { NavigationItem } from '@/components/molecules';
@@ -21,10 +21,10 @@ import {
 
 const baseNavigation = [
   { name: 'Home', href: '/', icon: Home },
+  { name: 'Projects ✨', href: '/projects', icon: FolderKanban },
   { name: 'Blog', href: '/blog', icon: BookOpen },
   { name: 'Docs', href: 'https://docs.nodove.com/', icon: Library },
   { name: 'About', href: '/about', icon: User },
-  { name: 'Contact', href: '/contact', icon: Mail },
 ];
 
 // Terminal window buttons component

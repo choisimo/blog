@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { Header, Footer } from './components/organisms';
@@ -11,7 +11,7 @@ import Index from './pages/Index';
 import Blog from './pages/Blog';
 import BlogPost from './pages/BlogPost';
 import About from './pages/About';
-import Contact from './pages/Contact';
+import Projects from './pages/Projects';
 import NewPost from './pages/NewPost';
 import NotFound from './pages/NotFound';
 import Insight from './pages/Insight';
@@ -27,19 +27,21 @@ const queryClient = new QueryClient();
 
 function App() {
   const [fabOn, setFabOn] = useState(true);
-  
+
   useEffect(() => {
     const getFabEnabled = () => {
       try {
         const ls = localStorage.getItem('aiMemo.fab.enabled');
         if (ls != null) return !!JSON.parse(ls);
-      } catch {}
-      
-      const envFlag = (import.meta as any).env?.VITE_FEATURE_FAB;
+      } catch {
+        void 0;
+      }
+
+      const envFlag = import.meta.env.VITE_FEATURE_FAB;
       if (envFlag != null) {
         return envFlag === true || envFlag === 'true' || envFlag === '1';
       }
-      
+
       return true;
     };
     setFabOn(getFabEnabled());
@@ -60,14 +62,15 @@ function App() {
               <Router>
                 <div className='min-h-screen flex flex-col bg-background text-foreground'>
                   <Header />
-                  <main className='flex-1 pb-[110px] lg:pb-[60px]'>
+                  <main className='flex-1 pb-[110px] md:pb-[76px] lg:pb-8 lg:pl-[15rem]'>
                     <Routes>
                       <Route path='/' element={<Index />} />
                       <Route path='/blog' element={<Blog />} />
                       <Route path='/blog/:year/:slug' element={<BlogPost />} />
                       <Route path='/post/:year/:slug' element={<BlogPost />} />
+                      <Route path='/projects' element={<Projects />} />
                       <Route path='/about' element={<About />} />
-                      <Route path='/contact' element={<Contact />} />
+                      <Route path='/contact' element={<Navigate to='/about' replace />} />
                       <Route path='/insight' element={<Insight />} />
                       <Route path='/admin/new-post' element={<NewPost />} />
                       <Route path='/admin/config' element={<AdminConfig />} />

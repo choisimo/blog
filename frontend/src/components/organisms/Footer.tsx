@@ -157,6 +157,14 @@ export function Footer() {
                 </li>
                 <li>
                   <Link
+                    to='/projects'
+                    className='text-muted-foreground hover:text-primary transition-colors'
+                  >
+                    Projects
+                  </Link>
+                </li>
+                <li>
+                  <Link
                     to='/blog'
                     className='text-muted-foreground hover:text-primary transition-colors'
                   >
@@ -169,14 +177,6 @@ export function Footer() {
                     className='text-muted-foreground hover:text-primary transition-colors'
                   >
                     About
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to='/contact'
-                    className='text-muted-foreground hover:text-primary transition-colors'
-                  >
-                    Contact
                   </Link>
                 </li>
               </ul>
