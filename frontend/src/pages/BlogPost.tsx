@@ -579,7 +579,7 @@ const BlogPost = () => {
                   {post.description && (
                     <p
                       className={cn(
-                        'text-base leading-relaxed text-muted-foreground dark:text-white/70 sm:text-lg',
+                        'text-base leading-relaxed text-foreground/85 dark:text-foreground/85 sm:text-lg',
                         isTerminal && 'border-l-2 border-primary/30 pl-4'
                       )}
                       dangerouslySetInnerHTML={{
@@ -717,11 +717,11 @@ const BlogPost = () => {
                   {post.tags && post.tags.length > 0 && (
                     <div
                       className={cn(
-                        'flex flex-wrap items-center gap-2 text-muted-foreground dark:text-white/70',
+                        'flex flex-wrap items-center gap-2 text-foreground/80 dark:text-foreground/80',
                         isTerminal && 'font-mono text-xs'
                       )}
                     >
-                      <Tag className='h-4 w-4 text-muted-foreground dark:text-white/70' />
+                      <Tag className='h-4 w-4 text-foreground/75 dark:text-foreground/75' />
                       {isTerminal && <span className='text-primary'>tags:</span>}
                       {post.tags.map(tag => (
                         <Badge
@@ -808,7 +808,7 @@ const BlogPost = () => {
                       </h2>
                       <p
                         className={cn(
-                          'text-sm text-muted-foreground dark:text-white/70',
+                          'text-sm text-foreground/80 dark:text-foreground/80',
                           isTerminal && 'font-mono text-xs'
                         )}
                       >
@@ -855,13 +855,13 @@ const BlogPost = () => {
                       >
                         {relatedPost.title}
                       </h3>
-                      <p className='mt-2 line-clamp-2 text-sm text-muted-foreground dark:text-white/70'>
+                      <p className='mt-2 line-clamp-2 text-sm text-foreground/80 dark:text-foreground/80'>
                         {relatedPost.excerpt || relatedPost.description}
                       </p>
                       {(relatedPost.readingTime || relatedPost.readTime) && (
                         <p
                           className={cn(
-                            'mt-3 text-xs uppercase tracking-wide text-muted-foreground dark:text-white/60',
+                            'mt-3 text-xs uppercase tracking-wide text-foreground/70 dark:text-foreground/75',
                             isTerminal && 'font-mono'
                           )}
                         >

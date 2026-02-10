@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Clock,
   Code2,
+  FolderKanban,
   Sparkles,
   TrendingUp,
 } from 'lucide-react';
@@ -29,7 +30,6 @@ import { formatDate } from '@/utils/blog';
 import { getEditorPicks, getRealtimeVisitors, startHeartbeat, stopHeartbeat, type EditorPick } from '@/services/analytics';
 import { getCategoryCounts } from '@/utils/categoryNormalize';
 import TerminalCategories from '@/components/features/navigation/TerminalCategories';
-import { AIConsole } from '@/components/features/console';
 
 // Shape used by visited posts in localStorage
 // Matches VisitedPostsMinimap
@@ -323,9 +323,42 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Right: AI Console (RAG-powered) */}
+          {/* Right: Projects Hub */}
           <div className='md:col-span-7'>
-            <AIConsole className="min-h-[420px] md:aspect-[16/10] md:min-h-0 md:h-auto" />
+            <Card className={cn(
+              'h-full border-primary/25 bg-gradient-to-br from-primary/10 via-card to-card',
+              isTerminal && 'border-primary/35'
+            )}>
+              <CardHeader className='space-y-4 p-6 md:p-8'>
+                <div className='inline-flex w-fit items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary'>
+                  ✨ Featured in Projects
+                </div>
+                <CardTitle className={cn(
+                  'text-2xl md:text-3xl',
+                  isTerminal && 'font-mono'
+                )}>
+                  Nodove Project Hub
+                </CardTitle>
+                <CardDescription className='max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-base'>
+                  AI Console은 이제 Projects 탭 최상단의 Featured Project로 이동되었습니다.
+                  카드/리스트 뷰, 태그 필터, iframe Preview 전략까지 한곳에서 관리할 수 있습니다.
+                </CardDescription>
+                <div className='flex flex-wrap gap-3'>
+                  <Button asChild>
+                    <Link to='/projects'>
+                      <FolderKanban className='h-4 w-4' />
+                      Explore Projects
+                    </Link>
+                  </Button>
+                  <Button asChild variant='outline'>
+                    <Link to='/projects'>
+                      Open Nodove AI Agent
+                      <ArrowRight className='h-4 w-4' />
+                    </Link>
+                  </Button>
+                </div>
+              </CardHeader>
+            </Card>
           </div>
         </div>
       </section>

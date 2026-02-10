@@ -13,6 +13,7 @@ import DebateArena from "@/components/features/debate/DebateArena";
 import { useToast } from "@/components/ui/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 import { useUIStrings } from "@/utils/i18n";
 import { useFeatureFlags } from "@/stores/useFeatureFlagsStore";
@@ -58,6 +59,7 @@ export default function FloatingActionBar() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { isTerminal } = useTheme();
+  const { language } = useLanguage();
   const { send, sendImpression, sendMemoContextChange } = useFabAnalytics();
   const str = useUIStrings();
   const { flags: featureFlags } = useFeatureFlags();
@@ -257,6 +259,8 @@ export default function FloatingActionBar() {
 
   const containerClasses = cn(
     "fixed inset-x-0 z-[var(--z-fab-bar)] px-3 sm:px-4 print:hidden",
+    !isMobile &&
+    "lg:inset-x-auto lg:left-6 lg:right-auto lg:top-24 lg:bottom-auto lg:w-52 lg:px-0",
     isMobile
       ? "bottom-0 pb-[calc(env(safe-area-inset-bottom,0px))] max-w-full overflow-x-hidden"
       : "bottom-[calc(16px+env(safe-area-inset-bottom,0px))]",
@@ -267,12 +271,14 @@ export default function FloatingActionBar() {
       : scrollHidden
         ? "translate-y-[200%] opacity-0 pointer-events-none" // Slide completely off-screen
         : "translate-y-0 opacity-100",
+    !isMobile && "lg:translate-y-0 lg:opacity-100 lg:pointer-events-auto",
   );
 
   const allDockActions: DockAction[] = [
     {
       key: "chat",
       label: str.nav.chat,
+      desktopLabel: language === "ko" ? "AI 채팅" : "AI Chat",
       icon: Sparkles,
       onClick: () => {
         setChatOpen(true);
@@ -284,6 +290,7 @@ export default function FloatingActionBar() {
     {
       key: "debate",
       label: str.nav.debate,
+      desktopLabel: language === "ko" ? "AI 토론" : "AI Debate",
       icon: Swords,
       onClick: () => {
         setDebateOpen(true);
@@ -294,6 +301,7 @@ export default function FloatingActionBar() {
     {
       key: "memo",
       label: str.nav.memo,
+      desktopLabel: language === "ko" ? "메모" : "Memo",
       icon: NotebookPen,
       onClick: () => {
         send("fab_memo_toggle");
@@ -303,6 +311,7 @@ export default function FloatingActionBar() {
     {
       key: "stack",
       label: str.nav.stack,
+      desktopLabel: language === "ko" ? "방문 스택" : "Visited Stack",
       icon: Layers,
       onClick: handleStackClick,
       disabled: !!stackDisabledReason,
@@ -311,6 +320,7 @@ export default function FloatingActionBar() {
     {
       key: "insight",
       label: str.nav.insight,
+      desktopLabel: language === "ko" ? "인사이트" : "Insight",
       icon: Map,
       onClick: () => {
         send("fab_insight_click");
@@ -398,7 +408,9 @@ export default function FloatingActionBar() {
           <nav
             className={cn(
               "mx-auto flex w-full justify-center",
-              isMobile ? "max-w-none" : "max-w-md sm:max-w-2xl",
+              isMobile
+                ? "max-w-none"
+                : "max-w-md sm:max-w-2xl lg:mx-0 lg:max-w-none lg:justify-start",
             )}
           >
             {/* Terminal style dock */}

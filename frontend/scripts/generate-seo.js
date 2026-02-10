@@ -155,15 +155,15 @@ function generateSitemap(posts) {
       lastmod: new Date().toISOString(),
     },
     {
-      url: `${BASE_URL}/about`,
-      changefreq: 'monthly',
-      priority: 0.7,
+      url: `${BASE_URL}/projects`,
+      changefreq: 'weekly',
+      priority: 0.85,
       lastmod: new Date().toISOString(),
     },
     {
-      url: `${BASE_URL}/contact`,
+      url: `${BASE_URL}/about`,
       changefreq: 'monthly',
-      priority: 0.6,
+      priority: 0.7,
       lastmod: new Date().toISOString(),
     },
     ...posts.map(p => ({

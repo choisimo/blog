@@ -120,8 +120,8 @@ function generatePostHtml(template, post) {
 function generateStaticPages(template) {
   const pages = [
     { path: 'blog', title: 'Blog', description: '기술, 개발, 생각에 대한 글들' },
+    { path: 'projects', title: 'Projects', description: '프로젝트 허브와 AI Console 미리보기' },
     { path: 'about', title: 'About', description: 'Nodove 소개' },
-    { path: 'stack', title: 'Tech Stack', description: '사용하는 기술 스택' },
   ];
 
   let count = 0;

@@ -6,10 +6,14 @@ interface ImportMetaEnv {
   readonly SSR: boolean;
   readonly VITE_SITE_BASE_URL?: string;
   readonly VITE_API_BASE_URL?: string;
+  readonly VITE_FEATURE_FAB?: string;
   readonly VITE_DEV_HOST?: string;
   readonly VITE_DEV_PORT?: string;
   readonly VITE_SITE_NAME?: string;
   readonly VITE_AUTHOR_NAME?: string;
+  readonly VITE_EMAILJS_SERVICE_ID?: string;
+  readonly VITE_EMAILJS_TEMPLATE_ID?: string;
+  readonly VITE_EMAILJS_PUBLIC_KEY?: string;
 }
 
 interface ImportMeta {

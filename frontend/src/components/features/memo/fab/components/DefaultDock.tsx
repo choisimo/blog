@@ -14,7 +14,7 @@ export function DefaultDock({ dockActions, isMobile }: DefaultDockProps) {
         "flex w-full items-center justify-center backdrop-blur-xl",
         isMobile
           ? "rounded-none border-t border-border/30 bg-background/95 px-2 py-1.5 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] dark:bg-background/90 dark:border-white/10"
-          : "rounded-[28px] border border-white/20 bg-background/70 px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.08),_0_2px_8px_rgba(0,0,0,0.04)] dark:border-white/10 dark:bg-background/60 dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)]",
+          : "rounded-[28px] border border-white/20 bg-background/70 px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.08),_0_2px_8px_rgba(0,0,0,0.04)] dark:border-white/10 dark:bg-background/60 dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)] lg:w-full lg:rounded-2xl lg:border-border/70 lg:bg-background/75 lg:px-2 lg:py-2",
       )}
     >
       {isMobile ? (
@@ -40,12 +40,12 @@ export function DefaultDock({ dockActions, isMobile }: DefaultDockProps) {
                     "h-10 w-10",
                     action.primary
                       ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
-                      : "bg-muted/60 text-foreground/70 dark:bg-white/10 dark:text-white/70",
+                      : "bg-muted/70 text-foreground/85 dark:bg-white/10 dark:text-white/80",
                   )}
                 >
                   <Icon className="h-5 w-5" />
                 </span>
-                <span className="text-[10px] text-muted-foreground/70 dark:text-white/50">
+                <span className="text-[10px] text-foreground/75 dark:text-white/70">
                   {action.label}
                 </span>
                 {action.badge && (
@@ -57,23 +57,24 @@ export function DefaultDock({ dockActions, isMobile }: DefaultDockProps) {
         </div>
       ) : (
         // PC: Premium hover effects and labels
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-2 lg:w-full lg:flex-col lg:items-stretch lg:gap-1.5">
           {dockActions.map((action) => {
             const Icon = action.icon;
+            const displayLabel = action.desktopLabel || action.label;
             return (
               <button
                 key={action.key}
                 type="button"
                 onClick={action.onClick}
                 disabled={action.disabled}
-                aria-label={action.label}
+                aria-label={displayLabel}
                 aria-disabled={action.disabled}
-                title={action.title}
+                title={action.title || displayLabel}
                 className={cn(
-                  "group relative flex items-center gap-2.5 rounded-2xl px-4 py-2.5 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50",
+                  "group relative flex items-center gap-2.5 rounded-2xl px-4 py-2.5 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 lg:w-full lg:justify-start lg:rounded-xl lg:px-3.5",
                   action.primary
                     ? "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:scale-[1.02]"
-                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground dark:hover:bg-white/10 dark:hover:text-white",
+                    : "text-foreground/75 hover:bg-muted/70 hover:text-foreground dark:text-white/75 dark:hover:bg-white/10 dark:hover:text-white",
                 )}
               >
                 <Icon
@@ -90,7 +91,7 @@ export function DefaultDock({ dockActions, isMobile }: DefaultDockProps) {
                       : "text-foreground/80 dark:text-white/80",
                   )}
                 >
-                  {action.label}
+                  {displayLabel}
                 </span>
                 {action.badge && (
                   <span

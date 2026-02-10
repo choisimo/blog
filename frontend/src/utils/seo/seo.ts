@@ -15,7 +15,7 @@ export interface SEOData {
   tags?: string[];
 }
 
-export type SEOPageType = 'home' | 'blog' | 'post' | 'about' | 'contact';
+export type SEOPageType = 'home' | 'blog' | 'post' | 'projects' | 'about' | 'contact';
 
 export interface GenerateSEOOptions {
   category?: string | null;
@@ -104,9 +104,19 @@ export const generateSEOData = (
     case 'about':
       return {
         title: `About | ${siteName}`,
-        description: 'Learn more about the author and the purpose of this blog',
-        keywords: ['about', 'author', 'biography'],
+        description: 'Developer identity, tech stack, and integrated contact form',
+        keywords: ['about', 'developer', 'contact', 'tech stack'],
         canonicalUrl: `${baseUrl}/about`,
+        ogImage: categoryOgImage,
+        ogType: 'website',
+      };
+
+    case 'projects':
+      return {
+        title: `Projects | ${siteName}`,
+        description: 'Project hub with featured AI console, previews, and source links',
+        keywords: ['projects', 'ai', 'infra', 'web', 'portfolio'],
+        canonicalUrl: `${baseUrl}/projects`,
         ogImage: categoryOgImage,
         ogType: 'website',
       };

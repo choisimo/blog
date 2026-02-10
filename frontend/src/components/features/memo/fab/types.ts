@@ -26,6 +26,7 @@ export type VirtualFS = {
 export type DockAction = {
   key: "chat" | "debate" | "memo" | "stack" | "insight";
   label: string;
+  desktopLabel?: string;
   icon: LucideIcon;
   onClick: () => void;
   disabled?: boolean;

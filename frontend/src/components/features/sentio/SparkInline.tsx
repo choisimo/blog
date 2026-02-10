@@ -12,6 +12,12 @@ import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Sparkles, Loader2, X, Lightbulb, Layers, Link2, MessageCircle } from 'lucide-react';
 import DebateRoom, { DebateTopic } from './DebateRoom';
+import useLanguage from '@/hooks/useLanguage';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 // Minimal telemetry to localStorage for future learning
 function logEvent(event: Record<string, unknown>) {
@@ -101,6 +107,7 @@ export default function SparkInline({
   const [showDebate, setShowDebate] = useState(false);
   const [debateTopic, setDebateTopic] = useState<DebateTopic | null>(null);
   const { isTerminal } = useTheme();
+  const { language } = useLanguage();
 
   const text = useMemo(() => extractText(children), [children]);
   const hasText = text && text.length > 0;
@@ -163,32 +170,42 @@ export default function SparkInline({
 
   const hasResult = sketchRes || prismRes || chainRes;
   const activeModeConfig = ModeConfig[activeMode];
+  const tooltipLabel = language === 'ko' ? 'AI 설명 보기' : 'View AI explanation';
+  const actionLabel = language === 'ko' ? 'AI로 문단 분석하기' : 'Analyze paragraph with AI';
 
   return (
     <>
       <p className='mb-4 leading-relaxed inline-block w-full group/spark relative'>
         {children}
         {hasText && (
-          <button
-            type='button'
-            title='AI로 문단 분석하기'
-            aria-label='AI로 문단 분석하기'
-            aria-expanded={open}
-            onClick={() => setOpen(v => !v)}
-            className={cn(
-              'ml-2 inline-flex items-center justify-center rounded-full transition-all duration-200',
-              'min-h-[36px] min-w-[36px] md:min-h-[28px] md:min-w-[28px]',
-              'opacity-40 hover:opacity-100 group-hover/spark:opacity-70',
-              'hover:bg-primary/10 hover:scale-110',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
-              isTerminal && 'text-primary',
-            )}
-          >
-            <Sparkles className={cn(
-              'h-4 w-4 md:h-3.5 md:w-3.5',
-              open && 'text-primary',
-            )} />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type='button'
+                title={tooltipLabel}
+                aria-label={tooltipLabel}
+                aria-expanded={open}
+                onClick={() => setOpen(v => !v)}
+                className={cn(
+                  'ml-2 inline-flex items-center justify-center rounded-full transition-all duration-200',
+                  'min-h-[36px] min-w-[36px] md:min-h-[28px] md:min-w-[28px]',
+                  'opacity-50 hover:opacity-100 group-hover/spark:opacity-80',
+                  'hover:bg-primary/10 hover:scale-110',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                  isTerminal && 'text-primary',
+                )}
+              >
+                <Sparkles className={cn(
+                  'h-4 w-4 md:h-3.5 md:w-3.5',
+                  open && 'text-primary',
+                )} />
+                <span className='sr-only'>{actionLabel}</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side='top'>
+              {tooltipLabel}
+            </TooltipContent>
+          </Tooltip>
         )}
       </p>
       
