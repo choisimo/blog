@@ -1,0 +1,77 @@
+# =============================================================================
+# Cloudflare Workers Local Emulation Dockerfile
+# =============================================================================
+# Runs wrangler dev in a container for local D1/R2/KV emulation
+#
+# Build from repository root:
+#   docker build -f workers/Dockerfile.local -t workers-local .
+# =============================================================================
+
+# Use debian-based node for workerd compatibility (Alpine doesn't work with workerd)
+FROM node:20-slim
+
+# Install dependencies
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+
+# ---------------------------------------------------------------------------
+# Stage 1: Build shared package
+# ---------------------------------------------------------------------------
+WORKDIR /shared
+COPY shared/package.json shared/package-lock.json* ./
+RUN npm install
+COPY shared/ ./
+RUN npm run build
+
+# ---------------------------------------------------------------------------
+# Stage 2: Setup workers
+# ---------------------------------------------------------------------------
+WORKDIR /app
+
+# Copy api-gateway package files and update shared path
+COPY workers/api-gateway/package.json ./
+RUN sed -i 's|"file:../../shared"|"file:/shared"|g' package.json
+
+# Install dependencies (skip lock file to avoid conflicts)
+RUN npm cache clean --force && npm install --legacy-peer-deps
+
+# Copy api-gateway source files (main worker for blog)
+COPY workers/api-gateway/src ./src
+COPY workers/api-gateway/tsconfig.json workers/api-gateway/wrangler.toml ./
+
+# Copy migrations from workers/migrations (shared migrations directory)
+COPY workers/migrations ./migrations
+
+# Fix migrations_dir path for Docker context (../migrations -> ./migrations)
+RUN sed -i 's|migrations_dir = "../migrations"|migrations_dir = "./migrations"|g' wrangler.toml
+
+# Create wrangler state directory
+RUN mkdir -p .wrangler/state/v3/d1
+
+# Expose wrangler dev port
+EXPOSE 8787
+
+# Create startup script that generates .dev.vars from env and runs wrangler
+RUN printf '#!/bin/sh\n\
+# Generate .dev.vars from environment variables for wrangler secrets\n\
+echo "BACKEND_ORIGIN=${BACKEND_ORIGIN:-http://localhost:5080}" > .dev.vars\n\
+echo "BACKEND_KEY=${BACKEND_KEY:-local-secret}" >> .dev.vars\n\
+echo "JWT_SECRET=${JWT_SECRET:-local-jwt-secret}" >> .dev.vars\n\
+echo "ADMIN_USERNAME=${ADMIN_USERNAME:-admin}" >> .dev.vars\n\
+echo "ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}" >> .dev.vars\n\
+echo "ADMIN_EMAIL=${ADMIN_EMAIL:-admin@localhost}" >> .dev.vars\n\
+echo "AI_SERVER_URL=${AI_SERVER_URL:-}" >> .dev.vars\n\
+echo "AI_API_KEY=${AI_API_KEY:-}" >> .dev.vars\n\
+echo "GEMINI_API_KEY=${GEMINI_API_KEY:-}" >> .dev.vars\n\
+echo "TAVILY_API_KEY=${TAVILY_API_KEY:-}" >> .dev.vars\n\
+echo "PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY:-}" >> .dev.vars\n\
+echo "RESEND_API_KEY=${RESEND_API_KEY:-}" >> .dev.vars\n\
+echo "NOTIFY_FROM_EMAIL=${NOTIFY_FROM_EMAIL:-}" >> .dev.vars\n\
+echo "ASSETS_BASE_URL=${ASSETS_BASE_URL:-}" >> .dev.vars\n\
+echo "API_BASE_URL=${API_BASE_URL:-}" >> .dev.vars\n\
+\n\
+# Apply migrations and start wrangler\n\
+npx wrangler d1 migrations apply blog-db --local 2>/dev/null || true\n\
+exec npx wrangler dev --local --persist-to .wrangler/state --ip 0.0.0.0 --port 8787\n\
+' > /app/start.sh && chmod +x /app/start.sh
+
+CMD ["/app/start.sh"]
