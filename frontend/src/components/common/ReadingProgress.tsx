@@ -29,7 +29,7 @@ export const ReadingProgress = () => {
   return (
     <div
       className={cn(
-        'fixed top-0 left-0 right-0 z-50',
+        'fixed top-0 left-0 right-0 z-[var(--z-fab-bar)]',
         'bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60',
         'border-b border-border/40'
       )}

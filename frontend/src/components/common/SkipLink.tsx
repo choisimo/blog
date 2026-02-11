@@ -12,7 +12,7 @@ export const SkipLink = ({ href, children, className }: SkipLinkProps) => {
       href={href}
       className={cn(
         'skip-link',
-        'absolute -top-10 left-6 z-[100] bg-background px-4 py-2 text-foreground',
+        'absolute -top-10 left-6 z-[var(--z-tooltip)] bg-background px-4 py-2 text-foreground',
         'focus:top-6 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
         'transition-all duration-200 font-medium rounded-md shadow-lg',
         className

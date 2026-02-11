@@ -48,7 +48,7 @@ export const ScrollToTop = () => {
       size='icon'
       variant='outline'
       className={cn(
-        'fixed bottom-8 right-8 z-50 rounded-full shadow-lg transition-all duration-300',
+        'fixed bottom-8 right-8 z-[var(--z-fab-bar)] rounded-full shadow-lg transition-all duration-300',
         isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-0',
         // Muted styling to differentiate from AI feature buttons
         isTerminal

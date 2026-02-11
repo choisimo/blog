@@ -231,7 +231,7 @@ export default function CommentReactions({
         {/* Floating emoji picker - appears on hover/click */}
         <div 
           className={cn(
-            "absolute left-0 bottom-full mb-1.5 z-50",
+            "absolute left-0 bottom-full mb-1.5 z-[var(--z-popover)]",
             "rounded-md border border-primary/30 bg-[rgba(0,0,0,0.95)] backdrop-blur-sm",
             "shadow-[0_0_12px_rgba(var(--primary-rgb),0.15)]",
             "transition-all duration-200 ease-out origin-bottom-left",
@@ -304,7 +304,7 @@ export default function CommentReactions({
       {/* Floating emoji picker - pill style */}
       <div 
         className={cn(
-          "absolute left-0 bottom-full mb-1.5 z-50",
+          "absolute left-0 bottom-full mb-1.5 z-[var(--z-popover)]",
           "rounded-xl border border-border bg-card/95 backdrop-blur-sm shadow-lg",
           "transition-all duration-200 ease-out origin-bottom-left",
           isPickerOpen
@@ -322,7 +322,7 @@ export default function CommentReactions({
       {/* Mobile backdrop */}
       {isMobile && isPickerOpen && (
         <div 
-          className="fixed inset-0 z-40"
+          className="fixed inset-0 z-[var(--z-floating-content)]"
           onClick={() => setIsPickerOpen(false)}
         />
       )}

@@ -249,7 +249,7 @@ export function RealTerminalModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex flex-col bg-background/95 backdrop-blur-sm animate-in fade-in-0 duration-200"
+      className="fixed inset-0 z-[var(--z-terminal-modal)] flex flex-col bg-background/95 backdrop-blur-sm animate-in fade-in-0 duration-200"
       style={{ height: viewportHeight }}
     >
       {/* Header */}

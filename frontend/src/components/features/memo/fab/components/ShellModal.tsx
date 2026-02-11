@@ -52,7 +52,7 @@ export function ShellModal({
   return createPortal(
     <div
       ref={shellContentRef}
-      className="fixed inset-0 z-[9999] flex flex-col bg-background/95 backdrop-blur-sm animate-in fade-in-0 duration-200"
+      className="fixed inset-0 z-[var(--z-terminal-modal)] flex flex-col bg-background/95 backdrop-blur-sm animate-in fade-in-0 duration-200"
       style={{ height: viewportHeight }}
     >
       {/* Backdrop - clicking closes the shell */}
@@ -126,7 +126,7 @@ export function ShellModal({
 
           {/* Autocomplete suggestions dropdown */}
           {suggestions.length > 0 && (
-            <div className="absolute left-0 right-0 top-full z-50 mx-3 mb-2 bg-[hsl(var(--terminal-code-bg))] border border-primary/30 rounded-[4px] shadow-lg overflow-hidden">
+            <div className="absolute left-0 right-0 top-full z-[var(--z-terminal-floating)] mx-3 mb-2 bg-[hsl(var(--terminal-code-bg))] border border-primary/30 rounded-[4px] shadow-lg overflow-hidden">
               <div className="text-[9px] font-mono text-primary/50 uppercase tracking-wider px-2 py-1 border-b border-border/30">
                 // Suggestions (Tab/Enter to select)
               </div>

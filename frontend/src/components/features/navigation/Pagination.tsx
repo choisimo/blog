@@ -197,7 +197,7 @@ const Pagination = ({
           <MoreHorizontal className={styles.icon} />
         </Button>
         {isJumpOpen && (
-          <div className='absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50'>
+          <div className='absolute top-full left-1/2 -translate-x-1/2 mt-2 z-[var(--z-popover)]'>
             <div className='bg-popover border border-border rounded-xl shadow-lg p-2 flex gap-1.5'>
               <Input
                 type='number'

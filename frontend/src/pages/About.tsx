@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BookOpen, Box, Cpu, Github, Layers, Linkedin, Mail, Send, Server, Terminal } from 'lucide-react';
+import { BrainCircuit, Cloud, Code2, Github, Linkedin, Mail, Send, Shield } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { site } from '@/config/site';
 import { sendContactMessage } from '@/services/contact';
-import { cn } from '@/lib/utils';
 
 interface ContactFormState {
   name: string;
@@ -44,31 +43,53 @@ const historyTimeline = [
   },
 ] as const;
 
-const stackItems = [
-  { name: 'Python', icon: CodeGlyph('Py'), accent: 'text-amber-600 dark:text-amber-300' },
-  { name: 'Go', icon: CodeGlyph('Go'), accent: 'text-cyan-600 dark:text-cyan-300' },
-  { name: 'Docker', icon: Box, accent: 'text-sky-600 dark:text-sky-300' },
-  { name: 'Kubernetes', icon: Layers, accent: 'text-indigo-600 dark:text-indigo-300' },
-  { name: 'Arch Linux', icon: Terminal, accent: 'text-blue-600 dark:text-blue-300' },
-  { name: 'System Design', icon: Server, accent: 'text-emerald-600 dark:text-emerald-300' },
-  { name: 'AI/LLM', icon: Cpu, accent: 'text-violet-600 dark:text-violet-300' },
-  { name: 'CS Fundamentals', icon: BookOpen, accent: 'text-rose-600 dark:text-rose-300' },
+const stackSections = [
+  {
+    title: 'AI & LLM Engineering',
+    icon: BrainCircuit,
+    badges: ['LangChain', 'LangGraph', 'LiteLLM', 'RAG', 'n8n'],
+    details: [
+      'LLM Orchestration: LangChain/LangGraph 기반 Multi-Agent 및 Stateful Workflow 설계',
+      'Model Serving: LiteLLM 기반 모델 추상화 + Custom OpenAI-compatible Server 구축',
+      'RAG: 벡터 데이터베이스 연동 및 문서 기반 질의응답 시스템 구현',
+      'Automation: n8n 기반 AI 워크플로우 자동화 및 데이터 파이프라인 구성',
+    ],
+  },
+  {
+    title: 'DevOps & Infrastructure',
+    icon: Cloud,
+    badges: ['Proxmox', 'Docker', 'Docker Compose', 'Kubernetes', 'Ansible', 'Arch Linux'],
+    details: [
+      'Proxmox VE: LXC/VM 클러스터 운영, 자원 최적화 및 홈랩 인프라 관리',
+      'Container: Docker/Compose 기반 복잡한 스택 구성 및 ComposeAI 프로젝트 개발',
+      'Kubernetes: 기초 운영 및 배포 워크플로우 실습',
+      'IaC/Config: Ansible 기반 서버 프로비저닝 및 설정 자동화',
+      'OS: Arch Linux 메인 사용, 커널/시스템 레벨 트러블슈팅 경험',
+    ],
+  },
+  {
+    title: 'Network & Security',
+    icon: Shield,
+    badges: ['OPNsense', 'VLAN', 'Tailscale', 'WireGuard', 'Consul', 'Nginx'],
+    details: [
+      'Network Security: OPNsense 방화벽 정책 관리 및 VLAN 구성',
+      'VPN & Mesh: Tailscale/WireGuard 기반 사설망 원격 접속 및 Site-to-Site 구성',
+      'Service Discovery: Consul KV Store 활용 및 서비스 헬스 체크',
+      'Traffic Management: Nginx Reverse Proxy 및 SSL/TLS Termination',
+    ],
+  },
+  {
+    title: 'Languages & Backend',
+    icon: Code2,
+    badges: ['Java', 'Spring Boot', 'Python', 'Go', 'Dart', 'Flutter'],
+    details: [
+      'Java (Spring Boot): 핵심 메인 서비스 개발에 사용',
+      'Python: 보조 언어로 Asyncio/AI-ML 라이브러리 활용',
+      'Go: 고성능 툴링 및 네트워크 프록시 컨트롤 중심으로 학습/적용',
+      'Dart & Flutter: 크로스 플랫폼 모바일 UI/UX 구현 학습 중',
+    ],
+  },
 ] as const;
-
-function CodeGlyph(label: string) {
-  return function Glyph({ className }: { className?: string }) {
-    return (
-      <span
-        className={cn(
-          'inline-flex h-5 min-w-5 items-center justify-center rounded border border-current/30 px-1 text-[10px] font-semibold leading-none',
-          className
-        )}
-      >
-        {label}
-      </span>
-    );
-  };
-}
 
 const About = () => {
   const { toast } = useToast();
@@ -176,16 +197,35 @@ const About = () => {
                 <h3 className='mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground'>
                   Tech Stack
                 </h3>
-                <div className='grid grid-cols-2 gap-2 sm:grid-cols-3'>
-                  {stackItems.map(({ name, icon: Icon, accent }) => (
-                    <Badge
-                      key={name}
-                      variant='secondary'
-                      className='flex h-10 items-center justify-start gap-2 rounded-lg border border-border/70 bg-card/80 px-2'
-                    >
-                      <Icon className='h-4 w-4 text-muted-foreground' />
-                      <span className={accent}>{name}</span>
-                    </Badge>
+                <div className='space-y-3'>
+                  {stackSections.map(({ title, icon: Icon, badges, details }) => (
+                    <div key={title} className='rounded-xl border border-border/70 bg-card/70 p-3'>
+                      <div className='flex items-start gap-3'>
+                        <div className='rounded-lg border border-border/70 bg-background/80 p-2'>
+                          <Icon className='h-4 w-4 text-primary' />
+                        </div>
+                        <div className='min-w-0'>
+                          <h4 className='text-sm font-semibold'>{title}</h4>
+                        </div>
+                      </div>
+
+                      <div className='mt-3 flex flex-wrap gap-1.5'>
+                        {badges.map(badge => (
+                          <Badge key={badge} variant='secondary' className='text-[11px]'>
+                            {badge}
+                          </Badge>
+                        ))}
+                      </div>
+
+                      <ul className='mt-3 space-y-1.5 text-xs leading-relaxed text-muted-foreground'>
+                        {details.map(detail => (
+                          <li key={detail} className='flex items-start gap-2'>
+                            <span className='mt-[2px] text-primary'>•</span>
+                            <span>{detail}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   ))}
                 </div>
               </div>

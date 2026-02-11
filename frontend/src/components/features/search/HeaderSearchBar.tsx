@@ -230,7 +230,7 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
         </div>
 
         {isOpen && results.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 border border-border bg-[hsl(var(--terminal-code-bg))] shadow-lg z-50 max-h-80 overflow-y-auto overscroll-contain">
+          <div className="absolute top-full left-0 right-0 mt-1 border border-border bg-[hsl(var(--terminal-code-bg))] shadow-lg z-[var(--z-popover)] max-h-80 overflow-y-auto overscroll-contain">
             <div className="px-3 py-2 border-b border-border/50 text-xs text-muted-foreground">
               <span className="text-primary">$</span> found {results.length} result{results.length !== 1 && 's'}
             </div>
@@ -265,14 +265,14 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
         )}
 
         {isOpen && query.trim() && results.length === 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 border border-border bg-[hsl(var(--terminal-code-bg))] shadow-lg z-50 px-3 py-4 text-center text-sm text-muted-foreground">
+          <div className="absolute top-full left-0 right-0 mt-1 border border-border bg-[hsl(var(--terminal-code-bg))] shadow-lg z-[var(--z-popover)] px-3 py-4 text-center text-sm text-muted-foreground">
             <span className="text-primary">$</span> grep: no matches found
           </div>
         )}
 
         {/* Search History for Terminal Theme */}
         {showHistory && !isOpen && recentQueries.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 border border-border bg-[hsl(var(--terminal-code-bg))] shadow-lg z-50 max-h-60 overflow-y-auto overscroll-contain">
+          <div className="absolute top-full left-0 right-0 mt-1 border border-border bg-[hsl(var(--terminal-code-bg))] shadow-lg z-[var(--z-popover)] max-h-60 overflow-y-auto overscroll-contain">
             <div className="px-3 py-2 border-b border-border/50 text-xs text-muted-foreground flex items-center gap-2">
               <History className="w-3 h-3 text-primary" />
               <span className="text-primary">$</span> history
@@ -332,7 +332,7 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
       </div>
 
       {isOpen && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-border/60 bg-card/95 backdrop-blur-sm shadow-xl z-50 max-h-80 overflow-y-auto overscroll-contain">
+        <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-border/60 bg-card/95 backdrop-blur-sm shadow-xl z-[var(--z-popover)] max-h-80 overflow-y-auto overscroll-contain">
           {results.map((post, idx) => (
             <button
               key={`${post.year}/${post.slug}`}
@@ -375,7 +375,7 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
       )}
 
       {isOpen && query.trim() && results.length === 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-border/60 bg-card/95 backdrop-blur-sm shadow-xl z-50 px-4 py-6 text-center">
+        <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-border/60 bg-card/95 backdrop-blur-sm shadow-xl z-[var(--z-popover)] px-4 py-6 text-center">
           <Search className="w-8 h-8 mx-auto text-muted-foreground/50 mb-2" />
           <p className="text-sm text-muted-foreground">No results for "{query}"</p>
         </div>
@@ -383,7 +383,7 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
 
       {/* Search History for Default Theme */}
       {showHistory && !isOpen && recentQueries.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-border/60 bg-card/95 backdrop-blur-sm shadow-xl z-50 max-h-60 overflow-y-auto overscroll-contain">
+        <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-border/60 bg-card/95 backdrop-blur-sm shadow-xl z-[var(--z-popover)] max-h-60 overflow-y-auto overscroll-contain">
           <div className="px-4 py-2 border-b border-border/30 text-xs text-muted-foreground flex items-center gap-2">
             <History className="w-3.5 h-3.5" />
             Recent Searches

@@ -17,7 +17,7 @@ export function ShellOutputOverlay({
   if (!output) return null;
 
   return createPortal(
-    <div className="fixed inset-x-0 bottom-14 z-[9998] px-3 pb-2 animate-in slide-in-from-bottom-2 duration-150">
+    <div className="fixed inset-x-0 bottom-14 z-[var(--z-terminal-floating)] px-3 pb-2 animate-in slide-in-from-bottom-2 duration-150">
       <div className="bg-[hsl(var(--terminal-code-bg))] border border-primary/30 rounded-[4px] shadow-lg shadow-primary/5 overflow-hidden max-h-[50vh]">
         {/* Terminal header */}
         <div className="flex items-center justify-between px-3 py-1.5 bg-primary/10 border-b border-primary/20">

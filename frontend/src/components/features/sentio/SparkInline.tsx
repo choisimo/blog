@@ -477,7 +477,7 @@ export default function SparkInline({
 
       {/* Debate Room Modal - Portal to body to escape parent overflow constraints */}
       {showDebate && (debateTopic || prismRes) && createPortal(
-        <div className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in-0 duration-200'>
+        <div className='fixed inset-0 z-[var(--z-modal-overlay)] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in-0 duration-200'>
           <div className='w-full max-w-lg animate-in zoom-in-95 slide-in-from-bottom-4 duration-300'>
             <DebateRoom
               topic={debateTopic || {

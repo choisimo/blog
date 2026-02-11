@@ -78,8 +78,13 @@
     --z-floating-content: 40;
     --z-fab-bar: 50;
     --z-memo-panel: 60;
-    --z-modal-overlay: 100;
+    --z-modal-overlay: 120;
     --z-chat-widget: 110;
+    --z-dialog: 130;
+    --z-popover: 140;
+    --z-tooltip: 150;
+    --z-terminal-floating: 160;
+    --z-terminal-modal: 170;
     --z-toast: 200;
   }
 

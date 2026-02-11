@@ -470,7 +470,9 @@ export function VisitedPostsMinimap({
   }
 
   return (
-    <div className='fixed bottom-8 right-24 z-50 select-none'>{sheet}</div>
+    <div className='fixed bottom-8 right-24 z-[var(--z-fab-bar)] select-none'>
+      {sheet}
+    </div>
   );
 }
 
