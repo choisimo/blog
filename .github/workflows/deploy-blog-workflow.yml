@@ -4,9 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'blog-backend/backend/**'
-      - 'blog-backend/shared/**'
-      - 'blog-backend/ai-orchestrator/**'
+      - 'backend/**'
       - '.github/workflows/deploy-blog-workflow.yml'
   workflow_dispatch:
     inputs:
@@ -66,43 +64,22 @@ jobs:
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=${{ github.event.inputs.image_tag }},enable=${{ github.event.inputs.image_tag != '' }}
 
-      - name: Docker meta - AI Server Backend
-        id: meta-ai
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/ai-server-backend
-          tags: |
-            type=sha,prefix=
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=raw,value=${{ github.event.inputs.image_tag }},enable=${{ github.event.inputs.image_tag != '' }}
-
       - name: Build and push Blog API
         uses: docker/build-push-action@v5
         with:
-          context: ./blog-backend/backend
-          file: ./blog-backend/backend/Dockerfile
+          context: ./backend
+          file: ./backend/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max,ignore-error=true
 
-      - name: Build and push AI Server Backend
-        uses: docker/build-push-action@v5
-        with:
-          context: ./blog-backend/ai-orchestrator
-          file: ./blog-backend/ai-orchestrator/Dockerfile
-          push: true
-          tags: ${{ steps.meta-ai.outputs.tags }}
-          labels: ${{ steps.meta-ai.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max,ignore-error=true
-
       - name: Build and push Terminal Server
         uses: docker/build-push-action@v5
         with:
-          context: ./blog-backend/backend/terminal-server
-          file: ./blog-backend/backend/terminal-server/Dockerfile
+          context: ./backend/terminal-server
+          file: ./backend/terminal-server/Dockerfile
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/blog-terminal:${{ steps.vars.outputs.sha_short }}
@@ -127,8 +104,6 @@ jobs:
           echo "Images pushed to GHCR:"
           echo "  - ghcr.io/${{ github.repository_owner }}/blog-api:${{ needs.build-and-push.outputs.sha_short }}"
           echo "  - ghcr.io/${{ github.repository_owner }}/blog-api:latest"
-          echo "  - ghcr.io/${{ github.repository_owner }}/ai-server-backend:${{ needs.build-and-push.outputs.sha_short }}"
-          echo "  - ghcr.io/${{ github.repository_owner }}/ai-server-backend:latest"
           echo "  - ghcr.io/${{ github.repository_owner }}/blog-terminal:${{ needs.build-and-push.outputs.sha_short }}"
           echo "  - ghcr.io/${{ github.repository_owner }}/blog-terminal:latest"
           echo ""

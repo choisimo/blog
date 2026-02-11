@@ -34,7 +34,7 @@ on:
     paths:
       - 'frontend/public/posts/**'
       - 'frontend/public/posts-manifest.json'
-      - 'blog-backend/scripts/rag/**'
+      - 'backend/scripts/rag/**'
 
 concurrency:
   group: rag-index-${{ github.ref }}
@@ -79,7 +79,7 @@ jobs:
             "mkdir -p ~/rag-indexing/scripts"
 
           # Upload the indexing script and requirements
-          scp -P "${{ env.SSH_PORT }}" -r blog-backend/scripts/rag/* \
+          scp -P "${{ env.SSH_PORT }}" -r backend/scripts/rag/* \
             "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:~/rag-indexing/scripts/"
 
           # Upload posts manifest and posts directory

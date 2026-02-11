@@ -6,13 +6,11 @@ on:
     branches: [ main ]
     paths:
       - 'frontend/**'
-      - 'blog-backend/doc-converter/**'
       - '.github/workflows/deploy.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'frontend/**'
-      - 'blog-backend/doc-converter/**'
       - '.github/workflows/deploy.yml'
 
 permissions:
@@ -50,15 +48,14 @@ jobs:
         cache: 'npm'
         cache-dependency-path: |
           frontend/package-lock.json
-          blog-backend/doc-converter/package-lock.json
         
     - name: Install dependencies (frontend)
       run: npm --prefix frontend ci
 
     - name: Organize images (move to proper directories)
       run: |
-        chmod +x ./blog-backend/scripts/organize-images.sh
-        ./blog-backend/scripts/organize-images.sh
+        chmod +x ./scripts/organize-images.sh
+        ./scripts/organize-images.sh
       
     - name: Generate manifests (frontend)
       run: npm --prefix frontend run generate-manifests
@@ -105,7 +102,7 @@ jobs:
               # Re-generate and re-commit
               npm --prefix frontend run generate-manifests
               npm --prefix frontend run generate-seo
-              ./blog-backend/scripts/organize-images.sh
+              ./scripts/organize-images.sh
               git add -f \
                 frontend/public/posts-manifest.json \
                 frontend/public/posts/posts-manifest.json \
@@ -136,15 +133,6 @@ jobs:
     - name: Build (frontend)
       run: npm --prefix frontend run build
 
-    - name: Install dependencies (doc-converter)
-      run: npm --prefix blog-backend/doc-converter ci
-
-    - name: Build (doc-converter)
-      run: npm --prefix blog-backend/doc-converter run build
-
-    - name: Copy doc-converter into frontend dist
-      run: mkdir -p frontend/dist/doc-converter && cp -r blog-backend/doc-converter/dist/* frontend/dist/doc-converter/
-      
     - name: Setup Pages
       uses: actions/configure-pages@v4
       
