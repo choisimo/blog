@@ -223,4 +223,41 @@ chat.post('/aggregate', async (c: Context<ChatContext>) => {
   }
 });
 
+/**
+ * GET /live/stream - 실시간 방문자 채팅 SSE
+ */
+chat.get('/live/stream', async (c: Context<ChatContext>) => {
+  const query = c.req.url.split('?')[1] || '';
+  return proxyRequest(c, `/live/stream${query ? `?${query}` : ''}`);
+});
+
+/**
+ * POST /live/message - 실시간 방문자 메시지 전송
+ */
+chat.post('/live/message', async (c: Context<ChatContext>) => {
+  return proxyRequest(c, '/live/message');
+});
+
+/**
+ * GET /live/config - live chat agent policy
+ */
+chat.get('/live/config', async (c: Context<ChatContext>) => {
+  return proxyRequest(c, '/live/config');
+});
+
+/**
+ * PUT /live/config - update live chat agent policy
+ */
+chat.put('/live/config', async (c: Context<ChatContext>) => {
+  return proxyRequest(c, '/live/config');
+});
+
+/**
+ * GET /live/room-stats?room=... - room telemetry
+ */
+chat.get('/live/room-stats', async (c: Context<ChatContext>) => {
+  const query = c.req.url.split('?')[1] || '';
+  return proxyRequest(c, `/live/room-stats${query ? `?${query}` : ''}`);
+});
+
 export default chat;

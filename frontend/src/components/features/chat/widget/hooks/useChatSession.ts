@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { ChatMessage, ChatSessionMeta, QuestionMode } from "../types";
 import {
   SESSIONS_INDEX_KEY,
@@ -47,6 +47,20 @@ export function useChatSession({
   setSelectedSessionIds,
   setInput,
 }: UseChatSessionProps) {
+  const persistIndexTimerRef = useRef<number | null>(null);
+
+  const scheduleSessionsIndexPersist = useCallback((next: ChatSessionMeta[]) => {
+    if (persistIndexTimerRef.current !== null) {
+      window.clearTimeout(persistIndexTimerRef.current);
+      persistIndexTimerRef.current = null;
+    }
+
+    persistIndexTimerRef.current = window.setTimeout(() => {
+      storeSessionsIndex(next);
+      persistIndexTimerRef.current = null;
+    }, 400);
+  }, []);
+
   const loadSession = useCallback(
     (id: string) => {
       const loaded = loadSessionMessages<ChatMessage>(id);
@@ -145,6 +159,7 @@ export function useChatSession({
     const articleUrl =
       typeof window !== "undefined" ? window.location.href : undefined;
 
+    let nextSessions: ChatSessionMeta[] | null = null;
     setSessions((prev) => {
       const existing = prev.find((s) => s.id === sessionKey);
       const createdAt = existing?.createdAt || nowIso;
@@ -161,7 +176,7 @@ export function useChatSession({
       };
       const others = prev.filter((s) => s.id !== sessionKey);
       const updated = [next, ...others];
-      storeSessionsIndex(updated);
+      nextSessions = updated;
       
       if (typeof window !== "undefined") {
         try {
@@ -172,7 +187,20 @@ export function useChatSession({
       }
       return updated;
     });
+
+    if (nextSessions) {
+      scheduleSessionsIndexPersist(nextSessions);
+    }
   }, [messages, summary, questionMode, pageTitle, persistOptIn, sessionKey, setSessions]);
+
+  useEffect(() => {
+    return () => {
+      if (persistIndexTimerRef.current !== null) {
+        window.clearTimeout(persistIndexTimerRef.current);
+        persistIndexTimerRef.current = null;
+      }
+    };
+  }, []);
 
   return {
     loadSession,

@@ -17,6 +17,7 @@ import {
   useChatState,
   useChatSession,
   useChatActions,
+  useLiveVisitorChat,
   useKeyboardHeight,
   useInputKeyDown,
 } from "./hooks";
@@ -81,6 +82,11 @@ export default function ChatWidget(props: {
     setInput: state.setInput,
   });
 
+  const liveVisitorChat = useLiveVisitorChat({
+    sessionId: state.sessionKey,
+    push: state.push,
+  });
+
   // Chat actions
   const actions = useChatActions({
     canSend: state.canSend,
@@ -101,6 +107,7 @@ export default function ChatWidget(props: {
     setUploadedImages: state.setUploadedImages,
     messages: state.messages,
     setSessionKey: state.setSessionKey,
+    sendVisitorMessage: liveVisitorChat.sendVisitorMessage,
   });
 
   // Keyboard handler

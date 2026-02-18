@@ -49,6 +49,14 @@ const STORAGE_KEY = 'admin.auth';
 
 // Refresh lock to prevent concurrent refreshes
 let refreshPromise: Promise<string | null> | null = null;
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearTokenRefreshTimer(): void {
+  if (refreshTimer) {
+    clearTimeout(refreshTimer);
+    refreshTimer = null;
+  }
+}
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -64,6 +72,7 @@ export const useAuthStore = create<AuthState>()(
        */
       setTokens: (accessToken, refreshToken, user) => {
         set({ accessToken, refreshToken, user: user ?? get().user });
+        scheduleTokenRefresh();
       },
 
       /**
@@ -77,6 +86,7 @@ export const useAuthStore = create<AuthState>()(
        * Clear all auth state (local only, no API call)
        */
       clearAuth: () => {
+        clearTokenRefreshTimer();
         set({
           accessToken: null,
           refreshToken: null,
@@ -141,6 +151,7 @@ export const useAuthStore = create<AuthState>()(
               accessToken: result.accessToken,
               isRefreshing: false,
             });
+            scheduleTokenRefresh();
             return result.accessToken;
           } catch (error) {
             console.error('Token refresh failed:', error);
@@ -220,6 +231,8 @@ export async function getAuthHeadersAsync(): Promise<Record<string, string>> {
  * Call this after login to set up auto-refresh
  */
 export function scheduleTokenRefresh(): () => void {
+  clearTokenRefreshTimer();
+
   const { accessToken } = useAuthStore.getState();
 
   if (!accessToken) return () => {};
@@ -231,13 +244,19 @@ export function scheduleTokenRefresh(): () => void {
   const refreshAt = expiration - 60 * 1000;
   const delay = Math.max(0, refreshAt - Date.now());
 
-  const timeoutId = setTimeout(async () => {
+  refreshTimer = setTimeout(async () => {
     await useAuthStore.getState().getValidAccessToken();
     // Schedule next refresh
     scheduleTokenRefresh();
   }, delay);
 
-  return () => clearTimeout(timeoutId);
+  return () => {
+    clearTokenRefreshTimer();
+  };
+}
+
+export function cancelTokenRefresh(): void {
+  clearTokenRefreshTimer();
 }
 
 // ============================================================================

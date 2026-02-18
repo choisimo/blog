@@ -235,6 +235,12 @@ services:
       - DEFAULT_CHAT_MODEL=${OPEN_NOTEBOOK_CHAT_MODEL:-gpt-4.1}
       - DEFAULT_TRANSFORMATION_MODEL=${OPEN_NOTEBOOK_TRANSFORM_MODEL:-gpt-4.1}
       - OPENAI_API_KEY=${AI_API_KEY}
+      - OPENAI_COMPATIBLE_BASE_URL=${AI_SERVER_URL:-https://api.openai.com/v1}
+      - OPENAI_COMPATIBLE_API_KEY=${AI_API_KEY}
+      - OPENAI_COMPATIBLE_BASE_URL_LLM=${AI_SERVER_URL:-https://api.openai.com/v1}
+      - OPENAI_COMPATIBLE_API_KEY_LLM=${AI_API_KEY}
+      - OPENAI_COMPATIBLE_BASE_URL_EMBEDDING=${AI_EMBEDDING_URL:-${AI_SERVER_URL:-https://api.openai.com/v1}}
+      - OPENAI_COMPATIBLE_API_KEY_EMBEDDING=${AI_EMBEDDING_API_KEY:-${AI_API_KEY}}
       - OPENAI_API_BASE=${AI_SERVER_URL:-https://api.openai.com/v1}
       # Embedding configuration
       - DEFAULT_EMBEDDING_MODEL=${OPEN_NOTEBOOK_EMBED_MODEL:-multilingual-e5-large}
@@ -248,7 +254,7 @@ services:
       surrealdb:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "curl -sf http://localhost:8501/health || exit 1" ]
+      test: [ "CMD-SHELL", "curl -sf http://localhost:5055/health || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -276,4 +282,3 @@ volumes:
     name: blog-redis-data
   surrealdb-data:
     name: blog-surrealdb-data
-

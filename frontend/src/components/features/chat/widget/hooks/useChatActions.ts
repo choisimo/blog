@@ -27,6 +27,7 @@ type UseChatActionsProps = {
   setUploadedImages: React.Dispatch<React.SetStateAction<UploadedChatImage[]>>;
   messages: ChatMessage[];
   setSessionKey: (key: string) => void;
+  sendVisitorMessage: (text: string) => Promise<void>;
 };
 
 export function useChatActions({
@@ -48,10 +49,32 @@ export function useChatActions({
   setUploadedImages,
   messages,
   setSessionKey,
+  sendVisitorMessage,
 }: UseChatActionsProps) {
   const send = useCallback(async () => {
     if (!canSend) return;
     const trimmed = input.trim();
+
+    if (trimmed.toLowerCase().startsWith('/live ')) {
+      const liveText = trimmed.slice(6).trim();
+      if (!liveText) return;
+
+      const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      setInput('');
+      push({ id, role: 'user', text: `[Live] ${liveText}` });
+
+      try {
+        await sendVisitorMessage(liveText);
+      } catch (e: any) {
+        push({
+          id: `${id}_live_err`,
+          role: 'system',
+          text: e?.message || 'Live message delivery failed',
+        });
+      }
+      return;
+    }
+
     const imageToUpload = attachedImage;
 
     setBusy(true);
@@ -199,6 +222,7 @@ export function useChatActions({
     lastPromptRef,
     setUploadedImages,
     setMessages,
+    sendVisitorMessage,
   ]);
 
   const stop = useCallback(() => {

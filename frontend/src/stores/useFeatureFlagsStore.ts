@@ -59,6 +59,8 @@ const DEFAULT_FLAGS: FeatureFlags = {
 
 // Cache duration: 5 minutes
 const CACHE_DURATION_MS = 5 * 60 * 1000;
+let featureFlagsInitialized = false;
+let visibilityChangeHandler: (() => void) | null = null;
 
 // ============================================================================
 // Store
@@ -229,15 +231,25 @@ export async function refreshFeatureFlags(): Promise<void> {
  * Call this in App.tsx or index.tsx
  */
 export function initFeatureFlags(): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || featureFlagsInitialized) return;
+  featureFlagsInitialized = true;
 
   // Fetch immediately on startup
   useFeatureFlagsStore.getState().fetchFlags();
 
   // Refresh when tab becomes visible
-  document.addEventListener('visibilitychange', () => {
+  visibilityChangeHandler = () => {
     if (document.visibilityState === 'visible') {
       useFeatureFlagsStore.getState().fetchFlags();
     }
-  });
+  };
+  document.addEventListener('visibilitychange', visibilityChangeHandler);
+}
+
+export function disposeFeatureFlags(): void {
+  if (visibilityChangeHandler) {
+    document.removeEventListener('visibilitychange', visibilityChangeHandler);
+    visibilityChangeHandler = null;
+  }
+  featureFlagsInitialized = false;
 }

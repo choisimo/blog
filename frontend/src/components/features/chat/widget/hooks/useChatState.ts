@@ -14,6 +14,9 @@ import {
   loadSessionsIndex,
 } from "@/services/chat";
 
+const SESSION_PERSIST_DEBOUNCE_MS = 400;
+const MAX_MESSAGES_PER_SESSION = 200;
+
 export function useChatState(options?: { initialMessage?: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState(options?.initialMessage || "");
@@ -51,6 +54,7 @@ export function useChatState(options?: { initialMessage?: string }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const lastPromptRef = useRef<string>("");
+  const persistTimerRef = useRef<number | null>(null);
 
   const canSend =
     (input.trim().length > 0 || attachedImage !== null) && !busy;
@@ -86,7 +90,9 @@ export function useChatState(options?: { initialMessage?: string }) {
       );
       if (raw) {
         const parsed = JSON.parse(raw) as ChatMessage[];
-        if (Array.isArray(parsed)) setMessages(parsed);
+        if (Array.isArray(parsed)) {
+          setMessages(parsed.slice(-MAX_MESSAGES_PER_SESSION));
+        }
       } else {
         setMessages([]);
       }
@@ -97,15 +103,41 @@ export function useChatState(options?: { initialMessage?: string }) {
 
   useEffect(() => {
     if (!persistOptIn || !sessionKey) return;
-    try {
-      localStorage.setItem(
-        `${SESSION_MESSAGES_PREFIX}${sessionKey}`,
-        JSON.stringify(messages),
-      );
-    } catch {
-      void 0;
+
+    if (persistTimerRef.current !== null) {
+      window.clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = null;
     }
+
+    persistTimerRef.current = window.setTimeout(() => {
+      try {
+        localStorage.setItem(
+          `${SESSION_MESSAGES_PREFIX}${sessionKey}`,
+          JSON.stringify(messages.slice(-MAX_MESSAGES_PER_SESSION)),
+        );
+      } catch {
+        void 0;
+      } finally {
+        persistTimerRef.current = null;
+      }
+    }, SESSION_PERSIST_DEBOUNCE_MS);
+
+    return () => {
+      if (persistTimerRef.current !== null) {
+        window.clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = null;
+      }
+    };
   }, [messages, persistOptIn, sessionKey]);
+
+  useEffect(() => {
+    return () => {
+      if (persistTimerRef.current !== null) {
+        window.clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = null;
+      }
+    };
+  }, []);
 
   // Handle attached image preview
   useEffect(() => {

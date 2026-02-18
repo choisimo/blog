@@ -58,25 +58,54 @@ export async function searchOpenNotebook(query, options = {}) {
 }
 
 export async function askOpenNotebook(query, options = {}) {
-  const { notebookId = null, includeContext = true } = options;
+  const { notebookId = null } = options;
+
+  let defaults = {};
+  try {
+    defaults = await fetchOpenNotebook('/api/models/defaults', {
+      method: 'GET',
+    });
+  } catch {
+    defaults = {};
+  }
+
+  let languageModelId = defaults.default_chat_model || null;
+
+  if (!languageModelId) {
+    const models = await fetchOpenNotebook('/api/models', {
+      method: 'GET',
+    });
+
+    const fallbackModel = Array.isArray(models)
+      ? models.find(m => m?.type === 'language' && m?.id)
+      : null;
+
+    languageModelId = fallbackModel?.id || null;
+  }
+
+  if (!languageModelId) {
+    throw new Error('Open Notebook language model is not configured');
+  }
 
   const body = {
-    query,
-    include_context: includeContext,
+    question: query,
+    strategy_model: languageModelId,
+    answer_model: languageModelId,
+    final_answer_model: languageModelId,
   };
 
   if (notebookId) {
     body.notebook_id = notebookId;
   }
 
-  const result = await fetchOpenNotebook('/api/ask', {
+  const result = await fetchOpenNotebook('/api/search/ask/simple', {
     method: 'POST',
     body: JSON.stringify(body),
     timeout: TIMEOUTS.LONG,
   });
 
   return {
-    answer: result.answer || '',
+    answer: result.answer || result.response || '',
     sources: result.sources || [],
     context: result.context || [],
   };

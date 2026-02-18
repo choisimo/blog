@@ -88,3 +88,12 @@ export {
   uploadChatImage,
   invokeChatAggregate,
 } from './api';
+
+export {
+  connectLiveChatStream,
+  sendLiveChatMessage,
+  getLiveChatConfig,
+  updateLiveChatConfig,
+  getLiveRoomStats,
+} from './live';
+export type { LiveChatEvent, LiveAgentPolicy } from './live';

@@ -44,4 +44,9 @@ export {
   streamChatMessage,
   uploadChatImage,
   invokeChatAggregate,
+  connectLiveChatStream,
+  sendLiveChatMessage,
+  getLiveChatConfig,
+  updateLiveChatConfig,
+  getLiveRoomStats,
 } from './chat/index';

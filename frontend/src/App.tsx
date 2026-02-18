@@ -19,14 +19,19 @@ import AdminConfig from './pages/AdminConfig';
 import './App.css';
 import { VisitedPostsMinimap } from '@/components/features/navigation/VisitedPostsMinimap';
 import FloatingActionBar from '@/components/features/memo/FloatingActionBar';
-import { initFeatureFlags } from '@/stores/useFeatureFlagsStore';
-
-initFeatureFlags();
+import { initFeatureFlags, disposeFeatureFlags } from '@/stores/useFeatureFlagsStore';
 
 const queryClient = new QueryClient();
 
 function App() {
   const [fabOn, setFabOn] = useState(true);
+
+  useEffect(() => {
+    initFeatureFlags();
+    return () => {
+      disposeFeatureFlags();
+    };
+  }, []);
 
   useEffect(() => {
     const getFabEnabled = () => {
