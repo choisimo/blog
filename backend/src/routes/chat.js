@@ -1,9 +1,13 @@
 import { Router } from 'express';
 import { WebSocketServer } from 'ws';
+import { readFile, readdir } from 'node:fs/promises';
+import path from 'node:path';
+import matter from 'gray-matter';
 import { aiService, tryParseJson } from '../lib/ai-service.js';
 import { getRedisClient, getRedisSubscriber } from '../lib/redis-client.js';
 import { config } from '../config.js';
 import { openaiEmbeddings } from '../lib/openai-compat-client.js';
+import openNotebook from '../services/open-notebook.service.js';
 import {
   CHROMA,
   AI_TEMPERATURES,
@@ -125,6 +129,14 @@ async function performRAGSearch(query, topK = 5) {
 
 // In-memory session storage (for simplicity - use Redis in production)
 const sessions = new Map();
+const notebookBootstrapJobs = new Map();
+let postsCorpusCache = null;
+
+const NOTEBOOK_BOOTSTRAP = {
+  CHUNK_SIZE: 3200,
+  CHUNK_OVERLAP: 200,
+  MAX_CHUNKS_PER_POST: 80,
+};
 
 // In-memory live chat streams (single-process only)
 const liveStreams = new Map();
@@ -620,6 +632,10 @@ function createSession(title = '') {
     title: title || `Session ${sessionId.slice(-6)}`,
     messages: [],
     createdAt: new Date().toISOString(),
+    notebookId: null,
+    notebookReady: false,
+    notebookBootstrappedAt: null,
+    notebookError: null,
   });
   return sessionId;
 }
@@ -629,6 +645,283 @@ function createSession(title = '') {
  */
 function getSession(sessionId) {
   return sessions.get(sessionId);
+}
+
+function getPostsDirectoryCandidates() {
+  const candidates = [];
+
+  if (config.content?.postsDir) {
+    candidates.push(config.content.postsDir);
+  }
+
+  if (config.content?.publicDir) {
+    candidates.push(path.join(config.content.publicDir, 'posts'));
+  }
+
+  candidates.push(path.resolve(process.cwd(), '../frontend/public/posts'));
+
+  return [...new Set(candidates)];
+}
+
+async function listMarkdownFiles(rootDir) {
+  const files = [];
+  const stack = [rootDir];
+
+  while (stack.length > 0) {
+    const dir = stack.pop();
+    if (!dir) continue;
+
+    let entries = [];
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(fullPath);
+        continue;
+      }
+
+      if (entry.isFile() && entry.name.endsWith('.md')) {
+        files.push(fullPath);
+      }
+    }
+  }
+
+  return files;
+}
+
+function chunkText(text) {
+  const chunks = [];
+  const chunkSize = NOTEBOOK_BOOTSTRAP.CHUNK_SIZE;
+  const overlap = NOTEBOOK_BOOTSTRAP.CHUNK_OVERLAP;
+
+  if (!text || typeof text !== 'string') {
+    return chunks;
+  }
+
+  let cursor = 0;
+  while (cursor < text.length && chunks.length < NOTEBOOK_BOOTSTRAP.MAX_CHUNKS_PER_POST) {
+    const end = Math.min(text.length, cursor + chunkSize);
+    const piece = text.slice(cursor, end).trim();
+    if (piece) {
+      chunks.push(piece);
+    }
+
+    if (end >= text.length) break;
+    cursor = Math.max(end - overlap, cursor + 1);
+  }
+
+  return chunks;
+}
+
+function postMetaFromPath(filePath, rootDir) {
+  const rel = path.relative(rootDir, filePath).replace(/\\/g, '/');
+  const parts = rel.split('/');
+
+  const year = parts[0] || '';
+  const maybeLang = parts[1] === 'ko' || parts[1] === 'en' ? parts[1] : '';
+  const filename = parts[parts.length - 1] || '';
+  const slug = filename.replace(/\.md$/i, '');
+
+  return { rel, year, lang: maybeLang, slug };
+}
+
+async function loadPostsCorpus() {
+  if (postsCorpusCache) {
+    return postsCorpusCache;
+  }
+
+  const candidates = getPostsDirectoryCandidates();
+
+  for (const rootDir of candidates) {
+    const files = await listMarkdownFiles(rootDir);
+    if (files.length === 0) continue;
+
+    const posts = [];
+    for (const filePath of files) {
+      try {
+        const raw = await readFile(filePath, 'utf-8');
+        const parsed = matter(raw);
+        const content = String(parsed.content || '').trim();
+        if (!content) continue;
+
+        const meta = postMetaFromPath(filePath, rootDir);
+        posts.push({
+          title: String(parsed.data?.title || meta.slug || 'Untitled'),
+          description: String(parsed.data?.description || parsed.data?.snippet || ''),
+          tags: Array.isArray(parsed.data?.tags) ? parsed.data.tags.map(String) : [],
+          date: String(parsed.data?.date || ''),
+          ...meta,
+          content,
+        });
+      } catch {
+        // Skip unreadable markdown file.
+      }
+    }
+
+    if (posts.length > 0) {
+      postsCorpusCache = posts;
+      return postsCorpusCache;
+    }
+  }
+
+  postsCorpusCache = [];
+  return postsCorpusCache;
+}
+
+function buildCatalogNotes(posts) {
+  if (!Array.isArray(posts) || posts.length === 0) {
+    return [];
+  }
+
+  const notes = [];
+
+  for (const post of posts) {
+    const chunks = chunkText(post.content);
+    if (chunks.length === 0) continue;
+
+    for (let idx = 0; idx < chunks.length; idx += 1) {
+      const header = [
+        `Title: ${post.title}`,
+        post.slug ? `Slug: ${post.slug}` : null,
+        post.year ? `Year: ${post.year}` : null,
+        post.lang ? `Lang: ${post.lang}` : null,
+        post.date ? `Date: ${post.date}` : null,
+        post.tags.length > 0 ? `Tags: ${post.tags.join(', ')}` : null,
+        post.description ? `Summary: ${post.description}` : null,
+        `SourcePath: ${post.rel}`,
+        `Chunk: ${idx + 1}/${chunks.length}`,
+      ].filter(Boolean).join('\n');
+
+      notes.push({
+        title: `post:${post.slug || post.title}:chunk-${idx + 1}`,
+        content: `${header}\n\n${chunks[idx]}`,
+      });
+    }
+  }
+
+  return notes;
+}
+
+async function bootstrapSessionNotebook(session) {
+  const posts = await loadPostsCorpus();
+  const notes = buildCatalogNotes(posts);
+
+  if (notes.length === 0) {
+    await openNotebook.createNote('No post content was available during notebook bootstrap.', {
+      title: 'blog-catalog-empty',
+      notebookId: session.notebookId,
+    });
+    return;
+  }
+
+  for (const note of notes) {
+    await openNotebook.createNote(note.content, {
+      title: note.title,
+      notebookId: session.notebookId,
+    });
+  }
+}
+
+async function ensureSessionNotebook(sessionId) {
+  if (!openNotebook.isEnabled()) {
+    return null;
+  }
+
+  const session = getSession(sessionId);
+  if (!session) {
+    return null;
+  }
+
+  if (session.notebookId && session.notebookReady) {
+    return session.notebookId;
+  }
+
+  if (notebookBootstrapJobs.has(sessionId)) {
+    await notebookBootstrapJobs.get(sessionId);
+    return session.notebookId || null;
+  }
+
+  const job = (async () => {
+    if (!session.notebookId) {
+      const notebookName = `chat-${session.id}`;
+      const notebookDescription = `Isolated notebook for chat session ${session.id}`;
+      const notebook = await openNotebook.createNotebook(notebookName, notebookDescription);
+      session.notebookId = notebook?.id || null;
+    }
+
+    if (!session.notebookId) {
+      throw new Error('Failed to provision session notebook');
+    }
+
+    if (!session.notebookReady) {
+      await bootstrapSessionNotebook(session);
+      session.notebookReady = true;
+      session.notebookBootstrappedAt = new Date().toISOString();
+    }
+
+    return session.notebookId;
+  })()
+    .catch((err) => {
+      session.notebookReady = false;
+      session.notebookError = err?.message || 'Notebook bootstrap failed';
+      throw err;
+    })
+    .finally(() => {
+      notebookBootstrapJobs.delete(sessionId);
+    });
+
+  notebookBootstrapJobs.set(sessionId, job);
+  await job;
+
+  return session.notebookId;
+}
+
+async function buildNotebookContext(query, session) {
+  if (!openNotebook.isEnabled() || !session?.id) {
+    return null;
+  }
+
+  try {
+    const notebookId = await ensureSessionNotebook(session.id);
+    if (!notebookId) return null;
+
+    const notebookResult = await openNotebook.ask(query, { notebookId });
+    if (!notebookResult?.answer) return null;
+
+    return `다음은 사용자 세션 전용 노트북 기반 참고 지식입니다:\n\n${notebookResult.answer}`;
+  } catch (err) {
+    console.warn('Open Notebook context build failed:', err?.message || err);
+    return null;
+  }
+}
+
+async function reinforceSessionNotebook(session, userMessage, assistantMessage) {
+  if (!openNotebook.isEnabled() || !session?.id) {
+    return;
+  }
+
+  try {
+    const notebookId = await ensureSessionNotebook(session.id);
+    if (!notebookId) return;
+
+    const content = [
+      `User: ${userMessage}`,
+      `Assistant: ${assistantMessage}`,
+    ].join('\n\n');
+
+    await openNotebook.createNote(content, {
+      title: `chat-turn-${Date.now()}`,
+      notebookId,
+      noteType: 'ai',
+    });
+  } catch (err) {
+    console.warn('Open Notebook reinforcement failed:', err?.message || err);
+  }
 }
 
 /**
@@ -783,6 +1076,11 @@ export function initChatWebSocket(server) {
         if (!session) {
           sessionId = createSession(payload.title);
           session = getSession(sessionId);
+          if (openNotebook.isEnabled()) {
+            void ensureSessionNotebook(sessionId).catch((err) => {
+              console.warn('Session notebook bootstrap failed:', err?.message || err);
+            });
+          }
         }
 
         let userMessage = '';
@@ -810,7 +1108,19 @@ export function initChatWebSocket(server) {
         session.messages.push({ role: 'user', content: userMessage });
         send({ type: 'session', sessionId });
 
-        const result = await aiService.chat(session.messages, { model: payload.model });
+        const messagesWithContext = [...session.messages];
+        const notebookContext = await buildNotebookContext(userMessage, session);
+        if (notebookContext) {
+          const lastIdx = messagesWithContext.length - 1;
+          if (lastIdx >= 0 && messagesWithContext[lastIdx].role === 'user') {
+            messagesWithContext[lastIdx] = {
+              ...messagesWithContext[lastIdx],
+              content: `${notebookContext}\n\n---\n\n사용자 질문: ${messagesWithContext[lastIdx].content}`,
+            };
+          }
+        }
+
+        const result = await aiService.chat(messagesWithContext, { model: payload.model });
         const text = result.content || '';
         const chunkSize = STREAMING.WS_CHUNK_SIZE;
 
@@ -822,6 +1132,7 @@ export function initChatWebSocket(server) {
         }
 
         session.messages.push({ role: 'assistant', content: text });
+        void reinforceSessionNotebook(session, userMessage, text);
         notifySession(sessionId, {
           level: 'info',
           message: 'AI response completed',
@@ -892,10 +1203,24 @@ router.post('/session', async (req, res, next) => {
   try {
     const { title } = req.body || {};
     const sessionId = createSession(title);
+    const session = getSession(sessionId);
+
+    if (openNotebook.isEnabled()) {
+      try {
+        await ensureSessionNotebook(sessionId);
+      } catch (err) {
+        console.warn('Notebook provisioning during session creation failed:', err?.message || err);
+      }
+    }
     
     return res.json({
       ok: true,
-      data: { sessionID: sessionId, id: sessionId },
+      data: {
+        sessionID: sessionId,
+        id: sessionId,
+        notebookId: session?.notebookId || null,
+        notebookReady: session?.notebookReady === true,
+      },
     });
   } catch (err) {
     return next(err);
@@ -910,12 +1235,18 @@ router.post('/session/:sessionId/message', async (req, res, next) => {
   try {
     const { sessionId } = req.params;
     const { parts, context, model, enableRag } = req.body || {};
+    let effectiveSessionId = sessionId;
 
     // Get or create session
     let session = getSession(sessionId);
     if (!session) {
-      const newId = createSession();
-      session = getSession(newId);
+      effectiveSessionId = createSession();
+      session = getSession(effectiveSessionId);
+      if (openNotebook.isEnabled()) {
+        void ensureSessionNotebook(effectiveSessionId).catch((err) => {
+          console.warn('Session notebook bootstrap failed:', err?.message || err);
+        });
+      }
     }
 
     // Extract text from parts
@@ -955,6 +1286,8 @@ router.post('/session/:sessionId/message', async (req, res, next) => {
       res.write(`data: ${payload}\n\n`);
     };
 
+    send({ type: 'session', sessionId: effectiveSessionId });
+
     let closed = false;
     req.on('close', () => {
       closed = true;
@@ -963,13 +1296,13 @@ router.post('/session/:sessionId/message', async (req, res, next) => {
     try {
       let ragContext = null;
       let ragSources = [];
+      const userQuery = parts
+        ?.filter((p) => p.type === 'text')
+        ?.map((p) => p.text)
+        ?.find((t) => t && !t.startsWith('[') && t.length > 5) || userMessage;
+      const notebookContext = await buildNotebookContext(userQuery, session);
 
       if (enableRag) {
-        const userQuery = parts
-          ?.filter((p) => p.type === 'text')
-          ?.map((p) => p.text)
-          ?.find((t) => t && !t.startsWith('[') && t.length > 5) || userMessage;
-        
         const ragResult = await performRAGSearch(userQuery, 5);
         ragContext = ragResult.context;
         ragSources = ragResult.sources;
@@ -980,12 +1313,13 @@ router.post('/session/:sessionId/message', async (req, res, next) => {
       }
 
       const messagesWithContext = [...session.messages];
-      if (ragContext) {
+      if (ragContext || notebookContext) {
+        const contextParts = [ragContext, notebookContext].filter(Boolean);
         const lastIdx = messagesWithContext.length - 1;
         if (lastIdx >= 0 && messagesWithContext[lastIdx].role === 'user') {
           messagesWithContext[lastIdx] = {
             ...messagesWithContext[lastIdx],
-            content: `${ragContext}\n\n---\n\n사용자 질문: ${messagesWithContext[lastIdx].content}`,
+            content: `${contextParts.join('\n\n')}` + `\n\n---\n\n사용자 질문: ${messagesWithContext[lastIdx].content}`,
           };
         }
       }
@@ -1005,8 +1339,9 @@ router.post('/session/:sessionId/message', async (req, res, next) => {
       }
 
       session.messages.push({ role: 'assistant', content: text });
+      void reinforceSessionNotebook(session, userMessage, text);
 
-      notifySession(sessionId, {
+      notifySession(effectiveSessionId, {
         level: 'info',
         message: 'AI response completed',
       });

@@ -530,8 +530,16 @@ export function useShellCommander({
   // Update suggestions when input changes
   useEffect(() => {
     const newSuggestions = generateSuggestions(shellInput);
-    setSuggestions(newSuggestions);
-    setSelectedSuggestionIndex(-1);
+    setSuggestions((prev) => {
+      if (
+        prev.length === newSuggestions.length &&
+        prev.every((value, index) => value === newSuggestions[index])
+      ) {
+        return prev;
+      }
+      return newSuggestions;
+    });
+    setSelectedSuggestionIndex((prev) => (prev === -1 ? prev : -1));
   }, [shellInput, generateSuggestions]);
 
   // Add output to logs when shellOutput changes

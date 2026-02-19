@@ -78,6 +78,16 @@ export const MarkdownRenderer = ({
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
+  const hasMediaNode = (node: unknown): boolean => {
+    if (!isValidElement(node)) return false;
+
+    const props = (node as any).props ?? {};
+    if (typeof props.src === 'string' && props.src.length > 0) return true;
+
+    const children = Children.toArray(props.children);
+    return children.some(child => hasMediaNode(child));
+  };
+
   return (
     <div
       className={cn(
@@ -198,11 +208,7 @@ export const MarkdownRenderer = ({
             }
 
             const childArray = Children.toArray(children);
-            const containsMedia = childArray.some(
-              child =>
-                isValidElement(child) &&
-                typeof (child as any).props?.src === 'string'
-            );
+            const containsMedia = childArray.some(child => hasMediaNode(child));
 
             if (containsMedia) {
               return (
@@ -341,6 +347,7 @@ export const MarkdownRenderer = ({
           img: ({ src, alt }) => (
             <ClickableImage src={src || ''} alt={alt} isTerminal={isTerminal} postPath={postPath} />
           ),
+          citation: ({ children }) => <cite>{children}</cite>,
           table: ({ children }) => (
             <div className='overflow-x-auto my-8 max-w-4xl mx-auto'>
               <table

@@ -1,6 +1,1920 @@
 {
-  "total": 0,
-  "items": [],
-  "generatedAt": "2026-02-18T17:49:55.719Z",
+  "total": 100,
+  "items": [
+    {
+      "id": "blog",
+      "title": "Blog",
+      "description": "Public repository technical summary and implementation overview. Architecture: Fullstack split (frontend/backend); CI/CD workflow automation present.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture",
+        "Fullstack"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/blog",
+      "codeUrl": "https://github.com/choisimo/blog",
+      "featured": true
+    },
+    {
+      "id": "agentpromptsforprojects",
+      "title": "Agentpromptsforprojects",
+      "description": "Private repository technical summary and implementation overview. Architecture: CI/CD workflow automation present. Transactions: Manual SQL transaction control (BEGIN/commit/rollback signals in 1 files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/AgentPromptsForProjects",
+      "codeUrl": "https://github.com/choisimo/AgentPromptsForProjects",
+      "featured": false
+    },
+    {
+      "id": "ai-pair-programmer",
+      "title": "AI Pair Programmer",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/AI-pair-programmer",
+      "codeUrl": "https://github.com/choisimo/AI-pair-programmer",
+      "featured": false
+    },
+    {
+      "id": "ai-server",
+      "title": "AI Server",
+      "description": "Private repository technical summary and implementation overview. Architecture: Container-orchestrated local environment; CI/CD workflow automation present. Transactions: ORM-managed commit/rollback usage (SQLAlchemy/session patterns, 1 files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/AI-server",
+      "codeUrl": "https://github.com/choisimo/AI-server",
+      "featured": false
+    },
+    {
+      "id": "ai_agent_arena",
+      "title": "AI Agent Arena",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository. Transactions: ORM-managed commit/rollback usage (SQLAlchemy/session patterns, 1 files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/AI_Agent_Arena",
+      "codeUrl": "https://github.com/choisimo/AI_Agent_Arena",
+      "featured": false
+    },
+    {
+      "id": "ai_agent_dev-application",
+      "title": "AI Agent Dev Application",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/AI_agent_dev-application",
+      "codeUrl": "https://github.com/choisimo/AI_agent_dev-application",
+      "featured": false
+    },
+    {
+      "id": "ai_module",
+      "title": "AI Module",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/AI_module",
+      "codeUrl": "https://github.com/choisimo/AI_module",
+      "featured": false
+    },
+    {
+      "id": "aiosk",
+      "title": "AIOSK",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository. Transactions: Manual SQL transaction control (BEGIN/commit/rollback signals in 4 files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/AIOSK",
+      "codeUrl": "https://github.com/choisimo/AIOSK",
+      "featured": false
+    },
+    {
+      "id": "aisubtitlegenerator",
+      "title": "Aisubtitlegenerator",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/AISubtitleGenerator",
+      "codeUrl": "https://github.com/choisimo/AISubtitleGenerator",
+      "featured": false
+    },
+    {
+      "id": "anime_heaven",
+      "title": "Anime Heaven",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/anime_heaven",
+      "codeUrl": "https://github.com/choisimo/anime_heaven",
+      "featured": false
+    },
+    {
+      "id": "astaralgorithm",
+      "title": "Astaralgorithm",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/AStarAlgorithm",
+      "codeUrl": "https://github.com/choisimo/AStarAlgorithm",
+      "featured": false
+    },
+    {
+      "id": "audionotes",
+      "title": "Audionotes",
+      "description": "Public repository technical summary and implementation overview. Architecture: Container-orchestrated local environment. Transactions: Manual SQL transaction control (BEGIN/commit/rollback signals in 1 files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/AudioNotes",
+      "codeUrl": "https://github.com/choisimo/AudioNotes",
+      "featured": false
+    },
+    {
+      "id": "auth-dev",
+      "title": "Auth Dev",
+      "description": "Private repository technical summary and implementation overview. Architecture: JVM layered application structure; CI/CD workflow automation present. Transactions: Spring declarative transactions via @Transactional (10 matching files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/auth-dev",
+      "codeUrl": "https://github.com/choisimo/auth-dev",
+      "featured": false
+    },
+    {
+      "id": "auth-server_spring-security",
+      "title": "Auth Server Spring Security",
+      "description": "Private repository technical summary and implementation overview. Architecture: JVM layered application structure; CI/CD workflow automation present. Transactions: Spring declarative transactions via @Transactional (7 matching files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/Auth-Server_Spring-Security",
+      "codeUrl": "https://github.com/choisimo/Auth-Server_Spring-Security",
+      "featured": false
+    },
+    {
+      "id": "auto_crawler",
+      "title": "Auto Crawler",
+      "description": "Private repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/Auto_Crawler",
+      "codeUrl": "https://github.com/choisimo/Auto_Crawler",
+      "featured": false
+    },
+    {
+      "id": "awesome-llm-apps",
+      "title": "Awesome Llm Apps",
+      "description": "Public repository technical summary and implementation overview. Architecture: CI/CD workflow automation present. Transactions: ORM-managed commit/rollback usage (SQLAlchemy/session patterns, 3 files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/awesome-llm-apps",
+      "codeUrl": "https://github.com/choisimo/awesome-llm-apps",
+      "featured": false
+    },
+    {
+      "id": "backup_strategy",
+      "title": "Backup Strategy",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/backup_strategy",
+      "codeUrl": "https://github.com/choisimo/backup_strategy",
+      "featured": false
+    },
+    {
+      "id": "blog-backend",
+      "title": "Blog Backend",
+      "description": "Private repository technical summary and implementation overview. Architecture: Configuration/notes or sparse repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/blog-backend",
+      "codeUrl": "https://github.com/choisimo/blog-backend",
+      "featured": false
+    },
+    {
+      "id": "boardweb",
+      "title": "Boardweb",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/boardWeb",
+      "codeUrl": "https://github.com/choisimo/boardWeb",
+      "featured": false
+    },
+    {
+      "id": "browseruse",
+      "title": "Browseruse",
+      "description": "Private repository technical summary and implementation overview. Architecture: CI/CD workflow automation present.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/BrowserUse",
+      "codeUrl": "https://github.com/choisimo/BrowserUse",
+      "featured": false
+    },
+    {
+      "id": "capstone",
+      "title": "Capstone",
+      "description": "Private repository technical summary and implementation overview. Architecture: Service-oriented layout (3 service directories); JVM layered application structure; CI/CD workflow automation present. Transactions: Spring declarative transactions via @Transactional (33 matching files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture",
+        "Microservice"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/Capstone",
+      "codeUrl": "https://github.com/choisimo/Capstone",
+      "featured": false
+    },
+    {
+      "id": "career_block",
+      "title": "Career Block",
+      "description": "Private repository technical summary and implementation overview. Architecture: Configuration/notes or sparse repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/career_block",
+      "codeUrl": "https://github.com/choisimo/career_block",
+      "featured": false
+    },
+    {
+      "id": "careernote_android",
+      "title": "Careernote Android",
+      "description": "Private repository technical summary and implementation overview. Architecture: Configuration/notes or sparse repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/careernote_android",
+      "codeUrl": "https://github.com/choisimo/careernote_android",
+      "featured": false
+    },
+    {
+      "id": "cbt-latest",
+      "title": "CBT Latest",
+      "description": "Public repository technical summary and implementation overview. Architecture: JVM layered application structure; Container-orchestrated local environment; CI/CD workflow automation present. Transactions: Spring declarative transactions via @Transactional (39 matching files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/CBT-latest",
+      "codeUrl": "https://github.com/choisimo/CBT-latest",
+      "featured": false
+    },
+    {
+      "id": "choisimo.github.io",
+      "title": "Choisimo.github.io",
+      "description": "Public repository technical summary and implementation overview. Architecture: CI/CD workflow automation present.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/choisimo.github.io",
+      "codeUrl": "https://github.com/choisimo/choisimo.github.io",
+      "featured": false
+    },
+    {
+      "id": "code-merger",
+      "title": "Code Merger",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/code-merger",
+      "codeUrl": "https://github.com/choisimo/code-merger",
+      "featured": false
+    },
+    {
+      "id": "code_repository",
+      "title": "Code Repository",
+      "description": "Public repository technical summary and implementation overview. Architecture: JVM layered application structure.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/code_repository",
+      "codeUrl": "https://github.com/choisimo/code_repository",
+      "featured": false
+    },
+    {
+      "id": "community",
+      "title": "Community",
+      "description": "Private repository technical summary and implementation overview. Architecture: JVM layered application structure; Container-orchestrated local environment. Transactions: Spring declarative transactions via @Transactional (12 matching files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/community",
+      "codeUrl": "https://github.com/choisimo/community",
+      "featured": false
+    },
+    {
+      "id": "compiler-study-program",
+      "title": "Compiler Study Program",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/compiler-study-program",
+      "codeUrl": "https://github.com/choisimo/compiler-study-program",
+      "featured": false
+    },
+    {
+      "id": "composeai",
+      "title": "Composeai",
+      "description": "Private repository technical summary and implementation overview. Architecture: Fullstack split (frontend/backend); Container-orchestrated local environment. Transactions: ORM-managed commit/rollback usage (SQLAlchemy/session patterns, 1 files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture",
+        "Fullstack"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/composeAI",
+      "codeUrl": "https://github.com/choisimo/composeAI",
+      "featured": false
+    },
+    {
+      "id": "confighub",
+      "title": "Confighub",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/ConfigHub",
+      "codeUrl": "https://github.com/choisimo/ConfigHub",
+      "featured": false
+    },
+    {
+      "id": "cosmos-weave",
+      "title": "Cosmos Weave",
+      "description": "Private repository technical summary and implementation overview. Architecture: Service-oriented layout (2 service directories); Container-orchestrated local environment.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture",
+        "Microservice"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/cosmos-weave",
+      "codeUrl": "https://github.com/choisimo/cosmos-weave",
+      "featured": false
+    },
+    {
+      "id": "cpp_loadbalancing_algorithm",
+      "title": "CPP Loadbalancing Algorithm",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/CPP_LoadBalancing_algorithm",
+      "codeUrl": "https://github.com/choisimo/CPP_LoadBalancing_algorithm",
+      "featured": false
+    },
+    {
+      "id": "crawler",
+      "title": "Crawler",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/Crawler",
+      "codeUrl": "https://github.com/choisimo/Crawler",
+      "featured": false
+    },
+    {
+      "id": "crawler_supporter",
+      "title": "Crawler Supporter",
+      "description": "Public repository technical summary and implementation overview. Architecture: Configuration/notes or sparse repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/Crawler_supporter",
+      "codeUrl": "https://github.com/choisimo/Crawler_supporter",
+      "featured": false
+    },
+    {
+      "id": "custom-blog",
+      "title": "Custom Blog",
+      "description": "Public repository technical summary and implementation overview. Architecture: Fullstack split (frontend/backend); JVM layered application structure; Container-orchestrated local environment.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture",
+        "Fullstack"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/custom-blog",
+      "codeUrl": "https://github.com/choisimo/custom-blog",
+      "featured": false
+    },
+    {
+      "id": "deep-dive",
+      "title": "Deep Dive",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/Deep-Dive",
+      "codeUrl": "https://github.com/choisimo/Deep-Dive",
+      "featured": false
+    },
+    {
+      "id": "dev-web-server",
+      "title": "Dev Web Server",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository. Transactions: Manual SQL transaction control (BEGIN/commit/rollback signals in 1 files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/dev-web-server",
+      "codeUrl": "https://github.com/choisimo/dev-web-server",
+      "featured": false
+    },
+    {
+      "id": "document",
+      "title": "Document",
+      "description": "Public repository technical summary and implementation overview. Architecture: CI/CD workflow automation present. Transactions: Spring declarative transactions via @Transactional (2 matching files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/document",
+      "codeUrl": "https://github.com/choisimo/document",
+      "featured": false
+    },
+    {
+      "id": "dotfiles",
+      "title": "Dotfiles",
+      "description": "Private repository technical summary and implementation overview. Architecture: Configuration/notes or sparse repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/dotfiles",
+      "codeUrl": "https://github.com/choisimo/dotfiles",
+      "featured": false
+    },
+    {
+      "id": "dothechi.com",
+      "title": "Dothechi.com",
+      "description": "Public repository technical summary and implementation overview. Architecture: JVM layered application structure. Transactions: Spring declarative transactions via @Transactional (8 matching files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/dothechi.com",
+      "codeUrl": "https://github.com/choisimo/dothechi.com",
+      "featured": false
+    },
+    {
+      "id": "dyp-describe-your-pages",
+      "title": "DYP Describe Your Pages",
+      "description": "Private repository technical summary and implementation overview. Architecture: Container-orchestrated local environment; CI/CD workflow automation present.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/DYP-Describe-Your-Pages",
+      "codeUrl": "https://github.com/choisimo/DYP-Describe-Your-Pages",
+      "featured": false
+    },
+    {
+      "id": "edu-connector",
+      "title": "Edu Connector",
+      "description": "Private repository technical summary and implementation overview. Architecture: JVM layered application structure. Transactions: Spring declarative transactions via @Transactional (15 matching files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/Edu-connector",
+      "codeUrl": "https://github.com/choisimo/Edu-connector",
+      "featured": false
+    },
+    {
+      "id": "env_variables_manager",
+      "title": "Env Variables Manager",
+      "description": "Public repository technical summary and implementation overview. Architecture: CI/CD workflow automation present.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/env_variables_manager",
+      "codeUrl": "https://github.com/choisimo/env_variables_manager",
+      "featured": false
+    },
+    {
+      "id": "examcollector",
+      "title": "Examcollector",
+      "description": "Public repository technical summary and implementation overview. Architecture: CI/CD workflow automation present. Transactions: Manual SQL transaction control (BEGIN/commit/rollback signals in 26 files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/ExamCollector",
+      "codeUrl": "https://github.com/choisimo/ExamCollector",
+      "featured": false
+    },
+    {
+      "id": "failure_coach_ai",
+      "title": "Failure Coach AI",
+      "description": "Public repository technical summary and implementation overview. Architecture: CI/CD workflow automation present.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/Failure_Coach_AI",
+      "codeUrl": "https://github.com/choisimo/Failure_Coach_AI",
+      "featured": false
+    },
+    {
+      "id": "filamai-backend",
+      "title": "Filamai Backend",
+      "description": "Private repository technical summary and implementation overview. Architecture: Container-orchestrated local environment; CI/CD workflow automation present. Transactions: Prisma transactional unit patterns via $transaction(...) (5 files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/filamai-backend",
+      "codeUrl": "https://github.com/choisimo/filamai-backend",
+      "featured": false
+    },
+    {
+      "id": "filamai-frontend",
+      "title": "Filamai Frontend",
+      "description": "Private repository technical summary and implementation overview. Architecture: JVM layered application structure.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/filamai-frontend",
+      "codeUrl": "https://github.com/choisimo/filamai-frontend",
+      "featured": false
+    },
+    {
+      "id": "filamai",
+      "title": "Filamai",
+      "description": "Private repository technical summary and implementation overview. Architecture: JVM layered application structure; Container-orchestrated local environment; CI/CD workflow automation present. Transactions: Prisma transactional unit patterns via $transaction(...) (3 files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/filamai",
+      "codeUrl": "https://github.com/choisimo/filamai",
+      "featured": false
+    },
+    {
+      "id": "fix_jb-project",
+      "title": "Fix Jb Project",
+      "description": "Private repository technical summary and implementation overview. Architecture: Fullstack split (frontend/backend); JVM layered application structure; CI/CD workflow automation present. Transactions: Spring declarative transactions via @Transactional (12 matching files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture",
+        "Fullstack"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/fix_jb-project",
+      "codeUrl": "https://github.com/choisimo/fix_jb-project",
+      "featured": false
+    },
+    {
+      "id": "game-repository",
+      "title": "Game Repository",
+      "description": "Public repository technical summary and implementation overview. Architecture: JVM layered application structure.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/Game-Repository",
+      "codeUrl": "https://github.com/choisimo/Game-Repository",
+      "featured": false
+    },
+    {
+      "id": "insight-reader",
+      "title": "Insight Reader",
+      "description": "Private repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/Insight-Reader",
+      "codeUrl": "https://github.com/choisimo/Insight-Reader",
+      "featured": false
+    },
+    {
+      "id": "intellij",
+      "title": "Intellij",
+      "description": "Private repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/intellij",
+      "codeUrl": "https://github.com/choisimo/intellij",
+      "featured": false
+    },
+    {
+      "id": "jb_team_3people-tigers",
+      "title": "JB Team 3people Tigers",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository. Transactions: Manual SQL transaction control (BEGIN/commit/rollback signals in 1 files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/JB_Team_3people-tigers",
+      "codeUrl": "https://github.com/choisimo/JB_Team_3people-tigers",
+      "featured": false
+    },
+    {
+      "id": "kb-moodfinancial_diary",
+      "title": "Kb Moodfinancial Diary",
+      "description": "Public repository technical summary and implementation overview. Architecture: JVM layered application structure; Container-orchestrated local environment; CI/CD workflow automation present. Transactions: Spring declarative transactions via @Transactional (6 matching files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/kb-MoodFinancial_Diary",
+      "codeUrl": "https://github.com/choisimo/kb-MoodFinancial_Diary",
+      "featured": false
+    },
+    {
+      "id": "kb_financial_concierge",
+      "title": "Kb Financial Concierge",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/kb_financial_concierge",
+      "codeUrl": "https://github.com/choisimo/kb_financial_concierge",
+      "featured": false
+    },
+    {
+      "id": "kotlin_webscrapper",
+      "title": "Kotlin Webscrapper",
+      "description": "Public repository technical summary and implementation overview. Architecture: JVM layered application structure.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/Kotlin_WebScrapper",
+      "codeUrl": "https://github.com/choisimo/Kotlin_WebScrapper",
+      "featured": false
+    },
+    {
+      "id": "magi-agent",
+      "title": "MAGI Agent",
+      "description": "Public repository technical summary and implementation overview. Architecture: Service-oriented layout (10 service directories); Container-orchestrated local environment. Transactions: ORM-managed commit/rollback usage (SQLAlchemy/session patterns, 8 files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture",
+        "Microservice"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/MAGI-Agent",
+      "codeUrl": "https://github.com/choisimo/MAGI-Agent",
+      "featured": false
+    },
+    {
+      "id": "mai-data",
+      "title": "MAI Data",
+      "description": "Private repository technical summary and implementation overview. Architecture: Configuration/notes or sparse repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/MAI-data",
+      "codeUrl": "https://github.com/choisimo/MAI-data",
+      "featured": false
+    },
+    {
+      "id": "media-lens-park",
+      "title": "Media Lens Park",
+      "description": "Private repository technical summary and implementation overview. Architecture: Configuration/notes or sparse repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/media-lens-park",
+      "codeUrl": "https://github.com/choisimo/media-lens-park",
+      "featured": false
+    },
+    {
+      "id": "n8n-workflows",
+      "title": "N8n Workflows",
+      "description": "Private repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/n8n-workflows",
+      "codeUrl": "https://github.com/choisimo/n8n-workflows",
+      "featured": false
+    },
+    {
+      "id": "newsinsight",
+      "title": "Newsinsight",
+      "description": "Public repository technical summary and implementation overview. Architecture: Fullstack split (frontend/backend); JVM layered application structure; CI/CD workflow automation present. Transactions: Spring declarative transactions via @Transactional (21 matching files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture",
+        "Fullstack"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/NewsInsight",
+      "codeUrl": "https://github.com/choisimo/NewsInsight",
+      "featured": false
+    },
+    {
+      "id": "nexus-stream",
+      "title": "Nexus Stream",
+      "description": "Public repository technical summary and implementation overview. Architecture: Container-orchestrated local environment.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/Nexus-Stream",
+      "codeUrl": "https://github.com/choisimo/Nexus-Stream",
+      "featured": false
+    },
+    {
+      "id": "nginx-admins-handbook",
+      "title": "Nginx Admins Handbook",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/nginx-admins-handbook",
+      "codeUrl": "https://github.com/choisimo/nginx-admins-handbook",
+      "featured": false
+    },
+    {
+      "id": "nginx-file-browser",
+      "title": "Nginx File Browser",
+      "description": "Public repository technical summary and implementation overview. Architecture: Container-orchestrated local environment.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/nginx-file-browser",
+      "codeUrl": "https://github.com/choisimo/nginx-file-browser",
+      "featured": false
+    },
+    {
+      "id": "nginx-settings",
+      "title": "Nginx Settings",
+      "description": "Private repository technical summary and implementation overview. Architecture: Configuration/notes or sparse repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/nginx-settings",
+      "codeUrl": "https://github.com/choisimo/nginx-settings",
+      "featured": false
+    },
+    {
+      "id": "nodove_careernote_project_chatserver",
+      "title": "Nodove Careernote Project Chatserver",
+      "description": "Private repository technical summary and implementation overview. Architecture: Fullstack split (frontend/backend); JVM layered application structure. Transactions: Spring declarative transactions via @Transactional (1 matching files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture",
+        "Fullstack"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/nodove_careernote_project_chatServer",
+      "codeUrl": "https://github.com/choisimo/nodove_careernote_project_chatServer",
+      "featured": false
+    },
+    {
+      "id": "nodove_careernote_project_react",
+      "title": "Nodove Careernote Project React",
+      "description": "Private repository technical summary and implementation overview. Architecture: Fullstack split (frontend/backend); JVM layered application structure; Container-orchestrated local environment; CI/CD workflow automation present. Transactions: Spring declarative transactions via @Transactional (7 matching files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture",
+        "Fullstack"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/nodove_careernote_project_react",
+      "codeUrl": "https://github.com/choisimo/nodove_careernote_project_react",
+      "featured": false
+    },
+    {
+      "id": "nodove_file_server",
+      "title": "Nodove File Server",
+      "description": "Private repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/Nodove_File_Server",
+      "codeUrl": "https://github.com/choisimo/Nodove_File_Server",
+      "featured": false
+    },
+    {
+      "id": "nodove_project",
+      "title": "Nodove Project",
+      "description": "Private repository technical summary and implementation overview. Architecture: Fullstack split (frontend/backend); JVM layered application structure. Transactions: Spring declarative transactions via @Transactional (2 matching files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture",
+        "Fullstack"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/nodove_project",
+      "codeUrl": "https://github.com/choisimo/nodove_project",
+      "featured": false
+    },
+    {
+      "id": "nodove_project_flutter",
+      "title": "Nodove Project Flutter",
+      "description": "Public repository technical summary and implementation overview. Architecture: Fullstack split (frontend/backend); JVM layered application structure.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture",
+        "Fullstack"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/nodove_project_flutter",
+      "codeUrl": "https://github.com/choisimo/nodove_project_flutter",
+      "featured": false
+    },
+    {
+      "id": "nodove_web",
+      "title": "Nodove Web",
+      "description": "Private repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/nodove_web",
+      "codeUrl": "https://github.com/choisimo/nodove_web",
+      "featured": false
+    },
+    {
+      "id": "nodove_workspace",
+      "title": "Nodove Workspace",
+      "description": "Private repository technical summary and implementation overview. Architecture: Configuration/notes or sparse repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/nodove_workspace",
+      "codeUrl": "https://github.com/choisimo/nodove_workspace",
+      "featured": false
+    },
+    {
+      "id": "note",
+      "title": "Note",
+      "description": "Private repository technical summary and implementation overview. Architecture: JVM layered application structure.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/note",
+      "codeUrl": "https://github.com/choisimo/note",
+      "featured": false
+    },
+    {
+      "id": "objectdetectionapp",
+      "title": "Objectdetectionapp",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/ObjectDetectionApp",
+      "codeUrl": "https://github.com/choisimo/ObjectDetectionApp",
+      "featured": false
+    },
+    {
+      "id": "portal-ai-terminal",
+      "title": "Portal Ai Terminal",
+      "description": "Private repository technical summary and implementation overview. Architecture: Container-orchestrated local environment.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/portal-ai-terminal",
+      "codeUrl": "https://github.com/choisimo/portal-ai-terminal",
+      "featured": false
+    },
+    {
+      "id": "post-manager",
+      "title": "Post Manager",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository. Transactions: Manual SQL transaction control (BEGIN/commit/rollback signals in 1 files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/post-manager",
+      "codeUrl": "https://github.com/choisimo/post-manager",
+      "featured": false
+    },
+    {
+      "id": "program_updater",
+      "title": "Program Updater",
+      "description": "Public repository technical summary and implementation overview. Architecture: Container-orchestrated local environment.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/Program_Updater",
+      "codeUrl": "https://github.com/choisimo/Program_Updater",
+      "featured": false
+    },
+    {
+      "id": "remote-manager",
+      "title": "Remote Manager",
+      "description": "Private repository technical summary and implementation overview. Architecture: CI/CD workflow automation present.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/remote-manager",
+      "codeUrl": "https://github.com/choisimo/remote-manager",
+      "featured": false
+    },
+    {
+      "id": "saemangeum-insight-board",
+      "title": "Saemangeum Insight Board",
+      "description": "Public repository technical summary and implementation overview. Architecture: CI/CD workflow automation present.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/saemangeum-insight-board",
+      "codeUrl": "https://github.com/choisimo/saemangeum-insight-board",
+      "featured": false
+    },
+    {
+      "id": "se_pair_programming",
+      "title": "SE Pair Programming",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/SE_Pair_Programming",
+      "codeUrl": "https://github.com/choisimo/SE_Pair_Programming",
+      "featured": false
+    },
+    {
+      "id": "se_team_j",
+      "title": "SE Team J",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/SE_Team_J",
+      "codeUrl": "https://github.com/choisimo/SE_Team_J",
+      "featured": false
+    },
+    {
+      "id": "sftp_file_tracker",
+      "title": "Sftp File Tracker",
+      "description": "Public repository technical summary and implementation overview. Architecture: Container-orchestrated local environment.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/sftp_file_tracker",
+      "codeUrl": "https://github.com/choisimo/sftp_file_tracker",
+      "featured": false
+    },
+    {
+      "id": "shopping_web",
+      "title": "Shopping Web",
+      "description": "Public repository technical summary and implementation overview. Architecture: JVM layered application structure; CI/CD workflow automation present.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/shopping_web",
+      "codeUrl": "https://github.com/choisimo/shopping_web",
+      "featured": false
+    },
+    {
+      "id": "sikyakchu",
+      "title": "Sikyakchu",
+      "description": "Private repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/Sikyakchu",
+      "codeUrl": "https://github.com/choisimo/Sikyakchu",
+      "featured": false
+    },
+    {
+      "id": "slidecraft-ai",
+      "title": "Slidecraft Ai",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository. Transactions: Manual SQL transaction control (BEGIN/commit/rollback signals in 3 files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/SlideCraft-ai",
+      "codeUrl": "https://github.com/choisimo/SlideCraft-ai",
+      "featured": false
+    },
+    {
+      "id": "springboot_jpa_test",
+      "title": "Springboot JPA Test",
+      "description": "Private repository technical summary and implementation overview. Architecture: JVM layered application structure.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/SpringBoot_JPA_test",
+      "codeUrl": "https://github.com/choisimo/SpringBoot_JPA_test",
+      "featured": false
+    },
+    {
+      "id": "springsecurityreactauthorization",
+      "title": "Springsecurityreactauthorization",
+      "description": "Public repository technical summary and implementation overview. Architecture: Fullstack split (frontend/backend); JVM layered application structure.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture",
+        "Fullstack"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/SpringSecurityReactAuthorization",
+      "codeUrl": "https://github.com/choisimo/SpringSecurityReactAuthorization",
+      "featured": false
+    },
+    {
+      "id": "system-design-primer",
+      "title": "System Design Primer",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/system-design-primer",
+      "codeUrl": "https://github.com/choisimo/system-design-primer",
+      "featured": false
+    },
+    {
+      "id": "system-prompts-and-models-of-ai-tools",
+      "title": "System Prompts And Models Of Ai Tools",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository. Transactions: Manual SQL transaction control (BEGIN/commit/rollback signals in 3 files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/system-prompts-and-models-of-ai-tools",
+      "codeUrl": "https://github.com/choisimo/system-prompts-and-models-of-ai-tools",
+      "featured": false
+    },
+    {
+      "id": "tone-ai-devops",
+      "title": "Tone AI Devops",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository. Transactions: Manual SQL transaction control (BEGIN/commit/rollback signals in 1 files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/Tone-AI-Devops",
+      "codeUrl": "https://github.com/choisimo/Tone-AI-Devops",
+      "featured": false
+    },
+    {
+      "id": "toyprojects",
+      "title": "Toyprojects",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/ToyProjects",
+      "codeUrl": "https://github.com/choisimo/ToyProjects",
+      "featured": false
+    },
+    {
+      "id": "ubuntu_socket_programming",
+      "title": "Ubuntu Socket Programming",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/ubuntu_socket_programming",
+      "codeUrl": "https://github.com/choisimo/ubuntu_socket_programming",
+      "featured": false
+    },
+    {
+      "id": "unity",
+      "title": "Unity",
+      "description": "Private repository technical summary and implementation overview. Architecture: Configuration/notes or sparse repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/unity",
+      "codeUrl": "https://github.com/choisimo/unity",
+      "featured": false
+    },
+    {
+      "id": "unity_project_2405",
+      "title": "Unity Project 2405",
+      "description": "Public repository technical summary and implementation overview. Architecture: Single-application or utility-style repository. Transactions: Manual SQL transaction control (BEGIN/commit/rollback signals in 3 files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/unity_project_2405",
+      "codeUrl": "https://github.com/choisimo/unity_project_2405",
+      "featured": false
+    },
+    {
+      "id": "v0-python-exam-guide-app",
+      "title": "V0 Python Exam Guide App",
+      "description": "Private repository technical summary and implementation overview. Architecture: Configuration/notes or sparse repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/v0-python-exam-guide-app",
+      "codeUrl": "https://github.com/choisimo/v0-python-exam-guide-app",
+      "featured": false
+    },
+    {
+      "id": "weatherapp",
+      "title": "Weatherapp",
+      "description": "Public repository technical summary and implementation overview. Architecture: Configuration/notes or sparse repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/WeatherApp",
+      "codeUrl": "https://github.com/choisimo/WeatherApp",
+      "featured": false
+    },
+    {
+      "id": "wsd-assignment-03",
+      "title": "WSD Assignment 03",
+      "description": "Public repository technical summary and implementation overview. Architecture: JVM layered application structure. Transactions: Spring declarative transactions via @Transactional (13 matching files).",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/WSD-Assignment-03",
+      "codeUrl": "https://github.com/choisimo/WSD-Assignment-03",
+      "featured": false
+    },
+    {
+      "id": "wsd-movie",
+      "title": "WSD Movie",
+      "description": "Public repository technical summary and implementation overview. Architecture: CI/CD workflow automation present.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/WSD-movie",
+      "codeUrl": "https://github.com/choisimo/WSD-movie",
+      "featured": false
+    },
+    {
+      "id": "xiaoxin_pad_2024_settings",
+      "title": "Xiaoxin Pad 2024 Settings",
+      "description": "Public repository technical summary and implementation overview. Architecture: Configuration/notes or sparse repository.",
+      "date": "2026-02-19",
+      "category": "Project",
+      "tags": [
+        "Repository",
+        "Architecture"
+      ],
+      "stack": [
+        "GitHub"
+      ],
+      "status": "Live",
+      "type": "link",
+      "url": "https://github.com/choisimo/Xiaoxin_pad_2024_settings",
+      "codeUrl": "https://github.com/choisimo/Xiaoxin_pad_2024_settings",
+      "featured": false
+    }
+  ],
+  "generatedAt": "2026-02-19T07:24:15.620Z",
   "format": 1
 }

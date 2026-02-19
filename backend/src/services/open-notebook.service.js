@@ -128,6 +128,28 @@ export async function createNotebook(name, description = '') {
   return result;
 }
 
+export async function createNote(content, options = {}) {
+  const { title = null, notebookId = null, noteType = 'human' } = options;
+
+  const body = {
+    content,
+    note_type: noteType,
+  };
+
+  if (title) {
+    body.title = title;
+  }
+
+  if (notebookId) {
+    body.notebook_id = notebookId;
+  }
+
+  return fetchOpenNotebook('/api/notes', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
 export async function addSource(notebookId, source) {
   const { type, content, url, title } = source;
 
@@ -172,6 +194,7 @@ export default {
   ask: askOpenNotebook,
   listNotebooks,
   createNotebook,
+  createNote,
   addSource,
   healthCheck,
   isEnabled: isOpenNotebookEnabled,

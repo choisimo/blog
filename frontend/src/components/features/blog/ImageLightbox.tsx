@@ -234,7 +234,7 @@ export function ClickableImage({ src, alt, className, isTerminal, postPath }: Cl
 
   return (
     <>
-      <figure className="my-8 text-center">
+      <span className="my-8 text-center block">
         <button
           type="button"
           onClick={() => setLightboxOpen(true)}
@@ -273,16 +273,16 @@ export function ClickableImage({ src, alt, className, isTerminal, postPath }: Cl
           </div>
         </button>
         {alt && (
-          <figcaption
+          <span
             className={cn(
               'text-sm text-muted-foreground mt-2 italic',
               isTerminal && 'font-mono not-italic'
             )}
           >
             {isTerminal ? `// ${alt}` : alt}
-          </figcaption>
+          </span>
         )}
-      </figure>
+      </span>
 
       {/* Lightbox uses ORIGINAL full-size image */}
       <ImageLightbox
