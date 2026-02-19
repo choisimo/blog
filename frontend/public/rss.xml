@@ -5,8 +5,152 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Wed, 18 Feb 2026 21:31:58 GMT</lastBuildDate>
+    <lastBuildDate>Thu, 19 Feb 2026 06:51:54 GMT</lastBuildDate>
     <language>en-US</language>
+    <item>
+      <title>[Arena 상세] Gemini_3.0_pro_high_reasoning 분석</title>
+      <description>Gemini_3.0_pro_high_reasoning 구현의 구조, 코드 포인트, 장단점과 Arena 내 비교 결과를 정리한 상세 페이지</description>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gemini-3-0-pro-high-reasoning</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gemini-3-0-pro-high-reasoning</guid>
+      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
+      <category>AI Engineering</category>
+      <category>Gemini_3.0</category>
+      <category>AI Gateway</category>
+      <category>MVC</category>
+      <category>Prototype</category>
+      <category>Arena</category>
+    </item>
+    <item>
+      <title>[Arena 상세] GLM-5 분석</title>
+      <description>GLM-5의 DDD 구조, 세션 영속성, MCP/Vector 확장과 Arena 내 평가를 상세 정리</description>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-glm-5</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-glm-5</guid>
+      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
+      <category>AI Engineering</category>
+      <category>GLM-5</category>
+      <category>DDD</category>
+      <category>MCP</category>
+      <category>Session</category>
+      <category>Structured Logging</category>
+    </item>
+    <item>
+      <title>[Arena 상세] GPT-5.2_High_Reasoning 분석</title>
+      <description>GPT-5.2_High_Reasoning 구현의 보안/인증 중심 설계와 Arena 비교 결과를 분석</description>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gpt-5-2-high-reasoning</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gpt-5-2-high-reasoning</guid>
+      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
+      <category>AI Engineering</category>
+      <category>GPT-5.2</category>
+      <category>API Key</category>
+      <category>Device Code OAuth</category>
+      <category>Security</category>
+      <category>Gateway</category>
+    </item>
+    <item>
+      <title>[Arena 상세] GPT-5.3-codex-x-high 분석</title>
+      <description>GPT-5.3-codex-x-high의 AppContainer DI, Topology 검증, 확장 계층 설계를 상세 분석</description>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gpt-5-3-codex-x-high</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gpt-5-3-codex-x-high</guid>
+      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
+      <category>AI Engineering</category>
+      <category>GPT-5.3</category>
+      <category>DI Container</category>
+      <category>Topology</category>
+      <category>Agent Skills</category>
+      <category>MCP</category>
+    </item>
+    <item>
+      <title>[Arena 상세] Grok_Fast_1 분석</title>
+      <description>Grok_Fast_1의 광범위 provider 지원과 기능 집중형 구조를 Arena 관점에서 분석</description>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-grok-fast-1</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-grok-fast-1</guid>
+      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
+      <category>AI Engineering</category>
+      <category>Grok_Fast_1</category>
+      <category>Multi Provider</category>
+      <category>Session</category>
+      <category>Vector DB</category>
+      <category>Flat MVC</category>
+    </item>
+    <item>
+      <title>[Arena 상세] Kimi_2.5 분석</title>
+      <description>Kimi_2.5의 YAML 중심 구성과 ImportError 기반 optional extension 패턴을 중심으로 분석</description>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-kimi-2-5</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-kimi-2-5</guid>
+      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
+      <category>AI Engineering</category>
+      <category>Kimi_2.5</category>
+      <category>YAML Config</category>
+      <category>Optional Extension</category>
+      <category>MVC</category>
+      <category>Gateway</category>
+    </item>
+    <item>
+      <title>[Arena 상세] MiniMax2.5 분석</title>
+      <description>MiniMax2.5 구현의 src 구조, 경량성, 전역 상태 리스크를 중심으로 Arena 결과를 분석</description>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-minimax-2-5</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-minimax-2-5</guid>
+      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
+      <category>AI Engineering</category>
+      <category>MiniMax2.5</category>
+      <category>src layout</category>
+      <category>Global State</category>
+      <category>Prototype</category>
+      <category>Gateway</category>
+    </item>
+    <item>
+      <title>[Arena 상세] Opus4.6 분석</title>
+      <description>Opus4.6의 미들웨어 중심 운영 아키텍처와 production-ready 특성을 상세 분석</description>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-opus-4-6</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-opus-4-6</guid>
+      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
+      <category>AI Engineering</category>
+      <category>Opus4.6</category>
+      <category>Middleware</category>
+      <category>Rate Limit</category>
+      <category>Auth</category>
+      <category>Production Ready</category>
+    </item>
+    <item>
+      <title>AI Agent Arena 2026: 10개 AI Provider Server 종합 분석</title>
+      <description>AI_Agent_Arena 결과 보고서를 기반으로 10개 AI Provider Server의 아키텍처, 코드 품질, 운영 적합성을 비교 분석하고 모델별 상세 페이지로 네비게이션할 수 있도록 정리한 메인 리포트</description>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-overview-and-comparison</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-overview-and-comparison</guid>
+      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
+      <category>AI Engineering</category>
+      <category>AI Agent Arena</category>
+      <category>LLM Gateway</category>
+      <category>FastAPI</category>
+      <category>Architecture</category>
+      <category>MCP</category>
+      <category>Comparative Analysis</category>
+    </item>
+    <item>
+      <title>[Arena 상세] sonnet_4.6 분석</title>
+      <description>sonnet_4.6의 Provider Chain 기반 폴백 설계와 Arena 최상위권 성능을 코드 관점에서 분석</description>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-sonnet-4-6</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-sonnet-4-6</guid>
+      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
+      <category>AI Engineering</category>
+      <category>sonnet_4.6</category>
+      <category>Provider Chain</category>
+      <category>Failover</category>
+      <category>Topology</category>
+      <category>Gateway</category>
+    </item>
+    <item>
+      <title>[Arena 상세] SWE_1.5 분석</title>
+      <description>SWE_1.5의 엔터프라이즈 지향 요소(PostgreSQL, Prometheus, retry)와 현재 구현 간극을 함께 분석</description>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-swe-1-5</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-swe-1-5</guid>
+      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
+      <category>AI Engineering</category>
+      <category>SWE_1.5</category>
+      <category>PostgreSQL</category>
+      <category>Prometheus</category>
+      <category>Retry</category>
+      <category>Enterprise</category>
+    </item>
     <item>
       <title>Container Network Interface</title>
       <description>Networking without NAT, the CNI&apos;s role in remote container networking, and more.</description>
@@ -120,154 +264,6 @@
       <category>DevOps</category>
       <category>개발 철학</category>
       <category>생산성</category>
-    </item>
-    <item>
-      <title>모든 것은 파일이다</title>
-      <description>cat | grep 이라는 단순한 명령어 뒤에 숨겨진 커널의 정교한 메커니즘. 모든 것을 파일로 추상화한 유닉스 철학의 고마움</description>
-      <link>https://noblog.nodove.com/blog/2026/io-redirection-pipeline</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/io-redirection-pipeline</guid>
-      <pubDate>Fri, 02 Jan 2026 00:00:00 GMT</pubDate>
-      <category>Tech &amp; Philosophy</category>
-      <category>시스템 프로그래밍</category>
-      <category>리눅스</category>
-      <category>커널</category>
-      <category>파이프</category>
-      <category>I/O</category>
-      <category>아키텍처</category>
-    </item>
-    <item>
-      <title>무속, 사이비 : 자유의 환상과 개인화의 비극</title>
-      <description>극단적 개인화가 낳은 소외, 그리고 사이비 집단이라는 달콤한 도피처. 우리는 왜 자유를 두려워하는가.</description>
-      <link>https://noblog.nodove.com/blog/2026/current-crowd</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/current-crowd</guid>
-      <pubDate>Thu, 01 Jan 2026 00:00:00 GMT</pubDate>
-      <category>Tech &amp; Philosophy</category>
-      <category>디지털 휴머니즘</category>
-      <category>쾌락 중독</category>
-      <category>최적화의 비극</category>
-      <category>인간 소외</category>
-      <category>기술 철학</category>
-      <category>문제 정의</category>
-    </item>
-    <item>
-      <title>감동을 잃어버린 그대들에게</title>
-      <description>효율성이라는 알고리즘에 갇혀, 비효율적인 낭만을 잃어버린 우리 시대에 대한 회고.</description>
-      <link>https://noblog.nodove.com/blog/2025/감동을_잃어버린_그대들에게</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/감동을_잃어버린_그대들에게</guid>
-      <pubDate>Mon, 29 Dec 2025 00:00:00 GMT</pubDate>
-      <category>Tech &amp; Philosophy</category>
-      <category>디지털 휴머니즘</category>
-      <category>쾌락 중독</category>
-      <category>최적화의 비극</category>
-      <category>인간 소외</category>
-      <category>기술 철학</category>
-      <category>문제 정의</category>
-    </item>
-    <item>
-      <title>Proxmox 네트워크 추가하기</title>
-      <description>Proxmox 네트워크 추가하기</description>
-      <link>https://noblog.nodove.com/blog/2026/proxmox-network-add</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/proxmox-network-add</guid>
-      <pubDate>Sun, 28 Dec 2025 00:00:00 GMT</pubDate>
-      <category>네트워크,proxmox,lxc</category>
-      <category>vmbr</category>
-      <category>vmbr_local</category>
-      <category>proxmox</category>
-      <category>vmbr0</category>
-      <category>vmbr1</category>
-      <category>bridge</category>
-      <category>STP</category>
-      <category>VLAN</category>
-      <category>VLAN aware</category>
-    </item>
-    <item>
-      <title>쿠버네티스 기본 구조</title>
-      <description>전통적 배포 방식부터 쿠버네티스 에코시스템까지, 개념을 정리하는 글</description>
-      <link>https://noblog.nodove.com/blog/2025/k8s-overview</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/k8s-overview</guid>
-      <pubDate>Tue, 02 Dec 2025 00:00:00 GMT</pubDate>
-      <category>Kubernetes</category>
-      <category>Kubernetes</category>
-      <category>DevOps</category>
-      <category>Cloud Native</category>
-      <category>컨테이너 오케스트레이션</category>
-    </item>
-    <item>
-      <title>우리는 DNA의 꼭두각시인가: 이성의 붕괴와 야성적 충동의 역설에 대한 생각</title>
-      <description>애덤 스미스의 이성적 인간관에 대한 반박부터 케인스와 민스키의 야성적 충동, 그리고 진화심리학적 관점까지. 인간 본성의 모순에 대한 생각</description>
-      <link>https://noblog.nodove.com/blog/2025/AnimalsMind</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/AnimalsMind</guid>
-      <pubDate>Mon, 01 Dec 2025 00:00:00 GMT</pubDate>
-      <category>Essays</category>
-      <category>Philosophy</category>
-      <category>Economics</category>
-      <category>Psychology</category>
-      <category>Minsky</category>
-      <category>Evolution</category>
-    </item>
-    <item>
-      <title>알고리즘의 역발상 관점</title>
-      <description>피보나치 수열, 행렬 곱셈, 그리디 알고리즘, 문자열 검색, P vs NP까지 — 컴퓨터 과학의 고전 알고리즘을 역발상 관점으로 정리</description>
-      <link>https://noblog.nodove.com/blog/2025/algorithm_solv</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/algorithm_solv</guid>
-      <pubDate>Sat, 29 Nov 2025 00:00:00 GMT</pubDate>
-      <category>Computer Science</category>
-      <category>알고리즘</category>
-      <category>동적 프로그래밍</category>
-      <category>그리디</category>
-      <category>문자열 알고리즘</category>
-      <category>P vs NP</category>
-    </item>
-    <item>
-      <title>Kafka와 LLM 서버 사이에 버퍼 존을 둔 AI 서버 설계기</title>
-      <description>Kafka와 LLM 서버 사이에 작은 버퍼 존을 두고 Gateway와 Buffer Worker를 나누어 설계한 이유, 그리고 이를 Kafka 토픽·메시지 스키마·docker-compose로 구체화해 가는 과정을 정리했다</description>
-      <link>https://noblog.nodove.com/blog/2025/AI-api-server-temporary-dev</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/AI-api-server-temporary-dev</guid>
-      <pubDate>Thu, 20 Nov 2025 00:00:00 GMT</pubDate>
-      <category>Backend</category>
-      <category>Kafka</category>
-      <category>LLM</category>
-      <category>RAG</category>
-      <category>Gateway</category>
-      <category>백엔드아키텍처</category>
-    </item>
-    <item>
-      <title>네트워크 병목과 NAT 게이트웨이의 한계: 한 CS 학생의 속마음</title>
-      <description>프라이빗 서브넷과 퍼블릭 서브넷, NAT Gateway와 IGW가 등장하는 전형적인 VPC 그림을 보던 수업 시간. 모두가 보안을 이야기할 때, 내 눈에는 그 구조가 거대한 깔때기 실험처럼 보였다. 이 글은 그 순간 머릿속에서 떠오른 병목에 대한 질문과 직관을 그대로 옮긴 기록이다.</description>
-      <link>https://noblog.nodove.com/blog/2025/nat-gateway-bottleneck-journal</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/nat-gateway-bottleneck-journal</guid>
-      <pubDate>Wed, 19 Nov 2025 00:00:00 GMT</pubDate>
-      <category>Network</category>
-      <category>NAT</category>
-      <category>클라우드네트워크</category>
-      <category>VPC</category>
-      <category>프라이빗서브넷</category>
-      <category>병목</category>
-    </item>
-    <item>
-      <title>제가 뇌를 리셋하게 만든 미래 기술 문서에서 발견한 6가지 깨달음</title>
-      <description>미래 기술 문서들 속에서 발견한 6가지 통찰과 인간 역할의 재정의를 공유합니다.</description>
-      <link>https://noblog.nodove.com/blog/2025/future-tech-six-insights</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/future-tech-six-insights</guid>
-      <pubDate>Tue, 04 Nov 2025 00:00:00 GMT</pubDate>
-      <category>Tech Essay</category>
-      <category>AI</category>
-      <category>DevOps</category>
-      <category>Future</category>
-      <category>Infrastructure</category>
-      <category>Self-Evolving Systems</category>
-    </item>
-    <item>
-      <title>정렬 알고리즘 수도 코드 완전 해부: 라인별 분석</title>
-      <description>버블 정렬부터 힙 정렬까지, 핵심 수도 코드를 한 줄씩 뜯어보며 왜 그런 로직이 필요한지 한국어로 상세하게 분석합니다.</description>
-      <link>https://noblog.nodove.com/blog/2025/sorting-algorithms-pseudocode-analysis</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2025/sorting-algorithms-pseudocode-analysis</guid>
-      <pubDate>Sun, 02 Nov 2025 00:00:00 GMT</pubDate>
-      <category>알고리즘</category>
-      <category>정렬</category>
-      <category>알고리즘</category>
-      <category>수도코드</category>
-      <category>학습노트</category>
     </item>
   </channel>
 </rss>

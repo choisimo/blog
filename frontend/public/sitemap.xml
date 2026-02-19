@@ -2,27 +2,93 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://noblog.nodove.com</loc>
-    <lastmod>2026-02-18T21:31:58.326Z</lastmod>
+    <lastmod>2026-02-19T06:51:54.736Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1</priority>
   </url>
   <url>
     <loc>https://noblog.nodove.com/blog</loc>
-    <lastmod>2026-02-18T21:31:58.326Z</lastmod>
+    <lastmod>2026-02-19T06:51:54.736Z</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://noblog.nodove.com/projects</loc>
-    <lastmod>2026-02-18T21:31:58.326Z</lastmod>
+    <lastmod>2026-02-19T06:51:54.736Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://noblog.nodove.com/about</loc>
-    <lastmod>2026-02-18T21:31:58.326Z</lastmod>
+    <lastmod>2026-02-19T06:51:54.736Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gemini-3-0-pro-high-reasoning</loc>
+    <lastmod>2026-02-19T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-glm-5</loc>
+    <lastmod>2026-02-19T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gpt-5-2-high-reasoning</loc>
+    <lastmod>2026-02-19T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gpt-5-3-codex-x-high</loc>
+    <lastmod>2026-02-19T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-grok-fast-1</loc>
+    <lastmod>2026-02-19T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-kimi-2-5</loc>
+    <lastmod>2026-02-19T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-minimax-2-5</loc>
+    <lastmod>2026-02-19T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-opus-4-6</loc>
+    <lastmod>2026-02-19T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-overview-and-comparison</loc>
+    <lastmod>2026-02-19T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-sonnet-4-6</loc>
+    <lastmod>2026-02-19T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-swe-1-5</loc>
+    <lastmod>2026-02-19T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
   </url>
   <url>
     <loc>https://noblog.nodove.com/blog/2026/Container Network Interface</loc>
