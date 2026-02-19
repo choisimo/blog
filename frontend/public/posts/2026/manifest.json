@@ -2,6 +2,17 @@
   "files": [
     "Algorithm.md",
     "Container Network Interface.md",
+    "ai-agent-arena-2026-gemini-3-0-pro-high-reasoning.md",
+    "ai-agent-arena-2026-glm-5.md",
+    "ai-agent-arena-2026-gpt-5-2-high-reasoning.md",
+    "ai-agent-arena-2026-gpt-5-3-codex-x-high.md",
+    "ai-agent-arena-2026-grok-fast-1.md",
+    "ai-agent-arena-2026-kimi-2-5.md",
+    "ai-agent-arena-2026-minimax-2-5.md",
+    "ai-agent-arena-2026-opus-4-6.md",
+    "ai-agent-arena-2026-overview-and-comparison.md",
+    "ai-agent-arena-2026-sonnet-4-6.md",
+    "ai-agent-arena-2026-swe-1-5.md",
     "current-crowd.md",
     "io-redirection-pipeline.md",
     "nobel1-kursk-tanks.md",
@@ -13,7 +24,7 @@
     "understanding-ssm-and-mamba.md",
     "vim-architecture-functionality-commands-integration.md"
   ],
-  "generatedAt": "2026-02-18T21:31:58.065Z",
-  "totalFiles": 12,
+  "generatedAt": "2026-02-19T06:45:00.000Z",
+  "totalFiles": 23,
   "excludedFiles": 0
 }
