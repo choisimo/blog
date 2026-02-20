@@ -1,11 +1,11 @@
 ---
 id: kb-moodfinancial_diary
-title: "Kb Moodfinancial Diary"
-description: "Public repository technical summary and implementation overview. Architecture: JVM layered application structure; Container-orchestrated local environment; CI/CD workflow automation present. Transactions: Spring declarative transactions via @Transactional (6 matching files)."
+title: "KB MoodFinancial Diary"
+description: "KB 금융 연동 감정-재정 다이어리 앱. JVM 레이어드 구조, Docker, CI/CD, Spring @Transactional 6개 파일 적용된 금융 서비스."
 date: 2026-02-19
-category: "Project"
-tags: ["Repository", "Architecture"]
-stack: ["GitHub"]
+category: "Fullstack"
+tags: ["Fintech", "Spring Boot", "Docker", "CI/CD"]
+stack: ["Java", "Spring Boot", "Docker", "MySQL"]
 status: "Live"
 type: "link"
 url: "https://github.com/choisimo/kb-MoodFinancial_Diary"
@@ -14,12 +14,6 @@ featured: false
 published: true
 ---
 
-# Kb Moodfinancial Diary
+# KB MoodFinancial Diary
 
-- Repository: `choisimo/kb-MoodFinancial_Diary`
-- GitHub: https://github.com/choisimo/kb-MoodFinancial_Diary
-- Visibility: Public
-- Architecture summary: JVM layered application structure; Container-orchestrated local environment; CI/CD workflow automation present
-- Transaction summary: Spring declarative transactions via @Transactional (6 matching files)
-
-This project entry was generated from the repository scan and links directly to GitHub.
+KB 금융 API 연동 감정-재정 다이어리 서비스. Spring Boot JVM 레이어드 백엔드, Docker, CI/CD 자동화로 구성된 핀테크 애플리케이션.

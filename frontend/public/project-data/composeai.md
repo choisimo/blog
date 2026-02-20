@@ -1,11 +1,11 @@
 ---
 id: composeai
-title: "Composeai"
-description: "Private repository technical summary and implementation overview. Architecture: Fullstack split (frontend/backend); Container-orchestrated local environment. Transactions: ORM-managed commit/rollback usage (SQLAlchemy/session patterns, 1 files)."
+title: "ComposeAI"
+description: "AI 기반 컴포즈 서비스. 풀스택 아키텍처, Docker 컨테이너 오케스트레이션, SQLAlchemy ORM 트랜잭션 적용."
 date: 2026-02-19
-category: "Project"
-tags: ["Repository", "Architecture", "Fullstack"]
-stack: ["GitHub"]
+category: "AI"
+tags: ["AI", "Fullstack", "Docker", "Python"]
+stack: ["Python", "SQLAlchemy", "Docker", "FastAPI"]
 status: "Live"
 type: "link"
 url: "https://github.com/choisimo/composeAI"
@@ -14,12 +14,6 @@ featured: false
 published: true
 ---
 
-# Composeai
+# ComposeAI
 
-- Repository: `choisimo/composeAI`
-- GitHub: https://github.com/choisimo/composeAI
-- Visibility: Private
-- Architecture summary: Fullstack split (frontend/backend); Container-orchestrated local environment
-- Transaction summary: ORM-managed commit/rollback usage (SQLAlchemy/session patterns, 1 files)
-
-This project entry was generated from the repository scan and links directly to GitHub.
+AI 기반 컴포즈 서비스. Python FastAPI + SQLAlchemy ORM, Docker 컨테이너 오케스트레이션이 적용된 풀스택 AI 플랫폼.

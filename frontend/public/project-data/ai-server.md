@@ -1,11 +1,11 @@
 ---
 id: ai-server
 title: "AI Server"
-description: "Private repository technical summary and implementation overview. Architecture: Container-orchestrated local environment; CI/CD workflow automation present. Transactions: ORM-managed commit/rollback usage (SQLAlchemy/session patterns, 1 files)."
+description: "프라이빗 AI 서버. Docker 컨테이너 오케스트레이션, CI/CD 자동화, SQLAlchemy ORM 트랜잭션 적용된 AI 백엔드 서비스."
 date: 2026-02-19
-category: "Project"
-tags: ["Repository", "Architecture"]
-stack: ["GitHub"]
+category: "AI"
+tags: ["AI", "Docker", "CI/CD", "Python"]
+stack: ["Python", "SQLAlchemy", "Docker"]
 status: "Live"
 type: "link"
 url: "https://github.com/choisimo/AI-server"
@@ -16,10 +16,4 @@ published: true
 
 # AI Server
 
-- Repository: `choisimo/AI-server`
-- GitHub: https://github.com/choisimo/AI-server
-- Visibility: Private
-- Architecture summary: Container-orchestrated local environment; CI/CD workflow automation present
-- Transaction summary: ORM-managed commit/rollback usage (SQLAlchemy/session patterns, 1 files)
-
-This project entry was generated from the repository scan and links directly to GitHub.
+프라이빗 AI 백엔드 서버. Python + SQLAlchemy ORM, Docker 컨테이너 환경, CI/CD 자동화로 구성된 AI 서비스 인프라.

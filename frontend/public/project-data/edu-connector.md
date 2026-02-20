@@ -1,11 +1,11 @@
 ---
 id: edu-connector
 title: "Edu Connector"
-description: "Private repository technical summary and implementation overview. Architecture: JVM layered application structure. Transactions: Spring declarative transactions via @Transactional (15 matching files)."
+description: "교육 연결 플랫폼. JVM 레이어드 아키텍처, Spring @Transactional 15개 파일 적용된 교육 관리 시스템."
 date: 2026-02-19
-category: "Project"
-tags: ["Repository", "Architecture"]
-stack: ["GitHub"]
+category: "Backend"
+tags: ["Spring Boot", "Education"]
+stack: ["Java", "Spring Boot", "MySQL"]
 status: "Live"
 type: "link"
 url: "https://github.com/choisimo/Edu-connector"
@@ -16,10 +16,4 @@ published: true
 
 # Edu Connector
 
-- Repository: `choisimo/Edu-connector`
-- GitHub: https://github.com/choisimo/Edu-connector
-- Visibility: Private
-- Architecture summary: JVM layered application structure
-- Transaction summary: Spring declarative transactions via @Transactional (15 matching files)
-
-This project entry was generated from the repository scan and links directly to GitHub.
+교육 플랫폼 연결 서비스 백엔드. JVM 레이어드 아키텍처, Spring @Transactional 15개 파일이 적용된 교육 관리 시스템.

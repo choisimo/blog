@@ -1,11 +1,11 @@
 ---
 id: agentpromptsforprojects
-title: "Agentpromptsforprojects"
-description: "Private repository technical summary and implementation overview. Architecture: CI/CD workflow automation present. Transactions: Manual SQL transaction control (BEGIN/commit/rollback signals in 1 files)."
+title: "Agent Prompts For Projects"
+description: "AI 에이전트 프롬프트 엔지니어링 컬렉션. CI/CD 자동화, SQL 트랜잭션 패턴 포함."
 date: 2026-02-19
-category: "Project"
-tags: ["Repository", "Architecture"]
-stack: ["GitHub"]
+category: "AI"
+tags: ["AI", "Prompt Engineering", "CI/CD"]
+stack: ["Markdown", "CI/CD"]
 status: "Live"
 type: "link"
 url: "https://github.com/choisimo/AgentPromptsForProjects"
@@ -14,12 +14,6 @@ featured: false
 published: true
 ---
 
-# Agentpromptsforprojects
+# Agent Prompts For Projects
 
-- Repository: `choisimo/AgentPromptsForProjects`
-- GitHub: https://github.com/choisimo/AgentPromptsForProjects
-- Visibility: Private
-- Architecture summary: CI/CD workflow automation present
-- Transaction summary: Manual SQL transaction control (BEGIN/commit/rollback signals in 1 files)
-
-This project entry was generated from the repository scan and links directly to GitHub.
+프로젝트별 AI 에이전트 프롬프트 엔지니어링 컬렉션. 다양한 개발 시나리오에 맞는 최적화된 프롬프트와 CI/CD 자동화 패턴을 정리.

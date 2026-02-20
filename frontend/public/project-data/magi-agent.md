@@ -1,25 +1,19 @@
 ---
 id: magi-agent
 title: "MAGI Agent"
-description: "Public repository technical summary and implementation overview. Architecture: Service-oriented layout (10 service directories); Container-orchestrated local environment. Transactions: ORM-managed commit/rollback usage (SQLAlchemy/session patterns, 8 files)."
+description: "10개 서비스 디렉토리의 대규모 마이크로서비스 AI 에이전트 시스템. Docker 컨테이너 오케스트레이션, SQLAlchemy ORM 트랜잭션 8개 파일."
 date: 2026-02-19
-category: "Project"
-tags: ["Repository", "Architecture", "Microservice"]
-stack: ["GitHub"]
+category: "AI"
+tags: ["Microservice", "AI Agent", "Docker", "Python"]
+stack: ["Python", "SQLAlchemy", "Docker", "FastAPI"]
 status: "Live"
 type: "link"
 url: "https://github.com/choisimo/MAGI-Agent"
 codeUrl: "https://github.com/choisimo/MAGI-Agent"
-featured: false
+featured: true
 published: true
 ---
 
 # MAGI Agent
 
-- Repository: `choisimo/MAGI-Agent`
-- GitHub: https://github.com/choisimo/MAGI-Agent
-- Visibility: Public
-- Architecture summary: Service-oriented layout (10 service directories); Container-orchestrated local environment
-- Transaction summary: ORM-managed commit/rollback usage (SQLAlchemy/session patterns, 8 files)
-
-This project entry was generated from the repository scan and links directly to GitHub.
+10개 마이크로서비스로 구성된 대규모 AI 에이전트 시스템. Python 기반 FastAPI + SQLAlchemy ORM, Docker 오케스트레이션으로 분산 AI 워크로드를 처리합니다.

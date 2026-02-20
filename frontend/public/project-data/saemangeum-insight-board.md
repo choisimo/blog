@@ -1,11 +1,11 @@
 ---
 id: saemangeum-insight-board
 title: "Saemangeum Insight Board"
-description: "Public repository technical summary and implementation overview. Architecture: CI/CD workflow automation present."
+description: "새만금 인사이트 대시보드. CI/CD 파이프라인 구성된 공공 데이터 시각화 서비스."
 date: 2026-02-19
-category: "Project"
-tags: ["Repository", "Architecture"]
-stack: ["GitHub"]
+category: "Tools"
+tags: ["Dashboard", "CI/CD", "Data Visualization"]
+stack: ["CI/CD"]
 status: "Live"
 type: "link"
 url: "https://github.com/choisimo/saemangeum-insight-board"
@@ -16,9 +16,4 @@ published: true
 
 # Saemangeum Insight Board
 
-- Repository: `choisimo/saemangeum-insight-board`
-- GitHub: https://github.com/choisimo/saemangeum-insight-board
-- Visibility: Public
-- Architecture summary: CI/CD workflow automation present
-
-This project entry was generated from the repository scan and links directly to GitHub.
+새만금 지역 공공 데이터 인사이트 대시보드. CI/CD 파이프라인으로 자동 배포되는 데이터 시각화 서비스.

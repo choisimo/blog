@@ -1,11 +1,11 @@
 ---
 id: auth-dev
 title: "Auth Dev"
-description: "Private repository technical summary and implementation overview. Architecture: JVM layered application structure; CI/CD workflow automation present. Transactions: Spring declarative transactions via @Transactional (10 matching files)."
+description: "Spring Security 기반 인증 서버. JVM 레이어드 구조, CI/CD 자동화, Spring @Transactional 10개 파일. 실 서비스용 인증 모듈."
 date: 2026-02-19
-category: "Project"
-tags: ["Repository", "Architecture"]
-stack: ["GitHub"]
+category: "Backend"
+tags: ["Spring Security", "JWT", "CI/CD"]
+stack: ["Java", "Spring Boot", "Spring Security"]
 status: "Live"
 type: "link"
 url: "https://github.com/choisimo/auth-dev"
@@ -16,10 +16,4 @@ published: true
 
 # Auth Dev
 
-- Repository: `choisimo/auth-dev`
-- GitHub: https://github.com/choisimo/auth-dev
-- Visibility: Private
-- Architecture summary: JVM layered application structure; CI/CD workflow automation present
-- Transaction summary: Spring declarative transactions via @Transactional (10 matching files)
-
-This project entry was generated from the repository scan and links directly to GitHub.
+Spring Security 기반 인증 서버 모듈. JWT 토큰 발급, OAuth2 연동, CI/CD 파이프라인이 적용된 실 서비스용 인증 시스템입니다.

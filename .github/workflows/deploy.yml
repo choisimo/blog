@@ -6,11 +6,13 @@ on:
     branches: [ main ]
     paths:
       - 'frontend/**'
+      - 'frontend/public/project-data/**'
       - '.github/workflows/deploy.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'frontend/**'
+      - 'frontend/public/project-data/**'
       - '.github/workflows/deploy.yml'
 
 permissions:
@@ -59,6 +61,9 @@ jobs:
       
     - name: Generate manifests (frontend)
       run: npm --prefix frontend run generate-manifests
+
+    - name: Generate projects manifest (frontend)
+      run: npm --prefix frontend run generate-projects-manifest
       
     - name: Generate SEO files (frontend)
       run: npm --prefix frontend run generate-seo
@@ -72,6 +77,7 @@ jobs:
         # Stage generated files and organized images
         git add -f \
           frontend/public/posts-manifest.json \
+          frontend/public/projects-manifest.json \
           frontend/public/posts/posts-manifest.json \
           frontend/public/posts/**/manifest.json \
           frontend/public/posts/**/*.md \
@@ -86,7 +92,7 @@ jobs:
           exit 0
         fi
         
-        git commit -m "chore(ci): update manifests, SEO artifacts and organize images"
+        git commit -m "chore(ci): update content manifests, SEO artifacts and organize images"
         
         # Push with retry (handles race condition when main diverges)
         MAX_RETRIES=3
@@ -101,10 +107,12 @@ jobs:
               git reset --hard origin/main
               # Re-generate and re-commit
               npm --prefix frontend run generate-manifests
+              npm --prefix frontend run generate-projects-manifest
               npm --prefix frontend run generate-seo
               ./scripts/organize-images.sh
               git add -f \
                 frontend/public/posts-manifest.json \
+                frontend/public/projects-manifest.json \
                 frontend/public/posts/posts-manifest.json \
                 frontend/public/posts/**/manifest.json \
                 frontend/public/posts/**/*.md \
@@ -113,7 +121,7 @@ jobs:
                 frontend/public/rss.xml \
                 frontend/public/robots.txt 2>/dev/null || true
               if ! git diff --cached --quiet; then
-                git commit -m "chore(ci): update manifests, SEO artifacts and organize images"
+                git commit -m "chore(ci): update content manifests, SEO artifacts and organize images"
               fi
             }
           }
@@ -140,15 +148,6 @@ jobs:
       uses: actions/upload-pages-artifact@v3
       with:
         path: './frontend/dist'
-
-    - name: Deploy to gh-pages branch
-      if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
-      uses: peaceiris/actions-gh-pages@v4
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./frontend/dist
-        publish_branch: gh-pages
-        force_orphan: true
 
   deploy:
     environment:

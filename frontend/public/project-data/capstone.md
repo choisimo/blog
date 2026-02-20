@@ -1,25 +1,19 @@
 ---
 id: capstone
 title: "Capstone"
-description: "Private repository technical summary and implementation overview. Architecture: Service-oriented layout (3 service directories); JVM layered application structure; CI/CD workflow automation present. Transactions: Spring declarative transactions via @Transactional (33 matching files)."
+description: "서비스 지향 마이크로서비스 아키텍처 캡스톤 프로젝트. 3개 서비스 디렉토리, JVM 레이어드 구조, CI/CD 자동화, Spring @Transactional 33개 파일 적용."
 date: 2026-02-19
-category: "Project"
-tags: ["Repository", "Architecture", "Microservice"]
-stack: ["GitHub"]
+category: "Backend"
+tags: ["Microservice", "Spring Boot", "CI/CD"]
+stack: ["Java", "Spring Boot", "JVM", "Docker"]
 status: "Live"
 type: "link"
 url: "https://github.com/choisimo/Capstone"
 codeUrl: "https://github.com/choisimo/Capstone"
-featured: false
+featured: true
 published: true
 ---
 
 # Capstone
 
-- Repository: `choisimo/Capstone`
-- GitHub: https://github.com/choisimo/Capstone
-- Visibility: Private
-- Architecture summary: Service-oriented layout (3 service directories); JVM layered application structure; CI/CD workflow automation present
-- Transaction summary: Spring declarative transactions via @Transactional (33 matching files)
-
-This project entry was generated from the repository scan and links directly to GitHub.
+마이크로서비스 아키텍처 기반 캡스톤 설계 프로젝트. 3개의 독립 서비스로 분리된 구조와 Spring Boot JVM 레이어드 아키텍처를 적용했습니다.

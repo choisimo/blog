@@ -1,11 +1,11 @@
 ---
 id: auth-server_spring-security
 title: "Auth Server Spring Security"
-description: "Private repository technical summary and implementation overview. Architecture: JVM layered application structure; CI/CD workflow automation present. Transactions: Spring declarative transactions via @Transactional (7 matching files)."
+description: "Spring Security 기반 독립형 인증 서버. JVM 레이어드 구조, CI/CD 자동화, Spring @Transactional 7개 파일 적용."
 date: 2026-02-19
-category: "Project"
-tags: ["Repository", "Architecture"]
-stack: ["GitHub"]
+category: "Backend"
+tags: ["Spring Security", "OAuth2", "CI/CD"]
+stack: ["Java", "Spring Boot", "Spring Security"]
 status: "Live"
 type: "link"
 url: "https://github.com/choisimo/Auth-Server_Spring-Security"
@@ -16,10 +16,4 @@ published: true
 
 # Auth Server Spring Security
 
-- Repository: `choisimo/Auth-Server_Spring-Security`
-- GitHub: https://github.com/choisimo/Auth-Server_Spring-Security
-- Visibility: Private
-- Architecture summary: JVM layered application structure; CI/CD workflow automation present
-- Transaction summary: Spring declarative transactions via @Transactional (7 matching files)
-
-This project entry was generated from the repository scan and links directly to GitHub.
+독립형 Spring Security 인증 서버. OAuth2 프로토콜 지원, JVM 레이어드 아키텍처, CI/CD 자동화 파이프라인 적용.
