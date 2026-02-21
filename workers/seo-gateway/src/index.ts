@@ -4,7 +4,7 @@ import { resolvePostMeta } from './post-resolver';
 import { createRewriter } from './meta-rewriter';
 
 const GITHUB_PAGES_CDN = 'https://choisimo.github.io/blog';
-const RAW_GITHUB_URL = 'https://raw.githubusercontent.com/choisimo/blog/gh-pages';
+const RAW_GITHUB_URL = 'https://choisimo.github.io/blog';
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',

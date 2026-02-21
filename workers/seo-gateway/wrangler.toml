@@ -4,14 +4,14 @@ compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
-GITHUB_PAGES_ORIGIN = "https://raw.githubusercontent.com/choisimo/blog/gh-pages"
+GITHUB_PAGES_ORIGIN = "https://choisimo.github.io/blog"
 API_BASE_URL = "https://api.nodove.com"
 SITE_BASE_URL = "https://noblog.nodove.com"
 SITE_NAME = "Nodove Blog"
 
 [env.production]
 name = "seo-gateway-prod"
-vars = { GITHUB_PAGES_ORIGIN = "https://raw.githubusercontent.com/choisimo/blog/gh-pages", API_BASE_URL = "https://api.nodove.com", SITE_BASE_URL = "https://noblog.nodove.com", SITE_NAME = "Nodove Blog" }
+vars = { GITHUB_PAGES_ORIGIN = "https://choisimo.github.io/blog", API_BASE_URL = "https://api.nodove.com", SITE_BASE_URL = "https://noblog.nodove.com", SITE_NAME = "Nodove Blog" }
 routes = [
   { pattern = "noblog.nodove.com/*", zone_name = "nodove.com" }
 ]
