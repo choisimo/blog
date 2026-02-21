@@ -45,7 +45,11 @@ async function fetchFromRawGitHub(path: string): Promise<Response> {
   const contentType = getMimeType(path);
   const newHeaders = new Headers(response.headers);
   newHeaders.set('Content-Type', contentType);
-  newHeaders.set('Cache-Control', 'public, max-age=31536000, immutable');
+  if (path.startsWith('/assets/') || path.includes('/images/')) {
+    newHeaders.set('Cache-Control', 'public, max-age=31536000, immutable');
+  } else {
+    newHeaders.set('Cache-Control', 'public, no-cache, must-revalidate');
+  }
   newHeaders.delete('Content-Security-Policy');
   
   return new Response(response.body, {
@@ -79,7 +83,7 @@ export default {
       let requestPath = url.pathname;
       
       if (requestPath.includes('.')) {
-        return fetchFromRawGitHub(requestPath);
+        return fetchFromRawGitHub(requestPath + url.search);
       }
       
       const htmlResponse = await fetchFromRawGitHub('/index.html');
