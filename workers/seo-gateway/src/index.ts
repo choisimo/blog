@@ -4,7 +4,11 @@ import { resolvePostMeta } from './post-resolver';
 import { createRewriter } from './meta-rewriter';
 
 const GITHUB_PAGES_CDN = 'https://choisimo.github.io/blog';
-const RAW_GITHUB_URL = 'https://choisimo.github.io/blog';
+// JSON manifests must bypass GitHub Pages/Fastly cache (which has max-age=31536000,immutable).
+// raw.githubusercontent.com serves repo files fresh on every request with no immutable caching.
+const RAW_GITHUB_SOURCE = 'https://raw.githubusercontent.com/choisimo/blog/main/frontend/public';
+// index.html lives at repo root (Vite template), not under public/
+const RAW_INDEX_HTML_URL = 'https://raw.githubusercontent.com/choisimo/blog/main/frontend/index.html';
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -33,22 +37,37 @@ function getMimeType(path: string): string {
 }
 
 async function fetchFromRawGitHub(path: string): Promise<Response> {
-  const url = `${RAW_GITHUB_URL}${path}`;
-  const response = await fetch(url, {
+  const strippedPath = path.split('?')[0];
+  const isJson = strippedPath.endsWith('.json');
+  const isIndexHtml = strippedPath === '/' || strippedPath === '/index.html' || strippedPath === '';
+
+  let fetchUrl: string;
+  if (isJson) {
+    fetchUrl = `${RAW_GITHUB_SOURCE}${strippedPath}`;
+  } else if (isIndexHtml) {
+    fetchUrl = `${GITHUB_PAGES_CDN}/index.html`;
+  } else {
+    fetchUrl = `${GITHUB_PAGES_CDN}${strippedPath}`;
+  }
+
+  const response = await fetch(fetchUrl, {
     headers: { 'User-Agent': 'SEO-Gateway/1.0' },
+    redirect: 'follow',
   });
   
   if (!response.ok) {
     return response;
   }
   
-  const contentType = getMimeType(path);
+  const contentType = getMimeType(strippedPath || '.html');
   const newHeaders = new Headers(response.headers);
   newHeaders.set('Content-Type', contentType);
-  if (path.startsWith('/assets/') || path.includes('/images/')) {
+  if (strippedPath.startsWith('/assets/') || strippedPath.includes('/images/')) {
     newHeaders.set('Cache-Control', 'public, max-age=31536000, immutable');
-  } else {
+  } else if (isJson) {
     newHeaders.set('Cache-Control', 'public, no-cache, must-revalidate');
+  } else {
+    newHeaders.set('Cache-Control', 'public, max-age=300');
   }
   newHeaders.delete('Content-Security-Policy');
   
@@ -92,9 +111,9 @@ export default {
 
     const meta = await resolvePostMeta(url, env);
 
-    const rawIndexUrl = `${env.GITHUB_PAGES_ORIGIN}/index.html`;
-    const originResponse = await fetch(rawIndexUrl, {
+    const originResponse = await fetch(RAW_INDEX_HTML_URL, {
       headers: { 'User-Agent': 'SEO-Gateway/1.0' },
+      redirect: 'follow',
     });
 
     if (!originResponse.ok) {
