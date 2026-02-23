@@ -212,7 +212,7 @@ export default function SparkInline({
       {open && (
         <div
           className={cn(
-            '-mt-2 mb-6 overflow-hidden transition-all duration-300',
+            '-mt-2 mb-6 overflow-hidden transition-[height,opacity,border-color] duration-300',
             // iOS-style card design
             'rounded-2xl border shadow-sm',
             isTerminal 

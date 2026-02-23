@@ -25,7 +25,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CommentSection, TableOfContents, SeriesNavigation } from '@/components/features/blog';
+import { CommentSection, TableOfContents, TocDrawer, SeriesNavigation } from '@/components/features/blog';
+import { QuizPanel } from '@/components/features/sentio/QuizPanel';
 import { Breadcrumb } from '@/components/features/navigation/Breadcrumb';
 import {
   ArrowLeft,
@@ -784,6 +785,12 @@ const BlogPost = () => {
               <SeriesNavigation currentPost={post} seriesPosts={seriesPosts} />
             )}
 
+            {/* AI Quiz Panel — shown only for posts with code blocks */}
+            <QuizPanel
+              content={localized?.content ?? post.content}
+              postTitle={localized?.title ?? post.title}
+            />
+
             <CommentSection postId={`${post.year}/${post.slug}`} />
 
             {relatedPosts.length > 0 && (
@@ -882,6 +889,8 @@ const BlogPost = () => {
         </div>
       </div>
       <ScrollToTop />
+      {/* Mobile TOC floating button */}
+      <TocDrawer content={localized?.content ?? post.content} />
     </>
   );
 };

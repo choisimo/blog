@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, type RefCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -39,13 +39,29 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
   const [scale, setScale] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [translate, setTranslate] = useState({ x: 0, y: 0 });
+
+  // Refs for drag tracking
+  const isDragging = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0, tx: 0, ty: 0 });
+  const hasDragged = useRef(false);
+  const scaleRef = useRef(scale);
+  const translateRef = useRef(translate);
+
+  // Keep refs in sync
+  useEffect(() => { scaleRef.current = scale; }, [scale]);
+  useEffect(() => { translateRef.current = translate; }, [translate]);
 
   const handleZoomIn = useCallback(() => {
-    setScale(prev => Math.min(prev + 0.25, 3));
+    setScale(prev => Math.min(prev + 0.25, 4));
   }, []);
 
   const handleZoomOut = useCallback(() => {
-    setScale(prev => Math.max(prev - 0.25, 0.5));
+    setScale(prev => {
+      const next = Math.max(prev - 0.25, 0.5);
+      if (next <= 1) setTranslate({ x: 0, y: 0 });
+      return next;
+    });
   }, []);
 
   const handleRotate = useCallback(() => {
@@ -55,6 +71,7 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
   const handleReset = useCallback(() => {
     setScale(1);
     setRotation(0);
+    setTranslate({ x: 0, y: 0 });
     setImageLoaded(false);
   }, []);
 
@@ -64,6 +81,64 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
     }
     onOpenChange(newOpen);
   }, [onOpenChange, handleReset]);
+
+  // Callback ref: attaches wheel listener immediately when the Dialog portal renders the container DOM node.
+  // This fixes the race condition where useEffect(,[open]) fires before the Radix Dialog portal mounts.
+  const containerRef: RefCallback<HTMLDivElement> = useCallback((node) => {
+    if (!node) return;
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.15 : -0.15;
+      setScale(prev => {
+        const next = Math.min(Math.max(prev + delta, 0.5), 4);
+        if (next <= 1) setTranslate({ x: 0, y: 0 });
+        return next;
+      });
+    };
+    node.addEventListener('wheel', handleWheel, { passive: false });
+    // React will call this with null when the node unmounts — but callback refs called with null
+    // don't get the previous node, so we store cleanup on the node itself.
+    // For cleanup, we rely on the Dialog unmounting the whole subtree when closed.
+  }, []);
+
+  // Pointer drag handlers
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // Only drag when zoomed in
+    if (scaleRef.current <= 1) return;
+    isDragging.current = true;
+    hasDragged.current = false;
+    dragStart.current = {
+      x: e.clientX,
+      y: e.clientY,
+      tx: translateRef.current.x,
+      ty: translateRef.current.y,
+    };
+    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+  }, []);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging.current) return;
+    const dx = e.clientX - dragStart.current.x;
+    const dy = e.clientY - dragStart.current.y;
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+      hasDragged.current = true;
+    }
+    if (hasDragged.current) {
+      setTranslate({
+        x: dragStart.current.tx + dx,
+        y: dragStart.current.ty + dy,
+      });
+    }
+  }, []);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    // Only close if it was a clean click (no drag)
+    if (!hasDragged.current && scaleRef.current <= 1) {
+      handleOpenChange(false);
+    }
+  }, [handleOpenChange]);
 
   // Preload full image when lightbox opens
   useEffect(() => {
@@ -83,7 +158,7 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
       >
         <VisuallyHidden>
           <DialogTitle>{alt || 'Image preview'}</DialogTitle>
-          <DialogDescription>Click outside or press Escape to close</DialogDescription>
+          <DialogDescription>Click outside or press Escape to close. Scroll to zoom. Drag to pan when zoomed.</DialogDescription>
         </VisuallyHidden>
         
         <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
@@ -101,7 +176,7 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
             size="icon"
             onClick={handleZoomIn}
             className="h-9 w-9 rounded-full bg-white/10 text-white hover:bg-white/20"
-            disabled={scale >= 3}
+            disabled={scale >= 4}
           >
             <ZoomIn className="h-4 w-4" />
           </Button>
@@ -123,9 +198,16 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
           </Button>
         </div>
 
-        <div 
-          className="flex items-center justify-center w-full h-full min-h-[50vh] p-3 sm:p-8 cursor-zoom-out"
-          onClick={() => handleOpenChange(false)}
+        <div
+          ref={containerRef}
+          data-testid="lightbox-container"
+          className={cn(
+            'flex items-center justify-center w-full h-full min-h-[50vh] p-3 sm:p-8',
+            scale > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-zoom-out',
+          )}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
         >
           {!imageLoaded && (
             <div className="absolute inset-0 flex items-center justify-center">
@@ -135,15 +217,15 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
           <img
             src={src}
             alt={alt || ''}
+            data-testid="lightbox-image"
             className={cn(
-              'max-w-full max-h-[85vh] sm:max-h-[85vh] object-contain transition-all duration-300',
-              'select-none',
+              'max-w-full max-h-[85vh] sm:max-h-[85vh] object-contain transition-[opacity] duration-300',
+              'select-none pointer-events-none',
               imageLoaded ? 'opacity-100' : 'opacity-0'
             )}
             style={{
-              transform: `scale(${scale}) rotate(${rotation}deg)`,
+              transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale}) rotate(${rotation}deg)`,
             }}
-            onClick={(e) => e.stopPropagation()}
             draggable={false}
           />
         </div>

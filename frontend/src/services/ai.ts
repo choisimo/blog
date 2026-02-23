@@ -30,7 +30,19 @@ export type SummaryResult = {
   keyPoints?: string[];
 };
 
-type TaskMode = 'sketch' | 'prism' | 'chain' | 'summary' | 'custom';
+export type QuizQuestion = {
+  type: 'fill_blank' | 'multiple_choice' | 'transform' | 'explain';
+  question: string;
+  answer: string;
+  options?: string[];  // for multiple_choice
+  explanation?: string;
+};
+
+export type QuizResult = {
+  quiz: QuizQuestion[];
+};
+
+type TaskMode = 'sketch' | 'prism' | 'chain' | 'summary' | 'custom' | 'quiz';
 
 type TaskPayload = {
   paragraph?: string;
@@ -402,5 +414,58 @@ export async function summary(input: {
       summary: safeTruncate(paragraph, TEXT_LIMITS.SUMMARY_TRUNCATE) || FALLBACK_DATA.SUMMARY.ERROR_MESSAGE,
       keyPoints: [...FALLBACK_DATA.SUMMARY.KEY_POINTS],
     };
+  }
+}
+
+// ============================================================================
+// Quiz
+// ============================================================================
+
+function isQuizResult(data: unknown): data is QuizResult {
+  return (
+    isRecord(data) &&
+    Array.isArray((data as QuizResult).quiz) &&
+    (data as QuizResult).quiz.length > 0
+  );
+}
+
+function createQuizFallback(): QuizResult {
+  return {
+    quiz: [
+      {
+        type: 'multiple_choice',
+        question: '이 문서의 주요 주제는 무엇인가요?',
+        answer: '위 내용을 다시 읽어보세요.',
+        options: ['개념 이해', '실습 예제', '이론 설명', '사례 연구'],
+        explanation: 'AI 서버가 일시적으로 응답하지 않아 기본 퀴즈가 표시됩니다.',
+      },
+    ],
+  };
+}
+
+/**
+ * Quiz: 코드 블록 기반 퀴즈 생성
+ */
+export async function quiz(input: {
+  paragraph: string;
+  postTitle?: string;
+}): Promise<QuizResult> {
+  const { paragraph, postTitle } = input;
+
+  try {
+    const response = await invokeTask<QuizResult>('quiz', {
+      paragraph,
+      postTitle,
+    });
+
+    const normalized = normalizeResponse(response, isQuizResult);
+    if (normalized) {
+      return { quiz: normalized.quiz.slice(0, 8) };
+    }
+
+    throw new Error('Invalid quiz response format');
+  } catch (err) {
+    console.error('Quiz AI call failed:', err);
+    return createQuizFallback();
   }
 }

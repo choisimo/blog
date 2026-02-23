@@ -3,6 +3,8 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
+import { BookOpen, X } from 'lucide-react';
 
 interface TocItem {
   id: string;
@@ -12,9 +14,10 @@ interface TocItem {
 
 interface TableOfContentsProps {
   content: string;
+  onClose?: () => void;
 }
 
-export const TableOfContents = ({ content }: TableOfContentsProps) => {
+export const TableOfContents = ({ content, onClose }: TableOfContentsProps) => {
   const [toc, setToc] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState<string>('');
   const { isTerminal } = useTheme();
@@ -196,10 +199,12 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
     }
   }, [activeId, isMobile]);
 
-  const scrollToHeading = (id: string) => {
+  const scrollToHeading = (id: string, closePanel?: () => void) => {
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
+      closePanel?.();
+      onClose?.();
     }
   };
 
@@ -208,6 +213,7 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
   return (
     <div
       ref={containerRef}
+      data-testid="toc-panel"
       className="w-72 sticky top-24"
     >
       <div
@@ -256,8 +262,8 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
             </>
           )}
         </h3>
-        <ScrollArea ref={scrollAreaRef} className='h-[500px]'>
-          <nav className='space-y-2'>
+        <ScrollArea ref={scrollAreaRef} className='max-h-[calc(100vh-12rem)]'>
+          <nav className='space-y-2 pr-2'>
             {toc.map((item, index) => (
               <button
                 key={`${item.id}-${index}`}
@@ -268,6 +274,7 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
                     delete itemRefs.current[item.id];
                   }
                 }}
+                title={item.title}
                 onClick={() => scrollToHeading(item.id)}
                 className={cn(
                   'block w-full text-left text-sm py-2 px-3 rounded-lg hover:bg-primary/10 transition-all duration-200',
@@ -284,7 +291,7 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
                   isTerminal && activeId === item.id && 'bg-primary/20 border-l-2 border-primary'
                 )}
               >
-                <span className='block truncate'>
+                <span className='block break-words leading-snug'>
                   {isTerminal && (
                     <span className='text-muted-foreground mr-2'>
                       {String(index + 1).padStart(2, '0')}
@@ -298,6 +305,68 @@ export const TableOfContents = ({ content }: TableOfContentsProps) => {
         </ScrollArea>
       </div>
     </div>
+  );
+};
+
+// Mobile TOC Drawer — floating button that opens a Sheet
+export const TocDrawer = ({ content }: { content: string }) => {
+  const [open, setOpen] = useState(false);
+  const { isTerminal } = useTheme();
+
+  // Extract toc to check if there are any headings
+  const hasToc = /^#{1,6}\s+.+$/m.test(content);
+  if (!hasToc) return null;
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <button
+          type="button"
+          data-testid="toc-mobile-trigger"
+          aria-label="목차 열기"
+          className={cn(
+            'fixed bottom-6 right-6 z-40 xl:hidden',
+            'flex items-center justify-center',
+            'h-12 w-12 rounded-full shadow-lg',
+            'bg-primary text-primary-foreground',
+            'hover:bg-primary/90 active:scale-95 transition-all duration-200',
+            isTerminal && 'rounded-lg border border-primary/40 bg-[hsl(var(--terminal-code-bg))] text-primary'
+          )}
+        >
+          <BookOpen className="h-5 w-5" />
+        </button>
+      </SheetTrigger>
+      <SheetContent
+        side="right"
+        className={cn(
+          'w-80 p-0 overflow-y-auto',
+          isTerminal && 'bg-[hsl(var(--terminal-code-bg))] border-primary/20'
+        )}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <SheetTitle className={cn(
+            'font-bold text-base',
+            isTerminal && 'font-mono text-primary'
+          )}>
+            {isTerminal ? '$ cat TOC' : '목차'}
+          </SheetTitle>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-muted transition-colors"
+            aria-label="닫기"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="p-4">
+          <TableOfContents
+            content={content}
+            onClose={() => setOpen(false)}
+          />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 };
 

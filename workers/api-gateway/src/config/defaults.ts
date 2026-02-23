@@ -19,6 +19,7 @@ export const AI_TEMPERATURES = {
   TRANSLATE_CONTENT: 0.2,
   AGGREGATE: 0.2,
   GENERATE: 0.2,
+  QUIZ: 0.5,
 } as const;
 
 // =============================================================================
@@ -33,6 +34,7 @@ export const MAX_TOKENS = {
   TRANSLATE_TITLE: 256,
   TRANSLATE_DESC: 512,
   TRANSLATE_CONTENT: 16000,
+  QUIZ: 3072,
 } as const;
 
 // =============================================================================
@@ -66,6 +68,7 @@ export const VALID_TASK_MODES = [
   'catalyst',
   'summary',
   'custom',
+  'quiz',
 ] as const;
 
 // =============================================================================
@@ -133,6 +136,8 @@ export function getTemperatureForMode(mode: TaskMode): number {
       return AI_TEMPERATURES.PRISM; // Same as CHAIN, SUMMARY
     case 'catalyst':
       return AI_TEMPERATURES.CATALYST;
+    case 'quiz':
+      return AI_TEMPERATURES.QUIZ;
     case 'custom':
     default:
       return AI_TEMPERATURES.CUSTOM;
@@ -150,6 +155,8 @@ export function getMaxTokensForMode(mode: TaskMode): number {
       return MAX_TOKENS.CHAIN;
     case 'summary':
       return MAX_TOKENS.SUMMARY;
+    case 'quiz':
+      return MAX_TOKENS.QUIZ;
     case 'catalyst':
     case 'custom':
     default:

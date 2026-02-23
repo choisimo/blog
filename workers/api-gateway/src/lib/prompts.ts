@@ -98,6 +98,26 @@ const SCHEMAS: Record<string, JsonSchema> = {
     },
     required: ['summary'],
   },
+  quiz: {
+    type: 'object',
+    properties: {
+      quiz: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            type: { type: 'string' },
+            question: { type: 'string' },
+            options: { type: 'array', items: { type: 'string' } },
+            answer: { type: 'string' },
+            explanation: { type: 'string' },
+          },
+          required: ['type', 'question', 'answer', 'explanation'],
+        },
+      },
+    },
+    required: ['quiz'],
+  },
 };
 
 export function getTemperature(mode: TaskMode): number {
@@ -242,6 +262,41 @@ function buildCustomPrompt(payload: TaskPayload): PromptConfig {
   };
 }
 
+
+function buildQuizPrompt(payload: TaskPayload): PromptConfig {
+  const content = safeTruncate(payload.paragraph || payload.content, TEXT_LIMITS.CONTENT);
+  const postTitle = safeTruncate(payload.postTitle || payload.title, TEXT_LIMITS.TITLE);
+
+  const user = `Task: Generate a learning quiz based on the following content.
+
+Context:
+- Blog Post Title: "${postTitle}"
+
+Content:
+"${content}"
+
+Instructions:
+1. Generate 3-5 quiz questions of MIXED types: fill_blank, multiple_choice, transform, explain
+2. For fill_blank: create a sentence with a key concept blanked out
+3. For multiple_choice: provide exactly 4 options (A, B, C, D), only one correct
+4. For transform: ask to convert or rewrite something from the content
+5. For explain: ask for a top-down explanation of a key concept
+6. Make questions progressively deeper (start easy, end with synthesis)
+7. Include a clear explanation for each correct answer
+8. Maintain the original language of the input text
+
+Response Schema:
+${JSON.stringify(SCHEMAS.quiz, null, 2)}`;
+
+  return {
+    system: COMMON_SYSTEM,
+    user,
+    temperature: getTemperature('quiz'),
+    maxTokens: getMaxTokens('quiz'),
+    schema: SCHEMAS.quiz,
+  };
+}
+
 export function buildTaskPrompt(mode: TaskMode, payload: TaskPayload): PromptConfig {
   switch (mode) {
     case 'sketch':
@@ -252,6 +307,8 @@ export function buildTaskPrompt(mode: TaskMode, payload: TaskPayload): PromptCon
       return buildChainPrompt(payload);
     case 'summary':
       return buildSummaryPrompt(payload);
+    case 'quiz':
+      return buildQuizPrompt(payload);
     case 'catalyst':
     case 'custom':
     default:
@@ -305,6 +362,19 @@ export function getFallbackData(mode: TaskMode, payload: TaskPayload): unknown {
       return {
         summary: paragraph.slice(0, TEXT_LIMITS.SUMMARY_TRUNCATE) || FALLBACK_DATA.SUMMARY.ERROR_MESSAGE,
         keyPoints: [...FALLBACK_DATA.SUMMARY.KEY_POINTS],
+      };
+
+
+    case 'quiz':
+      return {
+        quiz: [
+          {
+            type: 'explain',
+            question: '이 내용의 핵심 개념을 설명해보세요.',
+            answer: '내용을 다시 읽고 핵심 개념을 파악해보세요.',
+            explanation: 'AI 응답 생성에 실패했습니다. 직접 내용을 학습해보세요.',
+          },
+        ],
       };
 
     default:

@@ -3,7 +3,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { Children, Fragment, isValidElement, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import SparkInline from '@/components/features/sentio/SparkInline';
@@ -44,6 +44,139 @@ interface MarkdownRendererProps {
   inlineEnabled?: boolean;
   postTitle?: string;
   postPath?: string; // e.g., "2025/future-tech-six-insights" for resolving relative image paths
+}
+
+// ============================================================================
+// CodeBlock component — line numbers + collapsible
+// ============================================================================
+interface CodeBlockProps {
+  codeString: string;
+  language: string;
+  isTerminalTheme: boolean;
+  copiedCode: string | null;
+  onCopy: (code: string) => void;
+}
+
+const COLLAPSE_THRESHOLD = 25;
+const COLLAPSED_MAX_LINES = 480; // ~25 lines worth of height in px
+
+function CodeBlock({ codeString, language, isTerminalTheme, copiedCode, onCopy }: CodeBlockProps) {
+  const lineCount = codeString.split('\n').length;
+  const isLong = lineCount > COLLAPSE_THRESHOLD;
+  const [collapsed, setCollapsed] = useState(isLong);
+
+  return (
+    <div className='relative group my-8 max-w-4xl mx-auto'>
+      {/* Terminal-style header for code blocks */}
+      {isTerminalTheme && (
+        <div className='flex items-center gap-2 bg-[hsl(var(--terminal-titlebar))] px-4 py-2 rounded-t-xl border border-b-0 border-border font-mono text-xs text-muted-foreground'>
+          <span className='w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-close))]' />
+          <span className='w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]' />
+          <span className='w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]' />
+          <span className='ml-2 text-primary'>{language}</span>
+        </div>
+      )}
+      {/* Non-terminal language badge */}
+      {!isTerminalTheme && language && (
+        <div className='absolute left-4 top-3 z-10'>
+          <span className='px-2 py-1 text-xs font-medium rounded bg-primary/10 text-primary border border-primary/20'>
+            {language}
+          </span>
+        </div>
+      )}
+
+      {/* Copy button */}
+      <Button
+        size='icon'
+        variant='ghost'
+        data-testid="code-copy-btn"
+        className={cn(
+          'absolute right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-10',
+          isTerminalTheme ? 'top-12 text-primary hover:text-primary hover:bg-primary/10' : 'top-2'
+        )}
+        onClick={() => onCopy(codeString)}
+      >
+        {copiedCode === codeString ? (
+          <Check className='h-4 w-4' />
+        ) : (
+          <Copy className='h-4 w-4' />
+        )}
+      </Button>
+
+      {/* Code area with collapsible */}
+      <div className='relative overflow-hidden'>
+        <div
+          className={cn(
+            'overflow-x-auto transition-[max-height] duration-500 ease-in-out',
+            collapsed ? 'overflow-y-hidden' : 'overflow-y-visible'
+          )}
+          style={collapsed ? { maxHeight: `${COLLAPSED_MAX_LINES}px` } : { maxHeight: 'none' }}
+        >
+          <SyntaxHighlighter
+            style={isTerminalTheme ? terminalTheme : oneDark}
+            language={language}
+            PreTag='div'
+            showLineNumbers={true}
+            lineNumberStyle={{
+              minWidth: '2.5em',
+              paddingRight: '1em',
+              color: isTerminalTheme ? 'rgba(100,160,120,0.4)' : 'rgba(150,150,170,0.5)',
+              userSelect: 'none',
+              fontSize: '0.8em',
+            }}
+            className={cn(
+              'rounded-xl shadow-lg !overflow-x-auto',
+              isTerminalTheme && 'rounded-t-none !rounded-b-xl',
+              !isTerminalTheme && language && '!pt-10'
+            )}
+            wrapLongLines={false}
+          >
+            {codeString}
+          </SyntaxHighlighter>
+        </div>
+
+        {/* Fade gradient overlay when collapsed */}
+        {isLong && collapsed && (
+          <div
+            className='absolute bottom-0 left-0 right-0 h-24 pointer-events-none'
+            style={{
+              background: isTerminalTheme
+                ? 'linear-gradient(to bottom, transparent, hsl(200 50% 3%))'
+                : 'linear-gradient(to bottom, transparent, #282c34)',
+            }}
+          />
+        )}
+      </div>
+
+      {/* Expand/Collapse toggle button */}
+      {isLong && (
+        <button
+          type='button'
+          data-testid='code-collapse-toggle'
+          onClick={() => setCollapsed(v => !v)}
+          className={cn(
+            'w-full flex items-center justify-center gap-2 py-2 text-xs font-medium transition-colors',
+            'border-t',
+            isTerminalTheme
+              ? 'bg-[hsl(var(--terminal-titlebar))] border-border text-primary hover:bg-primary/10 rounded-b-xl'
+              : 'bg-[#282c34] border-[#3e4451] text-gray-400 hover:text-gray-200 rounded-b-xl'
+          )}
+        >
+          {collapsed ? (
+            <>
+              <ChevronDown className='h-3.5 w-3.5' />
+              <span>{lineCount - COLLAPSE_THRESHOLD}줄 더 보기</span>
+            </>
+          ) : (
+            <>
+              <ChevronUp className='h-3.5 w-3.5' />
+              <span>접기</span>
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  );
 }
 
 export const MarkdownRenderer = ({
@@ -272,53 +405,13 @@ export const MarkdownRenderer = ({
             const language = match ? match[1] : '';
 
             return !inline && match ? (
-              <div className='relative group my-8 max-w-4xl mx-auto overflow-x-auto'>
-                {/* Terminal-style header for code blocks */}
-                {isTerminal && (
-                  <div className='flex items-center gap-2 bg-[hsl(var(--terminal-titlebar))] px-4 py-2 rounded-t-xl border border-b-0 border-border font-mono text-xs text-muted-foreground'>
-                    <span className='w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-close))]' />
-                    <span className='w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]' />
-                    <span className='w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]' />
-                    <span className='ml-2 text-primary'>{language}</span>
-                  </div>
-                )}
-                {/* Non-terminal language badge */}
-                {!isTerminal && language && (
-                  <div className='absolute left-4 top-3 z-10'>
-                    <span className='px-2 py-1 text-xs font-medium rounded bg-primary/10 text-primary border border-primary/20'>
-                      {language}
-                    </span>
-                  </div>
-                )}
-                <Button
-                  size='icon'
-                  variant='ghost'
-                  className={cn(
-                    'absolute right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-10',
-                    isTerminal ? 'top-12 text-primary hover:text-primary hover:bg-primary/10' : 'top-2'
-                  )}
-                  onClick={() => copyToClipboard(codeString)}
-                >
-                  {copiedCode === codeString ? (
-                    <Check className='h-4 w-4' />
-                  ) : (
-                    <Copy className='h-4 w-4' />
-                  )}
-                </Button>
-                <SyntaxHighlighter
-                  style={isTerminal ? terminalTheme : oneDark}
-                  language={language}
-                  PreTag='div'
-                  className={cn(
-                    'rounded-xl shadow-lg !overflow-x-auto',
-                    isTerminal && 'rounded-t-none !rounded-b-xl',
-                    !isTerminal && language && '!pt-10'
-                  )}
-                  wrapLongLines={false}
-                >
-                  {codeString}
-                </SyntaxHighlighter>
-              </div>
+              <CodeBlock
+                codeString={codeString}
+                language={language}
+                isTerminalTheme={isTerminal}
+                copiedCode={copiedCode}
+                onCopy={copyToClipboard}
+              />
             ) : (
               <code
                 className={cn(
