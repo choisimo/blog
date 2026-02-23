@@ -444,23 +444,28 @@ function createQuizFallback(): QuizResult {
 }
 
 /**
- * Quiz: 코드 블록 기반 퀴즈 생성
+ * Quiz: 코드 블록 기반 퀴즈 생성 (배치 단위)
+ * batchIndex=0 → Q1-Q2, batchIndex=1 → Q3-Q4, ...
  */
 export async function quiz(input: {
   paragraph: string;
   postTitle?: string;
+  batchIndex?: number;
+  previousQuestions?: string[];
 }): Promise<QuizResult> {
-  const { paragraph, postTitle } = input;
+  const { paragraph, postTitle, batchIndex = 0, previousQuestions = [] } = input;
 
   try {
     const response = await invokeTask<QuizResult>('quiz', {
       paragraph,
       postTitle,
+      batchIndex,
+      previousQuestions,
     });
 
     const normalized = normalizeResponse(response, isQuizResult);
     if (normalized) {
-      return { quiz: normalized.quiz.slice(0, 8) };
+      return { quiz: normalized.quiz.slice(0, 2) };
     }
 
     throw new Error('Invalid quiz response format');

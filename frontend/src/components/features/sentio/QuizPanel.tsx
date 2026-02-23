@@ -1,8 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
-import { quiz, QuizQuestion, QuizResult } from '@/services/ai';
-import { BookOpen, Loader2, CheckCircle, XCircle, RotateCcw, ChevronRight } from 'lucide-react';
+import { quiz, QuizQuestion } from '@/services/ai';
+import { BookOpen, Loader2, CheckCircle, XCircle, RotateCcw, ChevronRight, Zap } from 'lucide-react';
 
 interface QuizPanelProps {
   content: string;
@@ -17,31 +17,78 @@ interface AnswerState {
   correct: boolean;
 }
 
+// Max batches to pre-fetch (2 questions each = up to 10 questions total)
+const MAX_BATCHES = 5;
+const QUESTIONS_PER_BATCH = 2;
+
 function isCorrectAnswer(question: QuizQuestion, userAnswer: string): boolean {
   const normalized = userAnswer.trim().toLowerCase();
   const correct = question.answer.trim().toLowerCase();
   if (normalized === correct) return true;
-  // For multiple_choice, exact match (after normalization)
   if (question.type === 'multiple_choice') return normalized === correct;
-  // For fill_blank: partial match allowed
   if (question.type === 'fill_blank') {
-    return correct.includes(normalized) || normalized.includes(correct.slice(0, Math.min(correct.length, 20)));
+    // Accept if user answer contains the key tokens
+    const correctTokens = correct.split(/\s+/).filter(t => t.length > 2);
+    const matchCount = correctTokens.filter(t => normalized.includes(t)).length;
+    return matchCount >= Math.ceil(correctTokens.length * 0.6);
   }
-  return false;
+  // For transform/explain: partial credit — if answer contains 60%+ of correct tokens
+  const tokens = correct.split(/\s+/).filter(t => t.length > 2);
+  if (tokens.length === 0) return false;
+  const matched = tokens.filter(t => normalized.includes(t)).length;
+  return matched / tokens.length >= 0.5;
 }
 
 export function QuizPanel({ content, postTitle }: QuizPanelProps) {
   const { isTerminal } = useTheme();
   const [state, setState] = useState<QuizState>('idle');
+  // All loaded questions so far
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  // Whether the next batch is currently being fetched
+  const [isFetchingNext, setIsFetchingNext] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<AnswerState[]>([]);
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [error, setError] = useState<string | null>(null);
 
+  // Track how many batches we've requested (to avoid double-fetching)
+  const batchFetchedRef = useRef(0);
+  const isFetchingRef = useRef(false);
+
   // Only render if content has fenced code blocks
   const hasCodeBlocks = /```[\s\S]*?```/.test(content);
   if (!hasCodeBlocks) return null;
+
+  // Fetch a batch of 2 questions
+  const fetchBatch = useCallback(async (batchIndex: number, allQuestions: QuizQuestion[]) => {
+    if (isFetchingRef.current) return;
+    if (batchIndex >= MAX_BATCHES) return;
+    isFetchingRef.current = true;
+    setIsFetchingNext(true);
+
+    try {
+      const previousQs = allQuestions.map(q => q.question);
+      const result = await quiz({
+        paragraph: content,
+        postTitle,
+        batchIndex,
+        previousQuestions: previousQs,
+      });
+
+      if (result.quiz.length > 0) {
+        setQuestions(prev => {
+          const updated = [...prev, ...result.quiz];
+          batchFetchedRef.current = batchIndex + 1;
+          return updated;
+        });
+      }
+    } catch (err) {
+      console.error(`Quiz batch ${batchIndex} failed:`, err);
+    } finally {
+      isFetchingRef.current = false;
+      setIsFetchingNext(false);
+    }
+  }, [content, postTitle]);
 
   const handleStart = useCallback(async () => {
     setState('loading');
@@ -49,37 +96,71 @@ export function QuizPanel({ content, postTitle }: QuizPanelProps) {
     setAnswers([]);
     setCurrentIndex(0);
     setCurrentAnswer('');
+    setQuestions([]);
+    batchFetchedRef.current = 0;
+    isFetchingRef.current = false;
 
     try {
-      const result: QuizResult = await quiz({ paragraph: content, postTitle });
+      // Fetch first batch (Q1-Q2)
+      const result = await quiz({ paragraph: content, postTitle, batchIndex: 0, previousQuestions: [] });
       if (result.quiz.length === 0) throw new Error('No questions generated');
+      batchFetchedRef.current = 1;
       setQuestions(result.quiz);
       setState('active');
+
+      // Immediately start pre-fetching batch 2 (Q3-Q4) in background
+      fetchBatch(1, result.quiz);
     } catch (err) {
       console.error('Quiz failed:', err);
       setError('퀴즈를 불러오는 데 실패했습니다. 다시 시도해주세요.');
       setState('idle');
     }
-  }, [content, postTitle]);
+  }, [content, postTitle, fetchBatch]);
+
+  // When user moves to question N, pre-fetch the next batch if we're 1 question away from the end
+  useEffect(() => {
+    if (state !== 'active') return;
+
+    const questionsLoaded = questions.length;
+    const distanceFromEnd = questionsLoaded - 1 - currentIndex;
+
+    // Pre-fetch when user is on the last question of current batch
+    if (distanceFromEnd <= 0 && !isFetchingRef.current && batchFetchedRef.current < MAX_BATCHES) {
+      fetchBatch(batchFetchedRef.current, questions);
+    }
+  }, [currentIndex, questions, state, fetchBatch]);
 
   const handleSubmitAnswer = useCallback(() => {
     const question = questions[currentIndex];
     const correct = isCorrectAnswer(question, currentAnswer);
-    const newAnswers = [
-      ...answers,
+    setAnswers(prev => [
+      ...prev,
       { value: currentAnswer, submitted: true, correct },
-    ];
-    setAnswers(newAnswers);
-  }, [questions, currentIndex, currentAnswer, answers]);
+    ]);
+  }, [questions, currentIndex, currentAnswer]);
 
   const handleNext = useCallback(() => {
-    if (currentIndex + 1 >= questions.length) {
-      setState('complete');
+    const nextIndex = currentIndex + 1;
+
+    if (nextIndex >= questions.length) {
+      // We're at the last loaded question
+      if (isFetchingRef.current || isFetchingNext) {
+        // More questions coming — wait (UI shows loading)
+        setCurrentIndex(nextIndex);
+        setCurrentAnswer('');
+      } else if (batchFetchedRef.current >= MAX_BATCHES) {
+        // No more batches available
+        setState('complete');
+      } else {
+        // Trigger fetch if not already running, then show loading
+        setCurrentIndex(nextIndex);
+        setCurrentAnswer('');
+      }
     } else {
-      setCurrentIndex(i => i + 1);
+      setCurrentIndex(nextIndex);
       setCurrentAnswer('');
     }
-  }, [currentIndex, questions.length]);
+  }, [currentIndex, questions.length, isFetchingNext]);
 
   const handleRetry = useCallback(() => {
     setState('idle');
@@ -88,11 +169,19 @@ export function QuizPanel({ content, postTitle }: QuizPanelProps) {
     setCurrentIndex(0);
     setCurrentAnswer('');
     setError(null);
+    batchFetchedRef.current = 0;
+    isFetchingRef.current = false;
   }, []);
 
   const currentQuestion = questions[currentIndex];
   const currentAnswerState = answers[currentIndex];
   const correctCount = answers.filter(a => a.correct).length;
+  const totalAnswered = answers.length;
+
+  // Determine if we're waiting for next question to load
+  const isWaitingForNext = state === 'active' && !currentQuestion && (isFetchingNext || isFetchingRef.current);
+  // Determine if we should show complete (no more questions and not fetching)
+  const shouldShowComplete = state === 'active' && !currentQuestion && !isFetchingNext && !isFetchingRef.current && batchFetchedRef.current >= MAX_BATCHES;
 
   return (
     <div
@@ -119,7 +208,7 @@ export function QuizPanel({ content, postTitle }: QuizPanelProps) {
             isTerminal ? 'bg-primary/20' : 'bg-primary/10'
           )}
         >
-          <BookOpen className={cn('h-4 w-4', isTerminal ? 'text-primary' : 'text-primary')} />
+          <BookOpen className={cn('h-4 w-4', 'text-primary')} />
         </div>
         <div>
           <h3 className={cn('font-semibold text-sm', isTerminal && 'font-mono text-primary')}>
@@ -129,20 +218,36 @@ export function QuizPanel({ content, postTitle }: QuizPanelProps) {
             이 글의 코드를 기반으로 생성된 퀴즈
           </p>
         </div>
+
         {state === 'active' && (
-          <span className='ml-auto text-xs text-muted-foreground'>
-            {currentIndex + 1} / {questions.length}
-          </span>
+          <div className="ml-auto flex items-center gap-2">
+            {/* Next question loading indicator */}
+            {isFetchingNext && (
+              <span className={cn(
+                'flex items-center gap-1.5 text-xs px-2 py-1 rounded-full',
+                isTerminal
+                  ? 'text-primary/60 bg-primary/10'
+                  : 'text-muted-foreground bg-muted/50'
+              )}>
+                <Zap className="h-3 w-3" />
+                <span className={isTerminal ? 'font-mono' : ''}>다음 문제 준비 중</span>
+              </span>
+            )}
+            <span className={cn('text-xs text-muted-foreground', isTerminal && 'font-mono')}>
+              {Math.min(currentIndex + 1, questions.length)} / {questions.length}
+              {isFetchingNext && '+'}
+            </span>
+          </div>
         )}
       </div>
 
       {/* Content */}
       <div className='px-6 py-6'>
-        {/* Idle state */}
+        {/* Idle */}
         {state === 'idle' && (
           <div className='flex flex-col items-center py-4 gap-4'>
             <p className={cn('text-sm text-center text-muted-foreground max-w-sm', isTerminal && 'font-mono')}>
-              이 글의 코드 예제를 학습했나요? AI가 맞춤형 퀴즈를 출제합니다.
+              이 글의 코드 예제를 학습했나요? AI가 코드 기반 심층 퀴즈를 출제합니다.
             </p>
             {error && (
               <p className='text-sm text-destructive text-center'>{error}</p>
@@ -165,196 +270,320 @@ export function QuizPanel({ content, postTitle }: QuizPanelProps) {
           </div>
         )}
 
-        {/* Loading state */}
+        {/* Initial loading */}
         {state === 'loading' && (
           <div className={cn('flex items-center justify-center gap-3 py-8', isTerminal ? 'text-primary' : 'text-muted-foreground')}>
             <Loader2 className='h-5 w-5 animate-spin' />
-            <span className={cn('text-sm', isTerminal && 'font-mono')}>퀴즈 생성 중...</span>
+            <span className={cn('text-sm', isTerminal && 'font-mono')}>코드 분석 중...</span>
           </div>
         )}
 
-        {/* Active state — question */}
+        {/* Waiting for next question to stream in */}
+        {isWaitingForNext && (
+          <div className={cn('flex items-center justify-center gap-3 py-8', isTerminal ? 'text-primary' : 'text-muted-foreground')}>
+            <Loader2 className='h-5 w-5 animate-spin' />
+            <span className={cn('text-sm', isTerminal && 'font-mono')}>다음 문제 생성 중...</span>
+          </div>
+        )}
+
+        {/* Show complete if ran out of questions */}
+        {shouldShowComplete && (
+          <CompleteView
+            correctCount={correctCount}
+            totalAnswered={totalAnswered}
+            isTerminal={isTerminal}
+            onRetry={handleRetry}
+          />
+        )}
+
+        {/* Active question */}
         {state === 'active' && currentQuestion && (
-          <div
-            data-testid='quiz-question'
-            className='space-y-5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300'
-          >
-            {/* Question */}
-            <div
-              className={cn(
-                'rounded-xl px-4 py-4 border',
-                isTerminal
-                  ? 'bg-primary/5 border-primary/20'
-                  : 'bg-muted/40 border-border/50'
-              )}
-            >
-              <p className={cn('text-sm font-medium leading-relaxed', isTerminal && 'font-mono text-foreground/90')}>
-                {currentQuestion.question}
-              </p>
-            </div>
-
-            {/* Answer input */}
-            {!currentAnswerState?.submitted && (
-              <>
-                {currentQuestion.type === 'multiple_choice' && currentQuestion.options ? (
-                  <div className='space-y-2'>
-                    {currentQuestion.options.map((option, i) => (
-                      <button
-                        key={i}
-                        type='button'
-                        onClick={() => setCurrentAnswer(option)}
-                        className={cn(
-                          'w-full text-left px-4 py-3 rounded-xl border text-sm transition-all',
-                          'hover:scale-[1.005] active:scale-[0.998]',
-                          currentAnswer === option
-                            ? isTerminal
-                              ? 'bg-primary/20 border-primary text-primary'
-                              : 'bg-primary/10 border-primary text-primary font-medium'
-                            : isTerminal
-                              ? 'bg-primary/5 border-primary/20 text-foreground/80 hover:bg-primary/10'
-                              : 'bg-background border-border/50 text-foreground/80 hover:bg-muted/50'
-                        )}
-                      >
-                        <span className={cn('font-mono text-xs mr-3 opacity-50')}>
-                          {String.fromCharCode(65 + i)}.
-                        </span>
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <textarea
-                    value={currentAnswer}
-                    onChange={e => setCurrentAnswer(e.target.value)}
-                    placeholder={
-                      currentQuestion.type === 'fill_blank'
-                        ? '답을 입력하세요...'
-                        : '코드를 작성하거나 설명을 입력하세요...'
-                    }
-                    rows={currentQuestion.type === 'fill_blank' ? 2 : 5}
-                    className={cn(
-                      'w-full rounded-xl border px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50',
-                      isTerminal
-                        ? 'bg-[hsl(var(--terminal-code-bg))] border-primary/20 text-foreground font-mono'
-                        : 'bg-background border-border/50'
-                    )}
-                  />
-                )}
-                <button
-                  type='button'
-                  onClick={handleSubmitAnswer}
-                  disabled={!currentAnswer.trim()}
-                  className={cn(
-                    'flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all',
-                    'disabled:opacity-40 disabled:cursor-not-allowed',
-                    isTerminal
-                      ? 'bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30'
-                      : 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  )}
-                >
-                  확인
-                  <ChevronRight className='h-4 w-4' />
-                </button>
-              </>
-            )}
-
-            {/* Feedback */}
-            {currentAnswerState?.submitted && (
-              <div
-                data-testid='quiz-feedback'
-                className={cn(
-                  'rounded-xl px-4 py-4 border space-y-3 animate-in fade-in-0 duration-200',
-                  currentAnswerState.correct
-                    ? isTerminal
-                      ? 'bg-emerald-500/10 border-emerald-500/30'
-                      : 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800/40'
-                    : isTerminal
-                      ? 'bg-red-500/10 border-red-500/30'
-                      : 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800/40'
-                )}
-              >
-                <div className='flex items-center gap-2'>
-                  {currentAnswerState.correct ? (
-                    <CheckCircle className={cn('h-4 w-4', isTerminal ? 'text-emerald-400' : 'text-green-600 dark:text-green-400')} />
-                  ) : (
-                    <XCircle className={cn('h-4 w-4', isTerminal ? 'text-red-400' : 'text-red-600 dark:text-red-400')} />
-                  )}
-                  <span className={cn(
-                    'text-sm font-medium',
-                    currentAnswerState.correct
-                      ? isTerminal ? 'text-emerald-400' : 'text-green-700 dark:text-green-300'
-                      : isTerminal ? 'text-red-400' : 'text-red-700 dark:text-red-300'
-                  )}>
-                    {currentAnswerState.correct ? '정답입니다!' : '틀렸습니다.'}
-                  </span>
-                </div>
-                {!currentAnswerState.correct && (
-                  <p className={cn('text-sm', isTerminal && 'font-mono')}>
-                    <span className='font-medium'>정답: </span>
-                    {currentQuestion.answer}
-                  </p>
-                )}
-                {currentQuestion.explanation && (
-                  <p className={cn('text-xs text-muted-foreground leading-relaxed', isTerminal && 'font-mono')}>
-                    {currentQuestion.explanation}
-                  </p>
-                )}
-                <button
-                  type='button'
-                  onClick={handleNext}
-                  className={cn(
-                    'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all mt-2',
-                    isTerminal
-                      ? 'bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30'
-                      : 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  )}
-                >
-                  {currentIndex + 1 >= questions.length ? '결과 보기' : '다음 문제'}
-                  <ChevronRight className='h-4 w-4' />
-                </button>
-              </div>
-            )}
-          </div>
+          <QuestionView
+            question={currentQuestion}
+            questionNumber={currentIndex + 1}
+            answerState={currentAnswerState}
+            currentAnswer={currentAnswer}
+            onAnswerChange={setCurrentAnswer}
+            onSubmit={handleSubmitAnswer}
+            onNext={handleNext}
+            isLast={currentIndex + 1 >= questions.length && batchFetchedRef.current >= MAX_BATCHES}
+            isTerminal={isTerminal}
+            isNextLoading={isFetchingNext && currentIndex + 1 >= questions.length}
+          />
         )}
 
-        {/* Complete state */}
+        {/* Complete state (triggered by handleNext reaching end) */}
         {state === 'complete' && (
-          <div className='flex flex-col items-center py-4 gap-4 animate-in fade-in-0 duration-300'>
-            <div className={cn(
-              'flex items-center justify-center w-16 h-16 rounded-2xl mb-2',
-              isTerminal ? 'bg-primary/10' : 'bg-primary/10'
-            )}>
-              <BookOpen className={cn('h-8 w-8', isTerminal ? 'text-primary' : 'text-primary')} />
-            </div>
-            <div className='text-center space-y-1'>
-              <p className={cn('text-2xl font-bold', isTerminal && 'font-mono text-primary')}>
-                {correctCount} / {questions.length} 정답
-              </p>
-              <p className={cn('text-sm text-muted-foreground', isTerminal && 'font-mono')}>
-                {correctCount === questions.length
-                  ? '완벽합니다! 모든 문제를 맞혔어요 🎉'
-                  : correctCount >= questions.length * 0.7
-                    ? '잘 했습니다! 조금만 더 복습해보세요.'
-                    : '다시 한번 읽어보고 도전해보세요!'}
-              </p>
-            </div>
-            <button
-              type='button'
-              onClick={handleRetry}
-              className={cn(
-                'flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all mt-2',
-                'hover:scale-[1.02] active:scale-[0.98]',
-                isTerminal
-                  ? 'bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30'
-                  : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm'
-              )}
-            >
-              <RotateCcw className='h-4 w-4' />
-              다시 도전하기
-            </button>
-          </div>
+          <CompleteView
+            correctCount={correctCount}
+            totalAnswered={totalAnswered}
+            isTerminal={isTerminal}
+            onRetry={handleRetry}
+          />
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+interface QuestionViewProps {
+  question: QuizQuestion;
+  questionNumber: number;
+  answerState: AnswerState | undefined;
+  currentAnswer: string;
+  onAnswerChange: (v: string) => void;
+  onSubmit: () => void;
+  onNext: () => void;
+  isLast: boolean;
+  isTerminal: boolean;
+  isNextLoading: boolean;
+}
+
+function QuestionView({
+  question,
+  questionNumber,
+  answerState,
+  currentAnswer,
+  onAnswerChange,
+  onSubmit,
+  onNext,
+  isLast,
+  isTerminal,
+  isNextLoading,
+}: QuestionViewProps) {
+  // Badge for question type
+  const typeBadge: Record<string, string> = {
+    fill_blank: '빈칸 채우기',
+    multiple_choice: '선택형',
+    transform: '변형 문제',
+    explain: '실행 추론',
+  };
+
+  return (
+    <div
+      data-testid='quiz-question'
+      className='space-y-4 animate-in fade-in-0 slide-in-from-bottom-2 duration-300'
+    >
+      {/* Type badge + question */}
+      <div
+        className={cn(
+          'rounded-xl px-4 py-4 border space-y-2',
+          isTerminal
+            ? 'bg-primary/5 border-primary/20'
+            : 'bg-muted/40 border-border/50'
+        )}
+      >
+        <div className="flex items-center gap-2 mb-1">
+          <span className={cn(
+            'text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full',
+            isTerminal
+              ? 'bg-primary/20 text-primary font-mono'
+              : 'bg-primary/10 text-primary'
+          )}>
+            {typeBadge[question.type] ?? question.type}
+          </span>
+          <span className={cn('text-[10px] text-muted-foreground', isTerminal && 'font-mono')}>
+            Q{questionNumber}
+          </span>
+        </div>
+        <p className={cn(
+          'text-sm font-medium leading-relaxed whitespace-pre-wrap',
+          isTerminal && 'font-mono text-foreground/90'
+        )}>
+          {question.question}
+        </p>
+      </div>
+
+      {/* Answer area */}
+      {!answerState?.submitted && (
+        <>
+          {question.type === 'multiple_choice' && question.options ? (
+            <div className='space-y-2'>
+              {question.options.map((option, i) => (
+                <button
+                  key={i}
+                  type='button'
+                  onClick={() => onAnswerChange(option)}
+                  className={cn(
+                    'w-full text-left px-4 py-3 rounded-xl border text-sm transition-all',
+                    'hover:scale-[1.005] active:scale-[0.998]',
+                    currentAnswer === option
+                      ? isTerminal
+                        ? 'bg-primary/20 border-primary text-primary'
+                        : 'bg-primary/10 border-primary text-primary font-medium'
+                      : isTerminal
+                        ? 'bg-primary/5 border-primary/20 text-foreground/80 hover:bg-primary/10'
+                        : 'bg-background border-border/50 text-foreground/80 hover:bg-muted/50'
+                  )}
+                >
+                  <span className='font-mono text-xs mr-3 opacity-50'>
+                    {String.fromCharCode(65 + i)}.
+                  </span>
+                  {option}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <textarea
+              value={currentAnswer}
+              onChange={e => onAnswerChange(e.target.value)}
+              placeholder={
+                question.type === 'fill_blank'
+                  ? '코드 토큰을 입력하세요...'
+                  : question.type === 'transform'
+                    ? '변형된 코드를 작성하세요...'
+                    : '실행 단계를 추론하여 설명하세요...'
+              }
+              rows={question.type === 'fill_blank' ? 2 : 6}
+              className={cn(
+                'w-full rounded-xl border px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50',
+                isTerminal
+                  ? 'bg-[hsl(var(--terminal-code-bg))] border-primary/20 text-foreground font-mono'
+                  : 'bg-background border-border/50'
+              )}
+            />
+          )}
+          <button
+            type='button'
+            onClick={onSubmit}
+            disabled={!currentAnswer.trim()}
+            className={cn(
+              'flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all',
+              'disabled:opacity-40 disabled:cursor-not-allowed',
+              isTerminal
+                ? 'bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30'
+                : 'bg-primary text-primary-foreground hover:bg-primary/90'
+            )}
+          >
+            확인
+            <ChevronRight className='h-4 w-4' />
+          </button>
+        </>
+      )}
+
+      {/* Feedback */}
+      {answerState?.submitted && (
+        <div
+          data-testid='quiz-feedback'
+          className={cn(
+            'rounded-xl px-4 py-4 border space-y-3 animate-in fade-in-0 duration-200',
+            answerState.correct
+              ? isTerminal
+                ? 'bg-emerald-500/10 border-emerald-500/30'
+                : 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800/40'
+              : isTerminal
+                ? 'bg-red-500/10 border-red-500/30'
+                : 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800/40'
+          )}
+        >
+          <div className='flex items-center gap-2'>
+            {answerState.correct ? (
+              <CheckCircle className={cn('h-4 w-4', isTerminal ? 'text-emerald-400' : 'text-green-600 dark:text-green-400')} />
+            ) : (
+              <XCircle className={cn('h-4 w-4', isTerminal ? 'text-red-400' : 'text-red-600 dark:text-red-400')} />
+            )}
+            <span className={cn(
+              'text-sm font-medium',
+              answerState.correct
+                ? isTerminal ? 'text-emerald-400' : 'text-green-700 dark:text-green-300'
+                : isTerminal ? 'text-red-400' : 'text-red-700 dark:text-red-300'
+            )}>
+              {answerState.correct ? '정답입니다!' : '틀렸습니다.'}
+            </span>
+          </div>
+          {!answerState.correct && (
+            <div className={cn('text-sm space-y-1', isTerminal && 'font-mono')}>
+              <span className='font-medium text-xs text-muted-foreground uppercase tracking-wide'>정답</span>
+              <pre className={cn(
+                'text-xs rounded-lg px-3 py-2 overflow-x-auto whitespace-pre-wrap',
+                isTerminal ? 'bg-primary/10 text-primary' : 'bg-muted text-foreground'
+              )}>
+                {question.answer}
+              </pre>
+            </div>
+          )}
+          {question.explanation && (
+            <p className={cn('text-xs text-muted-foreground leading-relaxed', isTerminal && 'font-mono')}>
+              {question.explanation}
+            </p>
+          )}
+          <button
+            type='button'
+            onClick={onNext}
+            disabled={isNextLoading}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all mt-2',
+              'disabled:opacity-60',
+              isTerminal
+                ? 'bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30'
+                : 'bg-primary text-primary-foreground hover:bg-primary/90'
+            )}
+          >
+            {isNextLoading ? (
+              <>
+                <Loader2 className='h-3.5 w-3.5 animate-spin' />
+                준비 중...
+              </>
+            ) : isLast ? (
+              <>결과 보기<ChevronRight className='h-4 w-4' /></>
+            ) : (
+              <>다음 문제<ChevronRight className='h-4 w-4' /></>
+            )}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface CompleteViewProps {
+  correctCount: number;
+  totalAnswered: number;
+  isTerminal: boolean;
+  onRetry: () => void;
+}
+
+function CompleteView({ correctCount, totalAnswered, isTerminal, onRetry }: CompleteViewProps) {
+  const pct = totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : 0;
+  return (
+    <div className='flex flex-col items-center py-4 gap-4 animate-in fade-in-0 duration-300'>
+      <div className={cn(
+        'flex items-center justify-center w-16 h-16 rounded-2xl mb-2',
+        isTerminal ? 'bg-primary/10' : 'bg-primary/10'
+      )}>
+        <BookOpen className={cn('h-8 w-8 text-primary')} />
+      </div>
+      <div className='text-center space-y-1'>
+        <p className={cn('text-2xl font-bold', isTerminal && 'font-mono text-primary')}>
+          {correctCount} / {totalAnswered} 정답
+        </p>
+        <p className={cn('text-sm font-medium', isTerminal ? 'font-mono text-primary/60' : 'text-muted-foreground')}>
+          정답률 {pct}%
+        </p>
+        <p className={cn('text-sm text-muted-foreground mt-1', isTerminal && 'font-mono')}>
+          {pct === 100
+            ? '완벽합니다! 코드를 완전히 이해했어요 🎉'
+            : pct >= 70
+              ? '잘 했습니다! 놓친 코드 라인을 다시 확인해보세요.'
+              : '코드를 다시 읽고 각 라인의 역할을 분석해보세요!'}
+        </p>
+      </div>
+      <button
+        type='button'
+        onClick={onRetry}
+        className={cn(
+          'flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all mt-2',
+          'hover:scale-[1.02] active:scale-[0.98]',
+          isTerminal
+            ? 'bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30'
+            : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm'
+        )}
+      >
+        <RotateCcw className='h-4 w-4' />
+        다시 도전하기
+      </button>
     </div>
   );
 }

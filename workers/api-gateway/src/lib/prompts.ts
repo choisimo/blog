@@ -266,24 +266,52 @@ function buildCustomPrompt(payload: TaskPayload): PromptConfig {
 function buildQuizPrompt(payload: TaskPayload): PromptConfig {
   const content = safeTruncate(payload.paragraph || payload.content, TEXT_LIMITS.CONTENT);
   const postTitle = safeTruncate(payload.postTitle || payload.title, TEXT_LIMITS.TITLE);
+  const batchIndex = typeof payload.batchIndex === 'number' ? payload.batchIndex : 0;
+  const previousQuestions: string[] = Array.isArray(payload.previousQuestions)
+    ? (payload.previousQuestions as string[])
+    : [];
 
-  const user = `Task: Generate a learning quiz based on the following content.
+  const batchNote = batchIndex > 0 && previousQuestions.length > 0
+    ? `\n\nAlready asked (do NOT repeat these):\n${previousQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}\n`
+    : '';
+
+  const user = `Task: Generate EXACTLY 2 code-focused learning quiz questions for a technical blog post.
 
 Context:
 - Blog Post Title: "${postTitle}"
+- Batch: ${batchIndex + 1} (generate questions ${batchIndex * 2 + 1}-${batchIndex * 2 + 2})${batchNote}
 
 Content:
 "${content}"
 
-Instructions:
-1. Generate 3-5 quiz questions of MIXED types: fill_blank, multiple_choice, transform, explain
-2. For fill_blank: create a sentence with a key concept blanked out
-3. For multiple_choice: provide exactly 4 options (A, B, C, D), only one correct
-4. For transform: ask to convert or rewrite something from the content
-5. For explain: ask for a top-down explanation of a key concept
-6. Make questions progressively deeper (start easy, end with synthesis)
-7. Include a clear explanation for each correct answer
-8. Maintain the original language of the input text
+## STRICT RULES — VIOLATIONS WILL FAIL:
+
+1. **CODE ONLY**: Every question MUST directly reference specific code from the content above.
+   - Quote the actual code line(s) in the question (wrap in backticks).
+   - FORBIDDEN: Questions about "main topic", "purpose of document", "what is X concept".
+   - FORBIDDEN: Generic comprehension questions that don't cite actual code.
+
+2. **QUESTION TYPES** (exactly 2 questions, mixed types):
+   - **fill_blank**: Quote a real code snippet with ONE crucial token replaced by ___.
+     Example: \`arr.sort((a, b) => ___ - ___)\` — what fills the blanks?
+   - **multiple_choice**: Give 4 options (A-D). Quote actual code, ask what it does / why / what happens if changed.
+     Example: In \`while (left <= right)\`, what happens if \`<=\` is changed to \`<\`?
+   - **transform**: Show real code, ask to rewrite it (iterative↔recursive, optimize, fix a bug, handle edge case).
+     Example: Rewrite this merge step without extra arrays: \`...code...\`
+   - **explain**: Quote a specific multi-line block, ask to trace execution step-by-step for given inputs.
+     Example: Trace \`mergeSort([3,1,2])\` through lines 12-18. What is the call stack?
+
+3. **DIFFICULTY**: Each batch escalates difficulty.
+   - Batch 1: Fill-blank + multiple_choice on specific code syntax/behavior
+   - Batch 2+: Transform + explain requiring deep reasoning about algorithm/logic
+
+4. **ANSWER QUALITY**:
+   - answer: exact code token or short phrase (for fill_blank/multiple_choice), or model solution (for transform/explain)
+   - explanation: 2-3 sentences explaining WHY, referencing the surrounding code context
+
+5. **LANGUAGE**: Match the language of the blog post content.
+
+Generate EXACTLY 2 questions.
 
 Response Schema:
 ${JSON.stringify(SCHEMAS.quiz, null, 2)}`;
