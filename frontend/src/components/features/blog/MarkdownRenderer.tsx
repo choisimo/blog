@@ -4,12 +4,13 @@ import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import { Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
-import { Children, Fragment, isValidElement, useMemo, useState } from 'react';
+import { Children, Fragment, isValidElement, useMemo, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import SparkInline from '@/components/features/sentio/SparkInline';
 import { ClickableImage } from './ImageLightbox';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
+import { createHeadingSlug, normalizeHeadingText } from '@/utils/markdownHeadings';
 
 // Terminal-style syntax highlighting theme
 const terminalTheme: { [key: string]: React.CSSProperties } = {
@@ -44,6 +45,25 @@ interface MarkdownRendererProps {
   inlineEnabled?: boolean;
   postTitle?: string;
   postPath?: string; // e.g., "2025/future-tech-six-insights" for resolving relative image paths
+}
+
+function extractTextFromNode(node: ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') {
+    return String(node);
+  }
+
+  if (Array.isArray(node)) {
+    return node.map(extractTextFromNode).join(' ');
+  }
+
+  if (!isValidElement(node)) {
+    return '';
+  }
+
+  const props = (node as any).props ?? {};
+  return Children.toArray(props.children)
+    .map(extractTextFromNode)
+    .join(' ');
 }
 
 // ============================================================================
@@ -221,6 +241,15 @@ export const MarkdownRenderer = ({
     return children.some(child => hasMediaNode(child));
   };
 
+  const headingSlugCounts = new Map<string, number>();
+  const getHeadingId = (children: ReactNode): string => {
+    const raw = normalizeHeadingText(extractTextFromNode(children));
+    const base = createHeadingSlug(raw);
+    const count = headingSlugCounts.get(base) ?? 0;
+    headingSlugCounts.set(base, count + 1);
+    return count === 0 ? base : `${base}-${count}`;
+  };
+
   return (
     <div
       className={cn(
@@ -234,11 +263,7 @@ export const MarkdownRenderer = ({
         rehypePlugins={[rehypeRaw]}
         components={{
           h1: ({ children }) => {
-            const text = String(children);
-            const id = text
-              .toLowerCase()
-              .replace(/[^\w\s-]/g, '')
-              .replace(/\s+/g, '-');
+            const id = getHeadingId(children);
             return (
               <h1
                 id={id}
@@ -253,11 +278,7 @@ export const MarkdownRenderer = ({
             );
           },
           h2: ({ children }) => {
-            const text = String(children);
-            const id = text
-              .toLowerCase()
-              .replace(/[^\w\s-]/g, '')
-              .replace(/\s+/g, '-');
+            const id = getHeadingId(children);
             return (
               <h2
                 id={id}
@@ -272,11 +293,7 @@ export const MarkdownRenderer = ({
             );
           },
           h3: ({ children }) => {
-            const text = String(children);
-            const id = text
-              .toLowerCase()
-              .replace(/[^\w\s-]/g, '')
-              .replace(/\s+/g, '-');
+            const id = getHeadingId(children);
             return (
               <h3
                 id={id}
@@ -291,11 +308,7 @@ export const MarkdownRenderer = ({
             );
           },
           h4: ({ children }) => {
-            const text = String(children);
-            const id = text
-              .toLowerCase()
-              .replace(/[^\w\s-]/g, '')
-              .replace(/\s+/g, '-');
+            const id = getHeadingId(children);
             return (
               <h4
                 id={id}
@@ -306,11 +319,7 @@ export const MarkdownRenderer = ({
             );
           },
           h5: ({ children }) => {
-            const text = String(children);
-            const id = text
-              .toLowerCase()
-              .replace(/[^\w\s-]/g, '')
-              .replace(/\s+/g, '-');
+            const id = getHeadingId(children);
             return (
               <h5
                 id={id}
@@ -321,11 +330,7 @@ export const MarkdownRenderer = ({
             );
           },
           h6: ({ children }) => {
-            const text = String(children);
-            const id = text
-              .toLowerCase()
-              .replace(/[^\w\s-]/g, '')
-              .replace(/\s+/g, '-');
+            const id = getHeadingId(children);
             return (
               <h6
                 id={id}
@@ -440,7 +445,7 @@ export const MarkdownRenderer = ({
           img: ({ src, alt }) => (
             <ClickableImage src={src || ''} alt={alt} isTerminal={isTerminal} postPath={postPath} />
           ),
-          citation: ({ children }) => <cite>{children}</cite>,
+          cite: ({ children }) => <cite>{children}</cite>,
           table: ({ children }) => (
             <div className='overflow-x-auto my-8 max-w-4xl mx-auto'>
               <table

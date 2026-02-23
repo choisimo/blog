@@ -618,7 +618,7 @@ export const STREAMING = {
  */
 export const VALID_TASK_MODES = parseJsonEnv(
   process.env.VALID_TASK_MODES,
-  ['sketch', 'prism', 'chain', 'catalyst', 'summary', 'custom']
+  ['sketch', 'prism', 'chain', 'catalyst', 'summary', 'custom', 'quiz']
 );
 
 // ============================================================================
@@ -736,6 +736,7 @@ export const OPENAI_CLIENT = {
 // Add catalyst and custom temperatures to existing AI_TEMPERATURES
 AI_TEMPERATURES.CATALYST = parseFloatEnv(process.env.AI_TEMP_CATALYST, 0.4);
 AI_TEMPERATURES.CUSTOM = parseFloatEnv(process.env.AI_TEMP_CUSTOM, 0.2);
+AI_TEMPERATURES.QUIZ = parseFloatEnv(process.env.AI_TEMP_QUIZ, 0.5);
 AI_TEMPERATURES.PLAYGROUND = parseFloatEnv(process.env.AI_TEMP_PLAYGROUND, 0.7);
 AI_TEMPERATURES.TEMPLATE = parseFloatEnv(process.env.AI_TEMP_TEMPLATE, 0.7);
 AI_TEMPERATURES.AGGREGATE = parseFloatEnv(process.env.AI_TEMP_AGGREGATE, 0.2);

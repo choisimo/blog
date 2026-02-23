@@ -180,6 +180,12 @@ export async function* streamChatEvents(
 
       const events = parser.processChunk(chunk);
       for (const event of events) {
+        if (event.type === 'session') {
+          storeSessionId(event.sessionId);
+        }
+        if (event.type === 'error') {
+          throw new ChatError(event.message || 'Chat failed', 'SERVER_ERROR');
+        }
         if (event.type === 'text') markFirst();
         yield event;
       }
@@ -188,6 +194,12 @@ export async function* streamChatEvents(
     // 남은 버퍼 처리
     const finalEvents = parser.flush();
     for (const event of finalEvents) {
+      if (event.type === 'session') {
+        storeSessionId(event.sessionId);
+      }
+      if (event.type === 'error') {
+        throw new ChatError(event.message || 'Chat failed', 'SERVER_ERROR');
+      }
       if (event.type === 'text') markFirst();
       yield event;
     }

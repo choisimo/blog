@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
-import { streamChatEvents } from '@/services/chat';
+import { streamChatEvents, invokeChatTask } from '@/services/chat';
 import { PrismResult } from '@/services/ai';
 import ChatMarkdown from '@/components/features/chat/ChatMarkdown';
 
@@ -52,12 +52,61 @@ const DEBATE_STARTERS = [
   { label: '조금 더 이해하고 정리하고 싶어요', stance: 'neutral' as const, icon: Lightbulb },
 ];
 
-const FOLLOW_UP_PROMPTS = [
+const DEFAULT_FOLLOW_UP_PROMPTS = [
   '내 상황에 맞게 풀어서 설명해줘',
   '다른 관점에서 보면 어떻게 느낄 수 있을까?',
   '앞으로 내가 어떤 선택을 할 수 있을지 같이 정리해줘',
   '지금 내가 놓치고 있는 포인트가 있다면 알려줘',
 ];
+
+function normalizePrompt(text: string): string {
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+function pickUniquePrompts(items: string[], max = 3): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+
+  for (const item of items) {
+    const normalized = normalizePrompt(item);
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(normalized);
+    if (out.length >= max) break;
+  }
+
+  return out;
+}
+
+function extractChainQuestions(raw: unknown): string[] {
+  if (!raw || typeof raw !== 'object') return [];
+  const candidate = raw as { questions?: Array<{ q?: unknown }> };
+  if (!Array.isArray(candidate.questions)) return [];
+
+  return candidate.questions
+    .map((q) => (typeof q?.q === 'string' ? q.q : ''))
+    .map(normalizePrompt)
+    .filter(Boolean);
+}
+
+function derivePromptsFromResponse(text: string): string[] {
+  const base = normalizePrompt(text);
+  if (!base) return [];
+
+  const ideas = base
+    .split(/(?<=[.!?。！？])\s+/)
+    .map(normalizePrompt)
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((line) => {
+      if (line.endsWith('?') || line.endsWith('？')) return line;
+      return `${line.replace(/[.!。]+$/, '')}에 대해 더 자세히 설명해줄래?`;
+    });
+
+  return pickUniquePrompts(ideas, 3);
+}
 
 type AIPersona = {
   id: string;
@@ -215,6 +264,9 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
   const [currentStance, setCurrentStance] = useState<'agree' | 'disagree' | 'neutral' | null>(null);
   const [selectedPersona, setSelectedPersona] = useState<AIPersona | null>(null);
   const [selectionStep, setSelectionStep] = useState<SelectionStep>('persona');
+  const [followUpPrompts, setFollowUpPrompts] = useState<string[]>(
+    DEFAULT_FOLLOW_UP_PROMPTS.slice(0, 3)
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -234,6 +286,42 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
   const addMessage = useCallback((msg: DebateMessage) => {
     setMessages(prev => [...prev, msg]);
   }, []);
+
+  const refreshFollowUps = useCallback(
+    async (assistantText: string, streamedFollowUps?: string[]) => {
+      const streamed = pickUniquePrompts(streamedFollowUps || [], 3);
+      if (streamed.length > 0) {
+        setFollowUpPrompts(streamed);
+        return;
+      }
+
+      try {
+        const result = await invokeChatTask<{ questions?: Array<{ q?: string }> }>({
+          mode: 'chain',
+          payload: {
+            paragraph: `${topic.title}\n\n${assistantText}`.slice(0, 1600),
+            postTitle: topic.title,
+          },
+        });
+
+        const dynamic = pickUniquePrompts(extractChainQuestions(result.data), 3);
+        if (dynamic.length > 0) {
+          setFollowUpPrompts(dynamic);
+          return;
+        }
+      } catch {
+        // fallback below
+      }
+
+      const derived = derivePromptsFromResponse(assistantText);
+      if (derived.length > 0) {
+        setFollowUpPrompts(derived);
+      } else {
+        setFollowUpPrompts(DEFAULT_FOLLOW_UP_PROMPTS.slice(0, 3));
+      }
+    },
+    [topic.title]
+  );
 
   const selectPersona = useCallback((persona: AIPersona) => {
     setSelectedPersona(persona);
@@ -278,6 +366,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
         : '조금 더 이해하고 정리하고 싶어요. 핵심 논점이 무엇인가요?';
 
       let acc = '';
+      const streamedFollowUps: string[] = [];
       for await (const ev of streamChatEvents({
         text: `${systemPrompt}\n\n---\n\n사용자: ${starterText}`,
         signal: controller.signal,
@@ -288,7 +377,13 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
           setMessages(prev =>
             prev.map(m => (m.id === aiId ? { ...m, content: acc } : m))
           );
+        } else if (ev.type === 'followups') {
+          streamedFollowUps.push(...ev.questions);
         }
+      }
+
+      if (acc.trim()) {
+        void refreshFollowUps(acc, streamedFollowUps);
       }
     } catch (err) {
       const error = err as Error;
@@ -316,7 +411,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
       if (timeoutId.current) clearTimeout(timeoutId.current);
       setBusy(false);
     }
-  }, [topic, addMessage, selectedPersona]);
+  }, [topic, addMessage, selectedPersona, refreshFollowUps]);
 
   const sendMessage = useCallback(async () => {
     if (!canSend) return;
@@ -372,6 +467,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
       ].join('\n');
 
       let acc = '';
+      const streamedFollowUps: string[] = [];
       for await (const ev of streamChatEvents({
         text: fullPrompt,
         signal: controller.signal,
@@ -382,7 +478,13 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
           setMessages(prev =>
             prev.map(m => (m.id === aiId ? { ...m, content: acc } : m))
           );
+        } else if (ev.type === 'followups') {
+          streamedFollowUps.push(...ev.questions);
         }
+      }
+
+      if (acc.trim()) {
+        void refreshFollowUps(acc, streamedFollowUps);
       }
     } catch (err) {
       const error = err as Error;
@@ -411,7 +513,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
       if (timeoutId.current) clearTimeout(timeoutId.current);
       setBusy(false);
     }
-  }, [canSend, input, messages, topic, currentStance, selectedPersona, addMessage]);
+  }, [canSend, input, messages, topic, currentStance, selectedPersona, addMessage, refreshFollowUps]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -430,6 +532,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
     setSelectedPersona(null);
     setSelectionStep('persona');
     setInput('');
+    setFollowUpPrompts(DEFAULT_FOLLOW_UP_PROMPTS.slice(0, 3));
     setBusy(false);
   }, []);
 
@@ -794,7 +897,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
         {/* Quick Follow-ups after AI response */}
         {!busy && messages.length > 0 && messages[messages.length - 1]?.role === 'ai' && (
           <div className="flex flex-wrap gap-2 pt-3">
-            {FOLLOW_UP_PROMPTS.slice(0, 3).map((prompt, i) => (
+            {followUpPrompts.map((prompt, i) => (
               <button
                 key={i}
                 type="button"

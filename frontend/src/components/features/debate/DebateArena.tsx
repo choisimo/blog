@@ -15,6 +15,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getApiBaseUrl } from '@/utils/apiBase';
+import { getChatBaseUrl } from '@/services/chat/config';
 import ChatMarkdown from '@/components/features/chat/ChatMarkdown';
 
 type Agent = {
@@ -51,6 +52,109 @@ const AGENT_ICONS: Record<string, React.ComponentType<{ className?: string }>> =
   defender: Shield,
   moderator: Scale,
 };
+
+type ApiEnvelope<T> = {
+  ok?: boolean;
+  data?: T;
+  error?: { message?: string } | string;
+  message?: string;
+};
+
+function normalizeBaseUrl(base: string): string {
+  return base.replace(/\/$/, '');
+}
+
+function extractErrorMessage(payload: unknown): string | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const obj = payload as Record<string, unknown>;
+  if (typeof obj.message === 'string') return obj.message;
+  if (typeof obj.error === 'string') return obj.error;
+  if (obj.error && typeof obj.error === 'object') {
+    const err = obj.error as Record<string, unknown>;
+    if (typeof err.message === 'string') return err.message;
+  }
+  return null;
+}
+
+function getDebateBaseCandidates(): string[] {
+  const candidates = new Set<string>();
+
+  try {
+    candidates.add(normalizeBaseUrl(getApiBaseUrl()));
+  } catch {
+    // ignore
+  }
+
+  try {
+    candidates.add(normalizeBaseUrl(getChatBaseUrl()));
+  } catch {
+    // ignore
+  }
+
+  if (typeof window !== 'undefined') {
+    candidates.add(normalizeBaseUrl(window.location.origin));
+  }
+
+  const hasNodoveDomain = Array.from(candidates).some((base) => /nodove\.com/i.test(base));
+  if (hasNodoveDomain) {
+    candidates.add('https://api.nodove.com');
+  }
+
+  return Array.from(candidates);
+}
+
+async function requestDebate<T>(path: string, init: RequestInit): Promise<T> {
+  const bases = getDebateBaseCandidates();
+  if (bases.length === 0) {
+    throw new Error('토론 API 기본 URL을 찾을 수 없습니다.');
+  }
+
+  let lastError = '토론 API 요청에 실패했습니다.';
+
+  for (const base of bases) {
+    const url = `${base}/api/v1/debate${path}`;
+
+    try {
+      const response = await fetch(url, init);
+      const text = await response.text().catch(() => '');
+
+      let parsed: ApiEnvelope<T> | null = null;
+      if (text) {
+        try {
+          parsed = JSON.parse(text) as ApiEnvelope<T>;
+        } catch {
+          parsed = null;
+        }
+      }
+
+      if (response.ok && parsed?.ok && parsed.data !== undefined) {
+        return parsed.data;
+      }
+
+      const message =
+        extractErrorMessage(parsed) ||
+        (text && !text.startsWith('<') ? text.slice(0, 160) : '') ||
+        `서버 오류: ${response.status}`;
+
+      const isNotFoundLike =
+        response.status === 404 ||
+        response.status === 405 ||
+        /not\s*found/i.test(message);
+
+      lastError = message;
+      if (isNotFoundLike) {
+        continue;
+      }
+
+      throw new Error(message);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '토론 API 호출 실패';
+      lastError = message;
+    }
+  }
+
+  throw new Error(lastError);
+}
 
 export default function DebateArena({
   initialTopic = '',
@@ -92,8 +196,7 @@ export default function DebateArena({
     setIsLoading(true);
     setError(null);
     try {
-      const baseUrl = getApiBaseUrl();
-      const response = await fetch(`${baseUrl}/api/v1/debate/sessions`, {
+      const data = await requestDebate<DebateSession>('/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -101,26 +204,16 @@ export default function DebateArena({
           topicDescription: description.trim() || undefined,
         }),
       });
-
-      if (response.ok) {
-        const data = await response.json() as { ok: boolean; data?: DebateSession; error?: { message?: string } };
-        if (data.ok && data.data) {
-          setSession(data.data);
-          setMessages([]);
-          setCurrentRound(0);
-          setVotes({});
-          setUserVote({});
-          setWinner(null);
-        } else {
-          setError(data.error?.message || '토론 세션 생성에 실패했습니다.');
-        }
-      } else {
-        const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } };
-        setError(errorData.error?.message || `서버 오류: ${response.status}`);
-      }
+      setSession(data);
+      setMessages([]);
+      setCurrentRound(0);
+      setVotes({});
+      setUserVote({});
+      setWinner(null);
     } catch (err) {
+      const message = err instanceof Error ? err.message : '토론 세션 생성에 실패했습니다.';
       console.error('Failed to start debate:', err);
-      setError('네트워크 오류가 발생했습니다. 다시 시도해주세요.');
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -132,27 +225,20 @@ export default function DebateArena({
     setIsLoading(true);
     setError(null);
     try {
-      const baseUrl = getApiBaseUrl();
-      const response = await fetch(`${baseUrl}/api/v1/debate/sessions/${session.sessionId}/round`, {
+      const data = await requestDebate<{ roundNumber: number; messages: DebateMessage[] }>(
+        `/sessions/${session.sessionId}/round`,
+        {
         method: 'POST',
-      });
-
-      if (response.ok) {
-        const data = await response.json() as { ok: boolean; data?: { roundNumber: number; messages: DebateMessage[] }; error?: { message?: string } };
-        if (data.ok && data.data) {
-          const { roundNumber, messages: newMessages } = data.data;
-          setCurrentRound(roundNumber);
-          setMessages((prev) => [...prev, ...newMessages]);
-        } else {
-          setError(data.error?.message || '라운드 생성에 실패했습니다.');
         }
-      } else {
-        const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } };
-        setError(errorData.error?.message || `서버 오류: ${response.status}`);
-      }
+      );
+
+      const { roundNumber, messages: newMessages } = data;
+      setCurrentRound(roundNumber);
+      setMessages((prev) => [...prev, ...newMessages]);
     } catch (err) {
+      const message = err instanceof Error ? err.message : '라운드 생성에 실패했습니다.';
       console.error('Failed to generate round:', err);
-      setError('네트워크 오류가 발생했습니다. 다시 시도해주세요.');
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -163,29 +249,26 @@ export default function DebateArena({
       if (!session || currentRound === 0) return;
 
       try {
-        const baseUrl = getApiBaseUrl();
-        const response = await fetch(`${baseUrl}/api/v1/debate/sessions/${session.sessionId}/vote`, {
+        const data = await requestDebate<{ votes: { attacker: number; defender: number } }>(
+          `/sessions/${session.sessionId}/vote`,
+          {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             roundNumber: currentRound,
             votedFor,
           }),
-        });
-
-        if (response.ok) {
-          const data = await response.json() as { ok: boolean; data?: { votes: { attacker: number; defender: number } } };
-          if (data.ok && data.data) {
-            setVotes((prev) => ({
-              ...prev,
-              [currentRound]: data.data!.votes,
-            }));
-            setUserVote((prev) => ({
-              ...prev,
-              [currentRound]: votedFor,
-            }));
           }
-        }
+        );
+
+        setVotes((prev) => ({
+          ...prev,
+          [currentRound]: data.votes,
+        }));
+        setUserVote((prev) => ({
+          ...prev,
+          [currentRound]: votedFor,
+        }));
       } catch (err) {
         console.error('Failed to vote:', err);
       }
@@ -202,17 +285,14 @@ export default function DebateArena({
     }
 
     try {
-      const baseUrl = getApiBaseUrl();
-      const response = await fetch(`${baseUrl}/api/v1/debate/sessions/${session.sessionId}/end`, {
+      const data = await requestDebate<{ winner: string | null }>(
+        `/sessions/${session.sessionId}/end`,
+        {
         method: 'POST',
-      });
-
-      if (response.ok) {
-        const data = await response.json() as { ok: boolean; data?: { winner: string | null; winnerRole: string | null } };
-        if (data.ok && data.data) {
-          setWinner(data.data.winner);
         }
-      }
+      );
+
+      setWinner(data.winner);
     } catch (err) {
       console.error('Failed to end debate:', err);
     }
@@ -329,6 +409,19 @@ export default function DebateArena({
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4">
+        {error && (
+          <div
+            className={cn(
+              'rounded-xl border px-4 py-3 text-sm',
+              isTerminal
+                ? 'border-red-500/40 bg-red-500/10 text-red-400'
+                : 'border-red-200 bg-red-50 text-red-700'
+            )}
+          >
+            {error}
+          </div>
+        )}
+
         {!session && (
           <div className="space-y-4 animate-in fade-in-0">
             <div className="space-y-3">

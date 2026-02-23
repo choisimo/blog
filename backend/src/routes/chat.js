@@ -127,6 +127,119 @@ async function performRAGSearch(query, topK = 5) {
   }
 }
 
+function extractMeaningfulLines(text) {
+  return String(text || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => line !== '---')
+    .filter((line) => !/^```/.test(line));
+}
+
+function sentencePoints(text, max = 4) {
+  const candidates = String(text || '')
+    .replace(/\s+/g, ' ')
+    .split(/(?<=[.!?。！？])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, max);
+
+  if (candidates.length > 0) return candidates;
+
+  return extractMeaningfulLines(text)
+    .map((line) => line.replace(/^[-*•\d.)\s]+/, '').trim())
+    .filter(Boolean)
+    .slice(0, max);
+}
+
+function projectTaskDataFromText(mode, text, payload) {
+  const rawText = String(text || '').trim();
+  if (!rawText) {
+    return getFallbackData(mode, payload);
+  }
+
+  const lines = extractMeaningfulLines(rawText);
+  const cleanedLines = lines
+    .map((line) => line.replace(/^[-*•\d.)\s]+/, '').trim())
+    .filter(Boolean);
+
+  switch (mode) {
+    case 'sketch': {
+      const moodMatch = rawText.match(/(?:mood|톤|감정)\s*[:：]\s*([^\n]+)/i);
+      const mood = moodMatch?.[1]?.trim() || FALLBACK_DATA.MOOD || 'insightful';
+      const bullets = cleanedLines.slice(0, 6);
+      return {
+        mood,
+        bullets: bullets.length > 0 ? bullets : sentencePoints(rawText, 4),
+      };
+    }
+
+    case 'prism': {
+      const points = sentencePoints(rawText, 4);
+      return {
+        facets: [
+          {
+            title: 'AI 분석',
+            points: points.length > 0 ? points : ['핵심 내용을 추출하지 못했습니다.'],
+          },
+        ],
+      };
+    }
+
+    case 'chain': {
+      const questionLines = cleanedLines
+        .filter((line) => /\?$|？$/.test(line))
+        .slice(0, 6);
+      const baseQuestions = questionLines.length > 0 ? questionLines : sentencePoints(rawText, 4);
+
+      return {
+        questions: baseQuestions.map((q) => ({
+          q: q.endsWith('?') || q.endsWith('？') ? q : `${q}?`,
+          why: '핵심 논점을 더 깊게 이해하기 위해',
+        })),
+      };
+    }
+
+    case 'quiz': {
+      return {
+        quiz: [
+          {
+            type: 'explain',
+            question: '위 내용을 바탕으로 핵심 개념을 설명해보세요.',
+            answer: rawText.slice(0, 800),
+            explanation: 'AI가 서술형으로 응답해 퀴즈 형식으로 변환했습니다.',
+          },
+        ],
+      };
+    }
+
+    case 'summary':
+      return { summary: rawText };
+
+    case 'catalyst': {
+      const ideas = sentencePoints(rawText, 3);
+      return {
+        suggestions:
+          ideas.length > 0
+            ? ideas.map((idea) => ({
+                idea,
+                reason: 'AI 응답에서 추출한 제안입니다.',
+              }))
+            : [
+                {
+                  idea: '핵심 쟁점을 다시 정리해보세요.',
+                  reason: '논점을 구조화하면 다음 선택이 쉬워집니다.',
+                },
+              ],
+      };
+    }
+
+    case 'custom':
+    default:
+      return { text: rawText };
+  }
+}
+
 // In-memory session storage (for simplicity - use Redis in production)
 const sessions = new Map();
 const notebookBootstrapJobs = new Map();
@@ -990,6 +1103,20 @@ function buildTaskPrompt(mode, payload) {
         temperature: AI_TEMPERATURES.SUMMARY,
       };
 
+    case 'quiz':
+      return {
+        prompt: [
+          'Return STRICT JSON only for technical learning quiz questions.',
+          '{"quiz":[{"type":"fill_blank|multiple_choice|transform|explain","question":"string","answer":"string","options":["string"],"explanation":"string"}]}',
+          `Post: ${title.slice(0, TEXT_LIMITS.TASK_TITLE)}`,
+          'Paragraph:',
+          text.slice(0, TEXT_LIMITS.TASK_PARAGRAPH),
+          '',
+          'Task: Generate EXACTLY 2 concise quiz questions in the original language.',
+        ].join('\n'),
+        temperature: AI_TEMPERATURES.QUIZ,
+      };
+
     case 'catalyst':
       return {
         prompt: [
@@ -1188,6 +1315,17 @@ function getFallbackData(mode, payload) {
       return {
         suggestions: [
           { idea: '다른 관점에서 접근', reason: '새로운 시각 제공' },
+        ],
+      };
+    case 'quiz':
+      return {
+        quiz: [
+          {
+            type: 'explain',
+            question: '이 내용의 핵심 개념을 설명해보세요.',
+            answer: '핵심 개념을 다시 정리해보며 이해를 점검해보세요.',
+            explanation: 'AI 응답이 일시적으로 지연되어 기본 퀴즈가 표시됩니다.',
+          },
         ],
       };
     default:
@@ -1634,8 +1772,8 @@ router.post('/session/:sessionId/task', async (req, res, next) => {
           data = json;
           console.log(`[Task:${taskMode}] Successfully parsed JSON:`, JSON.stringify(data).slice(0, 200));
         } else {
-          console.warn(`[Task:${taskMode}] JSON parse failed for response:`, text?.slice(0, 300));
-          throw new Error('Invalid JSON response');
+          console.warn(`[Task:${taskMode}] JSON parse failed, projecting text result`);
+          data = projectTaskDataFromText(taskMode, text, taskPayload);
         }
       }
 

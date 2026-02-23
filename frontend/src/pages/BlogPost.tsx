@@ -883,14 +883,20 @@ const BlogPost = () => {
           </article>
           
           <aside className='hidden xl:block relative'>
-            <TableOfContents content={localized?.content ?? post.content} />
+            <TableOfContents
+              content={localized?.content ?? post.content}
+              postTitle={localized?.title ?? post.title}
+            />
           </aside>
         </div>
         </div>
       </div>
       <ScrollToTop />
       {/* Mobile TOC floating button */}
-      <TocDrawer content={localized?.content ?? post.content} />
+      <TocDrawer
+        content={localized?.content ?? post.content}
+        postTitle={localized?.title ?? post.title}
+      />
     </>
   );
 };

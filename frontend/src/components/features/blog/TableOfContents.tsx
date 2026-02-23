@@ -5,6 +5,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { BookOpen, X } from 'lucide-react';
+import { buildMarkdownToc } from '@/utils/markdownHeadings';
 
 interface TocItem {
   id: string;
@@ -15,9 +16,10 @@ interface TocItem {
 interface TableOfContentsProps {
   content: string;
   onClose?: () => void;
+  postTitle?: string;
 }
 
-export const TableOfContents = ({ content, onClose }: TableOfContentsProps) => {
+export const TableOfContents = ({ content, onClose, postTitle }: TableOfContentsProps) => {
   const [toc, setToc] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState<string>('');
   const { isTerminal } = useTheme();
@@ -36,34 +38,9 @@ export const TableOfContents = ({ content, onClose }: TableOfContentsProps) => {
   const dropInTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
-    // Extract headings from markdown content
-    const headingRegex = /^(#{1,6})\s+(.+)$/gm;
-    const headings: TocItem[] = [];
-    const usedIds = new Set<string>();
-    let match: RegExpExecArray | null;
-
-    while ((match = headingRegex.exec(content)) !== null) {
-      const level = match[1].length;
-      const title = match[2].trim();
-      const id = title
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/\s+/g, '-');
-
-      // Ensure unique IDs
-      let uniqueId = id;
-      let suffix = 1;
-      while (usedIds.has(uniqueId)) {
-        uniqueId = `${id}-${suffix}`;
-        suffix++;
-      }
-      usedIds.add(uniqueId);
-
-      headings.push({ id: uniqueId, title, level });
-    }
-
+    const headings = buildMarkdownToc(content, postTitle) as TocItem[];
     setToc(headings);
-  }, [content]);
+  }, [content, postTitle]);
 
   useEffect(() => {
     // Skip scroll tracking on mobile for performance
@@ -202,7 +179,14 @@ export const TableOfContents = ({ content, onClose }: TableOfContentsProps) => {
   const scrollToHeading = (id: string, closePanel?: () => void) => {
     const element = document.getElementById(id);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+      const targetY =
+        element.getBoundingClientRect().top +
+        window.scrollY -
+        (STICKY_TOP_PX + 12);
+      window.scrollTo({
+        top: Math.max(0, targetY),
+        behavior: 'smooth',
+      });
       closePanel?.();
       onClose?.();
     }
@@ -309,7 +293,13 @@ export const TableOfContents = ({ content, onClose }: TableOfContentsProps) => {
 };
 
 // Mobile TOC Drawer — floating button that opens a Sheet
-export const TocDrawer = ({ content }: { content: string }) => {
+export const TocDrawer = ({
+  content,
+  postTitle,
+}: {
+  content: string;
+  postTitle?: string;
+}) => {
   const [open, setOpen] = useState(false);
   const { isTerminal } = useTheme();
 
@@ -362,6 +352,7 @@ export const TocDrawer = ({ content }: { content: string }) => {
         <div className="p-4">
           <TableOfContents
             content={content}
+            postTitle={postTitle}
             onClose={() => setOpen(false)}
           />
         </div>

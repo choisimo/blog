@@ -55,6 +55,26 @@ export function extractTexts(obj: any): string[] {
 export function parseStreamObject(obj: any): ChatStreamEvent[] {
   const events: ChatStreamEvent[] = [];
 
+  // 세션 이벤트
+  if (obj?.type === 'session' && typeof obj?.sessionId === 'string') {
+    events.push({ type: 'session', sessionId: obj.sessionId });
+  }
+
+  // 에러 이벤트
+  if (obj?.type === 'error') {
+    const message =
+      (typeof obj?.error === 'string' && obj.error) ||
+      (typeof obj?.message === 'string' && obj.message) ||
+      'Chat failed';
+    const code = typeof obj?.code === 'string' ? obj.code : undefined;
+    events.push({ type: 'error', message, code });
+  }
+
+  // 완료 이벤트
+  if (obj?.type === 'done') {
+    events.push({ type: 'done' });
+  }
+
   // 텍스트 추출
   const texts = extractTexts(obj);
   for (const t of texts) {
@@ -160,6 +180,11 @@ export function createSSEParser(): StreamParser {
 
         if (data === '[DONE]' || event === 'done') {
           events.push({ type: 'done' });
+          continue;
+        }
+
+        if (event === 'error') {
+          events.push({ type: 'error', message: data || 'Chat failed' });
           continue;
         }
 

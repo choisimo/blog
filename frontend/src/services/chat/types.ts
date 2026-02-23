@@ -124,6 +124,7 @@ export type InvokeChatTaskResult<T = unknown> = {
 
 export type ChatStreamEvent =
   | { type: 'text'; text: string }
+  | { type: 'session'; sessionId: string }
   | {
       type: 'sources';
       sources: Array<{
@@ -135,6 +136,7 @@ export type ChatStreamEvent =
     }
   | { type: 'followups'; questions: string[] }
   | { type: 'context'; page?: { url?: string; title?: string } }
+  | { type: 'error'; message: string; code?: string }
   | { type: 'done' };
 
 export type StreamChatInput = {

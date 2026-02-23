@@ -153,10 +153,18 @@ async function invokeTask<T>(
     throw new Error(`AI task error: ${res.status} ${text.slice(0, 180)}`);
   }
 
-  const result = (await res.json()) as TaskResponse<T>;
+  const result = (await res.json()) as TaskResponse<T> | Record<string, unknown>;
 
   // data 추출 (다양한 응답 구조 대응)
-  const data = result?.data ?? (result as unknown as { result?: T })?.result ?? result;
+  const topLevel =
+    (isRecord(result) && ('data' in result ? result.data : undefined)) ??
+    (isRecord(result) && ('result' in result ? result.result : undefined)) ??
+    result;
+
+  // Workers success(c, { data, mode, source }) 래핑 해제
+  const data =
+    (isRecord(topLevel) && 'data' in topLevel ? topLevel.data : undefined) ??
+    topLevel;
 
   if (!data) {
     throw new Error('Invalid AI task response: no data');
@@ -247,6 +255,10 @@ function isPrismResult(data: unknown): data is PrismResult {
 
 function isChainResult(data: unknown): data is ChainResult {
   return isRecord(data) && Array.isArray(data.questions);
+}
+
+function isSummaryResult(data: unknown): data is SummaryResult {
+  return isRecord(data) && typeof data.summary === 'string';
 }
 
 // ============================================================================
@@ -400,10 +412,11 @@ export async function summary(input: {
       postTitle,
     });
 
-    if (isRecord(response) && typeof response.summary === 'string') {
+    const normalized = normalizeResponse(response, isSummaryResult);
+    if (normalized) {
       return {
-        summary: response.summary,
-        keyPoints: Array.isArray(response.keyPoints) ? response.keyPoints : undefined,
+        summary: normalized.summary,
+        keyPoints: Array.isArray(normalized.keyPoints) ? normalized.keyPoints : undefined,
       };
     }
 

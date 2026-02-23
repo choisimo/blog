@@ -26,6 +26,194 @@ export type LLMResponse = {
   error?: string;
 };
 
+function extractMeaningfulLines(text: string): string[] {
+  return text
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .filter(line => line !== '---')
+    .filter(line => !/^```/.test(line));
+}
+
+function sentencePoints(text: string, max = 4): string[] {
+  const candidates = text
+    .replace(/\s+/g, ' ')
+    .split(/(?<=[.!?。！？])\s+/)
+    .map(s => s.trim())
+    .filter(Boolean)
+    .slice(0, max);
+
+  if (candidates.length > 0) return candidates;
+
+  const lines = extractMeaningfulLines(text)
+    .map(l => l.replace(/^[-*•\d.)\s]+/, '').trim())
+    .filter(Boolean)
+    .slice(0, max);
+
+  return lines;
+}
+
+function projectTaskDataFromText(
+  mode: TaskMode,
+  text: string,
+  payload: Record<string, unknown>
+): unknown {
+  const lines = extractMeaningfulLines(text);
+  const cleanedLines = lines.map(line => line.replace(/^[-*•\d.)\s]+/, '').trim());
+
+  switch (mode) {
+    case 'sketch': {
+      const moodMatch = text.match(/(?:mood|톤|감정)\s*[:：]\s*([^\n]+)/i);
+      const mood = moodMatch?.[1]?.trim() || 'insightful';
+      const bullets = cleanedLines
+        .filter(line => line.length > 2)
+        .slice(0, 6);
+
+      return {
+        mood,
+        bullets: bullets.length > 0 ? bullets : sentencePoints(text, 4),
+      };
+    }
+
+    case 'prism': {
+      const blocks = text
+        .split(/\n\s*\n/)
+        .map(block => block.trim())
+        .filter(Boolean)
+        .slice(0, 4);
+
+      const facets = blocks
+        .map(block => {
+          const blockLines = block
+            .split(/\r?\n/)
+            .map(l => l.trim())
+            .filter(Boolean);
+          if (blockLines.length === 0) return null;
+
+          const rawTitle = blockLines[0] || '분석 관점';
+          const title = rawTitle
+            .replace(/^#+\s*/, '')
+            .replace(/[：:]$/, '')
+            .trim();
+
+          const points = blockLines
+            .slice(1)
+            .map(l => l.replace(/^[-*•\d.)\s]+/, '').trim())
+            .filter(Boolean)
+            .slice(0, 4);
+
+          if (points.length === 0) return null;
+          return { title, points };
+        })
+        .filter((f): f is { title: string; points: string[] } => !!f);
+
+      if (facets.length > 0) {
+        return { facets };
+      }
+
+      return {
+        facets: [
+          {
+            title: 'AI 분석',
+            points: sentencePoints(text, 4),
+          },
+        ],
+      };
+    }
+
+    case 'chain': {
+      const questionLines = lines
+        .map(l => l.replace(/^[-*•\d.)\s]+/, '').trim())
+        .filter(l => /\?$|\uFF1F$/.test(l))
+        .slice(0, 6);
+
+      const questions = (questionLines.length > 0 ? questionLines : sentencePoints(text, 4))
+        .map(q => q.endsWith('?') || q.endsWith('？') ? q : `${q}?`)
+        .slice(0, 6)
+        .map(q => ({
+          q,
+          why: '핵심 논점을 더 깊게 이해하기 위해',
+        }));
+
+      return { questions };
+    }
+
+    case 'summary': {
+      const summary = text.trim();
+      return {
+        summary,
+        keyPoints: sentencePoints(text, 5),
+      };
+    }
+
+    case 'quiz': {
+      return {
+        quiz: [
+          {
+            type: 'explain',
+            question: '위 내용을 바탕으로 핵심 로직을 설명해보세요.',
+            answer: text.trim().slice(0, 800),
+            explanation: 'AI가 구조화된 퀴즈 형식 대신 서술형으로 응답하여 변환했습니다.',
+          },
+        ],
+      };
+    }
+
+    case 'catalyst':
+    case 'custom':
+    default: {
+      const fallbackText = text.trim();
+      if (fallbackText) {
+        return { text: fallbackText };
+      }
+      return getFallbackData(mode, payload as any);
+    }
+  }
+}
+
+async function repairTaskJsonWithSchema(
+  mode: TaskMode,
+  promptConfig: PromptConfig,
+  rawText: string,
+  env: Env
+): Promise<unknown | null> {
+  if (!promptConfig.schema) return null;
+
+  const repairPrompt = [
+    'Convert the following assistant output into STRICT JSON that matches the schema.',
+    'Return JSON only. No markdown, no explanation.',
+    '',
+    `Mode: ${mode}`,
+    'Schema:',
+    JSON.stringify(promptConfig.schema, null, 2),
+    '',
+    'Assistant output:',
+    rawText,
+  ].join('\n');
+
+  const repaired = await callLLM(
+    {
+      user: repairPrompt,
+      temperature: 0,
+      responseFormat: 'json',
+    },
+    env
+  );
+
+  if (repaired.ok && repaired.parsed && typeof repaired.parsed === 'object') {
+    return repaired.parsed;
+  }
+
+  if (repaired.ok && repaired.text) {
+    const parsed = tryParseJson(repaired.text);
+    if (parsed && typeof parsed === 'object') {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
 /**
  * JSON 파싱 유틸리티
  * LLM 응답에서 JSON을 추출합니다.
@@ -324,13 +512,23 @@ export async function executeTask(
         source: response.source,
       };
     }
-    
-    // 파싱 실패 - raw 텍스트와 함께 반환
-    console.warn('LLM response parsing failed, using raw text');
+
+    // 스키마 기반 보정 시도 (LLM 응답의 의미를 유지하면서 JSON 구조만 교정)
+    const repaired = await repairTaskJsonWithSchema(mode, promptConfig, response.text, env);
+    if (repaired && typeof repaired === 'object') {
+      return {
+        ok: true,
+        data: repaired,
+        source: `${response.source}-repaired`,
+      };
+    }
+
+    // 최종 보정: 텍스트를 모드별 구조로 투영
+    console.warn('LLM response parsing failed, projecting text to structured task output');
     return {
       ok: true,
-      data: { _raw: response.text },
-      source: response.source,
+      data: projectTaskDataFromText(mode, response.text, payload),
+      source: `${response.source}-projected`,
     };
   }
 
