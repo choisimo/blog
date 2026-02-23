@@ -3,15 +3,15 @@
   <channel>
     <title>Nodove Blog</title>
     <description>A blog about technology, programming, and web development</description>
-    <link>http://localhost:3000</link>
-    <atom:link href="http://localhost:3000/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Mon, 23 Feb 2026 08:56:21 GMT</lastBuildDate>
+    <link>https://noblog.nodove.com</link>
+    <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
+    <lastBuildDate>Mon, 23 Feb 2026 11:24:13 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
       <title>[Arena 상세] Gemini_3.0_pro_high_reasoning 분석</title>
       <description>Gemini_3.0_pro_high_reasoning 구현의 구조, 코드 포인트, 장단점과 Arena 내 비교 결과를 정리한 상세 페이지</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-gemini-3-0-pro-high-reasoning</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-gemini-3-0-pro-high-reasoning</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gemini-3-0-pro-high-reasoning</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gemini-3-0-pro-high-reasoning</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>Gemini_3.0</category>
@@ -23,8 +23,8 @@
     <item>
       <title>[Arena 상세] GLM-5 분석</title>
       <description>GLM-5의 DDD 구조, 세션 영속성, MCP/Vector 확장과 Arena 내 평가를 상세 정리</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-glm-5</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-glm-5</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-glm-5</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-glm-5</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>GLM-5</category>
@@ -36,8 +36,8 @@
     <item>
       <title>[Arena 상세] GPT-5.2_High_Reasoning 분석</title>
       <description>GPT-5.2_High_Reasoning 구현의 보안/인증 중심 설계와 Arena 비교 결과를 분석</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-gpt-5-2-high-reasoning</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-gpt-5-2-high-reasoning</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gpt-5-2-high-reasoning</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gpt-5-2-high-reasoning</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>GPT-5.2</category>
@@ -49,8 +49,8 @@
     <item>
       <title>[Arena 상세] GPT-5.3-codex-x-high 분석</title>
       <description>GPT-5.3-codex-x-high의 AppContainer DI, Topology 검증, 확장 계층 설계를 상세 분석</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-gpt-5-3-codex-x-high</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-gpt-5-3-codex-x-high</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gpt-5-3-codex-x-high</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gpt-5-3-codex-x-high</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>GPT-5.3</category>
@@ -62,8 +62,8 @@
     <item>
       <title>[Arena 상세] Grok_Fast_1 분석</title>
       <description>Grok_Fast_1의 광범위 provider 지원과 기능 집중형 구조를 Arena 관점에서 분석</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-grok-fast-1</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-grok-fast-1</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-grok-fast-1</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-grok-fast-1</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>Grok_Fast_1</category>
@@ -75,8 +75,8 @@
     <item>
       <title>[Arena 상세] Kimi_2.5 분석</title>
       <description>Kimi_2.5의 YAML 중심 구성과 ImportError 기반 optional extension 패턴을 중심으로 분석</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-kimi-2-5</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-kimi-2-5</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-kimi-2-5</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-kimi-2-5</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>Kimi_2.5</category>
@@ -88,8 +88,8 @@
     <item>
       <title>[Arena 상세] MiniMax2.5 분석</title>
       <description>MiniMax2.5 구현의 src 구조, 경량성, 전역 상태 리스크를 중심으로 Arena 결과를 분석</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-minimax-2-5</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-minimax-2-5</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-minimax-2-5</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-minimax-2-5</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>MiniMax2.5</category>
@@ -101,8 +101,8 @@
     <item>
       <title>[Arena 상세] Opus4.6 분석</title>
       <description>Opus4.6의 미들웨어 중심 운영 아키텍처와 production-ready 특성을 상세 분석</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-opus-4-6</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-opus-4-6</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-opus-4-6</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-opus-4-6</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>Opus4.6</category>
@@ -114,8 +114,8 @@
     <item>
       <title>AI Agent Arena 2026: 10개 AI Provider Server 종합 분석</title>
       <description>AI_Agent_Arena 결과 보고서를 기반으로 10개 AI Provider Server의 아키텍처, 코드 품질, 운영 적합성을 비교 분석하고 모델별 상세 페이지로 네비게이션할 수 있도록 정리한 메인 리포트</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-overview-and-comparison</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-overview-and-comparison</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-overview-and-comparison</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-overview-and-comparison</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>AI Agent Arena</category>
@@ -128,8 +128,8 @@
     <item>
       <title>[Arena 상세] sonnet_4.6 분석</title>
       <description>sonnet_4.6의 Provider Chain 기반 폴백 설계와 Arena 최상위권 성능을 코드 관점에서 분석</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-sonnet-4-6</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-sonnet-4-6</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-sonnet-4-6</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-sonnet-4-6</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>sonnet_4.6</category>
@@ -141,8 +141,8 @@
     <item>
       <title>[Arena 상세] SWE_1.5 분석</title>
       <description>SWE_1.5의 엔터프라이즈 지향 요소(PostgreSQL, Prometheus, retry)와 현재 구현 간극을 함께 분석</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-swe-1-5</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-swe-1-5</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-swe-1-5</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-swe-1-5</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>SWE_1.5</category>
@@ -154,8 +154,8 @@
     <item>
       <title>Container Network Interface</title>
       <description>Networking without NAT, the CNI&apos;s role in remote container networking, and more.</description>
-      <link>http://localhost:3000/blog/2026/Container Network Interface</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/Container Network Interface</guid>
+      <link>https://noblog.nodove.com/blog/2026/Container Network Interface</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/Container Network Interface</guid>
       <pubDate>Sun, 01 Feb 2026 00:00:00 GMT</pubDate>
       <category>Network, Container, CNI</category>
       <category>Network</category>
@@ -165,8 +165,8 @@
     <item>
       <title>Proxmox &amp; OPNsense VLAN 추가 및 설정 가이드</title>
       <description>Proxmox VE에서 OPNsense VM에 새로운 가상 네트워크 인터페이스(vNIC)를 추가하고, VLAN 104 네트워크로 설정하는 단계별 가이드입니다.</description>
-      <link>http://localhost:3000/blog/2026/proxmox-opnsense-vlan-104-guide</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/proxmox-opnsense-vlan-104-guide</guid>
+      <link>https://noblog.nodove.com/blog/2026/proxmox-opnsense-vlan-104-guide</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/proxmox-opnsense-vlan-104-guide</guid>
       <pubDate>Mon, 26 Jan 2026 00:00:00 GMT</pubDate>
       <category>Guide</category>
       <category>Proxmox</category>
@@ -178,8 +178,8 @@
     <item>
       <title>개인화된 가독성: 텍스트를 넘어 이해를 설계하다</title>
       <description>도구는 차가울지 몰라도, 그 도구가 전하는 이해는 따뜻해야 합니다. 사용자의 맥락에 맞춰 숨 쉬는 문서를 만드는 기술적 여정에 대하여.</description>
-      <link>http://localhost:3000/blog/2026/personalized-readability-ux</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/personalized-readability-ux</guid>
+      <link>https://noblog.nodove.com/blog/2026/personalized-readability-ux</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/personalized-readability-ux</guid>
       <pubDate>Sun, 25 Jan 2026 00:00:00 GMT</pubDate>
       <category>Essay</category>
       <category>UX</category>
@@ -190,8 +190,8 @@
     <item>
       <title>Algorithm</title>
       <description>알고리즘 리스트</description>
-      <link>http://localhost:3000/blog/2026/Algorithm</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/Algorithm</guid>
+      <link>https://noblog.nodove.com/blog/2026/Algorithm</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/Algorithm</guid>
       <pubDate>Tue, 20 Jan 2026 00:00:00 GMT</pubDate>
       <category>algorithm</category>
       <category>algorithm</category>
@@ -201,8 +201,8 @@
     <item>
       <title>Understanding State Space Models and Mamba</title>
       <description>Transformer의 대안으로 떠오르는 SSM과 Mamba의 원리를 깊이 있게 설명합니다. 인지 과학적 은유부터 Induction Heads 메커니즘까지.</description>
-      <link>http://localhost:3000/blog/2026/understanding-ssm-and-mamba</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/understanding-ssm-and-mamba</guid>
+      <link>https://noblog.nodove.com/blog/2026/understanding-ssm-and-mamba</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/understanding-ssm-and-mamba</guid>
       <pubDate>Sat, 17 Jan 2026 00:00:00 GMT</pubDate>
       <category>AI</category>
       <category>SSM</category>
@@ -215,8 +215,8 @@
     <item>
       <title>Vim Architecture, Functionality, Commands, and Integration</title>
       <description>Vim의 아키텍처부터 핵심 기능, 필수 명령어, 그리고 다양한 개발 환경과의 통합까지 심층적으로 탐구합니다</description>
-      <link>http://localhost:3000/blog/2026/vim-architecture-functionality-commands-integration</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/vim-architecture-functionality-commands-integration</guid>
+      <link>https://noblog.nodove.com/blog/2026/vim-architecture-functionality-commands-integration</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/vim-architecture-functionality-commands-integration</guid>
       <pubDate>Thu, 15 Jan 2026 00:00:00 GMT</pubDate>
       <category>기술</category>
       <category>Vim</category>
@@ -229,8 +229,8 @@
     <item>
       <title>쉘 스크립트의 공백: 리눅스 철학이 숨겨진 한 줄의 코드</title>
       <description>[ 명령어 앞의 공백 하나가 왜 필요한지, 리눅스 철학을 통해 이해하기</description>
-      <link>http://localhost:3000/blog/2026/shellscript-analyze-1</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/shellscript-analyze-1</guid>
+      <link>https://noblog.nodove.com/blog/2026/shellscript-analyze-1</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/shellscript-analyze-1</guid>
       <pubDate>Tue, 06 Jan 2026 00:00:00 GMT</pubDate>
       <category>Tech &amp; Philosophy</category>
       <category>쉘 스크립트</category>
@@ -242,8 +242,8 @@
     <item>
       <title>쿠르스크 초원의 전차전</title>
       <description>1943년 쿠르스크. 강철 안에 갇힌 두 전차장이 발견한 것은 적이 아닌, 자신과 똑같이 두려워하는 한 사람이었다.</description>
-      <link>http://localhost:3000/blog/2026/nobel1-kursk-tanks</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/nobel1-kursk-tanks</guid>
+      <link>https://noblog.nodove.com/blog/2026/nobel1-kursk-tanks</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/nobel1-kursk-tanks</guid>
       <pubDate>Sun, 04 Jan 2026 00:00:00 GMT</pubDate>
       <category>Fiction</category>
       <category>단편소설</category>
@@ -255,8 +255,8 @@
     <item>
       <title>게으름의 미학</title>
       <description>나의 귀찮음이 만들어낸 부지런한 컨테이너</description>
-      <link>http://localhost:3000/blog/2026/remote-server-think</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/remote-server-think</guid>
+      <link>https://noblog.nodove.com/blog/2026/remote-server-think</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/remote-server-think</guid>
       <pubDate>Sat, 03 Jan 2026 00:00:00 GMT</pubDate>
       <category>Tech &amp; Philosophy</category>
       <category>시스템 설계</category>
