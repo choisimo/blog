@@ -292,15 +292,15 @@ export default function FloatingActionBar() {
     ),
   );
 
-  const allDockActions: DockAction[] = [
+  const allDockActions: DockAction[] = useMemo(() => [
     {
       key: "chat",
       label: str.nav.chat,
       desktopLabel: language === "ko" ? "AI 채팅" : "AI Chat",
       icon: Sparkles,
       onClick: () => {
-        setChatOpen(true);
-        send("fab_ai_chat_open");
+        setChatOpen(prev => !prev);
+        send(chatOpen ? 'fab_ai_chat_close' : 'fab_ai_chat_open');
       },
       primary: true,
       hidden: !featureFlags.aiEnabled,
@@ -336,7 +336,7 @@ export default function FloatingActionBar() {
       },
       badge: hasNew,
     },
-  ];
+  ], [str, language, chatOpen, featureFlags.aiEnabled, send, setChatOpen, toggleMemo, handleStackClick, stackDisabledReason, hasNew, clearBadge, vfs]);
 
   const dockActions = allDockActions.filter(action => !action.hidden);
 

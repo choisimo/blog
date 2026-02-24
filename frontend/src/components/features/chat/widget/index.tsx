@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -33,7 +33,7 @@ import {
   LiveRoomPanel,
   ChatSidebar,
 } from "./components";
-import DebateArena from "@/components/features/debate/DebateArena";
+import { streamChatEvents } from "@/services/chat";
 
 function formatLiveRoomName(room: string): string {
   return String(room || "room:lobby")
@@ -50,9 +50,8 @@ export default function ChatWidget(props: {
   const keyboardHeight = useKeyboardHeight(isMobile);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [debateOpen, setDebateOpen] = useState(false);
-  const [debateTopic, setDebateTopic] = useState("");
-  const [debateDescription, setDebateDescription] = useState("");
+  const [debateBusy, setDebateBusy] = useState(false);
+  const debateAbortRef = useRef<AbortController | null>(null);
 
   // Dynamic max height calculation for PC
   const [pcMaxHeight, setPcMaxHeight] = useState("80vh");
@@ -162,15 +161,98 @@ export default function ChatWidget(props: {
 
   const currentLiveRoomLabel = formatLiveRoomName(liveVisitorChat.room);
 
-  const handleStartDebate = () => {
-    const roomLabel = formatLiveRoomName(liveVisitorChat.room);
-    setDebateTopic(`${roomLabel} 방 주제로 토론해보기`);
-    setDebateDescription(
-      `현재 라이브 채팅 방: ${roomLabel}\n이 방에서 나온 관점을 기반으로 찬반 토론을 시작합니다.`,
-    );
-    setDebateOpen(true);
+  const handleStartDebate = useCallback(async () => {
+    if (debateBusy) return;
     state.setShowActionSheet(false);
-  };
+
+    const roomLabel = formatLiveRoomName(liveVisitorChat.room);
+    const topic = `${roomLabel} 방 주제로 AI 토론`;
+
+    // 토론 시작 알림
+    state.push({
+      id: `debate_start_${Date.now()}`,
+      role: 'system',
+      text: `[토론 시작] 주제: ${topic}`,
+      systemKind: 'status',
+    });
+
+    setDebateBusy(true);
+    const abort = new AbortController();
+    debateAbortRef.current = abort;
+
+    const PRO_PROMPT =
+      `당신은 논리적이고 설득력 있는 찬성측 토론자입니다. 주어진 주제에 대해 명확한 근거와 사례를 들어 찬성 주장을 펼치세요. ` +
+      `3-5문장 이내로 핵심 논거를 제시하세요.\n\n주제: ${topic}`;
+    const CON_PROMPT =
+      `당신은 날카롭고 비판적인 반대측 토론자입니다. 주어진 주제에 대해 구체적인 반박 근거를 들어 반대 주장을 펼치세요. ` +
+      `3-5문장 이내로 핵심 논거를 제시하세요.\n\n주제: ${topic}`;
+
+    const rounds = 2;
+    try {
+      for (let round = 1; round <= rounds; round++) {
+        if (abort.signal.aborted) break;
+
+        // 찬성측 발언
+        const proId = `debate_pro_${round}_${Date.now()}`;
+        state.push({ id: proId, role: 'assistant', text: '' });
+        let proText = '';
+        for await (const ev of streamChatEvents({
+          text: round === 1 ? PRO_PROMPT : `${PRO_PROMPT}\n\n반대측 주장:\n${proText}에 반박하며 주장을 강화하세요.`,
+          signal: abort.signal,
+          useArticleContext: false,
+        })) {
+          if (ev.type === 'text') {
+            proText += ev.text;
+            state.setMessages(prev =>
+              prev.map(m => m.id === proId ? { ...m, text: `[토론 · 찬성] ${proText}` } : m)
+            );
+          }
+        }
+
+        if (abort.signal.aborted) break;
+
+        // 반대측 발언
+        const conId = `debate_con_${round}_${Date.now()}`;
+        state.push({ id: conId, role: 'assistant', text: '' });
+        let conText = '';
+        for await (const ev of streamChatEvents({
+          text: round === 1 ? CON_PROMPT : `${CON_PROMPT}\n\n찬성측 주장:\n${proText}에 반박하여 반대 주장을 강화하세요.`,
+          signal: abort.signal,
+          useArticleContext: false,
+        })) {
+          if (ev.type === 'text') {
+            conText += ev.text;
+            state.setMessages(prev =>
+              prev.map(m => m.id === conId ? { ...m, text: `[토론 · 반대] ${conText}` } : m)
+            );
+          }
+        }
+      }
+
+      if (!abort.signal.aborted) {
+        state.push({
+          id: `debate_end_${Date.now()}`,
+          role: 'system',
+          text: '[토론 종료] AI 토론이 완료되었습니다.',
+          systemKind: 'status',
+        });
+      }
+    } catch {
+      if (!abort.signal.aborted) {
+        state.push({
+          id: `debate_err_${Date.now()}`,
+          role: 'system',
+          text: '[토론 오류] 토론 중 문제가 발생했습니다.',
+          systemKind: 'error',
+          systemLevel: 'error',
+        });
+      }
+    } finally {
+      setDebateBusy(false);
+      debateAbortRef.current = null;
+    }
+  // deps: debateBusy is a guard, state/liveVisitorChat.room are stable refs
+  }, [debateBusy, liveVisitorChat.room, state]);
 
   return (
     <>
@@ -388,17 +470,6 @@ export default function ChatWidget(props: {
         isTerminal={isTerminal}
       />
 
-      {debateOpen && (
-        <div className="fixed inset-0 z-[var(--z-chat-widget)] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-2xl max-h-[85vh]">
-            <DebateArena
-              initialTopic={debateTopic}
-              initialDescription={debateDescription}
-              onClose={() => setDebateOpen(false)}
-            />
-          </div>
-        </div>
-      )}
 
       <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
         <AlertDialogContent>

@@ -166,7 +166,7 @@ export function ChatMessages({
 }
 
 // Empty state component
-function EmptyState({
+const EmptyState = React.memo(function EmptyState({
   isTerminal,
   isMobile,
   onPromptClick,
@@ -237,10 +237,10 @@ function EmptyState({
       </div>
     </div>
   );
-}
+});
 
 // Terminal-style message
-function TerminalMessage({
+const TerminalMessage = React.memo(function TerminalMessage({
   message: m,
   imageUrl,
   cleanText,
@@ -351,10 +351,10 @@ function TerminalMessage({
       })()}
     </div>
   );
-}
+});
 
 // Default style message
-function DefaultMessage({
+const DefaultMessage = React.memo(function DefaultMessage({
   message: m,
   imageUrl,
   cleanText,
@@ -455,10 +455,10 @@ function DefaultMessage({
       </div>
     </div>
   );
-}
+});
 
 // User image attachment
-function UserImage({
+const UserImage = React.memo(function UserImage({
   imageUrl,
   isTerminal,
 }: {
@@ -497,10 +497,10 @@ function UserImage({
       </div>
     </div>
   );
-}
+});
 
 // Sources component
-function Sources({
+const Sources = React.memo(function Sources({
   sources,
   isTerminal,
   onSourceClick,
@@ -559,10 +559,10 @@ function Sources({
       </ul>
     </div>
   );
-}
+});
 
 // Followups component
-function Followups({
+const Followups = React.memo(function Followups({
   followups,
   isTerminal,
   isMobile,
@@ -621,10 +621,10 @@ function Followups({
       </div>
     </div>
   );
-}
+});
 
 // System status/error component
-function SystemMessage({
+const SystemMessage = React.memo(function SystemMessage({
   text,
   level,
   isTerminal,
@@ -658,4 +658,4 @@ function SystemMessage({
   }
 
   return null; // Default style handles this inline
-}
+});

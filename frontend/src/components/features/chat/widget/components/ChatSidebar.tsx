@@ -261,7 +261,6 @@ export function ChatSidebar({
             <Switch
               checked={persistOptIn}
               onCheckedChange={onTogglePersist}
-              className="scale-75"
             />
           </div>
         </div>

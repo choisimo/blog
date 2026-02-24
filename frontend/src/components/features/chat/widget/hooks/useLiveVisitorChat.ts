@@ -189,13 +189,11 @@ export function useLiveVisitorChat(input: {
             return;
           }
 
-          push(
-            buildSystemMessage(
-              `[Live] ${sender}: ${event.text}`,
-              'info',
-              { systemKind: 'status' }
-            )
-          );
+          push({
+            id: `live_visitor_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            role: 'assistant',
+            text: `[Live · ${sender}] ${event.text}`,
+          });
           return;
         }
 

@@ -1,10 +1,46 @@
-import React, { useCallback, useMemo, useState, useRef, useEffect, memo } from 'react';
+import React, { useCallback, useMemo, useState, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import bash from 'react-syntax-highlighter/dist/esm/languages/prism/bash';
+import css from 'react-syntax-highlighter/dist/esm/languages/prism/css';
+import go from 'react-syntax-highlighter/dist/esm/languages/prism/go';
+import java from 'react-syntax-highlighter/dist/esm/languages/prism/java';
+import javascript from 'react-syntax-highlighter/dist/esm/languages/prism/javascript';
+import json from 'react-syntax-highlighter/dist/esm/languages/prism/json';
+import jsxLang from 'react-syntax-highlighter/dist/esm/languages/prism/jsx';
+import kotlin from 'react-syntax-highlighter/dist/esm/languages/prism/kotlin';
+import markdown from 'react-syntax-highlighter/dist/esm/languages/prism/markdown';
+import python from 'react-syntax-highlighter/dist/esm/languages/prism/python';
+import rust from 'react-syntax-highlighter/dist/esm/languages/prism/rust';
+import sql from 'react-syntax-highlighter/dist/esm/languages/prism/sql';
+import tsx from 'react-syntax-highlighter/dist/esm/languages/prism/tsx';
+import typescript from 'react-syntax-highlighter/dist/esm/languages/prism/typescript';
+import yaml from 'react-syntax-highlighter/dist/esm/languages/prism/yaml';
+
+SyntaxHighlighter.registerLanguage('bash', bash);
+SyntaxHighlighter.registerLanguage('css', css);
+SyntaxHighlighter.registerLanguage('go', go);
+SyntaxHighlighter.registerLanguage('java', java);
+SyntaxHighlighter.registerLanguage('javascript', javascript);
+SyntaxHighlighter.registerLanguage('js', javascript);
+SyntaxHighlighter.registerLanguage('json', json);
+SyntaxHighlighter.registerLanguage('jsx', jsxLang);
+SyntaxHighlighter.registerLanguage('kotlin', kotlin);
+SyntaxHighlighter.registerLanguage('markdown', markdown);
+SyntaxHighlighter.registerLanguage('python', python);
+SyntaxHighlighter.registerLanguage('py', python);
+SyntaxHighlighter.registerLanguage('rust', rust);
+SyntaxHighlighter.registerLanguage('sql', sql);
+SyntaxHighlighter.registerLanguage('tsx', tsx);
+SyntaxHighlighter.registerLanguage('typescript', typescript);
+SyntaxHighlighter.registerLanguage('ts', typescript);
+SyntaxHighlighter.registerLanguage('yaml', yaml);
+
 import { useTheme } from '@/contexts/ThemeContext';
+
 import { cn } from '@/lib/utils';
 import { Copy, Check, Table2 } from 'lucide-react';
 
@@ -70,41 +106,128 @@ function sanitizeStreamingMarkdown(content: string): string {
   return result;
 }
 
-const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({ content, isStreaming }) => {
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const { isTerminal } = useTheme();
-  const lastContentRef = useRef(content);
-  const [displayContent, setDisplayContent] = useState(content);
-  
-  // Throttle content updates during streaming to reduce re-renders
-  useEffect(() => {
-    if (isStreaming) {
-      // During streaming, update less frequently to avoid jank
-      const timerId = setTimeout(() => {
-        const sanitized = sanitizeStreamingMarkdown(content);
-        setDisplayContent(sanitized);
-        lastContentRef.current = content;
-      }, 50); // 50ms throttle
-      
-      return () => clearTimeout(timerId);
-    } else {
-      // Not streaming - update immediately
-      setDisplayContent(content);
-      lastContentRef.current = content;
-    }
-  }, [content, isStreaming]);
+// Isolated code block — owns its own copied state so parent doesn't re-render on copy
+interface ChatCodeBlockProps {
+  language: string;
+  codeString: string;
+  isTerminal: boolean;
+}
 
-  const handleCopy = useCallback((code: string) => {
+const ChatCodeBlock = memo(function ChatCodeBlock({ language, codeString, isTerminal }: ChatCodeBlockProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
     if (!navigator?.clipboard) return;
-    void navigator.clipboard
-      .writeText(code)
-      .then(() => {
-        setCopiedCode(code);
-        window.setTimeout(() => setCopiedCode(null), 2000);
-      })
-      .catch(() => {});
-  }, []);
+    void navigator.clipboard.writeText(codeString).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  }, [codeString]);
 
+  return (
+    <div className={cn(
+      'relative my-3 overflow-hidden rounded-lg bg-[#0b1020] dark:bg-[#050a1a] group',
+      isTerminal && 'bg-[hsl(var(--terminal-code-bg))] border border-border'
+    )}>
+      <div className={cn(
+        'flex items-center justify-between px-3 py-1.5 border-b text-xs',
+        isTerminal
+          ? 'border-border bg-[hsl(var(--terminal-code-bg))]'
+          : 'border-white/10 bg-white/5'
+      )}>
+        <span className={cn(
+          'font-mono uppercase tracking-wide',
+          isTerminal ? 'text-primary/70' : 'text-white/60'
+        )}>
+          {language}
+        </span>
+        <button
+          type='button'
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition',
+            'opacity-0 group-hover:opacity-100 focus:opacity-100',
+            'sm:opacity-100',
+            isTerminal
+              ? 'bg-primary/20 text-primary hover:bg-primary/30 font-mono'
+              : 'bg-white/10 text-white hover:bg-white/20 backdrop-blur'
+          )}
+          onClick={handleCopy}
+        >
+          {copied ? (
+            <>
+              <Check className='h-3 w-3' />
+              <span>Copied</span>
+            </>
+          ) : (
+            <>
+              <Copy className='h-3 w-3' />
+              <span>Copy</span>
+            </>
+          )}
+        </button>
+      </div>
+      <SyntaxHighlighter
+        style={isTerminal ? terminalChatTheme : oneDark}
+        language={language}
+        PreTag='div'
+        className='!bg-transparent !p-4 text-[12px] !m-0 overflow-auto overscroll-contain max-h-[400px]'
+        wrapLongLines={false}
+      >
+        {codeString}
+      </SyntaxHighlighter>
+    </div>
+  );
+});
+
+// Plain code block (no language) — also owns its copied state
+interface ChatPlainCodeBlockProps {
+  codeString: string;
+  isTerminal: boolean;
+}
+
+const ChatPlainCodeBlock = memo(function ChatPlainCodeBlock({ codeString, isTerminal }: ChatPlainCodeBlockProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    if (!navigator?.clipboard) return;
+    void navigator.clipboard.writeText(codeString).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  }, [codeString]);
+
+  return (
+    <div className={cn(
+      'relative my-3 overflow-hidden rounded-lg bg-[#0b1020] dark:bg-[#050a1a] group',
+      isTerminal && 'bg-[hsl(var(--terminal-code-bg))] border border-border'
+    )}>
+      <button
+        type='button'
+        className={cn(
+          'absolute right-2 top-2 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition z-10',
+          'opacity-0 group-hover:opacity-100 focus:opacity-100 sm:opacity-100',
+          isTerminal
+            ? 'bg-primary/20 text-primary hover:bg-primary/30 font-mono'
+            : 'bg-white/10 text-white hover:bg-white/20 backdrop-blur'
+        )}
+        onClick={handleCopy}
+      >
+        {copied ? <Check className='h-3 w-3' /> : <Copy className='h-3 w-3' />}
+      </button>
+      <pre className={cn(
+        'p-4 text-[12px] overflow-auto overscroll-contain max-h-[400px]',
+        isTerminal ? 'text-primary/90 font-mono' : 'text-white/90'
+      )}>
+        {codeString}
+      </pre>
+    </div>
+  );
+});
+
+const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({ content, isStreaming }) => {
+  const { isTerminal } = useTheme();
+  const displayContent = isStreaming ? sanitizeStreamingMarkdown(content) : content;
+  
   const components = useMemo<Components>(() => ({
     h1: ({ children }) => (
       <h3 className={cn('mt-4 mb-2 text-base font-semibold', isTerminal && 'font-mono text-primary')}>{children}</h3>
@@ -151,91 +274,21 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({ content, isStreaming }
     code({ inline, className, children, ...props }: CodeComponentProps) {
       const match = /language-(\w+)/.exec(className || '');
       const codeString = String(children).replace(/\n$/, '');
-      const isCopied = copiedCode === codeString;
 
       if (!inline && match) {
         return (
-          <div className={cn(
-            'relative my-3 overflow-hidden rounded-lg bg-[#0b1020] dark:bg-[#050a1a] group',
-            isTerminal && 'bg-[hsl(var(--terminal-code-bg))] border border-border'
-          )}>
-            <div className={cn(
-              'flex items-center justify-between px-3 py-1.5 border-b text-xs',
-              isTerminal 
-                ? 'border-border bg-[hsl(var(--terminal-code-bg))]' 
-                : 'border-white/10 bg-white/5'
-            )}>
-              <span className={cn(
-                'font-mono uppercase tracking-wide',
-                isTerminal ? 'text-primary/70' : 'text-white/60'
-              )}>
-                {match[1]}
-              </span>
-              <button
-                type='button'
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition',
-                  'opacity-0 group-hover:opacity-100 focus:opacity-100',
-                  'sm:opacity-100', // Always visible on mobile
-                  isTerminal 
-                    ? 'bg-primary/20 text-primary hover:bg-primary/30 font-mono' 
-                    : 'bg-white/10 text-white hover:bg-white/20 backdrop-blur'
-                )}
-                onClick={() => handleCopy(codeString)}
-              >
-                {isCopied ? (
-                  <>
-                    <Check className='h-3 w-3' />
-                    <span>Copied</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className='h-3 w-3' />
-                    <span>Copy</span>
-                  </>
-                )}
-              </button>
-            </div>
-            <SyntaxHighlighter
-              style={isTerminal ? terminalChatTheme : oneDark}
-              language={match[1]}
-              PreTag='div'
-              className='!bg-transparent !p-4 text-[12px] !m-0 overflow-auto overscroll-contain max-h-[400px]'
-              wrapLongLines={false}
-            >
-              {codeString}
-            </SyntaxHighlighter>
-          </div>
+          <ChatCodeBlock
+            language={match[1]}
+            codeString={codeString}
+            isTerminal={isTerminal}
+          />
         );
       }
 
       // Code block without language specified
       if (!inline && !match && codeString.includes('\n')) {
         return (
-          <div className={cn(
-            'relative my-3 overflow-hidden rounded-lg bg-[#0b1020] dark:bg-[#050a1a] group',
-            isTerminal && 'bg-[hsl(var(--terminal-code-bg))] border border-border'
-          )}>
-            <button
-              type='button'
-              className={cn(
-                'absolute right-2 top-2 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition z-10',
-                'opacity-0 group-hover:opacity-100 focus:opacity-100 sm:opacity-100',
-                isTerminal 
-                  ? 'bg-primary/20 text-primary hover:bg-primary/30 font-mono' 
-                  : 'bg-white/10 text-white hover:bg-white/20 backdrop-blur'
-              )}
-              onClick={() => handleCopy(codeString)}
-            >
-              {isCopied ? <Check className='h-3 w-3' /> : <Copy className='h-3 w-3' />}
-            </button>
-            <pre className={cn(
-              'p-4 text-[12px] overflow-auto overscroll-contain max-h-[400px]',
-              isTerminal ? 'text-primary/90 font-mono' : 'text-white/90'
-            )}>
-              {codeString}
-            </pre>
-          </div>
+          <ChatPlainCodeBlock codeString={codeString} isTerminal={isTerminal} />
         );
       }
 
@@ -330,7 +383,7 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({ content, isStreaming }
         isTerminal ? 'border-primary/20' : 'border-border'
       )} />
     ),
-  }), [copiedCode, handleCopy, isTerminal]);
+  }), [isTerminal]);
 
   if (!displayContent.trim()) return null;
 

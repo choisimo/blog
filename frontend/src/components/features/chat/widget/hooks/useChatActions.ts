@@ -266,6 +266,7 @@ export function useChatActions({
         }
 
         let acc = "";
+        let rafHandle: number | null = null;
         push({ id: aiId, role: "assistant", text: "" });
         for await (const ev of streamChatEvents({
           text: baseText,
@@ -279,9 +280,15 @@ export function useChatActions({
         })) {
           if (ev.type === "text") {
             acc += ev.text;
-            setMessages((prev) =>
-              prev.map((m) => (m.id === aiId ? { ...m, text: acc } : m)),
-            );
+            const snapshot = acc;
+            const id = aiId;
+            if (rafHandle !== null) cancelAnimationFrame(rafHandle);
+            rafHandle = requestAnimationFrame(() => {
+              rafHandle = null;
+              setMessages((prev) =>
+                prev.map((m) => (m.id === id ? { ...m, text: snapshot } : m)),
+              );
+            });
           } else if (ev.type === "sources") {
             setMessages((prev) =>
               prev.map((m) =>
@@ -295,6 +302,16 @@ export function useChatActions({
               ),
             );
           }
+        }
+
+        // Flush any pending rAF update so the final text is committed immediately
+        if (rafHandle !== null) {
+          cancelAnimationFrame(rafHandle);
+          const finalAcc = acc;
+          const finalId = aiId;
+          setMessages((prev) =>
+            prev.map((m) => (m.id === finalId ? { ...m, text: finalAcc } : m)),
+          );
         }
 
         // Extract and save memories from conversation (fire and forget)

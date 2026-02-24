@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { quiz, QuizQuestion } from '@/services/ai';
 import { BookOpen, Loader2, CheckCircle, XCircle, RotateCcw, ChevronRight, Zap } from 'lucide-react';
+import ChatMarkdown from '@/components/features/chat/ChatMarkdown';
 
 interface QuizPanelProps {
   content: string;
@@ -534,12 +535,12 @@ function QuestionView({
             Q{questionNumber}
           </span>
         </div>
-        <p className={cn(
-          'text-sm font-medium leading-relaxed whitespace-pre-wrap',
+        <div className={cn(
+          'text-sm font-medium leading-relaxed',
           isTerminal && 'font-mono text-foreground/90'
         )}>
-          {question.question}
-        </p>
+          <ChatMarkdown content={question.question} />
+        </div>
       </div>
 
       {/* Answer area */}
@@ -651,9 +652,9 @@ function QuestionView({
             </div>
           )}
           {question.explanation && (
-            <p className={cn('text-xs text-muted-foreground leading-relaxed', isTerminal && 'font-mono')}>
-              {question.explanation}
-            </p>
+            <div className={cn('text-xs text-muted-foreground leading-relaxed', isTerminal && 'font-mono')}>
+              <ChatMarkdown content={question.explanation} />
+            </div>
           )}
           <button
             type='button'

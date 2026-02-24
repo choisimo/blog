@@ -141,17 +141,17 @@ export function useChatState(options?: { initialMessage?: string }) {
 
   // Prune expired transient messages every second
   useEffect(() => {
-    if (!messages.some((m) => m.transient)) return;
     const timer = window.setInterval(() => {
       const now = Date.now();
-      setMessages((prev) =>
-        prev.filter(
+      setMessages((prev) => {
+        if (!prev.some((m) => m.transient)) return prev;
+        return prev.filter(
           (m) => !(m.transient && m.expiresAt !== undefined && now > m.expiresAt),
-        ),
-      );
+        );
+      });
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [messages]);
+  }, []);
 
   // Handle attached image preview
   useEffect(() => {
