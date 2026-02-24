@@ -54,9 +54,37 @@ export function QuizPanel({ content, postTitle }: QuizPanelProps) {
   // Track how many batches we've requested (to avoid double-fetching)
   const batchFetchedRef = useRef(0);
   const isFetchingRef = useRef(false);
+  // Pre-generated questions: populated silently after page load
+  const preGeneratedRef = useRef<QuizQuestion[]>([]);
 
   // Only render if content has fenced code blocks
   const hasCodeBlocks = /```[\s\S]*?```/.test(content);
+
+  // Pre-generate quiz silently after page load so 'Start' is instant
+  useEffect(() => {
+    if (!hasCodeBlocks) return;
+    // Don't pre-gen if already in progress or already have data
+    if (isFetchingRef.current || preGeneratedRef.current.length > 0) return;
+
+    const timer = setTimeout(async () => {
+      if (isFetchingRef.current || preGeneratedRef.current.length > 0) return;
+      isFetchingRef.current = true;
+      try {
+        const result = await quiz({ paragraph: content, postTitle, batchIndex: 0, previousQuestions: [] });
+        if (result.quiz.length > 0) {
+          preGeneratedRef.current = result.quiz;
+        }
+      } catch {
+        // Silent fail — user will generate on demand when clicking start
+      } finally {
+        isFetchingRef.current = false;
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Return null after all hooks if no code blocks
   if (!hasCodeBlocks) return null;
 
   // Fetch a batch of 2 questions
@@ -99,6 +127,18 @@ export function QuizPanel({ content, postTitle }: QuizPanelProps) {
     setQuestions([]);
     batchFetchedRef.current = 0;
     isFetchingRef.current = false;
+
+    // Use pre-generated questions if already available — instant UX
+    if (preGeneratedRef.current.length > 0) {
+      const preGenerated = preGeneratedRef.current;
+      preGeneratedRef.current = [];
+      batchFetchedRef.current = 1;
+      setQuestions(preGenerated);
+      setState('active');
+      // Pre-fetch batch 2 in background
+      fetchBatch(1, preGenerated);
+      return;
+    }
 
     try {
       // Fetch first batch (Q1-Q2)

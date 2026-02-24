@@ -1,4 +1,6 @@
-import { defineConfig, devices } from 'playwright/test';
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -6,7 +8,7 @@ import { defineConfig, devices } from 'playwright/test';
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? 'github' : 'list',
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:8080',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:8080',
     trace: 'on-first-retry',
     ignoreHTTPSErrors: true,
   },
@@ -16,12 +18,4 @@ import { defineConfig, devices } from 'playwright/test';
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: process.env.PLAYWRIGHT_NO_SERVER
-    ? undefined
-    : {
-        command: 'npm run dev',
-        url: 'http://localhost:8080',
-        reuseExistingServer: !process.env.CI,
-        timeout: 120_000,
-      },
 });

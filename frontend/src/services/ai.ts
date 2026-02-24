@@ -155,6 +155,11 @@ async function invokeTask<T>(
 
   const result = (await res.json()) as TaskResponse<T> | Record<string, unknown>;
 
+  // Detect fallback response from Workers — AI server unavailable
+  if (isRecord(result) && result._fallback === true) {
+    throw new Error('AI server returned fallback: backend unavailable');
+  }
+
   // data 추출 (다양한 응답 구조 대응)
   const topLevel =
     (isRecord(result) && ('data' in result ? result.data : undefined)) ??

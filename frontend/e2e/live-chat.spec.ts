@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Route } from 'playwright/test';
+import { test, expect, type Page, type Route } from '@playwright/test';
 
 const API_BASE = process.env.PLAYWRIGHT_API_BASE ?? 'https://api.nodove.com';
 
@@ -210,14 +210,14 @@ test.describe('/live command — integration with chat widget', () => {
 
     const chatArea = page.locator('[data-testid="chat-messages"], .chat-messages, [role="log"]').first();
     await expect(chatArea).toBeVisible({ timeout: 5000 });
-    
+
     // Check if the chat area has the live message
     await expect(chatArea).toContainText(/(\[Live\]|Live|test message)/i);
-    
+
     // Take a screenshot verification
-    await page.screenshot({ 
+    await page.screenshot({
       path: 'verification-screenshots/live-chat-message-success.png',
-      fullPage: false 
+      fullPage: false
     });
   });
 
@@ -373,7 +373,7 @@ test.describe('/live — API failure handling', () => {
 test.describe('/live — advanced simulated conversation', () => {
   test('handles incoming live_message and updates UI correctly', async ({ page }) => {
     let sseCallback: any = null;
-    
+
     page.route(`${API_BASE}/api/v1/chat/live/stream*`, async (route: Route) => {
       // Create a mock stream that we can control
       const stream = new ReadableStream({
@@ -384,7 +384,7 @@ test.describe('/live — advanced simulated conversation', () => {
           };
         }
       });
-      
+
       route.fulfill({
         status: 200,
         headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
@@ -395,20 +395,20 @@ test.describe('/live — advanced simulated conversation', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
     await openChatWidget(page);
-    
+
     // Send message via SSE
     if (sseCallback) {
       sseCallback('data: {"type":"live_message","text":"Welcome to Live Chat!","senderType":"admin","room":"room:lobby"}\n\n');
     }
-    
+
     // Wait for the UI to update
     const chatArea = page.locator('[data-testid="chat-messages"], .chat-messages, [role="log"]').first();
     await expect(chatArea).toBeVisible({ timeout: 5000 });
     await expect(chatArea).toContainText(/Welcome to Live Chat!/i, { timeout: 5000 });
-    
-    await page.screenshot({ 
+
+    await page.screenshot({
       path: 'verification-screenshots/live-chat-incoming-message.png',
-      fullPage: false 
+      fullPage: false
     });
   });
 });

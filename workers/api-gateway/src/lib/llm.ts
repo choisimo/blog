@@ -126,22 +126,22 @@ function normalizeQuizQuestion(value: unknown): QuizQuestion | null {
 
 function extractQuizItemsFromData(value: unknown): unknown[] {
   if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
     const parsed = tryParseJson(value);
     return parsed ? extractQuizItemsFromData(parsed) : [];
   }
-
   if (!isRecord(value)) return [];
   if (Array.isArray(value.quiz)) return value.quiz;
   if (Array.isArray(value.questions)) return value.questions;
   if (Array.isArray(value.items)) return value.items;
   if ('result' in value) return extractQuizItemsFromData(value.result);
+  if ('_raw' in value) {
     const rawData = value._raw;
     if (typeof rawData === 'string') return extractQuizItemsFromData(rawData);
     if (isRecord(rawData) && typeof rawData.text === 'string') {
       return extractQuizItemsFromData(rawData.text);
     }
   }
-
   // Sentio/custom mode: backend may return a blog-post metadata object with a
   // `problems` array (e.g. algorithm exercises). Map each problem entry to a
   // minimal quiz question so the normalizer can still produce a valid quiz.
