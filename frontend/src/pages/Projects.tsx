@@ -3,8 +3,9 @@ import { Code2, Eye, ExternalLink, LayoutGrid, List } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ProjectCard, ProjectModal, TagFilter } from '@/components/features/projects';
+import { ProjectCard, ProjectCardSkeleton, ProjectModal, TagFilter } from '@/components/features/projects';
 import { getProjects, getProjectTags, type ProjectItem } from '@/data/projects';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -110,11 +111,41 @@ const Projects = () => {
       </section>
 
       {loading && (
-        <section className='mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3'>
-          {Array.from({ length: 6 }).map((_, index) => (
-            <Card key={index} className='h-[320px] animate-pulse border-border/60 bg-card/60' />
-          ))}
-        </section>
+        <>
+          <section className='mt-8'>
+            <Card className='overflow-hidden border-border/60'>
+              <CardHeader className='space-y-4 pb-3'>
+                <Skeleton className='h-6 w-36 rounded-full' />
+                <Skeleton className='h-8 w-2/3' />
+                <div className='space-y-2 max-w-3xl'>
+                  <Skeleton className='h-4 w-full' />
+                  <Skeleton className='h-4 w-5/6' />
+                </div>
+              </CardHeader>
+              <CardContent className='flex flex-wrap gap-2 pb-6'>
+                <Skeleton className='h-10 w-28 rounded-md' />
+                <Skeleton className='h-10 w-28 rounded-md' />
+                <Skeleton className='h-10 w-24 rounded-md' />
+              </CardContent>
+            </Card>
+          </section>
+
+          <section className='mt-10 space-y-5'>
+            <div className='flex flex-col gap-3 md:flex-row md:items-center md:justify-between'>
+              <div className='flex flex-wrap gap-2'>
+                <Skeleton className='h-9 w-16 rounded-full' />
+                <Skeleton className='h-9 w-20 rounded-full' />
+                <Skeleton className='h-9 w-24 rounded-full' />
+              </div>
+              <Skeleton className='h-11 w-36 rounded-xl' />
+            </div>
+            <div className='grid gap-5 md:grid-cols-2 xl:grid-cols-3'>
+              {Array.from({ length: 6 }).map((_, index) => (
+                <ProjectCardSkeleton key={index} />
+              ))}
+            </div>
+          </section>
+        </>
       )}
 
       {!loading && error && (

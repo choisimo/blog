@@ -67,7 +67,7 @@ function App() {
               <Router>
                 <div className='min-h-screen flex flex-col bg-background text-foreground'>
                   <Header />
-                  <main className='flex-1 pb-[110px] md:pb-[76px] lg:pb-8 lg:pl-[15rem]'>
+                  <main className='flex-1 pb-[110px] md:pb-[84px] lg:pb-[96px]'>
                     <Routes>
                       <Route path='/' element={<Index />} />
                       <Route path='/blog' element={<Blog />} />

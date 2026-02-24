@@ -11,10 +11,10 @@ export function DefaultDock({ dockActions, isMobile }: DefaultDockProps) {
   return (
     <div
       className={cn(
-        "flex w-full items-center justify-center backdrop-blur-xl",
+        "flex items-center justify-center backdrop-blur-xl",
         isMobile
-          ? "rounded-none border-t border-border/30 bg-background/95 px-2 py-1.5 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] dark:bg-background/90 dark:border-white/10"
-          : "rounded-[28px] border border-white/20 bg-background/70 px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.08),_0_2px_8px_rgba(0,0,0,0.04)] dark:border-white/10 dark:bg-background/60 dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)] lg:w-full lg:rounded-2xl lg:border-border/70 lg:bg-background/75 lg:px-2 lg:py-2",
+          ? "w-full rounded-none border-t border-border/30 bg-background/95 px-2 py-1.5 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] dark:bg-background/90 dark:border-white/10"
+          : "w-auto max-w-full rounded-[28px] border border-white/20 bg-background/75 px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.08),_0_2px_8px_rgba(0,0,0,0.04)] dark:border-white/10 dark:bg-background/65 dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)]",
       )}
     >
       {isMobile ? (
@@ -57,7 +57,7 @@ export function DefaultDock({ dockActions, isMobile }: DefaultDockProps) {
         </div>
       ) : (
         // PC: Premium hover effects and labels
-        <div className="flex items-center justify-center gap-2 lg:w-full lg:flex-col lg:items-stretch lg:gap-1.5">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           {dockActions.map((action) => {
             const Icon = action.icon;
             const displayLabel = action.desktopLabel || action.label;
@@ -71,7 +71,7 @@ export function DefaultDock({ dockActions, isMobile }: DefaultDockProps) {
                 aria-disabled={action.disabled}
                 title={action.title || displayLabel}
                 className={cn(
-                  "group relative flex items-center gap-2.5 rounded-2xl px-4 py-2.5 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 lg:w-full lg:justify-start lg:rounded-xl lg:px-3.5",
+                  "group relative flex items-center gap-2.5 rounded-2xl px-4 py-2.5 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50",
                   action.primary
                     ? "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:scale-[1.02]"
                     : "text-foreground/75 hover:bg-muted/70 hover:text-foreground dark:text-white/75 dark:hover:bg-white/10 dark:hover:text-white",

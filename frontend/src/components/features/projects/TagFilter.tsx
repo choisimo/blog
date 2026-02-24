@@ -20,7 +20,7 @@ export function TagFilter({ tags, selectedTag, onSelect }: TagFilterProps) {
             type='button'
             variant={active ? 'default' : 'outline'}
             size='sm'
-            className={cn('rounded-full px-3', !active && 'text-muted-foreground')}
+            className={cn('rounded-full px-3', !active && 'text-foreground/80')}
             onClick={() => onSelect(tag)}
           >
             {tag}

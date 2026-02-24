@@ -259,8 +259,6 @@ export default function FloatingActionBar() {
 
   const containerClasses = cn(
     "fixed inset-x-0 z-[var(--z-fab-bar)] px-3 sm:px-4 print:hidden",
-    !isMobile &&
-    "lg:inset-x-auto lg:left-6 lg:right-auto lg:top-24 lg:bottom-auto lg:w-52 lg:px-0",
     isMobile
       ? "bottom-0 pb-[calc(env(safe-area-inset-bottom,0px))] max-w-full overflow-x-hidden"
       : "bottom-[calc(16px+env(safe-area-inset-bottom,0px))]",
@@ -271,7 +269,6 @@ export default function FloatingActionBar() {
       : scrollHidden
         ? "translate-y-[200%] opacity-0 pointer-events-none" // Slide completely off-screen
         : "translate-y-0 opacity-100",
-    !isMobile && "lg:translate-y-0 lg:opacity-100 lg:pointer-events-auto",
   );
 
   const allDockActions: DockAction[] = [
@@ -410,7 +407,7 @@ export default function FloatingActionBar() {
               "mx-auto flex w-full justify-center",
               isMobile
                 ? "max-w-none"
-                : "max-w-md sm:max-w-2xl lg:mx-0 lg:max-w-none lg:justify-start",
+                : "max-w-6xl",
             )}
           >
             {/* Terminal style dock */}
