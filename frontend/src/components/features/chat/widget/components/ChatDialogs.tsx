@@ -85,6 +85,8 @@ type MobileActionSheetProps = {
   onShowSessions: () => void;
   onShowImageDrawer: () => void;
   onTogglePersist: () => void;
+  onStartDebate?: () => void;
+  currentLiveRoomLabel?: string;
   onClearAll: () => void;
   isTerminal: boolean;
 };
@@ -98,6 +100,8 @@ export function MobileActionSheet({
   onShowSessions,
   onShowImageDrawer,
   onTogglePersist,
+  onStartDebate,
+  currentLiveRoomLabel,
   onClearAll,
   isTerminal,
 }: MobileActionSheetProps) {
@@ -148,6 +152,19 @@ export function MobileActionSheet({
             valueBadge
             valuePrimary={persistOptIn}
             onClick={() => runAction(onTogglePersist)}
+            isTerminal={isTerminal}
+          />
+          <ActionButton
+            label={
+              currentLiveRoomLabel
+                ? `현재 방 AI 토론 (${currentLiveRoomLabel})`
+                : "현재 방 AI 토론"
+            }
+            value="LIVE"
+            valueBadge
+            valuePrimary
+            disabled={!onStartDebate}
+            onClick={() => runAction(() => onStartDebate?.())}
             isTerminal={isTerminal}
           />
           <ActionButton

@@ -125,7 +125,7 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({ content, isStreaming }
       <strong className={cn('text-[13px] font-semibold', isTerminal && 'font-mono')}>{children}</strong>
     ),
     p: ({ children }) => (
-      <p className='text-[13px] leading-relaxed'>{children}</p>
+      <p className='text-[13px] leading-relaxed break-words [overflow-wrap:anywhere]'>{children}</p>
     ),
     ul: ({ children }) => (
       <ul className={cn('pl-4 text-[13px] leading-relaxed list-disc space-y-1', isTerminal && 'list-none')}>
@@ -138,7 +138,7 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({ content, isStreaming }
       </ol>
     ),
     li: ({ children }) => (
-      <li className={cn('leading-relaxed', isTerminal && 'before:content-["-_"] before:text-primary')}>{children}</li>
+      <li className={cn('leading-relaxed break-words [overflow-wrap:anywhere]', isTerminal && 'before:content-["-_"] before:text-primary')}>{children}</li>
     ),
     blockquote: ({ children }) => (
       <blockquote className={cn(
@@ -257,7 +257,7 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({ content, isStreaming }
         target='_blank'
         rel='noopener noreferrer'
         className={cn(
-          'text-primary underline decoration-dotted underline-offset-2 hover:text-primary/80',
+          'text-primary underline decoration-dotted underline-offset-2 hover:text-primary/80 break-all',
           isTerminal && 'hover:decoration-solid'
         )}
       >
@@ -337,6 +337,7 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({ content, isStreaming }
   return (
     <div className={cn(
       'chat-markdown prose prose-sm prose-neutral max-w-none dark:prose-invert',
+      'break-words [overflow-wrap:anywhere]',
       '[&>p]:mb-3 [&>p:last-child]:mb-0',
       '[&>ul]:my-2 [&>ol]:my-2',
       '[&_pre]:!overflow-auto',

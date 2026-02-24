@@ -40,6 +40,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object';
 }
 
+function clampQuizCount(value: unknown, fallback = 2): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  return Math.max(1, Math.min(6, Math.floor(value)));
+}
+
 function extractMeaningfulLines(text: string): string[] {
   return text
     .split(/\r?\n/)
@@ -161,20 +166,24 @@ function extractQuizItemsFromData(value: unknown): unknown[] {
   return [];
 }
 
-function normalizeQuizData(value: unknown): { quiz: QuizQuestion[] } | null {
+function normalizeQuizData(value: unknown, maxQuestions = 2): { quiz: QuizQuestion[] } | null {
   const quiz = extractQuizItemsFromData(value)
     .map(normalizeQuizQuestion)
     .filter((item): item is QuizQuestion => item !== null)
-    .slice(0, 2);
+    .slice(0, Math.max(1, maxQuestions));
 
   if (quiz.length === 0) return null;
 
   return { quiz };
 }
 
-function normalizeTaskDataForMode(mode: TaskMode, value: unknown): unknown | null {
+function normalizeTaskDataForMode(
+  mode: TaskMode,
+  value: unknown,
+  payload?: Record<string, unknown>
+): unknown | null {
   if (mode !== 'quiz') return value;
-  return normalizeQuizData(value);
+  return normalizeQuizData(value, clampQuizCount(payload?.quizCount, 2));
 }
 
 function projectTaskDataFromText(
@@ -271,15 +280,40 @@ function projectTaskDataFromText(
     }
 
     case 'quiz': {
+      const quizCount = clampQuizCount(payload.quizCount, 2);
+      const templates: QuizQuestion[] = [
+        {
+          type: 'multiple_choice',
+          question: '이 내용의 핵심 코드 흐름에서 가장 중요한 분기 조건은 무엇인가요?',
+          answer: '핵심 분기 조건을 다시 확인해보세요.',
+          options: ['입력 검증', '분기 처리', '반복 종료', '예외 처리'],
+          explanation: 'AI가 구조화된 퀴즈 형식 대신 서술형으로 응답하여 변환했습니다.',
+        },
+        {
+          type: 'fill_blank',
+          question: '본문 코드의 핵심 로직을 한 줄로 요약하면 ___ 입니다.',
+          answer: '입력 처리 후 핵심 연산을 수행하는 흐름',
+          explanation: '코드의 입력-처리-출력 흐름을 따라가며 빈칸을 채워보세요.',
+        },
+        {
+          type: 'explain',
+          question: '핵심 함수의 실행 순서를 단계별로 설명해보세요.',
+          answer: text.trim().slice(0, 800) || '입력 정규화 → 핵심 연산 → 결과 반환',
+          explanation: '정답 문구보다 단계별 흐름을 설명하는 것이 중요합니다.',
+        },
+      ];
+
+      const quiz = Array.from({ length: quizCount }, (_, idx) => {
+        const base = templates[idx % templates.length];
+        if (idx < templates.length) return base;
+        return {
+          ...base,
+          question: `${base.question} (심화 ${idx + 1})`,
+        };
+      });
+
       return {
-        quiz: [
-          {
-            type: 'explain',
-            question: '위 내용을 바탕으로 핵심 로직을 설명해보세요.',
-            answer: text.trim().slice(0, 800),
-            explanation: 'AI가 구조화된 퀴즈 형식 대신 서술형으로 응답하여 변환했습니다.',
-          },
-        ],
+        quiz,
       };
     }
 
@@ -618,7 +652,7 @@ export async function executeTask(
   const response = await callTaskLLM(promptConfig, env);
 
   if (response.ok && response.parsed) {
-    const normalizedParsed = normalizeTaskDataForMode(mode, response.parsed);
+    const normalizedParsed = normalizeTaskDataForMode(mode, response.parsed, payload);
     if (normalizedParsed) {
       return {
         ok: true,
@@ -635,7 +669,7 @@ export async function executeTask(
     // 한 번 더 파싱 시도
     const parsed = tryParseJson(response.text);
     if (parsed) {
-      const normalizedParsed = normalizeTaskDataForMode(mode, parsed);
+      const normalizedParsed = normalizeTaskDataForMode(mode, parsed, payload);
       if (normalizedParsed) {
         return {
           ok: true,
@@ -650,7 +684,7 @@ export async function executeTask(
     // 스키마 기반 보정 시도 (LLM 응답의 의미를 유지하면서 JSON 구조만 교정)
     const repaired = await repairTaskJsonWithSchema(mode, promptConfig, response.text, env);
     if (repaired && typeof repaired === 'object') {
-      const normalizedRepaired = normalizeTaskDataForMode(mode, repaired);
+      const normalizedRepaired = normalizeTaskDataForMode(mode, repaired, payload);
       if (normalizedRepaired) {
         return {
           ok: true,
@@ -665,7 +699,7 @@ export async function executeTask(
     // 최종 보정: 텍스트를 모드별 구조로 투영
     console.warn('LLM response parsing failed, projecting text to structured task output');
     const projected = projectTaskDataFromText(mode, response.text, payload);
-    const normalizedProjected = normalizeTaskDataForMode(mode, projected) ?? projected;
+    const normalizedProjected = normalizeTaskDataForMode(mode, projected, payload) ?? projected;
 
     return {
       ok: true,

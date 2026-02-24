@@ -36,6 +36,8 @@ export type ChatSidebarProps = {
   onModeChange: (mode: QuestionMode) => void;
   currentRoom?: string;
   onRoomSelect?: (room: string) => void;
+  onStartDebate?: () => void;
+  currentLiveRoomLabel?: string;
   sessions: ChatSessionMeta[];
   selectedSessionIds: string[];
   onToggleSession: (id: string) => void;
@@ -51,6 +53,8 @@ export function ChatSidebar({
   onModeChange,
   currentRoom,
   onRoomSelect,
+  onStartDebate,
+  currentLiveRoomLabel,
   sessions,
   selectedSessionIds,
   onToggleSession,
@@ -134,9 +138,30 @@ export function ChatSidebar({
 
         {/* 실시간 채팅 */}
         <div className={sectionClass}>
-          <div className={labelClass}>
-            <Radio className="w-3 h-3" />
-            실시간
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className={labelClass}>
+              <Radio className="w-3 h-3" />
+              실시간
+            </div>
+            <button
+              type="button"
+              disabled={!onStartDebate}
+              onClick={() => onStartDebate?.()}
+              className={cn(
+                "shrink-0 rounded border px-2 py-1 text-[10px] leading-none transition-colors",
+                isTerminal
+                  ? "border-primary/40 text-primary hover:bg-primary/10"
+                  : "border-border/70 text-muted-foreground hover:bg-muted hover:text-foreground",
+                !onStartDebate && "opacity-50 cursor-not-allowed",
+              )}
+              title={
+                currentLiveRoomLabel
+                  ? `현재 방 AI 토론 (${currentLiveRoomLabel})`
+                  : "현재 방 AI 토론"
+              }
+            >
+              AI 토론
+            </button>
           </div>
           {rooms.length === 0 ? (
             <p className="text-xs text-muted-foreground/50 px-2 py-1">

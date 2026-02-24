@@ -789,6 +789,7 @@ const BlogPost = () => {
             <QuizPanel
               content={localized?.content ?? post.content}
               postTitle={localized?.title ?? post.title}
+              postTags={post.tags}
             />
 
             <CommentSection postId={`${post.year}/${post.slug}`} />

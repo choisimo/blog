@@ -4,12 +4,11 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { NotebookPen, Sparkles, Layers, Map, Swords } from "lucide-react";
+import { NotebookPen, Sparkles, Layers, Map } from "lucide-react";
 import VisitedPostsMinimap, {
   useVisitedPostsState,
 } from "@/components/features/navigation/VisitedPostsMinimap";
 import ChatWidget from "@/components/features/chat/ChatWidget";
-import DebateArena from "@/components/features/debate/DebateArena";
 import { useToast } from "@/components/ui/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -54,10 +53,9 @@ export default function FloatingActionBar() {
   const { items: visitedPosts, storageAvailable } = useVisitedPostsState();
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInitialMessage, setChatInitialMessage] = useState<string | undefined>(undefined);
-  const [debateOpen, setDebateOpen] = useState(false);
   const scrollHidden = useScrollHide();
   const [fabPinned] = useFabPinned();
-  const [fabPosition, setFabPosition] = useFabPosition();
+  const [fabPosition] = useFabPosition();
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { isTerminal } = useTheme();
@@ -308,17 +306,6 @@ export default function FloatingActionBar() {
       hidden: !featureFlags.aiEnabled,
     },
     {
-      key: "debate",
-      label: str.nav.debate,
-      desktopLabel: language === "ko" ? "AI 토론" : "AI Debate",
-      icon: Swords,
-      onClick: () => {
-        setDebateOpen(true);
-        send("fab_debate_open");
-      },
-      hidden: !featureFlags.aiEnabled,
-    },
-    {
       key: "memo",
       label: str.nav.memo,
       desktopLabel: language === "ko" ? "메모" : "Memo",
@@ -454,7 +441,7 @@ export default function FloatingActionBar() {
               )
             ) : (
               // Default style dock
-              <DefaultDock dockActions={dockActions} isMobile={isMobile} isLeft={isLeftFab} fabPosition={fabPosition} setFabPosition={!isMobile ? setFabPosition : undefined} />
+              <DefaultDock dockActions={dockActions} isMobile={isMobile} isLeft={isLeftFab} />
             )}
           </nav>
         </div>
@@ -469,19 +456,6 @@ export default function FloatingActionBar() {
             send("fab_ai_chat_close");
           }}
         />
-      )}
-
-      {debateOpen && (
-        <div className="fixed inset-0 z-[var(--z-chat-widget)] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-2xl max-h-[85vh]">
-            <DebateArena
-              onClose={() => {
-                setDebateOpen(false);
-                send("fab_debate_close");
-              }}
-            />
-          </div>
-        </div>
       )}
     </>
   );

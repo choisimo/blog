@@ -7,6 +7,7 @@ import { BookOpen, Loader2, CheckCircle, XCircle, RotateCcw, ChevronRight, Zap }
 interface QuizPanelProps {
   content: string;
   postTitle?: string;
+  postTags?: string[];
 }
 
 type QuizState = 'idle' | 'loading' | 'active' | 'complete';
@@ -20,6 +21,32 @@ interface AnswerState {
 // Max batches to pre-fetch (2 questions each = up to 10 questions total)
 const MAX_BATCHES = 5;
 const QUESTIONS_PER_BATCH = 2;
+const STUDY_MODE_TAG_TRIGGERS = [
+  'study',
+  '학습',
+  'algorithm',
+  '알고리즘',
+  'problem-solving',
+  'problem_solving',
+  'coding-test',
+  '코딩테스트',
+  'data-structure',
+  '자료구조',
+];
+
+function normalizePostTags(tags?: string[]): string[] {
+  if (!Array.isArray(tags)) return [];
+  return tags
+    .map(tag => (typeof tag === 'string' ? tag.trim().toLowerCase() : ''))
+    .filter(Boolean)
+    .slice(0, 24);
+}
+
+function hasStudyModeTag(tags: string[]): boolean {
+  return tags.some(tag =>
+    STUDY_MODE_TAG_TRIGGERS.some(trigger => tag.includes(trigger))
+  );
+}
 
 function isCorrectAnswer(question: QuizQuestion, userAnswer: string): boolean {
   const normalized = userAnswer.trim().toLowerCase();
@@ -39,7 +66,7 @@ function isCorrectAnswer(question: QuizQuestion, userAnswer: string): boolean {
   return matched / tokens.length >= 0.5;
 }
 
-export function QuizPanel({ content, postTitle }: QuizPanelProps) {
+export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
   const { isTerminal } = useTheme();
   const [state, setState] = useState<QuizState>('idle');
   // All loaded questions so far
@@ -57,12 +84,27 @@ export function QuizPanel({ content, postTitle }: QuizPanelProps) {
   // Pre-generated questions: populated silently after page load
   const preGeneratedRef = useRef<QuizQuestion[]>([]);
 
-  // Only render if content has fenced code blocks
+  const normalizedPostTags = normalizePostTags(postTags);
+
+  // Trigger conditions: fenced code blocks OR learning-oriented tags
   const hasCodeBlocks = /```[\s\S]*?```/.test(content);
+  const hasStudyTagTrigger = hasStudyModeTag(normalizedPostTags);
+  const shouldEnableQuiz = hasCodeBlocks || hasStudyTagTrigger;
+
+  // Study mode can be manually toggled; study-like tags auto-enable it by default
+  const [studyMode, setStudyMode] = useState<boolean>(() => hasStudyTagTrigger);
+  const questionsPerBatch = studyMode ? 3 : QUESTIONS_PER_BATCH;
+  const maxBatches = studyMode ? 6 : MAX_BATCHES;
+
+  useEffect(() => {
+    if (hasStudyTagTrigger) {
+      setStudyMode(true);
+    }
+  }, [hasStudyTagTrigger]);
 
   // Pre-generate quiz silently after page load so 'Start' is instant
   useEffect(() => {
-    if (!hasCodeBlocks) return;
+    if (!shouldEnableQuiz) return;
     // Don't pre-gen if already in progress or already have data
     if (isFetchingRef.current || preGeneratedRef.current.length > 0) return;
 
@@ -70,7 +112,15 @@ export function QuizPanel({ content, postTitle }: QuizPanelProps) {
       if (isFetchingRef.current || preGeneratedRef.current.length > 0) return;
       isFetchingRef.current = true;
       try {
-        const result = await quiz({ paragraph: content, postTitle, batchIndex: 0, previousQuestions: [] });
+        const result = await quiz({
+          paragraph: content,
+          postTitle,
+          batchIndex: 0,
+          previousQuestions: [],
+          quizCount: questionsPerBatch,
+          studyMode,
+          postTags: normalizedPostTags,
+        });
         if (result.quiz.length > 0) {
           preGeneratedRef.current = result.quiz;
         }
@@ -83,14 +133,21 @@ export function QuizPanel({ content, postTitle }: QuizPanelProps) {
 
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [
+    shouldEnableQuiz,
+    content,
+    postTitle,
+    questionsPerBatch,
+    studyMode,
+    normalizedPostTags,
+  ]);
   // Return null after all hooks if no code blocks
-  if (!hasCodeBlocks) return null;
+  if (!shouldEnableQuiz) return null;
 
-  // Fetch a batch of 2 questions
+  // Fetch a batch of questions
   const fetchBatch = useCallback(async (batchIndex: number, allQuestions: QuizQuestion[]) => {
     if (isFetchingRef.current) return;
-    if (batchIndex >= MAX_BATCHES) return;
+    if (batchIndex >= maxBatches) return;
     isFetchingRef.current = true;
     setIsFetchingNext(true);
 
@@ -101,6 +158,9 @@ export function QuizPanel({ content, postTitle }: QuizPanelProps) {
         postTitle,
         batchIndex,
         previousQuestions: previousQs,
+        quizCount: questionsPerBatch,
+        studyMode,
+        postTags: normalizedPostTags,
       });
 
       if (result.quiz.length > 0) {
@@ -116,7 +176,14 @@ export function QuizPanel({ content, postTitle }: QuizPanelProps) {
       isFetchingRef.current = false;
       setIsFetchingNext(false);
     }
-  }, [content, postTitle]);
+  }, [
+    content,
+    postTitle,
+    maxBatches,
+    questionsPerBatch,
+    studyMode,
+    normalizedPostTags,
+  ]);
 
   const handleStart = useCallback(async () => {
     setState('loading');
@@ -142,7 +209,15 @@ export function QuizPanel({ content, postTitle }: QuizPanelProps) {
 
     try {
       // Fetch first batch (Q1-Q2)
-      const result = await quiz({ paragraph: content, postTitle, batchIndex: 0, previousQuestions: [] });
+      const result = await quiz({
+        paragraph: content,
+        postTitle,
+        batchIndex: 0,
+        previousQuestions: [],
+        quizCount: questionsPerBatch,
+        studyMode,
+        postTags: normalizedPostTags,
+      });
       if (result.quiz.length === 0) throw new Error('No questions generated');
       batchFetchedRef.current = 1;
       setQuestions(result.quiz);
@@ -155,7 +230,14 @@ export function QuizPanel({ content, postTitle }: QuizPanelProps) {
       setError('퀴즈를 불러오는 데 실패했습니다. 다시 시도해주세요.');
       setState('idle');
     }
-  }, [content, postTitle, fetchBatch]);
+  }, [
+    content,
+    postTitle,
+    fetchBatch,
+    questionsPerBatch,
+    studyMode,
+    normalizedPostTags,
+  ]);
 
   // When user moves to question N, pre-fetch the next batch if we're 1 question away from the end
   useEffect(() => {
@@ -165,10 +247,10 @@ export function QuizPanel({ content, postTitle }: QuizPanelProps) {
     const distanceFromEnd = questionsLoaded - 1 - currentIndex;
 
     // Pre-fetch when user is on the last question of current batch
-    if (distanceFromEnd <= 0 && !isFetchingRef.current && batchFetchedRef.current < MAX_BATCHES) {
+    if (distanceFromEnd <= 0 && !isFetchingRef.current && batchFetchedRef.current < maxBatches) {
       fetchBatch(batchFetchedRef.current, questions);
     }
-  }, [currentIndex, questions, state, fetchBatch]);
+  }, [currentIndex, questions, state, fetchBatch, maxBatches]);
 
   const handleSubmitAnswer = useCallback(() => {
     const question = questions[currentIndex];
@@ -188,7 +270,7 @@ export function QuizPanel({ content, postTitle }: QuizPanelProps) {
         // More questions coming — wait (UI shows loading)
         setCurrentIndex(nextIndex);
         setCurrentAnswer('');
-      } else if (batchFetchedRef.current >= MAX_BATCHES) {
+      } else if (batchFetchedRef.current >= maxBatches) {
         // No more batches available
         setState('complete');
       } else {
@@ -221,7 +303,7 @@ export function QuizPanel({ content, postTitle }: QuizPanelProps) {
   // Determine if we're waiting for next question to load
   const isWaitingForNext = state === 'active' && !currentQuestion && (isFetchingNext || isFetchingRef.current);
   // Determine if we should show complete (no more questions and not fetching)
-  const shouldShowComplete = state === 'active' && !currentQuestion && !isFetchingNext && !isFetchingRef.current && batchFetchedRef.current >= MAX_BATCHES;
+  const shouldShowComplete = state === 'active' && !currentQuestion && !isFetchingNext && !isFetchingRef.current && batchFetchedRef.current >= maxBatches;
 
   return (
     <div
@@ -257,6 +339,11 @@ export function QuizPanel({ content, postTitle }: QuizPanelProps) {
           <p className={cn('text-xs text-muted-foreground', isTerminal && 'font-mono')}>
             이 글의 코드를 기반으로 생성된 퀴즈
           </p>
+          {studyMode && (
+            <p className={cn('text-[10px] text-primary/80', isTerminal && 'font-mono')}>
+              학습 모드: 확장 문제 세트 활성화
+            </p>
+          )}
         </div>
 
         {state === 'active' && (
@@ -287,8 +374,27 @@ export function QuizPanel({ content, postTitle }: QuizPanelProps) {
         {state === 'idle' && (
           <div className='flex flex-col items-center py-4 gap-4'>
             <p className={cn('text-sm text-center text-muted-foreground max-w-sm', isTerminal && 'font-mono')}>
-              이 글의 코드 예제를 학습했나요? AI가 코드 기반 심층 퀴즈를 출제합니다.
+              {hasCodeBlocks
+                ? '이 글의 코드 예제를 학습했나요? AI가 코드 기반 심층 퀴즈를 출제합니다.'
+                : '학습 태그가 감지되어 퀴즈가 활성화되었습니다. 학습 모드로 더 다양한 문제를 풀어보세요.'}
             </p>
+            <button
+              type='button'
+              onClick={() => setStudyMode(prev => !prev)}
+              className={cn(
+                'px-3 py-1.5 rounded-full text-xs border transition-colors',
+                studyMode
+                  ? isTerminal
+                    ? 'bg-primary/20 text-primary border-primary/40 font-mono'
+                    : 'bg-primary/10 text-primary border-primary/30'
+                  : isTerminal
+                    ? 'text-muted-foreground border-primary/20 hover:text-primary hover:border-primary/40 font-mono'
+                    : 'text-muted-foreground border-border hover:text-foreground hover:border-primary/30'
+              )}
+              aria-pressed={studyMode}
+            >
+              {studyMode ? '학습 모드 ON (배치당 3문제)' : '학습 모드 OFF (배치당 2문제)'}
+            </button>
             {error && (
               <p className='text-sm text-destructive text-center'>{error}</p>
             )}
@@ -346,7 +452,7 @@ export function QuizPanel({ content, postTitle }: QuizPanelProps) {
             onAnswerChange={setCurrentAnswer}
             onSubmit={handleSubmitAnswer}
             onNext={handleNext}
-            isLast={currentIndex + 1 >= questions.length && batchFetchedRef.current >= MAX_BATCHES}
+            isLast={currentIndex + 1 >= questions.length && batchFetchedRef.current >= maxBatches}
             isTerminal={isTerminal}
             isNextLoading={isFetchingNext && currentIndex + 1 >= questions.length}
           />

@@ -28,6 +28,8 @@ type ChatHeaderProps = {
   onShowActionSheet: () => void;
   onShowImageDrawer: () => void;
   onTogglePersist: () => void;
+  onStartDebate?: () => void;
+  currentLiveRoomLabel?: string;
   onClearAll: () => void;
   onClose?: () => void;
   sidebarOpen?: boolean;
@@ -45,6 +47,8 @@ export function ChatHeader({
   onShowActionSheet,
   onShowImageDrawer,
   onTogglePersist,
+  onStartDebate,
+  currentLiveRoomLabel,
   onClearAll,
   onClose,
   sidebarOpen,
@@ -179,6 +183,17 @@ export function ChatHeader({
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={onTogglePersist}>
                 {persistOptIn ? "기록 저장 끄기" : "기록 저장 켜기"}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!onStartDebate}
+                onSelect={() => onStartDebate?.()}
+                className="max-w-[18rem]"
+              >
+                <span className="truncate">
+                  {currentLiveRoomLabel
+                    ? `현재 방 AI 토론 시작 (${currentLiveRoomLabel})`
+                    : "현재 방 AI 토론 시작"}
+                </span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={onClearAll}>

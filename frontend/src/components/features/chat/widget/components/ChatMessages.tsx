@@ -253,6 +253,7 @@ function TerminalMessage({
   onRetry,
   lastPrompt,
   onSourceClick,
+  onExpireMessage,
 }: {
   message: ChatMessage;
   imageUrl: string | null;
@@ -366,6 +367,7 @@ function DefaultMessage({
   onRetry,
   lastPrompt,
   onSourceClick,
+  onExpireMessage,
 }: {
   message: ChatMessage;
   imageUrl: string | null;
@@ -403,7 +405,7 @@ function DefaultMessage({
     <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "max-w-full text-sm leading-relaxed px-4 py-3",
+          "max-w-full text-sm leading-relaxed px-4 py-3 break-words [overflow-wrap:anywhere]",
           isMobile ? "max-w-[90%] rounded-2xl" : "max-w-[85%] rounded-2xl",
           isUser && "bg-primary text-primary-foreground rounded-br-md",
           isAssistant && "bg-secondary text-secondary-foreground rounded-bl-md",
@@ -418,14 +420,14 @@ function DefaultMessage({
           )
         ) : isUser ? (
           <div className="space-y-2">
-            <span className="whitespace-pre-wrap">
+            <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
               {cleanText ||
                 (imageUrl ? "첨부한 이미지에 대해 설명해줘." : m.text)}
             </span>
             {imageUrl && <UserImage imageUrl={imageUrl} isTerminal={false} />}
           </div>
         ) : (
-          <span className="whitespace-pre-wrap">{m.text}</span>
+          <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{m.text}</span>
         )}
 
         {isAssistant && <Sources sources={m.sources} isTerminal={false} onSourceClick={onSourceClick} />}
@@ -519,7 +521,7 @@ function Sources({
               <span className="text-primary/50">[{i + 1}]</span>{" "}
               {s.url ? (
                 <a
-                  className="underline decoration-dotted hover:text-primary cursor-pointer"
+                  className="underline decoration-dotted hover:text-primary cursor-pointer break-all"
                   href={s.url}
                   onClick={(e) => onSourceClick(s.url!, e)}
                 >
@@ -543,7 +545,7 @@ function Sources({
           <li key={i}>
             {s.url ? (
               <a
-                className="underline text-primary cursor-pointer"
+                className="underline text-primary cursor-pointer break-all"
                 href={s.url}
                 onClick={(e) => onSourceClick(s.url!, e)}
               >

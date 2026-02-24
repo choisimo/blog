@@ -1,19 +1,14 @@
 import React from "react";
-import { Settings, Monitor, AlignLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import type { DockAction } from "../types";
-import type { FabPosition } from "../hooks";
 
 type DefaultDockProps = {
   dockActions: DockAction[];
   isMobile: boolean;
   isLeft?: boolean;
-  fabPosition?: FabPosition;
-  setFabPosition?: (v: FabPosition) => void;
 };
 
-export function DefaultDock({ dockActions, isMobile, isLeft, fabPosition, setFabPosition }: DefaultDockProps) {
+export function DefaultDock({ dockActions, isMobile, isLeft }: DefaultDockProps) {
   return (
     <div
       className={cn(
@@ -141,52 +136,6 @@ export function DefaultDock({ dockActions, isMobile, isLeft, fabPosition, setFab
               </button>
             );
           })}
-          {/* FAB layout settings — PC only */}
-          {setFabPosition && fabPosition && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="FAB layout settings"
-                  title="FAB layout settings"
-                  className="group relative flex items-center justify-center rounded-2xl p-2.5 transition-all duration-200 text-foreground/40 hover:bg-muted/70 hover:text-foreground/75 dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white/75"
-                >
-                  <Settings className="h-[16px] w-[16px]" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent side="top" align="end" className="w-56 p-3">
-                <p className="text-xs font-semibold text-foreground/60 uppercase tracking-wider mb-2">FAB Position</p>
-                <div className="flex flex-col gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setFabPosition('bottom')}
-                    className={cn(
-                      "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors w-full text-left",
-                      fabPosition === 'bottom'
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-muted text-foreground/80"
-                    )}
-                  >
-                    <Monitor className="h-4 w-4 shrink-0" />
-                    Bottom bar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFabPosition('left')}
-                    className={cn(
-                      "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors w-full text-left",
-                      fabPosition === 'left'
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-muted text-foreground/80"
-                    )}
-                  >
-                    <AlignLeft className="h-4 w-4 shrink-0" />
-                    Left sidebar
-                  </button>
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
         </div>
       )}
     </div>

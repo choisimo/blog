@@ -33,6 +33,13 @@ import {
   LiveRoomPanel,
   ChatSidebar,
 } from "./components";
+import DebateArena from "@/components/features/debate/DebateArena";
+
+function formatLiveRoomName(room: string): string {
+  return String(room || "room:lobby")
+    .replace(/^room:/, "")
+    .replace(/:/g, "/");
+}
 
 export default function ChatWidget(props: {
   onClose?: () => void;
@@ -43,6 +50,9 @@ export default function ChatWidget(props: {
   const keyboardHeight = useKeyboardHeight(isMobile);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [debateOpen, setDebateOpen] = useState(false);
+  const [debateTopic, setDebateTopic] = useState("");
+  const [debateDescription, setDebateDescription] = useState("");
 
   // Dynamic max height calculation for PC
   const [pcMaxHeight, setPcMaxHeight] = useState("80vh");
@@ -111,6 +121,8 @@ export default function ChatWidget(props: {
     setUploadedImages: state.setUploadedImages,
     messages: state.messages,
     setSessionKey: state.setSessionKey,
+    currentLiveRoom: liveVisitorChat.room,
+    switchLiveRoom: liveVisitorChat.switchRoom,
     sendVisitorMessage: liveVisitorChat.sendVisitorMessage,
   });
 
@@ -148,6 +160,18 @@ export default function ChatWidget(props: {
     setShowClearConfirm(false);
   }, [actions]);
 
+  const currentLiveRoomLabel = formatLiveRoomName(liveVisitorChat.room);
+
+  const handleStartDebate = () => {
+    const roomLabel = formatLiveRoomName(liveVisitorChat.room);
+    setDebateTopic(`${roomLabel} 방 주제로 토론해보기`);
+    setDebateDescription(
+      `현재 라이브 채팅 방: ${roomLabel}\n이 방에서 나온 관점을 기반으로 찬반 토론을 시작합니다.`,
+    );
+    setDebateOpen(true);
+    state.setShowActionSheet(false);
+  };
+
   return (
     <>
       <div
@@ -182,6 +206,8 @@ export default function ChatWidget(props: {
           onShowActionSheet={() => state.setShowActionSheet(true)}
           onShowImageDrawer={() => state.setShowImageDrawer(true)}
           onTogglePersist={state.togglePersistStorage}
+          onStartDebate={handleStartDebate}
+          currentLiveRoomLabel={currentLiveRoomLabel}
           onClearAll={handleClearAll}
           onClose={props.onClose}
           sidebarOpen={sidebarOpen}
@@ -197,6 +223,7 @@ export default function ChatWidget(props: {
               questionMode={state.questionMode}
               onModeChange={state.setQuestionMode}
               currentRoom={liveVisitorChat.room}
+              onRoomSelect={liveVisitorChat.switchRoom}
               sessions={state.sessions}
               selectedSessionIds={state.selectedSessionIds}
               onToggleSession={session.toggleSessionSelected}
@@ -204,6 +231,8 @@ export default function ChatWidget(props: {
               onAggregateSelected={session.handleAggregateFromSelected}
               persistOptIn={state.persistOptIn}
               onTogglePersist={state.togglePersistStorage}
+              onStartDebate={handleStartDebate}
+              currentLiveRoomLabel={currentLiveRoomLabel}
             />
           )}
 
@@ -229,6 +258,9 @@ export default function ChatWidget(props: {
                 isTerminal={isTerminal}
                 isMobile={isMobile}
                 currentRoom={liveVisitorChat.room}
+                onRoomSelect={liveVisitorChat.switchRoom}
+                onStartDebate={handleStartDebate}
+                currentRoomLabel={currentLiveRoomLabel}
               />
             )}
 
@@ -320,6 +352,7 @@ export default function ChatWidget(props: {
             questionMode={state.questionMode}
             onModeChange={state.setQuestionMode}
             currentRoom={liveVisitorChat.room}
+            onRoomSelect={liveVisitorChat.switchRoom}
             sessions={state.sessions}
             selectedSessionIds={state.selectedSessionIds}
             onToggleSession={session.toggleSessionSelected}
@@ -327,6 +360,8 @@ export default function ChatWidget(props: {
             onAggregateSelected={session.handleAggregateFromSelected}
             persistOptIn={state.persistOptIn}
             onTogglePersist={state.togglePersistStorage}
+            onStartDebate={handleStartDebate}
+            currentLiveRoomLabel={currentLiveRoomLabel}
           />
         </SheetContent>
       </Sheet>
@@ -347,9 +382,23 @@ export default function ChatWidget(props: {
           state.setShowImageDrawer(true);
         }}
         onTogglePersist={state.togglePersistStorage}
+        onStartDebate={handleStartDebate}
+        currentLiveRoomLabel={currentLiveRoomLabel}
         onClearAll={handleClearAll}
         isTerminal={isTerminal}
       />
+
+      {debateOpen && (
+        <div className="fixed inset-0 z-[var(--z-chat-widget)] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl max-h-[85vh]">
+            <DebateArena
+              initialTopic={debateTopic}
+              initialDescription={debateDescription}
+              onClose={() => setDebateOpen(false)}
+            />
+          </div>
+        </div>
+      )}
 
       <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
         <AlertDialogContent>

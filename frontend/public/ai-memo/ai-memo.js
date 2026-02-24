@@ -81,6 +81,16 @@
     return normalized;
   }
 
+  function getFabPositionSetting() {
+    try {
+      const raw = localStorage.getItem('fab.position');
+      if (raw === 'bottom' || raw === 'left') return raw;
+      const parsed = raw != null ? JSON.parse(raw) : null;
+      if (parsed === 'bottom' || parsed === 'left') return parsed;
+    } catch (_) {}
+    return 'bottom';
+  }
+
   class AIMemoPad extends HTMLElement {
     constructor() {
       super();
@@ -100,6 +110,7 @@
         devJs: LS.get(KEYS.devJs, 'console.log("Hello from user JS");'),
         proposalMd: LS.get(KEYS.proposalMd, ''),
         fontSize: LS.get(KEYS.fontSize, 13),
+        fabPosition: getFabPositionSetting(),
         events: LS.get(KEYS.events, []),
         layoutMode: LS.get(KEYS.layoutMode, 'split'),
         previewPane: LS.get(KEYS.previewPane, 'editor')
@@ -1243,6 +1254,18 @@
                </select>
              </div>
              <div class="section">
+               <label class="label" for="fabPosition">FAB 배치</label>
+               <div class="row" style="gap:8px; align-items:flex-start;">
+                 <select id="fabPosition" class="input">
+                   <option value="bottom">하단 바</option>
+                   <option value="left">좌측 사이드</option>
+                 </select>
+                 <div class="small" style="opacity:0.8">
+                   채팅/메모 도크 위치를 선택합니다.
+                 </div>
+               </div>
+             </div>
+             <div class="section">
                <label class="label">패널 위치</label>
                <div class="row" style="gap:10px; align-items:flex-start;">
                  <button id="resetPosition" class="btn secondary" type="button">위치 초기화</button>
@@ -1366,6 +1389,7 @@
         this.shadowRoot.querySelectorAll('#previewPaneToggle button')
       );
       this.$fontSize = this.shadowRoot.getElementById('fontSize');
+      this.$fabPosition = this.shadowRoot.getElementById('fabPosition');
       this.$inlineEnabled = this.shadowRoot.getElementById('inlineEnabled');
       this.$closeAfterInject = this.shadowRoot.getElementById('closeAfterInject');
       this.$resetPosition = this.shadowRoot.getElementById('resetPosition');
@@ -1604,6 +1628,9 @@
         const fs = parseInt(this.state.fontSize || 13, 10);
         this.$fontSize.value = String(fs);
         this.applyFontSize(fs);
+      }
+      if (this.$fabPosition) {
+        this.$fabPosition.value = this.state.fabPosition === 'left' ? 'left' : 'bottom';
       }
 
       // panel open
@@ -2831,6 +2858,26 @@
          };
         this.$fontSize.addEventListener('change', onFs);
         this.$fontSize.addEventListener('input', onFs);
+      }
+
+      // FAB position (shared with React FAB)
+      if (this.$fabPosition) {
+        const onFabPosition = () => {
+          const next = this.$fabPosition.value === 'left' ? 'left' : 'bottom';
+          this.state.fabPosition = next;
+          try {
+            localStorage.setItem('fab.position', next);
+          } catch (_) {}
+          try {
+            window.dispatchEvent(
+              new CustomEvent('fab:position-changed', { detail: { position: next } })
+            );
+          } catch (_) {}
+          this.out.toast(`FAB 위치: ${next === 'left' ? '좌측' : '하단'}`);
+          this.logEvent({ type: 'change_fab_position', label: next });
+        };
+        this.$fabPosition.addEventListener('change', onFabPosition);
+        this.$fabPosition.addEventListener('input', onFabPosition);
       }
 
       // Proposal actions

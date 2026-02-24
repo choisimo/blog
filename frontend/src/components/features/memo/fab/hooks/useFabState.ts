@@ -415,16 +415,71 @@ export function useFabAnalytics() {
 export type FabPosition = 'bottom' | 'left';
 
 export function useFabPosition(): [FabPosition, (v: FabPosition) => void] {
+  const normalize = (raw: unknown): FabPosition | null => {
+    if (raw === 'bottom' || raw === 'left') return raw;
+    if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed === 'bottom' || parsed === 'left') return parsed;
+      } catch {
+        void 0;
+      }
+    }
+    return null;
+  };
+
   const [position, setPositionState] = useState<FabPosition>(() => {
     try {
-      const saved = localStorage.getItem('fab.position') as FabPosition | null;
-      if (saved === 'bottom' || saved === 'left') return saved;
+      const saved = localStorage.getItem('fab.position');
+      const normalized = normalize(saved);
+      if (normalized) return normalized;
     } catch { void 0; }
     return 'bottom';
   });
+
+  useEffect(() => {
+    const apply = (raw: unknown) => {
+      const normalized = normalize(raw);
+      if (normalized) {
+        setPositionState(normalized);
+      }
+    };
+
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || e.key === 'fab.position') {
+        apply(e.newValue);
+      }
+    };
+
+    const onPositionChanged = (e: Event) => {
+      const custom = e as CustomEvent<{ position?: FabPosition }>;
+      if (custom.detail?.position) {
+        apply(custom.detail.position);
+        return;
+      }
+      try {
+        apply(localStorage.getItem('fab.position'));
+      } catch {
+        void 0;
+      }
+    };
+
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('fab:position-changed', onPositionChanged as EventListener);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('fab:position-changed', onPositionChanged as EventListener);
+    };
+  }, []);
+
   const setPosition = useCallback((v: FabPosition) => {
     setPositionState(v);
     try { localStorage.setItem('fab.position', v); } catch { void 0; }
+    try {
+      window.dispatchEvent(new CustomEvent('fab:position-changed', { detail: { position: v } }));
+    } catch {
+      void 0;
+    }
   }, []);
   return [position, setPosition];
 }

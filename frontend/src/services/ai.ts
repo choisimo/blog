@@ -498,6 +498,19 @@ function normalizeQuizQuestion(raw: unknown): QuizQuestion | null {
   return normalized;
 }
 
+function clampQuizCount(value: unknown, fallback = 2): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  return Math.max(1, Math.min(6, Math.floor(value)));
+}
+
+function normalizeQuizTags(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map(tag => (typeof tag === 'string' ? tag.trim().toLowerCase() : ''))
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
 function extractQuizItems(raw: unknown): unknown[] {
   if (Array.isArray(raw)) return raw;
   if (typeof raw === 'string') {
@@ -536,14 +549,14 @@ function extractQuizItems(raw: unknown): unknown[] {
   return [];
 }
 
-function normalizeQuizResult(raw: unknown): QuizResult | null {
+function normalizeQuizResult(raw: unknown, maxQuestions = 2): QuizResult | null {
   const items = extractQuizItems(raw);
   if (items.length === 0) return null;
 
   const quiz = items
     .map(normalizeQuizQuestion)
     .filter((item): item is QuizQuestion => item !== null)
-    .slice(0, 2);
+    .slice(0, Math.max(1, maxQuestions));
 
   if (quiz.length === 0) return null;
 
@@ -551,20 +564,35 @@ function normalizeQuizResult(raw: unknown): QuizResult | null {
 }
 
 function isQuizResult(data: unknown): data is QuizResult {
-  return normalizeQuizResult(data) !== null;
+  return normalizeQuizResult(data, 6) !== null;
 }
 
-function createQuizFallback(): QuizResult {
+function createQuizFallback(quizCount = 2): QuizResult {
+  const safeCount = clampQuizCount(quizCount);
+  const templates: QuizQuestion[] = [
+    {
+      type: 'multiple_choice',
+      question: '이 문서의 주요 주제는 무엇인가요?',
+      answer: '위 내용을 다시 읽어보세요.',
+      options: ['개념 이해', '실습 예제', '이론 설명', '사례 연구'],
+      explanation: 'AI 서버가 일시적으로 응답하지 않아 기본 퀴즈가 표시됩니다.',
+    },
+    {
+      type: 'fill_blank',
+      question: '핵심 코드 흐름에서 가장 중요한 조건문/반복문을 빈칸으로 설명해보세요.',
+      answer: '문서의 코드 예제 핵심 조건',
+      explanation: '핵심 분기/반복 조건을 다시 확인하면 이해에 도움이 됩니다.',
+    },
+    {
+      type: 'explain',
+      question: '본문의 핵심 로직을 한 문단으로 요약해 설명해보세요.',
+      answer: '핵심 로직을 단계별로 요약해보세요.',
+      explanation: '정답보다 사고 과정을 정리하는 것이 중요합니다.',
+    },
+  ];
+
   return {
-    quiz: [
-      {
-        type: 'multiple_choice',
-        question: '이 문서의 주요 주제는 무엇인가요?',
-        answer: '위 내용을 다시 읽어보세요.',
-        options: ['개념 이해', '실습 예제', '이론 설명', '사례 연구'],
-        explanation: 'AI 서버가 일시적으로 응답하지 않아 기본 퀴즈가 표시됩니다.',
-      },
-    ],
+    quiz: templates.slice(0, safeCount),
   };
 }
 
@@ -577,8 +605,22 @@ export async function quiz(input: {
   postTitle?: string;
   batchIndex?: number;
   previousQuestions?: string[];
+  quizCount?: number;
+  studyMode?: boolean;
+  postTags?: string[];
 }): Promise<QuizResult> {
-  const { paragraph, postTitle, batchIndex = 0, previousQuestions = [] } = input;
+  const {
+    paragraph,
+    postTitle,
+    batchIndex = 0,
+    previousQuestions = [],
+    quizCount = 2,
+    studyMode = false,
+    postTags = [],
+  } = input;
+
+  const requestedQuizCount = clampQuizCount(quizCount);
+  const normalizedPostTags = normalizeQuizTags(postTags);
 
   try {
     const response = await invokeTask<QuizResult>('quiz', {
@@ -586,12 +628,18 @@ export async function quiz(input: {
       postTitle,
       batchIndex,
       previousQuestions,
+      quizCount: requestedQuizCount,
+      studyMode,
+      postTags: normalizedPostTags,
     });
 
     const normalized =
-      normalizeQuizResult(normalizeResponse(response, isQuizResult) ?? response);
+      normalizeQuizResult(
+        normalizeResponse(response, isQuizResult) ?? response,
+        requestedQuizCount
+      );
     if (normalized) {
-      return { quiz: normalized.quiz.slice(0, 2) };
+      return { quiz: normalized.quiz.slice(0, requestedQuizCount) };
     }
     // Log the actual response shape to help diagnose future mismatches
     const shape = isRecord(response)
@@ -600,9 +648,9 @@ export async function quiz(input: {
     console.warn(
       `Quiz AI response could not be normalized, using fallback. Response keys: [${shape}]`
     );
-    return createQuizFallback();
+    return createQuizFallback(requestedQuizCount);
   } catch (err) {
     console.error('Quiz AI call failed:', err);
-    return createQuizFallback();
+    return createQuizFallback(requestedQuizCount);
   }
 }

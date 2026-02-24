@@ -158,6 +158,35 @@ function toText(value) {
   return '';
 }
 
+function clampQuizCount(value, fallback = 2) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  return Math.max(1, Math.min(6, Math.floor(value)));
+}
+
+function normalizeQuizTags(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((tag) => (typeof tag === 'string' ? tag.trim().toLowerCase() : ''))
+    .filter(Boolean)
+    .slice(0, 24);
+}
+
+function hasStudyTagTrigger(tags) {
+  const triggers = [
+    'study',
+    '학습',
+    'algorithm',
+    '알고리즘',
+    'problem-solving',
+    'problem_solving',
+    'coding-test',
+    '코딩테스트',
+    'data-structure',
+    '자료구조',
+  ];
+  return tags.some((tag) => triggers.some((trigger) => tag.includes(trigger)));
+}
+
 function normalizeQuizType(value) {
   if (typeof value !== 'string') return 'explain';
   const normalized = value.trim().toLowerCase().replace(/[\s-]+/g, '_');
@@ -226,19 +255,19 @@ function extractQuizItems(value) {
   return [];
 }
 
-function normalizeQuizData(value) {
+function normalizeQuizData(value, maxQuestions = 2) {
   const quiz = extractQuizItems(value)
     .map(normalizeQuizQuestion)
     .filter(Boolean)
-    .slice(0, 2);
+    .slice(0, Math.max(1, maxQuestions));
 
   if (!quiz.length) return null;
   return { quiz };
 }
 
-function normalizeTaskData(mode, value) {
+function normalizeTaskData(mode, value, payload = {}) {
   if (mode !== 'quiz') return value;
-  return normalizeQuizData(value);
+  return normalizeQuizData(value, clampQuizCount(payload.quizCount, 2));
 }
 
 function projectTaskDataFromText(mode, text, payload) {
@@ -290,15 +319,40 @@ function projectTaskDataFromText(mode, text, payload) {
     }
 
     case 'quiz': {
+      const quizCount = clampQuizCount(payload.quizCount, 2);
+      const templates = [
+        {
+          type: 'multiple_choice',
+          question: '이 내용의 핵심 코드 흐름에서 가장 중요한 분기 조건은 무엇인가요?',
+          answer: '핵심 분기 조건을 다시 확인해보세요.',
+          options: ['입력 검증', '분기 처리', '반복 종료', '예외 처리'],
+          explanation: 'AI가 서술형으로 응답해 퀴즈 형식으로 변환했습니다.',
+        },
+        {
+          type: 'fill_blank',
+          question: '본문 코드의 핵심 로직을 한 줄로 요약하면 ___ 입니다.',
+          answer: '입력 처리 후 핵심 연산을 수행하는 흐름',
+          explanation: '코드의 입력-처리-출력 흐름을 따라가며 빈칸을 채워보세요.',
+        },
+        {
+          type: 'explain',
+          question: '핵심 함수의 실행 순서를 단계별로 설명해보세요.',
+          answer: rawText.slice(0, 800) || '입력 정규화 → 핵심 연산 → 결과 반환',
+          explanation: '정답 문구보다 단계별 흐름을 설명하는 것이 중요합니다.',
+        },
+      ];
+
+      const quiz = Array.from({ length: quizCount }, (_, idx) => {
+        const base = templates[idx % templates.length];
+        if (idx < templates.length) return base;
+        return {
+          ...base,
+          question: `${base.question} (심화 ${idx + 1})`,
+        };
+      });
+
       return {
-        quiz: [
-          {
-            type: 'explain',
-            question: '위 내용을 바탕으로 핵심 개념을 설명해보세요.',
-            answer: rawText.slice(0, 800),
-            explanation: 'AI가 서술형으로 응답해 퀴즈 형식으로 변환했습니다.',
-          },
-        ],
+        quiz,
       };
     }
 
@@ -1197,10 +1251,24 @@ function isValidTaskMode(mode) {
  * Helper: Build prompt for task
  */
 function buildTaskPrompt(mode, payload) {
-  const { paragraph, content, postTitle, persona, prompt, batchIndex, previousQuestions } = payload;
+  const {
+    paragraph,
+    content,
+    postTitle,
+    persona,
+    prompt,
+    batchIndex,
+    previousQuestions,
+    quizCount,
+    studyMode,
+    postTags,
+  } = payload;
   const text = paragraph || content || prompt || '';
   const title = postTitle || '';
   const quizBatchIndex = Number.isFinite(Number(batchIndex)) ? Math.max(0, Number(batchIndex)) : 0;
+  const requestedQuizCount = clampQuizCount(quizCount, 2);
+  const normalizedPostTags = normalizeQuizTags(postTags);
+  const effectiveStudyMode = studyMode === true || hasStudyTagTrigger(normalizedPostTags);
   const askedQuestions = Array.isArray(previousQuestions)
     ? previousQuestions.filter((q) => typeof q === 'string' && q.trim()).slice(0, 12)
     : [];
@@ -1257,6 +1325,8 @@ function buildTaskPrompt(mode, payload) {
       };
 
     case 'quiz': {
+      const batchStart = quizBatchIndex * requestedQuizCount + 1;
+      const batchEnd = batchStart + requestedQuizCount - 1;
       const duplicateGuard = askedQuestions.length
         ? [
             'Do NOT repeat already asked questions:',
@@ -1270,15 +1340,23 @@ function buildTaskPrompt(mode, payload) {
           'Return STRICT JSON only for technical learning quiz questions.',
           '{"quiz":[{"type":"fill_blank|multiple_choice|transform|explain","question":"string","answer":"string","options":["string"],"explanation":"string"}]}',
           `Post: ${title.slice(0, TEXT_LIMITS.TASK_TITLE)}`,
-          `Batch: ${quizBatchIndex + 1} (generate questions ${quizBatchIndex * 2 + 1}-${quizBatchIndex * 2 + 2})`,
+          `Batch: ${quizBatchIndex + 1} (generate questions ${batchStart}-${batchEnd})`,
+          normalizedPostTags.length > 0
+            ? `Post Tags: ${normalizedPostTags.join(', ')}`
+            : 'Post Tags: (none)',
+          effectiveStudyMode
+            ? 'Study Mode: ON (increase difficulty diversity and conceptual coverage while staying grounded in code).'
+            : 'Study Mode: OFF',
           'Paragraph:',
           text.slice(0, TEXT_LIMITS.TASK_PARAGRAPH),
           '',
           ...duplicateGuard,
-          'Task: Generate EXACTLY 2 concise quiz questions in the original language.',
+          `Task: Generate EXACTLY ${requestedQuizCount} concise quiz questions in the original language.`,
           'Each question must be grounded in concrete code details from the paragraph.',
         ].join('\n'),
-        temperature: AI_TEMPERATURES.QUIZ,
+        temperature: effectiveStudyMode
+          ? Math.min(AI_TEMPERATURES.QUIZ + 0.1, 0.8)
+          : AI_TEMPERATURES.QUIZ,
       };
     }
 
@@ -1483,15 +1561,42 @@ function getFallbackData(mode, payload) {
         ],
       };
     case 'quiz':
-      return {
-        quiz: [
+      {
+        const quizCount = clampQuizCount(payload.quizCount, 2);
+        const templates = [
           {
-            type: 'explain',
-            question: '이 내용의 핵심 개념을 설명해보세요.',
-            answer: '핵심 개념을 다시 정리해보며 이해를 점검해보세요.',
+            type: 'multiple_choice',
+            question: '이 내용의 핵심 코드 흐름에서 가장 중요한 분기 조건은 무엇인가요?',
+            answer: '핵심 분기 조건을 다시 확인해보세요.',
+            options: ['입력 검증', '분기 처리', '반복 종료', '예외 처리'],
             explanation: 'AI 응답이 일시적으로 지연되어 기본 퀴즈가 표시됩니다.',
           },
-        ],
+          {
+            type: 'fill_blank',
+            question: '본문 코드의 핵심 로직을 한 줄로 요약하면 ___ 입니다.',
+            answer: '입력 처리 후 핵심 연산을 수행하는 흐름',
+            explanation: '코드의 입력-처리-출력 흐름을 다시 정리해보세요.',
+          },
+          {
+            type: 'explain',
+            question: '핵심 함수의 실행 순서를 단계별로 설명해보세요.',
+            answer: '입력 정규화 → 핵심 연산 → 결과 반환',
+            explanation: '핵심 로직을 단계별로 요약하는 것이 학습에 도움이 됩니다.',
+          },
+        ];
+
+        const quiz = Array.from({ length: quizCount }, (_, idx) => {
+          const base = templates[idx % templates.length];
+          if (idx < templates.length) return base;
+          return {
+            ...base,
+            question: `${base.question} (심화 ${idx + 1})`,
+          };
+        });
+
+      return {
+          quiz,
+        };
       };
     default:
       return { text: 'Unable to process request' };
@@ -1972,7 +2077,7 @@ router.post('/session/:sessionId/task', async (req, res, next) => {
       } else {
         const json = tryParseJson(text);
         if (json) {
-          const normalized = normalizeTaskData(taskMode, json);
+          const normalized = normalizeTaskData(taskMode, json, taskPayload);
           if (normalized) {
             data = normalized;
             console.log(`[Task:${taskMode}] Successfully parsed and normalized JSON:`, JSON.stringify(data).slice(0, 200));

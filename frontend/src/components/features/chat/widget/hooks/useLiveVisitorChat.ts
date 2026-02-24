@@ -1,12 +1,26 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   connectLiveChatStream,
   sendLiveChatMessage,
-  type LiveChatEvent,
 } from '@/services/chat';
+import type { LiveChatEvent } from '@/services/chat/live';
 import type { ChatMessage, SystemMessageLevel } from '../types';
 
 const VISITOR_NAME_KEY = 'aiChat.liveVisitorName';
+
+function normalizeRoomKey(rawRoom: string): string {
+  const fallback = 'room:lobby';
+  const trimmed = String(rawRoom || '').trim().toLowerCase();
+  if (!trimmed) return fallback;
+
+  const normalized = trimmed
+    .replace(/[^a-z0-9:_-]/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 120);
+
+  if (!normalized) return fallback;
+  return normalized.startsWith('room:') ? normalized : `room:${normalized}`;
+}
 
 function toRoomKey(pathname: string): string {
   const normalized = (pathname || '/').replace(/\/+$/, '') || '/';
@@ -17,15 +31,21 @@ function toRoomKey(pathname: string): string {
   if ((parts[0] === 'blog' || parts[0] === 'post') && parts.length >= 3) {
     const year = parts[1];
     const slug = parts.slice(2).join('-');
-    return `room:blog:${year}:${slug}`;
+    return normalizeRoomKey(`room:blog:${year}:${slug}`);
   }
 
   if (parts[0] === 'projects') {
     const project = parts[1] || 'lobby';
-    return `room:project:${project}`;
+    return normalizeRoomKey(`room:project:${project}`);
   }
 
-  return `room:page:${parts.join(':')}`;
+  return normalizeRoomKey(`room:page:${parts.join(':')}`);
+}
+
+function formatRoomName(room: string): string {
+  return String(room || 'room:lobby')
+    .replace(/^room:/, '')
+    .replace(/:/g, '/');
 }
 
 function getVisitorName(): string {
@@ -92,10 +112,26 @@ export function useLiveVisitorChat(input: {
 }) {
   const { sessionId, push } = input;
   const connectedRef = useRef(false);
+  const disconnectRef = useRef<(() => void) | null>(null);
   const visitorName = useMemo(() => getVisitorName(), []);
-  const room = useMemo(() => {
+  const [room, setRoom] = useState<string>(() => {
     if (typeof window === 'undefined') return 'room:lobby';
     return toRoomKey(window.location.pathname);
+  });
+  const [reconnectNonce, setReconnectNonce] = useState(0);
+
+  const switchRoom = useCallback((nextRoom: string) => {
+    const normalized = normalizeRoomKey(nextRoom);
+    connectedRef.current = false;
+    try {
+      disconnectRef.current?.();
+    } catch {
+      // ignore disconnect errors
+    } finally {
+      disconnectRef.current = null;
+    }
+    setRoom(normalized);
+    setReconnectNonce((prev) => prev + 1);
   }, []);
 
   useEffect(() => {
@@ -113,7 +149,7 @@ export function useLiveVisitorChat(input: {
             connectedRef.current = true;
             push(
               buildSystemMessage(
-                `[Live] Connected to visitor chat (${event.onlineCount} online). Use /live <message> to chat in real time.`,
+                `[Live] ${formatRoomName(event.room || room)} 방 연결됨 (${event.onlineCount} online). Use /live <message> to chat in real time.`,
                 'info',
                 { systemKind: 'status' }
               )
@@ -136,8 +172,23 @@ export function useLiveVisitorChat(input: {
         }
 
         if (event.type === 'live_message') {
-          if (event.sessionId === sessionId) return;
           const sender = event.name || 'anonymous';
+          const isSelfEcho =
+            event.sessionId === sessionId && sender.trim().toLowerCase() === visitorName.trim().toLowerCase();
+          if (isSelfEcho) return;
+
+          const isLiveAgent =
+            event.senderType === 'agent' || sender.toLowerCase() === 'room-companion';
+
+          if (isLiveAgent) {
+            push({
+              id: `live_agent_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+              role: 'assistant',
+              text: `[Live · ${sender}] ${event.text}`,
+            });
+            return;
+          }
+
           push(
             buildSystemMessage(
               `[Live] ${sender}: ${event.text}`,
@@ -173,12 +224,16 @@ export function useLiveVisitorChat(input: {
         );
       },
     });
+    disconnectRef.current = disconnect;
 
     return () => {
       connectedRef.current = false;
       disconnect();
+      if (disconnectRef.current === disconnect) {
+        disconnectRef.current = null;
+      }
     };
-  }, [sessionId, push, visitorName, room]);
+  }, [sessionId, push, visitorName, room, reconnectNonce]);
 
   const sendVisitorMessage = useCallback(
     async (text: string) => {
@@ -193,5 +248,5 @@ export function useLiveVisitorChat(input: {
     [sessionId, visitorName, room]
   );
 
-  return { sendVisitorMessage, room };
+  return { sendVisitorMessage, room, switchRoom };
 }

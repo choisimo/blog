@@ -515,7 +515,7 @@ export async function deleteChatSession(sessionId: string): Promise<void> {
 
 export async function getMemoryContextForChat(
   userQuery: string,
-  maxTokens = MEMORY_DEFAULTS.CONTEXT_MAX_TOKENS
+  maxTokens: number = MEMORY_DEFAULTS.CONTEXT_MAX_TOKENS
 ): Promise<string | null> {
   const results = await searchMemories(userQuery, { n_results: 10 });
 

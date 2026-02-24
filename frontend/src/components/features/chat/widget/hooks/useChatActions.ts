@@ -5,8 +5,16 @@ import {
   uploadChatImage,
   invokeChatAggregate,
   startNewSession,
+  getLiveRooms,
+  getLiveRoomStats,
 } from "@/services/chat";
 import { getMemoryContextForChat, extractAndSaveMemories } from "@/services/memory";
+
+function formatLiveRoomName(room: string): string {
+  return String(room || "room:lobby")
+    .replace(/^room:/, "")
+    .replace(/:/g, "/");
+}
 
 type UseChatActionsProps = {
   canSend: boolean;
@@ -27,6 +35,8 @@ type UseChatActionsProps = {
   setUploadedImages: React.Dispatch<React.SetStateAction<UploadedChatImage[]>>;
   messages: ChatMessage[];
   setSessionKey: (key: string) => void;
+  currentLiveRoom: string;
+  switchLiveRoom: (room: string) => void;
   sendVisitorMessage: (text: string) => Promise<void>;
 };
 
@@ -49,14 +59,112 @@ export function useChatActions({
   setUploadedImages,
   messages,
   setSessionKey,
+  currentLiveRoom,
+  switchLiveRoom,
   sendVisitorMessage,
 }: UseChatActionsProps) {
   const send = useCallback(async () => {
     if (!canSend) return;
     const trimmed = input.trim();
 
-    if (trimmed.toLowerCase().startsWith('/live ')) {
-      const liveText = trimmed.slice(6).trim();
+    if (trimmed.toLowerCase() === "/live" || trimmed.toLowerCase().startsWith("/live ")) {
+      const payload = trimmed.slice(5).trim();
+      const command = payload.toLowerCase();
+
+      const pushLiveSystem = (
+        text: string,
+        level: "info" | "warn" | "error" = "info"
+      ) => {
+        push({
+          id: `live_cmd_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          role: "system",
+          text,
+          systemLevel: level,
+          systemKind: level === "error" ? "error" : "status",
+        });
+      };
+
+      if (!payload || command === "help" || command === "?") {
+        setInput("");
+        pushLiveSystem(
+          [
+            "[Live] Commands",
+            "- /live <message> : 현재 방에 메시지 전송",
+            "- /live list : 활성 방 목록 보기",
+            "- /live room : 현재 접속 방 확인",
+            "- /live room <room> : 방 이동 (예: /live room lobby)",
+            "- /live join <room> : room 명령과 동일",
+            "- /live lobby : 로비(room:lobby)로 이동",
+          ].join("\n")
+        );
+        return;
+      }
+
+      if (command === "list" || command === "rooms") {
+        setInput("");
+        try {
+          const rooms = await getLiveRooms();
+          if (rooms.length === 0) {
+            pushLiveSystem("[Live] 현재 활성 방이 없습니다.");
+            return;
+          }
+
+          const top = rooms.slice(0, 12);
+          pushLiveSystem(
+            [
+              `[Live] Active rooms (${rooms.length})`,
+              ...top.map(
+                (r, idx) => `${idx + 1}. ${formatLiveRoomName(r.room)} · ${r.onlineCount} online`
+              ),
+              "",
+              "Use /live room <name> to move.",
+            ].join("\n")
+          );
+        } catch (e: any) {
+          try {
+            const stats = await getLiveRoomStats(currentLiveRoom);
+            pushLiveSystem(
+              [
+                "[Live] 전체 방 목록 API를 사용할 수 없어 현재 방만 표시합니다.",
+                `- ${formatLiveRoomName(stats.room)} · ${stats.onlineCount} online`,
+              ].join("\n"),
+              "warn"
+            );
+          } catch {
+            pushLiveSystem(e?.message || "[Live] 방 목록을 가져오지 못했습니다.", "error");
+          }
+        }
+        return;
+      }
+
+      if (command === "room") {
+        setInput("");
+        pushLiveSystem(`[Live] 현재 방: ${formatLiveRoomName(currentLiveRoom)}`);
+        return;
+      }
+
+      if (command === "lobby") {
+        setInput("");
+        switchLiveRoom("room:lobby");
+        pushLiveSystem("[Live] room:lobby 로 이동합니다. 재연결 중...");
+        return;
+      }
+
+      if (command.startsWith("room ") || command.startsWith("join ")) {
+        const nextRoom = payload.split(/\s+/).slice(1).join(" ").trim();
+        if (!nextRoom) {
+          setInput("");
+          pushLiveSystem("[Live] 방 이름이 필요합니다. 예: /live room lobby", "warn");
+          return;
+        }
+
+        setInput("");
+        switchLiveRoom(nextRoom);
+        pushLiveSystem(`[Live] ${formatLiveRoomName(nextRoom)} 방으로 이동합니다. 재연결 중...`);
+        return;
+      }
+
+      const liveText = payload;
       if (!liveText) return;
 
       const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -223,6 +331,8 @@ export function useChatActions({
     lastPromptRef,
     setUploadedImages,
     setMessages,
+    currentLiveRoom,
+    switchLiveRoom,
     sendVisitorMessage,
   ]);
 

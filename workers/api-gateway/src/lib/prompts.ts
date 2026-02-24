@@ -18,6 +18,11 @@ export interface TaskPayload {
   title?: string;
   persona?: string;
   prompt?: string;
+  batchIndex?: number;
+  previousQuestions?: string[];
+  quizCount?: number;
+  studyMode?: boolean;
+  postTags?: string[];
   [key: string]: unknown;
 }
 
@@ -35,6 +40,40 @@ export type JsonSchema = {
   required?: string[];
   items?: unknown;
 };
+
+const QUIZ_COUNT_MIN = 1;
+const QUIZ_COUNT_MAX = 6;
+const QUIZ_STUDY_TAG_TRIGGERS = [
+  'study',
+  '학습',
+  'algorithm',
+  '알고리즘',
+  'problem-solving',
+  'problem_solving',
+  'coding-test',
+  '코딩테스트',
+  'data-structure',
+  '자료구조',
+];
+
+function clampQuizCount(value: unknown, fallback = 2): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  return Math.max(QUIZ_COUNT_MIN, Math.min(QUIZ_COUNT_MAX, Math.floor(value)));
+}
+
+function normalizeQuizTags(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map(tag => (typeof tag === 'string' ? tag.trim().toLowerCase() : ''))
+    .filter(Boolean)
+    .slice(0, 24);
+}
+
+function hasStudyTagTrigger(tags: string[]): boolean {
+  return tags.some(tag =>
+    QUIZ_STUDY_TAG_TRIGGERS.some(trigger => tag.includes(trigger))
+  );
+}
 
 // 공통 시스템 프롬프트
 const COMMON_SYSTEM = `You are a helpful AI assistant for a blog platform.
@@ -270,19 +309,36 @@ function buildQuizPrompt(payload: TaskPayload): PromptConfig {
   const previousQuestions: string[] = Array.isArray(payload.previousQuestions)
     ? (payload.previousQuestions as string[])
     : [];
+  const quizCount = clampQuizCount(payload.quizCount, 2);
+  const postTags = normalizeQuizTags(payload.postTags);
+  const tagDrivenStudyMode = hasStudyTagTrigger(postTags);
+  const studyMode = payload.studyMode === true || tagDrivenStudyMode;
+
+  const batchStart = batchIndex * quizCount + 1;
+  const batchEnd = batchStart + quizCount - 1;
 
   const batchNote = batchIndex > 0 && previousQuestions.length > 0
     ? `\n\nAlready asked (do NOT repeat these):\n${previousQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}\n`
     : '';
 
-  const user = `Task: Generate EXACTLY 2 code-focused learning quiz questions for a technical blog post.
+  const tagsNote = postTags.length > 0
+    ? `\n- Post Tags: ${postTags.join(', ')}`
+    : '';
+
+  const studyModeNote = studyMode
+    ? '\n\nSTUDY MODE IS ON: increase conceptual coverage and difficulty diversity while staying grounded in the provided code/context.'
+    : '';
+
+  const user = `Task: Generate EXACTLY ${quizCount} code-focused learning quiz questions for a technical blog post.
 
 Context:
 - Blog Post Title: "${postTitle}"
-- Batch: ${batchIndex + 1} (generate questions ${batchIndex * 2 + 1}-${batchIndex * 2 + 2})${batchNote}
+- Batch: ${batchIndex + 1} (generate questions ${batchStart}-${batchEnd})${tagsNote}${batchNote}
 
 Content:
 "${content}"
+
+${studyModeNote}
 
 ## STRICT RULES — VIOLATIONS WILL FAIL:
 
@@ -291,7 +347,7 @@ Content:
    - FORBIDDEN: Questions about "main topic", "purpose of document", "what is X concept".
    - FORBIDDEN: Generic comprehension questions that don't cite actual code.
 
-2. **QUESTION TYPES** (exactly 2 questions, mixed types):
+2. **QUESTION TYPES** (exactly ${quizCount} questions, mixed types):
    - **fill_blank**: Quote a real code snippet with ONE crucial token replaced by ___.
      Example: \`arr.sort((a, b) => ___ - ___)\` — what fills the blanks?
    - **multiple_choice**: Give 4 options (A-D). Quote actual code, ask what it does / why / what happens if changed.
@@ -304,6 +360,7 @@ Content:
 3. **DIFFICULTY**: Each batch escalates difficulty.
    - Batch 1: Fill-blank + multiple_choice on specific code syntax/behavior
    - Batch 2+: Transform + explain requiring deep reasoning about algorithm/logic
+   - Study mode: include at least one medium/high reasoning question per batch
 
 4. **ANSWER QUALITY**:
    - answer: exact code token or short phrase (for fill_blank/multiple_choice), or model solution (for transform/explain)
@@ -311,7 +368,7 @@ Content:
 
 5. **LANGUAGE**: Match the language of the blog post content.
 
-Generate EXACTLY 2 questions.
+Generate EXACTLY ${quizCount} questions.
 
 Response Schema:
 ${JSON.stringify(SCHEMAS.quiz, null, 2)}`;
@@ -319,7 +376,7 @@ ${JSON.stringify(SCHEMAS.quiz, null, 2)}`;
   return {
     system: COMMON_SYSTEM,
     user,
-    temperature: getTemperature('quiz'),
+    temperature: studyMode ? Math.min(getTemperature('quiz') + 0.1, 0.8) : getTemperature('quiz'),
     maxTokens: getMaxTokens('quiz'),
     schema: SCHEMAS.quiz,
   };
@@ -393,17 +450,41 @@ export function getFallbackData(mode: TaskMode, payload: TaskPayload): unknown {
       };
 
 
-    case 'quiz':
-      return {
-        quiz: [
-          {
-            type: 'explain',
-            question: '이 내용의 핵심 개념을 설명해보세요.',
-            answer: '내용을 다시 읽고 핵심 개념을 파악해보세요.',
-            explanation: 'AI 응답 생성에 실패했습니다. 직접 내용을 학습해보세요.',
-          },
-        ],
-      };
+    case 'quiz': {
+      const quizCount = clampQuizCount(payload.quizCount, 2);
+      const templates = [
+        {
+          type: 'multiple_choice',
+          question: '이 내용의 핵심 코드 흐름에서 가장 중요한 분기 조건은 무엇인가요?',
+          answer: '핵심 분기 조건을 다시 확인해보세요.',
+          options: ['입력 검증', '분기 처리', '반복 종료', '예외 처리'],
+          explanation: 'AI 응답 생성에 실패하여 기본 퀴즈를 제공합니다. 코드 분기 조건을 다시 읽어보세요.',
+        },
+        {
+          type: 'fill_blank',
+          question: '본문 코드의 핵심 로직을 한 줄로 요약하면 ___ 입니다.',
+          answer: '입력 처리 후 핵심 연산을 수행하는 흐름',
+          explanation: '코드의 입력-처리-출력 흐름을 따라가며 빈칸을 채워보세요.',
+        },
+        {
+          type: 'explain',
+          question: '핵심 함수의 실행 순서를 단계별로 설명해보세요.',
+          answer: '입력 정규화 → 핵심 연산 → 결과 반환',
+          explanation: '정답 문구보다 단계별 흐름을 설명하는 것이 중요합니다.',
+        },
+      ];
+
+      const quiz = Array.from({ length: quizCount }, (_, idx) => {
+        const base = templates[idx % templates.length];
+        if (idx < templates.length) return base;
+        return {
+          ...base,
+          question: `${base.question} (심화 ${idx + 1})`,
+        };
+      });
+
+      return { quiz };
+    }
 
     default:
       return { ...FALLBACK_DATA.CUSTOM.ERROR };

@@ -49,7 +49,7 @@ export function SystemStatusMessage({
         )}
       >
         <div className="h-px flex-1 bg-primary/20" />
-        <span className="text-[11px] font-mono text-primary/40 whitespace-nowrap px-1">
+        <span className="text-[11px] font-mono text-primary/40 break-words [overflow-wrap:anywhere] text-center px-1">
           {text}
         </span>
         <div className="h-px flex-1 bg-primary/20" />
@@ -65,7 +65,7 @@ export function SystemStatusMessage({
       )}
     >
       <div className="h-px flex-1 bg-border/50" />
-      <span className="text-[11px] text-muted-foreground/70 whitespace-nowrap px-1">
+      <span className="text-[11px] text-muted-foreground/70 break-words [overflow-wrap:anywhere] text-center px-1">
         {text}
       </span>
       <div className="h-px flex-1 bg-border/50" />
