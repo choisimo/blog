@@ -746,10 +746,8 @@
     markdownToHtml(src) {
       let s = String(src || '');
 
-      // escape HTML
-      s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
       // collect tokens for code to avoid further markdown transforms inside
+      // NOTE: tokenize BEFORE global HTML escape so code content is not double-escaped
       const tokens = [];
       const tokenize = html => {
         tokens.push(html);
@@ -757,16 +755,20 @@
       };
 
       // fenced code blocks ```lang\n...\n```
+      // extracted BEFORE global escape; escape code content here only once
       s = s.replace(/```([\w-]*)\n([\s\S]*?)```/g, (m, lang, code) => {
-        const c = code.replace(/\n$/, '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        const c = code.replace(/\n$/, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         return tokenize(`<pre><code class="lang-${lang || 'text'}">${c}</code></pre>`);
       });
 
       // inline code `...`
       s = s.replace(/`([^`]+)`/g, (m, code) => {
-        const c = code.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        const c = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         return tokenize(`<code>${c}</code>`);
       });
+
+      // escape HTML in non-code content only
+      s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
       // headings
       s = s.replace(/^######\s+(.*)$/gm, '<h6>$1</h6>')

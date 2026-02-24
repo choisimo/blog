@@ -4,6 +4,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { quiz, QuizQuestion } from '@/services/ai';
 import { BookOpen, Loader2, CheckCircle, XCircle, RotateCcw, ChevronRight, Zap } from 'lucide-react';
 import ChatMarkdown from '@/components/features/chat/ChatMarkdown';
+import CodeIDE from '@/components/features/sentio/CodeIDE';
 
 interface QuizPanelProps {
   content: string;
@@ -595,26 +596,26 @@ function QuestionView({
                 </button>
               ))}
             </div>
-          ) : (
-            <textarea
-              value={currentAnswer}
-              onChange={e => onAnswerChange(e.target.value)}
-              placeholder={
-                question.type === 'fill_blank'
-                  ? '코드 토큰을 입력하세요...'
-                  : question.type === 'transform'
-                    ? '변형된 코드를 작성하세요...'
-                    : '실행 단계를 추론하여 설명하세요...'
-              }
-              rows={question.type === 'fill_blank' ? 2 : 6}
-              className={cn(
-                'w-full rounded-xl border px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50',
-                isTerminal
-                  ? 'bg-[hsl(var(--terminal-code-bg))] border-primary/20 text-foreground font-mono'
-                  : 'bg-background border-border/50'
-              )}
-            />
-          )}
+        ) : question.type === 'transform' || question.type === 'explain' ? (
+          <CodeIDE
+            value={currentAnswer}
+            onChange={onAnswerChange}
+            question={question.question}
+          />
+        ) : (
+          <textarea
+            value={currentAnswer}
+            onChange={e => onAnswerChange(e.target.value)}
+            placeholder='코드 토큰을 입력하세요...'
+            rows={2}
+            className={cn(
+              'w-full rounded-xl border px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50',
+              isTerminal
+                ? 'bg-[hsl(var(--terminal-code-bg))] border-primary/20 text-foreground font-mono'
+                : 'bg-background border-border/50'
+            )}
+          />
+        )}
           <button
             type='button'
             onClick={onSubmit}

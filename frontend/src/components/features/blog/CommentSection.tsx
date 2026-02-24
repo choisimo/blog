@@ -213,7 +213,7 @@ export default function CommentSection({ postId }: { postId: string }) {
     const ragContextPromise = getRAGContextForChat(userComment, 1500, 5000);
     
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 45000);
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
 
     try {
       const ragContext = await ragContextPromise;

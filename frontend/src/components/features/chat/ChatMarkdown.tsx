@@ -3,22 +3,20 @@ import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import bash from 'react-syntax-highlighter/dist/esm/languages/prism/bash';
-import css from 'react-syntax-highlighter/dist/esm/languages/prism/css';
-import go from 'react-syntax-highlighter/dist/esm/languages/prism/go';
-import java from 'react-syntax-highlighter/dist/esm/languages/prism/java';
-import javascript from 'react-syntax-highlighter/dist/esm/languages/prism/javascript';
-import json from 'react-syntax-highlighter/dist/esm/languages/prism/json';
-import jsxLang from 'react-syntax-highlighter/dist/esm/languages/prism/jsx';
-import kotlin from 'react-syntax-highlighter/dist/esm/languages/prism/kotlin';
-import markdown from 'react-syntax-highlighter/dist/esm/languages/prism/markdown';
-import python from 'react-syntax-highlighter/dist/esm/languages/prism/python';
-import rust from 'react-syntax-highlighter/dist/esm/languages/prism/rust';
-import sql from 'react-syntax-highlighter/dist/esm/languages/prism/sql';
-import tsx from 'react-syntax-highlighter/dist/esm/languages/prism/tsx';
-import typescript from 'react-syntax-highlighter/dist/esm/languages/prism/typescript';
-import yaml from 'react-syntax-highlighter/dist/esm/languages/prism/yaml';
+import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import bash from 'react-syntax-highlighter/dist/esm/languages/hljs/bash';
+import css from 'react-syntax-highlighter/dist/esm/languages/hljs/css';
+import go from 'react-syntax-highlighter/dist/esm/languages/hljs/go';
+import java from 'react-syntax-highlighter/dist/esm/languages/hljs/java';
+import javascript from 'react-syntax-highlighter/dist/esm/languages/hljs/javascript';
+import json from 'react-syntax-highlighter/dist/esm/languages/hljs/json';
+import kotlin from 'react-syntax-highlighter/dist/esm/languages/hljs/kotlin';
+import markdown from 'react-syntax-highlighter/dist/esm/languages/hljs/markdown';
+import python from 'react-syntax-highlighter/dist/esm/languages/hljs/python';
+import rust from 'react-syntax-highlighter/dist/esm/languages/hljs/rust';
+import sql from 'react-syntax-highlighter/dist/esm/languages/hljs/sql';
+import typescript from 'react-syntax-highlighter/dist/esm/languages/hljs/typescript';
+import yaml from 'react-syntax-highlighter/dist/esm/languages/hljs/yaml';
 
 SyntaxHighlighter.registerLanguage('bash', bash);
 SyntaxHighlighter.registerLanguage('css', css);
@@ -27,14 +25,14 @@ SyntaxHighlighter.registerLanguage('java', java);
 SyntaxHighlighter.registerLanguage('javascript', javascript);
 SyntaxHighlighter.registerLanguage('js', javascript);
 SyntaxHighlighter.registerLanguage('json', json);
-SyntaxHighlighter.registerLanguage('jsx', jsxLang);
+SyntaxHighlighter.registerLanguage('jsx', javascript);
 SyntaxHighlighter.registerLanguage('kotlin', kotlin);
 SyntaxHighlighter.registerLanguage('markdown', markdown);
 SyntaxHighlighter.registerLanguage('python', python);
 SyntaxHighlighter.registerLanguage('py', python);
 SyntaxHighlighter.registerLanguage('rust', rust);
 SyntaxHighlighter.registerLanguage('sql', sql);
-SyntaxHighlighter.registerLanguage('tsx', tsx);
+SyntaxHighlighter.registerLanguage('tsx', typescript);
 SyntaxHighlighter.registerLanguage('typescript', typescript);
 SyntaxHighlighter.registerLanguage('ts', typescript);
 SyntaxHighlighter.registerLanguage('yaml', yaml);
@@ -46,22 +44,18 @@ import { Copy, Check, Table2 } from 'lucide-react';
 
 // Terminal-style syntax highlighting theme for chat
 const terminalChatTheme: { [key: string]: React.CSSProperties } = {
-  ...oneDark,
-  'code[class*="language-"]': {
-    ...oneDark['code[class*="language-"]'],
+  ...atomOneDark,
+  hljs: {
+    ...atomOneDark['hljs'],
     color: '#c6f7d4',
-    background: 'transparent',
+    background: 'hsl(200 50% 3%)',
     fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
   },
-  'pre[class*="language-"]': {
-    ...oneDark['pre[class*="language-"]'],
-    background: 'hsl(200 50% 3%)',
-  },
-  comment: { color: '#4e5953' },
-  keyword: { color: '#3cff96' },
-  string: { color: '#3cb8ff' },
-  function: { color: '#3cff96' },
-  number: { color: '#ffb02e' },
+  'hljs-comment': { color: '#4e5953', fontStyle: 'italic' },
+  'hljs-keyword': { color: '#3cff96' },
+  'hljs-string': { color: '#3cb8ff' },
+  'hljs-title': { color: '#3cff96' },
+  'hljs-number': { color: '#ffb02e' },
 };
 
 interface ChatMarkdownProps {
@@ -167,7 +161,7 @@ const ChatCodeBlock = memo(function ChatCodeBlock({ language, codeString, isTerm
         </button>
       </div>
       <SyntaxHighlighter
-        style={isTerminal ? terminalChatTheme : oneDark}
+        style={isTerminal ? terminalChatTheme : atomOneDark}
         language={language}
         PreTag='div'
         className='!bg-transparent !p-4 text-[12px] !m-0 overflow-auto overscroll-contain max-h-[400px]'

@@ -375,7 +375,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
       const controller = new AbortController();
       abortRef.current = controller;
 
-      timeoutId.current = setTimeout(() => controller.abort(), 30000);
+      timeoutId.current = setTimeout(() => controller.abort(), 120000);
 
       const systemPrompt = buildDebateSystemPrompt(topic, stance, selectedPersona || undefined);
       const starterText = stance === 'agree'
@@ -466,7 +466,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
       const controller = new AbortController();
       abortRef.current = controller;
 
-      timeoutId.current = setTimeout(() => controller.abort(), 30000);
+      timeoutId.current = setTimeout(() => controller.abort(), 120000);
 
       const history = messages
         .filter(m => m.role !== 'system')

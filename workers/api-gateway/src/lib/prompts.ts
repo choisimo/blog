@@ -343,7 +343,8 @@ ${studyModeNote}
 ## STRICT RULES — VIOLATIONS WILL FAIL:
 
 1. **CODE ONLY**: Every question MUST directly reference specific code from the content above.
-   - Quote the actual code line(s) in the question (wrap in backticks).
+   - Multi-line code MUST be wrapped in fenced code blocks with language identifier: \`\`\`lang\n...\n\`\`\`
+   - Single tokens/short expressions MAY use inline backticks, but prefer fenced blocks for any code spanning multiple tokens.
    - FORBIDDEN: Questions about "main topic", "purpose of document", "what is X concept".
    - FORBIDDEN: Generic comprehension questions that don't cite actual code.
 
@@ -352,10 +353,12 @@ ${studyModeNote}
      Example: \`arr.sort((a, b) => ___ - ___)\` — what fills the blanks?
    - **multiple_choice**: Give 4 options (A-D). Quote actual code, ask what it does / why / what happens if changed.
      Example: In \`while (left <= right)\`, what happens if \`<=\` is changed to \`<\`?
-   - **transform**: Show real code, ask to rewrite it (iterative↔recursive, optimize, fix a bug, handle edge case).
-     Example: Rewrite this merge step without extra arrays: \`...code...\`
-   - **explain**: Quote a specific multi-line block, ask to trace execution step-by-step for given inputs.
-     Example: Trace \`mergeSort([3,1,2])\` through lines 12-18. What is the call stack?
+   - **transform**: Show real code in a fenced block, ask to rewrite it (iterative↔recursive, optimize, fix a bug, handle edge case).
+     MUST use fenced block in question: \`\`\`lang\n...code...\n\`\`\`
+     Example question format: "Rewrite the following merge step without extra arrays:\n\`\`\`js\n...code...\n\`\`\`"
+   - **explain**: Quote a specific multi-line block in a fenced code block, ask to trace execution step-by-step for given inputs.
+     MUST use fenced block: \`\`\`lang\n...code...\n\`\`\`
+     Example question format: "Trace execution through the following function with input [3,1,2]:\n\`\`\`js\n...code...\n\`\`\`"
 
 3. **DIFFICULTY**: Each batch escalates difficulty.
    - Batch 1: Fill-blank + multiple_choice on specific code syntax/behavior

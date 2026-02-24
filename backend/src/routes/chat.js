@@ -1701,6 +1701,12 @@ router.post('/session/:sessionId/message', async (req, res, next) => {
       closed = true;
     });
 
+    const heartbeatInterval = setInterval(() => {
+      if (!closed) {
+        send({ type: 'heartbeat', ts: Date.now() });
+      }
+    }, 15000);
+
     try {
       let ragContext = null;
       let ragSources = [];
@@ -1760,6 +1766,7 @@ router.post('/session/:sessionId/message', async (req, res, next) => {
       send({ type: 'error', error: err.message || 'Chat failed' });
     }
 
+    clearInterval(heartbeatInterval);
     res.end();
   } catch (err) {
     return next(err);
