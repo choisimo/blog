@@ -12,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 import {
   useChatState,
@@ -29,6 +30,8 @@ import {
   ChatInput,
   ImageDrawer,
   MobileActionSheet,
+  LiveRoomPanel,
+  ChatSidebar,
 } from "./components";
 
 export default function ChatWidget(props: {
@@ -39,6 +42,7 @@ export default function ChatWidget(props: {
   const { isTerminal } = useTheme();
   const keyboardHeight = useKeyboardHeight(isMobile);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Dynamic max height calculation for PC
   const [pcMaxHeight, setPcMaxHeight] = useState("80vh");
@@ -149,17 +153,14 @@ export default function ChatWidget(props: {
       <div
         className={cn(
           "fixed z-[var(--z-chat-widget)] flex flex-col overflow-hidden border bg-background shadow-2xl transition-all",
-          // Mobile: always fullscreen (adjusted for keyboard) with overflow protection
+          // Mobile: always fullscreen
           isMobile
             ? "inset-0 rounded-none max-w-full w-full overflow-x-hidden"
-            : "bottom-20 left-1/2 w-[min(100%-24px,42rem)] -translate-x-1/2 rounded-2xl",
-          // Terminal theme: PC rounded, mobile fullscreen
-          isTerminal &&
-            !isMobile &&
-            "border-border bg-[hsl(var(--terminal-code-bg))] rounded-lg terminal-crt",
-          isTerminal &&
-            isMobile &&
-            "border-0 bg-[hsl(var(--terminal-code-bg))]",
+            : sidebarOpen
+              ? "bottom-20 left-1/2 w-[min(100%-24px,58rem)] -translate-x-1/2 rounded-2xl"
+              : "bottom-20 left-1/2 w-[min(100%-24px,42rem)] -translate-x-1/2 rounded-2xl",
+          isTerminal && !isMobile && "border-border bg-[hsl(var(--terminal-code-bg))] rounded-lg terminal-crt",
+          isTerminal && isMobile && "border-0 bg-[hsl(var(--terminal-code-bg))]",
         )}
         style={
           isMobile && keyboardHeight > 0
@@ -183,89 +184,125 @@ export default function ChatWidget(props: {
           onTogglePersist={state.togglePersistStorage}
           onClearAll={handleClearAll}
           onClose={props.onClose}
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={() => setSidebarOpen((v) => !v)}
         />
 
-        {/* Session panel */}
-        {state.showSessions && (
-          <ChatSessionPanel
-            sessions={state.sessions}
-            selectedSessionIds={state.selectedSessionIds}
-            onToggleSession={session.toggleSessionSelected}
-            onLoadSession={session.loadSession}
-            onClose={() => state.setShowSessions(false)}
-            onAggregateSelected={session.handleAggregateFromSelected}
-            isTerminal={isTerminal}
-            isMobile={isMobile}
-          />
-        )}
-
-        {/* Mode selector */}
-        <ModeSelector
-          questionMode={state.questionMode}
-          onModeChange={state.setQuestionMode}
-          isTerminal={isTerminal}
-          isMobile={isMobile}
-        />
-
-        {/* Messages area */}
-        <div
-          ref={state.scrollRef}
-          className={cn(
-            "flex-1 overflow-auto overscroll-contain px-4 py-4 space-y-4",
-            isMobile && "px-4",
-            isTerminal && "space-y-3 font-mono text-sm",
+        {/* 2-panel layout: sidebar (desktop) + main chat area */}
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          {/* Desktop sidebar (inline) */}
+          {!isMobile && sidebarOpen && (
+            <ChatSidebar
+              isTerminal={isTerminal}
+              questionMode={state.questionMode}
+              onModeChange={state.setQuestionMode}
+              currentRoom={liveVisitorChat.room}
+              sessions={state.sessions}
+              selectedSessionIds={state.selectedSessionIds}
+              onToggleSession={session.toggleSessionSelected}
+              onLoadSession={session.loadSession}
+              onAggregateSelected={session.handleAggregateFromSelected}
+              persistOptIn={state.persistOptIn}
+              onTogglePersist={state.togglePersistStorage}
+            />
           )}
-        >
-          <ChatMessages
-            messages={state.messages}
-            isTerminal={isTerminal}
-            isMobile={isMobile}
-            onPromptClick={handlePromptClick}
-            onRetry={handleRetry}
-            lastPrompt={state.lastPromptRef.current}
-            onNavigate={props.onClose}
-          />
-        </div>
 
-        {/* Summary bar */}
-        {state.persistOptIn && state.summary && (
-          <div
-            className={cn(
-              "px-4 py-2 border-t text-xs text-muted-foreground truncate shrink-0",
-              isTerminal &&
-                "font-mono border-border bg-[hsl(var(--terminal-code-bg))]",
+          {/* Main chat column */}
+          <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            {/* Session panel */}
+            {state.showSessions && (
+              <ChatSessionPanel
+                sessions={state.sessions}
+                selectedSessionIds={state.selectedSessionIds}
+                onToggleSession={session.toggleSessionSelected}
+                onLoadSession={session.loadSession}
+                onClose={() => state.setShowSessions(false)}
+                onAggregateSelected={session.handleAggregateFromSelected}
+                isTerminal={isTerminal}
+                isMobile={isMobile}
+              />
             )}
-          >
-            {isTerminal ? (
-              <span>
-                <span className="text-primary/60"># Last:</span> {state.summary}
-              </span>
-            ) : (
-              <>요약: {state.summary}</>
+
+            {/* Live room panel (mobile only — desktop uses sidebar) */}
+            {isMobile && (
+              <LiveRoomPanel
+                isTerminal={isTerminal}
+                isMobile={isMobile}
+                currentRoom={liveVisitorChat.room}
+              />
             )}
+
+            {/* Mode selector (mobile only — desktop uses sidebar) */}
+            {isMobile && (
+              <ModeSelector
+                questionMode={state.questionMode}
+                onModeChange={state.setQuestionMode}
+                isTerminal={isTerminal}
+                isMobile={isMobile}
+              />
+            )}
+
+            {/* Messages area */}
+            <div
+              ref={state.scrollRef}
+              className={cn(
+                "flex-1 overflow-auto overscroll-contain px-4 py-4 space-y-4",
+                isMobile && "px-4",
+                isTerminal && "space-y-3 font-mono text-sm",
+              )}
+            >
+              <ChatMessages
+                messages={state.messages}
+                isTerminal={isTerminal}
+                isMobile={isMobile}
+                onPromptClick={handlePromptClick}
+                onRetry={handleRetry}
+                lastPrompt={state.lastPromptRef.current}
+                onNavigate={props.onClose}
+                onExpireMessage={(id) => state.setMessages((prev) => prev.filter((m) => m.id !== id))}
+              />
+            </div>
+
+            {/* Summary bar */}
+            {state.persistOptIn && state.summary && (
+              <div
+                className={cn(
+                  "px-4 py-2 border-t text-xs text-muted-foreground truncate shrink-0",
+                  isTerminal && "font-mono border-border bg-[hsl(var(--terminal-code-bg))]",
+                )}
+              >
+                {isTerminal ? (
+                  <span>
+                    <span className="text-primary/60"># Last:</span> {state.summary}
+                  </span>
+                ) : (
+                  <>요약: {state.summary}</>
+                )}
+              </div>
+            )}
+
+            {/* Input area */}
+            <ChatInput
+              input={state.input}
+              onInputChange={state.setInput}
+              onKeyDown={onKeyDown}
+              onSend={actions.send}
+              onStop={actions.stop}
+              onClearAll={handleClearAll}
+              onFileSelect={state.setAttachedImage}
+              attachedImage={state.attachedImage}
+              attachedPreviewUrl={state.attachedPreviewUrl}
+              busy={state.busy}
+              canSend={state.canSend}
+              firstTokenMs={state.firstTokenMs}
+              questionMode={state.questionMode}
+              isTerminal={isTerminal}
+              isMobile={isMobile}
+              textareaRef={state.textareaRef}
+              fileInputRef={state.fileInputRef}
+            />
           </div>
-        )}
-
-        {/* Input area */}
-        <ChatInput
-          input={state.input}
-          onInputChange={state.setInput}
-          onKeyDown={onKeyDown}
-          onSend={actions.send}
-          onStop={actions.stop}
-          onClearAll={handleClearAll}
-          onFileSelect={state.setAttachedImage}
-          attachedImage={state.attachedImage}
-          attachedPreviewUrl={state.attachedPreviewUrl}
-          busy={state.busy}
-          canSend={state.canSend}
-          firstTokenMs={state.firstTokenMs}
-          questionMode={state.questionMode}
-          isTerminal={isTerminal}
-          isMobile={isMobile}
-          textareaRef={state.textareaRef}
-          fileInputRef={state.fileInputRef}
-        />
+        </div>
       </div>
 
       {/* Image drawer dialog */}
@@ -274,6 +311,25 @@ export default function ChatWidget(props: {
         onOpenChange={state.setShowImageDrawer}
         uploadedImages={state.uploadedImages}
       />
+
+      {/* Mobile sidebar slide-over */}
+      <Sheet open={isMobile && sidebarOpen} onOpenChange={(open) => setSidebarOpen(open)}>
+        <SheetContent side="left" className="w-64 p-0">
+          <ChatSidebar
+            isTerminal={isTerminal}
+            questionMode={state.questionMode}
+            onModeChange={state.setQuestionMode}
+            currentRoom={liveVisitorChat.room}
+            sessions={state.sessions}
+            selectedSessionIds={state.selectedSessionIds}
+            onToggleSession={session.toggleSessionSelected}
+            onLoadSession={session.loadSession}
+            onAggregateSelected={session.handleAggregateFromSelected}
+            persistOptIn={state.persistOptIn}
+            onTogglePersist={state.togglePersistStorage}
+          />
+        </SheetContent>
+      </Sheet>
 
       {/* Mobile action sheet */}
       <MobileActionSheet

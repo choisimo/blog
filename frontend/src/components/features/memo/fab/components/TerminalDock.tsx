@@ -5,15 +5,55 @@ import type { DockAction } from "../types";
 type TerminalDockProps = {
   dockActions: DockAction[];
   isMobile: boolean;
+  isLeft?: boolean;
 };
 
-export function TerminalDock({ dockActions, isMobile }: TerminalDockProps) {
+export function TerminalDock({ dockActions, isMobile, isLeft }: TerminalDockProps) {
   if (isMobile) {
     // Mobile TUI is handled by MobileShellBar component
     return null;
   }
 
   // PC Terminal Dock
+  if (isLeft) {
+    return (
+      <div className="flex flex-col items-center gap-0.5 border border-border bg-[hsl(var(--terminal-code-bg))] py-2 px-1 backdrop-blur-sm">
+        {dockActions.map((action) => {
+          const Icon = action.icon;
+          return (
+            <button
+              key={action.key}
+              type="button"
+              onClick={action.onClick}
+              disabled={action.disabled}
+              aria-label={action.desktopLabel || action.label}
+              title={action.title || action.desktopLabel || action.label}
+              className={cn(
+                "group relative flex items-center justify-center p-3 font-mono text-xs transition-all disabled:cursor-not-allowed disabled:opacity-50",
+                action.primary
+                  ? "bg-primary/20 text-primary border border-primary/40 hover:bg-primary/30"
+                  : "text-foreground/75 hover:text-primary hover:bg-primary/10 border border-transparent hover:border-primary/30",
+              )}
+            >
+              <Icon
+                className={cn(
+                  "h-4 w-4",
+                  action.primary && "terminal-glow",
+                )}
+              />
+              {action.badge && (
+                <span
+                  className="absolute -top-0.5 -right-0.5 inline-flex h-2 w-2 rounded-full bg-primary animate-pulse"
+                  aria-hidden
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div className="flex w-auto max-w-full items-center gap-0.5 overflow-hidden border border-border bg-[hsl(var(--terminal-code-bg))] backdrop-blur-sm">
       {/* Terminal window controls - macOS style traffic lights */}

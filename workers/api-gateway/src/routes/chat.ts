@@ -16,12 +16,12 @@ import type { Env } from '../types';
 import { createAIService } from '../lib/ai-service';
 import { success, badRequest, error } from '../lib/response';
 import { AI_TEMPERATURES } from '../config/defaults';
-import { 
-  buildTaskPrompt, 
-  isValidTaskMode, 
+import {
+  buildTaskPrompt,
+  isValidTaskMode,
   getFallbackData,
-  type TaskMode, 
-  type TaskPayload 
+  type TaskMode,
+  type TaskPayload
 } from '../lib/prompts';
 import { executeTask } from '../lib/llm';
 import { getCorsHeadersForRequest } from '../lib/cors';
@@ -53,10 +53,14 @@ async function proxyRequest(c: Context<ChatContext>, path: string) {
   if (c.env.BACKEND_KEY) {
     upstreamHeaders.set('X-Backend-Key', c.env.BACKEND_KEY);
   }
-  if (c.env.OPENCODE_AUTH_TOKEN) {
-    upstreamHeaders.set('Authorization', `Bearer ${c.env.OPENCODE_AUTH_TOKEN}`);
-  } else if (c.env.GITHUB_TOKEN) {
-    upstreamHeaders.set('Authorization', `Bearer ${c.env.GITHUB_TOKEN}`);
+
+  // Do not overwrite client's Authorization header if it already exists
+  if (!upstreamHeaders.has('Authorization')) {
+    if (c.env.OPENCODE_AUTH_TOKEN) {
+      upstreamHeaders.set('Authorization', `Bearer ${c.env.OPENCODE_AUTH_TOKEN}`);
+    } else if (c.env.GITHUB_TOKEN) {
+      upstreamHeaders.set('Authorization', `Bearer ${c.env.GITHUB_TOKEN}`);
+    }
   }
 
   const upstreamRequest = new Request(upstreamUrl, {
@@ -169,7 +173,7 @@ chat.post('/session/:sessionId/task', async (c: Context<ChatContext>) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Task execution failed';
     console.error('Task error:', message);
-    
+
     // 에러 시에도 폴백 데이터 반환 시도
     try {
       const fallbackData = getFallbackData(taskMode, taskPayload);
@@ -258,6 +262,13 @@ chat.put('/live/config', async (c: Context<ChatContext>) => {
 chat.get('/live/room-stats', async (c: Context<ChatContext>) => {
   const query = c.req.url.split('?')[1] || '';
   return proxyRequest(c, `/live/room-stats${query ? `?${query}` : ''}`);
+});
+
+/**
+ * GET /live/rooms - list active live chat rooms
+ */
+chat.get('/live/rooms', async (c: Context<ChatContext>) => {
+  return proxyRequest(c, '/live/rooms');
 });
 
 export default chat;

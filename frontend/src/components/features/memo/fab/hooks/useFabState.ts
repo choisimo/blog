@@ -411,3 +411,20 @@ export function useFabAnalytics() {
 
   return { send, sendImpression, sendMemoContextChange };
 }
+
+export type FabPosition = 'bottom' | 'left';
+
+export function useFabPosition(): [FabPosition, (v: FabPosition) => void] {
+  const [position, setPositionState] = useState<FabPosition>(() => {
+    try {
+      const saved = localStorage.getItem('fab.position') as FabPosition | null;
+      if (saved === 'bottom' || saved === 'left') return saved;
+    } catch { void 0; }
+    return 'bottom';
+  });
+  const setPosition = useCallback((v: FabPosition) => {
+    setPositionState(v);
+    try { localStorage.setItem('fab.position', v); } catch { void 0; }
+  }, []);
+  return [position, setPosition];
+}

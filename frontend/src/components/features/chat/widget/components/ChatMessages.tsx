@@ -1,11 +1,13 @@
 import React from "react";
-import { Loader2, Terminal, ChevronRight } from "lucide-react";
+import { Terminal, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import ChatMarkdown from "../../ChatMarkdown";
 import { cn } from "@/lib/utils";
 import type { ChatMessage, SourceLink, SystemMessageLevel } from "../types";
 import { extractImageFromMessage, QUICK_PROMPTS } from "../constants";
+import { TypingDots } from "./ChatSidebar";
+import { SystemStatusMessage } from "./SystemStatusMessage";
 
 type ChatMessagesProps = {
   messages: ChatMessage[];
@@ -15,6 +17,7 @@ type ChatMessagesProps = {
   onRetry: (lastPrompt: string) => void;
   lastPrompt: string;
   onNavigate?: (path: string) => void;
+  onExpireMessage?: (id: string) => void;
 };
 
 function getSystemLevel(message: ChatMessage): SystemMessageLevel {
@@ -65,6 +68,7 @@ export function ChatMessages({
   onRetry,
   lastPrompt,
   onNavigate,
+  onExpireMessage,
 }: ChatMessagesProps) {
   const navigate = useNavigate();
 
@@ -133,6 +137,7 @@ export function ChatMessages({
               onRetry={() => onRetry(lastPrompt)}
               lastPrompt={lastPrompt}
               onSourceClick={handleSourceClick}
+              onExpireMessage={onExpireMessage}
             />
           );
         }
@@ -152,6 +157,7 @@ export function ChatMessages({
             onRetry={() => onRetry(lastPrompt)}
             lastPrompt={lastPrompt}
             onSourceClick={handleSourceClick}
+            onExpireMessage={onExpireMessage}
           />
         );
       })}
@@ -260,6 +266,7 @@ function TerminalMessage({
   onRetry: () => void;
   lastPrompt: string;
   onSourceClick: (url: string, e: React.MouseEvent) => void;
+  onExpireMessage?: (id: string) => void;
 }) {
   return (
     <div className="space-y-2">
@@ -315,15 +322,32 @@ function TerminalMessage({
           />
         </div>
       )}
-      {isSystem && (
-        <SystemMessage
-          text={m.text}
-          level={systemLevel}
-          isTerminal
-          lastPrompt={lastPrompt}
-          onRetry={onRetry}
-        />
-      )}
+      {isSystem && (() => {
+        const isStatus =
+          m.systemKind === "status" ||
+          (m.systemKind !== "error" &&
+            (m.text.startsWith("[Live]") || m.text.startsWith("[Session]")) &&
+            systemLevel !== "error");
+        if (isStatus) {
+          return (
+            <SystemStatusMessage
+              text={m.text}
+              isTerminal
+              transient={m.transient}
+              onExpire={() => onExpireMessage?.(m.id)}
+            />
+          );
+        }
+        return (
+          <SystemMessage
+            text={m.text}
+            level={systemLevel}
+            isTerminal
+            lastPrompt={lastPrompt}
+            onRetry={onRetry}
+          />
+        );
+      })()}
     </div>
   );
 }
@@ -355,7 +379,26 @@ function DefaultMessage({
   onRetry: () => void;
   lastPrompt: string;
   onSourceClick: (url: string, e: React.MouseEvent) => void;
+  onExpireMessage?: (id: string) => void;
 }) {
+  const isStatus =
+    isSystem &&
+    (m.systemKind === "status" ||
+      (m.systemKind !== "error" &&
+        (m.text.startsWith("[Live]") || m.text.startsWith("[Session]")) &&
+        systemLevel !== "error"));
+
+  if (isStatus) {
+    return (
+      <SystemStatusMessage
+        text={m.text}
+        isTerminal={false}
+        transient={m.transient}
+        onExpire={() => onExpireMessage?.(m.id)}
+      />
+    );
+  }
+
   return (
     <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
       <div
@@ -371,10 +414,7 @@ function DefaultMessage({
           m.text.trim() ? (
             <ChatMarkdown content={m.text} />
           ) : (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              답변을 준비하고 있어요…
-            </div>
+            <TypingDots />
           )
         ) : isUser ? (
           <div className="space-y-2">

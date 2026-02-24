@@ -24,7 +24,7 @@ export type VirtualFS = {
 };
 
 export type DockAction = {
-  key: "chat" | "debate" | "memo" | "stack" | "insight";
+  key: "chat" | "debate" | "memo" | "stack" | "insight" | "live";
   label: string;
   desktopLabel?: string;
   icon: LucideIcon;

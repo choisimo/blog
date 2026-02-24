@@ -113,7 +113,7 @@ export function useChatState(options?: { initialMessage?: string }) {
       try {
         localStorage.setItem(
           `${SESSION_MESSAGES_PREFIX}${sessionKey}`,
-          JSON.stringify(messages.slice(-MAX_MESSAGES_PER_SESSION)),
+          JSON.stringify(messages.filter((m) => !m.transient).slice(-MAX_MESSAGES_PER_SESSION)),
         );
       } catch {
         void 0;
@@ -138,6 +138,20 @@ export function useChatState(options?: { initialMessage?: string }) {
       }
     };
   }, []);
+
+  // Prune expired transient messages every second
+  useEffect(() => {
+    if (!messages.some((m) => m.transient)) return;
+    const timer = window.setInterval(() => {
+      const now = Date.now();
+      setMessages((prev) =>
+        prev.filter(
+          (m) => !(m.transient && m.expiresAt !== undefined && now > m.expiresAt),
+        ),
+      );
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [messages]);
 
   // Handle attached image preview
   useEffect(() => {

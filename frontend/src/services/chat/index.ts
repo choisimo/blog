@@ -95,5 +95,6 @@ export {
   getLiveChatConfig,
   updateLiveChatConfig,
   getLiveRoomStats,
+  getLiveRooms,
 } from './live';
-export type { LiveChatEvent, LiveAgentPolicy } from './live';
+export type { LiveChatEvent, LiveAgentPolicy, LiveRoom } from './live';

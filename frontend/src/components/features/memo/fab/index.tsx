@@ -30,6 +30,7 @@ import {
   useHistoryBadge,
   useScrollHide,
   useFabPinned,
+  useFabPosition,
   hideLegacyLaunchers,
   useFabAnalytics,
 } from "./hooks";
@@ -56,6 +57,7 @@ export default function FloatingActionBar() {
   const [debateOpen, setDebateOpen] = useState(false);
   const scrollHidden = useScrollHide();
   const [fabPinned] = useFabPinned();
+  const [fabPosition, setFabPosition] = useFabPosition();
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { isTerminal } = useTheme();
@@ -78,6 +80,18 @@ export default function FloatingActionBar() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll(); // Initial check
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Ctrl+Alt+M shortcut: open live chat
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.altKey && (e.key === 'm' || e.key === 'M')) {
+        e.preventDefault();
+        setChatOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, []);
 
   // Add viewport height management for mobile keyboard
@@ -257,18 +271,27 @@ export default function FloatingActionBar() {
   // Mobile terminal shell bar should always be visible
   const shouldAlwaysShow = isMobile && isTerminal;
 
+  const isLeftFab = !isMobile && fabPosition === 'left';
+
   const containerClasses = cn(
-    "fixed inset-x-0 z-[var(--z-fab-bar)] px-3 sm:px-4 print:hidden",
-    isMobile
-      ? "bottom-0 pb-[calc(env(safe-area-inset-bottom,0px))] max-w-full overflow-x-hidden"
-      : "bottom-[calc(16px+env(safe-area-inset-bottom,0px))]",
+    "fixed z-[var(--z-fab-bar)] print:hidden",
+    isLeftFab
+      ? "left-0 top-1/2 -translate-y-1/2 px-0 py-3"
+      : cn(
+          "inset-x-0 px-3 sm:px-4",
+          isMobile
+            ? "bottom-0 pb-[calc(env(safe-area-inset-bottom,0px))] max-w-full overflow-x-hidden"
+            : "bottom-[calc(16px+env(safe-area-inset-bottom,0px))]",
+        ),
     // Smooth slide animation with longer duration for better UX
     "transition-all duration-300 ease-out",
-    shouldAlwaysShow || fabPinned
-      ? "translate-y-0 opacity-100"
-      : scrollHidden
-        ? "translate-y-[200%] opacity-0 pointer-events-none" // Slide completely off-screen
-        : "translate-y-0 opacity-100",
+    !isLeftFab && (
+      shouldAlwaysShow || fabPinned
+        ? "translate-y-0 opacity-100"
+        : scrollHidden
+          ? "translate-y-[200%] opacity-0 pointer-events-none"
+          : "translate-y-0 opacity-100"
+    ),
   );
 
   const allDockActions: DockAction[] = [
@@ -405,9 +428,11 @@ export default function FloatingActionBar() {
           <nav
             className={cn(
               "mx-auto flex w-full justify-center",
-              isMobile
-                ? "max-w-none"
-                : "max-w-6xl",
+              isLeftFab
+                ? "flex-col items-center gap-1"
+                : isMobile
+                  ? "max-w-none"
+                  : "max-w-6xl",
             )}
           >
             {/* Terminal style dock */}
@@ -425,11 +450,11 @@ export default function FloatingActionBar() {
                 )
               ) : (
                 // PC Terminal Dock
-                <TerminalDock dockActions={dockActions} isMobile={isMobile} />
+                <TerminalDock dockActions={dockActions} isMobile={isMobile} isLeft={isLeftFab} />
               )
             ) : (
               // Default style dock
-              <DefaultDock dockActions={dockActions} isMobile={isMobile} />
+              <DefaultDock dockActions={dockActions} isMobile={isMobile} isLeft={isLeftFab} fabPosition={fabPosition} setFabPosition={!isMobile ? setFabPosition : undefined} />
             )}
           </nav>
         </div>

@@ -2,44 +2,44 @@ import { getApiBaseUrl } from '@/utils/apiBase';
 
 export type LiveChatEvent =
   | {
-      type: 'connected';
-      room: string;
-      sessionId: string;
-      onlineCount: number;
-      ts?: string;
-    }
+    type: 'connected';
+    room: string;
+    sessionId: string;
+    onlineCount: number;
+    ts?: string;
+  }
   | {
-      type: 'presence';
-      room: string;
-      action: 'join' | 'leave';
-      senderType?: 'client' | 'agent';
-      sessionId: string;
-      name: string;
-      onlineCount: number;
-      ts?: string;
-    }
+    type: 'presence';
+    room: string;
+    action: 'join' | 'leave';
+    senderType?: 'client' | 'agent';
+    sessionId: string;
+    name: string;
+    onlineCount: number;
+    ts?: string;
+  }
   | {
-      type: 'live_message';
-      room: string;
-      sessionId: string;
-      senderType?: 'client' | 'agent';
-      name: string;
-      text: string;
-      onlineCount: number;
-      ts?: string;
-    }
+    type: 'live_message';
+    room: string;
+    sessionId: string;
+    senderType?: 'client' | 'agent';
+    name: string;
+    text: string;
+    onlineCount: number;
+    ts?: string;
+  }
   | {
-      type: 'session_notification';
-      sessionId: string;
-      level?: 'info' | 'warn' | 'error';
-      message: string;
-      room?: string;
-      ts?: string;
-    }
+    type: 'session_notification';
+    sessionId: string;
+    level?: 'info' | 'warn' | 'error';
+    message: string;
+    room?: string;
+    ts?: string;
+  }
   | {
-      type: 'ping';
-      ts?: string;
-    };
+    type: 'ping';
+    ts?: string;
+  };
 
 export type LiveAgentPolicy = {
   silenceProbability: number;
@@ -109,6 +109,7 @@ export async function sendLiveChatMessage(input: {
 }): Promise<void> {
   const res = await fetch(toSSEHttpUrl('/api/v1/chat/live/message'), {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       sessionId: input.sessionId,
@@ -174,4 +175,24 @@ export async function getLiveRoomStats(room: string): Promise<{
     throw new Error(parsed?.error || 'Failed to load live room stats');
   }
   return parsed.data;
+}
+
+export type LiveRoom = {
+  room: string;
+  onlineCount: number;
+  messageCount: number;
+  lastActivity: string | null;
+  lastText: string | null;
+};
+
+export async function getLiveRooms(): Promise<LiveRoom[]> {
+  const res = await fetch(toSSEHttpUrl('/api/v1/chat/live/rooms'), {
+    method: 'GET',
+    credentials: 'include',
+  });
+  const parsed = await res.json().catch(() => null);
+  if (!res.ok || !parsed?.ok || !Array.isArray(parsed?.data?.rooms)) {
+    throw new Error(parsed?.error || 'Failed to load live rooms');
+  }
+  return parsed.data.rooms as LiveRoom[];
 }

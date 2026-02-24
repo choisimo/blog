@@ -9,8 +9,10 @@ export {
   useHistoryBadge,
   useScrollHide,
   useFabPinned,
+  useFabPosition,
   hideLegacyLaunchers,
   useFabAnalytics,
 } from "./useFabState";
+export type { FabPosition } from "./useFabState";
 export { useShellCommander } from "./useShellCommander";
 export { useRealTerminal, type UseRealTerminalReturn, type TerminalStatus } from "./useRealTerminal";

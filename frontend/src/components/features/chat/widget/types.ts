@@ -14,9 +14,12 @@ export type ChatMessage = {
   role: "user" | "assistant" | "system";
   text: string;
   systemLevel?: SystemMessageLevel;
+  systemKind?: "status" | "error";
+  transient?: boolean;
+  expiresAt?: number;
   sources?: SourceLink[];
   followups?: string[];
-};
+}
 
 export type UploadedChatImage = {
   id: string;

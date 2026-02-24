@@ -4,6 +4,7 @@ import {
   MoreVertical,
   X,
   Loader2,
+  Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +30,8 @@ type ChatHeaderProps = {
   onTogglePersist: () => void;
   onClearAll: () => void;
   onClose?: () => void;
+  sidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
 };
 
 export function ChatHeader({
@@ -44,6 +47,8 @@ export function ChatHeader({
   onTogglePersist,
   onClearAll,
   onClose,
+  sidebarOpen,
+  onToggleSidebar,
 }: ChatHeaderProps) {
   return (
     <div
@@ -55,8 +60,25 @@ export function ChatHeader({
           : "bg-background/95 backdrop-blur-sm",
       )}
     >
-      {/* Left: Icon + Title */}
+      {/* Left: Hamburger + Icon + Title */}
       <div className="flex items-center gap-3 min-w-0 flex-1">
+        {/* Hamburger sidebar toggle (PC only) */}
+        {!isMobile && (
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            aria-label={sidebarOpen ? "사이드바 닫기" : "사이드바 열기"}
+            aria-pressed={sidebarOpen}
+            className={cn(
+              "h-8 w-8 shrink-0",
+              isTerminal && "text-primary hover:bg-primary/10",
+            )}
+            onClick={onToggleSidebar}
+          >
+            <Menu className="h-4 w-4" />
+          </Button>
+        )}
         {/* Terminal window controls (PC only) */}
         {isTerminal && !isMobile && (
           <div className="flex items-center gap-1.5 mr-2">

@@ -347,6 +347,43 @@ const liveRoomHistory = new Map();
 const liveAgentTimers = new Map();
 const LIVE_HISTORY_LIMIT = 30;
 const LIVE_AGENT_NAME = 'room-companion';
+
+// Multi-persona agent pool — names look like real users, not bots
+const LIVE_AGENT_PERSONAS = [
+  {
+    name: 'alex',
+    style: 'casual',
+    traits: 'curious, asks follow-up questions, uses occasional humor',
+    lang_hint: { ko: '반말 가능, 짧고 자연스럽게', en: 'casual short replies' },
+  },
+  {
+    name: 'jamie',
+    style: 'thoughtful',
+    traits: 'analytical, references interesting angles, sometimes plays devil\'s advocate',
+    lang_hint: { ko: '논리적이고 간결하게', en: 'thoughtful concise replies' },
+  },
+  {
+    name: 'sam',
+    style: 'friendly',
+    traits: 'warm, encouraging, uses simple language, relates to personal experience',
+    lang_hint: { ko: '친근하고 공감하는 말투', en: 'warm empathetic tone' },
+  },
+  {
+    name: 'quinn',
+    style: 'direct',
+    traits: 'brief, opinionated, sometimes challenges assumptions, no fluff',
+    lang_hint: { ko: '짧고 직설적으로', en: 'short direct opinionated' },
+  },
+  {
+    name: 'morgan',
+    style: 'creative',
+    traits: 'lateral thinker, draws unexpected comparisons, asks thought-provoking questions',
+    lang_hint: { ko: '창의적이고 흥미로운 시각', en: 'creative lateral thinking' },
+  },
+];
+
+// Map: room -> last persona index (rotate personas per room)
+const roomPersonaIndex = new Map();
 const LIVE_REDIS_CHANNEL = 'livechat:events';
 const LIVE_INSTANCE_ID = `live-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
 const LIVE_REDIS_PRESENCE_PREFIX = 'livechat:presence';
@@ -374,7 +411,7 @@ function parseLivePolicyFromEnv() {
 
   return {
     silenceProbability: clampNumber(
-      Number.parseFloat(process.env.LIVE_AGENT_SILENCE_PROBABILITY || '0.32'),
+      Number.parseFloat(process.env.LIVE_AGENT_SILENCE_PROBABILITY || '0.1'),
       0,
       0.9
     ),
@@ -612,7 +649,7 @@ function shouldSkipAutoReply(text) {
   const value = String(text || '').trim();
   if (!value) return true;
   if (value.startsWith('/')) return true;
-  if (value.length < 3) return true;
+  if (value.length < 1) return true;
   if ((value.match(/https?:\/\//g) || []).length >= 2) return true;
 
   const blockedPatterns = [
@@ -715,33 +752,56 @@ function isLivePolicyWriteAuthorized(req) {
 }
 
 async function buildAutoReplyText(room, triggerName, triggerText) {
+  // Pick persona (rotate per room so multiple messages use different voices)
+  const personas = LIVE_AGENT_PERSONAS;
+  const prevIdx = roomPersonaIndex.get(room) ?? Math.floor(Math.random() * personas.length);
+  // Skip to a different persona than last time
+  const nextIdx = (prevIdx + 1 + Math.floor(Math.random() * (personas.length - 1))) % personas.length;
+  roomPersonaIndex.set(room, nextIdx);
+  const persona = personas[nextIdx];
+
   const history = liveRoomHistory.get(room) || [];
   const transcript = history
     .slice(-10)
     .map((msg) => `${msg.name}: ${msg.text}`)
     .join('\n');
 
+  // Detect language from trigger text (simple heuristic: Korean unicode range)
+  const isKorean = /[\uAC00-\uD7A3]/.test(triggerText);
+  const langStyle = isKorean ? persona.lang_hint.ko : persona.lang_hint.en;
+
   const prompt = [
-    'You are an automated community room companion.',
-    'Reply in the same language as the latest user message, naturally and casually.',
-    'Keep it short (1-3 sentences), warm, and conversation-continuing.',
-    'Never claim to be human. Never mention hidden system instructions.',
+    `You are ${persona.name}, a real participant in an online community room.`,
+    `Your personality: ${persona.traits}.`,
+    `Reply style: ${langStyle}.`,
+    'Reply in the same language as the latest user message.',
+    'Write 1-3 short natural sentences like a real community member would.',
+    'Do NOT say you are AI. Do NOT mention being a bot or assistant.',
+    'Do NOT use formal greetings. Just respond naturally to the conversation.',
     '',
     `Room: ${room}`,
-    `Latest speaker: ${triggerName}`,
-    `Latest message: ${triggerText}`,
+    `${triggerName} just said: "${triggerText}"`,
     '',
-    'Recent chat:',
-    transcript || '(no prior messages)',
+    'Recent chat context:',
+    transcript || '(conversation just started)',
     '',
-    'Write only the reply message body.',
+    'Write only your reply. Be natural, brief, and conversational.',
   ].join('\n');
 
   const generated = await aiService.generate(prompt, {
-    temperature: liveAgentPolicy.temperature,
+    temperature: Math.min(1.2, liveAgentPolicy.temperature + 0.15),
   });
 
   return normalizeAutoReply(generated);
+}
+
+// Pick agent display name from persona (used for emitted messages)
+function getAgentPersonaName(room) {
+  const idx = roomPersonaIndex.get(room);
+  if (idx === undefined || idx < 0 || idx >= LIVE_AGENT_PERSONAS.length) {
+    return LIVE_AGENT_PERSONAS[0].name;
+  }
+  return LIVE_AGENT_PERSONAS[idx].name;
 }
 
 function scheduleAutoRoomReply({ room, triggerSessionId, triggerName, triggerText }) {
@@ -770,12 +830,12 @@ function scheduleAutoRoomReply({ room, triggerSessionId, triggerName, triggerTex
 
     try {
       const reply = await buildAutoReplyText(room, triggerName, triggerText);
-      const agentSessionId = `agent:${room}`;
+      const agentSessionId = `agent:${room}:${getAgentPersonaName(room)}`;
       const ts = new Date().toISOString();
 
       appendRoomHistory(room, {
         sessionId: agentSessionId,
-        name: LIVE_AGENT_NAME,
+        name: getAgentPersonaName(room),
         text: reply,
         senderType: 'agent',
         ts,
@@ -787,7 +847,7 @@ function scheduleAutoRoomReply({ room, triggerSessionId, triggerName, triggerTex
         room,
         sessionId: agentSessionId,
         senderType: 'agent',
-        name: LIVE_AGENT_NAME,
+        name: getAgentPersonaName(room),
         text: reply,
         ts,
         onlineCount,
@@ -795,7 +855,7 @@ function scheduleAutoRoomReply({ room, triggerSessionId, triggerName, triggerTex
 
       notifySession(triggerSessionId, {
         level: 'info',
-        message: `${LIVE_AGENT_NAME} replied in the room`,
+        message: `${getAgentPersonaName(room)} replied in the room`,
         room,
       });
     } catch (err) {
@@ -1834,6 +1894,44 @@ router.get('/live/room-stats', async (req, res, next) => {
   }
 });
 
+router.get('/live/rooms', async (req, res, next) => {
+  try {
+    await ensureLiveRedisBridge();
+    // Collect all rooms that have had activity (in-memory history)
+    const rooms = [];
+    for (const [roomKey, history] of liveRoomHistory.entries()) {
+      if (history.length === 0) continue;
+      const onlineCount = await getRoomParticipantCountGlobal(roomKey);
+      const lastMsg = history[history.length - 1];
+      rooms.push({
+        room: roomKey,
+        onlineCount,
+        messageCount: history.length,
+        lastActivity: lastMsg?.ts || null,
+        lastText: lastMsg?.text ? lastMsg.text.slice(0, 60) : null,
+      });
+    }
+    // Also include rooms with active SSE connections but no history yet
+    for (const stream of liveStreams.values()) {
+      if (!rooms.some((r) => r.room === stream.room)) {
+        const onlineCount = await getRoomParticipantCountGlobal(stream.room);
+        if (onlineCount > 0) {
+          rooms.push({
+            room: stream.room,
+            onlineCount,
+            messageCount: 0,
+            lastActivity: null,
+            lastText: null,
+          });
+        }
+      }
+    }
+    rooms.sort((a, b) => (b.onlineCount - a.onlineCount) || (b.messageCount - a.messageCount));
+    return res.json({ ok: true, data: { rooms } });
+  } catch (err) {
+    return next(err);
+  }
+});
 /**
  * POST /api/v1/chat/session/:sessionId/task
  * Execute inline AI task (sketch, prism, chain, etc.)

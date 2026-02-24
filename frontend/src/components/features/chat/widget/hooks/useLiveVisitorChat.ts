@@ -42,13 +42,17 @@ function getVisitorName(): string {
 
 function buildSystemMessage(
   text: string,
-  level: SystemMessageLevel = 'info'
+  level: SystemMessageLevel = 'info',
+  opts?: { systemKind?: 'status' | 'error'; transient?: boolean; expiresAt?: number }
 ): ChatMessage {
   return {
     id: `live_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     role: 'system',
     text,
     systemLevel: level,
+    systemKind: opts?.systemKind,
+    transient: opts?.transient,
+    expiresAt: opts?.expiresAt,
   };
 }
 
@@ -109,7 +113,9 @@ export function useLiveVisitorChat(input: {
             connectedRef.current = true;
             push(
               buildSystemMessage(
-                `[Live] Connected to visitor chat (${event.onlineCount} online). Use /live <message> to chat in real time.`
+                `[Live] Connected to visitor chat (${event.onlineCount} online). Use /live <message> to chat in real time.`,
+                'info',
+                { systemKind: 'status' }
               )
             );
           }
@@ -121,7 +127,9 @@ export function useLiveVisitorChat(input: {
           const actionText = event.action === 'join' ? 'joined' : 'left';
           push(
             buildSystemMessage(
-              `[Live] ${event.name} ${actionText}. Online: ${event.onlineCount}`
+              `[Live] ${event.name} ${actionText}. Online: ${event.onlineCount}`,
+              'info',
+              { systemKind: 'status', transient: true, expiresAt: Date.now() + 4000 }
             )
           );
           return;
@@ -129,22 +137,28 @@ export function useLiveVisitorChat(input: {
 
         if (event.type === 'live_message') {
           if (event.sessionId === sessionId) return;
-          const sender = event.senderType === 'agent'
-            ? `${event.name} (auto assistant)`
-            : event.name;
+          const sender = event.name || 'anonymous';
           push(
             buildSystemMessage(
-              `[Live] ${sender}: ${event.text}`
+              `[Live] ${sender}: ${event.text}`,
+              'info',
+              { systemKind: 'status' }
             )
           );
           return;
         }
 
         if (event.type === 'session_notification' && event.sessionId === sessionId) {
+          const lvl = normalizeSystemLevel(event.level);
           push(
             buildSystemMessage(
               `[Session] ${formatSessionMessage(event.message)}`,
-              normalizeSystemLevel(event.level)
+              lvl,
+              {
+                systemKind: lvl === 'error' ? 'error' : 'status',
+                transient: lvl !== 'error',
+                expiresAt: lvl !== 'error' ? Date.now() + 4000 : undefined,
+              }
             )
           );
         }
@@ -153,7 +167,8 @@ export function useLiveVisitorChat(input: {
         push(
           buildSystemMessage(
             '[Live] Connection unstable. Reconnecting...',
-            'warn'
+            'warn',
+            { systemKind: 'error' }
           )
         );
       },
@@ -178,5 +193,5 @@ export function useLiveVisitorChat(input: {
     [sessionId, visitorName, room]
   );
 
-  return { sendVisitorMessage };
+  return { sendVisitorMessage, room };
 }
