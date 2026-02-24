@@ -16,6 +16,7 @@ export {
   type StreamChatInput,
   type ChatImageUploadResult,
   type ChatSessionMeta,
+  type LiveRoom,
   isUnifiedTasksEnabled,
   SESSION_ID_KEY,
   SESSIONS_INDEX_KEY,
@@ -49,4 +50,5 @@ export {
   getLiveChatConfig,
   updateLiveChatConfig,
   getLiveRoomStats,
+  getLiveRooms,
 } from './chat/index';
