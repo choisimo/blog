@@ -608,8 +608,8 @@ export async function quiz(input: {
   quizCount?: number;
   studyMode?: boolean;
   postTags?: string[];
+  wrongQuestions?: string[];
 }): Promise<QuizResult> {
-  const {
     paragraph,
     postTitle,
     batchIndex = 0,
@@ -617,6 +617,7 @@ export async function quiz(input: {
     quizCount = 2,
     studyMode = false,
     postTags = [],
+    wrongQuestions = [],
   } = input;
 
   const requestedQuizCount = clampQuizCount(quizCount);
@@ -631,6 +632,7 @@ export async function quiz(input: {
       quizCount: requestedQuizCount,
       studyMode,
       postTags: normalizedPostTags,
+      wrongQuestions,
     });
 
     const normalized =

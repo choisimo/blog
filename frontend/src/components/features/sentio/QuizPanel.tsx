@@ -76,6 +76,7 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
   const [isFetchingNext, setIsFetchingNext] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<AnswerState[]>([]);
+  const [wrongQuestions, setWrongQuestions] = useState<QuizQuestion[]>([]);
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -162,8 +163,8 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
         quizCount: questionsPerBatch,
         studyMode,
         postTags: normalizedPostTags,
+        wrongQuestions: wrongQuestions.map(q => q.question),
       });
-
       if (result.quiz.length > 0) {
         setQuestions(prev => {
           const updated = [...prev, ...result.quiz];
@@ -184,12 +185,14 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
     questionsPerBatch,
     studyMode,
     normalizedPostTags,
+    wrongQuestions,
   ]);
 
   const handleStart = useCallback(async () => {
     setState('loading');
     setError(null);
     setAnswers([]);
+    setWrongQuestions([]);
     setCurrentIndex(0);
     setCurrentAnswer('');
     setQuestions([]);
@@ -256,6 +259,12 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
   const handleSubmitAnswer = useCallback(() => {
     const question = questions[currentIndex];
     const correct = isCorrectAnswer(question, currentAnswer);
+    if (!correct) {
+      setWrongQuestions(prev => [
+        ...prev.filter(q => q.question !== question.question),
+        question,
+      ]);
+    }
     setAnswers(prev => [
       ...prev,
       { value: currentAnswer, submitted: true, correct },
@@ -289,6 +298,7 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
     setState('idle');
     setQuestions([]);
     setAnswers([]);
+    setWrongQuestions([]);
     setCurrentIndex(0);
     setCurrentAnswer('');
     setError(null);
@@ -456,6 +466,7 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
             isLast={currentIndex + 1 >= questions.length && batchFetchedRef.current >= maxBatches}
             isTerminal={isTerminal}
             isNextLoading={isFetchingNext && currentIndex + 1 >= questions.length}
+            isWrongQuestion={wrongQuestions.some(q => q.question === currentQuestion.question)}
           />
         )}
 
@@ -486,6 +497,7 @@ interface QuestionViewProps {
   isLast: boolean;
   isTerminal: boolean;
   isNextLoading: boolean;
+  isWrongQuestion?: boolean;
 }
 
 function QuestionView({
@@ -499,6 +511,7 @@ function QuestionView({
   isLast,
   isTerminal,
   isNextLoading,
+  isWrongQuestion = false,
 }: QuestionViewProps) {
   // Badge for question type
   const typeBadge: Record<string, string> = {
@@ -516,7 +529,7 @@ function QuestionView({
       {/* Type badge + question */}
       <div
         className={cn(
-          'rounded-xl px-4 py-4 border space-y-2',
+          'rounded-xl px-4 py-4 border space-y-2 min-w-0 overflow-hidden',
           isTerminal
             ? 'bg-primary/5 border-primary/20'
             : 'bg-muted/40 border-border/50'
@@ -534,9 +547,19 @@ function QuestionView({
           <span className={cn('text-[10px] text-muted-foreground', isTerminal && 'font-mono')}>
             Q{questionNumber}
           </span>
+          {isWrongQuestion && !answerState?.submitted && (
+            <span className={cn(
+              'text-[10px] font-semibold px-2 py-0.5 rounded-full',
+              isTerminal
+                ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30 font-mono'
+                : 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20'
+            )}>
+              ⚠️ 재출제
+            </span>
+          )}
         </div>
         <div className={cn(
-          'text-sm font-medium leading-relaxed',
+          'text-sm font-medium leading-relaxed break-words [overflow-wrap:anywhere]',
           isTerminal && 'font-mono text-foreground/90'
         )}>
           <ChatMarkdown content={question.question} />

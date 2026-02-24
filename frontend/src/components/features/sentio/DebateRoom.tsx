@@ -46,6 +46,13 @@ type DebateRoomProps = {
   postTitle?: string;
 };
 
+const THINKING_MESSAGES = [
+  '생각하는 중...',
+  '관점을 정리하고 있어요...',
+  '답변을 구성하는 중...',
+  '맥락을 분석하고 있어요...',
+];
+
 const DEBATE_STARTERS = [
   { label: '이 부분이 특히 신경 쓰여요', stance: 'agree' as const, icon: ThumbsUp },
   { label: '이 부분이 조금 불편해요', stance: 'disagree' as const, icon: ThumbsDown },
@@ -261,6 +268,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
   const [messages, setMessages] = useState<DebateMessage[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [thinkingMsgIdx, setThinkingMsgIdx] = useState(0);
   const [currentStance, setCurrentStance] = useState<'agree' | 'disagree' | 'neutral' | null>(null);
   const [selectedPersona, setSelectedPersona] = useState<AIPersona | null>(null);
   const [selectionStep, setSelectionStep] = useState<SelectionStep>('persona');
@@ -282,6 +290,17 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
+
+  useEffect(() => {
+    if (!busy) {
+      setThinkingMsgIdx(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setThinkingMsgIdx(prev => (prev + 1) % THINKING_MESSAGES.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [busy]);
 
   const addMessage = useCallback((msg: DebateMessage) => {
     setMessages(prev => [...prev, msg]);
@@ -589,6 +608,14 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
               )}
             >
               {isTerminal ? '>_ AI 상담실' : 'AI 상담실'}
+              {busy && (
+                <span className="inline-flex items-center gap-1 ml-2">
+                  <span className={cn(
+                    'w-1.5 h-1.5 rounded-full animate-pulse',
+                    isTerminal ? 'bg-primary' : 'bg-emerald-500'
+                  )} />
+                </span>
+              )}
             </h3>
             <p className="text-xs text-muted-foreground truncate max-w-[200px] sm:max-w-[280px]">
               {topic.title}
@@ -860,9 +887,15 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
                       )}
                     </>
                   ) : (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>생각하는 중...</span>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground min-h-[44px]">
+                      <div className="flex gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:0ms]" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:150ms]" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:300ms]" />
+                      </div>
+                      <span className="text-xs transition-all duration-500">
+                        {THINKING_MESSAGES[thinkingMsgIdx]}
+                      </span>
                     </div>
                   )}
                 </div>

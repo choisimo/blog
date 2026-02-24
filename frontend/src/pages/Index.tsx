@@ -14,7 +14,6 @@ import {
   ChevronRight,
   Clock,
   Code2,
-  FolderKanban,
   Sparkles,
   TrendingUp,
 } from 'lucide-react';
@@ -242,124 +241,101 @@ const Index = () => {
           Hero Section - Split Layout with Featured Post
           ============================================ */}
       <section className='mb-16'>
-        <div className='grid gap-6 md:grid-cols-12 md:gap-8 items-center'>
-          {/* Left: Typography & CTA */}
-          <div className='md:col-span-5 space-y-6 text-left'>
-            <div className='space-y-2'>
-              <p className={cn(
-                'text-sm font-medium tracking-widest uppercase',
-                isTerminal ? 'text-primary font-mono' : 'text-muted-foreground'
-              )}>
-                {isTerminal ? '> WELCOME_TO' : 'Welcome to'}
-              </p>
-              <h1 className={cn(
-                'text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]',
-                isTerminal && 'font-mono'
-              )}>
-                <span className={cn(
-                  isTerminal 
-                    ? 'text-foreground' 
-                    : 'bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent'
-                )}>
-                  Architecting
-                </span>
-                <br />
-                <span className={cn(
-                  isTerminal 
-                    ? 'text-primary terminal-glow' 
-                    : 'bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent'
-                )}>
-                  Intelligence
-                </span>
-              </h1>
-            </div>
+        <div className='max-w-2xl mx-auto space-y-6 text-center'>
+          <div className='space-y-2'>
             <p className={cn(
-              'text-lg leading-relaxed max-w-md',
-              isTerminal ? 'text-muted-foreground' : 'text-muted-foreground'
+              'text-sm font-medium tracking-widest uppercase',
+              isTerminal ? 'text-primary font-mono' : 'text-muted-foreground'
             )}>
-              AI, 시스템 설계, 그리고 코드의 본질을 탐구하는 기술 블로그
+              {isTerminal ? '> WELCOME_TO' : 'Welcome to'}
             </p>
-            
-            {/* Search Bar */}
-            <div className='max-w-md'>
-              <SearchBar
-                posts={allPosts}
-                onSearchResults={results => {
-                  setSearchResults(results);
-                  setSearchActive(results !== allPosts);
-                }}
-                placeholder='Search posts, tags, categories...'
-              />
-            </div>
-            
-            {/* CTA Buttons */}
-            <div className='flex flex-wrap gap-3 pt-2'>
-              <Button 
-                asChild 
-                size='lg' 
-                variant={isTerminal ? 'terminal-active' : 'default'}
-                className={cn(
-                  isTerminal && 'shadow-[0_0_16px_hsl(var(--primary)/0.4)] hover:shadow-[0_0_20px_hsl(var(--primary)/0.5)]'
-                )}
-              >
-                <Link to='/blog'>
-                  <BookOpen className='mr-2 h-5 w-5' />
-                  Explore Posts
-                </Link>
-              </Button>
-              <Button 
-                asChild 
-                variant='outline' 
-                size='lg'
-                className={cn(
-                  isTerminal && 'font-mono border-border text-foreground hover:border-primary hover:text-primary'
-                )}
-              >
-                <Link to='/about'>
-                  About Me
-                  <ArrowRight className='ml-2 h-5 w-5' />
-                </Link>
-              </Button>
-            </div>
+            <h1 className={cn(
+              'text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]',
+              isTerminal && 'font-mono'
+            )}>
+              <span className={cn(
+                isTerminal
+                  ? 'text-foreground'
+                  : 'bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent'
+              )}>
+                Architecting
+              </span>
+              <br />
+              <span className={cn(
+                isTerminal
+                  ? 'text-primary terminal-glow'
+                  : 'bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent'
+              )}>
+                Intelligence
+              </span>
+            </h1>
+          </div>
+          <p className={cn(
+            'text-lg leading-relaxed',
+            isTerminal ? 'text-muted-foreground' : 'text-muted-foreground'
+          )}>
+            AI, 시스템 설계, 그리고 코드의 본질을 탐구하는 기술 블로그
+          </p>
+
+          {/* Search Bar */}
+          <div className='max-w-md mx-auto'>
+            <SearchBar
+              posts={allPosts}
+              onSearchResults={results => {
+                setSearchResults(results);
+                setSearchActive(results !== allPosts);
+              }}
+              placeholder='Search posts, tags, categories...'
+            />
           </div>
 
-          {/* Right: Projects Hub */}
-          <div className='md:col-span-7'>
-            <Card className={cn(
-              'h-full border-primary/25 bg-gradient-to-br from-primary/10 via-card to-card',
-              isTerminal && 'border-primary/35'
-            )}>
-              <CardHeader className='space-y-4 p-6 md:p-8'>
-                <div className='inline-flex w-fit items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary'>
-                  ✨ Featured in Projects
-                </div>
-                <CardTitle className={cn(
-                  'text-2xl md:text-3xl',
-                  isTerminal && 'font-mono'
-                )}>
-                  Nodove Project Hub
-                </CardTitle>
-                <CardDescription className='max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-base'>
-                  AI Console은 이제 Projects 탭 최상단의 Featured Project로 이동되었습니다.
-                  카드/리스트 뷰, 태그 필터, iframe Preview 전략까지 한곳에서 관리할 수 있습니다.
-                </CardDescription>
-                <div className='flex flex-wrap gap-3'>
-                  <Button asChild>
-                    <Link to='/projects'>
-                      <FolderKanban className='h-4 w-4' />
-                      Explore Projects
-                    </Link>
-                  </Button>
-                  <Button asChild variant='outline'>
-                    <Link to='/projects'>
-                      Open Nodove AI Agent
-                      <ArrowRight className='h-4 w-4' />
-                    </Link>
-                  </Button>
-                </div>
-              </CardHeader>
-            </Card>
+          {/* CTA Buttons */}
+          <div className='flex flex-wrap gap-3 justify-center pt-2'>
+            <Button
+              asChild
+              size='lg'
+              variant={isTerminal ? 'terminal-active' : 'default'}
+              className={cn(
+                isTerminal && 'shadow-[0_0_16px_hsl(var(--primary)/0.4)] hover:shadow-[0_0_20px_hsl(var(--primary)/0.5)]'
+              )}
+            >
+              <Link to='/blog'>
+                <BookOpen className='mr-2 h-5 w-5' />
+                Explore Posts
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant='outline'
+              size='lg'
+              className={cn(
+                isTerminal && 'font-mono border-border text-foreground hover:border-primary hover:text-primary'
+              )}
+            >
+              <Link to='/about'>
+                About Me
+                <ArrowRight className='ml-2 h-5 w-5' />
+              </Link>
+            </Button>
           </div>
+
+          {/* Realtime visitors pill */}
+          {activeVisitors > 0 && (
+            <div className='flex justify-center pt-2'>
+              <div className={cn(
+                'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium',
+                isTerminal
+                  ? 'bg-primary/20 text-primary border border-primary/30'
+                  : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+              )}>
+                <span className={cn(
+                  'w-1.5 h-1.5 rounded-full animate-pulse',
+                  isTerminal ? 'bg-primary' : 'bg-emerald-500'
+                )} />
+                {activeVisitors}명이 지금 읽고 있어요
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -850,78 +826,52 @@ function CategorySuggestionsPanel({ isTerminal, activeVisitors }: { isTerminal: 
     >
       <div className='flex items-center justify-between gap-3 mb-4'>
         <div className='min-w-0'>
-          <div
-            className={cn(
-              'text-sm font-semibold',
-              isTerminal ? 'text-primary' : 'text-foreground'
-            )}
-          >
-            {isTerminal ? '$ suggested_features' : 'Suggested features'}
+          <div className={cn('text-sm font-semibold', isTerminal ? 'text-primary' : 'text-foreground')}>
+            {isTerminal ? '$ live_status' : 'Live Status'}
           </div>
-          <div
-            className={cn(
-              'text-xs text-muted-foreground',
-              isTerminal && 'text-primary/60'
-            )}
-          >
-            {isTerminal ? 'right-pane idea list' : 'Ideas for the right pane'}
+          <div className='text-xs text-muted-foreground'>
+            {isTerminal ? 'realtime blog activity' : '실시간 블로그 현황'}
           </div>
         </div>
-        <div className='flex items-center gap-2'>
-          {activeVisitors > 0 && (
-            <div
-              className={cn(
-                'flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium',
-                isTerminal
-                  ? 'bg-primary/20 text-primary border border-primary/30'
-                  : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-              )}
-              title="현재 접속자 수"
-            >
-              <span className={cn(
-                'w-1.5 h-1.5 rounded-full animate-pulse',
-                isTerminal ? 'bg-primary' : 'bg-emerald-500'
-              )} />
-              {activeVisitors}
-            </div>
-          )}
-          <TrendingUp className={cn('h-4 w-4', isTerminal ? 'text-primary' : 'text-muted-foreground')} />
-        </div>
+        {activeVisitors > 0 && (
+          <div
+            className={cn(
+              'flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium',
+              isTerminal
+                ? 'bg-primary/20 text-primary border border-primary/30'
+                : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+            )}
+            title='현재 접속자 수'
+          >
+            <span className={cn(
+              'w-1.5 h-1.5 rounded-full animate-pulse',
+              isTerminal ? 'bg-primary' : 'bg-emerald-500'
+            )} />
+            {activeVisitors} 접속 중
+          </div>
+        )}
+        <TrendingUp className={cn('h-4 w-4 shrink-0', isTerminal ? 'text-primary' : 'text-muted-foreground')} />
       </div>
 
-      <div className={cn('space-y-2', isTerminal && 'text-sm')}> 
-        <div className='flex items-start gap-2'>
-          <span className={cn('mt-0.5', isTerminal ? 'text-primary' : 'text-muted-foreground')}>1)</span>
-          <div className='min-w-0'>
-            <div className={cn('font-medium', isTerminal ? 'text-foreground' : 'text-foreground')}>Trending / Hot Posts</div>
-            <div className='text-xs text-muted-foreground'>최근 조회/댓글 기반 TOP N</div>
-          </div>
+      <div className='space-y-3'>
+        <div className='flex items-center justify-between'>
+          <span className='text-xs text-muted-foreground'>지금 읽는 중</span>
+          <span className={cn('text-xs font-mono font-medium', isTerminal ? 'text-primary' : 'text-foreground')}>
+            {activeVisitors > 0 ? `${activeVisitors}명` : '—'}
+          </span>
         </div>
-        <div className='flex items-start gap-2'>
-          <span className={cn('mt-0.5', isTerminal ? 'text-primary' : 'text-muted-foreground')}>2)</span>
-          <div className='min-w-0'>
-            <div className={cn('font-medium', isTerminal ? 'text-foreground' : 'text-foreground')}>Continue Reading</div>
-            <div className='text-xs text-muted-foreground'>최근 본 글 / 마지막 스크롤 위치 복귀</div>
-          </div>
+        <div className='flex items-center justify-between'>
+          <span className='text-xs text-muted-foreground'>오늘 새 글</span>
+          <span className='text-xs font-mono font-medium text-muted-foreground'>—</span>
         </div>
-        <div className='flex items-start gap-2'>
-          <span className={cn('mt-0.5', isTerminal ? 'text-primary' : 'text-muted-foreground')}>3)</span>
-          <div className='min-w-0'>
-            <div className={cn('font-medium', isTerminal ? 'text-foreground' : 'text-foreground')}>Weekly Digest</div>
-            <div className='text-xs text-muted-foreground'>이번 주 새 글 + 요약(메일/RSS)</div>
-          </div>
-        </div>
-        <div className='flex items-start gap-2'>
-          <span className={cn('mt-0.5', isTerminal ? 'text-primary' : 'text-muted-foreground')}>4)</span>
-          <div className='min-w-0'>
-            <div className={cn('font-medium', isTerminal ? 'text-foreground' : 'text-foreground')}>AI Quick Actions</div>
-            <div className='text-xs text-muted-foreground'>"이 블로그에서 X 찾아줘" 프롬프트 버튼</div>
-          </div>
+        <div className='flex items-center justify-between'>
+          <span className='text-xs text-muted-foreground'>트렌딩 카테고리</span>
+          <span className='text-xs font-mono font-medium text-muted-foreground'>AI &amp; ML</span>
         </div>
       </div>
 
       <div className={cn('mt-4 pt-3 border-t text-xs', isTerminal ? 'border-primary/20 text-primary/70' : 'border-border/60 text-muted-foreground')}>
-        {isTerminal ? 'hint: future widgets can live here' : 'This area can host future widgets.'}
+        {isTerminal ? '# 30s interval refresh' : '30초마다 자동 갱신'}
       </div>
     </div>
   );
