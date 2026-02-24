@@ -7,10 +7,13 @@ export type SourceLink = {
   snippet?: string;
 };
 
+export type SystemMessageLevel = "info" | "warn" | "error";
+
 export type ChatMessage = {
   id: string;
   role: "user" | "assistant" | "system";
   text: string;
+  systemLevel?: SystemMessageLevel;
   sources?: SourceLink[];
   followups?: string[];
 };

@@ -126,22 +126,15 @@ function normalizeQuizQuestion(value: unknown): QuizQuestion | null {
 
 function extractQuizItemsFromData(value: unknown): unknown[] {
   if (Array.isArray(value)) return value;
-
-  if (typeof value === 'string') {
     const parsed = tryParseJson(value);
     return parsed ? extractQuizItemsFromData(parsed) : [];
   }
 
   if (!isRecord(value)) return [];
-
   if (Array.isArray(value.quiz)) return value.quiz;
   if (Array.isArray(value.questions)) return value.questions;
   if (Array.isArray(value.items)) return value.items;
-
-  if ('data' in value) return extractQuizItemsFromData(value.data);
   if ('result' in value) return extractQuizItemsFromData(value.result);
-
-  if ('_raw' in value) {
     const rawData = value._raw;
     if (typeof rawData === 'string') return extractQuizItemsFromData(rawData);
     if (isRecord(rawData) && typeof rawData.text === 'string') {
@@ -149,6 +142,22 @@ function extractQuizItemsFromData(value: unknown): unknown[] {
     }
   }
 
+  // Sentio/custom mode: backend may return a blog-post metadata object with a
+  // `problems` array (e.g. algorithm exercises). Map each problem entry to a
+  // minimal quiz question so the normalizer can still produce a valid quiz.
+  if (Array.isArray(value.problems)) {
+    return (value.problems as unknown[]).map(p => {
+      if (!isRecord(p)) return p;
+      return {
+        type: 'explain',
+        question: toText(p.description ?? p.title ?? p.problem ?? `문제 ${p.number ?? ''}`.trim()),
+        answer: toText(p.python_function ?? p.java_method ?? p.solution ?? p.answer ?? '위 내용을 참고하세요.'),
+        explanation: p.example_input != null
+          ? `예시 입력: ${toText(p.example_input)} → 출력: ${toText(p.example_output ?? '?')}`
+          : undefined,
+      };
+    });
+  }
   return [];
 }
 

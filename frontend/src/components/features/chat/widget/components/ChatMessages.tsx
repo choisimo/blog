@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import ChatMarkdown from "../../ChatMarkdown";
 import { cn } from "@/lib/utils";
-import type { ChatMessage, SourceLink } from "../types";
+import type { ChatMessage, SourceLink, SystemMessageLevel } from "../types";
 import { extractImageFromMessage, QUICK_PROMPTS } from "../constants";
 
 type ChatMessagesProps = {
@@ -16,6 +16,46 @@ type ChatMessagesProps = {
   lastPrompt: string;
   onNavigate?: (path: string) => void;
 };
+
+function getSystemLevel(message: ChatMessage): SystemMessageLevel {
+  return message.systemLevel ?? "error";
+}
+
+function getSystemBubbleClass(level: SystemMessageLevel): string {
+  switch (level) {
+    case "info":
+      return "border border-primary/20 bg-primary/10 text-primary";
+    case "warn":
+      return "border border-amber-500/30 bg-amber-500/10 text-amber-700";
+    case "error":
+    default:
+      return "border border-destructive/30 bg-destructive/10 text-destructive";
+  }
+}
+
+function getSystemTerminalClass(level: SystemMessageLevel): string {
+  switch (level) {
+    case "info":
+      return "text-primary";
+    case "warn":
+      return "text-amber-400";
+    case "error":
+    default:
+      return "text-destructive";
+  }
+}
+
+function getSystemLabel(level: SystemMessageLevel): string {
+  switch (level) {
+    case "info":
+      return "[INFO]";
+    case "warn":
+      return "[WARN]";
+    case "error":
+    default:
+      return "[ERROR]";
+  }
+}
 
 export function ChatMessages({
   messages,
@@ -70,6 +110,7 @@ export function ChatMessages({
         const isUser = m.role === "user";
         const isAssistant = m.role === "assistant";
         const isSystem = m.role === "system";
+        const systemLevel = getSystemLevel(m);
 
         // Extract image from user message
         const { imageUrl, cleanText } = isUser
@@ -86,6 +127,7 @@ export function ChatMessages({
               isUser={isUser}
               isAssistant={isAssistant}
               isSystem={isSystem}
+              systemLevel={systemLevel}
               isMobile={isMobile}
               onPromptClick={onPromptClick}
               onRetry={() => onRetry(lastPrompt)}
@@ -104,6 +146,7 @@ export function ChatMessages({
             isUser={isUser}
             isAssistant={isAssistant}
             isSystem={isSystem}
+            systemLevel={systemLevel}
             isMobile={isMobile}
             onPromptClick={onPromptClick}
             onRetry={() => onRetry(lastPrompt)}
@@ -198,6 +241,7 @@ function TerminalMessage({
   isUser,
   isAssistant,
   isSystem,
+  systemLevel,
   isMobile,
   onPromptClick,
   onRetry,
@@ -210,6 +254,7 @@ function TerminalMessage({
   isUser: boolean;
   isAssistant: boolean;
   isSystem: boolean;
+  systemLevel: SystemMessageLevel;
   isMobile: boolean;
   onPromptClick: (prompt: string) => void;
   onRetry: () => void;
@@ -271,8 +316,9 @@ function TerminalMessage({
         </div>
       )}
       {isSystem && (
-        <SystemError
+        <SystemMessage
           text={m.text}
+          level={systemLevel}
           isTerminal
           lastPrompt={lastPrompt}
           onRetry={onRetry}
@@ -290,6 +336,7 @@ function DefaultMessage({
   isUser,
   isAssistant,
   isSystem,
+  systemLevel,
   isMobile,
   onPromptClick,
   onRetry,
@@ -302,6 +349,7 @@ function DefaultMessage({
   isUser: boolean;
   isAssistant: boolean;
   isSystem: boolean;
+  systemLevel: SystemMessageLevel;
   isMobile: boolean;
   onPromptClick: (prompt: string) => void;
   onRetry: () => void;
@@ -316,7 +364,7 @@ function DefaultMessage({
           isMobile ? "max-w-[90%] rounded-2xl" : "max-w-[85%] rounded-2xl",
           isUser && "bg-primary text-primary-foreground rounded-br-md",
           isAssistant && "bg-secondary text-secondary-foreground rounded-bl-md",
-          isSystem && "bg-destructive/10 text-destructive",
+          isSystem && getSystemBubbleClass(systemLevel),
         )}
       >
         {isAssistant ? (
@@ -350,7 +398,7 @@ function DefaultMessage({
           />
         )}
 
-        {isSystem && lastPrompt && (
+        {isSystem && systemLevel === "error" && lastPrompt && (
           <div className="mt-3">
             <Button
               size="sm"
@@ -533,26 +581,31 @@ function Followups({
   );
 }
 
-// System error component
-function SystemError({
+// System status/error component
+function SystemMessage({
   text,
+  level,
   isTerminal,
   lastPrompt,
   onRetry,
 }: {
   text: string;
+  level: SystemMessageLevel;
   isTerminal: boolean;
   lastPrompt: string;
   onRetry: () => void;
 }) {
   if (isTerminal) {
+    const toneClass = getSystemTerminalClass(level);
+    const label = getSystemLabel(level);
+
     return (
-      <div className="flex items-start gap-2 text-destructive">
-        <span className="font-bold select-none shrink-0">[ERROR]</span>
+      <div className={cn("flex items-start gap-2", toneClass)}>
+        <span className="font-bold select-none shrink-0">{label}</span>
         <span className="whitespace-pre-wrap break-words text-sm">{text}</span>
-        {lastPrompt && (
+        {level === "error" && lastPrompt && (
           <button
-            className="text-xs underline ml-2 hover:text-destructive/80"
+            className="text-xs underline ml-2 opacity-80 hover:opacity-100"
             onClick={onRetry}
           >
             retry

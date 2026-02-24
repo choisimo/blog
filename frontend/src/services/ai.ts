@@ -495,21 +495,16 @@ function normalizeQuizQuestion(raw: unknown): QuizQuestion | null {
 
 function extractQuizItems(raw: unknown): unknown[] {
   if (Array.isArray(raw)) return raw;
-
   if (typeof raw === 'string') {
     const parsed = tryParseJson(raw);
     return parsed ? extractQuizItems(parsed) : [];
   }
-
   if (!isRecord(raw)) return [];
-
   if (Array.isArray(raw.quiz)) return raw.quiz;
   if (Array.isArray(raw.questions)) return raw.questions;
   if (Array.isArray(raw.items)) return raw.items;
-
   if ('data' in raw) return extractQuizItems(raw.data);
   if ('result' in raw) return extractQuizItems(raw.result);
-
   if ('_raw' in raw) {
     const rawData = raw._raw;
     if (typeof rawData === 'string') return extractQuizItems(rawData);
@@ -517,7 +512,22 @@ function extractQuizItems(raw: unknown): unknown[] {
       return extractQuizItems(rawData.text);
     }
   }
-
+  // Sentio/custom mode: backend may return a blog-post metadata object with a
+  // `problems` array (e.g. algorithm exercises). Map each problem entry to a
+  // minimal quiz question so the normalizer can still produce a valid quiz.
+  if (Array.isArray(raw.problems)) {
+    return (raw.problems as unknown[]).map(p => {
+      if (!isRecord(p)) return p;
+      return {
+        type: 'explain',
+        question: p.description ?? p.title ?? p.problem ?? `문제 ${p.number ?? ''}`.trim(),
+        answer: p.python_function ?? p.java_method ?? p.solution ?? p.answer ?? '위 내용을 참고하세요.',
+        explanation: p.example_input != null
+          ? `예시 입력: ${p.example_input} → 출력: ${p.example_output ?? '?'}`
+          : undefined,
+      };
+    });
+  }
   return [];
 }
 
@@ -575,12 +585,16 @@ export async function quiz(input: {
 
     const normalized =
       normalizeQuizResult(normalizeResponse(response, isQuizResult) ?? response);
-
     if (normalized) {
       return { quiz: normalized.quiz.slice(0, 2) };
     }
-
-    console.warn('Quiz AI response could not be normalized, using fallback');
+    // Log the actual response shape to help diagnose future mismatches
+    const shape = isRecord(response)
+      ? Object.keys(response).join(', ')
+      : typeof response;
+    console.warn(
+      `Quiz AI response could not be normalized, using fallback. Response keys: [${shape}]`
+    );
     return createQuizFallback();
   } catch (err) {
     console.error('Quiz AI call failed:', err);

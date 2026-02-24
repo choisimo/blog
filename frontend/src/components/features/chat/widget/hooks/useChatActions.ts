@@ -70,6 +70,7 @@ export function useChatActions({
           id: `${id}_live_err`,
           role: 'system',
           text: e?.message || 'Live message delivery failed',
+          systemLevel: 'error',
         });
       }
       return;
@@ -201,7 +202,7 @@ export function useChatActions({
         aiId != null
           ? `${aiId}_err`
           : `${Date.now()}_${Math.random().toString(36).slice(2, 8)}_err`;
-      push({ id: errId, role: "system", text: msg });
+      push({ id: errId, role: "system", text: msg, systemLevel: "error" });
     } finally {
       setBusy(false);
     }
