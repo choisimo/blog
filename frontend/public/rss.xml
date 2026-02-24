@@ -5,7 +5,7 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Tue, 24 Feb 2026 13:28:04 GMT</lastBuildDate>
+    <lastBuildDate>Tue, 24 Feb 2026 17:13:39 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
       <title>[Arena 상세] Gemini_3.0_pro_high_reasoning 분석</title>
@@ -213,6 +213,21 @@
       <category>Math</category>
     </item>
     <item>
+      <title>혼자라는 이름의 계절</title>
+      <description>한여름의 뜨거운 도시를 건너며, 한 사람이 고독의 정체를 끝내 마주하는 이야기</description>
+      <link>https://noblog.nodove.com/blog/2026/alone</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/alone</guid>
+      <pubDate>Thu, 15 Jan 2026 00:00:00 GMT</pubDate>
+      <category>문학</category>
+      <category>단편소설</category>
+      <category>고독</category>
+      <category>도시</category>
+      <category>여름</category>
+      <category>연민</category>
+      <category>내면</category>
+      <category>창작</category>
+    </item>
+    <item>
       <title>Vim Architecture, Functionality, Commands, and Integration</title>
       <description>Vim의 아키텍처부터 핵심 기능, 필수 명령어, 그리고 다양한 개발 환경과의 통합까지 심층적으로 탐구합니다</description>
       <link>https://noblog.nodove.com/blog/2026/vim-architecture-functionality-commands-integration</link>
@@ -251,19 +266,6 @@
       <category>역사</category>
       <category>인간성</category>
       <category>쿠르스크 전투</category>
-    </item>
-    <item>
-      <title>게으름의 미학</title>
-      <description>나의 귀찮음이 만들어낸 부지런한 컨테이너</description>
-      <link>https://noblog.nodove.com/blog/2026/remote-server-think</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/remote-server-think</guid>
-      <pubDate>Sat, 03 Jan 2026 00:00:00 GMT</pubDate>
-      <category>Tech &amp; Philosophy</category>
-      <category>시스템 설계</category>
-      <category>자동화</category>
-      <category>DevOps</category>
-      <category>개발 철학</category>
-      <category>생산성</category>
     </item>
   </channel>
 </rss>

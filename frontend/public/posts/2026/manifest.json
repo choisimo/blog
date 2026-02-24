@@ -13,6 +13,7 @@
     "ai-agent-arena-2026-overview-and-comparison.md",
     "ai-agent-arena-2026-sonnet-4-6.md",
     "ai-agent-arena-2026-swe-1-5.md",
+    "alone.md",
     "current-crowd.md",
     "io-redirection-pipeline.md",
     "nobel1-kursk-tanks.md",
@@ -24,7 +25,7 @@
     "understanding-ssm-and-mamba.md",
     "vim-architecture-functionality-commands-integration.md"
   ],
-  "generatedAt": "2026-02-24T13:28:03.755Z",
-  "totalFiles": 23,
+  "generatedAt": "2026-02-24T17:13:39.153Z",
+  "totalFiles": 24,
   "excludedFiles": 0
 }
