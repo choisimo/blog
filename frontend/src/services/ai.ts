@@ -609,7 +609,8 @@ export async function quiz(input: {
   studyMode?: boolean;
   postTags?: string[];
   wrongQuestions?: string[];
-}): Promise<QuizResult> {
+}): Promise<QuizResult> { 
+  const {	
     paragraph,
     postTitle,
     batchIndex = 0,
