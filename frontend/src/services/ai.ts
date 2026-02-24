@@ -434,12 +434,109 @@ export async function summary(input: {
 // Quiz
 // ============================================================================
 
+const QUIZ_TYPES: QuizQuestion['type'][] = [
+  'fill_blank',
+  'multiple_choice',
+  'transform',
+  'explain',
+];
+
+function normalizeQuizType(value: unknown): QuizQuestion['type'] {
+  if (typeof value !== 'string') return 'explain';
+  const normalized = value.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (normalized === 'fillblank') return 'fill_blank';
+  if (normalized === 'multiplechoice') return 'multiple_choice';
+  if (normalized === 'code_transform') return 'transform';
+  if (QUIZ_TYPES.includes(normalized as QuizQuestion['type'])) {
+    return normalized as QuizQuestion['type'];
+  }
+  return 'explain';
+}
+
+function toNormalizedText(value: unknown): string {
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  return '';
+}
+
+function normalizeQuizQuestion(raw: unknown): QuizQuestion | null {
+  if (!isRecord(raw)) return null;
+
+  const question = toNormalizedText(raw.question ?? raw.q ?? raw.prompt ?? raw.title);
+  const answer = toNormalizedText(raw.answer ?? raw.correctAnswer ?? raw.correct ?? raw.solution ?? raw.a);
+
+  if (!question || !answer) return null;
+
+  const optionsSource =
+    (Array.isArray(raw.options) ? raw.options : undefined) ??
+    (Array.isArray(raw.choices) ? raw.choices : undefined) ??
+    (Array.isArray(raw.candidates) ? raw.candidates : undefined);
+
+  const options = Array.isArray(optionsSource)
+    ? optionsSource.map(toNormalizedText).filter(Boolean).slice(0, 6)
+    : [];
+
+  const explanation = toNormalizedText(raw.explanation ?? raw.reason ?? raw.why ?? raw.hint);
+  const type = normalizeQuizType(raw.type ?? (options.length > 0 ? 'multiple_choice' : 'explain'));
+
+  const normalized: QuizQuestion = {
+    type,
+    question,
+    answer,
+  };
+
+  if (options.length > 0) normalized.options = options;
+  if (explanation) normalized.explanation = explanation;
+
+  return normalized;
+}
+
+function extractQuizItems(raw: unknown): unknown[] {
+  if (Array.isArray(raw)) return raw;
+
+  if (typeof raw === 'string') {
+    const parsed = tryParseJson(raw);
+    return parsed ? extractQuizItems(parsed) : [];
+  }
+
+  if (!isRecord(raw)) return [];
+
+  if (Array.isArray(raw.quiz)) return raw.quiz;
+  if (Array.isArray(raw.questions)) return raw.questions;
+  if (Array.isArray(raw.items)) return raw.items;
+
+  if ('data' in raw) return extractQuizItems(raw.data);
+  if ('result' in raw) return extractQuizItems(raw.result);
+
+  if ('_raw' in raw) {
+    const rawData = raw._raw;
+    if (typeof rawData === 'string') return extractQuizItems(rawData);
+    if (isRecord(rawData) && typeof rawData.text === 'string') {
+      return extractQuizItems(rawData.text);
+    }
+  }
+
+  return [];
+}
+
+function normalizeQuizResult(raw: unknown): QuizResult | null {
+  const items = extractQuizItems(raw);
+  if (items.length === 0) return null;
+
+  const quiz = items
+    .map(normalizeQuizQuestion)
+    .filter((item): item is QuizQuestion => item !== null)
+    .slice(0, 2);
+
+  if (quiz.length === 0) return null;
+
+  return { quiz };
+}
+
 function isQuizResult(data: unknown): data is QuizResult {
-  return (
-    isRecord(data) &&
-    Array.isArray((data as QuizResult).quiz) &&
-    (data as QuizResult).quiz.length > 0
-  );
+  return normalizeQuizResult(data) !== null;
 }
 
 function createQuizFallback(): QuizResult {
@@ -476,12 +573,15 @@ export async function quiz(input: {
       previousQuestions,
     });
 
-    const normalized = normalizeResponse(response, isQuizResult);
+    const normalized =
+      normalizeQuizResult(normalizeResponse(response, isQuizResult) ?? response);
+
     if (normalized) {
       return { quiz: normalized.quiz.slice(0, 2) };
     }
 
-    throw new Error('Invalid quiz response format');
+    console.warn('Quiz AI response could not be normalized, using fallback');
+    return createQuizFallback();
   } catch (err) {
     console.error('Quiz AI call failed:', err);
     return createQuizFallback();

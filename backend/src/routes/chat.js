@@ -152,6 +152,95 @@ function sentencePoints(text, max = 4) {
     .slice(0, max);
 }
 
+function toText(value) {
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return '';
+}
+
+function normalizeQuizType(value) {
+  if (typeof value !== 'string') return 'explain';
+  const normalized = value.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (normalized === 'fillblank') return 'fill_blank';
+  if (normalized === 'multiplechoice') return 'multiple_choice';
+  if (normalized === 'code_transform') return 'transform';
+  if (['fill_blank', 'multiple_choice', 'transform', 'explain'].includes(normalized)) {
+    return normalized;
+  }
+  return 'explain';
+}
+
+function normalizeQuizQuestion(value) {
+  if (!value || typeof value !== 'object') return null;
+
+  const question = toText(value.question ?? value.q ?? value.prompt ?? value.title);
+  const answer = toText(value.answer ?? value.correctAnswer ?? value.correct ?? value.solution ?? value.a);
+  if (!question || !answer) return null;
+
+  const optionsSource =
+    (Array.isArray(value.options) ? value.options : null) ||
+    (Array.isArray(value.choices) ? value.choices : null) ||
+    (Array.isArray(value.candidates) ? value.candidates : null);
+
+  const options = Array.isArray(optionsSource)
+    ? optionsSource.map(toText).filter(Boolean).slice(0, 6)
+    : [];
+
+  const explanation = toText(value.explanation ?? value.reason ?? value.why ?? value.hint);
+  const type = normalizeQuizType(value.type ?? (options.length > 0 ? 'multiple_choice' : 'explain'));
+
+  const normalized = {
+    type,
+    question,
+    answer,
+  };
+
+  if (options.length > 0) normalized.options = options;
+  if (explanation) normalized.explanation = explanation;
+
+  return normalized;
+}
+
+function extractQuizItems(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = tryParseJson(value);
+    return parsed ? extractQuizItems(parsed) : [];
+  }
+  if (!value || typeof value !== 'object') return [];
+
+  if (Array.isArray(value.quiz)) return value.quiz;
+  if (Array.isArray(value.questions)) return value.questions;
+  if (Array.isArray(value.items)) return value.items;
+
+  if ('data' in value) return extractQuizItems(value.data);
+  if ('result' in value) return extractQuizItems(value.result);
+  if ('_raw' in value) {
+    const rawData = value._raw;
+    if (typeof rawData === 'string') return extractQuizItems(rawData);
+    if (rawData && typeof rawData === 'object' && typeof rawData.text === 'string') {
+      return extractQuizItems(rawData.text);
+    }
+  }
+
+  return [];
+}
+
+function normalizeQuizData(value) {
+  const quiz = extractQuizItems(value)
+    .map(normalizeQuizQuestion)
+    .filter(Boolean)
+    .slice(0, 2);
+
+  if (!quiz.length) return null;
+  return { quiz };
+}
+
+function normalizeTaskData(mode, value) {
+  if (mode !== 'quiz') return value;
+  return normalizeQuizData(value);
+}
+
 function projectTaskDataFromText(mode, text, payload) {
   const rawText = String(text || '').trim();
   if (!rawText) {
@@ -1048,9 +1137,13 @@ function isValidTaskMode(mode) {
  * Helper: Build prompt for task
  */
 function buildTaskPrompt(mode, payload) {
-  const { paragraph, content, postTitle, persona, prompt } = payload;
+  const { paragraph, content, postTitle, persona, prompt, batchIndex, previousQuestions } = payload;
   const text = paragraph || content || prompt || '';
   const title = postTitle || '';
+  const quizBatchIndex = Number.isFinite(Number(batchIndex)) ? Math.max(0, Number(batchIndex)) : 0;
+  const askedQuestions = Array.isArray(previousQuestions)
+    ? previousQuestions.filter((q) => typeof q === 'string' && q.trim()).slice(0, 12)
+    : [];
 
   switch (mode) {
     case 'sketch':
@@ -1103,19 +1196,31 @@ function buildTaskPrompt(mode, payload) {
         temperature: AI_TEMPERATURES.SUMMARY,
       };
 
-    case 'quiz':
+    case 'quiz': {
+      const duplicateGuard = askedQuestions.length
+        ? [
+            'Do NOT repeat already asked questions:',
+            ...askedQuestions.map((q, i) => `${i + 1}. ${q}`),
+            '',
+          ]
+        : [];
+
       return {
         prompt: [
           'Return STRICT JSON only for technical learning quiz questions.',
           '{"quiz":[{"type":"fill_blank|multiple_choice|transform|explain","question":"string","answer":"string","options":["string"],"explanation":"string"}]}',
           `Post: ${title.slice(0, TEXT_LIMITS.TASK_TITLE)}`,
+          `Batch: ${quizBatchIndex + 1} (generate questions ${quizBatchIndex * 2 + 1}-${quizBatchIndex * 2 + 2})`,
           'Paragraph:',
           text.slice(0, TEXT_LIMITS.TASK_PARAGRAPH),
           '',
+          ...duplicateGuard,
           'Task: Generate EXACTLY 2 concise quiz questions in the original language.',
+          'Each question must be grounded in concrete code details from the paragraph.',
         ].join('\n'),
         temperature: AI_TEMPERATURES.QUIZ,
       };
+    }
 
     case 'catalyst':
       return {
@@ -1769,8 +1874,14 @@ router.post('/session/:sessionId/task', async (req, res, next) => {
       } else {
         const json = tryParseJson(text);
         if (json) {
-          data = json;
-          console.log(`[Task:${taskMode}] Successfully parsed JSON:`, JSON.stringify(data).slice(0, 200));
+          const normalized = normalizeTaskData(taskMode, json);
+          if (normalized) {
+            data = normalized;
+            console.log(`[Task:${taskMode}] Successfully parsed and normalized JSON:`, JSON.stringify(data).slice(0, 200));
+          } else {
+            console.warn(`[Task:${taskMode}] Parsed JSON failed schema validation, projecting text result`);
+            data = projectTaskDataFromText(taskMode, text, taskPayload);
+          }
         } else {
           console.warn(`[Task:${taskMode}] JSON parse failed, projecting text result`);
           data = projectTaskDataFromText(taskMode, text, taskPayload);

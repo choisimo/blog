@@ -26,6 +26,20 @@ export type LLMResponse = {
   error?: string;
 };
 
+type QuizQuestionType = 'fill_blank' | 'multiple_choice' | 'transform' | 'explain';
+
+type QuizQuestion = {
+  type: QuizQuestionType;
+  question: string;
+  answer: string;
+  options?: string[];
+  explanation?: string;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object';
+}
+
 function extractMeaningfulLines(text: string): string[] {
   return text
     .split(/\r?\n/)
@@ -51,6 +65,107 @@ function sentencePoints(text: string, max = 4): string[] {
     .slice(0, max);
 
   return lines;
+}
+
+function toText(value: unknown): string {
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  return '';
+}
+
+function normalizeQuizType(value: unknown): QuizQuestionType {
+  if (typeof value !== 'string') return 'explain';
+  const normalized = value.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (normalized === 'fillblank') return 'fill_blank';
+  if (normalized === 'multiplechoice') return 'multiple_choice';
+  if (normalized === 'code_transform') return 'transform';
+  if (
+    normalized === 'fill_blank' ||
+    normalized === 'multiple_choice' ||
+    normalized === 'transform' ||
+    normalized === 'explain'
+  ) {
+    return normalized;
+  }
+  return 'explain';
+}
+
+function normalizeQuizQuestion(value: unknown): QuizQuestion | null {
+  if (!isRecord(value)) return null;
+
+  const question = toText(value.question ?? value.q ?? value.prompt ?? value.title);
+  const answer = toText(value.answer ?? value.correctAnswer ?? value.correct ?? value.solution ?? value.a);
+
+  if (!question || !answer) return null;
+
+  const optionsSource =
+    (Array.isArray(value.options) ? value.options : undefined) ??
+    (Array.isArray(value.choices) ? value.choices : undefined) ??
+    (Array.isArray(value.candidates) ? value.candidates : undefined);
+
+  const options = Array.isArray(optionsSource)
+    ? optionsSource.map(toText).filter(Boolean).slice(0, 6)
+    : [];
+
+  const explanation = toText(value.explanation ?? value.reason ?? value.why ?? value.hint);
+  const type = normalizeQuizType(value.type ?? (options.length > 0 ? 'multiple_choice' : 'explain'));
+
+  const normalized: QuizQuestion = {
+    type,
+    question,
+    answer,
+  };
+
+  if (options.length > 0) normalized.options = options;
+  if (explanation) normalized.explanation = explanation;
+
+  return normalized;
+}
+
+function extractQuizItemsFromData(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+
+  if (typeof value === 'string') {
+    const parsed = tryParseJson(value);
+    return parsed ? extractQuizItemsFromData(parsed) : [];
+  }
+
+  if (!isRecord(value)) return [];
+
+  if (Array.isArray(value.quiz)) return value.quiz;
+  if (Array.isArray(value.questions)) return value.questions;
+  if (Array.isArray(value.items)) return value.items;
+
+  if ('data' in value) return extractQuizItemsFromData(value.data);
+  if ('result' in value) return extractQuizItemsFromData(value.result);
+
+  if ('_raw' in value) {
+    const rawData = value._raw;
+    if (typeof rawData === 'string') return extractQuizItemsFromData(rawData);
+    if (isRecord(rawData) && typeof rawData.text === 'string') {
+      return extractQuizItemsFromData(rawData.text);
+    }
+  }
+
+  return [];
+}
+
+function normalizeQuizData(value: unknown): { quiz: QuizQuestion[] } | null {
+  const quiz = extractQuizItemsFromData(value)
+    .map(normalizeQuizQuestion)
+    .filter((item): item is QuizQuestion => item !== null)
+    .slice(0, 2);
+
+  if (quiz.length === 0) return null;
+
+  return { quiz };
+}
+
+function normalizeTaskDataForMode(mode: TaskMode, value: unknown): unknown | null {
+  if (mode !== 'quiz') return value;
+  return normalizeQuizData(value);
 }
 
 function projectTaskDataFromText(
@@ -494,11 +609,16 @@ export async function executeTask(
   const response = await callTaskLLM(promptConfig, env);
 
   if (response.ok && response.parsed) {
-    return {
-      ok: true,
-      data: response.parsed,
-      source: response.source,
-    };
+    const normalizedParsed = normalizeTaskDataForMode(mode, response.parsed);
+    if (normalizedParsed) {
+      return {
+        ok: true,
+        data: normalizedParsed,
+        source: response.source,
+      };
+    }
+
+    console.warn(`[Task:${mode}] Parsed JSON did not match expected schema, attempting recovery`);
   }
 
   // 텍스트 응답이 있지만 파싱 실패한 경우
@@ -506,28 +626,41 @@ export async function executeTask(
     // 한 번 더 파싱 시도
     const parsed = tryParseJson(response.text);
     if (parsed) {
-      return {
-        ok: true,
-        data: parsed,
-        source: response.source,
-      };
+      const normalizedParsed = normalizeTaskDataForMode(mode, parsed);
+      if (normalizedParsed) {
+        return {
+          ok: true,
+          data: normalizedParsed,
+          source: response.source,
+        };
+      }
+
+      console.warn(`[Task:${mode}] Parsed text JSON failed schema validation, attempting repair`);
     }
 
     // 스키마 기반 보정 시도 (LLM 응답의 의미를 유지하면서 JSON 구조만 교정)
     const repaired = await repairTaskJsonWithSchema(mode, promptConfig, response.text, env);
     if (repaired && typeof repaired === 'object') {
-      return {
-        ok: true,
-        data: repaired,
-        source: `${response.source}-repaired`,
-      };
+      const normalizedRepaired = normalizeTaskDataForMode(mode, repaired);
+      if (normalizedRepaired) {
+        return {
+          ok: true,
+          data: normalizedRepaired,
+          source: `${response.source}-repaired`,
+        };
+      }
+
+      console.warn(`[Task:${mode}] Repaired JSON failed schema validation, projecting from text`);
     }
 
     // 최종 보정: 텍스트를 모드별 구조로 투영
     console.warn('LLM response parsing failed, projecting text to structured task output');
+    const projected = projectTaskDataFromText(mode, response.text, payload);
+    const normalizedProjected = normalizeTaskDataForMode(mode, projected) ?? projected;
+
     return {
       ok: true,
-      data: projectTaskDataFromText(mode, response.text, payload),
+      data: normalizedProjected,
       source: `${response.source}-projected`,
     };
   }
