@@ -18,6 +18,7 @@ import {
   TEXT_LIMITS,
   VALID_TASK_MODES,
   FALLBACK_DATA,
+  STREAMING,
 } from "../config/constants.js";
 
 const router = Router();
@@ -681,6 +682,74 @@ function sendSSE(res, payload) {
   } catch {
     // ignore closed stream
   }
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function splitStreamingText(text, preferredSize) {
+  const value = typeof text === "string" ? text : String(text || "");
+  if (!value) return [];
+
+  const chunkSize = Math.max(
+    1,
+    Number.parseInt(String(preferredSize || 0), 10) || 50,
+  );
+
+  if (value.length <= chunkSize) return [value];
+
+  const chunks = [];
+  let cursor = 0;
+
+  while (cursor < value.length) {
+    let end = Math.min(value.length, cursor + chunkSize);
+
+    if (end < value.length) {
+      const wordBoundary = value.lastIndexOf(" ", end);
+      if (wordBoundary > cursor + Math.floor(chunkSize * 0.45)) {
+        end = wordBoundary + 1;
+      }
+    }
+
+    chunks.push(value.slice(cursor, end));
+    cursor = end;
+  }
+
+  return chunks;
+}
+
+async function emitTextChunks({
+  text,
+  sendChunk,
+  isClosed,
+  chunkSize,
+  chunkDelayMs = 0,
+}) {
+  if (typeof sendChunk !== "function") return "";
+  const shouldStop = typeof isClosed === "function" ? isClosed : () => false;
+  const delayMs = Math.max(
+    0,
+    Number.parseInt(String(chunkDelayMs || 0), 10) || 0,
+  );
+
+  const chunks = splitStreamingText(text, chunkSize);
+  if (chunks.length === 0) return "";
+
+  let emitted = "";
+  for (let i = 0; i < chunks.length; i += 1) {
+    if (shouldStop()) break;
+
+    const piece = chunks[i];
+    emitted += piece;
+    sendChunk(piece);
+
+    if (delayMs > 0 && i < chunks.length - 1) {
+      await wait(delayMs);
+    }
+  }
+
+  return emitted;
 }
 
 function broadcastRoom(room, payload) {
@@ -1720,9 +1789,14 @@ export function initChatWebSocket(server) {
             model: payload.model,
             timeout: CHAT_RESPONSE_TIMEOUT_MS,
           })) {
-            if (closed || ws.readyState !== ws.OPEN) break;
-            text += chunk;
-            send({ type: "text", text: chunk });
+            const emitted = await emitTextChunks({
+              text: chunk,
+              chunkSize: STREAMING.WS_CHUNK_SIZE,
+              chunkDelayMs: 0,
+              isClosed: () => closed || ws.readyState !== ws.OPEN,
+              sendChunk: (piece) => send({ type: "text", text: piece }),
+            });
+            text += emitted;
           }
         } catch (streamErr) {
           if (!text) {
@@ -1730,9 +1804,15 @@ export function initChatWebSocket(server) {
               model: payload.model,
               timeout: CHAT_RESPONSE_TIMEOUT_MS,
             });
-            text = fallback.content || "";
-            if (!closed && ws.readyState === ws.OPEN && text) {
-              send({ type: "text", text });
+            const fallbackText = fallback.content || "";
+            if (!closed && ws.readyState === ws.OPEN && fallbackText) {
+              text += await emitTextChunks({
+                text: fallbackText,
+                chunkSize: STREAMING.WS_CHUNK_SIZE,
+                chunkDelayMs: STREAMING.WS_CHUNK_DELAY,
+                isClosed: () => closed || ws.readyState !== ws.OPEN,
+                sendChunk: (piece) => send({ type: "text", text: piece }),
+              });
             }
           } else {
             throw streamErr;
@@ -2005,9 +2085,14 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
           model,
           timeout: CHAT_RESPONSE_TIMEOUT_MS,
         })) {
-          if (closed) break;
-          text += chunk;
-          send({ type: "text", text: chunk });
+          const emitted = await emitTextChunks({
+            text: chunk,
+            chunkSize: STREAMING.CHUNK_SIZE,
+            chunkDelayMs: 0,
+            isClosed: () => closed,
+            sendChunk: (piece) => send({ type: "text", text: piece }),
+          });
+          text += emitted;
         }
       } catch (streamErr) {
         if (!text) {
@@ -2015,9 +2100,15 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
             model,
             timeout: CHAT_RESPONSE_TIMEOUT_MS,
           });
-          text = fallback.content || "";
-          if (!closed && text) {
-            send({ type: "text", text });
+          const fallbackText = fallback.content || "";
+          if (!closed && fallbackText) {
+            text += await emitTextChunks({
+              text: fallbackText,
+              chunkSize: STREAMING.CHUNK_SIZE,
+              chunkDelayMs: STREAMING.CHUNK_DELAY,
+              isClosed: () => closed,
+              sendChunk: (piece) => send({ type: "text", text: piece }),
+            });
           }
         } else {
           throw streamErr;

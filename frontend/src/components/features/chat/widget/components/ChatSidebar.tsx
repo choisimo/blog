@@ -103,7 +103,7 @@ export function ChatSidebar({
   return (
     <div
       className={cn(
-        "flex flex-col h-full border-r shrink-0 w-52 overflow-hidden",
+        "flex h-full w-64 shrink-0 flex-col overflow-hidden border-r",
         isTerminal
           ? "bg-[hsl(var(--terminal-code-bg))] border-border font-mono"
           : "bg-muted/20",
@@ -177,7 +177,9 @@ export function ChatSidebar({
                   onClick={() => onRoomSelect?.(r.room)}
                 >
                   <MessageCircle className="w-3 h-3 shrink-0" />
-                  <span className="truncate flex-1 text-left">{name}</span>
+                  <span className="min-w-0 flex-1 truncate text-left">
+                    {name}
+                  </span>
                   <Badge
                     variant="secondary"
                     className="text-[10px] px-1 py-0 h-4 shrink-0"
@@ -207,17 +209,20 @@ export function ChatSidebar({
             sessions.slice(0, 10).map((s) => {
               const checked = selectedSessionIds.includes(s.id);
               return (
-                <div key={s.id} className="flex items-center gap-1 mb-1">
+                <div
+                  key={s.id}
+                  className="mb-1.5 grid grid-cols-[auto_1fr] items-start gap-1.5"
+                >
                   <input
                     type="checkbox"
-                    className="w-3 h-3 rounded shrink-0"
+                    className="mt-1 h-3 w-3 shrink-0 rounded"
                     checked={checked}
                     onChange={() => onToggleSession(s.id)}
                   />
                   <button
                     type="button"
                     className={cn(
-                      "flex-1 px-2 py-1.5 rounded text-sm transition-colors text-left truncate",
+                      "min-w-0 rounded px-2 py-1.5 text-left text-sm transition-colors",
                       isTerminal
                         ? "text-muted-foreground hover:text-foreground hover:bg-white/5"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted",
@@ -225,7 +230,7 @@ export function ChatSidebar({
                     onClick={() => onLoadSession(s.id)}
                     title={s.title ?? "제목 없음"}
                   >
-                    <span className="truncate text-xs block">
+                    <span className="block break-words text-xs leading-4 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
                       {s.title ?? "제목 없음"}
                     </span>
                   </button>
@@ -254,17 +259,52 @@ export function ChatSidebar({
             <Settings className="w-3 h-3" />
             설정
           </div>
-          <div className="flex items-center justify-between px-2 py-1.5">
-            <span className="text-sm text-muted-foreground">LIVE 고정</span>
-            <Switch
-              checked={livePinned}
-              onCheckedChange={() => onToggleLivePinned?.()}
-              disabled={!onToggleLivePinned}
-            />
-          </div>
-          <div className="flex items-center justify-between px-2 py-1.5">
-            <span className="text-sm text-muted-foreground">기록 저장</span>
-            <Switch checked={persistOptIn} onCheckedChange={onTogglePersist} />
+          <div className="grid grid-cols-2 gap-2 px-1">
+            <div
+              className={cn(
+                "rounded-xl border px-2.5 py-2",
+                livePinned
+                  ? "border-primary/40 bg-primary/10"
+                  : "border-border/60 bg-background/70",
+              )}
+            >
+              <div className="mb-1 text-[11px] font-medium text-muted-foreground">
+                LIVE 고정
+              </div>
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[11px] text-muted-foreground/90">
+                  {livePinned ? "ON" : "OFF"}
+                </span>
+                <Switch
+                  checked={livePinned}
+                  onCheckedChange={() => onToggleLivePinned?.()}
+                  disabled={!onToggleLivePinned}
+                  className="scale-95"
+                />
+              </div>
+            </div>
+            <div
+              className={cn(
+                "rounded-xl border px-2.5 py-2",
+                persistOptIn
+                  ? "border-primary/40 bg-primary/10"
+                  : "border-border/60 bg-background/70",
+              )}
+            >
+              <div className="mb-1 text-[11px] font-medium text-muted-foreground">
+                기록 저장
+              </div>
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[11px] text-muted-foreground/90">
+                  {persistOptIn ? "ON" : "OFF"}
+                </span>
+                <Switch
+                  checked={persistOptIn}
+                  onCheckedChange={onTogglePersist}
+                  className="scale-95"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </ScrollArea>
