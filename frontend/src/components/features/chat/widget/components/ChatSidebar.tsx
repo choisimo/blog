@@ -103,7 +103,7 @@ export function ChatSidebar({
   return (
     <div
       className={cn(
-        "flex h-full w-64 shrink-0 flex-col overflow-hidden border-r",
+        "flex h-full w-72 shrink-0 flex-col overflow-hidden border-r",
         isTerminal
           ? "bg-[hsl(var(--terminal-code-bg))] border-border font-mono"
           : "bg-muted/20",

@@ -536,7 +536,7 @@ export default function ChatWidget(props: {
         open={isMobile && sidebarOpen}
         onOpenChange={(open) => setSidebarOpen(open)}
       >
-        <SheetContent side="left" className="w-64 p-0">
+        <SheetContent side="left" className="w-72 max-w-[85vw] p-0">
           <ChatSidebar
             isTerminal={isTerminal}
             questionMode={state.questionMode}
