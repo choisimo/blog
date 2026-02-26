@@ -11,6 +11,8 @@ interface LiveRoomPanelProps {
   onRoomSelect?: (room: string) => void;
   onStartDebate?: () => void;
   currentRoomLabel?: string;
+  livePinned?: boolean;
+  onToggleLivePinned?: () => void;
 }
 
 function formatRoomName(room: string): string {
@@ -24,6 +26,8 @@ export function LiveRoomPanel({
   onRoomSelect,
   onStartDebate,
   currentRoomLabel,
+  livePinned = false,
+  onToggleLivePinned,
 }: LiveRoomPanelProps) {
   const [rooms, setRooms] = useState<LiveRoom[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,14 +73,37 @@ export function LiveRoomPanel({
         )}
       >
         <div className="flex items-center justify-between gap-2 px-3 pt-2 pb-1.5">
-          <p
-            className={cn(
-              "text-[11px] font-semibold tracking-wide uppercase",
-              isTerminal ? "text-primary/70 font-mono" : "text-muted-foreground",
-            )}
-          >
-            Live rooms ({sortedRooms.length})
-          </p>
+          <div className="flex min-w-0 items-center gap-2">
+            <p
+              className={cn(
+                "text-[11px] font-semibold tracking-wide uppercase",
+                isTerminal
+                  ? "text-primary/70 font-mono"
+                  : "text-muted-foreground",
+              )}
+            >
+              Live rooms ({sortedRooms.length})
+            </p>
+            <button
+              type="button"
+              onClick={() => onToggleLivePinned?.()}
+              className={cn(
+                "shrink-0 rounded border px-2 py-1 text-[10px] leading-none transition-colors",
+                livePinned
+                  ? isTerminal
+                    ? "border-primary/60 bg-primary/20 text-primary"
+                    : "border-primary/40 bg-primary/10 text-primary"
+                  : isTerminal
+                    ? "border-border/60 text-muted-foreground hover:border-primary/40 hover:text-primary"
+                    : "border-border/70 text-muted-foreground hover:bg-muted hover:text-foreground",
+                !onToggleLivePinned && "opacity-50 cursor-not-allowed",
+              )}
+              disabled={!onToggleLivePinned}
+              title="일반 입력을 /live 없이 실시간 방으로 전송"
+            >
+              LIVE 고정 {livePinned ? "ON" : "OFF"}
+            </button>
+          </div>
           <button
             type="button"
             disabled={!onStartDebate}
@@ -148,14 +175,37 @@ export function LiveRoomPanel({
       )}
     >
       <div className="flex items-center justify-between gap-2 px-3 pt-2 pb-1">
-        <p
-          className={cn(
-            "text-[11px] font-semibold tracking-wide uppercase",
-            isTerminal ? "text-primary/70 font-mono" : "text-muted-foreground",
-          )}
-        >
-          Live rooms ({sortedRooms.length})
-        </p>
+        <div className="flex min-w-0 items-center gap-2">
+          <p
+            className={cn(
+              "text-[11px] font-semibold tracking-wide uppercase",
+              isTerminal
+                ? "text-primary/70 font-mono"
+                : "text-muted-foreground",
+            )}
+          >
+            Live rooms ({sortedRooms.length})
+          </p>
+          <button
+            type="button"
+            onClick={() => onToggleLivePinned?.()}
+            className={cn(
+              "shrink-0 rounded border px-2 py-1 text-[10px] leading-none transition-colors",
+              livePinned
+                ? isTerminal
+                  ? "border-primary/60 bg-primary/20 text-primary"
+                  : "border-primary/40 bg-primary/10 text-primary"
+                : isTerminal
+                  ? "border-border/60 text-muted-foreground hover:border-primary/40 hover:text-primary"
+                  : "border-border/70 text-muted-foreground hover:bg-muted hover:text-foreground",
+              !onToggleLivePinned && "opacity-50 cursor-not-allowed",
+            )}
+            disabled={!onToggleLivePinned}
+            title="일반 입력을 /live 없이 실시간 방으로 전송"
+          >
+            LIVE 고정 {livePinned ? "ON" : "OFF"}
+          </button>
+        </div>
         <button
           type="button"
           disabled={!onStartDebate}

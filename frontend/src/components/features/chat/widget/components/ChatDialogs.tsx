@@ -89,6 +89,8 @@ type MobileActionSheetProps = {
   currentLiveRoomLabel?: string;
   onClearAll: () => void;
   isTerminal: boolean;
+  livePinned?: boolean;
+  onToggleLivePinned?: () => void;
 };
 
 export function MobileActionSheet({
@@ -104,6 +106,8 @@ export function MobileActionSheet({
   currentLiveRoomLabel,
   onClearAll,
   isTerminal,
+  livePinned = false,
+  onToggleLivePinned,
 }: MobileActionSheetProps) {
   const runAction = (fn: () => void) => {
     fn();
@@ -152,6 +156,15 @@ export function MobileActionSheet({
             valueBadge
             valuePrimary={persistOptIn}
             onClick={() => runAction(onTogglePersist)}
+            isTerminal={isTerminal}
+          />
+          <ActionButton
+            label={livePinned ? "LIVE 고정 끄기" : "LIVE 고정 켜기"}
+            value={livePinned ? "ON" : "OFF"}
+            valueBadge
+            valuePrimary={livePinned}
+            disabled={!onToggleLivePinned}
+            onClick={() => runAction(() => onToggleLivePinned?.())}
             isTerminal={isTerminal}
           />
           <ActionButton

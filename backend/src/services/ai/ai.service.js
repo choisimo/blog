@@ -25,9 +25,9 @@
  *   const result = await aiService.task('sketch', { paragraph: '...' });
  */
 
-import { logAIUsage } from '../../repositories/ai-usage.repository.js';
-import { enqueueAITask, waitForAIResult } from './task-queue.service.js';
-import { config } from '../../config.js';
+import { logAIUsage } from "../../repositories/ai-usage.repository.js";
+import { enqueueAITask, waitForAIResult } from "./task-queue.service.js";
+import { config } from "../../config.js";
 import {
   AI_MODELS,
   AI_API,
@@ -35,13 +35,17 @@ import {
   TEXT_LIMITS,
   TIMEOUTS,
   FALLBACK_DATA,
-} from '../../config/constants.js';
+} from "../../config/constants.js";
 
 let getOpenAIClient, OpenAICompatClient;
 try {
-  ({ getOpenAIClient, default: OpenAICompatClient } = await import('./openai-client.service.js'));
+  ({ getOpenAIClient, default: OpenAICompatClient } =
+    await import("./openai-client.service.js"));
 } catch (err) {
-  console.error('[AIService] Failed to import openai-client.service:', err.message);
+  console.error(
+    "[AIService] Failed to import openai-client.service:",
+    err.message,
+  );
   getOpenAIClient = null;
   OpenAICompatClient = null;
 }
@@ -51,18 +55,24 @@ const logger = {
     return JSON.stringify({
       timestamp: new Date().toISOString(),
       level,
-      service: 'ai-service',
+      service: "ai-service",
       ...context,
       message,
       ...data,
     });
   },
-  info(ctx, msg, data) { console.log(this._format('info', ctx, msg, data)); },
-  warn(ctx, msg, data) { console.warn(this._format('warn', ctx, msg, data)); },
-  error(ctx, msg, data) { console.error(this._format('error', ctx, msg, data)); },
+  info(ctx, msg, data) {
+    console.log(this._format("info", ctx, msg, data));
+  },
+  warn(ctx, msg, data) {
+    console.warn(this._format("warn", ctx, msg, data));
+  },
+  error(ctx, msg, data) {
+    console.error(this._format("error", ctx, msg, data));
+  },
   debug(ctx, msg, data) {
-    if (process.env.DEBUG_AI === 'true') {
-      console.debug(this._format('debug', ctx, msg, data));
+    if (process.env.DEBUG_AI === "true") {
+      console.debug(this._format("debug", ctx, msg, data));
     }
   },
 };
@@ -70,17 +80,19 @@ const logger = {
 export class AIService {
   constructor() {
     this._openaiClient = null;
-    this._useAsyncQueue = process.env.AI_ASYNC_MODE === 'true';
+    this._useAsyncQueue = process.env.AI_ASYNC_MODE === "true";
     this._redisChecked = false;
     this._redisAvailable = false;
-    
+
     if (!getOpenAIClient) {
-      throw new Error('OpenAI client not available. Check openai-client.service.js import.');
+      throw new Error(
+        "OpenAI client not available. Check openai-client.service.js import.",
+      );
     }
-    
+
     logger.info(
-      { operation: 'init' },
-      `AIService initialized (async: ${this._useAsyncQueue})`
+      { operation: "init" },
+      `AIService initialized (async: ${this._useAsyncQueue})`,
     );
   }
 
@@ -88,18 +100,18 @@ export class AIService {
     if (this._redisChecked) {
       return this._redisAvailable;
     }
-    
+
     try {
-      const { isRedisAvailable } = await import('../../lib/redis-client.js');
+      const { isRedisAvailable } = await import("../../lib/redis-client.js");
       this._redisAvailable = await isRedisAvailable();
     } catch {
       this._redisAvailable = false;
     }
-    
+
     this._redisChecked = true;
     logger.debug(
-      { operation: 'redis-check' },
-      `Redis availability: ${this._redisAvailable}`
+      { operation: "redis-check" },
+      `Redis availability: ${this._redisAvailable}`,
     );
     return this._redisAvailable;
   }
@@ -108,11 +120,11 @@ export class AIService {
     if (options.sync === true) {
       return false;
     }
-    
+
     if (!this._useAsyncQueue) {
       return false;
     }
-    
+
     return this._checkRedisAvailable();
   }
 
@@ -130,14 +142,12 @@ export class AIService {
     const requestId = `gen-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const startTime = Date.now();
 
-    logger.debug(
-      { operation: 'generate', requestId },
-      'Starting generation',
-      { promptLength: prompt?.length }
-    );
+    logger.debug({ operation: "generate", requestId }, "Starting generation", {
+      promptLength: prompt?.length,
+    });
 
     const useAsync = await this._shouldUseAsyncQueue(options);
-    
+
     if (useAsync) {
       return this._generateAsync(prompt, options, requestId, startTime);
     }
@@ -157,36 +167,35 @@ export class AIService {
 
       const duration = Date.now() - startTime;
       logger.info(
-        { operation: 'generate', requestId },
-        'Generation completed',
-        { duration, resultLength: result?.length }
+        { operation: "generate", requestId },
+        "Generation completed",
+        { duration, resultLength: result?.length },
       );
 
       logAIUsage({
         modelName: options.model || this._getDefaultModel(),
-        requestType: 'completion',
+        requestType: "completion",
         promptTokens: this._estimateTokens(prompt),
         completionTokens: this._estimateTokens(result),
         latencyMs: duration,
-        status: 'success',
+        status: "success",
         metadata: { requestId },
       }).catch(() => {});
 
       return result;
     } catch (error) {
       const duration = Date.now() - startTime;
-      logger.error(
-        { operation: 'generate', requestId },
-        'Generation failed',
-        { duration, error: error.message }
-      );
+      logger.error({ operation: "generate", requestId }, "Generation failed", {
+        duration,
+        error: error.message,
+      });
 
       logAIUsage({
         modelName: options.model || this._getDefaultModel(),
-        requestType: 'completion',
+        requestType: "completion",
         promptTokens: this._estimateTokens(prompt),
         latencyMs: duration,
-        status: 'error',
+        status: "error",
         errorMessage: error.message,
         metadata: { requestId },
       }).catch(() => {});
@@ -197,36 +206,39 @@ export class AIService {
 
   async _generateAsync(prompt, options, requestId, startTime) {
     logger.info(
-      { operation: 'generate', requestId, mode: 'async' },
-      'Enqueueing async generation'
+      { operation: "generate", requestId, mode: "async" },
+      "Enqueueing async generation",
     );
 
     const taskId = await enqueueAITask({
-      type: 'generate',
+      type: "generate",
       payload: { prompt, options },
-      priority: options.priority || 'normal',
+      priority: options.priority || "normal",
     });
 
-    const result = await waitForAIResult(taskId, options.timeout || TIMEOUTS.DEFAULT);
-    
+    const result = await waitForAIResult(
+      taskId,
+      options.timeout || TIMEOUTS.DEFAULT,
+    );
+
     if (!result.ok) {
-      throw new Error(result.error || 'Async generation failed');
+      throw new Error(result.error || "Async generation failed");
     }
 
     const duration = Date.now() - startTime;
     logger.info(
-      { operation: 'generate', requestId, mode: 'async' },
-      'Async generation completed',
-      { duration, resultLength: result.data?.length }
+      { operation: "generate", requestId, mode: "async" },
+      "Async generation completed",
+      { duration, resultLength: result.data?.length },
     );
 
     logAIUsage({
       modelName: options.model || this._getDefaultModel(),
-      requestType: 'completion',
+      requestType: "completion",
       promptTokens: this._estimateTokens(prompt),
       completionTokens: this._estimateTokens(result.data),
       latencyMs: duration,
-      status: 'success',
+      status: "success",
       metadata: { requestId, async: true },
     }).catch(() => {});
 
@@ -237,14 +249,12 @@ export class AIService {
     const requestId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const startTime = Date.now();
 
-    logger.debug(
-      { operation: 'chat', requestId },
-      'Starting chat',
-      { messageCount: messages?.length }
-    );
+    logger.debug({ operation: "chat", requestId }, "Starting chat", {
+      messageCount: messages?.length,
+    });
 
     const useAsync = await this._shouldUseAsyncQueue(options);
-    
+
     if (useAsync) {
       return this._chatAsync(messages, options, requestId, startTime);
     }
@@ -264,47 +274,49 @@ export class AIService {
       const result = {
         content: response.content,
         model: response.model,
-        provider: response.provider || 'openai-compat',
+        provider: response.provider || "openai-compat",
         usage: response.usage,
         sessionId: response.sessionId,
       };
 
-      if (!result.content || result.content.trim() === '') {
-        throw new Error('AI returned empty response');
+      if (!result.content || result.content.trim() === "") {
+        throw new Error("AI returned empty response");
       }
 
       const duration = Date.now() - startTime;
-      logger.info(
-        { operation: 'chat', requestId },
-        'Chat completed',
-        { duration, resultLength: result.content?.length }
-      );
+      logger.info({ operation: "chat", requestId }, "Chat completed", {
+        duration,
+        resultLength: result.content?.length,
+      });
 
       logAIUsage({
         modelName: result.model || options.model || this._getDefaultModel(),
-        requestType: 'chat',
-        promptTokens: result.usage?.prompt_tokens || this._estimateTokens(JSON.stringify(messages)),
-        completionTokens: result.usage?.completion_tokens || this._estimateTokens(result.content),
+        requestType: "chat",
+        promptTokens:
+          result.usage?.prompt_tokens ||
+          this._estimateTokens(JSON.stringify(messages)),
+        completionTokens:
+          result.usage?.completion_tokens ||
+          this._estimateTokens(result.content),
         latencyMs: duration,
-        status: 'success',
+        status: "success",
         metadata: { requestId },
       }).catch(() => {});
 
       return result;
     } catch (error) {
       const duration = Date.now() - startTime;
-      logger.error(
-        { operation: 'chat', requestId },
-        'Chat failed',
-        { duration, error: error.message }
-      );
+      logger.error({ operation: "chat", requestId }, "Chat failed", {
+        duration,
+        error: error.message,
+      });
 
       logAIUsage({
         modelName: options.model || this._getDefaultModel(),
-        requestType: 'chat',
+        requestType: "chat",
         promptTokens: this._estimateTokens(JSON.stringify(messages)),
         latencyMs: duration,
-        status: 'error',
+        status: "error",
         errorMessage: error.message,
         metadata: { requestId },
       }).catch(() => {});
@@ -315,36 +327,39 @@ export class AIService {
 
   async _chatAsync(messages, options, requestId, startTime) {
     logger.info(
-      { operation: 'chat', requestId, mode: 'async' },
-      'Enqueueing async chat'
+      { operation: "chat", requestId, mode: "async" },
+      "Enqueueing async chat",
     );
 
     const taskId = await enqueueAITask({
-      type: 'chat',
+      type: "chat",
       payload: { messages, options },
-      priority: options.priority || 'normal',
+      priority: options.priority || "normal",
     });
 
-    const result = await waitForAIResult(taskId, options.timeout || TIMEOUTS.DEFAULT);
-    
+    const result = await waitForAIResult(
+      taskId,
+      options.timeout || TIMEOUTS.DEFAULT,
+    );
+
     if (!result.ok) {
-      throw new Error(result.error || 'Async chat failed');
+      throw new Error(result.error || "Async chat failed");
     }
 
     const duration = Date.now() - startTime;
     logger.info(
-      { operation: 'chat', requestId, mode: 'async' },
-      'Async chat completed',
-      { duration, resultLength: result.data?.content?.length }
+      { operation: "chat", requestId, mode: "async" },
+      "Async chat completed",
+      { duration, resultLength: result.data?.content?.length },
     );
 
     logAIUsage({
       modelName: result.data?.model || options.model || this._getDefaultModel(),
-      requestType: 'chat',
+      requestType: "chat",
       promptTokens: this._estimateTokens(JSON.stringify(messages)),
       completionTokens: this._estimateTokens(result.data?.content),
       latencyMs: duration,
-      status: 'success',
+      status: "success",
       metadata: { requestId, async: true },
     }).catch(() => {});
 
@@ -354,37 +369,41 @@ export class AIService {
   async vision(imageData, prompt, options = {}) {
     const requestId = `vision-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const startTime = Date.now();
-    
-    const isUrl = imageData.startsWith('http://') || imageData.startsWith('https://');
+
+    const isUrl =
+      imageData.startsWith("http://") || imageData.startsWith("https://");
 
     logger.info(
-      { operation: 'vision', requestId },
-      'Starting vision analysis',
-      { type: isUrl ? 'url' : 'base64', model: options.model || AI_MODELS.VISION }
+      { operation: "vision", requestId },
+      "Starting vision analysis",
+      {
+        type: isUrl ? "url" : "base64",
+        model: options.model || AI_MODELS.VISION,
+      },
     );
 
     try {
       const client = this._getClient();
       const result = await client.vision(imageData, prompt, {
-        mimeType: options.mimeType || 'image/jpeg',
+        mimeType: options.mimeType || "image/jpeg",
         model: options.model || AI_MODELS.VISION,
         timeout: options.timeout,
       });
 
       const duration = Date.now() - startTime;
       logger.info(
-        { operation: 'vision', requestId },
-        'Vision analysis completed',
-        { duration, resultLength: result?.length }
+        { operation: "vision", requestId },
+        "Vision analysis completed",
+        { duration, resultLength: result?.length },
       );
 
       return result;
     } catch (error) {
       const duration = Date.now() - startTime;
       logger.error(
-        { operation: 'vision', requestId },
-        'Vision analysis failed',
-        { duration, error: error.message }
+        { operation: "vision", requestId },
+        "Vision analysis failed",
+        { duration, error: error.message },
       );
       throw error;
     }
@@ -393,6 +412,71 @@ export class AIService {
   async *stream(prompt, options = {}) {
     const client = this._getClient();
     yield* client.stream(prompt, options);
+  }
+
+  async *streamChat(messages, options = {}) {
+    const requestId = `chat-stream-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const startTime = Date.now();
+    const modelName = options.model || this._getDefaultModel();
+
+    logger.debug(
+      { operation: "chat_stream", requestId },
+      "Starting chat stream",
+      { model: modelName, messageCount: messages?.length },
+    );
+
+    let completion = "";
+
+    try {
+      const client = this._getClient();
+      for await (const chunk of client.streamChat(messages, {
+        temperature: options.temperature,
+        model: options.model,
+        maxTokens: options.maxTokens,
+        timeout: options.timeout,
+      })) {
+        if (!chunk) continue;
+        completion += chunk;
+        yield chunk;
+      }
+
+      const duration = Date.now() - startTime;
+      logger.info(
+        { operation: "chat_stream", requestId },
+        "Chat stream completed",
+        { duration, model: modelName, resultLength: completion.length },
+      );
+
+      logAIUsage({
+        modelName,
+        requestType: "chat_stream",
+        promptTokens: this._estimateTokens(JSON.stringify(messages)),
+        completionTokens: this._estimateTokens(completion),
+        latencyMs: duration,
+        status: "success",
+        metadata: { requestId },
+      }).catch(() => {});
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      logger.error(
+        { operation: "chat_stream", requestId },
+        "Chat stream failed",
+        { duration, model: modelName, error: error.message },
+      );
+
+      logAIUsage({
+        modelName,
+        requestType: "chat_stream",
+        promptTokens: this._estimateTokens(JSON.stringify(messages)),
+        completionTokens: this._estimateTokens(completion),
+        latencyMs: duration,
+        status: "error",
+        errorMessage: error.message,
+        metadata: { requestId },
+      }).catch(() => {});
+
+      throw error;
+    }
   }
 
   async task(mode, payload, options = {}) {
@@ -406,115 +490,142 @@ export class AIService {
       });
 
       const json = this.tryParseJson(text);
-      if (json && typeof json === 'object') {
+      if (json && typeof json === "object") {
         return { ok: true, data: json };
       }
 
       return { ok: true, data: this._getFallbackData(mode, payload) };
     } catch (error) {
       logger.warn(
-        { operation: 'task', mode },
-        'Task generation failed, using fallback',
-        { error: error.message }
+        { operation: "task", mode },
+        "Task generation failed, using fallback",
+        { error: error.message },
       );
       return { ok: true, data: this._getFallbackData(mode, payload) };
     }
   }
 
   _buildTaskPrompt(mode, payload) {
-    const { paragraph, postTitle, persona, content, prompt: userPrompt } = payload;
-    const truncated = this._safeTruncate(paragraph || content || '', TEXT_LIMITS.TASK_PARAGRAPH);
-    const titleTrunc = this._safeTruncate(postTitle || '', TEXT_LIMITS.TASK_TITLE);
+    const {
+      paragraph,
+      postTitle,
+      persona,
+      content,
+      prompt: userPrompt,
+    } = payload;
+    const truncated = this._safeTruncate(
+      paragraph || content || "",
+      TEXT_LIMITS.TASK_PARAGRAPH,
+    );
+    const titleTrunc = this._safeTruncate(
+      postTitle || "",
+      TEXT_LIMITS.TASK_TITLE,
+    );
 
     switch (mode) {
-      case 'sketch':
+      case "sketch":
         return {
-          system: 'You are a helpful writing companion. Return STRICT JSON only.',
+          system:
+            "You are a helpful writing companion. Return STRICT JSON only.",
           user: [
             '{"mood":"string","bullets":["string", "string", "..."]}',
-            '',
+            "",
             `Persona: ${persona || FALLBACK_DATA.PERSONA}`,
             `Post: ${titleTrunc}`,
-            'Paragraph:',
+            "Paragraph:",
             truncated,
-            '',
-            'Task: Capture the emotional sketch. Select a concise mood (e.g., curious, excited, skeptical) and 3-6 short bullets in the original language.',
-          ].join('\n'),
+            "",
+            "Task: Capture the emotional sketch. Select a concise mood (e.g., curious, excited, skeptical) and 3-6 short bullets in the original language.",
+          ].join("\n"),
         };
 
-      case 'prism':
+      case "prism":
         return {
-          system: 'Return STRICT JSON only for idea facets.',
+          system: "Return STRICT JSON only for idea facets.",
           user: [
             '{"facets":[{"title":"string","points":["string","string"]}]}',
             `Post: ${titleTrunc}`,
-            'Paragraph:',
+            "Paragraph:",
             truncated,
-            '',
-            'Task: Provide 2-3 facets (titles) with 2-4 concise points each, in the original language.',
-          ].join('\n'),
+            "",
+            "Task: Provide 2-3 facets (titles) with 2-4 concise points each, in the original language.",
+          ].join("\n"),
         };
 
-      case 'chain':
+      case "chain":
         return {
-          system: 'Return STRICT JSON only for follow-up questions.',
+          system: "Return STRICT JSON only for follow-up questions.",
           user: [
             '{"questions":[{"q":"string","why":"string"}]}',
             `Post: ${titleTrunc}`,
-            'Paragraph:',
+            "Paragraph:",
             truncated,
-            '',
-            'Task: Generate 3-5 short follow-up questions and a brief why for each, in the original language.',
-          ].join('\n'),
+            "",
+            "Task: Generate 3-5 short follow-up questions and a brief why for each, in the original language.",
+          ].join("\n"),
         };
 
-      case 'summary':
+      case "summary":
         return {
-          system: userPrompt || 'You are a helpful assistant that summarizes text concisely.',
+          system:
+            userPrompt ||
+            "You are a helpful assistant that summarizes text concisely.",
           user: `Summarize the following content in Korean, concise but faithful to key points.\n\n${truncated}`,
         };
 
       default:
         return {
-          system: 'You are a helpful assistant.',
+          system: "You are a helpful assistant.",
           user: truncated,
         };
     }
   }
 
   _getFallbackData(mode, payload) {
-    const paragraph = payload.paragraph || payload.content || '';
+    const paragraph = payload.paragraph || payload.content || "";
 
     switch (mode) {
-      case 'sketch': {
+      case "sketch": {
         const sentences = paragraph
-          .replace(/\n+/g, ' ')
+          .replace(/\n+/g, " ")
           .split(/[.!?]\s+/)
-          .map(s => s.trim())
+          .map((s) => s.trim())
           .filter(Boolean);
         return {
           mood: FALLBACK_DATA.MOOD,
-          bullets: sentences.slice(0, 4).map(s =>
-            s.length > TEXT_LIMITS.BULLET_TEXT ? `${s.slice(0, TEXT_LIMITS.BULLET_TEXT - 2)}…` : s
-          ),
+          bullets: sentences
+            .slice(0, 4)
+            .map((s) =>
+              s.length > TEXT_LIMITS.BULLET_TEXT
+                ? `${s.slice(0, TEXT_LIMITS.BULLET_TEXT - 2)}…`
+                : s,
+            ),
         };
       }
 
-      case 'prism':
+      case "prism":
         return {
           facets: [
-            { title: FALLBACK_DATA.FACETS[0]?.title || '핵심 요점', points: [this._safeTruncate(paragraph, TEXT_LIMITS.BULLET_TEXT)] },
-            { title: FALLBACK_DATA.FACETS[1]?.title || '생각해볼 점', points: FALLBACK_DATA.FACETS[1]?.points || ['관점 A', '관점 B'] },
+            {
+              title: FALLBACK_DATA.FACETS[0]?.title || "핵심 요점",
+              points: [this._safeTruncate(paragraph, TEXT_LIMITS.BULLET_TEXT)],
+            },
+            {
+              title: FALLBACK_DATA.FACETS[1]?.title || "생각해볼 점",
+              points: FALLBACK_DATA.FACETS[1]?.points || ["관점 A", "관점 B"],
+            },
           ],
         };
 
-      case 'chain':
+      case "chain":
         return {
           questions: FALLBACK_DATA.QUESTIONS,
         };
 
-      case 'summary':
-        return { summary: this._safeTruncate(paragraph, FALLBACK_DATA.SUMMARY_LENGTH) };
+      case "summary":
+        return {
+          summary: this._safeTruncate(paragraph, FALLBACK_DATA.SUMMARY_LENGTH),
+        };
 
       default:
         return { text: paragraph };
@@ -541,21 +652,27 @@ export class AIService {
 
     try {
       return JSON.parse(text);
-    } catch { /* continue */ }
+    } catch {
+      /* continue */
+    }
 
     const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
     if (fence?.[1]) {
       try {
         return JSON.parse(fence[1].trim());
-      } catch { /* continue */ }
+      } catch {
+        /* continue */
+      }
     }
 
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}');
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
     if (start >= 0 && end > start) {
       try {
         return JSON.parse(text.slice(start, end + 1));
-      } catch { /* continue */ }
+      } catch {
+        /* continue */
+      }
     }
 
     return null;
@@ -567,33 +684,44 @@ export class AIService {
   }
 
   _getDefaultModel() {
-    return config.ai?.defaultModel
-      || process.env.AI_DEFAULT_MODEL
-      || process.env.OPENAI_DEFAULT_MODEL
-      || AI_MODELS.DEFAULT;
+    return (
+      config.ai?.defaultModel ||
+      process.env.AI_DEFAULT_MODEL ||
+      process.env.OPENAI_DEFAULT_MODEL ||
+      AI_MODELS.DEFAULT
+    );
   }
 
   async health(force = false) {
     try {
       const client = this._getClient();
-      return client.health?.(force) || { ok: false, error: 'Health check not available' };
+      return (
+        client.health?.(force) || {
+          ok: false,
+          error: "Health check not available",
+        }
+      );
     } catch (error) {
       return { ok: false, error: error.message };
     }
   }
 
   getProviderInfo() {
-    const baseUrl = config.ai?.baseUrl
-      || process.env.OPENAI_API_BASE_URL
-      || process.env.AI_SERVER_URL
-      || AI_API.BASE_URL
-      || 'https://api.openai.com/v1';
+    const baseUrl =
+      config.ai?.baseUrl ||
+      process.env.OPENAI_API_BASE_URL ||
+      process.env.AI_SERVER_URL ||
+      AI_API.BASE_URL ||
+      "https://api.openai.com/v1";
 
     return {
-      provider: 'openai-compat',
+      provider: "openai-compat",
       config: {
         baseUrl,
-        defaultModel: config.ai?.defaultModel || process.env.AI_DEFAULT_MODEL || AI_MODELS.DEFAULT,
+        defaultModel:
+          config.ai?.defaultModel ||
+          process.env.AI_DEFAULT_MODEL ||
+          AI_MODELS.DEFAULT,
       },
     };
   }

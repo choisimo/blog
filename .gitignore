@@ -249,3 +249,61 @@ gh_secrets.env
 .roo
 .husky
 .ruff_cache
+
+# ------------------------------------------------------------------------------
+# Rust / Cargo 빌드 산출물
+# ------------------------------------------------------------------------------
+# 컴파일된 실행 파일 및 빌드 아티팩트가 저장되는 디렉토리
+/target/
+
+# rustfmt (포맷터) 실행 시 생성되는 백업 파일
+**/*.rs.bk
+
+# Windows 환경에서 MSVC로 빌드할 때 생성되는 디버그 심볼 파일
+*.pdb
+
+# 패키지 매니저 파일 (참고사항)
+# - 바이너리 애플리케이션(Application)을 개발 중이라면 Cargo.lock을 Git에 포함해야 하므로 무시하지 않습니다.
+# - 라이브러리(Crate)를 개발 중이라면 아래 주석을 해제하여 Cargo.lock을 무시하는 것이 권장됩니다.
+# Cargo.lock
+
+# ------------------------------------------------------------------------------
+# 개발 도구 및 에디터
+# ------------------------------------------------------------------------------
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# JetBrains 계열 (IntelliJ, RustRover, CLion 등)
+.idea/
+*.iml
+
+# Cursor / Windsurf 등 AI IDE
+.cursor/
+.windsurf/
+
+# Vim / Emacs 등 텍스트 에디터 임시 파일
+*.swp
+*.swo
+*~
+\#*\#
+
+# ------------------------------------------------------------------------------
+# OS 환경 파일
+# ------------------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# rust - temp
+backend-rust/**
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/

@@ -1,11 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  MessageCircle,
-  Radio,
-  History,
-  Settings,
-  Users,
-} from "lucide-react";
+import { MessageCircle, Radio, History, Settings, Users } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
@@ -45,6 +39,8 @@ export type ChatSidebarProps = {
   onAggregateSelected: () => void;
   persistOptIn: boolean;
   onTogglePersist: () => void;
+  livePinned?: boolean;
+  onToggleLivePinned?: () => void;
 };
 
 export function ChatSidebar({
@@ -62,6 +58,8 @@ export function ChatSidebar({
   onAggregateSelected,
   persistOptIn,
   onTogglePersist,
+  livePinned = false,
+  onToggleLivePinned,
 }: ChatSidebarProps) {
   const [rooms, setRooms] = useState<LiveRoom[]>([]);
 
@@ -257,11 +255,16 @@ export function ChatSidebar({
             설정
           </div>
           <div className="flex items-center justify-between px-2 py-1.5">
-            <span className="text-sm text-muted-foreground">기록 저장</span>
+            <span className="text-sm text-muted-foreground">LIVE 고정</span>
             <Switch
-              checked={persistOptIn}
-              onCheckedChange={onTogglePersist}
+              checked={livePinned}
+              onCheckedChange={() => onToggleLivePinned?.()}
+              disabled={!onToggleLivePinned}
             />
+          </div>
+          <div className="flex items-center justify-between px-2 py-1.5">
+            <span className="text-sm text-muted-foreground">기록 저장</span>
+            <Switch checked={persistOptIn} onCheckedChange={onTogglePersist} />
           </div>
         </div>
       </ScrollArea>

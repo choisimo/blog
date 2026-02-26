@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Terminal, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,8 @@ type ChatMessagesProps = {
   onNavigate?: (path: string) => void;
   onExpireMessage?: (id: string) => void;
 };
+
+const MOBILE_RENDER_LIMIT = 80;
 
 function getSystemLevel(message: ChatMessage): SystemMessageLevel {
   return message.systemLevel ?? "error";
@@ -71,34 +73,54 @@ export function ChatMessages({
   onExpireMessage,
 }: ChatMessagesProps) {
   const navigate = useNavigate();
+  const [showFullMobileHistory, setShowFullMobileHistory] = useState(false);
+
+  useEffect(() => {
+    if (!isMobile || messages.length <= MOBILE_RENDER_LIMIT) {
+      setShowFullMobileHistory(false);
+    }
+  }, [isMobile, messages.length]);
+
+  const hiddenMessageCount =
+    isMobile && !showFullMobileHistory && messages.length > MOBILE_RENDER_LIMIT
+      ? messages.length - MOBILE_RENDER_LIMIT
+      : 0;
+
+  const visibleMessages = useMemo(() => {
+    if (hiddenMessageCount <= 0) return messages;
+    return messages.slice(-MOBILE_RENDER_LIMIT);
+  }, [messages, hiddenMessageCount]);
 
   // Handle navigation to internal blog links
-  const handleSourceClick = (url: string, e: React.MouseEvent) => {
-    // Check if it's an internal blog link
-    const currentHost = window.location.host;
-    let isInternal = false;
-    let internalPath = "";
+  const handleSourceClick = useCallback(
+    (url: string, e: React.MouseEvent) => {
+      // Check if it's an internal blog link
+      const currentHost = window.location.host;
+      let isInternal = false;
+      let internalPath = "";
 
-    try {
-      const urlObj = new URL(url, window.location.origin);
-      if (urlObj.host === currentHost || url.startsWith("/")) {
-        isInternal = true;
-        internalPath = urlObj.pathname;
+      try {
+        const urlObj = new URL(url, window.location.origin);
+        if (urlObj.host === currentHost || url.startsWith("/")) {
+          isInternal = true;
+          internalPath = urlObj.pathname;
+        }
+      } catch {
+        // If URL parsing fails, check if it's a relative path
+        if (url.startsWith("/")) {
+          isInternal = true;
+          internalPath = url;
+        }
       }
-    } catch {
-      // If URL parsing fails, check if it's a relative path
-      if (url.startsWith("/")) {
-        isInternal = true;
-        internalPath = url;
-      }
-    }
 
-    if (isInternal && internalPath) {
-      e.preventDefault();
-      navigate(internalPath);
-      onNavigate?.(internalPath);
-    }
-  };
+      if (isInternal && internalPath) {
+        e.preventDefault();
+        navigate(internalPath);
+        onNavigate?.(internalPath);
+      }
+    },
+    [navigate, onNavigate],
+  );
 
   return (
     <>
@@ -110,7 +132,19 @@ export function ChatMessages({
         />
       )}
 
-      {messages.map((m) => {
+      {hiddenMessageCount > 0 && (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => setShowFullMobileHistory(true)}
+            className="rounded-full border px-3 py-1 text-xs text-muted-foreground hover:bg-muted transition-colors"
+          >
+            이전 메시지 {hiddenMessageCount}개 보기
+          </button>
+        </div>
+      )}
+
+      {visibleMessages.map((m) => {
         const isUser = m.role === "user";
         const isAssistant = m.role === "assistant";
         const isSystem = m.role === "system";
@@ -134,7 +168,7 @@ export function ChatMessages({
               systemLevel={systemLevel}
               isMobile={isMobile}
               onPromptClick={onPromptClick}
-              onRetry={() => onRetry(lastPrompt)}
+              onRetry={onRetry}
               lastPrompt={lastPrompt}
               onSourceClick={handleSourceClick}
               onExpireMessage={onExpireMessage}
@@ -154,7 +188,7 @@ export function ChatMessages({
             systemLevel={systemLevel}
             isMobile={isMobile}
             onPromptClick={onPromptClick}
-            onRetry={() => onRetry(lastPrompt)}
+            onRetry={onRetry}
             lastPrompt={lastPrompt}
             onSourceClick={handleSourceClick}
             onExpireMessage={onExpireMessage}
@@ -205,7 +239,9 @@ const EmptyState = React.memo(function EmptyState({
                   className="terminal-command-btn crt-cli-btn"
                   onClick={() => onPromptClick(prompt)}
                 >
-                  <span className="crt-text-amber font-bold">[{index + 1}]</span>
+                  <span className="crt-text-amber font-bold">
+                    [{index + 1}]
+                  </span>
                   <span>{prompt}</span>
                 </button>
               ))}
@@ -218,7 +254,9 @@ const EmptyState = React.memo(function EmptyState({
 
   return (
     <div className="space-y-4 rounded-2xl border border-dashed px-4 py-6 text-sm text-muted-foreground">
-      <p className="text-center">빠르게 시작하려면 아래 프롬프트를 눌러보세요.</p>
+      <p className="text-center">
+        빠르게 시작하려면 아래 프롬프트를 눌러보세요.
+      </p>
       <div className={cn("flex flex-wrap gap-2", isMobile && "flex-col")}>
         {QUICK_PROMPTS.map((prompt) => (
           <Button
@@ -264,11 +302,13 @@ const TerminalMessage = React.memo(function TerminalMessage({
   systemLevel: SystemMessageLevel;
   isMobile: boolean;
   onPromptClick: (prompt: string) => void;
-  onRetry: () => void;
+  onRetry: (lastPrompt: string) => void;
   lastPrompt: string;
   onSourceClick: (url: string, e: React.MouseEvent) => void;
   onExpireMessage?: (id: string) => void;
 }) {
+  const isStreaming = isAssistant && !m.sources?.length && !m.followups?.length;
+
   return (
     <div className="space-y-2">
       {isUser && (
@@ -304,17 +344,24 @@ const TerminalMessage = React.memo(function TerminalMessage({
           <div className="text-foreground/90 text-sm typewriter-container">
             {m.text.trim() ? (
               <>
-                <ChatMarkdown content={m.text} />
-                {/* Show cursor while still streaming (no sources yet means still streaming) */}
-                {!m.sources?.length && !m.followups?.length && (
-                  <span className="typewriter-cursor" />
+                {isMobile && isStreaming ? (
+                  <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                    {m.text}
+                  </span>
+                ) : (
+                  <ChatMarkdown content={m.text} isStreaming={isStreaming} />
                 )}
+                {isStreaming && <span className="typewriter-cursor" />}
               </>
             ) : (
               <span className="crt-block-cursor" aria-label="waiting" />
             )}
           </div>
-          <Sources sources={m.sources} isTerminal onSourceClick={onSourceClick} />
+          <Sources
+            sources={m.sources}
+            isTerminal
+            onSourceClick={onSourceClick}
+          />
           <Followups
             followups={m.followups}
             isTerminal
@@ -323,32 +370,33 @@ const TerminalMessage = React.memo(function TerminalMessage({
           />
         </div>
       )}
-      {isSystem && (() => {
-        const isStatus =
-          m.systemKind === "status" ||
-          (m.systemKind !== "error" &&
-            (m.text.startsWith("[Live]") || m.text.startsWith("[Session]")) &&
-            systemLevel !== "error");
-        if (isStatus) {
+      {isSystem &&
+        (() => {
+          const isStatus =
+            m.systemKind === "status" ||
+            (m.systemKind !== "error" &&
+              (m.text.startsWith("[Live]") || m.text.startsWith("[Session]")) &&
+              systemLevel !== "error");
+          if (isStatus) {
+            return (
+              <SystemStatusMessage
+                text={m.text}
+                isTerminal
+                transient={m.transient}
+                onExpire={() => onExpireMessage?.(m.id)}
+              />
+            );
+          }
           return (
-            <SystemStatusMessage
+            <SystemMessage
               text={m.text}
+              level={systemLevel}
               isTerminal
-              transient={m.transient}
-              onExpire={() => onExpireMessage?.(m.id)}
+              lastPrompt={lastPrompt}
+              onRetry={() => onRetry(lastPrompt)}
             />
           );
-        }
-        return (
-          <SystemMessage
-            text={m.text}
-            level={systemLevel}
-            isTerminal
-            lastPrompt={lastPrompt}
-            onRetry={onRetry}
-          />
-        );
-      })()}
+        })()}
     </div>
   );
 });
@@ -378,11 +426,12 @@ const DefaultMessage = React.memo(function DefaultMessage({
   systemLevel: SystemMessageLevel;
   isMobile: boolean;
   onPromptClick: (prompt: string) => void;
-  onRetry: () => void;
+  onRetry: (lastPrompt: string) => void;
   lastPrompt: string;
   onSourceClick: (url: string, e: React.MouseEvent) => void;
   onExpireMessage?: (id: string) => void;
 }) {
+  const isStreaming = isAssistant && !m.sources?.length && !m.followups?.length;
   const isStatus =
     isSystem &&
     (m.systemKind === "status" ||
@@ -414,7 +463,13 @@ const DefaultMessage = React.memo(function DefaultMessage({
       >
         {isAssistant ? (
           m.text.trim() ? (
-            <ChatMarkdown content={m.text} />
+            isMobile && isStreaming ? (
+              <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                {m.text}
+              </span>
+            ) : (
+              <ChatMarkdown content={m.text} isStreaming={isStreaming} />
+            )
           ) : (
             <TypingDots />
           )
@@ -427,10 +482,18 @@ const DefaultMessage = React.memo(function DefaultMessage({
             {imageUrl && <UserImage imageUrl={imageUrl} isTerminal={false} />}
           </div>
         ) : (
-          <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{m.text}</span>
+          <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+            {m.text}
+          </span>
         )}
 
-        {isAssistant && <Sources sources={m.sources} isTerminal={false} onSourceClick={onSourceClick} />}
+        {isAssistant && (
+          <Sources
+            sources={m.sources}
+            isTerminal={false}
+            onSourceClick={onSourceClick}
+          />
+        )}
         {isAssistant && (
           <Followups
             followups={m.followups}
@@ -446,7 +509,7 @@ const DefaultMessage = React.memo(function DefaultMessage({
               size="sm"
               variant="ghost"
               className="h-9 text-sm px-3"
-              onClick={onRetry}
+              onClick={() => onRetry(lastPrompt)}
             >
               다시 시도하기
             </Button>
@@ -539,7 +602,9 @@ const Sources = React.memo(function Sources({
 
   return (
     <div className="mt-3 space-y-1.5">
-      <div className="text-xs text-muted-foreground font-medium">참고한 출처</div>
+      <div className="text-xs text-muted-foreground font-medium">
+        참고한 출처
+      </div>
       <ul className="text-sm list-disc pl-4 space-y-1">
         {sources.map((s, i) => (
           <li key={i}>
@@ -579,7 +644,9 @@ const Followups = React.memo(function Followups({
     return (
       <div className="mt-3 pl-3">
         <span className="text-xs text-primary/60"># 연관 질문:</span>
-        <div className={cn("flex gap-2 mt-2", isMobile ? "flex-col" : "flex-wrap")}>
+        <div
+          className={cn("flex gap-2 mt-2", isMobile ? "flex-col" : "flex-wrap")}
+        >
           {followups.map((q, i) => (
             <button
               key={i}

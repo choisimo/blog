@@ -47,11 +47,14 @@ export default function ChatWidget(props: {
 }) {
   const isMobile = useIsMobile();
   const { isTerminal } = useTheme();
-  const keyboardHeight = useKeyboardHeight(isMobile);
+  const keyboardViewport = useKeyboardHeight(isMobile);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [debateBusy, setDebateBusy] = useState(false);
   const debateAbortRef = useRef<AbortController | null>(null);
+
+  // Main state hook
+  const state = useChatState({ initialMessage: props.initialMessage });
 
   // Dynamic max height calculation for PC
   const [pcMaxHeight, setPcMaxHeight] = useState("80vh");
@@ -71,8 +74,17 @@ export default function ChatWidget(props: {
     return () => window.removeEventListener("resize", calculateHeight);
   }, [isMobile]);
 
-  // Main state hook
-  const state = useChatState({ initialMessage: props.initialMessage });
+  useEffect(() => {
+    if (!isMobile || !keyboardViewport.keyboardVisible) return;
+    const scroller = state.scrollRef.current;
+    if (!scroller) return;
+
+    const raf = requestAnimationFrame(() => {
+      scroller.scrollTop = scroller.scrollHeight;
+    });
+
+    return () => cancelAnimationFrame(raf);
+  }, [isMobile, keyboardViewport.keyboardVisible, state.scrollRef]);
 
   // Session management
   const session = useChatSession({
@@ -123,6 +135,9 @@ export default function ChatWidget(props: {
     currentLiveRoom: liveVisitorChat.room,
     switchLiveRoom: liveVisitorChat.switchRoom,
     sendVisitorMessage: liveVisitorChat.sendVisitorMessage,
+    isMobile,
+    livePinned: state.livePinned,
+    setLivePinned: state.setLivePinned,
   });
 
   // Keyboard handler
@@ -136,7 +151,7 @@ export default function ChatWidget(props: {
       state.setInput(prompt);
       state.focusInput();
     },
-    [state],
+    [state.setInput, state.focusInput],
   );
 
   const handleRetry = useCallback(
@@ -144,7 +159,7 @@ export default function ChatWidget(props: {
       state.setInput(lastPrompt);
       state.focusInput();
     },
-    [state],
+    [state.setInput, state.focusInput],
   );
 
   const handleClearAll = useCallback(async () => {
@@ -159,7 +174,17 @@ export default function ChatWidget(props: {
     setShowClearConfirm(false);
   }, [actions]);
 
+  const isKeyboardFocusMode = isMobile && keyboardViewport.keyboardVisible;
   const currentLiveRoomLabel = formatLiveRoomName(liveVisitorChat.room);
+  const toggleLivePinned = useCallback(() => {
+    state.setLivePinned((prev) => !prev);
+  }, [state.setLivePinned]);
+  const handleExpireMessage = useCallback(
+    (id: string) => {
+      state.setMessages((prev) => prev.filter((m) => m.id !== id));
+    },
+    [state.setMessages],
+  );
 
   const handleStartDebate = useCallback(async () => {
     if (debateBusy) return;
@@ -171,9 +196,9 @@ export default function ChatWidget(props: {
     // 토론 시작 알림
     state.push({
       id: `debate_start_${Date.now()}`,
-      role: 'system',
+      role: "system",
       text: `[토론 시작] 주제: ${topic}`,
-      systemKind: 'status',
+      systemKind: "status",
     });
 
     setDebateBusy(true);
@@ -188,92 +213,164 @@ export default function ChatWidget(props: {
       `3-5문장 이내로 핵심 논거를 제시하세요.\n\n주제: ${topic}`;
 
     const rounds = 2;
+    const MOBILE_DEBATE_FLUSH_MS = 64;
+
+    const runDebateTurn = async (params: {
+      prompt: string;
+      id: string;
+      prefix: string;
+      signal: AbortSignal;
+    }) => {
+      let text = "";
+      let rafHandle: number | null = null;
+      let mobileFlushTimer: number | null = null;
+
+      const commit = (snapshot: string) => {
+        state.setMessages((prev) =>
+          prev.map((m) =>
+            m.id === params.id
+              ? { ...m, text: `${params.prefix}${snapshot}` }
+              : m,
+          ),
+        );
+      };
+
+      const scheduleCommit = (snapshot: string) => {
+        if (isMobile) {
+          if (mobileFlushTimer !== null) return;
+          mobileFlushTimer = window.setTimeout(() => {
+            mobileFlushTimer = null;
+            commit(text);
+          }, MOBILE_DEBATE_FLUSH_MS);
+          return;
+        }
+
+        if (rafHandle !== null) cancelAnimationFrame(rafHandle);
+        rafHandle = requestAnimationFrame(() => {
+          rafHandle = null;
+          commit(snapshot);
+        });
+      };
+
+      try {
+        for await (const ev of streamChatEvents({
+          text: params.prompt,
+          signal: params.signal,
+          useArticleContext: false,
+        })) {
+          if (ev.type !== "text") continue;
+          text += ev.text;
+          scheduleCommit(text);
+        }
+      } finally {
+        if (mobileFlushTimer !== null) {
+          window.clearTimeout(mobileFlushTimer);
+          mobileFlushTimer = null;
+        }
+        if (rafHandle !== null) {
+          cancelAnimationFrame(rafHandle);
+          rafHandle = null;
+        }
+        commit(text);
+      }
+
+      return text;
+    };
+
     try {
+      let previousConText = "";
       for (let round = 1; round <= rounds; round++) {
         if (abort.signal.aborted) break;
 
         // 찬성측 발언
         const proId = `debate_pro_${round}_${Date.now()}`;
-        state.push({ id: proId, role: 'assistant', text: '' });
-        let proText = '';
-        for await (const ev of streamChatEvents({
-          text: round === 1 ? PRO_PROMPT : `${PRO_PROMPT}\n\n반대측 주장:\n${proText}에 반박하며 주장을 강화하세요.`,
+        state.push({ id: proId, role: "assistant", text: "" });
+        const proText = await runDebateTurn({
+          prompt:
+            round === 1
+              ? PRO_PROMPT
+              : `${PRO_PROMPT}\n\n직전 반대측 주장:\n${previousConText}\n위 주장에 반박하며 찬성 논리를 강화하세요.`,
+          id: proId,
+          prefix: "[토론 · 찬성] ",
           signal: abort.signal,
-          useArticleContext: false,
-        })) {
-          if (ev.type === 'text') {
-            proText += ev.text;
-            state.setMessages(prev =>
-              prev.map(m => m.id === proId ? { ...m, text: `[토론 · 찬성] ${proText}` } : m)
-            );
-          }
-        }
+        });
 
         if (abort.signal.aborted) break;
 
         // 반대측 발언
         const conId = `debate_con_${round}_${Date.now()}`;
-        state.push({ id: conId, role: 'assistant', text: '' });
-        let conText = '';
-        for await (const ev of streamChatEvents({
-          text: round === 1 ? CON_PROMPT : `${CON_PROMPT}\n\n찬성측 주장:\n${proText}에 반박하여 반대 주장을 강화하세요.`,
+        state.push({ id: conId, role: "assistant", text: "" });
+        const conText = await runDebateTurn({
+          prompt:
+            round === 1
+              ? `${CON_PROMPT}\n\n찬성측 주장:\n${proText}`
+              : `${CON_PROMPT}\n\n찬성측 최신 주장:\n${proText}\n이를 반박하여 반대 주장을 강화하세요.`,
+          id: conId,
+          prefix: "[토론 · 반대] ",
           signal: abort.signal,
-          useArticleContext: false,
-        })) {
-          if (ev.type === 'text') {
-            conText += ev.text;
-            state.setMessages(prev =>
-              prev.map(m => m.id === conId ? { ...m, text: `[토론 · 반대] ${conText}` } : m)
-            );
-          }
-        }
+        });
+        previousConText = conText;
       }
 
       if (!abort.signal.aborted) {
         state.push({
           id: `debate_end_${Date.now()}`,
-          role: 'system',
-          text: '[토론 종료] AI 토론이 완료되었습니다.',
-          systemKind: 'status',
+          role: "system",
+          text: "[토론 종료] AI 토론이 완료되었습니다.",
+          systemKind: "status",
         });
       }
     } catch {
       if (!abort.signal.aborted) {
         state.push({
           id: `debate_err_${Date.now()}`,
-          role: 'system',
-          text: '[토론 오류] 토론 중 문제가 발생했습니다.',
-          systemKind: 'error',
-          systemLevel: 'error',
+          role: "system",
+          text: "[토론 오류] 토론 중 문제가 발생했습니다.",
+          systemKind: "error",
+          systemLevel: "error",
         });
       }
     } finally {
       setDebateBusy(false);
       debateAbortRef.current = null;
     }
-  // deps: debateBusy is a guard, state/liveVisitorChat.room are stable refs
-  }, [debateBusy, liveVisitorChat.room, state]);
+    // deps: debateBusy is a guard, state/liveVisitorChat.room are stable refs
+  }, [
+    debateBusy,
+    isMobile,
+    liveVisitorChat.room,
+    state.setShowActionSheet,
+    state.push,
+    state.setMessages,
+  ]);
 
   return (
     <>
       <div
         className={cn(
-          "fixed z-[var(--z-chat-widget)] flex flex-col overflow-hidden border bg-background shadow-2xl transition-all",
+          "fixed z-[var(--z-chat-widget)] flex flex-col overflow-hidden border bg-background",
+          isMobile ? "shadow-none" : "shadow-2xl transition-all",
           // Mobile: always fullscreen
           isMobile
-            ? "inset-0 rounded-none max-w-full w-full overflow-x-hidden"
+            ? "left-0 right-0 rounded-none max-w-full w-full overflow-x-hidden"
             : sidebarOpen
               ? "bottom-20 left-1/2 w-[min(100%-24px,58rem)] -translate-x-1/2 rounded-2xl"
               : "bottom-20 left-1/2 w-[min(100%-24px,42rem)] -translate-x-1/2 rounded-2xl",
-          isTerminal && !isMobile && "border-border bg-[hsl(var(--terminal-code-bg))] rounded-lg terminal-crt",
-          isTerminal && isMobile && "border-0 bg-[hsl(var(--terminal-code-bg))]",
+          isTerminal &&
+            !isMobile &&
+            "border-border bg-[hsl(var(--terminal-code-bg))] rounded-lg terminal-crt",
+          isTerminal &&
+            isMobile &&
+            "border-0 bg-[hsl(var(--terminal-code-bg))]",
         )}
         style={
-          isMobile && keyboardHeight > 0
-            ? { height: `calc(100dvh - ${keyboardHeight}px)` }
-            : isMobile
-              ? { height: "100dvh" }
-              : { maxHeight: pcMaxHeight }
+          isMobile
+            ? {
+                height: keyboardViewport.viewportHeight,
+                top: `${keyboardViewport.viewportTop}px`,
+                bottom: "auto",
+              }
+            : { maxHeight: pcMaxHeight }
         }
       >
         {/* Header */}
@@ -290,6 +387,7 @@ export default function ChatWidget(props: {
           onTogglePersist={state.togglePersistStorage}
           onStartDebate={handleStartDebate}
           currentLiveRoomLabel={currentLiveRoomLabel}
+          livePinned={state.livePinned}
           onClearAll={handleClearAll}
           onClose={props.onClose}
           sidebarOpen={sidebarOpen}
@@ -313,6 +411,8 @@ export default function ChatWidget(props: {
               onAggregateSelected={session.handleAggregateFromSelected}
               persistOptIn={state.persistOptIn}
               onTogglePersist={state.togglePersistStorage}
+              livePinned={state.livePinned}
+              onToggleLivePinned={toggleLivePinned}
               onStartDebate={handleStartDebate}
               currentLiveRoomLabel={currentLiveRoomLabel}
             />
@@ -335,7 +435,7 @@ export default function ChatWidget(props: {
             )}
 
             {/* Live room panel (mobile only — desktop uses sidebar) */}
-            {isMobile && (
+            {isMobile && !isKeyboardFocusMode && (
               <LiveRoomPanel
                 isTerminal={isTerminal}
                 isMobile={isMobile}
@@ -343,11 +443,13 @@ export default function ChatWidget(props: {
                 onRoomSelect={liveVisitorChat.switchRoom}
                 onStartDebate={handleStartDebate}
                 currentRoomLabel={currentLiveRoomLabel}
+                livePinned={state.livePinned}
+                onToggleLivePinned={toggleLivePinned}
               />
             )}
 
             {/* Mode selector (mobile only — desktop uses sidebar) */}
-            {isMobile && (
+            {isMobile && !isKeyboardFocusMode && (
               <ModeSelector
                 questionMode={state.questionMode}
                 onModeChange={state.setQuestionMode}
@@ -360,7 +462,8 @@ export default function ChatWidget(props: {
             <div
               ref={state.scrollRef}
               className={cn(
-                "flex-1 overflow-auto overscroll-contain px-4 py-4 space-y-4",
+                "flex-1 overflow-auto overscroll-contain px-4 py-4 space-y-4 [content-visibility:auto]",
+                isKeyboardFocusMode && "py-2",
                 isMobile && "px-4",
                 isTerminal && "space-y-3 font-mono text-sm",
               )}
@@ -373,21 +476,23 @@ export default function ChatWidget(props: {
                 onRetry={handleRetry}
                 lastPrompt={state.lastPromptRef.current}
                 onNavigate={props.onClose}
-                onExpireMessage={(id) => state.setMessages((prev) => prev.filter((m) => m.id !== id))}
+                onExpireMessage={handleExpireMessage}
               />
             </div>
 
             {/* Summary bar */}
-            {state.persistOptIn && state.summary && (
+            {state.persistOptIn && state.summary && !isKeyboardFocusMode && (
               <div
                 className={cn(
                   "px-4 py-2 border-t text-xs text-muted-foreground truncate shrink-0",
-                  isTerminal && "font-mono border-border bg-[hsl(var(--terminal-code-bg))]",
+                  isTerminal &&
+                    "font-mono border-border bg-[hsl(var(--terminal-code-bg))]",
                 )}
               >
                 {isTerminal ? (
                   <span>
-                    <span className="text-primary/60"># Last:</span> {state.summary}
+                    <span className="text-primary/60"># Last:</span>{" "}
+                    {state.summary}
                   </span>
                 ) : (
                   <>요약: {state.summary}</>
@@ -427,7 +532,10 @@ export default function ChatWidget(props: {
       />
 
       {/* Mobile sidebar slide-over */}
-      <Sheet open={isMobile && sidebarOpen} onOpenChange={(open) => setSidebarOpen(open)}>
+      <Sheet
+        open={isMobile && sidebarOpen}
+        onOpenChange={(open) => setSidebarOpen(open)}
+      >
         <SheetContent side="left" className="w-64 p-0">
           <ChatSidebar
             isTerminal={isTerminal}
@@ -442,6 +550,8 @@ export default function ChatWidget(props: {
             onAggregateSelected={session.handleAggregateFromSelected}
             persistOptIn={state.persistOptIn}
             onTogglePersist={state.togglePersistStorage}
+            livePinned={state.livePinned}
+            onToggleLivePinned={toggleLivePinned}
             onStartDebate={handleStartDebate}
             currentLiveRoomLabel={currentLiveRoomLabel}
           />
@@ -464,12 +574,13 @@ export default function ChatWidget(props: {
           state.setShowImageDrawer(true);
         }}
         onTogglePersist={state.togglePersistStorage}
+        livePinned={state.livePinned}
+        onToggleLivePinned={toggleLivePinned}
         onStartDebate={handleStartDebate}
         currentLiveRoomLabel={currentLiveRoomLabel}
         onClearAll={handleClearAll}
         isTerminal={isTerminal}
       />
-
 
       <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
         <AlertDialogContent>
@@ -481,7 +592,10 @@ export default function ChatWidget(props: {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction onClick={handleClearConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleClearConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               삭제
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -1,7 +1,15 @@
-import { config } from '../config/index.js';
-import { TIMEOUTS } from '../config/constants.js';
+import { config } from "../config/index.js";
+import { TIMEOUTS } from "../config/constants.js";
 
-const OPEN_NOTEBOOK_BASE_URL = config.services?.openNotebookUrl || 'http://open-notebook:8501';
+const OPEN_NOTEBOOK_BASE_URL =
+  config.services?.openNotebookUrl || "http://open-notebook:8501";
+const OPEN_NOTEBOOK_MODEL_CACHE_TTL_MS = Math.max(
+  30_000,
+  Number.parseInt(process.env.OPEN_NOTEBOOK_MODEL_CACHE_TTL_MS || "300000", 10),
+);
+
+let _cachedLanguageModelId = null;
+let _cachedLanguageModelExpiresAt = 0;
 
 async function fetchOpenNotebook(endpoint, options = {}) {
   const url = `${OPEN_NOTEBOOK_BASE_URL}${endpoint}`;
@@ -15,7 +23,7 @@ async function fetchOpenNotebook(endpoint, options = {}) {
       ...options,
       signal: controller.signal,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...options.headers,
       },
     });
@@ -24,13 +32,15 @@ async function fetchOpenNotebook(endpoint, options = {}) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Open Notebook API error: ${response.status} - ${errorText}`);
+      throw new Error(
+        `Open Notebook API error: ${response.status} - ${errorText}`,
+      );
     }
 
     return response.json();
   } catch (err) {
     clearTimeout(timeoutId);
-    if (err.name === 'AbortError') {
+    if (err.name === "AbortError") {
       throw new Error(`Open Notebook request timeout after ${timeout}ms`);
     }
     throw err;
@@ -49,8 +59,8 @@ export async function searchOpenNotebook(query, options = {}) {
     body.notebook_id = notebookId;
   }
 
-  const result = await fetchOpenNotebook('/api/search', {
-    method: 'POST',
+  const result = await fetchOpenNotebook("/api/search", {
+    method: "POST",
     body: JSON.stringify(body),
   });
 
@@ -59,32 +69,51 @@ export async function searchOpenNotebook(query, options = {}) {
 
 export async function askOpenNotebook(query, options = {}) {
   const { notebookId = null } = options;
+  const timeoutMs =
+    Number.isFinite(options.timeout) && options.timeout > 0
+      ? options.timeout
+      : TIMEOUTS.LONG;
+  const now = Date.now();
 
-  let defaults = {};
-  try {
-    defaults = await fetchOpenNotebook('/api/models/defaults', {
-      method: 'GET',
-    });
-  } catch {
-    defaults = {};
-  }
-
-  let languageModelId = defaults.default_chat_model || null;
-
-  if (!languageModelId) {
-    const models = await fetchOpenNotebook('/api/models', {
-      method: 'GET',
-    });
-
-    const fallbackModel = Array.isArray(models)
-      ? models.find(m => m?.type === 'language' && m?.id)
-      : null;
-
-    languageModelId = fallbackModel?.id || null;
+  let languageModelId = null;
+  if (_cachedLanguageModelId && _cachedLanguageModelExpiresAt > now) {
+    languageModelId = _cachedLanguageModelId;
   }
 
   if (!languageModelId) {
-    throw new Error('Open Notebook language model is not configured');
+    let defaults = {};
+    try {
+      defaults = await fetchOpenNotebook("/api/models/defaults", {
+        method: "GET",
+        timeout: Math.min(timeoutMs, 4000),
+      });
+    } catch {
+      defaults = {};
+    }
+
+    languageModelId = defaults.default_chat_model || null;
+
+    if (!languageModelId) {
+      const models = await fetchOpenNotebook("/api/models", {
+        method: "GET",
+        timeout: Math.min(timeoutMs, 4000),
+      });
+
+      const fallbackModel = Array.isArray(models)
+        ? models.find((m) => m?.type === "language" && m?.id)
+        : null;
+
+      languageModelId = fallbackModel?.id || null;
+    }
+
+    if (languageModelId) {
+      _cachedLanguageModelId = languageModelId;
+      _cachedLanguageModelExpiresAt = now + OPEN_NOTEBOOK_MODEL_CACHE_TTL_MS;
+    }
+  }
+
+  if (!languageModelId) {
+    throw new Error("Open Notebook language model is not configured");
   }
 
   const body = {
@@ -98,30 +127,30 @@ export async function askOpenNotebook(query, options = {}) {
     body.notebook_id = notebookId;
   }
 
-  const result = await fetchOpenNotebook('/api/search/ask/simple', {
-    method: 'POST',
+  const result = await fetchOpenNotebook("/api/search/ask/simple", {
+    method: "POST",
     body: JSON.stringify(body),
-    timeout: TIMEOUTS.LONG,
+    timeout: timeoutMs,
   });
 
   return {
-    answer: result.answer || result.response || '',
+    answer: result.answer || result.response || "",
     sources: result.sources || [],
     context: result.context || [],
   };
 }
 
 export async function listNotebooks() {
-  const result = await fetchOpenNotebook('/api/notebooks', {
-    method: 'GET',
+  const result = await fetchOpenNotebook("/api/notebooks", {
+    method: "GET",
   });
 
   return result.notebooks || [];
 }
 
-export async function createNotebook(name, description = '') {
-  const result = await fetchOpenNotebook('/api/notebooks', {
-    method: 'POST',
+export async function createNotebook(name, description = "") {
+  const result = await fetchOpenNotebook("/api/notebooks", {
+    method: "POST",
     body: JSON.stringify({ name, description }),
   });
 
@@ -129,7 +158,7 @@ export async function createNotebook(name, description = '') {
 }
 
 export async function createNote(content, options = {}) {
-  const { title = null, notebookId = null, noteType = 'human' } = options;
+  const { title = null, notebookId = null, noteType = "human" } = options;
 
   const body = {
     content,
@@ -144,8 +173,8 @@ export async function createNote(content, options = {}) {
     body.notebook_id = notebookId;
   }
 
-  return fetchOpenNotebook('/api/notes', {
-    method: 'POST',
+  return fetchOpenNotebook("/api/notes", {
+    method: "POST",
     body: JSON.stringify(body),
   });
 }
@@ -158,15 +187,15 @@ export async function addSource(notebookId, source) {
     source_type: type,
   };
 
-  if (type === 'text') {
+  if (type === "text") {
     body.content = content;
-    body.title = title || 'Untitled';
-  } else if (type === 'url') {
+    body.title = title || "Untitled";
+  } else if (type === "url") {
     body.url = url;
   }
 
-  const result = await fetchOpenNotebook('/api/sources', {
-    method: 'POST',
+  const result = await fetchOpenNotebook("/api/sources", {
+    method: "POST",
     body: JSON.stringify(body),
   });
 
@@ -175,8 +204,8 @@ export async function addSource(notebookId, source) {
 
 export async function healthCheck() {
   try {
-    const result = await fetchOpenNotebook('/health', {
-      method: 'GET',
+    const result = await fetchOpenNotebook("/health", {
+      method: "GET",
       timeout: 5000,
     });
     return { ok: true, ...result };

@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { ChatMessage, ChatSessionMeta, QuestionMode } from "../types";
 import {
-  SESSIONS_INDEX_KEY,
-  SESSION_MESSAGES_PREFIX,
   switchToSession,
   loadSessionMessages,
   storeSessionsIndex,
 } from "@/services/chat";
+
+const SESSION_META_DEBOUNCE_MS = 450;
 
 type UseChatSessionProps = {
   sessionKey: string;
@@ -48,18 +48,22 @@ export function useChatSession({
   setInput,
 }: UseChatSessionProps) {
   const persistIndexTimerRef = useRef<number | null>(null);
+  const sessionMetaTimerRef = useRef<number | null>(null);
 
-  const scheduleSessionsIndexPersist = useCallback((next: ChatSessionMeta[]) => {
-    if (persistIndexTimerRef.current !== null) {
-      window.clearTimeout(persistIndexTimerRef.current);
-      persistIndexTimerRef.current = null;
-    }
+  const scheduleSessionsIndexPersist = useCallback(
+    (next: ChatSessionMeta[]) => {
+      if (persistIndexTimerRef.current !== null) {
+        window.clearTimeout(persistIndexTimerRef.current);
+        persistIndexTimerRef.current = null;
+      }
 
-    persistIndexTimerRef.current = window.setTimeout(() => {
-      storeSessionsIndex(next);
-      persistIndexTimerRef.current = null;
-    }, 400);
-  }, []);
+      persistIndexTimerRef.current = window.setTimeout(() => {
+        storeSessionsIndex(next);
+        persistIndexTimerRef.current = null;
+      }, 400);
+    },
+    [],
+  );
 
   const loadSession = useCallback(
     (id: string) => {
@@ -148,53 +152,82 @@ export function useChatSession({
   useEffect(() => {
     if (!persistOptIn || !sessionKey) return;
     if (messages.length === 0) return;
-
-    const nowIso = new Date().toISOString();
-    const firstUser = messages.find((m) => m.role === "user" && m.text.trim());
-    const baseTitle = (firstUser?.text || pageTitle || "새 대화")
-      .split("\n")[0]
-      .trim();
-    const title =
-      baseTitle.length > 60 ? `${baseTitle.slice(0, 60)}…` : baseTitle;
-    const articleUrl =
-      typeof window !== "undefined" ? window.location.href : undefined;
-
-    let nextSessions: ChatSessionMeta[] | null = null;
-    setSessions((prev) => {
-      const existing = prev.find((s) => s.id === sessionKey);
-      const createdAt = existing?.createdAt || nowIso;
-      const next: ChatSessionMeta = {
-        id: sessionKey,
-        title: existing?.title || title,
-        summary,
-        createdAt,
-        updatedAt: nowIso,
-        messageCount: messages.length,
-        mode: questionMode,
-        articleUrl: articleUrl || existing?.articleUrl,
-        articleTitle: pageTitle || existing?.articleTitle,
-      };
-      const others = prev.filter((s) => s.id !== sessionKey);
-      const updated = [next, ...others];
-      nextSessions = updated;
-      
-      if (typeof window !== "undefined") {
-        try {
-          window.dispatchEvent(new CustomEvent("aiChat:sessionsUpdated"));
-        } catch {
-          void 0;
-        }
-      }
-      return updated;
-    });
-
-    if (nextSessions) {
-      scheduleSessionsIndexPersist(nextSessions);
+    if (sessionMetaTimerRef.current !== null) {
+      window.clearTimeout(sessionMetaTimerRef.current);
+      sessionMetaTimerRef.current = null;
     }
-  }, [messages, summary, questionMode, pageTitle, persistOptIn, sessionKey, setSessions]);
+
+    sessionMetaTimerRef.current = window.setTimeout(() => {
+      const nowIso = new Date().toISOString();
+      const firstUser = messages.find(
+        (m) => m.role === "user" && m.text.trim(),
+      );
+      const baseTitle = (firstUser?.text || pageTitle || "새 대화")
+        .split("\n")[0]
+        .trim();
+      const title =
+        baseTitle.length > 60 ? `${baseTitle.slice(0, 60)}…` : baseTitle;
+      const articleUrl =
+        typeof window !== "undefined" ? window.location.href : undefined;
+
+      let nextSessions: ChatSessionMeta[] | null = null;
+      setSessions((prev) => {
+        const existing = prev.find((s) => s.id === sessionKey);
+        const createdAt = existing?.createdAt || nowIso;
+        const next: ChatSessionMeta = {
+          id: sessionKey,
+          title: existing?.title || title,
+          summary,
+          createdAt,
+          updatedAt: nowIso,
+          messageCount: messages.length,
+          mode: questionMode,
+          articleUrl: articleUrl || existing?.articleUrl,
+          articleTitle: pageTitle || existing?.articleTitle,
+        };
+        const others = prev.filter((s) => s.id !== sessionKey);
+        const updated = [next, ...others];
+        nextSessions = updated;
+
+        if (typeof window !== "undefined") {
+          try {
+            window.dispatchEvent(new CustomEvent("aiChat:sessionsUpdated"));
+          } catch {
+            void 0;
+          }
+        }
+        return updated;
+      });
+
+      if (nextSessions) {
+        scheduleSessionsIndexPersist(nextSessions);
+      }
+      sessionMetaTimerRef.current = null;
+    }, SESSION_META_DEBOUNCE_MS);
+
+    return () => {
+      if (sessionMetaTimerRef.current !== null) {
+        window.clearTimeout(sessionMetaTimerRef.current);
+        sessionMetaTimerRef.current = null;
+      }
+    };
+  }, [
+    messages,
+    summary,
+    questionMode,
+    pageTitle,
+    persistOptIn,
+    sessionKey,
+    setSessions,
+    scheduleSessionsIndexPersist,
+  ]);
 
   useEffect(() => {
     return () => {
+      if (sessionMetaTimerRef.current !== null) {
+        window.clearTimeout(sessionMetaTimerRef.current);
+        sessionMetaTimerRef.current = null;
+      }
       if (persistIndexTimerRef.current !== null) {
         window.clearTimeout(persistIndexTimerRef.current);
         persistIndexTimerRef.current = null;

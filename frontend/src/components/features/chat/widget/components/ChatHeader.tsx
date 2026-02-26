@@ -1,11 +1,5 @@
 import React from "react";
-import {
-  Sparkles,
-  MoreVertical,
-  X,
-  Loader2,
-  Menu,
-} from "lucide-react";
+import { Sparkles, MoreVertical, X, Loader2, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -30,6 +24,7 @@ type ChatHeaderProps = {
   onTogglePersist: () => void;
   onStartDebate?: () => void;
   currentLiveRoomLabel?: string;
+  livePinned?: boolean;
   onClearAll: () => void;
   onClose?: () => void;
   sidebarOpen?: boolean;
@@ -49,11 +44,16 @@ export function ChatHeader({
   onTogglePersist,
   onStartDebate,
   currentLiveRoomLabel,
+  livePinned = false,
   onClearAll,
   onClose,
   sidebarOpen,
   onToggleSidebar,
 }: ChatHeaderProps) {
+  const liveStatus = livePinned
+    ? `LIVE 고정 ON (${currentLiveRoomLabel || "room"})`
+    : null;
+
   return (
     <div
       className={cn(
@@ -61,7 +61,9 @@ export function ChatHeader({
         isMobile && "px-4 py-3 safe-area-top",
         isTerminal
           ? "bg-[hsl(var(--terminal-titlebar))] border-border"
-          : "bg-background/95 backdrop-blur-sm",
+          : isMobile
+            ? "bg-background"
+            : "bg-background/95 backdrop-blur-sm",
       )}
     >
       {/* Left: Hamburger + Icon + Title */}
@@ -126,6 +128,8 @@ export function ChatHeader({
               <span className="inline-flex items-center gap-1">
                 <Loader2 className="h-3 w-3 animate-spin" /> 생성 중…
               </span>
+            ) : liveStatus ? (
+              liveStatus
             ) : persistOptIn ? (
               "기록 저장 ON"
             ) : (

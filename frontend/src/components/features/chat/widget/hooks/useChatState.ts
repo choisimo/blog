@@ -16,6 +16,8 @@ import {
 
 const SESSION_PERSIST_DEBOUNCE_MS = 400;
 const MAX_MESSAGES_PER_SESSION = 200;
+const LIVE_PINNED_KEY = "aiChat.livePinned";
+const AUTO_SCROLL_BOTTOM_THRESHOLD_PX = 120;
 
 export function useChatState(options?: { initialMessage?: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -48,6 +50,14 @@ export function useChatState(options?: { initialMessage?: string }) {
     null,
   );
   const [uploadedImages, setUploadedImages] = useState<UploadedChatImage[]>([]);
+  const [livePinned, setLivePinned] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.localStorage.getItem(LIVE_PINNED_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -55,16 +65,44 @@ export function useChatState(options?: { initialMessage?: string }) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const lastPromptRef = useRef<string>("");
   const persistTimerRef = useRef<number | null>(null);
+  const autoScrollEnabledRef = useRef(true);
 
-  const canSend =
-    (input.trim().length > 0 || attachedImage !== null) && !busy;
+  const canSend = (input.trim().length > 0 || attachedImage !== null) && !busy;
 
   // Auto-scroll on new messages
   useEffect(() => {
     const sc = scrollRef.current;
     if (!sc) return;
-    sc.scrollTop = sc.scrollHeight + 1000;
-  }, [messages, busy]);
+
+    const lastMessage = messages[messages.length - 1];
+    const shouldForceScroll = lastMessage?.role === "user";
+    if (!autoScrollEnabledRef.current && !shouldForceScroll) return;
+
+    const raf = requestAnimationFrame(() => {
+      sc.scrollTop = sc.scrollHeight + 1000;
+    });
+
+    return () => cancelAnimationFrame(raf);
+  }, [messages]);
+
+  useEffect(() => {
+    const sc = scrollRef.current;
+    if (!sc) return;
+
+    const updateAutoScrollState = () => {
+      const distanceFromBottom =
+        sc.scrollHeight - (sc.scrollTop + sc.clientHeight);
+      autoScrollEnabledRef.current =
+        distanceFromBottom <= AUTO_SCROLL_BOTTOM_THRESHOLD_PX;
+    };
+
+    updateAutoScrollState();
+    sc.addEventListener("scroll", updateAutoScrollState, { passive: true });
+
+    return () => {
+      sc.removeEventListener("scroll", updateAutoScrollState);
+    };
+  }, []);
 
   // Load persist opt-in preference
   useEffect(() => {
@@ -113,7 +151,11 @@ export function useChatState(options?: { initialMessage?: string }) {
       try {
         localStorage.setItem(
           `${SESSION_MESSAGES_PREFIX}${sessionKey}`,
-          JSON.stringify(messages.filter((m) => !m.transient).slice(-MAX_MESSAGES_PER_SESSION)),
+          JSON.stringify(
+            messages
+              .filter((m) => !m.transient)
+              .slice(-MAX_MESSAGES_PER_SESSION),
+          ),
         );
       } catch {
         void 0;
@@ -139,6 +181,15 @@ export function useChatState(options?: { initialMessage?: string }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(LIVE_PINNED_KEY, livePinned ? "1" : "0");
+    } catch {
+      // ignore localStorage failures
+    }
+  }, [livePinned]);
+
   // Prune expired transient messages every second
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -146,7 +197,8 @@ export function useChatState(options?: { initialMessage?: string }) {
       setMessages((prev) => {
         if (!prev.some((m) => m.transient)) return prev;
         return prev.filter(
-          (m) => !(m.transient && m.expiresAt !== undefined && now > m.expiresAt),
+          (m) =>
+            !(m.transient && m.expiresAt !== undefined && now > m.expiresAt),
         );
       });
     }, 1000);
@@ -197,11 +249,14 @@ export function useChatState(options?: { initialMessage?: string }) {
 
   const summary = useMemo(() => {
     if (messages.length === 0) return "";
-    const assistants = messages.filter(
-      (m) => m.role === "assistant" && m.text.trim(),
-    );
-    const last = assistants[assistants.length - 1];
-    const txt = last?.text || "";
+    let txt = "";
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const candidate = messages[i];
+      if (candidate.role !== "assistant") continue;
+      if (!candidate.text.trim()) continue;
+      txt = candidate.text;
+      break;
+    }
     return txt.length > 160 ? `${txt.slice(0, 160)}…` : txt;
   }, [messages]);
 
@@ -244,6 +299,8 @@ export function useChatState(options?: { initialMessage?: string }) {
     setAttachedPreviewUrl,
     uploadedImages,
     setUploadedImages,
+    livePinned,
+    setLivePinned,
     // Refs
     scrollRef,
     abortRef,

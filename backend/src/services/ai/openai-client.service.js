@@ -27,44 +27,41 @@
  *   const text = await openaiGenerate('Summarize this text...');
  */
 
-import OpenAI from 'openai';
-import { config } from '../../config.js';
+import OpenAI from "openai";
+import { config } from "../../config.js";
 import {
   AI_MODELS,
   TIMEOUTS,
   CIRCUIT_BREAKER,
   OPENAI_CLIENT,
-} from '../../config/constants.js';
+} from "../../config/constants.js";
 
 // ============================================================================
 // Configuration (from config.js which supports Consul KV with env fallback)
 // ============================================================================
 
-const getOpenAIBaseUrl = () => (
-  config.ai?.baseUrl
-  || process.env.OPENAI_API_BASE_URL
-  || process.env.AI_SERVER_URL
-  || 'https://api.openai.com/v1'
-);
-const OPENAI_API_KEY = config.ai?.apiKey
-  || process.env.AI_API_KEY
-  || process.env.OPENAI_API_KEY
-  || 'sk-placeholder';
-const OPENAI_DEFAULT_MODEL = config.ai?.defaultModel
-  || process.env.AI_DEFAULT_MODEL
-  || AI_MODELS.DEFAULT;
-const getEmbeddingBaseUrl = () => (
-  config.rag?.embeddingUrl
-  || process.env.AI_EMBEDDING_URL
-  || process.env.AI_SERVER_URL
-  || process.env.OPENAI_API_BASE_URL
-  || 'https://api.openai.com/v1'
-);
-const getEmbeddingModel = () => (
-  config.rag?.embeddingModel
-  || process.env.AI_EMBED_MODEL
-  || 'text-embedding-3-small'
-);
+const getOpenAIBaseUrl = () =>
+  config.ai?.baseUrl ||
+  process.env.OPENAI_API_BASE_URL ||
+  process.env.AI_SERVER_URL ||
+  "https://api.openai.com/v1";
+const OPENAI_API_KEY =
+  config.ai?.apiKey ||
+  process.env.AI_API_KEY ||
+  process.env.OPENAI_API_KEY ||
+  "sk-placeholder";
+const OPENAI_DEFAULT_MODEL =
+  config.ai?.defaultModel || process.env.AI_DEFAULT_MODEL || AI_MODELS.DEFAULT;
+const getEmbeddingBaseUrl = () =>
+  config.rag?.embeddingUrl ||
+  process.env.AI_EMBEDDING_URL ||
+  process.env.AI_SERVER_URL ||
+  process.env.OPENAI_API_BASE_URL ||
+  "https://api.openai.com/v1";
+const getEmbeddingModel = () =>
+  config.rag?.embeddingModel ||
+  process.env.AI_EMBED_MODEL ||
+  "text-embedding-3-small";
 
 // Timeout settings
 const DEFAULT_TIMEOUT = TIMEOUTS.DEFAULT; // 2 minutes
@@ -83,18 +80,24 @@ const logger = {
     return JSON.stringify({
       timestamp: new Date().toISOString(),
       level,
-      service: 'openai-compat-client',
+      service: "openai-compat-client",
       ...context,
       message,
       ...data,
     });
   },
-  info(ctx, msg, data) { console.log(this._format('info', ctx, msg, data)); },
-  warn(ctx, msg, data) { console.warn(this._format('warn', ctx, msg, data)); },
-  error(ctx, msg, data) { console.error(this._format('error', ctx, msg, data)); },
+  info(ctx, msg, data) {
+    console.log(this._format("info", ctx, msg, data));
+  },
+  warn(ctx, msg, data) {
+    console.warn(this._format("warn", ctx, msg, data));
+  },
+  error(ctx, msg, data) {
+    console.error(this._format("error", ctx, msg, data));
+  },
   debug(ctx, msg, data) {
-    if (process.env.DEBUG_OPENAI === 'true') {
-      console.debug(this._format('debug', ctx, msg, data));
+    if (process.env.DEBUG_OPENAI === "true") {
+      console.debug(this._format("debug", ctx, msg, data));
     }
   },
 };
@@ -106,8 +109,8 @@ const logger = {
 export class OpenAICompatClient {
   constructor(options = {}) {
     let baseURL = options.baseUrl || getOpenAIBaseUrl();
-    if (!baseURL.endsWith('/v1')) {
-      baseURL = baseURL.replace(/\/$/, '') + '/v1';
+    if (!baseURL.endsWith("/v1")) {
+      baseURL = baseURL.replace(/\/$/, "") + "/v1";
     }
 
     this.baseUrl = baseURL;
@@ -137,11 +140,10 @@ export class OpenAICompatClient {
       status: null,
     };
 
-    logger.info(
-      { operation: 'init' },
-      'OpenAICompatClient initialized',
-      { baseUrl: this.baseUrl, defaultModel: this.defaultModel }
-    );
+    logger.info({ operation: "init" }, "OpenAICompatClient initialized", {
+      baseUrl: this.baseUrl,
+      defaultModel: this.defaultModel,
+    });
   }
 
   /**
@@ -176,11 +178,9 @@ export class OpenAICompatClient {
 
     if (this._circuitState.failures >= CIRCUIT_BREAKER_THRESHOLD) {
       this._circuitState.isOpen = true;
-      logger.warn(
-        { operation: 'circuit_breaker' },
-        'Circuit breaker opened',
-        { failures: this._circuitState.failures }
-      );
+      logger.warn({ operation: "circuit_breaker" }, "Circuit breaker opened", {
+        failures: this._circuitState.failures,
+      });
     }
   }
 
@@ -204,54 +204,63 @@ export class OpenAICompatClient {
     const startTime = Date.now();
 
     if (this._isCircuitOpen()) {
-      logger.warn({ operation: 'chat', requestId }, 'Request blocked by circuit breaker');
-      throw new Error('AI service temporarily unavailable (circuit breaker open)');
+      logger.warn(
+        { operation: "chat", requestId },
+        "Request blocked by circuit breaker",
+      );
+      throw new Error(
+        "AI service temporarily unavailable (circuit breaker open)",
+      );
     }
 
     const model = options.model || this.defaultModel;
 
-    logger.debug(
-      { operation: 'chat', requestId },
-      'Starting chat request',
-      { model, messageCount: messages?.length }
-    );
+    logger.debug({ operation: "chat", requestId }, "Starting chat request", {
+      model,
+      messageCount: messages?.length,
+    });
 
     try {
-      const response = await this._openai.chat.completions.create({
-        model,
-        messages,
-        temperature: options.temperature ?? 0.7,
-        max_tokens: options.maxTokens || options.max_tokens,
-        stream: false,
-      });
+      const response = await this._openai.chat.completions.create(
+        {
+          model,
+          messages,
+          temperature: options.temperature ?? 0.7,
+          max_tokens: options.maxTokens || options.max_tokens,
+          stream: false,
+        },
+        {
+          timeout: options.timeout || DEFAULT_TIMEOUT,
+        },
+      );
 
       const duration = Date.now() - startTime;
       this._recordSuccess();
 
       const result = {
-        content: response.choices[0]?.message?.content || '',
+        content: response.choices[0]?.message?.content || "",
         model: response.model || model,
-        provider: 'openai-compat',
+        provider: "openai-compat",
         usage: response.usage,
         finishReason: response.choices[0]?.finish_reason,
       };
 
-      logger.info(
-        { operation: 'chat', requestId },
-        'Chat completed',
-        { duration, model: result.model, responseLength: result.content?.length }
-      );
+      logger.info({ operation: "chat", requestId }, "Chat completed", {
+        duration,
+        model: result.model,
+        responseLength: result.content?.length,
+      });
 
       return result;
     } catch (error) {
       const duration = Date.now() - startTime;
       this._recordFailure();
 
-      logger.error(
-        { operation: 'chat', requestId },
-        'Chat failed',
-        { duration, model, error: error.message }
-      );
+      logger.error({ operation: "chat", requestId }, "Chat failed", {
+        duration,
+        model,
+        error: error.message,
+      });
 
       throw error;
     }
@@ -268,10 +277,10 @@ export class OpenAICompatClient {
     const messages = [];
 
     if (options.systemPrompt) {
-      messages.push({ role: 'system', content: options.systemPrompt });
+      messages.push({ role: "system", content: options.systemPrompt });
     }
 
-    messages.push({ role: 'user', content: prompt });
+    messages.push({ role: "user", content: prompt });
 
     const result = await this.chat(messages, {
       model: options.model,
@@ -292,27 +301,25 @@ export class OpenAICompatClient {
    */
   async vision(imageData, prompt, options = {}) {
     const model = options.model || AI_MODELS.VISION;
-    const isUrl = imageData.startsWith('http://') || imageData.startsWith('https://');
+    const isUrl =
+      imageData.startsWith("http://") || imageData.startsWith("https://");
 
     let imageContent;
     if (isUrl) {
-      imageContent = { type: 'image_url', image_url: { url: imageData } };
+      imageContent = { type: "image_url", image_url: { url: imageData } };
     } else {
-      const mimeType = options.mimeType || 'image/jpeg';
+      const mimeType = options.mimeType || "image/jpeg";
       imageContent = {
-        type: 'image_url',
-        image_url: { url: `data:${mimeType};base64,${imageData}` }
+        type: "image_url",
+        image_url: { url: `data:${mimeType};base64,${imageData}` },
       };
     }
 
     const messages = [
       {
-        role: 'user',
-        content: [
-          imageContent,
-          { type: 'text', text: prompt }
-        ]
-      }
+        role: "user",
+        content: [imageContent, { type: "text", text: prompt }],
+      },
     ];
 
     const result = await this.chat(messages, { model });
@@ -330,13 +337,18 @@ export class OpenAICompatClient {
     const model = options.model || this.defaultModel;
 
     try {
-      const stream = await this._openai.chat.completions.create({
-        model,
-        messages,
-        temperature: options.temperature ?? 0.7,
-        max_tokens: options.maxTokens,
-        stream: true,
-      });
+      const stream = await this._openai.chat.completions.create(
+        {
+          model,
+          messages,
+          temperature: options.temperature ?? 0.7,
+          max_tokens: options.maxTokens,
+          stream: true,
+        },
+        {
+          timeout: options.timeout || DEFAULT_TIMEOUT,
+        },
+      );
 
       for await (const chunk of stream) {
         const content = chunk.choices[0]?.delta?.content;
@@ -363,10 +375,10 @@ export class OpenAICompatClient {
     const messages = [];
 
     if (options.systemPrompt) {
-      messages.push({ role: 'system', content: options.systemPrompt });
+      messages.push({ role: "system", content: options.systemPrompt });
     }
 
-    messages.push({ role: 'user', content: prompt });
+    messages.push({ role: "user", content: prompt });
 
     yield* this.streamChat(messages, options);
   }
@@ -390,7 +402,7 @@ export class OpenAICompatClient {
       this._recordSuccess();
 
       return {
-        embeddings: response.data.map(d => d.embedding),
+        embeddings: response.data.map((d) => d.embedding),
         model: response.model,
         usage: response.usage,
       };
@@ -412,7 +424,9 @@ export class OpenAICompatClient {
       return response.data;
     } catch (error) {
       this._recordFailure();
-      logger.warn({ operation: 'listModels' }, 'Failed to list models', { error: error.message });
+      logger.warn({ operation: "listModels" }, "Failed to list models", {
+        error: error.message,
+      });
       return [];
     }
   }
@@ -426,7 +440,10 @@ export class OpenAICompatClient {
   async health(force = false) {
     const now = Date.now();
 
-    if (!force && now - this._healthCache.lastCheck < this._healthCache.cacheDuration) {
+    if (
+      !force &&
+      now - this._healthCache.lastCheck < this._healthCache.cacheDuration
+    ) {
       return {
         ok: this._healthCache.isHealthy,
         cached: true,
@@ -448,7 +465,9 @@ export class OpenAICompatClient {
       this._healthCache.isHealthy = false;
       this._healthCache.lastCheck = now;
 
-      logger.warn({ operation: 'health' }, 'Health check failed', { error: error.message });
+      logger.warn({ operation: "health" }, "Health check failed", {
+        error: error.message,
+      });
 
       return { ok: false, error: error.message };
     }
@@ -470,7 +489,7 @@ export class OpenAICompatClient {
    */
   getProviderInfo() {
     return {
-      provider: 'openai-compat',
+      provider: "openai-compat",
       baseUrl: this.baseUrl,
       defaultModel: this.defaultModel,
     };
@@ -503,7 +522,10 @@ export function getOpenAIEmbeddingClient(options = {}) {
   const cacheKey = `${baseUrl}::${apiKey}`;
 
   if (!_embeddingClients.has(cacheKey)) {
-    _embeddingClients.set(cacheKey, new OpenAICompatClient({ baseUrl, apiKey }));
+    _embeddingClients.set(
+      cacheKey,
+      new OpenAICompatClient({ baseUrl, apiKey }),
+    );
   }
 
   return _embeddingClients.get(cacheKey);
