@@ -1,5 +1,6 @@
 import { Context } from 'hono';
 import type { Env } from '../types';
+import { getSecret } from './secrets';
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://noblog.nodove.com',
@@ -11,24 +12,29 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:8081',
 ];
 
-export function getAllowedOrigins(env: Env): string[] {
-  const configured = (env.ALLOWED_ORIGINS || '')
+function parseAllowedOrigins(raw: string | null | undefined): string[] {
+  return String(raw || '')
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean);
+}
+
+export async function getAllowedOrigins(env: Env): Promise<string[]> {
+  const secretValue = await getSecret(env, 'ALLOWED_ORIGINS');
+  const configured = parseAllowedOrigins(secretValue || env.ALLOWED_ORIGINS);
 
   return configured.length > 0 ? configured : DEFAULT_ALLOWED_ORIGINS;
 }
 
-export function isOriginAllowed(origin: string | undefined, env: Env): boolean {
+export async function isOriginAllowed(origin: string | undefined, env: Env): Promise<boolean> {
   if (!origin) return false;
-  const allowed = getAllowedOrigins(env);
+  const allowed = await getAllowedOrigins(env);
   return allowed.includes(origin);
 }
 
-export function setCorsHeaders(c: Context, origin?: string) {
+export async function setCorsHeaders(c: Context, origin?: string): Promise<void> {
   const env = c.env as Env;
-  const allowed = isOriginAllowed(origin, env);
+  const allowed = await isOriginAllowed(origin, env);
 
   if (allowed && origin) {
     c.header('Access-Control-Allow-Origin', origin);
@@ -36,16 +42,16 @@ export function setCorsHeaders(c: Context, origin?: string) {
   }
 
   c.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  c.header(
-    'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, X-Requested-With'
-  );
+  c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
   c.header('Access-Control-Max-Age', '86400');
 }
 
-export function getCorsHeadersForRequest(request: Request, env: Env): Record<string, string> {
+export async function getCorsHeadersForRequest(
+  request: Request,
+  env: Env
+): Promise<Record<string, string>> {
   const origin = request.headers.get('Origin') || undefined;
-  const allowed = isOriginAllowed(origin, env);
+  const allowed = await isOriginAllowed(origin, env);
 
   const headers: Record<string, string> = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',

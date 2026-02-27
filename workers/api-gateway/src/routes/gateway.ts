@@ -15,7 +15,12 @@
 import { Hono } from 'hono';
 import type { HonoEnv, Env } from '../types';
 import { success, badRequest, serverError } from '../lib/response';
-import { getApiBaseUrl, getAiServeApiKey } from '../lib/config';
+import {
+  getApiBaseUrl,
+  getAiServeApiKey,
+  getAiDefaultModel,
+  getAiVisionModel,
+} from '../lib/config';
 import { requireAdmin } from '../middleware/auth';
 
 const gateway = new Hono<HonoEnv>();
@@ -44,11 +49,7 @@ async function getAiAgentBackendUrl(env: Env): Promise<string> {
 /**
  * Proxy request to backend AI agent server
  */
-async function proxyToBackendAi(
-  request: Request,
-  env: Env,
-  path: string
-): Promise<Response> {
+async function proxyToBackendAi(request: Request, env: Env, path: string): Promise<Response> {
   const backendUrl = await getAiAgentBackendUrl(env);
   const url = new URL(path, backendUrl);
 
@@ -66,13 +67,15 @@ async function proxyToBackendAi(
   if (apiKey) {
     headers.set('X-Internal-Gateway-Key', apiKey);
   }
+  const forcedModel = await getAiDefaultModel(env);
+  if (forcedModel) {
+    headers.set('X-AI-Model', forcedModel);
+  }
 
   // Remove sensitive headers
   headers.delete('X-Gateway-Caller-Key');
 
-  const body = ['GET', 'HEAD'].includes(request.method)
-    ? undefined
-    : await request.blob();
+  const body = ['GET', 'HEAD'].includes(request.method) ? undefined : await request.blob();
 
   const forwarded = new Request(url.toString(), {
     method: request.method,
@@ -152,9 +155,7 @@ const DEFAULT_VISION_PROMPT = `이 이미지를 분석해주세요. 다음 내�
 /**
  * Fetch image and convert to base64
  */
-async function fetchImageAsBase64(
-  imageUrl: string
-): Promise<{ base64: string; mimeType: string }> {
+async function fetchImageAsBase64(imageUrl: string): Promise<{ base64: string; mimeType: string }> {
   const response = await fetch(imageUrl);
   if (!response.ok) {
     throw new Error(`Failed to fetch image: ${response.status}`);
@@ -186,6 +187,16 @@ async function analyzeWithBackend(
   if (apiKey) {
     headers['X-Internal-Gateway-Key'] = apiKey;
   }
+  const [forcedModel, forcedVisionModel] = await Promise.all([
+    getAiDefaultModel(env),
+    getAiVisionModel(env),
+  ]);
+  if (forcedModel) {
+    headers['X-AI-Model'] = forcedModel;
+  }
+  if (forcedVisionModel) {
+    headers['X-AI-Vision-Model'] = forcedVisionModel;
+  }
 
   const response = await fetch(url, {
     method: 'POST',
@@ -207,10 +218,7 @@ async function analyzeWithBackend(
 
   // 다양한 응답 형식 지원
   const description =
-    data?.data?.description ||
-    data?.data?.text ||
-    data?.description ||
-    data?.text;
+    data?.data?.description || data?.data?.text || data?.description || data?.text;
 
   if (!description) throw new Error('No description in backend response');
   return description;
@@ -224,9 +232,7 @@ gateway.post('/vision/analyze', async (c) => {
     mimeType?: string;
     prompt?: string;
   };
-  const body: VisionRequestBody = await c.req
-    .json<VisionRequestBody>()
-    .catch(() => ({}));
+  const body: VisionRequestBody = await c.req.json<VisionRequestBody>().catch(() => ({}));
 
   let imageBase64: string;
   let mimeType: string;
@@ -280,11 +286,19 @@ gateway.get('/vision/health', async (c) => {
 gateway.get('/config', async (c) => {
   const backendUrl = await getAiAgentBackendUrl(c.env);
   const apiKey = await getAiServeApiKey(c.env);
+  const [forcedModel, forcedVisionModel] = await Promise.all([
+    getAiDefaultModel(c.env),
+    getAiVisionModel(c.env),
+  ]);
 
   return success(c, {
     mode: 'backend',
     backendUrl,
     hasApiKey: !!apiKey,
+    ai: {
+      defaultModel: forcedModel || null,
+      visionModel: forcedVisionModel || null,
+    },
   });
 });
 
@@ -293,9 +307,7 @@ gateway.put('/config', requireAdmin, async (c) => {
   type ConfigUpdateBody = {
     backendUrl?: string;
   };
-  const body: ConfigUpdateBody = await c.req
-    .json<ConfigUpdateBody>()
-    .catch(() => ({}));
+  const body: ConfigUpdateBody = await c.req.json<ConfigUpdateBody>().catch(() => ({}));
 
   try {
     if (body.backendUrl) {

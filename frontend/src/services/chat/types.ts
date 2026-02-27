@@ -9,15 +9,15 @@
 // ============================================================================
 
 export type ChatErrorCode =
-  | 'NETWORK_ERROR'
-  | 'TIMEOUT'
-  | 'ABORTED'
-  | 'UNAUTHORIZED'
-  | 'RATE_LIMITED'
-  | 'SERVER_ERROR'
-  | 'VALIDATION_ERROR'
-  | 'PARSE_ERROR'
-  | 'UNKNOWN';
+  | "NETWORK_ERROR"
+  | "TIMEOUT"
+  | "ABORTED"
+  | "UNAUTHORIZED"
+  | "RATE_LIMITED"
+  | "SERVER_ERROR"
+  | "VALIDATION_ERROR"
+  | "PARSE_ERROR"
+  | "UNKNOWN";
 
 export class ChatError extends Error {
   readonly code: ChatErrorCode;
@@ -29,55 +29,65 @@ export class ChatError extends Error {
   constructor(
     message: string,
     code: ChatErrorCode,
-    options?: { status?: number; response?: unknown; cause?: unknown }
+    options?: { status?: number; response?: unknown; cause?: unknown },
   ) {
     super(message);
-    this.name = 'ChatError';
+    this.name = "ChatError";
     this.code = code;
     this.status = options?.status;
     this.response = options?.response;
     this.originalCause = options?.cause;
-    this.isRetryable = ['NETWORK_ERROR', 'TIMEOUT', 'SERVER_ERROR', 'RATE_LIMITED'].includes(code);
+    this.isRetryable = [
+      "NETWORK_ERROR",
+      "TIMEOUT",
+      "SERVER_ERROR",
+      "RATE_LIMITED",
+    ].includes(code);
   }
 
   static fromResponse(status: number, body?: unknown): ChatError {
     const message = extractErrorMessage(body) || `HTTP ${status}`;
-    
+
     if (status === 401 || status === 403) {
-      return new ChatError(message, 'UNAUTHORIZED', { status, response: body });
+      return new ChatError(message, "UNAUTHORIZED", { status, response: body });
     }
     if (status === 429) {
-      return new ChatError(message, 'RATE_LIMITED', { status, response: body });
+      return new ChatError(message, "RATE_LIMITED", { status, response: body });
     }
     if (status >= 400 && status < 500) {
-      return new ChatError(message, 'VALIDATION_ERROR', { status, response: body });
+      return new ChatError(message, "VALIDATION_ERROR", {
+        status,
+        response: body,
+      });
     }
     if (status >= 500) {
-      return new ChatError(message, 'SERVER_ERROR', { status, response: body });
+      return new ChatError(message, "SERVER_ERROR", { status, response: body });
     }
-    return new ChatError(message, 'UNKNOWN', { status, response: body });
+    return new ChatError(message, "UNKNOWN", { status, response: body });
   }
 
   static fromNetworkError(error: unknown): ChatError {
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      return new ChatError('Request aborted', 'ABORTED', { cause: error });
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return new ChatError("Request aborted", "ABORTED", { cause: error });
     }
-    if (error instanceof TypeError && error.message.includes('fetch')) {
-      return new ChatError('Network request failed', 'NETWORK_ERROR', { cause: error });
+    if (error instanceof TypeError && error.message.includes("fetch")) {
+      return new ChatError("Network request failed", "NETWORK_ERROR", {
+        cause: error,
+      });
     }
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return new ChatError(message, 'UNKNOWN', { cause: error });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return new ChatError(message, "UNKNOWN", { cause: error });
   }
 }
 
 function extractErrorMessage(body: unknown): string | null {
-  if (!body || typeof body !== 'object') return null;
+  if (!body || typeof body !== "object") return null;
   const obj = body as Record<string, unknown>;
-  if (typeof obj.error === 'string') return obj.error;
-  if (typeof obj.message === 'string') return obj.message;
-  if (obj.error && typeof obj.error === 'object') {
+  if (typeof obj.error === "string") return obj.error;
+  if (typeof obj.message === "string") return obj.message;
+  if (obj.error && typeof obj.error === "object") {
     const err = obj.error as Record<string, unknown>;
-    if (typeof err.message === 'string') return err.message;
+    if (typeof err.message === "string") return err.message;
   }
   return null;
 }
@@ -95,12 +105,12 @@ export type ChatSession = {
 // ============================================================================
 
 export type ChatTaskMode =
-  | 'catalyst'
-  | 'sketch'
-  | 'prism'
-  | 'chain'
-  | 'summary'
-  | 'custom';
+  | "catalyst"
+  | "sketch"
+  | "prism"
+  | "chain"
+  | "summary"
+  | "custom";
 
 export type InvokeChatTaskInput = {
   mode: ChatTaskMode;
@@ -123,10 +133,10 @@ export type InvokeChatTaskResult<T = unknown> = {
 // ============================================================================
 
 export type ChatStreamEvent =
-  | { type: 'text'; text: string }
-  | { type: 'session'; sessionId: string }
+  | { type: "text"; text: string }
+  | { type: "session"; sessionId: string }
   | {
-      type: 'sources';
+      type: "sources";
       sources: Array<{
         title?: string;
         url?: string;
@@ -134,10 +144,10 @@ export type ChatStreamEvent =
         snippet?: string;
       }>;
     }
-  | { type: 'followups'; questions: string[] }
-  | { type: 'context'; page?: { url?: string; title?: string } }
-  | { type: 'error'; message: string; code?: string }
-  | { type: 'done' };
+  | { type: "followups"; questions: string[] }
+  | { type: "context"; page?: { url?: string; title?: string } }
+  | { type: "error"; message: string; code?: string }
+  | { type: "done" };
 
 export type StreamChatInput = {
   text: string;
@@ -174,6 +184,6 @@ export type PageContext = {
 };
 
 export type ContentPart = {
-  type: 'text';
+  type: "text";
   text: string;
 };

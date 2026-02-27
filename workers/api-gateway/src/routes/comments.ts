@@ -25,7 +25,7 @@ comments.get('/', async (c) => {
   );
 
   // Normalize to camelCase and ensure date fallbacks
-  const normalized = items.map(item => ({
+  const normalized = items.map((item) => ({
     id: item.id,
     postId: (item as any).post_id || postId,
     author: item.author,
@@ -85,7 +85,7 @@ comments.get('/stream', async (c) => {
   }
 
   const origin = c.req.header('Origin') || '';
-  const allowed = isOriginAllowed(origin, c.env as Env);
+  const allowed = await isOriginAllowed(origin, c.env as Env);
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -131,7 +131,15 @@ comments.get('/stream', async (c) => {
             String(postId).trim().slice(0, 256)
           );
 
-          const newItems: Array<{ id: string; postId: string; author: string; content: string; website: null; parentId: null; createdAt: string }> = [];
+          const newItems: Array<{
+            id: string;
+            postId: string;
+            author: string;
+            content: string;
+            website: null;
+            parentId: null;
+            createdAt: string;
+          }> = [];
           let maxTs = lastTs;
           for (const d of items) {
             const createdAt = (d as any).created_at || (d as any).createdAt;
@@ -203,7 +211,12 @@ comments.delete('/:id', requireAdmin, async (c) => {
   }
 
   // Soft delete by setting status to 'hidden'
-  await execute(db, "UPDATE comments SET status = 'hidden', updated_at = ? WHERE id = ?", new Date().toISOString(), id);
+  await execute(
+    db,
+    "UPDATE comments SET status = 'hidden', updated_at = ? WHERE id = ?",
+    new Date().toISOString(),
+    id
+  );
 
   return success(c, { deleted: true });
 });
@@ -224,7 +237,7 @@ comments.get('/:commentId/reactions', async (c) => {
     emoji: string;
     count: number;
   }
-  
+
   const reactions = await queryAll<ReactionCount>(
     db,
     `SELECT emoji, COUNT(*) as count

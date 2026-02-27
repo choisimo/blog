@@ -15,7 +15,7 @@
  */
 
 import type { Env } from '../types';
-import { getAiServeUrl, getAiServeApiKey } from './config';
+import { getAiServeUrl, getAiServeApiKey, getAiDefaultModel, getAiVisionModel } from './config';
 import { buildTaskPrompt, getFallbackData, type TaskMode, type TaskPayload } from './prompts';
 
 export const TRACE_ID_HEADER = 'X-Trace-ID';
@@ -91,7 +91,7 @@ export class AIService {
 
   /**
    * Get the backend API URL (cached)
-   * 
+   *
    * Uses BACKEND_ORIGIN directly to avoid calling api.nodove.com (Workers itself).
    * This ensures AI requests go to the actual backend server.
    */
@@ -100,7 +100,7 @@ export class AIService {
       // Priority: BACKEND_ORIGIN > AI_SERVER_URL (from KV/env)
       // BACKEND_ORIGIN points to the actual backend server (blog-b.nodove.com)
       // AI_SERVER_URL defaults to api.nodove.com which is Workers itself!
-      this.baseUrl = this.env.BACKEND_ORIGIN || await getAiServeUrl(this.env);
+      this.baseUrl = this.env.BACKEND_ORIGIN || (await getAiServeUrl(this.env));
     }
     return this.baseUrl;
   }
@@ -119,9 +119,19 @@ export class AIService {
       headers[TRACE_ID_HEADER] = this.traceId;
     }
 
-    const apiKey = await getAiServeApiKey(this.env);
+    const [apiKey, forcedModel, forcedVisionModel] = await Promise.all([
+      getAiServeApiKey(this.env),
+      getAiDefaultModel(this.env),
+      getAiVisionModel(this.env),
+    ]);
     if (apiKey) {
       headers['X-API-KEY'] = apiKey;
+    }
+    if (forcedModel) {
+      headers['X-AI-Model'] = forcedModel;
+    }
+    if (forcedVisionModel) {
+      headers['X-AI-Vision-Model'] = forcedVisionModel;
     }
 
     if (this.env.BACKEND_KEY) {
@@ -177,13 +187,17 @@ export class AIService {
    * Generate text from a prompt
    */
   async generate(prompt: string, options: GenerateOptions = {}): Promise<string> {
-    const result = await this.request<{ text: string }>('/generate', {
-      prompt,
-      temperature: options.temperature ?? 0.2,
-      maxTokens: options.maxTokens,
-      model: options.model,
-      systemPrompt: options.systemPrompt,
-    }, { timeout: options.timeout });
+    const result = await this.request<{ text: string }>(
+      '/generate',
+      {
+        prompt,
+        temperature: options.temperature ?? 0.2,
+        maxTokens: options.maxTokens,
+        model: options.model,
+        systemPrompt: options.systemPrompt,
+      },
+      { timeout: options.timeout }
+    );
 
     return result.text;
   }
@@ -192,28 +206,32 @@ export class AIService {
    * Chat completion with message history
    */
   async chat(messages: ChatMessage[], options: ChatOptions = {}): Promise<ChatResult> {
-    return this.request<ChatResult>('/auto-chat', {
-      messages,
-      temperature: options.temperature,
-      maxTokens: options.maxTokens,
-      model: options.model,
-    }, { timeout: options.timeout });
+    return this.request<ChatResult>(
+      '/auto-chat',
+      {
+        messages,
+        temperature: options.temperature,
+        maxTokens: options.maxTokens,
+        model: options.model,
+      },
+      { timeout: options.timeout }
+    );
   }
 
   /**
    * Vision analysis with image
    */
-  async vision(
-    imageData: string,
-    prompt: string,
-    options: VisionOptions = {}
-  ): Promise<string> {
-    const result = await this.request<{ description: string }>('/vision/analyze', {
-      imageBase64: imageData,
-      mimeType: options.mimeType || 'image/jpeg',
-      prompt,
-      model: options.model,
-    }, { timeout: options.timeout });
+  async vision(imageData: string, prompt: string, options: VisionOptions = {}): Promise<string> {
+    const result = await this.request<{ description: string }>(
+      '/vision/analyze',
+      {
+        imageBase64: imageData,
+        mimeType: options.mimeType || 'image/jpeg',
+        prompt,
+        model: options.model,
+      },
+      { timeout: options.timeout }
+    );
 
     return result.description;
   }
@@ -265,7 +283,7 @@ export class AIService {
 
   /**
    * Health check
-   * 
+   *
    * Checks backend API availability directly (not /ai/health to avoid circular calls).
    * Uses /api/v1/healthz which is a simple health endpoint.
    */
@@ -274,12 +292,12 @@ export class AIService {
       // Use BACKEND_ORIGIN directly to check backend health
       // Avoid calling /ai/health which may have issues with opencode-backend
       const backendOrigin = this.env.BACKEND_ORIGIN;
-      
+
       if (!backendOrigin) {
-        return { 
-          ok: false, 
+        return {
+          ok: false,
           status: 'BACKEND_ORIGIN not configured',
-          provider: 'unknown'
+          provider: 'unknown',
         };
       }
 
@@ -288,7 +306,7 @@ export class AIService {
       const res = await fetch(url, {
         method: 'GET',
         headers: {
-          'Accept': 'application/json',
+          Accept: 'application/json',
           'User-Agent': 'Blog-Workers/1.0',
         },
       });
@@ -319,7 +337,7 @@ export class AIService {
 
   /**
    * Get provider info
-   * 
+   *
    * Returns static provider info since dynamic fetching from backend
    * may cause issues when opencode-backend is unavailable.
    */

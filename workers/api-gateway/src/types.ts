@@ -22,6 +22,9 @@ export type Env = {
   AI_SERVER_URL?: string; // e.g., https://ai-check.nodove.com
   AI_API_KEY?: string;
   API_BASE_URL?: string; // e.g., https://api.nodove.com
+  AI_DEFAULT_MODEL?: string; // e.g., gpt-4.1 (forced by gateway)
+  AI_VISION_MODEL?: string; // e.g., gpt-4o
+  PERPLEXITY_MODEL?: string; // e.g., sonar
 
   // Legacy: GEMINI_API_KEY는 더 이상 Workers에서 직접 사용하지 않음
   // 백엔드 서버에서 관리됩니다
@@ -37,8 +40,8 @@ export type Env = {
   GITHUB_TOKEN?: string;
 
   // Variables
-  ENV: 'development' | 'production';
-  ALLOWED_ORIGINS: string;
+  ENV: 'development' | 'staging' | 'production';
+  ALLOWED_ORIGINS?: string;
 
   // Secrets encryption key (optional, falls back to JWT_SECRET)
   SECRETS_ENCRYPTION_KEY?: string;

@@ -20,6 +20,7 @@ import './App.css';
 import { VisitedPostsMinimap } from '@/components/features/navigation/VisitedPostsMinimap';
 import FloatingActionBar from '@/components/features/memo/FloatingActionBar';
 import { initFeatureFlags, disposeFeatureFlags } from '@/stores/useFeatureFlagsStore';
+import { initNotificationSSE, disposeNotificationSSE } from '@/services/notificationSSE';
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,13 @@ function App() {
     initFeatureFlags();
     return () => {
       disposeFeatureFlags();
+    };
+  }, []);
+
+  useEffect(() => {
+    initNotificationSSE();
+    return () => {
+      disposeNotificationSSE();
     };
   }, []);
 

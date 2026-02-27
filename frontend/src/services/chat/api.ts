@@ -4,15 +4,15 @@
  * 채팅 관련 API 호출 함수들
  */
 
-import { getApiBaseUrl } from '@/utils/apiBase';
+import { getApiBaseUrl } from "@/utils/apiBase";
 import {
   buildChatUrl,
   buildChatHeaders,
   isUnifiedTasksEnabled,
   buildChatWebSocketUrl,
   shouldUseChatWebSocket,
-} from './config';
-import { ensureSession, storeSessionId } from './session';
+} from "./config";
+import { ensureSession, storeSessionId } from "./session";
 import {
   getPageContext,
   getArticleTextSnippet,
@@ -21,12 +21,12 @@ import {
   buildImageContext,
   buildRAGContextPrompt,
   buildMemoryContextPrompt,
-} from './context';
+} from "./context";
 import {
   getParserForContentType,
   createFirstTokenTracker,
   parseStreamObject,
-} from './stream';
+} from "./stream";
 import type {
   ChatStreamEvent,
   StreamChatInput,
@@ -34,8 +34,8 @@ import type {
   InvokeChatTaskResult,
   ChatImageUploadResult,
   ContentPart,
-} from './types';
-import { ChatError } from './types';
+} from "./types";
+import { ChatError } from "./types";
 
 // ============================================================================
 // Chat Task API
@@ -45,33 +45,33 @@ import { ChatError } from './types';
  * AI 태스크 실행 (sketch, prism, chain 등)
  */
 export async function invokeChatTask<T = unknown>(
-  input: InvokeChatTaskInput
+  input: InvokeChatTaskInput,
 ): Promise<InvokeChatTaskResult<T>> {
   if (!isUnifiedTasksEnabled()) {
-    throw new Error('Unified chat task API is disabled');
+    throw new Error("Unified chat task API is disabled");
   }
 
   const sessionID = await ensureSession();
-  const url = buildChatUrl('/task', sessionID);
-  const headers = buildChatHeaders('json');
+  const url = buildChatUrl("/task", sessionID);
+  const headers = buildChatHeaders("json");
 
   if (input.headers) Object.assign(headers, input.headers);
 
   const body = {
     mode: input.mode,
-    prompt: input.prompt ?? '',
+    prompt: input.prompt ?? "",
     payload: input.payload ?? {},
     context: input.context ?? getPageContext(),
   };
 
   const res = await fetch(url, {
-    method: 'POST',
+    method: "POST",
     headers,
     body: JSON.stringify(body),
     signal: input.signal,
   });
 
-  const text = await res.text().catch(() => '');
+  const text = await res.text().catch(() => "");
   let parsed: unknown = null;
   if (text) {
     try {
@@ -86,12 +86,12 @@ export async function invokeChatTask<T = unknown>(
   }
 
   const dataCandidate =
-    parsed && typeof parsed === 'object'
-      ? (parsed as any).data ??
+    parsed && typeof parsed === "object"
+      ? ((parsed as any).data ??
         (parsed as any).result ??
         (parsed as any).output ??
         (parsed as any).payload ??
-        parsed
+        parsed)
       : parsed;
 
   return {
@@ -110,7 +110,7 @@ export async function invokeChatTask<T = unknown>(
  * 채팅 메시지 스트리밍
  */
 export async function* streamChatEvents(
-  input: StreamChatInput
+  input: StreamChatInput,
 ): AsyncGenerator<ChatStreamEvent, void, void> {
   const sessionID = await ensureSession();
   const { page, parts, enableRag } = buildStreamPayload(input);
@@ -137,15 +137,15 @@ export async function* streamChatEvents(
       if (gotEvent) {
         throw err;
       }
-      console.warn('[Chat] WebSocket failed, falling back to SSE:', err);
+      console.warn("[Chat] WebSocket failed, falling back to SSE:", err);
     }
   }
 
-  const url = buildChatUrl('/message', sessionID);
-  const headers = buildChatHeaders('stream');
+  const url = buildChatUrl("/message", sessionID);
+  const headers = buildChatHeaders("stream");
 
   const res = await fetch(url, {
-    method: 'POST',
+    method: "POST",
     headers,
     body: JSON.stringify({
       parts,
@@ -156,14 +156,18 @@ export async function* streamChatEvents(
   });
 
   if (!res.ok || !res.body) {
-    const t = await res.text().catch(() => '');
+    const t = await res.text().catch(() => "");
     let parsed: unknown = null;
-    try { parsed = JSON.parse(t); } catch { void 0; }
+    try {
+      parsed = JSON.parse(t);
+    } catch {
+      void 0;
+    }
     throw ChatError.fromResponse(res.status, parsed || t);
   }
 
   // 스트림 파싱
-  const contentType = res.headers.get('content-type') || '';
+  const contentType = res.headers.get("content-type") || "";
   const parser = getParserForContentType(contentType);
   const markFirst = createFirstTokenTracker(input.onFirstToken);
 
@@ -180,13 +184,13 @@ export async function* streamChatEvents(
 
       const events = parser.processChunk(chunk);
       for (const event of events) {
-        if (event.type === 'session') {
+        if (event.type === "session") {
           storeSessionId(event.sessionId);
         }
-        if (event.type === 'error') {
-          throw new ChatError(event.message || 'Chat failed', 'SERVER_ERROR');
+        if (event.type === "error") {
+          throw new ChatError(event.message || "Chat failed", "SERVER_ERROR");
         }
-        if (event.type === 'text') markFirst();
+        if (event.type === "text") markFirst();
         yield event;
       }
     }
@@ -194,13 +198,13 @@ export async function* streamChatEvents(
     // 남은 버퍼 처리
     const finalEvents = parser.flush();
     for (const event of finalEvents) {
-      if (event.type === 'session') {
+      if (event.type === "session") {
         storeSessionId(event.sessionId);
       }
-      if (event.type === 'error') {
-        throw new ChatError(event.message || 'Chat failed', 'SERVER_ERROR');
+      if (event.type === "error") {
+        throw new ChatError(event.message || "Chat failed", "SERVER_ERROR");
       }
-      if (event.type === 'text') markFirst();
+      if (event.type === "text") markFirst();
       yield event;
     }
   } finally {
@@ -220,30 +224,30 @@ function buildStreamPayload(input: StreamChatInput): {
     ? getArticleTextSnippet(4000)
     : null;
 
-  const parts: ContentPart[] = [{ type: 'text', text: CHAT_STYLE_PROMPT }];
+  const parts: ContentPart[] = [{ type: "text", text: CHAT_STYLE_PROMPT }];
 
   if (input.ragContext) {
     const ragPrompt = buildRAGContextPrompt(input.ragContext);
-    if (ragPrompt) parts.push({ type: 'text', text: ragPrompt });
+    if (ragPrompt) parts.push({ type: "text", text: ragPrompt });
   }
 
   if (input.memoryContext) {
     const memoryPrompt = buildMemoryContextPrompt(input.memoryContext);
-    if (memoryPrompt) parts.push({ type: 'text', text: memoryPrompt });
+    if (memoryPrompt) parts.push({ type: "text", text: memoryPrompt });
   }
 
   const contextPrompt = buildContextPrompt(articleSnippet);
-  if (contextPrompt) parts.push({ type: 'text', text: contextPrompt });
+  if (contextPrompt) parts.push({ type: "text", text: contextPrompt });
 
   if (input.imageUrl) {
     const imageContext = buildImageContext(
       input.imageUrl,
       input.imageAnalysis,
-      input.text
+      input.text,
     );
-    parts.push({ type: 'text', text: imageContext });
+    parts.push({ type: "text", text: imageContext });
   } else {
-    parts.push({ type: 'text', text: input.text });
+    parts.push({ type: "text", text: input.text });
   }
 
   return { page, parts, enableRag: input.enableRag ?? false };
@@ -274,7 +278,7 @@ async function* streamChatEventsWebSocket(input: {
   };
 
   const push = (event: ChatStreamEvent) => {
-    if (event.type === 'text') markFirst();
+    if (event.type === "text") markFirst();
     queue.push(event);
     wake();
   };
@@ -284,8 +288,11 @@ async function* streamChatEventsWebSocket(input: {
     closed = true;
     error = err ?? null;
     try {
-      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
-        ws.close(1000, 'stream end');
+      if (
+        ws.readyState === WebSocket.OPEN ||
+        ws.readyState === WebSocket.CONNECTING
+      ) {
+        ws.close(1000, "stream end");
       }
     } catch {
       // ignore close errors
@@ -294,55 +301,58 @@ async function* streamChatEventsWebSocket(input: {
   };
 
   const handleAbort = () => {
-    finish(new ChatError('Request aborted', 'ABORTED'));
+    finish(new ChatError("Request aborted", "ABORTED"));
   };
 
   if (input.signal) {
     if (input.signal.aborted) {
       handleAbort();
     } else {
-      input.signal.addEventListener('abort', handleAbort, { once: true });
+      input.signal.addEventListener("abort", handleAbort, { once: true });
     }
   }
 
   ws.onopen = () => {
     ws.send(
       JSON.stringify({
-        type: 'message',
+        type: "message",
         sessionId: input.sessionId,
         parts: input.parts,
         context: { page: input.page },
         enableRag: input.enableRag,
-      })
+      }),
     );
   };
 
   ws.onmessage = (event) => {
-    const raw = typeof event.data === 'string' ? event.data : '';
+    const raw = typeof event.data === "string" ? event.data : "";
     if (!raw) return;
 
     try {
       const payload = JSON.parse(raw);
 
-      if (payload?.type === 'session' && typeof payload.sessionId === 'string') {
+      if (
+        payload?.type === "session" &&
+        typeof payload.sessionId === "string"
+      ) {
         storeSessionId(payload.sessionId);
         return;
       }
 
-      if (payload?.type === 'done') {
-        push({ type: 'done' });
+      if (payload?.type === "done") {
+        push({ type: "done" });
         finish();
         return;
       }
 
-      if (payload?.type === 'error') {
-        finish(new ChatError(payload.error || 'Chat failed', 'SERVER_ERROR'));
+      if (payload?.type === "error") {
+        finish(new ChatError(payload.error || "Chat failed", "SERVER_ERROR"));
         return;
       }
 
       const events = parseStreamObject(payload);
       if (events.length === 0 && payload?.text) {
-        push({ type: 'text', text: payload.text });
+        push({ type: "text", text: payload.text });
         return;
       }
 
@@ -355,7 +365,7 @@ async function* streamChatEventsWebSocket(input: {
   };
 
   ws.onerror = () => {
-    finish(new ChatError('WebSocket error', 'NETWORK_ERROR'));
+    finish(new ChatError("WebSocket error", "NETWORK_ERROR"));
   };
 
   ws.onclose = () => {
@@ -368,7 +378,7 @@ async function* streamChatEventsWebSocket(input: {
         const next = queue.shift();
         if (next) {
           yield next;
-          if (next.type === 'done') return;
+          if (next.type === "done") return;
           continue;
         }
       }
@@ -384,7 +394,7 @@ async function* streamChatEventsWebSocket(input: {
     }
   } finally {
     if (input.signal) {
-      input.signal.removeEventListener('abort', handleAbort);
+      input.signal.removeEventListener("abort", handleAbort);
     }
   }
 }
@@ -396,7 +406,7 @@ export async function* streamChatMessage(input: {
   text: string;
 }): AsyncGenerator<string, void, void> {
   for await (const ev of streamChatEvents({ text: input.text })) {
-    if (ev.type === 'text') yield ev.text;
+    if (ev.type === "text") yield ev.text;
   }
 }
 
@@ -409,24 +419,24 @@ export async function* streamChatMessage(input: {
  */
 export async function uploadChatImage(
   file: File,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<ChatImageUploadResult> {
   const base = getApiBaseUrl();
-  const url = `${base.replace(/\/$/, '')}/api/v1/images/chat-upload`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/images/chat-upload`;
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append("file", file);
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[ChatImage] Uploading to:', url);
+  if (process.env.NODE_ENV === "development") {
+    console.log("[ChatImage] Uploading to:", url);
   }
 
   const res = await fetch(url, {
-    method: 'POST',
+    method: "POST",
     body: formData,
     signal,
   });
 
-  const text = await res.text().catch(() => '');
+  const text = await res.text().catch(() => "");
   let parsed: any = null;
   if (text) {
     try {
@@ -441,12 +451,15 @@ export async function uploadChatImage(
   }
 
   const data = parsed.data;
-  if (!data || typeof data.url !== 'string') {
-    throw new ChatError('Invalid chat image upload response', 'PARSE_ERROR');
+  if (!data || typeof data.url !== "string") {
+    throw new ChatError("Invalid chat image upload response", "PARSE_ERROR");
   }
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[ChatImage] Upload success, analysis:', data.imageAnalysis ? 'OK' : 'NULL');
+  if (process.env.NODE_ENV === "development") {
+    console.log(
+      "[ChatImage] Upload success, analysis:",
+      data.imageAnalysis ? "OK" : "NULL",
+    );
   }
 
   return data as ChatImageUploadResult;
@@ -464,16 +477,16 @@ export async function invokeChatAggregate(input: {
   signal?: AbortSignal;
 }): Promise<string> {
   const base = getApiBaseUrl();
-  const url = `${base.replace(/\/$/, '')}/api/v1/chat/aggregate`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/chat/aggregate`;
 
   const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt: input.prompt }),
     signal: input.signal,
   });
 
-  const text = await res.text().catch(() => '');
+  const text = await res.text().catch(() => "");
   let parsed: any = null;
   if (text) {
     try {
@@ -489,11 +502,11 @@ export async function invokeChatAggregate(input: {
 
   const data = parsed.data;
   const value =
-    (data && typeof data.text === 'string' && data.text) ||
-    (typeof data === 'string' ? data : null);
+    (data && typeof data.text === "string" && data.text) ||
+    (typeof data === "string" ? data : null);
 
   if (!value) {
-    throw new ChatError('Invalid chat aggregate response', 'PARSE_ERROR');
+    throw new ChatError("Invalid chat aggregate response", "PARSE_ERROR");
   }
   return value;
 }

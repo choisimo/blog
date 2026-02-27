@@ -1,12 +1,15 @@
-import { Router } from 'express';
-import { aiService, tryParseJson } from '../lib/ai-service.js';
-import { config } from '../config.js';
-import { queryAll, isD1Configured } from '../lib/d1.js';
-import { getAITaskQueue } from '../lib/ai-task-queue.js';
-import { isRedisAvailable } from '../lib/redis-client.js';
-import { getAIRateLimiter, rateLimitMiddleware } from '../lib/ai-rate-limiter.js';
-import { ragSearch } from '../lib/agent/tools/rag-search.js';
-import { requireFeature } from '../middleware/featureFlags.js';
+import { Router } from "express";
+import { aiService, tryParseJson } from "../lib/ai-service.js";
+import { config } from "../config.js";
+import { queryAll, isD1Configured } from "../lib/d1.js";
+import { getAITaskQueue } from "../lib/ai-task-queue.js";
+import { isRedisAvailable } from "../lib/redis-client.js";
+import {
+  getAIRateLimiter,
+  rateLimitMiddleware,
+} from "../lib/ai-rate-limiter.js";
+import { ragSearch } from "../lib/agent/tools/rag-search.js";
+import { requireFeature } from "../middleware/featureFlags.js";
 import {
   AI_MODELS,
   RAG_KEYWORDS,
@@ -16,11 +19,31 @@ import {
   TIMEOUTS,
   CONTEXT,
   AI_TEMPERATURES,
-} from '../config/constants.js';
+} from "../config/constants.js";
 
 const router = Router();
 
-router.use(requireFeature('ai'));
+router.use(requireFeature("ai"));
+
+function readHeaderValue(value) {
+  if (Array.isArray(value)) return value[0];
+  if (typeof value === "string") return value;
+  return undefined;
+}
+
+function resolveChatModelFromRequest(req) {
+  const forced = readHeaderValue(req?.headers?.["x-ai-model"])?.trim();
+  if (forced) return forced;
+  return config.ai?.defaultModel || AI_MODELS.DEFAULT;
+}
+
+function resolveVisionModelFromRequest(req) {
+  const forcedVision = readHeaderValue(
+    req?.headers?.["x-ai-vision-model"],
+  )?.trim();
+  if (forcedVision) return forcedVision;
+  return resolveChatModelFromRequest(req);
+}
 
 // ============================================================================
 // RAG Integration Helper
@@ -30,14 +53,14 @@ async function searchBlogPosts(query, nResults = 5) {
   try {
     const results = await ragSearch(query, { limit: nResults });
     if (!results || results.length === 0) return null;
-    
-    return results.map(r => ({
+
+    return results.map((r) => ({
       document: r.content,
       metadata: r.metadata || {},
       score: r.score,
     }));
   } catch (err) {
-    console.warn('RAG search error:', err.message);
+    console.warn("RAG search error:", err.message);
     return null;
   }
 }
@@ -49,19 +72,19 @@ async function searchBlogPosts(query, nResults = 5) {
  */
 function shouldUseRAG(message) {
   if (!message) return false;
-  
+
   const lowerMsg = message.toLowerCase();
-  
+
   // Korean keywords for blog/post recommendations
   const koreanKeywords = RAG_KEYWORDS.KOREAN;
-  
+
   // English keywords
   const englishKeywords = RAG_KEYWORDS.ENGLISH;
-  
+
   // Check for keywords
-  const hasKoreanKeyword = koreanKeywords.some(kw => lowerMsg.includes(kw));
-  const hasEnglishKeyword = englishKeywords.some(kw => lowerMsg.includes(kw));
-  
+  const hasKoreanKeyword = koreanKeywords.some((kw) => lowerMsg.includes(kw));
+  const hasEnglishKeyword = englishKeywords.some((kw) => lowerMsg.includes(kw));
+
   return hasKoreanKeyword || hasEnglishKeyword;
 }
 
@@ -71,17 +94,19 @@ function shouldUseRAG(message) {
  * @returns {string} Formatted context
  */
 function formatRAGContext(results) {
-  if (!results || results.length === 0) return '';
-  
-  const posts = results.map((r, i) => {
-    const meta = r.metadata || {};
-    return `${i + 1}. "${meta.title}" (${meta.date || 'no date'})
-   - URL: ${meta.url || '/blog/' + meta.slug}
-   - Category: ${meta.category || 'N/A'}
-   - Tags: ${meta.tags || 'N/A'}
-   - Summary: ${r.document?.substring(0, 200) || 'N/A'}`;
-  }).join('\n\n');
-  
+  if (!results || results.length === 0) return "";
+
+  const posts = results
+    .map((r, i) => {
+      const meta = r.metadata || {};
+      return `${i + 1}. "${meta.title}" (${meta.date || "no date"})
+   - URL: ${meta.url || "/blog/" + meta.slug}
+   - Category: ${meta.category || "N/A"}
+   - Tags: ${meta.tags || "N/A"}
+   - Summary: ${r.document?.substring(0, 200) || "N/A"}`;
+    })
+    .join("\n\n");
+
   return `${RAG_PROMPTS.CONTEXT_TEMPLATE}
 
 ${posts}
@@ -92,12 +117,13 @@ ${RAG_PROMPTS.RECOMMENDATION_INSTRUCTION}`;
 // ============================================================================
 // Model List Endpoint - Get available AI models (DB-first, with fallbacks)
 // GET /api/v1/ai/models
-// 
+//
 // Priority: 1. Database (ai_models table) -> 2. Static fallback
 // ============================================================================
 
-router.get('/models', async (req, res) => {
-  const defaultModel = config.ai?.defaultModel ||
+router.get("/models", async (req, res) => {
+  const defaultModel =
+    config.ai?.defaultModel ||
     process.env.AI_DEFAULT_MODEL ||
     AI_MODELS.DEFAULT;
 
@@ -105,8 +131,8 @@ router.get('/models', async (req, res) => {
   if (isD1Configured()) {
     try {
       const sql = `
-        SELECT 
-          m.id, m.model_name, m.display_name, m.description, 
+        SELECT
+          m.id, m.model_name, m.display_name, m.description,
           m.supports_vision, m.supports_streaming, m.supports_function_calling,
           m.context_window, m.priority,
           p.name as provider_name, p.display_name as provider_display_name
@@ -115,15 +141,15 @@ router.get('/models', async (req, res) => {
         WHERE m.is_enabled = 1
         ORDER BY m.priority DESC, m.display_name ASC
       `;
-      
+
       const dbModels = await queryAll(sql);
 
       if (dbModels.length > 0) {
-        const formattedModels = dbModels.map(m => ({
+        const formattedModels = dbModels.map((m) => ({
           id: m.id,
           name: m.display_name || m.model_name,
-          provider: m.provider_display_name || m.provider_name || 'Unknown',
-          description: m.description || '',
+          provider: m.provider_display_name || m.provider_name || "Unknown",
+          description: m.description || "",
           isDefault: m.id === defaultModel,
           capabilities: buildCapabilities(m),
           contextWindow: m.context_window,
@@ -141,12 +167,15 @@ router.get('/models', async (req, res) => {
           data: {
             models: formattedModels,
             default: defaultModel,
-            provider: 'database',
+            provider: "database",
           },
         });
       }
     } catch (dbErr) {
-      console.warn('DB model lookup failed, using fallback list:', dbErr.message);
+      console.warn(
+        "DB model lookup failed, using fallback list:",
+        dbErr.message,
+      );
     }
   }
 
@@ -156,8 +185,8 @@ router.get('/models', async (req, res) => {
     data: {
       models: getFallbackModels(defaultModel),
       default: defaultModel,
-      provider: 'fallback',
-      warning: 'Using fallback model list - Database may be unavailable',
+      provider: "fallback",
+      warning: "Using fallback model list - Database may be unavailable",
     },
   });
 });
@@ -166,11 +195,11 @@ router.get('/models', async (req, res) => {
  * Build capabilities array from DB model flags
  */
 function buildCapabilities(model) {
-  const caps = ['chat']; // All models support chat
-  if (model.supports_vision) caps.push('vision');
-  if (model.supports_streaming) caps.push('streaming');
-  if (model.supports_function_calling) caps.push('function-calling');
-  if (model.context_window >= CONTEXT.LONG_THRESHOLD) caps.push('long-context');
+  const caps = ["chat"]; // All models support chat
+  if (model.supports_vision) caps.push("vision");
+  if (model.supports_streaming) caps.push("streaming");
+  if (model.supports_function_calling) caps.push("function-calling");
+  if (model.context_window >= CONTEXT.LONG_THRESHOLD) caps.push("long-context");
   return caps;
 }
 
@@ -179,15 +208,45 @@ function buildCapabilities(model) {
  */
 function getFallbackModels(defaultModel) {
   const fallbackList = AI_MODELS.STATIC_FALLBACK_LIST || [
-    { id: 'gpt-4.1', name: 'GPT-4.1', provider: 'GitHub', capabilities: ['chat', 'vision'] },
-    { id: 'gpt-4o', name: 'GPT-4o', provider: 'GitHub', capabilities: ['chat', 'vision'] },
-    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'GitHub', capabilities: ['chat', 'vision'] },
-    { id: 'claude-sonnet-4', name: 'Claude Sonnet 4', provider: 'GitHub', capabilities: ['chat', 'vision', 'long-context'] },
-    { id: 'claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'GitHub', capabilities: ['chat', 'vision'] },
-    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'GitHub', capabilities: ['chat', 'vision', 'long-context'] },
+    {
+      id: "gpt-4.1",
+      name: "GPT-4.1",
+      provider: "GitHub",
+      capabilities: ["chat", "vision"],
+    },
+    {
+      id: "gpt-4o",
+      name: "GPT-4o",
+      provider: "GitHub",
+      capabilities: ["chat", "vision"],
+    },
+    {
+      id: "gpt-4o-mini",
+      name: "GPT-4o Mini",
+      provider: "GitHub",
+      capabilities: ["chat", "vision"],
+    },
+    {
+      id: "claude-sonnet-4",
+      name: "Claude Sonnet 4",
+      provider: "GitHub",
+      capabilities: ["chat", "vision", "long-context"],
+    },
+    {
+      id: "claude-3.5-sonnet",
+      name: "Claude 3.5 Sonnet",
+      provider: "GitHub",
+      capabilities: ["chat", "vision"],
+    },
+    {
+      id: "gemini-2.0-flash",
+      name: "Gemini 2.0 Flash",
+      provider: "GitHub",
+      capabilities: ["chat", "vision", "long-context"],
+    },
   ];
-  
-  return fallbackList.map(m => ({
+
+  return fallbackList.map((m) => ({
     ...m,
     isDefault: m.id === defaultModel,
   }));
@@ -198,41 +257,48 @@ function getFallbackModels(defaultModel) {
 // POST /api/v1/ai/auto-chat
 // ============================================================================
 
-router.post('/auto-chat', rateLimitMiddleware(), async (req, res, next) => {
+router.post("/auto-chat", rateLimitMiddleware(), async (req, res, next) => {
   try {
-    const { messages, temperature, maxTokens, model } = req.body || {};
+    const { messages, temperature, maxTokens } = req.body || {};
+    const forcedModel = resolveChatModelFromRequest(req);
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({
         ok: false,
-        error: { message: 'messages array is required', code: 'INVALID_REQUEST' },
+        error: {
+          message: "messages array is required",
+          code: "INVALID_REQUEST",
+        },
       });
     }
 
     // Get the last user message for RAG search
-    const lastUserMessage = messages.slice().reverse().find(m => m.role === 'user')?.content;
-    
+    const lastUserMessage = messages
+      .slice()
+      .reverse()
+      .find((m) => m.role === "user")?.content;
+
     // Check if we should use RAG for this query
     let enrichedMessages = [...messages];
     let usedRAG = false;
-    
+
     if (lastUserMessage && shouldUseRAG(lastUserMessage)) {
       // Search for relevant blog posts
       const ragResults = await searchBlogPosts(lastUserMessage, 5);
-      
+
       if (ragResults && ragResults.length > 0) {
         // Format RAG results as context
         const context = formatRAGContext(ragResults);
-        
+
         // Inject context as a system message
-        const systemMsg = enrichedMessages.find(m => m.role === 'system');
+        const systemMsg = enrichedMessages.find((m) => m.role === "system");
         if (systemMsg) {
           // Append to existing system message
           systemMsg.content = `${systemMsg.content}\n\n${context}`;
         } else {
           // Add new system message with context
           enrichedMessages.unshift({
-            role: 'system',
+            role: "system",
             content: `${RAG_PROMPTS.BLOG_ASSISTANT}\n\n${context}`,
           });
         }
@@ -240,11 +306,11 @@ router.post('/auto-chat', rateLimitMiddleware(), async (req, res, next) => {
       }
     }
 
-    // Use unified AI service for chat with optional model selection
+    // Client model override is not allowed; model is controlled by gateway/runtime config.
     const result = await aiService.chat(enrichedMessages, {
       temperature,
       maxTokens,
-      model, // Pass selected model to AI service
+      model: forcedModel,
     });
 
     return res.json({
@@ -257,20 +323,20 @@ router.post('/auto-chat', rateLimitMiddleware(), async (req, res, next) => {
       },
     });
   } catch (err) {
-    console.error('auto-chat error:', err);
+    console.error("auto-chat error:", err);
     return next(err);
   }
 });
 
 // GET /api/v1/ai/health - Health check
-router.get('/health', async (req, res) => {
+router.get("/health", async (req, res) => {
   const healthResult = await aiService.health();
   const providerInfo = aiService.getProviderInfo();
 
   res.json({
     ok: true,
     data: {
-      status: healthResult.ok ? 'healthy' : 'degraded',
+      status: healthResult.ok ? "healthy" : "degraded",
       provider: providerInfo.provider,
       health: healthResult,
       hasApiKey: !!config.ai?.apiKey,
@@ -280,14 +346,14 @@ router.get('/health', async (req, res) => {
 });
 
 // GET /api/v1/ai/status - Status check
-router.get('/status', async (req, res) => {
+router.get("/status", async (req, res) => {
   const providerInfo = aiService.getProviderInfo();
   const healthResult = await aiService.health();
 
   res.json({
     ok: true,
     data: {
-      status: healthResult.ok ? 'ok' : 'degraded',
+      status: healthResult.ok ? "ok" : "degraded",
       provider: providerInfo.provider,
       model: providerInfo.config?.defaultModel || config.ai?.defaultModel,
       aiService: {
@@ -309,15 +375,15 @@ router.get('/status', async (req, res) => {
 });
 
 // GET /api/v1/ai/queue-stats - Queue statistics
-router.get('/queue-stats', async (req, res) => {
+router.get("/queue-stats", async (req, res) => {
   const redisAvailable = await isRedisAvailable();
-  
+
   if (!redisAvailable) {
     return res.json({
       ok: true,
       data: {
         enabled: false,
-        message: 'Async queue not available (Redis offline)',
+        message: "Async queue not available (Redis offline)",
       },
     });
   }
@@ -329,7 +395,7 @@ router.get('/queue-stats', async (req, res) => {
     ok: true,
     data: {
       enabled: true,
-      asyncMode: process.env.AI_ASYNC_MODE === 'true',
+      asyncMode: process.env.AI_ASYNC_MODE === "true",
       ...stats,
       timestamp: new Date().toISOString(),
     },
@@ -337,13 +403,13 @@ router.get('/queue-stats', async (req, res) => {
 });
 
 // GET /api/v1/ai/dlq - Get Dead Letter Queue tasks
-router.get('/dlq', async (req, res) => {
+router.get("/dlq", async (req, res) => {
   const redisAvailable = await isRedisAvailable();
-  
+
   if (!redisAvailable) {
     return res.status(503).json({
       ok: false,
-      error: { message: 'Redis unavailable', code: 'REDIS_UNAVAILABLE' },
+      error: { message: "Redis unavailable", code: "REDIS_UNAVAILABLE" },
     });
   }
 
@@ -358,51 +424,51 @@ router.get('/dlq', async (req, res) => {
 });
 
 // POST /api/v1/ai/dlq/:messageId/reprocess - Reprocess a DLQ task
-router.post('/dlq/:messageId/reprocess', async (req, res) => {
+router.post("/dlq/:messageId/reprocess", async (req, res) => {
   const redisAvailable = await isRedisAvailable();
-  
+
   if (!redisAvailable) {
     return res.status(503).json({
       ok: false,
-      error: { message: 'Redis unavailable', code: 'REDIS_UNAVAILABLE' },
+      error: { message: "Redis unavailable", code: "REDIS_UNAVAILABLE" },
     });
   }
 
   const { messageId } = req.params;
   const queue = getAITaskQueue();
-  
+
   try {
     const result = await queue.reprocessDLQTask(messageId);
     res.json({ ok: true, data: result });
   } catch (err) {
     res.status(404).json({
       ok: false,
-      error: { message: err.message, code: 'DLQ_TASK_NOT_FOUND' },
+      error: { message: err.message, code: "DLQ_TASK_NOT_FOUND" },
     });
   }
 });
 
 // DELETE /api/v1/ai/dlq - Purge all DLQ tasks
-router.delete('/dlq', async (req, res) => {
+router.delete("/dlq", async (req, res) => {
   const redisAvailable = await isRedisAvailable();
-  
+
   if (!redisAvailable) {
     return res.status(503).json({
       ok: false,
-      error: { message: 'Redis unavailable', code: 'REDIS_UNAVAILABLE' },
+      error: { message: "Redis unavailable", code: "REDIS_UNAVAILABLE" },
     });
   }
 
   const queue = getAITaskQueue();
   const result = await queue.purgeDLQ();
-  
+
   res.json({ ok: true, data: result });
 });
 
 // GET /api/v1/ai/rate-limit - Get rate limit status for current client
-router.get('/rate-limit', async (req, res) => {
+router.get("/rate-limit", async (req, res) => {
   const limiter = getAIRateLimiter();
-  const identifier = req.ip || req.headers['x-forwarded-for'] || 'anonymous';
+  const identifier = req.ip || req.headers["x-forwarded-for"] || "anonymous";
   const quota = await limiter.getRemainingQuota(identifier);
 
   res.json({
@@ -410,7 +476,7 @@ router.get('/rate-limit', async (req, res) => {
     data: {
       ...quota,
       windowMs: limiter.windowMs,
-      identifier: identifier.slice(0, 8) + '...',
+      identifier: identifier.slice(0, 8) + "...",
     },
   });
 });
@@ -425,10 +491,10 @@ router.get('/rate-limit', async (req, res) => {
  */
 async function fetchImageAsBase64(imageUrl) {
   const parsedUrl = new URL(imageUrl);
-  
+
   // 1. 프로토콜 제한 (http, https만 허용)
-  if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-    throw new Error('Invalid protocol');
+  if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+    throw new Error("Invalid protocol");
   }
 
   // 2. (옵션) 내부망 IP 접근 차단 로직 추가 권장 (프로덕션 환경)
@@ -436,9 +502,9 @@ async function fetchImageAsBase64(imageUrl) {
 
   const response = await fetch(imageUrl, {
     // 3. 타임아웃 설정 (AbortSignal)
-    signal: AbortSignal.timeout(TIMEOUTS.IMAGE_FETCH), 
+    signal: AbortSignal.timeout(TIMEOUTS.IMAGE_FETCH),
     // 4. 리다이렉트 제한 (무한 루프 방지)
-    redirect: 'error' 
+    redirect: "error",
   });
 
   if (!response.ok) {
@@ -446,110 +512,132 @@ async function fetchImageAsBase64(imageUrl) {
   }
 
   // 5. 콘텐츠 크기 제한 (예: 10MB)
-  const contentLength = response.headers.get('content-length');
+  const contentLength = response.headers.get("content-length");
   if (contentLength && parseInt(contentLength) > IMAGE.MAX_SIZE) {
-    throw new Error('Image too large');
+    throw new Error("Image too large");
   }
 
   // 스트림으로 읽으면서 크기 체크 (Content-Length가 없는 경우 대비)
-  const buffer = await response.arrayBuffer(); 
+  const buffer = await response.arrayBuffer();
   if (buffer.byteLength > IMAGE.MAX_SIZE) {
-    throw new Error('Image too large');
+    throw new Error("Image too large");
   }
 
-  const contentType = response.headers.get('content-type') || IMAGE.DEFAULT_MIME;
-  const base64 = Buffer.from(buffer).toString('base64');
+  const contentType =
+    response.headers.get("content-type") || IMAGE.DEFAULT_MIME;
+  const base64 = Buffer.from(buffer).toString("base64");
 
   return { base64, mimeType: contentType };
 }
 
-router.post('/vision/analyze', rateLimitMiddleware(), async (req, res, next) => {
-  try {
-    const { imageUrl, imageBase64, mimeType: inputMimeType, prompt, provider: preferredProvider } = req.body || {};
-
-    let imageData;
-    let mimeType;
-    let imageType; // 'url' or 'base64'
-
-    // Prefer URL if provided
-    // For trusted asset URLs we can pass through directly (more efficient than converting to base64)
-    if (imageUrl) {
-      const assetsBaseUrl = config.assetsBaseUrl || `${String(config.siteBaseUrl || '').replace(/\/$/, '')}/images`;
-      const isTrustedAssetUrl = imageUrl.includes(String(assetsBaseUrl).replace(/^https?:\/\//, ''));
-      
-      if (isTrustedAssetUrl) {
-        // Pass trusted URL directly
-        imageData = imageUrl;
-        mimeType = inputMimeType || IMAGE.DEFAULT_MIME;
-        imageType = 'url';
-      } else {
-        // For other URLs, fetch and convert to base64 (for compatibility)
-        try {
-          const fetched = await fetchImageAsBase64(imageUrl);
-          imageData = fetched.base64;
-          mimeType = fetched.mimeType;
-          imageType = 'base64';
-        } catch (err) {
-          return res.status(400).json({
-            ok: false,
-            error: { message: err.message || 'Failed to fetch image', code: 'IMAGE_FETCH_ERROR' },
-          });
-        }
-      }
-    } else if (imageBase64) {
-      imageData = imageBase64;
-      mimeType = inputMimeType || IMAGE.DEFAULT_MIME;
-      imageType = 'base64';
-    } else {
-      return res.status(400).json({
-        ok: false,
-        error: { message: 'imageUrl or imageBase64 required', code: 'INVALID_REQUEST' },
-      });
-    }
-
-    const analysisPrompt = prompt || VISION_PROMPTS.DEFAULT;
-
-    // Use unified AI service for vision analysis
-    // aiService.vision handles both URL and base64 formats
+router.post(
+  "/vision/analyze",
+  rateLimitMiddleware(),
+  async (req, res, next) => {
     try {
-      const description = await aiService.vision(imageData, analysisPrompt, {
-        mimeType,
-        model: AI_MODELS.VISION, // Vision-capable model
-      });
+      const {
+        imageUrl,
+        imageBase64,
+        mimeType: inputMimeType,
+        prompt,
+        provider: preferredProvider,
+      } = req.body || {};
 
-      return res.json({
-        ok: true,
-        data: {
-          description,
-          provider: aiService.provider,
-          imageType, // Let client know how image was processed
-        },
-      });
+      let imageData;
+      let mimeType;
+      let imageType; // 'url' or 'base64'
+
+      // Prefer URL if provided
+      // For trusted asset URLs we can pass through directly (more efficient than converting to base64)
+      if (imageUrl) {
+        const assetsBaseUrl =
+          config.assetsBaseUrl ||
+          `${String(config.siteBaseUrl || "").replace(/\/$/, "")}/images`;
+        const isTrustedAssetUrl = imageUrl.includes(
+          String(assetsBaseUrl).replace(/^https?:\/\//, ""),
+        );
+
+        if (isTrustedAssetUrl) {
+          // Pass trusted URL directly
+          imageData = imageUrl;
+          mimeType = inputMimeType || IMAGE.DEFAULT_MIME;
+          imageType = "url";
+        } else {
+          // For other URLs, fetch and convert to base64 (for compatibility)
+          try {
+            const fetched = await fetchImageAsBase64(imageUrl);
+            imageData = fetched.base64;
+            mimeType = fetched.mimeType;
+            imageType = "base64";
+          } catch (err) {
+            return res.status(400).json({
+              ok: false,
+              error: {
+                message: err.message || "Failed to fetch image",
+                code: "IMAGE_FETCH_ERROR",
+              },
+            });
+          }
+        }
+      } else if (imageBase64) {
+        imageData = imageBase64;
+        mimeType = inputMimeType || IMAGE.DEFAULT_MIME;
+        imageType = "base64";
+      } else {
+        return res.status(400).json({
+          ok: false,
+          error: {
+            message: "imageUrl or imageBase64 required",
+            code: "INVALID_REQUEST",
+          },
+        });
+      }
+
+      const analysisPrompt = prompt || VISION_PROMPTS.DEFAULT;
+      const forcedVisionModel = resolveVisionModelFromRequest(req);
+
+      // Use unified AI service for vision analysis
+      // aiService.vision handles both URL and base64 formats
+      try {
+        const description = await aiService.vision(imageData, analysisPrompt, {
+          mimeType,
+          model: forcedVisionModel,
+        });
+
+        return res.json({
+          ok: true,
+          data: {
+            description,
+            provider: aiService.provider,
+            imageType, // Let client know how image was processed
+          },
+        });
+      } catch (err) {
+        console.error("Vision analysis failed:", err.message);
+        return res.status(502).json({
+          ok: false,
+          error: {
+            message: err.message || "Vision analysis failed",
+            code: "VISION_ERROR",
+          },
+        });
+      }
     } catch (err) {
-      console.error('Vision analysis failed:', err.message);
-      return res.status(502).json({
-        ok: false,
-        error: {
-          message: err.message || 'Vision analysis failed',
-          code: 'VISION_ERROR',
-        },
-      });
+      console.error("vision/analyze error:", err);
+      return next(err);
     }
-  } catch (err) {
-    console.error('vision/analyze error:', err);
-    return next(err);
-  }
-});
+  },
+);
 
 // GET /api/v1/ai/vision/health - Vision health check
-router.get('/vision/health', async (req, res) => {
+router.get("/vision/health", async (req, res) => {
   const healthResult = await aiService.health();
   const providerInfo = aiService.getProviderInfo();
 
   res.json({
     ok: true,
     data: {
-      status: healthResult.ok ? 'ok' : 'degraded',
+      status: healthResult.ok ? "ok" : "degraded",
       provider: providerInfo.provider,
       providers: {
         [providerInfo.provider]: healthResult.ok,
@@ -563,34 +651,46 @@ router.get('/vision/health', async (req, res) => {
 // Existing Endpoints (summarize, sketch, prism, chain, generate)
 // ============================================================================
 
-router.post('/summarize', async (req, res, next) => {
+router.post("/summarize", async (req, res, next) => {
   try {
     const { text, input, instructions } = req.body || {};
     const contentText = text || input;
     if (!contentText) {
-      return res.status(400).json({ ok: false, error: 'Missing text' });
+      return res.status(400).json({ ok: false, error: "Missing text" });
     }
 
-    const result = await aiService.task('summary', {
-      content: contentText,
-      prompt: instructions,
-    }, { temperature: AI_TEMPERATURES.SUMMARY });
+    const result = await aiService.task(
+      "summary",
+      {
+        content: contentText,
+        prompt: instructions,
+      },
+      { temperature: AI_TEMPERATURES.SUMMARY },
+    );
 
-    return res.json({ ok: true, data: { summary: result.data?.summary || result.data?.text || contentText.slice(0, 200) } });
+    return res.json({
+      ok: true,
+      data: {
+        summary:
+          result.data?.summary ||
+          result.data?.text ||
+          contentText.slice(0, 200),
+      },
+    });
   } catch (err) {
     return next(err);
   }
 });
 
-router.post('/sketch', async (req, res, next) => {
+router.post("/sketch", async (req, res, next) => {
   try {
     const { paragraph, postTitle, persona } = req.body || {};
-    if (!paragraph || typeof paragraph !== 'string')
+    if (!paragraph || typeof paragraph !== "string")
       return res
         .status(400)
-        .json({ ok: false, error: 'paragraph is required' });
+        .json({ ok: false, error: "paragraph is required" });
 
-    const result = await aiService.task('sketch', {
+    const result = await aiService.task("sketch", {
       paragraph,
       postTitle,
       persona,
@@ -606,21 +706,21 @@ router.post('/sketch', async (req, res, next) => {
       });
     }
 
-    throw new Error('Invalid response');
+    throw new Error("Invalid response");
   } catch (err) {
     return next(err);
   }
 });
 
-router.post('/prism', async (req, res, next) => {
+router.post("/prism", async (req, res, next) => {
   try {
     const { paragraph, postTitle } = req.body || {};
-    if (!paragraph || typeof paragraph !== 'string')
+    if (!paragraph || typeof paragraph !== "string")
       return res
         .status(400)
-        .json({ ok: false, error: 'paragraph is required' });
+        .json({ ok: false, error: "paragraph is required" });
 
-    const result = await aiService.task('prism', {
+    const result = await aiService.task("prism", {
       paragraph,
       postTitle,
     });
@@ -632,21 +732,21 @@ router.post('/prism', async (req, res, next) => {
       });
     }
 
-    throw new Error('Invalid response');
+    throw new Error("Invalid response");
   } catch (err) {
     return next(err);
   }
 });
 
-router.post('/chain', async (req, res, next) => {
+router.post("/chain", async (req, res, next) => {
   try {
     const { paragraph, postTitle } = req.body || {};
-    if (!paragraph || typeof paragraph !== 'string')
+    if (!paragraph || typeof paragraph !== "string")
       return res
         .status(400)
-        .json({ ok: false, error: 'paragraph is required' });
+        .json({ ok: false, error: "paragraph is required" });
 
-    const result = await aiService.task('chain', {
+    const result = await aiService.task("chain", {
       paragraph,
       postTitle,
     });
@@ -658,7 +758,7 @@ router.post('/chain', async (req, res, next) => {
       });
     }
 
-    throw new Error('Invalid response');
+    throw new Error("Invalid response");
   } catch (err) {
     return next(err);
   }
@@ -671,14 +771,17 @@ router.post('/chain', async (req, res, next) => {
 // Raw generate endpoint for AI Memo and other generic prompts
 // Request: { prompt: string, temperature?: number }
 // Response: { ok: true, data: { text: string } }
-router.post('/generate', rateLimitMiddleware(), async (req, res, next) => {
+router.post("/generate", rateLimitMiddleware(), async (req, res, next) => {
   try {
     const { prompt, temperature } = req.body || {};
-    if (!prompt || typeof prompt !== 'string') {
-      return res.status(400).json({ ok: false, error: 'prompt is required' });
+    if (!prompt || typeof prompt !== "string") {
+      return res.status(400).json({ ok: false, error: "prompt is required" });
     }
     const text = await aiService.generate(String(prompt), {
-      temperature: typeof temperature === 'number' ? temperature : AI_TEMPERATURES.GENERATE,
+      temperature:
+        typeof temperature === "number"
+          ? temperature
+          : AI_TEMPERATURES.GENERATE,
     });
     return res.json({ ok: true, data: { text } });
   } catch (err) {
@@ -688,35 +791,42 @@ router.post('/generate', rateLimitMiddleware(), async (req, res, next) => {
 
 // SSE streaming endpoint. Accepts GET with query `prompt` (or `q`) and optional `temperature`.
 // Streams the generated text in small chunks as 'token' events and completes with 'done'.
-router.get('/generate/stream', async (req, res, next) => {
+router.get("/generate/stream", async (req, res, next) => {
   try {
-    const q = (req.query.prompt || req.query.q || req.query.text || '').toString();
+    const q = (
+      req.query.prompt ||
+      req.query.q ||
+      req.query.text ||
+      ""
+    ).toString();
     const t = Number(req.query.temperature);
     const temperature = Number.isFinite(t) ? t : AI_TEMPERATURES.GENERATE;
 
     if (!q) {
       res.writeHead(400, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache, no-transform',
-        Connection: 'keep-alive',
-        'X-Accel-Buffering': 'no',
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
       });
       res.write(`event: error\n`);
-      res.write(`data: ${JSON.stringify({ message: 'prompt is required' })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({ message: "prompt is required" })}\n\n`,
+      );
       return res.end();
     }
 
     res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no',
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
     });
 
     const send = (event, data) => {
       if (event) res.write(`event: ${event}\n`);
       if (data !== undefined) {
-        const payload = typeof data === 'string' ? data : JSON.stringify(data);
+        const payload = typeof data === "string" ? data : JSON.stringify(data);
         // split by newlines to avoid very long lines
         const lines = String(payload).split(/\n/);
         for (const line of lines) {
@@ -726,7 +836,7 @@ router.get('/generate/stream', async (req, res, next) => {
       res.write(`\n`);
     };
 
-    send('open', { type: 'open' });
+    send("open", { type: "open" });
 
     let closed = false;
     const onClose = () => {
@@ -739,11 +849,11 @@ router.get('/generate/stream', async (req, res, next) => {
         }
       } catch {}
     };
-    req.on('close', onClose);
+    req.on("close", onClose);
 
     const ping = setInterval(() => {
       try {
-        send('ping', {});
+        send("ping", {});
       } catch {
         onClose();
       }
@@ -753,14 +863,14 @@ router.get('/generate/stream', async (req, res, next) => {
     try {
       for await (const chunk of aiService.stream(String(q), { temperature })) {
         if (closed) break;
-        send('token', { token: chunk });
+        send("token", { token: chunk });
       }
       if (!closed) {
-        send('done', { type: 'done' });
+        send("done", { type: "done" });
       }
       return onClose();
     } catch (err) {
-      send('error', { message: err?.message || 'generation failed' });
+      send("error", { message: err?.message || "generation failed" });
       return onClose();
     }
   } catch (err) {

@@ -29,6 +29,7 @@ import { getSessionMemory } from "../lib/agent/memory/session.js";
 import { requireFeature } from "../middleware/featureFlags.js";
 import { buildLiveContextPrompt } from "../services/live-context.service.js";
 
+import { broadcastNotification } from "./notifications.js";
 const router = express.Router();
 
 router.use(requireFeature("ai"));
@@ -77,7 +78,6 @@ function enrichAgentMessageWithLiveContext(message, sessionId) {
  *   mode?: string,                // Agent mode: default, research, coding, blog, article, terminal
  *   articleSlug?: string,         // Article slug (for article mode)
  *   tools?: string[],             // Enabled tools (default: all)
- *   model?: string,               // Model override
  *   temperature?: number,         // Temperature override
  *   maxIterations?: number,       // Max tool iterations
  *   userId?: string,              // User ID for memory
@@ -104,7 +104,6 @@ router.post("/run", async (req, res) => {
       mode = "default",
       articleSlug,
       tools,
-      model,
       temperature,
       maxIterations,
       userId = "default-user",
@@ -134,7 +133,6 @@ router.post("/run", async (req, res) => {
         userId,
       },
       options: {
-        model,
         temperature,
         maxIterations: effectiveMaxIterations,
       },
@@ -219,7 +217,6 @@ router.post("/stream", async (req, res) => {
       mode = "default",
       articleSlug,
       tools,
-      model,
       temperature,
       maxIterations,
       userId = "default-user",
@@ -253,7 +250,6 @@ router.post("/stream", async (req, res) => {
           userId,
         },
         options: {
-          model,
           temperature,
           maxIterations: effectiveMaxIterations,
         },
@@ -306,7 +302,6 @@ router.post("/stream", async (req, res) => {
               error: event.data.error,
             });
             break;
-          case "done":
             send("done", {
               type: "done",
               sessionId,
@@ -314,9 +309,27 @@ router.post("/stream", async (req, res) => {
                 event.data.toolCalls?.map((tc) => tc.function?.name) || [],
               content: event.data.content,
             });
-            break;
+            broadcastNotification("agent_complete", {
+              type: "agent_complete",
+              title: "AI Agent 작업 완료",
+              message: event.data.content
+                ? event.data.content.slice(0, 120) +
+                  (event.data.content.length > 120 ? "…" : "")
+                : "작업이 완료되었습니다.",
+              payload: {
+                sessionId,
+                toolsUsed:
+                  event.data.toolCalls?.map((tc) => tc.function?.name) || [],
+              },
+            });
           case "error":
             send("error", { message: event.data.message });
+            broadcastNotification("error", {
+              type: "error",
+              title: "AI Agent 오류",
+              message: event.data.message ?? "알 수 없는 오류가 발생했습니다.",
+              payload: { sessionId },
+            });
             break;
         }
       }

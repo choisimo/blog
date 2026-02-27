@@ -9,9 +9,9 @@
  *   if (!flags.aiEnabled) return <DisabledMessage />;
  */
 
-import { useEffect, useRef } from 'react';
-import { create } from 'zustand';
-import { getApiBaseUrl } from '@/utils/apiBase';
+import { useEffect, useRef } from "react";
+import { create } from "zustand";
+import { getApiBaseUrl } from "@/utils/apiBase";
 
 // ============================================================================
 // Types
@@ -28,7 +28,14 @@ export interface FeatureFlags {
 export interface RuntimeConfig {
   siteBaseUrl?: string;
   apiBaseUrl?: string;
+  chatBaseUrl?: string;
+  chatWsBaseUrl?: string;
   env?: string;
+  ai?: {
+    modelSelectionEnabled?: boolean;
+    defaultModel?: string | null;
+    visionModel?: string | null;
+  };
   features: FeatureFlags;
 }
 
@@ -91,14 +98,14 @@ export const useFeatureFlagsStore = create<FeatureFlagsState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const apiBase = getApiBaseUrl().replace(/\/$/, '');
+      const apiBase = getApiBaseUrl().replace(/\/$/, "");
       const response = await fetch(`${apiBase}/api/v1/public/config`, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          Accept: 'application/json',
+          Accept: "application/json",
         },
         // Don't fail on non-2xx - we'll use defaults
-        credentials: 'omit',
+        credentials: "omit",
       });
 
       if (!response.ok) {
@@ -111,23 +118,40 @@ export const useFeatureFlagsStore = create<FeatureFlagsState>((set, get) => ({
       const data = json?.data ?? json;
       const features = data?.features;
 
-      if (features && typeof features === 'object') {
+      if (features && typeof features === "object") {
         set({
           flags: {
             aiEnabled: features.aiEnabled ?? DEFAULT_FLAGS.aiEnabled,
             ragEnabled: features.ragEnabled ?? DEFAULT_FLAGS.ragEnabled,
-            terminalEnabled: features.terminalEnabled ?? DEFAULT_FLAGS.terminalEnabled,
+            terminalEnabled:
+              features.terminalEnabled ?? DEFAULT_FLAGS.terminalEnabled,
             aiInline: features.aiInline ?? DEFAULT_FLAGS.aiInline,
-            commentsEnabled: features.commentsEnabled ?? DEFAULT_FLAGS.commentsEnabled,
+            commentsEnabled:
+              features.commentsEnabled ?? DEFAULT_FLAGS.commentsEnabled,
           },
           isLoading: false,
           lastFetched: Date.now(),
         });
 
         // Also inject into window for legacy compatibility
-        if (typeof window !== 'undefined') {
+        if (typeof window !== "undefined") {
           const w = window as any;
           w.APP_CONFIG = w.APP_CONFIG || {};
+          if (typeof data?.apiBaseUrl === "string" && data.apiBaseUrl) {
+            w.APP_CONFIG.apiBaseUrl = data.apiBaseUrl;
+          }
+          if (typeof data?.chatBaseUrl === "string" && data.chatBaseUrl) {
+            w.APP_CONFIG.chatBaseUrl = data.chatBaseUrl;
+          }
+          if (typeof data?.chatWsBaseUrl === "string" && data.chatWsBaseUrl) {
+            w.APP_CONFIG.chatWsBaseUrl = data.chatWsBaseUrl;
+          }
+          if (data?.ai && typeof data.ai === "object") {
+            w.APP_CONFIG.ai = {
+              ...(w.APP_CONFIG.ai || {}),
+              ...data.ai,
+            };
+          }
           w.APP_CONFIG.features = get().flags;
         }
       } else {
@@ -138,10 +162,10 @@ export const useFeatureFlagsStore = create<FeatureFlagsState>((set, get) => ({
         });
       }
     } catch (err) {
-      console.warn('[FeatureFlags] Failed to fetch, using defaults:', err);
+      console.warn("[FeatureFlags] Failed to fetch, using defaults:", err);
       set({
         isLoading: false,
-        error: err instanceof Error ? err.message : 'Unknown error',
+        error: err instanceof Error ? err.message : "Unknown error",
         lastFetched: Date.now(),
       });
     }
@@ -231,7 +255,7 @@ export async function refreshFeatureFlags(): Promise<void> {
  * Call this in App.tsx or index.tsx
  */
 export function initFeatureFlags(): void {
-  if (typeof window === 'undefined' || featureFlagsInitialized) return;
+  if (typeof window === "undefined" || featureFlagsInitialized) return;
   featureFlagsInitialized = true;
 
   // Fetch immediately on startup
@@ -239,16 +263,16 @@ export function initFeatureFlags(): void {
 
   // Refresh when tab becomes visible
   visibilityChangeHandler = () => {
-    if (document.visibilityState === 'visible') {
+    if (document.visibilityState === "visible") {
       useFeatureFlagsStore.getState().fetchFlags();
     }
   };
-  document.addEventListener('visibilitychange', visibilityChangeHandler);
+  document.addEventListener("visibilitychange", visibilityChangeHandler);
 }
 
 export function disposeFeatureFlags(): void {
   if (visibilityChangeHandler) {
-    document.removeEventListener('visibilitychange', visibilityChangeHandler);
+    document.removeEventListener("visibilitychange", visibilityChangeHandler);
     visibilityChangeHandler = null;
   }
   featureFlagsInitialized = false;

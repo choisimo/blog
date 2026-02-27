@@ -8,12 +8,15 @@
  * - config:ai_serve_url     - AI 서버 URL (api.nodove.com)
  * - config:ai_serve_api_key - AI 서버 API 키
  * - config:api_base_url     - 백엔드 API URL (api.nodove.com)
- * - config:ai_gateway_caller_key - 게이트웨이 호출자 키
+ * - config:ai_default_model - 백엔드 강제 기본 모델
+ * - config:ai_vision_model  - 비전 강제 모델
+ * - config:perplexity_model - 웹 검색 기본 모델
  *
  * Priority:
- * 1. KV value (if set)
- * 2. Environment variable
- * 3. Hardcoded default
+ * 1. D1 Secret (if set)
+ * 2. KV value (if set)
+ * 3. Environment variable
+ * 4. Hardcoded default
  */
 
 import type { Env } from '../types';
@@ -24,6 +27,9 @@ export const CONFIG_KEYS = {
   AI_SERVE_URL: 'config:ai_serve_url',
   AI_SERVE_API_KEY: 'config:ai_serve_api_key',
   API_BASE_URL: 'config:api_base_url',
+  AI_DEFAULT_MODEL: 'config:ai_default_model',
+  AI_VISION_MODEL: 'config:ai_vision_model',
+  PERPLEXITY_MODEL: 'config:perplexity_model',
 } as const;
 
 // Default fallback URLs (used if both KV and env are empty)
@@ -102,17 +108,27 @@ async function getOptionalConfig(
 }
 
 /**
+ * Get optional config value with priority: D1 secret > KV > env
+ */
+async function getOptionalConfigWithSecret(
+  env: Env,
+  secretKey: string,
+  kvKey: string,
+  envValue: string | undefined
+): Promise<string | undefined> {
+  const secretValue = await getSecret(env, secretKey);
+  if (secretValue) return secretValue;
+  return getOptionalConfig(env.KV, kvKey, envValue);
+}
+
+/**
  * Get AI Serve URL (for AI server like ai-check.nodove.com)
  */
 export async function getAiServeUrl(env: Env): Promise<string> {
-  // Priority: D1 secrets > KV > env > default
-  const dbValue = await getSecret(env, 'AI_SERVER_URL');
-  if (dbValue) return dbValue;
-
   return getConfig(
     env.KV,
     CONFIG_KEYS.AI_SERVE_URL,
-    env.AI_SERVER_URL,
+    (await getSecret(env, 'AI_SERVER_URL')) || env.AI_SERVER_URL,
     DEFAULTS.AI_SERVE_URL
   );
 }
@@ -121,26 +137,59 @@ export async function getAiServeUrl(env: Env): Promise<string> {
  * Get AI Serve API Key (optional)
  */
 export async function getAiServeApiKey(env: Env): Promise<string | undefined> {
-  // Priority: D1 secrets > KV > env
-  const dbValue = await getSecret(env, 'AI_API_KEY');
-  if (dbValue) return dbValue;
-
-  return getOptionalConfig(env.KV, CONFIG_KEYS.AI_SERVE_API_KEY, env.AI_API_KEY);
+  return getOptionalConfigWithSecret(
+    env,
+    'AI_API_KEY',
+    CONFIG_KEYS.AI_SERVE_API_KEY,
+    env.AI_API_KEY
+  );
 }
 
 /**
  * Get Backend API Base URL (via Cloudflare Tunnel)
  */
 export async function getApiBaseUrl(env: Env): Promise<string> {
-  // Priority: D1 secrets > KV > env > default
-  const dbValue = await getSecret(env, 'API_BASE_URL');
-  if (dbValue) return dbValue;
-
   return getConfig(
     env.KV,
     CONFIG_KEYS.API_BASE_URL,
-    env.API_BASE_URL,
+    (await getSecret(env, 'API_BASE_URL')) || env.API_BASE_URL,
     DEFAULTS.API_BASE_URL
+  );
+}
+
+/**
+ * Get forced default chat model (if configured)
+ */
+export async function getAiDefaultModel(env: Env): Promise<string | undefined> {
+  return getOptionalConfigWithSecret(
+    env,
+    'AI_DEFAULT_MODEL',
+    CONFIG_KEYS.AI_DEFAULT_MODEL,
+    env.AI_DEFAULT_MODEL
+  );
+}
+
+/**
+ * Get forced vision model (if configured)
+ */
+export async function getAiVisionModel(env: Env): Promise<string | undefined> {
+  return getOptionalConfigWithSecret(
+    env,
+    'AI_VISION_MODEL',
+    CONFIG_KEYS.AI_VISION_MODEL,
+    env.AI_VISION_MODEL
+  );
+}
+
+/**
+ * Get default Perplexity model (if configured)
+ */
+export async function getPerplexityModel(env: Env): Promise<string | undefined> {
+  return getOptionalConfigWithSecret(
+    env,
+    'PERPLEXITY_MODEL',
+    CONFIG_KEYS.PERPLEXITY_MODEL,
+    env.PERPLEXITY_MODEL
   );
 }
 
@@ -176,6 +225,9 @@ export async function getAllConfig(env: Env): Promise<{
   aiServeUrl: { value: string; source: 'db' | 'kv' | 'env' | 'default' };
   apiBaseUrl: { value: string; source: 'db' | 'kv' | 'env' | 'default' };
   aiServeApiKey: { value: string; source: 'db' | 'kv' | 'env' | 'none' } | null;
+  aiDefaultModel: { value: string; source: 'db' | 'kv' | 'env' | 'none' } | null;
+  aiVisionModel: { value: string; source: 'db' | 'kv' | 'env' | 'none' } | null;
+  perplexityModel: { value: string; source: 'db' | 'kv' | 'env' | 'none' } | null;
 }> {
   const kv = env.KV;
 
@@ -221,10 +273,43 @@ export async function getAllConfig(env: Env): Promise<{
         : null;
   }
 
+  const aiDefaultDb = await getSecret(env, 'AI_DEFAULT_MODEL');
+  const aiDefaultKv = aiDefaultDb ? null : await kv.get(CONFIG_KEYS.AI_DEFAULT_MODEL);
+  const aiDefaultModel = aiDefaultDb
+    ? { value: aiDefaultDb, source: 'db' as const }
+    : aiDefaultKv
+      ? { value: aiDefaultKv, source: 'kv' as const }
+      : env.AI_DEFAULT_MODEL
+        ? { value: env.AI_DEFAULT_MODEL, source: 'env' as const }
+        : null;
+
+  const aiVisionDb = await getSecret(env, 'AI_VISION_MODEL');
+  const aiVisionKv = aiVisionDb ? null : await kv.get(CONFIG_KEYS.AI_VISION_MODEL);
+  const aiVisionModel = aiVisionDb
+    ? { value: aiVisionDb, source: 'db' as const }
+    : aiVisionKv
+      ? { value: aiVisionKv, source: 'kv' as const }
+      : env.AI_VISION_MODEL
+        ? { value: env.AI_VISION_MODEL, source: 'env' as const }
+        : null;
+
+  const perplexityDb = await getSecret(env, 'PERPLEXITY_MODEL');
+  const perplexityKv = perplexityDb ? null : await kv.get(CONFIG_KEYS.PERPLEXITY_MODEL);
+  const perplexityModel = perplexityDb
+    ? { value: perplexityDb, source: 'db' as const }
+    : perplexityKv
+      ? { value: perplexityKv, source: 'kv' as const }
+      : env.PERPLEXITY_MODEL
+        ? { value: env.PERPLEXITY_MODEL, source: 'env' as const }
+        : null;
+
   return {
     aiServeUrl,
     apiBaseUrl,
     aiServeApiKey,
+    aiDefaultModel,
+    aiVisionModel,
+    perplexityModel,
   };
 }
 

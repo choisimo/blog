@@ -4,19 +4,27 @@ import { success, badRequest, notFound, error } from '../lib/response';
 import { execute } from '../lib/d1';
 import { requireAdmin } from '../middleware/auth';
 import { createAIService } from '../lib/ai-service';
+import { getAllowedOrigins } from '../lib/cors';
+import { getSecret } from '../lib/secrets';
+import { getApiBaseUrl } from '../lib/config';
 
 const images = new Hono<HonoEnv>();
 
 const CHAT_UPLOAD_MAX_SIZE = 10 * 1024 * 1024; // 10MB
-const CHAT_UPLOAD_ALLOWED_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-];
+const CHAT_UPLOAD_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const KV_RATE_LIMIT_PREFIX = 'ratelimit:chat-upload:';
 const CHAT_UPLOAD_RATE_LIMIT = 20;
 const CHAT_UPLOAD_RATE_WINDOW = 60;
+
+async function resolveAssetsBaseUrl(env: Env): Promise<string> {
+  const secretValue = await getSecret(env, 'ASSETS_BASE_URL');
+  if (secretValue || env.ASSETS_BASE_URL) {
+    return String(secretValue || env.ASSETS_BASE_URL).replace(/\/$/, '');
+  }
+
+  const apiBaseUrl = await getApiBaseUrl(env);
+  return `${apiBaseUrl.replace(/\/$/, '')}/images`;
+}
 
 // POST /images/presign - Generate presigned URL for R2 upload (admin only)
 images.post('/presign', requireAdmin, async (c) => {
@@ -31,7 +39,7 @@ images.post('/presign', requireAdmin, async (c) => {
   if (!r2) {
     return badRequest(c, 'R2 bucket is not configured');
   }
-  
+
   // Generate a unique key for R2
   const sanitized = filename.replace(/[^a-zA-Z0-9._-]/g, '-');
   const timestamp = Date.now();
@@ -84,7 +92,7 @@ images.post('/upload-direct', requireAdmin, async (c) => {
   });
 
   // Generate public URL (assuming R2 public bucket or custom domain)
-  const assetsBase = (c.env.ASSETS_BASE_URL || 'https://assets-b.nodove.com').replace(/\/$/, '');
+  const assetsBase = await resolveAssetsBaseUrl(c.env);
   const url = `${assetsBase}/${key}`;
 
   // Save metadata to D1
@@ -104,34 +112,41 @@ images.post('/upload-direct', requireAdmin, async (c) => {
     );
   }
 
-  return success(c, {
-    id: attachmentId,
-    url,
-    key,
-    size: file.size,
-  }, 201);
+  return success(
+    c,
+    {
+      id: attachmentId,
+      url,
+      key,
+      size: file.size,
+    },
+    201
+  );
 });
 
 // POST /images/chat-upload - Direct upload for AI Chat images (origin-guarded, rate-limited)
-images.post('/chat-upload', async c => {
+images.post('/chat-upload', async (c) => {
   const origin = c.req.header('origin') || '';
-  const allowedOrigins = (c.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
-  
+  const allowedOrigins = await getAllowedOrigins(c.env);
+
   if (origin && allowedOrigins.length > 0 && !allowedOrigins.includes(origin)) {
     return error(c, 'Forbidden - Invalid origin', 403);
   }
 
   const kv = c.env.KV;
   if (kv) {
-    const clientIP = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
+    const clientIP =
+      c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
     const rateLimitKey = `${KV_RATE_LIMIT_PREFIX}${clientIP}`;
-    const currentCount = parseInt(await kv.get(rateLimitKey) || '0', 10);
-    
+    const currentCount = parseInt((await kv.get(rateLimitKey)) || '0', 10);
+
     if (currentCount >= CHAT_UPLOAD_RATE_LIMIT) {
       return error(c, 'Too many requests - Rate limit exceeded', 429);
     }
-    
-    await kv.put(rateLimitKey, String(currentCount + 1), { expirationTtl: CHAT_UPLOAD_RATE_WINDOW });
+
+    await kv.put(rateLimitKey, String(currentCount + 1), {
+      expirationTtl: CHAT_UPLOAD_RATE_WINDOW,
+    });
   }
 
   const contentType = c.req.header('content-type') || '';
@@ -147,7 +162,10 @@ images.post('/chat-upload', async c => {
   }
 
   if (file.size > CHAT_UPLOAD_MAX_SIZE) {
-    return badRequest(c, `File too large - maximum ${CHAT_UPLOAD_MAX_SIZE / 1024 / 1024}MB allowed`);
+    return badRequest(
+      c,
+      `File too large - maximum ${CHAT_UPLOAD_MAX_SIZE / 1024 / 1024}MB allowed`
+    );
   }
 
   if (!CHAT_UPLOAD_ALLOWED_TYPES.includes(file.type)) {
@@ -170,11 +188,11 @@ images.post('/chat-upload', async c => {
     },
   });
 
-  const assetsBase = (c.env.ASSETS_BASE_URL || 'https://assets.blog.nodove.com').replace(/\/$/, '');
+  const assetsBase = await resolveAssetsBaseUrl(c.env);
   const url = `${assetsBase}/${key}`;
 
   let imageAnalysis: string | null = null;
-  
+
   if (file.type?.startsWith('image/')) {
     try {
       const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));

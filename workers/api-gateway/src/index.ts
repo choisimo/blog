@@ -18,6 +18,7 @@ import { tracingMiddleware } from './middleware/tracing';
 import { errorHandler } from './middleware/error';
 import { success } from './lib/response';
 import { getCorsHeadersForRequest } from './lib/cors';
+import { getApiBaseUrl, getAiDefaultModel, getAiVisionModel } from './lib/config';
 
 // Import routes
 import auth from './routes/auth';
@@ -59,7 +60,7 @@ const app = new Hono<HonoEnv>();
 async function proxyToBackend(request: Request, env: Env): Promise<Response> {
   const backendOrigin = env.BACKEND_ORIGIN;
   if (!backendOrigin) {
-    const corsHeaders = getCorsHeadersForRequest(request, env);
+    const corsHeaders = await getCorsHeadersForRequest(request, env);
     return new Response(
       JSON.stringify({
         error: 'Configuration error',
@@ -90,6 +91,26 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
   headers.set('CF-Ray', request.headers.get('CF-Ray') || '');
   headers.set('CF-IPCountry', request.headers.get('CF-IPCountry') || '');
 
+  const isAiOrChatPath =
+    url.pathname.startsWith('/api/v1/ai') ||
+    url.pathname.startsWith('/api/v1/chat') ||
+    url.pathname.startsWith('/api/v1/agent');
+  const isVisionPath =
+    url.pathname.startsWith('/api/v1/images') || url.pathname.startsWith('/api/v1/ai/vision');
+
+  if (isAiOrChatPath || isVisionPath) {
+    const [forcedModel, forcedVisionModel] = await Promise.all([
+      getAiDefaultModel(env),
+      getAiVisionModel(env),
+    ]);
+    if (forcedModel) {
+      headers.set('X-AI-Model', forcedModel);
+    }
+    if (forcedVisionModel && isVisionPath) {
+      headers.set('X-AI-Vision-Model', forcedVisionModel);
+    }
+  }
+
   try {
     const response = await fetch(backendUrl.toString(), {
       method: request.method,
@@ -99,7 +120,7 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
       duplex: request.method !== 'GET' && request.method !== 'HEAD' ? 'half' : undefined,
     });
 
-    const corsHeaders = getCorsHeadersForRequest(request, env);
+    const corsHeaders = await getCorsHeadersForRequest(request, env);
     const responseHeaders = new Headers(response.headers);
 
     // Prevent upstream CORS headers from causing Origin mismatch issues
@@ -121,7 +142,7 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
   } catch (error) {
     console.error('Backend request failed:', error);
 
-    const corsHeaders = getCorsHeadersForRequest(request, env);
+    const corsHeaders = await getCorsHeadersForRequest(request, env);
     return new Response(
       JSON.stringify({
         error: 'Backend unavailable',
@@ -167,14 +188,40 @@ app.get('/healthz', (c) => {
   });
 });
 
-app.get('/public/config', (c) => {
-  return success(c, {
-    env: c.env.ENV,
-    features: {
-      aiInline: true,
-      comments: true,
+async function buildPublicConfig(env: Env) {
+  const [apiBaseUrl, forcedModel, forcedVisionModel] = await Promise.all([
+    getApiBaseUrl(env),
+    getAiDefaultModel(env),
+    getAiVisionModel(env),
+  ]);
+  const chatWsBaseUrl = apiBaseUrl.replace(/^http:\/\//, 'ws://').replace(/^https:\/\//, 'wss://');
+
+  return {
+    env: env.ENV,
+    apiBaseUrl,
+    chatBaseUrl: apiBaseUrl,
+    chatWsBaseUrl,
+    ai: {
+      modelSelectionEnabled: false,
+      defaultModel: forcedModel || null,
+      visionModel: forcedVisionModel || null,
     },
-  });
+    features: {
+      aiEnabled: true,
+      ragEnabled: true,
+      terminalEnabled: true,
+      aiInline: true,
+      commentsEnabled: true,
+    },
+  };
+}
+
+app.get('/public/config', async (c) => {
+  return success(c, await buildPublicConfig(c.env));
+});
+
+app.get('/api/v1/public/config', async (c) => {
+  return success(c, await buildPublicConfig(c.env));
 });
 
 // =============================================================================
@@ -273,7 +320,13 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
         `SELECT *, (views_7d * 0.5 + views_30d * 0.3 + total_views * 0.2) as score
          FROM post_stats WHERE total_views > 0 ORDER BY score DESC LIMIT 10`
       )
-      .all<{ post_slug: string; year: string; views_7d: number; views_30d: number; total_views: number }>();
+      .all<{
+        post_slug: string;
+        year: string;
+        views_7d: number;
+        views_30d: number;
+        total_views: number;
+      }>();
 
     if (topPosts.results && topPosts.results.length > 0) {
       await db.prepare(`UPDATE editor_picks SET is_active = 0, updated_at = datetime('now')`).run();
@@ -287,7 +340,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       for (let i = 0; i < topPicks.length; i++) {
         const postItem = topPicks[i];
         if (!postItem) continue;
-        const score = postItem.views_7d * 0.5 + postItem.views_30d * 0.3 + postItem.total_views * 0.2;
+        const score =
+          postItem.views_7d * 0.5 + postItem.views_30d * 0.3 + postItem.total_views * 0.2;
         let reason = 'Popular post';
         if (postItem.views_7d > postItem.views_30d * 0.5) {
           reason = 'Trending this week';
@@ -302,7 +356,19 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
              ON CONFLICT(post_slug, year)
              DO UPDATE SET rank = ?, score = ?, reason = ?, expires_at = ?, is_active = 1, picked_at = datetime('now'), updated_at = datetime('now')`
           )
-          .bind(postItem.post_slug, postItem.year, '', i + 1, score, reason, expiresAtStr, i + 1, score, reason, expiresAtStr)
+          .bind(
+            postItem.post_slug,
+            postItem.year,
+            '',
+            i + 1,
+            score,
+            reason,
+            expiresAtStr,
+            i + 1,
+            score,
+            reason,
+            expiresAtStr
+          )
           .run();
       }
 

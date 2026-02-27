@@ -1,7 +1,12 @@
 import { Hono } from 'hono';
 import type { HonoEnv, Env } from '../types';
 import { success, badRequest, notFound, serverError } from '../lib/response';
-import { getApiBaseUrl, getAiServeApiKey } from '../lib/config';
+import {
+  getApiBaseUrl,
+  getAiServeApiKey,
+  getAiDefaultModel,
+  getAiVisionModel,
+} from '../lib/config';
 
 const debate = new Hono<HonoEnv>();
 
@@ -39,12 +44,22 @@ async function callAI(
 ): Promise<{ content: string; tokensUsed?: number }> {
   const backendUrl = await getApiBaseUrl(env);
   const apiKey = await getAiServeApiKey(env);
+  const [forcedModel, forcedVisionModel] = await Promise.all([
+    getAiDefaultModel(env),
+    getAiVisionModel(env),
+  ]);
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
   if (apiKey) {
     headers['X-Internal-Gateway-Key'] = apiKey;
+  }
+  if (forcedModel) {
+    headers['X-AI-Model'] = forcedModel;
+  }
+  if (forcedVisionModel) {
+    headers['X-AI-Vision-Model'] = forcedVisionModel;
   }
 
   const response = await fetch(`${backendUrl}/api/v1/ai/auto-chat`, {
@@ -63,7 +78,7 @@ async function callAI(
     throw new Error(`AI call failed: ${response.status}`);
   }
 
-  const data = await response.json() as {
+  const data = (await response.json()) as {
     ok?: boolean;
     data?: { content?: string; message?: string; tokensUsed?: number };
     content?: string;
@@ -89,7 +104,7 @@ debate.post('/sessions', async (c) => {
     fingerprintId?: string;
   };
 
-  const body = await c.req.json<CreateSessionBody>().catch(() => ({} as CreateSessionBody));
+  const body = await c.req.json<CreateSessionBody>().catch(() => ({}) as CreateSessionBody);
 
   if (!body.topicTitle?.trim()) {
     return badRequest(c, 'topicTitle is required');
@@ -100,19 +115,23 @@ debate.post('/sessions', async (c) => {
   try {
     const topicId = generateId();
     await db
-      .prepare(`
+      .prepare(
+        `
         INSERT INTO debate_topics (id, title, description, created_by)
         VALUES (?, ?, ?, ?)
-      `)
+      `
+      )
       .bind(topicId, body.topicTitle.trim(), body.topicDescription || null, body.userId || null)
       .run();
 
     const sessionId = generateId();
     await db
-      .prepare(`
+      .prepare(
+        `
         INSERT INTO debate_sessions (id, topic_id, user_id, fingerprint_id)
         VALUES (?, ?, ?, ?)
-      `)
+      `
+      )
       .bind(sessionId, topicId, body.userId || null, body.fingerprintId || null)
       .run();
 
@@ -142,12 +161,14 @@ debate.get('/sessions/:id', async (c) => {
 
   try {
     const session = await db
-      .prepare(`
+      .prepare(
+        `
         SELECT s.*, t.title, t.description
         FROM debate_sessions s
         JOIN debate_topics t ON s.topic_id = t.id
         WHERE s.id = ?
-      `)
+      `
+      )
       .bind(sessionId)
       .first<{
         id: string;
@@ -163,9 +184,11 @@ debate.get('/sessions/:id', async (c) => {
     }
 
     const messages = await db
-      .prepare(`
+      .prepare(
+        `
         SELECT * FROM debate_messages WHERE session_id = ? ORDER BY round_number, created_at
-      `)
+      `
+      )
       .bind(sessionId)
       .all<{
         id: string;
@@ -207,12 +230,14 @@ debate.post('/sessions/:id/round', async (c) => {
 
   try {
     const session = await db
-      .prepare(`
+      .prepare(
+        `
         SELECT s.*, t.title, t.description
         FROM debate_sessions s
         JOIN debate_topics t ON s.topic_id = t.id
         WHERE s.id = ? AND s.status = 'active'
-      `)
+      `
+      )
       .bind(sessionId)
       .first<{
         id: string;
@@ -229,12 +254,14 @@ debate.post('/sessions/:id/round', async (c) => {
     const roundNumber = session.total_rounds + 1;
 
     const previousMessages = await db
-      .prepare(`
-        SELECT agent_role, agent_name, content, round_number 
-        FROM debate_messages 
-        WHERE session_id = ? 
+      .prepare(
+        `
+        SELECT agent_role, agent_name, content, round_number
+        FROM debate_messages
+        WHERE session_id = ?
         ORDER BY round_number, created_at
-      `)
+      `
+      )
       .bind(sessionId)
       .all<{
         agent_role: string;
@@ -249,7 +276,9 @@ debate.post('/sessions/:id/round', async (c) => {
 
     const topicContext = `주제: ${session.title}\n${session.description ? `설명: ${session.description}` : ''}`;
 
-    const generateAgentResponse = async (role: AgentRole): Promise<{
+    const generateAgentResponse = async (
+      role: AgentRole
+    ): Promise<{
       content: string;
       responseTimeMs: number;
       tokensUsed?: number;
@@ -263,13 +292,15 @@ debate.post('/sessions/:id/round', async (c) => {
       }
 
       if (role === 'attacker') {
-        prompt += roundNumber === 1
-          ? '이 주제에 대한 첫 번째 반론을 제시해주세요. 2-3문장으로 핵심적인 비판점을 짚어주세요.'
-          : '옹호자의 주장에 대해 반박해주세요. 2-3문장으로 논점을 강화해주세요.';
+        prompt +=
+          roundNumber === 1
+            ? '이 주제에 대한 첫 번째 반론을 제시해주세요. 2-3문장으로 핵심적인 비판점을 짚어주세요.'
+            : '옹호자의 주장에 대해 반박해주세요. 2-3문장으로 논점을 강화해주세요.';
       } else if (role === 'defender') {
-        prompt += roundNumber === 1
-          ? '이 주제를 지지하는 첫 번째 논거를 제시해주세요. 2-3문장으로 핵심적인 지지 근거를 설명해주세요.'
-          : '도전자의 비판에 대해 반박하고 입장을 방어해주세요. 2-3문장으로 답변해주세요.';
+        prompt +=
+          roundNumber === 1
+            ? '이 주제를 지지하는 첫 번째 논거를 제시해주세요. 2-3문장으로 핵심적인 지지 근거를 설명해주세요.'
+            : '도전자의 비판에 대해 반박하고 입장을 방어해주세요. 2-3문장으로 답변해주세요.';
       } else {
         prompt += `라운드 ${roundNumber}의 토론 내용을 간단히 요약하고, 양측의 핵심 논점을 정리해주세요. 2-3문장으로 작성해주세요.`;
       }
@@ -300,10 +331,12 @@ debate.post('/sessions/:id/round', async (c) => {
     for (const resp of responses) {
       const agent = DEBATE_AGENTS[resp.role];
       await db
-        .prepare(`
+        .prepare(
+          `
           INSERT INTO debate_messages (id, session_id, agent_role, agent_name, content, round_number, response_time_ms, tokens_used)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `)
+        `
+        )
         .bind(
           generateId(),
           sessionId,
@@ -318,9 +351,11 @@ debate.post('/sessions/:id/round', async (c) => {
     }
 
     await db
-      .prepare(`
+      .prepare(
+        `
         UPDATE debate_sessions SET total_rounds = ?, updated_at = datetime('now') WHERE id = ?
-      `)
+      `
+      )
       .bind(roundNumber, sessionId)
       .run();
 
@@ -350,7 +385,7 @@ debate.post('/sessions/:id/vote', async (c) => {
     fingerprintId?: string;
   };
 
-  const body = await c.req.json<VoteBody>().catch(() => ({} as VoteBody));
+  const body = await c.req.json<VoteBody>().catch(() => ({}) as VoteBody);
 
   if (!body.roundNumber || !body.votedFor) {
     return badRequest(c, 'roundNumber and votedFor are required');
@@ -364,12 +399,14 @@ debate.post('/sessions/:id/vote', async (c) => {
 
   try {
     await db
-      .prepare(`
+      .prepare(
+        `
         INSERT INTO debate_votes (id, session_id, round_number, user_id, fingerprint_id, voted_for)
         VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(session_id, round_number, fingerprint_id)
         DO UPDATE SET voted_for = ?, created_at = datetime('now')
-      `)
+      `
+      )
       .bind(
         generateId(),
         sessionId,
@@ -382,12 +419,14 @@ debate.post('/sessions/:id/vote', async (c) => {
       .run();
 
     const votes = await db
-      .prepare(`
-        SELECT voted_for, COUNT(*) as count 
-        FROM debate_votes 
+      .prepare(
+        `
+        SELECT voted_for, COUNT(*) as count
+        FROM debate_votes
         WHERE session_id = ? AND round_number = ?
         GROUP BY voted_for
-      `)
+      `
+      )
       .bind(sessionId, body.roundNumber)
       .all<{ voted_for: string; count: number }>();
 
@@ -417,12 +456,14 @@ debate.post('/sessions/:id/end', async (c) => {
 
   try {
     const votes = await db
-      .prepare(`
-        SELECT voted_for, COUNT(*) as count 
-        FROM debate_votes 
+      .prepare(
+        `
+        SELECT voted_for, COUNT(*) as count
+        FROM debate_votes
         WHERE session_id = ?
         GROUP BY voted_for
-      `)
+      `
+      )
       .bind(sessionId)
       .all<{ voted_for: string; count: number }>();
 
@@ -437,11 +478,13 @@ debate.post('/sessions/:id/end', async (c) => {
     }
 
     await db
-      .prepare(`
-        UPDATE debate_sessions 
+      .prepare(
+        `
+        UPDATE debate_sessions
         SET status = 'completed', winner_agent = ?, ended_at = datetime('now'), updated_at = datetime('now')
         WHERE id = ?
-      `)
+      `
+      )
       .bind(winner, sessionId)
       .run();
 

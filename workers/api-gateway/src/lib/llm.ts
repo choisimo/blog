@@ -8,7 +8,7 @@
 import type { Env } from '../types';
 import type { PromptConfig, TaskMode } from './prompts';
 import { getFallbackData } from './prompts';
-import { getApiBaseUrl, getAiServeApiKey } from './config';
+import { getApiBaseUrl, getAiServeApiKey, getAiDefaultModel, getAiVisionModel } from './config';
 
 export type LLMRequest = {
   system?: string;
@@ -48,24 +48,24 @@ function clampQuizCount(value: unknown, fallback = 2): number {
 function extractMeaningfulLines(text: string): string[] {
   return text
     .split(/\r?\n/)
-    .map(line => line.trim())
+    .map((line) => line.trim())
     .filter(Boolean)
-    .filter(line => line !== '---')
-    .filter(line => !/^```/.test(line));
+    .filter((line) => line !== '---')
+    .filter((line) => !/^```/.test(line));
 }
 
 function sentencePoints(text: string, max = 4): string[] {
   const candidates = text
     .replace(/\s+/g, ' ')
     .split(/(?<=[.!?。！？])\s+/)
-    .map(s => s.trim())
+    .map((s) => s.trim())
     .filter(Boolean)
     .slice(0, max);
 
   if (candidates.length > 0) return candidates;
 
   const lines = extractMeaningfulLines(text)
-    .map(l => l.replace(/^[-*•\d.)\s]+/, '').trim())
+    .map((l) => l.replace(/^[-*•\d.)\s]+/, '').trim())
     .filter(Boolean)
     .slice(0, max);
 
@@ -82,7 +82,10 @@ function toText(value: unknown): string {
 
 function normalizeQuizType(value: unknown): QuizQuestionType {
   if (typeof value !== 'string') return 'explain';
-  const normalized = value.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
   if (normalized === 'fillblank') return 'fill_blank';
   if (normalized === 'multiplechoice') return 'multiple_choice';
   if (normalized === 'code_transform') return 'transform';
@@ -101,7 +104,9 @@ function normalizeQuizQuestion(value: unknown): QuizQuestion | null {
   if (!isRecord(value)) return null;
 
   const question = toText(value.question ?? value.q ?? value.prompt ?? value.title);
-  const answer = toText(value.answer ?? value.correctAnswer ?? value.correct ?? value.solution ?? value.a);
+  const answer = toText(
+    value.answer ?? value.correctAnswer ?? value.correct ?? value.solution ?? value.a
+  );
 
   if (!question || !answer) return null;
 
@@ -115,7 +120,9 @@ function normalizeQuizQuestion(value: unknown): QuizQuestion | null {
     : [];
 
   const explanation = toText(value.explanation ?? value.reason ?? value.why ?? value.hint);
-  const type = normalizeQuizType(value.type ?? (options.length > 0 ? 'multiple_choice' : 'explain'));
+  const type = normalizeQuizType(
+    value.type ?? (options.length > 0 ? 'multiple_choice' : 'explain')
+  );
 
   const normalized: QuizQuestion = {
     type,
@@ -151,15 +158,18 @@ function extractQuizItemsFromData(value: unknown): unknown[] {
   // `problems` array (e.g. algorithm exercises). Map each problem entry to a
   // minimal quiz question so the normalizer can still produce a valid quiz.
   if (Array.isArray(value.problems)) {
-    return (value.problems as unknown[]).map(p => {
+    return (value.problems as unknown[]).map((p) => {
       if (!isRecord(p)) return p;
       return {
         type: 'explain',
         question: toText(p.description ?? p.title ?? p.problem ?? `문제 ${p.number ?? ''}`.trim()),
-        answer: toText(p.python_function ?? p.java_method ?? p.solution ?? p.answer ?? '위 내용을 참고하세요.'),
-        explanation: p.example_input != null
-          ? `예시 입력: ${toText(p.example_input)} → 출력: ${toText(p.example_output ?? '?')}`
-          : undefined,
+        answer: toText(
+          p.python_function ?? p.java_method ?? p.solution ?? p.answer ?? '위 내용을 참고하세요.'
+        ),
+        explanation:
+          p.example_input != null
+            ? `예시 입력: ${toText(p.example_input)} → 출력: ${toText(p.example_output ?? '?')}`
+            : undefined,
       };
     });
   }
@@ -192,15 +202,13 @@ function projectTaskDataFromText(
   payload: Record<string, unknown>
 ): unknown {
   const lines = extractMeaningfulLines(text);
-  const cleanedLines = lines.map(line => line.replace(/^[-*•\d.)\s]+/, '').trim());
+  const cleanedLines = lines.map((line) => line.replace(/^[-*•\d.)\s]+/, '').trim());
 
   switch (mode) {
     case 'sketch': {
       const moodMatch = text.match(/(?:mood|톤|감정)\s*[:：]\s*([^\n]+)/i);
       const mood = moodMatch?.[1]?.trim() || 'insightful';
-      const bullets = cleanedLines
-        .filter(line => line.length > 2)
-        .slice(0, 6);
+      const bullets = cleanedLines.filter((line) => line.length > 2).slice(0, 6);
 
       return {
         mood,
@@ -211,15 +219,15 @@ function projectTaskDataFromText(
     case 'prism': {
       const blocks = text
         .split(/\n\s*\n/)
-        .map(block => block.trim())
+        .map((block) => block.trim())
         .filter(Boolean)
         .slice(0, 4);
 
       const facets = blocks
-        .map(block => {
+        .map((block) => {
           const blockLines = block
             .split(/\r?\n/)
-            .map(l => l.trim())
+            .map((l) => l.trim())
             .filter(Boolean);
           if (blockLines.length === 0) return null;
 
@@ -231,7 +239,7 @@ function projectTaskDataFromText(
 
           const points = blockLines
             .slice(1)
-            .map(l => l.replace(/^[-*•\d.)\s]+/, '').trim())
+            .map((l) => l.replace(/^[-*•\d.)\s]+/, '').trim())
             .filter(Boolean)
             .slice(0, 4);
 
@@ -256,14 +264,14 @@ function projectTaskDataFromText(
 
     case 'chain': {
       const questionLines = lines
-        .map(l => l.replace(/^[-*•\d.)\s]+/, '').trim())
-        .filter(l => /\?$|\uFF1F$/.test(l))
+        .map((l) => l.replace(/^[-*•\d.)\s]+/, '').trim())
+        .filter((l) => /\?$|\uFF1F$/.test(l))
         .slice(0, 6);
 
       const questions = (questionLines.length > 0 ? questionLines : sentencePoints(text, 4))
-        .map(q => q.endsWith('?') || q.endsWith('？') ? q : `${q}?`)
+        .map((q) => (q.endsWith('?') || q.endsWith('？') ? q : `${q}?`))
         .slice(0, 6)
-        .map(q => ({
+        .map((q) => ({
           q,
           why: '핵심 논점을 더 깊게 이해하기 위해',
         }));
@@ -424,7 +432,7 @@ export function tryParseJson<T = unknown>(text: string): T | null {
 /**
  * 백엔드 AI 서버 호출 (/ai/auto-chat 엔드포인트)
  * 대화형 AI 호출에 사용됩니다.
- * 
+ *
  * Uses BACKEND_ORIGIN to avoid circular calls (api.nodove.com -> api.nodove.com).
  */
 async function callBackendAutoChat(
@@ -432,12 +440,10 @@ async function callBackendAutoChat(
   env: Env
 ): Promise<{ ok: boolean; text?: string; error?: string }> {
   // Use BACKEND_ORIGIN directly to avoid calling Workers itself
-  const backendUrl = env.BACKEND_ORIGIN || await getApiBaseUrl(env);
+  const backendUrl = env.BACKEND_ORIGIN || (await getApiBaseUrl(env));
   const url = `${backendUrl.replace(/\/$/, '')}/api/v1/ai/auto-chat`;
 
-  const message = request.system
-    ? `${request.system}\n\n${request.user}`
-    : request.user;
+  const message = request.system ? `${request.system}\n\n${request.user}` : request.user;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -453,6 +459,10 @@ async function callBackendAutoChat(
   const apiKey = await getAiServeApiKey(env);
   if (apiKey) {
     headers['X-API-KEY'] = apiKey;
+  }
+  const forcedModel = await getAiDefaultModel(env);
+  if (forcedModel) {
+    headers['X-AI-Model'] = forcedModel;
   }
 
   try {
@@ -504,7 +514,7 @@ async function callBackendAutoChat(
 /**
  * 백엔드 AI 서버 호출 (/ai/generate 엔드포인트)
  * 단순 텍스트 생성에 사용됩니다.
- * 
+ *
  * Uses BACKEND_ORIGIN to avoid circular calls (api.nodove.com -> api.nodove.com).
  */
 async function callBackendGenerate(
@@ -512,12 +522,10 @@ async function callBackendGenerate(
   env: Env
 ): Promise<{ ok: boolean; text?: string; error?: string }> {
   // Use BACKEND_ORIGIN directly to avoid calling Workers itself
-  const base = env.BACKEND_ORIGIN || await getApiBaseUrl(env);
+  const base = env.BACKEND_ORIGIN || (await getApiBaseUrl(env));
   const url = `${base.replace(/\/$/, '')}/api/v1/ai/generate`;
 
-  const fullPrompt = request.system
-    ? `${request.system}\n\n${request.user}`
-    : request.user;
+  const fullPrompt = request.system ? `${request.system}\n\n${request.user}` : request.user;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -531,6 +539,16 @@ async function callBackendGenerate(
   const apiKey = await getAiServeApiKey(env);
   if (apiKey) {
     headers['X-API-KEY'] = apiKey;
+  }
+  const [forcedModel, forcedVisionModel] = await Promise.all([
+    getAiDefaultModel(env),
+    getAiVisionModel(env),
+  ]);
+  if (forcedModel) {
+    headers['X-AI-Model'] = forcedModel;
+  }
+  if (forcedVisionModel) {
+    headers['X-AI-Vision-Model'] = forcedVisionModel;
   }
 
   try {
@@ -575,16 +593,12 @@ async function callBackendGenerate(
  * 모든 호출은 자체 백엔드 서버를 통해 처리됩니다.
  * 백엔드 서버가 내부적으로 적절한 AI 모델(Gemini, OpenAI 등)을 선택합니다.
  */
-export async function callLLM(
-  request: LLMRequest,
-  env: Env
-): Promise<LLMResponse> {
+export async function callLLM(request: LLMRequest, env: Env): Promise<LLMResponse> {
   // /ai/generate 엔드포인트 시도
   const result = await callBackendGenerate(request, env);
 
   if (result.ok && result.text) {
-    const parsed =
-      request.responseFormat === 'json' ? tryParseJson(result.text) : null;
+    const parsed = request.responseFormat === 'json' ? tryParseJson(result.text) : null;
     return {
       ok: true,
       text: result.text,
@@ -598,10 +612,7 @@ export async function callLLM(
   const autoChatResult = await callBackendAutoChat(request, env);
 
   if (autoChatResult.ok && autoChatResult.text) {
-    const parsed =
-      request.responseFormat === 'json'
-        ? tryParseJson(autoChatResult.text)
-        : null;
+    const parsed = request.responseFormat === 'json' ? tryParseJson(autoChatResult.text) : null;
     return {
       ok: true,
       text: autoChatResult.text,
@@ -616,8 +627,7 @@ export async function callLLM(
     text: '',
     parsed: null,
     source: 'backend',
-    error:
-      result.error || autoChatResult.error || 'Backend AI server unavailable',
+    error: result.error || autoChatResult.error || 'Backend AI server unavailable',
   };
 }
 
@@ -625,17 +635,17 @@ export async function callLLM(
  * Task 모드용 LLM 호출 함수
  * PromptConfig를 받아서 LLM을 호출하고 결과를 반환합니다.
  */
-export async function callTaskLLM(
-  promptConfig: PromptConfig,
-  env: Env
-): Promise<LLMResponse> {
-  return callLLM({
-    system: promptConfig.system,
-    user: promptConfig.user,
-    temperature: promptConfig.temperature,
-    maxTokens: promptConfig.maxTokens,
-    responseFormat: 'json',
-  }, env);
+export async function callTaskLLM(promptConfig: PromptConfig, env: Env): Promise<LLMResponse> {
+  return callLLM(
+    {
+      system: promptConfig.system,
+      user: promptConfig.user,
+      temperature: promptConfig.temperature,
+      maxTokens: promptConfig.maxTokens,
+      responseFormat: 'json',
+    },
+    env
+  );
 }
 
 /**

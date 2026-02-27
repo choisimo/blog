@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { HonoEnv, Env } from '../types';
 import { success, badRequest, serverError } from '../lib/response';
+import { getPerplexityModel } from '../lib/config';
 
 const search = new Hono<HonoEnv>();
 
@@ -118,10 +119,10 @@ async function searchWithPerplexity(
   apiKey: string,
   query: string,
   options: {
-    model?: string;
+    model: string;
     domains?: string[];
     recency?: 'day' | 'week' | 'month' | 'year';
-  } = {}
+  }
 ): Promise<{ answer: string; citations: Array<{ title: string; url: string; snippet: string }> }> {
   const response = await fetch(PERPLEXITY_API_URL, {
     method: 'POST',
@@ -130,7 +131,7 @@ async function searchWithPerplexity(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: options.model || 'sonar',
+      model: options.model,
       messages: [
         {
           role: 'system',
@@ -211,7 +212,7 @@ search.post('/web', async (c) => {
     provider?: 'tavily' | 'perplexity';
   };
 
-  const body = await c.req.json<WebSearchBody>().catch(() => ({} as WebSearchBody));
+  const body = await c.req.json<WebSearchBody>().catch(() => ({}) as WebSearchBody);
 
   if (!body.query?.trim()) {
     return badRequest(c, 'query is required');
@@ -219,6 +220,7 @@ search.post('/web', async (c) => {
 
   const tavilyApiKey = await getTavilyApiKey(c.env);
   const perplexityApiKey = await getPerplexityApiKey(c.env);
+  const perplexityModel = await getPerplexityModel(c.env);
   const provider: 'tavily' | 'perplexity' =
     body.provider || (tavilyApiKey ? 'tavily' : perplexityApiKey ? 'perplexity' : 'tavily');
 
@@ -227,10 +229,14 @@ search.post('/web', async (c) => {
       if (!perplexityApiKey) {
         return badRequest(c, 'PERPLEXITY_API_KEY not configured');
       }
+      if (!perplexityModel) {
+        return badRequest(c, 'PERPLEXITY_MODEL not configured');
+      }
 
       const started = Date.now();
 
       const result = await searchWithPerplexity(perplexityApiKey, body.query.trim(), {
+        model: perplexityModel,
         domains: body.includeDomains,
       });
 

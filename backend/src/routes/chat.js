@@ -14,6 +14,7 @@ import {
 } from "../services/live-context.service.js";
 import {
   CHROMA,
+  AI_MODELS,
   AI_TEMPERATURES,
   TEXT_LIMITS,
   VALID_TASK_MODES,
@@ -24,6 +25,18 @@ import {
 const router = Router();
 
 const ragCollectionCache = new Map();
+
+function readHeaderValue(value) {
+  if (Array.isArray(value)) return value[0];
+  if (typeof value === "string") return value;
+  return undefined;
+}
+
+function resolveChatModelFromRequest(req) {
+  const forced = readHeaderValue(req?.headers?.["x-ai-model"])?.trim();
+  if (forced) return forced;
+  return config.ai?.defaultModel || AI_MODELS.DEFAULT;
+}
 
 function getChromaCollectionsBase() {
   return `${config.rag.chromaUrl}/api/v2/tenants/${CHROMA.TENANT}/databases/${CHROMA.DATABASE}/collections`;
@@ -1676,9 +1689,10 @@ export function initChatWebSocket(server) {
     }
   });
 
-  wss.on("connection", (ws, _request, url) => {
+  wss.on("connection", (ws, request, url) => {
     let busy = false;
     let closed = false;
+    const forcedModel = resolveChatModelFromRequest(request);
 
     const send = (payload) => {
       if (ws.readyState === ws.OPEN) {
@@ -1786,7 +1800,7 @@ export function initChatWebSocket(server) {
         let text = "";
         try {
           for await (const chunk of aiService.streamChat(messagesWithContext, {
-            model: payload.model,
+            model: forcedModel,
             timeout: CHAT_RESPONSE_TIMEOUT_MS,
           })) {
             const emitted = await emitTextChunks({
@@ -1801,7 +1815,7 @@ export function initChatWebSocket(server) {
         } catch (streamErr) {
           if (!text) {
             const fallback = await aiService.chat(messagesWithContext, {
-              model: payload.model,
+              model: forcedModel,
               timeout: CHAT_RESPONSE_TIMEOUT_MS,
             });
             const fallbackText = fallback.content || "";
@@ -1976,7 +1990,8 @@ router.post("/session", async (req, res, next) => {
 router.post("/session/:sessionId/message", async (req, res, next) => {
   try {
     const { sessionId } = req.params;
-    const { parts, context, model, enableRag } = req.body || {};
+    const { parts, context, enableRag } = req.body || {};
+    const forcedModel = resolveChatModelFromRequest(req);
     let effectiveSessionId = sessionId;
 
     // Get or create session
@@ -2082,7 +2097,7 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
       let text = "";
       try {
         for await (const chunk of aiService.streamChat(messagesWithContext, {
-          model,
+          model: forcedModel,
           timeout: CHAT_RESPONSE_TIMEOUT_MS,
         })) {
           const emitted = await emitTextChunks({
@@ -2097,7 +2112,7 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
       } catch (streamErr) {
         if (!text) {
           const fallback = await aiService.chat(messagesWithContext, {
-            model,
+            model: forcedModel,
             timeout: CHAT_RESPONSE_TIMEOUT_MS,
           });
           const fallbackText = fallback.content || "";

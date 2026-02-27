@@ -223,14 +223,22 @@ Workers에서 처리하지 않는 라우트는 자동으로 백엔드 서버로 
 | `RESEND_API_KEY` | Resend 이메일 API 키 | Email OTP |
 | `NOTIFY_FROM_EMAIL` | 발신자 이메일 | Email OTP |
 | `AI_API_KEY` | AI 서버 인증 키 | AI 기능 |
+| `AI_DEFAULT_MODEL` | 강제 기본 모델 (클라이언트 모델 선택 비활성화) | 권장 |
+| `AI_VISION_MODEL` | 비전 분석 전용 모델 | 권장 |
+| `PERPLEXITY_MODEL` | Perplexity 기본 모델 (예: `sonar`) | 선택 |
+| `API_BASE_URL` | API Base URL (런타임 주입) | 권장 |
+| `ASSETS_BASE_URL` | Assets Base URL (런타임 주입) | 권장 |
+| `ALLOWED_ORIGINS` | CORS 허용 Origin 목록 (콤마 구분) | 권장 |
 
 ### Environment Variables
 
 | Variable | Dev | Prod |
 |----------|-----|------|
 | `ENV` | `development` | `production` |
-| `ALLOWED_ORIGINS` | `localhost:5173,...` | `noblog.nodove.com,...` |
-| `API_BASE_URL` | `https://api.nodove.com` | `https://api.nodove.com` |
+| `ALLOWED_ORIGINS` | `localhost:5173,...` | secret 권장 |
+| `API_BASE_URL` | `https://api.nodove.com` | secret 권장 |
+
+프로덕션에서는 주요 값(`ALLOWED_ORIGINS`, `API_BASE_URL`, `ASSETS_BASE_URL`, 모델 관련 값)을 `wrangler secret put` 또는 GitHub Secrets 기반 배포 파이프라인으로 주입하는 방식을 권장합니다.
 
 ---
 

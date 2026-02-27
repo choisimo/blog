@@ -31,10 +31,18 @@ routes = [
 #   - OPENROUTER_API_KEY: OpenRouter API key
 #   - AI_API_KEY: Internal API key for self-hosted AI server
 #   - AI_SERVER_URL: Self-hosted AI server URL
+#   - AI_DEFAULT_MODEL: Forced default model (client model override disabled)
+#   - AI_VISION_MODEL: Forced vision model
+#   - PERPLEXITY_MODEL: Default Perplexity model (e.g. sonar)
 #
 # Email OTP (Optional):
 #   - RESEND_API_KEY: Resend.com API key for sending OTP emails
 #   - NOTIFY_FROM_EMAIL: Email sender address
+#
+# Runtime Config (recommended as secrets for runtime updates):
+#   - API_BASE_URL
+#   - ASSETS_BASE_URL
+#   - ALLOWED_ORIGINS
 # =============================================================================
 
 # Development environment variables
@@ -76,9 +84,6 @@ routes = [
 
 [env.production.vars]
 ENV = "production"
-ALLOWED_ORIGINS = "https://noblog.nodove.com,https://blog.nodove.com,https://blog-test.nodove.com"
-ASSETS_BASE_URL = "https://assets-b.nodove.com"
-API_BASE_URL = "https://api.nodove.com"
 
 [[env.production.d1_databases]]
 binding = "DB"

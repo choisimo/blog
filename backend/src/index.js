@@ -26,6 +26,7 @@ import configRouter from './routes/config.js';
 import workersRouter from './routes/workers.js';
 import aiAdminRouter from './routes/aiAdmin.js';
 import agentRouter from './routes/agent.js';
+import notificationsRouter from './routes/notifications.js';
 
 async function startServer() {
   await loadAndApplyConsulConfig();
@@ -104,6 +105,7 @@ app.use('/api/v1/admin/config', configRouter);
 app.use('/api/v1/admin/workers', workersRouter);
 app.use('/api/v1/admin/ai', aiAdminRouter);
 app.use('/api/v1/agent', agentRouter);
+app.use('/api/v1/notifications', notificationsRouter);
 
 // not found
 app.use((req, res) => {

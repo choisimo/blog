@@ -281,6 +281,14 @@ npx wrangler secret put NOTIFY_FROM_EMAIL --env production
 npx wrangler secret put GEMINI_API_KEY --env production
 npx wrangler secret put OPENROUTER_API_KEY --env production
 npx wrangler secret put AI_API_KEY --env production
+npx wrangler secret put AI_DEFAULT_MODEL --env production
+npx wrangler secret put AI_VISION_MODEL --env production
+npx wrangler secret put PERPLEXITY_MODEL --env production
+
+# 선택 - 런타임 설정(실시간 변경 권장)
+npx wrangler secret put API_BASE_URL --env production
+npx wrangler secret put ASSETS_BASE_URL --env production
+npx wrangler secret put ALLOWED_ORIGINS --env production
 
 # ============================================
 # R2 Gateway Secrets
@@ -301,8 +309,8 @@ npx wrangler secret put BACKEND_KEY --env production
 | Worker | Variable | Dev | Prod |
 |--------|----------|-----|------|
 | api-gateway | `ENV` | `development` | `production` |
-| api-gateway | `ALLOWED_ORIGINS` | `localhost:5173,...` | `noblog.nodove.com,...` |
-| api-gateway | `API_BASE_URL` | `https://api.nodove.com` | `https://api.nodove.com` |
+| api-gateway | `ALLOWED_ORIGINS` | `localhost:5173,...` | secret 권장 |
+| api-gateway | `API_BASE_URL` | `https://api.nodove.com` | secret 권장 |
 | r2-gateway | `ALLOWED_ORIGINS` | `*` | `noblog.nodove.com,...` |
 | terminal-gateway | `TERMINAL_ORIGIN` | `https://terminal-origin.nodove.com` | 동일 |
 
@@ -333,16 +341,16 @@ npx wrangler deploy --env production
 
 | Workflow | 파일 | 트리거 |
 |----------|------|--------|
-| API Gateway Deploy | `deploy-api-gateway.yml` | `workers/api-gateway/**` 변경 시 |
+| Workers Deploy | `deploy-workers.yml` | `workers/**` 변경 시 |
 | Full Blog Deploy | `deploy-blog-workflow.yml` | 전체 배포 파이프라인 |
 
 ```yaml
-# deploy-api-gateway.yml 트리거 조건
+# deploy-workers.yml 트리거 조건
 on:
   push:
     branches: [main]
     paths:
-      - 'workers/api-gateway/**'
+      - 'workers/**'
 ```
 
 ### Dry-run (변경사항 미리보기)

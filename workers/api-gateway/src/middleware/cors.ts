@@ -6,11 +6,11 @@ export async function corsMiddleware(c: Context, next: Next) {
 
   // Handle preflight
   if (c.req.method === 'OPTIONS') {
-    setCorsHeaders(c, origin);
+    await setCorsHeaders(c, origin);
     return c.body(null, 204);
   }
 
   // Set CORS headers for actual requests
-  setCorsHeaders(c, origin);
+  await setCorsHeaders(c, origin);
   await next();
 }

@@ -1,8 +1,8 @@
 /**
  * Chat Routes
- * 
+ *
  * 챗봇 및 Inline AI Task(sketch/prism/chain) 처리를 담당합니다.
- * 
+ *
  * 엔드포인트:
  * - POST /session - 새 세션 생성 (프록시)
  * - POST /session/:id/message - 챗봇 메시지 (프록시, SSE 지원)
@@ -21,22 +21,27 @@ import {
   isValidTaskMode,
   getFallbackData,
   type TaskMode,
-  type TaskPayload
+  type TaskPayload,
 } from '../lib/prompts';
 import { executeTask } from '../lib/llm';
 import { getCorsHeadersForRequest } from '../lib/cors';
+import { getAiDefaultModel, getAiVisionModel } from '../lib/config';
 
 type ChatContext = { Bindings: Env };
 
 const chat = new Hono<ChatContext>();
 
+type ProxyOptions = {
+  sanitizeClientModel?: boolean;
+};
+
 /**
  * 업스트림 AI 서비스로 요청을 프록시합니다.
  * 챗봇 메시지(SSE 스트리밍) 및 세션 생성에 사용됩니다.
- * 
+ *
  * Uses BACKEND_ORIGIN to avoid circular calls (api.nodove.com -> api.nodove.com).
  */
-async function proxyRequest(c: Context<ChatContext>, path: string) {
+async function proxyRequest(c: Context<ChatContext>, path: string, options: ProxyOptions = {}) {
   // Use BACKEND_ORIGIN directly to avoid calling Workers itself
   const backendOrigin = c.env.BACKEND_ORIGIN;
   if (!backendOrigin) {
@@ -54,6 +59,17 @@ async function proxyRequest(c: Context<ChatContext>, path: string) {
     upstreamHeaders.set('X-Backend-Key', c.env.BACKEND_KEY);
   }
 
+  const [forcedModel, forcedVisionModel] = await Promise.all([
+    getAiDefaultModel(c.env),
+    getAiVisionModel(c.env),
+  ]);
+  if (forcedModel) {
+    upstreamHeaders.set('X-AI-Model', forcedModel);
+  }
+  if (forcedVisionModel) {
+    upstreamHeaders.set('X-AI-Vision-Model', forcedVisionModel);
+  }
+
   // Do not overwrite client's Authorization header if it already exists
   if (!upstreamHeaders.has('Authorization')) {
     if (c.env.OPENCODE_AUTH_TOKEN) {
@@ -63,17 +79,41 @@ async function proxyRequest(c: Context<ChatContext>, path: string) {
     }
   }
 
+  let upstreamBody: BodyInit | null | undefined = c.req.raw.body;
+  if (options.sanitizeClientModel && !['GET', 'HEAD'].includes(c.req.method)) {
+    const contentType = (c.req.header('content-type') || '').toLowerCase();
+    if (contentType.includes('application/json')) {
+      const rawBody = await c.req.raw.text();
+      if (rawBody.trim()) {
+        try {
+          const payload = JSON.parse(rawBody) as Record<string, unknown>;
+          if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+            const sanitized = { ...payload };
+            delete sanitized.model;
+            upstreamBody = JSON.stringify(sanitized);
+          } else {
+            upstreamBody = rawBody;
+          }
+        } catch {
+          upstreamBody = rawBody;
+        }
+      } else {
+        upstreamBody = rawBody;
+      }
+    }
+  }
+
   const upstreamRequest = new Request(upstreamUrl, {
     method: c.req.method,
     headers: upstreamHeaders,
-    body: c.req.raw.body,
+    body: upstreamBody,
     redirect: 'manual',
   });
 
   const upstreamResponse = await fetch(upstreamRequest);
 
   const headers = new Headers(upstreamResponse.headers);
-  const corsHeaders = getCorsHeadersForRequest(c.req.raw, c.env);
+  const corsHeaders = await getCorsHeadersForRequest(c.req.raw, c.env);
   Object.entries(corsHeaders).forEach(([key, value]) => {
     headers.set(key, value);
   });
@@ -98,22 +138,24 @@ chat.post('/session', async (c: Context<ChatContext>) => {
  */
 chat.post('/session/:sessionId/message', async (c: Context<ChatContext>) => {
   const { sessionId } = c.req.param();
-  return proxyRequest(c, `/session/${sessionId}/message`);
+  return proxyRequest(c, `/session/${sessionId}/message`, {
+    sanitizeClientModel: true,
+  });
 });
 
 /**
  * POST /session/:sessionId/task - Inline AI Task 실행
- * 
+ *
  * sketch, prism, chain 등의 AI 작업을 처리합니다.
  * 프론트엔드는 mode와 payload만 전송하고, 프롬프트는 서버에서 생성합니다.
- * 
+ *
  * Request Body:
  * {
  *   mode: 'sketch' | 'prism' | 'chain' | 'catalyst' | 'summary' | 'custom',
  *   payload: { paragraph, postTitle, persona, ... },
  *   context?: { url, title }
  * }
- * 
+ *
  * Response:
  * {
  *   ok: true,
@@ -124,7 +166,12 @@ chat.post('/session/:sessionId/message', async (c: Context<ChatContext>) => {
  */
 chat.post('/session/:sessionId/task', async (c: Context<ChatContext>) => {
   const body = await c.req.json().catch(() => ({}));
-  const { mode, payload, context, prompt: legacyPrompt } = body as {
+  const {
+    mode,
+    payload,
+    context,
+    prompt: legacyPrompt,
+  } = body as {
     mode?: string;
     payload?: TaskPayload;
     context?: { url?: string; title?: string };
@@ -132,7 +179,7 @@ chat.post('/session/:sessionId/task', async (c: Context<ChatContext>) => {
   };
 
   // 모드 검증
-  const taskMode: TaskMode = isValidTaskMode(mode || '') ? mode as TaskMode : 'custom';
+  const taskMode: TaskMode = isValidTaskMode(mode || '') ? (mode as TaskMode) : 'custom';
   const taskPayload: TaskPayload = payload || {};
 
   // 하위 호환성: 프론트엔드가 아직 prompt를 보내는 경우
@@ -239,7 +286,9 @@ chat.get('/live/stream', async (c: Context<ChatContext>) => {
  * POST /live/message - 실시간 방문자 메시지 전송
  */
 chat.post('/live/message', async (c: Context<ChatContext>) => {
-  return proxyRequest(c, '/live/message');
+  return proxyRequest(c, '/live/message', {
+    sanitizeClientModel: true,
+  });
 });
 
 /**
