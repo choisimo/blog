@@ -1,0 +1,134 @@
+import express from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
+import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
+import { config, publicRuntimeConfig, loadAndApplyConsulConfig } from './config.js';
+import { requireBackendKey } from './middleware/backendAuth.js';
+
+import aiRouter from './routes/ai.js';
+import commentsRouter from './routes/comments.js';
+import analyticsRouter from './routes/analytics.js';
+import chatRouter, { initChatWebSocket } from './routes/chat.js';
+import translateRouter from './routes/translate.js';
+import userContentRouter from './routes/userContent.js';
+import ogRouter from './routes/og.js';
+import adminRouter from './routes/admin.js';
+import postsRouter from './routes/posts.js';
+import imagesRouter from './routes/images.js';
+import authRouter from './routes/auth.js';
+import ragRouter from './routes/rag.js';
+import memoriesRouter from './routes/memories.js';
+import memosRouter from './routes/memos.js';
+import userRouter from './routes/user.js';
+import searchRouter from './routes/search.js';
+import configRouter from './routes/config.js';
+import workersRouter from './routes/workers.js';
+import aiAdminRouter from './routes/aiAdmin.js';
+import agentRouter from './routes/agent.js';
+import notificationsRouter from './routes/notifications.js';
+
+async function startServer() {
+  await loadAndApplyConsulConfig();
+  
+  const app = express();
+
+// trust proxy (for correct IP in rate-limit, etc.)
+app.set('trust proxy', config.trustProxy);
+
+// security headers
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
+
+// CORS
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin) return callback(null, true);
+    const ok = config.allowedOrigins.some(o => o === origin);
+    return callback(ok ? null : new Error('Not allowed by CORS'), ok);
+  },
+  credentials: true,
+};
+app.use(cors(corsOptions));
+
+// logging
+app.use(morgan('combined'));
+
+// Backend key validation (must come after public endpoints like healthz)
+// Routes defined BEFORE this middleware are publicly accessible
+app.get('/api/v1/healthz', (req, res) => {
+  res.json({ ok: true, env: config.appEnv, uptime: process.uptime() });
+});
+app.get('/api/v1/public/config', (req, res) => {
+  res.json({ ok: true, data: publicRuntimeConfig() });
+});
+
+// All routes below require valid X-Backend-Key from Gateway
+app.use(requireBackendKey);
+
+// parsers
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false }));
+
+// basic rate limit (can be overridden per route if needed)
+const limiter = rateLimit({
+  windowMs: config.rateLimit.windowMs,
+  max: config.rateLimit.max,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(limiter);
+
+// routes
+app.use('/api/v1/ai', aiRouter);
+app.use('/api/v1/comments', commentsRouter);
+app.use('/api/v1/analytics', analyticsRouter);
+app.use('/api/v1/chat', chatRouter);
+app.use('/api/v1/translate', translateRouter);
+app.use('/api/v1/memos', memosRouter);
+app.use('/api', userContentRouter);  // /api/personas, /api/memos
+app.use('/api/v1', userContentRouter);
+app.use('/api/v1/user-content', userContentRouter);
+app.use('/api/v1/og', ogRouter);
+app.use('/api/v1/admin', adminRouter);
+app.use('/api/v1/posts', postsRouter);
+app.use('/api/v1/images', imagesRouter);
+app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/rag', ragRouter);
+app.use('/api/v1/memories', memoriesRouter);
+app.use('/api/v1/user', userRouter);
+app.use('/api/v1/search', searchRouter);
+app.use('/api/v1/admin/config', configRouter);
+app.use('/api/v1/admin/workers', workersRouter);
+app.use('/api/v1/admin/ai', aiAdminRouter);
+app.use('/api/v1/agent', agentRouter);
+app.use('/api/v1/notifications', notificationsRouter);
+
+// not found
+app.use((req, res) => {
+  res.status(404).json({ ok: false, error: 'Not Found' });
+});
+
+// error handler
+
+app.use((err, req, res, next) => {
+  const status = err.status || 500;
+  res.status(status).json({ ok: false, error: err.message || 'Server Error' });
+});
+
+const port = config.port;
+const host = config.host;
+const server = app.listen(port, host, () => {
+  console.log(`[api] listening on http://${host}:${port}`);
+  console.log(`[api] features: ai=${config.features.aiEnabled}, rag=${config.features.ragEnabled}, comments=${config.features.commentsEnabled}`);
+});
+initChatWebSocket(server);
+}
+
+startServer().catch(err => {
+  console.error('[api] Failed to start server:', err);
+  process.exit(1);
+});

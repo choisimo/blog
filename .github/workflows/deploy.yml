@@ -1,0 +1,206 @@
+name: Deploy to GitHub Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'frontend/**'
+      - 'frontend/public/project-data/**'
+      - '.github/workflows/deploy.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'frontend/**'
+      - 'frontend/public/project-data/**'
+      - '.github/workflows/deploy.yml'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      SITE_BASE_URL: https://noblog.nodove.com
+      VITE_SITE_BASE_URL: https://noblog.nodove.com
+      # Unified backend base URL (e.g., https://api.nodove.com or https://your-server:5080)
+      # Configure this as a repository secret named VITE_API_BASE_URL
+      VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+      VITE_CHAT_BASE_URL: ${{ secrets.VITE_CHAT_BASE_URL }}
+      VITE_CHAT_API_KEY: ${{ secrets.VITE_CHAT_API_KEY }}
+      # Feature flags for frontend (configure as repository secrets)
+      # Set VITE_FEATURE_FAB to 'true' to enable FAB by default
+      VITE_FEATURE_FAB: ${{ secrets.VITE_FEATURE_FAB }}
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: |
+          frontend/package-lock.json
+        
+    - name: Install dependencies (frontend)
+      run: npm --prefix frontend ci
+
+    - name: Organize images (move to proper directories)
+      run: |
+        chmod +x ./scripts/organize-images.sh
+        ./scripts/organize-images.sh
+      
+    - name: Generate manifests (frontend)
+      run: npm --prefix frontend run generate-manifests
+
+    - name: Generate projects manifest (frontend)
+      run: npm --prefix frontend run generate-projects-manifest
+      
+    - name: Generate SEO files (frontend)
+      run: npm --prefix frontend run generate-seo
+      
+    - name: Auto-commit generated files
+      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        
+        # Stage generated files and organized images
+        git add -f \
+          frontend/public/posts-manifest.json \
+          frontend/public/projects-manifest.json \
+          frontend/public/posts/posts-manifest.json \
+          frontend/public/posts/**/manifest.json \
+          frontend/public/posts/**/*.md \
+          frontend/public/images/ \
+          frontend/public/sitemap.xml \
+          frontend/public/rss.xml \
+          frontend/public/robots.txt 2>/dev/null || true
+        
+        # Check if there are staged changes
+        if git diff --cached --quiet; then
+          echo "No changes to commit"
+          exit 0
+        fi
+        
+        git commit -m "chore(ci): update content manifests, SEO artifacts and organize images"
+        
+        # Push with retry (handles race condition when main diverges)
+        MAX_RETRIES=3
+        for i in $(seq 1 $MAX_RETRIES); do
+          echo "Push attempt $i/$MAX_RETRIES"
+          git fetch origin main
+          git rebase origin/main || {
+            echo "Rebase failed, trying merge..."
+            git rebase --abort 2>/dev/null || true
+            git merge --no-edit origin/main || {
+              echo "Merge also failed, resetting and re-applying..."
+              git reset --hard origin/main
+              # Re-generate and re-commit
+              npm --prefix frontend run generate-manifests
+              npm --prefix frontend run generate-projects-manifest
+              npm --prefix frontend run generate-seo
+              ./scripts/organize-images.sh
+              git add -f \
+                frontend/public/posts-manifest.json \
+                frontend/public/projects-manifest.json \
+                frontend/public/posts/posts-manifest.json \
+                frontend/public/posts/**/manifest.json \
+                frontend/public/posts/**/*.md \
+                frontend/public/images/ \
+                frontend/public/sitemap.xml \
+                frontend/public/rss.xml \
+                frontend/public/robots.txt 2>/dev/null || true
+              if ! git diff --cached --quiet; then
+                git commit -m "chore(ci): update content manifests, SEO artifacts and organize images"
+              fi
+            }
+          }
+          
+          if git push origin main; then
+            echo "Push successful on attempt $i"
+            exit 0
+          fi
+          
+          echo "Push failed, retrying in 3 seconds..."
+          sleep 3
+        done
+        
+        echo "::error::Failed to push after $MAX_RETRIES attempts"
+        exit 1
+      
+    - name: Build (frontend)
+      run: npm --prefix frontend run build
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+      
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: './frontend/dist'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  sync-gh-pages:
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: ${{ github.event_name != 'pull_request' }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install and build frontend
+        env:
+          SITE_BASE_URL: https://noblog.nodove.com
+          VITE_SITE_BASE_URL: https://noblog.nodove.com
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_CHAT_BASE_URL: ${{ secrets.VITE_CHAT_BASE_URL }}
+          VITE_CHAT_API_KEY: ${{ secrets.VITE_CHAT_API_KEY }}
+          VITE_FEATURE_FAB: ${{ secrets.VITE_FEATURE_FAB }}
+        run: |
+          npm --prefix frontend ci
+          chmod +x ./scripts/organize-images.sh
+          ./scripts/organize-images.sh
+          npm --prefix frontend run generate-manifests
+          npm --prefix frontend run generate-projects-manifest
+          npm --prefix frontend run generate-seo
+          npm --prefix frontend run build
+
+      - name: Push dist to gh-pages branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan gh-pages-tmp
+          git rm -rf --cached . 2>/dev/null || true
+          cp -r frontend/dist/. .
+          git add -A
+          git commit -m "chore(gh-pages): sync dist from main@$(git rev-parse --short HEAD main)"
+          git push origin HEAD:gh-pages --force

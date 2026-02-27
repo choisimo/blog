@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>타입 변수와 야생의 캐스팅: 제네릭을 길들이던 내 기록 | Nodove Blog</title>
+    <meta name="description" content="로 타입과 ClassCastException에 질려, 제네릭이 도입되던 현장을 지켜보며 타입 안정성을 붙잡은 개발자 일기" />
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    
+    
+    
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/nodove.ico" />
+
+    <!-- Fonts: Pretendard (sans) + JetBrains Mono (mono) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@latest/dist/web/variable/pretendardvariable-dynamic-subset.css" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <script>
+      (function() {
+        const theme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const root = document.documentElement;
+        root.classList.remove('light', 'dark', 'terminal');
+        
+        if (theme === 'terminal') {
+          // Terminal uses dark as base with additional terminal class
+          root.classList.add('dark', 'terminal');
+        } else if (theme === 'dark' || (theme === 'system' && prefersDark) || (!theme && prefersDark)) {
+          root.classList.add('dark');
+        } else if (theme === 'light') {
+          root.classList.add('light');
+        } else if (!theme) {
+          // Default: terminal theme for new visitors
+          root.classList.add('dark', 'terminal');
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-BfiQ8Q2g.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-Cmm2Fedx.js">
+    <link rel="modulepreload" crossorigin href="/assets/ui-dgQIXIId.js">
+    <link rel="modulepreload" crossorigin href="/assets/utils-B2rm_Apj.js">
+    <link rel="modulepreload" crossorigin href="/assets/search-Ch1WBRTM.js">
+    <link rel="modulepreload" crossorigin href="/assets/markdown-C4DgRyv4.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-sy4EPig8.css">
+  
+    <!-- Open Graph / Facebook / KakaoTalk -->
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://noblog.nodove.com/blog/2025/java-generics-journal" />
+    <meta property="og:title" content="타입 변수와 야생의 캐스팅: 제네릭을 길들이던 내 기록" />
+    <meta property="og:description" content="로 타입과 ClassCastException에 질려, 제네릭이 도입되던 현장을 지켜보며 타입 안정성을 붙잡은 개발자 일기" />
+    <meta property="og:image" content="https://api.nodove.com/api/v1/og?title=%ED%83%80%EC%9E%85+%EB%B3%80%EC%88%98%EC%99%80+%EC%95%BC%EC%83%9D%EC%9D%98+%EC%BA%90%EC%8A%A4%ED%8C%85%3A+%EC%A0%9C%EB%84%A4%EB%A6%AD%EC%9D%84+%EA%B8%B8%EB%93%A4%EC%9D%B4%EB%8D%98+%EB%82%B4+%EA%B8%B0%EB%A1%9D&subtitle=Java" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="Nodove Blog" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="article:published_time" content="2025-10-25" />
+    <meta property="article:author" content="Admin" />
+    <meta property="article:section" content="Java" />
+    <meta property="article:tag" content="Java, Generics, 타입시스템, Erasure, 컬렉션" />
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://noblog.nodove.com/blog/2025/java-generics-journal" />
+    <meta name="twitter:title" content="타입 변수와 야생의 캐스팅: 제네릭을 길들이던 내 기록" />
+    <meta name="twitter:description" content="로 타입과 ClassCastException에 질려, 제네릭이 도입되던 현장을 지켜보며 타입 안정성을 붙잡은 개발자 일기" />
+    <meta name="twitter:image" content="https://api.nodove.com/api/v1/og?title=%ED%83%80%EC%9E%85+%EB%B3%80%EC%88%98%EC%99%80+%EC%95%BC%EC%83%9D%EC%9D%98+%EC%BA%90%EC%8A%A4%ED%8C%85%3A+%EC%A0%9C%EB%84%A4%EB%A6%AD%EC%9D%84+%EA%B8%B8%EB%93%A4%EC%9D%B4%EB%8D%98+%EB%82%B4+%EA%B8%B0%EB%A1%9D&subtitle=Java" />
+    
+    <!-- Additional SEO -->
+    <link rel="canonical" href="https://noblog.nodove.com/blog/2025/java-generics-journal" />
+</head>
+
+  <body>
+    <div id="root"></div>
+    <script defer src="/ai-memo/ai-memo.js?v=20251019-1"></script>
+  </body>
+</html>

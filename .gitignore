@@ -1,0 +1,309 @@
+# =============================================================================
+# Git Ignore - Blog Project
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Dependencies
+# -----------------------------------------------------------------------------
+node_modules/
+*/node_modules/
+**/node_modules/
+
+# -----------------------------------------------------------------------------
+# Build outputs
+# -----------------------------------------------------------------------------
+dist/
+dist-ssr/
+build/
+.next/
+out/
+.nuxt/
+.cache/
+.parcel-cache
+storybook-static/
+
+# -----------------------------------------------------------------------------
+# Environment Variables (SENSITIVE - NEVER COMMIT)
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.*.example
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env.backup*
+
+# Backend specific env files
+blog-backend/backend/.env
+blog-backend/backend/.env.*
+!blog-backend/backend/.env.example
+!blog-backend/backend/.env.*.example
+
+# Workers specific
+blog-backend/workers/.dev.vars
+blog-backend/workers/.dev.vars.*
+
+# OpenCode Serve specific
+blog-backend/backend/opencode-serve/.env
+blog-backend/backend/opencode-serve/.env.*
+
+# -----------------------------------------------------------------------------
+# Secrets & Credentials (SENSITIVE - NEVER COMMIT)
+# -----------------------------------------------------------------------------
+# Service accounts
+serviceAccount*.json
+**/serviceAccount*.json
+firebase-adminsdk*.json
+**/firebase-adminsdk*.json
+
+# Private keys
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+
+# JWT secrets
+jwt.secret
+*.secret
+
+# API keys files
+api-keys.json
+secrets.json
+credentials.json
+
+# Token files
+*.jwt
+*.token
+auto-token.jwt
+
+# SSH keys
+.ssh/
+ssh_host_*
+
+# -----------------------------------------------------------------------------
+# Wrangler
+# -----------------------------------------------------------------------------
+.wrangler/
+blog-backend/workers/.wrangler/
+**/node_modules/.cache/wrangler/
+wrangler-account.json
+
+# -----------------------------------------------------------------------------
+# Database files
+# -----------------------------------------------------------------------------
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
+
+# -----------------------------------------------------------------------------
+# Logs
+# -----------------------------------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Node diagnostic reports
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# -----------------------------------------------------------------------------
+# Runtime / Process
+# -----------------------------------------------------------------------------
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# -----------------------------------------------------------------------------
+# IDE / Editor
+# -----------------------------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+
+# -----------------------------------------------------------------------------
+# OS Generated
+# -----------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Windows
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# -----------------------------------------------------------------------------
+# Testing / Coverage
+# -----------------------------------------------------------------------------
+coverage/
+*.lcov
+.nyc_output/
+
+# -----------------------------------------------------------------------------
+# TypeScript
+# -----------------------------------------------------------------------------
+*.tsbuildinfo
+
+# -----------------------------------------------------------------------------
+# Temporary / Backup
+# -----------------------------------------------------------------------------
+*.tmp
+*.temp
+*.backup
+*.bak
+*.old
+*.orig
+post-temp/
+
+# -----------------------------------------------------------------------------
+# Archives
+# -----------------------------------------------------------------------------
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# -----------------------------------------------------------------------------
+# Docker (sensitive)
+# -----------------------------------------------------------------------------
+docker-compose.override.yml
+
+# -----------------------------------------------------------------------------
+# Local data directory (SQLite, caches)
+# -----------------------------------------------------------------------------
+.data/
+
+# -----------------------------------------------------------------------------
+# Misc
+# -----------------------------------------------------------------------------
+.vercel
+.turbo
+.cache/
+.npm/
+.eslintcache
+.stylelintcache
+
+# Python (for scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.so
+.venv/
+venv/
+ENV/
+
+# -----------------------------------------------------------------------------
+# Generated / Export artifacts
+# -----------------------------------------------------------------------------
+codebase-export/
+export-*.md
+docs/*.pdf
+
+.sisyphus/
+session-*.md
+screenshots/e2e-mobile/
+screenshots/스크린샷_*.png
+
+.roo/*
+!.roo/mcp.json
+
+linked-post
+.agent/**
+
+# -----------------------------------------------------------------------------
+# Sensitive files
+# -----------------------------------------------------------------------------
+!*env.example
+gh_variables.env
+gh_secrets.env
+.gh_env.local
+.env.backend.local
+.env.wrangler.local
+.env
+
+.roo
+.husky
+.ruff_cache
+
+# ------------------------------------------------------------------------------
+# Rust / Cargo 빌드 산출물
+# ------------------------------------------------------------------------------
+# 컴파일된 실행 파일 및 빌드 아티팩트가 저장되는 디렉토리
+/target/
+
+# rustfmt (포맷터) 실행 시 생성되는 백업 파일
+**/*.rs.bk
+
+# Windows 환경에서 MSVC로 빌드할 때 생성되는 디버그 심볼 파일
+*.pdb
+
+# 패키지 매니저 파일 (참고사항)
+# - 바이너리 애플리케이션(Application)을 개발 중이라면 Cargo.lock을 Git에 포함해야 하므로 무시하지 않습니다.
+# - 라이브러리(Crate)를 개발 중이라면 아래 주석을 해제하여 Cargo.lock을 무시하는 것이 권장됩니다.
+# Cargo.lock
+
+# ------------------------------------------------------------------------------
+# 개발 도구 및 에디터
+# ------------------------------------------------------------------------------
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# JetBrains 계열 (IntelliJ, RustRover, CLion 등)
+.idea/
+*.iml
+
+# Cursor / Windsurf 등 AI IDE
+.cursor/
+.windsurf/
+
+# Vim / Emacs 등 텍스트 에디터 임시 파일
+*.swp
+*.swo
+*~
+\#*\#
+
+# ------------------------------------------------------------------------------
+# OS 환경 파일
+# ------------------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# rust - temp
+backend-rust/**
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/

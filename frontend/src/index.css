@@ -1,0 +1,2108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ============================================
+       Light Theme - Warm Editorial Design (Claude Style)
+       설계 원칙: "따뜻하게 + 부드럽게"
+       - Warm Off-white 배경 → 눈의 피로 감소
+       - 부드러운 텍스트 대비 (차콜 계열)
+       - Flat design, 미니멀한 장식
+       - 읽기에 최적화된 타이포그래피
+       ============================================ */
+    
+    /* Surface 계층 (3단) - Cream/Sepia 톤 (눈 피로 대폭 감소) */
+    --background: 45 30% 92%;           /* #EDE8DF - Cream 배경 */
+    --foreground: 220 15% 20%;          /* #2D3748 - 진한 차콜 */
+    
+    --card: 45 25% 95%;                 /* #F5F2EC - Warm 카드 */
+    --card-foreground: 220 15% 20%;
+    
+    --popover: 45 25% 95%;
+    --popover-foreground: 220 15% 20%;
+    
+    /* Surface 확장 토큰 */
+    --surface: 45 25% 95%;
+    --surface-2: 45 20% 90%;
+    --surface-elevated: 45 20% 97%;
+    --overlay: 220 15% 15% / 0.5;
+    
+    /* Primary - Warm 톤에 어울리는 딥 블루 */
+    --primary: 220 70% 45%;             /* #2563EB 계열 - Warm에 어울리는 파랑 */
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary */
+    --secondary: 40 15% 88%;
+    --secondary-foreground: 220 15% 20%;
+
+    /* Tag / chip tokens (accessibility tuned) */
+    --tag: 40 20% 85%;
+    --tag-foreground: 220 18% 22%;
+    --tag-border: 40 14% 68%;
+    
+    /* Muted */
+    --muted: 40 15% 88%;
+    --muted-foreground: 220 12% 36%;
+    
+    /* Accent */
+    --accent: 40 18% 90%;
+    --accent-foreground: 220 15% 20%;
+    
+    /* Semantic Colors - 조금 더 부드럽게 */
+    --destructive: 0 65% 50%;           /* 살짝 채도 낮춤 */
+    --destructive-foreground: 0 0% 100%;
+    --warning: 38 85% 50%;              /* 살짝 채도 낮춤 */
+    --warning-foreground: 0 0% 100%;
+    --success: 142 60% 45%;             /* 살짝 채도 낮춤 */
+    --success-foreground: 0 0% 100%;
+    
+    /* Border */
+    --border: 40 15% 82%;
+    --border-strong: 40 12% 70%;
+    --input: 40 15% 82%;
+    --divider: 40 15% 86%;
+    
+    /* Focus/Ring */
+    --ring: 220 70% 45%;
+    
+    /* 텍스트 위계 (4단) */
+    --text-strong: 220 20% 15%;
+    --text: 220 15% 20%;
+    --text-muted: 220 12% 36%;
+    --text-subtle: 220 10% 44%;
+    
+    /* Selection - 부드러운 하이라이트 */
+    --selection: 220 70% 45% / 0.12;
+    
+    --radius: 0.5rem;
+
+    /* Z-Index Layer System */
+    --z-base: 0;
+    --z-floating-content: 40;
+    --z-fab-bar: 50;
+    --z-memo-panel: 60;
+    --z-modal-overlay: 120;
+    --z-chat-widget: 110;
+    --z-dialog: 130;
+    --z-popover: 140;
+    --z-tooltip: 150;
+    --z-terminal-floating: 160;
+    --z-terminal-modal: 170;
+    --z-toast: 200;
+  }
+
+  .dark {
+    /* ============================================
+       Dark Theme - Deep Blue-Gray Foundation
+       설계 원칙: Light 테마와 동일한 계층 구조
+       - 3단 Surface 계층 유지
+       - 4단 텍스트 위계 유지
+       - WCAG 대비율 준수
+       ============================================ */
+    
+    /* Surface 계층 (3단) - 눈 피로 감소를 위한 따뜻한 톤 */
+    --background: 224 71% 4%;            /* #070B14 - 깊은 배경 */
+    --foreground: 210 40% 96%;           /* #F1F5F9 - 밝은 텍스트 */
+    
+    --card: 224 50% 8%;                  /* #0F1629 - 카드 배경 (배경보다 밝음) */
+    --card-foreground: 210 40% 96%;
+    
+    --popover: 224 50% 10%;              /* #131B2E - 팝오버/모달 (최상위) */
+    --popover-foreground: 210 40% 96%;
+    
+    /* Surface 확장 토큰 */
+    --surface: 224 50% 8%;               /* 카드/섹션 기본 */
+    --surface-2: 224 50% 6%;             /* 입력, 툴바, 서브 패널 */
+    --surface-elevated: 224 50% 12%;     /* 모달/팝오버 */
+    --overlay: 0 0% 0% / 0.6;            /* 모달 뒤 dim */
+    
+    /* Primary - 밝고 접근성 좋은 파랑 */
+    --primary: 226 70% 60%;              /* #5B7FE8 - 밝은 파랑 */
+    --primary-foreground: 224 71% 4%;    /* 어두운 텍스트 (대비) */
+    
+    /* Secondary - 눈에 띄는 구분감 */
+    --secondary: 217.2 32.6% 17.5%;      /* #1E293B */
+    --secondary-foreground: 210 40% 96%;
+
+    /* Tag / chip tokens (accessibility tuned) */
+    --tag: 217.2 32.6% 20%;
+    --tag-foreground: 210 35% 94%;
+    --tag-border: 217.2 32.6% 34%;
+    
+    /* Muted - 텍스트 위계 강화 */
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 60%;   /* #8B9AB8 - 대비 4.5:1+ */
+    
+    /* Accent */
+    --accent: 217.2 32.6% 20%;
+    --accent-foreground: 210 40% 96%;
+    
+    /* Semantic Colors - 어두운 배경에서 잘 보이는 밝기 */
+    --destructive: 0 72% 55%;            /* #E53E3E - 밝은 빨강 */
+    --destructive-foreground: 0 0% 100%;
+    --warning: 38 92% 55%;               /* #F6AD55 */
+    --warning-foreground: 0 0% 0%;
+    --success: 142 71% 50%;              /* #48BB78 */
+    --success-foreground: 0 0% 0%;
+    
+    /* Border - 확실한 경계선 (Light보다 미묘함) */
+    --border: 217.2 32.6% 20%;           /* #2D3748 */
+    --border-strong: 217.2 32.6% 30%;    /* #4A5568 */
+    --input: 217.2 32.6% 17.5%;
+    --divider: 217.2 32.6% 15%;          /* 리스트 구분선 */
+    
+    /* Focus/Ring */
+    --ring: 226 70% 60%;                 /* primary와 동일 */
+    
+    /* 텍스트 위계 (4단) */
+    --text-strong: 210 40% 98%;          /* 제목 - #F7FAFC */
+    --text: 210 40% 92%;                 /* 본문 - #E2E8F0 */
+    --text-muted: 215 20.2% 60%;         /* 보조 - #8B9AB8 */
+    --text-subtle: 215 20.2% 45%;        /* placeholder - #6B7999 */
+    
+    /* Selection */
+    --selection: 226 70% 60% / 0.25;
+  }
+
+  /* Terminal Theme - CRT / Green Monitor Aesthetic */
+  /* Design Philosophy: "모든 UI는 터미널 명령어와 출력값처럼 보여야 한다" */
+  /* Color Balance: Neon green limited to interactive elements only */
+  .terminal {
+    /* Deep charcoal with subtle green tint - easier on eyes than pure black */
+    --background: 200 25% 5%;
+    /* Light warm white for body text - better readability */
+    --foreground: 60 10% 92%;
+    /* Card backgrounds - slightly elevated from main bg */
+    --card: 200 20% 7%;
+    --card-foreground: 60 10% 92%;
+    /* Popover uses card colors */
+    --popover: 200 20% 7%;
+    --popover-foreground: 60 10% 92%;
+    /* Neon green primary accent - use sparingly */
+    --primary: 150 100% 62%;
+    --primary-foreground: 200 25% 5%;
+    /* Muted secondary - softer contrast */
+    --secondary: 200 20% 10%;
+    --secondary-foreground: 60 10% 85%;
+    /* Muted text colors - warm gray for better comfort */
+    --muted: 200 15% 10%;
+    --muted-foreground: 60 5% 55%;
+    /* Accent matches primary for consistency */
+    --accent: 150 100% 62%;
+    --accent-foreground: 200 25% 5%;
+    /* Destructive red */
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 60 10% 92%;
+    /* Borders - subtle, not competing with content */
+    --border: 200 15% 15%;
+    --input: 200 15% 15%;
+    /* Ring for focus states */
+    --ring: 150 100% 62%;
+    
+    /* Cyber-Minimalism Design Tokens */
+    --radius: 4px; /* 날렵한 사각형 (Radius 2px~4px) */
+    
+    /* Terminal-specific custom properties */
+    --terminal-glow: 150 100% 62%;
+    --terminal-cyan: 190 100% 60%;
+    --terminal-amber: 40 100% 55%;
+    --terminal-code-bg: 200 25% 4%;
+    --terminal-code-text: 60 20% 75%;
+    --terminal-prompt: 150 100% 62%;
+    --terminal-cursor: 150 100% 62%;
+    --terminal-link: 150 100% 62%;
+    --terminal-link-hover: 150 80% 75%;
+    --terminal-titlebar: 200 25% 4%;
+    --terminal-window-btn-close: 0 70% 55%;
+    --terminal-window-btn-minimize: 40 90% 55%;
+    --terminal-window-btn-maximize: 140 70% 45%;
+    
+    /* Cyber-Minimalism: Glow Effects - softer for less eye strain */
+    --glow-shadow: 0 0 8px hsl(150 100% 62% / 0.3);
+    --glow-shadow-strong: 0 0 12px hsl(150 100% 62% / 0.5);
+    
+    /* Dim states for inactive elements */
+    --terminal-dim: 150 100% 62% / 0.08;
+    --terminal-inactive-border: 200 15% 18%;
+  }
+
+  .terminal .terminal-crt {
+    overflow: hidden;
+    animation: crt-flicker 10s infinite;
+  }
+
+  .terminal .terminal-crt::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+    background: 
+      radial-gradient(
+        ellipse at center, 
+        transparent 0%, 
+        transparent 55%, 
+        rgba(0, 0, 0, 0.25) 80%,
+        rgba(0, 0, 0, 0.5) 100%
+      ),
+      repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 2px,
+        rgba(0, 0, 0, 0.12) 2px,
+        rgba(0, 0, 0, 0.12) 4px
+      );
+  }
+
+  .terminal .terminal-crt::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 11;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 0, 0, 0.015) 0%,
+      transparent 20%,
+      transparent 80%,
+      rgba(0, 255, 255, 0.015) 100%
+    );
+    mix-blend-mode: screen;
+  }
+
+  .terminal .terminal-crt > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .terminal .terminal-empty-panel {
+    border: 1px solid hsl(var(--terminal-glow) / 0.25);
+    border-radius: 0;
+    padding: 20px;
+    background: hsl(var(--terminal-code-bg));
+    box-shadow: 
+      inset 0 0 60px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 hsl(var(--terminal-glow) / 0.1);
+    font-family: "JetBrains Mono", "PT Mono", "DM Mono", monospace;
+    color: var(--terminal-code-text);
+  }
+
+  .terminal .terminal-empty-grid {
+    display: grid;
+    grid-template-columns: minmax(180px, 220px) 1fr;
+    gap: 20px;
+  }
+
+  .terminal .terminal-ascii-art {
+    margin: 0;
+    padding: 16px;
+    border: 1px solid hsl(var(--terminal-amber) / 0.25);
+    border-radius: 0;
+    background: hsl(var(--background));
+    color: hsl(var(--terminal-amber));
+    font-size: 0.78rem;
+    line-height: 1.3;
+    text-shadow: 0 0 4px hsl(var(--terminal-amber) / 0.4);
+  }
+
+  .terminal .terminal-empty-text {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .terminal .terminal-empty-title {
+    font-weight: 600;
+    color: hsl(var(--terminal-amber));
+    text-shadow: 0 0 6px hsl(var(--terminal-amber) / 0.5);
+  }
+
+  .terminal .terminal-empty-sub {
+    color: rgba(226, 232, 240, 0.75);
+  }
+
+  .terminal .terminal-command-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+  }
+
+  .terminal .terminal-command-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid rgba(124, 58, 237, 0.4);
+    border-radius: 10px;
+    background: rgba(5, 8, 12, 0.85);
+    color: var(--terminal-code-text);
+    font-size: 0.82rem;
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+
+  .terminal .terminal-command-btn:hover {
+    transform: translateY(-1px);
+    border-color: var(--terminal-amber);
+    box-shadow: 0 0 15px rgba(124, 58, 237, 0.3);
+  }
+
+  .terminal .terminal-command-btn:focus-visible {
+    outline: 2px solid var(--terminal-amber);
+    outline-offset: 2px;
+  }
+
+  .terminal .terminal-command-prefix {
+    color: var(--terminal-amber);
+    font-weight: 600;
+  }
+
+  .terminal .crt-cli-btn {
+    border: 1px dotted hsl(var(--terminal-glow) / 0.35);
+    border-radius: 0 !important;
+    background: transparent;
+    transition: all 0.15s ease;
+  }
+
+  .terminal .crt-cli-btn:hover {
+    transform: none;
+    border-style: solid;
+    border-color: hsl(var(--terminal-glow) / 0.7);
+    background: hsl(var(--terminal-glow) / 0.08);
+    box-shadow: 0 0 8px hsl(var(--terminal-glow) / 0.2);
+  }
+
+  .terminal .crt-cli-btn:active {
+    background: hsl(var(--terminal-glow));
+    color: hsl(var(--background));
+  }
+
+  .terminal .crt-cli-btn:active .crt-text-amber {
+    color: hsl(var(--background));
+  }
+}
+
+@layer base {
+  /* Mobile viewport overflow prevention */
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  
+  /* Light/Dark 테마 가독성 향상 */
+  :root {
+    /* 본문 폰트 크기 및 행간 최적화 */
+    --content-line-height: 1.8;
+    --content-letter-spacing: -0.01em;
+  }
+  
+  /* 본문 텍스트 가독성 향상 */
+  .prose,
+  article,
+  .content,
+  [role="article"] {
+    line-height: var(--content-line-height);
+    letter-spacing: var(--content-letter-spacing);
+  }
+  
+  /* 한글 최적화 (Light/Dark 테마) */
+  :not(.terminal) .prose p,
+  :not(.terminal) article p,
+  :not(.terminal) .content p {
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    text-align: justify;
+    text-justify: inter-character;
+  }
+  
+  /* Base heading styles to ensure consistent sizing and spacing (sectioned headings included) */
+  h1,
+  section h1,
+  article h1,
+  [role='article'] h1,
+  .prose h1 {
+    @apply text-3xl md:text-4xl font-extrabold leading-tight my-4;
+  }
+  h2,
+  section h2,
+  article h2,
+  [role='article'] h2,
+  .prose h2 {
+    @apply text-2xl md:text-3xl font-semibold leading-snug my-3;
+  }
+  h3,
+  section h3,
+  article h3,
+  [role='article'] h3,
+  .prose h3 {
+    @apply text-xl md:text-2xl font-medium leading-snug my-2;
+  }
+  code,
+  pre,
+  kbd,
+  samp {
+    @apply font-mono;
+  }
+}
+
+@layer utilities {
+  /* Responsive styles for markdown content */
+  .content img {
+    @apply max-w-full h-auto rounded-md;
+  }
+  .content pre {
+    @apply overflow-x-auto;
+  }
+  .content table {
+    @apply w-full overflow-x-auto block;
+  }
+
+  .animate-gradient {
+    background-size: 400% 400%;
+    animation: gradient 15s ease infinite;
+  }
+
+  @keyframes gradient {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  /* Accessibility and mobile improvements */
+  .touch-target-44 {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .safe-area {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Mobile-friendly button sizes */
+  .mobile-btn {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Improved mobile spacing */
+  @media (max-width: 767px) {
+    .mobile-padding {
+      @apply px-4 py-3;
+    }
+    
+    .mobile-gap {
+      @apply gap-3;
+    }
+  }
+
+  /* Animation utilities */
+  @keyframes slide-in {
+    from {
+      opacity: 0;
+      transform: translateX(1rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .animate-slide-in {
+    animation: slide-in 0.3s ease-out forwards;
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out forwards;
+  }
+
+  /* Shimmer for skeletons */
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0) 0%,
+      rgba(255, 255, 255, 0.2) 50%,
+      rgba(0, 0, 0, 0) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s infinite;
+  }
+
+  /* Focus improvements for keyboard navigation */
+  .focus-ring {
+    @apply focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background focus:outline-none;
+  }
+
+  /* Skip link for accessibility */
+  .skip-link {
+    @apply absolute -top-10 left-6 z-[100] bg-background px-4 py-2 text-foreground focus:top-6;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-muted;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/20 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/30;
+}
+
+/* Better focus styles */
+
+*:focus-visible {
+  @apply ring-2 ring-ring ring-offset-2 ring-offset-background;
+}
+
+/* Line clamp utilities */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* Keep loading indicators readable: spinner should still rotate */
+  .animate-spin {
+    animation-duration: 0.9s !important;
+    animation-iteration-count: infinite !important;
+    animation-timing-function: linear !important;
+  }
+}
+
+/* ============================================
+   Terminal Theme Specific Styles
+   ============================================ */
+
+/* Terminal theme scrollbar */
+.terminal ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.terminal ::-webkit-scrollbar-track {
+  background: hsl(var(--terminal-code-bg));
+}
+
+.terminal ::-webkit-scrollbar-thumb {
+  background: hsl(var(--terminal-glow) / 0.3);
+  border-radius: 3px;
+}
+
+.terminal ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--terminal-glow) / 0.5);
+}
+
+/* Terminal cursor blink animation */
+@keyframes terminal-cursor-blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
+.terminal-cursor {
+  display: inline-block;
+  width: 0.6em;
+  height: 1.2em;
+  background-color: hsl(var(--terminal-cursor));
+  animation: terminal-cursor-blink 1s step-end infinite;
+  vertical-align: text-bottom;
+  margin-left: 2px;
+}
+
+/* Terminal scanline effect (optional, performance-friendly) */
+.terminal-scanlines::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: var(--z-toast); /* Use layered z-index system */
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+}
+
+/* ============================================
+   CRT Animation Keyframes
+   ============================================ */
+
+/* Subtle constant screen flicker */
+@keyframes crt-flicker {
+  0%, 100% { opacity: 1; }
+  92% { opacity: 0.98; }
+  93% { opacity: 0.95; }
+  94% { opacity: 1; }
+  97% { opacity: 0.97; }
+  98% { opacity: 1; }
+}
+
+/* RGB Chromatic Aberration shift */
+@keyframes crt-rgb-shift {
+  0%, 100% { 
+    text-shadow: -0.5px 0 rgba(255,0,0,0.3), 0.5px 0 rgba(0,255,255,0.3); 
+  }
+  50% { 
+    text-shadow: -1px 0 rgba(255,0,0,0.2), 1px 0 rgba(0,255,255,0.2); 
+  }
+}
+
+/* Phosphor glow pulse */
+@keyframes phosphor-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.02); }
+}
+
+/* Block cursor blink for input */
+@keyframes crt-block-cursor {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+/* Screen on/off flicker effect */
+@keyframes crt-power-on {
+  0% { 
+    opacity: 0;
+    transform: scaleY(0.01) scaleX(0.5);
+    filter: brightness(2);
+  }
+  30% {
+    opacity: 1;
+    transform: scaleY(0.5) scaleX(0.8);
+    filter: brightness(1.5);
+  }
+  60% {
+    transform: scaleY(1.1) scaleX(1);
+    filter: brightness(1.2);
+  }
+  100% {
+    transform: scaleY(1) scaleX(1);
+    filter: brightness(1);
+  }
+}
+
+/* Typewriter cursor for AI response */
+@keyframes typewriter-cursor {
+  0%, 50% { border-right-color: hsl(var(--terminal-glow)); }
+  51%, 100% { border-right-color: transparent; }
+}
+
+/* Terminal CRT glow effect */
+.terminal-glow {
+  text-shadow: 0 0 5px hsl(var(--terminal-glow) / 0.5),
+               0 0 10px hsl(var(--terminal-glow) / 0.3);
+}
+
+.terminal .crt-text-glow {
+  text-shadow: 
+    0 0 2px hsl(var(--terminal-glow) / 0.9),
+    0 0 6px hsl(var(--terminal-glow) / 0.5),
+    0 0 12px hsl(var(--terminal-glow) / 0.25);
+}
+
+.terminal .crt-text-amber {
+  color: hsl(var(--terminal-amber));
+  text-shadow: 
+    0 0 2px hsl(var(--terminal-amber) / 0.8),
+    0 0 6px hsl(var(--terminal-amber) / 0.4);
+}
+
+.terminal .crt-text-cyan {
+  color: hsl(var(--terminal-cyan));
+  text-shadow: 
+    0 0 2px hsl(var(--terminal-cyan) / 0.8),
+    0 0 6px hsl(var(--terminal-cyan) / 0.4);
+}
+
+.terminal .crt-command {
+  color: hsl(var(--terminal-glow));
+  text-shadow: 0 0 4px hsl(var(--terminal-glow) / 0.6);
+}
+
+.terminal .crt-system {
+  color: hsl(var(--terminal-amber));
+  text-shadow: 0 0 4px hsl(var(--terminal-amber) / 0.5);
+}
+
+.terminal .crt-block-cursor {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.1em;
+  background: hsl(var(--terminal-cursor));
+  animation: crt-block-cursor 1s step-end infinite;
+  vertical-align: text-bottom;
+  margin-left: 1px;
+  box-shadow: 0 0 4px hsl(var(--terminal-glow) / 0.5);
+}
+
+.terminal .text-terminal-amber {
+  color: hsl(var(--terminal-amber));
+}
+
+.terminal .text-terminal-cyan {
+  color: hsl(var(--terminal-cyan));
+}
+
+.terminal .text-terminal-glow {
+  color: hsl(var(--terminal-glow));
+}
+
+.terminal .typewriter-container {
+  position: relative;
+}
+
+.terminal .typewriter-cursor::after {
+  content: "";
+  display: inline-block;
+  width: 0.5em;
+  height: 1em;
+  background: hsl(var(--terminal-glow));
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: crt-block-cursor 1s step-end infinite;
+  box-shadow: 0 0 4px hsl(var(--terminal-glow) / 0.5);
+}
+
+.terminal .streaming-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: hsl(var(--terminal-glow) / 0.7);
+  font-size: 0.75rem;
+}
+
+.terminal .streaming-dots span {
+  animation: streaming-dot 1.4s infinite ease-in-out both;
+}
+
+.terminal .streaming-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.terminal .streaming-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes streaming-dot {
+  0%, 80%, 100% { opacity: 0.3; }
+  40% { opacity: 1; }
+}
+
+.terminal .ai-response-container {
+  border-left: 2px solid hsl(var(--terminal-glow) / 0.3);
+  padding-left: 12px;
+  margin-left: 0;
+}
+
+.terminal .ai-response-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: hsl(var(--terminal-glow) / 0.7);
+  font-size: 0.75rem;
+  margin-bottom: 8px;
+}
+
+/* Terminal typography overrides */
+.terminal h1,
+.terminal h2,
+.terminal h3,
+.terminal h4,
+.terminal h5,
+.terminal h6 {
+  font-family: 'JetBrains Mono', 'Fira Code', 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+  letter-spacing: 0.04em;
+}
+
+.terminal .font-mono,
+.terminal code,
+.terminal pre,
+.terminal kbd,
+.terminal samp {
+  font-family: 'JetBrains Mono', 'Fira Code', 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+}
+
+/* Terminal link styles */
+.terminal a:not(.no-terminal-style) {
+  color: hsl(var(--terminal-link));
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+  transition: all 0.15s ease;
+}
+
+.terminal a:not(.no-terminal-style):hover {
+  color: hsl(var(--terminal-link-hover));
+  text-decoration-style: solid;
+}
+
+/* Terminal focus ring */
+.terminal *:focus-visible {
+  outline: 2px solid hsl(var(--terminal-glow));
+  outline-offset: 2px;
+  box-shadow: 0 0 8px hsl(var(--terminal-glow) / 0.4);
+}
+
+/* Terminal window title bar */
+.terminal-titlebar {
+  background: hsl(var(--terminal-titlebar));
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+
+.terminal-window-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.terminal-window-btn {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: default;
+}
+
+.terminal-window-btn-close {
+  background: hsl(var(--terminal-window-btn-close));
+}
+
+.terminal-window-btn-minimize {
+  background: hsl(var(--terminal-window-btn-minimize));
+}
+
+.terminal-window-btn-maximize {
+  background: hsl(var(--terminal-window-btn-maximize));
+}
+
+/* Terminal prompt prefix */
+.terminal-prompt::before {
+  content: '> ';
+  color: hsl(var(--terminal-prompt));
+  font-weight: 600;
+}
+
+/* Terminal code block styles */
+.terminal pre[class*="language-"],
+.terminal .code-block {
+  background: hsl(var(--terminal-code-bg)) !important;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+}
+
+.terminal pre[class*="language-"] code,
+.terminal .code-block code {
+  color: hsl(var(--terminal-code-text)) !important;
+}
+
+/* Terminal card/container styles */
+.terminal .terminal-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 hsl(var(--border)),
+              0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Terminal list styles (ASCII bullets) */
+.terminal ul:not(.no-terminal-style) > li::marker {
+  content: '- ';
+  color: hsl(var(--terminal-prompt));
+}
+
+.terminal ol:not(.no-terminal-style) > li::marker {
+  color: hsl(var(--terminal-prompt));
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Terminal blockquote */
+.terminal blockquote {
+  border-left: 3px solid hsl(var(--terminal-glow));
+  background: hsl(var(--terminal-code-bg));
+  padding: 16px 20px;
+  margin: 1.5em 0;
+  font-style: normal;
+  border-radius: 0 4px 4px 0;
+  position: relative;
+}
+
+.terminal blockquote::before {
+  content: '>';
+  position: absolute;
+  left: -12px;
+  top: 16px;
+  color: hsl(var(--terminal-glow));
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 1.1em;
+}
+
+.terminal blockquote p {
+  margin: 0.5em 0;
+  line-height: 1.7;
+}
+
+.terminal blockquote p:first-child {
+  margin-top: 0;
+}
+
+.terminal blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* ============================================
+   Terminal Theme - Long-form Reading Typography
+   Enhanced readability for blog posts
+   ============================================ */
+
+/* Terminal prose body text - optimized for long-form reading */
+.terminal .prose,
+.terminal article,
+.terminal [role="article"] {
+  font-size: 1rem;
+  line-height: 1.85;
+  letter-spacing: 0.01em;
+}
+
+.terminal .prose p,
+.terminal article p,
+.terminal [role="article"] p {
+  margin-bottom: 1.5em;
+  line-height: 1.85;
+  color: hsl(var(--foreground));
+}
+
+/* Terminal headings with better spacing for reading flow */
+.terminal .prose h1,
+.terminal article h1 {
+  margin-top: 2.5em;
+  margin-bottom: 1em;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.terminal .prose h2,
+.terminal article h2 {
+  margin-top: 2em;
+  margin-bottom: 0.8em;
+  line-height: 1.35;
+  font-weight: 600;
+  border-bottom: 1px solid hsl(var(--border));
+  padding-bottom: 0.4em;
+}
+
+.terminal .prose h3,
+.terminal article h3 {
+  margin-top: 1.8em;
+  margin-bottom: 0.6em;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.terminal .prose h4,
+.terminal article h4,
+.terminal .prose h5,
+.terminal article h5,
+.terminal .prose h6,
+.terminal article h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  line-height: 1.45;
+}
+
+/* First heading after title shouldn't have excessive top margin */
+.terminal .prose > h2:first-child,
+.terminal article > h2:first-child {
+  margin-top: 0;
+}
+
+/* Terminal lists with better spacing */
+.terminal .prose ul,
+.terminal .prose ol,
+.terminal article ul,
+.terminal article ol {
+  margin: 1.25em 0;
+  padding-left: 1.5em;
+}
+
+.terminal .prose li,
+.terminal article li {
+  margin-bottom: 0.5em;
+  line-height: 1.7;
+}
+
+.terminal .prose li > p,
+.terminal article li > p {
+  margin-bottom: 0.5em;
+}
+
+/* Nested lists */
+.terminal .prose ul ul,
+.terminal .prose ol ol,
+.terminal .prose ul ol,
+.terminal .prose ol ul {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+/* Terminal inline code in prose */
+.terminal .prose code:not([class*="language-"]),
+.terminal article code:not([class*="language-"]) {
+  background: hsl(var(--terminal-code-bg));
+  border: 1px solid hsl(var(--border));
+  border-radius: 3px;
+  padding: 0.15em 0.4em;
+  font-size: 0.9em;
+  color: hsl(var(--terminal-cyan));
+}
+
+/* Terminal horizontal rule */
+.terminal .prose hr,
+.terminal article hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    hsl(var(--terminal-glow) / 0.3) 20%,
+    hsl(var(--terminal-glow) / 0.5) 50%,
+    hsl(var(--terminal-glow) / 0.3) 80%,
+    transparent
+  );
+  margin: 2.5em 0;
+}
+
+/* Terminal strong/bold text */
+.terminal .prose strong,
+.terminal article strong {
+  color: hsl(var(--terminal-glow));
+  font-weight: 600;
+}
+
+/* Terminal emphasis/italic */
+.terminal .prose em,
+.terminal article em {
+  color: hsl(var(--terminal-amber));
+  font-style: italic;
+}
+
+/* Terminal images in prose */
+.terminal .prose img,
+.terminal article img {
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  margin: 1.5em 0;
+}
+
+/* Terminal figure/caption */
+.terminal .prose figure,
+.terminal article figure {
+  margin: 2em 0;
+}
+
+.terminal .prose figcaption,
+.terminal article figcaption {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85em;
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+  margin-top: 0.75em;
+}
+
+.terminal .prose figcaption::before {
+  content: '// ';
+  color: hsl(var(--terminal-glow) / 0.6);
+}
+
+/* Terminal table */
+.terminal table {
+  border: 1px solid hsl(var(--border));
+}
+
+.terminal th {
+  background: hsl(var(--terminal-code-bg));
+  color: hsl(var(--terminal-glow));
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.85em;
+  letter-spacing: 0.05em;
+}
+
+.terminal td {
+  border: 1px solid hsl(var(--border));
+}
+
+/* Terminal selection highlight */
+.terminal ::selection {
+  background: hsl(var(--terminal-glow) / 0.3);
+  color: hsl(var(--foreground));
+}
+
+/* Terminal toast notification */
+.terminal [data-radix-toast-viewport] [data-state="open"] {
+  background: hsl(var(--terminal-titlebar));
+  border: 1px solid hsl(var(--terminal-glow) / 0.3);
+  font-family: 'JetBrains Mono', monospace;
+  box-shadow: 0 0 20px hsl(var(--terminal-glow) / 0.2);
+}
+
+.terminal [data-radix-toast-viewport] [data-state="open"] [class*="ToastTitle"],
+.terminal [data-radix-toast-viewport] [data-state="open"] > div > div:first-child {
+  color: hsl(var(--terminal-glow));
+  font-weight: 600;
+}
+
+.terminal [data-radix-toast-viewport] [data-state="open"] [class*="ToastDescription"],
+.terminal [data-radix-toast-viewport] [data-state="open"] > div > div:last-child {
+  color: hsl(var(--terminal-secondary));
+  font-size: 0.85em;
+}
+
+/* ============================================
+   Cyber-Minimalism Utility Classes
+   ============================================ */
+
+/* Glassmorphism Card Style */
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.terminal .glass-card {
+  background: rgba(20, 25, 30, 0.6);
+  border: 1px solid hsl(var(--border));
+}
+
+.terminal .glass-card:hover {
+  background: rgba(20, 25, 30, 0.8);
+  border-color: hsl(var(--primary) / 0.3);
+  box-shadow: var(--glow-shadow);
+}
+
+/* Terminal Hover Glow Effect for Cards */
+.terminal .glow-card {
+  transition: all 0.3s ease;
+}
+
+.terminal .glow-card:hover {
+  border-color: hsl(var(--primary) / 0.5);
+  box-shadow: 
+    0 0 20px hsl(var(--primary) / 0.15),
+    inset 0 0 20px hsl(var(--primary) / 0.05);
+}
+
+/* Terminal Panel (Output Window) */
+.terminal .terminal-panel,
+.terminal-panel {
+  background-color: hsl(var(--terminal-panel, var(--card)));
+  border: 1px solid hsl(var(--terminal-inactive-border, var(--border)));
+  border-left: 3px solid hsl(var(--primary));
+  padding: 1.5rem;
+  border-radius: 4px;
+  position: relative;
+}
+
+/* Command Button (Keycap style) */
+.terminal .cmd-btn,
+.cmd-btn {
+  background: transparent;
+  border: 1px solid hsl(var(--terminal-inactive-border, var(--border)));
+  color: hsl(var(--muted-foreground));
+  padding: 0.5rem 1rem;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+  font-weight: bold;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.terminal .cmd-btn:hover,
+.cmd-btn:hover {
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+  box-shadow: var(--glow-shadow, 0 0 10px hsl(150 100% 62% / 0.4));
+  text-shadow: 0 0 5px hsl(var(--primary));
+}
+
+.terminal .cmd-btn.active,
+.cmd-btn.active {
+  background: hsl(var(--primary));
+  color: hsl(210 50% 2%); /* Dark text on neon green */
+  border-color: hsl(var(--primary));
+  box-shadow: var(--glow-shadow, 0 0 10px hsl(150 100% 62% / 0.4));
+}
+
+.terminal .cmd-btn.close,
+.cmd-btn.close {
+  border-color: hsl(var(--destructive) / 0.5);
+  color: hsl(var(--destructive));
+}
+
+.terminal .cmd-btn.close:hover,
+.cmd-btn.close:hover {
+  background: hsl(var(--destructive));
+  color: white; /* White text on red background */
+  border-color: hsl(var(--destructive));
+  box-shadow: 0 0 10px hsl(var(--destructive) / 0.5);
+}
+
+/* Terminal Prompt Style */
+.terminal .prompt-prefix::before {
+  content: '> ';
+  color: hsl(var(--terminal-prompt, var(--primary)));
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Comment Style Title (// prefix) */
+.terminal .section-comment {
+  color: hsl(var(--muted-foreground));
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.95rem;
+  font-weight: normal;
+}
+
+/* Neon Glow Text */
+.terminal .neon-text {
+  color: hsl(var(--primary));
+  text-shadow: 0 0 5px hsl(var(--primary) / 0.5),
+               0 0 10px hsl(var(--primary) / 0.3);
+}
+
+/* Terminal highlight text */
+.terminal .highlight-text {
+  color: hsl(var(--foreground));
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+/* ============================================
+   Light/Dark Theme Enhanced Readability
+   ============================================ */
+
+/* 기본 테마 카드/컨테이너 스타일 */
+:not(.terminal) .card,
+:not(.terminal) [class*="Card"] {
+  @apply transition-all duration-200;
+}
+
+:not(.terminal) .card:hover,
+:not(.terminal) [class*="Card"]:hover {
+  @apply shadow-lg;
+}
+
+/* 기본 테마 버튼 최소 터치 타겟 */
+:not(.terminal) button,
+:not(.terminal) [role="button"],
+:not(.terminal) a[href] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* 예외: 인라인 링크와 작은 아이콘 버튼 */
+:not(.terminal) a:not([class*="btn"]):not([class*="Button"]),
+:not(.terminal) .inline-link,
+:not(.terminal) [class*="icon-only"] {
+  min-height: unset;
+  min-width: unset;
+}
+
+/* 기본 테마 인풋 필드 스타일링 */
+:not(.terminal) input[type="text"],
+:not(.terminal) input[type="email"],
+:not(.terminal) input[type="password"],
+:not(.terminal) input[type="search"],
+:not(.terminal) textarea,
+:not(.terminal) select {
+  @apply transition-all duration-200;
+  font-size: 16px; /* iOS 줌 방지 */
+}
+
+/* 기본 테마 포커스 스타일 */
+:not(.terminal) input:focus,
+:not(.terminal) textarea:focus,
+:not(.terminal) select:focus {
+  @apply ring-2 ring-primary/30 border-primary;
+}
+
+/* Light 테마 - 이미 :root에서 정의됨, .light는 명시적 토글용 */
+.light {
+  --background: 45 30% 92%;
+  --foreground: 220 15% 20%;
+  --card: 45 25% 95%;
+  --card-foreground: 220 15% 20%;
+  --muted-foreground: 220 10% 45%;
+  --border: 40 15% 82%;
+  --border-strong: 40 12% 70%;
+}
+
+/* Light 테마 Selection */
+.light ::selection,
+:root:not(.dark):not(.terminal) ::selection {
+  background: hsl(220 70% 45% / 0.18);
+  color: hsl(220 15% 20%);
+}
+
+/* Light 테마 카드 스타일 - Flat design, 미니멀 shadow */
+:root:not(.dark):not(.terminal) .card,
+.light .card,
+:root:not(.dark):not(.terminal) [data-slot="card"],
+.light [data-slot="card"] {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 1px 2px hsl(30 10% 30% / 0.03);
+}
+
+:root:not(.dark):not(.terminal) .card:hover,
+.light .card:hover {
+  box-shadow: 0 2px 8px hsl(30 10% 30% / 0.06);
+}
+
+/* Light 테마 입력 필드 - 명확한 경계 */
+:root:not(.dark):not(.terminal) input,
+:root:not(.dark):not(.terminal) textarea,
+:root:not(.dark):not(.terminal) select,
+.light input,
+.light textarea,
+.light select {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+}
+
+:root:not(.dark):not(.terminal) input:focus,
+:root:not(.dark):not(.terminal) textarea:focus,
+:root:not(.dark):not(.terminal) select:focus,
+.light input:focus,
+.light textarea:focus,
+.light select:focus {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
+}
+
+/* Light 테마 placeholder - 확실한 대비 */
+:root:not(.dark):not(.terminal) input::placeholder,
+:root:not(.dark):not(.terminal) textarea::placeholder,
+.light input::placeholder,
+.light textarea::placeholder {
+  color: hsl(220 9% 55%);
+  opacity: 1;
+}
+
+/* Light 테마 버튼 hover/active 상태 강화 */
+:root:not(.dark):not(.terminal) button:hover,
+.light button:hover {
+  background-color: hsl(var(--accent));
+}
+
+:root:not(.dark):not(.terminal) button:active,
+.light button:active {
+  transform: translateY(1px);
+}
+
+/* Light 테마 Primary 버튼 */
+:root:not(.dark):not(.terminal) .bg-primary,
+.light .bg-primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+:root:not(.dark):not(.terminal) .bg-primary:hover,
+.light .bg-primary:hover {
+  background: hsl(226 55% 45%);
+}
+
+/* Light 테마 모달/다이얼로그 */
+:root:not(.dark):not(.terminal) [role="dialog"],
+:root:not(.dark):not(.terminal) [data-radix-dialog-content],
+.light [role="dialog"],
+.light [data-radix-dialog-content] {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 10px 40px hsl(220 13% 10% / 0.15),
+              0 4px 12px hsl(220 13% 10% / 0.1);
+}
+
+/* Light 테마 드롭다운/팝오버 */
+:root:not(.dark):not(.terminal) [data-radix-popper-content-wrapper] [role="menu"],
+:root:not(.dark):not(.terminal) [data-radix-popover-content],
+.light [data-radix-popper-content-wrapper] [role="menu"],
+.light [data-radix-popover-content] {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 4px 16px hsl(220 13% 10% / 0.12),
+              0 2px 6px hsl(220 13% 10% / 0.06);
+}
+
+/* Light 테마 테이블 */
+:root:not(.dark):not(.terminal) table th,
+.light table th {
+  background: hsl(var(--secondary));
+  border-bottom: 2px solid hsl(var(--border));
+}
+
+:root:not(.dark):not(.terminal) table td,
+.light table td {
+  border-bottom: 1px solid hsl(var(--divider, var(--border)));
+}
+
+:root:not(.dark):not(.terminal) table tr:hover,
+.light table tr:hover {
+  background: hsl(var(--secondary) / 0.5);
+}
+
+/* Light 테마 스크롤바 */
+:root:not(.dark):not(.terminal) ::-webkit-scrollbar-track,
+.light ::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+:root:not(.dark):not(.terminal) ::-webkit-scrollbar-thumb,
+.light ::-webkit-scrollbar-thumb {
+  background: hsl(220 13% 75%);
+  border-radius: 5px;
+}
+
+:root:not(.dark):not(.terminal) ::-webkit-scrollbar-thumb:hover,
+.light ::-webkit-scrollbar-thumb:hover {
+  background: hsl(220 13% 65%);
+}
+
+/* Light 테마 뱃지/칩 */
+:root:not(.dark):not(.terminal) .badge,
+:root:not(.dark):not(.terminal) [data-slot="badge"],
+.light .badge,
+.light [data-slot="badge"] {
+  border: 1px solid hsl(var(--border));
+}
+
+/* Light 테마 구분선 */
+:root:not(.dark):not(.terminal) hr,
+:root:not(.dark):not(.terminal) [role="separator"],
+.light hr,
+.light [role="separator"] {
+  border-color: hsl(var(--border));
+}
+
+/* Dark 테마 세부 조정 */
+.dark:not(.terminal) {
+  /* 눈의 피로를 줄이기 위한 약간 따뜻한 배경 */
+  --background: 224 71% 4%;
+  --card: 224 71% 6%;
+  /* 더 나은 가독성을 위한 텍스트 색상 */
+  --foreground: 210 40% 96%;
+  --muted-foreground: 215 20.2% 60%;
+}
+
+/* ============================================
+   Dark Theme - Enhanced Readability
+   Light 테마와 동일한 원칙 적용
+   ============================================ */
+
+/* Dark 테마 Selection */
+.dark ::selection {
+  background: hsl(226 70% 60% / 0.3);
+  color: hsl(210 40% 98%);
+}
+
+/* Dark 테마 카드 스타일 - 배경과 확실한 구분 */
+.dark .card,
+.dark [data-slot="card"] {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 1px 3px hsl(0 0% 0% / 0.2),
+              0 1px 2px hsl(0 0% 0% / 0.15);
+}
+
+.dark .card:hover {
+  box-shadow: 0 4px 12px hsl(0 0% 0% / 0.3),
+              0 2px 4px hsl(0 0% 0% / 0.2);
+}
+
+/* Dark 테마 입력 필드 - 명확한 경계 */
+.dark input,
+.dark textarea,
+.dark select {
+  background: hsl(var(--surface-2, var(--card)));
+  border-color: hsl(var(--border));
+}
+
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.2);
+}
+
+/* Dark 테마 placeholder */
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: hsl(var(--text-subtle, 215 20.2% 45%));
+  opacity: 1;
+}
+
+/* Dark 테마 Primary 버튼 */
+.dark .bg-primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.dark .bg-primary:hover {
+  background: hsl(226 70% 55%);
+}
+
+/* Dark 테마 모달/다이얼로그 */
+.dark [role="dialog"],
+.dark [data-radix-dialog-content] {
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 10px 40px hsl(0 0% 0% / 0.4),
+              0 4px 12px hsl(0 0% 0% / 0.3);
+}
+
+/* Dark 테마 드롭다운/팝오버 */
+.dark [data-radix-popper-content-wrapper] [role="menu"],
+.dark [data-radix-popover-content] {
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 4px 16px hsl(0 0% 0% / 0.35),
+              0 2px 6px hsl(0 0% 0% / 0.25);
+}
+
+/* Dark 테마 테이블 */
+.dark table th {
+  background: hsl(var(--secondary));
+  border-bottom: 2px solid hsl(var(--border));
+}
+
+.dark table td {
+  border-bottom: 1px solid hsl(var(--divider, var(--border)));
+}
+
+.dark table tr:hover {
+  background: hsl(var(--secondary) / 0.5);
+}
+
+/* Dark 테마 스크롤바 */
+.dark ::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(var(--border-strong, 217.2 32.6% 30%));
+  border-radius: 5px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(217.2 32.6% 40%);
+}
+
+/* Dark 테마 뱃지/칩 */
+.dark .badge,
+.dark [data-slot="badge"] {
+  border: 1px solid hsl(var(--border));
+}
+
+/* Dark 테마 구분선 */
+.dark hr,
+.dark [role="separator"] {
+  border-color: hsl(var(--border));
+}
+
+/* 기본 테마 prose 스타일 개선 */
+:not(.terminal) .prose {
+  --tw-prose-body: hsl(var(--foreground));
+  --tw-prose-headings: hsl(var(--foreground));
+  --tw-prose-lead: hsl(var(--muted-foreground));
+  --tw-prose-links: hsl(var(--primary));
+  --tw-prose-bold: hsl(var(--foreground));
+  --tw-prose-counters: hsl(var(--muted-foreground));
+  --tw-prose-bullets: hsl(var(--muted-foreground));
+  --tw-prose-hr: hsl(var(--border));
+  --tw-prose-quotes: hsl(var(--foreground));
+  --tw-prose-quote-borders: hsl(var(--primary));
+  --tw-prose-captions: hsl(var(--muted-foreground));
+  --tw-prose-code: hsl(var(--primary));
+  --tw-prose-pre-code: hsl(var(--foreground));
+  --tw-prose-pre-bg: hsl(var(--muted));
+  --tw-prose-th-borders: hsl(var(--border));
+  --tw-prose-td-borders: hsl(var(--border));
+}
+
+:not(.terminal) .prose h1,
+:not(.terminal) .prose h2,
+:not(.terminal) .prose h3,
+:not(.terminal) .prose h4 {
+  @apply font-semibold tracking-tight;
+  font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+:not(.terminal) .prose p {
+  @apply leading-relaxed;
+  margin-bottom: 1.25em;
+}
+
+:not(.terminal) .prose a {
+  @apply underline underline-offset-4 decoration-primary/40 hover:decoration-primary transition-colors;
+}
+
+:not(.terminal) .prose blockquote {
+  @apply border-l-4 border-primary/30 bg-muted/30 py-2 px-4 my-4 italic;
+}
+
+:not(.terminal) .prose code:not(pre code) {
+  @apply bg-muted px-1.5 py-0.5 rounded text-sm font-normal;
+}
+
+:not(.terminal) .prose pre {
+  @apply rounded-xl border border-border/50 shadow-sm;
+}
+
+/* 기본 테마 목록 스타일 */
+:not(.terminal) .prose ul,
+:not(.terminal) .prose ol {
+  @apply my-4 pl-5;
+}
+
+:not(.terminal) .prose li {
+  @apply my-1;
+}
+
+:not(.terminal) .prose li::marker {
+  color: hsl(var(--primary));
+}
+
+/* 기본 테마 테이블 스타일 */
+:not(.terminal) .prose table {
+  @apply w-full border-collapse;
+}
+
+:not(.terminal) .prose th {
+  @apply bg-muted/50 font-semibold text-left px-4 py-3 border-b-2 border-border;
+}
+
+:not(.terminal) .prose td {
+  @apply px-4 py-3 border-b border-border/50;
+}
+
+:not(.terminal) .prose tr:hover {
+  @apply bg-muted/30;
+}
+
+/* 기본 테마 이미지 스타일 */
+:not(.terminal) .prose img {
+  @apply rounded-xl shadow-md my-6;
+}
+
+:not(.terminal) .prose figure {
+  @apply my-6;
+}
+
+:not(.terminal) .prose figcaption {
+  @apply text-center text-sm text-muted-foreground mt-3;
+}
+
+/* ============================================
+   Compact TUI System
+   ============================================ */
+
+/* TUI Typography Scaling */
+:root {
+  font-size: clamp(14px, 1.5vw, 15px);
+  line-height: 1.6;
+}
+
+/* TUI Button & Padding Refactoring */
+.btn-tui {
+  @apply border bg-transparent text-foreground hover:bg-primary/10 hover:text-primary;
+  padding: 0.5rem 1rem;
+  height: auto;
+  min-height: 36px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.tui-card {
+  @apply border bg-transparent p-4 shadow-none;
+}
+
+/* ============================================
+   Button Contrast & Visibility Improvements
+   ============================================ */
+
+/* Primary button: ensure text is always readable */
+.btn-primary,
+button[class*="bg-primary"]:not([class*="bg-primary/"]) {
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+/* Terminal theme primary buttons - Dark text on bright neon green */
+.terminal .btn-primary,
+.terminal button[class*="bg-primary"]:not([class*="bg-primary/"]),
+.terminal a[class*="bg-primary"]:not([class*="bg-primary/"]),
+.terminal button[class*="terminal-active"],
+.terminal [class*="terminal-active"] {
+  background-color: hsl(var(--primary));
+  color: hsl(210 50% 2%) !important; /* Force dark text on neon green */
+  font-weight: 600;
+}
+
+/* Outline buttons in terminal theme */
+.terminal .btn-outline {
+  background: transparent;
+  border: 1px solid hsl(var(--primary));
+  color: hsl(var(--primary));
+}
+
+.terminal .btn-outline:hover {
+  background: hsl(var(--primary) / 0.1);
+}
+
+/* FAB dock buttons - only apply to actual FAB elements, not all bg-primary/20 */
+.terminal [role="toolbar"] [class*="bg-primary/20"],
+.terminal .fab-button[class*="bg-primary/20"] {
+  color: hsl(var(--primary));
+}
+
+/* Terminal active tabs - ensure contrast */
+.terminal [data-state="active"][class*="bg-primary"],
+.terminal button[data-state="active"][class*="terminal"] {
+  color: hsl(210 50% 2%) !important; /* Dark text on neon green */
+}
+
+/* Destructive buttons - ensure red text is visible on dark backgrounds */
+.terminal button[class*="destructive"],
+.terminal [class*="destructive"] {
+  --destructive-text: 0 70% 60%; /* Slightly brighter red for dark mode */
+}
+
+.terminal button[class*="bg-destructive"]:not([class*="bg-destructive/"]) {
+  color: hsl(0 0% 100%) !important; /* White text on red background */
+}
+
+/* Secondary buttons in terminal theme */
+.terminal button[class*="bg-secondary"]:not([class*="bg-secondary/"]) {
+  color: hsl(var(--secondary-foreground));
+}
+
+/* Ghost and outline buttons should have visible text */
+.terminal button[class*="ghost"],
+.terminal button[class*="outline"] {
+  color: hsl(var(--foreground));
+}
+
+.terminal button[class*="ghost"]:hover,
+.terminal button[class*="outline"]:hover {
+  color: hsl(var(--primary));
+}
+
+/* ============================================
+   Mobile UX Improvements (All Themes)
+   ============================================ */
+
+@media (max-width: 767px) {
+  /* 모바일 버튼 최소 크기 - 터치 타겟 44px 보장 */
+  button,
+  [role="button"],
+  .btn,
+  [class*="Button"] {
+    min-height: 44px;
+  }
+  
+  /* 아이콘 전용 버튼은 width도 보장 */
+  button[class*="icon"],
+  [role="button"][class*="icon"],
+  button[aria-label]:not([class*="w-"]) {
+    min-width: 44px;
+  }
+  
+  /* 모바일 간격 */
+  .container,
+  .content-container {
+    @apply px-4; /* 1rem for mobile */
+  }
+  
+  /* 모바일 폰트 크기 */
+  .prose,
+  article,
+  .content {
+    font-size: 1rem;
+    line-height: 1.7;
+  }
+
+  h1, .text-3xl { font-size: 1.75rem; }
+  h2, .text-2xl { font-size: 1.5rem; }
+  h3, .text-xl { font-size: 1.25rem; }
+
+  /* Adjust meta data font size */
+  .meta-text {
+    font-size: clamp(11px, 2vw, 12px);
+  }
+  
+  /* Input/Select 높이 강화 - 모바일 48px 권장 */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+  select,
+  textarea {
+    min-height: 48px;
+  }
+  
+  /* Mobile performance: reduce backdrop-filter intensity */
+  .backdrop-blur,
+  .backdrop-blur-sm,
+  .backdrop-blur-md,
+  .backdrop-blur-lg,
+  .backdrop-blur-xl,
+  [class*="backdrop-blur"] {
+    --tw-backdrop-blur: blur(4px) !important;
+  }
+  
+  /* Disable backdrop-filter on very low-end devices (prefers-reduced-motion as proxy) */
+  @media (prefers-reduced-motion: reduce) {
+    .backdrop-blur,
+    .backdrop-blur-sm,
+    .backdrop-blur-md,
+    .backdrop-blur-lg,
+    .backdrop-blur-xl,
+    [class*="backdrop-blur"] {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      background-color: hsl(var(--background) / 0.95) !important;
+    }
+  }
+  
+  /* Glass card mobile optimization */
+  .glass-card {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+}
+
+/* ============================================
+   Accessibility Improvements
+   ============================================ */
+
+/* Hide scrollbar for carousel */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-track-transparent::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thumb-muted-foreground\/20::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.2);
+  border-radius: 3px;
+}
+
+.hover\:scrollbar-thumb-muted-foreground\/40:hover::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.4);
+}
+
+/* 고대비 모드 지원 */
+@media (prefers-contrast: high) {
+  :root {
+    --border: 214.3 31.8% 50%;
+  }
+  
+  .dark {
+    --border: 217.2 32.6% 50%;
+  }
+}
+
+/* 스크린 리더 전용 텍스트 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 767px) {
+  .terminal .terminal-crt::before {
+    background: 
+      radial-gradient(
+        ellipse at center, 
+        transparent 0%, 
+        transparent 65%, 
+        rgba(0, 0, 0, 0.2) 100%
+      ),
+      repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 3px,
+        rgba(0, 0, 0, 0.08) 3px,
+        rgba(0, 0, 0, 0.08) 6px
+      );
+  }
+
+  .terminal .terminal-crt::after {
+    display: none;
+  }
+
+  .terminal .terminal-crt {
+    animation: none;
+  }
+
+  .terminal .crt-text-glow {
+    text-shadow: 0 0 3px hsl(var(--terminal-glow) / 0.5);
+  }
+
+  .terminal .crt-text-amber,
+  .terminal .crt-text-cyan {
+    text-shadow: 0 0 3px currentColor;
+  }
+
+  .terminal .crt-cli-btn,
+  .terminal .terminal-command-btn {
+    min-height: 48px;
+    padding: 14px 16px;
+    font-size: 0.875rem;
+  }
+
+  .terminal .terminal-command-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .terminal .terminal-empty-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .terminal .terminal-ascii-art {
+    font-size: 0.65rem;
+    padding: 12px;
+    text-align: center;
+  }
+  
+  .terminal .terminal-empty-panel {
+    padding: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal .terminal-crt {
+    animation: none !important;
+  }
+  
+  .terminal .crt-block-cursor,
+  .terminal .terminal-cursor {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+  
+  .terminal .crt-text-glow,
+  .terminal .crt-text-amber,
+  .terminal .crt-text-cyan {
+    text-shadow: none !important;
+  }
+  
+  .terminal .terminal-crt::before,
+  .terminal .terminal-crt::after {
+    opacity: 0.5;
+  }
+}

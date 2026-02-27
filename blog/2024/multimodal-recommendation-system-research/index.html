@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>웹 기반 다중 모달 추천 시스템 연구 | Nodove Blog</title>
+    <meta name="description" content="텍스트, 이미지, 영상 데이터를 종합적으로 처리하는 하이브리드 추천 시스템의 알고리즘 설계와 구현 방법에 대한 심화 연구입니다." />
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    
+    
+    
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/nodove.ico" />
+
+    <!-- Fonts: Pretendard (sans) + JetBrains Mono (mono) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@latest/dist/web/variable/pretendardvariable-dynamic-subset.css" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <script>
+      (function() {
+        const theme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const root = document.documentElement;
+        root.classList.remove('light', 'dark', 'terminal');
+        
+        if (theme === 'terminal') {
+          // Terminal uses dark as base with additional terminal class
+          root.classList.add('dark', 'terminal');
+        } else if (theme === 'dark' || (theme === 'system' && prefersDark) || (!theme && prefersDark)) {
+          root.classList.add('dark');
+        } else if (theme === 'light') {
+          root.classList.add('light');
+        } else if (!theme) {
+          // Default: terminal theme for new visitors
+          root.classList.add('dark', 'terminal');
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-BfiQ8Q2g.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-Cmm2Fedx.js">
+    <link rel="modulepreload" crossorigin href="/assets/ui-dgQIXIId.js">
+    <link rel="modulepreload" crossorigin href="/assets/utils-B2rm_Apj.js">
+    <link rel="modulepreload" crossorigin href="/assets/search-Ch1WBRTM.js">
+    <link rel="modulepreload" crossorigin href="/assets/markdown-C4DgRyv4.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-sy4EPig8.css">
+  
+    <!-- Open Graph / Facebook / KakaoTalk -->
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://noblog.nodove.com/blog/2024/multimodal-recommendation-system-research" />
+    <meta property="og:title" content="웹 기반 다중 모달 추천 시스템 연구" />
+    <meta property="og:description" content="텍스트, 이미지, 영상 데이터를 종합적으로 처리하는 하이브리드 추천 시스템의 알고리즘 설계와 구현 방법에 대한 심화 연구입니다." />
+    <meta property="og:image" content="https://api.nodove.com/api/v1/og?title=%EC%9B%B9+%EA%B8%B0%EB%B0%98+%EB%8B%A4%EC%A4%91+%EB%AA%A8%EB%8B%AC+%EC%B6%94%EC%B2%9C+%EC%8B%9C%EC%8A%A4%ED%85%9C+%EC%97%B0%EA%B5%AC&subtitle=AI" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="Nodove Blog" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="article:published_time" content="2024-09-20" />
+    <meta property="article:author" content="Admin" />
+    <meta property="article:section" content="AI" />
+    <meta property="article:tag" content="추천 시스템, 다중 모달, Word2Vec, CNN, LSTM, 협업 필터링, 딥러닝" />
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://noblog.nodove.com/blog/2024/multimodal-recommendation-system-research" />
+    <meta name="twitter:title" content="웹 기반 다중 모달 추천 시스템 연구" />
+    <meta name="twitter:description" content="텍스트, 이미지, 영상 데이터를 종합적으로 처리하는 하이브리드 추천 시스템의 알고리즘 설계와 구현 방법에 대한 심화 연구입니다." />
+    <meta name="twitter:image" content="https://api.nodove.com/api/v1/og?title=%EC%9B%B9+%EA%B8%B0%EB%B0%98+%EB%8B%A4%EC%A4%91+%EB%AA%A8%EB%8B%AC+%EC%B6%94%EC%B2%9C+%EC%8B%9C%EC%8A%A4%ED%85%9C+%EC%97%B0%EA%B5%AC&subtitle=AI" />
+    
+    <!-- Additional SEO -->
+    <link rel="canonical" href="https://noblog.nodove.com/blog/2024/multimodal-recommendation-system-research" />
+</head>
+
+  <body>
+    <div id="root"></div>
+    <script defer src="/ai-memo/ai-memo.js?v=20251019-1"></script>
+  </body>
+</html>

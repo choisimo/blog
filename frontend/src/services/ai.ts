@@ -1,0 +1,784 @@
+import { ensureSession } from "@/services/chat";
+import { getApiBaseUrl } from "@/utils/apiBase";
+import { TEXT_LIMITS, FALLBACK_DATA } from "@/config/defaults";
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export type SketchResult = {
+  mood: string;
+  bullets: string[];
+};
+
+export type PrismResult = {
+  facets: Array<{
+    title: string;
+    points: string[];
+  }>;
+};
+
+export type ChainResult = {
+  questions: Array<{
+    q: string;
+    why: string;
+  }>;
+};
+
+export type SummaryResult = {
+  summary: string;
+  keyPoints?: string[];
+};
+
+export type QuizQuestion = {
+  type: "fill_blank" | "multiple_choice" | "transform" | "explain";
+  question: string;
+  answer: string;
+  options?: string[]; // for multiple_choice
+  explanation?: string;
+};
+
+export type QuizResult = {
+  quiz: QuizQuestion[];
+};
+
+type TaskMode = "sketch" | "prism" | "chain" | "summary" | "custom" | "quiz";
+
+type TaskPayload = {
+  paragraph?: string;
+  postTitle?: string;
+  persona?: string;
+  [key: string]: unknown;
+};
+
+type TaskResponse<T> = {
+  ok: boolean;
+  data: T;
+  mode: string;
+  source?: "ai-call" | "gemini" | "fallback";
+  _fallback?: boolean;
+};
+
+// ============================================================================
+// Utilities
+// ============================================================================
+
+/**
+ * 객체인지 확인
+ */
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return v !== null && typeof v === "object";
+}
+
+/**
+ * JSON 파싱 (서버 응답이 문자열인 경우 대비)
+ */
+function tryParseJson<T = unknown>(text: string): T | null {
+  if (!text || typeof text !== "string") return null;
+
+  // 직접 파싱
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    // continue
+  }
+
+  // 코드블록 추출
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence?.[1]) {
+    try {
+      return JSON.parse(fence[1].trim()) as T;
+    } catch {
+      // continue
+    }
+  }
+
+  // { } 서브스트링
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    try {
+      return JSON.parse(text.slice(start, end + 1)) as T;
+    } catch {
+      // continue
+    }
+  }
+
+  return null;
+}
+
+function safeTruncate(s: string, maxLength: number): string {
+  if (!s) return "";
+  return s.length > maxLength ? `${s.slice(0, maxLength - 1)}...` : s;
+}
+
+// ============================================================================
+// Core API
+// ============================================================================
+
+/**
+ * Workers API를 통해 AI Task 실행
+ *
+ * 프론트엔드는 mode와 payload만 전송합니다.
+ * 프롬프트 생성은 Workers에서 처리됩니다.
+ */
+async function invokeTask<T>(mode: TaskMode, payload: TaskPayload): Promise<T> {
+  const sessionId = await ensureSession();
+  const base = getApiBaseUrl();
+  const url = `${base.replace(/\/$/, "")}/api/v1/chat/session/${encodeURIComponent(sessionId)}/task`;
+
+  const body = {
+    mode,
+    payload, // 프롬프트 없이 payload만 전송
+    context: {
+      url: typeof window !== "undefined" ? window.location.href : undefined,
+      title: typeof document !== "undefined" ? document.title : undefined,
+    },
+  };
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`AI task error: ${res.status} ${text.slice(0, 180)}`);
+  }
+
+  const result = (await res.json()) as
+    | TaskResponse<T>
+    | Record<string, unknown>;
+
+  // Detect fallback response from Workers — AI server unavailable
+  if (isRecord(result) && result._fallback === true) {
+    throw new Error("AI server returned fallback: backend unavailable");
+  }
+
+  // data 추출 (다양한 응답 구조 대응)
+  const topLevel =
+    (isRecord(result) && ("data" in result ? result.data : undefined)) ??
+    (isRecord(result) && ("result" in result ? result.result : undefined)) ??
+    result;
+
+  // Workers success(c, { data, mode, source }) 래핑 해제
+  const data =
+    (isRecord(topLevel) && "data" in topLevel ? topLevel.data : undefined) ??
+    topLevel;
+
+  if (!data) {
+    throw new Error("Invalid AI task response: no data");
+  }
+
+  return data as T;
+}
+
+/**
+ * 응답 데이터 검증 및 정규화
+ */
+function normalizeResponse<T>(
+  raw: unknown,
+  validator: (data: unknown) => data is T,
+): T | null {
+  // 직접 검증
+  if (validator(raw)) {
+    return raw;
+  }
+
+  // nested data 구조 확인
+  if (isRecord(raw) && "data" in raw && validator(raw.data)) {
+    return raw.data as T;
+  }
+
+  // _raw.text 구조 확인 (LLM 응답 파싱 실패 시)
+  if (isRecord(raw) && "_raw" in raw) {
+    const rawData = raw._raw;
+    // _raw가 문자열인 경우
+    if (typeof rawData === "string") {
+      const parsed = tryParseJson<T>(rawData);
+      if (parsed && validator(parsed)) {
+        return parsed;
+      }
+    }
+    // _raw.text가 문자열인 경우
+    if (isRecord(rawData) && typeof rawData.text === "string") {
+      const parsed = tryParseJson<T>(rawData.text);
+      if (parsed && validator(parsed)) {
+        return parsed;
+      }
+    }
+  }
+
+  // nested data._raw 구조 확인
+  if (
+    isRecord(raw) &&
+    "data" in raw &&
+    isRecord(raw.data) &&
+    "_raw" in raw.data
+  ) {
+    const rawData = (raw.data as Record<string, unknown>)._raw;
+    if (typeof rawData === "string") {
+      const parsed = tryParseJson<T>(rawData);
+      if (parsed && validator(parsed)) {
+        return parsed;
+      }
+    }
+    if (isRecord(rawData) && typeof rawData.text === "string") {
+      const parsed = tryParseJson<T>(rawData.text);
+      if (parsed && validator(parsed)) {
+        return parsed;
+      }
+    }
+  }
+
+  // 문자열인 경우 JSON 파싱 시도
+  if (typeof raw === "string") {
+    const parsed = tryParseJson<T>(raw);
+    if (parsed && validator(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+// ============================================================================
+// Validators
+// ============================================================================
+
+function isSketchResult(data: unknown): data is SketchResult {
+  return (
+    isRecord(data) &&
+    typeof data.mood === "string" &&
+    Array.isArray(data.bullets)
+  );
+}
+
+function isPrismResult(data: unknown): data is PrismResult {
+  return isRecord(data) && Array.isArray(data.facets);
+}
+
+function isChainResult(data: unknown): data is ChainResult {
+  return isRecord(data) && Array.isArray(data.questions);
+}
+
+function isSummaryResult(data: unknown): data is SummaryResult {
+  return isRecord(data) && typeof data.summary === "string";
+}
+
+// ============================================================================
+// Fallback Generators
+// ============================================================================
+
+function createSketchFallback(paragraph: string): SketchResult {
+  const sentences = (paragraph || "")
+    .replace(/\n+/g, " ")
+    .split(/[.!?]\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 10)
+    .slice(0, 4);
+
+  return {
+    mood: FALLBACK_DATA.MOOD,
+    bullets:
+      sentences.length > 0
+        ? sentences.map((s) => safeTruncate(s, TEXT_LIMITS.SKETCH_BULLET))
+        : [...FALLBACK_DATA.SKETCH.BULLETS_ERROR],
+  };
+}
+
+function createPrismFallback(paragraph: string): PrismResult {
+  return {
+    facets: [
+      {
+        title: FALLBACK_DATA.PRISM.FACETS[0].title,
+        points: [
+          safeTruncate(paragraph, TEXT_LIMITS.PRISM_TRUNCATE) ||
+            FALLBACK_DATA.PRISM.FACETS[0].points[0],
+        ],
+      },
+      {
+        title: FALLBACK_DATA.PRISM.FACETS[1].title,
+        points: [...FALLBACK_DATA.PRISM.FACETS[1].points],
+      },
+    ],
+  };
+}
+
+function createChainFallback(): ChainResult {
+  return {
+    questions: FALLBACK_DATA.CHAIN.QUESTIONS.map((q) => ({ ...q })),
+  };
+}
+
+// ============================================================================
+// Public API
+// ============================================================================
+
+/**
+ * Sketch: 감정(mood)과 핵심 포인트(bullets) 추출
+ */
+export async function sketch(input: {
+  paragraph: string;
+  postTitle?: string;
+  persona?: string;
+}): Promise<SketchResult> {
+  const { paragraph, postTitle, persona } = input;
+
+  try {
+    const response = await invokeTask<SketchResult>("sketch", {
+      paragraph,
+      postTitle,
+      persona,
+    });
+
+    const normalized = normalizeResponse(response, isSketchResult);
+    if (normalized) {
+      return {
+        mood: normalized.mood,
+        bullets: normalized.bullets.slice(0, 10),
+      };
+    }
+
+    throw new Error("Invalid sketch response format");
+  } catch (err) {
+    console.error("Sketch AI call failed:", err);
+    return createSketchFallback(paragraph);
+  }
+}
+
+/**
+ * Prism: 다각도 분석 (facets)
+ */
+export async function prism(input: {
+  paragraph: string;
+  postTitle?: string;
+}): Promise<PrismResult> {
+  const { paragraph, postTitle } = input;
+
+  try {
+    const response = await invokeTask<PrismResult>("prism", {
+      paragraph,
+      postTitle,
+    });
+
+    const normalized = normalizeResponse(response, isPrismResult);
+    if (normalized) {
+      return {
+        facets: normalized.facets.slice(0, 4),
+      };
+    }
+
+    throw new Error("Invalid prism response format");
+  } catch (err) {
+    console.error("Prism AI call failed:", err);
+    return createPrismFallback(paragraph);
+  }
+}
+
+/**
+ * Chain: 후속 질문 생성
+ */
+export async function chain(input: {
+  paragraph: string;
+  postTitle?: string;
+}): Promise<ChainResult> {
+  const { paragraph, postTitle } = input;
+
+  try {
+    const response = await invokeTask<ChainResult>("chain", {
+      paragraph,
+      postTitle,
+    });
+
+    const normalized = normalizeResponse(response, isChainResult);
+    if (normalized) {
+      return {
+        questions: normalized.questions.slice(0, 6),
+      };
+    }
+
+    throw new Error("Invalid chain response format");
+  } catch (err) {
+    console.error("Chain AI call failed:", err);
+    return createChainFallback();
+  }
+}
+
+/**
+ * Summary: 요약 생성 (새로 추가)
+ */
+export async function summary(input: {
+  paragraph: string;
+  postTitle?: string;
+}): Promise<SummaryResult> {
+  const { paragraph, postTitle } = input;
+
+  try {
+    const response = await invokeTask<SummaryResult>("summary", {
+      paragraph,
+      postTitle,
+    });
+
+    const normalized = normalizeResponse(response, isSummaryResult);
+    if (normalized) {
+      return {
+        summary: normalized.summary,
+        keyPoints: Array.isArray(normalized.keyPoints)
+          ? normalized.keyPoints
+          : undefined,
+      };
+    }
+
+    throw new Error("Invalid summary response format");
+  } catch (err) {
+    console.error("Summary AI call failed:", err);
+    return {
+      summary:
+        safeTruncate(paragraph, TEXT_LIMITS.SUMMARY_TRUNCATE) ||
+        FALLBACK_DATA.SUMMARY.ERROR_MESSAGE,
+      keyPoints: [...FALLBACK_DATA.SUMMARY.KEY_POINTS],
+    };
+  }
+}
+
+// ============================================================================
+// Quiz
+// ============================================================================
+
+const QUIZ_TYPES: QuizQuestion["type"][] = [
+  "fill_blank",
+  "multiple_choice",
+  "transform",
+  "explain",
+];
+
+function normalizeQuizType(value: unknown): QuizQuestion["type"] {
+  if (typeof value !== "string") return "explain";
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+  if (normalized === "fillblank") return "fill_blank";
+  if (normalized === "multiplechoice") return "multiple_choice";
+  if (normalized === "code_transform") return "transform";
+  if (QUIZ_TYPES.includes(normalized as QuizQuestion["type"])) {
+    return normalized as QuizQuestion["type"];
+  }
+  return "explain";
+}
+
+function toNormalizedText(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return "";
+}
+
+function pickObjectRecord(
+  ...values: unknown[]
+): Record<string, unknown> | null {
+  for (const value of values) {
+    if (isRecord(value)) return value;
+  }
+  return null;
+}
+
+function clampVisualizationHeight(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  return Math.max(160, Math.min(560, Math.floor(value)));
+}
+
+function buildVisualizationFence(raw: Record<string, unknown>): string | null {
+  const visualizationRecord = pickObjectRecord(
+    raw.visualization,
+    raw.visual,
+    raw.graph,
+    raw.chart,
+  );
+
+  const html = toNormalizedText(
+    raw.html ??
+      raw.markup ??
+      raw.template ??
+      raw.renderHtml ??
+      visualizationRecord?.html ??
+      visualizationRecord?.markup ??
+      visualizationRecord?.template,
+  );
+  const js = toNormalizedText(
+    raw.js ??
+      raw.javascript ??
+      raw.script ??
+      raw.renderJs ??
+      visualizationRecord?.js ??
+      visualizationRecord?.javascript ??
+      visualizationRecord?.script,
+  );
+  const css = toNormalizedText(
+    raw.css ??
+      raw.style ??
+      raw.styles ??
+      raw.renderCss ??
+      visualizationRecord?.css ??
+      visualizationRecord?.style ??
+      visualizationRecord?.styles,
+  );
+  const title = toNormalizedText(
+    raw.visualizationTitle ?? raw.chartTitle ?? visualizationRecord?.title,
+  );
+
+  const sourceType = toNormalizedText(
+    raw.visualizationType ?? raw.chartType ?? visualizationRecord?.type,
+  );
+  const sourceData =
+    raw.chartData ?? raw.graphData ?? visualizationRecord?.data;
+  const height =
+    clampVisualizationHeight(raw.visualizationHeight ?? raw.chartHeight) ??
+    clampVisualizationHeight(
+      visualizationRecord?.height ?? visualizationRecord?.minHeight,
+    );
+
+  const payload: Record<string, unknown> = {};
+
+  if (html) payload.html = html;
+  if (js) payload.js = js;
+  if (css) payload.css = css;
+  if (title) payload.title = title;
+  if (height !== undefined) payload.height = height;
+  if (sourceType) payload.type = sourceType;
+  if (Array.isArray(sourceData) && sourceData.length > 0)
+    payload.data = sourceData;
+
+  if (Object.keys(payload).length === 0) {
+    return null;
+  }
+
+  return `\`\`\`viz\n${JSON.stringify(payload, null, 2)}\n\`\`\``;
+}
+
+function normalizeQuizQuestion(raw: unknown): QuizQuestion | null {
+  if (!isRecord(raw)) return null;
+
+  const question = toNormalizedText(
+    raw.question ?? raw.q ?? raw.prompt ?? raw.title,
+  );
+  const answer = toNormalizedText(
+    raw.answer ?? raw.correctAnswer ?? raw.correct ?? raw.solution ?? raw.a,
+  );
+
+  if (!question || !answer) return null;
+
+  const optionsSource =
+    (Array.isArray(raw.options) ? raw.options : undefined) ??
+    (Array.isArray(raw.choices) ? raw.choices : undefined) ??
+    (Array.isArray(raw.candidates) ? raw.candidates : undefined);
+
+  const options = Array.isArray(optionsSource)
+    ? optionsSource.map(toNormalizedText).filter(Boolean).slice(0, 6)
+    : [];
+
+  const explanation = toNormalizedText(
+    raw.explanation ?? raw.reason ?? raw.why ?? raw.hint,
+  );
+  const type = normalizeQuizType(
+    raw.type ?? (options.length > 0 ? "multiple_choice" : "explain"),
+  );
+  const vizFence = buildVisualizationFence(raw);
+  const mergedQuestion =
+    vizFence &&
+    !question.includes("```viz") &&
+    !question.includes("```html") &&
+    !question.includes("```html+js")
+      ? `${question}\n\n${vizFence}`
+      : question;
+
+  const normalized: QuizQuestion = {
+    type,
+    question: mergedQuestion,
+    answer,
+  };
+
+  if (options.length > 0) normalized.options = options;
+  if (explanation) normalized.explanation = explanation;
+
+  return normalized;
+}
+
+function clampQuizCount(value: unknown, fallback = 2): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.max(1, Math.min(6, Math.floor(value)));
+}
+
+function normalizeQuizTags(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((tag) => (typeof tag === "string" ? tag.trim().toLowerCase() : ""))
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+function extractQuizItems(raw: unknown): unknown[] {
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "string") {
+    const parsed = tryParseJson(raw);
+    return parsed ? extractQuizItems(parsed) : [];
+  }
+  if (!isRecord(raw)) return [];
+  if (Array.isArray(raw.quiz)) return raw.quiz;
+  if (Array.isArray(raw.questions)) return raw.questions;
+  if (Array.isArray(raw.items)) return raw.items;
+  if ("data" in raw) return extractQuizItems(raw.data);
+  if ("result" in raw) return extractQuizItems(raw.result);
+  if ("_raw" in raw) {
+    const rawData = raw._raw;
+    if (typeof rawData === "string") return extractQuizItems(rawData);
+    if (isRecord(rawData) && typeof rawData.text === "string") {
+      return extractQuizItems(rawData.text);
+    }
+  }
+  // Sentio/custom mode: backend may return a blog-post metadata object with a
+  // `problems` array (e.g. algorithm exercises). Map each problem entry to a
+  // minimal quiz question so the normalizer can still produce a valid quiz.
+  if (Array.isArray(raw.problems)) {
+    return (raw.problems as unknown[]).map((p) => {
+      if (!isRecord(p)) return p;
+      return {
+        type: "explain",
+        question:
+          p.description ??
+          p.title ??
+          p.problem ??
+          `문제 ${p.number ?? ""}`.trim(),
+        answer:
+          p.python_function ??
+          p.java_method ??
+          p.solution ??
+          p.answer ??
+          "위 내용을 참고하세요.",
+        explanation:
+          p.example_input != null
+            ? `예시 입력: ${p.example_input} → 출력: ${p.example_output ?? "?"}`
+            : undefined,
+      };
+    });
+  }
+  return [];
+}
+
+function normalizeQuizResult(
+  raw: unknown,
+  maxQuestions = 2,
+): QuizResult | null {
+  const items = extractQuizItems(raw);
+  if (items.length === 0) return null;
+
+  const quiz = items
+    .map(normalizeQuizQuestion)
+    .filter((item): item is QuizQuestion => item !== null)
+    .slice(0, Math.max(1, maxQuestions));
+
+  if (quiz.length === 0) return null;
+
+  return { quiz };
+}
+
+function isQuizResult(data: unknown): data is QuizResult {
+  return normalizeQuizResult(data, 6) !== null;
+}
+
+function createQuizFallback(quizCount = 2): QuizResult {
+  const safeCount = clampQuizCount(quizCount);
+  const templates: QuizQuestion[] = [
+    {
+      type: "multiple_choice",
+      question: "이 문서의 주요 주제는 무엇인가요?",
+      answer: "위 내용을 다시 읽어보세요.",
+      options: ["개념 이해", "실습 예제", "이론 설명", "사례 연구"],
+      explanation: "AI 서버가 일시적으로 응답하지 않아 기본 퀴즈가 표시됩니다.",
+    },
+    {
+      type: "fill_blank",
+      question:
+        "핵심 코드 흐름에서 가장 중요한 조건문/반복문을 빈칸으로 설명해보세요.",
+      answer: "문서의 코드 예제 핵심 조건",
+      explanation: "핵심 분기/반복 조건을 다시 확인하면 이해에 도움이 됩니다.",
+    },
+    {
+      type: "explain",
+      question: "본문의 핵심 로직을 한 문단으로 요약해 설명해보세요.",
+      answer: "핵심 로직을 단계별로 요약해보세요.",
+      explanation: "정답보다 사고 과정을 정리하는 것이 중요합니다.",
+    },
+  ];
+
+  return {
+    quiz: templates.slice(0, safeCount),
+  };
+}
+
+/**
+ * Quiz: 코드 블록 기반 퀴즈 생성 (배치 단위)
+ * batchIndex=0 → Q1-Q2, batchIndex=1 → Q3-Q4, ...
+ */
+export async function quiz(input: {
+  paragraph: string;
+  postTitle?: string;
+  batchIndex?: number;
+  previousQuestions?: string[];
+  quizCount?: number;
+  studyMode?: boolean;
+  postTags?: string[];
+  wrongQuestions?: string[];
+}): Promise<QuizResult> {
+  const {
+    paragraph,
+    postTitle,
+    batchIndex = 0,
+    previousQuestions = [],
+    quizCount = 2,
+    studyMode = false,
+    postTags = [],
+    wrongQuestions = [],
+  } = input;
+
+  const requestedQuizCount = clampQuizCount(quizCount);
+  const normalizedPostTags = normalizeQuizTags(postTags);
+
+  try {
+    const response = await invokeTask<QuizResult>("quiz", {
+      paragraph,
+      postTitle,
+      batchIndex,
+      previousQuestions,
+      quizCount: requestedQuizCount,
+      studyMode,
+      postTags: normalizedPostTags,
+      wrongQuestions,
+    });
+
+    const normalized = normalizeQuizResult(
+      normalizeResponse(response, isQuizResult) ?? response,
+      requestedQuizCount,
+    );
+    if (normalized) {
+      return { quiz: normalized.quiz.slice(0, requestedQuizCount) };
+    }
+    // Log the actual response shape to help diagnose future mismatches
+    const shape = isRecord(response)
+      ? Object.keys(response).join(", ")
+      : typeof response;
+    console.warn(
+      `Quiz AI response could not be normalized, using fallback. Response keys: [${shape}]`,
+    );
+    return createQuizFallback(requestedQuizCount);
+  } catch (err) {
+    console.error("Quiz AI call failed:", err);
+    return createQuizFallback(requestedQuizCount);
+  }
+}
