@@ -370,7 +370,7 @@ export default function ChatWidget(props: {
                 top: `${keyboardViewport.viewportTop}px`,
                 bottom: "auto",
               }
-            : { maxHeight: pcMaxHeight }
+            : { height: pcMaxHeight, maxHeight: pcMaxHeight }
         }
       >
         {/* Header */}

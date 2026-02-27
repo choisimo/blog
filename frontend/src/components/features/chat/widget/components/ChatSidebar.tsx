@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { MessageCircle, Radio, History, Settings, Users } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,6 +15,77 @@ export function TypingDots() {
       <span className="w-2 h-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:-0.3s]" />
       <span className="w-2 h-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:-0.15s]" />
       <span className="w-2 h-2 rounded-full bg-muted-foreground/60 animate-bounce" />
+    </div>
+  );
+}
+
+type SettingToggleCardProps = {
+  label: string;
+  checked: boolean;
+  isTerminal: boolean;
+  disabled?: boolean;
+  onToggle?: () => void;
+};
+
+function SettingToggleCard({
+  label,
+  checked,
+  isTerminal,
+  disabled = false,
+  onToggle,
+}: SettingToggleCardProps) {
+  const thumbSize = "calc(clamp(2.1rem,4.3vw,2.45rem) - 0.4rem)";
+  const thumbInset = "0.2rem";
+  const thumbLeft = checked
+    ? `calc(100% - ${thumbSize} - ${thumbInset})`
+    : thumbInset;
+
+  return (
+    <div
+      className={cn(
+        "min-h-[5.6rem] rounded-2xl border px-3 py-2.5",
+        checked
+          ? "border-primary/35 bg-primary/10"
+          : isTerminal
+            ? "border-border/70 bg-background/40"
+            : "border-border/70 bg-background/70",
+      )}
+    >
+      <div className="mb-1 text-[0.72rem] font-semibold text-muted-foreground">
+        {label}
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[clamp(0.95rem,1.9vw,1.1rem)] font-medium text-muted-foreground">
+          {checked ? "ON" : "OFF"}
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={checked}
+          aria-label={label}
+          disabled={disabled}
+          onClick={() => onToggle?.()}
+          className={cn(
+            "relative min-h-[2.1rem] min-w-[3.75rem] rounded-full border transition-colors duration-200",
+            "h-[clamp(2.1rem,4.3vw,2.45rem)] w-[clamp(3.75rem,7.8vw,4.7rem)]",
+            checked
+              ? "border-primary/60 bg-primary"
+              : "border-border/70 bg-muted",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1",
+            disabled && "cursor-not-allowed opacity-50",
+          )}
+          style={{ minHeight: "2.1rem", minWidth: "3.75rem" }}
+        >
+          <span
+            className="absolute top-1/2 rounded-full bg-background shadow-md transition-all duration-200 -translate-y-1/2"
+            style={{
+              width: thumbSize,
+              height: thumbSize,
+              left: thumbLeft,
+            }}
+          />
+        </button>
+      </div>
     </div>
   );
 }
@@ -259,52 +329,20 @@ export function ChatSidebar({
             <Settings className="w-3 h-3" />
             설정
           </div>
-          <div className="grid grid-cols-2 gap-2 px-1">
-            <div
-              className={cn(
-                "rounded-xl border px-2.5 py-2",
-                livePinned
-                  ? "border-primary/40 bg-primary/10"
-                  : "border-border/60 bg-background/70",
-              )}
-            >
-              <div className="mb-1 text-[11px] font-medium text-muted-foreground">
-                LIVE 고정
-              </div>
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-[11px] text-muted-foreground/90">
-                  {livePinned ? "ON" : "OFF"}
-                </span>
-                <Switch
-                  checked={livePinned}
-                  onCheckedChange={() => onToggleLivePinned?.()}
-                  disabled={!onToggleLivePinned}
-                  className="scale-95"
-                />
-              </div>
-            </div>
-            <div
-              className={cn(
-                "rounded-xl border px-2.5 py-2",
-                persistOptIn
-                  ? "border-primary/40 bg-primary/10"
-                  : "border-border/60 bg-background/70",
-              )}
-            >
-              <div className="mb-1 text-[11px] font-medium text-muted-foreground">
-                기록 저장
-              </div>
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-[11px] text-muted-foreground/90">
-                  {persistOptIn ? "ON" : "OFF"}
-                </span>
-                <Switch
-                  checked={persistOptIn}
-                  onCheckedChange={onTogglePersist}
-                  className="scale-95"
-                />
-              </div>
-            </div>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-2 px-1">
+            <SettingToggleCard
+              label="LIVE 고정"
+              checked={livePinned}
+              onToggle={onToggleLivePinned}
+              disabled={!onToggleLivePinned}
+              isTerminal={isTerminal}
+            />
+            <SettingToggleCard
+              label="기록 저장"
+              checked={persistOptIn}
+              onToggle={onTogglePersist}
+              isTerminal={isTerminal}
+            />
           </div>
         </div>
       </ScrollArea>
