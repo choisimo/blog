@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from '@/utils/apiBase';
+import { getApiBaseUrl } from '@/utils/network/apiBase';
 
 export interface ContactFormPayload {
   name: string;

@@ -4,7 +4,7 @@
  * 채팅 관련 API 호출 함수들
  */
 
-import { getApiBaseUrl } from "@/utils/apiBase";
+import { getApiBaseUrl } from "@/utils/network/apiBase";
 import {
   buildChatUrl,
   buildChatHeaders,

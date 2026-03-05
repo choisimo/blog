@@ -42,7 +42,7 @@ import SparkInline from '@/components/features/sentio/SparkInline';
 import { ClickableImage } from './ImageLightbox';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
-import { createHeadingSlug, normalizeHeadingText } from '@/utils/markdownHeadings';
+import { createHeadingSlug, normalizeHeadingText } from '@/utils/content/markdownHeadings';
 
 // Terminal-style syntax highlighting theme
 const terminalTheme: { [key: string]: React.CSSProperties } = {

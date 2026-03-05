@@ -4,7 +4,7 @@
  * 런타임/환경 설정 관련 유틸리티
  */
 
-import { getApiBaseUrl } from '@/utils/apiBase';
+import { getApiBaseUrl } from '@/utils/network/apiBase';
 
 /**
  * Chat 서버 베이스 URL 가져오기

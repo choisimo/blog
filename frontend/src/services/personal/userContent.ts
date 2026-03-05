@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from '@/utils/apiBase';
+import { getApiBaseUrl } from '@/utils/network/apiBase';
 import { useAuthStore } from '@/stores/session/useAuthStore';
 import { 
   isTokenExpired,

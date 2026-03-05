@@ -11,7 +11,7 @@
 
 import { useEffect, useRef } from "react";
 import { create } from "zustand";
-import { getApiBaseUrl } from "@/utils/apiBase";
+import { getApiBaseUrl } from "@/utils/network/apiBase";
 
 // ============================================================================
 // Types

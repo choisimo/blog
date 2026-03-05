@@ -1,5 +1,5 @@
 import FingerprintJS from "@fingerprintjs/fingerprintjs";
-import { getApiBaseUrl } from "@/utils/apiBase";
+import { getApiBaseUrl } from "@/utils/network/apiBase";
 import {
   sha256,
   getCanvasFingerprint,

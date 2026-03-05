@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { getApiBaseUrl } from '@/utils/apiBase';
+import { getApiBaseUrl } from '@/utils/network/apiBase';
 import { useAuthStore } from '@/stores/session/useAuthStore';
 import { Eye, EyeOff, Download, Save, RefreshCw, Copy, CheckCircle2, AlertCircle } from 'lucide-react';
 

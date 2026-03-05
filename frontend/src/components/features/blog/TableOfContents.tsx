@@ -5,7 +5,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useIsMobile } from '@/hooks/ui/use-mobile';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { BookOpen, X } from 'lucide-react';
-import { buildMarkdownToc } from '@/utils/markdownHeadings';
+import { buildMarkdownToc } from '@/utils/content/markdownHeadings';
 
 interface TocItem {
   id: string;

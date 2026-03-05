@@ -7,7 +7,7 @@
  * - 채팅 컨텍스트에 관련 메모리 주입
  */
 
-import { getApiBaseUrl } from '@/utils/apiBase';
+import { getApiBaseUrl } from '@/utils/network/apiBase';
 import { MEMORY_DEFAULTS } from '@/config/defaults';
 
 // ============================================================================

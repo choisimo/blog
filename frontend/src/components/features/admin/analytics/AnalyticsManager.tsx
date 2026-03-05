@@ -30,7 +30,7 @@ import {
   Loader2,
   BarChart3,
 } from 'lucide-react';
-import { getApiBaseUrl } from '@/utils/apiBase';
+import { getApiBaseUrl } from '@/utils/network/apiBase';
 import { useAuthStore } from '@/stores/session/useAuthStore';
 
 // ============================================================================

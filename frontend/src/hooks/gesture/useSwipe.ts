@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
-import { hapticLight } from '@/utils/haptics';
+import { hapticLight } from '@/utils/ui/haptics';
 
 export type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null;
 

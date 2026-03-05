@@ -5,7 +5,7 @@
  * using Reciprocal Rank Fusion (RRF) for optimal results.
  */
 
-import { getApiBaseUrl } from '@/utils/apiBase';
+import { getApiBaseUrl } from '@/utils/network/apiBase';
 import { PostService } from '@/services/content/postService';
 import { expandQueryWithSynonyms, getRelatedKeywords } from './synonyms';
 import { RAG_DEFAULTS } from '@/config/defaults';

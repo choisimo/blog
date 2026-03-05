@@ -26,7 +26,7 @@ import {
   ToggleLeft,
   ToggleRight,
 } from 'lucide-react';
-import { getApiBaseUrl } from '@/utils/apiBase';
+import { getApiBaseUrl } from '@/utils/network/apiBase';
 import { useAuthStore } from '@/stores/session/useAuthStore';
 import { useFeatureFlagsStore, type FeatureFlags } from '@/stores/runtime/useFeatureFlagsStore';
 

@@ -7,7 +7,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ThemeProvider } from '@/contexts/ThemeContext';
-import BlogPost from '@/pages/BlogPost';
+import BlogPost from '@/pages/public/BlogPost';
 
 // Mock data layer
 vi.mock('@/data/content/posts', () => {

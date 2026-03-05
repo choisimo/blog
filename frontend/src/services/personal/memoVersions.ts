@@ -5,7 +5,7 @@
  * for memo content CRUD and version history management.
  */
 
-import { getApiBaseUrl } from '@/utils/apiBase';
+import { getApiBaseUrl } from '@/utils/network/apiBase';
 
 // ============================================================================
 // Types

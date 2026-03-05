@@ -2,7 +2,7 @@
  * Analytics Service
  * Handles view tracking and editor picks
  */
-import { getApiBaseUrl } from '@/utils/apiBase';
+import { getApiBaseUrl } from '@/utils/network/apiBase';
 
 // ============================================================================
 // Types

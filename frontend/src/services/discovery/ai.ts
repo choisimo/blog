@@ -1,5 +1,5 @@
 import { ensureSession } from "@/services/chat";
-import { getApiBaseUrl } from "@/utils/apiBase";
+import { getApiBaseUrl } from "@/utils/network/apiBase";
 import { TEXT_LIMITS, FALLBACK_DATA } from "@/config/defaults";
 
 // ============================================================================

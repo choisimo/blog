@@ -21,7 +21,7 @@ import {
   formatDate,
   resolveLocalizedPost,
   parseDescriptionMarkdown,
-} from '@/utils/blog';
+} from '@/utils/content/blog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';

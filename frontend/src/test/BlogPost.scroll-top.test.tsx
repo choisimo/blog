@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ThemeProvider } from '@/contexts/ThemeContext';
-import BlogPost from '@/pages/BlogPost';
+import BlogPost from '@/pages/public/BlogPost';
 
 vi.mock('@/data/content/posts', () => {
   const post = {

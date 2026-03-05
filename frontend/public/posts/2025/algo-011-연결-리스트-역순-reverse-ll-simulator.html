@@ -8,7 +8,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;font-size:14px;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
 :root{--bg:#1e1e1e;--panel:#252526;--text:#d4d4d4;--border:#3e3e42;--primary:#007acc;--primary-h:#005999;--accent:#4CAF50;--danger:#f44336;--hl:#264f78}
-.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px;width:100%;max-width:680px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px;width:100%;}
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 4px}
 .header h2{margin:0;font-size:1.05rem;color:#fff}
 .header .sub{color:#888;font-weight:400}
@@ -34,26 +34,64 @@ input[type=range]{accent-color:var(--primary);width:80px}
 .viz{background:#1a1a1a;border:1px solid var(--border);border-radius:6px;padding:12px;min-height:120px;margin-bottom:10px;display:flex;flex-direction:column;gap:10px}
 .log{font-size:.8rem;color:#888;min-height:36px;padding:4px 0}
 .array-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-.box{width:42px;height:42px;display:flex;align-items:center;justify-content:center;background:#333;border:2px solid var(--border);border-radius:6px;font-weight:bold}
-.box.active{border-color:var(--primary);box-shadow:0 0 8px var(--primary)}
+.box{width:42px;height:42px;display:flex;align-items:center;justify-content:center;background:#333;border:2px solid var(--border);border-radius:6px;font-weight:bold;transition:all .3s;}
+.box.active{border-color:var(--primary);box-shadow:0 0 8px var(--primary);transform:translateY(-2px);}
 .box.accent{border-color:var(--accent);color:var(--accent);background:rgba(76,175,80,.15)}
+.box.merged{border-color:var(--accent);background:rgba(76,175,80,0.2);color:var(--accent);}
+.box.danger{border-color:var(--danger);background:rgba(244,67,54,0.2);color:var(--danger);}
 .panel{background:#1e1e1e;border:1px solid var(--border);border-radius:6px;padding:10px;font-family:monospace;white-space:pre-wrap}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:start}
 .kv .k{color:#888}
 .kv .v{color:#d4d4d4}
 .grid{display:grid;gap:4px;justify-content:center}
 .cell{width:30px;height:30px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;border-radius:4px}
+
+/* === v2 Code-Trace additions === */
+.card{display:flex;gap:12px;max-width:760px;width:100%;}
+.workspace{flex:1;min-width:0;}
+.btn-icon{background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:#888;cursor:pointer;font-size:.75rem;font-family:monospace;white-space:nowrap;flex-shrink:0;}
+.btn-icon:hover,.btn-icon.active{border-color:var(--primary);color:var(--primary);}
+.btn-icon.active{background:rgba(0,122,204,.1);}
+.code-trace-panel{width:280px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;}
+.code-view{background:#1e1e1e;border:1px solid var(--border);border-radius:6px;padding:10px;font-family:monospace;font-size:12px;line-height:1.7;overflow-y:auto;max-height:260px;}
+.code-line-t{padding:1px 6px;border-left:3px solid transparent;border-radius:2px;white-space:pre;color:#d4d4d4;}
+.code-line-t.hl{background:rgba(0,122,204,.18);border-left-color:var(--primary);color:#fff;}
+.code-view-title,.memory-view-title{font-size:.72rem;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+.memory-view{background:#1a1a1a;border:1px solid var(--border);border-radius:6px;padding:10px;font-size:.8rem;}
+.mv-row{display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #2a2a2a;}
+.mv-row:last-child{border-bottom:none;}
+.mv-key{color:#888;min-width:56px;font-family:monospace;}
+.mv-val{color:#4fc3f7;font-family:monospace;font-weight:bold;}
+.mv-badge{border-radius:3px;padding:1px 6px;font-size:.73rem;font-family:monospace;margin-left:auto;}
+.mv-badge.true-badge{background:rgba(76,175,80,.25);color:#4CAF50;}
+.mv-badge.false-badge{background:rgba(244,67,54,.25);color:#f44336;}
+.condition-bar{min-height:24px;padding:3px 6px;font-size:.77rem;font-family:monospace;color:#bbb;display:flex;flex-wrap:wrap;gap:8px;align-items:center;border:1px solid #2a2a2a;border-radius:4px;margin-bottom:6px;background:#1c1c1c;}
+.pointer-row{display:flex;gap:10px;justify-content:center;font-size:.74rem;font-family:monospace;padding:2px 0;color:#888;}
+.ptr-item{display:flex;gap:3px;}
+.ptr-key{color:#888;}
+.ptr-val{color:#4fc3f7;}
+@keyframes swapLeft{0%{transform:translateY(0)}40%{transform:translateY(-22px) translateX(-8px)}100%{transform:translateY(0)}}
+@keyframes swapRight{0%{transform:translateY(0)}40%{transform:translateY(-22px) translateX(8px)}100%{transform:translateY(0)}}
+.swap-left{animation:swapLeft .45s ease;}
+.swap-right{animation:swapRight .45s ease;}
+@media(max-width:700px){.card{flex-direction:column;}.code-trace-panel{width:100%;}}
+
 </style>
 </head>
 <body style="flex-direction:column;">
-<div class="header" style="width:100%;max-width:680px;">
+<div class="header" style="width:100%;max-width:760px;">
   <h2>연결 리스트 역순 <span class="sub">— Reverse Linked List</span></h2>
-  <button class="btn-info" id="btn-info" type="button" title="설명 보기">?</button>
+  <div style="display:flex;gap:6px;align-items:center;">
+    <button class="btn-icon" id="btn-code" type="button" title="코드 패널 열기/닫기">&lt;/&gt;</button>
+    <button class="btn-icon btn-info" id="btn-info" type="button" title="설명 보기">?</button>
+  </div>
 </div>
-<div class="card">
-  <div class="viz" id="viz"></div>
-  <div class="log" id="log">Initializing...</div>
-  <div class="controls">
+<div class="card" id="card">
+  <div class="workspace">
+    <div class="viz" id="viz"></div>
+    <div class="condition-bar" id="condition-bar"></div>
+    <div class="log" id="log">Initializing...</div>
+    <div class="controls">
     <button id="btn-prev">⏮ Prev</button>
     <button id="btn-play">▶ Play</button>
     <button id="btn-pause" disabled>⏸ Pause</button>
@@ -61,6 +99,17 @@ input[type=range]{accent-color:var(--primary);width:80px}
     <button id="btn-reset">Reset</button>
     <label class="step-info">Speed: <input type="range" id="speed" min="100" max="2000" value="800" dir="rtl"></label>
     <span class="step-info" id="step-counter">Step: 0 / 0</span>
+  </div>
+  </div>
+  <div class="code-trace-panel" id="code-panel" style="display:none;">
+    <div>
+      <div class="code-view-title">Python 코드</div>
+      <div class="code-view" id="code-view"></div>
+    </div>
+    <div>
+      <div class="memory-view-title">변수 상태</div>
+      <div class="memory-view" id="memory-view"></div>
+    </div>
   </div>
 </div>
 <div class="modal-overlay" id="modal">
@@ -74,87 +123,218 @@ input[type=range]{accent-color:var(--primary);width:80px}
   </div>
 </div>
 <script>
-let states = [{"msg":"초기","list":"1->2->3->4->5->null","prev":null,"curr":1},{"msg":"1 reverse","list":"1->null | 2->3->4->5","prev":1,"curr":2},{"msg":"2 reverse","list":"2->1->null | 3->4->5","prev":2,"curr":3},{"msg":"4 reverse","list":"4->3->2->1->null | 5","prev":4,"curr":5},{"msg":"완료","list":"5->4->3->2->1->null","prev":5,"curr":null}];
-function makeBox(value, mode) {
+
+// === v2 Code-Trace Engine ===
+const _codeLines = ["def reverse_list(head):", "    prev = None", "    curr = head", "    while curr:", "        nxt = curr.next", "        curr.next = prev", "        prev = curr", "        curr = nxt", "    return prev"];
+let _codePanelOpen = false;
+
+function _makeBox(value, mode, swapDir) {
   const d = document.createElement('div');
   d.className = 'box';
   if (mode === 'active') d.classList.add('active');
   if (mode === 'accent') d.classList.add('accent');
+  if (mode === 'merged') d.classList.add('merged');
+  if (mode === 'danger') d.classList.add('danger');
+  if (swapDir === 'left') d.classList.add('swap-left');
+  if (swapDir === 'right') d.classList.add('swap-right');
   d.innerText = String(value);
   return d;
 }
-function asArray(v) { return Array.isArray(v) ? v : []; }
-function renderGrid(grid, activeSet) {
-  const wrap = document.createElement('div');
-  wrap.className = 'grid';
-  wrap.style.gridTemplateColumns = 'repeat(' + (grid[0] ? grid[0].length : 1) + ', 30px)';
-  for (let r = 0; r < grid.length; r += 1) {
-    for (let c = 0; c < grid[r].length; c += 1) {
-      const cell = document.createElement('div');
-      cell.className = 'cell';
-      const key = r + ',' + c;
-      if (activeSet.has(key)) cell.style.borderColor = 'var(--primary)';
-      cell.innerText = String(grid[r][c]);
-      wrap.appendChild(cell);
-    }
+
+function _renderPointerRow(state) {
+  const ptrs = {};
+  const map = {left:'L',right:'R',mid:'M',i:'i',j:'j',slow:'S',fast:'F',pivot:'P',start:'S',end:'E'};
+  for (const [k, label] of Object.entries(map)) {
+    if (state[k] !== undefined && state[k] !== null) ptrs[label] = state[k];
   }
-  return wrap;
+  if (Object.keys(ptrs).length === 0) return null;
+  const row = document.createElement('div');
+  row.className = 'pointer-row';
+  for (const [label, val] of Object.entries(ptrs)) {
+    const item = document.createElement('span');
+    item.className = 'ptr-item';
+    item.innerHTML = '<span class="ptr-key">' + label + '→</span><span class="ptr-val">' + val + '</span>';
+    row.appendChild(item);
+  }
+  return row;
 }
-function renderState(state) {
-  viz.innerHTML = '';
-  const active = new Set(asArray(state.active).map((x) => String(x)));
-  const result = new Set(asArray(state.result).map((x) => String(x)));
+
+function _renderVizV2(state, vizEl) {
+  vizEl.innerHTML = '';
+  const active = new Set((Array.isArray(state.active) ? state.active : []).map(String));
+  const result = new Set((Array.isArray(state.result) ? state.result : []).map(String));
+
+  if (Array.isArray(state.arrs)) {
+    const row = document.createElement('div');
+    row.className = 'array-row';
+    let gi = 0;
+    state.arrs.forEach(function(subArr) {
+      const group = document.createElement('div');
+      group.style.cssText = 'display:flex;gap:4px;margin:0 8px;';
+      subArr.forEach(function(val) {
+        const box = document.createElement('div');
+        box.className = 'box';
+        box.innerText = String(val);
+        if (state.activeIndices && state.activeIndices.includes(gi)) box.classList.add('active');
+        if (state.mergedIndices && state.mergedIndices.includes(gi)) box.classList.add('merged');
+        group.appendChild(box);
+        gi++;
+      });
+      row.appendChild(group);
+    });
+    vizEl.appendChild(row);
+    return;
+  }
+
   if (Array.isArray(state.arr)) {
     const row = document.createElement('div');
     row.className = 'array-row';
-    for (let i = 0; i < state.arr.length; i += 1) {
+    const swapPair = state.swapPair || [];
+    for (let idx = 0; idx < state.arr.length; idx++) {
       let mode = '';
-      if (active.has(String(i)) || i === state.fast || i === state.left || i === state.right || i === state.mid) mode = 'active';
-      if (result.has(String(i)) || i === state.slow) mode = 'accent';
-      row.appendChild(makeBox(state.arr[i], mode));
+      if (active.has(String(idx)) || idx === state.fast || idx === state.left ||
+          idx === state.right || idx === state.mid || idx === state.pivot) mode = 'active';
+      if (result.has(String(idx)) || idx === state.slow) mode = 'accent';
+      let swapDir = '';
+      if (swapPair.length === 2) {
+        if (idx === swapPair[0]) swapDir = 'right';
+        if (idx === swapPair[1]) swapDir = 'left';
+      }
+      row.appendChild(_makeBox(state.arr[idx], mode, swapDir));
     }
-    viz.appendChild(row);
+    vizEl.appendChild(row);
+    const ptrRow = _renderPointerRow(state);
+    if (ptrRow) vizEl.appendChild(ptrRow);
+    return;
   }
+
   if (Array.isArray(state.grid)) {
-    const gSet = new Set(asArray(state.path).map((p) => p[0] + ',' + p[1]));
-    viz.appendChild(renderGrid(state.grid, gSet));
-  }
-  if (!Array.isArray(state.arr) && !Array.isArray(state.grid)) {
-    const panel = document.createElement('div');
-    panel.className = 'panel';
-    panel.innerText = JSON.stringify(state, null, 2);
-    viz.appendChild(panel);
-  } else {
-    const kv = document.createElement('div');
-    kv.className = 'kv';
-    const keys = Object.keys(state).filter((k) => k !== 'arr' && k !== 'grid' && k !== 'msg' && k !== 'active' && k !== 'result');
-    for (let i = 0; i < keys.length; i += 1) {
-      const k = keys[i];
-      const kd = document.createElement('div');
-      kd.className = 'k';
-      kd.innerText = k;
-      const vd = document.createElement('div');
-      vd.className = 'v';
-      vd.innerText = typeof state[k] === 'string' ? state[k] : JSON.stringify(state[k]);
-      kv.appendChild(kd);
-      kv.appendChild(vd);
+    const wrap = document.createElement('div');
+    wrap.className = 'grid';
+    wrap.style.gridTemplateColumns = 'repeat(' + (state.grid[0] ? state.grid[0].length : 1) + ', 30px)';
+    const pathSet = new Set((Array.isArray(state.path) ? state.path : []).map(function(p){ return p[0]+','+p[1]; }));
+    for (let r = 0; r < state.grid.length; r++) {
+      for (let c = 0; c < state.grid[r].length; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        if (pathSet.has(r+','+c)) cell.style.borderColor = 'var(--primary)';
+        cell.innerText = String(state.grid[r][c]);
+        wrap.appendChild(cell);
+      }
     }
-    if (keys.length > 0) viz.appendChild(kv);
+    vizEl.appendChild(wrap);
+    const kv = _makeKVPanel(state, ['grid','path','msg','active','result']);
+    if (kv) vizEl.appendChild(kv);
+    return;
+  }
+
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.innerText = JSON.stringify(state, null, 2);
+  vizEl.appendChild(panel);
+}
+
+function _makeKVPanel(state, skipKeys) {
+  const skip = new Set(skipKeys || []);
+  const keys = Object.keys(state).filter(function(k){ return !skip.has(k); });
+  if (keys.length === 0) return null;
+  const kv = document.createElement('div');
+  kv.className = 'kv';
+  keys.forEach(function(k) {
+    const kd = document.createElement('div'); kd.className = 'k'; kd.innerText = k;
+    const vd = document.createElement('div'); vd.className = 'v';
+    vd.innerText = typeof state[k] === 'string' ? state[k] : JSON.stringify(state[k]);
+    kv.appendChild(kd); kv.appendChild(vd);
+  });
+  return kv;
+}
+
+function _renderConditionBar(state) {
+  const bar = document.getElementById('condition-bar');
+  if (!bar) return;
+  bar.innerHTML = '';
+  if (!state.conditions && state.left === undefined && state.right === undefined) return;
+  if (state.conditions && Array.isArray(state.conditions)) {
+    state.conditions.forEach(function(cond) {
+      const span = document.createElement('span');
+      const ok = cond.result ? '✓' : '✗';
+      const badge = cond.result ? 'true-badge' : 'false-badge';
+      span.innerHTML = '<span style="color:#d4d4d4">' + _esc(cond.expr) + '</span> <span class="mv-badge ' + badge + '">' + ok + ' ' + (cond.result ? 'True' : 'False') + '</span>';
+      bar.appendChild(span);
+    });
+    return;
+  }
+  if (state.left !== undefined && state.right !== undefined) {
+    const ok = state.left <= state.right;
+    const badge = ok ? 'true-badge' : 'false-badge';
+    const expr = 'left ≤ right → ' + state.left + ' ≤ ' + state.right;
+    bar.innerHTML = '<span>' + _esc(expr) + ' <span class="mv-badge ' + badge + '">' + (ok ? '✓ True' : '✗ False') + '</span></span>';
   }
 }
-let currentStep = 0, playing = false, timer;
-const viz = document.getElementById('viz');
-const log = document.getElementById('log');
-const stepCounter = document.getElementById('step-counter');
+
+function _renderCodePanel(state) {
+  const codeView = document.getElementById('code-view');
+  const memView = document.getElementById('memory-view');
+  if (!codeView || !memView) return;
+  codeView.innerHTML = '';
+  if (_codeLines && _codeLines.length) {
+    _codeLines.forEach(function(line, idx) {
+      const el = document.createElement('div');
+      el.className = 'code-line-t';
+      if (state.line && (idx + 1) === state.line) el.classList.add('hl');
+      el.textContent = line;
+      codeView.appendChild(el);
+    });
+  }
+  memView.innerHTML = '';
+  const varKeys = ['left','right','mid','i','j','slow','fast','pivot','count','target','sum','found','cur','prev','lo','hi','k'];
+  const shown = [];
+  varKeys.forEach(function(k) {
+    if (state[k] !== undefined && state[k] !== null) shown.push([k, state[k]]);
+  });
+  if (state.vars) Object.entries(state.vars).forEach(function(e){ shown.push(e); });
+  shown.forEach(function(pair) {
+    const row = document.createElement('div');
+    row.className = 'mv-row';
+    row.innerHTML = '<span class="mv-key">' + _esc(String(pair[0])) + '</span><span class="mv-val">' + _esc(JSON.stringify(pair[1])) + '</span>';
+    memView.appendChild(row);
+  });
+  if (state.conditions && Array.isArray(state.conditions)) {
+    state.conditions.forEach(function(cond) {
+      const row = document.createElement('div');
+      row.className = 'mv-row';
+      const badge = cond.result ? 'true-badge' : 'false-badge';
+      row.innerHTML = '<span class="mv-key" style="min-width:auto;color:#aaa">' + _esc(cond.expr) + '</span><span class="mv-badge ' + badge + '" style="margin-left:6px">' + (cond.result ? 'True' : 'False') + '</span>';
+      memView.appendChild(row);
+    });
+  }
+}
+
+function _esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+
+let states = [{"msg": "초기", "list": "1->2->3->4->5->null", "prev": null, "curr": 1, "vars": {"list": "1->2->3->4->5->null", "curr": 1}, "line": 2}, {"msg": "1 reverse", "list": "1->null | 2->3->4->5", "prev": 1, "curr": 2, "vars": {"list": "1->null | 2->3->4->5", "prev": 1, "curr": 2}, "line": 5}, {"msg": "2 reverse", "list": "2->1->null | 3->4->5", "prev": 2, "curr": 3, "vars": {"list": "2->1->null | 3->4->5", "prev": 2, "curr": 3}, "line": 6}, {"msg": "4 reverse", "list": "4->3->2->1->null | 5", "prev": 4, "curr": 5, "vars": {"list": "4->3->2->1->null | 5", "prev": 4, "curr": 5}, "line": 8}, {"msg": "완료", "list": "5->4->3->2->1->null", "prev": 5, "curr": null, "vars": {"list": "5->4->3->2->1->null", "prev": 5}, "line": 9}];
+
+
 function render() {
   if (states.length === 0) return;
   const state = states[currentStep];
-  renderState(state);
+  const viz = document.getElementById('viz');
+  const log = document.getElementById('log');
+  const stepCounter = document.getElementById('step-counter');
+  _renderVizV2(state, viz);
+  _renderConditionBar(state);
+  if (_codePanelOpen) _renderCodePanel(state);
   log.innerText = state.msg;
   stepCounter.innerText = 'Step: ' + (currentStep + 1) + ' / ' + states.length;
   document.getElementById('btn-prev').disabled = currentStep === 0;
   document.getElementById('btn-next').disabled = currentStep === states.length - 1;
 }
+
+
+let currentStep = 0, playing = false, timer;
 function next() { if (currentStep < states.length - 1) { currentStep += 1; render(); } else pause(); }
 function prev() { if (currentStep > 0) { currentStep -= 1; render(); } }
 function play() {
@@ -172,15 +352,28 @@ function pause() {
   clearInterval(timer);
 }
 function reset() { pause(); currentStep = 0; render(); }
-document.getElementById('btn-next').addEventListener('click', () => { pause(); next(); });
-document.getElementById('btn-prev').addEventListener('click', () => { pause(); prev(); });
+document.getElementById('btn-next').addEventListener('click', function() { pause(); next(); });
+document.getElementById('btn-prev').addEventListener('click', function() { pause(); prev(); });
 document.getElementById('btn-play').addEventListener('click', play);
 document.getElementById('btn-pause').addEventListener('click', pause);
 document.getElementById('btn-reset').addEventListener('click', reset);
-document.getElementById('speed').addEventListener('input', () => { if (playing) { pause(); play(); } });
-document.getElementById('btn-info').addEventListener('click', () => document.getElementById('modal').classList.add('open'));
-document.getElementById('modal-close').addEventListener('click', () => document.getElementById('modal').classList.remove('open'));
-document.getElementById('modal').addEventListener('click', (e) => { if (e.target === document.getElementById('modal')) document.getElementById('modal').classList.remove('open'); });
+document.getElementById('speed').addEventListener('input', function() { if (playing) { pause(); play(); } });
+
+
+document.getElementById('btn-info').addEventListener('click', function() { document.getElementById('modal').classList.add('open'); });
+document.getElementById('modal-close').addEventListener('click', function() { document.getElementById('modal').classList.remove('open'); });
+document.getElementById('modal').addEventListener('click', function(e) { if (e.target === document.getElementById('modal')) document.getElementById('modal').classList.remove('open'); });
+
+
+// Code panel toggle
+document.getElementById('btn-code').addEventListener('click', function() {
+  _codePanelOpen = !_codePanelOpen;
+  const panel = document.getElementById('code-panel');
+  panel.style.display = _codePanelOpen ? 'flex' : 'none';
+  if (_codePanelOpen) { panel.style.flexDirection = 'column'; _renderCodePanel(states[currentStep]); }
+  document.getElementById('btn-code').classList.toggle('active', _codePanelOpen);
+});
+
 render();
 </script>
 </body>

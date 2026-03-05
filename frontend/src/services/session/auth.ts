@@ -11,7 +11,7 @@
  * - Secure token storage with Zustand persist
  */
 
-import { getApiBaseUrl } from '@/utils/apiBase';
+import { getApiBaseUrl } from '@/utils/network/apiBase';
 
 // ============================================================================
 // Types

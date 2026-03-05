@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { site } from '@/config/site';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
-import { getApiBaseUrl } from '@/utils/apiBase';
+import { getApiBaseUrl } from '@/utils/network/apiBase';
 
 type SubscribeStatus = 'idle' | 'loading' | 'success' | 'error';
 

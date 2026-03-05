@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from '@/utils/apiBase';
+import { getApiBaseUrl } from '@/utils/network/apiBase';
 import { getCachedAdvancedVisitorId, getAdvancedFingerprint } from '@/services/session/fingerprint';
 
 // Available emoji reactions

@@ -32,7 +32,7 @@ import {
   migrateFromLegacyStorage,
   scheduleTokenRefresh,
 } from '@/stores/session/useAuthStore';
-import { getApiBaseUrl } from '@/utils/apiBase';
+import { getApiBaseUrl } from '@/utils/network/apiBase';
 
 // ============================================================================
 // Auth Step Types

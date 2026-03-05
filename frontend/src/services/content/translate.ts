@@ -2,7 +2,7 @@
  * Translation Service
  * Handles AI-powered translations with caching
  */
-import { getApiBaseUrl } from '@/utils/apiBase';
+import { getApiBaseUrl } from '@/utils/network/apiBase';
 
 // ============================================================================
 // Types

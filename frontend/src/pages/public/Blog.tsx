@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Search, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useDebounce } from '@/hooks/core/useDebounce';
-import { formatDate } from '@/utils/blog';
+import { formatDate } from '@/utils/content/blog';
 import { OptimizedImage } from '@/components/common/OptimizedImage';
 import { useSEO } from '@/hooks/seo/useSEO';
 import { generateSEOData, generateStructuredData } from '@/utils/seo/seo';

@@ -11,8 +11,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { BlogPost } from '@/types/blog';
-import { formatDate, resolveLocalizedPost } from '@/utils/blog';
-import { stripMarkdown } from '@/utils/common';
+import { formatDate, resolveLocalizedPost } from '@/utils/content/blog';
+import { stripMarkdown } from '@/utils/shared/common';
 import { ArrowRight, Clock, User } from 'lucide-react';
 import { DateDisplay, TagList } from '@/components/atoms';
 import { prefetchPost } from '@/data/content/posts';
