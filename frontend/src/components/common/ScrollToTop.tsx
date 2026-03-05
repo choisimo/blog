@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowUp } from 'lucide-react';
 import { cn, throttle } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/ui/use-mobile';
 import { useTheme } from '@/contexts/ThemeContext';
 
 export const ScrollToTop = () => {

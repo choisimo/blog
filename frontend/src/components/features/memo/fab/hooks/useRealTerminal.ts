@@ -12,7 +12,7 @@ import {
   hasAuthToken,
   type TerminalConnection,
   type TerminalOptions,
-} from "@/services/terminal";
+} from "@/services/realtime/terminal";
 
 export type TerminalStatus =
   | "disconnected"

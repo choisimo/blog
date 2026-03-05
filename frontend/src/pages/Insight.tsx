@@ -4,8 +4,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ZoomIn, ZoomOut, RotateCcw, Network, MessageSquare, FileText, Sparkles, X, Lightbulb, PenLine, Calendar, ExternalLink, Filter } from 'lucide-react';
-import { getPosts } from '@/data/posts';
-import { curiosityTracker, type CuriosityEvent } from '@/services/curiosity';
+import { getPosts } from '@/data/content/posts';
+import { curiosityTracker, type CuriosityEvent } from '@/services/engagement/curiosity';
 import { loadSessionsIndex } from '@/services/chat';
 
 // ─────────────────────────────────────────────────────────────────────────────

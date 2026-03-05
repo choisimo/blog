@@ -6,9 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ProjectCard, ProjectCardSkeleton, ProjectModal, TagFilter } from '@/components/features/projects';
-import { getProjects, getProjectTags, type ProjectItem } from '@/data/projects';
+import { getProjects, getProjectTags, type ProjectItem } from '@/data/content/projects';
 import { cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/ui/use-mobile';
 import { useSEO } from '@/hooks/seo/useSEO';
 import { generateSEOData, generateStructuredData } from '@/utils/seo/seo';
 

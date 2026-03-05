@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { useAuthStore } from '@/stores/session/useAuthStore';
 import { Loader2 } from 'lucide-react';
-import { getMe } from '@/services/auth';
+import { getMe } from '@/services/session/auth';
 
 interface AuthGuardProps {
     children: React.ReactNode;

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>과반수 원소 — Boyer-Moore Voting</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;font-size:14px;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+:root{--bg:#1e1e1e;--panel:#252526;--text:#d4d4d4;--border:#3e3e42;--primary:#007acc;--primary-h:#005999;--accent:#4CAF50;--danger:#f44336;--hl:#264f78}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px;width:100%;max-width:680px}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 4px}
+.header h2{margin:0;font-size:1.05rem;color:#fff}
+.header .sub{color:#888;font-weight:400}
+.btn-info{background:none;border:1px solid var(--border);border-radius:50%;width:26px;height:26px;color:#888;cursor:pointer;font-size:.85rem;font-weight:bold;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}
+.btn-info:hover{border-color:var(--primary);color:var(--primary)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:28px 32px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;position:relative}
+.modal h3{margin:0 0 16px;color:#fff;font-size:1.1rem}
+.modal section{margin-bottom:16px}
+.modal h4{margin:0 0 6px;color:var(--primary);font-size:.85rem;text-transform:uppercase;letter-spacing:.05em}
+.modal p,.modal li{font-size:.9rem;line-height:1.6;color:var(--text);margin:0 0 4px}
+.modal ul{padding-left:18px;margin:0}
+.tag{display:inline-block;background:#2d2d30;border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:.8rem;margin-right:6px;color:#4fc3f7;font-family:monospace}
+.modal-close{position:absolute;top:12px;right:14px;background:none;border:none;color:#888;font-size:1.2rem;cursor:pointer;padding:0;line-height:1}
+.modal-close:hover{color:#fff}
+.controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+button{background:var(--primary);border:none;border-radius:4px;color:#fff;cursor:pointer;padding:5px 12px;font-size:.8rem}
+button:hover{background:var(--primary-h)}
+button:disabled{opacity:.4;cursor:default}
+.step-info{font-size:.82rem;color:#888;margin-left:auto}
+input[type=range]{accent-color:var(--primary);width:80px}
+.viz{background:#1a1a1a;border:1px solid var(--border);border-radius:6px;padding:12px;min-height:120px;margin-bottom:10px;display:flex;flex-direction:column;gap:10px}
+.log{font-size:.8rem;color:#888;min-height:36px;padding:4px 0}
+.array-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.box{width:42px;height:42px;display:flex;align-items:center;justify-content:center;background:#333;border:2px solid var(--border);border-radius:6px;font-weight:bold}
+.box.active{border-color:var(--primary);box-shadow:0 0 8px var(--primary)}
+.box.accent{border-color:var(--accent);color:var(--accent);background:rgba(76,175,80,.15)}
+.panel{background:#1e1e1e;border:1px solid var(--border);border-radius:6px;padding:10px;font-family:monospace;white-space:pre-wrap}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:start}
+.kv .k{color:#888}
+.kv .v{color:#d4d4d4}
+.grid{display:grid;gap:4px;justify-content:center}
+.cell{width:30px;height:30px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;border-radius:4px}
+</style>
+</head>
+<body style="flex-direction:column;">
+<div class="header" style="width:100%;max-width:680px;">
+  <h2>과반수 원소 <span class="sub">— Boyer-Moore Voting</span></h2>
+  <button class="btn-info" id="btn-info" type="button" title="설명 보기">?</button>
+</div>
+<div class="card">
+  <div class="viz" id="viz"></div>
+  <div class="log" id="log">Initializing...</div>
+  <div class="controls">
+    <button id="btn-prev">⏮ Prev</button>
+    <button id="btn-play">▶ Play</button>
+    <button id="btn-pause" disabled>⏸ Pause</button>
+    <button id="btn-next">Next ⏭</button>
+    <button id="btn-reset">Reset</button>
+    <label class="step-info">Speed: <input type="range" id="speed" min="100" max="2000" value="800" dir="rtl"></label>
+    <span class="step-info" id="step-counter">Step: 0 / 0</span>
+  </div>
+</div>
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <button class="modal-close" id="modal-close">✕</button>
+    <h3>과반수 원소 — Boyer-Moore Voting</h3>
+    <section><h4>📌 문제</h4><p>nums=[2,2,1,1,1,2,2]</p></section>
+    <section><h4>💡 핵심 아이디어</h4><p>투표 알고리즘</p></section>
+    <section><h4>⏱ 복잡도</h4><span class="tag">시간: O(n)</span><span class="tag">공간: O(1)</span></section>
+    <section><h4>🏗 아키텍트의 시선</h4><p>candidate와 count 유지. 다른 값이면 count--. 0이면 후보 교체.</p></section>
+  </div>
+</div>
+<script>
+let states = [{"msg":"초기","candidate":null,"count":0},{"msg":"i=0: num=2, candidate=2,count=1","candidate":2,"count":1},{"msg":"i=1: num=2==candidate, count=2","candidate":2,"count":2},{"msg":"i=3: num=1!=candidate, count=0","candidate":2,"count":0},{"msg":"i=4: candidate=1,count=1","candidate":1,"count":1},{"msg":"i=6: candidate=2,count=1","candidate":2,"count":1},{"msg":"결과: candidate=2","candidate":2,"count":1}];
+function makeBox(value, mode) {
+  const d = document.createElement('div');
+  d.className = 'box';
+  if (mode === 'active') d.classList.add('active');
+  if (mode === 'accent') d.classList.add('accent');
+  d.innerText = String(value);
+  return d;
+}
+function asArray(v) { return Array.isArray(v) ? v : []; }
+function renderGrid(grid, activeSet) {
+  const wrap = document.createElement('div');
+  wrap.className = 'grid';
+  wrap.style.gridTemplateColumns = 'repeat(' + (grid[0] ? grid[0].length : 1) + ', 30px)';
+  for (let r = 0; r < grid.length; r += 1) {
+    for (let c = 0; c < grid[r].length; c += 1) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      const key = r + ',' + c;
+      if (activeSet.has(key)) cell.style.borderColor = 'var(--primary)';
+      cell.innerText = String(grid[r][c]);
+      wrap.appendChild(cell);
+    }
+  }
+  return wrap;
+}
+function renderState(state) {
+  viz.innerHTML = '';
+  const active = new Set(asArray(state.active).map((x) => String(x)));
+  const result = new Set(asArray(state.result).map((x) => String(x)));
+  if (Array.isArray(state.arr)) {
+    const row = document.createElement('div');
+    row.className = 'array-row';
+    for (let i = 0; i < state.arr.length; i += 1) {
+      let mode = '';
+      if (active.has(String(i)) || i === state.fast || i === state.left || i === state.right || i === state.mid) mode = 'active';
+      if (result.has(String(i)) || i === state.slow) mode = 'accent';
+      row.appendChild(makeBox(state.arr[i], mode));
+    }
+    viz.appendChild(row);
+  }
+  if (Array.isArray(state.grid)) {
+    const gSet = new Set(asArray(state.path).map((p) => p[0] + ',' + p[1]));
+    viz.appendChild(renderGrid(state.grid, gSet));
+  }
+  if (!Array.isArray(state.arr) && !Array.isArray(state.grid)) {
+    const panel = document.createElement('div');
+    panel.className = 'panel';
+    panel.innerText = JSON.stringify(state, null, 2);
+    viz.appendChild(panel);
+  } else {
+    const kv = document.createElement('div');
+    kv.className = 'kv';
+    const keys = Object.keys(state).filter((k) => k !== 'arr' && k !== 'grid' && k !== 'msg' && k !== 'active' && k !== 'result');
+    for (let i = 0; i < keys.length; i += 1) {
+      const k = keys[i];
+      const kd = document.createElement('div');
+      kd.className = 'k';
+      kd.innerText = k;
+      const vd = document.createElement('div');
+      vd.className = 'v';
+      vd.innerText = typeof state[k] === 'string' ? state[k] : JSON.stringify(state[k]);
+      kv.appendChild(kd);
+      kv.appendChild(vd);
+    }
+    if (keys.length > 0) viz.appendChild(kv);
+  }
+}
+let currentStep = 0, playing = false, timer;
+const viz = document.getElementById('viz');
+const log = document.getElementById('log');
+const stepCounter = document.getElementById('step-counter');
+function render() {
+  if (states.length === 0) return;
+  const state = states[currentStep];
+  renderState(state);
+  log.innerText = state.msg;
+  stepCounter.innerText = 'Step: ' + (currentStep + 1) + ' / ' + states.length;
+  document.getElementById('btn-prev').disabled = currentStep === 0;
+  document.getElementById('btn-next').disabled = currentStep === states.length - 1;
+}
+function next() { if (currentStep < states.length - 1) { currentStep += 1; render(); } else pause(); }
+function prev() { if (currentStep > 0) { currentStep -= 1; render(); } }
+function play() {
+  if (!playing && currentStep < states.length - 1) {
+    playing = true;
+    document.getElementById('btn-play').disabled = true;
+    document.getElementById('btn-pause').disabled = false;
+    timer = setInterval(next, parseInt(document.getElementById('speed').value, 10));
+  }
+}
+function pause() {
+  playing = false;
+  document.getElementById('btn-play').disabled = false;
+  document.getElementById('btn-pause').disabled = true;
+  clearInterval(timer);
+}
+function reset() { pause(); currentStep = 0; render(); }
+document.getElementById('btn-next').addEventListener('click', () => { pause(); next(); });
+document.getElementById('btn-prev').addEventListener('click', () => { pause(); prev(); });
+document.getElementById('btn-play').addEventListener('click', play);
+document.getElementById('btn-pause').addEventListener('click', pause);
+document.getElementById('btn-reset').addEventListener('click', reset);
+document.getElementById('speed').addEventListener('input', () => { if (playing) { pause(); play(); } });
+document.getElementById('btn-info').addEventListener('click', () => document.getElementById('modal').classList.add('open'));
+document.getElementById('modal-close').addEventListener('click', () => document.getElementById('modal').classList.remove('open'));
+document.getElementById('modal').addEventListener('click', (e) => { if (e.target === document.getElementById('modal')) document.getElementById('modal').classList.remove('open'); });
+render();
+</script>
+</body>
+</html>

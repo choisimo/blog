@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePostsIndex } from '@/hooks/usePostsIndex';
+import { usePostsIndex } from '@/hooks/content/usePostsIndex';
 import { cn } from '@/lib/utils';
 
 type CommandHandler = (args: string[]) => string | void;

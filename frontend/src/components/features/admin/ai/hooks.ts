@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { useAuthStore } from '@/stores/session/useAuthStore';
 import { getApiBaseUrl } from '@/utils/apiBase';
 import type {
   AIProvider,

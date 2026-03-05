@@ -10,7 +10,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import BlogPost from '@/pages/BlogPost';
 
 // Mock data layer
-vi.mock('@/data/posts', () => {
+vi.mock('@/data/content/posts', () => {
   return {
     getPostBySlug: vi.fn(async () => ({
       id: 'test',
@@ -91,7 +91,7 @@ vi.mock('@/components/features/blog/MarkdownRenderer', () => {
 });
 
 // Import mocked modules (vi.mock hoists above)
-import { prefetchPost } from '@/data/posts';
+import { prefetchPost } from '@/data/content/posts';
 // @ts-expect-error - __resolve is a test-only export from the mock
 import { __resolve as resolveMarkdown } from '@/components/features/blog/MarkdownRenderer';
 

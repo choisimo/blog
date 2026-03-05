@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/ui/use-mobile';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { BookOpen, X } from 'lucide-react';
 import { buildMarkdownToc } from '@/utils/markdownHeadings';

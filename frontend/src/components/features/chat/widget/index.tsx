@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/ui/use-mobile";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
   AlertDialog,

@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import BlogPost from '@/pages/BlogPost';
 
-vi.mock('@/data/posts', () => {
+vi.mock('@/data/content/posts', () => {
   const post = {
     id: 'test',
     title: 'Test Blog Post',

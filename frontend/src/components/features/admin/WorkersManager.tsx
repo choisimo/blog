@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/components/ui/use-toast';
 import { getApiBaseUrl } from '@/utils/apiBase';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { useAuthStore } from '@/stores/session/useAuthStore';
 import {
   Cloud,
   Database,

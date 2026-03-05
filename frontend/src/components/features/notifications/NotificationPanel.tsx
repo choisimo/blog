@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useNotificationStore, type AppNotification } from '@/stores/useNotificationStore';
+import { useNotificationStore, type AppNotification } from '@/stores/realtime/useNotificationStore';
 import {
   Bell,
   X,

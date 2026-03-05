@@ -18,7 +18,7 @@ import {
   getRecentQueries,
   addSearchQuery,
   removeSearchQuery,
-} from '@/services/searchHistory';
+} from '@/services/session/searchHistory';
 
 interface HeaderSearchBarProps {
   posts: BlogPost[];

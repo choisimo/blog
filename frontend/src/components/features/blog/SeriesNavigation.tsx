@@ -4,7 +4,7 @@ import { BlogPost } from '@/types/blog';
 import { ChevronLeft, ChevronRight, ListOrdered } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
-import { prefetchPost } from '@/data/posts';
+import { prefetchPost } from '@/data/content/posts';
 
 interface SeriesNavigationProps {
   currentPost: BlogPost;

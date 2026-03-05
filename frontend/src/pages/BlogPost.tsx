@@ -15,7 +15,7 @@ import {
 } from 'react';
 import { ReadingProgress } from '@/components/common/ReadingProgress';
 import { ScrollToTop } from '@/components/common/ScrollToTop';
-import { getPostBySlug, getPostsPage, prefetchPost, getPostsBySeries } from '@/data/posts';
+import { getPostBySlug, getPostsPage, prefetchPost, getPostsBySeries } from '@/data/content/posts';
 import { BlogPost as BlogPostType } from '@/types/blog';
 import {
   formatDate,
@@ -41,14 +41,14 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import useLanguage from '@/hooks/useLanguage';
+import useLanguage from '@/hooks/i18n/useLanguage';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
-import { recordView } from '@/services/analytics';
-import { translatePost, type TranslationResult } from '@/services/translate';
-import { curiosityTracker } from '@/services/curiosity';
+import { recordView } from '@/services/content/analytics';
+import { translatePost, type TranslationResult } from '@/services/content/translate';
+import { curiosityTracker } from '@/services/engagement/curiosity';
 import { useUIStrings } from '@/utils/i18n/uiStrings';
-import { findRelatedPosts as findRAGRelatedPosts } from '@/services/rag';
+import { findRelatedPosts as findRAGRelatedPosts } from '@/services/discovery/rag';
 import { useSEO } from '@/hooks/seo/useSEO';
 import { generateSEOData, generateStructuredData } from '@/utils/seo/seo';
 

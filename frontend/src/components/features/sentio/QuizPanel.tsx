@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
-import { quiz, QuizQuestion } from "@/services/ai";
+import { quiz, QuizQuestion } from "@/services/discovery/ai";
 import {
   BookOpen,
   Loader2,

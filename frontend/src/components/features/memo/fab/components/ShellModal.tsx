@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Terminal, X, MonitorUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ShellLog } from "../types";
-import { hasAuthToken } from "@/services/terminal";
+import { hasAuthToken } from "@/services/realtime/terminal";
 
 type ShellModalProps = {
   isOpen: boolean;

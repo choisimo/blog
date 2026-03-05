@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Globe2, Loader2, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/ui/use-mobile';
 
 interface CommentInputModalProps {
   isOpen: boolean;

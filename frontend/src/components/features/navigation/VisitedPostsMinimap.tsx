@@ -10,7 +10,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/ui/use-mobile';
 import { loadSessionsIndex, storeSessionsIndex } from '@/services/chat';
 
 export type VisitedPostItem = {

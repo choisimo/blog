@@ -59,7 +59,7 @@ import {
 } from 'lucide-react';
 import { useRoutes, useModels } from './hooks';
 import type { AIRoute, RouteFormData, AIModel } from './types';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/ui/use-toast';
 
 interface RouteFormProps {
   route?: AIRoute;

@@ -5,14 +5,14 @@ import { ThemeProvider } from '../contexts/ThemeContext';
 import { BrowserRouter } from 'react-router-dom';
 import { BlogCard } from '../components/features/blog';
 
-vi.mock('@/data/posts', () => {
+vi.mock('@/data/content/posts', () => {
   return {
     prefetchPost: vi.fn(() => Promise.resolve()),
   };
 });
 
 // Use ESM import so alias resolution works under Vitest
-import { prefetchPost } from '@/data/posts';
+import { prefetchPost } from '@/data/content/posts';
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(

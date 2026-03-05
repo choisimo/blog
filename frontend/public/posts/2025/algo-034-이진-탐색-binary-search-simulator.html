@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>이진 탐색 — Binary Search</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;font-size:14px;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+:root{--bg:#1e1e1e;--panel:#252526;--text:#d4d4d4;--border:#3e3e42;--primary:#007acc;--primary-h:#005999;--accent:#4CAF50;--danger:#f44336;--hl:#264f78}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px;width:100%;max-width:680px}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 4px}
+.header h2{margin:0;font-size:1.05rem;color:#fff}
+.header .sub{color:#888;font-weight:400}
+.btn-info{background:none;border:1px solid var(--border);border-radius:50%;width:26px;height:26px;color:#888;cursor:pointer;font-size:.85rem;font-weight:bold;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}
+.btn-info:hover{border-color:var(--primary);color:var(--primary)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:28px 32px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;position:relative}
+.modal h3{margin:0 0 16px;color:#fff;font-size:1.1rem}
+.modal section{margin-bottom:16px}
+.modal h4{margin:0 0 6px;color:var(--primary);font-size:.85rem;text-transform:uppercase;letter-spacing:.05em}
+.modal p,.modal li{font-size:.9rem;line-height:1.6;color:var(--text);margin:0 0 4px}
+.modal ul{padding-left:18px;margin:0}
+.tag{display:inline-block;background:#2d2d30;border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:.8rem;margin-right:6px;color:#4fc3f7;font-family:monospace}
+.modal-close{position:absolute;top:12px;right:14px;background:none;border:none;color:#888;font-size:1.2rem;cursor:pointer;padding:0;line-height:1}
+.modal-close:hover{color:#fff}
+.controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+button{background:var(--primary);border:none;border-radius:4px;color:#fff;cursor:pointer;padding:5px 12px;font-size:.8rem}
+button:hover{background:var(--primary-h)}
+button:disabled{opacity:.4;cursor:default}
+.step-info{font-size:.82rem;color:#888;margin-left:auto}
+input[type=range]{accent-color:var(--primary);width:80px}
+.viz{background:#1a1a1a;border:1px solid var(--border);border-radius:6px;padding:12px;min-height:120px;margin-bottom:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.log{font-size:.8rem;color:#888;min-height:36px;padding:4px 0}
+.array-row { display: flex; gap: 8px; justify-content: center; min-height: 40px; }
+.box { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: #333; border: 2px solid var(--border); border-radius: 6px; font-weight: bold; font-size: 1.1rem; transition: all 0.3s; }
+.box.active { border-color: var(--primary); box-shadow: 0 0 8px var(--primary); transform: translateY(-2px); }
+.box.merged { border-color: var(--accent); background: rgba(76,175,80,0.2); color: var(--accent); }
+.code-panel { background: #1e1e1e; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 13px; color: #d4d4d4; border: 1px solid var(--border); }
+.code-line { padding: 2px 4px; border-left: 3px solid transparent; }
+.code-line.active { background: var(--hl); border-left-color: var(--primary); }
+
+</style>
+</head>
+<body style="flex-direction:column;">
+<div class="header" style="width:100%;max-width:680px;">
+    <h2>이진 탐색 <span class="sub">— Binary Search</span></h2>
+    <button class="btn-info" id="btn-info" type="button" title="설명 보기">?</button>
+</div>
+<div class="card">
+    <div class="viz" id="viz"></div>
+    <div class="log" id="log">Initializing...</div>
+    <div class="controls">
+        <button id="btn-prev">⏮ Prev</button>
+        <button id="btn-play">▶ Play</button>
+        <button id="btn-pause" disabled>⏸ Pause</button>
+        <button id="btn-next">Next ⏭</button>
+        <button id="btn-reset">Reset</button>
+        <label class="step-info">Speed: <input type="range" id="speed" min="100" max="2000" value="800" dir="rtl"></label>
+        <span class="step-info" id="step-counter">Step: 0 / 0</span>
+    </div>
+    <div class="code-panel">
+        <div class="code-line" id="line-1">def solve(arr):</div>
+        <div class="code-line" id="line-2">    # Implementation</div>
+        <div class="code-line" id="line-3">    pass</div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal">
+    <div class="modal">
+        <button class="modal-close" id="modal-close">✕</button>
+        <h3>이진 탐색 — Binary Search</h3>
+        <section><h4>📌 문제</h4><p>정렬된 배열 [-1, 0, 3, 5, 9, 12]에서 9의 위치를 찾아라.</p></section>
+        <section><h4>💡 핵심 아이디어</h4><ul><li>배열의 중간값(mid)을 확인한다.</li><li>mid가 타겟보다 작으면 오른쪽 절반을 탐색한다.</li><li>mid가 타겟보다 크면 왼쪽 절반을 탐색한다.</li></ul></section>
+        <section><h4>⏱ 복잡도</h4><span class="tag">시간: O(log n)</span><span class="tag">공간: O(1)</span></section>
+        <section><h4>🏗 아키텍트의 시선</h4><p>정렬된 데이터에서 탐색할 때 가장 기본이 되는 알고리즘. O(log n)의 강력한 성능을 자랑한다.</p></section>
+    </div>
+</div>
+
+<script>
+
+let states = [];
+function generateStates() {
+    states.push({ arr: [-1, 0, 3, 5, 9, 12], msg: "초기 배열. target=9. left=0, right=5", line: 1, activeIndices: [0, 5] });
+    states.push({ arr: [-1, 0, 3, 5, 9, 12], msg: "mid=2 (값: 3). 3 < 9 이므로 오른쪽 탐색", line: 2, activeIndices: [2] });
+    states.push({ arr: [-1, 0, 3, 5, 9, 12], msg: "left=3, right=5", line: 2, activeIndices: [3, 5] });
+    states.push({ arr: [-1, 0, 3, 5, 9, 12], msg: "mid=4 (값: 9). 9 == 9 정답 발견!", line: 3, mergedIndices: [4] });
+}
+generateStates();
+
+
+let currentStep = 0;
+let playing = false;
+let timer;
+
+const viz = document.getElementById('viz');
+const log = document.getElementById('log');
+const stepCounter = document.getElementById('step-counter');
+
+function render() {
+    if(states.length === 0) return;
+    const state = states[currentStep];
+    viz.innerHTML = '';
+    
+    const row = document.createElement('div');
+    row.className = 'array-row';
+    
+    if(state.arrs) {
+        let globalIdx = 0;
+        state.arrs.forEach(subArr => {
+            const group = document.createElement('div');
+            group.style.display = 'flex';
+            group.style.gap = '4px';
+            group.style.margin = '0 8px';
+            
+            subArr.forEach(val => {
+                const box = document.createElement('div');
+                box.className = 'box';
+                box.innerText = val;
+                if (state.activeIndices && state.activeIndices.includes(globalIdx)) box.classList.add('active');
+                if (state.mergedIndices && state.mergedIndices.includes(globalIdx)) box.classList.add('merged');
+                group.appendChild(box);
+                globalIdx++;
+            });
+            row.appendChild(group);
+        });
+    } else if(state.arr) {
+        state.arr.forEach((val, idx) => {
+            const box = document.createElement('div');
+            box.className = 'box';
+            box.innerText = val;
+            if (state.activeIndices && state.activeIndices.includes(idx)) box.classList.add('active');
+            if (state.mergedIndices && state.mergedIndices.includes(idx)) box.classList.add('merged');
+            row.appendChild(box);
+        });
+    }
+    
+    viz.appendChild(row);
+    log.innerText = state.msg;
+    stepCounter.innerText = `Step: ${currentStep + 1} / ${states.length}`;
+    
+    document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+    if (state.line) {
+        const lineEl = document.getElementById(`line-${state.line}`);
+        if (lineEl) lineEl.classList.add('active');
+    }
+    
+    document.getElementById('btn-prev').disabled = currentStep === 0;
+    document.getElementById('btn-next').disabled = currentStep === states.length - 1;
+}
+
+function next() { if (currentStep < states.length - 1) { currentStep++; render(); } else pause(); }
+function prev() { if (currentStep > 0) { currentStep--; render(); } }
+function play() { if (!playing && currentStep < states.length - 1) { playing = true; document.getElementById('btn-play').disabled = true; document.getElementById('btn-pause').disabled = false; timer = setInterval(next, document.getElementById('speed').value); } }
+function pause() { playing = false; document.getElementById('btn-play').disabled = false; document.getElementById('btn-pause').disabled = true; clearInterval(timer); }
+function reset() { pause(); currentStep = 0; render(); }
+
+document.getElementById('btn-next').addEventListener('click', () => { pause(); next(); });
+document.getElementById('btn-prev').addEventListener('click', () => { pause(); prev(); });
+document.getElementById('btn-play').addEventListener('click', play);
+document.getElementById('btn-pause').addEventListener('click', pause);
+document.getElementById('btn-reset').addEventListener('click', reset);
+document.getElementById('speed').addEventListener('input', () => { if (playing) { pause(); play(); } });
+
+
+document.getElementById('btn-info').addEventListener('click',()=>document.getElementById('modal').classList.add('open'));
+document.getElementById('modal-close').addEventListener('click',()=>document.getElementById('modal').classList.remove('open'));
+document.getElementById('modal').addEventListener('click',e=>{if(e.target===document.getElementById('modal'))document.getElementById('modal').classList.remove('open');});
+
+
+render();
+</script>
+</body>
+</html>

@@ -9,10 +9,10 @@
 import { memo, useCallback } from 'react';
 import { Terminal, Trash2, X, Minimize2, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/ui/use-mobile';
 import { useTheme } from '@/contexts/ThemeContext';
-import { hybridSearch, type HybridSearchResult } from '@/services/rag';
-import { searchWeb } from '@/services/webSearch';
+import { hybridSearch, type HybridSearchResult } from '@/services/discovery/rag';
+import { searchWeb } from '@/services/discovery/webSearch';
 import { streamChatEvents } from '@/services/chat';
 import { useConsoleState } from './useConsoleState';
 import { ConsoleMessages } from './ConsoleMessages';

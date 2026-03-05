@@ -23,10 +23,10 @@ import { cn } from "@/lib/utils";
 import { NavigationItem } from "@/components/molecules";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { usePostsIndex } from "@/hooks/usePostsIndex";
+import { useIsMobile } from "@/hooks/ui/use-mobile";
+import { usePostsIndex } from "@/hooks/content/usePostsIndex";
 import { HeaderSearchBar } from "@/components/features/search/HeaderSearchBar";
-import { useNotificationStore } from "@/stores/useNotificationStore";
+import { useNotificationStore } from "@/stores/realtime/useNotificationStore";
 import { NotificationPanel } from "@/components/features/notifications/NotificationPanel";
 import {
   DropdownMenu,
@@ -37,8 +37,8 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 
-import { useAuthStore } from "@/stores/useAuthStore";
-import { isTokenExpired } from "@/services/auth";
+import { useAuthStore } from "@/stores/session/useAuthStore";
+import { isTokenExpired } from "@/services/session/auth";
 
 const baseNavigation = [
   { name: "Home", href: "/", icon: Home },

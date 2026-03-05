@@ -1,5 +1,5 @@
 import { BlogPost } from '@/types/blog';
-import { getPosts } from '@/data/posts';
+import { getPosts } from '@/data/content/posts';
 
 export interface SitemapEntry {
   url: string;

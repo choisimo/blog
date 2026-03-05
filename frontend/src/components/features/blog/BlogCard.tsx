@@ -15,9 +15,9 @@ import { formatDate, resolveLocalizedPost } from '@/utils/blog';
 import { stripMarkdown } from '@/utils/common';
 import { ArrowRight, Clock, User } from 'lucide-react';
 import { DateDisplay, TagList } from '@/components/atoms';
-import { prefetchPost } from '@/data/posts';
+import { prefetchPost } from '@/data/content/posts';
 import { OptimizedImage } from '@/components/common/OptimizedImage';
-import useLanguage from '@/hooks/useLanguage';
+import useLanguage from '@/hooks/i18n/useLanguage';
 
 interface BlogCardProps {
   post: BlogPost;

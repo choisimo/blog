@@ -18,7 +18,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { BlogCardSkeleton, PostCard } from '@/components';
-import { getPosts, getPostsPage, getPostBySlug } from '@/data/posts';
+import { getPosts, getPostsPage, getPostBySlug } from '@/data/content/posts';
 import type { BlogPost } from '@/types/blog';
 import { SearchBar } from '@/components/features/search/SearchBar';
 import { site } from '@/config/site';
@@ -26,7 +26,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { OptimizedImage } from '@/components/common/OptimizedImage';
 import { formatDate } from '@/utils/blog';
-import { getEditorPicks, getRealtimeVisitors, startHeartbeat, stopHeartbeat, type EditorPick } from '@/services/analytics';
+import { getEditorPicks, getRealtimeVisitors, startHeartbeat, stopHeartbeat, type EditorPick } from '@/services/content/analytics';
 import { getCategoryCounts } from '@/utils/categoryNormalize';
 import TerminalCategories from '@/components/features/navigation/TerminalCategories';
 import { useSEO } from '@/hooks/seo/useSEO';

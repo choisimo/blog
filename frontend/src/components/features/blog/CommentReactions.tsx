@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/ui/use-mobile';
 import {
   ALLOWED_EMOJIS,
   ReactionCount,
@@ -10,7 +10,7 @@ import {
   removeReaction,
   getUserReactions,
   setUserReactions,
-} from '@/services/reactions';
+} from '@/services/engagement/reactions';
 
 interface CommentReactionsProps {
   commentId: string;

@@ -31,7 +31,7 @@ import {
   Download,
 } from 'lucide-react';
 import { useUsage, useAIConfig } from './hooks';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/ui/use-toast';
 
 function formatNumber(num: number): string {
   if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;

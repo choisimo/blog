@@ -31,7 +31,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { getApiBaseUrl } from '@/utils/apiBase';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { useAuthStore } from '@/stores/session/useAuthStore';
 
 // ============================================================================
 // Types

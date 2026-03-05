@@ -6,7 +6,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/ui/use-toast';
 
 type Theme = 'light' | 'dark' | 'system' | 'terminal';
 

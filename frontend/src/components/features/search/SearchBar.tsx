@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { X, Search, Terminal, ChevronRight, Globe, Loader2 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
-import { searchWeb, type WebSearchResult } from "@/services/webSearch";
+import { searchWeb, type WebSearchResult } from "@/services/discovery/webSearch";
 
 interface SearchBarProps {
   posts: BlogPost[];

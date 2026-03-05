@@ -7,12 +7,12 @@ import {
   SketchResult,
   PrismResult,
   ChainResult,
-} from '@/services/ai';
+} from '@/services/discovery/ai';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Sparkles, Loader2, X, Lightbulb, Layers, Link2, MessageCircle, ChevronRight } from 'lucide-react';
 import DebateRoom, { DebateTopic } from './DebateRoom';
-import useLanguage from '@/hooks/useLanguage';
+import useLanguage from '@/hooks/i18n/useLanguage';
 import {
   Tooltip,
   TooltipContent,

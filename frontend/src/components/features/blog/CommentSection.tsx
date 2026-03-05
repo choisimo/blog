@@ -9,10 +9,10 @@ import { cn } from '@/lib/utils';
 import CommentInputModal from './CommentInputModal';
 import CommentReactions from './CommentReactions';
 import { streamChatEvents } from '@/services/chat';
-import { fetchReactionsBatch, ReactionCount } from '@/services/reactions';
-import { getCachedAdvancedVisitorId, getAdvancedFingerprint } from '@/services/fingerprint';
-import { getRAGContextForChat } from '@/services/rag';
-import { useFeatureFlags } from '@/stores/useFeatureFlagsStore';
+import { fetchReactionsBatch, ReactionCount } from '@/services/engagement/reactions';
+import { getCachedAdvancedVisitorId, getAdvancedFingerprint } from '@/services/session/fingerprint';
+import { getRAGContextForChat } from '@/services/discovery/rag';
+import { useFeatureFlags } from '@/stores/runtime/useFeatureFlagsStore';
 
 // Load any archived comments bundled at build-time
 // Using a relative glob; keys may vary (relative vs absolute) depending on bundler.

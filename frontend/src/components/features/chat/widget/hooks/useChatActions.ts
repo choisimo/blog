@@ -11,7 +11,7 @@ import {
 import {
   getMemoryContextForChat,
   extractAndSaveMemories,
-} from "@/services/memory";
+} from "@/services/personal/memory";
 
 function formatLiveRoomName(room: string): string {
   return String(room || "room:lobby")

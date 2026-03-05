@@ -12,16 +12,16 @@ import Blog from './pages/Blog';
 import BlogPost from './pages/BlogPost';
 import About from './pages/About';
 import Projects from './pages/Projects';
-import NewPost from './pages/NewPost';
+import NewPost from './pages/admin/NewPost';
 import NotFound from './pages/NotFound';
 import Insight from './pages/Insight';
-import AdminConfig from './pages/AdminConfig';
-import AdminAuthCallback from './pages/AdminAuthCallback';
+import AdminConfig from './pages/admin/AdminConfig';
+import AdminAuthCallback from './pages/admin/AdminAuthCallback';
 import './App.css';
 import { VisitedPostsMinimap } from '@/components/features/navigation/VisitedPostsMinimap';
 import FloatingActionBar from '@/components/features/memo/FloatingActionBar';
-import { initFeatureFlags, disposeFeatureFlags } from '@/stores/useFeatureFlagsStore';
-import { initNotificationSSE, disposeNotificationSSE } from '@/services/notificationSSE';
+import { initFeatureFlags, disposeFeatureFlags } from '@/stores/runtime/useFeatureFlagsStore';
+import { initNotificationSSE, disposeNotificationSSE } from '@/services/realtime/notificationSSE';
 
 const queryClient = new QueryClient();
 

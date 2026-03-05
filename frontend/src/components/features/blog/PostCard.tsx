@@ -6,13 +6,13 @@ import { BlogPost } from '@/types/blog';
 import { formatDate, resolveLocalizedPost } from '@/utils/blog';
 import { stripMarkdown } from '@/utils/common';
 import { ArrowRight, Clock, Bookmark, BookmarkCheck } from 'lucide-react';
-import { prefetchPost } from '@/data/posts';
+import { prefetchPost } from '@/data/content/posts';
 import { OptimizedImage } from '@/components/common/OptimizedImage';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useIsBookmarked } from '@/hooks/useBookmarks';
-import { useTilt } from '@/hooks/useTilt';
-import { useSwipe } from '@/hooks/useSwipe';
-import useLanguage from '@/hooks/useLanguage';
+import { useIsBookmarked } from '@/hooks/content/useBookmarks';
+import { useTilt } from '@/hooks/gesture/useTilt';
+import { useSwipe } from '@/hooks/gesture/useSwipe';
+import useLanguage from '@/hooks/i18n/useLanguage';
 import { cn } from '@/lib/utils';
 
 type PostCardVariant = 'featured' | 'grid' | 'list' | 'mini';

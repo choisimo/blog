@@ -10,12 +10,12 @@ import VisitedPostsMinimap, {
 } from "@/components/features/navigation/VisitedPostsMinimap";
 import ChatWidget from "@/components/features/chat/ChatWidget";
 import { useToast } from "@/components/ui/use-toast";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/ui/use-mobile";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 import { useUIStrings } from "@/utils/i18n";
-import { useFeatureFlags } from "@/stores/useFeatureFlagsStore";
+import { useFeatureFlags } from "@/stores/runtime/useFeatureFlagsStore";
 
 import type { DockAction } from "./types";
 import {

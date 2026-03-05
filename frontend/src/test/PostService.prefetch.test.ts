@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { PostService } from '@/services/postService';
+import { PostService } from '@/services/content/postService';
 
 // Utility to create a minimal fetch Response
 const jsonResponse = (data: unknown, init: ResponseInit = { status: 200 }) =>

@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { site } from '@/config/site';
-import { sendContactMessage } from '@/services/contact';
+import { sendContactMessage } from '@/services/engagement/contact';
 import { useSEO } from '@/hooks/seo/useSEO';
 import { generateSEOData, generateStructuredData } from '@/utils/seo/seo';
 

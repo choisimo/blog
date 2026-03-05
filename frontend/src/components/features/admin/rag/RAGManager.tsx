@@ -40,7 +40,7 @@ import {
   getCollectionStatus,
   type RAGSearchResult,
   type RAGCollection,
-} from '@/services/rag';
+} from '@/services/discovery/rag';
 
 // ============================================================================
 // Health Status Component
