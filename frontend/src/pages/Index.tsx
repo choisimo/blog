@@ -29,6 +29,8 @@ import { formatDate } from '@/utils/blog';
 import { getEditorPicks, getRealtimeVisitors, startHeartbeat, stopHeartbeat, type EditorPick } from '@/services/analytics';
 import { getCategoryCounts } from '@/utils/categoryNormalize';
 import TerminalCategories from '@/components/features/navigation/TerminalCategories';
+import { useSEO } from '@/hooks/seo/useSEO';
+import { generateSEOData, generateStructuredData } from '@/utils/seo/seo';
 
 // Shape used by visited posts in localStorage
 // Matches VisitedPostsMinimap
@@ -43,13 +45,18 @@ interface VisitedPostItem {
 const STORAGE_KEY = 'visited.posts';
 
 const Index = () => {
+  useSEO(
+    generateSEOData(undefined, 'home'),
+    generateStructuredData(undefined, 'home')
+  );
+
   const { isTerminal } = useTheme();
-  
+
   // Latest posts state
   const [latestPosts, setLatestPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Realtime visitor count
   const [activeVisitors, setActiveVisitors] = useState<number>(0);
 
@@ -96,7 +103,7 @@ const Index = () => {
 
         // 1. Try to load from D1 database (analytics-based editor picks)
         const dbPicks = await getEditorPicks(3);
-        
+
         if (dbPicks.length > 0) {
           // Resolve posts from D1 picks
           const resolved = await Promise.all(
@@ -106,7 +113,7 @@ const Index = () => {
             })
           );
           const filtered = resolved.filter((p): p is BlogPost => !!p);
-          
+
           if (filtered.length > 0) {
             setFeaturedPosts(filtered);
             return;
@@ -191,15 +198,15 @@ const Index = () => {
   // Realtime visitor tracking
   useEffect(() => {
     startHeartbeat();
-    
+
     // Fetch initial count
     getRealtimeVisitors().then(setActiveVisitors);
-    
+
     // Refresh count every 30 seconds
     const interval = setInterval(() => {
       getRealtimeVisitors().then(setActiveVisitors);
     }, 30000);
-    
+
     return () => {
       stopHeartbeat();
       clearInterval(interval);
@@ -376,7 +383,7 @@ const Index = () => {
             {isTerminal ? '// editor_picks' : "Editor's Picks"}
           </h2>
         </div>
-        
+
         {featuredLoading ? (
           <div className='grid lg:grid-cols-3 gap-6'>
             {Array.from({ length: 3 }).map((_, i) => (
@@ -387,14 +394,14 @@ const Index = () => {
           <div className='grid lg:grid-cols-3 gap-6'>
             {/* Main Featured Card (2/3 width on desktop) */}
             <div className='lg:col-span-2'>
-              <Link 
+              <Link
                 to={`/blog/${featuredPosts[0].year}/${featuredPosts[0].slug}`}
                 className='group block h-full'
               >
                 <div className={cn(
                   'relative h-full min-h-[400px] rounded-2xl overflow-hidden',
-                  isTerminal 
-                    ? 'border border-border bg-card/50 backdrop-blur-sm hover:border-primary/50' 
+                  isTerminal
+                    ? 'border border-border bg-card/50 backdrop-blur-sm hover:border-primary/50'
                     : 'bg-card shadow-md hover:shadow-xl',
                   'transition-all duration-300'
                 )}>
@@ -407,25 +414,25 @@ const Index = () => {
                   ) : (
                     <div className={cn(
                       'w-full h-full',
-                      isTerminal 
-                        ? 'bg-gradient-to-br from-primary/5 to-card' 
+                      isTerminal
+                        ? 'bg-gradient-to-br from-primary/5 to-card'
                         : 'bg-gradient-to-br from-muted/80 to-muted'
                     )} />
                   )}
-                  
+
                   <div className={cn(
                     'absolute inset-0',
-                    isTerminal 
-                      ? 'bg-gradient-to-t from-background via-background/70 to-transparent' 
+                    isTerminal
+                      ? 'bg-gradient-to-t from-background via-background/70 to-transparent'
                       : 'bg-gradient-to-t from-black/80 via-black/40 to-transparent'
                   )} />
-                  
+
                   <div className='absolute bottom-0 left-0 right-0 p-8'>
                     <div className='flex items-center gap-3 mb-4'>
                       <span className={cn(
                         'px-3 py-1 text-xs font-medium rounded-full',
-                        isTerminal 
-                          ? 'bg-primary/20 text-primary border border-primary/30' 
+                        isTerminal
+                          ? 'bg-primary/20 text-primary border border-primary/30'
                           : 'bg-primary text-primary-foreground'
                       )}>
                         {featuredPosts[0].category}
@@ -442,8 +449,8 @@ const Index = () => {
                     </div>
                     <h3 className={cn(
                       'text-2xl md:text-3xl font-bold mb-3 line-clamp-2',
-                      isTerminal 
-                        ? 'text-foreground group-hover:text-primary' 
+                      isTerminal
+                        ? 'text-foreground group-hover:text-primary'
                         : 'text-white',
                       'transition-colors'
                     )}>
@@ -469,15 +476,15 @@ const Index = () => {
             {/* Side Cards (1/3 width, stacked) */}
             <div className='flex flex-col gap-6'>
               {featuredPosts.slice(1, 3).map(post => (
-                <Link 
+                <Link
                   key={`${post.year}/${post.slug}`}
                   to={`/blog/${post.year}/${post.slug}`}
                   className='group flex-1'
                 >
                   <div className={cn(
                     'h-full rounded-xl overflow-hidden flex flex-col',
-                    isTerminal 
-                      ? 'border border-border bg-card/30 backdrop-blur-sm hover:border-primary/50 hover:bg-card/50' 
+                    isTerminal
+                      ? 'border border-border bg-card/30 backdrop-blur-sm hover:border-primary/50 hover:bg-card/50'
                       : 'bg-card border border-border/50 shadow-sm hover:shadow-lg',
                     'transition-all duration-300'
                   )}>
@@ -494,8 +501,8 @@ const Index = () => {
                       <div className='flex items-center gap-2 mb-2'>
                         <span className={cn(
                           'px-2 py-0.5 text-xs rounded',
-                          isTerminal 
-                            ? 'bg-primary/10 text-primary' 
+                          isTerminal
+                            ? 'bg-primary/10 text-primary'
                             : 'bg-secondary text-secondary-foreground'
                         )}>
                           {post.category}
@@ -506,8 +513,8 @@ const Index = () => {
                       </div>
                       <h3 className={cn(
                         'font-semibold line-clamp-2 flex-1',
-                        isTerminal 
-                          ? 'text-foreground group-hover:text-primary' 
+                        isTerminal
+                          ? 'text-foreground group-hover:text-primary'
                           : 'group-hover:text-primary',
                         'transition-colors'
                       )}>
@@ -535,8 +542,8 @@ const Index = () => {
               {isTerminal ? '// recently_viewed' : 'Recently Viewed'}
             </h2>
             <div className='flex items-center gap-2'>
-              <Button 
-                variant='ghost' 
+              <Button
+                variant='ghost'
                 size='icon'
                 className={cn(
                   'h-8 w-8 rounded-full',
@@ -546,8 +553,8 @@ const Index = () => {
               >
                 <ChevronLeft className='h-4 w-4' />
               </Button>
-              <Button 
-                variant='ghost' 
+              <Button
+                variant='ghost'
                 size='icon'
                 className={cn(
                   'h-8 w-8 rounded-full',
@@ -567,22 +574,22 @@ const Index = () => {
               </Button>
             </div>
           </div>
-          
+
           {/* Carousel Container */}
-          <div 
+          <div
             ref={carouselRef}
             className='flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 snap-x snap-mandatory scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40'
           >
             {recentlyViewed.map(item => (
-              <Link 
-                key={item.path} 
-                to={item.path} 
+              <Link
+                key={item.path}
+                to={item.path}
                 className='group flex-shrink-0 w-[280px] snap-start'
               >
                 <div className={cn(
                   'rounded-xl overflow-hidden h-full',
-                  isTerminal 
-                    ? 'border border-border bg-card/30 backdrop-blur-sm hover:border-primary/50 hover:bg-card/50' 
+                  isTerminal
+                    ? 'border border-border bg-card/30 backdrop-blur-sm hover:border-primary/50 hover:bg-card/50'
                     : 'bg-card border border-border/50 shadow-sm hover:shadow-md',
                   'transition-all duration-300'
                 )}>
@@ -597,8 +604,8 @@ const Index = () => {
                   ) : (
                     <div className={cn(
                       'aspect-[16/9]',
-                      isTerminal 
-                        ? 'bg-gradient-to-br from-primary/5 to-card' 
+                      isTerminal
+                        ? 'bg-gradient-to-br from-primary/5 to-card'
                         : 'bg-gradient-to-br from-muted to-muted/50'
                     )} />
                   )}
@@ -608,8 +615,8 @@ const Index = () => {
                     </div>
                     <h3 className={cn(
                       'font-medium line-clamp-2 text-sm',
-                      isTerminal 
-                        ? 'text-foreground group-hover:text-primary' 
+                      isTerminal
+                        ? 'text-foreground group-hover:text-primary'
                         : 'group-hover:text-primary',
                       'transition-colors'
                     )}>
@@ -712,8 +719,8 @@ const Index = () => {
         ) : loading ? (
           <div className='space-y-4'>
             {Array.from({ length: 3 }).map((_, i) => (
-              <div 
-                key={i} 
+              <div
+                key={i}
                 className={cn(
                   'h-32 rounded-xl animate-pulse',
                   isTerminal ? 'bg-card border border-border' : 'bg-muted'
@@ -731,8 +738,8 @@ const Index = () => {
               >
                 <article className={cn(
                   'flex gap-5 rounded-xl p-4 transition-all duration-300',
-                  isTerminal 
-                    ? 'border border-border bg-card/30 backdrop-blur-sm hover:border-primary/50 hover:bg-card/50' 
+                  isTerminal
+                    ? 'border border-border bg-card/30 backdrop-blur-sm hover:border-primary/50 hover:bg-card/50'
                     : 'bg-card border border-border/50 shadow-sm hover:shadow-md'
                 )}>
                   {/* Thumbnail */}
@@ -746,22 +753,22 @@ const Index = () => {
                     ) : (
                       <div className={cn(
                         'w-full h-full flex items-center justify-center',
-                        isTerminal 
-                          ? 'bg-gradient-to-br from-primary/5 to-card' 
+                        isTerminal
+                          ? 'bg-gradient-to-br from-primary/5 to-card'
                           : 'bg-gradient-to-br from-muted to-muted/50'
                       )}>
                         <BookOpen className='h-8 w-8 text-muted-foreground/50' />
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Content */}
                   <div className='flex-1 min-w-0 flex flex-col justify-center'>
                     <div className='flex flex-wrap items-center gap-2 mb-2'>
                       <span className={cn(
                         'px-2 py-0.5 text-xs font-medium rounded',
-                        isTerminal 
-                          ? 'bg-primary/10 text-primary' 
+                        isTerminal
+                          ? 'bg-primary/10 text-primary'
                           : 'bg-secondary text-secondary-foreground'
                       )}>
                         {post.category}
@@ -778,8 +785,8 @@ const Index = () => {
                     </div>
                     <h3 className={cn(
                       'font-semibold text-lg mb-1 line-clamp-1',
-                      isTerminal 
-                        ? 'text-foreground group-hover:text-primary' 
+                      isTerminal
+                        ? 'text-foreground group-hover:text-primary'
                         : 'group-hover:text-primary',
                       'transition-colors'
                     )}>

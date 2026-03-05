@@ -1,6 +1,28 @@
 {
-  "total": 258,
+  "total": 259,
   "items": [
+    {
+      "path": "/posts/2026/teleport.md",
+      "year": "2026",
+      "slug": "teleport",
+      "title": "SSH private key 관리에 대한 고민",
+      "description": "['ssh 키와 호스트 관리에 대한 스트레스와 해결 방안 고민들']",
+      "snippet": "['ssh 키와 호스트 관리에 대한 스트레스와 해결 방안 고민들']",
+      "date": "2026-02-29",
+      "tags": [
+        "ssh",
+        "private key",
+        "socket",
+        "security",
+        "개발",
+        "dev-ops"
+      ],
+      "category": "Tech",
+      "author": "Admin",
+      "readingTime": "7 min read",
+      "published": true,
+      "url": "/blog/2026/teleport"
+    },
     {
       "path": "/posts/2026/ai-agent-arena-2026-gemini-3-0-pro-high-reasoning.md",
       "year": "2026",
@@ -5441,7 +5463,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-02-27T10:14:58.556Z",
+  "generatedAt": "2026-03-04T16:42:52.349Z",
   "years": [
     "2026",
     "2025",

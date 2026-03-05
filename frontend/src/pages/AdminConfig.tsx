@@ -17,50 +17,65 @@ import {
 } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Lock, Settings, Cloud, Bot, Key, Mail, ArrowLeft, RefreshCw, Database, Activity, BarChart3 } from 'lucide-react';
+import { Lock, Settings, Cloud, Bot, Key, ArrowLeft, RefreshCw, Database, Activity, BarChart3 } from 'lucide-react';
 import {
-  login,
-  verifyOtp,
-  resendOtp,
+  initiateTotpChallenge,
+  verifyTotpCode,
+  getTotpSetup,
+  verifyTotpSetup,
   getMe,
-  type LoginResponse,
+  type TotpVerifyResponse,
+  type TotpSetupResponse,
 } from '@/services/auth';
 import {
   useAuthStore,
   migrateFromLegacyStorage,
   scheduleTokenRefresh,
 } from '@/stores/useAuthStore';
+import { getApiBaseUrl } from '@/utils/apiBase';
 
 // ============================================================================
 // Auth Step Types
 // ============================================================================
 
-type AuthStep = 'credentials' | 'otp' | 'authenticated';
+type AuthStep = 'totp-login' | 'totp-setup' | 'authenticated';
 
 // ============================================================================
-// Credentials Form Component
+// TOTP Login Screen
 // ============================================================================
 
-interface CredentialsFormProps {
-  onSuccess: (response: LoginResponse) => void;
+interface TotpLoginScreenProps {
+  onSuccess: (response: TotpVerifyResponse) => void;
   onError: (error: string) => void;
 }
 
-function CredentialsForm({ onSuccess, onError }: CredentialsFormProps) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+function TotpLoginScreen({ onSuccess, onError }: TotpLoginScreenProps) {
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const apiBase = getApiBaseUrl();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!username || !password) return;
-
+  const handleGetChallenge = async () => {
     setLoading(true);
     try {
-      const response = await login(username, password);
+      const result = await initiateTotpChallenge();
+      setChallengeId(result.challengeId);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Failed to get challenge');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!challengeId || code.length !== 6) return;
+    setLoading(true);
+    try {
+      const response = await verifyTotpCode(challengeId, code);
       onSuccess(response);
     } catch (err) {
-      onError(err instanceof Error ? err.message : 'Login failed');
+      onError(err instanceof Error ? err.message : 'Verification failed');
     } finally {
       setLoading(false);
     }
@@ -73,233 +88,168 @@ function CredentialsForm({ onSuccess, onError }: CredentialsFormProps) {
           <Lock className="h-6 w-6 text-primary" />
         </div>
         <CardTitle>Admin Authentication</CardTitle>
-        <CardDescription>Enter your admin credentials to continue</CardDescription>
+        <CardDescription>Sign in with TOTP or OAuth</CardDescription>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
-            <Input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter username"
-              autoFocus
-              autoComplete="username"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter password"
-              autoComplete="current-password"
-            />
-          </div>
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={!username || !password || loading}
-          >
+      <CardContent className="space-y-4">
+        {!challengeId ? (
+          <Button className="w-full" onClick={handleGetChallenge} disabled={loading}>
             {loading ? (
               <>
                 <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                Verifying...
+                Loading...
               </>
             ) : (
-              'Continue'
+              'Sign in with Authenticator'
             )}
           </Button>
-        </form>
+        ) : (
+          <form onSubmit={handleVerify} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="totp-code">Authenticator Code</Label>
+              <Input
+                id="totp-code"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="000000"
+                autoFocus
+                className="text-center text-2xl tracking-widest"
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={code.length !== 6 || loading}>
+              {loading ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                'Verify'
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full text-muted-foreground"
+              onClick={() => { setChallengeId(null); setCode(''); }}
+            >
+              <ArrowLeft className="mr-1 h-4 w-4" />
+              Back
+            </Button>
+          </form>
+        )}
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">or continue with</span>
+          </div>
+        </div>
+
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => { window.location.href = `${apiBase}/api/v1/auth/oauth/github`; }}
+        >
+          Sign in with GitHub
+        </Button>
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => { window.location.href = `${apiBase}/api/v1/auth/oauth/google`; }}
+        >
+          Sign in with Google
+        </Button>
       </CardContent>
     </Card>
   );
 }
 
 // ============================================================================
-// OTP Form Component
+// TOTP Setup Screen
 // ============================================================================
 
-interface OtpFormProps {
-  sessionId: string;
-  message: string;
-  expiresAt: string;
-  devOtp?: string;
-  onSuccess: () => void;
+interface TotpSetupScreenProps {
+  onComplete: () => void;
   onError: (error: string) => void;
-  onBack: () => void;
 }
 
-function OtpForm({
-  sessionId,
-  message,
-  expiresAt,
-  devOtp,
-  onSuccess,
-  onError,
-  onBack,
-}: OtpFormProps) {
-  const [otp, setOtp] = useState('');
+function TotpSetupScreen({ onComplete, onError }: TotpSetupScreenProps) {
+  const [setup, setSetup] = useState<TotpSetupResponse | null>(null);
+  const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const [resending, setResending] = useState(false);
-  const [currentMessage, setCurrentMessage] = useState(message);
-  const [currentExpiresAt, setCurrentExpiresAt] = useState(expiresAt);
-  const [currentDevOtp, setCurrentDevOtp] = useState(devOtp);
-  const { setTokens } = useAuthStore();
-
-  // Calculate time remaining
-  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
 
   useEffect(() => {
-    const updateTimer = () => {
-      const expires = new Date(currentExpiresAt).getTime();
-      const now = Date.now();
-      const remaining = Math.max(0, Math.floor((expires - now) / 1000));
-      setTimeRemaining(remaining);
-    };
+    getTotpSetup()
+      .then(setSetup)
+      .catch((err: unknown) => onError(err instanceof Error ? err.message : 'Failed to load setup'));
+  }, [onError]);
 
-    updateTimer();
-    const interval = setInterval(updateTimer, 1000);
-    return () => clearInterval(interval);
-  }, [currentExpiresAt]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!otp || otp.length !== 6) return;
-
+    if (code.length !== 6 || !setup) return;
     setLoading(true);
     try {
-      const response = await verifyOtp(sessionId, otp);
-      // Convert VerifyOtpResponse.user to UserInfo format
-      const userInfo = {
-        ...response.user,
-        emailVerified: true, // OTP verified means email is verified
-      };
-      setTokens(response.accessToken, response.refreshToken, userInfo);
-      scheduleTokenRefresh();
-      onSuccess();
+      await verifyTotpSetup(code);
+      onComplete();
     } catch (err) {
-      onError(err instanceof Error ? err.message : 'Verification failed');
+      onError(err instanceof Error ? err.message : 'Setup verification failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResend = async () => {
-    setResending(true);
-    try {
-      const response = await resendOtp(sessionId);
-      setCurrentMessage(response.message);
-      setCurrentExpiresAt(response.expiresAt);
-      setCurrentDevOtp(response._dev_otp);
-      setOtp('');
-    } catch (err) {
-      onError(err instanceof Error ? err.message : 'Failed to resend code');
-    } finally {
-      setResending(false);
-    }
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const isExpired = timeRemaining === 0;
+  if (!setup) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
 
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
         <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-          <Mail className="h-6 w-6 text-primary" />
+          <Lock className="h-6 w-6 text-primary" />
         </div>
-        <CardTitle>Verify Your Identity</CardTitle>
-        <CardDescription>{currentMessage}</CardDescription>
+        <CardTitle>Setup Authenticator</CardTitle>
+        <CardDescription>Scan this QR code with your authenticator app</CardDescription>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <CardContent className="space-y-4">
+        <div className="flex justify-center">
+          <img src={setup.qrDataUrl} alt="TOTP QR Code" className="w-48 h-48" />
+        </div>
+        <p className="text-xs text-center text-muted-foreground break-all font-mono">{setup.secret}</p>
+        <form onSubmit={handleVerify} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="otp">Verification Code</Label>
+            <Label htmlFor="setup-code">Verify Code</Label>
             <Input
-              id="otp"
+              id="setup-code"
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
               maxLength={6}
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
               placeholder="000000"
               autoFocus
               className="text-center text-2xl tracking-widest"
             />
-            {currentDevOtp && (
-              <p className="text-xs text-muted-foreground text-center">
-                Dev mode OTP: <code className="font-mono bg-muted px-1">{currentDevOtp}</code>
-              </p>
-            )}
           </div>
-
-          {timeRemaining !== null && (
-            <p
-              className={`text-sm text-center ${
-                isExpired ? 'text-destructive' : 'text-muted-foreground'
-              }`}
-            >
-              {isExpired
-                ? 'Code expired. Please request a new one.'
-                : `Code expires in ${formatTime(timeRemaining)}`}
-            </p>
-          )}
-
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={otp.length !== 6 || loading || isExpired}
-          >
+          <Button type="submit" className="w-full" disabled={code.length !== 6 || loading}>
             {loading ? (
               <>
                 <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                 Verifying...
               </>
             ) : (
-              'Verify Code'
+              'Complete Setup'
             )}
           </Button>
-
-          <div className="flex items-center justify-between pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onBack}
-              className="text-muted-foreground"
-            >
-              <ArrowLeft className="mr-1 h-4 w-4" />
-              Back
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleResend}
-              disabled={resending}
-              className="text-muted-foreground"
-            >
-              {resending ? (
-                <>
-                  <RefreshCw className="mr-1 h-4 w-4 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                'Resend Code'
-              )}
-            </Button>
-          </div>
         </form>
       </CardContent>
     </Card>
@@ -311,20 +261,26 @@ function OtpForm({
 // ============================================================================
 
 export default function AdminConfig() {
-  const [step, setStep] = useState<AuthStep>('credentials');
-  const [loginResponse, setLoginResponse] = useState<LoginResponse | null>(null);
+  const [step, setStep] = useState<AuthStep>('totp-login');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const { isAuthenticated, getValidAccessToken, logout, user } = useAuthStore();
+  const { isAuthenticated, getValidAccessToken, logout, user, setTokens } = useAuthStore();
 
-  // Check authentication on mount
   useEffect(() => {
     migrateFromLegacyStorage();
 
+    const checkTotpSetup = async () => {
+      try {
+        const setup = await getTotpSetup();
+        setStep(setup.setupComplete ? 'totp-login' : 'totp-setup');
+      } catch {
+        setStep('totp-login');
+      }
+    };
+
     const checkAuth = async () => {
       if (isAuthenticated()) {
-        // Verify token is still valid
         const token = await getValidAccessToken();
         if (token) {
           try {
@@ -332,13 +288,14 @@ export default function AdminConfig() {
             setStep('authenticated');
             scheduleTokenRefresh();
           } catch {
-            // Token invalid, clear and show login
             await logout();
-            setStep('credentials');
+            await checkTotpSetup();
           }
         } else {
-          setStep('credentials');
+          await checkTotpSetup();
         }
+      } else {
+        await checkTotpSetup();
       }
       setLoading(false);
     };
@@ -346,35 +303,29 @@ export default function AdminConfig() {
     checkAuth();
   }, [isAuthenticated, getValidAccessToken, logout]);
 
-  const handleLoginSuccess = useCallback((response: LoginResponse) => {
-    setLoginResponse(response);
-    setError('');
-    setStep('otp');
-  }, []);
-
-  const handleOtpSuccess = useCallback(() => {
+  const handleTotpSuccess = useCallback((response: TotpVerifyResponse) => {
+    const userInfo = { ...response.user };
+    setTokens(response.accessToken, response.refreshToken, userInfo);
+    scheduleTokenRefresh();
     setError('');
     setStep('authenticated');
+  }, [setTokens]);
+
+  const handleSetupComplete = useCallback(() => {
+    setError('');
+    setStep('totp-login');
   }, []);
 
   const handleError = useCallback((errorMessage: string) => {
     setError(errorMessage);
   }, []);
 
-  const handleBack = useCallback(() => {
-    setStep('credentials');
-    setLoginResponse(null);
-    setError('');
-  }, []);
-
   const handleLogout = useCallback(async () => {
     await logout();
-    setStep('credentials');
-    setLoginResponse(null);
+    setStep('totp-login');
     setError('');
   }, [logout]);
 
-  // Loading state
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -383,34 +334,20 @@ export default function AdminConfig() {
     );
   }
 
-  // Credentials step
-  if (step === 'credentials') {
+  if (step === 'totp-setup') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] p-4">
-        <CredentialsForm onSuccess={handleLoginSuccess} onError={handleError} />
-        {error && (
-          <p className="mt-4 text-sm text-destructive text-center">{error}</p>
-        )}
+        <TotpSetupScreen onComplete={handleSetupComplete} onError={handleError} />
+        {error && <p className="mt-4 text-sm text-destructive text-center">{error}</p>}
       </div>
     );
   }
 
-  // OTP step
-  if (step === 'otp' && loginResponse) {
+  if (step === 'totp-login') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] p-4">
-        <OtpForm
-          sessionId={loginResponse.sessionId}
-          message={loginResponse.message}
-          expiresAt={loginResponse.expiresAt}
-          devOtp={loginResponse._dev_otp}
-          onSuccess={handleOtpSuccess}
-          onError={handleError}
-          onBack={handleBack}
-        />
-        {error && (
-          <p className="mt-4 text-sm text-destructive text-center">{error}</p>
-        )}
+        <TotpLoginScreen onSuccess={handleTotpSuccess} onError={handleError} />
+        {error && <p className="mt-4 text-sm text-destructive text-center">{error}</p>}
       </div>
     );
   }

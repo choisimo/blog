@@ -597,6 +597,10 @@ function QuestionView({
     multiple_choice: "선택형",
     transform: "변형 문제",
     explain: "실행 추론",
+    system_modeling: "시스템 모델링",
+    tradeoff_analysis: "트레이드오프 분석",
+    refactoring_problem: "리팩토링 문제",
+    concept_connection: "개념 연결",
   };
 
   return (
@@ -693,6 +697,89 @@ function QuestionView({
               onChange={onAnswerChange}
               question={question.question}
             />
+          ) : question.type === "system_modeling" ? (
+            <div className="space-y-3">
+              <div
+                className={cn(
+                  "flex flex-wrap gap-2 text-[10px] font-medium",
+                  isTerminal ? "font-mono text-primary/60" : "text-muted-foreground",
+                )}
+              >
+                {["컴포넌트", "데이터 흐름", "입력/출력", "상호작용"].map((hint) => (
+                  <span
+                    key={hint}
+                    className={cn(
+                      "px-2 py-0.5 rounded-full border",
+                      isTerminal
+                        ? "border-primary/20 bg-primary/5"
+                        : "border-border/50 bg-muted/30",
+                    )}
+                  >
+                    {hint}
+                  </span>
+                ))}
+              </div>
+              <CodeIDE
+                value={currentAnswer}
+                onChange={onAnswerChange}
+                question={question.question}
+              />
+            </div>
+          ) : question.type === "tradeoff_analysis" ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                {["Option A", "Option B"].map((label) => (
+                  <div
+                    key={label}
+                    className={cn(
+                      "rounded-lg border px-3 py-2 text-center text-xs font-semibold",
+                      isTerminal
+                        ? "border-primary/20 bg-primary/5 text-primary font-mono"
+                        : "border-border/50 bg-muted/30 text-muted-foreground",
+                    )}
+                  >
+                    {label}
+                  </div>
+                ))}
+              </div>
+              <CodeIDE
+                value={currentAnswer}
+                onChange={onAnswerChange}
+                question={question.question}
+              />
+            </div>
+          ) : question.type === "refactoring_problem" ? (
+            <CodeIDE
+              value={currentAnswer}
+              onChange={onAnswerChange}
+              question={question.question}
+            />
+          ) : question.type === "concept_connection" ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 justify-center">
+                {question.question
+                  .match(/[`"']([^`"']+)[`"']/g)
+                  ?.slice(0, 2)
+                  .map((concept, i) => (
+                    <span
+                      key={i}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-xs font-semibold border",
+                        isTerminal
+                          ? "bg-primary/15 border-primary/30 text-primary font-mono"
+                          : "bg-primary/10 border-primary/20 text-primary",
+                      )}
+                    >
+                      {concept.replace(/[`"']/g, "")}
+                    </span>
+                  )) ?? null}
+              </div>
+              <CodeIDE
+                value={currentAnswer}
+                onChange={onAnswerChange}
+                question={question.question}
+              />
+            </div>
           ) : (
             <textarea
               value={currentAnswer}

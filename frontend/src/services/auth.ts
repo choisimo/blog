@@ -1,9 +1,9 @@
 /**
  * Admin Authentication Service
  *
- * 2-Step OTP Authentication Flow:
- * 1. login(username, password) → sessionId
- * 2. verifyOtp(sessionId, otp) → { accessToken, refreshToken }
+ * TOTP + OAuth2 Authentication Flow:
+ * - TOTP: initiateTotpChallenge() → verifyTotpCode() → tokens
+ * - OAuth: redirect to /api/v1/auth/oauth/{github|google} → callback
  *
  * Features:
  * - Access token (15min) / Refresh token (7 days)
@@ -17,14 +17,11 @@ import { getApiBaseUrl } from '@/utils/apiBase';
 // Types
 // ============================================================================
 
-export interface LoginResponse {
-  sessionId: string;
-  message: string;
-  expiresAt: string;
-  _dev_otp?: string; // Only in development mode
+export interface TotpChallengeResponse {
+  challengeId: string;
 }
 
-export interface VerifyOtpResponse {
+export interface TotpVerifyResponse {
   accessToken: string;
   refreshToken: string;
   tokenType: string;
@@ -33,7 +30,15 @@ export interface VerifyOtpResponse {
     username: string;
     email: string;
     role: string;
+    emailVerified: boolean;
   };
+}
+
+export interface TotpSetupResponse {
+  otpauthUri: string;
+  qrDataUrl: string;
+  secret: string;
+  setupComplete: boolean;
 }
 
 export interface RefreshTokenResponse {
@@ -62,76 +67,56 @@ export interface ApiResponse<T> {
 const getBaseUrl = () => getApiBaseUrl();
 
 /**
- * Step 1: Login with credentials → Sends OTP to admin email
+ * Request a new TOTP challenge ID (5-min TTL)
  */
-export async function login(
-  username: string,
-  password: string
-): Promise<LoginResponse> {
-  const res = await fetch(`${getBaseUrl()}/api/v1/auth/login`, {
+export async function initiateTotpChallenge(): Promise<TotpChallengeResponse> {
+  const res = await fetch(`${getBaseUrl()}/api/v1/auth/totp/challenge`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
   });
-
-  const json: ApiResponse<LoginResponse> = await res.json().catch(() => ({
-    ok: false,
-    error: 'Invalid response',
-  }));
-
-  if (!res.ok || !json.ok || !json.data) {
-    throw new Error(json.error || 'Login failed');
-  }
-
+  const json: ApiResponse<TotpChallengeResponse> = await res.json().catch(() => ({ ok: false, error: 'Invalid response' }));
+  if (!res.ok || !json.ok || !json.data) throw new Error(json.error || 'Failed to get challenge');
   return json.data;
 }
 
 /**
- * Step 2: Verify OTP → Returns access + refresh tokens
+ * Verify TOTP code against challenge → returns tokens
  */
-export async function verifyOtp(
-  sessionId: string,
-  otp: string
-): Promise<VerifyOtpResponse> {
-  const res = await fetch(`${getBaseUrl()}/api/v1/auth/verify-otp`, {
+export async function verifyTotpCode(
+  challengeId: string,
+  code: string
+): Promise<TotpVerifyResponse> {
+  const res = await fetch(`${getBaseUrl()}/api/v1/auth/totp/verify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessionId, otp }),
+    body: JSON.stringify({ challengeId, code }),
   });
-
-  const json: ApiResponse<VerifyOtpResponse> = await res.json().catch(() => ({
-    ok: false,
-    error: 'Invalid response',
-  }));
-
-  if (!res.ok || !json.ok || !json.data) {
-    throw new Error(json.error || 'OTP verification failed');
-  }
-
+  const json: ApiResponse<TotpVerifyResponse> = await res.json().catch(() => ({ ok: false, error: 'Invalid response' }));
+  if (!res.ok || !json.ok || !json.data) throw new Error(json.error || 'TOTP verification failed');
   return json.data;
 }
 
 /**
- * Resend OTP for existing session
+ * Get TOTP setup info (QR code + secret)
  */
-export async function resendOtp(
-  sessionId: string
-): Promise<{ message: string; expiresAt: string; _dev_otp?: string }> {
-  const res = await fetch(`${getBaseUrl()}/api/v1/auth/resend-otp`, {
+export async function getTotpSetup(): Promise<TotpSetupResponse> {
+  const res = await fetch(`${getBaseUrl()}/api/v1/auth/totp/setup`);
+  const json: ApiResponse<TotpSetupResponse> = await res.json().catch(() => ({ ok: false, error: 'Invalid response' }));
+  if (!res.ok || !json.ok || !json.data) throw new Error(json.error || 'Failed to get TOTP setup');
+  return json.data;
+}
+
+/**
+ * Verify TOTP setup code to mark setup as complete
+ */
+export async function verifyTotpSetup(code: string): Promise<{ setupComplete: boolean }> {
+  const res = await fetch(`${getBaseUrl()}/api/v1/auth/totp/setup/verify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessionId }),
+    body: JSON.stringify({ code }),
   });
-
-  const json = await res.json().catch(() => ({
-    ok: false,
-    error: 'Invalid response',
-  }));
-
-  if (!res.ok || !json.ok || !json.data) {
-    throw new Error(json.error || 'Failed to resend OTP');
-  }
-
+  const json: ApiResponse<{ setupComplete: boolean }> = await res.json().catch(() => ({ ok: false, error: 'Invalid response' }));
+  if (!res.ok || !json.ok || !json.data) throw new Error(json.error || 'Setup verification failed');
   return json.data;
 }
 

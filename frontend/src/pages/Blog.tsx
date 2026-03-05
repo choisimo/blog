@@ -11,6 +11,8 @@ import { Search, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatDate } from '@/utils/blog';
 import { OptimizedImage } from '@/components/common/OptimizedImage';
+import { useSEO } from '@/hooks/seo/useSEO';
+import { generateSEOData, generateStructuredData } from '@/utils/seo/seo';
 
 const POSTS_PER_PAGE = 12;
 const TAGS_PER_PAGE = 20;
@@ -19,6 +21,11 @@ const Blog = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryParam = searchParams.get('category');
+
+  useSEO(
+    generateSEOData(undefined, 'blog', { category: categoryParam }),
+    generateStructuredData(undefined, 'blog')
+  );
   const pageParam = searchParams.get('page');
 
   const initialCategory = useMemo(
@@ -408,10 +415,10 @@ const Blog = () => {
                     <OptimizedImage
                       src={featuredPost.coverImage}
                       alt={featuredPost.title}
-                      className='h-64 w-full object-cover'
+                      className='aspect-[16/9] w-full object-cover'
                     />
                   ) : (
-                    <div className='flex h-64 items-center justify-center text-muted-foreground'>
+                    <div className='flex aspect-[16/9] items-center justify-center text-muted-foreground'>
                       <span>No cover</span>
                     </div>
                   )}
@@ -432,7 +439,7 @@ const Blog = () => {
                   <h2 className='text-2xl font-semibold leading-tight text-foreground dark:text-white'>
                     {featuredPost.title}
                   </h2>
-                  <p className='text-muted-foreground dark:text-white/70'>{featuredPost.excerpt || featuredPost.description}</p>
+                  <p className='line-clamp-3 text-muted-foreground dark:text-white/70'>{featuredPost.excerpt || featuredPost.description}</p>
                 </Link>
               </div>
             </div>
@@ -467,7 +474,7 @@ const Blog = () => {
                       <h3 className='text-base font-semibold leading-snug text-foreground dark:text-white'>
                         {post.title}
                       </h3>
-                      <p className='line-clamp-2 text-muted-foreground dark:text-white/70'>{post.excerpt || post.description}</p>
+                      <p className='line-clamp-3 text-muted-foreground dark:text-white/70'>{post.excerpt || post.description}</p>
                     </div>
                   </Link>
                 ))}
@@ -529,7 +536,7 @@ const Blog = () => {
                     <h3 className='text-base font-semibold leading-snug text-foreground dark:text-white'>
                       {post.title}
                     </h3>
-                    <p className='line-clamp-2 text-muted-foreground dark:text-white/70'>{post.excerpt || post.description}</p>
+                    <p className='line-clamp-3 text-muted-foreground dark:text-white/70'>{post.excerpt || post.description}</p>
                   </div>
                 </Link>
               ))}
@@ -564,6 +571,6 @@ const Blog = () => {
     </div>
   );
 }
-;
+  ;
 
 export default Blog;

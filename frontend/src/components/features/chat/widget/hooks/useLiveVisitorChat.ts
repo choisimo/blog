@@ -1,51 +1,50 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  connectLiveChatStream,
-  sendLiveChatMessage,
-} from '@/services/chat';
-import type { LiveChatEvent } from '@/services/chat/live';
-import type { ChatMessage, SystemMessageLevel } from '../types';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { connectLiveChatStream, sendLiveChatMessage } from "@/services/chat";
+import type { LiveChatEvent } from "@/services/chat/live";
+import type { ChatMessage, SystemMessageLevel } from "../types";
 
-const VISITOR_NAME_KEY = 'aiChat.liveVisitorName';
+const VISITOR_NAME_KEY = "aiChat.liveVisitorName";
 
 function normalizeRoomKey(rawRoom: string): string {
-  const fallback = 'room:lobby';
-  const trimmed = String(rawRoom || '').trim().toLowerCase();
+  const fallback = "room:lobby";
+  const trimmed = String(rawRoom || "")
+    .trim()
+    .toLowerCase();
   if (!trimmed) return fallback;
 
   const normalized = trimmed
-    .replace(/[^a-z0-9:_-]/g, '-')
-    .replace(/-+/g, '-')
+    .replace(/[^a-z0-9:_-]/g, "-")
+    .replace(/-+/g, "-")
     .slice(0, 120);
 
   if (!normalized) return fallback;
-  return normalized.startsWith('room:') ? normalized : `room:${normalized}`;
+  return normalized.startsWith("room:") ? normalized : `room:${normalized}`;
 }
 
 function toRoomKey(pathname: string): string {
-  const normalized = (pathname || '/').replace(/\/+$/, '') || '/';
-  const parts = normalized.split('/').filter(Boolean);
+  const normalized = (pathname || "/").replace(/\/+$/, "") || "/";
+  const parts = normalized.split("/").filter(Boolean);
 
-  if (parts.length === 0) return 'room:lobby';
+  if (parts.length === 0) return "room:lobby";
 
-  if ((parts[0] === 'blog' || parts[0] === 'post') && parts.length >= 3) {
+  if ((parts[0] === "blog" || parts[0] === "post") && parts.length >= 3) {
     const year = parts[1];
-    const slug = parts.slice(2).join('-');
+    const slug = parts.slice(2).join("-");
     return normalizeRoomKey(`room:blog:${year}:${slug}`);
   }
 
-  if (parts[0] === 'projects') {
-    const project = parts[1] || 'lobby';
+  if (parts[0] === "projects") {
+    const project = parts[1] || "lobby";
     return normalizeRoomKey(`room:project:${project}`);
   }
 
-  return normalizeRoomKey(`room:page:${parts.join(':')}`);
+  return normalizeRoomKey(`room:page:${parts.join(":")}`);
 }
 
 function formatRoomName(room: string): string {
-  return String(room || 'room:lobby')
-    .replace(/^room:/, '')
-    .replace(/:/g, '/');
+  return String(room || "room:lobby")
+    .replace(/^room:/, "")
+    .replace(/:/g, "/");
 }
 
 function getVisitorName(): string {
@@ -62,12 +61,16 @@ function getVisitorName(): string {
 
 function buildSystemMessage(
   text: string,
-  level: SystemMessageLevel = 'info',
-  opts?: { systemKind?: 'status' | 'error'; transient?: boolean; expiresAt?: number }
+  level: SystemMessageLevel = "info",
+  opts?: {
+    systemKind?: "status" | "error";
+    transient?: boolean;
+    expiresAt?: number;
+  },
 ): ChatMessage {
   return {
     id: `live_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    role: 'system',
+    role: "system",
     text,
     systemLevel: level,
     systemKind: opts?.systemKind,
@@ -76,31 +79,33 @@ function buildSystemMessage(
   };
 }
 
-function normalizeSystemLevel(level?: 'info' | 'warn' | 'error'): SystemMessageLevel {
-  if (level === 'error' || level === 'warn') return level;
-  return 'info';
+function normalizeSystemLevel(
+  level?: "info" | "warn" | "error",
+): SystemMessageLevel {
+  if (level === "error" || level === "warn") return level;
+  return "info";
 }
 
 function formatSessionMessage(message: string): string {
-  const raw = String(message || '').trim();
+  const raw = String(message || "").trim();
   const normalized = raw.toLowerCase();
 
-  if (normalized === 'ai response completed') {
-    return 'AI 응답이 완료되었습니다.';
+  if (normalized === "ai response completed") {
+    return "AI 응답이 완료되었습니다.";
   }
 
-  if (normalized === 'your live message was delivered') {
-    return '라이브 메시지가 전달되었습니다. 참여자가 없으면 답변이 바로 오지 않을 수 있습니다.';
+  if (normalized === "your live message was delivered") {
+    return "라이브 메시지가 전달되었습니다. 참여자가 없으면 답변이 바로 오지 않을 수 있습니다.";
   }
 
-  if (normalized.endsWith('replied in the room')) {
-    const suffix = 'replied in the room';
+  if (normalized.endsWith("replied in the room")) {
+    const suffix = "replied in the room";
     const name = raw.slice(0, -suffix.length).trim();
-    return `${name || 'assistant'}가 방에서 응답했습니다.`;
+    return `${name || "assistant"}가 방에서 응답했습니다.`;
   }
 
-  if (normalized === 'auto room reply skipped due to temporary ai error') {
-    return '자동 응답이 일시 오류로 생략되었습니다.';
+  if (normalized === "auto room reply skipped due to temporary ai error") {
+    return "자동 응답이 일시 오류로 생략되었습니다.";
   }
 
   return raw;
@@ -113,12 +118,17 @@ export function useLiveVisitorChat(input: {
   const { sessionId, push } = input;
   const connectedRef = useRef(false);
   const disconnectRef = useRef<(() => void) | null>(null);
+  const liveSessionIdRef = useRef<string>(sessionId);
   const visitorName = useMemo(() => getVisitorName(), []);
   const [room, setRoom] = useState<string>(() => {
-    if (typeof window === 'undefined') return 'room:lobby';
+    if (typeof window === "undefined") return "room:lobby";
     return toRoomKey(window.location.pathname);
   });
   const [reconnectNonce, setReconnectNonce] = useState(0);
+
+  useEffect(() => {
+    liveSessionIdRef.current = sessionId;
+  }, [sessionId]);
 
   const switchRoom = useCallback((nextRoom: string) => {
     const normalized = normalizeRoomKey(nextRoom);
@@ -142,48 +152,59 @@ export function useLiveVisitorChat(input: {
       room,
       name: visitorName,
       onEvent: (event: LiveChatEvent) => {
-        if (event.type === 'ping') return;
+        if (event.type === "ping") return;
 
-        if (event.type === 'connected') {
+        if (event.type === "connected") {
+          if (event.sessionId && typeof event.sessionId === "string") {
+            liveSessionIdRef.current = event.sessionId;
+          }
           if (!connectedRef.current) {
             connectedRef.current = true;
             push(
               buildSystemMessage(
                 `[Live] ${formatRoomName(event.room || room)} 방 연결됨 (${event.onlineCount} online). Use /live <message> to chat in real time.`,
-                'info',
-                { systemKind: 'status' }
-              )
+                "info",
+                { systemKind: "status" },
+              ),
             );
           }
           return;
         }
 
-        if (event.type === 'presence') {
-          if (event.sessionId === sessionId) return;
-          const actionText = event.action === 'join' ? 'joined' : 'left';
+        if (event.type === "presence") {
+          const activeLiveSessionId = liveSessionIdRef.current || sessionId;
+          if (event.sessionId === activeLiveSessionId) return;
+          const actionText = event.action === "join" ? "joined" : "left";
           push(
             buildSystemMessage(
               `[Live] ${event.name} ${actionText}. Online: ${event.onlineCount}`,
-              'info',
-              { systemKind: 'status', transient: true, expiresAt: Date.now() + 4000 }
-            )
+              "info",
+              {
+                systemKind: "status",
+                transient: true,
+                expiresAt: Date.now() + 4000,
+              },
+            ),
           );
           return;
         }
 
-        if (event.type === 'live_message') {
-          const sender = event.name || 'anonymous';
+        if (event.type === "live_message") {
+          const sender = event.name || "anonymous";
+          const activeLiveSessionId = liveSessionIdRef.current || sessionId;
           const isSelfEcho =
-            event.sessionId === sessionId && sender.trim().toLowerCase() === visitorName.trim().toLowerCase();
+            event.sessionId === activeLiveSessionId &&
+            sender.trim().toLowerCase() === visitorName.trim().toLowerCase();
           if (isSelfEcho) return;
 
           const isLiveAgent =
-            event.senderType === 'agent' || sender.toLowerCase() === 'room-companion';
+            event.senderType === "agent" ||
+            sender.toLowerCase() === "room-companion";
 
           if (isLiveAgent) {
             push({
               id: `live_agent_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-              role: 'assistant',
+              role: "assistant",
               text: `[Live · ${sender}] ${event.text}`,
             });
             return;
@@ -191,34 +212,37 @@ export function useLiveVisitorChat(input: {
 
           push({
             id: `live_visitor_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-            role: 'assistant',
+            role: "assistant",
             text: `[Live · ${sender}] ${event.text}`,
           });
           return;
         }
 
-        if (event.type === 'session_notification' && event.sessionId === sessionId) {
+        if (
+          event.type === "session_notification" &&
+          event.sessionId === (liveSessionIdRef.current || sessionId)
+        ) {
           const lvl = normalizeSystemLevel(event.level);
           push(
             buildSystemMessage(
               `[Session] ${formatSessionMessage(event.message)}`,
               lvl,
               {
-                systemKind: lvl === 'error' ? 'error' : 'status',
-                transient: lvl !== 'error',
-                expiresAt: lvl !== 'error' ? Date.now() + 4000 : undefined,
-              }
-            )
+                systemKind: lvl === "error" ? "error" : "status",
+                transient: lvl !== "error",
+                expiresAt: lvl !== "error" ? Date.now() + 4000 : undefined,
+              },
+            ),
           );
         }
       },
       onError: () => {
         push(
           buildSystemMessage(
-            '[Live] Connection unstable. Reconnecting...',
-            'warn',
-            { systemKind: 'error' }
-          )
+            "[Live] Connection unstable. Reconnecting...",
+            "warn",
+            { systemKind: "error" },
+          ),
         );
       },
     });
@@ -236,14 +260,14 @@ export function useLiveVisitorChat(input: {
   const sendVisitorMessage = useCallback(
     async (text: string) => {
       await sendLiveChatMessage({
-        sessionId,
+        sessionId: liveSessionIdRef.current || sessionId,
         text,
         room,
         name: visitorName,
-        senderType: 'client',
+        senderType: "client",
       });
     },
-    [sessionId, visitorName, room]
+    [sessionId, visitorName, room],
   );
 
   return { sendVisitorMessage, room, switchRoom };

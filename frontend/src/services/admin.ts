@@ -10,10 +10,8 @@ export type CreatePostPayload = {
 };
 
 export type LoginResponse = {
-  sessionId: string;
+  challengeId: string;
   message: string;
-  expiresAt: string;
-  _dev_otp?: string;
 };
 
 export type VerifyOtpResponse = {
@@ -28,32 +26,43 @@ export type VerifyOtpResponse = {
   };
 };
 
+/**
+ * Step 1: Request a TOTP challenge (no credentials needed — TOTP is the secret).
+ * Returns a short-lived challengeId (5 min TTL).
+ * _username and _password are ignored but kept for backward compatibility.
+ */
 export async function adminLoginStep1(
-  username: string,
-  password: string
+  _username?: string,
+  _password?: string
 ): Promise<LoginResponse> {
   const base = getApiBaseUrl();
-  const res = await fetch(`${base}/api/v1/auth/login`, {
+  const res = await fetch(`${base}/api/v1/auth/totp/challenge`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json?.ok) {
-    throw new Error(json?.error?.message || json?.error || 'Login failed');
+    throw new Error(json?.error?.message || json?.error || 'Challenge request failed');
   }
-  return json.data as LoginResponse;
+  return {
+    challengeId: json.data.challengeId as string,
+    message: 'TOTP challenge issued — enter your authenticator code',
+  };
 }
 
+/**
+ * Step 2: Verify the TOTP code against the challenge.
+ * challengeId is from adminLoginStep1; otp is the 6-digit TOTP code.
+ */
 export async function adminLoginStep2(
-  sessionId: string,
+  challengeId: string,
   otp: string
 ): Promise<VerifyOtpResponse> {
   const base = getApiBaseUrl();
-  const res = await fetch(`${base}/api/v1/auth/verify-otp`, {
+  const res = await fetch(`${base}/api/v1/auth/totp/verify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessionId, otp }),
+    body: JSON.stringify({ challengeId, code: otp }),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json?.ok) {
@@ -62,37 +71,26 @@ export async function adminLoginStep2(
   return json.data as VerifyOtpResponse;
 }
 
-export async function adminResendOtp(sessionId: string): Promise<{ message: string; expiresAt: string }> {
-  const base = getApiBaseUrl();
-  const res = await fetch(`${base}/api/v1/auth/resend-otp`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessionId }),
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok || !json?.ok) {
-    throw new Error(json?.error?.message || json?.error || 'Failed to resend OTP');
-  }
-  return json.data as { message: string; expiresAt: string };
+/**
+ * @deprecated TOTP does not support resend. Calls adminLoginStep1() to issue a new challenge.
+ */
+export async function adminResendOtp(_sessionId: string): Promise<{ message: string; expiresAt: string }> {
+  await adminLoginStep1();
+  return {
+    message: 'New TOTP challenge issued — enter your authenticator code',
+    expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+  };
 }
 
+/**
+ * @deprecated Use adminLoginStep1 + adminLoginStep2 instead.
+ */
 export async function adminLogin(
-  username: string,
-  password: string
+  _username: string,
+  _password: string
 ): Promise<string> {
-  const base = getApiBaseUrl();
-  const res = await fetch(`${base}/api/v1/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok || !json?.ok) {
-    throw new Error(json?.error || 'Login failed');
-  }
-  const token = json.data?.token as string;
-  if (!token) throw new Error('No token returned');
-  return token;
+  const { challengeId } = await adminLoginStep1();
+  return challengeId;
 }
 
 export async function createPostPR(

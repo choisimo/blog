@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider } from './contexts/ThemeContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { Header, Footer } from './components/organisms';
-import { ErrorBoundary } from './components/common';
+import { ErrorBoundary, AuthGuard } from './components/common';
 import { Toaster } from './components/ui/toaster';
 import { TooltipProvider } from './components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -16,6 +16,7 @@ import NewPost from './pages/NewPost';
 import NotFound from './pages/NotFound';
 import Insight from './pages/Insight';
 import AdminConfig from './pages/AdminConfig';
+import AdminAuthCallback from './pages/AdminAuthCallback';
 import './App.css';
 import { VisitedPostsMinimap } from '@/components/features/navigation/VisitedPostsMinimap';
 import FloatingActionBar from '@/components/features/memo/FloatingActionBar';
@@ -52,7 +53,7 @@ function App() {
 
       const envFlag = import.meta.env.VITE_FEATURE_FAB;
       if (envFlag != null) {
-        return envFlag === true || envFlag === 'true' || envFlag === '1';
+        return envFlag === 'true' || envFlag === '1';
       }
 
       return true;
@@ -85,8 +86,13 @@ function App() {
                       <Route path='/about' element={<About />} />
                       <Route path='/contact' element={<Navigate to='/about' replace />} />
                       <Route path='/insight' element={<Insight />} />
-                      <Route path='/admin/new-post' element={<NewPost />} />
+                      <Route path='/admin/new-post' element={
+                        <AuthGuard>
+                          <NewPost />
+                        </AuthGuard>
+                      } />
                       <Route path='/admin/config' element={<AdminConfig />} />
+                      <Route path='/admin/auth/callback' element={<AdminAuthCallback />} />
                       <Route path='*' element={<NotFound />} />
                     </Routes>
                   </main>

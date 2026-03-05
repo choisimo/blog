@@ -37,8 +37,13 @@ export const configSchema = z.object({
 
   ADMIN_BEARER_TOKEN: z.string().optional(),
   JWT_SECRET: z.string().optional(),
-  ADMIN_USERNAME: z.string().optional(),
-  ADMIN_PASSWORD: z.string().optional(),
+  TOTP_SECRET: z.string().optional(),
+  ADMIN_ALLOWED_EMAILS: z.string().optional(),
+  GITHUB_CLIENT_ID: z.string().optional(),
+  GITHUB_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  OAUTH_REDIRECT_BASE_URL: z.string().optional(),
   VERCEL_DEPLOY_HOOK_URL: z.string().optional(),
 
   AI_EMBEDDING_URL: z.string().default('https://api.openai.com/v1'),

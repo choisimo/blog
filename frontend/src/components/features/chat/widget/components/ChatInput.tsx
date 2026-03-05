@@ -62,36 +62,42 @@ export function ChatInput({
         isMobile && "pb-[calc(1rem+env(safe-area-inset-bottom))]",
         isTerminal
           ? "bg-[hsl(var(--terminal-code-bg))] border-border"
-          : "bg-background",
+          : "bg-white dark:bg-[#0A0A0A] border-[#EAEAEA] dark:border-[#222222]",
       )}
     >
       {/* New conversation button */}
       <div
         className={cn(
-          "flex items-center justify-between mb-3",
+          "flex items-center justify-between mb-2",
           isTerminal && "font-mono",
         )}
       >
         <span
           className={cn(
-            "text-xs text-muted-foreground",
-            isTerminal && "text-primary/60",
+            isTerminal
+              ? "text-xs text-primary/60"
+              : "text-[11px] text-[#AAAAAA] dark:text-[#555555]",
           )}
         >
           {isTerminal ? "# 새 주제 시작" : "새 주제를 시작할 땐"}
         </span>
-        <Button
-          onClick={onClearAll}
-          variant="ghost"
-          size="sm"
-          className={cn(
-            "h-8 px-3 text-xs",
-            isTerminal &&
-              "font-mono text-primary/80 hover:text-primary hover:bg-primary/10 border border-primary/30",
-          )}
-        >
-          {isTerminal ? "$ clear" : "새 대화"}
-        </Button>
+        {isTerminal ? (
+          <Button
+            onClick={onClearAll}
+            variant="ghost"
+            size="sm"
+            className="h-8 px-3 text-xs font-mono text-primary/80 hover:text-primary hover:bg-primary/10 border border-primary/30"
+          >
+            $ clear
+          </Button>
+        ) : (
+          <button
+            onClick={onClearAll}
+            className="text-[11px] text-[#666666] dark:text-[#888888] hover:text-[#111111] dark:hover:text-[#EEEEEE] px-2 py-1 rounded-sm hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A] transition-colors"
+          >
+            새 대화
+          </button>
+        )}
       </div>
 
       {/* Attached image preview */}
@@ -373,11 +379,12 @@ function DefaultInput({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-border bg-muted/40 px-4 py-3 shadow-sm",
-        isMobile && "rounded-xl",
+        "rounded-lg border border-[#EAEAEA] dark:border-[#333333] bg-white dark:bg-[#0A0A0A]",
+        "transition-colors focus-within:border-[#111111] dark:focus-within:border-[#EEEEEE]",
+        "px-3 py-2.5",
       )}
     >
-      <div className="flex items-end gap-3">
+      <div className="flex items-end gap-2">
         <Textarea
           value={input}
           onChange={(e) => onInputChange(e.target.value)}
@@ -386,13 +393,15 @@ function DefaultInput({
           placeholder={placeholder}
           ref={textareaRef}
           className={cn(
-            "flex-1 resize-none border-0 bg-transparent px-0 py-2 focus-visible:ring-0 focus-visible:ring-offset-0 overflow-y-auto",
+            "flex-1 resize-none border-0 bg-transparent px-0 py-1.5",
+            "text-[13px] text-[#111111] dark:text-[#EEEEEE]",
+            "placeholder:text-[#AAAAAA] focus-visible:ring-0 focus-visible:ring-offset-0 overflow-y-auto",
             isMobile
-              ? "text-base min-h-[56px] max-h-[96px]"
-              : "text-sm min-h-[52px] max-h-[72px]",
+              ? "min-h-[44px] max-h-[96px]"
+              : "min-h-[44px] max-h-[96px]",
           )}
         />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <input
             ref={fileInputRef}
             type="file"
@@ -403,40 +412,35 @@ function DefaultInput({
               onFileSelect(file);
             }}
           />
-          <Button
+          <button
             type="button"
-            size="icon"
-            variant="ghost"
-            className={cn(
-              "rounded-xl border border-dashed border-muted-foreground/40 text-muted-foreground hover:border-muted-foreground hover:text-foreground",
-              isMobile ? "h-12 w-12" : "h-11 w-11",
-            )}
             onClick={onFileClick}
             aria-label="이미지 첨부"
+            className="h-8 w-8 flex items-center justify-center rounded-md transition-colors text-[#AAAAAA] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]"
           >
-            <ImageIcon className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
-          </Button>
+            <ImageIcon className="h-3.5 w-3.5" />
+          </button>
           {busy ? (
-            <Button
+            <button
               onClick={onStop}
-              size="icon"
-              variant="secondary"
-              className={cn("rounded-xl", isMobile ? "h-12 w-12" : "h-11 w-11")}
+              className="h-8 w-8 flex items-center justify-center rounded-md transition-colors text-[#888888] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]"
             >
-              <Square className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
-            </Button>
+              <Square className="h-3.5 w-3.5" />
+            </button>
           ) : (
-            <Button
+            <button
               onClick={onSend}
               disabled={!canSend}
-              size="icon"
+              type="button"
               className={cn(
-                "rounded-xl shadow-lg",
-                isMobile ? "h-12 w-12" : "h-11 w-11",
+                "h-8 w-8 flex items-center justify-center rounded-md transition-colors",
+                canSend
+                  ? "text-[#111111] dark:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]"
+                  : "text-[#CCCCCC] dark:text-[#444444] cursor-not-allowed",
               )}
             >
-              <Send className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
-            </Button>
+              <Send className="h-3.5 w-3.5" />
+            </button>
           )}
         </div>
       </div>

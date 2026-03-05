@@ -31,7 +31,7 @@ export type SummaryResult = {
 };
 
 export type QuizQuestion = {
-  type: "fill_blank" | "multiple_choice" | "transform" | "explain";
+  type: "fill_blank" | "multiple_choice" | "transform" | "explain" | "system_modeling" | "tradeoff_analysis" | "refactoring_problem" | "concept_connection";
   question: string;
   answer: string;
   options?: string[]; // for multiple_choice
@@ -136,45 +136,53 @@ async function invokeTask<T>(mode: TaskMode, payload: TaskPayload): Promise<T> {
     },
   };
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(30_000),
+    });
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`AI task error: ${res.status} ${text.slice(0, 180)}`);
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`AI task error: ${res.status} ${text.slice(0, 180)}`);
+    }
+
+    const result = (await res.json()) as
+      | TaskResponse<T>
+      | Record<string, unknown>;
+
+    // Detect fallback response from Workers — AI server unavailable
+    if (isRecord(result) && result._fallback === true) {
+      throw new Error("AI server returned fallback: backend unavailable");
+    }
+
+    // data 추출 (다양한 응답 구조 대응)
+    const topLevel =
+      (isRecord(result) && ("data" in result ? result.data : undefined)) ??
+      (isRecord(result) && ("result" in result ? result.result : undefined)) ??
+      result;
+
+    // Workers success(c, { data, mode, source }) 래핑 해제
+    const data =
+      (isRecord(topLevel) && "data" in topLevel ? topLevel.data : undefined) ??
+      topLevel;
+
+    if (!data) {
+      throw new Error("Invalid AI task response: no data");
+    }
+
+    return data as T;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "TimeoutError") {
+      throw new Error("AI task timed out after 30 seconds");
+    }
+    throw err;
   }
-
-  const result = (await res.json()) as
-    | TaskResponse<T>
-    | Record<string, unknown>;
-
-  // Detect fallback response from Workers — AI server unavailable
-  if (isRecord(result) && result._fallback === true) {
-    throw new Error("AI server returned fallback: backend unavailable");
-  }
-
-  // data 추출 (다양한 응답 구조 대응)
-  const topLevel =
-    (isRecord(result) && ("data" in result ? result.data : undefined)) ??
-    (isRecord(result) && ("result" in result ? result.result : undefined)) ??
-    result;
-
-  // Workers success(c, { data, mode, source }) 래핑 해제
-  const data =
-    (isRecord(topLevel) && "data" in topLevel ? topLevel.data : undefined) ??
-    topLevel;
-
-  if (!data) {
-    throw new Error("Invalid AI task response: no data");
-  }
-
-  return data as T;
 }
 
 /**
@@ -455,6 +463,10 @@ const QUIZ_TYPES: QuizQuestion["type"][] = [
   "multiple_choice",
   "transform",
   "explain",
+  "system_modeling",
+  "tradeoff_analysis",
+  "refactoring_problem",
+  "concept_connection",
 ];
 
 function normalizeQuizType(value: unknown): QuizQuestion["type"] {

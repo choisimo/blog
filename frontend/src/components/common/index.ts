@@ -6,3 +6,4 @@ export { PostImage } from './PostImage';
 export { SkipLink } from './SkipLink';
 export { LanguageToggle } from './LanguageToggle';
 export { ErrorBoundary, PageErrorBoundary } from './ErrorBoundary';
+export { AuthGuard } from './AuthGuard';

@@ -57,33 +57,33 @@ export function ChatHeader({
   return (
     <div
       className={cn(
-        "flex items-center justify-between border-b px-4 py-3 shrink-0",
-        isMobile && "px-4 py-3 safe-area-top",
+        "flex items-center justify-between border-b shrink-0",
+        isMobile ? "px-4 py-3 safe-area-top" : "px-3 py-2.5",
         isTerminal
           ? "bg-[hsl(var(--terminal-titlebar))] border-border"
           : isMobile
-            ? "bg-background"
-            : "bg-background/95 backdrop-blur-sm",
+            ? "bg-white dark:bg-[#0A0A0A] border-[#EAEAEA] dark:border-[#222222]"
+            : "bg-white dark:bg-[#0A0A0A] border-[#EAEAEA] dark:border-[#222222]",
       )}
     >
       {/* Left: Hamburger + Icon + Title */}
-      <div className="flex items-center gap-3 min-w-0 flex-1">
+      <div className="flex items-center gap-2.5 min-w-0 flex-1">
         {/* Hamburger sidebar toggle (PC only) */}
         {!isMobile && (
-          <Button
+          <button
             type="button"
-            size="icon"
-            variant="ghost"
             aria-label={sidebarOpen ? "사이드바 닫기" : "사이드바 열기"}
             aria-pressed={sidebarOpen}
             className={cn(
-              "h-8 w-8 shrink-0",
-              isTerminal && "text-primary hover:bg-primary/10",
+              "h-7 w-7 shrink-0 flex items-center justify-center rounded-md transition-colors",
+              isTerminal
+                ? "text-primary hover:bg-primary/10"
+                : "text-[#888888] dark:text-[#666666] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]",
             )}
             onClick={onToggleSidebar}
           >
-            <Menu className="h-4 w-4" />
-          </Button>
+            <Menu className="h-3.5 w-3.5" />
+          </button>
         )}
         {/* Terminal window controls (PC only) */}
         {isTerminal && !isMobile && (
@@ -93,40 +93,58 @@ export function ChatHeader({
             <span className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]" />
           </div>
         )}
+        {/* Icon */}
         <div
           className={cn(
-            "flex items-center justify-center rounded-full bg-primary/10 shrink-0",
-            isMobile ? "h-9 w-9" : "h-10 w-10",
-            isTerminal && "bg-primary/20 rounded-lg",
+            "flex items-center justify-center shrink-0",
+            isTerminal
+              ? cn(
+                  "rounded-lg bg-primary/20",
+                  isMobile ? "h-9 w-9" : "h-8 w-8",
+                )
+              : cn(
+                  "rounded-md bg-[#F5F5F5] dark:bg-[#1A1A1A]",
+                  isMobile ? "h-8 w-8" : "h-7 w-7",
+                ),
           )}
         >
           <Sparkles
             className={cn(
-              "text-primary",
-              isMobile ? "h-4 w-4" : "h-5 w-5",
-              isTerminal && "terminal-glow",
+              isTerminal
+                ? cn("text-primary terminal-glow", isMobile ? "h-4 w-4" : "h-4 w-4")
+                : cn(
+                    "text-[#111111] dark:text-[#EEEEEE]",
+                    isMobile ? "h-4 w-4" : "h-3.5 w-3.5",
+                  ),
             )}
           />
         </div>
+        {/* Title + subtitle */}
         <div className="min-w-0">
           <p
             className={cn(
-              "font-semibold truncate",
-              isMobile ? "text-sm" : "text-sm",
-              isTerminal && "font-mono text-primary",
+              "truncate leading-tight",
+              isTerminal
+                ? cn("font-mono text-primary", isMobile ? "text-sm" : "text-[13px] font-semibold")
+                : cn(
+                    "font-semibold tracking-tight text-[#111111] dark:text-[#EEEEEE]",
+                    isMobile ? "text-[13px]" : "text-[13px]",
+                  ),
             )}
           >
             {isTerminal ? ">_ AI Chat" : "AI Chat"}
           </p>
           <p
             className={cn(
-              "text-xs text-muted-foreground truncate",
-              isTerminal && "font-mono",
+              "truncate leading-tight",
+              isTerminal
+                ? "text-xs text-muted-foreground font-mono"
+                : "text-[11px] text-[#888888] dark:text-[#666666]",
             )}
           >
             {busy ? (
               <span className="inline-flex items-center gap-1">
-                <Loader2 className="h-3 w-3 animate-spin" /> 생성 중…
+                <Loader2 className="h-2.5 w-2.5 animate-spin" /> 생성 중…
               </span>
             ) : liveStatus ? (
               liveStatus
@@ -140,7 +158,7 @@ export function ChatHeader({
       </div>
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="flex items-center gap-0.5 shrink-0">
         {/* Options menu */}
         {isMobile ? (
           <Button
@@ -159,18 +177,18 @@ export function ChatHeader({
         ) : (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
+              <button
                 type="button"
-                size="icon"
-                variant="ghost"
                 aria-label="대화 옵션"
                 className={cn(
-                  "h-9 w-9",
-                  isTerminal && "text-primary hover:bg-primary/10",
+                  "h-7 w-7 flex items-center justify-center rounded-md transition-colors",
+                  isTerminal
+                    ? "text-primary hover:bg-primary/10"
+                    : "text-[#888888] dark:text-[#666666] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]",
                 )}
               >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
+                <MoreVertical className="h-3.5 w-3.5" />
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48 text-sm">
               <DropdownMenuItem
@@ -209,19 +227,20 @@ export function ChatHeader({
 
         {/* Close button */}
         {onClose && (
-          <Button
+          <button
             type="button"
-            size="icon"
-            variant="ghost"
-            className={cn(
-              isMobile ? "h-10 w-10" : "h-9 w-9",
-              isTerminal && "text-primary hover:bg-primary/10",
-            )}
             aria-label="창 닫기"
             onClick={onClose}
+            className={cn(
+              "flex items-center justify-center rounded-md transition-colors",
+              isMobile ? "h-10 w-10" : "h-7 w-7",
+              isTerminal
+                ? "text-primary hover:bg-primary/10"
+                : "text-[#888888] dark:text-[#666666] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]",
+            )}
           >
-            <X className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
-          </Button>
+            <X className={isMobile ? "h-5 w-5" : "h-3.5 w-3.5"} />
+          </button>
         )}
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from '@/utils/apiBase';
+import { getCachedAdvancedVisitorId, getAdvancedFingerprint } from '@/services/fingerprint';
 
 // Available emoji reactions
 export const ALLOWED_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '🎉', '💡'] as const;
@@ -9,39 +10,24 @@ export interface ReactionCount {
   count: number;
 }
 
-// Generate a simple fingerprint for anonymous reaction tracking
+// Use the advanced hybrid fingerprint for reaction tracking.
+// Prefers the cached synchronous value for performance; falls back to async.
 export function getFingerprint(): string {
-  // Try to get existing fingerprint from localStorage
-  const stored = localStorage.getItem('comment.fingerprint');
+  // Fast path: return cached advanced visitor ID
+  const cached = getCachedAdvancedVisitorId();
+  if (cached) return cached;
+
+  // Fallback: legacy localStorage key (will be populated once async init runs)
+  const stored = localStorage.getItem('nodove_adv_fingerprint');
   if (stored) return stored;
 
-  // Generate new fingerprint based on browser characteristics
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  ctx?.fillText('fingerprint', 10, 10);
-  const canvasData = canvas.toDataURL();
+  // Last resort: trigger async generation and return a temporary placeholder
+  // The next reaction will use the real ID once it's cached.
+  getAdvancedFingerprint().catch(() => { });
 
-  const components = [
-    navigator.userAgent,
-    navigator.language,
-    screen.width,
-    screen.height,
-    new Date().getTimezoneOffset(),
-    canvasData.slice(-50),
-  ];
-
-  // Simple hash function
-  const hash = components.join('|');
-  let result = 0;
-  for (let i = 0; i < hash.length; i++) {
-    const char = hash.charCodeAt(i);
-    result = ((result << 5) - result) + char;
-    result = result & result;
-  }
-  const fingerprint = Math.abs(result).toString(36);
-
-  localStorage.setItem('comment.fingerprint', fingerprint);
-  return fingerprint;
+  // Generate a temporary ID so the current request isn't blocked
+  const tempId = `tmp_${Date.now().toString(36)}`;
+  return tempId;
 }
 
 // Fetch reactions for multiple comments

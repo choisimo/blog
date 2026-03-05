@@ -1,265 +1,430 @@
 /**
- * Enhanced Auth Routes with Email OTP Verification
+ * Auth Routes — TOTP + OAuth2 (GitHub / Google)
  *
- * Flow:
- * 1. POST /auth/login - Verify credentials, send OTP to admin email
- * 2. POST /auth/verify-otp - Verify OTP, issue access + refresh tokens
- * 3. POST /auth/refresh - Use refresh token to get new access token
- * 4. POST /auth/logout - Invalidate refresh token
- * 5. GET /auth/me - Get current user info
+ * Admin authentication flow (replaces username/password + email OTP):
+ *
+ * TOTP flow:
+ *   POST /auth/totp/setup         - Get QR code + secret for first-time setup
+ *   POST /auth/totp/setup/verify  - Confirm TOTP setup with first code
+ *   POST /auth/totp/challenge     - Create a short-lived challenge
+ *   POST /auth/totp/verify        - Verify code + challengeId → issue JWT
+ *
+ * OAuth2 flow:
+ *   GET  /auth/oauth/github           - Redirect to GitHub
+ *   GET  /auth/oauth/github/callback  - Exchange code → issue JWT → redirect to frontend
+ *   GET  /auth/oauth/google           - Redirect to Google
+ *   GET  /auth/oauth/google/callback  - Exchange code → issue JWT → redirect to frontend
+ *
+ * Token management (unchanged):
+ *   POST /auth/refresh    - Refresh access token
+ *   POST /auth/logout     - Invalidate session
+ *   GET  /auth/me         - Current user info
+ *
+ * Anonymous (unchanged, verbatim):
+ *   POST /auth/anonymous         - Issue anonymous JWT
+ *   POST /auth/anonymous/refresh - Refresh anonymous JWT
  *
  * Security:
- * - Admin credentials from GitHub Secrets (env vars)
- * - OTP sent to admin email (ADMIN_EMAIL)
- * - Access token: 15 minutes
- * - Refresh token: 7 days (stored in KV for revocation)
- * - OTP: 10 minutes, single use
+ *   - TOTP secret stored in KV at key `totp:secret`
+ *   - TOTP setup complete flag at `totp:setup:complete`
+ *   - TOTP challenges expire in 5 minutes (`auth:challenge:{id}`)
+ *   - OAuth state tokens expire in 5 minutes (`auth:oauth:state:{state}`)
+ *   - Only emails in ADMIN_ALLOWED_EMAILS can authenticate via OAuth
+ *   - All admin tokens have emailVerified: true
  */
 
 import { Hono } from 'hono';
-import type { HonoEnv, Env, AuthSession } from '../types';
+import type { HonoEnv } from '../types';
 import { success, badRequest, unauthorized, error } from '../lib/response';
 import {
   verifyJwt,
   signJwt,
   generateAccessToken,
   generateRefreshToken,
-  generateOtp,
   generateSecureToken,
-  OTP_EXPIRY,
   REFRESH_TOKEN_EXPIRY,
 } from '../lib/jwt';
+import { generateTotpSecret, buildOtpauthUri, verifyTotp } from '../lib/totp';
+import {
+  buildGithubAuthUrl,
+  exchangeGithubCode,
+  buildGoogleAuthUrl,
+  exchangeGoogleCode,
+  isEmailAllowed,
+} from '../lib/oauth';
 
 const auth = new Hono<HonoEnv>();
 
 // KV key prefixes
-const KV_AUTH_SESSION_PREFIX = 'auth:session:';
 const KV_REFRESH_TOKEN_PREFIX = 'auth:refresh:';
+const KV_TOTP_SECRET_KEY = 'totp:secret';
+const KV_TOTP_SETUP_KEY = 'totp:setup:complete';
+const KV_CHALLENGE_PREFIX = 'auth:challenge:';
+const KV_OAUTH_STATE_PREFIX = 'auth:oauth:state:';
 
 // Anonymous token expiry (30 days)
 const ANONYMOUS_TOKEN_EXPIRY = 30 * 24 * 3600;
 
-/**
- * Hash a string using SHA-256 (for OTP storage)
- */
-async function hashString(str: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(str);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-}
+// TOTP challenge TTL (5 minutes)
+const CHALLENGE_TTL = 5 * 60;
 
-/**
- * Send OTP email via Resend
- */
-async function sendOtpEmail(env: Env, email: string, otp: string): Promise<boolean> {
-  const apiKey = env.RESEND_API_KEY;
-  const from = env.NOTIFY_FROM_EMAIL;
+// OAuth state TTL (5 minutes)
+const OAUTH_STATE_TTL = 5 * 60;
 
-  if (!apiKey || !from) {
-    console.error('Missing email configuration for OTP');
-    return false;
-  }
+// ============================================================================
+// HELPERS
+// ============================================================================
 
-  const html = `
-    <div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #0f172a; max-width: 400px; margin: 0 auto; padding: 20px;">
-      <h2 style="margin: 0 0 16px; color: #1e293b;">Admin Login Verification</h2>
-      <p style="margin: 0 0 16px; color: #475569;">Your one-time verification code is:</p>
-      <div style="background: #f1f5f9; border-radius: 8px; padding: 16px; text-align: center; margin: 0 0 16px;">
-        <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #0f172a;">${otp}</span>
-      </div>
-      <p style="margin: 0 0 8px; color: #64748b; font-size: 14px;">This code expires in 10 minutes.</p>
-      <p style="margin: 0; color: #94a3b8; font-size: 12px;">If you didn't request this code, please ignore this email.</p>
-    </div>
-  `;
-
-  try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from,
-        to: [email],
-        subject: `Admin Login: Your verification code is ${otp}`,
-        html,
-      }),
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      console.error('Failed to send OTP email:', res.status, err);
-      return false;
-    }
-
-    return true;
-  } catch (err) {
-    console.error('Error sending OTP email:', err);
-    return false;
-  }
-}
-
-/**
- * POST /auth/login
- * Step 1: Verify credentials and send OTP to admin email
- */
-auth.post('/login', async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  const { username, password } = body as { username?: string; password?: string };
-
-  if (!username || !password) {
-    return badRequest(c, 'username and password required');
-  }
-
-  // Verify admin credentials from env (GitHub Secrets)
-  const adminUsername = c.env.ADMIN_USERNAME;
-  const adminPassword = c.env.ADMIN_PASSWORD;
-  const adminEmail = c.env.ADMIN_EMAIL;
-
-  if (!adminUsername || !adminPassword) {
-    return error(c, 'Authentication not configured', 500);
-  }
-
-  if (username !== adminUsername || password !== adminPassword) {
-    // Add delay to prevent timing attacks
-    await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 500));
-    return unauthorized(c, 'Invalid credentials');
-  }
-
-  if (!adminEmail) {
-    return error(c, 'Admin email not configured for OTP verification', 500);
-  }
-
-  // Generate OTP and session
-  const otp = generateOtp(6);
-  const sessionId = generateSecureToken(32);
-  const otpHash = await hashString(otp);
-  const expiresAt = new Date(Date.now() + OTP_EXPIRY * 1000).toISOString();
-
-  // Store session in KV
-  const session: AuthSession = {
-    id: sessionId,
-    username: adminUsername,
-    email: adminEmail,
-    otp_hash: otpHash,
-    otp_expires_at: expiresAt,
-    is_verified: 0,
-    created_at: new Date().toISOString(),
-  };
-
-  await c.env.KV.put(
-    `${KV_AUTH_SESSION_PREFIX}${sessionId}`,
-    JSON.stringify(session),
-    { expirationTtl: OTP_EXPIRY + 60 } // Add 1 minute buffer
-  );
-
-  // Send OTP email
-  const emailSent = await sendOtpEmail(c.env, adminEmail, otp);
-
-  if (!emailSent) {
-    // In development, return OTP for testing (NOT for production!)
-    if (c.env.ENV !== 'production') {
-      return success(c, {
-        sessionId,
-        message: 'OTP generated (dev mode)',
-        expiresAt,
-        _dev_otp: otp, // Only in development!
-      });
-    }
-    return error(c, 'Failed to send verification email', 500);
-  }
-
-  // Mask email for response
-  const maskedEmail = adminEmail.replace(/(.{2})(.*)(@.*)/, '$1***$3');
-
-  return success(c, {
-    sessionId,
-    message: `Verification code sent to ${maskedEmail}`,
-    expiresAt,
-  });
-});
-
-/**
- * POST /auth/verify-otp
- * Step 2: Verify OTP and issue tokens
- */
-auth.post('/verify-otp', async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  const { sessionId, otp } = body as { sessionId?: string; otp?: string };
-
-  if (!sessionId || !otp) {
-    return badRequest(c, 'sessionId and otp required');
-  }
-
-  // Get session from KV
-  const sessionData = await c.env.KV.get(`${KV_AUTH_SESSION_PREFIX}${sessionId}`);
-  if (!sessionData) {
-    return unauthorized(c, 'Invalid or expired session');
-  }
-
-  const session: AuthSession = JSON.parse(sessionData);
-
-  // Check if already verified (prevent replay)
-  if (session.is_verified) {
-    return unauthorized(c, 'Session already verified');
-  }
-
-  // Check OTP expiration
-  if (new Date(session.otp_expires_at) < new Date()) {
-    await c.env.KV.delete(`${KV_AUTH_SESSION_PREFIX}${sessionId}`);
-    return unauthorized(c, 'Verification code expired');
-  }
-
-  // Verify OTP
-  const otpHash = await hashString(otp);
-  if (otpHash !== session.otp_hash) {
-    // Add delay to prevent brute force
-    await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 500));
-    return unauthorized(c, 'Invalid verification code');
-  }
-
-  // Mark session as verified and delete it (single use)
-  await c.env.KV.delete(`${KV_AUTH_SESSION_PREFIX}${sessionId}`);
-
-  // Generate tokens
-  const tokenPayload = {
+/** Build admin token payload with emailVerified: true */
+function adminPayload(email: string) {
+  return {
     sub: 'admin',
-    role: 'admin',
-    username: session.username,
-    email: session.email,
+    role: 'admin' as const,
+    username: 'admin',
+    email,
     emailVerified: true,
   };
+}
 
-  const accessToken = await generateAccessToken(tokenPayload, c.env);
-  const refreshToken = await generateRefreshToken(tokenPayload, c.env);
+/** Issue access + refresh tokens and store refresh token in KV */
+async function issueAdminTokens(
+  payload: ReturnType<typeof adminPayload>,
+  env: HonoEnv['Bindings']
+): Promise<{ accessToken: string; refreshToken: string }> {
+  const accessToken = await generateAccessToken(payload, env);
+  const refreshToken = await generateRefreshToken(payload, env);
 
-  // Store refresh token in KV for revocation capability
   const refreshTokenId = generateSecureToken(16);
-  await c.env.KV.put(
+  await env.KV.put(
     `${KV_REFRESH_TOKEN_PREFIX}${refreshTokenId}`,
     JSON.stringify({
       token: refreshToken,
-      username: session.username,
+      email: payload.email,
       createdAt: new Date().toISOString(),
     }),
     { expirationTtl: REFRESH_TOKEN_EXPIRY }
   );
 
+  return { accessToken, refreshToken };
+}
+
+// ============================================================================
+// TOTP SETUP
+// ============================================================================
+
+/**
+ * GET /auth/totp/setup
+ * Returns otpauthUri + base32 secret for QR code rendering.
+ * If setup is already complete, requires a valid admin Bearer token.
+ */
+auth.get('/totp/setup', async (c) => {
+  const setupComplete = await c.env.KV.get(KV_TOTP_SETUP_KEY);
+
+  // If already set up, require admin auth to re-view
+  if (setupComplete === 'true') {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader) {
+      return unauthorized(c, 'TOTP already configured — provide admin token to view setup');
+    }
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+    try {
+      const payload = await verifyJwt(token, c.env);
+      if (payload.role !== 'admin') {
+        return unauthorized(c, 'Admin token required');
+      }
+    } catch {
+      return unauthorized(c, 'Invalid admin token');
+    }
+  }
+
+  // Get or generate the TOTP secret
+  let secret = await c.env.KV.get(KV_TOTP_SECRET_KEY);
+  if (!secret) {
+    secret = generateTotpSecret();
+    await c.env.KV.put(KV_TOTP_SECRET_KEY, secret);
+  }
+
+  const otpauthUri = buildOtpauthUri(secret, 'nodove blog', 'admin');
+
+  return success(c, {
+    otpauthUri,
+    secret,
+    setupComplete: setupComplete === 'true',
+  });
+});
+
+/**
+ * POST /auth/totp/setup/verify
+ * Verify the first TOTP code to confirm setup is complete.
+ * Body: { code: string }
+ */
+auth.post('/totp/setup/verify', async (c) => {
+  const body = await c.req.json().catch(() => ({})) as { code?: string };
+  const { code } = body;
+
+  if (!code) return badRequest(c, 'code required');
+
+  const secret = await c.env.KV.get(KV_TOTP_SECRET_KEY);
+  if (!secret) return error(c, 'TOTP not yet initialized — call GET /auth/totp/setup first', 400);
+
+  const valid = await verifyTotp(secret, code);
+  if (!valid) {
+    return unauthorized(c, 'Invalid TOTP code');
+  }
+
+  await c.env.KV.put(KV_TOTP_SETUP_KEY, 'true');
+  return success(c, { ok: true, message: 'TOTP setup complete' });
+});
+
+// ============================================================================
+// TOTP LOGIN
+// ============================================================================
+
+/**
+ * POST /auth/totp/challenge
+ * Creates a short-lived challenge ID (5 min) that must be passed to /totp/verify.
+ * Stateless — no user identity needed yet.
+ */
+auth.post('/totp/challenge', async (c) => {
+  const setupComplete = await c.env.KV.get(KV_TOTP_SETUP_KEY);
+  if (setupComplete !== 'true') {
+    return error(c, 'TOTP not configured — complete setup first', 400);
+  }
+
+  const challengeId = generateSecureToken(32);
+  await c.env.KV.put(
+    `${KV_CHALLENGE_PREFIX}${challengeId}`,
+    JSON.stringify({ id: challengeId, createdAt: new Date().toISOString() }),
+    { expirationTtl: CHALLENGE_TTL }
+  );
+
+  return success(c, {
+    challengeId,
+    expiresIn: CHALLENGE_TTL,
+  });
+});
+
+/**
+ * POST /auth/totp/verify
+ * Verify TOTP code + challenge → issue JWT tokens.
+ * Body: { challengeId: string, code: string }
+ */
+auth.post('/totp/verify', async (c) => {
+  const body = await c.req.json().catch(() => ({})) as {
+    challengeId?: string;
+    code?: string;
+  };
+  const { challengeId, code } = body;
+
+  if (!challengeId || !code) {
+    return badRequest(c, 'challengeId and code required');
+  }
+
+  // Validate challenge (consume it — single use)
+  const challengeData = await c.env.KV.get(`${KV_CHALLENGE_PREFIX}${challengeId}`);
+  if (!challengeData) {
+    return unauthorized(c, 'Invalid or expired challenge');
+  }
+  await c.env.KV.delete(`${KV_CHALLENGE_PREFIX}${challengeId}`);
+
+  // Verify TOTP code
+  const secret = await c.env.KV.get(KV_TOTP_SECRET_KEY);
+  if (!secret) {
+    return error(c, 'TOTP not configured', 500);
+  }
+
+  const valid = await verifyTotp(secret, code);
+  if (!valid) {
+    await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 500));
+    return unauthorized(c, 'Invalid TOTP code');
+  }
+
+  // Issue tokens — use a placeholder email since TOTP has no identity
+  const payload = adminPayload('admin@totp.local');
+  const { accessToken, refreshToken } = await issueAdminTokens(payload, c.env);
+
   return success(c, {
     accessToken,
     refreshToken,
     tokenType: 'Bearer',
-    expiresIn: 15 * 60, // 15 minutes in seconds
+    expiresIn: 15 * 60,
     user: {
-      username: session.username,
-      email: session.email,
+      email: 'admin@totp.local',
       role: 'admin',
+      authMethod: 'totp',
     },
   });
 });
+
+// ============================================================================
+// OAUTH2 — GITHUB
+// ============================================================================
+
+/**
+ * GET /auth/oauth/github
+ * Redirect to GitHub OAuth authorization page
+ */
+auth.get('/oauth/github', async (c) => {
+  const clientId = c.env.GITHUB_CLIENT_ID;
+  const redirectBase = c.env.OAUTH_REDIRECT_BASE_URL;
+
+  if (!clientId || !redirectBase) {
+    return error(c, 'GitHub OAuth not configured', 500);
+  }
+
+  const state = generateSecureToken(32);
+  await c.env.KV.put(
+    `${KV_OAUTH_STATE_PREFIX}${state}`,
+    JSON.stringify({ state, provider: 'github', createdAt: new Date().toISOString() }),
+    { expirationTtl: OAUTH_STATE_TTL }
+  );
+
+  const redirectUri = `${redirectBase}/api/v1/auth/oauth/github/callback`;
+  const url = buildGithubAuthUrl(state, clientId, redirectUri);
+  return c.redirect(url, 302);
+});
+
+/**
+ * GET /auth/oauth/github/callback
+ * Exchange code → verify email → issue JWT → redirect to frontend
+ */
+auth.get('/oauth/github/callback', async (c) => {
+  const code = c.req.query('code');
+  const state = c.req.query('state');
+  const frontendBase = c.env.OAUTH_REDIRECT_BASE_URL;
+
+  if (!code || !state || !frontendBase) {
+    return error(c, 'Invalid callback parameters', 400);
+  }
+
+  // Validate state
+  const stateData = await c.env.KV.get(`${KV_OAUTH_STATE_PREFIX}${state}`);
+  if (!stateData) {
+    return unauthorized(c, 'Invalid or expired OAuth state');
+  }
+  await c.env.KV.delete(`${KV_OAUTH_STATE_PREFIX}${state}`);
+
+  const clientId = c.env.GITHUB_CLIENT_ID;
+  const clientSecret = c.env.GITHUB_CLIENT_SECRET;
+  const allowedEmails = c.env.ADMIN_ALLOWED_EMAILS;
+
+  if (!clientId || !clientSecret) {
+    return error(c, 'GitHub OAuth not configured', 500);
+  }
+
+  try {
+    const redirectUri = `${frontendBase}/api/v1/auth/oauth/github/callback`;
+    const { email } = await exchangeGithubCode(code, clientId, clientSecret, redirectUri);
+
+    // Check allowlist
+    if (!allowedEmails || !isEmailAllowed(email, allowedEmails)) {
+      return c.redirect(
+        `${frontendBase}/admin/auth/callback#error=email_not_allowed`,
+        302
+      );
+    }
+
+    const payload = adminPayload(email);
+    const { accessToken, refreshToken } = await issueAdminTokens(payload, c.env);
+
+    const fragment = new URLSearchParams({ token: accessToken, refreshToken });
+    return c.redirect(`${frontendBase}/admin/auth/callback#${fragment.toString()}`, 302);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'OAuth error';
+    console.error('GitHub callback error:', msg);
+    return c.redirect(
+      `${frontendBase}/admin/auth/callback#error=${encodeURIComponent(msg)}`,
+      302
+    );
+  }
+});
+
+// ============================================================================
+// OAUTH2 — GOOGLE
+// ============================================================================
+
+/**
+ * GET /auth/oauth/google
+ * Redirect to Google OIDC authorization page
+ */
+auth.get('/oauth/google', async (c) => {
+  const clientId = c.env.GOOGLE_CLIENT_ID;
+  const redirectBase = c.env.OAUTH_REDIRECT_BASE_URL;
+
+  if (!clientId || !redirectBase) {
+    return error(c, 'Google OAuth not configured', 500);
+  }
+
+  const state = generateSecureToken(32);
+  await c.env.KV.put(
+    `${KV_OAUTH_STATE_PREFIX}${state}`,
+    JSON.stringify({ state, provider: 'google', createdAt: new Date().toISOString() }),
+    { expirationTtl: OAUTH_STATE_TTL }
+  );
+
+  const redirectUri = `${redirectBase}/api/v1/auth/oauth/google/callback`;
+  const url = buildGoogleAuthUrl(state, clientId, redirectUri);
+  return c.redirect(url, 302);
+});
+
+/**
+ * GET /auth/oauth/google/callback
+ * Exchange code → verify email → issue JWT → redirect to frontend
+ */
+auth.get('/oauth/google/callback', async (c) => {
+  const code = c.req.query('code');
+  const state = c.req.query('state');
+  const frontendBase = c.env.OAUTH_REDIRECT_BASE_URL;
+
+  if (!code || !state || !frontendBase) {
+    return error(c, 'Invalid callback parameters', 400);
+  }
+
+  // Validate state
+  const stateData = await c.env.KV.get(`${KV_OAUTH_STATE_PREFIX}${state}`);
+  if (!stateData) {
+    return unauthorized(c, 'Invalid or expired OAuth state');
+  }
+  await c.env.KV.delete(`${KV_OAUTH_STATE_PREFIX}${state}`);
+
+  const clientId = c.env.GOOGLE_CLIENT_ID;
+  const clientSecret = c.env.GOOGLE_CLIENT_SECRET;
+  const allowedEmails = c.env.ADMIN_ALLOWED_EMAILS;
+
+  if (!clientId || !clientSecret) {
+    return error(c, 'Google OAuth not configured', 500);
+  }
+
+  try {
+    const redirectUri = `${frontendBase}/api/v1/auth/oauth/google/callback`;
+    const { email } = await exchangeGoogleCode(code, clientId, clientSecret, redirectUri);
+
+    // Check allowlist
+    if (!allowedEmails || !isEmailAllowed(email, allowedEmails)) {
+      return c.redirect(
+        `${frontendBase}/admin/auth/callback#error=email_not_allowed`,
+        302
+      );
+    }
+
+    const payload = adminPayload(email);
+    const { accessToken, refreshToken } = await issueAdminTokens(payload, c.env);
+
+    const fragment = new URLSearchParams({ token: accessToken, refreshToken });
+    return c.redirect(`${frontendBase}/admin/auth/callback#${fragment.toString()}`, 302);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'OAuth error';
+    console.error('Google callback error:', msg);
+    return c.redirect(
+      `${frontendBase}/admin/auth/callback#error=${encodeURIComponent(msg)}`,
+      302
+    );
+  }
+});
+
+// ============================================================================
+// TOKEN MANAGEMENT (unchanged)
+// ============================================================================
 
 /**
  * POST /auth/refresh
@@ -274,14 +439,12 @@ auth.post('/refresh', async (c) => {
   }
 
   try {
-    // Verify refresh token
     const payload = await verifyJwt(refreshToken, c.env);
 
     if (payload.type !== 'refresh') {
       return unauthorized(c, 'Invalid token type');
     }
 
-    // Generate new access token
     const accessToken = await generateAccessToken(
       {
         sub: payload.sub,
@@ -314,9 +477,8 @@ auth.post('/logout', async (c) => {
 
   if (refreshToken) {
     try {
-      // We could store revoked tokens in KV if needed
-      // For now, just acknowledge logout
-      // The refresh token will naturally expire
+      // Refresh token is stored in KV under auth:refresh:{id}
+      // Natural expiry handles cleanup; acknowledge logout immediately
     } catch {
       // Ignore errors during logout
     }
@@ -343,7 +505,6 @@ auth.get('/me', async (c) => {
   try {
     const claims = await verifyJwt(token, c.env);
 
-    // Ensure it's an access token and email is verified
     if (claims.type === 'refresh') {
       return unauthorized(c, 'Invalid token type');
     }
@@ -362,67 +523,9 @@ auth.get('/me', async (c) => {
   }
 });
 
-/**
- * POST /auth/resend-otp
- * Resend OTP for an existing session
- */
-auth.post('/resend-otp', async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  const { sessionId } = body as { sessionId?: string };
-
-  if (!sessionId) {
-    return badRequest(c, 'sessionId required');
-  }
-
-  // Get session from KV
-  const sessionData = await c.env.KV.get(`${KV_AUTH_SESSION_PREFIX}${sessionId}`);
-  if (!sessionData) {
-    return unauthorized(c, 'Invalid or expired session');
-  }
-
-  const session: AuthSession = JSON.parse(sessionData);
-
-  // Check if already verified
-  if (session.is_verified) {
-    return badRequest(c, 'Session already verified');
-  }
-
-  // Generate new OTP
-  const otp = generateOtp(6);
-  const otpHash = await hashString(otp);
-  const expiresAt = new Date(Date.now() + OTP_EXPIRY * 1000).toISOString();
-
-  // Update session
-  session.otp_hash = otpHash;
-  session.otp_expires_at = expiresAt;
-
-  await c.env.KV.put(
-    `${KV_AUTH_SESSION_PREFIX}${sessionId}`,
-    JSON.stringify(session),
-    { expirationTtl: OTP_EXPIRY + 60 }
-  );
-
-  // Send new OTP email
-  const emailSent = await sendOtpEmail(c.env, session.email, otp);
-
-  if (!emailSent) {
-    if (c.env.ENV !== 'production') {
-      return success(c, {
-        message: 'New OTP generated (dev mode)',
-        expiresAt,
-        _dev_otp: otp,
-      });
-    }
-    return error(c, 'Failed to send verification email', 500);
-  }
-
-  const maskedEmail = session.email.replace(/(.{2})(.*)(@.*)/, '$1***$3');
-
-  return success(c, {
-    message: `New verification code sent to ${maskedEmail}`,
-    expiresAt,
-  });
-});
+// ============================================================================
+// ANONYMOUS TOKENS (verbatim — DO NOT MODIFY)
+// ============================================================================
 
 /**
  * POST /auth/anonymous

@@ -9,7 +9,9 @@ import { PERSIST_OPTIN_KEY } from "../constants";
 import {
   getStoredSessionId,
   storeSessionId,
+  clearStoredSessionId,
   generateLocalSessionId,
+  SESSIONS_INDEX_KEY,
   SESSION_MESSAGES_PREFIX,
   loadSessionsIndex,
 } from "@/services/chat";
@@ -238,10 +240,51 @@ export function useChatState(options?: { initialMessage?: string }) {
     setPersistOptIn(next);
     try {
       localStorage.setItem(PERSIST_OPTIN_KEY, next ? "1" : "0");
+
+      // When opting out, immediately purge all existing local chat data
+      if (!next) {
+        // Remove sessions index
+        localStorage.removeItem(SESSIONS_INDEX_KEY);
+
+        // Remove all chat history entries
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith(SESSION_MESSAGES_PREFIX)) {
+            keysToRemove.push(key);
+          }
+        }
+        for (const key of keysToRemove) {
+          localStorage.removeItem(key);
+        }
+
+        // Clear current session storage keys (includes legacy key)
+        clearStoredSessionId();
+
+        // Sync in-memory state so UI reflects the opt-out immediately
+        setMessages([]);
+        setSessions([]);
+        setSelectedSessionIds([]);
+        setShowSessions(false);
+        setInput("");
+        setIsAggregatePrompt(false);
+        setSessionKey(generateLocalSessionId());
+
+        try {
+          window.dispatchEvent(new CustomEvent("aiChat:sessionsUpdated"));
+        } catch {
+          // ignore event dispatch failures
+        }
+      } else {
+        // Ensure current session key is persisted once user opts back in.
+        if (sessionKey) {
+          storeSessionId(sessionKey);
+        }
+      }
     } catch {
       void 0;
     }
-  }, [persistOptIn]);
+  }, [persistOptIn, sessionKey]);
 
   const focusInput = useCallback(() => {
     requestAnimationFrame(() => textareaRef.current?.focus());

@@ -10,7 +10,7 @@ let _configPromise = null;
 
 async function buildConfig() {
   const consulConfig = await loadConsulConfig();
-  const merged = { ...consulConfig, ...process.env };
+  const merged = { ...process.env, ...consulConfig };
   const raw = configSchema.parse(merged);
 
   const repoRoot = path.resolve(process.cwd(), '..');
@@ -56,8 +56,19 @@ async function buildConfig() {
 
     admin: {
       bearerToken: raw.ADMIN_BEARER_TOKEN,
-      username: raw.ADMIN_USERNAME,
-      password: raw.ADMIN_PASSWORD,
+    },
+
+    totp: {
+      secret: raw.TOTP_SECRET,
+    },
+
+    oauth: {
+      allowedEmails: raw.ADMIN_ALLOWED_EMAILS,
+      githubClientId: raw.GITHUB_CLIENT_ID,
+      githubClientSecret: raw.GITHUB_CLIENT_SECRET,
+      googleClientId: raw.GOOGLE_CLIENT_ID,
+      googleClientSecret: raw.GOOGLE_CLIENT_SECRET,
+      redirectBaseUrl: raw.OAUTH_REDIRECT_BASE_URL,
     },
 
     auth: {
@@ -167,8 +178,17 @@ export const config = {
   },
   admin: {
     bearerToken: syncConfig.ADMIN_BEARER_TOKEN,
-    username: syncConfig.ADMIN_USERNAME,
-    password: syncConfig.ADMIN_PASSWORD,
+  },
+  totp: {
+    secret: syncConfig.TOTP_SECRET,
+  },
+  oauth: {
+    allowedEmails: syncConfig.ADMIN_ALLOWED_EMAILS,
+    githubClientId: syncConfig.GITHUB_CLIENT_ID,
+    githubClientSecret: syncConfig.GITHUB_CLIENT_SECRET,
+    googleClientId: syncConfig.GOOGLE_CLIENT_ID,
+    googleClientSecret: syncConfig.GOOGLE_CLIENT_SECRET,
+    redirectBaseUrl: syncConfig.OAUTH_REDIRECT_BASE_URL,
   },
   auth: {
     jwtSecret: syncConfig.JWT_SECRET,

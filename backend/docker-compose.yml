@@ -39,10 +39,7 @@ services:
   # Backend API Server
   # ---------------------------------------------------------------------------
   api:
-    image: blog-api:latest
-    build:
-      context: ..
-      dockerfile: backend/Dockerfile.local
+    image: ghcr.io/choisimo/blog-api:latest
     container_name: blog-api
     env_file: .env
     environment:
@@ -70,6 +67,7 @@ services:
     labels:
       - "com.blog.service=api"
       - "com.blog.description=Backend API Server"
+      - "com.centurylinklabs.watchtower.enable=true"
 
   # ---------------------------------------------------------------------------
   # Nginx Reverse Proxy
@@ -103,10 +101,7 @@ services:
   # Terminal Server (WebSocket)
   # ---------------------------------------------------------------------------
   terminal-server:
-    image: blog-terminal:latest
-    build:
-      context: ./terminal-server
-      dockerfile: Dockerfile
+    image: ghcr.io/choisimo/blog-terminal:latest
     container_name: blog-terminal
     environment:
       - NODE_ENV=production
@@ -123,6 +118,7 @@ services:
     labels:
       - "com.blog.service=terminal"
       - "com.blog.description=WebSocket Terminal Server"
+      - "com.centurylinklabs.watchtower.enable=true"
 
   # ---------------------------------------------------------------------------
   # Workers Local Emulator (Wrangler)
@@ -263,6 +259,39 @@ services:
     labels:
       - "com.blog.service=open-notebook"
       - "com.blog.description=Knowledge Management with RAG"
+
+  # ---------------------------------------------------------------------------
+  # Watchtower - Automatic Container Updates from GHCR
+  # ---------------------------------------------------------------------------
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: blog-watchtower
+    environment:
+      # Only update containers with the enable label
+      - WATCHTOWER_LABEL_ENABLE=true
+      # Check for new images every 5 minutes (300 seconds)
+      - WATCHTOWER_POLL_INTERVAL=300
+      # Clean up old images after updating
+      - WATCHTOWER_CLEANUP=true
+      # Rolling restart: start new container before stopping old one
+      - WATCHTOWER_ROLLING_RESTART=true
+      # Include stopped containers
+      - WATCHTOWER_INCLUDE_STOPPED=false
+      # Lifecycle hooks: log when updating
+      - WATCHTOWER_LIFECYCLE_HOOKS=true
+      # Notifications (optional, uncomment to enable)
+      # - WATCHTOWER_NOTIFICATIONS=slack
+      # - WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL=https://hooks.slack.com/services/xxx
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Mount Docker config for GHCR authentication
+      - ${HOME}/.docker/config.json:/config.json:ro
+    networks:
+      - blog-network
+    restart: unless-stopped
+    labels:
+      - "com.blog.service=watchtower"
+      - "com.blog.description=Automatic container update from GHCR"
 
 # =============================================================================
 # Networks

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { MessageCircle, Radio, History, Settings, Users } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -34,58 +33,91 @@ function SettingToggleCard({
   disabled = false,
   onToggle,
 }: SettingToggleCardProps) {
-  const thumbSize = "calc(clamp(2.1rem,4.3vw,2.45rem) - 0.4rem)";
-  const thumbInset = "0.2rem";
-  const thumbLeft = checked
-    ? `calc(100% - ${thumbSize} - ${thumbInset})`
-    : thumbInset;
+  if (isTerminal) {
+    // Terminal mode: keep original style
+    const thumbSize = "calc(clamp(2.1rem,4.3vw,2.45rem) - 0.4rem)";
+    const thumbInset = "0.2rem";
+    const thumbLeft = checked
+      ? `calc(100% - ${thumbSize} - ${thumbInset})`
+      : thumbInset;
+    return (
+      <div
+        className={cn(
+          "min-h-[5.6rem] rounded-2xl border px-3 py-2.5",
+          checked
+            ? "border-primary/35 bg-primary/10"
+            : "border-border/70 bg-background/40",
+        )}
+      >
+        <div className="mb-1 text-[0.72rem] font-semibold text-muted-foreground">
+          {label}
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[clamp(0.95rem,1.9vw,1.1rem)] font-medium text-muted-foreground">
+            {checked ? "ON" : "OFF"}
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={checked}
+            aria-label={label}
+            disabled={disabled}
+            onClick={() => onToggle?.()}
+            className={cn(
+              "relative min-h-[2.1rem] min-w-[3.75rem] rounded-full border transition-colors duration-200",
+              "h-[clamp(2.1rem,4.3vw,2.45rem)] w-[clamp(3.75rem,7.8vw,4.7rem)]",
+              checked
+                ? "border-primary/60 bg-primary"
+                : "border-border/70 bg-muted",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1",
+              disabled && "cursor-not-allowed opacity-50",
+            )}
+            style={{ minHeight: "2.1rem", minWidth: "3.75rem" }}
+          >
+            <span
+              className="absolute top-1/2 rounded-full bg-background shadow-md transition-all duration-200 -translate-y-1/2"
+              style={{ width: thumbSize, height: thumbSize, left: thumbLeft }}
+            />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
+  // Default mode: slim inline toggle row (Vercel style)
   return (
-    <div
-      className={cn(
-        "min-h-[5.6rem] rounded-2xl border px-3 py-2.5",
-        checked
-          ? "border-primary/35 bg-primary/10"
-          : isTerminal
-            ? "border-border/70 bg-background/40"
-            : "border-border/70 bg-background/70",
-      )}
-    >
-      <div className="mb-1 text-[0.72rem] font-semibold text-muted-foreground">
+    <div className="flex items-center justify-between py-1.5 px-2">
+      <span className="text-xs text-[#666666] font-medium dark:text-[#999999]">
         {label}
-      </div>
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[clamp(0.95rem,1.9vw,1.1rem)] font-medium text-muted-foreground">
-          {checked ? "ON" : "OFF"}
-        </span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={checked}
-          aria-label={label}
-          disabled={disabled}
-          onClick={() => onToggle?.()}
-          className={cn(
-            "relative min-h-[2.1rem] min-w-[3.75rem] rounded-full border transition-colors duration-200",
-            "h-[clamp(2.1rem,4.3vw,2.45rem)] w-[clamp(3.75rem,7.8vw,4.7rem)]",
-            checked
-              ? "border-primary/60 bg-primary"
-              : "border-border/70 bg-muted",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1",
-            disabled && "cursor-not-allowed opacity-50",
-          )}
-          style={{ minHeight: "2.1rem", minWidth: "3.75rem" }}
-        >
-          <span
-            className="absolute top-1/2 rounded-full bg-background shadow-md transition-all duration-200 -translate-y-1/2"
-            style={{
-              width: thumbSize,
-              height: thumbSize,
-              left: thumbLeft,
-            }}
-          />
-        </button>
-      </div>
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        disabled={disabled}
+        onClick={() => onToggle?.()}
+        style={{ height: '18px', width: '32px', minWidth: 'unset', minHeight: 'unset' }}
+        className={cn(
+          "relative rounded-full transition-colors duration-150",
+          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#0070F3] focus-visible:ring-offset-1",
+          checked
+            ? "bg-[#111111] dark:bg-[#EEEEEE]"
+            : "bg-[#E5E5E5] dark:bg-[#333333]",
+          disabled && "opacity-40 cursor-not-allowed",
+        )}
+      >
+        <span
+          style={{
+            position: 'absolute',
+            top: '2px',
+            left: checked ? '16px' : '2px',
+            height: '14px',
+            width: '14px',
+          }}
+          className="rounded-full bg-white shadow-sm transition-all duration-150"
+        />
+      </button>
     </div>
   );
 }
@@ -153,21 +185,33 @@ export function ChatSidebar({
 
   const sectionClass = "px-3 py-2";
 
+  // Vercel-style section labels: tiny, uppercase, airy
   const labelClass = cn(
-    "flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider mb-2",
-    isTerminal ? "text-primary/50 font-mono" : "text-muted-foreground/70",
+    "flex items-center gap-1.5 mb-2",
+    isTerminal
+      ? "text-xs font-semibold uppercase tracking-wider text-primary/50 font-mono"
+      : "text-[10px] font-semibold uppercase tracking-[0.08em] text-[#999999] dark:text-[#666666]",
   );
 
+  // Vercel-style active: left border indicator + bold text, no filled background
   const itemClass = (active: boolean) =>
     cn(
-      "flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm transition-colors text-left",
+      "relative flex items-center gap-2 w-full px-3 py-1.5 text-sm transition-colors text-left rounded-sm",
       active
         ? isTerminal
           ? "bg-primary/20 text-primary"
-          : "bg-primary/10 text-primary font-medium"
+          : "text-[#111111] dark:text-[#EEEEEE] font-semibold before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-4 before:w-0.5 before:bg-[#111111] dark:before:bg-[#EEEEEE] before:rounded-full"
         : isTerminal
           ? "text-muted-foreground hover:text-foreground hover:bg-white/5"
-          : "text-muted-foreground hover:text-foreground hover:bg-muted",
+          : "text-[#666666] dark:text-[#888888] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]",
+    );
+
+  // Hairline divider (Vercel style) vs. Separator for terminal
+  const Divider = () =>
+    isTerminal ? (
+      <div className="h-px bg-border/40 mx-0 my-1" />
+    ) : (
+      <div className="h-px bg-[#EAEAEA] dark:bg-[#222222] mx-3 my-1" />
     );
 
   return (
@@ -176,7 +220,7 @@ export function ChatSidebar({
         "flex h-full w-72 shrink-0 flex-col overflow-hidden border-r",
         isTerminal
           ? "bg-[hsl(var(--terminal-code-bg))] border-border font-mono"
-          : "bg-muted/20",
+          : "bg-[#FAFAFA] dark:bg-[#0A0A0A] border-[#EAEAEA] dark:border-[#222222]",
       )}
     >
       <ScrollArea className="flex-1">
@@ -202,7 +246,7 @@ export function ChatSidebar({
           </button>
         </div>
 
-        <Separator className={cn(isTerminal && "bg-border/40")} />
+        <Divider />
 
         {/* 실시간 채팅 */}
         <div className={sectionClass}>
@@ -219,7 +263,7 @@ export function ChatSidebar({
                 "shrink-0 rounded border px-2 py-1 text-[10px] leading-none transition-colors",
                 isTerminal
                   ? "border-primary/40 text-primary hover:bg-primary/10"
-                  : "border-border/70 text-muted-foreground hover:bg-muted hover:text-foreground",
+                  : "border-[#EAEAEA] dark:border-[#333333] text-[#666666] dark:text-[#888888] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A] hover:text-[#111111] dark:hover:text-[#EEEEEE]",
                 !onStartDebate && "opacity-50 cursor-not-allowed",
               )}
               title={
@@ -232,7 +276,14 @@ export function ChatSidebar({
             </button>
           </div>
           {rooms.length === 0 ? (
-            <p className="text-xs text-muted-foreground/50 px-2 py-1">
+            <p
+              className={cn(
+                "text-xs px-2 py-1",
+                isTerminal
+                  ? "text-muted-foreground/50"
+                  : "text-[#AAAAAA] dark:text-[#555555]",
+              )}
+            >
               활성 방 없음
             </p>
           ) : (
@@ -263,7 +314,7 @@ export function ChatSidebar({
           )}
         </div>
 
-        <Separator className={cn(isTerminal && "bg-border/40")} />
+        <Divider />
 
         {/* 대화 기록 */}
         <div className={sectionClass}>
@@ -272,7 +323,14 @@ export function ChatSidebar({
             대화 기록
           </div>
           {sessions.length === 0 ? (
-            <p className="text-xs text-muted-foreground/50 px-2 py-1">
+            <p
+              className={cn(
+                "text-xs px-2 py-1",
+                isTerminal
+                  ? "text-muted-foreground/50"
+                  : "text-[#AAAAAA] dark:text-[#555555]",
+              )}
+            >
               저장된 대화 없음
             </p>
           ) : (
@@ -295,7 +353,7 @@ export function ChatSidebar({
                       "min-w-0 rounded px-2 py-1.5 text-left text-sm transition-colors",
                       isTerminal
                         ? "text-muted-foreground hover:text-foreground hover:bg-white/5"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                        : "text-[#666666] dark:text-[#888888] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]",
                     )}
                     onClick={() => onLoadSession(s.id)}
                     title={s.title ?? "제목 없음"}
@@ -321,7 +379,7 @@ export function ChatSidebar({
           )}
         </div>
 
-        <Separator className={cn(isTerminal && "bg-border/40")} />
+        <Divider />
 
         {/* 설정 */}
         <div className={sectionClass}>
@@ -329,21 +387,39 @@ export function ChatSidebar({
             <Settings className="w-3 h-3" />
             설정
           </div>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-2 px-1">
-            <SettingToggleCard
-              label="LIVE 고정"
-              checked={livePinned}
-              onToggle={onToggleLivePinned}
-              disabled={!onToggleLivePinned}
-              isTerminal={isTerminal}
-            />
-            <SettingToggleCard
-              label="기록 저장"
-              checked={persistOptIn}
-              onToggle={onTogglePersist}
-              isTerminal={isTerminal}
-            />
-          </div>
+          {isTerminal ? (
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-2 px-1">
+              <SettingToggleCard
+                label="LIVE 고정"
+                checked={livePinned}
+                onToggle={onToggleLivePinned}
+                disabled={!onToggleLivePinned}
+                isTerminal={isTerminal}
+              />
+              <SettingToggleCard
+                label="기록 저장"
+                checked={persistOptIn}
+                onToggle={onTogglePersist}
+                isTerminal={isTerminal}
+              />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-0.5 px-1">
+              <SettingToggleCard
+                label="LIVE 고정"
+                checked={livePinned}
+                onToggle={onToggleLivePinned}
+                disabled={!onToggleLivePinned}
+                isTerminal={isTerminal}
+              />
+              <SettingToggleCard
+                label="기록 저장"
+                checked={persistOptIn}
+                onToggle={onTogglePersist}
+                isTerminal={isTerminal}
+              />
+            </div>
+          )}
         </div>
       </ScrollArea>
     </div>

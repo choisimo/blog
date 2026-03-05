@@ -10,6 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { site } from '@/config/site';
 import { sendContactMessage } from '@/services/contact';
+import { useSEO } from '@/hooks/seo/useSEO';
+import { generateSEOData, generateStructuredData } from '@/utils/seo/seo';
 
 interface ContactFormState {
   name: string;
@@ -92,6 +94,11 @@ const stackSections = [
 ] as const;
 
 const About = () => {
+  useSEO(
+    generateSEOData(undefined, 'about'),
+    generateStructuredData(undefined, 'about')
+  );
+
   const { toast } = useToast();
   const [formData, setFormData] = useState<ContactFormState>(initialFormState);
   const [isSubmitting, setIsSubmitting] = useState(false);

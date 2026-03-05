@@ -35,7 +35,7 @@ function addListener(postId, send) {
     try {
       set.delete(send);
       if (set.size === 0) listenersByPost.delete(key);
-    } catch {}
+    } catch { }
   };
 }
 function broadcast(postId, payload) {
@@ -48,7 +48,7 @@ function broadcast(postId, payload) {
     } catch {
       try {
         set.delete(send);
-      } catch {}
+      } catch { }
     }
   }
 }
@@ -204,13 +204,13 @@ router.get('/', requireD1, async (req, res, next) => {
 router.post('/', requireD1, async (req, res, next) => {
   try {
     const { postId, postSlug, slug, author, content, email, website } = req.body || {};
-    
+
     // Support multiple field names for post identifier
     const postIdentifier = postId || postSlug || slug;
 
     if (!postIdentifier || typeof postIdentifier !== 'string')
-      return res.status(400).json({ 
-        ok: false, 
+      return res.status(400).json({
+        ok: false,
         error: 'postId, postSlug, or slug is required',
         hint: 'Provide postId or postSlug in the request body'
       });
@@ -224,18 +224,44 @@ router.post('/', requireD1, async (req, res, next) => {
       return res.status(400).json({ ok: false, error: 'Author or content too long' });
     }
 
+    // Extract device fingerprint from header or body
+    const deviceFingerprint = String(
+      req.headers['x-device-fingerprint'] || req.body?.fingerprint || ''
+    ).trim().slice(0, 128) || null;
+
+    // Rate limiting: block same fingerprint from posting within 60 seconds
+    if (deviceFingerprint) {
+      try {
+        const recentComment = await queryOne(
+          `SELECT id FROM comments
+           WHERE device_fingerprint = ? AND created_at > datetime('now', '-60 seconds')
+           LIMIT 1`,
+          deviceFingerprint,
+        );
+        if (recentComment) {
+          return res.status(429).json({
+            ok: false,
+            error: 'Too many comments. Please wait a moment before posting again.',
+          });
+        }
+      } catch {
+        // Non-critical: proceed even if rate limit check fails
+      }
+    }
+
     const normalizedPostId = String(postIdentifier).trim().slice(0, 256);
     const commentId = `comment-${crypto.randomUUID()}`;
     const now = new Date().toISOString();
 
     await execute(
-      `INSERT INTO comments(id, post_id, author, email, content, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO comments(id, post_id, author, email, content, device_fingerprint, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       commentId,
       normalizedPostId,
       author.trim().slice(0, 64),
       email ? email.trim().slice(0, 256) : null,
       content.trim().slice(0, 5000),
+      deviceFingerprint,
       'visible',
       now,
       now
@@ -253,7 +279,7 @@ router.post('/', requireD1, async (req, res, next) => {
         createdAt: now,
       };
       broadcast(normalizedPostId, { type: 'append', items: [item] });
-    } catch {}
+    } catch { }
 
     return res.json({ ok: true, data: { id: commentId } });
   } catch (err) {
@@ -304,10 +330,10 @@ router.get('/stream', requireD1, async (req, res, next) => {
       clearInterval(ping);
       try {
         if (typeof unsubscribe === 'function') unsubscribe();
-      } catch {}
+      } catch { }
       try {
         res.end();
-      } catch {}
+      } catch { }
     };
     req.on('close', onClose);
 

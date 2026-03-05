@@ -300,8 +300,10 @@ gh_secrets.env
 .LSOverride
 ._*
 
-# rust - temp
-backend-rust/**
+# rust workspace (keep source tracked, ignore build artifacts)
+backend-rust/target/
+backend-rust/**/target/
+backend-rust/blog.db
 # Windows
 Thumbs.db
 ehthumbs.db

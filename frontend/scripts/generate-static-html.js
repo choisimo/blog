@@ -61,6 +61,69 @@ function resolveImageUrl(coverImage, title, category) {
   return `${API_BASE_URL}/api/v1/og?${params.toString()}`;
 }
 
+function generateStructuredDataStr(pageType, data = {}) {
+  const authorName = process.env.VITE_AUTHOR_NAME || 'nodove';
+
+  if (pageType === 'post' && data) {
+    const sd = {
+      '@context': 'https://schema.org',
+      '@type': 'BlogPosting',
+      headline: data.title,
+      description: data.description,
+      image: resolveImageUrl(data.coverImage, data.title, data.category),
+      author: {
+        '@type': 'Person',
+        name: authorName,
+      },
+      publisher: {
+        '@type': 'Organization',
+        name: SITE_NAME,
+        logo: {
+          '@type': 'ImageObject',
+          url: `${BASE_URL}/nodove.ico`,
+        },
+      },
+      datePublished: data.date,
+      dateModified: data.date,
+      mainEntityOfPage: {
+        '@type': 'WebPage',
+        '@id': `${BASE_URL}/blog/${data.year}/${data.slug}`,
+      },
+      keywords: Array.isArray(data.tags) ? data.tags.join(', ') : '',
+      articleSection: data.category,
+    };
+    return `<script type="application/ld+json">${JSON.stringify(sd)}</script>`;
+  }
+
+  if (pageType === 'blog') {
+    const sd = {
+      '@context': 'https://schema.org',
+      '@type': 'Blog',
+      name: `${SITE_NAME} Blog`,
+      description: 'A blog about technology, programming, and web development',
+      url: `${BASE_URL}/blog`,
+      author: {
+        '@type': 'Person',
+        name: authorName,
+      },
+    };
+    return `<script type="application/ld+json">${JSON.stringify(sd)}</script>`;
+  }
+
+  const sd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: SITE_NAME,
+    description: 'A blog about technology, programming, and web development',
+    url: BASE_URL,
+    author: {
+      '@type': 'Person',
+      name: authorName,
+    },
+  };
+  return `<script type="application/ld+json">${JSON.stringify(sd)}</script>`;
+}
+
 function generatePostHtml(template, post) {
   const title = escapeHtml(post.title);
   const description = escapeHtml(post.description || post.snippet || '');
@@ -105,6 +168,7 @@ function generatePostHtml(template, post) {
     
     <!-- Additional SEO -->
     <link rel="canonical" href="${url}" />
+    ${generateStructuredDataStr('post', post)}
 `;
 
   const existingOgPattern = /<meta\s+property="og:[^"]+"\s+content="[^"]*"\s*\/?>/gi;
@@ -112,7 +176,7 @@ function generatePostHtml(template, post) {
   html = html.replace(existingOgPattern, '');
   html = html.replace(existingTwitterPattern, '');
 
-  html = html.replace('</head>', `${ogTags}</head>`);
+  html = html.replace('</head>', `${ogTags}\n</head>`);
 
   return html;
 }
@@ -150,9 +214,10 @@ function generateStaticPages(template) {
     <meta name="twitter:description" content="${page.description}" />
     <meta name="twitter:image" content="${pageImage}" />
     <link rel="canonical" href="${BASE_URL}/${page.path}" />
+    ${generateStructuredDataStr(page.path === 'blog' ? 'blog' : 'home')}
 `;
 
-    html = html.replace('</head>', `${ogTags}</head>`);
+    html = html.replace('</head>', `${ogTags}\n</head>`);
     fs.writeFileSync(path.join(pageDir, 'index.html'), html);
     count++;
   }

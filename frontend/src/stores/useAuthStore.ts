@@ -32,6 +32,7 @@ export interface AuthState {
 
   // Actions
   setTokens: (accessToken: string, refreshToken: string, user?: UserInfo) => void;
+  setTokensFromOAuth: (accessToken: string, refreshToken: string) => void;
   setUser: (user: UserInfo | null) => void;
   clearAuth: () => void;
   logout: () => Promise<void>;
@@ -72,6 +73,13 @@ export const useAuthStore = create<AuthState>()(
        */
       setTokens: (accessToken, refreshToken, user) => {
         set({ accessToken, refreshToken, user: user ?? get().user });
+        scheduleTokenRefresh();
+      },
+      /**
+       * Set both tokens after successful OAuth callback
+       */
+      setTokensFromOAuth: (accessToken, refreshToken) => {
+        set({ accessToken, refreshToken });
         scheduleTokenRefresh();
       },
 

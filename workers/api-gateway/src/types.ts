@@ -9,9 +9,17 @@ export type Env = {
   JWT_SECRET: string;
   TAVILY_API_KEY?: string;
   PERPLEXITY_API_KEY?: string;
-  ADMIN_USERNAME?: string;
-  ADMIN_PASSWORD?: string;
-  ADMIN_EMAIL?: string; // Admin email for OTP verification (GitHub Secrets)
+  // OAuth2 + TOTP Admin Auth
+  ADMIN_ALLOWED_EMAILS?: string; // Comma-separated list of allowed admin emails
+  GITHUB_CLIENT_ID?: string;
+  GITHUB_CLIENT_SECRET?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  OAUTH_REDIRECT_BASE_URL?: string; // e.g., https://noblog.nodove.com
+
+  // Cloudflare Access IAP (optional)
+  CF_ACCESS_AUD?: string; // Application AUD tag for JWT validation
+  CF_TEAM_DOMAIN?: string; // e.g., https://yourteam.cloudflareaccess.com
 
   // Backend Proxy Configuration
   BACKEND_ORIGIN?: string; // e.g., http://YOUR_SERVER_IP:8080
@@ -124,15 +132,18 @@ export type JwtPayload = {
   exp?: number;
 };
 
-// Auth Session for OTP verification
-export type AuthSession = {
+// TOTP Challenge stored in KV (key: auth:challenge:{id})
+export type TotpChallenge = {
   id: string;
-  username: string;
-  email: string;
-  otp_hash: string;
-  otp_expires_at: string;
-  is_verified: number;
-  created_at: string;
+  createdAt: string;
+  expiresAt: string;
+};
+
+// OAuth state stored in KV (key: auth:oauth:state:{state})
+export type OAuthState = {
+  state: string;
+  provider: 'github' | 'google';
+  createdAt: string;
 };
 
 // Post Analytics Models

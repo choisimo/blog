@@ -10,6 +10,7 @@ import CommentInputModal from './CommentInputModal';
 import CommentReactions from './CommentReactions';
 import { streamChatEvents } from '@/services/chat';
 import { fetchReactionsBatch, ReactionCount } from '@/services/reactions';
+import { getCachedAdvancedVisitorId, getAdvancedFingerprint } from '@/services/fingerprint';
 import { getRAGContextForChat } from '@/services/rag';
 import { useFeatureFlags } from '@/stores/useFeatureFlagsStore';
 
@@ -76,11 +77,11 @@ export default function CommentSection({ postId }: { postId: string }) {
   // Fetch reactions when comments change
   useEffect(() => {
     if (!comments || comments.length === 0) return;
-    
+
     const commentIds = comments
       .map(c => c.id)
       .filter((id): id is string => !!id);
-    
+
     if (commentIds.length === 0) return;
 
     fetchReactionsBatch(commentIds)
@@ -134,7 +135,7 @@ export default function CommentSection({ postId }: { postId: string }) {
                 const keyOf = (it: CommentItem) =>
                   String(
                     it.id ||
-                      `${it.createdAt || ''}|${it.author || ''}|${(it.content || '').slice(0, 24)}`
+                    `${it.createdAt || ''}|${it.author || ''}|${(it.content || '').slice(0, 24)}`
                   );
                 const seen = new Set(before.map(keyOf));
                 const merged = [...before];
@@ -198,26 +199,26 @@ export default function CommentSection({ postId }: { postId: string }) {
   // Generate AI response to a user comment
   const generateAiResponse = useCallback(async (userComment: string, userName: string) => {
     if (!aiDiscussionEnabled) return;
-    
+
     setAiResponding(true);
     setAiStreamingText('');
     setAiError(null);
-    
+
     const pageTitle = typeof document !== 'undefined' ? document.title : '';
     const pageUrl = typeof window !== 'undefined' ? window.location.href : '';
-    
-    const recentComments = (comments || []).slice(-5).map(c => 
+
+    const recentComments = (comments || []).slice(-5).map(c =>
       `${c.author}: ${c.content}`
     ).join('\n');
 
     const ragContextPromise = getRAGContextForChat(userComment, 1500, 5000);
-    
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 120000);
 
     try {
       const ragContext = await ragContextPromise;
-      
+
       const prompt = `당신은 블로그 글에서 독자들과 토론하는 친근한 AI 어시스턴트예요. 
 현재 페이지: ${pageTitle}
 URL: ${pageUrl}
@@ -234,7 +235,7 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 �
 - 존댓말을 사용하고 친근하게 대해주세요`;
 
       let fullText = '';
-      for await (const ev of streamChatEvents({ 
+      for await (const ev of streamChatEvents({
         text: prompt,
         useArticleContext: true,
         signal: controller.signal,
@@ -244,12 +245,12 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 �
           setAiStreamingText(fullText);
         }
       }
-      
+
       // Add AI comment to the list
       if (fullText.trim()) {
         const now = new Date().toISOString();
         const tempId = `ai-${Date.now()}`;
-        
+
         // Optimistically add to local state first
         const aiComment: CommentItem = {
           id: tempId,
@@ -260,28 +261,32 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 �
           createdAt: now,
         };
         setComments(prev => [...(prev || []), aiComment]);
-        
+
         // Persist to D1 database
         try {
           const base = getApiBaseUrl().replace(/\/$/, '');
           const url = `${base}/api/v1/comments`;
+          const aiFp = getCachedAdvancedVisitorId() || '';
           const resp = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...(aiFp ? { 'X-Device-Fingerprint': aiFp } : {}),
+            },
             body: JSON.stringify({
               postId,
               author: 'AI Assistant',
               content: fullText.trim(),
             }),
           });
-          
+
           if (resp.ok) {
             const respData = (await resp.json()) as any;
             const persistedId = respData?.id ?? respData?.data?.id;
             // Update local state with persisted ID
             if (persistedId) {
-              setComments(prev => 
-                (prev || []).map(c => 
+              setComments(prev =>
+                (prev || []).map(c =>
                   c.id === tempId ? { ...c, id: persistedId } : c
                 )
               );
@@ -297,7 +302,7 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 �
     } catch (err) {
       const error = err as Error;
       console.error('AI response error:', error);
-      
+
       // Set user-facing error message
       if (error.name === 'AbortError') {
         setAiError('AI 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.');
@@ -325,9 +330,13 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 �
 
     const base = getApiBaseUrl().replace(/\/$/, '');
     const url = `${base}/api/v1/comments`;
+    const deviceFp = getCachedAdvancedVisitorId() || '';
     const resp = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(deviceFp ? { 'X-Device-Fingerprint': deviceFp } : {}),
+      },
       body: JSON.stringify({
         postId,
         author: data.author,
@@ -417,7 +426,7 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 �
                   ? "font-mono text-muted-foreground"
                   : "text-muted-foreground dark:text-white/60"
               )}>
-                {isTerminal 
+                {isTerminal
                   ? "// Leave a short reflection or follow-up question"
                   : "Leave a short reflection or follow-up question"}
               </p>
@@ -425,33 +434,33 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 �
           </div>
           <div className="flex items-center gap-2">
             {featureFlags.aiEnabled && (
-            <button
-              type="button"
-              onClick={handleToggleAiDiscussion}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
-                isTerminal
-                  ? aiDiscussionEnabled
-                    ? "bg-primary/20 text-primary border border-primary/30 font-mono"
-                    : "bg-muted/50 text-muted-foreground border border-border font-mono hover:border-primary/50"
-                  : aiDiscussionEnabled
-                    ? "bg-gradient-to-r from-violet-500/20 to-purple-500/20 text-violet-600 dark:text-violet-400 border border-violet-500/30"
-                    : "bg-muted/50 text-muted-foreground border border-border/50 hover:border-violet-500/30 hover:text-violet-600 dark:hover:text-violet-400"
-              )}
-              title={aiDiscussionEnabled ? "AI 토론 모드 끄기" : "AI 토론 모드 켜기"}
-            >
-              <Bot className={cn(
-                "h-3.5 w-3.5",
-                aiDiscussionEnabled && "animate-pulse"
-              )} />
-              {isTerminal 
-                ? aiDiscussionEnabled ? "AI:ON" : "AI:OFF"
-                : aiDiscussionEnabled ? "AI 토론" : "AI 토론"
-              }
-              {aiDiscussionEnabled && (
-                <Sparkles className="h-3 w-3" />
-              )}
-            </button>
+              <button
+                type="button"
+                onClick={handleToggleAiDiscussion}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                  isTerminal
+                    ? aiDiscussionEnabled
+                      ? "bg-primary/20 text-primary border border-primary/30 font-mono"
+                      : "bg-muted/50 text-muted-foreground border border-border font-mono hover:border-primary/50"
+                    : aiDiscussionEnabled
+                      ? "bg-gradient-to-r from-violet-500/20 to-purple-500/20 text-violet-600 dark:text-violet-400 border border-violet-500/30"
+                      : "bg-muted/50 text-muted-foreground border border-border/50 hover:border-violet-500/30 hover:text-violet-600 dark:hover:text-violet-400"
+                )}
+                title={aiDiscussionEnabled ? "AI 토론 모드 끄기" : "AI 토론 모드 켜기"}
+              >
+                <Bot className={cn(
+                  "h-3.5 w-3.5",
+                  aiDiscussionEnabled && "animate-pulse"
+                )} />
+                {isTerminal
+                  ? aiDiscussionEnabled ? "AI:ON" : "AI:OFF"
+                  : aiDiscussionEnabled ? "AI 토론" : "AI 토론"
+                }
+                {aiDiscussionEnabled && (
+                  <Sparkles className="h-3 w-3" />
+                )}
+              </button>
             )}
             {error && (
               <span className={cn(
@@ -491,151 +500,152 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 �
               {comments.map((c, idx) => {
                 const isAiComment = c.author === 'AI Assistant' || c.id?.startsWith('ai-');
                 return (
-                <li
-                  key={c.id || idx}
-                  className={cn(
-                    "text-sm leading-relaxed transition-colors",
-                    isTerminal
-                      ? cn(
+                  <li
+                    key={c.id || idx}
+                    className={cn(
+                      "text-sm leading-relaxed transition-colors",
+                      isTerminal
+                        ? cn(
                           "pl-4 py-3 hover:bg-primary/5 relative before:absolute before:left-[-9px] before:top-[18px] before:w-2 before:h-2 before:rounded-full before:border-2 before:border-background",
-                          isAiComment 
-                            ? "before:bg-violet-500 bg-violet-500/5" 
+                          isAiComment
+                            ? "before:bg-violet-500 bg-violet-500/5"
                             : "before:bg-primary/50"
                         )
-                      : cn(
+                        : cn(
                           "p-4 rounded-2xl border shadow-sm mb-3",
                           isAiComment
                             ? "border-violet-500/30 bg-gradient-to-br from-violet-500/5 to-purple-500/5 dark:from-violet-500/10 dark:to-purple-500/10"
                             : "border-border/30 bg-background/60 hover:bg-background/80 dark:border-white/5 dark:bg-white/5 dark:hover:bg-white/8"
                         )
-                  )}
-                >
-                  {/* Terminal mode: Git log style */}
-                  {isTerminal ? (
-                    <div className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs">
-                        <span className="text-muted-foreground">
-                          [{c.createdAt 
-                            ? new Date(c.createdAt).toLocaleString('ko-KR', {
+                    )}
+                  >
+                    {/* Terminal mode: Git log style */}
+                    {isTerminal ? (
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs">
+                          <span className="text-muted-foreground">
+                            [{c.createdAt
+                              ? new Date(c.createdAt).toLocaleString('ko-KR', {
                                 year: 'numeric',
                                 month: '2-digit',
                                 day: '2-digit',
                                 hour: '2-digit',
                                 minute: '2-digit'
                               })
-                            : 'unknown'}]
-                        </span>
-                        <span className={cn(
-                          "font-semibold",
-                          isAiComment ? "text-violet-500" : "text-primary"
-                        )}>
-                          {isAiComment ? (
-                            <span className="inline-flex items-center gap-1">
-                              <Bot className="h-3 w-3" />
-                              AI@assistant
+                              : 'unknown'}]
+                          </span>
+                          <span className={cn(
+                            "font-semibold",
+                            isAiComment ? "text-violet-500" : "text-primary"
+                          )}>
+                            {isAiComment ? (
+                              <span className="inline-flex items-center gap-1">
+                                <Bot className="h-3 w-3" />
+                                AI@assistant
+                              </span>
+                            ) : (
+                              `${c.author}@visitor`
+                            )}
+                          </span>
+                          <span className="text-muted-foreground">:~$</span>
+                        </div>
+                        <div className="font-mono text-foreground pl-0 sm:pl-4">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              p: ({ children }) => <span className="inline">{children}</span>,
+                            }}
+                          >
+                            {c.content}
+                          </ReactMarkdown>
+                        </div>
+                        {c.website && (
+                          <a
+                            href={c.website}
+                            target='_blank'
+                            rel='noreferrer'
+                            className="inline-flex items-center gap-1 text-xs font-mono text-primary/70 hover:text-primary hover:underline pl-0 sm:pl-4"
+                          >
+                            <Globe2 className="h-3 w-3" />
+                            {c.website}
+                          </a>
+                        )}
+                        {/* Comment Reactions */}
+                        {c.id && (
+                          <div className="pl-0 sm:pl-4">
+                            <CommentReactions
+                              commentId={c.id}
+                              initialReactions={reactionsMap[c.id] || []}
+                              isTerminal={isTerminal}
+                              compact
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* Standard mode: Card style */
+                      <>
+                        <div className='mb-2.5 flex items-center justify-between'>
+                          <div className='flex items-center gap-2'>
+                            <span className={cn(
+                              "flex items-center justify-center rounded-full w-7 h-7",
+                              isAiComment
+                                ? "bg-gradient-to-br from-violet-500/20 to-purple-500/20"
+                                : "bg-gradient-to-br from-primary/20 to-primary/10"
+                            )}>
+                              {isAiComment ? (
+                                <Bot className="h-3.5 w-3.5 text-violet-500" />
+                              ) : (
+                                <User className="h-3.5 w-3.5 text-primary" />
+                              )}
                             </span>
-                          ) : (
-                            `${c.author}@visitor`
+                            <span className={cn(
+                              "font-semibold text-[13px]",
+                              isAiComment
+                                ? "text-violet-600 dark:text-violet-400"
+                                : "text-foreground dark:text-white"
+                            )}>
+                              {c.author}
+                              {isAiComment && (
+                                <Sparkles className="inline h-3 w-3 ml-1 text-violet-500" />
+                              )}
+                            </span>
+                          </div>
+                          {c.createdAt && (
+                            <span className="text-xs font-normal text-muted-foreground/70 dark:text-white/50">
+                              {new Date(c.createdAt).toLocaleDateString()}
+                            </span>
                           )}
-                        </span>
-                        <span className="text-muted-foreground">:~$</span>
-                      </div>
-                      <div className="font-mono text-foreground pl-0 sm:pl-4">
-                        <ReactMarkdown 
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            p: ({ children }) => <span className="inline">{children}</span>,
-                          }}
-                        >
-                          {c.content}
-                        </ReactMarkdown>
-                      </div>
-                      {c.website && (
-                        <a
-                          href={c.website}
-                          target='_blank'
-                          rel='noreferrer'
-                          className="inline-flex items-center gap-1 text-xs font-mono text-primary/70 hover:text-primary hover:underline pl-0 sm:pl-4"
-                        >
-                          <Globe2 className="h-3 w-3" />
-                          {c.website}
-                        </a>
-                      )}
-                      {/* Comment Reactions */}
-                      {c.id && (
-                        <div className="pl-0 sm:pl-4">
+                        </div>
+                        <div className="prose prose-sm max-w-none leading-relaxed dark:prose-invert prose-p:text-foreground/90 dark:prose-p:text-white/85">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {c.content}
+                          </ReactMarkdown>
+                        </div>
+                        {c.website && (
+                          <a
+                            href={c.website}
+                            target='_blank'
+                            rel='noreferrer'
+                            className="mt-2.5 inline-flex items-center gap-1 text-xs text-primary/80 hover:text-primary hover:underline"
+                          >
+                            <Globe2 className="h-3 w-3" />
+                            {c.website}
+                          </a>
+                        )}
+                        {/* Comment Reactions */}
+                        {c.id && (
                           <CommentReactions
                             commentId={c.id}
                             initialReactions={reactionsMap[c.id] || []}
                             isTerminal={isTerminal}
-                            compact
                           />
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    /* Standard mode: Card style */
-                    <>
-                      <div className='mb-2.5 flex items-center justify-between'>
-                        <div className='flex items-center gap-2'>
-                          <span className={cn(
-                            "flex items-center justify-center rounded-full w-7 h-7",
-                            isAiComment
-                              ? "bg-gradient-to-br from-violet-500/20 to-purple-500/20"
-                              : "bg-gradient-to-br from-primary/20 to-primary/10"
-                          )}>
-                            {isAiComment ? (
-                              <Bot className="h-3.5 w-3.5 text-violet-500" />
-                            ) : (
-                              <User className="h-3.5 w-3.5 text-primary" />
-                            )}
-                          </span>
-                          <span className={cn(
-                            "font-semibold text-[13px]",
-                            isAiComment
-                              ? "text-violet-600 dark:text-violet-400"
-                              : "text-foreground dark:text-white"
-                          )}>
-                            {c.author}
-                            {isAiComment && (
-                              <Sparkles className="inline h-3 w-3 ml-1 text-violet-500" />
-                            )}
-                          </span>
-                        </div>
-                        {c.createdAt && (
-                          <span className="text-xs font-normal text-muted-foreground/70 dark:text-white/50">
-                            {new Date(c.createdAt).toLocaleDateString()}
-                          </span>
                         )}
-                      </div>
-                      <div className="prose prose-sm max-w-none leading-relaxed dark:prose-invert prose-p:text-foreground/90 dark:prose-p:text-white/85">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                          {c.content}
-                        </ReactMarkdown>
-                      </div>
-                      {c.website && (
-                        <a
-                          href={c.website}
-                          target='_blank'
-                          rel='noreferrer'
-                          className="mt-2.5 inline-flex items-center gap-1 text-xs text-primary/80 hover:text-primary hover:underline"
-                        >
-                          <Globe2 className="h-3 w-3" />
-                          {c.website}
-                        </a>
-                      )}
-                      {/* Comment Reactions */}
-                      {c.id && (
-                        <CommentReactions
-                          commentId={c.id}
-                          initialReactions={reactionsMap[c.id] || []}
-                          isTerminal={isTerminal}
-                        />
-                      )}
-                    </>
-                  )}
-                </li>
-              );})}
+                      </>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
 
@@ -660,7 +670,7 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 �
                     <span className="text-muted-foreground">:~$</span>
                   </div>
                   <div className="font-mono text-foreground pl-0 sm:pl-4">
-                    <ReactMarkdown 
+                    <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
                         p: ({ children }) => <span className="inline">{children}</span>,
@@ -760,8 +770,8 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 �
                   : "group-hover:text-primary"
               )} />
               <span className="flex-1">
-                {isTerminal 
-                  ? ">_ Write a comment..." 
+                {isTerminal
+                  ? ">_ Write a comment..."
                   : "Write a comment..."}
               </span>
               <span className={cn(
@@ -781,7 +791,7 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 �
                   ? "font-mono text-muted-foreground"
                   : "text-muted-foreground dark:text-white/50"
               )}>
-                {isTerminal 
+                {isTerminal
                   ? "// archived comments shown; new ones appear live"
                   : "Archived comments are shown above; new ones will appear live."}
               </p>

@@ -42,7 +42,7 @@ export async function requireAuth(c: Context, next: Next) {
  * This middleware ensures:
  * 1. Valid access token (not refresh token)
  * 2. User has 'admin' role
- * 3. Email has been verified via OTP
+ * 3. emailVerified flag is true (set by TOTP and OAuth2 flows)
  */
 export async function requireAdmin(c: Context, next: Next) {
   const env = c.env as Env;

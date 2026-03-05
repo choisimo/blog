@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -27,6 +28,8 @@ import workersRouter from './routes/workers.js';
 import aiAdminRouter from './routes/aiAdmin.js';
 import agentRouter from './routes/agent.js';
 import notificationsRouter from './routes/notifications.js';
+import debateRouter from './routes/debate.js';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 async function startServer() {
   await loadAndApplyConsulConfig();
@@ -67,6 +70,7 @@ app.get('/api/v1/public/config', (req, res) => {
 });
 
 // All routes below require valid X-Backend-Key from Gateway
+app.use('/api/v1/notifications', notificationsRouter);
 app.use(requireBackendKey);
 
 // parsers
@@ -89,8 +93,6 @@ app.use('/api/v1/analytics', analyticsRouter);
 app.use('/api/v1/chat', chatRouter);
 app.use('/api/v1/translate', translateRouter);
 app.use('/api/v1/memos', memosRouter);
-app.use('/api', userContentRouter);  // /api/personas, /api/memos
-app.use('/api/v1', userContentRouter);
 app.use('/api/v1/user-content', userContentRouter);
 app.use('/api/v1/og', ogRouter);
 app.use('/api/v1/admin', adminRouter);
@@ -105,19 +107,14 @@ app.use('/api/v1/admin/config', configRouter);
 app.use('/api/v1/admin/workers', workersRouter);
 app.use('/api/v1/admin/ai', aiAdminRouter);
 app.use('/api/v1/agent', agentRouter);
-app.use('/api/v1/notifications', notificationsRouter);
+
+app.use('/api/v1/debate', debateRouter);
 
 // not found
-app.use((req, res) => {
-  res.status(404).json({ ok: false, error: 'Not Found' });
-});
+app.use(notFoundHandler);
 
 // error handler
-
-app.use((err, req, res, next) => {
-  const status = err.status || 500;
-  res.status(status).json({ ok: false, error: err.message || 'Server Error' });
-});
+app.use(errorHandler);
 
 const port = config.port;
 const host = config.host;

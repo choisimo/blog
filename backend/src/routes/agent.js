@@ -240,6 +240,17 @@ router.post("/stream", async (req, res) => {
     const effectiveMaxIterations = resolveMaxIterations(maxIterations);
 
     // Stream agent response
+    const AGENT_STREAM_TIMEOUT_MS = 120_000;
+    let streamTimedOut = false;
+    const streamTimeout = setTimeout(() => {
+      streamTimedOut = true;
+      if (!closed) {
+        send('error', { message: 'Stream timeout after 120 seconds', code: 'STREAM_TIMEOUT' });
+        onClose();
+      }
+    }, AGENT_STREAM_TIMEOUT_MS);
+
+
     try {
       for await (const event of coordinator.stream({
         sessionId,
@@ -254,7 +265,8 @@ router.post("/stream", async (req, res) => {
           maxIterations: effectiveMaxIterations,
         },
       })) {
-        if (closed) break;
+        if (closed || streamTimedOut) break;
+
 
         switch (event.type) {
           case "text":
@@ -302,26 +314,6 @@ router.post("/stream", async (req, res) => {
               error: event.data.error,
             });
             break;
-            send("done", {
-              type: "done",
-              sessionId,
-              toolsUsed:
-                event.data.toolCalls?.map((tc) => tc.function?.name) || [],
-              content: event.data.content,
-            });
-            broadcastNotification("agent_complete", {
-              type: "agent_complete",
-              title: "AI Agent 작업 완료",
-              message: event.data.content
-                ? event.data.content.slice(0, 120) +
-                  (event.data.content.length > 120 ? "…" : "")
-                : "작업이 완료되었습니다.",
-              payload: {
-                sessionId,
-                toolsUsed:
-                  event.data.toolCalls?.map((tc) => tc.function?.name) || [],
-              },
-            });
           case "error":
             send("error", { message: event.data.message });
             broadcastNotification("error", {
@@ -335,13 +327,17 @@ router.post("/stream", async (req, res) => {
       }
     } catch (streamError) {
       send("error", { message: streamError.message, code: "STREAM_ERROR" });
+    } finally {
+      clearTimeout(streamTimeout);
     }
 
+
     onClose();
-  } catch (err) {
-    console.error("Agent stream error:", err);
-    send("error", { message: err.message, code: "INTERNAL_ERROR" });
-    onClose();
+  } catch (streamError) {
+    console.error('[agent] Stream error:', streamError);
+    if (!closed) {
+      send('error', { message: 'Stream processing error', code: 'STREAM_ERROR' });
+    }
   }
 });
 

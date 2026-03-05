@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { SEOData } from '../../utils/seo/seo';
 
-export const useSEO = (seoData: SEOData) => {
+export const useSEO = (seoData: SEOData, structuredData?: Record<string, any>) => {
   useEffect(() => {
     // Update document title
     document.title = seoData.title;
@@ -100,5 +100,18 @@ export const useSEO = (seoData: SEOData) => {
         document.head.appendChild(tagElement);
       });
     }
-  }, [seoData]);
+
+    // Update Structured Data (JSON-LD)
+    if (structuredData) {
+      let script = document.querySelector('script[type="application/ld+json"]') as HTMLScriptElement;
+      if (script) {
+        script.textContent = JSON.stringify(structuredData);
+      } else {
+        script = document.createElement('script');
+        script.type = 'application/ld+json';
+        script.textContent = JSON.stringify(structuredData);
+        document.head.appendChild(script);
+      }
+    }
+  }, [seoData, structuredData]);
 };

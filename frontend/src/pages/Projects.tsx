@@ -9,6 +9,8 @@ import { ProjectCard, ProjectCardSkeleton, ProjectModal, TagFilter } from '@/com
 import { getProjects, getProjectTags, type ProjectItem } from '@/data/projects';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useSEO } from '@/hooks/seo/useSEO';
+import { generateSEOData, generateStructuredData } from '@/utils/seo/seo';
 
 type ViewMode = 'card' | 'list';
 
@@ -24,6 +26,11 @@ function getStatusClassName(status: ProjectItem['status']): string {
 }
 
 const Projects = () => {
+  useSEO(
+    generateSEOData(undefined, 'projects'),
+    generateStructuredData(undefined, 'projects')
+  );
+
   const isMobile = useIsMobile();
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [loading, setLoading] = useState(true);

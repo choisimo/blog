@@ -300,9 +300,20 @@ export class OpenAICompatClient {
    * @returns {Promise<string>} Analysis result
    */
   async vision(imageData, prompt, options = {}) {
+    const requestId = `vision-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const model = options.model || AI_MODELS.VISION;
     const isUrl =
       imageData.startsWith("http://") || imageData.startsWith("https://");
+
+    if (this._isCircuitOpen()) {
+      logger.warn(
+        { operation: "vision", requestId },
+        "Request blocked by circuit breaker"
+      );
+      throw new Error(
+        "AI service temporarily unavailable (circuit breaker open)"
+      );
+    }
 
     let imageContent;
     if (isUrl) {
@@ -322,10 +333,17 @@ export class OpenAICompatClient {
       },
     ];
 
-    const result = await this.chat(messages, { model });
-    return result.content;
+    try {
+      const result = await this.chat(messages, { model });
+      return result.content;
+    } catch (error) {
+      logger.error({ operation: "vision", requestId }, "Vision analysis failed", {
+        model,
+        error: error.message,
+      });
+      throw error;
+    }
   }
-
   /**
    * Streaming chat completion
    *
@@ -334,7 +352,23 @@ export class OpenAICompatClient {
    * @yields {string} Text chunks
    */
   async *streamChat(messages, options = {}) {
+    const requestId = `stream-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const model = options.model || this.defaultModel;
+
+    if (this._isCircuitOpen()) {
+      logger.warn(
+        { operation: "streamChat", requestId },
+        "Stream request blocked by circuit breaker"
+      );
+      throw new Error(
+        "AI service temporarily unavailable (circuit breaker open)"
+      );
+    }
+
+    logger.debug({ operation: "streamChat", requestId }, "Starting stream request", {
+      model,
+      messageCount: messages?.length,
+    });
 
     try {
       const stream = await this._openai.chat.completions.create(
@@ -360,6 +394,10 @@ export class OpenAICompatClient {
       this._recordSuccess();
     } catch (error) {
       this._recordFailure();
+      logger.error({ operation: "streamChat", requestId }, "Stream failed", {
+        model,
+        error: error.message,
+      });
       throw error;
     }
   }
@@ -372,6 +410,18 @@ export class OpenAICompatClient {
    * @yields {string} Text chunks
    */
   async *stream(prompt, options = {}) {
+    const requestId = `stream-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    if (this._isCircuitOpen()) {
+      logger.warn(
+        { operation: "stream", requestId },
+        "Stream request blocked by circuit breaker"
+      );
+      throw new Error(
+        "AI service temporarily unavailable (circuit breaker open)"
+      );
+    }
+
     const messages = [];
 
     if (options.systemPrompt) {
