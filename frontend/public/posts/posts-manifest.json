@@ -1,6 +1,26 @@
 {
-  "total": 259,
+  "total": 261,
   "items": [
+    {
+      "path": "/posts/2026/awk-1.md",
+      "year": "2026",
+      "slug": "awk-1",
+      "title": "awk 시스템 처리 원리",
+      "description": "awk 시스템 레벨에서의 처리 원리를 아주 간단하게 살펴봅시다.",
+      "snippet": "awk 시스템 레벨에서의 처리 원리를 아주 간단하게 살펴봅시다.",
+      "date": "2026-03-06",
+      "tags": [
+        "record",
+        "interpreter",
+        "awk"
+      ],
+      "category": "Linux, awk, memory",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "coverImage": "/posts/2026/images/2026/awk-1/1.png",
+      "url": "/blog/2026/awk-1"
+    },
     {
       "path": "/posts/2026/teleport.md",
       "year": "2026",
@@ -4275,6 +4295,26 @@
       "url": "/blog/2025/memory-management-study"
     },
     {
+      "path": "/posts/2026/docker-1.md",
+      "year": "2026",
+      "slug": "docker-1",
+      "title": "Docker container 란 무엇일까?",
+      "description": "Docker 기초-1",
+      "snippet": "Docker 기초-1",
+      "date": "2025-01-01",
+      "tags": [
+        "cgroups",
+        "namespace",
+        "container",
+        "docker"
+      ],
+      "category": "Linux, docker, virtualization",
+      "author": "Admin",
+      "readingTime": "1 min read",
+      "published": true,
+      "url": "/blog/2026/docker-1"
+    },
+    {
       "path": "/posts/2024/react-native-springboot-mongodb-diary-app.md",
       "year": "2024",
       "slug": "react-native-springboot-mongodb-diary-app",
@@ -5466,7 +5506,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-03-05T04:56:19.355Z",
+  "generatedAt": "2026-03-05T21:51:17.064Z",
   "years": [
     "2026",
     "2025",
