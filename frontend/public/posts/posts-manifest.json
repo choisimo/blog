@@ -5,22 +5,25 @@
       "path": "/posts/2026/teleport.md",
       "year": "2026",
       "slug": "teleport",
-      "title": "SSH private key 관리에 대한 고민",
-      "description": "['ssh 키와 호스트 관리에 대한 스트레스와 해결 방안 고민들']",
-      "snippet": "['ssh 키와 호스트 관리에 대한 스트레스와 해결 방안 고민들']",
+      "title": "리눅스, fork에서 io_uring까지, OS가 선택한 타협",
+      "description": "리눅스가 수십 년에 걸쳐 쌓아 올린 설계의 타협",
+      "snippet": "리눅스가 수십 년에 걸쳐 쌓아 올린 설계의 타협",
       "date": "2026-02-29",
       "tags": [
-        "ssh",
-        "private key",
-        "socket",
+        "linux",
+        "os",
         "security",
-        "개발",
-        "dev-ops"
+        "ssh",
+        "teleport",
+        "selinux",
+        "devops",
+        "kernel"
       ],
       "category": "Tech",
       "author": "Admin",
-      "readingTime": "7 min read",
+      "readingTime": "10 min read",
       "published": true,
+      "coverImage": "/images/2026/teleport/1.png",
       "url": "/blog/2026/teleport"
     },
     {
@@ -5463,7 +5466,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-03-04T16:42:52.349Z",
+  "generatedAt": "2026-03-05T04:56:19.355Z",
   "years": [
     "2026",
     "2025",
