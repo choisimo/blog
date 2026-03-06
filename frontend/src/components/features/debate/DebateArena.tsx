@@ -224,22 +224,92 @@ export default function DebateArena({
 
     setIsLoading(true);
     setError(null);
-    try {
-      const data = await requestDebate<{ roundNumber: number; messages: DebateMessage[] }>(
-        `/sessions/${session.sessionId}/round`,
-        {
-        method: 'POST',
-        }
-      );
 
-      const { roundNumber, messages: newMessages } = data;
-      setCurrentRound(roundNumber);
-      setMessages((prev) => [...prev, ...newMessages]);
+    const bases = getDebateBaseCandidates();
+    const streamUrl = `${bases[0]}/api/v1/debate/sessions/${session.sessionId}/round/stream`;
+
+    try {
+      const response = await fetch(streamUrl, { method: 'POST' });
+
+      if (!response.ok || !response.body) {
+        const text = await response.text().catch(() => '');
+        let msg = `서버 오류: ${response.status}`;
+        try {
+          const parsed = JSON.parse(text) as { error?: { message?: string } | string; message?: string };
+          msg = extractErrorMessage(parsed) || msg;
+        } catch {
+          void 0;
+        }
+        throw new Error(msg);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      const partialIndexByRole: Record<string, number> = {};
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr) continue;
+
+          let event: {
+            type: string;
+            role?: string;
+            name?: string;
+            color?: string;
+            text?: string;
+            content?: string;
+            roundNumber?: number;
+            message?: string;
+          };
+          try {
+            event = JSON.parse(jsonStr) as typeof event;
+          } catch {
+            continue;
+          }
+
+          if (event.type === 'agent_start' && event.role && event.name && event.color) {
+            setMessages((prev) => {
+              partialIndexByRole[event.role!] = prev.length;
+              return [...prev, { role: event.role!, name: event.name!, content: '', color: event.color! }];
+            });
+          } else if (event.type === 'text' && event.role && event.text) {
+            setMessages((prev) => {
+              const idx = partialIndexByRole[event.role!];
+              if (idx === undefined) return prev;
+              const updated = [...prev];
+              updated[idx] = { ...updated[idx], content: updated[idx].content + event.text! };
+              return updated;
+            });
+          } else if (event.type === 'agent_done' && event.role && event.content !== undefined) {
+            setMessages((prev) => {
+              const idx = partialIndexByRole[event.role!];
+              if (idx === undefined) return prev;
+              const updated = [...prev];
+              updated[idx] = { ...updated[idx], content: event.content! };
+              return updated;
+            });
+          } else if (event.type === 'done' && event.roundNumber !== undefined) {
+            setCurrentRound(event.roundNumber);
+            setIsLoading(false);
+          } else if (event.type === 'error') {
+            throw new Error(event.message || '스트리밍 오류');
+          }
+        }
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : '라운드 생성에 실패했습니다.';
-      console.error('Failed to generate round:', err);
+      console.error('Failed to generate round (stream):', err);
       setError(message);
-    } finally {
       setIsLoading(false);
     }
   }, [session, isLoading]);

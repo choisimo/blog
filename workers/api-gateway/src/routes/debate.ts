@@ -375,6 +375,50 @@ debate.post('/sessions/:id/round', async (c) => {
   }
 });
 
+debate.post('/sessions/:id/round/stream', async (c) => {
+  const sessionId = c.req.param('id');
+
+  const backendUrl = await getApiBaseUrl(c.env);
+  const apiKey = await getAiServeApiKey(c.env);
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (apiKey) {
+    headers['X-Internal-Gateway-Key'] = apiKey;
+  }
+
+  let backendRes: Response;
+  try {
+    backendRes = await fetch(
+      `${backendUrl}/api/v1/debate/sessions/${sessionId}/round/stream`,
+      {
+        method: 'POST',
+        headers,
+        signal: c.req.raw.signal,
+      }
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Backend connection failed';
+    console.error('Debate stream backend fetch failed:', message);
+    return serverError(c, message);
+  }
+
+  if (!backendRes.ok || !backendRes.body) {
+    return serverError(c, `Backend stream unavailable: ${backendRes.status}`);
+  }
+
+  return new Response(backendRes.body, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    },
+  });
+});
+
 debate.post('/sessions/:id/vote', async (c) => {
   const sessionId = c.req.param('id');
 
