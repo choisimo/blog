@@ -264,6 +264,8 @@ export function ClickableImage({ src, alt, className, isTerminal, postPath }: Cl
       resolvedSrc = src.replace('../images/', '/images/');
     } else if (src.startsWith('./images/')) {
       resolvedSrc = src.replace('./images/', '/images/');
+    } else if (src.startsWith('images/')) {
+      resolvedSrc = `/${src}`;
     } else if (src.startsWith('image/')) {
       // Handle relative paths like "image/post-name/file.png"
       // Use postPath to get the year, e.g., "2025/future-tech-six-insights" -> "2025"
