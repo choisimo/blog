@@ -7,12 +7,29 @@ const postsDir = path.join(process.cwd(), 'public', 'posts');
 
 function normalizeImagePath(rawPath, markdownAbsPath) {
   if (!rawPath) return undefined;
-  if (/^https?:\/\//i.test(rawPath) || rawPath.startsWith('data:')) {
-    return rawPath;
+  const normalizedInput = String(rawPath).trim();
+  if (!normalizedInput) return undefined;
+
+  if (/^https?:\/\//i.test(normalizedInput) || normalizedInput.startsWith('data:')) {
+    return normalizedInput;
+  }
+
+  if (normalizedInput.startsWith('/')) {
+    return normalizedInput;
+  }
+
+  const rootImagesMatch = normalizedInput.match(/^(?:\.\.\/|\.\/)*images\/(.+)$/i);
+  if (rootImagesMatch?.[1]) {
+    return `/images/${rootImagesMatch[1]}`;
+  }
+
+  const rootPostsMatch = normalizedInput.match(/^(?:\.\.\/|\.\/)*posts\/(.+)$/i);
+  if (rootPostsMatch?.[1]) {
+    return `/posts/${rootPostsMatch[1]}`;
   }
 
   const markdownDir = path.dirname(markdownAbsPath);
-  const absolutePath = path.resolve(markdownDir, rawPath);
+  const absolutePath = path.resolve(markdownDir, normalizedInput);
   const publicDir = path.join(process.cwd(), 'public');
   const relativeToPublic = path.relative(publicDir, absolutePath);
 
@@ -20,11 +37,9 @@ function normalizeImagePath(rawPath, markdownAbsPath) {
     return `/${relativeToPublic.replace(/\\/g, '/')}`;
   }
 
-  if (rawPath.startsWith('/')) {
-    return rawPath;
-  }
-
-  const stripped = rawPath.replace(/^\.\/?/, '').replace(/^\.\./, '');
+  const stripped = normalizedInput
+    .replace(/^\.\/?/, '')
+    .replace(/^(?:\.\.\/)+/, '');
   return `/${stripped}`;
 }
 

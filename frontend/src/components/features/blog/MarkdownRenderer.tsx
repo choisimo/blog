@@ -48,7 +48,11 @@ import {
 } from "react";
 import { Button } from "@/components/ui/button";
 import SparkInline from "@/components/features/sentio/SparkInline";
-import { ClickableImage } from "./ImageLightbox";
+import {
+  ClickableImage,
+  EmbeddedVideo,
+  NormalizedVideoSource,
+} from "./ImageLightbox";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 import {
@@ -685,6 +689,23 @@ export const MarkdownRenderer = ({
               src={src || ""}
               alt={alt}
               isTerminal={isTerminal}
+              postPath={postPath}
+            />
+          ),
+          video: ({ src, children, ...props }) => (
+            <EmbeddedVideo
+              {...props}
+              src={typeof src === "string" ? src : ""}
+              postPath={postPath}
+              isTerminal={isTerminal}
+            >
+              {children}
+            </EmbeddedVideo>
+          ),
+          source: ({ src, ...props }) => (
+            <NormalizedVideoSource
+              {...props}
+              src={typeof src === "string" ? src : undefined}
               postPath={postPath}
             />
           ),

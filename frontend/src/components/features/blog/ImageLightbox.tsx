@@ -1,4 +1,12 @@
-import { useState, useCallback, useEffect, useRef, type RefCallback } from 'react';
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  type ComponentProps,
+  type RefCallback,
+  type ReactNode,
+} from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,24 +17,12 @@ import { Button } from '@/components/ui/button';
 import { X, ZoomIn, ZoomOut, RotateCw, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
-
-/**
- * Get thumbnail path for an image.
- * Thumbnails are generated as .thumb.webp files by the optimize-images script.
- */
-function getThumbSrc(src: string): string {
-  if (!src) return src;
-  
-  // Skip external URLs, data URIs, and already-thumbnail files
-  if (/^(https?:)?\/\//i.test(src) || /^(data|blob):/i.test(src)) return src;
-  if (src.includes('.thumb.')) return src;
-  
-  // Replace extension with .thumb.webp
-  const lastDot = src.lastIndexOf('.');
-  if (lastDot === -1) return src;
-  
-  return src.substring(0, lastDot) + '.thumb.webp';
-}
+import {
+  getThumbSrc,
+  isVideoMedia,
+  resolvePostMediaSrc,
+  shouldUseThumb,
+} from '@/utils/content/postMedia';
 
 interface ImageLightboxProps {
   src: string;
@@ -248,36 +244,19 @@ interface ClickableImageProps {
   postPath?: string; // e.g., "2025/future-tech-six-insights" for resolving relative image paths
 }
 
-export function ClickableImage({ src, alt, className, isTerminal, postPath }: ClickableImageProps) {
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [thumbLoaded, setThumbLoaded] = useState(false);
-  const [thumbError, setThumbError] = useState(false);
+interface EmbeddedVideoProps extends ClickableImageProps {
+  autoPlay?: boolean;
+  controls?: boolean;
+  loop?: boolean;
+  muted?: boolean;
+  playsInline?: boolean;
+  children?: ReactNode;
+}
+
+function useInView<T extends HTMLElement>() {
   const [isInView, setIsInView] = useState(false);
-  const imgRef = useRef<HTMLImageElement>(null);
+  const mediaRef = useRef<T>(null);
 
-  // Resolve relative paths to absolute
-  let resolvedSrc = src;
-  if (src) {
-    if (src.startsWith('../../images/')) {
-      resolvedSrc = src.replace('../../images/', '/images/');
-    } else if (src.startsWith('../images/')) {
-      resolvedSrc = src.replace('../images/', '/images/');
-    } else if (src.startsWith('./images/')) {
-      resolvedSrc = src.replace('./images/', '/images/');
-    } else if (src.startsWith('images/')) {
-      resolvedSrc = `/${src}`;
-    } else if (src.startsWith('image/')) {
-      // Handle relative paths like "image/post-name/file.png"
-      // Use postPath to get the year, e.g., "2025/future-tech-six-insights" -> "2025"
-      const year = postPath?.split('/')[0] || '2025';
-      resolvedSrc = `/posts/${year}/${src}`;
-    }
-  }
-
-  // Get thumbnail version (falls back to original if thumb doesn't exist)
-  const thumbSrc = getThumbSrc(resolvedSrc);
-
-  // Intersection Observer for lazy loading
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -292,7 +271,7 @@ export function ClickableImage({ src, alt, className, isTerminal, postPath }: Cl
       }
     );
 
-    const currentRef = imgRef.current;
+    const currentRef = mediaRef.current;
     if (currentRef) {
       observer.observe(currentRef);
     }
@@ -304,6 +283,114 @@ export function ClickableImage({ src, alt, className, isTerminal, postPath }: Cl
     };
   }, []);
 
+  return { isInView, mediaRef };
+}
+
+export function EmbeddedVideo({
+  src,
+  alt,
+  className,
+  isTerminal,
+  postPath,
+  autoPlay = true,
+  controls = true,
+  loop = true,
+  muted = true,
+  playsInline = true,
+  children,
+}: EmbeddedVideoProps) {
+  const resolvedSrc = resolvePostMediaSrc(src, postPath);
+  const { isInView, mediaRef } = useInView<HTMLVideoElement>();
+  const [loadFailed, setLoadFailed] = useState(false);
+  const hasDirectSrc = !!resolvedSrc;
+
+  if (!hasDirectSrc && !children) {
+    return null;
+  }
+
+  return (
+    <span className="my-8 text-center block">
+      {loadFailed ? (
+        <div
+          className={cn(
+            'rounded-xl border border-border/50 bg-muted/40 px-6 py-12 text-sm text-muted-foreground',
+            isTerminal && 'rounded-lg border-border',
+            className
+          )}
+        >
+          {alt || 'Video unavailable'}
+        </div>
+      ) : (
+        <video
+          ref={mediaRef}
+          src={hasDirectSrc && isInView ? resolvedSrc : undefined}
+          data-src={hasDirectSrc ? resolvedSrc : undefined}
+          autoPlay={autoPlay}
+          controls={controls}
+          loop={loop}
+          muted={muted}
+          playsInline={playsInline}
+          preload="metadata"
+          onCanPlay={(event) => {
+            if (!autoPlay) return;
+            void event.currentTarget.play().catch(() => undefined);
+          }}
+          onError={() => setLoadFailed(true)}
+          className={cn(
+            'rounded-xl shadow-lg mx-auto max-w-full h-auto bg-black',
+            isTerminal && 'rounded-lg border border-border',
+            className
+          )}
+          aria-label={alt || 'Embedded video'}
+        >
+          {children}
+        </video>
+      )}
+      {alt && (
+        <span
+          className={cn(
+            'text-sm text-muted-foreground mt-2 italic',
+            isTerminal && 'font-mono not-italic'
+          )}
+        >
+          {isTerminal ? `// ${alt}` : alt}
+        </span>
+      )}
+    </span>
+  );
+}
+
+export function NormalizedVideoSource({
+  src,
+  postPath,
+  ...props
+}: ComponentProps<'source'> & { postPath?: string }) {
+  const resolvedSrc =
+    typeof src === 'string' ? resolvePostMediaSrc(src, postPath) : src;
+
+  return <source {...props} src={resolvedSrc} />;
+}
+
+export function ClickableImage({ src, alt, className, isTerminal, postPath }: ClickableImageProps) {
+  const resolvedSrc = resolvePostMediaSrc(src, postPath);
+  const isVideo = isVideoMedia(resolvedSrc);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [thumbLoaded, setThumbLoaded] = useState(false);
+  const [thumbError, setThumbError] = useState(false);
+  const { isInView, mediaRef: imgRef } = useInView<HTMLImageElement>();
+
+  if (isVideo) {
+    return (
+      <EmbeddedVideo
+        src={resolvedSrc}
+        alt={alt}
+        className={className}
+        isTerminal={isTerminal}
+        postPath={postPath}
+      />
+    );
+  }
+
   // Handle thumbnail load error - fallback to original
   const handleThumbError = useCallback(() => {
     setThumbError(true);
@@ -314,7 +401,9 @@ export function ClickableImage({ src, alt, className, isTerminal, postPath }: Cl
   }, []);
 
   // Use original if thumbnail failed to load
-  const displaySrc = thumbError ? resolvedSrc : thumbSrc;
+  const displaySrc = thumbError || !shouldUseThumb(resolvedSrc)
+    ? resolvedSrc
+    : getThumbSrc(resolvedSrc);
 
   return (
     <>

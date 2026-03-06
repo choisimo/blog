@@ -5,6 +5,7 @@ import type {
   PostsPage,
   SupportedLanguage,
 } from '@/types/blog';
+import { normalizeManifestMediaPath } from '@/utils/content/postMedia';
 
 type ManifestItem = {
   path: string; // /posts/:lang/:year/:file.md or legacy /posts/:year/:file.md
@@ -49,6 +50,14 @@ export class PostService {
 
   private static asLower(value: unknown): string {
     return this.asString(value).toLowerCase();
+  }
+
+  private static normalizeCoverImage(
+    coverImage: string | undefined,
+    year: string,
+    slug: string
+  ): string | undefined {
+    return normalizeManifestMediaPath(coverImage, `${year}/${slug}`);
   }
 
   // Query for paginated metadata
@@ -169,7 +178,7 @@ export class PostService {
       slug: it.slug,
       year: it.year,
       published: true,
-      coverImage: it.coverImage,
+      coverImage: this.normalizeCoverImage(it.coverImage, it.year, it.slug),
       language: it.language ?? 'ko',
     }));
 
@@ -322,7 +331,15 @@ export class PostService {
       year,
       language: defaultLanguage,
       published: frontMatter.published !== false,
-      coverImage: frontMatter.coverImage || frontMatter.cover,
+      coverImage: this.normalizeCoverImage(
+        typeof frontMatter.coverImage === 'string'
+          ? frontMatter.coverImage
+          : typeof frontMatter.cover === 'string'
+            ? frontMatter.cover
+            : undefined,
+        year,
+        filename
+      ),
       defaultLanguage,
       availableLanguages,
       translations: translationEntries,
@@ -363,7 +380,11 @@ export class PostService {
           author: parsed.author,
           readingTime: parsed.readingTime,
           published: true,
-          coverImage: parsed.coverImage,
+          coverImage: this.normalizeCoverImage(
+            parsed.coverImage,
+            parsed.year!,
+            parsed.slug!
+          ),
           language: (parsed.language as SupportedLanguage) || 'ko',
           url: `/blog/${parsed.year}/${parsed.slug}`,
         });
@@ -408,7 +429,7 @@ export class PostService {
         slug: it.slug,
         year: it.year,
         published: true,
-        coverImage: it.coverImage,
+        coverImage: this.normalizeCoverImage(it.coverImage, it.year, it.slug),
         language: it.language ?? 'ko',
         defaultLanguage: it.defaultLanguage,
         availableLanguages: it.availableLanguages,
@@ -446,7 +467,11 @@ export class PostService {
         slug: parsed.slug!,
         year: parsed.year!,
         published: true,
-        coverImage: parsed.coverImage ?? item.coverImage,
+        coverImage: this.normalizeCoverImage(
+          parsed.coverImage ?? item.coverImage,
+          parsed.year!,
+          parsed.slug!
+        ),
         defaultLanguage: parsed.defaultLanguage,
         availableLanguages: parsed.availableLanguages,
         translations: parsed.translations,
@@ -472,7 +497,11 @@ export class PostService {
       slug: parsed.slug!,
       year: parsed.year!,
       published: true,
-      coverImage: parsed.coverImage ?? item.coverImage,
+      coverImage: this.normalizeCoverImage(
+        parsed.coverImage ?? item.coverImage,
+        parsed.year!,
+        parsed.slug!
+      ),
       language: (parsed.language ?? parsed.defaultLanguage ?? 'ko') as SupportedLanguage,
     };
   }

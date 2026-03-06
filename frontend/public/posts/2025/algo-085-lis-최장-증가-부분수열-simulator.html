@@ -83,6 +83,38 @@ input[type=range]{accent-color:var(--primary);width:80px}
 .ptr-item{display:flex;gap:3px;}
 .ptr-key{color:#888;}
 .ptr-val{color:#4fc3f7;}
+.viz-stack{display:flex;flex-direction:column;gap:10px;width:100%}
+.viz-lane{display:flex;gap:10px;align-items:flex-start;animation:vizFadeIn .24s ease both}
+.viz-label{min-width:64px;padding-top:8px;color:#888;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;font-family:monospace}
+.viz-body{flex:1;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
+.viz-card-grid,.viz-group-grid,.viz-metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;width:100%}
+.viz-group-grid{grid-template-columns:repeat(auto-fit,minmax(126px,1fr))}
+.viz-card,.viz-group,.viz-metric{background:#202022;border:1px solid var(--border);border-radius:8px;padding:10px;min-height:54px;animation:vizRise .24s ease both}
+.viz-card.changed,.viz-group.changed,.viz-metric.changed,.viz-pill.changed{animation:vizRise .24s ease both,vizPulse .58s ease}
+.viz-card-key,.viz-metric-key,.viz-group-title{font-size:.7rem;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;font-family:monospace}
+.viz-card-value,.viz-metric-value{font-family:monospace;color:#fff;font-weight:600;line-height:1.4;word-break:break-word}
+.viz-group-items{display:flex;flex-wrap:wrap;gap:6px}
+.viz-pill{min-height:34px;min-width:40px;padding:0 10px;border-radius:999px;border:1px solid var(--border);background:#202022;color:#d4d4d4;display:inline-flex;align-items:center;justify-content:center;font-family:monospace;font-size:.82rem;animation:vizRise .24s ease both}
+.viz-pill.tone-primary,.viz-metric.tone-primary{border-color:rgba(0,122,204,.55);background:rgba(0,122,204,.12)}
+.viz-pill.tone-primary{color:#7ec8ff}
+.viz-pill.tone-accent,.viz-metric.tone-accent{border-color:rgba(76,175,80,.55);background:rgba(76,175,80,.14)}
+.viz-pill.tone-accent{color:#7fd784}
+.viz-pill.tone-danger,.viz-metric.tone-danger{border-color:rgba(244,67,54,.55);background:rgba(244,67,54,.14)}
+.viz-pill.tone-danger{color:#ff8c83}
+.viz-metric.tone-primary .viz-metric-value{color:#7ec8ff}
+.viz-metric.tone-accent .viz-metric-value{color:#7fd784}
+.viz-metric.tone-danger .viz-metric-value{color:#ff8c83}
+.viz-empty{min-height:34px;padding:0 12px;border-radius:999px;border:1px dashed var(--border);display:inline-flex;align-items:center;color:#888;font-family:monospace;font-size:.78rem}
+.viz-text-strip{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.viz-matrix{display:flex;flex-direction:column;gap:6px;width:100%}
+.viz-matrix-row{display:flex;gap:6px;flex-wrap:nowrap}
+.box.compact{width:34px;height:34px;font-size:.82rem}
+.box.changed,.cell.changed{animation:vizPulse .58s ease}
+@keyframes vizFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes vizRise{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes vizPulse{0%{transform:scale(1);box-shadow:0 0 0 rgba(0,122,204,0)}50%{transform:scale(1.04);box-shadow:0 0 14px rgba(0,122,204,.32)}100%{transform:scale(1);box-shadow:0 0 0 rgba(0,122,204,0)}}
+@media(max-width:700px){.viz-lane{flex-direction:column;gap:6px;}.viz-label{min-width:0;padding-top:0;}}
+
 @keyframes swapLeft{0%{transform:translateY(0)}40%{transform:translateY(-22px) translateX(-8px)}100%{transform:translateY(0)}}
 @keyframes swapRight{0%{transform:translateY(0)}40%{transform:translateY(-22px) translateX(8px)}100%{transform:translateY(0)}}
 .swap-left{animation:swapLeft .45s ease;}
@@ -141,29 +173,93 @@ input[type=range]{accent-color:var(--primary);width:80px}
 const _codeLines = ["def longest_increasing_subsequence(nums):", "    dp = []", "    for n in nums:", "        lo, hi = 0, len(dp)", "        while lo < hi:", "            mid = (lo+hi)//2", "            if dp[mid] < n: lo = mid+1", "            else: hi = mid", "        if lo == len(dp): dp.append(n)", "        else: dp[lo] = n", "    return len(dp)"];
 let _codePanelOpen = false;
 
-function _makeBox(value, mode, swapDir) {
+function _makeBox(value, mode, swapDir, options) {
   const d = document.createElement('div');
+  const opts = options || {};
   d.className = 'box';
   if (mode === 'active') d.classList.add('active');
   if (mode === 'accent') d.classList.add('accent');
   if (mode === 'merged') d.classList.add('merged');
   if (mode === 'danger') d.classList.add('danger');
+  if (opts.compact) d.classList.add('compact');
+  if (opts.changed && !swapDir) d.classList.add('changed');
   if (swapDir === 'left') d.classList.add('swap-left');
   if (swapDir === 'right') d.classList.add('swap-right');
+  if (typeof opts.delay === 'number') d.style.animationDelay = opts.delay + 'ms';
   d.innerText = String(value);
   return d;
+}
+
+function _safeJson(value) {
+  try { return JSON.stringify(value); }
+  catch (err) { return String(value); }
+}
+
+function _displayValue(value) {
+  if (value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (value === null) return 'null';
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return _safeJson(value);
+}
+
+function _isPrimitive(value) {
+  return value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+}
+
+function _isMatrixLike(value) {
+  return Array.isArray(value) && value.length > 0 && value.every(function(row) { return Array.isArray(row); });
+}
+
+function _isCoordList(value) {
+  return Array.isArray(value) && value.every(function(item) { return Array.isArray(item) && item.length === 2; });
+}
+
+function _isRenderableObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function _didChange(prevValue, nextValue) {
+  return _safeJson(prevValue) !== _safeJson(nextValue);
+}
+
+function _toneForKey(key, value) {
+  if (typeof value === 'boolean') return value ? 'accent' : 'danger';
+  const accentKeys = new Set(['result','output','order','path','rightView','mst','merged']);
+  const primaryKeys = new Set(['stack','queue','cache','heap','minStack','deque','q','pq','maxH','minH','set','visited','dist','inDegree','parent','words']);
+  if (accentKeys.has(key)) return 'accent';
+  if (primaryKeys.has(key)) return 'primary';
+  return '';
+}
+
+function _makeLane(root, label) {
+  const lane = document.createElement('div');
+  lane.className = 'viz-lane';
+  const lab = document.createElement('div');
+  lab.className = 'viz-label';
+  lab.textContent = label;
+  const body = document.createElement('div');
+  body.className = 'viz-body';
+  lane.appendChild(lab);
+  lane.appendChild(body);
+  root.appendChild(lane);
+  return body;
 }
 
 function _renderPointerRow(state) {
   const ptrs = {};
   const map = {left:'L',right:'R',mid:'M',i:'i',j:'j',slow:'S',fast:'F',pivot:'P',start:'S',end:'E'};
-  for (const [k, label] of Object.entries(map)) {
-    if (state[k] !== undefined && state[k] !== null) ptrs[label] = state[k];
+  for (const entry of Object.entries(map)) {
+    const key = entry[0];
+    const label = entry[1];
+    if (state[key] !== undefined && state[key] !== null) ptrs[label] = state[key];
   }
   if (Object.keys(ptrs).length === 0) return null;
   const row = document.createElement('div');
   row.className = 'pointer-row';
-  for (const [label, val] of Object.entries(ptrs)) {
+  for (const entry of Object.entries(ptrs)) {
+    const label = entry[0];
+    const val = entry[1];
     const item = document.createElement('span');
     item.className = 'ptr-item';
     item.innerHTML = '<span class="ptr-key">' + label + '→</span><span class="ptr-val">' + val + '</span>';
@@ -172,94 +268,327 @@ function _renderPointerRow(state) {
   return row;
 }
 
-function _renderVizV2(state, vizEl) {
-  vizEl.innerHTML = '';
-  const active = new Set((Array.isArray(state.active) ? state.active : []).map(String));
-  const result = new Set((Array.isArray(state.result) ? state.result : []).map(String));
+function _appendEmpty(body, text) {
+  const empty = document.createElement('div');
+  empty.className = 'viz-empty';
+  empty.textContent = text || 'empty';
+  body.appendChild(empty);
+}
 
-  if (Array.isArray(state.arrs)) {
-    const row = document.createElement('div');
-    row.className = 'array-row';
-    let gi = 0;
-    state.arrs.forEach(function(subArr) {
-      const group = document.createElement('div');
-      group.style.cssText = 'display:flex;gap:4px;margin:0 8px;';
-      subArr.forEach(function(val) {
-        const box = document.createElement('div');
-        box.className = 'box';
-        box.innerText = String(val);
-        if (state.activeIndices && state.activeIndices.includes(gi)) box.classList.add('active');
-        if (state.mergedIndices && state.mergedIndices.includes(gi)) box.classList.add('merged');
-        group.appendChild(box);
-        gi++;
-      });
-      row.appendChild(group);
+function _makePill(text, tone, changed, index) {
+  const pill = document.createElement('div');
+  pill.className = 'viz-pill';
+  if (tone) pill.classList.add('tone-' + tone);
+  if (changed) pill.classList.add('changed');
+  pill.style.animationDelay = Math.min(index || 0, 8) * 40 + 'ms';
+  pill.textContent = text;
+  return pill;
+}
+
+function _appendCollectionLane(root, label, items, prevItems) {
+  const body = _makeLane(root, label);
+  if (!items.length) {
+    _appendEmpty(body, 'empty');
+    return;
+  }
+  const tone = _toneForKey(label, items);
+  items.forEach(function(item, index) {
+    const prevItem = Array.isArray(prevItems) ? prevItems[index] : undefined;
+    body.appendChild(_makePill(_displayValue(item), tone, !Array.isArray(prevItems) || _didChange(prevItem, item), index));
+  });
+}
+
+function _appendMetricGrid(root, entries, prevState) {
+  if (!entries.length) return;
+  const body = _makeLane(root, 'state');
+  body.classList.add('viz-metric-grid');
+  entries.forEach(function(pair, index) {
+    const key = pair[0];
+    const value = pair[1];
+    const card = document.createElement('div');
+    card.className = 'viz-metric';
+    const tone = _toneForKey(key, value);
+    if (tone) card.classList.add('tone-' + tone);
+    if (!prevState || _didChange(prevState[key], value)) card.classList.add('changed');
+    card.style.animationDelay = Math.min(index, 8) * 40 + 'ms';
+    const k = document.createElement('div');
+    k.className = 'viz-metric-key';
+    k.textContent = key;
+    const v = document.createElement('div');
+    v.className = 'viz-metric-value';
+    v.textContent = _displayValue(value);
+    card.appendChild(k);
+    card.appendChild(v);
+    body.appendChild(card);
+  });
+}
+
+function _appendTextLane(root, label, text, prevText) {
+  const body = _makeLane(root, label);
+  if (!text) {
+    _appendEmpty(body, 'empty');
+    return;
+  }
+  if (text.length <= 16) {
+    body.classList.add('viz-text-strip');
+    text.split('').forEach(function(ch, index) {
+      const prevChar = typeof prevText === 'string' ? prevText[index] : undefined;
+      body.appendChild(_makeBox(ch === ' ' ? '·' : ch, '', '', {
+        compact: true,
+        changed: typeof prevText !== 'string' || prevChar !== ch,
+        delay: Math.min(index, 8) * 35
+      }));
     });
-    vizEl.appendChild(row);
     return;
   }
+  body.appendChild(_makePill(text, _toneForKey(label, text), text !== prevText, 0));
+}
 
-  if (Array.isArray(state.arr)) {
-    const row = document.createElement('div');
-    row.className = 'array-row';
-    const swapPair = state.swapPair || [];
-    for (let idx = 0; idx < state.arr.length; idx++) {
-      let mode = '';
-      if (active.has(String(idx)) || idx === state.fast || idx === state.left ||
-          idx === state.right || idx === state.mid || idx === state.pivot) mode = 'active';
-      if (result.has(String(idx)) || idx === state.slow) mode = 'accent';
-      let swapDir = '';
-      if (swapPair.length === 2) {
-        if (idx === swapPair[0]) swapDir = 'right';
-        if (idx === swapPair[1]) swapDir = 'left';
-      }
-      row.appendChild(_makeBox(state.arr[idx], mode, swapDir));
-    }
-    vizEl.appendChild(row);
-    const ptrRow = _renderPointerRow(state);
-    if (ptrRow) vizEl.appendChild(ptrRow);
+function _appendObjectGrid(root, label, obj, prevObj) {
+  const entries = Object.entries(obj || {});
+  const body = _makeLane(root, label);
+  body.classList.add('viz-card-grid');
+  if (!entries.length) {
+    _appendEmpty(body, 'empty');
     return;
   }
+  entries.forEach(function(entry, index) {
+    const key = entry[0];
+    const value = entry[1];
+    const card = document.createElement('div');
+    card.className = 'viz-card';
+    if (!prevObj || _didChange(prevObj[key], value)) card.classList.add('changed');
+    card.style.animationDelay = Math.min(index, 8) * 40 + 'ms';
+    const k = document.createElement('div');
+    k.className = 'viz-card-key';
+    k.textContent = key;
+    const v = document.createElement('div');
+    v.className = 'viz-card-value';
+    v.textContent = _displayValue(value);
+    card.appendChild(k);
+    card.appendChild(v);
+    body.appendChild(card);
+  });
+}
 
-  if (Array.isArray(state.grid)) {
+function _appendGroups(root, label, groups, prevGroups) {
+  const entries = Object.entries(groups || {});
+  const body = _makeLane(root, label);
+  body.classList.add('viz-group-grid');
+  if (!entries.length) {
+    _appendEmpty(body, 'empty');
+    return;
+  }
+  entries.forEach(function(entry, index) {
+    const key = entry[0];
+    const items = Array.isArray(entry[1]) ? entry[1] : [entry[1]];
+    const prevItems = prevGroups && Array.isArray(prevGroups[key]) ? prevGroups[key] : null;
+    const group = document.createElement('div');
+    group.className = 'viz-group';
+    if (!prevGroups || _didChange(prevGroups[key], items)) group.classList.add('changed');
+    group.style.animationDelay = Math.min(index, 8) * 40 + 'ms';
+    const title = document.createElement('div');
+    title.className = 'viz-group-title';
+    title.textContent = key;
     const wrap = document.createElement('div');
-    wrap.className = 'grid';
-    wrap.style.gridTemplateColumns = 'repeat(' + (state.grid[0] ? state.grid[0].length : 1) + ', 30px)';
-    const pathSet = new Set((Array.isArray(state.path) ? state.path : []).map(function(p){ return p[0]+','+p[1]; }));
-    for (let r = 0; r < state.grid.length; r++) {
-      for (let c = 0; c < state.grid[r].length; c++) {
-        const cell = document.createElement('div');
-        cell.className = 'cell';
-        if (pathSet.has(r+','+c)) cell.style.borderColor = 'var(--primary)';
-        cell.innerText = String(state.grid[r][c]);
-        wrap.appendChild(cell);
-      }
-    }
-    vizEl.appendChild(wrap);
-    const kv = _makeKVPanel(state, ['grid','path','msg','active','result']);
-    if (kv) vizEl.appendChild(kv);
-    return;
-  }
-
-  const panel = document.createElement('div');
-  panel.className = 'panel';
-  panel.innerText = JSON.stringify(state, null, 2);
-  vizEl.appendChild(panel);
+    wrap.className = 'viz-group-items';
+    items.forEach(function(item, itemIndex) {
+      const prevItem = Array.isArray(prevItems) ? prevItems[itemIndex] : undefined;
+      wrap.appendChild(_makePill(_displayValue(item), 'primary', !Array.isArray(prevItems) || _didChange(prevItem, item), itemIndex));
+    });
+    group.appendChild(title);
+    group.appendChild(wrap);
+    body.appendChild(group);
+  });
 }
 
 function _makeKVPanel(state, skipKeys) {
   const skip = new Set(skipKeys || []);
-  const keys = Object.keys(state).filter(function(k){ return !skip.has(k); });
+  const keys = Object.keys(state).filter(function(key) { return !skip.has(key); });
   if (keys.length === 0) return null;
   const kv = document.createElement('div');
   kv.className = 'kv';
-  keys.forEach(function(k) {
-    const kd = document.createElement('div'); kd.className = 'k'; kd.innerText = k;
-    const vd = document.createElement('div'); vd.className = 'v';
-    vd.innerText = typeof state[k] === 'string' ? state[k] : JSON.stringify(state[k]);
-    kv.appendChild(kd); kv.appendChild(vd);
+  keys.forEach(function(key) {
+    const kd = document.createElement('div');
+    kd.className = 'k';
+    kd.innerText = key;
+    const vd = document.createElement('div');
+    vd.className = 'v';
+    vd.innerText = typeof state[key] === 'string' ? state[key] : _safeJson(state[key]);
+    kv.appendChild(kd);
+    kv.appendChild(vd);
   });
   return kv;
+}
+
+function _appendMatrix(root, label, matrix, prevMatrix, coordPath) {
+  const body = _makeLane(root, label);
+  body.classList.add('viz-matrix');
+  const pathSet = new Set((coordPath || []).map(function(pair) { return pair[0] + ',' + pair[1]; }));
+  if (!matrix.length) {
+    _appendEmpty(body, 'empty');
+    return;
+  }
+  matrix.forEach(function(row, rowIndex) {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'viz-matrix-row';
+    row.forEach(function(value, colIndex) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      const key = rowIndex + ',' + colIndex;
+      if (!prevMatrix || !Array.isArray(prevMatrix[rowIndex]) || _didChange(prevMatrix[rowIndex][colIndex], value) || pathSet.has(key)) {
+        cell.classList.add('changed');
+      }
+      if (pathSet.has(key)) {
+        cell.style.borderColor = 'var(--primary)';
+        cell.style.background = 'rgba(0,122,204,.14)';
+        cell.style.color = '#fff';
+      }
+      cell.textContent = String(value);
+      rowEl.appendChild(cell);
+    });
+    body.appendChild(rowEl);
+  });
+}
+
+function _appendPrimaryArray(root, state, prevState, active, result) {
+  const row = document.createElement('div');
+  row.className = 'array-row';
+  const swapPair = state.swapPair || [];
+  const prevArr = prevState && Array.isArray(prevState.arr) ? prevState.arr : null;
+  for (let idx = 0; idx < state.arr.length; idx++) {
+    let mode = '';
+    if (active.has(String(idx)) || idx === state.fast || idx === state.left ||
+        idx === state.right || idx === state.mid || idx === state.pivot) mode = 'active';
+    if (result.has(String(idx)) || idx === state.slow) mode = 'accent';
+    let swapDir = '';
+    if (swapPair.length === 2) {
+      if (idx === swapPair[0]) swapDir = 'right';
+      if (idx === swapPair[1]) swapDir = 'left';
+    }
+    row.appendChild(_makeBox(state.arr[idx], mode, swapDir, {
+      changed: !prevArr || _didChange(prevArr[idx], state.arr[idx]) || mode === 'active' || mode === 'accent',
+      delay: Math.min(idx, 8) * 35
+    }));
+  }
+  root.appendChild(row);
+  const ptrRow = _renderPointerRow(state);
+  if (ptrRow) root.appendChild(ptrRow);
+}
+
+function _appendGroupedArrays(root, state, prevState) {
+  const row = document.createElement('div');
+  row.className = 'array-row';
+  const prevArrs = prevState && Array.isArray(prevState.arrs) ? prevState.arrs : null;
+  let gi = 0;
+  state.arrs.forEach(function(subArr, groupIndex) {
+    const group = document.createElement('div');
+    group.style.cssText = 'display:flex;gap:4px;margin:0 8px;';
+    subArr.forEach(function(val, itemIndex) {
+      const prevVal = prevArrs && Array.isArray(prevArrs[groupIndex]) ? prevArrs[groupIndex][itemIndex] : undefined;
+      const box = _makeBox(val, '', '', {
+        changed: !prevArrs || _didChange(prevVal, val) || (state.activeIndices && state.activeIndices.includes(gi)) || (state.mergedIndices && state.mergedIndices.includes(gi)),
+        delay: Math.min(gi, 8) * 35
+      });
+      if (state.activeIndices && state.activeIndices.includes(gi)) box.classList.add('active');
+      if (state.mergedIndices && state.mergedIndices.includes(gi)) box.classList.add('merged');
+      group.appendChild(box);
+      gi += 1;
+    });
+    row.appendChild(group);
+  });
+  root.appendChild(row);
+}
+
+function _renderVizV2(state, vizEl, prevState) {
+  vizEl.innerHTML = '';
+  const root = document.createElement('div');
+  root.className = 'viz-stack';
+  vizEl.appendChild(root);
+
+  const handled = new Set(['msg','line','vars','conditions','swapPair','activeIndices','mergedIndices']);
+  const active = new Set((Array.isArray(state.active) ? state.active : []).map(String));
+  const result = new Set((Array.isArray(state.result) ? state.result : []).map(String));
+
+  if (Array.isArray(state.arrs)) {
+    _appendGroupedArrays(root, state, prevState);
+    handled.add('arrs');
+    handled.add('active');
+  }
+
+  if (Array.isArray(state.arr)) {
+    _appendPrimaryArray(root, state, prevState, active, result);
+    handled.add('arr');
+    handled.add('active');
+  }
+
+  ['grid','board','matrix','triangle'].forEach(function(key) {
+    if (_isMatrixLike(state[key])) {
+      const coordPath = key === 'grid' && _isCoordList(state.path) ? state.path : [];
+      _appendMatrix(root, key, state[key], prevState ? prevState[key] : null, coordPath);
+      handled.add(key);
+      if (coordPath.length) handled.add('path');
+    }
+  });
+
+  if (_isRenderableObject(state.groups)) {
+    _appendGroups(root, 'groups', state.groups, prevState ? prevState.groups : null);
+    handled.add('groups');
+  }
+
+  ['map','colors','list'].forEach(function(key) {
+    if (!handled.has(key) && _isRenderableObject(state[key])) {
+      _appendObjectGrid(root, key, state[key], prevState ? prevState[key] : null);
+      handled.add(key);
+    }
+  });
+
+  ['window','prefix','current','list','chain','tree','traversal','step','action','s','ch'].forEach(function(key) {
+    if (!handled.has(key) && typeof state[key] === 'string') {
+      _appendTextLane(root, key, state[key], prevState ? prevState[key] : '');
+      handled.add(key);
+    }
+  });
+
+  const preferredArrayKeys = ['stack','queue','cache','heap','minStack','set','deque','q','pq','maxH','minH','output','visited','order','path','words','edges','mst','triplets','rightView','inDegree','dist','result','merged','data','out','pair','l1','l2','parent','used','intervals','inorder'];
+  preferredArrayKeys.forEach(function(key) {
+    if (!handled.has(key) && Array.isArray(state[key])) {
+      _appendCollectionLane(root, key, state[key], prevState ? prevState[key] : null);
+      handled.add(key);
+    }
+  });
+
+  Object.keys(state).forEach(function(key) {
+    if (!handled.has(key) && Array.isArray(state[key])) {
+      _appendCollectionLane(root, key, state[key], prevState ? prevState[key] : null);
+      handled.add(key);
+    }
+  });
+
+  const scalarEntries = Object.keys(state).filter(function(key) {
+    if (handled.has(key)) return false;
+    if (key === 'msg' || key === 'line' || key === 'vars' || key === 'conditions') return false;
+    if (Array.isArray(state[key])) return false;
+    if (_isRenderableObject(state[key])) return false;
+    return _isPrimitive(state[key]);
+  }).map(function(key) {
+    return [key, state[key]];
+  });
+
+  scalarEntries.forEach(function(entry) {
+    handled.add(entry[0]);
+  });
+  _appendMetricGrid(root, scalarEntries, prevState);
+
+  const kv = _makeKVPanel(state, Array.from(handled));
+  if (kv) root.appendChild(kv);
+
+  if (!root.childElementCount) {
+    const panel = document.createElement('div');
+    panel.className = 'panel';
+    panel.innerText = JSON.stringify(state, null, 2);
+    vizEl.appendChild(panel);
+  }
 }
 
 function _renderConditionBar(state) {
@@ -378,10 +707,11 @@ function render() {
   stepCounter.innerText = 'Step: ' + (currentStep + 1) + ' / ' + states.length;
   document.getElementById('btn-prev').disabled = currentStep === 0;
   document.getElementById('btn-next').disabled = currentStep === states.length - 1;
+  lastRenderedState = state;
 }
 
 
-let currentStep = 0, playing = false, timer;
+let currentStep = 0, playing = false, timer, lastRenderedState = null;
 function next() { if (currentStep < states.length - 1) { currentStep += 1; render(); } else pause(); }
 function prev() { if (currentStep > 0) { currentStep -= 1; render(); } }
 function play() {

@@ -18,7 +18,7 @@
       "author": "Admin",
       "readingTime": "3 min read",
       "published": true,
-      "coverImage": "/posts/2026/images/2026/awk-1/1.png",
+      "coverImage": "/images/2026/awk-1/1.png",
       "url": "/blog/2026/awk-1"
     },
     {
@@ -295,7 +295,7 @@
       "author": "Admin",
       "readingTime": "5 min read",
       "published": true,
-      "coverImage": "/posts/2026/images/2026/CNI/bridge.png",
+      "coverImage": "/images/2026/CNI/bridge.png",
       "url": "/blog/2026/Container Network Interface"
     },
     {
@@ -5506,7 +5506,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-03-06T07:41:24.437Z",
+  "generatedAt": "2026-03-06T08:14:56.120Z",
   "years": [
     "2026",
     "2025",
