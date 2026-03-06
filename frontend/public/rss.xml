@@ -5,8 +5,19 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Thu, 05 Mar 2026 04:56:19 GMT</lastBuildDate>
+    <lastBuildDate>Thu, 05 Mar 2026 21:51:17 GMT</lastBuildDate>
     <language>en-US</language>
+    <item>
+      <title>awk 시스템 처리 원리</title>
+      <description>awk 시스템 레벨에서의 처리 원리를 아주 간단하게 살펴봅시다.</description>
+      <link>https://noblog.nodove.com/blog/2026/awk-1</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/awk-1</guid>
+      <pubDate>Fri, 06 Mar 2026 00:00:00 GMT</pubDate>
+      <category>Linux, awk, memory</category>
+      <category>record</category>
+      <category>interpreter</category>
+      <category>awk</category>
+    </item>
     <item>
       <title>리눅스, fork에서 io_uring까지, OS가 선택한 타협</title>
       <description>리눅스가 수십 년에 걸쳐 쌓아 올린 설계의 타협</description>
@@ -256,19 +267,6 @@
       <category>CLI</category>
       <category>Productivity</category>
       <category>개발도구</category>
-    </item>
-    <item>
-      <title>쉘 스크립트의 공백: 리눅스 철학이 숨겨진 한 줄의 코드</title>
-      <description>[ 명령어 앞의 공백 하나가 왜 필요한지, 리눅스 철학을 통해 이해하기</description>
-      <link>https://noblog.nodove.com/blog/2026/shellscript-analyze-1</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/shellscript-analyze-1</guid>
-      <pubDate>Tue, 06 Jan 2026 00:00:00 GMT</pubDate>
-      <category>Tech &amp; Philosophy</category>
-      <category>쉘 스크립트</category>
-      <category>리눅스</category>
-      <category>시스템 프로그래밍</category>
-      <category>커널</category>
-      <category>개발 철학</category>
     </item>
   </channel>
 </rss>
