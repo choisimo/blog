@@ -4,19 +4,28 @@ import QRCode from 'qrcode';
 import { signJwt, verifyJwt } from '../lib/jwt.js';
 import { config } from '../config.js';
 import crypto from 'crypto';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 
 const router = Router();
 
 // ─── In-memory state ───────────────────────────────────────────────────────────
 
-// TOTP secret: prefer env-supplied TOTP_SECRET; otherwise generate once at startup
+// TOTP secret: only use env-supplied TOTP_SECRET. Never auto-generate at startup.
 let totpSecret = config.totp?.secret || null;
 let totpSetupComplete = !!totpSecret;
 
-if (!totpSecret) {
-  totpSecret = authenticator.generateSecret();
-  console.warn('[auth] No TOTP_SECRET env var — generated ephemeral secret (dev only, lost on restart)');
-}
+// ADMIN_SETUP_TOKEN: used to gate the one-time TOTP provisioning flow.
+// If not supplied in env, generate a random one and print it once to the console.
+const adminSetupToken = process.env.ADMIN_SETUP_TOKEN || (() => {
+  const generated = crypto.randomBytes(32).toString('hex');
+  console.warn(
+    '\n[auth] ⚠️  ADMIN_SETUP_TOKEN not set — generated a one-time token for this session:\n' +
+    `       ADMIN_SETUP_TOKEN=${generated}\n` +
+    '       Set this in your .env to make it permanent.\n'
+  );
+  return generated;
+})();
 
 /** @type {Map<string, { expiresAt: number }>} */
 const totpChallenges = new Map();
@@ -76,15 +85,46 @@ function purgeStaleChallenges() {
   }
 }
 
+async function upsertEnvVar(envPath, key, value) {
+  let content = '';
+  try {
+    content = await fs.readFile(envPath, 'utf8');
+  } catch {
+    content = '';
+  }
+
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const lineRegex = new RegExp(`^${escapedKey}=.*$`, 'm');
+  const newLine = `${key}=${value}`;
+
+  if (lineRegex.test(content)) {
+    content = content.replace(lineRegex, newLine);
+  } else {
+    content = content.endsWith('\n') || content === ''
+      ? content + newLine + '\n'
+      : content + '\n' + newLine + '\n';
+  }
+
+  await fs.writeFile(envPath, content, 'utf8');
+}
+
 // ─── TOTP ──────────────────────────────────────────────────────────────────────
 
-/**
- * GET /api/v1/auth/totp/setup
- * Returns QR code data URL + raw secret for initial provisioning.
- * Protected: requires valid admin access token OR setup not yet complete.
- */
 router.get('/totp/setup', async (req, res) => {
+  if (totpSetupComplete) {
+    return res.json({ ok: true, data: { setupComplete: true } });
+  }
+
+  const providedToken = req.headers['setup-token'];
+  if (!providedToken || providedToken !== adminSetupToken) {
+    return res.json({ ok: true, data: { setupComplete: false, requiresToken: true } });
+  }
+
   try {
+    if (!totpSecret) {
+      totpSecret = authenticator.generateSecret();
+    }
+
     const issuer = 'nodove blog';
     const account = 'admin';
     const otpauthUri = authenticator.keyuri(account, issuer, totpSecret);
@@ -96,7 +136,7 @@ router.get('/totp/setup', async (req, res) => {
         otpauthUri,
         qrDataUrl,
         secret: totpSecret,
-        setupComplete: totpSetupComplete,
+        setupComplete: false,
       },
     });
   } catch (err) {
@@ -105,27 +145,35 @@ router.get('/totp/setup', async (req, res) => {
   }
 });
 
-/**
- * POST /api/v1/auth/totp/setup/verify
- * Body: { code: string }
- * Verifies the setup code and marks TOTP as configured.
- */
 router.post('/totp/setup/verify', async (req, res) => {
+  if (totpSetupComplete) {
+    return res.json({ ok: true, data: { setupComplete: true } });
+  }
+
+  const providedToken = req.headers['setup-token'];
+  if (!providedToken || providedToken !== adminSetupToken) {
+    return res.status(401).json({ ok: false, error: 'Setup-Token required' });
+  }
+
   const { code } = req.body || {};
   if (!code) return res.status(400).json({ ok: false, error: 'code required' });
+  if (!totpSecret) return res.status(400).json({ ok: false, error: 'TOTP not initialized — call GET /totp/setup first' });
 
   const valid = authenticator.verify({ token: String(code).trim(), secret: totpSecret });
   if (!valid) return res.status(401).json({ ok: false, error: 'invalid code' });
 
   totpSetupComplete = true;
+
+  try {
+    const envPath = path.join(config.content.repoRoot, 'backend', '.env');
+    await upsertEnvVar(envPath, 'TOTP_SECRET', totpSecret);
+  } catch (err) {
+    console.error('[auth] Failed to persist TOTP_SECRET to .env:', err);
+  }
+
   return res.json({ ok: true, data: { setupComplete: true } });
 });
 
-/**
- * POST /api/v1/auth/totp/challenge
- * Issues a short-lived challenge ID (5 min TTL).
- * The client pairs this with a TOTP code in the verify step.
- */
 router.post('/totp/challenge', async (req, res) => {
   purgeStaleChallenges();
   const challengeId = `totp-${crypto.randomUUID()}`;
@@ -133,11 +181,6 @@ router.post('/totp/challenge', async (req, res) => {
   return res.json({ ok: true, data: { challengeId } });
 });
 
-/**
- * POST /api/v1/auth/totp/verify
- * Body: { challengeId: string, code: string }
- * Verifies challenge existence + TOTP code → issues JWT.
- */
 router.post('/totp/verify', async (req, res) => {
   const { challengeId, code } = req.body || {};
   if (!challengeId || !code) {
