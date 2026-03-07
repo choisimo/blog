@@ -1,0 +1,65 @@
+name: Deploy Cloudflare Workers
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'workers/**'
+      - '.github/workflows/deploy-workers.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-api-gateway:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      AI_DEFAULT_MODEL: ${{ secrets.AI_DEFAULT_MODEL }}
+      AI_VISION_MODEL: ${{ secrets.AI_VISION_MODEL }}
+      PERPLEXITY_MODEL: ${{ secrets.PERPLEXITY_MODEL }}
+      API_BASE_URL: ${{ secrets.API_BASE_URL }}
+      ASSETS_BASE_URL: ${{ secrets.ASSETS_BASE_URL }}
+      ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: workers/api-gateway/package-lock.json
+
+      - name: Install dependencies
+        working-directory: workers/api-gateway
+        run: npm ci
+
+      - name: Inject runtime secrets
+        working-directory: workers/api-gateway
+        run: |
+          set -euo pipefail
+          put_secret() {
+            local key="$1"
+            local value="$2"
+            if [ -n "$value" ]; then
+              printf "%s" "$value" | npx wrangler secret put "$key" --env production
+            else
+              echo "skip: $key (empty)"
+            fi
+          }
+
+          put_secret AI_DEFAULT_MODEL "${AI_DEFAULT_MODEL}"
+          put_secret AI_VISION_MODEL "${AI_VISION_MODEL}"
+          put_secret PERPLEXITY_MODEL "${PERPLEXITY_MODEL}"
+          put_secret API_BASE_URL "${API_BASE_URL}"
+          put_secret ASSETS_BASE_URL "${ASSETS_BASE_URL}"
+          put_secret ALLOWED_ORIGINS "${ALLOWED_ORIGINS}"
+
+      - name: Deploy api-gateway
+        working-directory: workers/api-gateway
+        run: npx wrangler deploy --env production

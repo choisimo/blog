@@ -1,0 +1,1766 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>가상 메모리 시뮬레이터: 수요 페이징 및 교체 알고리즘</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0f172a;
+        --panel-bg: rgba(30, 41, 59, 0.7);
+        --border: rgba(255, 255, 255, 0.1);
+        --primary: #3b82f6;
+        --accent: #8b5cf6;
+        --success: #10b981;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Inter", sans-serif;
+        background:
+          radial-gradient(
+            circle at 20% 10%,
+            rgba(59, 130, 246, 0.14),
+            transparent 38%
+          ),
+          radial-gradient(
+            circle at 82% 5%,
+            rgba(139, 92, 246, 0.12),
+            transparent 34%
+          ),
+          var(--bg);
+        color: var(--text-main);
+        line-height: 1.6;
+        padding: clamp(0.85rem, 2vw, 2rem);
+        min-height: 100vh;
+      }
+
+      h1,
+      h2,
+      h3 {
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+
+      h1 {
+        font-size: 2.2rem;
+        text-align: center;
+        margin-bottom: 2rem;
+        background: linear-gradient(to right, #3b82f6, #8b5cf6);
+        -webkit-background-clip: text;
+        color: transparent;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1.4rem;
+      }
+
+      .glass {
+        background: var(--panel-bg);
+        backdrop-filter: blur(12px);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow:
+          0 4px 6px -1px rgba(0, 0, 0, 0.1),
+          0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      }
+
+      /* Demand Paging Section */
+      .dp-controls {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        background: rgba(0, 0, 0, 0.2);
+        padding: 1rem;
+        border-radius: 12px;
+      }
+
+      .dp-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: stretch;
+        flex-wrap: wrap;
+        gap: 0.9rem;
+        position: relative;
+        margin-top: 1rem;
+      }
+
+      #dp-cpu,
+      #dp-ram,
+      #dp-disk {
+        flex: 1 1 220px;
+      }
+
+      #dp-pt {
+        flex: 1.5 1 340px !important;
+      }
+
+      .dp-connector {
+        flex: 0 0 40px;
+      }
+
+      .dp-box {
+        flex: 1;
+        text-align: center;
+        padding: 1rem;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        min-height: 250px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+      }
+
+      .dp-title {
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: var(--accent);
+      }
+
+      .pt-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.4rem;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 6px;
+        font-size: 0.85rem;
+      }
+
+      .pt-row.valid-row {
+        background: rgba(16, 185, 129, 0.1);
+        border-left: 3px solid var(--success);
+      }
+
+      .pt-row.invalid-row {
+        border-left: 3px solid transparent;
+      }
+
+      .pt-valid {
+        color: var(--success);
+        font-weight: bold;
+      }
+
+      .pt-invalid {
+        color: var(--danger);
+        font-weight: bold;
+        transition: color 0.3s;
+      }
+
+      .anim-element {
+        transition: all 0.5s ease-in-out;
+      }
+
+      .moving-page {
+        position: absolute;
+        width: 60px;
+        height: 40px;
+        background: var(--primary);
+        color: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        z-index: 10;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* Pulse Animations */
+      @keyframes pulse-red {
+        0% {
+          box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+        }
+
+        70% {
+          box-shadow: 0 0 0 15px rgba(239, 68, 68, 0);
+        }
+
+        100% {
+          box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+        }
+      }
+
+      @keyframes pulse-green {
+        0% {
+          box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        }
+
+        70% {
+          box-shadow: 0 0 0 15px rgba(16, 185, 129, 0);
+        }
+
+        100% {
+          box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+        }
+      }
+
+      @keyframes pulse-blue {
+        0% {
+          box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+        }
+
+        70% {
+          box-shadow: 0 0 0 15px rgba(59, 130, 246, 0);
+        }
+
+        100% {
+          box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+        }
+      }
+
+      @keyframes pulse-yellow {
+        0% {
+          box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+        }
+
+        70% {
+          box-shadow: 0 0 0 15px rgba(245, 158, 11, 0);
+        }
+
+        100% {
+          box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+        }
+      }
+
+      .fault-glow {
+        animation: pulse-red 1s infinite;
+        border-color: var(--danger) !important;
+      }
+
+      .success-glow {
+        animation: pulse-green 1s;
+        border-color: var(--success) !important;
+      }
+
+      .hit-glow {
+        animation: pulse-blue 1s;
+        border-color: var(--primary) !important;
+      }
+
+      .evict-glow {
+        animation: pulse-yellow 1s infinite;
+        border-color: var(--warning) !important;
+      }
+
+      /* Setup Panel */
+      .control-panel {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: flex-end;
+        margin-bottom: 1rem;
+      }
+
+      .input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        flex: 1;
+        min-width: 150px;
+      }
+
+      .input-group label {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      input,
+      select {
+        padding: 0.6rem 0.8rem;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.2);
+        color: white;
+        font-family: inherit;
+        font-size: 0.95rem;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+
+      input:focus,
+      select:focus {
+        border-color: var(--primary);
+      }
+
+      button {
+        padding: 0.6rem 1rem;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: inherit;
+        font-size: 0.95rem;
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .btn-primary {
+        background: var(--primary);
+        color: white;
+      }
+
+      .btn-primary:hover:not(:disabled) {
+        background: #2563eb;
+        transform: translateY(-1px);
+      }
+
+      .btn-danger {
+        background: var(--danger);
+        color: white;
+      }
+
+      .btn-danger:hover:not(:disabled) {
+        background: #dc2626;
+        transform: translateY(-1px);
+      }
+
+      /* Algorithm Simulation Grid */
+      .algo-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+      }
+
+      .algo-card {
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        position: relative;
+      }
+
+      .algo-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 0.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .algo-name {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--primary);
+      }
+
+      /* Algorithm History Display */
+      .algo-history {
+        display: flex;
+        gap: 0.5rem;
+        overflow-x: auto;
+        padding: 1rem 0;
+        min-height: 120px;
+        align-items: flex-start;
+      }
+
+      /* Custom scrollbar for history */
+      .algo-history::-webkit-scrollbar {
+        height: 8px;
+      }
+
+      .algo-history::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+      }
+
+      .algo-history::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+      }
+
+      .history-col {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        align-items: center;
+        min-width: 50px;
+        animation: slideIn 0.3s ease-out forwards;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateX(-10px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      .history-step {
+        font-size: 0.85rem;
+        font-weight: bold;
+        margin-bottom: 0.4rem;
+        padding-bottom: 0.2rem;
+        border-bottom: 1px solid var(--border);
+        width: 100%;
+        text-align: center;
+      }
+
+      .frame {
+        width: 44px;
+        height: 44px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        font-weight: 800;
+        position: relative;
+        transition: all 0.3s;
+      }
+
+      .frame.new {
+        border-color: var(--success);
+        color: var(--success);
+        background: rgba(16, 185, 129, 0.1);
+      }
+
+      .frame.hit {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: rgba(59, 130, 246, 0.1);
+      }
+
+      .algo-stats {
+        display: flex;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 2rem;
+        font-size: 0.9rem;
+        padding-top: 1rem;
+        border-top: 1px dashed var(--border);
+        margin-top: auto;
+      }
+
+      .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .stat-value {
+        font-size: 1.5rem;
+        font-weight: 800;
+      }
+
+      .faults-text {
+        color: var(--danger);
+      }
+
+      .hits-text {
+        color: var(--success);
+      }
+
+      .current-req {
+        text-align: center;
+        font-size: 1.25rem;
+        font-weight: 800;
+        padding: 0.5rem;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        height: 46px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 1;
+      }
+
+      .ref-string-display {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        font-family: monospace;
+        font-size: 1.1rem;
+        padding: 1rem;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        min-height: 50px;
+        align-items: center;
+      }
+
+      .ref-item {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        transition: all 0.2s;
+      }
+
+      .ref-item.active {
+        background: var(--primary);
+        color: white;
+        transform: scale(1.1);
+        font-weight: bold;
+      }
+
+      .ref-item.past {
+        color: var(--text-muted);
+        opacity: 0.5;
+      }
+
+      /* Dashboard elements */
+      .dash-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+      }
+
+      @media (max-width: 900px) {
+        .dash-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 1120px) {
+        .dp-connector {
+          display: none !important;
+        }
+
+        .dp-box {
+          min-height: 200px;
+        }
+
+        #dp-pt {
+          order: 1;
+          flex: 1 1 100% !important;
+        }
+
+        #dp-cpu,
+        #dp-ram,
+        #dp-disk {
+          flex: 1 1 calc(50% - 0.9rem);
+        }
+      }
+
+      @media (max-width: 760px) {
+        body {
+          padding: 0.75rem;
+        }
+
+        .glass {
+          padding: 1rem;
+          border-radius: 14px;
+        }
+
+        h1 {
+          font-size: 1.6rem;
+          margin-bottom: 1rem;
+        }
+
+        .control-panel {
+          gap: 0.75rem;
+        }
+
+        .input-group {
+          min-width: 120px;
+          flex: 1 1 100%;
+        }
+
+        #dp-cpu,
+        #dp-ram,
+        #dp-disk {
+          flex: 1 1 100%;
+        }
+
+        .algo-card {
+          padding: 1rem;
+        }
+
+        .algo-header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.65rem;
+        }
+
+        .current-req {
+          width: 100%;
+          min-width: 0 !important;
+          height: 40px;
+          font-size: 1rem;
+        }
+
+        .ref-string-display {
+          font-size: 0.95rem;
+          padding: 0.7rem;
+        }
+      }
+
+      .chart-container {
+        width: 100%;
+        height: 250px;
+        position: relative;
+      }
+
+      .belady-alert {
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid var(--danger);
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 1rem;
+        display: none;
+        animation: pulse-red 2s infinite;
+      }
+
+      .belady-alert h3 {
+        color: var(--danger);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      /* Future stream for Optimal */
+      .future-stream {
+        display: flex;
+        gap: 0.2rem;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        justify-content: flex-start;
+        margin-top: 0.5rem;
+        height: 24px;
+        font-family: monospace;
+        align-items: center;
+      }
+
+      .future-item {
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      #dp-page-btns {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        justify-content: center;
+        width: 100%;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h1>가상 메모리 & 페이지 교체 시뮬레이터</h1>
+
+      <!-- SECTION 1: Demand Paging Visualization -->
+      <section class="glass">
+        <h2>1. 수요 페이징 (Demand Paging) 애니메이션 시뮬레이터</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1rem">
+          <b>Page Fault와 Swap(교체) 과정 전체를 시각화합니다.</b> 논리
+          메모리(페이지)가 물리 메모리(프레임)보다 클 때, 메모리가 가득 차면
+          오래된 페이지를 디스크로 내보내고(Swap-out), 요청한 페이지를
+          가져옵니다(Swap-in).
+        </p>
+
+        <div class="dp-controls">
+          <div class="input-group" style="flex: 0.5">
+            <label>총 가상 페이지 수</label>
+            <select id="dp-virtual-pages" onchange="setupDemandPaging()">
+              <option value="4">4 Pages (0~3)</option>
+              <option value="6" selected>6 Pages (0~5)</option>
+              <option value="8">8 Pages (0~7)</option>
+            </select>
+          </div>
+          <div class="input-group" style="flex: 0.5">
+            <label>물리 램 프레임 수</label>
+            <select id="dp-physical-frames" onchange="setupDemandPaging()">
+              <option value="2">2 Frames</option>
+              <option value="3" selected>3 Frames</option>
+              <option value="4">4 Frames</option>
+            </select>
+          </div>
+          <button
+            class="btn-danger"
+            style="margin-left: auto"
+            onclick="setupDemandPaging()"
+          >
+            초기화 (Reset)
+          </button>
+        </div>
+
+        <div id="dp-page-btns">
+          <!-- JS generates Request Page Buttons here -->
+        </div>
+
+        <div class="dp-container" id="dp-scene">
+          <div id="dp-mover" class="moving-page"></div>
+          <div
+            id="dp-swap-mover"
+            class="moving-page"
+            style="background: var(--warning)"
+          ></div>
+
+          <div class="dp-box" id="dp-cpu">
+            <div class="dp-title">CPU</div>
+            <div style="font-size: 3rem">💻</div>
+            <div
+              id="cpu-msg"
+              style="margin-top: 1rem; font-weight: 600; color: var(--primary)"
+            >
+              대기 중...
+            </div>
+          </div>
+
+          <div
+            style="
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              width: 40px;
+            "
+          >
+            <span style="font-size: 1.5rem">➡️</span>
+            <span
+              style="
+                font-size: 0.75rem;
+                color: var(--text-muted);
+                text-align: center;
+              "
+              >논리<br />주소</span
+            >
+          </div>
+
+          <div class="dp-box" style="flex: 1.5" id="dp-pt">
+            <div class="dp-title">Page Table</div>
+            <div class="page-table" id="pt-container" style="gap: 0.4rem">
+              <!-- PT rows populated by JS -->
+            </div>
+          </div>
+
+          <div
+            style="
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              width: 40px;
+            "
+          >
+            <span style="font-size: 1.5rem">↔️</span>
+            <span
+              style="
+                font-size: 0.75rem;
+                color: var(--text-muted);
+                text-align: center;
+              "
+              >물리<br />주소</span
+            >
+          </div>
+
+          <div class="dp-box" id="dp-ram">
+            <div class="dp-title" id="ram-title">Physical RAM</div>
+            <div class="page-table" id="ram-slots" style="gap: 0.4rem">
+              <!-- RAM slots populated by JS -->
+            </div>
+          </div>
+
+          <div class="dp-box" id="dp-disk">
+            <div class="dp-title">Disk Storage</div>
+            <div style="font-size: 3rem; opacity: 0.8">💽</div>
+            <div
+              style="
+                font-size: 0.8rem;
+                margin-top: 0.5rem;
+                color: var(--text-muted);
+              "
+            >
+              스왑 공간 (Swap Space)
+            </div>
+            <div
+              id="disk-info"
+              style="font-size: 0.8rem; color: var(--warning); margin-top: auto"
+            >
+              대기 중
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 2: Dashboards & Algos -->
+      <div class="dash-grid">
+        <!-- Dashboard Canvas -->
+        <section class="glass" style="display: flex; flex-direction: column">
+          <h2 style="margin-bottom: 0.5rem; font-size: 1.5rem">
+            2. 페이지 폴트 현황판
+          </h2>
+          <p
+            style="
+              color: var(--text-muted);
+              font-size: 0.85rem;
+              margin-bottom: 1rem;
+            "
+          >
+            알고리즘별 프레임 증가에 따른 결함 횟수 그래프
+          </p>
+
+          <div
+            style="
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+            "
+          >
+            <div class="chart-container">
+              <canvas id="hitRateChart"></canvas>
+            </div>
+          </div>
+
+          <div class="belady-alert" id="belady-warning">
+            <h3>⚠️ Belady의 역설 감지!</h3>
+            <p style="font-size: 0.85rem">
+              현재 입력된 참조 문자열에서 <b>FIFO 알고리즘</b>이 프레임 수를
+              늘렸음에도 Page Fault가 오히려 증가하는 현상이 나타났습니다!
+              (그래프 붉은 선 확인)
+            </p>
+          </div>
+        </section>
+
+        <!-- Algorithm Control Panel -->
+        <section class="glass">
+          <h2 style="margin-bottom: 0.5rem; font-size: 1.5rem">
+            3. 페이지 교체 알고리즘 (추적 히스토리)
+          </h2>
+          <p
+            style="
+              color: var(--text-muted);
+              font-size: 0.85rem;
+              margin-bottom: 1rem;
+            "
+          >
+            모든 과정이 다이어그램 히스토리 형태로 렌더링됩니다.
+          </p>
+
+          <div class="control-panel">
+            <div class="input-group" style="flex: 2">
+              <label>참조 문자열 (Reference String)</label>
+              <input
+                type="text"
+                id="ref-input"
+                value="1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5"
+                oninput="previewChart()"
+              />
+            </div>
+            <div class="input-group">
+              <label>프레임 수</label>
+              <select id="frame-input" onchange="previewChart()">
+                <option value="3" selected>3 Frames</option>
+                <option value="4">4 Frames</option>
+                <option value="5">5 Frames</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>속도</label>
+              <select id="speed-input">
+                <option value="1200">느림 (1.2s)</option>
+                <option value="600" selected>보통 (0.6s)</option>
+                <option value="250">빠름 (0.25s)</option>
+                <option value="0">즉시 완료 (애니메이션 생략)</option>
+              </select>
+            </div>
+            <button
+              class="btn-primary"
+              id="btn-sim-start"
+              style="width: 100%"
+              onclick="startAlgorithmSimulation()"
+            >
+              🚀 전체 시뮬레이션 시작
+            </button>
+          </div>
+
+          <div class="ref-string-display" id="ref-display">
+            <span class="ref-item" style="opacity: 0.5"
+              >참조 문자열 대기 중...</span
+            >
+          </div>
+
+          <div style="display: flex; gap: 2rem; margin-top: 1rem">
+            <div style="text-align: center">
+              <div
+                style="
+                  font-size: 0.85rem;
+                  color: var(--text-muted);
+                  text-transform: uppercase;
+                "
+              >
+                전체 참조 횟수
+              </div>
+              <div
+                style="font-size: 2rem; font-weight: 800; color: var(--primary)"
+                id="total-refs-dash"
+              >
+                0
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Histroy Diagram View -->
+      <div class="algo-grid">
+        <!-- FIFO -->
+        <div class="algo-card glass" style="background: rgba(0, 0, 0, 0.2)">
+          <div class="algo-header">
+            <span class="algo-name">FIFO (First-In First-Out)</span>
+            <div style="display: flex; gap: 1rem">
+              <div class="current-req" id="fifo-req" style="min-width: 120px">
+                -
+              </div>
+            </div>
+          </div>
+          <div class="algo-history" id="fifo-history"></div>
+          <div class="algo-stats">
+            <div class="stat-item">
+              <span style="font-size: 0.8em; color: var(--text-muted)"
+                >Faults:</span
+              >
+              <span class="stat-value faults-text" id="fifo-faults">0</span>
+            </div>
+            <div class="stat-item">
+              <span style="font-size: 0.8em; color: var(--text-muted)"
+                >Hits:</span
+              >
+              <span class="stat-value hits-text" id="fifo-hits">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- LRU -->
+        <div class="algo-card glass" style="background: rgba(0, 0, 0, 0.2)">
+          <div class="algo-header">
+            <span class="algo-name">LRU (Least Recently Used)</span>
+            <div style="display: flex; gap: 1rem">
+              <div class="current-req" id="lru-req" style="min-width: 120px">
+                -
+              </div>
+            </div>
+          </div>
+          <div class="algo-history" id="lru-history"></div>
+          <div class="algo-stats">
+            <div class="stat-item">
+              <span style="font-size: 0.8em; color: var(--text-muted)"
+                >Faults:</span
+              >
+              <span class="stat-value faults-text" id="lru-faults">0</span>
+            </div>
+            <div class="stat-item">
+              <span style="font-size: 0.8em; color: var(--text-muted)"
+                >Hits:</span
+              >
+              <span class="stat-value hits-text" id="lru-hits">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- OPTIMAL -->
+        <div class="algo-card glass" style="background: rgba(0, 0, 0, 0.2)">
+          <div class="algo-header">
+            <span class="algo-name">Optimal (이론상 최적)</span>
+            <div style="display: flex; gap: 1rem; align-items: center">
+              <div
+                class="future-stream"
+                id="opt-future"
+                style="margin-top: 0"
+              ></div>
+              <div
+                class="current-req"
+                id="opt-req"
+                style="min-width: 120px; margin-bottom: 0"
+              >
+                -
+              </div>
+            </div>
+          </div>
+          <div class="algo-history" id="opt-history"></div>
+          <div class="algo-stats">
+            <div class="stat-item">
+              <span style="font-size: 0.8em; color: var(--text-muted)"
+                >Faults:</span
+              >
+              <span class="stat-value faults-text" id="opt-faults">0</span>
+            </div>
+            <div class="stat-item">
+              <span style="font-size: 0.8em; color: var(--text-muted)"
+                >Hits:</span
+              >
+              <span class="stat-value hits-text" id="opt-hits">0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // -----------------------------------------
+      // 1. Demand Paging Multiple States Logic
+      // -----------------------------------------
+      let dpTotalPages = 6;
+      let dpTotalFrames = 3;
+
+      // DP State Setup
+      let ptState = [];
+      let ramState = [];
+      let dpFifoQueue = []; // Frame index FIFO
+
+      function setupDemandPaging() {
+        if (isDpRunning) return; // Prevent reset during animation
+
+        dpTotalPages = parseInt(
+          document.getElementById("dp-virtual-pages").value,
+        );
+        dpTotalFrames = parseInt(
+          document.getElementById("dp-physical-frames").value,
+        );
+        document.getElementById("ram-title").textContent =
+          `Physical RAM (${dpTotalFrames} Frames)`;
+
+        ptState = [];
+        for (let i = 0; i < dpTotalPages; i++) {
+          ptState.push({ id: i, valid: false, frame: null });
+        }
+
+        ramState = [];
+        dpFifoQueue = [];
+        for (let i = 0; i < dpTotalFrames; i++) {
+          ramState.push(null); // empty
+        }
+
+        // Initialize with Frame 0 having Page 0 Just to show some starting resident data
+        ptState[0].valid = true;
+        ptState[0].frame = 0;
+        ramState[0] = 0;
+        dpFifoQueue.push(0);
+
+        renderDemandPagingBtns();
+        renderDemandPaging();
+
+        document.getElementById("cpu-msg").innerHTML =
+          "초기화 됨<br>페이지를 요청하세요";
+        document.getElementById("cpu-msg").style.color = "var(--text-muted)";
+        document.getElementById("dp-cpu").className = "dp-box";
+        document.getElementById("dp-disk").className = "dp-box";
+        document.getElementById("disk-info").textContent = "스왑 대기";
+      }
+
+      function renderDemandPagingBtns() {
+        const btnContainer = document.getElementById("dp-page-btns");
+        btnContainer.innerHTML = "";
+        for (let i = 0; i < dpTotalPages; i++) {
+          const btn = document.createElement("button");
+          btn.className = "btn-primary req-btn";
+          btn.textContent = `Page ${i} 요청`;
+          btn.onclick = () => requestPage(i);
+          btnContainer.appendChild(btn);
+        }
+      }
+
+      function renderDemandPaging() {
+        const ptContainer = document.getElementById("pt-container");
+        const ramContainer = document.getElementById("ram-slots");
+
+        // Render PT
+        ptContainer.innerHTML = "";
+        for (let i = 0; i < dpTotalPages; i++) {
+          const row = document.createElement("div");
+          const state = ptState[i];
+          row.id = `pt-row-${i}`;
+          row.className = `pt-row ${state.valid ? "valid-row" : "invalid-row"}`;
+
+          const validText = state.valid
+            ? `<span id="pt-bit-${i}" class="pt-valid">V (상주) -> F${state.frame}</span>`
+            : `<span id="pt-bit-${i}" class="pt-invalid">I (부재)</span>`;
+          row.innerHTML = `<span>Page ${i}</span>${validText}`;
+          ptContainer.appendChild(row);
+        }
+
+        // Render RAM
+        ramContainer.innerHTML = "";
+        for (let i = 0; i < dpTotalFrames; i++) {
+          const row = document.createElement("div");
+          row.id = `ram-row-${i}`;
+          row.className = "pt-row";
+          row.style.position = "relative"; // for animation
+
+          const pId = ramState[i];
+          if (pId !== null) {
+            row.style.background = "rgba(16, 185, 129, 0.2)";
+            row.style.border = "1px solid var(--success)";
+            row.innerHTML = `<span style="font-size:0.8rem; color:var(--text-main)">Frame ${i}</span><span style="font-weight:bold; font-size:1.1rem; color: #fff;">P${pId}</span>`;
+          } else {
+            row.style.background = "rgba(255,255,255,0.05)";
+            row.style.border = "1px dashed var(--border)";
+            row.innerHTML = `<span style="font-size:0.8rem; color:var(--text-muted)">Frame ${i}</span><span style="color:var(--text-muted); font-size: 0.75rem;">비어있음</span>`;
+          }
+          ramContainer.appendChild(row);
+        }
+      }
+
+      let isDpRunning = false;
+      async function requestPage(pageId) {
+        if (isDpRunning) return;
+        isDpRunning = true;
+
+        const btns = document.querySelectorAll(".req-btn");
+        btns.forEach((b) => {
+          b.disabled = true;
+        });
+
+        const cpuMsg = document.getElementById("cpu-msg");
+        const cpuBox = document.getElementById("dp-cpu");
+        const ptRow = document.getElementById(`pt-row-${pageId}`);
+        const diskBox = document.getElementById("dp-disk");
+        const mover = document.getElementById("dp-mover");
+        const swapMover = document.getElementById("dp-swap-mover");
+
+        // Reset previous popups/glows
+        const oldLabels = document.querySelectorAll(".pf-label");
+        oldLabels.forEach((l) => l.remove());
+
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+        cpuMsg.innerHTML = `요청: Page ${pageId}`;
+        cpuMsg.style.color = "var(--text-main)";
+
+        await sleep(300);
+        cpuBox.classList.add("hit-glow");
+        await sleep(600);
+        cpuBox.classList.remove("hit-glow");
+
+        const state = ptState[pageId];
+
+        if (state.valid) {
+          // PAGE HIT
+          ptRow.classList.add("hit-glow");
+          await sleep(500);
+
+          const ramRow = document.getElementById(`ram-row-${state.frame}`);
+          ramRow.classList.add("hit-glow");
+
+          cpuMsg.innerHTML = `HIT! (Frame ${state.frame})<br>작업 재개`;
+          cpuMsg.style.color = "var(--primary)";
+
+          await sleep(800);
+          ptRow.classList.remove("hit-glow");
+          ramRow.classList.remove("hit-glow");
+        } else {
+          // PAGE FAULT
+          ptRow.classList.add("fault-glow");
+
+          const pfLabel = document.createElement("div");
+          pfLabel.className = "pf-label";
+          pfLabel.textContent = "⚠️ PAGE FAULT";
+          pfLabel.style.position = "absolute";
+          pfLabel.style.backgroundColor = "var(--danger)";
+          pfLabel.style.color = "white";
+          pfLabel.style.padding = "4px 8px";
+          pfLabel.style.borderRadius = "4px";
+          pfLabel.style.fontWeight = "bold";
+          pfLabel.style.top = "-5px";
+          pfLabel.style.right = "-120px";
+          pfLabel.style.fontSize = "0.75rem";
+          pfLabel.style.boxShadow = "0 4px 6px rgba(0,0,0,0.3)";
+          pfLabel.style.zIndex = "10";
+          pfLabel.style.whiteSpace = "nowrap";
+          ptRow.style.position = "relative";
+          ptRow.appendChild(pfLabel);
+
+          cpuMsg.innerHTML = "PAGE FAULT 발생!<br>OS 인터럽트 발생";
+          cpuMsg.style.color = "var(--danger)";
+
+          await sleep(1000);
+
+          // Find empty frame
+          let targetFrameIdx = ramState.findIndex((r) => r === null);
+          let swapNeeded = false;
+          let victimPageId = null;
+
+          if (targetFrameIdx === -1) {
+            // RAM is full, do FIFO Replacement
+            swapNeeded = true;
+            targetFrameIdx = dpFifoQueue.shift(); // Get oldest frame
+            victimPageId = ramState[targetFrameIdx];
+
+            cpuMsg.innerHTML = `메모리 가득 참!<br>P${victimPageId} (Frame ${targetFrameIdx}) 교체`;
+            cpuMsg.style.color = "var(--warning)";
+
+            const swapRamRow = document.getElementById(
+              `ram-row-${targetFrameIdx}`,
+            );
+            const oldPtRow = document.getElementById(`pt-row-${victimPageId}`);
+            swapRamRow.classList.add("evict-glow");
+
+            document.getElementById("disk-info").textContent =
+              `Swap-out P${victimPageId} ...`;
+
+            await sleep(800);
+
+            // Swap Out Animation
+            const sceneRect = document
+              .getElementById("dp-scene")
+              .getBoundingClientRect();
+            const diskRect = diskBox.getBoundingClientRect();
+            const ramRect = swapRamRow.getBoundingClientRect();
+
+            swapMover.textContent = `P${victimPageId}`;
+            swapMover.style.left =
+              ramRect.left - sceneRect.left + ramRect.width / 2 - 30 + "px";
+            swapMover.style.top = ramRect.top - sceneRect.top + "px";
+            swapMover.style.opacity = "1";
+
+            await sleep(50);
+            swapMover.style.transition = "all 0.8s ease-in-out";
+            swapMover.style.left =
+              diskRect.left - sceneRect.left + diskRect.width / 2 - 30 + "px";
+            swapMover.style.top = diskRect.top - sceneRect.top + "px";
+
+            await sleep(800);
+            swapMover.style.opacity = "0";
+            swapMover.style.transition = "none";
+            swapRamRow.classList.remove("evict-glow");
+
+            // Update Victim PT to Invalid
+            ptState[victimPageId].valid = false;
+            ptState[victimPageId].frame = null;
+            renderDemandPaging();
+
+            diskBox.classList.add("evict-glow");
+            await sleep(400);
+            diskBox.classList.remove("evict-glow");
+
+            // Keep the original PF label on the new requested page
+            const newPtRowRef = document.getElementById(`pt-row-${pageId}`);
+            newPtRowRef.style.position = "relative";
+            newPtRowRef.appendChild(pfLabel);
+          }
+
+          // Swap In Animation (fetching requested page)
+          document.getElementById("disk-info").textContent =
+            `Swap-in P${pageId} ...`;
+          diskBox.classList.add("fault-glow");
+          await sleep(500);
+
+          const sceneRect = document
+            .getElementById("dp-scene")
+            .getBoundingClientRect();
+          const diskRect = diskBox.getBoundingClientRect();
+          const targetRamRow = document.getElementById(
+            `ram-row-${targetFrameIdx}`,
+          );
+          const ramRect = targetRamRow.getBoundingClientRect();
+
+          mover.textContent = `P${pageId}`;
+          mover.style.left =
+            diskRect.left - sceneRect.left + diskRect.width / 2 - 30 + "px";
+          mover.style.top = diskRect.top - sceneRect.top + "px";
+          mover.style.opacity = "1";
+          mover.style.backgroundColor = "var(--danger)";
+
+          await sleep(50);
+          mover.style.transition = "all 0.8s ease-in-out";
+          mover.style.left =
+            ramRect.left - sceneRect.left + ramRect.width / 2 - 30 + "px";
+          mover.style.top = ramRect.top - sceneRect.top + "px";
+          mover.style.backgroundColor = "var(--success)";
+
+          await sleep(800);
+          mover.style.opacity = "0";
+          mover.style.transition = "none";
+          diskBox.classList.remove("fault-glow");
+          document.getElementById("disk-info").textContent = "대기 중";
+
+          // Update Data state
+          ramState[targetFrameIdx] = pageId;
+          dpFifoQueue.push(targetFrameIdx); // Add new to FIFO
+          ptState[pageId].valid = true;
+          ptState[pageId].frame = targetFrameIdx;
+
+          renderDemandPaging();
+
+          const newPtRow = document.getElementById(`pt-row-${pageId}`);
+          const newRamRow = document.getElementById(
+            `ram-row-${targetFrameIdx}`,
+          );
+
+          newPtRow.classList.add("success-glow");
+          newRamRow.classList.add("success-glow");
+
+          cpuMsg.innerHTML = `P${pageId} 로드 완료<br>작업 재개`;
+          cpuMsg.style.color = "var(--success)";
+
+          await sleep(1000);
+          newPtRow.classList.remove("success-glow");
+          newRamRow.classList.remove("success-glow");
+        }
+
+        isDpRunning = false;
+        btns.forEach((b) => {
+          b.disabled = false;
+        });
+      }
+
+      // Initialize DP state
+      setupDemandPaging();
+
+      // -----------------------------------------
+      // 2. Page Replacement Simulation Logic (History Mode)
+      // -----------------------------------------
+      let isAlgorithmRunning = false;
+
+      function getRefString() {
+        return document
+          .getElementById("ref-input")
+          .value.split(",")
+          .map((x) => x.trim())
+          .filter((x) => x !== "");
+      }
+
+      class Algorithm {
+        constructor(framesCount, type) {
+          this.maxFrames = framesCount;
+          this.type = type; // 'fifo', 'lru', 'opt'
+          this.frames = [];
+          this.faults = 0;
+          this.hits = 0;
+          this.time = 0;
+          this.queue = [];
+          this.fullRef = [];
+        }
+
+        process(page, nextRefIndex) {
+          this.time++;
+          let hit = false;
+          let victimIdx = -1;
+          let isFull = this.frames.length >= this.maxFrames;
+
+          let existingIdx = this.frames.findIndex((f) => f.page === page);
+          if (existingIdx !== -1) {
+            hit = true;
+            this.hits++;
+            if (this.type === "lru") {
+              this.frames[existingIdx].time = this.time;
+            }
+          } else {
+            this.faults++;
+            if (!isFull) {
+              this.frames.push({ page: page, time: this.time });
+              if (this.type === "fifo") this.queue.push(page);
+            } else {
+              if (this.type === "fifo") {
+                let victimPage = this.queue.shift();
+                victimIdx = this.frames.findIndex((f) => f.page === victimPage);
+                this.frames[victimIdx] = { page: page, time: this.time };
+                this.queue.push(page);
+              } else if (this.type === "lru") {
+                let lruIdx = 0;
+                for (let i = 1; i < this.frames.length; i++) {
+                  if (this.frames[i].time < this.frames[lruIdx].time) {
+                    lruIdx = i;
+                  }
+                }
+                victimIdx = lruIdx;
+                this.frames[victimIdx] = { page: page, time: this.time };
+              } else if (this.type === "opt") {
+                let farthestDist = -1;
+                let optIdx = 0;
+
+                for (let i = 0; i < this.frames.length; i++) {
+                  let currPage = this.frames[i].page;
+                  let futureSlice = this.fullRef.slice(nextRefIndex);
+                  let dist = futureSlice.indexOf(currPage);
+                  if (dist === -1) {
+                    optIdx = i;
+                    break;
+                  }
+                  if (dist > farthestDist) {
+                    farthestDist = dist;
+                    optIdx = i;
+                  }
+                }
+                victimIdx = optIdx;
+                this.frames[victimIdx] = { page: page, time: this.time };
+              }
+            }
+          }
+          return { hit, victimIdx };
+        }
+      }
+
+      function renderHistoryColumn(
+        containerId,
+        frames,
+        maxFrames,
+        hitInfo,
+        reqPage,
+      ) {
+        const container = document.getElementById(containerId);
+
+        const colDiv = document.createElement("div");
+        colDiv.className = "history-col";
+
+        // Header (Page Req)
+        const header = document.createElement("div");
+        header.className = "history-step";
+        header.textContent = reqPage;
+        header.style.color = hitInfo.hit ? "var(--primary)" : "var(--danger)";
+        colDiv.appendChild(header);
+
+        // Frames
+        for (let i = 0; i < maxFrames; i++) {
+          const fDiv = document.createElement("div");
+          fDiv.className = "frame";
+          if (i < frames.length) {
+            fDiv.textContent = frames[i].page;
+
+            // Highlight hit or replaced
+            if (hitInfo.hit && frames[i].page === hitInfo.page) {
+              fDiv.classList.add("hit");
+            } else if (
+              !hitInfo.hit &&
+              (hitInfo.victimIdx === i ||
+                (hitInfo.victimIdx === -1 && i === frames.length - 1))
+            ) {
+              fDiv.classList.add("new");
+            }
+          }
+          colDiv.appendChild(fDiv);
+        }
+
+        // Footer status indicator
+        const footer = document.createElement("div");
+        footer.style.fontSize = "0.75rem";
+        footer.style.fontWeight = "bold";
+        footer.innerHTML = hitInfo.hit
+          ? '<span style="color:var(--primary)">Hit</span>'
+          : '<span style="color:var(--danger)">Fault</span>';
+        colDiv.appendChild(footer);
+
+        container.appendChild(colDiv);
+        // Scroll to end smoothly
+        container.scrollTo({ left: container.scrollWidth, behavior: "smooth" });
+      }
+
+      async function startAlgorithmSimulation() {
+        if (isAlgorithmRunning) return;
+
+        const refs = getRefString();
+        if (refs.length === 0) return;
+
+        isAlgorithmRunning = true;
+        const btn = document.getElementById("btn-sim-start");
+        btn.disabled = true;
+        btn.textContent = "⏳ 실행 중...";
+
+        document.getElementById("total-refs-dash").textContent = "0";
+        const fCount = parseInt(document.getElementById("frame-input").value);
+        let speed = parseInt(document.getElementById("speed-input").value);
+
+        // Pre-calculate to analyze Belady & redraw chart
+        analyzeAndDrawChart(refs);
+
+        // Setup display
+        const refDisplay = document.getElementById("ref-display");
+        refDisplay.innerHTML = "";
+        refs.forEach((r, idx) => {
+          let s = document.createElement("span");
+          s.className = "ref-item";
+          s.id = `ref-${idx}`;
+          s.textContent = r;
+          refDisplay.appendChild(s);
+        });
+
+        const fifo = new Algorithm(fCount, "fifo");
+        const lru = new Algorithm(fCount, "lru");
+        const opt = new Algorithm(fCount, "opt");
+        opt.fullRef = refs;
+
+        // Clear Histories
+        ["fifo", "lru", "opt"].forEach((a) => {
+          document.getElementById(`${a}-history`).innerHTML = "";
+          document.getElementById(`${a}-req`).textContent = "-";
+          document.getElementById(`${a}-faults`).textContent = "0";
+          document.getElementById(`${a}-hits`).textContent = "0";
+          document.getElementById(`${a}-req`).style.backgroundColor =
+            "rgba(255,255,255,0.1)";
+          document.getElementById(`${a}-req`).style.color = "var(--text-main)";
+        });
+
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+        if (speed === 0) {
+          // Instant Process
+          for (let i = 0; i < refs.length; i++) {
+            const page = refs[i];
+            const fRes = fifo.process(page, i + 1);
+            const lRes = lru.process(page, i + 1);
+            const oRes = opt.process(page, i + 1);
+
+            renderHistoryColumn(
+              "fifo-history",
+              fifo.frames,
+              fCount,
+              { hit: fRes.hit, victimIdx: fRes.victimIdx, page: page },
+              page,
+            );
+            renderHistoryColumn(
+              "lru-history",
+              lru.frames,
+              fCount,
+              { hit: lRes.hit, victimIdx: lRes.victimIdx, page: page },
+              page,
+            );
+            renderHistoryColumn(
+              "opt-history",
+              opt.frames,
+              fCount,
+              { hit: oRes.hit, victimIdx: oRes.victimIdx, page: page },
+              page,
+            );
+          }
+          ["fifo", "lru", "opt"].forEach((a) => {
+            const alg = a === "fifo" ? fifo : a === "lru" ? lru : opt;
+            document.getElementById(`${a}-faults`).textContent = alg.faults;
+            document.getElementById(`${a}-hits`).textContent = alg.hits;
+            document.getElementById(`${a}-req`).textContent = "완료";
+          });
+          document.getElementById("total-refs-dash").textContent = refs.length;
+        } else {
+          // Animated Process
+          for (let i = 0; i < refs.length; i++) {
+            const page = refs[i];
+
+            if (i > 0)
+              document.getElementById(`ref-${i - 1}`).className =
+                "ref-item past";
+            document.getElementById(`ref-${i}`).className = "ref-item active";
+
+            await sleep(speed * 0.2);
+
+            const fRes = fifo.process(page, i + 1);
+            const lRes = lru.process(page, i + 1);
+            const oRes = opt.process(page, i + 1);
+
+            document.getElementById("total-refs-dash").textContent = i + 1;
+
+            ["fifo", "lru", "opt"].forEach((a) => {
+              const res = a === "fifo" ? fRes : a === "lru" ? lRes : oRes;
+              const alg = a === "fifo" ? fifo : a === "lru" ? lru : opt;
+              const reqEl = document.getElementById(`${a}-req`);
+
+              reqEl.innerHTML = `처리: ${page}`;
+              reqEl.style.transition = "none";
+              reqEl.style.backgroundColor = res.hit
+                ? "rgba(59, 130, 246, 0.3)"
+                : "rgba(239, 68, 68, 0.3)";
+              reqEl.style.color = res.hit ? "var(--primary)" : "var(--danger)";
+
+              if (!res.hit) reqEl.classList.add("fault-glow");
+
+              setTimeout(() => {
+                reqEl.style.transition = "background-color 0.5s";
+                reqEl.style.backgroundColor = "rgba(255,255,255,0.1)";
+                reqEl.style.color = "var(--text-main)";
+                reqEl.classList.remove("fault-glow");
+              }, speed * 0.6);
+
+              document.getElementById(`${a}-faults`).textContent = alg.faults;
+              document.getElementById(`${a}-hits`).textContent = alg.hits;
+
+              renderHistoryColumn(
+                `${a}-history`,
+                alg.frames,
+                fCount,
+                { hit: res.hit, victimIdx: res.victimIdx, page: page },
+                page,
+              );
+            });
+
+            // Update OPT Future display
+            const futureContainer = document.getElementById("opt-future");
+            futureContainer.innerHTML = "";
+            const futureLookahead = Math.min(6, refs.length - i - 1);
+            if (futureLookahead > 0) {
+              futureContainer.innerHTML =
+                '<span style="font-weight:bold; margin-right:5px;">미래: </span>';
+              for (let k = 1; k <= futureLookahead; k++) {
+                const span = document.createElement("span");
+                span.className = "future-item";
+                span.textContent = refs[i + k];
+                futureContainer.appendChild(span);
+              }
+            }
+
+            await sleep(speed * 0.8);
+          }
+          if (refs.length > 0) {
+            document.getElementById(`ref-${refs.length - 1}`).className =
+              "ref-item past";
+          }
+        }
+
+        isAlgorithmRunning = false;
+        btn.disabled = false;
+        btn.textContent = "🚀 전체 시뮬레이션 시작";
+      }
+
+      // -----------------------------------------
+      // 3. Dashboard Chart & Belady's Anomaly
+      // -----------------------------------------
+      function simulateAll(refs) {
+        let maxF = 7;
+        let dataFIFO = [];
+        let dataLRU = [];
+        let hasBelady = false;
+
+        for (let f = 1; f <= maxF; f++) {
+          let fifoAlg = new Algorithm(f, "fifo");
+          let lruAlg = new Algorithm(f, "lru");
+
+          for (let i = 0; i < refs.length; i++) {
+            fifoAlg.process(refs[i], i + 1);
+            lruAlg.process(refs[i], i + 1);
+          }
+          dataFIFO.push(fifoAlg.faults);
+          dataLRU.push(lruAlg.faults);
+
+          if (f > 1 && dataFIFO[f - 1] > dataFIFO[f - 2]) {
+            hasBelady = true;
+          }
+        }
+        return { dataFIFO, dataLRU, hasBelady };
+      }
+
+      function previewChart() {
+        if (!isAlgorithmRunning) analyzeAndDrawChart(getRefString());
+      }
+
+      function analyzeAndDrawChart(refs) {
+        if (refs.length === 0) return;
+        const results = simulateAll(refs);
+
+        // Belady Alert
+        const alertBox = document.getElementById("belady-warning");
+        if (results.hasBelady) {
+          alertBox.style.display = "block";
+        } else {
+          alertBox.style.display = "none";
+        }
+
+        // Canvas Setup
+        const canvas = document.getElementById("hitRateChart");
+        const ctx = canvas.getContext("2d");
+
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+
+        const w = canvas.width;
+        const h = canvas.height;
+        const pad = 40;
+
+        ctx.clearRect(0, 0, w, h);
+
+        const maxFaults = Math.max(...results.dataFIFO, ...results.dataLRU, 1);
+
+        // Draw Axes
+        ctx.strokeStyle = "rgba(255,255,255,0.2)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(pad, pad - 10);
+        ctx.lineTo(pad, h - pad);
+        ctx.lineTo(w - pad + 10, h - pad);
+        ctx.stroke();
+
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "12px Inter";
+        ctx.textAlign = "right";
+        ctx.fillText(maxFaults, pad - 10, pad);
+        ctx.fillText("0", pad - 10, h - pad + 5);
+
+        ctx.fillStyle = "#94a3b8";
+        ctx.textAlign = "center";
+        for (let i = 1; i <= 7; i++) {
+          const x = pad + ((w - 2 * pad) / 6) * (i - 1);
+          ctx.fillText(i, x, h - pad + 20);
+        }
+        ctx.fillText("프레임 갯수", w / 2, h - 5);
+
+        function drawLine(data, color) {
+          ctx.beginPath();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 3;
+          for (let i = 0; i < 7; i++) {
+            const x = pad + ((w - 2 * pad) / 6) * i;
+            const val = data[i];
+            const y = h - pad - (val / maxFaults) * (h - 2 * pad - 10);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+
+          ctx.fillStyle = color;
+          for (let i = 0; i < 7; i++) {
+            const x = pad + ((w - 2 * pad) / 6) * i;
+            const val = data[i];
+            const y = h - pad - (val / maxFaults) * (h - 2 * pad - 10);
+            ctx.beginPath();
+            ctx.arc(x, y, 4, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        drawLine(results.dataFIFO, "#ef4444");
+        drawLine(results.dataLRU, "#10b981");
+
+        // Legend
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#ef4444";
+        ctx.fillText("■ FIFO 폴트", w - 20, 20);
+        ctx.fillStyle = "#10b981";
+        ctx.fillText("■ LRU 폴트", w - 20, 40);
+      }
+
+      // Initial Load
+      window.onload = () => {
+        analyzeAndDrawChart(getRefString());
+        window.addEventListener("resize", () => {
+          analyzeAndDrawChart(getRefString());
+        });
+      };
+    </script>
+  </body>
+</html>

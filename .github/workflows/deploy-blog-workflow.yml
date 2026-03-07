@@ -1,0 +1,125 @@
+name: Build Blog Backend Images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-blog-workflow.yml'
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Custom image tag (default: git SHA)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: backend-build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-push:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+      sha_short: ${{ steps.vars.outputs.sha_short }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up variables
+        id: vars
+        run: |
+          SHA_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "sha_short=${SHA_SHORT}" >> $GITHUB_OUTPUT
+          echo "SHA Short: ${SHA_SHORT}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker meta - Blog API
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/blog-api
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=${{ github.event.inputs.image_tag }},enable=${{ github.event.inputs.image_tag != '' }}
+
+      - name: Build and push Blog API
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max,ignore-error=true
+
+      - name: Build and push Terminal Server
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/terminal-server
+          file: ./backend/terminal-server/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/blog-terminal:${{ steps.vars.outputs.sha_short }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/blog-terminal:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max,ignore-error=true
+
+  notify:
+    name: Build Complete
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    if: success()
+
+    steps:
+      - name: Build summary
+        run: |
+          echo ""
+          echo "╔════════════════════════════════════════════════════════════╗"
+          echo "║              BUILD COMPLETED SUCCESSFULLY                  ║"
+          echo "╚════════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "Images pushed to GHCR:"
+          echo "  - ghcr.io/${{ github.repository_owner }}/blog-api:${{ needs.build-and-push.outputs.sha_short }}"
+          echo "  - ghcr.io/${{ github.repository_owner }}/blog-api:latest"
+          echo "  - ghcr.io/${{ github.repository_owner }}/blog-terminal:${{ needs.build-and-push.outputs.sha_short }}"
+          echo "  - ghcr.io/${{ github.repository_owner }}/blog-terminal:latest"
+          echo ""
+          echo "┌────────────────────────────────────────────────────────────┐"
+          echo "│ MANUAL DEPLOYMENT INSTRUCTIONS                             │"
+          echo "├────────────────────────────────────────────────────────────┤"
+          echo "│ Server deployment is managed manually.                     │"
+          echo "│                                                            │"
+          echo "│ To deploy on the server:                                   │"
+          echo "│   1. SSH to server                                         │"
+          echo "│   2. Pull and restart services (compose)                   │"
+          echo "│                                                            │"
+          echo "│ Or pull and restart specific service:                      │"
+          echo "│   docker pull ghcr.io/${{ github.repository_owner }}/blog-api:latest"
+          echo "│   docker compose restart api                               │"
+          echo "│                                                            │"
+          echo "│ Environment variables are synced separately via:           │"
+          echo "│   .github/workflows/sync-backend-env.yml                   │"
+          echo "└────────────────────────────────────────────────────────────┘"

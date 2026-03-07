@@ -1,0 +1,17 @@
+{
+  "service": {
+    "id": "chromadb",
+    "name": "chromadb",
+    "tags": ["database", "vector", "rag"],
+    "port": 8000,
+    "check": {
+      "http": "http://chromadb:8000/api/v1/heartbeat",
+      "interval": "30s",
+      "timeout": "10s"
+    },
+    "meta": {
+      "type": "vector-db",
+      "collection": "blog-posts-all-MiniLM-L6-v2"
+    }
+  }
+}

@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BFS — Breadth-First Search</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;font-size:14px;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+:root{--bg:#1e1e1e;--panel:#252526;--text:#d4d4d4;--border:#3e3e42;--primary:#007acc;--primary-h:#005999;--accent:#4CAF50;--danger:#f44336;--hl:#264f78}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px;width:100%;}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 4px}
+.header h2{margin:0;font-size:1.05rem;color:#fff}
+.header .sub{color:#888;font-weight:400}
+.btn-info{background:none;border:1px solid var(--border);border-radius:50%;width:26px;height:26px;color:#888;cursor:pointer;font-size:.85rem;font-weight:bold;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}
+.btn-info:hover{border-color:var(--primary);color:var(--primary)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:28px 32px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;position:relative}
+.modal h3{margin:0 0 16px;color:#fff;font-size:1.1rem}
+.modal section{margin-bottom:16px}
+.modal h4{margin:0 0 6px;color:var(--primary);font-size:.85rem;text-transform:uppercase;letter-spacing:.05em}
+.modal p,.modal li{font-size:.9rem;line-height:1.6;color:var(--text);margin:0 0 4px}
+.modal ul{padding-left:18px;margin:0}
+.tag{display:inline-block;background:#2d2d30;border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:.8rem;margin-right:6px;color:#4fc3f7;font-family:monospace}
+.modal-close{position:absolute;top:12px;right:14px;background:none;border:none;color:#888;font-size:1.2rem;cursor:pointer;padding:0;line-height:1}
+.modal-close:hover{color:#fff}
+.controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+button{background:var(--primary);border:none;border-radius:4px;color:#fff;cursor:pointer;padding:5px 12px;font-size:.8rem}
+button:hover{background:var(--primary-h)}
+button:disabled{opacity:.4;cursor:default}
+.step-info{font-size:.82rem;color:#888;margin-left:auto}
+input[type=range]{accent-color:var(--primary);width:80px}
+.viz{background:#1a1a1a;border:1px solid var(--border);border-radius:6px;padding:12px;min-height:120px;margin-bottom:10px;display:flex;flex-direction:column;gap:10px}
+.log{font-size:.8rem;color:#888;min-height:36px;padding:4px 0}
+.array-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.box{width:42px;height:42px;display:flex;align-items:center;justify-content:center;background:#333;border:2px solid var(--border);border-radius:6px;font-weight:bold;transition:all .3s;}
+.box.active{border-color:var(--primary);box-shadow:0 0 8px var(--primary);transform:translateY(-2px);}
+.box.accent{border-color:var(--accent);color:var(--accent);background:rgba(76,175,80,.15)}
+.box.merged{border-color:var(--accent);background:rgba(76,175,80,0.2);color:var(--accent);}
+.box.danger{border-color:var(--danger);background:rgba(244,67,54,0.2);color:var(--danger);}
+.panel{background:#1e1e1e;border:1px solid var(--border);border-radius:6px;padding:10px;font-family:monospace;white-space:pre-wrap}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:start}
+.kv .k{color:#888}
+.kv .v{color:#d4d4d4}
+.grid{display:grid;gap:4px;justify-content:center}
+.cell{width:30px;height:30px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;border-radius:4px}
+
+/* === v2 Code-Trace additions === */
+.card{display:flex;gap:12px;max-width:760px;width:100%;}
+.workspace{flex:1;min-width:0;}
+.btn-icon{background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:#888;cursor:pointer;font-size:.75rem;font-family:monospace;white-space:nowrap;flex-shrink:0;}
+.btn-icon:hover,.btn-icon.active{border-color:var(--primary);color:var(--primary);}
+.btn-icon.active{background:rgba(0,122,204,.1);}
+.code-trace-panel{width:280px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;}
+.code-view{background:#1e1e1e;border:1px solid var(--border);border-radius:6px;padding:10px;font-family:monospace;font-size:12px;line-height:1.7;overflow-y:auto;max-height:260px;}
+.code-line-t{padding:1px 6px;border-left:3px solid transparent;border-radius:2px;white-space:pre;color:#d4d4d4;}
+.code-line-t.hl{background:rgba(0,122,204,.18);border-left-color:var(--primary);color:#fff;}
+.code-view-title,.memory-view-title{font-size:.72rem;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+.memory-view{background:#1a1a1a;border:1px solid var(--border);border-radius:6px;padding:10px;font-size:.8rem;}
+.mv-row{display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #2a2a2a;}
+.mv-row:last-child{border-bottom:none;}
+.mv-key{color:#888;min-width:56px;font-family:monospace;}
+.mv-val{color:#4fc3f7;font-family:monospace;font-weight:bold;}
+.mv-badge{border-radius:3px;padding:1px 6px;font-size:.73rem;font-family:monospace;margin-left:auto;}
+.mv-badge.true-badge{background:rgba(76,175,80,.25);color:#4CAF50;}
+.mv-badge.false-badge{background:rgba(244,67,54,.25);color:#f44336;}
+.condition-bar{min-height:24px;padding:3px 6px;font-size:.77rem;font-family:monospace;color:#bbb;display:flex;flex-wrap:wrap;gap:8px;align-items:center;border:1px solid #2a2a2a;border-radius:4px;margin-bottom:6px;background:#1c1c1c;}
+.pointer-row{display:flex;gap:10px;justify-content:center;font-size:.74rem;font-family:monospace;padding:2px 0;color:#888;}
+.ptr-item{display:flex;gap:3px;}
+.ptr-key{color:#888;}
+.ptr-val{color:#4fc3f7;}
+.viz-stack{display:flex;flex-direction:column;gap:10px;width:100%}
+.viz-lane{display:flex;gap:10px;align-items:flex-start;animation:vizFadeIn .24s ease both}
+.viz-label{min-width:64px;padding-top:8px;color:#888;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;font-family:monospace}
+.viz-body{flex:1;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
+.viz-card-grid,.viz-group-grid,.viz-metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;width:100%}
+.viz-group-grid{grid-template-columns:repeat(auto-fit,minmax(126px,1fr))}
+.viz-card,.viz-group,.viz-metric{background:#202022;border:1px solid var(--border);border-radius:8px;padding:10px;min-height:54px;animation:vizRise .24s ease both}
+.viz-card.changed,.viz-group.changed,.viz-metric.changed,.viz-pill.changed{animation:vizRise .24s ease both,vizPulse .58s ease}
+.viz-card-key,.viz-metric-key,.viz-group-title{font-size:.7rem;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;font-family:monospace}
+.viz-card-value,.viz-metric-value{font-family:monospace;color:#fff;font-weight:600;line-height:1.4;word-break:break-word}
+.viz-group-items{display:flex;flex-wrap:wrap;gap:6px}
+.viz-pill{min-height:34px;min-width:40px;padding:0 10px;border-radius:999px;border:1px solid var(--border);background:#202022;color:#d4d4d4;display:inline-flex;align-items:center;justify-content:center;font-family:monospace;font-size:.82rem;animation:vizRise .24s ease both}
+.viz-pill.tone-primary,.viz-metric.tone-primary{border-color:rgba(0,122,204,.55);background:rgba(0,122,204,.12)}
+.viz-pill.tone-primary{color:#7ec8ff}
+.viz-pill.tone-accent,.viz-metric.tone-accent{border-color:rgba(76,175,80,.55);background:rgba(76,175,80,.14)}
+.viz-pill.tone-accent{color:#7fd784}
+.viz-pill.tone-danger,.viz-metric.tone-danger{border-color:rgba(244,67,54,.55);background:rgba(244,67,54,.14)}
+.viz-pill.tone-danger{color:#ff8c83}
+.viz-metric.tone-primary .viz-metric-value{color:#7ec8ff}
+.viz-metric.tone-accent .viz-metric-value{color:#7fd784}
+.viz-metric.tone-danger .viz-metric-value{color:#ff8c83}
+.viz-empty{min-height:34px;padding:0 12px;border-radius:999px;border:1px dashed var(--border);display:inline-flex;align-items:center;color:#888;font-family:monospace;font-size:.78rem}
+.viz-text-strip{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.viz-matrix{display:flex;flex-direction:column;gap:6px;width:100%}
+.viz-matrix-row{display:flex;gap:6px;flex-wrap:nowrap}
+.box.compact{width:34px;height:34px;font-size:.82rem}
+.box.changed,.cell.changed{animation:vizPulse .58s ease}
+@keyframes vizFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes vizRise{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes vizPulse{0%{transform:scale(1);box-shadow:0 0 0 rgba(0,122,204,0)}50%{transform:scale(1.04);box-shadow:0 0 14px rgba(0,122,204,.32)}100%{transform:scale(1);box-shadow:0 0 0 rgba(0,122,204,0)}}
+@media(max-width:700px){.viz-lane{flex-direction:column;gap:6px;}.viz-label{min-width:0;padding-top:0;}}
+
+@keyframes swapLeft{0%{transform:translateY(0)}40%{transform:translateY(-22px) translateX(-8px)}100%{transform:translateY(0)}}
+@keyframes swapRight{0%{transform:translateY(0)}40%{transform:translateY(-22px) translateX(8px)}100%{transform:translateY(0)}}
+.swap-left{animation:swapLeft .45s ease;}
+.swap-right{animation:swapRight .45s ease;}
+@media(max-width:700px){.card{flex-direction:column;}.code-trace-panel{width:100%;}}
+
+</style>
+</head>
+<body style="flex-direction:column;">
+<div class="header" style="width:100%;max-width:760px;">
+  <h2>BFS <span class="sub">— Breadth-First Search</span></h2>
+  <div style="display:flex;gap:6px;align-items:center;">
+    <button class="btn-icon" id="btn-code" type="button" title="코드 패널 열기/닫기">&lt;/&gt;</button>
+    <button class="btn-icon btn-info" id="btn-info" type="button" title="설명 보기">?</button>
+  </div>
+</div>
+<div class="card" id="card">
+  <div class="workspace">
+    <div class="viz" id="viz"></div>
+    <div class="condition-bar" id="condition-bar"></div>
+    <div class="log" id="log">Initializing...</div>
+    <div class="controls">
+    <button id="btn-prev">⏮ Prev</button>
+    <button id="btn-play">▶ Play</button>
+    <button id="btn-pause" disabled>⏸ Pause</button>
+    <button id="btn-next">Next ⏭</button>
+    <button id="btn-reset">Reset</button>
+    <label class="step-info">Speed: <input type="range" id="speed" min="100" max="2000" value="800" dir="rtl"></label>
+    <span class="step-info" id="step-counter">Step: 0 / 0</span>
+  </div>
+  </div>
+  <div class="code-trace-panel" id="code-panel" style="display:none;">
+    <div>
+      <div class="code-view-title">Python 코드</div>
+      <div class="code-view" id="code-view"></div>
+    </div>
+    <div>
+      <div class="memory-view-title">변수 상태</div>
+      <div class="memory-view" id="memory-view"></div>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <button class="modal-close" id="modal-close">✕</button>
+    <h3>BFS — Breadth-First Search</h3>
+    <section><h4>📌 문제</h4><p>graph adjacency list: {0:[1,2], 1:[0,3,4], 2:[0,4], 3:[1], 4:[1,2]}, start=0</p></section>
+    <section><h4>💡 핵심 아이디어</h4><p>레벨 탐색 (Queue)</p></section>
+    <section><h4>⏱ 복잡도</h4><span class="tag">시간: O(V+E)</span><span class="tag">공간: O(V)</span></section>
+    <section><h4>🏗 아키텍트의 시선</h4><p>계층적 탐색과 최단 경로. 큐로 레벨 순서 보장.</p></section>
+  </div>
+</div>
+<script>
+
+// === v2 Code-Trace Engine ===
+const _codeLines = ["def bfs(graph, start):", "    from collections import deque", "    visited = set([start])", "    queue = deque([start])", "    while queue:", "        node = queue.popleft()", "        for nei in graph[node]:", "            if nei not in visited:", "                visited.add(nei)", "                queue.append(nei)"];
+let _codePanelOpen = false;
+
+function _makeBox(value, mode, swapDir, options) {
+  const d = document.createElement('div');
+  const opts = options || {};
+  d.className = 'box';
+  if (mode === 'active') d.classList.add('active');
+  if (mode === 'accent') d.classList.add('accent');
+  if (mode === 'merged') d.classList.add('merged');
+  if (mode === 'danger') d.classList.add('danger');
+  if (opts.compact) d.classList.add('compact');
+  if (opts.changed && !swapDir) d.classList.add('changed');
+  if (swapDir === 'left') d.classList.add('swap-left');
+  if (swapDir === 'right') d.classList.add('swap-right');
+  if (typeof opts.delay === 'number') d.style.animationDelay = opts.delay + 'ms';
+  d.innerText = String(value);
+  return d;
+}
+
+function _safeJson(value) {
+  try { return JSON.stringify(value); }
+  catch (err) { return String(value); }
+}
+
+function _displayValue(value) {
+  if (value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (value === null) return 'null';
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return _safeJson(value);
+}
+
+function _isPrimitive(value) {
+  return value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+}
+
+function _isMatrixLike(value) {
+  return Array.isArray(value) && value.length > 0 && value.every(function(row) { return Array.isArray(row); });
+}
+
+function _isCoordList(value) {
+  return Array.isArray(value) && value.every(function(item) { return Array.isArray(item) && item.length === 2; });
+}
+
+function _isRenderableObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function _didChange(prevValue, nextValue) {
+  return _safeJson(prevValue) !== _safeJson(nextValue);
+}
+
+function _toneForKey(key, value) {
+  if (typeof value === 'boolean') return value ? 'accent' : 'danger';
+  const accentKeys = new Set(['result','output','order','path','rightView','mst','merged']);
+  const primaryKeys = new Set(['stack','queue','cache','heap','minStack','deque','q','pq','maxH','minH','set','visited','dist','inDegree','parent','words']);
+  if (accentKeys.has(key)) return 'accent';
+  if (primaryKeys.has(key)) return 'primary';
+  return '';
+}
+
+function _makeLane(root, label) {
+  const lane = document.createElement('div');
+  lane.className = 'viz-lane';
+  const lab = document.createElement('div');
+  lab.className = 'viz-label';
+  lab.textContent = label;
+  const body = document.createElement('div');
+  body.className = 'viz-body';
+  lane.appendChild(lab);
+  lane.appendChild(body);
+  root.appendChild(lane);
+  return body;
+}
+
+function _renderPointerRow(state) {
+  const ptrs = {};
+  const map = {left:'L',right:'R',mid:'M',i:'i',j:'j',slow:'S',fast:'F',pivot:'P',start:'S',end:'E'};
+  for (const entry of Object.entries(map)) {
+    const key = entry[0];
+    const label = entry[1];
+    if (state[key] !== undefined && state[key] !== null) ptrs[label] = state[key];
+  }
+  if (Object.keys(ptrs).length === 0) return null;
+  const row = document.createElement('div');
+  row.className = 'pointer-row';
+  for (const entry of Object.entries(ptrs)) {
+    const label = entry[0];
+    const val = entry[1];
+    const item = document.createElement('span');
+    item.className = 'ptr-item';
+    item.innerHTML = '<span class="ptr-key">' + label + '→</span><span class="ptr-val">' + val + '</span>';
+    row.appendChild(item);
+  }
+  return row;
+}
+
+function _appendEmpty(body, text) {
+  const empty = document.createElement('div');
+  empty.className = 'viz-empty';
+  empty.textContent = text || 'empty';
+  body.appendChild(empty);
+}
+
+function _makePill(text, tone, changed, index) {
+  const pill = document.createElement('div');
+  pill.className = 'viz-pill';
+  if (tone) pill.classList.add('tone-' + tone);
+  if (changed) pill.classList.add('changed');
+  pill.style.animationDelay = Math.min(index || 0, 8) * 40 + 'ms';
+  pill.textContent = text;
+  return pill;
+}
+
+function _appendCollectionLane(root, label, items, prevItems) {
+  const body = _makeLane(root, label);
+  if (!items.length) {
+    _appendEmpty(body, 'empty');
+    return;
+  }
+  const tone = _toneForKey(label, items);
+  items.forEach(function(item, index) {
+    const prevItem = Array.isArray(prevItems) ? prevItems[index] : undefined;
+    body.appendChild(_makePill(_displayValue(item), tone, !Array.isArray(prevItems) || _didChange(prevItem, item), index));
+  });
+}
+
+function _appendMetricGrid(root, entries, prevState) {
+  if (!entries.length) return;
+  const body = _makeLane(root, 'state');
+  body.classList.add('viz-metric-grid');
+  entries.forEach(function(pair, index) {
+    const key = pair[0];
+    const value = pair[1];
+    const card = document.createElement('div');
+    card.className = 'viz-metric';
+    const tone = _toneForKey(key, value);
+    if (tone) card.classList.add('tone-' + tone);
+    if (!prevState || _didChange(prevState[key], value)) card.classList.add('changed');
+    card.style.animationDelay = Math.min(index, 8) * 40 + 'ms';
+    const k = document.createElement('div');
+    k.className = 'viz-metric-key';
+    k.textContent = key;
+    const v = document.createElement('div');
+    v.className = 'viz-metric-value';
+    v.textContent = _displayValue(value);
+    card.appendChild(k);
+    card.appendChild(v);
+    body.appendChild(card);
+  });
+}
+
+function _appendTextLane(root, label, text, prevText) {
+  const body = _makeLane(root, label);
+  if (!text) {
+    _appendEmpty(body, 'empty');
+    return;
+  }
+  if (text.length <= 16) {
+    body.classList.add('viz-text-strip');
+    text.split('').forEach(function(ch, index) {
+      const prevChar = typeof prevText === 'string' ? prevText[index] : undefined;
+      body.appendChild(_makeBox(ch === ' ' ? '·' : ch, '', '', {
+        compact: true,
+        changed: typeof prevText !== 'string' || prevChar !== ch,
+        delay: Math.min(index, 8) * 35
+      }));
+    });
+    return;
+  }
+  body.appendChild(_makePill(text, _toneForKey(label, text), text !== prevText, 0));
+}
+
+function _appendObjectGrid(root, label, obj, prevObj) {
+  const entries = Object.entries(obj || {});
+  const body = _makeLane(root, label);
+  body.classList.add('viz-card-grid');
+  if (!entries.length) {
+    _appendEmpty(body, 'empty');
+    return;
+  }
+  entries.forEach(function(entry, index) {
+    const key = entry[0];
+    const value = entry[1];
+    const card = document.createElement('div');
+    card.className = 'viz-card';
+    if (!prevObj || _didChange(prevObj[key], value)) card.classList.add('changed');
+    card.style.animationDelay = Math.min(index, 8) * 40 + 'ms';
+    const k = document.createElement('div');
+    k.className = 'viz-card-key';
+    k.textContent = key;
+    const v = document.createElement('div');
+    v.className = 'viz-card-value';
+    v.textContent = _displayValue(value);
+    card.appendChild(k);
+    card.appendChild(v);
+    body.appendChild(card);
+  });
+}
+
+function _appendGroups(root, label, groups, prevGroups) {
+  const entries = Object.entries(groups || {});
+  const body = _makeLane(root, label);
+  body.classList.add('viz-group-grid');
+  if (!entries.length) {
+    _appendEmpty(body, 'empty');
+    return;
+  }
+  entries.forEach(function(entry, index) {
+    const key = entry[0];
+    const items = Array.isArray(entry[1]) ? entry[1] : [entry[1]];
+    const prevItems = prevGroups && Array.isArray(prevGroups[key]) ? prevGroups[key] : null;
+    const group = document.createElement('div');
+    group.className = 'viz-group';
+    if (!prevGroups || _didChange(prevGroups[key], items)) group.classList.add('changed');
+    group.style.animationDelay = Math.min(index, 8) * 40 + 'ms';
+    const title = document.createElement('div');
+    title.className = 'viz-group-title';
+    title.textContent = key;
+    const wrap = document.createElement('div');
+    wrap.className = 'viz-group-items';
+    items.forEach(function(item, itemIndex) {
+      const prevItem = Array.isArray(prevItems) ? prevItems[itemIndex] : undefined;
+      wrap.appendChild(_makePill(_displayValue(item), 'primary', !Array.isArray(prevItems) || _didChange(prevItem, item), itemIndex));
+    });
+    group.appendChild(title);
+    group.appendChild(wrap);
+    body.appendChild(group);
+  });
+}
+
+function _makeKVPanel(state, skipKeys) {
+  const skip = new Set(skipKeys || []);
+  const keys = Object.keys(state).filter(function(key) { return !skip.has(key); });
+  if (keys.length === 0) return null;
+  const kv = document.createElement('div');
+  kv.className = 'kv';
+  keys.forEach(function(key) {
+    const kd = document.createElement('div');
+    kd.className = 'k';
+    kd.innerText = key;
+    const vd = document.createElement('div');
+    vd.className = 'v';
+    vd.innerText = typeof state[key] === 'string' ? state[key] : _safeJson(state[key]);
+    kv.appendChild(kd);
+    kv.appendChild(vd);
+  });
+  return kv;
+}
+
+function _appendMatrix(root, label, matrix, prevMatrix, coordPath) {
+  const body = _makeLane(root, label);
+  body.classList.add('viz-matrix');
+  const pathSet = new Set((coordPath || []).map(function(pair) { return pair[0] + ',' + pair[1]; }));
+  if (!matrix.length) {
+    _appendEmpty(body, 'empty');
+    return;
+  }
+  matrix.forEach(function(row, rowIndex) {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'viz-matrix-row';
+    row.forEach(function(value, colIndex) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      const key = rowIndex + ',' + colIndex;
+      if (!prevMatrix || !Array.isArray(prevMatrix[rowIndex]) || _didChange(prevMatrix[rowIndex][colIndex], value) || pathSet.has(key)) {
+        cell.classList.add('changed');
+      }
+      if (pathSet.has(key)) {
+        cell.style.borderColor = 'var(--primary)';
+        cell.style.background = 'rgba(0,122,204,.14)';
+        cell.style.color = '#fff';
+      }
+      cell.textContent = String(value);
+      rowEl.appendChild(cell);
+    });
+    body.appendChild(rowEl);
+  });
+}
+
+function _appendPrimaryArray(root, state, prevState, active, result) {
+  const row = document.createElement('div');
+  row.className = 'array-row';
+  const swapPair = state.swapPair || [];
+  const prevArr = prevState && Array.isArray(prevState.arr) ? prevState.arr : null;
+  for (let idx = 0; idx < state.arr.length; idx++) {
+    let mode = '';
+    if (active.has(String(idx)) || idx === state.fast || idx === state.left ||
+        idx === state.right || idx === state.mid || idx === state.pivot) mode = 'active';
+    if (result.has(String(idx)) || idx === state.slow) mode = 'accent';
+    let swapDir = '';
+    if (swapPair.length === 2) {
+      if (idx === swapPair[0]) swapDir = 'right';
+      if (idx === swapPair[1]) swapDir = 'left';
+    }
+    row.appendChild(_makeBox(state.arr[idx], mode, swapDir, {
+      changed: !prevArr || _didChange(prevArr[idx], state.arr[idx]) || mode === 'active' || mode === 'accent',
+      delay: Math.min(idx, 8) * 35
+    }));
+  }
+  root.appendChild(row);
+  const ptrRow = _renderPointerRow(state);
+  if (ptrRow) root.appendChild(ptrRow);
+}
+
+function _appendGroupedArrays(root, state, prevState) {
+  const row = document.createElement('div');
+  row.className = 'array-row';
+  const prevArrs = prevState && Array.isArray(prevState.arrs) ? prevState.arrs : null;
+  let gi = 0;
+  state.arrs.forEach(function(subArr, groupIndex) {
+    const group = document.createElement('div');
+    group.style.cssText = 'display:flex;gap:4px;margin:0 8px;';
+    subArr.forEach(function(val, itemIndex) {
+      const prevVal = prevArrs && Array.isArray(prevArrs[groupIndex]) ? prevArrs[groupIndex][itemIndex] : undefined;
+      const box = _makeBox(val, '', '', {
+        changed: !prevArrs || _didChange(prevVal, val) || (state.activeIndices && state.activeIndices.includes(gi)) || (state.mergedIndices && state.mergedIndices.includes(gi)),
+        delay: Math.min(gi, 8) * 35
+      });
+      if (state.activeIndices && state.activeIndices.includes(gi)) box.classList.add('active');
+      if (state.mergedIndices && state.mergedIndices.includes(gi)) box.classList.add('merged');
+      group.appendChild(box);
+      gi += 1;
+    });
+    row.appendChild(group);
+  });
+  root.appendChild(row);
+}
+
+function _renderVizV2(state, vizEl, prevState) {
+  vizEl.innerHTML = '';
+  const root = document.createElement('div');
+  root.className = 'viz-stack';
+  vizEl.appendChild(root);
+
+  const handled = new Set(['msg','line','vars','conditions','swapPair','activeIndices','mergedIndices']);
+  const active = new Set((Array.isArray(state.active) ? state.active : []).map(String));
+  const result = new Set((Array.isArray(state.result) ? state.result : []).map(String));
+
+  if (Array.isArray(state.arrs)) {
+    _appendGroupedArrays(root, state, prevState);
+    handled.add('arrs');
+    handled.add('active');
+  }
+
+  if (Array.isArray(state.arr)) {
+    _appendPrimaryArray(root, state, prevState, active, result);
+    handled.add('arr');
+    handled.add('active');
+  }
+
+  ['grid','board','matrix','triangle'].forEach(function(key) {
+    if (_isMatrixLike(state[key])) {
+      const coordPath = key === 'grid' && _isCoordList(state.path) ? state.path : [];
+      _appendMatrix(root, key, state[key], prevState ? prevState[key] : null, coordPath);
+      handled.add(key);
+      if (coordPath.length) handled.add('path');
+    }
+  });
+
+  if (_isRenderableObject(state.groups)) {
+    _appendGroups(root, 'groups', state.groups, prevState ? prevState.groups : null);
+    handled.add('groups');
+  }
+
+  ['map','colors','list'].forEach(function(key) {
+    if (!handled.has(key) && _isRenderableObject(state[key])) {
+      _appendObjectGrid(root, key, state[key], prevState ? prevState[key] : null);
+      handled.add(key);
+    }
+  });
+
+  ['window','prefix','current','list','chain','tree','traversal','step','action','s','ch'].forEach(function(key) {
+    if (!handled.has(key) && typeof state[key] === 'string') {
+      _appendTextLane(root, key, state[key], prevState ? prevState[key] : '');
+      handled.add(key);
+    }
+  });
+
+  const preferredArrayKeys = ['stack','queue','cache','heap','minStack','set','deque','q','pq','maxH','minH','output','visited','order','path','words','edges','mst','triplets','rightView','inDegree','dist','result','merged','data','out','pair','l1','l2','parent','used','intervals','inorder'];
+  preferredArrayKeys.forEach(function(key) {
+    if (!handled.has(key) && Array.isArray(state[key])) {
+      _appendCollectionLane(root, key, state[key], prevState ? prevState[key] : null);
+      handled.add(key);
+    }
+  });
+
+  Object.keys(state).forEach(function(key) {
+    if (!handled.has(key) && Array.isArray(state[key])) {
+      _appendCollectionLane(root, key, state[key], prevState ? prevState[key] : null);
+      handled.add(key);
+    }
+  });
+
+  const scalarEntries = Object.keys(state).filter(function(key) {
+    if (handled.has(key)) return false;
+    if (key === 'msg' || key === 'line' || key === 'vars' || key === 'conditions') return false;
+    if (Array.isArray(state[key])) return false;
+    if (_isRenderableObject(state[key])) return false;
+    return _isPrimitive(state[key]);
+  }).map(function(key) {
+    return [key, state[key]];
+  });
+
+  scalarEntries.forEach(function(entry) {
+    handled.add(entry[0]);
+  });
+  _appendMetricGrid(root, scalarEntries, prevState);
+
+  const kv = _makeKVPanel(state, Array.from(handled));
+  if (kv) root.appendChild(kv);
+
+  if (!root.childElementCount) {
+    const panel = document.createElement('div');
+    panel.className = 'panel';
+    panel.innerText = JSON.stringify(state, null, 2);
+    vizEl.appendChild(panel);
+  }
+}
+
+function _renderConditionBar(state) {
+  const bar = document.getElementById('condition-bar');
+  if (!bar) return;
+  bar.innerHTML = '';
+  if (!state.conditions && state.left === undefined && state.right === undefined) return;
+  if (state.conditions && Array.isArray(state.conditions)) {
+    state.conditions.forEach(function(cond) {
+      const span = document.createElement('span');
+      const ok = cond.result ? '✓' : '✗';
+      const badge = cond.result ? 'true-badge' : 'false-badge';
+      span.innerHTML = '<span style="color:#d4d4d4">' + _esc(cond.expr) + '</span> <span class="mv-badge ' + badge + '">' + ok + ' ' + (cond.result ? 'True' : 'False') + '</span>';
+      bar.appendChild(span);
+    });
+    return;
+  }
+  if (state.left !== undefined && state.right !== undefined) {
+    const ok = state.left <= state.right;
+    const badge = ok ? 'true-badge' : 'false-badge';
+    const expr = 'left ≤ right → ' + state.left + ' ≤ ' + state.right;
+    bar.innerHTML = '<span>' + _esc(expr) + ' <span class="mv-badge ' + badge + '">' + (ok ? '✓ True' : '✗ False') + '</span></span>';
+  }
+}
+
+function _renderCodePanel(state) {
+  const codeView = document.getElementById('code-view');
+  const memView = document.getElementById('memory-view');
+  if (!codeView || !memView) return;
+  codeView.innerHTML = '';
+  if (_codeLines && _codeLines.length) {
+    _codeLines.forEach(function(line, idx) {
+      const el = document.createElement('div');
+      el.className = 'code-line-t';
+      if (state.line && (idx + 1) === state.line) el.classList.add('hl');
+      el.textContent = line;
+      codeView.appendChild(el);
+    });
+  }
+  memView.innerHTML = '';
+  const varKeys = ['left','right','mid','i','j','slow','fast','pivot','count','target','sum','found','cur','prev','lo','hi','k'];
+  const shown = [];
+  varKeys.forEach(function(k) {
+    if (state[k] !== undefined && state[k] !== null) shown.push([k, state[k]]);
+  });
+  if (state.vars) Object.entries(state.vars).forEach(function(e){ shown.push(e); });
+  shown.forEach(function(pair) {
+    const row = document.createElement('div');
+    row.className = 'mv-row';
+    row.innerHTML = '<span class="mv-key">' + _esc(String(pair[0])) + '</span><span class="mv-val">' + _esc(JSON.stringify(pair[1])) + '</span>';
+    memView.appendChild(row);
+  });
+  if (state.conditions && Array.isArray(state.conditions)) {
+    state.conditions.forEach(function(cond) {
+      const row = document.createElement('div');
+      row.className = 'mv-row';
+      const badge = cond.result ? 'true-badge' : 'false-badge';
+      row.innerHTML = '<span class="mv-key" style="min-width:auto;color:#aaa">' + _esc(cond.expr) + '</span><span class="mv-badge ' + badge + '" style="margin-left:6px">' + (cond.result ? 'True' : 'False') + '</span>';
+      memView.appendChild(row);
+    });
+  }
+}
+
+function _esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+
+let states = [{"msg":"초기 상태","q":[0],"visited":[0],"order":[],"line":1,"vars":{"q":[0],"visited":[0],"order":[]}},{"msg":"Dequeue 0, Enqueue 1, 2","q":[1,2],"visited":[0,1,2],"order":[0],"line":10,"vars":{"q":[1,2],"visited":[0,1,2],"order":[0]}},{"msg":"Dequeue 1, Enqueue 3, 4","q":[2,3,4],"visited":[0,1,2,3,4],"order":[0,1],"line":10,"vars":{"q":[2,3,4],"visited":[0,1,2,3,4],"order":[0,1]}},{"msg":"Dequeue 2","q":[3,4],"visited":[0,1,2,3,4],"order":[0,1,2],"line":6,"vars":{"q":[3,4],"visited":[0,1,2,3,4],"order":[0,1,2]}},{"msg":"Dequeue 3","q":[4],"visited":[0,1,2,3,4],"order":[0,1,2,3],"line":6,"vars":{"q":[4],"visited":[0,1,2,3,4],"order":[0,1,2,3]}},{"msg":"Dequeue 4","q":[],"visited":[0,1,2,3,4],"order":[0,1,2,3,4],"line":6,"vars":{"q":[],"visited":[0,1,2,3,4],"order":[0,1,2,3,4]}}];
+
+
+function render() {
+  if (states.length === 0) return;
+  const state = states[currentStep];
+  const viz = document.getElementById('viz');
+  const log = document.getElementById('log');
+  const stepCounter = document.getElementById('step-counter');
+  _renderVizV2(state, viz, lastRenderedState);
+  _renderConditionBar(state);
+  if (_codePanelOpen) _renderCodePanel(state);
+  log.innerText = state.msg;
+  stepCounter.innerText = 'Step: ' + (currentStep + 1) + ' / ' + states.length;
+  document.getElementById('btn-prev').disabled = currentStep === 0;
+  document.getElementById('btn-next').disabled = currentStep === states.length - 1;
+  lastRenderedState = state;
+}
+
+
+let currentStep = 0, playing = false, timer, lastRenderedState = null;
+function next() { if (currentStep < states.length - 1) { currentStep += 1; render(); } else pause(); }
+function prev() { if (currentStep > 0) { currentStep -= 1; render(); } }
+function play() {
+  if (!playing && currentStep < states.length - 1) {
+    playing = true;
+    document.getElementById('btn-play').disabled = true;
+    document.getElementById('btn-pause').disabled = false;
+    timer = setInterval(next, parseInt(document.getElementById('speed').value, 10));
+  }
+}
+function pause() {
+  playing = false;
+  document.getElementById('btn-play').disabled = false;
+  document.getElementById('btn-pause').disabled = true;
+  clearInterval(timer);
+}
+function reset() { pause(); currentStep = 0; render(); }
+document.getElementById('btn-next').addEventListener('click', function() { pause(); next(); });
+document.getElementById('btn-prev').addEventListener('click', function() { pause(); prev(); });
+document.getElementById('btn-play').addEventListener('click', play);
+document.getElementById('btn-pause').addEventListener('click', pause);
+document.getElementById('btn-reset').addEventListener('click', reset);
+document.getElementById('speed').addEventListener('input', function() { if (playing) { pause(); play(); } });
+
+
+document.getElementById('btn-info').addEventListener('click', function() { document.getElementById('modal').classList.add('open'); });
+document.getElementById('modal-close').addEventListener('click', function() { document.getElementById('modal').classList.remove('open'); });
+document.getElementById('modal').addEventListener('click', function(e) { if (e.target === document.getElementById('modal')) document.getElementById('modal').classList.remove('open'); });
+
+
+// Code panel toggle
+document.getElementById('btn-code').addEventListener('click', function() {
+  _codePanelOpen = !_codePanelOpen;
+  const panel = document.getElementById('code-panel');
+  panel.style.display = _codePanelOpen ? 'flex' : 'none';
+  if (_codePanelOpen) { panel.style.flexDirection = 'column'; _renderCodePanel(states[currentStep]); }
+  document.getElementById('btn-code').classList.toggle('active', _codePanelOpen);
+});
+
+render();
+</script>
+</body>
+</html>

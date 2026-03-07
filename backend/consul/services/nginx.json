@@ -1,0 +1,16 @@
+{
+  "service": {
+    "id": "blog-nginx",
+    "name": "nginx",
+    "tags": ["proxy", "ssl", "gateway"],
+    "port": 80,
+    "check": {
+      "http": "http://nginx:80/health",
+      "interval": "15s",
+      "timeout": "5s"
+    },
+    "meta": {
+      "type": "reverse-proxy"
+    }
+  }
+}
