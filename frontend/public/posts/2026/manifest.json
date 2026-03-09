@@ -24,11 +24,12 @@
     "proxmox-opnsense-vlan-104-guide.md",
     "remote-server-think.md",
     "shellscript-analyze-1.md",
+    "teleport-config.md",
     "teleport.md",
     "understanding-ssm-and-mamba.md",
     "vim-architecture-functionality-commands-integration.md"
   ],
-  "generatedAt": "2026-03-06T08:14:56.066Z",
-  "totalFiles": 27,
+  "generatedAt": "2026-03-08T04:28:39.806Z",
+  "totalFiles": 28,
   "excludedFiles": 0
 }

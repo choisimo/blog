@@ -1,5 +1,5 @@
 {
-  "total": 261,
+  "total": 262,
   "items": [
     {
       "path": "/posts/2026/awk-1.md",
@@ -20,6 +20,29 @@
       "published": true,
       "coverImage": "/images/2026/awk-1/1.png",
       "url": "/blog/2026/awk-1"
+    },
+    {
+      "path": "/posts/2026/teleport-config.md",
+      "year": "2026",
+      "slug": "teleport-config",
+      "title": "Teleport 설치와 서버 관리 가이드",
+      "description": "도메인 연결 이후 관리자 계정 생성부터 노드 등록, RBAC, 세션 감사까지 한 번에 정리한 Teleport 운영 가이드",
+      "snippet": "도메인 연결 이후 관리자 계정 생성부터 노드 등록, RBAC, 세션 감사까지 한 번에 정리한 Teleport 운영 가이드",
+      "date": "2026-03-01",
+      "tags": [
+        "teleport",
+        "ssh",
+        "security",
+        "devops",
+        "개발",
+        "infra"
+      ],
+      "category": "Tech",
+      "author": "Admin",
+      "readingTime": "4 min read",
+      "published": true,
+      "coverImage": "/images/2026/teleport-config/teleport-1.png",
+      "url": "/blog/2026/teleport-config"
     },
     {
       "path": "/posts/2026/teleport.md",
@@ -5506,7 +5529,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-03-06T08:14:56.120Z",
+  "generatedAt": "2026-03-08T04:28:39.852Z",
   "years": [
     "2026",
     "2025",
