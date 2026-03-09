@@ -18,6 +18,7 @@
     "current-crowd.md",
     "docker-1.md",
     "io-redirection-pipeline.md",
+    "limitation_of_bestcases.md",
     "nobel1-kursk-tanks.md",
     "personalized-readability-ux.md",
     "proxmox-network-add.md",
@@ -29,7 +30,7 @@
     "understanding-ssm-and-mamba.md",
     "vim-architecture-functionality-commands-integration.md"
   ],
-  "generatedAt": "2026-03-08T04:28:39.806Z",
-  "totalFiles": 28,
+  "generatedAt": "2026-03-09T19:34:44.898Z",
+  "totalFiles": 29,
   "excludedFiles": 0
 }

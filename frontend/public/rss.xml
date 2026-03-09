@@ -5,7 +5,7 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Sat, 07 Mar 2026 02:15:56 GMT</lastBuildDate>
+    <lastBuildDate>Mon, 09 Mar 2026 19:34:45 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
       <title>awk 시스템 처리 원리</title>
@@ -17,6 +17,22 @@
       <category>record</category>
       <category>interpreter</category>
       <category>awk</category>
+    </item>
+    <item>
+      <title>Teleport 설치와 서버 관리 가이드</title>
+      <description>직접 443을 여는 기본 템플릿부터, 80/443 충돌 환경에서 DNS-01과 Nginx L4 passthrough로 우회한 실전 예시까지 함께 정리한 Teleport 운영 가이드</description>
+      <link>https://noblog.nodove.com/blog/2026/teleport-config</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/teleport-config</guid>
+      <pubDate>Sun, 01 Mar 2026 00:00:00 GMT</pubDate>
+      <category>Tech</category>
+      <category>teleport</category>
+      <category>ssh</category>
+      <category>security</category>
+      <category>devops</category>
+      <category>infra</category>
+      <category>nginx</category>
+      <category>cloudflare</category>
+      <category>dns-01</category>
     </item>
     <item>
       <title>리눅스, fork에서 io_uring까지, OS가 선택한 타협</title>
@@ -253,20 +269,6 @@
       <category>연민</category>
       <category>내면</category>
       <category>창작</category>
-    </item>
-    <item>
-      <title>Vim Architecture, Functionality, Commands, and Integration</title>
-      <description>Vim의 아키텍처부터 핵심 기능, 필수 명령어, 그리고 다양한 개발 환경과의 통합까지 심층적으로 탐구합니다</description>
-      <link>https://noblog.nodove.com/blog/2026/vim-architecture-functionality-commands-integration</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/vim-architecture-functionality-commands-integration</guid>
-      <pubDate>Thu, 15 Jan 2026 00:00:00 GMT</pubDate>
-      <category>기술</category>
-      <category>Vim</category>
-      <category>Neovim</category>
-      <category>Editor</category>
-      <category>CLI</category>
-      <category>Productivity</category>
-      <category>개발도구</category>
     </item>
   </channel>
 </rss>
