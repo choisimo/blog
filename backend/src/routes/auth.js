@@ -1,5 +1,11 @@
 import { Router } from 'express';
-import { authenticator } from 'otplib';
+import { TOTP, NobleCryptoPlugin, ScureBase32Plugin } from 'otplib';
+
+// otplib v13: TOTP class-based API requires explicit crypto/base32 plugins
+const totp = new TOTP({
+  crypto: new NobleCryptoPlugin(),
+  base32: new ScureBase32Plugin(),
+});
 import QRCode from 'qrcode';
 import { signJwt, verifyJwt } from '../lib/jwt.js';
 import { config } from '../config.js';
@@ -157,12 +163,12 @@ router.get('/totp/setup', async (req, res) => {
 
   try {
     if (!totpSecret) {
-      totpSecret = authenticator.generateSecret();
+      totpSecret = totp.generateSecret();
     }
 
     const issuer = 'nodove blog';
     const account = 'admin';
-    const otpauthUri = authenticator.keyuri(account, issuer, totpSecret);
+    const otpauthUri = totp.toURI({ label: account, issuer, secret: totpSecret });
     const qrDataUrl = await QRCode.toDataURL(otpauthUri);
 
     return res.json({
@@ -194,7 +200,7 @@ router.post('/totp/setup/verify', async (req, res) => {
   if (!code) return res.status(400).json({ ok: false, error: 'code required' });
   if (!totpSecret) return res.status(400).json({ ok: false, error: 'TOTP not initialized — call GET /totp/setup first' });
 
-  const valid = authenticator.verify({ token: String(code).trim(), secret: totpSecret });
+  const valid = await totp.verify(String(code).trim(), { secret: totpSecret });
   if (!valid) return res.status(401).json({ ok: false, error: 'invalid code' });
 
   totpSetupComplete = true;
@@ -229,7 +235,7 @@ router.post('/totp/verify', async (req, res) => {
     return res.status(401).json({ ok: false, error: 'challenge expired' });
   }
 
-  const valid = authenticator.verify({ token: String(code).trim(), secret: totpSecret });
+  const valid = await totp.verify(String(code).trim(), { secret: totpSecret });
   if (!valid) return res.status(401).json({ ok: false, error: 'invalid TOTP code' });
 
   totpChallenges.delete(challengeId);
