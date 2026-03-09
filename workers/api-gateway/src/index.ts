@@ -189,6 +189,10 @@ app.get('/healthz', (c) => {
   });
 });
 
+app.get('/health', async (c) => {
+  return proxyToBackend(c.req.raw, c.env);
+});
+
 async function buildPublicConfig(env: Env) {
   const [apiBaseUrl, forcedModel, forcedVisionModel] = await Promise.all([
     getApiBaseUrl(env),

@@ -7,13 +7,15 @@
  * - POST /rag/search - 시맨틱 검색 (프록시)
  * - POST /rag/embed - 텍스트 임베딩 생성 (프록시)
  * - GET /rag/health - RAG 서비스 상태 확인 (프록시)
+ * - GET /rag/status - 컬렉션 상태 조회 (프록시)
+ * - GET /rag/collections - 컬렉션 목록 조회 (프록시)
  */
 
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { Env } from '../types';
-import { success, error } from '../lib/response';
+import { error } from '../lib/response';
 
 type RagContext = { Bindings: Env };
 
@@ -35,11 +37,24 @@ async function proxyToBackend(
   if (!backendOrigin) {
     return error(c, 'BACKEND_ORIGIN not configured', 500, 'CONFIG_ERROR');
   }
-  const upstreamUrl = `${backendOrigin}/api/v1/rag${path}`;
 
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-  };
+  // Preserve query string for GET requests (e.g. /status?collection=xxx)
+  const url = new URL(c.req.url);
+  const upstreamUrl = `${backendOrigin}/api/v1/rag${path}${url.search}`;
+
+  const headers = new Headers();
+  headers.set('Content-Type', 'application/json');
+
+  // Inject backend authentication key
+  if (c.env.BACKEND_KEY) {
+    headers.set('X-Backend-Key', c.env.BACKEND_KEY);
+  }
+
+  // Forward original Authorization header so backend requireAdmin can validate JWT
+  const authHeader = c.req.header('Authorization');
+  if (authHeader) {
+    headers.set('Authorization', authHeader);
+  }
 
   const requestInit: RequestInit = {
     method,
@@ -97,6 +112,21 @@ rag.post('/embed', async (c) => {
  */
 rag.get('/health', async (c) => {
   return proxyToBackend(c, '/health', 'GET');
+});
+
+/**
+ * GET /status - 특정 컬렉션 상태 조회
+ * Query: ?collection=<name>
+ */
+rag.get('/status', async (c) => {
+  return proxyToBackend(c, '/status', 'GET');
+});
+
+/**
+ * GET /collections - 모든 ChromaDB 컬렉션 목록 조회
+ */
+rag.get('/collections', async (c) => {
+  return proxyToBackend(c, '/collections', 'GET');
 });
 
 export default rag;
