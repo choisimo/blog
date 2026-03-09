@@ -6,6 +6,7 @@ import { config } from '../config.js';
 import crypto from 'crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { getRedisClient } from '../lib/redis-client.js';
 
 const router = Router();
 
@@ -33,8 +34,42 @@ const totpChallenges = new Map();
 /** @type {Map<string, { provider: string, expiresAt: number }>} */
 const oauthStates = new Map();
 
-/** @type {Set<string>} */
-const refreshTokenStore = new Set();
+/** @type {Set<string>} Fallback in-memory store when Redis is unavailable */
+const _refreshTokenFallback = new Set();
+
+const REFRESH_TOKEN_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
+const REDIS_KEY_PREFIX = 'refresh_token:';
+
+async function addRefreshToken(token) {
+  try {
+    const redis = await getRedisClient();
+    await redis.set(`${REDIS_KEY_PREFIX}${token}`, '1', { EX: REFRESH_TOKEN_TTL });
+  } catch (err) {
+    console.warn('[auth] Redis unavailable, falling back to in-memory store for refresh token:', err.message);
+    _refreshTokenFallback.add(token);
+  }
+}
+
+async function hasRefreshToken(token) {
+  try {
+    const redis = await getRedisClient();
+    const val = await redis.get(`${REDIS_KEY_PREFIX}${token}`);
+    return val !== null;
+  } catch (err) {
+    console.warn('[auth] Redis unavailable, checking in-memory fallback for refresh token:', err.message);
+    return _refreshTokenFallback.has(token);
+  }
+}
+
+async function removeRefreshToken(token) {
+  try {
+    const redis = await getRedisClient();
+    await redis.del(`${REDIS_KEY_PREFIX}${token}`);
+  } catch (err) {
+    console.warn('[auth] Redis unavailable, removing from in-memory fallback for refresh token:', err.message);
+    _refreshTokenFallback.delete(token);
+  }
+}
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -62,7 +97,7 @@ function issueTokens(email) {
     { sub: 'admin', role: 'admin', username: 'admin', email, emailVerified: true, type: 'refresh' },
     { expiresIn: '7d' }
   );
-  refreshTokenStore.add(refreshToken);
+  addRefreshToken(refreshToken).catch(err => console.error('[auth] Failed to store refresh token:', err.message));
   return { accessToken, refreshToken };
 }
 
@@ -410,7 +445,8 @@ router.post('/refresh', async (req, res) => {
     const token = String(refreshToken || '').trim();
     if (!token) return res.status(400).json({ ok: false, error: 'refreshToken required' });
 
-    if (!refreshTokenStore.has(token)) {
+    const tokenExists = await hasRefreshToken(token);
+    if (!tokenExists) {
       return res.status(401).json({ ok: false, error: 'invalid refresh token' });
     }
 
@@ -442,7 +478,7 @@ router.post('/refresh', async (req, res) => {
 router.post('/logout', async (req, res) => {
   const { refreshToken } = req.body || {};
   const token = String(refreshToken || '').trim();
-  if (token) refreshTokenStore.delete(token);
+  if (token) await removeRefreshToken(token);
   return res.json({ ok: true });
 });
 

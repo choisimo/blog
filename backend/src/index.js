@@ -6,6 +6,7 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import { config, publicRuntimeConfig, loadAndApplyConsulConfig } from './config.js';
 import { requireBackendKey } from './middleware/backendAuth.js';
+import { httpCache } from './middleware/httpCache.js';
 
 import aiRouter from './routes/ai.js';
 import commentsRouter from './routes/comments.js';
@@ -65,7 +66,7 @@ app.use(morgan('combined'));
 app.get('/api/v1/healthz', (req, res) => {
   res.json({ ok: true, env: config.appEnv, uptime: process.uptime() });
 });
-app.get('/api/v1/public/config', (req, res) => {
+app.get('/api/v1/public/config', httpCache({ ttl: 300, prefix: 'config' }), (req, res) => {
   res.json({ ok: true, data: publicRuntimeConfig() });
 });
 

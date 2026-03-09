@@ -1,28 +1,5 @@
-/**
- * RAG (Retrieval-Augmented Generation) Manager
- * 
- * ChromaDB 컬렉션 관리, 시맨틱 검색 테스트, 문서 인덱싱 UI
- */
-
 import { useState, useEffect, useCallback } from 'react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   RefreshCw,
   Search,
@@ -31,7 +8,6 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  Loader2,
 } from 'lucide-react';
 import {
   checkRAGHealth,
@@ -42,16 +18,12 @@ import {
   type RAGCollection,
 } from '@/services/discovery/rag';
 
-// ============================================================================
-// Health Status Component
-// ============================================================================
-
 interface HealthStatus {
   embedding: { ok: boolean; error?: string };
   chroma: { ok: boolean; error?: string };
 }
 
-function RAGHealthStatus() {
+function RAGHealthSection() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -65,8 +37,7 @@ function RAGHealthStatus() {
           chroma: { ok: response.data.chromadb },
         });
       } else {
-        // Parse from the raw response format
-        const raw = response as any;
+        const raw = response as unknown as { services?: { embedding: { ok: boolean }; chroma: { ok: boolean } } };
         if (raw.services) {
           setHealth({
             embedding: raw.services.embedding,
@@ -85,66 +56,59 @@ function RAGHealthStatus() {
     fetchHealth();
   }, [fetchHealth]);
 
-  const StatusIcon = ({ ok }: { ok: boolean }) =>
-    ok ? (
-      <CheckCircle className="h-4 w-4 text-green-500" />
-    ) : (
-      <XCircle className="h-4 w-4 text-red-500" />
-    );
-
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-base">RAG 서비스 상태</CardTitle>
-            <CardDescription>Embedding 엔드포인트 및 ChromaDB 연결 상태</CardDescription>
-          </div>
-          <Button variant="ghost" size="sm" onClick={fetchHealth} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {loading && !health ? (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            상태 확인 중...
-          </div>
+    <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
+      <span className="text-xs font-semibold text-zinc-700">RAG Service Health</span>
+      <div className="flex items-center gap-4">
+        {loading ? (
+          <RefreshCw className="h-3 w-3 animate-spin text-zinc-400" />
         ) : health ? (
-          <div className="flex gap-6">
-            <div className="flex items-center gap-2">
-              <StatusIcon ok={health.embedding.ok} />
-              <span className="text-sm">Embedding</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <StatusIcon ok={health.chroma.ok} />
-              <span className="text-sm">ChromaDB</span>
-            </div>
-          </div>
+          <>
+            <span className="flex items-center gap-1 text-xs">
+              {health.embedding.ok ? (
+                <CheckCircle className="h-3 w-3 text-emerald-600" />
+              ) : (
+                <XCircle className="h-3 w-3 text-red-600" />
+              )}
+              <span className={health.embedding.ok ? 'text-emerald-600' : 'text-red-600'}>
+                Embedding
+              </span>
+            </span>
+            <span className="flex items-center gap-1 text-xs">
+              {health.chroma.ok ? (
+                <CheckCircle className="h-3 w-3 text-emerald-600" />
+              ) : (
+                <XCircle className="h-3 w-3 text-red-600" />
+              )}
+              <span className={health.chroma.ok ? 'text-emerald-600' : 'text-red-600'}>
+                ChromaDB
+              </span>
+            </span>
+          </>
         ) : (
-          <div className="flex items-center gap-2 text-red-500">
-            <AlertCircle className="h-4 w-4" />
-            연결 실패
-          </div>
+          <span className="flex items-center gap-1 text-xs text-red-600">
+            <AlertCircle className="h-3 w-3" />
+            Unreachable
+          </span>
         )}
-      </CardContent>
-    </Card>
+        <button
+          type="button"
+          onClick={fetchHealth}
+          disabled={loading}
+          className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+    </div>
   );
 }
 
-// ============================================================================
-// Collections List Component
-// ============================================================================
-
-function CollectionsList() {
+function CollectionsSection() {
   const [collections, setCollections] = useState<RAGCollection[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
-  const [collectionStats, setCollectionStats] = useState<{
-    count: number;
-    exists: boolean;
-  } | null>(null);
+  const [collectionStats, setCollectionStats] = useState<{ count: number; exists: boolean } | null>(null);
 
   const fetchCollections = useCallback(async () => {
     setLoading(true);
@@ -169,10 +133,7 @@ function CollectionsList() {
     try {
       const status = await getCollectionStatus(name);
       if (status.ok && status.data) {
-        setCollectionStats({
-          count: status.data.count,
-          exists: status.data.exists,
-        });
+        setCollectionStats({ count: status.data.count, exists: status.data.exists });
       }
     } catch {
       setCollectionStats(null);
@@ -180,65 +141,124 @@ function CollectionsList() {
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              컬렉션 목록
-            </CardTitle>
-            <CardDescription>ChromaDB에 저장된 벡터 컬렉션</CardDescription>
-          </div>
-          <Button variant="ghost" size="sm" onClick={fetchCollections} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
+    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
+        <div className="flex items-center gap-2">
+          <Database className="h-3.5 w-3.5 text-zinc-500" />
+          <span className="text-xs font-semibold text-zinc-700">Collections</span>
         </div>
-      </CardHeader>
-      <CardContent>
+        <button
+          type="button"
+          onClick={fetchCollections}
+          disabled={loading}
+          className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+      <div className="px-4 py-3">
         {loading ? (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            로딩 중...
+          <div className="flex items-center gap-2 text-xs text-zinc-400">
+            <RefreshCw className="h-3 w-3 animate-spin" />
+            Loading...
           </div>
         ) : collections.length === 0 ? (
-          <p className="text-sm text-muted-foreground">컬렉션이 없습니다.</p>
+          <p className="text-xs text-zinc-400">No collections found.</p>
         ) : (
-          <div className="space-y-4">
-            <div className="flex flex-wrap gap-2">
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-1.5">
               {collections.map((col) => (
-                <Badge
+                <button
+                  type="button"
                   key={col.name}
-                  variant={selectedCollection === col.name ? 'default' : 'outline'}
-                  className="cursor-pointer"
                   onClick={() => handleSelectCollection(col.name)}
+                  className={`font-mono text-xs px-2 py-0.5 rounded border transition-colors ${
+                    selectedCollection === col.name
+                      ? 'bg-zinc-900 text-white border-zinc-900'
+                      : 'bg-zinc-100 text-zinc-600 border-zinc-200 hover:border-zinc-400'
+                  }`}
                 >
                   {col.name}
-                </Badge>
+                </button>
               ))}
             </div>
             {selectedCollection && collectionStats && (
-              <div className="p-3 bg-muted rounded-lg text-sm">
-                <p>
-                  <strong>{selectedCollection}</strong>
-                </p>
-                <p className="text-muted-foreground">
-                  문서 수: {collectionStats.count.toLocaleString()}개
-                </p>
+              <div className="flex items-center gap-4 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-md">
+                <span className="font-mono text-xs text-zinc-600">{selectedCollection}</span>
+                <span className="text-xs text-zinc-400">
+                  {collectionStats.count.toLocaleString()} documents
+                </span>
               </div>
             )}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
-// ============================================================================
-// Semantic Search Tester Component
-// ============================================================================
+function IndexStatusSection() {
+  const [status, setStatus] = useState<{ count: number; collection: string } | null>(null);
+  const [loading, setLoading] = useState(true);
 
-function SearchTester() {
+  const fetchStatus = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await getCollectionStatus();
+      if (response.ok && response.data) {
+        setStatus({ count: response.data.count, collection: response.data.collection });
+      }
+    } catch {
+      setStatus(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStatus();
+  }, [fetchStatus]);
+
+  return (
+    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-100">
+        <FileText className="h-3.5 w-3.5 text-zinc-500" />
+        <span className="text-xs font-semibold text-zinc-700">Index Status</span>
+      </div>
+      <div className="px-4 py-3">
+        {loading ? (
+          <div className="flex items-center gap-2 text-xs text-zinc-400">
+            <RefreshCw className="h-3 w-3 animate-spin" />
+            Loading...
+          </div>
+        ) : status ? (
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-px border border-zinc-100 rounded-md overflow-hidden">
+              <div className="px-3 py-2 bg-zinc-50">
+                <p className="text-xs text-zinc-400">Documents</p>
+                <p className="text-sm font-semibold text-zinc-800">{status.count.toLocaleString()}</p>
+              </div>
+              <div className="px-3 py-2 bg-zinc-50">
+                <p className="text-xs text-zinc-400">Collection</p>
+                <p className="font-mono text-xs text-zinc-600 truncate">{status.collection}</p>
+              </div>
+            </div>
+            <p className="text-xs text-zinc-400">
+              Re-indexing via{' '}
+              <span className="font-mono text-zinc-600 bg-zinc-100 px-1 py-0.5 rounded">
+                scripts/rag/index_posts.py
+              </span>
+            </p>
+          </div>
+        ) : (
+          <p className="text-xs text-zinc-400">Unable to fetch index status.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SearchTesterSection() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<RAGSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -246,7 +266,6 @@ function SearchTester() {
 
   const handleSearch = async () => {
     if (!query.trim()) return;
-
     setLoading(true);
     setError(null);
     try {
@@ -266,173 +285,92 @@ function SearchTester() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <Search className="h-4 w-4" />
-          시맨틱 검색 테스트
-        </CardTitle>
-        <CardDescription>
-          RAG 검색 정확도를 테스트합니다. 쿼리를 입력하고 유사한 문서를 검색해보세요.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-100">
+        <Search className="h-3.5 w-3.5 text-zinc-500" />
+        <span className="text-xs font-semibold text-zinc-700">Semantic Search Tester</span>
+      </div>
+      <div className="px-4 py-3 space-y-3">
         <div className="flex gap-2">
           <Input
-            placeholder="검색 쿼리 입력... (예: LLM 추론 최적화 방법)"
+            placeholder="Enter search query..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            className="h-8 text-sm rounded-md border-zinc-200 flex-1"
           />
-          <Button onClick={handleSearch} disabled={loading || !query.trim()}>
+          <button
+            type="button"
+            onClick={handleSearch}
+            disabled={loading || !query.trim()}
+            className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-md bg-zinc-900 hover:bg-zinc-800 text-white transition-colors disabled:opacity-50"
+          >
             {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <RefreshCw className="h-3 w-3 animate-spin" />
             ) : (
-              <Search className="h-4 w-4" />
+              <Search className="h-3 w-3" />
             )}
-          </Button>
+            Search
+          </button>
         </div>
 
         {error && (
-          <div className="p-3 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-lg text-sm">
-            {error}
-          </div>
+          <p className="text-xs text-red-600">{error}</p>
         )}
 
         {results.length > 0 && (
-          <div className="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-16">유사도</TableHead>
-                  <TableHead>제목</TableHead>
-                  <TableHead className="w-24">카테고리</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {results.map((result, idx) => (
-                  <TableRow key={idx}>
-                    <TableCell>
-                      <Badge
-                        variant={result.score > 0.7 ? 'default' : 'secondary'}
-                      >
-                        {(result.score * 100).toFixed(0)}%
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">
-                          {result.metadata.title || 'Untitled'}
-                        </p>
-                        <p className="text-xs text-muted-foreground line-clamp-2">
-                          {result.content.slice(0, 150)}...
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {result.metadata.category || '-'}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ============================================================================
-// Index Management Component
-// ============================================================================
-
-function IndexManager() {
-  const [status, setStatus] = useState<{ count: number; collection: string } | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const fetchStatus = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await getCollectionStatus();
-      if (response.ok && response.data) {
-        setStatus({
-          count: response.data.count,
-          collection: response.data.collection,
-        });
-      }
-    } catch {
-      setStatus(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <FileText className="h-4 w-4" />
-          인덱스 상태
-        </CardTitle>
-        <CardDescription>
-          블로그 포스트 인덱스 현황. 전체 재인덱싱은 GitHub Actions를 통해 수행됩니다.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            로딩 중...
-          </div>
-        ) : status ? (
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-2xl font-bold">{status.count.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">인덱싱된 문서</p>
-              </div>
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm font-mono break-all">{status.collection}</p>
-                <p className="text-xs text-muted-foreground">컬렉션 이름</p>
-              </div>
+          <div className="border border-zinc-200 rounded-md overflow-hidden">
+            <div className="grid grid-cols-12 px-3 py-2 bg-zinc-50 border-b border-zinc-100">
+              <span className="col-span-2 text-xs text-zinc-400">Score</span>
+              <span className="col-span-7 text-xs text-zinc-400">Document</span>
+              <span className="col-span-3 text-xs text-zinc-400">Category</span>
             </div>
-            <p className="text-xs text-muted-foreground">
-              * 블로그 글 인덱싱은 <code className="bg-muted px-1">scripts/rag/index_posts.py</code>를 통해 수행됩니다.
-            </p>
+            <div className="divide-y divide-zinc-100">
+              {results.map((result, idx) => (
+                <div key={`${result.metadata.title ?? ''}-${idx}`} className="grid grid-cols-12 px-3 py-2.5 items-start hover:bg-zinc-50">
+                  <div className="col-span-2">
+                    <span
+                      className={`font-mono text-xs px-1 py-0.5 rounded ${
+                        result.score > 0.7
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : 'bg-zinc-100 text-zinc-500'
+                      }`}
+                    >
+                      {(result.score * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="col-span-7">
+                    <p className="text-xs font-medium text-zinc-800">
+                      {result.metadata.title || 'Untitled'}
+                    </p>
+                    <p className="text-xs text-zinc-400 line-clamp-2 mt-0.5">
+                      {result.content.slice(0, 150)}...
+                    </p>
+                  </div>
+                  <span className="col-span-3 font-mono text-xs text-zinc-400 bg-zinc-100 px-1 py-0.5 rounded w-fit">
+                    {result.metadata.category || '-'}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">상태를 불러올 수 없습니다.</p>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
-
-// ============================================================================
-// Main RAG Manager Component
-// ============================================================================
 
 export function RAGManager() {
   return (
-    <div className="space-y-6">
-      {/* Health Status */}
-      <RAGHealthStatus />
-
-      {/* Two column layout for collections and index */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <CollectionsList />
-        <IndexManager />
+    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+      <RAGHealthSection />
+      <div className="p-4 space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <CollectionsSection />
+          <IndexStatusSection />
+        </div>
+        <SearchTesterSection />
       </div>
-
-      {/* Search Tester - Full width */}
-      <SearchTester />
     </div>
   );
 }

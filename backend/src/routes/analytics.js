@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { queryAll, queryOne, execute, isD1Configured } from '../lib/d1.js';
+import { httpCache, invalidateCacheByPrefix } from '../middleware/httpCache.js';
 
 const router = Router();
 
@@ -102,7 +103,7 @@ router.get('/stats/:year/:slug', requireD1, async (req, res, next) => {
  * GET /api/v1/analytics/editor-picks
  * Get active editor picks
  */
-router.get('/editor-picks', requireD1, async (req, res, next) => {
+router.get('/editor-picks', requireD1, httpCache({ ttl: 600, prefix: 'analytics' }), async (req, res, next) => {
   try {
     const limit = parseInt(req.query.limit) || 3;
 
@@ -126,7 +127,7 @@ router.get('/editor-picks', requireD1, async (req, res, next) => {
  * GET /api/v1/analytics/trending
  * Get trending posts based on recent views
  */
-router.get('/trending', requireD1, async (req, res, next) => {
+router.get('/trending', requireD1, httpCache({ ttl: 300, prefix: 'analytics' }), async (req, res, next) => {
   try {
     const limit = parseInt(req.query.limit) || 5;
     const days = parseInt(req.query.days) || 7;
@@ -207,6 +208,7 @@ router.post('/refresh-stats', requireD1, async (req, res, next) => {
       );
     }
 
+    await invalidateCacheByPrefix('analytics');
     return res.json({ ok: true, data: { refreshed: allPosts.length } });
   } catch (err) {
     console.error('Failed to refresh stats:', err);

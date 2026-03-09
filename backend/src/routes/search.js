@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { createWebSearchTool } from '../lib/agent/tools/web-search.js';
+import { httpCache } from '../middleware/httpCache.js';
 
 const router = Router();
 
@@ -9,7 +10,7 @@ router.get('/health', async (req, res) => {
   res.json({ ok: true, data: { status: configured ? 'configured' : 'unconfigured' } });
 });
 
-router.post('/web', async (req, res, next) => {
+router.post('/web', httpCache({ ttl: 600, prefix: 'search', keyFromBody: ['query', 'maxResults', 'searchDepth'], allowPost: true }), async (req, res, next) => {
   try {
     const { query, maxResults = 5, searchDepth = 'basic' } = req.body || {};
     const q = String(query || '').trim();

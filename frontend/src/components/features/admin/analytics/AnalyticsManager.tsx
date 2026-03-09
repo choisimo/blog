@@ -1,41 +1,7 @@
-/**
- * Analytics Manager
- * 
- * 에디터 픽 관리, 트렌딩 포스트, 조회수 통계
- */
-
 import { useState, useEffect, useCallback } from 'react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  RefreshCw,
-  TrendingUp,
-  Star,
-  Eye,
-  Loader2,
-  BarChart3,
-} from 'lucide-react';
+import { RefreshCw, TrendingUp, Star, Eye, BarChart3 } from 'lucide-react';
 import { getApiBaseUrl } from '@/utils/network/apiBase';
 import { useAuthStore } from '@/stores/session/useAuthStore';
-
-// ============================================================================
-// Types
-// ============================================================================
 
 interface EditorPick {
   post_slug: string;
@@ -57,15 +23,8 @@ interface TrendingPost {
   total_views: number;
 }
 
-
-
-// ============================================================================
-// API Functions
-// ============================================================================
-
 async function getEditorPicks(): Promise<EditorPick[]> {
   const base = getApiBaseUrl();
-  
   try {
     const res = await fetch(`${base}/api/v1/analytics/editor-picks?limit=10`);
     if (!res.ok) return [];
@@ -76,11 +35,10 @@ async function getEditorPicks(): Promise<EditorPick[]> {
   }
 }
 
-async function getTrendingPosts(days: number = 7, limit: number = 10): Promise<TrendingPost[]> {
+async function getTrendingPosts(days: number = 7): Promise<TrendingPost[]> {
   const base = getApiBaseUrl();
-  
   try {
-    const res = await fetch(`${base}/api/v1/analytics/trending?days=${days}&limit=${limit}`);
+    const res = await fetch(`${base}/api/v1/analytics/trending?days=${days}&limit=10`);
     if (!res.ok) return [];
     const data = await res.json();
     return data.data?.trending ?? [];
@@ -91,13 +49,10 @@ async function getTrendingPosts(days: number = 7, limit: number = 10): Promise<T
 
 async function refreshStats(token: string): Promise<boolean> {
   const base = getApiBaseUrl();
-  
   try {
     const res = await fetch(`${base}/api/v1/analytics/refresh-stats`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     });
     return res.ok;
   } catch {
@@ -105,11 +60,7 @@ async function refreshStats(token: string): Promise<boolean> {
   }
 }
 
-// ============================================================================
-// Editor Picks Card
-// ============================================================================
-
-function EditorPicksCard() {
+function EditorPicksSection() {
   const [picks, setPicks] = useState<EditorPick[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -125,89 +76,65 @@ function EditorPicksCard() {
   }, [fetchPicks]);
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Star className="h-4 w-4 text-yellow-500" />
-              에디터 픽
-            </CardTitle>
-            <CardDescription>
-              관리자가 선정한 추천 글 목록
-            </CardDescription>
-          </div>
-          <Button variant="ghost" size="sm" onClick={fetchPicks} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
+    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
+        <div className="flex items-center gap-2">
+          <Star className="h-3.5 w-3.5 text-zinc-500" />
+          <span className="text-xs font-semibold text-zinc-700">Editor Picks</span>
         </div>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            로딩 중...
+        <button
+          type="button"
+          onClick={fetchPicks}
+          disabled={loading}
+          className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+      {loading ? (
+        <div className="flex items-center gap-2 px-4 py-3 text-xs text-zinc-400">
+          <RefreshCw className="h-3 w-3 animate-spin" />
+          Loading...
+        </div>
+      ) : picks.length === 0 ? (
+        <p className="px-4 py-3 text-xs text-zinc-400">No editor picks configured.</p>
+      ) : (
+        <div className="divide-y divide-zinc-100">
+          <div className="grid grid-cols-12 px-4 py-2 bg-zinc-50 border-b border-zinc-100">
+            <span className="col-span-1 text-xs text-zinc-400">#</span>
+            <span className="col-span-7 text-xs text-zinc-400">Post</span>
+            <span className="col-span-2 text-xs text-zinc-400">Category</span>
+            <span className="col-span-2 text-xs text-zinc-400 text-right">Score</span>
           </div>
-        ) : picks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            등록된 에디터 픽이 없습니다.
-          </p>
-        ) : (
-          <div className="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">#</TableHead>
-                  <TableHead>제목</TableHead>
-                  <TableHead className="w-24">카테고리</TableHead>
-                  <TableHead className="w-16">점수</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {picks.map((pick) => (
-                  <TableRow key={`${pick.year}/${pick.post_slug}`}>
-                    <TableCell>
-                      <Badge variant="outline">{pick.rank}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <a
-                        href={`/#/blog/${pick.year}/${pick.post_slug}`}
-                        className="text-sm font-medium hover:underline"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {pick.title || pick.post_slug}
-                      </a>
-                      {pick.reason && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {pick.reason}
-                        </p>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">
-                        {pick.category || '-'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm font-medium">{pick.score}</span>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          {picks.map((pick) => (
+            <div key={`${pick.year}/${pick.post_slug}`} className="grid grid-cols-12 px-4 py-2.5 items-center hover:bg-zinc-50">
+              <span className="col-span-1 font-mono text-xs text-zinc-400">{pick.rank}</span>
+              <div className="col-span-7">
+                <a
+                  href={`/#/blog/${pick.year}/${pick.post_slug}`}
+                  className="text-xs font-medium text-zinc-800 hover:text-zinc-600 hover:underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {pick.title || pick.post_slug}
+                </a>
+                {pick.reason && (
+                  <p className="text-xs text-zinc-400 mt-0.5 truncate">{pick.reason}</p>
+                )}
+              </div>
+              <span className="col-span-2 font-mono text-xs text-zinc-400 bg-zinc-100 px-1 py-0.5 rounded w-fit">
+                {pick.category || '-'}
+              </span>
+              <span className="col-span-2 text-xs font-medium text-zinc-700 text-right">{pick.score}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
-// ============================================================================
-// Trending Posts Card
-// ============================================================================
-
-function TrendingPostsCard() {
+function TrendingPostsSection() {
   const [trending, setTrending] = useState<TrendingPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(7);
@@ -224,96 +151,83 @@ function TrendingPostsCard() {
   }, [fetchTrending]);
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-500" />
-              트렌딩 포스트
-            </CardTitle>
-            <CardDescription>
-              최근 {days}일간 조회수 기준
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex border rounded-lg overflow-hidden">
-              {[7, 14, 30].map((d) => (
-                <button
-                  key={d}
-                  onClick={() => setDays(d)}
-                  className={`px-2 py-1 text-xs ${
-                    days === d
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-background hover:bg-muted'
-                  }`}
-                >
-                  {d}일
-                </button>
-              ))}
-            </div>
-            <Button variant="ghost" size="sm" onClick={fetchTrending} disabled={loading}>
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
-          </div>
+    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="h-3.5 w-3.5 text-zinc-500" />
+          <span className="text-xs font-semibold text-zinc-700">Trending Posts</span>
         </div>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            로딩 중...
-          </div>
-        ) : trending.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            트렌딩 데이터가 없습니다.
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {trending.map((post, idx) => (
-              <div
-                key={`${post.year}/${post.post_slug}`}
-                className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+        <div className="flex items-center gap-1.5">
+          <div className="flex border border-zinc-200 rounded-md overflow-hidden">
+            {[7, 14, 30].map((d) => (
+              <button
+                type="button"
+                key={d}
+                onClick={() => setDays(d)}
+                className={`px-2 py-1 text-xs transition-colors ${
+                  days === d
+                    ? 'bg-zinc-900 text-white'
+                    : 'bg-white text-zinc-500 hover:bg-zinc-50'
+                }`}
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-lg font-bold text-muted-foreground w-6">
-                    {idx + 1}
-                  </span>
-                  <div>
-                    <a
-                      href={`/#/blog/${post.year}/${post.post_slug}`}
-                      className="text-sm font-medium hover:underline"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {post.post_slug}
-                    </a>
-                    <p className="text-xs text-muted-foreground">{post.year}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-1 text-sm font-medium">
-                    <Eye className="h-3 w-3" />
-                    {post.recent_views.toLocaleString()}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    전체: {post.total_views.toLocaleString()}
-                  </p>
-                </div>
-              </div>
+                {d}d
+              </button>
             ))}
           </div>
-        )}
-      </CardContent>
-    </Card>
+          <button
+            type="button"
+            onClick={fetchTrending}
+            disabled={loading}
+            className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
+      {loading ? (
+        <div className="flex items-center gap-2 px-4 py-3 text-xs text-zinc-400">
+          <RefreshCw className="h-3 w-3 animate-spin" />
+          Loading...
+        </div>
+      ) : trending.length === 0 ? (
+        <p className="px-4 py-3 text-xs text-zinc-400">No trending data for this period.</p>
+      ) : (
+        <div className="divide-y divide-zinc-100">
+          {trending.map((post, idx) => (
+            <div
+              key={`${post.year}/${post.post_slug}`}
+              className="flex items-center justify-between px-4 py-2.5 hover:bg-zinc-50"
+            >
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-xs text-zinc-400 w-4">{idx + 1}</span>
+                <div>
+                  <a
+                    href={`/#/blog/${post.year}/${post.post_slug}`}
+                    className="text-xs font-medium text-zinc-800 hover:text-zinc-600 hover:underline"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {post.post_slug}
+                  </a>
+                  <p className="text-xs text-zinc-400">{post.year}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="flex items-center gap-1 text-xs font-medium text-zinc-700">
+                  <Eye className="h-3 w-3 text-zinc-400" />
+                  {post.recent_views.toLocaleString()}
+                </div>
+                <p className="text-xs text-zinc-400">total: {post.total_views.toLocaleString()}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
-// ============================================================================
-// Stats Refresh Card
-// ============================================================================
-
-function StatsRefreshCard() {
+function StatsRefreshSection() {
   const { getValidAccessToken } = useAuthStore();
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
@@ -322,86 +236,63 @@ function StatsRefreshCard() {
   const handleRefresh = async () => {
     setRefreshing(true);
     setResult(null);
-    
     const token = await getValidAccessToken();
     if (token) {
       const success = await refreshStats(token);
       setResult({
         success,
-        message: success ? '통계가 갱신되었습니다.' : '갱신에 실패했습니다.',
+        message: success ? 'Stats refreshed successfully.' : 'Refresh failed.',
       });
-      if (success) {
-        setLastRefresh(new Date());
-      }
+      if (success) setLastRefresh(new Date());
     } else {
-      setResult({
-        success: false,
-        message: '인증이 필요합니다.',
-      });
+      setResult({ success: false, message: 'Authentication required.' });
     }
-    
     setRefreshing(false);
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-blue-500" />
-          통계 갱신
-        </CardTitle>
-        <CardDescription>
-          7일/30일 조회수 집계를 수동으로 갱신합니다
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <Button
+    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-100">
+        <BarChart3 className="h-3.5 w-3.5 text-zinc-500" />
+        <span className="text-xs font-semibold text-zinc-700">Stats Refresh</span>
+      </div>
+      <div className="px-4 py-3 space-y-3">
+        <p className="text-xs text-zinc-400">
+          Manually trigger 7-day and 30-day view count aggregation.
+        </p>
+        <button
+          type="button"
           onClick={handleRefresh}
           disabled={refreshing}
-          className="w-full"
+          className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-md bg-zinc-900 hover:bg-zinc-800 text-white transition-colors disabled:opacity-50"
         >
-          {refreshing ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              갱신 중...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              통계 갱신 실행
-            </>
-          )}
-        </Button>
-        
+          <RefreshCw className={`h-3 w-3 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Refreshing...' : 'Run Refresh'}
+        </button>
         {result && (
-          <p className={`text-sm ${result.success ? 'text-green-600' : 'text-red-600'}`}>
+          <p className={`text-xs ${result.success ? 'text-emerald-600' : 'text-red-600'}`}>
             {result.message}
           </p>
         )}
-        
         {lastRefresh && (
-          <p className="text-xs text-muted-foreground">
-            마지막 갱신: {lastRefresh.toLocaleString()}
+          <p className="text-xs text-zinc-400">
+            Last refresh:{' '}
+            <span className="font-mono">{lastRefresh.toLocaleString()}</span>
           </p>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
-// ============================================================================
-// Main Component
-// ============================================================================
-
 export function AnalyticsManager() {
   return (
-    <div className="space-y-6">
-      {/* Two column layout */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <TrendingPostsCard />
-        <div className="space-y-6">
-          <StatsRefreshCard />
-          <EditorPicksCard />
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <TrendingPostsSection />
+        <div className="space-y-4">
+          <StatsRefreshSection />
+          <EditorPicksSection />
         </div>
       </div>
     </div>

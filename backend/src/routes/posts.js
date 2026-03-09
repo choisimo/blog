@@ -7,23 +7,14 @@ import slugify from 'slugify';
 import { config } from '../config.js';
 import requireAdmin from '../middleware/adminAuth.js';
 import { buildFrontmatterMarkdown } from '../lib/markdown.js';
+import { httpCache, invalidateCacheByPrefix } from '../middleware/httpCache.js';
 
 const router = Router();
-
-// Cache for remote posts manifest
-let cachedManifest = null;
-let manifestCacheTime = 0;
-const MANIFEST_CACHE_TTL = 60 * 1000; // 1 minute
 
 /**
  * Fetch posts manifest from frontend
  */
 async function fetchRemoteManifest() {
-  const now = Date.now();
-  if (cachedManifest && (now - manifestCacheTime) < MANIFEST_CACHE_TTL) {
-    return cachedManifest;
-  }
-
   const manifestUrl = `${config.siteBaseUrl}/posts-manifest.json`;
   try {
     const response = await fetch(manifestUrl, {
@@ -33,13 +24,10 @@ async function fetchRemoteManifest() {
     if (!response.ok) {
       throw new Error(`Failed to fetch manifest: ${response.status}`);
     }
-    cachedManifest = await response.json();
-    manifestCacheTime = now;
-    return cachedManifest;
+    return await response.json();
   } catch (err) {
     console.error('[posts] Failed to fetch remote manifest:', err.message);
-    // Return cached even if expired, or empty
-    return cachedManifest || { total: 0, items: [], years: [] };
+    return { total: 0, items: [], years: [] };
   }
 }
 
@@ -197,7 +185,7 @@ function generateUnifiedManifest() {
   return unified;
 }
 
-router.get('/', async (req, res, next) => {
+router.get('/', httpCache({ ttl: 300, prefix: 'posts' }), async (req, res, next) => {
   try {
     const q = req.query || {};
     const year = (q.year || '').toString();
@@ -265,7 +253,7 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-router.get('/:year/:slug', async (req, res, next) => {
+router.get('/:year/:slug', httpCache({ ttl: 600, prefix: 'posts' }), async (req, res, next) => {
   try {
     const { year, slug } = req.params;
     if (!/^\d{4}$/.test(year))
@@ -334,6 +322,8 @@ router.post('/', requireAdmin, async (req, res, next) => {
     generatePerYearManifest(year);
     const unified = generateUnifiedManifest();
 
+    await invalidateCacheByPrefix('posts');
+
     return res.status(201).json({ ok: true, data: { path: `/posts/${year}/${filename}`, manifestTotal: unified.total } });
   } catch (err) {
     return next(err);
@@ -367,6 +357,8 @@ router.put('/:year/:slug', requireAdmin, async (req, res, next) => {
     generatePerYearManifest(year);
     const unified = generateUnifiedManifest();
 
+    await invalidateCacheByPrefix('posts');
+
     return res.json({ ok: true, data: { updated: true, manifestTotal: unified.total } });
   } catch (err) {
     return next(err);
@@ -388,6 +380,8 @@ router.delete('/:year/:slug', requireAdmin, async (req, res, next) => {
 
     generatePerYearManifest(year);
     const unified = generateUnifiedManifest();
+
+    await invalidateCacheByPrefix('posts');
 
     return res.json({ ok: true, data: { deleted: true, manifestTotal: unified.total } });
   } catch (err) {

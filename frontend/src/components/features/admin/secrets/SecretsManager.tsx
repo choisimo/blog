@@ -1,20 +1,4 @@
-/**
- * Secrets Manager - Main Component
- *
- * Centralized secrets/API keys management UI
- */
-
 import { useState, useEffect } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Key,
   Shield,
@@ -29,241 +13,223 @@ import { useSecretsOverview } from './hooks';
 import { SecretsListManager } from './SecretsListManager';
 import { AuditLogViewer } from './AuditLogViewer';
 
+type TabId = 'overview' | 'secrets' | 'audit';
+
+const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
+  { id: 'overview', label: 'Overview', icon: <Key className="h-3.5 w-3.5" /> },
+  { id: 'secrets', label: 'All Secrets', icon: <List className="h-3.5 w-3.5" /> },
+  { id: 'audit', label: 'Audit Log', icon: <History className="h-3.5 w-3.5" /> },
+];
+
 export function SecretsManager() {
   const { overview, health, loading, error, fetchOverview } = useSecretsOverview();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState<TabId>('overview');
 
   useEffect(() => {
     fetchOverview();
   }, [fetchOverview]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'healthy':
-        return 'bg-green-500';
-      case 'unhealthy':
-        return 'bg-red-500';
-      default:
-        return 'bg-gray-500';
-    }
-  };
+  const missingRequired = overview?.stats?.missing_required ?? 0;
+  const expiringSoon = overview?.stats?.expiring_soon ?? 0;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <Key className="h-5 w-5" />
-            Secrets Management
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Centralized management for API keys, tokens, and secrets
-          </p>
+    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
+        <div className="flex items-center gap-2">
+          <Key className="h-3.5 w-3.5 text-zinc-500" />
+          <span className="text-xs font-semibold text-zinc-700">Secrets Management</span>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchOverview} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <button
+          type="button"
+          onClick={fetchOverview}
+          disabled={loading}
+          className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
       {error && (
-        <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm">
-          {error}
+        <div className="px-4 py-2 border-b border-zinc-100 bg-red-50">
+          <p className="text-xs text-red-600">{error}</p>
         </div>
       )}
 
-      {/* Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {/* Encryption Status */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              Encryption
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <div className={`h-2 w-2 rounded-full ${getStatusColor(health?.status || 'unknown')}`} />
-              <span className="text-lg font-semibold capitalize">
-                {health?.encryption || 'Unknown'}
+      <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-zinc-100 border-b border-zinc-100">
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Shield className="h-3.5 w-3.5 text-zinc-400" />
+            <span className="text-xs text-zinc-400">Encryption</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div
+              className={`h-1.5 w-1.5 rounded-full ${
+                health?.status === 'healthy'
+                  ? 'bg-emerald-500'
+                  : health?.status === 'unhealthy'
+                  ? 'bg-red-500'
+                  : 'bg-zinc-400'
+              }`}
+            />
+            <span className="text-xs font-medium text-zinc-700 capitalize">
+              {health?.encryption || 'Unknown'}
+            </span>
+          </div>
+        </div>
+
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Key className="h-3.5 w-3.5 text-zinc-400" />
+            <span className="text-xs text-zinc-400">Total Secrets</span>
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-sm font-semibold text-zinc-800">
+              {overview?.stats?.total ?? '-'}
+            </span>
+            <span className="text-xs text-zinc-400">
+              ({overview?.stats?.configured ?? 0} configured)
+            </span>
+          </div>
+        </div>
+
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-1.5 mb-1">
+            <AlertTriangle className="h-3.5 w-3.5 text-zinc-400" />
+            <span className="text-xs text-zinc-400">Missing Required</span>
+          </div>
+          {missingRequired > 0 ? (
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono text-xs text-red-600 bg-red-50 border border-red-200 px-1 py-0.5 rounded">
+                {missingRequired}
               </span>
+              <span className="text-xs text-zinc-400">need attention</span>
             </div>
-          </CardContent>
-        </Card>
+          ) : (
+            <div className="flex items-center gap-1 text-xs text-emerald-600">
+              <CheckCircle className="h-3 w-3" />
+              All configured
+            </div>
+          )}
+        </div>
 
-        {/* Total Secrets */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Key className="h-4 w-4" />
-              Total Secrets
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold">{overview?.stats?.total ?? '-'}</span>
-              <span className="text-sm text-muted-foreground">
-                ({overview?.stats?.configured ?? 0} configured)
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Clock className="h-3.5 w-3.5 text-zinc-400" />
+            <span className="text-xs text-zinc-400">Expiring Soon</span>
+          </div>
+          {expiringSoon > 0 ? (
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono text-xs text-amber-600 bg-amber-50 border border-amber-200 px-1 py-0.5 rounded">
+                {expiringSoon}
               </span>
+              <span className="text-xs text-zinc-400">in 7 days</span>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Missing Required */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" />
-              Missing Required
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              {(overview?.stats?.missing_required ?? 0) > 0 ? (
-                <>
-                  <Badge variant="destructive">{overview?.stats?.missing_required}</Badge>
-                  <span className="text-sm text-muted-foreground">need attention</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <span className="text-sm text-muted-foreground">All configured</span>
-                </>
-              )}
+          ) : (
+            <div className="flex items-center gap-1 text-xs text-emerald-600">
+              <CheckCircle className="h-3 w-3" />
+              None expiring
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Expiring Soon */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Expiring Soon
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              {(overview?.stats?.expiring_soon ?? 0) > 0 ? (
-                <>
-                  <Badge variant="secondary">{overview?.stats?.expiring_soon}</Badge>
-                  <span className="text-sm text-muted-foreground">in next 7 days</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <span className="text-sm text-muted-foreground">None expiring</span>
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+          )}
+        </div>
       </div>
 
-      {/* Main Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="overview" className="flex items-center gap-2">
-            <Key className="h-4 w-4" />
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="secrets" className="flex items-center gap-2">
-            <List className="h-4 w-4" />
-            All Secrets
-          </TabsTrigger>
-          <TabsTrigger value="audit" className="flex items-center gap-2">
-            <History className="h-4 w-4" />
-            Audit Log
-          </TabsTrigger>
-        </TabsList>
+      <div className="flex items-center gap-0.5 border-b border-zinc-200 px-2 pt-1">
+        {TABS.map((tab) => (
+          <button
+            type="button"
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 whitespace-nowrap transition-colors ${
+              activeTab === tab.id
+                ? 'border-zinc-900 text-zinc-900'
+                : 'border-transparent text-zinc-400 hover:text-zinc-700'
+            }`}
+          >
+            {tab.icon}
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-6">
-          {/* Categories */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Categories</CardTitle>
-              <CardDescription>Secrets organized by category</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {overview?.categories?.map((cat) => (
-                  <div
-                    key={cat.id}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
-                    onClick={() => {
-                      setActiveTab('secrets');
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Key className="h-4 w-4 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{cat.display_name}</p>
-                        <p className="text-xs text-muted-foreground">{cat.description}</p>
-                      </div>
-                    </div>
-                    <Badge variant="secondary">{cat.secret_count}</Badge>
-                  </div>
-                ))}
+      <div className="p-4">
+        {activeTab === 'overview' && (
+          <div className="space-y-4">
+            <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+              <div className="px-4 py-3 border-b border-zinc-100">
+                <span className="text-xs font-semibold text-zinc-700">Categories</span>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent Activity */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>Latest changes to secrets</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {overview?.recentActivity && overview.recentActivity.length > 0 ? (
-                <div className="space-y-3">
-                  {overview.recentActivity.map((log) => (
-                    <div
-                      key={log.id}
-                      className="flex items-center justify-between py-2 border-b last:border-0"
+              {!overview?.categories || overview.categories.length === 0 ? (
+                <p className="px-4 py-3 text-xs text-zinc-400">No categories found.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-zinc-100">
+                  {overview.categories.map((cat) => (
+                    <button
+                      type="button"
+                      key={cat.id}
+                      onClick={() => setActiveTab('secrets')}
+                      className="flex items-center justify-between px-4 py-3 hover:bg-zinc-50 transition-colors text-left"
                     >
-                      <div className="flex items-center gap-3">
-                        <Badge
-                          variant={
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-md bg-zinc-100 flex items-center justify-center">
+                          <Key className="h-3 w-3 text-zinc-500" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-zinc-800">{cat.display_name}</p>
+                          <p className="text-xs text-zinc-400">{cat.description}</p>
+                        </div>
+                      </div>
+                      <span className="font-mono text-xs text-zinc-400 bg-zinc-100 px-1 py-0.5 rounded">
+                        {cat.secret_count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+              <div className="px-4 py-3 border-b border-zinc-100">
+                <span className="text-xs font-semibold text-zinc-700">Recent Activity</span>
+              </div>
+              {!overview?.recentActivity || overview.recentActivity.length === 0 ? (
+                <p className="px-4 py-4 text-xs text-zinc-400 text-center">No recent activity.</p>
+              ) : (
+                <div className="divide-y divide-zinc-100">
+                  {overview.recentActivity.map((log) => (
+                    <div key={log.id} className="flex items-center justify-between px-4 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`font-mono text-xs px-1 py-0.5 rounded border ${
                             log.action === 'deleted'
-                              ? 'destructive'
+                              ? 'bg-red-50 text-red-600 border-red-200'
                               : log.action === 'created'
-                                ? 'default'
-                                : 'secondary'
-                          }
+                              ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                              : 'bg-zinc-100 text-zinc-600 border-zinc-200'
+                          }`}
                         >
                           {log.action}
-                        </Badge>
-                        <span className="font-mono text-sm">{log.key_name || log.secret_id}</span>
+                        </span>
+                        <span className="font-mono text-xs text-zinc-600">
+                          {log.key_name || log.secret_id}
+                        </span>
                       </div>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-zinc-400">
                         {new Date(log.created_at).toLocaleString()}
                       </span>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">No recent activity</p>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+            </div>
+          </div>
+        )}
 
-        {/* Secrets List Tab */}
-        <TabsContent value="secrets">
+        {activeTab === 'secrets' && (
           <SecretsListManager categories={overview?.categories ?? []} />
-        </TabsContent>
+        )}
 
-        {/* Audit Log Tab */}
-        <TabsContent value="audit">
-          <AuditLogViewer />
-        </TabsContent>
-      </Tabs>
+        {activeTab === 'audit' && <AuditLogViewer />}
+      </div>
     </div>
   );
 }

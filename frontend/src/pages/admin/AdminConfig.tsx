@@ -8,16 +8,21 @@ import { SystemHealth } from '@/components/features/admin/health';
 import { AnalyticsManager } from '@/components/features/admin/analytics';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Lock, Settings, Cloud, Bot, Key, ArrowLeft, RefreshCw, Database, Activity, BarChart3 } from 'lucide-react';
+import {
+  Lock,
+  Settings,
+  Cloud,
+  Bot,
+  Key,
+  RefreshCw,
+  Database,
+  Activity,
+  BarChart3,
+  LogOut,
+  ShieldCheck,
+  Server,
+} from 'lucide-react';
 import {
   initiateTotpChallenge,
   verifyTotpCode,
@@ -32,28 +37,117 @@ import {
   migrateFromLegacyStorage,
   scheduleTokenRefresh,
 } from '@/stores/session/useAuthStore';
-import { getApiBaseUrl } from '@/utils/network/apiBase';
 
-// ============================================================================
-// Auth Step Types
-// ============================================================================
+type AuthStep = 'initial-gate' | 'totp-login' | 'totp-setup' | 'authenticated';
 
-type AuthStep = 'totp-login' | 'totp-setup-token' | 'totp-setup' | 'authenticated';
+type NavTab =
+  | 'health'
+  | 'rag'
+  | 'analytics'
+  | 'ai'
+  | 'config'
+  | 'secrets'
+  | 'workers';
 
-// ============================================================================
-// TOTP Login Screen
-// ============================================================================
+function ErrorMsg({ message }: { message: string }) {
+  if (!message) return null;
+  return (
+    <p className="mt-3 text-xs text-red-600 font-mono bg-red-50 border border-red-200 rounded-md px-3 py-2">
+      {message}
+    </p>
+  );
+}
+
+function AuthShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        <div className="flex items-center gap-2 justify-center mb-6">
+          <Server className="h-4 w-4 text-zinc-500" />
+          <span className="text-sm font-semibold text-zinc-700 tracking-tight">
+            noblog admin
+          </span>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+interface InitialGateScreenProps {
+  onServerKeySubmit: (key: string) => Promise<void>;
+  loading: boolean;
+  error: string;
+}
+
+function InitialGateScreen({ onServerKeySubmit, loading, error }: InitialGateScreenProps) {
+  const [key, setKey] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!key.trim()) return;
+    await onServerKeySubmit(key.trim());
+  };
+
+  return (
+    <AuthShell>
+      <div className="bg-white border border-zinc-200 rounded-lg p-6">
+        <div className="mb-5">
+          <div className="flex items-center gap-2 mb-1">
+            <ShieldCheck className="h-4 w-4 text-zinc-500" />
+            <h1 className="text-sm font-semibold text-zinc-900">Server Access Key</h1>
+          </div>
+          <p className="text-xs text-zinc-500 leading-relaxed">
+            Enter the <code className="font-mono text-xs text-zinc-600 bg-zinc-100 px-1 py-0.5 rounded">ADMIN_SETUP_TOKEN</code> printed in the server startup logs.
+          </p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="server-key" className="text-xs font-medium text-zinc-700">
+              Access key
+            </Label>
+            <Input
+              id="server-key"
+              type="password"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              placeholder="Paste token from server console"
+              autoFocus
+              autoComplete="off"
+              className="h-8 text-sm rounded-md border-zinc-200 focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1 font-mono"
+            />
+          </div>
+          <Button
+            type="submit"
+            className="w-full h-8 text-xs font-medium rounded-md bg-zinc-900 hover:bg-zinc-800 text-white"
+            disabled={!key.trim() || loading}
+          >
+            {loading ? (
+              <>
+                <RefreshCw className="mr-1.5 h-3 w-3 animate-spin" />
+                Verifying...
+              </>
+            ) : (
+              'Continue'
+            )}
+          </Button>
+        </form>
+        <ErrorMsg message={error} />
+      </div>
+    </AuthShell>
+  );
+}
 
 interface TotpLoginScreenProps {
   onSuccess: (response: TotpVerifyResponse) => void;
-  onError: (error: string) => void;
+  error: string;
+  onError: (msg: string) => void;
 }
 
-function TotpLoginScreen({ onSuccess, onError }: TotpLoginScreenProps) {
+function TotpLoginScreen({ onSuccess, error, onError }: TotpLoginScreenProps) {
   const [challengeId, setChallengeId] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const apiBase = getApiBaseUrl();
 
   const handleGetChallenge = async () => {
     setLoading(true);
@@ -82,30 +176,41 @@ function TotpLoginScreen({ onSuccess, onError }: TotpLoginScreenProps) {
   };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="text-center">
-        <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-          <Lock className="h-6 w-6 text-primary" />
+    <AuthShell>
+      <div className="bg-white border border-zinc-200 rounded-lg p-6">
+        <div className="mb-5">
+          <div className="flex items-center gap-2 mb-1">
+            <Lock className="h-4 w-4 text-zinc-500" />
+            <h1 className="text-sm font-semibold text-zinc-900">Authenticator</h1>
+          </div>
+          <p className="text-xs text-zinc-500">
+            {challengeId
+              ? 'Enter the 6-digit code from your authenticator app.'
+              : 'Generate a challenge to continue.'}
+          </p>
         </div>
-        <CardTitle>Admin Authentication</CardTitle>
-        <CardDescription>Sign in with TOTP or OAuth</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+
         {!challengeId ? (
-          <Button className="w-full" onClick={handleGetChallenge} disabled={loading}>
+          <Button
+            className="w-full h-8 text-xs font-medium rounded-md bg-zinc-900 hover:bg-zinc-800 text-white"
+            onClick={handleGetChallenge}
+            disabled={loading}
+          >
             {loading ? (
               <>
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                <RefreshCw className="mr-1.5 h-3 w-3 animate-spin" />
                 Loading...
               </>
             ) : (
-              'Sign in with Authenticator'
+              'Get Challenge'
             )}
           </Button>
         ) : (
           <form onSubmit={handleVerify} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="totp-code">Authenticator Code</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="totp-code" className="text-xs font-medium text-zinc-700">
+                TOTP code
+              </Label>
               <Input
                 id="totp-code"
                 type="text"
@@ -116,122 +221,58 @@ function TotpLoginScreen({ onSuccess, onError }: TotpLoginScreenProps) {
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
                 placeholder="000000"
                 autoFocus
-                className="text-center text-2xl tracking-widest"
+                className="h-8 text-sm text-center font-mono tracking-[0.3em] rounded-md border-zinc-200 focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1"
               />
             </div>
-            <Button type="submit" className="w-full" disabled={code.length !== 6 || loading}>
+            <Button
+              type="submit"
+              className="w-full h-8 text-xs font-medium rounded-md bg-zinc-900 hover:bg-zinc-800 text-white"
+              disabled={code.length !== 6 || loading}
+            >
               {loading ? (
                 <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  <RefreshCw className="mr-1.5 h-3 w-3 animate-spin" />
                   Verifying...
                 </>
               ) : (
                 'Verify'
               )}
             </Button>
-            <Button
+            <button
               type="button"
-              variant="ghost"
-              size="sm"
-              className="w-full text-muted-foreground"
+              className="w-full text-xs text-zinc-400 hover:text-zinc-600 transition-colors py-1"
               onClick={() => { setChallengeId(null); setCode(''); }}
             >
-              <ArrowLeft className="mr-1 h-4 w-4" />
-              Back
-            </Button>
+              ← Back
+            </button>
           </form>
         )}
 
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">or continue with</span>
-          </div>
-        </div>
-
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={() => { window.location.href = `${apiBase}/api/v1/auth/oauth/github`; }}
-        >
-          Sign in with GitHub
-        </Button>
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={() => { window.location.href = `${apiBase}/api/v1/auth/oauth/google`; }}
-        >
-          Sign in with Google
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ============================================================================
-// TOTP Setup Screen
-// ============================================================================
-
-interface TotpSetupTokenScreenProps {
-  onTokenSubmit: (token: string) => void;
-  onError: (error: string) => void;
-}
-
-function TotpSetupTokenScreen({ onTokenSubmit, onError: _onError }: TotpSetupTokenScreenProps) {
-  const [token, setToken] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token.trim()) return;
-    onTokenSubmit(token.trim());
-  };
-
-  return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="text-center">
-        <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-          <Key className="h-6 w-6 text-primary" />
-        </div>
-        <CardTitle>Admin Setup Token</CardTitle>
-        <CardDescription>Enter the ADMIN_SETUP_TOKEN from the server console to continue</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="setup-token">Setup Token</Label>
-            <Input
-              id="setup-token"
-              type="password"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder="Paste token from server console"
-              autoFocus
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={!token.trim()}>
-            Continue
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+        <ErrorMsg message={error} />
+      </div>
+    </AuthShell>
   );
 }
 
 interface TotpSetupScreenProps {
   setupToken: string;
   onComplete: () => void;
-  onError: (error: string) => void;
+  error: string;
+  onError: (msg: string) => void;
 }
 
-function TotpSetupScreen({ setupToken, onComplete, onError }: TotpSetupScreenProps) {
+function TotpSetupScreen({ setupToken, onComplete, error, onError }: TotpSetupScreenProps) {
   const [setup, setSetup] = useState<TotpSetupResponse | null>(null);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingSetup, setLoadingSetup] = useState(true);
 
   useEffect(() => {
+    setLoadingSetup(true);
     getTotpSetup(setupToken)
       .then(setSetup)
-      .catch((err: unknown) => onError(err instanceof Error ? err.message : 'Failed to load setup'));
+      .catch((err: unknown) => onError(err instanceof Error ? err.message : 'Failed to load setup'))
+      .finally(() => setLoadingSetup(false));
   }, [setupToken, onError]);
 
   const handleVerify = async (e: React.FormEvent) => {
@@ -248,89 +289,175 @@ function TotpSetupScreen({ setupToken, onComplete, onError }: TotpSetupScreenPro
     }
   };
 
-  if (!setup) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="text-center">
-        <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-          <Lock className="h-6 w-6 text-primary" />
-        </div>
-        <CardTitle>Setup Authenticator</CardTitle>
-        <CardDescription>Scan this QR code with your authenticator app</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex justify-center">
-          <img src={setup.qrDataUrl} alt="TOTP QR Code" className="w-48 h-48" />
-        </div>
-        <p className="text-xs text-center text-muted-foreground break-all font-mono">{setup.secret}</p>
-        <form onSubmit={handleVerify} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="setup-code">Verify Code</Label>
-            <Input
-              id="setup-code"
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={6}
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-              placeholder="000000"
-              autoFocus
-              className="text-center text-2xl tracking-widest"
-            />
+    <AuthShell>
+      <div className="bg-white border border-zinc-200 rounded-lg p-6">
+        <div className="mb-5">
+          <div className="flex items-center gap-2 mb-1">
+            <ShieldCheck className="h-4 w-4 text-zinc-500" />
+            <h1 className="text-sm font-semibold text-zinc-900">Setup Authenticator</h1>
           </div>
-          <Button type="submit" className="w-full" disabled={code.length !== 6 || loading}>
-            {loading ? (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                Verifying...
-              </>
-            ) : (
-              'Complete Setup'
+          <p className="text-xs text-zinc-500 leading-relaxed">
+            Scan the QR code with your authenticator app, then enter the code to confirm.
+          </p>
+        </div>
+
+        {loadingSetup ? (
+          <div className="flex items-center justify-center py-8">
+            <RefreshCw className="h-5 w-5 animate-spin text-zinc-400" />
+          </div>
+        ) : setup ? (
+          <div className="space-y-4">
+            {setup.qrDataUrl && (
+              <div className="flex justify-center py-2">
+                <div className="border border-zinc-200 rounded-md p-2 bg-white">
+                  <img src={setup.qrDataUrl} alt="TOTP QR Code" className="w-40 h-40" />
+                </div>
+              </div>
             )}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+            {setup.secret && (
+              <div className="space-y-1">
+                <p className="text-xs text-zinc-500">Manual entry key</p>
+                <p className="font-mono text-xs text-zinc-600 bg-zinc-100 px-2 py-1.5 rounded-md break-all select-all">
+                  {setup.secret}
+                </p>
+              </div>
+            )}
+            <form onSubmit={handleVerify} className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="setup-code" className="text-xs font-medium text-zinc-700">
+                  Verify code
+                </Label>
+                <Input
+                  id="setup-code"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="000000"
+                  autoFocus
+                  className="h-8 text-sm text-center font-mono tracking-[0.3em] rounded-md border-zinc-200 focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1"
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full h-8 text-xs font-medium rounded-md bg-zinc-900 hover:bg-zinc-800 text-white"
+                disabled={code.length !== 6 || loading}
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="mr-1.5 h-3 w-3 animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  'Complete Setup'
+                )}
+              </Button>
+            </form>
+          </div>
+        ) : null}
+
+        <ErrorMsg message={error} />
+      </div>
+    </AuthShell>
   );
 }
 
-// ============================================================================
-// Main Component
-// ============================================================================
+const NAV_TABS: { id: NavTab; label: string; icon: React.ReactNode }[] = [
+  { id: 'health', label: 'Health', icon: <Activity className="h-3.5 w-3.5" /> },
+  { id: 'rag', label: 'RAG', icon: <Database className="h-3.5 w-3.5" /> },
+  { id: 'analytics', label: 'Analytics', icon: <BarChart3 className="h-3.5 w-3.5" /> },
+  { id: 'ai', label: 'AI', icon: <Bot className="h-3.5 w-3.5" /> },
+  { id: 'config', label: 'Env', icon: <Settings className="h-3.5 w-3.5" /> },
+  { id: 'secrets', label: 'Secrets', icon: <Key className="h-3.5 w-3.5" /> },
+  { id: 'workers', label: 'Workers', icon: <Cloud className="h-3.5 w-3.5" /> },
+];
+
+interface AdminDashboardProps {
+  userEmail?: string;
+  onLogout: () => void;
+}
+
+function AdminDashboard({ userEmail, onLogout }: AdminDashboardProps) {
+  const [activeTab, setActiveTab] = useState<NavTab>('health');
+
+  return (
+    <div className="min-h-screen bg-zinc-50">
+      {/* Top bar */}
+      <header className="bg-white border-b border-zinc-200 sticky top-0 z-10">
+        <div className="flex items-center justify-between px-4 h-10">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <Server className="h-3.5 w-3.5 text-zinc-500" />
+              <span className="text-xs font-semibold text-zinc-800 tracking-tight">
+                noblog admin
+              </span>
+            </div>
+            <span className="text-zinc-200 text-sm">|</span>
+            {/* Nav tabs */}
+            <nav className="flex items-center gap-0.5">
+              {NAV_TABS.map((tab) => (
+                 <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md transition-colors ${
+                    activeTab === tab.id
+                      ? 'bg-zinc-900 text-white font-medium'
+                      : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100'
+                  }`}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+          <div className="flex items-center gap-2">
+            {userEmail && (
+              <span className="font-mono text-xs text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded">
+                {userEmail}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={onLogout}
+              className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 transition-colors px-1.5 py-0.5 rounded hover:bg-zinc-100"
+            >
+              <LogOut className="h-3 w-3" />
+              Logout
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Content */}
+      <main className="p-4">
+        {activeTab === 'health' && <SystemHealth />}
+        {activeTab === 'rag' && <RAGManager />}
+        {activeTab === 'analytics' && <AnalyticsManager />}
+        {activeTab === 'ai' && <AIManager />}
+        {activeTab === 'config' && <ConfigManager />}
+        {activeTab === 'secrets' && <SecretsManager />}
+        {activeTab === 'workers' && <WorkersManager />}
+      </main>
+    </div>
+  );
+}
 
 export default function AdminConfig() {
-  const [step, setStep] = useState<AuthStep>('totp-login');
+  const [step, setStep] = useState<AuthStep>('initial-gate');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [gateLoading, setGateLoading] = useState(false);
   const [setupToken, setSetupToken] = useState('');
 
   const { isAuthenticated, getValidAccessToken, logout, user, setTokens } = useAuthStore();
 
   useEffect(() => {
     migrateFromLegacyStorage();
-
-    const checkTotpSetup = async () => {
-      try {
-        const setup = await getTotpSetup();
-        if (setup.setupComplete) {
-          setStep('totp-login');
-        } else if (setup.requiresToken) {
-          setStep('totp-setup-token');
-        } else {
-          setStep('totp-setup');
-        }
-      } catch {
-        setStep('totp-login');
-      }
-    };
 
     const checkAuth = async () => {
       if (isAuthenticated()) {
@@ -342,19 +469,35 @@ export default function AdminConfig() {
             scheduleTokenRefresh();
           } catch {
             await logout();
-            await checkTotpSetup();
           }
-        } else {
-          await checkTotpSetup();
         }
-      } else {
-        await checkTotpSetup();
       }
-      setLoading(false);
+      setPageLoading(false);
     };
 
     checkAuth();
   }, [isAuthenticated, getValidAccessToken, logout]);
+
+  const handleServerKeySubmit = useCallback(async (key: string) => {
+    setGateLoading(true);
+    setError('');
+    try {
+      const setup = await getTotpSetup(key);
+      if (setup.requiresToken) {
+        setError('Invalid server access key. Check the server startup logs and try again.');
+      } else if (setup.setupComplete) {
+        setSetupToken(key);
+        setStep('totp-login');
+      } else {
+        setSetupToken(key);
+        setStep('totp-setup');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to validate key');
+    } finally {
+      setGateLoading(false);
+    }
+  }, []);
 
   const handleTotpSuccess = useCallback((response: TotpVerifyResponse) => {
     const userInfo = { ...response.user };
@@ -364,146 +507,66 @@ export default function AdminConfig() {
     setStep('authenticated');
   }, [setTokens]);
 
-  const handleSetupTokenSubmit = useCallback(async (token: string) => {
-    setSetupToken(token);
-    setError('');
-    try {
-      const setup = await getTotpSetup(token);
-      if (setup.requiresToken) {
-        setError('Invalid setup token. Check the server console and try again.');
-      } else {
-        setStep('totp-setup');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to validate token');
-    }
-  }, []);
-
   const handleSetupComplete = useCallback(() => {
     setError('');
     setStep('totp-login');
   }, []);
 
-  const handleError = useCallback((errorMessage: string) => {
-    setError(errorMessage);
+  const handleError = useCallback((msg: string) => {
+    setError(msg);
   }, []);
 
   const handleLogout = useCallback(async () => {
     await logout();
-    setStep('totp-login');
+    setStep('initial-gate');
+    setSetupToken('');
     setError('');
   }, [logout]);
 
-  if (loading) {
+  if (pageLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
+        <RefreshCw className="h-5 w-5 animate-spin text-zinc-400" />
       </div>
     );
   }
 
-  if (step === 'totp-setup-token') {
+  if (step === 'initial-gate') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] p-4">
-        <TotpSetupTokenScreen onTokenSubmit={handleSetupTokenSubmit} onError={handleError} />
-        {error && <p className="mt-4 text-sm text-destructive text-center">{error}</p>}
-      </div>
+      <InitialGateScreen
+        onServerKeySubmit={handleServerKeySubmit}
+        loading={gateLoading}
+        error={error}
+      />
     );
   }
 
   if (step === 'totp-setup') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] p-4">
-        <TotpSetupScreen setupToken={setupToken} onComplete={handleSetupComplete} onError={handleError} />
-        {error && <p className="mt-4 text-sm text-destructive text-center">{error}</p>}
-      </div>
+      <TotpSetupScreen
+        setupToken={setupToken}
+        onComplete={handleSetupComplete}
+        error={error}
+        onError={handleError}
+      />
     );
   }
 
   if (step === 'totp-login') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] p-4">
-        <TotpLoginScreen onSuccess={handleTotpSuccess} onError={handleError} />
-        {error && <p className="mt-4 text-sm text-destructive text-center">{error}</p>}
-      </div>
+      <TotpLoginScreen
+        onSuccess={handleTotpSuccess}
+        error={error}
+        onError={handleError}
+      />
     );
   }
 
-  // Authenticated - show admin dashboard
+  // authenticated
   return (
-    <div className="container mx-auto py-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground">
-            {user?.email ? `Logged in as ${user.email}` : '환경변수, Workers, AI 모델 관리'}
-          </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Logout
-        </Button>
-      </div>
-
-      <Tabs defaultValue="health" className="space-y-6">
-        <TabsList className="grid w-full max-w-4xl grid-cols-7">
-          <TabsTrigger value="health" className="flex items-center gap-2">
-            <Activity className="h-4 w-4" />
-            상태
-          </TabsTrigger>
-          <TabsTrigger value="rag" className="flex items-center gap-2">
-            <Database className="h-4 w-4" />
-            RAG
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            통계
-          </TabsTrigger>
-          <TabsTrigger value="ai" className="flex items-center gap-2">
-            <Bot className="h-4 w-4" />
-            AI
-          </TabsTrigger>
-          <TabsTrigger value="config" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            환경변수
-          </TabsTrigger>
-          <TabsTrigger value="secrets" className="flex items-center gap-2">
-            <Key className="h-4 w-4" />
-            Secrets
-          </TabsTrigger>
-          <TabsTrigger value="workers" className="flex items-center gap-2">
-            <Cloud className="h-4 w-4" />
-            Workers
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="health">
-          <SystemHealth />
-        </TabsContent>
-
-        <TabsContent value="rag">
-          <RAGManager />
-        </TabsContent>
-
-        <TabsContent value="analytics">
-          <AnalyticsManager />
-        </TabsContent>
-
-        <TabsContent value="ai">
-          <AIManager />
-        </TabsContent>
-
-        <TabsContent value="config">
-          <ConfigManager />
-        </TabsContent>
-
-        <TabsContent value="secrets">
-          <SecretsManager />
-        </TabsContent>
-
-        <TabsContent value="workers">
-          <WorkersManager />
-        </TabsContent>
-      </Tabs>
-    </div>
+    <AdminDashboard
+      userEmail={user?.email}
+      onLogout={handleLogout}
+    />
   );
 }
