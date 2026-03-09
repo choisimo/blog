@@ -39,6 +39,11 @@ comments.get('/', async (c) => {
   return success(c, { comments: normalized });
 });
 
+// Strip HTML tags to prevent stored XSS
+function stripHtml(input: string): string {
+  return input.replace(/<[^>]*>/g, '').trim();
+}
+
 // POST /comments - Create new comment
 comments.post('/', async (c) => {
   const body = await c.req.json().catch(() => ({}));
@@ -61,15 +66,23 @@ comments.post('/', async (c) => {
   const commentId = `comment-${crypto.randomUUID()}`;
   const now = new Date().toISOString();
 
+  const sanitizedAuthor = stripHtml(author).slice(0, 64);
+  const sanitizedContent = stripHtml(content).slice(0, 5000);
+  const sanitizedEmail = email ? stripHtml(email).trim().slice(0, 256) : null;
+
+  if (!sanitizedAuthor || !sanitizedContent) {
+    return badRequest(c, 'Author and content must not be empty after sanitization');
+  }
+
   await execute(
     db,
     `INSERT INTO comments(id, post_id, author, email, content, status, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     commentId,
     normalizedPostId,
-    author.trim().slice(0, 64),
-    email ? email.trim().slice(0, 256) : null,
-    content.trim().slice(0, 5000),
+    sanitizedAuthor,
+    sanitizedEmail,
+    sanitizedContent,
     'visible', // or 'pending' if moderation is required
     now,
     now

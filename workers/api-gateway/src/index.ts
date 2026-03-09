@@ -43,6 +43,7 @@ import search from './routes/search';
 import user from './routes/user';
 import debate from './routes/debate';
 import subscribe from './routes/subscribe';
+import contact from './routes/contact';
 import type { Env } from './types';
 
 const app = new Hono<HonoEnv>();
@@ -251,6 +252,7 @@ api.route('/search', search);
 api.route('/user', user);
 api.route('/debate', debate);
 api.route('/subscribe', subscribe);
+api.route('/contact', contact);
 
 app.route('/api/v1', api);
 

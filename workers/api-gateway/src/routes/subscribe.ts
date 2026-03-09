@@ -25,18 +25,26 @@ function generateToken(): string {
     .join('');
 }
 
+type EmailResult =
+  | { ok: true }
+  | { ok: false; reason: 'missing_config' | 'resend_error' | 'network_error'; detail?: string };
+
 async function sendConfirmationEmail(
   env: { RESEND_API_KEY?: string; NOTIFY_FROM_EMAIL?: string; PUBLIC_SITE_URL?: string },
   email: string,
   token: string
-): Promise<boolean> {
+): Promise<EmailResult> {
   const apiKey = env.RESEND_API_KEY;
   const from = env.NOTIFY_FROM_EMAIL;
   const siteUrl = env.PUBLIC_SITE_URL || 'https://noblog.nodove.com';
 
   if (!apiKey || !from) {
-    console.warn('[Subscribe] Missing RESEND_API_KEY or NOTIFY_FROM_EMAIL');
-    return false;
+    console.error(
+      '[Subscribe] Email configuration missing — cannot send confirmation email.',
+      `RESEND_API_KEY: ${apiKey ? 'set' : 'MISSING'}, NOTIFY_FROM_EMAIL: ${from ? 'set' : 'MISSING'}.`,
+      'Run: wrangler secret put RESEND_API_KEY && wrangler secret put NOTIFY_FROM_EMAIL'
+    );
+    return { ok: false, reason: 'missing_config' };
   }
 
   const confirmUrl = `${siteUrl}/api/v1/subscribe/confirm?token=${token}`;
@@ -70,15 +78,16 @@ async function sendConfirmationEmail(
     });
 
     if (!res.ok) {
-      const err = await res.text();
-      console.error('[Subscribe] Resend API error:', res.status, err);
-      return false;
+      const detail = await res.text();
+      console.error('[Subscribe] Resend API error:', res.status, detail);
+      return { ok: false, reason: 'resend_error', detail: `HTTP ${res.status}: ${detail.slice(0, 200)}` };
     }
 
-    return true;
+    return { ok: true };
   } catch (err) {
-    console.error('[Subscribe] Failed to send confirmation email:', err);
-    return false;
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error('[Subscribe] Network error sending confirmation email:', detail);
+    return { ok: false, reason: 'network_error', detail };
   }
 }
 
@@ -89,6 +98,10 @@ app.post('/', async (c) => {
 
     if (!email || !email.includes('@')) {
       return error(c, 'Valid email is required', 400);
+    }
+
+    if (containsHtml(email) || (name && containsHtml(name))) {
+      return error(c, 'Invalid input', 400);
     }
 
     const db = c.env.DB;
@@ -112,8 +125,11 @@ app.post('/', async (c) => {
           token,
           existing.id
         );
-        await sendConfirmationEmail(c.env, normalizedEmail, token);
-        return success(c, { message: 'Confirmation email resent', pendingConfirmation: true });
+        const emailResult = await sendConfirmationEmail(c.env, normalizedEmail, token);
+        if (!emailResult.ok) {
+          console.error('[Subscribe] Resend confirmation email failed:', emailResult.reason, emailResult.detail ?? '');
+        }
+        return success(c, { message: 'Confirmation email resent', pendingConfirmation: true, emailFailed: !emailResult.ok });
       }
       if (existing.status === 'unsubscribed') {
         const token = generateToken();
@@ -123,8 +139,11 @@ app.post('/', async (c) => {
           token,
           existing.id
         );
-        await sendConfirmationEmail(c.env, normalizedEmail, token);
-        return success(c, { message: 'Resubscription confirmation sent', pendingConfirmation: true });
+        const emailResult = await sendConfirmationEmail(c.env, normalizedEmail, token);
+        if (!emailResult.ok) {
+          console.error('[Subscribe] Resubscription email failed:', emailResult.reason, emailResult.detail ?? '');
+        }
+        return success(c, { message: 'Resubscription confirmation sent', pendingConfirmation: true, emailFailed: !emailResult.ok });
       }
     }
 
@@ -137,9 +156,12 @@ app.post('/', async (c) => {
       token
     );
 
-    await sendConfirmationEmail(c.env, normalizedEmail, token);
+    const emailResult = await sendConfirmationEmail(c.env, normalizedEmail, token);
+    if (!emailResult.ok) {
+      console.error('[Subscribe] New subscription email failed:', emailResult.reason, emailResult.detail ?? '');
+    }
 
-    return success(c, { message: 'Confirmation email sent', pendingConfirmation: true });
+    return success(c, { message: 'Confirmation email sent', pendingConfirmation: true, emailFailed: !emailResult.ok });
   } catch (err) {
     console.error('[Subscribe] Error:', err);
     return error(c, 'Failed to process subscription', 500);
@@ -328,6 +350,10 @@ function escapeHtml(str: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+function containsHtml(str: string): boolean {
+  return /<[^>]*>/.test(str);
 }
 
 export default app;
