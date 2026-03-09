@@ -38,7 +38,7 @@ import { getApiBaseUrl } from '@/utils/network/apiBase';
 // Auth Step Types
 // ============================================================================
 
-type AuthStep = 'totp-login' | 'totp-setup' | 'authenticated';
+type AuthStep = 'totp-login' | 'totp-setup-token' | 'totp-setup' | 'authenticated';
 
 // ============================================================================
 // TOTP Login Screen
@@ -172,28 +172,74 @@ function TotpLoginScreen({ onSuccess, onError }: TotpLoginScreenProps) {
 // TOTP Setup Screen
 // ============================================================================
 
+interface TotpSetupTokenScreenProps {
+  onTokenSubmit: (token: string) => void;
+  onError: (error: string) => void;
+}
+
+function TotpSetupTokenScreen({ onTokenSubmit, onError: _onError }: TotpSetupTokenScreenProps) {
+  const [token, setToken] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token.trim()) return;
+    onTokenSubmit(token.trim());
+  };
+
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader className="text-center">
+        <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+          <Key className="h-6 w-6 text-primary" />
+        </div>
+        <CardTitle>Admin Setup Token</CardTitle>
+        <CardDescription>Enter the ADMIN_SETUP_TOKEN from the server console to continue</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="setup-token">Setup Token</Label>
+            <Input
+              id="setup-token"
+              type="password"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder="Paste token from server console"
+              autoFocus
+            />
+          </div>
+          <Button type="submit" className="w-full" disabled={!token.trim()}>
+            Continue
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
 interface TotpSetupScreenProps {
+  setupToken: string;
   onComplete: () => void;
   onError: (error: string) => void;
 }
 
-function TotpSetupScreen({ onComplete, onError }: TotpSetupScreenProps) {
+function TotpSetupScreen({ setupToken, onComplete, onError }: TotpSetupScreenProps) {
   const [setup, setSetup] = useState<TotpSetupResponse | null>(null);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    getTotpSetup()
+    getTotpSetup(setupToken)
       .then(setSetup)
       .catch((err: unknown) => onError(err instanceof Error ? err.message : 'Failed to load setup'));
-  }, [onError]);
+  }, [setupToken, onError]);
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (code.length !== 6 || !setup) return;
     setLoading(true);
     try {
-      await verifyTotpSetup(code);
+      await verifyTotpSetup(code, setupToken);
       onComplete();
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Setup verification failed');
@@ -264,6 +310,7 @@ export default function AdminConfig() {
   const [step, setStep] = useState<AuthStep>('totp-login');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [setupToken, setSetupToken] = useState('');
 
   const { isAuthenticated, getValidAccessToken, logout, user, setTokens } = useAuthStore();
 
@@ -273,7 +320,13 @@ export default function AdminConfig() {
     const checkTotpSetup = async () => {
       try {
         const setup = await getTotpSetup();
-        setStep(setup.setupComplete ? 'totp-login' : 'totp-setup');
+        if (setup.setupComplete) {
+          setStep('totp-login');
+        } else if (setup.requiresToken) {
+          setStep('totp-setup-token');
+        } else {
+          setStep('totp-setup');
+        }
       } catch {
         setStep('totp-login');
       }
@@ -311,6 +364,21 @@ export default function AdminConfig() {
     setStep('authenticated');
   }, [setTokens]);
 
+  const handleSetupTokenSubmit = useCallback(async (token: string) => {
+    setSetupToken(token);
+    setError('');
+    try {
+      const setup = await getTotpSetup(token);
+      if (setup.requiresToken) {
+        setError('Invalid setup token. Check the server console and try again.');
+      } else {
+        setStep('totp-setup');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to validate token');
+    }
+  }, []);
+
   const handleSetupComplete = useCallback(() => {
     setError('');
     setStep('totp-login');
@@ -334,10 +402,19 @@ export default function AdminConfig() {
     );
   }
 
+  if (step === 'totp-setup-token') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] p-4">
+        <TotpSetupTokenScreen onTokenSubmit={handleSetupTokenSubmit} onError={handleError} />
+        {error && <p className="mt-4 text-sm text-destructive text-center">{error}</p>}
+      </div>
+    );
+  }
+
   if (step === 'totp-setup') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] p-4">
-        <TotpSetupScreen onComplete={handleSetupComplete} onError={handleError} />
+        <TotpSetupScreen setupToken={setupToken} onComplete={handleSetupComplete} onError={handleError} />
         {error && <p className="mt-4 text-sm text-destructive text-center">{error}</p>}
       </div>
     );

@@ -197,6 +197,18 @@ const CONFIG_CATEGORIES = [
         isSecret: true,
         description: "Admin Password",
       },
+      {
+        key: "TOTP_SECRET",
+        type: "password",
+        isSecret: true,
+        description: "TOTP Secret (base32) — auto-persisted on first setup",
+      },
+      {
+        key: "ADMIN_SETUP_TOKEN",
+        type: "password",
+        isSecret: true,
+        description: "One-time token required to access TOTP provisioning endpoint",
+      },
     ],
   },
   {

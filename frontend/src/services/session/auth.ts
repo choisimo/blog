@@ -35,10 +35,11 @@ export interface TotpVerifyResponse {
 }
 
 export interface TotpSetupResponse {
-  otpauthUri: string;
-  qrDataUrl: string;
-  secret: string;
+  otpauthUri?: string;
+  qrDataUrl?: string;
+  secret?: string;
   setupComplete: boolean;
+  requiresToken?: boolean;
 }
 
 export interface RefreshTokenResponse {
@@ -99,8 +100,10 @@ export async function verifyTotpCode(
 /**
  * Get TOTP setup info (QR code + secret)
  */
-export async function getTotpSetup(): Promise<TotpSetupResponse> {
-  const res = await fetch(`${getBaseUrl()}/api/v1/auth/totp/setup`);
+export async function getTotpSetup(setupToken?: string): Promise<TotpSetupResponse> {
+  const headers: Record<string, string> = {};
+  if (setupToken) headers['Setup-Token'] = setupToken;
+  const res = await fetch(`${getBaseUrl()}/api/v1/auth/totp/setup`, { headers });
   const json: ApiResponse<TotpSetupResponse> = await res.json().catch(() => ({ ok: false, error: 'Invalid response' }));
   if (!res.ok || !json.ok || !json.data) throw new Error(json.error || 'Failed to get TOTP setup');
   return json.data;
@@ -109,10 +112,12 @@ export async function getTotpSetup(): Promise<TotpSetupResponse> {
 /**
  * Verify TOTP setup code to mark setup as complete
  */
-export async function verifyTotpSetup(code: string): Promise<{ setupComplete: boolean }> {
+export async function verifyTotpSetup(code: string, setupToken?: string): Promise<{ setupComplete: boolean }> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (setupToken) headers['Setup-Token'] = setupToken;
   const res = await fetch(`${getBaseUrl()}/api/v1/auth/totp/setup/verify`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ code }),
   });
   const json: ApiResponse<{ setupComplete: boolean }> = await res.json().catch(() => ({ ok: false, error: 'Invalid response' }));
