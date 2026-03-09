@@ -2,6 +2,29 @@
   "total": 263,
   "items": [
     {
+      "path": "/posts/2026/limitation_of_bestcases.md",
+      "year": "2026",
+      "slug": "limitation_of_bestcases",
+      "title": "베스트 프랙티스가 병목으로 바뀌는 순간: 싱글톤, Nginx, SAGA를 다시 보는 일",
+      "description": "싱글톤, 단일 Nginx 리버스 프록시, SAGA 패턴이 과연 좋은 방법일까?",
+      "snippet": "싱글톤, 단일 Nginx 리버스 프록시, SAGA 패턴이 과연 좋은 방법일까?",
+      "date": "2026-03-10",
+      "tags": [
+        "System Design",
+        "Distributed Systems",
+        "Singleton",
+        "Nginx",
+        "SAGA",
+        "Design for Failure"
+      ],
+      "category": "Architecture",
+      "author": "Admin",
+      "readingTime": "8 min read",
+      "published": true,
+      "coverImage": "/images/2026/limitation_of_bestcases/MessageBrokerLimit.png",
+      "url": "/blog/2026/limitation_of_bestcases"
+    },
+    {
       "path": "/posts/2026/awk-1.md",
       "year": "2026",
       "slug": "awk-1",
@@ -562,22 +585,6 @@
       "published": true,
       "coverImage": "/images/2026/무속-사이비.png",
       "url": "/blog/2026/current-crowd"
-    },
-    {
-      "path": "/posts/2026/limitation_of_bestcases.md",
-      "year": "2026",
-      "slug": "limitation_of_bestcases",
-      "title": "Limitation_of_bestcases",
-      "description": "시스템 설계의 성역 파괴: 보편적 패턴의 치명적 허점과 설계적 재앙\n\n1. 서론: '베스트 프랙티스'라는 이름의 기술적 타성\n\n업계에서 전해 내려오는 '베스트 프랙티스'는 현대 엔지니어들의 뇌를 마비시키는 치명적인 마약이다. 소위 전문가라는 자들은 Hour 8에서 강조하는 \"계획(Planning), 설계(Designing), 구현(Implementing),",
-      "snippet": "시스템 설계의 성역 파괴: 보편적 패턴의 치명적 허점과 설계적 재앙\n\n1. 서론: '베스트 프랙티스'라는 이름의 기술적 타성\n\n업계에서 전해 내려오는 '베스트 프랙티스'는 현대 엔지니어들의 뇌를 마비시키는 치명적인 마약이다. 소위 전문가라는 자들은 Hour 8에서 강조하는 \"계획(Planning), 설계(Designing), 구현(Implementing),",
-      "date": "2026-01-01",
-      "tags": [],
-      "category": "General",
-      "author": "Admin",
-      "readingTime": "12 min read",
-      "published": true,
-      "coverImage": "/images/2026/limitation_of_bestcases/MessageBrokerLimit.png",
-      "url": "/blog/2026/limitation_of_bestcases"
     },
     {
       "path": "/posts/2025/감동을_잃어버린_그대들에게.md",
@@ -5547,7 +5554,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-03-09T22:24:02.674Z",
+  "generatedAt": "2026-03-09T23:14:24.285Z",
   "years": [
     "2026",
     "2025",

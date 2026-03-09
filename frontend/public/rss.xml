@@ -5,8 +5,22 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Mon, 09 Mar 2026 22:24:03 GMT</lastBuildDate>
+    <lastBuildDate>Mon, 09 Mar 2026 23:14:24 GMT</lastBuildDate>
     <language>en-US</language>
+    <item>
+      <title>베스트 프랙티스가 병목으로 바뀌는 순간: 싱글톤, Nginx, SAGA를 다시 보는 일</title>
+      <description>싱글톤, 단일 Nginx 리버스 프록시, SAGA 패턴이 과연 좋은 방법일까?</description>
+      <link>https://noblog.nodove.com/blog/2026/limitation_of_bestcases</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/limitation_of_bestcases</guid>
+      <pubDate>Tue, 10 Mar 2026 00:00:00 GMT</pubDate>
+      <category>Architecture</category>
+      <category>System Design</category>
+      <category>Distributed Systems</category>
+      <category>Singleton</category>
+      <category>Nginx</category>
+      <category>SAGA</category>
+      <category>Design for Failure</category>
+    </item>
     <item>
       <title>awk 시스템 처리 원리</title>
       <description>awk 시스템 레벨에서의 처리 원리를 아주 간단하게 살펴봅시다.</description>
@@ -254,21 +268,6 @@
       <category>DeepLearning</category>
       <category>Transformer</category>
       <category>Math</category>
-    </item>
-    <item>
-      <title>혼자라는 이름의 계절</title>
-      <description>한여름의 뜨거운 도시를 건너며, 한 사람이 고독의 정체를 끝내 마주하는 이야기</description>
-      <link>https://noblog.nodove.com/blog/2026/alone</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/alone</guid>
-      <pubDate>Thu, 15 Jan 2026 00:00:00 GMT</pubDate>
-      <category>문학</category>
-      <category>단편소설</category>
-      <category>고독</category>
-      <category>도시</category>
-      <category>여름</category>
-      <category>연민</category>
-      <category>내면</category>
-      <category>창작</category>
     </item>
   </channel>
 </rss>

@@ -1,5 +1,5 @@
 {
-  "total": 22,
+  "total": 21,
   "items": [
     {
       "id": "blog",
@@ -100,42 +100,31 @@
       "featured": true
     },
     {
-      "id": "agentpromptsforprojects",
-      "title": "Agent Prompts For Projects",
-      "description": "AI 에이전트 프롬프트 엔지니어링 컬렉션. CI/CD 자동화, SQL 트랜잭션 패턴 포함.",
-      "date": "2026-02-19",
-      "category": "AI",
-      "tags": [
-        "AI",
-        "Prompt Engineering",
-        "CI/CD"
-      ],
-      "stack": [
-        "Markdown",
-        "CI/CD"
-      ],
-      "status": "Live",
-      "type": "link",
-      "url": "https://github.com/choisimo/AgentPromptsForProjects",
-      "codeUrl": "https://github.com/choisimo/AgentPromptsForProjects",
-      "featured": false
-    },
-    {
       "id": "ai-server",
       "title": "AI Server",
-      "description": "프라이빗 AI 서버. Docker 컨테이너 오케스트레이션, CI/CD 자동화, SQLAlchemy ORM 트랜잭션 적용된 AI 백엔드 서비스.",
+      "description": "Node.js/TypeScript 기반 AI 운영 플랫폼. AI Gateway, OpenCode Serve, Redpanda/Bytewax 스트리밍, Grafana/Langfuse 관측성, GHCR 배포 파이프라인을 포함한 멀티서비스 AI 인프라.",
       "date": "2026-02-19",
       "category": "AI",
       "tags": [
-        "AI",
-        "Docker",
-        "CI/CD",
-        "Python"
+        "AI Gateway",
+        "OpenAI Compatible",
+        "Docker Compose",
+        "Observability",
+        "Redpanda",
+        "Bytewax"
       ],
       "stack": [
-        "Python",
-        "SQLAlchemy",
-        "Docker"
+        "Node.js",
+        "TypeScript",
+        "React",
+        "Docker",
+        "PostgreSQL",
+        "Redis",
+        "Redpanda",
+        "Bytewax",
+        "Grafana",
+        "Langfuse",
+        "Python"
       ],
       "status": "Live",
       "type": "link",
@@ -501,6 +490,6 @@
       "featured": false
     }
   ],
-  "generatedAt": "2026-03-09T22:24:02.863Z",
+  "generatedAt": "2026-03-09T23:14:24.533Z",
   "format": 1
 }
