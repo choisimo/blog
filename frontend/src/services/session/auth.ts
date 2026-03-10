@@ -42,6 +42,16 @@ export interface TotpSetupResponse {
   requiresToken?: boolean;
 }
 
+export interface TotpSetupStatusResponse {
+  setupComplete: boolean;
+  requiresSetupToken?: boolean;
+}
+
+export interface TotpSetupVerifyResponse {
+  setupComplete: boolean;
+  message?: string;
+}
+
 export interface RefreshTokenResponse {
   accessToken: string;
   tokenType: string;
@@ -55,10 +65,17 @@ export interface UserInfo {
   emailVerified: boolean;
 }
 
+type ApiErrorPayload =
+  | string
+  | {
+      code?: string;
+      message?: string;
+    };
+
 export interface ApiResponse<T> {
   ok: boolean;
   data?: T;
-  error?: string;
+  error?: ApiErrorPayload;
 }
 
 // ============================================================================
@@ -66,6 +83,46 @@ export interface ApiResponse<T> {
 // ============================================================================
 
 const getBaseUrl = () => getApiBaseUrl();
+
+function getApiErrorMessage(
+  error: ApiErrorPayload | undefined,
+  fallback: string
+): string {
+  if (typeof error === 'string' && error.trim()) {
+    return error;
+  }
+
+  if (
+    error &&
+    typeof error === 'object' &&
+    typeof error.message === 'string' &&
+    error.message.trim()
+  ) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
+async function parseApiResponse<T>(res: Response): Promise<ApiResponse<T>> {
+  return res.json().catch(() => ({
+    ok: false,
+    error: { message: 'Invalid response' },
+  }));
+}
+
+async function unwrapApiResponse<T>(
+  res: Response,
+  fallback: string
+): Promise<T> {
+  const json = await parseApiResponse<T>(res);
+
+  if (!res.ok || !json.ok || !json.data) {
+    throw new Error(getApiErrorMessage(json.error, fallback));
+  }
+
+  return json.data;
+}
 
 /**
  * Request a new TOTP challenge ID (5-min TTL)
@@ -75,9 +132,10 @@ export async function initiateTotpChallenge(): Promise<TotpChallengeResponse> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
-  const json: ApiResponse<TotpChallengeResponse> = await res.json().catch(() => ({ ok: false, error: 'Invalid response' }));
-  if (!res.ok || !json.ok || !json.data) throw new Error(json.error || 'Failed to get challenge');
-  return json.data;
+  return unwrapApiResponse<TotpChallengeResponse>(
+    res,
+    'Failed to get challenge'
+  );
 }
 
 /**
@@ -92,37 +150,56 @@ export async function verifyTotpCode(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ challengeId, code }),
   });
-  const json: ApiResponse<TotpVerifyResponse> = await res.json().catch(() => ({ ok: false, error: 'Invalid response' }));
-  if (!res.ok || !json.ok || !json.data) throw new Error(json.error || 'TOTP verification failed');
-  return json.data;
+  return unwrapApiResponse<TotpVerifyResponse>(res, 'TOTP verification failed');
+}
+
+/**
+ * Get TOTP setup status without requesting the secret itself.
+ */
+export async function getTotpSetupStatus(): Promise<TotpSetupStatusResponse> {
+  const res = await fetch(`${getBaseUrl()}/api/v1/auth/totp/status`);
+  return unwrapApiResponse<TotpSetupStatusResponse>(
+    res,
+    'Failed to load TOTP setup status'
+  );
 }
 
 /**
  * Get TOTP setup info (QR code + secret)
  */
-export async function getTotpSetup(setupToken?: string): Promise<TotpSetupResponse> {
+export async function getTotpSetup(
+  setupToken?: string,
+  accessToken?: string
+): Promise<TotpSetupResponse> {
   const headers: Record<string, string> = {};
   if (setupToken) headers['Setup-Token'] = setupToken;
-  const res = await fetch(`${getBaseUrl()}/api/v1/auth/totp/setup`, { headers });
-  const json: ApiResponse<TotpSetupResponse> = await res.json().catch(() => ({ ok: false, error: 'Invalid response' }));
-  if (!res.ok || !json.ok || !json.data) throw new Error(json.error || 'Failed to get TOTP setup');
-  return json.data;
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  const res = await fetch(`${getBaseUrl()}/api/v1/auth/totp/setup`, {
+    headers,
+  });
+  return unwrapApiResponse<TotpSetupResponse>(res, 'Failed to get TOTP setup');
 }
 
 /**
  * Verify TOTP setup code to mark setup as complete
  */
-export async function verifyTotpSetup(code: string, setupToken?: string): Promise<{ setupComplete: boolean }> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+export async function verifyTotpSetup(
+  code: string,
+  setupToken?: string
+): Promise<TotpSetupVerifyResponse> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
   if (setupToken) headers['Setup-Token'] = setupToken;
   const res = await fetch(`${getBaseUrl()}/api/v1/auth/totp/setup/verify`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ code }),
   });
-  const json: ApiResponse<{ setupComplete: boolean }> = await res.json().catch(() => ({ ok: false, error: 'Invalid response' }));
-  if (!res.ok || !json.ok || !json.data) throw new Error(json.error || 'Setup verification failed');
-  return json.data;
+  return unwrapApiResponse<TotpSetupVerifyResponse>(
+    res,
+    'Setup verification failed'
+  );
 }
 
 /**
@@ -136,19 +213,7 @@ export async function refreshAccessToken(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ refreshToken }),
   });
-
-  const json: ApiResponse<RefreshTokenResponse> = await res
-    .json()
-    .catch(() => ({
-      ok: false,
-      error: 'Invalid response',
-    }));
-
-  if (!res.ok || !json.ok || !json.data) {
-    throw new Error(json.error || 'Token refresh failed');
-  }
-
-  return json.data;
+  return unwrapApiResponse<RefreshTokenResponse>(res, 'Token refresh failed');
 }
 
 /**
@@ -175,19 +240,11 @@ export async function getMe(accessToken: string): Promise<UserInfo> {
       Authorization: `Bearer ${accessToken}`,
     },
   });
-
-  const json: ApiResponse<{ user: UserInfo }> = await res
-    .json()
-    .catch(() => ({
-      ok: false,
-      error: 'Invalid response',
-    }));
-
-  if (!res.ok || !json.ok || !json.data) {
-    throw new Error(json.error || 'Failed to get user info');
-  }
-
-  return json.data.user;
+  const data = await unwrapApiResponse<{ user: UserInfo }>(
+    res,
+    'Failed to get user info'
+  );
+  return data.user;
 }
 
 // ============================================================================
@@ -251,41 +308,29 @@ export async function requestAnonymousToken(): Promise<AnonymousTokenResponse> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
-
-  const json: ApiResponse<AnonymousTokenResponse> = await res.json().catch(() => ({
-    ok: false,
-    error: 'Invalid response',
-  }));
-
-  if (!res.ok || !json.ok || !json.data) {
-    throw new Error(json.error || 'Failed to get anonymous token');
-  }
-
-  return json.data;
+  return unwrapApiResponse<AnonymousTokenResponse>(
+    res,
+    'Failed to get anonymous token'
+  );
 }
 
 /**
  * Refresh anonymous token
  */
-export async function refreshAnonymousToken(token: string): Promise<AnonymousTokenResponse> {
+export async function refreshAnonymousToken(
+  token: string
+): Promise<AnonymousTokenResponse> {
   const res = await fetch(`${getBaseUrl()}/api/v1/auth/anonymous/refresh`, {
     method: 'POST',
-    headers: { 
+    headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
   });
-
-  const json: ApiResponse<AnonymousTokenResponse> = await res.json().catch(() => ({
-    ok: false,
-    error: 'Invalid response',
-  }));
-
-  if (!res.ok || !json.ok || !json.data) {
-    throw new Error(json.error || 'Failed to refresh anonymous token');
-  }
-
-  return json.data;
+  return unwrapApiResponse<AnonymousTokenResponse>(
+    res,
+    'Failed to refresh anonymous token'
+  );
 }
 
 /**
@@ -326,19 +371,19 @@ export function clearAnonymousToken(): void {
  */
 export async function getValidAnonymousToken(): Promise<string> {
   const existing = getStoredAnonymousToken();
-  
+
   // No token - request new one
   if (!existing) {
     const result = await requestAnonymousToken();
     storeAnonymousToken(result.token);
     return result.token;
   }
-  
+
   // Check if token is still valid (with 1 day buffer)
   if (!isTokenExpired(existing, 86400)) {
     return existing;
   }
-  
+
   // Try to refresh
   try {
     const result = await refreshAnonymousToken(existing);

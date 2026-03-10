@@ -1,4 +1,7 @@
 import { execute, queryOne, isD1Configured } from './base/d1.repository.js';
+import { createLogger } from '../lib/logger.js';
+
+const logger = createLogger('ai-usage');
 
 export async function logAIUsage(data) {
   if (!isD1Configured()) {
@@ -20,6 +23,8 @@ export async function logAIUsage(data) {
     } = data;
 
     let modelId = null;
+    let estimatedCost = 0;
+
     if (modelName) {
       const model = await queryOne(
         'SELECT id, input_cost_per_1k, output_cost_per_1k FROM ai_models WHERE model_name = ?',
@@ -27,6 +32,9 @@ export async function logAIUsage(data) {
       );
       if (model) {
         modelId = model.id;
+        estimatedCost =
+          ((promptTokens || 0) * (model.input_cost_per_1k || 0)) / 1000 +
+          ((completionTokens || 0) * (model.output_cost_per_1k || 0)) / 1000;
       }
     }
 
@@ -38,19 +46,6 @@ export async function logAIUsage(data) {
       );
       if (route) {
         routeId = route.id;
-      }
-    }
-
-    let estimatedCost = 0;
-    if (modelId) {
-      const model = await queryOne(
-        'SELECT input_cost_per_1k, output_cost_per_1k FROM ai_models WHERE id = ?',
-        modelId
-      );
-      if (model) {
-        estimatedCost =
-          ((promptTokens || 0) * (model.input_cost_per_1k || 0)) / 1000 +
-          ((completionTokens || 0) * (model.output_cost_per_1k || 0)) / 1000;
       }
     }
 
@@ -78,51 +73,41 @@ export async function logAIUsage(data) {
       metadata ? JSON.stringify(metadata) : null
     );
 
-    const today = new Date().toISOString().split('T')[0];
     if (modelId) {
-      const result = await execute(
-        `UPDATE ai_usage_daily SET
-          total_requests = total_requests + 1,
-          total_prompt_tokens = total_prompt_tokens + ?,
-          total_completion_tokens = total_completion_tokens + ?,
-          total_tokens = total_tokens + ?,
-          total_cost = total_cost + ?,
-          success_count = success_count + ?,
-          error_count = error_count + ?,
-          avg_latency_ms = (avg_latency_ms * (total_requests - 1) + ?) / total_requests
-        WHERE date = ? AND model_id = ?`,
+      const today = new Date().toISOString().split('T')[0];
+      const isSuccess = status === 'success' ? 1 : 0;
+      const isError = status === 'error' ? 1 : 0;
+      const safeLatency = latencyMs || 0;
+
+      await execute(
+        `INSERT INTO ai_usage_daily (
+          date, model_id, total_requests,
+          total_prompt_tokens, total_completion_tokens, total_tokens,
+          total_cost, success_count, error_count, avg_latency_ms
+        ) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(date, model_id) DO UPDATE SET
+          total_requests        = total_requests + 1,
+          total_prompt_tokens   = total_prompt_tokens + excluded.total_prompt_tokens,
+          total_completion_tokens = total_completion_tokens + excluded.total_completion_tokens,
+          total_tokens          = total_tokens + excluded.total_tokens,
+          total_cost            = total_cost + excluded.total_cost,
+          success_count         = success_count + excluded.success_count,
+          error_count           = error_count + excluded.error_count,
+          avg_latency_ms        = (avg_latency_ms * total_requests + excluded.avg_latency_ms)
+                                  / (total_requests + 1)`,
+        today,
+        modelId,
         promptTokens,
         completionTokens,
         totalTokens,
         estimatedCost,
-        status === 'success' ? 1 : 0,
-        status === 'error' ? 1 : 0,
-        latencyMs || 0,
-        today,
-        modelId
+        isSuccess,
+        isError,
+        safeLatency
       );
-
-      if (result.changes === 0) {
-        await execute(
-          `INSERT INTO ai_usage_daily (
-            date, model_id, total_requests,
-            total_prompt_tokens, total_completion_tokens, total_tokens,
-            total_cost, success_count, error_count, avg_latency_ms
-          ) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`,
-          today,
-          modelId,
-          promptTokens,
-          completionTokens,
-          totalTokens,
-          estimatedCost,
-          status === 'success' ? 1 : 0,
-          status === 'error' ? 1 : 0,
-          latencyMs || 0
-        );
-      }
     }
   } catch (err) {
-    console.warn('[AIUsage] Failed to log usage:', err.message);
+    logger.warn({}, 'Failed to log usage', { error: err.message });
   }
 }
 

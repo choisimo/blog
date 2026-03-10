@@ -6,6 +6,9 @@
  */
 
 import { spawn } from 'child_process';
+import { createLogger } from '../../../lib/logger.js';
+
+const logger = createLogger('mcp-client');
 
 // Configuration
 const MCP_CONFIG_PATH = process.env.MCP_CONFIG_PATH || '/.roo/mcp.json';
@@ -62,12 +65,12 @@ class MCPClient {
         });
 
         this.process.stderr.on('data', (data) => {
-          console.error(`[MCP] stderr: ${data}`);
+          logger.error({}, 'MCP stderr', { data: String(data).trim() });
         });
 
         this.process.on('close', (code) => {
           this.ready = false;
-          console.log(`[MCP] Process exited with code ${code}`);
+          logger.info({ code }, 'MCP process exited');
         });
 
         // Send initialize request
@@ -229,7 +232,7 @@ async function getMCPClient(serverName) {
 export async function createMCPClientTool() {
   // Check if MCP is enabled
   if (process.env.DISABLE_MCP === 'true') {
-    console.log('[MCP] MCP is disabled');
+    logger.info({}, 'MCP is disabled');
     return null;
   }
 
@@ -275,7 +278,7 @@ export async function createMCPClientTool() {
     async execute(params) {
       const { action, server = 'filesystem', path, pattern, tool, args } = params;
 
-      console.log(`[MCP] Executing action: ${action} on server: ${server}`);
+      logger.debug({ action, server }, 'Executing MCP action');
 
       try {
         const client = await getMCPClient(server);
@@ -343,7 +346,7 @@ export async function createMCPClientTool() {
             };
         }
       } catch (error) {
-        console.error(`[MCP] Action failed: ${error.message}`);
+        logger.error({ action }, 'MCP action failed', { error: error.message });
         return {
           success: false,
           action,

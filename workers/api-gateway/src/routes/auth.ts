@@ -4,7 +4,8 @@
  * Admin authentication flow (replaces username/password + email OTP):
  *
  * TOTP flow:
- *   POST /auth/totp/setup         - Get QR code + secret for first-time setup
+ *   GET  /auth/totp/status        - Check whether TOTP is already configured
+ *   GET  /auth/totp/setup         - Get secret for first-time setup or authenticated re-view
  *   POST /auth/totp/setup/verify  - Confirm TOTP setup with first code
  *   POST /auth/totp/challenge     - Create a short-lived challenge
  *   POST /auth/totp/verify        - Verify code + challengeId → issue JWT
@@ -113,19 +114,33 @@ async function issueAdminTokens(
 // ============================================================================
 
 /**
+ * GET /auth/totp/status
+ * Returns whether TOTP setup is complete without exposing the secret itself.
+ */
+auth.get('/totp/status', async (c) => {
+  const setupComplete = await c.env.KV.get(KV_TOTP_SETUP_KEY);
+
+  return success(c, {
+    setupComplete: setupComplete === 'true',
+    requiresSetupToken: setupComplete !== 'true',
+  });
+});
+
+/**
  * GET /auth/totp/setup
  * Returns otpauthUri + base32 secret for QR code rendering.
- * If setup is already complete, requires a valid admin Bearer token.
+ * If setup is already complete, returns status-only unless a valid admin Bearer token is provided.
+ * If setup is not complete, requires a valid Setup-Token header.
  */
 auth.get('/totp/setup', async (c) => {
   const setupComplete = await c.env.KV.get(KV_TOTP_SETUP_KEY);
 
-  // If already set up, require admin auth to re-view
   if (setupComplete === 'true') {
     const authHeader = c.req.header('Authorization');
     if (!authHeader) {
-      return unauthorized(c, 'TOTP already configured — provide admin token to view setup');
+      return success(c, { setupComplete: true });
     }
+
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();
     try {
       const payload = await verifyJwt(token, c.env);
@@ -134,6 +149,16 @@ auth.get('/totp/setup', async (c) => {
       }
     } catch {
       return unauthorized(c, 'Invalid admin token');
+    }
+  } else {
+    const configuredSetupToken = c.env.ADMIN_SETUP_TOKEN?.trim();
+    if (!configuredSetupToken) {
+      return error(c, 'ADMIN_SETUP_TOKEN is not configured', 503, 'SETUP_TOKEN_UNAVAILABLE');
+    }
+
+    const providedSetupToken = c.req.header('Setup-Token')?.trim();
+    if (!providedSetupToken || providedSetupToken !== configuredSetupToken) {
+      return unauthorized(c, 'Valid setup token required');
     }
   }
 
@@ -159,7 +184,22 @@ auth.get('/totp/setup', async (c) => {
  * Body: { code: string }
  */
 auth.post('/totp/setup/verify', async (c) => {
-  const body = await c.req.json().catch(() => ({})) as { code?: string };
+  const setupComplete = await c.env.KV.get(KV_TOTP_SETUP_KEY);
+  if (setupComplete === 'true') {
+    return success(c, { setupComplete: true, message: 'TOTP setup already complete' });
+  }
+
+  const configuredSetupToken = c.env.ADMIN_SETUP_TOKEN?.trim();
+  if (!configuredSetupToken) {
+    return error(c, 'ADMIN_SETUP_TOKEN is not configured', 503, 'SETUP_TOKEN_UNAVAILABLE');
+  }
+
+  const providedSetupToken = c.req.header('Setup-Token')?.trim();
+  if (!providedSetupToken || providedSetupToken !== configuredSetupToken) {
+    return unauthorized(c, 'Valid setup token required');
+  }
+
+  const body = (await c.req.json().catch(() => ({}))) as { code?: string };
   const { code } = body;
 
   if (!code) return badRequest(c, 'code required');
@@ -173,7 +213,7 @@ auth.post('/totp/setup/verify', async (c) => {
   }
 
   await c.env.KV.put(KV_TOTP_SETUP_KEY, 'true');
-  return success(c, { ok: true, message: 'TOTP setup complete' });
+  return success(c, { setupComplete: true, message: 'TOTP setup complete' });
 });
 
 // ============================================================================
@@ -210,7 +250,7 @@ auth.post('/totp/challenge', async (c) => {
  * Body: { challengeId: string, code: string }
  */
 auth.post('/totp/verify', async (c) => {
-  const body = await c.req.json().catch(() => ({})) as {
+  const body = (await c.req.json().catch(() => ({}))) as {
     challengeId?: string;
     code?: string;
   };
@@ -318,10 +358,7 @@ auth.get('/oauth/github/callback', async (c) => {
 
     // Check allowlist
     if (!allowedEmails || !isEmailAllowed(email, allowedEmails)) {
-      return c.redirect(
-        `${frontendBase}/admin/auth/callback#error=email_not_allowed`,
-        302
-      );
+      return c.redirect(`${frontendBase}/admin/auth/callback#error=email_not_allowed`, 302);
     }
 
     const payload = adminPayload(email);
@@ -332,10 +369,7 @@ auth.get('/oauth/github/callback', async (c) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'OAuth error';
     console.error('GitHub callback error:', msg);
-    return c.redirect(
-      `${frontendBase}/admin/auth/callback#error=${encodeURIComponent(msg)}`,
-      302
-    );
+    return c.redirect(`${frontendBase}/admin/auth/callback#error=${encodeURIComponent(msg)}`, 302);
   }
 });
 
@@ -401,10 +435,7 @@ auth.get('/oauth/google/callback', async (c) => {
 
     // Check allowlist
     if (!allowedEmails || !isEmailAllowed(email, allowedEmails)) {
-      return c.redirect(
-        `${frontendBase}/admin/auth/callback#error=email_not_allowed`,
-        302
-      );
+      return c.redirect(`${frontendBase}/admin/auth/callback#error=email_not_allowed`, 302);
     }
 
     const payload = adminPayload(email);
@@ -415,10 +446,7 @@ auth.get('/oauth/google/callback', async (c) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'OAuth error';
     console.error('Google callback error:', msg);
-    return c.redirect(
-      `${frontendBase}/admin/auth/callback#error=${encodeURIComponent(msg)}`,
-      302
-    );
+    return c.redirect(`${frontendBase}/admin/auth/callback#error=${encodeURIComponent(msg)}`, 302);
   }
 });
 
@@ -539,7 +567,7 @@ auth.post('/anonymous', async (c) => {
 
   // Use existing anonymous ID or generate a new one
   let anonymousId: string;
-  
+
   if (existingId && typeof existingId === 'string' && existingId.startsWith('anon-')) {
     // Validate existing ID format (anon-{uuid})
     const uuidPart = existingId.slice(5);
@@ -590,7 +618,7 @@ auth.post('/anonymous/refresh', async (c) => {
 
   try {
     const payload = await verifyJwt(token, c.env);
-    
+
     // Only refresh anonymous tokens
     if (payload.role !== 'anonymous' || !payload.sub?.startsWith('anon-')) {
       return badRequest(c, 'Not an anonymous token');

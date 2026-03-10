@@ -1,4 +1,7 @@
 import { getRedisClient, isRedisAvailable } from '../lib/redis-client.js';
+import { createLogger } from '../lib/logger.js';
+
+const logger = createLogger('http-cache');
 
 const CACHE_KEY_NS = 'http_cache';
 
@@ -81,7 +84,7 @@ export function httpCache(options = {}) {
         }
       }
     } catch (err) {
-      console.error('[httpCache] Redis read error:', err.message);
+      logger.error({}, 'Redis read error', { error: err.message });
       res.set('X-Cache-Status', 'ERROR');
     }
 
@@ -107,7 +110,7 @@ export function httpCache(options = {}) {
             );
           })
           .catch(err => {
-            console.error('[httpCache] Redis write error:', err.message);
+            logger.error({}, 'Redis write error', { error: err.message });
           });
       }
 
@@ -145,12 +148,12 @@ export async function invalidateCache(pattern) {
     } while (cursor !== 0);
 
     if (deleted > 0) {
-      console.log(`[httpCache] Invalidated ${deleted} cache key(s) matching: ${pattern}`);
+      logger.info({ deleted, pattern }, 'Cache invalidated');
     }
 
     return deleted;
   } catch (err) {
-    console.error('[httpCache] Invalidation error:', err.message);
+    logger.error({}, 'Cache invalidation error', { error: err.message });
     return 0;
   }
 }

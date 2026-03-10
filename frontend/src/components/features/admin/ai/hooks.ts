@@ -161,7 +161,7 @@ export function useProviders() {
         status: string;
         latencyMs: number | null;
         error: string | null;
-      }>(`/providers/${id}/health`, { method: 'POST' });
+      }>(`/providers/${id}/health`, { method: 'PUT' });
       if (result.ok) {
         await fetchProviders();
       }
@@ -227,7 +227,7 @@ export function useModels() {
     setLoading(true);
     setError(null);
     const params = new URLSearchParams();
-    if (providerId) params.set('providerId', providerId);
+    if (providerId) params.set('provider_id', providerId);
     if (enabled !== undefined) params.set('enabled', String(enabled));
     const query = params.toString() ? `?${params}` : '';
 
@@ -400,10 +400,10 @@ export function useUsage() {
       setLoading(true);
       setError(null);
       const params = new URLSearchParams();
-      if (options?.startDate) params.set('startDate', options.startDate);
-      if (options?.endDate) params.set('endDate', options.endDate);
-      if (options?.modelId) params.set('modelId', options.modelId);
-      if (options?.groupBy) params.set('groupBy', options.groupBy);
+      if (options?.startDate) params.set('start_date', options.startDate);
+      if (options?.endDate) params.set('end_date', options.endDate);
+      if (options?.modelId) params.set('model_id', options.modelId);
+      if (options?.groupBy) params.set('group_by', options.groupBy);
       const query = params.toString() ? `?${params}` : '';
 
       const result = await apiFetch<AIUsageData>(`/usage${query}`);

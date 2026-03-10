@@ -1,5 +1,8 @@
 import { config } from '../config.js';
 import { verifyJwt } from '../lib/jwt.js';
+import { createLogger } from '../lib/logger.js';
+
+const logger = createLogger('user-auth');
 
 /**
  * User authentication middleware.
@@ -43,7 +46,7 @@ export function requireUserAuth(req, res, next) {
     if (err.name === 'JsonWebTokenError') {
       return res.status(401).json({ ok: false, error: 'Unauthorized - Invalid token' });
     }
-    console.error('[userAuth] JWT verification error:', err.message);
+    logger.error({}, 'JWT verification error', { error: err.message });
     return res.status(401).json({ ok: false, error: 'Unauthorized' });
   }
 }
@@ -58,7 +61,7 @@ export function requireUserOwnership(paramName = 'userId') {
     }
 
     if (paramUserId && paramUserId !== tokenUserId) {
-      console.warn(`[userAuth] IDOR attempt: token=${tokenUserId}, param=${paramUserId}, path=${req.path}`);
+      logger.warn({ tokenUserId, paramUserId, path: req.path }, 'IDOR attempt');
       return res.status(403).json({ ok: false, error: 'Forbidden - Access denied' });
     }
 

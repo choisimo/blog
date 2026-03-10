@@ -2,6 +2,9 @@ import { config } from '../../config.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
+import { createLogger } from '../../lib/logger.js';
+
+const logger = createLogger('d1-repository');
 
 let _db;
 let _migrationsReady = false;
@@ -134,7 +137,7 @@ export async function testConnection() {
     await queryOne('SELECT 1 as test');
     return true;
   } catch (err) {
-    console.error('DB connection test failed:', err.message);
+    logger.error({}, 'DB connection test failed', { error: err.message });
     return false;
   }
 }

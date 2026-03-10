@@ -33,7 +33,11 @@ const THUMB_SUFFIX = '.thumb.webp';
 const MIN_SIZE_BYTES = 50 * 1024; // 50KB
 
 // Supported image extensions
-const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
+// NOTE: .gif is intentionally excluded — animated GIFs must not be converted to
+// static WebP thumbnails (sharp strips animation without the {animated:true} flag,
+// and even with it the output file is larger than the original GIF in most cases).
+// The frontend renders GIFs directly from the original file via <ClickableImage>.
+const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp'];
 
 async function findImages(dir) {
   const images = [];

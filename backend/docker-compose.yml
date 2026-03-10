@@ -48,6 +48,7 @@ services:
       - SQLITE_PATH=/app/.data/blog.db
       - SQLITE_MIGRATIONS_DIR=/app/migrations
       - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-bloguser}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@postgres:5432/${POSTGRES_DB:-bloganalytics}
     volumes:
       - ../frontend/public:/frontend/public
       - ../.data:/app/.data
@@ -56,6 +57,8 @@ services:
       - blog-network
     depends_on:
       redis:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     healthcheck:
       test: [ "CMD", "wget", "-q", "--spider", "http://127.0.0.1:5080/api/v1/healthz" ]
@@ -167,6 +170,35 @@ services:
     labels:
       - "com.blog.service=chromadb"
       - "com.blog.description=Vector Database for RAG"
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL - Analytics and logging database
+  # REQUIRED: POSTGRES_PASSWORD must be set in .env (no default).
+  #   postgres:16-alpine refuses to start with an empty POSTGRES_PASSWORD.
+  #   If it is unset, both this service and `api` (depends_on: service_healthy)
+  #   will fail to start. Set it in .env before running docker compose up.
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: blog-postgres
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-bloganalytics}
+      - POSTGRES_USER=${POSTGRES_USER:-bloguser}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - blog-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bloguser} -d ${POSTGRES_DB:-bloganalytics}" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    labels:
+      - "com.blog.service=postgres"
+      - "com.blog.description=PostgreSQL for analytics and logs"
 
   # ---------------------------------------------------------------------------
   # Redis - Caching and async task queue
@@ -331,3 +363,5 @@ volumes:
     name: blog-redis-data
   surrealdb-data:
     name: blog-surrealdb-data
+  postgres-data:
+    name: blog-postgres-data

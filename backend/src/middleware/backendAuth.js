@@ -1,5 +1,8 @@
 import crypto from 'crypto';
 import { config } from '../config.js';
+import { createLogger } from '../lib/logger.js';
+
+const logger = createLogger('backend-auth');
 
 /**
  * Backend key validation middleware.
@@ -16,7 +19,7 @@ export function requireBackendKey(req, res, next) {
   const clientKey = req.headers['x-backend-key'];
   
   if (!clientKey) {
-    console.warn(`[backendAuth] Missing X-Backend-Key from ${req.ip} - ${req.method} ${req.path}`);
+    logger.warn({ ip: req.ip, method: req.method, path: req.path }, 'Missing X-Backend-Key');
     return res.status(401).json({ 
       ok: false, 
       error: 'Unauthorized - Missing backend key' 
@@ -24,7 +27,7 @@ export function requireBackendKey(req, res, next) {
   }
 
   if (!timingSafeEqual(clientKey, backendKey)) {
-    console.warn(`[backendAuth] Invalid X-Backend-Key from ${req.ip} - ${req.method} ${req.path}`);
+    logger.warn({ ip: req.ip, method: req.method, path: req.path }, 'Invalid X-Backend-Key');
     return res.status(401).json({ 
       ok: false, 
       error: 'Unauthorized - Invalid backend key' 

@@ -8,6 +8,9 @@ import { config } from '../config.js';
 import requireAdmin from '../middleware/adminAuth.js';
 import { buildFrontmatterMarkdown } from '../lib/markdown.js';
 import { httpCache, invalidateCacheByPrefix } from '../middleware/httpCache.js';
+import { createLogger } from '../lib/logger.js';
+
+const logger = createLogger('posts-route');
 
 const router = Router();
 
@@ -26,7 +29,7 @@ async function fetchRemoteManifest() {
     }
     return await response.json();
   } catch (err) {
-    console.error('[posts] Failed to fetch remote manifest:', err.message);
+    logger.error({}, 'Failed to fetch remote manifest', { error: err.message });
     return { total: 0, items: [], years: [] };
   }
 }
@@ -46,7 +49,7 @@ async function fetchRemotePost(year, slug) {
     }
     return await response.text();
   } catch (err) {
-    console.error(`[posts] Failed to fetch post ${year}/${slug}:`, err.message);
+    logger.error({ year, slug }, 'Failed to fetch post', { error: err.message });
     return null;
   }
 }

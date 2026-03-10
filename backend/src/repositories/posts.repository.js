@@ -5,6 +5,9 @@ import matter from 'gray-matter';
 import slugify from 'slugify';
 import { config } from '../config.js';
 import { buildFrontmatterMarkdown } from '../lib/markdown.js';
+import { createLogger } from '../lib/logger.js';
+
+const logger = createLogger('posts-repository');
 
 let cachedManifest = null;
 let manifestCacheTime = 0;
@@ -29,7 +32,7 @@ export async function fetchRemoteManifest() {
     manifestCacheTime = now;
     return cachedManifest;
   } catch (err) {
-    console.error('[PostsRepo] Failed to fetch remote manifest:', err.message);
+    logger.error({}, 'Failed to fetch remote manifest', { error: err.message });
     return cachedManifest || { total: 0, items: [], years: [] };
   }
 }
@@ -46,7 +49,7 @@ export async function fetchRemotePost(year, slug) {
     }
     return await response.text();
   } catch (err) {
-    console.error(`[PostsRepo] Failed to fetch post ${year}/${slug}:`, err.message);
+    logger.error({ year, slug }, 'Failed to fetch post', { error: err.message });
     return null;
   }
 }

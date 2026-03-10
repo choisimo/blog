@@ -10,6 +10,9 @@
 
 import { createClient } from 'redis';
 import { config } from '../config.js';
+import { createLogger } from './logger.js';
+
+const logger = createLogger('redis-client');
 
 let _client = null;
 let _subscriber = null;
@@ -46,7 +49,7 @@ export async function getRedisClient() {
         socket: {
           reconnectStrategy: (retries) => {
             if (retries > 10) {
-              console.error('[Redis] Max reconnection attempts reached');
+              logger.error({}, 'Max reconnection attempts reached');
               return new Error('Max reconnection attempts reached');
             }
             return Math.min(retries * 100, 3000);
@@ -55,15 +58,15 @@ export async function getRedisClient() {
       });
 
       _client.on('error', (err) => {
-        console.error('[Redis] Client error:', err.message);
+        logger.error({}, 'Client error', { error: err.message });
       });
 
       _client.on('reconnecting', () => {
-        console.log('[Redis] Reconnecting...');
+        logger.info({}, 'Reconnecting...');
       });
 
       await _client.connect();
-      console.log('[Redis] Connected successfully');
+      logger.info({}, 'Connected successfully');
       return _client;
     } finally {
       _isConnecting = false;
@@ -84,11 +87,11 @@ export async function getRedisSubscriber() {
   });
 
   _subscriber.on('error', (err) => {
-    console.error('[Redis:Subscriber] Error:', err.message);
+    logger.error({ subscriber: true }, 'Error', { error: err.message });
   });
 
   await _subscriber.connect();
-  console.log('[Redis:Subscriber] Connected');
+  logger.info({ subscriber: true }, 'Connected');
   return _subscriber;
 }
 
@@ -106,7 +109,7 @@ export async function closeRedis() {
   await Promise.all(promises);
   _client = null;
   _subscriber = null;
-  console.log('[Redis] Connections closed');
+  logger.info({}, 'Connections closed');
 }
 
 export async function isRedisAvailable() {

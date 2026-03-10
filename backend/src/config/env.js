@@ -1,9 +1,12 @@
 import dotenv from 'dotenv';
 import path from 'node:path';
 import { CONSUL, CACHE_TTL } from './constants.js';
+import { createLogger } from '../lib/logger.js';
 
 dotenv.config({ path: path.resolve(process.cwd(), '..', '.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '.env'), override: true });
+
+const logger = createLogger('config');
 
 let consulClient = null;
 let consulCache = new Map();
@@ -21,11 +24,11 @@ export async function initConsul() {
 
     const leader = await consulClient.status.leader();
     if (leader) {
-      console.log(`[config] Consul connected: ${CONSUL.HOST}:${CONSUL.PORT}`);
+      logger.info({ host: CONSUL.HOST, port: CONSUL.PORT }, 'Consul connected');
     }
     return consulClient;
   } catch (err) {
-    console.warn(`[config] Consul unavailable, using environment: ${err.message}`);
+    logger.warn({}, 'Consul unavailable, using environment', { error: err.message });
     return null;
   }
 }
@@ -55,7 +58,7 @@ export async function consulGet(key) {
       return value;
     }
   } catch (err) {
-    console.warn(`[config] Consul get failed for ${key}: ${err.message}`);
+    logger.warn({ key }, 'Consul get failed', { error: err.message });
   }
   return null;
 }

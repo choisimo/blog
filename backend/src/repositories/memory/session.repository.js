@@ -6,6 +6,9 @@
  */
 
 import { SESSION } from '../../config/constants.js';
+import { createLogger } from '../../lib/logger.js';
+
+const logger = createLogger('session-memory');
 
 const MAX_HISTORY_LENGTH = SESSION.MAX_HISTORY;
 const SESSION_TTL = SESSION.TTL;
@@ -147,7 +150,7 @@ class SessionMemoryStore {
     }
 
     if (expiredSessions.length > 0) {
-      console.log(`[SessionMemory] Cleaned up ${expiredSessions.length} expired sessions`);
+      logger.info({ count: expiredSessions.length }, 'Cleaned up expired sessions');
     }
   }
 

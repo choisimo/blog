@@ -7,6 +7,9 @@ import rateLimit from 'express-rate-limit';
 import { config, publicRuntimeConfig, loadAndApplyConsulConfig } from './config.js';
 import { requireBackendKey } from './middleware/backendAuth.js';
 import { httpCache } from './middleware/httpCache.js';
+import { httpRequestDuration, httpRequestsTotal } from './lib/metrics.js';
+import { logger, enablePgLogs } from './lib/logger.js';
+import { runMigrations, isPgConfigured } from './repositories/analytics.repository.js';
 
 import aiRouter from './routes/ai.js';
 import commentsRouter from './routes/comments.js';
@@ -30,24 +33,33 @@ import aiAdminRouter from './routes/aiAdmin.js';
 import agentRouter from './routes/agent.js';
 import notificationsRouter from './routes/notifications.js';
 import debateRouter from './routes/debate.js';
+import metricsRouter from './routes/metrics.js';
+import adminLogsRouter from './routes/adminLogs.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 async function startServer() {
   await loadAndApplyConsulConfig();
+
+  if (isPgConfigured()) {
+    try {
+      await runMigrations();
+      enablePgLogs();
+      logger.info({}, 'PostgreSQL migrations applied');
+    } catch (err) {
+      logger.warn({}, 'PostgreSQL migration failed, continuing without PG', { error: err.message });
+    }
+  }
   
   const app = express();
 
-// trust proxy (for correct IP in rate-limit, etc.)
 app.set('trust proxy', config.trustProxy);
 
-// security headers
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
   })
 );
 
-// CORS
 const corsOptions = {
   origin(origin, callback) {
     if (!origin) return callback(null, true);
@@ -58,27 +70,33 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// logging
 app.use(morgan('combined'));
 
-// Backend key validation (must come after public endpoints like healthz)
-// Routes defined BEFORE this middleware are publicly accessible
+app.use((req, res, next) => {
+  const end = httpRequestDuration.startTimer();
+  res.on('finish', () => {
+    const route = req.route?.path || req.path || 'unknown';
+    const labels = { method: req.method, route, status_code: res.statusCode };
+    end(labels);
+    httpRequestsTotal.inc(labels);
+  });
+  next();
+});
+
 app.get('/api/v1/healthz', (req, res) => {
   res.json({ ok: true, env: config.appEnv, uptime: process.uptime() });
 });
 app.get('/api/v1/public/config', httpCache({ ttl: 300, prefix: 'config' }), (req, res) => {
   res.json({ ok: true, data: publicRuntimeConfig() });
 });
+app.use('/metrics', metricsRouter);
 
-// All routes below require valid X-Backend-Key from Gateway
 app.use('/api/v1/notifications', notificationsRouter);
 app.use(requireBackendKey);
 
-// parsers
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));
 
-// basic rate limit (can be overridden per route if needed)
 const limiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
   max: config.rateLimit.max,
@@ -87,7 +105,6 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// routes
 app.use('/api/v1/ai', aiRouter);
 app.use('/api/v1/comments', commentsRouter);
 app.use('/api/v1/analytics', analyticsRouter);
@@ -107,26 +124,25 @@ app.use('/api/v1/search', searchRouter);
 app.use('/api/v1/admin/config', configRouter);
 app.use('/api/v1/admin/workers', workersRouter);
 app.use('/api/v1/admin/ai', aiAdminRouter);
+app.use('/api/v1/admin', adminLogsRouter);
 app.use('/api/v1/agent', agentRouter);
 
 app.use('/api/v1/debate', debateRouter);
 
-// not found
 app.use(notFoundHandler);
 
-// error handler
 app.use(errorHandler);
 
 const port = config.port;
 const host = config.host;
 const server = app.listen(port, host, () => {
-  console.log(`[api] listening on http://${host}:${port}`);
-  console.log(`[api] features: ai=${config.features.aiEnabled}, rag=${config.features.ragEnabled}, comments=${config.features.commentsEnabled}`);
+  logger.info({ port, host }, `listening on http://${host}:${port}`);
+  logger.info({ features: { ai: config.features.aiEnabled, rag: config.features.ragEnabled, comments: config.features.commentsEnabled } }, 'features');
 });
 initChatWebSocket(server);
 }
 
 startServer().catch(err => {
-  console.error('[api] Failed to start server:', err);
+  logger.error({}, 'Failed to start server', { error: err.message, stack: err.stack });
   process.exit(1);
 });

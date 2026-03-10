@@ -10,6 +10,9 @@ import matter from "gray-matter";
 import { config } from "../config.js";
 import openNotebook from "../services/open-notebook.service.js";
 import { buildLiveContextPrompt } from "../services/live-context.service.js";
+import { createLogger } from "../lib/logger.js";
+
+const logger = createLogger("session");
 
 // ---------------------------------------------------------------------------
 // In-memory state
@@ -388,7 +391,7 @@ export async function buildNotebookContext(query, session) {
 
     return `다음은 사용자 세션 전용 노트북 기반 참고 지식입니다:\n\n${notebookResult.answer}`;
   } catch (err) {
-    console.warn("Open Notebook context build failed:", err?.message || err);
+    logger.warn({}, 'Open Notebook context build failed', { error: err?.message });
     return null;
   }
 }
@@ -417,7 +420,7 @@ export async function reinforceSessionNotebook(
       noteType: "ai",
     });
   } catch (err) {
-    console.warn("Open Notebook reinforcement failed:", err?.message || err);
+    logger.warn({}, 'Open Notebook reinforcement failed', { error: err?.message });
   }
 }
 

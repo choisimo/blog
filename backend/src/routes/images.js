@@ -9,6 +9,9 @@ import requireAdmin from "../middleware/adminAuth.js";
 import { upload as r2Upload, isR2Configured, generateKey } from "../lib/r2.js";
 import { aiService } from "../lib/ai-service.js";
 import { AI_MODELS } from "../config/constants.js";
+import { createLogger } from "../lib/logger.js";
+
+const logger = createLogger('images-route');
 
 const router = Router();
 
@@ -274,7 +277,7 @@ router.post("/chat-upload", upload.single("file"), async (req, res, next) => {
         });
       } catch (err) {
         // Vision analysis failed, but upload succeeded - continue without analysis
-        console.error("Vision analysis failed:", err.message);
+        logger.error({}, 'Vision analysis failed', { error: err.message });
       }
     }
 
@@ -289,7 +292,7 @@ router.post("/chat-upload", upload.single("file"), async (req, res, next) => {
       },
     });
   } catch (err) {
-    console.error("chat-upload error:", err);
+    logger.error({}, 'chat-upload error', { error: err.message });
     return next(err);
   }
 });

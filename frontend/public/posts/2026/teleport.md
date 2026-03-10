@@ -341,11 +341,29 @@ Inactive(file):  333323 kB  ← 메모리 압박 시 드롭 대상
 아래 시뮬레이션에서 참조열과 프레임 수를 바꿔보면, 페이지 교체 알고리즘의 차이를 직관적으로 확인할 수 있습니다.
 
 <iframe
-  src="/posts/2026/teleport-paging-simulation.html"
+  src="/posts/2026/teleport-paging-1.html"
   width="100%"
-  height="900px"
+  height="550px"
+  style="border: none; border-radius: 12px; overflow: hidden; margin-bottom: 16px;"
+  title="Demand Paging Animation"
+  loading="lazy"
+></iframe>
+
+<iframe
+  src="/posts/2026/teleport-paging-2.html"
+  width="100%"
+  height="400px"
+  style="border: none; border-radius: 12px; overflow: hidden; margin-bottom: 16px;"
+  title="Page Fault Dashboard"
+  loading="lazy"
+></iframe>
+
+<iframe
+  src="/posts/2026/teleport-paging-3.html"
+  width="100%"
+  height="500px"
   style="border: none; border-radius: 12px; overflow: hidden;"
-  title="Teleport Paging Simulation"
+  title="Algorithm History tracking"
   loading="lazy"
 ></iframe>
 

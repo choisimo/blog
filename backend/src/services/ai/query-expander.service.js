@@ -19,6 +19,7 @@
 import { getOpenAIClient } from './openai-client.service.js';
 import { config } from '../../config.js';
 import { OPENAI_CLIENT, CACHE_TTL } from '../../config/constants.js';
+import { createLogger } from '../../lib/logger.js';
 
 // ============================================================================
 // Configuration
@@ -36,26 +37,7 @@ const expansionCache = new Map();
 // Logger
 // ============================================================================
 
-const logger = {
-  _format(level, context, message, data = {}) {
-    return JSON.stringify({
-      timestamp: new Date().toISOString(),
-      level,
-      service: 'query-expander',
-      ...context,
-      message,
-      ...data,
-    });
-  },
-  info(ctx, msg, data) { console.log(this._format('info', ctx, msg, data)); },
-  warn(ctx, msg, data) { console.warn(this._format('warn', ctx, msg, data)); },
-  error(ctx, msg, data) { console.error(this._format('error', ctx, msg, data)); },
-  debug(ctx, msg, data) {
-    if (process.env.DEBUG_QUERY_EXPANDER === 'true') {
-      console.debug(this._format('debug', ctx, msg, data));
-    }
-  },
-};
+const logger = createLogger('query-expander');
 
 // ============================================================================
 // Language Detection

@@ -5,6 +5,10 @@
  * Supports Perplexity, Tavily, DuckDuckGo, Brave Search, and custom search endpoints.
  */
 
+import { createLogger } from '../../../lib/logger.js';
+
+const logger = createLogger('web-search');
+
 // Configuration
 const SEARCH_API_URL = process.env.SEARCH_API_URL || 'https://api.duckduckgo.com/';
 const BRAVE_API_KEY = process.env.BRAVE_SEARCH_API_KEY;
@@ -296,7 +300,7 @@ export function createWebSearchTool() {
     async execute(args) {
       const { action, query, url, engine = 'tavily', limit = 5, searchDepth = 'advanced' } = args;
 
-      console.log(`[WebSearch] Action: ${action}, Engine: ${engine}, Query: ${query || url}`);
+      logger.debug({ action, engine, query: query || url }, 'WebSearch execute');
 
       try {
         switch (action) {
@@ -365,7 +369,7 @@ export function createWebSearchTool() {
             };
         }
       } catch (error) {
-        console.error(`[WebSearch] Failed: ${error.message}`);
+        logger.error({ action }, 'WebSearch failed', { error: error.message });
         return {
           success: false,
           action,

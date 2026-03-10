@@ -13,6 +13,9 @@ import crypto from 'crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { getRedisClient } from '../lib/redis-client.js';
+import { createLogger } from '../lib/logger.js';
+
+const logger = createLogger('auth');
 
 const router = Router();
 
@@ -51,7 +54,7 @@ async function addRefreshToken(token) {
     const redis = await getRedisClient();
     await redis.set(`${REDIS_KEY_PREFIX}${token}`, '1', { EX: REFRESH_TOKEN_TTL });
   } catch (err) {
-    console.warn('[auth] Redis unavailable, falling back to in-memory store for refresh token:', err.message);
+    logger.warn({}, 'Redis unavailable, falling back to in-memory store for refresh token', { error: err.message });
     _refreshTokenFallback.add(token);
   }
 }
@@ -62,7 +65,7 @@ async function hasRefreshToken(token) {
     const val = await redis.get(`${REDIS_KEY_PREFIX}${token}`);
     return val !== null;
   } catch (err) {
-    console.warn('[auth] Redis unavailable, checking in-memory fallback for refresh token:', err.message);
+    logger.warn({}, 'Redis unavailable, checking in-memory fallback for refresh token', { error: err.message });
     return _refreshTokenFallback.has(token);
   }
 }
@@ -72,7 +75,7 @@ async function removeRefreshToken(token) {
     const redis = await getRedisClient();
     await redis.del(`${REDIS_KEY_PREFIX}${token}`);
   } catch (err) {
-    console.warn('[auth] Redis unavailable, removing from in-memory fallback for refresh token:', err.message);
+    logger.warn({}, 'Redis unavailable, removing from in-memory fallback for refresh token', { error: err.message });
     _refreshTokenFallback.delete(token);
   }
 }
@@ -103,7 +106,7 @@ function issueTokens(email) {
     { sub: 'admin', role: 'admin', username: 'admin', email, emailVerified: true, type: 'refresh' },
     { expiresIn: '7d' }
   );
-  addRefreshToken(refreshToken).catch(err => console.error('[auth] Failed to store refresh token:', err.message));
+  addRefreshToken(refreshToken).catch(err => logger.error({}, 'Failed to store refresh token', { error: err.message }));
   return { accessToken, refreshToken };
 }
 
@@ -181,7 +184,7 @@ router.get('/totp/setup', async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('[auth] totp/setup error:', err);
+    logger.error({}, 'totp/setup error', { error: err.message });
     return res.status(500).json({ ok: false, error: 'Failed to generate TOTP setup' });
   }
 });
@@ -209,7 +212,7 @@ router.post('/totp/setup/verify', async (req, res) => {
     const envPath = path.join(config.content.repoRoot, 'backend', '.env');
     await upsertEnvVar(envPath, 'TOTP_SECRET', totpSecret);
   } catch (err) {
-    console.error('[auth] Failed to persist TOTP_SECRET to .env:', err);
+    logger.error({}, 'Failed to persist TOTP_SECRET to .env', { error: err.message });
   }
 
   return res.json({ ok: true, data: { setupComplete: true } });
@@ -346,7 +349,7 @@ router.get('/oauth/github/callback', async (req, res) => {
     const params = new URLSearchParams({ token: accessToken, refreshToken });
     return res.redirect(302, `${frontendBase}/admin/auth/callback#${params.toString()}`);
   } catch (err) {
-    console.error('[auth] github/callback error:', err);
+    logger.error({}, 'github/callback error', { error: err.message });
     return res.redirect(302, `${frontendBase}/admin/auth/callback#error=server_error`);
   }
 });
@@ -438,7 +441,7 @@ router.get('/oauth/google/callback', async (req, res) => {
     const params = new URLSearchParams({ token: accessToken, refreshToken });
     return res.redirect(302, `${frontendBase}/admin/auth/callback#${params.toString()}`);
   } catch (err) {
-    console.error('[auth] google/callback error:', err);
+    logger.error({}, 'google/callback error', { error: err.message });
     return res.redirect(302, `${frontendBase}/admin/auth/callback#error=server_error`);
   }
 });

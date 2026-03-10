@@ -9,6 +9,9 @@ import { aiService } from "../lib/ai-service.js";
 import { getRedisClient, getRedisSubscriber } from "../lib/redis-client.js";
 import { AI_TEMPERATURES } from "../config/constants.js";
 import { appendLiveContextMessage } from "../services/live-context.service.js";
+import { createLogger } from "../lib/logger.js";
+
+const logger = createLogger('live-chat');
 
 // ---------------------------------------------------------------------------
 // In-memory state
@@ -249,7 +252,7 @@ export async function touchRedisPresence(room, sessionId) {
     await redis.hSet(key, sessionId, ts);
     await redis.expire(key, LIVE_REDIS_PRESENCE_TTL_SEC);
   } catch (err) {
-    console.warn('[chat] Redis hSet/expire failed:', err?.message || err);
+    logger.warn({}, 'Redis hSet/expire failed', { error: err?.message });
     // ignore redis presence failures
   }
 }
@@ -261,7 +264,7 @@ export async function removeRedisPresence(room, sessionId) {
     const key = getPresenceKey(room);
     await redis.hDel(key, sessionId);
   } catch (err) {
-    console.warn('[chat] Redis hDel failed:', err?.message || err);
+    logger.warn({}, 'Redis hDel failed', { error: err?.message });
     // ignore redis presence failures
   }
 }
@@ -335,19 +338,16 @@ export async function ensureLiveRedisBridge() {
 
         broadcastRoom(room, payload);
       } catch (err) {
-        console.warn('[chat] Redis payload parse failed:', err?.message || err);
+        logger.warn({}, 'Redis payload parse failed', { error: err?.message });
         // ignore malformed redis payload
       }
     });
 
     liveRedisBridgeReady = true;
-    console.log("[LiveChat] Redis bridge enabled");
+    logger.info({}, 'Redis bridge enabled');
   } catch (err) {
     liveRedisBridgeFailed = true;
-    console.warn(
-      "[LiveChat] Redis bridge unavailable. Using local-only live fan-out.",
-    );
-    console.warn("[LiveChat] Bridge error:", err?.message || err);
+    logger.warn({}, 'Redis bridge unavailable. Using local-only live fan-out.', { error: err?.message });
   }
 }
 
@@ -365,10 +365,7 @@ export async function publishLiveEvent(room, payload) {
       }),
     );
   } catch (err) {
-    console.warn(
-      "[LiveChat] Failed to publish redis live event:",
-      err?.message || err,
-    );
+    logger.warn({}, 'Failed to publish redis live event', { error: err?.message });
   }
 }
 
@@ -565,7 +562,7 @@ export function scheduleAutoRoomReply({
         message: "Auto room reply skipped due to temporary AI error",
         room,
       });
-      console.warn("Auto room reply failed:", err?.message || err);
+      logger.warn({ room }, 'Auto room reply failed', { error: err?.message });
     }
   }, jitterMs);
 

@@ -20,6 +20,9 @@
  */
 
 import { isRedisAvailable, getRedisClient } from '../../lib/redis-client.js';
+import { createLogger } from '../../lib/logger.js';
+
+const logger = createLogger('chat-session-repo');
 
 // Redis key prefixes
 const REDIS_SESSION_PREFIX = 'chat:session:';
@@ -120,7 +123,7 @@ export async function getChatSession(sessionId) {
       const data = await client.get(key);
       return deserializeSession(data);
     } catch (err) {
-      console.warn('[ChatSessionRepo] Redis get failed, falling back to memory:', err.message);
+      logger.warn({}, 'Redis get failed, falling back to memory', { error: err.message });
     }
   }
 
@@ -159,7 +162,7 @@ export async function setChatSession(sessionId, sessionData) {
 
       return;
     } catch (err) {
-      console.warn('[ChatSessionRepo] Redis set failed, falling back to memory:', err.message);
+      logger.warn({}, 'Redis set failed, falling back to memory', { error: err.message });
     }
   }
 
@@ -212,7 +215,7 @@ export async function updateChatSession(sessionId, updates) {
 
       return updated;
     } catch (err) {
-      console.warn('[ChatSessionRepo] Redis update failed, falling back to memory:', err.message);
+      logger.warn({}, 'Redis update failed, falling back to memory', { error: err.message });
     }
   }
 
@@ -249,7 +252,7 @@ export async function deleteChatSession(sessionId) {
 
       return deleted > 0;
     } catch (err) {
-      console.warn('[ChatSessionRepo] Redis delete failed, falling back to memory:', err.message);
+      logger.warn({}, 'Redis delete failed, falling back to memory', { error: err.message });
     }
   }
 
@@ -287,7 +290,7 @@ export async function getChatSessionsByUser(userId) {
 
       return sessions;
     } catch (err) {
-      console.warn('[ChatSessionRepo] Redis getChatSessionsByUser failed, falling back to memory:', err.message);
+      logger.warn({}, 'Redis getChatSessionsByUser failed, falling back to memory', { error: err.message });
     }
   }
 

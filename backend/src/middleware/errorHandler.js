@@ -10,8 +10,12 @@
  * @module middleware/errorHandler
  */
 
+import { randomBytes } from 'node:crypto';
 import { ZodError } from 'zod';
 import { SERVER } from '../config/constants.js';
+import { createLogger } from '../lib/logger.js';
+
+const logger = createLogger('error-handler');
 
 // ============================================================================
 // Error Classes
@@ -138,6 +142,10 @@ export class GatewayTimeoutError extends AppError {
 
 const isProduction = () => SERVER.ENV === 'production';
 
+function generateErrorId() {
+  return `err_${randomBytes(4).toString('hex')}`;
+}
+
 /**
  * Format Zod validation errors into a structured response
  */
@@ -247,26 +255,25 @@ export function errorHandler(err, req, res, next) {
     return next(err);
   }
 
+  const errorId = generateErrorId();
   const { statusCode, body } = getErrorResponse(err);
 
   // Log based on severity
   if (statusCode >= 500) {
-    console.error(`[error] ${statusCode} ${req.method} ${req.path}`, {
+    logger.error({ method: req.method, path: req.path, errorId, code: body.code }, `${statusCode} ${req.method} ${req.path}`, {
       error: err.message,
       stack: isProduction() ? undefined : err.stack,
-      code: body.code,
     });
   } else if (statusCode >= 400) {
-    console.warn(`[warn] ${statusCode} ${req.method} ${req.path}`, {
+    logger.warn({ method: req.method, path: req.path, errorId, code: body.code }, `${statusCode} ${req.method} ${req.path}`, {
       error: err.message,
-      code: body.code,
     });
   }
 
   // Send structured response
   res.status(statusCode).json({
     ok: false,
-    error: body,
+    error: { ...body, errorId },
   });
 }
 

@@ -6,6 +6,9 @@
  */
 
 import { config } from '../../../config.js';
+import { createLogger } from '../../../lib/logger.js';
+
+const logger = createLogger('code-execution');
 
 const getTerminalServerUrl = () => config.services?.terminalServerUrl || process.env.TERMINAL_SERVER_URL || 'http://terminal-server:8080';
 const EXECUTION_TIMEOUT = parseInt(process.env.CODE_EXEC_TIMEOUT || '30000', 10);
@@ -129,7 +132,7 @@ export function createCodeExecutionTool() {
         return { success: false, error: 'code is required' };
       }
 
-      console.log(`[CodeExec] Executing ${language} code (${code.length} chars)`);
+      logger.debug({ language, chars: code.length }, 'Executing code');
 
       try {
         let result;
@@ -151,7 +154,7 @@ export function createCodeExecutionTool() {
             };
         }
 
-        console.log(`[CodeExec] Execution completed: ${result.success ? 'success' : 'failed'}`);
+        logger.debug({ language, success: result.success !== false }, 'Code execution completed');
 
         return {
           success: result.success !== false,
@@ -161,7 +164,7 @@ export function createCodeExecutionTool() {
           error: result.error,
         };
       } catch (error) {
-        console.error(`[CodeExec] Failed: ${error.message}`);
+        logger.error({ language }, 'Code execution failed', { error: error.message });
         return {
           success: false,
           language,

@@ -10,6 +10,9 @@
 import { config } from '../../../config.js';
 import { openaiEmbeddings } from '../../ai/openai-client.service.js';
 import { expandQuery, getCombinedQueries } from '../../ai/query-expander.service.js';
+import { createLogger } from '../../../lib/logger.js';
+
+const logger = createLogger('rag-search');
 
 const getChromaUrl = () => config.rag?.chromaUrl || process.env.CHROMA_URL || 'http://chromadb:8000';
 const getEmbeddingUrl = () => config.rag?.embeddingUrl
@@ -77,7 +80,7 @@ async function generateEmbeddings(text) {
     });
     return result.embeddings[0];
   } catch (error) {
-    console.error('[RAGSearch] Embedding generation failed:', error.message);
+    logger.error({}, 'Embedding generation failed', { error: error.message });
     throw error;
   }
 }
@@ -120,7 +123,7 @@ async function searchWithExpansion(query, options = {}) {
 
   const collectionUUID = await getCollectionUUID(collection);
   if (!collectionUUID) {
-    console.warn(`[RAGSearch] Collection not found: ${collection}`);
+    logger.warn({ collection }, 'Collection not found');
     return { results: [], expansion: null };
   }
 
@@ -131,9 +134,9 @@ async function searchWithExpansion(query, options = {}) {
     try {
       expansion = await expandQuery(query, { timeout: 3000 });
       queriesToSearch = getCombinedQueries(expansion, 3);
-      console.log(`[RAGSearch] Expanded "${query}" to ${queriesToSearch.length} queries`);
+      logger.debug({ query, count: queriesToSearch.length }, 'Query expanded');
     } catch (err) {
-      console.warn('[RAGSearch] Query expansion failed:', err.message);
+      logger.warn({}, 'Query expansion failed', { error: err.message });
     }
   }
 
@@ -164,7 +167,7 @@ async function searchWithExpansion(query, options = {}) {
         rankMap.get(docId).ranks.push(rank + 1);
       }
     } catch (err) {
-      console.warn(`[RAGSearch] Search failed for "${q}":`, err.message);
+      logger.warn({ query: q }, 'Search failed for query', { error: err.message });
     }
   }
 
@@ -218,7 +221,7 @@ export function createRAGSearchTool() {
     async execute(args) {
       const { query, collection, limit, category, tags, expand = true } = args;
 
-      console.log(`[RAGSearch] Searching for: "${query}" (expand: ${expand})`);
+      logger.debug({ query, expand }, 'Searching');
 
       try {
         const where = {};
@@ -236,7 +239,7 @@ export function createRAGSearchTool() {
           expand,
         });
 
-        console.log(`[RAGSearch] Found ${results.length} results`);
+        logger.debug({ count: results.length }, 'Search results found');
 
         const response = {
           success: true,
@@ -262,7 +265,7 @@ export function createRAGSearchTool() {
 
         return response;
       } catch (error) {
-        console.error('[RAGSearch] Search failed:', error.message);
+        logger.error({}, 'Search failed', { error: error.message });
         return {
           success: false,
           error: error.message,

@@ -15,6 +15,9 @@ import { createBlogOpsTool } from './blog-ops.tool.js';
 import { createMCPClientTool } from './mcp-client.tool.js';
 import { createWebSearchTool } from './web-search.tool.js';
 import { createCodeExecutionTool } from './code-execution.tool.js';
+import { createLogger } from '../../../lib/logger.js';
+
+const logger = createLogger('tool-registry');
 
 export class ToolRegistry {
   constructor() {
@@ -44,11 +47,11 @@ export class ToolRegistry {
         this.register(mcpTool);
       }
     } catch (error) {
-      console.warn('[ToolRegistry] MCP tool initialization failed:', error.message);
+      logger.warn({}, 'MCP tool initialization failed', { error: error.message });
     }
 
     this._initialized = true;
-    console.log(`[ToolRegistry] Initialized with ${this.tools.size} tools`);
+    logger.info({ count: this.tools.size }, 'Tool registry initialized');
   }
 
   register(tool) {
@@ -57,7 +60,7 @@ export class ToolRegistry {
     }
 
     this.tools.set(tool.name, tool);
-    console.log(`[ToolRegistry] Registered tool: ${tool.name}`);
+    logger.debug({ tool: tool.name }, 'Tool registered');
   }
 
   unregister(name) {
@@ -112,7 +115,7 @@ export function getToolRegistry() {
   if (!_registry) {
     _registry = new ToolRegistry();
     _registry.initialize().catch(err => {
-      console.error('[ToolRegistry] Initialization error:', err);
+      logger.error({}, 'Tool registry initialization error', { error: err.message });
     });
   }
   return _registry;

@@ -42,7 +42,7 @@ export async function setCorsHeaders(c: Context, origin?: string): Promise<void>
   }
 
   c.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Setup-Token');
   c.header('Access-Control-Max-Age', '86400');
 }
 
@@ -55,7 +55,7 @@ export async function getCorsHeadersForRequest(
 
   const headers: Record<string, string> = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, X-API-Key',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, X-API-Key, Setup-Token',
     'Access-Control-Max-Age': '86400',
   };
 

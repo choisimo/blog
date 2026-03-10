@@ -1,5 +1,8 @@
 import { config } from '../config.js';
 import { openaiEmbeddings } from './ai/openai-client.service.js';
+import { createLogger } from '../lib/logger.js';
+
+const logger = createLogger('chat-service');
 
 const CHROMA_TENANT = 'default_tenant';
 const CHROMA_DATABASE = 'default_database';
@@ -108,7 +111,7 @@ export async function performRAGSearch(query, topK = 5) {
     
     return { context, sources };
   } catch (err) {
-    console.warn('RAG search failed:', err.message);
+    logger.warn({}, 'RAG search failed', { error: err.message });
     return { context: null, sources: [] };
   }
 }

@@ -11,6 +11,7 @@ export type Env = {
   PERPLEXITY_API_KEY?: string;
   // OAuth2 + TOTP Admin Auth
   ADMIN_ALLOWED_EMAILS?: string; // Comma-separated list of allowed admin emails
+  ADMIN_SETUP_TOKEN?: string; // One-time token required for first-time TOTP provisioning
   GITHUB_CLIENT_ID?: string;
   GITHUB_CLIENT_SECRET?: string;
   GOOGLE_CLIENT_ID?: string;

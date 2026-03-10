@@ -7,6 +7,9 @@
 
 import { query, execute, isD1Configured } from '../base/d1.repository.js';
 import { DB_TABLES, MEMORY } from '../../config/constants.js';
+import { createLogger } from '../../lib/logger.js';
+
+const logger = createLogger('persistent-memory');
 
 const TABLE_NAME = DB_TABLES.MEMORIES;
 const PREFERENCES_TABLE = DB_TABLES.PREFERENCES;
@@ -48,7 +51,7 @@ class PersistentMemoryStore {
     try {
       const isAvailable = await this._isD1Available();
       if (!isAvailable) {
-        console.warn('[PersistentMemory] DB not available, using fallback');
+        logger.warn({}, 'DB not available, using fallback');
         return this._fallbackSave(memory);
       }
 
@@ -66,7 +69,7 @@ class PersistentMemoryStore {
 
       return { id, ...memory };
     } catch (error) {
-      console.error('[PersistentMemory] Save failed:', error.message);
+      logger.error({}, 'Save failed', { error: error.message });
       return this._fallbackSave(memory);
     }
   }
@@ -107,7 +110,7 @@ class PersistentMemoryStore {
         createdAt: row.created_at,
       }));
     } catch (error) {
-      console.error('[PersistentMemory] Get failed:', error.message);
+      logger.error({}, 'Get failed', { error: error.message });
       return this._fallbackGet(sessionId, options);
     }
   }
@@ -148,7 +151,7 @@ class PersistentMemoryStore {
         createdAt: row.created_at,
       }));
     } catch (error) {
-      console.error('[PersistentMemory] Search failed:', error.message);
+      logger.error({}, 'Search failed', { error: error.message });
       return [];
     }
   }
@@ -164,7 +167,7 @@ class PersistentMemoryStore {
 
       await execute(`DELETE FROM ${TABLE_NAME} WHERE id = ?`, id);
     } catch (error) {
-      console.error('[PersistentMemory] Delete failed:', error.message);
+      logger.error({}, 'Delete failed', { error: error.message });
     }
   }
 
@@ -189,7 +192,7 @@ class PersistentMemoryStore {
       }
       return {};
     } catch (error) {
-      console.error('[PersistentMemory] Get preferences failed:', error.message);
+      logger.error({}, 'Get preferences failed', { error: error.message });
       return {};
     }
   }
@@ -217,7 +220,7 @@ class PersistentMemoryStore {
         JSON.stringify(preferences)
       );
     } catch (error) {
-      console.error('[PersistentMemory] Save preferences failed:', error.message);
+      logger.error({}, 'Save preferences failed', { error: error.message });
       this._fallbackPreferences.set(sessionId, preferences);
     }
   }
@@ -238,7 +241,7 @@ class PersistentMemoryStore {
       await execute(`DELETE FROM ${TABLE_NAME} WHERE session_id = ?`, sessionId);
       await execute(`DELETE FROM ${PREFERENCES_TABLE} WHERE session_id = ?`, sessionId);
     } catch (error) {
-      console.error('[PersistentMemory] Clear failed:', error.message);
+      logger.error({}, 'Clear failed', { error: error.message });
     }
   }
 

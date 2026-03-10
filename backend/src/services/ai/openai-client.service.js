@@ -35,6 +35,7 @@ import {
   CIRCUIT_BREAKER,
   OPENAI_CLIENT,
 } from "../../config/constants.js";
+import { createLogger } from "../../lib/logger.js";
 
 // ============================================================================
 // Configuration (from config.js which supports Consul KV with env fallback)
@@ -75,32 +76,7 @@ const CIRCUIT_BREAKER_RESET_TIME = CIRCUIT_BREAKER.RESET_TIME; // 30 seconds
 // Logger
 // ============================================================================
 
-const logger = {
-  _format(level, context, message, data = {}) {
-    return JSON.stringify({
-      timestamp: new Date().toISOString(),
-      level,
-      service: "openai-compat-client",
-      ...context,
-      message,
-      ...data,
-    });
-  },
-  info(ctx, msg, data) {
-    console.log(this._format("info", ctx, msg, data));
-  },
-  warn(ctx, msg, data) {
-    console.warn(this._format("warn", ctx, msg, data));
-  },
-  error(ctx, msg, data) {
-    console.error(this._format("error", ctx, msg, data));
-  },
-  debug(ctx, msg, data) {
-    if (process.env.DEBUG_OPENAI === "true") {
-      console.debug(this._format("debug", ctx, msg, data));
-    }
-  },
-};
+const logger = createLogger('openai-compat-client');
 
 // ============================================================================
 // OpenAI Compatible Client Class

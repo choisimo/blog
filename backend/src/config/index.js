@@ -2,6 +2,9 @@ import path from 'node:path';
 import { configSchema } from './schema.js';
 import { loadConsulConfig, consulGet } from './env.js';
 import { CONSUL } from './constants.js';
+import { createLogger } from '../lib/logger.js';
+
+const logger = createLogger('config');
 
 export * from './constants.js';
 
@@ -244,7 +247,7 @@ export const config = {
 
 export async function loadAndApplyConsulConfig() {
   if (!CONSUL.ENABLED) {
-    console.log('[config] Consul disabled, using environment variables');
+    logger.info({}, 'Consul disabled, using environment variables');
     return config;
   }
 
@@ -263,10 +266,10 @@ export async function loadAndApplyConsulConfig() {
       features: asyncConfig.features,
     });
 
-    console.log('[config] Consul config applied successfully');
+    logger.info({}, 'Consul config applied successfully');
     return config;
   } catch (err) {
-    console.warn(`[config] Failed to apply Consul config: ${err.message}`);
+    logger.warn({}, 'Failed to apply Consul config', { error: err.message });
     return config;
   }
 }

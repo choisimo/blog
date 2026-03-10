@@ -36,81 +36,56 @@ import {
   TIMEOUTS,
   FALLBACK_DATA,
 } from "../../config/constants.js";
+import { createLogger } from "../../lib/logger.js";
+
+const logger = createLogger('ai-service');
 
 let getOpenAIClient, OpenAICompatClient;
 try {
   ({ getOpenAIClient, default: OpenAICompatClient } =
     await import("./openai-client.service.js"));
 } catch (err) {
-  console.error(
-    "[AIService] Failed to import openai-client.service:",
-    err.message,
-  );
+  logger.error({}, 'Failed to import openai-client.service', { error: err.message });
   getOpenAIClient = null;
   OpenAICompatClient = null;
 }
 
-const logger = {
-  _format(level, context, message, data = {}) {
-    return JSON.stringify({
-      timestamp: new Date().toISOString(),
-      level,
-      service: "ai-service",
-      ...context,
-      message,
-      ...data,
-    });
-  },
-  info(ctx, msg, data) {
-    console.log(this._format("info", ctx, msg, data));
-  },
-  warn(ctx, msg, data) {
-    console.warn(this._format("warn", ctx, msg, data));
-  },
-  error(ctx, msg, data) {
-    console.error(this._format("error", ctx, msg, data));
-  },
-  debug(ctx, msg, data) {
-    if (process.env.DEBUG_AI === "true") {
-      console.debug(this._format("debug", ctx, msg, data));
-    }
-  },
-};
-
 export class AIService {
   constructor() {
     this._openaiClient = null;
-    this._useAsyncQueue = process.env.AI_ASYNC_MODE === "true";
-    this._redisChecked = false;
+    this._useAsyncQueue = process.env.AI_ASYNC_MODE === 'true';
+    this._redisCheckedAt = 0;
     this._redisAvailable = false;
+    this._redisCheckTtlMs = parseInt(process.env.AI_REDIS_CHECK_TTL_MS || '30000', 10);
 
     if (!getOpenAIClient) {
       throw new Error(
-        "OpenAI client not available. Check openai-client.service.js import.",
+        'OpenAI client not available. Check openai-client.service.js import.',
       );
     }
 
     logger.info(
-      { operation: "init" },
+      { operation: 'init' },
       `AIService initialized (async: ${this._useAsyncQueue})`,
     );
   }
 
   async _checkRedisAvailable() {
-    if (this._redisChecked) {
+    const now = Date.now();
+    if (now - this._redisCheckedAt < this._redisCheckTtlMs) {
       return this._redisAvailable;
     }
 
     try {
-      const { isRedisAvailable } = await import("../../lib/redis-client.js");
+      const { isRedisAvailable } = await import('../../lib/redis-client.js');
       this._redisAvailable = await isRedisAvailable();
     } catch {
       this._redisAvailable = false;
     }
 
-    this._redisChecked = true;
+    this._redisCheckedAt = now;
     logger.debug(
-      { operation: "redis-check" },
+      { operation: 'redis-check' },
       `Redis availability: ${this._redisAvailable}`,
     );
     return this._redisAvailable;

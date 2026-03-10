@@ -1,6 +1,9 @@
 import { config } from '../../config.js';
 import { openaiEmbeddings } from '../../lib/openai-compat-client.js';
 import { CHROMA, AI_MODELS, MEMORY, FALLBACK_DATA } from '../../config/constants.js';
+import { createLogger } from '../../lib/logger.js';
+
+const logger = createLogger('vector-memory');
 
 const getChromaUrl = () => config.rag?.chromaUrl || process.env.CHROMA_URL || CHROMA.URL;
 const getEmbeddingUrl = () => config.rag?.embeddingUrl
@@ -25,7 +28,7 @@ async function generateEmbeddings(text) {
     });
     return result.embeddings[0];
   } catch (error) {
-    console.error('[VectorMemory] Embedding generation failed:', error.message);
+    logger.error({}, 'Embedding generation failed', { error: error.message });
     return null;
   }
 }
@@ -60,7 +63,7 @@ class VectorMemoryStore {
       this._initialized = true;
       return true;
     } catch (error) {
-      console.warn('[VectorMemory] ChromaDB initialization failed:', error.message);
+      logger.warn({}, 'ChromaDB initialization failed', { error: error.message });
       return false;
     }
   }
@@ -69,7 +72,7 @@ class VectorMemoryStore {
     const { content, sessionId, type = MEMORY.CONVERSATION_TYPE, metadata = {} } = memory;
 
     if (!content) {
-      console.warn('[VectorMemory] Empty content, skipping');
+      logger.warn({}, 'Empty content, skipping');
       return null;
     }
 
@@ -108,7 +111,7 @@ class VectorMemoryStore {
 
       return { id, content, sessionId, type };
     } catch (error) {
-      console.error('[VectorMemory] Add failed:', error.message);
+      logger.error({}, 'Add failed', { error: error.message });
       return this._fallbackAdd(memory);
     }
   }
@@ -166,7 +169,7 @@ class VectorMemoryStore {
 
       return results;
     } catch (error) {
-      console.error('[VectorMemory] Search failed:', error.message);
+      logger.error({}, 'Search failed', { error: error.message });
       return this._fallbackSearch(query, options);
     }
   }
@@ -189,7 +192,7 @@ class VectorMemoryStore {
 
       this._fallbackStore.delete(sessionId);
     } catch (error) {
-      console.error('[VectorMemory] Delete failed:', error.message);
+      logger.error({}, 'Delete failed', { error: error.message });
     }
   }
 

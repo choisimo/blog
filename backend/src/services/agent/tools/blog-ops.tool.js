@@ -6,6 +6,9 @@
  */
 
 import { config } from '../../../config.js';
+import { createLogger } from '../../../lib/logger.js';
+
+const logger = createLogger('blog-ops');
 
 const getApiBaseUrl = () => config.services?.backendUrl || process.env.INTERNAL_API_URL || `http://localhost:${config.port || 5080}`;
 
@@ -100,7 +103,7 @@ export function createBlogOpsTool() {
     async execute(args) {
       const { operation, slug, query, category, tags, limit, offset, content, title } = args;
 
-      console.log(`[BlogOps] Executing operation: ${operation}`);
+      logger.debug({ operation }, 'BlogOps execute');
 
       try {
         switch (operation) {
@@ -242,7 +245,7 @@ export function createBlogOpsTool() {
             };
         }
       } catch (error) {
-        console.error(`[BlogOps] Operation failed: ${error.message}`);
+        logger.error({ operation }, 'BlogOps operation failed', { error: error.message });
         return {
           success: false,
           operation,

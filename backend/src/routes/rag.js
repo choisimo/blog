@@ -22,6 +22,9 @@ import { requireFeature } from '../middleware/featureFlags.js';
 import { expandQuery, getCombinedQueries } from '../lib/query-expander.js';
 import { getOpenAIEmbeddingClient, openaiEmbeddings } from '../lib/openai-compat-client.js';
 import openNotebook from '../services/open-notebook.service.js';
+import { createLogger } from '../lib/logger.js';
+
+const logger = createLogger('rag');
 
 const router = express.Router();
 
@@ -313,7 +316,7 @@ router.post('/search', async (req, res) => {
         expansion = await expandQuery(query, { timeout: 4000 });
         queriesToSearch = getCombinedQueries(expansion, 4);
       } catch (expandErr) {
-        console.warn('Query expansion failed, using original query:', expandErr.message);
+        logger.warn({}, 'Query expansion failed, using original query', { error: expandErr.message });
       }
     }
 
@@ -337,7 +340,7 @@ router.post('/search', async (req, res) => {
         const chromaResult = await queryChroma(embedding, fetchPerQuery);
         return { queryIndex, chromaResult };
       } catch (err) {
-        console.warn(`Search failed for query "${q}":`, err.message);
+        logger.warn({ query: q }, 'Search failed for query', { error: err.message });
         return { queryIndex, chromaResult: null };
       }
     });
@@ -393,7 +396,7 @@ router.post('/search', async (req, res) => {
 
     res.json({ ok: true, data: responseData });
   } catch (err) {
-    console.error('RAG search error:', err.message);
+    logger.error({}, 'RAG search error', { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -430,7 +433,7 @@ router.post('/embed', async (req, res) => {
 
     res.json({ ok: true, data: { embeddings } });
   } catch (err) {
-    console.error('RAG embed error:', err.message);
+    logger.error({}, 'RAG embed error', { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -545,7 +548,7 @@ router.post('/memories/upsert', async (req, res) => {
 
     res.json({ ok: true, data: { upserted: ids.length } });
   } catch (err) {
-    console.error('Memory upsert error:', err.message);
+    logger.error({}, 'Memory upsert error', { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -621,7 +624,7 @@ router.post('/memories/search', async (req, res) => {
 
     res.json({ ok: true, data: { results } });
   } catch (err) {
-    console.error('Memory search error:', err.message);
+    logger.error({}, 'Memory search error', { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -650,7 +653,7 @@ router.delete('/memories/:userId/:memoryId', async (req, res) => {
 
     res.json({ ok: true, data: { deleted: true } });
   } catch (err) {
-    console.error('Memory delete error:', err.message);
+    logger.error({}, 'Memory delete error', { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -678,7 +681,7 @@ router.post('/memories/batch-delete', async (req, res) => {
 
     res.json({ ok: true, data: { deleted: memoryIds.length } });
   } catch (err) {
-    console.error('Memory batch-delete error:', err.message);
+    logger.error({}, 'Memory batch-delete error', { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -738,7 +741,7 @@ router.post('/index', async (req, res) => {
 
     res.json({ ok: true, data: { indexed: ids.length, collection: collectionName } });
   } catch (err) {
-    console.error('RAG index error:', err.message);
+    logger.error({}, 'RAG index error', { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -767,7 +770,7 @@ router.delete('/index/:documentId', async (req, res) => {
 
     res.json({ ok: true, data: { deleted: true } });
   } catch (err) {
-    console.error('RAG delete error:', err.message);
+    logger.error({}, 'RAG delete error', { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -826,7 +829,7 @@ router.get('/status', async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('RAG status error:', err.message);
+    logger.error({}, 'RAG status error', { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -860,7 +863,7 @@ router.get('/collections', async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('RAG collections error:', err.message);
+    logger.error({}, 'RAG collections error', { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -881,7 +884,7 @@ router.post('/notebook/search', async (req, res) => {
 
     res.json({ ok: true, data: { results } });
   } catch (err) {
-    console.error('Open Notebook search error:', err.message);
+    logger.error({}, 'Open Notebook search error', { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -902,7 +905,7 @@ router.post('/notebook/ask', async (req, res) => {
 
     res.json({ ok: true, data: result });
   } catch (err) {
-    console.error('Open Notebook ask error:', err.message);
+    logger.error({}, 'Open Notebook ask error', { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -917,7 +920,7 @@ router.get('/notebook/notebooks', async (req, res) => {
 
     res.json({ ok: true, data: { notebooks } });
   } catch (err) {
-    console.error('Open Notebook list error:', err.message);
+    logger.error({}, 'Open Notebook list error', { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });

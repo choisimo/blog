@@ -20,8 +20,10 @@ import {
   CONTEXT,
   AI_TEMPERATURES,
 } from "../config/constants.js";
+import { createLogger } from "../lib/logger.js";
 
 const router = Router();
+const logger = createLogger("ai");
 
 router.use(requireFeature("ai"));
 
@@ -60,7 +62,7 @@ async function searchBlogPosts(query, nResults = 5) {
       score: r.score,
     }));
   } catch (err) {
-    console.warn("RAG search error:", err.message);
+    logger.warn({}, 'RAG search error', { error: err.message });
     return null;
   }
 }
@@ -172,10 +174,7 @@ router.get("/models", async (req, res) => {
         });
       }
     } catch (dbErr) {
-      console.warn(
-        "DB model lookup failed, using fallback list:",
-        dbErr.message,
-      );
+      logger.warn({}, 'DB model lookup failed, using fallback list', { error: dbErr.message });
     }
   }
 
@@ -323,7 +322,7 @@ router.post("/auto-chat", rateLimitMiddleware(), async (req, res, next) => {
       },
     });
   } catch (err) {
-    console.error("auto-chat error:", err);
+    logger.error({}, 'auto-chat error', { error: err.message });
     return next(err);
   }
 });
@@ -613,7 +612,7 @@ router.post(
           },
         });
       } catch (err) {
-        console.error("Vision analysis failed:", err.message);
+        logger.error({}, 'Vision analysis failed', { error: err.message });
         return res.status(502).json({
           ok: false,
           error: {
@@ -623,7 +622,7 @@ router.post(
         });
       }
     } catch (err) {
-      console.error("vision/analyze error:", err);
+      logger.error({}, 'vision/analyze error', { error: err.message });
       return next(err);
     }
   },

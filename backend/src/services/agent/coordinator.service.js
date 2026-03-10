@@ -35,6 +35,7 @@ import {
   buildSystemPrompt,
 } from "../../lib/agent/prompts/system.js";
 import { AGENT } from "../../config/constants.js";
+import { createLogger } from "../../lib/logger.js";
 
 const DEFAULT_MODEL = process.env.AGENT_MODEL || "gpt-4.1";
 const MAX_TOOL_ITERATIONS = AGENT.MAX_TOOL_ITERATIONS;
@@ -80,32 +81,8 @@ async function withTimeout(promise, timeoutMs, timeoutErrorMessage) {
   }
 }
 
-const logger = {
-  _format(level, context, message, data = {}) {
-    return JSON.stringify({
-      timestamp: new Date().toISOString(),
-      level,
-      service: "agent-coordinator",
-      ...context,
-      message,
-      ...data,
-    });
-  },
-  info(ctx, msg, data) {
-    console.log(this._format("info", ctx, msg, data));
-  },
-  warn(ctx, msg, data) {
-    console.warn(this._format("warn", ctx, msg, data));
-  },
-  error(ctx, msg, data) {
-    console.error(this._format("error", ctx, msg, data));
-  },
-  debug(ctx, msg, data) {
-    if (process.env.DEBUG_AGENT === "true") {
-      console.debug(this._format("debug", ctx, msg, data));
-    }
-  },
-};
+const logger = createLogger('agent-coordinator');
+
 
 export class AgentCoordinator {
   constructor(options = {}) {

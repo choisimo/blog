@@ -28,9 +28,11 @@ import {
 import { getSessionMemory } from "../lib/agent/memory/session.js";
 import { requireFeature } from "../middleware/featureFlags.js";
 import { buildLiveContextPrompt } from "../services/live-context.service.js";
+import { createLogger } from "../lib/logger.js";
 
 import { broadcastNotification } from "./notifications.js";
 const router = express.Router();
+const logger = createLogger("agent");
 
 router.use(requireFeature("ai"));
 
@@ -150,7 +152,7 @@ router.post("/run", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Agent run error:", err);
+    logger.error({}, 'Agent run error', { error: err.message, stack: err.stack });
     res.status(500).json({
       ok: false,
       error: { message: err.message, code: "INTERNAL_ERROR" },
@@ -334,7 +336,7 @@ router.post("/stream", async (req, res) => {
 
     onClose();
   } catch (streamError) {
-    console.error('[agent] Stream error:', streamError);
+    logger.error({}, 'Stream error', { error: streamError.message, stack: streamError.stack });
     if (!closed) {
       send('error', { message: 'Stream processing error', code: 'STREAM_ERROR' });
     }
@@ -400,7 +402,7 @@ router.get("/session/:sessionId", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Get session error:", err);
+    logger.error({}, 'Get session error', { error: err.message, stack: err.stack });
     res.status(500).json({
       ok: false,
       error: { message: err.message, code: "INTERNAL_ERROR" },
@@ -423,7 +425,7 @@ router.delete("/session/:sessionId", async (req, res) => {
       data: { deleted: true, sessionId },
     });
   } catch (err) {
-    console.error("Delete session error:", err);
+    logger.error({}, 'Delete session error', { error: err.message, stack: err.stack });
     res.status(500).json({
       ok: false,
       error: { message: err.message, code: "INTERNAL_ERROR" },
@@ -456,7 +458,7 @@ router.get("/sessions", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("List sessions error:", err);
+    logger.error({}, 'List sessions error', { error: err.message, stack: err.stack });
     res.status(500).json({
       ok: false,
       error: { message: err.message, code: "INTERNAL_ERROR" },
@@ -487,7 +489,7 @@ router.get("/health", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Agent health error:", err);
+    logger.error({}, 'Agent health error', { error: err.message, stack: err.stack });
     res.status(500).json({
       ok: false,
       data: {
@@ -519,7 +521,7 @@ router.get("/tools", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("List tools error:", err);
+    logger.error({}, 'List tools error', { error: err.message, stack: err.stack });
     res.status(500).json({
       ok: false,
       error: { message: err.message, code: "INTERNAL_ERROR" },
@@ -594,7 +596,7 @@ router.post("/memory/extract", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Memory extract error:", err);
+    logger.error({}, 'Memory extract error', { error: err.message, stack: err.stack });
     res.status(500).json({
       ok: false,
       error: { message: err.message, code: "INTERNAL_ERROR" },
@@ -627,7 +629,7 @@ router.post("/memory/search", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Memory search error:", err);
+    logger.error({}, 'Memory search error', { error: err.message, stack: err.stack });
     res.status(500).json({
       ok: false,
       error: { message: err.message, code: "INTERNAL_ERROR" },

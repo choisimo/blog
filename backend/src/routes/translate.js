@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import { queryOne, execute, isD1Configured } from '../lib/d1.js';
 import { aiService } from '../lib/ai-service.js';
+import { createLogger } from '../lib/logger.js';
 
 const router = Router();
+const logger = createLogger('translate');
 
 // Supported languages
 const SUPPORTED_LANGS = ['ko', 'en'];
@@ -191,7 +193,7 @@ ${truncatedContent}`;
       },
     });
   } catch (err) {
-    console.error('Translation failed:', err);
+    logger.error({}, 'Translation failed', { error: err.message });
     
     const errMsg = String(err?.message || '');
     
@@ -254,7 +256,7 @@ router.get('/:year/:slug/:targetLang', requireD1, async (req, res, next) => {
       },
     });
   } catch (err) {
-    console.error('Failed to get translation:', err);
+    logger.error({}, 'Failed to get translation', { error: err.message });
     return next(err);
   }
 });
@@ -277,7 +279,7 @@ router.delete('/:year/:slug/:targetLang', requireD1, async (req, res, next) => {
 
     return res.json({ ok: true, data: { deleted: true } });
   } catch (err) {
-    console.error('Failed to delete translation:', err);
+    logger.error({}, 'Failed to delete translation', { error: err.message });
     return next(err);
   }
 });
