@@ -1,0 +1,16 @@
+{
+  "service": {
+    "id": "blog-redis",
+    "name": "redis",
+    "tags": ["database", "cache", "queue"],
+    "port": 6379,
+    "check": {
+      "tcp": "redis:6379",
+      "interval": "10s",
+      "timeout": "5s"
+    },
+    "meta": {
+      "type": "cache"
+    }
+  }
+}

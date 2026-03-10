@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>수요 페이징 시뮬레이터</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; /* zinc-50 */ color: #0f172a; /* zinc-950 */ margin: 0; padding: 16px; min-height: 100vh; }
+    
+    .panel { background: white; border: 1px solid #e2e8f0; /* slate-200 */ border-radius: 8px; /* rounded-md */ box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+    .panel-header { font-size: 0.875rem; font-weight: 600; color: #64748b; /* slate-500 */ border-bottom: 1px solid #e2e8f0; padding: 12px 16px; margin-bottom: 16px; }
+    
+    .btn { padding: 6px 12px; font-size: 0.875rem; font-weight: 500; border-radius: 6px; border: 1px solid transparent; cursor: pointer; transition: all 0.15s; background-color: white; border-color: #e2e8f0; color: #0f172a; }
+    .btn:hover:not(:disabled) { background-color: #f1f5f9; }
+    .btn-primary { background-color: #2563eb; color: white; border-color: #2563eb; }
+    .btn-primary:hover:not(:disabled) { background-color: #1d4ed8; border-color: #1d4ed8; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .input-label { display: block; font-size: 0.75rem; font-weight: 600; color: #64748b; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.025em; }
+    .select-sm { padding: 4px 8px; font-size: 0.875rem; border: 1px solid #e2e8f0; border-radius: 6px; outline: none; background: white; }
+    .select-sm:focus { border-color: #2563eb; }
+
+    .grid-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 0.875rem; }
+    .grid-row:last-child { border-bottom: none; }
+    
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+    .tag { font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; font-weight: 500; font-family: monospace; border: 1px solid transparent; }
+    .tag-valid { background-color: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+    .tag-invalid { background-color: #f8fafc; color: #64748b; border-color: #e2e8f0; }
+    .tag-frame { background-color: #eff6ff; color: #1e40af; border-color: #bfdbfe; font-size: 0.875rem; padding: 4px 8px; }
+
+    .moving-page { position: absolute; width: 40px; height: 30px; font-size: 0.75rem; background: #2563eb; color: white; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: monospace; z-index: 10; opacity: 0; pointer-events: none; transition: all 0.5s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+    
+    /* Pulses */
+    @keyframes pulse-hit { 0% { background-color: rgba(37,99,235,0); } 50% { background-color: rgba(37,99,235,0.1); } 100% { background-color: rgba(37,99,235,0); } }
+    @keyframes pulse-fault { 0% { background-color: rgba(220,38,38,0); } 50% { background-color: rgba(220,38,38,0.1); } 100% { background-color: rgba(220,38,38,0); } }
+    @keyframes pulse-swap { 0% { background-color: rgba(217,119,6,0); } 50% { background-color: rgba(217,119,6,0.1); } 100% { background-color: rgba(217,119,6,0); } }
+    
+    .anim-hit { animation: pulse-hit 0.8s; }
+    .anim-fault { animation: pulse-fault 1.2s; border-left: 2px solid #dc2626 !important; }
+    .anim-success { animation: pulse-hit 1s; border-left: 2px solid #166534 !important; }
+    .anim-evict { animation: pulse-swap 1s infinite; border-color: #d97706 !important; }
+
+    .architecture-container { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 24px; position: relative; }
+    @media (min-width: 640px) {
+      .architecture-container { grid-template-columns: repeat(2, 1fr); }
+    }
+    
+    .dp-block { display: flex; flex-direction: column; min-height: 180px; }
+    .pt-container { max-height: 180px; overflow-y: auto; }
+    
+    .status-msg { font-size: 0.875rem; font-family: monospace; color: #64748b; margin-top: auto; padding: 12px; text-align: center; border-top: 1px solid #e2e8f0; background: #f8fafc; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
+
+    /* Custom Scrollbar for pt-container */
+    .pt-container::-webkit-scrollbar { width: 4px; }
+    .pt-container::-webkit-scrollbar-track { background: #f1f5f9; }
+    .pt-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  
+  <div class="panel p-4 mb-4">
+    <div class="flex flex-col sm:flex-row sm:items-end gap-4 sm:justify-between">
+      <div class="flex flex-wrap gap-4">
+        <div>
+          <label class="input-label">Virtual Pages</label>
+          <select id="dp-virtual-pages" class="select-sm w-full sm:w-auto" onchange="setupDemandPaging()">
+            <option value="4">4 Pages</option>
+            <option value="6" selected>6 Pages</option>
+            <option value="8">8 Pages</option>
+          </select>
+        </div>
+        <div>
+          <label class="input-label">Physical Frames</label>
+          <select id="dp-physical-frames" class="select-sm w-full sm:w-auto" onchange="setupDemandPaging()">
+            <option value="2">2 Frames</option>
+            <option value="3" selected>3 Frames</option>
+            <option value="4">4 Frames</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn" onclick="setupDemandPaging()">Reset</button>
+    </div>
+  </div>
+
+  <div class="flex flex-wrap gap-2 mb-4" id="dp-page-btns">
+    <!-- JS populated -->
+  </div>
+
+  <div class="architecture-container" id="dp-scene">
+    <div id="dp-mover" class="moving-page"></div>
+    <div id="dp-swap-mover" class="moving-page" style="background: #d97706;"></div>
+
+    <!-- CPU -->
+    <div class="panel dp-block" id="dp-cpu">
+      <div class="panel-header">📝 CPU Request</div>
+      <div class="flex-1 flex items-center justify-center p-4">
+        <svg class="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
+      </div>
+      <div id="cpu-msg" class="status-msg">IDLE</div>
+    </div>
+
+    <!-- Page Table -->
+    <div class="panel dp-block" id="dp-pt">
+      <div class="panel-header">📑 Page Table</div>
+      <div class="pt-container" id="pt-container">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- RAM -->
+    <div class="panel dp-block" id="dp-ram">
+      <div class="panel-header" id="ram-title">💾 Physical RAM</div>
+      <div class="pt-container" id="ram-slots">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- Disk -->
+    <div class="panel dp-block" id="dp-disk">
+      <div class="panel-header">💿 Swap Space</div>
+      <div class="flex-1 flex items-center justify-center p-4">
+        <svg class="w-12 h-12 text-slate-400 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
+      </div>
+      <div id="disk-info" class="status-msg text-slate-500">READY</div>
+    </div>
+  </div>
+
+  <script>
+    let dpTotalPages = 6;
+    let dpTotalFrames = 3;
+    let ptState = [];
+    let ramState = [];
+    let dpFifoQueue = []; 
+
+    function setupDemandPaging() {
+      if (isDpRunning) return; 
+
+      dpTotalPages = parseInt(document.getElementById("dp-virtual-pages").value);
+      dpTotalFrames = parseInt(document.getElementById("dp-physical-frames").value);
+      document.getElementById("ram-title").textContent = `💾 Physical RAM (${dpTotalFrames} Frames)`;
+
+      ptState = [];
+      for (let i = 0; i < dpTotalPages; i++) ptState.push({ id: i, valid: false, frame: null });
+
+      ramState = [];
+      dpFifoQueue = [];
+      for (let i = 0; i < dpTotalFrames; i++) ramState.push(null);
+
+      // Start empty initially for simpler understanding
+      // ptState[0].valid = true; ptState[0].frame = 0; ramState[0] = 0; dpFifoQueue.push(0);
+
+      renderDemandPagingBtns();
+      renderDemandPaging();
+
+      document.getElementById("cpu-msg").innerHTML = "Awaiting request...";
+      document.getElementById("cpu-msg").style.color = "#64748b";
+      document.getElementById("disk-info").textContent = "Swap ready";
+    }
+
+    function renderDemandPagingBtns() {
+      const btnContainer = document.getElementById("dp-page-btns");
+      btnContainer.innerHTML = "";
+      for (let i = 0; i < dpTotalPages; i++) {
+        const btn = document.createElement("button");
+        btn.className = "btn btn-primary req-btn";
+        btn.textContent = `Req P${i}`;
+        btn.onclick = () => requestPage(i);
+        btnContainer.appendChild(btn);
+      }
+    }
+
+    function renderDemandPaging() {
+      const ptContainer = document.getElementById("pt-container");
+      const ramContainer = document.getElementById("ram-slots");
+
+      ptContainer.innerHTML = "";
+      for (let i = 0; i < dpTotalPages; i++) {
+        const state = ptState[i];
+        const row = document.createElement("div");
+        row.id = `pt-row-${i}`;
+        row.className = "grid-row mono";
+        row.style.borderLeft = state.valid ? "2px solid white" : "2px solid transparent";
+        
+        const validText = state.valid 
+          ? `<span class="tag tag-valid">V (F${state.frame})</span>` 
+          : `<span class="tag tag-invalid">I</span>`;
+        row.innerHTML = `<span class="text-slate-600">P${i}</span> ${validText}`;
+        ptContainer.appendChild(row);
+      }
+
+      ramContainer.innerHTML = "";
+      for (let i = 0; i < dpTotalFrames; i++) {
+        const row = document.createElement("div");
+        row.id = `ram-row-${i}`;
+        row.className = "grid-row mono";
+        
+        const pId = ramState[i];
+        if (pId !== null) {
+          row.style.background = "#f8fafc";
+          row.innerHTML = `<span class="text-slate-500">F${i}</span><span class="tag tag-frame">P${pId}</span>`;
+        } else {
+          row.style.background = "white";
+          row.innerHTML = `<span class="text-slate-400">F${i}</span><span class="text-slate-400 text-xs">EMPTY</span>`;
+        }
+        ramContainer.appendChild(row);
+      }
+    }
+
+    let isDpRunning = false;
+    async function requestPage(pageId) {
+      if (isDpRunning) return;
+      isDpRunning = true;
+
+      const btns = document.querySelectorAll(".req-btn");
+      btns.forEach(b => b.disabled = true);
+
+      const cpuMsg = document.getElementById("cpu-msg");
+      const cpuBox = document.getElementById("dp-cpu");
+      const ptRow = document.getElementById(`pt-row-${pageId}`);
+      const diskBox = document.getElementById("dp-disk");
+      const mover = document.getElementById("dp-mover");
+      const swapMover = document.getElementById("dp-swap-mover");
+      const diskInfo = document.getElementById("disk-info");
+
+      document.querySelectorAll(".pf-label").forEach(l => l.remove());
+
+      const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+      cpuMsg.innerHTML = `Req: P${pageId}`;
+      cpuMsg.style.color = "#0f172a";
+
+      await sleep(200);
+      cpuBox.classList.add("anim-hit");
+      await sleep(400);
+      cpuBox.classList.remove("anim-hit");
+
+      const state = ptState[pageId];
+
+      if (state.valid) {
+        // HIT
+        ptRow.classList.add("anim-hit");
+        await sleep(400);
+        const ramRow = document.getElementById(`ram-row-${state.frame}`);
+        ramRow.classList.add("anim-hit");
+
+        cpuMsg.innerHTML = `HIT (F${state.frame})`;
+        cpuMsg.style.color = "#166534";
+
+        await sleep(600);
+        ptRow.classList.remove("anim-hit");
+        ramRow.classList.remove("anim-hit");
+      } else {
+        // FAULT
+        ptRow.classList.add("anim-fault");
+        
+        const pfLabel = document.createElement("div");
+        pfLabel.className = "pf-label tag mono bg-red-100 text-red-700 border-red-200 mt-1";
+        pfLabel.textContent = "FAULT";
+        pfLabel.style.display = "inline-block";
+        pfLabel.style.marginLeft = "auto";
+        ptRow.appendChild(pfLabel);
+
+        cpuMsg.innerHTML = "PAGE FAULT";
+        cpuMsg.style.color = "#dc2626";
+
+        await sleep(800);
+
+        let targetFrameIdx = ramState.findIndex(r => r === null);
+        let victimPageId = null;
+
+        if (targetFrameIdx === -1) {
+          // FIFO Replacement
+          targetFrameIdx = dpFifoQueue.shift();
+          victimPageId = ramState[targetFrameIdx];
+
+          cpuMsg.innerHTML = `EVICT: P${victimPageId} from F${targetFrameIdx}`;
+          cpuMsg.style.color = "#d97706";
+
+          const swapRamRow = document.getElementById(`ram-row-${targetFrameIdx}`);
+          swapRamRow.classList.add("anim-evict");
+          diskInfo.textContent = `Swap out P${victimPageId}`;
+          diskInfo.style.color = "#d97706";
+
+          await sleep(600);
+
+          const sceneRect = document.getElementById("dp-scene").getBoundingClientRect();
+          const diskRect = diskBox.getBoundingClientRect();
+          const ramRect = swapRamRow.getBoundingClientRect();
+
+          swapMover.textContent = `P${victimPageId}`;
+          swapMover.style.left = (ramRect.left - sceneRect.left + ramRect.width/2 - 20) + "px";
+          swapMover.style.top = (ramRect.top - sceneRect.top) + "px";
+          swapMover.style.opacity = "1";
+
+          await sleep(50);
+          swapMover.style.left = (diskRect.left - sceneRect.left + diskRect.width/2 - 20) + "px";
+          swapMover.style.top = (diskRect.top - sceneRect.top + diskRect.height/2 - 15) + "px";
+
+          await sleep(600);
+          swapMover.style.opacity = "0";
+          swapMover.style.transition = "none";
+          swapRamRow.classList.remove("anim-evict");
+
+          ptState[victimPageId].valid = false;
+          ptState[victimPageId].frame = null;
+          renderDemandPaging();
+          
+          await sleep(200);
+        }
+
+        // SWAP IN
+        diskInfo.textContent = `Swap in P${pageId}`;
+        diskInfo.style.color = "#2563eb";
+        diskBox.classList.add("anim-fault");
+        await sleep(400);
+
+        const sceneRect = document.getElementById("dp-scene").getBoundingClientRect();
+        const diskRect = diskBox.getBoundingClientRect();
+        const targetRamRow = document.getElementById(`ram-row-${targetFrameIdx}`);
+        const ramRect = targetRamRow.getBoundingClientRect();
+
+        mover.textContent = `P${pageId}`;
+        mover.style.transition = "none";
+        mover.style.left = (diskRect.left - sceneRect.left + diskRect.width/2 - 20) + "px";
+        mover.style.top = (diskRect.top - sceneRect.top + diskRect.height/2 - 15) + "px";
+        mover.style.opacity = "1";
+        mover.style.backgroundColor = "#2563eb";
+
+        await sleep(50);
+        mover.style.transition = "all 0.6s ease";
+        mover.style.left = (ramRect.left - sceneRect.left + ramRect.width/2 - 20) + "px";
+        mover.style.top = (ramRect.top - sceneRect.top) + "px";
+
+        await sleep(700);
+        mover.style.opacity = "0";
+        diskBox.classList.remove("anim-fault");
+        diskInfo.textContent = "Swap ready";
+        diskInfo.style.color = "#64748b";
+
+        ramState[targetFrameIdx] = pageId;
+        dpFifoQueue.push(targetFrameIdx);
+        ptState[pageId].valid = true;
+        ptState[pageId].frame = targetFrameIdx;
+
+        renderDemandPaging();
+
+        const newPtRow = document.getElementById(`pt-row-${pageId}`);
+        const newRamRow = document.getElementById(`ram-row-${targetFrameIdx}`);
+
+        newPtRow.classList.remove("anim-fault");
+        newPtRow.classList.add("anim-success");
+        newRamRow.classList.add("anim-success");
+
+        cpuMsg.innerHTML = `Loaded P${pageId}`;
+        cpuMsg.style.color = "#166534";
+
+        await sleep(800);
+        newPtRow.classList.remove("anim-success");
+        newRamRow.classList.remove("anim-success");
+        if(pfLabel.parentNode) pfLabel.remove();
+      }
+
+      isDpRunning = false;
+      btns.forEach(b => b.disabled = false);
+    }
+
+    setupDemandPaging();
+  </script>
+</body>
+</html>
