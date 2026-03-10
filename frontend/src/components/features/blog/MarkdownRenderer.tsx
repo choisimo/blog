@@ -239,7 +239,6 @@ function EmbeddedIframe({
         style={{
           border: "none",
           minHeight: `${MIN_EMBED_HEIGHT}px`,
-          height: `${frameHeight}px`,
           width: "100%",
           ...style,
           height: `${frameHeight}px`,
