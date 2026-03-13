@@ -10,7 +10,7 @@ import type { PageContext } from './types';
  * 현재 페이지 컨텍스트 가져오기
  */
 export function getPageContext(): PageContext {
-  const w = typeof window !== 'undefined' ? (window as any) : null;
+  const w = typeof window !== 'undefined' ? window : null;
   const url = w?.location?.href as string | undefined;
   const title = w?.document?.title as string | undefined;
   return { url, title };

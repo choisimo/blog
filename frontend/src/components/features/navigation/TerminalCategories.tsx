@@ -64,17 +64,19 @@ export default function TerminalCategories({
 
       switch (e.key) {
         case 'ArrowDown':
-        case 'j':
+        case 'j': {
           e.preventDefault();
           setSelectedIndex(i => Math.min(i + 1, flattenedCategories.length - 1));
           break;
+        }
         case 'ArrowUp':
-        case 'k':
+        case 'k': {
           e.preventDefault();
           setSelectedIndex(i => Math.max(i - 1, 0));
           break;
+        }
         case 'Enter':
-        case 'l':
+        case 'l': {
           e.preventDefault();
           const selected = flattenedCategories[selectedIndex];
           if (selected) {
@@ -85,24 +87,28 @@ export default function TerminalCategories({
             }
           }
           break;
+        }
         case 'h':
-        case 'ArrowLeft':
+        case 'ArrowLeft': {
           e.preventDefault();
           const current = flattenedCategories[selectedIndex];
           if (current && expandedPaths.has(current.name)) {
             toggleExpand(current.name);
           }
           break;
-        case '/':
+        }
+        case '/': {
           e.preventDefault();
           setInputBuffer('');
           break;
-        case 'Escape':
+        }
+        case 'Escape': {
           setInputBuffer('');
           break;
-        default:
+        }
+        default: {
           if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
-            const newBuffer = inputBuffer + e.key.toLowerCase();
+            const newBuffer = `${inputBuffer}${e.key.toLowerCase()}`;
             setInputBuffer(newBuffer);
             const matchIndex = flattenedCategories.findIndex(c => 
               c.name.toLowerCase().startsWith(newBuffer)
@@ -112,6 +118,7 @@ export default function TerminalCategories({
             }
             setTimeout(() => setInputBuffer(''), 1000);
           }
+        }
       }
     };
 

@@ -55,6 +55,14 @@ export default function ChatWidget(props: {
 
   // Main state hook
   const state = useChatState({ initialMessage: props.initialMessage });
+  const {
+    focusInput,
+    push,
+    setInput,
+    setLivePinned,
+    setMessages,
+    setShowActionSheet,
+  } = state;
 
   // Dynamic max height calculation for PC
   const [pcMaxHeight, setPcMaxHeight] = useState("80vh");
@@ -148,18 +156,18 @@ export default function ChatWidget(props: {
 
   const handlePromptClick = useCallback(
     (prompt: string) => {
-      state.setInput(prompt);
-      state.focusInput();
+      setInput(prompt);
+      focusInput();
     },
-    [state.setInput, state.focusInput],
+    [focusInput, setInput],
   );
 
   const handleRetry = useCallback(
     (lastPrompt: string) => {
-      state.setInput(lastPrompt);
-      state.focusInput();
+      setInput(lastPrompt);
+      focusInput();
     },
-    [state.setInput, state.focusInput],
+    [focusInput, setInput],
   );
 
   const handleClearAll = useCallback(async () => {
@@ -177,24 +185,24 @@ export default function ChatWidget(props: {
   const isKeyboardFocusMode = isMobile && keyboardViewport.keyboardVisible;
   const currentLiveRoomLabel = formatLiveRoomName(liveVisitorChat.room);
   const toggleLivePinned = useCallback(() => {
-    state.setLivePinned((prev) => !prev);
-  }, [state.setLivePinned]);
+    setLivePinned((prev) => !prev);
+  }, [setLivePinned]);
   const handleExpireMessage = useCallback(
     (id: string) => {
-      state.setMessages((prev) => prev.filter((m) => m.id !== id));
+      setMessages((prev) => prev.filter((m) => m.id !== id));
     },
-    [state.setMessages],
+    [setMessages],
   );
 
   const handleStartDebate = useCallback(async () => {
     if (debateBusy) return;
-    state.setShowActionSheet(false);
+    setShowActionSheet(false);
 
     const roomLabel = formatLiveRoomName(liveVisitorChat.room);
     const topic = `${roomLabel} 방 주제로 AI 토론`;
 
     // 토론 시작 알림
-    state.push({
+    push({
       id: `debate_start_${Date.now()}`,
       role: "system",
       text: `[토론 시작] 주제: ${topic}`,
@@ -225,8 +233,8 @@ export default function ChatWidget(props: {
       let rafHandle: number | null = null;
       let mobileFlushTimer: number | null = null;
 
-      const commit = (snapshot: string) => {
-        state.setMessages((prev) =>
+        const commit = (snapshot: string) => {
+        setMessages((prev) =>
           prev.map((m) =>
             m.id === params.id
               ? { ...m, text: `${params.prefix}${snapshot}` }
@@ -284,7 +292,7 @@ export default function ChatWidget(props: {
 
         // 찬성측 발언
         const proId = `debate_pro_${round}_${Date.now()}`;
-        state.push({ id: proId, role: "assistant", text: "" });
+        push({ id: proId, role: "assistant", text: "" });
         const proText = await runDebateTurn({
           prompt:
             round === 1
@@ -299,7 +307,7 @@ export default function ChatWidget(props: {
 
         // 반대측 발언
         const conId = `debate_con_${round}_${Date.now()}`;
-        state.push({ id: conId, role: "assistant", text: "" });
+        push({ id: conId, role: "assistant", text: "" });
         const conText = await runDebateTurn({
           prompt:
             round === 1
@@ -313,7 +321,7 @@ export default function ChatWidget(props: {
       }
 
       if (!abort.signal.aborted) {
-        state.push({
+        push({
           id: `debate_end_${Date.now()}`,
           role: "system",
           text: "[토론 종료] AI 토론이 완료되었습니다.",
@@ -322,7 +330,7 @@ export default function ChatWidget(props: {
       }
     } catch {
       if (!abort.signal.aborted) {
-        state.push({
+        push({
           id: `debate_err_${Date.now()}`,
           role: "system",
           text: "[토론 오류] 토론 중 문제가 발생했습니다.",
@@ -334,14 +342,13 @@ export default function ChatWidget(props: {
       setDebateBusy(false);
       debateAbortRef.current = null;
     }
-    // deps: debateBusy is a guard, state/liveVisitorChat.room are stable refs
   }, [
     debateBusy,
     isMobile,
     liveVisitorChat.room,
-    state.setShowActionSheet,
-    state.push,
-    state.setMessages,
+    push,
+    setMessages,
+    setShowActionSheet,
   ]);
 
   return (

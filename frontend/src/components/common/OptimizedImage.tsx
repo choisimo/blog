@@ -28,8 +28,8 @@ export const OptimizedImage = ({
     if (!src) return src;
     if (/^(https?:)?\/\//i.test(src) || /^(data|blob):/i.test(src)) return src;
 
-    const base = (import.meta as any).env?.BASE_URL
-      ? String((import.meta as any).env.BASE_URL)
+    const base = import.meta.env?.BASE_URL
+      ? String(import.meta.env.BASE_URL)
       : '/';
     const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
     if (!normalizedBase || normalizedBase === '/') return src;

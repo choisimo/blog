@@ -18,12 +18,16 @@ module.exports = {
   theme: {
     container: {
       center: true,
-      padding: '2rem',
+      padding: '1rem',
       screens: {
         '2xl': '1400px',
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Pretendard', ...require('tailwindcss/defaultTheme').fontFamily.sans],
+        mono: ['JetBrains Mono', ...require('tailwindcss/defaultTheme').fontFamily.mono],
+      },
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
@@ -87,6 +91,10 @@ module.exports = {
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+      },
+      transitionTimingFunction: {
+        spring: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+        smooth: 'cubic-bezier(0.4, 0, 0.2, 1)',
       },
     },
   },

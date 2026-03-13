@@ -3,7 +3,7 @@ import { SEOData } from "@/utils/seo/seo";
 
 export const useSEO = (
   seoData: SEOData,
-  structuredData?: Record<string, any>,
+  structuredData?: Record<string, unknown>,
 ) => {
   useEffect(() => {
     // Update document title

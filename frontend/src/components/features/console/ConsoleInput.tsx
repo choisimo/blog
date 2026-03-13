@@ -179,7 +179,7 @@ export const ConsoleInput = memo(function ConsoleInput({
             onInput={e => {
               const target = e.target as HTMLTextAreaElement;
               target.style.height = 'auto';
-              target.style.height = Math.min(target.scrollHeight, isMobile ? 100 : 120) + 'px';
+              target.style.height = `${Math.min(target.scrollHeight, isMobile ? 100 : 120)}px`;
             }}
           />
         </div>

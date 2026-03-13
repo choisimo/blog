@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useNotificationStore, type AppNotification } from '@/stores/realtime/useNotificationStore';
+import { useIsMobile } from '@/hooks/ui/use-mobile';
 import {
   Bell,
   X,
@@ -48,11 +49,13 @@ function NotificationIcon({ type, className }: { type: AppNotification['type']; 
 function NotificationRow({
   notification,
   isTerminal,
+  isMobile,
   onMarkRead,
   onRemove,
 }: {
   notification: AppNotification;
   isTerminal: boolean;
+  isMobile: boolean;
   onMarkRead: (id: string) => void;
   onRemove: (id: string) => void;
 }) {
@@ -122,8 +125,10 @@ function NotificationRow({
         )}
       </div>
 
-      {/* Action buttons (show on hover) */}
-      <div className='flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0'>
+      <div className={cn(
+        'flex items-center gap-0.5 transition-opacity shrink-0',
+        isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+      )}>
         {!notification.read && (
           <button
             type='button'
@@ -163,6 +168,7 @@ function NotificationRow({
 
 export function NotificationPanel() {
   const { isTerminal } = useTheme();
+  const isMobile = useIsMobile();
   const { notifications, unreadCount, markRead, markAllRead, removeNotification, clearRead } =
     useNotificationStore();
 
@@ -254,6 +260,7 @@ export function NotificationPanel() {
               key={notification.id}
               notification={notification}
               isTerminal={isTerminal}
+              isMobile={isMobile}
               onMarkRead={markRead}
               onRemove={removeNotification}
             />

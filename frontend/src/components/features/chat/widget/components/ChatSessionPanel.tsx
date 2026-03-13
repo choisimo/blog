@@ -155,7 +155,7 @@ export function ModeSelector({
             <span className="text-terminal-amber">[</span>
             <span className={questionMode === "article" ? "text-primary crt-text-glow" : "opacity-0"}>X</span>
             <span className="text-terminal-amber">]</span>
-            <span className="ml-1">Article</span>
+            <span className="ml-1">이 글 관련</span>
           </button>
           <button
             type="button"
@@ -170,7 +170,7 @@ export function ModeSelector({
             <span className="text-terminal-amber">[</span>
             <span className={questionMode === "general" ? "text-primary crt-text-glow" : "opacity-0"}>X</span>
             <span className="text-terminal-amber">]</span>
-            <span className="ml-1">General</span>
+            <span className="ml-1">자유 대화</span>
           </button>
         </div>
       </div>
@@ -189,7 +189,7 @@ export function ModeSelector({
           "text-xs text-muted-foreground truncate max-w-[50%]",
         )}
       >
-        {questionMode === "article" ? "현재 글 기반" : "일반 대화"}
+        {questionMode === "article" ? "이 글 관련" : "자유 대화"}
       </span>
       <div
         className={cn(
@@ -211,7 +211,7 @@ export function ModeSelector({
           )}
           onClick={() => onModeChange("article")}
         >
-          현재 글
+          이 글 관련
         </Button>
         <Button
           size="sm"
@@ -227,7 +227,7 @@ export function ModeSelector({
           )}
           onClick={() => onModeChange("general")}
         >
-          일반
+          자유 대화
         </Button>
       </div>
     </div>

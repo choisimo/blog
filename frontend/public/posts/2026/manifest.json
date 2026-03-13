@@ -17,6 +17,7 @@
     "awk-1.md",
     "current-crowd.md",
     "docker-1.md",
+    "hedgefunds_transcation_manage.md",
     "io-redirection-pipeline.md",
     "limitation_of_bestcases.md",
     "nobel1-kursk-tanks.md",
@@ -30,7 +31,7 @@
     "understanding-ssm-and-mamba.md",
     "vim-architecture-functionality-commands-integration.md"
   ],
-  "generatedAt": "2026-03-10T17:08:49.933Z",
-  "totalFiles": 29,
+  "generatedAt": "2026-03-13T14:58:32.915Z",
+  "totalFiles": 30,
   "excludedFiles": 0
 }

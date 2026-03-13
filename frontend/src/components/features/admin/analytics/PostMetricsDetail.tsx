@@ -101,8 +101,7 @@ export function PostMetricsDetail({ slug, year, onBack }: PostMetricsDetailProps
         const data = await metricsRes.json();
         setHourly(data.data?.hourly ?? []);
       }
-    } catch {
-    } finally {
+    } catch { void 0; } finally {
       setLoading(false);
     }
   }, [slug, year, getValidAccessToken]);

@@ -1,5 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+type MemoPadElement = HTMLElement & {
+  openHistory?: () => void;
+  shadowRoot: ShadowRoot | null;
+};
+
+type FabEventDetail = Record<string, unknown>;
+
+function getMemoShadowRoot(aiMemoEl: HTMLElement | null): ShadowRoot | null {
+  return (aiMemoEl as MemoPadElement | null)?.shadowRoot ?? null;
+}
+
 // Feature flag: build-time + runtime override
 export function isFabEnabled(): boolean {
   let lsValue: boolean | null = null;
@@ -16,9 +27,9 @@ export function isFabEnabled(): boolean {
     return lsValue;
   }
 
-  const envFlag = (import.meta as any).env?.VITE_FEATURE_FAB;
+  const envFlag = import.meta.env.VITE_FEATURE_FAB;
   if (envFlag != null) {
-    return envFlag === true || envFlag === "true" || envFlag === "1";
+    return ["true", "1"].includes(envFlag);
   }
 
   return true;
@@ -71,7 +82,7 @@ export function useMemoOpen(aiMemoEl: HTMLElement | null): boolean {
     let pollId: number | null = null;
 
     const tryAttachPanelObserver = () => {
-      const shadow = (aiMemoEl as any)?.shadowRoot as ShadowRoot | undefined;
+      const shadow = getMemoShadowRoot(aiMemoEl) ?? undefined;
       const panel = shadow?.getElementById("panel");
       if (!panel) return false;
       const check = () => setOpen(panel.classList.contains("open"));
@@ -87,7 +98,7 @@ export function useMemoOpen(aiMemoEl: HTMLElement | null): boolean {
 
     // Attempt now; if not present, observe shadowRoot subtree and poll LS briefly
     if (!tryAttachPanelObserver()) {
-      const shadow = (aiMemoEl as any)?.shadowRoot as ShadowRoot | undefined;
+      const shadow = getMemoShadowRoot(aiMemoEl) ?? undefined;
       if (shadow) {
         shadowObserver = new MutationObserver(() => {
           if (tryAttachPanelObserver()) {
@@ -128,7 +139,7 @@ export function useMemoOpen(aiMemoEl: HTMLElement | null): boolean {
 export function useHistoryOverlayOpen(aiMemoEl: HTMLElement | null): boolean {
   const [open, setOpen] = useState(false);
   useEffect(() => {
-    const shadow = (aiMemoEl as any)?.shadowRoot as ShadowRoot | undefined;
+    const shadow = getMemoShadowRoot(aiMemoEl) ?? undefined;
     if (!shadow) {
       setOpen(false);
       return;
@@ -351,7 +362,7 @@ export function useFabPinned(): [boolean, () => void] {
 export function hideLegacyLaunchers(aiMemoEl: HTMLElement | null) {
   try {
     if (!aiMemoEl) return;
-    const shadow = (aiMemoEl as any).shadowRoot as ShadowRoot | undefined;
+    const shadow = getMemoShadowRoot(aiMemoEl) ?? undefined;
     // Hide only legacy floating launchers; keep memo UI intact
     const launcher = shadow?.getElementById("launcher") as HTMLElement | null;
     const historyLauncher = shadow?.getElementById(
@@ -368,14 +379,14 @@ export function useFabAnalytics() {
   const impressionSent = useRef(false);
   const prevMemoOpen = useRef<boolean | null>(null);
 
-  const send = useCallback((type: string, detail?: Record<string, any>) => {
+  const send = useCallback((type: string, detail?: FabEventDetail) => {
     try {
       const evt = new CustomEvent("fab:event", {
         detail: { type, ts: Date.now(), ...(detail || {}) },
       });
       window.dispatchEvent(evt);
       if (
-        (import.meta as any).env?.DEV ||
+        import.meta.env.DEV ||
         (typeof localStorage !== "undefined" &&
           localStorage.getItem("aiMemo.fab.debug") === "true")
       ) {
@@ -414,24 +425,24 @@ export function useFabAnalytics() {
 
 export type FabPosition = 'bottom' | 'left';
 
-export function useFabPosition(): [FabPosition, (v: FabPosition) => void] {
-  const normalize = (raw: unknown): FabPosition | null => {
-    if (raw === 'bottom' || raw === 'left') return raw;
-    if (typeof raw === 'string') {
-      try {
-        const parsed = JSON.parse(raw);
-        if (parsed === 'bottom' || parsed === 'left') return parsed;
-      } catch {
-        void 0;
-      }
+function normalizeFabPosition(raw: unknown): FabPosition | null {
+  if (raw === 'bottom' || raw === 'left') return raw;
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed === 'bottom' || parsed === 'left') return parsed;
+    } catch {
+      void 0;
     }
-    return null;
-  };
+  }
+  return null;
+}
 
+export function useFabPosition(): [FabPosition, (v: FabPosition) => void] {
   const [position, setPositionState] = useState<FabPosition>(() => {
     try {
       const saved = localStorage.getItem('fab.position');
-      const normalized = normalize(saved);
+      const normalized = normalizeFabPosition(saved);
       if (normalized) return normalized;
     } catch { void 0; }
     return 'bottom';
@@ -439,7 +450,7 @@ export function useFabPosition(): [FabPosition, (v: FabPosition) => void] {
 
   useEffect(() => {
     const apply = (raw: unknown) => {
-      const normalized = normalize(raw);
+      const normalized = normalizeFabPosition(raw);
       if (normalized) {
         setPositionState(normalized);
       }

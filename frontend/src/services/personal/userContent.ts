@@ -128,34 +128,34 @@ async function request<T>(
   return body;
 }
 
-function normalisePersona(raw: any): Persona {
+function normalisePersona(raw: Record<string, unknown>): Persona {
   return {
     id: String(raw.id),
     name: String(raw.name ?? ''),
     prompt: String(raw.prompt ?? ''),
-    tags: Array.isArray(raw.tags) ? raw.tags.map(String) : [],
+    tags: Array.isArray(raw.tags) ? (raw.tags as unknown[]).map(String) : [],
     createdAt: String(raw.createdAt ?? new Date().toISOString()),
     updatedAt: raw.updatedAt ? String(raw.updatedAt) : undefined,
     etag: raw.etag ? String(raw.etag) : null,
   };
 }
 
-function normaliseMemo(raw: any): MemoNote {
+function normaliseMemo(raw: Record<string, unknown>): MemoNote {
   return {
     id: String(raw.id),
     originalContent: String(raw.originalContent ?? ''),
     userNote: String(raw.userNote ?? ''),
-    tags: Array.isArray(raw.tags) ? raw.tags.map(String) : [],
+    tags: Array.isArray(raw.tags) ? (raw.tags as unknown[]).map(String) : [],
     createdAt: String(raw.createdAt ?? new Date().toISOString()),
     updatedAt: raw.updatedAt ? String(raw.updatedAt) : undefined,
-    source: raw.source ? { ...raw.source } : undefined,
+    source: raw.source ? { ...(raw.source as MemoSource) } : undefined,
     etag: raw.etag ? String(raw.etag) : null,
   };
 }
 
 export async function listPersonas(cursor?: string | null): Promise<ListResponse<Persona>> {
   const params = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
-  const res = await request<any[]>(`/api/v1/personas${params}`);
+  const res = await request<Record<string, unknown>[]>(`/api/v1/personas${params}`);
   const payload = Array.isArray(res.data) ? res.data : [];
   const personas = payload.map(normalisePersona);
   const cursorValue = (res.cursor ?? null) as string | null;
@@ -165,7 +165,7 @@ export async function listPersonas(cursor?: string | null): Promise<ListResponse
 
 export async function createPersona(input: PersonaPayload): Promise<Persona> {
   const body = JSON.stringify(input);
-  const res = await request<any>('/api/v1/personas', {
+  const res = await request<Record<string, unknown>>('/api/v1/personas', {
     method: 'POST',
     body,
   });
@@ -179,7 +179,7 @@ export async function updatePersona(
 ): Promise<Persona> {
   const headers: Record<string, string> = {};
   if (etag) headers['If-Match'] = etag;
-  const res = await request<any>(`/api/v1/personas/${encodeURIComponent(id)}`, {
+  const res = await request<Record<string, unknown>>(`/api/v1/personas/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers,
     body: JSON.stringify(input),
@@ -198,7 +198,7 @@ export async function deletePersona(id: string, etag?: string | null): Promise<v
 
 export async function listMemos(cursor?: string | null): Promise<ListResponse<MemoNote>> {
   const params = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
-  const res = await request<any[]>(`/api/v1/user-content/memos${params}`);
+  const res = await request<Record<string, unknown>[]>(`/api/v1/user-content/memos${params}`);
   const payload = Array.isArray(res.data) ? res.data : [];
   const memos = payload.map(normaliseMemo);
   const cursorValue = (res.cursor ?? null) as string | null;
@@ -207,7 +207,7 @@ export async function listMemos(cursor?: string | null): Promise<ListResponse<Me
 }
 
 export async function createMemo(input: MemoPayload): Promise<MemoNote> {
-  const res = await request<any>('/api/v1/user-content/memos', {
+  const res = await request<Record<string, unknown>>('/api/v1/user-content/memos', {
     method: 'POST',
     body: JSON.stringify(input),
   });
@@ -221,7 +221,7 @@ export async function updateMemo(
 ): Promise<MemoNote> {
   const headers: Record<string, string> = {};
   if (etag) headers['If-Match'] = etag;
-  const res = await request<any>(`/api/v1/user-content/memos/${encodeURIComponent(id)}`, {
+  const res = await request<Record<string, unknown>>(`/api/v1/user-content/memos/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers,
     body: JSON.stringify(input),

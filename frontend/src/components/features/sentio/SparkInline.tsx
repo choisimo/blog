@@ -67,10 +67,10 @@ function extractText(children: React.ReactNode): string {
 type Mode = 'idle' | 'sketch' | 'prism' | 'chain';
 
 const ModeConfig: Record<Mode, { label: string; icon: React.ComponentType<{ className?: string }>; activeColor: string; description: string }> = {
-  idle: { label: 'Idle', icon: Sparkles, activeColor: 'text-muted-foreground', description: '' },
-  sketch: { label: 'Sketch', icon: Lightbulb, activeColor: 'text-amber-500 dark:text-amber-400', description: '감정과 핵심 포인트' },
-  prism: { label: 'Prism', icon: Layers, activeColor: 'text-violet-500 dark:text-violet-400', description: '다각도 분석' },
-  chain: { label: 'Chain', icon: Link2, activeColor: 'text-emerald-500 dark:text-emerald-400', description: '연쇄 질문' },
+  idle: { label: 'AI 분석', icon: Sparkles, activeColor: 'text-muted-foreground', description: '' },
+  sketch: { label: '핵심 파악', icon: Lightbulb, activeColor: 'text-amber-500 dark:text-amber-400', description: '감정과 핵심 포인트' },
+  prism: { label: '다각도 분석', icon: Layers, activeColor: 'text-violet-500 dark:text-violet-400', description: '다각도 분석' },
+  chain: { label: '더 생각해보기', icon: Link2, activeColor: 'text-emerald-500 dark:text-emerald-400', description: '연쇄 질문' },
 };
 
 // Mood emoji mapping
@@ -548,9 +548,9 @@ export default function SparkInline({
                     위 버튼을 눌러 AI 분석을 시작하세요
                   </p>
                   <div className='flex flex-wrap justify-center gap-4 mt-4 text-xs text-muted-foreground/70'>
-                    <span><strong>Sketch</strong> - 핵심 포인트</span>
-                    <span><strong>Prism</strong> - 다각도 분석</span>
-                    <span><strong>Chain</strong> - 연쇄 질문</span>
+                    <span><strong>핵심 파악</strong> - 핵심 포인트</span>
+                    <span><strong>다각도 분석</strong> - 다양한 시각</span>
+                    <span><strong>더 생각해보기</strong> - 연쇄 질문</span>
                   </div>
                 </div>
               )}

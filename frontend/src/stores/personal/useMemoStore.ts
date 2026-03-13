@@ -104,10 +104,10 @@ export const useMemoStore = create<MemoStoreState>((set, get) => ({
       );
       toast({ title: '메모가 업데이트되었습니다.' });
       return updated;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[useMemoStore] updateMemo error', error);
       set({ memos: original });
-      const status = error?.message?.includes?.('412') ? '동일한 메모가 이미 수정되었어요.' : '잠시 후 다시 시도해주세요.';
+      const status = (error instanceof Error && error.message.includes('412')) ? '동일한 메모가 이미 수정되었어요.' : '잠시 후 다시 시도해주세요.';
       toast({ title: '메모 수정 실패', description: status });
       return undefined;
     }
@@ -123,10 +123,10 @@ export const useMemoStore = create<MemoStoreState>((set, get) => ({
       await UserContentService.deleteMemo(id, target.etag);
       toast({ title: '메모가 삭제되었습니다.' });
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[useMemoStore] deleteMemo error', error);
       set({ memos: original });
-      const message = error?.message?.includes?.('412')
+      const message = (error instanceof Error && error.message.includes('412'))
         ? '다른 곳에서 수정된 메모예요. 새로고침 후 다시 시도해주세요.'
         : '메모 삭제에 실패했습니다. 다시 시도해주세요.';
       toast({ title: '삭제 실패', description: message });

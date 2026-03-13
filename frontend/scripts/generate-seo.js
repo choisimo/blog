@@ -187,17 +187,13 @@ function generateSitemap(posts) {
 
 function buildRobotsWithSitemap(existing = '') {
   const sitemapLine = `Sitemap: ${BASE_URL}/sitemap.xml`;
-  if (existing.includes('Sitemap:')) {
-    // If a Sitemap line exists but not our exact URL, append our URL too.
-    if (!existing.includes(sitemapLine)) {
-      const end = existing.endsWith('\n') ? '' : '\n';
-      return `${existing + end + sitemapLine}\n`;
-    }
-    return existing;
-  }
   if (existing.trim().length > 0) {
-    const end = existing.endsWith('\n') ? '' : '\n';
-    return `${existing + end + sitemapLine}\n`;
+    const lines = existing
+      .split('\n')
+      .filter(line => !line.trim().startsWith('Sitemap:'));
+    const body = lines.join('\n').replace(/\n+$/, '');
+    const end = body.length > 0 ? '\n' : '';
+    return `${body + end + sitemapLine}\n`;
   }
   // Default robots if none exists
   return `User-agent: *\nAllow: /\n\n${sitemapLine}\n`;

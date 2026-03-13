@@ -1,6 +1,29 @@
 {
-  "total": 263,
+  "total": 264,
   "items": [
+    {
+      "path": "/posts/2026/hedgefunds_transcation_manage.md",
+      "year": "2026",
+      "slug": "hedgefunds_transcation_manage",
+      "title": "초고속 결제 엔진에서 원자성은 어떻게 유지되는가?",
+      "description": "나노초 단위 초고속 결제에서도 락-프리 동시성 제어가 어떻게 트랜잭션의 원자성을 지키는지, 그리고 어디까지가 보장되는지",
+      "snippet": "나노초 단위 초고속 결제에서도 락-프리 동시성 제어가 어떻게 트랜잭션의 원자성을 지키는지, 그리고 어디까지가 보장되는지",
+      "date": "2026-03-11",
+      "tags": [
+        "HFT",
+        "Leverage",
+        "Atomicity",
+        "ACID",
+        "IMDB",
+        "CAS",
+        "MVCC"
+      ],
+      "category": "Finance",
+      "author": "Admin",
+      "readingTime": "4 min read",
+      "published": true,
+      "url": "/blog/2026/hedgefunds_transcation_manage"
+    },
     {
       "path": "/posts/2026/limitation_of_bestcases.md",
       "year": "2026",
@@ -5554,7 +5577,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-03-10T17:08:50.036Z",
+  "generatedAt": "2026-03-13T14:58:33.063Z",
   "years": [
     "2026",
     "2025",

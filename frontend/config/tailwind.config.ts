@@ -91,6 +91,10 @@ export default {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
       },
+      transitionTimingFunction: {
+        spring: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+        smooth: 'cubic-bezier(0.4, 0, 0.2, 1)',
+      },
     },
   },
   plugins: [tailwindcssAnimate],

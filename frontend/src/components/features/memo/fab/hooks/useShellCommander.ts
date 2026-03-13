@@ -20,7 +20,7 @@ type UseShellCommanderOptions = {
   onMemoToggle: () => void;
   onStackClick: () => void;
   onShellClose: () => void;
-  send: (type: string, detail?: Record<string, any>) => void;
+  send: (type: string, detail?: Record<string, unknown>) => void;
 };
 
 export function useShellCommander({

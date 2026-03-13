@@ -430,8 +430,6 @@ export function useUsage() {
 // ============================================================================
 
 export function useAIConfig() {
-  const [loading, setLoading] = useState(false);
-
   const exportConfig = useCallback(async () => {
     const result = await apiFetch<{
       exportedAt: string;
@@ -443,7 +441,6 @@ export function useAIConfig() {
   }, []);
 
   return {
-    loading,
     exportConfig,
   };
 }
@@ -804,7 +801,7 @@ export function usePlayground() {
     [fetchTemplates]
   );
 
-  const useTemplate = useCallback(async (id: string) => {
+  const applyTemplate = useCallback(async (id: string) => {
     const result = await apiFetch<{ template: PromptTemplate }>(`/prompt-templates/${id}/use`, {
       method: 'POST',
     });
@@ -827,6 +824,6 @@ export function usePlayground() {
     createTemplate,
     updateTemplate,
     deleteTemplate,
-    useTemplate,
+    applyTemplate,
   };
 }

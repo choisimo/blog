@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { SupportedLanguage } from '@/types/blog';
 
@@ -48,29 +48,29 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
-  const persistLanguage = (lang: SupportedLanguage) => {
+  const persistLanguage = useCallback((lang: SupportedLanguage) => {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEY, lang);
-    } catch {
-      // ignore storage errors
-    }
-  };
+    } catch { void 0; }
+  }, []);
 
-  const setLanguage = (lang: SupportedLanguage) => {
+  const setLanguage = useCallback((lang: SupportedLanguage) => {
     setLanguageState(prev => (prev === lang ? prev : lang));
     persistLanguage(lang);
-  };
+  }, [persistLanguage]);
 
-  const toggleLanguage = () => {
-    const next = language === 'ko' ? 'en' : 'ko';
-    setLanguageState(next);
-    persistLanguage(next);
-  };
+  const toggleLanguage = useCallback(() => {
+    setLanguageState(prev => {
+      const next = prev === 'ko' ? 'en' : 'ko';
+      persistLanguage(next);
+      return next;
+    });
+  }, [persistLanguage]);
 
   const value = useMemo(
     () => ({ language, setLanguage, toggleLanguage }),
-    [language]
+    [language, setLanguage, toggleLanguage]
   );
 
   return (

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -250,16 +250,22 @@ const Index = () => {
       <section className='mb-16'>
         <div className='max-w-2xl mx-auto space-y-6 text-center'>
           <div className='space-y-2'>
-            <p className={cn(
-              'text-sm font-medium tracking-widest uppercase',
-              isTerminal ? 'text-primary font-mono' : 'text-muted-foreground'
-            )}>
+            <p
+              className={cn(
+                'text-sm font-medium tracking-widest uppercase animate-hero-fade-up',
+                isTerminal ? 'text-primary font-mono' : 'text-muted-foreground'
+              )}
+              style={{ '--anim-delay': '0ms' } as React.CSSProperties}
+            >
               {isTerminal ? '> WELCOME_TO' : 'Welcome to'}
             </p>
-            <h1 className={cn(
-              'text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]',
-              isTerminal && 'font-mono'
-            )}>
+            <h1
+              className={cn(
+                'text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] animate-hero-fade-up',
+                isTerminal && 'font-mono'
+              )}
+              style={{ '--anim-delay': '80ms' } as React.CSSProperties}
+            >
               <span className={cn(
                 isTerminal
                   ? 'text-foreground'
@@ -277,15 +283,21 @@ const Index = () => {
               </span>
             </h1>
           </div>
-          <p className={cn(
-            'text-lg leading-relaxed',
-            isTerminal ? 'text-muted-foreground' : 'text-muted-foreground'
-          )}>
+          <p
+            className={cn(
+              'text-lg leading-relaxed animate-hero-fade-up',
+              isTerminal ? 'text-muted-foreground' : 'text-muted-foreground'
+            )}
+            style={{ '--anim-delay': '160ms' } as React.CSSProperties}
+          >
             AI, 시스템 설계, 그리고 코드의 본질을 탐구하는 기술 블로그
           </p>
 
           {/* Search Bar */}
-          <div className='max-w-md mx-auto'>
+          <div
+            className='max-w-md mx-auto animate-hero-fade-up'
+            style={{ '--anim-delay': '240ms' } as React.CSSProperties}
+          >
             <SearchBar
               posts={allPosts}
               onSearchResults={results => {
@@ -297,7 +309,10 @@ const Index = () => {
           </div>
 
           {/* CTA Buttons */}
-          <div className='flex flex-wrap gap-3 justify-center pt-2'>
+          <div
+            className='flex flex-wrap gap-3 justify-center pt-2 animate-hero-fade-up'
+            style={{ '--anim-delay': '320ms' } as React.CSSProperties}
+          >
             <Button
               asChild
               size='lg'
@@ -328,7 +343,10 @@ const Index = () => {
 
           {/* Realtime visitors pill */}
           {activeVisitors > 0 && (
-            <div className='flex justify-center pt-2'>
+            <div
+              className='flex justify-center pt-2 animate-hero-fade-up'
+              style={{ '--anim-delay': '400ms' } as React.CSSProperties}
+            >
               <div className={cn(
                 'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium',
                 isTerminal
@@ -377,7 +395,7 @@ const Index = () => {
       <section className='mb-16'>
         <div className='flex items-center justify-between mb-8'>
           <h2 className={cn(
-            'text-2xl font-bold',
+            'text-2xl font-bold animate-section-slide-in',
             isTerminal && 'font-mono'
           )}>
             {isTerminal ? '// editor_picks' : "Editor's Picks"}
@@ -403,7 +421,7 @@ const Index = () => {
                   isTerminal
                     ? 'border border-border bg-card/50 backdrop-blur-sm hover:border-primary/50'
                     : 'bg-card shadow-md hover:shadow-xl',
-                  'transition-all duration-300'
+                  'transition-[transform,box-shadow,border-color,background-color] duration-300'
                 )}>
                   {featuredPosts[0].coverImage ? (
                     <OptimizedImage
@@ -486,7 +504,7 @@ const Index = () => {
                     isTerminal
                       ? 'border border-border bg-card/30 backdrop-blur-sm hover:border-primary/50 hover:bg-card/50'
                       : 'bg-card border border-border/50 shadow-sm hover:shadow-lg',
-                    'transition-all duration-300'
+                    'transition-[transform,box-shadow,border-color,background-color] duration-300'
                   )}>
                     {post.coverImage && (
                       <div className='aspect-[16/9] overflow-hidden'>
@@ -591,7 +609,7 @@ const Index = () => {
                   isTerminal
                     ? 'border border-border bg-card/30 backdrop-blur-sm hover:border-primary/50 hover:bg-card/50'
                     : 'bg-card border border-border/50 shadow-sm hover:shadow-md',
-                  'transition-all duration-300'
+                  'transition-[transform,box-shadow,border-color,background-color] duration-300'
                 )}>
                   {item.coverImage ? (
                     <div className='aspect-[16/9] overflow-hidden'>
@@ -656,9 +674,10 @@ const Index = () => {
                   >
                     <Card
                       className={cn(
-                        'group cursor-pointer transition-all duration-300',
-                        'hover:shadow-lg hover:-translate-y-0.5'
+                        'group cursor-pointer transition-[transform,box-shadow] duration-300',
+                        'hover:shadow-lg hover:-translate-y-1'
                       )}
+                      style={{ transitionTimingFunction: 'var(--ease-spring)' }}
                     >
                       <CardHeader className='text-center py-4 px-3'>
                         <category.icon
@@ -737,7 +756,7 @@ const Index = () => {
                 className='group block'
               >
                 <article className={cn(
-                  'flex gap-5 rounded-xl p-4 transition-all duration-300',
+                  'flex gap-5 rounded-xl p-4 transition-[transform,box-shadow,border-color,background-color] duration-300',
                   isTerminal
                     ? 'border border-border bg-card/30 backdrop-blur-sm hover:border-primary/50 hover:bg-card/50'
                     : 'bg-card border border-border/50 shadow-sm hover:shadow-md'
