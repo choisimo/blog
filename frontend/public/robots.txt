@@ -13,4 +13,4 @@ Allow: /
 
 User-agent: *
 Allow: /
-Sitemap: http://localhost:3000/sitemap.xml
+Sitemap: https://noblog.nodove.com/sitemap.xml
