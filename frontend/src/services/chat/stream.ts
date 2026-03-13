@@ -9,42 +9,46 @@ import type { ChatStreamEvent } from "./types";
 /**
  * 응답 객체에서 텍스트 추출
  */
-export function extractTexts(obj: any): string[] {
+export function extractTexts(obj: unknown): string[] {
   const out: string[] = [];
   if (!obj || typeof obj !== "object") return out;
+  const o = obj as Record<string, unknown>;
 
-  // 직접 text (백엔드 SSE 형식: { type: 'text', text: '...' })
-  if (typeof obj.text === "string") out.push(obj.text);
+  if (typeof o.text === "string") out.push(o.text);
+  if (typeof o.content === "string") out.push(o.content);
 
-  // 직접 content
-  if (typeof obj.content === "string") out.push(obj.content);
-
-  // parts 배열
-  if (Array.isArray(obj.parts)) {
-    for (const p of obj.parts) {
-      if (p) {
-        if (typeof (p as any).text === "string") out.push((p as any).text);
-        else if (typeof (p as any).content === "string")
-          out.push((p as any).content);
+  if (Array.isArray(o.parts)) {
+    for (const p of o.parts) {
+      if (p && typeof p === 'object') {
+        const part = p as Record<string, unknown>;
+        if (typeof part.text === "string") out.push(part.text);
+        else if (typeof part.content === "string") out.push(part.content);
       }
     }
   }
 
-  // message.content
-  if (obj.message && typeof obj.message.content === "string") {
-    out.push(obj.message.content);
+  if (o.message && typeof o.message === 'object') {
+    const msg = o.message as Record<string, unknown>;
+    if (typeof msg.content === "string") out.push(msg.content);
   }
 
-  // OpenAI 스타일 choices
-  if (Array.isArray(obj.choices)) {
-    for (const c of obj.choices) {
-      const delta = c?.delta?.content ?? c?.message?.content;
-      if (typeof delta === "string") out.push(delta);
+  if (Array.isArray(o.choices)) {
+    for (const c of o.choices) {
+      if (c && typeof c === 'object') {
+        const ch = c as Record<string, unknown>;
+        const delta = ch.delta && typeof ch.delta === 'object'
+          ? (ch.delta as Record<string, unknown>).content
+          : undefined;
+        const msg = ch.message && typeof ch.message === 'object'
+          ? (ch.message as Record<string, unknown>).content
+          : undefined;
+        const text = delta ?? msg;
+        if (typeof text === "string") out.push(text);
+      }
     }
   }
 
-  // delta 필드
-  if (typeof obj.delta === "string") out.push(obj.delta);
+  if (typeof o.delta === "string") out.push(o.delta);
 
   return out;
 }
@@ -52,51 +56,47 @@ export function extractTexts(obj: any): string[] {
 /**
  * JSON 객체를 ChatStreamEvent로 변환
  */
-export function parseStreamObject(obj: any): ChatStreamEvent[] {
+export function parseStreamObject(obj: unknown): ChatStreamEvent[] {
   const events: ChatStreamEvent[] = [];
+  if (!obj || typeof obj !== 'object') return events;
+  const o = obj as Record<string, unknown>;
 
-  // 세션 이벤트
-  if (obj?.type === "session" && typeof obj?.sessionId === "string") {
-    events.push({ type: "session", sessionId: obj.sessionId });
+  if (o.type === "session" && typeof o.sessionId === "string") {
+    events.push({ type: "session", sessionId: o.sessionId });
   }
 
-  // 에러 이벤트
-  if (obj?.type === "error") {
+  if (o.type === "error") {
     const message =
-      (typeof obj?.error === "string" && obj.error) ||
-      (typeof obj?.message === "string" && obj.message) ||
+      (typeof o.error === "string" && o.error) ||
+      (typeof o.message === "string" && o.message) ||
       "Chat failed";
-    const code = typeof obj?.code === "string" ? obj.code : undefined;
+    const code = typeof o.code === "string" ? o.code : undefined;
     events.push({ type: "error", message, code });
   }
 
-  // 완료 이벤트
-  if (obj?.type === "done") {
+  if (o.type === "done") {
     events.push({ type: "done" });
   }
 
-  // 텍스트 추출
   const texts = extractTexts(obj);
   for (const t of texts) {
     if (t) events.push({ type: "text", text: t });
   }
 
-  // 소스
-  const srcs = obj?.sources;
+  const srcs = o.sources;
   if (Array.isArray(srcs)) {
     events.push({ type: "sources", sources: srcs });
   }
 
-  // 후속 질문
-  const fups = obj?.followups || obj?.suggestions;
+  const fups = o.followups ?? o.suggestions;
   if (Array.isArray(fups)) {
     events.push({ type: "followups", questions: fups });
   }
 
-  // 컨텍스트
-  const ctx = obj?.context;
+  const ctx = o.context;
   if (ctx && typeof ctx === "object") {
-    events.push({ type: "context", page: ctx.page || ctx });
+    const ctxObj = ctx as Record<string, unknown>;
+    events.push({ type: "context", page: ctxObj.page ?? ctx });
   }
 
   return events;

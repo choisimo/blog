@@ -281,7 +281,11 @@ export async function createBackendSession(title?: string): Promise<string> {
     throw new Error(`Failed to create session: ${res.status} ${t.slice(0, 180)}`);
   }
 
-  const data = (await res.json().catch(() => ({}))) as any;
+  const data = (await res.json().catch(() => ({}))) as {
+    sessionID?: string;
+    id?: string;
+    data?: { sessionID?: string; id?: string };
+  };
   const id =
     data?.sessionID || data?.id || data?.data?.sessionID || data?.data?.id;
 

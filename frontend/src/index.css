@@ -90,6 +90,13 @@
     --z-terminal-floating: 160;
     --z-terminal-modal: 170;
     --z-toast: 200;
+
+    /* Blog card surface token */
+    --card-blog: 0 0% 100%;
+
+    /* Easing tokens */
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark {
@@ -162,6 +169,9 @@
     
     /* Selection */
     --selection: 226 70% 60% / 0.25;
+
+    /* Blog card surface — blue-tinted elevated surface */
+    --card-blog: 222 22% 13%;
   }
 
   /* Terminal Theme - CRT / Green Monitor Aesthetic */
@@ -2100,5 +2110,62 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
   .terminal .terminal-crt::before,
   .terminal .terminal-crt::after {
     opacity: 0.5;
+  }
+}
+
+@keyframes hero-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes route-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes section-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-hero-fade-up {
+  animation: hero-fade-up 0.55s var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1)) both;
+  animation-delay: var(--anim-delay, 0ms);
+}
+
+.animate-route-fade-in {
+  animation: route-fade-in 0.35s var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1)) both;
+}
+
+.animate-section-slide-in {
+  animation: section-slide-in 0.4s var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1)) both;
+  animation-delay: var(--anim-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-hero-fade-up,
+  .animate-route-fade-in,
+  .animate-section-slide-in {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
 }

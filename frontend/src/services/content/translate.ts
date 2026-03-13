@@ -47,15 +47,15 @@ export async function translatePost(request: TranslationRequest): Promise<Transl
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const message = (errorData as any)?.error?.message || `Translation failed: ${response.status}`;
+    const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } };
+    const message = errorData?.error?.message || `Translation failed: ${response.status}`;
     console.error('[translate] API error:', response.status, message);
     throw new Error(message);
   }
 
-  const data = await response.json();
-  console.log('[translate] Success, cached:', (data as any).data?.cached);
-  return (data as any).data as TranslationResult;
+  const data = await response.json() as { data?: TranslationResult & { cached?: boolean } };
+  console.log('[translate] Success, cached:', data.data?.cached);
+  return data.data as TranslationResult;
 }
 
 /**
@@ -75,8 +75,8 @@ export async function getCachedTranslation(
       return null;
     }
 
-    const data = await response.json();
-    return (data as any).data as TranslationResult;
+    const data = await response.json() as { data?: TranslationResult };
+    return data.data ?? null;
   } catch {
     return null;
   }

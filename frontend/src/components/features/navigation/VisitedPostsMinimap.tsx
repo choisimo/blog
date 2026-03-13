@@ -32,6 +32,16 @@ type ChatSessionLite = {
   updatedAt?: string;
 };
 
+function isVisitedPostItem(item: unknown): item is VisitedPostItem {
+  return !!item && typeof item === 'object' &&
+    typeof (item as VisitedPostItem).path === 'string' &&
+    typeof (item as VisitedPostItem).title === 'string';
+}
+
+function isChatSessionLite(session: unknown): session is ChatSessionLite {
+  return !!session && typeof session === 'object' && typeof (session as ChatSessionLite).id === 'string';
+}
+
 export function useVisitedPostsState() {
   const [items, setItems] = useState<VisitedPostItem[]>([]);
   const [storageAvailable, setStorageAvailable] = useState(true);
@@ -44,7 +54,7 @@ export function useVisitedPostsState() {
         setStorageAvailable(true);
         return;
       }
-      const parsed = JSON.parse(raw);
+      const parsed = JSON.parse(raw) as unknown;
       // Validate that it's an array with proper structure
       if (!Array.isArray(parsed)) {
         // Invalid data - reset to empty array
@@ -54,13 +64,7 @@ export function useVisitedPostsState() {
         return;
       }
       // Filter out any malformed items
-      const validItems = parsed.filter(
-        (item: any) =>
-          item &&
-          typeof item === 'object' &&
-          typeof item.path === 'string' &&
-          typeof item.title === 'string'
-      );
+      const validItems = parsed.filter(isVisitedPostItem);
       setItems(validItems);
       setStorageAvailable(true);
     } catch {
@@ -163,9 +167,7 @@ export function VisitedPostsMinimap({
           setChatSessions([]);
           return;
         }
-        const validSessions = parsed.filter(
-          (s: any) => s && typeof s === 'object' && typeof s.id === 'string'
-        );
+        const validSessions = parsed.filter(isChatSessionLite);
         setChatSessions(validSessions);
       } catch {
         setChatSessions([]);

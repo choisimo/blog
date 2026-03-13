@@ -67,7 +67,7 @@ export default function BotChatPanel({
             }
 
             setMessages((prev) => [...prev, { role: "assistant", content: botResponse }]);
-        } catch (e: any) {
+        } catch {
             toast({ title: "오류", description: "AI 요청 실패", variant: "destructive" });
         } finally {
             setIsTyping(false);

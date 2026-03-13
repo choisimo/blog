@@ -327,7 +327,7 @@ export function WorkersManager() {
                         { label: 'Compat', value: worker.config.compatibility_date },
                         {
                           label: 'Account',
-                          value: worker.config.account_id.slice(0, 8) + '...',
+                          value: `${worker.config.account_id.slice(0, 8)}...`,
                           copyValue: worker.config.account_id,
                         },
                       ].map(({ label, value, copyValue }) => (

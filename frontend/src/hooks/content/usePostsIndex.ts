@@ -11,12 +11,26 @@ import type { BlogPost } from '@/types/blog';
 let cachedPosts: BlogPost[] | null = null;
 let loadingPromise: Promise<BlogPost[]> | null = null;
 
-export function usePostsIndex() {
+export function prefetchPostsIndex(): void {
+  if (cachedPosts || loadingPromise) return;
+  loadingPromise = getPosts();
+  loadingPromise
+    .then(result => {
+      cachedPosts = result;
+    })
+    .catch(() => {
+      loadingPromise = null;
+    });
+}
+
+export function usePostsIndex(enabled = true) {
   const [posts, setPosts] = useState<BlogPost[]>(cachedPosts || []);
-  const [loading, setLoading] = useState(!cachedPosts);
+  const [loading, setLoading] = useState(!!(enabled && !cachedPosts));
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
+
     // 이미 캐시가 있으면 바로 반환
     if (cachedPosts) {
       setPosts(cachedPosts);
@@ -51,7 +65,7 @@ export function usePostsIndex() {
         setLoading(false);
         loadingPromise = null;
       });
-  }, []);
+  }, [enabled]);
 
   // 강제 리프레시 함수 (필요 시)
   const refresh = useCallback(async () => {

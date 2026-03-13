@@ -19,6 +19,10 @@ function formatLiveRoomName(room: string): string {
     .replace(/:/g, "/");
 }
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
 type UseChatActionsProps = {
   canSend: boolean;
   input: string;
@@ -162,7 +166,7 @@ export function useChatActions({
               "Use /live room <name> to move.",
             ].join("\n"),
           );
-        } catch (e: any) {
+        } catch (e) {
           try {
             const stats = await getLiveRoomStats(currentLiveRoom);
             pushLiveSystem(
@@ -173,10 +177,7 @@ export function useChatActions({
               "warn",
             );
           } catch {
-            pushLiveSystem(
-              e?.message || "[Live] 방 목록을 가져오지 못했습니다.",
-              "error",
-            );
+            pushLiveSystem(getErrorMessage(e, "[Live] 방 목록을 가져오지 못했습니다."), "error");
           }
         }
         return;
@@ -225,11 +226,11 @@ export function useChatActions({
 
       try {
         await sendVisitorMessage(liveText);
-      } catch (e: any) {
+      } catch (e) {
         push({
           id: `${id}_live_err`,
           role: "system",
-          text: e?.message || "Live message delivery failed",
+          text: getErrorMessage(e, "Live message delivery failed"),
           systemLevel: "error",
         });
       }
@@ -248,11 +249,11 @@ export function useChatActions({
 
       try {
         await sendVisitorMessage(trimmed);
-      } catch (e: any) {
+      } catch (e) {
         push({
           id: `${id}_live_err`,
           role: "system",
-          text: e?.message || "Live message delivery failed",
+          text: getErrorMessage(e, "Live message delivery failed"),
           systemLevel: "error",
         });
       }
@@ -413,8 +414,8 @@ export function useChatActions({
           });
         }
       }
-    } catch (e: any) {
-      const msg = e?.message || "Chat failed";
+    } catch (e) {
+      const msg = getErrorMessage(e, "Chat failed");
       const errId =
         aiId != null
           ? `${aiId}_err`

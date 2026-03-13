@@ -34,8 +34,63 @@ import type {
   InvokeChatTaskResult,
   ChatImageUploadResult,
   ContentPart,
+  ChatErrorCode,
 } from "./types";
 import { ChatError } from "./types";
+
+type ChatTaskEnvelope = {
+  data?: unknown;
+  result?: unknown;
+  output?: unknown;
+  payload?: unknown;
+};
+
+type ChatUploadEnvelope = {
+  ok?: boolean;
+  data?: ChatImageUploadResult;
+};
+
+type ChatAggregateEnvelope = {
+  ok?: boolean;
+  data?: string | { text?: string };
+};
+
+function getAggregateText(data: ChatAggregateEnvelope["data"]): string | null {
+  if (typeof data === "string") {
+    return data;
+  }
+  if (data && typeof data === "object" && "text" in data && typeof data.text === "string") {
+    return data.text;
+  }
+  return null;
+}
+
+function getEnvelopeData(parsed: unknown): unknown {
+  if (!parsed || typeof parsed !== "object") return parsed;
+
+  const envelope = parsed as ChatTaskEnvelope;
+  return envelope.data ?? envelope.result ?? envelope.output ?? envelope.payload ?? parsed;
+}
+
+function getParsedObject(parsed: unknown): Record<string, unknown> | null {
+  return parsed && typeof parsed === "object"
+    ? (parsed as Record<string, unknown>)
+    : null;
+}
+
+function getStreamErrorMessage(payload: Record<string, unknown>): string {
+  return typeof payload.error === "string"
+    ? payload.error
+    : typeof payload.message === "string"
+      ? payload.message
+      : "Chat failed";
+}
+
+function getStreamErrorCode(payload: Record<string, unknown>): ChatErrorCode {
+  return typeof payload.code === "string"
+    ? (payload.code as ChatErrorCode)
+    : "SERVER_ERROR";
+}
 
 // ============================================================================
 // Chat Task API
@@ -85,14 +140,7 @@ export async function invokeChatTask<T = unknown>(
     throw ChatError.fromResponse(res.status, parsed);
   }
 
-  const dataCandidate =
-    parsed && typeof parsed === "object"
-      ? ((parsed as any).data ??
-        (parsed as any).result ??
-        (parsed as any).output ??
-        (parsed as any).payload ??
-        parsed)
-      : parsed;
+  const dataCandidate = getEnvelopeData(parsed);
 
   return {
     ok: true,
@@ -329,30 +377,32 @@ async function* streamChatEventsWebSocket(input: {
     if (!raw) return;
 
     try {
-      const payload = JSON.parse(raw);
+      const payload = JSON.parse(raw) as unknown;
+      const payloadObject = getParsedObject(payload);
+      if (!payloadObject) return;
 
       if (
-        payload?.type === "session" &&
-        typeof payload.sessionId === "string"
+        payloadObject.type === "session" &&
+        typeof payloadObject.sessionId === "string"
       ) {
-        storeSessionId(payload.sessionId);
+        storeSessionId(payloadObject.sessionId);
         return;
       }
 
-      if (payload?.type === "done") {
+      if (payloadObject.type === "done") {
         push({ type: "done" });
         finish();
         return;
       }
 
-      if (payload?.type === "error") {
-        finish(new ChatError(payload.error || "Chat failed", "SERVER_ERROR"));
+      if (payloadObject.type === "error") {
+        finish(new ChatError(getStreamErrorMessage(payloadObject), getStreamErrorCode(payloadObject)));
         return;
       }
 
-      const events = parseStreamObject(payload);
-      if (events.length === 0 && payload?.text) {
-        push({ type: "text", text: payload.text });
+      const events = parseStreamObject(payloadObject);
+      if (events.length === 0 && typeof payloadObject.text === "string") {
+        push({ type: "text", text: payloadObject.text });
         return;
       }
 
@@ -437,7 +487,7 @@ export async function uploadChatImage(
   });
 
   const text = await res.text().catch(() => "");
-  let parsed: any = null;
+  let parsed: ChatUploadEnvelope | null = null;
   if (text) {
     try {
       parsed = JSON.parse(text);
@@ -450,7 +500,7 @@ export async function uploadChatImage(
     throw ChatError.fromResponse(res.status, parsed || text);
   }
 
-  const data = parsed.data;
+  const data = parsed?.data;
   if (!data || typeof data.url !== "string") {
     throw new ChatError("Invalid chat image upload response", "PARSE_ERROR");
   }
@@ -462,7 +512,7 @@ export async function uploadChatImage(
     );
   }
 
-  return data as ChatImageUploadResult;
+  return data;
 }
 
 // ============================================================================
@@ -487,7 +537,7 @@ export async function invokeChatAggregate(input: {
   });
 
   const text = await res.text().catch(() => "");
-  let parsed: any = null;
+  let parsed: ChatAggregateEnvelope | null = null;
   if (text) {
     try {
       parsed = JSON.parse(text);
@@ -500,10 +550,7 @@ export async function invokeChatAggregate(input: {
     throw ChatError.fromResponse(res.status, parsed || text);
   }
 
-  const data = parsed.data;
-  const value =
-    (data && typeof data.text === "string" && data.text) ||
-    (typeof data === "string" ? data : null);
+  const value = getAggregateText(parsed?.data);
 
   if (!value) {
     throw new ChatError("Invalid chat aggregate response", "PARSE_ERROR");

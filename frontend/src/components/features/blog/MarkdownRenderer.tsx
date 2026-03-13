@@ -44,6 +44,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactElement,
   type ReactNode,
 } from "react";
 import { Button } from "@/components/ui/button";
@@ -274,7 +275,7 @@ function extractTextFromNode(node: ReactNode): string {
     return "";
   }
 
-  const props = (node as any).props ?? {};
+  const props = (node as ReactElement<{ children?: ReactNode }>).props ?? {};
   return Children.toArray(props.children).map(extractTextFromNode).join(" ");
 }
 
@@ -463,7 +464,7 @@ export const MarkdownRenderer = ({
   const hasMediaNode = (node: unknown): boolean => {
     if (!isValidElement(node)) return false;
 
-    const props = (node as any).props ?? {};
+    const props = (node as ReactElement<{ children?: ReactNode; src?: string }>).props ?? {};
     if (typeof props.src === "string" && props.src.length > 0) return true;
 
     const children = Children.toArray(props.children);

@@ -109,7 +109,7 @@ export async function semanticSearch(
     // Backend returns: { ok, data: { results: [{ document, metadata, distance }] } }
     // Frontend expects: { ok, data: { results: [{ content, metadata, score }] } }
     if (data.ok && data.data?.results) {
-      data.data.results = data.data.results.map((r: any) => ({
+      data.data.results = data.data.results.map((r: RAGSearchResult) => ({
         ...r,
         content: r.content || r.document || '',
         score: r.score ?? (r.distance != null ? Math.max(0, 1 - r.distance) : 0),

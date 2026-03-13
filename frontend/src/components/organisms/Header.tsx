@@ -17,6 +17,7 @@ import {
   Terminal,
   Library,
   Bell,
+  Search,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -24,7 +25,6 @@ import { NavigationItem } from "@/components/molecules";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useIsMobile } from "@/hooks/ui/use-mobile";
-import { usePostsIndex } from "@/hooks/content/usePostsIndex";
 import { HeaderSearchBar } from "@/components/features/search/HeaderSearchBar";
 import { useNotificationStore } from "@/stores/realtime/useNotificationStore";
 import { NotificationPanel } from "@/components/features/notifications/NotificationPanel";
@@ -36,6 +36,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
 import { useAuthStore } from "@/stores/session/useAuthStore";
 import { isTokenExpired } from "@/services/session/auth";
@@ -61,10 +62,10 @@ function TerminalWindowButtons() {
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchSheetOpen, setSearchSheetOpen] = useState(false);
   const { theme, setTheme, isTerminal } = useTheme();
   const { language, setLanguage } = useLanguage();
   const isMobile = useIsMobile();
-  const { posts } = usePostsIndex();
   const { unreadCount } = useNotificationStore();
   const accessToken = useAuthStore((s) => s.accessToken);
   const refreshToken = useAuthStore((s) => s.refreshToken);
@@ -84,12 +85,13 @@ export function Header() {
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-[var(--z-fab-bar)] w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
-        isTerminal && "bg-[hsl(var(--terminal-titlebar))] border-border",
-      )}
-    >
+    <>
+      <header
+        className={cn(
+          "sticky top-0 z-[var(--z-fab-bar)] w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+          isTerminal && "bg-[hsl(var(--terminal-titlebar))] border-border",
+        )}
+      >
       <nav
         className="container mx-auto px-4 sm:px-6 lg:px-8"
         aria-label="Global"
@@ -134,7 +136,7 @@ export function Header() {
           </div>
 
           <div className="hidden md:block flex-1 max-w-xs lg:max-w-sm mx-4">
-            <HeaderSearchBar posts={posts} />
+            <HeaderSearchBar />
           </div>
 
           <div className="flex items-center gap-x-2 sm:gap-x-4">
@@ -143,6 +145,23 @@ export function Header() {
                 <LanguageToggle />
                 <ThemeToggle />
               </>
+            )}
+
+            {/* 모바일: 검색 버튼 */}
+            {isMobile && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSearchSheetOpen(true)}
+                className={cn(
+                  "h-11 w-11 md:hidden",
+                  isTerminal &&
+                    "text-primary hover:text-primary hover:bg-primary/10",
+                )}
+                aria-label="검색"
+              >
+                <Search className="h-5 w-5" />
+              </Button>
             )}
 
             {/* 모바일: 통합 설정 드롭다운 */}
@@ -374,26 +393,45 @@ export function Header() {
       </nav>
 
       {/* Mobile menu */}
-      <div className={cn("md:hidden", mobileMenuOpen ? "block" : "hidden")}>
-        <div
-          className={cn(
-            "space-y-1 px-4 pb-3 pt-2",
-            isTerminal && "bg-[hsl(var(--terminal-code-bg))]",
-          )}
-        >
-          {navigation.map((item) => (
-            <NavigationItem
-              key={item.name}
-              name={item.name}
-              href={item.href}
-              icon={item.icon}
-              isMobile
-              onClick={closeMobileMenu}
-              className={cn(isTerminal && "font-mono no-terminal-style")}
-            />
-          ))}
+      {mobileMenuOpen && (
+        <div className="md:hidden animate-in slide-in-from-top-2 fade-in duration-200 ease-out">
+          <div
+            className={cn(
+              "space-y-1 px-4 pb-3 pt-2 border-t",
+              isTerminal && "bg-[hsl(var(--terminal-code-bg))] border-primary/20",
+              !isTerminal && "border-border/50 bg-background/95 backdrop-blur",
+            )}
+          >
+            {navigation.map((item) => (
+              <NavigationItem
+                key={item.name}
+                name={item.name}
+                href={item.href}
+                icon={item.icon}
+                isMobile
+                onClick={closeMobileMenu}
+                className={cn(isTerminal && "font-mono no-terminal-style")}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </header>
-  );
+    {/* Mobile Search Sheet */}
+    <Sheet open={searchSheetOpen} onOpenChange={setSearchSheetOpen}>
+      <SheetContent
+        side="top"
+        className={cn(
+          "p-4",
+          isTerminal && "bg-[hsl(var(--terminal-code-bg))] border-primary/20",
+        )}
+      >
+        <SheetTitle className="sr-only">Search</SheetTitle>
+        <div className="mt-2">
+          <HeaderSearchBar className="w-full" />
+        </div>
+      </SheetContent>
+    </Sheet>
+  </>
+);
 }

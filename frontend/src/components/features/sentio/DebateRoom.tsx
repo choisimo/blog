@@ -16,7 +16,6 @@ import {
   BarChart3,
   Sparkles,
   HelpCircle,
-  ChevronLeft,
   Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -51,24 +50,6 @@ const THINKING_MESSAGES = [
   "관점을 정리하고 있어요...",
   "답변을 구성하는 중...",
   "맥락을 분석하고 있어요...",
-];
-
-const DEBATE_STARTERS = [
-  {
-    label: "이 부분이 특히 신경 쓰여요",
-    stance: "agree" as const,
-    icon: ThumbsUp,
-  },
-  {
-    label: "이 부분이 조금 불편해요",
-    stance: "disagree" as const,
-    icon: ThumbsDown,
-  },
-  {
-    label: "조금 더 이해하고 정리하고 싶어요",
-    stance: "neutral" as const,
-    icon: Lightbulb,
-  },
 ];
 
 const DEFAULT_FOLLOW_UP_PROMPTS = [
@@ -207,7 +188,7 @@ function buildDebateSystemPrompt(
     lines.push("", "[참고할 수 있는 관점들]");
     topic.facets.forEach((f, i) => {
       lines.push(`${i + 1}. ${f.title}`);
-      f.points.forEach((p) => lines.push(`   - ${p}`));
+      f.points.forEach((p) => { lines.push(`   - ${p}`); });
     });
   }
 
@@ -226,7 +207,61 @@ function buildDebateSystemPrompt(
   return lines.join("\n");
 }
 
-type SelectionStep = "persona" | "stance" | "chat";
+type SelectionStep = "intent" | "chat";
+
+type DebateIntentOption = {
+  id: string;
+  label: string;
+  sublabel: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+  personaId: string;
+  stance: "agree" | "disagree" | "neutral";
+  starterText: string;
+};
+
+const INTENT_OPTIONS: DebateIntentOption[] = [
+  {
+    id: "understand",
+    label: "더 잘 이해하고 싶어요",
+    sublabel: "핵심을 쉽게 풀어줘요",
+    icon: GraduationCap,
+    color: "from-amber-500 to-orange-500",
+    personaId: "mentor",
+    stance: "neutral",
+    starterText: "이 내용을 더 쉽게 이해하고 싶어요. 핵심을 정리해주실 수 있나요?",
+  },
+  {
+    id: "explore",
+    label: "다른 관점을 알고 싶어요",
+    sublabel: "새로운 시각으로 살펴봐요",
+    icon: Compass,
+    color: "from-blue-500 to-cyan-500",
+    personaId: "explorer",
+    stance: "neutral",
+    starterText: "이 주제를 다양한 관점에서 바라보면 어떨까요?",
+  },
+  {
+    id: "challenge",
+    label: "비판적으로 살펴볼게요",
+    sublabel: "논리의 허점을 찾아봐요",
+    icon: Swords,
+    color: "from-red-500 to-pink-500",
+    personaId: "debater",
+    stance: "disagree",
+    starterText: "이 내용에 대해 비판적으로 생각해보고 싶어요. 반박 논리를 알려주실 수 있나요?",
+  },
+  {
+    id: "analyze",
+    label: "체계적으로 분석해볼게요",
+    sublabel: "데이터와 논리로 파헤쳐요",
+    icon: BarChart3,
+    color: "from-emerald-500 to-teal-500",
+    personaId: "analyst",
+    stance: "agree",
+    starterText: "이 주제를 체계적으로 분석해볼게요. 구조화된 관점을 알려주세요.",
+  },
+];
 
 function StepProgress({
   step,
@@ -236,8 +271,7 @@ function StepProgress({
   isTerminal: boolean;
 }) {
   const steps: { key: SelectionStep; label: string }[] = [
-    { key: "persona", label: "AI 선택" },
-    { key: "stance", label: "마음" },
+    { key: "intent", label: "의도" },
     { key: "chat", label: "대화" },
   ];
   const currentIdx = steps.findIndex((s) => s.key === step);
@@ -317,11 +351,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
   const [selectedPersona, setSelectedPersona] = useState<AIPersona | null>(
     null,
   );
-  const [selectionStep, setSelectionStep] = useState<SelectionStep>("persona");
-  const [dynamicStarters, setDynamicStarters] = useState<
-    typeof DEBATE_STARTERS | null
-  >(null);
-  const [startersLoading, setStartersLoading] = useState(false);
+  const [selectionStep, setSelectionStep] = useState<SelectionStep>("intent");
   const [followUpPrompts, setFollowUpPrompts] = useState<string[]>(
     DEFAULT_FOLLOW_UP_PROMPTS.slice(0, 3),
   );
@@ -335,7 +365,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, busy]);
+  });
 
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 100);
@@ -397,51 +427,12 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
     [topic.title],
   );
 
-  const selectPersona = useCallback(
-    (persona: AIPersona) => {
-      setSelectedPersona(persona);
-      setSelectionStep("stance");
-      setDynamicStarters(null);
-      setStartersLoading(true);
-      invokeChatTask<{ questions?: Array<{ q?: string }> }>({
-        mode: "chain",
-        payload: {
-          paragraph:
-            `다음 주제로 AI 상담을 시작하려고 합니다: ${topic.title}\n\n${topic.context}`.slice(
-              0,
-              1200,
-            ),
-          postTitle: topic.title,
-        },
-      })
-        .then((result) => {
-          const questions = extractChainQuestions(result.data).slice(0, 3);
-          if (questions.length === 3) {
-            setDynamicStarters([
-              { label: questions[0], stance: "agree" as const, icon: ThumbsUp },
-              {
-                label: questions[1],
-                stance: "disagree" as const,
-                icon: ThumbsDown,
-              },
-              {
-                label: questions[2],
-                stance: "neutral" as const,
-                icon: Lightbulb,
-              },
-            ]);
-          }
-        })
-        .catch(() => {
-          /* fallback to DEBATE_STARTERS */
-        })
-        .finally(() => setStartersLoading(false));
-    },
-    [topic],
-  );
+  const startDebateWithIntent = useCallback(
+    async (intent: DebateIntentOption) => {
+      const persona = AI_PERSONAS.find((p) => p.id === intent.personaId) ?? AI_PERSONAS[0];
+      const stance = intent.stance;
 
-  const startDebate = useCallback(
-    async (stance: "agree" | "disagree" | "neutral") => {
+      setSelectedPersona(persona ?? null);
       setCurrentStance(stance);
       setSelectionStep("chat");
       setBusy(true);
@@ -449,9 +440,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
       const userMsg: DebateMessage = {
         id: `user_${Date.now()}`,
         role: "user",
-        content:
-          (dynamicStarters ?? DEBATE_STARTERS).find((s) => s.stance === stance)
-            ?.label || "",
+        content: intent.label,
         stance,
         timestamp: Date.now(),
       };
@@ -478,19 +467,13 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
         const systemPrompt = buildDebateSystemPrompt(
           topic,
           stance,
-          selectedPersona || undefined,
+          persona ?? undefined,
         );
-        const starterText =
-          stance === "agree"
-            ? "이 부분이 특히 신경 쓰여요. 조금 더 이해하고 정리하고 싶어요."
-            : stance === "disagree"
-              ? "이 부분이 조금 불편해요. 다른 관점에서 생각해볼 수 있을까요?"
-              : "조금 더 이해하고 정리하고 싶어요. 핵심 논점이 무엇인가요?";
 
         let acc = "";
         const streamedFollowUps: string[] = [];
         for await (const ev of streamChatEvents({
-          text: `${systemPrompt}\n\n---\n\n사용자: ${starterText}`,
+          text: `${systemPrompt}\n\n---\n\n사용자: ${intent.starterText}`,
           signal: controller.signal,
           useArticleContext: false,
         })) {
@@ -510,28 +493,18 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
       } catch (err) {
         const error = err as Error;
         if (error.name === "AbortError") {
-          const aiMsg = messages.find((m) => m.id === aiId);
-          if (!aiMsg?.content) {
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === aiId
-                  ? {
-                      ...m,
-                      content: "응답 시간이 초과되었어요. 다시 시도해주세요.",
-                    }
-                  : m,
-              ),
-            );
-          }
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === aiId && !m.content
+                ? { ...m, content: "응답 시간이 초과되었어요. 다시 시도해주세요." }
+                : m,
+            ),
+          );
         } else {
           setMessages((prev) =>
             prev.map((m) =>
               m.id === aiId
-                ? {
-                    ...m,
-                    content:
-                      "죄송해요, 응답을 생성하지 못했어요. 다시 시도해주세요.",
-                  }
+                ? { ...m, content: "죄송해요, 응답을 생성하지 못했어요. 다시 시도해주세요." }
                 : m,
             ),
           );
@@ -541,14 +514,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
         setBusy(false);
       }
     },
-    [
-      topic,
-      addMessage,
-      selectedPersona,
-      refreshFollowUps,
-      dynamicStarters,
-      messages,
-    ],
+    [topic, addMessage, refreshFollowUps],
   );
 
   const sendMessage = useCallback(async () => {
@@ -684,10 +650,9 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
     setMessages([]);
     setCurrentStance(null);
     setSelectedPersona(null);
-    setSelectionStep("persona");
+    setSelectionStep("intent");
     setInput("");
     setFollowUpPrompts(DEFAULT_FOLLOW_UP_PROMPTS.slice(0, 3));
-    setDynamicStarters(null);
     setBusy(false);
   }, []);
 
@@ -807,10 +772,9 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
         ref={scrollRef}
         className="flex-1 overflow-y-auto overscroll-contain px-4 py-5 space-y-5"
       >
-        {/* Step 1: Persona Selection */}
-        {selectionStep === "persona" && (
+        {selectionStep === "intent" && (
           <div className="space-y-5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
-            <StepProgress step="persona" isTerminal={isTerminal} />
+            <StepProgress step="intent" isTerminal={isTerminal} />
 
             {/* Topic Card */}
             <div
@@ -841,28 +805,27 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
               </div>
             </div>
 
-            {/* Persona Selection */}
             <div className="space-y-4 pt-2">
               <div className="text-center space-y-1">
                 <p className="text-sm font-medium flex items-center justify-center gap-2">
                   <Sparkles className="h-4 w-4 text-primary" />
-                  <span>어떤 AI와 상담할까요?</span>
+                  <span>무엇이 궁금하신가요?</span>
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  각 AI는 다른 관점과 스타일로 대화합니다
+                  원하는 대화 방향을 골라주세요
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                {AI_PERSONAS.map((persona) => {
-                  const Icon = persona.icon;
+              <div className="grid grid-cols-1 gap-2.5">
+                {INTENT_OPTIONS.map((intent) => {
+                  const Icon = intent.icon;
                   return (
                     <button
-                      key={persona.id}
+                      key={intent.id}
                       type="button"
-                      onClick={() => selectPersona(persona)}
+                      onClick={() => startDebateWithIntent(intent)}
                       className={cn(
-                        "group flex flex-col items-center gap-2 px-4 py-4 rounded-xl border transition-all",
-                        "hover:scale-[1.02] active:scale-[0.98]",
+                        "group flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all text-left",
+                        "hover:scale-[1.01] active:scale-[0.99]",
                         isTerminal
                           ? "border-primary/30 hover:border-primary/60 hover:bg-primary/10"
                           : "border-border hover:border-primary/40 hover:bg-muted/50 hover:shadow-sm",
@@ -870,151 +833,25 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
                     >
                       <div
                         className={cn(
-                          "flex items-center justify-center h-12 w-12 rounded-full bg-gradient-to-br",
-                          persona.color,
-                          "text-white shadow-lg transition-transform group-hover:scale-110 duration-200",
+                          "flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br shrink-0",
+                          intent.color,
+                          "text-white shadow-md transition-transform group-hover:scale-110 duration-200",
                         )}
                       >
-                        <Icon className="h-6 w-6" />
+                        <Icon className="h-5 w-5" />
                       </div>
-                      <div className="text-center">
+                      <div className="flex-1 min-w-0">
                         <span className="text-sm font-medium block">
-                          {persona.name}
+                          {intent.label}
                         </span>
-                        <span className="text-xs text-muted-foreground line-clamp-2">
-                          {persona.description}
+                        <span className="text-xs text-muted-foreground">
+                          {intent.sublabel}
                         </span>
                       </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 transition-transform group-hover:translate-x-0.5" />
                     </button>
                   );
                 })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Step 2: Stance Selection */}
-        {selectionStep === "stance" && selectedPersona && (
-          <div className="space-y-5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
-            <StepProgress step="stance" isTerminal={isTerminal} />
-
-            {/* Selected Persona Display */}
-            <div
-              className={cn(
-                "rounded-xl px-4 py-4 border",
-                isTerminal
-                  ? "bg-primary/5 border-primary/30"
-                  : "bg-muted/40 border-border/60",
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className={cn(
-                    "flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br shrink-0",
-                    selectedPersona.color,
-                    "text-white shadow-md",
-                  )}
-                >
-                  <selectedPersona.icon className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h4 className="font-medium text-sm">
-                    {selectedPersona.name}와 상담
-                  </h4>
-                  <p className="text-xs text-muted-foreground">
-                    {selectedPersona.description}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectionStep("persona")}
-                  className={cn(
-                    "flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg transition-colors",
-                    isTerminal
-                      ? "text-primary/70 hover:text-primary hover:bg-primary/10"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
-                  )}
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                  뒤로가기
-                </button>
-              </div>
-            </div>
-
-            {/* Facets Preview */}
-            {topic.facets && topic.facets.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground px-1">
-                  관련 관점들:
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {topic.facets.slice(0, 3).map((f, i) => (
-                    <span
-                      key={i}
-                      className={cn(
-                        "inline-flex items-center px-3 py-1.5 rounded-full text-xs",
-                        isTerminal
-                          ? "bg-primary/10 text-primary border border-primary/20"
-                          : "bg-secondary text-secondary-foreground",
-                      )}
-                    >
-                      {f.title}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Stance Selection */}
-            <div className="space-y-4 pt-3">
-              <p className="text-sm text-center text-muted-foreground">
-                어떤 마음으로 상담을 시작할까요?
-              </p>
-              <div className="grid grid-cols-1 gap-2.5">
-                {startersLoading ? (
-                  <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>주제에 맞는 시작 모드를 생성하는 중...</span>
-                  </div>
-                ) : (
-                  (dynamicStarters ?? DEBATE_STARTERS).map((starter) => {
-                    const Icon = starter.icon;
-                    return (
-                      <button
-                        key={starter.stance}
-                        type="button"
-                        onClick={() => startDebate(starter.stance)}
-                        disabled={busy}
-                        className={cn(
-                          "flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all",
-                          "hover:scale-[1.01] active:scale-[0.99]",
-                          isTerminal
-                            ? "border-primary/30 hover:border-primary/50 hover:bg-primary/10"
-                            : "border-border hover:border-primary/40 hover:bg-muted/50",
-                          busy && "opacity-50 cursor-not-allowed",
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "flex items-center justify-center h-9 w-9 rounded-lg shrink-0",
-                            starter.stance === "agree" &&
-                              "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-                            starter.stance === "disagree" &&
-                              "bg-orange-500/15 text-orange-600 dark:text-orange-400",
-                            starter.stance === "neutral" &&
-                              "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-                          )}
-                        >
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <span className="text-sm font-medium flex-1 text-left line-clamp-2">
-                          {starter.label}
-                        </span>
-                        <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                      </button>
-                    );
-                  })
-                )}
               </div>
             </div>
           </div>
@@ -1110,9 +947,9 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
           messages.length > 0 &&
           messages[messages.length - 1]?.role === "ai" && (
             <div className="flex flex-wrap gap-2 pt-3">
-              {followUpPrompts.map((prompt, i) => (
+              {followUpPrompts.map((prompt) => (
                 <button
-                  key={i}
+                  key={prompt}
                   type="button"
                   onClick={() => handleFollowUp(prompt)}
                   className={cn(

@@ -198,7 +198,7 @@ const BlogPost = () => {
         ? "아래에서 알고리즘 동작을 직접 실행해볼 수 있습니다."
         : "Run the interactive simulation below.";
     const rawTitle = `${localized?.title ?? post.title} simulator`;
-    const safeTitle = rawTitle.replaceAll('"', "&quot;");
+    const safeTitle = rawTitle.replace(/"/g, "&quot;");
 
     return `${baseContent.trimEnd()}
 
@@ -494,7 +494,7 @@ ${description}
             );
             selected = ragPosts.slice(0, 3);
           }
-        } catch {}
+        } catch { void 0; }
 
         if (selected.length < 3) {
           const byCategory = await getPostsPage({
@@ -679,7 +679,7 @@ ${description}
 
                 <div
                   className={cn(
-                    "rounded-[32px] border border-white/60 bg-white/80 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-[#131a26] sm:p-8",
+                    "rounded-[32px] border border-white/60 bg-white/80 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-[hsl(var(--card-blog))] sm:p-8",
                     isTerminal && "rounded-lg border-border bg-card",
                   )}
                 >
@@ -735,7 +735,7 @@ ${description}
                     >
                       <div
                         className={cn(
-                          "flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[#0f1724] dark:text-white",
+                          "flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[hsl(var(--card-blog))] dark:text-white",
                           isTerminal &&
                             "rounded bg-[hsl(var(--terminal-code-bg))]",
                         )}
@@ -750,7 +750,7 @@ ${description}
                       {readingTimeLabel && (
                         <div
                           className={cn(
-                            "flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[#0f1724] dark:text-white",
+                            "flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[hsl(var(--card-blog))] dark:text-white",
                             isTerminal &&
                               "rounded bg-[hsl(var(--terminal-code-bg))]",
                           )}
@@ -766,7 +766,7 @@ ${description}
                       {post.author && (
                         <div
                           className={cn(
-                            "flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[#0f1724] dark:text-white",
+                            "flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[hsl(var(--card-blog))] dark:text-white",
                             isTerminal &&
                               "rounded bg-[hsl(var(--terminal-code-bg))]",
                           )}
@@ -915,7 +915,7 @@ ${description}
               <section
                 data-toc-boundary
                 className={cn(
-                  "rounded-[32px] border border-white/50 bg-card/70 p-4 shadow-soft backdrop-blur-sm dark:border-white/5 dark:bg-[#141927]/90 sm:p-8 -mx-2 sm:mx-0",
+                  "rounded-[32px] border border-white/50 bg-card/70 p-4 shadow-soft backdrop-blur-sm dark:border-white/5 dark:bg-[hsl(var(--card-blog)/0.9)] sm:p-8 -mx-2 sm:mx-0",
                   isTerminal &&
                     "rounded-lg border-border bg-[hsl(var(--terminal-code-bg))]",
                 )}
@@ -1013,7 +1013,7 @@ ${description}
                           preservedFrom ? { from: preservedFrom } : undefined
                         }
                         className={cn(
-                          "group rounded-2xl border border-border/60 bg-card/70 p-5 shadow-sm transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg dark:border-white/10 dark:bg-[#141b2a]",
+                          "group rounded-2xl border border-border/60 bg-card/70 p-5 shadow-sm transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg dark:border-white/10 dark:bg-[hsl(var(--card-blog))]",
                           isTerminal &&
                             "rounded-lg border-border bg-[hsl(var(--terminal-code-bg))] hover:border-primary",
                         )}

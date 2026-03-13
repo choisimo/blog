@@ -22,7 +22,7 @@ interface GraphNode {
   y: number;
   vx: number;
   vy: number;
-  data?: any;
+  data?: PostNodeData | ChatSession | TagNodeData | SearchNodeData | MemoNodeData;
   ts?: number; // timestamp for filtering
 }
 
@@ -57,6 +57,45 @@ interface MemoEvent {
       title?: string;
     };
   };
+}
+
+type SessionIndexEntry = ReturnType<typeof loadSessionsIndex>[number];
+
+interface PostNodeData {
+  year: number;
+  slug: string;
+  title: string;
+  category: string;
+  tags: string[];
+}
+
+interface TagNodeData {
+  tag: string;
+  count: number;
+}
+
+interface SearchNodeData {
+  hash: string;
+  count: number;
+  queryText?: string;
+}
+
+interface MemoNodeData {
+  id: string;
+  postId: string;
+  ts: number;
+  snippet?: string;
+}
+
+function isChatSession(value: SessionIndexEntry): value is ChatSession {
+  return Boolean(value && typeof value.id === 'string');
+}
+
+function isMemoEvent(value: unknown): value is MemoEvent {
+  if (!value || typeof value !== 'object') return false;
+
+  const candidate = value as { t?: unknown };
+  return typeof candidate.t === 'number';
 }
 
 interface RelatedContent {
@@ -606,9 +645,9 @@ const Insight = () => {
         // Load AI chat sessions from localStorage
         let chatSessions: ChatSession[] = [];
         try {
-          chatSessions = loadSessionsIndex().filter((s: any) => s && s.id);
+          chatSessions = loadSessionsIndex().filter(isChatSession);
         } catch {
-          void 0;
+          // intentional: local session parse errors silently ignored
         }
         setAllChatSessions(chatSessions);
         
@@ -617,10 +656,10 @@ const Insight = () => {
         try {
           const raw = localStorage.getItem('aiMemo.events');
           if (raw) {
-            memoEvents = JSON.parse(raw).filter((e: any) => e && typeof e.t === 'number');
+            memoEvents = (JSON.parse(raw) as unknown[]).filter(isMemoEvent);
           }
         } catch {
-          void 0;
+          // intentional: memo event parse errors silently ignored
         }
         setAllMemoEvents(memoEvents);
         
@@ -630,14 +669,18 @@ const Insight = () => {
           if (raw) {
             JSON.parse(raw);
           }
-        } catch { void 0; }
+        } catch {
+          // intentional: visited post parse errors silently ignored
+        }
         
         // Load curiosity events
         let curiosityEvents: CuriosityEvent[] = [];
         try {
           curiosityEvents = curiosityTracker.getEvents();
           setAllCuriosityEvents(curiosityEvents);
-        } catch { void 0; }
+        } catch {
+          // intentional: curiosity tracker errors silently ignored
+        }
         
         // Build nodes
         const newNodes: GraphNode[] = [];
@@ -921,7 +964,7 @@ const Insight = () => {
     }
     
     setSelectedNode(id);
-  }, [selectedNode, nodes, edges, navigate, allChatSessions, allMemoEvents]);
+  }, [selectedNode, nodes, edges, allChatSessions, allMemoEvents]);
   
   // Zoom controls
   const handleZoomIn = () => setZoom(z => Math.min(z * 1.2, 3));
