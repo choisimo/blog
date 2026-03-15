@@ -1,6 +1,28 @@
 {
-  "total": 264,
+  "total": 265,
   "items": [
+    {
+      "path": "/posts/2026/git-history-rewrite-reset-rebase-reflog.md",
+      "year": "2026",
+      "slug": "git-history-rewrite-reset-rebase-reflog",
+      "title": "force push 이후 커밋 해시가 전부 바뀌는 이유: reset, rebase, reflog로 복구까지",
+      "description": "커밋 메시지 수정이나 rebase 뒤에 왜 해시가 연쇄적으로 바뀌는지, reset과 rebase는 무엇이 다른지, hard reset으로 날린 커밋을 reflog로 어떻게 되살리는지 정리한다.",
+      "snippet": "커밋 메시지 수정이나 rebase 뒤에 왜 해시가 연쇄적으로 바뀌는지, reset과 rebase는 무엇이 다른지, hard reset으로 날린 커밋을 reflog로 어떻게 되살리는지 정리한다.",
+      "date": "2026-03-16",
+      "tags": [
+        "Git",
+        "Force Push",
+        "Reset",
+        "Rebase",
+        "Reflog",
+        "Version Control"
+      ],
+      "category": "Git",
+      "author": "Admin",
+      "readingTime": "7 min read",
+      "published": true,
+      "url": "/blog/2026/git-history-rewrite-reset-rebase-reflog"
+    },
     {
       "path": "/posts/2026/hedgefunds_transcation_manage.md",
       "year": "2026",
@@ -5577,7 +5599,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-03-13T22:18:31.089Z",
+  "generatedAt": "2026-03-15T16:43:51.623Z",
   "years": [
     "2026",
     "2025",

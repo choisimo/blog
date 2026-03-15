@@ -5,8 +5,22 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Fri, 13 Mar 2026 22:18:31 GMT</lastBuildDate>
+    <lastBuildDate>Sun, 15 Mar 2026 16:44:27 GMT</lastBuildDate>
     <language>en-US</language>
+    <item>
+      <title>force push 이후 커밋 해시가 전부 바뀌는 이유: reset, rebase, reflog로 복구까지</title>
+      <description>커밋 메시지 수정이나 rebase 뒤에 왜 해시가 연쇄적으로 바뀌는지, reset과 rebase는 무엇이 다른지, hard reset으로 날린 커밋을 reflog로 어떻게 되살리는지 정리한다.</description>
+      <link>https://noblog.nodove.com/blog/2026/git-history-rewrite-reset-rebase-reflog</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/git-history-rewrite-reset-rebase-reflog</guid>
+      <pubDate>Mon, 16 Mar 2026 00:00:00 GMT</pubDate>
+      <category>Git</category>
+      <category>Git</category>
+      <category>Force Push</category>
+      <category>Reset</category>
+      <category>Rebase</category>
+      <category>Reflog</category>
+      <category>Version Control</category>
+    </item>
     <item>
       <title>초고속 결제 엔진에서 원자성은 어떻게 유지되는가?</title>
       <description>나노초 단위 초고속 결제에서도 락-프리 동시성 제어가 어떻게 트랜잭션의 원자성을 지키는지, 그리고 어디까지가 보장되는지</description>
@@ -258,17 +272,6 @@
       <category>AI</category>
       <category>Interaction Design</category>
       <category>Readability</category>
-    </item>
-    <item>
-      <title>Algorithm</title>
-      <description>알고리즘 리스트</description>
-      <link>https://noblog.nodove.com/blog/2026/Algorithm</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/Algorithm</guid>
-      <pubDate>Tue, 20 Jan 2026 00:00:00 GMT</pubDate>
-      <category>algorithm</category>
-      <category>algorithm</category>
-      <category>CS</category>
-      <category>math</category>
     </item>
   </channel>
 </rss>
