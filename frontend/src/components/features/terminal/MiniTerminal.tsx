@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePostsIndex } from '@/hooks/content/usePostsIndex';
 import { cn } from '@/lib/utils';
@@ -25,7 +25,7 @@ export function MiniTerminal({ className, onClose }: MiniTerminalProps) {
     setOutput(prev => [...prev, ...newLines]);
   }, []);
 
-  const commands: Record<string, CommandHandler> = {
+  const commands: Record<string, CommandHandler> = useMemo(() => ({
     help: () => `Available commands:
   search <query>  - Search posts by keyword
   cat <slug>      - Open a post (e.g., cat hello-world)
@@ -116,7 +116,7 @@ export function MiniTerminal({ className, onClose }: MiniTerminalProps) {
     date: () => new Date().toLocaleString(),
 
     echo: (args) => args.join(' '),
-  };
+  }), [navigate, onClose, posts, searchPosts]);
 
   const handleCommand = useCallback((cmd: string) => {
     const trimmed = cmd.trim();

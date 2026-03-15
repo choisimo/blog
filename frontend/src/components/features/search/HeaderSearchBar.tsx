@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Fuse from 'fuse.js';
-import { BlogPost } from '@/types/blog';
+import { usePostsIndex } from '@/hooks/content/usePostsIndex';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,11 +21,12 @@ import {
 } from '@/services/session/searchHistory';
 
 interface HeaderSearchBarProps {
-  posts: BlogPost[];
   className?: string;
 }
 
-export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
+export function HeaderSearchBar({ className }: HeaderSearchBarProps) {
+  const [searchActive, setSearchActive] = useState(false);
+  const { posts } = usePostsIndex(searchActive);
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -168,6 +169,7 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
   }, [query]);
 
   const handleFocus = useCallback(() => {
+    setSearchActive(true);
     if (query.trim()) {
       setIsOpen(true);
     } else if (recentQueries.length > 0) {
@@ -211,6 +213,7 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
                 onChange={e => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onFocus={handleFocus}
+                onMouseEnter={() => setSearchActive(true)}
                 className="h-9 border-0 bg-transparent pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-0 focus-visible:ring-offset-0"
                 style={{ paddingLeft: terminalPrefixWidth ? terminalPrefixWidth + 24 : undefined }}
               />
@@ -316,7 +319,8 @@ export function HeaderSearchBar({ posts, className }: HeaderSearchBarProps) {
           onChange={e => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={handleFocus}
-          className="pl-10 pr-10 h-10 rounded-xl border border-border/60 bg-background shadow-none focus:border-primary/60 focus:ring-0 transition-colors duration-200 placeholder:text-muted-foreground/60"
+          onMouseEnter={() => setSearchActive(true)}
+          className="pl-10 pr-10 h-10 rounded-xl border border-border/60 bg-background shadow-none focus:border-primary/60 focus:ring-0 focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.12)] transition-[colors,box-shadow] duration-200 placeholder:text-muted-foreground/60"
         />
         {query && (
           <Button

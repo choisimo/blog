@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { BlogCardSkeleton } from '@/components';
+import { BlogSkeletonFeatured, BlogSkeletonSpotlight, BlogSkeletonList } from '@/components/features/blog';
 import { Pagination } from '@/components';
 import { getPostsPage, getAllCategories, getAllTags } from '@/data/content/posts';
 import { BlogPost, PostsPage } from '@/types/blog';
@@ -243,7 +243,7 @@ const Blog = () => {
               aria-label='Search posts'
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className='h-12 rounded-2xl border border-transparent bg-white pl-12 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-primary dark:border-white/10 dark:bg-[#191f29] dark:text-white dark:placeholder:text-white/60'
+              className='h-12 rounded-2xl border border-transparent bg-white pl-12 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-primary dark:border-white/10 dark:bg-[hsl(var(--card-blog))] dark:text-white dark:placeholder:text-white/60'
             />
           </div>
         </header>
@@ -264,10 +264,10 @@ const Blog = () => {
                       : handleCategoryChange(category)
                   }
                   className={[
-                    'rounded-full px-4 py-1 text-sm transition-colors',
+                    'rounded-full px-4 py-2 text-sm transition-colors min-h-[44px] flex items-center justify-center',
                     isActive
                       ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'bg-white text-muted-foreground shadow-sm dark:border dark:border-white/10 dark:bg-[#191f29] dark:text-white/80',
+                      : 'bg-white text-muted-foreground shadow-sm dark:border dark:border-white/10 dark:bg-[hsl(var(--card-blog))] dark:text-white/80',
                   ].join(' ')}
                 >
                   {category}
@@ -310,7 +310,7 @@ const Blog = () => {
                 <Badge
                   key={tag}
                   variant='default'
-                  className='cursor-pointer rounded-full px-4 py-2 text-sm gap-1 min-h-[36px] flex items-center'
+                  className='cursor-pointer rounded-full px-4 py-2 text-sm gap-1 min-h-[44px] flex items-center'
                   onClick={() => handleTagToggle(tag)}
                 >
                   #{tag}
@@ -329,7 +329,7 @@ const Blog = () => {
 
           {/* Tags panel with search and pagination */}
           {showAllTags && (
-            <div className='rounded-2xl border border-border/40 bg-white p-4 shadow-soft dark:border-white/5 dark:bg-[#191f29] space-y-3'>
+            <div className='rounded-2xl border border-border/40 bg-white p-4 shadow-soft dark:border-white/5 dark:bg-[hsl(var(--card-blog))] space-y-3'>
               {/* Tag search */}
               <div className='relative'>
                 <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground' />
@@ -358,7 +358,7 @@ const Blog = () => {
                     <Badge
                       key={tag}
                       variant={selectedTags.includes(tag) ? 'default' : 'outline'}
-                      className='cursor-pointer rounded-full px-4 py-2 text-sm hover:bg-primary/10 min-h-[36px] flex items-center'
+                      className='cursor-pointer rounded-full px-4 py-2 text-sm hover:bg-primary/10 min-h-[44px] flex items-center'
                       onClick={() => handleTagToggle(tag)}
                     >
                       #{tag}
@@ -408,7 +408,7 @@ const Blog = () => {
 
         {featuredPost && (
           <section className='mb-10 space-y-5'>
-            <div className='rounded-[28px] border border-border/40 bg-white p-5 shadow-soft dark:border-white/5 dark:bg-[#1b202b] dark:text-white'>
+            <div className='rounded-[28px] border border-border/40 bg-white p-5 shadow-soft dark:border-white/5 dark:bg-[hsl(var(--card-blog))] dark:text-white'>
               <div className='space-y-4'>
                 <div className='overflow-hidden rounded-3xl bg-muted dark:bg-white/5'>
                   {featuredPost.coverImage ? (
@@ -450,7 +450,7 @@ const Blog = () => {
                   <Link
                     key={post.slug}
                     to={`/blog/${post.year}/${post.slug}`}
-                    className='flex gap-4 rounded-2xl border border-border/40 bg-white p-4 shadow-soft dark:border-white/5 dark:bg-[#1a1f2a] dark:text-white'
+                    className='flex gap-4 rounded-2xl border border-border/40 bg-white p-4 shadow-soft dark:border-white/5 dark:bg-[hsl(var(--card-blog))] dark:text-white'
                     state={{ from: { pathname: location.pathname, search: location.search } }}
                     data-testid='post-link'
                   >
@@ -492,10 +492,20 @@ const Blog = () => {
           </div>
 
           {loading ? (
-            <div className='grid gap-4'>
-              {Array.from({ length: pageData.pageSize || POSTS_PER_PAGE }).map((_, index) => (
-                <BlogCardSkeleton key={index} />
-              ))}
+            <div className='space-y-5'>
+              {/* Featured skeleton */}
+              <BlogSkeletonFeatured />
+              {/* Spotlight skeletons */}
+              <div className='grid gap-5 md:grid-cols-2'>
+                <BlogSkeletonSpotlight />
+                <BlogSkeletonSpotlight />
+              </div>
+              {/* List skeletons */}
+              <div className='space-y-5'>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <BlogSkeletonList key={i} />
+                ))}
+              </div>
             </div>
           ) : error ? (
             <div className='text-center py-12'>
@@ -510,7 +520,7 @@ const Blog = () => {
                 <Link
                   key={post.slug}
                   to={`/blog/${post.year}/${post.slug}`}
-                  className='flex gap-4 rounded-2xl border border-border/40 bg-white p-4 shadow-soft dark:border-white/5 dark:bg-[#181d27] dark:text-white'
+                   className='flex gap-4 rounded-2xl border border-border/40 bg-white p-4 shadow-soft dark:border-white/5 dark:bg-[hsl(var(--card-blog))] dark:text-white'
                   state={{ from: { pathname: location.pathname, search: location.search } }}
                   data-testid='post-link'
                 >

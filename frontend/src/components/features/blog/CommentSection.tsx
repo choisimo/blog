@@ -10,16 +10,9 @@ import CommentInputModal from './CommentInputModal';
 import CommentReactions from './CommentReactions';
 import { streamChatEvents } from '@/services/chat';
 import { fetchReactionsBatch, ReactionCount } from '@/services/engagement/reactions';
-import { getCachedAdvancedVisitorId, getAdvancedFingerprint } from '@/services/session/fingerprint';
+import { getCachedAdvancedVisitorId } from '@/services/session/fingerprint';
 import { getRAGContextForChat } from '@/services/discovery/rag';
 import { useFeatureFlags } from '@/stores/runtime/useFeatureFlagsStore';
-
-// Load any archived comments bundled at build-time
-// Using a relative glob; keys may vary (relative vs absolute) depending on bundler.
-const archivedModules = (import.meta as any).glob(
-  '../../../data/comments/**/*.json',
-  { eager: true }
-);
 
 type CommentItem = {
   id?: string;
@@ -33,8 +26,31 @@ type CommentItem = {
 
 type ArchivedPayload = { comments: CommentItem[] };
 
+type CommentListResponse = {
+  comments?: CommentItem[];
+  data?: {
+    comments?: CommentItem[];
+    id?: string;
+  };
+  id?: string;
+};
+
+type CommentStreamAppend = {
+  type: 'append';
+  items: CommentItem[];
+};
+
+type ArchivedModule = ArchivedPayload | { default: ArchivedPayload };
+
+// Load any archived comments bundled at build-time
+// Using a relative glob; keys may vary (relative vs absolute) depending on bundler.
+const archivedModules = import.meta.glob<ArchivedModule>(
+  '../../../data/comments/**/*.json',
+  { eager: true }
+);
+
 function getArchivedFor(postId: string): ArchivedPayload | null {
-  const entries = Object.entries(archivedModules as Record<string, any>);
+  const entries = Object.entries(archivedModules);
   // Match any key that ends with `/${postId}.json`
   const found = entries.find(([k]) => k.endsWith(`/${postId}.json`));
   if (!found) return null;
@@ -114,7 +130,7 @@ export default function CommentSection({ postId }: { postId: string }) {
         if (!archived) {
           const resp = await fetch(url);
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          const data = (await resp.json()) as any;
+          const data = (await resp.json()) as CommentListResponse;
           const list = Array.isArray(data?.comments)
             ? data.comments
             : data?.data?.comments || [];
@@ -125,11 +141,12 @@ export default function CommentSection({ postId }: { postId: string }) {
         const sseUrl = `${base}/api/v1/comments/stream?postId=${encodeURIComponent(
           postId
         )}`;
-        es = new EventSource(sseUrl, { withCredentials: true } as any);
+        es = new EventSource(sseUrl, { withCredentials: true });
         es.onmessage = ev => {
           try {
-            const msg = JSON.parse(ev.data);
+            const msg = JSON.parse(ev.data) as unknown;
             if (msg && msg.type === 'append' && Array.isArray(msg.items)) {
+              const appendMessage = msg as CommentStreamAppend;
               setComments(prev => {
                 const before = (prev || []).filter(Boolean) as CommentItem[];
                 const keyOf = (it: CommentItem) =>
@@ -139,7 +156,7 @@ export default function CommentSection({ postId }: { postId: string }) {
                   );
                 const seen = new Set(before.map(keyOf));
                 const merged = [...before];
-                for (const it of msg.items) {
+                for (const it of appendMessage.items) {
                   const k = keyOf(it);
                   if (!seen.has(k)) {
                     seen.add(k);
@@ -156,15 +173,16 @@ export default function CommentSection({ postId }: { postId: string }) {
               });
             }
           } catch {
-            void 0;
+            // intentional: malformed SSE payloads are silently ignored
           }
         };
         es.onerror = () => {
           es?.close();
           es = null;
         };
-      } catch (e: any) {
-        if (!cancelled && !archived) setError(e?.message || 'Failed to load comments');
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to load comments';
+        if (!cancelled && !archived) setError(message);
       } finally {
         if (!cancelled && !archived) setLoading(false);
       }
@@ -281,7 +299,7 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 �
           });
 
           if (resp.ok) {
-            const respData = (await resp.json()) as any;
+            const respData = (await resp.json()) as CommentListResponse;
             const persistedId = respData?.id ?? respData?.data?.id;
             // Update local state with persisted ID
             if (persistedId) {
@@ -347,7 +365,7 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 �
     });
 
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const respData = (await resp.json()) as any;
+    const respData = (await resp.json()) as CommentListResponse;
     const id = (respData?.id ?? respData?.data?.id) as string | undefined;
 
     // Optimistic append with deduplication

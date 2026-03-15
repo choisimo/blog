@@ -135,8 +135,16 @@ export const useFeatureFlagsStore = create<FeatureFlagsState>((set, get) => ({
 
         // Also inject into window for legacy compatibility
         if (typeof window !== "undefined") {
-          const w = window as any;
-          w.APP_CONFIG = w.APP_CONFIG || {};
+          const w = window as Window & {
+            APP_CONFIG?: {
+              apiBaseUrl?: string;
+              chatBaseUrl?: string;
+              chatWsBaseUrl?: string;
+              ai?: Record<string, unknown>;
+              features?: FeatureFlags;
+            };
+          };
+          w.APP_CONFIG = w.APP_CONFIG ?? {};
           if (typeof data?.apiBaseUrl === "string" && data.apiBaseUrl) {
             w.APP_CONFIG.apiBaseUrl = data.apiBaseUrl;
           }
@@ -148,8 +156,8 @@ export const useFeatureFlagsStore = create<FeatureFlagsState>((set, get) => ({
           }
           if (data?.ai && typeof data.ai === "object") {
             w.APP_CONFIG.ai = {
-              ...(w.APP_CONFIG.ai || {}),
-              ...data.ai,
+              ...(w.APP_CONFIG.ai ?? {}),
+              ...(data.ai as Record<string, unknown>),
             };
           }
           w.APP_CONFIG.features = get().flags;

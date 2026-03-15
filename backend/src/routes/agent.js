@@ -77,7 +77,7 @@ function enrichAgentMessageWithLiveContext(message, sessionId) {
  * {
  *   message: string,              // User message
  *   sessionId?: string,           // Session ID (auto-generated if not provided)
- *   mode?: string,                // Agent mode: default, research, coding, blog, article, terminal
+ *   mode?: string,                // Agent mode: default, research, coding, blog, article, terminal, performance
  *   articleSlug?: string,         // Article slug (for article mode)
  *   tools?: string[],             // Enabled tools (default: all)
  *   temperature?: number,         // Temperature override
@@ -558,6 +558,11 @@ router.get("/modes", (req, res) => {
           id: "terminal",
           name: "Terminal",
           description: "System administration tasks",
+        },
+        {
+          id: "performance",
+          name: "Performance Audit",
+          description: "Frontend/runtime performance investigation",
         },
       ],
     },

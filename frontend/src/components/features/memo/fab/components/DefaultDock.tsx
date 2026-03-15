@@ -40,7 +40,7 @@ export function DefaultDock({ dockActions, isMobile, isLeft }: DefaultDockProps)
                 <span
                   className={cn(
                     "flex items-center justify-center rounded-xl transition-all duration-150",
-                    "h-10 w-10",
+                    "h-11 w-11",
                     action.primary
                       ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
                       : "bg-muted/70 text-foreground/85 dark:bg-white/10 dark:text-white/80",

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -65,7 +65,6 @@ import {
   type PlaygroundHistory,
   type PromptTemplate,
 } from './hooks';
-import type { AIModel } from './types';
 import { cn } from '@/lib/utils';
 
 function formatLatency(ms: number | null): string {
@@ -371,7 +370,7 @@ export function Playground() {
     fetchTemplates,
     createTemplate,
     deleteTemplate,
-    useTemplate,
+    applyTemplate,
   } = usePlayground();
 
   const [systemPrompt, setSystemPrompt] = useState('');
@@ -432,7 +431,7 @@ export function Playground() {
   };
 
   const handleLoadTemplate = async (template: PromptTemplate) => {
-    await useTemplate(template.id);
+    await applyTemplate(template.id);
     setSystemPrompt(template.system_prompt || '');
     setUserPrompt(template.user_prompt_template);
     setTemperature(template.default_temperature);

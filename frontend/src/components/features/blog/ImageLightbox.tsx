@@ -127,7 +127,7 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
     }
   }, []);
 
-  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerUp = useCallback((_e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDragging.current) return;
     isDragging.current = false;
     // Only close if it was a clean click (no drag)
@@ -379,6 +379,14 @@ export function ClickableImage({ src, alt, className, isTerminal, postPath }: Cl
   const [thumbError, setThumbError] = useState(false);
   const { isInView, mediaRef: imgRef } = useInView<HTMLImageElement>();
 
+  const handleThumbError = useCallback(() => {
+    setThumbError(true);
+  }, []);
+
+  const handleThumbLoad = useCallback(() => {
+    setThumbLoaded(true);
+  }, []);
+
   if (isVideo) {
     return (
       <EmbeddedVideo
@@ -390,15 +398,6 @@ export function ClickableImage({ src, alt, className, isTerminal, postPath }: Cl
       />
     );
   }
-
-  // Handle thumbnail load error - fallback to original
-  const handleThumbError = useCallback(() => {
-    setThumbError(true);
-  }, []);
-
-  const handleThumbLoad = useCallback(() => {
-    setThumbLoaded(true);
-  }, []);
 
   // Use original if thumbnail failed to load
   const displaySrc = thumbError || !shouldUseThumb(resolvedSrc)

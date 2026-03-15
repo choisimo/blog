@@ -1,6 +1,55 @@
 {
-  "total": 263,
+  "total": 265,
   "items": [
+    {
+      "path": "/posts/2026/Immutable_infra.md",
+      "year": "2026",
+      "slug": "Immutable_infra",
+      "title": "Immutable Infra",
+      "description": "수정하는 서버에서 교체하는 인프라로: 컨테이너와 쿠버네티스가 만든 불변 운영 모델의 배경과 한계",
+      "snippet": "수정하는 서버에서 교체하는 인프라로: 컨테이너와 쿠버네티스가 만든 불변 운영 모델의 배경과 한계",
+      "date": "2026-03-14",
+      "tags": [
+        "container",
+        "kubernetes",
+        "infra",
+        "devops",
+        "system-architecture"
+      ],
+      "category": "system-architecture",
+      "author": "Admin",
+      "readingTime": "5 min read",
+      "published": true,
+      "coverImage": "/images/2026/Immutable_infra/3.png",
+      "url": "/blog/2026/Immutable_infra"
+    },
+    {
+      "path": "/posts/2026/hedgefunds_transcation_manage.md",
+      "year": "2026",
+      "slug": "hedgefunds_transcation_manage",
+      "title": "초고속 결제 엔진에서 원자성은 어떻게 유지되는가?",
+      "description": "나노초 단위 초고속 결제에서도 락-프리 동시성 제어가 어떻게 트랜잭션의 원자성을 지키는지, 그리고 어디까지가 보장되는지",
+      "snippet": "나노초 단위 초고속 결제에서도 락-프리 동시성 제어가 어떻게 트랜잭션의 원자성을 지키는지, 그리고 어디까지가 보장되는지",
+      "date": "2026-03-11",
+      "tags": [
+        "HFT",
+        "Leverage",
+        "Atomicity",
+        "ACID",
+        "IMDB",
+        "CAS",
+        "MVCC",
+        "Immutability",
+        "Kubernetes",
+        "Jitter"
+      ],
+      "category": "Finance",
+      "author": "Admin",
+      "readingTime": "10 min read",
+      "published": true,
+      "coverImage": "/images/2026/hedgefunds_atomicity/latency_jitter.png",
+      "url": "/blog/2026/hedgefunds_transcation_manage"
+    },
     {
       "path": "/posts/2026/limitation_of_bestcases.md",
       "year": "2026",
@@ -5554,7 +5603,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-03-10T17:18:04.590Z",
+  "generatedAt": "2026-03-15T09:28:21.993Z",
   "years": [
     "2026",
     "2025",

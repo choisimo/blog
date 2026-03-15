@@ -220,7 +220,7 @@ const PostCard = memo(({
     <article
       ref={showTilt ? combinedRef : swipeRef}
       className={cn(
-        'group relative flex flex-col rounded-2xl border border-border/50 bg-card overflow-hidden transition-all',
+        'group relative flex flex-col rounded-2xl border border-border/50 bg-card overflow-hidden transition-all active:scale-[0.99]',
         'hover:shadow-xl hover:border-primary/30',
         isTerminal && 'rounded-lg border-border bg-[hsl(var(--terminal-code-bg))] hover:border-primary hover:shadow-[0_0_20px_hsl(var(--primary)/0.3)]',
         isFeatured && 'md:flex-row',

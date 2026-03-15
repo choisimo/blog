@@ -5,7 +5,7 @@ export type CreatePostPayload = {
   slug?: string;
   year?: string | number;
   content: string;
-  frontmatter?: Record<string, any>;
+  frontmatter?: Record<string, unknown>;
   draft?: boolean;
 };
 

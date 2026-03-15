@@ -12,13 +12,6 @@ interface LogEntry {
   [key: string]: unknown;
 }
 
-const LEVEL_COLORS: Record<string, string> = {
-  error: 'text-red-600 bg-red-50 border-red-200',
-  warn: 'text-amber-600 bg-amber-50 border-amber-200',
-  info: 'text-zinc-700 bg-zinc-50 border-zinc-200',
-  debug: 'text-slate-500 bg-slate-50 border-slate-200',
-};
-
 const LEVEL_BADGE: Record<string, string> = {
   error: 'bg-red-100 text-red-700',
   warn: 'bg-amber-100 text-amber-700',
@@ -104,8 +97,7 @@ export function LogViewer() {
         const data = JSON.parse(e.data) as LogEntry;
         if (data.type === 'connected') return;
         setLogs(prev => [data, ...prev].slice(0, 1000));
-      } catch {
-      }
+      } catch { void 0; }
     };
 
     es.onerror = () => {

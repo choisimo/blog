@@ -16,6 +16,12 @@ interface CommentInputModalProps {
   initialAuthor?: string;
 }
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error && error.message
+    ? error.message
+    : 'Failed to submit comment';
+}
+
 export default function CommentInputModal({
   isOpen,
   onClose,
@@ -105,8 +111,7 @@ export default function CommentInputModal({
     };
   }, [isOpen, isMobile]);
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitComment = useCallback(async () => {
     if (!author.trim() || !content.trim()) return;
 
     try {
@@ -122,22 +127,27 @@ export default function CommentInputModal({
       setWebsite('');
       setShowWebsiteField(false);
       onClose();
-    } catch (err: any) {
-      setError(err?.message || 'Failed to submit comment');
+    } catch (err) {
+      setError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
   }, [author, content, website, onSubmit, onClose]);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitComment();
+  }, [submitComment]);
 
   // Handle Ctrl/Cmd + Enter to submit
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       if (author.trim() && content.trim() && !submitting) {
-        handleSubmit(e as any);
+        void submitComment();
       }
     }
-  }, [author, content, submitting, handleSubmit]);
+  }, [author, content, submitting, submitComment]);
 
   if (!isOpen) return null;
 

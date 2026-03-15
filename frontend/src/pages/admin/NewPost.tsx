@@ -3,7 +3,6 @@ import { useMutation } from "@tanstack/react-query";
 import {
   adminLoginStep1,
   adminLoginStep2,
-  adminResendOtp,
   createPostPR,
   type CreatePostPayload,
   uploadPostImages,
@@ -17,11 +16,16 @@ import { useToast } from "@/hooks/ui/use-toast";
 import MarkdownRenderer from "@/components/features/blog/MarkdownRenderer";
 import { useAuthStore } from "@/stores/session/useAuthStore";
 import { isTokenExpired } from "@/services/session/auth";
+import type { UserInfo } from "@/services/session/auth";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import BotChatPanel from "@/components/features/admin/BotChatPanel";
 
 type LoginStep = "credentials" | "otp" | "authenticated";
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
 
 export default function NewPost() {
   const { toast } = useToast();
@@ -78,10 +82,10 @@ export default function NewPost() {
     },
     onSuccess: (data) =>
       toast({ title: "OTP 전송됨", description: data.message }),
-    onError: (e: any) =>
+    onError: (e) =>
       toast({
         title: "로그인 실패",
-        description: e?.message || "인증 실패",
+        description: getErrorMessage(e, "인증 실패"),
         variant: "destructive",
       }),
   });
@@ -90,32 +94,36 @@ export default function NewPost() {
     mutationFn: async () => {
       if (!sessionId) throw new Error("세션이 없습니다");
       const result = await adminLoginStep2(sessionId, otp);
-      setTokens(result.accessToken, result.refreshToken, result.user as any);
+      setTokens(result.accessToken, result.refreshToken, result.user as UserInfo);
       setLoginStep("authenticated");
       window.dispatchEvent(new Event("admin-auth-changed"));
       return result;
     },
     onSuccess: () =>
       toast({ title: "로그인 성공", description: "관리자 인증 완료" }),
-    onError: (e: any) =>
+    onError: (e) =>
       toast({
         title: "OTP 인증 실패",
-        description: e?.message || "인증 실패",
+        description: getErrorMessage(e, "인증 실패"),
         variant: "destructive",
       }),
   });
 
   const doResendOtp = useMutation({
     mutationFn: async () => {
-      if (!sessionId) throw new Error("세션이 없습니다");
-      return await adminResendOtp(sessionId);
+      const result = await adminLoginStep1(username, password);
+      setSessionId(result.challengeId);
+      return {
+        message: result.message,
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      };
     },
     onSuccess: (data) =>
       toast({ title: "OTP 재전송", description: data.message }),
-    onError: (e: any) =>
+    onError: (e) =>
       toast({
         title: "OTP 재전송 실패",
-        description: e?.message || "실패",
+        description: getErrorMessage(e, "실패"),
         variant: "destructive",
       }),
   });
@@ -163,10 +171,10 @@ export default function NewPost() {
         void 0;
       }
     },
-    onError: (e: any) =>
+    onError: (e) =>
       toast({
         title: "PR 생성 실패",
-        description: e?.message || "오류",
+        description: getErrorMessage(e, "오류"),
         variant: "destructive",
       }),
   });
@@ -196,10 +204,10 @@ export default function NewPost() {
         title: "업로드 완료",
         description: `${res.items.length}개 업로드됨`,
       });
-    } catch (e: any) {
+    } catch (e) {
       toast({
         title: "업로드 실패",
-        description: e?.message || "오류",
+        description: getErrorMessage(e, "오류"),
         variant: "destructive",
       });
     } finally {
@@ -480,9 +488,10 @@ export default function NewPost() {
                           업로드된 파일 (클릭하면 마크다운 삽입)
                         </div>
                         <ul className="space-y-1 text-sm">
-                          {uploaded.map((u, idx) => (
-                            <li key={idx} className="flex items-center gap-2">
+                          {uploaded.map((u) => (
+                            <li key={u.variantWebp?.url || u.url} className="flex items-center gap-2">
                               <button
+                                type="button"
                                 className="text-primary hover:underline max-w-[250px] truncate block text-left"
                                 onClick={() =>
                                   insertAtCursor(

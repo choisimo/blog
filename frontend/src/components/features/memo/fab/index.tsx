@@ -1,10 +1,5 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import { NotebookPen, Sparkles, Layers, Map } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { NotebookPen, Sparkles, Layers, Map as MapIcon } from "lucide-react";
 import VisitedPostsMinimap, {
   useVisitedPostsState,
 } from "@/components/features/navigation/VisitedPostsMinimap";
@@ -42,6 +37,11 @@ import {
   DefaultDock,
   RealTerminalModal,
 } from "./components";
+
+type MemoPadElement = HTMLElement & {
+  openHistory?: () => void;
+  shadowRoot: ShadowRoot | null;
+};
 
 export default function FloatingActionBar() {
   const enabled = isFabEnabled();
@@ -127,7 +127,7 @@ export default function FloatingActionBar() {
   const clickShadowBtn = useCallback(
     (id: string) => {
       try {
-        const shadow = (aiMemoEl as any)?.shadowRoot as ShadowRoot | undefined;
+        const shadow = (aiMemoEl as MemoPadElement | null)?.shadowRoot ?? undefined;
         const btn = shadow?.getElementById(id) as HTMLButtonElement | null;
         btn?.click();
       } catch {
@@ -145,12 +145,12 @@ export default function FloatingActionBar() {
   const openHistory = useCallback(() => {
     let opened = false;
     try {
-      const anyEl = aiMemoEl as any;
-      if (typeof anyEl?.openHistory === "function") {
-        anyEl.openHistory();
+      const memoEl = aiMemoEl as MemoPadElement | null;
+      if (typeof memoEl?.openHistory === "function") {
+        memoEl.openHistory();
         opened = true;
       } else if (aiMemoEl) {
-        const shadow = anyEl?.shadowRoot as ShadowRoot | undefined;
+        const shadow = memoEl?.shadowRoot ?? undefined;
         const historyLauncher = shadow?.getElementById(
           "historyLauncher",
         ) as HTMLElement | null;
@@ -239,7 +239,7 @@ export default function FloatingActionBar() {
     tick();
 
     let mo: MutationObserver | null = null;
-    const shadow = (aiMemoEl as any)?.shadowRoot as ShadowRoot | undefined;
+    const shadow = (aiMemoEl as MemoPadElement | null)?.shadowRoot ?? undefined;
     if (shadow) {
       mo = new MutationObserver(() => hideLegacyLaunchers(aiMemoEl));
       mo.observe(shadow, { childList: true, subtree: true });
@@ -254,7 +254,7 @@ export default function FloatingActionBar() {
       ).getPropertyValue("--primary");
       aiMemoEl.style.setProperty("--primary-color", primaryColor);
     }
-  }, [aiMemoEl, isTerminal]);
+  }, [aiMemoEl]);
 
   // impression once
   useEffect(() => {
@@ -328,7 +328,7 @@ export default function FloatingActionBar() {
       key: "insight",
       label: str.nav.insight,
       desktopLabel: language === "ko" ? "인사이트" : "Insight",
-      icon: Map,
+      icon: MapIcon,
       onClick: () => {
         send("fab_insight_click");
         clearBadge();
@@ -336,7 +336,7 @@ export default function FloatingActionBar() {
       },
       badge: hasNew,
     },
-  ], [str, language, chatOpen, featureFlags.aiEnabled, send, setChatOpen, toggleMemo, handleStackClick, stackDisabledReason, hasNew, clearBadge, vfs]);
+  ], [str, language, chatOpen, featureFlags.aiEnabled, send, toggleMemo, handleStackClick, stackDisabledReason, hasNew, clearBadge, vfs]);
 
   const dockActions = allDockActions.filter(action => !action.hidden);
 

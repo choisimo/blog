@@ -315,7 +315,7 @@ export const TocDrawer = ({
           data-testid="toc-mobile-trigger"
           aria-label="목차 열기"
           className={cn(
-            'fixed bottom-6 right-6 z-40 xl:hidden',
+            'fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 z-[51] xl:hidden',
             'flex items-center justify-center',
             'h-12 w-12 rounded-full shadow-lg',
             'bg-primary text-primary-foreground',
