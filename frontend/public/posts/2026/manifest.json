@@ -2,6 +2,7 @@
   "files": [
     "Algorithm.md",
     "Container Network Interface.md",
+    "Immutable_infra.md",
     "ai-agent-arena-2026-gemini-3-0-pro-high-reasoning.md",
     "ai-agent-arena-2026-glm-5.md",
     "ai-agent-arena-2026-gpt-5-2-high-reasoning.md",
@@ -32,7 +33,7 @@
     "understanding-ssm-and-mamba.md",
     "vim-architecture-functionality-commands-integration.md"
   ],
-  "generatedAt": "2026-03-15T16:43:51.573Z",
-  "totalFiles": 31,
+  "generatedAt": "2026-03-15T16:47:46.195Z",
+  "totalFiles": 32,
   "excludedFiles": 0
 }

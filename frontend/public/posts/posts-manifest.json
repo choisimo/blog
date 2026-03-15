@@ -1,5 +1,5 @@
 {
-  "total": 265,
+  "total": 266,
   "items": [
     {
       "path": "/posts/2026/git-history-rewrite-reset-rebase-reflog.md",
@@ -24,6 +24,28 @@
       "url": "/blog/2026/git-history-rewrite-reset-rebase-reflog"
     },
     {
+      "path": "/posts/2026/Immutable_infra.md",
+      "year": "2026",
+      "slug": "Immutable_infra",
+      "title": "Immutable Infra",
+      "description": "수정하는 서버에서 교체하는 인프라로: 컨테이너와 쿠버네티스가 만든 불변 운영 모델의 배경과 한계",
+      "snippet": "수정하는 서버에서 교체하는 인프라로: 컨테이너와 쿠버네티스가 만든 불변 운영 모델의 배경과 한계",
+      "date": "2026-03-14",
+      "tags": [
+        "container",
+        "kubernetes",
+        "infra",
+        "devops",
+        "system-architecture"
+      ],
+      "category": "system-architecture",
+      "author": "Admin",
+      "readingTime": "5 min read",
+      "published": true,
+      "coverImage": "/images/2026/Immutable_infra/3.png",
+      "url": "/blog/2026/Immutable_infra"
+    },
+    {
       "path": "/posts/2026/hedgefunds_transcation_manage.md",
       "year": "2026",
       "slug": "hedgefunds_transcation_manage",
@@ -38,12 +60,16 @@
         "ACID",
         "IMDB",
         "CAS",
-        "MVCC"
+        "MVCC",
+        "Immutability",
+        "Kubernetes",
+        "Jitter"
       ],
       "category": "Finance",
       "author": "Admin",
-      "readingTime": "12 min read",
+      "readingTime": "10 min read",
       "published": true,
+      "coverImage": "/images/2026/hedgefunds_atomicity/latency_jitter.png",
       "url": "/blog/2026/hedgefunds_transcation_manage"
     },
     {
@@ -5599,7 +5625,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-03-15T16:43:51.623Z",
+  "generatedAt": "2026-03-15T16:47:46.250Z",
   "years": [
     "2026",
     "2025",

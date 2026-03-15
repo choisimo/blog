@@ -5,21 +5,20 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Sun, 15 Mar 2026 16:44:27 GMT</lastBuildDate>
+    <lastBuildDate>Sun, 15 Mar 2026 16:47:46 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
-      <title>force push 이후 커밋 해시가 전부 바뀌는 이유: reset, rebase, reflog로 복구까지</title>
-      <description>커밋 메시지 수정이나 rebase 뒤에 왜 해시가 연쇄적으로 바뀌는지, reset과 rebase는 무엇이 다른지, hard reset으로 날린 커밋을 reflog로 어떻게 되살리는지 정리한다.</description>
-      <link>https://noblog.nodove.com/blog/2026/git-history-rewrite-reset-rebase-reflog</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/git-history-rewrite-reset-rebase-reflog</guid>
-      <pubDate>Mon, 16 Mar 2026 00:00:00 GMT</pubDate>
-      <category>Git</category>
-      <category>Git</category>
-      <category>Force Push</category>
-      <category>Reset</category>
-      <category>Rebase</category>
-      <category>Reflog</category>
-      <category>Version Control</category>
+      <title>Immutable Infra</title>
+      <description>수정하는 서버에서 교체하는 인프라로: 컨테이너와 쿠버네티스가 만든 불변 운영 모델의 배경과 한계</description>
+      <link>https://noblog.nodove.com/blog/2026/Immutable_infra</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/Immutable_infra</guid>
+      <pubDate>Sat, 14 Mar 2026 00:00:00 GMT</pubDate>
+      <category>system-architecture</category>
+      <category>container</category>
+      <category>kubernetes</category>
+      <category>infra</category>
+      <category>devops</category>
+      <category>system-architecture</category>
     </item>
     <item>
       <title>초고속 결제 엔진에서 원자성은 어떻게 유지되는가?</title>
@@ -35,6 +34,9 @@
       <category>IMDB</category>
       <category>CAS</category>
       <category>MVCC</category>
+      <category>Immutability</category>
+      <category>Kubernetes</category>
+      <category>Jitter</category>
     </item>
     <item>
       <title>베스트 프랙티스가 병목으로 바뀌는 순간: 싱글톤, Nginx, SAGA를 다시 보는 일</title>

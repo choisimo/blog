@@ -83,6 +83,16 @@ function buildSimulatorCandidate(year: string, slug: string): string {
   return encodeURI(`/posts/${year}/${slug}-simulator.html`);
 }
 
+function isAppShellHtml(content: string): boolean {
+  const sample = content.slice(0, 12000).toLowerCase();
+  return (
+    sample.includes('<div id="root"></div>') ||
+    sample.includes("<div id='root'></div>") ||
+    sample.includes('script type="module" crossorigin src="/assets/index-') ||
+    sample.includes("<title>nodove blog</title>")
+  );
+}
+
 async function checkSimulatorExists(path: string): Promise<boolean> {
   if (simulatorExistenceCache.has(path)) {
     return simulatorExistenceCache.get(path)!;
@@ -91,19 +101,18 @@ async function checkSimulatorExists(path: string): Promise<boolean> {
   let exists = false;
 
   try {
-    const head = await fetch(path, { method: "HEAD", cache: "no-store" });
-    exists = head.ok;
-    if (!exists && [403, 405, 501].includes(head.status)) {
-      const get = await fetch(path, { method: "GET", cache: "no-store" });
-      exists = get.ok;
+    const res = await fetch(path, { method: "GET", cache: "no-store" });
+    if (res.ok) {
+      const contentType = res.headers.get("content-type") ?? "";
+      if (contentType.includes("text/html")) {
+        const html = await res.text();
+        exists = !isAppShellHtml(html);
+      } else {
+        exists = true;
+      }
     }
   } catch {
-    try {
-      const get = await fetch(path, { method: "GET", cache: "no-store" });
-      exists = get.ok;
-    } catch {
-      exists = false;
-    }
+    exists = false;
   }
 
   simulatorExistenceCache.set(path, exists);
@@ -494,7 +503,9 @@ ${description}
             );
             selected = ragPosts.slice(0, 3);
           }
-        } catch { void 0; }
+        } catch {
+          void 0;
+        }
 
         if (selected.length < 3) {
           const byCategory = await getPostsPage({
