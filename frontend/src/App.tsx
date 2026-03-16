@@ -44,7 +44,16 @@ import {
 } from "@/services/realtime/notificationSSE";
 import { PageTransitionFallback } from "@/components/atoms";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 2 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function App() {
   const [fabOn, setFabOn] = useState(true);
