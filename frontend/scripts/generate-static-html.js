@@ -1,11 +1,7 @@
 #!/usr/bin/env node
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { resolveSiteBaseUrl } from './lib/resolve-site-url.js';
 
 const PROJECT_ROOT = process.cwd();
 const DIST_DIR = path.join(PROJECT_ROOT, 'dist');
@@ -13,11 +9,7 @@ const PUBLIC_DIR = path.join(PROJECT_ROOT, 'public');
 const MANIFEST_ROOT_PATH = path.join(PUBLIC_DIR, 'posts-manifest.json');
 const MANIFEST_NESTED_PATH = path.join(PUBLIC_DIR, 'posts', 'posts-manifest.json');
 
-const repoRoot = path.resolve(__dirname, '..', '..');
-dotenv.config({ path: path.join(repoRoot, '.env') });
-dotenv.config({ path: path.join(repoRoot, 'frontend', '.env'), override: true });
-
-const BASE_URL = process.env.SITE_BASE_URL || process.env.VITE_SITE_BASE_URL || 'https://noblog.nodove.com';
+const BASE_URL = resolveSiteBaseUrl();
 const API_BASE_URL = process.env.VITE_API_BASE_URL || 'https://api.nodove.com';
 const SITE_NAME = 'Nodove Blog';
 
