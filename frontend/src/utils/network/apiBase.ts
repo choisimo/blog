@@ -53,8 +53,15 @@ export function getApiBaseUrl(): string {
       if (v) {
         const parsed = JSON.parse(v) as unknown;
         if (typeof parsed === "string" && parsed) {
+          const isProd = import.meta.env.PROD as boolean | undefined;
+          // Require an explicit localhost host/port match to avoid suffix spoofing.
+          const isLocalhost =
+            /^http:\/\/localhost(:\d+)?(\/|$)/.test(parsed) ||
+            /^http:\/\/127\.0\.0\.1(:\d+)?(\/|$)/.test(parsed);
+          if (!isProd || parsed.startsWith("https://") || isLocalhost) {
           baseUrl = parsed;
           source = "localStorage";
+          }
         }
       }
     } catch {
