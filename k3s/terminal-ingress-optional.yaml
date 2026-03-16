@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: terminal-origin
+  namespace: blog
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+    - secretName: blog-origin-tls
+      hosts:
+        - terminal-origin.nodove.com
+  rules:
+    - host: terminal-origin.nodove.com
+      http:
+        paths:
+          - path: /terminal
+            pathType: Prefix
+            backend:
+              service:
+                name: terminal-server
+                port:
+                  name: http
