@@ -125,12 +125,11 @@ async function getOptionalConfigWithSecret(
  * Get AI Serve URL (for AI server like ai-check.nodove.com)
  */
 export async function getAiServeUrl(env: Env): Promise<string> {
-  return getConfig(
-    env.KV,
-    CONFIG_KEYS.AI_SERVE_URL,
-    (await getSecret(env, 'AI_SERVER_URL')) || env.AI_SERVER_URL,
-    DEFAULTS.AI_SERVE_URL
-  );
+  // D1 secret takes absolute precedence over KV cache — check it first
+  const secretValue = await getSecret(env, 'AI_SERVER_URL');
+  if (secretValue) return secretValue;
+  // Only consult KV/cache if no D1 secret is set
+  return getConfig(env.KV, CONFIG_KEYS.AI_SERVE_URL, env.AI_SERVER_URL, DEFAULTS.AI_SERVE_URL);
 }
 
 /**
@@ -149,12 +148,9 @@ export async function getAiServeApiKey(env: Env): Promise<string | undefined> {
  * Get Backend API Base URL (via Cloudflare Tunnel)
  */
 export async function getApiBaseUrl(env: Env): Promise<string> {
-  return getConfig(
-    env.KV,
-    CONFIG_KEYS.API_BASE_URL,
-    (await getSecret(env, 'API_BASE_URL')) || env.API_BASE_URL,
-    DEFAULTS.API_BASE_URL
-  );
+  const secretValue = await getSecret(env, 'API_BASE_URL');
+  if (secretValue) return secretValue;
+  return getConfig(env.KV, CONFIG_KEYS.API_BASE_URL, env.API_BASE_URL, DEFAULTS.API_BASE_URL);
 }
 
 /**

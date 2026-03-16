@@ -138,9 +138,7 @@ adminAi.get('/providers/:id', requireAdmin, async (c) => {
   const id = c.req.param('id');
 
   try {
-    const provider = await c.env.DB.prepare(
-      `SELECT * FROM ai_providers WHERE id = ?`
-    )
+    const provider = await c.env.DB.prepare(`SELECT * FROM ai_providers WHERE id = ?`)
       .bind(id)
       .first<AIProvider>();
 
@@ -192,9 +190,7 @@ adminAi.post('/providers', requireAdmin, async (c) => {
       .bind(id, name, display_name, api_base_url || null, api_key_env || null)
       .run();
 
-    const provider = await c.env.DB.prepare(
-      `SELECT * FROM ai_providers WHERE id = ?`
-    )
+    const provider = await c.env.DB.prepare(`SELECT * FROM ai_providers WHERE id = ?`)
       .bind(id)
       .first<AIProvider>();
 
@@ -223,9 +219,7 @@ adminAi.put('/providers/:id', requireAdmin, async (c) => {
   };
 
   try {
-    const existing = await c.env.DB.prepare(
-      `SELECT * FROM ai_providers WHERE id = ?`
-    )
+    const existing = await c.env.DB.prepare(`SELECT * FROM ai_providers WHERE id = ?`)
       .bind(id)
       .first<AIProvider>();
 
@@ -251,9 +245,7 @@ adminAi.put('/providers/:id', requireAdmin, async (c) => {
       )
       .run();
 
-    const provider = await c.env.DB.prepare(
-      `SELECT * FROM ai_providers WHERE id = ?`
-    )
+    const provider = await c.env.DB.prepare(`SELECT * FROM ai_providers WHERE id = ?`)
       .bind(id)
       .first<AIProvider>();
 
@@ -266,18 +258,73 @@ adminAi.put('/providers/:id', requireAdmin, async (c) => {
 
 /**
  * PUT /admin/ai/providers/:id/health
- * Provider 헬스 상태 업데이트 (외부 호출 결과 저장)
+ * Provider 상태를 직접 업데이트하거나, body 없이 호출 시 실제 헬스 체크를 수행합니다.
  */
 adminAi.put('/providers/:id/health', requireAdmin, async (c) => {
   const id = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
   const { status } = body as { status?: string };
 
-  if (!status || !['healthy', 'degraded', 'down', 'unknown'].includes(status)) {
-    return badRequest(c, 'status must be one of: healthy, degraded, down, unknown');
-  }
-
   try {
+    const provider = await c.env.DB.prepare(`SELECT * FROM ai_providers WHERE id = ?`)
+      .bind(id)
+      .first<AIProvider>();
+
+    if (!provider) {
+      return notFound(c, `Provider not found: ${id}`);
+    }
+
+    if (status) {
+      if (!['healthy', 'degraded', 'down', 'unknown'].includes(status)) {
+        return badRequest(c, 'status must be one of: healthy, degraded, down, unknown');
+      }
+
+      await c.env.DB.prepare(
+        `UPDATE ai_providers SET
+          health_status = ?,
+          last_health_check = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`
+      )
+        .bind(status, id)
+        .run();
+
+      return success(c, {
+        providerId: id,
+        status,
+        latencyMs: null,
+        error: null,
+        checkedAt: new Date().toISOString(),
+      });
+    }
+
+    const model = await c.env.DB.prepare(
+      `SELECT * FROM ai_models WHERE provider_id = ? AND is_enabled = 1 ORDER BY priority ASC, created_at ASC LIMIT 1`
+    )
+      .bind(id)
+      .first<AIModel>();
+
+    let computedStatus: 'healthy' | 'down' | 'unknown' = 'unknown';
+    let latencyMs: number | null = null;
+    let errorMessage: string | null = null;
+
+    if (model) {
+      try {
+        const aiService = createAIService(c.env);
+        const startedAt = Date.now();
+        await aiService.chat([{ role: 'user', content: 'Reply with OK.' }], {
+          model: model.model_identifier,
+          timeout: 15000,
+          maxTokens: 8,
+        });
+        latencyMs = Date.now() - startedAt;
+        computedStatus = 'healthy';
+      } catch (err) {
+        computedStatus = 'down';
+        errorMessage = err instanceof Error ? err.message : 'Health check failed';
+      }
+    }
+
     await c.env.DB.prepare(
       `UPDATE ai_providers SET
         health_status = ?,
@@ -285,10 +332,16 @@ adminAi.put('/providers/:id/health', requireAdmin, async (c) => {
         updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`
     )
-      .bind(status, id)
+      .bind(computedStatus, id)
       .run();
 
-    return success(c, { id, health_status: status });
+    return success(c, {
+      providerId: id,
+      status: computedStatus,
+      latencyMs,
+      error: errorMessage,
+      checkedAt: new Date().toISOString(),
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to update health status';
     return error(c, message, 500);
@@ -363,9 +416,7 @@ adminAi.delete('/providers/:id', requireAdmin, async (c) => {
   const id = c.req.param('id');
 
   try {
-    const existing = await c.env.DB.prepare(
-      `SELECT * FROM ai_providers WHERE id = ?`
-    )
+    const existing = await c.env.DB.prepare(`SELECT * FROM ai_providers WHERE id = ?`)
       .bind(id)
       .first<AIProvider>();
 
@@ -496,16 +547,17 @@ adminAi.post('/models', requireAdmin, async (c) => {
   };
 
   if (!provider_id || !model_name || !display_name || !model_identifier) {
-    return badRequest(c, 'provider_id, model_name, display_name, and model_identifier are required');
+    return badRequest(
+      c,
+      'provider_id, model_name, display_name, and model_identifier are required'
+    );
   }
 
   const id = generateId('model');
 
   try {
     // Verify provider exists
-    const provider = await c.env.DB.prepare(
-      `SELECT id FROM ai_providers WHERE id = ?`
-    )
+    const provider = await c.env.DB.prepare(`SELECT id FROM ai_providers WHERE id = ?`)
       .bind(provider_id)
       .first();
 
@@ -584,7 +636,7 @@ adminAi.put('/models/:id', requireAdmin, async (c) => {
       priority,
     } = body as Partial<{
       display_name: string;
-  model_identifier: string;
+      model_identifier: string;
       description: string;
       context_window: number;
       max_tokens: number;
@@ -657,9 +709,7 @@ adminAi.put('/models/:id', requireAdmin, async (c) => {
     updates.push('updated_at = CURRENT_TIMESTAMP');
     values.push(id);
 
-    await c.env.DB.prepare(
-      `UPDATE ai_models SET ${updates.join(', ')} WHERE id = ?`
-    )
+    await c.env.DB.prepare(`UPDATE ai_models SET ${updates.join(', ')} WHERE id = ?`)
       .bind(...values)
       .run();
 
@@ -993,12 +1043,11 @@ adminAi.get('/usage', requireAdmin, async (c) => {
     // Default date range: last 7 days
     const end = endDate || new Date().toISOString().split('T')[0];
     const start =
-      startDate ||
-      new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      startDate || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
     // Summary stats
     const summaryQuery = `
-      SELECT 
+      SELECT
         COUNT(*) as total_requests,
         SUM(total_tokens) as total_tokens,
         SUM(estimated_cost) as total_cost,
@@ -1019,7 +1068,7 @@ adminAi.get('/usage', requireAdmin, async (c) => {
     let breakdownQuery: string;
     if (groupBy === 'model') {
       breakdownQuery = `
-        SELECT 
+        SELECT
           m.model_name,
           m.display_name,
           COUNT(*) as requests,
@@ -1034,7 +1083,7 @@ adminAi.get('/usage', requireAdmin, async (c) => {
       `;
     } else {
       breakdownQuery = `
-        SELECT 
+        SELECT
           date(created_at) as date,
           COUNT(*) as requests,
           SUM(total_tokens) as tokens,
@@ -1173,7 +1222,9 @@ adminAi.get('/config/export', requireAdmin, async (c) => {
        JOIN ai_providers p ON m.provider_id = p.id
        WHERE m.is_enabled = 1 AND p.is_enabled = 1
        ORDER BY m.priority DESC`
-    ).all<AIModel & { provider_name: string; api_base_url: string | null; api_key_env: string | null }>();
+    ).all<
+      AIModel & { provider_name: string; api_base_url: string | null; api_key_env: string | null }
+    >();
 
     // Get default route
     const defaultRoute = await c.env.DB.prepare(
@@ -1214,9 +1265,7 @@ adminAi.get('/config/export', requireAdmin, async (c) => {
     const fallbacks: Record<string, string[]>[] = [];
     for (const route of routes.results || []) {
       if (route.fallback_model_ids) {
-        const primaryModel = await c.env.DB.prepare(
-          `SELECT model_name FROM ai_models WHERE id = ?`
-        )
+        const primaryModel = await c.env.DB.prepare(`SELECT model_name FROM ai_models WHERE id = ?`)
           .bind(route.primary_model_id)
           .first<{ model_name: string }>();
 
@@ -1239,9 +1288,7 @@ adminAi.get('/config/export', requireAdmin, async (c) => {
     const contextFallbacks: Record<string, string[]>[] = [];
     for (const route of routes.results || []) {
       if (route.context_window_fallback_ids) {
-        const primaryModel = await c.env.DB.prepare(
-          `SELECT model_name FROM ai_models WHERE id = ?`
-        )
+        const primaryModel = await c.env.DB.prepare(`SELECT model_name FROM ai_models WHERE id = ?`)
           .bind(route.primary_model_id)
           .first<{ model_name: string }>();
 
@@ -1310,7 +1357,7 @@ adminAi.get('/overview', requireAdmin, async (c) => {
   try {
     // Provider stats
     const providerStats = await c.env.DB.prepare(
-      `SELECT 
+      `SELECT
         COUNT(*) as total,
         SUM(CASE WHEN is_enabled = 1 THEN 1 ELSE 0 END) as enabled,
         SUM(CASE WHEN health_status = 'healthy' THEN 1 ELSE 0 END) as healthy,
@@ -1321,7 +1368,7 @@ adminAi.get('/overview', requireAdmin, async (c) => {
 
     // Model stats
     const modelStats = await c.env.DB.prepare(
-      `SELECT 
+      `SELECT
         COUNT(*) as total,
         SUM(CASE WHEN is_enabled = 1 THEN 1 ELSE 0 END) as enabled,
         SUM(CASE WHEN supports_vision = 1 THEN 1 ELSE 0 END) as vision_capable,
@@ -1331,7 +1378,7 @@ adminAi.get('/overview', requireAdmin, async (c) => {
 
     // Route stats
     const routeStats = await c.env.DB.prepare(
-      `SELECT 
+      `SELECT
         COUNT(*) as total,
         SUM(CASE WHEN is_enabled = 1 THEN 1 ELSE 0 END) as enabled
        FROM ai_routes`
@@ -1340,7 +1387,7 @@ adminAi.get('/overview', requireAdmin, async (c) => {
     // Today's usage
     const today = new Date().toISOString().split('T')[0];
     const todayUsage = await c.env.DB.prepare(
-      `SELECT 
+      `SELECT
         SUM(total_requests) as requests,
         SUM(total_tokens) as tokens,
         SUM(total_cost) as cost
@@ -1406,7 +1453,9 @@ adminAi.get('/traces', requireAdmin, async (c) => {
     query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
     params.push(limit, offset);
 
-    const result = await c.env.DB.prepare(query).bind(...params).all();
+    const result = await c.env.DB.prepare(query)
+      .bind(...params)
+      .all();
 
     const countQuery = `SELECT COUNT(*) as total FROM ai_trace_summary WHERE 1=1${
       status ? ' AND status = ?' : ''
@@ -1434,9 +1483,7 @@ adminAi.get('/traces/:traceId', requireAdmin, async (c) => {
   const traceId = c.req.param('traceId');
 
   try {
-    const summary = await c.env.DB.prepare(
-      `SELECT * FROM ai_trace_summary WHERE trace_id = ?`
-    )
+    const summary = await c.env.DB.prepare(`SELECT * FROM ai_trace_summary WHERE trace_id = ?`)
       .bind(traceId)
       .first();
 
@@ -1466,7 +1513,7 @@ adminAi.get('/traces/stats/summary', requireAdmin, async (c) => {
 
   try {
     const stats = await c.env.DB.prepare(
-      `SELECT 
+      `SELECT
         COUNT(*) as total_traces,
         SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count,
         SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as error_count,
@@ -1593,7 +1640,9 @@ adminAi.post('/playground/run', requireAdmin, async (c) => {
        WHERE m.id IN (${placeholders}) AND m.is_enabled = 1 AND p.is_enabled = 1`
     )
       .bind(...model_ids)
-      .all<AIModel & { provider_name: string; api_base_url: string | null; api_key_env: string | null }>();
+      .all<
+        AIModel & { provider_name: string; api_base_url: string | null; api_key_env: string | null }
+      >();
 
     if (!models.results || models.results.length === 0) {
       return badRequest(c, 'No enabled models found with given IDs');
@@ -1643,7 +1692,12 @@ adminAi.post('/playground/run', requireAdmin, async (c) => {
 
         // Calculate estimated cost
         let estimatedCost: number | null = null;
-        if (model.input_cost_per_1k && model.output_cost_per_1k && promptTokens && completionTokens) {
+        if (
+          model.input_cost_per_1k &&
+          model.output_cost_per_1k &&
+          promptTokens &&
+          completionTokens
+        ) {
           estimatedCost =
             (promptTokens / 1000) * model.input_cost_per_1k +
             (completionTokens / 1000) * model.output_cost_per_1k;
@@ -1781,7 +1835,9 @@ adminAi.get('/playground/history', requireAdmin, async (c) => {
     query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
     params.push(limit, offset);
 
-    const result = await c.env.DB.prepare(query).bind(...params).all<PlaygroundHistory>();
+    const result = await c.env.DB.prepare(query)
+      .bind(...params)
+      .all<PlaygroundHistory>();
 
     // Get total count
     let countQuery = `SELECT COUNT(*) as total FROM ai_playground_history WHERE 1=1`;
@@ -1795,9 +1851,12 @@ adminAi.get('/playground/history', requireAdmin, async (c) => {
       countParams.push(status);
     }
 
-    const countResult = countParams.length > 0
-      ? await c.env.DB.prepare(countQuery).bind(...countParams).first<{ total: number }>()
-      : await c.env.DB.prepare(countQuery).first<{ total: number }>();
+    const countResult =
+      countParams.length > 0
+        ? await c.env.DB.prepare(countQuery)
+            .bind(...countParams)
+            .first<{ total: number }>()
+        : await c.env.DB.prepare(countQuery).first<{ total: number }>();
 
     return success(c, {
       history: result.results || [],
@@ -1819,9 +1878,7 @@ adminAi.get('/playground/history/:id', requireAdmin, async (c) => {
   const id = c.req.param('id');
 
   try {
-    const history = await c.env.DB.prepare(
-      `SELECT * FROM ai_playground_history WHERE id = ?`
-    )
+    const history = await c.env.DB.prepare(`SELECT * FROM ai_playground_history WHERE id = ?`)
       .bind(id)
       .first<PlaygroundHistory>();
 
@@ -1844,9 +1901,7 @@ adminAi.delete('/playground/history/:id', requireAdmin, async (c) => {
   const id = c.req.param('id');
 
   try {
-    const existing = await c.env.DB.prepare(
-      `SELECT id FROM ai_playground_history WHERE id = ?`
-    )
+    const existing = await c.env.DB.prepare(`SELECT id FROM ai_playground_history WHERE id = ?`)
       .bind(id)
       .first();
 
@@ -1854,9 +1909,7 @@ adminAi.delete('/playground/history/:id', requireAdmin, async (c) => {
       return notFound(c, `History not found: ${id}`);
     }
 
-    await c.env.DB.prepare(`DELETE FROM ai_playground_history WHERE id = ?`)
-      .bind(id)
-      .run();
+    await c.env.DB.prepare(`DELETE FROM ai_playground_history WHERE id = ?`).bind(id).run();
 
     return success(c, { deleted: true, id });
   } catch (err) {
@@ -1882,9 +1935,12 @@ adminAi.delete('/playground/history', requireAdmin, async (c) => {
       params.push(cutoffDate);
     }
 
-    const result = params.length > 0
-      ? await c.env.DB.prepare(query).bind(...params).run()
-      : await c.env.DB.prepare(query).run();
+    const result =
+      params.length > 0
+        ? await c.env.DB.prepare(query)
+            .bind(...params)
+            .run()
+        : await c.env.DB.prepare(query).run();
 
     return success(c, {
       deleted: true,
@@ -1918,9 +1974,12 @@ adminAi.get('/prompt-templates', requireAdmin, async (c) => {
 
     query += ` ORDER BY usage_count DESC, name ASC`;
 
-    const result = params.length > 0
-      ? await c.env.DB.prepare(query).bind(...params).all<PromptTemplate>()
-      : await c.env.DB.prepare(query).all<PromptTemplate>();
+    const result =
+      params.length > 0
+        ? await c.env.DB.prepare(query)
+            .bind(...params)
+            .all<PromptTemplate>()
+        : await c.env.DB.prepare(query).all<PromptTemplate>();
 
     return success(c, {
       templates: result.results || [],
@@ -1990,9 +2049,7 @@ adminAi.post('/prompt-templates', requireAdmin, async (c) => {
       )
       .run();
 
-    const template = await c.env.DB.prepare(
-      `SELECT * FROM ai_prompt_templates WHERE id = ?`
-    )
+    const template = await c.env.DB.prepare(`SELECT * FROM ai_prompt_templates WHERE id = ?`)
       .bind(id)
       .first<PromptTemplate>();
 
@@ -2015,9 +2072,7 @@ adminAi.put('/prompt-templates/:id', requireAdmin, async (c) => {
   const body = await c.req.json().catch(() => ({}));
 
   try {
-    const existing = await c.env.DB.prepare(
-      `SELECT * FROM ai_prompt_templates WHERE id = ?`
-    )
+    const existing = await c.env.DB.prepare(`SELECT * FROM ai_prompt_templates WHERE id = ?`)
       .bind(id)
       .first<PromptTemplate>();
 
@@ -2100,15 +2155,11 @@ adminAi.put('/prompt-templates/:id', requireAdmin, async (c) => {
     updates.push('updated_at = CURRENT_TIMESTAMP');
     values.push(id);
 
-    await c.env.DB.prepare(
-      `UPDATE ai_prompt_templates SET ${updates.join(', ')} WHERE id = ?`
-    )
+    await c.env.DB.prepare(`UPDATE ai_prompt_templates SET ${updates.join(', ')} WHERE id = ?`)
       .bind(...values)
       .run();
 
-    const template = await c.env.DB.prepare(
-      `SELECT * FROM ai_prompt_templates WHERE id = ?`
-    )
+    const template = await c.env.DB.prepare(`SELECT * FROM ai_prompt_templates WHERE id = ?`)
       .bind(id)
       .first<PromptTemplate>();
 
@@ -2127,9 +2178,7 @@ adminAi.delete('/prompt-templates/:id', requireAdmin, async (c) => {
   const id = c.req.param('id');
 
   try {
-    const existing = await c.env.DB.prepare(
-      `SELECT id FROM ai_prompt_templates WHERE id = ?`
-    )
+    const existing = await c.env.DB.prepare(`SELECT id FROM ai_prompt_templates WHERE id = ?`)
       .bind(id)
       .first();
 
@@ -2137,9 +2186,7 @@ adminAi.delete('/prompt-templates/:id', requireAdmin, async (c) => {
       return notFound(c, `Template not found: ${id}`);
     }
 
-    await c.env.DB.prepare(`DELETE FROM ai_prompt_templates WHERE id = ?`)
-      .bind(id)
-      .run();
+    await c.env.DB.prepare(`DELETE FROM ai_prompt_templates WHERE id = ?`).bind(id).run();
 
     return success(c, { deleted: true, id });
   } catch (err) {
@@ -2156,9 +2203,7 @@ adminAi.post('/prompt-templates/:id/use', requireAdmin, async (c) => {
   const id = c.req.param('id');
 
   try {
-    const template = await c.env.DB.prepare(
-      `SELECT * FROM ai_prompt_templates WHERE id = ?`
-    )
+    const template = await c.env.DB.prepare(`SELECT * FROM ai_prompt_templates WHERE id = ?`)
       .bind(id)
       .first<PromptTemplate>();
 

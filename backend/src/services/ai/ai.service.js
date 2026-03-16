@@ -104,9 +104,10 @@ export class AIService {
   }
 
   _getOpenAIClient() {
-    if (this._openaiClient) return this._openaiClient;
-    this._openaiClient = getOpenAIClient();
-    return this._openaiClient;
+    // Always delegate to the singleton factory — it handles fingerprint-based
+    // recreation internally. Do NOT cache the returned instance here, or
+    // dynamic config changes will not take effect until process restart.
+    return getOpenAIClient();
   }
 
   _getClient() {
@@ -682,21 +683,14 @@ export class AIService {
   }
 
   getProviderInfo() {
-    const baseUrl =
-      config.ai?.baseUrl ||
-      process.env.OPENAI_API_BASE_URL ||
-      process.env.AI_SERVER_URL ||
-      AI_API.BASE_URL ||
-      "https://api.openai.com/v1";
+    const client = this._getClient();
+    const snapshot = client.getProviderInfo?.() ?? {};
 
     return {
       provider: "openai-compat",
       config: {
-        baseUrl,
-        defaultModel:
-          config.ai?.defaultModel ||
-          process.env.AI_DEFAULT_MODEL ||
-          AI_MODELS.DEFAULT,
+        baseUrl: snapshot.baseUrl || config.ai?.baseUrl || "https://api.openai.com/v1",
+        defaultModel: snapshot.defaultModel || config.ai?.defaultModel || AI_MODELS.DEFAULT,
       },
     };
   }

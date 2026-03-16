@@ -7,16 +7,12 @@
  * Base path: /api/v1/admin/ai
  */
 
-import { Router } from 'express';
-import { v4 as uuidv4 } from 'uuid';
-import { queryAll, queryOne, execute, isD1Configured } from '../lib/d1.js';
-import requireAdmin from '../middleware/adminAuth.js';
-import { aiService } from '../lib/ai-service.js';
-import {
-  AI_ROUTE_DEFAULTS,
-  HEALTH_CHECK,
-  USAGE,
-} from '../config/constants.js';
+import { Router } from "express";
+import { v4 as uuidv4 } from "uuid";
+import { queryAll, queryOne, execute, isD1Configured } from "../lib/d1.js";
+import requireAdmin from "../middleware/adminAuth.js";
+import { aiService } from "../lib/ai-service.js";
+import { AI_ROUTE_DEFAULTS, HEALTH_CHECK, USAGE } from "../config/constants.js";
 
 const router = Router();
 
@@ -27,11 +23,11 @@ router.use(requireAdmin);
 // Helpers
 // ============================================================================
 
-const generateId = (prefix) => `${prefix}_${uuidv4().split('-')[0]}`;
+const generateId = (prefix) => `${prefix}_${uuidv4().split("-")[0]}`;
 
 const parseJsonField = (field) => {
   if (!field) return null;
-  if (typeof field === 'object') return field;
+  if (typeof field === "object") return field;
   try {
     return JSON.parse(field);
   } catch {
@@ -44,7 +40,7 @@ const checkD1 = (req, res, next) => {
   if (!isD1Configured()) {
     return res.status(500).json({
       ok: false,
-      error: 'Database not configured',
+      error: "Database not configured",
     });
   }
   next();
@@ -59,10 +55,10 @@ router.use(checkD1);
 /**
  * GET /providers - List all providers
  */
-router.get('/providers', async (req, res, next) => {
+router.get("/providers", async (req, res, next) => {
   try {
     const providers = await queryAll(`
-      SELECT 
+      SELECT
         p.*,
         (SELECT COUNT(*) FROM ai_models WHERE provider_id = p.id) as model_count,
         (SELECT COUNT(*) FROM ai_models WHERE provider_id = p.id AND is_enabled = 1) as enabled_model_count
@@ -94,15 +90,15 @@ router.get('/providers', async (req, res, next) => {
 /**
  * GET /providers/:id - Get single provider
  */
-router.get('/providers/:id', async (req, res, next) => {
+router.get("/providers/:id", async (req, res, next) => {
   try {
     const provider = await queryOne(
-      'SELECT * FROM ai_providers WHERE id = ?',
-      req.params.id
+      "SELECT * FROM ai_providers WHERE id = ?",
+      req.params.id,
     );
 
     if (!provider) {
-      return res.status(404).json({ ok: false, error: 'Provider not found' });
+      return res.status(404).json({ ok: false, error: "Provider not found" });
     }
 
     res.json({
@@ -128,21 +124,21 @@ router.get('/providers/:id', async (req, res, next) => {
 /**
  * POST /providers - Create provider
  */
-router.post('/providers', async (req, res, next) => {
+router.post("/providers", async (req, res, next) => {
   try {
     const { name, displayName, apiBaseUrl, apiKeyEnv } = req.body;
 
     if (!name || !displayName) {
       return res.status(400).json({
         ok: false,
-        error: 'name and displayName are required',
+        error: "name and displayName are required",
       });
     }
 
     // Check for duplicate name
     const existing = await queryOne(
-      'SELECT id FROM ai_providers WHERE name = ?',
-      name
+      "SELECT id FROM ai_providers WHERE name = ?",
+      name,
     );
     if (existing) {
       return res.status(409).json({
@@ -151,7 +147,7 @@ router.post('/providers', async (req, res, next) => {
       });
     }
 
-    const id = generateId('prov');
+    const id = generateId("prov");
     await execute(
       `INSERT INTO ai_providers (id, name, display_name, api_base_url, api_key_env)
        VALUES (?, ?, ?, ?, ?)`,
@@ -159,10 +155,13 @@ router.post('/providers', async (req, res, next) => {
       name,
       displayName,
       apiBaseUrl || null,
-      apiKeyEnv || null
+      apiKeyEnv || null,
     );
 
-    const provider = await queryOne('SELECT * FROM ai_providers WHERE id = ?', id);
+    const provider = await queryOne(
+      "SELECT * FROM ai_providers WHERE id = ?",
+      id,
+    );
 
     res.status(201).json({
       ok: true,
@@ -183,32 +182,32 @@ router.post('/providers', async (req, res, next) => {
 /**
  * PUT /providers/:id - Update provider
  */
-router.put('/providers/:id', async (req, res, next) => {
+router.put("/providers/:id", async (req, res, next) => {
   try {
     const { displayName, apiBaseUrl, apiKeyEnv, isEnabled } = req.body;
 
     const existing = await queryOne(
-      'SELECT * FROM ai_providers WHERE id = ?',
-      req.params.id
+      "SELECT * FROM ai_providers WHERE id = ?",
+      req.params.id,
     );
     if (!existing) {
-      return res.status(404).json({ ok: false, error: 'Provider not found' });
+      return res.status(404).json({ ok: false, error: "Provider not found" });
     }
 
     await execute(
-      `UPDATE ai_providers 
+      `UPDATE ai_providers
        SET display_name = ?, api_base_url = ?, api_key_env = ?, is_enabled = ?, updated_at = datetime('now')
        WHERE id = ?`,
       displayName ?? existing.display_name,
       apiBaseUrl !== undefined ? apiBaseUrl : existing.api_base_url,
       apiKeyEnv !== undefined ? apiKeyEnv : existing.api_key_env,
       isEnabled !== undefined ? (isEnabled ? 1 : 0) : existing.is_enabled,
-      req.params.id
+      req.params.id,
     );
 
     const provider = await queryOne(
-      'SELECT * FROM ai_providers WHERE id = ?',
-      req.params.id
+      "SELECT * FROM ai_providers WHERE id = ?",
+      req.params.id,
     );
 
     res.json({
@@ -230,20 +229,20 @@ router.put('/providers/:id', async (req, res, next) => {
 /**
  * DELETE /providers/:id - Delete provider
  */
-router.delete('/providers/:id', async (req, res, next) => {
+router.delete("/providers/:id", async (req, res, next) => {
   try {
     const existing = await queryOne(
-      'SELECT * FROM ai_providers WHERE id = ?',
-      req.params.id
+      "SELECT * FROM ai_providers WHERE id = ?",
+      req.params.id,
     );
     if (!existing) {
-      return res.status(404).json({ ok: false, error: 'Provider not found' });
+      return res.status(404).json({ ok: false, error: "Provider not found" });
     }
 
     // Check if has models
     const modelCount = await queryOne(
-      'SELECT COUNT(*) as count FROM ai_models WHERE provider_id = ?',
-      req.params.id
+      "SELECT COUNT(*) as count FROM ai_models WHERE provider_id = ?",
+      req.params.id,
     );
     if (modelCount?.count > 0) {
       return res.status(400).json({
@@ -252,7 +251,7 @@ router.delete('/providers/:id', async (req, res, next) => {
       });
     }
 
-    await execute('DELETE FROM ai_providers WHERE id = ?', req.params.id);
+    await execute("DELETE FROM ai_providers WHERE id = ?", req.params.id);
 
     res.json({ ok: true, data: { deleted: req.params.id } });
   } catch (err) {
@@ -260,23 +259,20 @@ router.delete('/providers/:id', async (req, res, next) => {
   }
 });
 
-/**
- * POST /providers/:id/health - Check provider health
- */
-router.post('/providers/:id/health', async (req, res, next) => {
+async function checkProviderHealth(req, res, next) {
   try {
     const provider = await queryOne(
-      'SELECT * FROM ai_providers WHERE id = ?',
-      req.params.id
+      "SELECT * FROM ai_providers WHERE id = ?",
+      req.params.id,
     );
     if (!provider) {
-      return res.status(404).json({ ok: false, error: 'Provider not found' });
+      return res.status(404).json({ ok: false, error: "Provider not found" });
     }
 
     // Get first enabled model for this provider
     const model = await queryOne(
-      'SELECT * FROM ai_models WHERE provider_id = ? AND is_enabled = 1 LIMIT 1',
-      req.params.id
+      "SELECT * FROM ai_models WHERE provider_id = ? AND is_enabled = 1 LIMIT 1",
+      req.params.id,
     );
 
     let healthStatus = HEALTH_CHECK.STATUS_UNKNOWN;
@@ -286,25 +282,25 @@ router.post('/providers/:id/health', async (req, res, next) => {
     if (model) {
       try {
         const start = Date.now();
-        await aiService.chat(
-          [{ role: 'user', content: HEALTH_CHECK.PROMPT }],
-          { model: model.model_name, timeout: HEALTH_CHECK.TIMEOUT }
-        );
+        await aiService.chat([{ role: "user", content: HEALTH_CHECK.PROMPT }], {
+          model: model.model_name,
+          timeout: HEALTH_CHECK.TIMEOUT,
+        });
         latencyMs = Date.now() - start;
-        healthStatus = 'healthy';
+        healthStatus = "healthy";
       } catch (err) {
-        healthStatus = 'down';
+        healthStatus = "down";
         error = err.message;
       }
     }
 
     // Update provider health status
     await execute(
-      `UPDATE ai_providers 
+      `UPDATE ai_providers
        SET health_status = ?, last_health_check = datetime('now'), updated_at = datetime('now')
        WHERE id = ?`,
       healthStatus,
-      req.params.id
+      req.params.id,
     );
 
     res.json({
@@ -320,7 +316,13 @@ router.post('/providers/:id/health', async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-});
+}
+
+/**
+ * POST|PUT /providers/:id/health - Check provider health
+ */
+router.post("/providers/:id/health", checkProviderHealth);
+router.put("/providers/:id/health", checkProviderHealth);
 
 // ============================================================================
 // Models CRUD
@@ -329,12 +331,12 @@ router.post('/providers/:id/health', async (req, res, next) => {
 /**
  * GET /models - List all models
  */
-router.get('/models', async (req, res, next) => {
+router.get("/models", async (req, res, next) => {
   try {
     const { providerId, enabled } = req.query;
 
     let sql = `
-      SELECT 
+      SELECT
         m.*,
         p.name as provider_name,
         p.display_name as provider_display_name,
@@ -346,15 +348,15 @@ router.get('/models', async (req, res, next) => {
     const params = [];
 
     if (providerId) {
-      sql += ' AND m.provider_id = ?';
+      sql += " AND m.provider_id = ?";
       params.push(providerId);
     }
     if (enabled !== undefined) {
-      sql += ' AND m.is_enabled = ?';
-      params.push(enabled === 'true' || enabled === '1' ? 1 : 0);
+      sql += " AND m.is_enabled = ?";
+      params.push(enabled === "true" || enabled === "1" ? 1 : 0);
     }
 
-    sql += ' ORDER BY m.priority DESC, m.display_name';
+    sql += " ORDER BY m.priority DESC, m.display_name";
 
     const models = await queryAll(sql, ...params);
 
@@ -396,18 +398,18 @@ router.get('/models', async (req, res, next) => {
 /**
  * GET /models/:id - Get single model
  */
-router.get('/models/:id', async (req, res, next) => {
+router.get("/models/:id", async (req, res, next) => {
   try {
     const model = await queryOne(
       `SELECT m.*, p.name as provider_name, p.display_name as provider_display_name
        FROM ai_models m
        JOIN ai_providers p ON m.provider_id = p.id
        WHERE m.id = ?`,
-      req.params.id
+      req.params.id,
     );
 
     if (!model) {
-      return res.status(404).json({ ok: false, error: 'Model not found' });
+      return res.status(404).json({ ok: false, error: "Model not found" });
     }
 
     res.json({
@@ -465,7 +467,7 @@ router.get('/models/:id', async (req, res, next) => {
 /**
  * POST /models - Create model
  */
-router.post('/models', async (req, res, next) => {
+router.post("/models", async (req, res, next) => {
   try {
     const {
       modelName,
@@ -488,14 +490,15 @@ router.post('/models', async (req, res, next) => {
     if (!modelName || !displayName || !providerId || !modelIdentifierValue) {
       return res.status(400).json({
         ok: false,
-        error: 'modelName, displayName, providerId, and modelIdentifier are required',
+        error:
+          "modelName, displayName, providerId, and modelIdentifier are required",
       });
     }
 
     // Check provider exists
     const provider = await queryOne(
-      'SELECT id FROM ai_providers WHERE id = ?',
-      providerId
+      "SELECT id FROM ai_providers WHERE id = ?",
+      providerId,
     );
     if (!provider) {
       return res.status(400).json({
@@ -506,8 +509,8 @@ router.post('/models', async (req, res, next) => {
 
     // Check for duplicate model name
     const existing = await queryOne(
-      'SELECT id FROM ai_models WHERE model_name = ?',
-      modelName
+      "SELECT id FROM ai_models WHERE model_name = ?",
+      modelName,
     );
     if (existing) {
       return res.status(409).json({
@@ -516,7 +519,7 @@ router.post('/models', async (req, res, next) => {
       });
     }
 
-    const id = generateId('model');
+    const id = generateId("model");
     await execute(
       `INSERT INTO ai_models (
         id, provider_id, model_name, display_name, model_identifier, description,
@@ -536,10 +539,10 @@ router.post('/models', async (req, res, next) => {
       supportsVision ? 1 : 0,
       supportsStreaming !== false ? 1 : 0,
       supportsFunctionCalling ? 1 : 0,
-      priority || 0
+      priority || 0,
     );
 
-    const model = await queryOne('SELECT * FROM ai_models WHERE id = ?', id);
+    const model = await queryOne("SELECT * FROM ai_models WHERE id = ?", id);
 
     res.status(201).json({
       ok: true,
@@ -560,7 +563,7 @@ router.post('/models', async (req, res, next) => {
 /**
  * PUT /models/:id - Update model
  */
-router.put('/models/:id', async (req, res, next) => {
+router.put("/models/:id", async (req, res, next) => {
   try {
     const {
       displayName,
@@ -578,11 +581,11 @@ router.put('/models/:id', async (req, res, next) => {
     } = req.body;
 
     const existing = await queryOne(
-      'SELECT * FROM ai_models WHERE id = ?',
-      req.params.id
+      "SELECT * FROM ai_models WHERE id = ?",
+      req.params.id,
     );
     if (!existing) {
-      return res.status(404).json({ ok: false, error: 'Model not found' });
+      return res.status(404).json({ ok: false, error: "Model not found" });
     }
 
     const modelIdentifierValue = modelIdentifier;
@@ -608,17 +611,36 @@ router.put('/models/:id', async (req, res, next) => {
       description !== undefined ? description : existing.description,
       contextWindow !== undefined ? contextWindow : existing.context_window,
       maxTokens !== undefined ? maxTokens : existing.max_tokens,
-      inputCostPer1k !== undefined ? inputCostPer1k : existing.input_cost_per_1k,
-      outputCostPer1k !== undefined ? outputCostPer1k : existing.output_cost_per_1k,
-      supportsVision !== undefined ? (supportsVision ? 1 : 0) : existing.supports_vision,
-      supportsStreaming !== undefined ? (supportsStreaming ? 1 : 0) : existing.supports_streaming,
-      supportsFunctionCalling !== undefined ? (supportsFunctionCalling ? 1 : 0) : existing.supports_function_calling,
+      inputCostPer1k !== undefined
+        ? inputCostPer1k
+        : existing.input_cost_per_1k,
+      outputCostPer1k !== undefined
+        ? outputCostPer1k
+        : existing.output_cost_per_1k,
+      supportsVision !== undefined
+        ? supportsVision
+          ? 1
+          : 0
+        : existing.supports_vision,
+      supportsStreaming !== undefined
+        ? supportsStreaming
+          ? 1
+          : 0
+        : existing.supports_streaming,
+      supportsFunctionCalling !== undefined
+        ? supportsFunctionCalling
+          ? 1
+          : 0
+        : existing.supports_function_calling,
       isEnabled !== undefined ? (isEnabled ? 1 : 0) : existing.is_enabled,
       priority !== undefined ? priority : existing.priority,
-      req.params.id
+      req.params.id,
     );
 
-    const model = await queryOne('SELECT * FROM ai_models WHERE id = ?', req.params.id);
+    const model = await queryOne(
+      "SELECT * FROM ai_models WHERE id = ?",
+      req.params.id,
+    );
 
     res.json({
       ok: true,
@@ -637,34 +659,35 @@ router.put('/models/:id', async (req, res, next) => {
 /**
  * DELETE /models/:id - Delete model
  */
-router.delete('/models/:id', async (req, res, next) => {
+router.delete("/models/:id", async (req, res, next) => {
   try {
     const existing = await queryOne(
-      'SELECT * FROM ai_models WHERE id = ?',
-      req.params.id
+      "SELECT * FROM ai_models WHERE id = ?",
+      req.params.id,
     );
     if (!existing) {
-      return res.status(404).json({ ok: false, error: 'Model not found' });
+      return res.status(404).json({ ok: false, error: "Model not found" });
     }
 
     // Check if used in routes
     const routeUsage = await queryOne(
-      `SELECT COUNT(*) as count FROM ai_routes 
-       WHERE primary_model_id = ? 
+      `SELECT COUNT(*) as count FROM ai_routes
+       WHERE primary_model_id = ?
          OR fallback_model_ids LIKE ?
          OR context_window_fallback_ids LIKE ?`,
       req.params.id,
       `%${req.params.id}%`,
-      `%${req.params.id}%`
+      `%${req.params.id}%`,
     );
     if (routeUsage?.count > 0) {
       return res.status(400).json({
         ok: false,
-        error: 'Cannot delete model used in routing rules. Update routes first.',
+        error:
+          "Cannot delete model used in routing rules. Update routes first.",
       });
     }
 
-    await execute('DELETE FROM ai_models WHERE id = ?', req.params.id);
+    await execute("DELETE FROM ai_models WHERE id = ?", req.params.id);
 
     res.json({ ok: true, data: { deleted: req.params.id } });
   } catch (err) {
@@ -675,14 +698,14 @@ router.delete('/models/:id', async (req, res, next) => {
 /**
  * POST /models/:id/test - Test model
  */
-router.post('/models/:id/test', async (req, res, next) => {
+router.post("/models/:id/test", async (req, res, next) => {
   try {
     const model = await queryOne(
-      'SELECT * FROM ai_models WHERE id = ?',
-      req.params.id
+      "SELECT * FROM ai_models WHERE id = ?",
+      req.params.id,
     );
     if (!model) {
-      return res.status(404).json({ ok: false, error: 'Model not found' });
+      return res.status(404).json({ ok: false, error: "Model not found" });
     }
 
     const { prompt } = req.body;
@@ -691,8 +714,8 @@ router.post('/models/:id/test', async (req, res, next) => {
     try {
       const start = Date.now();
       const response = await aiService.chat(
-        [{ role: 'user', content: testPrompt }],
-        { model: model.model_name, timeout: HEALTH_CHECK.MODEL_TEST_TIMEOUT }
+        [{ role: "user", content: testPrompt }],
+        { model: model.model_name, timeout: HEALTH_CHECK.MODEL_TEST_TIMEOUT },
       );
       const latencyMs = Date.now() - start;
 
@@ -730,10 +753,10 @@ router.post('/models/:id/test', async (req, res, next) => {
 /**
  * GET /routes - List all routes
  */
-router.get('/routes', async (req, res, next) => {
+router.get("/routes", async (req, res, next) => {
   try {
     const routes = await queryAll(`
-      SELECT 
+      SELECT
         r.*,
         m.model_name as primary_model_name,
         m.display_name as primary_model_display_name
@@ -755,7 +778,8 @@ router.get('/routes', async (req, res, next) => {
           }
         : null,
       fallbackModelIds: parseJsonField(r.fallback_model_ids) || [],
-      contextWindowFallbackIds: parseJsonField(r.context_window_fallback_ids) || [],
+      contextWindowFallbackIds:
+        parseJsonField(r.context_window_fallback_ids) || [],
       numRetries: r.num_retries,
       timeoutSeconds: r.timeout_seconds,
       isDefault: !!r.is_default,
@@ -773,18 +797,18 @@ router.get('/routes', async (req, res, next) => {
 /**
  * GET /routes/:id - Get single route
  */
-router.get('/routes/:id', async (req, res, next) => {
+router.get("/routes/:id", async (req, res, next) => {
   try {
     const route = await queryOne(
       `SELECT r.*, m.model_name as primary_model_name, m.display_name as primary_model_display_name
        FROM ai_routes r
        LEFT JOIN ai_models m ON r.primary_model_id = m.id
        WHERE r.id = ?`,
-      req.params.id
+      req.params.id,
     );
 
     if (!route) {
-      return res.status(404).json({ ok: false, error: 'Route not found' });
+      return res.status(404).json({ ok: false, error: "Route not found" });
     }
 
     res.json({
@@ -802,7 +826,8 @@ router.get('/routes/:id', async (req, res, next) => {
             }
           : null,
         fallbackModelIds: parseJsonField(route.fallback_model_ids) || [],
-        contextWindowFallbackIds: parseJsonField(route.context_window_fallback_ids) || [],
+        contextWindowFallbackIds:
+          parseJsonField(route.context_window_fallback_ids) || [],
         numRetries: route.num_retries,
         timeoutSeconds: route.timeout_seconds,
         isDefault: !!route.is_default,
@@ -819,7 +844,7 @@ router.get('/routes/:id', async (req, res, next) => {
 /**
  * POST /routes - Create route
  */
-router.post('/routes', async (req, res, next) => {
+router.post("/routes", async (req, res, next) => {
   try {
     const {
       name,
@@ -836,14 +861,14 @@ router.post('/routes', async (req, res, next) => {
     if (!name) {
       return res.status(400).json({
         ok: false,
-        error: 'name is required',
+        error: "name is required",
       });
     }
 
     // Check for duplicate name
     const existing = await queryOne(
-      'SELECT id FROM ai_routes WHERE name = ?',
-      name
+      "SELECT id FROM ai_routes WHERE name = ?",
+      name,
     );
     if (existing) {
       return res.status(409).json({
@@ -854,10 +879,10 @@ router.post('/routes', async (req, res, next) => {
 
     // If setting as default, unset other defaults
     if (isDefault) {
-      await execute('UPDATE ai_routes SET is_default = 0');
+      await execute("UPDATE ai_routes SET is_default = 0");
     }
 
-    const id = generateId('route');
+    const id = generateId("route");
     await execute(
       `INSERT INTO ai_routes (
         id, name, description, routing_strategy, primary_model_id,
@@ -870,13 +895,15 @@ router.post('/routes', async (req, res, next) => {
       routingStrategy || AI_ROUTE_DEFAULTS.ROUTING_STRATEGY,
       primaryModelId || null,
       fallbackModelIds ? JSON.stringify(fallbackModelIds) : null,
-      contextWindowFallbackIds ? JSON.stringify(contextWindowFallbackIds) : null,
+      contextWindowFallbackIds
+        ? JSON.stringify(contextWindowFallbackIds)
+        : null,
       numRetries || AI_ROUTE_DEFAULTS.NUM_RETRIES,
       timeoutSeconds || AI_ROUTE_DEFAULTS.TIMEOUT_SECONDS,
-      isDefault ? 1 : 0
+      isDefault ? 1 : 0,
     );
 
-    const route = await queryOne('SELECT * FROM ai_routes WHERE id = ?', id);
+    const route = await queryOne("SELECT * FROM ai_routes WHERE id = ?", id);
 
     res.status(201).json({
       ok: true,
@@ -894,7 +921,7 @@ router.post('/routes', async (req, res, next) => {
 /**
  * PUT /routes/:id - Update route
  */
-router.put('/routes/:id', async (req, res, next) => {
+router.put("/routes/:id", async (req, res, next) => {
   try {
     const {
       name,
@@ -910,16 +937,19 @@ router.put('/routes/:id', async (req, res, next) => {
     } = req.body;
 
     const existing = await queryOne(
-      'SELECT * FROM ai_routes WHERE id = ?',
-      req.params.id
+      "SELECT * FROM ai_routes WHERE id = ?",
+      req.params.id,
     );
     if (!existing) {
-      return res.status(404).json({ ok: false, error: 'Route not found' });
+      return res.status(404).json({ ok: false, error: "Route not found" });
     }
 
     // If setting as default, unset other defaults
     if (isDefault && !existing.is_default) {
-      await execute('UPDATE ai_routes SET is_default = 0 WHERE id != ?', req.params.id);
+      await execute(
+        "UPDATE ai_routes SET is_default = 0 WHERE id != ?",
+        req.params.id,
+      );
     }
 
     await execute(
@@ -940,16 +970,23 @@ router.put('/routes/:id', async (req, res, next) => {
       description !== undefined ? description : existing.description,
       routingStrategy ?? existing.routing_strategy,
       primaryModelId !== undefined ? primaryModelId : existing.primary_model_id,
-      fallbackModelIds !== undefined ? JSON.stringify(fallbackModelIds) : existing.fallback_model_ids,
-      contextWindowFallbackIds !== undefined ? JSON.stringify(contextWindowFallbackIds) : existing.context_window_fallback_ids,
+      fallbackModelIds !== undefined
+        ? JSON.stringify(fallbackModelIds)
+        : existing.fallback_model_ids,
+      contextWindowFallbackIds !== undefined
+        ? JSON.stringify(contextWindowFallbackIds)
+        : existing.context_window_fallback_ids,
       numRetries ?? existing.num_retries,
       timeoutSeconds ?? existing.timeout_seconds,
       isDefault !== undefined ? (isDefault ? 1 : 0) : existing.is_default,
       isEnabled !== undefined ? (isEnabled ? 1 : 0) : existing.is_enabled,
-      req.params.id
+      req.params.id,
     );
 
-    const route = await queryOne('SELECT * FROM ai_routes WHERE id = ?', req.params.id);
+    const route = await queryOne(
+      "SELECT * FROM ai_routes WHERE id = ?",
+      req.params.id,
+    );
 
     res.json({
       ok: true,
@@ -968,24 +1005,25 @@ router.put('/routes/:id', async (req, res, next) => {
 /**
  * DELETE /routes/:id - Delete route
  */
-router.delete('/routes/:id', async (req, res, next) => {
+router.delete("/routes/:id", async (req, res, next) => {
   try {
     const existing = await queryOne(
-      'SELECT * FROM ai_routes WHERE id = ?',
-      req.params.id
+      "SELECT * FROM ai_routes WHERE id = ?",
+      req.params.id,
     );
     if (!existing) {
-      return res.status(404).json({ ok: false, error: 'Route not found' });
+      return res.status(404).json({ ok: false, error: "Route not found" });
     }
 
     if (existing.is_default) {
       return res.status(400).json({
         ok: false,
-        error: 'Cannot delete the default route. Set another route as default first.',
+        error:
+          "Cannot delete the default route. Set another route as default first.",
       });
     }
 
-    await execute('DELETE FROM ai_routes WHERE id = ?', req.params.id);
+    await execute("DELETE FROM ai_routes WHERE id = ?", req.params.id);
 
     res.json({ ok: true, data: { deleted: req.params.id } });
   } catch (err) {
@@ -1000,17 +1038,21 @@ router.delete('/routes/:id', async (req, res, next) => {
 /**
  * GET /usage - Get usage statistics
  */
-router.get('/usage', async (req, res, next) => {
+router.get("/usage", async (req, res, next) => {
   try {
     const { startDate, endDate, modelId, groupBy } = req.query;
 
     // Default to last 7 days
-    const end = endDate || new Date().toISOString().split('T')[0];
-    const start = startDate || new Date(Date.now() - USAGE.DEFAULT_PERIOD_MS).toISOString().split('T')[0];
+    const end = endDate || new Date().toISOString().split("T")[0];
+    const start =
+      startDate ||
+      new Date(Date.now() - USAGE.DEFAULT_PERIOD_MS)
+        .toISOString()
+        .split("T")[0];
 
     // Summary
     let summaryQuery = `
-      SELECT 
+      SELECT
         COUNT(*) as total_requests,
         COALESCE(SUM(total_tokens), 0) as total_tokens,
         COALESCE(SUM(estimated_cost), 0) as total_cost,
@@ -1023,7 +1065,7 @@ router.get('/usage', async (req, res, next) => {
     const summaryParams = [start, end];
 
     if (modelId) {
-      summaryQuery += ' AND model_id = ?';
+      summaryQuery += " AND model_id = ?";
       summaryParams.push(modelId);
     }
 
@@ -1033,9 +1075,9 @@ router.get('/usage', async (req, res, next) => {
     let breakdownQuery;
     let breakdownParams = [start, end];
 
-    if (groupBy === 'model') {
+    if (groupBy === "model") {
       breakdownQuery = `
-        SELECT 
+        SELECT
           u.model_id,
           m.model_name,
           m.display_name,
@@ -1052,7 +1094,7 @@ router.get('/usage', async (req, res, next) => {
     } else {
       // Default: group by day
       breakdownQuery = `
-        SELECT 
+        SELECT
           date(created_at) as date,
           COUNT(*) as requests,
           COALESCE(SUM(total_tokens), 0) as tokens,
@@ -1062,10 +1104,10 @@ router.get('/usage', async (req, res, next) => {
         WHERE date(created_at) >= ? AND date(created_at) <= ?
       `;
       if (modelId) {
-        breakdownQuery += ' AND model_id = ?';
+        breakdownQuery += " AND model_id = ?";
         breakdownParams.push(modelId);
       }
-      breakdownQuery += ' GROUP BY date(created_at) ORDER BY date ASC';
+      breakdownQuery += " GROUP BY date(created_at) ORDER BY date ASC";
     }
 
     const breakdownResult = await queryAll(breakdownQuery, ...breakdownParams);
@@ -1077,7 +1119,8 @@ router.get('/usage', async (req, res, next) => {
         summary: {
           totalRequests: summaryResult?.total_requests || 0,
           totalTokens: summaryResult?.total_tokens || 0,
-          totalCost: Math.round((summaryResult?.total_cost || 0) * 10000) / 10000,
+          totalCost:
+            Math.round((summaryResult?.total_cost || 0) * 10000) / 10000,
           avgLatencyMs: Math.round(summaryResult?.avg_latency_ms || 0),
           successCount: summaryResult?.success_count || 0,
           errorCount: summaryResult?.error_count || 0,
@@ -1108,7 +1151,7 @@ router.get('/usage', async (req, res, next) => {
 /**
  * POST /usage/log - Log a usage event (internal use)
  */
-router.post('/usage/log', async (req, res, next) => {
+router.post("/usage/log", async (req, res, next) => {
   try {
     const {
       modelId,
@@ -1129,8 +1172,8 @@ router.post('/usage/log', async (req, res, next) => {
     let estimatedCost = 0;
     if (modelId) {
       const model = await queryOne(
-        'SELECT input_cost_per_1k, output_cost_per_1k FROM ai_models WHERE id = ?',
-        modelId
+        "SELECT input_cost_per_1k, output_cost_per_1k FROM ai_models WHERE id = ?",
+        modelId,
       );
       if (model) {
         estimatedCost =
@@ -1139,7 +1182,7 @@ router.post('/usage/log', async (req, res, next) => {
       }
     }
 
-    const id = generateId('usage');
+    const id = generateId("usage");
     await execute(
       `INSERT INTO ai_usage_logs (
         id, model_id, route_id, request_type,
@@ -1149,16 +1192,16 @@ router.post('/usage/log', async (req, res, next) => {
       id,
       modelId || null,
       routeId || null,
-      requestType || 'chat',
+      requestType || "chat",
       promptTokens || 0,
       completionTokens || 0,
       totalTokens,
       estimatedCost,
       latencyMs || null,
-      status || 'success',
+      status || "success",
       errorMessage || null,
       userId || null,
-      metadata ? JSON.stringify(metadata) : null
+      metadata ? JSON.stringify(metadata) : null,
     );
 
     res.status(201).json({ ok: true, data: { id } });
@@ -1170,11 +1213,11 @@ router.post('/usage/log', async (req, res, next) => {
 /**
  * GET /config/export - Export current config as YAML-compatible JSON
  */
-router.get('/config/export', async (req, res, next) => {
+router.get("/config/export", async (req, res, next) => {
   try {
-    const providers = await queryAll('SELECT * FROM ai_providers');
-    const models = await queryAll('SELECT * FROM ai_models');
-    const routes = await queryAll('SELECT * FROM ai_routes');
+    const providers = await queryAll("SELECT * FROM ai_providers");
+    const models = await queryAll("SELECT * FROM ai_models");
+    const routes = await queryAll("SELECT * FROM ai_routes");
 
     res.json({
       ok: true,
@@ -1212,7 +1255,9 @@ router.get('/config/export', async (req, res, next) => {
           routingStrategy: r.routing_strategy,
           primaryModelId: r.primary_model_id,
           fallbackModelIds: parseJsonField(r.fallback_model_ids),
-          contextWindowFallbackIds: parseJsonField(r.context_window_fallback_ids),
+          contextWindowFallbackIds: parseJsonField(
+            r.context_window_fallback_ids,
+          ),
           numRetries: r.num_retries,
           timeoutSeconds: r.timeout_seconds,
           isDefault: !!r.is_default,

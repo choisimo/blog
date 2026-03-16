@@ -87,6 +87,61 @@ function readHeaderValue(value) {
   return undefined;
 }
 
+function formatPageContext(pageContext) {
+  if (!pageContext || typeof pageContext !== "object") {
+    return null;
+  }
+
+  const lines = [];
+  const title =
+    typeof pageContext.title === "string" ? pageContext.title.trim() : "";
+  const url = typeof pageContext.url === "string" ? pageContext.url.trim() : "";
+
+  if (title || url) {
+    lines.push(`[Context: ${title || ""} - ${url || ""}]`);
+  }
+
+  const article =
+    pageContext.article && typeof pageContext.article === "object"
+      ? pageContext.article
+      : null;
+
+  if (article) {
+    const articleTitle =
+      typeof article.title === "string" ? article.title.trim() : "";
+    const slug = typeof article.slug === "string" ? article.slug.trim() : "";
+    const year = typeof article.year === "string" ? article.year.trim() : "";
+    const description =
+      typeof article.description === "string"
+        ? article.description.trim()
+        : "";
+    const headings = Array.isArray(article.headings)
+      ? article.headings
+          .filter((value) => typeof value === "string")
+          .map((value) => value.trim())
+          .filter(Boolean)
+          .slice(0, 6)
+      : [];
+
+    if (articleTitle) {
+      lines.push(`[Current Article Title] ${articleTitle}`);
+    }
+    if (year && slug) {
+      lines.push(`[Current Article Slug] ${year}/${slug}`);
+    } else if (slug) {
+      lines.push(`[Current Article Slug] ${slug}`);
+    }
+    if (description) {
+      lines.push(`[Current Article Description] ${description}`);
+    }
+    if (headings.length > 0) {
+      lines.push(`[Current Article Headings] ${headings.join(" | ")}`);
+    }
+  }
+
+  return lines.length > 0 ? lines.join("\n") : null;
+}
+
 function resolveChatModelFromRequest(req) {
   const forced = readHeaderValue(req?.headers?.["x-ai-model"])?.trim();
   if (forced) return forced;
@@ -131,7 +186,7 @@ async function getEmbeddings(texts) {
   return result.embeddings;
 }
 
-async function queryChroma(embedding, nResults = 5) {
+async function queryChroma(embedding, nResults = 5, where = null) {
   const collectionName = config.rag.chromaCollection;
   const collectionsBase = getChromaCollectionsBase();
 
@@ -141,14 +196,19 @@ async function queryChroma(embedding, nResults = 5) {
   }
 
   const queryUrl = `${collectionsBase}/${collectionUUID}/query`;
+  const body = {
+    query_embeddings: [embedding],
+    n_results: nResults,
+    include: ["documents", "metadatas", "distances"],
+  };
+  if (where) {
+    body.where = where;
+  }
+
   const response = await fetch(queryUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      query_embeddings: [embedding],
-      n_results: nResults,
-      include: ["documents", "metadatas", "distances"],
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
@@ -158,10 +218,18 @@ async function queryChroma(embedding, nResults = 5) {
   return response.json();
 }
 
-async function performRAGSearch(query, topK = 5) {
+async function performRAGSearch(query, topK = 5, articleSlug = null, articleYear = null) {
   try {
     const [embedding] = await getEmbeddings([query]);
-    const chromaResult = await queryChroma(embedding, topK);
+
+    let where = null;
+    if (articleSlug) {
+      where = articleYear
+        ? { $and: [{ slug: { $eq: articleSlug } }, { year: { $eq: articleYear } }] }
+        : { slug: { $eq: articleSlug } };
+    }
+
+    const chromaResult = await queryChroma(embedding, topK, where);
 
     const sources = [];
     const contextParts = [];
@@ -379,8 +447,9 @@ export function initChatWebSocket(server) {
         }
 
         const pageContext = payload.context?.page || payload.context;
-        if (pageContext?.url || pageContext?.title) {
-          userMessage = `[Context: ${pageContext.title || ""} - ${pageContext.url || ""}]\n\n${userMessage}`;
+        const serializedPageContext = formatPageContext(pageContext);
+        if (serializedPageContext) {
+          userMessage = `${serializedPageContext}\n\n${userMessage}`;
         }
 
         session.lastActivityAt = Date.now();
@@ -389,9 +458,11 @@ export function initChatWebSocket(server) {
 
         const { notebookContext, ragContext, ragSources } =
           await resolveMessageContexts({
-            userQuery: userMessage,
+            userQuery: deriveUserQuery(payload.parts, userMessage),
             session,
             enableRag: payload.enableRag === true,
+            articleSlug: pageContext?.article?.slug || null,
+            articleYear: pageContext?.article?.year || null,
           });
 
         if (ragSources.length > 0) {
@@ -557,8 +628,9 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
 
     // Add context if available
     const pageContext = context?.page;
-    if (pageContext?.url || pageContext?.title) {
-      userMessage = `[Context: ${pageContext.title || ""} - ${pageContext.url || ""}]\n\n${userMessage}`;
+    const serializedPageContext = formatPageContext(pageContext);
+    if (serializedPageContext) {
+      userMessage = `${serializedPageContext}\n\n${userMessage}`;
     }
 
     // Store message
@@ -593,11 +665,15 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
 
     try {
       const userQuery = deriveUserQuery(parts, userMessage);
+      const articleSlug = pageContext?.article?.slug || null;
+      const articleYear = pageContext?.article?.year || null;
       const { notebookContext, ragContext, ragSources } =
         await resolveMessageContexts({
           userQuery,
           session,
           enableRag,
+          articleSlug,
+          articleYear,
         });
 
       if (ragSources.length > 0) {

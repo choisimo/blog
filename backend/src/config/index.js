@@ -119,6 +119,7 @@ async function buildConfig() {
       terminalServerUrl: raw.TERMINAL_SERVER_URL,
       terminalGatewayUrl: raw.TERMINAL_GATEWAY_URL,
       openNotebookUrl: raw.OPEN_NOTEBOOK_URL,
+      workerApiUrl: raw.WORKER_API_URL || null,
     },
 
     consul: {
@@ -229,6 +230,7 @@ export const config = {
     terminalServerUrl: syncConfig.TERMINAL_SERVER_URL,
     terminalGatewayUrl: syncConfig.TERMINAL_GATEWAY_URL,
     openNotebookUrl: syncConfig.OPEN_NOTEBOOK_URL,
+    workerApiUrl: syncConfig.WORKER_API_URL || null,
   },
   consul: {
     enabled: CONSUL.ENABLED,

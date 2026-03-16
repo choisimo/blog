@@ -36,37 +36,13 @@ import {
   OPENAI_CLIENT,
 } from "../../config/constants.js";
 import { createLogger } from "../../lib/logger.js";
-
-// ============================================================================
-// Configuration (from config.js which supports Consul KV with env fallback)
-// ============================================================================
-
-const getOpenAIBaseUrl = () =>
-  config.ai?.baseUrl ||
-  process.env.OPENAI_API_BASE_URL ||
-  process.env.AI_SERVER_URL ||
-  "https://api.openai.com/v1";
-const OPENAI_API_KEY =
-  config.ai?.apiKey ||
-  process.env.AI_API_KEY ||
-  process.env.OPENAI_API_KEY ||
-  "sk-placeholder";
-const OPENAI_DEFAULT_MODEL =
-  config.ai?.defaultModel || process.env.AI_DEFAULT_MODEL || AI_MODELS.DEFAULT;
-const getEmbeddingBaseUrl = () =>
-  config.rag?.embeddingUrl ||
-  process.env.AI_EMBEDDING_URL ||
-  process.env.AI_SERVER_URL ||
-  process.env.OPENAI_API_BASE_URL ||
-  "https://api.openai.com/v1";
-const getEmbeddingModel = () =>
-  config.rag?.embeddingModel ||
-  process.env.AI_EMBED_MODEL ||
-  "text-embedding-3-small";
+import {
+  getCachedAIConfigSnapshot,
+  primeAIConfigRefresh,
+} from "./dynamic-config.service.js";
 
 // Timeout settings
 const DEFAULT_TIMEOUT = TIMEOUTS.DEFAULT; // 2 minutes
-const LONG_TIMEOUT = TIMEOUTS.LONG; // 5 minutes
 
 // Circuit breaker settings
 const CIRCUIT_BREAKER_THRESHOLD = CIRCUIT_BREAKER.THRESHOLD;
@@ -84,14 +60,28 @@ const logger = createLogger('openai-compat-client');
 
 export class OpenAICompatClient {
   constructor(options = {}) {
-    let baseURL = options.baseUrl || getOpenAIBaseUrl();
+    let baseURL =
+      options.baseUrl ||
+      config.ai?.baseUrl ||
+      process.env.OPENAI_API_BASE_URL ||
+      process.env.AI_SERVER_URL ||
+      "https://api.openai.com/v1";
     if (!baseURL.endsWith("/v1")) {
       baseURL = baseURL.replace(/\/$/, "") + "/v1";
     }
 
     this.baseUrl = baseURL;
-    this.apiKey = options.apiKey || OPENAI_API_KEY;
-    this.defaultModel = options.model || OPENAI_DEFAULT_MODEL;
+    this.apiKey =
+      options.apiKey ||
+      config.ai?.apiKey ||
+      process.env.AI_API_KEY ||
+      process.env.OPENAI_API_KEY ||
+      "sk-placeholder";
+    this.defaultModel =
+      options.model ||
+      config.ai?.defaultModel ||
+      process.env.AI_DEFAULT_MODEL ||
+      AI_MODELS.DEFAULT;
 
     // Initialize OpenAI client
     this._openai = new OpenAI({
@@ -527,15 +517,36 @@ export class OpenAICompatClient {
 // ============================================================================
 
 let _client = null;
+let _clientFingerprint = null;
 const _embeddingClients = new Map();
 
 /**
  * Get the default OpenAI compatible client instance
  */
 export function getOpenAIClient(options = {}) {
-  if (!_client || Object.keys(options).length > 0) {
-    _client = new OpenAICompatClient(options);
+  // If per-call options are provided, always create a fresh instance
+  if (Object.keys(options).length > 0) {
+    const snapshot = getCachedAIConfigSnapshot();
+    return new OpenAICompatClient({
+      baseUrl: options.baseUrl || snapshot.baseUrl,
+      apiKey: options.apiKey || snapshot.apiKey || 'sk-placeholder',
+      model: options.model || snapshot.defaultModel,
+      ...options,
+    });
   }
+
+  const snapshot = getCachedAIConfigSnapshot();
+
+  // If config fingerprint changed, recreate the client
+  if (!_client || _clientFingerprint !== snapshot.fingerprint) {
+    _client = new OpenAICompatClient({
+      baseUrl: snapshot.baseUrl,
+      apiKey: snapshot.apiKey || 'sk-placeholder',
+      model: snapshot.defaultModel,
+    });
+    _clientFingerprint = snapshot.fingerprint;
+  }
+
   return _client;
 }
 
@@ -543,8 +554,15 @@ export function getOpenAIClient(options = {}) {
  * Get a cached OpenAI-compatible client for embeddings.
  */
 export function getOpenAIEmbeddingClient(options = {}) {
-  const baseUrl = options.baseUrl || getEmbeddingBaseUrl();
-  const apiKey = options.apiKey || OPENAI_API_KEY;
+  const snapshot = getCachedAIConfigSnapshot();
+  // Use explicit options or fall back to dynamic snapshot / rag config
+  const baseUrl = options.baseUrl 
+    || config.rag?.embeddingUrl 
+    || snapshot.baseUrl;
+  const apiKey = options.apiKey 
+    || config.rag?.embeddingApiKey 
+    || snapshot.apiKey 
+    || 'sk-placeholder';
   const cacheKey = `${baseUrl}::${apiKey}`;
 
   if (!_embeddingClients.has(cacheKey)) {
@@ -595,7 +613,22 @@ export async function* openaiStreamChat(messages, options = {}) {
 export async function openaiEmbeddings(input, options = {}) {
   const { baseUrl, apiKey, model, ...embedOptions } = options;
   const client = getOpenAIEmbeddingClient({ baseUrl, apiKey });
-  const embeddingModel = model || getEmbeddingModel();
+  const embeddingModel = model 
+    || config.rag?.embeddingModel 
+    || process.env.AI_EMBED_MODEL 
+    || 'text-embedding-3-small';
   return client.embeddings(input, { model: embeddingModel, ...embedOptions });
 }
+
+/**
+ * Get current AI client config snapshot (for status/health reporting).
+ * @returns {import('./dynamic-config.service.js').AIConfigSnapshot}
+ */
+export function getOpenAIClientConfigSnapshot() {
+  return getCachedAIConfigSnapshot();
+}
+
 export default OpenAICompatClient;
+
+// Prime dynamic config refresh on module load
+primeAIConfigRefresh();

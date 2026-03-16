@@ -21,6 +21,8 @@ import {
   AI_TEMPERATURES,
 } from "../config/constants.js";
 import { createLogger } from "../lib/logger.js";
+import { getCachedAIConfigSnapshot } from '../services/ai/dynamic-config.service.js';
+import { getOpenAIClientConfigSnapshot } from '../services/ai/openai-client.service.js';
 
 const router = Router();
 const logger = createLogger("ai");
@@ -36,7 +38,8 @@ function readHeaderValue(value) {
 function resolveChatModelFromRequest(req) {
   const forced = readHeaderValue(req?.headers?.["x-ai-model"])?.trim();
   if (forced) return forced;
-  return config.ai?.defaultModel || AI_MODELS.DEFAULT;
+  const snapshot = getCachedAIConfigSnapshot();
+  return snapshot.defaultModel || config.ai?.defaultModel || AI_MODELS.DEFAULT;
 }
 
 function resolveVisionModelFromRequest(req) {
@@ -124,7 +127,9 @@ ${RAG_PROMPTS.RECOMMENDATION_INSTRUCTION}`;
 // ============================================================================
 
 router.get("/models", async (req, res) => {
+  const snapshot = getCachedAIConfigSnapshot();
   const defaultModel =
+    snapshot.defaultModel ||
     config.ai?.defaultModel ||
     process.env.AI_DEFAULT_MODEL ||
     AI_MODELS.DEFAULT;
@@ -331,6 +336,7 @@ router.post("/auto-chat", rateLimitMiddleware(), async (req, res, next) => {
 router.get("/health", async (req, res) => {
   const healthResult = await aiService.health();
   const providerInfo = aiService.getProviderInfo();
+  const configSnapshot = getCachedAIConfigSnapshot();
 
   res.json({
     ok: true,
@@ -338,7 +344,8 @@ router.get("/health", async (req, res) => {
       status: healthResult.ok ? "healthy" : "degraded",
       provider: providerInfo.provider,
       health: healthResult,
-      hasApiKey: !!config.ai?.apiKey,
+      hasApiKey: !!configSnapshot.apiKey,
+      configSource: configSnapshot.source,
       timestamp: new Date().toISOString(),
     },
   });
@@ -348,13 +355,14 @@ router.get("/health", async (req, res) => {
 router.get("/status", async (req, res) => {
   const providerInfo = aiService.getProviderInfo();
   const healthResult = await aiService.health();
+  const clientConfigSnapshot = getOpenAIClientConfigSnapshot();
 
   res.json({
     ok: true,
     data: {
       status: healthResult.ok ? "ok" : "degraded",
       provider: providerInfo.provider,
-      model: providerInfo.config?.defaultModel || config.ai?.defaultModel,
+      model: providerInfo.config?.defaultModel || clientConfigSnapshot.defaultModel || config.ai?.defaultModel,
       aiService: {
         provider: providerInfo.provider,
         config: providerInfo.config,

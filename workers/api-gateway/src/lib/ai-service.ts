@@ -284,13 +284,10 @@ export class AIService {
   /**
    * Health check
    *
-   * Checks backend API availability directly (not /ai/health to avoid circular calls).
-   * Uses /api/v1/healthz which is a simple health endpoint.
+   * Checks backend AI health directly so auth/provider failures are surfaced.
    */
   async health(): Promise<{ ok: boolean; provider?: string; status?: string }> {
     try {
-      // Use BACKEND_ORIGIN directly to check backend health
-      // Avoid calling /ai/health which may have issues with opencode-backend
       const backendOrigin = this.env.BACKEND_ORIGIN;
 
       if (!backendOrigin) {
@@ -301,14 +298,20 @@ export class AIService {
         };
       }
 
-      const url = `${backendOrigin.replace(/\/$/, '')}/api/v1/healthz`;
+      const url = `${backendOrigin.replace(/\/$/, '')}/api/v1/ai/health`;
+
+      const headers: Record<string, string> = {
+        Accept: 'application/json',
+        'User-Agent': 'Blog-Workers/1.0',
+      };
+
+      if (this.env.BACKEND_KEY) {
+        headers['X-Backend-Key'] = this.env.BACKEND_KEY;
+      }
 
       const res = await fetch(url, {
         method: 'GET',
-        headers: {
-          Accept: 'application/json',
-          'User-Agent': 'Blog-Workers/1.0',
-        },
+        headers,
       });
 
       if (!res.ok) {
@@ -317,14 +320,24 @@ export class AIService {
 
       const data = (await res.json()) as {
         ok?: boolean;
-        env?: string;
-        uptime?: number;
+        data?: {
+          status?: string;
+          provider?: string;
+          health?: {
+            error?: string;
+            status?: unknown;
+          };
+        };
       };
 
+      const aiStatus = data.data?.status || 'unknown';
+      const provider = data.data?.provider || 'backend';
+      const errorMessage = data.data?.health?.error;
+
       return {
-        ok: data.ok ?? true,
-        provider: 'backend',
-        status: data.ok ? 'healthy' : 'degraded',
+        ok: aiStatus === 'healthy',
+        provider,
+        status: errorMessage || aiStatus,
       };
     } catch (err) {
       return {
