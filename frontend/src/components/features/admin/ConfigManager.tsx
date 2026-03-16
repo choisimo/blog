@@ -16,6 +16,7 @@ import {
   Copy,
   CheckCircle2,
   AlertCircle,
+  ChevronDown,
 } from 'lucide-react';
 
 interface ConfigVariable {
@@ -181,17 +182,19 @@ export function ConfigManager() {
   const renderField = (variable: ConfigVariable) => {
     const value = getValue(variable.key);
     const isVisible = visibleSecrets.has(variable.key);
+    const baseInputClass = 'h-9 text-sm rounded-lg border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-200 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 focus-visible:ring-offset-0 transition-all';
+    const iconBtnClass = 'h-9 w-9 flex items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 outline-none shrink-0';
 
     switch (variable.type) {
       case 'select':
         return (
           <Select value={value} onValueChange={(v) => updateValue(variable.key, v)}>
-            <SelectTrigger className="h-8 text-sm rounded-md border-zinc-200 focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1">
+            <SelectTrigger className={`${baseInputClass} w-full`}>
               <SelectValue placeholder={variable.default || 'Select...'} />
             </SelectTrigger>
             <SelectContent>
               {variable.options?.map((opt) => (
-                <SelectItem key={opt} value={opt} className="text-sm">
+                <SelectItem key={opt} value={opt} className='text-sm'>
                   {opt}
                 </SelectItem>
               ))}
@@ -201,20 +204,22 @@ export function ConfigManager() {
 
       case 'password':
         return (
-          <div className="flex gap-2">
+          <div className='flex gap-2'>
             <Input
+              id={variable.key}
               type={isVisible ? 'text' : 'password'}
               value={value}
               onChange={(e) => updateValue(variable.key, e.target.value)}
               placeholder={configData?.[variable.key]?.isSet ? '••••••••' : 'Not set'}
-              className="h-8 text-sm rounded-md border-zinc-200 flex-1"
+              className={`${baseInputClass} flex-1`}
             />
             <button
-              type="button"
+              type='button'
               onClick={() => toggleSecretVisibility(variable.key)}
-              className="h-8 w-8 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors"
+              aria-label={isVisible ? 'Hide value' : 'Show value'}
+              className={iconBtnClass}
             >
-              {isVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              {isVisible ? <EyeOff className='h-3.5 w-3.5' aria-hidden='true' /> : <Eye className='h-3.5 w-3.5' aria-hidden='true' />}
             </button>
           </div>
         );
@@ -222,31 +227,34 @@ export function ConfigManager() {
       case 'textarea':
         return (
           <Textarea
+            id={variable.key}
             value={value}
             onChange={(e) => updateValue(variable.key, e.target.value)}
             placeholder={variable.default || ''}
             rows={3}
-            className="text-sm rounded-md border-zinc-200 focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1"
+            className='text-sm rounded-lg border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-200 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 focus-visible:ring-offset-0 transition-all resize-none'
           />
         );
 
       case 'url':
         return (
-          <div className="flex gap-2">
+          <div className='flex gap-2'>
             <Input
-              type="url"
+              id={variable.key}
+              type='url'
               value={value}
               onChange={(e) => updateValue(variable.key, e.target.value)}
-              placeholder={variable.default || 'https://...'}
-              className="h-8 text-sm rounded-md border-zinc-200 flex-1"
+              placeholder={variable.default || 'https://…'}
+              className={`${baseInputClass} flex-1`}
             />
             {value && (
               <button
-                type="button"
+                type='button'
                 onClick={() => copyToClipboard(value)}
-                className="h-8 w-8 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors"
+                aria-label='Copy URL'
+                className={iconBtnClass}
               >
-                <Copy className="h-3.5 w-3.5" />
+                <Copy className='h-3.5 w-3.5' aria-hidden='true' />
               </button>
             )}
           </div>
@@ -255,22 +263,24 @@ export function ConfigManager() {
       case 'number':
         return (
           <Input
-            type="number"
+            id={variable.key}
+            type='number'
             value={value}
             onChange={(e) => updateValue(variable.key, e.target.value)}
             placeholder={variable.default || '0'}
-            className="h-8 text-sm rounded-md border-zinc-200"
+            className={baseInputClass}
           />
         );
 
       default:
         return (
           <Input
-            type="text"
+            id={variable.key}
+            type='text'
             value={value}
             onChange={(e) => updateValue(variable.key, e.target.value)}
             placeholder={variable.default || ''}
-            className="h-8 text-sm rounded-md border-zinc-200"
+            className={baseInputClass}
           />
         );
     }
@@ -278,9 +288,9 @@ export function ConfigManager() {
 
   if (categoriesLoading || configLoading) {
     return (
-      <div className="flex items-center gap-2 p-6 text-sm text-zinc-500">
-        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-        Loading configuration...
+      <div className='rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-8 flex items-center gap-3 text-sm text-zinc-400'>
+        <RefreshCw className='h-4 w-4 animate-spin shrink-0' aria-hidden='true' />
+        <span>Loading configuration…</span>
       </div>
     );
   }
@@ -289,99 +299,109 @@ export function ConfigManager() {
   const activeCategory = categories.find((c) => c.id === activeTab) ?? categories[0];
 
   return (
-    <div className="space-y-4">
-      <div className="bg-white border border-zinc-200 rounded-lg px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {hasChanges && (
+    <div className='space-y-3'>
+      <div className='rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3 flex items-center justify-between gap-3'>
+        <div className='flex items-center gap-2 min-w-0'>
+          {hasChanges ? (
             <>
-              <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
-              <span className="text-xs text-amber-600 font-medium">Unsaved changes</span>
+              <AlertCircle className='h-3.5 w-3.5 text-amber-500 shrink-0' aria-hidden='true' />
+              <span className='text-xs text-amber-600 dark:text-amber-400 font-medium'>Unsaved changes</span>
             </>
-          )}
-          {!hasChanges && (
-            <span className="text-xs text-zinc-400">Environment config</span>
+          ) : (
+            <span className='text-xs text-zinc-400 dark:text-zinc-500'>Environment config</span>
           )}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className='flex items-center gap-1.5 shrink-0'>
           <button
-            type="button"
+            type='button'
             onClick={() => exportMutation.mutate('env')}
             disabled={exportMutation.isPending}
-            className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-md border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+            className='flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 outline-none'
           >
-            <Download className="h-3 w-3" />
+            <Download className='h-3 w-3' aria-hidden='true' />
             .env
           </button>
           <button
-            type="button"
+            type='button'
             onClick={() => exportMutation.mutate('docker-compose')}
             disabled={exportMutation.isPending}
-            className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-md border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+            className='flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 outline-none'
           >
-            <Download className="h-3 w-3" />
+            <Download className='h-3 w-3' aria-hidden='true' />
             Docker
           </button>
           <button
-            type="button"
+            type='button'
             onClick={handleSave}
             disabled={!hasChanges || saveMutation.isPending}
-            className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-md bg-zinc-900 hover:bg-zinc-800 text-white transition-colors disabled:opacity-50"
+            className='flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 text-white shadow-sm transition-all active:scale-95 disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 outline-none'
           >
-            <Save className="h-3 w-3" />
-            {saveMutation.isPending ? 'Saving...' : 'Save'}
+            <Save className='h-3 w-3' aria-hidden='true' />
+            {saveMutation.isPending ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>
 
-      <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-        <div className="flex items-center gap-0.5 border-b border-zinc-200 px-2 pt-1 overflow-x-auto">
+      <div className='rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden'>
+        <div className='flex items-center gap-0.5 border-b border-zinc-100 dark:border-zinc-800 px-2 pt-1 overflow-x-auto scrollbar-hide'>
           {categories.map((cat) => (
             <button
-              type="button"
+              type='button'
               key={cat.id}
               onClick={() => setActiveTab(cat.id)}
-              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 whitespace-nowrap transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 whitespace-nowrap transition-all outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 ${
                 activeTab === cat.id
-                  ? 'border-zinc-900 text-zinc-900'
-                  : 'border-transparent text-zinc-400 hover:text-zinc-700'
+                  ? 'border-zinc-900 dark:border-zinc-200 text-zinc-900 dark:text-zinc-100'
+                  : 'border-transparent text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
               }`}
             >
               {cat.name}
-              <span className="font-mono text-zinc-400">{cat.variables.length}</span>
+              <span className={`font-mono text-xs px-1 py-0.5 rounded ${
+                activeTab === cat.id
+                  ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
+                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500'
+              }`}>
+                {cat.variables.length}
+              </span>
             </button>
           ))}
         </div>
 
         {activeCategory && (
-          <div className="divide-y divide-zinc-100">
+          <div className='divide-y divide-zinc-50 dark:divide-zinc-800/50'>
             {activeCategory.variables.map((variable) => {
               const configValue = configData?.[variable.key];
               return (
-                <div key={variable.key} className="px-4 py-3 space-y-1.5">
-                  <div className="flex items-center gap-2">
+                <div key={variable.key} className='px-4 py-3.5 space-y-2 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 transition-colors'>
+                  <div className='flex items-center gap-2 flex-wrap'>
                     <Label
                       htmlFor={variable.key}
-                      className="font-mono text-xs text-zinc-600 bg-zinc-100 px-1 py-0.5 rounded cursor-default"
+                      className='font-mono text-xs text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded cursor-default border border-zinc-200/80 dark:border-zinc-700/80'
                     >
                       {variable.key}
                     </Label>
                     {variable.isSecret && (
-                      <span className="text-xs text-zinc-400 font-medium">secret</span>
+                      <span className='text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 px-1.5 py-0.5 rounded font-medium'>
+                        secret
+                      </span>
                     )}
                     {configValue?.isSet && (
-                      <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                      <span className='flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400'>
+                        <CheckCircle2 className='h-3 w-3' aria-hidden='true' />
+                        Set
+                      </span>
                     )}
                   </div>
                   {variable.description && (
-                    <p className="text-xs text-zinc-400">{variable.description}</p>
+                    <p className='text-xs text-zinc-400 dark:text-zinc-500 leading-relaxed'>{variable.description}</p>
                   )}
                   {renderField(variable)}
                   {variable.default && !variable.isSecret && (
-                    <p className="text-xs text-zinc-400">
+                    <p className='text-xs text-zinc-400 dark:text-zinc-500'>
                       Default:{' '}
-                      <span className="font-mono text-zinc-600 bg-zinc-100 px-1 py-0.5 rounded">
+                      <code className='font-mono text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded'>
                         {variable.default}
-                      </span>
+                      </code>
                     </p>
                   )}
                 </div>

@@ -2,9 +2,9 @@
  * Secrets Management API Hooks
  */
 
-import { useState, useCallback } from 'react';
-import { useAuthStore } from '@/stores/session/useAuthStore';
-import { getApiBaseUrl } from '@/utils/network/apiBase';
+import { useState, useCallback } from "react";
+import { useAuthStore } from "@/stores/session/useAuthStore";
+import { getApiBaseUrl } from "@/utils/network/apiBase";
 import type {
   SecretCategory,
   SecretPublic,
@@ -12,7 +12,7 @@ import type {
   SecretFormData,
   SecretsOverview,
   SecretsHealth,
-} from './types';
+} from "./types";
 
 // ============================================================================
 // API Fetch Wrapper
@@ -20,7 +20,7 @@ import type {
 
 async function apiFetch<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<{ ok: boolean; data?: T; error?: string }> {
   const { getValidAccessToken, clearAuth } = useAuthStore.getState();
   const API_BASE = getApiBaseUrl();
@@ -29,13 +29,13 @@ async function apiFetch<T>(
     const token = await getValidAccessToken();
 
     if (!token) {
-      return { ok: false, error: 'Not authenticated. Please log in again.' };
+      return { ok: false, error: "Not authenticated. Please log in again." };
     }
 
     const res = await fetch(`${API_BASE}/api/v1/admin/secrets${endpoint}`, {
       ...options,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
         ...(options.headers || {}),
       },
@@ -45,22 +45,25 @@ async function apiFetch<T>(
       const newToken = await getValidAccessToken();
       if (!newToken) {
         clearAuth();
-        return { ok: false, error: 'Session expired. Please log in again.' };
+        return { ok: false, error: "Session expired. Please log in again." };
       }
 
-      const retryRes = await fetch(`${API_BASE}/api/v1/admin/secrets${endpoint}`, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${newToken}`,
-          ...(options.headers || {}),
+      const retryRes = await fetch(
+        `${API_BASE}/api/v1/admin/secrets${endpoint}`,
+        {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${newToken}`,
+            ...(options.headers || {}),
+          },
         },
-      });
+      );
 
       if (!retryRes.ok) {
         if (retryRes.status === 401) {
           clearAuth();
-          return { ok: false, error: 'Session expired. Please log in again.' };
+          return { ok: false, error: "Session expired. Please log in again." };
         }
         const json = await retryRes.json().catch(() => ({}));
         return { ok: false, error: json.error || `HTTP ${retryRes.status}` };
@@ -78,7 +81,10 @@ async function apiFetch<T>(
 
     return { ok: true, data: json.data };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Unknown error",
+    };
   }
 }
 
@@ -94,27 +100,37 @@ export function useCategories() {
   const fetchCategories = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const result = await apiFetch<{ categories: SecretCategory[] }>('/categories');
+    const result = await apiFetch<{ categories: SecretCategory[] }>(
+      "/categories",
+    );
     if (result.ok && result.data) {
       setCategories(result.data.categories);
     } else {
-      setError(result.error || 'Failed to fetch categories');
+      setError(result.error || "Failed to fetch categories");
     }
     setLoading(false);
   }, []);
 
   const createCategory = useCallback(
-    async (data: { name: string; displayName: string; description?: string; icon?: string }) => {
-      const result = await apiFetch<{ category: SecretCategory }>('/categories', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+    async (data: {
+      name: string;
+      displayName: string;
+      description?: string;
+      icon?: string;
+    }) => {
+      const result = await apiFetch<{ category: SecretCategory }>(
+        "/categories",
+        {
+          method: "POST",
+          body: JSON.stringify(data),
+        },
+      );
       if (result.ok) {
         await fetchCategories();
       }
       return result;
     },
-    [fetchCategories]
+    [fetchCategories],
   );
 
   return {
@@ -138,20 +154,22 @@ export function useSecrets() {
   const fetchSecrets = useCallback(async (categoryId?: string) => {
     setLoading(true);
     setError(null);
-    const query = categoryId ? `?categoryId=${categoryId}` : '';
-    const result = await apiFetch<{ secrets: SecretPublic[] }>(`/${query}`);
+    const query = categoryId
+      ? `?categoryId=${encodeURIComponent(categoryId)}`
+      : "";
+    const result = await apiFetch<{ secrets: SecretPublic[] }>(query);
     if (result.ok && result.data) {
       setSecrets(result.data.secrets);
     } else {
-      setError(result.error || 'Failed to fetch secrets');
+      setError(result.error || "Failed to fetch secrets");
     }
     setLoading(false);
   }, []);
 
   const createSecret = useCallback(
     async (data: SecretFormData) => {
-      const result = await apiFetch<{ secret: SecretPublic }>('/', {
-        method: 'POST',
+      const result = await apiFetch<{ secret: SecretPublic }>("/", {
+        method: "POST",
         body: JSON.stringify(data),
       });
       if (result.ok) {
@@ -159,13 +177,13 @@ export function useSecrets() {
       }
       return result;
     },
-    [fetchSecrets]
+    [fetchSecrets],
   );
 
   const updateSecret = useCallback(
     async (id: string, data: Partial<SecretFormData>) => {
       const result = await apiFetch<{ secret: SecretPublic }>(`/${id}`, {
-        method: 'PUT',
+        method: "PUT",
         body: JSON.stringify(data),
       });
       if (result.ok) {
@@ -173,38 +191,49 @@ export function useSecrets() {
       }
       return result;
     },
-    [fetchSecrets]
+    [fetchSecrets],
   );
 
   const deleteSecret = useCallback(
     async (id: string) => {
       const result = await apiFetch<{ deleted: string }>(`/${id}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
       if (result.ok) {
         await fetchSecrets();
       }
       return result;
     },
-    [fetchSecrets]
+    [fetchSecrets],
   );
 
   const revealSecret = useCallback(async (id: string) => {
-    const result = await apiFetch<{ id: string; keyName: string; value: string }>(`/${id}/reveal`, {
-      method: 'POST',
+    const result = await apiFetch<{
+      id: string;
+      keyName: string;
+      value: string;
+    }>(`/${id}/reveal`, {
+      method: "POST",
     });
     return result;
   }, []);
 
   const generateValue = useCallback(
-    async (type: 'secret' | 'apiKey' | 'uuid' = 'secret', length?: number, prefix?: string) => {
-      const result = await apiFetch<{ value: string; type: string }>('/generate', {
-        method: 'POST',
-        body: JSON.stringify({ type, length, prefix }),
-      });
+    async (
+      type: "secret" | "apiKey" | "uuid" = "secret",
+      length?: number,
+      prefix?: string,
+    ) => {
+      const result = await apiFetch<{ value: string; type: string }>(
+        "/generate",
+        {
+          method: "POST",
+          body: JSON.stringify({ type, length, prefix }),
+        },
+      );
       return result;
     },
-    []
+    [],
   );
 
   return {
@@ -228,20 +257,29 @@ export function useAuditLog() {
   const [logs, setLogs] = useState<SecretAuditLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pagination, setPagination] = useState({ total: 0, limit: 50, offset: 0 });
+  const [pagination, setPagination] = useState({
+    total: 0,
+    limit: 50,
+    offset: 0,
+  });
 
   const fetchLogs = useCallback(
-    async (options?: { secretId?: string; action?: string; limit?: number; offset?: number }) => {
+    async (options?: {
+      secretId?: string;
+      action?: string;
+      limit?: number;
+      offset?: number;
+    }) => {
       setLoading(true);
       setError(null);
 
       const params = new URLSearchParams();
-      if (options?.secretId) params.set('secretId', options.secretId);
-      if (options?.action) params.set('action', options.action);
-      if (options?.limit) params.set('limit', String(options.limit));
-      if (options?.offset) params.set('offset', String(options.offset));
+      if (options?.secretId) params.set("secretId", options.secretId);
+      if (options?.action) params.set("action", options.action);
+      if (options?.limit) params.set("limit", String(options.limit));
+      if (options?.offset) params.set("offset", String(options.offset));
 
-      const query = params.toString() ? `?${params}` : '';
+      const query = params.toString() ? `?${params}` : "";
       const result = await apiFetch<{
         logs: SecretAuditLog[];
         pagination: { total: number; limit: number; offset: number };
@@ -251,11 +289,11 @@ export function useAuditLog() {
         setLogs(result.data.logs);
         setPagination(result.data.pagination);
       } else {
-        setError(result.error || 'Failed to fetch audit logs');
+        setError(result.error || "Failed to fetch audit logs");
       }
       setLoading(false);
     },
-    []
+    [],
   );
 
   return {
@@ -282,8 +320,8 @@ export function useSecretsOverview() {
     setError(null);
 
     const [overviewResult, healthResult] = await Promise.all([
-      apiFetch<SecretsOverview>('/overview'),
-      apiFetch<SecretsHealth>('/health'),
+      apiFetch<SecretsOverview>("/overview"),
+      apiFetch<SecretsHealth>("/health"),
     ]);
 
     if (overviewResult.ok && overviewResult.data) {
@@ -293,7 +331,11 @@ export function useSecretsOverview() {
       setHealth(healthResult.data);
     }
     if (!overviewResult.ok && !healthResult.ok) {
-      setError(overviewResult.error || healthResult.error || 'Failed to fetch overview');
+      setError(
+        overviewResult.error ||
+          healthResult.error ||
+          "Failed to fetch overview",
+      );
     }
 
     setLoading(false);
@@ -316,7 +358,7 @@ export function useSecretsExport() {
   const [loading, setLoading] = useState(false);
 
   const exportSecrets = useCallback(async (includeValues = false) => {
-    const query = includeValues ? '?includeValues=true' : '';
+    const query = includeValues ? "?includeValues=true" : "";
     const result = await apiFetch<{
       exportedAt: string;
       categories: SecretCategory[];
@@ -333,7 +375,7 @@ export function useSecretsExport() {
         displayName: string;
         value?: string;
       }>,
-      overwrite = false
+      overwrite = false,
     ) => {
       setLoading(true);
       const result = await apiFetch<{
@@ -341,14 +383,14 @@ export function useSecretsExport() {
         updated: number;
         skipped: number;
         errors: string[];
-      }>('/import', {
-        method: 'POST',
+      }>("/import", {
+        method: "POST",
         body: JSON.stringify({ secrets, overwrite }),
       });
       setLoading(false);
       return result;
     },
-    []
+    [],
   );
 
   return {

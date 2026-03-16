@@ -21,6 +21,8 @@ import {
   generateApiKey,
   validateEncryption,
 } from '../lib/crypto';
+import { clearSecretsCache } from '../lib/secrets';
+import { clearConfigCache } from '../lib/config';
 
 const secrets = new Hono<HonoEnv>();
 
@@ -463,6 +465,9 @@ secrets.put('/:id', async (c) => {
     .bind(...values)
     .run();
 
+  clearSecretsCache(existing.key_name);
+  clearConfigCache();
+
   // Log update
   await logAudit(c.env.DB, existing.id, value !== undefined ? 'rotated' : 'updated', {
     oldValueHash,
@@ -513,6 +518,9 @@ secrets.delete('/:id', async (c) => {
   });
 
   await c.env.DB.prepare(`DELETE FROM secrets WHERE id = ?`).bind(existing.id).run();
+
+  clearSecretsCache(existing.key_name);
+  clearConfigCache();
 
   return success(c, { deleted: existing.id, keyName: existing.key_name });
 });

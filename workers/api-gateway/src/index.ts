@@ -37,6 +37,7 @@ import memos from './routes/memos';
 import memories from './routes/memories';
 import adminAi from './routes/admin-ai';
 import secrets from './routes/secrets';
+import internal from './routes/internal';
 import personas from './routes/personas';
 import userContent from './routes/user-content';
 import search from './routes/search';
@@ -245,11 +246,11 @@ api.route('/analytics', analytics);
 api.route('/translate', translate);
 api.route('/config', config);
 api.route('/rag', rag);
-api.route('/gateway', gateway);
 api.route('/memos', memos);
 api.route('/memories', memories);
 api.route('/admin/ai', adminAi);
 api.route('/admin/secrets', secrets);
+api.route('/internal', internal);
 api.route('/personas', personas);
 api.route('/user-content', userContent);
 api.route('/search', search);
@@ -257,6 +258,7 @@ api.route('/user', user);
 api.route('/debate', debate);
 api.route('/subscribe', subscribe);
 api.route('/contact', contact);
+api.route('/gateway', gateway);
 
 app.route('/api/v1', api);
 

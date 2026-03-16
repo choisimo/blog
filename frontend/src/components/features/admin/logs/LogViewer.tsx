@@ -1,46 +1,66 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { RefreshCw, Play, Pause, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
-import { getApiBaseUrl } from '@/utils/network/apiBase';
-import { useAuthStore } from '@/stores/session/useAuthStore';
+import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  RefreshCw,
+  Play,
+  Pause,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
+import { getApiBaseUrl } from "@/utils/network/apiBase";
+import { useAuthStore } from "@/stores/session/useAuthStore";
 
 interface LogEntry {
   id?: number;
   timestamp: string;
-  level: 'error' | 'warn' | 'info' | 'debug';
+  level: "error" | "warn" | "info" | "debug";
   service?: string;
   message: string;
   [key: string]: unknown;
 }
 
 const LEVEL_BADGE: Record<string, string> = {
-  error: 'bg-red-100 text-red-700',
-  warn: 'bg-amber-100 text-amber-700',
-  info: 'bg-zinc-100 text-zinc-600',
-  debug: 'bg-slate-100 text-slate-500',
+  error: "bg-red-100 text-red-700",
+  warn: "bg-amber-100 text-amber-700",
+  info: "bg-zinc-100 text-zinc-600",
+  debug: "bg-slate-100 text-slate-500",
 };
 
 function LogRow({ entry }: { entry: LogEntry }) {
   const [expanded, setExpanded] = useState(false);
   const { timestamp, level, service, message, ...rest } = entry;
-  const hasContext = Object.keys(rest).filter(k => !['id', 'pid', 'type'].includes(k)).length > 0;
+  const hasContext =
+    Object.keys(rest).filter((k) => !["id", "pid", "type"].includes(k)).length >
+    0;
 
   const contextData = Object.fromEntries(
-    Object.entries(rest).filter(([k]) => !['id', 'pid', 'type'].includes(k))
+    Object.entries(rest).filter(([k]) => !["id", "pid", "type"].includes(k)),
   );
 
   return (
-    <div className={`border-b border-zinc-100 last:border-0 ${expanded ? 'bg-zinc-50' : 'hover:bg-zinc-50'}`}>
+    <div
+      className={`border-b border-zinc-100 last:border-0 ${expanded ? "bg-zinc-50" : "hover:bg-zinc-50"}`}
+    >
       <button
         type="button"
-        className={`w-full flex items-start gap-2 px-3 py-2 text-left ${hasContext ? 'cursor-pointer' : 'cursor-default'}`}
-        onClick={() => hasContext && setExpanded(v => !v)}
+        className={`w-full flex items-start gap-2 px-3 py-2 text-left ${hasContext ? "cursor-pointer" : "cursor-default"}`}
+        onClick={() => hasContext && setExpanded((v) => !v)}
         disabled={!hasContext}
       >
         <span className="font-mono text-xs text-zinc-400 whitespace-nowrap pt-0.5 w-[160px] shrink-0">
-          {new Date(timestamp).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-          <span className="text-zinc-300">.{String(new Date(timestamp).getMilliseconds()).padStart(3, '0')}</span>
+          {new Date(timestamp).toLocaleTimeString("en-US", {
+            hour12: false,
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })}
+          <span className="text-zinc-300">
+            .{String(new Date(timestamp).getMilliseconds()).padStart(3, "0")}
+          </span>
         </span>
-        <span className={`text-xs font-mono font-semibold px-1.5 py-0.5 rounded-sm shrink-0 ${LEVEL_BADGE[level] ?? LEVEL_BADGE.info}`}>
+        <span
+          className={`text-xs font-mono font-semibold px-1.5 py-0.5 rounded-sm shrink-0 ${LEVEL_BADGE[level] ?? LEVEL_BADGE.info}`}
+        >
           {level.toUpperCase()}
         </span>
         {service && (
@@ -48,10 +68,16 @@ function LogRow({ entry }: { entry: LogEntry }) {
             {service}
           </span>
         )}
-        <span className="text-xs text-zinc-700 flex-1 break-all">{message}</span>
+        <span className="text-xs text-zinc-700 flex-1 break-all">
+          {message}
+        </span>
         {hasContext && (
           <span className="text-zinc-400 shrink-0 mt-0.5">
-            {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            {expanded ? (
+              <ChevronDown className="h-3 w-3" />
+            ) : (
+              <ChevronRight className="h-3 w-3" />
+            )}
           </span>
         )}
       </button>
@@ -67,8 +93,8 @@ function LogRow({ entry }: { entry: LogEntry }) {
 export function LogViewer() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [paused, setPaused] = useState(false);
-  const [levelFilter, setLevelFilter] = useState<string>('all');
-  const [serviceFilter, setServiceFilter] = useState('');
+  const [levelFilter, setLevelFilter] = useState<string>("all");
+  const [serviceFilter, setServiceFilter] = useState("");
   const [connected, setConnected] = useState(false);
   const esRef = useRef<EventSource | null>(null);
   const pausedRef = useRef(false);
@@ -84,7 +110,8 @@ export function LogViewer() {
     if (!token) return;
 
     const base = getApiBaseUrl();
-    const url = `${base}/api/v1/admin/logs/stream`;
+    const params = new URLSearchParams({ token });
+    const url = `${base}/api/v1/admin/logs/stream?${params.toString()}`;
 
     const es = new EventSource(url);
     esRef.current = es;
@@ -95,9 +122,11 @@ export function LogViewer() {
       if (pausedRef.current) return;
       try {
         const data = JSON.parse(e.data) as LogEntry;
-        if (data.type === 'connected') return;
-        setLogs(prev => [data, ...prev].slice(0, 1000));
-      } catch { void 0; }
+        if (data.type === "connected") return;
+        setLogs((prev) => [data, ...prev].slice(0, 1000));
+      } catch {
+        void 0;
+      }
     };
 
     es.onerror = () => {
@@ -120,9 +149,10 @@ export function LogViewer() {
 
   const handleClear = () => setLogs([]);
 
-  const filtered = logs.filter(l => {
-    if (levelFilter !== 'all' && l.level !== levelFilter) return false;
-    if (serviceFilter && l.service && !l.service.includes(serviceFilter)) return false;
+  const filtered = logs.filter((l) => {
+    if (levelFilter !== "all" && l.level !== levelFilter) return false;
+    if (serviceFilter && l.service && !l.service.includes(serviceFilter))
+      return false;
     if (serviceFilter && !l.service) return false;
     return true;
   });
@@ -131,19 +161,27 @@ export function LogViewer() {
     <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
         <div className="flex items-center gap-2">
-          <span className={`h-2 w-2 rounded-full shrink-0 ${connected ? 'bg-emerald-500' : 'bg-zinc-300'}`} />
-          <span className="text-xs font-semibold text-zinc-700">Server Logs</span>
-          <span className="font-mono text-xs text-zinc-400">({filtered.length})</span>
+          <span
+            className={`h-2 w-2 rounded-full shrink-0 ${connected ? "bg-emerald-500" : "bg-zinc-300"}`}
+          />
+          <span className="text-xs font-semibold text-zinc-700">
+            Server Logs
+          </span>
+          <span className="font-mono text-xs text-zinc-400">
+            ({filtered.length})
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex border border-zinc-200 rounded-md overflow-hidden">
-            {(['all', 'error', 'warn', 'info', 'debug'] as const).map(l => (
+            {(["all", "error", "warn", "info", "debug"] as const).map((l) => (
               <button
                 key={l}
                 type="button"
                 onClick={() => setLevelFilter(l)}
                 className={`px-2 py-1 text-xs transition-colors ${
-                  levelFilter === l ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-500 hover:bg-zinc-50'
+                  levelFilter === l
+                    ? "bg-zinc-900 text-white"
+                    : "bg-white text-zinc-500 hover:bg-zinc-50"
                 }`}
               >
                 {l}
@@ -154,15 +192,19 @@ export function LogViewer() {
             type="text"
             placeholder="service..."
             value={serviceFilter}
-            onChange={e => setServiceFilter(e.target.value)}
+            onChange={(e) => setServiceFilter(e.target.value)}
             className="h-7 px-2 text-xs border border-zinc-200 rounded-md w-24 focus:outline-none focus:ring-1 focus:ring-zinc-400"
           />
           <button
             type="button"
-            onClick={() => setPaused(v => !v)}
+            onClick={() => setPaused((v) => !v)}
             className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors"
           >
-            {paused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
+            {paused ? (
+              <Play className="h-3 w-3" />
+            ) : (
+              <Pause className="h-3 w-3" />
+            )}
           </button>
           <button
             type="button"
@@ -176,14 +218,16 @@ export function LogViewer() {
             onClick={connect}
             className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors"
           >
-            <RefreshCw className={`h-3 w-3 ${!connected ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-3 w-3 ${!connected ? "animate-spin" : ""}`}
+            />
           </button>
         </div>
       </div>
       <div className="h-[500px] overflow-y-auto font-mono bg-white">
         {filtered.length === 0 ? (
           <div className="flex items-center justify-center h-full text-xs text-zinc-400">
-            {connected ? 'Waiting for logs...' : 'Connecting...'}
+            {connected ? "Waiting for logs..." : "Connecting..."}
           </div>
         ) : (
           filtered.map((entry, i) => (
