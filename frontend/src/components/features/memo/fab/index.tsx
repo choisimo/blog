@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { NotebookPen, Sparkles, Layers, Map as MapIcon } from "lucide-react";
-import VisitedPostsMinimap, {
-  useVisitedPostsState,
-} from "@/components/features/navigation/VisitedPostsMinimap";
+import VisitedPostsMinimap from "@/components/features/navigation/VisitedPostsMinimap";
+import { useVisitedPostsState } from "@/components/features/navigation/useVisitedPosts";
 import ChatWidget from "@/components/features/chat/ChatWidget";
 import { useToast } from "@/components/ui/use-toast";
 import { useIsMobile } from "@/hooks/ui/use-mobile";

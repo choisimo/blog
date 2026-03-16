@@ -513,16 +513,21 @@
       if (typeof fromRuntime === 'string' && fromRuntime) return normalizeBaseUrl(fromRuntime);
 
       // 2) localStorage override (developer convenience)
+      // Production guard: only accept https:// or strict localhost to prevent arbitrary redirect.
       try {
         const v = LS.get('aiMemo.backendUrl');
         if (typeof v === 'string' && v) {
-          const normalized = normalizeBaseUrl(v);
-          if (normalized !== v) {
-            try {
-              LS.set('aiMemo.backendUrl', normalized);
-            } catch (_) {}
+          const isProd = location.hostname !== 'localhost' && location.hostname !== '127.0.0.1';
+          const isLocalhost = /^http:\/\/localhost(:\d+)?(\/|$)/.test(v) || /^http:\/\/127\.0\.0\.1(:\d+)?(\/|$)/.test(v);
+          if (!isProd || v.startsWith('https://') || isLocalhost) {
+            const normalized = normalizeBaseUrl(v);
+            if (normalized !== v) {
+              try {
+                LS.set('aiMemo.backendUrl', normalized);
+              } catch (_) {}
+            }
+            return normalized;
           }
-          return normalized;
         }
       } catch {
         // ignore

@@ -394,13 +394,13 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 �
     formShownAt.current = Date.now();
 
     // Trigger AI response if enabled
-    if (aiDiscussionEnabled) {
+    if (aiDiscussionEnabled && featureFlags.aiEnabled) {
       // Small delay to ensure user comment is visible first
       setTimeout(() => {
         generateAiResponse(data.content, data.author);
       }, 500);
     }
-  }, [postId, aiDiscussionEnabled, generateAiResponse]);
+  }, [postId, aiDiscussionEnabled, featureFlags.aiEnabled, generateAiResponse]);
 
   return (
     <section aria-label='Comments' className='space-y-6'>

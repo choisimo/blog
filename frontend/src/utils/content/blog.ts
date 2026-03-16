@@ -142,14 +142,16 @@ export const parseMarkdownFrontmatter = (content: string): ParsedMarkdown => {
   return { frontmatter, content: bodyContent };
 };
 
-/**
- * Parse description markdown to HTML, removing images and converting basic markdown
- * Used for post summary/excerpt display
- */
 export const parseDescriptionMarkdown = (text: string): string => {
   if (!text) return '';
-  
-  const result = text
+
+  // Escape raw input before substitution to prevent HTML injection from untrusted content.
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  const result = escaped
     // Remove image markdown: ![alt](src) or ![alt]
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, '')
     .replace(/!\[[^\]]*\]/g, '')
@@ -165,12 +167,19 @@ export const parseDescriptionMarkdown = (text: string): string => {
     .replace(/`([^`]+)`/g, '<code class="bg-muted px-1 py-0.5 rounded text-sm">$1</code>')
     // Convert headers to bold (### Header -> <strong>Header</strong>)
     .replace(/^#{1,6}\s+(.+)$/gm, '<strong>$1</strong>')
-    // Convert links: [text](url)
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-primary hover:underline">$1</a>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, linkText: string, href: string) => {
+      const safePrefixes = ['https://', 'http://', '/', '#', 'mailto:'];
+      const isSafe = safePrefixes.some(p => href.startsWith(p));
+      if (!isSafe) return linkText;
+      // Escape href for safe HTML attribute insertion — prevents breaking out of the
+      // href="..." attribute via embedded quotes (e.g. https://x.com" onclick="...).
+      const safeHref = href.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      return `<a href="${safeHref}" class="text-primary hover:underline">${linkText}</a>`;
+    })
     // Clean up extra whitespace from removed images
     .replace(/\s{2,}/g, ' ')
     .trim();
-  
+
   return result;
 };
 

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -10,7 +10,10 @@
     <meta property="og:description" content="nodove 블로그" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://noblog.nodove.com" />
-    <meta property="og:image" content="https://api.nodove.com/api/v1/og?title=Nodove%20Blog&subtitle=Tech%20%26%20Programming" />
+    <meta
+      property="og:image"
+      content="https://api.nodove.com/api/v1/og?title=Nodove%20Blog&subtitle=Tech%20%26%20Programming"
+    />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:site_name" content="Nodove Blog" />
@@ -19,34 +22,67 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="nodove blog" />
     <meta name="twitter:description" content="nodove 블로그" />
-    <meta name="twitter:image" content="https://api.nodove.com/api/v1/og?title=Nodove%20Blog&subtitle=Tech%20%26%20Programming" />
+    <meta
+      name="twitter:image"
+      content="https://api.nodove.com/api/v1/og?title=Nodove%20Blog&subtitle=Tech%20%26%20Programming"
+    />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="shortcut icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" href="/nodove.ico" />
 
     <!-- Fonts: Pretendard (sans) + JetBrains Mono (mono) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@latest/dist/web/variable/pretendardvariable-dynamic-subset.css" />
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/pretendard@latest/dist/web/variable/pretendardvariable-dynamic-subset.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
 
     <script>
-      (function() {
-        const theme = localStorage.getItem('theme');
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      (function (l) {
+        if (l.search[1] === "/") {
+          const decoded = l.search
+            .slice(1)
+            .split("&")
+            .map((part) => part.replace(/~and~/g, "&"))
+            .join("?");
+
+          window.history.replaceState(
+            null,
+            "",
+            l.pathname.slice(0, -1) + decoded + l.hash,
+          );
+        }
+      })(window.location);
+    </script>
+
+    <script>
+      (function () {
+        const theme = localStorage.getItem("theme");
+        const prefersDark = window.matchMedia(
+          "(prefers-color-scheme: dark)",
+        ).matches;
         const root = document.documentElement;
-        root.classList.remove('light', 'dark', 'terminal');
-        
-        if (theme === 'terminal') {
+        root.classList.remove("light", "dark", "terminal");
+
+        if (theme === "terminal") {
           // Terminal uses dark as base with additional terminal class
-          root.classList.add('dark', 'terminal');
-        } else if (theme === 'dark' || (theme === 'system' && prefersDark) || (!theme && prefersDark)) {
-          root.classList.add('dark');
-        } else if (theme === 'light') {
-          root.classList.add('light');
+          root.classList.add("dark", "terminal");
+        } else if (
+          theme === "dark" ||
+          (theme === "system" && prefersDark) ||
+          (!theme && prefersDark)
+        ) {
+          root.classList.add("dark");
+        } else if (theme === "light") {
+          root.classList.add("light");
         } else if (!theme) {
           // Default: terminal theme for new visitors
-          root.classList.add('dark', 'terminal');
+          root.classList.add("dark", "terminal");
         }
       })();
     </script>
