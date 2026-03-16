@@ -15,6 +15,7 @@ import {
   SESSION_MESSAGES_PREFIX,
   loadSessionsIndex,
 } from "@/services/chat";
+import { hasArticlePageContext } from "@/services/chat/context";
 
 const SESSION_PERSIST_DEBOUNCE_MS = 400;
 const MAX_MESSAGES_PER_SESSION = 200;
@@ -46,7 +47,9 @@ export function useChatState(options?: { initialMessage?: string }) {
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
   const [isAggregatePrompt, setIsAggregatePrompt] = useState(false);
   const [firstTokenMs, setFirstTokenMs] = useState<number | null>(null);
-  const [questionMode, setQuestionMode] = useState<QuestionMode>("article");
+  const [questionMode, setQuestionMode] = useState<QuestionMode>(() =>
+    hasArticlePageContext() ? "article" : "general",
+  );
   const [attachedImage, setAttachedImage] = useState<File | null>(null);
   const [attachedPreviewUrl, setAttachedPreviewUrl] = useState<string | null>(
     null,

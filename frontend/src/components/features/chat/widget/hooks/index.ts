@@ -3,3 +3,4 @@ export { useChatSession } from "./useChatSession";
 export { useChatActions } from "./useChatActions";
 export { useKeyboardHeight, useInputKeyDown } from "./useChatKeyboard";
 export { useLiveVisitorChat } from './useLiveVisitorChat';
+export { usePreventScrollChaining } from "./usePreventScrollChaining";
