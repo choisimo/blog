@@ -25,6 +25,7 @@ import {
   buildSystemPrompt,
   SYSTEM_PROMPTS,
 } from "../lib/agent/prompts/system.js";
+import { normalizeMode, listAgentModes } from "../lib/agent/mode-registry.js";
 import { getSessionMemory } from "../lib/agent/memory/session.js";
 import { requireFeature } from "../middleware/featureFlags.js";
 import { buildLiveContextPrompt } from "../services/live-context.service.js";
@@ -125,11 +126,10 @@ router.post("/run", async (req, res) => {
     );
     const effectiveMaxIterations = resolveMaxIterations(maxIterations);
 
-    // Run agent
     const result = await coordinator.run({
       sessionId,
       messages: [{ role: "user", content: effectiveMessage }],
-      mode,
+      mode: normalizeMode(mode),
       context: {
         articleSlug,
         userId,
@@ -241,7 +241,6 @@ router.post("/stream", async (req, res) => {
     );
     const effectiveMaxIterations = resolveMaxIterations(maxIterations);
 
-    // Stream agent response
     const AGENT_STREAM_TIMEOUT_MS = 120_000;
     let streamTimedOut = false;
     const streamTimeout = setTimeout(() => {
@@ -252,12 +251,11 @@ router.post("/stream", async (req, res) => {
       }
     }, AGENT_STREAM_TIMEOUT_MS);
 
-
     try {
       for await (const event of coordinator.stream({
         sessionId,
         messages: [{ role: "user", content: effectiveMessage }],
-        mode,
+        mode: normalizeMode(mode),
         context: {
           articleSlug,
           userId,
@@ -536,35 +534,7 @@ router.get("/modes", (req, res) => {
   res.json({
     ok: true,
     data: {
-      modes: [
-        {
-          id: "default",
-          name: "General",
-          description: "General conversation and assistance",
-        },
-        {
-          id: "research",
-          name: "Research",
-          description: "In-depth information gathering",
-        },
-        { id: "coding", name: "Coding", description: "Programming assistance" },
-        { id: "blog", name: "Blog", description: "Blog content management" },
-        {
-          id: "article",
-          name: "Article Q&A",
-          description: "Questions about specific articles",
-        },
-        {
-          id: "terminal",
-          name: "Terminal",
-          description: "System administration tasks",
-        },
-        {
-          id: "performance",
-          name: "Performance Audit",
-          description: "Frontend/runtime performance investigation",
-        },
-      ],
+      modes: listAgentModes(),
     },
   });
 });
