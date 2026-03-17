@@ -45,6 +45,7 @@ import user from './routes/user';
 import debate from './routes/debate';
 import subscribe from './routes/subscribe';
 import contact from './routes/contact';
+import notifications from './routes/notifications';
 import type { Env } from './types';
 
 const app = new Hono<HonoEnv>();
@@ -136,6 +137,26 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
       responseHeaders.set(key, value);
     });
 
+    if (response.status >= 502 && response.status <= 504) {
+      console.error('Backend returned error status:', response.status);
+      responseHeaders.delete('Content-Length');
+      responseHeaders.set('Content-Type', 'application/json');
+      responseHeaders.set('Retry-After', '30');
+
+      return new Response(
+        JSON.stringify({
+          error: 'Backend unavailable',
+          message: `Backend returned ${response.status}. Retry after 30 seconds.`,
+          status: response.status,
+        }),
+        {
+          status: response.status,
+          statusText: response.statusText,
+          headers: responseHeaders,
+        }
+      );
+    }
+
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
@@ -154,6 +175,7 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
         status: 503,
         headers: {
           'Content-Type': 'application/json',
+          'Retry-After': '30',
           ...corsHeaders,
         },
       }
@@ -258,6 +280,7 @@ api.route('/user', user);
 api.route('/debate', debate);
 api.route('/subscribe', subscribe);
 api.route('/contact', contact);
+api.route('/notifications', notifications);
 api.route('/gateway', gateway);
 
 app.route('/api/v1', api);

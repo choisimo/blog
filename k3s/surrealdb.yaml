@@ -33,19 +33,24 @@ spec:
           image: surrealdb/surrealdb:v2
           imagePullPolicy: IfNotPresent
           command:
-            - /bin/sh
-            - -ec
-            - |
-              exec /surreal start --user root --pass "$SURREALDB_ROOT_PASSWORD" --bind 0.0.0.0:8000 rocksdb:/data/database.db
+            - /surreal
+            - start
+            - --user
+            - root
+            - --bind
+            - 0.0.0.0:8000
+            - rocksdb:///data/database.db
           ports:
             - name: http
               containerPort: 8000
           env:
-            - name: SURREALDB_ROOT_PASSWORD
+            - name: SURREAL_PASS
               valueFrom:
                 secretKeyRef:
                   name: blog-app-secrets
                   key: SURREALDB_ROOT_PASSWORD
+            - name: SURREAL_USER
+              value: "root"
           volumeMounts:
             - name: data
               mountPath: /data

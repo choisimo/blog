@@ -38,6 +38,7 @@ const RECONNECT_BASE_MS = 2000;
 const RECONNECT_MAX_MS = 30000;
 const RECONNECT_JITTER_MS = 1000;
 const MAX_RECONNECT_ATTEMPTS = 10;
+const SLOW_POLL_INTERVAL_MS = 60000;
 const PING_TIMEOUT_MS = 60000; // treat connection as dead if no ping for 60s
 
 // ============================================================================
@@ -48,6 +49,7 @@ let abortController: AbortController | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let pingWatchdog: ReturnType<typeof setTimeout> | null = null;
 let reconnectAttempts = 0;
+let slowPollMode = false;
 let disposed = false;
 let initialized = false;
 let authChangeListenerBound = false;
@@ -112,9 +114,19 @@ function reconnect() {
   clearReconnectTimer();
 
   if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-    console.warn("[NotificationSSE] Max reconnect attempts reached, giving up");
+    if (!slowPollMode) {
+      console.warn(
+        "[NotificationSSE] Max reconnect attempts reached, entering slow-poll mode (every 60s)",
+      );
+    }
+    slowPollMode = true;
+    reconnectTimer = setTimeout(() => {
+      if (!disposed) connect();
+    }, SLOW_POLL_INTERVAL_MS);
     return;
   }
+
+  slowPollMode = false;
 
   const delay = Math.min(
     RECONNECT_BASE_MS * Math.pow(2, reconnectAttempts) +
@@ -330,6 +342,7 @@ async function connect() {
 
     // Reset attempts on successful connection
     reconnectAttempts = 0;
+    slowPollMode = false;
     resetPingWatchdog();
 
     // Start parsing the stream
@@ -375,6 +388,7 @@ export function initNotificationSSE(): void {
 export function disposeNotificationSSE(): void {
   disposed = true;
   initialized = false;
+  slowPollMode = false;
   clearReconnectTimer();
   clearPingWatchdog();
   closeConnection();

@@ -4,8 +4,9 @@ metadata:
   name: blog-backend
   namespace: blog
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: blog-redirect-https@kubernetescrd
 spec:
   ingressClassName: traefik
   tls:

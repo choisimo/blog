@@ -11,3 +11,4 @@ resources:
   - open-notebook.yaml
   - api.yaml
   - ingress.yaml
+  - middleware.yaml
