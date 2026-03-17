@@ -77,6 +77,26 @@ notifications.get('/stream', async (c) => {
     responseHeaders.set('Connection', 'keep-alive');
     responseHeaders.set('X-Accel-Buffering', 'no');
 
+    // Normalize upstream 502/503/504 — prevent raw error passthrough to browser
+    if (response.status >= 502 && response.status <= 504) {
+      console.error('Notifications backend returned error status:', response.status);
+      return new Response(
+        JSON.stringify({
+          error: 'Backend unavailable',
+          message: `Notifications backend returned ${response.status}. Retry after 30 seconds.`,
+          status: response.status,
+        }),
+        {
+          status: 503,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': '30',
+            ...corsHeaders,
+          },
+        }
+      );
+    }
+
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,

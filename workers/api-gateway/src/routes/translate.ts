@@ -226,6 +226,10 @@ ${truncatedContent}`;
       statusCode = 504;
       errorMessage = ERROR_MESSAGES.AI_TIMEOUT;
     }
+
+    if (statusCode === 502 || statusCode === 504) {
+      c.header('Retry-After', '30');
+    }
     
     return error(c, errorMessage, statusCode);
   }
