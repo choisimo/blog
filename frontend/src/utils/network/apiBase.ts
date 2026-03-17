@@ -64,9 +64,7 @@ export function getApiBaseUrl(): string {
           }
         }
       }
-    } catch {
-      void 0;
-    }
+    } catch { void 0; }
   }
 
   if (!baseUrl) {
@@ -112,9 +110,7 @@ export function getApiBaseUrl(): string {
       const w2 = window as RuntimeWindow;
       if (w2?.APP_CONFIG?.apiBaseUrl) w2.APP_CONFIG.apiBaseUrl = normalized;
       if (w2?.__APP_CONFIG?.apiBaseUrl) w2.__APP_CONFIG.apiBaseUrl = normalized;
-    } catch {
-      void 0;
-    }
+    } catch { void 0; }
   }
 
   return normalized;
