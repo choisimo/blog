@@ -13,7 +13,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { MiniTerminal } from '@/components/features/terminal';
+import { MiniTerminal } from '@/components/molecules/MiniTerminal';
 import {
   getRecentQueries,
   addSearchQuery,

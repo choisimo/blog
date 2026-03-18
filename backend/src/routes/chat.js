@@ -2,10 +2,8 @@ import { Router } from "express";
 import { WebSocketServer } from "ws";
 import { aiService, tryParseJson } from "../lib/ai-service.js";
 import { config } from "../config.js";
-import { openaiEmbeddings } from "../lib/openai-compat-client.js";
 import openNotebook from "../services/open-notebook.service.js";
 import {
-  CHROMA,
   AI_MODELS,
   AI_TEMPERATURES,
   STREAMING,
@@ -66,77 +64,20 @@ import {
   getAllActiveStreamRooms,
 } from "../services/live-chat.service.js";
 import { getApplicationContainer } from "../application/bootstrap/container.js";
+import { performRAGSearch, formatPageContext } from "../services/chat-rag.service.js";
+import { wait, splitStreamingText, emitTextChunks, extractUserMessage, streamWithFallback, finalizeChatTurn } from "../lib/chat-streaming.js";
 
 const router = Router();
 const {
   services: { liveSessionAuthService },
 } = getApplicationContainer();
 
-// ---------------------------------------------------------------------------
-// RAG infrastructure (stays here — tightly coupled to config.rag)
-// ---------------------------------------------------------------------------
-
-const ragCollectionCache = new Map();
+setPerformRAGSearch(performRAGSearch);
 
 function readHeaderValue(value) {
   if (Array.isArray(value)) return value[0];
   if (typeof value === "string") return value;
   return undefined;
-}
-
-function formatPageContext(pageContext) {
-  if (!pageContext || typeof pageContext !== "object") {
-    return null;
-  }
-
-  const lines = [];
-  const title =
-    typeof pageContext.title === "string" ? pageContext.title.trim() : "";
-  const url = typeof pageContext.url === "string" ? pageContext.url.trim() : "";
-
-  if (title || url) {
-    lines.push(`[Context: ${title || ""} - ${url || ""}]`);
-  }
-
-  const article =
-    pageContext.article && typeof pageContext.article === "object"
-      ? pageContext.article
-      : null;
-
-  if (article) {
-    const articleTitle =
-      typeof article.title === "string" ? article.title.trim() : "";
-    const slug = typeof article.slug === "string" ? article.slug.trim() : "";
-    const year = typeof article.year === "string" ? article.year.trim() : "";
-    const description =
-      typeof article.description === "string"
-        ? article.description.trim()
-        : "";
-    const headings = Array.isArray(article.headings)
-      ? article.headings
-          .filter((value) => typeof value === "string")
-          .map((value) => value.trim())
-          .filter(Boolean)
-          .slice(0, 6)
-      : [];
-
-    if (articleTitle) {
-      lines.push(`[Current Article Title] ${articleTitle}`);
-    }
-    if (year && slug) {
-      lines.push(`[Current Article Slug] ${year}/${slug}`);
-    } else if (slug) {
-      lines.push(`[Current Article Slug] ${slug}`);
-    }
-    if (description) {
-      lines.push(`[Current Article Description] ${description}`);
-    }
-    if (headings.length > 0) {
-      lines.push(`[Current Article Headings] ${headings.join(" | ")}`);
-    }
-  }
-
-  return lines.length > 0 ? lines.join("\n") : null;
 }
 
 function resolveChatModelFromRequest(req) {
@@ -145,214 +86,10 @@ function resolveChatModelFromRequest(req) {
   return config.ai?.defaultModel || AI_MODELS.DEFAULT;
 }
 
-function getChromaCollectionsBase() {
-  return `${config.rag.chromaUrl}/api/v2/tenants/${CHROMA.TENANT}/databases/${CHROMA.DATABASE}/collections`;
-}
-
-async function getCollectionUUID(collectionName) {
-  if (ragCollectionCache.has(collectionName)) {
-    return ragCollectionCache.get(collectionName);
-  }
-
-  try {
-    const collectionsUrl = getChromaCollectionsBase();
-    const listResp = await fetch(collectionsUrl, { method: "GET" });
-
-    if (!listResp.ok) return null;
-
-    const collections = await listResp.json();
-    const collection = collections.find((c) => c.name === collectionName);
-
-    if (collection) {
-      ragCollectionCache.set(collectionName, collection.id);
-      return collection.id;
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
-
-async function getEmbeddings(texts) {
-  const result = await openaiEmbeddings(texts, {
-    model: config.rag.embeddingModel,
-    baseUrl: config.rag.embeddingUrl,
-    apiKey: config.rag.embeddingApiKey,
-  });
-
-  return result.embeddings;
-}
-
-async function queryChroma(embedding, nResults = 5, where = null) {
-  const collectionName = config.rag.chromaCollection;
-  const collectionsBase = getChromaCollectionsBase();
-
-  const collectionUUID = await getCollectionUUID(collectionName);
-  if (!collectionUUID) {
-    throw new Error(`Collection not found: ${collectionName}`);
-  }
-
-  const queryUrl = `${collectionsBase}/${collectionUUID}/query`;
-  const body = {
-    query_embeddings: [embedding],
-    n_results: nResults,
-    include: ["documents", "metadatas", "distances"],
-  };
-  if (where) {
-    body.where = where;
-  }
-
-  const response = await fetch(queryUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    throw new Error(`ChromaDB error: ${response.status}`);
-  }
-
-  return response.json();
-}
-
-async function performRAGSearch(query, topK = 5, articleSlug = null, articleYear = null) {
-  try {
-    const [embedding] = await getEmbeddings([query]);
-
-    let where = null;
-    if (articleSlug) {
-      where = articleYear
-        ? { $and: [{ slug: { $eq: articleSlug } }, { year: { $eq: articleYear } }] }
-        : { slug: { $eq: articleSlug } };
-    }
-
-    const chromaResult = await queryChroma(embedding, topK, where);
-
-    const sources = [];
-    const contextParts = [];
-
-    if (chromaResult.documents && chromaResult.documents[0]) {
-      const docs = chromaResult.documents[0];
-      const metas = chromaResult.metadatas?.[0] || [];
-      const dists = chromaResult.distances?.[0] || [];
-
-      for (let i = 0; i < docs.length; i++) {
-        const meta = metas[i] || {};
-        const distance = dists[i];
-        const score = distance != null ? Math.max(0, 1 - distance) : null;
-
-        sources.push({
-          title: meta.title || meta.post_title || "Untitled",
-          url: meta.slug
-            ? `/posts/${meta.year || new Date().getFullYear()}/${meta.slug}`
-            : undefined,
-          score,
-          snippet: docs[i]?.slice(0, 200) || "",
-        });
-
-        const title = meta.title || meta.post_title || "";
-        contextParts.push(
-          `[${i + 1}] ${title ? `"${title}": ` : ""}${docs[i]}`,
-        );
-      }
-    }
-
-    const context =
-      contextParts.length > 0
-        ? `다음은 관련 블로그 포스트에서 발췌한 내용입니다:\n\n${contextParts.join("\n\n")}\n\n위 내용을 참고하여 답변해주세요.`
-        : null;
-
-    return { context, sources };
-  } catch (err) {
-    logger.warn({}, 'RAG search failed', { error: err.message });
-    return { context: null, sources: [] };
-  }
-}
-
-// Inject performRAGSearch into session.service so it can resolve RAG contexts
-// without a circular import back to this file.
-setPerformRAGSearch(performRAGSearch);
-
-// ---------------------------------------------------------------------------
-// Route-local constants
-// ---------------------------------------------------------------------------
-
 const CHAT_RESPONSE_TIMEOUT_MS = Math.max(
   5_000,
   Number.parseInt(process.env.CHAT_RESPONSE_TIMEOUT_MS || "45000", 10),
 );
-
-// ---------------------------------------------------------------------------
-// Streaming utilities (used only by route handlers)
-// ---------------------------------------------------------------------------
-
-function wait(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function splitStreamingText(text, preferredSize) {
-  const value = typeof text === "string" ? text : String(text || "");
-  if (!value) return [];
-
-  const chunkSize = Math.max(
-    1,
-    Number.parseInt(String(preferredSize || 0), 10) || 50,
-  );
-
-  if (value.length <= chunkSize) return [value];
-
-  const chunks = [];
-  let cursor = 0;
-
-  while (cursor < value.length) {
-    let end = Math.min(value.length, cursor + chunkSize);
-
-    if (end < value.length) {
-      const wordBoundary = value.lastIndexOf(" ", end);
-      if (wordBoundary > cursor + Math.floor(chunkSize * 0.45)) {
-        end = wordBoundary + 1;
-      }
-    }
-
-    chunks.push(value.slice(cursor, end));
-    cursor = end;
-  }
-
-  return chunks;
-}
-
-async function emitTextChunks({
-  text,
-  sendChunk,
-  isClosed,
-  chunkSize,
-  chunkDelayMs = 0,
-}) {
-  if (typeof sendChunk !== "function") return "";
-  const shouldStop = typeof isClosed === "function" ? isClosed : () => false;
-  const delayMs = Math.max(
-    0,
-    Number.parseInt(String(chunkDelayMs || 0), 10) || 0,
-  );
-
-  const chunks = splitStreamingText(text, chunkSize);
-  if (chunks.length === 0) return "";
-
-  let emitted = "";
-  for (let i = 0; i < chunks.length; i += 1) {
-    if (shouldStop()) break;
-
-    const piece = chunks[i];
-    emitted += piece;
-    sendChunk(piece);
-
-    if (delayMs > 0 && i < chunks.length - 1) {
-      await wait(delayMs);
-    }
-  }
-
-  return emitted;
-}
 
 // ----------------------------------------------------------------------------
 // WebSocket Chat Streaming
@@ -426,17 +163,7 @@ export function initChatWebSocket(server) {
           }
         }
 
-        let userMessage = "";
-        if (Array.isArray(payload.parts)) {
-          userMessage = payload.parts
-            .filter((p) => p?.type === "text")
-            .map((p) => p.text)
-            .join("\n");
-        } else if (typeof payload.parts === "string") {
-          userMessage = payload.parts;
-        } else if (typeof payload.text === "string") {
-          userMessage = payload.text;
-        }
+        let userMessage = extractUserMessage(payload.parts, payload.text);
 
         if (!userMessage.trim()) {
           send({ type: "error", error: "No message content" });
@@ -484,52 +211,28 @@ export function initChatWebSocket(server) {
           }
         }
 
-        let text = "";
-        try {
-          for await (const chunk of aiService.streamChat(messagesWithContext, {
-            model: forcedModel,
-            timeout: CHAT_RESPONSE_TIMEOUT_MS,
-          })) {
-            const emitted = await emitTextChunks({
-              text: chunk,
-              chunkSize: STREAMING.WS_CHUNK_SIZE,
-              chunkDelayMs: 0,
-              isClosed: () => closed || ws.readyState !== ws.OPEN,
-              sendChunk: (piece) => send({ type: "text", text: piece }),
-            });
-            text += emitted;
-          }
-        } catch (streamErr) {
-          if (!text) {
-            const fallback = await aiService.chat(messagesWithContext, {
-              model: forcedModel,
-              timeout: CHAT_RESPONSE_TIMEOUT_MS,
-            });
-            const fallbackText = fallback.content || "";
-            if (!closed && ws.readyState === ws.OPEN && fallbackText) {
-              text += await emitTextChunks({
-                text: fallbackText,
-                chunkSize: STREAMING.WS_CHUNK_SIZE,
-                chunkDelayMs: STREAMING.WS_CHUNK_DELAY,
-                isClosed: () => closed || ws.readyState !== ws.OPEN,
-                sendChunk: (piece) => send({ type: "text", text: piece }),
-              });
-            }
-          } else {
-            throw streamErr;
-          }
-        }
+        const text = await streamWithFallback({
+          aiService,
+          messages: messagesWithContext,
+          model: forcedModel,
+          timeout: CHAT_RESPONSE_TIMEOUT_MS,
+          chunkSize: STREAMING.WS_CHUNK_SIZE,
+          chunkDelayMs: STREAMING.WS_CHUNK_DELAY,
+          isClosed: () => closed || ws.readyState !== ws.OPEN,
+          sendChunk: (piece) => send({ type: "text", text: piece }),
+        });
 
         if (!text.trim()) {
           throw new Error("AI returned empty response");
         }
 
-        session.lastActivityAt = Date.now();
-        session.messages.push({ role: "assistant", content: text });
-        void reinforceSessionNotebook(session, userMessage, text);
-        notifySession(sessionId, {
-          level: "info",
-          message: "AI response completed",
+        finalizeChatTurn({
+          session,
+          sessionId,
+          userMessage,
+          text,
+          reinforceSessionNotebook,
+          notifySession,
         });
         send({ type: "done" });
       } catch (err) {
@@ -609,15 +312,7 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
     }
 
     // Extract text from parts
-    let userMessage = "";
-    if (Array.isArray(parts)) {
-      userMessage = parts
-        .filter((p) => p.type === "text")
-        .map((p) => p.text)
-        .join("\n");
-    } else if (typeof parts === "string") {
-      userMessage = parts;
-    }
+    let userMessage = extractUserMessage(parts);
 
     if (!userMessage.trim()) {
       return res.status(400).json({ ok: false, error: "No message content" });
@@ -699,53 +394,28 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
         return res.end();
       }
 
-      let text = "";
-      try {
-        for await (const chunk of aiService.streamChat(messagesWithContext, {
-          model: forcedModel,
-          timeout: CHAT_RESPONSE_TIMEOUT_MS,
-        })) {
-          const emitted = await emitTextChunks({
-            text: chunk,
-            chunkSize: STREAMING.CHUNK_SIZE,
-            chunkDelayMs: 0,
-            isClosed: () => closed,
-            sendChunk: (piece) => send({ type: "text", text: piece }),
-          });
-          text += emitted;
-        }
-      } catch (streamErr) {
-        if (!text) {
-          const fallback = await aiService.chat(messagesWithContext, {
-            model: forcedModel,
-            timeout: CHAT_RESPONSE_TIMEOUT_MS,
-          });
-          const fallbackText = fallback.content || "";
-          if (!closed && fallbackText) {
-            text += await emitTextChunks({
-              text: fallbackText,
-              chunkSize: STREAMING.CHUNK_SIZE,
-              chunkDelayMs: STREAMING.CHUNK_DELAY,
-              isClosed: () => closed,
-              sendChunk: (piece) => send({ type: "text", text: piece }),
-            });
-          }
-        } else {
-          throw streamErr;
-        }
-      }
+      const text = await streamWithFallback({
+        aiService,
+        messages: messagesWithContext,
+        model: forcedModel,
+        timeout: CHAT_RESPONSE_TIMEOUT_MS,
+        chunkSize: STREAMING.CHUNK_SIZE,
+        chunkDelayMs: STREAMING.CHUNK_DELAY,
+        isClosed: () => closed,
+        sendChunk: (piece) => send({ type: "text", text: piece }),
+      });
 
       if (!text.trim()) {
         throw new Error("AI returned empty response");
       }
 
-      session.lastActivityAt = Date.now();
-      session.messages.push({ role: "assistant", content: text });
-      void reinforceSessionNotebook(session, userMessage, text);
-
-      notifySession(effectiveSessionId, {
-        level: "info",
-        message: "AI response completed",
+      finalizeChatTurn({
+        session,
+        sessionId: effectiveSessionId,
+        userMessage,
+        text,
+        reinforceSessionNotebook,
+        notifySession,
       });
 
       send({ type: "done" });

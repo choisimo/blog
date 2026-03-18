@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
 import { streamChatEvents, invokeChatTask } from "@/services/chat";
 import { PrismResult } from "@/services/discovery/ai";
-import ChatMarkdown from "@/components/features/chat/ChatMarkdown";
+import ChatMarkdown from "@/components/molecules/ChatMarkdown";
 
 export type DebateMessage = {
   id: string;
