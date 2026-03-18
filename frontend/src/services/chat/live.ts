@@ -4,6 +4,13 @@ import {
   parseSSEFrame as parseRawSSEFrame,
 } from "@/services/core/sse-frame";
 
+type LiveSourceLink = {
+  title?: string;
+  url?: string;
+  score?: number;
+  snippet?: string;
+};
+
 export type LiveChatEvent =
   | {
       type: "connected";
@@ -38,6 +45,8 @@ export type LiveChatEvent =
       personaTraits?: string;
       triggeredByMention?: boolean;
       mentionedAgents?: string[];
+      contextKinds?: string[];
+      sources?: LiveSourceLink[];
       ts?: string;
     }
   | {
@@ -60,6 +69,8 @@ export type LiveAgentPolicy = {
   maxReplyChars: number;
   temperature: number;
   historyLimit: number;
+  maxRoundTurns: number;
+  liveResearchEnabled: boolean;
   redisBridgeEnabled: boolean;
   redisBridgeFailed: boolean;
   redisPresenceTtlSec: number;

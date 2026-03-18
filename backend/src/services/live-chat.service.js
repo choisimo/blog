@@ -9,6 +9,8 @@ import { aiService } from "../lib/ai-service.js";
 import { getRedisClient, getRedisSubscriber } from "../lib/redis-client.js";
 import { AI_TEMPERATURES } from "../config/constants.js";
 import { appendLiveContextMessage } from "../services/live-context.service.js";
+import { performRAGSearch as performLiveRAGSearch } from "./chat.service.js";
+import { createWebSearchTool } from "./agent/tools/web-search.tool.js";
 import { createLogger } from "../lib/logger.js";
 
 const logger = createLogger('live-chat');
@@ -22,11 +24,23 @@ const liveRooms = new Map();
 const liveRoomHistory = new Map();
 const liveAgentRounds = new Map();
 const liveAgentMemory = new Map();
+const liveRoomTurnState = new Map();
 const roomAgentCursor = new Map();
 const LIVE_HISTORY_LIMIT = 30;
 const LIVE_AGENT_MEMORY_LIMIT = 6;
 const LIVE_TRANSCRIPT_LIMIT = 12;
-const LIVE_AGENT_ROUND_LIMIT = 3;
+const LIVE_AGENT_ROUND_LIMIT = 4;
+const LIVE_RESEARCH_SOURCE_LIMIT = 4;
+const LIVE_RESEARCH_QUERY_MAX_CHARS = 240;
+const LIVE_RESEARCH_RAG_TIMEOUT_MS = Math.max(
+  400,
+  Number.parseInt(process.env.LIVE_RESEARCH_RAG_TIMEOUT_MS || "2400", 10),
+);
+const LIVE_RESEARCH_WEB_TIMEOUT_MS = Math.max(
+  500,
+  Number.parseInt(process.env.LIVE_RESEARCH_WEB_TIMEOUT_MS || "3600", 10),
+);
+const liveWebSearchTool = createWebSearchTool();
 
 // ---------------------------------------------------------------------------
 // Multi-persona agent pool
@@ -187,6 +201,7 @@ export function unregisterLiveStream(streamId) {
       liveRoomHistory.delete(stream.room);
       clearScheduledAgentRound(stream.room);
       liveAgentMemory.delete(stream.room);
+      liveRoomTurnState.delete(stream.room);
       roomAgentCursor.delete(stream.room);
     }
   }
@@ -347,6 +362,190 @@ export function recordLiveMessage(room, entry = {}) {
   appendAgentMemory(normalizedRoom, normalizedEntry);
 
   return normalizedEntry;
+}
+
+async function withSoftTimeout(promise, timeoutMs, fallbackValue) {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return promise;
+  }
+
+  let timer = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((resolve) => {
+        timer = setTimeout(() => resolve(fallbackValue), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+function normalizeSourceLink(entry = {}) {
+  const title =
+    typeof entry.title === "string" && entry.title.trim()
+      ? entry.title.trim()
+      : "Untitled";
+  const url =
+    typeof entry.url === "string" && entry.url.trim() ? entry.url.trim() : undefined;
+  const snippet =
+    typeof entry.snippet === "string" && entry.snippet.trim()
+      ? entry.snippet.trim().slice(0, 280)
+      : undefined;
+  const numericScore = Number(entry.score);
+
+  return {
+    title,
+    url,
+    snippet,
+    score: Number.isFinite(numericScore)
+      ? Math.max(0, Math.min(1, numericScore))
+      : undefined,
+  };
+}
+
+function pickLiveWebSearchEngine() {
+  if (process.env.PERPLEXITY_API_KEY) return "perplexity";
+  if (process.env.TAVILY_API_KEY) return "tavily";
+  if (process.env.SERPER_API_KEY) return "serper";
+  if (process.env.BRAVE_SEARCH_API_KEY) return "brave";
+  return "duckduckgo";
+}
+
+function shouldUseLiveWebResearch(text) {
+  const value = String(text || "").trim();
+  if (!value || value.length < 8) return false;
+  return (
+    value.length >= 18 ||
+    /[?？]/.test(value) ||
+    /\b(today|latest|current|news|price|trend|release|version)\b/i.test(value) ||
+    /(오늘|최신|최근|뉴스|가격|트렌드|릴리즈|버전|검색)/.test(value)
+  );
+}
+
+function formatResearchSourceLine(source) {
+  const title = source?.title || "Untitled";
+  const url = source?.url ? ` (${source.url})` : "";
+  const snippet = source?.snippet ? ` - ${source.snippet}` : "";
+  return `- ${title}${url}${snippet}`;
+}
+
+async function buildLiveResearchContext(triggerText) {
+  const query = String(triggerText || "").trim().slice(0, LIVE_RESEARCH_QUERY_MAX_CHARS);
+  if (!query) {
+    return { contextText: null, sources: [], contextKinds: [] };
+  }
+
+  const ragPromise = withSoftTimeout(
+    performLiveRAGSearch(query, 3),
+    LIVE_RESEARCH_RAG_TIMEOUT_MS,
+    { context: null, sources: [] },
+  ).catch(() => ({ context: null, sources: [] }));
+
+  const shouldUseWeb = shouldUseLiveWebResearch(query);
+  const webPromise = shouldUseWeb
+    ? withSoftTimeout(
+        liveWebSearchTool.execute({
+          action: "search",
+          query,
+          engine: pickLiveWebSearchEngine(),
+          limit: 3,
+          searchDepth: "advanced",
+        }),
+        LIVE_RESEARCH_WEB_TIMEOUT_MS,
+        { success: false, answer: null, results: [] },
+      ).catch(() => ({ success: false, answer: null, results: [] }))
+    : Promise.resolve({ success: false, answer: null, results: [] });
+
+  const [ragResult, webResult] = await Promise.all([ragPromise, webPromise]);
+
+  const ragSources = Array.isArray(ragResult?.sources)
+    ? ragResult.sources
+        .map((entry) => normalizeSourceLink(entry))
+        .filter((entry) => entry.title || entry.snippet)
+    : [];
+  const webSources =
+    webResult?.success && Array.isArray(webResult.results)
+      ? webResult.results
+          .map((entry) =>
+            normalizeSourceLink({
+              title: entry.title,
+              url: entry.url,
+              snippet: entry.snippet,
+              score: entry.score,
+            }),
+          )
+          .filter((entry) => entry.title || entry.snippet)
+      : [];
+
+  const contextKinds = [];
+  const contextParts = [];
+
+  if (ragResult?.context || ragSources.length > 0) {
+    contextKinds.push("rag");
+    contextParts.push(
+      [
+        "[Vector DB context]",
+        ragResult?.context || ragSources.map(formatResearchSourceLine).join("\n"),
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    );
+  }
+
+  const webAnswer =
+    webResult?.success && typeof webResult.answer === "string"
+      ? webResult.answer.trim()
+      : "";
+  if (webAnswer || webSources.length > 0) {
+    contextKinds.push("web");
+    contextParts.push(
+      [
+        "[Web search context]",
+        webAnswer || null,
+        webSources.map(formatResearchSourceLine).join("\n"),
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    );
+  }
+
+  return {
+    contextText: contextParts.length > 0 ? contextParts.join("\n\n") : null,
+    sources: [...webSources, ...ragSources].slice(0, LIVE_RESEARCH_SOURCE_LIMIT),
+    contextKinds,
+  };
+}
+
+function rollRoomMaxTurns(triggerText, mentionedAgents) {
+  const hasExplicitMention = Array.isArray(mentionedAgents) && mentionedAgents.length > 0;
+  const questionLike =
+    /[?？]/.test(String(triggerText || "")) ||
+    /\b(why|how|what|should|can|could|would)\b/i.test(String(triggerText || "")) ||
+    /(왜|어떻게|뭐|어떤|가능|알려)/.test(String(triggerText || ""));
+  const minTurns = hasExplicitMention || questionLike ? 2 : 1;
+  const range = LIVE_AGENT_ROUND_LIMIT - minTurns + 1;
+  return minTurns + Math.floor(Math.random() * Math.max(1, range));
+}
+
+function resetRoomTurnState(room, maxAiTurns) {
+  const normalizedRoom = normalizeRoomKey(room);
+  const next = {
+    consecutiveAiTurns: 0,
+    maxAiTurns: Math.max(1, Math.min(LIVE_AGENT_ROUND_LIMIT, Math.floor(maxAiTurns))),
+  };
+  liveRoomTurnState.set(normalizedRoom, next);
+  return next;
+}
+
+function getRoomTurnState(room) {
+  return (
+    liveRoomTurnState.get(normalizeRoomKey(room)) || {
+      consecutiveAiTurns: 0,
+      maxAiTurns: LIVE_AGENT_ROUND_LIMIT,
+    }
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -594,25 +793,20 @@ function pickRotatingAgents(room, count, excludedNames = []) {
   return picks;
 }
 
-function buildAutoReplyPlan(room, triggerText, mentionedAgents) {
+function buildAutoReplyPlan(room, mentionedAgents, targetTurns) {
   const normalizedRoom = normalizeRoomKey(room);
   const normalizedMentions = Array.isArray(mentionedAgents)
     ? mentionedAgents
         .map((value) => String(value || "").trim().toLowerCase())
         .filter((value) => LIVE_AGENT_PERSONA_MAP.has(value))
     : [];
-  const hasExplicitMention = normalizedMentions.length > 0;
-  const questionLike = /[?？]|(\bwhy\b|\bhow\b|\bwhat\b|\bshould\b|왜|어떻게|뭐|어떤)/i.test(
-    triggerText,
+  const desiredTurns = Math.max(
+    1,
+    Math.min(
+      LIVE_AGENT_ROUND_LIMIT,
+      Number.isFinite(targetTurns) ? Math.floor(targetTurns) : 1,
+    ),
   );
-  const desiredTurns = hasExplicitMention
-    ? Math.min(
-        LIVE_AGENT_ROUND_LIMIT,
-        Math.max(2, normalizedMentions.length + 1),
-      )
-    : questionLike || String(triggerText || "").length > 90
-      ? Math.min(LIVE_AGENT_ROUND_LIMIT, 3)
-      : 2;
 
   const starters = normalizedMentions.slice(0, LIVE_AGENT_ROUND_LIMIT);
   const fillers = pickRotatingAgents(
@@ -694,6 +888,15 @@ export async function buildAutoReplyText(input = {}) {
         .map((value) => String(value || "").trim().toLowerCase())
         .filter((value) => LIVE_AGENT_PERSONA_MAP.has(value))
     : [];
+  const researchContextText =
+    typeof input.researchContextText === "string" && input.researchContextText.trim()
+      ? input.researchContextText.trim()
+      : "";
+  const contextKinds = Array.isArray(input.contextKinds)
+    ? input.contextKinds
+        .map((value) => String(value || "").trim().toLowerCase())
+        .filter(Boolean)
+    : [];
 
   const history = liveRoomHistory.get(room) || [];
   const transcript = history
@@ -729,6 +932,9 @@ export async function buildAutoReplyText(input = {}) {
     "Do NOT say you are AI, a bot, an assistant, or a language model.",
     "Do NOT add speaker labels, quotes, emojis, or stage directions.",
     "Do NOT repeat the previous speaker verbatim or restate the whole room summary.",
+    contextKinds.length > 0
+      ? `Use the shared ${contextKinds.join("+")} context when it helps. Keep facts grounded in that context and do not invent unsupported details.`
+      : "If you are unsure about a factual claim, stay conversational and avoid overclaiming.",
     directMentioned
       ? "You were explicitly called by name, so answer directly before widening the discussion."
       : `You are jumping in after ${replyToName}, so react to their point while keeping the original user message in mind.`,
@@ -748,6 +954,9 @@ export async function buildAutoReplyText(input = {}) {
     "Recent room transcript:",
     transcript || "(conversation just started)",
     "",
+    "Shared reference context for this room:",
+    researchContextText || "(none)",
+    "",
     "Write only the message text.",
   ].join("\n");
 
@@ -766,6 +975,12 @@ async function runAgentRoundStep(room, roundId) {
   if (!round || round.roundId !== roundId) return;
 
   round.timer = null;
+  const turnState = getRoomTurnState(room);
+  if (turnState.consecutiveAiTurns >= turnState.maxAiTurns) {
+    liveAgentRounds.delete(room);
+    return;
+  }
+
   const agentName = round.remainingAgents.shift();
   if (!agentName) {
     liveAgentRounds.delete(room);
@@ -792,6 +1007,19 @@ async function runAgentRoundStep(room, roundId) {
   const replyToName = round.lastSpeakerName || round.triggerName;
 
   try {
+    const research =
+      round.researchData ||
+      (await round.researchPromise?.catch(() => ({
+        contextText: null,
+        sources: [],
+        contextKinds: [],
+      })));
+    round.researchData = research || {
+      contextText: null,
+      sources: [],
+      contextKinds: [],
+    };
+
     const reply = await buildAutoReplyText({
       room,
       agentName,
@@ -801,8 +1029,12 @@ async function runAgentRoundStep(room, roundId) {
       mentionedAgents: round.mentionedAgents,
       turnIndex: round.turnIndex,
       roundSize: round.roundSize,
+      researchContextText: round.researchData.contextText,
+      contextKinds: round.researchData.contextKinds,
     });
     const ts = new Date().toISOString();
+    turnState.consecutiveAiTurns += 1;
+    liveRoomTurnState.set(room, turnState);
     const messagePayload = {
       type: "live_message",
       room,
@@ -820,6 +1052,11 @@ async function runAgentRoundStep(room, roundId) {
       personaTraits: persona.traits,
       triggeredByMention: round.mentionedAgents.includes(agentName),
       mentionedAgents: round.mentionedAgents,
+      contextKinds: round.researchData.contextKinds,
+      sources:
+        round.turnIndex === 1 && Array.isArray(round.researchData.sources)
+          ? round.researchData.sources
+          : undefined,
     };
 
     recordLiveMessage(room, messagePayload);
@@ -827,7 +1064,10 @@ async function runAgentRoundStep(room, roundId) {
 
     notifySession(round.triggerSessionId, {
       level: "info",
-      message: `${agentName} replied in the room`,
+      message:
+        round.researchData.contextKinds?.length > 0
+          ? `${agentName} replied in the room using ${round.researchData.contextKinds.join("+")} context`
+          : `${agentName} replied in the room`,
       room,
     });
 
@@ -840,6 +1080,10 @@ async function runAgentRoundStep(room, roundId) {
     }
 
     liveAgentRounds.set(room, round);
+    if (turnState.consecutiveAiTurns >= turnState.maxAiTurns) {
+      liveAgentRounds.delete(room);
+      return;
+    }
     scheduleAgentRoundStep(room, roundId, pickReplyDelay(true));
   } catch (err) {
     notifySession(round.triggerSessionId, {
@@ -882,7 +1126,15 @@ export function scheduleAutoRoomReply({
     return;
   }
 
-  const plan = buildAutoReplyPlan(normalizedRoom, triggerText, mentionedAgents);
+  const turnState = resetRoomTurnState(
+    normalizedRoom,
+    rollRoomMaxTurns(triggerText, mentionedAgents),
+  );
+  const plan = buildAutoReplyPlan(
+    normalizedRoom,
+    mentionedAgents,
+    turnState.maxAiTurns,
+  );
   if (plan.length === 0) return;
 
   const roundId = `round-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -897,13 +1149,15 @@ export function scheduleAutoRoomReply({
     triggerText: String(triggerText || "").trim(),
     mentionedAgents,
     remainingAgents: [...plan],
-    roundSize: plan.length,
+    roundSize: turnState.maxAiTurns,
     turnIndex: 1,
     lastSpeakerName:
       typeof triggerName === "string" && triggerName.trim()
         ? triggerName.trim()
         : "visitor",
     timer: null,
+    researchPromise: buildLiveResearchContext(triggerText),
+    researchData: null,
   });
 
   scheduleAgentRoundStep(normalizedRoom, roundId, pickReplyDelay(false));
@@ -917,6 +1171,8 @@ export function getLivePolicySnapshot() {
   return {
     ...liveAgentPolicy,
     historyLimit: LIVE_HISTORY_LIMIT,
+    maxRoundTurns: LIVE_AGENT_ROUND_LIMIT,
+    liveResearchEnabled: true,
     redisBridgeEnabled: liveRedisBridgeReady,
     redisBridgeFailed: liveRedisBridgeFailed,
     redisPresenceTtlSec: LIVE_REDIS_PRESENCE_TTL_SEC,
