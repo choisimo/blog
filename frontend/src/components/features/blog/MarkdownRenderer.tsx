@@ -2,21 +2,28 @@ import ReactMarkdown from "react-markdown";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import bash from "react-syntax-highlighter/dist/esm/languages/hljs/bash";
+import cpp from "react-syntax-highlighter/dist/esm/languages/hljs/cpp";
 import css from "react-syntax-highlighter/dist/esm/languages/hljs/css";
+import dockerfile from "react-syntax-highlighter/dist/esm/languages/hljs/dockerfile";
 import go from "react-syntax-highlighter/dist/esm/languages/hljs/go";
 import java from "react-syntax-highlighter/dist/esm/languages/hljs/java";
 import javascript from "react-syntax-highlighter/dist/esm/languages/hljs/javascript";
 import json from "react-syntax-highlighter/dist/esm/languages/hljs/json";
 import kotlin from "react-syntax-highlighter/dist/esm/languages/hljs/kotlin";
 import markdownLang from "react-syntax-highlighter/dist/esm/languages/hljs/markdown";
+import plaintext from "react-syntax-highlighter/dist/esm/languages/hljs/plaintext";
 import python from "react-syntax-highlighter/dist/esm/languages/hljs/python";
 import rust from "react-syntax-highlighter/dist/esm/languages/hljs/rust";
+import shell from "react-syntax-highlighter/dist/esm/languages/hljs/shell";
 import sql from "react-syntax-highlighter/dist/esm/languages/hljs/sql";
 import typescript from "react-syntax-highlighter/dist/esm/languages/hljs/typescript";
+import vim from "react-syntax-highlighter/dist/esm/languages/hljs/vim";
 import yaml from "react-syntax-highlighter/dist/esm/languages/hljs/yaml";
 
 SyntaxHighlighter.registerLanguage("bash", bash);
+SyntaxHighlighter.registerLanguage("cpp", cpp);
 SyntaxHighlighter.registerLanguage("css", css);
+SyntaxHighlighter.registerLanguage("dockerfile", dockerfile);
 SyntaxHighlighter.registerLanguage("go", go);
 SyntaxHighlighter.registerLanguage("java", java);
 SyntaxHighlighter.registerLanguage("javascript", javascript);
@@ -25,13 +32,18 @@ SyntaxHighlighter.registerLanguage("json", json);
 SyntaxHighlighter.registerLanguage("jsx", javascript);
 SyntaxHighlighter.registerLanguage("kotlin", kotlin);
 SyntaxHighlighter.registerLanguage("markdown", markdownLang);
+SyntaxHighlighter.registerLanguage("plaintext", plaintext);
 SyntaxHighlighter.registerLanguage("python", python);
 SyntaxHighlighter.registerLanguage("py", python);
 SyntaxHighlighter.registerLanguage("rust", rust);
+SyntaxHighlighter.registerLanguage("shell", shell);
+SyntaxHighlighter.registerLanguage("sh", shell);
 SyntaxHighlighter.registerLanguage("sql", sql);
+SyntaxHighlighter.registerLanguage("text", plaintext);
 SyntaxHighlighter.registerLanguage("tsx", typescript);
 SyntaxHighlighter.registerLanguage("typescript", typescript);
 SyntaxHighlighter.registerLanguage("ts", typescript);
+SyntaxHighlighter.registerLanguage("vim", vim);
 SyntaxHighlighter.registerLanguage("yaml", yaml);
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
@@ -279,12 +291,71 @@ function extractTextFromNode(node: ReactNode): string {
   return Children.toArray(props.children).map(extractTextFromNode).join(" ");
 }
 
+const SHELL_SNIPPET_PATTERN =
+  /(^#!\/bin\/(?:ba|z|k)?sh)|(^|\n)\s*(sudo\s+)?(apt|awk|cat|chmod|cp|curl|docker|git|grep|journalctl|kubectl|logger|mail|mv|npm|pvecm|rm|sed|ssh|systemctl|tail|tee|ufw)\b|(\|\s*grep\b)/m;
+
+function normalizeCodeLanguage(
+  rawLanguage: string,
+): { syntaxLanguage?: string; displayLanguage: string } {
+  const normalized = rawLanguage.trim().toLowerCase();
+  const aliasMap: Record<
+    string,
+    { syntaxLanguage?: string; displayLanguage: string }
+  > = {
+    bash: { syntaxLanguage: "bash", displayLanguage: "bash" },
+    cpp: { syntaxLanguage: "cpp", displayLanguage: "cpp" },
+    dockerfile: { syntaxLanguage: "dockerfile", displayLanguage: "dockerfile" },
+    go: { syntaxLanguage: "go", displayLanguage: "go" },
+    java: { syntaxLanguage: "java", displayLanguage: "java" },
+    javascript: { syntaxLanguage: "javascript", displayLanguage: "javascript" },
+    js: { syntaxLanguage: "javascript", displayLanguage: "javascript" },
+    json: { syntaxLanguage: "json", displayLanguage: "json" },
+    jsx: { syntaxLanguage: "jsx", displayLanguage: "jsx" },
+    kotlin: { syntaxLanguage: "kotlin", displayLanguage: "kotlin" },
+    markdown: { syntaxLanguage: "markdown", displayLanguage: "markdown" },
+    md: { syntaxLanguage: "markdown", displayLanguage: "markdown" },
+    plaintext: { syntaxLanguage: "plaintext", displayLanguage: "text" },
+    py: { syntaxLanguage: "python", displayLanguage: "python" },
+    python: { syntaxLanguage: "python", displayLanguage: "python" },
+    rust: { syntaxLanguage: "rust", displayLanguage: "rust" },
+    sh: { syntaxLanguage: "shell", displayLanguage: "shell" },
+    shell: { syntaxLanguage: "shell", displayLanguage: "shell" },
+    sql: { syntaxLanguage: "sql", displayLanguage: "sql" },
+    text: { syntaxLanguage: "plaintext", displayLanguage: "text" },
+    ts: { syntaxLanguage: "typescript", displayLanguage: "typescript" },
+    tsx: { syntaxLanguage: "tsx", displayLanguage: "tsx" },
+    typescript: { syntaxLanguage: "typescript", displayLanguage: "typescript" },
+    vim: { syntaxLanguage: "vim", displayLanguage: "vim" },
+    yaml: { syntaxLanguage: "yaml", displayLanguage: "yaml" },
+    yml: { syntaxLanguage: "yaml", displayLanguage: "yaml" },
+  };
+
+  return aliasMap[normalized] ?? { displayLanguage: normalized || "code" };
+}
+
+function inferCodeLanguage(
+  codeString: string,
+): { syntaxLanguage?: string; displayLanguage: string } {
+  const trimmed = codeString.trim();
+
+  if (!trimmed) {
+    return { displayLanguage: "code" };
+  }
+
+  if (SHELL_SNIPPET_PATTERN.test(trimmed)) {
+    return { syntaxLanguage: "shell", displayLanguage: "shell" };
+  }
+
+  return { displayLanguage: "code" };
+}
+
 // ============================================================================
 // CodeBlock component — line numbers + collapsible
 // ============================================================================
 interface CodeBlockProps {
   codeString: string;
-  language: string;
+  syntaxLanguage?: string;
+  displayLanguage: string;
   isTerminalTheme: boolean;
   copiedCode: string | null;
   onCopy: (code: string) => void;
@@ -295,7 +366,8 @@ const COLLAPSED_MAX_LINES = 480; // ~25 lines worth of height in px
 
 function CodeBlock({
   codeString,
-  language,
+  syntaxLanguage,
+  displayLanguage,
   isTerminalTheme,
   copiedCode,
   onCopy,
@@ -303,6 +375,8 @@ function CodeBlock({
   const lineCount = codeString.split("\n").length;
   const isLong = lineCount > COLLAPSE_THRESHOLD;
   const [collapsed, setCollapsed] = useState(isLong);
+  const label = displayLanguage || "code";
+  const showLineNumbers = lineCount > 1;
 
   return (
     <div className="relative group my-8 max-w-4xl mx-auto">
@@ -312,14 +386,14 @@ function CodeBlock({
           <span className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-close))]" />
           <span className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]" />
           <span className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]" />
-          <span className="ml-2 text-primary">{language}</span>
+          <span className="ml-2 text-primary">{label}</span>
         </div>
       )}
       {/* Non-terminal language badge */}
-      {!isTerminalTheme && language && (
+      {!isTerminalTheme && (
         <div className="absolute left-4 top-3 z-10">
-          <span className="px-2 py-1 text-xs font-medium rounded bg-primary/10 text-primary border border-primary/20">
-            {language}
+          <span className="rounded-md border border-white/15 bg-white/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-200 shadow-sm backdrop-blur">
+            {label}
           </span>
         </div>
       )}
@@ -359,22 +433,46 @@ function CodeBlock({
         >
           <SyntaxHighlighter
             style={isTerminalTheme ? terminalTheme : atomOneDark}
-            language={language}
+            language={syntaxLanguage}
             PreTag="div"
-            showLineNumbers={true}
+            showLineNumbers={showLineNumbers}
             lineNumberStyle={{
               minWidth: "2.5em",
               paddingRight: "1em",
               color: isTerminalTheme
                 ? "rgba(100,160,120,0.4)"
-                : "rgba(150,150,170,0.5)",
+                : "rgba(148,163,184,0.55)",
               userSelect: "none",
-              fontSize: "0.8em",
+              fontSize: "0.78em",
+              paddingTop: "0.15rem",
+            }}
+            customStyle={{
+              margin: 0,
+              padding: isTerminalTheme
+                ? "1.2rem 1.25rem 1.15rem"
+                : "1.15rem 1.2rem",
+              borderRadius: isTerminalTheme ? "0 0 1rem 1rem" : "1rem",
+              background: isTerminalTheme ? "hsl(200 50% 3%)" : "#0f172a",
+              border: isTerminalTheme
+                ? "1px solid hsl(200 30% 12%)"
+                : "1px solid rgba(15, 23, 42, 0.14)",
+              boxShadow: isTerminalTheme
+                ? "0 18px 40px rgba(0, 0, 0, 0.35)"
+                : "0 18px 36px rgba(15, 23, 42, 0.12)",
+              fontSize: "0.92rem",
+              lineHeight: 1.75,
+            }}
+            codeTagProps={{
+              style: {
+                fontFamily:
+                  "'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, monospace",
+                fontSize: "0.92rem",
+              },
             }}
             className={cn(
               "rounded-xl shadow-lg !overflow-x-auto",
               isTerminalTheme && "rounded-t-none !rounded-b-xl",
-              !isTerminalTheme && language && "!pt-10",
+              !isTerminalTheme && "!pt-11",
             )}
             wrapLongLines={false}
           >
@@ -645,14 +743,17 @@ export const MarkdownRenderer = ({
             children,
             ...props
           }: React.ComponentProps<"code"> & { inline?: boolean }) {
-            const match = /language-(\w+)/.exec(className || "");
+            const match = /language-([\w-]+)/.exec(className || "");
             const codeString = String(children).replace(/\n$/, "");
-            const language = match ? match[1] : "";
+            const resolvedLanguage = match
+              ? normalizeCodeLanguage(match[1])
+              : inferCodeLanguage(codeString);
 
-            return !inline && match ? (
+            return !inline ? (
               <CodeBlock
                 codeString={codeString}
-                language={language}
+                syntaxLanguage={resolvedLanguage.syntaxLanguage}
+                displayLanguage={resolvedLanguage.displayLanguage}
                 isTerminalTheme={isTerminal}
                 copiedCode={copiedCode}
                 onCopy={copyToClipboard}
