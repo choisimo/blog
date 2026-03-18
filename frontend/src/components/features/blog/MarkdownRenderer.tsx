@@ -47,6 +47,28 @@ SyntaxHighlighter.registerLanguage("vim", vim);
 SyntaxHighlighter.registerLanguage("yaml", yaml);
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
+
+const sanitizeSchema = {
+  ...defaultSchema,
+  attributes: {
+    ...defaultSchema.attributes,
+    "*": [...(defaultSchema.attributes?.["*"] ?? []), "className", "style", "id"],
+    img: [...(defaultSchema.attributes?.img ?? []), "src", "alt", "title", "width", "height", "loading"],
+    a: [...(defaultSchema.attributes?.a ?? []), "href", "title", "target", "rel"],
+    video: ["src", "controls", "width", "height", "poster", "preload", "muted", "autoPlay", "loop"],
+    source: ["src", "type"],
+    div: [...(defaultSchema.attributes?.div ?? []), "className", "style", "data-*"],
+    span: [...(defaultSchema.attributes?.span ?? []), "className", "style", "data-*"],
+    code: ["className"],
+    pre: ["className"],
+  },
+  tagNames: [
+    ...(defaultSchema.tagNames ?? []),
+    "video", "source", "details", "summary", "mark", "abbr",
+    "figure", "figcaption", "picture",
+  ],
+};
 import { Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
 import {
   Children,
@@ -60,7 +82,7 @@ import {
   type ReactNode,
 } from "react";
 import { Button } from "@/components/ui/button";
-import SparkInline from "@/components/features/sentio/SparkInline";
+import SparkInline from "@/components/molecules/SparkInline";
 import {
   ClickableImage,
   EmbeddedVideo,
@@ -588,7 +610,7 @@ export const MarkdownRenderer = ({
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]}
+        rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
         components={{
           h1: ({ children }) => {
             const id = getHeadingId(children);
