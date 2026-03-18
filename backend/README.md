@@ -331,6 +331,14 @@ GITHUB_REPO_OWNER=your-username
 GITHUB_REPO_NAME=blog
 
 # ============================================
+# Worker API (REQUIRED for AI dynamic config)
+# ============================================
+# ⚠️  WORKER_API_URL is required for centralized AI provider config.
+# Without it, the backend falls back to local env vars for AI settings
+# and multi-provider routing is unavailable.
+WORKER_API_URL=https://api.example.com
+
+# ============================================
 # Consul Service Discovery (선택)
 # ============================================
 USE_CONSUL=false                  # true to enable Consul KV

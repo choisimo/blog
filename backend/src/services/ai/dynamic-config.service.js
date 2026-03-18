@@ -40,6 +40,12 @@ let currentSnapshot = null;
 /** @type {Promise<AIConfigSnapshot> | null} */
 let refreshPromise = null;
 
+/** @type {ProviderSnapshot | null} */
+let currentProviderSnapshot = null;
+
+/** @type {Promise<ProviderSnapshot> | null} */
+let providerRefreshPromise = null;
+
 // =============================================================================
 // Types (JSDoc)
 // =============================================================================
@@ -53,6 +59,58 @@ let refreshPromise = null;
  * @property {string} fingerprint - Hash of baseUrl+apiKey+defaultModel for change detection
  * @property {number} fetchedAt - When this snapshot was created (Date.now())
  * @property {number} expiresAt - When this snapshot expires (fetchedAt + CACHE_TTL_MS)
+ */
+
+/**
+ * @typedef {Object} ProviderSnapshotProvider
+ * @property {string} id
+ * @property {string} name
+ * @property {string} displayName
+ * @property {string | null} apiBaseUrl
+ * @property {string | null} apiKeyEnv
+ * @property {boolean} isEnabled
+ * @property {string} healthStatus
+ * @property {string | null} resolvedApiKey - API key resolved by Worker (from D1 secrets / env)
+ */
+
+/**
+ * @typedef {Object} ProviderSnapshotModel
+ * @property {string} id
+ * @property {string} provider_id
+ * @property {string} model_name
+ * @property {string} display_name
+ * @property {string} model_identifier
+ * @property {number | null} context_window
+ * @property {number | null} max_tokens
+ * @property {number} supports_vision
+ * @property {number} supports_streaming
+ * @property {number} supports_function_calling
+ * @property {number} is_enabled
+ * @property {number} priority
+ */
+
+/**
+ * @typedef {Object} ProviderSnapshotRoute
+ * @property {string} id
+ * @property {string} name
+ * @property {string} routing_strategy
+ * @property {string | null} primary_model_id
+ * @property {string | null} fallback_model_ids - JSON array string
+ * @property {string | null} context_window_fallback_ids - JSON array string
+ * @property {number} num_retries
+ * @property {number} timeout_seconds
+ * @property {number} is_default
+ * @property {number} is_enabled
+ */
+
+/**
+ * @typedef {Object} ProviderSnapshot
+ * @property {'worker'} source
+ * @property {ProviderSnapshotProvider[]} providers
+ * @property {ProviderSnapshotModel[]} models
+ * @property {ProviderSnapshotRoute | null} defaultRoute
+ * @property {number} fetchedAt
+ * @property {number} expiresAt
  */
 
 // =============================================================================
@@ -268,6 +326,8 @@ export async function getDynamicAIConfig() {
 export function invalidateAIConfigCache() {
   currentSnapshot = null;
   refreshPromise = null;
+  currentProviderSnapshot = null;
+  providerRefreshPromise = null;
   logger.info({ operation: 'invalidate' }, 'AI config cache invalidated');
 }
 
@@ -276,7 +336,145 @@ export function invalidateAIConfigCache() {
  * Safe to call multiple times — collapses into single in-flight fetch.
  */
 export function primeAIConfigRefresh() {
+  const workerApiUrl = config.services?.workerApiUrl;
+  if (!workerApiUrl) {
+    logger.warn(
+      { operation: 'prime' },
+      '⚠️  WORKER_API_URL is not configured. AI config will use local env fallback only. ' +
+      'Set WORKER_API_URL in .env to enable centralized AI config from the Worker.',
+    );
+    return;
+  }
+
   refreshAIConfig().catch((err) => {
     logger.warn({ operation: 'prime' }, 'Primed refresh failed', { error: err.message });
   });
+}
+
+// =============================================================================
+// Provider Snapshot — multi-provider config from Worker
+// =============================================================================
+
+/**
+ * Fetch full provider/model/route snapshot from Worker internal endpoint.
+ * @returns {Promise<ProviderSnapshot>}
+ */
+async function fetchWorkerProviderSnapshot() {
+  const workerApiUrl = config.services?.workerApiUrl;
+  if (!workerApiUrl) {
+    throw new Error('WORKER_API_URL not configured');
+  }
+
+  const backendKey = config.backendKey;
+  if (!backendKey) {
+    throw new Error('BACKEND_KEY not configured — cannot authenticate with Worker');
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${workerApiUrl}/api/v1/internal/ai-config/providers`, {
+      method: 'GET',
+      headers: {
+        'X-Backend-Key': backendKey,
+        'Accept': 'application/json',
+      },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Worker returned HTTP ${response.status}`);
+    }
+
+    const json = await response.json();
+    if (!json.ok || !json.data) {
+      throw new Error('Worker returned unexpected response shape');
+    }
+
+    const { providers, models, defaultRoute } = json.data;
+    const now = Date.now();
+
+    return {
+      source: 'worker',
+      providers: providers || [],
+      models: models || [],
+      defaultRoute: defaultRoute || null,
+      fetchedAt: now,
+      expiresAt: now + CACHE_TTL_MS,
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Background refresh for provider snapshot.
+ * Collapses concurrent calls into a single in-flight promise.
+ * @returns {Promise<ProviderSnapshot>}
+ */
+async function refreshProviderSnapshot() {
+  if (providerRefreshPromise) return providerRefreshPromise;
+
+  providerRefreshPromise = (async () => {
+    try {
+      const snapshot = await fetchWorkerProviderSnapshot();
+      currentProviderSnapshot = snapshot;
+
+      logger.info(
+        { operation: 'provider-refresh', source: snapshot.source },
+        'Provider snapshot updated from Worker',
+        { providerCount: snapshot.providers.length, modelCount: snapshot.models.length },
+      );
+
+      return snapshot;
+    } catch (err) {
+      logger.warn(
+        { operation: 'provider-refresh' },
+        'Failed to fetch provider snapshot from Worker',
+        { error: err.message },
+      );
+
+      // Extend current snapshot TTL if available
+      if (currentProviderSnapshot) {
+        currentProviderSnapshot = {
+          ...currentProviderSnapshot,
+          expiresAt: Date.now() + CACHE_TTL_MS,
+        };
+        return currentProviderSnapshot;
+      }
+
+      // No fallback — return null-ish snapshot so caller can degrade gracefully
+      return null;
+    } finally {
+      providerRefreshPromise = null;
+    }
+  })();
+
+  return providerRefreshPromise;
+}
+
+/**
+ * Get the cached provider snapshot, triggering a background refresh if expired.
+ *
+ * Returns null when WORKER_API_URL is not configured or no snapshot has been
+ * fetched yet (callers should fall back to their own degradation logic).
+ *
+ * @returns {Promise<ProviderSnapshot | null>}
+ */
+export async function getProviderSnapshot() {
+  if (!config.services?.workerApiUrl) {
+    return null;
+  }
+
+  if (!currentProviderSnapshot) {
+    return refreshProviderSnapshot();
+  }
+
+  if (Date.now() >= currentProviderSnapshot.expiresAt) {
+    // Return stale while refresh runs in background
+    refreshProviderSnapshot().catch(() => {});
+  }
+
+  return currentProviderSnapshot;
 }

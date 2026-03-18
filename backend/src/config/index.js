@@ -247,6 +247,10 @@ export const config = {
   },
 };
 
+if (!config.services.workerApiUrl) {
+  logger.warn({}, 'WORKER_API_URL is not set — AI dynamic config from Worker will be unavailable. Set WORKER_API_URL to the api-gateway Worker URL.');
+}
+
 export async function loadAndApplyConsulConfig() {
   if (!CONSUL.ENABLED) {
     logger.info({}, 'Consul disabled, using environment variables');
