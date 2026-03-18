@@ -7,18 +7,19 @@ excerpt: "Heap & Graph Basics - 단어 사다리 (Word Ladder) 문제에 대한 
 readTime: "5분"
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**단어 사다리 (Word Ladder)**
-* 파트: Heap & Graph Basics
-* 관련 알고리즘: BFS
+Word Ladder는 문자열 변환 문제가 아니라, 각 단어가 노드이고 한 글자 차이 변환이 간선인 암묵적 그래프에서 최단 변환 수를 찾는 문제입니다. 그래프를 명시적으로 다 만들지 않아도 탐색이 가능한 이유를 설명해 보세요.
 
-> **Architect's View**
-> 암묵적 그래프와 상태 공간
+1. 현재 단어에서 한 글자씩 바꿔 이웃 후보를 생성하고, visited가 어떤 역할을 하는지 추적하세요.
+2. 사전 전체 그래프를 미리 구축하는 방식과 on-the-fly neighbor 생성 방식을 메모리 사용과 지연 시간 관점에서 비교하세요.
+3. 양방향 BFS가 왜 특히 이 문제에서 강력한지, branching factor 관점에서 설명하세요.
 
-이 글에서는 단어 사다리 (Word Ladder) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 암묵적 간선 생성 방식을 적을 것
+- 최단 변환이 BFS와 연결되는 이유를 설명할 것
+- bidirectional BFS의 이점을 적을 것
 
 ## 🐍 Python 구현
 

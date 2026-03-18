@@ -7,18 +7,19 @@ excerpt: "Sorting & Binary Search - 정렬 색깔 (Dutch Flag) 문제에 대한 
 readTime: "5분"
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**정렬 색깔 (Dutch Flag)**
-* 파트: Sorting & Binary Search
-* 관련 알고리즘: 3-way partition
+Dutch National Flag는 정렬 문제라기보다, 하나의 스트림을 단일 패스에서 세 클래스 구간으로 안정적으로 분할하는 문제입니다. `0`, `1`, `2`가 각각 어떤 메모리 구간으로 모여 가는지 설명해 보세요.
 
-> **Architect's View**
-> 다중 분류와 단일 패스
+1. `low`, `mid`, `high`가 가리키는 구간의 의미를 정의하고, 현재 값이 0/1/2일 때 왜 서로 다른 이동 규칙을 써야 하는지 추적하세요.
+2. counting sort, 일반 정렬, 3-way partition을 쓰기 횟수, 추가 메모리, 단일 패스 가능성 관점에서 비교하세요.
+3. 클래스가 3개가 아니라 k개로 늘어나면 왜 같은 포인터 체계가 바로 일반화되지 않는지 설명하세요.
 
-이 글에서는 정렬 색깔 (Dutch Flag) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 세 구간의 의미를 정확히 적을 것
+- swap 뒤 `mid`를 움직일지 말지 이유를 설명할 것
+- k-way 일반화의 어려움을 적을 것
 
 ## 🐍 Python 구현
 

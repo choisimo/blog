@@ -7,18 +7,19 @@ excerpt: "Tree & Binary Search Tree - 최대 깊이 (Max Depth) 문제에 대한
 readTime: "5분"
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**최대 깊이 (Max Depth)**
-* 파트: Tree & Binary Search Tree
-* 관련 알고리즘: 재귀
+최대 깊이는 단순 카운팅이 아니라, 각 서브트리에서 얻은 답을 부모가 어떻게 결합하는지 정의하는 재귀 contract 문제입니다. 노드 하나가 자기 서브트리에 대해 어떤 정보를 반환해야 부모가 전역 깊이를 만들 수 있는지 설명해 보세요.
 
-> **Architect's View**
-> 트리 속성의 재귀적 분해
+1. `depth(node) = 1 + max(depth(left), depth(right))`가 어떤 정보 흐름을 의미하는지 추적하세요.
+2. DFS 재귀와 BFS 레벨 카운팅 방식을 skewed tree, balanced tree, 매우 넓은 tree에서 비교하세요.
+3. 깊이 대신 지름, 최소 깊이, 균형 여부를 구하는 문제로 바뀌면 반환 contract가 어떻게 달라지는지 설명하세요.
 
-이 글에서는 최대 깊이 (Max Depth) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- base case와 return 의미를 적을 것
+- DFS/BFS 중 어느 쪽이 언제 더 위험한지 적을 것
+- 반환 계약(contract) 개념을 설명할 것
 
 ## 🐍 Python 구현
 

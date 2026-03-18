@@ -7,18 +7,19 @@ excerpt: "Heap & Graph Basics - 힙 구현 (Min Heap) 문제에 대한 풀이와
 readTime: "5분"
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**힙 구현 (Min Heap)**
-* 파트: Heap & Graph Basics
-* 관련 알고리즘: 배열 기반 힙
+Min Heap 구현은 트리를 만드는 문제가 아니라, 완전 이진 트리의 부분 순서(partial order)를 연속 배열 위에 인코딩하는 문제입니다. 왜 parent/child 관계를 포인터 없이 인덱스 산술로 표현할 수 있는지 설명해 보세요.
 
-> **Architect's View**
-> 완전 이진 트리의 배열 표현
+1. 삽입 시 sift-up, 삭제 시 sift-down이 배열 인덱스와 값 순서를 어떻게 바꾸는지 추적하세요.
+2. 정렬 배열, balanced BST, heap을 최소값 질의/삽입/삭제 혼합 workload 관점에서 비교하세요.
+3. 힙이 완전 정렬 구조가 아닌데도 우선순위 스케줄러에 충분한 이유를 설명하세요.
 
-이 글에서는 힙 구현 (Min Heap) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- parent/child 인덱스 공식을 적을 것
+- heap property의 의미를 설명할 것
+- 완전 정렬과 부분 정렬을 구분할 것
 
 ## 🐍 Python 구현
 

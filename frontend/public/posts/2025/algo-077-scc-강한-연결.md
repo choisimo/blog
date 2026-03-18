@@ -7,18 +7,19 @@ excerpt: "Graph Advanced - SCC (강한 연결) 문제에 대한 풀이와 아키
 readTime: "5분"
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**SCC (강한 연결)**
-* 파트: Graph Advanced
-* 관련 알고리즘: 타잔/코사라주
+SCC는 cycle 하나를 찾는 문제가 아니라, 서로 도달 가능한 정점들의 최대 묶음을 압축해 시스템의 순환 구조를 드러내는 문제입니다. 왜 SCC 축약 그래프는 DAG가 되는지 설명해 보세요.
 
-> **Architect's View**
-> 시스템 순환 탐지
+1. Tarjan의 index/low-link 혹은 Kosaraju의 역방향 그래프 순서가 무엇을 의미하는지 추적하세요.
+2. 단순 cycle detection과 SCC 분해가 제공하는 정보의 차이를 설명하세요.
+3. 모듈 의존성, 서비스 호출 순환, deadlock 분석에서 SCC가 왜 중요한지 설명하세요.
 
-이 글에서는 SCC (강한 연결) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- low-link 또는 finishing order의 의미를 적을 것
+- SCC 압축 결과가 DAG가 되는 이유를 설명할 것
+- cycle 발견과 component 분해를 구분할 것
 
 ## 🐍 Python 구현
 
