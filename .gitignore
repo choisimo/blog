@@ -171,6 +171,8 @@ htmlcov/
 .coverage
 **/.pytest_cache/
 **/.mypy_cache/
+.verification/
+.opencode-spotcheck/
 
 # -----------------------------------------------------------------------------
 # TypeScript
