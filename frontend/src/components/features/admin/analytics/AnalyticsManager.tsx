@@ -54,17 +54,23 @@ async function getEditorPicks(): Promise<EditorPick[]> {
   }
 }
 
-async function getTrendingPosts(days: number = 7): Promise<TrendingPost[]> {
+async function getTrendingPosts(
+  days: number = 7,
+  offset: number = 0,
+): Promise<{ trending: TrendingPost[]; total: number }> {
   const base = getApiBaseUrl();
   try {
     const res = await fetch(
-      `${base}/api/v1/analytics/trending?days=${days}&limit=10`,
+      `${base}/api/v1/analytics/trending?days=${days}&limit=10&offset=${offset}`,
     );
-    if (!res.ok) return [];
+    if (!res.ok) return { trending: [], total: 0 };
     const data = await res.json();
-    return data.data?.trending ?? [];
+    return {
+      trending: data.data?.trending ?? [],
+      total: data.data?.total ?? 0,
+    };
   } catch {
-    return [];
+    return { trending: [], total: 0 };
   }
 }
 
@@ -82,8 +88,17 @@ async function refreshStats(token: string): Promise<boolean> {
 }
 
 function EditorPicksSection() {
+  const { getValidAccessToken } = useAuthStore();
   const [picks, setPicks] = useState<EditorPick[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [formSlug, setFormSlug] = useState("");
+  const [formYear, setFormYear] = useState("");
+  const [formRank, setFormRank] = useState("");
+  const [formReason, setFormReason] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
 
   const fetchPicks = useCallback(async () => {
     setLoading(true);
@@ -96,6 +111,80 @@ function EditorPicksSection() {
     fetchPicks();
   }, [fetchPicks]);
 
+  const handleRemove = async (year: string, slug: string) => {
+    setRemoveError(null);
+    const token = await getValidAccessToken();
+    if (!token) {
+      setRemoveError("Authentication required.");
+      return;
+    }
+    const base = getApiBaseUrl();
+    try {
+      const res = await fetch(
+        `${base}/api/v1/analytics/admin/editor-picks/${year}/${slug}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      if (!res.ok) {
+        setRemoveError("Failed to remove pick.");
+        return;
+      }
+      await fetchPicks();
+    } catch {
+      setRemoveError("Failed to remove pick.");
+    }
+  };
+
+  const handleAddSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+    setFormSubmitting(true);
+    const token = await getValidAccessToken();
+    if (!token) {
+      setFormError("Authentication required.");
+      setFormSubmitting(false);
+      return;
+    }
+    const base = getApiBaseUrl();
+    try {
+      const body: {
+        post_slug: string;
+        year: string;
+        rank?: number;
+        reason?: string;
+      } = { post_slug: formSlug.trim(), year: formYear.trim() };
+      if (formRank) body.rank = parseInt(formRank, 10);
+      if (formReason.trim()) body.reason = formReason.trim();
+      const res = await fetch(
+        `${base}/api/v1/analytics/admin/editor-picks`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(body),
+        },
+      );
+      if (!res.ok) {
+        setFormError("Failed to add pick.");
+        setFormSubmitting(false);
+        return;
+      }
+      setFormSlug("");
+      setFormYear("");
+      setFormRank("");
+      setFormReason("");
+      setShowAddForm(false);
+      await fetchPicks();
+    } catch {
+      setFormError("Failed to add pick.");
+    }
+    setFormSubmitting(false);
+  };
+
   return (
     <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
@@ -105,15 +194,93 @@ function EditorPicksSection() {
             Editor Picks
           </span>
         </div>
-        <button
-          type="button"
-          onClick={fetchPicks}
-          disabled={loading}
-          className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              setShowAddForm((v) => !v);
+              setFormError(null);
+            }}
+            className="h-7 px-2 text-xs rounded-md border border-zinc-200 text-zinc-500 hover:bg-zinc-50"
+          >
+            Add Pick
+          </button>
+          <button
+            type="button"
+            onClick={fetchPicks}
+            disabled={loading}
+            className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+          </button>
+        </div>
       </div>
+      {showAddForm && (
+        <form
+          onSubmit={handleAddSubmit}
+          className="px-4 py-3 border-b border-zinc-100 space-y-2"
+        >
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="text"
+              value={formSlug}
+              onChange={(e) => setFormSlug(e.target.value)}
+              placeholder="post-slug"
+              required
+              className="flex-1 min-w-0 h-7 px-2 text-xs rounded-md border border-zinc-200 text-zinc-700 placeholder-zinc-400 focus:outline-none focus:border-zinc-400"
+            />
+            <input
+              type="text"
+              value={formYear}
+              onChange={(e) => setFormYear(e.target.value)}
+              placeholder="2025"
+              required
+              className="w-20 h-7 px-2 text-xs rounded-md border border-zinc-200 text-zinc-700 placeholder-zinc-400 focus:outline-none focus:border-zinc-400"
+            />
+            <input
+              type="number"
+              value={formRank}
+              onChange={(e) => setFormRank(e.target.value)}
+              placeholder="1"
+              min={1}
+              max={99}
+              className="w-16 h-7 px-2 text-xs rounded-md border border-zinc-200 text-zinc-700 placeholder-zinc-400 focus:outline-none focus:border-zinc-400"
+            />
+          </div>
+          <input
+            type="text"
+            value={formReason}
+            onChange={(e) => setFormReason(e.target.value)}
+            placeholder="Reason..."
+            className="w-full h-7 px-2 text-xs rounded-md border border-zinc-200 text-zinc-700 placeholder-zinc-400 focus:outline-none focus:border-zinc-400"
+          />
+          {formError && (
+            <p className="text-xs text-red-500">{formError}</p>
+          )}
+          <div className="flex gap-1.5">
+            <button
+              type="submit"
+              disabled={formSubmitting}
+              className="h-7 px-2 text-xs rounded-md bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-50"
+            >
+              {formSubmitting ? "Saving..." : "Submit"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowAddForm(false);
+                setFormError(null);
+              }}
+              className="h-7 px-2 text-xs rounded-md border border-zinc-200 text-zinc-500 hover:bg-zinc-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+      {removeError && (
+        <p className="px-4 py-2 text-xs text-red-500">{removeError}</p>
+      )}
       {loading ? (
         <div className="flex items-center gap-2 px-4 py-3 text-xs text-zinc-400">
           <RefreshCw className="h-3 w-3 animate-spin" />
@@ -127,11 +294,12 @@ function EditorPicksSection() {
         <div className="divide-y divide-zinc-100">
           <div className="grid grid-cols-12 px-4 py-2 bg-zinc-50 border-b border-zinc-100">
             <span className="col-span-1 text-xs text-zinc-400">#</span>
-            <span className="col-span-7 text-xs text-zinc-400">Post</span>
+            <span className="col-span-6 text-xs text-zinc-400">Post</span>
             <span className="col-span-2 text-xs text-zinc-400">Category</span>
             <span className="col-span-2 text-xs text-zinc-400 text-right">
               Score
             </span>
+            <span className="col-span-1" />
           </div>
           {picks.map((pick) => (
             <div
@@ -141,7 +309,7 @@ function EditorPicksSection() {
               <span className="col-span-1 font-mono text-xs text-zinc-400">
                 {pick.rank}
               </span>
-              <div className="col-span-7">
+              <div className="col-span-6">
                 <a
                   href={`/#/blog/${pick.year}/${pick.post_slug}`}
                   className="text-xs font-medium text-zinc-800 hover:text-zinc-600 hover:underline"
@@ -162,6 +330,15 @@ function EditorPicksSection() {
               <span className="col-span-2 text-xs font-medium text-zinc-700 text-right">
                 {pick.score}
               </span>
+              <div className="col-span-1 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => handleRemove(pick.year, pick.post_slug)}
+                  className="text-xs text-red-400 hover:text-red-600 hover:underline"
+                >
+                  Remove
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -174,17 +351,24 @@ function TrendingPostsSection() {
   const [trending, setTrending] = useState<TrendingPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(7);
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
+  const PAGE_SIZE = 10;
 
   const fetchTrending = useCallback(async () => {
     setLoading(true);
-    const result = await getTrendingPosts(days);
-    setTrending(result);
+    const result = await getTrendingPosts(days, page * PAGE_SIZE);
+    setTrending(result.trending);
+    setTotal(result.total);
     setLoading(false);
-  }, [days]);
+  }, [days, page]);
 
   useEffect(() => {
     fetchTrending();
   }, [fetchTrending]);
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const offset = page * PAGE_SIZE;
 
   return (
     <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
@@ -201,7 +385,10 @@ function TrendingPostsSection() {
               <button
                 type="button"
                 key={d}
-                onClick={() => setDays(d)}
+                onClick={() => {
+                  setDays(d);
+                  setPage(0);
+                }}
                 className={`px-2 py-1 text-xs transition-colors ${
                   days === d
                     ? "bg-zinc-900 text-white"
@@ -232,40 +419,69 @@ function TrendingPostsSection() {
           No trending data for this period.
         </p>
       ) : (
-        <div className="divide-y divide-zinc-100">
-          {trending.map((post, idx) => (
-            <div
-              key={`${post.year}/${post.post_slug}`}
-              className="flex items-center justify-between px-4 py-2.5 hover:bg-zinc-50"
-            >
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-xs text-zinc-400 w-4">
-                  {idx + 1}
-                </span>
-                <div>
-                  <a
-                    href={`/#/blog/${post.year}/${post.post_slug}`}
-                    className="text-xs font-medium text-zinc-800 hover:text-zinc-600 hover:underline"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {post.post_slug}
-                  </a>
-                  <p className="text-xs text-zinc-400">{post.year}</p>
+        <>
+          <div className="divide-y divide-zinc-100">
+            {trending.map((post, idx) => (
+              <div
+                key={`${post.year}/${post.post_slug}`}
+                className="flex items-center justify-between px-4 py-2.5 hover:bg-zinc-50"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-xs text-zinc-400 w-4">
+                    {offset + idx + 1}
+                  </span>
+                  <div>
+                    <a
+                      href={`/#/blog/${post.year}/${post.post_slug}`}
+                      className="text-xs font-medium text-zinc-800 hover:text-zinc-600 hover:underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {post.post_slug}
+                    </a>
+                    <p className="text-xs text-zinc-400">{post.year}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="flex items-center gap-1 text-xs font-medium text-zinc-700">
+                    <Eye className="h-3 w-3 text-zinc-400" />
+                    {post.recent_views.toLocaleString()}
+                  </div>
+                  <p className="text-xs text-zinc-400">
+                    total: {post.total_views.toLocaleString()}
+                  </p>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="flex items-center gap-1 text-xs font-medium text-zinc-700">
-                  <Eye className="h-3 w-3 text-zinc-400" />
-                  {post.recent_views.toLocaleString()}
-                </div>
-                <p className="text-xs text-zinc-400">
-                  total: {post.total_views.toLocaleString()}
-                </p>
+            ))}
+          </div>
+          {total > PAGE_SIZE && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-100">
+              <span className="text-xs text-zinc-400">
+                Page {page + 1} of {totalPages}
+              </span>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  className="h-7 px-2 text-xs rounded-md border border-zinc-200 text-zinc-500 hover:bg-zinc-50 disabled:opacity-40"
+                >
+                  Prev
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPage((p) => Math.min(totalPages - 1, p + 1))
+                  }
+                  disabled={page >= totalPages - 1}
+                  className="h-7 px-2 text-xs rounded-md border border-zinc-200 text-zinc-500 hover:bg-zinc-50 disabled:opacity-40"
+                >
+                  Next
+                </button>
               </div>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -370,7 +586,7 @@ function AllPostsSection() {
     slug: string;
     year: string;
   } | null>(null);
-  const PAGE_SIZE = 50;
+  const PAGE_SIZE = 10;
 
   const fetchStats = useCallback(async () => {
     setLoading(true);

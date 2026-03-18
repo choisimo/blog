@@ -46,6 +46,7 @@ import debate from './routes/debate';
 import subscribe from './routes/subscribe';
 import contact from './routes/contact';
 import notifications from './routes/notifications';
+import adminLogs from './routes/admin-logs';
 import type { Env } from './types';
 
 const app = new Hono<HonoEnv>();
@@ -281,6 +282,7 @@ api.route('/debate', debate);
 api.route('/subscribe', subscribe);
 api.route('/contact', contact);
 api.route('/notifications', notifications);
+api.route('/admin/logs', adminLogs);
 api.route('/gateway', gateway);
 
 app.route('/api/v1', api);

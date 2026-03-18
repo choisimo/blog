@@ -170,6 +170,7 @@ function App() {
                           }
                         />
                         <Route path="/admin/config" element={<AdminConfig />} />
+                        <Route path="/admin/config/*" element={<AdminConfig />} />
                         <Route
                           path="/admin/auth/callback"
                           element={<AdminAuthCallback />}

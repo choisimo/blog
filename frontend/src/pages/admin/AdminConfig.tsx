@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ConfigManager } from '@/components/features/admin/ConfigManager';
 import { WorkersManager } from '@/components/features/admin/WorkersManager';
 import { AIManager } from '@/components/features/admin/ai';
@@ -580,7 +581,18 @@ interface AdminDashboardProps {
 }
 
 function AdminDashboard({ userEmail, onLogout }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<NavTab>('health');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab') as NavTab | null;
+  const validTabs = NAV_TABS.map(t => t.id);
+  const activeTab: NavTab = tabParam && validTabs.includes(tabParam) ? tabParam : 'health';
+
+  const setActiveTab = (tab: NavTab) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', tab);
+      return next;
+    }, { replace: true });
+  };
 
   return (
     <div className='min-h-screen bg-zinc-50 dark:bg-zinc-950'>

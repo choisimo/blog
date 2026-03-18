@@ -9,6 +9,7 @@ import {
   Brain,
   ToggleRight,
   ToggleLeft,
+  Bot,
 } from "lucide-react";
 import { getApiBaseUrl } from "@/utils/network/apiBase";
 import { useAuthStore } from "@/stores/session/useAuthStore";
@@ -121,6 +122,41 @@ async function checkProviderHealth(
   }
 }
 
+interface AgentHealth {
+  status: "healthy" | "degraded" | "error" | "unknown";
+  llm?: { ok: boolean };
+  tools?: { count: number };
+  uptime?: number;
+}
+
+async function checkAgentHealthRequest(): Promise<AgentHealth> {
+  const base = getApiBaseUrl();
+  try {
+    const res = await fetch(`${base}/api/v1/agent/health`, {
+      method: "GET",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return { status: "error" };
+    const data = await res.json();
+    return {
+      status: data.data?.status ?? "unknown",
+      llm: data.data?.llm,
+      tools: data.data?.tools,
+      uptime: data.data?.uptime,
+    };
+  } catch {
+    return { status: "error" };
+  }
+}
+
+function formatUptime(seconds?: number): string {
+  if (seconds == null) return "—";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
 function StatusDot({ status }: { status: ServiceStatus["status"] }) {
   if (status === "checking") {
     return <RefreshCw className="h-3 w-3 text-zinc-400 animate-spin" />;
@@ -159,6 +195,9 @@ export function SystemHealth() {
   const [providers, setProviders] = useState<ProviderHealth[]>([]);
   const [providersLoading, setProvidersLoading] = useState(false);
   const [checkingProvider, setCheckingProvider] = useState<string | null>(null);
+
+  const [agentHealth, setAgentHealth] = useState<AgentHealth | null>(null);
+  const [agentLoading, setAgentLoading] = useState(false);
 
   const { flags, isLoading: flagsLoading, fetchFlags } = useFeatureFlagsStore();
 
@@ -239,21 +278,30 @@ export function SystemHealth() {
     fetchFlags();
   }, [fetchFlags]);
 
+  const checkAgentHealth = useCallback(async () => {
+    setAgentLoading(true);
+    const result = await checkAgentHealthRequest();
+    setAgentHealth(result);
+    setAgentLoading(false);
+  }, []);
+
   const refreshAll = useCallback(() => {
     checkCoreServices();
     checkRagServices();
     fetchProviders();
+    checkAgentHealth();
     refreshFlags();
-  }, [checkCoreServices, checkRagServices, fetchProviders, refreshFlags]);
+  }, [checkCoreServices, checkRagServices, fetchProviders, checkAgentHealth, refreshFlags]);
 
   useEffect(() => {
     refreshAll();
   }, [refreshAll]);
 
-  const allLoading = coreLoading || ragLoading || providersLoading;
+  const allLoading = coreLoading || ragLoading || providersLoading || agentLoading;
   const allHealthy =
     coreServices.every((s) => s.status === "healthy") &&
-    ragServices.every((s) => s.status === "healthy");
+    ragServices.every((s) => s.status === "healthy") &&
+    agentHealth?.status === "healthy";
 
   return (
     <div className="space-y-4">
@@ -284,7 +332,7 @@ export function SystemHealth() {
         </button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <div className="bg-white border border-zinc-200 rounded-lg">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-100">
             <div className="flex items-center gap-1.5">
@@ -460,6 +508,72 @@ export function SystemHealth() {
                   )}
                 </div>
               ),
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white border border-zinc-200 rounded-lg">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-100">
+            <div className="flex items-center gap-1.5">
+              <Bot className="h-3.5 w-3.5 text-zinc-500" />
+              <span className="text-xs font-semibold text-zinc-700">Agent</span>
+            </div>
+            <button
+              type="button"
+              onClick={checkAgentHealth}
+              disabled={agentLoading}
+              className="h-6 w-6 flex items-center justify-center rounded hover:bg-zinc-100 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`h-3 w-3 text-zinc-400 ${agentLoading ? "animate-spin" : ""}`}
+              />
+            </button>
+          </div>
+          <div className="divide-y divide-zinc-100">
+            {agentHealth == null ? (
+              <p className="px-4 py-2.5 text-xs text-zinc-400">
+                {agentLoading ? "Checking…" : "Not checked"}
+              </p>
+            ) : (
+              <>
+                <div className="flex items-center justify-between px-4 py-2.5">
+                  <span className="text-sm text-zinc-700">Status</span>
+                  <div className="flex items-center gap-1.5">
+                    {agentHealth.status === "healthy" ? (
+                      <CheckCircle className="h-3 w-3 text-emerald-600" />
+                    ) : agentHealth.status === "error" ? (
+                      <XCircle className="h-3 w-3 text-red-600" />
+                    ) : (
+                      <AlertCircle className="h-3 w-3 text-amber-500" />
+                    )}
+                    <span className="font-mono text-xs text-zinc-500 capitalize">
+                      {agentHealth.status}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between px-4 py-2.5">
+                  <span className="text-sm text-zinc-700">Uptime</span>
+                  <span className="font-mono text-xs text-zinc-400">
+                    {formatUptime(agentHealth.uptime)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-2.5">
+                  <span className="text-sm text-zinc-700">Tools</span>
+                  <span className="font-mono text-xs text-zinc-400">
+                    {agentHealth.tools?.count ?? "—"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-2.5">
+                  <span className="text-sm text-zinc-700">LLM</span>
+                  {agentHealth.llm?.ok === true ? (
+                    <CheckCircle className="h-3 w-3 text-emerald-600" />
+                  ) : agentHealth.llm?.ok === false ? (
+                    <XCircle className="h-3 w-3 text-red-600" />
+                  ) : (
+                    <AlertCircle className="h-3 w-3 text-zinc-400" />
+                  )}
+                </div>
+              </>
             )}
           </div>
         </div>
