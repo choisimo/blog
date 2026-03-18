@@ -20,8 +20,13 @@ const logger = createLogger('live-chat');
 const liveStreams = new Map();
 const liveRooms = new Map();
 const liveRoomHistory = new Map();
-const liveAgentTimers = new Map();
+const liveAgentRounds = new Map();
+const liveAgentMemory = new Map();
+const roomAgentCursor = new Map();
 const LIVE_HISTORY_LIMIT = 30;
+const LIVE_AGENT_MEMORY_LIMIT = 6;
+const LIVE_TRANSCRIPT_LIMIT = 12;
+const LIVE_AGENT_ROUND_LIMIT = 3;
 
 // ---------------------------------------------------------------------------
 // Multi-persona agent pool
@@ -65,12 +70,9 @@ const LIVE_AGENT_PERSONAS = [
     },
   },
 ];
-
-// ---------------------------------------------------------------------------
-// Room persona rotation state
-// ---------------------------------------------------------------------------
-
-const roomPersonaIndex = new Map();
+const LIVE_AGENT_PERSONA_MAP = new Map(
+  LIVE_AGENT_PERSONAS.map((persona) => [persona.name, persona]),
+);
 
 // ---------------------------------------------------------------------------
 // Redis bridge constants & state
@@ -183,11 +185,9 @@ export function unregisterLiveStream(streamId) {
     if (room.size === 0) {
       liveRooms.delete(stream.room);
       liveRoomHistory.delete(stream.room);
-      const timer = liveAgentTimers.get(stream.room);
-      if (timer) {
-        clearTimeout(timer);
-        liveAgentTimers.delete(stream.room);
-      }
+      clearScheduledAgentRound(stream.room);
+      liveAgentMemory.delete(stream.room);
+      roomAgentCursor.delete(stream.room);
     }
   }
 }
@@ -233,6 +233,120 @@ export function appendRoomHistory(room, entry) {
   const prev = liveRoomHistory.get(room) || [];
   const next = [...prev, entry].slice(-LIVE_HISTORY_LIMIT);
   liveRoomHistory.set(room, next);
+}
+
+function getAgentPersona(agentName) {
+  const normalized = String(agentName || "").trim().toLowerCase();
+  return LIVE_AGENT_PERSONA_MAP.get(normalized) || null;
+}
+
+function getAgentSessionId(room, agentName) {
+  return `agent:${room}:${String(agentName || "").trim().toLowerCase()}`;
+}
+
+function ensureAgentMemoryRoom(room) {
+  if (!liveAgentMemory.has(room)) {
+    liveAgentMemory.set(room, new Map());
+  }
+  return liveAgentMemory.get(room);
+}
+
+function clearScheduledAgentRound(room) {
+  const round = liveAgentRounds.get(room);
+  if (round?.timer) {
+    clearTimeout(round.timer);
+  }
+  liveAgentRounds.delete(room);
+}
+
+function appendAgentMemory(room, entry) {
+  const persona = getAgentPersona(entry?.name);
+  if (!persona || entry?.senderType !== "agent") return;
+
+  const roomMemory = ensureAgentMemoryRoom(room);
+  const bucket = roomMemory.get(persona.name) || [];
+  bucket.push({
+    name: persona.name,
+    text: String(entry.text || "").trim(),
+    replyToName:
+      typeof entry.replyToName === "string" ? entry.replyToName.trim() : "",
+    ts: entry.ts || new Date().toISOString(),
+  });
+
+  if (bucket.length > LIVE_AGENT_MEMORY_LIMIT) {
+    bucket.splice(0, bucket.length - LIVE_AGENT_MEMORY_LIMIT);
+  }
+
+  roomMemory.set(persona.name, bucket);
+}
+
+function getAgentRecentMemory(room, agentName, limit = 4) {
+  const persona = getAgentPersona(agentName);
+  if (!persona) return [];
+  const roomMemory = liveAgentMemory.get(room);
+  const bucket = roomMemory?.get(persona.name) || [];
+  if (bucket.length <= limit) {
+    return [...bucket];
+  }
+  return bucket.slice(-limit);
+}
+
+export function recordLiveMessage(room, entry = {}) {
+  const normalizedRoom = normalizeRoomKey(room);
+  const normalizedEntry = {
+    sessionId:
+      typeof entry.sessionId === "string" && entry.sessionId.trim()
+        ? entry.sessionId.trim()
+        : "",
+    name:
+      typeof entry.name === "string" && entry.name.trim()
+        ? entry.name.trim()
+        : entry.senderType === "agent"
+          ? "agent"
+          : "visitor",
+    text: String(entry.text || "").trim(),
+    senderType: entry.senderType === "agent" ? "agent" : "client",
+    ts: entry.ts || new Date().toISOString(),
+    replyToName:
+      typeof entry.replyToName === "string" && entry.replyToName.trim()
+        ? entry.replyToName.trim()
+        : undefined,
+    turnIndex: Number.isFinite(entry.turnIndex)
+      ? Math.max(1, Math.floor(entry.turnIndex))
+      : undefined,
+    roundId:
+      typeof entry.roundId === "string" && entry.roundId.trim()
+        ? entry.roundId.trim()
+        : undefined,
+    personaStyle:
+      typeof entry.personaStyle === "string" && entry.personaStyle.trim()
+        ? entry.personaStyle.trim()
+        : undefined,
+    personaTraits:
+      typeof entry.personaTraits === "string" && entry.personaTraits.trim()
+        ? entry.personaTraits.trim()
+        : undefined,
+    triggeredByMention: entry.triggeredByMention === true,
+    mentionedAgents: Array.isArray(entry.mentionedAgents)
+      ? entry.mentionedAgents
+          .map((value) => String(value || "").trim().toLowerCase())
+          .filter(Boolean)
+          .slice(0, LIVE_AGENT_PERSONAS.length)
+      : [],
+  };
+
+  appendRoomHistory(normalizedRoom, normalizedEntry);
+  appendLiveContextMessage({
+    sessionId: normalizedEntry.sessionId,
+    room: normalizedRoom,
+    name: normalizedEntry.name,
+    text: normalizedEntry.text,
+    senderType: normalizedEntry.senderType,
+    ts: normalizedEntry.ts,
+  });
+  appendAgentMemory(normalizedRoom, normalizedEntry);
+
+  return normalizedEntry;
 }
 
 // ---------------------------------------------------------------------------
@@ -319,21 +433,7 @@ export async function ensureLiveRedisBridge() {
         if (!payload || typeof payload !== "object") return;
 
         if (payload.type === "live_message") {
-          appendRoomHistory(room, {
-            sessionId: payload.sessionId,
-            name: payload.name,
-            text: payload.text,
-            senderType: payload.senderType || "client",
-            ts: payload.ts || new Date().toISOString(),
-          });
-          appendLiveContextMessage({
-            sessionId: payload.sessionId,
-            room,
-            name: payload.name,
-            text: payload.text,
-            senderType: payload.senderType || "client",
-            ts: payload.ts || new Date().toISOString(),
-          });
+          recordLiveMessage(room, payload);
         }
 
         broadcastRoom(room, payload);
@@ -432,59 +532,333 @@ export function normalizeAutoReply(text) {
   return softened.slice(0, liveAgentPolicy.maxReplyChars);
 }
 
-export async function buildAutoReplyText(room, triggerName, triggerText) {
-  // Pick persona (rotate per room so multiple messages use different voices)
+function escapeRegExp(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function extractMentionedAgents(text) {
+  const value = String(text || "");
+  const matches = [];
+
+  for (const persona of LIVE_AGENT_PERSONAS) {
+    const pattern = new RegExp(
+      `(^|[^a-z0-9])@?${escapeRegExp(persona.name)}(?=$|[^a-z0-9])`,
+      "i",
+    );
+    const index = value.search(pattern);
+    if (index >= 0) {
+      matches.push({ name: persona.name, index });
+    }
+  }
+
+  return matches
+    .sort((a, b) => a.index - b.index)
+    .map((entry) => entry.name);
+}
+
+function pickRotatingAgents(room, count, excludedNames = []) {
+  const excluded = new Set(
+    excludedNames.map((value) => String(value || "").trim().toLowerCase()),
+  );
   const personas = LIVE_AGENT_PERSONAS;
-  const prevIdx =
-    roomPersonaIndex.get(room) ?? Math.floor(Math.random() * personas.length);
-  // Skip to a different persona than last time
-  const nextIdx =
-    (prevIdx + 1 + Math.floor(Math.random() * (personas.length - 1))) %
-    personas.length;
-  roomPersonaIndex.set(room, nextIdx);
-  const persona = personas[nextIdx];
+  const maxCount = Math.max(
+    0,
+    Math.min(count, personas.length - Math.min(excluded.size, personas.length)),
+  );
+  if (maxCount === 0) return [];
+
+  let cursor =
+    roomAgentCursor.get(room) ?? Math.floor(Math.random() * personas.length);
+  const picks = [];
+  let attempts = 0;
+
+  while (picks.length < maxCount && attempts < personas.length * 3) {
+    cursor = (cursor + 1) % personas.length;
+    attempts += 1;
+    const persona = personas[cursor];
+    if (!persona || excluded.has(persona.name) || picks.includes(persona.name)) {
+      continue;
+    }
+    picks.push(persona.name);
+  }
+
+  if (picks.length > 0) {
+    const lastIdx = personas.findIndex(
+      (persona) => persona.name === picks[picks.length - 1],
+    );
+    if (lastIdx >= 0) {
+      roomAgentCursor.set(room, lastIdx);
+    }
+  }
+
+  return picks;
+}
+
+function buildAutoReplyPlan(room, triggerText, mentionedAgents) {
+  const normalizedRoom = normalizeRoomKey(room);
+  const normalizedMentions = Array.isArray(mentionedAgents)
+    ? mentionedAgents
+        .map((value) => String(value || "").trim().toLowerCase())
+        .filter((value) => LIVE_AGENT_PERSONA_MAP.has(value))
+    : [];
+  const hasExplicitMention = normalizedMentions.length > 0;
+  const questionLike = /[?？]|(\bwhy\b|\bhow\b|\bwhat\b|\bshould\b|왜|어떻게|뭐|어떤)/i.test(
+    triggerText,
+  );
+  const desiredTurns = hasExplicitMention
+    ? Math.min(
+        LIVE_AGENT_ROUND_LIMIT,
+        Math.max(2, normalizedMentions.length + 1),
+      )
+    : questionLike || String(triggerText || "").length > 90
+      ? Math.min(LIVE_AGENT_ROUND_LIMIT, 3)
+      : 2;
+
+  const starters = normalizedMentions.slice(0, LIVE_AGENT_ROUND_LIMIT);
+  const fillers = pickRotatingAgents(
+    normalizedRoom,
+    desiredTurns - starters.length,
+    starters,
+  );
+  return [...starters, ...fillers].slice(0, LIVE_AGENT_ROUND_LIMIT);
+}
+
+function formatTranscriptEntry(entry) {
+  const replyToName =
+    typeof entry?.replyToName === "string" && entry.replyToName.trim()
+      ? ` -> ${entry.replyToName.trim()}`
+      : "";
+  return `${entry?.name || "anonymous"}${replyToName}: ${entry?.text || ""}`;
+}
+
+function pickReplyDelay(isFollowUp = false) {
+  if (!isFollowUp) {
+    return (
+      liveAgentPolicy.minDelayMs +
+      Math.floor(
+        Math.random() *
+          Math.max(1, liveAgentPolicy.maxDelayMs - liveAgentPolicy.minDelayMs),
+      )
+    );
+  }
+
+  const followUpMin = Math.max(350, Math.floor(liveAgentPolicy.minDelayMs * 0.45));
+  const followUpMax = Math.max(
+    followUpMin + 150,
+    Math.min(liveAgentPolicy.maxDelayMs, Math.floor(liveAgentPolicy.maxDelayMs * 0.72)),
+  );
+  return (
+    followUpMin +
+    Math.floor(Math.random() * Math.max(1, followUpMax - followUpMin))
+  );
+}
+
+function scheduleAgentRoundStep(room, roundId, delayMs) {
+  const round = liveAgentRounds.get(room);
+  if (!round || round.roundId !== roundId) return;
+
+  if (round.timer) {
+    clearTimeout(round.timer);
+  }
+
+  round.timer = setTimeout(() => {
+    void runAgentRoundStep(room, roundId);
+  }, Math.max(120, Math.floor(delayMs)));
+}
+
+export async function buildAutoReplyText(input = {}) {
+  const room = normalizeRoomKey(input.room);
+  const agentName = String(input.agentName || "").trim().toLowerCase();
+  const persona = getAgentPersona(agentName);
+  if (!persona) {
+    throw new Error(`Unknown live agent persona: ${agentName}`);
+  }
+
+  const triggerName =
+    typeof input.triggerName === "string" && input.triggerName.trim()
+      ? input.triggerName.trim()
+      : "visitor";
+  const triggerText = String(input.triggerText || "").trim();
+  const replyToName =
+    typeof input.replyToName === "string" && input.replyToName.trim()
+      ? input.replyToName.trim()
+      : triggerName;
+  const turnIndex = Number.isFinite(input.turnIndex)
+    ? Math.max(1, Math.floor(input.turnIndex))
+    : 1;
+  const roundSize = Number.isFinite(input.roundSize)
+    ? Math.max(1, Math.floor(input.roundSize))
+    : 1;
+  const mentionedAgents = Array.isArray(input.mentionedAgents)
+    ? input.mentionedAgents
+        .map((value) => String(value || "").trim().toLowerCase())
+        .filter((value) => LIVE_AGENT_PERSONA_MAP.has(value))
+    : [];
 
   const history = liveRoomHistory.get(room) || [];
   const transcript = history
-    .slice(-10)
-    .map((msg) => `${msg.name}: ${msg.text}`)
+    .slice(-LIVE_TRANSCRIPT_LIMIT)
+    .map(formatTranscriptEntry)
     .join("\n");
+  const agentMemory = getAgentRecentMemory(room, agentName, 4)
+    .map((entry) => formatTranscriptEntry(entry))
+    .join("\n");
+  const otherAgents = LIVE_AGENT_PERSONAS.filter(
+    (candidate) => candidate.name !== agentName,
+  )
+    .map((candidate) => `${candidate.name} (${candidate.style})`)
+    .join(", ");
 
-  // Detect language from trigger text (simple heuristic: Korean unicode range)
-  const isKorean = /[\uAC00-\uD7A3]/.test(triggerText);
+  const isKorean = /[\uAC00-\uD7A3]/.test(triggerText || transcript);
   const langStyle = isKorean ? persona.lang_hint.ko : persona.lang_hint.en;
+  const directMentioned = mentionedAgents.includes(agentName);
+  const chainGuidance =
+    turnIndex < roundSize
+      ? "Leave a little room for someone else to jump in after you."
+      : "Wrap up your point naturally without sounding like a final summary.";
 
   const prompt = [
-    `You are ${persona.name}, a real participant in an online community room.`,
-    `Your personality: ${persona.traits}.`,
+    `You are ${persona.name}, one named participant in a fast live multi-agent room.`,
+    `Persona style: ${persona.style}. Traits: ${persona.traits}.`,
     `Reply style: ${langStyle}.`,
+    `Other named agents in this room: ${otherAgents || "none"}.`,
+    "Stay fully in character as a person in the room.",
     "Reply in the same language as the latest user message.",
-    "Write 1-3 short natural sentences like a real community member would.",
-    "Do NOT say you are AI. Do NOT mention being a bot or assistant.",
-    "Do NOT use formal greetings. Just respond naturally to the conversation.",
+    "Write exactly one chat bubble with 1-3 short natural sentences.",
+    "Sound spontaneous and conversational, like a real group chat participant.",
+    "Do NOT say you are AI, a bot, an assistant, or a language model.",
+    "Do NOT add speaker labels, quotes, emojis, or stage directions.",
+    "Do NOT repeat the previous speaker verbatim or restate the whole room summary.",
+    directMentioned
+      ? "You were explicitly called by name, so answer directly before widening the discussion."
+      : `You are jumping in after ${replyToName}, so react to their point while keeping the original user message in mind.`,
+    chainGuidance,
     "",
     `Room: ${room}`,
-    `${triggerName} just said: "${triggerText}"`,
+    `Original user trigger from ${triggerName}: "${triggerText}"`,
+    `Immediate previous speaker: ${replyToName}`,
+    mentionedAgents.length > 0
+      ? `Explicitly mentioned agents: ${mentionedAgents.join(", ")}`
+      : "Explicitly mentioned agents: none",
+    `Current turn in the room chain: ${turnIndex}/${roundSize}`,
     "",
-    "Recent chat context:",
+    "Your recent messages in this room:",
+    agentMemory || "(no prior agent-specific history)",
+    "",
+    "Recent room transcript:",
     transcript || "(conversation just started)",
     "",
-    "Write only your reply. Be natural, brief, and conversational.",
+    "Write only the message text.",
   ].join("\n");
 
   const generated = await aiService.generate(prompt, {
-    temperature: Math.min(1.2, liveAgentPolicy.temperature + 0.15),
+    temperature: Math.min(
+      1.2,
+      liveAgentPolicy.temperature + (turnIndex > 1 ? 0.18 : 0.08),
+    ),
   });
 
   return normalizeAutoReply(generated);
 }
 
-export function getAgentPersonaName(room) {
-  const idx = roomPersonaIndex.get(room);
-  if (idx === undefined || idx < 0 || idx >= LIVE_AGENT_PERSONAS.length) {
-    return LIVE_AGENT_PERSONAS[0].name;
+async function runAgentRoundStep(room, roundId) {
+  const round = liveAgentRounds.get(room);
+  if (!round || round.roundId !== roundId) return;
+
+  round.timer = null;
+  const agentName = round.remainingAgents.shift();
+  if (!agentName) {
+    liveAgentRounds.delete(room);
+    return;
   }
-  return LIVE_AGENT_PERSONAS[idx].name;
+
+  const participantCount = await getRoomParticipantCountGlobal(room);
+  if (participantCount > 1 && round.mentionedAgents.length === 0) {
+    liveAgentRounds.delete(room);
+    return;
+  }
+
+  const persona = getAgentPersona(agentName);
+  if (!persona) {
+    if (round.remainingAgents.length === 0) {
+      liveAgentRounds.delete(room);
+      return;
+    }
+    liveAgentRounds.set(room, round);
+    scheduleAgentRoundStep(room, roundId, pickReplyDelay(true));
+    return;
+  }
+
+  const replyToName = round.lastSpeakerName || round.triggerName;
+
+  try {
+    const reply = await buildAutoReplyText({
+      room,
+      agentName,
+      triggerName: round.triggerName,
+      triggerText: round.triggerText,
+      replyToName,
+      mentionedAgents: round.mentionedAgents,
+      turnIndex: round.turnIndex,
+      roundSize: round.roundSize,
+    });
+    const ts = new Date().toISOString();
+    const messagePayload = {
+      type: "live_message",
+      room,
+      sessionId: getAgentSessionId(room, agentName),
+      senderType: "agent",
+      name: agentName,
+      text: reply,
+      ts,
+      onlineCount: await getRoomParticipantCountGlobal(room),
+      replyToName,
+      turnIndex: round.turnIndex,
+      roundId,
+      roundSize: round.roundSize,
+      personaStyle: persona.style,
+      personaTraits: persona.traits,
+      triggeredByMention: round.mentionedAgents.includes(agentName),
+      mentionedAgents: round.mentionedAgents,
+    };
+
+    recordLiveMessage(room, messagePayload);
+    await emitRoomEvent(room, messagePayload);
+
+    notifySession(round.triggerSessionId, {
+      level: "info",
+      message: `${agentName} replied in the room`,
+      room,
+    });
+
+    round.lastSpeakerName = agentName;
+    round.turnIndex += 1;
+
+    if (round.remainingAgents.length === 0) {
+      liveAgentRounds.delete(room);
+      return;
+    }
+
+    liveAgentRounds.set(room, round);
+    scheduleAgentRoundStep(room, roundId, pickReplyDelay(true));
+  } catch (err) {
+    notifySession(round.triggerSessionId, {
+      level: "warn",
+      message: "Auto room reply skipped due to temporary AI error",
+      room,
+    });
+    logger.warn({ room, agentName }, "Auto room reply failed", {
+      error: err?.message,
+    });
+
+    if (round.remainingAgents.length === 0) {
+      liveAgentRounds.delete(room);
+      return;
+    }
+
+    liveAgentRounds.set(room, round);
+    scheduleAgentRoundStep(room, roundId, Math.max(250, pickReplyDelay(true) / 2));
+  }
 }
 
 export function scheduleAutoRoomReply({
@@ -493,80 +867,46 @@ export function scheduleAutoRoomReply({
   triggerName,
   triggerText,
 }) {
-  const existingTimer = liveAgentTimers.get(room);
-  if (existingTimer) {
-    clearTimeout(existingTimer);
-    liveAgentTimers.delete(room);
-  }
-
-  if (Math.random() < liveAgentPolicy.silenceProbability) {
-    return;
-  }
+  const normalizedRoom = normalizeRoomKey(room);
+  clearScheduledAgentRound(normalizedRoom);
 
   if (shouldSkipAutoReply(triggerText)) {
     return;
   }
 
-  const jitterMs =
-    liveAgentPolicy.minDelayMs +
-    Math.floor(
-      Math.random() * (liveAgentPolicy.maxDelayMs - liveAgentPolicy.minDelayMs),
-    );
-  const timer = setTimeout(async () => {
-    liveAgentTimers.delete(room);
+  const mentionedAgents = extractMentionedAgents(triggerText);
+  if (
+    mentionedAgents.length === 0 &&
+    Math.random() < liveAgentPolicy.silenceProbability
+  ) {
+    return;
+  }
 
-    const participantCount = await getRoomParticipantCountGlobal(room);
-    if (participantCount > 1) return;
+  const plan = buildAutoReplyPlan(normalizedRoom, triggerText, mentionedAgents);
+  if (plan.length === 0) return;
 
-    try {
-      const reply = await buildAutoReplyText(room, triggerName, triggerText);
-      const agentSessionId = `agent:${room}:${getAgentPersonaName(room)}`;
-      const ts = new Date().toISOString();
+  const roundId = `round-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  liveAgentRounds.set(normalizedRoom, {
+    roundId,
+    room: normalizedRoom,
+    triggerSessionId,
+    triggerName:
+      typeof triggerName === "string" && triggerName.trim()
+        ? triggerName.trim()
+        : "visitor",
+    triggerText: String(triggerText || "").trim(),
+    mentionedAgents,
+    remainingAgents: [...plan],
+    roundSize: plan.length,
+    turnIndex: 1,
+    lastSpeakerName:
+      typeof triggerName === "string" && triggerName.trim()
+        ? triggerName.trim()
+        : "visitor",
+    timer: null,
+  });
 
-      appendRoomHistory(room, {
-        sessionId: agentSessionId,
-        name: getAgentPersonaName(room),
-        text: reply,
-        senderType: "agent",
-        ts,
-      });
-      appendLiveContextMessage({
-        sessionId: agentSessionId,
-        room,
-        name: getAgentPersonaName(room),
-        text: reply,
-        senderType: "agent",
-        ts,
-      });
-
-      const onlineCount = await getRoomParticipantCountGlobal(room);
-      await emitRoomEvent(room, {
-        type: "live_message",
-        room,
-        sessionId: agentSessionId,
-        senderType: "agent",
-        name: getAgentPersonaName(room),
-        text: reply,
-        ts,
-        onlineCount,
-      });
-
-      notifySession(triggerSessionId, {
-        level: "info",
-        message: `${getAgentPersonaName(room)} replied in the room`,
-        room,
-      });
-    } catch (err) {
-      notifySession(triggerSessionId, {
-        level: "warn",
-        message: "Auto room reply skipped due to temporary AI error",
-        room,
-      });
-      logger.warn({ room }, 'Auto room reply failed', { error: err?.message });
-    }
-  }, jitterMs);
-
-  liveAgentTimers.set(room, timer);
+  scheduleAgentRoundStep(normalizedRoom, roundId, pickReplyDelay(false));
 }
 
 // ---------------------------------------------------------------------------

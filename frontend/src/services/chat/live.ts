@@ -30,6 +30,14 @@ export type LiveChatEvent =
       name: string;
       text: string;
       onlineCount: number;
+      replyToName?: string;
+      turnIndex?: number;
+      roundId?: string;
+      roundSize?: number;
+      personaStyle?: string;
+      personaTraits?: string;
+      triggeredByMention?: boolean;
+      mentionedAgents?: string[];
       ts?: string;
     }
   | {

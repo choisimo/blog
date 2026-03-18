@@ -4,7 +4,6 @@ import { aiService, tryParseJson } from "../lib/ai-service.js";
 import { config } from "../config.js";
 import { openaiEmbeddings } from "../lib/openai-compat-client.js";
 import openNotebook from "../services/open-notebook.service.js";
-import { appendLiveContextMessage } from "../services/live-context.service.js";
 import {
   CHROMA,
   AI_MODELS,
@@ -47,7 +46,7 @@ import {
   getRoomParticipantCountGlobal,
   sendSSE,
   broadcastRoom,
-  appendRoomHistory,
+  recordLiveMessage,
   ensureLiveRedisBridge,
   publishLiveEvent,
   emitRoomEvent,
@@ -57,8 +56,6 @@ import {
   notifySession,
   shouldSkipAutoReply,
   normalizeAutoReply,
-  buildAutoReplyText,
-  getAgentPersonaName,
   scheduleAutoRoomReply,
   getLivePolicySnapshot,
   validateAndApplyLivePolicyUpdate,
@@ -911,16 +908,8 @@ router.post("/live/message", async (req, res, next) => {
     }
 
     const ts = new Date().toISOString();
-    appendRoomHistory(room, {
+    recordLiveMessage(room, {
       sessionId,
-      name,
-      text,
-      senderType,
-      ts,
-    });
-    appendLiveContextMessage({
-      sessionId,
-      room,
       name,
       text,
       senderType,
@@ -946,10 +935,7 @@ router.post("/live/message", async (req, res, next) => {
       room,
     });
 
-    if (
-      senderType === "client" &&
-      (await getRoomParticipantCountGlobal(room)) <= 1
-    ) {
+    if (senderType === "client") {
       scheduleAutoRoomReply({
         room,
         triggerSessionId: sessionId,
