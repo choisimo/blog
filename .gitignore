@@ -163,6 +163,14 @@ Desktop.ini
 coverage/
 *.lcov
 .nyc_output/
+test-results/
+playwright-report/
+frontend/test-results/
+frontend/playwright-report/
+htmlcov/
+.coverage
+**/.pytest_cache/
+**/.mypy_cache/
 
 # -----------------------------------------------------------------------------
 # TypeScript
