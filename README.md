@@ -1,6 +1,8 @@
 # Nodove Blog Platform
 
 > Full-Stack 블로그 플랫폼 - Edge Computing 기반 고성능 아키텍처
+>
+> 참고: 이 문서의 공개 호스트명과 운영 주소 예시는 모두 비식별 placeholder입니다.
 
 ## 🏗️ Architecture Overview
 
@@ -13,9 +15,9 @@ flowchart TB
     end
 
     subgraph "Cloudflare Edge (Global)"
-        API_GW[API Gateway<br/>api.nodove.com]
-        R2_GW[R2 Gateway<br/>assets-b.nodove.com]
-        TERM_GW[Terminal Gateway<br/>terminal.nodove.com]
+        API_GW[API Gateway<br/>api.example.com]
+        R2_GW[R2 Gateway<br/>assets.example.com]
+        TERM_GW[Terminal Gateway<br/>terminal.example.com]
         
         D1[(D1 Database)]
         R2[(R2 Storage)]
@@ -23,7 +25,7 @@ flowchart TB
     end
 
     subgraph "Origin Server"
-        BE[Backend Server<br/>blog-b.nodove.com]
+        BE[Backend Server<br/>origin.example.com]
         AI_SRV[AI Server]
         RAG[RAG Service]
     end
@@ -62,6 +64,7 @@ flowchart TB
 | Subsystem | Description | Documentation |
 |-----------|-------------|---------------|
 | **AI Service** | 지능형 기능 (요약, 분석, RAG) | [📄 docs/AI_SERVICE_ANATOMY_MAP.md](./docs/AI_SERVICE_ANATOMY_MAP.md) |
+| **Content Naming** | 게시글 파일명/slug 운영 규칙 | [📄 docs/post-filename-convention.md](./docs/post-filename-convention.md) |
 | **CI/CD Pipeline** | GitHub Actions 자동 배포 | [📄 backend/README-CICD.md](./backend/README-CICD.md) |
 | **Doc Converter** | DOCX/PDF → Markdown 변환기 | [📄 doc-converter/README.md](./doc-converter/README.md) |
 
@@ -88,6 +91,7 @@ flowchart TB
 - **Framework**: Express 4
 - **Image Processing**: Sharp
 - **AI Backend**: OpenCode Server
+- **Code Execution**: Self-hosted Piston
 - **Vector DB**: ChromaDB
 
 ---
@@ -96,11 +100,11 @@ flowchart TB
 
 | Domain | Service | Purpose |
 |--------|---------|---------|
-| `noblog.nodove.com` | Frontend | React SPA (GitHub Pages) |
-| `api.nodove.com` | API Gateway | All API requests |
-| `assets-b.nodove.com` | R2 Gateway | Static assets, images |
-| `terminal.nodove.com` | Terminal Gateway | WebSocket terminal |
-| `blog-b.nodove.com` | Backend | Origin server |
+| `blog.example.com` | Frontend | React SPA (GitHub Pages) |
+| `api.example.com` | API Gateway | All API requests |
+| `assets.example.com` | R2 Gateway | Static assets, images |
+| `terminal.example.com` | Terminal Gateway | WebSocket terminal |
+| `origin.example.com` | Backend | Origin server |
 
 ---
 
@@ -357,13 +361,13 @@ flowchart LR
 
 ```bash
 # API Gateway
-curl https://api.nodove.com/health
+curl https://api.example.com/health
 
 # Backend
-curl https://blog-b.nodove.com/api/v1/healthz
+curl https://origin.example.com/api/v1/healthz
 
 # R2 Gateway
-curl https://assets-b.nodove.com/health
+curl https://assets.example.com/health
 ```
 
 ### Logs
@@ -400,5 +404,5 @@ This project is private. All rights reserved.
 ## 📞 Contact
 
 - **Author**: nodove
-- **Blog**: [noblog.nodove.com](https://noblog.nodove.com)
-- **API**: [api.nodove.com](https://api.nodove.com)
+- **Blog**: [blog.example.com](https://blog.example.com)
+- **API**: [api.example.com](https://api.example.com)

@@ -9,7 +9,7 @@ readTime: "18분"
 
 ## 정렬 알고리즘 수도 코드 완전 해부
 
-기존 글인 《정렬 알고리즘 완전 정복: 버블 정렬부터 힙 정렬까지》(@/home/nodove/workspace/blog/frontend/public/posts/2025/sorting-algorithms-masterclass.md)를 기반으로, 이번에는 **각 알고리즘의 수도 코드 각각의 행이 의미하는 바를 세밀하게 분석**한다. 흐름을 한 눈에 이해하는 것과 별개로, “왜 이 줄이 필요할까?”라는 의문을 해결하는 데 집중했다.
+기존 글인 《정렬 알고리즘 완전 정복: 버블 정렬부터 힙 정렬까지》(@<repo-root>/frontend/public/posts/2025/sorting-algorithms-masterclass.md)를 기반으로, 이번에는 **각 알고리즘의 수도 코드 각각의 행이 의미하는 바를 세밀하게 분석**한다. 흐름을 한 눈에 이해하는 것과 별개로, “왜 이 줄이 필요할까?”라는 의문을 해결하는 데 집중했다.
 
 > **읽는 방법**
 >

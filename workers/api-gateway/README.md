@@ -1,5 +1,7 @@
 # Blog API Gateway
 
+> 참고: 이 문서의 공개 호스트명과 운영 주소 예시는 모두 비식별 placeholder입니다.
+
 ## 1. Service Overview (개요)
 
 ### 목적
@@ -36,7 +38,7 @@ flowchart TB
     end
 
     subgraph "Cloudflare Edge"
-        GW[API Gateway<br/>api.nodove.com]
+        GW[API Gateway<br/>api.example.com]
         D1[(D1 Database)]
         R2[(R2 Storage)]
         KV[(KV Store)]
@@ -236,7 +238,7 @@ Workers에서 처리하지 않는 라우트는 자동으로 백엔드 서버로 
 |----------|-----|------|
 | `ENV` | `development` | `production` |
 | `ALLOWED_ORIGINS` | `localhost:5173,...` | secret 권장 |
-| `API_BASE_URL` | `https://api.nodove.com` | secret 권장 |
+| `API_BASE_URL` | `https://api.example.com` | secret 권장 |
 
 프로덕션에서는 주요 값(`ALLOWED_ORIGINS`, `API_BASE_URL`, `ASSETS_BASE_URL`, 모델 관련 값)을 `wrangler secret put` 또는 GitHub Secrets 기반 배포 파이프라인으로 주입하는 방식을 권장합니다.
 

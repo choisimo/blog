@@ -1,5 +1,7 @@
 # Backend API Server
 
+> 참고: 이 문서의 공개 호스트명, 운영 주소, 이메일 예시는 모두 비식별 placeholder입니다.
+
 ## 1. Service Overview (개요)
 
 ### 목적
@@ -21,6 +23,7 @@ Backend API Server는 블로그 플랫폼의 **Origin 서버**입니다. Gateway
 | **AI API**        | OpenAI SDK 호환 AI 기능 (요약, 분석)          | Active |
 | **RAG API**       | ChromaDB 기반 벡터 검색 및 질의응답           | Active |
 | **Agent API**     | Multi-tool AI Agent orchestration             | Active |
+| **Execute API**   | Self-hosted Piston code execution proxy       | Active |
 | **OG Image**      | Sharp 기반 Open Graph 이미지 동적 생성        | Active |
 | **Comments API**  | 댓글 관리                                     | Active |
 | **Analytics API** | 조회수/트렌딩                                 | Active |
@@ -47,7 +50,7 @@ flowchart TB
     end
 
     subgraph "Origin Server (Docker)"
-        BE[Backend Server<br/>blog-b.nodove.com:5080]
+        BE[Backend Server<br/>origin.example.com:5080]
 
         subgraph "Services"
             AI_SRV[AI Server<br/>OpenAI-compatible endpoint]
@@ -147,6 +150,17 @@ Host: ./frontend/public  →  Container: /frontend/public
 | `POST` | `/chat`    | `{ message, sessionId? }` | `{ response, actions }` | Agent 대화            |
 | `POST` | `/execute` | `{ tool, params }`        | `{ result }`            | 도구 직접 실행        |
 | `GET`  | `/tools`   | -                         | `{ tools[] }`           | 사용 가능한 도구 목록 |
+| `GET`  | `/health`  | -                         | `{ status, llm, tools }`| Agent 상태 확인       |
+| `GET`  | `/prompts` | -                         | `{ prompts[] }`         | Admin 프롬프트 목록   |
+| `PUT`  | `/prompts/:mode` | `{ text }`          | `{ mode, text }`        | Admin 프롬프트 덮어쓰기 |
+| `DELETE` | `/prompts/:mode` | -                  | `{ mode, text }`        | Admin 프롬프트 초기화 |
+
+### Execute Routes (`/api/v1/execute`)
+
+| Method | Endpoint    | Input                                       | Output             | Description                |
+| ------ | ----------- | ------------------------------------------- | ------------------ | -------------------------- |
+| `GET`  | `/runtimes` | -                                           | `{ ok, data }`     | 사용 가능한 Piston 런타임 |
+| `POST` | `/`         | `{ language, version?, files[], stdin? }`   | `{ ok, data }`     | 코드 실행 프록시           |
 
 ### Posts Routes (`/api/v1/posts`) - Legacy
 
@@ -264,7 +278,7 @@ APP_ENV=production              # development | staging | production
 HOST=0.0.0.0
 PORT=5080
 TRUST_PROXY=1                   # Reverse proxy 앞에서 동작 시
-ALLOWED_ORIGINS=https://noblog.nodove.com,https://api.nodove.com
+ALLOWED_ORIGINS=https://blog.example.com,https://api.example.com
 
 # ============================================
 # AI - OpenAI-Compatible

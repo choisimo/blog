@@ -1,5 +1,7 @@
 # k3s Migration Notes
 
+> Note: Public hostnames, registry coordinates, and repo URLs in this document use sanitized placeholders.
+
 ## Assessment
 
 Moving this stack from `docker-compose` plus Watchtower to k3s is viable, but not as a 1:1 translation.
@@ -48,7 +50,7 @@ This repo still has a few runtime assumptions that matter in Kubernetes:
 - `api.yaml`: backend API deployment, repo-sync init container, sqlite PVC
 - `postgres.yaml`, `redis.yaml`, `chromadb.yaml`, `surrealdb.yaml`: stateful services
 - `open-notebook.yaml`: notebook deployment
-- `ingress.yaml`: Traefik ingress for `blog-b.nodove.com`
+- `ingress.yaml`: Traefik ingress for `origin.example.com`
 - `terminal-optional.yaml`, `terminal-ingress-optional.yaml`: optional terminal path using DinD
 - `secret-example.yaml`, `registry-secret.example.yaml`: examples only, not included in kustomization
 

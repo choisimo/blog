@@ -1,5 +1,7 @@
 # R2 Gateway
 
+> 참고: 이 문서의 공개 호스트명과 운영 주소 예시는 모두 비식별 placeholder입니다.
+
 ## 1. Service Overview (개요)
 
 ### 목적
@@ -217,7 +219,7 @@ If-Match: "old_etag"
 
 | Variable | Dev | Prod |
 |----------|-----|------|
-| `ALLOWED_ORIGINS` | `*` | `noblog.nodove.com,...` |
+| `ALLOWED_ORIGINS` | `*` | `blog.example.com,...` |
 | `ALLOWED_INTERNAL_ORIGINS` | - | API Gateway URL |
 
 ---
@@ -245,14 +247,14 @@ If-Match: "old_etag"
 
 ```bash
 # 공개 에셋 테스트
-curl -I https://assets-b.nodove.com/images/cover.jpg
+curl -I https://assets.example.com/images/cover.jpg
 
 # ETag 검증 테스트
-curl -H "If-None-Match: \"abc123\"" https://assets-b.nodove.com/images/cover.jpg
+curl -H "If-None-Match: \"abc123\"" https://assets.example.com/images/cover.jpg
 
 # Internal API 테스트
 curl -H "X-Internal-Key: your-key" \
-  "https://assets-b.nodove.com/internal/memories/user1/"
+  "https://assets.example.com/internal/memories/user1/"
 
 # 실시간 로그
 npx wrangler tail r2-gateway --env production

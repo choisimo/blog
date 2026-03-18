@@ -18,7 +18,7 @@
 
 ### Option 1: blog-api-gateway에 통합
 - `blog-api-gateway`의 `/terminal/*` 라우트에서 JWT 인증 + rate limiting 구현
-- 프론트엔드가 `wss://api.nodove.com/terminal` 사용하도록 변경
+- 프론트엔드가 `wss://api.example.com/terminal` 사용하도록 변경
 
 ### Option 2: terminal-server에서 직접 인증
 - `terminal-server`에 JWT 검증 로직 추가
@@ -26,13 +26,13 @@
 - nginx에서 직접 `/terminal/` 라우팅
 
 ### Option 3: Cloudflare Access 사용
-- Cloudflare Access로 `terminal.nodove.com` 보호
+- Cloudflare Access로 `terminal.example.com` 보호
 - JWT 검증을 Cloudflare Access에 위임
 
 ## 마이그레이션 순서
 
 1. 새 인증 방식 구현 및 테스트
-2. 프론트엔드 URL 변경 (`terminal.nodove.com` → `api.nodove.com/terminal`)
+2. 프론트엔드 URL 변경 (`terminal.example.com` → `api.example.com/terminal`)
 3. DNS/Route 변경
 4. 이 Worker 삭제
 

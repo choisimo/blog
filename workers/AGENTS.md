@@ -1,5 +1,7 @@
 # AGENTS.md — workers/
 
+> Note: Public hostnames in this guide use sanitized placeholders.
+
 ## OVERVIEW
 
 Four Cloudflare Workers forming the edge layer. TypeScript, built with `wrangler`. All workers use `nodejs_compat` flag.
@@ -8,10 +10,10 @@ Four Cloudflare Workers forming the edge layer. TypeScript, built with `wrangler
 
 | Worker | Domain | Purpose |
 |--------|--------|---------|
-| `api-gateway` | `api.nodove.com` | Unified API — D1/R2/KV + proxy to backend |
+| `api-gateway` | `api.example.com` | Unified API — D1/R2/KV + proxy to backend |
 | `r2-gateway` | (internal) | R2 object storage proxy |
-| `terminal-gateway` | `terminal.nodove.com` | WebSocket proxy to backend terminal-server |
-| `seo-gateway` | `noblog.nodove.com` | SSR meta-tag injection for crawlers |
+| `terminal-gateway` | `terminal.example.com` | WebSocket proxy to backend terminal-server |
+| `seo-gateway` | `blog.example.com` | SSR meta-tag injection for crawlers |
 
 ## STRUCTURE
 

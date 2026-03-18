@@ -1,5 +1,7 @@
 # 코드 최적화 분석 보고서
 
+> 참고: 이 문서의 공개 호스트명과 운영 주소 예시는 모두 비식별 placeholder입니다.
+
 > 작성일: 2026-03-16  
 > 분석 범위: Frontend (React SPA), Backend (Node.js/Express), Cloudflare Workers (API Gateway)  
 > 분석 방법: 정적 코드 분석 + Explore 에이전트 2개 + Oracle 검증
@@ -12,14 +14,14 @@
 [Client Browser]
     ↓ HTTPS
 [Cloudflare Edge]
-    ├── api-gateway (api.nodove.com) — Hono, D1/R2/KV, 백엔드 프록시
-    ├── r2-gateway (assets-b.nodove.com) — R2 정적 에셋 서빙
-    ├── seo-gateway (noblog.nodove.com) — 크롤러용 메타태그 주입
-    └── terminal-gateway (terminal.nodove.com) — WebSocket 프록시
+    ├── api-gateway (api.example.com) — Hono, D1/R2/KV, 백엔드 프록시
+    ├── r2-gateway (assets.example.com) — R2 정적 에셋 서빙
+    ├── seo-gateway (blog.example.com) — 크롤러용 메타태그 주입
+    └── terminal-gateway (terminal.example.com) — WebSocket 프록시
     ↓ Cloudflare Tunnel
-[Origin Backend] (blog-b.nodove.com)
+[Origin Backend] (origin.example.com)
     └── Node.js 20 + Express, Sharp, ChromaDB, Redis, AI upstream
-[Frontend] (noblog.nodove.com)
+[Frontend] (blog.example.com)
     └── React 18 SPA, Vite 5, GitHub Pages
 ```
 
