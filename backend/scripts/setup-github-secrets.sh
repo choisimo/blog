@@ -124,6 +124,7 @@ set_var "POSTGRES_USER" "bloguser"
 # AI
 set_var "AI_DEFAULT_MODEL" "gpt-4.1"
 set_var "AI_SERVER_URL" "https://api.openai.com/v1"
+set_var "WORKER_API_URL" "https://api.nodove.com"
 
 # Assets
 set_var "ASSETS_BASE_URL" "https://assets-b.nodove.com"

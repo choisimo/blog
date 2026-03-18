@@ -48,6 +48,7 @@ services:
       - SQLITE_PATH=/app/.data/blog.db
       - SQLITE_MIGRATIONS_DIR=/app/migrations
       - REDIS_URL=redis://redis:6379
+      - WORKER_API_URL=${WORKER_API_URL:?WORKER_API_URL must be set in .env}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-bloguser}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@postgres:5432/${POSTGRES_DB:-bloganalytics}
     volumes:
       - ../frontend/public:/frontend/public

@@ -152,6 +152,7 @@ if [ ! -f ".env" ] || [ "$backup_env" = "y" ]; then
     # Optional configurations
     echo ""
     echo "Optional configurations (press Enter to skip):"
+    prompt_input "Worker API URL (api-gateway Worker, e.g. https://api.example.com)" WORKER_API_URL ""
     prompt_input "Gemini API Key" GEMINI_API_KEY ""
     
     # Create .env file
@@ -175,6 +176,9 @@ GIT_USER_EMAIL="${GIT_USER_EMAIL}"
 
 # Admin Protection
 ADMIN_BEARER_TOKEN=${ADMIN_TOKEN}
+
+# Worker API URL (required for AI dynamic config)
+WORKER_API_URL=${WORKER_API_URL}
 
 # Optional Services
 GEMINI_API_KEY=${GEMINI_API_KEY}
