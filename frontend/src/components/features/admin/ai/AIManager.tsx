@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { Bot, Cpu, GitBranch, BarChart3, Activity, FlaskConical } from 'lucide-react';
+import { Bot, Cpu, GitBranch, BarChart3, Activity, FlaskConical, MessageSquare } from 'lucide-react';
 import { ProvidersManager } from './ProvidersManager';
 import { ModelsManager } from './ModelsManager';
 import { RoutesManager } from './RoutesManager';
 import { UsageMonitor } from './UsageMonitor';
 import { TraceViewer } from './TraceViewer';
 import { Playground } from './Playground';
+import { PromptsManager } from './PromptsManager';
 
-type TabId = 'playground' | 'models' | 'providers' | 'routes' | 'monitoring' | 'traces';
+type TabId = 'playground' | 'models' | 'providers' | 'routes' | 'monitoring' | 'traces' | 'prompts';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'playground', label: 'Playground', icon: <FlaskConical className="h-3.5 w-3.5" /> },
@@ -16,6 +17,7 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'routes', label: 'Routes', icon: <GitBranch className="h-3.5 w-3.5" /> },
   { id: 'monitoring', label: 'Monitoring', icon: <BarChart3 className="h-3.5 w-3.5" /> },
   { id: 'traces', label: 'Traces', icon: <Activity className="h-3.5 w-3.5" /> },
+  { id: 'prompts', label: 'Prompts', icon: <MessageSquare className="h-3.5 w-3.5" /> },
 ];
 
 export function AIManager() {
@@ -48,6 +50,7 @@ export function AIManager() {
         {activeTab === 'routes' && <RoutesManager />}
         {activeTab === 'monitoring' && <UsageMonitor />}
         {activeTab === 'traces' && <TraceViewer />}
+        {activeTab === 'prompts' && <PromptsManager />}
       </div>
     </div>
   );

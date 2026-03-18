@@ -28,6 +28,7 @@ import {
 import { normalizeMode, listAgentModes } from "../lib/agent/mode-registry.js";
 import { getSessionMemory } from "../lib/agent/memory/session.js";
 import { requireFeature } from "../middleware/featureFlags.js";
+import { requireAdmin } from "../middleware/adminAuth.js";
 import { buildLiveContextPrompt } from "../services/live-context.service.js";
 import { createLogger } from "../lib/logger.js";
 
@@ -610,6 +611,103 @@ router.post("/memory/search", async (req, res) => {
       error: { message: err.message, code: "INTERNAL_ERROR" },
     });
   }
+});
+// ============================================================================
+// ADMIN: AGENT PROMPT MANAGEMENT
+// ============================================================================
+
+/**
+ * Runtime prompt overrides (in-memory, resets on restart).
+ * key = mode name (e.g. "default"), value = overridden prompt text
+ */
+const promptOverrides = new Map();
+
+const MODE_LABELS = {
+  default: 'Default',
+  research: 'Research',
+  coding: 'Coding',
+  blog: 'Blog Writing',
+  article: 'Article Q&A',
+  terminal: 'Terminal',
+  performance: 'Performance',
+};
+
+/**
+ * GET /prompts — list all agent modes with their current prompt text
+ * Admin-only
+ */
+router.get('/prompts', requireAdmin, (req, res) => {
+  const prompts = Object.keys(SYSTEM_PROMPTS).map((mode) => ({
+    mode,
+    label: MODE_LABELS[mode] || mode,
+    text: promptOverrides.has(mode) ? promptOverrides.get(mode) : SYSTEM_PROMPTS[mode],
+    isOverridden: promptOverrides.has(mode),
+  }));
+  res.json({ ok: true, data: { prompts } });
+});
+
+/**
+ * PUT /prompts/:mode — update a prompt mode's text at runtime
+ * Admin-only
+ */
+router.put('/prompts/:mode', requireAdmin, (req, res) => {
+  const { mode } = req.params;
+  const { text } = req.body;
+
+  if (!SYSTEM_PROMPTS[mode]) {
+    return res.status(400).json({
+      ok: false,
+      error: { message: `Unknown mode: ${mode}. Valid modes: ${Object.keys(SYSTEM_PROMPTS).join(', ')}`, code: 'INVALID_MODE' },
+    });
+  }
+
+  if (typeof text !== 'string' || !text.trim()) {
+    return res.status(400).json({
+      ok: false,
+      error: { message: 'text must be a non-empty string', code: 'INVALID_REQUEST' },
+    });
+  }
+
+  promptOverrides.set(mode, text.trim());
+  logger.info({}, 'Agent prompt override set', { mode, length: text.length });
+
+  res.json({
+    ok: true,
+    data: {
+      mode,
+      label: MODE_LABELS[mode] || mode,
+      text: text.trim(),
+      isOverridden: true,
+    },
+  });
+});
+
+/**
+ * DELETE /prompts/:mode — reset a prompt mode to its default
+ * Admin-only
+ */
+router.delete('/prompts/:mode', requireAdmin, (req, res) => {
+  const { mode } = req.params;
+
+  if (!SYSTEM_PROMPTS[mode]) {
+    return res.status(400).json({
+      ok: false,
+      error: { message: `Unknown mode: ${mode}`, code: 'INVALID_MODE' },
+    });
+  }
+
+  promptOverrides.delete(mode);
+  logger.info({}, 'Agent prompt override reset', { mode });
+
+  res.json({
+    ok: true,
+    data: {
+      mode,
+      label: MODE_LABELS[mode] || mode,
+      text: SYSTEM_PROMPTS[mode],
+      isOverridden: false,
+    },
+  });
 });
 
 export default router;
