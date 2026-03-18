@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { createLogger } from '../lib/logger.js';
+import { validateBody } from '../middleware/validation.js';
+import { executeBodySchema } from '../middleware/schemas/execute.schema.js';
 
 const router = Router();
 const logger = createLogger('execute');
@@ -22,12 +24,8 @@ router.get('/runtimes', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', validateBody(executeBodySchema), async (req, res) => {
   const { language, version, files, stdin, args, compile_timeout, run_timeout } = req.body;
-
-  if (!language || !files || !Array.isArray(files) || files.length === 0) {
-    return res.status(400).json({ ok: false, error: 'language and files[] are required' });
-  }
 
   const payload = {
     language,

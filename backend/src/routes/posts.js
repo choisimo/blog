@@ -14,6 +14,10 @@ const logger = createLogger('posts-route');
 
 const router = Router();
 
+async function exists(filePath) {
+  try { await fs.promises.access(filePath); return true; } catch { return false; }
+}
+
 /**
  * Fetch posts manifest from frontend
  */
@@ -57,10 +61,10 @@ async function fetchRemotePost(year, slug) {
 /**
  * Check if filesystem source is available
  */
-function isFilesystemAvailable() {
+async function isFilesystemAvailable() {
   try {
     const { postsDir } = config.content;
-    return fs.existsSync(postsDir);
+    return await exists(postsDir);
   } catch {
     return false;
   }
@@ -110,18 +114,24 @@ function computeItem(year, file, fm, body) {
   };
 }
 
-function listYears(postsDir) {
-  return fs
-    .readdirSync(postsDir)
-    .filter(item => fs.statSync(path.join(postsDir, item)).isDirectory())
-    .filter(year => /^\d{4}$/.test(year));
+async function listYears(postsDir) {
+  const entries = await fs.promises.readdir(postsDir);
+  const years = [];
+  for (const item of entries) {
+    const stat = await fs.promises.stat(path.join(postsDir, item));
+    if (stat.isDirectory() && /^\d{4}$/.test(item)) {
+      years.push(item);
+    }
+  }
+  return years;
 }
 
-function generatePerYearManifest(year) {
+async function generatePerYearManifest(year) {
   const { postsDir } = config.content;
   const yearDir = path.join(postsDir, year);
-  if (!fs.existsSync(yearDir)) return { valid: 0, invalid: 0 };
-  const files = fs.readdirSync(yearDir).filter(f => f.endsWith('.md'));
+  if (!(await exists(yearDir))) return { valid: 0, invalid: 0 };
+  const allFiles = await fs.promises.readdir(yearDir);
+  const files = allFiles.filter(f => f.endsWith('.md'));
   const valid = [];
   const invalid = [];
   for (const file of files) {
@@ -131,7 +141,7 @@ function generatePerYearManifest(year) {
     }
     const abs = path.join(yearDir, file);
     try {
-      const raw = fs.readFileSync(abs, 'utf8');
+      const raw = await fs.promises.readFile(abs, 'utf8');
       if (!raw.trim()) {
         invalid.push(file);
         continue;
@@ -148,22 +158,23 @@ function generatePerYearManifest(year) {
     totalFiles: valid.length,
     excludedFiles: invalid.length,
   };
-  fs.writeFileSync(path.join(yearDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  await fs.promises.writeFile(path.join(yearDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   return { valid: valid.length, invalid: invalid.length };
 }
 
-function generateUnifiedManifest() {
+async function generateUnifiedManifest() {
   const { postsDir, publicDir } = config.content;
-  const years = listYears(postsDir);
+  const years = await listYears(postsDir);
   const items = [];
   for (const year of years) {
     const yearDir = path.join(postsDir, year);
-    const files = fs.readdirSync(yearDir).filter(f => f.endsWith('.md'));
+    const allFiles = await fs.promises.readdir(yearDir);
+    const files = allFiles.filter(f => f.endsWith('.md'));
     for (const file of files) {
       if (!validateFilename(file)) continue;
       const abs = path.join(yearDir, file);
       try {
-        const raw = fs.readFileSync(abs, 'utf8');
+        const raw = await fs.promises.readFile(abs, 'utf8');
         if (!raw.trim()) continue;
         const { data: fm, content } = matter(raw);
         const item = computeItem(year, file, fm, content);
@@ -181,10 +192,10 @@ function generateUnifiedManifest() {
   };
   const rootPath = path.join(publicDir, 'posts-manifest.json');
   const nestedPath = path.join(publicDir, 'posts', 'posts-manifest.json');
-  fse.ensureDirSync(path.dirname(nestedPath));
+  await fse.ensureDir(path.dirname(nestedPath));
   const payload = `${JSON.stringify(unified, null, 2)}\n`;
-  fs.writeFileSync(rootPath, payload);
-  fs.writeFileSync(nestedPath, payload);
+  await fs.promises.writeFile(rootPath, payload);
+  await fs.promises.writeFile(nestedPath, payload);
   return unified;
 }
 
@@ -197,19 +208,20 @@ router.get('/', httpCache({ ttl: 300, prefix: 'posts' }), async (req, res, next)
     const offset = parseInt(q.offset) || 0;
 
     // Try filesystem first, fallback to remote manifest
-    if (isFilesystemAvailable()) {
+    if (await isFilesystemAvailable()) {
       const { postsDir } = config.content;
-      const years = listYears(postsDir);
+      const years = await listYears(postsDir);
       let items = [];
       const yearsToScan = year && /^\d{4}$/.test(year) ? [year] : years;
       
       for (const y of yearsToScan) {
         const dir = path.join(postsDir, y);
-        if (!fs.existsSync(dir)) continue;
-        for (const file of fs.readdirSync(dir).filter(f => f.endsWith('.md'))) {
+        if (!(await exists(dir))) continue;
+        const allFiles = await fs.promises.readdir(dir);
+        for (const file of allFiles.filter(f => f.endsWith('.md'))) {
           if (!validateFilename(file)) continue;
           const abs = path.join(dir, file);
-          const raw = fs.readFileSync(abs, 'utf8');
+          const raw = await fs.promises.readFile(abs, 'utf8');
           const { data: fm, content } = matter(raw);
           if (fm.published === false && !includeDrafts) continue;
           items.push(computeItem(y, file, fm, content));
@@ -265,10 +277,10 @@ router.get('/:year/:slug', httpCache({ ttl: 600, prefix: 'posts' }), async (req,
     const file = `${slug}.md`;
     
     // Try filesystem first
-    if (isFilesystemAvailable()) {
+    if (await isFilesystemAvailable()) {
       const abs = path.join(config.content.postsDir, year, file);
-      if (fs.existsSync(abs)) {
-        const raw = fs.readFileSync(abs, 'utf8');
+      if (await exists(abs)) {
+        const raw = await fs.promises.readFile(abs, 'utf8');
         const { data: fm, content } = matter(raw);
         const item = computeItem(year, file, fm, content);
         return res.json({ ok: true, data: { item, markdown: raw }, source: 'filesystem' });
@@ -303,9 +315,9 @@ router.post('/', requireAdmin, async (req, res, next) => {
       return res.status(400).json({ ok: false, error: 'invalid slug/filename' });
 
     const yearDir = path.join(config.content.postsDir, year);
-    fse.ensureDirSync(yearDir);
+    await fse.ensureDir(yearDir);
     const abs = path.join(yearDir, filename);
-    if (fs.existsSync(abs))
+    if (await exists(abs))
       return res.status(409).json({ ok: false, error: 'already exists' });
 
     const fm = {
@@ -319,11 +331,11 @@ router.post('/', requireAdmin, async (req, res, next) => {
     const body = typeof content === 'string' ? content : '';
     const md = buildFrontmatterMarkdown(fm, body);
 
-    fs.writeFileSync(abs, md);
+    await fs.promises.writeFile(abs, md);
 
     // regenerate manifests
-    generatePerYearManifest(year);
-    const unified = generateUnifiedManifest();
+    await generatePerYearManifest(year);
+    const unified = await generateUnifiedManifest();
 
     await invalidateCacheByPrefix('posts');
 
@@ -340,7 +352,7 @@ router.put('/:year/:slug', requireAdmin, async (req, res, next) => {
       return res.status(400).json({ ok: false, error: 'Invalid year' });
     const filename = `${slug}.md`;
     const abs = path.join(config.content.postsDir, year, filename);
-    if (!fs.existsSync(abs))
+    if (!(await exists(abs)))
       return res.status(404).json({ ok: false, error: 'Not found' });
 
     const { markdown, frontmatter, content } = req.body || {};
@@ -349,16 +361,16 @@ router.put('/:year/:slug', requireAdmin, async (req, res, next) => {
       newMd = markdown;
     } else {
       // if fm/content provided, rebuild
-      const existing = fs.readFileSync(abs, 'utf8');
+      const existing = await fs.promises.readFile(abs, 'utf8');
       const { data: fm0 } = matter(existing);
       const fm = { ...fm0, ...(frontmatter && typeof frontmatter === 'object' ? frontmatter : {}) };
       const body = typeof content === 'string' ? content : existing.replace(/^---[\s\S]*?---\n?/, '');
       newMd = buildFrontmatterMarkdown(fm, body);
     }
 
-    fs.writeFileSync(abs, newMd);
-    generatePerYearManifest(year);
-    const unified = generateUnifiedManifest();
+    await fs.promises.writeFile(abs, newMd);
+    await generatePerYearManifest(year);
+    const unified = await generateUnifiedManifest();
 
     await invalidateCacheByPrefix('posts');
 
@@ -375,14 +387,14 @@ router.delete('/:year/:slug', requireAdmin, async (req, res, next) => {
       return res.status(400).json({ ok: false, error: 'Invalid year' });
     const filename = `${slug}.md`;
     const abs = path.join(config.content.postsDir, year, filename);
-    if (!fs.existsSync(abs))
+    if (!(await exists(abs)))
       return res.status(404).json({ ok: false, error: 'Not found' });
 
-    fs.unlinkSync(abs);
+    await fs.promises.unlink(abs);
     // If year dir becomes empty, keep dir (front-end expects /posts/<year>/)
 
-    generatePerYearManifest(year);
-    const unified = generateUnifiedManifest();
+    await generatePerYearManifest(year);
+    const unified = await generateUnifiedManifest();
 
     await invalidateCacheByPrefix('posts');
 
@@ -394,9 +406,9 @@ router.delete('/:year/:slug', requireAdmin, async (req, res, next) => {
 
 router.post('/regenerate-manifests', requireAdmin, async (req, res, next) => {
   try {
-    const years = listYears(config.content.postsDir);
-    for (const y of years) generatePerYearManifest(y);
-    const unified = generateUnifiedManifest();
+    const years = await listYears(config.content.postsDir);
+    for (const y of years) await generatePerYearManifest(y);
+    const unified = await generateUnifiedManifest();
     return res.json({ ok: true, data: { total: unified.total, years: unified.years } });
   } catch (err) {
     return next(err);
