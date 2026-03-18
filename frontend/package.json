@@ -22,6 +22,7 @@
     "test:coverage": "vitest run --coverage --config config/vite.config.ts",
     "preview": "vite preview --config config/vite.config.ts",
     "generate-manifests": "node scripts/generate-manifests.js",
+    "audit:post-filenames": "node scripts/audit-post-filenames.mjs",
     "generate-projects-manifest": "node scripts/generate-projects-manifest.js",
     "generate-seo": "node scripts/generate-seo.js",
     "deploy": "npm run generate-manifests && npm run generate-projects-manifest && npm run generate-seo && npm run build",
