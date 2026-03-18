@@ -40,6 +40,7 @@ import {
   getCachedAIConfigSnapshot,
   primeAIConfigRefresh,
 } from "./dynamic-config.service.js";
+import { isD1Configured } from "../../lib/d1.js";
 
 // Timeout settings
 const DEFAULT_TIMEOUT = TIMEOUTS.DEFAULT; // 2 minutes
@@ -518,13 +519,17 @@ export class OpenAICompatClient {
 
 let _client = null;
 let _clientFingerprint = null;
+let _multiProviderSingleton = null;
 const _embeddingClients = new Map();
 
-/**
- * Get the default OpenAI compatible client instance
- */
+// Pre-initialize multi-provider client if D1 is available
+if (isD1Configured()) {
+  import("./multi-provider.service.js").then(({ getMultiProviderClient }) => {
+    _multiProviderSingleton = getMultiProviderClient();
+  }).catch(() => {});
+}
+
 export function getOpenAIClient(options = {}) {
-  // If per-call options are provided, always create a fresh instance
   if (Object.keys(options).length > 0) {
     const snapshot = getCachedAIConfigSnapshot();
     return new OpenAICompatClient({
@@ -535,9 +540,12 @@ export function getOpenAIClient(options = {}) {
     });
   }
 
+  if (_multiProviderSingleton) {
+    return _multiProviderSingleton;
+  }
+
   const snapshot = getCachedAIConfigSnapshot();
 
-  // If config fingerprint changed, recreate the client
   if (!_client || _clientFingerprint !== snapshot.fingerprint) {
     _client = new OpenAICompatClient({
       baseUrl: snapshot.baseUrl,
