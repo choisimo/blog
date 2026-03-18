@@ -293,6 +293,34 @@ services:
       - "com.blog.description=Knowledge Management with RAG"
 
   # ---------------------------------------------------------------------------
+  # Piston - Self-hosted Code Execution Engine
+  # ---------------------------------------------------------------------------
+  # Replaces the now-defunct public emkc.org/api/v2/piston API (whitelist-only since 2026-02-15).
+  # Accessed internally via http://piston:2000 — never exposed to the internet.
+  # Frontend calls /api/v1/execute (backend proxy) which forwards to this service.
+  # ---------------------------------------------------------------------------
+  piston:
+    image: ghcr.io/engineer-man/piston:latest
+    container_name: blog-piston
+    privileged: true
+    tmpfs:
+      - /piston/jobs
+    volumes:
+      - piston-data:/piston/packages
+    networks:
+      - blog-network
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q --spider http://localhost:2000/api/v2/runtimes || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    labels:
+      - "com.blog.service=piston"
+      - "com.blog.description=Self-hosted code execution engine"
+
+  # ---------------------------------------------------------------------------
   # Watchtower - Automatic Container Updates from GHCR
   # ---------------------------------------------------------------------------
   # Prerequisites (run once on server before starting):
@@ -365,3 +393,5 @@ volumes:
     name: blog-surrealdb-data
   postgres-data:
     name: blog-postgres-data
+  piston-data:
+    name: blog-piston-data

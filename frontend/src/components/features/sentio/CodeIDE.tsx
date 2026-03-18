@@ -9,6 +9,7 @@ import { oneDark } from '@codemirror/theme-one-dark';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Play, Loader2, ChevronDown } from 'lucide-react';
+import { getApiBaseUrl } from '@/utils/network/apiBase';
 
 const LANGUAGE_OPTIONS = [
   { label: 'Python', value: 'python', pistonLang: 'python', pistonVersion: '3.10.0' },
@@ -55,7 +56,8 @@ interface RunResult {
 
 async function runCode(code: string, lang: LanguageValue): Promise<RunResult> {
   const opt = LANGUAGE_OPTIONS.find(l => l.value === lang)!;
-  const res = await fetch('https://emkc.org/api/v2/piston/execute', {
+  const base = getApiBaseUrl();
+  const res = await fetch(`${base}/api/v1/execute`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -64,14 +66,19 @@ async function runCode(code: string, lang: LanguageValue): Promise<RunResult> {
       files: [{ content: code }],
     }),
   });
-  if (!res.ok) throw new Error(`Execution API error: ${res.status}`);
-  const data = (await res.json()) as {
-    run: { stdout: string; stderr: string; code: number };
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(errBody.error ?? `Execution API error: ${res.status}`);
+  }
+  const body = (await res.json()) as {
+    ok: boolean;
+    data: { run: { stdout: string; stderr: string; code: number } };
   };
+  const run = body.data.run;
   return {
-    stdout: data.run.stdout,
-    stderr: data.run.stderr,
-    exitCode: data.run.code,
+    stdout: run.stdout,
+    stderr: run.stderr,
+    exitCode: run.code,
   };
 }
 
@@ -86,6 +93,10 @@ export default function CodeIDE({ value, onChange, question, className }: CodeID
   const { isTerminal } = useTheme();
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const valueRef = useRef(value);
+  valueRef.current = value;
 
   const [lang, setLang] = useState<LanguageValue>(() => detectLanguage(question));
   const [running, setRunning] = useState(false);
@@ -103,7 +114,7 @@ export default function CodeIDE({ value, onChange, question, className }: CodeID
       viewRef.current = null;
     }
 
-    const startDoc = value || '';
+    const startDoc = valueRef.current || '';
 
     const state = EditorState.create({
       doc: startDoc,
@@ -113,7 +124,7 @@ export default function CodeIDE({ value, onChange, question, className }: CodeID
         oneDark,
         EditorView.updateListener.of(update => {
           if (update.docChanged) {
-            onChange(update.state.doc.toString());
+            onChangeRef.current(update.state.doc.toString());
           }
         }),
         EditorView.theme({
@@ -138,7 +149,9 @@ export default function CodeIDE({ value, onChange, question, className }: CodeID
       viewRef.current?.destroy();
       viewRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // value is intentionally excluded: editor is only recreated on lang change.
+  // External value changes are handled by the sync effect below.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
 
   // Sync external value changes (e.g., reset) without re-creating the editor

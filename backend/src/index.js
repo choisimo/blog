@@ -35,6 +35,7 @@ import notificationsRouter from './routes/notifications.js';
 import debateRouter from './routes/debate.js';
 import metricsRouter from './routes/metrics.js';
 import adminLogsRouter from './routes/adminLogs.js';
+import executeRouter from './routes/execute.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 async function startServer() {
@@ -128,6 +129,7 @@ app.use('/api/v1/admin', adminLogsRouter);
 app.use('/api/v1/agent', agentRouter);
 
 app.use('/api/v1/debate', debateRouter);
+app.use('/api/v1/execute', executeRouter);
 
 app.use(notFoundHandler);
 
