@@ -1,5 +1,6 @@
 import { useAuthStore } from '@/stores/session/useAuthStore';
 import { getApiBaseUrl } from '@/utils/network/apiBase';
+import { bearerAuth } from '@/lib/auth';
 
 interface AdminApiResult<T> {
   ok: boolean;
@@ -31,7 +32,7 @@ export async function adminApiFetch<T>(
       ...fetchOptions,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        ...bearerAuth(token),
         ...((fetchOptions.headers as Record<string, string>) || {}),
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
@@ -50,7 +51,7 @@ export async function adminApiFetch<T>(
         ...fetchOptions,
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${newToken}`,
+          ...bearerAuth(newToken),
           ...((fetchOptions.headers as Record<string, string>) || {}),
         },
         ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
@@ -87,7 +88,7 @@ export async function adminFetchRaw(
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(token ? bearerAuth(token) : {}),
       ...((options.headers as Record<string, string>) || {}),
     },
   });

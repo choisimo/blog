@@ -181,7 +181,7 @@ app.get('/trending', async (c) => {
  * POST /api/v1/analytics/refresh-stats
  * Refresh 7d and 30d view counts (should be called by cron)
  */
-app.post('/refresh-stats', async (c) => {
+app.post('/refresh-stats', requireAdmin, async (c) => {
   try {
     const db = c.env.DB;
 
@@ -246,7 +246,7 @@ app.post('/refresh-stats', async (c) => {
  * POST /api/v1/analytics/update-editor-picks
  * Auto-update editor picks based on analytics (should be called by cron daily)
  */
-app.post('/update-editor-picks', async (c) => {
+app.post('/update-editor-picks', requireAdmin, async (c) => {
   try {
     const db = c.env.DB;
 

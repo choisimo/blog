@@ -86,27 +86,26 @@ export async function verifyToken(
  * Supports: query param, Authorization header, cookie
  */
 export function extractToken(request: Request): string | null {
-  const url = new URL(request.url);
-
-  // 1. Query parameter
-  const queryToken = url.searchParams.get('token');
-  if (queryToken) {
-    return queryToken;
-  }
-
-  // 2. Authorization header (Bearer token)
+  // 1. Authorization header (Bearer token) — preferred
   const authHeader = request.headers.get('Authorization');
   if (authHeader?.startsWith('Bearer ')) {
     return authHeader.slice(7);
   }
 
-  // 3. Cookie
+  // 2. Cookie
   const cookies = request.headers.get('Cookie') || '';
   const tokenCookie = cookies
     .split(';')
     .find((c) => c.trim().startsWith('terminal_token='));
   if (tokenCookie) {
     return tokenCookie.split('=')[1]?.trim() || null;
+  }
+
+  // 3. Query parameter (last resort — tokens in URLs are logged/cached)
+  const url = new URL(request.url);
+  const queryToken = url.searchParams.get('token');
+  if (queryToken) {
+    return queryToken;
   }
 
   return null;

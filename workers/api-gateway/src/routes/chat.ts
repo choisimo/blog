@@ -26,6 +26,7 @@ import {
 import { executeTask } from '../lib/llm';
 import { getCorsHeadersForRequest } from '../lib/cors';
 import { getAiDefaultModel, getAiVisionModel } from '../lib/config';
+import { requireAdmin } from '../middleware/auth';
 
 type ChatContext = { Bindings: Env };
 
@@ -71,12 +72,8 @@ async function proxyRequest(c: Context<ChatContext>, path: string, options: Prox
   }
 
   // Do not overwrite client's Authorization header if it already exists
-  if (!upstreamHeaders.has('Authorization')) {
-    if (c.env.OPENCODE_AUTH_TOKEN) {
-      upstreamHeaders.set('Authorization', `Bearer ${c.env.OPENCODE_AUTH_TOKEN}`);
-    } else if (c.env.GITHUB_TOKEN) {
-      upstreamHeaders.set('Authorization', `Bearer ${c.env.GITHUB_TOKEN}`);
-    }
+  if (!upstreamHeaders.has('Authorization') && c.env.OPENCODE_AUTH_TOKEN) {
+    upstreamHeaders.set('Authorization', `Bearer ${c.env.OPENCODE_AUTH_TOKEN}`);
   }
 
   let upstreamBody: BodyInit | null | undefined = c.req.raw.body;
@@ -301,14 +298,14 @@ chat.get('/live/config', async (c: Context<ChatContext>) => {
 /**
  * PUT /live/config - update live chat agent policy
  */
-chat.put('/live/config', async (c: Context<ChatContext>) => {
+chat.put('/live/config', requireAdmin, async (c: Context<ChatContext>) => {
   return proxyRequest(c, '/live/config');
 });
 
 /**
  * GET /live/room-stats?room=... - room telemetry
  */
-chat.get('/live/room-stats', async (c: Context<ChatContext>) => {
+chat.get('/live/room-stats', requireAdmin, async (c: Context<ChatContext>) => {
   const query = c.req.url.split('?')[1] || '';
   return proxyRequest(c, `/live/room-stats${query ? `?${query}` : ''}`);
 });
@@ -316,7 +313,7 @@ chat.get('/live/room-stats', async (c: Context<ChatContext>) => {
 /**
  * GET /live/rooms - list active live chat rooms
  */
-chat.get('/live/rooms', async (c: Context<ChatContext>) => {
+chat.get('/live/rooms', requireAdmin, async (c: Context<ChatContext>) => {
   return proxyRequest(c, '/live/rooms');
 });
 

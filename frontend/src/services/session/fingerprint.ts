@@ -1,5 +1,6 @@
 import FingerprintJS from "@fingerprintjs/fingerprintjs";
 import { getApiBaseUrl } from "@/utils/network/apiBase";
+import { bearerAuth } from "@/lib/auth";
 import {
   sha256,
   getCanvasFingerprint,
@@ -207,7 +208,7 @@ export async function validateSession(
   try {
     const baseUrl = getApiBaseUrl();
     const response = await fetch(`${baseUrl}/api/v1/user/session/verify`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: bearerAuth(token),
     });
     if (!response.ok) return null;
 
@@ -228,7 +229,7 @@ export async function recoverSession(
     const response = await fetch(`${baseUrl}/api/v1/user/session/recover`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${oldToken}`,
+        ...bearerAuth(oldToken),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -341,7 +342,7 @@ export async function savePreference(
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        ...bearerAuth(token),
       },
       body: JSON.stringify({ key, value }),
     });
@@ -361,7 +362,7 @@ export async function getPreferences(): Promise<Record<
   try {
     const baseUrl = getApiBaseUrl();
     const response = await fetch(`${baseUrl}/api/v1/user/preferences`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: bearerAuth(token),
     });
 
     if (!response.ok) return null;

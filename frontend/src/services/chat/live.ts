@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from "@/utils/network/apiBase";
+import { bearerAuth } from "@/lib/auth";
 import {
   findSSEFrameBoundary,
   parseSSEFrame as parseRawSSEFrame,
@@ -137,7 +138,7 @@ export function connectLiveChatStream(
       try {
         const headers: Record<string, string> = {};
         if (sessionToken) {
-          headers["Authorization"] = `Bearer ${sessionToken}`;
+          headers["Authorization"] = bearerAuth(sessionToken).Authorization;
         }
 
         const response = await fetch(url.toString(), {
@@ -211,7 +212,7 @@ export async function sendLiveChatMessage(input: {
     "Content-Type": "application/json",
   };
   if (sessionToken) {
-    headers["Authorization"] = `Bearer ${sessionToken}`;
+    headers["Authorization"] = bearerAuth(sessionToken).Authorization;
   }
 
   const payload: Record<string, string> = {

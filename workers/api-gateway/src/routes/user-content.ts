@@ -11,7 +11,7 @@ import { Hono } from 'hono';
 import type { HonoEnv, Env } from '../types';
 import { success, badRequest, notFound, unauthorized } from '../lib/response';
 import { queryAll, execute, queryOne } from '../lib/d1';
-import { verifyJwt } from '../lib/jwt';
+import { getUserIdFromToken } from '../lib/auth-helpers';
 
 const userContent = new Hono<HonoEnv>();
 
@@ -27,24 +27,6 @@ interface MemoNote {
   updated_at: string;
 }
 
-/**
- * Extract user ID from JWT token
- */
-async function getUserIdFromToken(c: any): Promise<string | null> {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader) return null;
-
-  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return null;
-
-  try {
-    const payload = await verifyJwt(token, c.env);
-    if (payload.type === 'refresh') return null;
-    return payload.sub || null;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Format memo for API response

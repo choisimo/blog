@@ -169,8 +169,9 @@ function App() {
                             </AuthGuard>
                           }
                         />
-                        <Route path="/admin/config" element={<AdminConfig />} />
-                        <Route path="/admin/config/*" element={<AdminConfig />} />
+                        <Route path="/admin/config" element={<AuthGuard><AdminConfig /></AuthGuard>} />
+                        <Route path="/admin/config/:section" element={<AuthGuard><AdminConfig /></AuthGuard>} />
+                        <Route path="/admin/config/:section/:subtab" element={<AuthGuard><AdminConfig /></AuthGuard>} />
                         <Route
                           path="/admin/auth/callback"
                           element={<AdminAuthCallback />}

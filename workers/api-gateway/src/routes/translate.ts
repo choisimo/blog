@@ -5,6 +5,7 @@ import { queryOne, execute } from '../lib/d1';
 import { success, error } from '../lib/response';
 import { createAIService } from '../lib/ai-service';
 import { AI_TEMPERATURES, MAX_TOKENS, TEXT_LIMITS, ERROR_MESSAGES } from '../config/defaults';
+import { requireAuth, requireAdmin } from '../middleware/auth';
 
 const app = new Hono<HonoEnv>();
 
@@ -53,7 +54,7 @@ function truncateForTranslation(content: string, maxChars: number = TEXT_LIMITS.
  * POST /api/v1/translate
  * Translate a blog post to target language
  */
-app.post('/', async (c) => {
+app.post('/', requireAuth, async (c) => {
   try {
     const body = await c.req.json<{
       year: string;
@@ -276,7 +277,7 @@ app.get('/:year/:slug/:targetLang', async (c) => {
  * DELETE /api/v1/translate/:year/:slug/:targetLang
  * Delete cached translation
  */
-app.delete('/:year/:slug/:targetLang', async (c) => {
+app.delete('/:year/:slug/:targetLang', requireAdmin, async (c) => {
   try {
     const { year, slug, targetLang } = c.req.param();
     const db = c.env.DB;

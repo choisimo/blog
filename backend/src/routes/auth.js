@@ -46,6 +46,43 @@ const oauthStates = new Map();
 /** @type {Set<string>} Fallback in-memory store when Redis is unavailable */
 const _refreshTokenFallback = new Set();
 
+const MAX_MAP_SIZE = 10_000;
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+
+function pruneExpiredEntries() {
+  purgeStaleChallenges();
+  // Cap _refreshTokenFallback — Set preserves insertion order, evict oldest
+  if (_refreshTokenFallback.size > MAX_MAP_SIZE) {
+    const excess = _refreshTokenFallback.size - MAX_MAP_SIZE;
+    let removed = 0;
+    for (const token of _refreshTokenFallback) {
+      if (removed >= excess) break;
+      _refreshTokenFallback.delete(token);
+      removed++;
+    }
+  }
+}
+
+const _cleanupTimer = setInterval(pruneExpiredEntries, CLEANUP_INTERVAL_MS);
+if (_cleanupTimer.unref) _cleanupTimer.unref();
+
+function guardedMapSet(map, key, value) {
+  if (map.size >= MAX_MAP_SIZE) pruneExpiredEntries();
+  if (map.size >= MAX_MAP_SIZE) {
+    const oldest = map.keys().next().value;
+    if (oldest !== undefined) map.delete(oldest);
+  }
+  map.set(key, value);
+}
+
+function guardedSetAdd(set, value) {
+  if (set.size >= MAX_MAP_SIZE) {
+    const oldest = set.values().next().value;
+    if (oldest !== undefined) set.delete(oldest);
+  }
+  set.add(value);
+}
+
 const REFRESH_TOKEN_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
 const REDIS_KEY_PREFIX = 'refresh_token:';
 
@@ -55,7 +92,7 @@ async function addRefreshToken(token) {
     await redis.set(`${REDIS_KEY_PREFIX}${token}`, '1', { EX: REFRESH_TOKEN_TTL });
   } catch (err) {
     logger.warn({}, 'Redis unavailable, falling back to in-memory store for refresh token', { error: err.message });
-    _refreshTokenFallback.add(token);
+    guardedSetAdd(_refreshTokenFallback, token);
   }
 }
 
@@ -221,7 +258,7 @@ router.post('/totp/setup/verify', async (req, res) => {
 router.post('/totp/challenge', async (req, res) => {
   purgeStaleChallenges();
   const challengeId = `totp-${crypto.randomUUID()}`;
-  totpChallenges.set(challengeId, { expiresAt: Date.now() + 5 * 60 * 1000 });
+  guardedMapSet(totpChallenges, challengeId, { expiresAt: Date.now() + 5 * 60 * 1000 });
   return res.json({ ok: true, data: { challengeId } });
 });
 
@@ -277,7 +314,7 @@ router.get('/oauth/github', (req, res) => {
 
   purgeStaleChallenges();
   const state = crypto.randomUUID();
-  oauthStates.set(state, { provider: 'github', expiresAt: Date.now() + 5 * 60 * 1000 });
+  guardedMapSet(oauthStates, state, { provider: 'github', expiresAt: Date.now() + 5 * 60 * 1000 });
 
   const redirectUri = `${config.oauth.redirectBaseUrl || config.apiBaseUrl}/api/v1/auth/oauth/github/callback`;
   const params = new URLSearchParams({
@@ -368,7 +405,7 @@ router.get('/oauth/google', (req, res) => {
 
   purgeStaleChallenges();
   const state = crypto.randomUUID();
-  oauthStates.set(state, { provider: 'google', expiresAt: Date.now() + 5 * 60 * 1000 });
+  guardedMapSet(oauthStates, state, { provider: 'google', expiresAt: Date.now() + 5 * 60 * 1000 });
 
   const redirectUri = `${config.oauth.redirectBaseUrl || config.apiBaseUrl}/api/v1/auth/oauth/google/callback`;
   const params = new URLSearchParams({

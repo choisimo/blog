@@ -60,9 +60,10 @@ import type { SecretCategory, SecretPublic, SecretFormData } from './types';
 
 interface SecretsListManagerProps {
   categories: SecretCategory[];
+  initialCategoryFilter?: string | null;
 }
 
-export function SecretsListManager({ categories: initialCategories }: SecretsListManagerProps) {
+export function SecretsListManager({ categories: initialCategories, initialCategoryFilter }: SecretsListManagerProps) {
   const {
     secrets,
     loading,
@@ -78,7 +79,14 @@ export function SecretsListManager({ categories: initialCategories }: SecretsLis
   const { categories, fetchCategories } = useCategories();
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>(initialCategoryFilter ?? 'all');
+
+  // Sync category filter when parent passes a new initial value (e.g. category card click)
+  useEffect(() => {
+    if (initialCategoryFilter) {
+      setCategoryFilter(initialCategoryFilter);
+    }
+  }, [initialCategoryFilter]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);

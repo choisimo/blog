@@ -112,12 +112,13 @@ Accept-Ranges: bytes
 
 ### Internal Endpoints (인증 필요)
 
-인증 방법: `X-Internal-Key` 헤더 또는 허용된 Referer
+인증 방법: `X-Internal-Key` 헤더 (Referer 기반 인증 없음)
 
 | Method | Path | Input | Output | Description |
 |--------|------|-------|--------|-------------|
 | `GET` | `/internal/{resource}/{userId}/` | `?cursor=&limit=` | `{ objects[], cursor }` | 오브젝트 목록 조회 |
-| `GET` | `/internal/{resource}/{userId}/{id}` | - | JSON data | 단일 오브젝트 조회 |
+| `GET` | `/internal/{resource}/{userId}/{id}` | - | Raw object body + headers | 단일 오브젝트 조회 |
+| `HEAD` | `/internal/{resource}/{userId}/{id}` | - | Headers only | 오브젝트 메타데이터 조회 |
 | `PUT` | `/internal/{resource}/{userId}/{id}` | JSON body | `{ ok, etag }` | 오브젝트 생성/수정 |
 | `DELETE` | `/internal/{resource}/{userId}/{id}` | - | 204 No Content | 오브젝트 삭제 |
 
@@ -128,8 +129,9 @@ Accept-Ranges: bytes
 ### Response Format
 
 ```typescript
-// Success
-{ "ok": true, "data": { ... } }
+// Single object GET - returns raw object body with metadata headers:
+//   Content-Type, ETag, Content-Length
+//   (NOT a JSON envelope)
 
 // List Response
 {
@@ -162,17 +164,12 @@ URL 분석:
 
 ### 인증 로직 (Internal Calls)
 
+모든 `/internal/*` 경로는 `X-Internal-Key` 헤더가 Worker 시크릿 `INTERNAL_KEY`와 정확히 일치해야 합니다. Referer 기반 인증 폴백은 없습니다.
+
 ```typescript
 function isInternalCall(request: Request, env: Env): boolean {
-  // 방법 1: API 키 검증
-  const key = request.headers.get("X-Internal-Key");
-  if (env.INTERNAL_KEY && key === env.INTERNAL_KEY) {
-    return true;
-  }
-  
-  // 방법 2: Referer 검증
-  const referer = request.headers.get("Referer");
-  return ALLOWED_INTERNAL_ORIGINS.some(origin => referer?.startsWith(origin));
+  const key = request.headers.get("X-Internal-Key") || "";
+  return !!(env.INTERNAL_KEY && key === env.INTERNAL_KEY);
 }
 ```
 
@@ -220,7 +217,6 @@ If-Match: "old_etag"
 | Variable | Dev | Prod |
 |----------|-----|------|
 | `ALLOWED_ORIGINS` | `*` | `blog.example.com,...` |
-| `ALLOWED_INTERNAL_ORIGINS` | - | API Gateway URL |
 
 ---
 

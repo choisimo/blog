@@ -23,6 +23,7 @@ import {
   type NotificationType,
 } from "@/stores/realtime/useNotificationStore";
 import { getApiBaseUrl } from "@/utils/network/apiBase";
+import { bearerAuth } from "@/lib/auth";
 import { useAuthStore } from "@/stores/session/useAuthStore";
 import {
   findSSEFrameBoundary,
@@ -323,7 +324,7 @@ async function connect() {
       method: "GET",
       headers: {
         "Content-Type": "text/event-stream",
-        Authorization: `Bearer ${token}`,
+        ...bearerAuth(token),
       },
       signal: controller.signal,
     });

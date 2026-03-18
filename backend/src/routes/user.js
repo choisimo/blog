@@ -1,6 +1,11 @@
 import { Router } from "express";
 import crypto from "crypto";
 import { queryAll, queryOne, execute, isD1Configured } from "../lib/d1.js";
+import { validateBody } from "../middleware/validation.js";
+import {
+  sessionBodySchema,
+  preferencesBodySchema,
+} from "../middleware/schemas/user.schema.js";
 
 const router = Router();
 
@@ -90,14 +95,10 @@ async function deactivateSession(sessionId) {
   );
 }
 
-router.post("/session", requireDb, async (req, res, next) => {
+router.post("/session", requireDb, validateBody(sessionBodySchema), async (req, res, next) => {
   try {
-    const fingerprint = req.body?.fingerprint || {};
-    const visitorId = String(fingerprint.visitorId || "").trim();
-    if (!visitorId)
-      return res
-        .status(400)
-        .json({ ok: false, error: "fingerprint.visitorId is required" });
+    const fingerprint = req.body.fingerprint;
+    const visitorId = fingerprint.visitorId;
 
     const fingerprintHash = sha256(visitorId);
     const now = new Date().toISOString();
@@ -317,17 +318,26 @@ router.post("/session/recover", requireDb, async (req, res, next) => {
     await deactivateSession(old.id);
 
     // Update fingerprint component hashes if provided
+    const VALID_COLUMNS = new Set([
+      "canvas_hash", "webgl_hash", "audio_hash",
+      "screen_resolution", "os_version", "advanced_fingerprint_hash",
+    ]);
+
     if (hasComponentHashes) {
       const updates = [];
       const params = [];
-      if (incomingFp.canvasHash) { updates.push("canvas_hash = ?"); params.push(incomingFp.canvasHash); }
-      if (incomingFp.webglHash) { updates.push("webgl_hash = ?"); params.push(incomingFp.webglHash); }
-      if (incomingFp.audioHash) { updates.push("audio_hash = ?"); params.push(incomingFp.audioHash); }
-      if (incomingFp.screenResolution) { updates.push("screen_resolution = ?"); params.push(incomingFp.screenResolution); }
-      if (incomingFp.osVersion) { updates.push("os_version = ?"); params.push(incomingFp.osVersion); }
+      const addUpdate = (col, val) => {
+        if (!VALID_COLUMNS.has(col)) return;
+        updates.push(`${col} = ?`);
+        params.push(val);
+      };
+      if (incomingFp.canvasHash) addUpdate("canvas_hash", incomingFp.canvasHash);
+      if (incomingFp.webglHash) addUpdate("webgl_hash", incomingFp.webglHash);
+      if (incomingFp.audioHash) addUpdate("audio_hash", incomingFp.audioHash);
+      if (incomingFp.screenResolution) addUpdate("screen_resolution", incomingFp.screenResolution);
+      if (incomingFp.osVersion) addUpdate("os_version", incomingFp.osVersion);
       if (incomingFp.advancedVisitorId) {
-        updates.push("advanced_fingerprint_hash = ?");
-        params.push(sha256(incomingFp.advancedVisitorId));
+        addUpdate("advanced_fingerprint_hash", sha256(incomingFp.advancedVisitorId));
       }
       if (updates.length > 0) {
         updates.push("updated_at = ?");
@@ -409,7 +419,7 @@ router.get("/preferences", requireDb, async (req, res, next) => {
   }
 });
 
-router.put("/preferences", requireDb, async (req, res, next) => {
+router.put("/preferences", requireDb, validateBody(preferencesBodySchema), async (req, res, next) => {
   try {
     const token = getSessionToken(req);
     if (!token)
@@ -428,12 +438,8 @@ router.put("/preferences", requireDb, async (req, res, next) => {
     }
     await touchSessionActivity(session.id);
 
-    const key = String(req.body?.key || "")
-      .trim()
-      .slice(0, 128);
-    const value = req.body?.value;
-    if (!key)
-      return res.status(400).json({ ok: false, error: "key is required" });
+    const key = req.body.key;
+    const value = req.body.value;
 
     const id = `pref-${crypto.randomUUID()}`;
     const now = new Date().toISOString();

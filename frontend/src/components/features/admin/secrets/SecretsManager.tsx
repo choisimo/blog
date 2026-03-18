@@ -12,6 +12,7 @@ import {
 import { useSecretsOverview } from './hooks';
 import { SecretsListManager } from './SecretsListManager';
 import { AuditLogViewer } from './AuditLogViewer';
+import { AdminSubtabs } from '@/components/molecules/AdminSubtabs';
 
 type TabId = 'overview' | 'secrets' | 'audit';
 
@@ -21,9 +22,17 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'audit', label: 'Audit Log', icon: <History className="h-3.5 w-3.5" /> },
 ];
 
-export function SecretsManager() {
+interface SecretsManagerProps {
+  subtab?: string;
+  onSubtabChange?: (subtab: string) => void;
+}
+
+export function SecretsManager({ subtab, onSubtabChange }: SecretsManagerProps) {
   const { overview, health, loading, error, fetchOverview } = useSecretsOverview();
-  const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const validTabs = TABS.map(t => t.id);
+  const activeTab: TabId =
+    subtab && validTabs.includes(subtab as TabId) ? (subtab as TabId) : 'overview';
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchOverview();
@@ -133,23 +142,14 @@ export function SecretsManager() {
         </div>
       </div>
 
-      <div className="flex items-center gap-0.5 border-b border-zinc-200 px-2 pt-1">
-        {TABS.map((tab) => (
-          <button
-            type="button"
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 whitespace-nowrap transition-colors ${
-              activeTab === tab.id
-                ? 'border-zinc-900 text-zinc-900'
-                : 'border-transparent text-zinc-400 hover:text-zinc-700'
-            }`}
-          >
-            {tab.icon}
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <AdminSubtabs
+        tabs={TABS}
+        activeTab={activeTab}
+        onTabChange={(id) => {
+          onSubtabChange?.(id);
+          if (id !== 'secrets') setSelectedCategoryId(null);
+        }}
+      />
 
       <div className="p-4">
         {activeTab === 'overview' && (
@@ -166,7 +166,10 @@ export function SecretsManager() {
                     <button
                       type="button"
                       key={cat.id}
-                      onClick={() => setActiveTab('secrets')}
+                      onClick={() => {
+                        setSelectedCategoryId(cat.id);
+                        onSubtabChange?.('secrets');
+                      }}
                       className="flex items-center justify-between px-4 py-3 hover:bg-zinc-50 transition-colors text-left"
                     >
                       <div className="flex items-center gap-2">
@@ -225,7 +228,10 @@ export function SecretsManager() {
         )}
 
         {activeTab === 'secrets' && (
-          <SecretsListManager categories={overview?.categories ?? []} />
+          <SecretsListManager
+            categories={overview?.categories ?? []}
+            initialCategoryFilter={selectedCategoryId}
+          />
         )}
 
         {activeTab === 'audit' && <AuditLogViewer />}
