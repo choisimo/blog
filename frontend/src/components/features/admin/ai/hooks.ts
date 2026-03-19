@@ -207,17 +207,41 @@ export function useModels() {
 
   const testModel = useCallback(async (id: string, prompt?: string) => {
     const result = await adminApiFetch<{
-      success: boolean;
-      modelId: string;
-      modelName: string;
-      latencyMs?: number;
-      response?: string;
-      error?: string;
-    }>(`/models/${id}/test`, { pathPrefix: '/api/v1/admin/ai',
+      results: Array<{
+        model_id: string;
+        model_name: string;
+        response: string | null;
+        latency_ms: number;
+        status: 'success' | 'error';
+        error_message: string | null;
+      }>;
+    }>('/playground/run', { pathPrefix: '/api/v1/admin/ai',
       method: 'POST',
-      body: { prompt },
+      body: {
+        model_ids: [id],
+        user_prompt: prompt || 'Return a short health-check response for this model.',
+      },
     });
-    return result;
+
+    if (!result.ok || !result.data?.results?.[0]) {
+      return {
+        ok: false,
+        error: result.error || 'Model test failed',
+      };
+    }
+
+    const testResult = result.data.results[0];
+    return {
+      ok: true,
+      data: {
+        success: testResult.status === 'success',
+        modelId: testResult.model_id,
+        modelName: testResult.model_name,
+        latencyMs: testResult.latency_ms,
+        response: testResult.response || undefined,
+        error: testResult.error_message || undefined,
+      },
+    };
   }, []);
 
   return {
