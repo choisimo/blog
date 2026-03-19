@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ['정렬', '탐색', '이진탐색', '시간복잡도', '알고리즘']
 excerpt: "핵심 정렬 알고리즘과 이진 탐색을 마스터하여 효율적인 데이터 처리의 기초를 다진다"
 readTime: "3분"
+published: false
 ---
 
 <div class="week-badge">3-4주차</div>

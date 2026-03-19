@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ['LIS', '동적계획법', '이분탐색', '부분수열']
 excerpt: "최장 증가 부분 수열(LIS) 문제를 동적 계획법과 이분 탐색으로 효율적으로 해결하는 방법을 학습합니다."
 readTime: "8분"
+published: false
 ---
 
 ## 개요

@@ -5,7 +5,7 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Wed, 18 Mar 2026 23:12:44 GMT</lastBuildDate>
+    <lastBuildDate>Thu, 19 Mar 2026 15:04:41 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
       <title>force push 이후 커밋 해시가 전부 바뀌는 이유: reset, rebase, reflog로 복구까지</title>

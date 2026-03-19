@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ["Algorithm", "구간 쿼리", "Problem Solving", "Python", "Java"]
 excerpt: "Advanced Topics - 세그먼트 트리 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
 ## Top-down 질문

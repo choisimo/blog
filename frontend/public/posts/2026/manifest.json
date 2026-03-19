@@ -18,6 +18,7 @@
     "awk-1.md",
     "current-crowd.md",
     "docker-1.md",
+    "draft-continuation-test.md",
     "git-history-rewrite-reset-rebase-reflog.md",
     "hedgefunds_transcation_manage.md",
     "io-redirection-pipeline.md",
@@ -33,7 +34,7 @@
     "understanding-ssm-and-mamba.md",
     "vim-architecture-functionality-commands-integration.md"
   ],
-  "generatedAt": "2026-03-18T23:12:43.167Z",
-  "totalFiles": 32,
+  "generatedAt": "2026-03-19T23:36:47.152Z",
+  "totalFiles": 33,
   "excludedFiles": 0
 }

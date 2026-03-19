@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ['KMP', '문자열매칭', '패턴매칭', '실패함수']
 excerpt: "KMP 알고리즘을 통해 문자열 패턴 매칭을 효율적으로 수행하는 방법과 실패 함수의 원리를 학습합니다."
 readTime: "9분"
+published: false
 ---
 
 ## 개요

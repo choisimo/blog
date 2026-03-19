@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ["Algorithm", "수직/수평 탐색", "Problem Solving", "Python", "Java"]
 excerpt: "Array & String Fundamentals - 최장 공통 접두사 (LCP) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
 ## Top-down 질문

@@ -300,9 +300,12 @@ ${description}
     loadData();
   }, [year, slug]);
 
-  // After post loads, record it to visited posts and track view
+  // After post loads, record it to visited posts, track view, and fan out
+  // post-dependent async work in parallel.
   useEffect(() => {
     if (!post) return;
+
+    let cancelled = false;
 
     // Record view to D1 analytics (fire and forget)
     recordView(post.year, post.slug).catch(() => {});
@@ -317,7 +320,6 @@ ${description}
       const key = "visited.posts";
       const raw = localStorage.getItem(key);
       const items: VisitedPostItem[] = raw ? JSON.parse(raw) : [];
-      const path = `/blog/${post.year}/${post.slug}`;
       const next: VisitedPostItem = {
         path,
         title: post.title,
@@ -339,17 +341,21 @@ ${description}
       }
       console.warn("Failed to persist visited posts", err);
     }
-  }, [post]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const resolveSimulator = async () => {
-      if (!post) {
-        setAutoSimulatorSrc(null);
+    const loadSeriesPosts = async () => {
+      if (!post.series) {
+        setSeriesPosts([]);
         return;
       }
+      try {
+        const posts = await getPostsBySeries(post.series);
+        if (!cancelled) setSeriesPosts(posts);
+      } catch {
+        if (!cancelled) setSeriesPosts([]);
+      }
+    };
 
+    const resolveSimulator = async () => {
       const baseContent = localized?.content ?? post.content;
       if (/<iframe[\s\S]*?>/i.test(baseContent)) {
         setAutoSimulatorSrc(null);
@@ -363,12 +369,12 @@ ${description}
       }
     };
 
-    void resolveSimulator();
+    void Promise.all([loadSeriesPosts(), resolveSimulator()]);
 
     return () => {
       cancelled = true;
     };
-  }, [localized?.content, post]);
+  }, [post, localized?.content]);
 
   // Auto-translate when language changes and no native translation exists
   useEffect(() => {
@@ -440,12 +446,6 @@ ${description}
       cancelled = true;
     };
   }, [post, language, year, slug]);
-
-  useEffect(() => {
-    if (!post) return;
-    if (typeof document === "undefined") return;
-    // title is now managed by useSEO
-  }, [post]);
 
   // sync inline feature flag from localStorage and storage events
   useEffect(() => {
@@ -561,26 +561,6 @@ ${description}
       cancelled = true;
     };
   }, [post]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const loadSeriesPosts = async () => {
-      if (!post?.series) {
-        setSeriesPosts([]);
-        return;
-      }
-      try {
-        const posts = await getPostsBySeries(post.series);
-        if (!cancelled) setSeriesPosts(posts);
-      } catch {
-        if (!cancelled) setSeriesPosts([]);
-      }
-    };
-    loadSeriesPosts();
-    return () => {
-      cancelled = true;
-    };
-  }, [post?.series]);
 
   const handleShare = async () => {
     const url = window.location.href;

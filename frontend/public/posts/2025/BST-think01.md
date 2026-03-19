@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ['Machine Learning', 'BST', '최적화', '줌인']
 excerpt: "BST 트리 호출 횟수 구하기를 보다가 떠오른 최적화 방안 생각 정리"
 readTime: "7분"
+published: false
 ---
 
 BST를 처음 만들어보던 어느 날, 뭔가 석연치 않은 기분이 들었습니다. 각 레벨을 일일이 순회하는 방식이 너무 비효율적으로 느껴졌거든요. "이게 맞나?" 싶어서 잠시 손을 멈추고 생각에 잠겼습니다.

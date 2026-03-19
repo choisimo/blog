@@ -32,8 +32,12 @@ const Unauthorized = lazy(() => import("./pages/public/Unauthorized"));
 const AdminConfig = lazy(() => import("./pages/admin/AdminConfig"));
 const AdminAuthCallback = lazy(() => import("./pages/admin/AdminAuthCallback"));
 import "./App.css";
-import { VisitedPostsMinimap } from "@/components/features/navigation/VisitedPostsMinimap";
-import FloatingActionBar from "@/components/features/memo/FloatingActionBar";
+const VisitedPostsMinimap = lazy(() =>
+  import("@/components/features/navigation/VisitedPostsMinimap").then((m) => ({
+    default: m.VisitedPostsMinimap,
+  })),
+);
+const FloatingActionBar = lazy(() => import("@/components/features/memo/FloatingActionBar"));
 import {
   initFeatureFlags,
   disposeFeatureFlags,
@@ -181,8 +185,12 @@ function App() {
                     </Suspense>
                   </main>
                   <Footer />
-                  {!fabOn && <VisitedPostsMinimap />}
-                  <FloatingActionBar />
+                  <Suspense fallback={null}>
+                    {!fabOn && <VisitedPostsMinimap />}
+                  </Suspense>
+                  <Suspense fallback={null}>
+                    <FloatingActionBar />
+                  </Suspense>
                   <Toaster />
                 </div>
               </Router>

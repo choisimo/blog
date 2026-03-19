@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ["Algorithm", "전위 기반", "Problem Solving", "Python", "Java"]
 excerpt: "Tree & Binary Search Tree - 트리→연결리스트 (Flatten) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
 ## Top-down 질문

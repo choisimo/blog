@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ["Algorithm", "재귀 분기", "Problem Solving", "Python", "Java"]
 excerpt: "Tree & Binary Search Tree - 최소 공통 조상 (LCA) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
 ## Top-down 질문
