@@ -38,14 +38,15 @@ interface ProviderHealth {
   enabledModelCount: number;
 }
 
-async function checkBackendHealth(): Promise<{
+// eslint-disable-next-line react-refresh/only-export-components
+export async function checkBackendHealth(): Promise<{
   ok: boolean;
   latencyMs: number;
 }> {
   const base = getApiBaseUrl();
   const start = Date.now();
   try {
-    const res = await fetch(`${base}/health`, {
+    const res = await fetch(`${base}/api/v1/healthz`, {
       method: "GET",
       signal: AbortSignal.timeout(5000),
     });

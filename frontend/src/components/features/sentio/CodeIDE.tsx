@@ -151,7 +151,6 @@ export default function CodeIDE({ value, onChange, question, className }: CodeID
     };
   // value is intentionally excluded: editor is only recreated on lang change.
   // External value changes are handled by the sync effect below.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
 
   // Sync external value changes (e.g., reset) without re-creating the editor

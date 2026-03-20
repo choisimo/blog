@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { getApiBaseUrl } from "@/utils/network/apiBase";
 import { adminFetchRaw } from "@/services/admin/apiClient";
+import { useAuthStore } from "@/stores/session/useAuthStore";
 import { PostMetricsDetail } from "./PostMetricsDetail";
 
 interface PostStat {
@@ -528,9 +529,12 @@ function StatsRefreshSection() {
   );
 }
 
-async function getAllPostStats(
+// eslint-disable-next-line react-refresh/only-export-components
+export async function getAllPostStats(
   orderBy: string,
 ): Promise<PostStat[]> {
+  const token = await useAuthStore.getState().getValidAccessToken();
+  if (!token) return [];
   const base = getApiBaseUrl();
   try {
     const res = await adminFetchRaw(

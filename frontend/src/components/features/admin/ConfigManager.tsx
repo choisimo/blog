@@ -17,7 +17,6 @@ import {
   Copy,
   CheckCircle2,
   AlertCircle,
-  ChevronDown,
 } from 'lucide-react';
 
 interface ConfigVariable {
