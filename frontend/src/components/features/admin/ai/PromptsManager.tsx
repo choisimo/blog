@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
+import { adminFetchRaw } from '@/services/admin/apiClient';
 import { getApiBaseUrl } from '@/utils/network/apiBase';
-import { useAuthStore } from '@/stores/session/useAuthStore';
 import { RefreshCw, RotateCcw, Save } from 'lucide-react';
 
 interface AgentPrompt {
@@ -13,25 +13,8 @@ interface AgentPrompt {
 
 const MODE_ORDER = ['default', 'research', 'coding', 'blog', 'article', 'terminal', 'performance'];
 
-async function fetchWithAuth(
-  url: string,
-  getToken: () => Promise<string | null>,
-  options: RequestInit = {}
-) {
-  const token = await getToken();
-  return fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers as Record<string, string> || {}),
-    },
-  });
-}
-
 export function PromptsManager() {
   const { toast } = useToast();
-  const { getValidAccessToken } = useAuthStore();
   const API_BASE = getApiBaseUrl();
 
   const [prompts, setPrompts] = useState<AgentPrompt[]>([]);
@@ -43,7 +26,7 @@ export function PromptsManager() {
 
   const loadOnMount = useCallback(() => {
     setLoading(true);
-    fetchWithAuth(`${API_BASE}/api/v1/agent/prompts`, getValidAccessToken)
+    adminFetchRaw(`${API_BASE}/api/v1/agent/prompts`)
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch prompts');
         return res.json();
@@ -61,7 +44,7 @@ export function PromptsManager() {
       })
       .catch(() => toast({ title: 'Failed to load prompts', variant: 'destructive' }))
       .finally(() => setLoading(false));
-  }, [API_BASE, getValidAccessToken, toast]);
+  }, [API_BASE, toast]);
 
   useEffect(() => {
     loadOnMount();
@@ -78,11 +61,10 @@ export function PromptsManager() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetchWithAuth(
-        `${API_BASE}/api/v1/agent/prompts/${selectedMode}`,
-        getValidAccessToken,
-        { method: 'PUT', body: JSON.stringify({ text: editedText }) }
-      );
+      const res = await adminFetchRaw(`${API_BASE}/api/v1/agent/prompts/${selectedMode}`, {
+        method: 'PUT',
+        body: JSON.stringify({ text: editedText }),
+      });
       if (!res.ok) throw new Error('Save failed');
       const json = await res.json();
       const updated: AgentPrompt = json.data;
@@ -98,11 +80,9 @@ export function PromptsManager() {
   const handleReset = async () => {
     setResetting(true);
     try {
-      const res = await fetchWithAuth(
-        `${API_BASE}/api/v1/agent/prompts/${selectedMode}`,
-        getValidAccessToken,
-        { method: 'DELETE' }
-      );
+      const res = await adminFetchRaw(`${API_BASE}/api/v1/agent/prompts/${selectedMode}`, {
+        method: 'DELETE',
+      });
       if (!res.ok) throw new Error('Reset failed');
       const json = await res.json();
       const updated: AgentPrompt = json.data;

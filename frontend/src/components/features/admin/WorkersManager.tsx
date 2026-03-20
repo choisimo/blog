@@ -3,8 +3,9 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
+import { AdminSubtabs } from '@/components/molecules/AdminSubtabs';
+import { adminFetchRaw } from '@/services/admin/apiClient';
 import { getApiBaseUrl } from '@/utils/network/apiBase';
-import { useAuthStore } from '@/stores/session/useAuthStore';
 import {
   Cloud,
   Database,
@@ -51,22 +52,6 @@ interface SecretInfo {
   workers: string[];
 }
 
-async function fetchWithAuth(
-  url: string,
-  getToken: () => Promise<string | null>,
-  options: RequestInit = {}
-) {
-  const token = await getToken();
-  return fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
-}
-
 const TABS = [
   { id: 'workers' as const, label: 'Workers', icon: <Cloud className="h-3.5 w-3.5" /> },
   { id: 'secrets' as const, label: 'Secrets', icon: <Key className="h-3.5 w-3.5" /> },
@@ -75,12 +60,18 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]['id'];
 
-export function WorkersManager() {
+interface WorkersManagerProps {
+  subtab?: string;
+  onSubtabChange?: (subtab: string) => void;
+}
+
+export function WorkersManager({ subtab, onSubtabChange }: WorkersManagerProps) {
   const { toast } = useToast();
-  const { getValidAccessToken } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<TabId>('workers');
+  const validTabs = TABS.map(t => t.id) as string[];
+  const activeTab: TabId = subtab && validTabs.includes(subtab) ? (subtab as TabId) : 'workers';
   const [deployEnv, setDeployEnv] = useState<'development' | 'production'>('production');
   const [secretInputs, setSecretInputs] = useState<Record<string, string>>({});
+  const [selectedWorkers, setSelectedWorkers] = useState<Record<string, string>>({});
   const [visibleSecrets, setVisibleSecrets] = useState<Set<string>>(new Set());
   const [expandedWorkers, setExpandedWorkers] = useState<Set<string>>(new Set());
   const [expandedSection, setExpandedSection] = useState<Record<string, string | null>>({});
@@ -90,7 +81,7 @@ export function WorkersManager() {
   const { data: workersData, isLoading: workersLoading } = useQuery({
     queryKey: ['workers-list'],
     queryFn: async () => {
-      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/workers/list`, getValidAccessToken);
+      const res = await adminFetchRaw(`${API_BASE}/api/v1/admin/workers/list`);
       if (!res.ok) throw new Error('Failed to fetch workers');
       const json = await res.json();
       return json.data.workers as WorkerConfig[];
@@ -100,7 +91,7 @@ export function WorkersManager() {
   const { data: secretsData } = useQuery({
     queryKey: ['workers-secrets'],
     queryFn: async () => {
-      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/workers/secrets`, getValidAccessToken);
+      const res = await adminFetchRaw(`${API_BASE}/api/v1/admin/workers/secrets`);
       if (!res.ok) throw new Error('Failed to fetch secrets');
       const json = await res.json();
       return json.data.secrets as SecretInfo[];
@@ -110,10 +101,7 @@ export function WorkersManager() {
   const { data: d1Data } = useQuery({
     queryKey: ['workers-d1'],
     queryFn: async () => {
-      const res = await fetchWithAuth(
-        `${API_BASE}/api/v1/admin/workers/d1/databases`,
-        getValidAccessToken
-      );
+      const res = await adminFetchRaw(`${API_BASE}/api/v1/admin/workers/d1/databases`);
       const json = await res.json();
       return json.data.databases || [];
     },
@@ -122,10 +110,7 @@ export function WorkersManager() {
   const { data: kvData } = useQuery({
     queryKey: ['workers-kv'],
     queryFn: async () => {
-      const res = await fetchWithAuth(
-        `${API_BASE}/api/v1/admin/workers/kv/namespaces`,
-        getValidAccessToken
-      );
+      const res = await adminFetchRaw(`${API_BASE}/api/v1/admin/workers/kv/namespaces`);
       const json = await res.json();
       return json.data.namespaces || [];
     },
@@ -134,10 +119,7 @@ export function WorkersManager() {
   const { data: r2Data } = useQuery({
     queryKey: ['workers-r2'],
     queryFn: async () => {
-      const res = await fetchWithAuth(
-        `${API_BASE}/api/v1/admin/workers/r2/buckets`,
-        getValidAccessToken
-      );
+      const res = await adminFetchRaw(`${API_BASE}/api/v1/admin/workers/r2/buckets`);
       const json = await res.json();
       return json.data.buckets || [];
     },
@@ -153,11 +135,10 @@ export function WorkersManager() {
       env: string;
       dryRun: boolean;
     }) => {
-      const res = await fetchWithAuth(
-        `${API_BASE}/api/v1/admin/workers/${workerId}/deploy`,
-        getValidAccessToken,
-        { method: 'POST', body: JSON.stringify({ env, dryRun }) }
-      );
+      const res = await adminFetchRaw(`${API_BASE}/api/v1/admin/workers/${workerId}/deploy`, {
+        method: 'POST',
+        body: JSON.stringify({ env, dryRun }),
+      });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || 'Deploy failed');
@@ -184,11 +165,10 @@ export function WorkersManager() {
       value: string;
       env: string;
     }) => {
-      const res = await fetchWithAuth(
-        `${API_BASE}/api/v1/admin/workers/${workerId}/secret`,
-        getValidAccessToken,
-        { method: 'POST', body: JSON.stringify({ key, value, env }) }
-      );
+      const res = await adminFetchRaw(`${API_BASE}/api/v1/admin/workers/${workerId}/secret`, {
+        method: 'POST',
+        body: JSON.stringify({ key, value, env }),
+      });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || 'Failed to set secret');
@@ -251,23 +231,7 @@ export function WorkersManager() {
 
   return (
     <div className='rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden'>
-      <div className='flex items-center gap-0.5 border-b border-zinc-100 dark:border-zinc-800 px-2 pt-1 overflow-x-auto scrollbar-hide'>
-        {TABS.map((tab) => (
-          <button
-            type='button'
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-all outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 whitespace-nowrap ${
-              activeTab === tab.id
-                ? 'border-zinc-900 dark:border-zinc-200 text-zinc-900 dark:text-zinc-100'
-                : 'border-transparent text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
-            }`}
-          >
-            {tab.icon}
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <AdminSubtabs tabs={TABS} activeTab={activeTab} onTabChange={(id) => onSubtabChange?.(id)} />
 
       {activeTab === 'workers' && (
         <div className='divide-y divide-zinc-50 dark:divide-zinc-800/50'>
@@ -565,7 +529,12 @@ export function WorkersManager() {
                     <Eye className='h-3.5 w-3.5' aria-hidden='true' />
                   )}
                 </button>
-                <Select defaultValue={secret.workers[0]}>
+                <Select
+                  value={selectedWorkers[secret.key] ?? secret.workers[0]}
+                  onValueChange={(v) =>
+                    setSelectedWorkers((prev) => ({ ...prev, [secret.key]: v }))
+                  }
+                >
                   <SelectTrigger className='h-9 text-xs w-[150px] border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 rounded-lg'>
                     <SelectValue placeholder='Select worker' />
                   </SelectTrigger>
@@ -583,7 +552,7 @@ export function WorkersManager() {
                     const value = secretInputs[secret.key];
                     if (value) {
                       secretMutation.mutate({
-                        workerId: secret.workers[0],
+                        workerId: selectedWorkers[secret.key] ?? secret.workers[0],
                         key: secret.key,
                         value,
                         env: 'production',
