@@ -5,8 +5,37 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Sat, 21 Mar 2026 00:01:04 GMT</lastBuildDate>
+    <lastBuildDate>Sat, 21 Mar 2026 08:42:42 GMT</lastBuildDate>
     <language>en-US</language>
+    <item>
+      <title>[파이썬 3부] 동적 객체와 타협하는 방법</title>
+      <description>동적 객체와의 거래, CPython 내부를 직접 따라가보기</description>
+      <link>https://noblog.nodove.com/blog/2026/python-3</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/python-3</guid>
+      <pubDate>Fri, 20 Mar 2026 00:00:00 GMT</pubDate>
+      <category>기술</category>
+      <category>Python</category>
+      <category>CPython</category>
+      <category>Bytecode</category>
+      <category>Interpreter</category>
+      <category>Performance</category>
+      <category>GIL</category>
+      <category>Memory</category>
+    </item>
+    <item>
+      <title>[파이썬 2부] 파이썬의 모든 것은 객체이다.</title>
+      <description>모든 것이 객체라면, 어떻게 관리될까? CPython 내부를 직접 따라가보기</description>
+      <link>https://noblog.nodove.com/blog/2026/python-2</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/python-2</guid>
+      <pubDate>Tue, 17 Mar 2026 00:00:00 GMT</pubDate>
+      <category>기술</category>
+      <category>Python</category>
+      <category>CPython</category>
+      <category>Bytecode</category>
+      <category>Interpreter</category>
+      <category>Performance</category>
+      <category>Memory</category>
+    </item>
     <item>
       <title>force push 이후 커밋 해시가 전부 바뀌는 이유: reset, rebase, reflog로 복구까지</title>
       <description>커밋 메시지 수정이나 rebase 뒤에 왜 해시가 연쇄적으로 바뀌는지, reset과 rebase는 무엇이 다른지, hard reset으로 날린 커밋을 reflog로 어떻게 되살리는지 정리한다.</description>
@@ -20,6 +49,20 @@
       <category>Rebase</category>
       <category>Reflog</category>
       <category>Version Control</category>
+    </item>
+    <item>
+      <title>[파이썬 1부] 파이썬의 변수 조회는 단순한 딕셔너리 검색일까?</title>
+      <description>소스 코드가 어떻게 토큰·AST·바이트코드로 변환되고, 런타임에 적응형 최적화가 일어나는지 CPython 내부를 직접 따라가보기</description>
+      <link>https://noblog.nodove.com/blog/2026/python-1</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/python-1</guid>
+      <pubDate>Sun, 15 Mar 2026 00:00:00 GMT</pubDate>
+      <category>기술</category>
+      <category>Python</category>
+      <category>CPython</category>
+      <category>Bytecode</category>
+      <category>Interpreter</category>
+      <category>Performance</category>
+      <category>Memory</category>
     </item>
     <item>
       <title>Immutable Infra</title>
@@ -239,43 +282,6 @@
       <category>Failover</category>
       <category>Topology</category>
       <category>Gateway</category>
-    </item>
-    <item>
-      <title>[Arena 상세] SWE_1.5 분석</title>
-      <description>SWE_1.5의 엔터프라이즈 지향 요소(PostgreSQL, Prometheus, retry)와 현재 구현 간극을 함께 분석</description>
-      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-swe-1-5</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-swe-1-5</guid>
-      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
-      <category>AI Engineering</category>
-      <category>SWE_1.5</category>
-      <category>PostgreSQL</category>
-      <category>Prometheus</category>
-      <category>Retry</category>
-      <category>Enterprise</category>
-    </item>
-    <item>
-      <title>Container Network Interface</title>
-      <description>Networking without NAT, the CNI&apos;s role in remote container networking, and more.</description>
-      <link>https://noblog.nodove.com/blog/2026/Container Network Interface</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/Container Network Interface</guid>
-      <pubDate>Sun, 01 Feb 2026 00:00:00 GMT</pubDate>
-      <category>Network, Container, CNI</category>
-      <category>Network</category>
-      <category>Container</category>
-      <category>CNI</category>
-    </item>
-    <item>
-      <title>Proxmox &amp; OPNsense VLAN 추가 및 설정 가이드</title>
-      <description>Proxmox VE에서 OPNsense VM에 새로운 가상 네트워크 인터페이스(vNIC)를 추가하고, VLAN 104 네트워크로 설정하는 단계별 가이드입니다.</description>
-      <link>https://noblog.nodove.com/blog/2026/proxmox-opnsense-vlan-104-guide</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/proxmox-opnsense-vlan-104-guide</guid>
-      <pubDate>Mon, 26 Jan 2026 00:00:00 GMT</pubDate>
-      <category>Guide</category>
-      <category>Proxmox</category>
-      <category>OPNsense</category>
-      <category>VLAN</category>
-      <category>Network</category>
-      <category>Virtualization</category>
     </item>
   </channel>
 </rss>

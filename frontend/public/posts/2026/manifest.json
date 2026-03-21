@@ -27,6 +27,9 @@
     "personalized-readability-ux.md",
     "proxmox-network-add.md",
     "proxmox-opnsense-vlan-104-guide.md",
+    "python-1.md",
+    "python-2.md",
+    "python-3.md",
     "remote-server-think.md",
     "shellscript-analyze-1.md",
     "teleport-config.md",
@@ -34,7 +37,7 @@
     "understanding-ssm-and-mamba.md",
     "vim-architecture-functionality-commands-integration.md"
   ],
-  "generatedAt": "2026-03-21T00:01:03.775Z",
-  "totalFiles": 33,
+  "generatedAt": "2026-03-21T08:42:41.775Z",
+  "totalFiles": 36,
   "excludedFiles": 0
 }

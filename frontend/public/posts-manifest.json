@@ -1,6 +1,30 @@
 {
-  "total": 267,
+  "total": 270,
   "items": [
+    {
+      "path": "/posts/2026/python-3.md",
+      "year": "2026",
+      "slug": "python-3",
+      "title": "[파이썬 3부] 동적 객체와 타협하는 방법",
+      "description": "동적 객체와의 거래, CPython 내부를 직접 따라가보기",
+      "snippet": "동적 객체와의 거래, CPython 내부를 직접 따라가보기",
+      "date": "2026-03-20",
+      "tags": [
+        "Python",
+        "CPython",
+        "Bytecode",
+        "Interpreter",
+        "Performance",
+        "GIL",
+        "Memory"
+      ],
+      "category": "기술",
+      "author": "Admin",
+      "readingTime": "4 min read",
+      "published": true,
+      "coverImage": "/images/2026/python-3/2.png",
+      "url": "/blog/2026/python-3"
+    },
     {
       "path": "/posts/2026/draft-continuation-test.md",
       "year": "2026",
@@ -15,6 +39,29 @@
       "readingTime": "1 min read",
       "published": false,
       "url": "/blog/2026/draft-continuation-test"
+    },
+    {
+      "path": "/posts/2026/python-2.md",
+      "year": "2026",
+      "slug": "python-2",
+      "title": "[파이썬 2부] 파이썬의 모든 것은 객체이다.",
+      "description": "모든 것이 객체라면, 어떻게 관리될까? CPython 내부를 직접 따라가보기",
+      "snippet": "모든 것이 객체라면, 어떻게 관리될까? CPython 내부를 직접 따라가보기",
+      "date": "2026-03-17",
+      "tags": [
+        "Python",
+        "CPython",
+        "Bytecode",
+        "Interpreter",
+        "Performance",
+        "Memory"
+      ],
+      "category": "기술",
+      "author": "Admin",
+      "readingTime": "5 min read",
+      "published": true,
+      "coverImage": "/images/2026/python-2/2.png",
+      "url": "/blog/2026/python-2"
     },
     {
       "path": "/posts/2026/git-history-rewrite-reset-rebase-reflog.md",
@@ -37,6 +84,29 @@
       "readingTime": "7 min read",
       "published": true,
       "url": "/blog/2026/git-history-rewrite-reset-rebase-reflog"
+    },
+    {
+      "path": "/posts/2026/python-1.md",
+      "year": "2026",
+      "slug": "python-1",
+      "title": "[파이썬 1부] 파이썬의 변수 조회는 단순한 딕셔너리 검색일까?",
+      "description": "소스 코드가 어떻게 토큰·AST·바이트코드로 변환되고, 런타임에 적응형 최적화가 일어나는지 CPython 내부를 직접 따라가보기",
+      "snippet": "소스 코드가 어떻게 토큰·AST·바이트코드로 변환되고, 런타임에 적응형 최적화가 일어나는지 CPython 내부를 직접 따라가보기",
+      "date": "2026-03-15",
+      "tags": [
+        "Python",
+        "CPython",
+        "Bytecode",
+        "Interpreter",
+        "Performance",
+        "Memory"
+      ],
+      "category": "기술",
+      "author": "Admin",
+      "readingTime": "5 min read",
+      "published": true,
+      "coverImage": "/images/2026/python-1/2.png",
+      "url": "/blog/2026/python-1"
     },
     {
       "path": "/posts/2026/Immutable_infra.md",
@@ -5640,7 +5710,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-03-21T00:01:03.863Z",
+  "generatedAt": "2026-03-21T08:42:41.862Z",
   "years": [
     "2026",
     "2025",
