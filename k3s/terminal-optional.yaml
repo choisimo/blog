@@ -31,7 +31,7 @@ spec:
       containers:
         - name: dind
           image: docker:27-dind
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           args:
             - --host=unix:///var/run/docker.sock
           env:
@@ -54,7 +54,7 @@ spec:
             periodSeconds: 5
         - name: terminal-server
           image: ghcr.io/choisimo/blog-terminal:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 8080

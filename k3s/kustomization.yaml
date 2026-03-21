@@ -12,3 +12,6 @@ resources:
   - api.yaml
   - ingress.yaml
   - middleware.yaml
+  - piston.yaml
+  - terminal-optional.yaml
+  - terminal-ingress-optional.yaml

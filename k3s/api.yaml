@@ -46,7 +46,7 @@ spec:
       initContainers:
         - name: sync-repo
           image: alpine/git:2.47.2
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           command:
             - /bin/sh
             - -ec
@@ -65,7 +65,7 @@ spec:
       containers:
         - name: api
           image: ghcr.io/choisimo/blog-api:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 5080
