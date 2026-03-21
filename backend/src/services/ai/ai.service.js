@@ -38,14 +38,16 @@ import {
 } from "../../config/constants.js";
 import { createLogger } from "../../lib/logger.js";
 
-const logger = createLogger('ai-service');
+const logger = createLogger("ai-service");
 
 let getOpenAIClient, OpenAICompatClient;
 try {
   ({ getOpenAIClient, default: OpenAICompatClient } =
     await import("./openai-client.service.js"));
 } catch (err) {
-  logger.error({}, 'Failed to import openai-client.service', { error: err.message });
+  logger.error({}, "Failed to import openai-client.service", {
+    error: err.message,
+  });
   getOpenAIClient = null;
   OpenAICompatClient = null;
 }
@@ -53,19 +55,22 @@ try {
 export class AIService {
   constructor() {
     this._openaiClient = null;
-    this._useAsyncQueue = process.env.AI_ASYNC_MODE === 'true';
+    this._useAsyncQueue = process.env.AI_ASYNC_MODE === "true";
     this._redisCheckedAt = 0;
     this._redisAvailable = false;
-    this._redisCheckTtlMs = parseInt(process.env.AI_REDIS_CHECK_TTL_MS || '30000', 10);
+    this._redisCheckTtlMs = parseInt(
+      process.env.AI_REDIS_CHECK_TTL_MS || "30000",
+      10,
+    );
 
     if (!getOpenAIClient) {
       throw new Error(
-        'OpenAI client not available. Check openai-client.service.js import.',
+        "OpenAI client not available. Check openai-client.service.js import.",
       );
     }
 
     logger.info(
-      { operation: 'init' },
+      { operation: "init" },
       `AIService initialized (async: ${this._useAsyncQueue})`,
     );
   }
@@ -77,7 +82,7 @@ export class AIService {
     }
 
     try {
-      const { isRedisAvailable } = await import('../../lib/redis-client.js');
+      const { isRedisAvailable } = await import("../../lib/redis-client.js");
       this._redisAvailable = await isRedisAvailable();
     } catch {
       this._redisAvailable = false;
@@ -85,7 +90,7 @@ export class AIService {
 
     this._redisCheckedAt = now;
     logger.debug(
-      { operation: 'redis-check' },
+      { operation: "redis-check" },
       `Redis availability: ${this._redisAvailable}`,
     );
     return this._redisAvailable;
@@ -689,8 +694,9 @@ export class AIService {
     return {
       provider: "openai-compat",
       config: {
-        baseUrl: snapshot.baseUrl || config.ai?.baseUrl || "https://api.openai.com/v1",
-        defaultModel: snapshot.defaultModel || config.ai?.defaultModel || AI_MODELS.DEFAULT,
+        baseUrl: snapshot.baseUrl || config.ai?.baseUrl || AI_API.BASE_URL,
+        defaultModel:
+          snapshot.defaultModel || config.ai?.defaultModel || AI_MODELS.DEFAULT,
       },
     };
   }

@@ -18,10 +18,14 @@ import {
   TIMEOUTS,
   CONTEXT,
   AI_TEMPERATURES,
+  STATIC_MODEL_FALLBACK_LIST,
 } from "../config/constants.js";
 import { createLogger } from "../lib/logger.js";
-import { getCachedAIConfigSnapshot, getProviderSnapshot } from '../services/ai/dynamic-config.service.js';
-import { getOpenAIClientConfigSnapshot } from '../services/ai/openai-client.service.js';
+import {
+  getCachedAIConfigSnapshot,
+  getProviderSnapshot,
+} from "../services/ai/dynamic-config.service.js";
+import { getOpenAIClientConfigSnapshot } from "../services/ai/openai-client.service.js";
 
 const router = Router();
 const logger = createLogger("ai");
@@ -64,7 +68,7 @@ async function searchBlogPosts(query, nResults = 5) {
       score: r.score,
     }));
   } catch (err) {
-    logger.warn({}, 'RAG search error', { error: err.message });
+    logger.warn({}, "RAG search error", { error: err.message });
     return null;
   }
 }
@@ -204,44 +208,8 @@ function buildCapabilities(model) {
  * Fallback models when DB is unavailable
  */
 function getFallbackModels(defaultModel) {
-  const fallbackList = AI_MODELS.STATIC_FALLBACK_LIST || [
-    {
-      id: "gpt-4.1",
-      name: "GPT-4.1",
-      provider: "GitHub",
-      capabilities: ["chat", "vision"],
-    },
-    {
-      id: "gpt-4o",
-      name: "GPT-4o",
-      provider: "GitHub",
-      capabilities: ["chat", "vision"],
-    },
-    {
-      id: "gpt-4o-mini",
-      name: "GPT-4o Mini",
-      provider: "GitHub",
-      capabilities: ["chat", "vision"],
-    },
-    {
-      id: "claude-sonnet-4",
-      name: "Claude Sonnet 4",
-      provider: "GitHub",
-      capabilities: ["chat", "vision", "long-context"],
-    },
-    {
-      id: "claude-3.5-sonnet",
-      name: "Claude 3.5 Sonnet",
-      provider: "GitHub",
-      capabilities: ["chat", "vision"],
-    },
-    {
-      id: "gemini-2.0-flash",
-      name: "Gemini 2.0 Flash",
-      provider: "GitHub",
-      capabilities: ["chat", "vision", "long-context"],
-    },
-  ];
+  const fallbackList =
+    AI_MODELS.STATIC_FALLBACK_LIST || STATIC_MODEL_FALLBACK_LIST;
 
   return fallbackList.map((m) => ({
     ...m,
@@ -320,7 +288,7 @@ router.post("/auto-chat", rateLimitMiddleware(), async (req, res, next) => {
       },
     });
   } catch (err) {
-    logger.error({}, 'auto-chat error', { error: err.message });
+    logger.error({}, "auto-chat error", { error: err.message });
     return next(err);
   }
 });
@@ -355,7 +323,10 @@ router.get("/status", async (req, res) => {
     data: {
       status: healthResult.ok ? "ok" : "degraded",
       provider: providerInfo.provider,
-      model: providerInfo.config?.defaultModel || clientConfigSnapshot.defaultModel || config.ai?.defaultModel,
+      model:
+        providerInfo.config?.defaultModel ||
+        clientConfigSnapshot.defaultModel ||
+        config.ai?.defaultModel,
       aiService: {
         provider: providerInfo.provider,
         config: providerInfo.config,
@@ -613,7 +584,7 @@ router.post(
           },
         });
       } catch (err) {
-        logger.error({}, 'Vision analysis failed', { error: err.message });
+        logger.error({}, "Vision analysis failed", { error: err.message });
         return res.status(502).json({
           ok: false,
           error: {
@@ -623,7 +594,7 @@ router.post(
         });
       }
     } catch (err) {
-      logger.error({}, 'vision/analyze error', { error: err.message });
+      logger.error({}, "vision/analyze error", { error: err.message });
       return next(err);
     }
   },

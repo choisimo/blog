@@ -19,20 +19,24 @@
  * }
  */
 
-import { isRedisAvailable, getRedisClient } from '../../lib/redis-client.js';
-import { createLogger } from '../../lib/logger.js';
+import { isRedisAvailable, getRedisClient } from "../../lib/redis-client.js";
+import { createLogger } from "../../lib/logger.js";
 
-const logger = createLogger('chat-session-repo');
+const logger = createLogger("chat-session-repo");
 
 // Redis key prefixes
-const REDIS_SESSION_PREFIX = 'chat:session:';
-const REDIS_USER_SESSIONS_PREFIX = 'chat:user:';
-const REDIS_USER_SESSIONS_SUFFIX = ':sessions';
+const REDIS_SESSION_PREFIX = "chat:session:";
+const REDIS_USER_SESSIONS_PREFIX = "chat:user:";
+const REDIS_USER_SESSIONS_SUFFIX = ":sessions";
 const REDIS_TTL = 604800; // 7 days in seconds
 
 /**
  * In-memory fallback store for when Redis is unavailable
+ * @todo Map 대신 LRU 캐시 사용하여 메모리 관리하기 위한 리팩토링 필요함
+ * @todo json.parse(json.stringify()) 대신 structuredClone 사용하여 깊은 복사 대체 리팩토링 필요함
+ * @todo Circuit Breaker 패턴 적용하여 Redis 장애시에만 fallback 사용하도록 리팩토링 필요함
  */
+
 class ChatSessionMemoryStore {
   constructor() {
     /** @type {Map<string, object>} */
@@ -52,7 +56,11 @@ class ChatSessionMemoryStore {
   async updateChatSession(sessionId, updates) {
     const current = this.sessions.get(sessionId);
     if (!current) return null;
-    const updated = { ...current, ...updates, updatedAt: new Date().toISOString() };
+    const updated = {
+      ...current,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
     this.sessions.set(sessionId, updated);
     return updated;
   }
@@ -123,7 +131,9 @@ export async function getChatSession(sessionId) {
       const data = await client.get(key);
       return deserializeSession(data);
     } catch (err) {
-      logger.warn({}, 'Redis get failed, falling back to memory', { error: err.message });
+      logger.warn({}, "Redis get failed, falling back to memory", {
+        error: err.message,
+      });
     }
   }
 
@@ -162,7 +172,9 @@ export async function setChatSession(sessionId, sessionData) {
 
       return;
     } catch (err) {
-      logger.warn({}, 'Redis set failed, falling back to memory', { error: err.message });
+      logger.warn({}, "Redis set failed, falling back to memory", {
+        error: err.message,
+      });
     }
   }
 
@@ -203,7 +215,11 @@ export async function updateChatSession(sessionId, updates) {
       await client.setEx(key, REDIS_TTL, serializeSession(updated));
 
       // Update user index if userId changed
-      if (updates.userId && updates.userId !== session.userId && session.userId) {
+      if (
+        updates.userId &&
+        updates.userId !== session.userId &&
+        session.userId
+      ) {
         const oldUserKey = `${REDIS_USER_SESSIONS_PREFIX}${session.userId}${REDIS_USER_SESSIONS_SUFFIX}`;
         await client.sRem(oldUserKey, sessionId);
       }
@@ -215,7 +231,9 @@ export async function updateChatSession(sessionId, updates) {
 
       return updated;
     } catch (err) {
-      logger.warn({}, 'Redis update failed, falling back to memory', { error: err.message });
+      logger.warn({}, "Redis update failed, falling back to memory", {
+        error: err.message,
+      });
     }
   }
 
@@ -252,7 +270,9 @@ export async function deleteChatSession(sessionId) {
 
       return deleted > 0;
     } catch (err) {
-      logger.warn({}, 'Redis delete failed, falling back to memory', { error: err.message });
+      logger.warn({}, "Redis delete failed, falling back to memory", {
+        error: err.message,
+      });
     }
   }
 
@@ -290,7 +310,11 @@ export async function getChatSessionsByUser(userId) {
 
       return sessions;
     } catch (err) {
-      logger.warn({}, 'Redis getChatSessionsByUser failed, falling back to memory', { error: err.message });
+      logger.warn(
+        {},
+        "Redis getChatSessionsByUser failed, falling back to memory",
+        { error: err.message },
+      );
     }
   }
 

@@ -18,10 +18,11 @@
  *   const snapshot = await getDynamicAIConfig();
  */
 
-import { config } from '../../config.js';
-import { createLogger } from '../../lib/logger.js';
+import { config } from "../../config.js";
+import { AI_API } from "../../config/constants.js";
+import { createLogger } from "../../lib/logger.js";
 
-const logger = createLogger('dynamic-config');
+const logger = createLogger("dynamic-config");
 
 // =============================================================================
 // Constants
@@ -125,7 +126,7 @@ let providerRefreshPromise = null;
  * @returns {string}
  */
 function buildFingerprint(baseUrl, apiKey, defaultModel) {
-  return `${baseUrl}::${apiKey ?? ''}::${defaultModel ?? ''}`;
+  return `${baseUrl}::${apiKey ?? ""}::${defaultModel ?? ""}`;
 }
 
 /**
@@ -133,13 +134,19 @@ function buildFingerprint(baseUrl, apiKey, defaultModel) {
  * @returns {AIConfigSnapshot}
  */
 function getEnvFallbackSnapshot() {
-  const baseUrl = config.ai?.baseUrl || process.env.AI_SERVER_URL || 'https://api.openai.com/v1';
-  const apiKey = config.ai?.apiKey || process.env.AI_API_KEY || process.env.OPENAI_API_KEY || null;
-  const defaultModel = config.ai?.defaultModel || process.env.AI_DEFAULT_MODEL || null;
+  const baseUrl =
+    config.ai?.baseUrl || process.env.AI_SERVER_URL || AI_API.BASE_URL;
+  const apiKey =
+    config.ai?.apiKey ||
+    process.env.AI_API_KEY ||
+    process.env.OPENAI_API_KEY ||
+    null;
+  const defaultModel =
+    config.ai?.defaultModel || process.env.AI_DEFAULT_MODEL || null;
   const now = Date.now();
 
   return {
-    source: 'env',
+    source: "env",
     baseUrl,
     apiKey,
     defaultModel,
@@ -166,12 +173,14 @@ function hasSnapshotExpired(snapshot) {
 async function fetchWorkerAIConfig() {
   const workerApiUrl = config.services?.workerApiUrl;
   if (!workerApiUrl) {
-    throw new Error('WORKER_API_URL not configured');
+    throw new Error("WORKER_API_URL not configured");
   }
 
   const backendKey = config.backendKey;
   if (!backendKey) {
-    throw new Error('BACKEND_KEY not configured — cannot authenticate with Worker');
+    throw new Error(
+      "BACKEND_KEY not configured — cannot authenticate with Worker",
+    );
   }
 
   const controller = new AbortController();
@@ -179,10 +188,10 @@ async function fetchWorkerAIConfig() {
 
   try {
     const response = await fetch(`${workerApiUrl}/api/v1/internal/ai-config`, {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'X-Backend-Key': backendKey,
-        'Accept': 'application/json',
+        "X-Backend-Key": backendKey,
+        Accept: "application/json",
       },
       signal: controller.signal,
     });
@@ -193,14 +202,14 @@ async function fetchWorkerAIConfig() {
 
     const json = await response.json();
     if (!json.ok || !json.data) {
-      throw new Error('Worker returned unexpected response shape');
+      throw new Error("Worker returned unexpected response shape");
     }
 
     const { baseUrl, apiKey, defaultModel } = json.data;
     const now = Date.now();
 
     return {
-      source: 'worker',
+      source: "worker",
       baseUrl: baseUrl || getEnvFallbackSnapshot().baseUrl,
       apiKey: apiKey || null,
       defaultModel: defaultModel || null,
@@ -230,18 +239,18 @@ async function refreshAIConfig() {
 
       if (!prev || prev.fingerprint !== snapshot.fingerprint) {
         logger.info(
-          { operation: 'refresh', source: snapshot.source },
-          'AI config updated from Worker',
-          { model: snapshot.defaultModel, baseUrl: snapshot.baseUrl }
+          { operation: "refresh", source: snapshot.source },
+          "AI config updated from Worker",
+          { model: snapshot.defaultModel, baseUrl: snapshot.baseUrl },
         );
       }
 
       return snapshot;
     } catch (err) {
       logger.warn(
-        { operation: 'refresh' },
-        'Failed to fetch AI config from Worker, using env fallback',
-        { error: err.message }
+        { operation: "refresh" },
+        "Failed to fetch AI config from Worker, using env fallback",
+        { error: err.message },
       );
 
       // Extend current snapshot TTL rather than returning expired data
@@ -328,7 +337,7 @@ export function invalidateAIConfigCache() {
   refreshPromise = null;
   currentProviderSnapshot = null;
   providerRefreshPromise = null;
-  logger.info({ operation: 'invalidate' }, 'AI config cache invalidated');
+  logger.info({ operation: "invalidate" }, "AI config cache invalidated");
 }
 
 /**
@@ -339,15 +348,17 @@ export function primeAIConfigRefresh() {
   const workerApiUrl = config.services?.workerApiUrl;
   if (!workerApiUrl) {
     logger.warn(
-      { operation: 'prime' },
-      '⚠️  WORKER_API_URL is not configured. AI config will use local env fallback only. ' +
-      'Set WORKER_API_URL in .env to enable centralized AI config from the Worker.',
+      { operation: "prime" },
+      "⚠️  WORKER_API_URL is not configured. AI config will use local env fallback only. " +
+        "Set WORKER_API_URL in .env to enable centralized AI config from the Worker.",
     );
     return;
   }
 
   refreshAIConfig().catch((err) => {
-    logger.warn({ operation: 'prime' }, 'Primed refresh failed', { error: err.message });
+    logger.warn({ operation: "prime" }, "Primed refresh failed", {
+      error: err.message,
+    });
   });
 }
 
@@ -362,26 +373,31 @@ export function primeAIConfigRefresh() {
 async function fetchWorkerProviderSnapshot() {
   const workerApiUrl = config.services?.workerApiUrl;
   if (!workerApiUrl) {
-    throw new Error('WORKER_API_URL not configured');
+    throw new Error("WORKER_API_URL not configured");
   }
 
   const backendKey = config.backendKey;
   if (!backendKey) {
-    throw new Error('BACKEND_KEY not configured — cannot authenticate with Worker');
+    throw new Error(
+      "BACKEND_KEY not configured — cannot authenticate with Worker",
+    );
   }
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const response = await fetch(`${workerApiUrl}/api/v1/internal/ai-config/providers`, {
-      method: 'GET',
-      headers: {
-        'X-Backend-Key': backendKey,
-        'Accept': 'application/json',
+    const response = await fetch(
+      `${workerApiUrl}/api/v1/internal/ai-config/providers`,
+      {
+        method: "GET",
+        headers: {
+          "X-Backend-Key": backendKey,
+          Accept: "application/json",
+        },
+        signal: controller.signal,
       },
-      signal: controller.signal,
-    });
+    );
 
     if (!response.ok) {
       throw new Error(`Worker returned HTTP ${response.status}`);
@@ -389,14 +405,14 @@ async function fetchWorkerProviderSnapshot() {
 
     const json = await response.json();
     if (!json.ok || !json.data) {
-      throw new Error('Worker returned unexpected response shape');
+      throw new Error("Worker returned unexpected response shape");
     }
 
     const { providers, models, defaultRoute } = json.data;
     const now = Date.now();
 
     return {
-      source: 'worker',
+      source: "worker",
       providers: providers || [],
       models: models || [],
       defaultRoute: defaultRoute || null,
@@ -422,16 +438,19 @@ async function refreshProviderSnapshot() {
       currentProviderSnapshot = snapshot;
 
       logger.info(
-        { operation: 'provider-refresh', source: snapshot.source },
-        'Provider snapshot updated from Worker',
-        { providerCount: snapshot.providers.length, modelCount: snapshot.models.length },
+        { operation: "provider-refresh", source: snapshot.source },
+        "Provider snapshot updated from Worker",
+        {
+          providerCount: snapshot.providers.length,
+          modelCount: snapshot.models.length,
+        },
       );
 
       return snapshot;
     } catch (err) {
       logger.warn(
-        { operation: 'provider-refresh' },
-        'Failed to fetch provider snapshot from Worker',
+        { operation: "provider-refresh" },
+        "Failed to fetch provider snapshot from Worker",
         { error: err.message },
       );
 

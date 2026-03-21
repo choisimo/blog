@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { config } from "../config.js";
+import { AI_API, AI_MODELS, CHROMA } from "../config/constants.js";
 import requireAdmin from "../middleware/adminAuth.js";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -80,9 +81,7 @@ const CONFIG_CATEGORIES = [
         key: "AI_SERVER_URL",
         type: "url",
         default:
-          config.ai?.baseUrl ||
-          process.env.AI_SERVER_URL ||
-          "https://api.openai.com/v1",
+          config.ai?.baseUrl || process.env.AI_SERVER_URL || AI_API.BASE_URL,
         description: "OpenAI SDK 호환 서버 URL",
       },
       {
@@ -94,7 +93,10 @@ const CONFIG_CATEGORIES = [
       {
         key: "AI_DEFAULT_MODEL",
         type: "text",
-        default: config.ai?.defaultModel || process.env.AI_DEFAULT_MODEL || "",
+        default:
+          config.ai?.defaultModel ||
+          process.env.AI_DEFAULT_MODEL ||
+          AI_MODELS.DEFAULT,
         description: "기본 AI 모델",
       },
     ],
@@ -144,7 +146,7 @@ const CONFIG_CATEGORIES = [
       {
         key: "AI_EMBEDDING_URL",
         type: "url",
-        default: "https://api.openai.com/v1",
+        default: AI_API.EMBEDDING_URL,
         description: "OpenAI-compatible Embedding URL",
       },
       {
@@ -156,19 +158,19 @@ const CONFIG_CATEGORIES = [
       {
         key: "AI_EMBED_MODEL",
         type: "text",
-        default: "text-embedding-3-small",
+        default: AI_MODELS.EMBEDDING,
         description: "Embedding Model",
       },
       {
         key: "CHROMA_URL",
         type: "url",
-        default: "http://chromadb:8000",
+        default: CHROMA.URL,
         description: "ChromaDB URL",
       },
       {
         key: "CHROMA_COLLECTION",
         type: "text",
-        default: "blog-posts-all-MiniLM-L6-v2",
+        default: CHROMA.COLLECTION,
         description: "ChromaDB Collection",
       },
     ],
@@ -207,7 +209,8 @@ const CONFIG_CATEGORIES = [
         key: "ADMIN_SETUP_TOKEN",
         type: "password",
         isSecret: true,
-        description: "One-time token required to access TOTP provisioning endpoint",
+        description:
+          "One-time token required to access TOTP provisioning endpoint",
       },
     ],
   },

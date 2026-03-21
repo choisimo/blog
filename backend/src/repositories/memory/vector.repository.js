@@ -1,22 +1,32 @@
-import { config } from '../../config.js';
-import { openaiEmbeddings } from '../../lib/openai-compat-client.js';
-import { CHROMA, AI_MODELS, MEMORY, FALLBACK_DATA } from '../../config/constants.js';
-import { createLogger } from '../../lib/logger.js';
+import { config } from "../../config.js";
+import { openaiEmbeddings } from "../../lib/openai-compat-client.js";
+import {
+  AI_API,
+  CHROMA,
+  AI_MODELS,
+  MEMORY,
+  FALLBACK_DATA,
+} from "../../config/constants.js";
+import { createLogger } from "../../lib/logger.js";
 
-const logger = createLogger('vector-memory');
+const logger = createLogger("vector-memory");
 
-const getChromaUrl = () => config.rag?.chromaUrl || process.env.CHROMA_URL || CHROMA.URL;
-const getEmbeddingUrl = () => config.rag?.embeddingUrl
-  || process.env.AI_EMBEDDING_URL
-  || process.env.AI_SERVER_URL
-  || 'https://api.openai.com/v1';
-const getEmbeddingApiKey = () => config.rag?.embeddingApiKey
-  || process.env.AI_EMBEDDING_API_KEY
-  || process.env.AI_API_KEY
-  || process.env.OPENAI_API_KEY;
-const getEmbeddingModel = () => config.rag?.embeddingModel
-  || process.env.AI_EMBED_MODEL
-  || AI_MODELS.EMBEDDING;
+const getChromaUrl = () =>
+  config.rag?.chromaUrl || process.env.CHROMA_URL || CHROMA.URL;
+const getEmbeddingUrl = () =>
+  config.rag?.embeddingUrl ||
+  process.env.AI_EMBEDDING_URL ||
+  process.env.AI_SERVER_URL ||
+  AI_API.EMBEDDING_URL;
+const getEmbeddingApiKey = () =>
+  config.rag?.embeddingApiKey ||
+  process.env.AI_EMBEDDING_API_KEY ||
+  process.env.AI_API_KEY ||
+  process.env.OPENAI_API_KEY;
+const getEmbeddingModel = () =>
+  config.rag?.embeddingModel ||
+  process.env.AI_EMBED_MODEL ||
+  AI_MODELS.EMBEDDING;
 const COLLECTION_NAME = CHROMA.MEMORY_COLLECTION;
 
 async function generateEmbeddings(text) {
@@ -28,7 +38,7 @@ async function generateEmbeddings(text) {
     });
     return result.embeddings[0];
   } catch (error) {
-    logger.error({}, 'Embedding generation failed', { error: error.message });
+    logger.error({}, "Embedding generation failed", { error: error.message });
     return null;
   }
 }
@@ -43,36 +53,50 @@ class VectorMemoryStore {
     if (this._initialized) return true;
 
     try {
-      const response = await fetch(`${getChromaUrl()}/api/v1/collections/${COLLECTION_NAME}`);
-      
+      const response = await fetch(
+        `${getChromaUrl()}/api/v1/collections/${COLLECTION_NAME}`,
+      );
+
       if (!response.ok && response.status === 404) {
-        const createResponse = await fetch(`${getChromaUrl()}/api/v1/collections`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: COLLECTION_NAME,
-            metadata: { description: 'Agent conversation memories' },
-          }),
-        });
+        const createResponse = await fetch(
+          `${getChromaUrl()}/api/v1/collections`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: COLLECTION_NAME,
+              metadata: { description: "Agent conversation memories" },
+            }),
+          },
+        );
 
         if (!createResponse.ok) {
-          throw new Error(`Failed to create collection: ${createResponse.status}`);
+          throw new Error(
+            `Failed to create collection: ${createResponse.status}`,
+          );
         }
       }
 
       this._initialized = true;
       return true;
     } catch (error) {
-      logger.warn({}, 'ChromaDB initialization failed', { error: error.message });
+      logger.warn({}, "ChromaDB initialization failed", {
+        error: error.message,
+      });
       return false;
     }
   }
 
   async add(memory) {
-    const { content, sessionId, type = MEMORY.CONVERSATION_TYPE, metadata = {} } = memory;
+    const {
+      content,
+      sessionId,
+      type = MEMORY.CONVERSATION_TYPE,
+      metadata = {},
+    } = memory;
 
     if (!content) {
-      logger.warn({}, 'Empty content, skipping');
+      logger.warn({}, "Empty content, skipping");
       return null;
     }
 
@@ -89,21 +113,26 @@ class VectorMemoryStore {
 
       const id = `vmem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-      const response = await fetch(`${getChromaUrl()}/api/v1/collections/${COLLECTION_NAME}/add`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ids: [id],
-          embeddings: [embedding],
-          documents: [content],
-          metadatas: [{
-            sessionId,
-            type,
-            timestamp: new Date().toISOString(),
-            ...metadata,
-          }],
-        }),
-      });
+      const response = await fetch(
+        `${getChromaUrl()}/api/v1/collections/${COLLECTION_NAME}/add`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ids: [id],
+            embeddings: [embedding],
+            documents: [content],
+            metadatas: [
+              {
+                sessionId,
+                type,
+                timestamp: new Date().toISOString(),
+                ...metadata,
+              },
+            ],
+          }),
+        },
+      );
 
       if (!response.ok) {
         throw new Error(`ChromaDB add failed: ${response.status}`);
@@ -111,13 +140,17 @@ class VectorMemoryStore {
 
       return { id, content, sessionId, type };
     } catch (error) {
-      logger.error({}, 'Add failed', { error: error.message });
+      logger.error({}, "Add failed", { error: error.message });
       return this._fallbackAdd(memory);
     }
   }
 
   async search(query, options = {}) {
-    const { sessionId, limit = MEMORY.VECTOR_SEARCH_LIMIT, minScore = MEMORY.VECTOR_MIN_SCORE } = options;
+    const {
+      sessionId,
+      limit = MEMORY.VECTOR_SEARCH_LIMIT,
+      minScore = MEMORY.VECTOR_MIN_SCORE,
+    } = options;
 
     if (!query) return [];
 
@@ -134,23 +167,26 @@ class VectorMemoryStore {
 
       const where = sessionId ? { sessionId } : undefined;
 
-      const response = await fetch(`${getChromaUrl()}/api/v1/collections/${COLLECTION_NAME}/query`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query_embeddings: [queryEmbedding],
-          n_results: limit,
-          where,
-          include: ['documents', 'metadatas', 'distances'],
-        }),
-      });
+      const response = await fetch(
+        `${getChromaUrl()}/api/v1/collections/${COLLECTION_NAME}/query`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query_embeddings: [queryEmbedding],
+            n_results: limit,
+            where,
+            include: ["documents", "metadatas", "distances"],
+          }),
+        },
+      );
 
       if (!response.ok) {
         throw new Error(`ChromaDB query failed: ${response.status}`);
       }
 
       const data = await response.json();
-      
+
       const results = [];
       const documents = data.documents?.[0] || [];
       const metadatas = data.metadatas?.[0] || [];
@@ -169,7 +205,7 @@ class VectorMemoryStore {
 
       return results;
     } catch (error) {
-      logger.error({}, 'Search failed', { error: error.message });
+      logger.error({}, "Search failed", { error: error.message });
       return this._fallbackSearch(query, options);
     }
   }
@@ -182,23 +218,28 @@ class VectorMemoryStore {
         return;
       }
 
-      await fetch(`${getChromaUrl()}/api/v1/collections/${COLLECTION_NAME}/delete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          where: { sessionId },
-        }),
-      });
+      await fetch(
+        `${getChromaUrl()}/api/v1/collections/${COLLECTION_NAME}/delete`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            where: { sessionId },
+          }),
+        },
+      );
 
       this._fallbackStore.delete(sessionId);
     } catch (error) {
-      logger.error({}, 'Delete failed', { error: error.message });
+      logger.error({}, "Delete failed", { error: error.message });
     }
   }
 
   async getStats() {
     try {
-      const response = await fetch(`${getChromaUrl()}/api/v1/collections/${COLLECTION_NAME}`);
+      const response = await fetch(
+        `${getChromaUrl()}/api/v1/collections/${COLLECTION_NAME}`,
+      );
       if (!response.ok) {
         return { count: 0, available: false };
       }
@@ -233,7 +274,9 @@ class VectorMemoryStore {
     const queryLower = query.toLowerCase();
     const results = [];
 
-    const sessions = sessionId ? [sessionId] : Array.from(this._fallbackStore.keys());
+    const sessions = sessionId
+      ? [sessionId]
+      : Array.from(this._fallbackStore.keys());
 
     for (const sid of sessions) {
       const memories = this._fallbackStore.get(sid) || [];

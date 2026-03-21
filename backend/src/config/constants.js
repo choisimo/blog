@@ -1,3 +1,22 @@
+import {
+  STATIC_MODEL_FALLBACK_LIST,
+  SYSTEM_MODEL_DEFAULTS,
+} from "./model-catalog.js";
+
+export {
+  DEFAULT_EMBEDDING_DIMENSIONS,
+  DEFAULT_MODEL_CAPABILITIES,
+  EMBEDDING_MODEL_CATALOG,
+  EMBEDDING_MODEL_ID_LIST,
+  EMBEDDING_MODEL_IDS,
+  MODEL_CAPABILITY_CATALOG,
+  MODEL_FALLBACK_CATALOG,
+  MODEL_ID_LIST,
+  MODEL_IDS,
+  STATIC_MODEL_FALLBACK_LIST,
+  SYSTEM_MODEL_DEFAULTS,
+} from "./model-catalog.js";
+
 /**
  * Configuration Constants
  *
@@ -62,9 +81,26 @@ function parseFloatEnv(envVar, defaultValue) {
  * @returns {boolean} Parsed boolean or default
  */
 function parseBoolEnv(envVar, defaultValue) {
-  if (envVar === undefined || envVar === null || envVar === '') return defaultValue;
-  return envVar === 'true' || envVar === '1';
+  if (envVar === undefined || envVar === null || envVar === "")
+    return defaultValue;
+  return envVar === "true" || envVar === "1";
 }
+
+const DEFAULT_OPENAI_COMPAT_BASE_URL = "https://api.openai.com/v1";
+const DEFAULT_DUCKDUCKGO_API_URL = "https://api.duckduckgo.com/";
+const DEFAULT_PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions";
+const DEFAULT_TAVILY_API_URL = "https://api.tavily.com/search";
+const DEFAULT_BRAVE_SEARCH_API_URL =
+  "https://api.search.brave.com/res/v1/web/search";
+const DEFAULT_SERPER_API_URL = "https://google.serper.dev/search";
+const DEFAULT_OPENAI_PLACEHOLDER_API_KEY = "sk-placeholder";
+const DEFAULT_REDIS_URL = "redis://localhost:6379";
+const DEFAULT_TERMINAL_SERVER_URL = "http://terminal-server:8080";
+const DEFAULT_TERMINAL_GATEWAY_URL = "https://terminal.nodove.com";
+const DEFAULT_OPEN_NOTEBOOK_URL = "http://open-notebook:8501";
+const DEFAULT_PISTON_URL = "http://piston:2000";
+const DEFAULT_MCP_CONFIG_PATH = "/.roo/mcp.json";
+const DEFAULT_MCP_WORKSPACE_PATH = "/workspace";
 
 // ============================================================================
 // AI Models Configuration
@@ -76,25 +112,31 @@ function parseBoolEnv(envVar, defaultValue) {
  */
 export const AI_MODELS = {
   /** Default model for general AI operations */
-  DEFAULT: process.env.AI_DEFAULT_MODEL,
+  DEFAULT: process.env.AI_DEFAULT_MODEL || SYSTEM_MODEL_DEFAULTS.DEFAULT,
 
   /** Default model for agent operations */
-  AGENT: process.env.AGENT_MODEL || process.env.AI_DEFAULT_MODEL,
+  AGENT:
+    process.env.AGENT_MODEL ||
+    process.env.AI_DEFAULT_MODEL ||
+    SYSTEM_MODEL_DEFAULTS.AGENT,
 
   /** Default model for vision/image analysis */
-  VISION: process.env.AI_VISION_MODEL,
+  VISION: process.env.AI_VISION_MODEL || SYSTEM_MODEL_DEFAULTS.VISION,
 
   /** Default model for embeddings */
-  EMBEDDING: process.env.AI_EMBED_MODEL,
+  EMBEDDING: process.env.AI_EMBED_MODEL || SYSTEM_MODEL_DEFAULTS.EMBEDDING,
 
   /** Model for Perplexity AI search */
-  PERPLEXITY: process.env.PERPLEXITY_MODEL,
+  PERPLEXITY: process.env.PERPLEXITY_MODEL || "sonar",
 
   /** Fallback models when primary is unavailable (JSON array) */
-  FALLBACKS: parseJsonEnv(process.env.AI_FALLBACK_MODELS),
+  FALLBACKS: parseJsonEnv(process.env.AI_FALLBACK_MODELS, []),
 
   /** Static fallback model list for when DB is unavailable */
-  STATIC_FALLBACK_LIST: parseJsonEnv(process.env.AI_STATIC_MODEL_LIST),
+  STATIC_FALLBACK_LIST: parseJsonEnv(
+    process.env.AI_STATIC_MODEL_LIST,
+    STATIC_MODEL_FALLBACK_LIST,
+  ),
 };
 
 // ============================================================================
@@ -107,28 +149,88 @@ export const AI_MODELS = {
  */
 export const AI_API = {
   /** Base URL for OpenAI-compatible API */
-  BASE_URL: process.env.AI_SERVER_URL
-    || process.env.OPENAI_API_BASE_URL,
+  BASE_URL:
+    process.env.AI_SERVER_URL ||
+    process.env.OPENAI_API_BASE_URL ||
+    DEFAULT_OPENAI_COMPAT_BASE_URL,
 
   /** Embedding API base URL (falls back to main API) */
-  EMBEDDING_URL: process.env.AI_EMBEDDING_URL
-    || process.env.AI_SERVER_URL
-    || process.env.OPENAI_API_BASE_URL,
+  EMBEDDING_URL:
+    process.env.AI_EMBEDDING_URL ||
+    process.env.AI_SERVER_URL ||
+    process.env.OPENAI_API_BASE_URL ||
+    DEFAULT_OPENAI_COMPAT_BASE_URL,
+
+  /** Placeholder API key for OpenAI-compatible clients */
+  PLACEHOLDER_API_KEY:
+    process.env.AI_PLACEHOLDER_API_KEY || DEFAULT_OPENAI_PLACEHOLDER_API_KEY,
 
   /** DuckDuckGo search API URL */
-  DUCKDUCKGO_URL: process.env.SEARCH_API_URL,
+  DUCKDUCKGO_URL: process.env.SEARCH_API_URL || DEFAULT_DUCKDUCKGO_API_URL,
 
   /** Perplexity API URL */
-  PERPLEXITY_URL: process.env.PERPLEXITY_API_URL,
+  PERPLEXITY_URL: process.env.PERPLEXITY_API_URL || DEFAULT_PERPLEXITY_API_URL,
 
   /** Tavily API URL */
-  TAVILY_URL: process.env.TAVILY_API_URL,
+  TAVILY_URL: process.env.TAVILY_API_URL || DEFAULT_TAVILY_API_URL,
 
   /** Brave Search API URL */
-  BRAVE_SEARCH_URL: process.env.BRAVE_SEARCH_URL,
+  BRAVE_SEARCH_URL:
+    process.env.BRAVE_SEARCH_URL || DEFAULT_BRAVE_SEARCH_API_URL,
 
   /** Serper (Google) API URL */
-  SERPER_URL: process.env.SERPER_URL,
+  SERPER_URL: process.env.SERPER_URL || DEFAULT_SERPER_API_URL,
+};
+
+// ============================================================================
+// Internal Service Defaults
+// ============================================================================
+
+/**
+ * Internal service endpoint defaults
+ * @constant
+ */
+export const INTERNAL_SERVICES = {
+  /** Default Redis URL */
+  REDIS_URL: process.env.REDIS_URL || DEFAULT_REDIS_URL,
+
+  /** Default terminal server URL */
+  TERMINAL_SERVER_URL:
+    process.env.TERMINAL_SERVER_URL || DEFAULT_TERMINAL_SERVER_URL,
+
+  /** Default terminal gateway URL */
+  TERMINAL_GATEWAY_URL:
+    process.env.TERMINAL_GATEWAY_URL || DEFAULT_TERMINAL_GATEWAY_URL,
+
+  /** Default Open Notebook URL */
+  OPEN_NOTEBOOK_URL: process.env.OPEN_NOTEBOOK_URL || DEFAULT_OPEN_NOTEBOOK_URL,
+
+  /** Default code execution service URL */
+  PISTON_URL: process.env.PISTON_URL || DEFAULT_PISTON_URL,
+};
+
+// ============================================================================
+// MCP Defaults
+// ============================================================================
+
+/**
+ * Model Context Protocol defaults
+ * @constant
+ */
+export const MCP = {
+  /** MCP config file path */
+  CONFIG_PATH: process.env.MCP_CONFIG_PATH || DEFAULT_MCP_CONFIG_PATH,
+
+  /** Default workspace path for filesystem MCP */
+  WORKSPACE_PATH: process.env.WORKSPACE_PATH || DEFAULT_MCP_WORKSPACE_PATH,
+
+  /** Default MCP filesystem server command */
+  FILESYSTEM_SERVER_COMMAND: process.env.MCP_FILESYSTEM_SERVER_COMMAND || "npx",
+
+  /** Default MCP filesystem server package */
+  FILESYSTEM_SERVER_PACKAGE:
+    process.env.MCP_FILESYSTEM_SERVER_PACKAGE ||
+    "@modelcontextprotocol/server-filesystem",
 };
 
 // ============================================================================
@@ -319,13 +421,22 @@ export const SEARCH = {
   DEFAULT_LIMIT: parseIntEnv(process.env.SEARCH_DEFAULT_LIMIT, 5),
 
   /** Default search engine */
-  DEFAULT_ENGINE: process.env.SEARCH_DEFAULT_ENGINE || 'tavily',
+  DEFAULT_ENGINE: process.env.SEARCH_DEFAULT_ENGINE || "tavily",
+
+  /** Search engine to prefer for advanced mode */
+  ADVANCED_ENGINE: process.env.WEB_SEARCH_ENGINE || "serper",
+
+  /** Search engine to prefer for basic mode */
+  BASIC_ENGINE: process.env.BASIC_SEARCH_ENGINE || "duckduckgo",
+
+  /** Basic search depth preset */
+  BASIC_DEPTH: "basic",
 
   /** Tavily default search depth */
-  TAVILY_DEPTH: process.env.TAVILY_SEARCH_DEPTH || 'advanced',
+  TAVILY_DEPTH: process.env.TAVILY_SEARCH_DEPTH || "advanced",
 
   /** Perplexity default recency filter */
-  PERPLEXITY_RECENCY: process.env.PERPLEXITY_RECENCY_FILTER || 'month',
+  PERPLEXITY_RECENCY: process.env.PERPLEXITY_RECENCY_FILTER || "month",
 
   /** RAG default results count */
   RAG_DEFAULT_RESULTS: parseIntEnv(process.env.RAG_DEFAULT_RESULTS, 5),
@@ -347,10 +458,12 @@ export const IMAGE = {
   MAX_SIZE: parseIntEnv(process.env.IMAGE_MAX_SIZE_BYTES, 10 * 1024 * 1024), // 10MB
 
   /** Default MIME type */
-  DEFAULT_MIME: process.env.IMAGE_DEFAULT_MIME || 'image/jpeg',
+  DEFAULT_MIME: process.env.IMAGE_DEFAULT_MIME || "image/jpeg",
 
   /** Web scraper user agent */
-  USER_AGENT: process.env.WEB_SCRAPER_USER_AGENT || 'Mozilla/5.0 (compatible; BlogAgent/1.0)',
+  USER_AGENT:
+    process.env.WEB_SCRAPER_USER_AGENT ||
+    "Mozilla/5.0 (compatible; BlogAgent/1.0)",
 };
 
 // ============================================================================
@@ -363,7 +476,7 @@ export const IMAGE = {
  */
 export const WORKER = {
   /** Worker instance name */
-  NAME: process.env.AI_WORKER_NAME || 'worker-1',
+  NAME: process.env.AI_WORKER_NAME || "worker-1",
 
   /** Batch size for processing */
   BATCH_SIZE: parseIntEnv(process.env.AI_WORKER_BATCH_SIZE, 1),
@@ -385,13 +498,13 @@ export const CONSUL = {
   ENABLED: parseBoolEnv(process.env.USE_CONSUL, false),
 
   /** Consul host */
-  HOST: process.env.CONSUL_HOST || 'consul',
+  HOST: process.env.CONSUL_HOST || "consul",
 
   /** Consul port */
   PORT: parseIntEnv(process.env.CONSUL_PORT, 8500),
 
   /** Config key prefix */
-  PREFIX: process.env.CONSUL_PREFIX || 'blog',
+  PREFIX: process.env.CONSUL_PREFIX || "blog",
 };
 
 // ============================================================================
@@ -429,7 +542,7 @@ export const FEATURES = {
  */
 export const SERVER = {
   /** Default host */
-  HOST: process.env.HOST || '0.0.0.0',
+  HOST: process.env.HOST || "0.0.0.0",
 
   /** Default port */
   PORT: parseIntEnv(process.env.PORT, 5080),
@@ -438,10 +551,10 @@ export const SERVER = {
   TRUST_PROXY: parseIntEnv(process.env.TRUST_PROXY, 1),
 
   /** Log level */
-  LOG_LEVEL: process.env.LOG_LEVEL || 'info',
+  LOG_LEVEL: process.env.LOG_LEVEL || "info",
 
   /** Application environment */
-  ENV: process.env.APP_ENV || 'development',
+  ENV: process.env.APP_ENV || "development",
 };
 
 // ============================================================================
@@ -454,7 +567,7 @@ export const SERVER = {
  */
 export const JWT = {
   /** Token expiration */
-  EXPIRES_IN: process.env.JWT_EXPIRES_IN || '12h',
+  EXPIRES_IN: process.env.JWT_EXPIRES_IN || "12h",
 };
 
 // ============================================================================
@@ -467,7 +580,7 @@ export const JWT = {
  */
 export const CONTENT = {
   /** Posts source type */
-  SOURCE: process.env.POSTS_SOURCE || 'filesystem',
+  SOURCE: process.env.POSTS_SOURCE || "filesystem",
 };
 
 // ============================================================================
@@ -480,19 +593,19 @@ export const CONTENT = {
  */
 export const CHROMA = {
   /** ChromaDB server URL */
-  URL: process.env.CHROMA_URL || 'http://chromadb:8000',
+  URL: process.env.CHROMA_URL || "http://chromadb:8000",
 
   /** ChromaDB tenant name */
-  TENANT: process.env.CHROMA_TENANT || 'default_tenant',
+  TENANT: process.env.CHROMA_TENANT || "default_tenant",
 
   /** ChromaDB database name */
-  DATABASE: process.env.CHROMA_DATABASE || 'default_database',
+  DATABASE: process.env.CHROMA_DATABASE || "default_database",
 
   /** Collection name for blog posts */
-  COLLECTION: process.env.CHROMA_COLLECTION || 'blog-posts-all-MiniLM-L6-v2',
+  COLLECTION: process.env.CHROMA_COLLECTION || "blog-posts-all-MiniLM-L6-v2",
 
   /** Collection name for agent memories */
-  MEMORY_COLLECTION: process.env.CHROMA_MEMORY_COLLECTION || 'agent_memories',
+  MEMORY_COLLECTION: process.env.CHROMA_MEMORY_COLLECTION || "agent_memories",
 };
 
 // ============================================================================
@@ -524,10 +637,10 @@ export const SESSION = {
  */
 export const DB_TABLES = {
   /** Agent memories table */
-  MEMORIES: process.env.DB_TABLE_MEMORIES || 'agent_memories',
+  MEMORIES: process.env.DB_TABLE_MEMORIES || "agent_memories",
 
   /** User preferences table */
-  PREFERENCES: process.env.DB_TABLE_PREFERENCES || 'agent_user_preferences',
+  PREFERENCES: process.env.DB_TABLE_PREFERENCES || "agent_user_preferences",
 };
 
 // ============================================================================
@@ -540,7 +653,8 @@ export const DB_TABLES = {
  */
 export const AI_ROUTE_DEFAULTS = {
   /** Default routing strategy */
-  ROUTING_STRATEGY: process.env.DEFAULT_ROUTING_STRATEGY || 'latency-based-routing',
+  ROUTING_STRATEGY:
+    process.env.DEFAULT_ROUTING_STRATEGY || "latency-based-routing",
 
   /** Default number of retries */
   NUM_RETRIES: parseIntEnv(process.env.DEFAULT_NUM_RETRIES, 3),
@@ -568,16 +682,17 @@ export const AI_ROUTE_DEFAULTS = {
  */
 export const HEALTH_CHECK = {
   /** Default health status when unknown */
-  STATUS_UNKNOWN: process.env.HEALTH_STATUS_UNKNOWN || 'unknown',
+  STATUS_UNKNOWN: process.env.HEALTH_STATUS_UNKNOWN || "unknown",
 
   /** Health check test prompt */
-  PROMPT: process.env.HEALTH_CHECK_PROMPT || 'Hello',
+  PROMPT: process.env.HEALTH_CHECK_PROMPT || "Hello",
 
   /** Health check timeout in milliseconds */
   TIMEOUT: parseIntEnv(process.env.HEALTH_CHECK_TIMEOUT_MS, 10000),
 
   /** Model test prompt */
-  MODEL_TEST_PROMPT: process.env.MODEL_TEST_PROMPT || 'Say "Hello" in one word.',
+  MODEL_TEST_PROMPT:
+    process.env.MODEL_TEST_PROMPT || 'Say "Hello" in one word.',
 
   /** Model test timeout in milliseconds */
   MODEL_TEST_TIMEOUT: parseIntEnv(process.env.MODEL_TEST_TIMEOUT_MS, 30000),
@@ -616,10 +731,15 @@ export const STREAMING = {
  * Valid AI task modes
  * @constant
  */
-export const VALID_TASK_MODES = parseJsonEnv(
-  process.env.VALID_TASK_MODES,
-  ['sketch', 'prism', 'chain', 'catalyst', 'summary', 'custom', 'quiz']
-);
+export const VALID_TASK_MODES = parseJsonEnv(process.env.VALID_TASK_MODES, [
+  "sketch",
+  "prism",
+  "chain",
+  "catalyst",
+  "summary",
+  "custom",
+  "quiz",
+]);
 
 // ============================================================================
 // Fallback Data Configuration
@@ -631,10 +751,10 @@ export const VALID_TASK_MODES = parseJsonEnv(
  */
 export const FALLBACK_DATA = {
   /** Default mood for sketch fallback */
-  MOOD: process.env.FALLBACK_MOOD || 'curious',
+  MOOD: process.env.FALLBACK_MOOD || "curious",
 
   /** Default persona */
-  PERSONA: process.env.DEFAULT_PERSONA || 'default',
+  PERSONA: process.env.DEFAULT_PERSONA || "default",
 
   /** Fallback summary truncation length */
   SUMMARY_LENGTH: parseIntEnv(process.env.FALLBACK_SUMMARY_LENGTH, 300),
@@ -644,15 +764,18 @@ export const FALLBACK_DATA = {
 
   /** Fallback facets for prism task (Korean) */
   FACETS: parseJsonEnv(process.env.FALLBACK_FACETS, [
-    { title: '핵심 요점', points: ['내용을 분석할 수 없습니다.'] },
-    { title: '생각해볼 점', points: ['다양한 관점에서 검토 필요', '추가 맥락 확인 권장'] },
+    { title: "핵심 요점", points: ["내용을 분석할 수 없습니다."] },
+    {
+      title: "생각해볼 점",
+      points: ["다양한 관점에서 검토 필요", "추가 맥락 확인 권장"],
+    },
   ]),
 
   /** Fallback questions for chain task (Korean) */
   QUESTIONS: parseJsonEnv(process.env.FALLBACK_QUESTIONS, [
-    { q: '이 주장의 핵심 근거는 무엇인가?', why: '논리적 기반 확인' },
-    { q: '어떤 전제나 가정이 깔려 있는가?', why: '숨겨진 전제 파악' },
-    { q: '실제로 어떻게 적용할 수 있는가?', why: '실용적 가치 탐색' },
+    { q: "이 주장의 핵심 근거는 무엇인가?", why: "논리적 기반 확인" },
+    { q: "어떤 전제나 가정이 깔려 있는가?", why: "숨겨진 전제 파악" },
+    { q: "실제로 어떻게 적용할 수 있는가?", why: "실용적 가치 탐색" },
   ]),
 };
 
@@ -666,10 +789,10 @@ export const FALLBACK_DATA = {
  */
 export const MEMORY = {
   /** Default memory type */
-  DEFAULT_TYPE: process.env.DEFAULT_MEMORY_TYPE || 'note',
+  DEFAULT_TYPE: process.env.DEFAULT_MEMORY_TYPE || "note",
 
   /** Default conversation memory type */
-  CONVERSATION_TYPE: process.env.DEFAULT_CONVERSATION_TYPE || 'conversation',
+  CONVERSATION_TYPE: process.env.DEFAULT_CONVERSATION_TYPE || "conversation",
 
   /** Default memory query limit */
   DEFAULT_LIMIT: parseIntEnv(process.env.DEFAULT_MEMORY_LIMIT, 50),
@@ -710,7 +833,10 @@ export const USAGE = {
   DEFAULT_DAYS: parseIntEnv(process.env.USAGE_DEFAULT_DAYS, 7),
 
   /** Default usage period in milliseconds (7 days) */
-  DEFAULT_PERIOD_MS: parseIntEnv(process.env.USAGE_DEFAULT_PERIOD_MS, 7 * 24 * 60 * 60 * 1000),
+  DEFAULT_PERIOD_MS: parseIntEnv(
+    process.env.USAGE_DEFAULT_PERIOD_MS,
+    7 * 24 * 60 * 60 * 1000,
+  ),
 };
 
 // ============================================================================
@@ -725,8 +851,12 @@ export const OPENAI_CLIENT = {
   /** Maximum retries for OpenAI API calls */
   MAX_RETRIES: parseIntEnv(process.env.OPENAI_MAX_RETRIES, 2),
 
+  /** Placeholder API key for SDK initialization without a real credential */
+  PLACEHOLDER_API_KEY: AI_API.PLACEHOLDER_API_KEY,
+
   /** Query expander model */
-  QUERY_EXPANDER_MODEL: process.env.QUERY_EXPANDER_MODEL || 'gpt-4.1-mini',
+  QUERY_EXPANDER_MODEL:
+    process.env.QUERY_EXPANDER_MODEL || SYSTEM_MODEL_DEFAULTS.QUERY_EXPANDER,
 };
 
 // ============================================================================
@@ -751,16 +881,19 @@ AI_TEMPERATURES.AGGREGATE = parseFloatEnv(process.env.AI_TEMP_AGGREGATE, 0.2);
  */
 export const RAG_PROMPTS = {
   /** System prompt for blog assistant */
-  BLOG_ASSISTANT: process.env.RAG_BLOG_ASSISTANT_PROMPT
-    || '당신은 nodove 블로그의 AI 어시스턴트입니다. 사용자의 질문에 친절하게 답변해주세요.',
+  BLOG_ASSISTANT:
+    process.env.RAG_BLOG_ASSISTANT_PROMPT ||
+    "당신은 nodove 블로그의 AI 어시스턴트입니다. 사용자의 질문에 친절하게 답변해주세요.",
 
   /** Context template for RAG results */
-  CONTEXT_TEMPLATE: process.env.RAG_CONTEXT_TEMPLATE
-    || '아래는 사용자의 질문과 관련된 블로그 게시글 목록입니다. 이 정보를 바탕으로 답변해주세요:',
+  CONTEXT_TEMPLATE:
+    process.env.RAG_CONTEXT_TEMPLATE ||
+    "아래는 사용자의 질문과 관련된 블로그 게시글 목록입니다. 이 정보를 바탕으로 답변해주세요:",
 
   /** Recommendation instruction */
-  RECOMMENDATION_INSTRUCTION: process.env.RAG_RECOMMENDATION_INSTRUCTION
-    || '위 게시글들을 참고하여 사용자에게 적절한 게시글을 추천해주세요. 제목, URL, 간단한 설명을 포함하여 안내해주세요.',
+  RECOMMENDATION_INSTRUCTION:
+    process.env.RAG_RECOMMENDATION_INSTRUCTION ||
+    "위 게시글들을 참고하여 사용자에게 적절한 게시글을 추천해주세요. 제목, URL, 간단한 설명을 포함하여 안내해주세요.",
 };
 
 // ============================================================================
@@ -773,7 +906,9 @@ export const RAG_PROMPTS = {
  */
 export const VISION_PROMPTS = {
   /** Default vision analysis prompt */
-  DEFAULT: process.env.VISION_DEFAULT_PROMPT || `이 이미지를 분석해주세요. 다음 내용을 간결하게 설명해주세요:
+  DEFAULT:
+    process.env.VISION_DEFAULT_PROMPT ||
+    `이 이미지를 분석해주세요. 다음 내용을 간결하게 설명해주세요:
 1. 이미지에 보이는 주요 요소들
 2. 전체적인 분위기나 맥락
 3. 텍스트가 있다면 해당 내용
@@ -792,14 +927,35 @@ export const VISION_PROMPTS = {
 export const RAG_KEYWORDS = {
   /** Korean keywords that trigger RAG search */
   KOREAN: parseJsonEnv(process.env.RAG_KEYWORDS_KOREAN, [
-    '게시글', '포스트', '글', '추천', '관련', '찾아', '알려', '보여',
-    '블로그', '게시물', '작성', '읽', '검색', '주제',
+    "게시글",
+    "포스트",
+    "글",
+    "추천",
+    "관련",
+    "찾아",
+    "알려",
+    "보여",
+    "블로그",
+    "게시물",
+    "작성",
+    "읽",
+    "검색",
+    "주제",
   ]),
 
   /** English keywords that trigger RAG search */
   ENGLISH: parseJsonEnv(process.env.RAG_KEYWORDS_ENGLISH, [
-    'post', 'blog', 'article', 'recommend', 'find', 'search',
-    'show me', 'related', 'about', 'topic', 'written',
+    "post",
+    "blog",
+    "article",
+    "recommend",
+    "find",
+    "search",
+    "show me",
+    "related",
+    "about",
+    "topic",
+    "written",
   ]),
 };
 

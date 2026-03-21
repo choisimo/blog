@@ -1,16 +1,17 @@
 /**
  * Web Search Tool - Search the web for information
- * 
+ *
  * Provides web search capabilities using various search APIs.
  * Supports Perplexity, Tavily, DuckDuckGo, Brave Search, and custom search endpoints.
  */
 
-import { createLogger } from '../../../lib/logger.js';
+import { AI_API, AI_MODELS, IMAGE, SEARCH } from "../../../config/constants.js";
+import { createLogger } from "../../../lib/logger.js";
 
-const logger = createLogger('web-search');
+const logger = createLogger("web-search");
 
 // Configuration
-const SEARCH_API_URL = process.env.SEARCH_API_URL || 'https://api.duckduckgo.com/';
+const SEARCH_API_URL = AI_API.DUCKDUCKGO_URL;
 const BRAVE_API_KEY = process.env.BRAVE_SEARCH_API_KEY;
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
 const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
@@ -21,30 +22,31 @@ const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
  */
 async function searchPerplexity(query, options = {}) {
   if (!PERPLEXITY_API_KEY) {
-    throw new Error('PERPLEXITY_API_KEY not configured');
+    throw new Error("PERPLEXITY_API_KEY not configured");
   }
 
-  const response = await fetch('https://api.perplexity.ai/chat/completions', {
-    method: 'POST',
+  const response = await fetch(AI_API.PERPLEXITY_URL, {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
     },
     body: JSON.stringify({
-      model: options.model || 'sonar',
+      model: options.model || AI_MODELS.PERPLEXITY,
       messages: [
         {
-          role: 'system',
-          content: 'You are a helpful search assistant. Provide accurate, well-cited information.',
+          role: "system",
+          content:
+            "You are a helpful search assistant. Provide accurate, well-cited information.",
         },
         {
-          role: 'user',
+          role: "user",
           content: query,
         },
       ],
       return_citations: true,
       search_domain_filter: options.domains || [],
-      search_recency_filter: options.recency || 'month',
+      search_recency_filter: options.recency || SEARCH.PERPLEXITY_RECENCY,
     }),
   });
 
@@ -54,7 +56,7 @@ async function searchPerplexity(query, options = {}) {
   }
 
   const data = await response.json();
-  const content = data.choices?.[0]?.message?.content || '';
+  const content = data.choices?.[0]?.message?.content || "";
   const citations = data.citations || [];
 
   return {
@@ -62,7 +64,7 @@ async function searchPerplexity(query, options = {}) {
     citations: citations.map((url, i) => ({
       title: `Source ${i + 1}`,
       url,
-      snippet: '',
+      snippet: "",
     })),
   };
 }
@@ -72,18 +74,18 @@ async function searchPerplexity(query, options = {}) {
  */
 async function searchTavily(query, options = {}) {
   if (!TAVILY_API_KEY) {
-    throw new Error('TAVILY_API_KEY not configured');
+    throw new Error("TAVILY_API_KEY not configured");
   }
 
-  const response = await fetch('https://api.tavily.com/search', {
-    method: 'POST',
+  const response = await fetch(AI_API.TAVILY_URL, {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       api_key: TAVILY_API_KEY,
       query,
-      search_depth: options.searchDepth || 'advanced',
+      search_depth: options.searchDepth || SEARCH.TAVILY_DEPTH,
       include_answer: true,
       include_raw_content: options.includeRawContent || false,
       max_results: options.limit || 5,
@@ -100,8 +102,8 @@ async function searchTavily(query, options = {}) {
   const data = await response.json();
 
   return {
-    answer: data.answer || '',
-    results: (data.results || []).map(r => ({
+    answer: data.answer || "",
+    results: (data.results || []).map((r) => ({
       title: r.title,
       snippet: r.content,
       url: r.url,
@@ -116,9 +118,9 @@ async function searchTavily(query, options = {}) {
 async function searchDuckDuckGo(query) {
   const params = new URLSearchParams({
     q: query,
-    format: 'json',
-    no_html: '1',
-    skip_disambig: '1',
+    format: "json",
+    no_html: "1",
+    skip_disambig: "1",
   });
 
   const response = await fetch(`${SEARCH_API_URL}?${params}`);
@@ -127,13 +129,13 @@ async function searchDuckDuckGo(query) {
   }
 
   const data = await response.json();
-  
+
   const results = [];
-  
+
   // Abstract (main answer)
   if (data.Abstract) {
     results.push({
-      title: data.Heading || 'Summary',
+      title: data.Heading || "Summary",
       snippet: data.Abstract,
       url: data.AbstractURL,
       source: data.AbstractSource,
@@ -145,7 +147,7 @@ async function searchDuckDuckGo(query) {
     for (const topic of data.RelatedTopics.slice(0, 5)) {
       if (topic.Text) {
         results.push({
-          title: topic.Text.split(' - ')[0],
+          title: topic.Text.split(" - ")[0],
           snippet: topic.Text,
           url: topic.FirstURL,
         });
@@ -161,7 +163,7 @@ async function searchDuckDuckGo(query) {
  */
 async function searchBrave(query, options = {}) {
   if (!BRAVE_API_KEY) {
-    throw new Error('BRAVE_SEARCH_API_KEY not configured');
+    throw new Error("BRAVE_SEARCH_API_KEY not configured");
   }
 
   const params = new URLSearchParams({
@@ -169,10 +171,10 @@ async function searchBrave(query, options = {}) {
     count: options.limit || 5,
   });
 
-  const response = await fetch(`https://api.search.brave.com/res/v1/web/search?${params}`, {
+  const response = await fetch(`${AI_API.BRAVE_SEARCH_URL}?${params}`, {
     headers: {
-      'Accept': 'application/json',
-      'X-Subscription-Token': BRAVE_API_KEY,
+      Accept: "application/json",
+      "X-Subscription-Token": BRAVE_API_KEY,
     },
   });
 
@@ -181,8 +183,8 @@ async function searchBrave(query, options = {}) {
   }
 
   const data = await response.json();
-  
-  return (data.web?.results || []).map(r => ({
+
+  return (data.web?.results || []).map((r) => ({
     title: r.title,
     snippet: r.description,
     url: r.url,
@@ -194,14 +196,14 @@ async function searchBrave(query, options = {}) {
  */
 async function searchSerper(query, options = {}) {
   if (!SERPER_API_KEY) {
-    throw new Error('SERPER_API_KEY not configured');
+    throw new Error("SERPER_API_KEY not configured");
   }
 
-  const response = await fetch('https://google.serper.dev/search', {
-    method: 'POST',
+  const response = await fetch(AI_API.SERPER_URL, {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'X-API-KEY': SERPER_API_KEY,
+      "Content-Type": "application/json",
+      "X-API-KEY": SERPER_API_KEY,
     },
     body: JSON.stringify({
       q: query,
@@ -214,8 +216,8 @@ async function searchSerper(query, options = {}) {
   }
 
   const data = await response.json();
-  
-  return (data.organic || []).map(r => ({
+
+  return (data.organic || []).map((r) => ({
     title: r.title,
     snippet: r.snippet,
     url: r.link,
@@ -229,7 +231,7 @@ async function fetchWebPage(url) {
   try {
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; BlogAgent/1.0)',
+        "User-Agent": IMAGE.USER_AGENT,
       },
     });
 
@@ -238,13 +240,13 @@ async function fetchWebPage(url) {
     }
 
     const html = await response.text();
-    
+
     // Simple HTML to text conversion
     const text = html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
       .trim();
 
     return text.slice(0, 5000);
@@ -258,81 +260,96 @@ async function fetchWebPage(url) {
  */
 export function createWebSearchTool() {
   return {
-    name: 'web_search',
-    description: 'Search the web for current information using AI-powered search (perplexity/tavily) or traditional engines. Perplexity provides AI-synthesized answers with citations. Tavily is optimized for AI agent use cases.',
+    name: "web_search",
+    description:
+      "Search the web for current information using AI-powered search (perplexity/tavily) or traditional engines. Perplexity provides AI-synthesized answers with citations. Tavily is optimized for AI agent use cases.",
     parameters: {
-      type: 'object',
+      type: "object",
       properties: {
         action: {
-          type: 'string',
-          description: 'The action to perform',
-          enum: ['search', 'fetch_page', 'ai_search'],
+          type: "string",
+          description: "The action to perform",
+          enum: ["search", "fetch_page", "ai_search"],
         },
         query: {
-          type: 'string',
-          description: 'Search query (for search/ai_search action)',
+          type: "string",
+          description: "Search query (for search/ai_search action)",
         },
         url: {
-          type: 'string',
-          description: 'URL to fetch (for fetch_page action)',
+          type: "string",
+          description: "URL to fetch (for fetch_page action)",
         },
         engine: {
-          type: 'string',
-          description: 'Search engine: perplexity (AI search with citations), tavily (AI-optimized), duckduckgo (free), brave, serper (Google)',
-          enum: ['perplexity', 'tavily', 'duckduckgo', 'brave', 'serper'],
-          default: 'tavily',
+          type: "string",
+          description:
+            "Search engine: perplexity (AI search with citations), tavily (AI-optimized), duckduckgo (free), brave, serper (Google)",
+          enum: ["perplexity", "tavily", "duckduckgo", "brave", "serper"],
+          default: SEARCH.DEFAULT_ENGINE,
         },
         limit: {
-          type: 'number',
-          description: 'Maximum number of results (for traditional engines)',
+          type: "number",
+          description: "Maximum number of results (for traditional engines)",
           default: 5,
         },
         searchDepth: {
-          type: 'string',
-          description: 'Search depth for Tavily: basic or advanced',
-          enum: ['basic', 'advanced'],
-          default: 'advanced',
+          type: "string",
+          description: "Search depth for Tavily: basic or advanced",
+          enum: ["basic", "advanced"],
+          default: SEARCH.TAVILY_DEPTH,
         },
       },
-      required: ['action'],
+      required: ["action"],
     },
 
     async execute(args) {
-      const { action, query, url, engine = 'tavily', limit = 5, searchDepth = 'advanced' } = args;
+      const {
+        action,
+        query,
+        url,
+        engine = SEARCH.DEFAULT_ENGINE,
+        limit = 5,
+        searchDepth = SEARCH.TAVILY_DEPTH,
+      } = args;
 
-      logger.debug({ action, engine, query: query || url }, 'WebSearch execute');
+      logger.debug(
+        { action, engine, query: query || url },
+        "WebSearch execute",
+      );
 
       try {
         switch (action) {
-          case 'ai_search':
-          case 'search': {
+          case "ai_search":
+          case "search": {
             if (!query) {
-              return { success: false, error: 'query is required for search' };
+              return { success: false, error: "query is required for search" };
             }
 
             let results;
             let answer = null;
 
             switch (engine) {
-              case 'perplexity': {
+              case "perplexity": {
                 const pplxResult = await searchPerplexity(query);
                 answer = pplxResult.answer;
                 results = pplxResult.citations;
                 break;
               }
-              case 'tavily': {
-                const tavilyResult = await searchTavily(query, { limit, searchDepth });
+              case "tavily": {
+                const tavilyResult = await searchTavily(query, {
+                  limit,
+                  searchDepth,
+                });
                 answer = tavilyResult.answer;
                 results = tavilyResult.results;
                 break;
               }
-              case 'brave':
+              case "brave":
                 results = await searchBrave(query, { limit });
                 break;
-              case 'serper':
+              case "serper":
                 results = await searchSerper(query, { limit });
                 break;
-              case 'duckduckgo':
+              case "duckduckgo":
               default:
                 results = await searchDuckDuckGo(query);
             }
@@ -348,9 +365,12 @@ export function createWebSearchTool() {
             };
           }
 
-          case 'fetch_page': {
+          case "fetch_page": {
             if (!url) {
-              return { success: false, error: 'url is required for fetch_page' };
+              return {
+                success: false,
+                error: "url is required for fetch_page",
+              };
             }
 
             const content = await fetchWebPage(url);
@@ -369,7 +389,7 @@ export function createWebSearchTool() {
             };
         }
       } catch (error) {
-        logger.error({ action }, 'WebSearch failed', { error: error.message });
+        logger.error({ action }, "WebSearch failed", { error: error.message });
         return {
           success: false,
           action,

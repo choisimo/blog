@@ -34,10 +34,10 @@ import {
   SYSTEM_PROMPTS,
   buildSystemPrompt,
 } from "../../lib/agent/prompts/system.js";
-import { AGENT } from "../../config/constants.js";
+import { AGENT, AI_MODELS } from "../../config/constants.js";
 import { createLogger } from "../../lib/logger.js";
 
-const DEFAULT_MODEL = process.env.AGENT_MODEL || "gpt-4.1";
+const DEFAULT_MODEL = process.env.AGENT_MODEL || AI_MODELS.AGENT;
 const MAX_TOOL_ITERATIONS = AGENT.MAX_TOOL_ITERATIONS;
 const MAX_CONTEXT_MESSAGES = AGENT.MAX_CONTEXT_MESSAGES;
 const TOOL_TIMEOUT = Math.max(
@@ -81,8 +81,7 @@ async function withTimeout(promise, timeoutMs, timeoutErrorMessage) {
   }
 }
 
-const logger = createLogger('agent-coordinator');
-
+const logger = createLogger("agent-coordinator");
 
 export class AgentCoordinator {
   constructor(options = {}) {

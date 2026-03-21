@@ -1,23 +1,24 @@
 /**
  * MCP Client Tool - Model Context Protocol Integration
- * 
+ *
  * Connects to MCP servers to access external tools and resources.
  * Supports filesystem, web search, and custom MCP servers.
  */
 
-import { spawn } from 'child_process';
-import { createLogger } from '../../../lib/logger.js';
+import { spawn } from "child_process";
+import { MCP } from "../../../config/constants.js";
+import { createLogger } from "../../../lib/logger.js";
 
-const logger = createLogger('mcp-client');
+const logger = createLogger("mcp-client");
 
 // Configuration
-const MCP_CONFIG_PATH = process.env.MCP_CONFIG_PATH || '/.roo/mcp.json';
+const MCP_CONFIG_PATH = MCP.CONFIG_PATH;
 
 // MCP Server definitions
 const MCP_SERVERS = {
   filesystem: {
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-filesystem', process.env.WORKSPACE_PATH || '/workspace'],
+    command: MCP.FILESYSTEM_SERVER_COMMAND,
+    args: ["-y", MCP.FILESYSTEM_SERVER_PACKAGE, MCP.WORKSPACE_PATH],
   },
   // Add more MCP servers as needed
 };
@@ -41,16 +42,16 @@ class MCPClient {
     return new Promise((resolve, reject) => {
       try {
         this.process = spawn(this.config.command, this.config.args, {
-          stdio: ['pipe', 'pipe', 'pipe'],
+          stdio: ["pipe", "pipe", "pipe"],
           env: { ...process.env, ...this.config.env },
         });
 
-        let buffer = '';
+        let buffer = "";
 
-        this.process.stdout.on('data', (data) => {
+        this.process.stdout.on("data", (data) => {
           buffer += data.toString();
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
 
           for (const line of lines) {
             if (line.trim()) {
@@ -64,26 +65,26 @@ class MCPClient {
           }
         });
 
-        this.process.stderr.on('data', (data) => {
-          logger.error({}, 'MCP stderr', { data: String(data).trim() });
+        this.process.stderr.on("data", (data) => {
+          logger.error({}, "MCP stderr", { data: String(data).trim() });
         });
 
-        this.process.on('close', (code) => {
+        this.process.on("close", (code) => {
           this.ready = false;
-          logger.info({ code }, 'MCP process exited');
+          logger.info({ code }, "MCP process exited");
         });
 
         // Send initialize request
         this._send({
-          jsonrpc: '2.0',
+          jsonrpc: "2.0",
           id: this._nextId(),
-          method: 'initialize',
+          method: "initialize",
           params: {
-            protocolVersion: '2024-11-05',
+            protocolVersion: "2024-11-05",
             capabilities: {},
             clientInfo: {
-              name: 'blog-agent',
-              version: '1.0.0',
+              name: "blog-agent",
+              version: "1.0.0",
             },
           },
         });
@@ -93,7 +94,6 @@ class MCPClient {
           this.ready = true;
           resolve();
         }, 1000);
-
       } catch (error) {
         reject(error);
       }
@@ -116,7 +116,7 @@ class MCPClient {
    */
   _send(message) {
     if (this.process && this.process.stdin.writable) {
-      this.process.stdin.write(JSON.stringify(message) + '\n');
+      this.process.stdin.write(JSON.stringify(message) + "\n");
     }
   }
 
@@ -153,13 +153,13 @@ class MCPClient {
 
       const timeout = setTimeout(() => {
         this.pendingRequests.delete(id);
-        reject(new Error('MCP tool call timeout'));
+        reject(new Error("MCP tool call timeout"));
       }, 30000);
 
       this._send({
-        jsonrpc: '2.0',
+        jsonrpc: "2.0",
         id,
-        method: 'tools/call',
+        method: "tools/call",
         params: { name, arguments: args },
       });
 
@@ -177,9 +177,9 @@ class MCPClient {
       this.pendingRequests.set(id, { resolve, reject });
 
       this._send({
-        jsonrpc: '2.0',
+        jsonrpc: "2.0",
         id,
-        method: 'tools/list',
+        method: "tools/list",
         params: {},
       });
     });
@@ -194,9 +194,9 @@ class MCPClient {
       this.pendingRequests.set(id, { resolve, reject });
 
       this._send({
-        jsonrpc: '2.0',
+        jsonrpc: "2.0",
         id,
-        method: 'resources/read',
+        method: "resources/read",
         params: { uri },
       });
     });
@@ -231,62 +231,70 @@ async function getMCPClient(serverName) {
  */
 export async function createMCPClientTool() {
   // Check if MCP is enabled
-  if (process.env.DISABLE_MCP === 'true') {
-    logger.info({}, 'MCP is disabled');
+  if (process.env.DISABLE_MCP === "true") {
+    logger.info({}, "MCP is disabled");
     return null;
   }
 
   return {
-    name: 'mcp_tools',
-    description: 'Access external tools and resources via Model Context Protocol (MCP). Can read files, search the web, and interact with various services.',
+    name: "mcp_tools",
+    description:
+      "Access external tools and resources via Model Context Protocol (MCP). Can read files, search the web, and interact with various services.",
     parameters: {
-      type: 'object',
+      type: "object",
       properties: {
         action: {
-          type: 'string',
-          description: 'The MCP action to perform',
-          enum: ['read_file', 'list_files', 'search_files', 'call_tool'],
+          type: "string",
+          description: "The MCP action to perform",
+          enum: ["read_file", "list_files", "search_files", "call_tool"],
         },
         server: {
-          type: 'string',
-          description: 'The MCP server to use',
-          enum: ['filesystem'],
-          default: 'filesystem',
+          type: "string",
+          description: "The MCP server to use",
+          enum: ["filesystem"],
+          default: "filesystem",
         },
         // For file operations
         path: {
-          type: 'string',
-          description: 'File or directory path',
+          type: "string",
+          description: "File or directory path",
         },
         pattern: {
-          type: 'string',
-          description: 'Search pattern (glob or regex)',
+          type: "string",
+          description: "Search pattern (glob or regex)",
         },
         // For call_tool
         tool: {
-          type: 'string',
-          description: 'Tool name to call',
+          type: "string",
+          description: "Tool name to call",
         },
         args: {
-          type: 'object',
-          description: 'Arguments for the tool',
+          type: "object",
+          description: "Arguments for the tool",
         },
       },
-      required: ['action'],
+      required: ["action"],
     },
 
     async execute(params) {
-      const { action, server = 'filesystem', path, pattern, tool, args } = params;
+      const {
+        action,
+        server = "filesystem",
+        path,
+        pattern,
+        tool,
+        args,
+      } = params;
 
-      logger.debug({ action, server }, 'Executing MCP action');
+      logger.debug({ action, server }, "Executing MCP action");
 
       try {
         const client = await getMCPClient(server);
 
         switch (action) {
-          case 'read_file': {
+          case "read_file": {
             if (!path) {
-              return { success: false, error: 'path is required' };
+              return { success: false, error: "path is required" };
             }
             const result = await client.readResource(`file://${path}`);
             return {
@@ -297,38 +305,38 @@ export async function createMCPClientTool() {
             };
           }
 
-          case 'list_files': {
+          case "list_files": {
             if (!path) {
-              return { success: false, error: 'path is required' };
+              return { success: false, error: "path is required" };
             }
-            const result = await client.callTool('list_directory', { path });
+            const result = await client.callTool("list_directory", { path });
             return {
               success: true,
               action,
               path,
-              files: result.content?.map(c => c.text),
+              files: result.content?.map((c) => c.text),
             };
           }
 
-          case 'search_files': {
+          case "search_files": {
             if (!pattern) {
-              return { success: false, error: 'pattern is required' };
+              return { success: false, error: "pattern is required" };
             }
-            const result = await client.callTool('search_files', {
-              path: path || '.',
+            const result = await client.callTool("search_files", {
+              path: path || ".",
               pattern,
             });
             return {
               success: true,
               action,
               pattern,
-              matches: result.content?.map(c => c.text),
+              matches: result.content?.map((c) => c.text),
             };
           }
 
-          case 'call_tool': {
+          case "call_tool": {
             if (!tool) {
-              return { success: false, error: 'tool is required' };
+              return { success: false, error: "tool is required" };
             }
             const result = await client.callTool(tool, args || {});
             return {
@@ -346,7 +354,7 @@ export async function createMCPClientTool() {
             };
         }
       } catch (error) {
-        logger.error({ action }, 'MCP action failed', { error: error.message });
+        logger.error({ action }, "MCP action failed", { error: error.message });
         return {
           success: false,
           action,
@@ -360,7 +368,7 @@ export async function createMCPClientTool() {
 /**
  * Cleanup MCP clients on exit
  */
-process.on('exit', () => {
+process.on("exit", () => {
   for (const client of mcpClients.values()) {
     client.stop();
   }

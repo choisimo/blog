@@ -30,6 +30,7 @@
 import OpenAI from "openai";
 import { config } from "../../config.js";
 import {
+  AI_API,
   AI_MODELS,
   TIMEOUTS,
   CIRCUIT_BREAKER,
@@ -52,7 +53,7 @@ const CIRCUIT_BREAKER_RESET_TIME = CIRCUIT_BREAKER.RESET_TIME; // 30 seconds
 // Logger
 // ============================================================================
 
-const logger = createLogger('openai-compat-client');
+const logger = createLogger("openai-compat-client");
 
 // ============================================================================
 // OpenAI Compatible Client Class
@@ -65,7 +66,7 @@ export class OpenAICompatClient {
       config.ai?.baseUrl ||
       process.env.OPENAI_API_BASE_URL ||
       process.env.AI_SERVER_URL ||
-      "https://api.openai.com/v1";
+      AI_API.BASE_URL;
     if (!baseURL.endsWith("/v1")) {
       baseURL = baseURL.replace(/\/$/, "") + "/v1";
     }
@@ -76,7 +77,7 @@ export class OpenAICompatClient {
       config.ai?.apiKey ||
       process.env.AI_API_KEY ||
       process.env.OPENAI_API_KEY ||
-      "sk-placeholder";
+      OPENAI_CLIENT.PLACEHOLDER_API_KEY;
     this.defaultModel =
       options.model ||
       config.ai?.defaultModel ||
@@ -274,10 +275,10 @@ export class OpenAICompatClient {
     if (this._isCircuitOpen()) {
       logger.warn(
         { operation: "vision", requestId },
-        "Request blocked by circuit breaker"
+        "Request blocked by circuit breaker",
       );
       throw new Error(
-        "AI service temporarily unavailable (circuit breaker open)"
+        "AI service temporarily unavailable (circuit breaker open)",
       );
     }
 
@@ -303,10 +304,14 @@ export class OpenAICompatClient {
       const result = await this.chat(messages, { model });
       return result.content;
     } catch (error) {
-      logger.error({ operation: "vision", requestId }, "Vision analysis failed", {
-        model,
-        error: error.message,
-      });
+      logger.error(
+        { operation: "vision", requestId },
+        "Vision analysis failed",
+        {
+          model,
+          error: error.message,
+        },
+      );
       throw error;
     }
   }
@@ -324,17 +329,21 @@ export class OpenAICompatClient {
     if (this._isCircuitOpen()) {
       logger.warn(
         { operation: "streamChat", requestId },
-        "Stream request blocked by circuit breaker"
+        "Stream request blocked by circuit breaker",
       );
       throw new Error(
-        "AI service temporarily unavailable (circuit breaker open)"
+        "AI service temporarily unavailable (circuit breaker open)",
       );
     }
 
-    logger.debug({ operation: "streamChat", requestId }, "Starting stream request", {
-      model,
-      messageCount: messages?.length,
-    });
+    logger.debug(
+      { operation: "streamChat", requestId },
+      "Starting stream request",
+      {
+        model,
+        messageCount: messages?.length,
+      },
+    );
 
     try {
       const stream = await this._openai.chat.completions.create(
@@ -381,10 +390,10 @@ export class OpenAICompatClient {
     if (this._isCircuitOpen()) {
       logger.warn(
         { operation: "stream", requestId },
-        "Stream request blocked by circuit breaker"
+        "Stream request blocked by circuit breaker",
       );
       throw new Error(
-        "AI service temporarily unavailable (circuit breaker open)"
+        "AI service temporarily unavailable (circuit breaker open)",
       );
     }
 
@@ -525,7 +534,8 @@ export function getOpenAIClient(options = {}) {
     const snapshot = getCachedAIConfigSnapshot();
     return new OpenAICompatClient({
       baseUrl: options.baseUrl || snapshot.baseUrl,
-      apiKey: options.apiKey || snapshot.apiKey || 'sk-placeholder',
+      apiKey:
+        options.apiKey || snapshot.apiKey || OPENAI_CLIENT.PLACEHOLDER_API_KEY,
       model: options.model || snapshot.defaultModel,
       ...options,
     });
@@ -536,7 +546,7 @@ export function getOpenAIClient(options = {}) {
   if (!_client || _clientFingerprint !== snapshot.fingerprint) {
     _client = new OpenAICompatClient({
       baseUrl: snapshot.baseUrl,
-      apiKey: snapshot.apiKey || 'sk-placeholder',
+      apiKey: snapshot.apiKey || OPENAI_CLIENT.PLACEHOLDER_API_KEY,
       model: snapshot.defaultModel,
     });
     _clientFingerprint = snapshot.fingerprint;
@@ -551,13 +561,13 @@ export function getOpenAIClient(options = {}) {
 export function getOpenAIEmbeddingClient(options = {}) {
   const snapshot = getCachedAIConfigSnapshot();
   // Use explicit options or fall back to dynamic snapshot / rag config
-  const baseUrl = options.baseUrl 
-    || config.rag?.embeddingUrl 
-    || snapshot.baseUrl;
-  const apiKey = options.apiKey 
-    || config.rag?.embeddingApiKey 
-    || snapshot.apiKey 
-    || 'sk-placeholder';
+  const baseUrl =
+    options.baseUrl || config.rag?.embeddingUrl || snapshot.baseUrl;
+  const apiKey =
+    options.apiKey ||
+    config.rag?.embeddingApiKey ||
+    snapshot.apiKey ||
+    OPENAI_CLIENT.PLACEHOLDER_API_KEY;
   const cacheKey = `${baseUrl}::${apiKey}`;
 
   if (!_embeddingClients.has(cacheKey)) {
@@ -608,10 +618,11 @@ export async function* openaiStreamChat(messages, options = {}) {
 export async function openaiEmbeddings(input, options = {}) {
   const { baseUrl, apiKey, model, ...embedOptions } = options;
   const client = getOpenAIEmbeddingClient({ baseUrl, apiKey });
-  const embeddingModel = model 
-    || config.rag?.embeddingModel 
-    || process.env.AI_EMBED_MODEL 
-    || 'text-embedding-3-small';
+  const embeddingModel =
+    model ||
+    config.rag?.embeddingModel ||
+    process.env.AI_EMBED_MODEL ||
+    AI_MODELS.EMBEDDING;
   return client.embeddings(input, { model: embeddingModel, ...embedOptions });
 }
 

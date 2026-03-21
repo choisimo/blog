@@ -1,9 +1,9 @@
 /**
  * RAG Routes
- * 
+ *
  * ChromaDB와 OpenAI-compatible 임베딩 엔드포인트에 대한 프록시
  * Workers에서 터널(api.nodove.com)을 통해 호출합니다.
- * 
+ *
  * 엔드포인트:
  * - POST /api/v1/rag/search - 시맨틱 검색 (블로그 포스트)
  * - POST /api/v1/rag/embed - 텍스트 임베딩 생성
@@ -16,10 +16,11 @@
  * - GET /api/v1/rag/notebook/notebooks - Open Notebook 목록
  */
 
-import express from 'express';
-import { config } from '../config.js';
-import { requireFeature } from '../middleware/featureFlags.js';
-import { validateBody } from '../middleware/validation.js';
+import express from "express";
+import { config } from "../config.js";
+import { CHROMA } from "../config/constants.js";
+import { requireFeature } from "../middleware/featureFlags.js";
+import { validateBody } from "../middleware/validation.js";
 import {
   ragSearchBodySchema,
   ragEmbedBodySchema,
@@ -29,24 +30,27 @@ import {
   ragIndexBodySchema,
   notebookSearchBodySchema,
   notebookAskBodySchema,
-} from '../middleware/schemas/rag.schema.js';
-import { expandQuery, getCombinedQueries } from '../lib/query-expander.js';
-import { getOpenAIEmbeddingClient, openaiEmbeddings } from '../lib/openai-compat-client.js';
-import openNotebook from '../services/open-notebook.service.js';
-import { createLogger } from '../lib/logger.js';
+} from "../middleware/schemas/rag.schema.js";
+import { expandQuery, getCombinedQueries } from "../lib/query-expander.js";
+import {
+  getOpenAIEmbeddingClient,
+  openaiEmbeddings,
+} from "../lib/openai-compat-client.js";
+import openNotebook from "../services/open-notebook.service.js";
+import { createLogger } from "../lib/logger.js";
 
-const logger = createLogger('rag');
+const logger = createLogger("rag");
 
 const router = express.Router();
 
-router.use(requireFeature('rag'));
+router.use(requireFeature("rag"));
 
 // Memory collection prefix (user-specific collections)
-const MEMORY_COLLECTION_PREFIX = 'user-memories-';
+const MEMORY_COLLECTION_PREFIX = "user-memories-";
 
 // ChromaDB v2 API configuration
-const CHROMA_TENANT = 'default_tenant';
-const CHROMA_DATABASE = 'default_database';
+const CHROMA_TENANT = CHROMA.TENANT;
+const CHROMA_DATABASE = CHROMA.DATABASE;
 
 // Cache for collection name -> UUID mapping
 const collectionUUIDCache = new Map();
@@ -71,24 +75,24 @@ async function getCollectionUUID(collectionName) {
   }
 
   const collectionsUrl = getChromaCollectionsBase();
-  
+
   // List all collections and find by name
   const listResp = await fetch(collectionsUrl, {
-    method: 'GET',
+    method: "GET",
   });
-  
+
   if (!listResp.ok) {
     throw new Error(`Failed to list collections: ${listResp.status}`);
   }
-  
+
   const collections = await listResp.json();
-  const collection = collections.find(c => c.name === collectionName);
-  
+  const collection = collections.find((c) => c.name === collectionName);
+
   if (collection) {
     collectionUUIDCache.set(collectionName, collection.id);
     return collection.id;
   }
-  
+
   return null;
 }
 
@@ -115,17 +119,23 @@ async function getEmbeddings(texts) {
  * @param {object} whereFilter - 필터 조건
  * @returns {Promise<object>} 검색 결과
  */
-async function queryChroma(embedding, nResults = 5, collectionName = null, whereFilter = null) {
+async function queryChroma(
+  embedding,
+  nResults = 5,
+  collectionName = null,
+  whereFilter = null,
+) {
   const collection = collectionName || config.rag.chromaCollection;
   const collectionsBase = getChromaCollectionsBase();
 
   const collectionUUID = await getCollectionUUID(collection);
   if (!collectionUUID) {
-    const maybeLegacy = typeof collection === 'string' && collection.includes('__')
-      ? collection.replace(/__/g, '-')
-      : typeof collection === 'string'
-        ? collection.replace(/-/g, '__')
-        : null;
+    const maybeLegacy =
+      typeof collection === "string" && collection.includes("__")
+        ? collection.replace(/__/g, "-")
+        : typeof collection === "string"
+          ? collection.replace(/-/g, "__")
+          : null;
 
     if (maybeLegacy && maybeLegacy !== collection) {
       const fallbackUUID = await getCollectionUUID(maybeLegacy);
@@ -135,7 +145,7 @@ async function queryChroma(embedding, nResults = 5, collectionName = null, where
         const body = {
           query_embeddings: [embedding],
           n_results: nResults,
-          include: ['documents', 'metadatas', 'distances'],
+          include: ["documents", "metadatas", "distances"],
         };
 
         if (whereFilter) {
@@ -143,8 +153,8 @@ async function queryChroma(embedding, nResults = 5, collectionName = null, where
         }
 
         const response = await fetch(queryUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
 
@@ -161,11 +171,11 @@ async function queryChroma(embedding, nResults = 5, collectionName = null, where
   }
 
   const queryUrl = `${collectionsBase}/${collectionUUID}/query`;
-  
+
   const body = {
     query_embeddings: [embedding],
     n_results: nResults,
-    include: ['documents', 'metadatas', 'distances'],
+    include: ["documents", "metadatas", "distances"],
   };
 
   if (whereFilter) {
@@ -173,8 +183,8 @@ async function queryChroma(embedding, nResults = 5, collectionName = null, where
   }
 
   const response = await fetch(queryUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
 
@@ -193,24 +203,26 @@ async function queryChroma(embedding, nResults = 5, collectionName = null, where
  */
 async function ensureCollection(collectionName) {
   const collectionsBase = getChromaCollectionsBase();
-  
+
   let uuid = await getCollectionUUID(collectionName);
   if (uuid) {
     return uuid;
   }
 
   const createResp = await fetch(collectionsBase, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       name: collectionName,
-      metadata: { 'hnsw:space': 'cosine' },
+      metadata: { "hnsw:space": "cosine" },
     }),
   });
 
   if (!createResp.ok && createResp.status !== 409) {
     const errorText = await createResp.text();
-    throw new Error(`Failed to create collection: ${createResp.status} - ${errorText}`);
+    throw new Error(
+      `Failed to create collection: ${createResp.status} - ${errorText}`,
+    );
   }
 
   if (createResp.ok) {
@@ -236,16 +248,22 @@ async function ensureCollection(collectionName) {
  * @param {string[]} documents - 문서 텍스트 배열
  * @param {object[]} metadatas - 메타데이터 배열
  */
-async function upsertToChroma(collectionName, ids, embeddings, documents, metadatas) {
+async function upsertToChroma(
+  collectionName,
+  ids,
+  embeddings,
+  documents,
+  metadatas,
+) {
   const collectionsBase = getChromaCollectionsBase();
-  
+
   const collectionUUID = await ensureCollection(collectionName);
 
   const upsertUrl = `${collectionsBase}/${collectionUUID}/upsert`;
-  
+
   const response = await fetch(upsertUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       ids,
       embeddings,
@@ -269,17 +287,17 @@ async function upsertToChroma(collectionName, ids, embeddings, documents, metada
  */
 async function deleteFromChroma(collectionName, ids) {
   const collectionsBase = getChromaCollectionsBase();
-  
+
   const collectionUUID = await getCollectionUUID(collectionName);
   if (!collectionUUID) {
     throw new Error(`Collection not found: ${collectionName}`);
   }
 
   const deleteUrl = `${collectionsBase}/${collectionUUID}/delete`;
-  
+
   const response = await fetch(deleteUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ids }),
   });
 
@@ -293,7 +311,7 @@ async function deleteFromChroma(collectionName, ids) {
 
 /**
  * POST /search - 시맨틱 검색 (블로그 포스트)
- * 
+ *
  * Request Body:
  * {
  *   query: string,           // 검색 쿼리
@@ -301,7 +319,7 @@ async function deleteFromChroma(collectionName, ids) {
  *   expand?: boolean,        // 쿼리 확장 사용 여부 (기본 true)
  *   expandedOnly?: boolean   // 확장 정보만 반환 (디버깅용)
  * }
- * 
+ *
  * Response:
  * {
  *   ok: true,
@@ -311,9 +329,14 @@ async function deleteFromChroma(collectionName, ids) {
  *   }
  * }
  */
-router.post('/search', validateBody(ragSearchBodySchema), async (req, res) => {
+router.post("/search", validateBody(ragSearchBodySchema), async (req, res) => {
   try {
-    const { query, n_results = 5, expand = true, expandedOnly = false } = req.body;
+    const {
+      query,
+      n_results = 5,
+      expand = true,
+      expandedOnly = false,
+    } = req.body;
 
     let expansion = null;
     let queriesToSearch = [query];
@@ -323,7 +346,9 @@ router.post('/search', validateBody(ragSearchBodySchema), async (req, res) => {
         expansion = await expandQuery(query, { timeout: 4000 });
         queriesToSearch = getCombinedQueries(expansion, 4);
       } catch (expandErr) {
-        logger.warn({}, 'Query expansion failed, using original query', { error: expandErr.message });
+        logger.warn({}, "Query expansion failed, using original query", {
+          error: expandErr.message,
+        });
       }
     }
 
@@ -331,7 +356,12 @@ router.post('/search', validateBody(ragSearchBodySchema), async (req, res) => {
       return res.json({
         ok: true,
         data: {
-          expansion: expansion || { original: query, translations: [], keywords: [], expandedQueries: [] },
+          expansion: expansion || {
+            original: query,
+            translations: [],
+            keywords: [],
+            expandedQueries: [],
+          },
           queriesToSearch,
         },
       });
@@ -347,7 +377,9 @@ router.post('/search', validateBody(ragSearchBodySchema), async (req, res) => {
         const chromaResult = await queryChroma(embedding, fetchPerQuery);
         return { queryIndex, chromaResult };
       } catch (err) {
-        logger.warn({ query: q }, 'Search failed for query', { error: err.message });
+        logger.warn({ query: q }, "Search failed for query", {
+          error: err.message,
+        });
         return { queryIndex, chromaResult: null };
       }
     });
@@ -363,7 +395,7 @@ router.post('/search', validateBody(ragSearchBodySchema), async (req, res) => {
 
       for (let rank = 0; rank < docs.length; rank++) {
         const docId = metas[rank]?.slug || metas[rank]?.id || `doc_${rank}`;
-        
+
         if (!rankMap.has(docId)) {
           rankMap.set(docId, {
             document: docs[rank],
@@ -372,7 +404,7 @@ router.post('/search', validateBody(ragSearchBodySchema), async (req, res) => {
             ranks: [],
           });
         }
-        
+
         rankMap.get(docId).ranks.push(rank + 1);
       }
     }
@@ -403,19 +435,19 @@ router.post('/search', validateBody(ragSearchBodySchema), async (req, res) => {
 
     res.json({ ok: true, data: responseData });
   } catch (err) {
-    logger.error({}, 'RAG search error', { error: err.message });
+    logger.error({}, "RAG search error", { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
 /**
  * POST /embed - 텍스트 임베딩 생성
- * 
+ *
  * Request Body:
  * {
  *   texts: string[]  // 임베딩할 텍스트 배열
  * }
- * 
+ *
  * Response:
  * {
  *   ok: true,
@@ -424,7 +456,7 @@ router.post('/search', validateBody(ragSearchBodySchema), async (req, res) => {
  *   }
  * }
  */
-router.post('/embed', validateBody(ragEmbedBodySchema), async (req, res) => {
+router.post("/embed", validateBody(ragEmbedBodySchema), async (req, res) => {
   try {
     const { texts } = req.body;
 
@@ -432,7 +464,7 @@ router.post('/embed', validateBody(ragEmbedBodySchema), async (req, res) => {
 
     res.json({ ok: true, data: { embeddings } });
   } catch (err) {
-    logger.error({}, 'RAG embed error', { error: err.message });
+    logger.error({}, "RAG embed error", { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -440,7 +472,7 @@ router.post('/embed', validateBody(ragEmbedBodySchema), async (req, res) => {
 /**
  * GET /health - RAG 서비스 상태 확인
  */
-router.get('/health', async (req, res) => {
+router.get("/health", async (req, res) => {
   const status = {
     embedding: { ok: false, url: config.rag.embeddingUrl },
     chroma: { ok: false, url: config.rag.chromaUrl },
@@ -455,7 +487,8 @@ router.get('/health', async (req, res) => {
     const embeddingHealth = await embeddingClient.health();
     status.embedding.ok = embeddingHealth.ok;
     if (!embeddingHealth.ok) {
-      status.embedding.error = embeddingHealth.error || 'Embedding endpoint unavailable';
+      status.embedding.error =
+        embeddingHealth.error || "Embedding endpoint unavailable";
     }
   } catch (err) {
     status.embedding.error = err.message;
@@ -463,7 +496,7 @@ router.get('/health', async (req, res) => {
 
   try {
     const chromaResp = await fetch(`${config.rag.chromaUrl}/api/v2/heartbeat`, {
-      method: 'GET',
+      method: "GET",
       signal: AbortSignal.timeout(5000),
     });
     status.chroma.ok = chromaResp.ok;
@@ -502,47 +535,57 @@ router.get('/health', async (req, res) => {
 
 /**
  * POST /memories/upsert - 사용자 메모리 임베딩 저장
- * 
+ *
  * Request Body:
  * {
  *   userId: string,
  *   memories: [{ id, content, memoryType, category }]
  * }
  */
-router.post('/memories/upsert', validateBody(memoriesUpsertBodySchema), async (req, res) => {
-  try {
-    const { userId, memories } = req.body;
+router.post(
+  "/memories/upsert",
+  validateBody(memoriesUpsertBodySchema),
+  async (req, res) => {
+    try {
+      const { userId, memories } = req.body;
 
-    // 1. Extract texts for embedding
-    const texts = memories.map(m => m.content);
-    
-    // 2. Generate embeddings
-    const embeddings = await getEmbeddings(texts);
+      // 1. Extract texts for embedding
+      const texts = memories.map((m) => m.content);
 
-    // 3. Prepare data for ChromaDB
-    const ids = memories.map(m => m.id);
-    const documents = texts;
-    const metadatas = memories.map(m => ({
-      user_id: userId,
-      memory_type: m.memoryType || 'fact',
-      category: m.category || '',
-      created_at: new Date().toISOString(),
-    }));
+      // 2. Generate embeddings
+      const embeddings = await getEmbeddings(texts);
 
-    // 4. Upsert to user-specific collection
-    const collectionName = `${MEMORY_COLLECTION_PREFIX}${userId}`;
-    await upsertToChroma(collectionName, ids, embeddings, documents, metadatas);
+      // 3. Prepare data for ChromaDB
+      const ids = memories.map((m) => m.id);
+      const documents = texts;
+      const metadatas = memories.map((m) => ({
+        user_id: userId,
+        memory_type: m.memoryType || "fact",
+        category: m.category || "",
+        created_at: new Date().toISOString(),
+      }));
 
-    res.json({ ok: true, data: { upserted: ids.length } });
-  } catch (err) {
-    logger.error({}, 'Memory upsert error', { error: err.message });
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
+      // 4. Upsert to user-specific collection
+      const collectionName = `${MEMORY_COLLECTION_PREFIX}${userId}`;
+      await upsertToChroma(
+        collectionName,
+        ids,
+        embeddings,
+        documents,
+        metadatas,
+      );
+
+      res.json({ ok: true, data: { upserted: ids.length } });
+    } catch (err) {
+      logger.error({}, "Memory upsert error", { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  },
+);
 
 /**
  * POST /memories/search - 사용자 메모리 시맨틱 검색
- * 
+ *
  * Request Body:
  * {
  *   userId: string,
@@ -552,87 +595,98 @@ router.post('/memories/upsert', validateBody(memoriesUpsertBodySchema), async (r
  *   category?: string
  * }
  */
-router.post('/memories/search', validateBody(memoriesSearchBodySchema), async (req, res) => {
-  try {
-    const { userId, query, n_results = 10, memoryType, category } = req.body;
-
-    // 1. Generate query embedding
-    const [embedding] = await getEmbeddings([query]);
-
-    // 2. Build where filter
-    let whereFilter = null;
-    if (memoryType || category) {
-      whereFilter = {};
-      if (memoryType) whereFilter.memory_type = memoryType;
-      if (category) whereFilter.category = category;
-    }
-
-    // 3. Search in user-specific collection
-    const collectionName = `${MEMORY_COLLECTION_PREFIX}${userId}`;
-    
-    let chromaResult;
+router.post(
+  "/memories/search",
+  validateBody(memoriesSearchBodySchema),
+  async (req, res) => {
     try {
-      chromaResult = await queryChroma(embedding, n_results, collectionName, whereFilter);
+      const { userId, query, n_results = 10, memoryType, category } = req.body;
+
+      // 1. Generate query embedding
+      const [embedding] = await getEmbeddings([query]);
+
+      // 2. Build where filter
+      let whereFilter = null;
+      if (memoryType || category) {
+        whereFilter = {};
+        if (memoryType) whereFilter.memory_type = memoryType;
+        if (category) whereFilter.category = category;
+      }
+
+      // 3. Search in user-specific collection
+      const collectionName = `${MEMORY_COLLECTION_PREFIX}${userId}`;
+
+      let chromaResult;
+      try {
+        chromaResult = await queryChroma(
+          embedding,
+          n_results,
+          collectionName,
+          whereFilter,
+        );
+      } catch (err) {
+        // Collection might not exist yet (no memories stored)
+        if (err.message.includes("404") || err.message.includes("not found")) {
+          return res.json({ ok: true, data: { results: [] } });
+        }
+        throw err;
+      }
+
+      // 4. Format results
+      const results = [];
+      if (chromaResult.documents && chromaResult.documents[0]) {
+        const docs = chromaResult.documents[0];
+        const metas = chromaResult.metadatas?.[0] || [];
+        const dists = chromaResult.distances?.[0] || [];
+        const ids = chromaResult.ids?.[0] || [];
+
+        for (let i = 0; i < docs.length; i++) {
+          results.push({
+            id: ids[i],
+            document: docs[i],
+            metadata: metas[i] || {},
+            distance: dists[i] || null,
+            // Convert distance to similarity score (cosine distance: 0 = identical)
+            similarity: dists[i] != null ? Math.max(0, 1 - dists[i]) : null,
+          });
+        }
+      }
+
+      res.json({ ok: true, data: { results } });
     } catch (err) {
-      // Collection might not exist yet (no memories stored)
-      if (err.message.includes('404') || err.message.includes('not found')) {
-        return res.json({ ok: true, data: { results: [] } });
-      }
-      throw err;
+      logger.error({}, "Memory search error", { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
     }
-
-    // 4. Format results
-    const results = [];
-    if (chromaResult.documents && chromaResult.documents[0]) {
-      const docs = chromaResult.documents[0];
-      const metas = chromaResult.metadatas?.[0] || [];
-      const dists = chromaResult.distances?.[0] || [];
-      const ids = chromaResult.ids?.[0] || [];
-
-      for (let i = 0; i < docs.length; i++) {
-        results.push({
-          id: ids[i],
-          document: docs[i],
-          metadata: metas[i] || {},
-          distance: dists[i] || null,
-          // Convert distance to similarity score (cosine distance: 0 = identical)
-          similarity: dists[i] != null ? Math.max(0, 1 - dists[i]) : null,
-        });
-      }
-    }
-
-    res.json({ ok: true, data: { results } });
-  } catch (err) {
-    logger.error({}, 'Memory search error', { error: err.message });
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
+  },
+);
 
 /**
  * DELETE /memories/:userId/:memoryId - 메모리 임베딩 삭제
  */
-router.delete('/memories/:userId/:memoryId', async (req, res) => {
+router.delete("/memories/:userId/:memoryId", async (req, res) => {
   try {
     const { userId, memoryId } = req.params;
 
     if (!userId || !memoryId) {
-      return res.status(400).json({ ok: false, error: 'userId and memoryId are required' });
+      return res
+        .status(400)
+        .json({ ok: false, error: "userId and memoryId are required" });
     }
 
     const collectionName = `${MEMORY_COLLECTION_PREFIX}${userId}`;
-    
+
     try {
       await deleteFromChroma(collectionName, [memoryId]);
     } catch (err) {
       // Ignore if collection or document doesn't exist
-      if (!err.message.includes('404') && !err.message.includes('not found')) {
+      if (!err.message.includes("404") && !err.message.includes("not found")) {
         throw err;
       }
     }
 
     res.json({ ok: true, data: { deleted: true } });
   } catch (err) {
-    logger.error({}, 'Memory delete error', { error: err.message });
+    logger.error({}, "Memory delete error", { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -640,26 +694,33 @@ router.delete('/memories/:userId/:memoryId', async (req, res) => {
 /**
  * POST /memories/batch-delete - 여러 메모리 임베딩 일괄 삭제
  */
-router.post('/memories/batch-delete', validateBody(memoriesBatchDeleteBodySchema), async (req, res) => {
-  try {
-    const { userId, memoryIds } = req.body;
-
-    const collectionName = `${MEMORY_COLLECTION_PREFIX}${userId}`;
-    
+router.post(
+  "/memories/batch-delete",
+  validateBody(memoriesBatchDeleteBodySchema),
+  async (req, res) => {
     try {
-      await deleteFromChroma(collectionName, memoryIds);
-    } catch (err) {
-      if (!err.message.includes('404') && !err.message.includes('not found')) {
-        throw err;
-      }
-    }
+      const { userId, memoryIds } = req.body;
 
-    res.json({ ok: true, data: { deleted: memoryIds.length } });
-  } catch (err) {
-    logger.error({}, 'Memory batch-delete error', { error: err.message });
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
+      const collectionName = `${MEMORY_COLLECTION_PREFIX}${userId}`;
+
+      try {
+        await deleteFromChroma(collectionName, memoryIds);
+      } catch (err) {
+        if (
+          !err.message.includes("404") &&
+          !err.message.includes("not found")
+        ) {
+          throw err;
+        }
+      }
+
+      res.json({ ok: true, data: { deleted: memoryIds.length } });
+    } catch (err) {
+      logger.error({}, "Memory batch-delete error", { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  },
+);
 
 // ========================================
 // INDEX MANAGEMENT ENDPOINTS
@@ -667,7 +728,7 @@ router.post('/memories/batch-delete', validateBody(memoriesBatchDeleteBodySchema
 
 /**
  * POST /index - 문서 인덱싱
- * 
+ *
  * Request Body:
  * {
  *   documents: [{
@@ -678,19 +739,19 @@ router.post('/memories/batch-delete', validateBody(memoriesBatchDeleteBodySchema
  *   collection?: string  // Optional custom collection name
  * }
  */
-router.post('/index', validateBody(ragIndexBodySchema), async (req, res) => {
+router.post("/index", validateBody(ragIndexBodySchema), async (req, res) => {
   try {
     const { documents, collection } = req.body;
 
     // 1. Extract texts for embedding
-    const texts = documents.map(d => d.content);
-    
+    const texts = documents.map((d) => d.content);
+
     // 2. Generate embeddings
     const embeddings = await getEmbeddings(texts);
 
     // 3. Prepare data for ChromaDB
-    const ids = documents.map(d => d.id);
-    const metadatas = documents.map(d => ({
+    const ids = documents.map((d) => d.id);
+    const metadatas = documents.map((d) => ({
       ...d.metadata,
       indexed_at: new Date().toISOString(),
     }));
@@ -699,9 +760,12 @@ router.post('/index', validateBody(ragIndexBodySchema), async (req, res) => {
     const collectionName = collection || config.rag.chromaCollection;
     await upsertToChroma(collectionName, ids, embeddings, texts, metadatas);
 
-    res.json({ ok: true, data: { indexed: ids.length, collection: collectionName } });
+    res.json({
+      ok: true,
+      data: { indexed: ids.length, collection: collectionName },
+    });
   } catch (err) {
-    logger.error({}, 'RAG index error', { error: err.message });
+    logger.error({}, "RAG index error", { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -709,28 +773,30 @@ router.post('/index', validateBody(ragIndexBodySchema), async (req, res) => {
 /**
  * DELETE /index/:documentId - 인덱스에서 문서 삭제
  */
-router.delete('/index/:documentId', async (req, res) => {
+router.delete("/index/:documentId", async (req, res) => {
   try {
     const { documentId } = req.params;
     const { collection } = req.query;
 
     if (!documentId) {
-      return res.status(400).json({ ok: false, error: 'documentId is required' });
+      return res
+        .status(400)
+        .json({ ok: false, error: "documentId is required" });
     }
 
     const collectionName = collection || config.rag.chromaCollection;
-    
+
     try {
       await deleteFromChroma(collectionName, [documentId]);
     } catch (err) {
-      if (!err.message.includes('404') && !err.message.includes('not found')) {
+      if (!err.message.includes("404") && !err.message.includes("not found")) {
         throw err;
       }
     }
 
     res.json({ ok: true, data: { deleted: true } });
   } catch (err) {
-    logger.error({}, 'RAG delete error', { error: err.message });
+    logger.error({}, "RAG delete error", { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -738,14 +804,14 @@ router.delete('/index/:documentId', async (req, res) => {
 /**
  * GET /status - 인덱스 상태 확인
  */
-router.get('/status', async (req, res) => {
+router.get("/status", async (req, res) => {
   try {
     const { collection } = req.query;
     const collectionName = collection || config.rag.chromaCollection;
     const collectionsBase = getChromaCollectionsBase();
 
     const collectionsResp = await fetch(collectionsBase, {
-      method: 'GET',
+      method: "GET",
       signal: AbortSignal.timeout(5000),
     });
 
@@ -754,7 +820,7 @@ router.get('/status', async (req, res) => {
     }
 
     const collections = await collectionsResp.json();
-    const collectionData = collections.find(c => c.name === collectionName);
+    const collectionData = collections.find((c) => c.name === collectionName);
 
     if (!collectionData) {
       return res.json({
@@ -768,10 +834,13 @@ router.get('/status', async (req, res) => {
     }
 
     const collectionUUID = collectionData.id;
-    const countResp = await fetch(`${collectionsBase}/${collectionUUID}/count`, {
-      method: 'GET',
-      signal: AbortSignal.timeout(5000),
-    });
+    const countResp = await fetch(
+      `${collectionsBase}/${collectionUUID}/count`,
+      {
+        method: "GET",
+        signal: AbortSignal.timeout(5000),
+      },
+    );
 
     let count = 0;
     if (countResp.ok) {
@@ -789,7 +858,7 @@ router.get('/status', async (req, res) => {
       },
     });
   } catch (err) {
-    logger.error({}, 'RAG status error', { error: err.message });
+    logger.error({}, "RAG status error", { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -797,12 +866,12 @@ router.get('/status', async (req, res) => {
 /**
  * GET /collections - 모든 컬렉션 목록
  */
-router.get('/collections', async (req, res) => {
+router.get("/collections", async (req, res) => {
   try {
     const collectionsBase = getChromaCollectionsBase();
-    
+
     const response = await fetch(collectionsBase, {
-      method: 'GET',
+      method: "GET",
       signal: AbortSignal.timeout(5000),
     });
 
@@ -815,7 +884,7 @@ router.get('/collections', async (req, res) => {
     res.json({
       ok: true,
       data: {
-        collections: collections.map(c => ({
+        collections: collections.map((c) => ({
           name: c.name,
           metadata: c.metadata || {},
         })),
@@ -823,48 +892,65 @@ router.get('/collections', async (req, res) => {
       },
     });
   } catch (err) {
-    logger.error({}, 'RAG collections error', { error: err.message });
+    logger.error({}, "RAG collections error", { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-router.post('/notebook/search', validateBody(notebookSearchBodySchema), async (req, res) => {
+router.post(
+  "/notebook/search",
+  validateBody(notebookSearchBodySchema),
+  async (req, res) => {
+    if (!openNotebook.isEnabled()) {
+      return res
+        .status(503)
+        .json({ ok: false, error: "Open Notebook is not enabled" });
+    }
+
+    try {
+      const { query, limit = 5, notebookId } = req.body;
+
+      const results = await openNotebook.search(query, { limit, notebookId });
+
+      res.json({ ok: true, data: { results } });
+    } catch (err) {
+      logger.error({}, "Open Notebook search error", { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  },
+);
+
+router.post(
+  "/notebook/ask",
+  validateBody(notebookAskBodySchema),
+  async (req, res) => {
+    if (!openNotebook.isEnabled()) {
+      return res
+        .status(503)
+        .json({ ok: false, error: "Open Notebook is not enabled" });
+    }
+
+    try {
+      const { query, notebookId, includeContext = true } = req.body;
+
+      const result = await openNotebook.ask(query, {
+        notebookId,
+        includeContext,
+      });
+
+      res.json({ ok: true, data: result });
+    } catch (err) {
+      logger.error({}, "Open Notebook ask error", { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  },
+);
+
+router.get("/notebook/notebooks", async (req, res) => {
   if (!openNotebook.isEnabled()) {
-    return res.status(503).json({ ok: false, error: 'Open Notebook is not enabled' });
-  }
-
-  try {
-    const { query, limit = 5, notebookId } = req.body;
-
-    const results = await openNotebook.search(query, { limit, notebookId });
-
-    res.json({ ok: true, data: { results } });
-  } catch (err) {
-    logger.error({}, 'Open Notebook search error', { error: err.message });
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-router.post('/notebook/ask', validateBody(notebookAskBodySchema), async (req, res) => {
-  if (!openNotebook.isEnabled()) {
-    return res.status(503).json({ ok: false, error: 'Open Notebook is not enabled' });
-  }
-
-  try {
-    const { query, notebookId, includeContext = true } = req.body;
-
-    const result = await openNotebook.ask(query, { notebookId, includeContext });
-
-    res.json({ ok: true, data: result });
-  } catch (err) {
-    logger.error({}, 'Open Notebook ask error', { error: err.message });
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-router.get('/notebook/notebooks', async (req, res) => {
-  if (!openNotebook.isEnabled()) {
-    return res.status(503).json({ ok: false, error: 'Open Notebook is not enabled' });
+    return res
+      .status(503)
+      .json({ ok: false, error: "Open Notebook is not enabled" });
   }
 
   try {
@@ -872,27 +958,27 @@ router.get('/notebook/notebooks', async (req, res) => {
 
     res.json({ ok: true, data: { notebooks } });
   } catch (err) {
-    logger.error({}, 'Open Notebook list error', { error: err.message });
+    logger.error({}, "Open Notebook list error", { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-router.get('/notebook/health', async (req, res) => {
+router.get("/notebook/health", async (req, res) => {
   if (!openNotebook.isEnabled()) {
-    return res.json({ 
-      ok: false, 
+    return res.json({
+      ok: false,
       enabled: false,
-      error: 'Open Notebook is not enabled' 
+      error: "Open Notebook is not enabled",
     });
   }
 
   try {
     const health = await openNotebook.healthCheck();
 
-    res.json({ 
-      ok: health.ok, 
+    res.json({
+      ok: health.ok,
       enabled: true,
-      ...health 
+      ...health,
     });
   } catch (err) {
     res.json({ ok: false, enabled: true, error: err.message });

@@ -1,12 +1,12 @@
-import path from 'node:path';
-import { configSchema } from './schema.js';
-import { loadConsulConfig, consulGet } from './env.js';
-import { CONSUL } from './constants.js';
-import { createLogger } from '../lib/logger.js';
+import path from "node:path";
+import { configSchema } from "./schema.js";
+import { loadConsulConfig, consulGet } from "./env.js";
+import { CONSUL, INTERNAL_SERVICES } from "./constants.js";
+import { createLogger } from "../lib/logger.js";
 
-const logger = createLogger('config');
+const logger = createLogger("config");
 
-export * from './constants.js';
+export * from "./constants.js";
 
 let _config = null;
 let _configPromise = null;
@@ -16,14 +16,15 @@ async function buildConfig() {
   const merged = { ...process.env, ...consulConfig };
   const raw = configSchema.parse(merged);
 
-  const repoRoot = path.resolve(process.cwd(), '..');
-  const allowedOrigins = raw.ALLOWED_ORIGINS.split(',')
-    .map(s => s.trim())
+  const repoRoot = path.resolve(process.cwd(), "..");
+  const allowedOrigins = raw.ALLOWED_ORIGINS.split(",")
+    .map((s) => s.trim())
     .filter(Boolean);
 
-  const publicDir = raw.CONTENT_PUBLIC_DIR || path.join(repoRoot, 'frontend', 'public');
-  const postsDir = raw.CONTENT_POSTS_DIR || path.join(publicDir, 'posts');
-  const imagesDir = raw.CONTENT_IMAGES_DIR || path.join(publicDir, 'images');
+  const publicDir =
+    raw.CONTENT_PUBLIC_DIR || path.join(repoRoot, "frontend", "public");
+  const postsDir = raw.CONTENT_POSTS_DIR || path.join(publicDir, "posts");
+  const imagesDir = raw.CONTENT_IMAGES_DIR || path.join(publicDir, "images");
   const assetsBaseUrl = raw.ASSETS_BASE_URL;
 
   return {
@@ -46,7 +47,7 @@ async function buildConfig() {
       baseUrl: raw.AI_SERVER_URL,
       apiKey: raw.AI_API_KEY || raw.OPENAI_API_KEY,
       defaultModel: raw.AI_DEFAULT_MODEL,
-      asyncMode: raw.AI_ASYNC_MODE === 'true',
+      asyncMode: raw.AI_ASYNC_MODE === "true",
     },
 
     github: {
@@ -97,7 +98,8 @@ async function buildConfig() {
 
     rag: {
       embeddingUrl: raw.AI_EMBEDDING_URL || raw.AI_SERVER_URL,
-      embeddingApiKey: raw.AI_EMBEDDING_API_KEY || raw.AI_API_KEY || raw.OPENAI_API_KEY,
+      embeddingApiKey:
+        raw.AI_EMBEDDING_API_KEY || raw.AI_API_KEY || raw.OPENAI_API_KEY,
       embeddingModel: raw.AI_EMBED_MODEL,
       chromaUrl: raw.CHROMA_URL,
       chromaCollection: raw.CHROMA_COLLECTION,
@@ -129,12 +131,12 @@ async function buildConfig() {
     },
 
     features: {
-      aiEnabled: raw.FEATURE_AI_ENABLED === 'true',
-      ragEnabled: raw.FEATURE_RAG_ENABLED === 'true',
-      terminalEnabled: raw.FEATURE_TERMINAL_ENABLED === 'true',
-      aiInline: raw.FEATURE_AI_INLINE === 'true',
-      commentsEnabled: raw.FEATURE_COMMENTS_ENABLED === 'true',
-      openNotebookEnabled: raw.OPEN_NOTEBOOK_ENABLED === 'true',
+      aiEnabled: raw.FEATURE_AI_ENABLED === "true",
+      ragEnabled: raw.FEATURE_RAG_ENABLED === "true",
+      terminalEnabled: raw.FEATURE_TERMINAL_ENABLED === "true",
+      aiInline: raw.FEATURE_AI_INLINE === "true",
+      commentsEnabled: raw.FEATURE_COMMENTS_ENABLED === "true",
+      openNotebookEnabled: raw.OPEN_NOTEBOOK_ENABLED === "true",
     },
   };
 }
@@ -149,9 +151,12 @@ export async function initConfig() {
 }
 
 const syncConfig = configSchema.parse(process.env);
-const repoRoot = path.resolve(process.cwd(), '..');
-const allowedOrigins = syncConfig.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean);
-const publicDir = syncConfig.CONTENT_PUBLIC_DIR || path.join(repoRoot, 'frontend', 'public');
+const repoRoot = path.resolve(process.cwd(), "..");
+const allowedOrigins = syncConfig.ALLOWED_ORIGINS.split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const publicDir =
+  syncConfig.CONTENT_PUBLIC_DIR || path.join(repoRoot, "frontend", "public");
 
 export const config = {
   appEnv: syncConfig.APP_ENV,
@@ -171,7 +176,7 @@ export const config = {
     baseUrl: syncConfig.AI_SERVER_URL,
     apiKey: syncConfig.AI_API_KEY || syncConfig.OPENAI_API_KEY,
     defaultModel: syncConfig.AI_DEFAULT_MODEL,
-    asyncMode: syncConfig.AI_ASYNC_MODE === 'true',
+    asyncMode: syncConfig.AI_ASYNC_MODE === "true",
   },
   github: {
     token: syncConfig.GITHUB_TOKEN,
@@ -202,8 +207,8 @@ export const config = {
   content: {
     repoRoot,
     publicDir,
-    postsDir: syncConfig.CONTENT_POSTS_DIR || path.join(publicDir, 'posts'),
-    imagesDir: syncConfig.CONTENT_IMAGES_DIR || path.join(publicDir, 'images'),
+    postsDir: syncConfig.CONTENT_POSTS_DIR || path.join(publicDir, "posts"),
+    imagesDir: syncConfig.CONTENT_IMAGES_DIR || path.join(publicDir, "images"),
     postsSource: syncConfig.POSTS_SOURCE,
   },
   integrations: {
@@ -211,7 +216,10 @@ export const config = {
   },
   rag: {
     embeddingUrl: syncConfig.AI_EMBEDDING_URL || syncConfig.AI_SERVER_URL,
-    embeddingApiKey: syncConfig.AI_EMBEDDING_API_KEY || syncConfig.AI_API_KEY || syncConfig.OPENAI_API_KEY,
+    embeddingApiKey:
+      syncConfig.AI_EMBEDDING_API_KEY ||
+      syncConfig.AI_API_KEY ||
+      syncConfig.OPENAI_API_KEY,
     embeddingModel: syncConfig.AI_EMBED_MODEL,
     chromaUrl: syncConfig.CHROMA_URL,
     chromaCollection: syncConfig.CHROMA_COLLECTION,
@@ -226,7 +234,8 @@ export const config = {
     serperApiKey: syncConfig.SERPER_API_KEY,
   },
   services: {
-    backendUrl: syncConfig.INTERNAL_API_URL || `http://localhost:${syncConfig.PORT}`,
+    backendUrl:
+      syncConfig.INTERNAL_API_URL || `http://localhost:${syncConfig.PORT}`,
     terminalServerUrl: syncConfig.TERMINAL_SERVER_URL,
     terminalGatewayUrl: syncConfig.TERMINAL_GATEWAY_URL,
     openNotebookUrl: syncConfig.OPEN_NOTEBOOK_URL,
@@ -238,22 +247,25 @@ export const config = {
     port: CONSUL.PORT,
   },
   features: {
-    aiEnabled: syncConfig.FEATURE_AI_ENABLED === 'true',
-    ragEnabled: syncConfig.FEATURE_RAG_ENABLED === 'true',
-    terminalEnabled: syncConfig.FEATURE_TERMINAL_ENABLED === 'true',
-    aiInline: syncConfig.FEATURE_AI_INLINE === 'true',
-    commentsEnabled: syncConfig.FEATURE_COMMENTS_ENABLED === 'true',
-    openNotebookEnabled: syncConfig.OPEN_NOTEBOOK_ENABLED === 'true',
+    aiEnabled: syncConfig.FEATURE_AI_ENABLED === "true",
+    ragEnabled: syncConfig.FEATURE_RAG_ENABLED === "true",
+    terminalEnabled: syncConfig.FEATURE_TERMINAL_ENABLED === "true",
+    aiInline: syncConfig.FEATURE_AI_INLINE === "true",
+    commentsEnabled: syncConfig.FEATURE_COMMENTS_ENABLED === "true",
+    openNotebookEnabled: syncConfig.OPEN_NOTEBOOK_ENABLED === "true",
   },
 };
 
 if (!config.services.workerApiUrl) {
-  logger.warn({}, 'WORKER_API_URL is not set — AI dynamic config from Worker will be unavailable. Set WORKER_API_URL to the api-gateway Worker URL.');
+  logger.warn(
+    {},
+    "WORKER_API_URL is not set — AI dynamic config from Worker will be unavailable. Set WORKER_API_URL to the api-gateway Worker URL.",
+  );
 }
 
 export async function loadAndApplyConsulConfig() {
   if (!CONSUL.ENABLED) {
-    logger.info({}, 'Consul disabled, using environment variables');
+    logger.info({}, "Consul disabled, using environment variables");
     return config;
   }
 
@@ -272,10 +284,10 @@ export async function loadAndApplyConsulConfig() {
       features: asyncConfig.features,
     });
 
-    logger.info({}, 'Consul config applied successfully');
+    logger.info({}, "Consul config applied successfully");
     return config;
   } catch (err) {
-    logger.warn({}, 'Failed to apply Consul config', { error: err.message });
+    logger.warn({}, "Failed to apply Consul config", { error: err.message });
     return config;
   }
 }
@@ -300,14 +312,16 @@ export async function getServiceUrl(serviceName) {
   if (url) return url;
 
   const fallbacks = {
-    'backend': config.services?.backendUrl || `http://localhost:${config.port}`,
-    'chromadb': config.rag.chromaUrl,
-    'embedding': config.rag.embeddingUrl,
-    'redis': config.redis?.url || 'redis://localhost:6379',
-    'terminal': config.services?.terminalServerUrl || 'http://terminal-server:8080',
+    backend: config.services?.backendUrl || `http://localhost:${config.port}`,
+    chromadb: config.rag.chromaUrl,
+    embedding: config.rag.embeddingUrl,
+    redis: config.redis?.url || INTERNAL_SERVICES.REDIS_URL,
+    terminal:
+      config.services?.terminalServerUrl ||
+      INTERNAL_SERVICES.TERMINAL_SERVER_URL,
   };
 
   return fallbacks[serviceName] || null;
 }
 
-export { consulGet, loadConsulConfig } from './env.js';
+export { consulGet, loadConsulConfig } from "./env.js";

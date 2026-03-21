@@ -1,6 +1,6 @@
 /**
  * Redis Client Module
- * 
+ *
  * Provides connection pooling, pub/sub, and streams support for the blog backend.
  * Used for:
  *   - AI task queue (async processing)
@@ -8,23 +8,25 @@
  *   - Caching and rate limiting
  */
 
-import { createClient } from 'redis';
-import { config } from '../config.js';
-import { createLogger } from './logger.js';
+import { createClient } from "redis";
+import { config } from "../config.js";
+import { INTERNAL_SERVICES } from "../config/constants.js";
+import { createLogger } from "./logger.js";
 
-const logger = createLogger('redis-client');
+const logger = createLogger("redis-client");
 
 let _client = null;
 let _subscriber = null;
 let _isConnecting = false;
 let _connectionPromise = null;
 
-const getRedisUrl = () => config.redis?.url || process.env.REDIS_URL || 'redis://localhost:6379';
-const REDIS_PASSWORD = process.env.REDIS_PASSWORD || '';
+const getRedisUrl = () =>
+  config.redis?.url || process.env.REDIS_URL || INTERNAL_SERVICES.REDIS_URL;
+const REDIS_PASSWORD = process.env.REDIS_PASSWORD || "";
 
 function buildRedisUrl() {
   const redisUrl = getRedisUrl();
-  if (redisUrl.includes('@') || !REDIS_PASSWORD) {
+  if (redisUrl.includes("@") || !REDIS_PASSWORD) {
     return redisUrl;
   }
   const url = new URL(redisUrl);
@@ -49,24 +51,24 @@ export async function getRedisClient() {
         socket: {
           reconnectStrategy: (retries) => {
             if (retries > 10) {
-              logger.error({}, 'Max reconnection attempts reached');
-              return new Error('Max reconnection attempts reached');
+              logger.error({}, "Max reconnection attempts reached");
+              return new Error("Max reconnection attempts reached");
             }
             return Math.min(retries * 100, 3000);
           },
         },
       });
 
-      _client.on('error', (err) => {
-        logger.error({}, 'Client error', { error: err.message });
+      _client.on("error", (err) => {
+        logger.error({}, "Client error", { error: err.message });
       });
 
-      _client.on('reconnecting', () => {
-        logger.info({}, 'Reconnecting...');
+      _client.on("reconnecting", () => {
+        logger.info({}, "Reconnecting...");
       });
 
       await _client.connect();
-      logger.info({}, 'Connected successfully');
+      logger.info({}, "Connected successfully");
       return _client;
     } finally {
       _isConnecting = false;
@@ -86,22 +88,22 @@ export async function getRedisSubscriber() {
     url: buildRedisUrl(),
   });
 
-  _subscriber.on('error', (err) => {
-    logger.error({ subscriber: true }, 'Error', { error: err.message });
+  _subscriber.on("error", (err) => {
+    logger.error({ subscriber: true }, "Error", { error: err.message });
   });
 
   await _subscriber.connect();
-  logger.info({ subscriber: true }, 'Connected');
+  logger.info({ subscriber: true }, "Connected");
   return _subscriber;
 }
 
 export async function closeRedis() {
   const promises = [];
-  
+
   if (_client?.isOpen) {
     promises.push(_client.quit().catch(() => _client.disconnect()));
   }
-  
+
   if (_subscriber?.isOpen) {
     promises.push(_subscriber.quit().catch(() => _subscriber.disconnect()));
   }
@@ -109,7 +111,7 @@ export async function closeRedis() {
   await Promise.all(promises);
   _client = null;
   _subscriber = null;
-  logger.info({}, 'Connections closed');
+  logger.info({}, "Connections closed");
 }
 
 export async function isRedisAvailable() {

@@ -1,8 +1,8 @@
 import { config } from "../config/index.js";
-import { TIMEOUTS } from "../config/constants.js";
+import { INTERNAL_SERVICES, TIMEOUTS } from "../config/constants.js";
 
 const OPEN_NOTEBOOK_BASE_URL =
-  config.services?.openNotebookUrl || "http://open-notebook:8501";
+  config.services?.openNotebookUrl || INTERNAL_SERVICES.OPEN_NOTEBOOK_URL;
 const OPEN_NOTEBOOK_MODEL_CACHE_TTL_MS = Math.max(
   30_000,
   Number.parseInt(process.env.OPEN_NOTEBOOK_MODEL_CACHE_TTL_MS || "300000", 10),

@@ -1,38 +1,49 @@
 /**
  * RAG Search Tool - Semantic search over blog content
- * 
+ *
  * Provides semantic search capabilities using ChromaDB and OpenAI-compatible embeddings.
  * Searches blog posts, memos, and other indexed content.
- * 
+ *
  * Uses ChromaDB v2 API for compatibility with current server setup.
  */
 
-import { config } from '../../../config.js';
-import { openaiEmbeddings } from '../../ai/openai-client.service.js';
-import { expandQuery, getCombinedQueries } from '../../ai/query-expander.service.js';
-import { createLogger } from '../../../lib/logger.js';
+import { config } from "../../../config.js";
+import { AI_API, AI_MODELS, CHROMA } from "../../../config/constants.js";
+import { openaiEmbeddings } from "../../ai/openai-client.service.js";
+import {
+  expandQuery,
+  getCombinedQueries,
+} from "../../ai/query-expander.service.js";
+import { createLogger } from "../../../lib/logger.js";
 
-const logger = createLogger('rag-search');
+const logger = createLogger("rag-search");
 
-const getChromaUrl = () => config.rag?.chromaUrl || process.env.CHROMA_URL || 'http://chromadb:8000';
-const getEmbeddingUrl = () => config.rag?.embeddingUrl
-  || process.env.AI_EMBEDDING_URL
-  || process.env.AI_SERVER_URL
-  || 'https://api.openai.com/v1';
-const getEmbeddingApiKey = () => config.rag?.embeddingApiKey
-  || process.env.AI_EMBEDDING_API_KEY
-  || process.env.AI_API_KEY
-  || process.env.OPENAI_API_KEY;
-const getEmbeddingModel = () => config.rag?.embeddingModel
-  || process.env.AI_EMBED_MODEL
-  || 'text-embedding-3-small';
-const getDefaultCollection = () => config.rag?.chromaCollection || process.env.CHROMA_COLLECTION || 'blog-posts-all-MiniLM-L6-v2';
+const getChromaUrl = () =>
+  config.rag?.chromaUrl || process.env.CHROMA_URL || CHROMA.URL;
+const getEmbeddingUrl = () =>
+  config.rag?.embeddingUrl ||
+  process.env.AI_EMBEDDING_URL ||
+  process.env.AI_SERVER_URL ||
+  AI_API.EMBEDDING_URL;
+const getEmbeddingApiKey = () =>
+  config.rag?.embeddingApiKey ||
+  process.env.AI_EMBEDDING_API_KEY ||
+  process.env.AI_API_KEY ||
+  process.env.OPENAI_API_KEY;
+const getEmbeddingModel = () =>
+  config.rag?.embeddingModel ||
+  process.env.AI_EMBED_MODEL ||
+  AI_MODELS.EMBEDDING;
+const getDefaultCollection = () =>
+  config.rag?.chromaCollection ||
+  process.env.CHROMA_COLLECTION ||
+  CHROMA.COLLECTION;
 const DEFAULT_LIMIT = 5;
 const RRF_K = 60;
 
 // ChromaDB v2 API configuration
-const CHROMA_TENANT = 'default_tenant';
-const CHROMA_DATABASE = 'default_database';
+const CHROMA_TENANT = CHROMA.TENANT;
+const CHROMA_DATABASE = CHROMA.DATABASE;
 
 // Cache for collection name -> UUID mapping
 const collectionUUIDCache = new Map();
@@ -53,21 +64,21 @@ async function getCollectionUUID(collectionName) {
   }
 
   const collectionsUrl = getChromaCollectionsBase();
-  
-  const listResp = await fetch(collectionsUrl, { method: 'GET' });
-  
+
+  const listResp = await fetch(collectionsUrl, { method: "GET" });
+
   if (!listResp.ok) {
     throw new Error(`Failed to list collections: ${listResp.status}`);
   }
-  
+
   const collections = await listResp.json();
-  const collection = collections.find(c => c.name === collectionName);
-  
+  const collection = collections.find((c) => c.name === collectionName);
+
   if (collection) {
     collectionUUIDCache.set(collectionName, collection.id);
     return collection.id;
   }
-  
+
   return null;
 }
 
@@ -80,7 +91,7 @@ async function generateEmbeddings(text) {
     });
     return result.embeddings[0];
   } catch (error) {
-    logger.error({}, 'Embedding generation failed', { error: error.message });
+    logger.error({}, "Embedding generation failed", { error: error.message });
     throw error;
   }
 }
@@ -88,11 +99,11 @@ async function generateEmbeddings(text) {
 async function queryChromaV2(collectionUUID, embedding, nResults, whereFilter) {
   const collectionsBase = getChromaCollectionsBase();
   const queryUrl = `${collectionsBase}/${collectionUUID}/query`;
-  
+
   const body = {
     query_embeddings: [embedding],
     n_results: nResults,
-    include: ['documents', 'metadatas', 'distances'],
+    include: ["documents", "metadatas", "distances"],
   };
 
   if (whereFilter && Object.keys(whereFilter).length > 0) {
@@ -100,8 +111,8 @@ async function queryChromaV2(collectionUUID, embedding, nResults, whereFilter) {
   }
 
   const response = await fetch(queryUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
 
@@ -123,7 +134,7 @@ async function searchWithExpansion(query, options = {}) {
 
   const collectionUUID = await getCollectionUUID(collection);
   if (!collectionUUID) {
-    logger.warn({ collection }, 'Collection not found');
+    logger.warn({ collection }, "Collection not found");
     return { results: [], expansion: null };
   }
 
@@ -134,9 +145,9 @@ async function searchWithExpansion(query, options = {}) {
     try {
       expansion = await expandQuery(query, { timeout: 3000 });
       queriesToSearch = getCombinedQueries(expansion, 3);
-      logger.debug({ query, count: queriesToSearch.length }, 'Query expanded');
+      logger.debug({ query, count: queriesToSearch.length }, "Query expanded");
     } catch (err) {
-      logger.warn({}, 'Query expansion failed', { error: err.message });
+      logger.warn({}, "Query expansion failed", { error: err.message });
     }
   }
 
@@ -147,14 +158,23 @@ async function searchWithExpansion(query, options = {}) {
     const q = queriesToSearch[qIdx];
     try {
       const queryEmbedding = await generateEmbeddings(q);
-      const data = await queryChromaV2(collectionUUID, queryEmbedding, fetchPerQuery, where);
-      
+      const data = await queryChromaV2(
+        collectionUUID,
+        queryEmbedding,
+        fetchPerQuery,
+        where,
+      );
+
       const documents = data.documents?.[0] || [];
       const metadatas = data.metadatas?.[0] || [];
       const distances = data.distances?.[0] || [];
 
       for (let rank = 0; rank < documents.length; rank++) {
-        const docId = metadatas[rank]?.slug || metadatas[rank]?.doc_id || metadatas[rank]?.id || `doc_${rank}`;
+        const docId =
+          metadatas[rank]?.slug ||
+          metadatas[rank]?.doc_id ||
+          metadatas[rank]?.id ||
+          `doc_${rank}`;
 
         if (!rankMap.has(docId)) {
           rankMap.set(docId, {
@@ -167,7 +187,9 @@ async function searchWithExpansion(query, options = {}) {
         rankMap.get(docId).ranks.push(rank + 1);
       }
     } catch (err) {
-      logger.warn({ query: q }, 'Search failed for query', { error: err.message });
+      logger.warn({ query: q }, "Search failed for query", {
+        error: err.message,
+      });
     }
   }
 
@@ -187,41 +209,43 @@ async function searchWithExpansion(query, options = {}) {
 
 export function createRAGSearchTool() {
   return {
-    name: 'rag_search',
-    description: 'Search blog posts and content using semantic search. Use this to find relevant articles, posts, or information from the blog.',
+    name: "rag_search",
+    description:
+      "Search blog posts and content using semantic search. Use this to find relevant articles, posts, or information from the blog.",
     parameters: {
-      type: 'object',
+      type: "object",
       properties: {
         query: {
-          type: 'string',
-          description: 'The search query to find relevant content',
+          type: "string",
+          description: "The search query to find relevant content",
         },
         collection: {
-          type: 'string',
-          description: 'The collection to search (uses config default if not specified)',
+          type: "string",
+          description:
+            "The collection to search (uses config default if not specified)",
         },
         limit: {
-          type: 'number',
-          description: 'Maximum number of results to return (default: 5)',
+          type: "number",
+          description: "Maximum number of results to return (default: 5)",
           default: 5,
         },
         category: {
-          type: 'string',
-          description: 'Filter by category (optional)',
+          type: "string",
+          description: "Filter by category (optional)",
         },
         tags: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Filter by tags (optional)',
+          type: "array",
+          items: { type: "string" },
+          description: "Filter by tags (optional)",
         },
       },
-      required: ['query'],
+      required: ["query"],
     },
 
     async execute(args) {
       const { query, collection, limit, category, tags, expand = true } = args;
 
-      logger.debug({ query, expand }, 'Searching');
+      logger.debug({ query, expand }, "Searching");
 
       try {
         const where = {};
@@ -239,14 +263,15 @@ export function createRAGSearchTool() {
           expand,
         });
 
-        logger.debug({ count: results.length }, 'Search results found');
+        logger.debug({ count: results.length }, "Search results found");
 
         const response = {
           success: true,
           query,
           count: results.length,
-          results: results.map(r => ({
-            content: r.content?.slice(0, 500) + (r.content?.length > 500 ? '...' : ''),
+          results: results.map((r) => ({
+            content:
+              r.content?.slice(0, 500) + (r.content?.length > 500 ? "..." : ""),
             title: r.metadata?.title,
             slug: r.metadata?.slug,
             category: r.metadata?.category,
@@ -265,7 +290,7 @@ export function createRAGSearchTool() {
 
         return response;
       } catch (error) {
-        logger.error({}, 'Search failed', { error: error.message });
+        logger.error({}, "Search failed", { error: error.message });
         return {
           success: false,
           error: error.message,

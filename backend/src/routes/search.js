@@ -1,63 +1,86 @@
-import { Router } from 'express';
-import { createWebSearchTool } from '../lib/agent/tools/web-search.js';
-import { httpCache } from '../middleware/httpCache.js';
+import { Router } from "express";
+import { SEARCH } from "../config/constants.js";
+import { createWebSearchTool } from "../lib/agent/tools/web-search.js";
+import { httpCache } from "../middleware/httpCache.js";
 
 const router = Router();
 
-router.get('/health', async (req, res) => {
+router.get("/health", async (req, res) => {
   // DuckDuckGo engine works without API keys
   const configured = true;
-  res.json({ ok: true, data: { status: configured ? 'configured' : 'unconfigured' } });
+  res.json({
+    ok: true,
+    data: { status: configured ? "configured" : "unconfigured" },
+  });
 });
 
-router.post('/web', httpCache({ ttl: 600, prefix: 'search', keyFromBody: ['query', 'maxResults', 'searchDepth'], allowPost: true }), async (req, res, next) => {
-  try {
-    const { query, maxResults = 5, searchDepth = 'basic' } = req.body || {};
-    const q = String(query || '').trim();
-    if (!q) return res.status(400).json({ ok: false, error: 'query is required' });
+router.post(
+  "/web",
+  httpCache({
+    ttl: 600,
+    prefix: "search",
+    keyFromBody: ["query", "maxResults", "searchDepth"],
+    allowPost: true,
+  }),
+  async (req, res, next) => {
+    try {
+      const {
+        query,
+        maxResults = 5,
+        searchDepth = SEARCH.BASIC_DEPTH,
+      } = req.body || {};
+      const q = String(query || "").trim();
+      if (!q)
+        return res.status(400).json({ ok: false, error: "query is required" });
 
-    const tool = createWebSearchTool();
+      const tool = createWebSearchTool();
 
-    const started = Date.now();
+      const started = Date.now();
 
-    // Map searchDepth to engine preference
-    const engine = searchDepth === 'advanced' ? (process.env.WEB_SEARCH_ENGINE || 'serper') : 'duckduckgo';
+      // Map searchDepth to engine preference
+      const engine =
+        searchDepth === SEARCH.TAVILY_DEPTH
+          ? SEARCH.ADVANCED_ENGINE
+          : SEARCH.BASIC_ENGINE;
 
-    const result = await tool.execute({
-      action: 'search',
-      query: q,
-      engine,
-      limit: Math.max(1, Math.min(10, Number(maxResults) || 5)),
-    });
-
-    const responseTime = Date.now() - started;
-
-    if (!result?.success) {
-      return res.status(502).json({ ok: false, error: result?.error || 'web search failed' });
-    }
-
-    const results = Array.isArray(result.results) ? result.results : [];
-
-    // Normalize to frontend type
-    const normalized = results.map((r, idx) => ({
-      title: String(r.title || ''),
-      url: String(r.url || ''),
-      snippet: String(r.snippet || ''),
-      score: Math.max(0, 1 - idx * 0.05),
-      publishedDate: r.publishedDate || undefined,
-    }));
-
-    return res.json({
-      ok: true,
-      data: {
+      const result = await tool.execute({
+        action: "search",
         query: q,
-        results: normalized,
-        responseTime,
-      },
-    });
-  } catch (err) {
-    return next(err);
-  }
-});
+        engine,
+        limit: Math.max(1, Math.min(10, Number(maxResults) || 5)),
+      });
+
+      const responseTime = Date.now() - started;
+
+      if (!result?.success) {
+        return res
+          .status(502)
+          .json({ ok: false, error: result?.error || "web search failed" });
+      }
+
+      const results = Array.isArray(result.results) ? result.results : [];
+
+      // Normalize to frontend type
+      const normalized = results.map((r, idx) => ({
+        title: String(r.title || ""),
+        url: String(r.url || ""),
+        snippet: String(r.snippet || ""),
+        score: Math.max(0, 1 - idx * 0.05),
+        publishedDate: r.publishedDate || undefined,
+      }));
+
+      return res.json({
+        ok: true,
+        data: {
+          query: q,
+          results: normalized,
+          responseTime,
+        },
+      });
+    } catch (err) {
+      return next(err);
+    }
+  },
+);
 
 export default router;

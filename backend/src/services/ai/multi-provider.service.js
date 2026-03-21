@@ -1,8 +1,9 @@
-import { getProviderSnapshot } from './dynamic-config.service.js';
-import { createLogger } from '../../lib/logger.js';
-import { getOpenAIClient } from './openai-client.service.js';
+import { getProviderSnapshot } from "./dynamic-config.service.js";
+import { AI_API } from "../../config/constants.js";
+import { createLogger } from "../../lib/logger.js";
+import { getOpenAIClient } from "./openai-client.service.js";
 
-const logger = createLogger('multi-provider-ai');
+const logger = createLogger("multi-provider-ai");
 
 const CACHE_TTL_MS = 60 * 1000;
 const DEFAULT_TIMEOUT_MS = 120 * 1000;
@@ -64,8 +65,8 @@ function recordProviderFailure(providerId) {
 
   if (state.failures === CIRCUIT_BREAKER_THRESHOLD) {
     logger.warn(
-      { operation: 'circuit_breaker', providerId },
-      'Provider circuit breaker opened',
+      { operation: "circuit_breaker", providerId },
+      "Provider circuit breaker opened",
       { resetAfterMs: CIRCUIT_BREAKER_RESET_MS },
     );
   }
@@ -88,29 +89,28 @@ function normalizeUsage(usage) {
 }
 
 function extractTextContent(content) {
-  if (typeof content === 'string') {
+  if (typeof content === "string") {
     return content;
   }
 
   if (Array.isArray(content)) {
     return content
       .map((item) => {
-        if (typeof item === 'string') return item;
-        if (item?.type === 'text') return item.text || '';
-        return '';
+        if (typeof item === "string") return item;
+        if (item?.type === "text") return item.text || "";
+        return "";
       })
-      .join('')
+      .join("")
       .trim();
   }
 
-  return '';
+  return "";
 }
 
 function buildChatEndpoint(apiBaseUrl) {
-  const normalizedBaseUrl = (apiBaseUrl || 'https://api.openai.com')
-    .replace(/\/+$/, '');
+  const normalizedBaseUrl = (apiBaseUrl || AI_API.BASE_URL).replace(/\/+$/, "");
 
-  if (normalizedBaseUrl.endsWith('/v1')) {
+  if (normalizedBaseUrl.endsWith("/v1")) {
     return `${normalizedBaseUrl}/chat/completions`;
   }
 
@@ -121,10 +121,10 @@ function buildMessages(prompt, systemPrompt) {
   const messages = [];
 
   if (systemPrompt) {
-    messages.push({ role: 'system', content: systemPrompt });
+    messages.push({ role: "system", content: systemPrompt });
   }
 
-  messages.push({ role: 'user', content: prompt });
+  messages.push({ role: "user", content: prompt });
 
   return messages;
 }
@@ -243,7 +243,9 @@ async function loadConfig(force = false) {
 
   const value = {
     providers,
-    providersById: new Map(providers.map((provider) => [provider.id, provider])),
+    providersById: new Map(
+      providers.map((provider) => [provider.id, provider]),
+    ),
     models,
     modelsById: createModelLookup(models),
     defaultRoute,
@@ -261,7 +263,7 @@ async function loadConfig(force = false) {
 async function createChatCompletion(provider, model, messages, options = {}) {
   const url = buildChatEndpoint(provider.api_base_url);
   const headers = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   };
 
   const apiKey = provider.resolvedApiKey ?? undefined;
@@ -270,11 +272,10 @@ async function createChatCompletion(provider, model, messages, options = {}) {
     headers.Authorization = `Bearer ${apiKey}`;
   }
 
-  const timeoutMs =
-    options.timeout || options.timeoutMs || DEFAULT_TIMEOUT_MS;
+  const timeoutMs = options.timeout || options.timeoutMs || DEFAULT_TIMEOUT_MS;
 
   const response = await fetch(url, {
-    method: 'POST',
+    method: "POST",
     headers,
     body: JSON.stringify({
       model: model.model_identifier,
@@ -321,8 +322,8 @@ export class MultiProviderAIService {
     // Prime the config cache from Worker snapshot on init
     loadConfig().catch((error) => {
       logger.warn(
-        { operation: 'init' },
-        'Failed to prime multi-provider config cache',
+        { operation: "init" },
+        "Failed to prime multi-provider config cache",
         { error: error.message },
       );
     });
@@ -349,7 +350,7 @@ export class MultiProviderAIService {
       : undefined;
 
     if (!chain.length) {
-      throw new Error('No enabled AI providers or models configured');
+      throw new Error("No enabled AI providers or models configured");
     }
 
     const errors = [];
@@ -359,15 +360,25 @@ export class MultiProviderAIService {
 
       if (isProviderCircuitOpen(provider.id)) {
         logger.warn(
-          { operation: 'chat', requestId, providerId: provider.id, modelId: model.id },
-          'Skipping provider because circuit breaker is open',
+          {
+            operation: "chat",
+            requestId,
+            providerId: provider.id,
+            modelId: model.id,
+          },
+          "Skipping provider because circuit breaker is open",
         );
         continue;
       }
 
       logger.info(
-        { operation: 'chat', requestId, providerId: provider.id, modelId: model.id },
-        'Attempting provider chat completion',
+        {
+          operation: "chat",
+          requestId,
+          providerId: provider.id,
+          modelId: model.id,
+        },
+        "Attempting provider chat completion",
         {
           providerName: provider.name,
           modelName: model.model_name,
@@ -387,12 +398,17 @@ export class MultiProviderAIService {
           model: response.model || model.model_name,
           provider: provider.id,
           usage: normalizeUsage(response.usage),
-          finishReason: response?.choices?.[0]?.finish_reason || 'stop',
+          finishReason: response?.choices?.[0]?.finish_reason || "stop",
         };
 
         logger.info(
-          { operation: 'chat', requestId, providerId: provider.id, modelId: model.id },
-          'Provider chat completion succeeded',
+          {
+            operation: "chat",
+            requestId,
+            providerId: provider.id,
+            modelId: model.id,
+          },
+          "Provider chat completion succeeded",
           {
             providerName: provider.name,
             modelName: result.model,
@@ -411,8 +427,13 @@ export class MultiProviderAIService {
         });
 
         logger.error(
-          { operation: 'chat', requestId, providerId: provider.id, modelId: model.id },
-          'Provider chat completion failed',
+          {
+            operation: "chat",
+            requestId,
+            providerId: provider.id,
+            modelId: model.id,
+          },
+          "Provider chat completion failed",
           {
             providerName: provider.name,
             modelName: model.model_name,
@@ -426,7 +447,7 @@ export class MultiProviderAIService {
     const error = new Error(
       lastError
         ? `All AI providers failed. Last error: ${lastError.message}`
-        : 'All AI providers failed',
+        : "All AI providers failed",
     );
     error.attempts = errors;
     throw error;
@@ -439,9 +460,12 @@ export class MultiProviderAIService {
       return this.getFallbackClient().generate(prompt, options);
     }
 
-    const result = await this.chat(buildMessages(prompt, options.systemPrompt), {
-      ...options,
-    });
+    const result = await this.chat(
+      buildMessages(prompt, options.systemPrompt),
+      {
+        ...options,
+      },
+    );
 
     return result.content;
   }
@@ -455,7 +479,7 @@ export class MultiProviderAIService {
 
     return {
       ok: config.providers.length > 0,
-      provider: 'multi-provider',
+      provider: "multi-provider",
       providers: config.providers.map((provider) => ({
         id: provider.id,
         name: provider.display_name || provider.name,
@@ -475,7 +499,7 @@ export class MultiProviderAIService {
     }
 
     return {
-      provider: 'multi-provider',
+      provider: "multi-provider",
       providers: cachedProviders.map((provider) => ({
         id: provider.id,
         name: provider.display_name || provider.name,
