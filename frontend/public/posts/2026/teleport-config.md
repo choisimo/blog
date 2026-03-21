@@ -305,7 +305,7 @@ docker compose run --rm --entrypoint certbot certbot certonly \
   --dns-cloudflare-credentials /secrets/cloudflare.ini \
   --dns-cloudflare-propagation-seconds 20 \
   -d teleport.example.net \
-  --email test@nodove.com \
+  --email ops@example.com \
   --agree-tos \
   --no-eff-email
 ```

@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "BFS/DFS", "Problem Solving", "Python", "Java"]
 excerpt: "Graph Advanced - 경로 존재 여부 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**경로 존재 여부**
-* 파트: Graph Advanced
-* 관련 알고리즘: BFS/DFS
+경로 존재 여부는 최단 경로나 비용이 아니라, 두 서비스/정점이 같은 연결 영역에 속하는지만 판정하는 reachability 문제입니다. 답이 Boolean 하나뿐이어도 왜 그래프 표현과 visited 관리가 핵심인지 설명해 보세요.
 
-> **Architect's View**
-> 도달 가능성과 서비스 가용성
+1. BFS 또는 DFS로 source에서 시작해 target이 도달 가능해지는 과정을 frontier와 visited 관점에서 추적하세요.
+2. 매 질의마다 BFS/DFS를 돌리는 방식과 Union-Find 전처리를 비교해, 질의 수와 업데이트 빈도에 따라 무엇이 유리한지 설명하세요.
+3. directed graph와 undirected graph에서 "경로 존재"의 의미 차이를 설명하세요.
 
-이 글에서는 경로 존재 여부 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- visited가 왜 필요한지 적을 것
+- 단발성 질의와 반복 질의를 구분할 것
+- 방향성 유무에 따른 차이를 적을 것
 
 ## 🐍 Python 구현
 

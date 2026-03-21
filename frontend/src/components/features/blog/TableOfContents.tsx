@@ -48,22 +48,36 @@ export const TableOfContents = ({ content, onClose, postTitle }: TableOfContents
 
     let resizeObserver: ResizeObserver | null = null;
 
-    const updateActiveHeading = () => {
-      const boundaryEl = document.querySelector('[data-toc-boundary]');
-      const headings = boundaryEl?.querySelectorAll(
-        'h1, h2, h3, h4, h5, h6'
-      );
-      if (!headings || headings.length === 0) return;
+    const visibleHeadings = new Map<string, number>();
+    const headingObserver = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          const heading = entry.target as HTMLElement;
+          if (!heading.id) return;
 
-      const scrollPosition = window.scrollY + 100;
-      for (let i = headings.length - 1; i >= 0; i--) {
-        const heading = headings[i] as HTMLElement;
-        if (heading.id && heading.offsetTop <= scrollPosition) {
-          setActiveId(heading.id);
-          break;
+          if (entry.isIntersecting) {
+            visibleHeadings.set(heading.id, entry.boundingClientRect.top);
+          } else {
+            visibleHeadings.delete(heading.id);
+          }
+        });
+
+        if (visibleHeadings.size > 0) {
+          const topmostHeadingId = [...visibleHeadings.entries()].sort(
+            (a, b) => a[1] - b[1]
+          )[0][0];
+          setActiveId(topmostHeadingId);
         }
+      },
+      { rootMargin: '-80px 0px -60% 0px', threshold: 0 }
+    );
+
+    const boundaryEl = document.querySelector('[data-toc-boundary]');
+    boundaryEl?.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(heading => {
+      if (heading.id) {
+        headingObserver.observe(heading);
       }
-    };
+    });
 
     const updateTocPosition = () => {
       const tocEl = containerRef.current;
@@ -93,32 +107,26 @@ export const TableOfContents = ({ content, onClose, postTitle }: TableOfContents
       }
     };
 
-    const updateOnScroll = () => {
-      updateActiveHeading();
-      updateTocPosition();
-    };
-    
     const handleScroll = () => {
       const now = Date.now();
-      
+
       // Throttle: skip if called too frequently
       if (now - lastScrollTime.current < THROTTLE_MS) {
         return;
       }
       lastScrollTime.current = now;
-      
+
       // Cancel any pending RAF
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
       }
-      
+
       // Schedule update in next animation frame
-      rafRef.current = requestAnimationFrame(updateOnScroll);
+      rafRef.current = requestAnimationFrame(updateTocPosition);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    updateOnScroll();
-    requestAnimationFrame(updateOnScroll);
+    updateTocPosition();
 
     if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
       resizeObserver = new ResizeObserver(() => {
@@ -145,6 +153,7 @@ export const TableOfContents = ({ content, onClose, postTitle }: TableOfContents
       if (resizeObserver) {
         resizeObserver.disconnect();
       }
+      headingObserver.disconnect();
     };
   }, [isMobile]);
 

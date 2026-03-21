@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "카운팅", "Problem Solving", "Python", "Java"]
 excerpt: "Array & String Fundamentals - 애너그램 판별 (Valid Anagram) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**애너그램 판별 (Valid Anagram)**
-* 파트: Array & String Fundamentals
-* 관련 알고리즘: 카운팅
+애너그램 판별은 문자열을 "순서 있는 텍스트"로 볼지, "정규화된 빈도 벡터"로 볼지 결정하는 데이터 표현 문제입니다. `s="anagram", t="nagaram"`에서 문자 순서를 버려도 되는 이유와, 그 대신 무엇을 보존해야 하는지 설명해 보세요.
 
-> **Architect's View**
-> 데이터 정규화와 동등성 비교
+1. 문자 카운트 배열 또는 해시맵이 입력을 받아 어떤 상태로 바뀌는지 추적하고, 최종적으로 모든 카운트가 0이어야 한다는 조건이 왜 필요충분한지 증명하세요.
+2. 정렬 후 비교 방식과 카운트 방식의 차이를 CPU cache locality, alphabet 크기, 메모리 상수항 측면에서 비교하세요.
+3. 대소문자, Unicode 정규화, 결합 문자처럼 "겉보기에는 같은 문자"가 여러 표현을 가질 때, 동등성 비교 계층을 어떻게 설계할지 설명하세요.
 
-이 글에서는 애너그램 판별 (Valid Anagram) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 빈도 구조의 전이 과정을 단계별로 적을 것
+- 정규화되지 않은 입력이 만드는 반례를 하나 들 것
+- 표현 계층과 비교 계층을 분리해서 설명할 것
 
 ## 🐍 Python 구현
 

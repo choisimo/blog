@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "투표 알고리즘", "Problem Solving", "Python", "Java"]
 excerpt: "Hash Map & Two Pointer & Sliding Window - 과반수 원소 (Boyer-Moore) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**과반수 원소 (Boyer-Moore)**
-* 파트: Hash Map & Two Pointer & Sliding Window
-* 관련 알고리즘: 투표 알고리즘
+Boyer-Moore는 빈도를 다 세지 않고도 과반수를 찾는 상태 압축 알고리즘입니다. 핵심은 "서로 다른 두 표를 지워도 과반수 여부는 보존된다"는 상쇄(cancellation) 논리인데, 이를 스트림 처리 관점에서 설명해 보세요.
 
-> **Architect's View**
-> 스트리밍 알고리즘과 상태 압축
+1. `candidate`와 `count`가 입력 스트림을 따라 어떻게 변하는지 추적하고, count가 0이 되는 순간 후보를 갈아끼워도 되는 이유를 설명하세요.
+2. 해시맵 전체 카운팅 방식과 Boyer-Moore 방식을 메모리 사용량, 온라인 처리, 검증 필요성 관점에서 비교하세요.
+3. 과반수가 항상 존재하지 않는 경우 왜 2차 검증이 필요하며, 이 알고리즘이 즉시 깨지는 반례는 무엇인지 제시하세요.
 
-이 글에서는 과반수 원소 (Boyer-Moore) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 상쇄되는 쌍의 의미를 문장으로 적을 것
+- 후보 교체 시점을 단계별로 적을 것
+- 1차 선택과 2차 검증을 분리해서 설명할 것
 
 ## 🐍 Python 구현
 

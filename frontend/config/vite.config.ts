@@ -36,9 +36,9 @@ export default defineConfig(({ mode }) => {
           vendor: ['react', 'react-dom', 'react-router-dom'],
           ui: [
             'lucide-react',
-            '@radix-ui/react-accordion',
-            '@radix-ui/react-avatar',
-            '@radix-ui/react-dialog',
+            '@radix-ui/react-slot',
+            '@radix-ui/react-toast',
+            '@radix-ui/react-tooltip',
           ],
           markdown: [
             'react-markdown',

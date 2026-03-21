@@ -254,16 +254,18 @@ ${RESPONSE_STYLE}
 // Dynamic Prompt Builder
 // ============================================================================
 
-/**
- * Build a complete system prompt based on mode and context
- * @param {object} options
- * @param {string} [options.mode] - Agent mode (default, research, coding, blog, article, terminal, performance)
- * @param {string} [options.articleSlug] - Article slug for article Q&A mode
- * @param {string} [options.articleContent] - Article content for context
- * @param {Array} [options.memories] - Relevant user memories
- * @param {object} [options.userPreferences] - User preferences
- * @param {string} [options.customInstructions] - Additional instructions
- */
+import { normalizeMode } from '../mode-registry.js';
+
+const MODE_PROMPTS = {
+  default: DEFAULT_MODE,
+  research: RESEARCH_MODE,
+  coding: CODING_MODE,
+  blog: BLOG_MODE,
+  article: ARTICLE_QA_MODE,
+  terminal: TERMINAL_MODE,
+  performance: PERFORMANCE_MODE,
+};
+
 export function buildSystemPrompt(options = {}) {
   const {
     mode = 'default',
@@ -274,48 +276,21 @@ export function buildSystemPrompt(options = {}) {
     customInstructions,
   } = options;
 
-  // Select base prompt by mode
-  let basePrompt;
-  switch (mode) {
-    case 'research':
-      basePrompt = RESEARCH_MODE;
-      break;
-    case 'coding':
-      basePrompt = CODING_MODE;
-      break;
-    case 'blog':
-      basePrompt = BLOG_MODE;
-      break;
-    case 'article':
-      basePrompt = ARTICLE_QA_MODE;
-      break;
-    case 'terminal':
-      basePrompt = TERMINAL_MODE;
-      break;
-    case 'performance':
-    case 'performance_audit':
-    case 'performance-audit':
-      basePrompt = PERFORMANCE_MODE;
-      break;
-    default:
-      basePrompt = DEFAULT_MODE;
-  }
+  const canonicalMode = normalizeMode(mode);
+  let basePrompt = MODE_PROMPTS[canonicalMode] ?? DEFAULT_MODE;
 
   const parts = [basePrompt];
 
-  // Add article context if in article mode
-  if (mode === 'article' && articleSlug) {
+  if (canonicalMode === 'article' && articleSlug) {
     parts.push(`\n## Current Article\nSlug: ${articleSlug}`);
     if (articleContent) {
-      // Truncate if too long
       const truncated = articleContent.length > 2000
-        ? articleContent.slice(0, 2000) + '...[truncated]'
+        ? `${articleContent.slice(0, 2000)}...[truncated]`
         : articleContent;
       parts.push(`\nContent Summary:\n${truncated}`);
     }
   }
 
-  // Add user memories
   if (memories.length > 0) {
     const memoryText = memories
       .map(m => `- ${m.category || m.type}: ${m.content}`)
@@ -323,7 +298,6 @@ export function buildSystemPrompt(options = {}) {
     parts.push(`\n## Relevant User Context\n${memoryText}`);
   }
 
-  // Add user preferences
   if (Object.keys(userPreferences).length > 0) {
     const prefText = Object.entries(userPreferences)
       .map(([k, v]) => `- ${k}: ${v}`)
@@ -331,12 +305,10 @@ export function buildSystemPrompt(options = {}) {
     parts.push(`\n## User Preferences\n${prefText}`);
   }
 
-  // Add custom instructions
   if (customInstructions) {
     parts.push(`\n## Additional Instructions\n${customInstructions}`);
   }
 
-  // Add current timestamp
   parts.push(`\n## Current Time\n${new Date().toISOString()}`);
 
   return parts.join('\n');
@@ -346,15 +318,7 @@ export function buildSystemPrompt(options = {}) {
 // Preset Prompts
 // ============================================================================
 
-export const SYSTEM_PROMPTS = {
-  default: DEFAULT_MODE,
-  research: RESEARCH_MODE,
-  coding: CODING_MODE,
-  blog: BLOG_MODE,
-  article: ARTICLE_QA_MODE,
-  terminal: TERMINAL_MODE,
-  performance: PERFORMANCE_MODE,
-};
+export const SYSTEM_PROMPTS = MODE_PROMPTS;
 
 // ============================================================================
 // Tool-Specific Prompts

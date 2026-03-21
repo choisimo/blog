@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "분할 정복", "Problem Solving", "Python", "Java"]
 excerpt: "Recursion & Backtracking - 거듭제곱 (Pow) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**거듭제곱 (Pow)**
-* 파트: Recursion & Backtracking
-* 관련 알고리즘: 분할 정복
+거듭제곱 계산은 곱셈 반복 문제가 아니라, 지수의 비트 구조를 이용해 연산 횟수를 로그 단위로 줄이는 분할 정복 문제입니다. 왜 `x^n`을 매번 하나씩 곱하지 않고 `x^(n/2)`를 재사용할 수 있는지 설명해 보세요.
 
-> **Architect's View**
-> 지수적 축소와 재귀 깊이
+1. 짝수 지수와 홀수 지수에서 재귀 식이 어떻게 달라지는지 추적하고, 부분 결과 재사용이 왜 가능한지 설명하세요.
+2. 선형 반복 곱셈, 재귀적 거듭제곱 분할, 반복적 exponentiation by squaring을 호출 스택, 오버플로우, branch 수 관점에서 비교하세요.
+3. 부동소수점 오차, 음수 지수, 모듈러 거듭제곱 조건이 들어오면 상태 정의를 어떻게 바꿔야 하는지 설명하세요.
 
-이 글에서는 거듭제곱 (Pow) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 짝수/홀수 분기를 나눠 적을 것
+- 로그 깊이가 나오는 이유를 설명할 것
+- 수치 안정성 또는 overflow 문제를 적을 것
 
 ## 🐍 Python 구현
 

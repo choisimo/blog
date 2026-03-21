@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "RLE", "Problem Solving", "Python", "Java"]
 excerpt: "Array & String Fundamentals - 문자열 압축 (Compression) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**문자열 압축 (Compression)**
-* 파트: Array & String Fundamentals
-* 관련 알고리즘: RLE
+문자열 압축은 "문자를 줄인다"가 아니라, 연속 구간을 다른 표현으로 직렬화하면서도 디코더가 경계를 복원할 수 있게 만드는 문제입니다. `['a','a','b','b','c','c','c']`를 예로 들어, run-length encoding이 실제로 어떤 메모리 변환을 수행하는지 설명해 보세요.
 
-> **Architect's View**
-> 데이터 직렬화 패턴
+1. `read`와 `write` 포인터가 각 run의 시작과 끝을 어떻게 식별하는지 추적하고, 왜 압축 결과가 원본보다 길어질 수도 있는지 설명하세요.
+2. RLE, 해시 기반 중복 제거, 사전 기반 압축(LZ 계열)을 데이터 분포, CPU 분기 수, 직렬화/역직렬화 복잡도 관점에서 비교하세요.
+3. 로그 스트림처럼 chunk 단위로 입력이 끊겨 도착할 때, run 경계가 chunk를 가로지르면 어떤 상태를 다음 chunk로 넘겨야 하는지 설명하세요.
 
-이 글에서는 문자열 압축 (Compression) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 각 run의 길이와 write 위치를 적을 것
+- 압축률이 입력 분포에 따라 달라지는 이유를 설명할 것
+- 복원 가능성 조건을 명시할 것
 
 ## 🐍 Python 구현
 

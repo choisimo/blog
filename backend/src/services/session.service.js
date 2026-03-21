@@ -458,18 +458,20 @@ export function deriveUserQuery(parts, fallback) {
     return String(fallback || "");
   }
 
-  return (
-    parts
-      .filter((p) => p?.type === "text")
-      .map((p) => (typeof p?.text === "string" ? p.text : ""))
-      .find((t) => t && !t.startsWith("[") && t.length > 5) || fallback
-  );
+  const candidates = parts
+    .filter((p) => p?.type === "text")
+    .map((p) => (typeof p?.text === "string" ? p.text : ""))
+    .filter((t) => t && !t.startsWith("["));
+
+  return candidates[candidates.length - 1] || fallback;
 }
 
 export async function resolveMessageContexts({
   userQuery,
   session,
   enableRag,
+  articleSlug = null,
+  articleYear = null,
 }) {
   const notebookPromise = withSoftTimeout(
     buildNotebookContext(userQuery, session),
@@ -479,7 +481,7 @@ export async function resolveMessageContexts({
 
   const ragPromise = enableRag
     ? withSoftTimeout(
-        _performRAGSearch(userQuery, 5),
+        _performRAGSearch(userQuery, 5, articleSlug, articleYear),
         CHAT_RAG_CONTEXT_TIMEOUT_MS,
         { context: null, sources: [] },
       ).catch(() => ({ context: null, sources: [] }))

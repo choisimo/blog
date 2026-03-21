@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "누적합+해시맵", "Problem Solving", "Python", "Java"]
 excerpt: "Hash Map & Two Pointer & Sliding Window - 부분 배열의 합 (Subarray Sum) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**부분 배열의 합 (Subarray Sum)**
-* 파트: Hash Map & Two Pointer & Sliding Window
-* 관련 알고리즘: 누적합+해시맵
+부분 배열 합 문제는 "구간을 다 더해 본다"가 아니라, 현재 prefix sum이 과거 어떤 prefix와 차이를 만들면 목표 합이 되는지 역조회하는 문제입니다. `nums=[1,1,1], k=2`를 예로 들어, prefix sum과 count map이 어떻게 답의 개수를 생성하는지 설명해 보세요.
 
-> **Architect's View**
-> Prefix Sum과 역 매핑
+1. 각 인덱스까지의 prefix sum과 `prefix_count` 맵 상태를 순서대로 적고, 왜 `current_sum-k`가 과거에 몇 번 나왔는지를 세야 하는지 설명하세요.
+2. 모든 시작점/끝점 쌍을 검사하는 방식과 prefix-hash 방식을 메모리 비용, 온라인 처리 가능성, 음수 포함 여부 관점에서 비교하세요.
+3. "존재 여부"가 아니라 "최대 길이"나 "개수"를 구하는 변형에서 해시맵 값이 어떻게 바뀌어야 하는지 설명하세요.
 
-이 글에서는 부분 배열의 합 (Subarray Sum) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- prefix sum의 누적 과정을 시점별로 적을 것
+- 초기값 `count[0]=1`이 왜 필요한지 설명할 것
+- 음수가 있으면 슬라이딩 윈도우가 깨지는 이유를 적을 것
 
 ## 🐍 Python 구현
 

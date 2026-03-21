@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "중위 순회", "Problem Solving", "Python", "Java"]
 excerpt: "Tree & Binary Search Tree - BST K번째 (Kth) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**BST K번째 (Kth)**
-* 파트: Tree & Binary Search Tree
-* 관련 알고리즘: 중위 순회
+BST에서 k번째 원소 찾기는 전체 정렬 결과를 다 만들 필요 없이, inorder 순서가 곧 정렬 순서라는 구조적 성질을 이용하는 order-statistic 문제입니다. 왜 중위 순회가 "정렬 스트림 생성기"처럼 동작하는지 설명해 보세요.
 
-> **Architect's View**
-> Order-Statistic과 이터레이터
+1. 중위 순회 중 방문 카운터가 증가하는 순간을 추적하고, 왜 k번째 방문 노드가 답이 되는지 설명하세요.
+2. 전체 inorder 배열 생성, early-stop 순회, subtree size를 저장한 augmented BST 방식을 비교하세요.
+3. 업데이트가 빈번한 시스템에서 subtree size augmentation이 왜 유리하지만 유지 비용도 발생하는지 설명하세요.
 
-이 글에서는 BST K번째 (Kth) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- inorder 방문 순서를 적을 것
+- k번째 방문 시점의 의미를 설명할 것
+- augmentation의 장단점을 적을 것
 
 ## 🐍 Python 구현
 

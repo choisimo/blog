@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "투 포인터", "Problem Solving", "Python", "Java"]
 excerpt: "Array & String Fundamentals - 중복 제거 (Remove Duplicates) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**중복 제거 (Remove Duplicates)**
-* 파트: Array & String Fundamentals
-* 관련 알고리즘: 투 포인터
+정렬된 배열에서 중복 제거는 "값 몇 개 지우기"가 아니라, 이미 처리된 압축 구간과 아직 읽지 않은 구간의 경계를 유지하는 스트림 압축 문제입니다. `nums=[1,1,2,2,3,4,4]`를 예로 들어 `slow`와 `fast`가 메모리 상 어떤 역할을 하는지 설명해 보세요.
 
-> **Architect's View**
-> 포인터 기반 스트림 처리
+1. 각 시점에 `[0..slow]` 구간이 어떤 의미를 가지는지 정의하고, `fast`가 새 값을 만날 때만 쓰기가 일어나는 이유를 상태 변화로 보여 주세요.
+2. 새로운 배열을 만드는 방식과 in-place 투 포인터 방식을 캐시 locality, 쓰기 횟수, 안정성 측면에서 비교하세요.
+3. 입력이 정렬되어 있지 않거나 "최대 2개까지만 유지" 같은 변형 제약이 들어오면 불변식을 어떻게 수정해야 하는지 설명하세요.
 
-이 글에서는 중복 제거 (Remove Duplicates) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- `slow`, `fast`, 유효 길이를 시간축으로 적을 것
+- `[0..slow]` 구간의 의미를 문장으로 정의할 것
+- 정렬 여부가 왜 핵심 전제인지 분리해서 설명할 것
 
 ## 🐍 Python 구현
 

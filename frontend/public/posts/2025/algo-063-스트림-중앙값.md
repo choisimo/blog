@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "이중 힙", "Problem Solving", "Python", "Java"]
 excerpt: "Heap & Graph Basics - 스트림 중앙값 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**스트림 중앙값**
-* 파트: Heap & Graph Basics
-* 관련 알고리즘: 이중 힙
+스트림 중앙값은 정렬 결과를 다 보관하는 문제가 아니라, lower half와 upper half의 경계를 실시간으로 유지하는 문제입니다. 두 힙이 왜 "중앙값 경계 장치"로 동작하는지 설명해 보세요.
 
-> **Architect's View**
-> 실시간 통계 시스템
+1. 새 값이 들어올 때 max-heap과 min-heap 중 어디로 가고, 언제 rebalance가 일어나는지 추적하세요.
+2. 전체 정렬 유지, balanced BST, 이중 힙 방식을 삽입 지연, 중앙값 조회 지연, 메모리 locality 관점에서 비교하세요.
+3. quantile이 하나가 아니라 p50/p95/p99 전체를 다뤄야 한다면 어떤 다른 스케치나 자료구조가 필요한지 설명하세요.
 
-이 글에서는 스트림 중앙값 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 두 힙 크기 조건을 적을 것
+- 경계 값이 왜 중앙값을 대표하는지 설명할 것
+- median과 general quantile을 구분할 것
 
 ## 🐍 Python 구현
 

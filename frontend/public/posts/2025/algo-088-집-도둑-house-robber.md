@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "선택/비선택 DP", "Problem Solving", "Python", "Java"]
 excerpt: "Dynamic Programming - 집 도둑 (House Robber) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**집 도둑 (House Robber)**
-* 파트: Dynamic Programming
-* 관련 알고리즘: 선택/비선택 DP
+House Robber는 인접 제약이 걸린 선형 자원 선택 최적화 문제입니다. 각 집에서의 결정이 바로 다음 집의 선택 가능성을 바꾸므로, 왜 "직전까지의 최적 상태 두 개"만 알면 충분한지 설명해 보세요.
 
-> **Architect's View**
-> 상태 정의의 핵심
+1. `take`와 `skip` 또는 `dp[i-1], dp[i-2]`가 무엇을 의미하는지 추적하고, 현재 집을 털 때와 안 털 때 전이가 어떻게 달라지는지 설명하세요.
+2. 완전 탐색, 메모이제이션, 상수 메모리 DP를 비교하세요.
+3. 원형 배치, 트리형 배치로 확장될 때 왜 상태 공간이 달라지는지 설명하세요.
 
-이 글에서는 집 도둑 (House Robber) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 인접 제약을 명시할 것
+- 두 상태만 남기는 이유를 설명할 것
+- 선형/원형/트리 변형을 구분할 것
 
 ## 🐍 Python 구현
 

@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "부분 정렬", "Problem Solving", "Python", "Java"]
 excerpt: "Sorting & Binary Search - K번째 큰 수 (Quick Select) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**K번째 큰 수 (Quick Select)**
-* 파트: Sorting & Binary Search
-* 관련 알고리즘: 부분 정렬
+Quick Select는 전체 순서를 완성하지 않고도 필요한 rank 하나만 찾는 선택(selection) 문제입니다. "정렬을 덜 한다"가 아니라, 피벗이 타깃 rank를 포함하는 한쪽 구간만 남기며 탐색 공간을 잘라낸다는 점을 설명해 보세요.
 
-> **Architect's View**
-> 기대 시간 복잡도 분석
+1. 파티션 후 피벗 위치와 목표 인덱스의 관계에 따라 어느 구간을 버릴 수 있는지 추적하고, 왜 버린 구간이 다시 필요 없다고 말할 수 있는지 설명하세요.
+2. 전체 정렬 후 선택, 힙 기반 top-k 유지, Quick Select를 메모리 사용과 평균/최악 시간 관점에서 비교하세요.
+3. 실시간 스트림이나 외부 메모리 환경에서는 왜 Quick Select가 직접 쓰기 어려운지 설명하세요.
 
-이 글에서는 K번째 큰 수 (Quick Select) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 목표 인덱스와 피벗 인덱스 관계를 적을 것
+- 버리는 구간의 정당성을 설명할 것
+- 평균 O(n)과 최악 O(n^2)를 함께 다룰 것
 
 ## 🐍 Python 구현
 

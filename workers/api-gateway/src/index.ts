@@ -37,6 +37,7 @@ import memos from './routes/memos';
 import memories from './routes/memories';
 import adminAi from './routes/admin-ai';
 import secrets from './routes/secrets';
+import internal from './routes/internal';
 import personas from './routes/personas';
 import userContent from './routes/user-content';
 import search from './routes/search';
@@ -44,6 +45,8 @@ import user from './routes/user';
 import debate from './routes/debate';
 import subscribe from './routes/subscribe';
 import contact from './routes/contact';
+import notifications from './routes/notifications';
+import adminLogs from './routes/admin-logs';
 import type { Env } from './types';
 
 const app = new Hono<HonoEnv>();
@@ -135,6 +138,26 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
       responseHeaders.set(key, value);
     });
 
+    if (response.status >= 502 && response.status <= 504) {
+      console.error('Backend returned error status:', response.status);
+      responseHeaders.delete('Content-Length');
+      responseHeaders.set('Content-Type', 'application/json');
+      responseHeaders.set('Retry-After', '30');
+
+      return new Response(
+        JSON.stringify({
+          error: 'Backend unavailable',
+          message: `Backend returned ${response.status}. Retry after 30 seconds.`,
+          status: response.status,
+        }),
+        {
+          status: response.status,
+          statusText: response.statusText,
+          headers: responseHeaders,
+        }
+      );
+    }
+
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
@@ -153,6 +176,7 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
         status: 503,
         headers: {
           'Content-Type': 'application/json',
+          'Retry-After': '30',
           ...corsHeaders,
         },
       }
@@ -245,11 +269,11 @@ api.route('/analytics', analytics);
 api.route('/translate', translate);
 api.route('/config', config);
 api.route('/rag', rag);
-api.route('/gateway', gateway);
 api.route('/memos', memos);
 api.route('/memories', memories);
 api.route('/admin/ai', adminAi);
 api.route('/admin/secrets', secrets);
+api.route('/internal', internal);
 api.route('/personas', personas);
 api.route('/user-content', userContent);
 api.route('/search', search);
@@ -257,6 +281,9 @@ api.route('/user', user);
 api.route('/debate', debate);
 api.route('/subscribe', subscribe);
 api.route('/contact', contact);
+api.route('/notifications', notifications);
+api.route('/admin/logs', adminLogs);
+api.route('/gateway', gateway);
 
 app.route('/api/v1', api);
 

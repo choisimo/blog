@@ -1,5 +1,13 @@
 import React from "react";
-import { Sparkles, MoreVertical, X, Loader2, Menu } from "lucide-react";
+import {
+  Sparkles,
+  MoreVertical,
+  X,
+  Loader2,
+  Menu,
+  Maximize2,
+  Minimize2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -29,6 +37,9 @@ type ChatHeaderProps = {
   onClose?: () => void;
   sidebarOpen?: boolean;
   onToggleSidebar?: () => void;
+  canExpand?: boolean;
+  expanded?: boolean;
+  onToggleExpanded?: () => void;
 };
 
 export function ChatHeader({
@@ -49,6 +60,9 @@ export function ChatHeader({
   onClose,
   sidebarOpen,
   onToggleSidebar,
+  canExpand = false,
+  expanded = false,
+  onToggleExpanded,
 }: ChatHeaderProps) {
   const liveStatus = livePinned
     ? `LIVE 고정 ON (${currentLiveRoomLabel || "room"})`
@@ -159,6 +173,27 @@ export function ChatHeader({
 
       {/* Right: Actions */}
       <div className="flex items-center gap-0.5 shrink-0">
+        {!isMobile && canExpand && (
+          <button
+            type="button"
+            aria-label={expanded ? "채팅 창 축소" : "채팅 창 확대"}
+            aria-pressed={expanded}
+            onClick={onToggleExpanded}
+            className={cn(
+              "h-7 w-7 flex items-center justify-center rounded-md transition-colors",
+              isTerminal
+                ? "text-primary hover:bg-primary/10"
+                : "text-[#888888] dark:text-[#666666] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]",
+            )}
+          >
+            {expanded ? (
+              <Minimize2 className="h-3.5 w-3.5" />
+            ) : (
+              <Maximize2 className="h-3.5 w-3.5" />
+            )}
+          </button>
+        )}
+
         {/* Options menu */}
         {isMobile ? (
           <Button

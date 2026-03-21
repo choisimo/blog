@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "정렬+스캔", "Problem Solving", "Python", "Java"]
 excerpt: "Sorting & Binary Search - 구간 병합 (Merge Intervals) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**구간 병합 (Merge Intervals)**
-* 파트: Sorting & Binary Search
-* 관련 알고리즘: 정렬+스캔
+구간 병합은 간단한 배열 정리가 아니라, 시간축 자원 사용 구간들을 정렬된 이벤트 흐름으로 재구성하는 문제입니다. 구간이 start 기준으로 정렬되면 왜 한 번의 스캔만으로 겹침 관계를 복원할 수 있는지 설명해 보세요.
 
-> **Architect's View**
-> 이벤트 기반 구간 관리
+1. 현재 병합 중인 구간과 다음 구간의 `start/end`를 비교하며 어떤 순간에 extend가 되고, 어떤 순간에 flush가 되는지 추적하세요.
+2. 정렬 없이 모든 구간 쌍을 비교하는 방식과 정렬+스캔 방식을 시간 복잡도, 캐시 패턴, 병렬성 관점에서 비교하세요.
+3. 닫힌 구간/반열린 구간, 실수 좌표, 분산 로그 윈도우처럼 정의가 바뀌면 merge 조건이 어떻게 달라지는지 설명하세요.
 
-이 글에서는 구간 병합 (Merge Intervals) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 병합 중인 현재 구간 상태를 적을 것
+- flush 조건과 extend 조건을 분리할 것
+- 구간 정의가 바뀌면 비교식이 어떻게 달라지는지 적을 것
 
 ## 🐍 Python 구현
 

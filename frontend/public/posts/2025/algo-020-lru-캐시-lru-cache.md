@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "해시맵+DLL", "Problem Solving", "Python", "Java"]
 excerpt: "Linked List & Stack/Queue - LRU 캐시 (LRU Cache) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**LRU 캐시 (LRU Cache)**
-* 파트: Linked List & Stack/Queue
-* 관련 알고리즘: 해시맵+DLL
+LRU 캐시는 "최근 사용 순서"와 "키 직접 조회"를 동시에 만족해야 하는 시스템 설계 문제입니다. 단일 자료구조로는 왜 둘을 함께 얻기 어렵고, 해시맵과 이중 연결 리스트를 묶어야 하는지 설명해 보세요.
 
-> **Architect's View**
-> 캐시 교체 정책과 복합 자료구조
+1. `put`, `get`, eviction이 일어날 때 hash table, head/tail 근처 노드, recency 순서가 어떻게 바뀌는지 순서대로 적으세요.
+2. 배열 기반 순서 관리, 단일 연결 리스트, balanced tree와 비교해 O(1) 보장을 깨뜨리는 병목이 어디서 생기는지 설명하세요.
+3. 실제 시스템에서 TTL, 동시성, write-back, clock algorithm이 들어오면 왜 "순수 LRU"만으로는 부족한지 설명하세요.
 
-이 글에서는 LRU 캐시 (LRU Cache) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 키 조회 경로와 순서 갱신 경로를 분리해서 적을 것
+- eviction 대상이 왜 tail 직전인지 설명할 것
+- 시간 최적화와 포인터 관리 비용을 함께 다룰 것
 
 ## 🐍 Python 구현
 

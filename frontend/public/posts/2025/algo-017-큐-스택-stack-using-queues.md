@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "어댑터", "Problem Solving", "Python", "Java"]
 excerpt: "Linked List & Stack/Queue - 큐→스택 (Stack using Queues) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**큐→스택 (Stack using Queues)**
-* 파트: Linked List & Stack/Queue
-* 관련 알고리즘: 어댑터
+이 문제는 자료구조 구현 문제가 아니라, FIFO 인터페이스만 가진 하부 계층 위에 LIFO 의미론을 얹는 어댑터 설계 문제입니다. 큐의 물리적 동작은 그대로인데 관찰 가능한 외부 행동만 스택처럼 보이게 만드는 방법을 설명해 보세요.
 
-> **Architect's View**
-> Adapter Pattern과 인터페이스 변환
+1. `push` 시 회전을 하든 `pop` 시 재배치를 하든, 어느 연산에 비용을 몰아넣을지 결정해야 합니다. 두 전략의 상태 변화를 큐 순서 기준으로 추적하세요.
+2. 단일 큐 회전 방식과 이중 큐 전환 방식을 상수항, 캐시 locality, 구현 복잡도 관점에서 비교하세요.
+3. 이런 의미론 변환이 실제 시스템에서 프로토콜 어댑터, API shim, 이벤트 재정렬 계층과 어떻게 닮아 있는지 설명하세요.
 
-이 글에서는 큐→스택 (Stack using Queues) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 큐 내부 순서가 어떻게 바뀌는지 적을 것
+- 어떤 연산을 비싸게 만들었는지 명시할 것
+- 인터페이스와 구현 계층을 분리해서 설명할 것
 
 ## 🐍 Python 구현
 

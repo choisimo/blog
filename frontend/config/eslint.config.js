@@ -51,7 +51,6 @@ export default tseslint.config(
   {
     files: [
       'src/contexts/**/*.{ts,tsx}',
-      'src/components/features/navigation/VisitedPostsMinimap.tsx',
     ],
     rules: {
       'react-refresh/only-export-components': 'off',

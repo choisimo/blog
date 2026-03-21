@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "그리디 수축", "Problem Solving", "Python", "Java"]
 excerpt: "Hash Map & Two Pointer & Sliding Window - 물 담기 (Container) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**물 담기 (Container)**
-* 파트: Hash Map & Two Pointer & Sliding Window
-* 관련 알고리즘: 그리디 수축
+이 문제의 핵심은 넓이 계산이 아니라, 두 경계를 줄여 가는 동안 어떤 쪽을 버려야 미래 최대 면적의 가능성을 덜 잃는지 판단하는 것입니다. 가장 낮은 벽을 움직이는 전략이 왜 탐욕적으로 정당화되는지 설명해 보세요.
 
-> **Architect's View**
-> 탐욕적 수축과 최적 부분 구조
+1. `height[left]`, `height[right]`, 폭 `w`가 면적을 어떻게 결정하는지 추적하고, 작은 쪽을 이동해야만 더 큰 면적 가능성이 남는 이유를 논리적으로 설명하세요.
+2. 모든 쌍 비교 방식과 투 포인터 수축 방식을 메모리 접근 패턴, 비교 횟수, 조기 가지치기 관점에서 비교하세요.
+3. 벽 하나의 두께, 비균일 간격, 3차원 용기처럼 문제 모델이 바뀌면 왜 같은 그리디 불변식이 무너지는지 설명하세요.
 
-이 글에서는 물 담기 (Container) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 면적이 줄거나 늘 수 있는 조건을 명시할 것
+- 왜 큰 쪽을 움직여도 소용없는지 설명할 것
+- 모델 변경 시 깨지는 전제를 적을 것
 
 ## 🐍 Python 구현
 

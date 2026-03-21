@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Bot, Globe2, Loader2, MessageCircle, PenLine, Sparkles, User } from 'lucide-react';
 import { getApiBaseUrl } from '@/utils/network/apiBase';
 import ReactMarkdown from 'react-markdown';
@@ -42,33 +42,26 @@ type CommentStreamAppend = {
 
 type ArchivedModule = ArchivedPayload | { default: ArchivedPayload };
 
-// Load any archived comments bundled at build-time
-// Using a relative glob; keys may vary (relative vs absolute) depending on bundler.
 const archivedModules = import.meta.glob<ArchivedModule>(
-  '../../../data/comments/**/*.json',
-  { eager: true }
+  '../../../data/comments/**/*.json'
 );
 
-function getArchivedFor(postId: string): ArchivedPayload | null {
-  const entries = Object.entries(archivedModules);
-  // Match any key that ends with `/${postId}.json`
-  const found = entries.find(([k]) => k.endsWith(`/${postId}.json`));
-  if (!found) return null;
-  const mod = found[1];
+async function getArchivedFor(postId: string): Promise<ArchivedPayload | null> {
+  const key = Object.keys(archivedModules).find(k => k.endsWith(`/${postId}.json`));
+  if (!key) return null;
+  const mod = await archivedModules[key]();
   const data = mod?.default ?? mod;
-  if (data && Array.isArray(data.comments)) return data as ArchivedPayload;
+  if (data && Array.isArray((data as ArchivedPayload).comments)) return data as ArchivedPayload;
   return null;
 }
 
 export default function CommentSection({ postId }: { postId: string }) {
   const { isTerminal } = useTheme();
   const { flags: featureFlags } = useFeatureFlags();
-  const archived = useMemo(() => getArchivedFor(postId), [postId]);
-  const [comments, setComments] = useState<CommentItem[] | null>(
-    archived?.comments ?? null
-  );
-  const [loading, setLoading] = useState<boolean>(!archived);
+  const [comments, setComments] = useState<CommentItem[] | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasArchived, setHasArchived] = useState(false);
 
   // Reactions state: map of commentId -> reactions
   const [reactionsMap, setReactionsMap] = useState<Record<string, ReactionCount[]>>({});
@@ -109,61 +102,80 @@ export default function CommentSection({ postId }: { postId: string }) {
     let cancelled = false;
     let es: EventSource | null = null;
 
-    // If archived comments exist, use them as initial state but still enable live updates.
-    if (archived) {
-      setLoading(false);
-      setComments(archived.comments);
-    }
+    setComments(null);
+    setHasArchived(false);
+    setError(null);
+    setLoading(true);
 
     async function load() {
       try {
-        // If we already have archived comments, don't show loading spinner.
-        if (!archived) setLoading(true);
-        setError(null);
-        const base = getApiBaseUrl().replace(/\/$/, '');
-        const url = `${base}/api/v1/comments?postId=${encodeURIComponent(
-          postId
-        )}`;
+        const archived = await getArchivedFor(postId);
 
-        // For non-archived pages, fetch initial list.
-        // For archived pages, keep the bundled list and rely on SSE for new items.
-        if (!archived) {
-          const resp = await fetch(url);
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          const data = (await resp.json()) as CommentListResponse;
-          const list = Array.isArray(data?.comments)
-            ? data.comments
-            : data?.data?.comments || [];
-          if (!cancelled) setComments(list || []);
+        if (archived) {
+          if (!cancelled) {
+            setComments(archived.comments);
+            setHasArchived(true);
+            setLoading(false);
+          }
+          const base = getApiBaseUrl().replace(/\/$/, '');
+          const sseUrl = `${base}/api/v1/comments/stream?postId=${encodeURIComponent(postId)}`;
+          es = new EventSource(sseUrl, { withCredentials: true });
+          es.onmessage = ev => {
+            try {
+              const msg = JSON.parse(ev.data) as unknown;
+              if (msg && (msg as CommentStreamAppend).type === 'append' && Array.isArray((msg as CommentStreamAppend).items)) {
+                const appendMessage = msg as CommentStreamAppend;
+                setComments(prev => {
+                  const before = (prev || []).filter(Boolean) as CommentItem[];
+                  const keyOf = (it: CommentItem) =>
+                    String(it.id || `${it.createdAt || ''}|${it.author || ''}|${(it.content || '').slice(0, 24)}`);
+                  const seen = new Set(before.map(keyOf));
+                  const merged = [...before];
+                  for (const it of appendMessage.items) {
+                    const k = keyOf(it);
+                    if (!seen.has(k)) { seen.add(k); merged.push(it); }
+                  }
+                  merged.sort((a, b) => {
+                    const ta = a.createdAt ? Date.parse(a.createdAt) : 0;
+                    const tb = b.createdAt ? Date.parse(b.createdAt) : 0;
+                    return ta - tb;
+                  });
+                  return merged;
+                });
+              }
+            } catch { /* malformed SSE payloads are silently ignored */ }
+          };
+          es.onerror = () => { es?.close(); es = null; };
+          return;
         }
 
-        // Try to open SSE stream for live updates (best-effort)
-        const sseUrl = `${base}/api/v1/comments/stream?postId=${encodeURIComponent(
-          postId
-        )}`;
+        const base = getApiBaseUrl().replace(/\/$/, '');
+        const url = `${base}/api/v1/comments?postId=${encodeURIComponent(postId)}`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = (await resp.json()) as CommentListResponse;
+        const list = Array.isArray(data?.comments)
+          ? data.comments
+          : data?.data?.comments || [];
+        if (!cancelled) setComments(list || []);
+
+        const sseUrl = `${base}/api/v1/comments/stream?postId=${encodeURIComponent(postId)}`;
         es = new EventSource(sseUrl, { withCredentials: true });
         es.onmessage = ev => {
           try {
             const msg = JSON.parse(ev.data) as unknown;
-            if (msg && msg.type === 'append' && Array.isArray(msg.items)) {
+            if (msg && (msg as CommentStreamAppend).type === 'append' && Array.isArray((msg as CommentStreamAppend).items)) {
               const appendMessage = msg as CommentStreamAppend;
               setComments(prev => {
                 const before = (prev || []).filter(Boolean) as CommentItem[];
                 const keyOf = (it: CommentItem) =>
-                  String(
-                    it.id ||
-                    `${it.createdAt || ''}|${it.author || ''}|${(it.content || '').slice(0, 24)}`
-                  );
+                  String(it.id || `${it.createdAt || ''}|${it.author || ''}|${(it.content || '').slice(0, 24)}`);
                 const seen = new Set(before.map(keyOf));
                 const merged = [...before];
                 for (const it of appendMessage.items) {
                   const k = keyOf(it);
-                  if (!seen.has(k)) {
-                    seen.add(k);
-                    merged.push(it);
-                  }
+                  if (!seen.has(k)) { seen.add(k); merged.push(it); }
                 }
-                // keep chronological order by createdAt
                 merged.sort((a, b) => {
                   const ta = a.createdAt ? Date.parse(a.createdAt) : 0;
                   const tb = b.createdAt ? Date.parse(b.createdAt) : 0;
@@ -172,31 +184,23 @@ export default function CommentSection({ postId }: { postId: string }) {
                 return merged;
               });
             }
-          } catch {
-            // intentional: malformed SSE payloads are silently ignored
-          }
+          } catch { /* malformed SSE payloads are silently ignored */ }
         };
-        es.onerror = () => {
-          es?.close();
-          es = null;
-        };
+        es.onerror = () => { es?.close(); es = null; };
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Failed to load comments';
-        if (!cancelled && !archived) setError(message);
+        if (!cancelled) setError(message);
       } finally {
-        if (!cancelled && !archived) setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     void load();
     return () => {
       cancelled = true;
-      if (es) {
-        es.close();
-        es = null;
-      }
+      if (es) { es.close(); es = null; }
     };
-  }, [postId, archived]);
+  }, [postId]);
 
   // Toggle AI discussion mode
   const handleToggleAiDiscussion = useCallback(() => {
@@ -394,13 +398,13 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 �
     formShownAt.current = Date.now();
 
     // Trigger AI response if enabled
-    if (aiDiscussionEnabled) {
+    if (aiDiscussionEnabled && featureFlags.aiEnabled) {
       // Small delay to ensure user comment is visible first
       setTimeout(() => {
         generateAiResponse(data.content, data.author);
       }, 500);
     }
-  }, [postId, aiDiscussionEnabled, generateAiResponse]);
+  }, [postId, aiDiscussionEnabled, featureFlags.aiEnabled, generateAiResponse]);
 
   return (
     <section aria-label='Comments' className='space-y-6'>
@@ -802,7 +806,7 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 �
               </span>
             </button>
 
-            {archived && (
+            {hasArchived && (
               <p className={cn(
                 "mt-3 text-xs text-center",
                 isTerminal

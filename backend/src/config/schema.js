@@ -64,6 +64,7 @@ export const configSchema = z.object({
   SERPER_API_KEY: z.string().optional(),
 
   INTERNAL_API_URL: z.string().optional(),
+  WORKER_API_URL: z.string().optional(),
   TERMINAL_SERVER_URL: z.string().default('http://terminal-server:8080'),
   TERMINAL_GATEWAY_URL: z.string().default('https://terminal.nodove.com'),
 

@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "전이적 DP", "Problem Solving", "Python", "Java"]
 excerpt: "Graph Advanced - 플로이드-워셜 (Floyd) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**플로이드-워셜 (Floyd)**
-* 파트: Graph Advanced
-* 관련 알고리즘: 전이적 DP
+플로이드-워셜은 모든 쌍 최단 경로를 한 번에 구하는 문제라기보다, "중간에 사용할 수 있는 정점 집합"을 점진적으로 넓혀 가는 3차원 DP입니다. `k`가 허용 중간 정점 집합의 경계를 뜻한다는 점을 설명해 보세요.
 
-> **Architect's View**
-> 모든 쌍 최단 경로
+1. `dist[i][j] = min(dist[i][j], dist[i][k] + dist[k][j])`가 어떤 상태 전이를 의미하는지, `k` 루프 기준으로 추적하세요.
+2. 반복 다익스트라와 플로이드-워셜을 sparse/dense 그래프, 메모리 사용, 전처리 비용 관점에서 비교하세요.
+3. 음수 사이클이 있으면 행렬 대각선이 어떤 신호를 주는지 설명하세요.
 
-이 글에서는 플로이드-워셜 (Floyd) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- `k`의 의미를 명시할 것
+- 행렬 업데이트 전후 상태를 적을 것
+- dense graph에서 왜 고려할 가치가 있는지 적을 것
 
 ## 🐍 Python 구현
 

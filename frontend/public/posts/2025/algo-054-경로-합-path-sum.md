@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "DFS", "Problem Solving", "Python", "Java"]
 excerpt: "Tree & Binary Search Tree - 경로 합 (Path Sum) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**경로 합 (Path Sum)**
-* 파트: Tree & Binary Search Tree
-* 관련 알고리즘: DFS
+Path Sum은 루트에서 리프까지 누적되는 상태를 들고 내려가면서 목표를 점점 분해하는 문제입니다. 배열의 prefix sum과 닮았지만, 분기가 생기기 때문에 왜 상태를 각 경로별로 독립적으로 유지해야 하는지 설명해 보세요.
 
-> **Architect's View**
-> 경로 탐색과 목표 분해
+1. 현재 노드 값까지 누적합 또는 남은 목표값이 어떻게 변하는지 추적하고, 리프에서만 판정을 내려야 하는 이유를 설명하세요.
+2. 모든 경로를 저장한 뒤 합산하는 방식과 DFS 중 누적 상태를 전달하는 방식을 메모리 사용량, branch explosion 관점에서 비교하세요.
+3. root-to-leaf가 아니라 any-to-any path, path count, max path sum으로 바뀌면 상태 정의가 어떻게 달라지는지 설명하세요.
 
-이 글에서는 경로 합 (Path Sum) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 누적 상태가 분기마다 어떻게 복제되는지 적을 것
+- 리프 판정의 이유를 적을 것
+- 경로 정의가 바뀌면 알고리즘도 달라진다는 점을 적을 것
 
 ## 🐍 Python 구현
 

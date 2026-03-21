@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "백트래킹", "Problem Solving", "Python", "Java"]
 excerpt: "Recursion & Backtracking - 순열 (Permutations) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**순열 (Permutations)**
-* 파트: Recursion & Backtracking
-* 관련 알고리즘: 백트래킹
+순열 생성은 원소를 "모두 한 번씩 쓰는" 전역 제약을 가진 상태 공간 탐색입니다. 부분집합과 달리 위치 정보가 중요해지므로, 같은 원소 집합이라도 배치 순서가 곧 다른 상태가 되는 이유를 설명해 보세요.
 
-> **Architect's View**
-> 상태 공간 트리와 탐색
+1. 깊이별로 선택된 원소 집합과 아직 남은 원소 집합이 어떻게 바뀌는지 추적하고, visited 배열이나 swap 기반 상태가 무엇을 보존하는지 설명하세요.
+2. visited 배열 방식과 in-place swap 방식을 캐시 locality, 복사 비용, 상태 복원 난이도 측면에서 비교하세요.
+3. 중복 원소가 있을 때 왜 같은 순열이 폭발적으로 중복 생성되는지, 이를 막으려면 어떤 정렬/skip 규칙이 필요한지 설명하세요.
 
-이 글에서는 순열 (Permutations) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 깊이별 선택 상태를 적을 것
+- 상태 복원(backtrack)의 의미를 설명할 것
+- 위치와 값이 동시에 제약이 된다는 점을 적을 것
 
 ## 🐍 Python 구현
 

@@ -21,7 +21,7 @@ import {
   getAiDefaultModel,
   getAiVisionModel,
 } from '../lib/config';
-import { requireAdmin } from '../middleware/auth';
+import { requireAdmin, requireAuth } from '../middleware/auth';
 
 const gateway = new Hono<HonoEnv>();
 
@@ -88,7 +88,7 @@ async function proxyToBackendAi(request: Request, env: Env, path: string): Promi
 }
 
 // POST /gateway/call/auto-chat
-gateway.post('/call/auto-chat', async (c) => {
+gateway.post('/call/auto-chat', requireAuth, async (c) => {
   try {
     const response = await proxyToBackendAi(c.req.raw, c.env, '/api/v1/ai/auto-chat');
     return new Response(response.body, {
@@ -225,7 +225,7 @@ async function analyzeWithBackend(
 }
 
 // POST /gateway/vision/analyze
-gateway.post('/vision/analyze', async (c) => {
+gateway.post('/vision/analyze', requireAuth, async (c) => {
   type VisionRequestBody = {
     imageUrl?: string;
     imageBase64?: string;

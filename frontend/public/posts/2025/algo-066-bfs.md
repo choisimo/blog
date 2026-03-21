@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "레벨 탐색", "Problem Solving", "Python", "Java"]
 excerpt: "Heap & Graph Basics - BFS 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**BFS**
-* 파트: Heap & Graph Basics
-* 관련 알고리즘: 레벨 탐색
+BFS는 단순 방문이 아니라, frontier를 레벨 단위로 넓혀 가며 unweighted graph의 최단 홉 수를 보장하는 탐색입니다. 큐가 왜 "다음 물결 wavefront"를 표현한다고 볼 수 있는지 설명해 보세요.
 
-> **Architect's View**
-> 계층적 탐색과 최단 경로
+1. 시작 정점에서 레벨이 어떻게 확장되는지, 큐와 visited 집합 상태를 추적하세요.
+2. DFS와 비교해 왜 BFS만이 unweighted 최단 경로를 보장하는지 설명하세요.
+3. frontier가 폭발적으로 커지는 그래프에서 메모리 병목이 왜 생기고, bidirectional BFS가 어떤 완화를 주는지 설명하세요.
 
-이 글에서는 BFS 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 레벨 개념을 명시할 것
+- 큐의 순서가 왜 중요한지 설명할 것
+- 공간 복잡도 병목을 적을 것
 
 ## 🐍 Python 구현
 

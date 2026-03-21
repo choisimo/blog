@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "메모이제이션/행렬", "Problem Solving", "Python", "Java"]
 excerpt: "Dynamic Programming - 피보나치 최적화 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**피보나치 최적화**
-* 파트: Dynamic Programming
-* 관련 알고리즘: 메모이제이션/행렬
+피보나치 최적화는 수열 계산이 아니라, 중복되는 하위 문제를 어디에 캐시하고 어떤 순서로 재사용할지 결정하는 문제입니다. 왜 naive recursion이 호출 트리를 폭발시키는지 설명해 보세요.
 
-> **Architect's View**
-> Top-down vs Bottom-up
+1. 동일한 `F(k)`가 호출 트리에서 몇 번 재방문되는지 추적하고, memoization이 그 중복을 어떻게 없애는지 설명하세요.
+2. top-down memo, bottom-up DP, matrix exponentiation을 시간/공간/상수항 관점에서 비교하세요.
+3. 캐시가 CPU L1에 남는 작은 n과 큰 정수 arithmetic가 필요한 큰 n에서 어떤 방식이 유리한지 설명하세요.
 
-이 글에서는 피보나치 최적화 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 중복 호출 구조를 적을 것
+- top-down과 bottom-up의 차이를 설명할 것
+- 더 빠른 수학적 방법과 DP를 비교할 것
 
 ## 🐍 Python 구현
 

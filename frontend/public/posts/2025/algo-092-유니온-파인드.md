@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "경로 압축+랭크", "Problem Solving", "Python", "Java"]
 excerpt: "Advanced Topics - 유니온 파인드 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**유니온 파인드**
-* 파트: Advanced Topics
-* 관련 알고리즘: 경로 압축+랭크
+유니온 파인드는 그래프 순회가 아니라, 연결 컴포넌트 대표자를 거의 상수 시간에 갱신/질의하기 위한 동적 연결성 구조입니다. 왜 parent forest 하나만으로 연결성을 표현할 수 있는지 설명해 보세요.
 
-> **Architect's View**
-> 동적 연결성 관리
+1. `find`, `union`이 parent 배열과 rank/size를 어떻게 바꾸는지 추적하고, path compression이 무엇을 압축하는지 설명하세요.
+2. 매 질의마다 BFS/DFS를 도는 방식과 Union-Find를 반복 질의 workload 관점에서 비교하세요.
+3. 경로 압축 + union by rank의 암묵적 상수 시간 보장이 왜 성립하는지 직관 수준으로 설명하세요.
 
-이 글에서는 유니온 파인드 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 대표자(root) 개념을 적을 것
+- path compression 전후 parent 구조를 설명할 것
+- 동적 질의에 왜 강한지 적을 것
 
 ## 🐍 Python 구현
 

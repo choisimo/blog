@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import ChatMarkdown from "@/components/features/chat/ChatMarkdown";
+import ChatMarkdown from "@/components/molecules/ChatMarkdown";
 import { cn } from "@/lib/utils";
 
 type QuizVisualizationSpec = {

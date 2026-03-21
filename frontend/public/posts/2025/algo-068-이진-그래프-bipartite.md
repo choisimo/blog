@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "2-색칠", "Problem Solving", "Python", "Java"]
 excerpt: "Heap & Graph Basics - 이진 그래프 (Bipartite) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**이진 그래프 (Bipartite)**
-* 파트: Heap & Graph Basics
-* 관련 알고리즘: 2-색칠
+이분 그래프 판별은 그래프를 두 집합으로 나누는 문제가 아니라, 인접한 두 정점이 항상 반대 상태를 가져야 한다는 parity 제약이 전체 그래프에서 모순 없이 유지되는지 검증하는 문제입니다. 2-coloring을 parity propagation으로 설명해 보세요.
 
-> **Architect's View**
-> 그래프 색칠과 분류
+1. BFS/DFS로 색을 퍼뜨릴 때 현재 정점과 이웃 정점의 색 제약이 어떻게 전파되는지 추적하세요.
+2. 홀수 길이 cycle이 왜 정확히 bipartite를 깨는 구조인지 설명하세요.
+3. 이진 분할이 매칭 문제, 스케줄링, 충돌 그래프와 어떻게 연결되는지 설명하세요.
 
-이 글에서는 이진 그래프 (Bipartite) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 색 전파 상태를 적을 것
+- 모순이 발생하는 조건을 설명할 것
+- 홀수 cycle과의 관계를 적을 것
 
 ## 🐍 Python 구현
 

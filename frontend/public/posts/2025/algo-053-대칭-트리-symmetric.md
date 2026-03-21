@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "거울 비교", "Problem Solving", "Python", "Java"]
 excerpt: "Tree & Binary Search Tree - 대칭 트리 (Symmetric) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**대칭 트리 (Symmetric)**
-* 파트: Tree & Binary Search Tree
-* 관련 알고리즘: 거울 비교
+대칭 트리는 값 비교 문제가 아니라, 두 서브트리가 거울 대응 관계를 만족하는지 검증하는 구조적 동등성 문제입니다. 단순 inorder 값 비교만으로는 왜 충분하지 않은지 설명해 보세요.
 
-> **Architect's View**
-> 구조적 동등성 비교
+1. `left.left`와 `right.right`, `left.right`와 `right.left`가 서로 대응해야 한다는 거울 매핑을 추적하세요.
+2. 값 시퀀스만 비교하는 방식과 구조+값을 함께 비교하는 방식을 반례와 함께 비교하세요.
+3. 이 문제를 일반 그래프 동형성 문제와 비교하면 왜 트리에서는 훨씬 단순한지 설명하세요.
 
-이 글에서는 대칭 트리 (Symmetric) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 거울 대응 쌍을 명시할 것
+- 구조와 값 비교를 분리할 것
+- 단순 순회 시퀀스 비교가 실패하는 반례를 적을 것
 
 ## 🐍 Python 구현
 

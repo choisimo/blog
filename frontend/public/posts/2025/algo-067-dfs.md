@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "깊이 탐색", "Problem Solving", "Python", "Java"]
 excerpt: "Heap & Graph Basics - DFS 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**DFS**
-* 파트: Heap & Graph Basics
-* 관련 알고리즘: 깊이 탐색
+DFS는 모든 정점을 보겠다는 탐색이라기보다, 하나의 경로를 끝까지 파고들며 구조적 속성(사이클, 위상, 컴포넌트)을 드러내는 스택 기반 탐색입니다. 왜 호출 스택이 탐색 경로 자체를 저장하는지 설명해 보세요.
 
-> **Architect's View**
-> 스택 기반 탐색과 속성 발견
+1. 재귀 호출 또는 명시적 스택이 현재 경로와 backtrack 지점을 어떻게 표현하는지 추적하세요.
+2. BFS와 비교해 메모리 피크, 발견 순서, 파생 가능한 그래프 속성이 어떻게 다른지 설명하세요.
+3. 깊은 그래프에서 recursion limit와 stack overflow가 왜 실제 물리적 제약이 되는지 설명하세요.
 
-이 글에서는 DFS 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 현재 경로 상태를 적을 것
+- backtrack이 언제 일어나는지 설명할 것
+- DFS가 유리한 분석 문제를 예로 들 것
 
 ## 🐍 Python 구현
 

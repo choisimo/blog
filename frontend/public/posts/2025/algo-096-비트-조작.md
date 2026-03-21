@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "XOR/AND/OR", "Problem Solving", "Python", "Java"]
 excerpt: "Advanced Topics - 비트 조작 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**비트 조작**
-* 파트: Advanced Topics
-* 관련 알고리즘: XOR/AND/OR
+비트 조작은 문법 트릭이 아니라, 상태를 word 단위로 압축해 CPU ALU가 한 번에 다룰 수 있게 만드는 표현 문제입니다. 왜 Boolean 배열 대신 비트마스크 하나가 강력할 수 있는지 설명해 보세요.
 
-> **Architect's View**
-> 공간 효율적 상태 표현
+1. AND, OR, XOR, shift가 각각 상태 집합에 어떤 연산을 의미하는지 예시와 함께 설명하세요.
+2. 비트마스크와 일반 배열/집합을 메모리 사용량, branchlessness, SIMD 친화성 관점에서 비교하세요.
+3. signedness, overflow, 언어별 시프트 규칙이 왜 실제 버그 포인트가 되는지 설명하세요.
 
-이 글에서는 비트 조작 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 연산별 의미를 적을 것
+- 물리적 word 단위 관점을 설명할 것
+- 구현 언어 차이에서 생기는 함정을 적을 것
 
 ## 🐍 Python 구현
 

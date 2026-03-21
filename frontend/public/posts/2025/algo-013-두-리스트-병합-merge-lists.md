@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "병합", "Problem Solving", "Python", "Java"]
 excerpt: "Linked List & Stack/Queue - 두 리스트 병합 (Merge Lists) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**두 리스트 병합 (Merge Lists)**
-* 파트: Linked List & Stack/Queue
-* 관련 알고리즘: 병합
+정렬된 두 연결 리스트 병합은 "작은 값을 고른다"가 아니라, 두 개의 순차 스트림을 끊김 없이 하나의 정렬 스트림으로 재배선(rewire)하는 문제입니다. `dummy` 노드가 왜 편의 장치가 아니라 경계 조건 제거 장치인지 설명해 보세요.
 
-> **Architect's View**
-> 분할 정복과 합병 추상화
+1. `l1`, `l2`, `tail`이 가리키는 위치를 시간축으로 추적하고, 병합된 prefix가 항상 정렬 상태를 유지하는 이유를 불변식으로 설명하세요.
+2. 새 노드를 계속 할당하는 방식과 기존 포인터만 재연결하는 방식을 메모리 단편화, allocator pressure, GC 부담 관점에서 비교하세요.
+3. 이 병합 추상화가 merge sort, 외부 정렬, 다중 스트림 병합으로 확장될 때 어떤 조건이 추가로 필요해지는지 설명하세요.
 
-이 글에서는 두 리스트 병합 (Merge Lists) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- `tail.next`가 바뀌는 순서를 단계별로 적을 것
+- 정렬 불변식이 깨지지 않는 이유를 설명할 것
+- 포인터 재사용과 새 할당의 비용 차이를 적을 것
 
 ## 🐍 Python 구현
 

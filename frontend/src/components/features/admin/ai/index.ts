@@ -5,5 +5,6 @@ export { RoutesManager } from './RoutesManager';
 export { UsageMonitor } from './UsageMonitor';
 export { TraceViewer } from './TraceViewer';
 export { Playground } from './Playground';
+export { PromptsManager } from './PromptsManager';
 export * from './hooks';
 export * from './types';

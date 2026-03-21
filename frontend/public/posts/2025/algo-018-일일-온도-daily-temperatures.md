@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "모노토닉 스택", "Problem Solving", "Python", "Java"]
 excerpt: "Linked List & Stack/Queue - 일일 온도 (Daily Temperatures) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**일일 온도 (Daily Temperatures)**
-* 파트: Linked List & Stack/Queue
-* 관련 알고리즘: 모노토닉 스택
+일일 온도 문제는 "다음 더 큰 값"을 찾는 것이 아니라, 아직 해답이 확정되지 않은 이벤트들을 어떤 순서로 보류해야 미래 입력이 도착하는 순간 즉시 정산할 수 있는가를 묻는 문제입니다. 모노토닉 스택이 왜 미해결 요청 큐처럼 동작하는지 설명해 보세요.
 
-> **Architect's View**
-> 이벤트 기반 처리
+1. 온도 배열을 왼쪽에서 오른쪽으로 읽을 때, 스택에 들어 있는 인덱스들이 어떤 정렬 관계를 유지하는지 추적하고 그 의미를 설명하세요.
+2. 각 인덱스가 스택에 한 번 들어가고 한 번만 나오는 이유를 통해 왜 전체 복잡도가 O(n)인지 증명하세요.
+3. 동일한 문제를 힙이나 브루트포스 스캔으로 풀 때와 비교해, 지연 시간과 메모리 패턴이 어떻게 달라지는지 설명하세요.
 
-이 글에서는 일일 온도 (Daily Temperatures) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- push/pop이 일어나는 시점을 배열 값과 함께 적을 것
+- 스택 단조성이 의미하는 바를 정의할 것
+- amortized 분석을 빠뜨리지 말 것
 
 ## 🐍 Python 구현
 

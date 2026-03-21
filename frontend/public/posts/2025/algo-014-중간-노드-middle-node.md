@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "빠른/느린 포인터", "Problem Solving", "Python", "Java"]
 excerpt: "Linked List & Stack/Queue - 중간 노드 (Middle Node) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**중간 노드 (Middle Node)**
-* 파트: Linked List & Stack/Queue
-* 관련 알고리즘: 빠른/느린 포인터
+중간 노드 찾기는 길이를 먼저 재지 않고도 상대 속도만으로 위치를 샘플링하는 문제입니다. 연결 리스트의 끝을 모르는 상태에서 `fast`가 2배 속도로 달릴 때 `slow`가 왜 중앙에 놓이게 되는지 설명해 보세요.
 
-> **Architect's View**
-> 포인터 패턴의 일반화
+1. 홀수 길이와 짝수 길이에서 `fast` 종료 조건이 어떤 차이를 만들고, 왜 구현에 따라 "왼쪽 중간"과 "오른쪽 중간"이 갈리는지 설명하세요.
+2. 길이 계산 후 두 번째 순회를 하는 방식과 fast/slow 단일 순회 방식을 캐시 miss, 포인터 재방문, 지연 시간 관점에서 비교하세요.
+3. 이 패턴이 사이클 탐지, palindrome 검사, split 단계로 확장될 때 무엇이 공통 불변식으로 남는지 설명하세요.
 
-이 글에서는 중간 노드 (Middle Node) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 홀수/짝수 예시를 하나씩 적을 것
+- 종료 조건이 결과 정의에 미치는 영향을 적을 것
+- 속도 차이 기반 추론을 수식이나 거리 관계로 설명할 것
 
 ## 🐍 Python 구현
 

@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import type { PageContext } from "@/services/chat/types";
 
 import {
   useChatState,
@@ -21,6 +22,7 @@ import {
   useLiveVisitorChat,
   useKeyboardHeight,
   useInputKeyDown,
+  usePreventScrollChaining,
 } from "./hooks";
 import {
   ChatHeader,
@@ -44,6 +46,7 @@ function formatLiveRoomName(room: string): string {
 export default function ChatWidget(props: {
   onClose?: () => void;
   initialMessage?: string;
+  currentPost?: PageContext["article"];
 }) {
   const isMobile = useIsMobile();
   const { isTerminal } = useTheme();
@@ -51,7 +54,9 @@ export default function ChatWidget(props: {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [debateBusy, setDebateBusy] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const debateAbortRef = useRef<AbortController | null>(null);
+  const widgetRef = useRef<HTMLDivElement | null>(null);
 
   // Main state hook
   const state = useChatState({ initialMessage: props.initialMessage });
@@ -66,21 +71,29 @@ export default function ChatWidget(props: {
 
   // Dynamic max height calculation for PC
   const [pcMaxHeight, setPcMaxHeight] = useState("80vh");
+  usePreventScrollChaining(widgetRef);
 
   useEffect(() => {
     if (isMobile) return;
 
     const calculateHeight = () => {
       const vh = window.innerHeight;
-      // Reserve space for FAB (80px) + some padding, max 85% of viewport
-      const safeMax = Math.min(vh * 0.85, vh - 100);
+      const safeMax = isExpanded
+        ? Math.min(vh * 0.94, vh - 32)
+        : Math.min(vh * 0.85, vh - 100);
       setPcMaxHeight(`${Math.round(safeMax)}px`);
     };
 
     calculateHeight();
     window.addEventListener("resize", calculateHeight);
     return () => window.removeEventListener("resize", calculateHeight);
-  }, [isMobile]);
+  }, [isExpanded, isMobile]);
+
+  useEffect(() => {
+    if (isMobile && isExpanded) {
+      setIsExpanded(false);
+    }
+  }, [isExpanded, isMobile]);
 
   useEffect(() => {
     if (!isMobile || !keyboardViewport.keyboardVisible) return;
@@ -146,6 +159,7 @@ export default function ChatWidget(props: {
     isMobile,
     livePinned: state.livePinned,
     setLivePinned: state.setLivePinned,
+    currentPost: props.currentPost,
   });
 
   // Keyboard handler
@@ -354,12 +368,15 @@ export default function ChatWidget(props: {
   return (
     <>
       <div
+        ref={widgetRef}
         className={cn(
-          "fixed z-[var(--z-chat-widget)] flex flex-col overflow-hidden border bg-background",
+          "fixed z-[var(--z-chat-widget)] flex flex-col overflow-hidden border bg-background overscroll-contain",
           isMobile ? "shadow-none" : "shadow-2xl transition-all",
           // Mobile: always fullscreen
           isMobile
             ? "left-0 right-0 rounded-none max-w-full w-full overflow-x-hidden"
+            : isExpanded
+              ? "left-1/2 top-4 w-[min(calc(100%-24px),88rem)] -translate-x-1/2 rounded-2xl"
             : sidebarOpen
               ? "bottom-20 left-1/2 w-[min(100%-24px,58rem)] -translate-x-1/2 rounded-2xl"
               : "bottom-20 left-1/2 w-[min(100%-24px,42rem)] -translate-x-1/2 rounded-2xl",
@@ -377,7 +394,9 @@ export default function ChatWidget(props: {
                 top: `${keyboardViewport.viewportTop}px`,
                 bottom: "auto",
               }
-            : { height: pcMaxHeight, maxHeight: pcMaxHeight }
+            : isExpanded
+              ? { height: pcMaxHeight, maxHeight: pcMaxHeight, bottom: "auto" }
+              : { height: pcMaxHeight, maxHeight: pcMaxHeight }
         }
       >
         {/* Header */}
@@ -399,6 +418,9 @@ export default function ChatWidget(props: {
           onClose={props.onClose}
           sidebarOpen={sidebarOpen}
           onToggleSidebar={() => setSidebarOpen((v) => !v)}
+          canExpand={!isMobile}
+          expanded={isExpanded}
+          onToggleExpanded={() => setIsExpanded((prev) => !prev)}
         />
 
         {/* 2-panel layout: sidebar (desktop) + main chat area */}
@@ -472,6 +494,7 @@ export default function ChatWidget(props: {
                 "flex-1 overflow-auto overscroll-contain px-4 py-4 space-y-4 [content-visibility:auto]",
                 isKeyboardFocusMode && "py-2",
                 isMobile && "px-4",
+                !isMobile && isExpanded && "px-5 py-5",
                 isTerminal && "space-y-3 font-mono text-sm",
               )}
             >

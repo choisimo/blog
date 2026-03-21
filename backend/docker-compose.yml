@@ -48,6 +48,7 @@ services:
       - SQLITE_PATH=/app/.data/blog.db
       - SQLITE_MIGRATIONS_DIR=/app/migrations
       - REDIS_URL=redis://redis:6379
+      - WORKER_API_URL=${WORKER_API_URL:?WORKER_API_URL must be set in .env}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-bloguser}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@postgres:5432/${POSTGRES_DB:-bloganalytics}
     volumes:
       - ../frontend/public:/frontend/public
@@ -92,9 +93,9 @@ services:
     healthcheck:
       test: [ "CMD", "wget", "-q", "--spider", "http://127.0.0.1/health" ]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 20s
     restart: unless-stopped
     labels:
       - "com.blog.service=nginx"
@@ -293,6 +294,40 @@ services:
       - "com.blog.description=Knowledge Management with RAG"
 
   # ---------------------------------------------------------------------------
+  # Piston - Self-hosted Code Execution Engine
+  # ---------------------------------------------------------------------------
+  # Replaces the now-defunct public emkc.org/api/v2/piston API (whitelist-only since 2026-02-15).
+  # Accessed internally via http://piston:2000 — never exposed to the internet.
+  # Frontend calls /api/v1/execute (backend proxy) which forwards to this service.
+  # ---------------------------------------------------------------------------
+  piston:
+    image: ghcr.io/engineer-man/piston:latest
+    container_name: blog-piston
+    privileged: true
+    tmpfs:
+      - /piston/jobs
+    volumes:
+      - piston-data:/piston/packages
+    networks:
+      - blog-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:2000/api/v2/runtimes',(res)=>process.exit(res.statusCode===200?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    labels:
+      - "com.blog.service=piston"
+      - "com.blog.description=Self-hosted code execution engine"
+
+  # ---------------------------------------------------------------------------
   # Watchtower - Automatic Container Updates from GHCR
   # ---------------------------------------------------------------------------
   # Prerequisites (run once on server before starting):
@@ -365,3 +400,5 @@ volumes:
     name: blog-surrealdb-data
   postgres-data:
     name: blog-postgres-data
+  piston-data:
+    name: blog-piston-data

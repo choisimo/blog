@@ -13,6 +13,9 @@ export type ChatMessage = {
   id: string;
   role: "user" | "assistant" | "system";
   text: string;
+  channel?: "default" | "live";
+  authorName?: string;
+  authorMeta?: string;
   systemLevel?: SystemMessageLevel;
   systemKind?: "status" | "error";
   transient?: boolean;

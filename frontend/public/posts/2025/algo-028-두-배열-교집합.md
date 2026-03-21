@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "해시맵 카운팅", "Problem Solving", "Python", "Java"]
 excerpt: "Hash Map & Two Pointer & Sliding Window - 두 배열 교집합 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**두 배열 교집합**
-* 파트: Hash Map & Two Pointer & Sliding Window
-* 관련 알고리즘: 해시맵 카운팅
+두 배열 교집합은 "같은 값 찾기"가 아니라, 두 입력을 멀티셋으로 보고 조인(join) 연산을 수행하는 문제입니다. 값의 존재만 볼지, 등장 횟수까지 보존할지에 따라 알고리즘 의미가 달라지는 이유를 설명해 보세요.
 
-> **Architect's View**
-> 멀티셋 연산과 데이터 조인
+1. 작은 배열을 카운트 맵으로 만들고 큰 배열을 스캔할 때, 카운터가 어떻게 줄어들며 언제 결과에 값을 추가하는지 추적하세요.
+2. 해시 카운팅 방식과 정렬 후 투 포인터 방식을 중복 처리, 메모리 사용, 캐시 locality 관점에서 비교하세요.
+3. 교집합 대신 inner join, semi join, approximate join으로 확장하면 어떤 추가 상태가 필요해지는지 설명하세요.
 
-이 글에서는 두 배열 교집합 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 존재 기반 교집합과 개수 기반 교집합을 구분할 것
+- 카운터 감소가 왜 필요한지 설명할 것
+- 데이터 조인 관점의 비유를 포함할 것
 
 ## 🐍 Python 구현
 

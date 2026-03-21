@@ -1,8 +1,16 @@
 import { getApiBaseUrl } from "@/utils/network/apiBase";
+import { bearerAuth } from "@/lib/auth";
 import {
   findSSEFrameBoundary,
   parseSSEFrame as parseRawSSEFrame,
 } from "@/services/core/sse-frame";
+
+type LiveSourceLink = {
+  title?: string;
+  url?: string;
+  score?: number;
+  snippet?: string;
+};
 
 export type LiveChatEvent =
   | {
@@ -30,6 +38,16 @@ export type LiveChatEvent =
       name: string;
       text: string;
       onlineCount: number;
+      replyToName?: string;
+      turnIndex?: number;
+      roundId?: string;
+      roundSize?: number;
+      personaStyle?: string;
+      personaTraits?: string;
+      triggeredByMention?: boolean;
+      mentionedAgents?: string[];
+      contextKinds?: string[];
+      sources?: LiveSourceLink[];
       ts?: string;
     }
   | {
@@ -52,6 +70,8 @@ export type LiveAgentPolicy = {
   maxReplyChars: number;
   temperature: number;
   historyLimit: number;
+  maxRoundTurns: number;
+  liveResearchEnabled: boolean;
   redisBridgeEnabled: boolean;
   redisBridgeFailed: boolean;
   redisPresenceTtlSec: number;
@@ -118,7 +138,7 @@ export function connectLiveChatStream(
       try {
         const headers: Record<string, string> = {};
         if (sessionToken) {
-          headers["Authorization"] = `Bearer ${sessionToken}`;
+          headers["Authorization"] = bearerAuth(sessionToken).Authorization;
         }
 
         const response = await fetch(url.toString(), {
@@ -192,7 +212,7 @@ export async function sendLiveChatMessage(input: {
     "Content-Type": "application/json",
   };
   if (sessionToken) {
-    headers["Authorization"] = `Bearer ${sessionToken}`;
+    headers["Authorization"] = bearerAuth(sessionToken).Authorization;
   }
 
   const payload: Record<string, string> = {

@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "정규화 키", "Problem Solving", "Python", "Java"]
 excerpt: "Hash Map & Two Pointer & Sliding Window - 그룹 애너그램 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**그룹 애너그램**
-* 파트: Hash Map & Two Pointer & Sliding Window
-* 관련 알고리즘: 정규화 키
+그룹 애너그램은 문자열 배열을 정렬하는 문제가 아니라, 서로 다른 원시 표현을 같은 canonical key 아래로 모으는 분류 시스템 문제입니다. `"eat","tea","tan","ate","nat","bat"`를 어떤 키 공간으로 투영해야 충돌 없이 그룹화할 수 있는지 설명해 보세요.
 
-> **Architect's View**
-> Canonical Key Classification
+1. 정렬 문자열 키 방식과 문자 빈도 벡터 키 방식이 각각 어떤 정보를 버리고 무엇을 보존하는지 설명하세요.
+2. 키 생성 비용, 해시 버킷 분산, alphabet 크기, 긴 문자열 처리 관점에서 두 canonicalization 전략을 비교하세요.
+3. 대소문자/Unicode 정규화/locale 규칙이 들어오면 "동일 그룹"의 정의가 어떻게 달라지고, 시스템적으로 어디에서 정규화를 해야 하는지 설명하세요.
 
-이 글에서는 그룹 애너그램 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 동일한 그룹으로 묶이는 키 예시를 적을 것
+- 키 생성 비용과 해시 저장 비용을 구분할 것
+- 정규화 계층이 왜 필요한지 설명할 것
 
 ## 🐍 Python 구현
 

@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { aiService, tryParseJson } from "../lib/ai-service.js";
 import { config } from "../config.js";
-import { queryAll, isD1Configured } from "../lib/d1.js";
 import { getAITaskQueue } from "../lib/ai-task-queue.js";
 import { isRedisAvailable } from "../lib/redis-client.js";
 import {
@@ -21,6 +20,8 @@ import {
   AI_TEMPERATURES,
 } from "../config/constants.js";
 import { createLogger } from "../lib/logger.js";
+import { getCachedAIConfigSnapshot, getProviderSnapshot } from '../services/ai/dynamic-config.service.js';
+import { getOpenAIClientConfigSnapshot } from '../services/ai/openai-client.service.js';
 
 const router = Router();
 const logger = createLogger("ai");
@@ -36,7 +37,8 @@ function readHeaderValue(value) {
 function resolveChatModelFromRequest(req) {
   const forced = readHeaderValue(req?.headers?.["x-ai-model"])?.trim();
   if (forced) return forced;
-  return config.ai?.defaultModel || AI_MODELS.DEFAULT;
+  const snapshot = getCachedAIConfigSnapshot();
+  return snapshot.defaultModel || config.ai?.defaultModel || AI_MODELS.DEFAULT;
 }
 
 function resolveVisionModelFromRequest(req) {
@@ -117,75 +119,71 @@ ${RAG_PROMPTS.RECOMMENDATION_INSTRUCTION}`;
 }
 
 // ============================================================================
-// Model List Endpoint - Get available AI models (DB-first, with fallbacks)
+// Model List Endpoint - Get available AI models
 // GET /api/v1/ai/models
 //
-// Priority: 1. Database (ai_models table) -> 2. Static fallback
+// Priority: 1. Worker provider snapshot -> 2. Static fallback
 // ============================================================================
 
 router.get("/models", async (req, res) => {
+  const configSnapshot = getCachedAIConfigSnapshot();
   const defaultModel =
+    configSnapshot.defaultModel ||
     config.ai?.defaultModel ||
     process.env.AI_DEFAULT_MODEL ||
     AI_MODELS.DEFAULT;
 
-  // 1. Try Database first (Source of Truth)
-  if (isD1Configured()) {
-    try {
-      const sql = `
-        SELECT
-          m.id, m.model_name, m.display_name, m.description,
-          m.supports_vision, m.supports_streaming, m.supports_function_calling,
-          m.context_window, m.priority,
-          p.name as provider_name, p.display_name as provider_display_name
-        FROM ai_models m
-        LEFT JOIN ai_providers p ON m.provider_id = p.id
-        WHERE m.is_enabled = 1
-        ORDER BY m.priority DESC, m.display_name ASC
-      `;
+  try {
+    const providerSnap = await getProviderSnapshot();
 
-      const dbModels = await queryAll(sql);
+    if (providerSnap && providerSnap.models.length > 0) {
+      const providerMap = Object.fromEntries(
+        providerSnap.providers.map((p) => [p.id, p]),
+      );
 
-      if (dbModels.length > 0) {
-        const formattedModels = dbModels.map((m) => ({
-          id: m.id,
-          name: m.display_name || m.model_name,
-          provider: m.provider_display_name || m.provider_name || "Unknown",
-          description: m.description || "",
-          isDefault: m.id === defaultModel,
-          capabilities: buildCapabilities(m),
-          contextWindow: m.context_window,
-        }));
-
-        // Sort: default first, then by priority (already sorted by DB), then by provider
-        formattedModels.sort((a, b) => {
-          if (a.isDefault) return -1;
-          if (b.isDefault) return 1;
-          return 0; // preserve DB order (by priority)
+      const formattedModels = providerSnap.models
+        .filter((m) => m.is_enabled)
+        .map((m) => {
+          const prov = providerMap[m.provider_id];
+          return {
+            id: m.id,
+            name: m.display_name || m.model_name,
+            provider: prov?.displayName || prov?.name || "Unknown",
+            description: "",
+            isDefault: m.id === defaultModel,
+            capabilities: buildCapabilities(m),
+            contextWindow: m.context_window,
+          };
         });
 
-        return res.json({
-          ok: true,
-          data: {
-            models: formattedModels,
-            default: defaultModel,
-            provider: "database",
-          },
-        });
-      }
-    } catch (dbErr) {
-      logger.warn({}, 'DB model lookup failed, using fallback list', { error: dbErr.message });
+      formattedModels.sort((a, b) => {
+        if (a.isDefault) return -1;
+        if (b.isDefault) return 1;
+        return 0;
+      });
+
+      return res.json({
+        ok: true,
+        data: {
+          models: formattedModels,
+          default: defaultModel,
+          provider: "worker",
+        },
+      });
     }
+  } catch (err) {
+    logger.warn({}, "Worker provider snapshot unavailable, using fallback", {
+      error: err.message,
+    });
   }
 
-  // 3. Final fallback - static model list
   res.json({
     ok: true,
     data: {
       models: getFallbackModels(defaultModel),
       default: defaultModel,
       provider: "fallback",
-      warning: "Using fallback model list - Database may be unavailable",
+      warning: "Using fallback model list - Worker may be unavailable",
     },
   });
 });
@@ -331,6 +329,7 @@ router.post("/auto-chat", rateLimitMiddleware(), async (req, res, next) => {
 router.get("/health", async (req, res) => {
   const healthResult = await aiService.health();
   const providerInfo = aiService.getProviderInfo();
+  const configSnapshot = getCachedAIConfigSnapshot();
 
   res.json({
     ok: true,
@@ -338,7 +337,8 @@ router.get("/health", async (req, res) => {
       status: healthResult.ok ? "healthy" : "degraded",
       provider: providerInfo.provider,
       health: healthResult,
-      hasApiKey: !!config.ai?.apiKey,
+      hasApiKey: !!configSnapshot.apiKey,
+      configSource: configSnapshot.source,
       timestamp: new Date().toISOString(),
     },
   });
@@ -348,13 +348,14 @@ router.get("/health", async (req, res) => {
 router.get("/status", async (req, res) => {
   const providerInfo = aiService.getProviderInfo();
   const healthResult = await aiService.health();
+  const clientConfigSnapshot = getOpenAIClientConfigSnapshot();
 
   res.json({
     ok: true,
     data: {
       status: healthResult.ok ? "ok" : "degraded",
       provider: providerInfo.provider,
-      model: providerInfo.config?.defaultModel || config.ai?.defaultModel,
+      model: providerInfo.config?.defaultModel || clientConfigSnapshot.defaultModel || config.ai?.defaultModel,
       aiService: {
         provider: providerInfo.provider,
         config: providerInfo.config,

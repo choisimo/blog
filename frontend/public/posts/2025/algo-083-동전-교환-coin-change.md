@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "완전 배낭", "Problem Solving", "Python", "Java"]
 excerpt: "Dynamic Programming - 동전 교환 (Coin Change) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**동전 교환 (Coin Change)**
-* 파트: Dynamic Programming
-* 관련 알고리즘: 완전 배낭
+동전 교환은 모든 조합을 나열하는 문제가 아니라, 금액별 최소 비용을 누적해 가며 도달 가능 상태를 확장하는 문제입니다. 왜 금액 축(amount axis)을 따라 DP를 세우면 중복 탐색이 사라지는지 설명해 보세요.
 
-> **Architect's View**
-> 완전 탐색→DP 사고 전환
+1. `dp[x]`가 어떤 의미를 가지는지 정의하고, 각 동전이 금액 상태를 어떻게 갱신하는지 추적하세요.
+2. BFS on amount graph, bottom-up DP, memoization을 비교해 어떤 방식이 unreachable amount를 더 자연스럽게 표현하는지 설명하세요.
+3. 동전 개수 제한이 생기거나 동전 종류가 매우 많아지면 왜 완전 배낭이 0/1 배낭과 달라지는지 설명하세요.
 
-이 글에서는 동전 교환 (Coin Change) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- `dp[x]`의 의미를 명시할 것
+- 불가능 상태 표현을 적을 것
+- coin reuse 허용 여부를 분리해서 설명할 것
 
 ## 🐍 Python 구현
 

@@ -12,6 +12,7 @@
  */
 
 import { getApiBaseUrl } from '@/utils/network/apiBase';
+import { bearerAuth } from '@/lib/auth';
 
 // ============================================================================
 // Types
@@ -173,7 +174,7 @@ export async function getTotpSetup(
 ): Promise<TotpSetupResponse> {
   const headers: Record<string, string> = {};
   if (setupToken) headers['Setup-Token'] = setupToken;
-  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  if (accessToken) headers.Authorization = bearerAuth(accessToken).Authorization;
   const res = await fetch(`${getBaseUrl()}/api/v1/auth/totp/setup`, {
     headers,
   });
@@ -236,9 +237,7 @@ export async function logout(refreshToken?: string): Promise<void> {
  */
 export async function getMe(accessToken: string): Promise<UserInfo> {
   const res = await fetch(`${getBaseUrl()}/api/v1/auth/me`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: bearerAuth(accessToken),
   });
   const data = await unwrapApiResponse<{ user: UserInfo }>(
     res,
@@ -324,7 +323,7 @@ export async function refreshAnonymousToken(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
+      ...bearerAuth(token),
     },
   });
   return unwrapApiResponse<AnonymousTokenResponse>(

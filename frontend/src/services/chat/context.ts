@@ -6,6 +6,71 @@
 
 import type { PageContext } from './types';
 
+type ArticleContext = NonNullable<PageContext["article"]>;
+
+function readText(selector: string): string | null {
+  const element = document.querySelector(selector) as HTMLElement | null;
+  const text = (element?.innerText || "").trim();
+  return text || null;
+}
+
+function parseArticlePath(url: URL): Pick<ArticleContext, "year" | "slug"> {
+  const match = url.pathname.match(/^\/blog\/(\d{4})\/([^/?#]+)/);
+  if (!match) {
+    return {};
+  }
+
+  return {
+    year: match[1],
+    slug: decodeURIComponent(match[2]),
+  };
+}
+
+export function getArticleContext(): ArticleContext | null {
+  if (typeof document === "undefined" || typeof window === "undefined") {
+    return null;
+  }
+
+  const parsedPath = parseArticlePath(new URL(window.location.href));
+  if (!parsedPath.slug) {
+    return null;
+  }
+
+  const articleSnippet = getArticleTextSnippet(500);
+  const articleTitle =
+    readText("article h1") ||
+    readText("main article h1") ||
+    readText("main h1") ||
+    null;
+  const description =
+    document.querySelector('meta[name="description"]')?.getAttribute("content") ||
+    document.querySelector('meta[property="og:description"]')?.getAttribute("content") ||
+    null;
+
+  const headings = Array.from(
+    document.querySelectorAll("article h2, article h3, main article h2, main article h3"),
+  )
+    .map((node) => (node.textContent || "").trim())
+    .filter(Boolean)
+    .slice(0, 6);
+
+  if (!articleTitle && !articleSnippet && headings.length === 0) {
+    return null;
+  }
+
+  return {
+    title: articleTitle || undefined,
+    slug: parsedPath.slug,
+    year: parsedPath.year,
+    description: description || articleSnippet || undefined,
+    headings: headings.length > 0 ? headings : undefined,
+  };
+}
+
+export function hasArticlePageContext(): boolean {
+  return getArticleContext() !== null;
+}
+
 /**
  * 현재 페이지 컨텍스트 가져오기
  */
@@ -13,7 +78,7 @@ export function getPageContext(): PageContext {
   const w = typeof window !== 'undefined' ? window : null;
   const url = w?.location?.href as string | undefined;
   const title = w?.document?.title as string | undefined;
-  return { url, title };
+  return { url, title, article: getArticleContext() || undefined };
 }
 
 /**
@@ -74,15 +139,33 @@ export const CHAT_STYLE_PROMPT = `다음 지침을 따르세요:
 /**
  * 컨텍스트 프롬프트 생성
  */
-export function buildContextPrompt(articleSnippet: string | null): string {
-  if (!articleSnippet) return '';
+export function buildContextPrompt(
+  articleSnippet: string | null,
+  pageContext?: PageContext | null,
+): string {
+  const article = pageContext?.article;
+  const metadataLines = [
+    article?.title ? `제목: ${article.title}` : null,
+    article?.year && article?.slug ? `게시물: ${article.year}/${article.slug}` : null,
+    article?.description ? `설명: ${article.description}` : null,
+    article?.headings && article.headings.length > 0
+      ? `주요 섹션: ${article.headings.join(" | ")}`
+      : null,
+  ].filter(Boolean);
+
+  if (!articleSnippet && metadataLines.length === 0) return '';
 
   return [
-    '현재 보고 있는 페이지의 본문 일부를 함께 전달할게요.',
-    '이 내용을 참고해서 사용자의 질문에 더 정확하게 답변해 주세요.',
+    metadataLines.length > 0
+      ? '사용자가 현재 읽고 있는 게시물의 핵심 정보를 함께 전달할게요.'
+      : '현재 보고 있는 페이지의 본문 일부를 함께 전달할게요.',
+    '이 내용을 우선 참고해서 사용자의 질문에 더 정확하게 답변해 주세요.',
     '',
+    ...(metadataLines.length > 0
+      ? ['[현재 게시물]', ...metadataLines, '']
+      : []),
     '[페이지 본문]',
-    articleSnippet,
+    articleSnippet || '(본문 스니펫 없음)',
     '',
     '---',
     '',
@@ -103,8 +186,11 @@ export function buildImageContext(
     imageContext += `[첨부된 이미지 분석 결과]\n${imageAnalysis}\n\n`;
   }
 
-  imageContext += `[이미지 링크: ${imageUrl}]\n\n`;
-  imageContext += userText || '이 이미지에 대해 설명해 주세요.';
+  imageContext += `[이미지 링크: ${imageUrl}]`;
+
+  if (userText) {
+    imageContext += `\n\n${userText}`;
+  }
 
   return imageContext;
 }

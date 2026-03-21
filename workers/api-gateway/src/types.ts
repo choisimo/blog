@@ -46,7 +46,6 @@ export type Env = {
   PUBLIC_SITE_URL?: string;
   ASSETS_BASE_URL?: string;
   OPENCODE_AUTH_TOKEN?: string;
-  GITHUB_TOKEN?: string;
 
   // Variables
   ENV: 'development' | 'staging' | 'production';
@@ -129,6 +128,10 @@ export type JwtPayload = {
   email?: string;
   emailVerified?: boolean;
   type?: 'access' | 'refresh';
+  jti?: string;
+  iss?: string;
+  aud?: string;
+  nbf?: number;
   iat?: number;
   exp?: number;
 };

@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "3회 반전", "Problem Solving", "Python", "Java"]
 excerpt: "Array & String Fundamentals - 배열 회전 (Rotate Array) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**배열 회전 (Rotate Array)**
-* 파트: Array & String Fundamentals
-* 관련 알고리즘: 3회 반전
+연속 메모리에 놓인 버퍼를 오른쪽으로 회전시키는 일은 "값을 옮기는 기술"이 아니라, 추가 버퍼 없이 주소 매핑을 보존하는 문제입니다. `nums=[1,2,3,4,5,6,7], k=3`에서 3회 반전이 왜 작동하는지, 각 구간이 물리적으로 어떻게 뒤집히는지 설명해 보세요.
 
-> **Architect's View**
-> in-place 알고리즘과 메모리 효율성
+1. 전체 반전, 앞 구간 반전, 뒤 구간 반전 이후의 배열 상태를 순서대로 적고, 각 원소가 최종 위치로 가는 인덱스 매핑을 증명하세요.
+2. 한 칸씩 `k`번 밀기, 보조 배열 복사, 3회 반전 방식을 쓰기 횟수, 캐시 지역성, 메모리 사용량 관점에서 비교하세요.
+3. `k`가 매우 크거나, 배열이 디스크 페이지 단위로 나뉘어 있거나, immutable 문자열처럼 in-place가 금지된 환경이면 설계를 어떻게 바꿀지 설명하세요.
 
-이 글에서는 배열 회전 (Rotate Array) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 반전 3단계의 배열 상태를 모두 적을 것
+- `new_index=(i+k)%n`과 반전 전략의 연결을 설명할 것
+- write amplification 차이를 분리해서 비교할 것
 
 ## 🐍 Python 구현
 

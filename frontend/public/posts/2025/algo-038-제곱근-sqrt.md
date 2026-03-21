@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "이진 탐색", "Problem Solving", "Python", "Java"]
 excerpt: "Sorting & Binary Search - 제곱근 (Sqrt) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**제곱근 (Sqrt)**
-* 파트: Sorting & Binary Search
-* 관련 알고리즘: 이진 탐색
+정수 제곱근은 연속적인 수학 문제를 정수 격자 위의 경계 탐색으로 바꾸는 문제입니다. "가장 큰 `x` such that `x^2 <= n`"이라는 정의가 왜 탐색 공간을 단조 predicate로 바꿔 주는지 설명해 보세요.
 
-> **Architect's View**
-> 연속 공간의 이산화
+1. `mid^2 <= n` 여부가 참/거짓 경계를 어떻게 만들고, 정답이 항상 왼쪽/오른쪽 어디에 남는지 추적하세요.
+2. Newton 방법, 부동소수점 sqrt, 정수 이진 탐색을 오차 처리, 오버플로우 위험, 정수 정확성 관점에서 비교하세요.
+3. 매우 큰 정수에서 곱셈 자체가 비싸다면, 비교 전략과 자료형 선택을 어떻게 바꿔야 하는지 설명하세요.
 
-이 글에서는 제곱근 (Sqrt) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- predicate 경계를 명시할 것
+- floor sqrt 정의를 정확히 적을 것
+- 정수 정확성과 연속 근사의 차이를 설명할 것
 
 ## 🐍 Python 구현
 

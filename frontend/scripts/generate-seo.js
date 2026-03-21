@@ -2,6 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
+import { resolveSiteBaseUrl } from './lib/resolve-site-url.js';
 
 const PROJECT_ROOT = process.cwd();
 const PUBLIC_DIR = path.join(PROJECT_ROOT, 'public');
@@ -12,18 +13,7 @@ const MANIFEST_NESTED_PATH = path.join(
   'posts-manifest.json'
 );
 
-import dotenv from 'dotenv';
-// Load root .env if present, then frontend/.env override
-import { fileURLToPath } from 'url';
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const repoRoot = path.resolve(__dirname, '..', '..');
-dotenv.config({ path: path.join(repoRoot, '.env') });
-dotenv.config({ path: path.join(repoRoot, 'frontend', '.env'), override: true });
-const BASE_URL =
-  process.env.SITE_BASE_URL ||
-  process.env.VITE_SITE_BASE_URL ||
-  'http://localhost:3000';
+const BASE_URL = resolveSiteBaseUrl();
 const SITE_NAME = 'Nodove Blog';
 const SITE_DESCRIPTION =
   'A blog about technology, programming, and web development';

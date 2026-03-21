@@ -1,9 +1,24 @@
 import { Hono } from 'hono';
-import type { HonoEnv, Env } from '../types';
-import { success, badRequest, notFound, serverError } from '../lib/response';
+import type { HonoEnv } from '../types';
+import { success, badRequest, notFound, serverError, forbidden } from '../lib/response';
 import { queryAll, execute, queryOne } from '../lib/d1';
+import { requireAuth } from '../middleware/auth';
 
 const memories = new Hono<HonoEnv>();
+
+// IDOR prevention: JWT sub must match :userId param
+memories.use('/:userId/*', requireAuth, async (c, next) => {
+  if (c.get('user').sub !== c.req.param('userId')) {
+    return forbidden(c, 'User ID mismatch');
+  }
+  await next();
+});
+memories.use('/:userId', requireAuth, async (c, next) => {
+  if (c.get('user').sub !== c.req.param('userId')) {
+    return forbidden(c, 'User ID mismatch');
+  }
+  await next();
+});
 
 // Types
 interface UserMemory {

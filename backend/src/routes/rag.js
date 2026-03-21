@@ -19,6 +19,17 @@
 import express from 'express';
 import { config } from '../config.js';
 import { requireFeature } from '../middleware/featureFlags.js';
+import { validateBody } from '../middleware/validation.js';
+import {
+  ragSearchBodySchema,
+  ragEmbedBodySchema,
+  memoriesUpsertBodySchema,
+  memoriesSearchBodySchema,
+  memoriesBatchDeleteBodySchema,
+  ragIndexBodySchema,
+  notebookSearchBodySchema,
+  notebookAskBodySchema,
+} from '../middleware/schemas/rag.schema.js';
 import { expandQuery, getCombinedQueries } from '../lib/query-expander.js';
 import { getOpenAIEmbeddingClient, openaiEmbeddings } from '../lib/openai-compat-client.js';
 import openNotebook from '../services/open-notebook.service.js';
@@ -300,13 +311,9 @@ async function deleteFromChroma(collectionName, ids) {
  *   }
  * }
  */
-router.post('/search', async (req, res) => {
+router.post('/search', validateBody(ragSearchBodySchema), async (req, res) => {
   try {
     const { query, n_results = 5, expand = true, expandedOnly = false } = req.body;
-
-    if (!query || typeof query !== 'string') {
-      return res.status(400).json({ ok: false, error: 'query is required' });
-    }
 
     let expansion = null;
     let queriesToSearch = [query];
@@ -417,17 +424,9 @@ router.post('/search', async (req, res) => {
  *   }
  * }
  */
-router.post('/embed', async (req, res) => {
+router.post('/embed', validateBody(ragEmbedBodySchema), async (req, res) => {
   try {
     const { texts } = req.body;
-
-    if (!texts || !Array.isArray(texts) || texts.length === 0) {
-      return res.status(400).json({ ok: false, error: 'texts array is required' });
-    }
-
-    if (texts.length > 32) {
-      return res.status(400).json({ ok: false, error: 'Maximum 32 texts per request' });
-    }
 
     const embeddings = await getEmbeddings(texts);
 
@@ -510,21 +509,9 @@ router.get('/health', async (req, res) => {
  *   memories: [{ id, content, memoryType, category }]
  * }
  */
-router.post('/memories/upsert', async (req, res) => {
+router.post('/memories/upsert', validateBody(memoriesUpsertBodySchema), async (req, res) => {
   try {
     const { userId, memories } = req.body;
-
-    if (!userId || typeof userId !== 'string') {
-      return res.status(400).json({ ok: false, error: 'userId is required' });
-    }
-
-    if (!memories || !Array.isArray(memories) || memories.length === 0) {
-      return res.status(400).json({ ok: false, error: 'memories array is required' });
-    }
-
-    if (memories.length > 20) {
-      return res.status(400).json({ ok: false, error: 'Maximum 20 memories per request' });
-    }
 
     // 1. Extract texts for embedding
     const texts = memories.map(m => m.content);
@@ -565,17 +552,9 @@ router.post('/memories/upsert', async (req, res) => {
  *   category?: string
  * }
  */
-router.post('/memories/search', async (req, res) => {
+router.post('/memories/search', validateBody(memoriesSearchBodySchema), async (req, res) => {
   try {
     const { userId, query, n_results = 10, memoryType, category } = req.body;
-
-    if (!userId || typeof userId !== 'string') {
-      return res.status(400).json({ ok: false, error: 'userId is required' });
-    }
-
-    if (!query || typeof query !== 'string') {
-      return res.status(400).json({ ok: false, error: 'query is required' });
-    }
 
     // 1. Generate query embedding
     const [embedding] = await getEmbeddings([query]);
@@ -661,13 +640,9 @@ router.delete('/memories/:userId/:memoryId', async (req, res) => {
 /**
  * POST /memories/batch-delete - 여러 메모리 임베딩 일괄 삭제
  */
-router.post('/memories/batch-delete', async (req, res) => {
+router.post('/memories/batch-delete', validateBody(memoriesBatchDeleteBodySchema), async (req, res) => {
   try {
     const { userId, memoryIds } = req.body;
-
-    if (!userId || !Array.isArray(memoryIds) || memoryIds.length === 0) {
-      return res.status(400).json({ ok: false, error: 'userId and memoryIds are required' });
-    }
 
     const collectionName = `${MEMORY_COLLECTION_PREFIX}${userId}`;
     
@@ -703,24 +678,9 @@ router.post('/memories/batch-delete', async (req, res) => {
  *   collection?: string  // Optional custom collection name
  * }
  */
-router.post('/index', async (req, res) => {
+router.post('/index', validateBody(ragIndexBodySchema), async (req, res) => {
   try {
     const { documents, collection } = req.body;
-
-    if (!documents || !Array.isArray(documents) || documents.length === 0) {
-      return res.status(400).json({ ok: false, error: 'documents array is required' });
-    }
-
-    if (documents.length > 100) {
-      return res.status(400).json({ ok: false, error: 'Maximum 100 documents per request' });
-    }
-
-    // Validate documents
-    for (const doc of documents) {
-      if (!doc.id || !doc.content) {
-        return res.status(400).json({ ok: false, error: 'Each document must have id and content' });
-      }
-    }
 
     // 1. Extract texts for embedding
     const texts = documents.map(d => d.content);
@@ -868,17 +828,13 @@ router.get('/collections', async (req, res) => {
   }
 });
 
-router.post('/notebook/search', async (req, res) => {
+router.post('/notebook/search', validateBody(notebookSearchBodySchema), async (req, res) => {
   if (!openNotebook.isEnabled()) {
     return res.status(503).json({ ok: false, error: 'Open Notebook is not enabled' });
   }
 
   try {
     const { query, limit = 5, notebookId } = req.body;
-
-    if (!query || typeof query !== 'string') {
-      return res.status(400).json({ ok: false, error: 'query is required' });
-    }
 
     const results = await openNotebook.search(query, { limit, notebookId });
 
@@ -889,17 +845,13 @@ router.post('/notebook/search', async (req, res) => {
   }
 });
 
-router.post('/notebook/ask', async (req, res) => {
+router.post('/notebook/ask', validateBody(notebookAskBodySchema), async (req, res) => {
   if (!openNotebook.isEnabled()) {
     return res.status(503).json({ ok: false, error: 'Open Notebook is not enabled' });
   }
 
   try {
     const { query, notebookId, includeContext = true } = req.body;
-
-    if (!query || typeof query !== 'string') {
-      return res.status(400).json({ ok: false, error: 'query is required' });
-    }
 
     const result = await openNotebook.ask(query, { notebookId, includeContext });
 

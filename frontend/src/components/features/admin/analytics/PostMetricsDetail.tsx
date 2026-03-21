@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, ArrowLeft, Eye, Clock, Globe, Monitor } from 'lucide-react';
 import { getApiBaseUrl } from '@/utils/network/apiBase';
-import { useAuthStore } from '@/stores/session/useAuthStore';
+import { adminFetchRaw } from '@/services/admin/apiClient';
 
 interface Visit {
   id: number;
@@ -72,22 +72,19 @@ export function PostMetricsDetail({ slug, year, onBack }: PostMetricsDetailProps
   const [hourly, setHourly] = useState<HourlyPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
-  const { getValidAccessToken } = useAuthStore();
 
   const PAGE_SIZE = 50;
 
   const fetchData = useCallback(async (pageNum: number) => {
     setLoading(true);
     const base = getApiBaseUrl();
-    const token = await getValidAccessToken();
-    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
     const offset = pageNum * PAGE_SIZE;
 
     try {
       const [visitsRes, metricsRes] = await Promise.all([
-        fetch(`${base}/api/v1/admin/analytics/posts/${year}/${slug}/visits?limit=${PAGE_SIZE}&offset=${offset}`, { headers }),
+        adminFetchRaw(`${base}/api/v1/admin/analytics/posts/${year}/${slug}/visits?limit=${PAGE_SIZE}&offset=${offset}`),
         pageNum === 0
-          ? fetch(`${base}/api/v1/admin/analytics/posts/${year}/${slug}/metrics`, { headers })
+          ? adminFetchRaw(`${base}/api/v1/admin/analytics/posts/${year}/${slug}/metrics`)
           : Promise.resolve(null),
       ]);
 
@@ -104,7 +101,7 @@ export function PostMetricsDetail({ slug, year, onBack }: PostMetricsDetailProps
     } catch { void 0; } finally {
       setLoading(false);
     }
-  }, [slug, year, getValidAccessToken]);
+  }, [slug, year]);
 
   useEffect(() => {
     fetchData(page);

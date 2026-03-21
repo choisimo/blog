@@ -214,9 +214,8 @@ export class PostService {
   > {
     try {
       const base = this.getBasePath();
-      const manifestUrl = `${base}/posts-manifest.json${import.meta.env.PROD ? `?v=${Date.now()}` : ''}`;
+      const manifestUrl = `${base}/posts-manifest.json`;
       const response = await fetch(manifestUrl, {
-        // Favor fresh-ish metadata but allow cached when offline
         cache: 'no-cache',
       });
       if (!response.ok) {

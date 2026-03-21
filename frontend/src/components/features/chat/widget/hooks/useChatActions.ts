@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import type { ChatMessage, UploadedChatImage } from "../types";
+import type { PageContext } from "@/services/chat/types";
 import {
   streamChatEvents,
   uploadChatImage,
@@ -48,6 +49,7 @@ type UseChatActionsProps = {
   isMobile: boolean;
   livePinned: boolean;
   setLivePinned: React.Dispatch<React.SetStateAction<boolean>>;
+  currentPost?: PageContext["article"];
 };
 
 export function useChatActions({
@@ -75,6 +77,7 @@ export function useChatActions({
   isMobile,
   livePinned,
   setLivePinned,
+  currentPost,
 }: UseChatActionsProps) {
   const send = useCallback(async () => {
     if (!canSend) return;
@@ -372,6 +375,7 @@ export function useChatActions({
           signal: controller.signal,
           onFirstToken: (ms) => setFirstTokenMs(ms),
           useArticleContext: questionMode === "article",
+          currentPost,
           imageUrl: uploaded?.url,
           imageAnalysis: uploaded?.imageAnalysis,
           memoryContext,
@@ -447,6 +451,7 @@ export function useChatActions({
     isMobile,
     livePinned,
     setLivePinned,
+    currentPost,
   ]);
 
   const stop = useCallback(() => {

@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "힙+해시맵", "Problem Solving", "Python", "Java"]
 excerpt: "Heap & Graph Basics - Top K 빈출 요소 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**Top K 빈출 요소**
-* 파트: Heap & Graph Basics
-* 관련 알고리즘: 힙+해시맵
+Top K 빈출 요소는 전체 정렬 문제가 아니라, 빈도 분포의 상위 k개만 유지하는 우선순위 필터 문제입니다. 왜 전체를 모두 정렬하지 않고도 답을 얻을 수 있는지 설명해 보세요.
 
-> **Architect's View**
-> 부분 정렬과 우선순위 필터링
+1. 빈도 맵 생성 후 k 크기 min-heap이 어떤 후보 경계를 유지하는지 추적하세요.
+2. 전체 정렬, bucket sort, k-size heap 방식을 데이터 크기와 k의 상대적 크기 관점에서 비교하세요.
+3. 분포가 극단적으로 skewed하거나 스트리밍 입력일 때 설계를 어떻게 바꿀지 설명하세요.
 
-이 글에서는 Top K 빈출 요소 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- heap top이 어떤 임계값 역할을 하는지 적을 것
+- `n log k`가 나오는 이유를 설명할 것
+- k와 n의 관계에 따른 대안 선택 기준을 적을 것
 
 ## 🐍 Python 구현
 

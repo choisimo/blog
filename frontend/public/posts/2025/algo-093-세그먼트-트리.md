@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "구간 쿼리", "Problem Solving", "Python", "Java"]
 excerpt: "Advanced Topics - 세그먼트 트리 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**세그먼트 트리**
-* 파트: Advanced Topics
-* 관련 알고리즘: 구간 쿼리
+세그먼트 트리는 배열 문제를 구간 집계 인덱스로 끌어올린 구조입니다. 왜 prefix sum만으로는 업데이트와 질의를 동시에 싸게 처리할 수 없고, 구간을 계층적으로 쪼갠 트리가 필요한지 설명해 보세요.
 
-> **Architect's View**
-> 구간 쿼리와 지연 전파
+1. 노드가 담당하는 구간 `[l, r]`와 집계값이 어떤 contract를 가지는지 설명하고, query/update가 어떤 노드들만 방문하는지 추적하세요.
+2. 세그먼트 트리, 펜윅 트리, prefix sum을 업데이트 빈도와 질의 종류 관점에서 비교하세요.
+3. lazy propagation이 왜 필요한지, 없는 경우 어떤 update pattern에서 병목이 생기는지 설명하세요.
 
-이 글에서는 세그먼트 트리 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 노드-구간 대응을 적을 것
+- 부분 겹침/완전 겹침/무관 구간을 구분할 것
+- lazy propagation 필요 조건을 설명할 것
 
 ## 🐍 Python 구현
 

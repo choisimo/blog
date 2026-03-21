@@ -68,6 +68,7 @@ VARIABLES=(
     ["WORKFLOW_DOMAIN"]="Workflow domain (e.g., workflow.yourdomain.com)"
     ["FRONTEND_DOMAIN"]="Frontend domain (e.g., blog.yourdomain.com)"
     ["AI_SERVER_URL"]="OpenAI-compatible AI server URL"
+    ["WORKER_API_URL"]="Worker API URL for AI dynamic config (e.g., https://api.example.com)"
     ["IMAGE_TAG"]="Docker image tag (default: latest)"
 )
 

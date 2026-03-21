@@ -278,22 +278,6 @@ export function errorHandler(err, req, res, next) {
 }
 
 /**
- * Async route wrapper to catch promise rejections
- *
- * @example
- * router.get('/posts/:id', asyncHandler(async (req, res) => {
- *   const post = await getPost(req.params.id);
- *   if (!post) throw new NotFoundError('Post not found');
- *   res.json({ ok: true, data: post });
- * }));
- */
-export function asyncHandler(fn) {
-  return (req, res, next) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
-  };
-}
-
-/**
  * Not found handler (404) - use before error handler
  */
 export function notFoundHandler(req, res, next) {

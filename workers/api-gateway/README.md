@@ -1,319 +1,173 @@
 # Blog API Gateway
 
-## 1. Service Overview (개요)
+> 참고: 이 문서의 공개 호스트명과 운영 주소 예시는 모두 비식별 placeholder입니다.
 
-### 목적
-Blog API Gateway는 블로그 플랫폼의 **단일 진입점(Single Entry Point)**으로서, Cloudflare Workers 기반의 Edge Computing 환경에서 모든 API 요청을 처리합니다. 기존 Cloudflare Tunnel을 대체하여 더 낮은 지연시간과 높은 확장성을 제공합니다.
+## Service Overview
 
-### 주요 기능
-| 기능 | 설명 |
-|------|------|
-| **인증/인가** | JWT 기반 인증 + Email OTP 2단계 검증 |
-| **콘텐츠 관리** | 게시글, 댓글, 이미지 CRUD 처리 |
-| **AI 서비스** | 텍스트 요약, 번역, RAG 기반 질의응답 |
-| **분석/추천** | 조회수 추적, 트렌딩 분석, 에디터 픽 자동 선정 |
-| **백엔드 프록시** | Workers에서 처리하지 않는 요청을 백엔드 서버로 전달 |
+`workers/api-gateway/`는 edge의 주 API 진입점입니다.
 
-### 기술 스택
-- **Runtime**: Cloudflare Workers (V8 Isolate)
-- **Framework**: Hono (경량 Web Framework)
-- **Database**: Cloudflare D1 (SQLite 기반)
-- **Storage**: Cloudflare R2 (S3 호환 Object Storage)
-- **Cache/KV**: Cloudflare KV (Key-Value Store)
-- **Language**: TypeScript
+- worker name: `blog-api-gateway`
+- runtime: Cloudflare Workers
+- framework: Hono
+- entrypoint: `workers/api-gateway/src/index.ts`
+- compatibility flag: `nodejs_compat`
+- data dependencies: D1, R2, KV, backend proxy
 
----
+## Direct Endpoints
 
-## 2. Architecture & Data Flow (구조 및 흐름)
+파일: `workers/api-gateway/src/index.ts`
 
-### System Architecture
+- `GET /_health` -> `{ ok: true, worker: "blog-api-gateway", timestamp }`
+- `GET /healthz` -> `{ ok: true, data: { status: "ok", env, timestamp } }`
+- `GET /health` -> backend proxy
+- `GET /public/config` -> public runtime config
+- `GET /api/v1/public/config` -> same public runtime config
 
-```mermaid
-flowchart TB
-    subgraph Client
-        FE[Frontend<br/>React SPA]
-        ADMIN[Admin Panel]
-    end
+## Mounted Route Prefixes
 
-    subgraph "Cloudflare Edge"
-        GW[API Gateway<br/>api.nodove.com]
-        D1[(D1 Database)]
-        R2[(R2 Storage)]
-        KV[(KV Store)]
-    end
+`/api/v1` 아래에 다음 prefix가 mount 됩니다.
 
-    subgraph "Origin Server"
-        BE[Backend Server<br/>Node.js]
-        TERM[Terminal Server]
-    end
-
-    FE --> GW
-    ADMIN --> GW
-    GW --> D1
-    GW --> R2
-    GW --> KV
-    GW -.->|Proxy| BE
-    GW -.->|WebSocket| TERM
+```text
+/auth
+/posts
+/comments
+/ai
+/chat
+/images
+/og
+/analytics
+/translate
+/config
+/rag
+/memos
+/memories
+/admin/ai
+/admin/secrets
+/internal
+/personas
+/user-content
+/search
+/user
+/debate
+/subscribe
+/contact
+/notifications
+/admin/logs
+/gateway
 ```
 
-### Request Flow (Authentication)
+이 문서는 각 prefix 내부의 세부 endpoint를 추측하지 않습니다. 실제 contract는 해당 route file과 tests가 있는 경우 그 구현을 기준으로 확인해야 합니다.
 
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant GW as API Gateway
-    participant KV as KV Store
-    participant EMAIL as Resend API
+## Backend Fallback Contract
 
-    C->>GW: POST /auth/login (credentials)
-    GW->>GW: Verify username/password
-    GW->>EMAIL: Send OTP to admin email
-    GW->>KV: Store session (10min TTL)
-    GW-->>C: { sessionId, otpSent: true }
-    
-    C->>GW: POST /auth/verify-otp (sessionId, otp)
-    GW->>KV: Validate OTP hash
-    GW->>GW: Generate JWT tokens
-    GW->>KV: Store refresh token (7d TTL)
-    GW-->>C: { accessToken, refreshToken }
-```
+미처리 요청은 `app.all('*', ...)`로 backend에 전달됩니다.
 
-### Request Flow (Analytics)
+- `BACKEND_ORIGIN`이 없으면 `500` JSON 오류 반환
+- `BACKEND_KEY`가 있으면 `X-Backend-Key` 주입
+- 추가 전달 가능 헤더:
+  - `X-Forwarded-For`
+  - `X-Forwarded-Proto`
+  - `X-Real-IP`
+  - `X-Request-ID`
+  - `CF-Ray`
+  - `CF-IPCountry`
+- `/api/v1/ai`, `/api/v1/chat`, `/api/v1/agent` 요청은 강제 모델 헤더를 붙일 수 있음
+- `/api/v1/images` 또는 `/api/v1/ai/vision` 요청은 vision model 헤더를 붙일 수 있음
+- backend가 `502`-`504`를 반환하면 worker는 JSON 오류와 `Retry-After: 30`을 반환
+- backend fetch 자체 실패 시 `503`과 `Retry-After: 30` 반환
 
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant GW as API Gateway
-    participant D1 as D1 Database
+운영상 의미:
 
-    C->>GW: POST /analytics/view { year, slug }
-    GW->>D1: UPSERT post_views (today)
-    GW->>D1: UPDATE post_stats (total_views++)
-    GW-->>C: { recorded: true }
+- worker health가 정상이어도 backend health는 별도로 깨질 수 있습니다.
+- 장애 확인 시 `/_health`, `/healthz`, `/health`를 분리해서 보는 것이 안전합니다.
 
-    Note over GW: Daily Cron (6 AM UTC)
-    GW->>D1: Refresh views_7d, views_30d
-    GW->>D1: Update editor_picks (top 3)
-    GW->>D1: Cleanup old records (>90 days)
-```
+## Public Config Contract
 
----
+파일: `workers/api-gateway/src/index.ts`
 
-## 3. API Specification (인터페이스 명세)
+public config 응답에는 다음 필드가 포함됩니다.
 
-### Authentication Routes (`/api/v1/auth`)
+- `env`
+- `apiBaseUrl`
+- `chatBaseUrl`
+- `chatWsBaseUrl`
+- `ai.modelSelectionEnabled`
+- `ai.defaultModel`
+- `ai.visionModel`
+- `features.aiEnabled`
+- `features.ragEnabled`
+- `features.terminalEnabled`
+- `features.aiInline`
+- `features.commentsEnabled`
 
-| Method | Endpoint | Input | Output | Description |
-|--------|----------|-------|--------|-------------|
-| `POST` | `/login` | `{ username, password }` | `{ sessionId, otpSent }` | 자격증명 확인 후 OTP 발송 |
-| `POST` | `/verify-otp` | `{ sessionId, otp }` | `{ accessToken, refreshToken }` | OTP 검증 후 토큰 발급 |
-| `POST` | `/refresh` | `{ refreshToken }` | `{ accessToken }` | Access Token 갱신 |
-| `POST` | `/logout` | `{ refreshToken }` | `{ success: true }` | Refresh Token 무효화 |
-| `GET` | `/me` | `Authorization: Bearer <token>` | `{ user }` | 현재 사용자 정보 |
+숨은 전제:
 
-### Content Routes
+- `chatWsBaseUrl`은 `apiBaseUrl`을 `ws://` 또는 `wss://`로 치환해 계산합니다.
+- feature flags는 현재 코드상 모두 `true`로 고정되어 있습니다.
 
-| Method | Endpoint | Input | Output | Auth |
-|--------|----------|-------|--------|------|
-| `GET` | `/posts` | `?status=&limit=&tag=` | `{ items: Post[] }` | - |
-| `GET` | `/posts/:slug` | - | `{ post, tags }` | - |
-| `POST` | `/posts` | `{ title, slug, content, ... }` | `{ id }` | Admin |
-| `GET` | `/comments?postId=` | `postId` (required) | `{ comments }` | - |
-| `POST` | `/comments` | `{ postId, author, content }` | `{ id }` | - |
-| `DELETE` | `/comments/:id` | - | `{ deleted: true }` | Admin |
-| `POST` | `/images/upload` | `multipart/form-data` | `{ urls }` | Admin |
+## Scheduled Work
 
-### Analytics Routes (`/api/v1/analytics`)
+- cron: `0 6 * * *`
+- 확인된 동작:
+  - `post_stats`의 `views_7d`, `views_30d` 갱신
+  - `editor_picks` 재선정
+  - `post_views`의 90일 초과 데이터 삭제
 
-| Method | Endpoint | Input | Output | Description |
-|--------|----------|-------|--------|-------------|
-| `POST` | `/view` | `{ year, slug }` | `{ recorded }` | 조회수 기록 |
-| `GET` | `/stats/:year/:slug` | - | `{ stats }` | 게시글 통계 조회 |
-| `GET` | `/trending?limit=&days=` | - | `{ trending }` | 트렌딩 게시글 |
-| `GET` | `/editor-picks?limit=` | - | `{ picks }` | 에디터 픽 |
+이 job은 D1 binding `DB`를 전제로 합니다.
 
-### AI Routes (`/api/v1/ai`)
+## Bindings And Config
 
-| Method | Endpoint | Input | Output | Description |
-|--------|----------|-------|--------|-------------|
-| `POST` | `/sketch` | `{ paragraph, postTitle? }` | `{ result }` | 텍스트 스케치 생성 |
-| `POST` | `/prism` | `{ paragraph, postTitle? }` | `{ result }` | 다각도 분석 |
-| `POST` | `/chain` | `{ paragraph, postTitle? }` | `{ result }` | 연쇄 사고 분석 |
+파일: `workers/api-gateway/wrangler.toml`
 
-### Response Format
+- D1 binding: `DB`
+- R2 binding: `R2`
+- KV binding: `KV`
+- dev vars:
+  - `ENV = "development"`
+  - `ALLOWED_ORIGINS`
+  - `ASSETS_BASE_URL`
+  - `API_BASE_URL`
+- prod vars:
+  - `ENV = "production"`
+- cron configured in Wrangler
+- observability enabled
 
-모든 API는 표준 응답 형식을 따릅니다:
+문서상 경계:
 
-```typescript
-// Success
-{ "ok": true, "data": { ... } }
+- secret은 `wrangler.toml`에 넣지 않고 `wrangler secret put`으로 주입해야 합니다.
+- production D1은 `blog-db-prod`, development D1은 `blog-db`를 사용합니다.
 
-// Error
-{ "ok": false, "error": { "code": "ERR_CODE", "message": "설명" } }
-```
+## Operations
 
----
-
-## 4. Key Business Logic (핵심 로직 상세)
-
-### JWT 기반 인증 + Email OTP 2FA
-
-```
-인증 흐름:
-1. 사용자가 username/password 제출
-2. 환경변수(GitHub Secrets)에 저장된 관리자 자격증명과 비교
-3. 일치 시 6자리 OTP 생성 → SHA-256 해시 후 KV 저장
-4. Resend API로 관리자 이메일에 OTP 발송
-5. OTP 검증 성공 시 JWT Access Token(15분) + Refresh Token(7일) 발급
-```
-
-**보안 고려사항:**
-- Timing Attack 방지를 위한 500-1000ms 랜덤 지연
-- OTP는 10분 후 만료, 단일 사용
-- Refresh Token은 KV에 저장되어 언제든 무효화 가능
-
-### 에디터 픽 자동 선정 알고리즘
-
-```
-Score = (views_7d × 0.5) + (views_30d × 0.3) + (total_views × 0.2)
-
-선정 기준:
-- views_7d > views_30d × 0.5 → "Trending this week"
-- total_views > 100 → "Evergreen favorite"
-- 그 외 → "Popular post"
-```
-
-매일 06:00 UTC Cron Trigger로 실행되며, 상위 3개 게시글이 자동 선정됩니다.
-
-### 백엔드 프록시 메커니즘
-
-Workers에서 처리하지 않는 라우트는 자동으로 백엔드 서버로 프록시됩니다:
-
-```
-요청 변환:
-- Host 헤더 → 백엔드 도메인으로 교체
-- X-Backend-Key → 공유 시크릿 추가
-- X-Forwarded-For, X-Real-IP → Cloudflare 헤더에서 추출
-- CF-Ray, CF-IPCountry → 디버깅용 전달
-```
-
----
-
-## 5. Dependencies & Environment (의존성)
-
-### Cloudflare Bindings
-
-| Binding | Type | Description |
-|---------|------|-------------|
-| `DB` | D1 Database | 메인 데이터베이스 (게시글, 댓글, 분석) |
-| `R2` | R2 Bucket | 이미지/파일 스토리지 |
-| `KV` | KV Namespace | 세션, 토큰, 설정 캐시 |
-
-### Required Secrets (`wrangler secret put`)
-
-| Secret | Description | Required |
-|--------|-------------|----------|
-| `JWT_SECRET` | JWT 서명 키 | ✅ |
-| `ADMIN_USERNAME` | 관리자 사용자명 | ✅ |
-| `ADMIN_PASSWORD` | 관리자 비밀번호 | ✅ |
-| `ADMIN_EMAIL` | OTP 수신 이메일 | ✅ |
-| `BACKEND_ORIGIN` | 백엔드 서버 URL | ✅ |
-| `BACKEND_KEY` | 백엔드 인증 키 (X-Backend-Key) | ✅ |
-| `INTERNAL_KEY` | R2 Gateway 인증 키 (X-Internal-Key) | R2 Internal API |
-| `RESEND_API_KEY` | Resend 이메일 API 키 | Email OTP |
-| `NOTIFY_FROM_EMAIL` | 발신자 이메일 | Email OTP |
-| `AI_API_KEY` | AI 서버 인증 키 | AI 기능 |
-| `AI_DEFAULT_MODEL` | 강제 기본 모델 (클라이언트 모델 선택 비활성화) | 권장 |
-| `AI_VISION_MODEL` | 비전 분석 전용 모델 | 권장 |
-| `PERPLEXITY_MODEL` | Perplexity 기본 모델 (예: `sonar`) | 선택 |
-| `API_BASE_URL` | API Base URL (런타임 주입) | 권장 |
-| `ASSETS_BASE_URL` | Assets Base URL (런타임 주입) | 권장 |
-| `ALLOWED_ORIGINS` | CORS 허용 Origin 목록 (콤마 구분) | 권장 |
-
-### Environment Variables
-
-| Variable | Dev | Prod |
-|----------|-----|------|
-| `ENV` | `development` | `production` |
-| `ALLOWED_ORIGINS` | `localhost:5173,...` | secret 권장 |
-| `API_BASE_URL` | `https://api.nodove.com` | secret 권장 |
-
-프로덕션에서는 주요 값(`ALLOWED_ORIGINS`, `API_BASE_URL`, `ASSETS_BASE_URL`, 모델 관련 값)을 `wrangler secret put` 또는 GitHub Secrets 기반 배포 파이프라인으로 주입하는 방식을 권장합니다.
-
----
-
-## 6. Edge Cases & Troubleshooting (운영 가이드)
-
-### 예상 에러 상황
-
-| 상황 | HTTP Code | Error Code | 해결 방법 |
-|------|-----------|------------|-----------|
-| OTP 만료 | 401 | `OTP_EXPIRED` | 로그인 재시도 |
-| 잘못된 OTP | 401 | `INVALID_OTP` | 최대 5회 시도 후 세션 만료 |
-| Refresh Token 만료 | 401 | `TOKEN_EXPIRED` | 재로그인 필요 |
-| 백엔드 연결 실패 | 503 | `BACKEND_UNAVAILABLE` | 백엔드 서버 상태 확인 |
-| D1 쿼리 실패 | 500 | `DATABASE_ERROR` | D1 대시보드에서 쿼리 로그 확인 |
-
-### 제약 사항
-
-1. **Cold Start**: Workers는 요청이 없으면 인스턴스가 종료됨. 첫 요청 시 ~50ms 지연 발생 가능
-2. **CPU 시간 제한**: 무료 플랜 10ms, 유료 플랜 30s (AI 요청 주의)
-3. **D1 쿼리 제한**: 단일 요청당 최대 100ms CPU 시간
-4. **KV 일관성**: Eventually Consistent (캐시 TTL 고려)
-
-### 디버깅 명령어
+### Quick checks
 
 ```bash
-# 실시간 로그 확인
-npx wrangler tail --env production
-
-# 로컬 개발 서버
-npx wrangler dev
-
-# D1 쿼리 실행
-npx wrangler d1 execute blog-db-prod --command "SELECT * FROM post_stats LIMIT 5"
-
-# Secrets 설정
-npx wrangler secret put JWT_SECRET --env production
+curl https://api.example.com/_health
+curl https://api.example.com/healthz
+curl https://api.example.com/health
+curl https://api.example.com/public/config
 ```
 
-### 배포
+### Failure modes
+
+- `BACKEND_ORIGIN` 누락 -> fallback 경로에서 `500`
+- backend 연결 실패 -> `503` + `Retry-After: 30`
+- backend upstream `502`-`504` -> wrapped JSON 오류 응답
+- 잘못된 runtime base URL config -> `public/config`의 API/WS endpoint가 잘못 계산될 수 있음
+
+## Deployment
+
+공용 스크립트는 `workers/package.json`에 있습니다.
 
 ```bash
-# 개발 환경
-npx wrangler deploy
-
-# 프로덕션
-npx wrangler deploy --env production
-
-# Dry-run (변경사항 확인)
-npx wrangler deploy --dry-run
+cd workers
+npm ci
+npm run dev
+npm run deploy:prod
 ```
 
----
+GitHub Actions 파일: `.github/workflows/deploy-workers.yml`
 
-## Quick Reference
-
-### Route Mounting Structure
-
-```
-/api/v1
-├── /auth         - 인증 (login, verify-otp, refresh, logout)
-├── /posts        - 게시글 CRUD
-├── /comments     - 댓글 관리
-├── /ai           - AI 기능 (sketch, prism, chain)
-├── /chat         - AI 채팅
-├── /images       - 이미지 업로드
-├── /og           - Open Graph 이미지 생성
-├── /analytics    - 조회수/트렌딩
-├── /translate    - 번역
-├── /config       - 동적 설정 (Admin)
-├── /rag          - RAG 질의응답
-├── /gateway      - 외부 API 프록시
-├── /memos        - 메모 기능
-├── /memories     - AI 메모리 저장
-├── /admin/ai     - AI 모델 관리 (Admin)
-├── /admin/secrets- 시크릿 관리 (Admin)
-├── /personas     - AI 페르소나
-└── /user-content - 사용자 생성 콘텐츠
-```
+- `workers/**` 변경 또는 수동 실행 시 동작
+- 현재 자동 배포 대상은 `api-gateway`
+- 일부 runtime config를 production secret으로 주입한 뒤 deploy 실행

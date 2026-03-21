@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "Kahn's/DFS", "Problem Solving", "Python", "Java"]
 excerpt: "Graph Advanced - 위상 정렬 (Topological) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**위상 정렬 (Topological)**
-* 파트: Graph Advanced
-* 관련 알고리즘: Kahn's/DFS
+위상 정렬은 순서를 정하는 문제가 아니라, 선행 의존성을 깨지 않는 실행 순서를 만드는 스케줄링 문제입니다. indegree가 0인 노드가 왜 지금 당장 실행 가능한 작업 집합을 의미하는지 설명해 보세요.
 
-> **Architect's View**
-> 의존성 해결과 스케줄링
+1. Kahn 방식에서 indegree 테이블과 큐 상태가 어떻게 변하는지 추적하세요.
+2. DFS 후위 순서 방식과 Kahn 방식을 cycle 검출 시점, 스트리밍 적합성, 구현 위험 관점에서 비교하세요.
+3. 실제 빌드 시스템이나 워크플로 오케스트레이션에서 partial order가 왜 전체 순서보다 본질적인지 설명하세요.
 
-이 글에서는 위상 정렬 (Topological) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- indegree 감소 과정을 적을 것
+- cycle이 있으면 왜 모든 노드를 꺼낼 수 없는지 설명할 것
+- 의존성 해소 관점으로 문제를 재정의할 것
 
 ## 🐍 Python 구현
 

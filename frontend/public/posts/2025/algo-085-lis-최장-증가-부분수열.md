@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "DP+이진탐색", "Problem Solving", "Python", "Java"]
 excerpt: "Dynamic Programming - LIS (최장 증가 부분수열) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**LIS (최장 증가 부분수열)**
-* 파트: Dynamic Programming
-* 관련 알고리즘: DP+이진탐색
+LIS는 증가 부분수열을 모두 찾는 문제가 아니라, 길이별로 "가장 작은 꼬리값"만 보존해 미래 확장 가능성을 최대화하는 문제입니다. patience sorting 해석이 왜 작동하는지 설명해 보세요.
 
-> **Architect's View**
-> Patience Sorting
+1. `tails[len]`가 무엇을 의미하는지 정의하고, 새 값이 들어올 때 이진 탐색으로 어떤 위치를 교체하는지 추적하세요.
+2. O(n^2) DP와 O(n log n) tails 방식을 비교해, 어떤 정보는 유지하고 어떤 정보는 버리는지 설명하세요.
+3. 실제 LIS 경로를 복원하려면 왜 predecessor 정보가 추가로 필요해지는지 설명하세요.
 
-이 글에서는 LIS (최장 증가 부분수열) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- `tails`의 의미를 길이별로 설명할 것
+- 교체가 정답 손실을 만들지 않는 이유를 적을 것
+- 길이 계산과 경로 복원을 구분할 것
 
 ## 🐍 Python 구현
 

@@ -10,6 +10,7 @@ import { httpCache } from './middleware/httpCache.js';
 import { httpRequestDuration, httpRequestsTotal } from './lib/metrics.js';
 import { logger, enablePgLogs } from './lib/logger.js';
 import { runMigrations, isPgConfigured } from './repositories/analytics.repository.js';
+import { closeRedis } from './lib/redis-client.js';
 
 import aiRouter from './routes/ai.js';
 import commentsRouter from './routes/comments.js';
@@ -29,12 +30,12 @@ import userRouter from './routes/user.js';
 import searchRouter from './routes/search.js';
 import configRouter from './routes/config.js';
 import workersRouter from './routes/workers.js';
-import aiAdminRouter from './routes/aiAdmin.js';
 import agentRouter from './routes/agent.js';
 import notificationsRouter from './routes/notifications.js';
 import debateRouter from './routes/debate.js';
 import metricsRouter from './routes/metrics.js';
 import adminLogsRouter from './routes/adminLogs.js';
+import executeRouter from './routes/execute.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 async function startServer() {
@@ -123,11 +124,11 @@ app.use('/api/v1/user', userRouter);
 app.use('/api/v1/search', searchRouter);
 app.use('/api/v1/admin/config', configRouter);
 app.use('/api/v1/admin/workers', workersRouter);
-app.use('/api/v1/admin/ai', aiAdminRouter);
 app.use('/api/v1/admin', adminLogsRouter);
 app.use('/api/v1/agent', agentRouter);
 
 app.use('/api/v1/debate', debateRouter);
+app.use('/api/v1/execute', executeRouter);
 
 app.use(notFoundHandler);
 
@@ -140,6 +141,40 @@ const server = app.listen(port, host, () => {
   logger.info({ features: { ai: config.features.aiEnabled, rag: config.features.ragEnabled, comments: config.features.commentsEnabled } }, 'features');
 });
 initChatWebSocket(server);
+
+let shuttingDown = false;
+function gracefulShutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.info({ signal }, 'Received shutdown signal, closing server...');
+
+  server.close(async () => {
+    logger.info({}, 'HTTP server closed');
+    try {
+      await closeRedis();
+      logger.info({}, 'Redis connections closed');
+    } catch (err) {
+      logger.error({ err }, 'Failed to close Redis connections');
+    }
+    process.exit(0);
+  });
+
+  setTimeout(() => {
+    logger.error({}, 'Shutdown timed out after 10s, forcing exit');
+    process.exit(1);
+  }, 10_000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+process.on('unhandledRejection', (reason) => {
+  logger.error({ err: reason }, 'Unhandled promise rejection');
+});
+process.on('uncaughtException', (err) => {
+  logger.error({ err }, 'Uncaught exception — shutting down');
+  gracefulShutdown('uncaughtException');
+});
 }
 
 startServer().catch(err => {

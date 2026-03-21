@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "복합 자료구조", "Problem Solving", "Python", "Java"]
 excerpt: "Advanced Topics - LRU+TTL 캐시 시스템 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**LRU+TTL 캐시 시스템**
-* 파트: Advanced Topics
-* 관련 알고리즘: 복합 자료구조
+LRU+TTL 캐시는 자료구조 문제가 아니라, recency와 absolute expiration이라는 서로 다른 시간 축을 동시에 관리해야 하는 실무형 캐시 설계 문제입니다. 왜 "최근 사용됨"과 "이미 만료됨"은 별개의 상태인지 설명해 보세요.
 
-> **Architect's View**
-> 실무 시스템 설계 종합
+1. `get`, `put`, 만료 확인, eviction이 일어날 때 hash map, recency list, time-based index가 어떻게 상호작용하는지 추적하세요.
+2. 순수 LRU, 순수 TTL, LRU+lazy expiration, time wheel/background sweeper 조합을 비교하세요.
+3. 동시성, clock skew, thundering herd, stale read를 막으려면 어떤 추가 정책이 필요한지 설명하세요.
 
-이 글에서는 LRU+TTL 캐시 시스템 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- recency와 expiry를 분리해서 적을 것
+- 만료 검사가 언제 eager/lazy로 일어나는지 설명할 것
+- 시스템 레벨 장애 요소를 하나 이상 포함할 것
 
 ## 🐍 Python 구현
 

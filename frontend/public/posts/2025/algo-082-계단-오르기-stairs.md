@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "1D DP", "Problem Solving", "Python", "Java"]
 excerpt: "Dynamic Programming - 계단 오르기 (Stairs) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**계단 오르기 (Stairs)**
-* 파트: Dynamic Programming
-* 관련 알고리즘: 1D DP
+계단 오르기는 조합 나열이 아니라, `i`번째 계단에 도달하는 방법 수가 직전 몇 상태에만 의존하는 선형 상태 전이 문제입니다. 왜 `dp[i] = dp[i-1] + dp[i-2]`가 시스템 전체를 요약하는 충분한 상태인지 설명해 보세요.
 
-> **Architect's View**
-> 상태 전이와 점화식
+1. 작은 n에서 상태 표를 채우며 각 칸이 어떤 이전 칸을 읽는지 추적하세요.
+2. 완전 재귀, 메모이제이션, 1D DP, 상수 메모리 rolling 변수를 비교하세요.
+3. 한 번에 1,2가 아니라 1,3,5칸처럼 규칙이 바뀌면 상태 차원이 어떻게 달라지는지 설명하세요.
 
-이 글에서는 계단 오르기 (Stairs) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- base case를 정확히 적을 것
+- 상태 전이 근거를 설명할 것
+- rolling 변수로 압축 가능한 이유를 적을 것
 
 ## 🐍 Python 구현
 

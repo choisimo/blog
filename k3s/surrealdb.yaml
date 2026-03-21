@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: surrealdb
+  namespace: blog
+spec:
+  clusterIP: None
+  selector:
+    app: surrealdb
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: surrealdb
+  namespace: blog
+spec:
+  serviceName: surrealdb
+  replicas: 1
+  selector:
+    matchLabels:
+      app: surrealdb
+  template:
+    metadata:
+      labels:
+        app: surrealdb
+    spec:
+      containers:
+        - name: surrealdb
+          image: surrealdb/surrealdb:v2
+          imagePullPolicy: IfNotPresent
+          command:
+            - /surreal
+            - start
+            - --user
+            - root
+            - --bind
+            - 0.0.0.0:8000
+            - rocksdb:///data/database.db
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: SURREAL_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: blog-app-secrets
+                  key: SURREALDB_ROOT_PASSWORD
+            - name: SURREAL_USER
+              value: "root"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 10Gi

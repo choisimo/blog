@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "피벗 분할", "Problem Solving", "Python", "Java"]
 excerpt: "Sorting & Binary Search - 퀵 정렬 (Quick Sort) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**퀵 정렬 (Quick Sort)**
-* 파트: Sorting & Binary Search
-* 관련 알고리즘: 피벗 분할
+퀵 정렬의 본질은 "정렬"이 아니라, 피벗을 기준으로 메모리 구간을 재배치해 문제를 비대칭 하위 문제들로 분해하는 것입니다. 피벗 선택이 왜 단순 구현 디테일이 아니라 성능 분포 전체를 결정하는지 설명해 보세요.
 
-> **Architect's View**
-> 피벗 전략과 최악 케이스 방어
+1. 파티션 과정에서 피벗보다 작은 영역, 아직 미분류 영역, 큰 영역이 어떻게 변하는지 시공간적으로 추적하세요.
+2. 병합 정렬과 비교해 추가 메모리, cache locality, 최악 사례 민감도 측면에서 어떤 trade-off가 있는지 설명하세요.
+3. 정렬된 입력, 중복이 많은 입력, 랜덤 입력에서 피벗 전략을 어떻게 달리해야 하는지 설명하세요.
 
-이 글에서는 퀵 정렬 (Quick Sort) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- partition 불변식을 명시할 것
+- 평균 성능과 최악 성능을 분리할 것
+- 피벗 전략이 왜 중요한지 반례와 함께 적을 것
 
 ## 🐍 Python 구현
 

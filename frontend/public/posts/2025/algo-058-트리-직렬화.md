@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "직렬화/역직렬화", "Problem Solving", "Python", "Java"]
 excerpt: "Tree & Binary Search Tree - 트리 직렬화 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**트리 직렬화**
-* 파트: Tree & Binary Search Tree
-* 관련 알고리즘: 직렬화/역직렬화
+트리 직렬화는 자료구조 문제라기보다, 메모리 안의 포인터 구조를 네트워크나 저장소를 건널 수 있는 선형 프로토콜로 바꾸는 문제입니다. 값 나열만으로는 왜 원래 구조를 복원할 수 없는지 설명해 보세요.
 
-> **Architect's View**
-> 데이터 교환 프로토콜 설계
+1. preorder + null marker 방식이 어떤 토큰 스트림을 만들고, 역직렬화가 그 스트림을 어떻게 다시 트리 구조로 복원하는지 추적하세요.
+2. preorder null marker, level-order, 괄호 표기법을 직렬화 크기, 모호성, 스트리밍 적합성 관점에서 비교하세요.
+3. 이 프로토콜에 버전 필드, 압축, checksum이 추가되면 왜 단순 알고리즘 문제가 시스템 설계 문제로 바뀌는지 설명하세요.
 
-이 글에서는 트리 직렬화 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 토큰 스트림 예시를 적을 것
+- 복원 가능성이 왜 null marker에 달려 있는지 적을 것
+- 프로토콜 설계 관점의 trade-off를 설명할 것
 
 ## 🐍 Python 구현
 

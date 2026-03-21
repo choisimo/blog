@@ -154,6 +154,24 @@ export function clearSecretsCache(keyName?: string): void {
   }
 }
 
+export async function getAiServeApiKey(env: Env): Promise<string | undefined> {
+  const secretValue = await getSecret(env, 'AI_API_KEY');
+  if (secretValue) {
+    return secretValue;
+  }
+
+  try {
+    const kvValue = await env.KV.get('config:ai_serve_api_key');
+    if (kvValue) {
+      return kvValue;
+    }
+  } catch (error) {
+    console.error('Failed to read AI serve API key from KV:', error);
+  }
+
+  return env.AI_API_KEY;
+}
+
 /**
  * Get AI provider API key
  * Convenience function for AI-related operations

@@ -53,13 +53,18 @@ export function getApiBaseUrl(): string {
       if (v) {
         const parsed = JSON.parse(v) as unknown;
         if (typeof parsed === "string" && parsed) {
+          const isProd = import.meta.env.PROD as boolean | undefined;
+          // Require an explicit localhost host/port match to avoid suffix spoofing.
+          const isLocalhost =
+            /^http:\/\/localhost(:\d+)?(\/|$)/.test(parsed) ||
+            /^http:\/\/127\.0\.0\.1(:\d+)?(\/|$)/.test(parsed);
+          if (!isProd || parsed.startsWith("https://") || isLocalhost) {
           baseUrl = parsed;
           source = "localStorage";
+          }
         }
       }
-    } catch {
-      void 0;
-    }
+    } catch { void 0; }
   }
 
   if (!baseUrl) {
@@ -105,9 +110,7 @@ export function getApiBaseUrl(): string {
       const w2 = window as RuntimeWindow;
       if (w2?.APP_CONFIG?.apiBaseUrl) w2.APP_CONFIG.apiBaseUrl = normalized;
       if (w2?.__APP_CONFIG?.apiBaseUrl) w2.__APP_CONFIG.apiBaseUrl = normalized;
-    } catch {
-      void 0;
-    }
+    } catch { void 0; }
   }
 
   return normalized;

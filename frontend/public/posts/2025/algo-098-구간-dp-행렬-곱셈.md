@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "Interval DP", "Problem Solving", "Python", "Java"]
 excerpt: "Advanced Topics - 구간 DP (행렬 곱셈) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**구간 DP (행렬 곱셈)**
-* 파트: Advanced Topics
-* 관련 알고리즘: Interval DP
+행렬 곱셈 순서 최적화는 곱셈 그 자체가 아니라, 어떤 분할점에서 parenthesization을 끊어야 총 연산량이 최소가 되는지 찾는 interval DP 문제입니다. 왜 로컬에서 가장 작은 곱을 먼저 하는 탐욕이 실패하는지 설명해 보세요.
 
-> **Architect's View**
-> 최적 분할 전략
+1. `dp[i][j]`가 구간 `[i, j]`의 최소 비용이라는 뜻을 갖도록 정의하고, 분할점 `k`를 바꿔 가며 비용이 어떻게 계산되는지 추적하세요.
+2. memoized recursion과 bottom-up diagonal fill을 비교해, 채우기 순서가 왜 중요하고 어떤 캐시 패턴을 만드는지 설명하세요.
+3. SQL join order, 컴파일러 expression tree 최적화와 이 문제가 어떻게 연결되는지 설명하세요.
 
-이 글에서는 구간 DP (행렬 곱셈) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 분할점 `k`의 역할을 적을 것
+- 구간 길이 순서로 채우는 이유를 설명할 것
+- greedy가 실패하는 반례를 적을 것
 
 ## 🐍 Python 구현
 

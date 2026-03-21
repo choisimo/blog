@@ -1,8 +1,17 @@
-import fs from 'fs';
+import fs from 'fs/promises';
 import fse from 'fs-extra';
 import path from 'node:path';
 import sharp from 'sharp';
 import { config } from '../config.js';
+
+async function fileExists(p) {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function sanitizeSegment(s) {
   return String(s || '')
@@ -50,12 +59,12 @@ export async function saveImageWithVariants(destDirAbs, relDir, file) {
     throw Object.assign(new Error(`Unsupported file type: .${ext}`), { status: 400 });
   }
 
-  fse.ensureDirSync(destDirAbs);
+  await fse.ensureDir(destDirAbs);
 
   let finalName = origName;
   let base = origName.replace(/\.[^.]+$/, '');
   let counter = 1;
-  while (fs.existsSync(path.join(destDirAbs, finalName))) {
+  while (await fileExists(path.join(destDirAbs, finalName))) {
     finalName = `${base}-${counter}.${ext}`;
     counter += 1;
   }
@@ -90,24 +99,25 @@ export async function saveImageWithVariants(destDirAbs, relDir, file) {
   };
 }
 
-export function listImages(dirAbs, relDir) {
-  if (!fs.existsSync(dirAbs)) {
+export async function listImages(dirAbs, relDir) {
+  if (!(await fileExists(dirAbs))) {
     return [];
   }
   
-  const entries = fs.readdirSync(dirAbs);
-  return entries
-    .filter(name => fs.statSync(path.join(dirAbs, name)).isFile())
-    .map(name => {
-      const stat = fs.statSync(path.join(dirAbs, name));
-      return {
+  const entries = await fs.readdir(dirAbs);
+  const results = [];
+  for (const name of entries) {
+    const stat = await fs.stat(path.join(dirAbs, name));
+    if (stat.isFile()) {
+      results.push({
         filename: name,
         url: `/images/${relDir}/${name}`,
         sizeBytes: stat.size,
         mtime: stat.mtime.toISOString(),
-      };
-    })
-    .sort((a, b) => (a.filename < b.filename ? -1 : 1));
+      });
+    }
+  }
+  return results.sort((a, b) => (a.filename < b.filename ? -1 : 1));
 }
 
 export async function deleteImage(year, slug, filename) {
@@ -117,7 +127,7 @@ export async function deleteImage(year, slug, filename) {
   const rel = path.posix.join(y, s, f);
   const abs = path.join(config.content.imagesDir, rel);
 
-  if (!fs.existsSync(abs)) {
+  if (!(await fileExists(abs))) {
     throw Object.assign(new Error('Not found'), { status: 404 });
   }
   
@@ -125,8 +135,7 @@ export async function deleteImage(year, slug, filename) {
 
   // Attempt to remove variant with -w*.webp
   const base = f.replace(/\.[^.]+$/, '');
-  const variantCandidates = fs
-    .readdirSync(path.dirname(abs))
+  const variantCandidates = (await fs.readdir(path.dirname(abs)))
     .filter(n => n.startsWith(base + '-w') && n.endsWith('.webp'));
     
   for (const cand of variantCandidates) {

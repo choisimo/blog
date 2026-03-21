@@ -1,7 +1,6 @@
 type Env = {
   MY_BUCKET: R2Bucket;
   INTERNAL_KEY?: string;
-  ALLOWED_INTERNAL_ORIGINS?: string;
   ALLOWED_ORIGINS?: string;
 };
 
@@ -90,16 +89,7 @@ async function handleAssetRequest(request: Request, env: Env, key: string) {
 
 function isInternalCall(request: Request, env: Env): boolean {
   const key = request.headers.get("X-Internal-Key") || "";
-  if (env.INTERNAL_KEY && key === env.INTERNAL_KEY) {
-    return true;
-  }
-  const referer = request.headers.get("Referer") || "";
-  if (!referer) return false;
-  if (!env.ALLOWED_INTERNAL_ORIGINS) return false;
-  return env.ALLOWED_INTERNAL_ORIGINS.split(",")
-    .map((o) => o.trim())
-    .filter(Boolean)
-    .some((allowed) => referer.startsWith(allowed));
+  return !!(env.INTERNAL_KEY && key === env.INTERNAL_KEY);
 }
 
 async function handleInternalRequest(

@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "2D DP", "Problem Solving", "Python", "Java"]
 excerpt: "Dynamic Programming - 편집 거리 (Edit Distance) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**편집 거리 (Edit Distance)**
-* 파트: Dynamic Programming
-* 관련 알고리즘: 2D DP
+편집 거리는 두 문자열이 얼마나 다른지 세는 문제가 아니라, 삽입/삭제/치환 연산이 만드는 최소 변환 경로를 구하는 정렬(alignment) 문제입니다. 각 연산이 DP 테이블에서 어떤 이동으로 표현되는지 설명해 보세요.
 
-> **Architect's View**
-> 문자열 유사도 측정
+1. `dp[i][j]`를 `word1[:i]`에서 `word2[:j]`로 가는 최소 비용으로 정의하고, 세 연산이 각각 어느 이전 상태를 참조하는지 추적하세요.
+2. LCS와의 관계, 비용 가중치가 다를 때의 변화, 실제 철자 교정 시스템에서의 의미를 설명하세요.
+3. Damerau 전치(transposition) 같은 추가 연산이 들어오면 왜 상태 전이가 달라지는지 설명하세요.
 
-이 글에서는 편집 거리 (Edit Distance) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 세 연산의 의미를 명확히 적을 것
+- base row/base column을 설명할 것
+- 문자열 유사도와 변환 비용의 관계를 적을 것
 
 ## 🐍 Python 구현
 

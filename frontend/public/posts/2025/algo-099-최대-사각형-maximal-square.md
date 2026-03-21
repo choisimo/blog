@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "2D DP", "Problem Solving", "Python", "Java"]
 excerpt: "Advanced Topics - 최대 사각형 (Maximal Square) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**최대 사각형 (Maximal Square)**
-* 파트: Advanced Topics
-* 관련 알고리즘: 2D DP
+최대 정사각형은 2D 격자에서 단순히 1의 개수를 세는 문제가 아니라, 각 셀을 우하단 꼭짓점으로 하는 최대 정사각형 크기를 누적하는 기하학적 DP 문제입니다. 왜 세 이웃의 최소값이 핵심이 되는지 설명해 보세요.
 
-> **Architect's View**
-> 기하학적 DP 최적화
+1. `dp[r][c]`를 현재 셀을 우하단으로 하는 최대 정사각형 한 변 길이로 정의하고, 위/왼쪽/왼쪽위 이웃이 어떻게 전이를 결정하는지 추적하세요.
+2. brute force로 모든 정사각형을 검사하는 방식과 2D DP를 비교하세요.
+3. 직사각형 최대 면적 문제와 왜 전이 방식이 달라지는지 설명하세요.
 
-이 글에서는 최대 사각형 (Maximal Square) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 세 이웃의 역할을 적을 것
+- 1이 아닌 셀에서 상태가 0이 되는 이유를 설명할 것
+- square와 rectangle 문제를 구분할 것
 
 ## 🐍 Python 구현
 

@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "문법 생성", "Problem Solving", "Python", "Java"]
 excerpt: "Recursion & Backtracking - 괄호 생성 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**괄호 생성**
-* 파트: Recursion & Backtracking
-* 관련 알고리즘: 문법 생성
+괄호 생성은 문자열 나열이 아니라, 잘 형성된 문법만 생성하도록 탐색 트리를 제한하는 생성(grammar production) 문제입니다. 여는 괄호와 닫는 괄호 개수 조건이 왜 지역 제약이면서도 전체 문법을 보장하는지 설명해 보세요.
 
-> **Architect's View**
-> Grammar Production과 카탈란 수
+1. 현재 문자열, `open`, `close` 카운터가 어떤 상태를 표현하는지 추적하고, `close > open`이 왜 금지 상태인지 설명하세요.
+2. 모든 2n 길이 이진 문자열 생성 후 필터링하는 방식과 제약 기반 생성 방식을 출력 수, 낭비 연산, 메모리 관점에서 비교하세요.
+3. 이 구조가 카탈란 수, 파서 테스트 케이스 생성, balanced structure enumeration과 어떻게 연결되는지 설명하세요.
 
-이 글에서는 괄호 생성 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 유효 prefix 조건을 명시할 것
+- 생성과 검증을 분리해서 설명할 것
+- 왜 필터링보다 생성 제약이 강한지 적을 것
 
 ## 🐍 Python 구현
 

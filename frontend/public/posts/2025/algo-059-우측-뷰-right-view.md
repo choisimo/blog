@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "레벨 순회", "Problem Solving", "Python", "Java"]
 excerpt: "Tree & Binary Search Tree - 우측 뷰 (Right View) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**우측 뷰 (Right View)**
-* 파트: Tree & Binary Search Tree
-* 관련 알고리즘: 레벨 순회
+우측 뷰는 트리 전체를 보는 문제가 아니라, 계층 구조를 특정 시점(side projection)에서 투영했을 때 보이는 frontier를 추출하는 문제입니다. 왜 각 레벨에서 마지막 노드만 남기면 되는지 설명해 보세요.
 
-> **Architect's View**
-> View Projection 패턴
+1. 레벨 순회에서 각 depth의 노드 집합이 어떻게 형성되고, 그중 어떤 노드가 투영 결과로 선택되는지 추적하세요.
+2. BFS level-order 방식과 우선 순서를 조정한 DFS 방식이 같은 답을 만드는 이유와, 내부 상태는 어떻게 다른지 설명하세요.
+3. 좌측 뷰, 상단 뷰, 실루엣 문제로 일반화하면 어떤 추가 좌표 정보가 필요해지는지 설명하세요.
 
-이 글에서는 우측 뷰 (Right View) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 레벨별 frontier를 적을 것
+- 투영 관점에서 문제를 설명할 것
+- BFS와 DFS의 상태 차이를 적을 것
 
 ## 🐍 Python 구현
 

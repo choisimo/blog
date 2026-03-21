@@ -152,6 +152,7 @@ export type ChatStreamEvent =
 export type StreamChatInput = {
   text: string;
   page?: { url?: string; title?: string };
+  currentPost?: PageContext["article"];
   signal?: AbortSignal;
   onFirstToken?: (ms: number) => void;
   useArticleContext?: boolean;
@@ -181,6 +182,13 @@ export type ChatImageUploadResult = {
 export type PageContext = {
   url?: string;
   title?: string;
+  article?: {
+    title?: string;
+    slug?: string;
+    year?: string;
+    description?: string;
+    headings?: string[];
+  };
 };
 
 export type ContentPart = {

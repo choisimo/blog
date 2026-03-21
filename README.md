@@ -1,404 +1,175 @@
 # Nodove Blog Platform
 
-> Full-Stack 블로그 플랫폼 - Edge Computing 기반 고성능 아키텍처
+> 참고: 이 문서의 공개 호스트명과 운영 주소 예시는 모두 비식별 placeholder입니다.
 
-## 🏗️ Architecture Overview
+## Overview
+
+이 저장소는 블로그 프론트엔드, Cloudflare Workers 기반 edge 레이어, Node.js backend, k3s 배포 매니페스트를 함께 관리합니다.
+
+- `frontend/`: React 18 + Vite SPA
+- `workers/`: Cloudflare Workers (`api-gateway`, `r2-gateway`, `terminal-gateway`, `seo-gateway`)
+- `backend/`: Node.js Express origin server
+- `k3s/`: k3s base/optional manifests
+- `docs/`: 운영 규칙과 분석 문서
+
+## Runtime Topology
 
 ```mermaid
 flowchart TB
-    subgraph "Clients"
-        FE[Frontend<br/>React SPA]
-        ADMIN[Admin Panel]
-        DOC[Doc Converter]
-    end
+    FE[Frontend SPA]
+    SEO[seo-gateway]
+    API[blog-api-gateway]
+    R2GW[r2-gateway]
+    TERM[terminal-gateway]
+    BE[backend]
+    D1[(D1)]
+    R2[(R2)]
+    KV[(KV)]
 
-    subgraph "Cloudflare Edge (Global)"
-        API_GW[API Gateway<br/>api.nodove.com]
-        R2_GW[R2 Gateway<br/>assets-b.nodove.com]
-        TERM_GW[Terminal Gateway<br/>terminal.nodove.com]
-        
-        D1[(D1 Database)]
-        R2[(R2 Storage)]
-        KV[(KV Store)]
-    end
-
-    subgraph "Origin Server"
-        BE[Backend Server<br/>blog-b.nodove.com]
-        AI_SRV[AI Server]
-        RAG[RAG Service]
-    end
-
-    FE --> API_GW
-    ADMIN --> API_GW
-    DOC -.->|Standalone| FE
-    
-    API_GW --> D1
-    API_GW --> R2
-    API_GW --> KV
-    API_GW -.->|Proxy| BE
-    
-    R2_GW --> R2
-    TERM_GW -.->|WebSocket| BE
-    
-    BE --> AI_SRV
-    BE --> RAG
+    FE --> API
+    FE --> R2GW
+    FE --> TERM
+    SEO --> FE
+    API --> D1
+    API --> R2
+    API --> KV
+    API -. fallback .-> BE
+    TERM -. websocket proxy .-> BE
+    R2GW --> R2
 ```
 
----
+## Documentation Index
 
-## 📚 Documentation Index
+| Area | Purpose | Document |
+| --- | --- | --- |
+| Edge layer | Worker roles, bindings, migrations, deployment | `workers/README.md` |
+| Backend | Route boundaries, runtime dependencies, operations | `backend/README.md` |
+| k3s | Base manifests, optional terminal runtime, rollout constraints | `k3s/README.md` |
+| Post naming | Filename and slug convention | `docs/post-filename-convention.md` |
+| AI config analysis | AI configuration consistency notes | `docs/ai-config-consistency-plan.md` |
+| News analysis | News service notes | `docs/news-service-analysis.md` |
+| Optimization analysis | Performance investigation notes | `docs/optimization-analysis.md` |
 
-### Core Services
+## Repository Layout
 
-| Service | Description | Documentation |
-|---------|-------------|---------------|
-| **Cloudflare Workers** | Edge Computing 레이어 (API Gateway, R2, Terminal) | [📄 workers/README.md](./workers/README.md) |
-| **API Gateway** | 통합 API 진입점 (인증, 콘텐츠, AI, 분석) | [📄 workers/api-gateway/README.md](./workers/api-gateway/README.md) |
-| **R2 Gateway** | Object Storage 접근 제어 및 Edge 캐싱 | [📄 workers/r2-gateway/README.md](./workers/r2-gateway/README.md) |
-| **Backend Server** | Origin 서버 (AI, RAG, OG Image) | [📄 backend/README.md](./backend/README.md) |
+```text
+blog/
+|- frontend/              React SPA and build scripts
+|- workers/               Cloudflare Workers and D1 migrations
+|- backend/               Express origin server and terminal server
+|- k3s/                   Kubernetes manifests for origin-side services
+|- docs/                  Project documentation and analysis notes
+|- scripts/               Repository utility scripts
+`- .github/workflows/     GitHub Actions workflows
+```
 
-### Subsystems
+## Local Development
 
-| Subsystem | Description | Documentation |
-|-----------|-------------|---------------|
-| **AI Service** | 지능형 기능 (요약, 분석, RAG) | [📄 docs/AI_SERVICE_ANATOMY_MAP.md](./docs/AI_SERVICE_ANATOMY_MAP.md) |
-| **CI/CD Pipeline** | GitHub Actions 자동 배포 | [📄 backend/README-CICD.md](./backend/README-CICD.md) |
-| **Doc Converter** | DOCX/PDF → Markdown 변환기 | [📄 doc-converter/README.md](./doc-converter/README.md) |
-
----
-
-## 🛠️ Tech Stack
-
-### Edge Layer (Cloudflare)
-- **Runtime**: Cloudflare Workers (V8 Isolate)
-- **Framework**: Hono
-- **Database**: D1 (SQLite)
-- **Storage**: R2 (S3 Compatible)
-- **Cache**: KV Store
-- **Language**: TypeScript
+루트 `package.json`은 서비스 오케스트레이션을 제공하지 않습니다. 각 서비스는 자신의 디렉토리에서 따로 실행합니다.
 
 ### Frontend
-- **Framework**: React 18 + Vite
-- **Styling**: Tailwind CSS
-- **State**: Zustand
-- **Build**: Vite 5
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+- dev server: `http://localhost:5173`
+- `predev`에서 manifest 생성 스크립트를 먼저 실행합니다.
+
+### Workers
+
+```bash
+cd workers
+npm ci
+npm run dev
+```
+
+- 기본 `npm run dev`는 `wrangler dev`로 `api-gateway`를 띄웁니다.
+- 개별 worker 작업 시 `workers/<name>/`에서 `wrangler dev`를 실행합니다.
 
 ### Backend
-- **Runtime**: Node.js 20+
-- **Framework**: Express 4
-- **Image Processing**: Sharp
-- **AI Backend**: OpenCode Server
-- **Vector DB**: ChromaDB
-
----
-
-## 🌐 Domain Structure
-
-| Domain | Service | Purpose |
-|--------|---------|---------|
-| `noblog.nodove.com` | Frontend | React SPA (GitHub Pages) |
-| `api.nodove.com` | API Gateway | All API requests |
-| `assets-b.nodove.com` | R2 Gateway | Static assets, images |
-| `terminal.nodove.com` | Terminal Gateway | WebSocket terminal |
-| `blog-b.nodove.com` | Backend | Origin server |
-
----
-
-## 📂 Project Structure
-
-```
-blog/
-├── frontend/                    # React SPA
-│   ├── src/                    # React 소스코드
-│   └── public/
-│       └── posts/              # Markdown 블로그 포스트
-│
-├── workers/                     # Cloudflare Workers
-│   ├── api-gateway/            # 메인 API Gateway
-│   │   ├── src/routes/         # API 라우트
-│   │   ├── migrations/         # D1 마이그레이션
-│   │   └── wrangler.toml       # Workers 설정
-│   ├── r2-gateway/             # R2 스토리지 Gateway
-│   └── terminal-gateway/       # WebSocket 터미널 Gateway
-│
-├── backend/                     # Node.js Origin Server
-│   ├── src/
-│   │   ├── routes/             # API 라우트
-│   │   └── lib/                # 유틸리티 (AI, RAG, Agent)
-│   ├── docker-compose.yml
-│   └── Dockerfile
-│
-├── shared/                      # 공유 유틸리티
-│
-├── doc-converter/               # 문서 변환 도구
-│   └── src/                    # React + Vite
-│
-├── docs/                        # 추가 문서
-│   └── AI_SERVICE_ANATOMY_MAP.md
-│
-├── scripts/                     # 유틸리티 스크립트
-│
-└── .github/
-    └── workflows/              # CI/CD 파이프라인
-        ├── deploy-blog-workflow.yml
-        └── deploy-api-gateway.yml
-```
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 20+
-- npm 9+
-- Wrangler CLI (`npm i -g wrangler`)
-- Docker (for backend)
-
-### Local Development
 
 ```bash
-# 1. Clone repository
-git clone https://github.com/your-username/blog.git
-cd blog
-
-# 2. Install dependencies
-npm install
-
-# 3. Start all services
-./start-all-local.sh
-```
-
-### Individual Service Development
-
-```bash
-# Frontend (React)
-cd frontend
-npm install
-npm run dev
-# → http://localhost:5173
-
-# API Gateway (Workers)
-cd workers/api-gateway
-npm install
-npx wrangler dev
-# → http://localhost:8787
-
-# Backend (Node.js)
 cd backend
-npm install
+npm ci
 npm run dev
-# → http://localhost:5080
-
-# Doc Converter
-cd doc-converter
-npm install
-npm run dev
-# → http://localhost:5174
 ```
 
----
+- default port: `5080`
+- health check: `http://localhost:5080/api/v1/healthz`
 
-## 📋 API Overview
+## Verified Entrypoints
 
-### Authentication
-```
-POST /api/v1/auth/login         - 로그인 (OTP 발송)
-POST /api/v1/auth/verify-otp    - OTP 검증 → JWT 발급
-POST /api/v1/auth/refresh       - Access Token 갱신
-POST /api/v1/auth/logout        - 로그아웃
-```
+### Frontend
 
-### Content
-```
-GET  /api/v1/posts              - 게시글 목록
-GET  /api/v1/posts/:slug        - 게시글 상세
-POST /api/v1/posts              - 게시글 생성 (Admin)
-GET  /api/v1/comments           - 댓글 목록
-POST /api/v1/comments           - 댓글 작성
-```
+- 정적 컨텐츠와 SPA는 `frontend/`에서 관리합니다.
+- build/dev/test/lint/typecheck 스크립트는 `frontend/package.json`에 정의되어 있습니다.
 
-### AI
-```
-POST /api/v1/ai/sketch          - 개념 스케치
-POST /api/v1/ai/prism           - 다각도 분석
-POST /api/v1/ai/chain           - 연쇄 사고 분석
-POST /api/v1/rag/query          - RAG 질의응답
-```
+### Workers
 
-### Analytics
-```
-POST /api/v1/analytics/view     - 조회수 기록
-GET  /api/v1/analytics/trending - 트렌딩 게시글
-GET  /api/v1/analytics/editor-picks - 에디터 픽
-```
+- `blog-api-gateway`
+  - health: `/_health`, `/healthz`
+  - public config: `/public/config`, `/api/v1/public/config`
+  - mounted API prefixes: `/auth`, `/posts`, `/comments`, `/ai`, `/chat`, `/images`, `/og`, `/analytics`, `/translate`, `/config`, `/rag`, `/memos`, `/memories`, `/admin/ai`, `/admin/secrets`, `/internal`, `/personas`, `/user-content`, `/search`, `/user`, `/debate`, `/subscribe`, `/contact`, `/notifications`, `/admin/logs`, `/gateway`
+  - fallback: unhandled routes proxy to backend
+  - cron: `0 6 * * *`
+- `r2-gateway`
+  - public prefixes: `ai-chat/`, `images/`, `posts/`, `assets/`
+  - internal API: `/internal/{resource}/{userId}/{id?}`
+- `terminal-gateway`
+  - `/terminal` websocket path만 처리
+  - JWT, rate limiting, single-session, geo blocking, `X-Backend-Key` 주입
+- `seo-gateway`
+  - crawler request만 HTML meta rewrite
+  - non-crawler는 static/GitHub Pages 흐름으로 pass-through
 
----
+### Backend
 
-## 🔧 Configuration
+- public routes before backend-key guard:
+  - `GET /api/v1/healthz`
+  - `GET /api/v1/public/config`
+  - `GET /metrics`
+  - `/api/v1/notifications`
+- 이후 `requireBackendKey`가 적용되고 나머지 `/api/v1/*` backend routes가 mount 됩니다.
 
-### Environment Variables
+## Deployment Notes
 
-각 서비스별 환경변수는 해당 README를 참조하세요:
-- [API Gateway Secrets](./workers/api-gateway/README.md#5-dependencies--environment-의존성)
-- [Backend Environment](./backend/README.md#5-dependencies--environment-의존성)
+### GitHub Actions
 
-### Cloudflare Setup
+- `deploy-workers.yml`
+  - trigger: `workers/**` 또는 workflow file 변경, 수동 실행
+  - installs dependencies in `workers/api-gateway`
+  - runtime secrets 일부를 `wrangler secret put`으로 주입
+  - production `api-gateway` deploy 실행
+- `deploy-blog-workflow.yml`
+  - trigger: `backend/**` 또는 workflow file 변경, 수동 실행
+  - `blog-api`, `blog-terminal` 이미지를 GHCR에 build/push
+  - 서버 배포는 자동 실행하지 않고 manual deployment 안내만 출력
+- `deploy.yml`도 저장소에 존재하지만 이 문서는 해당 workflow의 역할을 추가 검증하지 않습니다.
+
+### k3s
+
+- `k3s/kustomization.yaml` base set에는 `namespace.yaml`, `configmap.yaml`, `postgres.yaml`, `redis.yaml`, `chromadb.yaml`, `surrealdb.yaml`, `open-notebook.yaml`, `api.yaml`, `ingress.yaml`, `middleware.yaml`이 포함됩니다.
+- optional terminal runtime은 base set에 포함되지 않습니다.
+
+## Operations Quick Checks
 
 ```bash
-# Login to Cloudflare
-npx wrangler login
+# backend health
+curl http://localhost:5080/api/v1/healthz
 
-# Deploy API Gateway
-cd workers/api-gateway
-npx wrangler deploy --env production
+# backend metrics
+curl http://localhost:5080/metrics
 
-# Set secrets
-npx wrangler secret put JWT_SECRET --env production
-npx wrangler secret put ADMIN_USERNAME --env production
-npx wrangler secret put ADMIN_PASSWORD --env production
+# workers health (local or deployed base URL)
+curl https://api.example.com/_health
+curl https://api.example.com/healthz
 ```
 
----
+## Notes And Boundaries
 
-## 📖 Documentation Deep Dive
-
-### 1. Workers Layer
-전체 Edge Computing 아키텍처 이해:
-→ [workers/README.md](./workers/README.md)
-
-### 2. API Gateway Details
-인증, 라우팅, 프록시 메커니즘:
-→ [workers/api-gateway/README.md](./workers/api-gateway/README.md)
-
-### 3. R2 Storage Access
-캐싱 전략, 접근 제어:
-→ [workers/r2-gateway/README.md](./workers/r2-gateway/README.md)
-
-### 4. Backend Server
-AI 서비스, RAG, Agent 시스템:
-→ [backend/README.md](./backend/README.md)
-
-### 5. AI Service Architecture
-Provider 선택, 스트리밍, Vision:
-→ [docs/AI_SERVICE_ANATOMY_MAP.md](./docs/AI_SERVICE_ANATOMY_MAP.md)
-
-### 6. CI/CD Pipeline
-GitHub Actions, Docker 배포:
-→ [backend/README-CICD.md](./backend/README-CICD.md)
-
-### 7. Doc Converter Tool
-DOCX/PDF 변환 워크플로우:
-→ [doc-converter/README.md](./doc-converter/README.md)
-
----
-
-## 🔄 Data Flow
-
-### Request Lifecycle
-
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant GW as API Gateway
-    participant D1 as D1 Database
-    participant BE as Backend
-    participant AI as AI Server
-
-    C->>GW: API Request
-    
-    alt Handled by Workers
-        GW->>D1: Query/Mutation
-        D1-->>GW: Result
-        GW-->>C: Response
-    else Proxy to Backend
-        GW->>BE: Forward Request
-        alt AI Request
-            BE->>AI: Process
-            AI-->>BE: AI Result
-        end
-        BE-->>GW: Response
-        GW-->>C: Forward Response
-    end
-```
-
-### Content Publishing Flow
-
-```mermaid
-flowchart LR
-    subgraph "Creation"
-        MD[Markdown 작성]
-        DOC[Doc Converter]
-    end
-    
-    subgraph "Storage"
-        GIT[Git Repository]
-        R2[R2 Bucket]
-        D1[D1 Database]
-    end
-    
-    subgraph "Delivery"
-        CDN[Cloudflare CDN]
-        API[API Gateway]
-    end
-    
-    MD --> GIT
-    DOC --> MD
-    GIT -->|Deploy| R2
-    GIT -->|Manifest| D1
-    R2 --> CDN
-    D1 --> API
-```
-
----
-
-## 📊 Monitoring
-
-### Health Checks
-
-```bash
-# API Gateway
-curl https://api.nodove.com/health
-
-# Backend
-curl https://blog-b.nodove.com/api/v1/healthz
-
-# R2 Gateway
-curl https://assets-b.nodove.com/health
-```
-
-### Logs
-
-```bash
-# Workers 실시간 로그
-npx wrangler tail --env production
-
-# Backend 로그 (Docker)
-docker compose logs -f api
-
-# Backend 로그 (PM2)
-pm2 logs blog-backend
-```
-
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
----
-
-## 📄 License
-
-This project is private. All rights reserved.
-
----
-
-## 📞 Contact
-
-- **Author**: nodove
-- **Blog**: [noblog.nodove.com](https://noblog.nodove.com)
-- **API**: [api.nodove.com](https://api.nodove.com)
+- 이 저장소 기준으로 루트에서 모든 서비스를 한 번에 실행하는 스크립트는 확인되지 않았습니다.
+- `doc-converter/`, `backend/README-CICD.md`, `docs/AI_SERVICE_ANATOMY_MAP.md`는 현재 저장소에서 확인되지 않았으므로 이 문서에서 제외했습니다.
+- 서비스별 상세 계약, 운영 지침, 제약은 `workers/README.md`, `backend/README.md`, `k3s/README.md`를 기준으로 확인하는 것이 안전합니다.

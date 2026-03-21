@@ -1,0 +1,183 @@
+# k3s Deployment Notes
+
+> Note: Public hostnames, registry coordinates, and repo URLs in this document use sanitized placeholders.
+
+## Scope
+
+`k3s/`는 origin-side services를 위한 Kubernetes manifests를 담고 있습니다. 현재 base apply set은 `kubectl apply -k k3s`로 정의됩니다.
+
+## Base Set
+
+파일: `k3s/kustomization.yaml`
+
+base resources:
+
+- `namespace.yaml`
+- `configmap.yaml`
+- `postgres.yaml`
+- `redis.yaml`
+- `chromadb.yaml`
+- `surrealdb.yaml`
+- `open-notebook.yaml`
+- `api.yaml`
+- `ingress.yaml`
+- `middleware.yaml`
+
+중요한 점은 `middleware.yaml`도 base set이라는 것입니다. 따라서 HTTPS redirect middleware는 optional이 아니라 기본 배포 범위에 포함됩니다.
+
+## Why The API Deployment Is Single-Replica
+
+파일: `k3s/api.yaml`
+
+`api` Deployment는 다음 제약을 코드로 고정합니다.
+
+- `replicas: 1`
+- `strategy.type: Recreate`
+- `PersistentVolumeClaim api-sqlite`
+
+의미:
+
+- backend가 local SQLite state를 사용하므로 동시에 여러 replica를 두는 구성이 기본값이 아닙니다.
+- `Recreate`는 old/new pod 동시 기동을 피합니다.
+- `api-sqlite` PVC가 `/app/.data`에 mount 됩니다.
+
+## Repo Sync Design
+
+같은 `api.yaml`에는 `sync-repo` init container가 있습니다.
+
+- image: `alpine/git:2.47.2`
+- source URL: `CONTENT_GIT_REPO_AUTH` 또는 `CONTENT_GIT_REPO`
+- ref: `CONTENT_GIT_REF`
+- target: `/repo`
+
+그 후 main `api` container는 `emptyDir` volume을 read-only subPath로 mount 합니다.
+
+- `/frontend`
+- `/workers`
+- `/backend`
+
+이 설계가 필요한 이유:
+
+- backend는 content, migrations, 일부 worker config를 로컬 파일시스템 경로로 읽습니다.
+- Kubernetes에서도 repo checkout view를 제공하기 위해 init-container clone 방식을 사용합니다.
+
+Trade-off:
+
+- 장점: container image 안에 repo 전체를 baked-in 하지 않아도 됩니다.
+- 단점: pod start 시 git clone 성공 여부에 의존하고, runtime write 작업에는 적합하지 않습니다.
+
+## Runtime Config
+
+파일: `k3s/configmap.yaml`
+
+확인된 주요 값:
+
+- `SITE_BASE_URL`
+- `API_BASE_URL`
+- `ALLOWED_ORIGINS`
+- `AI_DEFAULT_MODEL`
+- `CHROMA_URL`
+- `SQLITE_PATH`
+- `SQLITE_MIGRATIONS_DIR=/workers/migrations`
+- `CONTENT_PUBLIC_DIR=/frontend/public`
+- `CONTENT_POSTS_DIR=/frontend/public/posts`
+- `CONTENT_IMAGES_DIR=/frontend/public/images`
+- `OPEN_NOTEBOOK_URL`
+- `TERMINAL_SERVER_URL`
+- `TERMINAL_GATEWAY_URL`
+- `FEATURE_AI_ENABLED`
+- `FEATURE_RAG_ENABLED`
+- `FEATURE_TERMINAL_ENABLED=false`
+- `FEATURE_AI_INLINE`
+- `FEATURE_COMMENTS_ENABLED`
+- `CONTENT_GIT_REPO`
+- `CONTENT_GIT_REF`
+- `SANDBOX_IMAGE`
+
+운영상 의미:
+
+- terminal 관련 값은 존재하지만 feature flag 기본값은 비활성화입니다.
+- migration path와 content path가 repo-sync mount 구조에 직접 결합됩니다.
+
+## Optional Terminal Runtime
+
+파일:
+
+- `k3s/terminal-optional.yaml`
+- `k3s/terminal-ingress-optional.yaml`
+
+확인된 구조:
+
+- `terminal-server` Deployment는 `docker:27-dind` sidecar를 포함합니다.
+- DinD container는 `securityContext.privileged: true`입니다.
+- app container는 `DOCKER_HOST=unix:///var/run/docker.sock`를 사용합니다.
+- terminal ingress host는 `terminal-origin.nodove.com`
+- published path는 `/terminal`
+
+Trade-off:
+
+- 장점: 기존 terminal-server의 Docker shelling model을 크게 바꾸지 않고 유지할 수 있습니다.
+- 단점: privileged DinD sidecar가 필요하므로 base set보다 보안 위험과 운영 복잡도가 큽니다.
+- 결과: optional terminal manifests는 기본 kustomization에 포함되지 않습니다.
+
+## Networking
+
+base ingress는 `origin.example.com`용 backend 노출을 담당하고, optional ingress는 terminal origin path를 별도로 노출합니다.
+
+`k3s/MANIFEST_RELATIONSHIPS.md` 기준으로 base ingress는 Traefik middleware `blog-redirect-https@kubernetescrd`를 참조합니다.
+
+## Secrets And Prerequisites
+
+base set을 적용하기 전에 문서와 manifest가 전제하는 항목:
+
+- namespace: `blog`
+- app secret: `blog-app-secrets`
+- image pull secret: `ghcr-creds`
+- TLS secret: `blog-origin-tls`
+
+또한 local-path storage class와 기본 Traefik ingress controller 존재를 가정합니다.
+
+## Rollout Model
+
+현재 문서와 workflow evidence를 종합하면, 이 디렉토리는 compose-era watchtower 대체가 아니라 선언적 rollout 전환을 목표로 합니다.
+
+- backend images는 GitHub Actions에서 GHCR로 build/push 가능
+- cluster apply는 별도 `kubectl apply -k k3s` 또는 GitOps 도구가 담당해야 함
+- 현재 저장소 evidence만으로는 k3s 자동 apply workflow는 확인되지 않음
+
+## Operations
+
+### Verify rendered base set
+
+```bash
+kubectl kustomize k3s
+kubectl apply -k k3s
+```
+
+### Check the API deployment assumptions
+
+```bash
+kubectl -n blog get deploy api
+kubectl -n blog get pvc api-sqlite
+kubectl -n blog logs deploy/api -c api
+kubectl -n blog logs deploy/api -c sync-repo
+```
+
+### When enabling terminal runtime
+
+```bash
+kubectl apply -f k3s/terminal-optional.yaml
+kubectl apply -f k3s/terminal-ingress-optional.yaml
+```
+
+검토 포인트:
+
+- privileged DinD 허용 여부
+- `SANDBOX_IMAGE` 적절성
+- `blog-app-secrets`에 `BACKEND_KEY` 존재 여부
+
+## Residual Risk
+
+- repo clone 실패 시 `api` pod는 content/migration 경로를 갖지 못합니다.
+- SQLite single-writer 전제 때문에 horizontal scaling 여지가 제한됩니다.
+- optional terminal runtime은 privileged container 의존이 가장 큰 운영 리스크입니다.

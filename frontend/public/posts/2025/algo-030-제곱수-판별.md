@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "이진 탐색", "Problem Solving", "Python", "Java"]
 excerpt: "Hash Map & Two Pointer & Sliding Window - 제곱수 판별 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**제곱수 판별**
-* 파트: Hash Map & Two Pointer & Sliding Window
-* 관련 알고리즘: 이진 탐색
+제곱수 판별은 숫자 계산 문제가 아니라, 단조(monotonic)한 탐색 공간에서 답의 존재 여부를 경계 탐색으로 줄여 가는 문제입니다. `num=16` 같은 입력에서 왜 `mid*mid` 비교만으로 답을 좁혀 갈 수 있는지 설명해 보세요.
 
-> **Architect's View**
-> 수학적 이진 탐색과 탐색 공간
+1. `low`, `high`, `mid`가 어떻게 변하는지 적고, 현재 구간 바깥에는 답이 없다고 말할 수 있는 근거를 불변식으로 설명하세요.
+2. 선형 증가 탐색, Newton 방법, 이진 탐색을 반복 횟수, 정수 오버플로우 위험, 구현 복잡도 관점에서 비교하세요.
+3. 64비트 범위나 임의 정밀도 정수에서는 `mid*mid` 자체가 위험할 수 있는데, 비교식을 어떻게 바꿔야 하는지 설명하세요.
 
-이 글에서는 제곱수 판별 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 탐색 구간 축소 과정을 단계별로 적을 것
+- 단조성 가정을 명시할 것
+- 오버플로우 회피 전략을 적을 것
 
 ## 🐍 Python 구현
 

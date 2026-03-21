@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "포인터 반전", "Problem Solving", "Python", "Java"]
 excerpt: "Linked List & Stack/Queue - 연결 리스트 역순 (Reverse LL) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**연결 리스트 역순 (Reverse LL)**
-* 파트: Linked List & Stack/Queue
-* 관련 알고리즘: 포인터 반전
+연결 리스트 역순은 값을 바꾸는 작업이 아니라, 포인터 그래프의 방향을 한 간선씩 뒤집어도 나머지 그래프를 잃지 않는지 검증하는 문제입니다. `1 -> 2 -> 3 -> 4 -> 5`에서 `prev`, `curr`, `next` 세 포인터가 없으면 어떤 정보가 사라지는지 설명해 보세요.
 
-> **Architect's View**
-> Iterative vs Recursive 설계
+1. 각 반복 시점에 역전이 끝난 prefix와 아직 보존된 suffix를 구분해 적고, 왜 `next`를 먼저 잡지 않으면 구조가 끊기는지 설명하세요.
+2. 반복 방식과 재귀 방식을 호출 스택 사용량, 포인터 가시성, 긴 리스트에서의 안정성 관점에서 비교하세요.
+3. 배열처럼 연속 메모리가 아닌 연결 리스트에서 캐시 miss와 pointer chasing이 어떤 비용을 만들고, 그럼에도 이 구조를 쓰는 이유가 무엇인지 설명하세요.
 
-이 글에서는 연결 리스트 역순 (Reverse LL) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- `prev/curr/next` 상태를 최소 3단계 이상 적을 것
+- 이미 뒤집힌 구간의 의미를 불변식으로 정의할 것
+- 재귀가 깨지는 물리적 한계를 함께 적을 것
 
 ## 🐍 Python 구현
 

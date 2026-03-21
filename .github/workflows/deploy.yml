@@ -141,6 +141,19 @@ jobs:
     - name: Build (frontend)
       run: npm --prefix frontend run build
 
+    - name: Bundle size report
+      run: |
+        if [ ! -d frontend/dist/assets ]; then
+          echo "frontend/dist/assets not found; skipping bundle size report"
+          exit 0
+        fi
+        echo "=== JS chunk sizes (raw) ==="
+        find frontend/dist/assets -name "*.js" -print0 | xargs -0 -r du -h | sort -rh | head -20
+        echo "=== Total JS ==="
+        find frontend/dist/assets -name "*.js" -print0 | xargs -0 -r du -ch | tail -1
+        echo "=== Total CSS ==="
+        find frontend/dist/assets -name "*.css" -print0 | xargs -0 -r du -ch | tail -1
+
     - name: Setup Pages
       uses: actions/configure-pages@v4
       

@@ -21,6 +21,7 @@ export function requireAdmin(req, res, next) {
   if (config.auth?.jwtSecret) {
     try {
       const claims = verifyJwt(token);
+      if (claims?.type === 'refresh') return res.status(401).json({ ok: false, error: 'Unauthorized' });
       if (isAdminClaims(claims)) return next();
     } catch {}
   }

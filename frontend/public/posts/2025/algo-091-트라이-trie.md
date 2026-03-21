@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "접두사 트리", "Problem Solving", "Python", "Java"]
 excerpt: "Advanced Topics - 트라이 (Trie) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**트라이 (Trie)**
-* 파트: Advanced Topics
-* 관련 알고리즘: 접두사 트리
+트라이는 단어 저장 구조가 아니라, 접두사 공유를 통해 문자열 집합을 계층적 인덱스로 바꾸는 문제입니다. 왜 해시셋 하나로는 prefix query를 싸게 처리할 수 없는지 설명해 보세요.
 
-> **Architect's View**
-> 검색 엔진과 자동 완성
+1. 문자열 삽입 시 노드 fan-out과 terminal flag가 어떻게 변하는지 추적하세요.
+2. Trie, sorted array + binary search, hash set을 exact lookup, prefix lookup, 메모리 오버헤드 관점에서 비교하세요.
+3. alphabet이 크거나 희소할 때 array child와 hashmap child 설계가 어떻게 달라지는지 설명하세요.
 
-이 글에서는 트라이 (Trie) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- prefix 경로 상태를 적을 것
+- terminal flag의 역할을 설명할 것
+- fan-out과 메모리 trade-off를 적을 것
 
 ## 🐍 Python 구현
 

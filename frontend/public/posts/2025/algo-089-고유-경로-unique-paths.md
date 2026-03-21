@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "격자 DP", "Problem Solving", "Python", "Java"]
 excerpt: "Dynamic Programming - 고유 경로 (Unique Paths) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**고유 경로 (Unique Paths)**
-* 파트: Dynamic Programming
-* 관련 알고리즘: 격자 DP
+고유 경로는 격자에서 이동 경로를 모두 시뮬레이션하는 문제가 아니라, 각 칸에 도달하는 방법 수가 위와 왼쪽의 상태만으로 결정되는 격자 DP 문제입니다. 왜 이 문제가 조합론과 동일한 답을 갖는지 설명해 보세요.
 
-> **Architect's View**
-> 격자 DP와 조합론
+1. `dp[r][c]`가 어떤 의미를 가지는지 정의하고, 행과 열을 채우는 순서를 추적하세요.
+2. DP 방식과 조합식 `C(m+n-2, m-1)`을 메모리 사용, overflow, 장애물 확장 가능성 관점에서 비교하세요.
+3. 장애물이 추가되면 조합식이 왜 바로 깨지고 DP가 다시 필요해지는지 설명하세요.
 
-이 글에서는 고유 경로 (Unique Paths) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 경계 행/열의 의미를 적을 것
+- 조합론과 DP의 연결을 설명할 것
+- 장애물 변형에서 상태가 어떻게 바뀌는지 적을 것
 
 ## 🐍 Python 구현
 

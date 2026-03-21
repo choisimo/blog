@@ -1,6 +1,7 @@
 import { config } from '../config.js';
 import { openaiEmbeddings } from './ai/openai-client.service.js';
 import { createLogger } from '../lib/logger.js';
+import { VALID_TASK_MODES } from '../config/constants.js';
 
 const logger = createLogger('chat-service');
 
@@ -141,8 +142,6 @@ export function addMessageToSession(sessionId, message) {
 export function clearSession(sessionId) {
   sessions.delete(sessionId);
 }
-
-const VALID_TASK_MODES = ['sketch', 'prism', 'chain', 'catalyst', 'summary', 'custom'];
 
 export function isValidTaskMode(mode) {
   return VALID_TASK_MODES.includes(mode);

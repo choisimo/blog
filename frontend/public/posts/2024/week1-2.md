@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ['알고리즘', '자료구조', '이산수학', '배열', '스택', '큐']
 excerpt: "알고리즘 학습의 첫 걸음, 이산수학과 기본 자료구조를 탄탄히 다지는 시간"
 readTime: "2분"
+published: false
 ---
 
 <div class="week-badge">1-2주차</div>

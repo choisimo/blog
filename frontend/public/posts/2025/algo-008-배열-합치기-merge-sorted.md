@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "역방향 병합", "Problem Solving", "Python", "Java"]
 excerpt: "Array & String Fundamentals - 배열 합치기 (Merge Sorted) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**배열 합치기 (Merge Sorted)**
-* 파트: Array & String Fundamentals
-* 관련 알고리즘: 역방향 병합
+이 문제의 본질은 정렬 두 개를 합치는 것이 아니라, 이미 값이 들어 있는 버퍼 `nums1`을 덮어쓰지 않고 같은 메모리 공간에서 병합 순서를 설계하는 것입니다. `nums1=[1,2,3,0,0,0], nums2=[2,5,6]`일 때 왜 뒤에서부터 채워야 하는지 설명해 보세요.
 
-> **Architect's View**
-> 역방향 포인터와 병합 전략
+1. `i`, `j`, `k` 포인터의 의미를 정의하고, 각 단계에서 어떤 값이 마지막 빈 슬롯으로 들어가는지 메모리 상태 변화와 함께 적으세요.
+2. 앞에서부터 병합, 별도 배열 복사, 뒤에서부터 in-place 병합을 쓰기 충돌 위험, 캐시 locality, 추가 메모리 관점에서 비교하세요.
+3. 입력 스트림이 실제로는 연결 리스트이거나 디스크 merge run이라면 왜 같은 전략을 그대로 쓸 수 없는지 설명하세요.
 
-이 글에서는 배열 합치기 (Merge Sorted) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 포인터 세 개의 이동을 단계별로 적을 것
+- 덮어쓰기 위험이 언제 발생하는지 설명할 것
+- 연속 메모리 전제가 깨질 때의 대안을 제시할 것
 
 ## 🐍 Python 구현
 

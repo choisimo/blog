@@ -3,15 +3,29 @@
   <channel>
     <title>Nodove Blog</title>
     <description>A blog about technology, programming, and web development</description>
-    <link>http://localhost:3000</link>
-    <atom:link href="http://localhost:3000/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Sun, 15 Mar 2026 09:28:22 GMT</lastBuildDate>
+    <link>https://noblog.nodove.com</link>
+    <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
+    <lastBuildDate>Sat, 21 Mar 2026 00:01:04 GMT</lastBuildDate>
     <language>en-US</language>
+    <item>
+      <title>force push 이후 커밋 해시가 전부 바뀌는 이유: reset, rebase, reflog로 복구까지</title>
+      <description>커밋 메시지 수정이나 rebase 뒤에 왜 해시가 연쇄적으로 바뀌는지, reset과 rebase는 무엇이 다른지, hard reset으로 날린 커밋을 reflog로 어떻게 되살리는지 정리한다.</description>
+      <link>https://noblog.nodove.com/blog/2026/git-history-rewrite-reset-rebase-reflog</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/git-history-rewrite-reset-rebase-reflog</guid>
+      <pubDate>Mon, 16 Mar 2026 00:00:00 GMT</pubDate>
+      <category>Git</category>
+      <category>Git</category>
+      <category>Force Push</category>
+      <category>Reset</category>
+      <category>Rebase</category>
+      <category>Reflog</category>
+      <category>Version Control</category>
+    </item>
     <item>
       <title>Immutable Infra</title>
       <description>수정하는 서버에서 교체하는 인프라로: 컨테이너와 쿠버네티스가 만든 불변 운영 모델의 배경과 한계</description>
-      <link>http://localhost:3000/blog/2026/Immutable_infra</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/Immutable_infra</guid>
+      <link>https://noblog.nodove.com/blog/2026/Immutable_infra</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/Immutable_infra</guid>
       <pubDate>Sat, 14 Mar 2026 00:00:00 GMT</pubDate>
       <category>system-architecture</category>
       <category>container</category>
@@ -23,8 +37,8 @@
     <item>
       <title>초고속 결제 엔진에서 원자성은 어떻게 유지되는가?</title>
       <description>나노초 단위 초고속 결제에서도 락-프리 동시성 제어가 어떻게 트랜잭션의 원자성을 지키는지, 그리고 어디까지가 보장되는지</description>
-      <link>http://localhost:3000/blog/2026/hedgefunds_transcation_manage</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/hedgefunds_transcation_manage</guid>
+      <link>https://noblog.nodove.com/blog/2026/hedgefunds_transcation_manage</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/hedgefunds_transcation_manage</guid>
       <pubDate>Wed, 11 Mar 2026 00:00:00 GMT</pubDate>
       <category>Finance</category>
       <category>HFT</category>
@@ -41,8 +55,8 @@
     <item>
       <title>베스트 프랙티스가 병목으로 바뀌는 순간: 싱글톤, Nginx, SAGA를 다시 보는 일</title>
       <description>싱글톤, 단일 Nginx 리버스 프록시, SAGA 패턴이 과연 좋은 방법일까?</description>
-      <link>http://localhost:3000/blog/2026/limitation_of_bestcases</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/limitation_of_bestcases</guid>
+      <link>https://noblog.nodove.com/blog/2026/limitation_of_bestcases</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/limitation_of_bestcases</guid>
       <pubDate>Tue, 10 Mar 2026 00:00:00 GMT</pubDate>
       <category>Architecture</category>
       <category>System Design</category>
@@ -55,8 +69,8 @@
     <item>
       <title>awk 시스템 처리 원리</title>
       <description>awk 시스템 레벨에서의 처리 원리를 아주 간단하게 살펴봅시다.</description>
-      <link>http://localhost:3000/blog/2026/awk-1</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/awk-1</guid>
+      <link>https://noblog.nodove.com/blog/2026/awk-1</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/awk-1</guid>
       <pubDate>Fri, 06 Mar 2026 00:00:00 GMT</pubDate>
       <category>Linux, awk, memory</category>
       <category>record</category>
@@ -66,8 +80,8 @@
     <item>
       <title>Teleport 설치와 서버 관리 가이드</title>
       <description>직접 443을 여는 기본 템플릿부터, 80/443 충돌 환경에서 DNS-01과 Nginx L4 passthrough로 우회한 실전 예시까지 함께 정리한 Teleport 운영 가이드</description>
-      <link>http://localhost:3000/blog/2026/teleport-config</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/teleport-config</guid>
+      <link>https://noblog.nodove.com/blog/2026/teleport-config</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/teleport-config</guid>
       <pubDate>Sun, 01 Mar 2026 00:00:00 GMT</pubDate>
       <category>Tech</category>
       <category>teleport</category>
@@ -82,8 +96,8 @@
     <item>
       <title>리눅스, fork에서 io_uring까지, OS가 선택한 타협</title>
       <description>리눅스가 수십 년에 걸쳐 쌓아 올린 설계의 타협</description>
-      <link>http://localhost:3000/blog/2026/teleport</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/teleport</guid>
+      <link>https://noblog.nodove.com/blog/2026/teleport</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/teleport</guid>
       <pubDate>Sun, 01 Mar 2026 00:00:00 GMT</pubDate>
       <category>Tech</category>
       <category>linux</category>
@@ -98,8 +112,8 @@
     <item>
       <title>[Arena 상세] Gemini_3.0_pro_high_reasoning 분석</title>
       <description>Gemini_3.0_pro_high_reasoning 구현의 구조, 코드 포인트, 장단점과 Arena 내 비교 결과를 정리한 상세 페이지</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-gemini-3-0-pro-high-reasoning</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-gemini-3-0-pro-high-reasoning</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gemini-3-0-pro-high-reasoning</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gemini-3-0-pro-high-reasoning</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>Gemini_3.0</category>
@@ -111,8 +125,8 @@
     <item>
       <title>[Arena 상세] GLM-5 분석</title>
       <description>GLM-5의 DDD 구조, 세션 영속성, MCP/Vector 확장과 Arena 내 평가를 상세 정리</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-glm-5</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-glm-5</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-glm-5</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-glm-5</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>GLM-5</category>
@@ -124,8 +138,8 @@
     <item>
       <title>[Arena 상세] GPT-5.2_High_Reasoning 분석</title>
       <description>GPT-5.2_High_Reasoning 구현의 보안/인증 중심 설계와 Arena 비교 결과를 분석</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-gpt-5-2-high-reasoning</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-gpt-5-2-high-reasoning</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gpt-5-2-high-reasoning</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gpt-5-2-high-reasoning</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>GPT-5.2</category>
@@ -137,8 +151,8 @@
     <item>
       <title>[Arena 상세] GPT-5.3-codex-x-high 분석</title>
       <description>GPT-5.3-codex-x-high의 AppContainer DI, Topology 검증, 확장 계층 설계를 상세 분석</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-gpt-5-3-codex-x-high</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-gpt-5-3-codex-x-high</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gpt-5-3-codex-x-high</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gpt-5-3-codex-x-high</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>GPT-5.3</category>
@@ -150,8 +164,8 @@
     <item>
       <title>[Arena 상세] Grok_Fast_1 분석</title>
       <description>Grok_Fast_1의 광범위 provider 지원과 기능 집중형 구조를 Arena 관점에서 분석</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-grok-fast-1</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-grok-fast-1</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-grok-fast-1</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-grok-fast-1</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>Grok_Fast_1</category>
@@ -163,8 +177,8 @@
     <item>
       <title>[Arena 상세] Kimi_2.5 분석</title>
       <description>Kimi_2.5의 YAML 중심 구성과 ImportError 기반 optional extension 패턴을 중심으로 분석</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-kimi-2-5</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-kimi-2-5</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-kimi-2-5</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-kimi-2-5</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>Kimi_2.5</category>
@@ -176,8 +190,8 @@
     <item>
       <title>[Arena 상세] MiniMax2.5 분석</title>
       <description>MiniMax2.5 구현의 src 구조, 경량성, 전역 상태 리스크를 중심으로 Arena 결과를 분석</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-minimax-2-5</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-minimax-2-5</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-minimax-2-5</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-minimax-2-5</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>MiniMax2.5</category>
@@ -189,8 +203,8 @@
     <item>
       <title>[Arena 상세] Opus4.6 분석</title>
       <description>Opus4.6의 미들웨어 중심 운영 아키텍처와 production-ready 특성을 상세 분석</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-opus-4-6</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-opus-4-6</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-opus-4-6</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-opus-4-6</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>Opus4.6</category>
@@ -202,8 +216,8 @@
     <item>
       <title>AI Agent Arena 2026: 10개 AI Provider Server 종합 분석</title>
       <description>AI_Agent_Arena 결과 보고서를 기반으로 10개 AI Provider Server의 아키텍처, 코드 품질, 운영 적합성을 비교 분석하고 모델별 상세 페이지로 네비게이션할 수 있도록 정리한 메인 리포트</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-overview-and-comparison</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-overview-and-comparison</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-overview-and-comparison</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-overview-and-comparison</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>AI Agent Arena</category>
@@ -216,8 +230,8 @@
     <item>
       <title>[Arena 상세] sonnet_4.6 분석</title>
       <description>sonnet_4.6의 Provider Chain 기반 폴백 설계와 Arena 최상위권 성능을 코드 관점에서 분석</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-sonnet-4-6</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-sonnet-4-6</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-sonnet-4-6</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-sonnet-4-6</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>sonnet_4.6</category>
@@ -229,8 +243,8 @@
     <item>
       <title>[Arena 상세] SWE_1.5 분석</title>
       <description>SWE_1.5의 엔터프라이즈 지향 요소(PostgreSQL, Prometheus, retry)와 현재 구현 간극을 함께 분석</description>
-      <link>http://localhost:3000/blog/2026/ai-agent-arena-2026-swe-1-5</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/ai-agent-arena-2026-swe-1-5</guid>
+      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-swe-1-5</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-swe-1-5</guid>
       <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
       <category>AI Engineering</category>
       <category>SWE_1.5</category>
@@ -242,8 +256,8 @@
     <item>
       <title>Container Network Interface</title>
       <description>Networking without NAT, the CNI&apos;s role in remote container networking, and more.</description>
-      <link>http://localhost:3000/blog/2026/Container Network Interface</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/Container Network Interface</guid>
+      <link>https://noblog.nodove.com/blog/2026/Container Network Interface</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/Container Network Interface</guid>
       <pubDate>Sun, 01 Feb 2026 00:00:00 GMT</pubDate>
       <category>Network, Container, CNI</category>
       <category>Network</category>
@@ -253,8 +267,8 @@
     <item>
       <title>Proxmox &amp; OPNsense VLAN 추가 및 설정 가이드</title>
       <description>Proxmox VE에서 OPNsense VM에 새로운 가상 네트워크 인터페이스(vNIC)를 추가하고, VLAN 104 네트워크로 설정하는 단계별 가이드입니다.</description>
-      <link>http://localhost:3000/blog/2026/proxmox-opnsense-vlan-104-guide</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/proxmox-opnsense-vlan-104-guide</guid>
+      <link>https://noblog.nodove.com/blog/2026/proxmox-opnsense-vlan-104-guide</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/proxmox-opnsense-vlan-104-guide</guid>
       <pubDate>Mon, 26 Jan 2026 00:00:00 GMT</pubDate>
       <category>Guide</category>
       <category>Proxmox</category>
@@ -262,18 +276,6 @@
       <category>VLAN</category>
       <category>Network</category>
       <category>Virtualization</category>
-    </item>
-    <item>
-      <title>개인화된 가독성: 텍스트를 넘어 이해를 설계하다</title>
-      <description>도구는 차가울지 몰라도, 그 도구가 전하는 이해는 따뜻해야 합니다. 사용자의 맥락에 맞춰 숨 쉬는 문서를 만드는 기술적 여정에 대하여.</description>
-      <link>http://localhost:3000/blog/2026/personalized-readability-ux</link>
-      <guid isPermaLink="true">http://localhost:3000/blog/2026/personalized-readability-ux</guid>
-      <pubDate>Sun, 25 Jan 2026 00:00:00 GMT</pubDate>
-      <category>Essay</category>
-      <category>UX</category>
-      <category>AI</category>
-      <category>Interaction Design</category>
-      <category>Readability</category>
     </item>
   </channel>
 </rss>

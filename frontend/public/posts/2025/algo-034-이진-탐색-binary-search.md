@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "탐색 공간 축소", "Problem Solving", "Python", "Java"]
 excerpt: "Sorting & Binary Search - 이진 탐색 (Binary Search) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**이진 탐색 (Binary Search)**
-* 파트: Sorting & Binary Search
-* 관련 알고리즘: 탐색 공간 축소
+이진 탐색은 절반으로 줄이는 기술이 아니라, "답이 존재한다면 현재 구간 안에 있다"는 불변식을 끝까지 보존하는 경계 관리 문제입니다. 정렬된 배열에서 mid 비교가 왜 전체 탐색 공간을 안전하게 버릴 수 있게 하는지 설명해 보세요.
 
-> **Architect's View**
-> 루프 불변식과 탐색 전략
+1. `low`, `high`, `mid`의 변화를 추적하고, 각 비교 뒤에 어느 절반을 버려도 되는지 논리적으로 설명하세요.
+2. 선형 탐색과 비교해 branch misprediction, random access, 캐시 패턴이 어떻게 달라지는지 설명하세요.
+3. lower bound, upper bound, predicate-based search로 일반화할 때 종료 조건과 반환 의미가 어떻게 달라지는지 설명하세요.
 
-이 글에서는 이진 탐색 (Binary Search) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 구간 불변식을 명시할 것
+- 종료 조건과 반환값의 관계를 적을 것
+- 단조 조건이 왜 필요한지 설명할 것
 
 ## 🐍 Python 구현
 

@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { NotebookPen, Sparkles, Layers, Map as MapIcon } from "lucide-react";
-import VisitedPostsMinimap, {
-  useVisitedPostsState,
-} from "@/components/features/navigation/VisitedPostsMinimap";
-import ChatWidget from "@/components/features/chat/ChatWidget";
+import VisitedPostsMinimap from "@/components/molecules/VisitedPostsMinimap";
+import { useVisitedPostsState } from "@/components/molecules/useVisitedPostsState";
+import ChatWidget from "@/components/molecules/ChatWidget";
 import { useToast } from "@/components/ui/use-toast";
 import { useIsMobile } from "@/hooks/ui/use-mobile";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -11,6 +10,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 import { useUIStrings } from "@/utils/i18n";
 import { useFeatureFlags } from "@/stores/runtime/useFeatureFlagsStore";
+import { getArticleContext } from "@/services/chat/context";
 
 import type { DockAction } from "./types";
 import {
@@ -53,6 +53,7 @@ export default function FloatingActionBar() {
   const { items: visitedPosts, storageAvailable } = useVisitedPostsState();
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInitialMessage, setChatInitialMessage] = useState<string | undefined>(undefined);
+  const [chatCurrentPost, setChatCurrentPost] = useState<ReturnType<typeof getArticleContext>>(null);
   const scrollHidden = useScrollHide();
   const [fabPinned] = useFabPinned();
   const [fabPosition] = useFabPosition();
@@ -63,6 +64,19 @@ export default function FloatingActionBar() {
   const { send, sendImpression, sendMemoContextChange } = useFabAnalytics();
   const str = useUIStrings();
   const { flags: featureFlags } = useFeatureFlags();
+
+  const openChat = useCallback((initialMessage?: string) => {
+    setChatCurrentPost(getArticleContext());
+    setChatInitialMessage(initialMessage);
+    setChatOpen(true);
+  }, []);
+
+  const closeChat = useCallback(() => {
+    setChatOpen(false);
+    setChatInitialMessage(undefined);
+    setChatCurrentPost(null);
+    send("fab_ai_chat_close");
+  }, [send]);
 
   // Shell Commander state (for terminal theme mobile)
   const [shellOpen, setShellOpen] = useState(false);
@@ -85,12 +99,12 @@ export default function FloatingActionBar() {
     const handler = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.altKey && (e.key === 'm' || e.key === 'M')) {
         e.preventDefault();
-        setChatOpen(true);
+        openChat();
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [openChat]);
 
   // Add viewport height management for mobile keyboard
   const [viewportHeight, setViewportHeight] = useState("100dvh");
@@ -209,10 +223,9 @@ export default function FloatingActionBar() {
   const shell = useShellCommander({
     vfs,
     posts,
-    onChatOpen: () => setChatOpen(true),
+    onChatOpen: () => openChat(),
     onChatOpenWithMessage: (message: string) => {
-      setChatInitialMessage(message);
-      setChatOpen(true);
+      openChat(message);
     },
     onMemoToggle: toggleMemo,
     onStackClick: handleStackClick,
@@ -299,8 +312,12 @@ export default function FloatingActionBar() {
       desktopLabel: language === "ko" ? "AI 채팅" : "AI Chat",
       icon: Sparkles,
       onClick: () => {
-        setChatOpen(prev => !prev);
-        send(chatOpen ? 'fab_ai_chat_close' : 'fab_ai_chat_open');
+        if (chatOpen) {
+          closeChat();
+        } else {
+          openChat();
+          send('fab_ai_chat_open');
+        }
       },
       primary: true,
       hidden: !featureFlags.aiEnabled,
@@ -336,7 +353,7 @@ export default function FloatingActionBar() {
       },
       badge: hasNew,
     },
-  ], [str, language, chatOpen, featureFlags.aiEnabled, send, toggleMemo, handleStackClick, stackDisabledReason, hasNew, clearBadge, vfs]);
+  ], [str, language, chatOpen, featureFlags.aiEnabled, send, toggleMemo, handleStackClick, stackDisabledReason, hasNew, clearBadge, vfs, openChat, closeChat]);
 
   const dockActions = allDockActions.filter(action => !action.hidden);
 
@@ -450,11 +467,8 @@ export default function FloatingActionBar() {
       {chatOpen && (
         <ChatWidget
           initialMessage={chatInitialMessage}
-          onClose={() => {
-            setChatOpen(false);
-            setChatInitialMessage(undefined);
-            send("fab_ai_chat_close");
-          }}
+          currentPost={chatCurrentPost ?? undefined}
+          onClose={closeChat}
         />
       )}
     </>

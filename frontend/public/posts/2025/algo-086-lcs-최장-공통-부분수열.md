@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "2D DP", "Problem Solving", "Python", "Java"]
 excerpt: "Dynamic Programming - LCS (최장 공통 부분수열) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**LCS (최장 공통 부분수열)**
-* 파트: Dynamic Programming
-* 관련 알고리즘: 2D DP
+LCS는 두 문자열을 비교하는 문제가 아니라, 두 시퀀스 축 위에서 정렬 가능한 공통 subsequence 길이를 계산하는 정렬(alignment) 문제입니다. 왜 현재 문자가 같을 때와 다를 때 전이가 달라지는지 설명해 보세요.
 
-> **Architect's View**
-> diff 알고리즘의 기초
+1. `dp[i][j]`가 두 prefix의 어떤 정보를 담는지 정의하고, 일치/불일치 시 전이를 추적하세요.
+2. LCS와 edit distance, substring 문제를 비교해 "연속성"과 "스킵 가능성" 차이를 설명하세요.
+3. 메모리를 줄이기 위해 rolling row를 쓰면 무엇을 잃고 무엇을 유지하는지 설명하세요.
 
-이 글에서는 LCS (최장 공통 부분수열) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 2차원 상태 의미를 적을 것
+- 일치/불일치 전이를 분리할 것
+- subsequence와 substring 차이를 적을 것
 
 ## 🐍 Python 구현
 

@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import type { HonoEnv, Env, PostStats, EditorPick } from '../types';
 import { queryOne, queryAll, execute } from '../lib/d1';
-import { success, error } from '../lib/response';
+import { success, error, badRequest, notFound } from '../lib/response';
+import { requireAdmin } from '../middleware/auth';
 
 const app = new Hono<HonoEnv>();
 
@@ -129,36 +130,47 @@ app.get('/editor-picks', async (c) => {
 app.get('/trending', async (c) => {
   try {
     const db = c.env.DB;
-    const limit = parseInt(c.req.query('limit') || '5');
+    const limit = Math.min(parseInt(c.req.query('limit') || '10'), 50);
+    const offset = Math.max(parseInt(c.req.query('offset') || '0'), 0);
     const days = parseInt(c.req.query('days') || '7');
 
     const sinceDate = new Date();
     sinceDate.setDate(sinceDate.getDate() - days);
     const sinceDateStr = sinceDate.toISOString().split('T')[0];
 
-    const trending = await queryAll<{
-      post_slug: string;
-      year: string;
-      recent_views: number;
-      total_views: number;
-    }>(
-      db,
-      `SELECT
-         pv.post_slug,
-         pv.year,
-         SUM(pv.view_count) as recent_views,
-         COALESCE(ps.total_views, 0) as total_views
-       FROM post_views pv
-       LEFT JOIN post_stats ps ON pv.post_slug = ps.post_slug AND pv.year = ps.year
-       WHERE pv.view_date >= ?
-       GROUP BY pv.post_slug, pv.year
-       ORDER BY recent_views DESC
-       LIMIT ?`,
-      sinceDateStr,
-      limit
-    );
+    const [totalRow, trending] = await Promise.all([
+      queryOne<{ cnt: number }>(
+        db,
+        `SELECT COUNT(DISTINCT pv.post_slug || '|' || pv.year) as cnt
+         FROM post_views pv
+         WHERE pv.view_date >= ?`,
+        sinceDateStr
+      ),
+      queryAll<{
+        post_slug: string;
+        year: string;
+        recent_views: number;
+        total_views: number;
+      }>(
+        db,
+        `SELECT
+           pv.post_slug,
+           pv.year,
+           SUM(pv.view_count) as recent_views,
+           COALESCE(ps.total_views, 0) as total_views
+         FROM post_views pv
+         LEFT JOIN post_stats ps ON pv.post_slug = ps.post_slug AND pv.year = ps.year
+         WHERE pv.view_date >= ?
+         GROUP BY pv.post_slug, pv.year
+         ORDER BY recent_views DESC
+         LIMIT ? OFFSET ?`,
+        sinceDateStr,
+        limit,
+        offset
+      ),
+    ]);
 
-    return success(c, { trending });
+    return success(c, { trending, total: totalRow?.cnt ?? 0, limit, offset });
   } catch (err) {
     console.error('Failed to get trending:', err);
     return error(c, 'Failed to get trending', 500);
@@ -169,7 +181,7 @@ app.get('/trending', async (c) => {
  * POST /api/v1/analytics/refresh-stats
  * Refresh 7d and 30d view counts (should be called by cron)
  */
-app.post('/refresh-stats', async (c) => {
+app.post('/refresh-stats', requireAdmin, async (c) => {
   try {
     const db = c.env.DB;
 
@@ -234,7 +246,7 @@ app.post('/refresh-stats', async (c) => {
  * POST /api/v1/analytics/update-editor-picks
  * Auto-update editor picks based on analytics (should be called by cron daily)
  */
-app.post('/update-editor-picks', async (c) => {
+app.post('/update-editor-picks', requireAdmin, async (c) => {
   try {
     const db = c.env.DB;
 
@@ -323,11 +335,153 @@ app.post('/update-editor-picks', async (c) => {
   }
 });
 
-/**
- * POST /api/v1/analytics/heartbeat
- * Record visitor heartbeat for realtime visitor count
- * Uses KV with 60-second TTL for active visitors
- */
+app.post('/admin/editor-picks', requireAdmin, async (c) => {
+  try {
+    const db = c.env.DB;
+    const body = await c.req.json<{
+      post_slug: string;
+      year: string;
+      title?: string;
+      rank?: number;
+      reason?: string;
+      expires_at?: string | null;
+    }>();
+
+    if (!body.post_slug || !body.year) {
+      return badRequest(c, 'post_slug and year are required');
+    }
+
+    const rank = body.rank ?? 99;
+    const title = body.title ?? '';
+    const reason = body.reason ?? 'Manually selected';
+    const expiresAt = body.expires_at ?? null;
+
+    await execute(
+      db,
+      `INSERT INTO editor_picks (post_slug, year, title, rank, score, reason, expires_at, is_active, picked_at)
+       VALUES (?, ?, ?, ?, 0, ?, ?, 1, datetime('now'))
+       ON CONFLICT(post_slug, year)
+       DO UPDATE SET
+         title = ?,
+         rank = ?,
+         reason = ?,
+         expires_at = ?,
+         is_active = 1,
+         updated_at = datetime('now')`,
+      body.post_slug,
+      body.year,
+      title,
+      rank,
+      reason,
+      expiresAt,
+      title,
+      rank,
+      reason,
+      expiresAt
+    );
+
+    const pick = await queryOne<EditorPick>(
+      db,
+      `SELECT * FROM editor_picks WHERE post_slug = ? AND year = ?`,
+      body.post_slug,
+      body.year
+    );
+
+    return success(c, { pick });
+  } catch (err) {
+    console.error('Failed to create editor pick:', err);
+    return error(c, 'Failed to create editor pick', 500);
+  }
+});
+
+app.put('/admin/editor-picks/:year/:slug', requireAdmin, async (c) => {
+  try {
+    const db = c.env.DB;
+    const { year, slug } = c.req.param();
+    const body = await c.req.json<{
+      title?: string;
+      rank?: number;
+      reason?: string;
+      is_active?: number;
+      expires_at?: string | null;
+    }>();
+
+    const existing = await queryOne<EditorPick>(
+      db,
+      `SELECT * FROM editor_picks WHERE post_slug = ? AND year = ?`,
+      slug,
+      year
+    );
+
+    if (!existing) {
+      return notFound(c, 'Editor pick not found');
+    }
+
+    const newTitle = body.title ?? existing.title;
+    const newRank = body.rank ?? existing.rank;
+    const newReason = body.reason ?? existing.reason;
+    const newIsActive = body.is_active ?? existing.is_active;
+    const newExpiresAt =
+      'expires_at' in body ? body.expires_at : existing.expires_at;
+
+    await execute(
+      db,
+      `UPDATE editor_picks
+       SET title = ?, rank = ?, reason = ?, is_active = ?, expires_at = ?, updated_at = datetime('now')
+       WHERE post_slug = ? AND year = ?`,
+      newTitle,
+      newRank,
+      newReason,
+      newIsActive,
+      newExpiresAt,
+      slug,
+      year
+    );
+
+    const pick = await queryOne<EditorPick>(
+      db,
+      `SELECT * FROM editor_picks WHERE post_slug = ? AND year = ?`,
+      slug,
+      year
+    );
+
+    return success(c, { pick });
+  } catch (err) {
+    console.error('Failed to update editor pick:', err);
+    return error(c, 'Failed to update editor pick', 500);
+  }
+});
+
+app.delete('/admin/editor-picks/:year/:slug', requireAdmin, async (c) => {
+  try {
+    const db = c.env.DB;
+    const { year, slug } = c.req.param();
+
+    const existing = await queryOne<EditorPick>(
+      db,
+      `SELECT id FROM editor_picks WHERE post_slug = ? AND year = ?`,
+      slug,
+      year
+    );
+
+    if (!existing) {
+      return notFound(c, 'Editor pick not found');
+    }
+
+    await execute(
+      db,
+      `UPDATE editor_picks SET is_active = 0, updated_at = datetime('now') WHERE post_slug = ? AND year = ?`,
+      slug,
+      year
+    );
+
+    return success(c, { removed: true });
+  } catch (err) {
+    console.error('Failed to remove editor pick:', err);
+    return error(c, 'Failed to remove editor pick', 500);
+  }
+});
+
 app.post('/heartbeat', async (c) => {
   try {
     const body = await c.req.json<{ visitorId?: string }>().catch(() => ({ visitorId: undefined }));

@@ -38,14 +38,21 @@ async function hmacSign(message: string, secret: string): Promise<string> {
 /**
  * Sign a JWT token with custom expiry
  */
+// Standard claims added to every token
+const JWT_ISSUER = 'blog-api-gateway';
+const JWT_AUDIENCE = 'blog-platform';
+
 export async function signJwt(
-  payload: Omit<JwtPayload, 'iat' | 'exp'>,
+  payload: Omit<JwtPayload, 'iat' | 'exp' | 'iss' | 'aud' | 'nbf'>,
   env: Env,
   expiresIn: number = ACCESS_TOKEN_EXPIRY
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const fullPayload: JwtPayload = {
     ...payload,
+    iss: JWT_ISSUER,
+    aud: JWT_AUDIENCE,
+    nbf: now,
     iat: now,
     exp: now + expiresIn,
   };
@@ -80,9 +87,22 @@ export async function verifyJwt(token: string, env: Env): Promise<JwtPayload> {
   const payloadJson = decoder.decode(base64UrlDecode(payloadB64!));
   const payload = JSON.parse(payloadJson) as JwtPayload;
 
-  // Check expiration
-  if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+  const now = Math.floor(Date.now() / 1000);
+
+  if (payload.exp && payload.exp < now) {
     throw new Error('Token expired');
+  }
+
+  if (!payload.nbf || payload.nbf > now) {
+    throw new Error('Token not yet valid');
+  }
+
+  if (!payload.iss || payload.iss !== JWT_ISSUER) {
+    throw new Error('Invalid token issuer');
+  }
+
+  if (!payload.aud || payload.aud !== JWT_AUDIENCE) {
+    throw new Error('Invalid token audience');
   }
 
   return payload;
@@ -107,15 +127,20 @@ export async function generateAccessToken(
 
 /**
  * Generate refresh token (long-lived)
+ * @param payload - user identity fields
+ * @param env - worker env (contains JWT_SECRET)
+ * @param jti - unique token ID for KV-backed revocation; embedded as `jti` claim
  */
 export async function generateRefreshToken(
   payload: { sub: string; role: string; username: string },
-  env: Env
+  env: Env,
+  jti?: string
 ): Promise<string> {
   return signJwt(
     {
       ...payload,
       type: 'refresh',
+      ...(jti ? { jti } : {}),
     },
     env,
     REFRESH_TOKEN_EXPIRY

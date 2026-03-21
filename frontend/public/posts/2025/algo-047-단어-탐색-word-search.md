@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "DFS+백트래킹", "Problem Solving", "Python", "Java"]
 excerpt: "Recursion & Backtracking - 단어 탐색 (Word Search) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**단어 탐색 (Word Search)**
-* 파트: Recursion & Backtracking
-* 관련 알고리즘: DFS+백트래킹
+Word Search는 격자에서 경로를 찾는 문제가 아니라, 같은 셀을 재사용하지 않는 경로 제약 아래 문자열 패턴을 매칭하는 문제입니다. 격자 좌표와 문자열 인덱스가 동시에 상태가 되는 이유를 설명해 보세요.
 
-> **Architect's View**
-> 패턴 매칭과 상태 관리
+1. `(r,c,index)` 상태가 어떤 의미를 가지는지 추적하고, 방문 표시를 언제 하고 언제 되돌려야 하는지 설명하세요.
+2. 별도 visited 배열 방식과 보드 in-place 마킹 방식을 메모리 사용, 캐시 locality, 복원 안정성 관점에서 비교하세요.
+3. 여러 단어를 한꺼번에 찾는 문제로 바뀌면 왜 트라이 같은 보조 구조가 필요해지는지 설명하세요.
 
-이 글에서는 단어 탐색 (Word Search) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 좌표와 문자열 인덱스를 함께 적을 것
+- 방문 금지 제약의 의미를 설명할 것
+- 복원 단계가 빠지면 생기는 오류를 적을 것
 
 ## 🐍 Python 구현
 

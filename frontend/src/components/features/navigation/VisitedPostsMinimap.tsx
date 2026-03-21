@@ -1,112 +1,41 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { OptimizedImage } from '@/components/common/OptimizedImage';
-import { Clock, Map as MapIcon } from 'lucide-react';
+import { Clock, Map as MapIcon, X } from 'lucide-react';
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetTrigger,
 } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/ui/use-mobile';
 import { loadSessionsIndex, storeSessionsIndex } from '@/services/chat';
+import {
+  type VisitedPostItem,
+  useVisitedPostsState,
+  STORAGE_KEY,
+} from './useVisitedPosts';
 
-export type VisitedPostItem = {
-  path: string; // "/blog/:year/:slug"
-  title: string;
-  coverImage?: string;
-  year: string;
-  slug: string;
-};
-
-const STORAGE_KEY = 'visited.posts';
+export type { VisitedPostItem };
 
 type ChatSessionLite = {
   id: string;
   title?: string;
-  summary?: string;
-  articleUrl?: string;
   articleTitle?: string;
-  updatedAt?: string;
+  articleUrl?: string;
+  updatedAt?: string | number;
 };
 
-function isVisitedPostItem(item: unknown): item is VisitedPostItem {
-  return !!item && typeof item === 'object' &&
-    typeof (item as VisitedPostItem).path === 'string' &&
-    typeof (item as VisitedPostItem).title === 'string';
-}
-
-function isChatSessionLite(session: unknown): session is ChatSessionLite {
-  return !!session && typeof session === 'object' && typeof (session as ChatSessionLite).id === 'string';
-}
-
-export function useVisitedPostsState() {
-  const [items, setItems] = useState<VisitedPostItem[]>([]);
-  const [storageAvailable, setStorageAvailable] = useState(true);
-
-  const read = useCallback(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) {
-        setItems([]);
-        setStorageAvailable(true);
-        return;
-      }
-      const parsed = JSON.parse(raw) as unknown;
-      // Validate that it's an array with proper structure
-      if (!Array.isArray(parsed)) {
-        // Invalid data - reset to empty array
-        localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
-        setItems([]);
-        setStorageAvailable(true);
-        return;
-      }
-      // Filter out any malformed items
-      const validItems = parsed.filter(isVisitedPostItem);
-      setItems(validItems);
-      setStorageAvailable(true);
-    } catch {
-      // JSON parse failed or other error - reset storage
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
-      } catch {
-        // localStorage completely unavailable
-      }
-      setItems([]);
-      setStorageAvailable(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    read();
-    const onStorage = (e: StorageEvent) => {
-      if (!e.key || e.key === STORAGE_KEY) read();
-    };
-    const onCustom = () => read();
-    const onStorageError = () => {
-      setItems([]);
-      setStorageAvailable(false);
-    };
-    window.addEventListener('storage', onStorage);
-    window.addEventListener('visitedposts:update', onCustom as EventListener);
-    window.addEventListener('visitedposts:error', onStorageError);
-    return () => {
-      window.removeEventListener('storage', onStorage);
-      window.removeEventListener(
-        'visitedposts:update',
-        onCustom as EventListener
-      );
-      window.removeEventListener('visitedposts:error', onStorageError);
-    };
-  }, [read]);
-
-  return { items, storageAvailable };
-}
-
-export function useVisitedPosts() {
-  return useVisitedPostsState().items;
+function isChatSessionLite(item: unknown): item is ChatSessionLite {
+  return (
+    !!item &&
+    typeof item === 'object' &&
+    typeof (item as ChatSessionLite).id === 'string'
+  );
 }
 
 function FallbackAvatar({ title }: { title: string }) {
@@ -138,7 +67,7 @@ export function VisitedPostsMinimap({
   const [chatSessions, setChatSessions] = useState<ChatSessionLite[]>([]);
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
   const isMobile = useIsMobile();
-  const listContainerRef = useRef<HTMLDivElement | null>(null);
+  const listContainerRef = useRef<HTMLElement | null>(null);
 
   const topStack = useMemo(() => items.slice(0, 4), [items]);
   const externalTrigger = mode === 'fab';
@@ -211,26 +140,25 @@ export function VisitedPostsMinimap({
   if (!storageAvailable && !items.length) return null;
   if (!items.length) return null;
 
-  const sheet = (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetContent
-        side={isMobile ? 'bottom' : 'right'}
-        hideClose
-        className={cn(
-          'p-0 bg-background/95',
-          // Only apply backdrop-blur on desktop for performance
-          !isMobile && 'backdrop-blur supports-[backdrop-filter]:backdrop-blur-lg',
-          isMobile
-            ? 'max-h-[75vh] rounded-t-[24px] border-x border-t border-border/60 shadow-[0_-18px_50px_rgba(15,23,42,0.18)]'
-            : 'h-full w-[420px] border-l border-border/40'
-        )}
-        aria-describedby={undefined}
-        style={
-          isMobile
-            ? { paddingBottom: 'env(safe-area-inset-bottom)' }
-            : undefined
-        }
-      >
+  const sheetContent = (
+    <SheetContent
+      side={isMobile ? 'bottom' : 'right'}
+      hideClose
+      className={cn(
+        'p-0 bg-background/95',
+        // Only apply backdrop-blur on desktop for performance
+        !isMobile && 'backdrop-blur supports-[backdrop-filter]:backdrop-blur-lg',
+        isMobile
+          ? 'max-h-[75vh] rounded-t-[24px] border-x border-t border-border/60 shadow-[0_-18px_50px_rgba(15,23,42,0.18)]'
+          : 'h-full w-[420px] border-l border-border/40'
+      )}
+      aria-describedby={undefined}
+      style={
+        isMobile
+          ? { paddingBottom: 'env(safe-area-inset-bottom)' }
+          : undefined
+      }
+    >
         <SheetHeader className='sticky top-0 z-10 border-b border-border/60 bg-background/98 px-5 pb-4 pt-5'>
           {isMobile && (
             <div className='mx-auto mb-4 h-1.5 w-12 rounded-full bg-muted-foreground/30' aria-hidden />
@@ -244,6 +172,15 @@ export function VisitedPostsMinimap({
             <span className='text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full'>
               {items.length}개
             </span>
+            <SheetClose asChild>
+              <button
+                type='button'
+                aria-label='close history'
+                className='ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors'
+              >
+                <X className='h-4 w-4' />
+              </button>
+            </SheetClose>
           </div>
           {/* Thumbnail stack row */}
           <div className='flex items-center gap-2 mt-3'>
@@ -297,9 +234,9 @@ export function VisitedPostsMinimap({
           </div>
         </SheetHeader>
         {view === 'list' ? (
-          <div
+          <section
             ref={listContainerRef}
-            tabIndex={0}
+            tabIndex={-1}
             className={cn(
               'overflow-y-auto overscroll-contain px-4 pb-8 pt-4 focus:outline-none',
               isMobile ? 'max-h-[calc(75vh-160px)]' : 'flex-1'
@@ -319,13 +256,13 @@ export function VisitedPostsMinimap({
                 if (p) go(p);
               }
             }}
-            role='region'
             aria-label='Visited posts list'
           >
             <ul className='space-y-2'>
               {items.map((p, idx) => (
                 <li key={p.path}>
                   <button
+                    type='button'
                     onClick={() => go(p)}
                     className={cn(
                       'group flex w-full items-center gap-4 rounded-xl px-4 py-4 text-left transition-colors hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring',
@@ -371,7 +308,7 @@ export function VisitedPostsMinimap({
                 기록 지우기
               </Button>
             </div>
-          </div>
+          </section>
         ) : (
           <div className={cn(
             'overflow-y-auto overscroll-contain px-4 pb-8 pt-4 space-y-3',
@@ -464,16 +401,33 @@ export function VisitedPostsMinimap({
           </div>
         )}
       </SheetContent>
-    </Sheet>
   );
 
   if (externalTrigger) {
-    return sheet;
+    return (
+      <Sheet open={open} onOpenChange={setOpen}>
+        {sheetContent}
+      </Sheet>
+    );
   }
 
   return (
     <div className='fixed bottom-8 right-24 z-[var(--z-fab-bar)] select-none'>
-      {sheet}
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <button
+            type='button'
+            aria-label='Open visited posts history'
+            className='flex h-11 items-center gap-2 rounded-full bg-background/95 px-3 shadow-lg ring-1 ring-border/50 backdrop-blur hover:bg-muted/80 transition-colors'
+          >
+            <Clock className='h-4 w-4 text-muted-foreground' />
+            <span className='text-xs font-medium text-foreground tabular-nums'>
+              {items.length}
+            </span>
+          </button>
+        </SheetTrigger>
+        {sheetContent}
+      </Sheet>
     </div>
   );
 }

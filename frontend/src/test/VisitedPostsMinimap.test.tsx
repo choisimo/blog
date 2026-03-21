@@ -46,7 +46,7 @@ describe('VisitedPostsMinimap', () => {
 
     // Initially collapsed, clicking opens list
     fireEvent.click(btn);
-    expect(screen.getByText(/Recently visited/i)).toBeInTheDocument();
+    expect(screen.getByText(/방문 기록/i)).toBeInTheDocument();
 
     // Close via Close button
     fireEvent.click(screen.getByRole('button', { name: /close history/i }));

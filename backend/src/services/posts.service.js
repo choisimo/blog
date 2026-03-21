@@ -13,6 +13,10 @@ let cachedManifest = null;
 let manifestCacheTime = 0;
 const MANIFEST_CACHE_TTL = 60 * 1000;
 
+async function exists(filePath) {
+  try { await fs.promises.access(filePath); return true; } catch { return false; }
+}
+
 export async function fetchRemoteManifest() {
   const now = Date.now();
   if (cachedManifest && (now - manifestCacheTime) < MANIFEST_CACHE_TTL) {
@@ -52,10 +56,10 @@ export async function fetchRemotePost(year, slug) {
   }
 }
 
-export function isFilesystemAvailable() {
+export async function isFilesystemAvailable() {
   try {
     const { postsDir } = config.content;
-    return fs.existsSync(postsDir);
+    return await exists(postsDir);
   } catch {
     return false;
   }
@@ -103,19 +107,25 @@ export function computePostItem(year, file, fm, body) {
   };
 }
 
-export function listYears(postsDir) {
-  return fs
-    .readdirSync(postsDir)
-    .filter(item => fs.statSync(path.join(postsDir, item)).isDirectory())
-    .filter(year => /^\d{4}$/.test(year));
+export async function listYears(postsDir) {
+  const entries = await fs.promises.readdir(postsDir);
+  const years = [];
+  for (const item of entries) {
+    const stat = await fs.promises.stat(path.join(postsDir, item));
+    if (stat.isDirectory() && /^\d{4}$/.test(item)) {
+      years.push(item);
+    }
+  }
+  return years;
 }
 
-export function generatePerYearManifest(year) {
+export async function generatePerYearManifest(year) {
   const { postsDir } = config.content;
   const yearDir = path.join(postsDir, year);
-  if (!fs.existsSync(yearDir)) return { valid: 0, invalid: 0 };
+  if (!(await exists(yearDir))) return { valid: 0, invalid: 0 };
   
-  const files = fs.readdirSync(yearDir).filter(f => f.endsWith('.md'));
+  const allFiles = await fs.promises.readdir(yearDir);
+  const files = allFiles.filter(f => f.endsWith('.md'));
   const valid = [];
   const invalid = [];
   
@@ -126,7 +136,7 @@ export function generatePerYearManifest(year) {
     }
     const abs = path.join(yearDir, file);
     try {
-      const raw = fs.readFileSync(abs, 'utf8');
+      const raw = await fs.promises.readFile(abs, 'utf8');
       if (!raw.trim()) {
         invalid.push(file);
         continue;
@@ -143,23 +153,24 @@ export function generatePerYearManifest(year) {
     totalFiles: valid.length,
     excludedFiles: invalid.length,
   };
-  fs.writeFileSync(path.join(yearDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  await fs.promises.writeFile(path.join(yearDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   return { valid: valid.length, invalid: invalid.length };
 }
 
-export function generateUnifiedManifest() {
+export async function generateUnifiedManifest() {
   const { postsDir, publicDir } = config.content;
-  const years = listYears(postsDir);
+  const years = await listYears(postsDir);
   const items = [];
   
   for (const year of years) {
     const yearDir = path.join(postsDir, year);
-    const files = fs.readdirSync(yearDir).filter(f => f.endsWith('.md'));
+    const allFiles = await fs.promises.readdir(yearDir);
+    const files = allFiles.filter(f => f.endsWith('.md'));
     for (const file of files) {
       if (!validateFilename(file)) continue;
       const abs = path.join(yearDir, file);
       try {
-        const raw = fs.readFileSync(abs, 'utf8');
+        const raw = await fs.promises.readFile(abs, 'utf8');
         if (!raw.trim()) continue;
         const { data: fm, content } = matter(raw);
         const item = computePostItem(year, file, fm, content);
@@ -180,10 +191,10 @@ export function generateUnifiedManifest() {
   
   const rootPath = path.join(publicDir, 'posts-manifest.json');
   const nestedPath = path.join(publicDir, 'posts', 'posts-manifest.json');
-  fse.ensureDirSync(path.dirname(nestedPath));
+  await fse.ensureDir(path.dirname(nestedPath));
   const payload = `${JSON.stringify(unified, null, 2)}\n`;
-  fs.writeFileSync(rootPath, payload);
-  fs.writeFileSync(nestedPath, payload);
+  await fs.promises.writeFile(rootPath, payload);
+  await fs.promises.writeFile(nestedPath, payload);
   
   return unified;
 }
@@ -191,19 +202,20 @@ export function generateUnifiedManifest() {
 export async function listPosts(options = {}) {
   const { year, includeDrafts = false, limit = 0, offset = 0 } = options;
   
-  if (isFilesystemAvailable()) {
+  if (await isFilesystemAvailable()) {
     const { postsDir } = config.content;
-    const years = listYears(postsDir);
+    const years = await listYears(postsDir);
     let items = [];
     const yearsToScan = year && /^\d{4}$/.test(year) ? [year] : years;
     
     for (const y of yearsToScan) {
       const dir = path.join(postsDir, y);
-      if (!fs.existsSync(dir)) continue;
-      for (const file of fs.readdirSync(dir).filter(f => f.endsWith('.md'))) {
+      if (!(await exists(dir))) continue;
+      const allFiles = await fs.promises.readdir(dir);
+      for (const file of allFiles.filter(f => f.endsWith('.md'))) {
         if (!validateFilename(file)) continue;
         const abs = path.join(dir, file);
-        const raw = fs.readFileSync(abs, 'utf8');
+        const raw = await fs.promises.readFile(abs, 'utf8');
         const { data: fm, content } = matter(raw);
         if (fm.published === false && !includeDrafts) continue;
         items.push(computePostItem(y, file, fm, content));
@@ -241,10 +253,10 @@ export async function listPosts(options = {}) {
 export async function getPost(year, slug) {
   const file = `${slug}.md`;
   
-  if (isFilesystemAvailable()) {
+  if (await isFilesystemAvailable()) {
     const abs = path.join(config.content.postsDir, year, file);
-    if (fs.existsSync(abs)) {
-      const raw = fs.readFileSync(abs, 'utf8');
+    if (await exists(abs)) {
+      const raw = await fs.promises.readFile(abs, 'utf8');
       const { data: fm, content } = matter(raw);
       const item = computePostItem(year, file, fm, content);
       return { item, markdown: raw, source: 'filesystem' };
@@ -276,10 +288,10 @@ export async function createPost(options) {
   }
 
   const yearDir = path.join(config.content.postsDir, year);
-  fse.ensureDirSync(yearDir);
+  await fse.ensureDir(yearDir);
   const abs = path.join(yearDir, filename);
   
-  if (fs.existsSync(abs)) {
+  if (await exists(abs)) {
     throw Object.assign(new Error('already exists'), { status: 409 });
   }
 
@@ -294,10 +306,10 @@ export async function createPost(options) {
   const body = typeof content === 'string' ? content : '';
   const md = buildFrontmatterMarkdown(fm, body);
 
-  fs.writeFileSync(abs, md);
+  await fs.promises.writeFile(abs, md);
 
-  generatePerYearManifest(year);
-  const unified = generateUnifiedManifest();
+  await generatePerYearManifest(year);
+  const unified = await generateUnifiedManifest();
 
   return { path: `/posts/${year}/${filename}`, manifestTotal: unified.total };
 }
@@ -306,7 +318,7 @@ export async function updatePost(year, slug, options) {
   const filename = `${slug}.md`;
   const abs = path.join(config.content.postsDir, year, filename);
   
-  if (!fs.existsSync(abs)) {
+  if (!(await exists(abs))) {
     throw Object.assign(new Error('Not found'), { status: 404 });
   }
 
@@ -316,16 +328,16 @@ export async function updatePost(year, slug, options) {
   if (typeof markdown === 'string') {
     newMd = markdown;
   } else {
-    const existing = fs.readFileSync(abs, 'utf8');
+    const existing = await fs.promises.readFile(abs, 'utf8');
     const { data: fm0 } = matter(existing);
     const fm = { ...fm0, ...(frontmatter && typeof frontmatter === 'object' ? frontmatter : {}) };
     const body = typeof content === 'string' ? content : existing.replace(/^---[\s\S]*?---\n?/, '');
     newMd = buildFrontmatterMarkdown(fm, body);
   }
 
-  fs.writeFileSync(abs, newMd);
-  generatePerYearManifest(year);
-  const unified = generateUnifiedManifest();
+  await fs.promises.writeFile(abs, newMd);
+  await generatePerYearManifest(year);
+  const unified = await generateUnifiedManifest();
 
   return { updated: true, manifestTotal: unified.total };
 }
@@ -334,20 +346,20 @@ export async function deletePost(year, slug) {
   const filename = `${slug}.md`;
   const abs = path.join(config.content.postsDir, year, filename);
   
-  if (!fs.existsSync(abs)) {
+  if (!(await exists(abs))) {
     throw Object.assign(new Error('Not found'), { status: 404 });
   }
 
-  fs.unlinkSync(abs);
-  generatePerYearManifest(year);
-  const unified = generateUnifiedManifest();
+  await fs.promises.unlink(abs);
+  await generatePerYearManifest(year);
+  const unified = await generateUnifiedManifest();
 
   return { deleted: true, manifestTotal: unified.total };
 }
 
 export async function regenerateManifests() {
-  const years = listYears(config.content.postsDir);
-  for (const y of years) generatePerYearManifest(y);
-  const unified = generateUnifiedManifest();
+  const years = await listYears(config.content.postsDir);
+  for (const y of years) await generatePerYearManifest(y);
+  const unified = await generateUnifiedManifest();
   return { total: unified.total, years: unified.years };
 }

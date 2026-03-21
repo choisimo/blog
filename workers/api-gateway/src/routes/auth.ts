@@ -92,14 +92,15 @@ async function issueAdminTokens(
   payload: ReturnType<typeof adminPayload>,
   env: HonoEnv['Bindings']
 ): Promise<{ accessToken: string; refreshToken: string }> {
-  const accessToken = await generateAccessToken(payload, env);
-  const refreshToken = await generateRefreshToken(payload, env);
-
   const refreshTokenId = generateSecureToken(16);
+
+  const accessToken = await generateAccessToken(payload, env);
+  const refreshToken = await generateRefreshToken(payload, env, refreshTokenId);
+
   await env.KV.put(
     `${KV_REFRESH_TOKEN_PREFIX}${refreshTokenId}`,
     JSON.stringify({
-      token: refreshToken,
+      sub: payload.sub,
       email: payload.email,
       createdAt: new Date().toISOString(),
     }),
@@ -473,19 +474,26 @@ auth.post('/refresh', async (c) => {
       return unauthorized(c, 'Invalid token type');
     }
 
-    const accessToken = await generateAccessToken(
-      {
-        sub: payload.sub,
-        role: payload.role,
-        username: payload.username,
-        email: payload.email,
-        emailVerified: true,
-      },
+    if (!payload.jti) {
+      return unauthorized(c, 'Token missing jti claim');
+    }
+
+    const kvKey = `${KV_REFRESH_TOKEN_PREFIX}${payload.jti}`;
+    const kvEntry = await c.env.KV.get(kvKey);
+    if (!kvEntry) {
+      return unauthorized(c, 'Refresh token revoked or expired');
+    }
+
+    await c.env.KV.delete(kvKey);
+
+    const newTokens = await issueAdminTokens(
+      adminPayload(payload.email || ''),
       c.env
     );
 
     return success(c, {
-      accessToken,
+      accessToken: newTokens.accessToken,
+      refreshToken: newTokens.refreshToken,
       tokenType: 'Bearer',
       expiresIn: 15 * 60,
     });
@@ -505,10 +513,12 @@ auth.post('/logout', async (c) => {
 
   if (refreshToken) {
     try {
-      // Refresh token is stored in KV under auth:refresh:{id}
-      // Natural expiry handles cleanup; acknowledge logout immediately
+      const payload = await verifyJwt(refreshToken, c.env);
+      if (payload.jti) {
+        await c.env.KV.delete(`${KV_REFRESH_TOKEN_PREFIX}${payload.jti}`);
+      }
     } catch {
-      // Ignore errors during logout
+      // Token may already be expired/invalid — still acknowledge logout
     }
   }
 

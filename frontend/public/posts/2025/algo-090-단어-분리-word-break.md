@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "문자열 DP", "Problem Solving", "Python", "Java"]
 excerpt: "Dynamic Programming - 단어 분리 (Word Break) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**단어 분리 (Word Break)**
-* 파트: Dynamic Programming
-* 관련 알고리즘: 문자열 DP
+Word Break는 문자열을 자르는 문제가 아니라, prefix 경계들 사이를 사전 단어가 간선으로 잇는 implicit graph/DP 문제입니다. 왜 `dp[i]`를 "i까지 분해 가능"으로 두면 전체 문장을 판정할 수 있는지 설명해 보세요.
 
-> **Architect's View**
-> 트라이 기반 최적화
+1. 각 인덱스 `i`에 대해 어떤 `j < i`가 `dp[j] && s[j:i] in dict`를 만족해야 하는지 추적하세요.
+2. DP, BFS on indices, Trie 최적화를 비교해 어느 단계에서 문자열 슬라이스 비용을 줄일 수 있는지 설명하세요.
+3. "가능 여부"가 아니라 "모든 분해 경우", "최소 단어 수"로 바뀌면 상태가 어떻게 달라지는지 설명하세요.
 
-이 글에서는 단어 분리 (Word Break) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 인덱스 기반 상태 정의를 적을 것
+- 사전 membership 검사의 역할을 설명할 것
+- Trie가 줄이는 비용이 무엇인지 적을 것
 
 ## 🐍 Python 구현
 

@@ -62,6 +62,30 @@ function getSystemLabel(level: SystemMessageLevel): string {
   }
 }
 
+function LiveMessageLabel({
+  authorName,
+  authorMeta,
+  isTerminal,
+}: {
+  authorName?: string;
+  authorMeta?: string;
+  isTerminal: boolean;
+}) {
+  if (!authorName && !authorMeta) return null;
+
+  return (
+    <div
+      className={cn(
+        "mb-2 flex flex-wrap items-center gap-2 text-[11px]",
+        isTerminal ? "text-primary/80" : "text-muted-foreground",
+      )}
+    >
+      {authorName ? <span className="font-semibold">{authorName}</span> : null}
+      {authorMeta ? <span>{authorMeta}</span> : null}
+    </div>
+  );
+}
+
 export function ChatMessages({
   messages,
   isTerminal,
@@ -307,7 +331,12 @@ const TerminalMessage = React.memo(function TerminalMessage({
   onSourceClick: (url: string, e: React.MouseEvent) => void;
   onExpireMessage?: (id: string) => void;
 }) {
-  const isStreaming = isAssistant && !m.sources?.length && !m.followups?.length;
+  const isLiveAssistantMessage = isAssistant && m.channel === "live";
+  const isStreaming =
+    isAssistant &&
+    m.channel !== "live" &&
+    !m.sources?.length &&
+    !m.followups?.length;
 
   return (
     <div className="space-y-2">
@@ -329,7 +358,7 @@ const TerminalMessage = React.memo(function TerminalMessage({
         <div className="ai-response-container">
           <div className="ai-response-header">
             <Terminal className="h-3.5 w-3.5" />
-            <span>AI Response</span>
+            <span>{isLiveAssistantMessage ? `Live · ${m.authorName || "room"}` : "AI Response"}</span>
             {!m.text.trim() && (
               <span className="streaming-indicator">
                 <span className="streaming-dots">
@@ -342,6 +371,13 @@ const TerminalMessage = React.memo(function TerminalMessage({
             )}
           </div>
           <div className="text-foreground/90 text-sm typewriter-container">
+            {isLiveAssistantMessage ? (
+              <LiveMessageLabel
+                authorName={undefined}
+                authorMeta={m.authorMeta}
+                isTerminal
+              />
+            ) : null}
             {m.text.trim() ? (
               <>
                 {isMobile && isStreaming ? (
@@ -431,7 +467,11 @@ const DefaultMessage = React.memo(function DefaultMessage({
   onSourceClick: (url: string, e: React.MouseEvent) => void;
   onExpireMessage?: (id: string) => void;
 }) {
-  const isStreaming = isAssistant && !m.sources?.length && !m.followups?.length;
+  const isStreaming =
+    isAssistant &&
+    m.channel !== "live" &&
+    !m.sources?.length &&
+    !m.followups?.length;
   const isStatus =
     isSystem &&
     (m.systemKind === "status" ||
@@ -462,17 +502,26 @@ const DefaultMessage = React.memo(function DefaultMessage({
         )}
       >
         {isAssistant ? (
-          m.text.trim() ? (
-            isMobile && isStreaming ? (
-              <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                {m.text}
-              </span>
+          <>
+            {m.channel === "live" ? (
+              <LiveMessageLabel
+                authorName={m.authorName}
+                authorMeta={m.authorMeta}
+                isTerminal={false}
+              />
+            ) : null}
+            {m.text.trim() ? (
+              isMobile && isStreaming ? (
+                <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                  {m.text}
+                </span>
+              ) : (
+                <ChatMarkdown content={m.text} isStreaming={isStreaming} />
+              )
             ) : (
-              <ChatMarkdown content={m.text} isStreaming={isStreaming} />
-            )
-          ) : (
-            <TypingDots />
-          )
+              <TypingDots />
+            )}
+          </>
         ) : isUser ? (
           <div className="space-y-2">
             <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">

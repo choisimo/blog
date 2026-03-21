@@ -104,11 +104,43 @@ function formatSessionMessage(message: string): string {
     return `${name || "assistant"}가 방에서 응답했습니다.`;
   }
 
+  if (normalized.includes("replied in the room using")) {
+    const marker = " replied in the room using ";
+    const idx = raw.toLowerCase().indexOf(marker);
+    if (idx >= 0) {
+      const name = raw.slice(0, idx).trim();
+      const context = raw.slice(idx + marker.length).trim();
+      return `${name || "assistant"}가 ${context} 기반으로 방에서 응답했습니다.`;
+    }
+  }
+
   if (normalized === "auto room reply skipped due to temporary ai error") {
     return "자동 응답이 일시 오류로 생략되었습니다.";
   }
 
   return raw;
+}
+
+function buildLiveAuthorMeta(event: Extract<LiveChatEvent, { type: "live_message" }>): string {
+  if (event.senderType === "agent") {
+    const metaParts = [
+      event.personaStyle ? `${event.personaStyle} persona` : "live agent",
+      event.contextKinds?.length ? `${event.contextKinds.join("+")} backed` : null,
+      event.triggeredByMention ? "called in" : null,
+      event.replyToName ? `replying to ${event.replyToName}` : null,
+      event.turnIndex && event.roundSize
+        ? `turn ${event.turnIndex}/${event.roundSize}`
+        : null,
+    ].filter(Boolean);
+    return metaParts.join(" · ");
+  }
+
+  return [
+    "live visitor",
+    event.replyToName ? `replying to ${event.replyToName}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 export function useLiveVisitorChat(input: {
@@ -162,7 +194,7 @@ export function useLiveVisitorChat(input: {
             connectedRef.current = true;
             push(
               buildSystemMessage(
-                `[Live] ${formatRoomName(event.room || room)} 방 연결됨 (${event.onlineCount} online). Use /live <message> to chat in real time.`,
+                `[Live] ${formatRoomName(event.room || room)} 방 연결됨 (${event.onlineCount} online). Use /live <message> to chat in real time. Call agents like @alex or @jamie to pull them into the room.`,
                 "info",
                 { systemKind: "status" },
               ),
@@ -205,7 +237,11 @@ export function useLiveVisitorChat(input: {
             push({
               id: `live_agent_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
               role: "assistant",
-              text: `[Live · ${sender}] ${event.text}`,
+              channel: "live",
+              authorName: sender,
+              authorMeta: buildLiveAuthorMeta(event),
+              text: event.text,
+              sources: event.sources,
             });
             return;
           }
@@ -213,7 +249,11 @@ export function useLiveVisitorChat(input: {
           push({
             id: `live_visitor_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
             role: "assistant",
-            text: `[Live · ${sender}] ${event.text}`,
+            channel: "live",
+            authorName: sender,
+            authorMeta: buildLiveAuthorMeta(event),
+            text: event.text,
+            sources: event.sources,
           });
           return;
         }

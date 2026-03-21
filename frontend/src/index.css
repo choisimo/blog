@@ -2169,3 +2169,30 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
     transform: none !important;
   }
 }
+
+@keyframes admin-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes admin-scale-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.admin-auth-card {
+  animation: admin-scale-in 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.admin-tab-content > * {
+  animation: admin-fade-in 0.18s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-auth-card,
+  .admin-tab-content > * {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

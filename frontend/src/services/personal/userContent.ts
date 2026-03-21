@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from '@/utils/network/apiBase';
+import { bearerAuth } from '@/lib/auth';
 import { useAuthStore } from '@/stores/session/useAuthStore';
 import { 
   isTokenExpired,
@@ -98,7 +99,7 @@ async function request<T>(
   
   // Get token asynchronously (will request anonymous token if needed)
   const token = await getAuthTokenAsync();
-  if (token) headers.set('Authorization', `Bearer ${token}`);
+  if (token) headers.set('Authorization', bearerAuth(token).Authorization);
   if (!headers.has('Accept')) headers.set('Accept', 'application/json');
 
   const res = await fetch(url, {

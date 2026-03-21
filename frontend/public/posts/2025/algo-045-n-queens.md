@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "CSP+백트래킹", "Problem Solving", "Python", "Java"]
 excerpt: "Recursion & Backtracking - N-Queens 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**N-Queens**
-* 파트: Recursion & Backtracking
-* 관련 알고리즘: CSP+백트래킹
+N-Queens는 단순 배치 문제가 아니라, 행/열/대각선 제약이 동시에 걸린 CSP(Constraint Satisfaction Problem)입니다. 왜 보드를 완성한 뒤 충돌을 검사하는 방식이 아니라, 놓는 순간 제약 위반을 차단해야 하는지 설명해 보세요.
 
-> **Architect's View**
-> 제약 만족 문제의 본질
+1. 각 행에 퀸 하나를 놓는다고 가정할 때, 열 집합과 두 대각선 집합이 어떤 제약 상태를 표현하는지 추적하세요.
+2. 보드를 매번 다시 스캔하는 방식과 set/bitmask 제약 추적 방식을 비교해, 어떤 비용을 사전 지불함으로써 branching factor를 줄이는지 설명하세요.
+3. N이 커질수록 메모리보다 탐색 폭이 병목이 되는 이유와, 대칭성 제거 같은 최적화가 왜 중요한지 설명하세요.
 
-이 글에서는 N-Queens 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 열/대각선 제약 상태를 명시할 것
+- prune가 일어나는 시점을 적을 것
+- CSP라는 관점으로 문제를 설명할 것
 
 ## 🐍 Python 구현
 

@@ -52,22 +52,25 @@ import {
   Circle,
   Power,
   PowerOff,
+  BookOpen,
 } from 'lucide-react';
 import { useProviders } from './hooks';
 import type { AIProvider, ProviderFormData } from './types';
+import { PROVIDER_CATALOG } from './providerCatalog';
 
 interface ProviderFormProps {
   provider?: AIProvider;
+  initialData?: Partial<ProviderFormData>;
   onSubmit: (data: ProviderFormData) => Promise<void>;
   onCancel: () => void;
 }
 
-function ProviderForm({ provider, onSubmit, onCancel }: ProviderFormProps) {
+function ProviderForm({ provider, initialData, onSubmit, onCancel }: ProviderFormProps) {
   const [formData, setFormData] = useState<ProviderFormData>({
-    name: provider?.name || '',
-    displayName: provider?.displayName || '',
-    apiBaseUrl: provider?.apiBaseUrl || '',
-    apiKeyEnv: provider?.apiKeyEnv || '',
+    name: provider?.name || initialData?.name || '',
+    displayName: provider?.displayName || initialData?.displayName || '',
+    apiBaseUrl: provider?.apiBaseUrl || initialData?.apiBaseUrl || '',
+    apiKeyEnv: provider?.apiKeyEnv || initialData?.apiKeyEnv || '',
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -193,6 +196,7 @@ export function ProvidersManager() {
   } = useProviders();
   const [showForm, setShowForm] = useState(false);
   const [editingProvider, setEditingProvider] = useState<AIProvider | null>(null);
+  const [catalogFormData, setCatalogFormData] = useState<Partial<ProviderFormData> | undefined>(undefined);
   const [checkingHealth, setCheckingHealth] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AIProvider | null>(null);
   const [killSwitchTarget, setKillSwitchTarget] = useState<AIProvider | null>(null);
@@ -206,7 +210,18 @@ export function ProvidersManager() {
     const result = await createProvider(data);
     if (result.ok) {
       setShowForm(false);
+      setCatalogFormData(undefined);
     }
+  };
+
+  const handleOpenFromCatalog = (catalog: typeof PROVIDER_CATALOG[0]) => {
+    setCatalogFormData({
+      name: catalog.id,
+      displayName: catalog.name,
+      apiBaseUrl: catalog.baseUrl,
+      apiKeyEnv: catalog.apiKeyEnvVar,
+    });
+    setShowForm(true);
   };
 
   const handleUpdate = async (data: ProviderFormData) => {
@@ -259,10 +274,41 @@ export function ProvidersManager() {
             <CardTitle>AI Providers</CardTitle>
             <CardDescription>Manage AI service providers and their API configurations</CardDescription>
           </div>
-          <Button onClick={() => setShowForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Provider
-          </Button>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  From Catalog
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64 max-h-80 overflow-y-auto">
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Cloud Providers</div>
+                {PROVIDER_CATALOG.filter((p) => p.category === 'cloud').map((p) => (
+                  <DropdownMenuItem key={p.id} onClick={() => handleOpenFromCatalog(p)}>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium text-sm">{p.name}</span>
+                      <span className="text-xs text-muted-foreground">{p.description}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Local / Self-hosted</div>
+                {PROVIDER_CATALOG.filter((p) => p.category === 'local').map((p) => (
+                  <DropdownMenuItem key={p.id} onClick={() => handleOpenFromCatalog(p)}>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium text-sm">{p.name}</span>
+                      <span className="text-xs text-muted-foreground">{p.description}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button onClick={() => { setCatalogFormData(undefined); setShowForm(true); }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Provider
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -392,13 +438,13 @@ export function ProvidersManager() {
       </CardContent>
 
       {/* Create Dialog */}
-      <Dialog open={showForm} onOpenChange={setShowForm}>
+      <Dialog open={showForm} onOpenChange={(open) => { setShowForm(open); if (!open) setCatalogFormData(undefined); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add New Provider</DialogTitle>
             <DialogDescription>Configure a new AI service provider</DialogDescription>
           </DialogHeader>
-          <ProviderForm onSubmit={handleCreate} onCancel={() => setShowForm(false)} />
+          <ProviderForm initialData={catalogFormData} onSubmit={handleCreate} onCancel={() => { setShowForm(false); setCatalogFormData(undefined); }} />
         </DialogContent>
       </Dialog>
 

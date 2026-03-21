@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "보조 스택", "Problem Solving", "Python", "Java"]
 excerpt: "Linked List & Stack/Queue - 최소 스택 (Min Stack) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**최소 스택 (Min Stack)**
-* 파트: Linked List & Stack/Queue
-* 관련 알고리즘: 보조 스택
+Min Stack은 "최솟값 하나 저장" 문제가 아니라, push/pop이 이어지는 가변 상태에서 `getMin()`을 O(1)로 보장하려면 어떤 보조 관측치를 함께 저장해야 하는지 묻는 문제입니다. 메인 스택과 보조 스택이 어떤 관계를 유지해야 하는지 설명해 보세요.
 
-> **Architect's View**
-> CQRS 패턴과 성능 보장
+1. 각 push/pop 시점에서 메인 스택과 최소 스택의 상태를 같이 적고, 왜 보조 스택 top이 항상 현재 전체 최소값이어야 하는지 불변식으로 설명하세요.
+2. 매번 전체 스택을 스캔하는 방식과 보조 스택 중복 저장 방식을 읽기 지연, 추가 메모리, branch predictability 관점에서 비교하세요.
+3. min뿐 아니라 max, median, frequency까지 즉시 질의해야 한다면 어떤 자료구조 조합이 필요해지는지 설계 관점에서 설명하세요.
 
-이 글에서는 최소 스택 (Min Stack) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 두 스택 상태를 같은 시점에 나란히 적을 것
+- O(1) 보장을 위해 중복 저장하는 이유를 설명할 것
+- 읽기 최적화와 쓰기 비용 증가를 분리해서 적을 것
 
 ## 🐍 Python 구현
 

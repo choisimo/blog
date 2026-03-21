@@ -1,13 +1,14 @@
-import { useState } from 'react';
-import { Bot, Cpu, GitBranch, BarChart3, Activity, FlaskConical } from 'lucide-react';
+import { Bot, Cpu, GitBranch, BarChart3, Activity, FlaskConical, MessageSquare } from 'lucide-react';
 import { ProvidersManager } from './ProvidersManager';
 import { ModelsManager } from './ModelsManager';
 import { RoutesManager } from './RoutesManager';
 import { UsageMonitor } from './UsageMonitor';
 import { TraceViewer } from './TraceViewer';
 import { Playground } from './Playground';
+import { PromptsManager } from './PromptsManager';
+import { AdminSubtabs } from '@/components/molecules/AdminSubtabs';
 
-type TabId = 'playground' | 'models' | 'providers' | 'routes' | 'monitoring' | 'traces';
+type TabId = 'playground' | 'models' | 'providers' | 'routes' | 'monitoring' | 'traces' | 'prompts';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'playground', label: 'Playground', icon: <FlaskConical className="h-3.5 w-3.5" /> },
@@ -16,30 +17,22 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'routes', label: 'Routes', icon: <GitBranch className="h-3.5 w-3.5" /> },
   { id: 'monitoring', label: 'Monitoring', icon: <BarChart3 className="h-3.5 w-3.5" /> },
   { id: 'traces', label: 'Traces', icon: <Activity className="h-3.5 w-3.5" /> },
+  { id: 'prompts', label: 'Prompts', icon: <MessageSquare className="h-3.5 w-3.5" /> },
 ];
 
-export function AIManager() {
-  const [activeTab, setActiveTab] = useState<TabId>('playground');
+interface AIManagerProps {
+  subtab?: string;
+  onSubtabChange?: (subtab: string) => void;
+}
+
+export function AIManager({ subtab, onSubtabChange }: AIManagerProps) {
+  const validTabs = TABS.map(t => t.id);
+  const activeTab: TabId =
+    subtab && validTabs.includes(subtab as TabId) ? (subtab as TabId) : 'playground';
 
   return (
     <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-      <div className="flex items-center gap-0.5 border-b border-zinc-200 px-2 pt-1 overflow-x-auto">
-        {TABS.map((tab) => (
-          <button
-            type="button"
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 whitespace-nowrap transition-colors ${
-              activeTab === tab.id
-                ? 'border-zinc-900 text-zinc-900'
-                : 'border-transparent text-zinc-400 hover:text-zinc-700'
-            }`}
-          >
-            {tab.icon}
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <AdminSubtabs tabs={TABS} activeTab={activeTab} onTabChange={(id) => onSubtabChange?.(id)} />
 
       <div className="p-4">
         {activeTab === 'playground' && <Playground />}
@@ -48,6 +41,7 @@ export function AIManager() {
         {activeTab === 'routes' && <RoutesManager />}
         {activeTab === 'monitoring' && <UsageMonitor />}
         {activeTab === 'traces' && <TraceViewer />}
+        {activeTab === 'prompts' && <PromptsManager />}
       </div>
     </div>
   );

@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "가지치기", "Problem Solving", "Python", "Java"]
 excerpt: "Recursion & Backtracking - 조합 (Combinations) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**조합 (Combinations)**
-* 파트: Recursion & Backtracking
-* 관련 알고리즘: 가지치기
+조합 생성은 순열과 달리 순서가 의미 없으므로, 같은 원소 집합을 여러 경로로 다시 만들지 않게 탐색 공간을 잘라내는 것이 핵심입니다. 왜 `start` 인덱스가 단순 구현 변수 이상인지 설명해 보세요.
 
-> **Architect's View**
-> Pruning 기반 탐색 최적화
+1. 현재 depth와 `start`가 어떤 후보 공간을 남겨 두는지 추적하고, 왜 이전 인덱스로 되돌아가면 중복이 생기는지 설명하세요.
+2. 순열 생성과 비교해 탐색 트리의 branching factor가 어떻게 달라지는지, pruning이 어느 수준에서 가능한지 설명하세요.
+3. `n choose k`를 단순 생성이 아니라 자원 선택, 샘플링, 조합 최적화로 일반화하면 어떤 추가 제약이 들어올 수 있는지 설명하세요.
 
-이 글에서는 조합 (Combinations) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- `start`가 표현하는 후보 범위를 적을 것
+- 순열과의 차이를 명확히 적을 것
+- pruning이 가능한 근거를 설명할 것
 
 ## 🐍 Python 구현
 

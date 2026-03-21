@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "Floyd's 알고리즘", "Problem Solving", "Python", "Java"]
 excerpt: "Linked List & Stack/Queue - 사이클 탐지 (Cycle Detection) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**사이클 탐지 (Cycle Detection)**
-* 파트: Linked List & Stack/Queue
-* 관련 알고리즘: Floyd's 알고리즘
+사이클 탐지는 "중복 방문이 있나"가 아니라, 추가 메모리 없이 포인터가 닫힌 궤도에 들어갔는지 판별하는 위상(topology) 문제입니다. 함수형 그래프 위에서 `slow`는 1칸, `fast`는 2칸 이동할 때 왜 결국 만나게 되는지 설명해 보세요.
 
-> **Architect's View**
-> 이중 속도 포인터와 불변식 탐지
+1. 비순환 구간 길이와 순환 구간 길이를 분리해서 정의하고, 두 포인터의 상대 속도가 사이클 내부에서 어떤 수학적 관계를 만드는지 증명하세요.
+2. visited set 방식과 Floyd 방식을 메모리 사용량, 캐시 접근, 노드 변형 가능 여부 관점에서 비교하세요.
+3. 만난 뒤 시작점을 찾는 2단계 과정이 왜 맞는지, 거리 식을 써서 인과관계를 끊기지 않게 설명하세요.
 
-이 글에서는 사이클 탐지 (Cycle Detection) 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- `slow`, `fast`의 위치 변화를 여러 시점으로 적을 것
+- 1차 만남과 2차 시작점 탐지를 분리해서 설명할 것
+- 공간 O(1)을 얻는 대신 무엇을 포기하는지 적을 것
 
 ## 🐍 Python 구현
 

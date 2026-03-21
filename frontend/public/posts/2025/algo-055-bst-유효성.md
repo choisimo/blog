@@ -5,20 +5,22 @@ category: "Algorithm"
 tags: ["Algorithm", "범위 검증", "Problem Solving", "Python", "Java"]
 excerpt: "Tree & Binary Search Tree - BST 유효성 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
-## 📌 문제 소개
+## Top-down 질문
 
-**BST 유효성**
-* 파트: Tree & Binary Search Tree
-* 관련 알고리즘: 범위 검증
+BST 유효성 검사는 부모-자식만 비교하는 문제가 아니라, 각 노드가 조상 전체가 만든 값 범위 제약을 지키는지 검증하는 문제입니다. 왜 로컬 비교만으로는 충분하지 않은지 설명해 보세요.
 
-> **Architect's View**
-> 불변식 검증과 범위 제약
+1. 재귀적으로 내려갈 때 `(low, high)` 범위가 어떻게 좁혀지는지 추적하고, 조상 제약이 자손까지 전파되는 이유를 설명하세요.
+2. inorder 정렬 여부 검사와 범위 전달 방식의 차이를 구현 단순성, 중복 값 정책, 조기 실패 가능성 관점에서 비교하세요.
+3. BST invariant가 깨졌을 때 어떤 질의가 망가지는지, 실제 인덱스 구조 관점에서 설명하세요.
 
-이 글에서는 BST 유효성 문제에 대해 알고리즘적 접근 방식과 이를 구현한 Python 및 Java 코드를 살펴봅니다.
+## 답변할 때 포함할 것
 
----
+- 범위 제약 전파를 적을 것
+- 로컬 비교 반례를 하나 제시할 것
+- BST 불변식이 왜 중요한지 설명할 것
 
 ## 🐍 Python 구현
 

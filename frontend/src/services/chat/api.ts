@@ -265,7 +265,11 @@ function buildStreamPayload(input: StreamChatInput): {
   parts: ContentPart[];
   enableRag: boolean;
 } {
-  const page = input.page || getPageContext();
+  const domPage = input.page || getPageContext();
+  const page: ReturnType<typeof getPageContext> = input.currentPost
+    ? { ...domPage, article: input.currentPost }
+    : domPage;
+
   const shouldUseArticleContext =
     input.useArticleContext !== undefined ? input.useArticleContext : true;
   const articleSnippet = shouldUseArticleContext
@@ -284,16 +288,17 @@ function buildStreamPayload(input: StreamChatInput): {
     if (memoryPrompt) parts.push({ type: "text", text: memoryPrompt });
   }
 
-  const contextPrompt = buildContextPrompt(articleSnippet);
+  const contextPrompt = buildContextPrompt(articleSnippet, page);
   if (contextPrompt) parts.push({ type: "text", text: contextPrompt });
 
   if (input.imageUrl) {
     const imageContext = buildImageContext(
       input.imageUrl,
       input.imageAnalysis,
-      input.text,
+      "",
     );
     parts.push({ type: "text", text: imageContext });
+    parts.push({ type: "text", text: input.text || "이 이미지에 대해 설명해 주세요." });
   } else {
     parts.push({ type: "text", text: input.text });
   }

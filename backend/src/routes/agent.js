@@ -25,8 +25,16 @@ import {
   buildSystemPrompt,
   SYSTEM_PROMPTS,
 } from "../lib/agent/prompts/system.js";
+import { normalizeMode, listAgentModes } from "../lib/agent/mode-registry.js";
 import { getSessionMemory } from "../lib/agent/memory/session.js";
 import { requireFeature } from "../middleware/featureFlags.js";
+import { requireAdmin } from "../middleware/adminAuth.js";
+import { validateBody } from "../middleware/validation.js";
+import {
+  agentRunBodySchema,
+  memoryExtractBodySchema,
+  memorySearchBodySchema,
+} from "../middleware/schemas/agent.schema.js";
 import { buildLiveContextPrompt } from "../services/live-context.service.js";
 import { createLogger } from "../lib/logger.js";
 
@@ -98,7 +106,7 @@ function enrichAgentMessageWithLiveContext(message, sessionId) {
  *   }
  * }
  */
-router.post("/run", async (req, res) => {
+router.post("/run", validateBody(agentRunBodySchema), async (req, res) => {
   try {
     const {
       message,
@@ -111,13 +119,6 @@ router.post("/run", async (req, res) => {
       userId = "default-user",
     } = req.body;
 
-    if (!message || typeof message !== "string") {
-      return res.status(400).json({
-        ok: false,
-        error: { message: "message is required", code: "INVALID_REQUEST" },
-      });
-    }
-
     const coordinator = getCoordinator();
     const effectiveMessage = enrichAgentMessageWithLiveContext(
       message,
@@ -125,11 +126,10 @@ router.post("/run", async (req, res) => {
     );
     const effectiveMaxIterations = resolveMaxIterations(maxIterations);
 
-    // Run agent
     const result = await coordinator.run({
       sessionId,
       messages: [{ role: "user", content: effectiveMessage }],
-      mode,
+      mode: normalizeMode(mode),
       context: {
         articleSlug,
         userId,
@@ -173,7 +173,7 @@ router.post("/run", async (req, res) => {
  * - event: done - Stream completed
  * - event: error - Error occurred
  */
-router.post("/stream", async (req, res) => {
+router.post("/stream", validateBody(agentRunBodySchema), async (req, res) => {
   // Set SSE headers
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
@@ -224,14 +224,6 @@ router.post("/stream", async (req, res) => {
       userId = "default-user",
     } = req.body;
 
-    if (!message || typeof message !== "string") {
-      send("error", {
-        message: "message is required",
-        code: "INVALID_REQUEST",
-      });
-      return onClose();
-    }
-
     send("open", { type: "open" });
 
     const coordinator = getCoordinator();
@@ -241,7 +233,6 @@ router.post("/stream", async (req, res) => {
     );
     const effectiveMaxIterations = resolveMaxIterations(maxIterations);
 
-    // Stream agent response
     const AGENT_STREAM_TIMEOUT_MS = 120_000;
     let streamTimedOut = false;
     const streamTimeout = setTimeout(() => {
@@ -252,12 +243,11 @@ router.post("/stream", async (req, res) => {
       }
     }, AGENT_STREAM_TIMEOUT_MS);
 
-
     try {
       for await (const event of coordinator.stream({
         sessionId,
         messages: [{ role: "user", content: effectiveMessage }],
-        mode,
+        mode: normalizeMode(mode),
         context: {
           articleSlug,
           userId,
@@ -536,35 +526,7 @@ router.get("/modes", (req, res) => {
   res.json({
     ok: true,
     data: {
-      modes: [
-        {
-          id: "default",
-          name: "General",
-          description: "General conversation and assistance",
-        },
-        {
-          id: "research",
-          name: "Research",
-          description: "In-depth information gathering",
-        },
-        { id: "coding", name: "Coding", description: "Programming assistance" },
-        { id: "blog", name: "Blog", description: "Blog content management" },
-        {
-          id: "article",
-          name: "Article Q&A",
-          description: "Questions about specific articles",
-        },
-        {
-          id: "terminal",
-          name: "Terminal",
-          description: "System administration tasks",
-        },
-        {
-          id: "performance",
-          name: "Performance Audit",
-          description: "Frontend/runtime performance investigation",
-        },
-      ],
+      modes: listAgentModes(),
     },
   });
 });
@@ -576,19 +538,9 @@ router.get("/modes", (req, res) => {
 /**
  * POST /memory/extract - Extract memories from conversation
  */
-router.post("/memory/extract", async (req, res) => {
+router.post("/memory/extract", validateBody(memoryExtractBodySchema), async (req, res) => {
   try {
     const { sessionId, messages } = req.body;
-
-    if (!messages || !Array.isArray(messages)) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          message: "messages array is required",
-          code: "INVALID_REQUEST",
-        },
-      });
-    }
 
     const coordinator = getCoordinator();
     const memories = await coordinator.extractMemories(messages);
@@ -612,16 +564,9 @@ router.post("/memory/extract", async (req, res) => {
 /**
  * POST /memory/search - Search memories semantically
  */
-router.post("/memory/search", async (req, res) => {
+router.post("/memory/search", validateBody(memorySearchBodySchema), async (req, res) => {
   try {
     const { query, userId = "default-user", limit = 10 } = req.body;
-
-    if (!query || typeof query !== "string") {
-      return res.status(400).json({
-        ok: false,
-        error: { message: "query is required", code: "INVALID_REQUEST" },
-      });
-    }
 
     const coordinator = getCoordinator();
     const results = await coordinator.searchMemories(query, { userId, limit });
@@ -640,6 +585,103 @@ router.post("/memory/search", async (req, res) => {
       error: { message: err.message, code: "INTERNAL_ERROR" },
     });
   }
+});
+// ============================================================================
+// ADMIN: AGENT PROMPT MANAGEMENT
+// ============================================================================
+
+/**
+ * Runtime prompt overrides (in-memory, resets on restart).
+ * key = mode name (e.g. "default"), value = overridden prompt text
+ */
+const promptOverrides = new Map();
+
+const MODE_LABELS = {
+  default: 'Default',
+  research: 'Research',
+  coding: 'Coding',
+  blog: 'Blog Writing',
+  article: 'Article Q&A',
+  terminal: 'Terminal',
+  performance: 'Performance',
+};
+
+/**
+ * GET /prompts — list all agent modes with their current prompt text
+ * Admin-only
+ */
+router.get('/prompts', requireAdmin, (req, res) => {
+  const prompts = Object.keys(SYSTEM_PROMPTS).map((mode) => ({
+    mode,
+    label: MODE_LABELS[mode] || mode,
+    text: promptOverrides.has(mode) ? promptOverrides.get(mode) : SYSTEM_PROMPTS[mode],
+    isOverridden: promptOverrides.has(mode),
+  }));
+  res.json({ ok: true, data: { prompts } });
+});
+
+/**
+ * PUT /prompts/:mode — update a prompt mode's text at runtime
+ * Admin-only
+ */
+router.put('/prompts/:mode', requireAdmin, (req, res) => {
+  const { mode } = req.params;
+  const { text } = req.body;
+
+  if (!SYSTEM_PROMPTS[mode]) {
+    return res.status(400).json({
+      ok: false,
+      error: { message: `Unknown mode: ${mode}. Valid modes: ${Object.keys(SYSTEM_PROMPTS).join(', ')}`, code: 'INVALID_MODE' },
+    });
+  }
+
+  if (typeof text !== 'string' || !text.trim()) {
+    return res.status(400).json({
+      ok: false,
+      error: { message: 'text must be a non-empty string', code: 'INVALID_REQUEST' },
+    });
+  }
+
+  promptOverrides.set(mode, text.trim());
+  logger.info({}, 'Agent prompt override set', { mode, length: text.length });
+
+  res.json({
+    ok: true,
+    data: {
+      mode,
+      label: MODE_LABELS[mode] || mode,
+      text: text.trim(),
+      isOverridden: true,
+    },
+  });
+});
+
+/**
+ * DELETE /prompts/:mode — reset a prompt mode to its default
+ * Admin-only
+ */
+router.delete('/prompts/:mode', requireAdmin, (req, res) => {
+  const { mode } = req.params;
+
+  if (!SYSTEM_PROMPTS[mode]) {
+    return res.status(400).json({
+      ok: false,
+      error: { message: `Unknown mode: ${mode}`, code: 'INVALID_MODE' },
+    });
+  }
+
+  promptOverrides.delete(mode);
+  logger.info({}, 'Agent prompt override reset', { mode });
+
+  res.json({
+    ok: true,
+    data: {
+      mode,
+      label: MODE_LABELS[mode] || mode,
+      text: SYSTEM_PROMPTS[mode],
+      isOverridden: false,
+    },
+  });
 });
 
 export default router;
