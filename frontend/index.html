@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>nodove blog</title>
     <meta name="description" content="nodove 블로그" />
+    <meta name="theme-default" content="terminal" />
 
     <meta property="og:title" content="nodove blog" />
     <meta property="og:description" content="nodove 블로그" />
@@ -62,11 +63,12 @@
 
     <script>
       (function () {
-        const theme = localStorage.getItem("theme");
-        const prefersDark = window.matchMedia(
-          "(prefers-color-scheme: dark)",
-        ).matches;
-        const root = document.documentElement;
+        var stored = localStorage.getItem("theme");
+        var validThemes = ["light", "dark", "system", "terminal"];
+        var defaultTheme = document.querySelector('meta[name="theme-default"]')?.content ?? 'terminal';
+        var theme = validThemes.indexOf(stored) !== -1 ? stored : defaultTheme;
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var root = document.documentElement;
         root.classList.remove("light", "dark", "terminal");
 
         if (theme === "terminal") {
@@ -74,15 +76,14 @@
           root.classList.add("dark", "terminal");
         } else if (
           theme === "dark" ||
-          (theme === "system" && prefersDark) ||
-          (!theme && prefersDark)
+          (theme === "system" && prefersDark)
         ) {
           root.classList.add("dark");
-        } else if (theme === "light") {
+        } else if (theme === "system") {
           root.classList.add("light");
-        } else if (!theme) {
-          // Default: terminal theme for new visitors
-          root.classList.add("dark", "terminal");
+        } else {
+          // "light" or explicit known theme
+          root.classList.add(theme);
         }
       })();
     </script>

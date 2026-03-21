@@ -10,6 +10,9 @@ import { toast } from '@/hooks/ui/use-toast';
 
 type Theme = 'light' | 'dark' | 'system' | 'terminal';
 
+const VALID_THEMES: Theme[] = ['light', 'dark', 'system', 'terminal'];
+const FALLBACK_THEME: Theme = 'terminal';
+
 interface ThemeContextType {
   theme: Theme;
   setTheme: (theme: Theme) => void;
@@ -27,8 +30,14 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    const savedTheme = localStorage.getItem('theme') as Theme;
-    return savedTheme || 'light';
+    const stored = localStorage.getItem('theme') as Theme;
+    if (stored && VALID_THEMES.includes(stored)) return stored;
+
+    const metaDefault = document.querySelector<HTMLMetaElement>('meta[name="theme-default"]')?.content as Theme | undefined;
+
+    return metaDefault && VALID_THEMES.includes(metaDefault)
+      ? metaDefault
+      : FALLBACK_THEME;
   });
   const isInitialMount = useRef(true);
 
