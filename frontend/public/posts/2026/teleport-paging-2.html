@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>페이지 폴트 현황판</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+            margin: 0;
+            padding: 16px;
+            min-height: 100vh;
+        }
+
+        .panel {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #64748b;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #64748b;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .input-text {
+            padding: 6px 10px;
+            font-size: 0.875rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            outline: none;
+            background: white;
+            width: 100%;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }
+
+        .input-text:focus {
+            border-color: #2563eb;
+        }
+
+        .chart-container {
+            flex: 1;
+            width: 100%;
+            position: relative;
+            min-height: 250px;
+        }
+
+        @keyframes pulse-red {
+            0% {
+                border-color: #fca5a5;
+            }
+
+            50% {
+                border-color: #ef4444;
+            }
+
+            100% {
+                border-color: #fca5a5;
+            }
+        }
+
+        .belady-alert {
+            background: #fef2f2;
+            border: 1px solid #fca5a5;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-top: 16px;
+            animation: pulse-red 2s infinite;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="panel p-4 h-full">
+        <div class="panel-header border-none p-0 mb-4 pb-0 flex justify-between items-center">
+            <span>📊 Page Fault Analysis</span>
+        </div>
+
+        <div class="mb-6">
+            <label class="input-label">Reference String</label>
+            <input type="text" id="ref-input" class="input-text" value="1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5"
+                oninput="analyzeAndDrawChart()" />
+        </div>
+
+        <div class="chart-container">
+            <canvas id="hitRateChart"></canvas>
+        </div>
+
+        <div class="belady-alert hidden" id="belady-warning">
+            <h3 class="text-red-700 font-semibold text-sm flex items-center gap-2 mb-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                    </path>
+                </svg>
+                Belady's Anomaly Detected
+            </h3>
+            <p class="text-xs text-red-600">
+                Notice that for FIFO, increasing the number of frames actually caused more page faults for this
+                reference string.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        class Algorithm {
+            constructor(framesCount, type) {
+                this.maxFrames = framesCount;
+                this.type = type;
+                this.frames = [];
+                this.faults = 0;
+                this.time = 0;
+                this.queue = [];
+            }
+            process(page) {
+                this.time++;
+                let isFull = this.frames.length >= this.maxFrames;
+                let existingIdx = this.frames.findIndex((f) => f.page === page);
+
+                if (existingIdx !== -1) {
+                    if (this.type === "lru") this.frames[existingIdx].time = this.time;
+                } else {
+                    this.faults++;
+                    if (!isFull) {
+                        this.frames.push({ page: page, time: this.time });
+                        if (this.type === "fifo") this.queue.push(page);
+                    } else {
+                        if (this.type === "fifo") {
+                            let victimPage = this.queue.shift();
+                            let victimIdx = this.frames.findIndex((f) => f.page === victimPage);
+                            this.frames[victimIdx] = { page: page, time: this.time };
+                            this.queue.push(page);
+                        } else if (this.type === "lru") {
+                            let lruIdx = 0;
+                            for (let i = 1; i < this.frames.length; i++) {
+                                if (this.frames[i].time < this.frames[lruIdx].time) lruIdx = i;
+                            }
+                            this.frames[lruIdx] = { page: page, time: this.time };
+                        }
+                    }
+                }
+            }
+        }
+
+        function getRefString() {
+            return document.getElementById("ref-input").value.split(",").map(x => x.trim()).filter(x => x !== "");
+        }
+
+        function simulateAll(refs) {
+            let maxF = 7;
+            let dataFIFO = [];
+            let dataLRU = [];
+            let hasBelady = false;
+
+            for (let f = 1; f <= maxF; f++) {
+                let fifoAlg = new Algorithm(f, "fifo");
+                let lruAlg = new Algorithm(f, "lru");
+
+                for (let i = 0; i < refs.length; i++) {
+                    fifoAlg.process(refs[i]);
+                    lruAlg.process(refs[i]);
+                }
+                dataFIFO.push(fifoAlg.faults);
+                dataLRU.push(lruAlg.faults);
+
+                if (f > 1 && dataFIFO[f - 1] > dataFIFO[f - 2]) hasBelady = true;
+            }
+            return { dataFIFO, dataLRU, hasBelady };
+        }
+
+        function analyzeAndDrawChart() {
+            const refs = getRefString();
+            if (refs.length === 0) return;
+            const results = simulateAll(refs);
+
+            const alertBox = document.getElementById("belady-warning");
+            if (results.hasBelady) {
+                alertBox.classList.remove("hidden");
+            } else {
+                alertBox.classList.add("hidden");
+            }
+
+            const canvas = document.getElementById("hitRateChart");
+            const ctx = canvas.getContext("2d");
+
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            const w = canvas.width;
+            const h = canvas.height;
+            const pad = 30;
+
+            ctx.clearRect(0, 0, w, h);
+            const maxFaults = Math.max(...results.dataFIFO, ...results.dataLRU, 1);
+
+            // Draw Grid
+            ctx.strokeStyle = "#e2e8f0";
+            ctx.lineWidth = 1;
+
+            // Horizontal lines
+            ctx.beginPath();
+            ctx.moveTo(pad, pad);
+            ctx.lineTo(w - pad + 10, pad);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(pad, h - pad);
+            ctx.lineTo(w - pad + 10, h - pad);
+            ctx.stroke();
+
+            // Axis labels
+            ctx.fillStyle = "#64748b";
+            ctx.font = "11px Inter";
+            ctx.textAlign = "right";
+            ctx.fillText(maxFaults, pad - 8, pad + 4);
+            ctx.fillText("0", pad - 8, h - pad + 4);
+
+            ctx.textAlign = "center";
+            for (let i = 1; i <= 7; i++) {
+                const x = pad + ((w - 2 * pad) / 6) * (i - 1);
+                ctx.fillText(i, x, h - pad + 16);
+            }
+            ctx.fillStyle = "#94a3b8";
+            ctx.fillText("Frames", w / 2, h - 2);
+
+            function drawLine(data, color) {
+                ctx.beginPath();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                for (let i = 0; i < 7; i++) {
+                    const x = pad + ((w - 2 * pad) / 6) * i;
+                    const val = data[i];
+                    const y = h - pad - (val / maxFaults) * (h - 2 * pad);
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+
+                ctx.fillStyle = "white";
+                for (let i = 0; i < 7; i++) {
+                    const x = pad + ((w - 2 * pad) / 6) * i;
+                    const val = data[i];
+                    const y = h - pad - (val / maxFaults) * (h - 2 * pad);
+                    ctx.beginPath();
+                    ctx.arc(x, y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+            }
+
+            drawLine(results.dataFIFO, "#ef4444"); // Red for FIFO
+            drawLine(results.dataLRU, "#2563eb");  // Blue for LRU
+
+            // Legend
+            ctx.textAlign = "right";
+            ctx.font = "11px Inter";
+            ctx.fillStyle = "#ef4444";
+            ctx.fillText("■ FIFO Faults", w - 10, 20);
+            ctx.fillStyle = "#2563eb";
+            ctx.fillText("■ LRU Faults", w - 10, 36);
+        }
+
+        window.onload = analyzeAndDrawChart;
+        window.addEventListener("resize", analyzeAndDrawChart);
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,2803 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OPNsense 정책 평가 알고리즘 시뮬레이터</title>
+    <style>
+      :root {
+        --bg: #1e1e1e;
+        --ink: #d4d4d4;
+        --muted: #9d9d9d;
+        --panel: #252526;
+        --line: #3e3e42;
+        --blue: #007acc;
+        --blue-soft: #1e3a5f;
+        --green: #4CAF50;
+        --green-soft: #1e3a1e;
+        --red: #f44336;
+        --red-soft: #3a1e1e;
+        --amber: #f0a500;
+        --amber-soft: #3a2e1e;
+        --slate-soft: #2a2a2a;
+        --shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          "Pretendard", "Noto Sans KR", "Segoe UI", Arial, sans-serif;
+        color: var(--ink);
+        background: var(--bg);
+        line-height: 1.55;
+        padding: clamp(12px, 2vw, 24px);
+      }
+
+      .app {
+        max-width: 1580px;
+        margin: 0 auto;
+        display: grid;
+        gap: 16px;
+      }
+
+      .hero {
+        background: linear-gradient(120deg, #0f172a, #1e293b 68%, #1d4ed8);
+        color: #eff6ff;
+        border-radius: 18px;
+        padding: clamp(14px, 2.3vw, 24px);
+        box-shadow: var(--shadow);
+      }
+
+      .hero h1 {
+        margin: 0 0 8px;
+        font-size: clamp(1.22rem, 2.1vw, 1.8rem);
+        letter-spacing: -0.015em;
+      }
+
+      .hero p {
+        margin: 0;
+        color: #cbd5e1;
+        font-size: clamp(0.9rem, 1.35vw, 1rem);
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+      }
+
+      .panel h2 {
+        margin: 0;
+        font-size: 1.03rem;
+        letter-spacing: -0.01em;
+      }
+
+      .overview {
+        padding: 14px;
+      }
+
+      .overview-grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .overview-card {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        background: #252526;
+      }
+
+      .overview-card h3 {
+        margin: 0 0 8px;
+        font-size: 0.95rem;
+      }
+
+      .overview-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .chip-row {
+        margin-top: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .chip {
+        border-radius: 999px;
+        padding: 5px 10px;
+        font-size: 0.76rem;
+        font-weight: 700;
+        border: 1px solid transparent;
+      }
+
+      .chip.blue {
+        color: #1e40af;
+        background: var(--blue-soft);
+        border-color: #bfdbfe;
+      }
+
+      .chip.green {
+        color: #166534;
+        background: var(--green-soft);
+        border-color: #bbf7d0;
+      }
+
+      .chip.amber {
+        color: #92400e;
+        background: var(--amber-soft);
+        border-color: #f0a500;
+      }
+
+      .main-grid {
+        display: grid;
+        grid-template-columns:
+          minmax(280px, 0.95fr) minmax(420px, 1.55fr)
+          minmax(300px, 1fr);
+        gap: 14px;
+      }
+
+      .workspace,
+      .visualizer,
+      .tracker,
+      .controller {
+        padding: 12px;
+      }
+
+      .section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .small-muted {
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
+
+      .scenario-select {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 9px 10px;
+        font-size: 0.9rem;
+        background: #2d2d30;
+      }
+
+      .scenario-help {
+        margin-top: 8px;
+        padding: 10px;
+        border-radius: 10px;
+        border: 1px solid #dbeafe;
+        background: #eff6ff;
+        color: #1e3a8a;
+        font-size: 0.84rem;
+      }
+
+      .code-builder {
+        margin-top: 12px;
+        border: 1px solid #d9e3f3;
+        border-radius: 12px;
+        background: #0b1220;
+        color: #e2e8f0;
+        padding: 10px;
+        overflow: auto;
+      }
+
+      .code-line {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 31px;
+        font-family: "JetBrains Mono", "D2Coding", monospace;
+        font-size: 0.82rem;
+        white-space: nowrap;
+      }
+
+      .line-no {
+        color: #64748b;
+        width: 20px;
+        text-align: right;
+        flex: 0 0 20px;
+      }
+
+      .fill-input {
+        width: 120px;
+        max-width: 38vw;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 5px 7px;
+        background: #111827;
+        color: #f8fafc;
+        font-family: inherit;
+        font-size: 0.78rem;
+      }
+
+      .fill-input.correct {
+        border-color: #22c55e;
+        background: rgba(34, 197, 94, 0.14);
+      }
+
+      .fill-input.wrong {
+        border-color: #ef4444;
+        background: rgba(239, 68, 68, 0.14);
+      }
+
+      .validation-grid {
+        margin-top: 10px;
+        display: grid;
+        gap: 6px;
+      }
+
+      .validation-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 9px;
+        border: 1px solid var(--line);
+        background: #252526;
+        padding: 6px 8px;
+        font-size: 0.8rem;
+      }
+
+      .validation-dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        border: 1px solid #94a3b8;
+        background: #252526;
+      }
+
+      .validation-item.correct {
+        border-color: #86efac;
+        background: #1a2a1a;
+      }
+
+      .validation-item.correct .validation-dot {
+        background: #22c55e;
+        border-color: #22c55e;
+      }
+
+      .validation-item.wrong {
+        border-color: #fda4af;
+        background: #3a1e1e;
+      }
+
+      .validation-item.wrong .validation-dot {
+        background: #ef4444;
+        border-color: #ef4444;
+      }
+
+      .completion {
+        margin-top: 8px;
+        font-size: 0.82rem;
+        font-weight: 700;
+      }
+
+      .completion strong {
+        color: var(--blue);
+      }
+
+      .visual-top {
+        display: grid;
+        grid-template-columns: 1.3fr auto 1fr;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .packet-card,
+      .decision-card {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #252526;
+        padding: 10px;
+      }
+
+      .packet-card h4,
+      .decision-card h4 {
+        margin: 0 0 6px;
+        font-size: 0.86rem;
+      }
+
+      .packet-meta,
+      .decision-meta {
+        display: grid;
+        gap: 5px;
+        font-size: 0.81rem;
+      }
+
+      .packet-meta span,
+      .decision-meta span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .packet-meta b,
+      .decision-meta b {
+        color: #1e3a8a;
+      }
+
+      .flow-arrow {
+        font-size: 1.4rem;
+        color: var(--blue);
+        font-weight: 900;
+      }
+
+      .decision-tag {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-weight: 800;
+        font-size: 0.76rem;
+        border: 1px solid transparent;
+      }
+
+      .decision-tag.pending {
+        background: #e2e8f0;
+        border-color: #cbd5e1;
+        color: #334155;
+      }
+
+      .decision-tag.allow {
+        background: #dcfce7;
+        border-color: #86efac;
+        color: #166534;
+      }
+
+      .decision-tag.deny {
+        background: #3a1a1a;
+        border-color: #fca5a5;
+        color: #991b1b;
+      }
+
+      .rule-list {
+        margin-top: 10px;
+        display: grid;
+        gap: 7px;
+      }
+
+      .rule-card {
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        background: #2d2d30;
+        padding: 9px;
+        transition:
+          transform 0.2s ease,
+          box-shadow 0.2s ease,
+          border-color 0.2s ease;
+      }
+
+      .rule-card .rule-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .rule-card .rule-title {
+        font-size: 0.83rem;
+        font-weight: 800;
+      }
+
+      .rule-card .rule-body {
+        margin-top: 5px;
+        font-size: 0.78rem;
+        color: var(--muted);
+        display: grid;
+        gap: 3px;
+      }
+
+      .rule-state {
+        border-radius: 999px;
+        padding: 2px 8px;
+        font-size: 0.72rem;
+        font-weight: 700;
+      }
+
+      .rule-card.idle .rule-state {
+        background: #e2e8f0;
+        color: #334155;
+      }
+
+      .rule-card.active {
+        border-color: #60a5fa;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        transform: translateX(2px);
+      }
+
+      .rule-card.active .rule-state {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+
+      .rule-card.rejected {
+        border-color: #fca5a5;
+        background: #2a1a1a;
+      }
+
+      .rule-card.rejected .rule-state {
+        background: #3a1a1a;
+        color: #b91c1c;
+      }
+
+      .rule-card.matched {
+        border-color: #86efac;
+        background: #1a2a1a;
+      }
+
+      .rule-card.matched .rule-state {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .reason-bubble {
+        margin-top: 10px;
+        border: 1px solid #bfdbfe;
+        background: #eff6ff;
+        color: #1e3a8a;
+        border-radius: 11px;
+        padding: 9px;
+        font-size: 0.83rem;
+      }
+
+      .tracker-code {
+        border: 1px solid #d9e3f3;
+        border-radius: 10px;
+        background: #0b1220;
+        color: #e2e8f0;
+        font-family: "JetBrains Mono", "D2Coding", monospace;
+        font-size: 0.79rem;
+        overflow: auto;
+      }
+
+      .track-line {
+        display: grid;
+        grid-template-columns: 28px 1fr;
+        gap: 8px;
+        align-items: center;
+        padding: 5px 9px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+      }
+
+      .track-line:last-child {
+        border-bottom: none;
+      }
+
+      .track-line .num {
+        color: #64748b;
+        text-align: right;
+      }
+
+      .track-line.active {
+        background: rgba(37, 99, 235, 0.2);
+      }
+
+      .watch-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        font-size: 0.78rem;
+      }
+
+      .watch-table th,
+      .watch-table td {
+        border: 1px solid var(--line);
+        padding: 6px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .watch-table th {
+        background: #252526;
+        font-weight: 700;
+      }
+
+      .watch-table td.delta.changed {
+        color: var(--blue);
+        font-weight: 700;
+      }
+
+      .stack-box,
+      .heap-box {
+        margin-top: 10px;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        background: #252526;
+        padding: 8px;
+      }
+
+      .stack-box h3,
+      .heap-box h3 {
+        margin: 0 0 6px;
+        font-size: 0.84rem;
+      }
+
+      .stack-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 5px;
+      }
+
+      .stack-list li {
+        border: 1px dashed #3e3e42;
+        border-radius: 8px;
+        background: #2d2d30;
+        padding: 5px 7px;
+        font-size: 0.76rem;
+      }
+
+      .heap-grid {
+        display: grid;
+        gap: 6px;
+      }
+
+      .heap-item {
+        border: 1px dashed #3e3e42;
+        border-radius: 8px;
+        background: #2d2d30;
+        padding: 5px 7px;
+        font-size: 0.75rem;
+      }
+
+      .mini-bar {
+        margin-top: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #e2e8f0;
+        overflow: hidden;
+      }
+
+      .mini-bar > span {
+        display: block;
+        height: 100%;
+        background: linear-gradient(90deg, #2563eb, #22c55e);
+        width: 0%;
+        transition: width 0.2s ease;
+      }
+
+      .controller {
+        display: grid;
+        gap: 10px;
+      }
+
+      .control-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+
+      button.ctrl {
+        border: 1px solid #cbd5e1;
+        background: #2d2d30;
+        border-radius: 10px;
+        padding: 8px 11px;
+        font-size: 0.83rem;
+        font-weight: 700;
+        color: #0f172a;
+        cursor: pointer;
+      }
+
+      button.ctrl.primary {
+        background: var(--blue);
+        border-color: #1d4ed8;
+        color: #fff;
+      }
+
+      button.ctrl:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      .speed-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+      }
+
+      .speed-wrap input[type="range"] {
+        width: min(240px, 52vw);
+      }
+
+      .timeline {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #252526;
+        padding: 8px;
+      }
+
+      .timeline-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 0.82rem;
+      }
+
+      .progress {
+        margin-top: 6px;
+        height: 8px;
+        border-radius: 999px;
+        background: #e2e8f0;
+        overflow: hidden;
+      }
+
+      .progress > span {
+        display: block;
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(90deg, #2563eb, #3b82f6);
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .metric {
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: #2d2d30;
+        padding: 8px;
+      }
+
+      .metric .label {
+        font-size: 0.73rem;
+        color: var(--muted);
+      }
+
+      .metric .value {
+        margin-top: 2px;
+        font-size: 0.95rem;
+        font-weight: 800;
+      }
+
+      .controller-message {
+        border-radius: 10px;
+        border: 1px solid #dbeafe;
+        background: #eff6ff;
+        color: #1d4ed8;
+        padding: 8px;
+        font-size: 0.82rem;
+      }
+
+      .locked-banner {
+        margin-top: 8px;
+        border: 1px solid #fecaca;
+        background: #3a1e1e;
+        color: #9f1239;
+        border-radius: 9px;
+        padding: 8px;
+        font-size: 0.8rem;
+        display: none;
+      }
+
+      .locked-banner.show {
+        display: block;
+      }
+
+      @media (max-width: 1320px) {
+        .main-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 860px) {
+        .overview-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .visual-top {
+          grid-template-columns: 1fr;
+        }
+
+        .flow-arrow {
+          text-align: center;
+          transform: rotate(90deg);
+        }
+
+        .metrics {
+          grid-template-columns: 1fr;
+        }
+      }
+
+
+
+      /* __editor-code-theme */
+      .code-panel,
+      .code-display,
+      #code-display,
+      .code-block,
+      .__trace-code-display,
+      #__trace-code-display,
+      #__rtx-python-display,
+      .code-builder {
+        background: linear-gradient(180deg, #111a29 0%, #0c1422 100%);
+        color: #e6edf3;
+        border: 1px solid #2b3547;
+        border-radius: 10px;
+        box-shadow:
+          0 10px 24px rgba(0, 0, 0, 0.35),
+          inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        font-family: JetBrains Mono, monospace;
+        font-size: 12.5px;
+        line-height: 1.65;
+        tab-size: 4;
+        scrollbar-color: #47566e #0b1220;
+        counter-reset: code-line;
+      }
+
+      .code-panel::-webkit-scrollbar,
+      .code-display::-webkit-scrollbar,
+      #code-display::-webkit-scrollbar,
+      .code-block::-webkit-scrollbar,
+      .__trace-code-display::-webkit-scrollbar,
+      #__trace-code-display::-webkit-scrollbar,
+      #__rtx-python-display::-webkit-scrollbar,
+      .code-builder::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      .code-panel::-webkit-scrollbar-track,
+      .code-display::-webkit-scrollbar-track,
+      #code-display::-webkit-scrollbar-track,
+      .code-block::-webkit-scrollbar-track,
+      .__trace-code-display::-webkit-scrollbar-track,
+      #__trace-code-display::-webkit-scrollbar-track,
+      #__rtx-python-display::-webkit-scrollbar-track,
+      .code-builder::-webkit-scrollbar-track {
+        background: #0b1220;
+      }
+      .code-panel::-webkit-scrollbar-thumb,
+      .code-display::-webkit-scrollbar-thumb,
+      #code-display::-webkit-scrollbar-thumb,
+      .code-block::-webkit-scrollbar-thumb,
+      .__trace-code-display::-webkit-scrollbar-thumb,
+      #__trace-code-display::-webkit-scrollbar-thumb,
+      #__rtx-python-display::-webkit-scrollbar-thumb,
+      .code-builder::-webkit-scrollbar-thumb {
+        background: #47566e;
+        border: 2px solid #0b1220;
+        border-radius: 999px;
+      }
+
+      .code-line,
+      .code-display .code-line,
+      #code-display .code-line,
+      .code-block .code-line,
+      .__trace-code-display .__line,
+      #__rtx-python-display .__line {
+        position: relative;
+        display: block;
+        min-height: 1.65em;
+        padding: 1px 10px 1px 3.4rem;
+        white-space: pre;
+      }
+
+      .__trace-code-display .__line,
+      #__rtx-python-display .__line {
+        margin: 0 !important;
+        padding-right: 10px !important;
+        padding-left: 3.4rem !important;
+      }
+
+      .code-line::before,
+      .code-display .code-line::before,
+      #code-display .code-line::before,
+      .code-block .code-line::before,
+      .__trace-code-display .__line::before,
+      #__rtx-python-display .__line::before {
+        counter-increment: code-line;
+        content: counter(code-line);
+        position: absolute;
+        left: 0.8rem;
+        top: 0;
+        width: 2rem;
+        text-align: right;
+        color: #6f7f97;
+        user-select: none;
+      }
+
+      .code-line.active,
+      .code-line.current,
+      .code-line.highlight,
+      .__trace-code-display .__line.__active,
+      #__rtx-python-display .__line.__active {
+        background: rgba(88, 166, 255, 0.16) !important;
+        box-shadow: inset 3px 0 0 #58a6ff;
+      }
+
+      .code-line.active::before,
+      .code-line.current::before,
+      .code-line.highlight::before,
+      .__trace-code-display .__line.__active::before,
+      #__rtx-python-display .__line.__active::before {
+        color: #9ecbff;
+      }
+
+      .kw,
+      .tok-keyword,
+      .code-keyword {
+        color: #ff7b72 !important;
+        font-weight: 600;
+      }
+      .fn,
+      .tok-function,
+      .tok-method,
+      .code-function {
+        color: #d2a8ff !important;
+      }
+      .tok-builtin {
+        color: #79c0ff !important;
+      }
+      .tok-number,
+      .code-number {
+        color: #a5d6ff !important;
+      }
+      .cm,
+      .tok-comment {
+        color: #8b949e !important;
+        font-style: italic;
+      }
+
+      .code-fill-box {
+        background: #0f1728;
+        border: 1px dashed #4d5d77;
+        border-radius: 5px;
+        color: #f8fafc;
+      }
+
+      /* __code-scroll-cap */
+      .code-panel,
+      .code-display,
+      #code-display,
+      .code-block,
+      .__trace-code-display,
+      #__trace-code-display,
+      #__rtx-python-display,
+      .code-builder,
+      .__rtx-runtime-body pre {
+        max-height: min(46vh, 420px);
+        overflow-y: auto;
+        overflow-x: auto;
+        scrollbar-gutter: stable;
+        overscroll-behavior: contain;
+      }
+      .code-line {
+        white-space: pre;
+      }
+
+      @media (max-width: 640px) {
+        .code-panel,
+        .code-display,
+        #code-display,
+        .code-block,
+        .__trace-code-display,
+        #__trace-code-display,
+        #__rtx-python-display,
+        .code-builder,
+        .__rtx-runtime-body pre {
+          max-height: min(42vh, 320px);
+        }
+      }
+
+      /* __runtime-trace-theme */
+      .__rtx-section {
+        margin-top: 12px;
+      }
+      .__rtx-head {
+        font-size: 0.8rem;
+        color: #9fb3c8;
+        margin: 0 0 8px;
+      }
+      .__rtx-runtime-panel {
+        margin-top: 12px;
+        border: 1px solid #2b3547;
+        border-radius: 10px;
+        background: linear-gradient(180deg, #0f1a2b, #0a1423);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+      }
+      .__rtx-runtime-title {
+        font-family: JetBrains Mono, monospace;
+        font-size: 0.78rem;
+        color: #9ecbff;
+        background: #0a1220;
+        border-bottom: 1px solid #22314a;
+        padding: 8px 10px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .__rtx-runtime-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        padding: 10px;
+      }
+      .__rtx-runtime-box {
+        border: 1px solid #2b3547;
+        border-radius: 8px;
+        background: rgba(9, 17, 31, 0.92);
+        min-width: 0;
+      }
+      .__rtx-runtime-box h4 {
+        margin: 0;
+        padding: 8px 10px;
+        font-family: JetBrains Mono, monospace;
+        font-size: 0.73rem;
+        color: #79c0ff;
+        border-bottom: 1px solid #20324d;
+      }
+      .__rtx-runtime-body pre {
+        margin: 0;
+        padding: 10px;
+        font-family: JetBrains Mono, monospace;
+        font-size: 0.74rem;
+        line-height: 1.5;
+        color: #dbe8f5;
+        white-space: pre;
+      }
+      @media (max-width: 980px) {
+        .__rtx-runtime-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+</style>
+    <style>
+      /* two-sum 시뮬레이터 기준 디자인 오버라이드 */
+      :root {
+        --bg-color: #1e1e1e;
+        --panel-bg: #252526;
+        --text-color: #d4d4d4;
+        --border-color: #3e3e42;
+        --primary: #007acc;
+        --primary-hover: #005999;
+        --accent: #4caf50;
+        --danger: #f44336;
+        --highlight: #264f78;
+      }
+
+      body {
+        background: var(--bg) !important;
+        color: var(--text-color) !important;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif !important;
+        line-height: 1.5;
+        padding: 20px;
+      }
+
+      .app {
+        gap: 20px;
+      }
+
+      .sim-header {
+        text-align: center;
+        min-height: 76px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .sim-header h2 {
+        margin: 0;
+        color: #fff !important;
+        font-size: clamp(1.14rem, 2vw, 1.48rem);
+        font-weight: 700;
+        letter-spacing: 0.01em;
+      }
+
+      .sim-header p {
+        margin: 6px 0 0;
+        color: #aaa !important;
+        font-size: 0.92rem;
+      }
+
+      .panel,
+      .overview-card,
+      .packet-card,
+      .decision-card,
+      .rule-card,
+      .metric,
+      .timeline,
+      .stack-box,
+      .heap-box,
+      .validation-item {
+        background: var(--panel-bg) !important;
+        border: 1px solid var(--border-color) !important;
+        box-shadow: none !important;
+        border-radius: 8px !important;
+      }
+
+      .overview,
+      .workspace,
+      .visualizer,
+      .tracker,
+      .controller {
+        padding: 20px !important;
+      }
+
+      .panel h2,
+      .overview-card h3,
+      .packet-card h4,
+      .decision-card h4,
+      .stack-box h3,
+      .heap-box h3,
+      .rule-title {
+        color: #fff !important;
+      }
+
+      .small-muted,
+      .workspace label,
+      .overview-card p,
+      .packet-meta,
+      .decision-meta,
+      .rule-card .rule-body,
+      .metric .label,
+      .watch-table td,
+      .watch-table th {
+        color: #aaa !important;
+      }
+
+      .chip {
+        background: #2d2d30 !important;
+        border: 1px solid var(--border-color) !important;
+        color: #9cdcfe !important;
+      }
+
+      .chip.green {
+        color: #b5cea8 !important;
+      }
+
+      .chip.amber {
+        color: #e2c08d !important;
+      }
+
+      .scenario-select,
+      .fill-input,
+      .speed-wrap input[type="range"] {
+        background: #1e1e1e !important;
+        border: 1px solid var(--border-color) !important;
+        color: var(--text-color) !important;
+      }
+
+      .scenario-help {
+        background: #2d2d30 !important;
+        border: 1px solid var(--border-color) !important;
+        color: #e2c08d !important;
+      }
+
+      .code-builder,
+      .tracker-code {
+        background: #1e1e1e !important;
+        border: 1px solid var(--border-color) !important;
+      }
+
+      .line-no,
+      .track-line .num {
+        color: #858585 !important;
+      }
+
+      .track-line.active {
+        background: var(--highlight) !important;
+      }
+
+      .watch-table th,
+      .watch-table td {
+        border-color: var(--border-color) !important;
+      }
+
+      .watch-table th {
+        background: #2d2d30 !important;
+      }
+
+      .watch-table td.delta.changed {
+        color: #9cdcfe !important;
+      }
+
+      .reason-bubble,
+      .controller-message {
+        background: #2d2d30 !important;
+        border: 1px solid var(--border-color) !important;
+        color: #e2c08d !important;
+      }
+
+      .locked-banner {
+        background: #3a2424 !important;
+        border: 1px solid #6a3232 !important;
+        color: #ffb3b3 !important;
+      }
+
+      button.ctrl {
+        background: var(--primary) !important;
+        border: none !important;
+        color: #fff !important;
+        border-radius: 4px !important;
+        min-height: 34px;
+        padding: 8px 16px !important;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      button.ctrl:hover:not(:disabled) {
+        background: var(--primary-hover) !important;
+      }
+
+      button.ctrl:disabled {
+        background: #555 !important;
+        color: #888 !important;
+      }
+
+      button.ctrl.primary {
+        background: var(--primary) !important;
+      }
+
+      .decision-tag.pending {
+        background: #333337 !important;
+        color: #d4d4d4 !important;
+        border: 1px solid var(--border-color) !important;
+      }
+
+      .decision-tag.allow {
+        background: rgba(76, 175, 80, 0.2) !important;
+        color: #b5cea8 !important;
+        border: 1px solid #4caf50 !important;
+      }
+
+      .decision-tag.deny {
+        background: rgba(244, 67, 54, 0.2) !important;
+        color: #ffb3b3 !important;
+        border: 1px solid #f44336 !important;
+      }
+
+      .rule-state {
+        background: #333337 !important;
+        color: #d4d4d4 !important;
+      }
+
+      .rule-card.active {
+        border-color: var(--primary) !important;
+        background: var(--highlight) !important;
+        box-shadow: none !important;
+      }
+
+      .rule-card.active .rule-state {
+        background: rgba(0, 122, 204, 0.25) !important;
+        color: #9cdcfe !important;
+      }
+
+      .rule-card.rejected {
+        border-color: #6a3232 !important;
+        background: #3a2424 !important;
+      }
+
+      .rule-card.rejected .rule-state {
+        background: rgba(244, 67, 54, 0.2) !important;
+        color: #ffb3b3 !important;
+      }
+
+      .rule-card.matched {
+        border-color: #4caf50 !important;
+        background: #243424 !important;
+      }
+
+      .rule-card.matched .rule-state {
+        background: rgba(76, 175, 80, 0.2) !important;
+        color: #b5cea8 !important;
+      }
+    
+    /* ── modal ─────────────────────────────────────── */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;pointer-events:none;transition:opacity .25s}
+    .modal-overlay.open{opacity:1;pointer-events:all}
+    .modal{background:#252526;border:1px solid #3e3e42;border-radius:12px;padding:24px 28px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;color:#d4d4d4;position:relative}
+    .modal h3{margin:0 0 16px;color:#fff;font-size:1.15rem}
+    .modal section{margin-bottom:14px}
+    .modal h4{margin:0 0 6px;color:#569cd6;font-size:.9rem}
+    .modal p,.modal li{font-size:.88rem;line-height:1.6;margin:4px 0;color:#ccc}
+    .modal ul{padding-left:18px}
+    .modal .tag{display:inline-block;background:#1e3a5f;color:#9cdcfe;border-radius:4px;padding:2px 8px;font-size:.82rem;margin-right:6px}
+    .modal-close{position:absolute;top:12px;right:14px;background:none;border:none;color:#888;font-size:1.2rem;cursor:pointer;padding:4px 8px;border-radius:4px}
+    .modal-close:hover{background:#3e3e42;color:#fff}
+    .btn-info-float{position:fixed;top:12px;right:12px;z-index:1000;background:#007acc;color:#fff;border:none;border-radius:50%;width:32px;height:32px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+    .btn-info-float:hover{background:#005999}
+</style>
+  </head>
+  <body>
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <button class="modal-close" id="modal-close" type="button">✕</button>
+    <h3>OPNsense 정책 평가 알고리즘 시뮬레이터</h3>
+    <section>
+      <h4>📌 개요</h4>
+      <p>OPNsense 방화벽의 규칙 평가를 "한 줄씩" 추적합니다. 첫 일치(First Match) 원칙이 왜 중요한지, 규칙 순서가 결과를 어떻게 바꾸는지 시각적으로 학습할 수 있습니다.</p>
+    </section>
+    <section>
+      <h4>💡 핵심 개념</h4>
+      <ul>
+        <li><strong>First Match 원칙</strong>: 규칙 목록을 위에서부터 순서대로 평가, 첫 번째 일치 규칙이 결과를 결정</li>
+        <li><strong>Implicit Deny</strong>: 일치하는 규칙이 없으면 기본적으로 차단</li>
+        <li><strong>VLAN 104 시나리오</strong>: 실무 네트워크 분리 환경에서의 정책 평가</li>
+        <li><strong>규칙 순서의 중요성</strong>: 동일 정책이라도 순서에 따라 결과가 달라짐</li>
+      </ul>
+    </section>
+    <section>
+      <h4>🏗 아키텍트의 시선</h4>
+      <p>방화벽 규칙은 알고리즘의 선형 탐색(O(n))입니다. 자주 매칭되는 규칙을 상단에 배치하면 평균 평가 비용을 줄일 수 있습니다. iptables, nftables, AWS Security Group도 동일한 First Match 모델을 따릅니다.</p>
+    </section>
+  </div>
+</div>
+<button class="btn-info-float" id="btn-info" type="button" title="설명 보기">ℹ</button>
+
+    <div class="app">
+      <div class="sim-header">
+        <h2>VLAN 104 정책 평가 알고리즘 시뮬레이터</h2>
+        <p>
+          OPNsense의 규칙 평가를 "한 줄씩" 추적합니다. 왜 첫 일치(First Match)가
+          중요한지, 규칙 순서가 어떻게 결과를 바꾸는지, 그리고 실무에서 어떤
+          아키텍처로 운영하는지 한 화면에서 학습할 수 있습니다.
+        </p>
+      </div>
+
+      <section class="panel overview">
+        <div class="overview-grid">
+          <article class="overview-card">
+            <h3>Why: 왜 이 알고리즘을 쓰는가?</h3>
+            <p>
+              방화벽 정책 평가는 "결정의 예측 가능성"이 핵심입니다. 규칙을
+              위에서 아래로 순차 평가하면, 운영자가 트래픽 경로를 확정적으로
+              설명할 수 있습니다. 장애 분석과 보안 감사에서도 해석이 쉽습니다.
+            </p>
+            <div class="chip-row">
+              <span class="chip blue">결정 방식: 첫 일치(First Match)</span>
+              <span class="chip green">운영 이점: 규칙 가시성</span>
+            </div>
+          </article>
+
+          <article class="overview-card">
+            <h3>Architecture: 코어 모듈</h3>
+            <p>
+              <b>상태 관리자(State Machine)</b>가 단일 진실 공급원으로 동작하고,
+              <b>실행 엔진(Tick/Step Engine)</b>은 Generator로 단계를 잘게
+              분해합니다. <b>이벤트 버스(Event Bus)</b>가 UI와 시각화 컴포넌트를
+              느슨하게 연결합니다.
+            </p>
+            <div class="chip-row">
+              <span class="chip blue">상태 관리자(State Machine)</span>
+              <span class="chip blue">생성기 기반 단계 엔진</span>
+              <span class="chip blue">이벤트 버스(Event Bus)</span>
+            </div>
+          </article>
+
+          <article class="overview-card">
+            <h3>실무 응용과 복잡도</h3>
+            <p>
+              이 모델은 OPNsense/pf 규칙 설계, ACL 정책 리뷰, Zero Trust
+              세그먼트 검증에 활용됩니다. 시간 복잡도는 <b>O(n)</b>, 공간
+              복잡도는 <b>O(1)</b>이며 n은 규칙 수입니다.
+            </p>
+            <div class="chip-row">
+              <span class="chip amber" id="scenario-complexity"
+                >현재 규칙 수: 0</span
+              >
+              <span class="chip green" id="scenario-note">시나리오: -</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <div class="main-grid">
+        <section class="panel workspace">
+          <div class="section-head">
+            <h2>B. 인터랙티브 작업 공간</h2>
+            <span class="small-muted">코드 빈칸 + 엣지 케이스</span>
+          </div>
+
+          <label for="scenario-select" class="small-muted"
+            >시나리오 / 엣지 케이스 선택</label
+          >
+          <select id="scenario-select" class="scenario-select"></select>
+          <div id="scenario-help" class="scenario-help"></div>
+
+          <div class="code-builder" aria-label="코드 빈칸 채우기">
+            <div class="code-line">
+              <span class="line-no">1</span
+              ><span>function evaluatePolicy(packet, rules) {</span>
+            </div>
+            <div class="code-line">
+              <span class="line-no">2</span>
+              <span>for (let i = 0; i &lt; </span>
+              <input
+                class="fill-input"
+                data-key="loopBound"
+                placeholder="rules.length"
+              />
+              <span>; i++) {</span>
+            </div>
+            <div class="code-line">
+              <span class="line-no">3</span
+              ><span>&nbsp;&nbsp;const rule = rules[i];</span>
+            </div>
+            <div class="code-line">
+              <span class="line-no">4</span>
+              <span>&nbsp;&nbsp;if (!isFieldMatch(packet.vlan, </span>
+              <input
+                class="fill-input"
+                data-key="vlanField"
+                placeholder="rule.vlan"
+              />
+              <span>)) continue;</span>
+            </div>
+            <div class="code-line">
+              <span class="line-no">5</span>
+              <span>&nbsp;&nbsp;if (!isFieldMatch(packet.srcZone, </span>
+              <input
+                class="fill-input"
+                data-key="srcField"
+                placeholder="rule.srcZone"
+              />
+              <span>)) continue;</span>
+            </div>
+            <div class="code-line">
+              <span class="line-no">6</span
+              ><span
+                >&nbsp;&nbsp;if (!isFieldMatch(packet.dstZone, rule.dstZone))
+                continue;</span
+              >
+            </div>
+            <div class="code-line">
+              <span class="line-no">7</span>
+              <span>&nbsp;&nbsp;return { action: </span>
+              <input
+                class="fill-input"
+                data-key="actionField"
+                placeholder="rule.action"
+              />
+              <span>, matchedIndex: i };</span>
+            </div>
+            <div class="code-line">
+              <span class="line-no">8</span><span>}</span>
+            </div>
+            <div class="code-line">
+              <span class="line-no">9</span>
+              <span>return { action: "</span>
+              <input
+                class="fill-input"
+                data-key="fallbackAction"
+                placeholder="DENY"
+              />
+              <span>", matchedIndex: -1 };</span>
+            </div>
+            <div class="code-line">
+              <span class="line-no">10</span><span>}</span>
+            </div>
+          </div>
+
+          <div id="validation-grid" class="validation-grid"></div>
+          <div class="completion">
+            코드 완성도: <strong id="completion-text">0 / 5</strong>
+          </div>
+          <div id="locked-banner" class="locked-banner">
+            시뮬레이션이 잠겨 있습니다. 빈칸을 정확히 채우면 Play/Pause와 Step
+            제어가 활성화됩니다.
+          </div>
+        </section>
+
+        <section class="panel visualizer">
+          <div class="section-head">
+            <h2>C. 실시간 시각화 캔버스</h2>
+            <span class="small-muted">규칙 매칭 흐름 + 원인 피드백</span>
+          </div>
+
+          <div class="visual-top">
+            <div class="packet-card" id="packet-card">
+              <h4>입력 패킷</h4>
+              <div class="packet-meta" id="packet-meta"></div>
+            </div>
+            <div class="flow-arrow">➜</div>
+            <div class="decision-card">
+              <h4>최종 결정</h4>
+              <div class="decision-meta">
+                <span
+                  >상태
+                  <b id="decision-tag" class="decision-tag pending"
+                    >미결정</b
+                  ></span
+                >
+                <span>일치 규칙 <b id="decision-match">-</b></span>
+              </div>
+            </div>
+          </div>
+
+          <div id="rule-list" class="rule-list"></div>
+          <div id="reason-bubble" class="reason-bubble"></div>
+        </section>
+
+        <section class="panel tracker">
+          <div class="section-head">
+            <h2>D. 라이브 코드 추적기</h2>
+            <span class="small-muted">라인 하이라이트 + 심층 변수 추적</span>
+          </div>
+
+          <div class="tracker-code" id="tracker-code">
+            <div class="track-line" data-line="1">
+              <span class="num">1</span
+              ><span>function evaluatePolicy(packet, rules) {</span>
+            </div>
+            <div class="track-line" data-line="2">
+              <span class="num">2</span
+              ><span>for (let i = 0; i &lt; rules.length; i++) {</span>
+            </div>
+            <div class="track-line" data-line="3">
+              <span class="num">3</span
+              ><span>&nbsp;&nbsp;const rule = rules[i];</span>
+            </div>
+            <div class="track-line" data-line="4">
+              <span class="num">4</span
+              ><span
+                >&nbsp;&nbsp;if (!isFieldMatch(packet.vlan, rule.vlan))
+                continue;</span
+              >
+            </div>
+            <div class="track-line" data-line="5">
+              <span class="num">5</span
+              ><span
+                >&nbsp;&nbsp;if (!isFieldMatch(packet.srcZone, rule.srcZone))
+                continue;</span
+              >
+            </div>
+            <div class="track-line" data-line="6">
+              <span class="num">6</span
+              ><span
+                >&nbsp;&nbsp;if (!isFieldMatch(packet.dstZone, rule.dstZone))
+                continue;</span
+              >
+            </div>
+            <div class="track-line" data-line="7">
+              <span class="num">7</span
+              ><span
+                >&nbsp;&nbsp;return { action: rule.action, matchedIndex: i
+                };</span
+              >
+            </div>
+            <div class="track-line" data-line="8">
+              <span class="num">8</span><span>}</span>
+            </div>
+            <div class="track-line" data-line="9">
+              <span class="num">9</span
+              ><span>return { action: "DENY", matchedIndex: -1 };</span>
+            </div>
+            <div class="track-line" data-line="10">
+              <span class="num">10</span><span>}</span>
+            </div>
+          </div>
+
+          <table class="watch-table">
+            <thead>
+              <tr>
+                <th>변수</th>
+                <th>현재 값</th>
+                <th>이전 값</th>
+                <th>변화</th>
+              </tr>
+            </thead>
+            <tbody id="watch-body"></tbody>
+          </table>
+
+          <div class="stack-box">
+            <h3>콜 스택 추적</h3>
+            <ul id="stack-list" class="stack-list"></ul>
+            <div class="mini-bar"><span id="stack-depth-bar"></span></div>
+          </div>
+
+          <div class="heap-box">
+            <h3>힙/객체 상태 (개념적)</h3>
+            <div id="heap-grid" class="heap-grid"></div>
+            <div class="mini-bar"><span id="comparison-bar"></span></div>
+          </div>
+        </section>
+      </div>
+
+      <section class="panel controller">
+        <div class="section-head">
+          <h2>E. 실행 제어부</h2>
+          <span class="small-muted">처음으로 / 이전 / 재생 / 다음 / 속도</span>
+        </div>
+
+        <div class="control-row">
+          <button id="btn-reset" class="ctrl">처음으로</button>
+          <button id="btn-back" class="ctrl">이전 스텝</button>
+          <button id="btn-play" class="ctrl primary">재생</button>
+          <button id="btn-forward" class="ctrl">다음 스텝</button>
+
+          <div class="speed-wrap">
+            <label for="speed-range" class="small-muted">속도</label>
+            <input
+              id="speed-range"
+              type="range"
+              min="150"
+              max="1500"
+              step="50"
+              value="700"
+            />
+            <span id="speed-text" class="small-muted">700ms</span>
+          </div>
+        </div>
+
+        <div class="timeline">
+          <div class="timeline-top">
+            <span id="step-text">스텝 0 / 0</span>
+            <span id="line-text">실행 라인: -</span>
+          </div>
+          <div class="progress"><span id="progress-fill"></span></div>
+        </div>
+
+        <div class="metrics">
+          <div class="metric">
+            <div class="label">비교 횟수</div>
+            <div class="value" id="metric-comparisons">0</div>
+          </div>
+          <div class="metric">
+            <div class="label">현재 규칙</div>
+            <div class="value" id="metric-rule">-</div>
+          </div>
+          <div class="metric">
+            <div class="label">결정</div>
+            <div class="value" id="metric-decision">미결정</div>
+          </div>
+        </div>
+
+        <div id="controller-message" class="controller-message"></div>
+      </section>
+    </div>
+
+    <script>
+      (() => {
+        "use strict";
+
+        // 이벤트 버스: 컴포넌트 간 결합도를 낮추기 위한 경량 pub/sub
+        const EventBus = {
+          events: {},
+          on(eventName, handler) {
+            if (!this.events[eventName]) {
+              this.events[eventName] = [];
+            }
+            this.events[eventName].push(handler);
+          },
+          emit(eventName, payload) {
+            (this.events[eventName] || []).forEach((handler) =>
+              handler(payload),
+            );
+          },
+        };
+
+        const FILLIN_SCHEMA = [
+          { key: "loopBound", label: "루프 범위", expected: "rules.length" },
+          { key: "vlanField", label: "VLAN 비교 대상", expected: "rule.vlan" },
+          {
+            key: "srcField",
+            label: "출발 존 비교 대상",
+            expected: "rule.srcZone",
+          },
+          {
+            key: "actionField",
+            label: "일치 시 반환 액션",
+            expected: "rule.action",
+          },
+          {
+            key: "fallbackAction",
+            label: "미일치 기본 액션",
+            expected: "DENY",
+          },
+        ];
+
+        const SCENARIOS = {
+          best_case: {
+            label: "최선 사례: 첫 규칙 즉시 일치",
+            help: "첫 규칙에서 바로 매칭되어 비교 횟수가 최소입니다. 운영 중 지연을 줄이려면 빈도가 높은 트래픽을 상단 규칙으로 배치합니다.",
+            packet: { vlan: 104, srcZone: "LAB", dstZone: "WAN" },
+            rules: [
+              {
+                id: "R1",
+                vlan: 104,
+                srcZone: "LAB",
+                dstZone: "WAN",
+                action: "ALLOW",
+                note: "개발 VLAN 인터넷 허용",
+              },
+              {
+                id: "R2",
+                vlan: 104,
+                srcZone: "LAB",
+                dstZone: "DB",
+                action: "DENY",
+                note: "DB 세그먼트 보호",
+              },
+              {
+                id: "R3",
+                vlan: 104,
+                srcZone: "GUEST",
+                dstZone: "WAN",
+                action: "DENY",
+                note: "게스트망 차단",
+              },
+            ],
+          },
+          worst_case: {
+            label: "최악 사례: 마지막 규칙에서 일치",
+            help: "앞선 규칙 대부분이 실패하고 마지막에서만 매칭됩니다. 규칙이 길어질수록 평균 처리 지연이 증가합니다.",
+            packet: { vlan: 104, srcZone: "LAB", dstZone: "WAN" },
+            rules: [
+              {
+                id: "R1",
+                vlan: 10,
+                srcZone: "ANY",
+                dstZone: "WAN",
+                action: "DENY",
+                note: "다른 VLAN 정책",
+              },
+              {
+                id: "R2",
+                vlan: 104,
+                srcZone: "GUEST",
+                dstZone: "WAN",
+                action: "DENY",
+                note: "출발 존 불일치",
+              },
+              {
+                id: "R3",
+                vlan: 104,
+                srcZone: "LAB",
+                dstZone: "DB",
+                action: "DENY",
+                note: "목적지 존 불일치",
+              },
+              {
+                id: "R4",
+                vlan: 104,
+                srcZone: "LAB",
+                dstZone: "MGMT",
+                action: "DENY",
+                note: "목적지 존 불일치",
+              },
+              {
+                id: "R5",
+                vlan: 104,
+                srcZone: "LAB",
+                dstZone: "WAN",
+                action: "ALLOW",
+                note: "마지막 규칙에서 허용",
+              },
+            ],
+          },
+          no_match: {
+            label: "실패 사례: 어떤 규칙도 일치하지 않음",
+            help: "명시 규칙이 없으면 마지막 기본 정책이 적용됩니다. 보안 기본값은 보통 Deny로 두는 것이 안전합니다.",
+            packet: { vlan: 104, srcZone: "IOT", dstZone: "WAN" },
+            rules: [
+              {
+                id: "R1",
+                vlan: 104,
+                srcZone: "LAB",
+                dstZone: "WAN",
+                action: "ALLOW",
+                note: "소스 존 불일치",
+              },
+              {
+                id: "R2",
+                vlan: 104,
+                srcZone: "GUEST",
+                dstZone: "WAN",
+                action: "ALLOW",
+                note: "소스 존 불일치",
+              },
+              {
+                id: "R3",
+                vlan: 105,
+                srcZone: "IOT",
+                dstZone: "WAN",
+                action: "ALLOW",
+                note: "VLAN 불일치",
+              },
+            ],
+          },
+          empty_rules: {
+            label: "엣지 케이스: 빈 규칙 배열",
+            help: "정책 배열이 비어 있으면 루프가 단 한 번도 실행되지 않고 즉시 기본 Deny가 반환됩니다.",
+            packet: { vlan: 104, srcZone: "LAB", dstZone: "WAN" },
+            rules: [],
+          },
+          shadowed_rule: {
+            label: "엣지 케이스: 상위 규칙이 하위 규칙을 가림",
+            help: "하위에 더 구체적인 허용 규칙이 있어도 상위 포괄 Deny가 먼저 매칭되면 하위 규칙은 실행되지 않습니다.",
+            packet: { vlan: 104, srcZone: "LAB", dstZone: "DB" },
+            rules: [
+              {
+                id: "R1",
+                vlan: 104,
+                srcZone: "LAB",
+                dstZone: "ANY",
+                action: "DENY",
+                note: "포괄 차단 규칙",
+              },
+              {
+                id: "R2",
+                vlan: 104,
+                srcZone: "LAB",
+                dstZone: "DB",
+                action: "ALLOW",
+                note: "도달하지 못하는 허용 규칙",
+              },
+              {
+                id: "R3",
+                vlan: 104,
+                srcZone: "ANY",
+                dstZone: "WAN",
+                action: "ALLOW",
+                note: "보조 허용 규칙",
+              },
+            ],
+          },
+        };
+
+        // 상태 관리자: 단일 진실 공급원
+        const appState = {
+          ui: {
+            selectedScenario: "best_case",
+            speedMs: 700,
+            isPlaying: false,
+            codeInputs: {
+              loopBound: "",
+              vlanField: "",
+              srcField: "",
+              actionField: "",
+              fallbackAction: "",
+            },
+            validations: {},
+            isCodeValid: false,
+            controllerMessage:
+              "코드를 완성하면 시뮬레이션 엔진이 활성화됩니다.",
+          },
+          engine: {
+            steps: [],
+            currentStepIndex: 0,
+          },
+        };
+
+        const dom = {
+          scenarioSelect: document.getElementById("scenario-select"),
+          scenarioHelp: document.getElementById("scenario-help"),
+          validationGrid: document.getElementById("validation-grid"),
+          completionText: document.getElementById("completion-text"),
+          lockedBanner: document.getElementById("locked-banner"),
+          fillInputs: Array.from(document.querySelectorAll(".fill-input")),
+          packetMeta: document.getElementById("packet-meta"),
+          decisionTag: document.getElementById("decision-tag"),
+          decisionMatch: document.getElementById("decision-match"),
+          ruleList: document.getElementById("rule-list"),
+          reasonBubble: document.getElementById("reason-bubble"),
+          trackerLines: Array.from(document.querySelectorAll(".track-line")),
+          watchBody: document.getElementById("watch-body"),
+          stackList: document.getElementById("stack-list"),
+          heapGrid: document.getElementById("heap-grid"),
+          stackDepthBar: document.getElementById("stack-depth-bar"),
+          comparisonBar: document.getElementById("comparison-bar"),
+          btnReset: document.getElementById("btn-reset"),
+          btnBack: document.getElementById("btn-back"),
+          btnPlay: document.getElementById("btn-play"),
+          btnForward: document.getElementById("btn-forward"),
+          speedRange: document.getElementById("speed-range"),
+          speedText: document.getElementById("speed-text"),
+          stepText: document.getElementById("step-text"),
+          lineText: document.getElementById("line-text"),
+          progressFill: document.getElementById("progress-fill"),
+          metricComparisons: document.getElementById("metric-comparisons"),
+          metricRule: document.getElementById("metric-rule"),
+          metricDecision: document.getElementById("metric-decision"),
+          controllerMessage: document.getElementById("controller-message"),
+          scenarioComplexity: document.getElementById("scenario-complexity"),
+          scenarioNote: document.getElementById("scenario-note"),
+        };
+
+        let playTimer = null;
+
+        function clone(value) {
+          return JSON.parse(JSON.stringify(value));
+        }
+
+        function normalizeExpression(value) {
+          return String(value || "")
+            .replace(/["'`]/g, "")
+            .replace(/\s+/g, "")
+            .toLowerCase();
+        }
+
+        function isBlankCorrect(key, inputValue) {
+          const expected =
+            FILLIN_SCHEMA.find((item) => item.key === key)?.expected || "";
+          const normalizedInput = normalizeExpression(inputValue);
+          if (!normalizedInput) return false;
+
+          if (key === "fallbackAction") {
+            return normalizedInput === "deny";
+          }
+
+          return normalizedInput === normalizeExpression(expected);
+        }
+
+        function validateFillInputs() {
+          const result = {};
+          FILLIN_SCHEMA.forEach((item) => {
+            const value = appState.ui.codeInputs[item.key] || "";
+            result[item.key] = {
+              label: item.label,
+              expected: item.expected,
+              value,
+              isCorrect: isBlankCorrect(item.key, value),
+              isEmpty: !value.trim(),
+            };
+          });
+          appState.ui.validations = result;
+          appState.ui.isCodeValid = Object.values(result).every(
+            (entry) => entry.isCorrect,
+          );
+        }
+
+        function isFieldMatch(packetValue, ruleValue) {
+          return (
+            String(ruleValue).toUpperCase() === "ANY" ||
+            String(packetValue).toUpperCase() ===
+              String(ruleValue).toUpperCase()
+          );
+        }
+
+        function makeRuleStates(rules) {
+          return rules.map(() => ({ status: "idle", reason: "아직 검사 전" }));
+        }
+
+        function buildStepSnapshot(ctx, payload) {
+          return {
+            line: payload.line,
+            title: payload.title,
+            reason: payload.reason,
+            packet: clone(ctx.packet),
+            rules: clone(ctx.rules),
+            ruleStates: clone(ctx.ruleStates),
+            activeRuleIndex: ctx.activeRuleIndex,
+            vars: {
+              i: ctx.i,
+              currentRuleId: ctx.currentRuleId,
+              comparisons: ctx.comparisons,
+              matchedIndex: ctx.matchedIndex,
+              decision: ctx.decision,
+              stackDepth: ctx.callStack.length,
+            },
+            callStack: clone(ctx.callStack),
+            heap: {
+              packetObject: `packet(vlan=${ctx.packet.vlan}, src=${ctx.packet.srcZone}, dst=${ctx.packet.dstZone})`,
+              rulesObject: `rules[${ctx.rules.length}] 배열`,
+              decisionObject:
+                ctx.decision === "미결정"
+                  ? "아직 생성되지 않음"
+                  : `{ action: \"${ctx.decision}\", matchedIndex: ${ctx.matchedIndex} }`,
+            },
+          };
+        }
+
+        // 실행 엔진: Generator 기반 Step 분해
+        function* firewallStepGenerator(scenario) {
+          const ctx = {
+            packet: clone(scenario.packet),
+            rules: clone(scenario.rules),
+            ruleStates: makeRuleStates(scenario.rules),
+            callStack: [],
+            activeRuleIndex: -1,
+            i: "-",
+            currentRuleId: "-",
+            comparisons: 0,
+            matchedIndex: -1,
+            decision: "미결정",
+          };
+
+          ctx.callStack.push("evaluatePolicy(packet, rules)");
+          yield buildStepSnapshot(ctx, {
+            line: 1,
+            title: "정책 평가 시작",
+            reason: "패킷을 규칙 배열의 첫 번째 항목부터 순차 평가합니다.",
+          });
+
+          if (ctx.rules.length === 0) {
+            ctx.decision = "DENY";
+            ctx.matchedIndex = -1;
+            yield buildStepSnapshot(ctx, {
+              line: 9,
+              title: "빈 규칙 배열 처리",
+              reason:
+                "검사할 규칙이 없으므로 기본 정책(DENY)을 즉시 반환합니다.",
+            });
+            ctx.callStack.pop();
+            yield buildStepSnapshot(ctx, {
+              line: 10,
+              title: "평가 종료",
+              reason: "엔진이 종료되었고 결과 객체가 확정되었습니다.",
+            });
+            return;
+          }
+
+          for (let i = 0; i < ctx.rules.length; i += 1) {
+            const rule = ctx.rules[i];
+            ctx.i = i;
+            ctx.currentRuleId = rule.id;
+            ctx.activeRuleIndex = i;
+            ctx.ruleStates[i].status = "active";
+            ctx.ruleStates[i].reason = "현재 규칙을 검사합니다.";
+
+            yield buildStepSnapshot(ctx, {
+              line: 2,
+              title: `루프 진입: ${rule.id}`,
+              reason: `${i + 1}번째 규칙으로 이동했습니다. First Match 정책이므로 순서가 결과를 좌우합니다.`,
+            });
+
+            yield buildStepSnapshot(ctx, {
+              line: 3,
+              title: "현재 규칙 로드",
+              reason: `${rule.id}의 조건(VLAN/출발/목적지)을 메모리에 올려 비교를 준비합니다.`,
+            });
+
+            ctx.callStack.push(`isFieldMatch(packet.vlan, ${rule.vlan})`);
+            ctx.comparisons += 1;
+            yield buildStepSnapshot(ctx, {
+              line: 4,
+              title: "VLAN 조건 비교",
+              reason: `패킷 VLAN(${ctx.packet.vlan})과 규칙 VLAN(${rule.vlan})을 비교합니다.`,
+            });
+            const vlanMatched = isFieldMatch(ctx.packet.vlan, rule.vlan);
+            ctx.callStack.pop();
+
+            if (!vlanMatched) {
+              ctx.ruleStates[i].status = "rejected";
+              ctx.ruleStates[i].reason =
+                `VLAN 불일치: ${ctx.packet.vlan} ≠ ${rule.vlan}`;
+              yield buildStepSnapshot(ctx, {
+                line: 4,
+                title: "continue 발생",
+                reason:
+                  "VLAN이 다르므로 이 규칙은 즉시 스킵하고 다음 규칙으로 넘어갑니다.",
+              });
+              continue;
+            }
+
+            ctx.callStack.push(`isFieldMatch(packet.srcZone, ${rule.srcZone})`);
+            ctx.comparisons += 1;
+            yield buildStepSnapshot(ctx, {
+              line: 5,
+              title: "출발 존 비교",
+              reason: `출발 존(${ctx.packet.srcZone})이 규칙 조건(${rule.srcZone})과 맞는지 검사합니다.`,
+            });
+            const srcMatched = isFieldMatch(ctx.packet.srcZone, rule.srcZone);
+            ctx.callStack.pop();
+
+            if (!srcMatched) {
+              ctx.ruleStates[i].status = "rejected";
+              ctx.ruleStates[i].reason =
+                `출발 존 불일치: ${ctx.packet.srcZone} ≠ ${rule.srcZone}`;
+              yield buildStepSnapshot(ctx, {
+                line: 5,
+                title: "continue 발생",
+                reason: "출발 존이 일치하지 않아 다음 규칙으로 이동합니다.",
+              });
+              continue;
+            }
+
+            ctx.callStack.push(`isFieldMatch(packet.dstZone, ${rule.dstZone})`);
+            ctx.comparisons += 1;
+            yield buildStepSnapshot(ctx, {
+              line: 6,
+              title: "목적지 존 비교",
+              reason: `목적지 존(${ctx.packet.dstZone})이 규칙 조건(${rule.dstZone})과 맞는지 검사합니다.`,
+            });
+            const dstMatched = isFieldMatch(ctx.packet.dstZone, rule.dstZone);
+            ctx.callStack.pop();
+
+            if (!dstMatched) {
+              ctx.ruleStates[i].status = "rejected";
+              ctx.ruleStates[i].reason =
+                `목적지 존 불일치: ${ctx.packet.dstZone} ≠ ${rule.dstZone}`;
+              yield buildStepSnapshot(ctx, {
+                line: 6,
+                title: "continue 발생",
+                reason: "목적지 존이 맞지 않아 이 규칙은 버려집니다.",
+              });
+              continue;
+            }
+
+            ctx.ruleStates[i].status = "matched";
+            ctx.ruleStates[i].reason = `첫 일치 규칙이므로 ${rule.action} 적용`;
+            ctx.decision = rule.action;
+            ctx.matchedIndex = i;
+
+            yield buildStepSnapshot(ctx, {
+              line: 7,
+              title: "첫 일치 규칙 확정",
+              reason: `${rule.id}가 처음으로 모든 조건을 통과했으므로 액션(${rule.action})을 반환하고 탐색을 종료합니다.`,
+            });
+
+            ctx.callStack.pop();
+            yield buildStepSnapshot(ctx, {
+              line: 10,
+              title: "평가 종료",
+              reason: "반환 지점에 도달하여 함수가 종료되었습니다.",
+            });
+            return;
+          }
+
+          ctx.decision = "DENY";
+          ctx.matchedIndex = -1;
+          yield buildStepSnapshot(ctx, {
+            line: 9,
+            title: "기본 정책 적용",
+            reason:
+              "모든 규칙을 검사했지만 매칭 실패. 기본 DENY 정책을 반환합니다.",
+          });
+
+          ctx.callStack.pop();
+          yield buildStepSnapshot(ctx, {
+            line: 10,
+            title: "평가 종료",
+            reason: "기본 정책 결과를 확정하고 엔진을 종료합니다.",
+          });
+        }
+
+        function buildLockedPreviewStep() {
+          const scenario = SCENARIOS[appState.ui.selectedScenario];
+          return {
+            line: 0,
+            title: "코드 미완성",
+            reason: "빈칸을 모두 맞게 채우면 단계 엔진이 활성화됩니다.",
+            packet: clone(scenario.packet),
+            rules: clone(scenario.rules),
+            ruleStates: makeRuleStates(scenario.rules),
+            activeRuleIndex: -1,
+            vars: {
+              i: "-",
+              currentRuleId: "-",
+              comparisons: 0,
+              matchedIndex: -1,
+              decision: "미결정",
+              stackDepth: 0,
+            },
+            callStack: [],
+            heap: {
+              packetObject: `packet(vlan=${scenario.packet.vlan}, src=${scenario.packet.srcZone}, dst=${scenario.packet.dstZone})`,
+              rulesObject: `rules[${scenario.rules.length}] 배열`,
+              decisionObject: "아직 생성되지 않음",
+            },
+          };
+        }
+
+        function stopPlayback() {
+          if (playTimer) {
+            clearTimeout(playTimer);
+            playTimer = null;
+          }
+          appState.ui.isPlaying = false;
+        }
+
+        function rebuildSteps() {
+          stopPlayback();
+          if (!appState.ui.isCodeValid) {
+            appState.engine.steps = [buildLockedPreviewStep()];
+            appState.engine.currentStepIndex = 0;
+            appState.ui.controllerMessage =
+              "코드를 먼저 완성해 주세요. 정답 입력 전에는 시뮬레이션이 잠금 상태입니다.";
+            EventBus.emit("state:changed");
+            return;
+          }
+
+          const scenario = SCENARIOS[appState.ui.selectedScenario];
+          const steps = [];
+          const gen = firewallStepGenerator(scenario);
+          for (const step of gen) {
+            steps.push(step);
+          }
+          appState.engine.steps = steps;
+          appState.engine.currentStepIndex = 0;
+          appState.ui.controllerMessage =
+            "준비 완료: Play를 누르면 라인 단위로 정책 평가가 진행됩니다.";
+          EventBus.emit("state:changed");
+        }
+
+        function getCurrentStep() {
+          const idx = appState.engine.currentStepIndex;
+          return (
+            appState.engine.steps[idx] ||
+            appState.engine.steps[0] ||
+            buildLockedPreviewStep()
+          );
+        }
+
+        function getPrevStep() {
+          const idx = appState.engine.currentStepIndex;
+          if (idx <= 0) return null;
+          return appState.engine.steps[idx - 1] || null;
+        }
+
+        function formatChange(prevValue, currValue) {
+          if (prevValue === undefined || prevValue === null) return "초기값";
+          if (String(prevValue) === String(currValue)) return "변화 없음";
+          return `${prevValue} → ${currValue}`;
+        }
+
+        function renderWorkspace() {
+          const scenario = SCENARIOS[appState.ui.selectedScenario];
+          dom.scenarioHelp.textContent = scenario.help;
+
+          let done = 0;
+          const validationHtml = FILLIN_SCHEMA.map((item) => {
+            const result = appState.ui.validations[item.key];
+            const stateClass = result?.isCorrect
+              ? "correct"
+              : result?.isEmpty
+                ? "pending"
+                : "wrong";
+            if (result?.isCorrect) done += 1;
+            const text = result?.isCorrect
+              ? `${item.label}: 정답`
+              : result?.isEmpty
+                ? `${item.label}: 입력 필요 (힌트: ${item.expected})`
+                : `${item.label}: 오답 (기대값 힌트: ${item.expected})`;
+            return `<div class="validation-item ${stateClass}"><span class="validation-dot"></span><span>${text}</span></div>`;
+          }).join("");
+
+          dom.validationGrid.innerHTML = validationHtml;
+          dom.completionText.textContent = `${done} / ${FILLIN_SCHEMA.length}`;
+          dom.lockedBanner.classList.toggle("show", !appState.ui.isCodeValid);
+
+          dom.fillInputs.forEach((input) => {
+            const key = input.dataset.key;
+            const result = appState.ui.validations[key];
+            input.classList.remove("correct", "wrong");
+            if (!result || result.isEmpty) return;
+            input.classList.add(result.isCorrect ? "correct" : "wrong");
+          });
+
+          dom.scenarioComplexity.textContent = `현재 규칙 수: ${scenario.rules.length}`;
+          dom.scenarioNote.textContent = `시나리오: ${scenario.label}`;
+        }
+
+        function renderVisualizer(step) {
+          dom.packetMeta.innerHTML = `
+            <span>VLAN <b>${step.packet.vlan}</b></span>
+            <span>출발 존 <b>${step.packet.srcZone}</b></span>
+            <span>목적지 존 <b>${step.packet.dstZone}</b></span>
+          `;
+
+          const decision = step.vars.decision;
+          dom.decisionTag.textContent = decision;
+          dom.decisionTag.className =
+            "decision-tag " +
+            (decision === "ALLOW"
+              ? "allow"
+              : decision === "DENY"
+                ? "deny"
+                : "pending");
+          dom.decisionMatch.textContent =
+            step.vars.matchedIndex >= 0
+              ? `${step.vars.currentRuleId} (index ${step.vars.matchedIndex})`
+              : "없음";
+
+          if (step.rules.length === 0) {
+            dom.ruleList.innerHTML = `
+              <div class="rule-card rejected">
+                <div class="rule-head">
+                  <span class="rule-title">규칙 없음</span>
+                  <span class="rule-state">빈 배열</span>
+                </div>
+                <div class="rule-body">정책 엔진이 즉시 기본 DENY 경로로 이동합니다.</div>
+              </div>
+            `;
+          } else {
+            dom.ruleList.innerHTML = step.rules
+              .map((rule, idx) => {
+                const state = step.ruleStates[idx] || {
+                  status: "idle",
+                  reason: "아직 검사 전",
+                };
+                return `
+                  <div class="rule-card ${state.status}">
+                    <div class="rule-head">
+                      <span class="rule-title">${rule.id} · ${rule.action}</span>
+                      <span class="rule-state">${state.status === "idle" ? "대기" : state.status === "active" ? "검사중" : state.status === "matched" ? "일치" : "탈락"}</span>
+                    </div>
+                    <div class="rule-body">
+                      <span>조건: VLAN=${rule.vlan}, SRC=${rule.srcZone}, DST=${rule.dstZone}</span>
+                      <span>의도: ${rule.note}</span>
+                      <span>피드백: ${state.reason}</span>
+                    </div>
+                  </div>
+                `;
+              })
+              .join("");
+          }
+
+          dom.reasonBubble.innerHTML = `<b>${step.title}</b><br>${step.reason}`;
+        }
+
+        function renderTracker(step, prevStep) {
+          dom.trackerLines.forEach((lineEl) => {
+            const lineNo = Number(lineEl.dataset.line);
+            lineEl.classList.toggle("active", lineNo === step.line);
+          });
+
+          const watchRows = [
+            { key: "i", label: "루프 인덱스(i)" },
+            { key: "currentRuleId", label: "현재 규칙 ID" },
+            { key: "comparisons", label: "누적 비교 횟수" },
+            { key: "matchedIndex", label: "매칭 인덱스" },
+            { key: "decision", label: "결정 액션" },
+            { key: "stackDepth", label: "콜 스택 깊이" },
+          ]
+            .map((item) => {
+              const curr = step.vars[item.key];
+              const prev = prevStep ? prevStep.vars[item.key] : undefined;
+              const delta = formatChange(prev, curr);
+              const changed = delta !== "변화 없음" && delta !== "초기값";
+              return `
+                <tr>
+                  <td>${item.label}</td>
+                  <td>${curr}</td>
+                  <td>${prev === undefined ? "-" : prev}</td>
+                  <td class="delta ${changed ? "changed" : ""}">${delta}</td>
+                </tr>
+              `;
+            })
+            .join("");
+
+          dom.watchBody.innerHTML = watchRows;
+
+          dom.stackList.innerHTML = step.callStack.length
+            ? step.callStack
+                .map((frame, idx) => `<li>${idx + 1}. ${frame}</li>`)
+                .join("")
+            : "<li>스택 프레임 없음</li>";
+
+          dom.heapGrid.innerHTML = `
+            <div class="heap-item"><b>패킷 객체</b><br>${step.heap.packetObject}</div>
+            <div class="heap-item"><b>규칙 배열</b><br>${step.heap.rulesObject}</div>
+            <div class="heap-item"><b>결정 객체</b><br>${step.heap.decisionObject}</div>
+          `;
+
+          const maxDepth = 8;
+          const depthPercent = Math.min(
+            100,
+            (step.vars.stackDepth / maxDepth) * 100,
+          );
+          dom.stackDepthBar.style.width = `${depthPercent}%`;
+
+          const scenario = SCENARIOS[appState.ui.selectedScenario];
+          const maxComparisons = Math.max(1, scenario.rules.length * 3);
+          const comparisonPercent = Math.min(
+            100,
+            (step.vars.comparisons / maxComparisons) * 100,
+          );
+          dom.comparisonBar.style.width = `${comparisonPercent}%`;
+        }
+
+        function renderController(step) {
+          const total = appState.engine.steps.length;
+          const current = appState.engine.currentStepIndex;
+          const atStart = current <= 0;
+          const atEnd = current >= total - 1;
+
+          dom.btnBack.disabled = !appState.ui.isCodeValid || atStart;
+          dom.btnForward.disabled = !appState.ui.isCodeValid || atEnd;
+          dom.btnPlay.disabled = !appState.ui.isCodeValid;
+          dom.btnPlay.textContent = appState.ui.isPlaying ? "일시정지" : "재생";
+
+          dom.speedText.textContent = `${appState.ui.speedMs}ms`;
+          dom.stepText.textContent = `스텝 ${total ? current + 1 : 0} / ${total}`;
+          dom.lineText.textContent = `실행 라인: ${step.line > 0 ? step.line : "-"}`;
+          const progress = total <= 1 ? 0 : (current / (total - 1)) * 100;
+          dom.progressFill.style.width = `${progress}%`;
+
+          dom.metricComparisons.textContent = step.vars.comparisons;
+          dom.metricRule.textContent = step.vars.currentRuleId;
+          dom.metricDecision.textContent = step.vars.decision;
+
+          dom.controllerMessage.textContent = appState.ui.controllerMessage;
+        }
+
+        function renderAll() {
+          const step = getCurrentStep();
+          const prevStep = getPrevStep();
+          renderWorkspace();
+          renderVisualizer(step);
+          renderTracker(step, prevStep);
+          renderController(step);
+          scheduleParentResize();
+        }
+
+        function stepForward() {
+          const maxIndex = appState.engine.steps.length - 1;
+          if (appState.engine.currentStepIndex < maxIndex) {
+            appState.engine.currentStepIndex += 1;
+            EventBus.emit("state:changed");
+            return true;
+          }
+          return false;
+        }
+
+        function runPlaybackTick() {
+          if (!appState.ui.isPlaying) return;
+          const moved = stepForward();
+          if (!moved) {
+            appState.ui.isPlaying = false;
+            appState.ui.controllerMessage =
+              "마지막 스텝에 도달했습니다. Reset으로 처음부터 다시 볼 수 있습니다.";
+            EventBus.emit("state:changed");
+            return;
+          }
+
+          playTimer = setTimeout(runPlaybackTick, appState.ui.speedMs);
+        }
+
+        function bootstrapScenarioOptions() {
+          dom.scenarioSelect.innerHTML = Object.entries(SCENARIOS)
+            .map(
+              ([key, value]) =>
+                `<option value="${key}">${value.label}</option>`,
+            )
+            .join("");
+          dom.scenarioSelect.value = appState.ui.selectedScenario;
+        }
+
+        function bindUiEvents() {
+          dom.scenarioSelect.addEventListener("change", (event) => {
+            EventBus.emit("workspace:scenarioChanged", event.target.value);
+          });
+
+          dom.fillInputs.forEach((input) => {
+            input.addEventListener("input", (event) => {
+              EventBus.emit("workspace:codeChanged", {
+                key: event.target.dataset.key,
+                value: event.target.value,
+              });
+            });
+          });
+
+          dom.btnReset.addEventListener("click", () =>
+            EventBus.emit("playback:reset"),
+          );
+          dom.btnBack.addEventListener("click", () =>
+            EventBus.emit("playback:back"),
+          );
+          dom.btnForward.addEventListener("click", () =>
+            EventBus.emit("playback:forward"),
+          );
+          dom.btnPlay.addEventListener("click", () =>
+            EventBus.emit("playback:toggle"),
+          );
+
+          dom.speedRange.addEventListener("input", (event) => {
+            EventBus.emit("playback:speed", Number(event.target.value));
+          });
+        }
+
+        function bindBusEvents() {
+          EventBus.on("workspace:scenarioChanged", (scenarioKey) => {
+            appState.ui.selectedScenario = scenarioKey;
+            appState.ui.controllerMessage =
+              "시나리오가 변경되어 스텝 엔진을 다시 생성합니다.";
+            rebuildSteps();
+          });
+
+          EventBus.on("workspace:codeChanged", ({ key, value }) => {
+            appState.ui.codeInputs[key] = value;
+            validateFillInputs();
+            rebuildSteps();
+          });
+
+          EventBus.on("playback:reset", () => {
+            stopPlayback();
+            appState.engine.currentStepIndex = 0;
+            appState.ui.controllerMessage = "초기 스텝으로 되돌렸습니다.";
+            EventBus.emit("state:changed");
+          });
+
+          EventBus.on("playback:back", () => {
+            if (!appState.ui.isCodeValid) {
+              appState.ui.controllerMessage =
+                "코드 완성 후 Step Back을 사용할 수 있습니다.";
+              EventBus.emit("state:changed");
+              return;
+            }
+            stopPlayback();
+            appState.engine.currentStepIndex = Math.max(
+              0,
+              appState.engine.currentStepIndex - 1,
+            );
+            appState.ui.controllerMessage = "이전 스텝으로 이동했습니다.";
+            EventBus.emit("state:changed");
+          });
+
+          EventBus.on("playback:forward", () => {
+            if (!appState.ui.isCodeValid) {
+              appState.ui.controllerMessage =
+                "코드 완성 후 Step Forward를 사용할 수 있습니다.";
+              EventBus.emit("state:changed");
+              return;
+            }
+            stopPlayback();
+            stepForward();
+            appState.ui.controllerMessage = "다음 스텝으로 이동했습니다.";
+            EventBus.emit("state:changed");
+          });
+
+          EventBus.on("playback:toggle", () => {
+            if (!appState.ui.isCodeValid) {
+              appState.ui.controllerMessage =
+                "먼저 코드 빈칸을 채워 시뮬레이션을 활성화하세요.";
+              EventBus.emit("state:changed");
+              return;
+            }
+
+            if (appState.ui.isPlaying) {
+              stopPlayback();
+              appState.ui.controllerMessage = "일시정지되었습니다.";
+              EventBus.emit("state:changed");
+              return;
+            }
+
+            if (
+              appState.engine.currentStepIndex >=
+              appState.engine.steps.length - 1
+            ) {
+              appState.engine.currentStepIndex = 0;
+            }
+
+            appState.ui.isPlaying = true;
+            appState.ui.controllerMessage =
+              "재생 중입니다. Generator Step Engine이 순차 실행됩니다.";
+            EventBus.emit("state:changed");
+            runPlaybackTick();
+          });
+
+          EventBus.on("playback:speed", (speedMs) => {
+            appState.ui.speedMs = speedMs;
+            appState.ui.controllerMessage = `재생 속도를 ${speedMs}ms로 변경했습니다.`;
+            if (appState.ui.isPlaying) {
+              stopPlayback();
+              appState.ui.isPlaying = true;
+              runPlaybackTick();
+            }
+            EventBus.emit("state:changed");
+          });
+
+          EventBus.on("state:changed", () => {
+            renderAll();
+          });
+        }
+
+        function init() {
+          bootstrapScenarioOptions();
+          bindUiEvents();
+          bindBusEvents();
+
+          validateFillInputs();
+          rebuildSteps();
+          dom.speedRange.value = String(appState.ui.speedMs);
+        }
+
+        // iframe 자동 높이 브리지
+        const IFRAME_AUTO_HEIGHT_MESSAGE_TYPE = "blog-iframe-auto-height";
+        let parentResizeRaf = 0;
+
+        function postParentHeight() {
+          if (window.parent === window) return;
+          const height = Math.max(
+            document.documentElement.scrollHeight,
+            document.body.scrollHeight,
+            document.documentElement.offsetHeight,
+            document.body.offsetHeight,
+          );
+          window.parent.postMessage(
+            {
+              type: IFRAME_AUTO_HEIGHT_MESSAGE_TYPE,
+              source: window.location.pathname,
+              height: height + 4,
+            },
+            "*",
+          );
+        }
+
+        function scheduleParentResize() {
+          if (window.parent === window) return;
+          if (parentResizeRaf) {
+            cancelAnimationFrame(parentResizeRaf);
+          }
+          parentResizeRaf = requestAnimationFrame(() => {
+            parentResizeRaf = 0;
+            postParentHeight();
+          });
+        }
+
+        window.addEventListener("resize", scheduleParentResize);
+        if ("ResizeObserver" in window) {
+          const observer = new ResizeObserver(() => scheduleParentResize());
+          observer.observe(document.body);
+          observer.observe(document.documentElement);
+        }
+
+        init();
+        scheduleParentResize();
+        setTimeout(scheduleParentResize, 120);
+        setTimeout(scheduleParentResize, 520);
+      })();
+    </script>
+  
+    <section class="__rtx-section" id="__rtx-runtime-panel">
+      <div class="__rtx-runtime-panel">
+        <div class="__rtx-runtime-title">Runtime Trace</div>
+        <div class="__rtx-runtime-grid">
+          <div class="__rtx-runtime-box">
+            <h4>Call Stack</h4>
+            <div class="__rtx-runtime-body"><pre id="__rtx-stack">loading...</pre></div>
+          </div>
+          <div class="__rtx-runtime-box">
+            <h4>Heap Snapshot</h4>
+            <div class="__rtx-runtime-body"><pre id="__rtx-heap">loading...</pre></div>
+          </div>
+          <div class="__rtx-runtime-box">
+            <h4>Global Variables</h4>
+            <div class="__rtx-runtime-body"><pre id="__rtx-global">loading...</pre></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  
+  <script>
+    /* __runtime-trace-script */
+    (() => {
+      if (window.__rtxRuntimeInstalled) return;
+      window.__rtxRuntimeInstalled = true;
+
+      const __RTX_SOURCE_LINES = ["from dataclasses import dataclass", "from typing import Dict, List, Tuple", "", "@dataclass", "class Rule:", "    action: str", "    src: str", "    dst: str", "    port: int", "", "def match_rule(rule: Rule, packet: Dict) -> bool:", "    return (", "        (rule.src == \"any\" or rule.src == packet[\"src\"]) and", "        (rule.dst == \"any\" or rule.dst == packet[\"dst\"]) and", "        (rule.port == -1 or rule.port == packet[\"port\"])", "    )", "", "def evaluate_policy(rules: List[Rule], packet: Dict) -> Tuple[str, int]:", "    for idx, rule in enumerate(rules):", "        if match_rule(rule, packet):", "            return rule.action, idx", "    return \"block\", -1"];
+
+      function esc(v) {
+        return String(v)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+      }
+
+      function colorize(line) {
+        const escaped = esc(line);
+        const parts = escaped.split(/(\b)/);
+        const kw = new Set(['def','for','while','if','else','elif','return','in','and','or','not','class','True','False','None','break','continue','from','import','try','except','with']);
+        const bi = new Set(['len','range','enumerate','max','min','sum','sorted','list','set','dict','tuple','abs','float','int','str','map','zip','any','all','divmod']);
+        const out = parts.map((p, i, arr) => {
+          if (/^\d+$/.test(p)) return `<span class="tok-number">${p}</span>`;
+          if (kw.has(p)) return `<span class="tok-keyword">${p}</span>`;
+          if (bi.has(p) && arr[i + 1] === '(') return `<span class="tok-builtin">${p}</span>`;
+          if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(p) && arr[i + 1] === '(' && !kw.has(p)) return `<span class="tok-function">${p}</span>`;
+          return p;
+        }).join('');
+        return out.replace(/(#.*)$/, '<span class="tok-comment">$1</span>');
+      }
+
+      function getSteps() {
+        if (Array.isArray(window.steps)) return window.steps;
+        if (Array.isArray(window.states)) return window.states;
+        if (window.appState?.engine && Array.isArray(window.appState.engine.steps)) return window.appState.engine.steps;
+        return [];
+      }
+
+      function getCurrentIndex() {
+        if (typeof window.cur === 'number') return window.cur;
+        if (typeof window.currentStep === 'number') return window.currentStep;
+        if (typeof window.currentStateIdx === 'number') return window.currentStateIdx;
+        if (typeof window.currentStepIndex === 'number') return window.currentStepIndex;
+        if (window.appState?.engine && typeof window.appState.engine.currentStepIndex === 'number') return window.appState.engine.currentStepIndex;
+        return 0;
+      }
+
+      function pickActiveLine(step, idx, total) {
+        const maxIdx = Math.max(__RTX_SOURCE_LINES.length - 1, 0);
+        if (typeof step?.codeLine === 'number') return Math.max(0, Math.min(maxIdx, step.codeLine));
+        if (typeof step?.line === 'number') return Math.max(0, Math.min(maxIdx, step.line > 0 ? step.line - 1 : step.line));
+        if (typeof step?.lineNo === 'number') return Math.max(0, Math.min(maxIdx, step.lineNo > 0 ? step.lineNo - 1 : step.lineNo));
+
+        const text = `${step?.phase || ''} ${step?.type || ''} ${step?.msg || ''}`.toLowerCase();
+        const lookup = (re) => {
+          for (let i = 0; i < __RTX_SOURCE_LINES.length; i++) {
+            if (re.test(__RTX_SOURCE_LINES[i].toLowerCase())) return i;
+          }
+          return -1;
+        };
+
+        if (/init|start|begin|초기|시작/.test(text)) return 0;
+        if (/done|finish|complete|완료|종료|return|반환/.test(text)) return maxIdx;
+        if (/dfs|bfs|recur|재귀|탐색|visit|방문|backtrack|flood/.test(text)) {
+          const v = lookup(/def\s+dfs|def\s+bfs|while|for|def\s+solve|def\s+search/);
+          if (v >= 0) return v;
+        }
+        if (/heap|push|pop|queue|stack/.test(text)) {
+          const v = lookup(/heap|push|pop|append|popleft|heappush|heappop/);
+          if (v >= 0) return v;
+        }
+        if (/scan|loop|순회/.test(text)) {
+          const v = lookup(/for|while/);
+          if (v >= 0) return v;
+        }
+
+        if (total > 1) return Math.max(0, Math.min(maxIdx, Math.floor((idx / (total - 1)) * (maxIdx || 1))));
+        return 0;
+      }
+
+      function renderInjectedSource(activeLine) {
+        const el = document.getElementById('__rtx-python-display');
+        if (!el) return;
+        if (!Array.isArray(__RTX_SOURCE_LINES) || __RTX_SOURCE_LINES.length === 0) {
+          el.textContent = '# Python source is not available for this simulation.';
+          return;
+        }
+        el.innerHTML = __RTX_SOURCE_LINES
+          .map((line, i) => `<span class="__line${i === activeLine ? ' __active' : ''}">${colorize(line)}</span>`)
+          .join('\n');
+      }
+
+      function highlightLegacyLines(activeLine) {
+        const lines = document.querySelectorAll('.code-line[id^="line-"]');
+        if (!lines.length) return;
+        lines.forEach((node) => node.classList.remove('active', 'current', 'highlight'));
+        const id = `line-${activeLine + 1}`;
+        const target = document.getElementById(id);
+        if (target && target.classList.contains('code-line')) target.classList.add('active');
+      }
+
+      function isComplex(v) {
+        return v && (Array.isArray(v) || typeof v === 'object');
+      }
+
+      function summarize(v) {
+        if (v === null) return 'null';
+        if (v === undefined) return 'undefined';
+        if (Array.isArray(v)) {
+          const preview = v.slice(0, 8).map((x) => (typeof x === 'object' ? 'Ellipsis' : JSON.stringify(x))).join(', ');
+          return `Array(len=${v.length}) [${preview}${v.length > 8 ? ', ...' : ''}]`;
+        }
+        if (v instanceof Map) return `Map(size=${v.size})`;
+        if (v instanceof Set) return `Set(size=${v.size})`;
+        if (typeof v === 'object') {
+          const keys = Object.keys(v);
+          return `Object(keys=${keys.length}) {{${keys.slice(0, 6).join(', ')}${keys.length > 6 ? ', ...' : ''}}}`;
+        }
+        return JSON.stringify(v);
+      }
+
+      function buildStack(step, idx) {
+        const lines = [];
+        const raw = step?.callStack || step?.stackTrace || step?.stack;
+        if (Array.isArray(raw) && raw.length) {
+          raw.slice(0, 8).forEach((f, i) => lines.push(`#${i} ${typeof f === 'string' ? f : summarize(f)}`));
+          return lines;
+        }
+
+        const fnNames = __RTX_SOURCE_LINES
+          .map((l) => {
+            const m = l.match(/^\s*def\s+([A-Za-z_][A-Za-z0-9_]*)/);
+            return m ? m[1] : '';
+          })
+          .filter(Boolean);
+
+        const root = fnNames[0] || 'simulate';
+        lines.push(`#0 ${root}()  [global]`);
+
+        const msg = `${step?.phase || ''} ${step?.type || ''} ${step?.msg || ''}`.toLowerCase();
+        const inferred = fnNames.find((n) => msg.includes(n.toLowerCase())) ||
+          (/dfs/.test(msg) ? 'dfs' : /bfs/.test(msg) ? 'bfs' : /dijkstra/.test(msg) ? 'dijkstra' : /topo|topological/.test(msg) ? 'topological_sort' : 'step_handler');
+
+        const depth = Number(step?.depth ?? step?.stackDepth ?? step?.recDepth ?? step?.level ?? 1);
+        const safeDepth = Number.isFinite(depth) && depth > 0 ? Math.min(depth, 6) : 1;
+        for (let i = 1; i <= safeDepth; i++) lines.push(`#${i} ${inferred}(step=${idx})`);
+        return lines;
+      }
+
+      function buildHeap(step) {
+        const out = [];
+        const stepObj = step && typeof step === 'object' ? step : {};
+        Object.entries(stepObj)
+          .filter(([k, v]) => !['msg', 'phase', 'type'].includes(k) && isComplex(v))
+          .slice(0, 8)
+          .forEach(([k, v]) => out.push(`${k}: ${summarize(v)}`));
+
+        const globals = ['grid', 'heap', 'stack', 'queue', 'graph', 'dist', 'parent', 'visited', 'memo', 'dp', 'map', 'seen'];
+        globals.forEach((k) => {
+          const v = window[k];
+          if (isComplex(v) && out.length < 12 && !out.some((line) => line.startsWith(`${k}:`))) out.push(`${k}: ${summarize(v)}`);
+        });
+
+        if (!out.length) out.push('(no heap snapshot detected)');
+        return out;
+      }
+
+      function buildGlobals(step, idx, total) {
+        const out = [];
+        out.push(`step_index: ${idx} / ${Math.max(total - 1, 0)}`);
+        const g = [
+          'cur', 'currentStep', 'currentStateIdx', 'currentStepIndex', 'playing', 'count',
+          'target', 'result', 'answer', 'mode', 'status', 'timer',
+        ];
+        g.forEach((k) => {
+          if (!(k in window)) return;
+          const v = window[k];
+          if (!isComplex(v) && typeof v !== 'function') out.push(`${k}: ${summarize(v)}`);
+        });
+
+        if (window.appState?.engine) {
+          out.push(`appState.engine.currentStepIndex: ${window.appState.engine.currentStepIndex ?? 0}`);
+          out.push(`appState.engine.steps: ${Array.isArray(window.appState.engine.steps) ? window.appState.engine.steps.length : 0}`);
+        }
+
+        if (step && typeof step === 'object') {
+          Object.entries(step)
+            .filter(([_, v]) => !isComplex(v) && typeof v !== 'function')
+            .slice(0, 10)
+            .forEach(([k, v]) => out.push(`step.${k}: ${summarize(v)}`));
+        }
+
+        return out;
+      }
+
+      function renderRuntime() {
+        const steps = getSteps();
+        const idx = getCurrentIndex();
+        const step = steps[idx] || {};
+        const activeLine = pickActiveLine(step, idx, steps.length || 1);
+
+        renderInjectedSource(activeLine);
+        highlightLegacyLines(activeLine);
+
+        const stackEl = document.getElementById('__rtx-stack');
+        const heapEl = document.getElementById('__rtx-heap');
+        const globalEl = document.getElementById('__rtx-global');
+        if (stackEl) stackEl.textContent = buildStack(step, idx).join('\n');
+        if (heapEl) heapEl.textContent = buildHeap(step).join('\n');
+        if (globalEl) globalEl.textContent = buildGlobals(step, idx, steps.length || 0).join('\n');
+      }
+
+      renderRuntime();
+      window.__rtxRuntimeInterval = setInterval(renderRuntime, 120);
+    })();
+  </script>
+
+<script>
+(function(){
+  var modal=document.getElementById('modal');
+  var btnInfo=document.getElementById('btn-info');
+  var btnClose=document.getElementById('modal-close');
+  if(btnInfo) btnInfo.addEventListener('click',function(){modal.classList.add('open');});
+  if(btnClose) btnClose.addEventListener('click',function(){modal.classList.remove('open');});
+  if(modal) modal.addEventListener('click',function(e){if(e.target===modal)modal.classList.remove('open');});
+})();
+</script>
+</body>
+</html>

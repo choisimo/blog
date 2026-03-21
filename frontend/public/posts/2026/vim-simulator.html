@@ -1,0 +1,1732 @@
+<!doctype html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vim Simulator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: "Fira Code", "JetBrains Mono", Consolas, monospace;
+      background-color: #1e1e1e;
+      color: #d4d4d4;
+    }
+
+    .cursor-normal {
+      background-color: #d4d4d4;
+      color: #1e1e1e;
+      position: relative;
+      z-index: 10;
+      display: inline-block;
+      animation: normal-blink 1.2s step-end infinite;
+    }
+
+    .cursor-insert {
+      border-left: 2px solid #d4d4d4;
+      margin-left: -1px;
+      padding-left: 1px;
+      color: inherit;
+      position: relative;
+      z-index: 10;
+      display: inline-block;
+      animation: insert-blink 1.2s step-end infinite;
+    }
+
+    .cursor-char {
+      min-width: 0.6em;
+      display: inline-block;
+      text-align: center;
+    }
+
+    @keyframes normal-blink {
+
+      0%,
+      100% {
+        background-color: #d4d4d4;
+        color: #1e1e1e;
+      }
+
+      50% {
+        background-color: transparent;
+        color: inherit;
+        box-shadow: inset 0 0 0 1px #d4d4d4;
+      }
+    }
+
+    @keyframes insert-blink {
+
+      0%,
+      100% {
+        border-color: #d4d4d4;
+      }
+
+      50% {
+        border-color: transparent;
+      }
+    }
+
+    .visual-selected {
+      background-color: #264f78;
+      color: #fff;
+    }
+
+    .line-number {
+      color: #858585;
+      user-select: none;
+      width: 3rem;
+      text-align: right;
+      padding-right: 1rem;
+      border-right: 1px solid #444;
+      margin-right: 0.5rem;
+      margin-bottom: 2px;
+      height: 1.5rem;
+      line-height: 1.5rem;
+    }
+
+    .line-wrapper {
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .editor-line {
+      height: 1.5rem;
+      line-height: 1.5rem;
+      white-space: pre;
+      position: relative;
+      flex-grow: 1;
+      overflow: visible;
+    }
+
+    #editor-container {
+      outline: none;
+    }
+
+    .toast-enter {
+      opacity: 1;
+      transform: translateY(0px) translateX(-50%);
+    }
+
+    .toast-exit {
+      opacity: 0;
+      transform: translateY(-20px) translateX(-50%);
+      pointer-events: none;
+    }
+
+    .key-badge {
+      background-color: #333;
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: 2px 8px;
+      color: #fbbf24;
+      font-weight: bold;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      font-size: 0.85rem;
+    }
+
+    /* Status Mode Colors */
+    .mode-NORMAL {
+      background-color: #569cd6;
+      color: #1e1e1e;
+    }
+
+    .mode-INSERT {
+      background-color: #4caf50;
+      color: #1e1e1e;
+    }
+
+    .mode-VISUAL,
+    .mode-VISUAL_LINE {
+      background-color: #c586c0;
+      color: #1e1e1e;
+    }
+
+    .mode-COMMAND {
+      background-color: #d7ba7d;
+      color: #1e1e1e;
+    }
+
+    @media (max-width: 768px) {
+      #mission-bar {
+        padding: 0.55rem 0.75rem;
+        font-size: 0.75rem;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+      }
+
+      #current-mission {
+        width: 100%;
+        text-align: left;
+        font-size: 0.75rem;
+        padding: 0.35rem 0.55rem;
+      }
+
+      #status-line {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+      }
+
+      #status-mode {
+        width: 5.5rem !important;
+        margin-right: 0.5rem !important;
+        font-size: 0.65rem;
+      }
+
+      #clipboard-status {
+        display: none;
+      }
+
+      #status-cursor {
+        width: auto;
+        min-width: 3rem;
+      }
+
+      .line-number {
+        width: 2rem;
+        padding-right: 0.5rem;
+        margin-right: 0.35rem;
+        font-size: 0.75rem;
+      }
+
+      .editor-line {
+        font-size: 0.9rem;
+      }
+
+      .key-badge {
+        font-size: 0.75rem;
+        padding: 2px 6px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      #editor-content {
+        padding-bottom: 5rem;
+      }
+
+      .editor-line {
+        font-size: 0.85rem;
+      }
+    }
+
+
+
+    /* __editor-code-theme */
+    .code-panel,
+    .code-display,
+    #code-display,
+    .code-block,
+    .__trace-code-display,
+    #__trace-code-display,
+    #__rtx-python-display,
+    .code-builder {
+      background: linear-gradient(180deg, #111a29 0%, #0c1422 100%);
+      color: #e6edf3;
+      border: 1px solid #2b3547;
+      border-radius: 10px;
+      box-shadow:
+        0 10px 24px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.03);
+      font-family: JetBrains Mono, monospace;
+      font-size: 12.5px;
+      line-height: 1.65;
+      tab-size: 4;
+      scrollbar-color: #47566e #0b1220;
+      counter-reset: code-line;
+    }
+
+    .code-panel::-webkit-scrollbar,
+    .code-display::-webkit-scrollbar,
+    #code-display::-webkit-scrollbar,
+    .code-block::-webkit-scrollbar,
+    .__trace-code-display::-webkit-scrollbar,
+    #__trace-code-display::-webkit-scrollbar,
+    #__rtx-python-display::-webkit-scrollbar,
+    .code-builder::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    .code-panel::-webkit-scrollbar-track,
+    .code-display::-webkit-scrollbar-track,
+    #code-display::-webkit-scrollbar-track,
+    .code-block::-webkit-scrollbar-track,
+    .__trace-code-display::-webkit-scrollbar-track,
+    #__trace-code-display::-webkit-scrollbar-track,
+    #__rtx-python-display::-webkit-scrollbar-track,
+    .code-builder::-webkit-scrollbar-track {
+      background: #0b1220;
+    }
+
+    .code-panel::-webkit-scrollbar-thumb,
+    .code-display::-webkit-scrollbar-thumb,
+    #code-display::-webkit-scrollbar-thumb,
+    .code-block::-webkit-scrollbar-thumb,
+    .__trace-code-display::-webkit-scrollbar-thumb,
+    #__trace-code-display::-webkit-scrollbar-thumb,
+    #__rtx-python-display::-webkit-scrollbar-thumb,
+    .code-builder::-webkit-scrollbar-thumb {
+      background: #47566e;
+      border: 2px solid #0b1220;
+      border-radius: 999px;
+    }
+
+    .code-line,
+    .code-display .code-line,
+    #code-display .code-line,
+    .code-block .code-line,
+    .__trace-code-display .__line,
+    #__rtx-python-display .__line {
+      position: relative;
+      display: block;
+      min-height: 1.65em;
+      padding: 1px 10px 1px 3.4rem;
+      white-space: pre;
+    }
+
+    .__trace-code-display .__line,
+    #__rtx-python-display .__line {
+      margin: 0 !important;
+      padding-right: 10px !important;
+      padding-left: 3.4rem !important;
+    }
+
+    .code-line::before,
+    .code-display .code-line::before,
+    #code-display .code-line::before,
+    .code-block .code-line::before,
+    .__trace-code-display .__line::before,
+    #__rtx-python-display .__line::before {
+      counter-increment: code-line;
+      content: counter(code-line);
+      position: absolute;
+      left: 0.8rem;
+      top: 0;
+      width: 2rem;
+      text-align: right;
+      color: #6f7f97;
+      user-select: none;
+    }
+
+    .code-line.active,
+    .code-line.current,
+    .code-line.highlight,
+    .__trace-code-display .__line.__active,
+    #__rtx-python-display .__line.__active {
+      background: rgba(88, 166, 255, 0.16) !important;
+      box-shadow: inset 3px 0 0 #58a6ff;
+    }
+
+    .code-line.active::before,
+    .code-line.current::before,
+    .code-line.highlight::before,
+    .__trace-code-display .__line.__active::before,
+    #__rtx-python-display .__line.__active::before {
+      color: #9ecbff;
+    }
+
+    .kw,
+    .tok-keyword,
+    .code-keyword {
+      color: #ff7b72 !important;
+      font-weight: 600;
+    }
+
+    .fn,
+    .tok-function,
+    .tok-method,
+    .code-function {
+      color: #d2a8ff !important;
+    }
+
+    .tok-builtin {
+      color: #79c0ff !important;
+    }
+
+    .tok-number,
+    .code-number {
+      color: #a5d6ff !important;
+    }
+
+    .cm,
+    .tok-comment {
+      color: #8b949e !important;
+      font-style: italic;
+    }
+
+    .code-fill-box {
+      background: #0f1728;
+      border: 1px dashed #4d5d77;
+      border-radius: 5px;
+      color: #f8fafc;
+    }
+
+    /* __code-scroll-cap */
+    .code-panel,
+    .code-display,
+    #code-display,
+    .code-block,
+    .__trace-code-display,
+    #__trace-code-display,
+    #__rtx-python-display,
+    .code-builder,
+    .__rtx-runtime-body pre {
+      max-height: min(46vh, 420px);
+      overflow-y: auto;
+      overflow-x: auto;
+      scrollbar-gutter: stable;
+      overscroll-behavior: contain;
+    }
+
+    .code-line {
+      white-space: pre;
+    }
+
+    @media (max-width: 640px) {
+
+      .code-panel,
+      .code-display,
+      #code-display,
+      .code-block,
+      .__trace-code-display,
+      #__trace-code-display,
+      #__rtx-python-display,
+      .code-builder,
+      .__rtx-runtime-body pre {
+        max-height: min(42vh, 320px);
+      }
+    }
+
+    /* __runtime-trace-theme */
+    .__rtx-section {
+      margin-top: 12px;
+    }
+
+    .__rtx-head {
+      font-size: 0.8rem;
+      color: #9fb3c8;
+      margin: 0 0 8px;
+    }
+
+    .__rtx-runtime-panel {
+      margin-top: 12px;
+      border: 1px solid #2b3547;
+      border-radius: 10px;
+      background: linear-gradient(180deg, #0f1a2b, #0a1423);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    .__rtx-runtime-title {
+      font-family: JetBrains Mono, monospace;
+      font-size: 0.78rem;
+      color: #9ecbff;
+      background: #0a1220;
+      border-bottom: 1px solid #22314a;
+      padding: 8px 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .__rtx-runtime-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      padding: 10px;
+    }
+
+    .__rtx-runtime-box {
+      border: 1px solid #2b3547;
+      border-radius: 8px;
+      background: rgba(9, 17, 31, 0.92);
+      min-width: 0;
+    }
+
+    .__rtx-runtime-box h4 {
+      margin: 0;
+      padding: 8px 10px;
+      font-family: JetBrains Mono, monospace;
+      font-size: 0.73rem;
+      color: #79c0ff;
+      border-bottom: 1px solid #20324d;
+    }
+
+    .__rtx-runtime-body pre {
+      margin: 0;
+      padding: 10px;
+      font-family: JetBrains Mono, monospace;
+      font-size: 0.74rem;
+      line-height: 1.5;
+      color: #dbe8f5;
+      white-space: pre;
+    }
+
+    @media (max-width: 980px) {
+      .__rtx-runtime-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  <style>
+    /* two-sum 시뮬레이터 기준 디자인 오버라이드 */
+    :root {
+      --bg-color: #1e1e1e;
+      --panel-bg: #252526;
+      --text-color: #d4d4d4;
+      --border-color: #3e3e42;
+      --primary: #007acc;
+      --primary-hover: #005999;
+      --accent: #4caf50;
+      --danger: #f44336;
+      --highlight: #264f78;
+    }
+
+    body {
+      background: var(--bg-color) !important;
+      color: var(--text-color) !important;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif !important;
+      box-sizing: border-box;
+      height: 100vh;
+      margin: 0;
+      padding: 20px;
+      gap: 20px;
+    }
+
+    .sim-header {
+      text-align: center;
+      min-height: 76px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      flex: 0 0 auto;
+    }
+
+    .sim-header h2 {
+      margin: 0;
+      color: #fff !important;
+      font-size: clamp(1.14rem, 2vw, 1.48rem);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .sim-header p {
+      margin: 6px 0 0;
+      color: #aaa !important;
+      font-size: 0.92rem;
+    }
+
+    #mission-bar {
+      background: var(--panel-bg) !important;
+      border-bottom: 1px solid var(--border-color) !important;
+      box-shadow: none !important;
+      min-height: 52px;
+      border-radius: 8px;
+    }
+
+    #mission-bar>span:first-child {
+      color: #aaa !important;
+    }
+
+    #current-mission {
+      background: #2d2d30 !important;
+      color: #9cdcfe !important;
+      border: 1px solid var(--border-color);
+    }
+
+    #feedback-toast {
+      background: var(--accent) !important;
+      color: #fff !important;
+    }
+
+    #editor-container {
+      background: var(--bg-color) !important;
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+      border-left: 1px solid var(--border-color);
+      border-right: 1px solid var(--border-color);
+      border-radius: 8px;
+    }
+
+    #editor-content {
+      padding-left: 8px;
+      padding-right: 8px;
+    }
+
+    .line-number {
+      color: #858585 !important;
+      border-right: 1px solid var(--border-color) !important;
+    }
+
+    .editor-line {
+      color: var(--text-color) !important;
+    }
+
+    .visual-selected {
+      background: var(--highlight) !important;
+    }
+
+    .cursor-normal {
+      background: #d4d4d4 !important;
+      color: #1e1e1e !important;
+    }
+
+    .cursor-insert {
+      border-left-color: #d4d4d4 !important;
+    }
+
+    #status-line {
+      background: var(--panel-bg) !important;
+      border-top: 1px solid var(--border-color);
+      box-shadow: none !important;
+      border-radius: 8px 8px 0 0;
+    }
+
+    #status-filename,
+    #clipboard-status,
+    #status-cursor {
+      color: var(--text-color) !important;
+    }
+
+    .mode-NORMAL {
+      background: var(--primary) !important;
+      color: #fff !important;
+    }
+
+    .mode-INSERT {
+      background: var(--accent) !important;
+      color: #fff !important;
+    }
+
+    .mode-VISUAL,
+    .mode-VISUAL_LINE {
+      background: #a855f7 !important;
+      color: #fff !important;
+    }
+
+    .mode-COMMAND {
+      background: #d97706 !important;
+      color: #fff !important;
+    }
+
+    #command-wrap {
+      background: var(--panel-bg) !important;
+      color: var(--text-color) !important;
+      border-top: 1px solid var(--border-color) !important;
+      border-left: 1px solid var(--border-color);
+      border-right: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+      border-radius: 0 0 8px 8px;
+    }
+
+    #cmd-cursor {
+      background: var(--text-color) !important;
+    }
+
+    .key-badge {
+      background: #2d2d30 !important;
+      border: 1px solid var(--border-color) !important;
+      color: #e2c08d !important;
+      box-shadow: none !important;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 14px;
+        gap: 14px;
+      }
+
+      .sim-header {
+        min-height: 60px;
+      }
+
+      .sim-header p {
+        font-size: 0.83rem;
+      }
+    }
+  
+    /* ── modal ─────────────────────────────────────── */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;pointer-events:none;transition:opacity .25s}
+    .modal-overlay.open{opacity:1;pointer-events:all}
+    .modal{background:#252526;border:1px solid #3e3e42;border-radius:12px;padding:24px 28px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;color:#d4d4d4;position:relative}
+    .modal h3{margin:0 0 16px;color:#fff;font-size:1.15rem}
+    .modal section{margin-bottom:14px}
+    .modal h4{margin:0 0 6px;color:#569cd6;font-size:.9rem}
+    .modal p,.modal li{font-size:.88rem;line-height:1.6;margin:4px 0;color:#ccc}
+    .modal ul{padding-left:18px}
+    .modal .tag{display:inline-block;background:#1e3a5f;color:#9cdcfe;border-radius:4px;padding:2px 8px;font-size:.82rem;margin-right:6px}
+    .modal-close{position:absolute;top:12px;right:14px;background:none;border:none;color:#888;font-size:1.2rem;cursor:pointer;padding:4px 8px;border-radius:4px}
+    .modal-close:hover{background:#3e3e42;color:#fff}
+    .btn-info-float{position:fixed;top:12px;right:12px;z-index:1000;background:#007acc;color:#fff;border:none;border-radius:50%;width:32px;height:32px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+    .btn-info-float:hover{background:#005999}
+</style>
+</head>
+
+<body class="h-screen flex flex-col overflow-hidden select-none">
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <button class="modal-close" id="modal-close" type="button">✕</button>
+    <h3>Vim Simulator — Interactive Tutorial</h3>
+    <section>
+      <h4>📌 개요</h4>
+      <p>Vim의 핵심 모드(Normal · Insert · Visual · Command)와 이동/편집 명령을 실시간 상태 변화와 함께 연습하는 인터랙티브 튜토리얼입니다.</p>
+    </section>
+    <section>
+      <h4>💡 학습 포인트</h4>
+      <ul>
+        <li><strong>모드 전환</strong>: i · Esc · v · : 의 컨텍스트 이해</li>
+        <li><strong>이동 명령</strong>: h/j/k/l · w/b · 0/$ · gg/G</li>
+        <li><strong>편집 명령</strong>: d · c · y · p · u · Ctrl-r</li>
+        <li><strong>미션 기반 학습</strong>: 9개 미션을 순서대로 클리어</li>
+      </ul>
+    </section>
+    <section>
+      <h4>🏗 아키텍트의 시선</h4>
+      <p>Vim의 명령 조합성(Composability)은 언어 설계의 교과서입니다. <code>동사 + 범위</code> 구조(예: <code>dw</code> = delete + word)는 최소 단위 조합으로 최대 표현력을 달성합니다.</p>
+    </section>
+  </div>
+</div>
+<button class="btn-info-float" id="btn-info" type="button" title="설명 보기">ℹ</button>
+
+  <div class="sim-header">
+    <h2>Vim Simulator - Interactive Tutorial</h2>
+    <p>모드 전환, 이동, 편집 명령을 실시간 상태 변화와 함께 연습합니다.</p>
+  </div>
+
+  <!-- Header -->
+  <div id="mission-bar"
+    class="bg-[#2d2d2d] text-white p-3 text-center text-sm font-bold flex justify-between px-6 shadow-md border-b border-[#444] z-50 shrink-0">
+    <span class="text-gray-400 font-normal">Vim Simulator
+      <span class="text-xs ml-2 text-gray-500">- Interactive Tutorial</span></span>
+    <span id="current-mission" class="text-blue-400 bg-blue-900/30 px-3 py-1 rounded">현재 미션: j 키를 눌러 한 줄 아래로 이동하세요
+      (1/9)</span>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="feedback-toast"
+    class="absolute top-16 left-1/2 -ml-16 transition-all duration-300 opacity-0 bg-green-500 text-white px-6 py-2 rounded-full shadow-lg font-bold z-50 toast-exit flex items-center gap-2">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+    </svg>
+    <span id="toast-msg">미션 성공!</span>
+  </div>
+
+  <!-- Main Editor -->
+  <div class="flex-1 overflow-auto bg-[#1e1e1e] flex flex-col pt-2" id="editor-container" tabindex="0">
+    <div id="editor-content" class="flex-1 cursor-text pb-20"></div>
+  </div>
+
+  <!-- Key Logger -->
+  <div class="absolute bottom-16 right-6 flex flex-col items-end pointer-events-none z-40">
+    <div class="text-xs text-gray-500 font-bold mb-1 tracking-wider uppercase">
+      Key History
+    </div>
+    <div id="key-history" class="flex gap-2"></div>
+  </div>
+
+  <!-- Status Line -->
+  <div
+    class="h-6 bg-[#007acc] text-white flex items-center px-4 text-xs font-bold shrink-0 shadow-inner z-50 transition-colors duration-200"
+    id="status-line">
+    <div id="status-mode" class="w-32 uppercase tracking-widest text-center rounded-sm mr-4 mode-NORMAL py-0.5 px-2">
+      NORMAL
+    </div>
+    <div id="status-filename" class="flex-1 text-gray-200 font-normal">
+      practice.txt
+    </div>
+    <div class="text-gray-300 text-right w-32 mr-4" id="clipboard-status"></div>
+    <div id="status-cursor" class="w-24 text-right">1:1</div>
+  </div>
+
+  <!-- Command Line -->
+  <div
+    class="bg-[#1e1e1e] text-[#d4d4d4] px-2 flex items-center text-sm font-bold shrink-0 transition-height duration-200 overflow-hidden h-0 border-t border-transparent"
+    id="command-wrap">
+    <span class="text-gray-400 mr-1">:</span>
+    <span id="cmd-text" class="whitespace-pre"></span>
+    <span id="cmd-cursor" class="w-2 bg-[#d4d4d4] inline-block h-4 animate-pulse"></span>
+  </div>
+
+  <script>
+    const IFRAME_AUTO_HEIGHT_MESSAGE_TYPE = "blog-iframe-auto-height";
+    let parentResizeRaf = 0;
+
+    function postParentHeight() {
+      if (window.parent === window) return;
+
+      const height = Math.max(
+        document.documentElement.scrollHeight,
+        document.body.scrollHeight,
+        document.documentElement.offsetHeight,
+        document.body.offsetHeight,
+      );
+
+      window.parent.postMessage(
+        {
+          type: IFRAME_AUTO_HEIGHT_MESSAGE_TYPE,
+          source: window.location.pathname,
+          height: height + 4,
+        },
+        "*",
+      );
+    }
+
+    function scheduleParentResize() {
+      if (window.parent === window) return;
+      if (parentResizeRaf) cancelAnimationFrame(parentResizeRaf);
+      parentResizeRaf = requestAnimationFrame(() => {
+        parentResizeRaf = 0;
+        postParentHeight();
+      });
+    }
+
+    const state = {
+      lines: [
+        "Vim Simulator 에 오신 것을 환영합니다!",
+        "이곳은 Vim의 핵심 동작을 연습할 수 있는 공간입니다.",
+        "",
+        "기본 이동키는 h(좌), j(하), k(상), l(우) 입니다.",
+        "단어 단위 이동은 w, b, e 를 사용합니다.",
+        "",
+        "Insert 모드는 i, a, o 로 진입하며 Esc 로 빠져나옵니다.",
+        "텍스트를 삭제하거나 복사할 때는 x, dd, yy, p 를 사용해보세요.",
+        "",
+        ":w 로 진행상황을 저장하고 :q 로 종료(초기화)를 시뮬레이션 할 수 있습니다.",
+        "특정 문자열을 변환할 때는 :%s/old/new/g 를 사용하세요.",
+        "예: :%s/Vim/빔/g",
+      ],
+      cursor: { r: 0, c: 0 },
+      mode: "NORMAL",
+      visualStart: { r: 0, c: 0 },
+      commandText: "",
+      keyBuffer: "",
+      clipboard: null, // { type: 'line' | 'char', data: string | string[] }
+      undoStack: [],
+      redoStack: [],
+      actionCount: 0,
+    };
+
+    const missions = [
+      {
+        id: 1,
+        text: "j 를 눌러 커서를 아래로 이동하세요.",
+        check: (e, k) => k === "j",
+      },
+      {
+        id: 2,
+        text: "w 를 눌러 다음 단어로 이동해보세요.",
+        check: (e, k) => k === "w",
+      },
+      {
+        id: 3,
+        text: "i 를 눌러 Insert 모드로 진입하세요.",
+        check: (e, k) => state.mode === "INSERT",
+      },
+      {
+        id: 4,
+        text: "텍스트를 입력하고 Esc 를 눌러 Normal 모드로 돌아오세요.",
+        check: (e, k) => state.mode === "NORMAL" && k === "Escape",
+      },
+      {
+        id: 5,
+        text: "dd 를 눌러 현재 줄을 1줄 삭제하세요.",
+        check: (e, k) =>
+          state.keyBuffer === "dd" ||
+          (state.clipboard?.type === "line" && k === "d"),
+      },
+      {
+        id: 6,
+        text: "u 를 눌러 삭제를 취소(Undo)하세요.",
+        check: (e, k) => k === "u",
+      },
+      {
+        id: 7,
+        text: "v 를 눌러 Visual 모드에 진입하세요.",
+        check: (e, k) => state.mode === "VISUAL",
+      },
+      {
+        id: 8,
+        text: ": 를 눌러 Command 모드에 진입하세요.",
+        check: (e, k) => state.mode === "COMMAND",
+      },
+      {
+        id: 9,
+        text: "q! 를 입력하고 Enter 를 눌러 튜토리얼을 종료하세요.",
+        check: (e, k) => k === "Enter" && state.commandText === "q!",
+      },
+    ];
+
+    let currentMissionIndex = 0;
+    let keyLog = [];
+
+    function saveStateToLocal() {
+      localStorage.setItem("vimSimulatorState", JSON.stringify(state.lines));
+    }
+    function loadStateFromLocal() {
+      const saved = localStorage.getItem("vimSimulatorState");
+      if (saved) state.lines = JSON.parse(saved);
+    }
+    loadStateFromLocal();
+
+    function pushUndo() {
+      state.undoStack.push({
+        lines: [...state.lines],
+        cursor: { ...state.cursor },
+      });
+      if (state.undoStack.length > 50) state.undoStack.shift();
+      state.redoStack = [];
+    }
+
+    function showMessage(msg, isSuccess = false) {
+      const toast = document.getElementById("feedback-toast");
+      document.getElementById("toast-msg").textContent = msg;
+
+      toast.classList.remove("toast-exit");
+      toast.classList.add("toast-enter");
+
+      if (isSuccess) {
+        toast.classList.replace("bg-blue-500", "bg-green-500");
+      } else {
+        toast.classList.replace("bg-green-500", "bg-blue-500");
+      }
+
+      setTimeout(() => {
+        toast.classList.remove("toast-enter");
+        toast.classList.add("toast-exit");
+      }, 2500);
+    }
+
+    function checkMission(e, key) {
+      if (currentMissionIndex >= missions.length) return;
+      const mission = missions[currentMissionIndex];
+
+      if (mission.check(e, key)) {
+        currentMissionIndex++;
+        showMessage("미션 완료!", true);
+        updateMissionUI();
+      }
+    }
+
+    function updateMissionUI() {
+      const current = document.getElementById("current-mission");
+      if (currentMissionIndex < missions.length) {
+        current.textContent = `현재 미션: ${missions[currentMissionIndex].text} (${currentMissionIndex + 1}/${missions.length})`;
+      } else {
+        current.textContent =
+          "모든 튜토리얼을 완료했습니다! 자유롭게 연습하세요.";
+        current.classList.replace("text-blue-400", "text-green-400");
+      }
+    }
+
+    function addKeyLog(key) {
+      let displayKey = key;
+      if (key === " ") displayKey = "Space";
+      if (key === "Escape") displayKey = "Esc";
+
+      keyLog.push(displayKey);
+      if (keyLog.length > 7) keyLog.shift();
+
+      const el = document.getElementById("key-history");
+      el.innerHTML = keyLog
+        .map((k) => `<div class="key-badge">${k}</div>`)
+        .join("");
+    }
+
+    function isAlnum(char) {
+      if (!char) return false;
+      return /^[a-zA-Z0-9_가-힣]+$/.test(char);
+    }
+
+    function moveCursor(dr, dc) {
+      state.cursor.r += dr;
+      state.cursor.r = Math.max(
+        0,
+        Math.min(state.lines.length - 1, state.cursor.r),
+      );
+
+      let lineLen = state.lines[state.cursor.r].length;
+      let maxC = state.mode === "INSERT" ? lineLen : Math.max(0, lineLen - 1);
+
+      if (dc !== 0) {
+        state.cursor.c += dc;
+      }
+      state.cursor.c = Math.max(0, Math.min(maxC, state.cursor.c));
+    }
+
+    function nextWord() {
+      let { r, c } = state.cursor;
+      let line = state.lines[r];
+      if (line.length === 0 || c >= line.length) {
+        if (r < state.lines.length - 1) {
+          r++;
+          c = 0;
+        }
+        state.cursor = { r, c };
+        return;
+      }
+      let startType = isAlnum(line[c]);
+      while (
+        c < line.length &&
+        isAlnum(line[c]) === startType &&
+        line[c] !== " "
+      )
+        c++;
+      while (c < line.length && line[c] === " ") c++;
+      if (c >= line.length && r < state.lines.length - 1) {
+        r++;
+        c = 0;
+        while (state.lines[r] && state.lines[r][c] === " ") c++;
+      } else if (c >= line.length) {
+        c = Math.max(0, line.length - 1);
+      }
+      state.cursor = { r, c };
+    }
+
+    function prevWord() {
+      let { r, c } = state.cursor;
+      if (c === 0) {
+        if (r > 0) {
+          r--;
+          c = state.lines[r].length;
+        } else return;
+      }
+      c--;
+      let line = state.lines[r];
+      while (c > 0 && line[c] === " ") c--;
+      if (c >= 0) {
+        let startType = isAlnum(line[c]);
+        while (
+          c > 0 &&
+          isAlnum(line[c - 1]) === startType &&
+          line[c - 1] !== " "
+        )
+          c--;
+      } else c = 0;
+      state.cursor = { r, c };
+    }
+
+    function endWord() {
+      let { r, c } = state.cursor;
+      let line = state.lines[r];
+      if (c < line.length - 1) c++;
+      else if (r < state.lines.length - 1) {
+        r++;
+        c = 0;
+        line = state.lines[r];
+      } else return;
+
+      while (c < line.length && line[c] === " ") c++;
+      if (c < line.length) {
+        let startType = isAlnum(line[c]);
+        while (
+          c < line.length - 1 &&
+          isAlnum(line[c + 1]) === startType &&
+          line[c + 1] !== " "
+        )
+          c++;
+      }
+      state.cursor = { r, c };
+    }
+
+    function executeCommand(cmd) {
+      if (cmd === "w") {
+        saveStateToLocal();
+        showMessage(":w - 페이지가 저장되었습니다 (LocalStorage)", false);
+      } else if (cmd === "q" || cmd === "q!") {
+        showMessage(":q - 튜토리얼을 새로고침합니다...", false);
+        setTimeout(() => location.reload(), 1000);
+      } else if (cmd.startsWith("%s/")) {
+        const parts = cmd.split("/");
+        if (parts.length >= 3) {
+          const search = parts[1];
+          const replace = parts[2];
+          const global = parts[3] === "g";
+          let count = 0;
+          pushUndo();
+          const regex = new RegExp(search, global ? "g" : "");
+          state.lines = state.lines.map((l) => {
+            let replaced = l;
+            if (l.match(regex)) {
+              replaced = l.replace(regex, replace);
+              count += (l.match(new RegExp(search, "g")) || []).length;
+            }
+            return replaced;
+          });
+          showMessage(`:%s - ${count}개의 문자열 치환 완료`, false);
+        } else {
+          showMessage("잘못된 치환 명령어 형식입니다.", false);
+        }
+      } else {
+        showMessage("알 수 없는 명령어입니다: " + cmd, false);
+      }
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (e.ctrlKey && e.key === "c") return; // let browser handle normal copy
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")
+        return;
+
+      const key = e.key;
+
+      if (
+        e.ctrlKey ||
+        key === "Escape" ||
+        key.startsWith("Arrow") ||
+        key === " " ||
+        key === "Backspace" ||
+        key === "Enter"
+      ) {
+        e.preventDefault();
+      }
+
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (
+          key.length === 1 ||
+          key === "Escape" ||
+          key === "Enter" ||
+          key === "Backspace"
+        ) {
+          addKeyLog(key);
+        }
+      } else if (e.ctrlKey && key === "r") {
+        addKeyLog("Ctrl+r");
+      }
+
+      const prevMode = state.mode;
+
+      // Handle logic by Mode
+      if (state.mode === "NORMAL") {
+        if (key === "h" || key === "ArrowLeft") moveCursor(0, -1);
+        else if (key === "j" || key === "ArrowDown") moveCursor(1, 0);
+        else if (key === "k" || key === "ArrowUp") moveCursor(-1, 0);
+        else if (key === "l" || key === "ArrowRight") moveCursor(0, 1);
+        else if (key === "w") nextWord();
+        else if (key === "b") prevWord();
+        else if (key === "e") endWord();
+        else if (key === "i") state.mode = "INSERT";
+        else if (key === "a") {
+          moveCursor(0, 1);
+          state.mode = "INSERT";
+        } else if (key === "A") {
+          state.cursor.c = state.lines[state.cursor.r].length;
+          state.mode = "INSERT";
+        } else if (key === "o") {
+          pushUndo();
+          state.cursor.r++;
+          state.lines.splice(state.cursor.r, 0, "");
+          state.cursor.c = 0;
+          state.mode = "INSERT";
+        } else if (key === "O") {
+          pushUndo();
+          state.lines.splice(state.cursor.r, 0, "");
+          state.cursor.c = 0;
+          state.mode = "INSERT";
+        } else if (key === "v") {
+          state.mode = "VISUAL";
+          state.visualStart = { ...state.cursor };
+        } else if (key === "V") {
+          state.mode = "VISUAL_LINE";
+          state.visualStart = { ...state.cursor };
+        } else if (key === ":") {
+          state.mode = "COMMAND";
+          state.commandText = "";
+        } else if (key === "x") {
+          const line = state.lines[state.cursor.r];
+          if (line.length > 0) {
+            pushUndo();
+            state.lines[state.cursor.r] =
+              line.slice(0, state.cursor.c) + line.slice(state.cursor.c + 1);
+            if (
+              state.cursor.c >= state.lines[state.cursor.r].length &&
+              state.cursor.c > 0
+            )
+              state.cursor.c--;
+          }
+        } else if (key === "d" || key === "y") {
+          state.keyBuffer += key;
+          if (state.keyBuffer === "dd") {
+            pushUndo();
+            state.clipboard = {
+              type: "line",
+              data: state.lines[state.cursor.r],
+            };
+            state.lines.splice(state.cursor.r, 1);
+            if (state.lines.length === 0) state.lines.push("");
+            if (state.cursor.r >= state.lines.length)
+              state.cursor.r = state.lines.length - 1;
+            state.cursor.c = Math.min(
+              state.cursor.c,
+              Math.max(0, state.lines[state.cursor.r].length - 1),
+            );
+            state.keyBuffer = "";
+            document.getElementById("clipboard-status").textContent =
+              "1 line deleted";
+          } else if (state.keyBuffer === "yy") {
+            state.clipboard = {
+              type: "line",
+              data: state.lines[state.cursor.r],
+            };
+            state.keyBuffer = "";
+            document.getElementById("clipboard-status").textContent =
+              "1 line yanked";
+          }
+          if (state.keyBuffer.length >= 2) state.keyBuffer = "";
+        } else if (key === "p") {
+          if (state.clipboard) {
+            pushUndo();
+            if (state.clipboard.type === "line") {
+              const linesObj = state.clipboard.data.split("\n");
+              state.lines.splice(state.cursor.r + 1, 0, ...linesObj);
+              state.cursor.r++;
+              state.cursor.c = 0;
+            } else if (state.clipboard.type === "char") {
+              const line = state.lines[state.cursor.r];
+              state.lines[state.cursor.r] =
+                line.slice(0, state.cursor.c + 1) +
+                state.clipboard.data +
+                line.slice(state.cursor.c + 1);
+              state.cursor.c++;
+            }
+          }
+        } else if (key === "u") {
+          if (state.undoStack.length > 0) {
+            state.redoStack.push({
+              lines: [...state.lines],
+              cursor: { ...state.cursor },
+            });
+            const prev = state.undoStack.pop();
+            state.lines = prev.lines;
+            state.cursor = prev.cursor;
+            showMessage("Undo 실행", false);
+          } else {
+            showMessage("최초 상태입니다.", false);
+          }
+        } else if (e.ctrlKey && key === "r") {
+          if (state.redoStack.length > 0) {
+            state.undoStack.push({
+              lines: [...state.lines],
+              cursor: { ...state.cursor },
+            });
+            const next = state.redoStack.pop();
+            state.lines = next.lines;
+            state.cursor = next.cursor;
+            showMessage("Redo 실행", false);
+          }
+        } else if (key !== "d" && key !== "y") {
+          state.keyBuffer = ""; // clear bad buffer
+        }
+      } else if (state.mode === "INSERT") {
+        if (key === "Escape") {
+          state.mode = "NORMAL";
+          state.cursor.c = Math.max(0, state.cursor.c - 1);
+        } else if (key === "Backspace") {
+          const line = state.lines[state.cursor.r];
+          if (state.cursor.c > 0) {
+            pushUndo();
+            state.lines[state.cursor.r] =
+              line.slice(0, state.cursor.c - 1) + line.slice(state.cursor.c);
+            state.cursor.c--;
+          } else if (state.cursor.r > 0) {
+            pushUndo();
+            const prevLen = state.lines[state.cursor.r - 1].length;
+            state.lines[state.cursor.r - 1] += line;
+            state.lines.splice(state.cursor.r, 1);
+            state.cursor.r--;
+            state.cursor.c = prevLen;
+          }
+        } else if (key === "Enter") {
+          pushUndo();
+          const line = state.lines[state.cursor.r];
+          const newLine = line.slice(state.cursor.c);
+          state.lines[state.cursor.r] = line.slice(0, state.cursor.c);
+          state.lines.splice(state.cursor.r + 1, 0, newLine);
+          state.cursor.r++;
+          state.cursor.c = 0;
+        } else if (
+          key.length === 1 &&
+          !e.ctrlKey &&
+          !e.metaKey &&
+          !e.altKey
+        ) {
+          const line = state.lines[state.cursor.r];
+          state.lines[state.cursor.r] =
+            line.slice(0, state.cursor.c) + key + line.slice(state.cursor.c);
+          state.cursor.c++;
+          state.actionCount++;
+          if (state.actionCount > 10) {
+            pushUndo();
+            state.actionCount = 0;
+          }
+        }
+      } else if (state.mode.startsWith("VISUAL")) {
+        if (key === "Escape") state.mode = "NORMAL";
+        else if (key === "h") moveCursor(0, -1);
+        else if (key === "j") moveCursor(1, 0);
+        else if (key === "k") moveCursor(-1, 0);
+        else if (key === "l") moveCursor(0, 1);
+        else if (key === "w") nextWord();
+        else if (key === "b") prevWord();
+        else if (key === "e") endWord();
+        else if (key === "y" || key === "d" || key === "x") {
+          let sr = Math.min(state.visualStart.r, state.cursor.r);
+          let er = Math.max(state.visualStart.r, state.cursor.r);
+
+          if (state.mode === "VISUAL_LINE") {
+            let copied = state.lines.slice(sr, er + 1).join("\n");
+            state.clipboard = { type: "line", data: copied };
+            if (key === "d" || key === "x") {
+              pushUndo();
+              state.lines.splice(sr, er - sr + 1);
+              if (state.lines.length === 0) state.lines.push("");
+              state.cursor.r = Math.min(sr, state.lines.length - 1);
+              state.cursor.c = 0;
+            }
+            document.getElementById("clipboard-status").textContent =
+              `${er - sr + 1} lines ${key === "y" ? "yanked" : "deleted"}`;
+          } else {
+            // Character visual simplified to line for multi-line or inline for single
+            if (sr === er) {
+              let sc = Math.min(state.visualStart.c, state.cursor.c);
+              let ec = Math.max(state.visualStart.c, state.cursor.c);
+              let line = state.lines[sr];
+              state.clipboard = {
+                type: "char",
+                data: line.slice(sc, ec + 1),
+              };
+              if (key === "d" || key === "x") {
+                pushUndo();
+                state.lines[sr] = line.slice(0, sc) + line.slice(ec + 1);
+                state.cursor = { r: sr, c: sc };
+              }
+            } else {
+              let copied = state.lines.slice(sr, er + 1).join("\n");
+              state.clipboard = { type: "line", data: copied };
+              if (key === "d" || key === "x") {
+                pushUndo();
+                state.lines.splice(sr, er - sr + 1);
+                if (state.lines.length === 0) state.lines.push("");
+                state.cursor.r = Math.min(sr, state.lines.length - 1);
+                state.cursor.c = 0;
+              }
+            }
+          }
+          state.mode = "NORMAL";
+        }
+      } else if (state.mode === "COMMAND") {
+        if (key === "Escape") state.mode = "NORMAL";
+        else if (key === "Backspace") {
+          state.commandText = state.commandText.slice(0, -1);
+          if (state.commandText === "") state.mode = "NORMAL";
+        } else if (key === "Enter") {
+          executeCommand(state.commandText);
+          state.mode = "NORMAL";
+        } else if (
+          key.length === 1 &&
+          !e.ctrlKey &&
+          !e.metaKey &&
+          !e.altKey
+        ) {
+          state.commandText += key;
+        }
+      }
+
+      // Enforce bounds post-action
+      let maxR = Math.max(0, state.lines.length - 1);
+      state.cursor.r = Math.min(maxR, state.cursor.r);
+      let maxC =
+        state.mode === "INSERT"
+          ? state.lines[state.cursor.r].length
+          : Math.max(0, state.lines[state.cursor.r].length - 1);
+      state.cursor.c = Math.min(maxC, state.cursor.c);
+
+      checkMission(e, key);
+
+      render();
+    });
+
+    function render() {
+      const editorEl = document.getElementById("editor-content");
+
+      // Render Status Line
+      const modeEl = document.getElementById("status-mode");
+      modeEl.textContent = state.mode;
+      modeEl.className = `w-32 uppercase tracking-widest text-[#1e1e1e] font-bold text-center rounded-sm mr-4 py-0.5 px-2 mode-${state.mode}`;
+      document.getElementById("status-cursor").textContent =
+        `${state.cursor.r + 1}:${state.cursor.c + 1}`;
+
+      const bgClass = "#007acc";
+      document.getElementById("status-line").style.backgroundColor =
+        state.mode === "INSERT"
+          ? "#1f8c22"
+          : state.mode === "VISUAL" || state.mode === "VISUAL_LINE"
+            ? "#a53e9e"
+            : state.mode === "COMMAND"
+              ? "#a5682a"
+              : "#007acc";
+
+      // Render Command Line
+      const cmdWrap = document.getElementById("command-wrap");
+      if (state.mode === "COMMAND") {
+        cmdWrap.classList.remove("h-0", "border-transparent", "hidden");
+        cmdWrap.classList.add("h-8", "border-gray-700", "py-1");
+        document.getElementById("cmd-text").textContent = state.commandText;
+      } else {
+        cmdWrap.classList.add("h-0", "border-transparent", "hidden");
+        cmdWrap.classList.remove("h-8", "border-gray-700", "py-1");
+      }
+
+      // Clear buffer
+      let htmlHTML = "";
+      for (let i = 0; i < state.lines.length; i++) {
+        const line = state.lines[i];
+        let lineHTML = "";
+
+        let isLineVisual = false;
+        if (state.mode === "VISUAL_LINE") {
+          let sr = Math.min(state.visualStart.r, state.cursor.r);
+          let er = Math.max(state.visualStart.r, state.cursor.r);
+          if (i >= sr && i <= er) isLineVisual = true;
+        }
+
+        const limit = Math.max(
+          line.length,
+          state.mode === "INSERT" && i === state.cursor.r
+            ? line.length + 1
+            : 1,
+        );
+
+        for (let j = 0; j <= line.length; j++) {
+          const char = line[j] || " ";
+          const isCursor = i === state.cursor.r && j === state.cursor.c;
+
+          if (j === line.length && !isCursor && line.length > 0) continue;
+
+          let isCharVisual = false;
+          if (state.mode === "VISUAL" && !isLineVisual) {
+            let flatStart = state.visualStart.r * 10000 + state.visualStart.c;
+            let flatCur = state.cursor.r * 10000 + state.cursor.c;
+            let flatMin = Math.min(flatStart, flatCur);
+            let flatMax = Math.max(flatStart, flatCur);
+            let flatCurr = i * 10000 + j;
+            if (
+              flatCurr >= flatMin &&
+              flatCurr <= flatMax &&
+              j < line.length
+            ) {
+              isCharVisual = true;
+            }
+          }
+
+          let classes = ["cursor-char"];
+          if (isCursor) {
+            classes.push(
+              state.mode === "INSERT" ? "cursor-insert" : "cursor-normal",
+            );
+          }
+          if (isLineVisual || isCharVisual) {
+            classes.push("visual-selected");
+          }
+
+          const displayChar =
+            char === " "
+              ? "&nbsp;"
+              : char
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+          lineHTML += `<span class="${classes.join(" ")}">${displayChar}</span>`;
+        }
+
+        htmlHTML += `<div class="line-wrapper ${isLineVisual ? "visual-selected" : ""}">
+                    <div class="line-number">${i + 1}</div>
+                    <div class="editor-line">${lineHTML}</div>
+                </div>`;
+      }
+
+      editorEl.innerHTML = htmlHTML;
+      scheduleParentResize();
+    }
+
+    // Initialize display
+    updateMissionUI();
+    render();
+
+    document.getElementById("editor-container").focus();
+    window.addEventListener("resize", scheduleParentResize);
+
+    if ("ResizeObserver" in window) {
+      const observer = new ResizeObserver(() => {
+        scheduleParentResize();
+      });
+      observer.observe(document.body);
+      observer.observe(document.documentElement);
+    }
+
+    scheduleParentResize();
+    setTimeout(scheduleParentResize, 150);
+    setTimeout(scheduleParentResize, 600);
+  </script>
+
+
+  <section class="__rtx-section" id="__rtx-code-section">
+    <div class="__rtx-head"></div>
+    <div class="panel code-panel">
+      <pre id="__rtx-python-display" class="__trace-code-display"></pre>
+    </div>
+  </section>
+
+  <section class="__rtx-section" id="__rtx-runtime-panel">
+    <div class="__rtx-runtime-panel">
+      <div class="__rtx-runtime-title">Runtime Trace</div>
+      <div class="__rtx-runtime-grid">
+        <div class="__rtx-runtime-box">
+          <h4>Call Stack</h4>
+          <div class="__rtx-runtime-body">
+            <pre id="__rtx-stack">loading...</pre>
+          </div>
+        </div>
+        <div class="__rtx-runtime-box">
+          <h4>Heap Snapshot</h4>
+          <div class="__rtx-runtime-body">
+            <pre id="__rtx-heap">loading...</pre>
+          </div>
+        </div>
+        <div class="__rtx-runtime-box">
+          <h4>Global Variables</h4>
+          <div class="__rtx-runtime-body">
+            <pre id="__rtx-global">loading...</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <script>
+    /* __runtime-trace-script */
+    (() => {
+      if (window.__rtxRuntimeInstalled) return;
+      window.__rtxRuntimeInstalled = true;
+
+      const __RTX_SOURCE_LINES = ["from dataclasses import dataclass", "from typing import List", "@dataclass", "class VimState:", "    mode: str = \"NORMAL\"", "    line: int = 0", "    col: int = 0", "    buffer: List[str] = None", "    def __post_init__(self):", "        if self.buffer is None: self.buffer = [\"\"]", "def apply_key(state: VimState, key: str) -> VimState:", "    if state.mode == \"NORMAL\" and key == \"i\": state.mode = \"INSERT\"", "    elif state.mode == \"INSERT\" and key == \"<Esc>\": state.mode = \"NORMAL\"", "    elif state.mode == \"INSERT\" and len(key) == 1:", "        line = state.buffer[state.line]", "        state.buffer[state.line] = line[:state.col] + key + line[state.col:]", "        state.col += 1", "    return state"];
+
+      function esc(v) {
+        return String(v)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+      }
+
+      function colorize(line) {
+        const escaped = esc(line);
+        const parts = escaped.split(/(\b)/);
+        const kw = new Set(['def', 'for', 'while', 'if', 'else', 'elif', 'return', 'in', 'and', 'or', 'not', 'class', 'True', 'False', 'None', 'break', 'continue', 'from', 'import', 'try', 'except', 'with']);
+        const bi = new Set(['len', 'range', 'enumerate', 'max', 'min', 'sum', 'sorted', 'list', 'set', 'dict', 'tuple', 'abs', 'float', 'int', 'str', 'map', 'zip', 'any', 'all', 'divmod']);
+        const out = parts.map((p, i, arr) => {
+          if (/^\d+$/.test(p)) return `<span class="tok-number">${p}</span>`;
+          if (kw.has(p)) return `<span class="tok-keyword">${p}</span>`;
+          if (bi.has(p) && arr[i + 1] === '(') return `<span class="tok-builtin">${p}</span>`;
+          if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(p) && arr[i + 1] === '(' && !kw.has(p)) return `<span class="tok-function">${p}</span>`;
+          return p;
+        }).join('');
+        return out.replace(/(#.*)$/, '<span class="tok-comment">$1</span>');
+      }
+
+      function getSteps() {
+        if (Array.isArray(window.steps)) return window.steps;
+        if (Array.isArray(window.states)) return window.states;
+        if (window.appState?.engine && Array.isArray(window.appState.engine.steps)) return window.appState.engine.steps;
+        return [];
+      }
+
+      function getCurrentIndex() {
+        if (typeof window.cur === 'number') return window.cur;
+        if (typeof window.currentStep === 'number') return window.currentStep;
+        if (typeof window.currentStateIdx === 'number') return window.currentStateIdx;
+        if (typeof window.currentStepIndex === 'number') return window.currentStepIndex;
+        if (window.appState?.engine && typeof window.appState.engine.currentStepIndex === 'number') return window.appState.engine.currentStepIndex;
+        return 0;
+      }
+
+      function pickActiveLine(step, idx, total) {
+        const maxIdx = Math.max(__RTX_SOURCE_LINES.length - 1, 0);
+        if (typeof step?.codeLine === 'number') return Math.max(0, Math.min(maxIdx, step.codeLine));
+        if (typeof step?.line === 'number') return Math.max(0, Math.min(maxIdx, step.line > 0 ? step.line - 1 : step.line));
+        if (typeof step?.lineNo === 'number') return Math.max(0, Math.min(maxIdx, step.lineNo > 0 ? step.lineNo - 1 : step.lineNo));
+
+        const text = `${step?.phase || ''} ${step?.type || ''} ${step?.msg || ''}`.toLowerCase();
+        const lookup = (re) => {
+          for (let i = 0; i < __RTX_SOURCE_LINES.length; i++) {
+            if (re.test(__RTX_SOURCE_LINES[i].toLowerCase())) return i;
+          }
+          return -1;
+        };
+
+        if (/init|start|begin|초기|시작/.test(text)) return 0;
+        if (/done|finish|complete|완료|종료|return|반환/.test(text)) return maxIdx;
+        if (/dfs|bfs|recur|재귀|탐색|visit|방문|backtrack|flood/.test(text)) {
+          const v = lookup(/def\s+dfs|def\s+bfs|while|for|def\s+solve|def\s+search/);
+          if (v >= 0) return v;
+        }
+        if (/heap|push|pop|queue|stack/.test(text)) {
+          const v = lookup(/heap|push|pop|append|popleft|heappush|heappop/);
+          if (v >= 0) return v;
+        }
+        if (/scan|loop|순회/.test(text)) {
+          const v = lookup(/for|while/);
+          if (v >= 0) return v;
+        }
+
+        if (total > 1) return Math.max(0, Math.min(maxIdx, Math.floor((idx / (total - 1)) * (maxIdx || 1))));
+        return 0;
+      }
+
+      function renderInjectedSource(activeLine) {
+        const el = document.getElementById('__rtx-python-display');
+        if (!el) return;
+        if (!Array.isArray(__RTX_SOURCE_LINES) || __RTX_SOURCE_LINES.length === 0) {
+          el.textContent = '# Python source is not available for this simulation.';
+          return;
+        }
+        el.innerHTML = __RTX_SOURCE_LINES
+          .map((line, i) => `<span class="__line${i === activeLine ? ' __active' : ''}">${colorize(line)}</span>`)
+          .join('\n');
+      }
+
+      function highlightLegacyLines(activeLine) {
+        const lines = document.querySelectorAll('.code-line[id^="line-"]');
+        if (!lines.length) return;
+        lines.forEach((node) => node.classList.remove('active', 'current', 'highlight'));
+        const id = `line-${activeLine + 1}`;
+        const target = document.getElementById(id);
+        if (target && target.classList.contains('code-line')) target.classList.add('active');
+      }
+
+      function isComplex(v) {
+        return v && (Array.isArray(v) || typeof v === 'object');
+      }
+
+      function summarize(v) {
+        if (v === null) return 'null';
+        if (v === undefined) return 'undefined';
+        if (Array.isArray(v)) {
+          const preview = v.slice(0, 8).map((x) => (typeof x === 'object' ? 'Ellipsis' : JSON.stringify(x))).join(', ');
+          return `Array(len=${v.length}) [${preview}${v.length > 8 ? ', ...' : ''}]`;
+        }
+        if (v instanceof Map) return `Map(size=${v.size})`;
+        if (v instanceof Set) return `Set(size=${v.size})`;
+        if (typeof v === 'object') {
+          const keys = Object.keys(v);
+          return `Object(keys=${keys.length}) {{${keys.slice(0, 6).join(', ')}${keys.length > 6 ? ', ...' : ''}}}`;
+        }
+        return JSON.stringify(v);
+      }
+
+      function buildStack(step, idx) {
+        const lines = [];
+        const raw = step?.callStack || step?.stackTrace || step?.stack;
+        if (Array.isArray(raw) && raw.length) {
+          raw.slice(0, 8).forEach((f, i) => lines.push(`#${i} ${typeof f === 'string' ? f : summarize(f)}`));
+          return lines;
+        }
+
+        const fnNames = __RTX_SOURCE_LINES
+          .map((l) => {
+            const m = l.match(/^\s*def\s+([A-Za-z_][A-Za-z0-9_]*)/);
+            return m ? m[1] : '';
+          })
+          .filter(Boolean);
+
+        const root = fnNames[0] || 'simulate';
+        lines.push(`#0 ${root}()  [global]`);
+
+        const msg = `${step?.phase || ''} ${step?.type || ''} ${step?.msg || ''}`.toLowerCase();
+        const inferred = fnNames.find((n) => msg.includes(n.toLowerCase())) ||
+          (/dfs/.test(msg) ? 'dfs' : /bfs/.test(msg) ? 'bfs' : /dijkstra/.test(msg) ? 'dijkstra' : /topo|topological/.test(msg) ? 'topological_sort' : 'step_handler');
+
+        const depth = Number(step?.depth ?? step?.stackDepth ?? step?.recDepth ?? step?.level ?? 1);
+        const safeDepth = Number.isFinite(depth) && depth > 0 ? Math.min(depth, 6) : 1;
+        for (let i = 1; i <= safeDepth; i++) lines.push(`#${i} ${inferred}(step=${idx})`);
+        return lines;
+      }
+
+      function buildHeap(step) {
+        const out = [];
+        const stepObj = step && typeof step === 'object' ? step : {};
+        Object.entries(stepObj)
+          .filter(([k, v]) => !['msg', 'phase', 'type'].includes(k) && isComplex(v))
+          .slice(0, 8)
+          .forEach(([k, v]) => out.push(`${k}: ${summarize(v)}`));
+
+        const globals = ['grid', 'heap', 'stack', 'queue', 'graph', 'dist', 'parent', 'visited', 'memo', 'dp', 'map', 'seen'];
+        globals.forEach((k) => {
+          const v = window[k];
+          if (isComplex(v) && out.length < 12 && !out.some((line) => line.startsWith(`${k}:`))) out.push(`${k}: ${summarize(v)}`);
+        });
+
+        if (!out.length) out.push('(no heap snapshot detected)');
+        return out;
+      }
+
+      function buildGlobals(step, idx, total) {
+        const out = [];
+        out.push(`step_index: ${idx} / ${Math.max(total - 1, 0)}`);
+        const g = [
+          'cur', 'currentStep', 'currentStateIdx', 'currentStepIndex', 'playing', 'count',
+          'target', 'result', 'answer', 'mode', 'status', 'timer',
+        ];
+        g.forEach((k) => {
+          if (!(k in window)) return;
+          const v = window[k];
+          if (!isComplex(v) && typeof v !== 'function') out.push(`${k}: ${summarize(v)}`);
+        });
+
+        if (window.appState?.engine) {
+          out.push(`appState.engine.currentStepIndex: ${window.appState.engine.currentStepIndex ?? 0}`);
+          out.push(`appState.engine.steps: ${Array.isArray(window.appState.engine.steps) ? window.appState.engine.steps.length : 0}`);
+        }
+
+        if (step && typeof step === 'object') {
+          Object.entries(step)
+            .filter(([_, v]) => !isComplex(v) && typeof v !== 'function')
+            .slice(0, 10)
+            .forEach(([k, v]) => out.push(`step.${k}: ${summarize(v)}`));
+        }
+
+        return out;
+      }
+
+      function renderRuntime() {
+        const steps = getSteps();
+        const idx = getCurrentIndex();
+        const step = steps[idx] || {};
+        const activeLine = pickActiveLine(step, idx, steps.length || 1);
+
+        renderInjectedSource(activeLine);
+        highlightLegacyLines(activeLine);
+
+        const stackEl = document.getElementById('__rtx-stack');
+        const heapEl = document.getElementById('__rtx-heap');
+        const globalEl = document.getElementById('__rtx-global');
+        if (stackEl) stackEl.textContent = buildStack(step, idx).join('\n');
+        if (heapEl) heapEl.textContent = buildHeap(step).join('\n');
+        if (globalEl) globalEl.textContent = buildGlobals(step, idx, steps.length || 0).join('\n');
+      }
+
+      renderRuntime();
+      window.__rtxRuntimeInterval = setInterval(renderRuntime, 120);
+    })();
+  </script>
+
+<script>
+(function(){
+  var modal=document.getElementById('modal');
+  var btnInfo=document.getElementById('btn-info');
+  var btnClose=document.getElementById('modal-close');
+  if(btnInfo) btnInfo.addEventListener('click',function(){modal.classList.add('open');});
+  if(btnClose) btnClose.addEventListener('click',function(){modal.classList.remove('open');});
+  if(modal) modal.addEventListener('click',function(e){if(e.target===modal)modal.classList.remove('open');});
+})();
+</script>
+</body>
+
+</html>

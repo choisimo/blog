@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ansible 설치와 첫 Inventory 구성 | Nodove Blog</title>
+    <meta name="description" content="패키지 설치부터 SSH 키, Inventory 작성, Ad-hoc 명령(ping, shell) 실행까지 Ansible 입문 필수 흐름." />
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    
+    
+    
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/nodove.ico" />
+
+    <!-- Fonts: Pretendard (sans) + JetBrains Mono (mono) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/pretendard@latest/dist/web/variable/pretendardvariable-dynamic-subset.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <script>
+      (function (l) {
+        if (l.search[1] === "/") {
+          const decoded = l.search
+            .slice(1)
+            .split("&")
+            .map((part) => part.replace(/~and~/g, "&"))
+            .join("?");
+
+          window.history.replaceState(
+            null,
+            "",
+            l.pathname.slice(0, -1) + decoded + l.hash,
+          );
+        }
+      })(window.location);
+    </script>
+
+    <script>
+      (function () {
+        const theme = localStorage.getItem("theme");
+        const prefersDark = window.matchMedia(
+          "(prefers-color-scheme: dark)",
+        ).matches;
+        const root = document.documentElement;
+        root.classList.remove("light", "dark", "terminal");
+
+        if (theme === "terminal") {
+          // Terminal uses dark as base with additional terminal class
+          root.classList.add("dark", "terminal");
+        } else if (
+          theme === "dark" ||
+          (theme === "system" && prefersDark) ||
+          (!theme && prefersDark)
+        ) {
+          root.classList.add("dark");
+        } else if (theme === "light") {
+          root.classList.add("light");
+        } else if (!theme) {
+          // Default: terminal theme for new visitors
+          root.classList.add("dark", "terminal");
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-C7dTVX1y.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-D7jv_ly0.js">
+    <link rel="modulepreload" crossorigin href="/assets/ui-DWyibHTL.js">
+    <link rel="modulepreload" crossorigin href="/assets/markdown-2En-ffqi.js">
+    <link rel="modulepreload" crossorigin href="/assets/utils-B2rm_Apj.js">
+    <link rel="modulepreload" crossorigin href="/assets/search-Ch1WBRTM.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-l6e9jtZq.css">
+  
+    <!-- Open Graph / Facebook / KakaoTalk -->
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://noblog.nodove.com/blog/2025/ansible-01-installation-setup" />
+    <meta property="og:title" content="Ansible 설치와 첫 Inventory 구성" />
+    <meta property="og:description" content="패키지 설치부터 SSH 키, Inventory 작성, Ad-hoc 명령(ping, shell) 실행까지 Ansible 입문 필수 흐름." />
+    <meta property="og:image" content="https://api.nodove.com/api/v1/og?title=Ansible+%EC%84%A4%EC%B9%98%EC%99%80+%EC%B2%AB+Inventory+%EA%B5%AC%EC%84%B1&subtitle=DevOps" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="Nodove Blog" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="article:published_time" content="2025-01-13" />
+    <meta property="article:author" content="Admin" />
+    <meta property="article:section" content="DevOps" />
+    <meta property="article:tag" content="DevOps, Ansible, 자동화, Inventory, 초급" />
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://noblog.nodove.com/blog/2025/ansible-01-installation-setup" />
+    <meta name="twitter:title" content="Ansible 설치와 첫 Inventory 구성" />
+    <meta name="twitter:description" content="패키지 설치부터 SSH 키, Inventory 작성, Ad-hoc 명령(ping, shell) 실행까지 Ansible 입문 필수 흐름." />
+    <meta name="twitter:image" content="https://api.nodove.com/api/v1/og?title=Ansible+%EC%84%A4%EC%B9%98%EC%99%80+%EC%B2%AB+Inventory+%EA%B5%AC%EC%84%B1&subtitle=DevOps" />
+    
+    <!-- Additional SEO -->
+    <link rel="canonical" href="https://noblog.nodove.com/blog/2025/ansible-01-installation-setup" />
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Ansible 설치와 첫 Inventory 구성","description":"패키지 설치부터 SSH 키, Inventory 작성, Ad-hoc 명령(ping, shell) 실행까지 Ansible 입문 필수 흐름.","image":"https://api.nodove.com/api/v1/og?title=Ansible+%EC%84%A4%EC%B9%98%EC%99%80+%EC%B2%AB+Inventory+%EA%B5%AC%EC%84%B1&subtitle=DevOps","author":{"@type":"Person","name":"nodove"},"publisher":{"@type":"Organization","name":"Nodove Blog","logo":{"@type":"ImageObject","url":"https://noblog.nodove.com/nodove.ico"}},"datePublished":"2025-01-13","dateModified":"2025-01-13","mainEntityOfPage":{"@type":"WebPage","@id":"https://noblog.nodove.com/blog/2025/ansible-01-installation-setup"},"keywords":"DevOps, Ansible, 자동화, Inventory, 초급","articleSection":"DevOps"}</script>
+
+</head>
+
+  <body>
+    <div id="root"></div>
+    <script defer src="/ai-memo/ai-memo.js?v=20251019-1"></script>
+  </body>
+</html>

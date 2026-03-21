@@ -1,0 +1,1 @@
+import{j as a}from"./ui-DWyibHTL.js";import{ad as o,ae as t,af as r}from"./index-C7dTVX1y.js";import"./vendor-D7jv_ly0.js";import"./markdown-2En-ffqi.js";import"./utils-B2rm_Apj.js";import"./search-Ch1WBRTM.js";function f(){return a.jsx(o,{...r,actions:[t.home,t.back]})}export{f as default};

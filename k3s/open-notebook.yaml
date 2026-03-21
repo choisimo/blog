@@ -1,0 +1,152 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-notebook
+  namespace: blog
+spec:
+  selector:
+    app: open-notebook
+  ports:
+    - name: web
+      port: 8501
+      targetPort: web
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open-notebook
+  namespace: blog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: open-notebook
+  template:
+    metadata:
+      labels:
+        app: open-notebook
+    spec:
+      initContainers:
+        - name: wait-for-surrealdb
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - until nc -zw2 surrealdb 8000; do echo "waiting for surrealdb..."; sleep 2; done
+      containers:
+        - name: open-notebook
+          image: lfnovo/open_notebook:v1-latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: web
+              containerPort: 8501
+            - name: health
+              containerPort: 5055
+          env:
+            - name: SURREAL_URL
+              value: ws://surrealdb:8000/rpc
+            - name: SURREAL_USER
+              value: root
+            - name: SURREAL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: blog-app-secrets
+                  key: SURREALDB_ROOT_PASSWORD
+            - name: SURREAL_NAMESPACE
+              value: open_notebook
+            - name: SURREAL_DATABASE
+              value: open_notebook
+            - name: DEFAULT_CHAT_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  name: blog-app-config
+                  key: AI_DEFAULT_MODEL
+            - name: DEFAULT_TRANSFORMATION_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  name: blog-app-config
+                  key: AI_DEFAULT_MODEL
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: blog-app-secrets
+                  key: AI_API_KEY
+                  optional: true
+            - name: OPENAI_COMPATIBLE_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: blog-app-secrets
+                  key: AI_SERVER_URL
+                  optional: true
+            - name: OPENAI_COMPATIBLE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: blog-app-secrets
+                  key: AI_API_KEY
+                  optional: true
+            - name: OPENAI_COMPATIBLE_BASE_URL_LLM
+              valueFrom:
+                secretKeyRef:
+                  name: blog-app-secrets
+                  key: AI_SERVER_URL
+                  optional: true
+            - name: OPENAI_COMPATIBLE_API_KEY_LLM
+              valueFrom:
+                secretKeyRef:
+                  name: blog-app-secrets
+                  key: AI_API_KEY
+                  optional: true
+            - name: OPENAI_COMPATIBLE_BASE_URL_EMBEDDING
+              valueFrom:
+                secretKeyRef:
+                  name: blog-app-secrets
+                  key: AI_EMBEDDING_URL
+                  optional: true
+            - name: OPENAI_COMPATIBLE_API_KEY_EMBEDDING
+              valueFrom:
+                secretKeyRef:
+                  name: blog-app-secrets
+                  key: AI_EMBEDDING_API_KEY
+                  optional: true
+            - name: OPENAI_API_BASE
+              valueFrom:
+                secretKeyRef:
+                  name: blog-app-secrets
+                  key: AI_SERVER_URL
+                  optional: true
+            - name: DEFAULT_EMBEDDING_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  name: blog-app-config
+                  key: AI_EMBED_MODEL
+            - name: EMBEDDING_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: blog-app-secrets
+                  key: AI_EMBEDDING_API_KEY
+                  optional: true
+            - name: EMBEDDING_API_BASE
+              valueFrom:
+                secretKeyRef:
+                  name: blog-app-secrets
+                  key: AI_EMBEDDING_URL
+                  optional: true
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: health
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: health
+            initialDelaySeconds: 60
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1
+              memory: 1Gi
