@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "export:source-md": "node scripts/export-source-to-markdown.js"
+  },
   "devDependencies": {},
   "dependencies": {
     "jose": "^6.1.2"
