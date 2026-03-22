@@ -50,6 +50,7 @@ export type Env = {
   // Variables
   ENV: 'development' | 'staging' | 'production';
   ALLOWED_ORIGINS?: string;
+  FEATURE_TERMINAL_ENABLED?: string;
 
   // Secrets encryption key (optional, falls back to JWT_SECRET)
   SECRETS_ENCRYPTION_KEY?: string;

@@ -51,6 +51,7 @@ ENV = "development"
 ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:4173,http://localhost:8080,http://localhost:8081,https://noblog.nodove.com,https://blog.nodove.com,https://blog-test.nodove.com"
 ASSETS_BASE_URL = "https://assets-b.nodove.com"
 API_BASE_URL = "https://api.nodove.com"
+FEATURE_TERMINAL_ENABLED = "false"
 
 # D1 Database binding (development)
 [[d1_databases]]
@@ -84,6 +85,7 @@ routes = [
 
 [env.production.vars]
 ENV = "production"
+FEATURE_TERMINAL_ENABLED = "false"
 
 [[env.production.d1_databases]]
 binding = "DB"
@@ -115,3 +117,4 @@ routes = [
 [env.staging.vars]
 ENV = "staging"
 ALLOWED_ORIGINS = "https://blog-test.nodove.com,http://localhost:5173"
+FEATURE_TERMINAL_ENABLED = "false"

@@ -223,6 +223,7 @@ async function buildPublicConfig(env: Env) {
     getAiDefaultModel(env),
     getAiVisionModel(env),
   ]);
+  const terminalEnabled = env.FEATURE_TERMINAL_ENABLED === 'true';
   const chatWsBaseUrl = apiBaseUrl.replace(/^http:\/\//, 'ws://').replace(/^https:\/\//, 'wss://');
 
   return {
@@ -238,7 +239,7 @@ async function buildPublicConfig(env: Env) {
     features: {
       aiEnabled: true,
       ragEnabled: true,
-      terminalEnabled: true,
+      terminalEnabled,
       aiInline: true,
       commentsEnabled: true,
     },

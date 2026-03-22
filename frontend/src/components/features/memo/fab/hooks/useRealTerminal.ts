@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useFeatureEnabled } from "@/stores/runtime/useFeatureFlagsStore";
 import {
   connectTerminal,
   checkTerminalHealth,
@@ -50,6 +51,7 @@ export function useRealTerminal(
     autoConnect = false,
   } = options;
 
+  const terminalEnabled = useFeatureEnabled("terminalEnabled");
   const [status, setStatus] = useState<TerminalStatus>("disconnected");
   const [error, setError] = useState<string | null>(null);
   const [isAvailable, setIsAvailable] = useState(false);
@@ -74,6 +76,12 @@ export function useRealTerminal(
   // Check if terminal service is available on mount
   useEffect(() => {
     const checkAvailability = async () => {
+      if (!terminalEnabled) {
+        setIsAvailable(false);
+        setError(null);
+        return;
+      }
+
       const authOk = hasAuthToken();
       if (!authOk) {
         setIsAvailable(false);
@@ -83,11 +91,26 @@ export function useRealTerminal(
       setIsAvailable(healthOk);
     };
     checkAvailability();
-  }, []);
+  }, [terminalEnabled]);
+
+  useEffect(() => {
+    if (!terminalEnabled && connectionRef.current) {
+      connectionRef.current.close();
+      connectionRef.current = null;
+      setStatus("disconnected");
+    }
+  }, [terminalEnabled]);
 
   const connect = useCallback(() => {
     // Don't connect if already connected
     if (connectionRef.current?.isConnected()) {
+      return;
+    }
+
+    if (!terminalEnabled) {
+      setIsAvailable(false);
+      setError("터미널 기능이 현재 비활성화되어 있습니다");
+      setStatus("error");
       return;
     }
 
@@ -134,7 +157,7 @@ export function useRealTerminal(
     }
 
     connectionRef.current = connection;
-  }, [cols, rows]);
+  }, [cols, rows, terminalEnabled]);
 
   const disconnect = useCallback(() => {
     if (connectionRef.current) {
@@ -158,10 +181,15 @@ export function useRealTerminal(
   }, []);
 
   const checkHealth = useCallback(async () => {
+    if (!terminalEnabled) {
+      setIsAvailable(false);
+      return false;
+    }
+
     const result = await checkTerminalHealth();
     setIsAvailable(result && hasAuthToken());
     return result;
-  }, []);
+  }, [terminalEnabled]);
 
   // Auto-connect if enabled
   useEffect(() => {
