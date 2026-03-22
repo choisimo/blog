@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { TouchIconButton } from '@/components/atoms/TouchIconButton';
 import { X, ZoomIn, ZoomOut, RotateCw, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
@@ -158,40 +158,36 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
         </VisuallyHidden>
         
         <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-          <Button
+          <TouchIconButton
             variant="ghost"
-            size="icon"
             onClick={handleZoomOut}
             className="h-9 w-9 rounded-full bg-white/10 text-white hover:bg-white/20"
             disabled={scale <= 0.5}
           >
             <ZoomOut className="h-4 w-4" />
-          </Button>
-          <Button
+          </TouchIconButton>
+          <TouchIconButton
             variant="ghost"
-            size="icon"
             onClick={handleZoomIn}
             className="h-9 w-9 rounded-full bg-white/10 text-white hover:bg-white/20"
             disabled={scale >= 4}
           >
             <ZoomIn className="h-4 w-4" />
-          </Button>
-          <Button
+          </TouchIconButton>
+          <TouchIconButton
             variant="ghost"
-            size="icon"
             onClick={handleRotate}
             className="h-9 w-9 rounded-full bg-white/10 text-white hover:bg-white/20"
           >
             <RotateCw className="h-4 w-4" />
-          </Button>
-          <Button
+          </TouchIconButton>
+          <TouchIconButton
             variant="ghost"
-            size="icon"
             onClick={() => handleOpenChange(false)}
             className="h-9 w-9 rounded-full bg-white/10 text-white hover:bg-white/20"
           >
             <X className="h-4 w-4" />
-          </Button>
+          </TouchIconButton>
         </div>
 
         <div

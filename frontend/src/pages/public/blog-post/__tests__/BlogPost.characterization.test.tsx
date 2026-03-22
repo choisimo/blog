@@ -1,0 +1,242 @@
+import "@testing-library/jest-dom/vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { beforeEach, test, expect, vi } from "vitest";
+
+const hoisted = vi.hoisted(() => {
+  // Two-level proxy: str.section.key → "" (string primitive, renderable by React)
+  const makeLeafProxy = () =>
+    new Proxy({} as Record<string, string>, {
+      get(_t, _k) { return ""; },
+    });
+  const makeUIStrings = () =>
+    new Proxy({} as Record<string, Record<string, string>>, {
+      get(_t, _k) { return makeLeafProxy(); },
+    });
+
+  return {
+    currentLanguage: "ko",
+    setLanguage: vi.fn(),
+    toast: vi.fn(),
+    uiStrings: makeUIStrings(),
+  };
+});
+
+vi.mock("@/data/content/posts", () => ({
+  getPostBySlug: vi.fn(),
+  getPostsPage: vi.fn(),
+  prefetchPost: vi.fn(),
+  getPostsBySeries: vi.fn(),
+}));
+vi.mock("@/services/content/postService", () => ({ getPost: vi.fn() }));
+vi.mock("@/services/content/translate", () => ({ translatePost: vi.fn() }));
+vi.mock("@/services/discovery/rag", () => ({ findRelatedPosts: vi.fn() }));
+vi.mock("@/hooks/seo/useSEO", () => ({ useSEO: vi.fn() }));
+vi.mock("@/components/common/ReadingProgress", () => ({ ReadingProgress: () => null }));
+vi.mock("@/components/common/ScrollToTop", () => ({ ScrollToTop: () => null }));
+vi.mock("@/components/ui/button", () => ({
+  Button: ({ children }: { children?: React.ReactNode }) => <button>{children}</button>,
+}));
+vi.mock("@/components/ui/badge", () => ({
+  Badge: ({ children }: { children?: React.ReactNode }) => <span>{children}</span>,
+}));
+vi.mock("@/components/ui/skeleton", () => ({ Skeleton: () => <div data-testid="skeleton" /> }));
+vi.mock("@/components/features/blog", () => ({
+  CommentSection: () => <div data-testid="comment-section" />,
+  TableOfContents: () => <div data-testid="table-of-contents" />,
+  TocDrawer: () => <div data-testid="toc-drawer" />,
+  SeriesNavigation: () => <div data-testid="series-navigation" />,
+}));
+vi.mock("@/components/features/sentio/QuizPanel", () => ({
+  QuizPanel: () => <div data-testid="quiz-panel" />,
+}));
+vi.mock("@/components/features/navigation/Breadcrumb", () => ({
+  Breadcrumb: () => <nav data-testid="breadcrumb" />,
+}));
+vi.mock("@/components/features/blog/MarkdownRenderer", () => ({
+  default: ({ content }: { content?: string }) => <div>{content}</div>,
+}));
+vi.mock("@/components/ui/use-toast", () => ({
+  useToast: () => ({ toast: hoisted.toast }),
+}));
+vi.mock("@/hooks/i18n/useLanguage", () => ({
+  default: () => ({
+    language: hoisted.currentLanguage,
+    setLanguage: hoisted.setLanguage,
+  }),
+}));
+vi.mock("@/contexts/LanguageContext", () => ({
+  useLanguage: () => ({
+    language: hoisted.currentLanguage,
+    setLanguage: hoisted.setLanguage,
+  }),
+  LanguageProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+vi.mock("@/utils/i18n/uiStrings", () => ({
+  useUIStrings: () => hoisted.uiStrings,
+}));
+vi.mock("@/contexts/ThemeContext", () => ({
+  useTheme: () => ({ isTerminal: false }),
+}));
+vi.mock("@/lib/utils", () => ({
+  cn: (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(" "),
+}));
+vi.mock("@/services/content/analytics", () => ({
+  recordView: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock("@/services/engagement/curiosity", () => ({
+  curiosityTracker: new Proxy(
+    {},
+    {
+      get: () => vi.fn(),
+    },
+  ),
+}));
+vi.mock("@/utils/content/blog", () => ({
+  formatDate: vi.fn(() => "2024-01-01"),
+  resolveLocalizedPost: vi.fn((post: { title: string; description: string; excerpt: string; content: string }) => ({
+    title: post.title,
+    description: post.description,
+    excerpt: post.excerpt,
+    content: post.content,
+  })),
+  parseDescriptionMarkdown: vi.fn((value: string) => value),
+}));
+vi.mock("@/utils/seo/seo", () => ({
+  generateSEOData: vi.fn(() => ({})),
+  generateStructuredData: vi.fn(() => ({})),
+}));
+
+import BlogPost from "../../BlogPost";
+import * as postsData from "@/data/content/posts";
+import * as postService from "@/services/content/postService";
+import * as translateService from "@/services/content/translate";
+import * as ragService from "@/services/discovery/rag";
+
+const basePost = {
+  id: "test-post",
+  title: "Test Post",
+  description: "Test description",
+  excerpt: "Test description",
+  content: "# Hello",
+  date: "2024-01-01",
+  author: "Admin",
+  tags: ["test"],
+  category: "General",
+  readingTime: "1 min read",
+  slug: "test-post",
+  year: "2024",
+  published: true,
+  language: "ko",
+  defaultLanguage: "ko",
+  availableLanguages: ["ko"],
+  translations: {},
+};
+
+const emptyPostsPage = {
+  items: [],
+  page: 1,
+  pageSize: 12,
+  total: 0,
+  totalPages: 1,
+  hasMore: false,
+};
+
+const mockedPostService = vi.mocked(
+  postService as unknown as {
+    getPost: ReturnType<typeof vi.fn>;
+  },
+);
+
+function renderBlogPost() {
+  return render(
+    <MemoryRouter initialEntries={["/posts/2024/test-post"]}>
+      <Routes>
+        <Route path="/posts/:year/:slug" element={<BlogPost />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+beforeEach(() => {
+  hoisted.currentLanguage = "ko";
+  hoisted.setLanguage.mockReset();
+  hoisted.toast.mockReset();
+
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: false,
+      headers: new Headers(),
+      text: async () => "",
+      json: async () => ({}),
+    }),
+  );
+
+  vi.mocked(postsData.getPostBySlug).mockResolvedValue(basePost);
+  vi.mocked(postsData.getPostsPage).mockResolvedValue(emptyPostsPage);
+  vi.mocked(postsData.prefetchPost).mockResolvedValue(undefined);
+  vi.mocked(postsData.getPostsBySeries).mockResolvedValue([]);
+  vi.mocked(translateService.translatePost).mockResolvedValue({
+    title: "Translated Test Post",
+    description: "Translated description",
+    content: "# Hello",
+    cached: false,
+  });
+  vi.mocked(ragService.findRelatedPosts).mockResolvedValue([]);
+  mockedPostService.getPost.mockResolvedValue(basePost);
+});
+
+test("renders post content when loaded successfully", async () => {
+  vi.mocked(postsData.getPostBySlug).mockResolvedValue(basePost);
+  mockedPostService.getPost.mockResolvedValue({
+    title: "Test Post",
+    content: "# Hello",
+    year: "2024",
+    slug: "test-post",
+  });
+
+  renderBlogPost();
+
+  expect(await screen.findByText("Test Post")).toBeInTheDocument();
+});
+
+test("renders original content when translation fails", async () => {
+  hoisted.currentLanguage = "en";
+  vi.mocked(postsData.getPostBySlug).mockResolvedValue(basePost);
+  vi.mocked(translateService.translatePost).mockRejectedValue(new Error("translation failed"));
+  mockedPostService.getPost.mockResolvedValue(basePost);
+
+  renderBlogPost();
+
+  await waitFor(() => {
+    expect(translateService.translatePost).toHaveBeenCalled();
+  });
+  expect(await screen.findByText("Test Post")).toBeInTheDocument();
+  expect(document.body.textContent).toContain("Test Post");
+});
+
+test("renders without related posts when none found", async () => {
+  vi.mocked(postsData.getPostBySlug).mockResolvedValue(basePost);
+  vi.mocked(ragService.findRelatedPosts).mockResolvedValue([]);
+  mockedPostService.getPost.mockResolvedValue(basePost);
+
+  renderBlogPost();
+
+  await waitFor(() => {
+    expect(ragService.findRelatedPosts).toHaveBeenCalled();
+  });
+  expect(await screen.findByText("Test Post")).toBeInTheDocument();
+});
+
+test("handles missing post gracefully", async () => {
+  vi.mocked(postsData.getPostBySlug).mockResolvedValue(null);
+  mockedPostService.getPost.mockResolvedValue(null);
+
+  renderBlogPost();
+
+  await waitFor(() => {
+    expect(postsData.getPostBySlug).toHaveBeenCalled();
+  });
+  expect(document.body).toBeInTheDocument();
+});
