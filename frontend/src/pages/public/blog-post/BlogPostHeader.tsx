@@ -15,13 +15,19 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { curiosityTracker } from "@/services/engagement/curiosity";
-import { formatDate, parseDescriptionMarkdown } from "@/utils/content/blog";
+import { formatDate } from "@/utils/content/blog";
 import type { BlogPost as BlogPostType } from "@/types/blog";
 import type { TranslationResult } from "@/services/content/translate";
+import { SafeDescriptionMarkdown } from "@/components/features/blog/SafeDescriptionMarkdown";
 
 interface BlogPostHeaderProps {
   post: BlogPostType;
-  localized: { title: string; description?: string; excerpt?: string; content: string } | null;
+  localized: {
+    title: string;
+    description?: string;
+    excerpt?: string;
+    content: string;
+  } | null;
   year: string;
   slug: string;
   language: string;
@@ -76,6 +82,7 @@ export function BlogPostHeader({
   retryLabel,
 }: BlogPostHeaderProps) {
   const navigate = useNavigate();
+  const description = localized?.description ?? post.description;
 
   const handleBackToBlog = () => {
     if (preservedFrom) {
@@ -109,9 +116,7 @@ export function BlogPostHeader({
           size="sm"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          {isTerminal
-            ? `< ${backToBlogLabel}`
-            : backToBlogLabel}
+          {isTerminal ? `< ${backToBlogLabel}` : backToBlogLabel}
         </Button>
         <Button
           onClick={onShare}
@@ -137,8 +142,7 @@ export function BlogPostHeader({
           {/* Terminal-style path indicator */}
           {isTerminal && (
             <div className="font-mono text-xs text-muted-foreground">
-              <span className="text-primary">cat</span> ~/blog/{year}/
-              {slug}.md
+              <span className="text-primary">cat</span> ~/blog/{year}/{slug}.md
             </div>
           )}
 
@@ -163,17 +167,13 @@ export function BlogPostHeader({
             {localized?.title ?? post.title}
           </h1>
 
-          {post.description && (
-            <p
+          {description && (
+            <SafeDescriptionMarkdown
+              text={description}
               className={cn(
                 "text-base leading-relaxed text-foreground/85 dark:text-foreground/85 sm:text-lg",
                 isTerminal && "border-l-2 border-primary/30 pl-4",
               )}
-              dangerouslySetInnerHTML={{
-                __html: parseDescriptionMarkdown(
-                  localized?.description ?? post.description,
-                ),
-              }}
             />
           )}
 
@@ -186,8 +186,7 @@ export function BlogPostHeader({
             <div
               className={cn(
                 "flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[hsl(var(--card-blog))] dark:text-white",
-                isTerminal &&
-                  "rounded bg-[hsl(var(--terminal-code-bg))]",
+                isTerminal && "rounded bg-[hsl(var(--terminal-code-bg))]",
               )}
             >
               <Calendar className="h-4 w-4 text-foreground/70" />
@@ -201,15 +200,12 @@ export function BlogPostHeader({
               <div
                 className={cn(
                   "flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[hsl(var(--card-blog))] dark:text-white",
-                  isTerminal &&
-                    "rounded bg-[hsl(var(--terminal-code-bg))]",
+                  isTerminal && "rounded bg-[hsl(var(--terminal-code-bg))]",
                 )}
               >
                 <Clock className="h-4 w-4 text-foreground/70" />
                 <span>
-                  {isTerminal
-                    ? `time: ${readingTimeLabel}`
-                    : readingTimeLabel}
+                  {isTerminal ? `time: ${readingTimeLabel}` : readingTimeLabel}
                 </span>
               </div>
             )}
@@ -217,15 +213,12 @@ export function BlogPostHeader({
               <div
                 className={cn(
                   "flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[hsl(var(--card-blog))] dark:text-white",
-                  isTerminal &&
-                    "rounded bg-[hsl(var(--terminal-code-bg))]",
+                  isTerminal && "rounded bg-[hsl(var(--terminal-code-bg))]",
                 )}
               >
                 <User className="h-4 w-4 text-foreground/70" />
                 <span>
-                  {isTerminal
-                    ? `author: ${post.author}`
-                    : post.author}
+                  {isTerminal ? `author: ${post.author}` : post.author}
                 </span>
               </div>
             )}
@@ -267,21 +260,15 @@ export function BlogPostHeader({
             {translating && (
               <div className="flex items-center gap-1.5 ml-2 text-primary">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                <span className="text-xs">
-                  {translatingLabel}
-                </span>
+                <span className="text-xs">{translatingLabel}</span>
               </div>
             )}
-            {aiTranslation &&
-              !translating &&
-              !hasNativeTranslation && (
-                <div className="flex items-center gap-1.5 ml-2 text-amber-600 dark:text-amber-400">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span className="text-xs">
-                    {aiTranslatedLabel}
-                  </span>
-                </div>
-              )}
+            {aiTranslation && !translating && !hasNativeTranslation && (
+              <div className="flex items-center gap-1.5 ml-2 text-amber-600 dark:text-amber-400">
+                <Sparkles className="h-3.5 w-3.5" />
+                <span className="text-xs">{aiTranslatedLabel}</span>
+              </div>
+            )}
           </div>
 
           {/* Translation error message */}
@@ -294,9 +281,7 @@ export function BlogPostHeader({
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-medium mb-1">
-                    {translationFailedLabel}
-                  </p>
+                  <p className="font-medium mb-1">{translationFailedLabel}</p>
                   <p className="text-xs opacity-80">
                     {translationError.message}
                   </p>
@@ -330,9 +315,7 @@ export function BlogPostHeader({
               )}
             >
               <Tag className="h-4 w-4 text-foreground/75 dark:text-foreground/75" />
-              {isTerminal && (
-                <span className="text-primary">tags:</span>
-              )}
+              {isTerminal && <span className="text-primary">tags:</span>}
               {post.tags.map((tag) => (
                 <Badge
                   key={tag}

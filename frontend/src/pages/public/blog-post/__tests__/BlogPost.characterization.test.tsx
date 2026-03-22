@@ -7,11 +7,15 @@ const hoisted = vi.hoisted(() => {
   // Two-level proxy: str.section.key → "" (string primitive, renderable by React)
   const makeLeafProxy = () =>
     new Proxy({} as Record<string, string>, {
-      get(_t, _k) { return ""; },
+      get(_t, _k) {
+        return "";
+      },
     });
   const makeUIStrings = () =>
     new Proxy({} as Record<string, Record<string, string>>, {
-      get(_t, _k) { return makeLeafProxy(); },
+      get(_t, _k) {
+        return makeLeafProxy();
+      },
     });
 
   return {
@@ -32,15 +36,23 @@ vi.mock("@/services/content/postService", () => ({ getPost: vi.fn() }));
 vi.mock("@/services/content/translate", () => ({ translatePost: vi.fn() }));
 vi.mock("@/services/discovery/rag", () => ({ findRelatedPosts: vi.fn() }));
 vi.mock("@/hooks/seo/useSEO", () => ({ useSEO: vi.fn() }));
-vi.mock("@/components/common/ReadingProgress", () => ({ ReadingProgress: () => null }));
+vi.mock("@/components/common/ReadingProgress", () => ({
+  ReadingProgress: () => null,
+}));
 vi.mock("@/components/common/ScrollToTop", () => ({ ScrollToTop: () => null }));
 vi.mock("@/components/ui/button", () => ({
-  Button: ({ children }: { children?: React.ReactNode }) => <button>{children}</button>,
+  Button: ({ children }: { children?: React.ReactNode }) => (
+    <button>{children}</button>
+  ),
 }));
 vi.mock("@/components/ui/badge", () => ({
-  Badge: ({ children }: { children?: React.ReactNode }) => <span>{children}</span>,
+  Badge: ({ children }: { children?: React.ReactNode }) => (
+    <span>{children}</span>
+  ),
 }));
-vi.mock("@/components/ui/skeleton", () => ({ Skeleton: () => <div data-testid="skeleton" /> }));
+vi.mock("@/components/ui/skeleton", () => ({
+  Skeleton: () => <div data-testid="skeleton" />,
+}));
 vi.mock("@/components/features/blog", () => ({
   CommentSection: () => <div data-testid="comment-section" />,
   TableOfContents: () => <div data-testid="table-of-contents" />,
@@ -70,7 +82,9 @@ vi.mock("@/contexts/LanguageContext", () => ({
     language: hoisted.currentLanguage,
     setLanguage: hoisted.setLanguage,
   }),
-  LanguageProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  LanguageProvider: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
 }));
 vi.mock("@/utils/i18n/uiStrings", () => ({
   useUIStrings: () => hoisted.uiStrings,
@@ -79,7 +93,8 @@ vi.mock("@/contexts/ThemeContext", () => ({
   useTheme: () => ({ isTerminal: false }),
 }));
 vi.mock("@/lib/utils", () => ({
-  cn: (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(" "),
+  cn: (...parts: Array<string | false | null | undefined>) =>
+    parts.filter(Boolean).join(" "),
 }));
 vi.mock("@/services/content/analytics", () => ({
   recordView: vi.fn().mockResolvedValue(undefined),
@@ -94,13 +109,19 @@ vi.mock("@/services/engagement/curiosity", () => ({
 }));
 vi.mock("@/utils/content/blog", () => ({
   formatDate: vi.fn(() => "2024-01-01"),
-  resolveLocalizedPost: vi.fn((post: { title: string; description: string; excerpt: string; content: string }) => ({
-    title: post.title,
-    description: post.description,
-    excerpt: post.excerpt,
-    content: post.content,
-  })),
-  parseDescriptionMarkdown: vi.fn((value: string) => value),
+  resolveLocalizedPost: vi.fn(
+    (post: {
+      title: string;
+      description: string;
+      excerpt: string;
+      content: string;
+    }) => ({
+      title: post.title,
+      description: post.description,
+      excerpt: post.excerpt,
+      content: post.content,
+    }),
+  ),
 }));
 vi.mock("@/utils/seo/seo", () => ({
   generateSEOData: vi.fn(() => ({})),
@@ -204,7 +225,9 @@ test("renders post content when loaded successfully", async () => {
 test("renders original content when translation fails", async () => {
   hoisted.currentLanguage = "en";
   vi.mocked(postsData.getPostBySlug).mockResolvedValue(basePost);
-  vi.mocked(translateService.translatePost).mockRejectedValue(new Error("translation failed"));
+  vi.mocked(translateService.translatePost).mockRejectedValue(
+    new Error("translation failed"),
+  );
   mockedPostService.getPost.mockResolvedValue(basePost);
 
   renderBlogPost();
