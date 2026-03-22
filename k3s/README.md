@@ -149,8 +149,23 @@ base set에는 namespace-level 기본 예산도 포함됩니다.
 현재 저장소에는 production digest pinning 입력값이 없습니다.
 
 - `postgres`, `redis`, `busybox`, `alpine/git`처럼 explicit tag가 있는 이미지는 유지했습니다.
-- `ghcr.io/choisimo/blog-api:latest`, `ghcr.io/engineer-man/piston:latest`, `chromadb/chroma:latest` 같은 mutable tag는 아직 남아 있습니다.
+- `ghcr.io/choisimo/blog-api:latest`, `chromadb/chroma:latest` 같은 mutable tag는 아직 남아 있습니다.
+- `ghcr.io/engineer-man/piston`은 GHCR public package page에서 확인한 digest `sha256:2f66b7456189c4d713aa986d98eccd0b6ee16d26c7ec5f21b30e942756fd127a`로 pin 했습니다.
 - production rollout 전에는 GHCR publish 결과나 upstream release digest를 확인해 immutable digest로 교체하는 것이 안전합니다.
+
+## Piston Sandbox Posture
+
+`k3s/piston.yaml`의 Piston container는 현재 `securityContext.privileged: true`를 유지합니다.
+
+- upstream Piston README는 containerized install 예시를 `docker run --privileged ... ghcr.io/engineer-man/piston`로 문서화합니다.
+- upstream isolate 문서는 containerized use를 권장하지 않으며, containers 안에서 실행하려면 privileged가 필요할 수 있다고 설명합니다.
+- 따라서 이 저장소는 upstream이 문서화한 실행 모델을 유지하고, 별도 검증 없는 non-privileged profile은 experimental로 취급합니다.
+
+운영상 의미:
+
+- Piston은 optional terminal DinD와 달리 base set에 포함되지만, privileged exception이 필요한 별도 sandbox workload입니다.
+- Kubernetes Pod Security `Restricted` 정책과는 직접 호환되지 않으므로 namespace/policy 설계 시 예외 처리가 필요합니다.
+- 현재 Piston image는 verified digest로 고정했고, privilege model 변경은 별도 검증 후 진행하는 것이 안전합니다.
 
 ## Networking
 
@@ -237,4 +252,4 @@ kubectl apply -k k3s/optional/cloudflared
 - repo clone 실패 시 `api` pod는 content/migration 경로를 갖지 못합니다.
 - SQLite single-writer 전제 때문에 horizontal scaling 여지가 제한됩니다.
 - optional terminal runtime은 privileged container 의존이 가장 큰 운영 리스크입니다.
-- image digest pinning 입력값이 저장소에 없으므로 일부 mutable tag 리스크가 남아 있습니다.
+- `blog-api`, `chromadb` 등 일부 mutable tag 리스크는 여전히 남아 있습니다.

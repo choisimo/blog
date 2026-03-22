@@ -43,11 +43,15 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: piston
-          image: ghcr.io/engineer-man/piston:latest
+          image: ghcr.io/engineer-man/piston@sha256:2f66b7456189c4d713aa986d98eccd0b6ee16d26c7ec5f21b30e942756fd127a
           imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 2000
+          # Upstream Piston documents privileged container execution, and upstream
+          # isolate warns that containerized use is not recommended and probably
+          # needs privileged mode. Keep the cluster manifest on that documented path
+          # until a validated non-privileged profile exists.
           securityContext:
             privileged: true
           volumeMounts:
