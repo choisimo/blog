@@ -20,6 +20,11 @@ const EXCLUDED_DIRS = new Set([
   'node_modules',
   '.turbo',
   '.cache',
+  '.tmp',
+  '.evidence',
+  '.sisyphus',
+  'test-results',
+  'verification-screenshots',
 ]);
 
 const EXCLUDED_FILES = new Set([
@@ -28,6 +33,12 @@ const EXCLUDED_FILES = new Set([
   'yarn.lock',
   'bun.lockb',
   '.DS_Store',
+  '.env',
+  '.env.local',
+  '.env.development',
+  '.env.production',
+  '.env.test',
+  '.env.staging',
 ]);
 
 const INCLUDED_EXTENSIONS = new Set([
@@ -68,8 +79,15 @@ const INCLUDED_EXTENSIONS = new Set([
   '.toml',
   '.ini',
   '.conf',
-  '.env',
 ]);
+
+const EXCLUDED_PATH_PATTERNS = [
+  /^frontend\/public\/blog\//,
+  /^frontend\/public\/post\//,
+  /^frontend\/public\/posts-manifest\.json$/,
+  /^frontend\/public\/projects-manifest\.json$/,
+  /^frontend\/public\/(?:sitemap|rss|robots)\.xml$/,
+];
 
 function parseArgs(argv) {
   const options = {
@@ -128,6 +146,21 @@ Options:
 `);
 }
 
+function normalizeRelativePath(filePath) {
+  return filePath.split(path.sep).join('/');
+}
+
+function shouldExcludePath(relativePath) {
+  const normalizedPath = normalizeRelativePath(relativePath);
+  const fileName = path.basename(normalizedPath);
+
+  if (/^\.env(\..+)?$/.test(fileName)) {
+    return true;
+  }
+
+  return EXCLUDED_PATH_PATTERNS.some((pattern) => pattern.test(normalizedPath));
+}
+
 function shouldIncludeFile(filePath, stat, maxFileSize) {
   if (!stat.isFile()) {
     return false;
@@ -135,6 +168,11 @@ function shouldIncludeFile(filePath, stat, maxFileSize) {
 
   const fileName = path.basename(filePath);
   if (EXCLUDED_FILES.has(fileName)) {
+    return false;
+  }
+
+  // Exclude all .env* files (e.g. .env.local, .env.production) to prevent secret leaks.
+  if (/^\.env(\..+)?$/.test(fileName)) {
     return false;
   }
 
@@ -155,9 +193,13 @@ function walk(dirPath, rootDir, collector, maxFileSize) {
 
   for (const entry of entries) {
     const absolutePath = path.join(dirPath, entry.name);
-    const relativePath = path.relative(rootDir, absolutePath);
+    const relativePath = normalizeRelativePath(path.relative(rootDir, absolutePath));
 
     if (!relativePath) {
+      continue;
+    }
+
+    if (shouldExcludePath(relativePath)) {
       continue;
     }
 
@@ -288,4 +330,22 @@ function main() {
   console.log(`Exported ${files.length} files to ${options.output}`);
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  EXCLUDED_DIRS,
+  EXCLUDED_FILES,
+  EXCLUDED_PATH_PATTERNS,
+  INCLUDED_EXTENSIONS,
+  parseArgs,
+  printHelp,
+  normalizeRelativePath,
+  shouldExcludePath,
+  shouldIncludeFile,
+  walk,
+  detectLanguage,
+  buildMarkdown,
+  main,
+};
