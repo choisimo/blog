@@ -26,6 +26,8 @@ spec:
       labels:
         app: open-notebook
     spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
       initContainers:
         - name: wait-for-surrealdb
           image: busybox:1.36
@@ -33,6 +35,13 @@ spec:
             - sh
             - -c
             - until nc -zw2 surrealdb 8000; do echo "waiting for surrealdb..."; sleep 2; done
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
       containers:
         - name: open-notebook
           image: lfnovo/open_notebook:v1-latest
@@ -131,6 +140,12 @@ spec:
                   name: blog-app-secrets
                   key: AI_EMBEDDING_URL
                   optional: true
+          startupProbe:
+            httpGet:
+              path: /health
+              port: health
+            failureThreshold: 30
+            periodSeconds: 5
           readinessProbe:
             httpGet:
               path: /health

@@ -39,6 +39,8 @@ spec:
       labels:
         app: piston
     spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
       containers:
         - name: piston
           image: ghcr.io/engineer-man/piston:latest
@@ -53,6 +55,14 @@ spec:
               mountPath: /piston/packages
             - name: piston-jobs
               mountPath: /piston/jobs
+          startupProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - "require('http').get('http://127.0.0.1:2000/api/v2/runtimes',(res)=>process.exit(res.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+            failureThreshold: 30
+            periodSeconds: 5
           readinessProbe:
             exec:
               command:
@@ -83,3 +93,4 @@ spec:
         - name: piston-jobs
           emptyDir:
             medium: Memory
+            sizeLimit: 256Mi

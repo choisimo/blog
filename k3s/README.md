@@ -13,6 +13,8 @@
 base resources:
 
 - `namespace.yaml`
+- `limitrange.yaml`
+- `resourcequota.yaml`
 - `configmap.yaml`
 - `postgres.yaml`
 - `redis.yaml`
@@ -22,6 +24,7 @@ base resources:
 - `api.yaml`
 - `ingress.yaml`
 - `middleware.yaml`
+- `piston.yaml`
 
 중요한 점은 `middleware.yaml`도 base set이라는 것입니다. 따라서 HTTPS redirect middleware는 optional이 아니라 기본 배포 범위에 포함됩니다.
 
@@ -96,29 +99,58 @@ Trade-off:
 
 운영상 의미:
 
-- terminal 관련 값은 존재하지만 feature flag 기본값은 비활성화입니다.
+- terminal 관련 값은 존재하지만 base set만 적용한 상태에서는 feature flag 기본값이 비활성화입니다.
 - migration path와 content path가 repo-sync mount 구조에 직접 결합됩니다.
 
 ## Optional Terminal Runtime
 
 파일:
 
-- `k3s/terminal-optional.yaml`
-- `k3s/terminal-ingress-optional.yaml`
+- `k3s/optional/terminal/terminal-optional.yaml`
+- `k3s/optional/terminal/terminal-ingress-optional.yaml`
 
 확인된 구조:
 
 - `terminal-server` Deployment는 `docker:27-dind` sidecar를 포함합니다.
 - DinD container는 `securityContext.privileged: true`입니다.
 - app container는 `DOCKER_HOST=unix:///var/run/docker.sock`를 사용합니다.
-- terminal ingress host는 `terminal-origin.nodove.com`
+- terminal ingress host는 `terminal.nodove.com`
 - published path는 `/terminal`
 
 Trade-off:
 
 - 장점: 기존 terminal-server의 Docker shelling model을 크게 바꾸지 않고 유지할 수 있습니다.
 - 단점: privileged DinD sidecar가 필요하므로 base set보다 보안 위험과 운영 복잡도가 큽니다.
-- 결과: optional terminal manifests는 기본 kustomization에 포함되지 않습니다.
+- 결과: optional terminal manifests는 `k3s/optional/terminal/` kustomization으로 분리되며 base apply에는 포함되지 않습니다.
+
+## Resource Guardrails
+
+파일:
+
+- `k3s/limitrange.yaml`
+- `k3s/resourcequota.yaml`
+
+base set에는 namespace-level 기본 예산도 포함됩니다.
+
+- `LimitRange`는 container 기본 CPU, memory, ephemeral-storage request/limit를 제공합니다.
+- `ResourceQuota`는 pod 수, PVC 수, aggregate CPU/memory/storage budget을 제한합니다.
+- 목적은 manifest에 누락된 자원 필드가 cluster-wide 무제한으로 퍼지는 것을 막는 것입니다.
+
+## Storage Assumption
+
+현재 PVC들은 여전히 `storageClassName: local-path`를 사용합니다.
+
+- 이것은 single-node 또는 node-local persistence 전제에는 맞습니다.
+- 다만 node 장애 시 다른 node로 자동 이전되는 HA storage가 아닙니다.
+- 저장소에 다른 storage class 정보가 없으므로, 이 refactor는 local-path를 문서화하고 유지합니다.
+
+## Image Pinning Gap
+
+현재 저장소에는 production digest pinning 입력값이 없습니다.
+
+- `postgres`, `redis`, `busybox`, `alpine/git`처럼 explicit tag가 있는 이미지는 유지했습니다.
+- `ghcr.io/choisimo/blog-api:latest`, `ghcr.io/engineer-man/piston:latest`, `chromadb/chroma:latest` 같은 mutable tag는 아직 남아 있습니다.
+- production rollout 전에는 GHCR publish 결과나 upstream release digest를 확인해 immutable digest로 교체하는 것이 안전합니다.
 
 ## Networking
 
@@ -166,8 +198,7 @@ kubectl -n blog logs deploy/api -c sync-repo
 ### When enabling terminal runtime
 
 ```bash
-kubectl apply -f k3s/terminal-optional.yaml
-kubectl apply -f k3s/terminal-ingress-optional.yaml
+kubectl apply -k k3s/optional/terminal
 ```
 
 검토 포인트:
@@ -176,8 +207,34 @@ kubectl apply -f k3s/terminal-ingress-optional.yaml
 - `SANDBOX_IMAGE` 적절성
 - `blog-app-secrets`에 `BACKEND_KEY` 존재 여부
 
+## Optional Cloudflare Tunnel
+
+파일:
+
+- `k3s/optional/cloudflared/kustomization.yaml`
+- `k3s/optional/cloudflared/cloudflared.yaml`
+- `k3s/optional/cloudflared/secret.example.yaml`
+
+이 optional set은 remotely-managed Cloudflare Tunnel 패턴을 위한 `cloudflared` Deployment를 제공합니다.
+
+- `replicas: 2`로 구성해 replica loss 시 단일 connector outage를 줄입니다.
+- tunnel route는 Cloudflare dashboard에서 별도로 설정해야 합니다.
+- 같은 namespace 안에서는 origin service target을 `http://api:5080`처럼 둘 수 있습니다.
+- `secret.example.yaml`은 reference only입니다. placeholder 값을 가진 예시 파일을 그대로 apply하면 안 됩니다.
+
+적용 예시:
+
+```bash
+kubectl -n blog create secret generic cloudflared-tunnel-token \
+  --from-literal=token='<real-cloudflare-tunnel-token>'
+kubectl apply -k k3s/optional/cloudflared
+```
+
+이미 Secret이 있다면 `kubectl -n blog delete secret cloudflared-tunnel-token` 후 다시 만들거나, 별도 secret manifest를 로컬에서 작성해 적용하는 편이 안전합니다.
+
 ## Residual Risk
 
 - repo clone 실패 시 `api` pod는 content/migration 경로를 갖지 못합니다.
 - SQLite single-writer 전제 때문에 horizontal scaling 여지가 제한됩니다.
 - optional terminal runtime은 privileged container 의존이 가장 큰 운영 리스크입니다.
+- image digest pinning 입력값이 저장소에 없으므로 일부 mutable tag 리스크가 남아 있습니다.

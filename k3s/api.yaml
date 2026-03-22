@@ -41,6 +41,8 @@ spec:
       labels:
         app: api
     spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
       imagePullSecrets:
         - name: ghcr-creds
       initContainers:
@@ -59,6 +61,13 @@ spec:
                 name: blog-app-config
             - secretRef:
                 name: blog-app-secrets
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
           volumeMounts:
             - name: repo-data
               mountPath: /repo
@@ -89,6 +98,12 @@ spec:
               mountPath: /backend
               subPath: backend
               readOnly: true
+          startupProbe:
+            httpGet:
+              path: /api/v1/healthz
+              port: http
+            failureThreshold: 30
+            periodSeconds: 5
           readinessProbe:
             httpGet:
               path: /api/v1/healthz
@@ -113,4 +128,5 @@ spec:
           persistentVolumeClaim:
             claimName: api-sqlite
         - name: repo-data
-          emptyDir: {}
+          emptyDir:
+            sizeLimit: 2Gi

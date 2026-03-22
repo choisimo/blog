@@ -28,6 +28,8 @@ spec:
       labels:
         app: redis
     spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
       containers:
         - name: redis
           image: redis:7-alpine
@@ -54,6 +56,11 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
+          startupProbe:
+            tcpSocket:
+              port: redis
+            failureThreshold: 30
+            periodSeconds: 5
           readinessProbe:
             tcpSocket:
               port: redis

@@ -26,6 +26,8 @@ spec:
       labels:
         app: terminal-server
     spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
       imagePullSecrets:
         - name: ghcr-creds
       containers:
@@ -103,6 +105,8 @@ spec:
               memory: 1Gi
       volumes:
         - name: docker-sock
-          emptyDir: {}
+          emptyDir:
+            sizeLimit: 16Mi
         - name: docker-graph
-          emptyDir: {}
+          emptyDir:
+            sizeLimit: 10Gi
