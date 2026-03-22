@@ -1,5 +1,5 @@
 import { Moon, Sun, Monitor, Terminal } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { TouchIconButton } from '@/components/atoms/TouchIconButton';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,9 +25,8 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
+        <TouchIconButton
           variant='ghost'
-          size='icon'
           className={cn(
             'h-9 w-9',
             isTerminal && 'text-primary hover:text-primary hover:bg-primary/10',
@@ -63,7 +62,7 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
             )}
           />
           <span className='sr-only'>Toggle theme</span>
-        </Button>
+        </TouchIconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent 
         align='end'

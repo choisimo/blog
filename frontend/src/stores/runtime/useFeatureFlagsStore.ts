@@ -59,7 +59,7 @@ export interface FeatureFlagsState {
 const DEFAULT_FLAGS: FeatureFlags = {
   aiEnabled: true,
   ragEnabled: true,
-  terminalEnabled: true,
+  terminalEnabled: false,
   aiInline: true,
   commentsEnabled: true,
 };
@@ -74,7 +74,7 @@ let visibilityChangeHandler: (() => void) | null = null;
 // ============================================================================
 
 export const useFeatureFlagsStore = create<FeatureFlagsState>((set, get) => ({
-  // Initial state - optimistically enable all features
+  // Initial state - keep optional infrastructure-backed features safe by default
   flags: { ...DEFAULT_FLAGS },
   isLoading: false,
   error: null,

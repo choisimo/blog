@@ -11,9 +11,9 @@ spec:
   tls:
     - secretName: blog-origin-tls
       hosts:
-        - terminal-origin.nodove.com
+        - terminal.nodove.com
   rules:
-    - host: terminal-origin.nodove.com
+    - host: terminal.nodove.com
       http:
         paths:
           - path: /terminal

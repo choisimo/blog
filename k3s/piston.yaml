@@ -1,0 +1,100 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: piston-packages
+  namespace: blog
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: piston
+  namespace: blog
+spec:
+  selector:
+    app: piston
+  ports:
+    - name: http
+      port: 2000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: piston
+  namespace: blog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: piston
+  template:
+    metadata:
+      labels:
+        app: piston
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: piston
+          image: ghcr.io/engineer-man/piston@sha256:2f66b7456189c4d713aa986d98eccd0b6ee16d26c7ec5f21b30e942756fd127a
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 2000
+          # Upstream Piston documents privileged container execution, and upstream
+          # isolate warns that containerized use is not recommended and probably
+          # needs privileged mode. Keep the cluster manifest on that documented path
+          # until a validated non-privileged profile exists.
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: piston-packages
+              mountPath: /piston/packages
+            - name: piston-jobs
+              mountPath: /piston/jobs
+          startupProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - "require('http').get('http://127.0.0.1:2000/api/v2/runtimes',(res)=>process.exit(res.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - "require('http').get('http://127.0.0.1:2000/api/v2/runtimes',(res)=>process.exit(res.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          livenessProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - "require('http').get('http://127.0.0.1:2000/api/v2/runtimes',(res)=>process.exit(res.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 2
+              memory: 1Gi
+      volumes:
+        - name: piston-packages
+          persistentVolumeClaim:
+            claimName: piston-packages
+        - name: piston-jobs
+          emptyDir:
+            medium: Memory
+            sizeLimit: 256Mi

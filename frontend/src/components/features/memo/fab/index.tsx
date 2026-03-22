@@ -219,6 +219,20 @@ export default function FloatingActionBar() {
     openStackView();
   }, [openStackView, stackDisabledReason, toast, str.stack.title]);
 
+  const openRealTerminal = useCallback(() => {
+    if (!featureFlags.terminalEnabled) {
+      toast({
+        title: "Terminal unavailable",
+        description: "The live terminal is currently disabled.",
+      });
+      return;
+    }
+
+    setShellOpen(false);
+    setRealTerminalOpen(true);
+    send("fab_real_terminal_open");
+  }, [featureFlags.terminalEnabled, send, toast]);
+
   // Shell Commander hook
   const shell = useShellCommander({
     vfs,
@@ -390,11 +404,7 @@ export default function FloatingActionBar() {
           consoleEndRef={shell.consoleEndRef}
           executeCommand={shell.executeShellCommandWithLog}
           commandHistory={shell.commandHistory}
-          onSwitchToRealTerminal={() => {
-            setShellOpen(false);
-            setRealTerminalOpen(true);
-            send("fab_real_terminal_open");
-          }}
+          onSwitchToRealTerminal={openRealTerminal}
         />
       )}
 

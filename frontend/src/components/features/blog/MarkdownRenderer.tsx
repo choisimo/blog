@@ -47,28 +47,7 @@ SyntaxHighlighter.registerLanguage("vim", vim);
 SyntaxHighlighter.registerLanguage("yaml", yaml);
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
-import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
-
-const sanitizeSchema = {
-  ...defaultSchema,
-  attributes: {
-    ...defaultSchema.attributes,
-    "*": [...(defaultSchema.attributes?.["*"] ?? []), "className", "style", "id"],
-    img: [...(defaultSchema.attributes?.img ?? []), "src", "alt", "title", "width", "height", "loading"],
-    a: [...(defaultSchema.attributes?.a ?? []), "href", "title", "target", "rel"],
-    video: ["src", "controls", "width", "height", "poster", "preload", "muted", "autoPlay", "loop"],
-    source: ["src", "type"],
-    div: [...(defaultSchema.attributes?.div ?? []), "className", "style", "data-*"],
-    span: [...(defaultSchema.attributes?.span ?? []), "className", "style", "data-*"],
-    code: ["className"],
-    pre: ["className"],
-  },
-  tagNames: [
-    ...(defaultSchema.tagNames ?? []),
-    "video", "source", "details", "summary", "mark", "abbr",
-    "figure", "figcaption", "picture",
-  ],
-};
+import rehypeSanitize from "rehype-sanitize";
 import { Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
 import {
   Children,
@@ -83,6 +62,7 @@ import {
 } from "react";
 import { Button } from "@/components/ui/button";
 import SparkInline from "@/components/molecules/SparkInline";
+import { blogMarkdownSanitizeSchema } from "./markdownSanitizeSchema";
 import {
   ClickableImage,
   EmbeddedVideo,
@@ -316,9 +296,10 @@ function extractTextFromNode(node: ReactNode): string {
 const SHELL_SNIPPET_PATTERN =
   /(^#!\/bin\/(?:ba|z|k)?sh)|(^|\n)\s*(sudo\s+)?(apt|awk|cat|chmod|cp|curl|docker|git|grep|journalctl|kubectl|logger|mail|mv|npm|pvecm|rm|sed|ssh|systemctl|tail|tee|ufw)\b|(\|\s*grep\b)/m;
 
-function normalizeCodeLanguage(
-  rawLanguage: string,
-): { syntaxLanguage?: string; displayLanguage: string } {
+function normalizeCodeLanguage(rawLanguage: string): {
+  syntaxLanguage?: string;
+  displayLanguage: string;
+} {
   const normalized = rawLanguage.trim().toLowerCase();
   const aliasMap: Record<
     string,
@@ -355,9 +336,10 @@ function normalizeCodeLanguage(
   return aliasMap[normalized] ?? { displayLanguage: normalized || "code" };
 }
 
-function inferCodeLanguage(
-  codeString: string,
-): { syntaxLanguage?: string; displayLanguage: string } {
+function inferCodeLanguage(codeString: string): {
+  syntaxLanguage?: string;
+  displayLanguage: string;
+} {
   const trimmed = codeString.trim();
 
   if (!trimmed) {
@@ -584,7 +566,9 @@ export const MarkdownRenderer = ({
   const hasMediaNode = (node: unknown): boolean => {
     if (!isValidElement(node)) return false;
 
-    const props = (node as ReactElement<{ children?: ReactNode; src?: string }>).props ?? {};
+    const props =
+      (node as ReactElement<{ children?: ReactNode; src?: string }>).props ??
+      {};
     if (typeof props.src === "string" && props.src.length > 0) return true;
 
     const children = Children.toArray(props.children);
@@ -610,7 +594,10 @@ export const MarkdownRenderer = ({
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+        rehypePlugins={[
+          rehypeRaw,
+          [rehypeSanitize, blogMarkdownSanitizeSchema],
+        ]}
         components={{
           h1: ({ children }) => {
             const id = getHeadingId(children);

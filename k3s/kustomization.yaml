@@ -3,6 +3,8 @@ kind: Kustomization
 
 resources:
   - namespace.yaml
+  - limitrange.yaml
+  - resourcequota.yaml
   - configmap.yaml
   - postgres.yaml
   - redis.yaml
@@ -12,3 +14,4 @@ resources:
   - api.yaml
   - ingress.yaml
   - middleware.yaml
+  - piston.yaml

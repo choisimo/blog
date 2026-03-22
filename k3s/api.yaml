@@ -41,12 +41,14 @@ spec:
       labels:
         app: api
     spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
       imagePullSecrets:
         - name: ghcr-creds
       initContainers:
         - name: sync-repo
           image: alpine/git:2.47.2
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           command:
             - /bin/sh
             - -ec
@@ -59,13 +61,20 @@ spec:
                 name: blog-app-config
             - secretRef:
                 name: blog-app-secrets
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
           volumeMounts:
             - name: repo-data
               mountPath: /repo
       containers:
         - name: api
           image: ghcr.io/choisimo/blog-api:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 5080
@@ -89,6 +98,12 @@ spec:
               mountPath: /backend
               subPath: backend
               readOnly: true
+          startupProbe:
+            httpGet:
+              path: /api/v1/healthz
+              port: http
+            failureThreshold: 30
+            periodSeconds: 5
           readinessProbe:
             httpGet:
               path: /api/v1/healthz
@@ -113,4 +128,5 @@ spec:
           persistentVolumeClaim:
             claimName: api-sqlite
         - name: repo-data
-          emptyDir: {}
+          emptyDir:
+            sizeLimit: 2Gi

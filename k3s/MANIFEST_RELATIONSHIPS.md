@@ -13,6 +13,8 @@
 | 파일 | `kustomization.yaml` 포함 여부 | 리소스 타입 | 용도 |
 | --- | --- | --- | --- |
 | `namespace.yaml` | 포함 | `Namespace` | `blog` 네임스페이스 생성 |
+| `limitrange.yaml` | 포함 | `LimitRange` | namespace 기본 container/PVC 자원 가드레일 |
+| `resourcequota.yaml` | 포함 | `ResourceQuota` | namespace 총량 예산 제한 |
 | `configmap.yaml` | 포함 | `ConfigMap` | 워크로드 간 공유되는 비시크릿 런타임 설정 |
 | `postgres.yaml` | 포함 | `Service`, `StatefulSet` | PostgreSQL DB와 headless service |
 | `redis.yaml` | 포함 | `Service`, `StatefulSet` | Redis 캐시와 headless service |
@@ -22,8 +24,13 @@
 | `api.yaml` | 포함 | `PersistentVolumeClaim`, `Service`, `Deployment` | 메인 backend API |
 | `ingress.yaml` | 포함 | `Ingress` | `origin.example.com` 공개 라우팅 |
 | `middleware.yaml` | 포함 | `Middleware` | Traefik HTTPS 리다이렉트 미들웨어 |
-| `terminal-optional.yaml` | 미포함 | `Service`, `Deployment` | DinD 기반 optional terminal runtime |
-| `terminal-ingress-optional.yaml` | 미포함 | `Ingress` | optional terminal 공개 라우팅 |
+| `piston.yaml` | 포함 | `PersistentVolumeClaim`, `Service`, `Deployment` | backend execute API용 code execution engine |
+| `optional/terminal/terminal-optional.yaml` | 미포함 | `Service`, `Deployment` | DinD 기반 optional terminal runtime |
+| `optional/terminal/terminal-ingress-optional.yaml` | 미포함 | `Ingress` | optional terminal 공개 라우팅 |
+| `optional/terminal/kustomization.yaml` | 미포함 | `Kustomization` | terminal optional apply 진입점 |
+| `optional/cloudflared/cloudflared.yaml` | 미포함 | `Deployment` | optional Cloudflare Tunnel connector |
+| `optional/cloudflared/secret.example.yaml` | 미포함 | `Secret` | Cloudflare Tunnel token 예시 |
+| `optional/cloudflared/kustomization.yaml` | 미포함 | `Kustomization` | cloudflared optional apply 진입점 |
 | `secret-example.yaml` | 미포함 | `Secret` | 애플리케이션 시크릿 예시 |
 | `registry-secret.example.yaml` | 미포함 | `Secret` | GHCR pull secret 예시 |
 | `kustomization.yaml` | 진입점 | `Kustomization` | 기본 apply 세트 정의 |
@@ -35,6 +42,8 @@
 `kubectl apply -k k3s`에 포함되는 리소스는 다음입니다.
 
 - `namespace.yaml`
+- `limitrange.yaml`
+- `resourcequota.yaml`
 - `configmap.yaml`
 - `postgres.yaml`
 - `redis.yaml`
@@ -44,13 +53,18 @@
 - `api.yaml`
 - `ingress.yaml`
 - `middleware.yaml`
+- `piston.yaml`
 
 ### 선택 세트
 
 다음 파일은 base 세트에 포함되지 않으며 필요 시 별도로 적용해야 합니다.
 
-- `terminal-optional.yaml`
-- `terminal-ingress-optional.yaml`
+- `optional/terminal/terminal-optional.yaml`
+- `optional/terminal/terminal-ingress-optional.yaml`
+- `optional/terminal/kustomization.yaml`
+- `optional/cloudflared/cloudflared.yaml`
+- `optional/cloudflared/secret.example.yaml`
+- `optional/cloudflared/kustomization.yaml`
 - `secret-example.yaml`
 - `registry-secret.example.yaml`
 
@@ -613,7 +627,7 @@ Ingress terminal-origin
 
 ## 선택 Terminal 런타임
 
-파일: `terminal-optional.yaml`
+파일: `optional/terminal/terminal-optional.yaml`
 
 이 파일은 optional 리소스 2개를 정의하며 base kustomization에는 포함되지 않습니다.
 
@@ -655,13 +669,13 @@ Ingress terminal-origin
 
 ### Terminal 연관관계
 
-- optional `terminal-ingress-optional.yaml`이 public 트래픽을 여기로 보냅니다.
+- optional `optional/terminal/terminal-ingress-optional.yaml`이 public 트래픽을 여기로 보냅니다.
 - terminal app은 Secret의 `BACKEND_KEY`, ConfigMap의 `SANDBOX_IMAGE`를 사용합니다.
 - 이 워크로드는 privileged DinD가 필요하므로 의도적으로 optional로 분리되어 있습니다.
 
 ## 선택 Terminal Ingress
 
-파일: `terminal-ingress-optional.yaml`
+파일: `optional/terminal/terminal-ingress-optional.yaml`
 
 ### 필드 설명
 
