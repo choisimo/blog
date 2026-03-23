@@ -1,6 +1,8 @@
 {
   "scripts": {
-    "export:source-md": "node scripts/export-source-to-markdown.js"
+    "export:source-md": "node scripts/export-source-to-markdown.js",
+    "contracts:check": "node scripts/check-contract-drift.mjs",
+    "contracts:snapshot": "node scripts/check-contract-drift.mjs --write"
   },
   "devDependencies": {},
   "dependencies": {
