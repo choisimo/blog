@@ -6,6 +6,7 @@ import { createLogger } from "../lib/logger.js";
 import { config } from "../config.js";
 import { requireUserAuth } from "../middleware/userAuth.js";
 import requireAdmin from "../middleware/adminAuth.js";
+import { broadcastNotification } from "./notifications.js";
 import {
   buildTranslationJobKey,
   getTranslationJobById,
@@ -133,7 +134,11 @@ function buildCachedResponse(cached) {
 
 function summarizeTranslationResult(result) {
   return {
-    source: result.cached ? "cache" : result.isAiGenerated ? "generated" : "passthrough",
+    source: result.cached
+      ? "cache"
+      : result.isAiGenerated
+        ? "generated"
+        : "passthrough",
     cached: result.cached,
     isAiGenerated: Boolean(result.isAiGenerated),
     translationAvailable: Boolean(result.content),
@@ -198,6 +203,42 @@ function buildTranslationJobUrls(req, year, slug, targetLang) {
   };
 }
 
+function notifyTranslationJob(
+  userId,
+  jobId,
+  urls,
+  sourcePost,
+  targetLang,
+  input,
+) {
+  if (!userId || !jobId) {
+    return;
+  }
+
+  broadcastNotification(
+    "notification",
+    {
+      type: input.type,
+      title: input.title,
+      message: input.message,
+      sourceId: jobId,
+      payload: {
+        jobId,
+        resultRef: urls.cacheUrl,
+        statusUrl: urls.statusUrl,
+        cacheUrl: urls.cacheUrl,
+        generateUrl: urls.generateUrl,
+        translation: {
+          year: sourcePost.year,
+          slug: sourcePost.slug,
+          targetLang,
+        },
+      },
+    },
+    userId,
+  );
+}
+
 function wantsAsyncResponse(req, options = {}) {
   if (options.respondAsync) {
     return true;
@@ -224,7 +265,11 @@ function buildGenerateSuccessResponse(res, data, job) {
   return res.json({ ok: true, data });
 }
 
-async function getImmediateTranslationResult(sourcePost, targetLang, options = {}) {
+async function getImmediateTranslationResult(
+  sourcePost,
+  targetLang,
+  options = {},
+) {
   const sourceLang = normalizeLang(options.sourceLang) || sourcePost.sourceLang;
 
   if (!options.forceRefresh) {
@@ -436,7 +481,9 @@ async function sendTranslationJobStatus(req, res) {
 
   const jobId = String(req.query?.jobId || "").trim();
   const key = buildTranslationJobKey(year, slug, normalizedTargetLang);
-  const job = jobId ? getTranslationJobById(jobId) : getTranslationJobByKey(key);
+  const job = jobId
+    ? getTranslationJobById(jobId)
+    : getTranslationJobByKey(key);
 
   if (!job || job.key !== key) {
     return res.status(404).json({
@@ -468,25 +515,77 @@ async function handleGenerate(req, res, sourcePost, targetLang, options = {}) {
     });
   }
 
-  const immediate = await getImmediateTranslationResult(sourcePost, normalizedTargetLang, options);
+  const immediate = await getImmediateTranslationResult(
+    sourcePost,
+    normalizedTargetLang,
+    options,
+  );
   if (immediate) {
     return buildGenerateSuccessResponse(res, immediate);
   }
 
   const sourceLang = normalizeLang(options.sourceLang) || sourcePost.sourceLang;
-  const urls = buildTranslationJobUrls(req, sourcePost.year, sourcePost.slug, normalizedTargetLang);
+  const urls = buildTranslationJobUrls(
+    req,
+    sourcePost.year,
+    sourcePost.slug,
+    normalizedTargetLang,
+  );
+  const userId = typeof req.userId === "string" ? req.userId : undefined;
+  let jobId = "";
   const jobHandle = startTranslationJob({
-    key: buildTranslationJobKey(sourcePost.year, sourcePost.slug, normalizedTargetLang),
+    key: buildTranslationJobKey(
+      sourcePost.year,
+      sourcePost.slug,
+      normalizedTargetLang,
+    ),
     year: sourcePost.year,
     slug: sourcePost.slug,
     targetLang: normalizedTargetLang,
     sourceLang,
     forceRefresh: options.forceRefresh,
     urls,
-    runner: () => translateAndCachePost(sourcePost, normalizedTargetLang, options),
+    runner: async () => {
+      try {
+        const result = await translateAndCachePost(
+          sourcePost,
+          normalizedTargetLang,
+          options,
+        );
+        notifyTranslationJob(
+          userId,
+          jobId,
+          urls,
+          sourcePost,
+          normalizedTargetLang,
+          {
+            type: "success",
+            title: "번역 준비 완료",
+            message: `${sourcePost.title} 번역이 준비되었습니다.`,
+          },
+        );
+        return result;
+      } catch (error) {
+        const details = normalizeTranslateError(error);
+        notifyTranslationJob(
+          userId,
+          jobId,
+          urls,
+          sourcePost,
+          normalizedTargetLang,
+          {
+            type: "error",
+            title: "번역 준비 실패",
+            message: details.message,
+          },
+        );
+        throw error;
+      }
+    },
     summarizeResult: summarizeTranslationResult,
     normalizeError: normalizeTranslateError,
   });
+  jobId = jobHandle.job.id;
 
   if (wantsAsyncResponse(req, options)) {
     applyJobHeaders(res, jobHandle.job);

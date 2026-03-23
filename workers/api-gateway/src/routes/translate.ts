@@ -315,6 +315,61 @@ function buildTranslationJobUrls(
   };
 }
 
+function getAuthenticatedUserId(c: Context<HonoEnv>): string | undefined {
+  const user = c.get('user') as { sub?: string } | undefined;
+  return typeof user?.sub === 'string' && user.sub ? user.sub : undefined;
+}
+
+async function notifyTranslationJob(
+  env: Env,
+  userId: string | undefined,
+  jobId: string,
+  urls: ReturnType<typeof buildTranslationJobUrls>,
+  sourcePost: SourcePost,
+  targetLang: SupportedLang,
+  input: {
+    type: 'success' | 'error';
+    title: string;
+    message: string;
+  }
+) {
+  if (!userId || !jobId || !env.BACKEND_ORIGIN || !env.BACKEND_KEY) {
+    return;
+  }
+
+  try {
+    await fetch(new URL('/api/v1/notifications/outbox/internal', env.BACKEND_ORIGIN), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Backend-Key': env.BACKEND_KEY,
+      },
+      body: JSON.stringify({
+        event: 'notification',
+        type: input.type,
+        title: input.title,
+        message: input.message,
+        userId,
+        sourceId: jobId,
+        payload: {
+          jobId,
+          resultRef: urls.cacheUrl,
+          statusUrl: urls.statusUrl,
+          cacheUrl: urls.cacheUrl,
+          generateUrl: urls.generateUrl,
+          translation: {
+            year: sourcePost.year,
+            slug: sourcePost.slug,
+            targetLang,
+          },
+        },
+      }),
+    });
+  } catch (error) {
+    console.error('Failed to enqueue translation notification:', error);
+  }
+}
+
 function wantsAsyncResponse(c: Context<HonoEnv>, options: GenerateOptions = {}) {
   if (options.respondAsync) {
     return true;
@@ -341,7 +396,12 @@ async function getImmediateTranslationResult(
   const normalizedSourceLang = normalizeLang(options.sourceLang) || sourcePost.sourceLang;
 
   if (!options.forceRefresh) {
-    const cached = await getCachedTranslationRecord(db, sourcePost.year, sourcePost.slug, targetLang);
+    const cached = await getCachedTranslationRecord(
+      db,
+      sourcePost.year,
+      sourcePost.slug,
+      targetLang
+    );
     const contentHash = hashContent(sourcePost.content);
     if (cached && cached.content_hash === contentHash) {
       return buildTranslationResponse(cached);
@@ -583,13 +643,25 @@ async function generateFromSourcePost(
     return error(c, `Unsupported target language: ${targetLang}`, 400, 'BAD_REQUEST');
   }
 
-  const immediate = await getImmediateTranslationResult(c.env.DB, sourcePost, normalizedTargetLang, options);
+  const immediate = await getImmediateTranslationResult(
+    c.env.DB,
+    sourcePost,
+    normalizedTargetLang,
+    options
+  );
   if (immediate) {
     return buildGenerateSuccessResponse(c, immediate);
   }
 
   const normalizedSourceLang = normalizeLang(options.sourceLang) || sourcePost.sourceLang;
-  const urls = buildTranslationJobUrls(c.req.url, sourcePost.year, sourcePost.slug, normalizedTargetLang);
+  const urls = buildTranslationJobUrls(
+    c.req.url,
+    sourcePost.year,
+    sourcePost.slug,
+    normalizedTargetLang
+  );
+  const userId = getAuthenticatedUserId(c);
+  let jobId = '';
   const job = startTranslationJob<TranslationResponseData>({
     key: buildTranslationJobKey(sourcePost.year, sourcePost.slug, normalizedTargetLang),
     year: sourcePost.year,
@@ -598,17 +670,36 @@ async function generateFromSourcePost(
     sourceLang: normalizedSourceLang,
     forceRefresh: options.forceRefresh,
     urls,
-    runner: () =>
-      translateAndCachePost(c.env, c.env.DB, {
-        year: sourcePost.year,
-        slug: sourcePost.slug,
-        targetLang: normalizedTargetLang,
-        sourceLang: normalizedSourceLang,
-        title: sourcePost.title,
-        description: sourcePost.description,
-        content: sourcePost.content,
-        forceRefresh: options.forceRefresh,
-      }),
+    runner: async () => {
+      try {
+        const result = await translateAndCachePost(c.env, c.env.DB, {
+          year: sourcePost.year,
+          slug: sourcePost.slug,
+          targetLang: normalizedTargetLang,
+          sourceLang: normalizedSourceLang,
+          title: sourcePost.title,
+          description: sourcePost.description,
+          content: sourcePost.content,
+          forceRefresh: options.forceRefresh,
+        });
+
+        await notifyTranslationJob(c.env, userId, jobId, urls, sourcePost, normalizedTargetLang, {
+          type: 'success',
+          title: '번역 준비 완료',
+          message: `${sourcePost.title} 번역이 준비되었습니다.`,
+        });
+
+        return result;
+      } catch (err) {
+        const details = normalizeGenerateError(err);
+        await notifyTranslationJob(c.env, userId, jobId, urls, sourcePost, normalizedTargetLang, {
+          type: 'error',
+          title: '번역 준비 실패',
+          message: details.message,
+        });
+        throw err;
+      }
+    },
     summarizeResult: summarizeTranslationResult,
     normalizeError: (err): TranslationJobError => {
       const details = normalizeGenerateError(err);
@@ -621,6 +712,7 @@ async function generateFromSourcePost(
       };
     },
   });
+  jobId = job.job.id;
 
   if (wantsAsyncResponse(c, options)) {
     applyJobHeaders(c, job.job);
@@ -661,14 +753,30 @@ app.post(
   }
 );
 
-app.get('/internal/posts/:year/:slug/translations/:targetLang/generate/status', requireAuth, sendTranslationJobStatus);
-app.get('/internal/posts/:year/:slug/translations/:targetLang/status', requireAuth, sendTranslationJobStatus);
+app.get(
+  '/internal/posts/:year/:slug/translations/:targetLang/generate/status',
+  requireAuth,
+  sendTranslationJobStatus
+);
+app.get(
+  '/internal/posts/:year/:slug/translations/:targetLang/status',
+  requireAuth,
+  sendTranslationJobStatus
+);
 
 app.get('/public/posts/:year/:slug/translations/:targetLang', sendCachedTranslation);
 app.get('/public/posts/:year/:slug/translations/:targetLang/cache', sendCachedTranslation);
 
-app.delete('/internal/posts/:year/:slug/translations/:targetLang', requireAdmin, deleteCachedTranslation);
-app.delete('/internal/posts/:year/:slug/translations/:targetLang/cache', requireAdmin, deleteCachedTranslation);
+app.delete(
+  '/internal/posts/:year/:slug/translations/:targetLang',
+  requireAdmin,
+  deleteCachedTranslation
+);
+app.delete(
+  '/internal/posts/:year/:slug/translations/:targetLang/cache',
+  requireAdmin,
+  deleteCachedTranslation
+);
 
 app.post('/translate', requireAuth, async (c) => {
   const body = await c.req
