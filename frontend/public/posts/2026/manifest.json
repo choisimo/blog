@@ -16,6 +16,7 @@
     "ai-agent-arena-2026-swe-1-5.md",
     "alone.md",
     "awk-1.md",
+    "c-lang-1.md",
     "current-crowd.md",
     "docker-1.md",
     "draft-continuation-test.md",
@@ -37,7 +38,7 @@
     "understanding-ssm-and-mamba.md",
     "vim-architecture-functionality-commands-integration.md"
   ],
-  "generatedAt": "2026-03-22T10:55:27.682Z",
-  "totalFiles": 36,
+  "generatedAt": "2026-03-23T10:27:08.406Z",
+  "totalFiles": 37,
   "excludedFiles": 0
 }

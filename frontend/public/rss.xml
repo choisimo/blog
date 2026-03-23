@@ -5,8 +5,22 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Sun, 22 Mar 2026 10:55:28 GMT</lastBuildDate>
+    <lastBuildDate>Mon, 23 Mar 2026 10:27:08 GMT</lastBuildDate>
     <language>en-US</language>
+    <item>
+      <title>[C 언어 1부] 배열은 왜 단순한 변수 묶음이 아닐까?</title>
+      <description>배열 선언 한 줄이 실제로 어떻게 동작하며, 인덱싱이 왜 포인터 연산으로 환원되는지 추적해보기</description>
+      <link>https://noblog.nodove.com/blog/2026/c-lang-1</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/c-lang-1</guid>
+      <pubDate>Sun, 22 Mar 2026 00:00:00 GMT</pubDate>
+      <category>기술</category>
+      <category>C</category>
+      <category>Array</category>
+      <category>Memory</category>
+      <category>Pointer</category>
+      <category>Cache</category>
+      <category>Compiler</category>
+    </item>
     <item>
       <title>[파이썬 3부] 동적 객체와 타협하는 방법</title>
       <description>동적 객체와의 거래, CPython 내부를 직접 따라가보기</description>
@@ -269,19 +283,6 @@
       <category>Architecture</category>
       <category>MCP</category>
       <category>Comparative Analysis</category>
-    </item>
-    <item>
-      <title>[Arena 상세] sonnet_4.6 분석</title>
-      <description>sonnet_4.6의 Provider Chain 기반 폴백 설계와 Arena 최상위권 성능을 코드 관점에서 분석</description>
-      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-sonnet-4-6</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-sonnet-4-6</guid>
-      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
-      <category>AI Engineering</category>
-      <category>sonnet_4.6</category>
-      <category>Provider Chain</category>
-      <category>Failover</category>
-      <category>Topology</category>
-      <category>Gateway</category>
     </item>
   </channel>
 </rss>
