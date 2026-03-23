@@ -30,6 +30,9 @@ import { cn } from "@/lib/utils";
 import { recordView } from "@/services/content/analytics";
 import {
   getCachedTranslation,
+  getTranslationGenerationStatus,
+  normalizeTranslationErrorCode,
+  requestTranslationGeneration,
   translatePost,
   TranslationApiError,
   type TranslationErrorCode,
@@ -57,6 +60,10 @@ type TranslationErrorState = {
   code: TranslationErrorCode;
   retryable: boolean;
 };
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 const simulatorExistenceCache = new Map<string, boolean>();
 
@@ -465,6 +472,93 @@ ${description}
           setAiTranslation(result);
         }
       } catch (err) {
+        if (err instanceof TranslationApiError && err.status === 404) {
+          try {
+            const generation = await requestTranslationGeneration({
+              year,
+              slug,
+              targetLang: language,
+              sourceLang: defaultLang,
+              title: post.title,
+              description: post.description,
+              content: post.content,
+            });
+
+            if (generation.translation) {
+              if (!cancelled) {
+                setAiTranslation(generation.translation);
+              }
+              return;
+            }
+
+            if (generation.job) {
+              for (let attempt = 0; attempt < 20; attempt += 1) {
+                const job = await getTranslationGenerationStatus(
+                  { year, slug, targetLang: language },
+                  generation.job.id,
+                );
+
+                if (cancelled) {
+                  return;
+                }
+
+                if (job.status === "succeeded") {
+                  const translated = await getCachedTranslation(
+                    year,
+                    slug,
+                    language,
+                  );
+
+                  if (!cancelled) {
+                    if (translated) {
+                      setAiTranslation(translated);
+                    } else {
+                      setTranslationError({
+                        code: "NOT_AVAILABLE",
+                        retryable: true,
+                      });
+                    }
+                  }
+                  return;
+                }
+
+                if (job.status === "failed") {
+                  if (!cancelled) {
+                    setTranslationError({
+                      code: normalizeTranslationErrorCode(job.error?.code),
+                      retryable: Boolean(job.error?.retryable),
+                    });
+                  }
+                  return;
+                }
+
+                await sleep(
+                  job.error?.retryAfterSeconds
+                    ? job.error.retryAfterSeconds * 1000
+                    : 3000,
+                );
+              }
+
+              if (!cancelled) {
+                setTranslationError({
+                  code: "NOT_AVAILABLE",
+                  retryable: true,
+                });
+              }
+              return;
+            }
+          } catch (generationError) {
+            console.error("Translation job failed:", generationError);
+            if (!cancelled && generationError instanceof TranslationApiError) {
+              setTranslationError({
+                code: generationError.code,
+                retryable: generationError.retryable,
+              });
+              return;
+            }
+          }
+        }
+
         console.error("Translation failed:", err);
         if (!cancelled) {
           if (err instanceof TranslationApiError) {

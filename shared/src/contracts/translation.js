@@ -67,6 +67,11 @@ export const translationGenerateResponseSchema = z.union([
       translation: translationResultSchema.optional(),
     }),
   ),
+  z.object({
+    ok: z.literal(true),
+    data: z.null(),
+    job: translationJobStatusSchema,
+  }),
 ]);
 
 export const translationJobResponseSchema = apiSuccessEnvelopeSchema(

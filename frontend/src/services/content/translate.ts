@@ -39,6 +39,26 @@ export type TranslationErrorCode =
   | "NOT_AVAILABLE"
   | "UNKNOWN";
 
+export type TranslationJobStatus = {
+  id: string;
+  status: "running" | "succeeded" | "failed";
+  statusUrl: string;
+  cacheUrl: string;
+  generateUrl: string;
+  error?: {
+    code?: string;
+    message: string;
+    retryable?: boolean;
+    retryAfterSeconds?: number;
+  };
+};
+
+export type TranslationGenerateResult = {
+  translation: TranslationResult | null;
+  job: TranslationJobStatus | null;
+  accepted: boolean;
+};
+
 type TranslationErrorResponse = {
   error?: string | { message?: string };
   code?: string;
@@ -75,6 +95,16 @@ function mapStatusToErrorCode(
   if (data?.code === "AI_ERROR" || status === 502) return "AI_ERROR";
   if (data?.code === "NOT_AVAILABLE" || status === 404) return "NOT_AVAILABLE";
   if (status === 401 || status === 403) return "AUTH_REQUIRED";
+  return "UNKNOWN";
+}
+
+export function normalizeTranslationErrorCode(
+  code?: string | null,
+): TranslationErrorCode {
+  if (code === "AI_TIMEOUT") return "AI_TIMEOUT";
+  if (code === "AI_ERROR") return "AI_ERROR";
+  if (code === "NOT_AVAILABLE" || code === "NOT_READY") return "NOT_AVAILABLE";
+  if (code === "AUTH_REQUIRED") return "AUTH_REQUIRED";
   return "UNKNOWN";
 }
 
@@ -123,6 +153,70 @@ function parseTranslationPayload(
   }
 
   throw new TranslationApiError("Invalid translation response", {
+    code: "UNKNOWN",
+    status,
+  });
+}
+
+function parseGenerateResult(
+  payload: unknown,
+  status: number,
+): TranslationGenerateResult {
+  const parsed = translationGenerateResponseSchema.safeParse(payload);
+  if (!parsed.success) {
+    throw new TranslationApiError("Invalid translation response", {
+      code: "UNKNOWN",
+      status,
+    });
+  }
+
+  const body = parsed.data;
+  if ("job" in body && body.data === null) {
+    return {
+      translation: null,
+      job: body.job as TranslationJobStatus,
+      accepted: true,
+    };
+  }
+
+  if ("job" in body.data) {
+    return {
+      translation:
+        (body.data.translation as TranslationResult | undefined) ?? null,
+      job: body.data.job as TranslationJobStatus,
+      accepted: false,
+    };
+  }
+
+  return {
+    translation: body.data as TranslationResult,
+    job: null,
+    accepted: false,
+  };
+}
+
+function parseJobStatusPayload(
+  payload: unknown,
+  status: number,
+): TranslationJobStatus {
+  const parsed = cachedTranslationResponseSchema.safeParse(payload);
+  if (parsed.success) {
+    throw new TranslationApiError("Expected a job status response", {
+      code: "UNKNOWN",
+      status,
+    });
+  }
+
+  const jobPayload = payload as {
+    ok?: boolean;
+    data?: { job?: TranslationJobStatus };
+  };
+
+  if (jobPayload?.ok && jobPayload.data?.job) {
+    return jobPayload.data.job;
+  }
+
+  throw new TranslationApiError("Invalid translation job response", {
     code: "UNKNOWN",
     status,
   });
@@ -210,6 +304,61 @@ export async function translatePost(
   const data = parseTranslationPayload(payload, response.status);
   console.log("[translate] Success, cached:", data.cached);
   return data;
+}
+
+export async function requestTranslationGeneration(
+  request: TranslationRequest,
+): Promise<TranslationGenerateResult> {
+  const baseUrl = getApiBaseUrl();
+  const headers = {
+    ...(await getAuthHeadersAsync()),
+    Prefer: "respond-async",
+  };
+  const body = JSON.stringify({
+    sourceLang: request.sourceLang,
+    forceRefresh: request.forceRefresh,
+    respondAsync: true,
+  });
+
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/posts/${request.year}/${request.slug}/translations/${request.targetLang}/generate?async=true`,
+    {
+      method: "POST",
+      headers,
+      body,
+    },
+  );
+
+  if (!response.ok) {
+    throw await parseError(response);
+  }
+
+  const payload = await response.json().catch(() => null);
+  return parseGenerateResult(payload, response.status);
+}
+
+export async function getTranslationGenerationStatus(
+  request: Pick<TranslationRequest, "year" | "slug" | "targetLang">,
+  jobId?: string,
+): Promise<TranslationJobStatus> {
+  const baseUrl = getApiBaseUrl();
+  const headers = await getAuthHeadersAsync();
+  const params = jobId ? `?jobId=${encodeURIComponent(jobId)}` : "";
+
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/posts/${request.year}/${request.slug}/translations/${request.targetLang}/generate/status${params}`,
+    {
+      method: "GET",
+      headers,
+    },
+  );
+
+  if (!response.ok) {
+    throw await parseError(response);
+  }
+
+  const payload = await response.json().catch(() => null);
+  return parseJobStatusPayload(payload, response.status);
 }
 
 /**
