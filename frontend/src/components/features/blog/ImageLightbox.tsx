@@ -31,7 +31,12 @@ interface ImageLightboxProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxProps) {
+export function ImageLightbox({
+  src,
+  alt,
+  open,
+  onOpenChange,
+}: ImageLightboxProps) {
   const [scale, setScale] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -45,8 +50,12 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
   const translateRef = useRef(translate);
 
   // Keep refs in sync
-  useEffect(() => { scaleRef.current = scale; }, [scale]);
-  useEffect(() => { translateRef.current = translate; }, [translate]);
+  useEffect(() => {
+    scaleRef.current = scale;
+  }, [scale]);
+  useEffect(() => {
+    translateRef.current = translate;
+  }, [translate]);
 
   const handleZoomIn = useCallback(() => {
     setScale(prev => Math.min(prev + 0.25, 4));
@@ -71,16 +80,19 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
     setImageLoaded(false);
   }, []);
 
-  const handleOpenChange = useCallback((newOpen: boolean) => {
-    if (!newOpen) {
-      handleReset();
-    }
-    onOpenChange(newOpen);
-  }, [onOpenChange, handleReset]);
+  const handleOpenChange = useCallback(
+    (newOpen: boolean) => {
+      if (!newOpen) {
+        handleReset();
+      }
+      onOpenChange(newOpen);
+    },
+    [onOpenChange, handleReset]
+  );
 
   // Callback ref: attaches wheel listener immediately when the Dialog portal renders the container DOM node.
   // This fixes the race condition where useEffect(,[open]) fires before the Radix Dialog portal mounts.
-  const containerRef: RefCallback<HTMLDivElement> = useCallback((node) => {
+  const containerRef: RefCallback<HTMLDivElement> = useCallback(node => {
     if (!node) return;
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -98,43 +110,52 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
   }, []);
 
   // Pointer drag handlers
-  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    // Only drag when zoomed in
-    if (scaleRef.current <= 1) return;
-    isDragging.current = true;
-    hasDragged.current = false;
-    dragStart.current = {
-      x: e.clientX,
-      y: e.clientY,
-      tx: translateRef.current.x,
-      ty: translateRef.current.y,
-    };
-    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
-  }, []);
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      // Only drag when zoomed in
+      if (scaleRef.current <= 1) return;
+      isDragging.current = true;
+      hasDragged.current = false;
+      dragStart.current = {
+        x: e.clientX,
+        y: e.clientY,
+        tx: translateRef.current.x,
+        ty: translateRef.current.y,
+      };
+      (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+    },
+    []
+  );
 
-  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDragging.current) return;
-    const dx = e.clientX - dragStart.current.x;
-    const dy = e.clientY - dragStart.current.y;
-    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
-      hasDragged.current = true;
-    }
-    if (hasDragged.current) {
-      setTranslate({
-        x: dragStart.current.tx + dx,
-        y: dragStart.current.ty + dy,
-      });
-    }
-  }, []);
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!isDragging.current) return;
+      const dx = e.clientX - dragStart.current.x;
+      const dy = e.clientY - dragStart.current.y;
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+        hasDragged.current = true;
+      }
+      if (hasDragged.current) {
+        setTranslate({
+          x: dragStart.current.tx + dx,
+          y: dragStart.current.ty + dy,
+        });
+      }
+    },
+    []
+  );
 
-  const handlePointerUp = useCallback((_e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDragging.current) return;
-    isDragging.current = false;
-    // Only close if it was a clean click (no drag)
-    if (!hasDragged.current && scaleRef.current <= 1) {
-      handleOpenChange(false);
-    }
-  }, [handleOpenChange]);
+  const handlePointerUp = useCallback(
+    (_e: React.PointerEvent<HTMLDivElement>) => {
+      if (!isDragging.current) return;
+      isDragging.current = false;
+      // Only close if it was a clean click (no drag)
+      if (!hasDragged.current && scaleRef.current <= 1) {
+        handleOpenChange(false);
+      }
+    },
+    [handleOpenChange]
+  );
 
   // Preload full image when lightbox opens
   useEffect(() => {
@@ -147,69 +168,77 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent 
+      <DialogContent
         hideClose
-        className="w-[100vw] h-[100vh] max-w-[100vw] max-h-[100vh] sm:w-auto sm:h-auto sm:max-w-[95vw] sm:max-h-[95vh] p-0 bg-black/95 border-none overflow-hidden rounded-none sm:rounded-lg"
+        className='w-[100vw] h-[100vh] max-w-[100vw] max-h-[100vh] sm:w-auto sm:h-auto sm:max-w-[95vw] sm:max-h-[95vh] p-0 bg-black/95 border-none overflow-hidden rounded-none sm:rounded-lg'
         onPointerDownOutside={() => handleOpenChange(false)}
       >
         <VisuallyHidden>
           <DialogTitle>{alt || 'Image preview'}</DialogTitle>
-          <DialogDescription>Click outside or press Escape to close. Scroll to zoom. Drag to pan when zoomed.</DialogDescription>
+          <DialogDescription>
+            Click outside or press Escape to close. Scroll to zoom. Drag to pan
+            when zoomed.
+          </DialogDescription>
         </VisuallyHidden>
-        
-        <div className="absolute top-4 right-4 z-20 flex items-center gap-2 rounded-full border border-white/10 bg-black/60 px-2 py-1.5 shadow-[0_18px_48px_rgba(0,0,0,0.45)] backdrop-blur-md">
+
+        <div className='absolute top-4 right-4 z-20 flex items-center gap-2 rounded-full border border-white/10 bg-black/60 px-2 py-1.5 shadow-[0_18px_48px_rgba(0,0,0,0.45)] backdrop-blur-md'>
           <TouchIconButton
-            variant="ghost"
+            variant='ghost'
             onClick={handleZoomOut}
-            className="h-10 w-10 rounded-full bg-black/70 text-white shadow-lg ring-1 ring-white/20 transition-colors hover:bg-black/90 disabled:bg-black/40 disabled:text-white/45 disabled:ring-white/10"
+            aria-label='Zoom out image preview'
+            className='h-10 w-10 rounded-full bg-black/70 text-white shadow-lg ring-1 ring-white/20 transition-colors hover:bg-black/90 disabled:bg-black/40 disabled:text-white/45 disabled:ring-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black'
             disabled={scale <= 0.5}
           >
-            <ZoomOut className="h-4 w-4" />
+            <ZoomOut className='h-4 w-4' />
           </TouchIconButton>
           <TouchIconButton
-            variant="ghost"
+            variant='ghost'
             onClick={handleZoomIn}
-            className="h-10 w-10 rounded-full bg-black/70 text-white shadow-lg ring-1 ring-white/20 transition-colors hover:bg-black/90 disabled:bg-black/40 disabled:text-white/45 disabled:ring-white/10"
+            aria-label='Zoom in image preview'
+            className='h-10 w-10 rounded-full bg-black/70 text-white shadow-lg ring-1 ring-white/20 transition-colors hover:bg-black/90 disabled:bg-black/40 disabled:text-white/45 disabled:ring-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black'
             disabled={scale >= 4}
           >
-            <ZoomIn className="h-4 w-4" />
+            <ZoomIn className='h-4 w-4' />
           </TouchIconButton>
           <TouchIconButton
-            variant="ghost"
+            variant='ghost'
             onClick={handleRotate}
-            className="h-10 w-10 rounded-full bg-black/70 text-white shadow-lg ring-1 ring-white/20 transition-colors hover:bg-black/90 disabled:bg-black/40 disabled:text-white/45 disabled:ring-white/10"
+            aria-label='Rotate image preview'
+            className='h-10 w-10 rounded-full bg-black/70 text-white shadow-lg ring-1 ring-white/20 transition-colors hover:bg-black/90 disabled:bg-black/40 disabled:text-white/45 disabled:ring-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black'
           >
-            <RotateCw className="h-4 w-4" />
+            <RotateCw className='h-4 w-4' />
           </TouchIconButton>
           <TouchIconButton
-            variant="ghost"
+            variant='ghost'
             onClick={() => handleOpenChange(false)}
-            className="h-10 w-10 rounded-full bg-white text-black shadow-lg ring-1 ring-white/20 transition-colors hover:bg-white/90"
+            aria-label='Close image preview'
+            autoFocus
+            className='h-10 w-10 rounded-full bg-white text-black shadow-lg ring-1 ring-white/20 transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black'
           >
-            <X className="h-4 w-4" />
+            <X className='h-4 w-4' />
           </TouchIconButton>
         </div>
 
         <div
           ref={containerRef}
-          data-testid="lightbox-container"
+          data-testid='lightbox-container'
           className={cn(
             'flex items-center justify-center w-full h-full min-h-[50vh] p-3 sm:p-8',
-            scale > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-zoom-out',
+            scale > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-zoom-out'
           )}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
         >
           {!imageLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-white/70" />
+            <div className='absolute inset-0 flex items-center justify-center'>
+              <Loader2 className='h-8 w-8 animate-spin text-white/70' />
             </div>
           )}
           <img
             src={src}
             alt={alt || ''}
-            data-testid="lightbox-image"
+            data-testid='lightbox-image'
             className={cn(
               'max-w-full max-h-[85vh] sm:max-h-[85vh] object-contain transition-[opacity] duration-300',
               'select-none pointer-events-none',
@@ -223,8 +252,8 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
         </div>
 
         {alt && (
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-            <p className="text-white/90 text-sm text-center">{alt}</p>
+          <div className='absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4'>
+            <p className='text-white/90 text-sm text-center'>{alt}</p>
           </div>
         )}
       </DialogContent>
@@ -305,7 +334,7 @@ export function EmbeddedVideo({
   }
 
   return (
-    <span className="my-8 text-center block">
+    <span className='my-8 text-center block'>
       {loadFailed ? (
         <div
           className={cn(
@@ -326,8 +355,8 @@ export function EmbeddedVideo({
           loop={loop}
           muted={muted}
           playsInline={playsInline}
-          preload="metadata"
-          onCanPlay={(event) => {
+          preload='metadata'
+          onCanPlay={event => {
             if (!autoPlay) return;
             void event.currentTarget.play().catch(() => undefined);
           }}
@@ -367,7 +396,13 @@ export function NormalizedVideoSource({
   return <source {...props} src={resolvedSrc} />;
 }
 
-export function ClickableImage({ src, alt, className, isTerminal, postPath }: ClickableImageProps) {
+export function ClickableImage({
+  src,
+  alt,
+  className,
+  isTerminal,
+  postPath,
+}: ClickableImageProps) {
   const resolvedSrc = resolvePostMediaSrc(src, postPath);
   const isVideo = isVideoMedia(resolvedSrc);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -396,23 +431,24 @@ export function ClickableImage({ src, alt, className, isTerminal, postPath }: Cl
   }
 
   // Use original if thumbnail failed to load
-  const displaySrc = thumbError || !shouldUseThumb(resolvedSrc)
-    ? resolvedSrc
-    : getThumbSrc(resolvedSrc);
+  const displaySrc =
+    thumbError || !shouldUseThumb(resolvedSrc)
+      ? resolvedSrc
+      : getThumbSrc(resolvedSrc);
 
   return (
     <>
-      <span className="my-8 text-center block">
+      <span className='my-8 text-center block'>
         <button
-          type="button"
+          type='button'
           onClick={() => setLightboxOpen(true)}
-          className="cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-xl inline-block relative overflow-hidden"
+          className='cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-xl inline-block relative overflow-hidden'
           aria-label={`View ${alt || 'image'} in full size`}
         >
           {/* Placeholder skeleton while loading */}
           {!thumbLoaded && (
-            <div className="absolute inset-0 bg-muted/50 animate-pulse rounded-xl flex items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/50" />
+            <div className='absolute inset-0 bg-muted/50 animate-pulse rounded-xl flex items-center justify-center'>
+              <Loader2 className='h-6 w-6 animate-spin text-muted-foreground/50' />
             </div>
           )}
           <img
@@ -420,8 +456,8 @@ export function ClickableImage({ src, alt, className, isTerminal, postPath }: Cl
             src={isInView ? displaySrc : undefined}
             data-src={displaySrc}
             alt={alt || ''}
-            loading="lazy"
-            decoding="async"
+            loading='lazy'
+            decoding='async'
             onLoad={handleThumbLoad}
             onError={handleThumbError}
             className={cn(
@@ -433,11 +469,13 @@ export function ClickableImage({ src, alt, className, isTerminal, postPath }: Cl
             )}
           />
           {/* Click hint overlay */}
-          <div className={cn(
-            'absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity',
-            'bg-black/20 rounded-xl'
-          )}>
-            <ZoomIn className="h-8 w-8 text-white drop-shadow-lg" />
+          <div
+            className={cn(
+              'absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity',
+              'bg-black/20 rounded-xl'
+            )}
+          >
+            <ZoomIn className='h-8 w-8 text-white drop-shadow-lg' />
           </div>
         </button>
         {alt && (
