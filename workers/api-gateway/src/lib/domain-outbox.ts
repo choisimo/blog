@@ -63,6 +63,27 @@ type FailDomainOutboxInput = {
   retryDelayMs?: number;
 };
 
+type ListStuckDomainOutboxInput = {
+  stream: string;
+  olderThanMinutes?: number;
+  limit?: number;
+};
+
+type DomainOutboxStatusCountRow = {
+  status: DomainOutboxStatus;
+  count: number;
+};
+
+export type DomainOutboxSummary = {
+  stream: string;
+  pending: number;
+  processing: number;
+  processed: number;
+  deadLetter: number;
+  oldestPendingAt: string | null;
+  oldestDeadLetterAt: string | null;
+};
+
 const schemaInit = new WeakMap<D1Database, Promise<void>>();
 
 function normalizeLimit(limit?: number) {
@@ -409,4 +430,101 @@ export async function replayDomainOutboxEvent(db: D1Database, id: string) {
     now,
     id
   );
+}
+
+export async function getDomainOutboxSummary(
+  db: D1Database,
+  stream: string
+): Promise<DomainOutboxSummary> {
+  await ensureDomainOutboxSchema(db);
+
+  const counts = await queryAll<DomainOutboxStatusCountRow>(
+    db,
+    `SELECT status, COUNT(*) as count
+       FROM domain_outbox
+      WHERE stream = ?
+      GROUP BY status`,
+    stream
+  );
+
+  const oldestPending = await queryOne<{ created_at: string }>(
+    db,
+    `SELECT created_at
+       FROM domain_outbox
+      WHERE stream = ?
+        AND status = 'pending'
+      ORDER BY created_at ASC
+      LIMIT 1`,
+    stream
+  );
+
+  const oldestDeadLetter = await queryOne<{ created_at: string }>(
+    db,
+    `SELECT created_at
+       FROM domain_outbox
+      WHERE stream = ?
+        AND status = 'dead_letter'
+      ORDER BY created_at ASC
+      LIMIT 1`,
+    stream
+  );
+
+  const summary: DomainOutboxSummary = {
+    stream,
+    pending: 0,
+    processing: 0,
+    processed: 0,
+    deadLetter: 0,
+    oldestPendingAt: oldestPending?.created_at ?? null,
+    oldestDeadLetterAt: oldestDeadLetter?.created_at ?? null,
+  };
+
+  for (const row of counts) {
+    if (row.status === 'pending') summary.pending = row.count;
+    if (row.status === 'processing') summary.processing = row.count;
+    if (row.status === 'processed') summary.processed = row.count;
+    if (row.status === 'dead_letter') summary.deadLetter = row.count;
+  }
+
+  return summary;
+}
+
+export async function listStuckDomainOutboxEvents(
+  db: D1Database,
+  input: ListStuckDomainOutboxInput
+): Promise<DomainOutboxEvent[]> {
+  await ensureDomainOutboxSchema(db);
+
+  const olderThanMinutes = Math.max(1, Math.min(24 * 60, input.olderThanMinutes ?? 15));
+  const limit = normalizeLimit(input.limit);
+  const cutoff = new Date(Date.now() - olderThanMinutes * 60_000).toISOString();
+
+  const rows = await queryAll<DomainOutboxRow>(
+    db,
+    `SELECT id, stream, aggregate_id, event_type, payload, idempotency_key,
+            status, retry_count, created_at, available_at, last_attempt_at,
+            processed_at, last_error
+       FROM domain_outbox
+      WHERE stream = ?
+        AND (
+          status = 'dead_letter'
+          OR (
+            status = 'processing'
+            AND COALESCE(last_attempt_at, created_at) <= ?
+          )
+          OR (
+            status = 'pending'
+            AND retry_count > 0
+            AND COALESCE(last_attempt_at, created_at) <= ?
+          )
+        )
+      ORDER BY COALESCE(last_attempt_at, created_at) ASC
+      LIMIT ?`,
+    input.stream,
+    cutoff,
+    cutoff,
+    limit
+  );
+
+  return rows.map(mapRow);
 }
