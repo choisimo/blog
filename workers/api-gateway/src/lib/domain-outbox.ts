@@ -23,12 +23,15 @@ type DomainOutboxRow = {
   stream: string;
   aggregate_id: string;
   event_type: string;
-  payload: string;
+  payload_json: string;
   idempotency_key: string | null;
   status: DomainOutboxStatus;
   retry_count: number;
   created_at: string;
-  available_at: string;
+  next_attempt_at: string;
+  locked_at: string | null;
+  consumer_id: string | null;
+  updated_at: string;
   last_attempt_at: string | null;
   processed_at: string | null;
   last_error: string | null;
@@ -105,12 +108,12 @@ function mapRow(row: DomainOutboxRow): DomainOutboxEvent {
     stream: row.stream,
     aggregateId: row.aggregate_id,
     eventType: row.event_type,
-    payload: parsePayload(row.payload),
+    payload: parsePayload(row.payload_json),
     idempotencyKey: row.idempotency_key,
     status: row.status,
     retryCount: row.retry_count,
     createdAt: row.created_at,
-    availableAt: row.available_at,
+    availableAt: row.next_attempt_at,
     lastAttemptAt: row.last_attempt_at,
     processedAt: row.processed_at,
     lastError: row.last_error,
@@ -137,12 +140,15 @@ export async function ensureDomainOutboxSchema(db: D1Database) {
          stream TEXT NOT NULL,
          aggregate_id TEXT NOT NULL,
          event_type TEXT NOT NULL,
-         payload TEXT NOT NULL,
+         payload_json TEXT NOT NULL,
          idempotency_key TEXT,
          status TEXT NOT NULL DEFAULT 'pending',
          retry_count INTEGER NOT NULL DEFAULT 0,
          created_at TEXT NOT NULL,
-         available_at TEXT NOT NULL,
+         next_attempt_at TEXT NOT NULL,
+         locked_at TEXT,
+         consumer_id TEXT,
+         updated_at TEXT NOT NULL,
          last_attempt_at TEXT,
          processed_at TEXT,
          last_error TEXT
@@ -157,7 +163,7 @@ export async function ensureDomainOutboxSchema(db: D1Database) {
     await execute(
       db,
       `CREATE INDEX IF NOT EXISTS idx_domain_outbox_pending
-         ON domain_outbox (stream, status, available_at, created_at)`
+         ON domain_outbox (stream, status, next_attempt_at, created_at)`
     );
     await execute(
       db,
@@ -189,10 +195,10 @@ export async function appendDomainOutboxEvent<TPayload>(
   await execute(
     db,
     `INSERT INTO domain_outbox (
-       id, stream, aggregate_id, event_type, payload, idempotency_key,
-       status, retry_count, created_at, available_at, last_attempt_at,
-       processed_at, last_error
-     ) VALUES (?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, NULL, NULL, NULL)`,
+       id, stream, aggregate_id, event_type, payload_json, idempotency_key,
+       status, retry_count, created_at, next_attempt_at, locked_at, consumer_id,
+       updated_at, last_attempt_at, processed_at, last_error
+     ) VALUES (?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, NULL, NULL, ?, NULL, NULL, NULL)`,
     id,
     input.stream,
     input.aggregateId,
@@ -200,7 +206,8 @@ export async function appendDomainOutboxEvent<TPayload>(
     payload,
     input.idempotencyKey ?? null,
     now,
-    availableAt
+    availableAt,
+    now
   );
 
   return {
@@ -242,9 +249,9 @@ export async function listDomainOutboxEvents(
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const rows = await queryAll<DomainOutboxRow>(
     db,
-    `SELECT id, stream, aggregate_id, event_type, payload, idempotency_key,
-            status, retry_count, created_at, available_at, last_attempt_at,
-            processed_at, last_error
+    `SELECT id, stream, aggregate_id, event_type, payload_json, idempotency_key,
+            status, retry_count, created_at, next_attempt_at, locked_at,
+            consumer_id, updated_at, last_attempt_at, processed_at, last_error
        FROM domain_outbox
        ${whereSql}
       ORDER BY created_at ASC
@@ -264,9 +271,9 @@ export async function getDomainOutboxEvent(
 
   const row = await queryOne<DomainOutboxRow>(
     db,
-    `SELECT id, stream, aggregate_id, event_type, payload, idempotency_key,
-            status, retry_count, created_at, available_at, last_attempt_at,
-            processed_at, last_error
+    `SELECT id, stream, aggregate_id, event_type, payload_json, idempotency_key,
+            status, retry_count, created_at, next_attempt_at, locked_at,
+            consumer_id, updated_at, last_attempt_at, processed_at, last_error
        FROM domain_outbox
       WHERE id = ?`,
     id
@@ -278,16 +285,21 @@ export async function getDomainOutboxEvent(
 export async function markDomainOutboxProcessed(db: D1Database, id: string) {
   await ensureDomainOutboxSchema(db);
 
+  const now = new Date().toISOString();
   await execute(
     db,
     `UPDATE domain_outbox
         SET status = 'processed',
             processed_at = ?,
             last_attempt_at = ?,
-            last_error = NULL
+            last_error = NULL,
+            locked_at = NULL,
+            consumer_id = NULL,
+            updated_at = ?
       WHERE id = ?`,
-    new Date().toISOString(),
-    new Date().toISOString(),
+    now,
+    now,
+    now,
     id
   );
 }
@@ -299,15 +311,22 @@ export async function markDomainOutboxPending(
 ) {
   await ensureDomainOutboxSchema(db);
 
+  const now = new Date().toISOString();
   await execute(
     db,
     `UPDATE domain_outbox
         SET status = 'pending',
+            next_attempt_at = ?,
             last_attempt_at = ?,
-            last_error = ?
+            last_error = ?,
+            locked_at = NULL,
+            consumer_id = NULL,
+            updated_at = ?
       WHERE id = ?`,
-    new Date().toISOString(),
+    now,
+    now,
     lastError ?? null,
+    now,
     id
   );
 }
@@ -321,13 +340,13 @@ export async function claimDomainOutboxEvents(
   const now = input.now || new Date().toISOString();
   const rows = await queryAll<DomainOutboxRow>(
     db,
-    `SELECT id, stream, aggregate_id, event_type, payload, idempotency_key,
-            status, retry_count, created_at, available_at, last_attempt_at,
-            processed_at, last_error
+    `SELECT id, stream, aggregate_id, event_type, payload_json, idempotency_key,
+            status, retry_count, created_at, next_attempt_at, locked_at,
+            consumer_id, updated_at, last_attempt_at, processed_at, last_error
        FROM domain_outbox
       WHERE stream = ?
         AND status = 'pending'
-        AND available_at <= ?
+        AND next_attempt_at <= ?
       ORDER BY created_at ASC
       LIMIT ?`,
     input.stream,
@@ -341,10 +360,16 @@ export async function claimDomainOutboxEvents(
       db,
       `UPDATE domain_outbox
           SET status = 'processing',
-              last_attempt_at = ?
+              last_attempt_at = ?,
+              locked_at = ?,
+              consumer_id = ?,
+              updated_at = ?
         WHERE id = ?
           AND status = 'pending'
-          AND available_at <= ?`,
+          AND next_attempt_at <= ?`,
+      now,
+      now,
+      input.stream,
       now,
       row.id,
       now
@@ -355,6 +380,9 @@ export async function claimDomainOutboxEvents(
         mapRow({
           ...row,
           status: 'processing',
+          locked_at: now,
+          consumer_id: input.stream,
+          updated_at: now,
           last_attempt_at: now,
         })
       );
@@ -392,17 +420,22 @@ export async function markDomainOutboxFailed(db: D1Database, input: FailDomainOu
     `UPDATE domain_outbox
         SET status = ?,
             retry_count = ?,
-            available_at = ?,
+            next_attempt_at = ?,
             last_attempt_at = ?,
             last_error = ?,
-            processed_at = CASE WHEN ? = 'dead_letter' THEN NULL ELSE processed_at END
+            locked_at = NULL,
+            consumer_id = NULL,
+            updated_at = ?,
+            processed_at = CASE WHEN ? = 'dead_letter' THEN ? ELSE NULL END
       WHERE id = ?`,
     nextStatus,
     retryCount,
     availableAt,
     now,
     input.lastError,
+    now,
     nextStatus,
+    nextStatus === 'dead_letter' ? now : null,
     input.id
   );
 
@@ -422,11 +455,15 @@ export async function replayDomainOutboxEvent(db: D1Database, id: string) {
     `UPDATE domain_outbox
         SET status = 'pending',
             retry_count = 0,
-            available_at = ?,
+            next_attempt_at = ?,
+            locked_at = NULL,
+            consumer_id = NULL,
+            updated_at = ?,
             last_attempt_at = NULL,
             processed_at = NULL,
             last_error = NULL
       WHERE id = ?`,
+    now,
     now,
     id
   );
@@ -501,9 +538,9 @@ export async function listStuckDomainOutboxEvents(
 
   const rows = await queryAll<DomainOutboxRow>(
     db,
-    `SELECT id, stream, aggregate_id, event_type, payload, idempotency_key,
-            status, retry_count, created_at, available_at, last_attempt_at,
-            processed_at, last_error
+    `SELECT id, stream, aggregate_id, event_type, payload_json, idempotency_key,
+            status, retry_count, created_at, next_attempt_at, locked_at,
+            consumer_id, updated_at, last_attempt_at, processed_at, last_error
        FROM domain_outbox
       WHERE stream = ?
         AND (
