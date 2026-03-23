@@ -267,7 +267,7 @@ api.route('/chat', chat);
 api.route('/images', images);
 api.route('/og', og);
 api.route('/analytics', analytics);
-api.route('/translate', translate);
+api.route('/', translate);
 api.route('/config', config);
 api.route('/rag', rag);
 api.route('/memos', memos);

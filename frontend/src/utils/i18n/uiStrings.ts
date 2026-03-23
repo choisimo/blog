@@ -53,6 +53,11 @@ const dictionary = {
       aiTranslated: "AI 번역",
       translationFailed: "번역 실패",
       showingOriginal: "원본 콘텐츠를 표시합니다.",
+      translationNotAvailable: "아직 준비된 번역이 없습니다.",
+      translationAuthRequired: "번역 생성은 로그인 후 사용할 수 있습니다.",
+      translationTimeout: "AI 서버 응답이 지연되고 있습니다.",
+      translationServerError: "AI 번역 서버에서 오류가 발생했습니다.",
+      translationUnknownError: "번역 중 오류가 발생했습니다.",
     },
     stack: {
       unavailable: "이 브라우저에서는 Stack 기능을 사용할 수 없습니다.",
@@ -108,6 +113,11 @@ const dictionary = {
       aiTranslated: "AI Translated",
       translationFailed: "Translation Failed",
       showingOriginal: "Showing original content.",
+      translationNotAvailable: "A cached translation is not available yet.",
+      translationAuthRequired: "Sign in to generate a new translation.",
+      translationTimeout: "The AI translation server is responding slowly.",
+      translationServerError: "The AI translation server returned an error.",
+      translationUnknownError: "Something went wrong while translating.",
     },
     stack: {
       unavailable: "Stack is not available in this browser.",

@@ -28,6 +28,14 @@ export interface GenerateSEOOptions {
   ogImageOverride?: string;
 }
 
+export type SEOResolvedPost = Pick<
+  BlogPost,
+  "year" | "slug" | "date" | "author" | "category" | "tags"
+> & {
+  title: string;
+  description: string;
+};
+
 const slugifyCategory = (value: string): string =>
   value
     .trim()
@@ -54,7 +62,7 @@ const buildCategoryImagePath = (
 };
 
 export const generateSEOData = (
-  post?: BlogPost,
+  post?: SEOResolvedPost,
   pageType: SEOPageType = "home",
   options: GenerateSEOOptions = {},
 ): SEOData => {
@@ -160,7 +168,7 @@ export const generateSEOData = (
 };
 
 export const generateStructuredData = (
-  post?: BlogPost,
+  post?: SEOResolvedPost,
   pageType: string = "home",
 ) => {
   const baseUrl =

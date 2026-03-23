@@ -3,10 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { BookOpen } from "lucide-react";
 import { prefetchPost } from "@/data/content/posts";
-import type { BlogPost as BlogPostType } from "@/types/blog";
+import type { ResolvedRelatedPostCard } from "@/types/blog";
 
 interface BlogPostRelatedProps {
-  relatedPosts: BlogPostType[];
+  relatedPosts: ResolvedRelatedPostCard[];
   preservedSearch: string;
   preservedFrom?: { pathname: string; search?: string };
   isTerminal: boolean;
@@ -30,8 +30,7 @@ export function BlogPostRelated({
         <div
           className={cn(
             "rounded-full bg-secondary/20 p-2 text-secondary-foreground dark:bg-white/10 dark:text-white",
-            isTerminal &&
-              "rounded bg-[hsl(var(--terminal-code-bg))]",
+            isTerminal && "rounded bg-[hsl(var(--terminal-code-bg))]",
           )}
         >
           <BookOpen className="h-5 w-5" />
@@ -43,9 +42,7 @@ export function BlogPostRelated({
               isTerminal && "font-mono text-primary",
             )}
           >
-            {isTerminal
-              ? `> ${relatedPostsLabel}`
-              : relatedPostsLabel}
+            {isTerminal ? `> ${relatedPostsLabel}` : relatedPostsLabel}
           </h2>
           <p
             className={cn(
@@ -65,9 +62,7 @@ export function BlogPostRelated({
               pathname: `/blog/${relatedPost.year}/${relatedPost.slug}`,
               search: preservedSearch || undefined,
             }}
-            state={
-              preservedFrom ? { from: preservedFrom } : undefined
-            }
+            state={preservedFrom ? { from: preservedFrom } : undefined}
             className={cn(
               "group rounded-2xl border border-border/60 bg-card/70 p-5 shadow-sm transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg dark:border-white/10 dark:bg-[hsl(var(--card-blog))]",
               isTerminal &&
@@ -76,9 +71,7 @@ export function BlogPostRelated({
             onMouseEnter={() =>
               prefetchPost(relatedPost.year, relatedPost.slug)
             }
-            onFocus={() =>
-              prefetchPost(relatedPost.year, relatedPost.slug)
-            }
+            onFocus={() => prefetchPost(relatedPost.year, relatedPost.slug)}
           >
             <Badge
               variant="secondary"
@@ -89,8 +82,8 @@ export function BlogPostRelated({
               )}
             >
               {isTerminal
-                ? `[${relatedPost.category}]`
-                : relatedPost.category}
+                ? `[${relatedPost.categoryLabel}]`
+                : relatedPost.categoryLabel}
             </Badge>
             <h3
               className={cn(
@@ -101,17 +94,16 @@ export function BlogPostRelated({
               {relatedPost.title}
             </h3>
             <p className="mt-2 line-clamp-2 text-sm text-foreground/80 dark:text-foreground/80">
-              {relatedPost.excerpt || relatedPost.description}
+              {relatedPost.excerpt}
             </p>
-            {(relatedPost.readingTime || relatedPost.readTime) && (
+            {relatedPost.readingTimeLabel && (
               <p
                 className={cn(
                   "mt-3 text-xs uppercase tracking-wide text-foreground/70 dark:text-foreground/75",
                   isTerminal && "font-mono",
                 )}
               >
-                {relatedPost.readingTime ||
-                  `${relatedPost.readTime} min read`}
+                {relatedPost.readingTimeLabel}
               </p>
             )}
           </Link>

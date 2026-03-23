@@ -1,14 +1,5 @@
-import {
-  useParams,
-  Navigate,
-  useLocation,
-} from "react-router-dom";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useParams, Navigate, useLocation } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ReadingProgress } from "@/components/common/ReadingProgress";
 import { ScrollToTop } from "@/components/common/ScrollToTop";
 import {
@@ -16,8 +7,15 @@ import {
   getPostsPage,
   getPostsBySeries,
 } from "@/data/content/posts";
-import { BlogPost as BlogPostType } from "@/types/blog";
-import { resolveLocalizedPost } from "@/utils/content/blog";
+import {
+  BlogPost as BlogPostType,
+  type ResolvedPostViewModel,
+  type ResolvedRelatedPostCard,
+} from "@/types/blog";
+import {
+  formatReadingTimeLabel,
+  resolveLocalizedPost,
+} from "@/utils/content/blog";
 import {
   CommentSection,
   TableOfContents,
@@ -31,7 +29,10 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 import { recordView } from "@/services/content/analytics";
 import {
+  getCachedTranslation,
   translatePost,
+  TranslationApiError,
+  type TranslationErrorCode,
   type TranslationResult,
 } from "@/services/content/translate";
 import { curiosityTracker } from "@/services/engagement/curiosity";
@@ -39,6 +40,7 @@ import { useUIStrings } from "@/utils/i18n/uiStrings";
 import { findRelatedPosts as findRAGRelatedPosts } from "@/services/discovery/rag";
 import { useSEO } from "@/hooks/seo/useSEO";
 import { generateSEOData, generateStructuredData } from "@/utils/seo/seo";
+import { useAuthStore } from "@/stores/session/useAuthStore";
 import { BlogPostHeader } from "./blog-post/BlogPostHeader";
 import { BlogPostContent } from "./blog-post/BlogPostContent";
 import { BlogPostRelated } from "./blog-post/BlogPostRelated";
@@ -49,6 +51,11 @@ type VisitedPostItem = {
   coverImage?: string;
   year: string;
   slug: string;
+};
+
+type TranslationErrorState = {
+  code: TranslationErrorCode;
+  retryable: boolean;
 };
 
 const simulatorExistenceCache = new Map<string, boolean>();
@@ -108,18 +115,13 @@ const BlogPost = () => {
   const { language, setLanguage } = useLanguage();
   const { isTerminal } = useTheme();
   const str = useUIStrings();
+  const hasTranslationSession = useAuthStore((state) =>
+    Boolean(state.accessToken || state.refreshToken),
+  );
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [post, setPost] = useState<BlogPostType | null>(null);
-
-  const seoData = post
-    ? generateSEOData(post, "post")
-    : generateSEOData(undefined, "home");
-  const structuredData = post
-    ? generateStructuredData(post, "post")
-    : undefined;
-  useSEO(seoData, structuredData);
 
   const [relatedPosts, setRelatedPosts] = useState<BlogPostType[]>([]);
   const [seriesPosts, setSeriesPosts] = useState<BlogPostType[]>([]);
@@ -131,10 +133,8 @@ const BlogPost = () => {
   const [aiTranslation, setAiTranslation] = useState<TranslationResult | null>(
     null,
   );
-  const [translationError, setTranslationError] = useState<{
-    message: string;
-    retryable: boolean;
-  } | null>(null);
+  const [translationError, setTranslationError] =
+    useState<TranslationErrorState | null>(null);
 
   // Check if native translation exists for the selected language
   const hasNativeTranslation = useMemo(() => {
@@ -195,22 +195,71 @@ ${description}
   }, [autoSimulatorSrc, language, localized?.content, localized?.title, post]);
 
   const readingTimeLabel = useMemo(() => {
-    if (!post) return "";
-    const raw =
-      post.readingTime || (post.readTime ? `${post.readTime} min read` : "");
-    if (!raw) return "";
-    const match = raw.match(/(\d+)/);
-    if (language === "ko") {
-      const minutes = match ? match[1] : "";
-      if (minutes) return `${minutes}분 읽기`;
-      return raw.includes("분") ? raw : raw.replace("min read", "분 읽기");
-    }
-    if (raw.includes("분")) {
-      const minutes = match ? match[1] : "";
-      if (minutes) return `${minutes} min read`;
-    }
-    return raw;
+    return formatReadingTimeLabel(
+      post?.readingTime ?? post?.readTime,
+      language === "en" ? "en" : "ko",
+    );
   }, [language, post]);
+
+  const resolvedPost = useMemo<ResolvedPostViewModel | null>(() => {
+    if (!post) return null;
+
+    const description = localized?.description ?? post.description;
+
+    return {
+      year: post.year,
+      slug: post.slug,
+      title: localized?.title ?? post.title,
+      description,
+      excerpt: localized?.excerpt ?? post.excerpt ?? description,
+      content: localized?.content ?? post.content,
+      categoryLabel: post.category,
+      tagLabels: [...post.tags],
+      readingTimeLabel,
+      author: post.author,
+      date: post.date,
+      tags: [...post.tags],
+    };
+  }, [localized, post, readingTimeLabel]);
+
+  const resolvedRelatedPosts = useMemo<ResolvedRelatedPostCard[]>(() => {
+    return relatedPosts.map((relatedPost) => {
+      const localizedRelated = resolveLocalizedPost(relatedPost, language);
+
+      return {
+        year: relatedPost.year,
+        slug: relatedPost.slug,
+        title: localizedRelated.title,
+        excerpt:
+          localizedRelated.excerpt ||
+          localizedRelated.description ||
+          relatedPost.description,
+        categoryLabel: relatedPost.category,
+        readingTimeLabel: formatReadingTimeLabel(
+          relatedPost.readingTime ?? relatedPost.readTime,
+          language === "en" ? "en" : "ko",
+        ),
+      };
+    });
+  }, [language, relatedPosts]);
+
+  const seoPost = useMemo(() => {
+    if (!post || !resolvedPost) return undefined;
+
+    return {
+      ...post,
+      title: resolvedPost.title,
+      description: resolvedPost.description,
+    };
+  }, [post, resolvedPost]);
+
+  const seoData = seoPost
+    ? generateSEOData(seoPost, "post")
+    : generateSEOData(undefined, "home");
+  const structuredData = seoPost
+    ? generateStructuredData(seoPost, "post")
+    : undefined;
+  useSEO(seoData, structuredData);
 
   const resolveLanguageName = useCallback((code: string) => {
     if (code === "ko") return "한국어";
@@ -223,6 +272,23 @@ ${description}
     [],
   );
 
+  const getTranslationErrorMessage = useCallback(
+    (code: TranslationErrorCode) => {
+      switch (code) {
+        case "NOT_AVAILABLE":
+          return str.blog.translationNotAvailable;
+        case "AUTH_REQUIRED":
+          return str.blog.translationAuthRequired;
+        case "AI_TIMEOUT":
+          return str.blog.translationTimeout;
+        case "AI_ERROR":
+          return str.blog.translationServerError;
+        default:
+          return str.blog.translationUnknownError;
+      }
+    },
+    [str],
+  );
 
   // Ensure scroll starts at top when navigating between posts
   useEffect(() => {
@@ -364,8 +430,27 @@ ${description}
     const loadTranslation = async () => {
       setTranslating(true);
       setTranslationError(null);
+      setAiTranslation(null);
 
       try {
+        const cached = await getCachedTranslation(year, slug, language);
+        if (cached) {
+          if (!cancelled) {
+            setAiTranslation(cached);
+          }
+          return;
+        }
+
+        if (!hasTranslationSession) {
+          if (!cancelled) {
+            setTranslationError({
+              code: "NOT_AVAILABLE",
+              retryable: false,
+            });
+          }
+          return;
+        }
+
         const result = await translatePost({
           year,
           slug,
@@ -382,22 +467,17 @@ ${description}
       } catch (err) {
         console.error("Translation failed:", err);
         if (!cancelled) {
-          const errMsg = err instanceof Error ? err.message : "";
-          const isTimeout =
-            errMsg.includes("504") ||
-            errMsg.includes("응답 지연") ||
-            errMsg.includes("timeout");
-          const isAiError =
-            errMsg.includes("502") || errMsg.includes("AI 서버");
-
-          setTranslationError({
-            message: isTimeout
-              ? "AI 서버 응답이 지연되고 있습니다."
-              : isAiError
-                ? "AI 번역 서버에서 오류가 발생했습니다."
-                : "번역 중 오류가 발생했습니다.",
-            retryable: isTimeout || isAiError,
-          });
+          if (err instanceof TranslationApiError) {
+            setTranslationError({
+              code: err.code,
+              retryable: err.retryable,
+            });
+          } else {
+            setTranslationError({
+              code: "UNKNOWN",
+              retryable: false,
+            });
+          }
         }
       } finally {
         if (!cancelled) {
@@ -411,7 +491,7 @@ ${description}
     return () => {
       cancelled = true;
     };
-  }, [post, language, year, slug]);
+  }, [post, language, year, slug, hasTranslationSession]);
 
   // sync inline feature flag from localStorage and storage events
   useEffect(() => {
@@ -533,8 +613,8 @@ ${description}
     if (navigator.share) {
       try {
         await navigator.share({
-          title: post?.title,
-          text: post?.description,
+          title: resolvedPost?.title ?? post?.title,
+          text: resolvedPost?.description ?? post?.description,
           url,
         });
       } catch (err) {
@@ -595,17 +675,40 @@ ${description}
             >
               <BlogPostHeader
                 post={post}
-                localized={localized}
+                postView={
+                  resolvedPost ?? {
+                    year: post.year,
+                    slug: post.slug,
+                    title: post.title,
+                    description: post.description,
+                    excerpt: post.excerpt,
+                    content: contentForRender,
+                    categoryLabel: post.category,
+                    tagLabels: [...post.tags],
+                    readingTimeLabel,
+                    author: post.author,
+                    date: post.date,
+                    tags: [...post.tags],
+                  }
+                }
                 year={year!}
                 slug={slug!}
                 language={language}
                 setLanguage={setLanguage}
                 resolveLanguageName={resolveLanguageName}
-                readingTimeLabel={readingTimeLabel}
                 translating={translating}
                 aiTranslation={aiTranslation}
                 hasNativeTranslation={hasNativeTranslation}
-                translationError={translationError}
+                translationError={
+                  translationError
+                    ? {
+                        message: getTranslationErrorMessage(
+                          translationError.code,
+                        ),
+                        retryable: translationError.retryable,
+                      }
+                    : null
+                }
                 onClearTranslationError={() => {
                   setTranslationError(null);
                   setAiTranslation(null);
@@ -627,7 +730,7 @@ ${description}
               <BlogPostContent
                 content={contentForRender}
                 inlineEnabled={inlineEnabled}
-                postTitle={localized?.title ?? post.title}
+                postTitle={resolvedPost?.title ?? post.title}
                 postPath={`${post.year}/${post.slug}`}
                 isTerminal={isTerminal}
               />
@@ -641,15 +744,15 @@ ${description}
 
               {/* AI Quiz Panel — shown only for posts with code blocks */}
               <QuizPanel
-                content={localized?.content ?? post.content}
-                postTitle={localized?.title ?? post.title}
+                content={resolvedPost?.content ?? post.content}
+                postTitle={resolvedPost?.title ?? post.title}
                 postTags={post.tags}
               />
 
               <CommentSection postId={`${post.year}/${post.slug}`} />
 
               <BlogPostRelated
-                relatedPosts={relatedPosts}
+                relatedPosts={resolvedRelatedPosts}
                 preservedSearch={preservedSearch}
                 preservedFrom={preservedFrom}
                 isTerminal={isTerminal}
@@ -660,8 +763,8 @@ ${description}
 
             <aside className="hidden xl:block relative">
               <TableOfContents
-                content={localized?.content ?? post.content}
-                postTitle={localized?.title ?? post.title}
+                content={resolvedPost?.content ?? post.content}
+                postTitle={resolvedPost?.title ?? post.title}
               />
             </aside>
           </div>
@@ -670,8 +773,8 @@ ${description}
       <ScrollToTop />
       {/* Mobile TOC floating button */}
       <TocDrawer
-        content={localized?.content ?? post.content}
-        postTitle={localized?.title ?? post.title}
+        content={resolvedPost?.content ?? post.content}
+        postTitle={resolvedPost?.title ?? post.title}
       />
     </>
   );

@@ -46,6 +46,32 @@ export const truncateText = (text: string, maxLength: number): string => {
   return `${text.slice(0, maxLength).trim()}...`;
 };
 
+export const formatReadingTimeLabel = (
+  readingTime: string | number | undefined,
+  language: SupportedLanguage = "ko",
+): string => {
+  if (readingTime === undefined || readingTime === null || readingTime === "") {
+    return "";
+  }
+
+  const raw =
+    typeof readingTime === "number" ? `${readingTime} min read` : readingTime;
+  const match = raw.match(/(\d+)/);
+  const minutes = match ? match[1] : "";
+
+  if (language === "ko") {
+    if (minutes) return `${minutes}분 읽기`;
+    return raw.includes("분") ? raw : raw.replace("min read", "분 읽기");
+  }
+
+  if (raw.includes("분")) {
+    if (minutes) return `${minutes} min read`;
+    return raw.replace("분 읽기", "min read");
+  }
+
+  return raw;
+};
+
 export interface LocalizedPostContent {
   title: string;
   description: string;
