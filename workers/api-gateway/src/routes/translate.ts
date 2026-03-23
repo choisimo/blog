@@ -21,6 +21,7 @@ const app = new Hono<HonoEnv>();
 
 const SUPPORTED_LANGS = ['ko', 'en'] as const;
 type SupportedLang = (typeof SUPPORTED_LANGS)[number];
+const LEGACY_TRANSLATE_SUNSET = 'Tue, 30 Jun 2026 00:00:00 GMT';
 
 const LANG_NAMES: Record<SupportedLang, string> = {
   ko: 'Korean',
@@ -298,6 +299,44 @@ function applyJobHeaders(c: Context<HonoEnv>, job: TranslationJobSnapshot) {
   c.header('Cache-Control', 'no-store');
   c.header('X-Translation-Job-Id', job.id);
   c.header('Location', job.statusUrl);
+}
+
+function applyLegacyRouteHeaders(c: Context<HonoEnv>, successorPath?: string) {
+  c.header('Deprecation', 'true');
+  c.header('Sunset', LEGACY_TRANSLATE_SUNSET);
+  if (successorPath) {
+    c.header('Link', `<${successorPath}>; rel="successor-version"`);
+  }
+}
+
+function buildLegacySuccessorPath(
+  params: { year?: string; slug?: string; targetLang?: string },
+  routeType: 'generate' | 'cache' | 'status' | 'delete'
+) {
+  const year = params.year || '{year}';
+  const slug = params.slug || '{slug}';
+  const targetLang = params.targetLang || '{targetLang}';
+
+  if (routeType === 'generate') {
+    return `/api/v1/internal/posts/${year}/${slug}/translations/${targetLang}/generate`;
+  }
+
+  if (routeType === 'cache') {
+    return `/api/v1/public/posts/${year}/${slug}/translations/${targetLang}/cache`;
+  }
+
+  if (routeType === 'status') {
+    return `/api/v1/internal/posts/${year}/${slug}/translations/${targetLang}/generate/status`;
+  }
+
+  return `/api/v1/internal/posts/${year}/${slug}/translations/${targetLang}/cache`;
+}
+
+function markLegacyTranslateRoute(
+  c: Context<HonoEnv>,
+  routeType: 'generate' | 'cache' | 'status' | 'delete'
+) {
+  applyLegacyRouteHeaders(c, buildLegacySuccessorPath(c.req.param(), routeType));
 }
 
 function buildTranslationJobUrls(
@@ -779,6 +818,7 @@ app.delete(
 );
 
 app.post('/translate', requireAuth, async (c) => {
+  markLegacyTranslateRoute(c, 'generate');
   const body = await c.req
     .json<TranslationRequestBody>()
     .catch(() => ({}) as TranslationRequestBody);
@@ -816,9 +856,18 @@ app.post('/translate', requireAuth, async (c) => {
   }
 });
 
-app.get('/translate/:year/:slug/:targetLang', sendCachedTranslation);
-app.get('/translate/:year/:slug/:targetLang/status', requireAuth, sendTranslationJobStatus);
+app.get('/translate/:year/:slug/:targetLang', async (c) => {
+  markLegacyTranslateRoute(c, 'cache');
+  return sendCachedTranslation(c);
+});
+app.get('/translate/:year/:slug/:targetLang/status', requireAuth, async (c) => {
+  markLegacyTranslateRoute(c, 'status');
+  return sendTranslationJobStatus(c);
+});
 
-app.delete('/translate/:year/:slug/:targetLang', requireAdmin, deleteCachedTranslation);
+app.delete('/translate/:year/:slug/:targetLang', requireAdmin, async (c) => {
+  markLegacyTranslateRoute(c, 'delete');
+  return deleteCachedTranslation(c);
+});
 
 export default app;

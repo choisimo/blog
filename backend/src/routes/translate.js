@@ -22,6 +22,7 @@ const LANG_NAMES = {
   ko: "Korean",
   en: "English",
 };
+const LEGACY_TRANSLATE_SUNSET = "Tue, 30 Jun 2026 00:00:00 GMT";
 
 const requireD1 = (req, res, next) => {
   if (!isD1Configured()) {
@@ -191,6 +192,50 @@ function applyJobHeaders(res, job) {
   res.setHeader("Cache-Control", "no-store");
   res.setHeader("X-Translation-Job-Id", job.id);
   res.setHeader("Location", job.statusUrl);
+}
+
+function applyLegacyRouteHeaders(res, successorPath) {
+  res.setHeader("Deprecation", "true");
+  res.setHeader("Sunset", LEGACY_TRANSLATE_SUNSET);
+  if (successorPath) {
+    res.setHeader("Link", `<${successorPath}>; rel="successor-version"`);
+  }
+}
+
+function buildLegacySuccessorPath(req, routeType) {
+  const { year, slug, targetLang } = req.params || {};
+  if (routeType === "generate") {
+    return year && slug && targetLang
+      ? `/api/v1/internal/posts/${year}/${slug}/translations/${targetLang}/generate`
+      : "/api/v1/internal/posts/{year}/{slug}/translations/{targetLang}/generate";
+  }
+
+  if (routeType === "cache") {
+    return year && slug && targetLang
+      ? `/api/v1/public/posts/${year}/${slug}/translations/${targetLang}/cache`
+      : "/api/v1/public/posts/{year}/{slug}/translations/{targetLang}/cache";
+  }
+
+  if (routeType === "status") {
+    return year && slug && targetLang
+      ? `/api/v1/internal/posts/${year}/${slug}/translations/${targetLang}/generate/status`
+      : "/api/v1/internal/posts/{year}/{slug}/translations/{targetLang}/generate/status";
+  }
+
+  if (routeType === "delete") {
+    return year && slug && targetLang
+      ? `/api/v1/internal/posts/${year}/${slug}/translations/${targetLang}/cache`
+      : "/api/v1/internal/posts/{year}/{slug}/translations/{targetLang}/cache";
+  }
+
+  return undefined;
+}
+
+function markLegacyTranslateRoute(routeType) {
+  return (req, res, next) => {
+    applyLegacyRouteHeaders(res, buildLegacySuccessorPath(req, routeType));
+    next();
+  };
 }
 
 function buildTranslationJobUrls(req, year, slug, targetLang) {
@@ -702,53 +747,61 @@ router.delete(
   deleteCachedTranslation,
 );
 
-router.post("/translate", requireD1, requireUserAuth, async (req, res) => {
-  const body = req.body || {};
+router.post(
+  "/translate",
+  markLegacyTranslateRoute("generate"),
+  requireD1,
+  requireUserAuth,
+  async (req, res) => {
+    const body = req.body || {};
 
-  if (!body.year || !body.slug || !body.targetLang) {
-    return res.status(400).json({
-      ok: false,
-      error: "year, slug, and targetLang are required",
-    });
-  }
-
-  try {
-    const fetchedSourcePost = await fetchPublishedPost(body.year, body.slug);
-    const sourcePost =
-      fetchedSourcePost ||
-      (body.title && body.content
-        ? {
-            year: body.year,
-            slug: body.slug,
-            title: body.title,
-            description: body.description || "",
-            content: body.content,
-            sourceLang: normalizeLang(body.sourceLang) || "ko",
-          }
-        : null);
-
-    if (!sourcePost) {
-      return res.status(404).json({
+    if (!body.year || !body.slug || !body.targetLang) {
+      return res.status(400).json({
         ok: false,
-        error: "Published post not found",
-        code: "NOT_AVAILABLE",
+        error: "year, slug, and targetLang are required",
       });
     }
 
-    return handleGenerate(req, res, sourcePost, body.targetLang, body);
-  } catch (err) {
-    return handleTranslateError(res, err);
-  }
-});
+    try {
+      const fetchedSourcePost = await fetchPublishedPost(body.year, body.slug);
+      const sourcePost =
+        fetchedSourcePost ||
+        (body.title && body.content
+          ? {
+              year: body.year,
+              slug: body.slug,
+              title: body.title,
+              description: body.description || "",
+              content: body.content,
+              sourceLang: normalizeLang(body.sourceLang) || "ko",
+            }
+          : null);
+
+      if (!sourcePost) {
+        return res.status(404).json({
+          ok: false,
+          error: "Published post not found",
+          code: "NOT_AVAILABLE",
+        });
+      }
+
+      return handleGenerate(req, res, sourcePost, body.targetLang, body);
+    } catch (err) {
+      return handleTranslateError(res, err);
+    }
+  },
+);
 
 router.get(
   "/translate/:year/:slug/:targetLang",
+  markLegacyTranslateRoute("cache"),
   requireD1,
   sendCachedTranslation,
 );
 
 router.get(
   "/translate/:year/:slug/:targetLang/status",
+  markLegacyTranslateRoute("status"),
   requireD1,
   requireUserAuth,
   sendTranslationJobStatus,
@@ -756,6 +809,7 @@ router.get(
 
 router.delete(
   "/translate/:year/:slug/:targetLang",
+  markLegacyTranslateRoute("delete"),
   requireD1,
   requireAdmin,
   deleteCachedTranslation,
