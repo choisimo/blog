@@ -47,6 +47,7 @@ flowchart TB
 | k3s | Base manifests, optional terminal runtime, rollout constraints | `k3s/README.md` |
 | Post naming | Filename and slug convention | `docs/post-filename-convention.md` |
 | Ownership | Worker/backend canonical owner matrix | `docs/canonical-owner-matrix.md` |
+| Shared contracts | Shared schema rollout order | `docs/shared-contract-rollout.md` |
 | AI config analysis | AI configuration consistency notes | `docs/ai-config-consistency-plan.md` |
 | News analysis | News service notes | `docs/news-service-analysis.md` |
 | Optimization analysis | Performance investigation notes | `docs/optimization-analysis.md` |
