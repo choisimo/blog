@@ -1,0 +1,277 @@
+import { execute, queryAll, queryOne } from './d1';
+
+export type DomainOutboxStatus =
+  | 'pending'
+  | 'processing'
+  | 'processed'
+  | 'dead_letter';
+
+export type DomainOutboxEvent<TPayload = unknown> = {
+  id: string;
+  stream: string;
+  aggregateId: string;
+  eventType: string;
+  payload: TPayload;
+  idempotencyKey: string | null;
+  status: DomainOutboxStatus;
+  retryCount: number;
+  createdAt: string;
+  availableAt: string;
+  lastAttemptAt: string | null;
+  processedAt: string | null;
+  lastError: string | null;
+};
+
+type DomainOutboxRow = {
+  id: string;
+  stream: string;
+  aggregate_id: string;
+  event_type: string;
+  payload: string;
+  idempotency_key: string | null;
+  status: DomainOutboxStatus;
+  retry_count: number;
+  created_at: string;
+  available_at: string;
+  last_attempt_at: string | null;
+  processed_at: string | null;
+  last_error: string | null;
+};
+
+type AppendDomainOutboxInput<TPayload> = {
+  stream: string;
+  aggregateId: string;
+  eventType: string;
+  payload: TPayload;
+  idempotencyKey?: string | null;
+  availableAt?: string;
+};
+
+type ListDomainOutboxInput = {
+  stream?: string;
+  status?: DomainOutboxStatus;
+  limit?: number;
+};
+
+const schemaInit = new WeakMap<D1Database, Promise<void>>();
+
+function normalizeLimit(limit?: number) {
+  const safe = Math.trunc(limit ?? 100);
+  return Math.max(1, Math.min(200, safe));
+}
+
+function parsePayload(payload: string) {
+  try {
+    return JSON.parse(payload);
+  } catch {
+    return payload;
+  }
+}
+
+function mapRow(row: DomainOutboxRow): DomainOutboxEvent {
+  return {
+    id: row.id,
+    stream: row.stream,
+    aggregateId: row.aggregate_id,
+    eventType: row.event_type,
+    payload: parsePayload(row.payload),
+    idempotencyKey: row.idempotency_key,
+    status: row.status,
+    retryCount: row.retry_count,
+    createdAt: row.created_at,
+    availableAt: row.available_at,
+    lastAttemptAt: row.last_attempt_at,
+    processedAt: row.processed_at,
+    lastError: row.last_error,
+  };
+}
+
+export async function ensureDomainOutboxSchema(db: D1Database) {
+  const existing = schemaInit.get(db);
+  if (existing) {
+    await existing;
+    return;
+  }
+
+  const initPromise = (async () => {
+    await execute(
+      db,
+      `CREATE TABLE IF NOT EXISTS domain_outbox (
+         id TEXT PRIMARY KEY,
+         stream TEXT NOT NULL,
+         aggregate_id TEXT NOT NULL,
+         event_type TEXT NOT NULL,
+         payload TEXT NOT NULL,
+         idempotency_key TEXT,
+         status TEXT NOT NULL DEFAULT 'pending',
+         retry_count INTEGER NOT NULL DEFAULT 0,
+         created_at TEXT NOT NULL,
+         available_at TEXT NOT NULL,
+         last_attempt_at TEXT,
+         processed_at TEXT,
+         last_error TEXT
+       )`
+    );
+    await execute(
+      db,
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_domain_outbox_idempotency
+         ON domain_outbox (stream, idempotency_key)
+       WHERE idempotency_key IS NOT NULL`
+    );
+    await execute(
+      db,
+      `CREATE INDEX IF NOT EXISTS idx_domain_outbox_pending
+         ON domain_outbox (stream, status, available_at, created_at)`
+    );
+    await execute(
+      db,
+      `CREATE INDEX IF NOT EXISTS idx_domain_outbox_aggregate
+         ON domain_outbox (stream, aggregate_id, created_at DESC)`
+    );
+  })();
+
+  schemaInit.set(db, initPromise);
+  try {
+    await initPromise;
+  } catch (error) {
+    schemaInit.delete(db);
+    throw error;
+  }
+}
+
+export async function appendDomainOutboxEvent<TPayload>(
+  db: D1Database,
+  input: AppendDomainOutboxInput<TPayload>
+): Promise<DomainOutboxEvent<TPayload>> {
+  await ensureDomainOutboxSchema(db);
+
+  const id = `outbox-${crypto.randomUUID()}`;
+  const now = new Date().toISOString();
+  const availableAt = input.availableAt || now;
+  const payload = JSON.stringify(input.payload);
+
+  await execute(
+    db,
+    `INSERT INTO domain_outbox (
+       id, stream, aggregate_id, event_type, payload, idempotency_key,
+       status, retry_count, created_at, available_at, last_attempt_at,
+       processed_at, last_error
+     ) VALUES (?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, NULL, NULL, NULL)`,
+    id,
+    input.stream,
+    input.aggregateId,
+    input.eventType,
+    payload,
+    input.idempotencyKey ?? null,
+    now,
+    availableAt
+  );
+
+  return {
+    id,
+    stream: input.stream,
+    aggregateId: input.aggregateId,
+    eventType: input.eventType,
+    payload: input.payload,
+    idempotencyKey: input.idempotencyKey ?? null,
+    status: 'pending',
+    retryCount: 0,
+    createdAt: now,
+    availableAt,
+    lastAttemptAt: null,
+    processedAt: null,
+    lastError: null,
+  };
+}
+
+export async function listDomainOutboxEvents(
+  db: D1Database,
+  input: ListDomainOutboxInput = {}
+): Promise<DomainOutboxEvent[]> {
+  await ensureDomainOutboxSchema(db);
+
+  const where: string[] = [];
+  const params: unknown[] = [];
+
+  if (input.stream) {
+    where.push('stream = ?');
+    params.push(input.stream);
+  }
+
+  if (input.status) {
+    where.push('status = ?');
+    params.push(input.status);
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const rows = await queryAll<DomainOutboxRow>(
+    db,
+    `SELECT id, stream, aggregate_id, event_type, payload, idempotency_key,
+            status, retry_count, created_at, available_at, last_attempt_at,
+            processed_at, last_error
+       FROM domain_outbox
+       ${whereSql}
+      ORDER BY created_at ASC
+      LIMIT ?`,
+    ...params,
+    normalizeLimit(input.limit)
+  );
+
+  return rows.map(mapRow);
+}
+
+export async function getDomainOutboxEvent(
+  db: D1Database,
+  id: string
+): Promise<DomainOutboxEvent | null> {
+  await ensureDomainOutboxSchema(db);
+
+  const row = await queryOne<DomainOutboxRow>(
+    db,
+    `SELECT id, stream, aggregate_id, event_type, payload, idempotency_key,
+            status, retry_count, created_at, available_at, last_attempt_at,
+            processed_at, last_error
+       FROM domain_outbox
+      WHERE id = ?`,
+    id
+  );
+
+  return row ? mapRow(row) : null;
+}
+
+export async function markDomainOutboxProcessed(db: D1Database, id: string) {
+  await ensureDomainOutboxSchema(db);
+
+  await execute(
+    db,
+    `UPDATE domain_outbox
+        SET status = 'processed',
+            processed_at = ?,
+            last_attempt_at = ?,
+            last_error = NULL
+      WHERE id = ?`,
+    new Date().toISOString(),
+    new Date().toISOString(),
+    id
+  );
+}
+
+export async function markDomainOutboxPending(
+  db: D1Database,
+  id: string,
+  lastError?: string | null
+) {
+  await ensureDomainOutboxSchema(db);
+
+  await execute(
+    db,
+    `UPDATE domain_outbox
+        SET status = 'pending',
+            last_attempt_at = ?,
+            last_error = ?
+      WHERE id = ?`,
+    new Date().toISOString(),
+    lastError ?? null,
+    id
+  );
+}
