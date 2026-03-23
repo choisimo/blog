@@ -7,6 +7,15 @@ import { success, error } from '../lib/response';
 import { createAIService } from '../lib/ai-service';
 import { AI_TEMPERATURES, MAX_TOKENS, TEXT_LIMITS, ERROR_MESSAGES } from '../config/defaults';
 import { requireAuth, requireAdmin } from '../middleware/auth';
+import {
+  buildTranslationJobKey,
+  getTranslationJobById,
+  getTranslationJobByKey,
+  startTranslationJob,
+  type TranslationJobError,
+  type TranslationJobResultSummary,
+  type TranslationJobSnapshot,
+} from './lib/translation-jobs';
 
 const app = new Hono<HonoEnv>();
 
@@ -42,11 +51,13 @@ type TranslationRequestBody = {
   description?: string;
   content?: string;
   forceRefresh?: boolean;
+  respondAsync?: boolean;
 };
 
 type GenerateOptions = {
   sourceLang?: string;
   forceRefresh?: boolean;
+  respondAsync?: boolean;
 };
 
 type ManifestItem = {
@@ -79,6 +90,24 @@ type GenerateTranslationInput = {
   description: string;
   content: string;
   forceRefresh?: boolean;
+};
+
+type TranslationResponseData = {
+  title: string;
+  description: string;
+  content: string;
+  cached: boolean;
+  isAiGenerated?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+type GenerateErrorInfo = {
+  status: ContentfulStatusCode;
+  code?: string;
+  message: string;
+  retryable: boolean;
+  retryAfterSeconds?: number;
 };
 
 function normalizeLang(value?: string | null): SupportedLang | undefined {
@@ -210,7 +239,7 @@ async function getCachedTranslationRecord(
   );
 }
 
-function buildTranslationResponse(record: TranslationCache) {
+function buildTranslationResponse(record: TranslationCache): TranslationResponseData {
   return {
     title: record.title,
     description: record.description || '',
@@ -220,6 +249,129 @@ function buildTranslationResponse(record: TranslationCache) {
     createdAt: record.created_at,
     updatedAt: record.updated_at,
   };
+}
+
+function summarizeTranslationResult(result: TranslationResponseData): TranslationJobResultSummary {
+  return {
+    source: result.cached ? 'cache' : result.isAiGenerated ? 'generated' : 'passthrough',
+    cached: result.cached,
+    isAiGenerated: Boolean(result.isAiGenerated),
+    translationAvailable: Boolean(result.content),
+    createdAt: result.createdAt,
+    updatedAt: result.updatedAt,
+  };
+}
+
+function normalizeGenerateError(err: unknown): GenerateErrorInfo {
+  const message = err instanceof Error ? err.message : 'Translation failed';
+
+  let status: ContentfulStatusCode = 500;
+  let errorMessage = message;
+  let code = 'UNKNOWN';
+  let retryable = false;
+  let retryAfterSeconds: number | undefined;
+
+  if (message.includes('Backend AI error')) {
+    status = 502;
+    errorMessage = ERROR_MESSAGES.AI_SERVER_ERROR;
+    code = 'AI_ERROR';
+    retryable = true;
+    retryAfterSeconds = 30;
+  } else if (message.includes('timeout') || message.includes('TIMEOUT')) {
+    status = 504;
+    errorMessage = ERROR_MESSAGES.AI_TIMEOUT;
+    code = 'AI_TIMEOUT';
+    retryable = true;
+    retryAfterSeconds = 30;
+  }
+
+  return {
+    status,
+    code,
+    message: errorMessage,
+    retryable,
+    retryAfterSeconds,
+  };
+}
+
+function applyJobHeaders(c: Context<HonoEnv>, job: TranslationJobSnapshot) {
+  c.header('Cache-Control', 'no-store');
+  c.header('X-Translation-Job-Id', job.id);
+  c.header('Location', job.statusUrl);
+}
+
+function buildTranslationJobUrls(
+  requestUrl: string,
+  year: string,
+  slug: string,
+  targetLang: string
+) {
+  const origin = new URL(requestUrl).origin;
+  const basePath = `${origin}/api/v1`;
+  return {
+    cacheUrl: `${basePath}/public/posts/${year}/${slug}/translations/${targetLang}/cache`,
+    generateUrl: `${basePath}/internal/posts/${year}/${slug}/translations/${targetLang}/generate`,
+    statusUrl: `${basePath}/internal/posts/${year}/${slug}/translations/${targetLang}/generate/status`,
+  };
+}
+
+function wantsAsyncResponse(c: Context<HonoEnv>, options: GenerateOptions = {}) {
+  if (options.respondAsync) {
+    return true;
+  }
+
+  if (c.req.query('async') === 'true') {
+    return true;
+  }
+
+  const prefer = c.req.header('Prefer') || '';
+  if (prefer.toLowerCase().includes('respond-async')) {
+    return true;
+  }
+
+  return c.req.header('X-Response-Mode') === 'async';
+}
+
+async function getImmediateTranslationResult(
+  db: D1Database,
+  sourcePost: SourcePost,
+  targetLang: SupportedLang,
+  options: GenerateOptions = {}
+): Promise<TranslationResponseData | null> {
+  const normalizedSourceLang = normalizeLang(options.sourceLang) || sourcePost.sourceLang;
+
+  if (!options.forceRefresh) {
+    const cached = await getCachedTranslationRecord(db, sourcePost.year, sourcePost.slug, targetLang);
+    const contentHash = hashContent(sourcePost.content);
+    if (cached && cached.content_hash === contentHash) {
+      return buildTranslationResponse(cached);
+    }
+  }
+
+  if (normalizedSourceLang === targetLang) {
+    return {
+      title: sourcePost.title,
+      description: sourcePost.description,
+      content: sourcePost.content,
+      cached: false,
+      isAiGenerated: false,
+    };
+  }
+
+  return null;
+}
+
+function buildGenerateSuccessResponse(
+  c: Context<HonoEnv>,
+  data: TranslationResponseData,
+  job?: TranslationJobSnapshot
+) {
+  if (job) {
+    applyJobHeaders(c, job);
+    return c.json({ ok: true, data, job }, 200);
+  }
+
+  return success(c, data);
 }
 
 async function translateAndCachePost(env: Env, db: D1Database, input: GenerateTranslationInput) {
@@ -333,24 +485,91 @@ ${truncatedContent}`;
 
 async function handleGenerateError(c: Context<HonoEnv>, err: unknown) {
   console.error('[translate] Translation failed:', err);
-  const message = err instanceof Error ? err.message : 'Translation failed';
+  const details = normalizeGenerateError(err);
 
-  let statusCode: ContentfulStatusCode = 500;
-  let errorMessage = message;
-
-  if (message.includes('Backend AI error')) {
-    statusCode = 502;
-    errorMessage = ERROR_MESSAGES.AI_SERVER_ERROR;
-  } else if (message.includes('timeout') || message.includes('TIMEOUT')) {
-    statusCode = 504;
-    errorMessage = ERROR_MESSAGES.AI_TIMEOUT;
+  if (details.retryAfterSeconds) {
+    c.header('Retry-After', String(details.retryAfterSeconds));
   }
 
-  if (statusCode === 502 || statusCode === 504) {
-    c.header('Retry-After', '30');
+  return error(c, details.message, details.status, details.code);
+}
+
+async function sendCachedTranslation(c: Context<HonoEnv>) {
+  try {
+    const { year, slug, targetLang } = c.req.param();
+    const normalizedTargetLang = normalizeLang(targetLang);
+
+    if (!normalizedTargetLang) {
+      return error(c, `Unsupported target language: ${targetLang}`, 400, 'BAD_REQUEST');
+    }
+
+    const sourcePost = await fetchPublishedPost(c.env, year, slug);
+    if (!sourcePost) {
+      return error(c, 'Published post not found', 404, 'NOT_AVAILABLE');
+    }
+
+    const cached = await getCachedTranslationRecord(c.env.DB, year, slug, normalizedTargetLang);
+
+    if (!cached) {
+      return error(c, 'Translation not found', 404, 'NOT_AVAILABLE');
+    }
+
+    return success(c, buildTranslationResponse(cached));
+  } catch (err) {
+    console.error('Failed to get translation:', err);
+    return error(c, 'Failed to get translation', 500, 'INTERNAL_ERROR');
+  }
+}
+
+async function deleteCachedTranslation(c: Context<HonoEnv>) {
+  try {
+    const { year, slug, targetLang } = c.req.param();
+    const normalizedTargetLang = normalizeLang(targetLang);
+
+    if (!normalizedTargetLang) {
+      return error(c, `Unsupported target language: ${targetLang}`, 400, 'BAD_REQUEST');
+    }
+
+    await execute(
+      c.env.DB,
+      `DELETE FROM post_translations_cache
+       WHERE post_slug = ? AND year = ? AND target_lang = ?`,
+      slug,
+      year,
+      normalizedTargetLang
+    );
+
+    return success(c, { deleted: true });
+  } catch (err) {
+    console.error('Failed to delete translation:', err);
+    return error(c, 'Failed to delete translation', 500, 'INTERNAL_ERROR');
+  }
+}
+
+async function sendTranslationJobStatus(c: Context<HonoEnv>) {
+  const { year, slug, targetLang } = c.req.param();
+  const normalizedTargetLang = normalizeLang(targetLang);
+
+  if (!normalizedTargetLang) {
+    return error(c, `Unsupported target language: ${targetLang}`, 400, 'BAD_REQUEST');
   }
 
-  return error(c, errorMessage, statusCode);
+  const jobId = c.req.query('jobId');
+  const key = buildTranslationJobKey(year, slug, normalizedTargetLang);
+  const job = jobId ? getTranslationJobById(jobId) : getTranslationJobByKey(key);
+
+  if (!job || job.key !== key) {
+    return error(c, 'Translation job not found', 404, 'NOT_FOUND');
+  }
+
+  applyJobHeaders(c, job);
+  if (job.status === 'running') {
+    c.header('Retry-After', '3');
+  } else if (job.error?.retryAfterSeconds) {
+    c.header('Retry-After', String(job.error.retryAfterSeconds));
+  }
+
+  return success(c, { job });
 }
 
 async function generateFromSourcePost(
@@ -364,22 +583,60 @@ async function generateFromSourcePost(
     return error(c, `Unsupported target language: ${targetLang}`, 400, 'BAD_REQUEST');
   }
 
+  const immediate = await getImmediateTranslationResult(c.env.DB, sourcePost, normalizedTargetLang, options);
+  if (immediate) {
+    return buildGenerateSuccessResponse(c, immediate);
+  }
+
   const normalizedSourceLang = normalizeLang(options.sourceLang) || sourcePost.sourceLang;
+  const urls = buildTranslationJobUrls(c.req.url, sourcePost.year, sourcePost.slug, normalizedTargetLang);
+  const job = startTranslationJob<TranslationResponseData>({
+    key: buildTranslationJobKey(sourcePost.year, sourcePost.slug, normalizedTargetLang),
+    year: sourcePost.year,
+    slug: sourcePost.slug,
+    targetLang: normalizedTargetLang,
+    sourceLang: normalizedSourceLang,
+    forceRefresh: options.forceRefresh,
+    urls,
+    runner: () =>
+      translateAndCachePost(c.env, c.env.DB, {
+        year: sourcePost.year,
+        slug: sourcePost.slug,
+        targetLang: normalizedTargetLang,
+        sourceLang: normalizedSourceLang,
+        title: sourcePost.title,
+        description: sourcePost.description,
+        content: sourcePost.content,
+        forceRefresh: options.forceRefresh,
+      }),
+    summarizeResult: summarizeTranslationResult,
+    normalizeError: (err): TranslationJobError => {
+      const details = normalizeGenerateError(err);
+      return {
+        status: details.status,
+        code: details.code,
+        message: details.message,
+        retryable: details.retryable,
+        retryAfterSeconds: details.retryAfterSeconds,
+      };
+    },
+  });
+
+  if (wantsAsyncResponse(c, options)) {
+    applyJobHeaders(c, job.job);
+    c.header('Retry-After', '3');
+    return c.json({ ok: true, data: null, job: job.job }, 202);
+  }
 
   try {
-    const data = await translateAndCachePost(c.env, c.env.DB, {
-      year: sourcePost.year,
-      slug: sourcePost.slug,
-      targetLang: normalizedTargetLang,
-      sourceLang: normalizedSourceLang,
-      title: sourcePost.title,
-      description: sourcePost.description,
-      content: sourcePost.content,
-      forceRefresh: options.forceRefresh,
-    });
-
-    return success(c, data);
+    const data = await job.wait;
+    const latestJob = getTranslationJobById(job.job.id) || job.job;
+    return buildGenerateSuccessResponse(c, data, latestJob);
   } catch (err) {
+    const latestJob = getTranslationJobById(job.job.id);
+    if (latestJob) {
+      applyJobHeaders(c, latestJob);
+    }
     return handleGenerateError(c, err);
   }
 }
@@ -404,57 +661,14 @@ app.post(
   }
 );
 
-app.get('/public/posts/:year/:slug/translations/:targetLang', async (c) => {
-  try {
-    const { year, slug, targetLang } = c.req.param();
-    const normalizedTargetLang = normalizeLang(targetLang);
+app.get('/internal/posts/:year/:slug/translations/:targetLang/generate/status', requireAuth, sendTranslationJobStatus);
+app.get('/internal/posts/:year/:slug/translations/:targetLang/status', requireAuth, sendTranslationJobStatus);
 
-    if (!normalizedTargetLang) {
-      return error(c, `Unsupported target language: ${targetLang}`, 400, 'BAD_REQUEST');
-    }
+app.get('/public/posts/:year/:slug/translations/:targetLang', sendCachedTranslation);
+app.get('/public/posts/:year/:slug/translations/:targetLang/cache', sendCachedTranslation);
 
-    const sourcePost = await fetchPublishedPost(c.env, year, slug);
-    if (!sourcePost) {
-      return error(c, 'Published post not found', 404, 'NOT_AVAILABLE');
-    }
-
-    const cached = await getCachedTranslationRecord(c.env.DB, year, slug, normalizedTargetLang);
-
-    if (!cached) {
-      return error(c, 'Translation not found', 404, 'NOT_AVAILABLE');
-    }
-
-    return success(c, buildTranslationResponse(cached));
-  } catch (err) {
-    console.error('Failed to get translation:', err);
-    return error(c, 'Failed to get translation', 500);
-  }
-});
-
-app.delete('/internal/posts/:year/:slug/translations/:targetLang', requireAdmin, async (c) => {
-  try {
-    const { year, slug, targetLang } = c.req.param();
-    const normalizedTargetLang = normalizeLang(targetLang);
-
-    if (!normalizedTargetLang) {
-      return error(c, `Unsupported target language: ${targetLang}`, 400, 'BAD_REQUEST');
-    }
-
-    await execute(
-      c.env.DB,
-      `DELETE FROM post_translations_cache
-       WHERE post_slug = ? AND year = ? AND target_lang = ?`,
-      slug,
-      year,
-      normalizedTargetLang
-    );
-
-    return success(c, { deleted: true });
-  } catch (err) {
-    console.error('Failed to delete translation:', err);
-    return error(c, 'Failed to delete translation', 500);
-  }
-});
+app.delete('/internal/posts/:year/:slug/translations/:targetLang', requireAdmin, deleteCachedTranslation);
+app.delete('/internal/posts/:year/:slug/translations/:targetLang/cache', requireAdmin, deleteCachedTranslation);
 
 app.post('/translate', requireAuth, async (c) => {
   const body = await c.req
@@ -487,34 +701,16 @@ app.post('/translate', requireAuth, async (c) => {
     return generateFromSourcePost(c, sourcePost, body.targetLang, {
       sourceLang: body.sourceLang,
       forceRefresh: body.forceRefresh,
+      respondAsync: body.respondAsync,
     });
   } catch (err) {
     return handleGenerateError(c, err);
   }
 });
 
-app.get('/translate/:year/:slug/:targetLang', async (c) => {
-  const { year, slug, targetLang } = c.req.param();
-  return app.fetch(
-    new Request(
-      new URL(`/public/posts/${year}/${slug}/translations/${targetLang}`, c.req.url).toString(),
-      { method: 'GET', headers: c.req.raw.headers }
-    ),
-    c.env,
-    c.executionCtx
-  );
-});
+app.get('/translate/:year/:slug/:targetLang', sendCachedTranslation);
+app.get('/translate/:year/:slug/:targetLang/status', requireAuth, sendTranslationJobStatus);
 
-app.delete('/translate/:year/:slug/:targetLang', requireAdmin, async (c) => {
-  const { year, slug, targetLang } = c.req.param();
-  return app.fetch(
-    new Request(
-      new URL(`/internal/posts/${year}/${slug}/translations/${targetLang}`, c.req.url).toString(),
-      { method: 'DELETE', headers: c.req.raw.headers }
-    ),
-    c.env,
-    c.executionCtx
-  );
-});
+app.delete('/translate/:year/:slug/:targetLang', requireAdmin, deleteCachedTranslation);
 
 export default app;
