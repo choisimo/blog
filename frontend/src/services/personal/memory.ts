@@ -7,8 +7,8 @@
  * - 채팅 컨텍스트에 관련 메모리 주입
  */
 
-import { getApiBaseUrl } from '@/utils/network/apiBase';
-import { MEMORY_DEFAULTS } from '@/config/defaults';
+import { getApiBaseUrl } from "@/utils/network/apiBase";
+import { MEMORY_DEFAULTS } from "@/config/defaults";
 
 // ============================================================================
 // Types
@@ -17,10 +17,10 @@ import { MEMORY_DEFAULTS } from '@/config/defaults';
 export interface UserMemory {
   id: string;
   userId: string;
-  memoryType: 'fact' | 'preference' | 'context' | 'summary';
+  memoryType: "fact" | "preference" | "context" | "summary";
   category?: string;
   content: string;
-  sourceType?: 'chat' | 'memo' | 'manual';
+  sourceType?: "chat" | "memo" | "manual";
   sourceId?: string;
   importanceScore: number;
   accessCount: number;
@@ -35,7 +35,7 @@ export interface ChatSession {
   userId: string;
   title?: string;
   summary?: string;
-  questionMode: 'general' | 'article';
+  questionMode: "general" | "article";
   articleSlug?: string;
   messageCount: number;
   totalTokens: number;
@@ -48,9 +48,9 @@ export interface ChatSession {
 export interface ChatMessage {
   id: string;
   sessionId: string;
-  role: 'user' | 'assistant' | 'system';
+  role: "user" | "assistant" | "system";
   content: string;
-  contentType: 'text' | 'image' | 'code' | 'error';
+  contentType: "text" | "image" | "code" | "error";
   metadata?: Record<string, unknown>;
   createdAt: string;
 }
@@ -72,7 +72,7 @@ export interface MemorySearchResult {
 // User ID Management
 // ============================================================================
 
-const USER_ID_KEY = 'memory.userId';
+const USER_ID_KEY = "memory.userId";
 
 /**
  * 현재 사용자 ID 가져오기 (없으면 생성)
@@ -100,25 +100,27 @@ export function setUserId(id: string): void {
 /**
  * 사용자 메모리 목록 조회
  */
-export async function getMemories(options: {
-  type?: string;
-  category?: string;
-  limit?: number;
-  offset?: number;
-  signal?: AbortSignal;
-} = {}): Promise<{ memories: UserMemory[]; total: number }> {
+export async function getMemories(
+  options: {
+    type?: string;
+    category?: string;
+    limit?: number;
+    offset?: number;
+    signal?: AbortSignal;
+  } = {},
+): Promise<{ memories: UserMemory[]; total: number }> {
   const userId = getUserId();
   const base = getApiBaseUrl();
   const params = new URLSearchParams();
-  if (options.type) params.set('type', options.type);
-  if (options.category) params.set('category', options.category);
-  if (options.limit) params.set('limit', String(options.limit));
-  if (options.offset) params.set('offset', String(options.offset));
+  if (options.type) params.set("type", options.type);
+  if (options.category) params.set("category", options.category);
+  if (options.limit) params.set("limit", String(options.limit));
+  if (options.offset) params.set("offset", String(options.offset));
 
-  const url = `${base.replace(/\/$/, '')}/api/v1/memories/${userId}?${params}`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}?${params}`;
 
   const res = await fetch(url, {
-    method: 'GET',
+    method: "GET",
     signal: options.signal,
   });
 
@@ -143,11 +145,11 @@ export async function createMemory(memory: {
 }): Promise<{ id: string }> {
   const userId = getUserId();
   const base = getApiBaseUrl();
-  const url = `${base.replace(/\/$/, '')}/api/v1/memories/${userId}`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}`;
 
   const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(memory),
   });
 
@@ -156,39 +158,30 @@ export async function createMemory(memory: {
   }
 
   const data = await res.json();
-  const memoryId = data.data?.id;
 
-  // 임베딩도 저장 (백그라운드)
-  if (memoryId) {
-    upsertMemoryEmbedding([{
-      id: memoryId,
-      content: memory.content,
-      memoryType: memory.memoryType || 'fact',
-      category: memory.category,
-    }]).catch(console.error);
-  }
-
-  return data.data || { id: '' };
+  return data.data || { id: "" };
 }
 
 /**
  * 여러 메모리 일괄 생성
  */
-export async function createMemoriesBatch(memories: Array<{
-  content: string;
-  memoryType?: string;
-  category?: string;
-  sourceType?: string;
-  sourceId?: string;
-  importanceScore?: number;
-}>): Promise<{ ids: string[]; created: number }> {
+export async function createMemoriesBatch(
+  memories: Array<{
+    content: string;
+    memoryType?: string;
+    category?: string;
+    sourceType?: string;
+    sourceId?: string;
+    importanceScore?: number;
+  }>,
+): Promise<{ ids: string[]; created: number }> {
   const userId = getUserId();
   const base = getApiBaseUrl();
-  const url = `${base.replace(/\/$/, '')}/api/v1/memories/${userId}/batch`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}/batch`;
 
   const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ memories }),
   });
 
@@ -197,20 +190,7 @@ export async function createMemoriesBatch(memories: Array<{
   }
 
   const data = await res.json();
-  const result = data.data || { ids: [], created: 0 };
-
-  // 임베딩도 저장 (백그라운드)
-  if (result.ids.length > 0) {
-    const memoriesToEmbed = memories.slice(0, result.ids.length).map((m, i) => ({
-      id: result.ids[i],
-      content: m.content,
-      memoryType: m.memoryType || 'fact',
-      category: m.category,
-    }));
-    upsertMemoryEmbedding(memoriesToEmbed).catch(console.error);
-  }
-
-  return result;
+  return data.data || { ids: [], created: 0 };
 }
 
 /**
@@ -219,16 +199,13 @@ export async function createMemoriesBatch(memories: Array<{
 export async function deleteMemory(memoryId: string): Promise<void> {
   const userId = getUserId();
   const base = getApiBaseUrl();
-  const url = `${base.replace(/\/$/, '')}/api/v1/memories/${userId}/${memoryId}`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}/${memoryId}`;
 
-  const res = await fetch(url, { method: 'DELETE' });
+  const res = await fetch(url, { method: "DELETE" });
 
   if (!res.ok) {
     throw new Error(`Failed to delete memory: ${res.status}`);
   }
-
-  // 임베딩도 삭제 (백그라운드)
-  deleteMemoryEmbedding(memoryId).catch(console.error);
 }
 
 // ============================================================================
@@ -238,25 +215,27 @@ export async function deleteMemory(memoryId: string): Promise<void> {
 /**
  * 메모리 임베딩 저장/업데이트
  */
-export async function upsertMemoryEmbedding(memories: Array<{
-  id: string;
-  content: string;
-  memoryType: string;
-  category?: string;
-}>): Promise<void> {
+export async function upsertMemoryEmbedding(
+  memories: Array<{
+    id: string;
+    content: string;
+    memoryType: string;
+    category?: string;
+  }>,
+): Promise<void> {
   const userId = getUserId();
   const base = getApiBaseUrl();
-  const url = `${base.replace(/\/$/, '')}/api/v1/rag/memories/upsert`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/rag/memories/upsert`;
 
   const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userId, memories }),
   });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    console.warn('Failed to upsert memory embedding:', res.status, text);
+    const text = await res.text().catch(() => "");
+    console.warn("Failed to upsert memory embedding:", res.status, text);
   }
 }
 
@@ -266,13 +245,13 @@ export async function upsertMemoryEmbedding(memories: Array<{
 export async function deleteMemoryEmbedding(memoryId: string): Promise<void> {
   const userId = getUserId();
   const base = getApiBaseUrl();
-  const url = `${base.replace(/\/$/, '')}/api/v1/rag/memories/${userId}/${memoryId}`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/rag/memories/${userId}/${memoryId}`;
 
-  const res = await fetch(url, { method: 'DELETE' });
+  const res = await fetch(url, { method: "DELETE" });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    console.warn('Failed to delete memory embedding:', res.status, text);
+    const text = await res.text().catch(() => "");
+    console.warn("Failed to delete memory embedding:", res.status, text);
   }
 }
 
@@ -286,16 +265,16 @@ export async function searchMemories(
     memoryType?: string;
     category?: string;
     signal?: AbortSignal;
-  } = {}
+  } = {},
 ): Promise<MemorySearchResult[]> {
   const userId = getUserId();
   const base = getApiBaseUrl();
-  const url = `${base.replace(/\/$/, '')}/api/v1/rag/memories/search`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/rag/memories/search`;
 
   try {
     const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         userId,
         query,
@@ -307,15 +286,15 @@ export async function searchMemories(
     });
 
     if (!res.ok) {
-      console.warn('Memory search failed:', res.status);
+      console.warn("Memory search failed:", res.status);
       return [];
     }
 
     const data = await res.json();
     return data.data?.results || [];
   } catch (err) {
-    if (err instanceof Error && err.name === 'AbortError') return [];
-    console.warn('Memory search error:', err);
+    if (err instanceof Error && err.name === "AbortError") return [];
+    console.warn("Memory search error:", err);
     return [];
   }
 }
@@ -327,23 +306,25 @@ export async function searchMemories(
 /**
  * 채팅 세션 목록 조회
  */
-export async function getChatSessions(options: {
-  limit?: number;
-  offset?: number;
-  includeArchived?: boolean;
-  signal?: AbortSignal;
-} = {}): Promise<{ sessions: ChatSession[] }> {
+export async function getChatSessions(
+  options: {
+    limit?: number;
+    offset?: number;
+    includeArchived?: boolean;
+    signal?: AbortSignal;
+  } = {},
+): Promise<{ sessions: ChatSession[] }> {
   const userId = getUserId();
   const base = getApiBaseUrl();
   const params = new URLSearchParams();
-  if (options.limit) params.set('limit', String(options.limit));
-  if (options.offset) params.set('offset', String(options.offset));
-  if (options.includeArchived) params.set('includeArchived', 'true');
+  if (options.limit) params.set("limit", String(options.limit));
+  if (options.offset) params.set("offset", String(options.offset));
+  if (options.includeArchived) params.set("includeArchived", "true");
 
-  const url = `${base.replace(/\/$/, '')}/api/v1/memories/${userId}/sessions?${params}`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}/sessions?${params}`;
 
   const res = await fetch(url, {
-    method: 'GET',
+    method: "GET",
     signal: options.signal,
   });
 
@@ -360,16 +341,16 @@ export async function getChatSessions(options: {
  */
 export async function createChatSession(options: {
   title?: string;
-  questionMode?: 'general' | 'article';
+  questionMode?: "general" | "article";
   articleSlug?: string;
 }): Promise<{ id: string }> {
   const userId = getUserId();
   const base = getApiBaseUrl();
-  const url = `${base.replace(/\/$/, '')}/api/v1/memories/${userId}/sessions`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}/sessions`;
 
   const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(options),
   });
 
@@ -378,25 +359,28 @@ export async function createChatSession(options: {
   }
 
   const data = await res.json();
-  return data.data || { id: '' };
+  return data.data || { id: "" };
 }
 
 /**
  * 채팅 세션 상세 조회 (메시지 포함)
  */
-export async function getChatSession(sessionId: string, options: {
-  limit?: number;
-  signal?: AbortSignal;
-} = {}): Promise<{ session: ChatSession; messages: ChatMessage[] }> {
+export async function getChatSession(
+  sessionId: string,
+  options: {
+    limit?: number;
+    signal?: AbortSignal;
+  } = {},
+): Promise<{ session: ChatSession; messages: ChatMessage[] }> {
   const userId = getUserId();
   const base = getApiBaseUrl();
   const params = new URLSearchParams();
-  if (options.limit) params.set('limit', String(options.limit));
+  if (options.limit) params.set("limit", String(options.limit));
 
-  const url = `${base.replace(/\/$/, '')}/api/v1/memories/${userId}/sessions/${sessionId}?${params}`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}/sessions/${sessionId}?${params}`;
 
   const res = await fetch(url, {
-    method: 'GET',
+    method: "GET",
     signal: options.signal,
   });
 
@@ -414,19 +398,19 @@ export async function getChatSession(sessionId: string, options: {
 export async function addChatMessage(
   sessionId: string,
   message: {
-    role: 'user' | 'assistant' | 'system';
+    role: "user" | "assistant" | "system";
     content: string;
     contentType?: string;
     metadata?: Record<string, unknown>;
-  }
+  },
 ): Promise<{ id: string }> {
   const userId = getUserId();
   const base = getApiBaseUrl();
-  const url = `${base.replace(/\/$/, '')}/api/v1/memories/${userId}/sessions/${sessionId}/messages`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}/sessions/${sessionId}/messages`;
 
   const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(message),
   });
 
@@ -435,7 +419,7 @@ export async function addChatMessage(
   }
 
   const data = await res.json();
-  return data.data || { id: '' };
+  return data.data || { id: "" };
 }
 
 /**
@@ -444,19 +428,19 @@ export async function addChatMessage(
 export async function addChatMessagesBatch(
   sessionId: string,
   messages: Array<{
-    role: 'user' | 'assistant' | 'system';
+    role: "user" | "assistant" | "system";
     content: string;
     contentType?: string;
     metadata?: Record<string, unknown>;
-  }>
+  }>,
 ): Promise<{ ids: string[]; created: number }> {
   const userId = getUserId();
   const base = getApiBaseUrl();
-  const url = `${base.replace(/\/$/, '')}/api/v1/memories/${userId}/sessions/${sessionId}/messages/batch`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}/sessions/${sessionId}/messages/batch`;
 
   const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ messages }),
   });
 
@@ -477,15 +461,15 @@ export async function updateChatSession(
     title?: string;
     summary?: string;
     isArchived?: boolean;
-  }
+  },
 ): Promise<void> {
   const userId = getUserId();
   const base = getApiBaseUrl();
-  const url = `${base.replace(/\/$/, '')}/api/v1/memories/${userId}/sessions/${sessionId}`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}/sessions/${sessionId}`;
 
   const res = await fetch(url, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(updates),
   });
 
@@ -500,9 +484,9 @@ export async function updateChatSession(
 export async function deleteChatSession(sessionId: string): Promise<void> {
   const userId = getUserId();
   const base = getApiBaseUrl();
-  const url = `${base.replace(/\/$/, '')}/api/v1/memories/${userId}/sessions/${sessionId}`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}/sessions/${sessionId}`;
 
-  const res = await fetch(url, { method: 'DELETE' });
+  const res = await fetch(url, { method: "DELETE" });
 
   if (!res.ok) {
     throw new Error(`Failed to delete chat session: ${res.status}`);
@@ -515,7 +499,7 @@ export async function deleteChatSession(sessionId: string): Promise<void> {
 
 export async function getMemoryContextForChat(
   userQuery: string,
-  maxTokens: number = MEMORY_DEFAULTS.CONTEXT_MAX_TOKENS
+  maxTokens: number = MEMORY_DEFAULTS.CONTEXT_MAX_TOKENS,
 ): Promise<string | null> {
   const results = await searchMemories(userQuery, { n_results: 10 });
 
@@ -527,10 +511,14 @@ export async function getMemoryContextForChat(
   for (const result of results) {
     if (result.similarity < MEMORY_DEFAULTS.SIMILARITY_THRESHOLD) continue;
 
-    const memType = result.metadata.memory_type || 'fact';
-    const category = result.metadata.category ? `/${result.metadata.category}` : '';
+    const memType = result.metadata.memory_type || "fact";
+    const category = result.metadata.category
+      ? `/${result.metadata.category}`
+      : "";
     const entry = `[${memType}${category}] ${result.document}`;
-    const entryTokens = Math.ceil(entry.length / MEMORY_DEFAULTS.CHARS_PER_TOKEN);
+    const entryTokens = Math.ceil(
+      entry.length / MEMORY_DEFAULTS.CHARS_PER_TOKEN,
+    );
 
     if (currentLength + entryTokens > maxTokens) break;
 
@@ -541,12 +529,12 @@ export async function getMemoryContextForChat(
   if (contextParts.length === 0) return null;
 
   return [
-    '[사용자 기억 데이터]',
-    '다음은 이 사용자에 대해 알고 있는 정보입니다. 답변 시 참고하세요:',
-    '',
+    "[사용자 기억 데이터]",
+    "다음은 이 사용자에 대해 알고 있는 정보입니다. 답변 시 참고하세요:",
+    "",
     ...contextParts,
-    '',
-  ].join('\n');
+    "",
+  ].join("\n");
 }
 
 // ============================================================================
@@ -564,11 +552,11 @@ export async function getMemoryContextForChat(
 export async function extractAndSaveMemories(
   userMessage: string,
   assistantResponse: string,
-  sessionId?: string
+  sessionId?: string,
 ): Promise<void> {
   // 간단한 휴리스틱으로 메모리 추출
   // TODO: 실제로는 LLM을 사용하여 더 정교하게 추출
-  
+
   const memories: Array<{
     content: string;
     memoryType: string;
@@ -581,12 +569,12 @@ export async function extractAndSaveMemories(
     /(?:좋아하|선호하|즐기|관심)/,
     /(?:싫어하|피하|불편)/,
   ];
-  
-  if (preferencePatterns.some(p => p.test(userMessage))) {
+
+  if (preferencePatterns.some((p) => p.test(userMessage))) {
     memories.push({
       content: userMessage.slice(0, 500),
-      memoryType: 'preference',
-      category: 'interest',
+      memoryType: "preference",
+      category: "interest",
       importanceScore: 0.7,
     });
   }
@@ -598,11 +586,11 @@ export async function extractAndSaveMemories(
     /(?:살고 있|거주)/,
   ];
 
-  if (personalPatterns.some(p => p.test(userMessage))) {
+  if (personalPatterns.some((p) => p.test(userMessage))) {
     memories.push({
       content: userMessage.slice(0, 500),
-      memoryType: 'fact',
-      category: 'personal',
+      memoryType: "fact",
+      category: "personal",
       importanceScore: 0.8,
     });
   }
@@ -613,27 +601,27 @@ export async function extractAndSaveMemories(
     /(?:도전|시도|프로젝트)/,
   ];
 
-  if (goalPatterns.some(p => p.test(userMessage))) {
+  if (goalPatterns.some((p) => p.test(userMessage))) {
     memories.push({
       content: userMessage.slice(0, 500),
-      memoryType: 'context',
-      category: 'goal',
+      memoryType: "context",
+      category: "goal",
       importanceScore: 0.6,
     });
   }
 
   // 메모리가 있으면 저장
   if (memories.length > 0) {
-    const memoriesWithSource = memories.map(m => ({
+    const memoriesWithSource = memories.map((m) => ({
       ...m,
-      sourceType: 'chat' as const,
+      sourceType: "chat" as const,
       sourceId: sessionId,
     }));
-    
+
     try {
       await createMemoriesBatch(memoriesWithSource);
     } catch (err) {
-      console.warn('Failed to save extracted memories:', err);
+      console.warn("Failed to save extracted memories:", err);
     }
   }
 }
