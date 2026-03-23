@@ -157,11 +157,11 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
           <DialogDescription>Click outside or press Escape to close. Scroll to zoom. Drag to pan when zoomed.</DialogDescription>
         </VisuallyHidden>
         
-        <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+        <div className="absolute top-4 right-4 z-20 flex items-center gap-2 rounded-full border border-white/10 bg-black/60 px-2 py-1.5 shadow-[0_18px_48px_rgba(0,0,0,0.45)] backdrop-blur-md">
           <TouchIconButton
             variant="ghost"
             onClick={handleZoomOut}
-            className="h-9 w-9 rounded-full bg-white/10 text-white hover:bg-white/20"
+            className="h-10 w-10 rounded-full bg-black/70 text-white shadow-lg ring-1 ring-white/20 transition-colors hover:bg-black/90 disabled:bg-black/40 disabled:text-white/45 disabled:ring-white/10"
             disabled={scale <= 0.5}
           >
             <ZoomOut className="h-4 w-4" />
@@ -169,7 +169,7 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
           <TouchIconButton
             variant="ghost"
             onClick={handleZoomIn}
-            className="h-9 w-9 rounded-full bg-white/10 text-white hover:bg-white/20"
+            className="h-10 w-10 rounded-full bg-black/70 text-white shadow-lg ring-1 ring-white/20 transition-colors hover:bg-black/90 disabled:bg-black/40 disabled:text-white/45 disabled:ring-white/10"
             disabled={scale >= 4}
           >
             <ZoomIn className="h-4 w-4" />
@@ -177,14 +177,14 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
           <TouchIconButton
             variant="ghost"
             onClick={handleRotate}
-            className="h-9 w-9 rounded-full bg-white/10 text-white hover:bg-white/20"
+            className="h-10 w-10 rounded-full bg-black/70 text-white shadow-lg ring-1 ring-white/20 transition-colors hover:bg-black/90 disabled:bg-black/40 disabled:text-white/45 disabled:ring-white/10"
           >
             <RotateCw className="h-4 w-4" />
           </TouchIconButton>
           <TouchIconButton
             variant="ghost"
             onClick={() => handleOpenChange(false)}
-            className="h-9 w-9 rounded-full bg-white/10 text-white hover:bg-white/20"
+            className="h-10 w-10 rounded-full bg-white text-black shadow-lg ring-1 ring-white/20 transition-colors hover:bg-white/90"
           >
             <X className="h-4 w-4" />
           </TouchIconButton>
