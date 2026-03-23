@@ -320,6 +320,12 @@
       "sharedContracts": []
     },
     {
+      "file": "frontend/src/services/realtime/notifications.ts",
+      "sharedContracts": [
+        "notifications"
+      ]
+    },
+    {
       "file": "backend/src/routes/translate.js",
       "sharedContracts": []
     },

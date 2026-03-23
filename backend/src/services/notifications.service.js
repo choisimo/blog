@@ -47,11 +47,14 @@ export function createNotificationsService({
       notificationStream.broadcast(
         envelope.eventName,
         {
+          notificationId: inbox?.id ?? null,
           type: envelope.type,
           title: envelope.title,
           message: envelope.message,
           payload: envelope.payload ?? null,
           sourceId: envelope.sourceId ?? null,
+          createdAt: inbox?.createdAt ?? outbox.createdAt,
+          readAt: inbox?.readAt ?? null,
         },
         envelope.targetUserId || undefined,
       );

@@ -48,7 +48,7 @@ import {
   initNotificationSSE,
   disposeNotificationSSE,
 } from "@/services/realtime/notificationSSE";
-import { storedSessionTokenProvider } from "@/services/core/stored-session-token.provider";
+import { adminAccessTokenProvider } from "@/services/core/admin-access-token.provider";
 import { PageTransitionFallback } from "@/components/atoms";
 
 const queryClient = new QueryClient({
@@ -73,7 +73,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    initNotificationSSE({ tokenProvider: storedSessionTokenProvider });
+    initNotificationSSE({ tokenProvider: adminAccessTokenProvider });
     return () => {
       disposeNotificationSSE();
     };

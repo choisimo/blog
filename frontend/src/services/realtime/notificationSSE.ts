@@ -23,7 +23,8 @@ import {
   type NotificationType,
 } from "@/stores/realtime/useNotificationStore";
 import type { AuthTokenProvider } from "@/services/core/auth-token.port";
-import { storedSessionTokenProvider } from "@/services/core/stored-session-token.provider";
+import { adminAccessTokenProvider } from "@/services/core/admin-access-token.provider";
+import { syncUnreadNotifications } from "@/services/realtime/notifications";
 import { getApiBaseUrl } from "@/utils/network/apiBase";
 import { bearerAuth } from "@/lib/auth";
 import {
@@ -54,7 +55,7 @@ let reconnectAttempts = 0;
 let slowPollMode = false;
 let disposed = false;
 let initialized = false;
-let tokenProvider: AuthTokenProvider = storedSessionTokenProvider;
+let tokenProvider: AuthTokenProvider = adminAccessTokenProvider;
 
 // ============================================================================
 // Helpers
@@ -141,12 +142,15 @@ function reconnect() {
 // ============================================================================
 
 interface SSENotificationPayload {
+  notificationId?: string;
   type?: string;
   title?: string;
   message?: string;
   notificationType?: NotificationType;
   sourceId?: string;
   payload?: Record<string, unknown>;
+  createdAt?: string;
+  readAt?: string | null;
 }
 
 function handleNotificationEvent(data: SSENotificationPayload) {
@@ -163,11 +167,14 @@ function handleNotificationEvent(data: SSENotificationPayload) {
           : "info");
 
   addNotification({
+    id: data.notificationId,
     type,
     title,
     message,
     sourceId: data.sourceId,
     payload: data.payload,
+    createdAt: data.createdAt,
+    read: Boolean(data.readAt),
   });
 }
 
@@ -340,6 +347,7 @@ async function connect() {
     reconnectAttempts = 0;
     slowPollMode = false;
     resetPingWatchdog();
+    void syncUnreadNotifications();
 
     // Start parsing the stream
     const reader = response.body.getReader();
@@ -370,10 +378,11 @@ async function connect() {
 export function initNotificationSSE(options?: {
   tokenProvider?: AuthTokenProvider;
 }): void {
-  tokenProvider = options?.tokenProvider ?? storedSessionTokenProvider;
+  tokenProvider = options?.tokenProvider ?? adminAccessTokenProvider;
   if (initialized) return;
   disposed = false;
   initialized = true;
+  void syncUnreadNotifications();
   connect();
 }
 

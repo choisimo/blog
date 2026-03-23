@@ -50,7 +50,9 @@ pingInterval.unref?.();
 // ============================================================================
 
 function getAuthenticatedUserId(req) {
-  return typeof req.userId === "string" && req.userId.trim() ? req.userId : null;
+  return typeof req.userId === "string" && req.userId.trim()
+    ? req.userId
+    : null;
 }
 
 function parsePushBody(body) {
@@ -160,7 +162,7 @@ router.get("/unread", requireUserAuth, async (req, res) => {
     return res.json({
       ok: true,
       data: {
-        notifications: result.items,
+        items: result.items,
         unreadCount: result.total,
         limit: result.limit,
       },
@@ -168,7 +170,10 @@ router.get("/unread", requireUserAuth, async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       ok: false,
-      error: { message: error?.message || "Failed to load unread notifications", code: "INTERNAL_ERROR" },
+      error: {
+        message: error?.message || "Failed to load unread notifications",
+        code: "INTERNAL_ERROR",
+      },
     });
   }
 });
@@ -186,7 +191,7 @@ router.get("/history", requireUserAuth, async (req, res) => {
     return res.json({
       ok: true,
       data: {
-        notifications: result.items,
+        items: result.items,
         total: result.total,
         limit: result.limit,
       },
@@ -194,7 +199,10 @@ router.get("/history", requireUserAuth, async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       ok: false,
-      error: { message: error?.message || "Failed to load notification history", code: "INTERNAL_ERROR" },
+      error: {
+        message: error?.message || "Failed to load notification history",
+        code: "INTERNAL_ERROR",
+      },
     });
   }
 });
@@ -221,13 +229,17 @@ router.patch("/:notificationId/read", requireUserAuth, async (req, res) => {
     return res.json({
       ok: true,
       data: {
-        notification,
+        id: notification.id,
+        readAt: notification.readAt,
       },
     });
   } catch (error) {
     return res.status(500).json({
       ok: false,
-      error: { message: error?.message || "Failed to mark notification as read", code: "INTERNAL_ERROR" },
+      error: {
+        message: error?.message || "Failed to mark notification as read",
+        code: "INTERNAL_ERROR",
+      },
     });
   }
 });
@@ -258,7 +270,10 @@ router.post(
     } catch (error) {
       return res.status(500).json({
         ok: false,
-        error: { message: error?.message || "Failed to push notification", code: "INTERNAL_ERROR" },
+        error: {
+          message: error?.message || "Failed to push notification",
+          code: "INTERNAL_ERROR",
+        },
       });
     }
   },
@@ -274,7 +289,10 @@ router.post(
     } catch (error) {
       return res.status(500).json({
         ok: false,
-        error: { message: error?.message || "Failed to enqueue notification", code: "INTERNAL_ERROR" },
+        error: {
+          message: error?.message || "Failed to enqueue notification",
+          code: "INTERNAL_ERROR",
+        },
       });
     }
   },
@@ -295,7 +313,10 @@ router.get("/health", requireBackendKey, async (_req, res) => {
   } catch (error) {
     return res.status(500).json({
       ok: false,
-      error: { message: error?.message || "Failed to inspect notifications subsystem", code: "INTERNAL_ERROR" },
+      error: {
+        message: error?.message || "Failed to inspect notifications subsystem",
+        code: "INTERNAL_ERROR",
+      },
     });
   }
 });
