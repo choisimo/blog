@@ -1,6 +1,29 @@
 {
-  "total": 270,
+  "total": 271,
   "items": [
+    {
+      "path": "/posts/2026/c-lang-1.md",
+      "year": "2026",
+      "slug": "c-lang-1",
+      "title": "[C 언어 1부] 배열은 왜 단순한 변수 묶음이 아닐까?",
+      "description": "배열 선언 한 줄이 실제로 어떻게 동작하며, 인덱싱이 왜 포인터 연산으로 환원되는지 추적해보기",
+      "snippet": "배열 선언 한 줄이 실제로 어떻게 동작하며, 인덱싱이 왜 포인터 연산으로 환원되는지 추적해보기",
+      "date": "2026-03-22",
+      "tags": [
+        "C",
+        "Array",
+        "Memory",
+        "Pointer",
+        "Cache",
+        "Compiler"
+      ],
+      "category": "기술",
+      "author": "Admin",
+      "readingTime": "7 min read",
+      "published": true,
+      "coverImage": "/images/2026/c-array-1/1.png",
+      "url": "/blog/2026/c-lang-1"
+    },
     {
       "path": "/posts/2026/python-3.md",
       "year": "2026",
@@ -5710,7 +5733,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-03-21T14:26:30.169Z",
+  "generatedAt": "2026-03-23T10:32:28.296Z",
   "years": [
     "2026",
     "2025",
