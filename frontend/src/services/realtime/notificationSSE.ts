@@ -22,9 +22,10 @@ import {
   addNotification,
   type NotificationType,
 } from "@/stores/realtime/useNotificationStore";
+import type { AuthTokenProvider } from "@/services/core/auth-token.port";
+import { storedSessionTokenProvider } from "@/services/core/stored-session-token.provider";
 import { getApiBaseUrl } from "@/utils/network/apiBase";
 import { bearerAuth } from "@/lib/auth";
-import { useAuthStore } from "@/stores/session/useAuthStore";
 import {
   findSSEFrameBoundary,
   parseSSEFrame,
@@ -53,7 +54,7 @@ let reconnectAttempts = 0;
 let slowPollMode = false;
 let disposed = false;
 let initialized = false;
-let authChangeListenerBound = false;
+let tokenProvider: AuthTokenProvider = storedSessionTokenProvider;
 
 // ============================================================================
 // Helpers
@@ -100,12 +101,6 @@ function closeConnection() {
     }
     abortController = null;
   }
-}
-
-function onAdminAuthChanged() {
-  if (disposed) return;
-  reconnectAttempts = 0;
-  reconnect();
 }
 
 function reconnect() {
@@ -308,7 +303,7 @@ async function connect() {
   }
 
   try {
-    const token = await useAuthStore.getState().getValidAccessToken();
+    const token = await tokenProvider.getAccessToken();
     if (!token) {
       clearReconnectTimer();
       reconnectTimer = setTimeout(() => {
@@ -372,14 +367,13 @@ async function connect() {
  * Initialize the notification SSE service.
  * Safe to call multiple times — only connects once.
  */
-export function initNotificationSSE(): void {
+export function initNotificationSSE(options?: {
+  tokenProvider?: AuthTokenProvider;
+}): void {
+  tokenProvider = options?.tokenProvider ?? storedSessionTokenProvider;
   if (initialized) return;
   disposed = false;
   initialized = true;
-  if (typeof window !== "undefined" && !authChangeListenerBound) {
-    window.addEventListener("admin-auth-changed", onAdminAuthChanged);
-    authChangeListenerBound = true;
-  }
   connect();
 }
 
@@ -393,10 +387,6 @@ export function disposeNotificationSSE(): void {
   clearReconnectTimer();
   clearPingWatchdog();
   closeConnection();
-  if (typeof window !== "undefined" && authChangeListenerBound) {
-    window.removeEventListener("admin-auth-changed", onAdminAuthChanged);
-    authChangeListenerBound = false;
-  }
 }
 
 /**
