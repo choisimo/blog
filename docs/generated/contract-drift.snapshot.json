@@ -305,11 +305,15 @@
   "sharedContractUsage": [
     {
       "file": "frontend/src/services/content/translate.ts",
-      "sharedContracts": []
+      "sharedContracts": [
+        "translation"
+      ]
     },
     {
       "file": "frontend/src/services/session/fingerprint.ts",
-      "sharedContracts": []
+      "sharedContracts": [
+        "auth"
+      ]
     },
     {
       "file": "frontend/src/services/realtime/notificationSSE.ts",

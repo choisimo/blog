@@ -27,9 +27,16 @@ export const sessionDataSchema = z.object({
   isNewUser: z.boolean().optional(),
 });
 
-export const sessionResponseSchema = apiSuccessEnvelopeSchema(sessionDataSchema);
+export const sessionResponseSchema =
+  apiSuccessEnvelopeSchema(sessionDataSchema);
 
 export const userPreferenceWriteSchema = z.object({
   key: z.string().min(1),
   value: z.unknown(),
 });
+
+export const userPreferencesResponseSchema = apiSuccessEnvelopeSchema(
+  z.object({
+    preferences: z.record(z.unknown()),
+  }),
+);

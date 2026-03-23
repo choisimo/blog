@@ -2,6 +2,10 @@
  * Translation Service
  * Handles AI-powered translations with caching
  */
+import {
+  cachedTranslationResponseSchema,
+  translationGenerateResponseSchema,
+} from "@blog/shared/contracts/translation";
 import { getApiBaseUrl } from "@/utils/network/apiBase";
 import { getAuthHeadersAsync } from "@/stores/session/useAuthStore";
 
@@ -92,6 +96,38 @@ async function parseError(response: Response): Promise<TranslationApiError> {
   });
 }
 
+function parseTranslationPayload(
+  payload: unknown,
+  status: number,
+): TranslationResult {
+  const parsed = translationGenerateResponseSchema.safeParse(payload);
+  if (parsed.success) {
+    const data = parsed.data.data;
+    if ("translation" in data) {
+      if (data.translation) {
+        return data.translation as TranslationResult;
+      }
+
+      throw new TranslationApiError("Translation is not ready yet", {
+        code: "NOT_AVAILABLE",
+        status,
+      });
+    }
+
+    return data as TranslationResult;
+  }
+
+  const cached = cachedTranslationResponseSchema.safeParse(payload);
+  if (cached.success) {
+    return cached.data.data as TranslationResult;
+  }
+
+  throw new TranslationApiError("Invalid translation response", {
+    code: "UNKNOWN",
+    status,
+  });
+}
+
 // ============================================================================
 // API Functions
 // ============================================================================
@@ -170,11 +206,10 @@ export async function translatePost(
     throw error;
   }
 
-  const data = (await response.json()) as {
-    data?: TranslationResult & { cached?: boolean };
-  };
-  console.log("[translate] Success, cached:", data.data?.cached);
-  return data.data as TranslationResult;
+  const payload = await response.json().catch(() => null);
+  const data = parseTranslationPayload(payload, response.status);
+  console.log("[translate] Success, cached:", data.cached);
+  return data;
 }
 
 /**
@@ -197,8 +232,8 @@ export async function getCachedTranslation(
       return null;
     }
 
-    const data = (await response.json()) as { data?: TranslationResult };
-    return data.data ?? null;
+    const payload = await response.json().catch(() => null);
+    return parseTranslationPayload(payload, response.status);
   } catch {
     return null;
   }

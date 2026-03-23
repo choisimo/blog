@@ -1,4 +1,10 @@
 import FingerprintJS from "@fingerprintjs/fingerprintjs";
+import {
+  sessionCreateRequestSchema,
+  sessionResponseSchema,
+  userPreferenceWriteSchema,
+  userPreferencesResponseSchema,
+} from "@blog/shared/contracts/auth";
 import { getApiBaseUrl } from "@/utils/network/apiBase";
 import { bearerAuth } from "@/lib/auth";
 import {
@@ -42,6 +48,11 @@ type SessionData = {
 
 let cachedFingerprint: FingerprintComponents | null = null;
 let sessionPromise: Promise<SessionData | null> | null = null;
+
+function parseSessionResponse(payload: unknown): SessionData | null {
+  const parsed = sessionResponseSchema.safeParse(payload);
+  return parsed.success ? (parsed.data.data as SessionData) : null;
+}
 
 // ---------------------------------------------------------------------------
 // Advanced Fingerprint Collection
@@ -162,37 +173,38 @@ export async function createSession(): Promise<SessionData | null> {
   try {
     const fp = await getAdvancedFingerprint();
     const baseUrl = getApiBaseUrl();
+    const body = sessionCreateRequestSchema.parse({
+      fingerprint: {
+        visitorId: fp.advancedVisitorId,
+        advancedVisitorId: fp.advancedVisitorId,
+        canvasHash: fp.canvasHash,
+        webglHash: fp.webglHash,
+        audioHash: fp.audioHash,
+        screenResolution: fp.screenResolution,
+        osVersion: fp.osVersion,
+        fpjsBlocked: fp.fpjsBlocked,
+        components: {
+          canvasHash: fp.canvasHash,
+          webglHash: fp.webglHash,
+          audioHash: fp.audioHash,
+        },
+      },
+      userAgent: navigator.userAgent,
+    });
 
     const response = await fetch(`${baseUrl}/api/v1/user/session`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fingerprint: {
-          visitorId: fp.advancedVisitorId,
-          advancedVisitorId: fp.advancedVisitorId,
-          canvasHash: fp.canvasHash,
-          webglHash: fp.webglHash,
-          audioHash: fp.audioHash,
-          screenResolution: fp.screenResolution,
-          osVersion: fp.osVersion,
-          fpjsBlocked: fp.fpjsBlocked,
-          components: {
-            canvasHash: fp.canvasHash,
-            webglHash: fp.webglHash,
-            audioHash: fp.audioHash,
-          },
-        },
-        userAgent: navigator.userAgent,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) return null;
 
-    const data = (await response.json()) as { ok: boolean; data?: SessionData };
-    if (data.ok && data.data) {
-      localStorage.setItem(SESSION_TOKEN_KEY, data.data.sessionToken);
-      localStorage.setItem(FINGERPRINT_ID_KEY, data.data.fingerprintId);
-      return data.data;
+    const data = parseSessionResponse(await response.json().catch(() => null));
+    if (data) {
+      localStorage.setItem(SESSION_TOKEN_KEY, data.sessionToken);
+      localStorage.setItem(FINGERPRINT_ID_KEY, data.fingerprintId);
+      return data;
     }
 
     return null;
@@ -212,8 +224,7 @@ export async function validateSession(
     });
     if (!response.ok) return null;
 
-    const data = (await response.json()) as { ok: boolean; data?: SessionData };
-    return data.ok ? data.data || null : null;
+    return parseSessionResponse(await response.json().catch(() => null));
   } catch {
     return null;
   }
@@ -246,11 +257,11 @@ export async function recoverSession(
 
     if (!response.ok) return null;
 
-    const data = (await response.json()) as { ok: boolean; data?: SessionData };
-    if (data.ok && data.data) {
-      localStorage.setItem(SESSION_TOKEN_KEY, data.data.sessionToken);
-      localStorage.setItem(FINGERPRINT_ID_KEY, data.data.fingerprintId);
-      return data.data;
+    const data = parseSessionResponse(await response.json().catch(() => null));
+    if (data) {
+      localStorage.setItem(SESSION_TOKEN_KEY, data.sessionToken);
+      localStorage.setItem(FINGERPRINT_ID_KEY, data.fingerprintId);
+      return data;
     }
 
     return null;
@@ -338,13 +349,14 @@ export async function savePreference(
 
   try {
     const baseUrl = getApiBaseUrl();
+    const body = userPreferenceWriteSchema.parse({ key, value });
     const response = await fetch(`${baseUrl}/api/v1/user/preferences`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
         ...bearerAuth(token),
       },
-      body: JSON.stringify({ key, value }),
+      body: JSON.stringify(body),
     });
     return response.ok;
   } catch {
@@ -367,11 +379,10 @@ export async function getPreferences(): Promise<Record<
 
     if (!response.ok) return null;
 
-    const data = (await response.json()) as {
-      ok: boolean;
-      data?: { preferences: Record<string, unknown> };
-    };
-    return data.ok ? data.data?.preferences || null : null;
+    const data = userPreferencesResponseSchema.safeParse(
+      await response.json().catch(() => null),
+    );
+    return data.success ? data.data.data.preferences : null;
   } catch {
     return null;
   }

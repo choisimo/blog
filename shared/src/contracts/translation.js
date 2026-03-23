@@ -24,6 +24,11 @@ export const localizedPostFieldsSchema = z.object({
   translatedAt: z.string().optional(),
 });
 
+export const translationResultSchema = localizedPostFieldsSchema.extend({
+  cached: z.boolean().optional(),
+  isAiGenerated: z.boolean().optional(),
+});
+
 export const translationQuerySchema = z.object({
   year: z.string().min(1),
   slug: z.string().min(1),
@@ -51,15 +56,18 @@ export const translationJobStatusSchema = z.object({
 });
 
 export const cachedTranslationResponseSchema = apiSuccessEnvelopeSchema(
-  localizedPostFieldsSchema,
+  translationResultSchema,
 );
 
-export const translationGenerateResponseSchema = apiSuccessEnvelopeSchema(
-  z.object({
-    job: translationJobStatusSchema,
-    translation: localizedPostFieldsSchema.optional(),
-  }),
-);
+export const translationGenerateResponseSchema = z.union([
+  apiSuccessEnvelopeSchema(translationResultSchema),
+  apiSuccessEnvelopeSchema(
+    z.object({
+      job: translationJobStatusSchema,
+      translation: translationResultSchema.optional(),
+    }),
+  ),
+]);
 
 export const translationJobResponseSchema = apiSuccessEnvelopeSchema(
   translationJobStatusSchema,
