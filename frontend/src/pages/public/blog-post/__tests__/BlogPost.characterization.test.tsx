@@ -20,6 +20,7 @@ const hoisted = vi.hoisted(() => {
 
   return {
     currentLanguage: "ko",
+    hasTranslationSession: false,
     setLanguage: vi.fn(),
     toast: vi.fn(),
     uiStrings: makeUIStrings(),
@@ -33,7 +34,30 @@ vi.mock("@/data/content/posts", () => ({
   getPostsBySeries: vi.fn(),
 }));
 vi.mock("@/services/content/postService", () => ({ getPost: vi.fn() }));
-vi.mock("@/services/content/translate", () => ({ translatePost: vi.fn() }));
+vi.mock("@/services/content/translate", () => {
+  class MockTranslationApiError extends Error {
+    code: string;
+    status: number;
+    retryable: boolean;
+
+    constructor(
+      message: string,
+      options: { code?: string; status: number; retryable?: boolean },
+    ) {
+      super(message);
+      this.name = "TranslationApiError";
+      this.code = options.code ?? "UNKNOWN";
+      this.status = options.status;
+      this.retryable = options.retryable ?? false;
+    }
+  }
+
+  return {
+    translatePost: vi.fn(),
+    getCachedTranslation: vi.fn(),
+    TranslationApiError: MockTranslationApiError,
+  };
+});
 vi.mock("@/services/discovery/rag", () => ({ findRelatedPosts: vi.fn() }));
 vi.mock("@/hooks/seo/useSEO", () => ({ useSEO: vi.fn() }));
 vi.mock("@/components/common/ReadingProgress", () => ({
@@ -89,6 +113,19 @@ vi.mock("@/contexts/LanguageContext", () => ({
 vi.mock("@/utils/i18n/uiStrings", () => ({
   useUIStrings: () => hoisted.uiStrings,
 }));
+vi.mock("@/stores/session/useAuthStore", () => ({
+  useAuthStore: (
+    selector?: (state: {
+      accessToken: string | null;
+      refreshToken: string | null;
+    }) => unknown,
+  ) => {
+    const state = hoisted.hasTranslationSession
+      ? { accessToken: "token", refreshToken: null }
+      : { accessToken: null, refreshToken: null };
+    return selector ? selector(state) : state;
+  },
+}));
 vi.mock("@/contexts/ThemeContext", () => ({
   useTheme: () => ({ isTerminal: false }),
 }));
@@ -109,6 +146,7 @@ vi.mock("@/services/engagement/curiosity", () => ({
 }));
 vi.mock("@/utils/content/blog", () => ({
   formatDate: vi.fn(() => "2024-01-01"),
+  formatReadingTimeLabel: vi.fn(() => "1 min read"),
   resolveLocalizedPost: vi.fn(
     (post: {
       title: string;
@@ -133,6 +171,7 @@ import * as postsData from "@/data/content/posts";
 import * as postService from "@/services/content/postService";
 import * as translateService from "@/services/content/translate";
 import * as ragService from "@/services/discovery/rag";
+import * as seoUtils from "@/utils/seo/seo";
 
 const basePost = {
   id: "test-post",
@@ -181,8 +220,19 @@ function renderBlogPost() {
 
 beforeEach(() => {
   hoisted.currentLanguage = "ko";
+  hoisted.hasTranslationSession = false;
   hoisted.setLanguage.mockReset();
   hoisted.toast.mockReset();
+  vi.mocked(postsData.getPostBySlug).mockReset();
+  vi.mocked(postsData.getPostsPage).mockReset();
+  vi.mocked(postsData.prefetchPost).mockReset();
+  vi.mocked(postsData.getPostsBySeries).mockReset();
+  vi.mocked(translateService.translatePost).mockReset();
+  vi.mocked(translateService.getCachedTranslation).mockReset();
+  vi.mocked(ragService.findRelatedPosts).mockReset();
+  vi.mocked(seoUtils.generateSEOData).mockReset();
+  vi.mocked(seoUtils.generateStructuredData).mockReset();
+  mockedPostService.getPost.mockReset();
 
   vi.stubGlobal(
     "fetch",
@@ -204,7 +254,10 @@ beforeEach(() => {
     content: "# Hello",
     cached: false,
   });
+  vi.mocked(translateService.getCachedTranslation).mockResolvedValue(null);
   vi.mocked(ragService.findRelatedPosts).mockResolvedValue([]);
+  vi.mocked(seoUtils.generateSEOData).mockReturnValue({});
+  vi.mocked(seoUtils.generateStructuredData).mockReturnValue({});
   mockedPostService.getPost.mockResolvedValue(basePost);
 });
 
@@ -224,6 +277,7 @@ test("renders post content when loaded successfully", async () => {
 
 test("renders original content when translation fails", async () => {
   hoisted.currentLanguage = "en";
+  hoisted.hasTranslationSession = true;
   vi.mocked(postsData.getPostBySlug).mockResolvedValue(basePost);
   vi.mocked(translateService.translatePost).mockRejectedValue(
     new Error("translation failed"),
@@ -237,6 +291,46 @@ test("renders original content when translation fails", async () => {
   });
   expect(await screen.findByText("Test Post")).toBeInTheDocument();
   expect(document.body.textContent).toContain("Test Post");
+});
+
+test("uses cached translation before attempting protected generation", async () => {
+  hoisted.currentLanguage = "en";
+  vi.mocked(translateService.getCachedTranslation).mockResolvedValue({
+    title: "Cached Test Post",
+    description: "Cached description",
+    content: "# Cached",
+    cached: true,
+  });
+
+  renderBlogPost();
+
+  expect(await screen.findByText("Cached Test Post")).toBeInTheDocument();
+  expect(translateService.translatePost).not.toHaveBeenCalled();
+  await waitFor(() => {
+    expect(seoUtils.generateSEOData).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        title: "Cached Test Post",
+        description: "Cached description",
+      }),
+      "post",
+    );
+  });
+});
+
+test("does not call protected translation generation without a session", async () => {
+  hoisted.currentLanguage = "en";
+
+  renderBlogPost();
+
+  await waitFor(() => {
+    expect(translateService.getCachedTranslation).toHaveBeenCalledWith(
+      "2024",
+      "test-post",
+      "en",
+    );
+  });
+  expect(translateService.translatePost).not.toHaveBeenCalled();
+  expect(await screen.findByText("Test Post")).toBeInTheDocument();
 });
 
 test("renders without related posts when none found", async () => {

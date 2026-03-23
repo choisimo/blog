@@ -37,7 +37,9 @@ const VisitedPostsMinimap = lazy(() =>
     default: m.VisitedPostsMinimap,
   })),
 );
-const FloatingActionBar = lazy(() => import("@/components/features/memo/FloatingActionBar"));
+const FloatingActionBar = lazy(
+  () => import("@/components/features/memo/FloatingActionBar"),
+);
 import {
   initFeatureFlags,
   disposeFeatureFlags,
@@ -46,6 +48,7 @@ import {
   initNotificationSSE,
   disposeNotificationSSE,
 } from "@/services/realtime/notificationSSE";
+import { adminAccessTokenProvider } from "@/services/core/admin-access-token.provider";
 import { PageTransitionFallback } from "@/components/atoms";
 
 const queryClient = new QueryClient({
@@ -70,7 +73,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    initNotificationSSE();
+    initNotificationSSE({ tokenProvider: adminAccessTokenProvider });
     return () => {
       disposeNotificationSSE();
     };
@@ -173,9 +176,30 @@ function App() {
                             </AuthGuard>
                           }
                         />
-                        <Route path="/admin/config" element={<AuthGuard><AdminConfig /></AuthGuard>} />
-                        <Route path="/admin/config/:section" element={<AuthGuard><AdminConfig /></AuthGuard>} />
-                        <Route path="/admin/config/:section/:subtab" element={<AuthGuard><AdminConfig /></AuthGuard>} />
+                        <Route
+                          path="/admin/config"
+                          element={
+                            <AuthGuard>
+                              <AdminConfig />
+                            </AuthGuard>
+                          }
+                        />
+                        <Route
+                          path="/admin/config/:section"
+                          element={
+                            <AuthGuard>
+                              <AdminConfig />
+                            </AuthGuard>
+                          }
+                        />
+                        <Route
+                          path="/admin/config/:section/:subtab"
+                          element={
+                            <AuthGuard>
+                              <AdminConfig />
+                            </AuthGuard>
+                          }
+                        />
                         <Route
                           path="/admin/auth/callback"
                           element={<AdminAuthCallback />}

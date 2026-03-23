@@ -16,24 +16,21 @@ import {
 import { cn } from "@/lib/utils";
 import { curiosityTracker } from "@/services/engagement/curiosity";
 import { formatDate } from "@/utils/content/blog";
-import type { BlogPost as BlogPostType } from "@/types/blog";
+import type {
+  BlogPost as BlogPostType,
+  ResolvedPostViewModel,
+} from "@/types/blog";
 import type { TranslationResult } from "@/services/content/translate";
 import { SafeDescriptionMarkdown } from "@/components/features/blog/SafeDescriptionMarkdown";
 
 interface BlogPostHeaderProps {
   post: BlogPostType;
-  localized: {
-    title: string;
-    description?: string;
-    excerpt?: string;
-    content: string;
-  } | null;
+  postView: ResolvedPostViewModel;
   year: string;
   slug: string;
   language: string;
   setLanguage: (lang: string) => void;
   resolveLanguageName: (code: string) => string;
-  readingTimeLabel: string;
   translating: boolean;
   aiTranslation: TranslationResult | null;
   hasNativeTranslation: boolean;
@@ -56,13 +53,12 @@ interface BlogPostHeaderProps {
 
 export function BlogPostHeader({
   post,
-  localized,
+  postView,
   year,
   slug,
   language,
   setLanguage,
   resolveLanguageName,
-  readingTimeLabel,
   translating,
   aiTranslation,
   hasNativeTranslation,
@@ -82,7 +78,11 @@ export function BlogPostHeader({
   retryLabel,
 }: BlogPostHeaderProps) {
   const navigate = useNavigate();
-  const description = localized?.description ?? post.description;
+  const description = postView.description;
+  const formattedDate = formatDate(
+    postView.date,
+    language === "en" ? "en" : "ko",
+  );
 
   const handleBackToBlog = () => {
     if (preservedFrom) {
@@ -98,10 +98,10 @@ export function BlogPostHeader({
         items={[
           { label: "Blog", href: "/blog" },
           {
-            label: post.category,
+            label: postView.categoryLabel,
             href: `/blog?category=${encodeURIComponent(post.category)}`,
           },
-          { label: localized?.title ?? post.title },
+          { label: postView.title },
         ]}
         className={cn(isTerminal && "font-mono text-xs")}
       />
@@ -153,7 +153,7 @@ export function BlogPostHeader({
             )}
           >
             {isTerminal && "["}
-            {post.category}
+            {postView.categoryLabel}
             {isTerminal && "]"}
           </div>
 
@@ -164,7 +164,7 @@ export function BlogPostHeader({
             )}
           >
             {isTerminal && "> "}
-            {localized?.title ?? post.title}
+            {postView.title}
           </h1>
 
           {description && (
@@ -191,12 +191,10 @@ export function BlogPostHeader({
             >
               <Calendar className="h-4 w-4 text-foreground/70" />
               <span>
-                {isTerminal
-                  ? `date: ${formatDate(post.date)}`
-                  : formatDate(post.date)}
+                {isTerminal ? `date: ${formattedDate}` : formattedDate}
               </span>
             </div>
-            {readingTimeLabel && (
+            {postView.readingTimeLabel && (
               <div
                 className={cn(
                   "flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[hsl(var(--card-blog))] dark:text-white",
@@ -205,11 +203,13 @@ export function BlogPostHeader({
               >
                 <Clock className="h-4 w-4 text-foreground/70" />
                 <span>
-                  {isTerminal ? `time: ${readingTimeLabel}` : readingTimeLabel}
+                  {isTerminal
+                    ? `time: ${postView.readingTimeLabel}`
+                    : postView.readingTimeLabel}
                 </span>
               </div>
             )}
-            {post.author && (
+            {postView.author && (
               <div
                 className={cn(
                   "flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[hsl(var(--card-blog))] dark:text-white",
@@ -218,7 +218,7 @@ export function BlogPostHeader({
               >
                 <User className="h-4 w-4 text-foreground/70" />
                 <span>
-                  {isTerminal ? `author: ${post.author}` : post.author}
+                  {isTerminal ? `author: ${postView.author}` : postView.author}
                 </span>
               </div>
             )}
@@ -316,7 +316,7 @@ export function BlogPostHeader({
             >
               <Tag className="h-4 w-4 text-foreground/75 dark:text-foreground/75" />
               {isTerminal && <span className="text-primary">tags:</span>}
-              {post.tags.map((tag) => (
+              {post.tags.map((tag, index) => (
                 <Badge
                   key={tag}
                   variant="outline"
@@ -333,7 +333,9 @@ export function BlogPostHeader({
                     navigate(`/blog?tag=${encodeURIComponent(tag)}`);
                   }}
                 >
-                  {isTerminal ? `[${tag}]` : `#${tag}`}
+                  {isTerminal
+                    ? `[${postView.tagLabels[index] ?? tag}]`
+                    : `#${postView.tagLabels[index] ?? tag}`}
                 </Badge>
               ))}
             </div>

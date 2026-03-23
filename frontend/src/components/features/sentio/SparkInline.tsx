@@ -10,7 +10,16 @@ import {
 } from '@/services/discovery/ai';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Sparkles, Loader2, X, Lightbulb, Layers, Link2, MessageCircle, ChevronRight } from 'lucide-react';
+import {
+  Sparkles,
+  Loader2,
+  X,
+  Lightbulb,
+  Layers,
+  Link2,
+  MessageCircle,
+  ChevronRight,
+} from 'lucide-react';
 import DebateRoom, { DebateTopic } from './DebateRoom';
 import useLanguage from '@/hooks/i18n/useLanguage';
 import {
@@ -64,21 +73,110 @@ function extractText(children: React.ReactNode): string {
   return parts.join(' ').replace(/\s+/g, ' ').trim();
 }
 
+const INLINE_ONLY_TAGS = new Set([
+  'a',
+  'abbr',
+  'b',
+  'br',
+  'cite',
+  'code',
+  'del',
+  'em',
+  'i',
+  'kbd',
+  'mark',
+  'q',
+  's',
+  'small',
+  'span',
+  'strong',
+  'sub',
+  'sup',
+  'time',
+  'u',
+  'var',
+  'wbr',
+]);
+
+function hasNonInlineChildren(children: React.ReactNode): boolean {
+  return React.Children.toArray(children).some(node => {
+    if (node == null || node === false) return false;
+    if (typeof node === 'string' || typeof node === 'number') return false;
+    if (Array.isArray(node)) return hasNonInlineChildren(node);
+    if (!React.isValidElement(node)) return false;
+
+    const props = (node.props as { children?: React.ReactNode }) ?? {};
+
+    if (node.type === React.Fragment) {
+      return hasNonInlineChildren(props.children);
+    }
+
+    if (typeof node.type === 'string') {
+      if (!INLINE_ONLY_TAGS.has(node.type)) {
+        return true;
+      }
+      return hasNonInlineChildren(props.children);
+    }
+
+    return true;
+  });
+}
+
 type Mode = 'idle' | 'sketch' | 'prism' | 'chain';
 
-const ModeConfig: Record<Mode, { label: string; icon: React.ComponentType<{ className?: string }>; activeColor: string; description: string }> = {
-  idle: { label: 'AI 분석', icon: Sparkles, activeColor: 'text-muted-foreground', description: '' },
-  sketch: { label: '핵심 파악', icon: Lightbulb, activeColor: 'text-amber-500 dark:text-amber-400', description: '감정과 핵심 포인트' },
-  prism: { label: '다각도 분석', icon: Layers, activeColor: 'text-violet-500 dark:text-violet-400', description: '다각도 분석' },
-  chain: { label: '더 생각해보기', icon: Link2, activeColor: 'text-emerald-500 dark:text-emerald-400', description: '연쇄 질문' },
+const ModeConfig: Record<
+  Mode,
+  {
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    activeColor: string;
+    description: string;
+  }
+> = {
+  idle: {
+    label: 'AI 분석',
+    icon: Sparkles,
+    activeColor: 'text-muted-foreground',
+    description: '',
+  },
+  sketch: {
+    label: '핵심 파악',
+    icon: Lightbulb,
+    activeColor: 'text-amber-500 dark:text-amber-400',
+    description: '감정과 핵심 포인트',
+  },
+  prism: {
+    label: '다각도 분석',
+    icon: Layers,
+    activeColor: 'text-violet-500 dark:text-violet-400',
+    description: '다각도 분석',
+  },
+  chain: {
+    label: '더 생각해보기',
+    icon: Link2,
+    activeColor: 'text-emerald-500 dark:text-emerald-400',
+    description: '연쇄 질문',
+  },
 };
 
 // Mood emoji mapping
 const MOOD_EMOJI: Record<string, string> = {
-  '설명적': '📖', '분석적': '🔍', '정보적': '💡', '교육적': '🎓',
-  '흥미로운': '✨', '흥미': '✨', '호기심': '🤔', '탐구적': '🧭',
-  '비판적': '⚡', '논쟁적': '🔥', '도전적': '💪', '철학적': '🌀',
-  '서사적': '📜', '감성적': '💫', '실용적': '🔧', '창의적': '🎨',
+  설명적: '📖',
+  분석적: '🔍',
+  정보적: '💡',
+  교육적: '🎓',
+  흥미로운: '✨',
+  흥미: '✨',
+  호기심: '🤔',
+  탐구적: '🧭',
+  비판적: '⚡',
+  논쟁적: '🔥',
+  도전적: '💪',
+  철학적: '🌀',
+  서사적: '📜',
+  감성적: '💫',
+  실용적: '🔧',
+  창의적: '🎨',
 };
 
 function getMoodEmoji(mood: string): string {
@@ -140,9 +238,11 @@ function formatChainResult(res: ChainResult): string {
 export default function SparkInline({
   children,
   postTitle,
+  wrapperTag,
 }: {
   children: React.ReactNode;
   postTitle?: string;
+  wrapperTag?: 'p' | 'div';
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState<Mode>('idle');
@@ -158,6 +258,8 @@ export default function SparkInline({
 
   const text = useMemo(() => extractText(children), [children]);
   const hasText = text && text.length > 0;
+  const ContentTag: 'p' | 'div' =
+    wrapperTag ?? (hasNonInlineChildren(children) ? 'div' : 'p');
 
   const run = async (which: Mode) => {
     if (!hasText) return;
@@ -205,10 +307,7 @@ export default function SparkInline({
         });
       }
     } catch (e: unknown) {
-      const msg =
-        e instanceof Error
-          ? e.message
-          : 'AI 호출 실패';
+      const msg = e instanceof Error ? e.message : 'AI 호출 실패';
       setError(msg);
     } finally {
       setLoading('idle');
@@ -217,12 +316,17 @@ export default function SparkInline({
 
   const hasResult = sketchRes || prismRes || chainRes;
   const activeModeConfig = ModeConfig[activeMode];
-  const tooltipLabel = language === 'ko' ? 'AI 설명 보기' : 'View AI explanation';
-  const actionLabel = language === 'ko' ? 'AI로 문단 분석하기' : 'Analyze paragraph with AI';
+  const tooltipLabel =
+    language === 'ko' ? 'AI 설명 보기' : 'View AI explanation';
+  const actionLabel =
+    language === 'ko' ? 'AI로 문단 분석하기' : 'Analyze paragraph with AI';
 
   return (
     <>
-      <p className='mb-4 leading-relaxed inline-block w-full group/spark relative'>
+      <ContentTag
+        className='mb-4 leading-relaxed inline-block w-full group/spark relative'
+        data-spark-inline-wrapper={ContentTag}
+      >
         {children}
         {hasText && (
           <Tooltip>
@@ -239,29 +343,29 @@ export default function SparkInline({
                   'opacity-50 hover:opacity-100 group-hover/spark:opacity-80',
                   'hover:bg-primary/10 hover:scale-110',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                  isTerminal && 'text-primary',
+                  isTerminal && 'text-primary'
                 )}
               >
-                <Sparkles className={cn(
-                  'h-4 w-4 md:h-3.5 md:w-3.5',
-                  open && 'text-primary',
-                )} />
+                <Sparkles
+                  className={cn(
+                    'h-4 w-4 md:h-3.5 md:w-3.5',
+                    open && 'text-primary'
+                  )}
+                />
                 <span className='sr-only'>{actionLabel}</span>
               </button>
             </TooltipTrigger>
-            <TooltipContent side='top'>
-              {tooltipLabel}
-            </TooltipContent>
+            <TooltipContent side='top'>{tooltipLabel}</TooltipContent>
           </Tooltip>
         )}
-      </p>
+      </ContentTag>
 
       {/* Animated panel using CSS grid trick for smooth height transition */}
       <div
         className={cn(
           'grid transition-[grid-template-rows,opacity] duration-300 ease-in-out',
           open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
-          '-mt-2 mb-6',
+          '-mt-2 mb-6'
         )}
         aria-hidden={!open}
       >
@@ -271,25 +375,33 @@ export default function SparkInline({
               'rounded-2xl border shadow-sm',
               isTerminal
                 ? 'bg-[hsl(var(--terminal-code-bg))] border-primary/20'
-                : 'bg-card/80 backdrop-blur-sm border-border/60',
+                : 'bg-card/80 backdrop-blur-sm border-border/60'
             )}
             role='region'
             aria-label='AI 분석 패널'
           >
             {/* Header with mode tabs */}
-            <div className={cn(
-              'flex items-center justify-between px-4 py-3 border-b',
-              isTerminal ? 'border-primary/10 bg-primary/5' : 'border-border/40 bg-muted/30',
-            )}>
+            <div
+              className={cn(
+                'flex items-center justify-between px-4 py-3 border-b',
+                isTerminal
+                  ? 'border-primary/10 bg-primary/5'
+                  : 'border-border/40 bg-muted/30'
+              )}
+            >
               {/* Mode buttons - iOS segmented control style */}
-              <div className={cn(
-                'inline-flex rounded-xl p-1 gap-1',
-                isTerminal ? 'bg-primary/10' : 'bg-muted/60',
-              )}>
-                {(['sketch', 'prism', 'chain'] as Mode[]).map((mode) => {
+              <div
+                className={cn(
+                  'inline-flex rounded-xl p-1 gap-1',
+                  isTerminal ? 'bg-primary/10' : 'bg-muted/60'
+                )}
+              >
+                {(['sketch', 'prism', 'chain'] as Mode[]).map(mode => {
                   const config = ModeConfig[mode];
                   const Icon = config.icon;
-                  const isActive = activeMode === mode && (hasResult !== null || loading === mode);
+                  const isActive =
+                    activeMode === mode &&
+                    (hasResult !== null || loading === mode);
                   const isLoading = loading === mode;
 
                   return (
@@ -299,18 +411,28 @@ export default function SparkInline({
                         'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200',
                         'min-h-[32px] min-w-[70px] justify-center',
                         'disabled:opacity-50 disabled:cursor-not-allowed',
-                        isActive && !isTerminal && 'bg-background shadow-sm text-foreground',
-                        isActive && isTerminal && 'bg-primary/20 text-primary shadow-sm',
-                        !isActive && 'text-muted-foreground hover:text-foreground hover:bg-background/50',
-                        isLoading && 'animate-pulse',
+                        isActive &&
+                          !isTerminal &&
+                          'bg-background shadow-sm text-foreground',
+                        isActive &&
+                          isTerminal &&
+                          'bg-primary/20 text-primary shadow-sm',
+                        !isActive &&
+                          'text-muted-foreground hover:text-foreground hover:bg-background/50',
+                        isLoading && 'animate-pulse'
                       )}
                       disabled={loading !== 'idle'}
                       onClick={() => run(mode)}
                     >
                       {isLoading ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <Loader2 className='h-3.5 w-3.5 animate-spin' />
                       ) : (
-                        <Icon className={cn('h-3.5 w-3.5', isActive && config.activeColor)} />
+                        <Icon
+                          className={cn(
+                            'h-3.5 w-3.5',
+                            isActive && config.activeColor
+                          )}
+                        />
                       )}
                       <span>{config.label}</span>
                     </button>
@@ -323,7 +445,8 @@ export default function SparkInline({
                 className={cn(
                   'flex items-center justify-center rounded-full transition-all duration-200',
                   'h-8 w-8 hover:bg-muted/80',
-                  isTerminal && 'hover:bg-primary/10 text-primary/60 hover:text-primary',
+                  isTerminal &&
+                    'hover:bg-primary/10 text-primary/60 hover:text-primary'
                 )}
                 onClick={() => setOpen(false)}
                 aria-label='닫기'
@@ -336,36 +459,48 @@ export default function SparkInline({
             <div className='px-4 py-4'>
               {/* Loading state */}
               {loading !== 'idle' && (
-                <div className={cn(
-                  'flex flex-col items-center gap-3 py-8 justify-center',
-                )}>
-                  <div className={cn(
-                    'flex items-center justify-center w-12 h-12 rounded-2xl',
-                    isTerminal ? 'bg-primary/10' : 'bg-muted',
-                  )}>
-                    <Loader2 className={cn(
-                      'h-6 w-6 animate-spin',
-                      isTerminal ? 'text-primary' : 'text-muted-foreground',
-                    )} />
+                <div
+                  className={cn(
+                    'flex flex-col items-center gap-3 py-8 justify-center'
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'flex items-center justify-center w-12 h-12 rounded-2xl',
+                      isTerminal ? 'bg-primary/10' : 'bg-muted'
+                    )}
+                  >
+                    <Loader2
+                      className={cn(
+                        'h-6 w-6 animate-spin',
+                        isTerminal ? 'text-primary' : 'text-muted-foreground'
+                      )}
+                    />
                   </div>
                   <div className='text-center'>
-                    <p className={cn(
-                      'text-sm font-medium',
-                      isTerminal ? 'text-primary' : 'text-foreground',
-                    )}>
+                    <p
+                      className={cn(
+                        'text-sm font-medium',
+                        isTerminal ? 'text-primary' : 'text-foreground'
+                      )}
+                    >
                       {activeModeConfig.label} 분석 중...
                     </p>
-                    <p className='text-xs text-muted-foreground mt-0.5'>잠시만 기다려 주세요...</p>
+                    <p className='text-xs text-muted-foreground mt-0.5'>
+                      잠시만 기다려 주세요...
+                    </p>
                   </div>
                 </div>
               )}
 
               {/* Error state */}
               {error && (
-                <div className={cn(
-                  'rounded-xl px-4 py-3 text-sm',
-                  'bg-destructive/10 text-destructive border border-destructive/20',
-                )}>
+                <div
+                  className={cn(
+                    'rounded-xl px-4 py-3 text-sm',
+                    'bg-destructive/10 text-destructive border border-destructive/20'
+                  )}
+                >
                   {error}
                 </div>
               )}
@@ -375,13 +510,21 @@ export default function SparkInline({
                 <div className='space-y-4 animate-in fade-in-0 slide-in-from-bottom-2 duration-300'>
                   {/* Mood badge */}
                   <div className='flex items-center gap-2'>
-                    <span className={cn(
-                      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium',
-                      isTerminal
-                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                        : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
-                    )}>
-                      <span className='text-base mr-0.5' role='img' aria-label='mood'>{getMoodEmoji(sketchRes.mood)}</span>
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium',
+                        isTerminal
+                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                          : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                      )}
+                    >
+                      <span
+                        className='text-base mr-0.5'
+                        role='img'
+                        aria-label='mood'
+                      >
+                        {getMoodEmoji(sketchRes.mood)}
+                      </span>
                       {sketchRes.mood}
                     </span>
                   </div>
@@ -393,13 +536,15 @@ export default function SparkInline({
                         key={i}
                         className={cn(
                           'flex items-start gap-3 text-sm leading-relaxed',
-                          isTerminal ? 'text-foreground/90' : 'text-foreground',
+                          isTerminal ? 'text-foreground/90' : 'text-foreground'
                         )}
                       >
-                        <span className={cn(
-                          'flex-shrink-0 w-1.5 h-1.5 rounded-full mt-2',
-                          isTerminal ? 'bg-primary/60' : 'bg-amber-500/60',
-                        )} />
+                        <span
+                          className={cn(
+                            'flex-shrink-0 w-1.5 h-1.5 rounded-full mt-2',
+                            isTerminal ? 'bg-primary/60' : 'bg-amber-500/60'
+                          )}
+                        />
                         <span>{b}</span>
                       </li>
                     ))}
@@ -419,19 +564,23 @@ export default function SparkInline({
                           'rounded-xl overflow-hidden border',
                           isTerminal
                             ? 'bg-primary/5 border-primary/20'
-                            : `${colors.bg} ${colors.border}`,
+                            : `${colors.bg} ${colors.border}`
                         )}
                       >
                         <div className='flex items-start gap-3 px-4 py-3'>
-                          <div className={cn(
-                            'w-1 self-stretch rounded-full shrink-0',
-                            isTerminal ? 'bg-primary/50' : colors.bar,
-                          )} />
+                          <div
+                            className={cn(
+                              'w-1 self-stretch rounded-full shrink-0',
+                              isTerminal ? 'bg-primary/50' : colors.bar
+                            )}
+                          />
                           <div className='flex-1 min-w-0'>
-                            <div className={cn(
-                              'font-medium text-sm mb-2',
-                              isTerminal ? 'text-primary' : colors.text,
-                            )}>
+                            <div
+                              className={cn(
+                                'font-medium text-sm mb-2',
+                                isTerminal ? 'text-primary' : colors.text
+                              )}
+                            >
                               {f.title}
                             </div>
                             <ul className='space-y-1.5'>
@@ -440,10 +589,12 @@ export default function SparkInline({
                                   key={j}
                                   className='flex items-start gap-2 text-sm leading-relaxed text-foreground/80'
                                 >
-                                  <span className={cn(
-                                    'flex-shrink-0 w-1 h-1 rounded-full mt-2',
-                                    isTerminal ? 'bg-primary/40' : colors.dot,
-                                  )} />
+                                  <span
+                                    className={cn(
+                                      'flex-shrink-0 w-1 h-1 rounded-full mt-2',
+                                      isTerminal ? 'bg-primary/40' : colors.dot
+                                    )}
+                                  />
                                   <span>{p}</span>
                                 </li>
                               ))}
@@ -471,11 +622,13 @@ export default function SparkInline({
                       'hover:scale-[1.01] active:scale-[0.99]',
                       isTerminal
                         ? 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20'
-                        : 'bg-violet-100/50 border-violet-300/50 text-violet-700 hover:bg-violet-100 dark:bg-violet-900/20 dark:border-violet-700/30 dark:text-violet-300 dark:hover:bg-violet-900/30',
+                        : 'bg-violet-100/50 border-violet-300/50 text-violet-700 hover:bg-violet-100 dark:bg-violet-900/20 dark:border-violet-700/30 dark:text-violet-300 dark:hover:bg-violet-900/30'
                     )}
                   >
                     <MessageCircle className='h-4 w-4' />
-                    <span className='text-sm font-medium flex-1 text-left'>이 주제로 상담 시작하기</span>
+                    <span className='text-sm font-medium flex-1 text-left'>
+                      이 주제로 상담 시작하기
+                    </span>
                     <ChevronRight className='h-4 w-4 transition-transform group-hover:translate-x-0.5' />
                   </button>
                 </div>
@@ -501,17 +654,25 @@ export default function SparkInline({
                         'hover:-translate-y-0.5 hover:shadow-sm active:scale-[0.99]',
                         isTerminal
                           ? 'bg-primary/5 border-primary/20 hover:bg-primary/10'
-                          : 'bg-emerald-50/50 border-emerald-200/50 dark:bg-emerald-900/10 dark:border-emerald-800/30 hover:bg-emerald-50 dark:hover:bg-emerald-900/20',
+                          : 'bg-emerald-50/50 border-emerald-200/50 dark:bg-emerald-900/10 dark:border-emerald-800/30 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
                       )}
                     >
-                      <div className={cn(
-                        'font-medium text-sm flex items-start gap-2',
-                        isTerminal ? 'text-primary' : 'text-emerald-700 dark:text-emerald-300',
-                      )}>
-                        <span className={cn(
-                          'flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold mt-0.5',
-                          isTerminal ? 'bg-primary/30 text-primary' : 'bg-emerald-500 text-white',
-                        )}>
+                      <div
+                        className={cn(
+                          'font-medium text-sm flex items-start gap-2',
+                          isTerminal
+                            ? 'text-primary'
+                            : 'text-emerald-700 dark:text-emerald-300'
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold mt-0.5',
+                            isTerminal
+                              ? 'bg-primary/30 text-primary'
+                              : 'bg-emerald-500 text-white'
+                          )}
+                        >
                           {i + 1}
                         </span>
                         <span>{q.q}</span>
@@ -534,23 +695,33 @@ export default function SparkInline({
               {/* Empty state - when opened but no result yet */}
               {!hasResult && loading === 'idle' && !error && (
                 <div className='py-8 flex flex-col items-center justify-center min-h-[180px]'>
-                  <div className={cn(
-                    'relative flex items-center justify-center w-14 h-14 rounded-2xl mb-4',
-                    isTerminal ? 'bg-primary/10' : 'bg-muted',
-                  )}>
+                  <div
+                    className={cn(
+                      'relative flex items-center justify-center w-14 h-14 rounded-2xl mb-4',
+                      isTerminal ? 'bg-primary/10' : 'bg-muted'
+                    )}
+                  >
                     <span className='absolute inset-0 rounded-2xl animate-ping opacity-20 bg-primary/40' />
-                    <Sparkles className={cn(
-                      'h-6 w-6 relative z-10',
-                      isTerminal ? 'text-primary' : 'text-muted-foreground',
-                    )} />
+                    <Sparkles
+                      className={cn(
+                        'h-6 w-6 relative z-10',
+                        isTerminal ? 'text-primary' : 'text-muted-foreground'
+                      )}
+                    />
                   </div>
                   <p className='text-sm text-muted-foreground text-center'>
                     위 버튼을 눌러 AI 분석을 시작하세요
                   </p>
                   <div className='flex flex-wrap justify-center gap-4 mt-4 text-xs text-muted-foreground/70'>
-                    <span><strong>핵심 파악</strong> - 핵심 포인트</span>
-                    <span><strong>다각도 분석</strong> - 다양한 시각</span>
-                    <span><strong>더 생각해보기</strong> - 연쇄 질문</span>
+                    <span>
+                      <strong>핵심 파악</strong> - 핵심 포인트
+                    </span>
+                    <span>
+                      <strong>다각도 분석</strong> - 다양한 시각
+                    </span>
+                    <span>
+                      <strong>더 생각해보기</strong> - 연쇄 질문
+                    </span>
                   </div>
                 </div>
               )}
@@ -560,26 +731,30 @@ export default function SparkInline({
       </div>
 
       {/* Debate Room Modal - Portal to body to escape parent overflow constraints */}
-      {showDebate && (debateTopic || prismRes) && createPortal(
-        <div className='fixed inset-0 z-[var(--z-modal-overlay)] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in-0 duration-200'>
-          <div className='w-full max-w-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300'>
-            <DebateRoom
-              topic={debateTopic || {
-                title: prismRes?.facets[0]?.title || '다각도 분석',
-                context: text,
-                facets: prismRes?.facets,
-                originalParagraph: text,
-              }}
-              postTitle={postTitle}
-              onClose={() => {
-                setShowDebate(false);
-                setDebateTopic(null);
-              }}
-            />
-          </div>
-        </div>,
-        document.body
-      )}
+      {showDebate &&
+        (debateTopic || prismRes) &&
+        createPortal(
+          <div className='fixed inset-0 z-[var(--z-modal-overlay)] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in-0 duration-200'>
+            <div className='w-full max-w-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300'>
+              <DebateRoom
+                topic={
+                  debateTopic || {
+                    title: prismRes?.facets[0]?.title || '다각도 분석',
+                    context: text,
+                    facets: prismRes?.facets,
+                    originalParagraph: text,
+                  }
+                }
+                postTitle={postTitle}
+                onClose={() => {
+                  setShowDebate(false);
+                  setDebateTopic(null);
+                }}
+              />
+            </div>
+          </div>,
+          document.body
+        )}
     </>
   );
 }

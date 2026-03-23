@@ -22,9 +22,11 @@ import {
   addNotification,
   type NotificationType,
 } from "@/stores/realtime/useNotificationStore";
+import type { AuthTokenProvider } from "@/services/core/auth-token.port";
+import { adminAccessTokenProvider } from "@/services/core/admin-access-token.provider";
+import { syncUnreadNotifications } from "@/services/realtime/notifications";
 import { getApiBaseUrl } from "@/utils/network/apiBase";
 import { bearerAuth } from "@/lib/auth";
-import { useAuthStore } from "@/stores/session/useAuthStore";
 import {
   findSSEFrameBoundary,
   parseSSEFrame,
@@ -53,7 +55,7 @@ let reconnectAttempts = 0;
 let slowPollMode = false;
 let disposed = false;
 let initialized = false;
-let authChangeListenerBound = false;
+let tokenProvider: AuthTokenProvider = adminAccessTokenProvider;
 
 // ============================================================================
 // Helpers
@@ -102,12 +104,6 @@ function closeConnection() {
   }
 }
 
-function onAdminAuthChanged() {
-  if (disposed) return;
-  reconnectAttempts = 0;
-  reconnect();
-}
-
 function reconnect() {
   if (disposed) return;
   closeConnection();
@@ -146,12 +142,15 @@ function reconnect() {
 // ============================================================================
 
 interface SSENotificationPayload {
+  notificationId?: string;
   type?: string;
   title?: string;
   message?: string;
   notificationType?: NotificationType;
   sourceId?: string;
   payload?: Record<string, unknown>;
+  createdAt?: string;
+  readAt?: string | null;
 }
 
 function handleNotificationEvent(data: SSENotificationPayload) {
@@ -168,11 +167,14 @@ function handleNotificationEvent(data: SSENotificationPayload) {
           : "info");
 
   addNotification({
+    id: data.notificationId,
     type,
     title,
     message,
     sourceId: data.sourceId,
     payload: data.payload,
+    createdAt: data.createdAt,
+    read: Boolean(data.readAt),
   });
 }
 
@@ -308,7 +310,7 @@ async function connect() {
   }
 
   try {
-    const token = await useAuthStore.getState().getValidAccessToken();
+    const token = await tokenProvider.getAccessToken();
     if (!token) {
       clearReconnectTimer();
       reconnectTimer = setTimeout(() => {
@@ -345,6 +347,7 @@ async function connect() {
     reconnectAttempts = 0;
     slowPollMode = false;
     resetPingWatchdog();
+    void syncUnreadNotifications();
 
     // Start parsing the stream
     const reader = response.body.getReader();
@@ -372,14 +375,14 @@ async function connect() {
  * Initialize the notification SSE service.
  * Safe to call multiple times — only connects once.
  */
-export function initNotificationSSE(): void {
+export function initNotificationSSE(options?: {
+  tokenProvider?: AuthTokenProvider;
+}): void {
+  tokenProvider = options?.tokenProvider ?? adminAccessTokenProvider;
   if (initialized) return;
   disposed = false;
   initialized = true;
-  if (typeof window !== "undefined" && !authChangeListenerBound) {
-    window.addEventListener("admin-auth-changed", onAdminAuthChanged);
-    authChangeListenerBound = true;
-  }
+  void syncUnreadNotifications();
   connect();
 }
 
@@ -393,10 +396,6 @@ export function disposeNotificationSSE(): void {
   clearReconnectTimer();
   clearPingWatchdog();
   closeConnection();
-  if (typeof window !== "undefined" && authChangeListenerBound) {
-    window.removeEventListener("admin-auth-changed", onAdminAuthChanged);
-    authChangeListenerBound = false;
-  }
 }
 
 /**

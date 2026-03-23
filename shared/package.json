@@ -1,0 +1,17 @@
+{
+  "name": "@blog/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./contracts/common": "./src/contracts/common.js",
+    "./contracts/translation": "./src/contracts/translation.js",
+    "./contracts/notifications": "./src/contracts/notifications.js",
+    "./contracts/auth": "./src/contracts/auth.js",
+    "./contracts/async-jobs": "./src/contracts/async-jobs.js"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  }
+}

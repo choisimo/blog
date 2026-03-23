@@ -1,4 +1,4 @@
-export type SupportedLanguage = 'ko' | 'en';
+export type SupportedLanguage = "ko" | "en";
 
 export interface LocalizedPostFields {
   title: string;
@@ -31,6 +31,30 @@ export interface BlogPost {
   series?: string;
   /** Order within the series (1-based) */
   seriesOrder?: number;
+}
+
+export interface ResolvedPostViewModel {
+  year: string;
+  slug: string;
+  title: string;
+  description: string;
+  excerpt?: string;
+  content: string;
+  categoryLabel: string;
+  tagLabels: string[];
+  readingTimeLabel?: string;
+  author?: string;
+  date: string;
+  tags: string[];
+}
+
+export interface ResolvedRelatedPostCard {
+  year: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  categoryLabel: string;
+  readingTimeLabel?: string;
 }
 
 export interface BlogCategory {
