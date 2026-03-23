@@ -1,10 +1,6 @@
 import { execute, queryAll, queryOne } from './d1';
 
-export type DomainOutboxStatus =
-  | 'pending'
-  | 'processing'
-  | 'processed'
-  | 'dead_letter';
+export type DomainOutboxStatus = 'pending' | 'processing' | 'processed' | 'dead_letter';
 
 export type DomainOutboxEvent<TPayload = unknown> = {
   id: string;
@@ -53,6 +49,20 @@ type ListDomainOutboxInput = {
   limit?: number;
 };
 
+type ClaimDomainOutboxInput = {
+  stream: string;
+  limit?: number;
+  now?: string;
+};
+
+type FailDomainOutboxInput = {
+  id: string;
+  lastError: string;
+  now?: string;
+  maxRetries?: number;
+  retryDelayMs?: number;
+};
+
 const schemaInit = new WeakMap<D1Database, Promise<void>>();
 
 function normalizeLimit(limit?: number) {
@@ -84,6 +94,11 @@ function mapRow(row: DomainOutboxRow): DomainOutboxEvent {
     processedAt: row.processed_at,
     lastError: row.last_error,
   };
+}
+
+export function computeDomainOutboxBackoffMs(retryCount: number) {
+  const attempt = Math.max(1, retryCount);
+  return Math.min(300_000, 5_000 * 2 ** (attempt - 1));
 }
 
 export async function ensureDomainOutboxSchema(db: D1Database) {
@@ -272,6 +287,126 @@ export async function markDomainOutboxPending(
       WHERE id = ?`,
     new Date().toISOString(),
     lastError ?? null,
+    id
+  );
+}
+
+export async function claimDomainOutboxEvents(
+  db: D1Database,
+  input: ClaimDomainOutboxInput
+): Promise<DomainOutboxEvent[]> {
+  await ensureDomainOutboxSchema(db);
+
+  const now = input.now || new Date().toISOString();
+  const rows = await queryAll<DomainOutboxRow>(
+    db,
+    `SELECT id, stream, aggregate_id, event_type, payload, idempotency_key,
+            status, retry_count, created_at, available_at, last_attempt_at,
+            processed_at, last_error
+       FROM domain_outbox
+      WHERE stream = ?
+        AND status = 'pending'
+        AND available_at <= ?
+      ORDER BY created_at ASC
+      LIMIT ?`,
+    input.stream,
+    now,
+    normalizeLimit(input.limit)
+  );
+
+  const claimed: DomainOutboxEvent[] = [];
+  for (const row of rows) {
+    const result = await execute(
+      db,
+      `UPDATE domain_outbox
+          SET status = 'processing',
+              last_attempt_at = ?
+        WHERE id = ?
+          AND status = 'pending'
+          AND available_at <= ?`,
+      now,
+      row.id,
+      now
+    );
+
+    if ((result.meta?.changes || 0) > 0) {
+      claimed.push(
+        mapRow({
+          ...row,
+          status: 'processing',
+          last_attempt_at: now,
+        })
+      );
+    }
+  }
+
+  return claimed;
+}
+
+export async function markDomainOutboxFailed(db: D1Database, input: FailDomainOutboxInput) {
+  await ensureDomainOutboxSchema(db);
+
+  const row = await queryOne<Pick<DomainOutboxRow, 'id' | 'retry_count'>>(
+    db,
+    `SELECT id, retry_count
+       FROM domain_outbox
+      WHERE id = ?`,
+    input.id
+  );
+
+  if (!row) {
+    return { status: 'missing' as const, retryCount: 0 };
+  }
+
+  const now = input.now || new Date().toISOString();
+  const retryCount = row.retry_count + 1;
+  const maxRetries = Math.max(1, input.maxRetries ?? 5);
+  const retryDelayMs = input.retryDelayMs ?? computeDomainOutboxBackoffMs(retryCount);
+  const nextStatus: DomainOutboxStatus = retryCount >= maxRetries ? 'dead_letter' : 'pending';
+  const availableAt =
+    nextStatus === 'dead_letter' ? now : new Date(Date.parse(now) + retryDelayMs).toISOString();
+
+  await execute(
+    db,
+    `UPDATE domain_outbox
+        SET status = ?,
+            retry_count = ?,
+            available_at = ?,
+            last_attempt_at = ?,
+            last_error = ?,
+            processed_at = CASE WHEN ? = 'dead_letter' THEN NULL ELSE processed_at END
+      WHERE id = ?`,
+    nextStatus,
+    retryCount,
+    availableAt,
+    now,
+    input.lastError,
+    nextStatus,
+    input.id
+  );
+
+  return {
+    status: nextStatus,
+    retryCount,
+    availableAt,
+  };
+}
+
+export async function replayDomainOutboxEvent(db: D1Database, id: string) {
+  await ensureDomainOutboxSchema(db);
+
+  const now = new Date().toISOString();
+  await execute(
+    db,
+    `UPDATE domain_outbox
+        SET status = 'pending',
+            retry_count = 0,
+            available_at = ?,
+            last_attempt_at = NULL,
+            processed_at = NULL,
+            last_error = NULL
+      WHERE id = ?`,
+    now,
     id
   );
 }

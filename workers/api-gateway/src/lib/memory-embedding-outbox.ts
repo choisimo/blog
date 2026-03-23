@@ -1,12 +1,13 @@
 import type { Env } from '../types';
 import {
   appendDomainOutboxEvent,
-  listDomainOutboxEvents,
-  markDomainOutboxPending,
+  claimDomainOutboxEvents,
+  markDomainOutboxFailed,
   markDomainOutboxProcessed,
 } from './domain-outbox';
 
 const MEMORY_EMBEDDING_STREAM = 'memory.embedding';
+const MEMORY_EMBEDDING_MAX_RETRIES = 5;
 
 type MemoryEmbeddingUpsertPayload = {
   userId: string;
@@ -32,10 +33,7 @@ async function requireBackend(env: Env) {
   };
 }
 
-async function upsertMemoryEmbedding(
-  env: Env,
-  payload: MemoryEmbeddingUpsertPayload
-) {
+async function upsertMemoryEmbedding(env: Env, payload: MemoryEmbeddingUpsertPayload) {
   const { backendOrigin, backendKey } = await requireBackend(env);
   const response = await fetch(`${backendOrigin}/api/v1/rag/memories/upsert`, {
     method: 'POST',
@@ -61,10 +59,7 @@ async function upsertMemoryEmbedding(
   }
 }
 
-async function deleteMemoryEmbedding(
-  env: Env,
-  payload: MemoryEmbeddingDeletePayload
-) {
+async function deleteMemoryEmbedding(env: Env, payload: MemoryEmbeddingDeletePayload) {
   const { backendOrigin, backendKey } = await requireBackend(env);
   const response = await fetch(
     `${backendOrigin}/api/v1/rag/memories/${payload.userId}/${payload.memoryId}`,
@@ -107,17 +102,14 @@ export async function enqueueMemoryEmbeddingDelete(
   });
 }
 
-export async function flushMemoryEmbeddingOutbox(
-  env: Env,
-  options: { limit?: number } = {}
-) {
-  const events = await listDomainOutboxEvents(env.DB, {
+export async function flushMemoryEmbeddingOutbox(env: Env, options: { limit?: number } = {}) {
+  const events = await claimDomainOutboxEvents(env.DB, {
     stream: MEMORY_EMBEDDING_STREAM,
-    status: 'pending',
     limit: options.limit ?? 25,
   });
 
   let processed = 0;
+  let deadLettered = 0;
 
   for (const event of events) {
     try {
@@ -131,12 +123,20 @@ export async function flushMemoryEmbeddingOutbox(
       processed += 1;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Memory embedding sync failed';
-      await markDomainOutboxPending(env.DB, event.id, message);
+      const result = await markDomainOutboxFailed(env.DB, {
+        id: event.id,
+        lastError: message,
+        maxRetries: MEMORY_EMBEDDING_MAX_RETRIES,
+      });
+      if (result.status === 'dead_letter') {
+        deadLettered += 1;
+      }
     }
   }
 
   return {
     processed,
+    deadLettered,
     scanned: events.length,
   };
 }
