@@ -226,38 +226,6 @@ function parseJobStatusPayload(
 // API Functions
 // ============================================================================
 
-type FetchTranslationOptions = {
-  method?: "GET" | "POST" | "DELETE";
-  headers?: HeadersInit;
-  body?: string;
-};
-
-async function fetchWithFallback(
-  urls: string[],
-  options: FetchTranslationOptions = {},
-): Promise<Response> {
-  let lastResponse: Response | null = null;
-  let lastError: unknown;
-
-  for (const url of urls) {
-    try {
-      const response = await fetch(url, options);
-      if (response.status !== 404) {
-        return response;
-      }
-      lastResponse = response;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  if (lastResponse) {
-    return lastResponse;
-  }
-
-  throw lastError ?? new Error("Translation request failed");
-}
-
 /**
  * Generate a translation for a published blog post.
  * The preferred contract lets the server load the post by year/slug.
@@ -371,10 +339,9 @@ export async function getCachedTranslation(
 ): Promise<TranslationResult | null> {
   try {
     const baseUrl = getApiBaseUrl();
-    const response = await fetchWithFallback([
+    const response = await fetch(
       `${baseUrl}/api/v1/public/posts/${year}/${slug}/translations/${targetLang}`,
-      `${baseUrl}/api/v1/translate/${year}/${slug}/${targetLang}`,
-    ]);
+    );
 
     if (!response.ok) {
       if (response.status === 404) return null;
@@ -399,11 +366,8 @@ export async function deleteCachedTranslation(
   try {
     const baseUrl = getApiBaseUrl();
     const headers = await getAuthHeadersAsync();
-    const response = await fetchWithFallback(
-      [
-        `${baseUrl}/api/v1/internal/posts/${year}/${slug}/translations/${targetLang}`,
-        `${baseUrl}/api/v1/translate/${year}/${slug}/${targetLang}`,
-      ],
+    const response = await fetch(
+      `${baseUrl}/api/v1/internal/posts/${year}/${slug}/translations/${targetLang}`,
       {
         method: "DELETE",
         headers,
