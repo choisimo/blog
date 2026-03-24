@@ -7,6 +7,8 @@
  * - POST /session - 새 세션 생성 (프록시)
  * - POST /session/:id/message - 챗봇 메시지 (프록시, SSE 지원)
  * - POST /session/:id/task - Inline AI Task (서버 사이드 프롬프트 생성)
+ * - POST /session/:id/lens-feed - Lens 카드 피드 생성
+ * - POST /session/:id/thought-feed - Thought 카드 피드 생성
  * - POST /aggregate - 통합 질문 처리
  */
 
@@ -23,10 +25,19 @@ import {
   type TaskMode,
   type TaskPayload,
 } from '../lib/prompts';
-import { executeTask } from '../lib/llm';
+import { callTaskLLM, executeTask, tryParseJson } from '../lib/llm';
 import { getCorsHeadersForRequest } from '../lib/cors';
 import { getAiDefaultModel, getAiVisionModel } from '../lib/config';
 import { requireAdmin } from '../middleware/auth';
+import { buildLensFeedPrompt, buildThoughtFeedPrompt } from '../lib/feed-prompts';
+import {
+  buildLensFeedFallback,
+  buildThoughtFeedFallback,
+  normalizeLensFeedRequest,
+  normalizeLensFeedResponse,
+  normalizeThoughtFeedRequest,
+  normalizeThoughtFeedResponse,
+} from '../lib/feed-normalizers';
 
 type ChatContext = { Bindings: Env };
 
@@ -231,6 +242,72 @@ chat.post('/session/:sessionId/task', async (c: Context<ChatContext>) => {
     } catch {
       return error(c, message, 500, 'INTERNAL_ERROR');
     }
+  }
+});
+
+chat.post('/session/:sessionId/lens-feed', async (c: Context<ChatContext>) => {
+  const body = await c.req.json().catch(() => ({}));
+  const input = normalizeLensFeedRequest(body);
+
+  if (!input) {
+    return badRequest(c, 'No content provided for lens feed');
+  }
+
+  try {
+    const promptConfig = buildLensFeedPrompt(input);
+    const response = await callTaskLLM(promptConfig, c.env);
+
+    if (response.ok) {
+      const candidate =
+        response.parsed ?? (response.text ? (tryParseJson(response.text) ?? response.text) : null);
+      const normalized = normalizeLensFeedResponse(candidate, input);
+      if (normalized) {
+        return success(c, normalized);
+      }
+    }
+
+    console.warn(
+      'Lens feed generation failed, returning fallback:',
+      response.error || 'normalization failed'
+    );
+    return success(c, buildLensFeedFallback(input));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Lens feed generation failed';
+    console.error('Lens feed error:', message);
+    return success(c, buildLensFeedFallback(input));
+  }
+});
+
+chat.post('/session/:sessionId/thought-feed', async (c: Context<ChatContext>) => {
+  const body = await c.req.json().catch(() => ({}));
+  const input = normalizeThoughtFeedRequest(body);
+
+  if (!input) {
+    return badRequest(c, 'No content provided for thought feed');
+  }
+
+  try {
+    const promptConfig = buildThoughtFeedPrompt(input);
+    const response = await callTaskLLM(promptConfig, c.env);
+
+    if (response.ok) {
+      const candidate =
+        response.parsed ?? (response.text ? (tryParseJson(response.text) ?? response.text) : null);
+      const normalized = normalizeThoughtFeedResponse(candidate, input);
+      if (normalized) {
+        return success(c, normalized);
+      }
+    }
+
+    console.warn(
+      'Thought feed generation failed, returning fallback:',
+      response.error || 'normalization failed'
+    );
+    return success(c, buildThoughtFeedFallback(input));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Thought feed generation failed';
+    console.error('Thought feed error:', message);
+    return success(c, buildThoughtFeedFallback(input));
   }
 });
 

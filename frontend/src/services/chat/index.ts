@@ -10,15 +10,22 @@ export type {
   ChatTaskMode,
   InvokeChatTaskInput,
   InvokeChatTaskResult,
+  LensCard,
+  ThoughtCard,
+  FeedCursor,
+  LensFeedRequest,
+  LensFeedResponse,
+  ThoughtFeedRequest,
+  ThoughtFeedResponse,
   ChatStreamEvent,
   StreamChatInput,
   ChatImageUploadResult,
   PageContext,
   ContentPart,
   ChatErrorCode,
-} from './types';
+} from "./types";
 
-export { ChatError } from './types';
+export { ChatError } from "./types";
 
 // Config
 export {
@@ -27,7 +34,7 @@ export {
   isUnifiedTasksEnabled,
   buildChatUrl,
   buildChatHeaders,
-} from './config';
+} from "./config";
 
 export {
   SESSION_ID_KEY,
@@ -52,8 +59,8 @@ export {
   ensureSession,
   startNewSession,
   switchToSession,
-} from './session';
-export type { ChatSessionMeta } from './session';
+} from "./session";
+export type { ChatSessionMeta } from "./session";
 
 // Context
 export {
@@ -64,7 +71,7 @@ export {
   buildImageContext,
   buildRAGContextPrompt,
   buildMemoryContextPrompt,
-} from './context';
+} from "./context";
 
 // Stream parsing
 export {
@@ -77,17 +84,19 @@ export {
   createJSONParser,
   createPlainTextParser,
   getParserForContentType,
-} from './stream';
-export type { StreamParser } from './stream';
+} from "./stream";
+export type { StreamParser } from "./stream";
 
 // API functions
 export {
   invokeChatTask,
+  invokeLensFeed,
+  invokeThoughtFeed,
   streamChatEvents,
   streamChatMessage,
   uploadChatImage,
   invokeChatAggregate,
-} from './api';
+} from "./api";
 
 export {
   connectLiveChatStream,
@@ -96,5 +105,5 @@ export {
   updateLiveChatConfig,
   getLiveRoomStats,
   getLiveRooms,
-} from './live';
-export type { LiveChatEvent, LiveAgentPolicy, LiveRoom } from './live';
+} from "./live";
+export type { LiveChatEvent, LiveAgentPolicy, LiveRoom } from "./live";

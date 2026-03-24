@@ -12,6 +12,13 @@ export {
   type ChatTaskMode,
   type InvokeChatTaskInput,
   type InvokeChatTaskResult,
+  type LensCard,
+  type ThoughtCard,
+  type FeedCursor,
+  type LensFeedRequest,
+  type LensFeedResponse,
+  type ThoughtFeedRequest,
+  type ThoughtFeedResponse,
   type ChatStreamEvent,
   type StreamChatInput,
   type ChatImageUploadResult,
@@ -41,6 +48,8 @@ export {
   startNewSession,
   switchToSession,
   invokeChatTask,
+  invokeLensFeed,
+  invokeThoughtFeed,
   streamChatEvents,
   streamChatMessage,
   uploadChatImage,
@@ -51,4 +60,4 @@ export {
   updateLiveChatConfig,
   getLiveRoomStats,
   getLiveRooms,
-} from './chat/index';
+} from "./chat/index";

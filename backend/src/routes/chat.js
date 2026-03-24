@@ -96,6 +96,104 @@ const CHAT_RESPONSE_TIMEOUT_MS = Math.max(
   5_000,
   Number.parseInt(process.env.CHAT_RESPONSE_TIMEOUT_MS || "45000", 10),
 );
+const CHAT_FEED_PROXY_TIMEOUT_MS = Math.max(
+  5_000,
+  Number.parseInt(process.env.CHAT_FEED_PROXY_TIMEOUT_MS || "15000", 10),
+);
+
+function buildWorkerChatHeaders(req) {
+  const headers = {
+    Accept: req.get("accept") || "application/json",
+    "Content-Type": req.get("content-type") || "application/json",
+  };
+
+  const authorization = req.get("authorization");
+  if (authorization) {
+    headers.Authorization = authorization;
+  }
+
+  const requestId = req.get("x-request-id");
+  if (requestId) {
+    headers["X-Request-Id"] = requestId;
+  }
+
+  const backendKey = config.backendKey;
+  if (backendKey) {
+    headers["X-Backend-Key"] = backendKey;
+  }
+
+  return headers;
+}
+
+async function proxyChatFeedToWorker(req, res, feedPath) {
+  const workerApiUrl = config.services?.workerApiUrl;
+  if (!workerApiUrl) {
+    return res.status(503).json({
+      ok: false,
+      error: "WORKER_API_URL is not configured",
+    });
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), CHAT_FEED_PROXY_TIMEOUT_MS);
+
+  try {
+    const upstreamUrl = workerApiUrl.replace(/\/$/, "") + feedPath;
+    const rawBody =
+      req.body == null
+        ? ""
+        : typeof req.body === "string"
+          ? req.body
+          : JSON.stringify(req.body);
+
+    const upstreamResponse = await fetch(upstreamUrl, {
+      method: "POST",
+      headers: buildWorkerChatHeaders(req),
+      body: rawBody,
+      signal: controller.signal,
+    });
+
+    const responseBody = await upstreamResponse.text();
+    const hopByHopHeaders = new Set([
+      "connection",
+      "content-length",
+      "keep-alive",
+      "proxy-authenticate",
+      "proxy-authorization",
+      "te",
+      "trailer",
+      "transfer-encoding",
+      "upgrade",
+    ]);
+
+    upstreamResponse.headers.forEach((value, key) => {
+      if (!hopByHopHeaders.has(key.toLowerCase())) {
+        res.setHeader(key, value);
+      }
+    });
+
+    if (!res.getHeader("content-type")) {
+      res.type("application/json");
+    }
+
+    return res.status(upstreamResponse.status).send(responseBody);
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      logger.warn({}, "Chat feed proxy timed out", {
+        feedPath,
+        timeoutMs: CHAT_FEED_PROXY_TIMEOUT_MS,
+      });
+      return res.status(504).json({
+        ok: false,
+        error: "Chat feed upstream timed out",
+      });
+    }
+
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 // ----------------------------------------------------------------------------
 // WebSocket Chat Streaming
@@ -778,6 +876,40 @@ router.get("/live/rooms", async (req, res, next) => {
     return next(err);
   }
 });
+/**
+ * POST /api/v1/chat/session/:sessionId/lens-feed
+ * Forward lens feed generation to Worker chat route.
+ */
+router.post("/session/:sessionId/lens-feed", async (req, res, next) => {
+  try {
+    const { sessionId } = req.params;
+    return await proxyChatFeedToWorker(
+      req,
+      res,
+      "/api/v1/chat/session/" + encodeURIComponent(sessionId) + "/lens-feed",
+    );
+  } catch (err) {
+    return next(err);
+  }
+});
+
+/**
+ * POST /api/v1/chat/session/:sessionId/thought-feed
+ * Forward thought feed generation to Worker chat route.
+ */
+router.post("/session/:sessionId/thought-feed", async (req, res, next) => {
+  try {
+    const { sessionId } = req.params;
+    return await proxyChatFeedToWorker(
+      req,
+      res,
+      "/api/v1/chat/session/" + encodeURIComponent(sessionId) + "/thought-feed",
+    );
+  } catch (err) {
+    return next(err);
+  }
+});
+
 /**
  * POST /api/v1/chat/session/:sessionId/task
  * Execute inline AI task (sketch, prism, chain, etc.)
