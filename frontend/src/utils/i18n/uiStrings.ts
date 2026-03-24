@@ -53,8 +53,10 @@ const dictionary = {
       aiTranslated: "AI 번역",
       translationFailed: "번역 실패",
       showingOriginal: "원본 콘텐츠를 표시합니다.",
-      translationNotAvailable: "아직 준비된 번역이 없습니다.",
-      translationAuthRequired: "번역 생성은 로그인 후 사용할 수 있습니다.",
+      translationNotAvailable:
+        "아직 준비된 번역이 없습니다. 공개 경로에서는 이미 생성된 캐시만 조회할 수 있습니다.",
+      translationAuthRequired:
+        "로그인하면 새 번역을 생성할 수 있습니다. 현재는 캐시된 번역만 조회 가능합니다.",
       translationTimeout: "AI 서버 응답이 지연되고 있습니다.",
       translationServerError: "AI 번역 서버에서 오류가 발생했습니다.",
       translationUnknownError: "번역 중 오류가 발생했습니다.",
@@ -113,8 +115,10 @@ const dictionary = {
       aiTranslated: "AI Translated",
       translationFailed: "Translation Failed",
       showingOriginal: "Showing original content.",
-      translationNotAvailable: "A cached translation is not available yet.",
-      translationAuthRequired: "Sign in to generate a new translation.",
+      translationNotAvailable:
+        "No prepared translation is cached yet. Public access can only read translations that were already generated.",
+      translationAuthRequired:
+        "Sign in to generate a new translation. Right now this page can only read existing cached translations.",
       translationTimeout: "The AI translation server is responding slowly.",
       translationServerError: "The AI translation server returned an error.",
       translationUnknownError: "Something went wrong while translating.",
