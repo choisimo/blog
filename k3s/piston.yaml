@@ -86,11 +86,10 @@ spec:
               fi
               cd "$CGROUP_FS"
               mkdir -p isolate/init
-              echo 1 > isolate/cgroup.procs
               enable_cgroup_controllers cgroup.subtree_control cpuset cpu io memory pids
               cd isolate
-              echo 1 > init/cgroup.procs
               enable_cgroup_controllers cgroup.subtree_control cpuset memory
+              echo 1 > init/cgroup.procs
               echo "Initialized cgroup"
               chown -R piston:piston /piston
               exec su -- piston -c 'ulimit -n 65536 && node /piston_api/src'
