@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,10 +57,11 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // All posts for search
+  // All posts for search — loaded lazily on first search interaction
   const [allPosts, setAllPosts] = useState<BlogPost[]>([]);
   const [searchResults, setSearchResults] = useState<BlogPost[] | null>(null);
   const [searchActive, setSearchActive] = useState(false);
+  const [searchPostsLoaded, setSearchPostsLoaded] = useState(false);
 
   // Editor's Picks
   const [featuredPosts, setFeaturedPosts] = useState<BlogPost[]>([]);
@@ -85,14 +86,9 @@ const Index = () => {
       }
     };
 
-    const loadAllForSearch = async () => {
-      try {
-        const posts = await getPosts();
-        if (!cancelled) setAllPosts(posts);
-      } catch {
-        // ignore search preload errors
-      }
-    };
+    // loadAllForSearch is intentionally NOT called at mount.
+    // Posts are loaded lazily when the user first focuses the search bar.
+    // See handleSearchFocus below.
 
     const loadFeatured = async () => {
       try {
@@ -159,13 +155,24 @@ const Index = () => {
     };
 
     loadLatest();
-    loadAllForSearch();
     loadFeatured();
 
     return () => {
       cancelled = true;
     };
   }, []);
+
+  // Lazy-load all posts only when the user first interacts with the search bar.
+  const handleSearchFocus = useCallback(async () => {
+    if (searchPostsLoaded) return;
+    setSearchPostsLoaded(true);
+    try {
+      const posts = await getPosts();
+      setAllPosts(posts);
+    } catch {
+      // silently ignore — search will just have no results
+    }
+  }, [searchPostsLoaded]);
 
   // Read recently viewed from localStorage and keep in sync
   useEffect(() => {
@@ -289,6 +296,7 @@ const Index = () => {
                 setSearchResults(results);
                 setSearchActive(results !== allPosts);
               }}
+              onFocus={handleSearchFocus}
               placeholder="Search posts, tags, categories..."
             />
           </div>

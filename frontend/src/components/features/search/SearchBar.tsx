@@ -13,6 +13,7 @@ interface SearchBarProps {
   onWebSearchResults?: (results: WebSearchResult[], answer?: string) => void;
   placeholder?: string;
   enableWebSearch?: boolean;
+  onFocus?: () => void;
 }
 
 export function SearchBar({
@@ -21,6 +22,7 @@ export function SearchBar({
   onWebSearchResults,
   placeholder = "블로그 검색...",
   enableWebSearch = true,
+  onFocus,
 }: SearchBarProps) {
   const [query, setQuery] = useState("");
   const [isWebSearching, setIsWebSearching] = useState(false);
@@ -112,6 +114,7 @@ export function SearchBar({
                 placeholder='--pattern "search query"'
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onFocus={onFocus}
                 className="flex-1 h-10 border-0 bg-transparent px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-0 focus-visible:ring-offset-0"
               />
             </div>
@@ -189,6 +192,7 @@ export function SearchBar({
           placeholder={placeholder}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onFocus={onFocus}
           className="pl-11 pr-10 h-11 rounded-xl border border-border/60 bg-background shadow-none focus:border-primary/60 focus:ring-0 transition-colors duration-200 placeholder:text-muted-foreground/60"
         />
         {query && (

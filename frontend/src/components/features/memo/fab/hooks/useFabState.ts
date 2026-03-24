@@ -296,7 +296,10 @@ export function useScrollHide(): boolean {
       if (Math.abs(delta) < 3) return;
 
       // Accumulate delta in the same direction
-      if ((delta > 0 && accumulatedDelta >= 0) || (delta < 0 && accumulatedDelta <= 0)) {
+      if (
+        (delta > 0 && accumulatedDelta >= 0) ||
+        (delta < 0 && accumulatedDelta <= 0)
+      ) {
         accumulatedDelta += delta;
       } else {
         // Direction changed, reset
@@ -317,7 +320,7 @@ export function useScrollHide(): boolean {
       const now = Date.now();
       if (now - lastTime < THROTTLE_MS) return;
       lastTime = now;
-      
+
       if (rafId) cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(updateHideState);
     };
@@ -423,14 +426,14 @@ export function useFabAnalytics() {
   return { send, sendImpression, sendMemoContextChange };
 }
 
-export type FabPosition = 'bottom' | 'left';
+export type FabPosition = "bottom" | "left";
 
 function normalizeFabPosition(raw: unknown): FabPosition | null {
-  if (raw === 'bottom' || raw === 'left') return raw;
-  if (typeof raw === 'string') {
+  if (raw === "bottom" || raw === "left") return raw;
+  if (typeof raw === "string") {
     try {
       const parsed = JSON.parse(raw);
-      if (parsed === 'bottom' || parsed === 'left') return parsed;
+      if (parsed === "bottom" || parsed === "left") return parsed;
     } catch {
       void 0;
     }
@@ -441,11 +444,13 @@ function normalizeFabPosition(raw: unknown): FabPosition | null {
 export function useFabPosition(): [FabPosition, (v: FabPosition) => void] {
   const [position, setPositionState] = useState<FabPosition>(() => {
     try {
-      const saved = localStorage.getItem('fab.position');
+      const saved = localStorage.getItem("fab.position");
       const normalized = normalizeFabPosition(saved);
       if (normalized) return normalized;
-    } catch { void 0; }
-    return 'bottom';
+    } catch {
+      void 0;
+    }
+    return "left";
   });
 
   useEffect(() => {
@@ -457,7 +462,7 @@ export function useFabPosition(): [FabPosition, (v: FabPosition) => void] {
     };
 
     const onStorage = (e: StorageEvent) => {
-      if (!e.key || e.key === 'fab.position') {
+      if (!e.key || e.key === "fab.position") {
         apply(e.newValue);
       }
     };
@@ -469,25 +474,37 @@ export function useFabPosition(): [FabPosition, (v: FabPosition) => void] {
         return;
       }
       try {
-        apply(localStorage.getItem('fab.position'));
+        apply(localStorage.getItem("fab.position"));
       } catch {
         void 0;
       }
     };
 
-    window.addEventListener('storage', onStorage);
-    window.addEventListener('fab:position-changed', onPositionChanged as EventListener);
+    window.addEventListener("storage", onStorage);
+    window.addEventListener(
+      "fab:position-changed",
+      onPositionChanged as EventListener,
+    );
     return () => {
-      window.removeEventListener('storage', onStorage);
-      window.removeEventListener('fab:position-changed', onPositionChanged as EventListener);
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(
+        "fab:position-changed",
+        onPositionChanged as EventListener,
+      );
     };
   }, []);
 
   const setPosition = useCallback((v: FabPosition) => {
     setPositionState(v);
-    try { localStorage.setItem('fab.position', v); } catch { void 0; }
     try {
-      window.dispatchEvent(new CustomEvent('fab:position-changed', { detail: { position: v } }));
+      localStorage.setItem("fab.position", v);
+    } catch {
+      void 0;
+    }
+    try {
+      window.dispatchEvent(
+        new CustomEvent("fab:position-changed", { detail: { position: v } }),
+      );
     } catch {
       void 0;
     }
