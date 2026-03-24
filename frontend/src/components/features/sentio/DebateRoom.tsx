@@ -3,19 +3,13 @@ import {
   X,
   Send,
   Loader2,
-  MessageSquare,
-  ThumbsUp,
-  ThumbsDown,
   RotateCcw,
-  Lightbulb,
   Users,
   ArrowRight,
   GraduationCap,
   Swords,
   Compass,
   BarChart3,
-  Sparkles,
-  HelpCircle,
   Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -23,6 +17,12 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { streamChatEvents, invokeChatTask } from "@/services/chat";
 import { PrismResult } from "@/services/discovery/ai";
 import ChatMarkdown from "@/components/molecules/ChatMarkdown";
+import {
+  type DebateEntryMode,
+  type DebateIntentOption,
+  getModeIntentOptions,
+  getModeIntro,
+} from "./debateEntry";
 
 export type DebateMessage = {
   id: string;
@@ -37,6 +37,8 @@ export type DebateTopic = {
   context: string;
   facets?: PrismResult["facets"];
   originalParagraph?: string;
+  entryMode?: DebateEntryMode;
+  entryIntentId?: string;
 };
 
 type DebateRoomProps = {
@@ -188,7 +190,9 @@ function buildDebateSystemPrompt(
     lines.push("", "[참고할 수 있는 관점들]");
     topic.facets.forEach((f, i) => {
       lines.push(`${i + 1}. ${f.title}`);
-      f.points.forEach((p) => { lines.push(`   - ${p}`); });
+      f.points.forEach((p) => {
+        lines.push(`   - ${p}`);
+      });
     });
   }
 
@@ -209,69 +213,17 @@ function buildDebateSystemPrompt(
 
 type SelectionStep = "intent" | "chat";
 
-type DebateIntentOption = {
-  id: string;
-  label: string;
-  sublabel: string;
-  icon: React.ComponentType<{ className?: string }>;
-  color: string;
-  personaId: string;
-  stance: "agree" | "disagree" | "neutral";
-  starterText: string;
-};
-
-const INTENT_OPTIONS: DebateIntentOption[] = [
-  {
-    id: "understand",
-    label: "더 잘 이해하고 싶어요",
-    sublabel: "핵심을 쉽게 풀어줘요",
-    icon: GraduationCap,
-    color: "from-amber-500 to-orange-500",
-    personaId: "mentor",
-    stance: "neutral",
-    starterText: "이 내용을 더 쉽게 이해하고 싶어요. 핵심을 정리해주실 수 있나요?",
-  },
-  {
-    id: "explore",
-    label: "다른 관점을 알고 싶어요",
-    sublabel: "새로운 시각으로 살펴봐요",
-    icon: Compass,
-    color: "from-blue-500 to-cyan-500",
-    personaId: "explorer",
-    stance: "neutral",
-    starterText: "이 주제를 다양한 관점에서 바라보면 어떨까요?",
-  },
-  {
-    id: "challenge",
-    label: "비판적으로 살펴볼게요",
-    sublabel: "논리의 허점을 찾아봐요",
-    icon: Swords,
-    color: "from-red-500 to-pink-500",
-    personaId: "debater",
-    stance: "disagree",
-    starterText: "이 내용에 대해 비판적으로 생각해보고 싶어요. 반박 논리를 알려주실 수 있나요?",
-  },
-  {
-    id: "analyze",
-    label: "체계적으로 분석해볼게요",
-    sublabel: "데이터와 논리로 파헤쳐요",
-    icon: BarChart3,
-    color: "from-emerald-500 to-teal-500",
-    personaId: "analyst",
-    stance: "agree",
-    starterText: "이 주제를 체계적으로 분석해볼게요. 구조화된 관점을 알려주세요.",
-  },
-];
-
 function StepProgress({
   step,
   isTerminal,
+  entryStepLabel,
 }: {
   step: SelectionStep;
   isTerminal: boolean;
+  entryStepLabel: string;
 }) {
   const steps: { key: SelectionStep; label: string }[] = [
-    { key: "intent", label: "의도" },
+    { key: "intent", label: entryStepLabel },
     { key: "chat", label: "대화" },
   ];
   const currentIdx = steps.findIndex((s) => s.key === step);
@@ -341,6 +293,8 @@ function StepProgress({
 
 export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
   const { isTerminal } = useTheme();
+  const entryIntro = getModeIntro(topic);
+  const intentOptions = getModeIntentOptions(topic);
   const [messages, setMessages] = useState<DebateMessage[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -358,6 +312,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const autoStartedIntentKeyRef = useRef<string | null>(null);
 
   const canSend = input.trim().length > 0 && !busy;
 
@@ -429,7 +384,8 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
 
   const startDebateWithIntent = useCallback(
     async (intent: DebateIntentOption) => {
-      const persona = AI_PERSONAS.find((p) => p.id === intent.personaId) ?? AI_PERSONAS[0];
+      const persona =
+        AI_PERSONAS.find((p) => p.id === intent.personaId) ?? AI_PERSONAS[0];
       const stance = intent.stance;
 
       setSelectedPersona(persona ?? null);
@@ -496,7 +452,10 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
           setMessages((prev) =>
             prev.map((m) =>
               m.id === aiId && !m.content
-                ? { ...m, content: "응답 시간이 초과되었어요. 다시 시도해주세요." }
+                ? {
+                    ...m,
+                    content: "응답 시간이 초과되었어요. 다시 시도해주세요.",
+                  }
                 : m,
             ),
           );
@@ -504,7 +463,11 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
           setMessages((prev) =>
             prev.map((m) =>
               m.id === aiId
-                ? { ...m, content: "죄송해요, 응답을 생성하지 못했어요. 다시 시도해주세요." }
+                ? {
+                    ...m,
+                    content:
+                      "죄송해요, 응답을 생성하지 못했어요. 다시 시도해주세요.",
+                  }
                 : m,
             ),
           );
@@ -670,6 +633,31 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
     [],
   );
 
+  useEffect(() => {
+    const intentId = topic.entryIntentId;
+    if (!intentId) {
+      autoStartedIntentKeyRef.current = null;
+      return;
+    }
+
+    const matchedIntent = intentOptions.find(
+      (option) => option.id === intentId,
+    );
+    if (!matchedIntent) return;
+
+    const autoKey = `${topic.title}::${topic.context}::${intentId}`;
+    if (autoStartedIntentKeyRef.current === autoKey) return;
+
+    autoStartedIntentKeyRef.current = autoKey;
+    void startDebateWithIntent(matchedIntent);
+  }, [
+    intentOptions,
+    startDebateWithIntent,
+    topic.context,
+    topic.entryIntentId,
+    topic.title,
+  ]);
+
   return (
     <div
       className={cn(
@@ -774,7 +762,11 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
       >
         {selectionStep === "intent" && (
           <div className="space-y-5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
-            <StepProgress step="intent" isTerminal={isTerminal} />
+            <StepProgress
+              step="intent"
+              isTerminal={isTerminal}
+              entryStepLabel={entryIntro.stepLabel}
+            />
 
             {/* Topic Card */}
             <div
@@ -795,6 +787,9 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
                   <MessageSquare className="h-4 w-4 text-primary" />
                 </div>
                 <div className="min-w-0 flex-1">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-primary/80">
+                    {entryIntro.eyebrow}
+                  </p>
                   <h4 className="font-medium text-sm mb-2">{topic.title}</h4>
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {topic.context.length > 200
@@ -809,14 +804,14 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
               <div className="text-center space-y-1">
                 <p className="text-sm font-medium flex items-center justify-center gap-2">
                   <Sparkles className="h-4 w-4 text-primary" />
-                  <span>무엇이 궁금하신가요?</span>
+                  <span>{entryIntro.title}</span>
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  원하는 대화 방향을 골라주세요
+                  {entryIntro.description}
                 </p>
               </div>
               <div className="grid grid-cols-1 gap-2.5">
-                {INTENT_OPTIONS.map((intent) => {
+                {intentOptions.map((intent) => {
                   const Icon = intent.icon;
                   return (
                     <button

@@ -3,11 +3,7 @@ import { WebSocketServer } from "ws";
 import { aiService, tryParseJson } from "../lib/ai-service.js";
 import { config } from "../config.js";
 import openNotebook from "../services/open-notebook.service.js";
-import {
-  AI_MODELS,
-  AI_TEMPERATURES,
-  STREAMING,
-} from "../config/constants.js";
+import { AI_MODELS, AI_TEMPERATURES, STREAMING } from "../config/constants.js";
 import { createLogger } from "../lib/logger.js";
 
 const logger = createLogger("chat");
@@ -64,8 +60,18 @@ import {
   getAllActiveStreamRooms,
 } from "../services/live-chat.service.js";
 import { getApplicationContainer } from "../application/bootstrap/container.js";
-import { performRAGSearch, formatPageContext } from "../services/chat-rag.service.js";
-import { wait, splitStreamingText, emitTextChunks, extractUserMessage, streamWithFallback, finalizeChatTurn } from "../lib/chat-streaming.js";
+import {
+  performRAGSearch,
+  formatPageContext,
+} from "../services/chat-rag.service.js";
+import {
+  wait,
+  splitStreamingText,
+  emitTextChunks,
+  extractUserMessage,
+  streamWithFallback,
+  finalizeChatTurn,
+} from "../lib/chat-streaming.js";
 
 const router = Router();
 const {
@@ -158,7 +164,9 @@ export function initChatWebSocket(server) {
           session = getSession(sessionId);
           if (openNotebook.isEnabled()) {
             void ensureSessionNotebook(sessionId).catch((err) => {
-              logger.warn({}, 'Session notebook bootstrap failed', { error: err?.message });
+              logger.warn({}, "Session notebook bootstrap failed", {
+                error: err?.message,
+              });
             });
           }
         }
@@ -270,7 +278,11 @@ router.post("/session", async (req, res, next) => {
 
     if (openNotebook.isEnabled()) {
       void ensureSessionNotebook(sessionId).catch((err) => {
-        logger.warn({}, 'Notebook provisioning during session creation failed', { error: err?.message });
+        logger.warn(
+          {},
+          "Notebook provisioning during session creation failed",
+          { error: err?.message },
+        );
       });
     }
 
@@ -306,7 +318,9 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
       session = getSession(effectiveSessionId);
       if (openNotebook.isEnabled()) {
         void ensureSessionNotebook(effectiveSessionId).catch((err) => {
-          logger.warn({}, 'Session notebook bootstrap failed', { error: err?.message });
+          logger.warn({}, "Session notebook bootstrap failed", {
+            error: err?.message,
+          });
         });
       }
     }
@@ -420,7 +434,7 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
 
       send({ type: "done" });
     } catch (err) {
-      logger.error({}, 'Chat streaming error', { error: err.message });
+      logger.error({}, "Chat streaming error", { error: err.message });
       send({ type: "error", error: err.message || "Chat failed" });
     }
 
@@ -559,6 +573,26 @@ router.post("/live/message", async (req, res, next) => {
     const name =
       nameRaw.trim().slice(0, 40) ||
       `visitor-${Math.random().toString(36).slice(2, 6)}`;
+    const replyToName =
+      typeof body.replyToName === "string" && body.replyToName.trim()
+        ? body.replyToName.trim().slice(0, 40)
+        : undefined;
+    const mentionedAgents = Array.isArray(body.mentionedAgents)
+      ? body.mentionedAgents
+          .map((value) =>
+            String(value || "")
+              .trim()
+              .toLowerCase(),
+          )
+          .filter(Boolean)
+          .slice(0, 6)
+      : typeof body.mentionedAgents === "string" && body.mentionedAgents.trim()
+        ? body.mentionedAgents
+            .split(",")
+            .map((value) => value.trim().toLowerCase())
+            .filter(Boolean)
+            .slice(0, 6)
+        : [];
 
     if (!resolvedSession.ok) {
       return res
@@ -583,6 +617,8 @@ router.post("/live/message", async (req, res, next) => {
       name,
       text,
       senderType,
+      replyToName,
+      mentionedAgents,
       ts,
     });
 
@@ -593,6 +629,8 @@ router.post("/live/message", async (req, res, next) => {
       senderType,
       name,
       text,
+      replyToName,
+      mentionedAgents,
       ts,
       onlineCount: await getRoomParticipantCountGlobal(room),
     };
@@ -611,6 +649,8 @@ router.post("/live/message", async (req, res, next) => {
         triggerSessionId: sessionId,
         triggerName: name,
         triggerText: text,
+        replyToName,
+        mentionedAgents,
       });
     }
 
@@ -772,7 +812,9 @@ router.post("/session/:sessionId/task", async (req, res, next) => {
       const text = await aiService.generate(prompt, { temperature });
 
       // Debug: log raw AI response
-      logger.debug({ taskMode }, 'Raw AI response', { preview: text?.slice(0, 500) });
+      logger.debug({ taskMode }, "Raw AI response", {
+        preview: text?.slice(0, 500),
+      });
 
       // Parse response based on mode
       let data;
@@ -784,13 +826,23 @@ router.post("/session/:sessionId/task", async (req, res, next) => {
           const normalized = normalizeTaskData(taskMode, json, taskPayload);
           if (normalized) {
             data = normalized;
-            logger.debug({ taskMode }, 'Successfully parsed and normalized JSON', { preview: JSON.stringify(data).slice(0, 200) });
+            logger.debug(
+              { taskMode },
+              "Successfully parsed and normalized JSON",
+              { preview: JSON.stringify(data).slice(0, 200) },
+            );
           } else {
-            logger.warn({ taskMode }, 'Parsed JSON failed schema validation, projecting text result');
+            logger.warn(
+              { taskMode },
+              "Parsed JSON failed schema validation, projecting text result",
+            );
             data = projectTaskDataFromText(taskMode, text, taskPayload);
           }
         } else {
-          logger.warn({ taskMode }, 'JSON parse failed, projecting text result');
+          logger.warn(
+            { taskMode },
+            "JSON parse failed, projecting text result",
+          );
           data = projectTaskDataFromText(taskMode, text, taskPayload);
         }
       }
@@ -802,7 +854,9 @@ router.post("/session/:sessionId/task", async (req, res, next) => {
         source: "ai-service",
       });
     } catch (err) {
-      logger.warn({}, 'Task execution failed, returning fallback', { error: err.message });
+      logger.warn({}, "Task execution failed, returning fallback", {
+        error: err.message,
+      });
       const fallbackData = getFallbackData(taskMode, taskPayload);
       return res.json({
         ok: true,

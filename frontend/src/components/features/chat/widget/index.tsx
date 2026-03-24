@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/ui/use-mobile";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import type { PageContext } from "@/services/chat/types";
+import type { LiveReplyTarget } from "./types";
 
 import {
   useChatState,
@@ -29,6 +30,7 @@ import {
   ChatSessionPanel,
   ModeSelector,
   ChatMessages,
+  ChatStatusRail,
   ChatInput,
   ImageDrawer,
   MobileActionSheet,
@@ -65,6 +67,7 @@ export default function ChatWidget(props: {
     push,
     setInput,
     setLivePinned,
+    setLiveReplyTarget,
     setMessages,
     setShowActionSheet,
   } = state;
@@ -159,6 +162,8 @@ export default function ChatWidget(props: {
     isMobile,
     livePinned: state.livePinned,
     setLivePinned: state.setLivePinned,
+    liveReplyTarget: state.liveReplyTarget,
+    setLiveReplyTarget: state.setLiveReplyTarget,
     currentPost: props.currentPost,
   });
 
@@ -207,6 +212,17 @@ export default function ChatWidget(props: {
     },
     [setMessages],
   );
+  const handleReplyToLiveMessage = useCallback(
+    (target: LiveReplyTarget) => {
+      setLiveReplyTarget(target);
+      focusInput();
+    },
+    [focusInput, setLiveReplyTarget],
+  );
+
+  useEffect(() => {
+    setLiveReplyTarget(null);
+  }, [liveVisitorChat.room, setLiveReplyTarget]);
 
   const handleStartDebate = useCallback(async () => {
     if (debateBusy) return;
@@ -247,7 +263,7 @@ export default function ChatWidget(props: {
       let rafHandle: number | null = null;
       let mobileFlushTimer: number | null = null;
 
-        const commit = (snapshot: string) => {
+      const commit = (snapshot: string) => {
         setMessages((prev) =>
           prev.map((m) =>
             m.id === params.id
@@ -377,9 +393,9 @@ export default function ChatWidget(props: {
             ? "left-0 right-0 rounded-none max-w-full w-full overflow-x-hidden"
             : isExpanded
               ? "left-1/2 top-4 w-[min(calc(100%-24px),88rem)] -translate-x-1/2 rounded-2xl"
-            : sidebarOpen
-              ? "bottom-20 left-1/2 w-[min(100%-24px,58rem)] -translate-x-1/2 rounded-2xl"
-              : "bottom-20 left-1/2 w-[min(100%-24px,42rem)] -translate-x-1/2 rounded-2xl",
+              : sidebarOpen
+                ? "bottom-20 left-1/2 w-[min(100%-24px,58rem)] -translate-x-1/2 rounded-2xl"
+                : "bottom-20 left-1/2 w-[min(100%-24px,42rem)] -translate-x-1/2 rounded-2xl",
           isTerminal &&
             !isMobile &&
             "border-border bg-[hsl(var(--terminal-code-bg))] rounded-lg terminal-crt",
@@ -421,6 +437,7 @@ export default function ChatWidget(props: {
           canExpand={!isMobile}
           expanded={isExpanded}
           onToggleExpanded={() => setIsExpanded((prev) => !prev)}
+          transportStatus={liveVisitorChat.transportStatus}
         />
 
         {/* 2-panel layout: sidebar (desktop) + main chat area */}
@@ -488,6 +505,10 @@ export default function ChatWidget(props: {
             )}
 
             {/* Messages area */}
+            <ChatStatusRail
+              banner={liveVisitorChat.banner}
+              isTerminal={isTerminal}
+            />
             <div
               ref={state.scrollRef}
               className={cn(
@@ -507,6 +528,8 @@ export default function ChatWidget(props: {
                 lastPrompt={state.lastPromptRef.current}
                 onNavigate={props.onClose}
                 onExpireMessage={handleExpireMessage}
+                activeReplyTargetName={state.liveReplyTarget?.name ?? null}
+                onReplyToLiveMessage={handleReplyToLiveMessage}
               />
             </div>
 
@@ -545,6 +568,8 @@ export default function ChatWidget(props: {
               canSend={state.canSend}
               firstTokenMs={state.firstTokenMs}
               questionMode={state.questionMode}
+              liveReplyTarget={state.liveReplyTarget}
+              onClearLiveReplyTarget={() => state.setLiveReplyTarget(null)}
               isTerminal={isTerminal}
               isMobile={isMobile}
               textareaRef={state.textareaRef}
