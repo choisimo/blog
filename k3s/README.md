@@ -189,8 +189,24 @@ base set을 적용하기 전에 문서와 manifest가 전제하는 항목:
 현재 문서와 workflow evidence를 종합하면, 이 디렉토리는 compose-era watchtower 대체가 아니라 선언적 rollout 전환을 목표로 합니다.
 
 - backend images는 GitHub Actions에서 GHCR로 build/push 가능
-- cluster apply는 별도 `kubectl apply -k k3s` 또는 GitOps 도구가 담당해야 함
+- cluster apply는 GitOps 도구가 담당하도록 정리하는 편이 안전함
 - 현재 저장소 evidence만으로는 k3s 자동 apply workflow는 확인되지 않음
+
+## GitOps Bootstrap
+
+`k3s/argocd` 는 Argo CD와 Argo CD Image Updater를 pinning 해서 bootstrap 하는 경로입니다.
+
+권장 설치 순서:
+
+1. `kubectl apply --server-side --force-conflicts -k k3s/argocd/install`
+2. `kubectl apply -k k3s/argocd/image-updater`
+3. `kubectl apply -k k3s/argocd/bootstrap`
+
+설치 후 기대 동작:
+
+- Argo CD가 `https://github.com/choisimo/blog.git` 의 `k3s` 경로를 감시
+- `blog-api`, `blog-terminal` 은 immutable SHA tag를 추적
+- `piston`, `open-notebook` 처럼 mutable tag를 써야 하는 third-party 이미지는 digest 전략으로 drift를 감지
 
 ## Operations
 

@@ -31,6 +31,11 @@ metadata:
   namespace: blog
 spec:
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       app: piston
@@ -43,8 +48,51 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: piston
-          image: ghcr.io/engineer-man/piston@sha256:2f66b7456189c4d713aa986d98eccd0b6ee16d26c7ec5f21b30e942756fd127a
+          image: ghcr.io/engineer-man/piston:latest
           imagePullPolicy: Always
+          command:
+            - /bin/bash
+            - -lc
+          args:
+            - |
+              set -e
+              enable_cgroup_controllers() {
+                target="$1"
+                shift
+                missing=""
+                current="$(cat "$target" 2>/dev/null || true)"
+                for controller in "$@"; do
+                  case " $current " in
+                    *" $controller "*) ;;
+                    *) missing="$missing +$controller" ;;
+                  esac
+                done
+                if [ -n "$missing" ]; then
+                  echo "${missing# }" > "$target"
+                fi
+              }
+              CGROUP_FS=/sys/fs/cgroup
+              if [ ! -e "$CGROUP_FS" ]; then
+                echo "Cannot find $CGROUP_FS. Please make sure your system is using cgroup v2"
+                exit 1
+              fi
+              if [ -e "$CGROUP_FS/unified" ]; then
+                echo "Combined cgroup v1+v2 mode is not supported. Please make sure your system is using pure cgroup v2"
+                exit 1
+              fi
+              if [ ! -e "$CGROUP_FS/cgroup.subtree_control" ]; then
+                echo "Cgroup v2 not found. Please make sure cgroup v2 is enabled on your system"
+                exit 1
+              fi
+              cd "$CGROUP_FS"
+              mkdir -p isolate/init
+              enable_cgroup_controllers cgroup.subtree_control cpuset cpu io memory pids
+              cd isolate
+              enable_cgroup_controllers cgroup.subtree_control cpuset memory
+              echo 1 > init/cgroup.procs
+              echo "Initialized cgroup"
+              chown -R piston:piston /piston
+              exec su -- piston -c 'ulimit -n 65536 && node /piston_api/src'
           ports:
             - name: http
               containerPort: 2000
@@ -88,7 +136,7 @@ spec:
               cpu: 100m
               memory: 256Mi
             limits:
-              cpu: 2
+              cpu: 1
               memory: 1Gi
       volumes:
         - name: piston-packages

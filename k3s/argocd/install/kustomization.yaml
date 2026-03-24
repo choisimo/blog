@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: argocd
+
+resources:
+  - namespace.yaml
+  - upstream-argocd-install-v3.3.4.yaml
+
+patches:
+  - path: argocd-cm-patch.yaml
+  - path: argocd-cmd-params-cm-patch.yaml
