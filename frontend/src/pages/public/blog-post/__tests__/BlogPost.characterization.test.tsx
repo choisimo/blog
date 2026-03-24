@@ -254,7 +254,11 @@ beforeEach(() => {
     content: "# Hello",
     cached: false,
   });
-  vi.mocked(translateService.getCachedTranslation).mockResolvedValue(null);
+  vi.mocked(translateService.getCachedTranslation).mockResolvedValue({
+    translation: null,
+    pending: false,
+    job: null,
+  });
   vi.mocked(ragService.findRelatedPosts).mockResolvedValue([]);
   vi.mocked(seoUtils.generateSEOData).mockReturnValue({});
   vi.mocked(seoUtils.generateStructuredData).mockReturnValue({});
@@ -277,9 +281,8 @@ test("renders post content when loaded successfully", async () => {
 
 test("renders original content when translation fails", async () => {
   hoisted.currentLanguage = "en";
-  hoisted.hasTranslationSession = true;
   vi.mocked(postsData.getPostBySlug).mockResolvedValue(basePost);
-  vi.mocked(translateService.translatePost).mockRejectedValue(
+  vi.mocked(translateService.getCachedTranslation).mockRejectedValue(
     new Error("translation failed"),
   );
   mockedPostService.getPost.mockResolvedValue(basePost);
@@ -287,24 +290,37 @@ test("renders original content when translation fails", async () => {
   renderBlogPost();
 
   await waitFor(() => {
-    expect(translateService.translatePost).toHaveBeenCalled();
+    expect(translateService.getCachedTranslation).toHaveBeenCalledWith(
+      "2024",
+      "test-post",
+      "en",
+    );
   });
   expect(await screen.findByText("Test Post")).toBeInTheDocument();
   expect(document.body.textContent).toContain("Test Post");
 });
 
-test("uses cached translation before attempting protected generation", async () => {
+test("uses cached translation from the public translation route", async () => {
   hoisted.currentLanguage = "en";
   vi.mocked(translateService.getCachedTranslation).mockResolvedValue({
-    title: "Cached Test Post",
-    description: "Cached description",
-    content: "# Cached",
-    cached: true,
+    translation: {
+      title: "Cached Test Post",
+      description: "Cached description",
+      content: "# Cached",
+      cached: true,
+    },
+    pending: false,
+    job: null,
   });
 
   renderBlogPost();
 
   expect(await screen.findByText("Cached Test Post")).toBeInTheDocument();
+  expect(translateService.getCachedTranslation).toHaveBeenCalledWith(
+    "2024",
+    "test-post",
+    "en",
+  );
   expect(translateService.translatePost).not.toHaveBeenCalled();
   await waitFor(() => {
     expect(seoUtils.generateSEOData).toHaveBeenLastCalledWith(
@@ -317,7 +333,7 @@ test("uses cached translation before attempting protected generation", async () 
   });
 });
 
-test("does not call protected translation generation without a session", async () => {
+test("requests public translation even without a session", async () => {
   hoisted.currentLanguage = "en";
 
   renderBlogPost();
@@ -331,6 +347,33 @@ test("does not call protected translation generation without a session", async (
   });
   expect(translateService.translatePost).not.toHaveBeenCalled();
   expect(await screen.findByText("Test Post")).toBeInTheDocument();
+});
+
+test("keeps the original content when public translation is still pending", async () => {
+  hoisted.currentLanguage = "en";
+  vi.mocked(translateService.getCachedTranslation).mockResolvedValue({
+    translation: null,
+    pending: true,
+    job: {
+      id: "job-1",
+      status: "running",
+      statusUrl: "/status",
+      cacheUrl: "/cache",
+      generateUrl: "/generate",
+    },
+  });
+
+  renderBlogPost();
+
+  await waitFor(() => {
+    expect(translateService.getCachedTranslation).toHaveBeenCalledWith(
+      "2024",
+      "test-post",
+      "en",
+    );
+  });
+  expect(await screen.findByText("Test Post")).toBeInTheDocument();
+  expect(document.body.textContent).toContain("Test description");
 });
 
 test("renders without related posts when none found", async () => {
