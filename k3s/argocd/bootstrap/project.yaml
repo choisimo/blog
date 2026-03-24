@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: blog
+  namespace: argocd
+spec:
+  description: Blog platform workloads managed from the k3s directory
+  sourceRepos:
+    - https://github.com/choisimo/blog.git
+  destinations:
+    - namespace: blog
+      server: https://kubernetes.default.svc
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"

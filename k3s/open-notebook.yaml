@@ -18,6 +18,11 @@ metadata:
   namespace: blog
 spec:
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       app: open-notebook
@@ -45,7 +50,7 @@ spec:
       containers:
         - name: open-notebook
           image: lfnovo/open_notebook:v1-latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - name: web
               containerPort: 8501

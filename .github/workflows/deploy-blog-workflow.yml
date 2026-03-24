@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      image_tag: ${{ steps.meta.outputs.version }}
+      image_tag: ${{ steps.vars.outputs.sha_short }}
       sha_short: ${{ steps.vars.outputs.sha_short }}
 
     steps:
@@ -60,7 +60,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/blog-api
           tags: |
-            type=sha,prefix=
+            type=raw,value=${{ steps.vars.outputs.sha_short }}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=${{ github.event.inputs.image_tag }},enable=${{ github.event.inputs.image_tag != '' }}
 
@@ -108,18 +108,13 @@ jobs:
           echo "  - ghcr.io/${{ github.repository_owner }}/blog-terminal:latest"
           echo ""
           echo "┌────────────────────────────────────────────────────────────┐"
-          echo "│ MANUAL DEPLOYMENT INSTRUCTIONS                             │"
+          echo "│ GITOPS DEPLOYMENT SUMMARY                                  │"
           echo "├────────────────────────────────────────────────────────────┤"
-          echo "│ Server deployment is managed manually.                     │"
+          echo "│ Argo CD watches the k3s directory in this repository.      │"
           echo "│                                                            │"
-          echo "│ To deploy on the server:                                   │"
-          echo "│   1. SSH to server                                         │"
-          echo "│   2. Pull and restart services (compose)                   │"
+          echo "│ Argo CD Image Updater selects immutable SHA tags for       │"
+          echo "│ blog-api and blog-terminal, then Argo CD auto-syncs.      │"
           echo "│                                                            │"
-          echo "│ Or pull and restart specific service:                      │"
-          echo "│   docker pull ghcr.io/${{ github.repository_owner }}/blog-api:latest"
-          echo "│   docker compose restart api                               │"
-          echo "│                                                            │"
-          echo "│ Environment variables are synced separately via:           │"
-          echo "│   .github/workflows/sync-backend-env.yml                   │"
+          echo "│ Expected lag: registry publish + updater scan + sync.      │"
+          echo "│ No manual kubectl rollout restart is required.             │"
           echo "└────────────────────────────────────────────────────────────┘"
