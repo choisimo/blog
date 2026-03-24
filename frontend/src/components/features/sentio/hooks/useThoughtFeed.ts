@@ -1,16 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   invokeThoughtFeed,
   type ThoughtCard as ThoughtCardData,
 } from "@/services/chat";
-import { chain } from "@/services/discovery/ai";
+import { FALLBACK_DATA } from "@/config/defaults";
 
 export type ThoughtFeedSource = "feed" | "fallback";
 
 type UseThoughtFeedOptions = {
   paragraph: string;
   postTitle?: string;
-  requestKey: number;
+  cacheKey: string;
+  enabled: boolean;
   onReady?: (cards: ThoughtCardData[], source: ThoughtFeedSource) => void;
 };
 
@@ -19,6 +20,13 @@ type ThoughtCursor = {
   page: number;
   seenKeys: string[];
 } | null;
+
+type CachedThoughtFeed = {
+  cards: ThoughtCardData[];
+  exhausted: boolean;
+  source: ThoughtFeedSource;
+  nextCursor: ThoughtCursor;
+};
 
 type UseThoughtFeedResult = {
   cards: ThoughtCardData[];
@@ -68,10 +76,15 @@ function mergeThoughtCards(
   };
 }
 
+function isWarmingResponse(response: { warming?: boolean } | null | undefined) {
+  return response?.warming === true;
+}
+
 export function useThoughtFeed({
   paragraph,
   postTitle,
-  requestKey,
+  cacheKey,
+  enabled,
   onReady,
 }: UseThoughtFeedOptions): UseThoughtFeedResult {
   const [cards, setCards] = useState<ThoughtCardData[]>([]);
@@ -79,16 +92,23 @@ export function useThoughtFeed({
   const [loadingMore, setLoadingMore] = useState(false);
   const [exhausted, setExhausted] = useState(false);
   const [source, setSource] = useState<ThoughtFeedSource | null>(null);
+
   const nextCursorRef = useRef<ThoughtCursor>(null);
   const readyKeyRef = useRef<string | null>(null);
   const requestIdRef = useRef(0);
   const initialAbortRef = useRef<AbortController | null>(null);
   const loadMoreAbortRef = useRef<AbortController | null>(null);
+  const cacheRef = useRef<Map<string, CachedThoughtFeed>>(new Map());
+  const activeCacheKeyRef = useRef<string | null>(null);
+
+  const cardsRef = useRef<ThoughtCardData[]>([]);
+  const exhaustedRef = useRef(false);
+  const sourceRef = useRef<ThoughtFeedSource | null>(null);
 
   const notifyReady = useCallback(
     (nextCards: ThoughtCardData[], nextSource: ThoughtFeedSource) => {
       if (!onReady || nextCards.length === 0) return;
-      const key = `${requestKey}:${nextSource}:${nextCards
+      const key = `${cacheKey}:${nextSource}:${nextCards
         .slice(0, 6)
         .map((card) => card.trackKey)
         .join("|")}`;
@@ -96,11 +116,64 @@ export function useThoughtFeed({
       readyKeyRef.current = key;
       onReady(nextCards, nextSource);
     },
-    [onReady, requestKey],
+    [cacheKey, onReady],
   );
 
+  const cancelInFlight = useCallback(() => {
+    requestIdRef.current += 1;
+    initialAbortRef.current?.abort();
+    loadMoreAbortRef.current?.abort();
+    initialAbortRef.current = null;
+    loadMoreAbortRef.current = null;
+  }, []);
+
+  const resetState = useCallback(() => {
+    setCards([]);
+    setLoading(false);
+    setLoadingMore(false);
+    setExhausted(false);
+    setSource(null);
+    nextCursorRef.current = null;
+  }, []);
+
+  const persistCache = useCallback(
+    (overrides: Partial<CachedThoughtFeed> = {}) => {
+      const currentKey = activeCacheKeyRef.current;
+      const nextSource = overrides.source ?? sourceRef.current;
+      if (!currentKey || !nextSource) return;
+
+      cacheRef.current.set(currentKey, {
+        cards: overrides.cards ?? cardsRef.current,
+        exhausted: overrides.exhausted ?? exhaustedRef.current,
+        source: nextSource,
+        nextCursor: overrides.nextCursor ?? nextCursorRef.current,
+      });
+    },
+    [],
+  );
+
+  const hydrateCache = useCallback(
+    (cached: CachedThoughtFeed) => {
+      setCards(cached.cards);
+      setLoading(false);
+      setLoadingMore(false);
+      setExhausted(cached.exhausted);
+      setSource(cached.source);
+      nextCursorRef.current = cached.nextCursor;
+      notifyReady(cached.cards, cached.source);
+    },
+    [notifyReady],
+  );
+
+  useEffect(() => {
+    cardsRef.current = cards;
+    exhaustedRef.current = exhausted;
+    sourceRef.current = source;
+    persistCache();
+  }, [cards, exhausted, persistCache, source]);
+
   const loadInitial = useCallback(async () => {
-    if (!paragraph.trim() || requestKey <= 0) return;
+    if (!paragraph.trim()) return;
 
     requestIdRef.current += 1;
     const requestId = requestIdRef.current;
@@ -115,7 +188,6 @@ export function useThoughtFeed({
     setExhausted(false);
     setSource(null);
     nextCursorRef.current = null;
-    readyKeyRef.current = null;
 
     try {
       const response = await invokeThoughtFeed(
@@ -126,11 +198,25 @@ export function useThoughtFeed({
         },
         { signal: controller.signal },
       );
-      if (requestId !== requestIdRef.current || controller.signal.aborted)
+      if (requestId !== requestIdRef.current || controller.signal.aborted) {
         return;
+      }
 
       const items = response.items ?? [];
       if (items.length === 0) {
+        if (isWarmingResponse(response)) {
+          setCards([]);
+          setExhausted(false);
+          setSource("feed");
+          nextCursorRef.current = response.nextCursor;
+          persistCache({
+            cards: [],
+            exhausted: false,
+            source: "feed",
+            nextCursor: response.nextCursor,
+          });
+          return;
+        }
         throw new Error("Empty thought feed");
       }
 
@@ -143,14 +229,12 @@ export function useThoughtFeed({
       if (isAbortError(error) || requestId !== requestIdRef.current) {
         return;
       }
+
       console.warn(
-        "[ThoughtFeed] thought-feed failed, falling back to chain()",
+        "[ThoughtFeed] thought-feed failed, using local fallback cards",
         error,
       );
-      const fallback = await chain({ paragraph, postTitle });
-      if (requestId !== requestIdRef.current) return;
-
-      const mapped = mapChainFallbackToThoughts(fallback.questions);
+      const mapped = mapChainFallbackToThoughts(FALLBACK_DATA.CHAIN.QUESTIONS);
       setCards(mapped);
       setExhausted(true);
       setSource("fallback");
@@ -164,7 +248,7 @@ export function useThoughtFeed({
         initialAbortRef.current = null;
       }
     }
-  }, [notifyReady, paragraph, postTitle, requestKey]);
+  }, [notifyReady, paragraph, persistCache, postTitle]);
 
   const loadMore = useCallback(async () => {
     if (
@@ -185,6 +269,7 @@ export function useThoughtFeed({
     const controller = new AbortController();
     loadMoreAbortRef.current = controller;
     setLoadingMore(true);
+
     try {
       const response = await invokeThoughtFeed(
         {
@@ -195,8 +280,9 @@ export function useThoughtFeed({
         },
         { signal: controller.signal },
       );
-      if (requestId !== requestIdRef.current || controller.signal.aborted)
+      if (requestId !== requestIdRef.current || controller.signal.aborted) {
         return;
+      }
 
       const incoming = response.items ?? [];
       let appendedCount = 0;
@@ -205,6 +291,17 @@ export function useThoughtFeed({
         appendedCount = merged.appendedCount;
         return merged.items;
       });
+
+      if (incoming.length === 0 && isWarmingResponse(response)) {
+        setExhausted(false);
+        nextCursorRef.current = response.nextCursor ?? cursor;
+        persistCache({
+          exhausted: false,
+          source: "feed",
+          nextCursor: response.nextCursor ?? cursor,
+        });
+        return;
+      }
 
       const isExhausted =
         response.exhausted ||
@@ -217,6 +314,7 @@ export function useThoughtFeed({
       if (isAbortError(error) || requestId !== requestIdRef.current) {
         return;
       }
+
       console.warn("[ThoughtFeed] thought-feed append failed", error);
       setExhausted(true);
       nextCursorRef.current = null;
@@ -228,11 +326,56 @@ export function useThoughtFeed({
         loadMoreAbortRef.current = null;
       }
     }
-  }, [exhausted, loading, loadingMore, paragraph, postTitle, source]);
+  }, [
+    exhausted,
+    loading,
+    loadingMore,
+    paragraph,
+    persistCache,
+    postTitle,
+    source,
+  ]);
 
   useEffect(() => {
+    if (!paragraph.trim()) {
+      readyKeyRef.current = null;
+      activeCacheKeyRef.current = null;
+      cancelInFlight();
+      resetState();
+      return;
+    }
+
+    if (activeCacheKeyRef.current === cacheKey) {
+      return;
+    }
+
+    cancelInFlight();
+    readyKeyRef.current = null;
+
+    const cached = cacheRef.current.get(cacheKey);
+    if (cached) {
+      activeCacheKeyRef.current = cacheKey;
+      hydrateCache(cached);
+      return;
+    }
+
+    if (!enabled) {
+      activeCacheKeyRef.current = null;
+      resetState();
+      return;
+    }
+
+    activeCacheKeyRef.current = cacheKey;
     void loadInitial();
-  }, [loadInitial]);
+  }, [
+    cacheKey,
+    cancelInFlight,
+    enabled,
+    hydrateCache,
+    loadInitial,
+    paragraph,
+    resetState,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -241,10 +384,8 @@ export function useThoughtFeed({
     };
   }, []);
 
-  const stableCards = useMemo(() => cards, [cards]);
-
   return {
-    cards: stableCards,
+    cards,
     loading,
     loadingMore,
     exhausted,

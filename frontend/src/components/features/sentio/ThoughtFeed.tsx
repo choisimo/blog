@@ -7,21 +7,24 @@ import { useThoughtFeed, type ThoughtFeedSource } from "./hooks/useThoughtFeed";
 type ThoughtFeedProps = {
   paragraph: string;
   postTitle?: string;
-  requestKey: number;
+  cacheKey: string;
+  enabled: boolean;
   onReady?: (cards: ThoughtCardData[], source: ThoughtFeedSource) => void;
 };
 
 export default function ThoughtFeed({
   paragraph,
   postTitle,
-  requestKey,
+  cacheKey,
+  enabled,
   onReady,
 }: ThoughtFeedProps) {
   const { cards, loading, loadingMore, exhausted, source, loadMore } =
     useThoughtFeed({
       paragraph,
       postTitle,
-      requestKey,
+      cacheKey,
+      enabled,
       onReady,
     });
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -30,7 +33,7 @@ export default function ThoughtFeed({
   useEffect(() => {
     const root = scrollRef.current;
     const target = sentinelRef.current;
-    if (!root || !target || exhausted) return;
+    if (!enabled || !root || !target || exhausted) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -47,7 +50,7 @@ export default function ThoughtFeed({
 
     observer.observe(target);
     return () => observer.disconnect();
-  }, [exhausted, loadMore, cards.length]);
+  }, [cards.length, enabled, exhausted, loadMore]);
 
   const renderStatus = useCallback(() => {
     if (loadingMore) {
@@ -104,23 +107,15 @@ export default function ThoughtFeed({
 
   return (
     <div className="space-y-4 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
-            Thought Feed
+      <div className="flex items-center gap-2">
+        <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+          Thought Feed
+        </span>
+        {source === "fallback" && (
+          <span className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">
+            Fallback
           </span>
-          {source === "fallback" && (
-            <span className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">
-              Fallback
-            </span>
-          )}
-        </div>
-        <p className="text-sm font-medium text-foreground">
-          질문 아코디언 대신, 아래로 이어지는 사고 카드 흐름입니다.
-        </p>
-        <p className="text-xs text-muted-foreground">
-          별도 분기 UI 없이 카드 자체로 다음 생각을 이어갑니다.
-        </p>
+        )}
       </div>
 
       <div

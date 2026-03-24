@@ -49,6 +49,7 @@ import contact from './routes/contact';
 import notifications from './routes/notifications';
 import adminLogs from './routes/admin-logs';
 import type { Env } from './types';
+import { flushAiArtifactOutbox } from './lib/ai-artifact-outbox';
 
 const app = new Hono<HonoEnv>();
 
@@ -417,6 +418,12 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     const date90dStr = date90d.toISOString().split('T')[0];
 
     await db.prepare(`DELETE FROM post_views WHERE view_date < ?`).bind(date90dStr).run();
+
+    // 4. Flush durable artifact generation work when queue/provider health allows it.
+    const artifactResult = await flushAiArtifactOutbox(env, {
+      limit: 10,
+    });
+    console.log('Artifact scheduler result:', artifactResult);
 
     console.log('Cron job completed successfully');
   } catch (err) {

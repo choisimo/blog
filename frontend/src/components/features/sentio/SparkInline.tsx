@@ -1,4 +1,10 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { sketch, SketchResult } from "@/services/discovery/ai";
 import type {
   LensCard as LensFeedCard,
@@ -112,6 +118,15 @@ function hasNonInlineChildren(children: React.ReactNode): boolean {
 
 type Mode = "idle" | "sketch" | "prism" | "chain";
 type FeedSource = "feed" | "fallback";
+type LoadedModes = Record<Exclude<Mode, "idle">, boolean>;
+
+function createInitialLoadedModes(): LoadedModes {
+  return {
+    sketch: false,
+    prism: false,
+    chain: false,
+  };
+}
 
 const ModeConfig: Record<
   Mode,
@@ -217,61 +232,92 @@ export default function SparkInline({
   const [error, setError] = useState<string | null>(null);
   const [sketchRes, setSketchRes] = useState<SketchResult | null>(null);
   const [activeMode, setActiveMode] = useState<Mode>("idle");
-  const [prismRequestKey, setPrismRequestKey] = useState(0);
-  const [chainRequestKey, setChainRequestKey] = useState(0);
+  const [loadedModes, setLoadedModes] = useState<LoadedModes>(
+    createInitialLoadedModes,
+  );
   const { isTerminal } = useTheme();
   const { language } = useLanguage();
 
   const text = useMemo(() => extractText(children), [children]);
   const hasText = text && text.length > 0;
+  const contentKey = useMemo(
+    () => `${postTitle ?? ""}::${text}`,
+    [postTitle, text],
+  );
+  const contentKeyRef = useRef(contentKey);
   const ContentTag: "p" | "div" =
     wrapperTag ?? (hasNonInlineChildren(children) ? "div" : "p");
 
-  const run = async (which: Mode) => {
-    if (!hasText) return;
-    setOpen(true);
+  useEffect(() => {
+    contentKeyRef.current = contentKey;
+    setOpen(false);
+    setLoading("idle");
     setError(null);
-    setLoading(which);
-    setActiveMode(which);
     setSketchRes(null);
+    setActiveMode("idle");
+    setLoadedModes(createInitialLoadedModes());
+  }, [contentKey]);
 
-    try {
-      if (which === "sketch") {
-        const res = await sketch({ paragraph: text, postTitle });
-        setSketchRes(res);
-        logEvent({ type: "sketch", len: text.length });
-        emitAiMemoLog({
-          type: "ai_qna",
-          mode: "sketch",
-          question: text,
-          answer: formatSketchResult(res),
-          postTitle,
+  const openMode = useCallback(
+    async (mode: Exclude<Mode, "idle">) => {
+      if (!hasText) return;
+
+      setOpen(true);
+      setError(null);
+      setActiveMode(mode);
+
+      if (mode === "sketch") {
+        if (loadedModes.sketch || sketchRes || loading === "sketch") {
+          return;
+        }
+
+        setLoading("sketch");
+        const requestContentKey = contentKey;
+
+        try {
+          const res = await sketch({ paragraph: text, postTitle });
+          if (contentKeyRef.current !== requestContentKey) return;
+
+          setSketchRes(res);
+          setLoadedModes((prev) =>
+            prev.sketch ? prev : { ...prev, sketch: true },
+          );
+          logEvent({ type: "sketch", len: text.length });
+          emitAiMemoLog({
+            type: "ai_qna",
+            mode: "sketch",
+            question: text,
+            answer: formatSketchResult(res),
+            postTitle,
+          });
+        } catch (e: unknown) {
+          if (contentKeyRef.current !== requestContentKey) return;
+          const msg = e instanceof Error ? e.message : "AI 호출 실패";
+          setError(msg);
+        } finally {
+          if (contentKeyRef.current === requestContentKey) {
+            setLoading("idle");
+          }
+        }
+
+        return;
+      }
+
+      if (!loadedModes[mode]) {
+        logEvent({
+          type: mode === "prism" ? "lens_feed" : "thought_feed",
+          len: text.length,
         });
+        setLoadedModes((prev) =>
+          prev[mode] ? prev : { ...prev, [mode]: true },
+        );
       }
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "AI 호출 실패";
-      setError(msg);
-    } finally {
-      if (which === "sketch") {
-        setLoading("idle");
-      }
-    }
-
-    if (which === "prism") {
-      logEvent({ type: "lens_feed", len: text.length });
-      setLoading("idle");
-      setPrismRequestKey((prev) => prev + 1);
-    }
-
-    if (which === "chain") {
-      logEvent({ type: "thought_feed", len: text.length });
-      setLoading("idle");
-      setChainRequestKey((prev) => prev + 1);
-    }
-  };
+    },
+    [contentKey, hasText, loadedModes, loading, postTitle, sketchRes, text],
+  );
 
   const hasResult =
-    sketchRes !== null || activeMode === "prism" || activeMode === "chain";
+    sketchRes !== null || loadedModes.prism || loadedModes.chain;
   const activeModeConfig = ModeConfig[activeMode];
   const tooltipLabel =
     language === "ko" ? "AI 설명 보기" : "View AI explanation";
@@ -382,9 +428,7 @@ export default function SparkInline({
                 {(["sketch", "prism", "chain"] as Mode[]).map((mode) => {
                   const config = ModeConfig[mode];
                   const Icon = config.icon;
-                  const isActive =
-                    activeMode === mode &&
-                    (hasResult !== null || loading === mode);
+                  const isActive = activeMode === mode;
                   const isLoading = loading === mode;
 
                   return (
@@ -404,8 +448,10 @@ export default function SparkInline({
                           "text-muted-foreground hover:text-foreground hover:bg-background/50",
                         isLoading && "animate-pulse",
                       )}
-                      disabled={loading !== "idle"}
-                      onClick={() => run(mode)}
+                      disabled={loading === "sketch"}
+                      onClick={() => {
+                        void openMode(mode as Exclude<Mode, "idle">);
+                      }}
                     >
                       {isLoading ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -489,7 +535,7 @@ export default function SparkInline({
               )}
 
               {/* Sketch Result */}
-              {sketchRes && loading === "idle" && (
+              {activeMode === "sketch" && sketchRes && loading === "idle" && (
                 <div className="space-y-4 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
                   {/* Mood badge */}
                   <div className="flex items-center gap-2">
@@ -536,24 +582,36 @@ export default function SparkInline({
               )}
 
               {/* Prism Result */}
-              {activeMode === "prism" && loading === "idle" && (
-                <PrismDeck
-                  paragraph={text}
-                  postTitle={postTitle}
-                  requestKey={prismRequestKey}
-                  onReady={handleLensReady}
-                />
-              )}
+              <div
+                className={cn(activeMode === "prism" ? "block" : "hidden")}
+                aria-hidden={activeMode !== "prism"}
+              >
+                {loadedModes.prism && (
+                  <PrismDeck
+                    paragraph={text}
+                    postTitle={postTitle}
+                    cacheKey={`${contentKey}:prism`}
+                    enabled={activeMode === "prism"}
+                    onReady={handleLensReady}
+                  />
+                )}
+              </div>
 
               {/* Chain Result */}
-              {activeMode === "chain" && loading === "idle" && (
-                <ThoughtFeed
-                  paragraph={text}
-                  postTitle={postTitle}
-                  requestKey={chainRequestKey}
-                  onReady={handleThoughtReady}
-                />
-              )}
+              <div
+                className={cn(activeMode === "chain" ? "block" : "hidden")}
+                aria-hidden={activeMode !== "chain"}
+              >
+                {loadedModes.chain && (
+                  <ThoughtFeed
+                    paragraph={text}
+                    postTitle={postTitle}
+                    cacheKey={`${contentKey}:chain`}
+                    enabled={activeMode === "chain"}
+                    onReady={handleThoughtReady}
+                  />
+                )}
+              </div>
 
               {/* Empty state - when opened but no result yet */}
               {!hasResult && loading === "idle" && !error && (
