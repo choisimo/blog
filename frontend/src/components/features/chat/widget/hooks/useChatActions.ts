@@ -50,7 +50,6 @@ type UseChatActionsProps = {
     replyToName?: string;
     mentionedAgents?: string[];
   }) => Promise<void>;
-  isMobile: boolean;
   livePinned: boolean;
   setLivePinned: React.Dispatch<React.SetStateAction<boolean>>;
   liveReplyTarget: LiveReplyTarget | null;
@@ -82,7 +81,6 @@ export function useChatActions({
   currentLiveRoom,
   switchLiveRoom,
   sendVisitorMessage,
-  isMobile,
   livePinned,
   setLivePinned,
   liveReplyTarget,
@@ -402,35 +400,16 @@ export function useChatActions({
         }
 
         let acc = "";
-        let rafHandle: number | null = null;
-        let mobileFlushTimer: number | null = null;
-        const MOBILE_STREAM_FLUSH_MS = 48;
+        let finalSources: ChatMessage["sources"] | undefined;
+        let finalFollowups: ChatMessage["followups"] | undefined;
 
-        const commitAssistantText = (snapshot: string) => {
-          const id = aiId;
-          setMessages((prev) =>
-            prev.map((m) => (m.id === id ? { ...m, text: snapshot } : m)),
-          );
-        };
-
-        const scheduleAssistantTextCommit = (snapshot: string) => {
-          if (isMobile) {
-            if (mobileFlushTimer !== null) return;
-            mobileFlushTimer = window.setTimeout(() => {
-              mobileFlushTimer = null;
-              commitAssistantText(acc);
-            }, MOBILE_STREAM_FLUSH_MS);
-            return;
-          }
-
-          if (rafHandle !== null) cancelAnimationFrame(rafHandle);
-          rafHandle = requestAnimationFrame(() => {
-            rafHandle = null;
-            commitAssistantText(snapshot);
-          });
-        };
-
-        push({ id: aiId, role: "assistant", text: "" });
+        push({
+          id: aiId,
+          role: "assistant",
+          text: "",
+          pending: true,
+          typingLabel: "AI가 작성 중...",
+        });
         for await (const ev of streamChatEvents({
           text: baseText,
           signal: controller.signal,
@@ -444,33 +423,26 @@ export function useChatActions({
         })) {
           if (ev.type === "text") {
             acc += ev.text;
-            scheduleAssistantTextCommit(acc);
           } else if (ev.type === "sources") {
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === aiId ? { ...m, sources: ev.sources } : m,
-              ),
-            );
+            finalSources = ev.sources;
           } else if (ev.type === "followups") {
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === aiId ? { ...m, followups: ev.questions } : m,
-              ),
-            );
+            finalFollowups = ev.questions;
           }
         }
-
-        // Flush any pending rAF update so the final text is committed immediately
-        if (mobileFlushTimer !== null) {
-          window.clearTimeout(mobileFlushTimer);
-          mobileFlushTimer = null;
-          commitAssistantText(acc);
-        }
-        if (rafHandle !== null) {
-          cancelAnimationFrame(rafHandle);
-          commitAssistantText(acc);
-          rafHandle = null;
-        }
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === aiId
+              ? {
+                  ...m,
+                  text: acc,
+                  pending: false,
+                  typingLabel: undefined,
+                  sources: finalSources,
+                  followups: finalFollowups,
+                }
+              : m,
+          ),
+        );
 
         // Extract and save memories from conversation (fire and forget)
         if (acc) {
@@ -480,6 +452,9 @@ export function useChatActions({
         }
       }
     } catch (e) {
+      if (aiId) {
+        setMessages((prev) => prev.filter((m) => m.id !== aiId));
+      }
       const msg = getErrorMessage(e, "Chat failed");
       const errId =
         aiId != null
@@ -508,7 +483,6 @@ export function useChatActions({
     setMessages,
     currentLiveRoom,
     switchLiveRoom,
-    isMobile,
     livePinned,
     liveReplyTarget,
     setLivePinned,

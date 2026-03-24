@@ -133,7 +133,7 @@ export default function ChatWidget(props: {
 
   const liveVisitorChat = useLiveVisitorChat({
     sessionId: state.sessionKey,
-    push: state.push,
+    setMessages: state.setMessages,
   });
 
   // Chat actions
@@ -159,7 +159,6 @@ export default function ChatWidget(props: {
     currentLiveRoom: liveVisitorChat.room,
     switchLiveRoom: liveVisitorChat.switchRoom,
     sendVisitorMessage: liveVisitorChat.sendVisitorMessage,
-    isMobile,
     livePinned: state.livePinned,
     setLivePinned: state.setLivePinned,
     liveReplyTarget: state.liveReplyTarget,
@@ -251,7 +250,6 @@ export default function ChatWidget(props: {
       `3-5문장 이내로 핵심 논거를 제시하세요.\n\n주제: ${topic}`;
 
     const rounds = 2;
-    const MOBILE_DEBATE_FLUSH_MS = 64;
 
     const runDebateTurn = async (params: {
       prompt: string;
@@ -260,35 +258,6 @@ export default function ChatWidget(props: {
       signal: AbortSignal;
     }) => {
       let text = "";
-      let rafHandle: number | null = null;
-      let mobileFlushTimer: number | null = null;
-
-      const commit = (snapshot: string) => {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === params.id
-              ? { ...m, text: `${params.prefix}${snapshot}` }
-              : m,
-          ),
-        );
-      };
-
-      const scheduleCommit = (snapshot: string) => {
-        if (isMobile) {
-          if (mobileFlushTimer !== null) return;
-          mobileFlushTimer = window.setTimeout(() => {
-            mobileFlushTimer = null;
-            commit(text);
-          }, MOBILE_DEBATE_FLUSH_MS);
-          return;
-        }
-
-        if (rafHandle !== null) cancelAnimationFrame(rafHandle);
-        rafHandle = requestAnimationFrame(() => {
-          rafHandle = null;
-          commit(snapshot);
-        });
-      };
 
       try {
         for await (const ev of streamChatEvents({
@@ -298,18 +267,20 @@ export default function ChatWidget(props: {
         })) {
           if (ev.type !== "text") continue;
           text += ev.text;
-          scheduleCommit(text);
         }
       } finally {
-        if (mobileFlushTimer !== null) {
-          window.clearTimeout(mobileFlushTimer);
-          mobileFlushTimer = null;
-        }
-        if (rafHandle !== null) {
-          cancelAnimationFrame(rafHandle);
-          rafHandle = null;
-        }
-        commit(text);
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === params.id
+              ? {
+                  ...m,
+                  text: `${params.prefix}${text}`,
+                  pending: false,
+                  typingLabel: undefined,
+                }
+              : m,
+          ),
+        );
       }
 
       return text;
@@ -322,7 +293,13 @@ export default function ChatWidget(props: {
 
         // 찬성측 발언
         const proId = `debate_pro_${round}_${Date.now()}`;
-        push({ id: proId, role: "assistant", text: "" });
+        push({
+          id: proId,
+          role: "assistant",
+          text: "",
+          pending: true,
+          typingLabel: "토론 · 찬성 작성 중...",
+        });
         const proText = await runDebateTurn({
           prompt:
             round === 1
@@ -337,7 +314,13 @@ export default function ChatWidget(props: {
 
         // 반대측 발언
         const conId = `debate_con_${round}_${Date.now()}`;
-        push({ id: conId, role: "assistant", text: "" });
+        push({
+          id: conId,
+          role: "assistant",
+          text: "",
+          pending: true,
+          typingLabel: "토론 · 반대 작성 중...",
+        });
         const conText = await runDebateTurn({
           prompt:
             round === 1

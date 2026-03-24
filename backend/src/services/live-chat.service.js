@@ -1138,6 +1138,26 @@ async function runAgentRoundStep(room, roundId) {
       contextKinds: [],
     };
 
+    await emitRoomEvent(room, {
+      type: "typing",
+      room,
+      sessionId: getAgentSessionId(room, agentName),
+      senderType: "agent",
+      name: agentName,
+      replyToName,
+      roundId,
+      roundSize: round.roundSize,
+      turnIndex: round.turnIndex,
+      personaStyle: persona.style,
+      personaTraits: persona.traits,
+      triggeredByMention:
+        round.mentionedAgents.includes(agentName) ||
+        round.targetAgentName === agentName,
+      mentionedAgents: round.mentionedAgents,
+      contextKinds: round.researchData.contextKinds,
+      ts: new Date().toISOString(),
+    });
+
     const reply = await buildAutoReplyText({
       room,
       agentName,

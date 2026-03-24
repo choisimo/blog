@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { connectLiveChatStream, sendLiveChatMessage } from "@/services/chat";
 import type { LiveChatEvent } from "@/services/chat/live";
-import { toast } from "@/components/ui/use-toast";
 import type {
   ChatMessage,
   ChatStatusBanner,
@@ -108,7 +107,7 @@ function formatSessionMessage(message: string): string {
 }
 
 function buildLiveAuthorMeta(
-  event: Extract<LiveChatEvent, { type: "live_message" }>,
+  event: Extract<LiveChatEvent, { type: "live_message" | "typing" }>,
 ): string {
   if (event.senderType === "agent") {
     const metaParts = [
@@ -131,6 +130,29 @@ function buildLiveAuthorMeta(
   ]
     .filter(Boolean)
     .join(" · ");
+}
+
+function normalizeActorKey(name: string): string {
+  return String(name || "anonymous")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function createLiveTypingMessageId(
+  room: string,
+  senderType: "client" | "agent" | undefined,
+  name: string,
+  roundId?: string,
+): string {
+  return [
+    "live_typing",
+    normalizeRoomKey(room),
+    roundId || "standalone",
+    senderType || "unknown",
+    normalizeActorKey(name),
+  ].join(":");
 }
 
 function buildTransportStatus(input: {
@@ -194,25 +216,11 @@ function buildTransportStatus(input: {
   };
 }
 
-function showLiveToast(params: {
-  title: string;
-  description?: string;
-  tone?: SystemMessageLevel;
-}) {
-  toast({
-    title: params.title,
-    description: params.description,
-    variant: params.tone === "error" ? "destructive" : "default",
-  });
-}
-
 function classifySessionNotification(
   message: string,
   level: SystemMessageLevel,
 ): {
-  kind: "ignore" | "toast" | "banner";
-  title?: string;
-  description?: string;
+  kind: "ignore" | "banner";
   tone: SystemMessageLevel;
   text?: string;
 } {
@@ -226,24 +234,14 @@ function classifySessionNotification(
   }
 
   if (normalized === "your live message was delivered") {
-    return {
-      kind: "toast",
-      tone: "info",
-      title: "메시지 전달됨",
-      description: formatted,
-    };
+    return { kind: "ignore", tone: "info" };
   }
 
   if (
     normalized.endsWith("replied in the room") ||
     normalized.includes("replied in the room using")
   ) {
-    return {
-      kind: "toast",
-      tone: "info",
-      title: "새 라이브 응답",
-      description: formatted,
-    };
+    return { kind: "ignore", tone: "info" };
   }
 
   if (normalized === "auto room reply skipped due to temporary ai error") {
@@ -262,19 +260,22 @@ function classifySessionNotification(
     };
   }
 
-  return {
-    kind: "toast",
-    tone: level,
-    title: "라이브 알림",
-    description: formatted,
-  };
+  if (level === "warn") {
+    return {
+      kind: "banner",
+      tone: "warn",
+      text: formatted,
+    };
+  }
+
+  return { kind: "ignore", tone: level };
 }
 
 export function useLiveVisitorChat(input: {
   sessionId: string;
-  push: (msg: ChatMessage) => void;
+  setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
 }) {
-  const { sessionId, push } = input;
+  const { sessionId, setMessages } = input;
   const initialRoom =
     typeof window === "undefined"
       ? "room:lobby"
@@ -319,6 +320,81 @@ export function useLiveVisitorChat(input: {
       }
     },
     [clearBannerTimer],
+  );
+
+  const upsertTypingBubble = useCallback(
+    (event: Extract<LiveChatEvent, { type: "typing" }>) => {
+      const sender = event.name || "anonymous";
+      const typingId = createLiveTypingMessageId(
+        event.room,
+        event.senderType,
+        sender,
+        event.roundId,
+      );
+
+      setMessages((prev) => {
+        const nextMessage: ChatMessage = {
+          id: typingId,
+          role: "assistant",
+          channel: "live",
+          authorName: sender,
+          authorMeta: buildLiveAuthorMeta(event),
+          liveSenderType: event.senderType === "agent" ? "agent" : "client",
+          text: "",
+          pending: true,
+          typingLabel: `${sender}가 작성 중...`,
+          typingKey: typingId,
+          transient: true,
+          expiresAt: Date.now() + 15_000,
+        };
+
+        const existingIndex = prev.findIndex(
+          (message) => message.id === typingId,
+        );
+        const existing = existingIndex >= 0 ? prev[existingIndex] : null;
+        if (existingIndex < 0 || (existing && !existing.pending)) {
+          return [...prev, nextMessage];
+        }
+
+        return prev.map((message, index) =>
+          index === existingIndex ? { ...message, ...nextMessage } : message,
+        );
+      });
+    },
+    [setMessages],
+  );
+
+  const commitLiveMessage = useCallback(
+    (event: Extract<LiveChatEvent, { type: "live_message" }>) => {
+      const sender = event.name || "anonymous";
+      const typingId = createLiveTypingMessageId(
+        event.room,
+        event.senderType,
+        sender,
+        event.roundId,
+      );
+      const nextMessage: ChatMessage = {
+        id: `live_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        role: "assistant",
+        channel: "live",
+        authorName: sender,
+        authorMeta: buildLiveAuthorMeta(event),
+        liveSenderType: event.senderType === "agent" ? "agent" : "client",
+        text: event.text,
+        pending: false,
+        typingLabel: undefined,
+        typingKey: typingId,
+        transient: false,
+        expiresAt: undefined,
+        sources: event.sources,
+      };
+
+      setMessages((prev) => [
+        ...prev.filter((message) => message.id !== typingId),
+        nextMessage,
+      ]);
+    },
+    [setMessages],
   );
 
   useEffect(() => {
@@ -401,10 +477,6 @@ export function useLiveVisitorChat(input: {
               },
               2600,
             );
-            showLiveToast({
-              title: "라이브 연결 복구됨",
-              description: `${formatRoomName(connectedRoom)} 방에 다시 연결되었습니다.`,
-            });
           } else {
             showBanner(null);
           }
@@ -415,10 +487,18 @@ export function useLiveVisitorChat(input: {
         if (event.type === "presence") {
           const activeLiveSessionId = liveSessionIdRef.current || sessionId;
           if (event.sessionId === activeLiveSessionId) return;
-          showLiveToast({
-            title: event.action === "join" ? "참여자 입장" : "참여자 퇴장",
-            description: `${event.name} · ${event.onlineCount} online`,
-          });
+          return;
+        }
+
+        if (event.type === "typing") {
+          const sender = event.name || "anonymous";
+          const activeLiveSessionId = liveSessionIdRef.current || sessionId;
+          const isSelfEcho =
+            event.sessionId === activeLiveSessionId &&
+            sender.trim().toLowerCase() === visitorName.trim().toLowerCase();
+          if (isSelfEcho) return;
+
+          upsertTypingBubble(event);
           return;
         }
 
@@ -435,29 +515,11 @@ export function useLiveVisitorChat(input: {
             sender.toLowerCase() === "room-companion";
 
           if (isLiveAgent) {
-            push({
-              id: `live_agent_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-              role: "assistant",
-              channel: "live",
-              authorName: sender,
-              authorMeta: buildLiveAuthorMeta(event),
-              liveSenderType: event.senderType === "agent" ? "agent" : "client",
-              text: event.text,
-              sources: event.sources,
-            });
+            commitLiveMessage(event);
             return;
           }
 
-          push({
-            id: `live_visitor_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-            role: "assistant",
-            channel: "live",
-            authorName: sender,
-            authorMeta: buildLiveAuthorMeta(event),
-            liveSenderType: event.senderType === "agent" ? "agent" : "client",
-            text: event.text,
-            sources: event.sources,
-          });
+          commitLiveMessage(event);
           return;
         }
 
@@ -467,15 +529,6 @@ export function useLiveVisitorChat(input: {
         ) {
           const lvl = normalizeSystemLevel(event.level);
           const notification = classifySessionNotification(event.message, lvl);
-
-          if (notification.kind === "toast" && notification.title) {
-            showLiveToast({
-              title: notification.title,
-              description: notification.description,
-              tone: notification.tone,
-            });
-            return;
-          }
 
           if (notification.kind === "banner" && notification.text) {
             showBanner({
@@ -512,7 +565,15 @@ export function useLiveVisitorChat(input: {
         disconnectRef.current = null;
       }
     };
-  }, [sessionId, push, room, reconnectNonce, showBanner, visitorName]);
+  }, [
+    commitLiveMessage,
+    room,
+    reconnectNonce,
+    sessionId,
+    showBanner,
+    upsertTypingBubble,
+    visitorName,
+  ]);
 
   const sendVisitorMessage = useCallback(
     async (input: {

@@ -349,14 +349,10 @@ const TerminalMessage = React.memo(function TerminalMessage({
   onReplyToLiveMessage?: (target: LiveReplyTarget) => void;
 }) {
   const isLiveAssistantMessage = isAssistant && m.channel === "live";
-  const isStreaming =
-    isAssistant &&
-    m.channel !== "live" &&
-    !m.sources?.length &&
-    !m.followups?.length;
   const isReplyActive = activeReplyTargetName === m.authorName;
   const canReply =
     isLiveAssistantMessage &&
+    !m.pending &&
     Boolean(m.authorName) &&
     Boolean(m.liveSenderType) &&
     Boolean(onReplyToLiveMessage);
@@ -398,14 +394,14 @@ const TerminalMessage = React.memo(function TerminalMessage({
                 }
               />
             ) : null}
-            {!m.text.trim() && (
+            {m.pending && (
               <span className="streaming-indicator">
                 <span className="streaming-dots">
                   <span>.</span>
                   <span>.</span>
                   <span>.</span>
                 </span>
-                processing
+                {m.typingLabel || "processing"}
               </span>
             )}
           </div>
@@ -417,19 +413,23 @@ const TerminalMessage = React.memo(function TerminalMessage({
                 isTerminal
               />
             ) : null}
-            {m.text.trim() ? (
+            {!m.pending && m.text.trim() ? (
               <>
-                {isMobile && isStreaming ? (
+                {isMobile ? (
                   <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                     {m.text}
                   </span>
                 ) : (
-                  <ChatMarkdown content={m.text} isStreaming={isStreaming} />
+                  <ChatMarkdown content={m.text} isStreaming={false} />
                 )}
-                {isStreaming && <span className="typewriter-cursor" />}
               </>
             ) : (
-              <span className="crt-block-cursor" aria-label="waiting" />
+              <div className="space-y-2">
+                {m.typingLabel ? (
+                  <span className="text-xs text-primary/70">{m.typingLabel}</span>
+                ) : null}
+                <span className="crt-block-cursor" aria-label="waiting" />
+              </div>
             )}
           </div>
           <Sources
@@ -510,11 +510,6 @@ const DefaultMessage = React.memo(function DefaultMessage({
   activeReplyTargetName?: string | null;
   onReplyToLiveMessage?: (target: LiveReplyTarget) => void;
 }) {
-  const isStreaming =
-    isAssistant &&
-    m.channel !== "live" &&
-    !m.sources?.length &&
-    !m.followups?.length;
   const isStatus =
     isSystem &&
     (m.systemKind === "status" ||
@@ -524,6 +519,7 @@ const DefaultMessage = React.memo(function DefaultMessage({
   const canReply =
     isAssistant &&
     m.channel === "live" &&
+    !m.pending &&
     Boolean(m.authorName) &&
     Boolean(m.liveSenderType) &&
     Boolean(onReplyToLiveMessage);
@@ -574,16 +570,23 @@ const DefaultMessage = React.memo(function DefaultMessage({
                 ) : null}
               </div>
             ) : null}
-            {m.text.trim() ? (
-              isMobile && isStreaming ? (
+            {!m.pending && m.text.trim() ? (
+              isMobile ? (
                 <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                   {m.text}
                 </span>
               ) : (
-                <ChatMarkdown content={m.text} isStreaming={isStreaming} />
+                <ChatMarkdown content={m.text} isStreaming={false} />
               )
             ) : (
-              <TypingDots />
+              <div className="space-y-2">
+                <TypingDots />
+                {m.typingLabel ? (
+                  <p className="text-xs text-muted-foreground">
+                    {m.typingLabel}
+                  </p>
+                ) : null}
+              </div>
             )}
           </>
         ) : isUser ? (
