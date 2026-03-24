@@ -18,6 +18,7 @@ const Blog = lazy(() => import("./pages/public/Blog"));
 const BlogPost = lazy(() => import("./pages/public/BlogPost"));
 const About = lazy(() => import("./pages/public/About"));
 const BadRequest = lazy(() => import("./pages/public/BadRequest"));
+const Debate = lazy(() => import("./pages/public/Debate"));
 const Forbidden = lazy(() => import("./pages/public/Forbidden"));
 const Projects = lazy(() => import("./pages/public/Projects"));
 const NewPost = lazy(() => import("./pages/admin/NewPost"));
@@ -128,6 +129,7 @@ function App() {
                         />
                         <Route path="/projects" element={<Projects />} />
                         <Route path="/about" element={<About />} />
+                        <Route path="/debate" element={<Debate />} />
                         <Route
                           path="/contact"
                           element={<Navigate to="/about" replace />}

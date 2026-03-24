@@ -451,7 +451,7 @@ ${description}
         if (!hasTranslationSession) {
           if (!cancelled) {
             setTranslationError({
-              code: "NOT_AVAILABLE",
+              code: "AUTH_REQUIRED",
               retryable: false,
             });
           }

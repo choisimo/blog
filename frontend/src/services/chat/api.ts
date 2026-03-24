@@ -8,7 +8,6 @@ import { getApiBaseUrl } from "@/utils/network/apiBase";
 import {
   buildChatUrl,
   buildChatHeaders,
-  isUnifiedTasksEnabled,
   buildChatWebSocketUrl,
   shouldUseChatWebSocket,
 } from "./config";
@@ -32,6 +31,10 @@ import type {
   StreamChatInput,
   InvokeChatTaskInput,
   InvokeChatTaskResult,
+  LensFeedRequest,
+  LensFeedResponse,
+  ThoughtFeedRequest,
+  ThoughtFeedResponse,
   ChatImageUploadResult,
   ContentPart,
   ChatErrorCode,
@@ -55,11 +58,27 @@ type ChatAggregateEnvelope = {
   data?: string | { text?: string };
 };
 
+type ChatJsonRequestOptions = {
+  signal?: AbortSignal;
+  headers?: Record<string, string>;
+};
+
+type ChatJsonResponse<T> = {
+  status: number;
+  data: T | null;
+  raw: unknown;
+};
+
 function getAggregateText(data: ChatAggregateEnvelope["data"]): string | null {
   if (typeof data === "string") {
     return data;
   }
-  if (data && typeof data === "object" && "text" in data && typeof data.text === "string") {
+  if (
+    data &&
+    typeof data === "object" &&
+    "text" in data &&
+    typeof data.text === "string"
+  ) {
     return data.text;
   }
   return null;
@@ -69,7 +88,13 @@ function getEnvelopeData(parsed: unknown): unknown {
   if (!parsed || typeof parsed !== "object") return parsed;
 
   const envelope = parsed as ChatTaskEnvelope;
-  return envelope.data ?? envelope.result ?? envelope.output ?? envelope.payload ?? parsed;
+  return (
+    envelope.data ??
+    envelope.result ??
+    envelope.output ??
+    envelope.payload ??
+    parsed
+  );
 }
 
 function getParsedObject(parsed: unknown): Record<string, unknown> | null {
@@ -92,38 +117,22 @@ function getStreamErrorCode(payload: Record<string, unknown>): ChatErrorCode {
     : "SERVER_ERROR";
 }
 
-// ============================================================================
-// Chat Task API
-// ============================================================================
-
-/**
- * AI 태스크 실행 (sketch, prism, chain 등)
- */
-export async function invokeChatTask<T = unknown>(
-  input: InvokeChatTaskInput,
-): Promise<InvokeChatTaskResult<T>> {
-  if (!isUnifiedTasksEnabled()) {
-    throw new Error("Unified chat task API is disabled");
-  }
-
-  const sessionID = await ensureSession();
-  const url = buildChatUrl("/task", sessionID);
+async function postSessionJson<T>(
+  path: string,
+  sessionId: string,
+  body: unknown,
+  options?: ChatJsonRequestOptions,
+): Promise<ChatJsonResponse<T>> {
+  const url = buildChatUrl(path, sessionId);
   const headers = buildChatHeaders("json");
 
-  if (input.headers) Object.assign(headers, input.headers);
-
-  const body = {
-    mode: input.mode,
-    prompt: input.prompt ?? "",
-    payload: input.payload ?? {},
-    context: input.context ?? getPageContext(),
-  };
+  if (options?.headers) Object.assign(headers, options.headers);
 
   const res = await fetch(url, {
     method: "POST",
     headers,
     body: JSON.stringify(body),
-    signal: input.signal,
+    signal: options?.signal,
   });
 
   const text = await res.text().catch(() => "");
@@ -143,11 +152,84 @@ export async function invokeChatTask<T = unknown>(
   const dataCandidate = getEnvelopeData(parsed);
 
   return {
-    ok: true,
     status: res.status,
     data: (dataCandidate as T) ?? null,
     raw: parsed,
   };
+}
+
+// ============================================================================
+// Chat Task API
+// ============================================================================
+
+/**
+ * AI 태스크 실행 (sketch, prism, chain 등)
+ */
+export async function invokeChatTask<T = unknown>(
+  input: InvokeChatTaskInput,
+): Promise<InvokeChatTaskResult<T>> {
+  const sessionID = await ensureSession();
+  const body = {
+    mode: input.mode,
+    prompt: input.prompt ?? "",
+    payload: input.payload ?? {},
+    context: input.context ?? getPageContext(),
+  };
+  const response = await postSessionJson<T>("/task", sessionID, body, {
+    signal: input.signal,
+    headers: input.headers,
+  });
+
+  return {
+    ok: true,
+    status: response.status,
+    data: response.data,
+    raw: response.raw,
+  };
+}
+
+export async function invokeLensFeed(
+  input: LensFeedRequest,
+  options?: ChatJsonRequestOptions,
+): Promise<LensFeedResponse> {
+  const sessionID = await ensureSession();
+  const response = await postSessionJson<LensFeedResponse>(
+    "/lens-feed",
+    sessionID,
+    {
+      ...input,
+      context: getPageContext(),
+    },
+    options,
+  );
+
+  if (response.data == null) {
+    throw new ChatError("Invalid lens feed response", "PARSE_ERROR");
+  }
+
+  return response.data;
+}
+
+export async function invokeThoughtFeed(
+  input: ThoughtFeedRequest,
+  options?: ChatJsonRequestOptions,
+): Promise<ThoughtFeedResponse> {
+  const sessionID = await ensureSession();
+  const response = await postSessionJson<ThoughtFeedResponse>(
+    "/thought-feed",
+    sessionID,
+    {
+      ...input,
+      context: getPageContext(),
+    },
+    options,
+  );
+
+  if (response.data == null) {
+    throw new ChatError("Invalid thought feed response", "PARSE_ERROR");
+  }
+
+  return response.data;
 }
 
 // ============================================================================
@@ -298,7 +380,10 @@ function buildStreamPayload(input: StreamChatInput): {
       "",
     );
     parts.push({ type: "text", text: imageContext });
-    parts.push({ type: "text", text: input.text || "이 이미지에 대해 설명해 주세요." });
+    parts.push({
+      type: "text",
+      text: input.text || "이 이미지에 대해 설명해 주세요.",
+    });
   } else {
     parts.push({ type: "text", text: input.text });
   }
@@ -401,7 +486,12 @@ async function* streamChatEventsWebSocket(input: {
       }
 
       if (payloadObject.type === "error") {
-        finish(new ChatError(getStreamErrorMessage(payloadObject), getStreamErrorCode(payloadObject)));
+        finish(
+          new ChatError(
+            getStreamErrorMessage(payloadObject),
+            getStreamErrorCode(payloadObject),
+          ),
+        );
         return;
       }
 

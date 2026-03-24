@@ -205,6 +205,8 @@ export async function sendLiveChatMessage(input: {
   room?: string;
   name?: string;
   senderType?: "client" | "agent";
+  replyToName?: string;
+  mentionedAgents?: string[];
 }): Promise<void> {
   const sessionToken = readStoredSessionToken();
 
@@ -215,12 +217,27 @@ export async function sendLiveChatMessage(input: {
     headers["Authorization"] = bearerAuth(sessionToken).Authorization;
   }
 
-  const payload: Record<string, string> = {
+  const payload: Record<string, unknown> = {
     text: input.text,
     room: input.room || "global",
     name: input.name || "",
     senderType: input.senderType || "client",
   };
+  if (input.replyToName?.trim()) {
+    payload.replyToName = input.replyToName.trim();
+  }
+  if (
+    Array.isArray(input.mentionedAgents) &&
+    input.mentionedAgents.length > 0
+  ) {
+    payload.mentionedAgents = input.mentionedAgents
+      .map((value) =>
+        String(value || "")
+          .trim()
+          .toLowerCase(),
+      )
+      .filter(Boolean);
+  }
   if (!sessionToken) {
     payload.sessionId = input.sessionId;
   }

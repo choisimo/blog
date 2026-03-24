@@ -1,11 +1,16 @@
-import { useEffect, useState, useRef } from 'react';
-import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useIsMobile } from '@/hooks/ui/use-mobile';
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
-import { BookOpen, X } from 'lucide-react';
-import { buildMarkdownToc } from '@/utils/content/markdownHeadings';
+import { useEffect, useState, useRef } from "react";
+import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useIsMobile } from "@/hooks/ui/use-mobile";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { BookOpen, X } from "lucide-react";
+import { buildMarkdownToc } from "@/utils/content/markdownHeadings";
 
 interface TocItem {
   id: string;
@@ -17,16 +22,22 @@ interface TableOfContentsProps {
   content: string;
   onClose?: () => void;
   postTitle?: string;
+  sticky?: boolean;
 }
 
-export const TableOfContents = ({ content, onClose, postTitle }: TableOfContentsProps) => {
+export const TableOfContents = ({
+  content,
+  onClose,
+  postTitle,
+  sticky = true,
+}: TableOfContentsProps) => {
   const [toc, setToc] = useState<TocItem[]>([]);
-  const [activeId, setActiveId] = useState<string>('');
+  const [activeId, setActiveId] = useState<string>("");
   const { isTerminal } = useTheme();
   const isMobile = useIsMobile();
   const [isStuck, setIsStuck] = useState(false);
   const [animateDropIn, setAnimateDropIn] = useState(false);
-  
+
   const rafRef = useRef<number | null>(null);
   const lastScrollTime = useRef<number>(0);
   const THROTTLE_MS = 100;
@@ -50,8 +61,8 @@ export const TableOfContents = ({ content, onClose, postTitle }: TableOfContents
 
     const visibleHeadings = new Map<string, number>();
     const headingObserver = new IntersectionObserver(
-      entries => {
-        entries.forEach(entry => {
+      (entries) => {
+        entries.forEach((entry) => {
           const heading = entry.target as HTMLElement;
           if (!heading.id) return;
 
@@ -64,16 +75,16 @@ export const TableOfContents = ({ content, onClose, postTitle }: TableOfContents
 
         if (visibleHeadings.size > 0) {
           const topmostHeadingId = [...visibleHeadings.entries()].sort(
-            (a, b) => a[1] - b[1]
+            (a, b) => a[1] - b[1],
           )[0][0];
           setActiveId(topmostHeadingId);
         }
       },
-      { rootMargin: '-80px 0px -60% 0px', threshold: 0 }
+      { rootMargin: "-80px 0px -60% 0px", threshold: 0 },
     );
 
-    const boundaryEl = document.querySelector('[data-toc-boundary]');
-    boundaryEl?.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(heading => {
+    const boundaryEl = document.querySelector("[data-toc-boundary]");
+    boundaryEl?.querySelectorAll("h1,h2,h3,h4,h5,h6").forEach((heading) => {
       if (heading.id) {
         headingObserver.observe(heading);
       }
@@ -125,10 +136,10 @@ export const TableOfContents = ({ content, onClose, postTitle }: TableOfContents
       rafRef.current = requestAnimationFrame(updateTocPosition);
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener("scroll", handleScroll, { passive: true });
     updateTocPosition();
 
-    if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
+    if (typeof ResizeObserver !== "undefined" && containerRef.current) {
       resizeObserver = new ResizeObserver(() => {
         updateTocPosition();
       });
@@ -138,11 +149,11 @@ export const TableOfContents = ({ content, onClose, postTitle }: TableOfContents
     const handleResize = () => {
       updateTocPosition();
     };
-    window.addEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
 
     return () => {
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleResize);
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
       }
@@ -165,7 +176,7 @@ export const TableOfContents = ({ content, onClose, postTitle }: TableOfContents
     if (!tocRoot || !activeItem) return;
 
     const viewport = tocRoot.querySelector(
-      '[data-radix-scroll-area-viewport]'
+      "[data-radix-scroll-area-viewport]",
     ) as HTMLElement | null;
     if (!viewport) return;
 
@@ -180,7 +191,7 @@ export const TableOfContents = ({ content, onClose, postTitle }: TableOfContents
       const target = itemOffset - viewportHeight * 0.35;
       viewport.scrollTo({
         top: Math.max(0, target),
-        behavior: 'smooth',
+        behavior: "smooth",
       });
     }
   }, [activeId, isMobile]);
@@ -194,7 +205,7 @@ export const TableOfContents = ({ content, onClose, postTitle }: TableOfContents
         (STICKY_TOP_PX + 12);
       window.scrollTo({
         top: Math.max(0, targetY),
-        behavior: 'smooth',
+        behavior: "smooth",
       });
       closePanel?.();
       onClose?.();
@@ -207,60 +218,63 @@ export const TableOfContents = ({ content, onClose, postTitle }: TableOfContents
     <div
       ref={containerRef}
       data-testid="toc-panel"
-      className="w-72 sticky top-24"
+      className={cn("w-full", sticky && "w-72 sticky top-24")}
     >
       <div
         className={cn(
-          'bg-card/50 backdrop-blur-sm border rounded-2xl p-6 shadow-lg',
-          animateDropIn && isStuck && 'animate-in slide-in-from-top-2 fade-in duration-200',
-          isTerminal && 'bg-[hsl(var(--terminal-code-bg))] border-border rounded-lg'
+          "bg-card/50 backdrop-blur-sm border rounded-2xl p-6 shadow-lg",
+          animateDropIn &&
+            isStuck &&
+            "animate-in slide-in-from-top-2 fade-in duration-200",
+          isTerminal &&
+            "bg-[hsl(var(--terminal-code-bg))] border-border rounded-lg",
         )}
       >
         {/* Terminal-style header */}
         {isTerminal && (
-          <div className='flex items-center gap-1.5 mb-4 pb-3 border-b border-border'>
-            <span className='w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-close))]' />
-            <span className='w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]' />
-            <span className='w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]' />
+          <div className="flex items-center gap-1.5 mb-4 pb-3 border-b border-border">
+            <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-close))]" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]" />
           </div>
         )}
 
         <h3
           className={cn(
-            'font-bold mb-4 text-base flex items-center',
-            isTerminal && 'font-mono text-primary text-sm'
+            "font-bold mb-4 text-base flex items-center",
+            isTerminal && "font-mono text-primary text-sm",
           )}
         >
           {isTerminal ? (
             <>
-              <span className='text-muted-foreground mr-2'>$</span>
+              <span className="text-muted-foreground mr-2">$</span>
               cat TOC
             </>
           ) : (
             <>
               <svg
-                className='w-5 h-5 mr-2'
-                fill='none'
-                stroke='currentColor'
-                viewBox='0 0 24 24'
+                className="w-5 h-5 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
                 <path
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                   strokeWidth={2}
-                  d='M4 6h16M4 10h16M4 14h16M4 18h16'
+                  d="M4 6h16M4 10h16M4 14h16M4 18h16"
                 />
               </svg>
               목차
             </>
           )}
         </h3>
-        <ScrollArea ref={scrollAreaRef} className='max-h-[calc(100vh-12rem)]'>
-          <nav className='space-y-2 pr-2'>
+        <ScrollArea ref={scrollAreaRef} className="max-h-[calc(100vh-12rem)]">
+          <nav className="space-y-2 pr-2">
             {toc.map((item, index) => (
               <button
                 key={`${item.id}-${index}`}
-                ref={node => {
+                ref={(node) => {
                   if (node) {
                     itemRefs.current[item.id] = node;
                   } else {
@@ -270,24 +284,26 @@ export const TableOfContents = ({ content, onClose, postTitle }: TableOfContents
                 title={item.title}
                 onClick={() => scrollToHeading(item.id)}
                 className={cn(
-                  'block w-full text-left text-sm py-2 px-3 rounded-lg hover:bg-primary/10 transition-all duration-200',
-                  'text-muted-foreground hover:text-foreground',
+                  "block w-full text-left text-sm py-2 px-3 rounded-lg hover:bg-primary/10 transition-all duration-200",
+                  "text-muted-foreground hover:text-foreground",
                   activeId === item.id &&
-                    'bg-primary/15 text-primary font-semibold border-l-2 border-primary',
-                  item.level === 1 && 'ml-0 font-medium',
-                  item.level === 2 && 'ml-4',
-                  item.level === 3 && 'ml-8',
-                  item.level === 4 && 'ml-12',
-                  item.level === 5 && 'ml-16',
-                  item.level === 6 && 'ml-20',
-                  isTerminal && 'font-mono text-xs rounded hover:bg-primary/20',
-                  isTerminal && activeId === item.id && 'bg-primary/20 border-l-2 border-primary'
+                    "bg-primary/15 text-primary font-semibold border-l-2 border-primary",
+                  item.level === 1 && "ml-0 font-medium",
+                  item.level === 2 && "ml-4",
+                  item.level === 3 && "ml-8",
+                  item.level === 4 && "ml-12",
+                  item.level === 5 && "ml-16",
+                  item.level === 6 && "ml-20",
+                  isTerminal && "font-mono text-xs rounded hover:bg-primary/20",
+                  isTerminal &&
+                    activeId === item.id &&
+                    "bg-primary/20 border-l-2 border-primary",
                 )}
               >
-                <span className='block break-words leading-snug'>
+                <span className="block break-words leading-snug">
                   {isTerminal && (
-                    <span className='text-muted-foreground mr-2'>
-                      {String(index + 1).padStart(2, '0')}
+                    <span className="text-muted-foreground mr-2">
+                      {String(index + 1).padStart(2, "0")}
                     </span>
                   )}
                   {item.title}
@@ -324,12 +340,13 @@ export const TocDrawer = ({
           data-testid="toc-mobile-trigger"
           aria-label="목차 열기"
           className={cn(
-            'fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 z-[51] xl:hidden',
-            'flex items-center justify-center',
-            'h-12 w-12 rounded-full shadow-lg',
-            'bg-primary text-primary-foreground',
-            'hover:bg-primary/90 active:scale-95 transition-all duration-200',
-            isTerminal && 'rounded-lg border border-primary/40 bg-[hsl(var(--terminal-code-bg))] text-primary'
+            "fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 z-[51] xl:hidden",
+            "flex items-center justify-center",
+            "h-12 w-12 rounded-full shadow-lg",
+            "bg-primary text-primary-foreground",
+            "hover:bg-primary/90 active:scale-95 transition-all duration-200",
+            isTerminal &&
+              "rounded-lg border border-primary/40 bg-[hsl(var(--terminal-code-bg))] text-primary",
           )}
         >
           <BookOpen className="h-5 w-5" />
@@ -338,16 +355,18 @@ export const TocDrawer = ({
       <SheetContent
         side="right"
         className={cn(
-          'w-80 p-0 overflow-y-auto',
-          isTerminal && 'bg-[hsl(var(--terminal-code-bg))] border-primary/20'
+          "w-80 p-0 overflow-y-auto",
+          isTerminal && "bg-[hsl(var(--terminal-code-bg))] border-primary/20",
         )}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b">
-          <SheetTitle className={cn(
-            'font-bold text-base',
-            isTerminal && 'font-mono text-primary'
-          )}>
-            {isTerminal ? '$ cat TOC' : '목차'}
+          <SheetTitle
+            className={cn(
+              "font-bold text-base",
+              isTerminal && "font-mono text-primary",
+            )}
+          >
+            {isTerminal ? "$ cat TOC" : "목차"}
           </SheetTitle>
           <button
             type="button"
@@ -363,6 +382,7 @@ export const TocDrawer = ({
             content={content}
             postTitle={postTitle}
             onClose={() => setOpen(false)}
+            sticky={false}
           />
         </div>
       </SheetContent>

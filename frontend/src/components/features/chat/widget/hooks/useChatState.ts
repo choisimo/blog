@@ -4,6 +4,7 @@ import type {
   ChatSessionMeta,
   UploadedChatImage,
   QuestionMode,
+  LiveReplyTarget,
 } from "../types";
 import { PERSIST_OPTIN_KEY } from "../constants";
 import {
@@ -63,6 +64,8 @@ export function useChatState(options?: { initialMessage?: string }) {
       return false;
     }
   });
+  const [liveReplyTarget, setLiveReplyTarget] =
+    useState<LiveReplyTarget | null>(null);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -158,7 +161,7 @@ export function useChatState(options?: { initialMessage?: string }) {
           `${SESSION_MESSAGES_PREFIX}${sessionKey}`,
           JSON.stringify(
             messages
-              .filter((m) => !m.transient)
+              .filter((m) => !m.transient && m.statusSource !== "event")
               .slice(-MAX_MESSAGES_PER_SESSION),
           ),
         );
@@ -347,6 +350,8 @@ export function useChatState(options?: { initialMessage?: string }) {
     setUploadedImages,
     livePinned,
     setLivePinned,
+    liveReplyTarget,
+    setLiveReplyTarget,
     // Refs
     scrollRef,
     abortRef,

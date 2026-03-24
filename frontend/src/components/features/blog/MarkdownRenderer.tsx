@@ -1,54 +1,54 @@
-import ReactMarkdown from 'react-markdown';
-import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
-import bash from 'react-syntax-highlighter/dist/esm/languages/hljs/bash';
-import cpp from 'react-syntax-highlighter/dist/esm/languages/hljs/cpp';
-import css from 'react-syntax-highlighter/dist/esm/languages/hljs/css';
-import dockerfile from 'react-syntax-highlighter/dist/esm/languages/hljs/dockerfile';
-import go from 'react-syntax-highlighter/dist/esm/languages/hljs/go';
-import java from 'react-syntax-highlighter/dist/esm/languages/hljs/java';
-import javascript from 'react-syntax-highlighter/dist/esm/languages/hljs/javascript';
-import json from 'react-syntax-highlighter/dist/esm/languages/hljs/json';
-import kotlin from 'react-syntax-highlighter/dist/esm/languages/hljs/kotlin';
-import markdownLang from 'react-syntax-highlighter/dist/esm/languages/hljs/markdown';
-import plaintext from 'react-syntax-highlighter/dist/esm/languages/hljs/plaintext';
-import python from 'react-syntax-highlighter/dist/esm/languages/hljs/python';
-import rust from 'react-syntax-highlighter/dist/esm/languages/hljs/rust';
-import shell from 'react-syntax-highlighter/dist/esm/languages/hljs/shell';
-import sql from 'react-syntax-highlighter/dist/esm/languages/hljs/sql';
-import typescript from 'react-syntax-highlighter/dist/esm/languages/hljs/typescript';
-import vim from 'react-syntax-highlighter/dist/esm/languages/hljs/vim';
-import yaml from 'react-syntax-highlighter/dist/esm/languages/hljs/yaml';
+import ReactMarkdown from "react-markdown";
+import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
+import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import bash from "react-syntax-highlighter/dist/esm/languages/hljs/bash";
+import cpp from "react-syntax-highlighter/dist/esm/languages/hljs/cpp";
+import css from "react-syntax-highlighter/dist/esm/languages/hljs/css";
+import dockerfile from "react-syntax-highlighter/dist/esm/languages/hljs/dockerfile";
+import go from "react-syntax-highlighter/dist/esm/languages/hljs/go";
+import java from "react-syntax-highlighter/dist/esm/languages/hljs/java";
+import javascript from "react-syntax-highlighter/dist/esm/languages/hljs/javascript";
+import json from "react-syntax-highlighter/dist/esm/languages/hljs/json";
+import kotlin from "react-syntax-highlighter/dist/esm/languages/hljs/kotlin";
+import markdownLang from "react-syntax-highlighter/dist/esm/languages/hljs/markdown";
+import plaintext from "react-syntax-highlighter/dist/esm/languages/hljs/plaintext";
+import python from "react-syntax-highlighter/dist/esm/languages/hljs/python";
+import rust from "react-syntax-highlighter/dist/esm/languages/hljs/rust";
+import shell from "react-syntax-highlighter/dist/esm/languages/hljs/shell";
+import sql from "react-syntax-highlighter/dist/esm/languages/hljs/sql";
+import typescript from "react-syntax-highlighter/dist/esm/languages/hljs/typescript";
+import vim from "react-syntax-highlighter/dist/esm/languages/hljs/vim";
+import yaml from "react-syntax-highlighter/dist/esm/languages/hljs/yaml";
 
-SyntaxHighlighter.registerLanguage('bash', bash);
-SyntaxHighlighter.registerLanguage('cpp', cpp);
-SyntaxHighlighter.registerLanguage('css', css);
-SyntaxHighlighter.registerLanguage('dockerfile', dockerfile);
-SyntaxHighlighter.registerLanguage('go', go);
-SyntaxHighlighter.registerLanguage('java', java);
-SyntaxHighlighter.registerLanguage('javascript', javascript);
-SyntaxHighlighter.registerLanguage('js', javascript);
-SyntaxHighlighter.registerLanguage('json', json);
-SyntaxHighlighter.registerLanguage('jsx', javascript);
-SyntaxHighlighter.registerLanguage('kotlin', kotlin);
-SyntaxHighlighter.registerLanguage('markdown', markdownLang);
-SyntaxHighlighter.registerLanguage('plaintext', plaintext);
-SyntaxHighlighter.registerLanguage('python', python);
-SyntaxHighlighter.registerLanguage('py', python);
-SyntaxHighlighter.registerLanguage('rust', rust);
-SyntaxHighlighter.registerLanguage('shell', shell);
-SyntaxHighlighter.registerLanguage('sh', shell);
-SyntaxHighlighter.registerLanguage('sql', sql);
-SyntaxHighlighter.registerLanguage('text', plaintext);
-SyntaxHighlighter.registerLanguage('tsx', typescript);
-SyntaxHighlighter.registerLanguage('typescript', typescript);
-SyntaxHighlighter.registerLanguage('ts', typescript);
-SyntaxHighlighter.registerLanguage('vim', vim);
-SyntaxHighlighter.registerLanguage('yaml', yaml);
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
-import { Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
+SyntaxHighlighter.registerLanguage("bash", bash);
+SyntaxHighlighter.registerLanguage("cpp", cpp);
+SyntaxHighlighter.registerLanguage("css", css);
+SyntaxHighlighter.registerLanguage("dockerfile", dockerfile);
+SyntaxHighlighter.registerLanguage("go", go);
+SyntaxHighlighter.registerLanguage("java", java);
+SyntaxHighlighter.registerLanguage("javascript", javascript);
+SyntaxHighlighter.registerLanguage("js", javascript);
+SyntaxHighlighter.registerLanguage("json", json);
+SyntaxHighlighter.registerLanguage("jsx", javascript);
+SyntaxHighlighter.registerLanguage("kotlin", kotlin);
+SyntaxHighlighter.registerLanguage("markdown", markdownLang);
+SyntaxHighlighter.registerLanguage("plaintext", plaintext);
+SyntaxHighlighter.registerLanguage("python", python);
+SyntaxHighlighter.registerLanguage("py", python);
+SyntaxHighlighter.registerLanguage("rust", rust);
+SyntaxHighlighter.registerLanguage("shell", shell);
+SyntaxHighlighter.registerLanguage("sh", shell);
+SyntaxHighlighter.registerLanguage("sql", sql);
+SyntaxHighlighter.registerLanguage("text", plaintext);
+SyntaxHighlighter.registerLanguage("tsx", typescript);
+SyntaxHighlighter.registerLanguage("typescript", typescript);
+SyntaxHighlighter.registerLanguage("ts", typescript);
+SyntaxHighlighter.registerLanguage("vim", vim);
+SyntaxHighlighter.registerLanguage("yaml", yaml);
+import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize from "rehype-sanitize";
+import { Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
 import {
   Children,
   Fragment,
@@ -59,44 +59,44 @@ import {
   useState,
   type ReactElement,
   type ReactNode,
-} from 'react';
-import type { Element as HastElement, ElementContent } from 'hast';
-import { Button } from '@/components/ui/button';
-import SparkInline from '@/components/molecules/SparkInline';
-import { blogMarkdownSanitizeSchema } from './markdownSanitizeSchema';
+} from "react";
+import type { Element as HastElement, ElementContent } from "hast";
+import { Button } from "@/components/ui/button";
+import SparkInline from "@/components/molecules/SparkInline";
+import { blogMarkdownSanitizeSchema } from "./markdownSanitizeSchema";
 import {
   ClickableImage,
   EmbeddedVideo,
   NormalizedVideoSource,
-} from './ImageLightbox';
-import { useTheme } from '@/contexts/ThemeContext';
-import { cn } from '@/lib/utils';
+} from "./ImageLightbox";
+import { useTheme } from "@/contexts/ThemeContext";
+import { cn } from "@/lib/utils";
 import {
   createHeadingSlug,
   normalizeHeadingText,
-} from '@/utils/content/markdownHeadings';
+} from "@/utils/content/markdownHeadings";
 
 // Terminal-style syntax highlighting theme
 const terminalTheme: { [key: string]: React.CSSProperties } = {
   ...atomOneDark,
   hljs: {
-    ...atomOneDark['hljs'],
-    color: '#c6f7d4',
-    background: 'hsl(200 50% 3%)',
-    border: '1px solid hsl(200 30% 12%)',
+    ...atomOneDark["hljs"],
+    color: "#c6f7d4",
+    background: "hsl(200 50% 3%)",
+    border: "1px solid hsl(200 30% 12%)",
     fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
   },
-  'hljs-comment': { color: '#4e5953', fontStyle: 'italic' },
-  'hljs-keyword': { color: '#3cff96' },
-  'hljs-string': { color: '#3cb8ff' },
-  'hljs-title': { color: '#3cff96' },
-  'hljs-number': { color: '#ffb02e' },
-  'hljs-operator': { color: '#3cff96' },
-  'hljs-punctuation': { color: '#7f8f87' },
-  'hljs-variable': { color: '#e4f4e8' },
-  'hljs-class .hljs-title': { color: '#3cb8ff' },
-  'hljs-literal': { color: '#ffb02e' },
-  'hljs-built_in': { color: '#ffb02e' },
+  "hljs-comment": { color: "#4e5953", fontStyle: "italic" },
+  "hljs-keyword": { color: "#3cff96" },
+  "hljs-string": { color: "#3cb8ff" },
+  "hljs-title": { color: "#3cff96" },
+  "hljs-number": { color: "#ffb02e" },
+  "hljs-operator": { color: "#3cff96" },
+  "hljs-punctuation": { color: "#7f8f87" },
+  "hljs-variable": { color: "#e4f4e8" },
+  "hljs-class .hljs-title": { color: "#3cb8ff" },
+  "hljs-literal": { color: "#ffb02e" },
+  "hljs-built_in": { color: "#ffb02e" },
 };
 
 interface MarkdownRendererProps {
@@ -107,9 +107,9 @@ interface MarkdownRendererProps {
   postPath?: string; // e.g., "2025/future-tech-six-insights" for resolving relative image paths
 }
 
-const IFRAME_AUTO_HEIGHT_MESSAGE_TYPE = 'blog-iframe-auto-height';
-const IFRAME_AUTO_HEIGHT_REQUEST_TYPE = 'blog-iframe-request-height';
-const IFRAME_AUTO_HEIGHT_SOURCE = 'nodove-blog-embed';
+const IFRAME_AUTO_HEIGHT_MESSAGE_TYPE = "blog-iframe-auto-height";
+const IFRAME_AUTO_HEIGHT_REQUEST_TYPE = "blog-iframe-request-height";
+const IFRAME_AUTO_HEIGHT_SOURCE = "nodove-blog-embed";
 const DEFAULT_EMBED_HEIGHT = 760;
 const MIN_EMBED_HEIGHT = 320;
 const MAX_EMBED_HEIGHT = 6000;
@@ -118,17 +118,17 @@ function clampEmbedHeight(value: number): number {
   if (!Number.isFinite(value)) return DEFAULT_EMBED_HEIGHT;
   return Math.max(
     MIN_EMBED_HEIGHT,
-    Math.min(MAX_EMBED_HEIGHT, Math.round(value))
+    Math.min(MAX_EMBED_HEIGHT, Math.round(value)),
   );
 }
 
 function parseEmbedHeight(
-  value: React.ComponentProps<'iframe'>['height']
+  value: React.ComponentProps<"iframe">["height"],
 ): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) {
+  if (typeof value === "number" && Number.isFinite(value)) {
     return clampEmbedHeight(value);
   }
-  if (typeof value !== 'string') return null;
+  if (typeof value !== "string") return null;
   const raw = value.trim();
   const match = raw.match(/^(\d+(?:\.\d+)?)\s*(px)?$/i);
   if (!match) return null;
@@ -137,32 +137,32 @@ function parseEmbedHeight(
 
 function normalizeIframeSrc(
   src: string | undefined,
-  postPath: string
+  postPath: string,
 ): string | undefined {
   if (!src) return undefined;
   const raw = src.trim();
   if (!raw) return undefined;
 
   if (
-    raw.startsWith('http://') ||
-    raw.startsWith('https://') ||
-    raw.startsWith('//') ||
-    raw.startsWith('data:') ||
-    raw.startsWith('blob:')
+    raw.startsWith("http://") ||
+    raw.startsWith("https://") ||
+    raw.startsWith("//") ||
+    raw.startsWith("data:") ||
+    raw.startsWith("blob:")
   ) {
     return raw;
   }
 
-  if (raw.startsWith('/')) {
+  if (raw.startsWith("/")) {
     return raw;
   }
 
-  if (raw.startsWith('posts/')) {
+  if (raw.startsWith("posts/")) {
     return `/${raw}`;
   }
 
-  const year = postPath.split('/')[0] ?? '';
-  const normalizedRelative = raw.replace(/^\.?\//, '');
+  const year = postPath.split("/")[0] ?? "";
+  const normalizedRelative = raw.replace(/^\.?\//, "");
   if (/^\d{4}$/.test(year)) {
     return `/posts/${year}/${normalizedRelative}`;
   }
@@ -171,19 +171,19 @@ function normalizeIframeSrc(
 }
 
 function extractEmbedHeightMessage(data: unknown): number | null {
-  if (!data || typeof data !== 'object') return null;
+  if (!data || typeof data !== "object") return null;
 
   const payload = data as Record<string, unknown>;
   if (payload.type !== IFRAME_AUTO_HEIGHT_MESSAGE_TYPE) return null;
 
   const value = payload.height;
-  const numeric = typeof value === 'number' ? value : Number(value);
+  const numeric = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(numeric)) return null;
 
   return clampEmbedHeight(numeric);
 }
 
-interface EmbeddedIframeProps extends React.ComponentProps<'iframe'> {
+interface EmbeddedIframeProps extends React.ComponentProps<"iframe"> {
   postPath: string;
   isTerminal: boolean;
 }
@@ -203,13 +203,13 @@ function EmbeddedIframe({
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const resolvedSrc = useMemo(
     () =>
-      normalizeIframeSrc(typeof src === 'string' ? src : undefined, postPath),
-    [postPath, src]
+      normalizeIframeSrc(typeof src === "string" ? src : undefined, postPath),
+    [postPath, src],
   );
 
   const initialHeight = useMemo(
     () => parseEmbedHeight(height) ?? DEFAULT_EMBED_HEIGHT,
-    [height]
+    [height],
   );
   const [frameHeight, setFrameHeight] = useState(initialHeight);
 
@@ -225,13 +225,13 @@ function EmbeddedIframe({
       const nextHeight = extractEmbedHeightMessage(event.data);
       if (!nextHeight) return;
 
-      setFrameHeight(prev =>
-        Math.abs(prev - nextHeight) < 2 ? prev : nextHeight
+      setFrameHeight((prev) =>
+        Math.abs(prev - nextHeight) < 2 ? prev : nextHeight,
       );
     };
 
-    window.addEventListener('message', onMessage);
-    return () => window.removeEventListener('message', onMessage);
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
   }, []);
 
   if (!resolvedSrc) {
@@ -239,27 +239,27 @@ function EmbeddedIframe({
   }
 
   return (
-    <div className='my-8 max-w-5xl mx-auto'>
+    <div className="my-8 max-w-5xl mx-auto">
       <iframe
         {...rest}
         ref={iframeRef}
         src={resolvedSrc}
-        title={title ?? 'Embedded content'}
-        loading={loading ?? 'lazy'}
+        title={title ?? "Embedded content"}
+        loading={loading ?? "lazy"}
         className={cn(
-          'w-full rounded-2xl border border-border/50 bg-card shadow-sm',
+          "w-full rounded-2xl border border-border/50 bg-card shadow-sm",
           isTerminal &&
-            'rounded border-primary/35 bg-[hsl(var(--terminal-code-bg))]',
-          className
+            "rounded border-primary/35 bg-[hsl(var(--terminal-code-bg))]",
+          className,
         )}
         style={{
-          border: 'none',
+          border: "none",
           minHeight: `${MIN_EMBED_HEIGHT}px`,
-          width: '100%',
+          width: "100%",
           ...style,
           height: `${frameHeight}px`,
         }}
-        onLoad={event => {
+        onLoad={(event) => {
           const targetWindow = iframeRef.current?.contentWindow;
           if (targetWindow) {
             targetWindow.postMessage(
@@ -267,7 +267,7 @@ function EmbeddedIframe({
                 type: IFRAME_AUTO_HEIGHT_REQUEST_TYPE,
                 source: IFRAME_AUTO_HEIGHT_SOURCE,
               },
-              '*'
+              "*",
             );
           }
           onLoad?.(event);
@@ -278,72 +278,72 @@ function EmbeddedIframe({
 }
 
 function extractTextFromNode(node: ReactNode): string {
-  if (typeof node === 'string' || typeof node === 'number') {
+  if (typeof node === "string" || typeof node === "number") {
     return String(node);
   }
 
   if (Array.isArray(node)) {
-    return node.map(extractTextFromNode).join(' ');
+    return node.map(extractTextFromNode).join(" ");
   }
 
   if (!isValidElement(node)) {
-    return '';
+    return "";
   }
 
   const props = (node as ReactElement<{ children?: ReactNode }>).props ?? {};
-  return Children.toArray(props.children).map(extractTextFromNode).join(' ');
+  return Children.toArray(props.children).map(extractTextFromNode).join(" ");
 }
 
 function extractRawTextFromNode(node: ReactNode): string {
-  if (typeof node === 'string' || typeof node === 'number') {
+  if (typeof node === "string" || typeof node === "number") {
     return String(node);
   }
 
   if (Array.isArray(node)) {
-    return node.map(extractRawTextFromNode).join('');
+    return node.map(extractRawTextFromNode).join("");
   }
 
   if (!isValidElement(node)) {
-    return '';
+    return "";
   }
 
   const props = (node as ReactElement<{ children?: ReactNode }>).props ?? {};
-  return Children.toArray(props.children).map(extractRawTextFromNode).join('');
+  return Children.toArray(props.children).map(extractRawTextFromNode).join("");
 }
 
 function extractTextFromHastNode(node: ElementContent | undefined): string {
-  if (!node) return '';
-  if (node.type === 'text') return node.value;
-  if ('children' in node) {
-    return node.children.map(extractTextFromHastNode).join('');
+  if (!node) return "";
+  if (node.type === "text") return node.value;
+  if ("children" in node) {
+    return node.children.map(extractTextFromHastNode).join("");
   }
-  return '';
+  return "";
 }
 
 function normalizeClassNames(value: unknown): string {
-  if (typeof value === 'string') return value;
+  if (typeof value === "string") return value;
   if (Array.isArray(value)) {
     return value
-      .filter((item): item is string => typeof item === 'string')
-      .join(' ');
+      .filter((item): item is string => typeof item === "string")
+      .join(" ");
   }
-  return '';
+  return "";
 }
 
 function extractCodeBlockDataFromPre(
   node: HastElement | undefined,
-  fallbackChildren: ReactNode
+  fallbackChildren: ReactNode,
 ): { className?: string; codeString: string } | null {
   const codeNode = node?.children.find(
     (child): child is HastElement =>
-      child.type === 'element' && child.tagName === 'code'
+      child.type === "element" && child.tagName === "code",
   );
 
   if (codeNode) {
     const codeString = codeNode.children
       .map(extractTextFromHastNode)
-      .join('')
-      .replace(/\n$/, '');
+      .join("")
+      .replace(/\n$/, "");
 
     if (codeString) {
       const className = normalizeClassNames(codeNode.properties?.className);
@@ -356,9 +356,9 @@ function extractCodeBlockDataFromPre(
 
   const codeElement = Children.toArray(fallbackChildren).find(
     (
-      child
+      child,
     ): child is ReactElement<{ className?: string; children?: ReactNode }> =>
-      isValidElement(child) && child.type === 'code'
+      isValidElement(child) && child.type === "code",
   );
 
   if (!codeElement) {
@@ -367,7 +367,7 @@ function extractCodeBlockDataFromPre(
 
   const codeString = extractRawTextFromNode(codeElement.props.children).replace(
     /\n$/,
-    ''
+    "",
   );
 
   if (!codeString) {
@@ -392,35 +392,35 @@ function normalizeCodeLanguage(rawLanguage: string): {
     string,
     { syntaxLanguage?: string; displayLanguage: string }
   > = {
-    bash: { syntaxLanguage: 'bash', displayLanguage: 'bash' },
-    cpp: { syntaxLanguage: 'cpp', displayLanguage: 'cpp' },
-    dockerfile: { syntaxLanguage: 'dockerfile', displayLanguage: 'dockerfile' },
-    go: { syntaxLanguage: 'go', displayLanguage: 'go' },
-    java: { syntaxLanguage: 'java', displayLanguage: 'java' },
-    javascript: { syntaxLanguage: 'javascript', displayLanguage: 'javascript' },
-    js: { syntaxLanguage: 'javascript', displayLanguage: 'javascript' },
-    json: { syntaxLanguage: 'json', displayLanguage: 'json' },
-    jsx: { syntaxLanguage: 'jsx', displayLanguage: 'jsx' },
-    kotlin: { syntaxLanguage: 'kotlin', displayLanguage: 'kotlin' },
-    markdown: { syntaxLanguage: 'markdown', displayLanguage: 'markdown' },
-    md: { syntaxLanguage: 'markdown', displayLanguage: 'markdown' },
-    plaintext: { syntaxLanguage: 'plaintext', displayLanguage: 'text' },
-    py: { syntaxLanguage: 'python', displayLanguage: 'python' },
-    python: { syntaxLanguage: 'python', displayLanguage: 'python' },
-    rust: { syntaxLanguage: 'rust', displayLanguage: 'rust' },
-    sh: { syntaxLanguage: 'shell', displayLanguage: 'shell' },
-    shell: { syntaxLanguage: 'shell', displayLanguage: 'shell' },
-    sql: { syntaxLanguage: 'sql', displayLanguage: 'sql' },
-    text: { syntaxLanguage: 'plaintext', displayLanguage: 'text' },
-    ts: { syntaxLanguage: 'typescript', displayLanguage: 'typescript' },
-    tsx: { syntaxLanguage: 'tsx', displayLanguage: 'tsx' },
-    typescript: { syntaxLanguage: 'typescript', displayLanguage: 'typescript' },
-    vim: { syntaxLanguage: 'vim', displayLanguage: 'vim' },
-    yaml: { syntaxLanguage: 'yaml', displayLanguage: 'yaml' },
-    yml: { syntaxLanguage: 'yaml', displayLanguage: 'yaml' },
+    bash: { syntaxLanguage: "bash", displayLanguage: "bash" },
+    cpp: { syntaxLanguage: "cpp", displayLanguage: "cpp" },
+    dockerfile: { syntaxLanguage: "dockerfile", displayLanguage: "dockerfile" },
+    go: { syntaxLanguage: "go", displayLanguage: "go" },
+    java: { syntaxLanguage: "java", displayLanguage: "java" },
+    javascript: { syntaxLanguage: "javascript", displayLanguage: "javascript" },
+    js: { syntaxLanguage: "javascript", displayLanguage: "javascript" },
+    json: { syntaxLanguage: "json", displayLanguage: "json" },
+    jsx: { syntaxLanguage: "jsx", displayLanguage: "jsx" },
+    kotlin: { syntaxLanguage: "kotlin", displayLanguage: "kotlin" },
+    markdown: { syntaxLanguage: "markdown", displayLanguage: "markdown" },
+    md: { syntaxLanguage: "markdown", displayLanguage: "markdown" },
+    plaintext: { syntaxLanguage: "plaintext", displayLanguage: "text" },
+    py: { syntaxLanguage: "python", displayLanguage: "python" },
+    python: { syntaxLanguage: "python", displayLanguage: "python" },
+    rust: { syntaxLanguage: "rust", displayLanguage: "rust" },
+    sh: { syntaxLanguage: "shell", displayLanguage: "shell" },
+    shell: { syntaxLanguage: "shell", displayLanguage: "shell" },
+    sql: { syntaxLanguage: "sql", displayLanguage: "sql" },
+    text: { syntaxLanguage: "plaintext", displayLanguage: "text" },
+    ts: { syntaxLanguage: "typescript", displayLanguage: "typescript" },
+    tsx: { syntaxLanguage: "tsx", displayLanguage: "tsx" },
+    typescript: { syntaxLanguage: "typescript", displayLanguage: "typescript" },
+    vim: { syntaxLanguage: "vim", displayLanguage: "vim" },
+    yaml: { syntaxLanguage: "yaml", displayLanguage: "yaml" },
+    yml: { syntaxLanguage: "yaml", displayLanguage: "yaml" },
   };
 
-  return aliasMap[normalized] ?? { displayLanguage: normalized || 'code' };
+  return aliasMap[normalized] ?? { displayLanguage: normalized || "code" };
 }
 
 function inferCodeLanguage(codeString: string): {
@@ -430,39 +430,39 @@ function inferCodeLanguage(codeString: string): {
   const trimmed = codeString.trim();
 
   if (!trimmed) {
-    return { displayLanguage: 'code' };
+    return { displayLanguage: "code" };
   }
 
   if (SHELL_SNIPPET_PATTERN.test(trimmed)) {
-    return { syntaxLanguage: 'shell', displayLanguage: 'shell' };
+    return { syntaxLanguage: "shell", displayLanguage: "shell" };
   }
 
-  return { displayLanguage: 'code' };
+  return { displayLanguage: "code" };
 }
 
 const INLINE_SAFE_TAGS = new Set([
-  'a',
-  'abbr',
-  'b',
-  'br',
-  'cite',
-  'code',
-  'del',
-  'em',
-  'i',
-  'kbd',
-  'mark',
-  'q',
-  's',
-  'small',
-  'span',
-  'strong',
-  'sub',
-  'sup',
-  'time',
-  'u',
-  'var',
-  'wbr',
+  "a",
+  "abbr",
+  "b",
+  "br",
+  "cite",
+  "code",
+  "del",
+  "em",
+  "i",
+  "kbd",
+  "mark",
+  "q",
+  "s",
+  "small",
+  "span",
+  "strong",
+  "sub",
+  "sup",
+  "time",
+  "u",
+  "var",
+  "wbr",
 ]);
 
 // ============================================================================
@@ -488,27 +488,27 @@ function CodeBlock({
   copiedCode,
   onCopy,
 }: CodeBlockProps) {
-  const lineCount = codeString.split('\n').length;
+  const lineCount = codeString.split("\n").length;
   const isLong = lineCount > COLLAPSE_THRESHOLD;
   const [collapsed, setCollapsed] = useState(isLong);
-  const label = displayLanguage || 'code';
+  const label = displayLanguage || "code";
   const showLineNumbers = lineCount > 1;
 
   return (
-    <div className='relative group my-8 max-w-4xl mx-auto'>
+    <div className="relative group my-8 max-w-4xl mx-auto">
       {/* Terminal-style header for code blocks */}
       {isTerminalTheme && (
-        <div className='flex items-center gap-2 bg-[hsl(var(--terminal-titlebar))] px-4 py-2 rounded-t-xl border border-b-0 border-border font-mono text-xs text-muted-foreground'>
-          <span className='w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-close))]' />
-          <span className='w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]' />
-          <span className='w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]' />
-          <span className='ml-2 text-primary'>{label}</span>
+        <div className="flex items-center gap-2 bg-[hsl(var(--terminal-titlebar))] px-4 py-2 rounded-t-xl border border-b-0 border-border font-mono text-xs text-muted-foreground">
+          <span className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-close))]" />
+          <span className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]" />
+          <span className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]" />
+          <span className="ml-2 text-primary">{label}</span>
         </div>
       )}
       {/* Non-terminal language badge */}
       {!isTerminalTheme && (
-        <div className='absolute left-4 top-3 z-10'>
-          <span className='rounded-md border border-white/15 bg-white/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-200 shadow-sm backdrop-blur'>
+        <div className="absolute left-4 top-3 z-10">
+          <span className="rounded-md border border-white/15 bg-white/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-200 shadow-sm backdrop-blur">
             {label}
           </span>
         </div>
@@ -516,79 +516,79 @@ function CodeBlock({
 
       {/* Copy button */}
       <Button
-        size='icon'
-        variant='ghost'
-        data-testid='code-copy-btn'
+        size="icon"
+        variant="ghost"
+        data-testid="code-copy-btn"
         className={cn(
-          'absolute right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-10',
+          "absolute right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-10",
           isTerminalTheme
-            ? 'top-12 text-primary hover:text-primary hover:bg-primary/10'
-            : 'top-2'
+            ? "top-12 text-primary hover:text-primary hover:bg-primary/10"
+            : "top-2",
         )}
         onClick={() => onCopy(codeString)}
       >
         {copiedCode === codeString ? (
-          <Check className='h-4 w-4' />
+          <Check className="h-4 w-4" />
         ) : (
-          <Copy className='h-4 w-4' />
+          <Copy className="h-4 w-4" />
         )}
       </Button>
 
       {/* Code area with collapsible */}
-      <div className='relative overflow-hidden'>
+      <div className="relative overflow-hidden">
         <div
           className={cn(
-            'overflow-x-auto transition-[max-height] duration-500 ease-in-out',
-            collapsed ? 'overflow-y-hidden' : 'overflow-y-visible'
+            "overflow-x-auto transition-[max-height] duration-500 ease-in-out",
+            collapsed ? "overflow-y-hidden" : "overflow-y-visible",
           )}
           style={
             collapsed
               ? { maxHeight: `${COLLAPSED_MAX_LINES}px` }
-              : { maxHeight: 'none' }
+              : { maxHeight: "none" }
           }
         >
           <SyntaxHighlighter
             style={isTerminalTheme ? terminalTheme : atomOneDark}
             language={syntaxLanguage}
-            PreTag='div'
+            PreTag="div"
             showLineNumbers={showLineNumbers}
             lineNumberStyle={{
-              minWidth: '2.5em',
-              paddingRight: '1em',
+              minWidth: "2.5em",
+              paddingRight: "1em",
               color: isTerminalTheme
-                ? 'rgba(100,160,120,0.4)'
-                : 'rgba(148,163,184,0.55)',
-              userSelect: 'none',
-              fontSize: '0.78em',
-              paddingTop: '0.15rem',
+                ? "rgba(100,160,120,0.4)"
+                : "rgba(148,163,184,0.55)",
+              userSelect: "none",
+              fontSize: "0.78em",
+              paddingTop: "0.15rem",
             }}
             customStyle={{
               margin: 0,
               padding: isTerminalTheme
-                ? '1.2rem 1.25rem 1.15rem'
-                : '1.15rem 1.2rem',
-              borderRadius: isTerminalTheme ? '0 0 1rem 1rem' : '1rem',
-              background: isTerminalTheme ? 'hsl(200 50% 3%)' : '#0f172a',
+                ? "1.2rem 1.25rem 1.15rem"
+                : "1.15rem 1.2rem",
+              borderRadius: isTerminalTheme ? "0 0 1rem 1rem" : "1rem",
+              background: isTerminalTheme ? "hsl(200 50% 3%)" : "#0f172a",
               border: isTerminalTheme
-                ? '1px solid hsl(200 30% 12%)'
-                : '1px solid rgba(15, 23, 42, 0.14)',
+                ? "1px solid hsl(200 30% 12%)"
+                : "1px solid rgba(15, 23, 42, 0.14)",
               boxShadow: isTerminalTheme
-                ? '0 18px 40px rgba(0, 0, 0, 0.35)'
-                : '0 18px 36px rgba(15, 23, 42, 0.12)',
-              fontSize: '0.92rem',
+                ? "0 18px 40px rgba(0, 0, 0, 0.35)"
+                : "0 18px 36px rgba(15, 23, 42, 0.12)",
+              fontSize: "0.92rem",
               lineHeight: 1.75,
             }}
             codeTagProps={{
               style: {
                 fontFamily:
                   "'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, monospace",
-                fontSize: '0.92rem',
+                fontSize: "0.92rem",
               },
             }}
             className={cn(
-              'rounded-xl shadow-lg !overflow-x-auto',
-              isTerminalTheme && 'rounded-t-none !rounded-b-xl',
-              !isTerminalTheme && '!pt-11'
+              "rounded-xl shadow-lg !overflow-x-auto",
+              isTerminalTheme && "rounded-t-none !rounded-b-xl",
+              !isTerminalTheme && "!pt-11",
             )}
             wrapLongLines={false}
           >
@@ -599,11 +599,11 @@ function CodeBlock({
         {/* Fade gradient overlay when collapsed */}
         {isLong && collapsed && (
           <div
-            className='absolute bottom-0 left-0 right-0 h-24 pointer-events-none'
+            className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
             style={{
               background: isTerminalTheme
-                ? 'linear-gradient(to bottom, transparent, hsl(200 50% 3%))'
-                : 'linear-gradient(to bottom, transparent, #282c34)',
+                ? "linear-gradient(to bottom, transparent, hsl(200 50% 3%))"
+                : "linear-gradient(to bottom, transparent, #282c34)",
             }}
           />
         )}
@@ -612,25 +612,25 @@ function CodeBlock({
       {/* Expand/Collapse toggle button */}
       {isLong && (
         <button
-          type='button'
-          data-testid='code-collapse-toggle'
-          onClick={() => setCollapsed(v => !v)}
+          type="button"
+          data-testid="code-collapse-toggle"
+          onClick={() => setCollapsed((v) => !v)}
           className={cn(
-            'w-full flex items-center justify-center gap-2 py-2 text-xs font-medium transition-colors',
-            'border-t',
+            "w-full flex items-center justify-center gap-2 py-2 text-xs font-medium transition-colors",
+            "border-t",
             isTerminalTheme
-              ? 'bg-[hsl(var(--terminal-titlebar))] border-border text-primary hover:bg-primary/10 rounded-b-xl'
-              : 'bg-[#282c34] border-[#3e4451] text-gray-400 hover:text-gray-200 rounded-b-xl'
+              ? "bg-[hsl(var(--terminal-titlebar))] border-border text-primary hover:bg-primary/10 rounded-b-xl"
+              : "bg-[#282c34] border-[#3e4451] text-gray-400 hover:text-gray-200 rounded-b-xl",
           )}
         >
           {collapsed ? (
             <>
-              <ChevronDown className='h-3.5 w-3.5' />
+              <ChevronDown className="h-3.5 w-3.5" />
               <span>{lineCount - COLLAPSE_THRESHOLD}줄 더 보기</span>
             </>
           ) : (
             <>
-              <ChevronUp className='h-3.5 w-3.5' />
+              <ChevronUp className="h-3.5 w-3.5" />
               <span>접기</span>
             </>
           )}
@@ -642,10 +642,10 @@ function CodeBlock({
 
 export const MarkdownRenderer = ({
   content,
-  className = '',
+  className = "",
   inlineEnabled = false,
-  postTitle = '',
-  postPath = '',
+  postTitle = "",
+  postPath = "",
 }: MarkdownRendererProps) => {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const { isTerminal } = useTheme();
@@ -657,7 +657,7 @@ export const MarkdownRenderer = ({
     while (lines.length) {
       const first = lines[0].trim();
       const plain = first
-        .replace(/^#+\s*/, '')
+        .replace(/^#+\s*/, "")
         .trim()
         .toLowerCase();
       if (plain && plain === normalizedTitle) {
@@ -666,7 +666,7 @@ export const MarkdownRenderer = ({
       }
       break;
     }
-    return lines.join('\n');
+    return lines.join("\n");
   }, [content, postTitle]);
 
   const copyToClipboard = (code: string) => {
@@ -682,8 +682,8 @@ export const MarkdownRenderer = ({
       (node as ReactElement<{ children?: ReactNode; src?: string }>).props ??
       {};
     if (node.type === Fragment) {
-      return Children.toArray(props.children).some(child =>
-        hasNonInlineNode(child)
+      return Children.toArray(props.children).some((child) =>
+        hasNonInlineNode(child),
       );
     }
 
@@ -697,14 +697,14 @@ export const MarkdownRenderer = ({
       return true;
     }
 
-    if (typeof props.src === 'string' && props.src.length > 0) return true;
+    if (typeof props.src === "string" && props.src.length > 0) return true;
 
-    if (typeof node.type === 'string' && !INLINE_SAFE_TAGS.has(node.type)) {
+    if (typeof node.type === "string" && !INLINE_SAFE_TAGS.has(node.type)) {
       return true;
     }
 
     const children = Children.toArray(props.children);
-    return children.some(child => hasNonInlineNode(child));
+    return children.some((child) => hasNonInlineNode(child));
   };
 
   const headingSlugCounts = new Map<string, number>();
@@ -719,9 +719,9 @@ export const MarkdownRenderer = ({
   return (
     <div
       className={cn(
-        'prose prose-neutral dark:prose-invert max-w-none prose-lg content',
-        isTerminal && 'prose-headings:font-mono prose-headings:tracking-wide',
-        className
+        "prose prose-neutral dark:prose-invert max-w-none prose-lg content",
+        isTerminal && "prose-headings:font-mono prose-headings:tracking-wide",
+        className,
       )}
     >
       <ReactMarkdown
@@ -737,11 +737,11 @@ export const MarkdownRenderer = ({
               <h1
                 id={id}
                 className={cn(
-                  'text-4xl font-bold mt-12 mb-6 scroll-mt-24 text-center max-w-4xl mx-auto',
-                  isTerminal && 'terminal-glow'
+                  "text-4xl font-bold mt-12 mb-6 scroll-mt-24 text-center max-w-4xl mx-auto",
+                  isTerminal && "terminal-glow",
                 )}
               >
-                {isTerminal && <span className='text-primary mr-2'>#</span>}
+                {isTerminal && <span className="text-primary mr-2">#</span>}
                 {children}
               </h1>
             );
@@ -752,11 +752,11 @@ export const MarkdownRenderer = ({
               <h2
                 id={id}
                 className={cn(
-                  'text-3xl font-semibold mt-10 mb-5 scroll-mt-24 text-center max-w-4xl mx-auto',
-                  isTerminal && 'terminal-glow'
+                  "text-3xl font-semibold mt-10 mb-5 scroll-mt-24 text-center max-w-4xl mx-auto",
+                  isTerminal && "terminal-glow",
                 )}
               >
-                {isTerminal && <span className='text-primary mr-2'>##</span>}
+                {isTerminal && <span className="text-primary mr-2">##</span>}
                 {children}
               </h2>
             );
@@ -767,11 +767,11 @@ export const MarkdownRenderer = ({
               <h3
                 id={id}
                 className={cn(
-                  'text-2xl font-semibold mt-8 mb-4 scroll-mt-24 text-center max-w-4xl mx-auto',
-                  isTerminal && 'terminal-glow'
+                  "text-2xl font-semibold mt-8 mb-4 scroll-mt-24 text-center max-w-4xl mx-auto",
+                  isTerminal && "terminal-glow",
                 )}
               >
-                {isTerminal && <span className='text-primary mr-2'>###</span>}
+                {isTerminal && <span className="text-primary mr-2">###</span>}
                 {children}
               </h3>
             );
@@ -781,7 +781,7 @@ export const MarkdownRenderer = ({
             return (
               <h4
                 id={id}
-                className='text-xl font-semibold mt-4 mb-2 scroll-mt-24'
+                className="text-xl font-semibold mt-4 mb-2 scroll-mt-24"
               >
                 {children}
               </h4>
@@ -792,7 +792,7 @@ export const MarkdownRenderer = ({
             return (
               <h5
                 id={id}
-                className='text-lg font-semibold mt-4 mb-2 scroll-mt-24'
+                className="text-lg font-semibold mt-4 mb-2 scroll-mt-24"
               >
                 {children}
               </h5>
@@ -803,7 +803,7 @@ export const MarkdownRenderer = ({
             return (
               <h6
                 id={id}
-                className='text-base font-semibold mt-4 mb-2 scroll-mt-24'
+                className="text-base font-semibold mt-4 mb-2 scroll-mt-24"
               >
                 {children}
               </h6>
@@ -811,13 +811,13 @@ export const MarkdownRenderer = ({
           },
           p: ({ children }) => {
             const childArray = Children.toArray(children);
-            const containsNonInlineContent = childArray.some(child =>
-              hasNonInlineNode(child)
+            const containsNonInlineContent = childArray.some((child) =>
+              hasNonInlineNode(child),
             );
 
             if (containsNonInlineContent) {
               return (
-                <div className='space-y-4 max-w-4xl mx-auto'>
+                <div className="space-y-4 max-w-4xl mx-auto">
                   {childArray.map((child, idx) => (
                     <Fragment key={idx}>{child}</Fragment>
                   ))}
@@ -827,7 +827,7 @@ export const MarkdownRenderer = ({
 
             if (inlineEnabled) {
               return (
-                <SparkInline postTitle={postTitle} wrapperTag='p'>
+                <SparkInline postTitle={postTitle} wrapperTag="p">
                   {children}
                 </SparkInline>
               );
@@ -836,8 +836,8 @@ export const MarkdownRenderer = ({
             return (
               <p
                 className={cn(
-                  'mb-6 leading-8 text-justify max-w-4xl mx-auto',
-                  isTerminal && 'border-l border-border/50 pl-4'
+                  "mb-6 leading-8 text-justify max-w-4xl mx-auto",
+                  isTerminal && "border-l border-border/50 pl-4",
                 )}
               >
                 {children}
@@ -847,23 +847,23 @@ export const MarkdownRenderer = ({
           ul: ({ children }) => (
             <ul
               className={cn(
-                'list-disc pl-6 mb-6 space-y-3 max-w-4xl mx-auto',
-                isTerminal && 'list-none'
+                "list-disc pl-6 mb-6 space-y-3 max-w-4xl mx-auto",
+                isTerminal && "list-none",
               )}
             >
               {children}
             </ul>
           ),
           ol: ({ children }) => (
-            <ol className='list-decimal pl-6 mb-6 space-y-3 max-w-4xl mx-auto'>
+            <ol className="list-decimal pl-6 mb-6 space-y-3 max-w-4xl mx-auto">
               {children}
             </ol>
           ),
           li: ({ children }) => (
             <li
               className={cn(
-                'leading-8 text-justify',
-                isTerminal && 'before:content-["-_"] before:text-primary'
+                "leading-8 text-justify",
+                isTerminal && 'before:content-["-_"] before:text-primary',
               )}
             >
               {children}
@@ -872,9 +872,9 @@ export const MarkdownRenderer = ({
           blockquote: ({ children }) => (
             <blockquote
               className={cn(
-                'border-l-4 border-primary pl-6 my-8 italic bg-muted/30 py-4 rounded-r-lg max-w-4xl mx-auto',
+                "border-l-4 border-primary pl-6 my-8 italic bg-muted/30 py-4 rounded-r-lg max-w-4xl mx-auto",
                 isTerminal &&
-                  'bg-[hsl(var(--terminal-code-bg))] border-primary/60 not-italic font-mono'
+                  "bg-[hsl(var(--terminal-code-bg))] border-primary/60 not-italic font-mono",
               )}
             >
               {children}
@@ -884,7 +884,7 @@ export const MarkdownRenderer = ({
             children,
             node,
             ...props
-          }: React.ComponentProps<'pre'> & { node?: HastElement }) {
+          }: React.ComponentProps<"pre"> & { node?: HastElement }) {
             const codeBlockData = extractCodeBlockDataFromPre(node, children);
 
             if (!codeBlockData) {
@@ -892,7 +892,7 @@ export const MarkdownRenderer = ({
             }
 
             const match = /language-([\w-]+)/.exec(
-              codeBlockData.className || ''
+              codeBlockData.className || "",
             );
             const resolvedLanguage = match
               ? normalizeCodeLanguage(match[1])
@@ -915,15 +915,16 @@ export const MarkdownRenderer = ({
             children,
             node: _node,
             ...props
-          }: React.ComponentProps<'code'> & { inline?: boolean }) {
+          }: React.ComponentProps<"code"> & { inline?: boolean }) {
             void inline;
             return (
               <code
+                data-inline-code="true"
                 className={cn(
-                  'bg-muted px-1.5 py-0.5 rounded text-sm',
+                  "bg-muted px-1.5 py-0.5 rounded text-sm",
                   isTerminal &&
-                    'bg-[hsl(var(--terminal-code-bg))] text-primary font-mono',
-                  className
+                    "bg-[hsl(var(--terminal-code-bg))] text-primary font-mono",
+                  className,
                 )}
                 {...props}
               >
@@ -934,12 +935,12 @@ export const MarkdownRenderer = ({
           a: ({ href, children }) => (
             <a
               href={href}
-              target='_blank'
-              rel='noopener noreferrer'
+              target="_blank"
+              rel="noopener noreferrer"
               className={cn(
-                'text-primary hover:underline',
+                "text-primary hover:underline",
                 isTerminal &&
-                  'underline decoration-dotted underline-offset-4 hover:decoration-solid'
+                  "underline decoration-dotted underline-offset-4 hover:decoration-solid",
               )}
             >
               {children}
@@ -947,7 +948,7 @@ export const MarkdownRenderer = ({
           ),
           img: ({ src, alt }) => (
             <ClickableImage
-              src={src || ''}
+              src={src || ""}
               alt={alt}
               isTerminal={isTerminal}
               postPath={postPath}
@@ -956,7 +957,7 @@ export const MarkdownRenderer = ({
           video: ({ src, children, ...props }) => (
             <EmbeddedVideo
               {...props}
-              src={typeof src === 'string' ? src : ''}
+              src={typeof src === "string" ? src : ""}
               postPath={postPath}
               isTerminal={isTerminal}
             >
@@ -966,11 +967,11 @@ export const MarkdownRenderer = ({
           source: ({ src, ...props }) => (
             <NormalizedVideoSource
               {...props}
-              src={typeof src === 'string' ? src : undefined}
+              src={typeof src === "string" ? src : undefined}
               postPath={postPath}
             />
           ),
-          iframe: props => (
+          iframe: (props) => (
             <EmbeddedIframe
               {...props}
               postPath={postPath}
@@ -979,11 +980,11 @@ export const MarkdownRenderer = ({
           ),
           cite: ({ children }) => <cite>{children}</cite>,
           table: ({ children }) => (
-            <div className='overflow-x-auto my-8 max-w-4xl mx-auto'>
+            <div className="overflow-x-auto my-8 max-w-4xl mx-auto">
               <table
                 className={cn(
-                  'min-w-full divide-y divide-border rounded-lg shadow-sm',
-                  isTerminal && 'font-mono text-sm'
+                  "min-w-full divide-y divide-border rounded-lg shadow-sm",
+                  isTerminal && "font-mono text-sm",
                 )}
               >
                 {children}
@@ -993,16 +994,16 @@ export const MarkdownRenderer = ({
           th: ({ children }) => (
             <th
               className={cn(
-                'px-4 py-2 text-left font-semibold bg-muted',
+                "px-4 py-2 text-left font-semibold bg-muted",
                 isTerminal &&
-                  'bg-[hsl(var(--terminal-code-bg))] text-primary uppercase text-xs tracking-wider'
+                  "bg-[hsl(var(--terminal-code-bg))] text-primary uppercase text-xs tracking-wider",
               )}
             >
               {children}
             </th>
           ),
           td: ({ children }) => (
-            <td className='px-4 py-2 border-t'>{children}</td>
+            <td className="px-4 py-2 border-t">{children}</td>
           ),
         }}
       >
