@@ -41,6 +41,9 @@ export type ChatMessage = {
   id: string;
   role: "user" | "assistant" | "system";
   text: string;
+  pending?: boolean;
+  typingLabel?: string;
+  typingKey?: string;
   channel?: "default" | "live";
   liveSenderType?: LiveSenderType;
   authorName?: string;

@@ -51,6 +51,23 @@ export type LiveChatEvent =
       ts?: string;
     }
   | {
+      type: "typing";
+      room: string;
+      sessionId: string;
+      senderType?: "client" | "agent";
+      name: string;
+      replyToName?: string;
+      turnIndex?: number;
+      roundId?: string;
+      roundSize?: number;
+      personaStyle?: string;
+      personaTraits?: string;
+      triggeredByMention?: boolean;
+      mentionedAgents?: string[];
+      contextKinds?: string[];
+      ts?: string;
+    }
+  | {
       type: "session_notification";
       sessionId: string;
       level?: "info" | "warn" | "error";

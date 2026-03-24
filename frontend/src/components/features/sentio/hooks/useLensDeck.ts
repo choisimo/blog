@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invokeLensFeed, type LensCard as LensCardData } from "@/services/chat";
-import { prism } from "@/services/discovery/ai";
+import { FALLBACK_DATA } from "@/config/defaults";
 
 export type LensDeckSource = "feed" | "fallback";
 
 type UseLensDeckOptions = {
   paragraph: string;
   postTitle?: string;
-  requestKey: number;
+  cacheKey: string;
+  enabled: boolean;
   onReady?: (cards: LensCardData[], source: LensDeckSource) => void;
 };
 
@@ -31,6 +32,14 @@ type LensCursor = {
   page: number;
   seenKeys: string[];
 } | null;
+
+type CachedLensDeck = {
+  cards: LensCardData[];
+  currentIndex: number;
+  exhausted: boolean;
+  source: LensDeckSource;
+  nextCursor: LensCursor;
+};
 
 const PERSONA_BY_INDEX: LensCardData["personaId"][] = [
   "mentor",
@@ -86,10 +95,15 @@ function mergeCards(
   };
 }
 
+function isWarmingResponse(response: { warming?: boolean } | null | undefined) {
+  return response?.warming === true;
+}
+
 export function useLensDeck({
   paragraph,
   postTitle,
-  requestKey,
+  cacheKey,
+  enabled,
   onReady,
 }: UseLensDeckOptions): UseLensDeckResult {
   const [cards, setCards] = useState<LensCardData[]>([]);
@@ -98,16 +112,24 @@ export function useLensDeck({
   const [loadingMore, setLoadingMore] = useState(false);
   const [exhausted, setExhausted] = useState(false);
   const [source, setSource] = useState<LensDeckSource | null>(null);
+
   const nextCursorRef = useRef<LensCursor>(null);
   const readyKeyRef = useRef<string | null>(null);
   const requestIdRef = useRef(0);
   const initialAbortRef = useRef<AbortController | null>(null);
   const loadMoreAbortRef = useRef<AbortController | null>(null);
+  const cacheRef = useRef<Map<string, CachedLensDeck>>(new Map());
+  const activeCacheKeyRef = useRef<string | null>(null);
+
+  const cardsRef = useRef<LensCardData[]>([]);
+  const currentIndexRef = useRef(0);
+  const exhaustedRef = useRef(false);
+  const sourceRef = useRef<LensDeckSource | null>(null);
 
   const notifyReady = useCallback(
     (nextCards: LensCardData[], nextSource: LensDeckSource) => {
       if (!onReady || nextCards.length === 0) return;
-      const key = `${requestKey}:${nextSource}:${nextCards
+      const key = `${cacheKey}:${nextSource}:${nextCards
         .slice(0, 4)
         .map((card) => card.angleKey)
         .join("|")}`;
@@ -115,11 +137,68 @@ export function useLensDeck({
       readyKeyRef.current = key;
       onReady(nextCards, nextSource);
     },
-    [onReady, requestKey],
+    [cacheKey, onReady],
   );
 
+  const cancelInFlight = useCallback(() => {
+    requestIdRef.current += 1;
+    initialAbortRef.current?.abort();
+    loadMoreAbortRef.current?.abort();
+    initialAbortRef.current = null;
+    loadMoreAbortRef.current = null;
+  }, []);
+
+  const resetState = useCallback(() => {
+    setCards([]);
+    setCurrentIndex(0);
+    setLoading(false);
+    setLoadingMore(false);
+    setExhausted(false);
+    setSource(null);
+    nextCursorRef.current = null;
+  }, []);
+
+  const persistCache = useCallback(
+    (overrides: Partial<CachedLensDeck> = {}) => {
+      const currentKey = activeCacheKeyRef.current;
+      const nextSource = overrides.source ?? sourceRef.current;
+      if (!currentKey || !nextSource) return;
+
+      cacheRef.current.set(currentKey, {
+        cards: overrides.cards ?? cardsRef.current,
+        currentIndex: overrides.currentIndex ?? currentIndexRef.current,
+        exhausted: overrides.exhausted ?? exhaustedRef.current,
+        source: nextSource,
+        nextCursor: overrides.nextCursor ?? nextCursorRef.current,
+      });
+    },
+    [],
+  );
+
+  const hydrateCache = useCallback(
+    (cached: CachedLensDeck) => {
+      setCards(cached.cards);
+      setCurrentIndex(cached.currentIndex);
+      setLoading(false);
+      setLoadingMore(false);
+      setExhausted(cached.exhausted);
+      setSource(cached.source);
+      nextCursorRef.current = cached.nextCursor;
+      notifyReady(cached.cards, cached.source);
+    },
+    [notifyReady],
+  );
+
+  useEffect(() => {
+    cardsRef.current = cards;
+    currentIndexRef.current = currentIndex;
+    exhaustedRef.current = exhausted;
+    sourceRef.current = source;
+    persistCache();
+  }, [cards, currentIndex, exhausted, persistCache, source]);
+
   const loadInitial = useCallback(async () => {
-    if (!paragraph.trim() || requestKey <= 0) return;
+    if (!paragraph.trim()) return;
 
     requestIdRef.current += 1;
     const requestId = requestIdRef.current;
@@ -135,7 +214,6 @@ export function useLensDeck({
     setExhausted(false);
     setSource(null);
     nextCursorRef.current = null;
-    readyKeyRef.current = null;
 
     try {
       const response = await invokeLensFeed(
@@ -146,15 +224,32 @@ export function useLensDeck({
         },
         { signal: controller.signal },
       );
-      if (requestId !== requestIdRef.current || controller.signal.aborted)
+      if (requestId !== requestIdRef.current || controller.signal.aborted) {
         return;
+      }
 
       const items = response.items ?? [];
       if (items.length === 0) {
+        if (isWarmingResponse(response)) {
+          setCards([]);
+          setCurrentIndex(0);
+          setExhausted(false);
+          setSource("feed");
+          nextCursorRef.current = response.nextCursor;
+          persistCache({
+            cards: [],
+            currentIndex: 0,
+            exhausted: false,
+            source: "feed",
+            nextCursor: response.nextCursor,
+          });
+          return;
+        }
         throw new Error("Empty lens feed");
       }
 
       setCards(items);
+      setCurrentIndex(0);
       setExhausted(response.exhausted);
       setSource("feed");
       nextCursorRef.current = response.nextCursor;
@@ -163,19 +258,18 @@ export function useLensDeck({
       if (isAbortError(error) || requestId !== requestIdRef.current) {
         return;
       }
+
       console.warn(
-        "[PrismDeck] lens-feed failed, falling back to prism()",
+        "[PrismDeck] lens-feed failed, using local fallback cards",
         error,
       );
-      const fallback = await prism({ paragraph, postTitle });
-      if (requestId !== requestIdRef.current) return;
-
       const mapped = mapPrismFallbackToCards(
         paragraph,
         postTitle,
-        fallback.facets,
+        FALLBACK_DATA.PRISM.FACETS,
       );
       setCards(mapped);
+      setCurrentIndex(0);
       setExhausted(true);
       setSource("fallback");
       nextCursorRef.current = null;
@@ -188,7 +282,7 @@ export function useLensDeck({
         initialAbortRef.current = null;
       }
     }
-  }, [notifyReady, paragraph, postTitle, requestKey]);
+  }, [notifyReady, paragraph, persistCache, postTitle]);
 
   const loadMore = useCallback(async () => {
     if (
@@ -209,6 +303,7 @@ export function useLensDeck({
     const controller = new AbortController();
     loadMoreAbortRef.current = controller;
     setLoadingMore(true);
+
     try {
       const response = await invokeLensFeed(
         {
@@ -219,8 +314,9 @@ export function useLensDeck({
         },
         { signal: controller.signal },
       );
-      if (requestId !== requestIdRef.current || controller.signal.aborted)
+      if (requestId !== requestIdRef.current || controller.signal.aborted) {
         return;
+      }
 
       const incoming = response.items ?? [];
       let appendedCount = 0;
@@ -229,6 +325,17 @@ export function useLensDeck({
         appendedCount = merged.appendedCount;
         return merged.items;
       });
+
+      if (incoming.length === 0 && isWarmingResponse(response)) {
+        setExhausted(false);
+        nextCursorRef.current = response.nextCursor ?? cursor;
+        persistCache({
+          exhausted: false,
+          source: "feed",
+          nextCursor: response.nextCursor ?? cursor,
+        });
+        return;
+      }
 
       const isExhausted =
         response.exhausted ||
@@ -241,6 +348,7 @@ export function useLensDeck({
       if (isAbortError(error) || requestId !== requestIdRef.current) {
         return;
       }
+
       console.warn("[PrismDeck] lens-feed prefetch failed", error);
       setExhausted(true);
       nextCursorRef.current = null;
@@ -252,11 +360,56 @@ export function useLensDeck({
         loadMoreAbortRef.current = null;
       }
     }
-  }, [exhausted, loading, loadingMore, paragraph, postTitle, source]);
+  }, [
+    exhausted,
+    loading,
+    loadingMore,
+    paragraph,
+    persistCache,
+    postTitle,
+    source,
+  ]);
 
   useEffect(() => {
+    if (!paragraph.trim()) {
+      readyKeyRef.current = null;
+      activeCacheKeyRef.current = null;
+      cancelInFlight();
+      resetState();
+      return;
+    }
+
+    if (activeCacheKeyRef.current === cacheKey) {
+      return;
+    }
+
+    cancelInFlight();
+    readyKeyRef.current = null;
+
+    const cached = cacheRef.current.get(cacheKey);
+    if (cached) {
+      activeCacheKeyRef.current = cacheKey;
+      hydrateCache(cached);
+      return;
+    }
+
+    if (!enabled) {
+      activeCacheKeyRef.current = null;
+      resetState();
+      return;
+    }
+
+    activeCacheKeyRef.current = cacheKey;
     void loadInitial();
-  }, [loadInitial]);
+  }, [
+    cacheKey,
+    cancelInFlight,
+    enabled,
+    hydrateCache,
+    loadInitial,
+    paragraph,
+    resetState,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -266,12 +419,12 @@ export function useLensDeck({
   }, []);
 
   useEffect(() => {
-    if (cards.length === 0 || source !== "feed") return;
+    if (!enabled || cards.length === 0 || source !== "feed") return;
     const remaining = cards.length - currentIndex - 1;
     if (remaining <= 2) {
       void loadMore();
     }
-  }, [cards.length, currentIndex, loadMore, source]);
+  }, [cards.length, currentIndex, enabled, loadMore, source]);
 
   const canGoPrev = currentIndex > 0;
   const canGoNext = currentIndex < cards.length - 1;

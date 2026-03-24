@@ -282,6 +282,29 @@ export async function getDomainOutboxEvent(
   return row ? mapRow(row) : null;
 }
 
+export async function getDomainOutboxEventByIdempotencyKey(
+  db: D1Database,
+  stream: string,
+  idempotencyKey: string
+): Promise<DomainOutboxEvent | null> {
+  await ensureDomainOutboxSchema(db);
+
+  const row = await queryOne<DomainOutboxRow>(
+    db,
+    `SELECT id, stream, aggregate_id, event_type, payload_json, idempotency_key,
+            status, retry_count, created_at, next_attempt_at, locked_at,
+            consumer_id, updated_at, last_attempt_at, processed_at, last_error
+       FROM domain_outbox
+      WHERE stream = ?
+        AND idempotency_key = ?
+      LIMIT 1`,
+    stream,
+    idempotencyKey
+  );
+
+  return row ? mapRow(row) : null;
+}
+
 export async function markDomainOutboxProcessed(db: D1Database, id: string) {
   await ensureDomainOutboxSchema(db);
 

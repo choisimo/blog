@@ -59,6 +59,12 @@ export type TranslationGenerateResult = {
   accepted: boolean;
 };
 
+export type PublicTranslationLookupResult = {
+  translation: TranslationResult | null;
+  pending: boolean;
+  job: TranslationJobStatus | null;
+};
+
 type TranslationErrorResponse = {
   error?: string | { message?: string };
   code?: string;
@@ -330,29 +336,52 @@ export async function getTranslationGenerationStatus(
 }
 
 /**
- * Get cached translation for a post (if exists)
+ * Get the public translation for a post.
+ * The public route may serve cache hits or generate a fresh translation.
  */
 export async function getCachedTranslation(
   year: string,
   slug: string,
   targetLang: string,
-): Promise<TranslationResult | null> {
-  try {
-    const baseUrl = getApiBaseUrl();
-    const response = await fetch(
-      `${baseUrl}/api/v1/public/posts/${year}/${slug}/translations/${targetLang}`,
-    );
+): Promise<PublicTranslationLookupResult> {
+  const baseUrl = getApiBaseUrl();
+  const response = await fetch(
+    `${baseUrl}/api/v1/public/posts/${year}/${slug}/translations/${targetLang}`,
+  );
 
-    if (!response.ok) {
-      if (response.status === 404) return null;
-      return null;
+  if (!response.ok) {
+    if (response.status === 404) {
+      return {
+        translation: null,
+        pending: false,
+        job: null,
+      };
     }
-
-    const payload = await response.json().catch(() => null);
-    return parseTranslationPayload(payload, response.status);
-  } catch {
-    return null;
+    throw await parseError(response);
   }
+
+  const payload = await response.json().catch(() => null);
+  if (
+    response.status === 202 &&
+    payload &&
+    typeof payload === "object" &&
+    "data" in payload &&
+    (payload as { data?: unknown }).data === null
+  ) {
+    return {
+      translation: null,
+      pending: true,
+      job: null,
+    };
+  }
+
+  const result = parseGenerateResult(payload, response.status);
+
+  return {
+    translation: result.translation,
+    pending: response.status === 202 || result.accepted,
+    job: result.job,
+  };
 }
 
 /**

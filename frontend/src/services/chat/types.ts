@@ -139,6 +139,13 @@ export type FeedCursor = {
   seenKeys: string[];
 };
 
+export type FeedItemState = {
+  logicalKey: string;
+  itemHash?: string;
+  unread?: boolean;
+  changed?: boolean;
+};
+
 export type LensCard = {
   id: string;
   personaId: "mentor" | "debater" | "explorer" | "analyst";
@@ -171,6 +178,12 @@ export type LensFeedResponse = {
   items: LensCard[];
   nextCursor: FeedCursor | null;
   exhausted: boolean;
+  warming?: boolean;
+  stale?: boolean;
+  snapshotId?: string;
+  generationVersionHash?: string;
+  unreadCount?: number;
+  itemStates?: FeedItemState[];
 };
 
 export type ThoughtFeedRequest = {
@@ -184,6 +197,12 @@ export type ThoughtFeedResponse = {
   items: ThoughtCard[];
   nextCursor: FeedCursor | null;
   exhausted: boolean;
+  warming?: boolean;
+  stale?: boolean;
+  snapshotId?: string;
+  generationVersionHash?: string;
+  unreadCount?: number;
+  itemStates?: FeedItemState[];
 };
 
 // ============================================================================

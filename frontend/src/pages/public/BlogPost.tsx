@@ -1,5 +1,5 @@
 import { useParams, Navigate, useLocation } from "react-router-dom";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { ReadingProgress } from "@/components/common/ReadingProgress";
 import { ScrollToTop } from "@/components/common/ScrollToTop";
 import {
@@ -30,10 +30,6 @@ import { cn } from "@/lib/utils";
 import { recordView } from "@/services/content/analytics";
 import {
   getCachedTranslation,
-  getTranslationGenerationStatus,
-  normalizeTranslationErrorCode,
-  requestTranslationGeneration,
-  translatePost,
   TranslationApiError,
   type TranslationErrorCode,
   type TranslationResult,
@@ -43,7 +39,6 @@ import { useUIStrings } from "@/utils/i18n/uiStrings";
 import { findRelatedPosts as findRAGRelatedPosts } from "@/services/discovery/rag";
 import { useSEO } from "@/hooks/seo/useSEO";
 import { generateSEOData, generateStructuredData } from "@/utils/seo/seo";
-import { useAuthStore } from "@/stores/session/useAuthStore";
 import { BlogPostHeader } from "./blog-post/BlogPostHeader";
 import { BlogPostContent } from "./blog-post/BlogPostContent";
 import { BlogPostRelated } from "./blog-post/BlogPostRelated";
@@ -60,10 +55,6 @@ type TranslationErrorState = {
   code: TranslationErrorCode;
   retryable: boolean;
 };
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 const simulatorExistenceCache = new Map<string, boolean>();
 
@@ -107,6 +98,63 @@ async function checkSimulatorExists(path: string): Promise<boolean> {
   return exists;
 }
 
+const MemoizedBlogPostContent = memo(
+  BlogPostContent,
+  (prev, next) =>
+    prev.content === next.content &&
+    prev.inlineEnabled === next.inlineEnabled &&
+    prev.postTitle === next.postTitle &&
+    prev.postPath === next.postPath &&
+    prev.isTerminal === next.isTerminal,
+);
+
+const MemoizedSeriesNavigation = memo(
+  SeriesNavigation,
+  (prev, next) =>
+    prev.currentPost === next.currentPost &&
+    prev.seriesPosts === next.seriesPosts,
+);
+
+const MemoizedQuizPanel = memo(
+  QuizPanel,
+  (prev, next) =>
+    prev.content === next.content &&
+    prev.postTitle === next.postTitle &&
+    prev.postTags === next.postTags,
+);
+
+const MemoizedCommentSection = memo(
+  CommentSection,
+  (prev, next) => prev.postId === next.postId,
+);
+
+const MemoizedBlogPostRelated = memo(
+  BlogPostRelated,
+  (prev, next) =>
+    prev.relatedPosts === next.relatedPosts &&
+    prev.preservedSearch === next.preservedSearch &&
+    prev.preservedFrom?.pathname === next.preservedFrom?.pathname &&
+    prev.preservedFrom?.search === next.preservedFrom?.search &&
+    prev.isTerminal === next.isTerminal &&
+    prev.relatedPostsLabel === next.relatedPostsLabel &&
+    prev.relatedPostsDescLabel === next.relatedPostsDescLabel,
+);
+
+const MemoizedTableOfContents = memo(
+  TableOfContents,
+  (prev, next) =>
+    prev.content === next.content &&
+    prev.postTitle === next.postTitle &&
+    prev.onClose === next.onClose &&
+    prev.sticky === next.sticky,
+);
+
+const MemoizedTocDrawer = memo(
+  TocDrawer,
+  (prev, next) =>
+    prev.content === next.content && prev.postTitle === next.postTitle,
+);
+
 const BlogPost = () => {
   const { year, slug } = useParams();
   const location = useLocation();
@@ -122,9 +170,6 @@ const BlogPost = () => {
   const { language, setLanguage } = useLanguage();
   const { isTerminal } = useTheme();
   const str = useUIStrings();
-  const hasTranslationSession = useAuthStore((state) =>
-    Boolean(state.accessToken || state.refreshToken),
-  );
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -346,15 +391,18 @@ ${description}
 
     let cancelled = false;
 
-    // Record view to D1 analytics (fire and forget)
-    recordView(post.year, post.slug).catch(() => {});
+    // Record view and curiosity tracking are non-critical — defer off the
+    // render-commit path so the post shell paints first.
+    const deferredAnalyticsId = setTimeout(() => {
+      recordView(post.year, post.slug).catch(() => {});
+      const postId = `${post.year}/${post.slug}`;
+      const path = `/blog/${post.year}/${post.slug}`;
+      curiosityTracker.trackPostView(postId, path, post.title, post.tags || []);
+    }, 0);
 
-    // Track to Curiosity (Web of Curiosity feature)
-    const postId = `${post.year}/${post.slug}`;
+    // Save to local visited posts — kept synchronous so minimap updates
+    // without delay; the write itself is tiny.
     const path = `/blog/${post.year}/${post.slug}`;
-    curiosityTracker.trackPostView(postId, path, post.title, post.tags || []);
-
-    // Save to local visited posts
     try {
       const key = "visited.posts";
       const raw = localStorage.getItem(key);
@@ -411,6 +459,7 @@ ${description}
     void Promise.all([loadSeriesPosts(), resolveSimulator()]);
 
     return () => {
+      clearTimeout(deferredAnalyticsId);
       cancelled = true;
     };
   }, [post, localized?.content]);
@@ -429,6 +478,7 @@ ${description}
     if (language === defaultLang || post.translations?.[language]) {
       setAiTranslation(null);
       setTranslationError(null);
+      setTranslating(false);
       return;
     }
 
@@ -440,125 +490,18 @@ ${description}
       setAiTranslation(null);
 
       try {
-        const cached = await getCachedTranslation(year, slug, language);
-        if (cached) {
-          if (!cancelled) {
-            setAiTranslation(cached);
-          }
-          return;
+        const result = await getCachedTranslation(year, slug, language);
+        if (cancelled) return;
+
+        if (result.translation) {
+          setAiTranslation(result.translation);
         }
 
-        if (!hasTranslationSession) {
-          if (!cancelled) {
-            setTranslationError({
-              code: "AUTH_REQUIRED",
-              retryable: false,
-            });
-          }
+        if (result.pending) {
+          setTranslationError(null);
           return;
-        }
-
-        const result = await translatePost({
-          year,
-          slug,
-          targetLang: language,
-          sourceLang: defaultLang,
-          title: post.title,
-          description: post.description,
-          content: post.content,
-        });
-
-        if (!cancelled) {
-          setAiTranslation(result);
         }
       } catch (err) {
-        if (err instanceof TranslationApiError && err.status === 404) {
-          try {
-            const generation = await requestTranslationGeneration({
-              year,
-              slug,
-              targetLang: language,
-              sourceLang: defaultLang,
-              title: post.title,
-              description: post.description,
-              content: post.content,
-            });
-
-            if (generation.translation) {
-              if (!cancelled) {
-                setAiTranslation(generation.translation);
-              }
-              return;
-            }
-
-            if (generation.job) {
-              for (let attempt = 0; attempt < 20; attempt += 1) {
-                const job = await getTranslationGenerationStatus(
-                  { year, slug, targetLang: language },
-                  generation.job.id,
-                );
-
-                if (cancelled) {
-                  return;
-                }
-
-                if (job.status === "succeeded") {
-                  const translated = await getCachedTranslation(
-                    year,
-                    slug,
-                    language,
-                  );
-
-                  if (!cancelled) {
-                    if (translated) {
-                      setAiTranslation(translated);
-                    } else {
-                      setTranslationError({
-                        code: "NOT_AVAILABLE",
-                        retryable: true,
-                      });
-                    }
-                  }
-                  return;
-                }
-
-                if (job.status === "failed") {
-                  if (!cancelled) {
-                    setTranslationError({
-                      code: normalizeTranslationErrorCode(job.error?.code),
-                      retryable: Boolean(job.error?.retryable),
-                    });
-                  }
-                  return;
-                }
-
-                await sleep(
-                  job.error?.retryAfterSeconds
-                    ? job.error.retryAfterSeconds * 1000
-                    : 3000,
-                );
-              }
-
-              if (!cancelled) {
-                setTranslationError({
-                  code: "NOT_AVAILABLE",
-                  retryable: true,
-                });
-              }
-              return;
-            }
-          } catch (generationError) {
-            console.error("Translation job failed:", generationError);
-            if (!cancelled && generationError instanceof TranslationApiError) {
-              setTranslationError({
-                code: generationError.code,
-                retryable: generationError.retryable,
-              });
-              return;
-            }
-          }
-        }
-
         console.error("Translation failed:", err);
         if (!cancelled) {
           if (err instanceof TranslationApiError) {
@@ -585,7 +528,7 @@ ${description}
     return () => {
       cancelled = true;
     };
-  }, [post, language, year, slug, hasTranslationSession]);
+  }, [language, post, slug, year]);
 
   // sync inline feature flag from localStorage and storage events
   useEffect(() => {
@@ -696,19 +639,73 @@ ${description}
         if (!cancelled) setRelatedPosts([]);
       }
     };
-    loadRelated();
+    // Related posts are below-the-fold — defer their fetch off the critical
+    // paint path with a short timeout so the article renders first.
+    const deferredRelatedId = setTimeout(() => {
+      loadRelated();
+    }, 200);
     return () => {
+      clearTimeout(deferredRelatedId);
       cancelled = true;
     };
   }, [post]);
+
+  const displayTitle = resolvedPost?.title ?? post?.title ?? "";
+  const tocContent = resolvedPost?.content ?? post?.content ?? "";
+
+  const postView = useMemo<ResolvedPostViewModel | null>(() => {
+    if (!post) return null;
+
+    return (
+      resolvedPost ?? {
+        year: post.year,
+        slug: post.slug,
+        title: post.title,
+        description: post.description,
+        excerpt: post.excerpt,
+        content: contentForRender,
+        categoryLabel: post.category,
+        tagLabels: [...post.tags],
+        readingTimeLabel,
+        author: post.author,
+        date: post.date,
+        tags: [...post.tags],
+      }
+    );
+  }, [contentForRender, post, readingTimeLabel, resolvedPost]);
+
+  const articleRenderProps = useMemo(
+    () =>
+      post
+        ? {
+            content: contentForRender,
+            inlineEnabled,
+            postTitle: displayTitle,
+            postPath: `${post.year}/${post.slug}`,
+            isTerminal,
+          }
+        : null,
+    [contentForRender, displayTitle, inlineEnabled, isTerminal, post],
+  );
+
+  const tocProps = useMemo(
+    () =>
+      post
+        ? {
+            content: tocContent,
+            postTitle: displayTitle,
+          }
+        : null,
+    [displayTitle, post, tocContent],
+  );
 
   const handleShare = async () => {
     const url = window.location.href;
     if (navigator.share) {
       try {
         await navigator.share({
-          title: resolvedPost?.title ?? post?.title,
-          text: resolvedPost?.description ?? post?.description,
+          title: postView?.title ?? post?.title,
+          text: postView?.description ?? post?.description,
           url,
         });
       } catch (err) {
@@ -769,22 +766,7 @@ ${description}
             >
               <BlogPostHeader
                 post={post}
-                postView={
-                  resolvedPost ?? {
-                    year: post.year,
-                    slug: post.slug,
-                    title: post.title,
-                    description: post.description,
-                    excerpt: post.excerpt,
-                    content: contentForRender,
-                    categoryLabel: post.category,
-                    tagLabels: [...post.tags],
-                    readingTimeLabel,
-                    author: post.author,
-                    date: post.date,
-                    tags: [...post.tags],
-                  }
-                }
+                postView={postView!}
                 year={year!}
                 slug={slug!}
                 language={language}
@@ -821,31 +803,25 @@ ${description}
                 retryLabel={str.common.retry}
               />
 
-              <BlogPostContent
-                content={contentForRender}
-                inlineEnabled={inlineEnabled}
-                postTitle={resolvedPost?.title ?? post.title}
-                postPath={`${post.year}/${post.slug}`}
-                isTerminal={isTerminal}
-              />
+              <MemoizedBlogPostContent {...articleRenderProps!} />
 
               {post.series && seriesPosts.length > 1 && (
-                <SeriesNavigation
+                <MemoizedSeriesNavigation
                   currentPost={post}
                   seriesPosts={seriesPosts}
                 />
               )}
 
               {/* AI Quiz Panel — shown only for posts with code blocks */}
-              <QuizPanel
-                content={resolvedPost?.content ?? post.content}
-                postTitle={resolvedPost?.title ?? post.title}
+              <MemoizedQuizPanel
+                content={tocContent}
+                postTitle={displayTitle}
                 postTags={post.tags}
               />
 
-              <CommentSection postId={`${post.year}/${post.slug}`} />
+              <MemoizedCommentSection postId={`${post.year}/${post.slug}`} />
 
-              <BlogPostRelated
+              <MemoizedBlogPostRelated
                 relatedPosts={resolvedRelatedPosts}
                 preservedSearch={preservedSearch}
                 preservedFrom={preservedFrom}
@@ -856,20 +832,14 @@ ${description}
             </article>
 
             <aside className="hidden xl:block relative">
-              <TableOfContents
-                content={resolvedPost?.content ?? post.content}
-                postTitle={resolvedPost?.title ?? post.title}
-              />
+              <MemoizedTableOfContents {...tocProps!} />
             </aside>
           </div>
         </div>
       </div>
       <ScrollToTop />
       {/* Mobile TOC floating button */}
-      <TocDrawer
-        content={resolvedPost?.content ?? post.content}
-        postTitle={resolvedPost?.title ?? post.title}
-      />
+      <MemoizedTocDrawer {...tocProps!} />
     </>
   );
 };

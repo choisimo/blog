@@ -5,7 +5,7 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Tue, 24 Mar 2026 05:38:18 GMT</lastBuildDate>
+    <lastBuildDate>Tue, 24 Mar 2026 10:03:28 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
       <title>[C 언어 1부] 배열은 왜 단순한 변수 묶음이 아닐까?</title>
