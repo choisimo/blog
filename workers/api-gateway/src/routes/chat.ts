@@ -157,6 +157,8 @@ chat.post('/session/:sessionId/lens-feed', async (c: Context<ChatContext>) => {
       unreadCount: served.readState.unreadCount,
       itemStates: served.readState.itemStates,
       source: served.stale ? 'snapshot-stale' : 'snapshot',
+      exhausted: served.warming ? false : served.page.payload.exhausted,
+      nextCursor: served.warming ? null : served.page.payload.nextCursor,
     });
   }
 
@@ -179,6 +181,8 @@ chat.post('/session/:sessionId/lens-feed', async (c: Context<ChatContext>) => {
     unreadCount: 0,
     itemStates: [],
     source: 'warming-fallback',
+    exhausted: false,
+    nextCursor: null,
   });
 });
 
@@ -219,6 +223,8 @@ chat.post('/session/:sessionId/thought-feed', async (c: Context<ChatContext>) =>
       unreadCount: served.readState.unreadCount,
       itemStates: served.readState.itemStates,
       source: served.stale ? 'snapshot-stale' : 'snapshot',
+      exhausted: served.warming ? false : served.page.payload.exhausted,
+      nextCursor: served.warming ? null : served.page.payload.nextCursor,
     });
   }
 
@@ -241,6 +247,8 @@ chat.post('/session/:sessionId/thought-feed', async (c: Context<ChatContext>) =>
     unreadCount: 0,
     itemStates: [],
     source: 'warming-fallback',
+    exhausted: false,
+    nextCursor: null,
   });
 });
 
