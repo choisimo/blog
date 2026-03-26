@@ -4,8 +4,15 @@ import {
   type ThoughtCard as ThoughtCardData,
 } from "@/services/chat";
 import { FALLBACK_DATA } from "@/config/defaults";
+import {
+  getAsyncArtifactStatus,
+  shouldPersistAsyncArtifactSource,
+  useWarmingRetry,
+  type AsyncArtifactStatus,
+  type AsyncArtifactSource,
+} from "./useAsyncArtifact";
 
-export type ThoughtFeedSource = "feed" | "fallback";
+export type ThoughtFeedSource = AsyncArtifactSource;
 
 type UseThoughtFeedOptions = {
   paragraph: string;
@@ -33,6 +40,7 @@ type UseThoughtFeedResult = {
   loading: boolean;
   loadingMore: boolean;
   exhausted: boolean;
+  status: AsyncArtifactStatus;
   source: ThoughtFeedSource | null;
   loadMore: () => Promise<void>;
 };
@@ -76,8 +84,13 @@ function mergeThoughtCards(
   };
 }
 
-function isWarmingResponse(response: { warming?: boolean } | null | undefined) {
-  return response?.warming === true;
+function resolveResponseSource(
+  response: { source?: string; warming?: boolean } | null | undefined,
+): Exclude<ThoughtFeedSource, "fallback"> {
+  if (response?.source === "warming-fallback" || response?.warming === true) {
+    return "warming";
+  }
+  return "feed";
 }
 
 export function useThoughtFeed({
@@ -104,6 +117,7 @@ export function useThoughtFeed({
   const cardsRef = useRef<ThoughtCardData[]>([]);
   const exhaustedRef = useRef(false);
   const sourceRef = useRef<ThoughtFeedSource | null>(null);
+  const status = getAsyncArtifactStatus(source);
 
   const notifyReady = useCallback(
     (nextCards: ThoughtCardData[], nextSource: ThoughtFeedSource) => {
@@ -140,7 +154,7 @@ export function useThoughtFeed({
     (overrides: Partial<CachedThoughtFeed> = {}) => {
       const currentKey = activeCacheKeyRef.current;
       const nextSource = overrides.source ?? sourceRef.current;
-      if (!currentKey || !nextSource) return;
+      if (!currentKey || !shouldPersistAsyncArtifactSource(nextSource)) return;
 
       cacheRef.current.set(currentKey, {
         cards: overrides.cards ?? cardsRef.current,
@@ -172,83 +186,105 @@ export function useThoughtFeed({
     persistCache();
   }, [cards, exhausted, persistCache, source]);
 
-  const loadInitial = useCallback(async () => {
-    if (!paragraph.trim()) return;
+  const loadInitial = useCallback(
+    async (warmingRetry = false) => {
+      if (!paragraph.trim()) return;
 
-    requestIdRef.current += 1;
-    const requestId = requestIdRef.current;
-    initialAbortRef.current?.abort();
-    loadMoreAbortRef.current?.abort();
-    const controller = new AbortController();
-    initialAbortRef.current = controller;
+      requestIdRef.current += 1;
+      const requestId = requestIdRef.current;
+      initialAbortRef.current?.abort();
+      loadMoreAbortRef.current?.abort();
+      const controller = new AbortController();
+      initialAbortRef.current = controller;
 
-    setLoading(true);
-    setLoadingMore(false);
-    setCards([]);
-    setExhausted(false);
-    setSource(null);
-    nextCursorRef.current = null;
-
-    try {
-      const response = await invokeThoughtFeed(
-        {
-          paragraph,
-          postTitle,
-          count: 4,
-        },
-        { signal: controller.signal },
-      );
-      if (requestId !== requestIdRef.current || controller.signal.aborted) {
-        return;
+      if (warmingRetry) {
+        setLoading(cardsRef.current.length === 0);
+      } else {
+        setLoading(true);
+        setLoadingMore(false);
+        setCards([]);
+        setExhausted(false);
+        setSource(null);
+        nextCursorRef.current = null;
       }
 
-      const items = response.items ?? [];
-      if (items.length === 0) {
-        if (isWarmingResponse(response)) {
-          setCards([]);
-          setExhausted(false);
-          setSource("feed");
-          nextCursorRef.current = response.nextCursor;
-          persistCache({
-            cards: [],
-            exhausted: false,
-            source: "feed",
-            nextCursor: response.nextCursor,
-          });
+      try {
+        const response = await invokeThoughtFeed(
+          {
+            paragraph,
+            postTitle,
+            count: 4,
+          },
+          { signal: controller.signal },
+        );
+        if (requestId !== requestIdRef.current || controller.signal.aborted) {
           return;
         }
-        throw new Error("Empty thought feed");
-      }
 
-      setCards(items);
-      setExhausted(response.exhausted);
-      setSource("feed");
-      nextCursorRef.current = response.nextCursor;
-      notifyReady(items, "feed");
-    } catch (error) {
-      if (isAbortError(error) || requestId !== requestIdRef.current) {
-        return;
-      }
+        const items = response.items ?? [];
+        const responseSource = resolveResponseSource(response);
+        if (responseSource === "warming") {
+          setCards(items);
+          setExhausted(false);
+          setSource("warming");
+          nextCursorRef.current = response.nextCursor;
+          return;
+        }
 
-      console.warn(
-        "[ThoughtFeed] thought-feed failed, using local fallback cards",
-        error,
-      );
-      const mapped = mapChainFallbackToThoughts(FALLBACK_DATA.CHAIN.QUESTIONS);
-      setCards(mapped);
-      setExhausted(true);
-      setSource("fallback");
-      nextCursorRef.current = null;
-      notifyReady(mapped, "fallback");
-    } finally {
-      if (requestId === requestIdRef.current) {
-        setLoading(false);
+        if (items.length === 0) {
+          throw new Error("Empty thought feed");
+        }
+
+        setCards(items);
+        setExhausted(response.exhausted);
+        setSource("feed");
+        nextCursorRef.current = response.nextCursor;
+        notifyReady(items, "feed");
+      } catch (error) {
+        if (isAbortError(error) || requestId !== requestIdRef.current) {
+          return;
+        }
+
+        if (warmingRetry && sourceRef.current === "warming") {
+          console.warn("[ThoughtFeed] warming refresh failed; retrying", error);
+          return;
+        }
+
+        console.warn(
+          "[ThoughtFeed] thought-feed failed, using local fallback cards",
+          error,
+        );
+        const mapped = mapChainFallbackToThoughts(
+          FALLBACK_DATA.CHAIN.QUESTIONS,
+        );
+        setCards(mapped);
+        setExhausted(true);
+        setSource("fallback");
+        nextCursorRef.current = null;
+        notifyReady(mapped, "fallback");
+      } finally {
+        if (requestId === requestIdRef.current) {
+          setLoading(false);
+        }
+        if (initialAbortRef.current === controller) {
+          initialAbortRef.current = null;
+        }
       }
-      if (initialAbortRef.current === controller) {
-        initialAbortRef.current = null;
-      }
-    }
-  }, [notifyReady, paragraph, persistCache, postTitle]);
+    },
+    [notifyReady, paragraph, postTitle],
+  );
+
+  const { reset: resetWarmingRetry } = useWarmingRetry({
+    enabled:
+      enabled &&
+      Boolean(paragraph.trim()) &&
+      activeCacheKeyRef.current === cacheKey,
+    status,
+    onRetry: () => {
+      if (activeCacheKeyRef.current !== cacheKey) return;
+      void loadInitial(true);
+    },
+  });
 
   const loadMore = useCallback(async () => {
     if (
@@ -342,6 +378,7 @@ export function useThoughtFeed({
       activeCacheKeyRef.current = null;
       cancelInFlight();
       resetState();
+      resetWarmingRetry();
       return;
     }
 
@@ -362,6 +399,7 @@ export function useThoughtFeed({
     if (!enabled) {
       activeCacheKeyRef.current = null;
       resetState();
+      resetWarmingRetry();
       return;
     }
 
@@ -375,6 +413,7 @@ export function useThoughtFeed({
     loadInitial,
     paragraph,
     resetState,
+    resetWarmingRetry,
   ]);
 
   useEffect(() => {
@@ -389,6 +428,7 @@ export function useThoughtFeed({
     loading,
     loadingMore,
     exhausted,
+    status,
     source,
     loadMore,
   };

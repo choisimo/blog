@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invokeLensFeed, type LensCard as LensCardData } from "@/services/chat";
 import { FALLBACK_DATA } from "@/config/defaults";
+import {
+  getAsyncArtifactStatus,
+  shouldPersistAsyncArtifactSource,
+  useWarmingRetry,
+  type AsyncArtifactStatus,
+  type AsyncArtifactSource,
+} from "./useAsyncArtifact";
 
-export type LensDeckSource = "feed" | "fallback";
+export type LensDeckSource = AsyncArtifactSource;
 
 type UseLensDeckOptions = {
   paragraph: string;
@@ -19,6 +26,7 @@ type UseLensDeckResult = {
   loading: boolean;
   loadingMore: boolean;
   exhausted: boolean;
+  status: AsyncArtifactStatus;
   source: LensDeckSource | null;
   canGoPrev: boolean;
   canGoNext: boolean;
@@ -95,8 +103,13 @@ function mergeCards(
   };
 }
 
-function isWarmingResponse(response: { warming?: boolean } | null | undefined) {
-  return response?.warming === true;
+function resolveResponseSource(
+  response: { source?: string; warming?: boolean } | null | undefined,
+): Exclude<LensDeckSource, "fallback"> {
+  if (response?.source === "warming-fallback" || response?.warming === true) {
+    return "warming";
+  }
+  return "feed";
 }
 
 export function useLensDeck({
@@ -125,6 +138,7 @@ export function useLensDeck({
   const currentIndexRef = useRef(0);
   const exhaustedRef = useRef(false);
   const sourceRef = useRef<LensDeckSource | null>(null);
+  const status = useMemo(() => getAsyncArtifactStatus(source), [source]);
 
   const notifyReady = useCallback(
     (nextCards: LensCardData[], nextSource: LensDeckSource) => {
@@ -162,7 +176,7 @@ export function useLensDeck({
     (overrides: Partial<CachedLensDeck> = {}) => {
       const currentKey = activeCacheKeyRef.current;
       const nextSource = overrides.source ?? sourceRef.current;
-      if (!currentKey || !nextSource) return;
+      if (!currentKey || !shouldPersistAsyncArtifactSource(nextSource)) return;
 
       cacheRef.current.set(currentKey, {
         cards: overrides.cards ?? cardsRef.current,
@@ -197,92 +211,111 @@ export function useLensDeck({
     persistCache();
   }, [cards, currentIndex, exhausted, persistCache, source]);
 
-  const loadInitial = useCallback(async () => {
-    if (!paragraph.trim()) return;
+  const loadInitial = useCallback(
+    async (warmingRetry = false) => {
+      if (!paragraph.trim()) return;
 
-    requestIdRef.current += 1;
-    const requestId = requestIdRef.current;
-    initialAbortRef.current?.abort();
-    loadMoreAbortRef.current?.abort();
-    const controller = new AbortController();
-    initialAbortRef.current = controller;
+      requestIdRef.current += 1;
+      const requestId = requestIdRef.current;
+      initialAbortRef.current?.abort();
+      loadMoreAbortRef.current?.abort();
+      const controller = new AbortController();
+      initialAbortRef.current = controller;
 
-    setLoading(true);
-    setLoadingMore(false);
-    setCards([]);
-    setCurrentIndex(0);
-    setExhausted(false);
-    setSource(null);
-    nextCursorRef.current = null;
-
-    try {
-      const response = await invokeLensFeed(
-        {
-          paragraph,
-          postTitle,
-          count: 4,
-        },
-        { signal: controller.signal },
-      );
-      if (requestId !== requestIdRef.current || controller.signal.aborted) {
-        return;
+      if (warmingRetry) {
+        setLoading(cardsRef.current.length === 0);
+      } else {
+        setLoading(true);
+        setLoadingMore(false);
+        setCards([]);
+        setCurrentIndex(0);
+        setExhausted(false);
+        setSource(null);
+        nextCursorRef.current = null;
       }
 
-      const items = response.items ?? [];
-      if (items.length === 0) {
-        if (isWarmingResponse(response)) {
-          setCards([]);
-          setCurrentIndex(0);
-          setExhausted(false);
-          setSource("feed");
-          nextCursorRef.current = response.nextCursor;
-          persistCache({
-            cards: [],
-            currentIndex: 0,
-            exhausted: false,
-            source: "feed",
-            nextCursor: response.nextCursor,
-          });
+      try {
+        const response = await invokeLensFeed(
+          {
+            paragraph,
+            postTitle,
+            count: 4,
+          },
+          { signal: controller.signal },
+        );
+        if (requestId !== requestIdRef.current || controller.signal.aborted) {
           return;
         }
-        throw new Error("Empty lens feed");
-      }
 
-      setCards(items);
-      setCurrentIndex(0);
-      setExhausted(response.exhausted);
-      setSource("feed");
-      nextCursorRef.current = response.nextCursor;
-      notifyReady(items, "feed");
-    } catch (error) {
-      if (isAbortError(error) || requestId !== requestIdRef.current) {
-        return;
-      }
+        const items = response.items ?? [];
+        const responseSource = resolveResponseSource(response);
+        if (responseSource === "warming") {
+          setCards(items);
+          setCurrentIndex(0);
+          setExhausted(false);
+          setSource("warming");
+          nextCursorRef.current = response.nextCursor;
+          return;
+        }
 
-      console.warn(
-        "[PrismDeck] lens-feed failed, using local fallback cards",
-        error,
-      );
-      const mapped = mapPrismFallbackToCards(
-        paragraph,
-        postTitle,
-        FALLBACK_DATA.PRISM.FACETS,
-      );
-      setCards(mapped);
-      setCurrentIndex(0);
-      setExhausted(true);
-      setSource("fallback");
-      nextCursorRef.current = null;
-      notifyReady(mapped, "fallback");
-    } finally {
-      if (requestId === requestIdRef.current) {
-        setLoading(false);
+        if (items.length === 0) {
+          throw new Error("Empty lens feed");
+        }
+
+        setCards(items);
+        setCurrentIndex(0);
+        setExhausted(response.exhausted);
+        setSource("feed");
+        nextCursorRef.current = response.nextCursor;
+        notifyReady(items, "feed");
+      } catch (error) {
+        if (isAbortError(error) || requestId !== requestIdRef.current) {
+          return;
+        }
+
+        if (warmingRetry && sourceRef.current === "warming") {
+          console.warn("[PrismDeck] warming refresh failed; retrying", error);
+          return;
+        }
+
+        console.warn(
+          "[PrismDeck] lens-feed failed, using local fallback cards",
+          error,
+        );
+        const mapped = mapPrismFallbackToCards(
+          paragraph,
+          postTitle,
+          FALLBACK_DATA.PRISM.FACETS,
+        );
+        setCards(mapped);
+        setCurrentIndex(0);
+        setExhausted(true);
+        setSource("fallback");
+        nextCursorRef.current = null;
+        notifyReady(mapped, "fallback");
+      } finally {
+        if (requestId === requestIdRef.current) {
+          setLoading(false);
+        }
+        if (initialAbortRef.current === controller) {
+          initialAbortRef.current = null;
+        }
       }
-      if (initialAbortRef.current === controller) {
-        initialAbortRef.current = null;
-      }
-    }
-  }, [notifyReady, paragraph, persistCache, postTitle]);
+    },
+    [notifyReady, paragraph, postTitle],
+  );
+
+  const { reset: resetWarmingRetry } = useWarmingRetry({
+    enabled:
+      enabled &&
+      Boolean(paragraph.trim()) &&
+      activeCacheKeyRef.current === cacheKey,
+    status,
+    onRetry: () => {
+      if (activeCacheKeyRef.current !== cacheKey) return;
+      void loadInitial(true);
+    },
+  });
 
   const loadMore = useCallback(async () => {
     if (
@@ -376,6 +409,7 @@ export function useLensDeck({
       activeCacheKeyRef.current = null;
       cancelInFlight();
       resetState();
+      resetWarmingRetry();
       return;
     }
 
@@ -396,6 +430,7 @@ export function useLensDeck({
     if (!enabled) {
       activeCacheKeyRef.current = null;
       resetState();
+      resetWarmingRetry();
       return;
     }
 
@@ -409,6 +444,7 @@ export function useLensDeck({
     loadInitial,
     paragraph,
     resetState,
+    resetWarmingRetry,
   ]);
 
   useEffect(() => {
@@ -451,6 +487,7 @@ export function useLensDeck({
     loading,
     loadingMore,
     exhausted,
+    status,
     source,
     canGoPrev,
     canGoNext,
