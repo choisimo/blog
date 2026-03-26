@@ -7,6 +7,7 @@ import {
   getDomainOutboxEventByIdempotencyKey,
   markDomainOutboxFailed,
   markDomainOutboxProcessed,
+  reviveDomainOutboxEvent,
 } from './domain-outbox';
 import {
   buildFeedScopeKey,
@@ -23,8 +24,6 @@ import {
   upsertWarmCandidate,
 } from './ai-artifacts';
 import {
-  buildLensFeedFallback,
-  buildThoughtFeedFallback,
   normalizeLensFeedRequest,
   normalizeLensFeedResponse,
   normalizeThoughtFeedRequest,
@@ -49,7 +48,7 @@ import {
 } from './translation-service';
 
 export const AI_ARTIFACT_STREAM = 'ai.artifact.generate';
-const FEED_SCHEMA_VERSION = '1';
+const FEED_SCHEMA_VERSION = '2';
 const LENS_PROMPT_VERSION = 'feed-lens-v1';
 const THOUGHT_PROMPT_VERSION = 'feed-thought-v1';
 const TRANSLATION_PROMPT_VERSION = 'translate-v2';
@@ -147,6 +146,10 @@ async function appendOrReuseOutboxEvent<TPayload>(
     );
     if (!existing) {
       throw error;
+    }
+    if (existing.status === 'dead_letter') {
+      await reviveDomainOutboxEvent(env.DB, existing.id);
+      return { ...existing, status: 'pending' as const, retryCount: 0 };
     }
     return existing;
   }
@@ -389,10 +392,20 @@ async function generateLensPages(env: Env, payload: FeedGeneratePayload) {
         normalized = normalizeLensFeedResponse(candidate, request);
       }
     } catch (error) {
-      console.warn('[ai-artifact] lens generation failed, using fallback page', error);
+      console.warn('[ai-artifact] lens generation failed', error);
     }
 
-    const finalPayload = normalized ?? buildLensFeedFallback(request);
+    if (normalized === null) {
+      if (pageNo === 0) {
+        throw new Error(
+          '[ai-artifact] lens first page normalization failed; refusing to store fallback as ready snapshot'
+        );
+      }
+      // Partial success: prior pages are usable, stop accumulating
+      break;
+    }
+
+    const finalPayload = normalized;
     const logicalKeys = finalPayload.items.map((item) => item.angleKey);
     const itemHashes = await Promise.all(
       finalPayload.items.map((item) =>
@@ -450,10 +463,20 @@ async function generateThoughtPages(env: Env, payload: FeedGeneratePayload) {
         normalized = normalizeThoughtFeedResponse(candidate, request);
       }
     } catch (error) {
-      console.warn('[ai-artifact] thought generation failed, using fallback page', error);
+      console.warn('[ai-artifact] thought generation failed', error);
     }
 
-    const finalPayload = normalized ?? buildThoughtFeedFallback(request);
+    if (normalized === null) {
+      if (pageNo === 0) {
+        throw new Error(
+          '[ai-artifact] thought first page normalization failed; refusing to store fallback as ready snapshot'
+        );
+      }
+      // Partial success: prior pages are usable, stop accumulating
+      break;
+    }
+
+    const finalPayload = normalized;
     const logicalKeys = finalPayload.items.map((item) => item.trackKey);
     const itemHashes = await Promise.all(
       finalPayload.items.map((item) =>
@@ -481,7 +504,7 @@ async function generateThoughtPages(env: Env, payload: FeedGeneratePayload) {
   return pages;
 }
 
-async function processFeedEvent(env: Env, payload: FeedGeneratePayload) {
+export async function processFeedEvent(env: Env, payload: FeedGeneratePayload) {
   const baseInput = {
     artifactType: payload.artifactType,
     scopeKey: payload.scopeKey,
@@ -609,6 +632,47 @@ export async function flushAiArtifactOutbox(env: Env, options: { limit?: number 
     skipped: false,
     reason: resource.reason,
   };
+}
+
+export async function generateAndStoreInitialFeedArtifact(
+  env: Env,
+  input: {
+    artifactType: AiArtifactFeedType;
+    sessionId?: string;
+    paragraph: string;
+    postTitle?: string;
+    count: number;
+  }
+): Promise<void> {
+  await ensureAiArtifactSchema(env.DB);
+  const sourceHash = await buildFeedSourceHash(input.paragraph, input.postTitle);
+  const scopeKey = await buildFeedScopeKey(input.paragraph, input.postTitle);
+  const modelRoute = (await getAiDefaultModel(env)) || 'default';
+  const promptVersion =
+    input.artifactType === 'feed.lens' ? LENS_PROMPT_VERSION : THOUGHT_PROMPT_VERSION;
+  const generationVersionHash = await buildGenerationVersionHash({
+    sourceHash,
+    artifactType: input.artifactType,
+    promptVersion,
+    schemaVersion: FEED_SCHEMA_VERSION,
+    modelRoute,
+  });
+  const payload: FeedGeneratePayload = {
+    artifactType: input.artifactType,
+    sessionId: input.sessionId,
+    paragraph: input.paragraph,
+    postTitle: input.postTitle,
+    scopeKey,
+    sourceHash,
+    promptVersion,
+    schemaVersion: FEED_SCHEMA_VERSION,
+    modelRoute,
+    generationVersionHash,
+    count: input.count,
+    maxPages: 1,
+    priority: 'interactive',
+  };
+  await processFeedEvent(env, payload);
 }
 
 export async function getServeableFeedPage<T extends LensCard | ThoughtCard>(
