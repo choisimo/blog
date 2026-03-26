@@ -492,6 +492,30 @@ export async function replayDomainOutboxEvent(db: D1Database, id: string) {
   );
 }
 
+export async function reviveDomainOutboxEvent(db: D1Database, id: string) {
+  await ensureDomainOutboxSchema(db);
+
+  const now = new Date().toISOString();
+  await execute(
+    db,
+    `UPDATE domain_outbox
+        SET status = 'pending',
+            retry_count = 0,
+            next_attempt_at = ?,
+            locked_at = NULL,
+            consumer_id = NULL,
+            updated_at = ?,
+            last_attempt_at = NULL,
+            processed_at = NULL,
+            last_error = NULL
+      WHERE id = ?
+        AND status = 'dead_letter'`,
+    now,
+    now,
+    id
+  );
+}
+
 export async function getDomainOutboxSummary(
   db: D1Database,
   stream: string
