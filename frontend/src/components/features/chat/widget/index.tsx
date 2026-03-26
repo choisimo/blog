@@ -550,6 +550,7 @@ export default function ChatWidget(props: {
               isMobile={isMobile}
               textareaRef={state.textareaRef}
               fileInputRef={state.fileInputRef}
+              hasMessages={state.messages.length > 0}
             />
           </div>
         </div>

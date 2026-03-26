@@ -25,6 +25,7 @@ type ChatInputProps = {
   isMobile: boolean;
   textareaRef: React.RefObject<HTMLTextAreaElement>;
   fileInputRef: React.RefObject<HTMLInputElement>;
+  hasMessages: boolean;
 };
 
 export function ChatInput({
@@ -47,6 +48,7 @@ export function ChatInput({
   isMobile,
   textareaRef,
   fileInputRef,
+  hasMessages,
 }: ChatInputProps) {
   const placeholder = liveReplyTarget
     ? `${liveReplyTarget.name}에게 라이브로 답장하기...`
@@ -58,17 +60,18 @@ export function ChatInput({
     <div
       className={cn(
         "border-t shrink-0",
-        isTerminal && isMobile ? "px-2 py-3" : "px-4 py-4",
-        isMobile && "pb-[calc(1rem+env(safe-area-inset-bottom))]",
+        isTerminal && isMobile ? "px-2 py-2" : "px-4 py-3",
+        isMobile && "pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]",
         isTerminal
           ? "bg-[hsl(var(--terminal-code-bg))] border-border"
           : "bg-white dark:bg-[#0A0A0A] border-[#EAEAEA] dark:border-[#222222]",
       )}
     >
       {/* New conversation button */}
+      {!hasMessages && (
       <div
         className={cn(
-          "flex items-center justify-between mb-2",
+          "flex items-center justify-between mb-1",
           isTerminal && "font-mono",
         )}
       >
@@ -99,6 +102,7 @@ export function ChatInput({
           </button>
         )}
       </div>
+      )}
 
       {/* Attached image preview */}
       {attachedImage && (
@@ -416,7 +420,7 @@ function DefaultInput({
       className={cn(
         "rounded-lg border border-[#EAEAEA] dark:border-[#333333] bg-white dark:bg-[#0A0A0A]",
         "transition-colors focus-within:border-[#111111] dark:focus-within:border-[#EEEEEE]",
-        "px-3 py-2.5",
+        "px-3 py-2",
       )}
     >
       <div className="flex items-end gap-2">
@@ -433,7 +437,7 @@ function DefaultInput({
             "placeholder:text-[#AAAAAA] focus-visible:ring-0 focus-visible:ring-offset-0 overflow-y-auto",
             isMobile
               ? "min-h-[44px] max-h-[96px]"
-              : "min-h-[44px] max-h-[96px]",
+              : "min-h-[40px] max-h-[96px]",
           )}
         />
         <div className="flex items-center gap-1">
