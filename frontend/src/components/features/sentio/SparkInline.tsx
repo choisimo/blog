@@ -117,7 +117,7 @@ function hasNonInlineChildren(children: React.ReactNode): boolean {
 }
 
 type Mode = "idle" | "sketch" | "prism" | "chain";
-type FeedSource = "feed" | "fallback";
+type FeedSource = "feed" | "warming" | "fallback";
 type LoadedModes = Record<Exclude<Mode, "idle">, boolean>;
 
 function createInitialLoadedModes(): LoadedModes {

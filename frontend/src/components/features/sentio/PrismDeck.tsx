@@ -4,6 +4,7 @@ import type { LensCard as LensCardData } from "@/services/chat";
 import { cn } from "@/lib/utils";
 import LensCard from "./LensCard";
 import { useLensDeck, type LensDeckSource } from "./hooks/useLensDeck";
+import AsyncArtifactStatusChip from "./AsyncArtifactStatusChip";
 
 type PrismDeckProps = {
   paragraph: string;
@@ -26,7 +27,7 @@ export default function PrismDeck({
     currentIndex,
     loading,
     loadingMore,
-    source,
+    status,
     canGoPrev,
     canGoNext,
     goPrev,
@@ -130,6 +131,24 @@ export default function PrismDeck({
   }
 
   if (!activeCard) {
+    if (status === "warming") {
+      return (
+        <div className="flex min-h-[24rem] flex-col items-center justify-center gap-3 rounded-[2rem] border border-violet-200/60 bg-[linear-gradient(135deg,rgba(245,243,255,0.92),rgba(250,245,255,0.88))] px-6 py-10 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 shadow-sm">
+            <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              렌즈 카드를 생성 중입니다
+            </p>
+            <p className="text-xs text-muted-foreground">
+              임시 스택을 보여주고 있고, 준비되면 자동으로 갱신합니다.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="rounded-[2rem] border border-border/60 bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground">
         아직 표시할 lens 카드가 없습니다.
@@ -146,11 +165,7 @@ export default function PrismDeck({
               <span className="rounded-full bg-violet-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700">
                 Prism Deck
               </span>
-              {source === "fallback" && (
-                <span className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">
-                  Fallback
-                </span>
-              )}
+              <AsyncArtifactStatusChip status={status} />
             </div>
             <p className="text-sm font-medium text-foreground">
               Lens {currentIndex + 1} / {cards.length}

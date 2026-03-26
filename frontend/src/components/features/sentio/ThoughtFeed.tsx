@@ -3,6 +3,7 @@ import { Loader2, Milestone, Sparkles } from "lucide-react";
 import type { ThoughtCard as ThoughtCardData } from "@/services/chat";
 import ThoughtCard from "./ThoughtCard";
 import { useThoughtFeed, type ThoughtFeedSource } from "./hooks/useThoughtFeed";
+import AsyncArtifactStatusChip from "./AsyncArtifactStatusChip";
 
 type ThoughtFeedProps = {
   paragraph: string;
@@ -19,7 +20,7 @@ export default function ThoughtFeed({
   enabled,
   onReady,
 }: ThoughtFeedProps) {
-  const { cards, loading, loadingMore, exhausted, source, loadMore } =
+  const { cards, loading, loadingMore, exhausted, status, loadMore } =
     useThoughtFeed({
       paragraph,
       postTitle,
@@ -98,6 +99,24 @@ export default function ThoughtFeed({
   }
 
   if (cards.length === 0) {
+    if (status === "warming") {
+      return (
+        <div className="flex min-h-[24rem] flex-col items-center justify-center gap-3 rounded-[2rem] border border-emerald-200/60 bg-[linear-gradient(180deg,rgba(240,253,244,0.86),rgba(255,255,255,0.96))] px-6 py-10 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/90 shadow-sm">
+            <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              Thought feed를 생성 중입니다
+            </p>
+            <p className="text-xs text-muted-foreground">
+              준비되면 자동으로 실제 카드로 교체합니다.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="rounded-[2rem] border border-border/60 bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground">
         아직 표시할 thought 카드가 없습니다.
@@ -111,11 +130,7 @@ export default function ThoughtFeed({
         <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
           Thought Feed
         </span>
-        {source === "fallback" && (
-          <span className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">
-            Fallback
-          </span>
-        )}
+        <AsyncArtifactStatusChip status={status} />
       </div>
 
       <div

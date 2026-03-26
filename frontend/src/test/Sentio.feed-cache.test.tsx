@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useLensDeck } from "@/components/features/sentio/hooks/useLensDeck";
 import { useThoughtFeed } from "@/components/features/sentio/hooks/useThoughtFeed";
 
@@ -114,6 +114,7 @@ function ThoughtHarness({
 
 describe("sentio feed cache", () => {
   beforeEach(() => {
+    vi.useRealTimers();
     vi.mocked(invokeLensFeed).mockReset();
     vi.mocked(invokeThoughtFeed).mockReset();
 
@@ -127,6 +128,10 @@ describe("sentio feed cache", () => {
       nextCursor: null,
       exhausted: true,
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("does not refetch lens cards when the same cache key is re-enabled", async () => {
@@ -165,5 +170,97 @@ describe("sentio feed cache", () => {
       expect(invokeThoughtFeed).toHaveBeenCalledTimes(1);
     });
     expect(screen.getByText(/Thought 1/)).toBeInTheDocument();
+  });
+
+  it("does not cache warming lens responses as ready feed data", async () => {
+    vi.useFakeTimers();
+    vi.mocked(invokeLensFeed)
+      .mockResolvedValueOnce({
+        items: lensItems.slice(0, 2),
+        nextCursor: null,
+        exhausted: false,
+        warming: true,
+        source: "warming-fallback",
+      })
+      .mockResolvedValueOnce({
+        items: lensItems,
+        nextCursor: null,
+        exhausted: true,
+        source: "snapshot",
+      });
+
+    const { rerender } = render(
+      <LensHarness cacheKey="lens:warm" enabled={true} />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(invokeLensFeed).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/Lens 1/)).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(invokeLensFeed).toHaveBeenCalledTimes(2);
+
+    rerender(<LensHarness cacheKey="lens:warm" enabled={false} />);
+    rerender(<LensHarness cacheKey="lens:warm" enabled={true} />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(invokeLensFeed).toHaveBeenCalledTimes(2);
+    expect(screen.getByText(/Lens 4/)).toBeInTheDocument();
+  });
+
+  it("does not cache warming thought responses as ready feed data", async () => {
+    vi.useFakeTimers();
+    vi.mocked(invokeThoughtFeed)
+      .mockResolvedValueOnce({
+        items: thoughtItems.slice(0, 1),
+        nextCursor: null,
+        exhausted: false,
+        warming: true,
+        source: "warming-fallback",
+      })
+      .mockResolvedValueOnce({
+        items: thoughtItems,
+        nextCursor: null,
+        exhausted: true,
+        source: "snapshot",
+      });
+
+    const { rerender } = render(
+      <ThoughtHarness cacheKey="thought:warm" enabled={true} />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(invokeThoughtFeed).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/Thought 1/)).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(invokeThoughtFeed).toHaveBeenCalledTimes(2);
+
+    rerender(<ThoughtHarness cacheKey="thought:warm" enabled={false} />);
+    rerender(<ThoughtHarness cacheKey="thought:warm" enabled={true} />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(invokeThoughtFeed).toHaveBeenCalledTimes(2);
+    expect(screen.getByText(/Thought 2/)).toBeInTheDocument();
   });
 });
