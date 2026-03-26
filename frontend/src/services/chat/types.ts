@@ -174,12 +174,18 @@ export type LensFeedRequest = {
   count?: number;
 };
 
+export type FeedResponseSource =
+  | "snapshot"
+  | "snapshot-stale"
+  | "warming-fallback";
+
 export type LensFeedResponse = {
   items: LensCard[];
   nextCursor: FeedCursor | null;
   exhausted: boolean;
   warming?: boolean;
   stale?: boolean;
+  source?: FeedResponseSource;
   snapshotId?: string;
   generationVersionHash?: string;
   unreadCount?: number;
@@ -199,6 +205,7 @@ export type ThoughtFeedResponse = {
   exhausted: boolean;
   warming?: boolean;
   stale?: boolean;
+  source?: FeedResponseSource;
   snapshotId?: string;
   generationVersionHash?: string;
   unreadCount?: number;

@@ -63,6 +63,9 @@ export type PublicTranslationLookupResult = {
   translation: TranslationResult | null;
   pending: boolean;
   job: TranslationJobStatus | null;
+  retryAfterSeconds?: number;
+  warming?: boolean;
+  stale?: boolean;
 };
 
 type TranslationErrorResponse = {
@@ -198,6 +201,35 @@ function parseGenerateResult(
     translation: body.data as TranslationResult,
     job: null,
     accepted: false,
+  };
+}
+
+function parseRetryAfterSeconds(value: string | null): number | undefined {
+  if (!value) return undefined;
+  const seconds = Number.parseInt(value, 10);
+  if (Number.isFinite(seconds) && seconds > 0) {
+    return seconds;
+  }
+  return undefined;
+}
+
+function extractLookupFlags(payload: unknown): {
+  warming: boolean;
+  stale: boolean;
+} {
+  if (!payload || typeof payload !== "object") {
+    return { warming: false, stale: false };
+  }
+
+  const body = payload as { data?: unknown };
+  const candidate =
+    body.data && typeof body.data === "object"
+      ? (body.data as Record<string, unknown>)
+      : (payload as Record<string, unknown>);
+
+  return {
+    warming: candidate.warming === true,
+    stale: candidate.stale === true,
   };
 }
 
@@ -348,6 +380,9 @@ export async function getCachedTranslation(
   const response = await fetch(
     `${baseUrl}/api/v1/public/posts/${year}/${slug}/translations/${targetLang}`,
   );
+  const retryAfterSeconds = parseRetryAfterSeconds(
+    response.headers.get("Retry-After"),
+  );
 
   if (!response.ok) {
     if (response.status === 404) {
@@ -355,6 +390,9 @@ export async function getCachedTranslation(
         translation: null,
         pending: false,
         job: null,
+        retryAfterSeconds,
+        warming: false,
+        stale: false,
       };
     }
     throw await parseError(response);
@@ -372,15 +410,22 @@ export async function getCachedTranslation(
       translation: null,
       pending: true,
       job: null,
+      retryAfterSeconds,
+      warming: true,
+      stale: false,
     };
   }
 
   const result = parseGenerateResult(payload, response.status);
+  const flags = extractLookupFlags(payload);
 
   return {
     translation: result.translation,
-    pending: response.status === 202 || result.accepted,
+    pending: response.status === 202 || result.accepted || flags.warming,
     job: result.job,
+    retryAfterSeconds,
+    warming: flags.warming,
+    stale: flags.stale,
   };
 }
 

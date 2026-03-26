@@ -355,14 +355,7 @@ export default function ChatWidget(props: {
       setDebateBusy(false);
       debateAbortRef.current = null;
     }
-  }, [
-    debateBusy,
-    isMobile,
-    liveVisitorChat.room,
-    push,
-    setMessages,
-    setShowActionSheet,
-  ]);
+  }, [debateBusy, liveVisitorChat.room, push, setMessages, setShowActionSheet]);
 
   return (
     <>

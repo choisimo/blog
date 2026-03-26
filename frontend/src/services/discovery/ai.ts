@@ -42,6 +42,7 @@ export type QuizQuestion = {
   question: string;
   answer: string;
   options?: string[]; // for multiple_choice
+  correctOptionIndex?: number;
   explanation?: string;
 };
 
@@ -470,6 +471,46 @@ function clampVisualizationHeight(value: unknown): number | undefined {
   return Math.max(160, Math.min(560, Math.floor(value)));
 }
 
+function parseExplicitCorrectOptionIndex(
+  value: unknown,
+  optionCount: number,
+): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const candidate = Math.floor(value);
+  if (candidate >= 0 && candidate < optionCount) return candidate;
+  if (candidate >= 1 && candidate <= optionCount) return candidate - 1;
+  return null;
+}
+
+function inferCorrectOptionIndex(
+  answer: string,
+  options: string[],
+): number | null {
+  if (!options.length) return null;
+
+  const normalizedAnswer = answer.trim().toLowerCase();
+  if (!normalizedAnswer) return null;
+
+  const exactIndex = options.findIndex(
+    (option) => option.trim().toLowerCase() === normalizedAnswer,
+  );
+  if (exactIndex >= 0) return exactIndex;
+
+  const letterMatch = normalizedAnswer.match(/^([a-z])(?:[).:\s-]|$)/i);
+  if (letterMatch) {
+    const index = letterMatch[1].toUpperCase().charCodeAt(0) - 65;
+    return index >= 0 && index < options.length ? index : null;
+  }
+
+  const numberMatch = normalizedAnswer.match(/^(\d+)(?:[).:\s-]|$)/);
+  if (numberMatch) {
+    const index = Number.parseInt(numberMatch[1], 10) - 1;
+    return index >= 0 && index < options.length ? index : null;
+  }
+
+  return null;
+}
+
 function buildVisualizationFence(raw: Record<string, unknown>): string | null {
   const visualizationRecord = pickObjectRecord(
     raw.visualization,
@@ -565,6 +606,14 @@ function normalizeQuizQuestion(raw: unknown): QuizQuestion | null {
   const type = normalizeQuizType(
     raw.type ?? (options.length > 0 ? "multiple_choice" : "explain"),
   );
+  const correctOptionIndex =
+    parseExplicitCorrectOptionIndex(
+      raw.correctOptionIndex ??
+        raw.correctIndex ??
+        raw.answerIndex ??
+        raw.correct_option_index,
+      options.length,
+    ) ?? inferCorrectOptionIndex(answer, options);
   const vizFence = buildVisualizationFence(raw);
   const mergedQuestion =
     vizFence &&
@@ -581,6 +630,9 @@ function normalizeQuizQuestion(raw: unknown): QuizQuestion | null {
   };
 
   if (options.length > 0) normalized.options = options;
+  if (correctOptionIndex !== null) {
+    normalized.correctOptionIndex = correctOptionIndex;
+  }
   if (explanation) normalized.explanation = explanation;
 
   return normalized;
@@ -674,8 +726,9 @@ function createQuizFallback(quizCount = 2): QuizResult {
     {
       type: "multiple_choice",
       question: "이 문서의 주요 주제는 무엇인가요?",
-      answer: "위 내용을 다시 읽어보세요.",
+      answer: "개념 이해",
       options: ["개념 이해", "실습 예제", "이론 설명", "사례 연구"],
+      correctOptionIndex: 0,
       explanation: "AI 서버가 일시적으로 응답하지 않아 기본 퀴즈가 표시됩니다.",
     },
     {
