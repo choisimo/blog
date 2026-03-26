@@ -39,6 +39,7 @@ import { useUIStrings } from "@/utils/i18n/uiStrings";
 import { findRelatedPosts as findRAGRelatedPosts } from "@/services/discovery/rag";
 import { useSEO } from "@/hooks/seo/useSEO";
 import { generateSEOData, generateStructuredData } from "@/utils/seo/seo";
+import type { AsyncArtifactStatus } from "@/components/features/sentio/hooks/useAsyncArtifact";
 import { BlogPostHeader } from "./blog-post/BlogPostHeader";
 import { BlogPostContent } from "./blog-post/BlogPostContent";
 import { BlogPostRelated } from "./blog-post/BlogPostRelated";
@@ -181,12 +182,14 @@ const BlogPost = () => {
   const [autoSimulatorSrc, setAutoSimulatorSrc] = useState<string | null>(null);
 
   // AI Translation state
-  const [translating, setTranslating] = useState(false);
+  const [translationStatus, setTranslationStatus] =
+    useState<AsyncArtifactStatus>("idle");
   const [aiTranslation, setAiTranslation] = useState<TranslationResult | null>(
     null,
   );
   const [translationError, setTranslationError] =
     useState<TranslationErrorState | null>(null);
+  const [translationRetryNonce, setTranslationRetryNonce] = useState(0);
 
   // Check if native translation exists for the selected language
   const hasNativeTranslation = useMemo(() => {
@@ -354,7 +357,7 @@ ${description}
         setError(false);
         // Reset translation states on route change to prevent stale content
         setAiTranslation(null);
-        setTranslating(false);
+        setTranslationStatus("idle");
         setTranslationError(null);
 
         if (!year || !slug) {
@@ -478,17 +481,21 @@ ${description}
     if (language === defaultLang || post.translations?.[language]) {
       setAiTranslation(null);
       setTranslationError(null);
-      setTranslating(false);
+      setTranslationStatus("idle");
       return;
     }
 
     let cancelled = false;
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const scheduleRetry = (delaySeconds?: number) => {
+      const retryDelayMs = Math.max(1, delaySeconds ?? 3) * 1000;
+      pollTimer = window.setTimeout(() => {
+        void loadTranslation();
+      }, retryDelayMs);
+    };
 
     const loadTranslation = async () => {
-      setTranslating(true);
-      setTranslationError(null);
-      setAiTranslation(null);
-
       try {
         const result = await getCachedTranslation(year, slug, language);
         if (cancelled) return;
@@ -499,8 +506,13 @@ ${description}
 
         if (result.pending) {
           setTranslationError(null);
+          setTranslationStatus("warming");
+          scheduleRetry(result.retryAfterSeconds);
           return;
         }
+
+        setTranslationError(null);
+        setTranslationStatus(result.translation ? "ready" : "idle");
       } catch (err) {
         console.error("Translation failed:", err);
         if (!cancelled) {
@@ -515,20 +527,30 @@ ${description}
               retryable: false,
             });
           }
-        }
-      } finally {
-        if (!cancelled) {
-          setTranslating(false);
+          setTranslationStatus("error");
         }
       }
     };
 
-    loadTranslation();
+    setTranslationStatus("warming");
+    setTranslationError(null);
+    setAiTranslation(null);
+    void loadTranslation();
 
     return () => {
       cancelled = true;
+      if (pollTimer !== null) {
+        clearTimeout(pollTimer);
+      }
     };
-  }, [language, post, slug, year]);
+  }, [language, post, slug, translationRetryNonce, year]);
+
+  const handleRetryTranslation = useCallback(() => {
+    setTranslationError(null);
+    setAiTranslation(null);
+    setTranslationStatus("idle");
+    setTranslationRetryNonce((prev) => prev + 1);
+  }, []);
 
   // sync inline feature flag from localStorage and storage events
   useEffect(() => {
@@ -772,7 +794,7 @@ ${description}
                 language={language}
                 setLanguage={setLanguage}
                 resolveLanguageName={resolveLanguageName}
-                translating={translating}
+                translationStatus={translationStatus}
                 aiTranslation={aiTranslation}
                 hasNativeTranslation={hasNativeTranslation}
                 translationError={
@@ -785,10 +807,7 @@ ${description}
                       }
                     : null
                 }
-                onClearTranslationError={() => {
-                  setTranslationError(null);
-                  setAiTranslation(null);
-                }}
+                onRetryTranslation={handleRetryTranslation}
                 isTerminal={isTerminal}
                 preservedFrom={preservedFrom}
                 preservedSearch={preservedSearch}
@@ -814,6 +833,7 @@ ${description}
 
               {/* AI Quiz Panel — shown only for posts with code blocks */}
               <MemoizedQuizPanel
+                key={`${year}:${slug}`}
                 content={tocContent}
                 postTitle={displayTitle}
                 postTags={post.tags}

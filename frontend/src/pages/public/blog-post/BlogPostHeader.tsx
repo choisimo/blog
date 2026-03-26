@@ -22,6 +22,7 @@ import type {
 } from "@/types/blog";
 import type { TranslationResult } from "@/services/content/translate";
 import { SafeDescriptionMarkdown } from "@/components/features/blog/SafeDescriptionMarkdown";
+import type { AsyncArtifactStatus } from "@/components/features/sentio/hooks/useAsyncArtifact";
 
 interface BlogPostHeaderProps {
   post: BlogPostType;
@@ -31,11 +32,11 @@ interface BlogPostHeaderProps {
   language: string;
   setLanguage: (lang: string) => void;
   resolveLanguageName: (code: string) => string;
-  translating: boolean;
+  translationStatus: AsyncArtifactStatus;
   aiTranslation: TranslationResult | null;
   hasNativeTranslation: boolean;
   translationError: { message: string; retryable: boolean } | null;
-  onClearTranslationError: () => void;
+  onRetryTranslation: () => void;
   isTerminal: boolean;
   preservedFrom?: { pathname: string; search?: string };
   preservedSearch: string;
@@ -59,11 +60,11 @@ export function BlogPostHeader({
   language,
   setLanguage,
   resolveLanguageName,
-  translating,
+  translationStatus,
   aiTranslation,
   hasNativeTranslation,
   translationError,
-  onClearTranslationError,
+  onRetryTranslation,
   isTerminal,
   preservedFrom,
   preservedSearch,
@@ -79,6 +80,9 @@ export function BlogPostHeader({
 }: BlogPostHeaderProps) {
   const navigate = useNavigate();
   const description = postView.description;
+  const isTranslationWarming = translationStatus === "warming";
+  const hasAiTranslationReady =
+    translationStatus === "ready" && aiTranslation && !hasNativeTranslation;
   const formattedDate = formatDate(
     postView.date,
     language === "en" ? "en" : "ko",
@@ -229,7 +233,7 @@ export function BlogPostHeader({
             className={cn(
               "flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-xs font-medium text-muted-foreground dark:border-primary/40 dark:bg-primary/10 dark:text-white/80",
               isTerminal && "rounded-lg font-mono border-solid",
-              translating && "animate-pulse",
+              isTranslationWarming && "animate-pulse",
             )}
           >
             <Languages className="h-4 w-4 text-primary" />
@@ -242,14 +246,14 @@ export function BlogPostHeader({
                   key={code}
                   type="button"
                   onClick={() => setLanguage(code)}
-                  disabled={translating}
+                  disabled={isTranslationWarming}
                   className={cn(
                     "rounded-full px-3 py-1 text-sm transition-colors",
                     language === code
                       ? "bg-primary text-primary-foreground shadow-sm"
                       : "bg-white/70 text-foreground/70 dark:bg-background/60 hover:bg-white dark:hover:bg-background/80",
                     isTerminal && "rounded font-mono",
-                    translating && "opacity-50 cursor-not-allowed",
+                    isTranslationWarming && "opacity-50 cursor-not-allowed",
                   )}
                 >
                   {resolveLanguageName(code)}
@@ -257,13 +261,13 @@ export function BlogPostHeader({
               ))}
             </div>
             {/* Translation status indicators */}
-            {translating && (
+            {isTranslationWarming && (
               <div className="flex items-center gap-1.5 ml-2 text-primary">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 <span className="text-xs">{translatingLabel}</span>
               </div>
             )}
-            {aiTranslation && !translating && !hasNativeTranslation && (
+            {hasAiTranslationReady && (
               <div className="flex items-center gap-1.5 ml-2 text-amber-600 dark:text-amber-400">
                 <Sparkles className="h-3.5 w-3.5" />
                 <span className="text-xs">{aiTranslatedLabel}</span>
@@ -293,7 +297,7 @@ export function BlogPostHeader({
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={onClearTranslationError}
+                    onClick={onRetryTranslation}
                     className={cn(
                       "shrink-0 text-xs h-8",
                       isTerminal &&

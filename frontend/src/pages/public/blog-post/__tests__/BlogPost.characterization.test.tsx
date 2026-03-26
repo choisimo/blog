@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { beforeEach, test, expect, vi } from "vitest";
+import { afterEach, beforeEach, test, expect, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => {
   // Two-level proxy: str.section.key → "" (string primitive, renderable by React)
@@ -265,6 +265,10 @@ beforeEach(() => {
   mockedPostService.getPost.mockResolvedValue(basePost);
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 test("renders post content when loaded successfully", async () => {
   vi.mocked(postsData.getPostBySlug).mockResolvedValue(basePost);
   mockedPostService.getPost.mockResolvedValue({
@@ -374,6 +378,51 @@ test("keeps the original content when public translation is still pending", asyn
   });
   expect(await screen.findByText("Test Post")).toBeInTheDocument();
   expect(document.body.textContent).toContain("Test description");
+});
+
+test("polls the public translation route until the translation is ready", async () => {
+  vi.useFakeTimers();
+  hoisted.currentLanguage = "en";
+  vi.mocked(translateService.getCachedTranslation)
+    .mockResolvedValueOnce({
+      translation: null,
+      pending: true,
+      job: null,
+      retryAfterSeconds: 1,
+      warming: true,
+      stale: false,
+    })
+    .mockResolvedValueOnce({
+      translation: {
+        title: "Polled Translation",
+        description: "Polled description",
+        content: "# Polled",
+        cached: true,
+      },
+      pending: false,
+      job: null,
+      warming: false,
+      stale: false,
+    });
+
+  renderBlogPost();
+
+  await act(async () => {
+    await Promise.resolve();
+  });
+  expect(translateService.getCachedTranslation).toHaveBeenCalledTimes(1);
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1000);
+  });
+
+  await act(async () => {
+    await Promise.resolve();
+  });
+  expect(translateService.getCachedTranslation).toHaveBeenCalledTimes(2);
+  expect(screen.getByText("Polled Translation")).toBeInTheDocument();
+
+  vi.useRealTimers();
 });
 
 test("renders without related posts when none found", async () => {
