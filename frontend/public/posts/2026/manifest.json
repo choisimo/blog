@@ -33,12 +33,13 @@
     "python-3.md",
     "remote-server-think.md",
     "shellscript-analyze-1.md",
+    "sprintboot-1.md",
     "teleport-config.md",
     "teleport.md",
     "understanding-ssm-and-mamba.md",
     "vim-architecture-functionality-commands-integration.md"
   ],
-  "generatedAt": "2026-03-26T02:32:12.639Z",
-  "totalFiles": 37,
+  "generatedAt": "2026-03-26T04:33:17.126Z",
+  "totalFiles": 38,
   "excludedFiles": 0
 }
