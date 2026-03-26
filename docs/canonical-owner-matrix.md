@@ -87,3 +87,26 @@ When a domain is not the canonical owner, its route must be one of:
 | --- | --- | --- |
 | external/public | `GET /api/v1/posts/:year/:slug` | Backend canonical identifier shape |
 | deprecated compatibility | `GET /api/v1/posts/:slug` | Legacy shortcut pending identifier unification |
+
+### Analytics
+
+| Class | Surface | Owner | Notes |
+| --- | --- | --- | --- |
+| external/public | `POST /api/v1/analytics/view` | Worker (proxy → Backend) | View recording — Worker proxies to Backend Postgres. Single write path. |
+| external/public | `GET /api/v1/analytics/stats/:year/:slug` | Worker (proxy → Backend) | Per-post stats read from Postgres via proxy. |
+| external/public | `GET /api/v1/analytics/trending` | Worker (proxy → Backend) | Trending posts aggregated from Postgres via proxy. |
+| external/public | `GET /api/v1/analytics/editor-picks` | Worker (D1 cache) | Edge-cached editor picks. Source populated by cron from Backend stats. |
+| external/public | `GET /api/v1/analytics/realtime` | Worker (KV) | Active visitor count. KV-native, no backend dependency. |
+| external/public | `POST /api/v1/analytics/heartbeat` | Worker (KV) | Visitor heartbeat. KV-native. |
+| internal/proxy | `POST /api/v1/analytics/refresh-stats` | Worker (proxy → Backend) | Admin-only. Delegates Postgres recalculation to Backend. |
+| internal/proxy | `POST /api/v1/analytics/update-editor-picks` | Worker | Admin/cron. Reads stats from Backend, writes editor_picks to D1 cache. |
+| internal/proxy | `POST|PUT|DELETE /api/v1/analytics/admin/editor-picks*` | Worker (D1) | Admin management of D1 editor_picks cache. |
+
+**Source-of-truth boundary (2026-03-26):**
+- View counts and aggregated stats: Backend (Postgres) — canonical.
+- Editor picks display cache: Worker D1 — populated by cron from Postgres, readable at edge.
+- Realtime visitor count: Worker KV — TTL-based, no durability required.
+
+**Resolved conflict:** Prior to this change, Worker wrote to both D1 `post_views`/`post_stats`
+AND proxied to Backend, causing silent numeric divergence. Worker D1 analytics write paths
+have been removed. D1 `post_views` table is now retention-cleanup-only (90d DELETE in cron).
