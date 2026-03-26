@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +24,12 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { BlogCardSkeleton, PostCard } from "@/components";
-import { getPosts, getPostsPage, getPostBySlug } from "@/data/content/posts";
+import {
+  getPosts,
+  getPostsPage,
+  getPostBySlug,
+  getPostCategoryCounts,
+} from "@/data/content/posts";
 import type { BlogPost } from "@/types/blog";
 import { SearchBar } from "@/components/features/search/SearchBar";
 import { site } from "@/config/site";
@@ -27,7 +38,6 @@ import { cn } from "@/lib/utils";
 import { OptimizedImage } from "@/components/common/OptimizedImage";
 import { formatDate } from "@/utils/content/blog";
 import { getEditorPicks, type EditorPick } from "@/services/content/analytics";
-import { getCategoryCounts } from "@/utils/content/categoryNormalize";
 import TerminalCategories from "@/components/features/navigation/TerminalCategories";
 import { useSEO } from "@/hooks/seo/useSEO";
 import { generateSEOData, generateStructuredData } from "@/utils/seo/seo";
@@ -43,6 +53,21 @@ interface VisitedPostItem {
 }
 
 const STORAGE_KEY = "visited.posts";
+const CATEGORY_VISUALS = [
+  { icon: Sparkles, color: "text-rose-500" },
+  { icon: Code2, color: "text-sky-500" },
+  { icon: TrendingUp, color: "text-emerald-500" },
+  { icon: BookOpen, color: "text-amber-500" },
+] as const;
+const CATEGORY_VISUALS_BY_NAME: Record<
+  string,
+  (typeof CATEGORY_VISUALS)[number]
+> = {
+  "AI & ML": CATEGORY_VISUALS[0],
+  "Web Dev": CATEGORY_VISUALS[1],
+  Algorithms: CATEGORY_VISUALS[2],
+  DevOps: CATEGORY_VISUALS[3],
+};
 
 const Index = () => {
   useSEO(
@@ -62,6 +87,12 @@ const Index = () => {
   const [searchResults, setSearchResults] = useState<BlogPost[] | null>(null);
   const [searchActive, setSearchActive] = useState(false);
   const [searchPostsLoaded, setSearchPostsLoaded] = useState(false);
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>(
+    {},
+  );
+  const [categoryCountsState, setCategoryCountsState] = useState<
+    "loading" | "ready" | "error"
+  >("loading");
 
   // Editor's Picks
   const [featuredPosts, setFeaturedPosts] = useState<BlogPost[]>([]);
@@ -154,8 +185,25 @@ const Index = () => {
       }
     };
 
+    const loadCategoryCounts = async () => {
+      try {
+        setCategoryCountsState("loading");
+        const counts = await getPostCategoryCounts();
+        if (!cancelled) {
+          setCategoryCounts(counts);
+          setCategoryCountsState("ready");
+        }
+      } catch {
+        if (!cancelled) {
+          setCategoryCounts({});
+          setCategoryCountsState("error");
+        }
+      }
+    };
+
     loadLatest();
     loadFeatured();
+    loadCategoryCounts();
 
     return () => {
       cancelled = true;
@@ -203,20 +251,28 @@ const Index = () => {
 
   // Featured categories with dynamic counts from allPosts (normalized)
   const categories = useMemo(() => {
-    const categoryMap = getCategoryCounts(allPosts);
+    const entries = Object.entries(categoryCounts)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, 6);
 
-    const baseCategories = [
-      { name: "AI & ML", icon: Sparkles, color: "text-purple-500" },
-      { name: "Web Dev", icon: Code2, color: "text-blue-500" },
-      { name: "Algorithms", icon: TrendingUp, color: "text-green-500" },
-      { name: "DevOps", icon: BookOpen, color: "text-orange-500" },
-    ];
+    const fallbackEntries = Object.keys(CATEGORY_VISUALS_BY_NAME).map(
+      (name) => [name, 0],
+    ) as Array<[string, number]>;
 
-    return baseCategories.map((cat) => ({
-      ...cat,
-      count: categoryMap[cat.name] || 0,
-    }));
-  }, [allPosts]);
+    const sourceEntries = entries.length > 0 ? entries : fallbackEntries;
+
+    return sourceEntries.map(([name, count], index) => {
+      const visuals =
+        CATEGORY_VISUALS_BY_NAME[name] ??
+        CATEGORY_VISUALS[index % CATEGORY_VISUALS.length];
+      return {
+        name,
+        count,
+        icon: visuals.icon,
+        color: visuals.color,
+      };
+    });
+  }, [categoryCounts]);
 
   // Carousel scroll handlers
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -665,6 +721,13 @@ const Index = () => {
         >
           {isTerminal ? "// categories" : "Popular Categories"}
         </h2>
+        <p className="mb-6 text-center text-sm text-muted-foreground">
+          {categoryCountsState === "loading"
+            ? "카테고리 집계를 준비 중입니다."
+            : categoryCountsState === "error"
+              ? "카테고리 집계를 불러오지 못해 마지막 메타데이터 기준으로 표시합니다."
+              : "최신 발행 포스트 기준 상위 카테고리입니다."}
+        </p>
 
         <div className="grid gap-6 md:grid-cols-12 md:gap-8 items-start">
           <div className="md:col-span-7">
@@ -698,7 +761,13 @@ const Index = () => {
                           {category.name}
                         </CardTitle>
                         <CardDescription className="text-xs">
-                          {category.count} posts
+                          {categoryCountsState === "loading"
+                            ? "집계 준비 중"
+                            : categoryCountsState === "error"
+                              ? "집계 오류"
+                              : category.count > 0
+                                ? `${category.count} posts`
+                                : "데이터 없음"}
                         </CardDescription>
                       </CardHeader>
                     </Card>
