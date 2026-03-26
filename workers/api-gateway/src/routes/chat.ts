@@ -18,7 +18,7 @@ import {
   normalizeLensFeedRequest,
   normalizeThoughtFeedRequest,
 } from '../lib/feed-normalizers';
-import { enqueueFeedArtifactGeneration, getServeableFeedPage } from '../lib/ai-artifact-outbox';
+import { enqueueFeedArtifactGeneration, generateAndStoreInitialFeedArtifact, getServeableFeedPage } from '../lib/ai-artifact-outbox';
 
 type ChatContext = { Bindings: Env };
 
@@ -162,6 +162,41 @@ chat.post('/session/:sessionId/lens-feed', async (c: Context<ChatContext>) => {
     });
   }
 
+  if (input.cursor.page === 0) {
+    try {
+      await generateAndStoreInitialFeedArtifact(c.env, {
+        artifactType: 'feed.lens',
+        sessionId,
+        paragraph: input.paragraph,
+        postTitle: input.postTitle,
+        count: 3,
+      });
+      const fresh = await getServeableFeedPage<LensCard>(c.env, {
+        artifactType: 'feed.lens',
+        sessionId,
+        paragraph: input.paragraph,
+        postTitle: input.postTitle,
+        pageNo: 0,
+      });
+      if (fresh.page) {
+        return success(c, {
+          ...fresh.page.payload,
+          snapshotId: fresh.page.versionId,
+          generationVersionHash: fresh.generationVersionHash,
+          warming: false,
+          stale: false,
+          unreadCount: fresh.readState.unreadCount,
+          itemStates: fresh.readState.itemStates,
+          source: 'snapshot' as const,
+          exhausted: fresh.page.payload.exhausted,
+          nextCursor: fresh.page.payload.nextCursor,
+        });
+      }
+    } catch (err) {
+      console.warn('[lens-feed] inline generation failed, falling back to async', err);
+    }
+  }
+
   await enqueueFeedArtifactGeneration(c.env, {
     artifactType: 'feed.lens',
     sessionId,
@@ -228,6 +263,41 @@ chat.post('/session/:sessionId/thought-feed', async (c: Context<ChatContext>) =>
     });
   }
 
+  if (input.cursor.page === 0) {
+    try {
+      await generateAndStoreInitialFeedArtifact(c.env, {
+        artifactType: 'feed.thought',
+        sessionId,
+        paragraph: input.paragraph,
+        postTitle: input.postTitle,
+        count: 3,
+      });
+      const fresh = await getServeableFeedPage<ThoughtCard>(c.env, {
+        artifactType: 'feed.thought',
+        sessionId,
+        paragraph: input.paragraph,
+        postTitle: input.postTitle,
+        pageNo: 0,
+      });
+      if (fresh.page) {
+        return success(c, {
+          ...fresh.page.payload,
+          snapshotId: fresh.page.versionId,
+          generationVersionHash: fresh.generationVersionHash,
+          warming: false,
+          stale: false,
+          unreadCount: fresh.readState.unreadCount,
+          itemStates: fresh.readState.itemStates,
+          source: 'snapshot' as const,
+          exhausted: fresh.page.payload.exhausted,
+          nextCursor: fresh.page.payload.nextCursor,
+        });
+      }
+    } catch (err) {
+      console.warn('[thought-feed] inline generation failed, falling back to async', err);
+    }
+  }
+
   await enqueueFeedArtifactGeneration(c.env, {
     artifactType: 'feed.thought',
     sessionId,
@@ -251,7 +321,6 @@ chat.post('/session/:sessionId/thought-feed', async (c: Context<ChatContext>) =>
     nextCursor: null,
   });
 });
-
 chat.post('/aggregate', async (c: Context<ChatContext>) => {
   return proxyRequest(c, '/aggregate', {
     sanitizeClientModel: true,
