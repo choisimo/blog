@@ -112,6 +112,13 @@ function resolveResponseSource(
   return "feed";
 }
 
+function isWarmingResponse(response: {
+  source?: string;
+  warming?: boolean;
+} | null | undefined): boolean {
+  return response?.warming === true || response?.source === "warming-fallback";
+}
+
 export function useLensDeck({
   paragraph,
   postTitle,
@@ -309,7 +316,8 @@ export function useLensDeck({
     enabled:
       enabled &&
       Boolean(paragraph.trim()) &&
-      activeCacheKeyRef.current === cacheKey,
+      (activeCacheKeyRef.current === cacheKey ||
+        activeCacheKeyRef.current === null),
     status,
     onRetry: () => {
       if (activeCacheKeyRef.current !== cacheKey) return;
