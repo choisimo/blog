@@ -7,17 +7,7 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { Env } from '../types';
-import { createAIService } from '../lib/ai-service';
 import { success, badRequest, error } from '../lib/response';
-import { AI_TEMPERATURES } from '../config/defaults';
-import {
-  buildTaskPrompt,
-  isValidTaskMode,
-  getFallbackData,
-  type TaskMode,
-  type TaskPayload,
-} from '../lib/prompts';
-import { executeTask } from '../lib/llm';
 import { getCorsHeadersForRequest } from '../lib/cors';
 import { getAiDefaultModel, getAiVisionModel } from '../lib/config';
 import { requireAdmin } from '../middleware/auth';
@@ -28,10 +18,7 @@ import {
   normalizeLensFeedRequest,
   normalizeThoughtFeedRequest,
 } from '../lib/feed-normalizers';
-import {
-  enqueueFeedArtifactGeneration,
-  getServeableFeedPage,
-} from '../lib/ai-artifact-outbox';
+import { enqueueFeedArtifactGeneration, getServeableFeedPage } from '../lib/ai-artifact-outbox';
 
 type ChatContext = { Bindings: Env };
 
@@ -127,66 +114,10 @@ chat.post('/session/:sessionId/message', async (c: Context<ChatContext>) => {
 });
 
 chat.post('/session/:sessionId/task', async (c: Context<ChatContext>) => {
-  const body = await c.req.json().catch(() => ({}));
-  const {
-    mode,
-    payload,
-    prompt: legacyPrompt,
-  } = body as {
-    mode?: string;
-    payload?: TaskPayload;
-    context?: { url?: string; title?: string };
-    prompt?: string;
-  };
-
-  const taskMode: TaskMode = isValidTaskMode(mode || '') ? (mode as TaskMode) : 'custom';
-  const taskPayload: TaskPayload = payload || {};
-
-  if (legacyPrompt && legacyPrompt.trim() && taskMode === 'custom') {
-    taskPayload.prompt = legacyPrompt;
-  }
-
-  const content = taskPayload.paragraph || taskPayload.content || taskPayload.prompt || '';
-  if (!content.trim()) {
-    return badRequest(c, 'No content provided for task');
-  }
-
-  try {
-    const promptConfig = buildTaskPrompt(taskMode, taskPayload);
-    const result = await executeTask(taskMode, promptConfig, taskPayload, c.env);
-
-    if (result.ok) {
-      return success(c, {
-        data: result.data,
-        mode: taskMode,
-        source: result.source,
-      });
-    }
-
-    console.warn('Task execution failed, returning fallback:', result.error);
-    return success(c, {
-      data: result.data,
-      mode: taskMode,
-      source: 'fallback',
-      _fallback: true,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Task execution failed';
-    console.error('Task error:', message);
-
-    try {
-      const fallbackData = getFallbackData(taskMode, taskPayload);
-      return success(c, {
-        data: fallbackData,
-        mode: taskMode,
-        source: 'fallback',
-        _fallback: true,
-        _error: message,
-      });
-    } catch {
-      return error(c, message, 500, 'INTERNAL_ERROR');
-    }
-  }
+  const { sessionId } = c.req.param();
+  return proxyRequest(c, `/session/${sessionId}/task`, {
+    sanitizeClientModel: true,
+  });
 });
 
 chat.post('/session/:sessionId/lens-feed', async (c: Context<ChatContext>) => {
@@ -238,6 +169,7 @@ chat.post('/session/:sessionId/lens-feed', async (c: Context<ChatContext>) => {
   });
 
   const fallback = buildLensFeedFallback(input);
+  c.header('Retry-After', '3');
   return success(c, {
     ...fallback,
     snapshotId: null,
@@ -299,6 +231,7 @@ chat.post('/session/:sessionId/thought-feed', async (c: Context<ChatContext>) =>
   });
 
   const fallback = buildThoughtFeedFallback(input);
+  c.header('Retry-After', '3');
   return success(c, {
     ...fallback,
     snapshotId: null,
@@ -312,36 +245,9 @@ chat.post('/session/:sessionId/thought-feed', async (c: Context<ChatContext>) =>
 });
 
 chat.post('/aggregate', async (c: Context<ChatContext>) => {
-  const body = await c.req.json().catch(() => ({}));
-  const { prompt } = body as { prompt?: string };
-
-  if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
-    return badRequest(c, 'prompt is required');
-  }
-
-  const systemPrompt = [
-    '다음 입력에는 여러 대화 세션의 요약과 사용자의 통합 질문이 함께 포함되어 있습니다.',
-    '먼저 세션 요약들을 충분히 이해한 뒤, 사용자의 요청에 따라 전체를 한 번에 통합하여 답변해 주세요.',
-    '- 공통된 핵심 아이디어',
-    '- 서로 다른 관점이나 긴장 지점',
-    '- 다음 액션/실천 아이디어',
-    '를 중심으로 한국어로 정리해 주세요.',
-    '',
-    '---',
-    '',
-    prompt.trim(),
-  ].join('\n');
-
-  try {
-    const aiService = createAIService(c.env);
-    const text = await aiService.generate(systemPrompt, {
-      temperature: AI_TEMPERATURES.AGGREGATE,
-    });
-    return success(c, { text });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'aggregate failed';
-    return error(c, message, 500, 'INTERNAL_ERROR');
-  }
+  return proxyRequest(c, '/aggregate', {
+    sanitizeClientModel: true,
+  });
 });
 
 chat.get('/live/stream', async (c: Context<ChatContext>) => {

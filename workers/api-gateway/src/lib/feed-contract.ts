@@ -44,16 +44,24 @@ export type LensFeedRequest = {
 
 export type ThoughtFeedRequest = LensFeedRequest;
 
+export type FeedResponseSource = 'snapshot' | 'snapshot-stale' | 'warming-fallback';
+
 export type LensFeedResponse = {
   items: LensCard[];
   nextCursor: FeedCursor | null;
   exhausted: boolean;
+  warming?: boolean;
+  stale?: boolean;
+  source?: FeedResponseSource;
 };
 
 export type ThoughtFeedResponse = {
   items: ThoughtCard[];
   nextCursor: FeedCursor | null;
   exhausted: boolean;
+  warming?: boolean;
+  stale?: boolean;
+  source?: FeedResponseSource;
 };
 
 export type NormalizedFeedRequestBase = {
@@ -75,12 +83,7 @@ export const FEED_MAX_COUNT = 6;
 export const FEED_MAX_PAGES = 8;
 export const FEED_MAX_SEEN_KEYS = 128;
 
-export const LENS_PERSONA_IDS = [
-  'mentor',
-  'debater',
-  'explorer',
-  'analyst',
-] as const;
+export const LENS_PERSONA_IDS = ['mentor', 'debater', 'explorer', 'analyst'] as const;
 
 export const LENS_FEED_SCHEMA: JsonSchema = {
   type: 'object',
@@ -102,16 +105,7 @@ export const LENS_FEED_SCHEMA: JsonSchema = {
           detail: { type: 'string' },
           tags: { type: 'array', items: { type: 'string' } },
         },
-        required: [
-          'id',
-          'personaId',
-          'angleKey',
-          'title',
-          'summary',
-          'bullets',
-          'detail',
-          'tags',
-        ],
+        required: ['id', 'personaId', 'angleKey', 'title', 'summary', 'bullets', 'detail', 'tags'],
       },
     },
   },
