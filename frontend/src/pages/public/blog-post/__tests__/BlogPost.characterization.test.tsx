@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { afterEach, beforeEach, test, expect, vi } from "vitest";
+import { afterEach, beforeEach, describe, test, expect, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => {
   // Two-level proxy: str.section.key → "" (string primitive, renderable by React)
@@ -55,6 +55,8 @@ vi.mock("@/services/content/translate", () => {
   return {
     translatePost: vi.fn(),
     getCachedTranslation: vi.fn(),
+    requestTranslationGeneration: vi.fn(),
+    getTranslationGenerationStatus: vi.fn(),
     TranslationApiError: MockTranslationApiError,
   };
 });
@@ -66,7 +68,7 @@ vi.mock("@/components/common/ReadingProgress", () => ({
 vi.mock("@/components/common/ScrollToTop", () => ({ ScrollToTop: () => null }));
 vi.mock("@/components/ui/button", () => ({
   Button: ({ children }: { children?: React.ReactNode }) => (
-    <button>{children}</button>
+    <button type="button">{children}</button>
   ),
 }));
 vi.mock("@/components/ui/badge", () => ({
@@ -162,8 +164,22 @@ vi.mock("@/utils/content/blog", () => ({
   ),
 }));
 vi.mock("@/utils/seo/seo", () => ({
-  generateSEOData: vi.fn(() => ({})),
-  generateStructuredData: vi.fn(() => ({})),
+  generateSEOData: vi.fn(() => ({
+    title: "SEO title",
+    description: "SEO description",
+    keywords: ["blog"],
+  })),
+  generateStructuredData: vi.fn(() => ({
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "nodove-blog",
+    description: "SEO description",
+    url: "https://noblog.nodove.com",
+    author: {
+      "@type": "Person",
+      name: "nodove",
+    },
+  })),
 }));
 
 import BlogPost from "../../BlogPost";
@@ -172,8 +188,9 @@ import * as postService from "@/services/content/postService";
 import * as translateService from "@/services/content/translate";
 import * as ragService from "@/services/discovery/rag";
 import * as seoUtils from "@/utils/seo/seo";
+import type { BlogPost as BlogPostType } from "@/types/blog";
 
-const basePost = {
+const basePost: BlogPostType = {
   id: "test-post",
   title: "Test Post",
   description: "Test description",
@@ -187,10 +204,28 @@ const basePost = {
   slug: "test-post",
   year: "2024",
   published: true,
-  language: "ko",
-  defaultLanguage: "ko",
+  language: "ko" as const,
+  defaultLanguage: "ko" as const,
   availableLanguages: ["ko"],
   translations: {},
+};
+
+const mockSeoData = {
+  title: "SEO title",
+  description: "SEO description",
+  keywords: ["blog"],
+};
+
+const mockStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "nodove-blog",
+  description: "SEO description",
+  url: "https://noblog.nodove.com",
+  author: {
+    "@type": "Person",
+    name: "nodove",
+  },
 };
 
 const emptyPostsPage = {
@@ -229,6 +264,8 @@ beforeEach(() => {
   vi.mocked(postsData.getPostsBySeries).mockReset();
   vi.mocked(translateService.translatePost).mockReset();
   vi.mocked(translateService.getCachedTranslation).mockReset();
+  vi.mocked(translateService.requestTranslationGeneration).mockReset();
+  vi.mocked(translateService.getTranslationGenerationStatus).mockReset();
   vi.mocked(ragService.findRelatedPosts).mockReset();
   vi.mocked(seoUtils.generateSEOData).mockReset();
   vi.mocked(seoUtils.generateStructuredData).mockReset();
@@ -259,9 +296,21 @@ beforeEach(() => {
     pending: false,
     job: null,
   });
+  vi.mocked(translateService.requestTranslationGeneration).mockResolvedValue({
+    translation: null,
+    job: null,
+    accepted: false,
+  });
+  vi.mocked(translateService.getTranslationGenerationStatus).mockResolvedValue({
+    id: "job-1",
+    status: "running",
+    statusUrl: "/status",
+    cacheUrl: "/cache",
+    generateUrl: "/generate",
+  });
   vi.mocked(ragService.findRelatedPosts).mockResolvedValue([]);
-  vi.mocked(seoUtils.generateSEOData).mockReturnValue({});
-  vi.mocked(seoUtils.generateStructuredData).mockReturnValue({});
+  vi.mocked(seoUtils.generateSEOData).mockReturnValue(mockSeoData);
+  vi.mocked(seoUtils.generateStructuredData).mockReturnValue(mockStructuredData);
   mockedPostService.getPost.mockResolvedValue(basePost);
 });
 
@@ -448,4 +497,67 @@ test("handles missing post gracefully", async () => {
     expect(postsData.getPostBySlug).toHaveBeenCalled();
   });
   expect(document.body).toBeInTheDocument();
+});
+
+describe("translation: uses getCachedTranslation only", () => {
+  test("calls getCachedTranslation when translation is requested", async () => {
+    hoisted.currentLanguage = "en";
+
+    renderBlogPost();
+
+    await waitFor(() => {
+      expect(translateService.getCachedTranslation).toHaveBeenCalledWith(
+        "2024",
+        "test-post",
+        "en",
+      );
+    });
+  });
+
+  test("does not call async generation helpers while loading translated content", async () => {
+    hoisted.currentLanguage = "en";
+    vi.mocked(translateService.getCachedTranslation)
+      .mockResolvedValueOnce({
+        translation: null,
+        pending: true,
+        job: {
+          id: "job-1",
+          status: "running",
+          statusUrl: "/status",
+          cacheUrl: "/cache",
+          generateUrl: "/generate",
+        },
+        retryAfterSeconds: 1,
+      })
+      .mockResolvedValueOnce({
+        translation: {
+          title: "Ready Translation",
+          description: "Ready description",
+          content: "# Ready",
+          cached: true,
+        },
+        pending: false,
+        job: null,
+      });
+
+    vi.useFakeTimers();
+    renderBlogPost();
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByText("Ready Translation")).toBeInTheDocument();
+
+    expect(translateService.requestTranslationGeneration).not.toHaveBeenCalled();
+    expect(translateService.getTranslationGenerationStatus).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
 });
