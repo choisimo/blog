@@ -10,7 +10,8 @@
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
     "worker": "node src/workers/ai-worker.js",
-    "worker:dev": "node --watch src/workers/ai-worker.js"
+    "worker:dev": "node --watch src/workers/ai-worker.js",
+    "test": "node --test test/notifications.redis-fanout.test.js && node --test test/translation-proxy.test.js"
   },
   "dependencies": {
     "@blog/shared": "file:../shared",
