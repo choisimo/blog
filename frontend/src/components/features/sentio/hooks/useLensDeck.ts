@@ -106,7 +106,7 @@ function mergeCards(
 function resolveResponseSource(
   response: { source?: string; warming?: boolean } | null | undefined,
 ): Exclude<LensDeckSource, "fallback"> {
-  if (response?.source === "warming-fallback" || response?.warming === true) {
+  if (response?.source === "warming" || response?.warming === true) {
     return "warming";
   }
   return "feed";
@@ -116,7 +116,7 @@ function isWarmingResponse(response: {
   source?: string;
   warming?: boolean;
 } | null | undefined): boolean {
-  return response?.warming === true || response?.source === "warming-fallback";
+  return response?.warming === true || response?.source === "warming";
 }
 
 export function useLensDeck({

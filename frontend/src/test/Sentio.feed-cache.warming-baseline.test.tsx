@@ -142,13 +142,13 @@ describe("sentio feed warming baseline", () => {
     vi.useRealTimers();
   });
 
-  it("collapses lens warming-fallback responses into local warming state", async () => {
+  it("treats lens warming responses with empty items as loading state", async () => {
     vi.mocked(invokeLensFeed).mockResolvedValueOnce({
-      items: lensItems.slice(0, 2),
+      items: [],
       nextCursor: null,
       exhausted: false,
       warming: true,
-      source: "warming-fallback",
+      source: "warming",
     } satisfies LensFeedResponse);
 
     render(<LensStateHarness cacheKey="lens:warming-collapse" enabled={true} />);
@@ -157,16 +157,16 @@ describe("sentio feed warming baseline", () => {
       expect(screen.getByTestId("lens-source")).toHaveTextContent("warming");
     });
     expect(screen.getByTestId("lens-status")).toHaveTextContent("warming");
-    expect(screen.getByTestId("lens-cards")).toHaveTextContent("Lens 1,Lens 2");
+    expect(screen.getByTestId("lens-cards")).toHaveTextContent("");
   });
 
-  it("collapses thought warming-fallback responses into local warming state", async () => {
+  it("treats thought warming responses with empty items as loading state", async () => {
     vi.mocked(invokeThoughtFeed).mockResolvedValueOnce({
-      items: thoughtItems.slice(0, 1),
+      items: [],
       nextCursor: null,
       exhausted: false,
       warming: true,
-      source: "warming-fallback",
+      source: "warming",
     } satisfies ThoughtFeedResponse);
 
     render(<ThoughtStateHarness cacheKey="thought:warming-collapse" enabled={true} />);
@@ -175,7 +175,7 @@ describe("sentio feed warming baseline", () => {
       expect(screen.getByTestId("thought-source")).toHaveTextContent("warming");
     });
     expect(screen.getByTestId("thought-status")).toHaveTextContent("warming");
-    expect(screen.getByTestId("thought-cards")).toHaveTextContent("Thought 1");
+    expect(screen.getByTestId("thought-cards")).toHaveTextContent("");
   });
 
   it("uses locally generated prism fallback cards when the lens request fails", async () => {
@@ -208,11 +208,11 @@ describe("sentio feed warming baseline", () => {
 
   it("does not persist initial lens warming responses as ready cache entries", async () => {
     vi.mocked(invokeLensFeed).mockResolvedValue({
-      items: lensItems.slice(0, 2),
+      items: [],
       nextCursor: null,
       exhausted: false,
       warming: true,
-      source: "warming-fallback",
+      source: "warming",
     } satisfies LensFeedResponse);
 
     const { rerender } = render(
@@ -241,11 +241,11 @@ describe("sentio feed warming baseline", () => {
 
   it("does not persist initial thought warming responses as ready cache entries", async () => {
     vi.mocked(invokeThoughtFeed).mockResolvedValue({
-      items: thoughtItems.slice(0, 1),
+      items: [],
       nextCursor: null,
       exhausted: false,
       warming: true,
-      source: "warming-fallback",
+      source: "warming",
     } satisfies ThoughtFeedResponse);
 
     const { rerender } = render(
@@ -300,7 +300,7 @@ describe("sentio feed warming baseline", () => {
         },
         exhausted: false,
         warming: true,
-        source: "warming-fallback",
+        source: "warming",
       } satisfies LensFeedResponse)
       .mockResolvedValueOnce({
         items: [],
@@ -354,7 +354,7 @@ describe("sentio feed warming baseline", () => {
         },
         exhausted: false,
         warming: true,
-        source: "warming-fallback",
+        source: "warming",
       } satisfies ThoughtFeedResponse);
 
     const { rerender } = render(

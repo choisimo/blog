@@ -487,9 +487,21 @@ ${description}
 
     let cancelled = false;
     let pollTimer: ReturnType<typeof setTimeout> | null = null;
+    let pollAttempts = 0;
+    const pollStartMs = Date.now();
+    const MAX_POLL_ATTEMPTS = 5;
+    const MAX_POLL_DURATION_MS = 20_000;
 
     const scheduleRetry = (delaySeconds?: number) => {
-      const retryDelayMs = Math.max(1, delaySeconds ?? 3) * 1000;
+      pollAttempts += 1;
+      if (
+        pollAttempts >= MAX_POLL_ATTEMPTS ||
+        Date.now() - pollStartMs >= MAX_POLL_DURATION_MS
+      ) {
+        setTranslationStatus("idle");
+        return;
+      }
+      const retryDelayMs = Math.max(1, delaySeconds ?? 15) * 1000;
       pollTimer = window.setTimeout(() => {
         void loadTranslation();
       }, retryDelayMs);

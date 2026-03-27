@@ -177,7 +177,7 @@ export type LensFeedRequest = {
 export type FeedResponseSource =
   | "snapshot"
   | "snapshot-stale"
-  | "warming-fallback";
+  | "warming";
 
 export type LensFeedResponse = {
   items: LensCard[];

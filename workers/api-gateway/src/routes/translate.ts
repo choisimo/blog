@@ -311,7 +311,7 @@ async function sendCachedTranslation(c: Context<HonoEnv>) {
       });
     }
 
-    c.header('Retry-After', '3');
+    c.header('Retry-After', '15');
     return c.json({ ok: true, data: null }, 202);
   } catch (err) {
     console.error('Failed to get translation:', err);

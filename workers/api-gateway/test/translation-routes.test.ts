@@ -312,7 +312,7 @@ describe('translation routes characterization', () => {
     );
 
     expect(response.status).toBe(202);
-    expect(response.headers.get('Retry-After')).toBe('3');
+    expect(response.headers.get('Retry-After')).toBe('15');
     await expect(response.json()).resolves.toEqual({ ok: true, data: null });
   });
 
