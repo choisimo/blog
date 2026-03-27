@@ -12,7 +12,12 @@ export default defineWorkersConfig(async () => {
           wrangler: { configPath: './wrangler.toml' },
           miniflare: {
             // Inject migrations as a serialised binding so test/setup.ts can apply them
-            bindings: { TEST_MIGRATIONS: migrations },
+            bindings: {
+              TEST_MIGRATIONS: migrations,
+              JWT_SECRET: 'translation-route-test-secret',
+              PUBLIC_SITE_URL: 'https://public.example',
+              BACKEND_ORIGIN: 'https://backend.example',
+            },
           },
         },
       },

@@ -20,4 +20,14 @@ beforeAll(async () => {
   }));
 
   await applyD1Migrations(env.DB, migrations);
+
+  // domain_outbox was originally created without last_attempt_at / processed_at.
+  // These columns were added to the TypeScript code after the migration was applied
+  // to production. Patch the test schema so all test files can use the live code paths.
+  const colResult = await env.DB.prepare('PRAGMA table_info(domain_outbox)').all<{ name: string }>();
+  const existingCols = new Set((colResult.results ?? []).map((r) => r.name));
+  const missing = ['last_attempt_at', 'processed_at'].filter((col) => !existingCols.has(col));
+  for (const col of missing) {
+    await env.DB.prepare(`ALTER TABLE domain_outbox ADD COLUMN ${col} TEXT`).run();
+  }
 });
