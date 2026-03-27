@@ -27,6 +27,8 @@ export const localizedPostFieldsSchema = z.object({
 export const translationResultSchema = localizedPostFieldsSchema.extend({
   cached: z.boolean().optional(),
   isAiGenerated: z.boolean().optional(),
+  stale: z.boolean().optional(),
+  warming: z.boolean().optional(),
 });
 
 export const translationQuerySchema = z.object({
