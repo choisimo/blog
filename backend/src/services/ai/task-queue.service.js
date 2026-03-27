@@ -67,7 +67,6 @@ export class AITaskQueue {
 
     await client.xAdd(
       STREAM_NAME,
-      { MAXLEN: { strategy: '~', threshold: STREAM_MAXLEN } },
       '*',
       {
         id: taskId,
@@ -76,6 +75,7 @@ export class AITaskQueue {
         priority: String(task.priority || 'normal'),
         timestamp: String(Date.now()),
       },
+      { MAXLEN: { strategy: '~', threshold: STREAM_MAXLEN } },
     );
 
     return taskId;
@@ -224,7 +224,6 @@ export class AITaskQueue {
     
     await client.xAdd(
       STREAM_NAME,
-      { MAXLEN: { strategy: '~', threshold: STREAM_MAXLEN } },
       '*',
       {
         id: task.id,
@@ -235,6 +234,7 @@ export class AITaskQueue {
         retryCount: String(task.retryCount + 1),
         lastError: errorMessage,
       },
+      { MAXLEN: { strategy: '~', threshold: STREAM_MAXLEN } },
     );
   }
 
@@ -307,7 +307,6 @@ export class AITaskQueue {
     
     await client.xAdd(
       STREAM_NAME,
-      { MAXLEN: { strategy: '~', threshold: STREAM_MAXLEN } },
       '*',
       {
         id: m.message.id,
@@ -318,6 +317,7 @@ export class AITaskQueue {
         retryCount: '0',
         reprocessedFrom: messageId,
       },
+      { MAXLEN: { strategy: '~', threshold: STREAM_MAXLEN } },
     );
     
     await client.xDel(DLQ_STREAM, messageId);
