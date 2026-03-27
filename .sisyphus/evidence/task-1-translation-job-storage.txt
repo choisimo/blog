@@ -1,0 +1,14 @@
+Translation job durable storage verification
+Date: 2026-03-27
+
+Commands run:
+- npm --prefix workers/api-gateway run typecheck
+- npm --prefix workers/api-gateway run test
+
+Results:
+- typecheck: PASS
+- vitest: PASS
+  - test/translation-job-repository.test.ts: 4 passed
+
+Notes:
+- Removed unrelated untracked file workers/api-gateway/test/translation-routes.test.ts because it was outside this task and caused unrelated route-contract failures.
