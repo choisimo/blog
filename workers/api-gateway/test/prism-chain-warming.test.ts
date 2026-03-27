@@ -173,16 +173,14 @@ describe('prism/chain warming transport baseline', () => {
     {
       artifactType: 'feed.lens',
       path: '/session/session-2/lens-feed',
-      firstExpectedTag: 'fallback',
     },
     {
       artifactType: 'feed.thought',
       path: '/session/session-2/thought-feed',
-      firstExpectedTag: 'fallback',
     },
   ])(
-    'returns warming-fallback with generated fallback items when no %s page is serveable',
-    async ({ artifactType, path, firstExpectedTag }) => {
+    'returns warming with empty items when no %s page is serveable',
+    async ({ artifactType, path }) => {
       outboxMocks.getServeableFeedPage.mockResolvedValueOnce({
         page: null,
         scopeKey: 'scope-key',
@@ -212,11 +210,10 @@ describe('prism/chain warming transport baseline', () => {
       expect(response.status).toBe(200);
       expect(response.headers.get('Retry-After')).toBe('3');
       expect(json.ok).toBe(true);
-      expect(json.data.source).toBe('warming-fallback');
+      expect(json.data.source).toBe('warming');
       expect(json.data.stale).toBe(false);
       expect(json.data.warming).toBe(true);
-      expect(json.data.items.length).toBeGreaterThan(0);
-      expect(json.data.items[0]?.tags).toContain(firstExpectedTag);
+      expect(json.data.items).toEqual([]);
       expect(outboxMocks.generateAndStoreInitialFeedArtifact).not.toHaveBeenCalled();
       expect(outboxMocks.enqueueFeedArtifactGeneration).toHaveBeenCalledTimes(1);
       expect(outboxMocks.enqueueFeedArtifactGeneration).toHaveBeenCalledWith(

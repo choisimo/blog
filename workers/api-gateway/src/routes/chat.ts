@@ -13,8 +13,6 @@ import { getAiDefaultModel, getAiVisionModel } from '../lib/config';
 import { requireAdmin } from '../middleware/auth';
 import type { LensCard, ThoughtCard } from '../lib/feed-contract';
 import {
-  buildLensFeedFallback,
-  buildThoughtFeedFallback,
   normalizeLensFeedRequest,
   normalizeThoughtFeedRequest,
 } from '../lib/feed-normalizers';
@@ -205,17 +203,16 @@ chat.post('/session/:sessionId/lens-feed', async (c: Context<ChatContext>) => {
     count: input.count,
   });
 
-  const fallback = buildLensFeedFallback(input);
   c.header('Retry-After', '3');
   return success(c, {
-    ...fallback,
+    items: [],
     snapshotId: null,
     generationVersionHash: served.generationVersionHash,
     warming: true,
     stale: false,
     unreadCount: 0,
     itemStates: [],
-    source: 'warming-fallback',
+    source: 'warming',
     exhausted: false,
     nextCursor: null,
   });
@@ -306,17 +303,16 @@ chat.post('/session/:sessionId/thought-feed', async (c: Context<ChatContext>) =>
     count: input.count,
   });
 
-  const fallback = buildThoughtFeedFallback(input);
   c.header('Retry-After', '3');
   return success(c, {
-    ...fallback,
+    items: [],
     snapshotId: null,
     generationVersionHash: served.generationVersionHash,
     warming: true,
     stale: false,
     unreadCount: 0,
     itemStates: [],
-    source: 'warming-fallback',
+    source: 'warming',
     exhausted: false,
     nextCursor: null,
   });
