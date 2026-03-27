@@ -18,6 +18,7 @@ import {
   fetchPublishedPost,
   getCachedTranslationRecord,
   getValidCachedTranslation,
+  hashContent,
   normalizeTranslationLang,
   translateAndCachePost,
   type SourcePost,
@@ -351,7 +352,12 @@ async function sendTranslationJobStatus(c: Context<HonoEnv>) {
 
   const jobId = c.req.query('jobId');
   const key = buildTranslationJobKey(year, slug, normalizedTargetLang);
-  const job = jobId ? getTranslationJobById(jobId) : getTranslationJobByKey(key);
+  const sourcePost = jobId ? null : await fetchPublishedPost(c.env, year, slug).catch(() => null);
+  const job = jobId
+    ? await getTranslationJobById(c.env.DB, jobId)
+    : sourcePost
+      ? await getTranslationJobByKey(c.env.DB, key, hashContent(sourcePost.content))
+      : null;
 
   if (!job || job.key !== key) {
     return error(c, 'Translation job not found', 404, 'NOT_FOUND');
@@ -384,6 +390,7 @@ async function generateFromSourcePost(
   }
 
   const sourceLang = normalizeTranslationLang(options.sourceLang) || sourcePost.sourceLang;
+  const contentHash = hashContent(sourcePost.content);
   const urls = buildTranslationJobUrls(
     c.req.url,
     sourcePost.year,
@@ -392,13 +399,14 @@ async function generateFromSourcePost(
   );
   const userId = getAuthenticatedUserId(c);
   let jobId = '';
-  const job = startTranslationJob<TranslationResponseData>({
+  const job = await startTranslationJob<TranslationResponseData>(c.env.DB, {
     key: buildTranslationJobKey(sourcePost.year, sourcePost.slug, normalizedTargetLang),
     year: sourcePost.year,
     slug: sourcePost.slug,
     targetLang: normalizedTargetLang,
     sourceLang,
     forceRefresh: options.forceRefresh,
+    contentHash,
     urls,
     runner: async () => {
       try {
@@ -452,10 +460,10 @@ async function generateFromSourcePost(
 
   try {
     const data = await job.wait;
-    const latestJob = getTranslationJobById(job.job.id) || job.job;
+    const latestJob = (await getTranslationJobById(c.env.DB, job.job.id)) || job.job;
     return buildGenerateSuccessResponse(c, data, latestJob);
   } catch (err) {
-    const latestJob = getTranslationJobById(job.job.id);
+    const latestJob = await getTranslationJobById(c.env.DB, job.job.id);
     if (latestJob) {
       applyJobHeaders(c, latestJob);
     }

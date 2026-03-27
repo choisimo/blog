@@ -1,3 +1,11 @@
+import type { D1Database } from '@cloudflare/workers-types';
+
+import {
+  fetchActiveTranslationJob,
+  fetchTranslationJobById,
+  upsertTranslationJobRow,
+} from '../../lib/translation-job-repository';
+
 type TranslationJobState = 'running' | 'succeeded' | 'failed';
 
 export type TranslationJobError = {
@@ -37,10 +45,6 @@ export type TranslationJobSnapshot = {
   result?: TranslationJobResultSummary;
 };
 
-type InternalTranslationJob<T> = TranslationJobSnapshot & {
-  promise?: Promise<T>;
-};
-
 type TranslationJobUrls = {
   statusUrl: string;
   cacheUrl: string;
@@ -54,6 +58,7 @@ type StartTranslationJobInput<T> = {
   targetLang: string;
   sourceLang?: string;
   forceRefresh?: boolean;
+  contentHash: string;
   urls: TranslationJobUrls;
   runner: () => Promise<T>;
   summarizeResult?: (result: T) => TranslationJobResultSummary;
@@ -66,72 +71,7 @@ type TranslationJobHandle<T> = {
   wait: Promise<T>;
 };
 
-type TranslationJobStore = {
-  jobsById: Map<string, InternalTranslationJob<any>>;
-  latestJobByKey: Map<string, InternalTranslationJob<any>>;
-};
-
-const STORE_KEY = '__blogTranslationJobStoreWorker';
-const JOB_TTL_MS = 30 * 60 * 1000;
-
-function getStore(): TranslationJobStore {
-  const root = globalThis as typeof globalThis & {
-    [STORE_KEY]?: TranslationJobStore;
-  };
-
-  if (!root[STORE_KEY]) {
-    root[STORE_KEY] = {
-      jobsById: new Map(),
-      latestJobByKey: new Map(),
-    };
-  }
-
-  return root[STORE_KEY]!;
-}
-
-function snapshotJob<T>(job: InternalTranslationJob<T>): TranslationJobSnapshot {
-  return {
-    id: job.id,
-    key: job.key,
-    status: job.status,
-    year: job.year,
-    slug: job.slug,
-    targetLang: job.targetLang,
-    sourceLang: job.sourceLang,
-    forceRefresh: job.forceRefresh,
-    createdAt: job.createdAt,
-    updatedAt: job.updatedAt,
-    startedAt: job.startedAt,
-    completedAt: job.completedAt,
-    statusUrl: job.statusUrl,
-    cacheUrl: job.cacheUrl,
-    generateUrl: job.generateUrl,
-    error: job.error,
-    result: job.result,
-  };
-}
-
-function pruneExpiredJobs(): void {
-  const store = getStore();
-  const now = Date.now();
-
-  for (const [jobId, job] of store.jobsById.entries()) {
-    if (job.status === 'running') {
-      continue;
-    }
-
-    const updatedAt = Date.parse(job.updatedAt || job.createdAt);
-    if (!updatedAt || now - updatedAt <= JOB_TTL_MS) {
-      continue;
-    }
-
-    store.jobsById.delete(jobId);
-    const current = store.latestJobByKey.get(job.key);
-    if (current?.id === jobId) {
-      store.latestJobByKey.delete(job.key);
-    }
-  }
-}
+const runningJobs = new Map<string, Promise<unknown>>();
 
 function defaultJobError(error: unknown): TranslationJobError {
   return {
@@ -141,31 +81,55 @@ function defaultJobError(error: unknown): TranslationJobError {
   };
 }
 
+function parseTranslationJobKey(key: string): {
+  year: string;
+  slug: string;
+  targetLang: string;
+} | null {
+  const firstSeparator = key.indexOf(':');
+  const lastSeparator = key.lastIndexOf(':');
+
+  if (firstSeparator <= 0 || lastSeparator <= firstSeparator + 1 || lastSeparator >= key.length - 1) {
+    return null;
+  }
+
+  return {
+    year: key.slice(0, firstSeparator),
+    slug: key.slice(firstSeparator + 1, lastSeparator),
+    targetLang: key.slice(lastSeparator + 1),
+  };
+}
+
 export function buildTranslationJobKey(year: string, slug: string, targetLang: string): string {
   return `${year}:${slug}:${targetLang}`;
 }
 
-export function startTranslationJob<T>(
+export async function startTranslationJob<T>(
+  db: D1Database,
   input: StartTranslationJobInput<T>
-): TranslationJobHandle<T> {
-  pruneExpiredJobs();
-  const store = getStore();
-  const existing = store.latestJobByKey.get(input.key) as InternalTranslationJob<T> | undefined;
+): Promise<TranslationJobHandle<T>> {
+  const existing = await fetchActiveTranslationJob(
+    db,
+    input.year,
+    input.slug,
+    input.targetLang,
+    input.contentHash
+  );
+  const existingWait = existing ? (runningJobs.get(existing.id) as Promise<T> | undefined) : undefined;
 
-  if (existing?.status === 'running' && existing.promise) {
+  if (existing?.status === 'running' && existingWait) {
     return {
       created: false,
-      job: snapshotJob(existing),
-      wait: existing.promise,
+      job: existing,
+      wait: existingWait,
     };
   }
 
   const now = new Date().toISOString();
   const jobId = `translation-job-${crypto.randomUUID()}`;
-  const job: InternalTranslationJob<T> = {
+  const baseJob = {
     id: jobId,
     key: input.key,
-    status: 'running',
     year: input.year,
     slug: input.slug,
     targetLang: input.targetLang,
@@ -177,46 +141,83 @@ export function startTranslationJob<T>(
     statusUrl: input.urls.statusUrl,
     cacheUrl: input.urls.cacheUrl,
     generateUrl: input.urls.generateUrl,
-  };
+  } satisfies Omit<TranslationJobSnapshot, 'status'>;
+
+  const job = await upsertTranslationJobRow(db, {
+    ...baseJob,
+    status: 'running',
+    contentHash: input.contentHash,
+  });
 
   const wait = Promise.resolve()
     .then(input.runner)
-    .then((result) => {
+    .then(async (result) => {
       const completedAt = new Date().toISOString();
-      job.status = 'succeeded';
-      job.updatedAt = completedAt;
-      job.completedAt = completedAt;
-      job.result = input.summarizeResult ? input.summarizeResult(result) : undefined;
+
+      await upsertTranslationJobRow(db, {
+        ...baseJob,
+        id: job.id,
+        status: 'succeeded',
+        updatedAt: completedAt,
+        completedAt,
+        error: undefined,
+        result: input.summarizeResult ? input.summarizeResult(result) : undefined,
+        contentHash: input.contentHash,
+      });
+
       return result;
     })
-    .catch((error) => {
+    .catch(async (error) => {
       const completedAt = new Date().toISOString();
-      job.status = 'failed';
-      job.updatedAt = completedAt;
-      job.completedAt = completedAt;
-      job.error = input.normalizeError ? input.normalizeError(error) : defaultJobError(error);
+
+      await upsertTranslationJobRow(db, {
+        ...baseJob,
+        id: job.id,
+        status: 'failed',
+        updatedAt: completedAt,
+        completedAt,
+        error: input.normalizeError ? input.normalizeError(error) : defaultJobError(error),
+        result: undefined,
+        contentHash: input.contentHash,
+      });
+
       throw error;
+    })
+    .finally(() => {
+      runningJobs.delete(job.id);
     });
 
-  job.promise = wait;
-  store.jobsById.set(jobId, job as InternalTranslationJob<any>);
-  store.latestJobByKey.set(input.key, job as InternalTranslationJob<any>);
+  runningJobs.set(job.id, wait as Promise<unknown>);
 
   return {
     created: true,
-    job: snapshotJob(job),
+    job,
     wait,
   };
 }
 
-export function getTranslationJobByKey(key: string): TranslationJobSnapshot | null {
-  pruneExpiredJobs();
-  const job = getStore().latestJobByKey.get(key);
-  return job ? snapshotJob(job) : null;
+export async function getTranslationJobByKey(
+  db: D1Database,
+  key: string,
+  contentHash: string
+): Promise<TranslationJobSnapshot | null> {
+  const parsedKey = parseTranslationJobKey(key);
+  if (!parsedKey) {
+    return null;
+  }
+
+  return fetchActiveTranslationJob(
+    db,
+    parsedKey.year,
+    parsedKey.slug,
+    parsedKey.targetLang,
+    contentHash
+  );
 }
 
-export function getTranslationJobById(jobId: string): TranslationJobSnapshot | null {
-  pruneExpiredJobs();
-  const job = getStore().jobsById.get(jobId);
-  return job ? snapshotJob(job) : null;
+export async function getTranslationJobById(
+  db: D1Database,
+  jobId: string
+): Promise<TranslationJobSnapshot | null> {
+  return fetchTranslationJobById(db, jobId);
 }
