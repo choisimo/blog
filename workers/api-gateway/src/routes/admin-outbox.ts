@@ -9,6 +9,10 @@ import {
   type DomainOutboxStatus,
 } from '../lib/domain-outbox';
 import {
+  flushAiArtifactOutbox,
+  AI_ARTIFACT_STREAM,
+} from '../lib/ai-artifact-outbox';
+import {
   flushMemoryEmbeddingOutbox,
   MEMORY_EMBEDDING_STREAM,
 } from '../lib/memory-embedding-outbox';
@@ -70,6 +74,10 @@ adminOutbox.get('/:stream', async (c) => {
   });
 });
 
+/**
+ * Replay one or more outbox events by id. This also supports targeted
+ * translation recovery by passing a single translation outbox event id.
+ */
 adminOutbox.post('/:stream/replay', async (c) => {
   const stream = c.req.param('stream');
   if (!stream) {
@@ -105,6 +113,18 @@ adminOutbox.post('/:stream/replay', async (c) => {
     ids,
     flush: flushResult,
   });
+});
+
+adminOutbox.post('/:stream/ai-flush', async (c) => {
+  const stream = c.req.param('stream');
+  const limit = Math.min(parseLimit(c.req.query('limit'), 10), 50);
+
+  if (stream !== AI_ARTIFACT_STREAM) {
+    return badRequest(c, `Unsupported stream: ${stream}`);
+  }
+
+  const result = await flushAiArtifactOutbox(c.env, { limit });
+  return success(c, result);
 });
 
 adminOutbox.post('/:stream/flush', async (c) => {
