@@ -44,6 +44,10 @@ jobs:
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
+      - name: Sync lock file with package.json
+        working-directory: backend
+        run: npm install --package-lock-only --ignore-scripts
+
       - name: Install backend dependencies
         working-directory: backend
         run: npm ci
