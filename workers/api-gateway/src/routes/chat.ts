@@ -167,7 +167,7 @@ chat.post('/session/:sessionId/lens-feed', async (c: Context<ChatContext>) => {
         sessionId,
         paragraph: input.paragraph,
         postTitle: input.postTitle,
-        count: 3,
+        count: 4,
       });
       const fresh = await getServeableFeedPage<LensCard>(c.env, {
         artifactType: 'feed.lens',
@@ -267,7 +267,7 @@ chat.post('/session/:sessionId/thought-feed', async (c: Context<ChatContext>) =>
         sessionId,
         paragraph: input.paragraph,
         postTitle: input.postTitle,
-        count: 3,
+        count: 4,
       });
       const fresh = await getServeableFeedPage<ThoughtCard>(c.env, {
         artifactType: 'feed.thought',
