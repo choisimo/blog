@@ -292,6 +292,9 @@ export function useThoughtFeed({
       if (activeCacheKeyRef.current !== cacheKey) return;
       void loadInitial(true);
     },
+    onExhausted: () => {
+      setSource("fallback");
+    },
   });
 
   const loadMore = useCallback(async () => {

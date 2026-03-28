@@ -41,6 +41,7 @@ type UseWarmingRetryOptions = {
   status: AsyncArtifactStatus;
   onRetry: () => void | Promise<void>;
   delays?: readonly number[];
+  onExhausted?: () => void;
 };
 
 export function useWarmingRetry({
@@ -48,6 +49,7 @@ export function useWarmingRetry({
   status,
   onRetry,
   delays = DEFAULT_WARMING_RETRY_DELAYS_MS,
+  onExhausted,
 }: UseWarmingRetryOptions) {
   const attemptRef = useRef(0);
   const onRetryRef = useRef(onRetry);
@@ -60,16 +62,24 @@ export function useWarmingRetry({
     attemptRef.current = 0;
   }, []);
 
+  const onExhaustedRef = useRef(onExhausted);
+
+  useEffect(() => {
+    onExhaustedRef.current = onExhausted;
+  }, [onExhausted]);
+
   useEffect(() => {
     if (!enabled || status !== "warming") {
       attemptRef.current = 0;
       return;
     }
 
-    const lastDelay = delays[delays.length - 1] ?? 3000;
-    const delay =
-      delays[Math.min(attemptRef.current, Math.max(delays.length - 1, 0))] ??
-      lastDelay;
+    if (attemptRef.current >= delays.length) {
+      onExhaustedRef.current?.();
+      return;
+    }
+
+    const delay = delays[attemptRef.current] ?? delays[delays.length - 1] ?? 3000;
 
     const timer = window.setTimeout(() => {
       attemptRef.current += 1;
