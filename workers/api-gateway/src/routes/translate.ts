@@ -19,6 +19,7 @@ import {
   getCachedTranslationRecord,
   getValidCachedTranslation,
   hashContent,
+  isSuspiciousTranslation,
   normalizeTranslationLang,
   translateAndCachePost,
   type SourcePost,
@@ -303,7 +304,7 @@ async function sendCachedTranslation(c: Context<HonoEnv>) {
     });
 
     const stale = await getCachedTranslationRecord(c.env.DB, year, slug, normalizedTargetLang);
-    if (stale) {
+    if (stale && !isSuspiciousTranslation(sourcePost.content, stale.content)) {
       return success(c, {
         ...buildTranslationResponse(stale),
         stale: true,

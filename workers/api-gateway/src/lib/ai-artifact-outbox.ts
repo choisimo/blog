@@ -549,6 +549,11 @@ async function processTranslationEvent(env: Env, payload: TranslationGeneratePay
     throw new Error('Published post not found');
   }
 
+  // Skip if source and target languages are the same
+  if (sourcePost.sourceLang === payload.targetLang) {
+    return;
+  }
+
   const cached = await getValidCachedTranslation(env.DB, sourcePost, payload.targetLang);
   if (cached && !payload.forceRefresh) {
     return;
