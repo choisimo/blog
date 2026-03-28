@@ -5,7 +5,7 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Sat, 28 Mar 2026 02:12:04 GMT</lastBuildDate>
+    <lastBuildDate>Sat, 28 Mar 2026 08:13:32 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
       <title>[C 언어 1부] 배열은 왜 단순한 변수 묶음이 아닐까?</title>
@@ -20,6 +20,21 @@
       <category>Pointer</category>
       <category>Cache</category>
       <category>Compiler</category>
+    </item>
+    <item>
+      <title>[알고리즘 1부] 시간 복잡도라는 숫자에 매몰된 착각</title>
+      <description>시간 복잡도가 실제 실행 시간 대신 성장률을 보는 이유</description>
+      <link>https://noblog.nodove.com/blog/2026/algorithm-1</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/algorithm-1</guid>
+      <pubDate>Fri, 20 Mar 2026 00:00:00 GMT</pubDate>
+      <category>기술</category>
+      <category>Python</category>
+      <category>Algorithm</category>
+      <category>Complexity</category>
+      <category>Big-O</category>
+      <category>Performance</category>
+      <category>System</category>
+      <category>Architecture</category>
     </item>
     <item>
       <title>[파이썬 3부] 동적 객체와 타협하는 방법</title>
@@ -270,19 +285,6 @@
       <category>Global State</category>
       <category>Prototype</category>
       <category>Gateway</category>
-    </item>
-    <item>
-      <title>[Arena 상세] Opus4.6 분석</title>
-      <description>Opus4.6의 미들웨어 중심 운영 아키텍처와 production-ready 특성을 상세 분석</description>
-      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-opus-4-6</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-opus-4-6</guid>
-      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
-      <category>AI Engineering</category>
-      <category>Opus4.6</category>
-      <category>Middleware</category>
-      <category>Rate Limit</category>
-      <category>Auth</category>
-      <category>Production Ready</category>
     </item>
   </channel>
 </rss>

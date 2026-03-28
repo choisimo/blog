@@ -25,6 +25,30 @@
       "url": "/blog/2026/c-lang-1"
     },
     {
+      "path": "/posts/2026/algorithm-1.md",
+      "year": "2026",
+      "slug": "algorithm-1",
+      "title": "[알고리즘 1부] 시간 복잡도라는 숫자에 매몰된 착각",
+      "description": "시간 복잡도가 실제 실행 시간 대신 성장률을 보는 이유",
+      "snippet": "시간 복잡도가 실제 실행 시간 대신 성장률을 보는 이유",
+      "date": "2026-03-20",
+      "tags": [
+        "Python",
+        "Algorithm",
+        "Complexity",
+        "Big-O",
+        "Performance",
+        "System",
+        "Architecture"
+      ],
+      "category": "기술",
+      "author": "Admin",
+      "readingTime": "7 min read",
+      "published": true,
+      "coverImage": "/images/2026/algorithm-1/1.png",
+      "url": "/blog/2026/algorithm-1"
+    },
+    {
       "path": "/posts/2026/python-3.md",
       "year": "2026",
       "slug": "python-3",
@@ -4545,26 +4569,6 @@
       "url": "/blog/2025/memory-management-study"
     },
     {
-      "path": "/posts/2026/docker-1.md",
-      "year": "2026",
-      "slug": "docker-1",
-      "title": "Docker container 란 무엇일까?",
-      "description": "Docker 기초-1",
-      "snippet": "Docker 기초-1",
-      "date": "2025-01-01",
-      "tags": [
-        "cgroups",
-        "namespace",
-        "container",
-        "docker"
-      ],
-      "category": "Linux, docker, virtualization",
-      "author": "Admin",
-      "readingTime": "1 min read",
-      "published": true,
-      "url": "/blog/2026/docker-1"
-    },
-    {
       "path": "/posts/2024/react-native-springboot-mongodb-diary-app.md",
       "year": "2024",
       "slug": "react-native-springboot-mongodb-diary-app",
@@ -5756,14 +5760,14 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-03-28T02:12:04.435Z",
+  "generatedAt": "2026-03-28T08:13:31.718Z",
   "years": [
     "2026",
     "2025",
     "2024"
   ],
   "categoryCounts": {
-    "기술": 22,
+    "기술": 23,
     "Git": 1,
     "system-architecture": 1,
     "Finance": 1,
@@ -5798,7 +5802,6 @@
     "History": 1,
     "Technology": 1,
     "Computer Science": 2,
-    "Linux, docker, virtualization": 1,
     "개발": 3,
     "Development": 1,
     "시스템": 1,

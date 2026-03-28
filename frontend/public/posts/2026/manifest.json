@@ -14,11 +14,11 @@
     "ai-agent-arena-2026-overview-and-comparison.md",
     "ai-agent-arena-2026-sonnet-4-6.md",
     "ai-agent-arena-2026-swe-1-5.md",
+    "algorithm-1.md",
     "alone.md",
     "awk-1.md",
     "c-lang-1.md",
     "current-crowd.md",
-    "docker-1.md",
     "draft-continuation-test.md",
     "git-history-rewrite-reset-rebase-reflog.md",
     "hedgefunds_transcation_manage.md",
@@ -39,7 +39,7 @@
     "understanding-ssm-and-mamba.md",
     "vim-architecture-functionality-commands-integration.md"
   ],
-  "generatedAt": "2026-03-28T02:12:04.346Z",
+  "generatedAt": "2026-03-28T08:13:31.621Z",
   "totalFiles": 38,
   "excludedFiles": 0
 }
