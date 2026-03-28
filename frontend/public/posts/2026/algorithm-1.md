@@ -12,13 +12,8 @@ tags:
     "System",
     "Architecture",
   ]
-description: "시간 복잡도가 실제 실행 시간 대신 성장률을 보는 이유"
-excerpt: "Big-O는 현실을 버리는 장난감이 아니라, 환경을 지워도 남는 구조적 증가율을 보는 도구다"
+excerpt: "시간 복잡도가 실제 실행 시간 대신 성장률을 보는 이유"
 readTime: "16분"
-author: "Admin"
-series: "algorithm"
-seriesOrder: 2
-published: true
 ---
 
 알고리즘을 처음 배울 때 많은 사람들이 가장 먼저 빠지는 함정이 있습니다. 바로 **시간 복잡도는 현실과 동떨어진 추상적 숫자놀음일 뿐**이라는 오해입니다.  
