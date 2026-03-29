@@ -3,22 +3,36 @@ import { useMutation } from "@tanstack/react-query";
 import {
   createPostPR,
   type CreatePostPayload,
+  type UploadedPostImage,
   uploadPostImages,
 } from "@/services/session/admin";
+import AdminPostPreview from "@/components/features/admin/AdminPostPreview";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/ui/use-toast";
-import MarkdownRenderer from "@/components/features/blog/MarkdownRenderer";
 import { useAuthStore } from "@/stores/session/useAuthStore";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import BotChatPanel from "@/components/features/admin/BotChatPanel";
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function normalizeSlug(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\-_ ]/g, "")
+    .replace(/[\s_]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 export default function NewPost() {
@@ -37,9 +51,18 @@ export default function NewPost() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploaded, setUploaded] = useState<
-    Array<{ url: string; variantWebp?: { url: string } | null }>
-  >([]);
+  const [uploaded, setUploaded] = useState<UploadedPostImage[]>([]);
+  const normalizedSlug = useMemo(() => normalizeSlug(slug), [slug]);
+  const normalizedTitleSlug = useMemo(() => normalizeSlug(title), [title]);
+  const previewSlug = normalizedSlug || normalizedTitleSlug || "draft-post";
+  const parsedTags = useMemo(
+    () =>
+      tags
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    [tags],
+  );
 
   const logout = async () => {
     await storeLogout();
@@ -51,16 +74,13 @@ export default function NewPost() {
       const token = await getValidAccessToken();
       if (!token) throw new Error("먼저 로그인하세요");
       const payload: CreatePostPayload = {
-        title: title.trim() || slug.trim() || "New Post",
-        slug: slug.trim() || undefined,
+        title: title.trim() || normalizedSlug || "New Post",
+        slug: normalizedSlug || undefined,
         year,
         content,
         frontmatter: {
           category: category || "General",
-          tags: tags
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean),
+          tags: parsedTags,
           coverImage: coverImage || undefined,
           published,
         },
@@ -89,11 +109,15 @@ export default function NewPost() {
       if (!token) throw new Error("먼저 로그인하세요");
       if (!year || !/^[0-9]{4}$/.test(year))
         throw new Error("연도(YYYY)를 입력하세요");
-      if (!slug.trim()) throw new Error("슬러그(slug)를 먼저 입력하세요 (이미지 경로 생성에 필요)");
+      if (!normalizedSlug) {
+        throw new Error(
+          "유효한 슬러그(slug)를 먼저 입력하세요 (영문/숫자 기준 canonical 경로에 사용됩니다)",
+        );
+      }
 
       setUploading(true);
       const res = await uploadPostImages(
-        { year, slug: slug.trim() },
+        { year, slug: normalizedSlug },
         files,
         token,
       );
@@ -101,7 +125,7 @@ export default function NewPost() {
 
       // Auto-insert images into the editor
       res.items.forEach((u) => {
-        insertAtCursor(`![image](${u.variantWebp?.url || u.url})`);
+        insertAtCursor(`![image](${u.markdownPath})`);
       });
 
       toast({
@@ -122,7 +146,11 @@ export default function NewPost() {
   const doUpload = async () => {
     const input = fileInputRef.current;
     if (!input || !input.files || input.files.length === 0) {
-      toast({ title: "오류", description: "업로드할 파일을 선택하세요", variant: "destructive" });
+      toast({
+        title: "오류",
+        description: "업로드할 파일을 선택하세요",
+        variant: "destructive",
+      });
       return;
     }
     const files = Array.from(input.files);
@@ -134,7 +162,7 @@ export default function NewPost() {
     const items = e.clipboardData.items;
     const imageFiles: File[] = [];
     for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf('image') !== -1) {
+      if (items[i].type.indexOf("image") !== -1) {
         const blob = items[i].getAsFile();
         if (blob) imageFiles.push(blob);
       }
@@ -151,7 +179,7 @@ export default function NewPost() {
     const imageFiles: File[] = [];
     if (items) {
       for (let i = 0; i < items.length; i++) {
-        if (items[i].kind === 'file' && items[i].type.match('^image/')) {
+        if (items[i].kind === "file" && items[i].type.match("^image/")) {
           const file = items[i].getAsFile();
           if (file) imageFiles.push(file);
         }
@@ -168,21 +196,12 @@ export default function NewPost() {
     );
   };
 
-  const previewContent = useMemo(() => {
-    const lines: string[] = [];
-    if (title.trim()) lines.push(`# ${title.trim()}`);
-    if (coverImage.trim()) lines.push(`![cover](${coverImage.trim()})`);
-    if (tags.trim()) lines.push(`\n> 태그: ${tags}`);
-    if (category.trim()) lines.push(`> 카테고리: ${category}`);
-    if (!published) lines.push("> 상태: Draft");
-    if (lines.length) lines.push("");
-    return [lines.join("\n"), content].filter(Boolean).join("\n");
-  }, [title, coverImage, tags, category, published, content]);
-
   return (
     <div className="container mx-auto px-0 md:px-4 py-4 md:py-8 h-[calc(100vh-80px)] max-w-[1400px]">
-      <ResizablePanelGroup direction="horizontal" className="h-full w-full rounded-lg border bg-background shadow-sm overflow-hidden md:flex">
-
+      <ResizablePanelGroup
+        direction="horizontal"
+        className="h-full w-full rounded-lg border bg-background shadow-sm overflow-hidden md:flex"
+      >
         <ResizablePanel defaultSize={70} minSize={40}>
           <ScrollArea className="h-full w-full">
             <div className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto">
@@ -218,6 +237,13 @@ export default function NewPost() {
                         onChange={(e) => setSlug(e.target.value)}
                         placeholder="my-new-post"
                       />
+                      {slug.trim() && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          canonical slug:{" "}
+                          {normalizedSlug ||
+                            "유효한 영문/숫자 slug를 입력하세요"}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="year">연도</Label>
@@ -269,7 +295,9 @@ export default function NewPost() {
 
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     <div>
-                      <Label htmlFor="content">내용 (Markdown) - 이미지 복사/붙여넣기 지원</Label>
+                      <Label htmlFor="content">
+                        내용 (Markdown) - 이미지 복사/붙여넣기 지원
+                      </Label>
                       <Textarea
                         id="content"
                         value={content}
@@ -283,8 +311,17 @@ export default function NewPost() {
                     </div>
                     <div>
                       <Label>미리보기</Label>
-                      <div className="border rounded-md p-4 min-h-[460px] bg-background">
-                        <MarkdownRenderer content={previewContent} />
+                      <div className="min-h-[460px] overflow-hidden rounded-md border bg-background">
+                        <AdminPostPreview
+                          title={title.trim() || "Untitled Post"}
+                          slug={previewSlug}
+                          year={year}
+                          category={category.trim() || "General"}
+                          tags={parsedTags}
+                          coverImage={coverImage.trim() || undefined}
+                          content={content}
+                          published={published}
+                        />
                       </div>
                     </div>
                   </div>
@@ -300,7 +337,11 @@ export default function NewPost() {
                           multiple
                         />
                       </div>
-                      <Button onClick={doUpload} disabled={uploading} variant="secondary">
+                      <Button
+                        onClick={doUpload}
+                        disabled={uploading}
+                        variant="secondary"
+                      >
                         {uploading ? "업로드 중…" : "수동 이미지 업로드"}
                       </Button>
                     </div>
@@ -311,27 +352,26 @@ export default function NewPost() {
                         </div>
                         <ul className="space-y-1 text-sm">
                           {uploaded.map((u) => (
-                            <li key={u.variantWebp?.url || u.url} className="flex items-center gap-2">
+                            <li
+                              key={u.markdownPath}
+                              className="flex items-center gap-2"
+                            >
                               <button
                                 type="button"
                                 className="text-primary hover:underline max-w-[250px] truncate block text-left"
                                 onClick={() =>
-                                  insertAtCursor(
-                                    `![image](${u.variantWebp?.url || u.url})`,
-                                  )
+                                  insertAtCursor(`![image](${u.markdownPath})`)
                                 }
                                 title="마크다운 삽입"
                               >
-                                {u.variantWebp?.url || u.url}
+                                {u.markdownPath}
                               </button>
                               <Button
                                 size="sm"
                                 variant="outline"
                                 className="h-6 text-xs px-2 py-0 ml-auto flex-shrink-0"
                                 onClick={() =>
-                                  navigator.clipboard.writeText(
-                                    u.variantWebp?.url || u.url,
-                                  )
+                                  navigator.clipboard.writeText(u.markdownPath)
                                 }
                               >
                                 복사
@@ -350,7 +390,9 @@ export default function NewPost() {
                       onClick={() => createPr.mutate()}
                       disabled={createPr.isPending}
                     >
-                      {createPr.isPending ? "PR 생성 중…" : "PR 생성 및 배포하기"}
+                      {createPr.isPending
+                        ? "PR 생성 중…"
+                        : "PR 생성 및 배포하기"}
                     </Button>
                   </div>
                 </CardContent>
@@ -361,7 +403,11 @@ export default function NewPost() {
 
         <ResizableHandle withHandle className="hidden md:flex" />
 
-        <ResizablePanel defaultSize={30} minSize={25} className="hidden md:block">
+        <ResizablePanel
+          defaultSize={30}
+          minSize={25}
+          className="hidden md:block"
+        >
           <BotChatPanel
             title={title}
             content={content}

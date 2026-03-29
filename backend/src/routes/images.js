@@ -4,6 +4,7 @@ import fse from "fs-extra";
 import path from "node:path";
 import multer from "multer";
 import sharp from "sharp";
+import slugify from "slugify";
 import { config } from "../config.js";
 import requireAdmin from "../middleware/adminAuth.js";
 import { upload as r2Upload, isR2Configured, generateKey } from "../lib/r2.js";
@@ -11,7 +12,7 @@ import { aiService } from "../lib/ai-service.js";
 import { AI_MODELS } from "../config/constants.js";
 import { createLogger } from "../lib/logger.js";
 
-const logger = createLogger('images-route');
+const logger = createLogger("images-route");
 
 const router = Router();
 
@@ -45,6 +46,14 @@ function sanitizeSegment(s) {
     .trim();
 }
 
+function normalizeSlug(value) {
+  return slugify(String(value || ""), {
+    lower: true,
+    strict: true,
+    trim: true,
+  });
+}
+
 function sanitizeFilename(name) {
   const base = path.basename(String(name || "file"));
   // Disallow hidden files and traversal
@@ -63,19 +72,13 @@ function buildDir({ year, slug, subdir }) {
     const rel = parts.join("/");
     return { abs: path.join(imagesDir, rel), rel };
   }
-  const y = sanitizeSegment(year);
-  const s = sanitizeSegment(slug);
-  if (y && /^\d{4}$/.test(y) && s) {
+  const y = String(year || "").trim();
+  const s = normalizeSlug(slug);
+  if (/^\d{4}$/.test(y) && s) {
     const rel = path.posix.join(y, s);
     return { abs: path.join(imagesDir, rel), rel };
   }
-  const now = new Date();
-  const rel = path.posix.join(
-    "uploads",
-    `${now.getFullYear()}`,
-    `${String(now.getMonth() + 1).padStart(2, "0")}`,
-  );
-  return { abs: path.join(imagesDir, rel), rel };
+  return null;
 }
 
 async function saveWithVariants(destDirAbs, relDir, file) {
@@ -101,17 +104,23 @@ async function saveWithVariants(destDirAbs, relDir, file) {
   const absOriginal = path.join(destDirAbs, finalName);
   await fse.writeFile(absOriginal, file.buffer);
 
+  const originalUrl = `/images/${relDir}/${finalName}`;
   let webpName = null;
   let webpUrl = null;
+  let width = null;
+  let height = null;
   try {
     const img = sharp(file.buffer, { failOn: "none" }).rotate();
     const meta = await img.metadata();
+    width = meta.width ?? null;
+    height = meta.height ?? null;
     const maxWidth = 1600;
-    const width = meta.width || maxWidth;
-    const resized = width > maxWidth ? img.resize({ width: maxWidth }) : img;
+    const sourceWidth = meta.width || maxWidth;
+    const resized =
+      sourceWidth > maxWidth ? img.resize({ width: maxWidth }) : img;
     const webpBuffer = await resized.webp({ quality: 82 }).toBuffer();
     const baseName = finalName.replace(/\.[^.]+$/, "");
-    webpName = `${baseName}-w${Math.min(width, maxWidth)}.webp`;
+    webpName = `${baseName}-w${Math.min(sourceWidth, maxWidth)}.webp`;
     const absWebp = path.join(destDirAbs, webpName);
     await fse.writeFile(absWebp, webpBuffer);
     webpUrl = `/images/${relDir}/${webpName}`;
@@ -122,8 +131,14 @@ async function saveWithVariants(destDirAbs, relDir, file) {
   return {
     filename: finalName,
     path: `${relDir}/${finalName}`,
-    url: `/images/${relDir}/${finalName}`,
+    url: originalUrl,
+    markdownPath: originalUrl,
+    previewUrl: webpUrl || originalUrl,
+    thumbPreviewUrl: webpUrl,
+    size: file.size,
     sizeBytes: file.size,
+    width,
+    height,
     variantWebp: webpName ? { filename: webpName, url: webpUrl } : null,
   };
 }
@@ -136,7 +151,14 @@ router.post(
     try {
       const b = req.body || {};
       const { year, slug, subdir } = b;
-      const { abs, rel } = buildDir({ year, slug, subdir });
+      const dirInfo = buildDir({ year, slug, subdir });
+      if (!dirInfo) {
+        return res.status(400).json({
+          ok: false,
+          error: "year(YYYY) and slug are required",
+        });
+      }
+      const { abs, rel } = dirInfo;
 
       const files = Array.isArray(req.files)
         ? req.files
@@ -167,7 +189,14 @@ router.get("/", requireAdmin, async (req, res, next) => {
   try {
     const q = req.query || {};
     const { year, slug, dir: subdir } = q;
-    const { abs, rel } = buildDir({ year, slug, subdir });
+    const dirInfo = buildDir({ year, slug, subdir });
+    if (!dirInfo) {
+      return res.status(400).json({
+        ok: false,
+        error: "year(YYYY) and slug are required",
+      });
+    }
+    const { abs, rel } = dirInfo;
 
     if (!fs.existsSync(abs))
       return res.json({ ok: true, data: { dir: `/images/${rel}`, items: [] } });
@@ -200,9 +229,12 @@ router.delete(
       if (!/^\d{4}$/.test(String(year || "")))
         return res.status(400).json({ ok: false, error: "Invalid year" });
 
-      const y = sanitizeSegment(year);
-      const s = sanitizeSegment(slug);
+      const y = String(year || "").trim();
+      const s = normalizeSlug(slug);
       const f = sanitizeFilename(filename);
+      if (!/^\d{4}$/.test(y) || !s) {
+        return res.status(400).json({ ok: false, error: "Invalid slug" });
+      }
       const rel = path.posix.join(y, s, f);
       const abs = path.join(config.content.imagesDir, rel);
 
@@ -243,58 +275,63 @@ router.delete(
  *
  * Returns: { url, key, size, contentType, imageAnalysis? }
  */
-router.post("/chat-upload", requireAdmin, upload.single("file"), async (req, res, next) => {
-  try {
-    const file = req.file;
-    if (!file) {
-      return res.status(400).json({ ok: false, error: "file is required" });
-    }
+router.post(
+  "/chat-upload",
+  requireAdmin,
+  upload.single("file"),
+  async (req, res, next) => {
+    try {
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ ok: false, error: "file is required" });
+      }
 
-    // Generate key
-    const key = generateKey(file.originalname || "image", "ai-chat");
+      // Generate key
+      const key = generateKey(file.originalname || "image", "ai-chat");
 
-    // Upload
-    const result = await r2Upload(key, file.buffer, {
-      contentType: file.mimetype || "application/octet-stream",
-    });
+      // Upload
+      const result = await r2Upload(key, file.buffer, {
+        contentType: file.mimetype || "application/octet-stream",
+      });
 
-    // Perform AI vision analysis if it's an image
-    // Prefer URL instead of base64
-    let imageAnalysis = null;
-    const forcedVisionModel = resolveVisionModelFromRequest(req);
-    if (file.mimetype?.startsWith("image/")) {
-      try {
-        const analysisPrompt = `이 이미지를 분석해주세요. 다음 내용을 간결하게 설명해주세요:
+      // Perform AI vision analysis if it's an image
+      // Prefer URL instead of base64
+      let imageAnalysis = null;
+      const forcedVisionModel = resolveVisionModelFromRequest(req);
+      if (file.mimetype?.startsWith("image/")) {
+        try {
+          const analysisPrompt = `이 이미지를 분석해주세요. 다음 내용을 간결하게 설명해주세요:
 1. 이미지에 보이는 주요 요소들
 2. 전체적인 분위기나 맥락
 3. 텍스트가 있다면 해당 내용
 
 한국어로 2-3문장으로 간결하게 요약해주세요.`;
 
-        imageAnalysis = await aiService.vision(result.url, analysisPrompt, {
-          mimeType: file.mimetype,
-          model: forcedVisionModel,
-        });
-      } catch (err) {
-        // Vision analysis failed, but upload succeeded - continue without analysis
-        logger.error({}, 'Vision analysis failed', { error: err.message });
+          imageAnalysis = await aiService.vision(result.url, analysisPrompt, {
+            mimeType: file.mimetype,
+            model: forcedVisionModel,
+          });
+        } catch (err) {
+          // Vision analysis failed, but upload succeeded - continue without analysis
+          logger.error({}, "Vision analysis failed", { error: err.message });
+        }
       }
-    }
 
-    return res.status(201).json({
-      ok: true,
-      data: {
-        url: result.url,
-        key: result.key,
-        size: result.size,
-        contentType: result.contentType,
-        imageAnalysis,
-      },
-    });
-  } catch (err) {
-    logger.error({}, 'chat-upload error', { error: err.message });
-    return next(err);
-  }
-});
+      return res.status(201).json({
+        ok: true,
+        data: {
+          url: result.url,
+          key: result.key,
+          size: result.size,
+          contentType: result.contentType,
+          imageAnalysis,
+        },
+      });
+    } catch (err) {
+      logger.error({}, "chat-upload error", { error: err.message });
+      return next(err);
+    }
+  },
+);
 
 export default router;
