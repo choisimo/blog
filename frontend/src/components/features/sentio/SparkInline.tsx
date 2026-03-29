@@ -47,6 +47,16 @@ function emitAiMemoLog(detail: Record<string, unknown>) {
   }
 }
 
+const ZERO_WIDTH_CHAR_RE = /[\u200B-\u200D\uFEFF]/g;
+
+function normalizeContentIdentity(value: string | undefined): string {
+  return String(value || "")
+    .normalize("NFKC")
+    .replace(ZERO_WIDTH_CHAR_RE, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function extractText(children: React.ReactNode): string {
   const parts: string[] = [];
   const walk = (node: React.ReactNode) => {
@@ -64,7 +74,7 @@ function extractText(children: React.ReactNode): string {
     }
   };
   walk(children);
-  return parts.join(" ").replace(/\s+/g, " ").trim();
+  return normalizeContentIdentity(parts.join(" "));
 }
 
 const INLINE_ONLY_TAGS = new Set([
@@ -240,9 +250,13 @@ export default function SparkInline({
 
   const text = useMemo(() => extractText(children), [children]);
   const hasText = text && text.length > 0;
+  const normalizedPostTitle = useMemo(
+    () => normalizeContentIdentity(postTitle),
+    [postTitle],
+  );
   const contentKey = useMemo(
-    () => `${postTitle ?? ""}::${text}`,
-    [postTitle, text],
+    () => `${normalizedPostTitle}::${text}`,
+    [normalizedPostTitle, text],
   );
   const contentKeyRef = useRef(contentKey);
   const ContentTag: "p" | "div" =

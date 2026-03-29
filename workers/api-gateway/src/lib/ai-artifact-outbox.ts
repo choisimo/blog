@@ -647,6 +647,7 @@ export async function generateAndStoreInitialFeedArtifact(
     paragraph: string;
     postTitle?: string;
     count: number;
+    maxPages?: number;
   }
 ): Promise<void> {
   await ensureAiArtifactSchema(env.DB);
@@ -674,7 +675,7 @@ export async function generateAndStoreInitialFeedArtifact(
     modelRoute,
     generationVersionHash,
     count: input.count,
-    maxPages: 1,
+    maxPages: Math.max(1, input.maxPages ?? 1),
     priority: 'interactive',
   };
   await processFeedEvent(env, payload);

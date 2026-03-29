@@ -12,11 +12,12 @@ import { getCorsHeadersForRequest } from '../lib/cors';
 import { getAiDefaultModel, getAiVisionModel } from '../lib/config';
 import { requireAdmin } from '../middleware/auth';
 import type { LensCard, ThoughtCard } from '../lib/feed-contract';
+import { normalizeLensFeedRequest, normalizeThoughtFeedRequest } from '../lib/feed-normalizers';
 import {
-  normalizeLensFeedRequest,
-  normalizeThoughtFeedRequest,
-} from '../lib/feed-normalizers';
-import { enqueueFeedArtifactGeneration, generateAndStoreInitialFeedArtifact, getServeableFeedPage } from '../lib/ai-artifact-outbox';
+  enqueueFeedArtifactGeneration,
+  generateAndStoreInitialFeedArtifact,
+  getServeableFeedPage,
+} from '../lib/ai-artifact-outbox';
 
 type ChatContext = { Bindings: Env };
 
@@ -155,8 +156,8 @@ chat.post('/session/:sessionId/lens-feed', async (c: Context<ChatContext>) => {
       unreadCount: served.readState.unreadCount,
       itemStates: served.readState.itemStates,
       source: served.stale ? 'snapshot-stale' : 'snapshot',
-      exhausted: served.warming ? false : served.page.payload.exhausted,
-      nextCursor: served.warming ? null : served.page.payload.nextCursor,
+      exhausted: served.page.payload.exhausted,
+      nextCursor: served.page.payload.nextCursor,
     });
   }
 
@@ -243,6 +244,7 @@ chat.post('/session/:sessionId/thought-feed', async (c: Context<ChatContext>) =>
         paragraph: input.paragraph,
         postTitle: input.postTitle,
         count: input.count,
+        maxPages: Math.max(input.cursor.page + 1, 2),
       });
     }
 
@@ -255,8 +257,8 @@ chat.post('/session/:sessionId/thought-feed', async (c: Context<ChatContext>) =>
       unreadCount: served.readState.unreadCount,
       itemStates: served.readState.itemStates,
       source: served.stale ? 'snapshot-stale' : 'snapshot',
-      exhausted: served.warming ? false : served.page.payload.exhausted,
-      nextCursor: served.warming ? null : served.page.payload.nextCursor,
+      exhausted: served.page.payload.exhausted,
+      nextCursor: served.page.payload.nextCursor,
     });
   }
 
@@ -268,6 +270,7 @@ chat.post('/session/:sessionId/thought-feed', async (c: Context<ChatContext>) =>
         paragraph: input.paragraph,
         postTitle: input.postTitle,
         count: 4,
+        maxPages: 2,
       });
       const fresh = await getServeableFeedPage<ThoughtCard>(c.env, {
         artifactType: 'feed.thought',
@@ -301,6 +304,7 @@ chat.post('/session/:sessionId/thought-feed', async (c: Context<ChatContext>) =>
     paragraph: input.paragraph,
     postTitle: input.postTitle,
     count: input.count,
+    maxPages: Math.max(input.cursor.page + 1, 2),
   });
 
   c.header('Retry-After', '3');

@@ -20,21 +20,28 @@ export default function ThoughtFeed({
   enabled,
   onReady,
 }: ThoughtFeedProps) {
-  const { cards, loading, loadingMore, exhausted, status, loadMore } =
-    useThoughtFeed({
-      paragraph,
-      postTitle,
-      cacheKey,
-      enabled,
-      onReady,
-    });
+  const {
+    cards,
+    loading,
+    loadingMore,
+    appendWarming,
+    exhausted,
+    status,
+    loadMore,
+  } = useThoughtFeed({
+    paragraph,
+    postTitle,
+    cacheKey,
+    enabled,
+    onReady,
+  });
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const root = scrollRef.current;
     const target = sentinelRef.current;
-    if (!enabled || !root || !target || exhausted) return;
+    if (!enabled || !root || !target || exhausted || appendWarming) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -51,9 +58,18 @@ export default function ThoughtFeed({
 
     observer.observe(target);
     return () => observer.disconnect();
-  }, [cards.length, enabled, exhausted, loadMore]);
+  }, [appendWarming, cards.length, enabled, exhausted, loadMore]);
 
   const renderStatus = useCallback(() => {
+    if (appendWarming) {
+      return (
+        <div className="flex items-center justify-center gap-2 rounded-2xl border border-border/60 bg-muted/25 px-4 py-3 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          다음 thought 카드를 준비 중입니다. 잠시 후 다시 이어집니다.
+        </div>
+      );
+    }
+
     if (loadingMore) {
       return (
         <div className="flex items-center justify-center gap-2 rounded-2xl border border-border/60 bg-muted/25 px-4 py-3 text-xs text-muted-foreground">
@@ -78,7 +94,7 @@ export default function ThoughtFeed({
         리스트 끝 sentinel이 보이면 다음 thought 카드를 자동으로 가져옵니다.
       </div>
     );
-  }, [exhausted, loadingMore]);
+  }, [appendWarming, exhausted, loadingMore]);
 
   if (loading) {
     return (

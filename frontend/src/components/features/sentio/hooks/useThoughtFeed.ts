@@ -5,6 +5,7 @@ import {
 } from "@/services/chat";
 import { FALLBACK_DATA } from "@/config/defaults";
 import {
+  DEFAULT_WARMING_RETRY_DELAYS_MS,
   getAsyncArtifactStatus,
   shouldPersistAsyncArtifactSource,
   useWarmingRetry,
@@ -39,11 +40,14 @@ type UseThoughtFeedResult = {
   cards: ThoughtCardData[];
   loading: boolean;
   loadingMore: boolean;
+  appendWarming: boolean;
   exhausted: boolean;
   status: AsyncArtifactStatus;
   source: ThoughtFeedSource | null;
   loadMore: () => Promise<void>;
 };
+
+const APPEND_WARMING_RETRY_MS = DEFAULT_WARMING_RETRY_DELAYS_MS[1] ?? 3000;
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";
@@ -93,10 +97,15 @@ function resolveResponseSource(
   return "feed";
 }
 
-function isWarmingResponse(response: {
-  source?: string;
-  warming?: boolean;
-} | null | undefined): boolean {
+function isWarmingResponse(
+  response:
+    | {
+        source?: string;
+        warming?: boolean;
+      }
+    | null
+    | undefined,
+): boolean {
   return response?.warming === true || response?.source === "warming";
 }
 
@@ -110,6 +119,7 @@ export function useThoughtFeed({
   const [cards, setCards] = useState<ThoughtCardData[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [appendWarming, setAppendWarming] = useState(false);
   const [exhausted, setExhausted] = useState(false);
   const [source, setSource] = useState<ThoughtFeedSource | null>(null);
 
@@ -152,6 +162,7 @@ export function useThoughtFeed({
     setCards([]);
     setLoading(false);
     setLoadingMore(false);
+    setAppendWarming(false);
     setExhausted(false);
     setSource(null);
     nextCursorRef.current = null;
@@ -178,6 +189,7 @@ export function useThoughtFeed({
       setCards(cached.cards);
       setLoading(false);
       setLoadingMore(false);
+      setAppendWarming(false);
       setExhausted(cached.exhausted);
       setSource(cached.source);
       nextCursorRef.current = cached.nextCursor;
@@ -209,6 +221,7 @@ export function useThoughtFeed({
       } else {
         setLoading(true);
         setLoadingMore(false);
+        setAppendWarming(false);
         setCards([]);
         setExhausted(false);
         setSource(null);
@@ -231,8 +244,9 @@ export function useThoughtFeed({
         const items = response.items ?? [];
         const responseSource = resolveResponseSource(response);
         if (responseSource === "warming") {
+          setAppendWarming(false);
           setCards(items);
-          setExhausted(false);
+          setExhausted(Boolean(response.exhausted));
           setSource("warming");
           nextCursorRef.current = response.nextCursor;
           return;
@@ -242,6 +256,7 @@ export function useThoughtFeed({
           throw new Error("Empty thought feed");
         }
 
+        setAppendWarming(false);
         setCards(items);
         setExhausted(response.exhausted);
         setSource("feed");
@@ -264,6 +279,7 @@ export function useThoughtFeed({
         const mapped = mapChainFallbackToThoughts(
           FALLBACK_DATA.CHAIN.QUESTIONS,
         );
+        setAppendWarming(false);
         setCards(mapped);
         setExhausted(true);
         setSource("fallback");
@@ -293,7 +309,21 @@ export function useThoughtFeed({
       void loadInitial(true);
     },
     onExhausted: () => {
+      setAppendWarming(false);
+
+      if (cardsRef.current.length > 0) {
+        setSource("feed");
+        setExhausted(nextCursorRef.current == null);
+        notifyReady(cardsRef.current, "feed");
+        return;
+      }
+
+      const mapped = mapChainFallbackToThoughts(FALLBACK_DATA.CHAIN.QUESTIONS);
+      nextCursorRef.current = null;
+      setCards(mapped);
+      setExhausted(true);
       setSource("fallback");
+      notifyReady(mapped, "fallback");
     },
   });
 
@@ -301,6 +331,7 @@ export function useThoughtFeed({
     if (
       loading ||
       loadingMore ||
+      appendWarming ||
       exhausted ||
       source !== "feed" ||
       !nextCursorRef.current
@@ -340,16 +371,18 @@ export function useThoughtFeed({
       });
 
       if (incoming.length === 0 && isWarmingResponse(response)) {
+        setAppendWarming(true);
         setExhausted(false);
-        nextCursorRef.current = response.nextCursor ?? cursor;
+        nextCursorRef.current = cursor;
         persistCache({
           exhausted: false,
           source: "feed",
-          nextCursor: response.nextCursor ?? cursor,
+          nextCursor: cursor,
         });
         return;
       }
 
+      setAppendWarming(false);
       const isExhausted =
         response.exhausted ||
         response.nextCursor == null ||
@@ -363,6 +396,7 @@ export function useThoughtFeed({
       }
 
       console.warn("[ThoughtFeed] thought-feed append failed", error);
+      setAppendWarming(false);
       setExhausted(true);
       nextCursorRef.current = null;
     } finally {
@@ -374,6 +408,7 @@ export function useThoughtFeed({
       }
     }
   }, [
+    appendWarming,
     exhausted,
     loading,
     loadingMore,
@@ -382,6 +417,26 @@ export function useThoughtFeed({
     postTitle,
     source,
   ]);
+
+  useEffect(() => {
+    if (
+      !appendWarming ||
+      !enabled ||
+      source !== "feed" ||
+      exhausted ||
+      !nextCursorRef.current
+    ) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setAppendWarming(false);
+    }, APPEND_WARMING_RETRY_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [appendWarming, enabled, exhausted, source]);
 
   useEffect(() => {
     if (!paragraph.trim()) {
@@ -438,6 +493,7 @@ export function useThoughtFeed({
     cards,
     loading,
     loadingMore,
+    appendWarming,
     exhausted,
     status,
     source,
