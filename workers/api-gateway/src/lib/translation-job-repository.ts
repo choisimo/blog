@@ -48,6 +48,7 @@ function parseJson<T>(value: string | null): T | undefined {
 function mapRow(row: TranslationJobRow): TranslationJobSnapshot {
   return {
     id: row.id,
+    type: 'translation.generate',
     key: row.key,
     status: row.status,
     year: row.year,
@@ -160,11 +161,25 @@ export async function upsertTranslationJobRow(
 ): Promise<TranslationJobSnapshot> {
   await execute(
     db,
-    `INSERT OR REPLACE INTO translation_jobs (
+    `INSERT INTO translation_jobs (
        id, key, status, year, slug, target_lang, source_lang, force_refresh,
        content_hash, created_at, updated_at, started_at, completed_at,
        status_url, cache_url, generate_url, error_json, result_json
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(year, slug, target_lang, content_hash)
+     DO UPDATE SET
+       key = excluded.key,
+       status = excluded.status,
+       source_lang = excluded.source_lang,
+       force_refresh = excluded.force_refresh,
+       updated_at = excluded.updated_at,
+       started_at = excluded.started_at,
+       completed_at = excluded.completed_at,
+       status_url = excluded.status_url,
+       cache_url = excluded.cache_url,
+       generate_url = excluded.generate_url,
+       error_json = excluded.error_json,
+       result_json = excluded.result_json`,
     ...bindInput(input)
   );
 
@@ -179,6 +194,49 @@ export async function upsertTranslationJobRow(
     throw new Error(
       `Failed to fetch translation job row after upsert: ${input.year}/${input.slug}/${input.targetLang}`
     );
+  }
+
+  return mapRow(row);
+}
+
+export async function updateTranslationJobRowById(
+  db: D1Database,
+  input: TranslationJobInput
+): Promise<TranslationJobSnapshot> {
+  await execute(
+    db,
+    `UPDATE translation_jobs
+        SET key = ?,
+            status = ?,
+            source_lang = ?,
+            force_refresh = ?,
+            updated_at = ?,
+            started_at = ?,
+            completed_at = ?,
+            status_url = ?,
+            cache_url = ?,
+            generate_url = ?,
+            error_json = ?,
+            result_json = ?
+      WHERE id = ?`,
+    input.key,
+    input.status,
+    input.sourceLang ?? null,
+    input.forceRefresh ? 1 : 0,
+    input.updatedAt,
+    input.startedAt,
+    input.completedAt ?? null,
+    input.statusUrl,
+    input.cacheUrl,
+    input.generateUrl,
+    serializeJson(input.error),
+    serializeJson(input.result),
+    input.id
+  );
+
+  const row = await fetchTranslationJobRowById(db, input.id);
+  if (!row) {
+    throw new Error(`Failed to fetch translation job row after update: ${input.id}`);
   }
 
   return mapRow(row);

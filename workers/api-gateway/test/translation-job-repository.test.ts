@@ -21,6 +21,7 @@ type TranslationJobInput = TranslationJobSnapshot & {
 function buildJobInput(overrides: Partial<TranslationJobInput> = {}): TranslationJobInput {
   return {
     id: overrides.id ?? `translation-job-${crypto.randomUUID()}`,
+    type: overrides.type ?? 'translation.generate',
     key: overrides.key ?? '2026:durable-storage:ko',
     status: overrides.status ?? 'running',
     year: overrides.year ?? '2026',
@@ -75,6 +76,7 @@ describe('translation-job-repository', () => {
 
     expect(created).toEqual({
       id: input.id,
+      type: input.type,
       key: input.key,
       status: input.status,
       year: input.year,
@@ -147,12 +149,18 @@ describe('translation-job-repository', () => {
     );
 
     expect(active).toEqual(second);
-    expect(second.id).toBe('translation-job-replacement');
+    expect(second.id).toBe('translation-job-initial');
     expect(Number(countRow?.count ?? 0)).toBe(1);
   });
 
   it('returns null when no active translation job exists for a scope and content hash', async () => {
-    const fetched = await fetchActiveTranslationJob(env.DB, '2099', 'missing-post', 'fr', 'hash-missing');
+    const fetched = await fetchActiveTranslationJob(
+      env.DB,
+      '2099',
+      'missing-post',
+      'fr',
+      'hash-missing'
+    );
 
     expect(fetched).toBeNull();
   });

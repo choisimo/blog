@@ -41,6 +41,7 @@ export type TranslationErrorCode =
 
 export type TranslationJobStatus = {
   id: string;
+  type: "translation.generate";
   status: "running" | "succeeded" | "failed";
   statusUrl: string;
   cacheUrl: string;

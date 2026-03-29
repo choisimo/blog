@@ -26,11 +26,12 @@ import {
   type SupportedTranslationLang,
   type TranslationResponseData,
 } from '../lib/translation-service';
-import { enqueueTranslationGeneration } from '../lib/ai-artifact-outbox';
 import { ERROR_MESSAGES } from '../config/defaults';
 
 const app = new Hono<HonoEnv>();
 const LEGACY_TRANSLATE_SUNSET = 'Tue, 30 Jun 2026 00:00:00 GMT';
+const TRANSLATION_JOB_POLL_INTERVAL_MS = 500;
+const TRANSLATION_JOB_TIMEOUT_MS = 30_000;
 
 type GenerateOptions = {
   sourceLang?: string;
@@ -70,6 +71,19 @@ function summarizeTranslationResult(result: TranslationResponseData): Translatio
 }
 
 function normalizeGenerateError(err: unknown): GenerateErrorInfo {
+  if (err && typeof err === 'object') {
+    const details = err as Partial<TranslationJobError>;
+    if (typeof details.status === 'number' && typeof details.message === 'string') {
+      return {
+        status: details.status as ContentfulStatusCode,
+        code: details.code,
+        message: details.message,
+        retryable: Boolean(details.retryable),
+        retryAfterSeconds: details.retryAfterSeconds,
+      };
+    }
+  }
+
   const message = err instanceof Error ? err.message : 'Translation failed';
 
   let status: ContentfulStatusCode = 500;
@@ -226,6 +240,18 @@ function wantsAsyncResponse(c: Context<HonoEnv>, options: GenerateOptions = {}) 
   return c.req.header('X-Response-Mode') === 'async';
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function attachTranslationJobWaitUntil(c: Context<HonoEnv>, promise: Promise<unknown>) {
+  c.executionCtx.waitUntil(
+    promise.catch((error) => {
+      console.error('[translate] Background translation job failed:', error);
+    })
+  );
+}
+
 async function getImmediateTranslationResult(
   sourcePost: SourcePost,
   targetLang: SupportedTranslationLang,
@@ -251,6 +277,127 @@ async function getImmediateTranslationResult(
   }
 
   return null;
+}
+
+async function waitForTranslationJobResult(
+  c: Context<HonoEnv>,
+  sourcePost: SourcePost,
+  targetLang: SupportedTranslationLang,
+  job: TranslationJobSnapshot
+): Promise<TranslationResponseData> {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt <= TRANSLATION_JOB_TIMEOUT_MS) {
+    const cached = await getValidCachedTranslation(c.env.DB, sourcePost, targetLang);
+    if (cached) {
+      return buildTranslationResponse(cached);
+    }
+
+    const latestJob = (await getTranslationJobById(c.env.DB, job.id)) || job;
+    if (latestJob.status === 'succeeded') {
+      const completed = await getValidCachedTranslation(c.env.DB, sourcePost, targetLang);
+      if (completed) {
+        return buildTranslationResponse(completed);
+      }
+      throw {
+        status: 500,
+        code: 'INTERNAL_ERROR',
+        message: 'Translation completed without a cached result',
+        retryable: false,
+      } satisfies TranslationJobError;
+    }
+
+    if (latestJob.status === 'failed') {
+      throw (
+        latestJob.error || {
+          status: 500,
+          code: 'INTERNAL_ERROR',
+          message: 'Translation job failed',
+          retryable: false,
+        }
+      );
+    }
+
+    await sleep(TRANSLATION_JOB_POLL_INTERVAL_MS);
+  }
+
+  throw {
+    status: 504,
+    code: 'AI_TIMEOUT',
+    message: ERROR_MESSAGES.AI_TIMEOUT,
+    retryable: true,
+    retryAfterSeconds: 3,
+  } satisfies TranslationJobError;
+}
+
+async function startTranslationGenerationJob(
+  c: Context<HonoEnv>,
+  sourcePost: SourcePost,
+  targetLang: SupportedTranslationLang,
+  options: GenerateOptions = {}
+) {
+  const sourceLang = normalizeTranslationLang(options.sourceLang) || sourcePost.sourceLang;
+  const contentHash = hashContent(sourcePost.content);
+  const urls = buildTranslationJobUrls(c.req.url, sourcePost.year, sourcePost.slug, targetLang);
+  const userId = getAuthenticatedUserId(c);
+  let jobId = '';
+
+  const handle = await startTranslationJob<TranslationResponseData>(c.env.DB, {
+    key: buildTranslationJobKey(sourcePost.year, sourcePost.slug, targetLang),
+    year: sourcePost.year,
+    slug: sourcePost.slug,
+    targetLang,
+    sourceLang,
+    forceRefresh: options.forceRefresh,
+    contentHash,
+    urls,
+    awaitExisting: (existingJob) =>
+      waitForTranslationJobResult(c, sourcePost, targetLang, existingJob),
+    runner: async () => {
+      try {
+        const result = await translateAndCachePost(c.env, c.env.DB, {
+          year: sourcePost.year,
+          slug: sourcePost.slug,
+          targetLang,
+          sourceLang,
+          title: sourcePost.title,
+          description: sourcePost.description,
+          content: sourcePost.content,
+          forceRefresh: options.forceRefresh,
+        });
+
+        await notifyTranslationJob(c, userId, jobId, urls, sourcePost, targetLang, {
+          type: 'success',
+          title: '번역 준비 완료',
+          message: `${sourcePost.title} 번역이 준비되었습니다.`,
+        });
+
+        return result;
+      } catch (err) {
+        const details = normalizeGenerateError(err);
+        await notifyTranslationJob(c, userId, jobId, urls, sourcePost, targetLang, {
+          type: 'error',
+          title: '번역 준비 실패',
+          message: details.message,
+        });
+        throw err;
+      }
+    },
+    summarizeResult: summarizeTranslationResult,
+    normalizeError: (err): TranslationJobError => {
+      const details = normalizeGenerateError(err);
+      return {
+        status: details.status,
+        code: details.code,
+        message: details.message,
+        retryable: details.retryable,
+        retryAfterSeconds: details.retryAfterSeconds,
+      };
+    },
+  });
+  jobId = handle.job.id;
+
+  return handle;
 }
 
 function buildGenerateSuccessResponse(
@@ -296,12 +443,12 @@ async function sendCachedTranslation(c: Context<HonoEnv>) {
       return success(c, buildTranslationResponse(cached));
     }
 
-    await enqueueTranslationGeneration(c.env, {
-      year,
-      slug,
-      targetLang: normalizedTargetLang,
-      priority: 'interactive',
+    const warmJob = await startTranslationGenerationJob(c, sourcePost, normalizedTargetLang, {
+      respondAsync: true,
     });
+    if (warmJob.created) {
+      attachTranslationJobWaitUntil(c, warmJob.wait);
+    }
 
     const stale = await getCachedTranslationRecord(c.env.DB, year, slug, normalizedTargetLang);
     if (stale && !isSuspiciousTranslation(sourcePost.content, stale.content)) {
@@ -312,7 +459,7 @@ async function sendCachedTranslation(c: Context<HonoEnv>) {
       });
     }
 
-    c.header('Retry-After', '15');
+    c.header('Retry-After', '3');
     return c.json({ ok: true, data: null }, 202);
   } catch (err) {
     console.error('Failed to get translation:', err);
@@ -385,75 +532,22 @@ async function generateFromSourcePost(
     return error(c, `Unsupported target language: ${targetLang}`, 400, 'BAD_REQUEST');
   }
 
-  const immediate = await getImmediateTranslationResult(sourcePost, normalizedTargetLang, options, c);
+  const immediate = await getImmediateTranslationResult(
+    sourcePost,
+    normalizedTargetLang,
+    options,
+    c
+  );
   if (immediate) {
     return buildGenerateSuccessResponse(c, immediate);
   }
 
-  const sourceLang = normalizeTranslationLang(options.sourceLang) || sourcePost.sourceLang;
-  const contentHash = hashContent(sourcePost.content);
-  const urls = buildTranslationJobUrls(
-    c.req.url,
-    sourcePost.year,
-    sourcePost.slug,
-    normalizedTargetLang
-  );
-  const userId = getAuthenticatedUserId(c);
-  let jobId = '';
-  const job = await startTranslationJob<TranslationResponseData>(c.env.DB, {
-    key: buildTranslationJobKey(sourcePost.year, sourcePost.slug, normalizedTargetLang),
-    year: sourcePost.year,
-    slug: sourcePost.slug,
-    targetLang: normalizedTargetLang,
-    sourceLang,
-    forceRefresh: options.forceRefresh,
-    contentHash,
-    urls,
-    runner: async () => {
-      try {
-        const result = await translateAndCachePost(c.env, c.env.DB, {
-          year: sourcePost.year,
-          slug: sourcePost.slug,
-          targetLang: normalizedTargetLang,
-          sourceLang,
-          title: sourcePost.title,
-          description: sourcePost.description,
-          content: sourcePost.content,
-          forceRefresh: options.forceRefresh,
-        });
-
-        await notifyTranslationJob(c, userId, jobId, urls, sourcePost, normalizedTargetLang, {
-          type: 'success',
-          title: '번역 준비 완료',
-          message: `${sourcePost.title} 번역이 준비되었습니다.`,
-        });
-
-        return result;
-      } catch (err) {
-        const details = normalizeGenerateError(err);
-        await notifyTranslationJob(c, userId, jobId, urls, sourcePost, normalizedTargetLang, {
-          type: 'error',
-          title: '번역 준비 실패',
-          message: details.message,
-        });
-        throw err;
-      }
-    },
-    summarizeResult: summarizeTranslationResult,
-    normalizeError: (err): TranslationJobError => {
-      const details = normalizeGenerateError(err);
-      return {
-        status: details.status,
-        code: details.code,
-        message: details.message,
-        retryable: details.retryable,
-        retryAfterSeconds: details.retryAfterSeconds,
-      };
-    },
-  });
-  jobId = job.job.id;
+  const job = await startTranslationGenerationJob(c, sourcePost, normalizedTargetLang, options);
 
   if (wantsAsyncResponse(c, options)) {
+    if (job.created) {
+      attachTranslationJobWaitUntil(c, job.wait);
+    }
     applyJobHeaders(c, job.job);
     c.header('Retry-After', '3');
     return c.json({ ok: true, data: null, job: job.job }, 202);

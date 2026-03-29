@@ -2,12 +2,18 @@ import { env, SELF } from 'cloudflare:test';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { signJwt } from '../src/lib/jwt';
-import { hashContent, type SourcePost, type SupportedTranslationLang } from '../src/lib/translation-service';
+import {
+  hashContent,
+  type SourcePost,
+  type SupportedTranslationLang,
+} from '../src/lib/translation-service';
 import type { Env } from '../src/types';
 
 declare module 'cloudflare:test' {
-  interface ProvidedEnv
-    extends Pick<Env, 'DB' | 'R2' | 'KV' | 'JWT_SECRET' | 'ENV' | 'PUBLIC_SITE_URL' | 'BACKEND_ORIGIN'> {}
+  interface ProvidedEnv extends Pick<
+    Env,
+    'DB' | 'R2' | 'KV' | 'JWT_SECRET' | 'ENV' | 'PUBLIC_SITE_URL' | 'BACKEND_ORIGIN'
+  > {}
 }
 
 type Deferred<T> = {
@@ -96,7 +102,8 @@ function installFetchInterception(): void {
   originalFetch = globalThis.fetch;
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+    const url =
+      typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 
     if (url === `${env.PUBLIC_SITE_URL}/posts-manifest.json`) {
       return jsonResponse({
@@ -303,17 +310,45 @@ describe('translation routes characterization', () => {
     });
   });
 
-  it('returns 202 and Retry-After when public translation generation is queued', async () => {
+  it('starts public translation immediately on cache miss without durable outbox enqueue', async () => {
     const sourcePost = buildSourcePost();
     registerPublishedPost(sourcePost);
+    let callCount = 0;
+    aiGenerateHandler = async () => {
+      callCount += 1;
+      if (callCount === 1) {
+        return 'Immediate translated title';
+      }
+      if (callCount === 2) {
+        return 'Immediate translated description';
+      }
+      return '# Immediate translated content';
+    };
 
     const response = await SELF.fetch(
       `https://example.com/api/v1/public/posts/${sourcePost.year}/${sourcePost.slug}/translations/en`
     );
+    const jobCountRow = await env.DB.prepare(
+      `SELECT COUNT(*) AS count
+         FROM translation_jobs
+        WHERE year = ?
+          AND slug = ?
+          AND target_lang = ?
+          AND content_hash = ?`
+    )
+      .bind(sourcePost.year, sourcePost.slug, 'en', hashContent(sourcePost.content))
+      .first<{ count: number }>();
+    const outboxCountRow = await env.DB.prepare(
+      'SELECT COUNT(*) AS count FROM domain_outbox WHERE event_type = ?'
+    )
+      .bind('translation.generate')
+      .first<{ count: number }>();
 
     expect(response.status).toBe(202);
-    expect(response.headers.get('Retry-After')).toBe('15');
+    expect(response.headers.get('Retry-After')).toBe('3');
     await expect(response.json()).resolves.toEqual({ ok: true, data: null });
+    expect(Number(jobCountRow?.count ?? 0)).toBe(1);
+    expect(Number(outboxCountRow?.count ?? 0)).toBe(0);
   });
 
   it('returns NOT_AVAILABLE when the published source post does not exist', async () => {
@@ -432,6 +467,7 @@ describe('translation routes characterization', () => {
       data: null;
       job: {
         id: string;
+        type: string;
         status: string;
         statusUrl: string;
         cacheUrl: string;
@@ -445,6 +481,7 @@ describe('translation routes characterization', () => {
     expect(response.headers.get('Location')).toBe(payload.job.statusUrl);
     expect(payload.ok).toBe(true);
     expect(payload.data).toBeNull();
+    expect(payload.job.type).toBe('translation.generate');
     expect(payload.job.status).toBe('running');
 
     deferred.resolve('Finished title');
@@ -503,6 +540,7 @@ describe('translation routes characterization', () => {
       data: {
         job: {
           id: generatePayload.job.id,
+          type: 'translation.generate',
           status: 'running',
         },
       },

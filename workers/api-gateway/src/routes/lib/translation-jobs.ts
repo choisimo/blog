@@ -1,9 +1,10 @@
 import type { D1Database } from '@cloudflare/workers-types';
 
 import {
+  createTranslationJobRow,
   fetchActiveTranslationJob,
   fetchTranslationJobById,
-  upsertTranslationJobRow,
+  updateTranslationJobRowById,
 } from '../../lib/translation-job-repository';
 
 type TranslationJobState = 'running' | 'succeeded' | 'failed';
@@ -27,6 +28,7 @@ export type TranslationJobResultSummary = {
 
 export type TranslationJobSnapshot = {
   id: string;
+  type: 'translation.generate';
   key: string;
   status: TranslationJobState;
   year: string;
@@ -63,6 +65,7 @@ type StartTranslationJobInput<T> = {
   runner: () => Promise<T>;
   summarizeResult?: (result: T) => TranslationJobResultSummary;
   normalizeError?: (error: unknown) => TranslationJobError;
+  awaitExisting?: (job: TranslationJobSnapshot) => Promise<T>;
 };
 
 type TranslationJobHandle<T> = {
@@ -81,6 +84,29 @@ function defaultJobError(error: unknown): TranslationJobError {
   };
 }
 
+function isUniqueConstraintError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return error.message.toLowerCase().includes('unique constraint failed');
+}
+
+function getExistingJobWait<T>(
+  job: TranslationJobSnapshot | null,
+  awaitExisting?: (job: TranslationJobSnapshot) => Promise<T>
+): Promise<T> | null {
+  if (!job) return null;
+
+  const existingWait = runningJobs.get(job.id) as Promise<T> | undefined;
+  if (existingWait) {
+    return existingWait;
+  }
+
+  if (awaitExisting) {
+    return awaitExisting(job);
+  }
+
+  return null;
+}
+
 function parseTranslationJobKey(key: string): {
   year: string;
   slug: string;
@@ -89,7 +115,11 @@ function parseTranslationJobKey(key: string): {
   const firstSeparator = key.indexOf(':');
   const lastSeparator = key.lastIndexOf(':');
 
-  if (firstSeparator <= 0 || lastSeparator <= firstSeparator + 1 || lastSeparator >= key.length - 1) {
+  if (
+    firstSeparator <= 0 ||
+    lastSeparator <= firstSeparator + 1 ||
+    lastSeparator >= key.length - 1
+  ) {
     return null;
   }
 
@@ -115,7 +145,7 @@ export async function startTranslationJob<T>(
     input.targetLang,
     input.contentHash
   );
-  const existingWait = existing ? (runningJobs.get(existing.id) as Promise<T> | undefined) : undefined;
+  const existingWait = getExistingJobWait(existing, input.awaitExisting);
 
   if (existing?.status === 'running' && existingWait) {
     return {
@@ -129,6 +159,7 @@ export async function startTranslationJob<T>(
   const jobId = `translation-job-${crypto.randomUUID()}`;
   const baseJob = {
     id: jobId,
+    type: 'translation.generate' as const,
     key: input.key,
     year: input.year,
     slug: input.slug,
@@ -143,18 +174,44 @@ export async function startTranslationJob<T>(
     generateUrl: input.urls.generateUrl,
   } satisfies Omit<TranslationJobSnapshot, 'status'>;
 
-  const job = await upsertTranslationJobRow(db, {
-    ...baseJob,
-    status: 'running',
-    contentHash: input.contentHash,
-  });
+  let job: TranslationJobSnapshot;
+  try {
+    job = await createTranslationJobRow(db, {
+      ...baseJob,
+      status: 'running',
+      contentHash: input.contentHash,
+    });
+  } catch (error) {
+    if (!isUniqueConstraintError(error)) {
+      throw error;
+    }
+
+    const concurrent = await fetchActiveTranslationJob(
+      db,
+      input.year,
+      input.slug,
+      input.targetLang,
+      input.contentHash
+    );
+    const concurrentWait = getExistingJobWait(concurrent, input.awaitExisting);
+
+    if (!concurrent || !concurrentWait) {
+      throw error;
+    }
+
+    return {
+      created: false,
+      job: concurrent,
+      wait: concurrentWait,
+    };
+  }
 
   const wait = Promise.resolve()
     .then(input.runner)
     .then(async (result) => {
       const completedAt = new Date().toISOString();
 
-      await upsertTranslationJobRow(db, {
+      await updateTranslationJobRowById(db, {
         ...baseJob,
         id: job.id,
         status: 'succeeded',
@@ -170,7 +227,7 @@ export async function startTranslationJob<T>(
     .catch(async (error) => {
       const completedAt = new Date().toISOString();
 
-      await upsertTranslationJobRow(db, {
+      await updateTranslationJobRowById(db, {
         ...baseJob,
         id: job.id,
         status: 'failed',
