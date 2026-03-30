@@ -1,389 +1,158 @@
-import { Hono } from 'hono';
-import type { HonoEnv, Env, Comment } from '../types';
-import { success, badRequest, notFound } from '../lib/response';
-import { queryAll, execute, queryOne } from '../lib/d1';
+import { Hono, type Context } from 'hono';
+import type { HonoEnv, Env } from '../types';
+import { getCorsHeadersForRequest } from '../lib/cors';
 import { requireAdmin } from '../middleware/auth';
-import { isOriginAllowed } from '../lib/cors';
 
 const comments = new Hono<HonoEnv>();
 
-// GET /comments?postId=xxx - Get comments for a post
-comments.get('/', async (c) => {
-  const postId = c.req.query('postId');
-  if (!postId) {
-    return badRequest(c, 'postId is required');
-  }
+function applyCorsHeaders(
+  headers: Headers,
+  corsHeaders: Record<string, string>
+): void {
+  headers.delete('Access-Control-Allow-Origin');
+  headers.delete('Access-Control-Allow-Credentials');
+  headers.delete('Access-Control-Allow-Methods');
+  headers.delete('Access-Control-Allow-Headers');
+  headers.delete('Access-Control-Max-Age');
 
-  const db = c.env.DB;
-  const items = await queryAll<Comment>(
-    db,
-    `SELECT id, post_id, author, content, email, status, created_at, updated_at
-     FROM comments
-     WHERE post_id = ? AND status = 'visible'
-     ORDER BY created_at ASC`,
-    String(postId).trim().slice(0, 256)
-  );
-
-  // Normalize to camelCase and ensure date fallbacks
-  const normalized = items.map((item) => ({
-    id: item.id,
-    postId: (item as any).post_id || postId,
-    author: item.author,
-    content: item.content,
-    email: item.email,
-    status: item.status,
-    createdAt: (item as any).created_at || new Date().toISOString(),
-    updatedAt: (item as any).updated_at || new Date().toISOString(),
-  }));
-
-  return success(c, { comments: normalized });
-});
-
-// Strip HTML tags to prevent stored XSS
-function stripHtml(input: string): string {
-  return input.replace(/<[^>]*>/g, '').trim();
+  Object.entries(corsHeaders).forEach(([key, value]) => {
+    headers.set(key, value);
+  });
 }
 
-// POST /comments - Create new comment
-comments.post('/', async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  const { postId, author, content, email } = body as Record<string, string>;
-
-  if (!postId || !author || !content) {
-    return badRequest(c, 'postId, author, and content are required');
+function buildBackendUrl(request: Request, env: Env): URL | null {
+  if (!env.BACKEND_ORIGIN) {
+    return null;
   }
 
-  // Basic validation
-  if (author.length > 64 || content.length > 5000) {
-    return badRequest(c, 'Author or content too long');
-  }
+  const requestUrl = new URL(request.url);
+  const suffix = requestUrl.pathname.replace(/^\/api\/v1\/comments/, '');
+  const backendUrl = new URL(`/api/v1/comments${suffix}`, env.BACKEND_ORIGIN);
+  backendUrl.search = requestUrl.search;
+  return backendUrl;
+}
 
-  const db = c.env.DB;
+async function proxyComments(
+  c: Context<HonoEnv>,
+  options: { sse?: boolean } = {}
+): Promise<Response> {
+  const corsHeaders = await getCorsHeadersForRequest(c.req.raw, c.env);
+  const backendUrl = buildBackendUrl(c.req.raw, c.env);
 
-  // Use the provided postId directly as the canonical thread key
-  const normalizedPostId = String(postId).trim().slice(0, 256);
-
-  const commentId = `comment-${crypto.randomUUID()}`;
-  const now = new Date().toISOString();
-
-  const sanitizedAuthor = stripHtml(author).slice(0, 64);
-  const sanitizedContent = stripHtml(content).slice(0, 5000);
-  const sanitizedEmail = email ? stripHtml(email).trim().slice(0, 256) : null;
-
-  if (!sanitizedAuthor || !sanitizedContent) {
-    return badRequest(c, 'Author and content must not be empty after sanitization');
-  }
-
-  await execute(
-    db,
-    `INSERT INTO comments(id, post_id, author, email, content, status, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    commentId,
-    normalizedPostId,
-    sanitizedAuthor,
-    sanitizedEmail,
-    sanitizedContent,
-    'visible', // or 'pending' if moderation is required
-    now,
-    now
-  );
-
-  return success(c, { id: commentId }, 201);
-});
-
-comments.get('/stream', async (c) => {
-  const postId = c.req.query('postId');
-  if (!postId) {
-    return badRequest(c, 'postId is required');
-  }
-
-  const origin = c.req.header('Origin') || '';
-  const allowed = await isOriginAllowed(origin, c.env as Env);
-
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      const send = (data: unknown) => {
-        const payload = `data: ${JSON.stringify(data)}\n\n`;
-        controller.enqueue(encoder.encode(payload));
-      };
-
-      const db = c.env.DB;
-      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-      let closed = false;
-      const signal = c.req.raw.signal;
-      const onAbort = () => {
-        closed = true;
-        try {
-          controller.close();
-        } catch {
-          void 0;
-        }
-      };
-      if (signal) {
-        if (signal.aborted) {
-          onAbort();
-          return;
-        }
-        signal.addEventListener('abort', onAbort, { once: true });
+  if (!backendUrl) {
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: {
+          message: 'BACKEND_ORIGIN not configured',
+          code: 'CONFIG_ERROR',
+        },
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
       }
-
-      send({ type: 'open', postId, ts: Date.now() });
-
-      let lastTs = Date.now();
-      let lastPing = 0;
-      while (!closed) {
-        try {
-          const items = await queryAll<Comment>(
-            db,
-            `SELECT id, post_id, author, content, email, status, created_at, updated_at
-             FROM comments
-             WHERE post_id = ? AND status = 'visible'
-             ORDER BY created_at ASC`,
-            String(postId).trim().slice(0, 256)
-          );
-
-          const newItems: Array<{
-            id: string;
-            postId: string;
-            author: string;
-            content: string;
-            website: null;
-            parentId: null;
-            createdAt: string;
-          }> = [];
-          let maxTs = lastTs;
-          for (const d of items) {
-            const createdAt = (d as any).created_at || (d as any).createdAt;
-            const ts = createdAt ? Date.parse(createdAt) : 0;
-            if (ts > lastTs) {
-              maxTs = Math.max(maxTs, ts);
-              newItems.push({
-                id: d.id,
-                postId: (d as any).post_id || postId,
-                author: d.author,
-                content: d.content,
-                website: null,
-                parentId: null,
-                createdAt,
-              });
-            }
-          }
-
-          if (newItems.length > 0) {
-            newItems.sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
-            send({ type: 'append', items: newItems });
-            lastTs = maxTs;
-          }
-
-          const now = Date.now();
-          if (now - lastPing > 25000) {
-            send({ type: 'ping', ts: now });
-            lastPing = now;
-          }
-        } catch (e: any) {
-          send({ type: 'error', message: e?.message || 'poll failed' });
-        }
-
-        await sleep(5000);
-      }
-
-      try {
-        if (signal) signal.removeEventListener('abort', onAbort);
-      } catch {
-        void 0;
-      }
-    },
-  });
-
-  const headers = new Headers({
-    'Content-Type': 'text/event-stream; charset=utf-8',
-    'Cache-Control': 'no-cache, no-transform',
-    Connection: 'keep-alive',
-  });
-  if (allowed && origin) {
-    headers.set('Access-Control-Allow-Origin', origin);
-    headers.set('Access-Control-Allow-Credentials', 'true');
-  }
-  headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  headers.set('Access-Control-Max-Age', '86400');
-
-  return new Response(stream, { headers });
-});
-
-// DELETE /comments/:id - Delete comment (admin only)
-comments.delete('/:id', requireAdmin, async (c) => {
-  const id = c.req.param('id');
-  const db = c.env.DB;
-
-  const existing = await queryOne<Comment>(db, 'SELECT id FROM comments WHERE id = ?', id);
-  if (!existing) {
-    return notFound(c, 'Comment not found');
+    );
   }
 
-  // Soft delete by setting status to 'hidden'
-  await execute(
-    db,
-    "UPDATE comments SET status = 'hidden', updated_at = ? WHERE id = ?",
-    new Date().toISOString(),
-    id
-  );
+  const headers = new Headers(c.req.raw.headers);
+  const clientIp = c.req.raw.headers.get('CF-Connecting-IP') || '';
 
-  return success(c, { deleted: true });
-});
-
-// ========================================
-// COMMENT REACTIONS (STICKERS)
-// ========================================
-
-// Available emoji reactions
-const ALLOWED_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '🎉', '💡'];
-
-// GET /comments/:commentId/reactions - Get reactions for a comment
-comments.get('/:commentId/reactions', async (c) => {
-  const commentId = c.req.param('commentId');
-  const db = c.env.DB;
-
-  interface ReactionCount {
-    emoji: string;
-    count: number;
+  headers.delete('Host');
+  headers.set('Host', 'blog-b.nodove.com');
+  if (c.env.BACKEND_KEY) {
+    headers.set('X-Backend-Key', c.env.BACKEND_KEY);
+  } else {
+    headers.delete('X-Backend-Key');
   }
+  headers.set('X-Forwarded-For', clientIp);
+  headers.set('X-Forwarded-Proto', 'https');
+  headers.set('X-Real-IP', clientIp);
+  headers.set('X-Request-ID', crypto.randomUUID());
+  headers.set('CF-IPCountry', c.req.raw.headers.get('CF-IPCountry') || '');
 
-  const reactions = await queryAll<ReactionCount>(
-    db,
-    `SELECT emoji, COUNT(*) as count
-     FROM comment_reactions
-     WHERE comment_id = ?
-     GROUP BY emoji
-     ORDER BY count DESC`,
-    commentId
-  );
+  const init: RequestInit & { duplex?: 'half' } = {
+    method: c.req.raw.method,
+    headers,
+    redirect: 'manual',
+    signal: c.req.raw.signal,
+  };
 
-  return success(c, { reactions });
-});
-
-// GET /comments/reactions/batch?commentIds=id1,id2,id3 - Get reactions for multiple comments
-comments.get('/reactions/batch', async (c) => {
-  const commentIdsParam = c.req.query('commentIds');
-  if (!commentIdsParam) {
-    return badRequest(c, 'commentIds is required');
+  if (c.req.raw.method !== 'GET' && c.req.raw.method !== 'HEAD') {
+    init.body = c.req.raw.body;
+    init.duplex = 'half';
   }
-
-  const commentIds = commentIdsParam.split(',').slice(0, 100); // Limit to 100 comments
-  if (commentIds.length === 0) {
-    return success(c, { reactions: {} });
-  }
-
-  const db = c.env.DB;
-  const placeholders = commentIds.map(() => '?').join(',');
-
-  interface ReactionRow {
-    comment_id: string;
-    emoji: string;
-    count: number;
-  }
-
-  const rows = await queryAll<ReactionRow>(
-    db,
-    `SELECT comment_id, emoji, COUNT(*) as count
-     FROM comment_reactions
-     WHERE comment_id IN (${placeholders})
-     GROUP BY comment_id, emoji`,
-    ...commentIds
-  );
-
-  // Group by comment_id
-  const reactions: Record<string, Array<{ emoji: string; count: number }>> = {};
-  for (const row of rows) {
-    if (!reactions[row.comment_id]) {
-      reactions[row.comment_id] = [];
-    }
-    reactions[row.comment_id]!.push({ emoji: row.emoji, count: row.count });
-  }
-
-  return success(c, { reactions });
-});
-
-// POST /comments/:commentId/reactions - Add a reaction
-comments.post('/:commentId/reactions', async (c) => {
-  const commentId = c.req.param('commentId');
-  const body = await c.req.json().catch(() => ({}));
-  const { emoji, fingerprint } = body as { emoji: string; fingerprint: string };
-
-  if (!emoji || !fingerprint) {
-    return badRequest(c, 'emoji and fingerprint are required');
-  }
-
-  if (!ALLOWED_EMOJIS.includes(emoji)) {
-    return badRequest(c, 'Invalid emoji');
-  }
-
-  if (fingerprint.length > 64) {
-    return badRequest(c, 'Invalid fingerprint');
-  }
-
-  const db = c.env.DB;
-
-  // Check if comment exists
-  const comment = await queryOne<{ id: string }>(
-    db,
-    'SELECT id FROM comments WHERE id = ? AND status = ?',
-    commentId,
-    'visible'
-  );
-  if (!comment) {
-    return notFound(c, 'Comment not found');
-  }
-
-  // Try to insert reaction (will fail if duplicate due to unique constraint)
-  const reactionId = `reaction-${crypto.randomUUID()}`;
-  const now = new Date().toISOString();
 
   try {
-    await execute(
-      db,
-      `INSERT INTO comment_reactions(id, comment_id, emoji, user_fingerprint, created_at)
-       VALUES (?, ?, ?, ?, ?)`,
-      reactionId,
-      commentId,
-      emoji,
-      fingerprint.slice(0, 64),
-      now
-    );
-    return success(c, { added: true, emoji }, 201);
-  } catch (err: any) {
-    // Unique constraint violation - user already reacted with this emoji
-    if (err.message?.includes('UNIQUE constraint')) {
-      return success(c, { added: false, message: 'Already reacted' });
+    const response = await fetch(backendUrl.toString(), init);
+    const responseHeaders = new Headers(response.headers);
+
+    applyCorsHeaders(responseHeaders, corsHeaders);
+
+    if (options.sse) {
+      responseHeaders.set('Cache-Control', 'no-cache, no-transform');
+      responseHeaders.set('Connection', 'keep-alive');
+      responseHeaders.set('X-Accel-Buffering', 'no');
     }
-    throw err;
+
+    if (response.status >= 502 && response.status <= 504) {
+      responseHeaders.delete('Content-Length');
+      responseHeaders.set('Content-Type', 'application/json');
+      responseHeaders.set('Retry-After', '30');
+
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: {
+            message: `Comments backend returned ${response.status}. Retry after 30 seconds.`,
+            code: 'BACKEND_UNAVAILABLE',
+          },
+        }),
+        {
+          status: 503,
+          headers: responseHeaders,
+        }
+      );
+    }
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: responseHeaders,
+    });
+  } catch (error) {
+    console.error('Comments proxy failed:', error);
+
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: {
+          message: 'Could not connect to comments backend',
+          code: 'BACKEND_UNAVAILABLE',
+        },
+      }),
+      {
+        status: 503,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': '30',
+          ...corsHeaders,
+        },
+      }
+    );
   }
-});
+}
 
-// DELETE /comments/:commentId/reactions - Remove a reaction
-comments.delete('/:commentId/reactions', async (c) => {
-  const commentId = c.req.param('commentId');
-  const body = await c.req.json().catch(() => ({}));
-  const { emoji, fingerprint } = body as { emoji: string; fingerprint: string };
-
-  if (!emoji || !fingerprint) {
-    return badRequest(c, 'emoji and fingerprint are required');
-  }
-
-  const db = c.env.DB;
-
-  await execute(
-    db,
-    `DELETE FROM comment_reactions
-     WHERE comment_id = ? AND emoji = ? AND user_fingerprint = ?`,
-    commentId,
-    emoji,
-    fingerprint.slice(0, 64)
-  );
-
-  return success(c, { removed: true });
-});
+comments.get('/', async (c) => proxyComments(c));
+comments.post('/', async (c) => proxyComments(c));
+comments.get('/stream', async (c) => proxyComments(c, { sse: true }));
+comments.get('/reactions/batch', async (c) => proxyComments(c));
+comments.get('/:commentId/reactions', async (c) => proxyComments(c));
+comments.post('/:commentId/reactions', async (c) => proxyComments(c));
+comments.delete('/:commentId/reactions', async (c) => proxyComments(c));
+comments.delete('/:id', requireAdmin, async (c) => proxyComments(c));
 
 export default comments;

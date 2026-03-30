@@ -17,6 +17,7 @@ export default defineWorkersConfig(async () => {
               JWT_SECRET: 'translation-route-test-secret',
               PUBLIC_SITE_URL: 'https://public.example',
               BACKEND_ORIGIN: 'https://backend.example',
+              BACKEND_KEY: 'comments-backend-key',
             },
           },
         },
