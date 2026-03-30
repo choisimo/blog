@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import type { HonoEnv } from '../types';
 import { success, badRequest, notFound, serverError } from '../lib/response';
 
@@ -38,6 +38,125 @@ type SessionCreateBody = {
   fingerprint: FingerprintData;
   userAgent?: string;
 };
+
+type SessionRecord = {
+  id: string;
+  fingerprint_id: string;
+  session_token: string;
+  expires_at: string;
+  first_seen_at: string | null;
+  visit_count: number | null;
+};
+
+function getAuthorizationToken(authHeader?: string): string {
+  const raw = String(authHeader || '').trim();
+  if (!raw.toLowerCase().startsWith('bearer ')) {
+    return '';
+  }
+
+  return raw.slice(7).trim();
+}
+
+function getSessionTokenFromRequest(c: Context<HonoEnv>): string {
+  const bearerToken = getAuthorizationToken(c.req.header('Authorization'));
+  if (bearerToken) {
+    return bearerToken;
+  }
+
+  return String(c.req.header('X-Session-Token') || '').trim();
+}
+
+async function findActiveSessionByToken(
+  db: HonoEnv['Bindings']['DB'],
+  token: string
+): Promise<SessionRecord | null> {
+  const session = await db
+    .prepare(`
+      SELECT s.*, f.fingerprint_hash, f.first_seen_at, f.visit_count
+      FROM user_sessions s
+      JOIN user_fingerprints f ON s.fingerprint_id = f.id
+      WHERE s.session_token = ? AND s.is_active = 1 AND s.expires_at > datetime('now')
+    `)
+    .bind(token)
+    .first<SessionRecord>();
+
+  return session ?? null;
+}
+
+async function touchSessionActivity(db: HonoEnv['Bindings']['DB'], sessionId: string): Promise<void> {
+  await db
+    .prepare(`
+      UPDATE user_sessions SET last_activity_at = datetime('now'), updated_at = datetime('now')
+      WHERE id = ?
+    `)
+    .bind(sessionId)
+    .run();
+}
+
+function toSessionResponse(session: SessionRecord, includeLegacySessionId = false) {
+  return {
+    sessionToken: session.session_token,
+    ...(includeLegacySessionId ? { sessionId: session.id } : {}),
+    fingerprintId: session.fingerprint_id,
+    expiresAt: session.expires_at,
+    firstSeenAt: session.first_seen_at ?? undefined,
+    visitCount:
+      typeof session.visit_count === 'number' ? session.visit_count : undefined,
+  };
+}
+
+async function recoverSessionByToken(c: Context<HonoEnv>, token: string) {
+  const db = c.env.DB;
+
+  const oldSession = await db
+    .prepare(`
+      SELECT fingerprint_id FROM user_sessions WHERE session_token = ?
+    `)
+    .bind(token)
+    .first<{ fingerprint_id: string }>();
+
+  if (!oldSession) {
+    return notFound(c, 'Session not found');
+  }
+
+  await db
+    .prepare(`
+      UPDATE user_sessions SET is_active = 0, updated_at = datetime('now')
+      WHERE session_token = ?
+    `)
+    .bind(token)
+    .run();
+
+  const newSessionToken = generateSessionToken();
+  const newSessionId = generateId();
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  const cfHeaders = c.req.raw.headers;
+  const ipAddress = cfHeaders.get('CF-Connecting-IP') || '';
+  const countryCode = cfHeaders.get('CF-IPCountry') || '';
+
+  await db
+    .prepare(`
+      INSERT INTO user_sessions (
+        id, fingerprint_id, session_token, ip_address, country_code, expires_at
+      ) VALUES (?, ?, ?, ?, ?, ?)
+    `)
+    .bind(
+      newSessionId,
+      oldSession.fingerprint_id,
+      newSessionToken,
+      ipAddress,
+      countryCode,
+      expiresAt
+    )
+    .run();
+
+  return success(c, {
+    sessionToken: newSessionToken,
+    fingerprintId: oldSession.fingerprint_id,
+    expiresAt,
+  });
+}
 
 user.post('/session', async (c) => {
   const body = await c.req.json<SessionCreateBody>().catch(() => ({} as SessionCreateBody));
@@ -122,52 +241,22 @@ user.post('/session', async (c) => {
   }
 });
 
-user.get('/session/:token', async (c) => {
-  const token = c.req.param('token');
-
+user.get('/session/verify', async (c) => {
+  const token = getSessionTokenFromRequest(c);
   if (!token) {
-    return badRequest(c, 'Session token is required');
+    return badRequest(c, 'Authorization or X-Session-Token header is required');
   }
 
   const db = c.env.DB;
 
   try {
-    const session = await db
-      .prepare(`
-        SELECT s.*, f.fingerprint_hash, f.first_seen_at, f.visit_count
-        FROM user_sessions s
-        JOIN user_fingerprints f ON s.fingerprint_id = f.id
-        WHERE s.session_token = ? AND s.is_active = 1 AND s.expires_at > datetime('now')
-      `)
-      .bind(token)
-      .first<{
-        id: string;
-        fingerprint_id: string;
-        session_token: string;
-        expires_at: string;
-        first_seen_at: string;
-        visit_count: number;
-      }>();
-
+    const session = await findActiveSessionByToken(db, token);
     if (!session) {
       return notFound(c, 'Session not found or expired');
     }
 
-    await db
-      .prepare(`
-        UPDATE user_sessions SET last_activity_at = datetime('now'), updated_at = datetime('now')
-        WHERE id = ?
-      `)
-      .bind(session.id)
-      .run();
-
-    return success(c, {
-      sessionId: session.id,
-      fingerprintId: session.fingerprint_id,
-      expiresAt: session.expires_at,
-      firstSeenAt: session.first_seen_at,
-      visitCount: session.visit_count,
-    });
+    await touchSessionActivity(db, session.id);
+    return success(c, toSessionResponse(session));
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to validate session';
     console.error('Session validation failed:', message);
@@ -175,9 +264,8 @@ user.get('/session/:token', async (c) => {
   }
 });
 
-user.post('/session/:token/recover', async (c) => {
+user.get('/session/:token', async (c) => {
   const token = c.req.param('token');
-
   if (!token) {
     return badRequest(c, 'Session token is required');
   }
@@ -185,47 +273,43 @@ user.post('/session/:token/recover', async (c) => {
   const db = c.env.DB;
 
   try {
-    const oldSession = await db
-      .prepare(`
-        SELECT fingerprint_id FROM user_sessions WHERE session_token = ?
-      `)
-      .bind(token)
-      .first<{ fingerprint_id: string }>();
-
-    if (!oldSession) {
-      return notFound(c, 'Session not found');
+    const session = await findActiveSessionByToken(db, token);
+    if (!session) {
+      return notFound(c, 'Session not found or expired');
     }
 
-    await db
-      .prepare(`
-        UPDATE user_sessions SET is_active = 0, updated_at = datetime('now')
-        WHERE session_token = ?
-      `)
-      .bind(token)
-      .run();
+    await touchSessionActivity(db, session.id);
+    return success(c, toSessionResponse(session, true));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to validate session';
+    console.error('Session validation failed:', message);
+    return serverError(c, message);
+  }
+});
 
-    const newSessionToken = generateSessionToken();
-    const newSessionId = generateId();
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+user.post('/session/recover', async (c) => {
+  const token = getSessionTokenFromRequest(c);
+  if (!token) {
+    return badRequest(c, 'Authorization or X-Session-Token header is required');
+  }
 
-    const cfHeaders = c.req.raw.headers;
-    const ipAddress = cfHeaders.get('CF-Connecting-IP') || '';
-    const countryCode = cfHeaders.get('CF-IPCountry') || '';
+  try {
+    return await recoverSessionByToken(c, token);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to recover session';
+    console.error('Session recovery failed:', message);
+    return serverError(c, message);
+  }
+});
 
-    await db
-      .prepare(`
-        INSERT INTO user_sessions (
-          id, fingerprint_id, session_token, ip_address, country_code, expires_at
-        ) VALUES (?, ?, ?, ?, ?, ?)
-      `)
-      .bind(newSessionId, oldSession.fingerprint_id, newSessionToken, ipAddress, countryCode, expiresAt)
-      .run();
+user.post('/session/:token/recover', async (c) => {
+  const token = c.req.param('token');
+  if (!token) {
+    return badRequest(c, 'Session token is required');
+  }
 
-    return success(c, {
-      sessionToken: newSessionToken,
-      fingerprintId: oldSession.fingerprint_id,
-      expiresAt,
-    });
+  try {
+    return await recoverSessionByToken(c, token);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to recover session';
     console.error('Session recovery failed:', message);
