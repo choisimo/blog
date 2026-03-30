@@ -97,7 +97,12 @@ function SettingToggleCard({
         aria-label={label}
         disabled={disabled}
         onClick={() => onToggle?.()}
-        style={{ height: '18px', width: '32px', minWidth: 'unset', minHeight: 'unset' }}
+        style={{
+          height: "18px",
+          width: "32px",
+          minWidth: "unset",
+          minHeight: "unset",
+        }}
         className={cn(
           "relative rounded-full transition-colors duration-150",
           "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#0070F3] focus-visible:ring-offset-1",
@@ -109,11 +114,11 @@ function SettingToggleCard({
       >
         <span
           style={{
-            position: 'absolute',
-            top: '2px',
-            left: checked ? '16px' : '2px',
-            height: '14px',
-            width: '14px',
+            position: "absolute",
+            top: "2px",
+            left: checked ? "16px" : "2px",
+            height: "14px",
+            width: "14px",
           }}
           className="rounded-full bg-white shadow-sm transition-all duration-150"
         />
@@ -380,48 +385,53 @@ export function ChatSidebar({
         </div>
 
         <Divider />
-
-        {/* 설정 */}
-        <div className={sectionClass}>
-          <div className={labelClass}>
-            <Settings className="w-3 h-3" />
-            설정
-          </div>
-          {isTerminal ? (
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-2 px-1">
-              <SettingToggleCard
-                label="LIVE 고정"
-                checked={livePinned}
-                onToggle={onToggleLivePinned}
-                disabled={!onToggleLivePinned}
-                isTerminal={isTerminal}
-              />
-              <SettingToggleCard
-                label="기록 저장"
-                checked={persistOptIn}
-                onToggle={onTogglePersist}
-                isTerminal={isTerminal}
-              />
-            </div>
-          ) : (
-            <div className="flex flex-col gap-0.5 px-1">
-              <SettingToggleCard
-                label="LIVE 고정"
-                checked={livePinned}
-                onToggle={onToggleLivePinned}
-                disabled={!onToggleLivePinned}
-                isTerminal={isTerminal}
-              />
-              <SettingToggleCard
-                label="기록 저장"
-                checked={persistOptIn}
-                onToggle={onTogglePersist}
-                isTerminal={isTerminal}
-              />
-            </div>
-          )}
-        </div>
       </ScrollArea>
+      <div
+        className={cn(
+          "shrink-0 border-t px-3 py-3",
+          isTerminal
+            ? "border-border bg-[hsl(var(--terminal-titlebar))]"
+            : "border-[#EAEAEA] bg-[#FCFCFC] dark:border-[#222222] dark:bg-[#050505]",
+        )}
+      >
+        <div className={labelClass}>
+          <Settings className="w-3 h-3" />
+          설정
+        </div>
+        {isTerminal ? (
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-2 px-1">
+            <SettingToggleCard
+              label="LIVE 고정"
+              checked={livePinned}
+              onToggle={onToggleLivePinned}
+              disabled={!onToggleLivePinned}
+              isTerminal={isTerminal}
+            />
+            <SettingToggleCard
+              label="기록 저장"
+              checked={persistOptIn}
+              onToggle={onTogglePersist}
+              isTerminal={isTerminal}
+            />
+          </div>
+        ) : (
+          <div className="flex flex-col gap-0.5 px-1">
+            <SettingToggleCard
+              label="LIVE 고정"
+              checked={livePinned}
+              onToggle={onToggleLivePinned}
+              disabled={!onToggleLivePinned}
+              isTerminal={isTerminal}
+            />
+            <SettingToggleCard
+              label="기록 저장"
+              checked={persistOptIn}
+              onToggle={onTogglePersist}
+              isTerminal={isTerminal}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

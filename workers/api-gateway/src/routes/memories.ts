@@ -1,9 +1,30 @@
 import { Hono } from 'hono';
-import type { HonoEnv, Env } from '../types';
-import { success, badRequest, notFound, serverError } from '../lib/response';
+import type { Context } from 'hono';
+import type { HonoEnv } from '../types';
+import { success, badRequest, notFound, serverError, forbidden } from '../lib/response';
 import { queryAll, execute, queryOne } from '../lib/d1';
+import {
+  enqueueMemoryEmbeddingDelete,
+  enqueueMemoryEmbeddingUpsert,
+  flushMemoryEmbeddingOutbox,
+} from '../lib/memory-embedding-outbox';
+import { requireAuth } from '../middleware/auth';
 
 const memories = new Hono<HonoEnv>();
+
+// IDOR prevention: JWT sub must match :userId param
+memories.use('/:userId/*', requireAuth, async (c, next) => {
+  if (c.get('user').sub !== c.req.param('userId')) {
+    return forbidden(c, 'User ID mismatch');
+  }
+  await next();
+});
+memories.use('/:userId', requireAuth, async (c, next) => {
+  if (c.get('user').sub !== c.req.param('userId')) {
+    return forbidden(c, 'User ID mismatch');
+  }
+  await next();
+});
 
 // Types
 interface UserMemory {
@@ -21,6 +42,10 @@ interface UserMemory {
   is_active: number;
   created_at: string;
   updated_at: string;
+}
+
+function scheduleMemoryEmbeddingFlush(c: Context<HonoEnv>) {
+  c.executionCtx.waitUntil(flushMemoryEmbeddingOutbox(c.env, { limit: 10 }));
 }
 
 interface ChatSession {
@@ -104,7 +129,7 @@ memories.get('/:userId', async (c) => {
   const countResult = await queryOne<{ count: number }>(db, countQuery, ...countParams);
 
   return success(c, {
-    memories: items.map(m => ({
+    memories: items.map((m) => ({
       id: m.id,
       userId: m.user_id,
       memoryType: m.memory_type,
@@ -165,11 +190,31 @@ memories.post('/:userId', async (c) => {
      (id, user_id, memory_type, category, content, source_type, source_id,
       importance_score, expires_at, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    id, userId, memoryType, category || null, content,
-    sourceType || null, sourceId || null,
+    id,
+    userId,
+    memoryType,
+    category || null,
+    content,
+    sourceType || null,
+    sourceId || null,
     Math.max(0, Math.min(1, importanceScore)),
-    expiresAt || null, now, now
+    expiresAt || null,
+    now,
+    now
   );
+
+  await enqueueMemoryEmbeddingUpsert(
+    c.env,
+    {
+      userId,
+      memoryId: id,
+      content,
+      memoryType,
+      category: category || null,
+    },
+    now
+  );
+  scheduleMemoryEmbeddingFlush(c);
 
   return success(c, { id, created: true }, 201);
 });
@@ -214,16 +259,33 @@ memories.post('/:userId/batch', async (c) => {
        (id, user_id, memory_type, category, content, source_type, source_id,
         importance_score, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      id, userId,
+      id,
+      userId,
       item.memoryType || 'fact',
       item.category || null,
       item.content,
       item.sourceType || null,
       item.sourceId || null,
       Math.max(0, Math.min(1, item.importanceScore || 0.5)),
-      now, now
+      now,
+      now
+    );
+    await enqueueMemoryEmbeddingUpsert(
+      c.env,
+      {
+        userId,
+        memoryId: id,
+        content: item.content,
+        memoryType: item.memoryType || 'fact',
+        category: item.category || null,
+      },
+      now
     );
     createdIds.push(id);
+  }
+
+  if (createdIds.length > 0) {
+    scheduleMemoryEmbeddingFlush(c);
   }
 
   return success(c, { ids: createdIds, created: createdIds.length }, 201);
@@ -249,8 +311,11 @@ memories.patch('/:userId/:memoryId', async (c) => {
   // Check ownership
   const existing = await queryOne<UserMemory>(
     db,
-    `SELECT id FROM user_memories WHERE id = ? AND user_id = ?`,
-    memoryId, userId
+    `SELECT id, content, memory_type, category, is_active
+       FROM user_memories
+      WHERE id = ? AND user_id = ?`,
+    memoryId,
+    userId
   );
 
   if (!existing) return notFound(c, 'Memory not found');
@@ -279,11 +344,36 @@ memories.patch('/:userId/:memoryId', async (c) => {
 
   params.push(memoryId);
 
-  await execute(
-    db,
-    `UPDATE user_memories SET ${updates.join(', ')} WHERE id = ?`,
-    ...params
-  );
+  await execute(db, `UPDATE user_memories SET ${updates.join(', ')} WHERE id = ?`, ...params);
+
+  const affectsEmbeddingProjection =
+    content !== undefined || category !== undefined || isActive !== undefined;
+  if (affectsEmbeddingProjection) {
+    const nextIsActive = isActive !== undefined ? (isActive ? 1 : 0) : existing.is_active;
+    if (nextIsActive === 0) {
+      await enqueueMemoryEmbeddingDelete(
+        c.env,
+        {
+          userId,
+          memoryId,
+        },
+        now
+      );
+    } else {
+      await enqueueMemoryEmbeddingUpsert(
+        c.env,
+        {
+          userId,
+          memoryId,
+          content: content !== undefined ? content : existing.content,
+          memoryType: existing.memory_type,
+          category: category !== undefined ? category : existing.category,
+        },
+        now
+      );
+    }
+    scheduleMemoryEmbeddingFlush(c);
+  }
 
   return success(c, { updated: true });
 });
@@ -300,10 +390,22 @@ memories.delete('/:userId/:memoryId', async (c) => {
   const result = await execute(
     db,
     `UPDATE user_memories SET is_active = 0, updated_at = ? WHERE id = ? AND user_id = ?`,
-    now, memoryId, userId
+    now,
+    memoryId,
+    userId
   );
 
   if (result.meta?.changes === 0) return notFound(c, 'Memory not found');
+
+  await enqueueMemoryEmbeddingDelete(
+    c.env,
+    {
+      userId,
+      memoryId,
+    },
+    now
+  );
+  scheduleMemoryEmbeddingFlush(c);
 
   return success(c, { deleted: true });
 });
@@ -322,7 +424,10 @@ memories.post('/:userId/access/:memoryId', async (c) => {
     `UPDATE user_memories
      SET access_count = access_count + 1, last_accessed_at = ?, updated_at = ?
      WHERE id = ? AND user_id = ?`,
-    now, now, memoryId, userId
+    now,
+    now,
+    memoryId,
+    userId
   );
 
   return success(c, { recorded: true });
@@ -361,7 +466,7 @@ memories.get('/:userId/sessions', async (c) => {
   const sessions = await queryAll<ChatSession>(db, query, ...params);
 
   return success(c, {
-    sessions: sessions.map(s => ({
+    sessions: sessions.map((s) => ({
       id: s.id,
       userId: s.user_id,
       title: s.title,
@@ -384,7 +489,11 @@ memories.post('/:userId/sessions', async (c) => {
   if (!userId) return badRequest(c, 'userId is required');
 
   const body = await c.req.json().catch(() => ({}));
-  const { title, questionMode = 'general', articleSlug } = body as {
+  const {
+    title,
+    questionMode = 'general',
+    articleSlug,
+  } = body as {
     title?: string;
     questionMode?: string;
     articleSlug?: string;
@@ -399,7 +508,13 @@ memories.post('/:userId/sessions', async (c) => {
     `INSERT INTO chat_sessions
      (id, user_id, title, question_mode, article_slug, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    id, userId, title || null, questionMode, articleSlug || null, now, now
+    id,
+    userId,
+    title || null,
+    questionMode,
+    articleSlug || null,
+    now,
+    now
   );
 
   return success(c, { id, created: true }, 201);
@@ -418,7 +533,8 @@ memories.get('/:userId/sessions/:sessionId', async (c) => {
   const session = await queryOne<ChatSession>(
     db,
     `SELECT * FROM chat_sessions WHERE id = ? AND user_id = ? AND is_deleted = 0`,
-    sessionId, userId
+    sessionId,
+    userId
   );
 
   if (!session) return notFound(c, 'Session not found');
@@ -430,7 +546,8 @@ memories.get('/:userId/sessions/:sessionId', async (c) => {
      WHERE session_id = ?
      ORDER BY created_at ASC
      LIMIT ?`,
-    sessionId, limit
+    sessionId,
+    limit
   );
 
   return success(c, {
@@ -448,7 +565,7 @@ memories.get('/:userId/sessions/:sessionId', async (c) => {
       createdAt: session.created_at,
       updatedAt: session.updated_at,
     },
-    messages: messages.map(m => ({
+    messages: messages.map((m) => ({
       id: m.id,
       sessionId: m.session_id,
       role: m.role,
@@ -467,7 +584,12 @@ memories.post('/:userId/sessions/:sessionId/messages', async (c) => {
   if (!userId || !sessionId) return badRequest(c, 'userId and sessionId are required');
 
   const body = await c.req.json().catch(() => ({}));
-  const { role, content, contentType = 'text', metadata } = body as {
+  const {
+    role,
+    content,
+    contentType = 'text',
+    metadata,
+  } = body as {
     role: string;
     content: string;
     contentType?: string;
@@ -487,7 +609,8 @@ memories.post('/:userId/sessions/:sessionId/messages', async (c) => {
   const session = await queryOne<ChatSession>(
     db,
     `SELECT id FROM chat_sessions WHERE id = ? AND user_id = ? AND is_deleted = 0`,
-    sessionId, userId
+    sessionId,
+    userId
   );
 
   if (!session) return notFound(c, 'Session not found');
@@ -498,8 +621,14 @@ memories.post('/:userId/sessions/:sessionId/messages', async (c) => {
     db,
     `INSERT INTO chat_messages (id, session_id, user_id, role, content, content_type, metadata, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    msgId, sessionId, userId, role, content, contentType,
-    metadata ? JSON.stringify(metadata) : null, now
+    msgId,
+    sessionId,
+    userId,
+    role,
+    content,
+    contentType,
+    metadata ? JSON.stringify(metadata) : null,
+    now
   );
 
   // Update session stats
@@ -510,7 +639,9 @@ memories.post('/:userId/sessions/:sessionId/messages', async (c) => {
          last_message_at = ?,
          updated_at = ?
      WHERE id = ?`,
-    now, now, sessionId
+    now,
+    now,
+    sessionId
   );
 
   return success(c, { id: msgId, created: true }, 201);
@@ -546,7 +677,8 @@ memories.post('/:userId/sessions/:sessionId/messages/batch', async (c) => {
   const session = await queryOne<ChatSession>(
     db,
     `SELECT id FROM chat_sessions WHERE id = ? AND user_id = ? AND is_deleted = 0`,
-    sessionId, userId
+    sessionId,
+    userId
   );
 
   if (!session) return notFound(c, 'Session not found');
@@ -563,9 +695,14 @@ memories.post('/:userId/sessions/:sessionId/messages/batch', async (c) => {
       db,
       `INSERT INTO chat_messages (id, session_id, user_id, role, content, content_type, metadata, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      msgId, sessionId, userId, msg.role, msg.content,
+      msgId,
+      sessionId,
+      userId,
+      msg.role,
+      msg.content,
       msg.contentType || 'text',
-      msg.metadata ? JSON.stringify(msg.metadata) : null, now
+      msg.metadata ? JSON.stringify(msg.metadata) : null,
+      now
     );
     createdIds.push(msgId);
   }
@@ -578,7 +715,10 @@ memories.post('/:userId/sessions/:sessionId/messages/batch', async (c) => {
          last_message_at = ?,
          updated_at = ?
      WHERE id = ?`,
-    createdIds.length, now, now, sessionId
+    createdIds.length,
+    now,
+    now,
+    sessionId
   );
 
   return success(c, { ids: createdIds, created: createdIds.length }, 201);
@@ -604,7 +744,8 @@ memories.patch('/:userId/sessions/:sessionId', async (c) => {
   const existing = await queryOne<ChatSession>(
     db,
     `SELECT id FROM chat_sessions WHERE id = ? AND user_id = ? AND is_deleted = 0`,
-    sessionId, userId
+    sessionId,
+    userId
   );
 
   if (!existing) return notFound(c, 'Session not found');
@@ -627,11 +768,7 @@ memories.patch('/:userId/sessions/:sessionId', async (c) => {
 
   params.push(sessionId);
 
-  await execute(
-    db,
-    `UPDATE chat_sessions SET ${updates.join(', ')} WHERE id = ?`,
-    ...params
-  );
+  await execute(db, `UPDATE chat_sessions SET ${updates.join(', ')} WHERE id = ?`, ...params);
 
   return success(c, { updated: true });
 });
@@ -648,7 +785,9 @@ memories.delete('/:userId/sessions/:sessionId', async (c) => {
   const result = await execute(
     db,
     `UPDATE chat_sessions SET is_deleted = 1, updated_at = ? WHERE id = ? AND user_id = ?`,
-    now, sessionId, userId
+    now,
+    sessionId,
+    userId
   );
 
   if (result.meta?.changes === 0) return notFound(c, 'Session not found');
@@ -707,7 +846,8 @@ memories.get('/:userId/context', async (c) => {
     execute(
       db,
       `UPDATE user_memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ?`,
-      now, mem.id
+      now,
+      mem.id
     ).catch(() => {});
   }
 

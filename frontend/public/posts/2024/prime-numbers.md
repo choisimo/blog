@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ['소수', '에라토스테네스의체', '소인수분해', '밀러라빈']
 excerpt: "효율적인 소수 판별과 소인수분해를 위한 다양한 수학 알고리즘들을 학습합니다."
 readTime: "13분"
+published: false
 ---
 
 ## 개요

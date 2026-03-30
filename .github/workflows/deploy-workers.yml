@@ -39,6 +39,14 @@ jobs:
         working-directory: workers/api-gateway
         run: npm ci
 
+      - name: Type-check worker
+        working-directory: workers/api-gateway
+        run: npm run typecheck
+
+      - name: Run worker tests
+        working-directory: workers/api-gateway
+        run: npm test
+
       - name: Inject runtime secrets
         working-directory: workers/api-gateway
         run: |

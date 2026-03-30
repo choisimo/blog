@@ -1,4 +1,4 @@
-import { queryAll, queryOne, isD1Configured } from '../../lib/d1.js';
+import { getProviderSnapshot } from './dynamic-config.service.js';
 import { createLogger } from '../../lib/logger.js';
 import { getOpenAIClient } from './openai-client.service.js';
 
@@ -158,6 +158,12 @@ function buildFallbackChain(config, requestedModel) {
       return;
     }
 
+    // Skip embedding-only models (max_tokens=0) — they cannot produce
+    // chat completions and would always fail in the fallback chain.
+    if (model.max_tokens === 0) {
+      return;
+    }
+
     const provider = config.providersById.get(model.provider_id);
     if (!provider) {
       return;
@@ -200,47 +206,47 @@ function buildFallbackChain(config, requestedModel) {
 }
 
 async function loadConfig(force = false) {
-  if (!isD1Configured()) {
-    return null;
-  }
-
   if (!force && configCache.value && Date.now() < configCache.expiresAt) {
     return configCache.value;
   }
 
-  const providers = await queryAll(
-    'SELECT * FROM ai_providers WHERE is_enabled = 1 ORDER BY display_name',
-  );
+  // Fetch from Worker snapshot (centralized config)
+  const snapshot = await getProviderSnapshot();
+  if (!snapshot || !snapshot.providers.length) {
+    return null;
+  }
 
-  const modelsByProvider = await Promise.all(
-    providers.map(async (provider) => ({
-      providerId: provider.id,
-      models: await queryAll(
-        'SELECT * FROM ai_models WHERE provider_id = ? AND is_enabled = 1 ORDER BY priority DESC',
-        provider.id,
-      ),
-    })),
-  );
+  // Map Worker snapshot shape to the internal config structure.
+  // Provider fields from Worker use camelCase; the rest of multi-provider
+  // logic expects snake_case (matching the D1 column names), so we map here.
+  const providers = snapshot.providers.map((p) => ({
+    id: p.id,
+    name: p.name,
+    display_name: p.displayName,
+    api_base_url: p.apiBaseUrl,
+    api_key_env: p.apiKeyEnv,
+    is_enabled: p.isEnabled ? 1 : 0,
+    health_status: p.healthStatus,
+    // Attach the resolved key so createChatCompletion can use it directly
+    resolvedApiKey: p.resolvedApiKey,
+  }));
 
-  const defaultRoute = await queryOne(
-    'SELECT * FROM ai_routes WHERE is_default = 1 AND is_enabled = 1 LIMIT 1',
-  );
+  const models = (snapshot.models || []).sort(sortByPriorityDesc);
 
-  const models = modelsByProvider
-    .flatMap((entry) => entry.models)
-    .sort(sortByPriorityDesc);
+  const rawRoute = snapshot.defaultRoute;
+  const defaultRoute = rawRoute
+    ? {
+        ...rawRoute,
+        fallbackModelIds: parseJsonArray(rawRoute.fallback_model_ids),
+      }
+    : null;
 
   const value = {
     providers,
     providersById: new Map(providers.map((provider) => [provider.id, provider])),
     models,
     modelsById: createModelLookup(models),
-    defaultRoute: defaultRoute
-      ? {
-          ...defaultRoute,
-          fallbackModelIds: parseJsonArray(defaultRoute.fallback_model_ids),
-        }
-      : null,
+    defaultRoute,
     loadedAt: Date.now(),
   };
 
@@ -258,9 +264,7 @@ async function createChatCompletion(provider, model, messages, options = {}) {
     'Content-Type': 'application/json',
   };
 
-  const apiKey = provider.api_key_env
-    ? process.env[provider.api_key_env]
-    : undefined;
+  const apiKey = provider.resolvedApiKey ?? undefined;
 
   if (apiKey) {
     headers.Authorization = `Bearer ${apiKey}`;
@@ -314,15 +318,14 @@ export class MultiProviderAIService {
   constructor() {
     this.fallbackClient = null;
 
-    if (isD1Configured()) {
-      loadConfig().catch((error) => {
-        logger.warn(
-          { operation: 'init' },
-          'Failed to prime multi-provider config cache',
-          { error: error.message },
-        );
-      });
-    }
+    // Prime the config cache from Worker snapshot on init
+    loadConfig().catch((error) => {
+      logger.warn(
+        { operation: 'init' },
+        'Failed to prime multi-provider config cache',
+        { error: error.message },
+      );
+    });
   }
 
   getFallbackClient() {
@@ -334,11 +337,11 @@ export class MultiProviderAIService {
   }
 
   async chat(messages, options = {}) {
-    if (!isD1Configured()) {
+    const config = await loadConfig(options.forceRefresh === true);
+
+    if (!config) {
       return this.getFallbackClient().chat(messages, options);
     }
-
-    const config = await loadConfig(options.forceRefresh === true);
     const chain = buildFallbackChain(config, options.model);
     const requestId = `multi-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const routeTimeoutMs = config?.defaultRoute?.timeout_seconds
@@ -430,7 +433,9 @@ export class MultiProviderAIService {
   }
 
   async generate(prompt, options = {}) {
-    if (!isD1Configured()) {
+    const config = await loadConfig();
+
+    if (!config) {
       return this.getFallbackClient().generate(prompt, options);
     }
 
@@ -442,18 +447,16 @@ export class MultiProviderAIService {
   }
 
   async health(force = false) {
-    if (!isD1Configured()) {
+    const config = await loadConfig(force);
+
+    if (!config) {
       return this.getFallbackClient().health(force);
     }
 
-    const providers = await queryAll(
-      'SELECT id, name, display_name, is_enabled, health_status FROM ai_providers WHERE is_enabled = 1 ORDER BY display_name',
-    );
-
     return {
-      ok: providers.length > 0,
+      ok: config.providers.length > 0,
       provider: 'multi-provider',
-      providers: providers.map((provider) => ({
+      providers: config.providers.map((provider) => ({
         id: provider.id,
         name: provider.display_name || provider.name,
         isEnabled: !!provider.is_enabled,
@@ -465,11 +468,11 @@ export class MultiProviderAIService {
   }
 
   getProviderInfo() {
-    if (!isD1Configured()) {
+    const cachedProviders = configCache.value?.providers || [];
+
+    if (!cachedProviders.length) {
       return this.getFallbackClient().getProviderInfo();
     }
-
-    const cachedProviders = configCache.value?.providers || [];
 
     return {
       provider: 'multi-provider',
@@ -492,5 +495,7 @@ export function getMultiProviderClient() {
 }
 
 export function isD1ConfiguredForMultiProvider() {
-  return isD1Configured();
+  // Preserved for API compatibility. Now checks Worker config availability
+  // instead of local D1, since config is consumed from the Worker.
+  return !!configCache.value;
 }

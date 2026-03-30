@@ -1,5 +1,4 @@
-import { ensureSession } from "@/services/chat";
-import { getApiBaseUrl } from "@/utils/network/apiBase";
+import { invokeChatTask, type ChatTaskMode } from "@/services/chat";
 import { TEXT_LIMITS, FALLBACK_DATA } from "@/config/defaults";
 
 // ============================================================================
@@ -31,10 +30,19 @@ export type SummaryResult = {
 };
 
 export type QuizQuestion = {
-  type: "fill_blank" | "multiple_choice" | "transform" | "explain" | "system_modeling" | "tradeoff_analysis" | "refactoring_problem" | "concept_connection";
+  type:
+    | "fill_blank"
+    | "multiple_choice"
+    | "transform"
+    | "explain"
+    | "system_modeling"
+    | "tradeoff_analysis"
+    | "refactoring_problem"
+    | "concept_connection";
   question: string;
   answer: string;
   options?: string[]; // for multiple_choice
+  correctOptionIndex?: number;
   explanation?: string;
 };
 
@@ -42,21 +50,11 @@ export type QuizResult = {
   quiz: QuizQuestion[];
 };
 
-type TaskMode = "sketch" | "prism" | "chain" | "summary" | "custom" | "quiz";
-
 type TaskPayload = {
   paragraph?: string;
   postTitle?: string;
   persona?: string;
   [key: string]: unknown;
-};
-
-type TaskResponse<T> = {
-  ok: boolean;
-  data: T;
-  mode: string;
-  source?: "ai-call" | "gemini" | "fallback";
-  _fallback?: boolean;
 };
 
 // ============================================================================
@@ -122,57 +120,24 @@ function safeTruncate(s: string, maxLength: number): string {
  * 프론트엔드는 mode와 payload만 전송합니다.
  * 프롬프트 생성은 Workers에서 처리됩니다.
  */
-async function invokeTask<T>(mode: TaskMode, payload: TaskPayload): Promise<T> {
-  const sessionId = await ensureSession();
-  const base = getApiBaseUrl();
-  const url = `${base.replace(/\/$/, "")}/api/v1/chat/session/${encodeURIComponent(sessionId)}/task`;
-
-  const body = {
-    mode,
-    payload, // 프롬프트 없이 payload만 전송
-    context: {
-      url: typeof window !== "undefined" ? window.location.href : undefined,
-      title: typeof document !== "undefined" ? document.title : undefined,
-    },
-  };
-
+async function invokeTask<T>(
+  mode: ChatTaskMode,
+  payload: TaskPayload,
+): Promise<T> {
   try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(body),
+    const result = await invokeChatTask<T>({
+      mode,
+      payload,
       signal: AbortSignal.timeout(30_000),
     });
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`AI task error: ${res.status} ${text.slice(0, 180)}`);
-    }
-
-    const result = (await res.json()) as
-      | TaskResponse<T>
-      | Record<string, unknown>;
-
     // Detect fallback response from Workers — AI server unavailable
-    if (isRecord(result) && result._fallback === true) {
+    if (isRecord(result.raw) && result.raw._fallback === true) {
       throw new Error("AI server returned fallback: backend unavailable");
     }
 
-    // data 추출 (다양한 응답 구조 대응)
-    const topLevel =
-      (isRecord(result) && ("data" in result ? result.data : undefined)) ??
-      (isRecord(result) && ("result" in result ? result.result : undefined)) ??
-      result;
-
-    // Workers success(c, { data, mode, source }) 래핑 해제
-    const data =
-      (isRecord(topLevel) && "data" in topLevel ? topLevel.data : undefined) ??
-      topLevel;
-
-    if (!data) {
+    const data = result.data ?? result.raw;
+    if (data === null || data === undefined) {
       throw new Error("Invalid AI task response: no data");
     }
 
@@ -506,6 +471,46 @@ function clampVisualizationHeight(value: unknown): number | undefined {
   return Math.max(160, Math.min(560, Math.floor(value)));
 }
 
+function parseExplicitCorrectOptionIndex(
+  value: unknown,
+  optionCount: number,
+): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const candidate = Math.floor(value);
+  if (candidate >= 0 && candidate < optionCount) return candidate;
+  if (candidate >= 1 && candidate <= optionCount) return candidate - 1;
+  return null;
+}
+
+function inferCorrectOptionIndex(
+  answer: string,
+  options: string[],
+): number | null {
+  if (!options.length) return null;
+
+  const normalizedAnswer = answer.trim().toLowerCase();
+  if (!normalizedAnswer) return null;
+
+  const exactIndex = options.findIndex(
+    (option) => option.trim().toLowerCase() === normalizedAnswer,
+  );
+  if (exactIndex >= 0) return exactIndex;
+
+  const letterMatch = normalizedAnswer.match(/^([a-z])(?:[).:\s-]|$)/i);
+  if (letterMatch) {
+    const index = letterMatch[1].toUpperCase().charCodeAt(0) - 65;
+    return index >= 0 && index < options.length ? index : null;
+  }
+
+  const numberMatch = normalizedAnswer.match(/^(\d+)(?:[).:\s-]|$)/);
+  if (numberMatch) {
+    const index = Number.parseInt(numberMatch[1], 10) - 1;
+    return index >= 0 && index < options.length ? index : null;
+  }
+
+  return null;
+}
+
 function buildVisualizationFence(raw: Record<string, unknown>): string | null {
   const visualizationRecord = pickObjectRecord(
     raw.visualization,
@@ -601,6 +606,14 @@ function normalizeQuizQuestion(raw: unknown): QuizQuestion | null {
   const type = normalizeQuizType(
     raw.type ?? (options.length > 0 ? "multiple_choice" : "explain"),
   );
+  const correctOptionIndex =
+    parseExplicitCorrectOptionIndex(
+      raw.correctOptionIndex ??
+        raw.correctIndex ??
+        raw.answerIndex ??
+        raw.correct_option_index,
+      options.length,
+    ) ?? inferCorrectOptionIndex(answer, options);
   const vizFence = buildVisualizationFence(raw);
   const mergedQuestion =
     vizFence &&
@@ -617,6 +630,9 @@ function normalizeQuizQuestion(raw: unknown): QuizQuestion | null {
   };
 
   if (options.length > 0) normalized.options = options;
+  if (correctOptionIndex !== null) {
+    normalized.correctOptionIndex = correctOptionIndex;
+  }
   if (explanation) normalized.explanation = explanation;
 
   return normalized;
@@ -710,8 +726,9 @@ function createQuizFallback(quizCount = 2): QuizResult {
     {
       type: "multiple_choice",
       question: "이 문서의 주요 주제는 무엇인가요?",
-      answer: "위 내용을 다시 읽어보세요.",
+      answer: "개념 이해",
       options: ["개념 이해", "실습 예제", "이론 설명", "사례 연구"],
+      correctOptionIndex: 0,
       explanation: "AI 서버가 일시적으로 응답하지 않아 기본 퀴즈가 표시됩니다.",
     },
     {

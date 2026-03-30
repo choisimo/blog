@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ["Algorithm", "제약 전파", "Problem Solving", "Python", "Java"]
 excerpt: "Recursion & Backtracking - 스도쿠 풀기 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
 ## Top-down 질문

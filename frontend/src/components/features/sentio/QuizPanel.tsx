@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
 import { quiz, QuizQuestion } from "@/services/discovery/ai";
@@ -58,11 +58,107 @@ function hasStudyModeTag(tags: string[]): boolean {
   );
 }
 
+function normalizeComparableText(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function resolveIndexedAnswer(
+  value: string,
+  optionCount: number,
+): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const letterMatch = trimmed.match(/^([a-z])(?:[).:\s-]|$)/i);
+  if (letterMatch) {
+    const index = letterMatch[1].toUpperCase().charCodeAt(0) - 65;
+    return index >= 0 && index < optionCount ? index : null;
+  }
+
+  const numberMatch = trimmed.match(/^(\d+)(?:[).:\s-]|$)/);
+  if (numberMatch) {
+    const index = Number.parseInt(numberMatch[1], 10) - 1;
+    return index >= 0 && index < optionCount ? index : null;
+  }
+
+  return null;
+}
+
+function getCorrectOptionIndex(question: QuizQuestion): number | null {
+  if (!question.options?.length) return null;
+
+  if (
+    typeof question.correctOptionIndex === "number" &&
+    Number.isInteger(question.correctOptionIndex) &&
+    question.correctOptionIndex >= 0 &&
+    question.correctOptionIndex < question.options.length
+  ) {
+    return question.correctOptionIndex;
+  }
+
+  const indexedAnswer = resolveIndexedAnswer(
+    question.answer,
+    question.options.length,
+  );
+  if (indexedAnswer !== null) {
+    return indexedAnswer;
+  }
+
+  const normalizedAnswer = normalizeComparableText(question.answer);
+  const exactIndex = question.options.findIndex(
+    (option) => normalizeComparableText(option) === normalizedAnswer,
+  );
+  return exactIndex >= 0 ? exactIndex : null;
+}
+
+function resolveSelectedOptionIndex(
+  question: QuizQuestion,
+  userAnswer: string,
+): number | null {
+  if (!question.options?.length) return null;
+
+  const indexedAnswer = resolveIndexedAnswer(
+    userAnswer,
+    question.options.length,
+  );
+  if (indexedAnswer !== null) {
+    return indexedAnswer;
+  }
+
+  const normalizedAnswer = normalizeComparableText(userAnswer);
+  const exactIndex = question.options.findIndex(
+    (option) => normalizeComparableText(option) === normalizedAnswer,
+  );
+  return exactIndex >= 0 ? exactIndex : null;
+}
+
+function formatMultipleChoiceAnswer(question: QuizQuestion): string {
+  const correctIndex = getCorrectOptionIndex(question);
+  if (
+    correctIndex !== null &&
+    question.options &&
+    question.options[correctIndex] !== undefined
+  ) {
+    return `${String.fromCharCode(65 + correctIndex)}. ${question.options[correctIndex]}`;
+  }
+  return question.answer;
+}
+
 function isCorrectAnswer(question: QuizQuestion, userAnswer: string): boolean {
-  const normalized = userAnswer.trim().toLowerCase();
-  const correct = question.answer.trim().toLowerCase();
+  const normalized = normalizeComparableText(userAnswer);
+  const correct = normalizeComparableText(question.answer);
   if (normalized === correct) return true;
-  if (question.type === "multiple_choice") return normalized === correct;
+  if (question.type === "multiple_choice") {
+    const correctOptionIndex = getCorrectOptionIndex(question);
+    const selectedOptionIndex = resolveSelectedOptionIndex(
+      question,
+      userAnswer,
+    );
+    if (correctOptionIndex !== null && selectedOptionIndex !== null) {
+      return selectedOptionIndex === correctOptionIndex;
+    }
+    return normalized === correct;
+  }
   if (question.type === "fill_blank") {
     // Accept if user answer contains the key tokens
     const correctTokens = correct.split(/\s+/).filter((t) => t.length > 2);
@@ -96,8 +192,13 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
   const isFetchingRef = useRef(false);
   // Pre-generated questions: populated silently after page load
   const preGeneratedRef = useRef<QuizQuestion[]>([]);
+  const requestVersionRef = useRef(0);
 
-  const normalizedPostTags = normalizePostTags(postTags);
+  const normalizedPostTags = useMemo(
+    () => normalizePostTags(postTags),
+    [postTags],
+  );
+  const normalizedPostTagsKey = normalizedPostTags.join("|");
 
   // Trigger conditions: fenced code blocks OR learning-oriented tags
   const hasCodeBlocks = /```[\s\S]*?```/.test(content);
@@ -109,17 +210,38 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
   const questionsPerBatch = studyMode ? 3 : QUESTIONS_PER_BATCH;
   const maxBatches = studyMode ? 6 : MAX_BATCHES;
 
+  const resetQuizState = useCallback((nextStudyMode: boolean) => {
+    requestVersionRef.current += 1;
+    setState("idle");
+    setQuestions([]);
+    setIsFetchingNext(false);
+    setCurrentIndex(0);
+    setAnswers([]);
+    setWrongQuestions([]);
+    setCurrentAnswer("");
+    setError(null);
+    setStudyMode(nextStudyMode);
+    batchFetchedRef.current = 0;
+    isFetchingRef.current = false;
+    preGeneratedRef.current = [];
+  }, []);
+
   useEffect(() => {
-    if (hasStudyTagTrigger) {
-      setStudyMode(true);
-    }
-  }, [hasStudyTagTrigger]);
+    resetQuizState(hasStudyTagTrigger);
+  }, [
+    content,
+    hasStudyTagTrigger,
+    normalizedPostTagsKey,
+    postTitle,
+    resetQuizState,
+  ]);
 
   // Pre-generate quiz silently after page load so 'Start' is instant
   useEffect(() => {
     if (!shouldEnableQuiz) return;
     // Don't pre-gen if already in progress or already have data
     if (isFetchingRef.current || preGeneratedRef.current.length > 0) return;
+    const requestVersion = requestVersionRef.current;
 
     const timer = setTimeout(async () => {
       if (isFetchingRef.current || preGeneratedRef.current.length > 0) return;
@@ -134,13 +256,18 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
           studyMode,
           postTags: normalizedPostTags,
         });
-        if (result.quiz.length > 0) {
+        if (
+          requestVersionRef.current === requestVersion &&
+          result.quiz.length > 0
+        ) {
           preGeneratedRef.current = result.quiz;
         }
       } catch {
         // Silent fail — user will generate on demand when clicking start
       } finally {
-        isFetchingRef.current = false;
+        if (requestVersionRef.current === requestVersion) {
+          isFetchingRef.current = false;
+        }
       }
     }, 1500);
 
@@ -158,6 +285,7 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
     async (batchIndex: number, allQuestions: QuizQuestion[]) => {
       if (isFetchingRef.current) return;
       if (batchIndex >= maxBatches) return;
+      const requestVersion = requestVersionRef.current;
       isFetchingRef.current = true;
       setIsFetchingNext(true);
 
@@ -173,7 +301,10 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
           postTags: normalizedPostTags,
           wrongQuestions: wrongQuestions.map((q) => q.question),
         });
-        if (result.quiz.length > 0) {
+        if (
+          requestVersionRef.current === requestVersion &&
+          result.quiz.length > 0
+        ) {
           setQuestions((prev) => {
             const updated = [...prev, ...result.quiz];
             batchFetchedRef.current = batchIndex + 1;
@@ -183,8 +314,10 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
       } catch (err) {
         console.error(`Quiz batch ${batchIndex} failed:`, err);
       } finally {
-        isFetchingRef.current = false;
-        setIsFetchingNext(false);
+        if (requestVersionRef.current === requestVersion) {
+          isFetchingRef.current = false;
+          setIsFetchingNext(false);
+        }
       }
     },
     [
@@ -199,6 +332,8 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
   );
 
   const handleStart = useCallback(async () => {
+    requestVersionRef.current += 1;
+    const requestVersion = requestVersionRef.current;
     setState("loading");
     setError(null);
     setAnswers([]);
@@ -232,6 +367,7 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
         studyMode,
         postTags: normalizedPostTags,
       });
+      if (requestVersionRef.current !== requestVersion) return;
       if (result.quiz.length === 0) throw new Error("No questions generated");
       batchFetchedRef.current = 1;
       setQuestions(result.quiz);
@@ -309,15 +445,19 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
   }, [currentIndex, questions.length, isFetchingNext, maxBatches]);
 
   const handleRetry = useCallback(() => {
-    setState("idle");
-    setQuestions([]);
-    setAnswers([]);
-    setWrongQuestions([]);
-    setCurrentIndex(0);
-    setCurrentAnswer("");
-    setError(null);
-    batchFetchedRef.current = 0;
-    isFetchingRef.current = false;
+    resetQuizState(studyMode);
+  }, [resetQuizState, studyMode]);
+
+  const handleToggleStudyMode = useCallback(() => {
+    setStudyMode((prev) => {
+      const next = !prev;
+      requestVersionRef.current += 1;
+      batchFetchedRef.current = 0;
+      isFetchingRef.current = false;
+      preGeneratedRef.current = [];
+      setError(null);
+      return next;
+    });
   }, []);
 
   const currentQuestion = questions[currentIndex];
@@ -446,7 +586,7 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
             </p>
             <button
               type="button"
-              onClick={() => setStudyMode((prev) => !prev)}
+              onClick={handleToggleStudyMode}
               className={cn(
                 "px-3 py-1.5 rounded-full text-xs border transition-colors",
                 studyMode
@@ -702,22 +842,26 @@ function QuestionView({
               <div
                 className={cn(
                   "flex flex-wrap gap-2 text-[10px] font-medium",
-                  isTerminal ? "font-mono text-primary/60" : "text-muted-foreground",
+                  isTerminal
+                    ? "font-mono text-primary/60"
+                    : "text-muted-foreground",
                 )}
               >
-                {["컴포넌트", "데이터 흐름", "입력/출력", "상호작용"].map((hint) => (
-                  <span
-                    key={hint}
-                    className={cn(
-                      "px-2 py-0.5 rounded-full border",
-                      isTerminal
-                        ? "border-primary/20 bg-primary/5"
-                        : "border-border/50 bg-muted/30",
-                    )}
-                  >
-                    {hint}
-                  </span>
-                ))}
+                {["컴포넌트", "데이터 흐름", "입력/출력", "상호작용"].map(
+                  (hint) => (
+                    <span
+                      key={hint}
+                      className={cn(
+                        "px-2 py-0.5 rounded-full border",
+                        isTerminal
+                          ? "border-primary/20 bg-primary/5"
+                          : "border-border/50 bg-muted/30",
+                      )}
+                    >
+                      {hint}
+                    </span>
+                  ),
+                )}
               </div>
               <CodeIDE
                 value={currentAnswer}
@@ -865,6 +1009,19 @@ function QuestionView({
           {!answerState.correct && (
             <div className={cn("text-sm space-y-1", isTerminal && "font-mono")}>
               <span className="font-medium text-xs text-muted-foreground uppercase tracking-wide">
+                선택한 답
+              </span>
+              <pre
+                className={cn(
+                  "text-xs rounded-lg px-3 py-2 overflow-x-auto whitespace-pre-wrap",
+                  isTerminal
+                    ? "bg-primary/5 text-foreground/80"
+                    : "bg-background text-foreground",
+                )}
+              >
+                {answerState.value}
+              </pre>
+              <span className="font-medium text-xs text-muted-foreground uppercase tracking-wide">
                 정답
               </span>
               <pre
@@ -875,7 +1032,9 @@ function QuestionView({
                     : "bg-muted text-foreground",
                 )}
               >
-                {question.answer}
+                {question.type === "multiple_choice"
+                  ? formatMultipleChoiceAnswer(question)
+                  : question.answer}
               </pre>
             </div>
           )}

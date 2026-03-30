@@ -13,6 +13,34 @@ interface OptimizedImageProps {
   onError?: () => void;
 }
 
+type InViewCallback = () => void;
+
+const callbackMap = new Map<Element, InViewCallback>();
+
+let sharedObserver: IntersectionObserver | null = null;
+
+function getSharedObserver(): IntersectionObserver {
+  if (!sharedObserver) {
+    sharedObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const cb = callbackMap.get(entry.target);
+            if (cb) {
+              cb();
+              sharedObserver?.unobserve(entry.target);
+              callbackMap.delete(entry.target);
+            }
+          }
+        });
+      },
+      { rootMargin: '50px', threshold: 0.01 }
+    );
+  }
+
+  return sharedObserver;
+}
+
 export const OptimizedImage = ({
   src,
   alt,
@@ -50,35 +78,21 @@ export const OptimizedImage = ({
   const [isInView, setIsInView] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // Intersection Observer for lazy loading
   useEffect(() => {
     if (loading === 'eager') {
       setIsInView(true);
       return;
     }
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsInView(true);
-          observer.disconnect();
-        }
-      },
-      {
-        rootMargin: '50px',
-        threshold: 0.01,
-      }
-    );
+    const el = imgRef.current;
+    if (!el) return;
 
-    const currentImgRef = imgRef.current;
-    if (currentImgRef) {
-      observer.observe(currentImgRef);
-    }
+    callbackMap.set(el, () => setIsInView(true));
+    getSharedObserver().observe(el);
 
     return () => {
-      if (currentImgRef) {
-        observer.unobserve(currentImgRef);
-      }
+      getSharedObserver().unobserve(el);
+      callbackMap.delete(el);
     };
   }, [loading]);
 

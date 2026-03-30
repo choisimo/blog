@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import type { HonoEnv, Env } from '../types';
-import { success, badRequest, notFound, unauthorized } from '../lib/response';
+import { success, badRequest, notFound, unauthorized, forbidden } from '../lib/response';
 import { queryAll, execute, queryOne } from '../lib/d1';
-import { verifyJwt } from '../lib/jwt';
+import { getUserIdFromToken } from '../lib/auth-helpers';
 
 const memos = new Hono<HonoEnv>();
 
@@ -27,26 +27,6 @@ interface MemoVersion {
   created_at: string;
 }
 
-/**
- * Extract user ID from JWT token
- * Supports both admin and anonymous tokens
- */
-async function getUserIdFromToken(c: any): Promise<string | null> {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader) return null;
-
-  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return null;
-
-  try {
-    const payload = await verifyJwt(token, c.env);
-    // Reject refresh tokens
-    if (payload.type === 'refresh') return null;
-    return payload.sub || null;
-  } catch {
-    return null;
-  }
-}
 
 // ============================================================================
 // JWT-based routes (no userId in path)
@@ -394,12 +374,19 @@ memos.delete('/', async (c) => {
 // Legacy routes with userId in path (for backward compatibility)
 // ============================================================================
 
+async function requireOwnerFromPath(c: any): Promise<string | Response> {
+  const userId = await getUserIdFromToken(c);
+  if (!userId) return unauthorized(c, 'Authentication required');
+  const paramUserId = c.req.param('userId');
+  if (userId !== paramUserId) return forbidden(c, 'User ID mismatch');
+  return userId;
+}
+
 // GET /memos/:userId - Get current memo content for a user
 memos.get('/:userId', async (c) => {
-  const userId = c.req.param('userId');
-  if (!userId) {
-    return badRequest(c, 'userId is required');
-  }
+  const result = await requireOwnerFromPath(c);
+  if (result instanceof Response) return result;
+  const userId = result;
 
   const db = c.env.DB;
   const memo = await queryOne<MemoContent>(
@@ -439,10 +426,9 @@ memos.get('/:userId', async (c) => {
 
 // PUT /memos/:userId - Save memo content (creates version if significant change)
 memos.put('/:userId', async (c) => {
-  const userId = c.req.param('userId');
-  if (!userId) {
-    return badRequest(c, 'userId is required');
-  }
+  const result = await requireOwnerFromPath(c);
+  if (result instanceof Response) return result;
+  const userId = result;
 
   const body = await c.req.json().catch(() => ({}));
   const { content, createVersion = false, changeSummary } = body as {
@@ -544,10 +530,9 @@ memos.put('/:userId', async (c) => {
 
 // GET /memos/:userId/versions - Get version history for a user's memo
 memos.get('/:userId/versions', async (c) => {
-  const userId = c.req.param('userId');
-  if (!userId) {
-    return badRequest(c, 'userId is required');
-  }
+  const result = await requireOwnerFromPath(c);
+  if (result instanceof Response) return result;
+  const userId = result;
 
   const limit = Math.min(parseInt(c.req.query('limit') || '20'), 50);
   const offset = parseInt(c.req.query('offset') || '0');
@@ -600,11 +585,13 @@ memos.get('/:userId/versions', async (c) => {
 
 // GET /memos/:userId/versions/:version - Get specific version content
 memos.get('/:userId/versions/:version', async (c) => {
-  const userId = c.req.param('userId');
+  const result = await requireOwnerFromPath(c);
+  if (result instanceof Response) return result;
+  const userId = result;
   const versionStr = c.req.param('version');
 
-  if (!userId || !versionStr) {
-    return badRequest(c, 'userId and version are required');
+  if (!versionStr) {
+    return badRequest(c, 'version is required');
   }
 
   const version = parseInt(versionStr);
@@ -653,11 +640,13 @@ memos.get('/:userId/versions/:version', async (c) => {
 
 // POST /memos/:userId/restore/:version - Restore a specific version
 memos.post('/:userId/restore/:version', async (c) => {
-  const userId = c.req.param('userId');
+  const result = await requireOwnerFromPath(c);
+  if (result instanceof Response) return result;
+  const userId = result;
   const versionStr = c.req.param('version');
 
-  if (!userId || !versionStr) {
-    return badRequest(c, 'userId and version are required');
+  if (!versionStr) {
+    return badRequest(c, 'version is required');
   }
 
   const version = parseInt(versionStr);
@@ -726,10 +715,9 @@ memos.post('/:userId/restore/:version', async (c) => {
 
 // DELETE /memos/:userId - Delete memo and all versions
 memos.delete('/:userId', async (c) => {
-  const userId = c.req.param('userId');
-  if (!userId) {
-    return badRequest(c, 'userId is required');
-  }
+  const result = await requireOwnerFromPath(c);
+  if (result instanceof Response) return result;
+  const userId = result;
 
   const db = c.env.DB;
 

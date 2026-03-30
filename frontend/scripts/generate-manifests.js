@@ -1,45 +1,52 @@
 #!/usr/bin/env node
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
+import fs from "fs";
+import path from "path";
+import matter from "gray-matter";
 
-const postsDir = path.join(process.cwd(), 'public', 'posts');
+const postsDir = path.join(process.cwd(), "public", "posts");
 
 function normalizeImagePath(rawPath, markdownAbsPath) {
   if (!rawPath) return undefined;
   const normalizedInput = String(rawPath).trim();
   if (!normalizedInput) return undefined;
 
-  if (/^https?:\/\//i.test(normalizedInput) || normalizedInput.startsWith('data:')) {
+  if (
+    /^https?:\/\//i.test(normalizedInput) ||
+    normalizedInput.startsWith("data:")
+  ) {
     return normalizedInput;
   }
 
-  if (normalizedInput.startsWith('/')) {
+  if (normalizedInput.startsWith("/")) {
     return normalizedInput;
   }
 
-  const rootImagesMatch = normalizedInput.match(/^(?:\.\.\/|\.\/)*images\/(.+)$/i);
+  const rootImagesMatch = normalizedInput.match(
+    /^(?:\.\.\/|\.\/)*images\/(.+)$/i,
+  );
   if (rootImagesMatch?.[1]) {
     return `/images/${rootImagesMatch[1]}`;
   }
 
-  const rootPostsMatch = normalizedInput.match(/^(?:\.\.\/|\.\/)*posts\/(.+)$/i);
+  const rootPostsMatch = normalizedInput.match(
+    /^(?:\.\.\/|\.\/)*posts\/(.+)$/i,
+  );
   if (rootPostsMatch?.[1]) {
     return `/posts/${rootPostsMatch[1]}`;
   }
 
   const markdownDir = path.dirname(markdownAbsPath);
   const absolutePath = path.resolve(markdownDir, normalizedInput);
-  const publicDir = path.join(process.cwd(), 'public');
+  const publicDir = path.join(process.cwd(), "public");
   const relativeToPublic = path.relative(publicDir, absolutePath);
 
-  if (relativeToPublic && !relativeToPublic.startsWith('..')) {
-    return `/${relativeToPublic.replace(/\\/g, '/')}`;
+  if (relativeToPublic && !relativeToPublic.startsWith("..")) {
+    return `/${relativeToPublic.replace(/\\/g, "/")}`;
   }
 
   const stripped = normalizedInput
-    .replace(/^\.\/?/, '')
-    .replace(/^(?:\.\.\/)+/, '');
+    .replace(/^\.\/?/, "")
+    .replace(/^(?:\.\.\/)+/, "");
   return `/${stripped}`;
 }
 
@@ -66,31 +73,28 @@ function stripLeadingMedia(content) {
   if (!content) return content;
   let result = content.trimStart();
 
-  const leadingBlockPatterns = [
-    /^>\s*\*\*[^\n]*\*\*\s*\n?/,
-    /^>\s*[^\n]*\n?/
-  ];
+  const leadingBlockPatterns = [/^>\s*\*\*[^\n]*\*\*\s*\n?/, /^>\s*[^\n]*\n?/];
 
-  leadingBlockPatterns.forEach(pattern => {
-    result = result.replace(pattern, '').trimStart();
+  leadingBlockPatterns.forEach((pattern) => {
+    result = result.replace(pattern, "").trimStart();
   });
 
-  result = result.replace(/^!\[[^\]]*\]\([^\)]+\)\s*/m, '');
-  result = result.replace(/^<img[^>]*>\s*/im, '');
+  result = result.replace(/^!\[[^\]]*\]\([^\)]+\)\s*/m, "");
+  result = result.replace(/^<img[^>]*>\s*/im, "");
 
   return result.trimStart();
 }
 
 function validateMarkdownFile(filePath, filename) {
   // Check for invalid filenames
-  if (filename === '.md' || filename.startsWith('.md')) {
+  if (filename === ".md" || filename.startsWith(".md")) {
     console.error(`❌ Invalid filename detected: "${filename}" in ${filePath}`);
     console.error(`   This file has an empty name before the .md extension`);
     return false;
   }
 
   // Check for files starting with dot (hidden files)
-  if (filename.startsWith('.') && filename !== '.md') {
+  if (filename.startsWith(".") && filename !== ".md") {
     console.warn(`⚠️  Hidden file detected: "${filename}" - skipping`);
     return false;
   }
@@ -99,13 +103,13 @@ function validateMarkdownFile(filePath, filename) {
   const validFilenamePattern = /^[a-zA-Z0-9][a-zA-Z0-9\-_]*\.md$/;
   if (!validFilenamePattern.test(filename)) {
     console.warn(
-      `⚠️  Potentially problematic filename: "${filename}" - consider using alphanumeric characters, hyphens, and underscores only`
+      `⚠️  Potentially problematic filename: "${filename}" - consider using alphanumeric characters, hyphens, and underscores only`,
     );
   }
 
   // Validate file content
   try {
-    const content = fs.readFileSync(filePath, 'utf8');
+    const content = fs.readFileSync(filePath, "utf8");
 
     // Check if file is empty
     if (content.trim().length === 0) {
@@ -114,9 +118,9 @@ function validateMarkdownFile(filePath, filename) {
     }
 
     // Check for frontmatter
-    if (!content.startsWith('---')) {
+    if (!content.startsWith("---")) {
       console.warn(
-        `⚠️  No frontmatter detected in: "${filename}" - this may cause display issues`
+        `⚠️  No frontmatter detected in: "${filename}" - this may cause display issues`,
       );
     }
 
@@ -124,7 +128,7 @@ function validateMarkdownFile(filePath, filename) {
     const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
     if (frontmatterMatch) {
       const frontmatter = frontmatterMatch[1];
-      if (!frontmatter.includes('title:')) {
+      if (!frontmatter.includes("title:")) {
         console.warn(`⚠️  No title found in frontmatter for: "${filename}"`);
       }
     }
@@ -144,7 +148,9 @@ function generateManifestForYear(year) {
     return;
   }
 
-  const allFiles = fs.readdirSync(yearDir).filter(file => file.endsWith('.md'));
+  const allFiles = fs
+    .readdirSync(yearDir)
+    .filter((file) => file.endsWith(".md"));
 
   console.log(`\n📁 Processing ${year} directory...`);
 
@@ -166,9 +172,9 @@ function generateManifestForYear(year) {
 
   if (invalidFiles.length > 0) {
     console.error(
-      `\n🚨 Found ${invalidFiles.length} invalid file(s) in ${year}:`
+      `\n🚨 Found ${invalidFiles.length} invalid file(s) in ${year}:`,
     );
-    invalidFiles.forEach(file => {
+    invalidFiles.forEach((file) => {
       console.error(`   - ${file}`);
     });
     console.error(`\n💡 Suggestions:`);
@@ -187,7 +193,7 @@ function generateManifestForYear(year) {
     excludedFiles: invalidFiles.length,
   };
 
-  const manifestPath = path.join(yearDir, 'manifest.json');
+  const manifestPath = path.join(yearDir, "manifest.json");
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
   console.log(`\n📄 Generated manifest for ${year}:`);
@@ -198,7 +204,7 @@ function generateManifestForYear(year) {
 }
 
 function generateUnifiedManifest(years) {
-  console.log('\n📄 Generating unified posts manifest...');
+  console.log("\n📄 Generating unified posts manifest...");
 
   const items = [];
 
@@ -206,21 +212,23 @@ function generateUnifiedManifest(years) {
     const yearDir = path.join(postsDir, year);
     if (!fs.existsSync(yearDir)) continue;
 
-    const files = fs.readdirSync(yearDir).filter(file => file.endsWith('.md'));
+    const files = fs
+      .readdirSync(yearDir)
+      .filter((file) => file.endsWith(".md"));
 
     for (const file of files) {
       const abs = path.join(yearDir, file);
       if (!validateMarkdownFile(abs, file)) continue;
 
-      const raw = fs.readFileSync(abs, 'utf8');
+      const raw = fs.readFileSync(abs, "utf8");
       const { data: fm, content: body } = matter(raw);
 
-      const filename = path.basename(file, '.md');
+      const filename = path.basename(file, ".md");
       const slug = fm.slug || filename;
       const date = fm.date || `${year}-01-01`;
       const tags = Array.isArray(fm.tags) ? fm.tags : [];
-      const category = fm.category || 'General';
-      const author = fm.author || 'Admin';
+      const category = fm.category || "General";
+      const author = fm.author || "Admin";
       const published = fm.published !== false;
       const coverImage = extractCoverImage(fm, body, abs);
 
@@ -228,15 +236,13 @@ function generateUnifiedManifest(years) {
       const cleanedBody = stripLeadingMedia(body);
       const textOnly = cleanedBody
         // strip code fences
-        .replace(/```[\s\S]*?```/g, '')
+        .replace(/```[\s\S]*?```/g, "")
         // strip html tags if any
-        .replace(/<[^>]+>/g, '')
+        .replace(/<[^>]+>/g, "")
         .trim();
       const baseSummary = fm.description || fm.excerpt || cleanedBody;
       const sanitizedSummary = stripLeadingMedia(baseSummary);
-      const snippet = (sanitizedSummary || textOnly)
-        .slice(0, 200)
-        .trim();
+      const snippet = (sanitizedSummary || textOnly).slice(0, 200).trim();
       const words = textOnly.split(/\s+/).filter(Boolean).length;
       const minutes = Math.max(1, Math.ceil(words / 200));
       const readingTime = `${minutes} min read`;
@@ -247,7 +253,7 @@ function generateUnifiedManifest(years) {
         slug,
         title:
           fm.title ||
-          slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+          slug.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
         description: fm.description || snippet,
         snippet,
         date,
@@ -265,20 +271,30 @@ function generateUnifiedManifest(years) {
   // Sort by date desc
   items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+  const categoryCounts = items.reduce((counts, item) => {
+    if (item.published === false) {
+      return counts;
+    }
+    const key = String(item.category || "General");
+    counts[key] = (counts[key] || 0) + 1;
+    return counts;
+  }, {});
+
   const unifiedManifest = {
     total: items.length,
     items,
     generatedAt: new Date().toISOString(),
     years: years.sort().reverse(),
+    categoryCounts,
     format: 2, // version marker for clients
   };
 
-  const publicDir = path.join(process.cwd(), 'public');
-  const unifiedManifestPathRoot = path.join(publicDir, 'posts-manifest.json');
+  const publicDir = path.join(process.cwd(), "public");
+  const unifiedManifestPathRoot = path.join(publicDir, "posts-manifest.json");
   const unifiedManifestPathNested = path.join(
     publicDir,
-    'posts',
-    'posts-manifest.json'
+    "posts",
+    "posts-manifest.json",
   );
   // ensure nested dir exists
   fs.mkdirSync(path.dirname(unifiedManifestPathNested), { recursive: true });
@@ -294,19 +310,19 @@ function generateUnifiedManifest(years) {
 }
 
 function generateAllManifests() {
-  console.log('🚀 Starting manifest generation with validation...\n');
+  console.log("🚀 Starting manifest generation with validation...\n");
 
   if (!fs.existsSync(postsDir)) {
-    console.error('❌ Posts directory does not exist');
+    console.error("❌ Posts directory does not exist");
     process.exit(1);
   }
 
   const years = fs
     .readdirSync(postsDir)
-    .filter(item => fs.statSync(path.join(postsDir, item)).isDirectory())
-    .filter(year => /^\d{4}$/.test(year)); // Only 4-digit year directories
+    .filter((item) => fs.statSync(path.join(postsDir, item)).isDirectory())
+    .filter((year) => /^\d{4}$/.test(year)); // Only 4-digit year directories
 
-  console.log(`📅 Found year directories: ${years.join(', ')}\n`);
+  console.log(`📅 Found year directories: ${years.join(", ")}\n`);
 
   let totalValid = 0;
   let totalInvalid = 0;
@@ -323,7 +339,7 @@ function generateAllManifests() {
   // Generate unified manifest for postService
   const unifiedPostCount = generateUnifiedManifest(years);
 
-  console.log('\n🎉 Manifest generation completed!');
+  console.log("\n🎉 Manifest generation completed!");
   console.log(`📊 Summary:`);
   console.log(`   ✅ Total valid files: ${totalValid}`);
   console.log(`   ❌ Total excluded files: ${totalInvalid}`);
@@ -331,15 +347,15 @@ function generateAllManifests() {
 
   if (totalInvalid > 0) {
     console.log(
-      `\n⚠️  ${totalInvalid} file(s) were excluded due to validation errors.`
+      `\n⚠️  ${totalInvalid} file(s) were excluded due to validation errors.`,
     );
     console.log(
-      `   Please fix these issues for the files to appear on your blog.`
+      `   Please fix these issues for the files to appear on your blog.`,
     );
     process.exit(1); // Exit with error code to fail CI/CD if there are invalid files
   }
 
-  console.log('\n✨ All files are valid and ready for deployment!');
+  console.log("\n✨ All files are valid and ready for deployment!");
 }
 
 generateAllManifests();

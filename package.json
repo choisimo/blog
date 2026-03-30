@@ -1,4 +1,10 @@
 {
+  "scripts": {
+    "export:source-md": "node scripts/export-source-to-markdown.js",
+    "contracts:check": "node scripts/check-contract-drift.mjs",
+    "contracts:snapshot": "node scripts/check-contract-drift.mjs --write",
+    "outbox:check-memory": "node scripts/check-memory-embedding-outbox.mjs"
+  },
   "devDependencies": {},
   "dependencies": {
     "jose": "^6.1.2"

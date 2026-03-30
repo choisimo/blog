@@ -13,7 +13,7 @@ import { performRAGSearch as performLiveRAGSearch } from "./chat.service.js";
 import { createWebSearchTool } from "./agent/tools/web-search.tool.js";
 import { createLogger } from "../lib/logger.js";
 
-const logger = createLogger('live-chat');
+const logger = createLogger("live-chat");
 
 // ---------------------------------------------------------------------------
 // In-memory state
@@ -251,12 +251,16 @@ export function appendRoomHistory(room, entry) {
 }
 
 function getAgentPersona(agentName) {
-  const normalized = String(agentName || "").trim().toLowerCase();
+  const normalized = String(agentName || "")
+    .trim()
+    .toLowerCase();
   return LIVE_AGENT_PERSONA_MAP.get(normalized) || null;
 }
 
 function getAgentSessionId(room, agentName) {
-  return `agent:${room}:${String(agentName || "").trim().toLowerCase()}`;
+  return `agent:${room}:${String(agentName || "")
+    .trim()
+    .toLowerCase()}`;
 }
 
 function ensureAgentMemoryRoom(room) {
@@ -344,7 +348,11 @@ export function recordLiveMessage(room, entry = {}) {
     triggeredByMention: entry.triggeredByMention === true,
     mentionedAgents: Array.isArray(entry.mentionedAgents)
       ? entry.mentionedAgents
-          .map((value) => String(value || "").trim().toLowerCase())
+          .map((value) =>
+            String(value || "")
+              .trim()
+              .toLowerCase(),
+          )
           .filter(Boolean)
           .slice(0, LIVE_AGENT_PERSONAS.length)
       : [],
@@ -388,7 +396,9 @@ function normalizeSourceLink(entry = {}) {
       ? entry.title.trim()
       : "Untitled";
   const url =
-    typeof entry.url === "string" && entry.url.trim() ? entry.url.trim() : undefined;
+    typeof entry.url === "string" && entry.url.trim()
+      ? entry.url.trim()
+      : undefined;
   const snippet =
     typeof entry.snippet === "string" && entry.snippet.trim()
       ? entry.snippet.trim().slice(0, 280)
@@ -419,7 +429,9 @@ function shouldUseLiveWebResearch(text) {
   return (
     value.length >= 18 ||
     /[?？]/.test(value) ||
-    /\b(today|latest|current|news|price|trend|release|version)\b/i.test(value) ||
+    /\b(today|latest|current|news|price|trend|release|version)\b/i.test(
+      value,
+    ) ||
     /(오늘|최신|최근|뉴스|가격|트렌드|릴리즈|버전|검색)/.test(value)
   );
 }
@@ -432,7 +444,9 @@ function formatResearchSourceLine(source) {
 }
 
 async function buildLiveResearchContext(triggerText) {
-  const query = String(triggerText || "").trim().slice(0, LIVE_RESEARCH_QUERY_MAX_CHARS);
+  const query = String(triggerText || "")
+    .trim()
+    .slice(0, LIVE_RESEARCH_QUERY_MAX_CHARS);
   if (!query) {
     return { contextText: null, sources: [], contextKinds: [] };
   }
@@ -487,7 +501,8 @@ async function buildLiveResearchContext(triggerText) {
     contextParts.push(
       [
         "[Vector DB context]",
-        ragResult?.context || ragSources.map(formatResearchSourceLine).join("\n"),
+        ragResult?.context ||
+          ragSources.map(formatResearchSourceLine).join("\n"),
       ]
         .filter(Boolean)
         .join("\n"),
@@ -513,27 +528,74 @@ async function buildLiveResearchContext(triggerText) {
 
   return {
     contextText: contextParts.length > 0 ? contextParts.join("\n\n") : null,
-    sources: [...webSources, ...ragSources].slice(0, LIVE_RESEARCH_SOURCE_LIMIT),
+    sources: [...webSources, ...ragSources].slice(
+      0,
+      LIVE_RESEARCH_SOURCE_LIMIT,
+    ),
     contextKinds,
   };
 }
 
-function rollRoomMaxTurns(triggerText, mentionedAgents) {
-  const hasExplicitMention = Array.isArray(mentionedAgents) && mentionedAgents.length > 0;
+function resolveTargetAgentName(replyToName, mentionedAgents) {
+  const normalizedReplyTarget = String(replyToName || "")
+    .trim()
+    .toLowerCase();
+  if (
+    normalizedReplyTarget &&
+    LIVE_AGENT_PERSONA_MAP.has(normalizedReplyTarget)
+  ) {
+    return normalizedReplyTarget;
+  }
+
+  const normalizedMentions = Array.isArray(mentionedAgents)
+    ? mentionedAgents
+        .map((value) =>
+          String(value || "")
+            .trim()
+            .toLowerCase(),
+        )
+        .filter((value) => LIVE_AGENT_PERSONA_MAP.has(value))
+    : [];
+
+  if (normalizedMentions.length === 1) {
+    return normalizedMentions[0];
+  }
+
+  return "";
+}
+
+function rollRoomMaxTurns(triggerText, mentionedAgents, targetAgentName) {
+  if (targetAgentName) {
+    return 1;
+  }
+
+  const normalizedMentions = Array.isArray(mentionedAgents)
+    ? mentionedAgents.filter((value) => LIVE_AGENT_PERSONA_MAP.has(value))
+    : [];
+  if (normalizedMentions.length === 1) {
+    return 1;
+  }
+  if (normalizedMentions.length > 1) {
+    return Math.min(2, normalizedMentions.length);
+  }
+
   const questionLike =
     /[?？]/.test(String(triggerText || "")) ||
-    /\b(why|how|what|should|can|could|would)\b/i.test(String(triggerText || "")) ||
+    /\b(why|how|what|should|can|could|would)\b/i.test(
+      String(triggerText || ""),
+    ) ||
     /(왜|어떻게|뭐|어떤|가능|알려)/.test(String(triggerText || ""));
-  const minTurns = hasExplicitMention || questionLike ? 2 : 1;
-  const range = LIVE_AGENT_ROUND_LIMIT - minTurns + 1;
-  return minTurns + Math.floor(Math.random() * Math.max(1, range));
+  return questionLike && Math.random() < 0.28 ? 2 : 1;
 }
 
 function resetRoomTurnState(room, maxAiTurns) {
   const normalizedRoom = normalizeRoomKey(room);
   const next = {
     consecutiveAiTurns: 0,
-    maxAiTurns: Math.max(1, Math.min(LIVE_AGENT_ROUND_LIMIT, Math.floor(maxAiTurns))),
+    maxAiTurns: Math.max(
+      1,
+      Math.min(LIVE_AGENT_ROUND_LIMIT, Math.floor(maxAiTurns)),
+    ),
   };
   liveRoomTurnState.set(normalizedRoom, next);
   return next;
@@ -565,7 +627,7 @@ export async function touchRedisPresence(room, sessionId) {
     await redis.hSet(key, sessionId, ts);
     await redis.expire(key, LIVE_REDIS_PRESENCE_TTL_SEC);
   } catch (err) {
-    logger.warn({}, 'Redis hSet/expire failed', { error: err?.message });
+    logger.warn({}, "Redis hSet/expire failed", { error: err?.message });
     // ignore redis presence failures
   }
 }
@@ -577,7 +639,7 @@ export async function removeRedisPresence(room, sessionId) {
     const key = getPresenceKey(room);
     await redis.hDel(key, sessionId);
   } catch (err) {
-    logger.warn({}, 'Redis hDel failed', { error: err?.message });
+    logger.warn({}, "Redis hDel failed", { error: err?.message });
     // ignore redis presence failures
   }
 }
@@ -637,16 +699,20 @@ export async function ensureLiveRedisBridge() {
 
         broadcastRoom(room, payload);
       } catch (err) {
-        logger.warn({}, 'Redis payload parse failed', { error: err?.message });
+        logger.warn({}, "Redis payload parse failed", { error: err?.message });
         // ignore malformed redis payload
       }
     });
 
     liveRedisBridgeReady = true;
-    logger.info({}, 'Redis bridge enabled');
+    logger.info({}, "Redis bridge enabled");
   } catch (err) {
     liveRedisBridgeFailed = true;
-    logger.warn({}, 'Redis bridge unavailable. Using local-only live fan-out.', { error: err?.message });
+    logger.warn(
+      {},
+      "Redis bridge unavailable. Using local-only live fan-out.",
+      { error: err?.message },
+    );
   }
 }
 
@@ -664,7 +730,9 @@ export async function publishLiveEvent(room, payload) {
       }),
     );
   } catch (err) {
-    logger.warn({}, 'Failed to publish redis live event', { error: err?.message });
+    logger.warn({}, "Failed to publish redis live event", {
+      error: err?.message,
+    });
   }
 }
 
@@ -750,14 +818,16 @@ function extractMentionedAgents(text) {
     }
   }
 
-  return matches
-    .sort((a, b) => a.index - b.index)
-    .map((entry) => entry.name);
+  return matches.sort((a, b) => a.index - b.index).map((entry) => entry.name);
 }
 
 function pickRotatingAgents(room, count, excludedNames = []) {
   const excluded = new Set(
-    excludedNames.map((value) => String(value || "").trim().toLowerCase()),
+    excludedNames.map((value) =>
+      String(value || "")
+        .trim()
+        .toLowerCase(),
+    ),
   );
   const personas = LIVE_AGENT_PERSONAS;
   const maxCount = Math.max(
@@ -775,7 +845,11 @@ function pickRotatingAgents(room, count, excludedNames = []) {
     cursor = (cursor + 1) % personas.length;
     attempts += 1;
     const persona = personas[cursor];
-    if (!persona || excluded.has(persona.name) || picks.includes(persona.name)) {
+    if (
+      !persona ||
+      excluded.has(persona.name) ||
+      picks.includes(persona.name)
+    ) {
       continue;
     }
     picks.push(persona.name);
@@ -793,13 +867,28 @@ function pickRotatingAgents(room, count, excludedNames = []) {
   return picks;
 }
 
-function buildAutoReplyPlan(room, mentionedAgents, targetTurns) {
+function buildAutoReplyPlan(
+  room,
+  mentionedAgents,
+  targetTurns,
+  targetAgentName,
+) {
   const normalizedRoom = normalizeRoomKey(room);
   const normalizedMentions = Array.isArray(mentionedAgents)
     ? mentionedAgents
-        .map((value) => String(value || "").trim().toLowerCase())
+        .map((value) =>
+          String(value || "")
+            .trim()
+            .toLowerCase(),
+        )
         .filter((value) => LIVE_AGENT_PERSONA_MAP.has(value))
     : [];
+  if (targetAgentName && LIVE_AGENT_PERSONA_MAP.has(targetAgentName)) {
+    return [targetAgentName];
+  }
+  if (normalizedMentions.length === 1) {
+    return normalizedMentions.slice(0, 1);
+  }
   const desiredTurns = Math.max(
     1,
     Math.min(
@@ -836,10 +925,16 @@ function pickReplyDelay(isFollowUp = false) {
     );
   }
 
-  const followUpMin = Math.max(350, Math.floor(liveAgentPolicy.minDelayMs * 0.45));
+  const followUpMin = Math.max(
+    350,
+    Math.floor(liveAgentPolicy.minDelayMs * 0.45),
+  );
   const followUpMax = Math.max(
     followUpMin + 150,
-    Math.min(liveAgentPolicy.maxDelayMs, Math.floor(liveAgentPolicy.maxDelayMs * 0.72)),
+    Math.min(
+      liveAgentPolicy.maxDelayMs,
+      Math.floor(liveAgentPolicy.maxDelayMs * 0.72),
+    ),
   );
   return (
     followUpMin +
@@ -855,14 +950,19 @@ function scheduleAgentRoundStep(room, roundId, delayMs) {
     clearTimeout(round.timer);
   }
 
-  round.timer = setTimeout(() => {
-    void runAgentRoundStep(room, roundId);
-  }, Math.max(120, Math.floor(delayMs)));
+  round.timer = setTimeout(
+    () => {
+      void runAgentRoundStep(room, roundId);
+    },
+    Math.max(120, Math.floor(delayMs)),
+  );
 }
 
 export async function buildAutoReplyText(input = {}) {
   const room = normalizeRoomKey(input.room);
-  const agentName = String(input.agentName || "").trim().toLowerCase();
+  const agentName = String(input.agentName || "")
+    .trim()
+    .toLowerCase();
   const persona = getAgentPersona(agentName);
   if (!persona) {
     throw new Error(`Unknown live agent persona: ${agentName}`);
@@ -885,16 +985,29 @@ export async function buildAutoReplyText(input = {}) {
     : 1;
   const mentionedAgents = Array.isArray(input.mentionedAgents)
     ? input.mentionedAgents
-        .map((value) => String(value || "").trim().toLowerCase())
+        .map((value) =>
+          String(value || "")
+            .trim()
+            .toLowerCase(),
+        )
         .filter((value) => LIVE_AGENT_PERSONA_MAP.has(value))
     : [];
+  const targetAgentName =
+    typeof input.targetAgentName === "string" && input.targetAgentName.trim()
+      ? input.targetAgentName.trim().toLowerCase()
+      : "";
   const researchContextText =
-    typeof input.researchContextText === "string" && input.researchContextText.trim()
+    typeof input.researchContextText === "string" &&
+    input.researchContextText.trim()
       ? input.researchContextText.trim()
       : "";
   const contextKinds = Array.isArray(input.contextKinds)
     ? input.contextKinds
-        .map((value) => String(value || "").trim().toLowerCase())
+        .map((value) =>
+          String(value || "")
+            .trim()
+            .toLowerCase(),
+        )
         .filter(Boolean)
     : [];
 
@@ -914,7 +1027,8 @@ export async function buildAutoReplyText(input = {}) {
 
   const isKorean = /[\uAC00-\uD7A3]/.test(triggerText || transcript);
   const langStyle = isKorean ? persona.lang_hint.ko : persona.lang_hint.en;
-  const directMentioned = mentionedAgents.includes(agentName);
+  const directMentioned =
+    mentionedAgents.includes(agentName) || targetAgentName === agentName;
   const chainGuidance =
     turnIndex < roundSize
       ? "Leave a little room for someone else to jump in after you."
@@ -988,7 +1102,11 @@ async function runAgentRoundStep(room, roundId) {
   }
 
   const participantCount = await getRoomParticipantCountGlobal(room);
-  if (participantCount > 1 && round.mentionedAgents.length === 0) {
+  if (
+    participantCount > 1 &&
+    round.mentionedAgents.length === 0 &&
+    !round.targetAgentName
+  ) {
     liveAgentRounds.delete(room);
     return;
   }
@@ -1020,6 +1138,26 @@ async function runAgentRoundStep(room, roundId) {
       contextKinds: [],
     };
 
+    await emitRoomEvent(room, {
+      type: "typing",
+      room,
+      sessionId: getAgentSessionId(room, agentName),
+      senderType: "agent",
+      name: agentName,
+      replyToName,
+      roundId,
+      roundSize: round.roundSize,
+      turnIndex: round.turnIndex,
+      personaStyle: persona.style,
+      personaTraits: persona.traits,
+      triggeredByMention:
+        round.mentionedAgents.includes(agentName) ||
+        round.targetAgentName === agentName,
+      mentionedAgents: round.mentionedAgents,
+      contextKinds: round.researchData.contextKinds,
+      ts: new Date().toISOString(),
+    });
+
     const reply = await buildAutoReplyText({
       room,
       agentName,
@@ -1027,6 +1165,7 @@ async function runAgentRoundStep(room, roundId) {
       triggerText: round.triggerText,
       replyToName,
       mentionedAgents: round.mentionedAgents,
+      targetAgentName: round.targetAgentName,
       turnIndex: round.turnIndex,
       roundSize: round.roundSize,
       researchContextText: round.researchData.contextText,
@@ -1050,7 +1189,9 @@ async function runAgentRoundStep(room, roundId) {
       roundSize: round.roundSize,
       personaStyle: persona.style,
       personaTraits: persona.traits,
-      triggeredByMention: round.mentionedAgents.includes(agentName),
+      triggeredByMention:
+        round.mentionedAgents.includes(agentName) ||
+        round.targetAgentName === agentName,
       mentionedAgents: round.mentionedAgents,
       contextKinds: round.researchData.contextKinds,
       sources:
@@ -1101,7 +1242,11 @@ async function runAgentRoundStep(room, roundId) {
     }
 
     liveAgentRounds.set(room, round);
-    scheduleAgentRoundStep(room, roundId, Math.max(250, pickReplyDelay(true) / 2));
+    scheduleAgentRoundStep(
+      room,
+      roundId,
+      Math.max(250, pickReplyDelay(true) / 2),
+    );
   }
 }
 
@@ -1110,6 +1255,8 @@ export function scheduleAutoRoomReply({
   triggerSessionId,
   triggerName,
   triggerText,
+  replyToName,
+  mentionedAgents: requestedAgents,
 }) {
   const normalizedRoom = normalizeRoomKey(room);
   clearScheduledAgentRound(normalizedRoom);
@@ -1118,9 +1265,24 @@ export function scheduleAutoRoomReply({
     return;
   }
 
-  const mentionedAgents = extractMentionedAgents(triggerText);
+  const mentionedAgents = Array.from(
+    new Set([
+      ...extractMentionedAgents(triggerText),
+      ...(Array.isArray(requestedAgents)
+        ? requestedAgents
+            .map((value) =>
+              String(value || "")
+                .trim()
+                .toLowerCase(),
+            )
+            .filter(Boolean)
+        : []),
+    ]),
+  );
+  const targetAgentName = resolveTargetAgentName(replyToName, mentionedAgents);
   if (
     mentionedAgents.length === 0 &&
+    !targetAgentName &&
     Math.random() < liveAgentPolicy.silenceProbability
   ) {
     return;
@@ -1128,12 +1290,13 @@ export function scheduleAutoRoomReply({
 
   const turnState = resetRoomTurnState(
     normalizedRoom,
-    rollRoomMaxTurns(triggerText, mentionedAgents),
+    rollRoomMaxTurns(triggerText, mentionedAgents, targetAgentName),
   );
   const plan = buildAutoReplyPlan(
     normalizedRoom,
     mentionedAgents,
     turnState.maxAiTurns,
+    targetAgentName,
   );
   if (plan.length === 0) return;
 
@@ -1147,14 +1310,17 @@ export function scheduleAutoRoomReply({
         ? triggerName.trim()
         : "visitor",
     triggerText: String(triggerText || "").trim(),
+    targetAgentName,
     mentionedAgents,
     remainingAgents: [...plan],
-    roundSize: turnState.maxAiTurns,
+    roundSize: plan.length,
     turnIndex: 1,
     lastSpeakerName:
-      typeof triggerName === "string" && triggerName.trim()
-        ? triggerName.trim()
-        : "visitor",
+      typeof replyToName === "string" && replyToName.trim()
+        ? replyToName.trim()
+        : typeof triggerName === "string" && triggerName.trim()
+          ? triggerName.trim()
+          : "visitor",
     timer: null,
     researchPromise: buildLiveResearchContext(triggerText),
     researchData: null,

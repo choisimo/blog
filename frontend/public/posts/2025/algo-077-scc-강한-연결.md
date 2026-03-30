@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ["Algorithm", "타잔/코사라주", "Problem Solving", "Python", "Java"]
 excerpt: "Graph Advanced - SCC (강한 연결) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
 ## Top-down 질문

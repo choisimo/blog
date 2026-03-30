@@ -18,6 +18,7 @@ const Blog = lazy(() => import("./pages/public/Blog"));
 const BlogPost = lazy(() => import("./pages/public/BlogPost"));
 const About = lazy(() => import("./pages/public/About"));
 const BadRequest = lazy(() => import("./pages/public/BadRequest"));
+const Debate = lazy(() => import("./pages/public/Debate"));
 const Forbidden = lazy(() => import("./pages/public/Forbidden"));
 const Projects = lazy(() => import("./pages/public/Projects"));
 const NewPost = lazy(() => import("./pages/admin/NewPost"));
@@ -32,8 +33,14 @@ const Unauthorized = lazy(() => import("./pages/public/Unauthorized"));
 const AdminConfig = lazy(() => import("./pages/admin/AdminConfig"));
 const AdminAuthCallback = lazy(() => import("./pages/admin/AdminAuthCallback"));
 import "./App.css";
-import { VisitedPostsMinimap } from "@/components/features/navigation/VisitedPostsMinimap";
-import FloatingActionBar from "@/components/features/memo/FloatingActionBar";
+const VisitedPostsMinimap = lazy(() =>
+  import("@/components/features/navigation/VisitedPostsMinimap").then((m) => ({
+    default: m.VisitedPostsMinimap,
+  })),
+);
+const FloatingActionBar = lazy(
+  () => import("@/components/features/memo/FloatingActionBar"),
+);
 import {
   initFeatureFlags,
   disposeFeatureFlags,
@@ -42,6 +49,7 @@ import {
   initNotificationSSE,
   disposeNotificationSSE,
 } from "@/services/realtime/notificationSSE";
+import { adminAccessTokenProvider } from "@/services/core/admin-access-token.provider";
 import { PageTransitionFallback } from "@/components/atoms";
 
 const queryClient = new QueryClient({
@@ -66,7 +74,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    initNotificationSSE();
+    initNotificationSSE({ tokenProvider: adminAccessTokenProvider });
     return () => {
       disposeNotificationSSE();
     };
@@ -121,6 +129,7 @@ function App() {
                         />
                         <Route path="/projects" element={<Projects />} />
                         <Route path="/about" element={<About />} />
+                        <Route path="/debate" element={<Debate />} />
                         <Route
                           path="/contact"
                           element={<Navigate to="/about" replace />}
@@ -169,8 +178,30 @@ function App() {
                             </AuthGuard>
                           }
                         />
-                        <Route path="/admin/config" element={<AdminConfig />} />
-                        <Route path="/admin/config/*" element={<AdminConfig />} />
+                        <Route
+                          path="/admin/config"
+                          element={
+                            <AuthGuard>
+                              <AdminConfig />
+                            </AuthGuard>
+                          }
+                        />
+                        <Route
+                          path="/admin/config/:section"
+                          element={
+                            <AuthGuard>
+                              <AdminConfig />
+                            </AuthGuard>
+                          }
+                        />
+                        <Route
+                          path="/admin/config/:section/:subtab"
+                          element={
+                            <AuthGuard>
+                              <AdminConfig />
+                            </AuthGuard>
+                          }
+                        />
                         <Route
                           path="/admin/auth/callback"
                           element={<AdminAuthCallback />}
@@ -180,8 +211,12 @@ function App() {
                     </Suspense>
                   </main>
                   <Footer />
-                  {!fabOn && <VisitedPostsMinimap />}
-                  <FloatingActionBar />
+                  <Suspense fallback={null}>
+                    {!fabOn && <VisitedPostsMinimap />}
+                  </Suspense>
+                  <Suspense fallback={null}>
+                    <FloatingActionBar />
+                  </Suspense>
                   <Toaster />
                 </div>
               </Router>

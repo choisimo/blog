@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
+import { TouchIconButton } from '@/components/atoms/TouchIconButton';
 import { ArrowUp } from 'lucide-react';
 import { cn, throttle } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/ui/use-mobile';
@@ -43,9 +43,8 @@ export const ScrollToTop = () => {
   }
 
   return (
-    <Button
+    <TouchIconButton
       onClick={scrollToTop}
-      size='icon'
       variant='outline'
       className={cn(
         'fixed right-4 md:right-6 lg:right-8 z-[var(--z-fab-bar)] rounded-full shadow-lg transition-all duration-300',
@@ -58,6 +57,6 @@ export const ScrollToTop = () => {
       )}
     >
       <ArrowUp className='h-4 w-4' />
-    </Button>
+    </TouchIconButton>
   );
 };

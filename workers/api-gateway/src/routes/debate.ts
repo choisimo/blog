@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { HonoEnv, Env } from '../types';
 import { success, badRequest, notFound, serverError } from '../lib/response';
+import { requireAuth } from '../middleware/auth';
 import {
   getApiBaseUrl,
   getAiServeApiKey,
@@ -96,7 +97,7 @@ async function callAI(
   };
 }
 
-debate.post('/sessions', async (c) => {
+debate.post('/sessions', requireAuth, async (c) => {
   type CreateSessionBody = {
     topicTitle: string;
     topicDescription?: string;
@@ -224,7 +225,7 @@ debate.get('/sessions/:id', async (c) => {
   }
 });
 
-debate.post('/sessions/:id/round', async (c) => {
+debate.post('/sessions/:id/round', requireAuth, async (c) => {
   const sessionId = c.req.param('id');
   const db = c.env.DB;
 
@@ -375,7 +376,7 @@ debate.post('/sessions/:id/round', async (c) => {
   }
 });
 
-debate.post('/sessions/:id/round/stream', async (c) => {
+debate.post('/sessions/:id/round/stream', requireAuth, async (c) => {
   const sessionId = c.req.param('id');
 
   const backendUrl = await getApiBaseUrl(c.env);
@@ -419,7 +420,7 @@ debate.post('/sessions/:id/round/stream', async (c) => {
   });
 });
 
-debate.post('/sessions/:id/vote', async (c) => {
+debate.post('/sessions/:id/vote', requireAuth, async (c) => {
   const sessionId = c.req.param('id');
 
   type VoteBody = {
@@ -494,7 +495,7 @@ debate.post('/sessions/:id/vote', async (c) => {
   }
 });
 
-debate.post('/sessions/:id/end', async (c) => {
+debate.post('/sessions/:id/end', requireAuth, async (c) => {
   const sessionId = c.req.param('id');
   const db = c.env.DB;
 

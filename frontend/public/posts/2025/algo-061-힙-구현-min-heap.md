@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ["Algorithm", "배열 기반 힙", "Problem Solving", "Python", "Java"]
 excerpt: "Heap & Graph Basics - 힙 구현 (Min Heap) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
 ## Top-down 질문

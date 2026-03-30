@@ -12,9 +12,9 @@ spec:
   tls:
     - secretName: blog-origin-tls
       hosts:
-        - blog-b.nodove.com
+        - api.nodove.com
   rules:
-    - host: blog-b.nodove.com
+    - host: api.nodove.com
       http:
         paths:
           - path: /api

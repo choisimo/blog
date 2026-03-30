@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ["Algorithm", "이진 탐색", "Problem Solving", "Python", "Java"]
 excerpt: "Sorting & Binary Search - 제곱근 (Sqrt) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
 ## Top-down 질문

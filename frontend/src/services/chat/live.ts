@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from "@/utils/network/apiBase";
+import { bearerAuth } from "@/lib/auth";
 import {
   findSSEFrameBoundary,
   parseSSEFrame as parseRawSSEFrame,
@@ -47,6 +48,23 @@ export type LiveChatEvent =
       mentionedAgents?: string[];
       contextKinds?: string[];
       sources?: LiveSourceLink[];
+      ts?: string;
+    }
+  | {
+      type: "typing";
+      room: string;
+      sessionId: string;
+      senderType?: "client" | "agent";
+      name: string;
+      replyToName?: string;
+      turnIndex?: number;
+      roundId?: string;
+      roundSize?: number;
+      personaStyle?: string;
+      personaTraits?: string;
+      triggeredByMention?: boolean;
+      mentionedAgents?: string[];
+      contextKinds?: string[];
       ts?: string;
     }
   | {
@@ -137,7 +155,7 @@ export function connectLiveChatStream(
       try {
         const headers: Record<string, string> = {};
         if (sessionToken) {
-          headers["Authorization"] = `Bearer ${sessionToken}`;
+          headers["Authorization"] = bearerAuth(sessionToken).Authorization;
         }
 
         const response = await fetch(url.toString(), {
@@ -204,6 +222,8 @@ export async function sendLiveChatMessage(input: {
   room?: string;
   name?: string;
   senderType?: "client" | "agent";
+  replyToName?: string;
+  mentionedAgents?: string[];
 }): Promise<void> {
   const sessionToken = readStoredSessionToken();
 
@@ -211,15 +231,30 @@ export async function sendLiveChatMessage(input: {
     "Content-Type": "application/json",
   };
   if (sessionToken) {
-    headers["Authorization"] = `Bearer ${sessionToken}`;
+    headers["Authorization"] = bearerAuth(sessionToken).Authorization;
   }
 
-  const payload: Record<string, string> = {
+  const payload: Record<string, unknown> = {
     text: input.text,
     room: input.room || "global",
     name: input.name || "",
     senderType: input.senderType || "client",
   };
+  if (input.replyToName?.trim()) {
+    payload.replyToName = input.replyToName.trim();
+  }
+  if (
+    Array.isArray(input.mentionedAgents) &&
+    input.mentionedAgents.length > 0
+  ) {
+    payload.mentionedAgents = input.mentionedAgents
+      .map((value) =>
+        String(value || "")
+          .trim()
+          .toLowerCase(),
+      )
+      .filter(Boolean);
+  }
   if (!sessionToken) {
     payload.sessionId = input.sessionId;
   }

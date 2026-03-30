@@ -16,6 +16,7 @@ import type { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { Env } from '../types';
 import { error } from '../lib/response';
+import { requireAdmin } from '../middleware/auth';
 
 type RagContext = { Bindings: Env };
 
@@ -103,7 +104,7 @@ rag.post('/search', async (c) => {
  *   texts: string[]  // 임베딩할 텍스트 배열
  * }
  */
-rag.post('/embed', async (c) => {
+rag.post('/embed', requireAdmin, async (c) => {
   return proxyToBackend(c, '/embed', 'POST');
 });
 
@@ -118,14 +119,14 @@ rag.get('/health', async (c) => {
  * GET /status - 특정 컬렉션 상태 조회
  * Query: ?collection=<name>
  */
-rag.get('/status', async (c) => {
+rag.get('/status', requireAdmin, async (c) => {
   return proxyToBackend(c, '/status', 'GET');
 });
 
 /**
  * GET /collections - 모든 ChromaDB 컬렉션 목록 조회
  */
-rag.get('/collections', async (c) => {
+rag.get('/collections', requireAdmin, async (c) => {
   return proxyToBackend(c, '/collections', 'GET');
 });
 

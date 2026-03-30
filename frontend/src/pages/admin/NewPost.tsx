@@ -1,8 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
-  adminLoginStep1,
-  adminLoginStep2,
   createPostPR,
   type CreatePostPayload,
   uploadPostImages,
@@ -15,13 +13,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/ui/use-toast";
 import MarkdownRenderer from "@/components/features/blog/MarkdownRenderer";
 import { useAuthStore } from "@/stores/session/useAuthStore";
-import { isTokenExpired } from "@/services/session/auth";
-import type { UserInfo } from "@/services/session/auth";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import BotChatPanel from "@/components/features/admin/BotChatPanel";
-
-type LoginStep = "credentials" | "otp" | "authenticated";
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
@@ -29,23 +23,8 @@ function getErrorMessage(error: unknown, fallback: string): string {
 
 export default function NewPost() {
   const { toast } = useToast();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [otp, setOtp] = useState("");
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [loginStep, setLoginStep] = useState<LoginStep>("credentials");
 
-  // Use unified auth store instead of local state
-  const {
-    accessToken,
-    refreshToken,
-    setTokens,
-    logout: storeLogout,
-    getValidAccessToken,
-  } = useAuthStore();
-  const hasUsableAuth =
-    !!(accessToken && !isTokenExpired(accessToken, 0)) ||
-    !!(refreshToken && !isTokenExpired(refreshToken, 0));
+  const { logout: storeLogout, getValidAccessToken } = useAuthStore();
 
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
@@ -62,84 +41,9 @@ export default function NewPost() {
     Array<{ url: string; variantWebp?: { url: string } | null }>
   >([]);
 
-  useEffect(() => {
-    const hasValidAccess = !!(accessToken && !isTokenExpired(accessToken, 0));
-    const hasValidRefresh = !!(
-      refreshToken && !isTokenExpired(refreshToken, 0)
-    );
-    if (hasValidAccess || hasValidRefresh) {
-      setLoginStep("authenticated");
-    } else {
-      setLoginStep("credentials");
-    }
-  }, [accessToken, refreshToken]);
-
-  const doLoginStep1 = useMutation({
-    mutationFn: async () => {
-      const result = await adminLoginStep1(username, password);
-      setSessionId(result.challengeId);
-      return result;
-    },
-    onSuccess: (data) =>
-      toast({ title: "OTP 전송됨", description: data.message }),
-    onError: (e) =>
-      toast({
-        title: "로그인 실패",
-        description: getErrorMessage(e, "인증 실패"),
-        variant: "destructive",
-      }),
-  });
-
-  const doLoginStep2 = useMutation({
-    mutationFn: async () => {
-      if (!sessionId) throw new Error("세션이 없습니다");
-      const result = await adminLoginStep2(sessionId, otp);
-      setTokens(result.accessToken, result.refreshToken, result.user as UserInfo);
-      setLoginStep("authenticated");
-      window.dispatchEvent(new Event("admin-auth-changed"));
-      return result;
-    },
-    onSuccess: () =>
-      toast({ title: "로그인 성공", description: "관리자 인증 완료" }),
-    onError: (e) =>
-      toast({
-        title: "OTP 인증 실패",
-        description: getErrorMessage(e, "인증 실패"),
-        variant: "destructive",
-      }),
-  });
-
-  const doResendOtp = useMutation({
-    mutationFn: async () => {
-      const result = await adminLoginStep1(username, password);
-      setSessionId(result.challengeId);
-      return {
-        message: result.message,
-        expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-      };
-    },
-    onSuccess: (data) =>
-      toast({ title: "OTP 재전송", description: data.message }),
-    onError: (e) =>
-      toast({
-        title: "OTP 재전송 실패",
-        description: getErrorMessage(e, "실패"),
-        variant: "destructive",
-      }),
-  });
-
   const logout = async () => {
     await storeLogout();
-    setSessionId(null);
-    setOtp("");
-    setLoginStep("credentials");
     window.dispatchEvent(new Event("admin-auth-changed"));
-  };
-
-  const backToCredentials = () => {
-    setSessionId(null);
-    setOtp("");
-    setLoginStep("credentials");
   };
 
   const createPr = useMutation({
@@ -275,93 +179,6 @@ export default function NewPost() {
     return [lines.join("\n"), content].filter(Boolean).join("\n");
   }, [title, coverImage, tags, category, published, content]);
 
-  const renderLoginSection = () => {
-    if (loginStep === "authenticated") {
-      return (
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-green-600">로그인됨</span>
-          <Button variant="secondary" onClick={logout}>
-            로그아웃
-          </Button>
-        </div>
-      );
-    }
-
-    if (loginStep === "otp") {
-      return (
-        <div className="space-y-4">
-          <div className="p-4 bg-muted rounded-md">
-            <p className="text-sm text-muted-foreground mb-2">
-              이메일로 전송된 인증 코드를 입력하세요
-            </p>
-            <div className="flex gap-3">
-              <Input
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                placeholder="000000"
-                maxLength={6}
-                className="w-32 text-center text-lg tracking-widest"
-              />
-              <Button
-                onClick={() => doLoginStep2.mutate()}
-                disabled={doLoginStep2.isPending || otp.length < 6}
-              >
-                {doLoginStep2.isPending ? "인증 중…" : "인증"}
-              </Button>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => doResendOtp.mutate()}
-              disabled={doResendOtp.isPending}
-            >
-              {doResendOtp.isPending ? "재전송 중…" : "OTP 재전송"}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={backToCredentials}>
-              처음으로
-            </Button>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="username">관리자 아이디</Label>
-            <Input
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="admin"
-            />
-          </div>
-          <div>
-            <Label htmlFor="password">관리자 비밀번호</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••"
-            />
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={() => doLoginStep1.mutate()}
-            disabled={doLoginStep1.isPending || !username || !password}
-          >
-            {doLoginStep1.isPending ? "로그인 중…" : "로그인"}
-          </Button>
-        </div>
-      </>
-    );
-  };
-
   return (
     <div className="container mx-auto px-0 md:px-4 py-4 md:py-8 h-[calc(100vh-80px)] max-w-[1400px]">
       <ResizablePanelGroup direction="horizontal" className="h-full w-full rounded-lg border bg-background shadow-sm overflow-hidden md:flex">
@@ -374,7 +191,12 @@ export default function NewPost() {
                   <CardTitle>게시글 작성 (PR 생성)</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6 px-0 pb-0">
-                  {renderLoginSection()}
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-green-600">로그인됨</span>
+                    <Button variant="secondary" onClick={logout}>
+                      로그아웃
+                    </Button>
+                  </div>
 
                   <hr className="my-4" />
 
@@ -478,7 +300,7 @@ export default function NewPost() {
                           multiple
                         />
                       </div>
-                      <Button onClick={doUpload} disabled={uploading || !hasUsableAuth} variant="secondary">
+                      <Button onClick={doUpload} disabled={uploading} variant="secondary">
                         {uploading ? "업로드 중…" : "수동 이미지 업로드"}
                       </Button>
                     </div>
@@ -526,7 +348,7 @@ export default function NewPost() {
                       size="lg"
                       className="w-full sm:w-auto"
                       onClick={() => createPr.mutate()}
-                      disabled={createPr.isPending || !hasUsableAuth}
+                      disabled={createPr.isPending}
                     >
                       {createPr.isPending ? "PR 생성 중…" : "PR 생성 및 배포하기"}
                     </Button>

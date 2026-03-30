@@ -4,6 +4,7 @@ import type {
   ChatSessionMeta,
   UploadedChatImage,
   QuestionMode,
+  LiveReplyTarget,
 } from "../types";
 import { PERSIST_OPTIN_KEY } from "../constants";
 import {
@@ -63,6 +64,8 @@ export function useChatState(options?: { initialMessage?: string }) {
       return false;
     }
   });
+  const [liveReplyTarget, setLiveReplyTarget] =
+    useState<LiveReplyTarget | null>(null);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -146,6 +149,7 @@ export function useChatState(options?: { initialMessage?: string }) {
 
   useEffect(() => {
     if (!persistOptIn || !sessionKey) return;
+    if (messages[messages.length - 1]?.pending) return;
 
     if (persistTimerRef.current !== null) {
       window.clearTimeout(persistTimerRef.current);
@@ -158,7 +162,9 @@ export function useChatState(options?: { initialMessage?: string }) {
           `${SESSION_MESSAGES_PREFIX}${sessionKey}`,
           JSON.stringify(
             messages
-              .filter((m) => !m.transient)
+              .filter(
+                (m) => !m.pending && !m.transient && m.statusSource !== "event",
+              )
               .slice(-MAX_MESSAGES_PER_SESSION),
           ),
         );
@@ -299,6 +305,7 @@ export function useChatState(options?: { initialMessage?: string }) {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
       const candidate = messages[i];
       if (candidate.role !== "assistant") continue;
+      if (candidate.pending) continue;
       if (!candidate.text.trim()) continue;
       txt = candidate.text;
       break;
@@ -347,6 +354,8 @@ export function useChatState(options?: { initialMessage?: string }) {
     setUploadedImages,
     livePinned,
     setLivePinned,
+    liveReplyTarget,
+    setLiveReplyTarget,
     // Refs
     scrollRef,
     abortRef,

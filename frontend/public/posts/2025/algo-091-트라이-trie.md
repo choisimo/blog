@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ["Algorithm", "접두사 트리", "Problem Solving", "Python", "Java"]
 excerpt: "Advanced Topics - 트라이 (Trie) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
 ## Top-down 질문

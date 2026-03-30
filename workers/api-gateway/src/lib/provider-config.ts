@@ -31,7 +31,7 @@ const DEFAULT_PROVIDERS: DynamicProvider[] = [
     name: 'openai',
     displayName: 'OpenAI-Compatible',
     apiBaseUrl: 'https://api.openai.com/v1',
-    apiKeyEnv: 'AI_API_KEY',
+    apiKeyEnv: 'OPENAI_API_KEY',
     isEnabled: true,
     healthStatus: 'unknown',
     lastHealthCheck: null,

@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ['Dijkstra', '최단경로', '우선순위큐', '그래프']
 excerpt: "다익스트라 알고리즘을 통해 가중 그래프에서의 최단 경로를 효율적으로 찾는 방법을 학습합니다."
 readTime: "9분"
+published: false
 ---
 
 ## 개요

@@ -5,10 +5,13 @@ import React, {
   useEffect,
   useRef,
   useState,
-} from 'react';
-import { toast } from '@/hooks/ui/use-toast';
+} from "react";
+import { toast } from "@/hooks/ui/use-toast";
 
-type Theme = 'light' | 'dark' | 'system' | 'terminal';
+type Theme = "light" | "dark" | "system" | "terminal";
+
+const VALID_THEMES: Theme[] = ["light", "dark", "system", "terminal"];
+const FALLBACK_THEME: Theme = "light";
 
 interface ThemeContextType {
   theme: Theme;
@@ -17,22 +20,30 @@ interface ThemeContextType {
 }
 
 const THEME_LABELS: Record<Theme, string> = {
-  light: 'Light',
-  dark: 'Dark',
-  system: 'System',
-  terminal: 'Terminal',
+  light: "Light",
+  dark: "Dark",
+  system: "System",
+  terminal: "Terminal",
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    const savedTheme = localStorage.getItem('theme') as Theme;
-    return savedTheme || 'light';
+    const stored = localStorage.getItem("theme") as Theme;
+    if (stored && VALID_THEMES.includes(stored)) return stored;
+
+    const metaDefault = document.querySelector<HTMLMetaElement>(
+      'meta[name="theme-default"]',
+    )?.content as Theme | undefined;
+
+    return metaDefault && VALID_THEMES.includes(metaDefault)
+      ? metaDefault
+      : FALLBACK_THEME;
   });
   const isInitialMount = useRef(true);
 
-  const isTerminal = theme === 'terminal';
+  const isTerminal = theme === "terminal";
 
   const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
@@ -40,10 +51,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // Show toast notification on theme change (not on initial mount)
     if (!isInitialMount.current) {
       const label = THEME_LABELS[newTheme];
-      if (newTheme === 'terminal') {
+      if (newTheme === "terminal") {
         toast({
           title: `>_ ${label} mode activated`,
-          description: 'Welcome to the matrix',
+          description: "Welcome to the matrix",
         });
       } else {
         toast({
@@ -56,22 +67,22 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove('light', 'dark', 'terminal');
+    root.classList.remove("light", "dark", "terminal");
 
-    if (theme === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
+    if (theme === "system") {
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
         .matches
-        ? 'dark'
-        : 'light';
+        ? "dark"
+        : "light";
       root.classList.add(systemTheme);
-    } else if (theme === 'terminal') {
+    } else if (theme === "terminal") {
       // Terminal uses dark as base with additional terminal class
-      root.classList.add('dark', 'terminal');
+      root.classList.add("dark", "terminal");
     } else {
       root.classList.add(theme);
     }
 
-    localStorage.setItem('theme', theme);
+    localStorage.setItem("theme", theme);
 
     // Mark initial mount as complete after first theme application
     if (isInitialMount.current) {
@@ -80,17 +91,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [theme]);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = () => {
-      if (theme === 'system') {
+      if (theme === "system") {
         const root = window.document.documentElement;
-        root.classList.remove('light', 'dark', 'terminal');
-        root.classList.add(mediaQuery.matches ? 'dark' : 'light');
+        root.classList.remove("light", "dark", "terminal");
+        root.classList.add(mediaQuery.matches ? "dark" : "light");
       }
     };
 
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
   }, [theme]);
 
   return (
@@ -103,7 +114,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    throw new Error("useTheme must be used within a ThemeProvider");
   }
   return context;
 };

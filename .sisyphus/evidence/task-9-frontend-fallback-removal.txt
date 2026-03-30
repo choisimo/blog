@@ -1,0 +1,49 @@
+=== Warming Baseline Tests ===
+
+> vite_react_shadcn_ts@0.0.0 test:run
+> vitest run --config config/vite.config.ts Sentio.feed-cache.warming-baseline
+
+
+ RUN  v3.2.4 /home/nodove/workspace/blog/frontend
+
+stderr | src/test/Sentio.feed-cache.warming-baseline.test.tsx > sentio feed warming baseline > uses locally generated prism fallback cards when the lens request fails
+[PrismDeck] lens-feed failed, using local fallback cards Error: lens boom
+    at [90m/home/nodove/workspace/blog/frontend/[39msrc/test/Sentio.feed-cache.warming-baseline.test.tsx:182:53
+    at [90mfile:///home/nodove/workspace/blog/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:155:11
+    at [90mfile:///home/nodove/workspace/blog/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:752:26
+    at [90mfile:///home/nodove/workspace/blog/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///home/nodove/workspace/blog/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1863:10[90m)[39m
+    at runTest [90m(file:///home/nodove/workspace/blog/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1574:12[90m)[39m
+    at runSuite [90m(file:///home/nodove/workspace/blog/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1729:8[90m)[39m
+    at runSuite [90m(file:///home/nodove/workspace/blog/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1729:8[90m)[39m
+    at runFiles [90m(file:///home/nodove/workspace/blog/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1787:3[90m)[39m
+
+stderr | src/test/Sentio.feed-cache.warming-baseline.test.tsx > sentio feed warming baseline > uses locally generated chain fallback cards when the thought request fails
+[ThoughtFeed] thought-feed failed, using local fallback cards Error: thought boom
+    at [90m/home/nodove/workspace/blog/frontend/[39msrc/test/Sentio.feed-cache.warming-baseline.test.tsx:196:56
+    at [90mfile:///home/nodove/workspace/blog/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:155:11
+    at [90mfile:///home/nodove/workspace/blog/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:752:26
+    at [90mfile:///home/nodove/workspace/blog/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///home/nodove/workspace/blog/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1863:10[90m)[39m
+    at runTest [90m(file:///home/nodove/workspace/blog/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1574:12[90m)[39m
+    at runSuite [90m(file:///home/nodove/workspace/blog/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1729:8[90m)[39m
+    at runSuite [90m(file:///home/nodove/workspace/blog/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1729:8[90m)[39m
+    at runFiles [90m(file:///home/nodove/workspace/blog/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1787:3[90m)[39m
+
+ ✓ src/test/Sentio.feed-cache.warming-baseline.test.tsx (8 tests) 180ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  23:23:38
+   Duration  1.04s (transform 108ms, setup 43ms, collect 161ms, tests 180ms, environment 251ms, prepare 179ms)
+
+
+=== Type Check ===
+
+> vite_react_shadcn_ts@0.0.0 type-check
+> tsc --project config/tsconfig.json --noEmit
+
+
+=== All checks passed ===

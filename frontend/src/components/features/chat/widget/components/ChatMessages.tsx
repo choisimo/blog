@@ -1,10 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Terminal, ChevronRight } from "lucide-react";
+import { Terminal, ChevronRight, CornerUpLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import ChatMarkdown from "../../ChatMarkdown";
 import { cn } from "@/lib/utils";
-import type { ChatMessage, SourceLink, SystemMessageLevel } from "../types";
+import type {
+  ChatMessage,
+  LiveReplyTarget,
+  SourceLink,
+  SystemMessageLevel,
+} from "../types";
 import { extractImageFromMessage, QUICK_PROMPTS } from "../constants";
 import { TypingDots } from "./ChatSidebar";
 import { SystemStatusMessage } from "./SystemStatusMessage";
@@ -18,6 +23,8 @@ type ChatMessagesProps = {
   lastPrompt: string;
   onNavigate?: (path: string) => void;
   onExpireMessage?: (id: string) => void;
+  activeReplyTargetName?: string | null;
+  onReplyToLiveMessage?: (target: LiveReplyTarget) => void;
 };
 
 const MOBILE_RENDER_LIMIT = 80;
@@ -95,6 +102,8 @@ export function ChatMessages({
   lastPrompt,
   onNavigate,
   onExpireMessage,
+  activeReplyTargetName,
+  onReplyToLiveMessage,
 }: ChatMessagesProps) {
   const navigate = useNavigate();
   const [showFullMobileHistory, setShowFullMobileHistory] = useState(false);
@@ -196,6 +205,8 @@ export function ChatMessages({
               lastPrompt={lastPrompt}
               onSourceClick={handleSourceClick}
               onExpireMessage={onExpireMessage}
+              activeReplyTargetName={activeReplyTargetName}
+              onReplyToLiveMessage={onReplyToLiveMessage}
             />
           );
         }
@@ -216,6 +227,8 @@ export function ChatMessages({
             lastPrompt={lastPrompt}
             onSourceClick={handleSourceClick}
             onExpireMessage={onExpireMessage}
+            activeReplyTargetName={activeReplyTargetName}
+            onReplyToLiveMessage={onReplyToLiveMessage}
           />
         );
       })}
@@ -316,6 +329,8 @@ const TerminalMessage = React.memo(function TerminalMessage({
   lastPrompt,
   onSourceClick,
   onExpireMessage,
+  activeReplyTargetName,
+  onReplyToLiveMessage,
 }: {
   message: ChatMessage;
   imageUrl: string | null;
@@ -330,13 +345,17 @@ const TerminalMessage = React.memo(function TerminalMessage({
   lastPrompt: string;
   onSourceClick: (url: string, e: React.MouseEvent) => void;
   onExpireMessage?: (id: string) => void;
+  activeReplyTargetName?: string | null;
+  onReplyToLiveMessage?: (target: LiveReplyTarget) => void;
 }) {
   const isLiveAssistantMessage = isAssistant && m.channel === "live";
-  const isStreaming =
-    isAssistant &&
-    m.channel !== "live" &&
-    !m.sources?.length &&
-    !m.followups?.length;
+  const isReplyActive = activeReplyTargetName === m.authorName;
+  const canReply =
+    isLiveAssistantMessage &&
+    !m.pending &&
+    Boolean(m.authorName) &&
+    Boolean(m.liveSenderType) &&
+    Boolean(onReplyToLiveMessage);
 
   return (
     <div className="space-y-2">
@@ -358,15 +377,31 @@ const TerminalMessage = React.memo(function TerminalMessage({
         <div className="ai-response-container">
           <div className="ai-response-header">
             <Terminal className="h-3.5 w-3.5" />
-            <span>{isLiveAssistantMessage ? `Live · ${m.authorName || "room"}` : "AI Response"}</span>
-            {!m.text.trim() && (
+            <span>
+              {isLiveAssistantMessage
+                ? `Live · ${m.authorName || "room"}`
+                : "AI Response"}
+            </span>
+            {canReply ? (
+              <ReplyActionButton
+                isTerminal
+                active={isReplyActive}
+                onClick={() =>
+                  onReplyToLiveMessage?.({
+                    name: m.authorName!,
+                    senderType: m.liveSenderType!,
+                  })
+                }
+              />
+            ) : null}
+            {m.pending && (
               <span className="streaming-indicator">
                 <span className="streaming-dots">
                   <span>.</span>
                   <span>.</span>
                   <span>.</span>
                 </span>
-                processing
+                {m.typingLabel || "processing"}
               </span>
             )}
           </div>
@@ -378,19 +413,23 @@ const TerminalMessage = React.memo(function TerminalMessage({
                 isTerminal
               />
             ) : null}
-            {m.text.trim() ? (
+            {!m.pending && m.text.trim() ? (
               <>
-                {isMobile && isStreaming ? (
+                {isMobile ? (
                   <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                     {m.text}
                   </span>
                 ) : (
-                  <ChatMarkdown content={m.text} isStreaming={isStreaming} />
+                  <ChatMarkdown content={m.text} isStreaming={false} />
                 )}
-                {isStreaming && <span className="typewriter-cursor" />}
               </>
             ) : (
-              <span className="crt-block-cursor" aria-label="waiting" />
+              <div className="space-y-2">
+                {m.typingLabel ? (
+                  <span className="text-xs text-primary/70">{m.typingLabel}</span>
+                ) : null}
+                <span className="crt-block-cursor" aria-label="waiting" />
+              </div>
             )}
           </div>
           <Sources
@@ -452,6 +491,8 @@ const DefaultMessage = React.memo(function DefaultMessage({
   lastPrompt,
   onSourceClick,
   onExpireMessage,
+  activeReplyTargetName,
+  onReplyToLiveMessage,
 }: {
   message: ChatMessage;
   imageUrl: string | null;
@@ -466,18 +507,23 @@ const DefaultMessage = React.memo(function DefaultMessage({
   lastPrompt: string;
   onSourceClick: (url: string, e: React.MouseEvent) => void;
   onExpireMessage?: (id: string) => void;
+  activeReplyTargetName?: string | null;
+  onReplyToLiveMessage?: (target: LiveReplyTarget) => void;
 }) {
-  const isStreaming =
-    isAssistant &&
-    m.channel !== "live" &&
-    !m.sources?.length &&
-    !m.followups?.length;
   const isStatus =
     isSystem &&
     (m.systemKind === "status" ||
       (m.systemKind !== "error" &&
         (m.text.startsWith("[Live]") || m.text.startsWith("[Session]")) &&
         systemLevel !== "error"));
+  const canReply =
+    isAssistant &&
+    m.channel === "live" &&
+    !m.pending &&
+    Boolean(m.authorName) &&
+    Boolean(m.liveSenderType) &&
+    Boolean(onReplyToLiveMessage);
+  const isReplyActive = activeReplyTargetName === m.authorName;
 
   if (isStatus) {
     return (
@@ -504,22 +550,43 @@ const DefaultMessage = React.memo(function DefaultMessage({
         {isAssistant ? (
           <>
             {m.channel === "live" ? (
-              <LiveMessageLabel
-                authorName={m.authorName}
-                authorMeta={m.authorMeta}
-                isTerminal={false}
-              />
+              <div className="mb-2 flex items-start justify-between gap-3">
+                <LiveMessageLabel
+                  authorName={m.authorName}
+                  authorMeta={m.authorMeta}
+                  isTerminal={false}
+                />
+                {canReply ? (
+                  <ReplyActionButton
+                    isTerminal={false}
+                    active={isReplyActive}
+                    onClick={() =>
+                      onReplyToLiveMessage?.({
+                        name: m.authorName!,
+                        senderType: m.liveSenderType!,
+                      })
+                    }
+                  />
+                ) : null}
+              </div>
             ) : null}
-            {m.text.trim() ? (
-              isMobile && isStreaming ? (
+            {!m.pending && m.text.trim() ? (
+              isMobile ? (
                 <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                   {m.text}
                 </span>
               ) : (
-                <ChatMarkdown content={m.text} isStreaming={isStreaming} />
+                <ChatMarkdown content={m.text} isStreaming={false} />
               )
             ) : (
-              <TypingDots />
+              <div className="space-y-2">
+                <TypingDots />
+                {m.typingLabel ? (
+                  <p className="text-xs text-muted-foreground">
+                    {m.typingLabel}
+                  </p>
+                ) : null}
+              </div>
             )}
           </>
         ) : isUser ? (
@@ -568,6 +635,36 @@ const DefaultMessage = React.memo(function DefaultMessage({
     </div>
   );
 });
+
+function ReplyActionButton({
+  isTerminal,
+  active,
+  onClick,
+}: {
+  isTerminal: boolean;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] transition-colors",
+        isTerminal
+          ? active
+            ? "border border-primary/40 bg-primary/15 text-primary"
+            : "border border-primary/20 text-primary/80 hover:bg-primary/10"
+          : active
+            ? "bg-primary/10 text-primary"
+            : "bg-muted text-muted-foreground hover:text-foreground",
+      )}
+    >
+      <CornerUpLeft className="h-3 w-3" />
+      <span>{active ? "답장 중" : "답장"}</span>
+    </button>
+  );
+}
 
 // User image attachment
 const UserImage = React.memo(function UserImage({

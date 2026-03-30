@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ['Knapsack', '배낭문제', '동적계획법', '최적화']
 excerpt: "0-1 배낭 문제와 무한 배낭 문제를 동적 계획법으로 해결하는 다양한 방법을 학습합니다."
 readTime: "9분"
+published: false
 ---
 
 ## 개요

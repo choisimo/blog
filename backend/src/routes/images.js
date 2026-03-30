@@ -243,7 +243,7 @@ router.delete(
  *
  * Returns: { url, key, size, contentType, imageAnalysis? }
  */
-router.post("/chat-upload", upload.single("file"), async (req, res, next) => {
+router.post("/chat-upload", requireAdmin, upload.single("file"), async (req, res, next) => {
   try {
     const file = req.file;
     if (!file) {

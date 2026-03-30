@@ -3,8 +3,7 @@
  */
 
 import { useState, useCallback } from "react";
-import { useAuthStore } from "@/stores/session/useAuthStore";
-import { getApiBaseUrl } from "@/utils/network/apiBase";
+import { adminApiFetch } from "@/services/admin/apiClient";
 import type {
   SecretCategory,
   SecretPublic,
@@ -13,80 +12,6 @@ import type {
   SecretsOverview,
   SecretsHealth,
 } from "./types";
-
-// ============================================================================
-// API Fetch Wrapper
-// ============================================================================
-
-async function apiFetch<T>(
-  endpoint: string,
-  options: RequestInit = {},
-): Promise<{ ok: boolean; data?: T; error?: string }> {
-  const { getValidAccessToken, clearAuth } = useAuthStore.getState();
-  const API_BASE = getApiBaseUrl();
-
-  try {
-    const token = await getValidAccessToken();
-
-    if (!token) {
-      return { ok: false, error: "Not authenticated. Please log in again." };
-    }
-
-    const res = await fetch(`${API_BASE}/api/v1/admin/secrets${endpoint}`, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...(options.headers || {}),
-      },
-    });
-
-    if (res.status === 401) {
-      const newToken = await getValidAccessToken();
-      if (!newToken) {
-        clearAuth();
-        return { ok: false, error: "Session expired. Please log in again." };
-      }
-
-      const retryRes = await fetch(
-        `${API_BASE}/api/v1/admin/secrets${endpoint}`,
-        {
-          ...options,
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${newToken}`,
-            ...(options.headers || {}),
-          },
-        },
-      );
-
-      if (!retryRes.ok) {
-        if (retryRes.status === 401) {
-          clearAuth();
-          return { ok: false, error: "Session expired. Please log in again." };
-        }
-        const json = await retryRes.json().catch(() => ({}));
-        return { ok: false, error: json.error || `HTTP ${retryRes.status}` };
-      }
-
-      const json = await retryRes.json();
-      return { ok: true, data: json.data };
-    }
-
-    const json = await res.json();
-
-    if (!res.ok || !json.ok) {
-      return { ok: false, error: json.error || `HTTP ${res.status}` };
-    }
-
-    return { ok: true, data: json.data };
-  } catch (err) {
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : "Unknown error",
-    };
-  }
-}
 
 // ============================================================================
 // Categories Hook
@@ -100,8 +25,9 @@ export function useCategories() {
   const fetchCategories = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const result = await apiFetch<{ categories: SecretCategory[] }>(
+    const result = await adminApiFetch<{ categories: SecretCategory[] }>(
       "/categories",
+      { pathPrefix: "/api/v1/admin/secrets" },
     );
     if (result.ok && result.data) {
       setCategories(result.data.categories);
@@ -118,11 +44,12 @@ export function useCategories() {
       description?: string;
       icon?: string;
     }) => {
-      const result = await apiFetch<{ category: SecretCategory }>(
+      const result = await adminApiFetch<{ category: SecretCategory }>(
         "/categories",
         {
+          pathPrefix: "/api/v1/admin/secrets",
           method: "POST",
-          body: JSON.stringify(data),
+          body: data,
         },
       );
       if (result.ok) {
@@ -157,7 +84,9 @@ export function useSecrets() {
     const query = categoryId
       ? `?categoryId=${encodeURIComponent(categoryId)}`
       : "";
-    const result = await apiFetch<{ secrets: SecretPublic[] }>(query);
+    const result = await adminApiFetch<{ secrets: SecretPublic[] }>(query, {
+      pathPrefix: "/api/v1/admin/secrets",
+    });
     if (result.ok && result.data) {
       setSecrets(result.data.secrets);
     } else {
@@ -168,9 +97,10 @@ export function useSecrets() {
 
   const createSecret = useCallback(
     async (data: SecretFormData) => {
-      const result = await apiFetch<{ secret: SecretPublic }>("/", {
+      const result = await adminApiFetch<{ secret: SecretPublic }>("/", {
+        pathPrefix: "/api/v1/admin/secrets",
         method: "POST",
-        body: JSON.stringify(data),
+        body: data,
       });
       if (result.ok) {
         await fetchSecrets();
@@ -182,9 +112,10 @@ export function useSecrets() {
 
   const updateSecret = useCallback(
     async (id: string, data: Partial<SecretFormData>) => {
-      const result = await apiFetch<{ secret: SecretPublic }>(`/${id}`, {
+      const result = await adminApiFetch<{ secret: SecretPublic }>(`/${id}`, {
+        pathPrefix: "/api/v1/admin/secrets",
         method: "PUT",
-        body: JSON.stringify(data),
+        body: data,
       });
       if (result.ok) {
         await fetchSecrets();
@@ -196,7 +127,8 @@ export function useSecrets() {
 
   const deleteSecret = useCallback(
     async (id: string) => {
-      const result = await apiFetch<{ deleted: string }>(`/${id}`, {
+      const result = await adminApiFetch<{ deleted: string }>(`/${id}`, {
+        pathPrefix: "/api/v1/admin/secrets",
         method: "DELETE",
       });
       if (result.ok) {
@@ -208,11 +140,12 @@ export function useSecrets() {
   );
 
   const revealSecret = useCallback(async (id: string) => {
-    const result = await apiFetch<{
+    const result = await adminApiFetch<{
       id: string;
       keyName: string;
       value: string;
     }>(`/${id}/reveal`, {
+      pathPrefix: "/api/v1/admin/secrets",
       method: "POST",
     });
     return result;
@@ -224,11 +157,12 @@ export function useSecrets() {
       length?: number,
       prefix?: string,
     ) => {
-      const result = await apiFetch<{ value: string; type: string }>(
+      const result = await adminApiFetch<{ value: string; type: string }>(
         "/generate",
         {
+          pathPrefix: "/api/v1/admin/secrets",
           method: "POST",
-          body: JSON.stringify({ type, length, prefix }),
+          body: { type, length, prefix },
         },
       );
       return result;
@@ -280,10 +214,10 @@ export function useAuditLog() {
       if (options?.offset) params.set("offset", String(options.offset));
 
       const query = params.toString() ? `?${params}` : "";
-      const result = await apiFetch<{
+      const result = await adminApiFetch<{
         logs: SecretAuditLog[];
         pagination: { total: number; limit: number; offset: number };
-      }>(`/audit${query}`);
+      }>(`/audit${query}`, { pathPrefix: "/api/v1/admin/secrets" });
 
       if (result.ok && result.data) {
         setLogs(result.data.logs);
@@ -320,8 +254,12 @@ export function useSecretsOverview() {
     setError(null);
 
     const [overviewResult, healthResult] = await Promise.all([
-      apiFetch<SecretsOverview>("/overview"),
-      apiFetch<SecretsHealth>("/health"),
+      adminApiFetch<SecretsOverview>("/overview", {
+        pathPrefix: "/api/v1/admin/secrets",
+      }),
+      adminApiFetch<SecretsHealth>("/health", {
+        pathPrefix: "/api/v1/admin/secrets",
+      }),
     ]);
 
     if (overviewResult.ok && overviewResult.data) {
@@ -359,11 +297,11 @@ export function useSecretsExport() {
 
   const exportSecrets = useCallback(async (includeValues = false) => {
     const query = includeValues ? "?includeValues=true" : "";
-    const result = await apiFetch<{
+    const result = await adminApiFetch<{
       exportedAt: string;
       categories: SecretCategory[];
       secrets: SecretPublic[];
-    }>(`/export${query}`);
+    }>(`/export${query}`, { pathPrefix: "/api/v1/admin/secrets" });
     return result;
   }, []);
 
@@ -378,14 +316,15 @@ export function useSecretsExport() {
       overwrite = false,
     ) => {
       setLoading(true);
-      const result = await apiFetch<{
+      const result = await adminApiFetch<{
         created: number;
         updated: number;
         skipped: number;
         errors: string[];
       }>("/import", {
+        pathPrefix: "/api/v1/admin/secrets",
         method: "POST",
-        body: JSON.stringify({ secrets, overwrite }),
+        body: { secrets, overwrite },
       });
       setLoading(false);
       return result;

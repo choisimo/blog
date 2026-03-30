@@ -43,6 +43,7 @@ const CONFIG_SCHEMA = {
     name: 'Service URLs',
     vars: [
       { key: 'INTERNAL_API_URL', value: () => config.services?.backendUrl },
+      { key: 'WORKER_API_URL', value: () => config.services?.workerApiUrl },
       { key: 'TERMINAL_SERVER_URL', value: () => config.services?.terminalServerUrl },
       { key: 'TERMINAL_GATEWAY_URL', value: () => config.services?.terminalGatewayUrl },
     ],

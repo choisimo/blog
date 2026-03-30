@@ -9,6 +9,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { bearerAuth } from '@/lib/auth';
 import {
   refreshAccessToken,
   isTokenExpired,
@@ -216,7 +217,7 @@ export function getAuthHeaders(): Record<string, string> {
   return accessToken
     ? {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
+        ...bearerAuth(accessToken),
       }
     : { 'Content-Type': 'application/json' };
 }
@@ -229,7 +230,7 @@ export async function getAuthHeadersAsync(): Promise<Record<string, string>> {
   return token
     ? {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        ...bearerAuth(token),
       }
     : { 'Content-Type': 'application/json' };
 }

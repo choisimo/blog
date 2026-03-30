@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: blog-resource-budget
+  namespace: blog
+spec:
+  hard:
+    pods: "20"
+    services: "10"
+    configmaps: "10"
+    secrets: "20"
+    persistentvolumeclaims: "10"
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    requests.ephemeral-storage: 10Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+    limits.ephemeral-storage: 20Gi
+    requests.storage: 100Gi

@@ -110,6 +110,7 @@ export type ChatTaskMode =
   | "prism"
   | "chain"
   | "summary"
+  | "quiz"
   | "custom";
 
 export type InvokeChatTaskInput = {
@@ -126,6 +127,89 @@ export type InvokeChatTaskResult<T = unknown> = {
   status: number;
   data: T | null;
   raw: unknown;
+};
+
+// ============================================================================
+// Feed Types
+// ============================================================================
+
+export type FeedCursor = {
+  seed: string;
+  page: number;
+  seenKeys: string[];
+};
+
+export type FeedItemState = {
+  logicalKey: string;
+  itemHash?: string;
+  unread?: boolean;
+  changed?: boolean;
+};
+
+export type LensCard = {
+  id: string;
+  personaId: "mentor" | "debater" | "explorer" | "analyst";
+  angleKey: string;
+  title: string;
+  summary: string;
+  bullets: string[];
+  detail: string;
+  tags: string[];
+};
+
+export type ThoughtCard = {
+  id: string;
+  trackKey: string;
+  title: string;
+  subtitle?: string;
+  body: string;
+  bullets?: string[];
+  tags?: string[];
+};
+
+export type LensFeedRequest = {
+  paragraph: string;
+  postTitle?: string;
+  cursor?: FeedCursor | null;
+  count?: number;
+};
+
+export type FeedResponseSource =
+  | "snapshot"
+  | "snapshot-stale"
+  | "warming";
+
+export type LensFeedResponse = {
+  items: LensCard[];
+  nextCursor: FeedCursor | null;
+  exhausted: boolean;
+  warming?: boolean;
+  stale?: boolean;
+  source?: FeedResponseSource;
+  snapshotId?: string;
+  generationVersionHash?: string;
+  unreadCount?: number;
+  itemStates?: FeedItemState[];
+};
+
+export type ThoughtFeedRequest = {
+  paragraph: string;
+  postTitle?: string;
+  cursor?: FeedCursor | null;
+  count?: number;
+};
+
+export type ThoughtFeedResponse = {
+  items: ThoughtCard[];
+  nextCursor: FeedCursor | null;
+  exhausted: boolean;
+  warming?: boolean;
+  stale?: boolean;
+  source?: FeedResponseSource;
+  snapshotId?: string;
+  generationVersionHash?: string;
+  unreadCount?: number;
+  itemStates?: FeedItemState[];
 };
 
 // ============================================================================

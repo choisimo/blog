@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { HonoEnv, Env } from '../types';
 import { getCorsHeadersForRequest } from '../lib/cors';
+import { requireAuth } from '../middleware/auth';
 
 const notifications = new Hono<HonoEnv>();
 
@@ -28,15 +29,15 @@ function buildBackendUrl(request: Request, env: Env): URL | null {
   return backendUrl;
 }
 
-notifications.get('/stream', async (c) => {
+notifications.get('/stream', requireAuth, async (c) => {
   const corsHeaders = await getCorsHeadersForRequest(c.req.raw, c.env);
   const backendUrl = buildBackendUrl(c.req.raw, c.env);
 
   if (!backendUrl) {
     return new Response(
       JSON.stringify({
-        error: 'Configuration error',
-        message: 'BACKEND_ORIGIN not configured',
+        ok: false,
+        error: { message: 'BACKEND_ORIGIN not configured', code: 'CONFIG_ERROR' },
       }),
       {
         status: 500,
@@ -82,9 +83,8 @@ notifications.get('/stream', async (c) => {
       console.error('Notifications backend returned error status:', response.status);
       return new Response(
         JSON.stringify({
-          error: 'Backend unavailable',
-          message: `Notifications backend returned ${response.status}. Retry after 30 seconds.`,
-          status: response.status,
+          ok: false,
+          error: { message: `Notifications backend returned ${response.status}. Retry after 30 seconds.`, code: 'BACKEND_UNAVAILABLE' },
         }),
         {
           status: 503,
@@ -106,8 +106,8 @@ notifications.get('/stream', async (c) => {
     console.error('Notifications SSE proxy failed:', error);
     return new Response(
       JSON.stringify({
-        error: 'Backend unavailable',
-        message: 'Could not connect to notifications backend',
+        ok: false,
+        error: { message: 'Could not connect to notifications backend', code: 'BACKEND_UNAVAILABLE' },
       }),
       {
         status: 503,

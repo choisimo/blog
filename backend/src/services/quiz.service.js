@@ -95,13 +95,55 @@ export function normalizeQuizType(value) {
   if (normalized === "refactoringproblem") return "refactoring_problem";
   if (normalized === "conceptconnection") return "concept_connection";
   if (
-    ["fill_blank", "multiple_choice", "transform", "explain", "system_modeling", "tradeoff_analysis", "refactoring_problem", "concept_connection"].includes(
-      normalized,
-    )
+    [
+      "fill_blank",
+      "multiple_choice",
+      "transform",
+      "explain",
+      "system_modeling",
+      "tradeoff_analysis",
+      "refactoring_problem",
+      "concept_connection",
+    ].includes(normalized)
   ) {
     return normalized;
   }
   return "explain";
+}
+
+function parseExplicitCorrectOptionIndex(value, optionCount) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const candidate = Math.floor(value);
+  if (candidate >= 0 && candidate < optionCount) return candidate;
+  if (candidate >= 1 && candidate <= optionCount) return candidate - 1;
+  return null;
+}
+
+function inferCorrectOptionIndex(answer, options) {
+  if (!Array.isArray(options) || options.length === 0) return null;
+  const normalizedAnswer = String(answer || "")
+    .trim()
+    .toLowerCase();
+  if (!normalizedAnswer) return null;
+
+  const exactIndex = options.findIndex(
+    (option) => String(option).trim().toLowerCase() === normalizedAnswer,
+  );
+  if (exactIndex >= 0) return exactIndex;
+
+  const letterMatch = normalizedAnswer.match(/^([a-z])(?:[\).:\-\s]|$)/i);
+  if (letterMatch) {
+    const index = letterMatch[1].toUpperCase().charCodeAt(0) - 65;
+    return index >= 0 && index < options.length ? index : null;
+  }
+
+  const numberMatch = normalizedAnswer.match(/^(\d+)(?:[\).:\-\s]|$)/);
+  if (numberMatch) {
+    const index = Number.parseInt(numberMatch[1], 10) - 1;
+    return index >= 0 && index < options.length ? index : null;
+  }
+
+  return null;
 }
 
 export function normalizeQuizQuestion(value) {
@@ -134,6 +176,14 @@ export function normalizeQuizQuestion(value) {
   const type = normalizeQuizType(
     value.type ?? (options.length > 0 ? "multiple_choice" : "explain"),
   );
+  const correctOptionIndex =
+    parseExplicitCorrectOptionIndex(
+      value.correctOptionIndex ??
+        value.correctIndex ??
+        value.answerIndex ??
+        value.correct_option_index,
+      options.length,
+    ) ?? inferCorrectOptionIndex(answer, options);
 
   const result = {
     type,
@@ -142,6 +192,8 @@ export function normalizeQuizQuestion(value) {
   };
 
   if (options.length > 0) result.options = options;
+  if (correctOptionIndex !== null)
+    result.correctOptionIndex = correctOptionIndex;
   if (explanation) result.explanation = explanation;
 
   return result;
@@ -252,8 +304,9 @@ export function projectTaskDataFromText(mode, text, payload) {
           type: "multiple_choice",
           question:
             "이 내용의 핵심 코드 흐름에서 가장 중요한 분기 조건은 무엇인가요?",
-          answer: "핵심 분기 조건을 다시 확인해보세요.",
+          answer: "분기 처리",
           options: ["입력 검증", "분기 처리", "반복 종료", "예외 처리"],
+          correctOptionIndex: 1,
           explanation: "AI가 서술형으로 응답해 퀴즈 형식으로 변환했습니다.",
         },
         {
@@ -418,7 +471,7 @@ export function buildTaskPrompt(mode, payload) {
       return {
         prompt: [
           "Return STRICT JSON only for technical learning quiz questions.",
-          '{"quiz":[{"type":"fill_blank|multiple_choice|transform|explain|system_modeling|tradeoff_analysis|refactoring_problem|concept_connection","question":"string","answer":"string","options":["string"],"explanation":"string"}]}',
+          '{"quiz":[{"type":"fill_blank|multiple_choice|transform|explain|system_modeling|tradeoff_analysis|refactoring_problem|concept_connection","question":"string","answer":"string","options":["string"],"correctOptionIndex":0,"explanation":"string"}]}',
           `Post: ${title.slice(0, TEXT_LIMITS.TASK_TITLE)}`,
           `Batch: ${quizBatchIndex + 1} (generate questions ${batchStart}-${batchEnd})`,
           normalizedPostTags.length > 0
@@ -436,7 +489,7 @@ export function buildTaskPrompt(mode, payload) {
           "",
           "Question type instructions:",
           "- fill_blank: Replace a key token in a code line with ___ and ask the learner to fill it in.",
-          "- multiple_choice: Provide 4 options with exactly one correct answer.",
+          "- multiple_choice: Provide exactly 4 options with exactly one correct answer, set correctOptionIndex as a zero-based index, and make answer exactly match the correct option text.",
           "- transform: Give a code snippet and ask the learner to rewrite or transform it.",
           "- explain: Ask the learner to explain what a code snippet does step-by-step.",
           "- system_modeling: Describe a real-world system design problem. Ask the learner to identify and model the key components, data flow, and interactions. Focus on architectural thinking.",
@@ -524,8 +577,9 @@ export function getFallbackData(mode, payload) {
           type: "multiple_choice",
           question:
             "이 내용의 핵심 코드 흐름에서 가장 중요한 분기 조건은 무엇인가요?",
-          answer: "핵심 분기 조건을 다시 확인해보세요.",
+          answer: "분기 처리",
           options: ["입력 검증", "분기 처리", "반복 종료", "예외 처리"],
+          correctOptionIndex: 1,
           explanation: "AI 응답이 일시적으로 지연되어 기본 퀴즈가 표시됩니다.",
         },
         {

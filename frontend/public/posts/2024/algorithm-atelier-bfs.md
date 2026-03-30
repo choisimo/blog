@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ["BFS", "그래프", "최단경로(무가중치)", "큐", "알고리즘 아틀리에"]
 excerpt: "물결 비유로 시작해 큐 기반 레이어 탐색의 원리와 코드를 연결합니다."
 readTime: "6분"
+published: false
 ---
 
 # 알고리즘 아틀리에: BFS

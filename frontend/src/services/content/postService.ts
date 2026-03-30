@@ -1,11 +1,12 @@
-import matter from 'gray-matter';
+import matter from "gray-matter";
 import type {
   BlogPost,
   LocalizedPostFields,
   PostsPage,
   SupportedLanguage,
-} from '@/types/blog';
-import { normalizeManifestMediaPath } from '@/utils/content/postMedia';
+} from "@/types/blog";
+import { normalizeManifestMediaPath } from "@/utils/content/postMedia";
+import { normalizeCategoryName } from "@/utils/content/categoryNormalize";
 
 type ManifestItem = {
   path: string; // /posts/:lang/:year/:file.md or legacy /posts/:year/:file.md
@@ -33,6 +34,7 @@ type UnifiedManifest = {
   items: ManifestItem[];
   generatedAt: string;
   years: string[];
+  categoryCounts?: Record<string, number>;
   format?: number;
 };
 
@@ -43,8 +45,8 @@ export class PostService {
   private static pageCache: Map<string, PostsPage<BlogPost>> = new Map();
 
   private static asString(value: unknown): string {
-    if (typeof value === 'string') return value;
-    if (value === null || value === undefined) return '';
+    if (typeof value === "string") return value;
+    if (value === null || value === undefined) return "";
     return String(value);
   }
 
@@ -55,20 +57,47 @@ export class PostService {
   private static normalizeCoverImage(
     coverImage: string | undefined,
     year: string,
-    slug: string
+    slug: string,
   ): string | undefined {
     return normalizeManifestMediaPath(coverImage, `${year}/${slug}`);
   }
 
+  private static computeCategoryCounts(
+    items: ManifestItem[],
+  ): Record<string, number> {
+    return items
+      .filter((it) => it.published !== false)
+      .reduce<Record<string, number>>((counts, item) => {
+        const normalized = normalizeCategoryName(item.category || "General");
+        counts[normalized] = (counts[normalized] || 0) + 1;
+        return counts;
+      }, {});
+  }
+
+  private static normalizeCategoryCounts(
+    counts: Record<string, number> | undefined,
+  ): Record<string, number> {
+    if (!counts) return {};
+
+    return Object.entries(counts).reduce<Record<string, number>>(
+      (acc, [category, count]) => {
+        const normalized = normalizeCategoryName(category || "General");
+        acc[normalized] = (acc[normalized] || 0) + count;
+        return acc;
+      },
+      {},
+    );
+  }
+
   // Query for paginated metadata
   static readonly DEFAULT_PAGE_SIZE = 12;
-  static readonly SORTS = ['date', 'title', 'readTime'] as const;
+  static readonly SORTS = ["date", "title", "readTime"] as const;
 
   private static getBasePath(): string {
     // Vite injects BASE_URL with a trailing slash (e.g., '/', '/blog/').
     // Normalize by removing the trailing slash so we can safely concatenate paths.
-    const base = import.meta.env.BASE_URL ?? '/';
-    return base.replace(/\/$/, '');
+    const base = import.meta.env.BASE_URL ?? "/";
+    return base.replace(/\/$/, "");
   }
 
   private static buildPageKey(q: {
@@ -77,14 +106,14 @@ export class PostService {
     category?: string;
     tags?: string[];
     search?: string;
-    sort?: 'date' | 'title' | 'readTime';
+    sort?: "date" | "title" | "readTime";
   }): string {
     const normalized = {
       ...q,
       tags: (q.tags || []).slice().sort(),
-      category: q.category || 'all',
+      category: q.category || "all",
       search: this.asString(q.search).trim().toLowerCase(),
-      sort: q.sort || 'date',
+      sort: q.sort || "date",
     };
     return JSON.stringify(normalized);
   }
@@ -95,48 +124,56 @@ export class PostService {
       category?: string;
       tags?: string[];
       search?: string;
-      sort?: 'date' | 'title' | 'readTime';
-    }
+      sort?: "date" | "title" | "readTime";
+    },
   ): ManifestItem[] {
     const search = this.asString(q.search).trim().toLowerCase();
     const category =
-      q.category && q.category !== 'all' ? q.category : undefined;
+      q.category && q.category !== "all" ? q.category : undefined;
     const requiredTags = (q.tags || []).filter(Boolean);
 
-    let filtered = items.filter(it => it.published !== false);
+    let filtered = items.filter((it) => it.published !== false);
     if (category) {
       const categoryLower = this.asLower(category);
-      filtered = filtered.filter(it => this.asLower(it.category) === categoryLower);
+      filtered = filtered.filter(
+        (it) => this.asLower(it.category) === categoryLower,
+      );
     }
     if (requiredTags.length) {
-      const requiredLower = requiredTags.map(t => this.asLower(t));
-      filtered = filtered.filter(it => {
+      const requiredLower = requiredTags.map((t) => this.asLower(t));
+      filtered = filtered.filter((it) => {
         const itemTags = Array.isArray(it.tags) ? it.tags : [];
-        const itemTagsLower = itemTags.map(t => this.asLower(t));
-        return requiredLower.some(t => itemTagsLower.includes(t));
+        const itemTagsLower = itemTags.map((t) => this.asLower(t));
+        return requiredLower.some((t) => itemTagsLower.includes(t));
       });
     }
     if (search) {
       filtered = filtered.filter(
-        it =>
+        (it) =>
           this.asLower(it.title).includes(search) ||
           this.asLower(it.description).includes(search) ||
           this.asLower(it.snippet).includes(search) ||
           this.asLower(it.category).includes(search) ||
-          (Array.isArray(it.tags) ? it.tags : []).some(t => this.asLower(t).includes(search))
+          (Array.isArray(it.tags) ? it.tags : []).some((t) =>
+            this.asLower(t).includes(search),
+          ),
       );
     }
 
-    const sortKey = q.sort || 'date';
+    const sortKey = q.sort || "date";
     filtered.sort((a, b) => {
-      if (sortKey === 'title') return this.asString(a.title).localeCompare(this.asString(b.title));
-      if (sortKey === 'readTime') {
+      if (sortKey === "title")
+        return this.asString(a.title).localeCompare(this.asString(b.title));
+      if (sortKey === "readTime") {
         // readingTime like "5 min read" -> parse leading int
         const parse = (s?: string) => (s ? parseInt(String(s), 10) || 0 : 0);
         return parse(a.readingTime) - parse(b.readingTime);
       }
       // default by date desc
-      return new Date(this.asString(b.date)).getTime() - new Date(this.asString(a.date)).getTime();
+      return (
+        new Date(this.asString(b.date)).getTime() -
+        new Date(this.asString(a.date)).getTime()
+      );
     });
 
     return filtered;
@@ -148,7 +185,7 @@ export class PostService {
     category?: string;
     tags?: string[];
     search?: string;
-    sort?: 'date' | 'title' | 'readTime';
+    sort?: "date" | "title" | "readTime";
   }): Promise<PostsPage<BlogPost>> {
     const page = Math.max(1, q.page || 1);
     const pageSize = Math.max(1, q.pageSize || PostService.DEFAULT_PAGE_SIZE);
@@ -164,22 +201,24 @@ export class PostService {
     const start = (page - 1) * pageSize;
     const slice = filtered.slice(start, start + pageSize);
 
-    const resultItems: BlogPost[] = slice.map(it => ({
+    const resultItems: BlogPost[] = slice.map((it) => ({
       id: it.slug,
       title: this.asString(it.title),
       description: this.asString(it.description),
       excerpt: it.snippet || it.description,
-      content: '',
+      content: "",
       date: this.asString(it.date),
-      author: this.asString(it.author) || 'Admin',
-      tags: (Array.isArray(it.tags) ? it.tags : []).filter(Boolean).map(t => this.asString(t)),
+      author: this.asString(it.author) || "Admin",
+      tags: (Array.isArray(it.tags) ? it.tags : [])
+        .filter(Boolean)
+        .map((t) => this.asString(t)),
       category: this.asString(it.category),
       readingTime: it.readingTime,
       slug: it.slug,
       year: it.year,
       published: true,
       coverImage: this.normalizeCoverImage(it.coverImage, it.year, it.slug),
-      language: it.language ?? 'ko',
+      language: it.language ?? "ko",
     }));
 
     const pageResult: PostsPage<BlogPost> = {
@@ -197,7 +236,7 @@ export class PostService {
 
   static async prefetchPost(year: string, slug: string): Promise<void> {
     const items = await this.getManifestItems();
-    const item = items.find(i => i.year === year && i.slug === slug);
+    const item = items.find((i) => i.year === year && i.slug === slug);
     if (!item) return;
     const key = `${year}/${slug}`;
     if (this.contentCache.has(key)) return;
@@ -216,14 +255,14 @@ export class PostService {
       const base = this.getBasePath();
       const manifestUrl = `${base}/posts-manifest.json`;
       const response = await fetch(manifestUrl, {
-        cache: 'no-cache',
+        cache: "no-cache",
       });
       if (!response.ok) {
-        throw new Error('Failed to load posts manifest');
+        throw new Error("Failed to load posts manifest");
       }
       return await response.json();
     } catch (error) {
-      console.error('Error loading posts manifest:', error);
+      console.error("Error loading posts manifest:", error);
       return null;
     }
   }
@@ -231,7 +270,7 @@ export class PostService {
   private static async loadMarkdownFile(path: string): Promise<string> {
     try {
       const base = this.getBasePath();
-      const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+      const normalizedPath = path.startsWith("/") ? path : `/${path}`;
       const url = `${base}${normalizedPath}`;
       const response = await fetch(url);
       if (!response.ok) {
@@ -246,7 +285,7 @@ export class PostService {
 
   private static parseMarkdownContent(
     content: string,
-    filePath: string
+    filePath: string,
   ): Partial<BlogPost> {
     const { data: frontMatter, content: markdownContent } = matter(content);
     // Simple reading time calculation: ~200 words per minute
@@ -261,26 +300,28 @@ export class PostService {
     const match = filePath.match(/\/posts\/(\d{4})\/(.+)\.md$/);
     const year = match?.[1] ?? new Date().getFullYear().toString();
     const filename =
-      match?.[2] ?? filePath.split('/').pop()?.replace('.md', '') ?? 'post';
+      match?.[2] ?? filePath.split("/").pop()?.replace(".md", "") ?? "post";
 
     const rawDefaultLanguage = frontMatter.defaultLanguage;
     const defaultLanguage: SupportedLanguage =
-      rawDefaultLanguage === 'en' ? 'en' : 'ko';
+      rawDefaultLanguage === "en" ? "en" : "ko";
 
     const parseLocalizedFields = (
-      fields: unknown
+      fields: unknown,
     ): LocalizedPostFields | undefined => {
-      if (!fields || typeof fields !== 'object') return undefined;
+      if (!fields || typeof fields !== "object") return undefined;
       const record = fields as Record<string, unknown>;
       const localized: LocalizedPostFields = {
-        title: typeof record.title === 'string' ? record.title : '',
+        title: typeof record.title === "string" ? record.title : "",
         description:
-          typeof record.description === 'string' ? record.description : '',
+          typeof record.description === "string" ? record.description : "",
       };
       if (!localized.title) delete localized.title;
       if (!localized.description) delete localized.description;
-      if (typeof record.excerpt === 'string') localized.excerpt = record.excerpt;
-      if (typeof record.content === 'string') localized.content = record.content;
+      if (typeof record.excerpt === "string")
+        localized.excerpt = record.excerpt;
+      if (typeof record.content === "string")
+        localized.content = record.content;
       return Object.keys(localized).length ? localized : undefined;
     };
 
@@ -288,32 +329,32 @@ export class PostService {
       Record<SupportedLanguage, LocalizedPostFields>
     > = {};
     const rawTranslations = frontMatter.translations;
-    if (rawTranslations && typeof rawTranslations === 'object') {
+    if (rawTranslations && typeof rawTranslations === "object") {
       Object.entries(rawTranslations as Record<string, unknown>).forEach(
         ([langKey, value]) => {
           const normalizedLang =
-            langKey === 'en' ? 'en' : langKey === 'ko' ? 'ko' : null;
+            langKey === "en" ? "en" : langKey === "ko" ? "ko" : null;
           if (!normalizedLang) return;
           const localized = parseLocalizedFields(value);
           if (localized) {
             translationEntries[normalizedLang] = localized;
           }
-        }
+        },
       );
     }
 
     const availableLanguages = Array.from(
       new Set<SupportedLanguage>([
         defaultLanguage,
-        ...Object.keys(translationEntries) as SupportedLanguage[],
-      ])
+        ...(Object.keys(translationEntries) as SupportedLanguage[]),
+      ]),
     );
 
     return {
       id: filename,
       title:
         frontMatter.title ||
-        filename.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        filename.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
       description:
         frontMatter.description || `${markdownContent.substring(0, 150)}...`,
       excerpt:
@@ -322,22 +363,22 @@ export class PostService {
         `${markdownContent.substring(0, 150)}...`,
       content: markdownContent,
       date: frontMatter.date || `${year}-01-01`,
-      author: frontMatter.author || 'Admin',
+      author: frontMatter.author || "Admin",
       tags: Array.isArray(frontMatter.tags) ? frontMatter.tags : [],
-      category: frontMatter.category || 'General',
+      category: frontMatter.category || "General",
       readingTime: readingTimeText,
       slug: filename,
       year,
       language: defaultLanguage,
       published: frontMatter.published !== false,
       coverImage: this.normalizeCoverImage(
-        typeof frontMatter.coverImage === 'string'
+        typeof frontMatter.coverImage === "string"
           ? frontMatter.coverImage
-          : typeof frontMatter.cover === 'string'
+          : typeof frontMatter.cover === "string"
             ? frontMatter.cover
             : undefined,
         year,
-        filename
+        filename,
       ),
       defaultLanguage,
       availableLanguages,
@@ -382,9 +423,9 @@ export class PostService {
           coverImage: this.normalizeCoverImage(
             parsed.coverImage,
             parsed.year!,
-            parsed.slug!
+            parsed.slug!,
           ),
-          language: (parsed.language as SupportedLanguage) || 'ko',
+          language: (parsed.language as SupportedLanguage) || "ko",
           url: `/blog/${parsed.year}/${parsed.slug}`,
         });
       } catch (e) {
@@ -393,18 +434,29 @@ export class PostService {
     }
     // Sort desc by date
     items.sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
     this.manifestCache = {
       total: items.length,
       items,
       generatedAt: new Date().toISOString(),
-      years: Array.from(new Set(items.map(i => i.year)))
+      years: Array.from(new Set(items.map((i) => i.year)))
         .sort()
         .reverse(),
+      categoryCounts: this.computeCategoryCounts(items),
       format: 1,
     };
     return items;
+  }
+
+  static async getCategoryCounts(): Promise<Record<string, number>> {
+    await this.getManifestItems();
+
+    if (this.manifestCache?.categoryCounts) {
+      return this.normalizeCategoryCounts(this.manifestCache.categoryCounts);
+    }
+
+    return this.computeCategoryCounts(this.manifestCache?.items ?? []);
   }
 
   static async getAllPosts(): Promise<BlogPost[]> {
@@ -413,23 +465,25 @@ export class PostService {
     const items = await this.getManifestItems();
     // Map metadata to BlogPost shape with empty content to satisfy type
     const posts: BlogPost[] = items
-      .filter(it => it.published !== false)
-      .map(it => ({
+      .filter((it) => it.published !== false)
+      .map((it) => ({
         id: it.slug,
         title: this.asString(it.title),
         description: this.asString(it.description),
         excerpt: it.snippet || it.description,
-        content: '', // lazy-loaded on demand
+        content: "", // lazy-loaded on demand
         date: this.asString(it.date),
-        author: this.asString(it.author) || 'Admin',
-        tags: (Array.isArray(it.tags) ? it.tags : []).filter(Boolean).map(t => this.asString(t)),
+        author: this.asString(it.author) || "Admin",
+        tags: (Array.isArray(it.tags) ? it.tags : [])
+          .filter(Boolean)
+          .map((t) => this.asString(t)),
         category: this.asString(it.category),
         readingTime: it.readingTime,
         slug: it.slug,
         year: it.year,
         published: true,
         coverImage: this.normalizeCoverImage(it.coverImage, it.year, it.slug),
-        language: it.language ?? 'ko',
+        language: it.language ?? "ko",
         defaultLanguage: it.defaultLanguage,
         availableLanguages: it.availableLanguages,
         translations: it.translations,
@@ -441,11 +495,11 @@ export class PostService {
 
   static async getPostBySlug(
     year: string,
-    slug: string
+    slug: string,
   ): Promise<BlogPost | null> {
     const key = `${year}/${slug}`;
     const items = await this.getManifestItems();
-    const item = items.find(i => i.year === year && i.slug === slug);
+    const item = items.find((i) => i.year === year && i.slug === slug);
     if (!item) return null;
 
     // Try cache
@@ -469,12 +523,12 @@ export class PostService {
         coverImage: this.normalizeCoverImage(
           parsed.coverImage ?? item.coverImage,
           parsed.year!,
-          parsed.slug!
+          parsed.slug!,
         ),
         defaultLanguage: parsed.defaultLanguage,
         availableLanguages: parsed.availableLanguages,
         translations: parsed.translations,
-        language: parsed.language ?? parsed.defaultLanguage ?? 'ko',
+        language: parsed.language ?? parsed.defaultLanguage ?? "ko",
       };
     }
 
@@ -499,23 +553,25 @@ export class PostService {
       coverImage: this.normalizeCoverImage(
         parsed.coverImage ?? item.coverImage,
         parsed.year!,
-        parsed.slug!
+        parsed.slug!,
       ),
-      language: (parsed.language ?? parsed.defaultLanguage ?? 'ko') as SupportedLanguage,
+      language: (parsed.language ??
+        parsed.defaultLanguage ??
+        "ko") as SupportedLanguage,
     };
   }
 
   static async getPostsByCategory(category: string): Promise<BlogPost[]> {
     const posts = await this.getAllPosts();
     return posts.filter(
-      post => post.category.toLowerCase() === category.toLowerCase()
+      (post) => post.category.toLowerCase() === category.toLowerCase(),
     );
   }
 
   static async getPostsByTag(tag: string): Promise<BlogPost[]> {
     const posts = await this.getAllPosts();
-    return posts.filter(post =>
-      post.tags.some(t => t.toLowerCase() === tag.toLowerCase())
+    return posts.filter((post) =>
+      post.tags.some((t) => t.toLowerCase() === tag.toLowerCase()),
     );
   }
 
@@ -524,12 +580,12 @@ export class PostService {
     const lowercaseQuery = query.toLowerCase();
 
     return posts.filter(
-      post =>
+      (post) =>
         post.title.toLowerCase().includes(lowercaseQuery) ||
         post.description.toLowerCase().includes(lowercaseQuery) ||
         (post.excerpt && post.excerpt.toLowerCase().includes(lowercaseQuery)) ||
-        post.tags.some(tag => tag.toLowerCase().includes(lowercaseQuery)) ||
-        post.category.toLowerCase().includes(lowercaseQuery)
+        post.tags.some((tag) => tag.toLowerCase().includes(lowercaseQuery)) ||
+        post.category.toLowerCase().includes(lowercaseQuery),
     );
   }
 

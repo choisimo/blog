@@ -5,8 +5,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useAuthStore } from '@/stores/session/useAuthStore';
-import { getApiBaseUrl } from '@/utils/network/apiBase';
+import { adminApiFetch } from '@/services/admin/apiClient';
 import type {
   AIProvider,
   AIModel,
@@ -16,81 +15,6 @@ import type {
   ModelFormData,
   RouteFormData,
 } from './types';
-
-// ============================================================================
-// API Fetch Wrapper with Auto Token Refresh
-// ============================================================================
-
-/**
- * Generic fetch wrapper with automatic token refresh
- */
-async function apiFetch<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<{ ok: boolean; data?: T; error?: string }> {
-  const { getValidAccessToken, clearAuth } = useAuthStore.getState();
-  const API_BASE = getApiBaseUrl();
-
-  try {
-    // Get valid access token (auto-refreshes if needed)
-    const token = await getValidAccessToken();
-
-    if (!token) {
-      return { ok: false, error: 'Not authenticated. Please log in again.' };
-    }
-
-    const res = await fetch(`${API_BASE}/api/v1/admin/ai${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-        ...(options.headers || {}),
-      },
-    });
-
-    // Handle 401 - token might be invalid
-    if (res.status === 401) {
-      // Try to refresh token once more
-      const newToken = await getValidAccessToken();
-      if (!newToken) {
-        clearAuth();
-        return { ok: false, error: 'Session expired. Please log in again.' };
-      }
-
-      // Retry with new token
-      const retryRes = await fetch(`${API_BASE}/api/v1/admin/ai${endpoint}`, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${newToken}`,
-          ...(options.headers || {}),
-        },
-      });
-
-      if (!retryRes.ok) {
-        if (retryRes.status === 401) {
-          clearAuth();
-          return { ok: false, error: 'Session expired. Please log in again.' };
-        }
-        const json = await retryRes.json().catch(() => ({}));
-        return { ok: false, error: json.error || `HTTP ${retryRes.status}` };
-      }
-
-      const json = await retryRes.json();
-      return { ok: true, data: json.data };
-    }
-
-    const json = await res.json();
-
-    if (!res.ok || !json.ok) {
-      return { ok: false, error: json.error || `HTTP ${res.status}` };
-    }
-
-    return { ok: true, data: json.data };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
-  }
-}
 
 // ============================================================================
 // Providers
@@ -104,7 +28,7 @@ export function useProviders() {
   const fetchProviders = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const result = await apiFetch<{ providers: AIProvider[] }>('/providers');
+    const result = await adminApiFetch<{ providers: AIProvider[] }>('/providers', { pathPrefix: '/api/v1/admin/ai' });
     if (result.ok && result.data) {
       setProviders(result.data.providers);
     } else {
@@ -115,9 +39,9 @@ export function useProviders() {
 
   const createProvider = useCallback(
     async (data: ProviderFormData) => {
-      const result = await apiFetch<AIProvider>('/providers', {
+      const result = await adminApiFetch<AIProvider>('/providers', { pathPrefix: '/api/v1/admin/ai',
         method: 'POST',
-        body: JSON.stringify(data),
+        body: data,
       });
       if (result.ok) {
         await fetchProviders();
@@ -129,9 +53,9 @@ export function useProviders() {
 
   const updateProvider = useCallback(
     async (id: string, data: Partial<ProviderFormData & { isEnabled: boolean }>) => {
-      const result = await apiFetch<AIProvider>(`/providers/${id}`, {
+      const result = await adminApiFetch<AIProvider>(`/providers/${id}`, { pathPrefix: '/api/v1/admin/ai',
         method: 'PUT',
-        body: JSON.stringify(data),
+        body: data,
       });
       if (result.ok) {
         await fetchProviders();
@@ -143,7 +67,7 @@ export function useProviders() {
 
   const deleteProvider = useCallback(
     async (id: string) => {
-      const result = await apiFetch<{ deleted: string }>(`/providers/${id}`, {
+      const result = await adminApiFetch<{ deleted: string }>(`/providers/${id}`, { pathPrefix: '/api/v1/admin/ai',
         method: 'DELETE',
       });
       if (result.ok) {
@@ -156,12 +80,12 @@ export function useProviders() {
 
   const checkHealth = useCallback(
     async (id: string) => {
-      const result = await apiFetch<{
+      const result = await adminApiFetch<{
         providerId: string;
         status: string;
         latencyMs: number | null;
         error: string | null;
-      }>(`/providers/${id}/health`, { method: 'PUT' });
+      }>(`/providers/${id}/health`, { pathPrefix: '/api/v1/admin/ai', method: 'PUT' });
       if (result.ok) {
         await fetchProviders();
       }
@@ -172,11 +96,11 @@ export function useProviders() {
 
   const killSwitchProvider = useCallback(
     async (id: string) => {
-      const result = await apiFetch<{
+      const result = await adminApiFetch<{
         killed: boolean;
         id: string;
         provider_name: string;
-      }>(`/providers/${id}/kill-switch`, { method: 'POST' });
+      }>(`/providers/${id}/kill-switch`, { pathPrefix: '/api/v1/admin/ai', method: 'POST' });
       if (result.ok) {
         await fetchProviders();
       }
@@ -187,11 +111,11 @@ export function useProviders() {
 
   const enableProvider = useCallback(
     async (id: string) => {
-      const result = await apiFetch<{
+      const result = await adminApiFetch<{
         enabled: boolean;
         id: string;
         provider_name: string;
-      }>(`/providers/${id}/enable`, { method: 'POST' });
+      }>(`/providers/${id}/enable`, { pathPrefix: '/api/v1/admin/ai', method: 'POST' });
       if (result.ok) {
         await fetchProviders();
       }
@@ -231,7 +155,7 @@ export function useModels() {
     if (enabled !== undefined) params.set('enabled', String(enabled));
     const query = params.toString() ? `?${params}` : '';
 
-    const result = await apiFetch<{ models: AIModel[] }>(`/models${query}`);
+    const result = await adminApiFetch<{ models: AIModel[] }>(`/models${query}`, { pathPrefix: '/api/v1/admin/ai' });
     if (result.ok && result.data) {
       setModels(result.data.models);
     } else {
@@ -242,9 +166,9 @@ export function useModels() {
 
   const createModel = useCallback(
     async (data: ModelFormData) => {
-      const result = await apiFetch<AIModel>('/models', {
+      const result = await adminApiFetch<AIModel>('/models', { pathPrefix: '/api/v1/admin/ai',
         method: 'POST',
-        body: JSON.stringify(data),
+        body: data,
       });
       if (result.ok) {
         await fetchModels();
@@ -256,9 +180,9 @@ export function useModels() {
 
   const updateModel = useCallback(
     async (id: string, data: Partial<ModelFormData & { isEnabled: boolean }>) => {
-      const result = await apiFetch<AIModel>(`/models/${id}`, {
+      const result = await adminApiFetch<AIModel>(`/models/${id}`, { pathPrefix: '/api/v1/admin/ai',
         method: 'PUT',
-        body: JSON.stringify(data),
+        body: data,
       });
       if (result.ok) {
         await fetchModels();
@@ -270,7 +194,7 @@ export function useModels() {
 
   const deleteModel = useCallback(
     async (id: string) => {
-      const result = await apiFetch<{ deleted: string }>(`/models/${id}`, {
+      const result = await adminApiFetch<{ deleted: string }>(`/models/${id}`, { pathPrefix: '/api/v1/admin/ai',
         method: 'DELETE',
       });
       if (result.ok) {
@@ -282,18 +206,42 @@ export function useModels() {
   );
 
   const testModel = useCallback(async (id: string, prompt?: string) => {
-    const result = await apiFetch<{
-      success: boolean;
-      modelId: string;
-      modelName: string;
-      latencyMs?: number;
-      response?: string;
-      error?: string;
-    }>(`/models/${id}/test`, {
+    const result = await adminApiFetch<{
+      results: Array<{
+        model_id: string;
+        model_name: string;
+        response: string | null;
+        latency_ms: number;
+        status: 'success' | 'error';
+        error_message: string | null;
+      }>;
+    }>('/playground/run', { pathPrefix: '/api/v1/admin/ai',
       method: 'POST',
-      body: JSON.stringify({ prompt }),
+      body: {
+        model_ids: [id],
+        user_prompt: prompt || 'Return a short health-check response for this model.',
+      },
     });
-    return result;
+
+    if (!result.ok || !result.data?.results?.[0]) {
+      return {
+        ok: false,
+        error: result.error || 'Model test failed',
+      };
+    }
+
+    const testResult = result.data.results[0];
+    return {
+      ok: true,
+      data: {
+        success: testResult.status === 'success',
+        modelId: testResult.model_id,
+        modelName: testResult.model_name,
+        latencyMs: testResult.latency_ms,
+        response: testResult.response || undefined,
+        error: testResult.error_message || undefined,
+      },
+    };
   }, []);
 
   return {
@@ -320,7 +268,7 @@ export function useRoutes() {
   const fetchRoutes = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const result = await apiFetch<{ routes: AIRoute[] }>('/routes');
+    const result = await adminApiFetch<{ routes: AIRoute[] }>('/routes', { pathPrefix: '/api/v1/admin/ai' });
     if (result.ok && result.data) {
       setRoutes(result.data.routes);
     } else {
@@ -331,9 +279,9 @@ export function useRoutes() {
 
   const createRoute = useCallback(
     async (data: RouteFormData) => {
-      const result = await apiFetch<AIRoute>('/routes', {
+      const result = await adminApiFetch<AIRoute>('/routes', { pathPrefix: '/api/v1/admin/ai',
         method: 'POST',
-        body: JSON.stringify(data),
+        body: data,
       });
       if (result.ok) {
         await fetchRoutes();
@@ -345,9 +293,9 @@ export function useRoutes() {
 
   const updateRoute = useCallback(
     async (id: string, data: Partial<RouteFormData & { isEnabled: boolean }>) => {
-      const result = await apiFetch<AIRoute>(`/routes/${id}`, {
+      const result = await adminApiFetch<AIRoute>(`/routes/${id}`, { pathPrefix: '/api/v1/admin/ai',
         method: 'PUT',
-        body: JSON.stringify(data),
+        body: data,
       });
       if (result.ok) {
         await fetchRoutes();
@@ -359,7 +307,7 @@ export function useRoutes() {
 
   const deleteRoute = useCallback(
     async (id: string) => {
-      const result = await apiFetch<{ deleted: string }>(`/routes/${id}`, {
+      const result = await adminApiFetch<{ deleted: string }>(`/routes/${id}`, { pathPrefix: '/api/v1/admin/ai',
         method: 'DELETE',
       });
       if (result.ok) {
@@ -406,7 +354,7 @@ export function useUsage() {
       if (options?.groupBy) params.set('group_by', options.groupBy);
       const query = params.toString() ? `?${params}` : '';
 
-      const result = await apiFetch<AIUsageData>(`/usage${query}`);
+      const result = await adminApiFetch<AIUsageData>(`/usage${query}`, { pathPrefix: '/api/v1/admin/ai' });
       if (result.ok && result.data) {
         setUsage(result.data);
       } else {
@@ -431,12 +379,12 @@ export function useUsage() {
 
 export function useAIConfig() {
   const exportConfig = useCallback(async () => {
-    const result = await apiFetch<{
+    const result = await adminApiFetch<{
       exportedAt: string;
       providers: AIProvider[];
       models: AIModel[];
       routes: AIRoute[];
-    }>('/config/export');
+    }>('/config/export', { pathPrefix: '/api/v1/admin/ai' });
     return result;
   }, []);
 
@@ -518,12 +466,12 @@ export function useTraces() {
       if (options?.endDate) params.set('end_date', options.endDate);
       const query = params.toString() ? `?${params}` : '';
 
-      const result = await apiFetch<{
+      const result = await adminApiFetch<{
         traces: AITraceSummary[];
         total: number;
         limit: number;
         offset: number;
-      }>(`/traces${query}`);
+      }>(`/traces${query}`, { pathPrefix: '/api/v1/admin/ai' });
       if (result.ok && result.data) {
         setTraces(result.data.traces);
         setTotal(result.data.total);
@@ -536,20 +484,20 @@ export function useTraces() {
   );
 
   const fetchTraceDetail = useCallback(async (traceId: string) => {
-    const result = await apiFetch<{
+    const result = await adminApiFetch<{
       summary: AITraceSummary;
       spans: AITraceSpan[];
-    }>(`/traces/${traceId}`);
+    }>(`/traces/${traceId}`, { pathPrefix: '/api/v1/admin/ai' });
     return result;
   }, []);
 
   const fetchTraceStats = useCallback(async (hours = 24) => {
-    const result = await apiFetch<{
+    const result = await adminApiFetch<{
       period_hours: number;
       since: string;
       stats: TraceStats;
       by_span_type: Array<{ span_type: string; count: number; avg_latency: number }>;
-    }>(`/traces/stats/summary?hours=${hours}`);
+    }>(`/traces/stats/summary?hours=${hours}`, { pathPrefix: '/api/v1/admin/ai' });
     return result;
   }, []);
 
@@ -640,7 +588,7 @@ export function usePlayground() {
     }) => {
       setRunning(true);
       setError(null);
-      const result = await apiFetch<{
+      const result = await adminApiFetch<{
         results: PlaygroundRunResult[];
         input: {
           system_prompt?: string;
@@ -648,9 +596,9 @@ export function usePlayground() {
           temperature: number;
           max_tokens?: number;
         };
-      }>('/playground/run', {
+      }>('/playground/run', { pathPrefix: '/api/v1/admin/ai',
         method: 'POST',
-        body: JSON.stringify(params),
+        body: params,
       });
       setRunning(false);
       if (!result.ok) {
@@ -672,12 +620,12 @@ export function usePlayground() {
       if (options?.status) params.set('status', options.status);
       const query = params.toString() ? `?${params}` : '';
 
-      const result = await apiFetch<{
+      const result = await adminApiFetch<{
         history: PlaygroundHistory[];
         total: number;
         limit: number;
         offset: number;
-      }>(`/playground/history${query}`);
+      }>(`/playground/history${query}`, { pathPrefix: '/api/v1/admin/ai' });
       if (result.ok && result.data) {
         setHistory(result.data.history);
         setTotal(result.data.total);
@@ -690,15 +638,15 @@ export function usePlayground() {
   );
 
   const fetchHistoryDetail = useCallback(async (id: string) => {
-    const result = await apiFetch<{ history: PlaygroundHistory }>(`/playground/history/${id}`);
+    const result = await adminApiFetch<{ history: PlaygroundHistory }>(`/playground/history/${id}`, { pathPrefix: '/api/v1/admin/ai' });
     return result;
   }, []);
 
   const deleteHistory = useCallback(
     async (id: string) => {
-      const result = await apiFetch<{ deleted: boolean; id: string }>(
+      const result = await adminApiFetch<{ deleted: boolean; id: string }>(
         `/playground/history/${id}`,
-        { method: 'DELETE' }
+        { pathPrefix: '/api/v1/admin/ai', method: 'DELETE' }
       );
       if (result.ok) {
         await fetchHistory();
@@ -711,9 +659,9 @@ export function usePlayground() {
   const clearHistory = useCallback(
     async (olderThanDays?: number) => {
       const query = olderThanDays ? `?older_than_days=${olderThanDays}` : '';
-      const result = await apiFetch<{ deleted: boolean; rows_affected: number }>(
+      const result = await adminApiFetch<{ deleted: boolean; rows_affected: number }>(
         `/playground/history${query}`,
-        { method: 'DELETE' }
+        { pathPrefix: '/api/v1/admin/ai', method: 'DELETE' }
       );
       if (result.ok) {
         await fetchHistory();
@@ -725,9 +673,9 @@ export function usePlayground() {
 
   const fetchTemplates = useCallback(async (category?: string) => {
     const query = category ? `?category=${category}` : '';
-    const result = await apiFetch<{ templates: PromptTemplate[]; total: number }>(
+    const result = await adminApiFetch<{ templates: PromptTemplate[]; total: number }>(
       `/prompt-templates${query}`
-    );
+    , { pathPrefix: '/api/v1/admin/ai' });
     if (result.ok && result.data) {
       setTemplates(result.data.templates);
     }
@@ -747,9 +695,9 @@ export function usePlayground() {
       default_max_tokens?: number;
       is_public?: boolean;
     }) => {
-      const result = await apiFetch<{ template: PromptTemplate }>('/prompt-templates', {
+      const result = await adminApiFetch<{ template: PromptTemplate }>('/prompt-templates', { pathPrefix: '/api/v1/admin/ai',
         method: 'POST',
-        body: JSON.stringify(data),
+        body: data,
       });
       if (result.ok) {
         await fetchTemplates();
@@ -775,9 +723,9 @@ export function usePlayground() {
         is_public: boolean;
       }>
     ) => {
-      const result = await apiFetch<{ template: PromptTemplate }>(`/prompt-templates/${id}`, {
+      const result = await adminApiFetch<{ template: PromptTemplate }>(`/prompt-templates/${id}`, { pathPrefix: '/api/v1/admin/ai',
         method: 'PUT',
-        body: JSON.stringify(data),
+        body: data,
       });
       if (result.ok) {
         await fetchTemplates();
@@ -789,9 +737,9 @@ export function usePlayground() {
 
   const deleteTemplate = useCallback(
     async (id: string) => {
-      const result = await apiFetch<{ deleted: boolean; id: string }>(
+      const result = await adminApiFetch<{ deleted: boolean; id: string }>(
         `/prompt-templates/${id}`,
-        { method: 'DELETE' }
+        { pathPrefix: '/api/v1/admin/ai', method: 'DELETE' }
       );
       if (result.ok) {
         await fetchTemplates();
@@ -802,7 +750,7 @@ export function usePlayground() {
   );
 
   const applyTemplate = useCallback(async (id: string) => {
-    const result = await apiFetch<{ template: PromptTemplate }>(`/prompt-templates/${id}/use`, {
+    const result = await adminApiFetch<{ template: PromptTemplate }>(`/prompt-templates/${id}/use`, { pathPrefix: '/api/v1/admin/ai',
       method: 'POST',
     });
     return result;
