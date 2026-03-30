@@ -1,4 +1,27 @@
 {
+  "authSemantics": {
+    "anonymousClaims": {
+      "backend": true,
+      "worker": true
+    },
+    "issuerAudienceGuard": {
+      "backend": true,
+      "worker": true
+    },
+    "legacyAnonymousCompat": {
+      "backend": false,
+      "worker": false
+    },
+    "refreshGuard": {
+      "backendUserAuth": true,
+      "workerUserAuth": true
+    }
+  },
+  "commentsBoundary": {
+    "backendUsesDirectD1": true,
+    "workerUsesBackendProxy": true,
+    "workerUsesDirectD1": false
+  },
   "generatedAt": "snapshot-managed",
   "routeMounts": [
     {
@@ -165,6 +188,12 @@
     },
     {
       "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/admin/outbox",
+      "owner": "worker",
+      "symbol": "adminOutbox"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
       "mountPath": "/admin/secrets",
       "owner": "worker",
       "symbol": "secrets"
@@ -267,12 +296,6 @@
     },
     {
       "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/posts",
-      "owner": "worker",
-      "symbol": "posts"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
       "mountPath": "/rag",
       "owner": "worker",
       "symbol": "rag"
@@ -349,5 +372,23 @@
       "file": "workers/api-gateway/src/routes/user.ts",
       "sharedContracts": []
     }
-  ]
+  ],
+  "userSessionContract": {
+    "backendRoutes": [
+      "/session",
+      "/session/recover",
+      "/session/verify"
+    ],
+    "frontendCalls": [
+      "/api/v1/user/session",
+      "/api/v1/user/session/recover",
+      "/api/v1/user/session/verify"
+    ],
+    "workerRoutes": [
+      "/session",
+      "/session/:token",
+      "/session/recover",
+      "/session/verify"
+    ]
+  }
 }

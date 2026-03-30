@@ -12,7 +12,8 @@
 | Public config and public read orchestration | Worker | Edge cache and geo-aware orchestration belong at the edge. |
 | Translation cache query | Worker | Public cache-first read path should stay edge-friendly. |
 | Auth and session issuance | Worker | User session issuance is part of the edge-facing public contract. |
-| User-facing D1 CRUD | Worker | D1-backed CRUD paths are edge-native and latency-sensitive. |
+| Edge-native personal CRUD and caches | Worker | Explicitly edge-native user-scoped D1/KV surfaces such as memories, memos, and cache-backed reads should stay at the edge. |
+| Comments and reactions | Backend | Public discussion state, moderation, and reaction semantics need one durable owner and must stay backend-authoritative. |
 | Durable notifications and outbox delivery | Backend | Async completion and job fanout live with long-running execution. |
 | AI, chat, agent, execute | Backend | Provider integration, queueing, and long-running compute are backend-owned. |
 | RAG and embeddings | Backend | Vector store and embedding lifecycle are backend-owned. |
@@ -73,6 +74,19 @@ When a domain is not the canonical owner, its route must be one of:
 | external/public | `POST /api/v1/user/session` | Worker-owned session issuance |
 | external/public | `GET /api/v1/user/session/verify` | Session verification |
 | external/public | `POST /api/v1/user/session/recover` | Session recovery |
+| deprecated compatibility | `GET /api/v1/user/session/:token` | Legacy token-in-path verify shape |
+| deprecated compatibility | `POST /api/v1/user/session/:token/recover` | Legacy token-in-path recover shape |
+
+### Comments
+
+| Class | Surface | Notes |
+| --- | --- | --- |
+| external/public | `GET /api/v1/comments` | Worker entrypoint proxies to backend canonical read path |
+| external/public | `POST /api/v1/comments` | Worker entrypoint proxies comment creation to backend |
+| external/public | `GET /api/v1/comments/stream` | Worker entrypoint proxies backend-owned SSE |
+| external/public | `GET /api/v1/comments/reactions/batch` | Backend-owned reaction state via worker proxy |
+| external/public | `GET|POST|DELETE /api/v1/comments/:commentId/reactions` | Backend-owned reaction mutation/read surface via worker proxy |
+| internal/proxy | `DELETE /api/v1/comments/:id` | Worker keeps admin gate, then forwards to backend delete handler |
 
 ### Memories And Embeddings
 

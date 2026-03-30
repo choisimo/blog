@@ -34,6 +34,24 @@ const consumerFiles = [
   "workers/api-gateway/src/routes/user.ts",
 ];
 
+const sessionContractFiles = {
+  frontend: "frontend/src/services/session/fingerprint.ts",
+  backend: "backend/src/routes/user.js",
+  worker: "workers/api-gateway/src/routes/user.ts",
+};
+
+const authSemanticsFiles = {
+  backendUserAuth: "backend/src/middleware/userAuth.js",
+  workerUserAuth: "workers/api-gateway/src/middleware/auth.ts",
+  backendAuthRoutes: "backend/src/routes/auth.js",
+  workerAuthRoutes: "workers/api-gateway/src/routes/auth.ts",
+};
+
+const commentsBoundaryFiles = {
+  worker: "workers/api-gateway/src/routes/comments.ts",
+  backend: "backend/src/routes/comments.js",
+};
+
 async function collectRouteMounts() {
   const mounts = [];
 
@@ -77,6 +95,110 @@ async function collectSharedImports() {
   return usage;
 }
 
+async function readSource(relativePath) {
+  const absPath = path.join(repoRoot, relativePath);
+  return readFile(absPath, "utf8");
+}
+
+async function collectUserSessionContract() {
+  const [frontendSource, backendSource, workerSource] = await Promise.all([
+    readSource(sessionContractFiles.frontend),
+    readSource(sessionContractFiles.backend),
+    readSource(sessionContractFiles.worker),
+  ]);
+
+  const frontendCalls = [
+    ...frontendSource.matchAll(/\/api\/v1\/user\/session(?:\/[A-Za-z-]+)?/g),
+  ].map((match) => match[0]);
+
+  const backendRoutes = [
+    ...backendSource.matchAll(/["']\/session(?:\/[A-Za-z:]+)?["']/g),
+  ].map((match) => match[0].slice(1, -1));
+
+  const workerRoutes = [
+    ...workerSource.matchAll(/['"]\/session(?:\/[A-Za-z:]+)?['"]/g),
+  ].map((match) => match[0].slice(1, -1));
+
+  return {
+    frontendCalls: Array.from(new Set(frontendCalls)).sort(),
+    backendRoutes: Array.from(new Set(backendRoutes)).sort(),
+    workerRoutes: Array.from(new Set(workerRoutes)).sort(),
+  };
+}
+
+async function collectAuthSemantics() {
+  const [
+    backendUserAuthSource,
+    workerUserAuthSource,
+    backendAuthRouteSource,
+    workerAuthRouteSource,
+    backendJwtSource,
+    workerJwtSource,
+  ] = await Promise.all([
+    readSource(authSemanticsFiles.backendUserAuth),
+    readSource(authSemanticsFiles.workerUserAuth),
+    readSource(authSemanticsFiles.backendAuthRoutes),
+    readSource(authSemanticsFiles.workerAuthRoutes),
+    readSource("backend/src/lib/jwt.js"),
+    readSource("workers/api-gateway/src/lib/jwt.ts"),
+  ]);
+
+  return {
+    refreshGuard: {
+      backendUserAuth:
+        /claims\??\.type === 'refresh'/.test(backendUserAuthSource),
+      workerUserAuth:
+        /payload\.type === 'refresh'/.test(workerUserAuthSource),
+    },
+    issuerAudienceGuard: {
+      backend:
+        /!claims\.iss \|\| claims\.iss !== JWT_ISSUER/.test(backendJwtSource) &&
+        /!claims\.aud \|\| !hasExpectedAudience\(claims\.aud\)/.test(backendJwtSource),
+      worker:
+        /!payload\.iss \|\| payload\.iss !== JWT_ISSUER/.test(workerJwtSource) &&
+        /!payload\.aud \|\| payload\.aud !== JWT_AUDIENCE/.test(workerJwtSource),
+    },
+    anonymousClaims: {
+      backend:
+        /role: 'anonymous'/.test(backendAuthRouteSource) &&
+        /type: 'access'/.test(backendAuthRouteSource) &&
+        /tokenClass: 'anonymous'/.test(backendAuthRouteSource),
+      worker:
+        /role: 'anonymous'/.test(workerAuthRouteSource) &&
+        /type: 'access'/.test(workerAuthRouteSource) &&
+        /tokenClass: 'anonymous'/.test(workerAuthRouteSource),
+    },
+    legacyAnonymousCompat: {
+      backend:
+        /claims\.role === 'anon'/.test(backendAuthRouteSource) ||
+        /claims\.type === 'anon'/.test(backendAuthRouteSource),
+      worker:
+        /payload\.role === 'anon'/.test(workerAuthRouteSource) ||
+        /payload\.type === 'anon'/.test(workerAuthRouteSource),
+    },
+  };
+}
+
+async function collectCommentsBoundary() {
+  const [workerSource, backendSource] = await Promise.all([
+    readSource(commentsBoundaryFiles.worker),
+    readSource(commentsBoundaryFiles.backend),
+  ]);
+
+  return {
+    workerUsesDirectD1:
+      /\.\.\/lib\/d1/.test(workerSource) ||
+      /\bquery(All|One)\s*\(/.test(workerSource) ||
+      /\bexecute\s*\(/.test(workerSource),
+    workerUsesBackendProxy:
+      /BACKEND_ORIGIN/.test(workerSource) &&
+      /\bfetch\s*\(/.test(workerSource),
+    backendUsesDirectD1:
+      /\bquery(All|One)\s*\(/.test(backendSource) ||
+      /\bexecute\s*\(/.test(backendSource),
+  };
+}
+
 function sortJson(value) {
   if (Array.isArray(value)) {
     return value.map(sortJson);
@@ -100,6 +222,9 @@ async function buildSnapshot() {
     generatedAt: "snapshot-managed",
     routeMounts: await collectRouteMounts(),
     sharedContractUsage: await collectSharedImports(),
+    userSessionContract: await collectUserSessionContract(),
+    authSemantics: await collectAuthSemantics(),
+    commentsBoundary: await collectCommentsBoundary(),
   };
 }
 
