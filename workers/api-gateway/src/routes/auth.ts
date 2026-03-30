@@ -596,17 +596,22 @@ auth.post('/anonymous', async (c) => {
       sub: anonymousId,
       role: 'anonymous',
       username: 'Anonymous',
+      tokenClass: 'anonymous',
       type: 'access',
     },
     c.env,
     ANONYMOUS_TOKEN_EXPIRY
   );
+  const expiresAt = new Date(
+    Date.now() + ANONYMOUS_TOKEN_EXPIRY * 1000
+  ).toISOString();
 
   return success(c, {
     token,
     userId: anonymousId,
     tokenType: 'Bearer',
     expiresIn: ANONYMOUS_TOKEN_EXPIRY,
+    expiresAt,
     isAnonymous: true,
   });
 });
@@ -630,7 +635,12 @@ auth.post('/anonymous/refresh', async (c) => {
     const payload = await verifyJwt(token, c.env);
 
     // Only refresh anonymous tokens
-    if (payload.role !== 'anonymous' || !payload.sub?.startsWith('anon-')) {
+    if (
+      payload.role !== 'anonymous' ||
+      payload.type !== 'access' ||
+      payload.tokenClass !== 'anonymous' ||
+      !payload.sub?.startsWith('anon-')
+    ) {
       return badRequest(c, 'Not an anonymous token');
     }
 
@@ -640,17 +650,22 @@ auth.post('/anonymous/refresh', async (c) => {
         sub: payload.sub,
         role: 'anonymous',
         username: 'Anonymous',
+        tokenClass: 'anonymous',
         type: 'access',
       },
       c.env,
       ANONYMOUS_TOKEN_EXPIRY
     );
+    const expiresAt = new Date(
+      Date.now() + ANONYMOUS_TOKEN_EXPIRY * 1000
+    ).toISOString();
 
     return success(c, {
       token: newToken,
       userId: payload.sub,
       tokenType: 'Bearer',
       expiresIn: ANONYMOUS_TOKEN_EXPIRY,
+      expiresAt,
       isAnonymous: true,
     });
   } catch (err) {
@@ -661,17 +676,22 @@ auth.post('/anonymous/refresh', async (c) => {
         sub: anonymousId,
         role: 'anonymous',
         username: 'Anonymous',
+        tokenClass: 'anonymous',
         type: 'access',
       },
       c.env,
       ANONYMOUS_TOKEN_EXPIRY
     );
+    const expiresAt = new Date(
+      Date.now() + ANONYMOUS_TOKEN_EXPIRY * 1000
+    ).toISOString();
 
     return success(c, {
       token: newToken,
       userId: anonymousId,
       tokenType: 'Bearer',
       expiresIn: ANONYMOUS_TOKEN_EXPIRY,
+      expiresAt,
       isAnonymous: true,
       renewed: true,
     });

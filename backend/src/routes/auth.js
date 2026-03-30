@@ -85,6 +85,8 @@ function guardedSetAdd(set, value) {
 
 const REFRESH_TOKEN_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
 const REDIS_KEY_PREFIX = 'refresh_token:';
+const ANONYMOUS_TOKEN_EXPIRY = '30d';
+const ANONYMOUS_TOKEN_EXPIRY_SECONDS = 30 * 24 * 60 * 60;
 
 async function addRefreshToken(token) {
   try {
@@ -145,6 +147,29 @@ function issueTokens(email) {
   );
   addRefreshToken(refreshToken).catch(err => logger.error({}, 'Failed to store refresh token', { error: err.message }));
   return { accessToken, refreshToken };
+}
+
+function buildAnonymousPayload(userId) {
+  return {
+    sub: userId,
+    role: 'anonymous',
+    userId,
+    type: 'access',
+    tokenClass: 'anonymous',
+  };
+}
+
+function isAnonymousClaims(claims) {
+  if (!claims || typeof claims !== 'object') return false;
+
+  const userId = String(claims.userId || claims.sub || '');
+  if (!userId.startsWith('anon-')) return false;
+
+  return (
+    claims.role === 'anonymous' &&
+    claims.type === 'access' &&
+    claims.tokenClass === 'anonymous'
+  );
 }
 
 function isEmailAllowed(email) {
@@ -559,9 +584,23 @@ router.get('/me', async (req, res) => {
 
 router.post('/anonymous', async (req, res) => {
   const userId = `anon-${crypto.randomUUID()}`;
-  const token = signJwt({ sub: userId, role: 'anon', userId, type: 'anon' }, { expiresIn: '30d' });
-  const expiresAt = decodeExpiresAtFromToken(token) || new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString();
-  return res.json({ ok: true, data: { token, expiresAt, userId } });
+  const token = signJwt(buildAnonymousPayload(userId), {
+    expiresIn: ANONYMOUS_TOKEN_EXPIRY,
+  });
+  const expiresAt =
+    decodeExpiresAtFromToken(token) ||
+    new Date(Date.now() + ANONYMOUS_TOKEN_EXPIRY_SECONDS * 1000).toISOString();
+  return res.json({
+    ok: true,
+    data: {
+      token,
+      expiresAt,
+      expiresIn: ANONYMOUS_TOKEN_EXPIRY_SECONDS,
+      userId,
+      tokenType: 'Bearer',
+      isAnonymous: true,
+    },
+  });
 });
 
 router.post('/anonymous/refresh', async (req, res) => {
@@ -569,12 +608,28 @@ router.post('/anonymous/refresh', async (req, res) => {
     const token = getBearerToken(req);
     if (!token) return res.status(401).json({ ok: false, error: 'Unauthorized' });
     const claims = verifyJwt(token);
-    if (claims?.type !== 'anon') return res.status(401).json({ ok: false, error: 'Unauthorized' });
+    if (!isAnonymousClaims(claims)) {
+      return res.status(401).json({ ok: false, error: 'Unauthorized' });
+    }
 
     const userId = claims.userId || claims.sub || `anon-${crypto.randomUUID()}`;
-    const next = signJwt({ sub: userId, role: 'anon', userId, type: 'anon' }, { expiresIn: '30d' });
-    const expiresAt = decodeExpiresAtFromToken(next) || new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString();
-    return res.json({ ok: true, data: { token: next, expiresAt, userId } });
+    const next = signJwt(buildAnonymousPayload(userId), {
+      expiresIn: ANONYMOUS_TOKEN_EXPIRY,
+    });
+    const expiresAt =
+      decodeExpiresAtFromToken(next) ||
+      new Date(Date.now() + ANONYMOUS_TOKEN_EXPIRY_SECONDS * 1000).toISOString();
+    return res.json({
+      ok: true,
+      data: {
+        token: next,
+        expiresAt,
+        expiresIn: ANONYMOUS_TOKEN_EXPIRY_SECONDS,
+        userId,
+        tokenType: 'Bearer',
+        isAnonymous: true,
+      },
+    });
   } catch {
     return res.status(401).json({ ok: false, error: 'Unauthorized' });
   }

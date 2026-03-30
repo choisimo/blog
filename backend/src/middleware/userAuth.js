@@ -30,6 +30,10 @@ export function requireUserAuth(req, res, next) {
 
   try {
     const claims = verifyJwt(token);
+
+    if (claims?.type === 'refresh') {
+      return res.status(401).json({ ok: false, error: 'Unauthorized - Invalid token type' });
+    }
     
     const userId = claims.sub || claims.userId || claims.user_id;
     if (!userId) {

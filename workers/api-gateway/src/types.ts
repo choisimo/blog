@@ -132,6 +132,7 @@ export type JwtPayload = {
   email?: string;
   emailVerified?: boolean;
   type?: 'access' | 'refresh';
+  tokenClass?: string;
   jti?: string;
   iss?: string;
   aud?: string;
