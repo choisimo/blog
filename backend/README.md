@@ -172,12 +172,10 @@ npm run worker
   - `ghcr.io/<owner>/blog-api`
   - `ghcr.io/<owner>/blog-terminal`
 - workflow는 서버에 SSH 배포를 수행하지 않습니다.
-- 성공 후 출력되는 안내도 manual deployment 절차만 제공합니다.
-
-`backend/AGENTS.md` 기준 운영 전제:
-
-- 서버 owner가 `git pull && docker-compose up -d` 방식으로 서비스 재시작
-- CI는 image publish까지만 담당
+- production rollout model은 GitOps 기준입니다.
+- Argo CD가 저장소의 `k3s` 경로를 감시하고, Argo CD Image Updater가 `blog-api`, `blog-terminal`의 immutable SHA tag를 선택한 뒤 auto-sync로 반영합니다.
+- production 기준으로는 `git pull && docker-compose up -d` 같은 수동 origin 재시작 절차를 운영 기본값으로 두지 않습니다.
+- `docker-compose`는 local/dev 실행 또는 ad-hoc origin debugging 문맥으로만 해석하는 편이 안전합니다.
 
 ## Operations
 

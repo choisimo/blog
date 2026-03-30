@@ -145,16 +145,21 @@ npm run dev
   - installs dependencies in `workers/api-gateway`
   - runtime secrets 일부를 `wrangler secret put`으로 주입
   - production `api-gateway` deploy 실행
+  - 현재 workflow 기준으로 `r2-gateway`, `terminal-gateway`, `seo-gateway`는 같은 자동 배포 경로에 포함되지 않음
 - `deploy-blog-workflow.yml`
   - trigger: `backend/**` 또는 workflow file 변경, 수동 실행
   - `blog-api`, `blog-terminal` 이미지를 GHCR에 build/push
-  - 서버 배포는 자동 실행하지 않고 manual deployment 안내만 출력
+  - production rollout model은 GitOps 기준임
+  - Argo CD가 저장소의 `k3s` 경로를 감시하고, Argo CD Image Updater가 immutable SHA tag를 선택한 뒤 auto-sync로 반영함
+  - production 기준으로는 SSH 접속 후 수동 `git pull` 또는 수동 rollout restart를 전제하지 않음
 - `deploy.yml`도 저장소에 존재하지만 이 문서는 해당 workflow의 역할을 추가 검증하지 않습니다.
 
 ### k3s
 
 - `k3s/kustomization.yaml` base set에는 `namespace.yaml`, `limitrange.yaml`, `resourcequota.yaml`, `configmap.yaml`, `postgres.yaml`, `redis.yaml`, `chromadb.yaml`, `surrealdb.yaml`, `open-notebook.yaml`, `api.yaml`, `ingress.yaml`, `middleware.yaml`, `piston.yaml`이 포함됩니다.
 - optional terminal runtime과 optional `cloudflared` tunnel connector는 각각 `k3s/optional/terminal`, `k3s/optional/cloudflared`로 분리됩니다.
+- production bootstrap은 `k3s/argocd` 기준으로 Argo CD와 Argo CD Image Updater를 설치하는 흐름입니다.
+- `docker-compose` 기반 재시작은 local/dev 또는 ad-hoc origin debugging 문맥으로만 해석하는 편이 안전합니다.
 
 ## Operations Quick Checks
 
