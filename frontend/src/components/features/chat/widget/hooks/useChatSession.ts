@@ -152,6 +152,8 @@ export function useChatSession({
   useEffect(() => {
     if (!persistOptIn || !sessionKey) return;
     if (messages.length === 0) return;
+    if (messages[messages.length - 1]?.pending) return;
+    if (messages[messages.length - 1]?.pending) return;
     if (sessionMetaTimerRef.current !== null) {
       window.clearTimeout(sessionMetaTimerRef.current);
       sessionMetaTimerRef.current = null;

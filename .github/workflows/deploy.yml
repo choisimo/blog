@@ -54,6 +54,18 @@ jobs:
     - name: Install dependencies (frontend)
       run: npm --prefix frontend ci
 
+    - name: Type-check (frontend)
+      run: npm --prefix frontend run type-check
+
+    - name: Test (frontend)
+      # Run the characterization and warming baseline tests that gate translation/sentio behavior.
+      # Pre-existing failures in BlogCard, BlogPost integration, and FloatingActionBar are excluded.
+      run: |
+        npm --prefix frontend run test:run -- \
+          BlogPost.characterization \
+          Sentio.feed-cache \
+          Sentio.feed-cache.warming-baseline
+
     - name: Organize images (move to proper directories)
       run: |
         chmod +x ./scripts/organize-images.sh

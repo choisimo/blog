@@ -12,11 +12,28 @@ const MANIFEST_NESTED_PATH = path.join(PUBLIC_DIR, 'posts', 'posts-manifest.json
 const BASE_URL = resolveSiteBaseUrl();
 const API_BASE_URL = process.env.VITE_API_BASE_URL || 'https://api.nodove.com';
 const SITE_NAME = 'Nodove Blog';
+const THEME_DEFAULT = 'terminal';
+const THEME_DEFAULT_META_TAG = `<meta name="theme-default" content="${THEME_DEFAULT}" />`;
+const THEME_DEFAULT_META_PATTERN = /<meta\s+name="theme-default"\s+content="[^"]*"\s*\/?>/i;
+const LEGACY_THEME_DEFAULT_EXPRESSION = `(document.querySelector('meta[name="theme-default"]') || {}).content || "terminal"`;
+const CANONICAL_THEME_DEFAULT_EXPRESSION = `document.querySelector('meta[name="theme-default"]')?.content ?? '${THEME_DEFAULT}'`;
 
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
+}
+
+function applyThemeContract(template) {
+  let html = template;
+
+  if (THEME_DEFAULT_META_PATTERN.test(html)) {
+    html = html.replace(THEME_DEFAULT_META_PATTERN, THEME_DEFAULT_META_TAG);
+  } else {
+    html = html.replace('</head>', `  ${THEME_DEFAULT_META_TAG}\n</head>`);
+  }
+
+  return html.replace(LEGACY_THEME_DEFAULT_EXPRESSION, CANONICAL_THEME_DEFAULT_EXPRESSION);
 }
 
 function loadManifest() {
@@ -232,7 +249,7 @@ function main() {
     process.exit(1);
   }
 
-  const template = fs.readFileSync(templatePath, 'utf8');
+  const template = applyThemeContract(fs.readFileSync(templatePath, 'utf8'));
   const manifest = loadManifest();
 
   if (!Array.isArray(manifest.items) || manifest.items.length === 0) {

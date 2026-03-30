@@ -4,7 +4,15 @@ import { CONSUL, CACHE_TTL } from './constants.js';
 import { createLogger } from '../lib/logger.js';
 
 dotenv.config({ path: path.resolve(process.cwd(), '..', '.env') });
-dotenv.config({ path: path.resolve(process.cwd(), '.env'), override: true });
+// override: true but preserve vars that are non-empty (prevents empty .env entries from clearing test env)
+const _localEnv = dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+if (_localEnv.parsed) {
+  for (const [key, value] of Object.entries(_localEnv.parsed)) {
+    if (value !== '' || process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+}
 
 const logger = createLogger('config');
 

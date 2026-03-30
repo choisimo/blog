@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { register, redisConnectionStatus, aiTaskQueueLength, aiTaskDlqLength } from '../lib/metrics.js';
 import { isRedisAvailable } from '../lib/redis-client.js';
+import { getAITaskQueue } from '../services/ai/task-queue.service.js';
 
 const router = Router();
 
@@ -11,7 +12,6 @@ router.get('/', async (req, res) => {
 
     if (redisUp) {
       try {
-        const { getAITaskQueue } = await import('../services/ai/task-queue.service.js');
         const stats = await getAITaskQueue().getQueueStats();
         aiTaskQueueLength.set(stats.queueLength ?? 0);
         aiTaskDlqLength.set(stats.dlqLength ?? 0);

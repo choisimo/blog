@@ -1,4 +1,3 @@
-import React from "react";
 import {
   Sparkles,
   MoreVertical,
@@ -17,7 +16,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import type { ChatSessionMeta, UploadedChatImage } from "../types";
+import type {
+  ChatSessionMeta,
+  UploadedChatImage,
+  ChatTransportStatus,
+} from "../types";
 
 type ChatHeaderProps = {
   isMobile: boolean;
@@ -40,7 +43,35 @@ type ChatHeaderProps = {
   canExpand?: boolean;
   expanded?: boolean;
   onToggleExpanded?: () => void;
+  transportStatus?: ChatTransportStatus | null;
 };
+
+function getTransportPillClass(
+  status: ChatTransportStatus | null | undefined,
+  isTerminal: boolean,
+) {
+  if (!status) {
+    return isTerminal
+      ? "border-primary/15 bg-primary/5 text-primary/70"
+      : "border-border/60 bg-muted/60 text-muted-foreground";
+  }
+
+  if (status.tone === "error") {
+    return isTerminal
+      ? "border-destructive/40 bg-destructive/10 text-destructive"
+      : "border-destructive/30 bg-destructive/10 text-destructive";
+  }
+
+  if (status.tone === "warn") {
+    return isTerminal
+      ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+      : "border-amber-500/30 bg-amber-500/10 text-amber-700";
+  }
+
+  return isTerminal
+    ? "border-primary/30 bg-primary/10 text-primary"
+    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+}
 
 export function ChatHeader({
   isMobile,
@@ -63,10 +94,18 @@ export function ChatHeader({
   canExpand = false,
   expanded = false,
   onToggleExpanded,
+  transportStatus,
 }: ChatHeaderProps) {
   const liveStatus = livePinned
     ? `LIVE 고정 ON (${currentLiveRoomLabel || "room"})`
     : null;
+  const statusMeta = busy
+    ? "생성 중…"
+    : liveStatus
+      ? liveStatus
+      : persistOptIn
+        ? "기록 저장 ON"
+        : "기록 저장 OFF";
 
   return (
     <div
@@ -112,10 +151,7 @@ export function ChatHeader({
           className={cn(
             "flex items-center justify-center shrink-0",
             isTerminal
-              ? cn(
-                  "rounded-lg bg-primary/20",
-                  isMobile ? "h-9 w-9" : "h-8 w-8",
-                )
+              ? cn("rounded-lg bg-primary/20", isMobile ? "h-9 w-9" : "h-8 w-8")
               : cn(
                   "rounded-md bg-[#F5F5F5] dark:bg-[#1A1A1A]",
                   isMobile ? "h-8 w-8" : "h-7 w-7",
@@ -125,7 +161,10 @@ export function ChatHeader({
           <Sparkles
             className={cn(
               isTerminal
-                ? cn("text-primary terminal-glow", isMobile ? "h-4 w-4" : "h-4 w-4")
+                ? cn(
+                    "text-primary terminal-glow",
+                    isMobile ? "h-4 w-4" : "h-4 w-4",
+                  )
                 : cn(
                     "text-[#111111] dark:text-[#EEEEEE]",
                     isMobile ? "h-4 w-4" : "h-3.5 w-3.5",
@@ -139,7 +178,10 @@ export function ChatHeader({
             className={cn(
               "truncate leading-tight",
               isTerminal
-                ? cn("font-mono text-primary", isMobile ? "text-sm" : "text-[13px] font-semibold")
+                ? cn(
+                    "font-mono text-primary",
+                    isMobile ? "text-sm" : "text-[13px] font-semibold",
+                  )
                 : cn(
                     "font-semibold tracking-tight text-[#111111] dark:text-[#EEEEEE]",
                     isMobile ? "text-[13px]" : "text-[13px]",
@@ -148,26 +190,34 @@ export function ChatHeader({
           >
             {isTerminal ? ">_ AI Chat" : "AI Chat"}
           </p>
-          <p
-            className={cn(
-              "truncate leading-tight",
-              isTerminal
-                ? "text-xs text-muted-foreground font-mono"
-                : "text-[11px] text-[#888888] dark:text-[#666666]",
-            )}
-          >
-            {busy ? (
-              <span className="inline-flex items-center gap-1">
-                <Loader2 className="h-2.5 w-2.5 animate-spin" /> 생성 중…
+          <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+            {transportStatus ? (
+              <span
+                className={cn(
+                  "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]",
+                  getTransportPillClass(transportStatus, isTerminal),
+                )}
+              >
+                {transportStatus.label}
               </span>
-            ) : liveStatus ? (
-              liveStatus
-            ) : persistOptIn ? (
-              "기록 저장 ON"
-            ) : (
-              "기록 저장 OFF"
-            )}
-          </p>
+            ) : null}
+            <p
+              className={cn(
+                "truncate leading-tight",
+                isTerminal
+                  ? "text-xs text-muted-foreground font-mono"
+                  : "text-[11px] text-[#888888] dark:text-[#666666]",
+              )}
+            >
+              {busy ? (
+                <span className="inline-flex items-center gap-1">
+                  <Loader2 className="h-2.5 w-2.5 animate-spin" /> {statusMeta}
+                </span>
+              ) : (
+                statusMeta
+              )}
+            </p>
+          </div>
         </div>
       </div>
 

@@ -11,44 +11,44 @@
        - 1px solid borders, 그림자 최소화
        - Vercel/Linear 스타일: 무채색 기반
        ============================================ */
-    
+
     /* Surface 계층 (3단) - Neutral White */
-    --background: 0 0% 98%;             /* #FAFAFA - 눈에 편한 오프화이트 배경 */
-    --foreground: 0 0% 9%;               /* #171717 - 거의 검정 텍스트 */
-    
-    --card: 0 0% 100%;                   /* #FFFFFF - 카드 배경 */
+    --background: 0 0% 98%; /* #FAFAFA - 눈에 편한 오프화이트 배경 */
+    --foreground: 0 0% 9%; /* #171717 - 거의 검정 텍스트 */
+
+    --card: 0 0% 100%; /* #FFFFFF - 카드 배경 */
     --card-foreground: 0 0% 9%;
-    
+
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 9%;
-    
+
     /* Surface 확장 토큰 */
-    --surface: 0 0% 98%;                 /* #FAFAFA */
-    --surface-2: 0 0% 96%;               /* #F5F5F5 */
+    --surface: 0 0% 98%; /* #FAFAFA */
+    --surface-2: 0 0% 96%; /* #F5F5F5 */
     --surface-elevated: 0 0% 100%;
     --overlay: 0 0% 0% / 0.5;
-    
+
     /* Primary - 명확한 파랑 */
-    --primary: 220 70% 45%;              /* #2563EB */
+    --primary: 220 70% 45%; /* #2563EB */
     --primary-foreground: 0 0% 100%;
-    
+
     /* Secondary */
-    --secondary: 0 0% 96%;               /* #F5F5F5 */
+    --secondary: 0 0% 96%; /* #F5F5F5 */
     --secondary-foreground: 0 0% 9%;
-    
+
     /* Tag / chip tokens */
-    --tag: 0 0% 93%;                     /* #EDEDED */
-    --tag-foreground: 0 0% 20%;          /* #333333 */
-    --tag-border: 0 0% 80%;              /* #CCCCCC */
-    
+    --tag: 0 0% 93%; /* #EDEDED */
+    --tag-foreground: 0 0% 20%; /* #333333 */
+    --tag-border: 0 0% 80%; /* #CCCCCC */
+
     /* Muted */
-    --muted: 0 0% 96%;                   /* #F5F5F5 */
-    --muted-foreground: 0 0% 45%;        /* #737373 */
-    
+    --muted: 0 0% 96%; /* #F5F5F5 */
+    --muted-foreground: 0 0% 45%; /* #737373 */
+
     /* Accent */
-    --accent: 0 0% 96%;                  /* #F5F5F5 */
+    --accent: 0 0% 96%; /* #F5F5F5 */
     --accent-foreground: 0 0% 9%;
-    
+
     /* Semantic Colors */
     --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 100%;
@@ -56,27 +56,27 @@
     --warning-foreground: 0 0% 100%;
     --success: 142 60% 40%;
     --success-foreground: 0 0% 100%;
-    
+
     /* Border - 선명한 1px 경계 */
-    --border: 0 0% 89%;                  /* #E3E3E3 */
-    --border-strong: 0 0% 70%;           /* #B3B3B3 */
+    --border: 0 0% 89%; /* #E3E3E3 */
+    --border-strong: 0 0% 70%; /* #B3B3B3 */
     --input: 0 0% 89%;
-    --divider: 0 0% 92%;                 /* #EBEBEB */
-    
+    --divider: 0 0% 92%; /* #EBEBEB */
+
     /* Focus/Ring */
     --ring: 220 70% 45%;
-    
+
     /* 텍스트 위계 (4단) */
-    --text-strong: 0 0% 9%;              /* #171717 */
-    --text: 0 0% 20%;                    /* #333333 */
-    --text-muted: 0 0% 45%;              /* #737373 */
-    --text-subtle: 0 0% 60%;             /* #999999 */
-    
+    --text-strong: 0 0% 9%; /* #171717 */
+    --text: 0 0% 20%; /* #333333 */
+    --text-muted: 0 0% 45%; /* #737373 */
+    --text-subtle: 0 0% 60%; /* #999999 */
+
     /* Selection */
     --selection: 220 70% 45% / 0.12;
-    
+
     --radius: 0.5rem;
-    
+
     /* Z-Index Layer System */
     --z-base: 0;
     --z-floating-content: 40;
@@ -106,44 +106,44 @@
        - Near-black 배경 (Vercel 스타일: #0a0a0a)
        - WCAG 대비율 준수
        ============================================ */
-    
+
     /* Surface 계층 (3단) - Near-Black */
-    --background: 0 0% 3.9%;             /* #0A0A0A - 깊은 배경 */
-    --foreground: 0 0% 98%;              /* #FAFAFA - 밝은 텍스트 */
-    
-    --card: 0 0% 3.9%;                   /* #0A0A0A */
+    --background: 0 0% 3.9%; /* #0A0A0A - 깊은 배경 */
+    --foreground: 0 0% 98%; /* #FAFAFA - 밝은 텍스트 */
+
+    --card: 0 0% 3.9%; /* #0A0A0A */
     --card-foreground: 0 0% 98%;
-    
-    --popover: 0 0% 9%;                  /* #171717 - 팝오버 */
+
+    --popover: 0 0% 9%; /* #171717 - 팝오버 */
     --popover-foreground: 0 0% 98%;
-    
+
     /* Surface 확장 토큰 */
-    --surface: 0 0% 9%;                  /* #171717 - 카드/섹션 */
-    --surface-2: 0 0% 6.3%;              /* #101010 - 입력/툴바 */
-    --surface-elevated: 0 0% 14.9%;      /* #262626 - 모달/팝오버 */
+    --surface: 0 0% 9%; /* #171717 - 카드/섹션 */
+    --surface-2: 0 0% 6.3%; /* #101010 - 입력/툴바 */
+    --surface-elevated: 0 0% 14.9%; /* #262626 - 모달/팝오버 */
     --overlay: 0 0% 0% / 0.6;
-    
+
     /* Primary - 밝고 접근성 좋은 파랑 */
-    --primary: 226 70% 60%;              /* #5B7FE8 */
+    --primary: 226 70% 60%; /* #5B7FE8 */
     --primary-foreground: 0 0% 3.9%;
-    
+
     /* Secondary */
-    --secondary: 0 0% 14.9%;             /* #262626 */
+    --secondary: 0 0% 14.9%; /* #262626 */
     --secondary-foreground: 0 0% 98%;
-    
+
     /* Tag / chip tokens */
-    --tag: 0 0% 14.9%;                   /* #262626 */
+    --tag: 0 0% 14.9%; /* #262626 */
     --tag-foreground: 0 0% 90%;
-    --tag-border: 0 0% 25%;              /* #404040 */
-    
+    --tag-border: 0 0% 25%; /* #404040 */
+
     /* Muted */
-    --muted: 0 0% 14.9%;                 /* #262626 */
-    --muted-foreground: 0 0% 63.9%;      /* #A3A3A3 */
-    
+    --muted: 0 0% 14.9%; /* #262626 */
+    --muted-foreground: 0 0% 63.9%; /* #A3A3A3 */
+
     /* Accent */
     --accent: 0 0% 14.9%;
     --accent-foreground: 0 0% 98%;
-    
+
     /* Semantic Colors */
     --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
@@ -151,22 +151,22 @@
     --warning-foreground: 0 0% 0%;
     --success: 142 71% 50%;
     --success-foreground: 0 0% 0%;
-    
+
     /* Border - 미묘하지만 확실한 경계 */
-    --border: 0 0% 14.9%;                /* #262626 */
-    --border-strong: 0 0% 27%;           /* #454545 */
+    --border: 0 0% 14.9%; /* #262626 */
+    --border-strong: 0 0% 27%; /* #454545 */
     --input: 0 0% 14.9%;
-    --divider: 0 0% 12%;                 /* #1F1F1F */
-    
+    --divider: 0 0% 12%; /* #1F1F1F */
+
     /* Focus/Ring */
     --ring: 226 70% 60%;
-    
+
     /* 텍스트 위계 (4단) */
-    --text-strong: 0 0% 98%;             /* #FAFAFA */
-    --text: 0 0% 85%;                    /* #D9D9D9 */
-    --text-muted: 0 0% 63.9%;            /* #A3A3A3 */
-    --text-subtle: 0 0% 45%;             /* #737373 */
-    
+    --text-strong: 0 0% 98%; /* #FAFAFA */
+    --text: 0 0% 85%; /* #D9D9D9 */
+    --text-muted: 0 0% 63.9%; /* #A3A3A3 */
+    --text-subtle: 0 0% 45%; /* #737373 */
+
     /* Selection */
     --selection: 226 70% 60% / 0.25;
 
@@ -208,10 +208,10 @@
     --input: 200 15% 15%;
     /* Ring for focus states */
     --ring: 150 100% 62%;
-    
+
     /* Cyber-Minimalism Design Tokens */
     --radius: 4px; /* 날렵한 사각형 (Radius 2px~4px) */
-    
+
     /* Terminal-specific custom properties */
     --terminal-glow: 150 100% 62%;
     --terminal-cyan: 190 100% 60%;
@@ -226,11 +226,11 @@
     --terminal-window-btn-close: 0 70% 55%;
     --terminal-window-btn-minimize: 40 90% 55%;
     --terminal-window-btn-maximize: 140 70% 45%;
-    
+
     /* Cyber-Minimalism: Glow Effects - softer for less eye strain */
     --glow-shadow: 0 0 8px hsl(150 100% 62% / 0.3);
     --glow-shadow-strong: 0 0 12px hsl(150 100% 62% / 0.5);
-    
+
     /* Dim states for inactive elements */
     --terminal-dim: 150 100% 62% / 0.08;
     --terminal-inactive-border: 200 15% 18%;
@@ -247,11 +247,11 @@
     inset: 0;
     pointer-events: none;
     z-index: 10;
-    background: 
+    background:
       radial-gradient(
-        ellipse at center, 
-        transparent 0%, 
-        transparent 55%, 
+        ellipse at center,
+        transparent 0%,
+        transparent 55%,
         rgba(0, 0, 0, 0.25) 80%,
         rgba(0, 0, 0, 0.5) 100%
       ),
@@ -290,7 +290,7 @@
     border-radius: 0;
     padding: 20px;
     background: hsl(var(--terminal-code-bg));
-    box-shadow: 
+    box-shadow:
       inset 0 0 60px rgba(0, 0, 0, 0.5),
       inset 0 1px 0 hsl(var(--terminal-glow) / 0.1);
     font-family: "JetBrains Mono", "PT Mono", "DM Mono", monospace;
@@ -349,7 +349,10 @@
     font-size: 0.82rem;
     text-align: left;
     cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.15s ease,
+      border-color 0.15s ease;
   }
 
   .terminal .terminal-command-btn:hover {
@@ -395,29 +398,38 @@
 
 @layer base {
   /* Mobile viewport overflow prevention */
-  html, body {
+  html,
+  body {
     overflow-x: hidden;
     max-width: 100vw;
   }
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
+    font-family:
+      "Pretendard Variable",
+      "Pretendard",
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      "Noto Sans KR",
+      sans-serif;
     font-feature-settings:
-      'rlig' 1,
-      'calt' 1;
+      "rlig" 1,
+      "calt" 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
-  
+
   /* Light/Dark 테마 가독성 향상 */
   :root {
     /* 본문 폰트 크기 및 행간 최적화 */
     --content-line-height: 1.8;
     --content-letter-spacing: -0.01em;
   }
-  
+
   /* 본문 텍스트 가독성 향상 */
   .prose,
   article,
@@ -426,7 +438,7 @@
     line-height: var(--content-line-height);
     letter-spacing: var(--content-letter-spacing);
   }
-  
+
   /* 한글 최적화 (Light/Dark 테마) */
   :not(.terminal) .prose p,
   :not(.terminal) article p,
@@ -436,26 +448,26 @@
     text-align: justify;
     text-justify: inter-character;
   }
-  
+
   /* Base heading styles to ensure consistent sizing and spacing (sectioned headings included) */
   h1,
   section h1,
   article h1,
-  [role='article'] h1,
+  [role="article"] h1,
   .prose h1 {
     @apply text-3xl md:text-4xl font-extrabold leading-tight my-4;
   }
   h2,
   section h2,
   article h2,
-  [role='article'] h2,
+  [role="article"] h2,
   .prose h2 {
     @apply text-2xl md:text-3xl font-semibold leading-snug my-3;
   }
   h3,
   section h3,
   article h3,
-  [role='article'] h3,
+  [role="article"] h3,
   .prose h3 {
     @apply text-xl md:text-2xl font-medium leading-snug my-2;
   }
@@ -522,7 +534,7 @@
     .mobile-padding {
       @apply px-4 py-3;
     }
-    
+
     .mobile-gap {
       @apply gap-3;
     }
@@ -670,10 +682,12 @@
 
 /* Terminal cursor blink animation */
 @keyframes terminal-cursor-blink {
-  0%, 50% {
+  0%,
+  50% {
     opacity: 1;
   }
-  51%, 100% {
+  51%,
+  100% {
     opacity: 0;
   }
 }
@@ -690,7 +704,7 @@
 
 /* Terminal scanline effect (optional, performance-friendly) */
 .terminal-scanlines::before {
-  content: '';
+  content: "";
   position: fixed;
   top: 0;
   left: 0;
@@ -713,39 +727,68 @@
 
 /* Subtle constant screen flicker */
 @keyframes crt-flicker {
-  0%, 100% { opacity: 1; }
-  92% { opacity: 0.9995; }
-  93% { opacity: 0.999; }
-  94% { opacity: 1; }
-  97% { opacity: 0.9995; }
-  98% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 0.9995;
+  }
+  93% {
+    opacity: 0.999;
+  }
+  94% {
+    opacity: 1;
+  }
+  97% {
+    opacity: 0.9995;
+  }
+  98% {
+    opacity: 1;
+  }
 }
 
 /* RGB Chromatic Aberration shift */
 @keyframes crt-rgb-shift {
-  0%, 100% { 
-    text-shadow: -0.5px 0 rgba(255,0,0,0.3), 0.5px 0 rgba(0,255,255,0.3); 
+  0%,
+  100% {
+    text-shadow:
+      -0.5px 0 rgba(255, 0, 0, 0.3),
+      0.5px 0 rgba(0, 255, 255, 0.3);
   }
-  50% { 
-    text-shadow: -1px 0 rgba(255,0,0,0.2), 1px 0 rgba(0,255,255,0.2); 
+  50% {
+    text-shadow:
+      -1px 0 rgba(255, 0, 0, 0.2),
+      1px 0 rgba(0, 255, 255, 0.2);
   }
 }
 
 /* Phosphor glow pulse */
 @keyframes phosphor-pulse {
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.02); }
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.02);
+  }
 }
 
 /* Block cursor blink for input */
 @keyframes crt-block-cursor {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0; }
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
 }
 
 /* Screen on/off flicker effect */
 @keyframes crt-power-on {
-  0% { 
+  0% {
     opacity: 0;
     transform: scaleY(0.01) scaleX(0.5);
     filter: brightness(2);
@@ -767,18 +810,25 @@
 
 /* Typewriter cursor for AI response */
 @keyframes typewriter-cursor {
-  0%, 50% { border-right-color: hsl(var(--terminal-glow)); }
-  51%, 100% { border-right-color: transparent; }
+  0%,
+  50% {
+    border-right-color: hsl(var(--terminal-glow));
+  }
+  51%,
+  100% {
+    border-right-color: transparent;
+  }
 }
 
 /* Terminal CRT glow effect */
 .terminal-glow {
-  text-shadow: 0 0 5px hsl(var(--terminal-glow) / 0.5),
-               0 0 10px hsl(var(--terminal-glow) / 0.3);
+  text-shadow:
+    0 0 5px hsl(var(--terminal-glow) / 0.5),
+    0 0 10px hsl(var(--terminal-glow) / 0.3);
 }
 
 .terminal .crt-text-glow {
-  text-shadow: 
+  text-shadow:
     0 0 2px hsl(var(--terminal-glow) / 0.9),
     0 0 6px hsl(var(--terminal-glow) / 0.5),
     0 0 12px hsl(var(--terminal-glow) / 0.25);
@@ -786,14 +836,14 @@
 
 .terminal .crt-text-amber {
   color: hsl(var(--terminal-amber));
-  text-shadow: 
+  text-shadow:
     0 0 2px hsl(var(--terminal-amber) / 0.8),
     0 0 6px hsl(var(--terminal-amber) / 0.4);
 }
 
 .terminal .crt-text-cyan {
   color: hsl(var(--terminal-cyan));
-  text-shadow: 
+  text-shadow:
     0 0 2px hsl(var(--terminal-cyan) / 0.8),
     0 0 6px hsl(var(--terminal-cyan) / 0.4);
 }
@@ -868,8 +918,14 @@
 }
 
 @keyframes streaming-dot {
-  0%, 80%, 100% { opacity: 0.3; }
-  40% { opacity: 1; }
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+  }
+  40% {
+    opacity: 1;
+  }
 }
 
 .terminal .ai-response-container {
@@ -894,7 +950,9 @@
 .terminal h4,
 .terminal h5,
 .terminal h6 {
-  font-family: 'JetBrains Mono', 'Fira Code', 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+  font-family:
+    "JetBrains Mono", "Fira Code", "IBM Plex Mono", ui-monospace, "SF Mono",
+    monospace;
   letter-spacing: 0.04em;
 }
 
@@ -903,7 +961,9 @@
 .terminal pre,
 .terminal kbd,
 .terminal samp {
-  font-family: 'JetBrains Mono', 'Fira Code', 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+  font-family:
+    "JetBrains Mono", "Fira Code", "IBM Plex Mono", ui-monospace, "SF Mono",
+    monospace;
 }
 
 /* Terminal link styles */
@@ -935,7 +995,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   font-size: 12px;
 }
 
@@ -966,7 +1026,7 @@
 
 /* Terminal prompt prefix */
 .terminal-prompt::before {
-  content: '> ';
+  content: "> ";
   color: hsl(var(--terminal-prompt));
   font-weight: 600;
 }
@@ -989,19 +1049,20 @@
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   border-radius: 8px;
-  box-shadow: inset 0 1px 0 hsl(var(--border)),
-              0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow:
+    inset 0 1px 0 hsl(var(--border)),
+    0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
 /* Terminal list styles (ASCII bullets) */
 .terminal ul:not(.no-terminal-style) > li::marker {
-  content: '- ';
+  content: "- ";
   color: hsl(var(--terminal-prompt));
 }
 
 .terminal ol:not(.no-terminal-style) > li::marker {
   color: hsl(var(--terminal-prompt));
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
 }
 
 /* Terminal blockquote */
@@ -1016,12 +1077,12 @@
 }
 
 .terminal blockquote::before {
-  content: '>';
+  content: ">";
   position: absolute;
   left: -12px;
   top: 16px;
   color: hsl(var(--terminal-glow));
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   font-weight: 700;
   font-size: 1.1em;
 }
@@ -1135,8 +1196,8 @@
 }
 
 /* Terminal inline code in prose */
-.terminal .prose code:not([class*="language-"]),
-.terminal article code:not([class*="language-"]) {
+.terminal .prose code[data-inline-code="true"],
+.terminal article code[data-inline-code="true"] {
   background: hsl(var(--terminal-code-bg));
   border: 1px solid hsl(var(--border));
   border-radius: 3px;
@@ -1191,7 +1252,7 @@
 
 .terminal .prose figcaption,
 .terminal article figcaption {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   font-size: 0.85em;
   color: hsl(var(--muted-foreground));
   text-align: center;
@@ -1199,7 +1260,7 @@
 }
 
 .terminal .prose figcaption::before {
-  content: '// ';
+  content: "// ";
   color: hsl(var(--terminal-glow) / 0.6);
 }
 
@@ -1211,7 +1272,7 @@
 .terminal th {
   background: hsl(var(--terminal-code-bg));
   color: hsl(var(--terminal-glow));
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   font-weight: 600;
   text-transform: uppercase;
   font-size: 0.85em;
@@ -1232,18 +1293,29 @@
 .terminal [data-radix-toast-viewport] [data-state="open"] {
   background: hsl(var(--terminal-titlebar));
   border: 1px solid hsl(var(--terminal-glow) / 0.3);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   box-shadow: 0 0 20px hsl(var(--terminal-glow) / 0.2);
 }
 
 .terminal [data-radix-toast-viewport] [data-state="open"] [class*="ToastTitle"],
-.terminal [data-radix-toast-viewport] [data-state="open"] > div > div:first-child {
+.terminal
+  [data-radix-toast-viewport]
+  [data-state="open"]
+  > div
+  > div:first-child {
   color: hsl(var(--terminal-glow));
   font-weight: 600;
 }
 
-.terminal [data-radix-toast-viewport] [data-state="open"] [class*="ToastDescription"],
-.terminal [data-radix-toast-viewport] [data-state="open"] > div > div:last-child {
+.terminal
+  [data-radix-toast-viewport]
+  [data-state="open"]
+  [class*="ToastDescription"],
+.terminal
+  [data-radix-toast-viewport]
+  [data-state="open"]
+  > div
+  > div:last-child {
   color: hsl(var(--terminal-secondary));
   font-size: 0.85em;
 }
@@ -1278,7 +1350,7 @@
 
 .terminal .glow-card:hover {
   border-color: hsl(var(--primary) / 0.5);
-  box-shadow: 
+  box-shadow:
     0 0 20px hsl(var(--primary) / 0.15),
     inset 0 0 20px hsl(var(--primary) / 0.05);
 }
@@ -1301,7 +1373,7 @@
   border: 1px solid hsl(var(--terminal-inactive-border, var(--border)));
   color: hsl(var(--muted-foreground));
   padding: 0.5rem 1rem;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 0.75rem;
   font-weight: bold;
   border-radius: 4px;
@@ -1343,16 +1415,16 @@
 
 /* Terminal Prompt Style */
 .terminal .prompt-prefix::before {
-  content: '> ';
+  content: "> ";
   color: hsl(var(--terminal-prompt, var(--primary)));
   font-weight: 600;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
 }
 
 /* Comment Style Title (// prefix) */
 .terminal .section-comment {
   color: hsl(var(--muted-foreground));
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   font-size: 0.95rem;
   font-weight: normal;
 }
@@ -1360,8 +1432,9 @@
 /* Neon Glow Text */
 .terminal .neon-text {
   color: hsl(var(--primary));
-  text-shadow: 0 0 5px hsl(var(--primary) / 0.5),
-               0 0 10px hsl(var(--primary) / 0.3);
+  text-shadow:
+    0 0 5px hsl(var(--primary) / 0.5),
+    0 0 10px hsl(var(--primary) / 0.3);
 }
 
 /* Terminal highlight text */
@@ -1512,19 +1585,23 @@
 .light [data-radix-dialog-content] {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
-  box-shadow: 0 10px 40px hsl(220 13% 10% / 0.15),
-              0 4px 12px hsl(220 13% 10% / 0.1);
+  box-shadow:
+    0 10px 40px hsl(220 13% 10% / 0.15),
+    0 4px 12px hsl(220 13% 10% / 0.1);
 }
 
 /* Light 테마 드롭다운/팝오버 */
-:root:not(.dark):not(.terminal) [data-radix-popper-content-wrapper] [role="menu"],
+:root:not(.dark):not(.terminal)
+  [data-radix-popper-content-wrapper]
+  [role="menu"],
 :root:not(.dark):not(.terminal) [data-radix-popover-content],
 .light [data-radix-popper-content-wrapper] [role="menu"],
 .light [data-radix-popover-content] {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
-  box-shadow: 0 4px 16px hsl(220 13% 10% / 0.12),
-              0 2px 6px hsl(220 13% 10% / 0.06);
+  box-shadow:
+    0 4px 16px hsl(220 13% 10% / 0.12),
+    0 2px 6px hsl(220 13% 10% / 0.06);
 }
 
 /* Light 테마 테이블 */
@@ -1601,13 +1678,15 @@
 .dark [data-slot="card"] {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
-  box-shadow: 0 1px 3px hsl(0 0% 0% / 0.2),
-              0 1px 2px hsl(0 0% 0% / 0.15);
+  box-shadow:
+    0 1px 3px hsl(0 0% 0% / 0.2),
+    0 1px 2px hsl(0 0% 0% / 0.15);
 }
 
 .dark .card:hover {
-  box-shadow: 0 4px 12px hsl(0 0% 0% / 0.3),
-              0 2px 4px hsl(0 0% 0% / 0.2);
+  box-shadow:
+    0 4px 12px hsl(0 0% 0% / 0.3),
+    0 2px 4px hsl(0 0% 0% / 0.2);
 }
 
 /* Dark 테마 입력 필드 - 명확한 경계 */
@@ -1647,8 +1726,9 @@
 .dark [data-radix-dialog-content] {
   background: hsl(var(--popover));
   border: 1px solid hsl(var(--border));
-  box-shadow: 0 10px 40px hsl(0 0% 0% / 0.4),
-              0 4px 12px hsl(0 0% 0% / 0.3);
+  box-shadow:
+    0 10px 40px hsl(0 0% 0% / 0.4),
+    0 4px 12px hsl(0 0% 0% / 0.3);
 }
 
 /* Dark 테마 드롭다운/팝오버 */
@@ -1656,8 +1736,9 @@
 .dark [data-radix-popover-content] {
   background: hsl(var(--popover));
   border: 1px solid hsl(var(--border));
-  box-shadow: 0 4px 16px hsl(0 0% 0% / 0.35),
-              0 2px 6px hsl(0 0% 0% / 0.25);
+  box-shadow:
+    0 4px 16px hsl(0 0% 0% / 0.35),
+    0 2px 6px hsl(0 0% 0% / 0.25);
 }
 
 /* Dark 테마 테이블 */
@@ -1725,7 +1806,12 @@
 :not(.terminal) .prose h3,
 :not(.terminal) .prose h4 {
   @apply font-semibold tracking-tight;
-  font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    "Pretendard Variable",
+    "Pretendard",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
 }
 
 :not(.terminal) .prose p {
@@ -1741,7 +1827,7 @@
   @apply border-l-4 border-primary/30 bg-muted/30 py-2 px-4 my-4 italic;
 }
 
-:not(.terminal) .prose code:not(pre code) {
+:not(.terminal) .prose code[data-inline-code="true"] {
   @apply bg-muted px-1.5 py-0.5 rounded text-sm font-normal;
 }
 
@@ -1809,7 +1895,7 @@
   padding: 0.5rem 1rem;
   height: auto;
   min-height: 36px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
 }
 
 .tui-card {
@@ -1898,20 +1984,20 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
   [class*="Button"] {
     min-height: 44px;
   }
-  
+
   /* 아이콘 전용 버튼은 width도 보장 */
   button[class*="icon"],
   [role="button"][class*="icon"],
   button[aria-label]:not([class*="w-"]) {
     min-width: 44px;
   }
-  
+
   /* 모바일 간격 */
   .container,
   .content-container {
     @apply px-4; /* 1rem for mobile */
   }
-  
+
   /* 모바일 폰트 크기 */
   .prose,
   article,
@@ -1920,22 +2006,31 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
     line-height: 1.7;
   }
 
-  h1, .text-3xl { font-size: 1.75rem; }
-  h2, .text-2xl { font-size: 1.5rem; }
-  h3, .text-xl { font-size: 1.25rem; }
+  h1,
+  .text-3xl {
+    font-size: 1.75rem;
+  }
+  h2,
+  .text-2xl {
+    font-size: 1.5rem;
+  }
+  h3,
+  .text-xl {
+    font-size: 1.25rem;
+  }
 
   /* Adjust meta data font size */
   .meta-text {
     font-size: clamp(11px, 2vw, 12px);
   }
-  
+
   /* Input/Select 높이 강화 - 모바일 48px 권장 */
   input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
   select,
   textarea {
     min-height: 48px;
   }
-  
+
   /* Mobile performance: reduce backdrop-filter intensity */
   .backdrop-blur,
   .backdrop-blur-sm,
@@ -1945,7 +2040,7 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
   [class*="backdrop-blur"] {
     --tw-backdrop-blur: blur(4px) !important;
   }
-  
+
   /* Disable backdrop-filter on very low-end devices (prefers-reduced-motion as proxy) */
   @media (prefers-reduced-motion: reduce) {
     .backdrop-blur,
@@ -1959,7 +2054,7 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
       background-color: hsl(var(--background) / 0.95) !important;
     }
   }
-  
+
   /* Glass card mobile optimization */
   .glass-card {
     backdrop-filter: blur(4px);
@@ -2008,7 +2103,7 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
   :root {
     --border: 0 0% 60%;
   }
-  
+
   .dark {
     --border: 0 0% 50%;
   }
@@ -2029,11 +2124,11 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
 
 @media (max-width: 767px) {
   .terminal .terminal-crt::before {
-    background: 
+    background:
       radial-gradient(
-        ellipse at center, 
-        transparent 0%, 
-        transparent 65%, 
+        ellipse at center,
+        transparent 0%,
+        transparent 65%,
         rgba(0, 0, 0, 0.2) 100%
       ),
       repeating-linear-gradient(
@@ -2084,7 +2179,7 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
     padding: 12px;
     text-align: center;
   }
-  
+
   .terminal .terminal-empty-panel {
     padding: 16px;
   }
@@ -2094,19 +2189,19 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
   .terminal .terminal-crt {
     animation: none !important;
   }
-  
+
   .terminal .crt-block-cursor,
   .terminal .terminal-cursor {
     animation: none !important;
     opacity: 1 !important;
   }
-  
+
   .terminal .crt-text-glow,
   .terminal .crt-text-amber,
   .terminal .crt-text-cyan {
     text-shadow: none !important;
   }
-  
+
   .terminal .terminal-crt::before,
   .terminal .terminal-crt::after {
     opacity: 0.5;
@@ -2147,16 +2242,19 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
 }
 
 .animate-hero-fade-up {
-  animation: hero-fade-up 0.55s var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1)) both;
+  animation: hero-fade-up 0.55s var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1))
+    both;
   animation-delay: var(--anim-delay, 0ms);
 }
 
 .animate-route-fade-in {
-  animation: route-fade-in 0.35s var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1)) both;
+  animation: route-fade-in 0.35s
+    var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1)) both;
 }
 
 .animate-section-slide-in {
-  animation: section-slide-in 0.4s var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1)) both;
+  animation: section-slide-in 0.4s
+    var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1)) both;
   animation-delay: var(--anim-delay, 0ms);
 }
 
@@ -2171,13 +2269,25 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
 }
 
 @keyframes admin-fade-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes admin-scale-in {
-  from { opacity: 0; transform: scale(0.97); }
-  to   { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .admin-auth-card {

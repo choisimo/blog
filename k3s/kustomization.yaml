@@ -3,6 +3,8 @@ kind: Kustomization
 
 resources:
   - namespace.yaml
+  - limitrange.yaml
+  - resourcequota.yaml
   - configmap.yaml
   - postgres.yaml
   - redis.yaml
@@ -12,3 +14,16 @@ resources:
   - api.yaml
   - ingress.yaml
   - middleware.yaml
+  - piston.yaml
+  - terminal-optional.yaml
+  - terminal-ingress-optional.yaml
+
+images:
+  - name: ghcr.io/choisimo/blog-api
+    newTag: latest
+  - name: ghcr.io/choisimo/blog-terminal
+    newTag: latest
+  - name: ghcr.io/engineer-man/piston
+    newTag: latest
+  - name: lfnovo/open_notebook
+    newTag: v1-latest

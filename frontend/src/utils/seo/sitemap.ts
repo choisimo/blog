@@ -15,8 +15,10 @@ export interface SitemapEntry {
   priority: number;
 }
 
+const SITE_BASE_URL_FALLBACK = 'https://blog.nodove.com';
+
 export const generateSitemap = async (): Promise<string> => {
-  const baseUrl = import.meta.env.VITE_SITE_BASE_URL || 'http://localhost:3000';
+  const baseUrl = import.meta.env.VITE_SITE_BASE_URL || SITE_BASE_URL_FALLBACK;
   const posts = await getPosts();
 
   const entries: SitemapEntry[] = [
@@ -73,7 +75,7 @@ ${entries
 };
 
 export const generateRobotsTxt = (): string => {
-  const baseUrl = import.meta.env.VITE_SITE_BASE_URL || 'http://localhost:3000';
+  const baseUrl = import.meta.env.VITE_SITE_BASE_URL || SITE_BASE_URL_FALLBACK;
 
   return `User-agent: *
 Allow: /
@@ -83,7 +85,7 @@ Sitemap: ${baseUrl}/sitemap.xml`;
 
 // Generate RSS feed
 export const generateRSSFeed = async (): Promise<string> => {
-  const baseUrl = import.meta.env.VITE_SITE_BASE_URL || 'http://localhost:3000';
+  const baseUrl = import.meta.env.VITE_SITE_BASE_URL || SITE_BASE_URL_FALLBACK;
   const siteName = 'Your Blog Name';
   const siteDescription =
     'A blog about technology, programming, and web development';

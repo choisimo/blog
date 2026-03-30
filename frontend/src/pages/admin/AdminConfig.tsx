@@ -1,30 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { ConfigManager } from '@/components/features/admin/ConfigManager';
-import { WorkersManager } from '@/components/features/admin/WorkersManager';
-import { AIManager } from '@/components/features/admin/ai';
-import { SecretsManager } from '@/components/features/admin/secrets';
-import { RAGManager } from '@/components/features/admin/rag';
-import { SystemHealth } from '@/components/features/admin/health';
-import { AnalyticsManager } from '@/components/features/admin/analytics';
-import { LogViewer } from '@/components/features/admin/logs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
   Lock,
-  Settings,
-  Cloud,
-  Bot,
-  Key,
   RefreshCw,
-  Database,
-  Activity,
-  BarChart3,
-  LogOut,
   ShieldCheck,
-  Server,
-  ScrollText,
   Terminal,
 } from 'lucide-react';
 import {
@@ -42,27 +23,10 @@ import {
   migrateFromLegacyStorage,
   scheduleTokenRefresh,
 } from '@/stores/session/useAuthStore';
-
-// ─── Design Tokens ────────────────────────────────────────────────────────────
-// Easing: spring feel for interactive state transitions
-// spring: cubic-bezier(0.34, 1.56, 0.64, 1) — overshoot
-// smooth: cubic-bezier(0.4, 0, 0.2, 1)       — material
-// All animations use transform/opacity only (no layout thrashing)
-// ─────────────────────────────────────────────────────────────────────────────
+import { AdminDashboard } from '@/pages/admin/AdminDashboard';
 
 type AuthStep = 'initial-gate' | 'totp-login' | 'totp-setup' | 'authenticated';
 
-type NavTab =
-  | 'health'
-  | 'rag'
-  | 'analytics'
-  | 'logs'
-  | 'ai'
-  | 'config'
-  | 'secrets'
-  | 'workers';
-
-// ─── Error Message ────────────────────────────────────────────────────────────
 function ErrorMsg({ message }: { message: string }) {
   if (!message) return null;
   return (
@@ -84,11 +48,9 @@ function ErrorMsg({ message }: { message: string }) {
   );
 }
 
-// ─── Auth Shell ───────────────────────────────────────────────────────────────
 function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <div className='admin-auth-shell min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center p-4'>
-      {/* Subtle grid background */}
       <div
         className='pointer-events-none fixed inset-0 opacity-[0.015] dark:opacity-[0.04]'
         style={{
@@ -99,7 +61,6 @@ function AuthShell({ children }: { children: React.ReactNode }) {
         aria-hidden='true'
       />
       <div className='admin-auth-card-wrapper w-full max-w-sm'>
-        {/* Brand badge */}
         <div className='flex items-center gap-2 justify-center mb-5'>
           <div className='admin-brand-icon flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-900 dark:bg-zinc-100 shadow-sm'>
             <Terminal className='h-3.5 w-3.5 text-white dark:text-zinc-900' />
@@ -117,11 +78,9 @@ function AuthShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ─── Card Shell (shared between auth forms) ───────────────────────────────────
 function AuthCard({ children }: { children: React.ReactNode }) {
   return (
     <div className='admin-auth-card relative overflow-hidden rounded-xl border border-zinc-200/80 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900'>
-      {/* Top edge accent line */}
       <div
         className='absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-zinc-400/30 to-transparent dark:via-zinc-600/40'
         aria-hidden='true'
@@ -131,7 +90,6 @@ function AuthCard({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ─── Initial Gate Screen ──────────────────────────────────────────────────────
 interface InitialGateScreenProps {
   onServerKeySubmit: (key: string) => Promise<void>;
   loading: boolean;
@@ -154,7 +112,6 @@ function InitialGateScreen({
   return (
     <AuthShell>
       <AuthCard>
-        {/* Header */}
         <div className='mb-5'>
           <div className='flex items-center gap-2 mb-1.5'>
             <div className='flex h-6 w-6 items-center justify-center rounded-md bg-zinc-100 dark:bg-zinc-800'>
@@ -173,7 +130,6 @@ function InitialGateScreen({
           </p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className='space-y-3'>
           <div className='space-y-1.5'>
             <Label
@@ -219,7 +175,6 @@ function InitialGateScreen({
   );
 }
 
-// ─── TOTP Login Screen ────────────────────────────────────────────────────────
 interface TotpLoginScreenProps {
   onSuccess: (response: TotpVerifyResponse) => void;
   error: string;
@@ -260,7 +215,6 @@ function TotpLoginScreen({ onSuccess, error, onError }: TotpLoginScreenProps) {
   return (
     <AuthShell>
       <AuthCard>
-        {/* Header */}
         <div className='mb-5'>
           <div className='flex items-center gap-2 mb-1.5'>
             <div className='flex h-6 w-6 items-center justify-center rounded-md bg-zinc-100 dark:bg-zinc-800'>
@@ -301,7 +255,6 @@ function TotpLoginScreen({ onSuccess, error, onError }: TotpLoginScreenProps) {
               >
                 TOTP code
               </Label>
-              {/* OTP-style segmented look via wide tracking */}
               <Input
                 id='totp-code'
                 type='text'
@@ -314,7 +267,6 @@ function TotpLoginScreen({ onSuccess, error, onError }: TotpLoginScreenProps) {
                 autoFocus
                 className='admin-otp-input h-12 text-xl text-center font-mono tracking-[0.5em] rounded-lg border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 focus-visible:ring-offset-0 transition-all'
               />
-              {/* Progress dots */}
               <div className='flex items-center justify-center gap-1.5 pt-0.5' aria-hidden='true'>
                 {(['p0', 'p1', 'p2', 'p3', 'p4', 'p5'] as const).map((id, i) => (
                   <div
@@ -363,7 +315,6 @@ function TotpLoginScreen({ onSuccess, error, onError }: TotpLoginScreenProps) {
   );
 }
 
-// ─── TOTP Setup Screen ────────────────────────────────────────────────────────
 interface TotpSetupScreenProps {
   setupToken: string;
   onComplete: () => void;
@@ -409,7 +360,6 @@ function TotpSetupScreen({
   return (
     <AuthShell>
       <AuthCard>
-        {/* Header */}
         <div className='mb-5'>
           <div className='flex items-center gap-2 mb-1.5'>
             <div className='flex h-6 w-6 items-center justify-center rounded-md bg-emerald-100 dark:bg-emerald-900/40'>
@@ -431,7 +381,6 @@ function TotpSetupScreen({
           </div>
         ) : setup ? (
           <div className='space-y-4'>
-            {/* QR Code */}
             {setup.qrDataUrl && (
               <div className='flex justify-center'>
                 <div className='inline-flex flex-col items-center gap-2'>
@@ -447,7 +396,6 @@ function TotpSetupScreen({
               </div>
             )}
 
-            {/* Manual Key */}
             {setup.secret && (
               <div className='rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2.5'>
                 <p className='text-xs text-zinc-500 dark:text-zinc-400 mb-1'>Manual entry key</p>
@@ -457,7 +405,6 @@ function TotpSetupScreen({
               </div>
             )}
 
-            {/* Verify Form */}
             <form onSubmit={handleVerify} className='space-y-3'>
               <div className='space-y-1.5'>
                 <Label
@@ -478,7 +425,6 @@ function TotpSetupScreen({
                   autoFocus
                   className='admin-otp-input h-12 text-xl text-center font-mono tracking-[0.5em] rounded-lg border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-0 transition-all'
                 />
-                {/* Progress dots */}
                 <div className='flex items-center justify-center gap-1.5 pt-0.5' aria-hidden='true'>
                   {(['p0', 'p1', 'p2', 'p3', 'p4', 'p5'] as const).map((id, i) => (
                     <div
@@ -517,183 +463,6 @@ function TotpSetupScreen({
   );
 }
 
-// ─── Nav Tab Definition ───────────────────────────────────────────────────────
-const NAV_TABS: {
-  id: NavTab;
-  label: string;
-  icon: React.ReactNode;
-  group?: 'infra' | 'ops' | 'config';
-}[] = [
-  {
-    id: 'health',
-    label: 'Health',
-    icon: <Activity className='h-3.5 w-3.5' />,
-    group: 'infra',
-  },
-  {
-    id: 'rag',
-    label: 'RAG',
-    icon: <Database className='h-3.5 w-3.5' />,
-    group: 'infra',
-  },
-  {
-    id: 'analytics',
-    label: 'Analytics',
-    icon: <BarChart3 className='h-3.5 w-3.5' />,
-    group: 'ops',
-  },
-  {
-    id: 'logs',
-    label: 'Logs',
-    icon: <ScrollText className='h-3.5 w-3.5' />,
-    group: 'ops',
-  },
-  {
-    id: 'ai',
-    label: 'AI',
-    icon: <Bot className='h-3.5 w-3.5' />,
-    group: 'config',
-  },
-  {
-    id: 'config',
-    label: 'Env',
-    icon: <Settings className='h-3.5 w-3.5' />,
-    group: 'config',
-  },
-  {
-    id: 'secrets',
-    label: 'Secrets',
-    icon: <Key className='h-3.5 w-3.5' />,
-    group: 'config',
-  },
-  {
-    id: 'workers',
-    label: 'Workers',
-    icon: <Cloud className='h-3.5 w-3.5' />,
-    group: 'config',
-  },
-];
-
-// ─── Admin Dashboard ──────────────────────────────────────────────────────────
-interface AdminDashboardProps {
-  userEmail?: string;
-  onLogout: () => void;
-}
-
-function AdminDashboard({ userEmail, onLogout }: AdminDashboardProps) {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const tabParam = searchParams.get('tab') as NavTab | null;
-  const validTabs = NAV_TABS.map(t => t.id);
-  const activeTab: NavTab = tabParam && validTabs.includes(tabParam) ? tabParam : 'health';
-
-  const setActiveTab = (tab: NavTab) => {
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      next.set('tab', tab);
-      return next;
-    }, { replace: true });
-  };
-
-  return (
-    <div className='min-h-screen bg-zinc-50 dark:bg-zinc-950'>
-      {/* ── Sticky Top Bar ── */}
-      <header className='sticky top-0 z-20 border-b border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm'>
-        <div className='flex items-center justify-between px-3 h-11'>
-          {/* Left: Brand + Nav */}
-          <div className='flex items-center gap-1 min-w-0'>
-            {/* Brand */}
-            <div className='flex items-center gap-1.5 mr-2 shrink-0'>
-              <div className='flex h-6 w-6 items-center justify-center rounded-md bg-zinc-900 dark:bg-zinc-100'>
-                <Server className='h-3 w-3 text-white dark:text-zinc-900' />
-              </div>
-              <span className='text-xs font-bold text-zinc-800 dark:text-zinc-200 tracking-tight hidden sm:inline'>
-                noblog admin
-              </span>
-            </div>
-
-            {/* Divider */}
-            <div className='h-4 w-px bg-zinc-200 dark:bg-zinc-700 shrink-0 hidden sm:block' aria-hidden='true' />
-
-            {/* Nav tabs — scrollable on narrow screens */}
-            <nav
-              className='flex items-center gap-0.5 overflow-x-auto scrollbar-hide'
-              aria-label='Admin navigation'
-            >
-              {NAV_TABS.map(tab => (
-                <button
-                  key={tab.id}
-                  type='button'
-                  onClick={() => setActiveTab(tab.id)}
-                  aria-current={activeTab === tab.id ? 'page' : undefined}
-                  className={`
-                    admin-nav-btn
-                    relative flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md
-                    whitespace-nowrap min-h-[32px] min-w-[32px]
-                    transition-all duration-150
-                    outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 focus-visible:ring-offset-1
-                    ${
-                      activeTab === tab.id
-                        ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm'
-                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 active:scale-95'
-                    }
-                  `}
-                >
-                  {tab.icon}
-                  <span className='hidden md:inline'>{tab.label}</span>
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          {/* Right: User + Logout */}
-          <div className='flex items-center gap-1.5 shrink-0 ml-2'>
-            {userEmail && (
-              <span className='hidden sm:inline font-mono text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md border border-zinc-200 dark:border-zinc-700 max-w-[160px] truncate'>
-                {userEmail}
-              </span>
-            )}
-            <button
-              type='button'
-              onClick={onLogout}
-              aria-label='Logout'
-              className='flex items-center gap-1 text-xs text-zinc-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400 transition-colors min-h-[32px] px-2 py-1 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1 outline-none'
-            >
-              <LogOut className='h-3.5 w-3.5' />
-              <span className='hidden sm:inline'>Logout</span>
-            </button>
-          </div>
-        </div>
-
-        {/* ── Mobile: active tab label indicator ── */}
-        <div className='sm:hidden flex items-center gap-1.5 px-3 pb-2'>
-          <span className='text-xs text-zinc-400 dark:text-zinc-500'>
-            {NAV_TABS.find(t => t.id === activeTab)?.icon}
-          </span>
-          <span className='text-xs font-medium text-zinc-700 dark:text-zinc-300 capitalize'>
-            {NAV_TABS.find(t => t.id === activeTab)?.label}
-          </span>
-        </div>
-      </header>
-
-      {/* ── Main Content ── */}
-      <main className='p-3 md:p-4 max-w-screen-2xl mx-auto'>
-        {/* Tab content with fade-in on switch */}
-        <div className='admin-tab-content'>
-          {activeTab === 'health' && <SystemHealth />}
-          {activeTab === 'rag' && <RAGManager />}
-          {activeTab === 'analytics' && <AnalyticsManager />}
-          {activeTab === 'logs' && <LogViewer />}
-          {activeTab === 'ai' && <AIManager />}
-          {activeTab === 'config' && <ConfigManager />}
-          {activeTab === 'secrets' && <SecretsManager />}
-          {activeTab === 'workers' && <WorkersManager />}
-        </div>
-      </main>
-    </div>
-  );
-}
-
-// ─── Page Loading Skeleton ────────────────────────────────────────────────────
 function PageLoadingState() {
   return (
     <div
@@ -707,7 +476,6 @@ function PageLoadingState() {
   );
 }
 
-// ─── Root Component ───────────────────────────────────────────────────────────
 export default function AdminConfig() {
   const [step, setStep] = useState<AuthStep>('initial-gate');
   const [error, setError] = useState('');

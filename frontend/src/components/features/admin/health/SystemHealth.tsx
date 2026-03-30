@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { getApiBaseUrl } from "@/utils/network/apiBase";
 import { useAuthStore } from "@/stores/session/useAuthStore";
+import { bearerAuth } from "@/lib/auth";
 import {
   useFeatureFlagsStore,
   type FeatureFlags,
@@ -37,14 +38,15 @@ interface ProviderHealth {
   enabledModelCount: number;
 }
 
-async function checkBackendHealth(): Promise<{
+// eslint-disable-next-line react-refresh/only-export-components
+export async function checkBackendHealth(): Promise<{
   ok: boolean;
   latencyMs: number;
 }> {
   const base = getApiBaseUrl();
   const start = Date.now();
   try {
-    const res = await fetch(`${base}/health`, {
+    const res = await fetch(`${base}/api/v1/healthz`, {
       method: "GET",
       signal: AbortSignal.timeout(5000),
     });
@@ -83,7 +85,7 @@ async function getProviders(token: string): Promise<ProviderHealth[]> {
   const base = getApiBaseUrl();
   try {
     const res = await fetch(`${base}/api/v1/admin/ai/providers`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: bearerAuth(token),
       signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) return [];
@@ -104,7 +106,7 @@ async function checkProviderHealth(
       `${base}/api/v1/admin/ai/providers/${providerId}/health`,
       {
         method: "PUT",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: bearerAuth(token),
         signal: AbortSignal.timeout(15000),
       },
     );

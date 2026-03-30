@@ -45,58 +45,143 @@ async function startServer() {
     try {
       await runMigrations();
       enablePgLogs();
-      logger.info({}, 'PostgreSQL migrations applied');
+      logger.info({}, "PostgreSQL migrations applied");
     } catch (err) {
-      logger.warn({}, 'PostgreSQL migration failed, continuing without PG', { error: err.message });
+      logger.warn({}, "PostgreSQL migration failed, continuing without PG", {
+        error: err.message,
+      });
     }
   }
-  
+
   const app = express();
 
-app.set('trust proxy', config.trustProxy);
+  app.set("trust proxy", config.trustProxy);
 
-app.use(
-  helmet({
-    crossOriginResourcePolicy: { policy: 'cross-origin' },
-  })
-);
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+    }),
+  );
 
-const corsOptions = {
-  origin(origin, callback) {
-    if (!origin) return callback(null, true);
-    const ok = config.allowedOrigins.some(o => o === origin);
-    return callback(ok ? null : new Error('Not allowed by CORS'), ok);
-  },
-  credentials: true,
-};
-app.use(cors(corsOptions));
+  const corsOptions = {
+    origin(origin, callback) {
+      if (!origin) return callback(null, true);
+      const ok = config.allowedOrigins.some((o) => o === origin);
+      return callback(ok ? null : new Error("Not allowed by CORS"), ok);
+    },
+    credentials: true,
+  };
+  app.use(cors(corsOptions));
 
-app.use(morgan('combined'));
+  app.use(morgan("combined"));
 
-app.use((req, res, next) => {
-  const end = httpRequestDuration.startTimer();
-  res.on('finish', () => {
-    const route = req.route?.path || req.path || 'unknown';
-    const labels = { method: req.method, route, status_code: res.statusCode };
-    end(labels);
-    httpRequestsTotal.inc(labels);
+  app.use((req, res, next) => {
+    const end = httpRequestDuration.startTimer();
+    res.on("finish", () => {
+      const route = req.route?.path || req.path || "unknown";
+      const labels = { method: req.method, route, status_code: res.statusCode };
+      end(labels);
+      httpRequestsTotal.inc(labels);
+    });
+    next();
   });
-  next();
-});
 
-app.get('/api/v1/healthz', (req, res) => {
-  res.json({ ok: true, env: config.appEnv, uptime: process.uptime() });
-});
-app.get('/api/v1/public/config', httpCache({ ttl: 300, prefix: 'config' }), (req, res) => {
-  res.json({ ok: true, data: publicRuntimeConfig() });
-});
-app.use('/metrics', metricsRouter);
+  app.get("/api/v1/healthz", (req, res) => {
+    res.json({ ok: true, env: config.appEnv, uptime: process.uptime() });
+  });
+  app.get(
+    "/api/v1/public/config",
+    httpCache({ ttl: 300, prefix: "config" }),
+    (req, res) => {
+      res.json({ ok: true, data: publicRuntimeConfig() });
+    },
+  );
+  app.use("/metrics", metricsRouter);
 
-app.use('/api/v1/notifications', notificationsRouter);
-app.use(requireBackendKey);
+  app.use("/api/v1/notifications", notificationsRouter);
+  app.use(requireBackendKey);
 
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: false }));
+  app.use(express.json({ limit: "1mb" }));
+  app.use(express.urlencoded({ extended: false }));
+
+  const limiter = rateLimit({
+    windowMs: config.rateLimit.windowMs,
+    max: config.rateLimit.max,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.use(limiter);
+
+  app.use("/api/v1/ai", aiRouter);
+  app.use("/api/v1/comments", commentsRouter);
+  app.use("/api/v1/analytics", analyticsRouter);
+  app.use("/api/v1/chat", chatRouter);
+  app.use("/api/v1", translateRouter);
+  app.use("/api/v1/memos", memosRouter);
+  app.use("/api/v1/user-content", userContentRouter);
+  app.use("/api/v1/og", ogRouter);
+  app.use("/api/v1/admin", adminRouter);
+  app.use("/api/v1/posts", postsRouter);
+  app.use("/api/v1/images", imagesRouter);
+  app.use("/api/v1/auth", authRouter);
+  app.use("/api/v1/rag", ragRouter);
+  app.use("/api/v1/memories", memoriesRouter);
+  app.use("/api/v1/user", userRouter);
+  app.use("/api/v1/search", searchRouter);
+  app.use("/api/v1/admin/config", configRouter);
+  app.use("/api/v1/admin/workers", workersRouter);
+  app.use("/api/v1/admin", adminLogsRouter);
+  app.use("/api/v1/agent", agentRouter);
+
+  app.use("/api/v1/debate", debateRouter);
+  app.use("/api/v1/execute", executeRouter);
+
+  app.use(notFoundHandler);
+
+  app.use(errorHandler);
+
+  const port = config.port;
+  const host = config.host;
+  const server = app.listen(port, host, () => {
+    logger.info({ port, host }, `listening on http://${host}:${port}`);
+    logger.info(
+      {
+        features: {
+          ai: config.features.aiEnabled,
+          rag: config.features.ragEnabled,
+          comments: config.features.commentsEnabled,
+        },
+      },
+      "features",
+    );
+  });
+  initChatWebSocket(server);
+
+  let shuttingDown = false;
+  function gracefulShutdown(signal) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    logger.info({ signal }, "Received shutdown signal, closing server...");
+
+    server.close(async () => {
+      logger.info({}, "HTTP server closed");
+      try {
+        await closeRedis();
+        logger.info({}, "Redis connections closed");
+      } catch (err) {
+        logger.error({ err }, "Failed to close Redis connections");
+      }
+      process.exit(0);
+    });
+
+    setTimeout(() => {
+      logger.error({}, "Shutdown timed out after 10s, forcing exit");
+      process.exit(1);
+    }, 10_000);
+  }
+
+  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+  process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
 const limiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
@@ -177,7 +262,10 @@ process.on('uncaughtException', (err) => {
 });
 }
 
-startServer().catch(err => {
-  logger.error({}, 'Failed to start server', { error: err.message, stack: err.stack });
+startServer().catch((err) => {
+  logger.error({}, "Failed to start server", {
+    error: err.message,
+    stack: err.stack,
+  });
   process.exit(1);
 });

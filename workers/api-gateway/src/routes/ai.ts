@@ -4,6 +4,7 @@ import { success, badRequest } from '../lib/response';
 import { createAIService, tryParseJson } from '../lib/ai-service';
 import { AI_TEMPERATURES, STREAMING } from '../config/defaults';
 import type { TaskMode, TaskPayload } from '../lib/prompts';
+import { markArtifactItemsRead } from '../lib/ai-artifacts';
 
 const ai = new Hono<HonoEnv>();
 
@@ -268,6 +269,61 @@ ai.get('/status', async (c) => {
     features: info.features,
     timestamp: new Date().toISOString(),
   });
+});
+
+ai.post('/artifacts/read', async (c) => {
+  const body = (await c.req.json().catch(() => ({}))) as {
+    userKey?: string;
+    sessionId?: string;
+    artifactType?: string;
+    scopeKey?: string;
+    logicalKey?: string;
+    itemHash?: string;
+  };
+
+  const userKey = body.userKey || body.sessionId;
+  if (!userKey || !body.artifactType || !body.scopeKey || !body.logicalKey || !body.itemHash) {
+    return badRequest(c, 'userKey, artifactType, scopeKey, logicalKey, and itemHash are required');
+  }
+
+  await markArtifactItemsRead(c.env.DB, {
+    userKey,
+    artifactType: body.artifactType,
+    scopeKey: body.scopeKey,
+    items: [{ logicalKey: body.logicalKey, itemHash: body.itemHash }],
+  });
+
+  return success(c, { updated: true });
+});
+
+ai.post('/artifacts/read/batch', async (c) => {
+  const body = (await c.req.json().catch(() => ({}))) as {
+    userKey?: string;
+    sessionId?: string;
+    artifactType?: string;
+    scopeKey?: string;
+    items?: Array<{ logicalKey?: string; itemHash?: string }>;
+  };
+
+  const userKey = body.userKey || body.sessionId;
+  const items = Array.isArray(body.items)
+    ? body.items.filter((item): item is { logicalKey: string; itemHash: string } =>
+        Boolean(item?.logicalKey && item?.itemHash)
+      )
+    : [];
+
+  if (!userKey || !body.artifactType || !body.scopeKey || items.length === 0) {
+    return badRequest(c, 'userKey, artifactType, scopeKey, and items are required');
+  }
+
+  await markArtifactItemsRead(c.env.DB, {
+    userKey,
+    artifactType: body.artifactType,
+    scopeKey: body.scopeKey,
+    items,
+  });
+
+  return success(c, { updated: true, count: items.length });
 });
 
 export default ai;

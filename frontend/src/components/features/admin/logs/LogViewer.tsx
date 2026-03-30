@@ -1,4 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import {
   RefreshCw,
   Play,
@@ -9,8 +16,13 @@ import {
 } from "lucide-react";
 import { getApiBaseUrl } from "@/utils/network/apiBase";
 import { useAuthStore } from "@/stores/session/useAuthStore";
+import { bearerAuth } from "@/lib/auth";
+import {
+  findSSEFrameBoundary,
+  parseSSEFrame,
+} from "@/services/core/sse-frame";
 
-interface LogEntry {
+export interface LogEntry {
   id?: number;
   timestamp: string;
   level: "error" | "warn" | "info" | "debug";
@@ -25,6 +37,144 @@ const LEVEL_BADGE: Record<string, string> = {
   info: "bg-zinc-100 text-zinc-600",
   debug: "bg-slate-100 text-slate-500",
 };
+
+const LOG_STREAM_RECONNECT_MS = 3000;
+const LOG_BUFFER_CAP = 1000;
+
+type LogStateSetter = Dispatch<SetStateAction<LogEntry[]>>;
+type BooleanRef = { current: boolean };
+type AbortControllerRef = { current: AbortController | null };
+
+function appendLogEntry(setLogs: LogStateSetter, entry: LogEntry) {
+  setLogs((prev) => [entry, ...prev].slice(0, LOG_BUFFER_CAP));
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export async function parseLogStream(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  {
+    pausedRef,
+    setLogs,
+  }: {
+    pausedRef: BooleanRef;
+    setLogs: LogStateSetter;
+  },
+) {
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  const processFrame = (frameText: string) => {
+    const frame = parseSSEFrame(frameText);
+    if (!frame) return;
+
+    try {
+      const data = JSON.parse(frame.data) as LogEntry & { type?: string };
+      if (data.type === "connected" || pausedRef.current) {
+        return;
+      }
+      appendLogEntry(setLogs, data);
+    } catch {
+      void 0;
+    }
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+
+    if (done) {
+      buffer += decoder.decode();
+      break;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+
+    while (true) {
+      const boundary = findSSEFrameBoundary(buffer);
+      if (!boundary) break;
+
+      const frame = buffer.slice(0, boundary.index);
+      buffer = buffer.slice(boundary.index + boundary.size);
+      processFrame(frame);
+    }
+  }
+
+  if (buffer.trim()) {
+    processFrame(buffer);
+  }
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export async function connectLogStream({
+  abortRef,
+  fetchImpl = fetch,
+  getValidAccessToken,
+  pausedRef,
+  reconnect,
+  setConnected,
+  setLogs,
+}: {
+  abortRef: AbortControllerRef;
+  fetchImpl?: typeof fetch;
+  getValidAccessToken: () => Promise<string | null>;
+  pausedRef: BooleanRef;
+  reconnect: () => void;
+  setConnected: (connected: boolean) => void;
+  setLogs: LogStateSetter;
+}) {
+  if (abortRef.current) {
+    abortRef.current.abort();
+  }
+
+  const token = await getValidAccessToken();
+  if (!token) {
+    setConnected(false);
+    reconnect();
+    return;
+  }
+
+  const base = getApiBaseUrl();
+  const url = `${base}/api/v1/admin/logs/stream`;
+  const controller = new AbortController();
+  abortRef.current = controller;
+
+  try {
+    const response = await fetchImpl(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "text/event-stream",
+        ...bearerAuth(token),
+      },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      setConnected(false);
+      reconnect();
+      return;
+    }
+
+    if (!response.body) {
+      setConnected(false);
+      reconnect();
+      return;
+    }
+
+    setConnected(true);
+    const reader = response.body.getReader();
+    await parseLogStream(reader, { pausedRef, setLogs });
+
+    if (!controller.signal.aborted) {
+      setConnected(false);
+      reconnect();
+    }
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return;
+    }
+    setConnected(false);
+    reconnect();
+  }
+}
 
 function LogRow({ entry }: { entry: LogEntry }) {
   const [expanded, setExpanded] = useState(false);
@@ -96,50 +246,52 @@ export function LogViewer() {
   const [levelFilter, setLevelFilter] = useState<string>("all");
   const [serviceFilter, setServiceFilter] = useState("");
   const [connected, setConnected] = useState(false);
-  const esRef = useRef<EventSource | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const pausedRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectRef = useRef<() => Promise<void>>(async () => {});
   const { getValidAccessToken } = useAuthStore();
 
-  const connect = useCallback(async () => {
-    if (esRef.current) {
-      esRef.current.close();
+  const scheduleReconnect = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
     }
 
-    const token = await getValidAccessToken();
-    if (!token) return;
+    reconnectTimeoutRef.current = setTimeout(() => {
+      reconnectTimeoutRef.current = null;
+      void connectRef.current();
+    }, LOG_STREAM_RECONNECT_MS);
+  }, []);
 
-    const base = getApiBaseUrl();
-    const params = new URLSearchParams({ token });
-    const url = `${base}/api/v1/admin/logs/stream?${params.toString()}`;
+  const connect = useCallback(async () => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
 
-    const es = new EventSource(url);
-    esRef.current = es;
+    await connectLogStream({
+      abortRef,
+      getValidAccessToken,
+      pausedRef,
+      reconnect: scheduleReconnect,
+      setConnected,
+      setLogs,
+    });
+  }, [getValidAccessToken, scheduleReconnect]);
 
-    es.onopen = () => setConnected(true);
-
-    es.onmessage = (e) => {
-      if (pausedRef.current) return;
-      try {
-        const data = JSON.parse(e.data) as LogEntry;
-        if (data.type === "connected") return;
-        setLogs((prev) => [data, ...prev].slice(0, 1000));
-      } catch {
-        void 0;
-      }
-    };
-
-    es.onerror = () => {
-      setConnected(false);
-      es.close();
-      setTimeout(() => connect(), 3000);
-    };
-  }, [getValidAccessToken]);
+  connectRef.current = connect;
 
   useEffect(() => {
-    connect();
+    void connect();
+
     return () => {
-      esRef.current?.close();
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- abortRef is a stable useRef; reading .current in cleanup is intentional to access the live controller at cleanup time
+      abortRef.current?.abort();
     };
   }, [connect]);
 

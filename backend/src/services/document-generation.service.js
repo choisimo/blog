@@ -124,20 +124,23 @@ function buildExportHtml({ title, content, customCss }) {
 </html>`;
 }
 
-function resolveChromiumPath() {
+async function resolveChromiumPath() {
   if (resolvedChromiumPath !== undefined) return resolvedChromiumPath;
-  resolvedChromiumPath = CHROMIUM_PATH_CANDIDATES.find((candidate) => {
+  for (const candidate of CHROMIUM_PATH_CANDIDATES) {
     try {
-      return fs.existsSync(candidate);
+      await fs.promises.access(candidate);
+      resolvedChromiumPath = candidate;
+      return resolvedChromiumPath;
     } catch {
-      return false;
+      // candidate not found, try next
     }
-  });
+  }
+  resolvedChromiumPath = null;
   return resolvedChromiumPath;
 }
 
 async function launchBrowser() {
-  const executablePath = resolveChromiumPath();
+  const executablePath = await resolveChromiumPath();
   if (!executablePath) {
     const err = new Error(
       "Chromium executable not found. Set PDF_CHROMIUM_EXECUTABLE_PATH or install chromium in runtime.",

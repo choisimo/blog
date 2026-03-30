@@ -1,4 +1,4 @@
-import { type BlogPost, type SupportedLanguage } from '@/types/blog';
+import { type BlogPost, type SupportedLanguage } from "@/types/blog";
 
 export interface FrontmatterData {
   title?: string;
@@ -16,14 +16,14 @@ export interface ParsedMarkdown {
 
 export const formatDate = (
   dateString: string,
-  language: SupportedLanguage = 'ko'
+  language: SupportedLanguage = "ko",
 ): string => {
   const date = new Date(dateString);
-  const locale = language === 'en' ? 'en-US' : 'ko-KR';
+  const locale = language === "en" ? "en-US" : "ko-KR";
   return date.toLocaleDateString(locale, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 };
 
@@ -36,14 +36,40 @@ export const calculateReadTime = (content: string): number => {
 export const createSlug = (title: string): string => {
   return title
     .toLowerCase()
-    .replace(/[^a-z0-9가-힣]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
+    .replace(/[^a-z0-9가-힣]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
 };
 
 export const truncateText = (text: string, maxLength: number): string => {
   if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength).trim()}...`;
+};
+
+export const formatReadingTimeLabel = (
+  readingTime: string | number | undefined,
+  language: SupportedLanguage = "ko",
+): string => {
+  if (readingTime === undefined || readingTime === null || readingTime === "") {
+    return "";
+  }
+
+  const raw =
+    typeof readingTime === "number" ? `${readingTime} min read` : readingTime;
+  const match = raw.match(/(\d+)/);
+  const minutes = match ? match[1] : "";
+
+  if (language === "ko") {
+    if (minutes) return `${minutes}분 읽기`;
+    return raw.includes("분") ? raw : raw.replace("min read", "분 읽기");
+  }
+
+  if (raw.includes("분")) {
+    if (minutes) return `${minutes} min read`;
+    return raw.replace("분 읽기", "min read");
+  }
+
+  return raw;
 };
 
 export interface LocalizedPostContent {
@@ -54,21 +80,19 @@ export interface LocalizedPostContent {
 }
 
 const getFallbackLanguage = (post: BlogPost): SupportedLanguage =>
-  post.defaultLanguage ?? 'ko';
+  post.defaultLanguage ?? "ko";
 
-export const getAvailableLanguages = (
-  post: BlogPost
-): SupportedLanguage[] => {
+export const getAvailableLanguages = (post: BlogPost): SupportedLanguage[] => {
   const fallback = getFallbackLanguage(post);
   const available = (post.availableLanguages ?? []).filter(
-    (lang): lang is SupportedLanguage => lang === 'ko' || lang === 'en'
+    (lang): lang is SupportedLanguage => lang === "ko" || lang === "en",
   );
   return Array.from(new Set<SupportedLanguage>([fallback, ...available]));
 };
 
 export const resolveLocalizedPost = (
   post: BlogPost,
-  language: SupportedLanguage
+  language: SupportedLanguage,
 ): LocalizedPostContent => {
   const fallbackLang = getFallbackLanguage(post);
   const base: LocalizedPostContent = {
@@ -105,7 +129,7 @@ const parseMarkdownValue = (value: string): unknown => {
   }
 
   // Parse arrays
-  if (value.startsWith('[') && value.endsWith(']')) {
+  if (value.startsWith("[") && value.endsWith("]")) {
     try {
       return JSON.parse(value);
     } catch {
@@ -128,8 +152,8 @@ export const parseMarkdownFrontmatter = (content: string): ParsedMarkdown => {
   const bodyContent = match[2];
 
   const frontmatter: FrontmatterData = {};
-  frontmatterText.split('\n').forEach(line => {
-    const colonIndex = line.indexOf(':');
+  frontmatterText.split("\n").forEach((line) => {
+    const colonIndex = line.indexOf(":");
     if (colonIndex > 0) {
       const key = line.substring(0, colonIndex).trim();
       const rawValue = line.substring(colonIndex + 1).trim();
@@ -142,52 +166,11 @@ export const parseMarkdownFrontmatter = (content: string): ParsedMarkdown => {
   return { frontmatter, content: bodyContent };
 };
 
-export const parseDescriptionMarkdown = (text: string): string => {
-  if (!text) return '';
-
-  // Escape raw input before substitution to prevent HTML injection from untrusted content.
-  const escaped = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-
-  const result = escaped
-    // Remove image markdown: ![alt](src) or ![alt]
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '')
-    .replace(/!\[[^\]]*\]/g, '')
-    // Remove standalone image URLs that look like paths
-    .replace(/\(\/images\/[^)]+\)/g, '')
-    // Convert bold: **text** or __text__
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/__([^_]+)__/g, '<strong>$1</strong>')
-    // Convert italic: *text* or _text_
-    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-    .replace(/_([^_]+)_/g, '<em>$1</em>')
-    // Convert inline code: `code`
-    .replace(/`([^`]+)`/g, '<code class="bg-muted px-1 py-0.5 rounded text-sm">$1</code>')
-    // Convert headers to bold (### Header -> <strong>Header</strong>)
-    .replace(/^#{1,6}\s+(.+)$/gm, '<strong>$1</strong>')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, linkText: string, href: string) => {
-      const safePrefixes = ['https://', 'http://', '/', '#', 'mailto:'];
-      const isSafe = safePrefixes.some(p => href.startsWith(p));
-      if (!isSafe) return linkText;
-      // Escape href for safe HTML attribute insertion — prevents breaking out of the
-      // href="..." attribute via embedded quotes (e.g. https://x.com" onclick="...).
-      const safeHref = href.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-      return `<a href="${safeHref}" class="text-primary hover:underline">${linkText}</a>`;
-    })
-    // Clean up extra whitespace from removed images
-    .replace(/\s{2,}/g, ' ')
-    .trim();
-
-  return result;
-};
-
 export const loadPostBySlug = async (
-  slug: string
+  slug: string,
 ): Promise<BlogPost | null> => {
   try {
-    const baseUrl = import.meta.env.BASE_URL || '/';
+    const baseUrl = import.meta.env.BASE_URL || "/";
     const response = await fetch(`${baseUrl}posts/${slug}.md`);
 
     if (!response.ok) {
@@ -203,7 +186,7 @@ export const loadPostBySlug = async (
     }
 
     const readTime = frontmatter.readTime
-      ? typeof frontmatter.readTime === 'string'
+      ? typeof frontmatter.readTime === "string"
         ? parseInt(frontmatter.readTime, 10)
         : frontmatter.readTime
       : calculateReadTime(bodyContent);
@@ -213,12 +196,12 @@ export const loadPostBySlug = async (
       : new Date().getFullYear().toString();
 
     return {
-      id: slug.replace('/', '-'),
+      id: slug.replace("/", "-"),
       title: frontmatter.title,
       description: frontmatter.excerpt || truncateText(bodyContent, 200),
-      date: frontmatter.date || '',
+      date: frontmatter.date || "",
       year,
-      category: frontmatter.category || '기술',
+      category: frontmatter.category || "기술",
       tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
       slug,
       content: bodyContent,

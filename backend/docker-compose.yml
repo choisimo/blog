@@ -301,8 +301,11 @@ services:
   # Frontend calls /api/v1/execute (backend proxy) which forwards to this service.
   # ---------------------------------------------------------------------------
   piston:
-    image: ghcr.io/engineer-man/piston:latest
+    image: ghcr.io/engineer-man/piston@sha256:2f66b7456189c4d713aa986d98eccd0b6ee16d26c7ec5f21b30e942756fd127a
     container_name: blog-piston
+    # Upstream Piston documents containerized deployment with --privileged, and
+    # upstream isolate warns containerized use is not recommended and may need it.
+    # Keep local Compose aligned with that documented execution model.
     privileged: true
     tmpfs:
       - /piston/jobs

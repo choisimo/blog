@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ['동적계획법', 'DP', '메모이제이션', '최적화', '알고리즘']
 excerpt: "최적 부분 구조와 중복 부분 문제를 이용한 효율적 문제 해결 기법을 마스터한다"
 readTime: "3분"
+published: false
 ---
 
 <div class="week-badge">7-8주차</div>

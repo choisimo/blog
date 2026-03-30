@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { NotebookPen, Sparkles, Layers, Map as MapIcon } from "lucide-react";
-import VisitedPostsMinimap from "@/components/features/navigation/VisitedPostsMinimap";
-import { useVisitedPostsState } from "@/components/features/navigation/useVisitedPosts";
-import ChatWidget from "@/components/features/chat/ChatWidget";
+import VisitedPostsMinimap from "@/components/molecules/VisitedPostsMinimap";
+import { useVisitedPostsState } from "@/components/molecules/useVisitedPostsState";
+import ChatWidget from "@/components/molecules/ChatWidget";
 import { useToast } from "@/components/ui/use-toast";
 import { useIsMobile } from "@/hooks/ui/use-mobile";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -219,6 +219,20 @@ export default function FloatingActionBar() {
     openStackView();
   }, [openStackView, stackDisabledReason, toast, str.stack.title]);
 
+  const openRealTerminal = useCallback(() => {
+    if (!featureFlags.terminalEnabled) {
+      toast({
+        title: "Terminal unavailable",
+        description: "The live terminal is currently disabled.",
+      });
+      return;
+    }
+
+    setShellOpen(false);
+    setRealTerminalOpen(true);
+    send("fab_real_terminal_open");
+  }, [featureFlags.terminalEnabled, send, toast]);
+
   // Shell Commander hook
   const shell = useShellCommander({
     vfs,
@@ -390,11 +404,7 @@ export default function FloatingActionBar() {
           consoleEndRef={shell.consoleEndRef}
           executeCommand={shell.executeShellCommandWithLog}
           commandHistory={shell.commandHistory}
-          onSwitchToRealTerminal={() => {
-            setShellOpen(false);
-            setRealTerminalOpen(true);
-            send("fab_real_terminal_open");
-          }}
+          onSwitchToRealTerminal={openRealTerminal}
         />
       )}
 

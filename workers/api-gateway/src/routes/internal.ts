@@ -14,15 +14,14 @@ import { getProvidersFromDB } from '../lib/provider-config';
 
 const internal = new Hono<HonoEnv>();
 
-/**
- * GET /api/v1/internal/ai-config
- *
- * Returns current AI configuration from D1 secrets / KV / env.
- * Used by backend to dynamically refresh AI client config.
- *
- * Auth: X-Backend-Key header required (BACKEND_KEY env)
- */
-internal.get('/ai-config', async (c) => {
+type WarmPriority = 'interactive' | 'publish' | 'revisit' | 'hot' | 'idle';
+
+type WarmSegment = {
+  paragraph: string;
+  postTitle?: string;
+};
+
+function requireBackendKey(c: import('hono').Context<HonoEnv>) {
   const env = c.env;
   const providedKey = c.req.header('X-Backend-Key');
 
@@ -30,10 +29,38 @@ internal.get('/ai-config', async (c) => {
     return unauthorized(c, 'X-Backend-Key required');
   }
 
+  return null;
+}
+
+async function buildFeedSegmentId(year: string, slug: string, paragraph: string) {
+  const hash = await sha256Hex(`${year}|${slug}|${paragraph.trim()}`);
+  return hash.slice(0, 16);
+}
+
+function deriveSegmentsFromContent(content: string, postTitle: string): WarmSegment[] {
+  const blocks = content
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .filter((block) => !block.startsWith('```'))
+    .filter((block) => !/^#{1,6}\s/.test(block))
+    .filter((block) => block.length >= 60)
+    .slice(0, 24);
+
+  return blocks.map((paragraph) => ({
+    paragraph,
+    postTitle,
+  }));
+}
+
+internal.get('/ai-config', async (c) => {
+  const authError = requireBackendKey(c);
+  if (authError) return authError;
+
   const [baseUrl, apiKey, defaultModel] = await Promise.all([
-    getAiServeUrl(env),
-    getAiServeApiKey(env),
-    getAiDefaultModel(env),
+    getAiServeUrl(c.env),
+    getAiServeApiKey(c.env),
+    getAiDefaultModel(c.env),
   ]);
 
   return success(c, {

@@ -1,14 +1,9 @@
 import React from "react";
-import {
-  Send,
-  Loader2,
-  Square,
-  Image as ImageIcon,
-} from "lucide-react";
+import { Send, Loader2, Square, Image as ImageIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { QuestionMode } from "../types";
+import type { LiveReplyTarget, QuestionMode } from "../types";
 
 type ChatInputProps = {
   input: string;
@@ -24,10 +19,13 @@ type ChatInputProps = {
   canSend: boolean;
   firstTokenMs: number | null;
   questionMode: QuestionMode;
+  liveReplyTarget: LiveReplyTarget | null;
+  onClearLiveReplyTarget: () => void;
   isTerminal: boolean;
   isMobile: boolean;
   textareaRef: React.RefObject<HTMLTextAreaElement>;
   fileInputRef: React.RefObject<HTMLInputElement>;
+  hasMessages: boolean;
 };
 
 export function ChatInput({
@@ -44,13 +42,17 @@ export function ChatInput({
   canSend,
   firstTokenMs,
   questionMode,
+  liveReplyTarget,
+  onClearLiveReplyTarget,
   isTerminal,
   isMobile,
   textareaRef,
   fileInputRef,
+  hasMessages,
 }: ChatInputProps) {
-  const placeholder =
-    questionMode === "article"
+  const placeholder = liveReplyTarget
+    ? `${liveReplyTarget.name}에게 라이브로 답장하기...`
+    : questionMode === "article"
       ? "현재 글 내용에 대해 물어보고 싶은 것을 입력하세요..."
       : "자유롭게 궁금한 내용을 입력하세요...";
 
@@ -58,17 +60,18 @@ export function ChatInput({
     <div
       className={cn(
         "border-t shrink-0",
-        isTerminal && isMobile ? "px-2 py-3" : "px-4 py-4",
-        isMobile && "pb-[calc(1rem+env(safe-area-inset-bottom))]",
+        isTerminal && isMobile ? "px-2 py-2" : "px-4 py-3",
+        isMobile && "pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]",
         isTerminal
           ? "bg-[hsl(var(--terminal-code-bg))] border-border"
           : "bg-white dark:bg-[#0A0A0A] border-[#EAEAEA] dark:border-[#222222]",
       )}
     >
       {/* New conversation button */}
+      {!hasMessages && (
       <div
         className={cn(
-          "flex items-center justify-between mb-2",
+          "flex items-center justify-between mb-1",
           isTerminal && "font-mono",
         )}
       >
@@ -99,6 +102,7 @@ export function ChatInput({
           </button>
         )}
       </div>
+      )}
 
       {/* Attached image preview */}
       {attachedImage && (
@@ -108,6 +112,37 @@ export function ChatInput({
           onRemove={() => onFileSelect(null)}
           isTerminal={isTerminal}
         />
+      )}
+
+      {liveReplyTarget && (
+        <div
+          className={cn(
+            "mb-3 flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-xs",
+            isTerminal
+              ? "border-primary/30 bg-primary/10 font-mono text-primary"
+              : "border-primary/20 bg-primary/5 text-primary",
+          )}
+        >
+          <div className="min-w-0">
+            <div className="font-medium">
+              {liveReplyTarget.senderType === "agent"
+                ? "AI 1:1 답장"
+                : "Live 답장"}
+            </div>
+            <div className="truncate opacity-80">{liveReplyTarget.name}</div>
+          </div>
+          <button
+            type="button"
+            onClick={onClearLiveReplyTarget}
+            className={cn(
+              "flex h-7 w-7 items-center justify-center rounded-full transition-colors",
+              isTerminal ? "hover:bg-primary/15" : "hover:bg-primary/10",
+            )}
+            aria-label="답장 대상 해제"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       )}
 
       {/* Input field */}
@@ -123,6 +158,7 @@ export function ChatInput({
           canSend={canSend}
           firstTokenMs={firstTokenMs}
           questionMode={questionMode}
+          placeholder={placeholder}
           isMobile={isMobile}
           textareaRef={textareaRef}
           fileInputRef={fileInputRef}
@@ -225,6 +261,7 @@ function TerminalInput({
   canSend,
   firstTokenMs,
   questionMode,
+  placeholder,
   isMobile,
   textareaRef,
   fileInputRef,
@@ -240,6 +277,7 @@ function TerminalInput({
   canSend: boolean;
   firstTokenMs: number | null;
   questionMode: QuestionMode;
+  placeholder: string;
   isMobile: boolean;
   textareaRef: React.RefObject<HTMLTextAreaElement>;
   fileInputRef: React.RefObject<HTMLInputElement>;
@@ -271,9 +309,10 @@ function TerminalInput({
           onKeyDown={onKeyDown}
           rows={isMobile ? 2 : 1}
           placeholder={
-            questionMode === "article"
+            placeholder ||
+            (questionMode === "article"
               ? "현재 글에 대해 질문하세요..."
-              : "무엇이든 물어보세요..."
+              : "무엇이든 물어보세요...")
           }
           ref={textareaRef}
           className={cn(
@@ -381,7 +420,7 @@ function DefaultInput({
       className={cn(
         "rounded-lg border border-[#EAEAEA] dark:border-[#333333] bg-white dark:bg-[#0A0A0A]",
         "transition-colors focus-within:border-[#111111] dark:focus-within:border-[#EEEEEE]",
-        "px-3 py-2.5",
+        "px-3 py-2",
       )}
     >
       <div className="flex items-end gap-2">
@@ -398,7 +437,7 @@ function DefaultInput({
             "placeholder:text-[#AAAAAA] focus-visible:ring-0 focus-visible:ring-offset-0 overflow-y-auto",
             isMobile
               ? "min-h-[44px] max-h-[96px]"
-              : "min-h-[44px] max-h-[96px]",
+              : "min-h-[40px] max-h-[96px]",
           )}
         />
         <div className="flex items-center gap-1">

@@ -5,8 +5,66 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Wed, 18 Mar 2026 05:51:30 GMT</lastBuildDate>
+    <lastBuildDate>Sat, 28 Mar 2026 13:42:56 GMT</lastBuildDate>
     <language>en-US</language>
+    <item>
+      <title>[C 언어 1부] 배열은 왜 단순한 변수 묶음이 아닐까?</title>
+      <description>배열 선언 한 줄이 실제로 어떻게 동작하며, 인덱싱이 왜 포인터 연산으로 환원되는지 추적해보기</description>
+      <link>https://noblog.nodove.com/blog/2026/c-lang-1</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/c-lang-1</guid>
+      <pubDate>Sun, 22 Mar 2026 00:00:00 GMT</pubDate>
+      <category>기술</category>
+      <category>C</category>
+      <category>Array</category>
+      <category>Memory</category>
+      <category>Pointer</category>
+      <category>Cache</category>
+      <category>Compiler</category>
+    </item>
+    <item>
+      <title>[알고리즘 1부] 시간 복잡도라는 숫자에 매몰된 착각</title>
+      <description>시간 복잡도가 실제 실행 시간 대신 성장률을 보는 이유</description>
+      <link>https://noblog.nodove.com/blog/2026/algorithm-1</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/algorithm-1</guid>
+      <pubDate>Fri, 20 Mar 2026 00:00:00 GMT</pubDate>
+      <category>기술</category>
+      <category>Python</category>
+      <category>Algorithm</category>
+      <category>Complexity</category>
+      <category>Big-O</category>
+      <category>Performance</category>
+      <category>System</category>
+      <category>Architecture</category>
+    </item>
+    <item>
+      <title>[파이썬 3부] 동적 객체와 타협하는 방법</title>
+      <description>동적 객체와의 거래, CPython 내부를 직접 따라가보기</description>
+      <link>https://noblog.nodove.com/blog/2026/python-3</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/python-3</guid>
+      <pubDate>Fri, 20 Mar 2026 00:00:00 GMT</pubDate>
+      <category>기술</category>
+      <category>Python</category>
+      <category>CPython</category>
+      <category>Bytecode</category>
+      <category>Interpreter</category>
+      <category>Performance</category>
+      <category>GIL</category>
+      <category>Memory</category>
+    </item>
+    <item>
+      <title>[파이썬 2부] 파이썬의 모든 것은 객체이다.</title>
+      <description>모든 것이 객체라면, 어떻게 관리될까? CPython 내부를 직접 따라가보기</description>
+      <link>https://noblog.nodove.com/blog/2026/python-2</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/python-2</guid>
+      <pubDate>Tue, 17 Mar 2026 00:00:00 GMT</pubDate>
+      <category>기술</category>
+      <category>Python</category>
+      <category>CPython</category>
+      <category>Bytecode</category>
+      <category>Interpreter</category>
+      <category>Performance</category>
+      <category>Memory</category>
+    </item>
     <item>
       <title>force push 이후 커밋 해시가 전부 바뀌는 이유: reset, rebase, reflog로 복구까지</title>
       <description>커밋 메시지 수정이나 rebase 뒤에 왜 해시가 연쇄적으로 바뀌는지, reset과 rebase는 무엇이 다른지, hard reset으로 날린 커밋을 reflog로 어떻게 되살리는지 정리한다.</description>
@@ -22,6 +80,20 @@
       <category>Version Control</category>
     </item>
     <item>
+      <title>[파이썬 1부] 파이썬의 변수 조회는 단순한 딕셔너리 검색일까?</title>
+      <description>소스 코드가 어떻게 토큰·AST·바이트코드로 변환되고, 런타임에 적응형 최적화가 일어나는지 CPython 내부를 직접 따라가보기</description>
+      <link>https://noblog.nodove.com/blog/2026/python-1</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/python-1</guid>
+      <pubDate>Sun, 15 Mar 2026 00:00:00 GMT</pubDate>
+      <category>기술</category>
+      <category>Python</category>
+      <category>CPython</category>
+      <category>Bytecode</category>
+      <category>Interpreter</category>
+      <category>Performance</category>
+      <category>Memory</category>
+    </item>
+    <item>
       <title>Immutable Infra</title>
       <description>수정하는 서버에서 교체하는 인프라로: 컨테이너와 쿠버네티스가 만든 불변 운영 모델의 배경과 한계</description>
       <link>https://noblog.nodove.com/blog/2026/Immutable_infra</link>
@@ -33,6 +105,20 @@
       <category>infra</category>
       <category>devops</category>
       <category>system-architecture</category>
+    </item>
+    <item>
+      <title>[스프링 서버 1부] Servlet Filter와 Spring Security는 어디서 요청을 가로채는가? 1편</title>
+      <description>Servlet Filter의 동작과 상태 유지</description>
+      <link>https://noblog.nodove.com/blog/2026/sprintboot-1</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/sprintboot-1</guid>
+      <pubDate>Fri, 13 Mar 2026 00:00:00 GMT</pubDate>
+      <category>기술</category>
+      <category>Spring</category>
+      <category>Spring Boot</category>
+      <category>Servlet Filter</category>
+      <category>Spring Security</category>
+      <category>SecurityContext</category>
+      <category>ThreadLocal</category>
     </item>
     <item>
       <title>초고속 결제 엔진에서 원자성은 어떻게 유지되는가?</title>
@@ -199,83 +285,6 @@
       <category>Global State</category>
       <category>Prototype</category>
       <category>Gateway</category>
-    </item>
-    <item>
-      <title>[Arena 상세] Opus4.6 분석</title>
-      <description>Opus4.6의 미들웨어 중심 운영 아키텍처와 production-ready 특성을 상세 분석</description>
-      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-opus-4-6</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-opus-4-6</guid>
-      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
-      <category>AI Engineering</category>
-      <category>Opus4.6</category>
-      <category>Middleware</category>
-      <category>Rate Limit</category>
-      <category>Auth</category>
-      <category>Production Ready</category>
-    </item>
-    <item>
-      <title>AI Agent Arena 2026: 10개 AI Provider Server 종합 분석</title>
-      <description>AI_Agent_Arena 결과 보고서를 기반으로 10개 AI Provider Server의 아키텍처, 코드 품질, 운영 적합성을 비교 분석하고 모델별 상세 페이지로 네비게이션할 수 있도록 정리한 메인 리포트</description>
-      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-overview-and-comparison</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-overview-and-comparison</guid>
-      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
-      <category>AI Engineering</category>
-      <category>AI Agent Arena</category>
-      <category>LLM Gateway</category>
-      <category>FastAPI</category>
-      <category>Architecture</category>
-      <category>MCP</category>
-      <category>Comparative Analysis</category>
-    </item>
-    <item>
-      <title>[Arena 상세] sonnet_4.6 분석</title>
-      <description>sonnet_4.6의 Provider Chain 기반 폴백 설계와 Arena 최상위권 성능을 코드 관점에서 분석</description>
-      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-sonnet-4-6</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-sonnet-4-6</guid>
-      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
-      <category>AI Engineering</category>
-      <category>sonnet_4.6</category>
-      <category>Provider Chain</category>
-      <category>Failover</category>
-      <category>Topology</category>
-      <category>Gateway</category>
-    </item>
-    <item>
-      <title>[Arena 상세] SWE_1.5 분석</title>
-      <description>SWE_1.5의 엔터프라이즈 지향 요소(PostgreSQL, Prometheus, retry)와 현재 구현 간극을 함께 분석</description>
-      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-swe-1-5</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-swe-1-5</guid>
-      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
-      <category>AI Engineering</category>
-      <category>SWE_1.5</category>
-      <category>PostgreSQL</category>
-      <category>Prometheus</category>
-      <category>Retry</category>
-      <category>Enterprise</category>
-    </item>
-    <item>
-      <title>Container Network Interface</title>
-      <description>Networking without NAT, the CNI&apos;s role in remote container networking, and more.</description>
-      <link>https://noblog.nodove.com/blog/2026/Container Network Interface</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/Container Network Interface</guid>
-      <pubDate>Sun, 01 Feb 2026 00:00:00 GMT</pubDate>
-      <category>Network, Container, CNI</category>
-      <category>Network</category>
-      <category>Container</category>
-      <category>CNI</category>
-    </item>
-    <item>
-      <title>Proxmox &amp; OPNsense VLAN 추가 및 설정 가이드</title>
-      <description>Proxmox VE에서 OPNsense VM에 새로운 가상 네트워크 인터페이스(vNIC)를 추가하고, VLAN 104 네트워크로 설정하는 단계별 가이드입니다.</description>
-      <link>https://noblog.nodove.com/blog/2026/proxmox-opnsense-vlan-104-guide</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/proxmox-opnsense-vlan-104-guide</guid>
-      <pubDate>Mon, 26 Jan 2026 00:00:00 GMT</pubDate>
-      <category>Guide</category>
-      <category>Proxmox</category>
-      <category>OPNsense</category>
-      <category>VLAN</category>
-      <category>Network</category>
-      <category>Virtualization</category>
     </item>
   </channel>
 </rss>

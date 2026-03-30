@@ -29,6 +29,12 @@ import { normalizeMode, listAgentModes } from "../lib/agent/mode-registry.js";
 import { getSessionMemory } from "../lib/agent/memory/session.js";
 import { requireFeature } from "../middleware/featureFlags.js";
 import { requireAdmin } from "../middleware/adminAuth.js";
+import { validateBody } from "../middleware/validation.js";
+import {
+  agentRunBodySchema,
+  memoryExtractBodySchema,
+  memorySearchBodySchema,
+} from "../middleware/schemas/agent.schema.js";
 import { buildLiveContextPrompt } from "../services/live-context.service.js";
 import { createLogger } from "../lib/logger.js";
 
@@ -100,7 +106,7 @@ function enrichAgentMessageWithLiveContext(message, sessionId) {
  *   }
  * }
  */
-router.post("/run", async (req, res) => {
+router.post("/run", validateBody(agentRunBodySchema), async (req, res) => {
   try {
     const {
       message,
@@ -112,13 +118,6 @@ router.post("/run", async (req, res) => {
       maxIterations,
       userId = "default-user",
     } = req.body;
-
-    if (!message || typeof message !== "string") {
-      return res.status(400).json({
-        ok: false,
-        error: { message: "message is required", code: "INVALID_REQUEST" },
-      });
-    }
 
     const coordinator = getCoordinator();
     const effectiveMessage = enrichAgentMessageWithLiveContext(
@@ -174,7 +173,7 @@ router.post("/run", async (req, res) => {
  * - event: done - Stream completed
  * - event: error - Error occurred
  */
-router.post("/stream", async (req, res) => {
+router.post("/stream", validateBody(agentRunBodySchema), async (req, res) => {
   // Set SSE headers
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
@@ -224,14 +223,6 @@ router.post("/stream", async (req, res) => {
       maxIterations,
       userId = "default-user",
     } = req.body;
-
-    if (!message || typeof message !== "string") {
-      send("error", {
-        message: "message is required",
-        code: "INVALID_REQUEST",
-      });
-      return onClose();
-    }
 
     send("open", { type: "open" });
 
@@ -547,19 +538,9 @@ router.get("/modes", (req, res) => {
 /**
  * POST /memory/extract - Extract memories from conversation
  */
-router.post("/memory/extract", async (req, res) => {
+router.post("/memory/extract", validateBody(memoryExtractBodySchema), async (req, res) => {
   try {
     const { sessionId, messages } = req.body;
-
-    if (!messages || !Array.isArray(messages)) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          message: "messages array is required",
-          code: "INVALID_REQUEST",
-        },
-      });
-    }
 
     const coordinator = getCoordinator();
     const memories = await coordinator.extractMemories(messages);
@@ -583,16 +564,9 @@ router.post("/memory/extract", async (req, res) => {
 /**
  * POST /memory/search - Search memories semantically
  */
-router.post("/memory/search", async (req, res) => {
+router.post("/memory/search", validateBody(memorySearchBodySchema), async (req, res) => {
   try {
     const { query, userId = "default-user", limit = 10 } = req.body;
-
-    if (!query || typeof query !== "string") {
-      return res.status(400).json({
-        ok: false,
-        error: { message: "query is required", code: "INVALID_REQUEST" },
-      });
-    }
 
     const coordinator = getCoordinator();
     const results = await coordinator.searchMemories(query, { userId, limit });

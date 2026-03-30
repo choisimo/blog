@@ -34,6 +34,9 @@ export type Env = {
   AI_DEFAULT_MODEL?: string; // e.g., gpt-4.1 (forced by gateway)
   AI_VISION_MODEL?: string; // e.g., gpt-4o
   PERPLEXITY_MODEL?: string; // e.g., sonar
+  AI_WARM_MAX_QUEUE_LENGTH?: string;
+  AI_WARM_MAX_DLQ_LENGTH?: string;
+  AI_WARM_SCAN_INTERVAL_MS?: string;
 
   // Legacy: GEMINI_API_KEY는 더 이상 Workers에서 직접 사용하지 않음
   // 백엔드 서버에서 관리됩니다
@@ -46,11 +49,11 @@ export type Env = {
   PUBLIC_SITE_URL?: string;
   ASSETS_BASE_URL?: string;
   OPENCODE_AUTH_TOKEN?: string;
-  GITHUB_TOKEN?: string;
 
   // Variables
   ENV: 'development' | 'staging' | 'production';
   ALLOWED_ORIGINS?: string;
+  FEATURE_TERMINAL_ENABLED?: string;
 
   // Secrets encryption key (optional, falls back to JWT_SECRET)
   SECRETS_ENCRYPTION_KEY?: string;
@@ -129,6 +132,10 @@ export type JwtPayload = {
   email?: string;
   emailVerified?: boolean;
   type?: 'access' | 'refresh';
+  jti?: string;
+  iss?: string;
+  aud?: string;
+  nbf?: number;
   iat?: number;
   exp?: number;
 };

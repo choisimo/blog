@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { ExternalLink, Maximize2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { AIConsole } from '@/components/features/console';
+import { AIConsole } from '@/components/molecules/AIConsole';
 import type { ProjectItem } from '@/types/project';
 
 interface ProjectModalProps {

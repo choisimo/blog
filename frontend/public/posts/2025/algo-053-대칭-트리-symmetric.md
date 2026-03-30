@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ["Algorithm", "거울 비교", "Problem Solving", "Python", "Java"]
 excerpt: "Tree & Binary Search Tree - 대칭 트리 (Symmetric) 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
 ## Top-down 질문

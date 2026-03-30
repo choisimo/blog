@@ -1,35 +1,21 @@
-import {
-  useParams,
-  Link,
-  Navigate,
-  useNavigate,
-  useLocation,
-} from "react-router-dom";
-import {
-  Suspense,
-  lazy,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useParams, Navigate, useLocation } from "react-router-dom";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { ReadingProgress } from "@/components/common/ReadingProgress";
 import { ScrollToTop } from "@/components/common/ScrollToTop";
 import {
   getPostBySlug,
   getPostsPage,
-  prefetchPost,
   getPostsBySeries,
 } from "@/data/content/posts";
-import { BlogPost as BlogPostType } from "@/types/blog";
 import {
-  formatDate,
+  BlogPost as BlogPostType,
+  type ResolvedPostViewModel,
+  type ResolvedRelatedPostCard,
+} from "@/types/blog";
+import {
+  formatReadingTimeLabel,
   resolveLocalizedPost,
-  parseDescriptionMarkdown,
 } from "@/utils/content/blog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   CommentSection,
   TableOfContents,
@@ -37,26 +23,15 @@ import {
   SeriesNavigation,
 } from "@/components/features/blog";
 import { QuizPanel } from "@/components/features/sentio/QuizPanel";
-import { Breadcrumb } from "@/components/features/navigation/Breadcrumb";
-import {
-  ArrowLeft,
-  Calendar,
-  Clock,
-  Tag,
-  Share2,
-  BookOpen,
-  User,
-  Languages,
-  Loader2,
-  Sparkles,
-} from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import useLanguage from "@/hooks/i18n/useLanguage";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 import { recordView } from "@/services/content/analytics";
 import {
-  translatePost,
+  getCachedTranslation,
+  TranslationApiError,
+  type TranslationErrorCode,
   type TranslationResult,
 } from "@/services/content/translate";
 import { curiosityTracker } from "@/services/engagement/curiosity";
@@ -64,10 +39,10 @@ import { useUIStrings } from "@/utils/i18n/uiStrings";
 import { findRelatedPosts as findRAGRelatedPosts } from "@/services/discovery/rag";
 import { useSEO } from "@/hooks/seo/useSEO";
 import { generateSEOData, generateStructuredData } from "@/utils/seo/seo";
-
-const MarkdownRenderer = lazy(
-  () => import("@/components/features/blog/MarkdownRenderer"),
-);
+import type { AsyncArtifactStatus } from "@/components/features/sentio/hooks/useAsyncArtifact";
+import { BlogPostHeader } from "./blog-post/BlogPostHeader";
+import { BlogPostContent } from "./blog-post/BlogPostContent";
+import { BlogPostRelated } from "./blog-post/BlogPostRelated";
 
 type VisitedPostItem = {
   path: string;
@@ -75,6 +50,11 @@ type VisitedPostItem = {
   coverImage?: string;
   year: string;
   slug: string;
+};
+
+type TranslationErrorState = {
+  code: TranslationErrorCode;
+  retryable: boolean;
 };
 
 const simulatorExistenceCache = new Map<string, boolean>();
@@ -119,9 +99,65 @@ async function checkSimulatorExists(path: string): Promise<boolean> {
   return exists;
 }
 
+const MemoizedBlogPostContent = memo(
+  BlogPostContent,
+  (prev, next) =>
+    prev.content === next.content &&
+    prev.inlineEnabled === next.inlineEnabled &&
+    prev.postTitle === next.postTitle &&
+    prev.postPath === next.postPath &&
+    prev.isTerminal === next.isTerminal,
+);
+
+const MemoizedSeriesNavigation = memo(
+  SeriesNavigation,
+  (prev, next) =>
+    prev.currentPost === next.currentPost &&
+    prev.seriesPosts === next.seriesPosts,
+);
+
+const MemoizedQuizPanel = memo(
+  QuizPanel,
+  (prev, next) =>
+    prev.content === next.content &&
+    prev.postTitle === next.postTitle &&
+    prev.postTags === next.postTags,
+);
+
+const MemoizedCommentSection = memo(
+  CommentSection,
+  (prev, next) => prev.postId === next.postId,
+);
+
+const MemoizedBlogPostRelated = memo(
+  BlogPostRelated,
+  (prev, next) =>
+    prev.relatedPosts === next.relatedPosts &&
+    prev.preservedSearch === next.preservedSearch &&
+    prev.preservedFrom?.pathname === next.preservedFrom?.pathname &&
+    prev.preservedFrom?.search === next.preservedFrom?.search &&
+    prev.isTerminal === next.isTerminal &&
+    prev.relatedPostsLabel === next.relatedPostsLabel &&
+    prev.relatedPostsDescLabel === next.relatedPostsDescLabel,
+);
+
+const MemoizedTableOfContents = memo(
+  TableOfContents,
+  (prev, next) =>
+    prev.content === next.content &&
+    prev.postTitle === next.postTitle &&
+    prev.onClose === next.onClose &&
+    prev.sticky === next.sticky,
+);
+
+const MemoizedTocDrawer = memo(
+  TocDrawer,
+  (prev, next) =>
+    prev.content === next.content && prev.postTitle === next.postTitle,
+);
+
 const BlogPost = () => {
   const { year, slug } = useParams();
-  const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: unknown })?.from;
   const preservedFrom =
@@ -140,28 +176,20 @@ const BlogPost = () => {
   const [error, setError] = useState(false);
   const [post, setPost] = useState<BlogPostType | null>(null);
 
-  const seoData = post
-    ? generateSEOData(post, "post")
-    : generateSEOData(undefined, "home");
-  const structuredData = post
-    ? generateStructuredData(post, "post")
-    : undefined;
-  useSEO(seoData, structuredData);
-
   const [relatedPosts, setRelatedPosts] = useState<BlogPostType[]>([]);
   const [seriesPosts, setSeriesPosts] = useState<BlogPostType[]>([]);
   const [inlineEnabled, setInlineEnabled] = useState<boolean>(true);
   const [autoSimulatorSrc, setAutoSimulatorSrc] = useState<string | null>(null);
 
   // AI Translation state
-  const [translating, setTranslating] = useState(false);
+  const [translationStatus, setTranslationStatus] =
+    useState<AsyncArtifactStatus>("idle");
   const [aiTranslation, setAiTranslation] = useState<TranslationResult | null>(
     null,
   );
-  const [translationError, setTranslationError] = useState<{
-    message: string;
-    retryable: boolean;
-  } | null>(null);
+  const [translationError, setTranslationError] =
+    useState<TranslationErrorState | null>(null);
+  const [translationRetryNonce, setTranslationRetryNonce] = useState(0);
 
   // Check if native translation exists for the selected language
   const hasNativeTranslation = useMemo(() => {
@@ -222,22 +250,71 @@ ${description}
   }, [autoSimulatorSrc, language, localized?.content, localized?.title, post]);
 
   const readingTimeLabel = useMemo(() => {
-    if (!post) return "";
-    const raw =
-      post.readingTime || (post.readTime ? `${post.readTime} min read` : "");
-    if (!raw) return "";
-    const match = raw.match(/(\d+)/);
-    if (language === "ko") {
-      const minutes = match ? match[1] : "";
-      if (minutes) return `${minutes}분 읽기`;
-      return raw.includes("분") ? raw : raw.replace("min read", "분 읽기");
-    }
-    if (raw.includes("분")) {
-      const minutes = match ? match[1] : "";
-      if (minutes) return `${minutes} min read`;
-    }
-    return raw;
+    return formatReadingTimeLabel(
+      post?.readingTime ?? post?.readTime,
+      language === "en" ? "en" : "ko",
+    );
   }, [language, post]);
+
+  const resolvedPost = useMemo<ResolvedPostViewModel | null>(() => {
+    if (!post) return null;
+
+    const description = localized?.description ?? post.description;
+
+    return {
+      year: post.year,
+      slug: post.slug,
+      title: localized?.title ?? post.title,
+      description,
+      excerpt: localized?.excerpt ?? post.excerpt ?? description,
+      content: localized?.content ?? post.content,
+      categoryLabel: post.category,
+      tagLabels: [...post.tags],
+      readingTimeLabel,
+      author: post.author,
+      date: post.date,
+      tags: [...post.tags],
+    };
+  }, [localized, post, readingTimeLabel]);
+
+  const resolvedRelatedPosts = useMemo<ResolvedRelatedPostCard[]>(() => {
+    return relatedPosts.map((relatedPost) => {
+      const localizedRelated = resolveLocalizedPost(relatedPost, language);
+
+      return {
+        year: relatedPost.year,
+        slug: relatedPost.slug,
+        title: localizedRelated.title,
+        excerpt:
+          localizedRelated.excerpt ||
+          localizedRelated.description ||
+          relatedPost.description,
+        categoryLabel: relatedPost.category,
+        readingTimeLabel: formatReadingTimeLabel(
+          relatedPost.readingTime ?? relatedPost.readTime,
+          language === "en" ? "en" : "ko",
+        ),
+      };
+    });
+  }, [language, relatedPosts]);
+
+  const seoPost = useMemo(() => {
+    if (!post || !resolvedPost) return undefined;
+
+    return {
+      ...post,
+      title: resolvedPost.title,
+      description: resolvedPost.description,
+    };
+  }, [post, resolvedPost]);
+
+  const seoData = seoPost
+    ? generateSEOData(seoPost, "post")
+    : generateSEOData(undefined, "home");
+  const structuredData = seoPost
+    ? generateStructuredData(seoPost, "post")
+    : undefined;
+  useSEO(seoData, structuredData);
 
   const resolveLanguageName = useCallback((code: string) => {
     if (code === "ko") return "한국어";
@@ -250,13 +327,23 @@ ${description}
     [],
   );
 
-  const handleBackToBlog = () => {
-    if (preservedFrom) {
-      navigate(`${preservedFrom.pathname}${preservedFrom.search || ""}`);
-    } else {
-      navigate(`/blog${preservedSearch || ""}`);
-    }
-  };
+  const getTranslationErrorMessage = useCallback(
+    (code: TranslationErrorCode) => {
+      switch (code) {
+        case "NOT_AVAILABLE":
+          return str.blog.translationNotAvailable;
+        case "AUTH_REQUIRED":
+          return str.blog.translationAuthRequired;
+        case "AI_TIMEOUT":
+          return str.blog.translationTimeout;
+        case "AI_ERROR":
+          return str.blog.translationServerError;
+        default:
+          return str.blog.translationUnknownError;
+      }
+    },
+    [str],
+  );
 
   // Ensure scroll starts at top when navigating between posts
   useEffect(() => {
@@ -270,7 +357,7 @@ ${description}
         setError(false);
         // Reset translation states on route change to prevent stale content
         setAiTranslation(null);
-        setTranslating(false);
+        setTranslationStatus("idle");
         setTranslationError(null);
 
         if (!year || !slug) {
@@ -300,24 +387,29 @@ ${description}
     loadData();
   }, [year, slug]);
 
-  // After post loads, record it to visited posts and track view
+  // After post loads, record it to visited posts, track view, and fan out
+  // post-dependent async work in parallel.
   useEffect(() => {
     if (!post) return;
 
-    // Record view to D1 analytics (fire and forget)
-    recordView(post.year, post.slug).catch(() => {});
+    let cancelled = false;
 
-    // Track to Curiosity (Web of Curiosity feature)
-    const postId = `${post.year}/${post.slug}`;
+    // Record view and curiosity tracking are non-critical — defer off the
+    // render-commit path so the post shell paints first.
+    const deferredAnalyticsId = setTimeout(() => {
+      recordView(post.year, post.slug).catch(() => {});
+      const postId = `${post.year}/${post.slug}`;
+      const path = `/blog/${post.year}/${post.slug}`;
+      curiosityTracker.trackPostView(postId, path, post.title, post.tags || []);
+    }, 0);
+
+    // Save to local visited posts — kept synchronous so minimap updates
+    // without delay; the write itself is tiny.
     const path = `/blog/${post.year}/${post.slug}`;
-    curiosityTracker.trackPostView(postId, path, post.title, post.tags || []);
-
-    // Save to local visited posts
     try {
       const key = "visited.posts";
       const raw = localStorage.getItem(key);
       const items: VisitedPostItem[] = raw ? JSON.parse(raw) : [];
-      const path = `/blog/${post.year}/${post.slug}`;
       const next: VisitedPostItem = {
         path,
         title: post.title,
@@ -339,17 +431,21 @@ ${description}
       }
       console.warn("Failed to persist visited posts", err);
     }
-  }, [post]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const resolveSimulator = async () => {
-      if (!post) {
-        setAutoSimulatorSrc(null);
+    const loadSeriesPosts = async () => {
+      if (!post.series) {
+        setSeriesPosts([]);
         return;
       }
+      try {
+        const posts = await getPostsBySeries(post.series);
+        if (!cancelled) setSeriesPosts(posts);
+      } catch {
+        if (!cancelled) setSeriesPosts([]);
+      }
+    };
 
+    const resolveSimulator = async () => {
       const baseContent = localized?.content ?? post.content;
       if (/<iframe[\s\S]*?>/i.test(baseContent)) {
         setAutoSimulatorSrc(null);
@@ -363,12 +459,13 @@ ${description}
       }
     };
 
-    void resolveSimulator();
+    void Promise.all([loadSeriesPosts(), resolveSimulator()]);
 
     return () => {
+      clearTimeout(deferredAnalyticsId);
       cancelled = true;
     };
-  }, [localized?.content, post]);
+  }, [post, localized?.content]);
 
   // Auto-translate when language changes and no native translation exists
   useEffect(() => {
@@ -384,68 +481,88 @@ ${description}
     if (language === defaultLang || post.translations?.[language]) {
       setAiTranslation(null);
       setTranslationError(null);
+      setTranslationStatus("idle");
       return;
     }
 
     let cancelled = false;
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+    let pollAttempts = 0;
+    const pollStartMs = Date.now();
+    const MAX_POLL_ATTEMPTS = 5;
+    const MAX_POLL_DURATION_MS = 20_000;
+
+    const scheduleRetry = (delaySeconds?: number) => {
+      pollAttempts += 1;
+      if (
+        pollAttempts >= MAX_POLL_ATTEMPTS ||
+        Date.now() - pollStartMs >= MAX_POLL_DURATION_MS
+      ) {
+        setTranslationStatus("idle");
+        return;
+      }
+      const retryDelayMs = Math.max(1, delaySeconds ?? 15) * 1000;
+      pollTimer = window.setTimeout(() => {
+        void loadTranslation();
+      }, retryDelayMs);
+    };
 
     const loadTranslation = async () => {
-      setTranslating(true);
-      setTranslationError(null);
-
       try {
-        const result = await translatePost({
-          year,
-          slug,
-          targetLang: language,
-          sourceLang: defaultLang,
-          title: post.title,
-          description: post.description,
-          content: post.content,
-        });
+        const result = await getCachedTranslation(year, slug, language);
+        if (cancelled) return;
 
-        if (!cancelled) {
-          setAiTranslation(result);
+        if (result.translation) {
+          setAiTranslation(result.translation);
         }
+
+        if (result.pending) {
+          setTranslationError(null);
+          setTranslationStatus("warming");
+          scheduleRetry(result.retryAfterSeconds);
+          return;
+        }
+
+        setTranslationError(null);
+        setTranslationStatus(result.translation ? "ready" : "idle");
       } catch (err) {
         console.error("Translation failed:", err);
         if (!cancelled) {
-          const errMsg = err instanceof Error ? err.message : "";
-          const isTimeout =
-            errMsg.includes("504") ||
-            errMsg.includes("응답 지연") ||
-            errMsg.includes("timeout");
-          const isAiError =
-            errMsg.includes("502") || errMsg.includes("AI 서버");
-
-          setTranslationError({
-            message: isTimeout
-              ? "AI 서버 응답이 지연되고 있습니다."
-              : isAiError
-                ? "AI 번역 서버에서 오류가 발생했습니다."
-                : "번역 중 오류가 발생했습니다.",
-            retryable: isTimeout || isAiError,
-          });
-        }
-      } finally {
-        if (!cancelled) {
-          setTranslating(false);
+          if (err instanceof TranslationApiError) {
+            setTranslationError({
+              code: err.code,
+              retryable: err.retryable,
+            });
+          } else {
+            setTranslationError({
+              code: "UNKNOWN",
+              retryable: false,
+            });
+          }
+          setTranslationStatus("error");
         }
       }
     };
 
-    loadTranslation();
+    setTranslationStatus("warming");
+    setTranslationError(null);
+    setAiTranslation(null);
+    void loadTranslation();
 
     return () => {
       cancelled = true;
+      if (pollTimer !== null) {
+        clearTimeout(pollTimer);
+      }
     };
-  }, [post, language, year, slug]);
+  }, [language, post, slug, translationRetryNonce, year]);
 
-  useEffect(() => {
-    if (!post) return;
-    if (typeof document === "undefined") return;
-    // title is now managed by useSEO
-  }, [post]);
+  const handleRetryTranslation = useCallback(() => {
+    setTranslationError(null);
+    setAiTranslation(null);
+    setTranslationStatus("idle");
+    setTranslationRetryNonce((prev) => prev + 1);
+  }, []);
 
   // sync inline feature flag from localStorage and storage events
   useEffect(() => {
@@ -556,39 +673,73 @@ ${description}
         if (!cancelled) setRelatedPosts([]);
       }
     };
-    loadRelated();
+    // Related posts are below-the-fold — defer their fetch off the critical
+    // paint path with a short timeout so the article renders first.
+    const deferredRelatedId = setTimeout(() => {
+      loadRelated();
+    }, 200);
     return () => {
+      clearTimeout(deferredRelatedId);
       cancelled = true;
     };
   }, [post]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const loadSeriesPosts = async () => {
-      if (!post?.series) {
-        setSeriesPosts([]);
-        return;
+  const displayTitle = resolvedPost?.title ?? post?.title ?? "";
+  const tocContent = resolvedPost?.content ?? post?.content ?? "";
+
+  const postView = useMemo<ResolvedPostViewModel | null>(() => {
+    if (!post) return null;
+
+    return (
+      resolvedPost ?? {
+        year: post.year,
+        slug: post.slug,
+        title: post.title,
+        description: post.description,
+        excerpt: post.excerpt,
+        content: contentForRender,
+        categoryLabel: post.category,
+        tagLabels: [...post.tags],
+        readingTimeLabel,
+        author: post.author,
+        date: post.date,
+        tags: [...post.tags],
       }
-      try {
-        const posts = await getPostsBySeries(post.series);
-        if (!cancelled) setSeriesPosts(posts);
-      } catch {
-        if (!cancelled) setSeriesPosts([]);
-      }
-    };
-    loadSeriesPosts();
-    return () => {
-      cancelled = true;
-    };
-  }, [post?.series]);
+    );
+  }, [contentForRender, post, readingTimeLabel, resolvedPost]);
+
+  const articleRenderProps = useMemo(
+    () =>
+      post
+        ? {
+            content: contentForRender,
+            inlineEnabled,
+            postTitle: displayTitle,
+            postPath: `${post.year}/${post.slug}`,
+            isTerminal,
+          }
+        : null,
+    [contentForRender, displayTitle, inlineEnabled, isTerminal, post],
+  );
+
+  const tocProps = useMemo(
+    () =>
+      post
+        ? {
+            content: tocContent,
+            postTitle: displayTitle,
+          }
+        : null,
+    [displayTitle, post, tocContent],
+  );
 
   const handleShare = async () => {
     const url = window.location.href;
     if (navigator.share) {
       try {
         await navigator.share({
-          title: post?.title,
-          text: post?.description,
+          title: postView?.title ?? post?.title,
+          text: postView?.description ?? post?.description,
           url,
         });
       } catch (err) {
@@ -647,450 +798,80 @@ ${description}
                 isTerminal && "terminal-card p-4 sm:p-6",
               )}
             >
-              <header className="space-y-6">
-                <Breadcrumb
-                  items={[
-                    { label: "Blog", href: "/blog" },
-                    {
-                      label: post.category,
-                      href: `/blog?category=${encodeURIComponent(post.category)}`,
-                    },
-                    { label: localized?.title ?? post.title },
-                  ]}
-                  className={cn(isTerminal && "font-mono text-xs")}
-                />
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <Button
-                    variant="ghost"
-                    onClick={handleBackToBlog}
-                    className={cn(
-                      "hover:bg-primary/10 dark:text-white",
-                      isTerminal && "font-mono text-primary hover:text-primary",
-                    )}
-                    size="sm"
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    {isTerminal
-                      ? `< ${str.blog.backToBlog}`
-                      : str.blog.backToBlog}
-                  </Button>
-                  <Button
-                    onClick={handleShare}
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      "gap-2 rounded-full border-border bg-white/70 text-foreground backdrop-blur hover:bg-primary/10 dark:border-white/10 dark:bg-white/5 dark:text-white",
-                      isTerminal && "font-mono border-border bg-transparent",
-                    )}
-                  >
-                    <Share2 className="h-4 w-4" />
-                    {str.blog.share}
-                  </Button>
-                </div>
+              <BlogPostHeader
+                post={post}
+                postView={postView!}
+                year={year!}
+                slug={slug!}
+                language={language}
+                setLanguage={setLanguage}
+                resolveLanguageName={resolveLanguageName}
+                translationStatus={translationStatus}
+                aiTranslation={aiTranslation}
+                hasNativeTranslation={hasNativeTranslation}
+                translationError={
+                  translationError
+                    ? {
+                        message: getTranslationErrorMessage(
+                          translationError.code,
+                        ),
+                        retryable: translationError.retryable,
+                      }
+                    : null
+                }
+                onRetryTranslation={handleRetryTranslation}
+                isTerminal={isTerminal}
+                preservedFrom={preservedFrom}
+                preservedSearch={preservedSearch}
+                onShare={handleShare}
+                backToBlogLabel={str.blog.backToBlog}
+                shareLabel={str.blog.share}
+                readingLanguageLabel={str.blog.readingLanguage}
+                translatingLabel={str.blog.translating}
+                aiTranslatedLabel={str.blog.aiTranslated}
+                translationFailedLabel={str.blog.translationFailed}
+                showingOriginalLabel={str.blog.showingOriginal}
+                retryLabel={str.common.retry}
+              />
 
-                <div
-                  className={cn(
-                    "rounded-[32px] border border-white/60 bg-white/80 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-[hsl(var(--card-blog))] sm:p-8",
-                    isTerminal && "rounded-lg border-border bg-card",
-                  )}
-                >
-                  <div className="space-y-5">
-                    {/* Terminal-style path indicator */}
-                    {isTerminal && (
-                      <div className="font-mono text-xs text-muted-foreground">
-                        <span className="text-primary">cat</span> ~/blog/{year}/
-                        {slug}.md
-                      </div>
-                    )}
-
-                    <div
-                      className={cn(
-                        "inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-primary",
-                        isTerminal && "rounded font-mono tracking-wider",
-                      )}
-                    >
-                      {isTerminal && "["}
-                      {post.category}
-                      {isTerminal && "]"}
-                    </div>
-
-                    <h1
-                      className={cn(
-                        "text-3xl font-bold leading-tight tracking-tight text-foreground dark:text-white sm:text-4xl lg:text-5xl",
-                        isTerminal && "font-mono terminal-glow",
-                      )}
-                    >
-                      {isTerminal && "> "}
-                      {localized?.title ?? post.title}
-                    </h1>
-
-                    {post.description && (
-                      <p
-                        className={cn(
-                          "text-base leading-relaxed text-foreground/85 dark:text-foreground/85 sm:text-lg",
-                          isTerminal && "border-l-2 border-primary/30 pl-4",
-                        )}
-                        dangerouslySetInnerHTML={{
-                          __html: parseDescriptionMarkdown(
-                            localized?.description ?? post.description,
-                          ),
-                        }}
-                      />
-                    )}
-
-                    <div
-                      className={cn(
-                        "grid gap-3 text-sm text-muted-foreground sm:grid-cols-3",
-                        isTerminal && "font-mono text-xs",
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          "flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[hsl(var(--card-blog))] dark:text-white",
-                          isTerminal &&
-                            "rounded bg-[hsl(var(--terminal-code-bg))]",
-                        )}
-                      >
-                        <Calendar className="h-4 w-4 text-foreground/70" />
-                        <span>
-                          {isTerminal
-                            ? `date: ${formatDate(post.date)}`
-                            : formatDate(post.date)}
-                        </span>
-                      </div>
-                      {readingTimeLabel && (
-                        <div
-                          className={cn(
-                            "flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[hsl(var(--card-blog))] dark:text-white",
-                            isTerminal &&
-                              "rounded bg-[hsl(var(--terminal-code-bg))]",
-                          )}
-                        >
-                          <Clock className="h-4 w-4 text-foreground/70" />
-                          <span>
-                            {isTerminal
-                              ? `time: ${readingTimeLabel}`
-                              : readingTimeLabel}
-                          </span>
-                        </div>
-                      )}
-                      {post.author && (
-                        <div
-                          className={cn(
-                            "flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[hsl(var(--card-blog))] dark:text-white",
-                            isTerminal &&
-                              "rounded bg-[hsl(var(--terminal-code-bg))]",
-                          )}
-                        >
-                          <User className="h-4 w-4 text-foreground/70" />
-                          <span>
-                            {isTerminal
-                              ? `author: ${post.author}`
-                              : post.author}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Language Selection - Always show for translation support */}
-                    <div
-                      className={cn(
-                        "flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-xs font-medium text-muted-foreground dark:border-primary/40 dark:bg-primary/10 dark:text-white/80",
-                        isTerminal && "rounded-lg font-mono border-solid",
-                        translating && "animate-pulse",
-                      )}
-                    >
-                      <Languages className="h-4 w-4 text-primary" />
-                      <span className="uppercase tracking-wide">
-                        {str.blog.readingLanguage}
-                      </span>
-                      <div className="flex flex-wrap gap-2">
-                        {(["ko", "en"] as const).map((code) => (
-                          <button
-                            key={code}
-                            type="button"
-                            onClick={() => setLanguage(code)}
-                            disabled={translating}
-                            className={cn(
-                              "rounded-full px-3 py-1 text-sm transition-colors",
-                              language === code
-                                ? "bg-primary text-primary-foreground shadow-sm"
-                                : "bg-white/70 text-foreground/70 dark:bg-background/60 hover:bg-white dark:hover:bg-background/80",
-                              isTerminal && "rounded font-mono",
-                              translating && "opacity-50 cursor-not-allowed",
-                            )}
-                          >
-                            {resolveLanguageName(code)}
-                          </button>
-                        ))}
-                      </div>
-                      {/* Translation status indicators */}
-                      {translating && (
-                        <div className="flex items-center gap-1.5 ml-2 text-primary">
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          <span className="text-xs">
-                            {str.blog.translating}
-                          </span>
-                        </div>
-                      )}
-                      {aiTranslation &&
-                        !translating &&
-                        !hasNativeTranslation && (
-                          <div className="flex items-center gap-1.5 ml-2 text-amber-600 dark:text-amber-400">
-                            <Sparkles className="h-3.5 w-3.5" />
-                            <span className="text-xs">
-                              {str.blog.aiTranslated}
-                            </span>
-                          </div>
-                        )}
-                    </div>
-
-                    {/* Translation error message */}
-                    {translationError && (
-                      <div
-                        className={cn(
-                          "rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400",
-                          isTerminal && "font-mono",
-                        )}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-medium mb-1">
-                              {str.blog.translationFailed}
-                            </p>
-                            <p className="text-xs opacity-80">
-                              {translationError.message}
-                            </p>
-                            <p className="text-xs mt-1 opacity-60">
-                              {str.blog.showingOriginal}
-                            </p>
-                          </div>
-                          {translationError.retryable && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setTranslationError(null);
-                                setAiTranslation(null);
-                              }}
-                              className={cn(
-                                "shrink-0 text-xs h-8",
-                                isTerminal &&
-                                  "font-mono border-primary/40 text-primary hover:bg-primary/10",
-                              )}
-                            >
-                              {str.common.retry}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {post.tags && post.tags.length > 0 && (
-                      <div
-                        className={cn(
-                          "flex flex-wrap items-center gap-2 text-foreground/80 dark:text-foreground/80",
-                          isTerminal && "font-mono text-xs",
-                        )}
-                      >
-                        <Tag className="h-4 w-4 text-foreground/75 dark:text-foreground/75" />
-                        {isTerminal && (
-                          <span className="text-primary">tags:</span>
-                        )}
-                        {post.tags.map((tag) => (
-                          <Badge
-                            key={tag}
-                            variant="outline"
-                            className={cn(
-                              "rounded-full px-3 py-1 text-xs dark:border-white/20 dark:text-white cursor-pointer hover:bg-primary/10 transition-colors",
-                              isTerminal &&
-                                "rounded border-primary/40 text-primary hover:bg-primary/20",
-                            )}
-                            onClick={() => {
-                              curiosityTracker.trackTagClick(
-                                tag,
-                                `${post.year}/${post.slug}`,
-                              );
-                              navigate(`/blog?tag=${encodeURIComponent(tag)}`);
-                            }}
-                          >
-                            {isTerminal ? `[${tag}]` : `#${tag}`}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </header>
-
-              <section
-                data-toc-boundary
-                className={cn(
-                  "rounded-[32px] border border-white/50 bg-card/70 p-4 shadow-soft backdrop-blur-sm dark:border-white/5 dark:bg-[hsl(var(--card-blog)/0.9)] sm:p-8 -mx-2 sm:mx-0",
-                  isTerminal &&
-                    "rounded-lg border-border bg-[hsl(var(--terminal-code-bg))]",
-                )}
-              >
-                <div
-                  className={cn(
-                    "prose prose-gray max-w-none dark:prose-invert",
-                    isTerminal &&
-                      "prose-headings:font-mono prose-headings:terminal-glow",
-                  )}
-                >
-                  <Suspense
-                    fallback={
-                      <div
-                        className="space-y-3"
-                        aria-label="Loading article content"
-                      >
-                        <Skeleton className="h-6 w-3/4" />
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-11/12" />
-                        <Skeleton className="h-4 w-10/12" />
-                        <Skeleton className="h-4 w-9/12" />
-                        <Skeleton className="h-4 w-1/2" />
-                      </div>
-                    }
-                  >
-                    <MarkdownRenderer
-                      content={contentForRender}
-                      inlineEnabled={inlineEnabled}
-                      postTitle={localized?.title ?? post.title}
-                      postPath={`${post.year}/${post.slug}`}
-                    />
-                  </Suspense>
-                </div>
-              </section>
+              <MemoizedBlogPostContent {...articleRenderProps!} />
 
               {post.series && seriesPosts.length > 1 && (
-                <SeriesNavigation
+                <MemoizedSeriesNavigation
                   currentPost={post}
                   seriesPosts={seriesPosts}
                 />
               )}
 
               {/* AI Quiz Panel — shown only for posts with code blocks */}
-              <QuizPanel
-                content={localized?.content ?? post.content}
-                postTitle={localized?.title ?? post.title}
+              <MemoizedQuizPanel
+                key={`${year}:${slug}`}
+                content={tocContent}
+                postTitle={displayTitle}
                 postTags={post.tags}
               />
 
-              <CommentSection postId={`${post.year}/${post.slug}`} />
+              <MemoizedCommentSection postId={`${post.year}/${post.slug}`} />
 
-              {relatedPosts.length > 0 && (
-                <section className="space-y-6">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={cn(
-                        "rounded-full bg-secondary/20 p-2 text-secondary-foreground dark:bg-white/10 dark:text-white",
-                        isTerminal &&
-                          "rounded bg-[hsl(var(--terminal-code-bg))]",
-                      )}
-                    >
-                      <BookOpen className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h2
-                        className={cn(
-                          "text-xl font-semibold text-foreground dark:text-white",
-                          isTerminal && "font-mono text-primary",
-                        )}
-                      >
-                        {isTerminal
-                          ? `> ${str.blog.relatedPosts}`
-                          : str.blog.relatedPosts}
-                      </h2>
-                      <p
-                        className={cn(
-                          "text-sm text-foreground/80 dark:text-foreground/80",
-                          isTerminal && "font-mono text-xs",
-                        )}
-                      >
-                        {str.blog.relatedPostsDesc}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    {relatedPosts.map((relatedPost) => (
-                      <Link
-                        key={`${relatedPost.year}/${relatedPost.slug}`}
-                        to={{
-                          pathname: `/blog/${relatedPost.year}/${relatedPost.slug}`,
-                          search: preservedSearch || undefined,
-                        }}
-                        state={
-                          preservedFrom ? { from: preservedFrom } : undefined
-                        }
-                        className={cn(
-                          "group rounded-2xl border border-border/60 bg-card/70 p-5 shadow-sm transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg dark:border-white/10 dark:bg-[hsl(var(--card-blog))]",
-                          isTerminal &&
-                            "rounded-lg border-border bg-[hsl(var(--terminal-code-bg))] hover:border-primary",
-                        )}
-                        onMouseEnter={() =>
-                          prefetchPost(relatedPost.year, relatedPost.slug)
-                        }
-                        onFocus={() =>
-                          prefetchPost(relatedPost.year, relatedPost.slug)
-                        }
-                      >
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            "mb-3 rounded-full px-3 py-1 text-xs dark:bg-white/10 dark:text-white",
-                            isTerminal &&
-                              "rounded font-mono text-primary bg-transparent border border-primary/40",
-                          )}
-                        >
-                          {isTerminal
-                            ? `[${relatedPost.category}]`
-                            : relatedPost.category}
-                        </Badge>
-                        <h3
-                          className={cn(
-                            "text-base font-semibold leading-snug text-foreground dark:text-white group-hover:text-primary",
-                            isTerminal && "font-mono",
-                          )}
-                        >
-                          {relatedPost.title}
-                        </h3>
-                        <p className="mt-2 line-clamp-2 text-sm text-foreground/80 dark:text-foreground/80">
-                          {relatedPost.excerpt || relatedPost.description}
-                        </p>
-                        {(relatedPost.readingTime || relatedPost.readTime) && (
-                          <p
-                            className={cn(
-                              "mt-3 text-xs uppercase tracking-wide text-foreground/70 dark:text-foreground/75",
-                              isTerminal && "font-mono",
-                            )}
-                          >
-                            {relatedPost.readingTime ||
-                              `${relatedPost.readTime} min read`}
-                          </p>
-                        )}
-                      </Link>
-                    ))}
-                  </div>
-                </section>
-              )}
+              <MemoizedBlogPostRelated
+                relatedPosts={resolvedRelatedPosts}
+                preservedSearch={preservedSearch}
+                preservedFrom={preservedFrom}
+                isTerminal={isTerminal}
+                relatedPostsLabel={str.blog.relatedPosts}
+                relatedPostsDescLabel={str.blog.relatedPostsDesc}
+              />
             </article>
 
             <aside className="hidden xl:block relative">
-              <TableOfContents
-                content={localized?.content ?? post.content}
-                postTitle={localized?.title ?? post.title}
-              />
+              <MemoizedTableOfContents {...tocProps!} />
             </aside>
           </div>
         </div>
       </div>
       <ScrollToTop />
       {/* Mobile TOC floating button */}
-      <TocDrawer
-        content={localized?.content ?? post.content}
-        postTitle={localized?.title ?? post.title}
-      />
+      <MemoizedTocDrawer {...tocProps!} />
     </>
   );
 };

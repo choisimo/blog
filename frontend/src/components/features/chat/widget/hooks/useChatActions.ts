@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import type { ChatMessage, UploadedChatImage } from "../types";
+import type { ChatMessage, LiveReplyTarget, UploadedChatImage } from "../types";
 import type { PageContext } from "@/services/chat/types";
 import {
   streamChatEvents,
@@ -45,10 +45,17 @@ type UseChatActionsProps = {
   setSessionKey: (key: string) => void;
   currentLiveRoom: string;
   switchLiveRoom: (room: string) => void;
-  sendVisitorMessage: (text: string) => Promise<void>;
-  isMobile: boolean;
+  sendVisitorMessage: (input: {
+    text: string;
+    replyToName?: string;
+    mentionedAgents?: string[];
+  }) => Promise<void>;
   livePinned: boolean;
   setLivePinned: React.Dispatch<React.SetStateAction<boolean>>;
+  liveReplyTarget: LiveReplyTarget | null;
+  setLiveReplyTarget: React.Dispatch<
+    React.SetStateAction<LiveReplyTarget | null>
+  >;
   currentPost?: PageContext["article"];
 };
 
@@ -74,11 +81,75 @@ export function useChatActions({
   currentLiveRoom,
   switchLiveRoom,
   sendVisitorMessage,
-  isMobile,
   livePinned,
   setLivePinned,
+  liveReplyTarget,
+  setLiveReplyTarget,
   currentPost,
 }: UseChatActionsProps) {
+  const buildLiveReplyMeta = useCallback(() => {
+    if (!liveReplyTarget) {
+      return {
+        replyToName: undefined,
+        mentionedAgents: undefined,
+      };
+    }
+
+    return {
+      replyToName: liveReplyTarget.name,
+      mentionedAgents:
+        liveReplyTarget.senderType === "agent"
+          ? [liveReplyTarget.name.toLowerCase()]
+          : undefined,
+    };
+  }, [liveReplyTarget]);
+
+  const getOutgoingLiveLabel = useCallback(
+    (text: string) =>
+      liveReplyTarget
+        ? `[Live → ${liveReplyTarget.name}] ${text}`
+        : `[Live] ${text}`,
+    [liveReplyTarget],
+  );
+
+  const sendDirectLiveMessage = useCallback(
+    async (text: string) => {
+      const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const liveMeta = buildLiveReplyMeta();
+
+      setInput("");
+      push({
+        id,
+        role: "user",
+        text: getOutgoingLiveLabel(text),
+      });
+
+      try {
+        await sendVisitorMessage({
+          text,
+          replyToName: liveMeta.replyToName,
+          mentionedAgents: liveMeta.mentionedAgents,
+        });
+        setLiveReplyTarget(null);
+      } catch (e) {
+        push({
+          id: `${id}_live_err`,
+          role: "system",
+          text: getErrorMessage(e, "Live message delivery failed"),
+          systemLevel: "error",
+        });
+      }
+    },
+    [
+      buildLiveReplyMeta,
+      getOutgoingLiveLabel,
+      push,
+      sendVisitorMessage,
+      setInput,
+      setLiveReplyTarget,
+    ],
+  );
+
   const send = useCallback(async () => {
     if (!canSend) return;
     const trimmed = input.trim();
@@ -93,6 +164,7 @@ export function useChatActions({
         text,
         systemLevel: level,
         systemKind: level === "error" ? "error" : "status",
+        statusSource: "command",
       });
     };
 
@@ -180,7 +252,10 @@ export function useChatActions({
               "warn",
             );
           } catch {
-            pushLiveSystem(getErrorMessage(e, "[Live] 방 목록을 가져오지 못했습니다."), "error");
+            pushLiveSystem(
+              getErrorMessage(e, "[Live] 방 목록을 가져오지 못했습니다."),
+              "error",
+            );
           }
         }
         return;
@@ -223,20 +298,17 @@ export function useChatActions({
       const liveText = payload;
       if (!liveText) return;
 
-      const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      setInput("");
-      push({ id, role: "user", text: `[Live] ${liveText}` });
+      await sendDirectLiveMessage(liveText);
+      return;
+    }
 
-      try {
-        await sendVisitorMessage(liveText);
-      } catch (e) {
-        push({
-          id: `${id}_live_err`,
-          role: "system",
-          text: getErrorMessage(e, "Live message delivery failed"),
-          systemLevel: "error",
-        });
-      }
+    if (
+      liveReplyTarget &&
+      trimmed &&
+      !trimmed.startsWith("/") &&
+      attachedImage === null
+    ) {
+      await sendDirectLiveMessage(trimmed);
       return;
     }
 
@@ -246,20 +318,7 @@ export function useChatActions({
       !trimmed.startsWith("/") &&
       attachedImage === null
     ) {
-      const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      setInput("");
-      push({ id, role: "user", text: `[Live] ${trimmed}` });
-
-      try {
-        await sendVisitorMessage(trimmed);
-      } catch (e) {
-        push({
-          id: `${id}_live_err`,
-          role: "system",
-          text: getErrorMessage(e, "Live message delivery failed"),
-          systemLevel: "error",
-        });
-      }
+      await sendDirectLiveMessage(trimmed);
       return;
     }
 
@@ -341,35 +400,16 @@ export function useChatActions({
         }
 
         let acc = "";
-        let rafHandle: number | null = null;
-        let mobileFlushTimer: number | null = null;
-        const MOBILE_STREAM_FLUSH_MS = 48;
+        let finalSources: ChatMessage["sources"] | undefined;
+        let finalFollowups: ChatMessage["followups"] | undefined;
 
-        const commitAssistantText = (snapshot: string) => {
-          const id = aiId;
-          setMessages((prev) =>
-            prev.map((m) => (m.id === id ? { ...m, text: snapshot } : m)),
-          );
-        };
-
-        const scheduleAssistantTextCommit = (snapshot: string) => {
-          if (isMobile) {
-            if (mobileFlushTimer !== null) return;
-            mobileFlushTimer = window.setTimeout(() => {
-              mobileFlushTimer = null;
-              commitAssistantText(acc);
-            }, MOBILE_STREAM_FLUSH_MS);
-            return;
-          }
-
-          if (rafHandle !== null) cancelAnimationFrame(rafHandle);
-          rafHandle = requestAnimationFrame(() => {
-            rafHandle = null;
-            commitAssistantText(snapshot);
-          });
-        };
-
-        push({ id: aiId, role: "assistant", text: "" });
+        push({
+          id: aiId,
+          role: "assistant",
+          text: "",
+          pending: true,
+          typingLabel: "AI가 작성 중...",
+        });
         for await (const ev of streamChatEvents({
           text: baseText,
           signal: controller.signal,
@@ -383,33 +423,26 @@ export function useChatActions({
         })) {
           if (ev.type === "text") {
             acc += ev.text;
-            scheduleAssistantTextCommit(acc);
           } else if (ev.type === "sources") {
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === aiId ? { ...m, sources: ev.sources } : m,
-              ),
-            );
+            finalSources = ev.sources;
           } else if (ev.type === "followups") {
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === aiId ? { ...m, followups: ev.questions } : m,
-              ),
-            );
+            finalFollowups = ev.questions;
           }
         }
-
-        // Flush any pending rAF update so the final text is committed immediately
-        if (mobileFlushTimer !== null) {
-          window.clearTimeout(mobileFlushTimer);
-          mobileFlushTimer = null;
-          commitAssistantText(acc);
-        }
-        if (rafHandle !== null) {
-          cancelAnimationFrame(rafHandle);
-          commitAssistantText(acc);
-          rafHandle = null;
-        }
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === aiId
+              ? {
+                  ...m,
+                  text: acc,
+                  pending: false,
+                  typingLabel: undefined,
+                  sources: finalSources,
+                  followups: finalFollowups,
+                }
+              : m,
+          ),
+        );
 
         // Extract and save memories from conversation (fire and forget)
         if (acc) {
@@ -419,6 +452,9 @@ export function useChatActions({
         }
       }
     } catch (e) {
+      if (aiId) {
+        setMessages((prev) => prev.filter((m) => m.id !== aiId));
+      }
       const msg = getErrorMessage(e, "Chat failed");
       const errId =
         aiId != null
@@ -447,11 +483,11 @@ export function useChatActions({
     setMessages,
     currentLiveRoom,
     switchLiveRoom,
-    sendVisitorMessage,
-    isMobile,
     livePinned,
+    liveReplyTarget,
     setLivePinned,
     currentPost,
+    sendDirectLiveMessage,
   ]);
 
   const stop = useCallback(() => {
@@ -469,6 +505,7 @@ export function useChatActions({
       setAttachedPreviewUrl(null);
       setUploadedImages([]);
       setIsAggregatePrompt(false);
+      setLiveReplyTarget(null);
 
       const nextKey = await startNewSession();
       setSessionKey(nextKey);
@@ -482,6 +519,7 @@ export function useChatActions({
       setAttachedPreviewUrl,
       setUploadedImages,
       setIsAggregatePrompt,
+      setLiveReplyTarget,
       setSessionKey,
     ],
   );

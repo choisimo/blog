@@ -1,0 +1,353 @@
+{
+  "generatedAt": "snapshot-managed",
+  "routeMounts": [
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1",
+      "owner": "backend",
+      "symbol": "translateRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/admin",
+      "owner": "backend",
+      "symbol": "adminLogsRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/admin",
+      "owner": "backend",
+      "symbol": "adminRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/admin/config",
+      "owner": "backend",
+      "symbol": "configRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/admin/workers",
+      "owner": "backend",
+      "symbol": "workersRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/agent",
+      "owner": "backend",
+      "symbol": "agentRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/ai",
+      "owner": "backend",
+      "symbol": "aiRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/analytics",
+      "owner": "backend",
+      "symbol": "analyticsRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/auth",
+      "owner": "backend",
+      "symbol": "authRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/chat",
+      "owner": "backend",
+      "symbol": "chatRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/comments",
+      "owner": "backend",
+      "symbol": "commentsRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/debate",
+      "owner": "backend",
+      "symbol": "debateRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/execute",
+      "owner": "backend",
+      "symbol": "executeRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/images",
+      "owner": "backend",
+      "symbol": "imagesRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/memories",
+      "owner": "backend",
+      "symbol": "memoriesRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/memos",
+      "owner": "backend",
+      "symbol": "memosRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/notifications",
+      "owner": "backend",
+      "symbol": "notificationsRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/og",
+      "owner": "backend",
+      "symbol": "ogRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/posts",
+      "owner": "backend",
+      "symbol": "postsRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/rag",
+      "owner": "backend",
+      "symbol": "ragRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/search",
+      "owner": "backend",
+      "symbol": "searchRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/user-content",
+      "owner": "backend",
+      "symbol": "userContentRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/api/v1/user",
+      "owner": "backend",
+      "symbol": "userRouter"
+    },
+    {
+      "file": "backend/src/index.js",
+      "mountPath": "/metrics",
+      "owner": "backend",
+      "symbol": "metricsRouter"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/",
+      "owner": "worker",
+      "symbol": "translate"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/admin/ai",
+      "owner": "worker",
+      "symbol": "adminAi"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/admin/logs",
+      "owner": "worker",
+      "symbol": "adminLogs"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/admin/secrets",
+      "owner": "worker",
+      "symbol": "secrets"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/ai",
+      "owner": "worker",
+      "symbol": "ai"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/analytics",
+      "owner": "worker",
+      "symbol": "analytics"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/auth",
+      "owner": "worker",
+      "symbol": "auth"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/chat",
+      "owner": "worker",
+      "symbol": "chat"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/comments",
+      "owner": "worker",
+      "symbol": "comments"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/config",
+      "owner": "worker",
+      "symbol": "config"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/contact",
+      "owner": "worker",
+      "symbol": "contact"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/debate",
+      "owner": "worker",
+      "symbol": "debate"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/gateway",
+      "owner": "worker",
+      "symbol": "gateway"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/images",
+      "owner": "worker",
+      "symbol": "images"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/internal",
+      "owner": "worker",
+      "symbol": "internal"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/memories",
+      "owner": "worker",
+      "symbol": "memories"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/memos",
+      "owner": "worker",
+      "symbol": "memos"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/notifications",
+      "owner": "worker",
+      "symbol": "notifications"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/og",
+      "owner": "worker",
+      "symbol": "og"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/personas",
+      "owner": "worker",
+      "symbol": "personas"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/posts",
+      "owner": "worker",
+      "symbol": "posts"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/rag",
+      "owner": "worker",
+      "symbol": "rag"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/search",
+      "owner": "worker",
+      "symbol": "search"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/subscribe",
+      "owner": "worker",
+      "symbol": "subscribe"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/user-content",
+      "owner": "worker",
+      "symbol": "userContent"
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "mountPath": "/user",
+      "owner": "worker",
+      "symbol": "user"
+    }
+  ],
+  "sharedContractUsage": [
+    {
+      "file": "frontend/src/services/content/translate.ts",
+      "sharedContracts": [
+        "translation"
+      ]
+    },
+    {
+      "file": "frontend/src/services/session/fingerprint.ts",
+      "sharedContracts": [
+        "auth"
+      ]
+    },
+    {
+      "file": "frontend/src/services/realtime/notificationSSE.ts",
+      "sharedContracts": []
+    },
+    {
+      "file": "frontend/src/services/realtime/notifications.ts",
+      "sharedContracts": [
+        "notifications"
+      ]
+    },
+    {
+      "file": "backend/src/routes/translate.js",
+      "sharedContracts": []
+    },
+    {
+      "file": "backend/src/routes/notifications.js",
+      "sharedContracts": []
+    },
+    {
+      "file": "backend/src/routes/user.js",
+      "sharedContracts": []
+    },
+    {
+      "file": "workers/api-gateway/src/routes/translate.ts",
+      "sharedContracts": []
+    },
+    {
+      "file": "workers/api-gateway/src/routes/notifications.ts",
+      "sharedContracts": []
+    },
+    {
+      "file": "workers/api-gateway/src/routes/user.ts",
+      "sharedContracts": []
+    }
+  ]
+}

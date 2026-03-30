@@ -4,65 +4,61 @@ import { queryOne, queryAll, execute } from '../lib/d1';
 import { success, error, badRequest, notFound } from '../lib/response';
 import { requireAdmin } from '../middleware/auth';
 
+// ---------------------------------------------------------------------------
+// Backend proxy helper
+// IMPORTANT: Use BACKEND_ORIGIN directly, NOT getApiBaseUrl() — that resolves
+// to api.example.com (this worker itself) and would cause an infinite loop.
+// ---------------------------------------------------------------------------
+async function proxyToBackend(
+  env: Env,
+  path: string,
+  method: 'GET' | 'POST',
+  body?: unknown,
+  query?: string
+): Promise<{ ok: boolean; data?: unknown; error?: string; status: number }> {
+  const backendOrigin = env.BACKEND_ORIGIN;
+  if (!backendOrigin) {
+    return { ok: false, error: 'BACKEND_ORIGIN not configured', status: 500 };
+  }
+
+  const url = `${backendOrigin}/api/v1/analytics${path}${query ? `?${query}` : ''}`;
+  const headers: HeadersInit = { 'Content-Type': 'application/json' };
+  if (env.BACKEND_KEY) {
+    headers['X-Backend-Key'] = env.BACKEND_KEY;
+  }
+
+  try {
+    const response = await fetch(url, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    const json = await response.json().catch(() => null);
+    return { ok: response.ok, data: json, status: response.status };
+  } catch (err) {
+    console.error(`Backend proxy error [${method} ${path}]:`, err);
+    return { ok: false, error: 'Backend unavailable', status: 503 };
+  }
+}
+
 const app = new Hono<HonoEnv>();
 
 /**
  * POST /api/v1/analytics/view
- * Record a view for a post
+ * Record a view for a post.
+ * Ownership: Backend (Postgres) — this handler is a thin proxy.
  */
 app.post('/view', async (c) => {
   try {
-    const body = await c.req.json<{ year: string; slug: string }>();
-    const { year, slug } = body;
-
-    if (!year || !slug) {
+    const body = await c.req.json<{ year: string; slug: string }>().catch(() => ({}) as { year: string; slug: string });
+    if (!body.year || !body.slug) {
       return error(c, 'year and slug are required', 400);
     }
 
-    const today = new Date().toISOString().split('T')[0];
-    const db = c.env.DB;
-
-    // Upsert daily view count
-    await execute(
-      db,
-      `INSERT INTO post_views (post_slug, year, view_date, view_count)
-       VALUES (?, ?, ?, 1)
-       ON CONFLICT(post_slug, year, view_date)
-       DO UPDATE SET view_count = view_count + 1, updated_at = datetime('now')`,
-      slug,
-      year,
-      today
-    );
-
-    // Update aggregated stats
-    const existingStats = await queryOne<PostStats>(
-      db,
-      `SELECT * FROM post_stats WHERE post_slug = ? AND year = ?`,
-      slug,
-      year
-    );
-
-    if (existingStats) {
-      // Update existing stats
-      await execute(
-        db,
-        `UPDATE post_stats
-         SET total_views = total_views + 1,
-             last_viewed_at = datetime('now'),
-             updated_at = datetime('now')
-         WHERE post_slug = ? AND year = ?`,
-        slug,
-        year
-      );
-    } else {
-      // Create new stats record
-      await execute(
-        db,
-        `INSERT INTO post_stats (post_slug, year, total_views, last_viewed_at)
-         VALUES (?, ?, 1, datetime('now'))`,
-        slug,
-        year
-      );
+    const result = await proxyToBackend(c.env, '/view', 'POST', body);
+    if (!result.ok) {
+      console.error('Backend view proxy failed:', result.error || result.status);
+      return error(c, result.error || 'Failed to record view', result.status as 400 | 500 | 503);
     }
 
     return success(c, { recorded: true });
@@ -74,22 +70,25 @@ app.post('/view', async (c) => {
 
 /**
  * GET /api/v1/analytics/stats/:year/:slug
- * Get stats for a specific post
+ * Get stats for a specific post.
+ * Ownership: Backend (Postgres) — this handler is a thin proxy.
  */
 app.get('/stats/:year/:slug', async (c) => {
   try {
     const { year, slug } = c.req.param();
-    const db = c.env.DB;
 
-    const stats = await queryOne<PostStats>(
-      db,
-      `SELECT * FROM post_stats WHERE post_slug = ? AND year = ?`,
-      slug,
-      year
-    );
+    const result = await proxyToBackend(c.env, `/stats/${year}/${slug}`, 'GET');
+    if (!result.ok) {
+      // Graceful fallback: return zero stats rather than erroring
+      console.warn('Backend stats proxy failed, returning zero stats:', result.error || result.status);
+      return success(c, {
+        stats: { total_views: 0, views_7d: 0, views_30d: 0 },
+      });
+    }
 
+    const payload = result.data as { ok?: boolean; data?: { stats?: PostStats } } | null;
     return success(c, {
-      stats: stats || { total_views: 0, views_7d: 0, views_30d: 0 },
+      stats: payload?.data?.stats || { total_views: 0, views_7d: 0, views_30d: 0 },
     });
   } catch (err) {
     console.error('Failed to get stats:', err);
@@ -125,52 +124,29 @@ app.get('/editor-picks', async (c) => {
 
 /**
  * GET /api/v1/analytics/trending
- * Get trending posts based on recent views
+ * Get trending posts based on recent views.
+ * Ownership: Backend (Postgres) — this handler is a thin proxy.
  */
 app.get('/trending', async (c) => {
   try {
-    const db = c.env.DB;
     const limit = Math.min(parseInt(c.req.query('limit') || '10'), 50);
     const offset = Math.max(parseInt(c.req.query('offset') || '0'), 0);
     const days = parseInt(c.req.query('days') || '7');
 
-    const sinceDate = new Date();
-    sinceDate.setDate(sinceDate.getDate() - days);
-    const sinceDateStr = sinceDate.toISOString().split('T')[0];
+    const query = `limit=${limit}&offset=${offset}&days=${days}`;
+    const result = await proxyToBackend(c.env, '/trending', 'GET', undefined, query);
+    if (!result.ok) {
+      console.warn('Backend trending proxy failed:', result.error || result.status);
+      return success(c, { trending: [], total: 0, limit, offset });
+    }
 
-    const [totalRow, trending] = await Promise.all([
-      queryOne<{ cnt: number }>(
-        db,
-        `SELECT COUNT(DISTINCT pv.post_slug || '|' || pv.year) as cnt
-         FROM post_views pv
-         WHERE pv.view_date >= ?`,
-        sinceDateStr
-      ),
-      queryAll<{
-        post_slug: string;
-        year: string;
-        recent_views: number;
-        total_views: number;
-      }>(
-        db,
-        `SELECT
-           pv.post_slug,
-           pv.year,
-           SUM(pv.view_count) as recent_views,
-           COALESCE(ps.total_views, 0) as total_views
-         FROM post_views pv
-         LEFT JOIN post_stats ps ON pv.post_slug = ps.post_slug AND pv.year = ps.year
-         WHERE pv.view_date >= ?
-         GROUP BY pv.post_slug, pv.year
-         ORDER BY recent_views DESC
-         LIMIT ? OFFSET ?`,
-        sinceDateStr,
-        limit,
-        offset
-      ),
-    ]);
-
-    return success(c, { trending, total: totalRow?.cnt ?? 0, limit, offset });
+    const payload = result.data as { ok?: boolean; data?: { trending?: unknown[]; total?: number } } | null;
+    return success(c, {
+      trending: payload?.data?.trending || [],
+      total: payload?.data?.total ?? 0,
+      limit,
+      offset,
+    });
   } catch (err) {
     console.error('Failed to get trending:', err);
     return error(c, 'Failed to get trending', 500);
@@ -179,63 +155,17 @@ app.get('/trending', async (c) => {
 
 /**
  * POST /api/v1/analytics/refresh-stats
- * Refresh 7d and 30d view counts (should be called by cron)
+ * Refresh 7d and 30d view counts.
+ * Ownership: Backend (Postgres) — this handler is a thin proxy.
  */
-app.post('/refresh-stats', async (c) => {
+app.post('/refresh-stats', requireAdmin, async (c) => {
   try {
-    const db = c.env.DB;
-
-    const now = new Date();
-    const date7d = new Date(now);
-    date7d.setDate(date7d.getDate() - 7);
-    const date30d = new Date(now);
-    date30d.setDate(date30d.getDate() - 30);
-
-    const date7dStr = date7d.toISOString().split('T')[0];
-    const date30dStr = date30d.toISOString().split('T')[0];
-
-    // Get all posts with views
-    const allPosts = await queryAll<{ post_slug: string; year: string }>(
-      db,
-      `SELECT DISTINCT post_slug, year FROM post_stats`
-    );
-
-    for (const post of allPosts) {
-      // Calculate 7d views
-      const views7d = await queryOne<{ cnt: number }>(
-        db,
-        `SELECT COALESCE(SUM(view_count), 0) as cnt
-         FROM post_views
-         WHERE post_slug = ? AND year = ? AND view_date >= ?`,
-        post.post_slug,
-        post.year,
-        date7dStr
-      );
-
-      // Calculate 30d views
-      const views30d = await queryOne<{ cnt: number }>(
-        db,
-        `SELECT COALESCE(SUM(view_count), 0) as cnt
-         FROM post_views
-         WHERE post_slug = ? AND year = ? AND view_date >= ?`,
-        post.post_slug,
-        post.year,
-        date30dStr
-      );
-
-      await execute(
-        db,
-        `UPDATE post_stats
-         SET views_7d = ?, views_30d = ?, updated_at = datetime('now')
-         WHERE post_slug = ? AND year = ?`,
-        views7d?.cnt || 0,
-        views30d?.cnt || 0,
-        post.post_slug,
-        post.year
-      );
+    const result = await proxyToBackend(c.env, '/refresh-stats', 'POST');
+    if (!result.ok) {
+      return error(c, result.error || 'Failed to refresh stats', result.status as 500 | 503);
     }
-
-    return success(c, { refreshed: allPosts.length });
+    const payload = result.data as { ok?: boolean; data?: { refreshed?: number } } | null;
+    return success(c, { refreshed: payload?.data?.refreshed ?? 0 });
   } catch (err) {
     console.error('Failed to refresh stats:', err);
     return error(c, 'Failed to refresh stats', 500);
@@ -244,48 +174,67 @@ app.post('/refresh-stats', async (c) => {
 
 /**
  * POST /api/v1/analytics/update-editor-picks
- * Auto-update editor picks based on analytics (should be called by cron daily)
+ * Auto-update editor picks based on analytics (cron daily).
+ * Reads top stats from Backend (Postgres) and writes editor_picks cache to D1.
  */
-app.post('/update-editor-picks', async (c) => {
+app.post('/update-editor-picks', requireAdmin, async (c) => {
   try {
     const db = c.env.DB;
 
-    // Scoring algorithm:
-    // - 50% weight on 7-day views (recency)
-    // - 30% weight on 30-day views (sustained interest)
-    // - 20% weight on total views (evergreen content)
-    const topPosts = await queryAll<PostStats>(
-      db,
-      `SELECT *,
-         (views_7d * 0.5 + views_30d * 0.3 + total_views * 0.2) as score
-       FROM post_stats
-       WHERE total_views > 0
-       ORDER BY score DESC
-       LIMIT 10`
+    // Fetch top posts stats from Backend (Postgres is the canonical source)
+    const statsResult = await proxyToBackend(
+      c.env,
+      '/all-stats',
+      'GET',
+      undefined,
+      'limit=10&orderBy=total_views'
     );
+    if (!statsResult.ok) {
+      console.error('Failed to fetch all-stats from backend:', statsResult.error || statsResult.status);
+      return error(c, 'Failed to fetch stats from backend', statsResult.status as 500 | 503);
+    }
 
-    if (topPosts.length === 0) {
+    type StatRow = {
+      post_slug: string;
+      year: string;
+      total_views: number;
+      views_7d: number;
+      views_30d: number;
+    };
+    const statsPayload = statsResult.data as {
+      ok?: boolean;
+      data?: { stats?: StatRow[] };
+    } | null;
+    const allStats: StatRow[] = statsPayload?.data?.stats || [];
+
+    // Score: 50% 7d + 30% 30d + 20% total
+    const scored = allStats
+      .filter((s) => s.total_views > 0)
+      .map((s) => ({
+        ...s,
+        score: s.views_7d * 0.5 + s.views_30d * 0.3 + s.total_views * 0.2,
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+
+    if (scored.length === 0) {
       return success(c, { message: 'No posts with views found' });
     }
 
-    // Deactivate all current picks
-    await execute(db, `UPDATE editor_picks SET is_active = 0, updated_at = datetime('now')`);
+    // Deactivate all current picks in D1 cache
+    await execute(db, `UPDATE editor_picks SET is_active = 0, updated_at = datetime('now')`);;
 
-    // Calculate tomorrow as expiry date
+    // Calculate expiry (6 AM next day)
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 1);
-    expiresAt.setHours(6, 0, 0, 0); // Expire at 6 AM next day
+    expiresAt.setHours(6, 0, 0, 0);
     const expiresAtStr = expiresAt.toISOString();
 
-    // Insert/update top 3 picks
-    const topPicks = topPosts.slice(0, 3);
+    const topPicks = scored.slice(0, 3);
     for (let i = 0; i < topPicks.length; i++) {
       const postItem = topPicks[i];
       if (!postItem) continue;
-      const score =
-        postItem.views_7d * 0.5 + postItem.views_30d * 0.3 + postItem.total_views * 0.2;
 
-      // Determine reason
       let reason = 'Popular post';
       if (postItem.views_7d > postItem.views_30d * 0.5) {
         reason = 'Trending this week';
@@ -308,13 +257,13 @@ app.post('/update-editor-picks', async (c) => {
            updated_at = datetime('now')`,
         postItem.post_slug,
         postItem.year,
-        '', // title will be filled by frontend
+        '', // title filled by frontend
         i + 1,
-        score,
+        postItem.score,
         reason,
         expiresAtStr,
         i + 1,
-        score,
+        postItem.score,
         reason,
         expiresAtStr
       );
@@ -326,7 +275,7 @@ app.post('/update-editor-picks', async (c) => {
         rank: i + 1,
         slug: p.post_slug,
         year: p.year,
-        score: p.views_7d * 0.5 + p.views_30d * 0.3 + p.total_views * 0.2,
+        score: p.score,
       })),
     });
   } catch (err) {

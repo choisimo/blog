@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ['알고리즘', '학습법', '코딩테스트', '자료구조']
 excerpt: "효과적인 알고리즘 공부 방법과 실전 팁을 제공합니다"
 readTime: "2분"
+published: false
 ---
 
 # 알고리즘 공부, 어떻게 시작할까?

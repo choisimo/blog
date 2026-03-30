@@ -5,6 +5,7 @@ category: "Algorithm"
 tags: ["Algorithm", "복합 자료구조", "Problem Solving", "Python", "Java"]
 excerpt: "Advanced Topics - LRU+TTL 캐시 시스템 문제에 대한 풀이와 아키텍트 관점의 해설입니다."
 readTime: "5분"
+published: false
 ---
 
 ## Top-down 질문

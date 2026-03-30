@@ -10,6 +10,7 @@ import {
   ChevronDown as ChevronDownIcon,
 } from "lucide-react";
 import { getApiBaseUrl } from "@/utils/network/apiBase";
+import { adminFetchRaw } from "@/services/admin/apiClient";
 import { useAuthStore } from "@/stores/session/useAuthStore";
 import { PostMetricsDetail } from "./PostMetricsDetail";
 
@@ -74,12 +75,11 @@ async function getTrendingPosts(
   }
 }
 
-async function refreshStats(token: string): Promise<boolean> {
+async function refreshStats(): Promise<boolean> {
   const base = getApiBaseUrl();
   try {
-    const res = await fetch(`${base}/api/v1/analytics/refresh-stats`, {
+    const res = await adminFetchRaw(`${base}/api/v1/analytics/refresh-stats`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
     });
     return res.ok;
   } catch {
@@ -88,7 +88,6 @@ async function refreshStats(token: string): Promise<boolean> {
 }
 
 function EditorPicksSection() {
-  const { getValidAccessToken } = useAuthStore();
   const [picks, setPicks] = useState<EditorPick[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -113,19 +112,11 @@ function EditorPicksSection() {
 
   const handleRemove = async (year: string, slug: string) => {
     setRemoveError(null);
-    const token = await getValidAccessToken();
-    if (!token) {
-      setRemoveError("Authentication required.");
-      return;
-    }
     const base = getApiBaseUrl();
     try {
-      const res = await fetch(
+      const res = await adminFetchRaw(
         `${base}/api/v1/analytics/admin/editor-picks/${year}/${slug}`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        },
+        { method: "DELETE" },
       );
       if (!res.ok) {
         setRemoveError("Failed to remove pick.");
@@ -141,12 +132,6 @@ function EditorPicksSection() {
     e.preventDefault();
     setFormError(null);
     setFormSubmitting(true);
-    const token = await getValidAccessToken();
-    if (!token) {
-      setFormError("Authentication required.");
-      setFormSubmitting(false);
-      return;
-    }
     const base = getApiBaseUrl();
     try {
       const body: {
@@ -157,14 +142,10 @@ function EditorPicksSection() {
       } = { post_slug: formSlug.trim(), year: formYear.trim() };
       if (formRank) body.rank = parseInt(formRank, 10);
       if (formReason.trim()) body.reason = formReason.trim();
-      const res = await fetch(
+      const res = await adminFetchRaw(
         `${base}/api/v1/analytics/admin/editor-picks`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
           body: JSON.stringify(body),
         },
       );
@@ -488,7 +469,6 @@ function TrendingPostsSection() {
 }
 
 function StatsRefreshSection() {
-  const { getValidAccessToken } = useAuthStore();
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [result, setResult] = useState<{
@@ -499,17 +479,12 @@ function StatsRefreshSection() {
   const handleRefresh = async () => {
     setRefreshing(true);
     setResult(null);
-    const token = await getValidAccessToken();
-    if (token) {
-      const success = await refreshStats(token);
-      setResult({
-        success,
-        message: success ? "Stats refreshed successfully." : "Refresh failed.",
-      });
-      if (success) setLastRefresh(new Date());
-    } else {
-      setResult({ success: false, message: "Authentication required." });
-    }
+    const success = await refreshStats();
+    setResult({
+      success,
+      message: success ? "Stats refreshed successfully." : "Refresh failed.",
+    });
+    if (success) setLastRefresh(new Date());
     setRefreshing(false);
   };
 
@@ -554,17 +529,16 @@ function StatsRefreshSection() {
   );
 }
 
-async function getAllPostStats(
+// eslint-disable-next-line react-refresh/only-export-components
+export async function getAllPostStats(
   orderBy: string,
-  token: string | null,
 ): Promise<PostStat[]> {
+  const token = await useAuthStore.getState().getValidAccessToken();
+  if (!token) return [];
   const base = getApiBaseUrl();
   try {
-    const res = await fetch(
+    const res = await adminFetchRaw(
       `${base}/api/v1/admin/analytics/posts?orderBy=${orderBy}`,
-      {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      },
     );
     if (!res.ok) return [];
     const data = await res.json();
@@ -577,7 +551,6 @@ async function getAllPostStats(
 type SortField = "total_views" | "views_7d" | "views_30d" | "last_viewed_at";
 
 function AllPostsSection() {
-  const { getValidAccessToken } = useAuthStore();
   const [stats, setStats] = useState<PostStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<SortField>("total_views");
@@ -590,11 +563,10 @@ function AllPostsSection() {
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
-    const token = await getValidAccessToken();
-    const result = await getAllPostStats(sortBy, token);
+    const result = await getAllPostStats(sortBy);
     setStats(result);
     setLoading(false);
-  }, [getValidAccessToken, sortBy]);
+  }, [sortBy]);
 
   useEffect(() => {
     fetchStats();

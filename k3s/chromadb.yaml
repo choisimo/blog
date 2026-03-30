@@ -28,6 +28,8 @@ spec:
       labels:
         app: chromadb
     spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
       containers:
         - name: chromadb
           image: chromadb/chroma:latest
@@ -43,6 +45,12 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /chroma/chroma
+          startupProbe:
+            httpGet:
+              path: /api/v2/heartbeat
+              port: http
+            failureThreshold: 30
+            periodSeconds: 5
           readinessProbe:
             httpGet:
               path: /api/v2/heartbeat

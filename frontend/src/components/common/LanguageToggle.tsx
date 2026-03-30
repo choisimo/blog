@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button';
+import { TouchIconButton } from '@/components/atoms/TouchIconButton';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,15 +20,14 @@ export function LanguageToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
+        <TouchIconButton
           type='button'
           variant='ghost'
-          size='icon'
           aria-label={`언어 변경: 현재 ${LABELS[language]}`}
           className='h-9 w-9'
         >
           <Globe className='h-4 w-4' />
-        </Button>
+        </TouchIconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end' className='w-32 text-sm'>
         {(Object.keys(LABELS) as SupportedLanguage[]).map(lang => (

@@ -3,10 +3,11 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { AdminSubtabs, type AdminSubtabsTab } from '@/components/molecules/AdminSubtabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
+import { adminFetchRaw } from '@/services/admin/apiClient';
 import { getApiBaseUrl } from '@/utils/network/apiBase';
-import { useAuthStore } from '@/stores/session/useAuthStore';
 import {
   Eye,
   EyeOff,
@@ -16,7 +17,6 @@ import {
   Copy,
   CheckCircle2,
   AlertCircle,
-  ChevronDown,
 } from 'lucide-react';
 
 interface ConfigVariable {
@@ -43,25 +43,8 @@ interface ConfigValue {
   default: string;
 }
 
-async function fetchWithAuth(
-  url: string,
-  getToken: () => Promise<string | null>,
-  options: RequestInit = {}
-) {
-  const token = await getToken();
-  return fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
-}
-
 export function ConfigManager() {
   const { toast } = useToast();
-  const { getValidAccessToken } = useAuthStore();
   const [activeTab, setActiveTab] = useState('app');
   const [editedValues, setEditedValues] = useState<Record<string, string>>({});
   const [visibleSecrets, setVisibleSecrets] = useState<Set<string>>(new Set());
@@ -72,7 +55,7 @@ export function ConfigManager() {
   const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
     queryKey: ['config-categories'],
     queryFn: async () => {
-      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/config/categories`, getValidAccessToken);
+      const res = await adminFetchRaw(`${API_BASE}/api/v1/admin/config/categories`);
       if (!res.ok) throw new Error('Failed to fetch categories');
       const json = await res.json();
       return json.data.categories as ConfigCategory[];
@@ -86,7 +69,7 @@ export function ConfigManager() {
   } = useQuery({
     queryKey: ['config-current'],
     queryFn: async () => {
-      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/config/current`, getValidAccessToken);
+      const res = await adminFetchRaw(`${API_BASE}/api/v1/admin/config/current`);
       if (!res.ok) throw new Error('Failed to fetch config');
       const json = await res.json();
       return json.data.config as Record<string, ConfigValue>;
@@ -95,7 +78,7 @@ export function ConfigManager() {
 
   const exportMutation = useMutation({
     mutationFn: async (format: string) => {
-      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/config/export`, getValidAccessToken, {
+      const res = await adminFetchRaw(`${API_BASE}/api/v1/admin/config/export`, {
         method: 'POST',
         body: JSON.stringify({ format, includeSecrets: false }),
       });
@@ -125,7 +108,7 @@ export function ConfigManager() {
 
   const saveMutation = useMutation({
     mutationFn: async (variables: Record<string, string>) => {
-      const res = await fetchWithAuth(`${API_BASE}/api/v1/admin/config/save-env`, getValidAccessToken, {
+      const res = await adminFetchRaw(`${API_BASE}/api/v1/admin/config/save-env`, {
         method: 'POST',
         body: JSON.stringify({ variables, target: 'backend' }),
       });
@@ -297,6 +280,7 @@ export function ConfigManager() {
 
   const categories = categoriesData || [];
   const activeCategory = categories.find((c) => c.id === activeTab) ?? categories[0];
+  const configTabs: AdminSubtabsTab[] = categories.map(cat => ({ id: cat.id, label: cat.name }));
 
   return (
     <div className='space-y-3'>
@@ -342,30 +326,24 @@ export function ConfigManager() {
         </div>
       </div>
 
-      <div className='rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden'>
-        <div className='flex items-center gap-0.5 border-b border-zinc-100 dark:border-zinc-800 px-2 pt-1 overflow-x-auto scrollbar-hide'>
-          {categories.map((cat) => (
-            <button
-              type='button'
-              key={cat.id}
-              onClick={() => setActiveTab(cat.id)}
-              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 whitespace-nowrap transition-all outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 ${
-                activeTab === cat.id
-                  ? 'border-zinc-900 dark:border-zinc-200 text-zinc-900 dark:text-zinc-100'
-                  : 'border-transparent text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
-              }`}
-            >
-              {cat.name}
-              <span className={`font-mono text-xs px-1 py-0.5 rounded ${
-                activeTab === cat.id
-                  ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500'
-              }`}>
-                {cat.variables.length}
-              </span>
-            </button>
-          ))}
-        </div>
+        <div className='rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden'>
+          <AdminSubtabs
+            tabs={configTabs}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            renderTab={(tab, isActive) => (
+              <>
+                {tab.label}
+                <span className={`font-mono text-xs px-1 py-0.5 rounded ${
+                  isActive
+                    ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
+                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500'
+                }`}>
+                  {categories.find(c => c.id === tab.id)?.variables.length ?? 0}
+                </span>
+              </>
+            )}
+          />
 
         {activeCategory && (
           <div className='divide-y divide-zinc-50 dark:divide-zinc-800/50'>
