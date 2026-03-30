@@ -1,6 +1,28 @@
 {
-  "total": 272,
+  "total": 273,
   "items": [
+    {
+      "path": "/posts/2026/haircut.md",
+      "year": "2026",
+      "slug": "haircut",
+      "title": "누구나 외롭다.",
+      "description": "고독과 바흐로 채운 어느 미용실 원장님과의 대화.",
+      "snippet": "고독과 바흐로 채운 어느 미용실 원장님과의 대화.",
+      "date": "2026-03-30",
+      "tags": [
+        "Identity",
+        "Architecture",
+        "Bach",
+        "Solitude",
+        "Deep Talk"
+      ],
+      "category": "Life",
+      "author": "Admin",
+      "readingTime": "3 min read",
+      "published": true,
+      "coverImage": "/images/2026/haircut/1.png",
+      "url": "/blog/2026/haircut"
+    },
     {
       "path": "/posts/2026/c-lang-1.md",
       "year": "2026",
@@ -5760,13 +5782,14 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-03-28T13:42:55.800Z",
+  "generatedAt": "2026-03-30T18:39:07.527Z",
   "years": [
     "2026",
     "2025",
     "2024"
   ],
   "categoryCounts": {
+    "Life": 1,
     "기술": 23,
     "Git": 1,
     "system-architecture": 1,

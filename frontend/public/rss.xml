@@ -5,8 +5,21 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Sat, 28 Mar 2026 13:42:56 GMT</lastBuildDate>
+    <lastBuildDate>Mon, 30 Mar 2026 18:39:07 GMT</lastBuildDate>
     <language>en-US</language>
+    <item>
+      <title>누구나 외롭다.</title>
+      <description>고독과 바흐로 채운 어느 미용실 원장님과의 대화.</description>
+      <link>https://noblog.nodove.com/blog/2026/haircut</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/haircut</guid>
+      <pubDate>Mon, 30 Mar 2026 00:00:00 GMT</pubDate>
+      <category>Life</category>
+      <category>Identity</category>
+      <category>Architecture</category>
+      <category>Bach</category>
+      <category>Solitude</category>
+      <category>Deep Talk</category>
+    </item>
     <item>
       <title>[C 언어 1부] 배열은 왜 단순한 변수 묶음이 아닐까?</title>
       <description>배열 선언 한 줄이 실제로 어떻게 동작하며, 인덱싱이 왜 포인터 연산으로 환원되는지 추적해보기</description>
@@ -271,19 +284,6 @@
       <category>YAML Config</category>
       <category>Optional Extension</category>
       <category>MVC</category>
-      <category>Gateway</category>
-    </item>
-    <item>
-      <title>[Arena 상세] MiniMax2.5 분석</title>
-      <description>MiniMax2.5 구현의 src 구조, 경량성, 전역 상태 리스크를 중심으로 Arena 결과를 분석</description>
-      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-minimax-2-5</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-minimax-2-5</guid>
-      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
-      <category>AI Engineering</category>
-      <category>MiniMax2.5</category>
-      <category>src layout</category>
-      <category>Global State</category>
-      <category>Prototype</category>
       <category>Gateway</category>
     </item>
   </channel>

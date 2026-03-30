@@ -21,6 +21,7 @@
     "current-crowd.md",
     "draft-continuation-test.md",
     "git-history-rewrite-reset-rebase-reflog.md",
+    "haircut.md",
     "hedgefunds_transcation_manage.md",
     "io-redirection-pipeline.md",
     "limitation_of_bestcases.md",
@@ -39,7 +40,7 @@
     "understanding-ssm-and-mamba.md",
     "vim-architecture-functionality-commands-integration.md"
   ],
-  "generatedAt": "2026-03-28T13:42:55.708Z",
-  "totalFiles": 38,
+  "generatedAt": "2026-03-30T18:39:07.437Z",
+  "totalFiles": 39,
   "excludedFiles": 0
 }
