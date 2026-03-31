@@ -5,8 +5,22 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Tue, 31 Mar 2026 04:34:22 GMT</lastBuildDate>
+    <lastBuildDate>Tue, 31 Mar 2026 04:38:48 GMT</lastBuildDate>
     <language>en-US</language>
+    <item>
+      <title>약점으로 오해되는 예민함, HSP</title>
+      <description>HSP는 유난이나 결함이 아니라, 더 깊게 받아들이고 더 쉽게 과부하되는 처리 방식에 가깝다.</description>
+      <link>https://noblog.nodove.com/blog/2026/hsp</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/hsp</guid>
+      <pubDate>Tue, 31 Mar 2026 00:00:00 GMT</pubDate>
+      <category>Mindset</category>
+      <category>HSP</category>
+      <category>Highly Sensitive Person</category>
+      <category>Sensory Processing Sensitivity</category>
+      <category>Emotional Regulation</category>
+      <category>Boundaries</category>
+      <category>Burnout</category>
+    </item>
     <item>
       <title>누구나 외롭다.</title>
       <description>고독과 바흐로 채운 어느 미용실 원장님과의 대화.</description>
@@ -272,19 +286,6 @@
       <category>Session</category>
       <category>Vector DB</category>
       <category>Flat MVC</category>
-    </item>
-    <item>
-      <title>[Arena 상세] Kimi_2.5 분석</title>
-      <description>Kimi_2.5의 YAML 중심 구성과 ImportError 기반 optional extension 패턴을 중심으로 분석</description>
-      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-kimi-2-5</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-kimi-2-5</guid>
-      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
-      <category>AI Engineering</category>
-      <category>Kimi_2.5</category>
-      <category>YAML Config</category>
-      <category>Optional Extension</category>
-      <category>MVC</category>
-      <category>Gateway</category>
     </item>
   </channel>
 </rss>

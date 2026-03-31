@@ -23,6 +23,7 @@
     "git-history-rewrite-reset-rebase-reflog.md",
     "haircut.md",
     "hedgefunds_transcation_manage.md",
+    "hsp.md",
     "io-redirection-pipeline.md",
     "limitation_of_bestcases.md",
     "nobel1-kursk-tanks.md",
@@ -40,7 +41,7 @@
     "understanding-ssm-and-mamba.md",
     "vim-architecture-functionality-commands-integration.md"
   ],
-  "generatedAt": "2026-03-31T04:34:21.533Z",
-  "totalFiles": 39,
+  "generatedAt": "2026-03-31T04:38:48.242Z",
+  "totalFiles": 40,
   "excludedFiles": 0
 }

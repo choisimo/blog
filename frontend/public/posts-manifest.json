@@ -1,6 +1,29 @@
 {
-  "total": 273,
+  "total": 274,
   "items": [
+    {
+      "path": "/posts/2026/hsp.md",
+      "year": "2026",
+      "slug": "hsp",
+      "title": "약점으로 오해되는 예민함, HSP",
+      "description": "HSP는 유난이나 결함이 아니라, 더 깊게 받아들이고 더 쉽게 과부하되는 처리 방식에 가깝다.",
+      "snippet": "HSP는 유난이나 결함이 아니라, 더 깊게 받아들이고 더 쉽게 과부하되는 처리 방식에 가깝다.",
+      "date": "2026-03-31",
+      "tags": [
+        "HSP",
+        "Highly Sensitive Person",
+        "Sensory Processing Sensitivity",
+        "Emotional Regulation",
+        "Boundaries",
+        "Burnout"
+      ],
+      "category": "Mindset",
+      "author": "Admin",
+      "readingTime": "9 min read",
+      "published": true,
+      "coverImage": "/images/2026/hsp/leaf.png",
+      "url": "/blog/2026/hsp"
+    },
     {
       "path": "/posts/2026/haircut.md",
       "year": "2026",
@@ -5782,13 +5805,14 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-03-31T04:34:21.625Z",
+  "generatedAt": "2026-03-31T04:38:48.333Z",
   "years": [
     "2026",
     "2025",
     "2024"
   ],
   "categoryCounts": {
+    "Mindset": 1,
     "Life": 1,
     "기술": 23,
     "Git": 1,
