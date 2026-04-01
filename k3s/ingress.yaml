@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: blog-backend
+  namespace: blog
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: blog-redirect-https@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+    - secretName: blog-origin-tls
+      hosts:
+        - api.nodove.com
+  rules:
+    - host: api.nodove.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  name: http

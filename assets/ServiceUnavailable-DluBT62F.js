@@ -1,0 +1,1 @@
+import{j as r}from"./ui-Dic__jr_.js";import{aq as t,ar as a,aO as e}from"./index-DWAGNaEJ.js";import"./vendor-D7jv_ly0.js";import"./markdown-CRHJ9H2o.js";import"./utils-B2rm_Apj.js";import"./search-Ch1WBRTM.js";function l(){return r.jsx(t,{...e,actions:[a.retry,a.home]})}export{l as default};

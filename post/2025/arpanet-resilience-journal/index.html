@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>스푸트니크의 그림자 아래, 내가 본 ARPANET의 첫 호흡 | nodove blog</title>
+    <meta name="description" content="냉전의 긴장 속에서 태어난 ARPANET을 따라가며, 패킷 교환과 IMP가 가져온 혁신을 밤새 되짚은 나의 기록" />
+    <link rel="canonical" href="http://localhost:3000/blog/2025/arpanet-resilience-journal" />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="http://localhost:3000/blog/2025/arpanet-resilience-journal" />
+    <meta property="og:title" content="스푸트니크의 그림자 아래, 내가 본 ARPANET의 첫 호흡 | nodove blog" />
+    <meta property="og:description" content="냉전의 긴장 속에서 태어난 ARPANET을 따라가며, 패킷 교환과 IMP가 가져온 혁신을 밤새 되짚은 나의 기록" />
+    <meta property="og:image" content="http://localhost:3000/images/2025/nuclear.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="스푸트니크의 그림자 아래, 내가 본 ARPANET의 첫 호흡 | nodove blog" />
+    <meta name="twitter:description" content="냉전의 긴장 속에서 태어난 ARPANET을 따라가며, 패킷 교환과 IMP가 가져온 혁신을 밤새 되짚은 나의 기록" />
+    <meta name="twitter:image" content="http://localhost:3000/images/2025/nuclear.png" />
+
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Fonts: Pretendard (sans) + JetBrains Mono (mono) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@latest/dist/web/variable/pretendardvariable-dynamic-subset.css" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+
+    
+    <script>(function(){try{if(!location.hash||location.hash==="#/"){location.replace(location.pathname+location.search+"#/blog/2025/arpanet-resilience-journal");}}catch(e){}})();</script>
+    <script>
+      (function() {
+        const theme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const root = document.documentElement;
+        root.classList.remove('light', 'dark', 'terminal');
+        
+        if (theme === 'terminal') {
+          // Terminal uses dark as base with additional terminal class
+          root.classList.add('dark', 'terminal');
+        } else if (theme === 'dark' || (theme === 'system' && prefersDark) || (!theme && prefersDark)) {
+          root.classList.add('dark');
+        } else if (theme === 'light') {
+          root.classList.add('light');
+        } else if (!theme) {
+          // Default: terminal theme for new visitors
+          root.classList.add('dark', 'terminal');
+        }
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module">
+      // Runtime configuration injected by Vite at build time
+      // Allows the static site (GitHub Pages) to find the unified backend
+      // Note: import.meta.env.* will be statically replaced by Vite during build
+      // If not set, getApiBaseUrl() will fall back to localStorage or null
+      window.APP_CONFIG = Object.assign({}, window.APP_CONFIG || {}, {
+        apiBaseUrl: import.meta.env.VITE_API_BASE_URL || null,
+      });
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+    <script defer src="/ai-memo/ai-memo.js?v=20251019-1"></script>
+  </body>
+</html>

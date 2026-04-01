@@ -1,0 +1,27 @@
+# =============================================================================
+# GitHub Actions Secrets - 프론트엔드/CI 전용
+# =============================================================================
+# 이 파일은 GitHub Actions 워크플로우에서 사용하는 secrets 템플릿입니다.
+# 백엔드 인프라(DB, SSH, 모니터링 등)는 .env.backend에서 별도 관리합니다.
+#
+# 사용법:
+#   1. 복사: cp .gh_env .gh_env.local
+#   2. 실제 값 입력 후 GitHub CLI로 등록:
+#      grep -v '^#' .gh_env.local | grep -v '^$' | while IFS='=' read -r key value; do
+#        gh secret set "$key" --body "$value"
+#      done
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# [REQUIRED] Frontend Build (deploy.yml, build-extra-images.yml)
+# -----------------------------------------------------------------------------
+VITE_API_BASE_URL=https://api.nodove.com
+VITE_TERMINAL_GATEWAY_URL=wss://terminal.nodove.com
+
+# -----------------------------------------------------------------------------
+# [OPTIONAL] Frontend Features
+# -----------------------------------------------------------------------------
+VITE_CHAT_BASE_URL=
+VITE_CHAT_API_KEY=
+VITE_FEATURE_FAB=true

@@ -1,0 +1,1 @@
+import{j as m}from"./ui-Dic__jr_.js";import{d as r}from"./index-DWAGNaEJ.js";function a({className:e,...t}){return m.jsx("div",{className:r("animate-pulse rounded-md bg-muted/80 dark:bg-muted/50",e),...t})}export{a as S};

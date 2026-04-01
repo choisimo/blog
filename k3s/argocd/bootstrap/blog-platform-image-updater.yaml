@@ -1,0 +1,41 @@
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: blog-platform
+  namespace: argocd
+spec:
+  writeBackConfig:
+    method: argocd
+  applicationRefs:
+    - namePattern: blog-platform
+      images:
+        - alias: blog-api
+          imageName: ghcr.io/choisimo/blog-api:latest
+          commonUpdateSettings:
+            updateStrategy: newest-build
+            allowTags: regexp:^[0-9a-f]{7}$
+          manifestTargets:
+            kustomize:
+              name: ghcr.io/choisimo/blog-api
+        - alias: blog-terminal
+          imageName: ghcr.io/choisimo/blog-terminal:latest
+          commonUpdateSettings:
+            updateStrategy: newest-build
+            allowTags: regexp:^[0-9a-f]{7}$
+          manifestTargets:
+            kustomize:
+              name: ghcr.io/choisimo/blog-terminal
+        - alias: piston
+          imageName: ghcr.io/engineer-man/piston:latest
+          commonUpdateSettings:
+            updateStrategy: digest
+          manifestTargets:
+            kustomize:
+              name: ghcr.io/engineer-man/piston
+        - alias: open-notebook
+          imageName: lfnovo/open_notebook:v1-latest
+          commonUpdateSettings:
+            updateStrategy: digest
+          manifestTargets:
+            kustomize:
+              name: lfnovo/open_notebook

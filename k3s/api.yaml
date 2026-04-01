@@ -1,0 +1,149 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: api-sqlite
+  namespace: blog
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: blog
+spec:
+  selector:
+    app: api
+  ports:
+    - name: http
+      port: 5080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: blog
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      imagePullSecrets:
+        - name: ghcr-creds
+      initContainers:
+        - name: sync-repo
+          image: alpine/git:2.47.2
+          imagePullPolicy: Always
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              repo_url="${CONTENT_GIT_REPO_AUTH:-$CONTENT_GIT_REPO}"
+              test -n "$repo_url"
+              git clone --depth 1 --branch "$CONTENT_GIT_REF" "$repo_url" /repo
+          envFrom:
+            - configMapRef:
+                name: blog-app-config
+            - secretRef:
+                name: blog-app-secrets
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: repo-data
+              mountPath: /repo
+      containers:
+        - name: api
+          image: ghcr.io/choisimo/blog-api:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 5080
+          envFrom:
+            - configMapRef:
+                name: blog-app-config
+            - secretRef:
+                name: blog-app-secrets
+          volumeMounts:
+            - name: sqlite-data
+              mountPath: /app/.data
+            - name: repo-data
+              mountPath: /frontend
+              subPath: frontend
+              readOnly: true
+            - name: repo-data
+              mountPath: /workers
+              subPath: workers
+              readOnly: true
+            - name: repo-data
+              mountPath: /backend
+              subPath: backend
+              readOnly: true
+          startupProbe:
+            httpGet:
+              path: /api/v1/healthz
+              port: http
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /api/v1/healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/v1/healthz
+              port: http
+            initialDelaySeconds: 45
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1
+              memory: 1Gi
+        - name: ai-worker
+          image: ghcr.io/choisimo/blog-api:latest
+          imagePullPolicy: Always
+          command: ["node", "src/workers/ai-worker.js"]
+          workingDir: /app
+          envFrom:
+            - configMapRef:
+                name: blog-app-config
+            - secretRef:
+                name: blog-app-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 400m
+              memory: 512Mi
+      volumes:
+        - name: sqlite-data
+          persistentVolumeClaim:
+            claimName: api-sqlite
+        - name: repo-data
+          emptyDir:
+            sizeLimit: 2Gi

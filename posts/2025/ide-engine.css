@@ -1,0 +1,175 @@
+/* ═══ IDE MODE ENGINE CSS ═══ */
+body.ide-mode {
+  padding: 0 !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+  overflow: hidden !important;
+  height: 100vh !important;
+  flex-direction: row !important;
+}
+
+/* Hide header in IDE mode */
+body.ide-mode > .header,
+body.ide-mode > .container > .header,
+body.ide-mode .card > .header {
+  display: none !important;
+}
+
+body.ide-mode > .card,
+body.ide-mode > .container > .card {
+  flex: 1 !important;
+  max-width: none !important;
+  border-radius: 0 !important;
+  border: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100vh !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Hide legacy elements in IDE mode */
+body.ide-mode .code-panel,
+body.ide-mode .step-display,
+body.ide-mode .__rtx-runtime-panel,
+body.ide-mode .btn-code {
+  display: none !important;
+}
+
+/* Make layout fill card */
+body.ide-mode .layout,
+body.ide-mode .layout-container {
+  flex: 1 !important;
+  padding: 16px !important;
+  margin: 0 !important;
+  overflow-y: auto !important;
+}
+
+/* Keep controls at bottom */
+body.ide-mode .controls {
+  padding: 8px 16px !important;
+  margin: 0 !important;
+  background: var(--panel, #252526) !important;
+  border-top: 1px solid var(--border, #3e3e42) !important;
+  border-radius: 0 !important;
+}
+
+/* IDE Code Sidebar */
+.ide-sidebar {
+  display: none;
+  width: 480px;
+  flex-shrink: 0;
+  flex-direction: column;
+  background: #0d1117;
+  overflow: hidden;
+  border-left: 1px solid var(--border, #3e3e42);
+  z-index: 100;
+}
+body.ide-mode .ide-sidebar {
+  display: flex !important;
+}
+
+/* IDE Header Overlay */
+.ide-header-overlay {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--panel, #252526);
+  border-bottom: 1px solid var(--border, #3e3e42);
+  flex-shrink: 0;
+  z-index: 20;
+}
+body.ide-mode .ide-header-overlay { display: flex; }
+.ide-header-overlay h2 {
+  margin: 0; font-size: 0.9rem; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ide-header-overlay .ide-header-actions {
+  display: flex; gap: 8px; align-items: center; flex-shrink: 0;
+}
+
+/* Sidebar Layout */
+.ide-sidebar-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.ide-sidebar-section.ide-code-area { flex: 5; border-bottom: 1px solid #21262d; }
+.ide-sidebar-section.ide-vars-area { flex: 3; }
+
+.ide-sidebar-title {
+  font-size: 0.7rem; color: #58a6ff; background: #161b22;
+  border-bottom: 1px solid #21262d; padding: 8px 16px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  flex-shrink: 0; font-weight: 600;
+}
+.ide-sidebar-body {
+  flex: 1; overflow-y: auto; overflow-x: auto; padding: 0;
+}
+
+/* Source Code */
+.ide-src-code {
+  margin: 0; padding: 12px 0;
+  font-family: JetBrains Mono, monospace;
+  font-size: 12.5px; line-height: 1.7;
+  white-space: pre; color: #e6edf3;
+  counter-reset: ide-src-line;
+  min-width: max-content;
+}
+.ide-src-line {
+  display: block; padding: 0 16px 0 3.6rem;
+  position: relative; white-space: pre; transition: background 0.15s;
+}
+.ide-src-line::before {
+  counter-increment: ide-src-line;
+  content: counter(ide-src-line);
+  position: absolute; left: 0.8rem; width: 2rem;
+  text-align: right; color: #484f58; font-size: 11.5px; user-select: none;
+}
+.ide-src-line.active {
+  background: rgba(56, 139, 253, 0.15);
+  box-shadow: inset 3px 0 0 #58a6ff;
+}
+.ide-src-line.active::before { color: #79c0ff; }
+
+/* Tokens */
+.itok-kw { color: #ff7b72; font-weight: 600; }
+.itok-fn { color: #d2a8ff; }
+.itok-bi { color: #79c0ff; }
+.itok-num { color: #a5d6ff; }
+.itok-str { color: #a5d6ff; }
+.itok-cm { color: #8b949e; font-style: italic; }
+
+/* Variables */
+.ide-live-vars { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
+.ide-live-vars th {
+  text-align: left; color: #8b949e; font-weight: 500;
+  padding: 6px 16px; border-bottom: 1px solid #21262d;
+  background: #0d1117; position: sticky; top: 0; z-index: 1;
+}
+.ide-live-vars td {
+  padding: 4px 16px; border-bottom: 1px solid #161b22; color: #c9d1d9;
+}
+.ide-live-vars td:first-child { color: #79c0ff; font-weight: 500; }
+.ide-live-vars td:last-child { color: #e6edf3; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  body.ide-mode { flex-direction: column !important; }
+  .ide-sidebar { width: 100%; flex: 1; border-left: none; border-top: 1px solid var(--border, #3e3e42); }
+}
+
+/* IDE Code Button */
+.ide-btn-code {
+  background: none; border: 1px solid var(--border, #3e3e42); border-radius: 6px;
+  color: #888; cursor: pointer; font-size: 0.8rem; font-weight: bold;
+  display: flex; align-items: center; justify-content: center;
+  padding: 4px 10px; font-family: JetBrains Mono, monospace;
+  transition: all 0.2s; height: 26px; z-index: 1000;
+}
+.ide-btn-code:hover, .ide-btn-code.active {
+  border-color: var(--primary, #007acc); color: var(--primary, #007acc);
+  background: rgba(0,122,204,0.1);
+}
