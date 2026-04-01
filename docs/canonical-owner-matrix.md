@@ -81,12 +81,12 @@ When a domain is not the canonical owner, its route must be one of:
 
 | Class | Surface | Notes |
 | --- | --- | --- |
-| external/public | `GET /api/v1/comments` | Worker entrypoint proxies to backend canonical read path |
-| external/public | `POST /api/v1/comments` | Worker entrypoint proxies comment creation to backend |
-| external/public | `GET /api/v1/comments/stream` | Worker entrypoint proxies backend-owned SSE |
-| external/public | `GET /api/v1/comments/reactions/batch` | Backend-owned reaction state via worker proxy |
-| external/public | `GET|POST|DELETE /api/v1/comments/:commentId/reactions` | Backend-owned reaction mutation/read surface via worker proxy |
-| internal/proxy | `DELETE /api/v1/comments/:id` | Worker keeps admin gate, then forwards to backend delete handler |
+| external/public | `GET /api/v1/comments` | Worker reads comment threads directly from D1 |
+| external/public | `POST /api/v1/comments` | Worker writes new comments directly to D1 |
+| external/public | `GET /api/v1/comments/stream` | Worker-owned D1 polling SSE for comment threads |
+| external/public | `GET /api/v1/comments/reactions/batch` | Worker aggregates reaction state directly from D1 |
+| external/public | `GET|POST|DELETE /api/v1/comments/:commentId/reactions` | Worker-owned reaction read/mutation surface on D1 |
+| internal/edge-admin | `DELETE /api/v1/comments/:id` | Worker keeps admin auth and soft-deletes comments in D1 |
 
 ### Memories And Embeddings
 

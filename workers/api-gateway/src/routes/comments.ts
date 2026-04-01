@@ -1,158 +1,449 @@
-import { Hono, type Context } from 'hono';
-import type { HonoEnv, Env } from '../types';
+import { Hono } from 'hono';
+import type { HonoEnv, Comment } from '../types';
+import { badRequest, notFound, success } from '../lib/response';
+import { execute, queryAll, queryOne } from '../lib/d1';
 import { getCorsHeadersForRequest } from '../lib/cors';
 import { requireAdmin } from '../middleware/auth';
 
 const comments = new Hono<HonoEnv>();
 
-function applyCorsHeaders(
-  headers: Headers,
-  corsHeaders: Record<string, string>
-): void {
-  headers.delete('Access-Control-Allow-Origin');
-  headers.delete('Access-Control-Allow-Credentials');
-  headers.delete('Access-Control-Allow-Methods');
-  headers.delete('Access-Control-Allow-Headers');
-  headers.delete('Access-Control-Max-Age');
+const ALLOWED_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '🎉', '💡'];
 
-  Object.entries(corsHeaders).forEach(([key, value]) => {
-    headers.set(key, value);
-  });
+function stripHtml(input: string): string {
+  return input.replace(/<[^>]*>/g, '').trim();
 }
 
-function buildBackendUrl(request: Request, env: Env): URL | null {
-  if (!env.BACKEND_ORIGIN) {
-    return null;
-  }
-
-  const requestUrl = new URL(request.url);
-  const suffix = requestUrl.pathname.replace(/^\/api\/v1\/comments/, '');
-  const backendUrl = new URL(`/api/v1/comments${suffix}`, env.BACKEND_ORIGIN);
-  backendUrl.search = requestUrl.search;
-  return backendUrl;
+function normalizePostIdentifier(value: unknown): string {
+  return String(value || '').trim().slice(0, 256);
 }
 
-async function proxyComments(
-  c: Context<HonoEnv>,
-  options: { sse?: boolean } = {}
-): Promise<Response> {
-  const corsHeaders = await getCorsHeadersForRequest(c.req.raw, c.env);
-  const backendUrl = buildBackendUrl(c.req.raw, c.env);
+function resolvePostIdentifier(value: {
+  postId?: unknown;
+  postSlug?: unknown;
+  slug?: unknown;
+}): string {
+  return normalizePostIdentifier(value.postId || value.postSlug || value.slug);
+}
 
-  if (!backendUrl) {
-    return new Response(
-      JSON.stringify({
-        ok: false,
-        error: {
-          message: 'BACKEND_ORIGIN not configured',
-          code: 'CONFIG_ERROR',
-        },
-      }),
-      {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders,
-        },
-      }
-    );
+function normalizeCommentId(value: unknown): string {
+  return String(value || '').trim().slice(0, 128);
+}
+
+function normalizeEmoji(value: unknown): string {
+  return String(value || '').trim().slice(0, 8);
+}
+
+function normalizeFingerprint(value: unknown): string {
+  return String(value || '').trim().slice(0, 128);
+}
+
+function mapComment(item: Comment) {
+  return {
+    id: item.id,
+    postId: item.post_id,
+    author: item.author,
+    content: item.content,
+    website: null,
+    parentId: null,
+    createdAt: item.created_at,
+  };
+}
+
+comments.get('/reactions/batch', async (c) => {
+  const raw = String(c.req.query('commentIds') || '').trim();
+  const ids = raw
+    .split(',')
+    .map((value) => normalizeCommentId(value))
+    .filter(Boolean)
+    .slice(0, 200);
+
+  if (ids.length === 0) {
+    return success(c, { reactions: {} });
   }
 
-  const headers = new Headers(c.req.raw.headers);
-  const clientIp = c.req.raw.headers.get('CF-Connecting-IP') || '';
-
-  headers.delete('Host');
-  headers.set('Host', 'blog-b.nodove.com');
-  if (c.env.BACKEND_KEY) {
-    headers.set('X-Backend-Key', c.env.BACKEND_KEY);
-  } else {
-    headers.delete('X-Backend-Key');
-  }
-  headers.set('X-Forwarded-For', clientIp);
-  headers.set('X-Forwarded-Proto', 'https');
-  headers.set('X-Real-IP', clientIp);
-  headers.set('X-Request-ID', crypto.randomUUID());
-  headers.set('CF-IPCountry', c.req.raw.headers.get('CF-IPCountry') || '');
-
-  const init: RequestInit & { duplex?: 'half' } = {
-    method: c.req.raw.method,
-    headers,
-    redirect: 'manual',
-    signal: c.req.raw.signal,
+  type ReactionRow = {
+    comment_id: string;
+    emoji: string;
+    count: number | string;
   };
 
-  if (c.req.raw.method !== 'GET' && c.req.raw.method !== 'HEAD') {
-    init.body = c.req.raw.body;
-    init.duplex = 'half';
+  const placeholders = ids.map(() => '?').join(',');
+  const rows = await queryAll<ReactionRow>(
+    c.env.DB,
+    `SELECT comment_id, emoji, COUNT(*) as count
+       FROM comment_reactions
+      WHERE comment_id IN (${placeholders})
+      GROUP BY comment_id, emoji`,
+    ...ids
+  );
+
+  const reactions: Record<string, Array<{ emoji: string; count: number }>> = {};
+  for (const id of ids) reactions[id] = [];
+
+  for (const row of rows) {
+    if (!reactions[row.comment_id]) reactions[row.comment_id] = [];
+    reactions[row.comment_id].push({
+      emoji: row.emoji,
+      count: Number(row.count || 0),
+    });
+  }
+
+  return success(c, { reactions });
+});
+
+comments.get('/:commentId/reactions', async (c) => {
+  const commentId = normalizeCommentId(c.req.param('commentId'));
+  if (!commentId) {
+    return badRequest(c, 'commentId is required');
+  }
+
+  type ReactionRow = {
+    emoji: string;
+    count: number | string;
+  };
+
+  const rows = await queryAll<ReactionRow>(
+    c.env.DB,
+    `SELECT emoji, COUNT(*) as count
+       FROM comment_reactions
+      WHERE comment_id = ?
+      GROUP BY emoji
+      ORDER BY count DESC`,
+    commentId
+  );
+
+  return success(c, {
+    reactions: rows.map((row) => ({
+      emoji: row.emoji,
+      count: Number(row.count || 0),
+    })),
+  });
+});
+
+comments.post('/:commentId/reactions', async (c) => {
+  const commentId = normalizeCommentId(c.req.param('commentId'));
+  const body = (await c.req.json().catch(() => ({}))) as {
+    emoji?: string;
+    fingerprint?: string;
+  };
+  const emoji = normalizeEmoji(body.emoji);
+  const fingerprint = normalizeFingerprint(body.fingerprint);
+
+  if (!commentId) {
+    return badRequest(c, 'commentId is required');
+  }
+  if (!emoji) {
+    return badRequest(c, 'emoji is required');
+  }
+  if (!fingerprint) {
+    return badRequest(c, 'fingerprint is required');
+  }
+  if (!ALLOWED_EMOJIS.includes(emoji)) {
+    return badRequest(c, 'Invalid emoji');
+  }
+
+  const comment = await queryOne<{ id: string }>(
+    c.env.DB,
+    'SELECT id FROM comments WHERE id = ? AND status = ?',
+    commentId,
+    'visible'
+  );
+  if (!comment) {
+    return notFound(c, 'Comment not found');
   }
 
   try {
-    const response = await fetch(backendUrl.toString(), init);
-    const responseHeaders = new Headers(response.headers);
-
-    applyCorsHeaders(responseHeaders, corsHeaders);
-
-    if (options.sse) {
-      responseHeaders.set('Cache-Control', 'no-cache, no-transform');
-      responseHeaders.set('Connection', 'keep-alive');
-      responseHeaders.set('X-Accel-Buffering', 'no');
+    await execute(
+      c.env.DB,
+      `INSERT INTO comment_reactions (id, comment_id, emoji, user_fingerprint, created_at)
+       VALUES (?, ?, ?, ?, ?)`,
+      `reaction-${crypto.randomUUID()}`,
+      commentId,
+      emoji,
+      fingerprint,
+      new Date().toISOString()
+    );
+    return success(c, { added: true, emoji }, 201);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (message.includes('UNIQUE constraint')) {
+      return success(c, { added: false, message: 'Already reacted' });
     }
+    throw error;
+  }
+});
 
-    if (response.status >= 502 && response.status <= 504) {
-      responseHeaders.delete('Content-Length');
-      responseHeaders.set('Content-Type', 'application/json');
-      responseHeaders.set('Retry-After', '30');
+comments.delete('/:commentId/reactions', async (c) => {
+  const commentId = normalizeCommentId(c.req.param('commentId'));
+  const body = (await c.req.json().catch(() => ({}))) as {
+    emoji?: string;
+    fingerprint?: string;
+  };
+  const emoji = normalizeEmoji(body.emoji);
+  const fingerprint = normalizeFingerprint(body.fingerprint);
 
-      return new Response(
-        JSON.stringify({
+  if (!commentId) {
+    return badRequest(c, 'commentId is required');
+  }
+  if (!emoji) {
+    return badRequest(c, 'emoji is required');
+  }
+  if (!fingerprint) {
+    return badRequest(c, 'fingerprint is required');
+  }
+
+  await execute(
+    c.env.DB,
+    `DELETE FROM comment_reactions
+      WHERE comment_id = ? AND emoji = ? AND user_fingerprint = ?`,
+    commentId,
+    emoji,
+    fingerprint
+  );
+
+  return success(c, { removed: true });
+});
+
+comments.get('/', async (c) => {
+  const postId = resolvePostIdentifier({
+    postId: c.req.query('postId'),
+    postSlug: c.req.query('postSlug'),
+    slug: c.req.query('slug'),
+  });
+
+  if (!postId) {
+    return badRequest(c, 'postId, postSlug, or slug is required');
+  }
+
+  const items = await queryAll<Comment>(
+    c.env.DB,
+    `SELECT id, post_id, author, content, email, status, created_at, updated_at
+       FROM comments
+      WHERE post_id = ? AND status = 'visible'
+      ORDER BY created_at ASC`,
+    postId
+  );
+
+  const mapped = items.map(mapComment);
+  return success(c, { comments: mapped, total: mapped.length });
+});
+
+comments.post('/', async (c) => {
+  const body = (await c.req.json().catch(() => ({}))) as {
+    postId?: string;
+    postSlug?: string;
+    slug?: string;
+    author?: string;
+    content?: string;
+    email?: string;
+    website?: string;
+    fingerprint?: string;
+  };
+
+  const postId = resolvePostIdentifier(body);
+  if (!postId) {
+    return badRequest(c, 'postId, postSlug, or slug is required');
+  }
+
+  if (typeof body.author !== 'string' || typeof body.content !== 'string') {
+    return badRequest(c, 'author and content are required');
+  }
+
+  if (body.author.length > 64 || body.content.length > 5000) {
+    return badRequest(c, 'Author or content too long');
+  }
+
+  const author = stripHtml(body.author).slice(0, 64);
+  const content = stripHtml(body.content).slice(0, 5000);
+  const email = typeof body.email === 'string' ? stripHtml(body.email).slice(0, 256) : null;
+  const fingerprint = normalizeFingerprint(
+    c.req.header('X-Device-Fingerprint') || body.fingerprint
+  );
+
+  if (!author || !content) {
+    return badRequest(c, 'Author and content must not be empty after sanitization');
+  }
+
+  if (fingerprint) {
+    const recent = await queryOne<{ id: string }>(
+      c.env.DB,
+      `SELECT id
+         FROM comments
+        WHERE device_fingerprint = ?
+          AND created_at > datetime('now', '-60 seconds')
+        LIMIT 1`,
+      fingerprint
+    );
+
+    if (recent) {
+      return c.json(
+        {
           ok: false,
           error: {
-            message: `Comments backend returned ${response.status}. Retry after 30 seconds.`,
-            code: 'BACKEND_UNAVAILABLE',
+            code: 'RATE_LIMITED',
+            message: 'Too many comments. Please wait a moment before posting again.',
           },
-        }),
-        {
-          status: 503,
-          headers: responseHeaders,
-        }
+        },
+        { status: 429 }
       );
     }
-
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: responseHeaders,
-    });
-  } catch (error) {
-    console.error('Comments proxy failed:', error);
-
-    return new Response(
-      JSON.stringify({
-        ok: false,
-        error: {
-          message: 'Could not connect to comments backend',
-          code: 'BACKEND_UNAVAILABLE',
-        },
-      }),
-      {
-        status: 503,
-        headers: {
-          'Content-Type': 'application/json',
-          'Retry-After': '30',
-          ...corsHeaders,
-        },
-      }
-    );
   }
-}
 
-comments.get('/', async (c) => proxyComments(c));
-comments.post('/', async (c) => proxyComments(c));
-comments.get('/stream', async (c) => proxyComments(c, { sse: true }));
-comments.get('/reactions/batch', async (c) => proxyComments(c));
-comments.get('/:commentId/reactions', async (c) => proxyComments(c));
-comments.post('/:commentId/reactions', async (c) => proxyComments(c));
-comments.delete('/:commentId/reactions', async (c) => proxyComments(c));
-comments.delete('/:id', requireAdmin, async (c) => proxyComments(c));
+  const commentId = `comment-${crypto.randomUUID()}`;
+  const now = new Date().toISOString();
+
+  await execute(
+    c.env.DB,
+    `INSERT INTO comments(
+       id,
+       post_id,
+       author,
+       email,
+       content,
+       device_fingerprint,
+       status,
+       created_at,
+       updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    commentId,
+    postId,
+    author,
+    email,
+    content,
+    fingerprint || null,
+    'visible',
+    now,
+    now
+  );
+
+  return success(c, { id: commentId }, 201);
+});
+
+comments.get('/stream', async (c) => {
+  const postId = resolvePostIdentifier({
+    postId: c.req.query('postId'),
+    postSlug: c.req.query('postSlug'),
+    slug: c.req.query('slug'),
+  });
+
+  if (!postId) {
+    return badRequest(c, 'postId, postSlug, or slug is required');
+  }
+
+  const encoder = new TextEncoder();
+  const corsHeaders = await getCorsHeadersForRequest(c.req.raw, c.env);
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (data: unknown) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+      };
+      const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+      const signal = c.req.raw.signal;
+
+      let closed = false;
+      let lastTs = Date.now();
+      let lastPing = 0;
+
+      const onAbort = () => {
+        closed = true;
+        try {
+          controller.close();
+        } catch {
+          void 0;
+        }
+      };
+
+      if (signal) {
+        if (signal.aborted) {
+          onAbort();
+          return;
+        }
+        signal.addEventListener('abort', onAbort, { once: true });
+      }
+
+      send({ type: 'open', postId, ts: Date.now() });
+
+      while (!closed) {
+        try {
+          const items = await queryAll<Comment>(
+            c.env.DB,
+            `SELECT id, post_id, author, content, email, status, created_at, updated_at
+               FROM comments
+              WHERE post_id = ? AND status = 'visible'
+              ORDER BY created_at ASC`,
+            postId
+          );
+
+          const appended = items
+            .filter((item) => Date.parse(item.created_at) > lastTs)
+            .map(mapComment);
+
+          if (appended.length > 0) {
+            appended.sort((left, right) => {
+              return Date.parse(left.createdAt || '') - Date.parse(right.createdAt || '');
+            });
+            send({ type: 'append', items: appended });
+            lastTs = Math.max(
+              lastTs,
+              ...appended.map((item) => Date.parse(item.createdAt || '') || 0)
+            );
+          }
+
+          const now = Date.now();
+          if (now - lastPing > 25000) {
+            send({ type: 'ping', ts: now });
+            lastPing = now;
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'poll failed';
+          send({ type: 'error', message });
+        }
+
+        await sleep(5000);
+      }
+
+      try {
+        signal?.removeEventListener('abort', onAbort);
+      } catch {
+        void 0;
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      ...corsHeaders,
+    },
+  });
+});
+
+comments.delete('/:id', requireAdmin, async (c) => {
+  const id = normalizeCommentId(c.req.param('id'));
+  if (!id) {
+    return badRequest(c, 'commentId is required');
+  }
+
+  const existing = await queryOne<{ id: string }>(
+    c.env.DB,
+    'SELECT id FROM comments WHERE id = ?',
+    id
+  );
+  if (!existing) {
+    return notFound(c, 'Comment not found');
+  }
+
+  await execute(
+    c.env.DB,
+    "UPDATE comments SET status = 'hidden', updated_at = ? WHERE id = ?",
+    new Date().toISOString(),
+    id
+  );
+
+  return success(c, { deleted: true });
+});
 
 export default comments;

@@ -19,8 +19,8 @@
   },
   "commentsBoundary": {
     "backendUsesDirectD1": true,
-    "workerUsesBackendProxy": true,
-    "workerUsesDirectD1": false
+    "workerUsesBackendProxy": false,
+    "workerUsesDirectD1": true
   },
   "generatedAt": "snapshot-managed",
   "routeMounts": [
