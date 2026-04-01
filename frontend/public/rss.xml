@@ -5,7 +5,7 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Wed, 01 Apr 2026 15:36:49 GMT</lastBuildDate>
+    <lastBuildDate>Wed, 01 Apr 2026 15:39:50 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
       <title>약점으로 오해되는 예민함, HSP</title>
@@ -20,6 +20,21 @@
       <category>Emotional Regulation</category>
       <category>Boundaries</category>
       <category>Burnout</category>
+    </item>
+    <item>
+      <title>[쿠버네티스-1] 이데아와 현실의 끝없는 투쟁</title>
+      <description>단순한 오케스트레이션 도구가 아닌, 쿠버네티스가 리눅스 커널 위에서 선언적 상태와 제어 루프를 통해 어떻게 시스템을 지배하는지 알아보기</description>
+      <link>https://noblog.nodove.com/blog/2026/k8s-start</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/k8s-start</guid>
+      <pubDate>Tue, 31 Mar 2026 00:00:00 GMT</pubDate>
+      <category>기술</category>
+      <category>Kubernetes</category>
+      <category>Architecture</category>
+      <category>Controller</category>
+      <category>Pod</category>
+      <category>kubelet</category>
+      <category>Linux Kernel</category>
+      <category>kube-proxy</category>
     </item>
     <item>
       <title>누구나 외롭다.</title>
@@ -273,19 +288,6 @@
       <category>Topology</category>
       <category>Agent Skills</category>
       <category>MCP</category>
-    </item>
-    <item>
-      <title>[Arena 상세] Grok_Fast_1 분석</title>
-      <description>Grok_Fast_1의 광범위 provider 지원과 기능 집중형 구조를 Arena 관점에서 분석</description>
-      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-grok-fast-1</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-grok-fast-1</guid>
-      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
-      <category>AI Engineering</category>
-      <category>Grok_Fast_1</category>
-      <category>Multi Provider</category>
-      <category>Session</category>
-      <category>Vector DB</category>
-      <category>Flat MVC</category>
     </item>
   </channel>
 </rss>

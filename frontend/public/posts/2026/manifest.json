@@ -25,6 +25,7 @@
     "hedgefunds_transcation_manage.md",
     "hsp.md",
     "io-redirection-pipeline.md",
+    "k8s-start.md",
     "limitation_of_bestcases.md",
     "nobel1-kursk-tanks.md",
     "personalized-readability-ux.md",
@@ -41,7 +42,7 @@
     "understanding-ssm-and-mamba.md",
     "vim-architecture-functionality-commands-integration.md"
   ],
-  "generatedAt": "2026-04-01T15:36:49.414Z",
-  "totalFiles": 40,
+  "generatedAt": "2026-04-01T15:39:50.300Z",
+  "totalFiles": 41,
   "excludedFiles": 0
 }

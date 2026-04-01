@@ -1,5 +1,5 @@
 {
-  "total": 274,
+  "total": 275,
   "items": [
     {
       "path": "/posts/2026/hsp.md",
@@ -23,6 +23,30 @@
       "published": true,
       "coverImage": "/images/2026/hsp/leaf.png",
       "url": "/blog/2026/hsp"
+    },
+    {
+      "path": "/posts/2026/k8s-start.md",
+      "year": "2026",
+      "slug": "k8s-start",
+      "title": "[쿠버네티스-1] 이데아와 현실의 끝없는 투쟁",
+      "description": "단순한 오케스트레이션 도구가 아닌, 쿠버네티스가 리눅스 커널 위에서 선언적 상태와 제어 루프를 통해 어떻게 시스템을 지배하는지 알아보기",
+      "snippet": "단순한 오케스트레이션 도구가 아닌, 쿠버네티스가 리눅스 커널 위에서 선언적 상태와 제어 루프를 통해 어떻게 시스템을 지배하는지 알아보기",
+      "date": "2026-03-31",
+      "tags": [
+        "Kubernetes",
+        "Architecture",
+        "Controller",
+        "Pod",
+        "kubelet",
+        "Linux Kernel",
+        "kube-proxy"
+      ],
+      "category": "기술",
+      "author": "Admin",
+      "readingTime": "12 min read",
+      "published": true,
+      "coverImage": "/images/2026/k8s-start/0.png",
+      "url": "/blog/2026/k8s-start"
     },
     {
       "path": "/posts/2026/haircut.md",
@@ -5805,7 +5829,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-04-01T15:36:49.504Z",
+  "generatedAt": "2026-04-01T15:39:50.393Z",
   "years": [
     "2026",
     "2025",
@@ -5813,8 +5837,8 @@
   ],
   "categoryCounts": {
     "Mindset": 1,
+    "기술": 24,
     "Life": 1,
-    "기술": 23,
     "Git": 1,
     "system-architecture": 1,
     "Finance": 1,
