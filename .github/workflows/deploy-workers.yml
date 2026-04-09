@@ -12,17 +12,41 @@ permissions:
   contents: read
 
 jobs:
-  deploy-api-gateway:
+  deploy-workers:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: api-gateway
+            path: workers/api-gateway
+            cache: workers/api-gateway/package-lock.json
+          - id: r2-gateway
+            path: workers/r2-gateway
+            cache: workers/r2-gateway/package-lock.json
+          - id: terminal-gateway
+            path: workers/terminal-gateway
+            cache: workers/terminal-gateway/package-lock.json
+          - id: seo-gateway
+            path: workers/seo-gateway
+            cache: workers/seo-gateway/package-lock.json
+
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BACKEND_ORIGIN: ${{ secrets.BACKEND_ORIGIN }}
+      BACKEND_KEY: ${{ secrets.BACKEND_KEY }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      TERMINAL_SESSION_SECRET: ${{ secrets.TERMINAL_SESSION_SECRET }}
+      INTERNAL_KEY: ${{ secrets.INTERNAL_KEY }}
       AI_DEFAULT_MODEL: ${{ secrets.AI_DEFAULT_MODEL }}
       AI_VISION_MODEL: ${{ secrets.AI_VISION_MODEL }}
       PERPLEXITY_MODEL: ${{ secrets.PERPLEXITY_MODEL }}
       API_BASE_URL: ${{ secrets.API_BASE_URL }}
       ASSETS_BASE_URL: ${{ secrets.ASSETS_BASE_URL }}
       ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS }}
+      TERMINAL_CONNECT_TOKEN_TTL_SECONDS: ${{ secrets.TERMINAL_CONNECT_TOKEN_TTL_SECONDS }}
+      TERMINAL_BLOCKED_COUNTRIES: ${{ secrets.TERMINAL_BLOCKED_COUNTRIES }}
 
     steps:
       - name: Checkout
@@ -33,41 +57,61 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: workers/api-gateway/package-lock.json
+          cache-dependency-path: ${{ matrix.cache }}
 
       - name: Install dependencies
-        working-directory: workers/api-gateway
+        working-directory: ${{ matrix.path }}
         run: npm ci
 
       - name: Type-check worker
-        working-directory: workers/api-gateway
-        run: npm run typecheck
+        working-directory: ${{ matrix.path }}
+        run: npm run typecheck --if-present
 
       - name: Run worker tests
-        working-directory: workers/api-gateway
-        run: npm test
+        working-directory: ${{ matrix.path }}
+        run: npm test --if-present
 
       - name: Inject runtime secrets
-        working-directory: workers/api-gateway
+        working-directory: ${{ matrix.path }}
         run: |
           set -euo pipefail
+
           put_secret() {
             local key="$1"
             local value="$2"
-            if [ -n "$value" ]; then
+            if [ -n "${value}" ]; then
               printf "%s" "$value" | npx wrangler secret put "$key" --env production
             else
               echo "skip: $key (empty)"
             fi
           }
 
-          put_secret AI_DEFAULT_MODEL "${AI_DEFAULT_MODEL}"
-          put_secret AI_VISION_MODEL "${AI_VISION_MODEL}"
-          put_secret PERPLEXITY_MODEL "${PERPLEXITY_MODEL}"
-          put_secret API_BASE_URL "${API_BASE_URL}"
-          put_secret ASSETS_BASE_URL "${ASSETS_BASE_URL}"
-          put_secret ALLOWED_ORIGINS "${ALLOWED_ORIGINS}"
+          case "${{ matrix.id }}" in
+            api-gateway)
+              put_secret BACKEND_ORIGIN "${BACKEND_ORIGIN}"
+              put_secret BACKEND_KEY "${BACKEND_KEY}"
+              put_secret JWT_SECRET "${JWT_SECRET}"
+              put_secret AI_DEFAULT_MODEL "${AI_DEFAULT_MODEL}"
+              put_secret AI_VISION_MODEL "${AI_VISION_MODEL}"
+              put_secret PERPLEXITY_MODEL "${PERPLEXITY_MODEL}"
+              put_secret API_BASE_URL "${API_BASE_URL}"
+              put_secret ASSETS_BASE_URL "${ASSETS_BASE_URL}"
+              put_secret ALLOWED_ORIGINS "${ALLOWED_ORIGINS}"
+              ;;
+            r2-gateway)
+              put_secret INTERNAL_KEY "${INTERNAL_KEY}"
+              ;;
+            terminal-gateway)
+              put_secret JWT_SECRET "${JWT_SECRET}"
+              put_secret TERMINAL_SESSION_SECRET "${TERMINAL_SESSION_SECRET}"
+              put_secret TERMINAL_CONNECT_TOKEN_TTL_SECONDS "${TERMINAL_CONNECT_TOKEN_TTL_SECONDS}"
+              put_secret TERMINAL_BLOCKED_COUNTRIES "${TERMINAL_BLOCKED_COUNTRIES}"
+              ;;
+            seo-gateway)
+              echo "seo-gateway has no required secrets in this workflow"
+              ;;
+          esac
 
-      - name: Deploy api-gateway
-        working-directory: workers/api-gateway
+      - name: Deploy worker
+        working-directory: ${{ matrix.path }}
         run: npx wrangler deploy --env production
