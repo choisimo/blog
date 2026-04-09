@@ -1,22 +1,24 @@
 /**
- * Terminal Gateway - Rate Limiting
- * 
- * Uses KV to track connection attempts per IP
- * Limits: 5 connections per minute, 1 concurrent session per user
+ * Terminal Gateway - Rate Limiting and Session Lease Tracking
  */
 
-import type { Env, RateLimitResult, SessionInfo } from './types';
+import type { RateLimitResult, SessionInfo } from './types';
 
-const RATE_LIMIT_WINDOW = 60; // 1 minute in seconds
-const RATE_LIMIT_MAX = 5; // max connections per window
-const SESSION_TTL = 15 * 60; // 15 minutes session TTL
+const RATE_LIMIT_WINDOW = 60;
+const RATE_LIMIT_MAX = 5;
+const SESSION_TTL = 15 * 60;
 
-/**
- * Check rate limit for an IP address
- */
+function sessionKey(sessionId: string) {
+  return `terminal:session:${sessionId}`;
+}
+
+function userKey(userId: string) {
+  return `terminal:user:${userId}`;
+}
+
 export async function checkRateLimit(
   clientIP: string,
-  kv: KVNamespace
+  kv: KVNamespace,
 ): Promise<RateLimitResult> {
   const key = `ratelimit:${clientIP}`;
   const now = Math.floor(Date.now() / 1000);
@@ -27,15 +29,13 @@ export async function checkRateLimit(
     let windowStart = now;
 
     if (data) {
-      const parsed = JSON.parse(data);
-      // Check if we're still in the same window
-      if (now - parsed.windowStart < RATE_LIMIT_WINDOW) {
-        count = parsed.count;
+      const parsed = JSON.parse(data) as { count?: number; windowStart?: number };
+      if (parsed.windowStart && now - parsed.windowStart < RATE_LIMIT_WINDOW) {
+        count = parsed.count || 0;
         windowStart = parsed.windowStart;
       }
     }
 
-    // Check if limit exceeded
     if (count >= RATE_LIMIT_MAX) {
       return {
         allowed: false,
@@ -44,13 +44,10 @@ export async function checkRateLimit(
       };
     }
 
-    // Increment counter
-    count++;
-    await kv.put(
-      key,
-      JSON.stringify({ count, windowStart }),
-      { expirationTtl: RATE_LIMIT_WINDOW }
-    );
+    count += 1;
+    await kv.put(key, JSON.stringify({ count, windowStart }), {
+      expirationTtl: RATE_LIMIT_WINDOW,
+    });
 
     return {
       allowed: true,
@@ -59,32 +56,19 @@ export async function checkRateLimit(
     };
   } catch (err) {
     console.error('Rate limit check failed:', err);
-    // Allow on error (fail open)
     return { allowed: true, remaining: 1, resetAt: now + RATE_LIMIT_WINDOW };
   }
 }
 
-/**
- * Check if user already has an active session
- */
-export async function hasActiveSession(
-  userId: string,
-  kv: KVNamespace
-): Promise<boolean> {
-  const key = `session:${userId}`;
+export async function hasActiveSession(userId: string, kv: KVNamespace): Promise<boolean> {
   try {
-    const session = await kv.get(key);
-    if (!session) {
-      return false;
-    }
+    const raw = await kv.get(userKey(userId));
+    if (!raw) return false;
 
-    const info = JSON.parse(session) as SessionInfo;
+    const info = JSON.parse(raw) as SessionInfo;
     const now = Date.now();
-
-    // Check if session is still valid (activity within last 5 minutes)
     if (now - info.lastActivity > 5 * 60 * 1000) {
-      // Session expired, clean up
-      await kv.delete(key);
+      await deleteSession(userId, info.sessionId, kv);
       return false;
     }
 
@@ -95,52 +79,30 @@ export async function hasActiveSession(
   }
 }
 
-/**
- * Create a new session for user
- */
 export async function createSession(
-  userId: string,
-  clientIP: string,
-  kv: KVNamespace
+  session: SessionInfo,
+  kv: KVNamespace,
 ): Promise<void> {
-  const key = `session:${userId}`;
-  const session: SessionInfo = {
-    userId,
-    clientIP,
-    connectedAt: Date.now(),
-    lastActivity: Date.now(),
-  };
-
-  await kv.put(key, JSON.stringify(session), { expirationTtl: SESSION_TTL });
+  await Promise.all([
+    kv.put(userKey(session.userId), JSON.stringify(session), { expirationTtl: SESSION_TTL }),
+    kv.put(sessionKey(session.sessionId), JSON.stringify(session), { expirationTtl: SESSION_TTL }),
+  ]);
 }
 
-/**
- * Update session activity timestamp
- */
 export async function updateSessionActivity(
-  userId: string,
-  kv: KVNamespace
+  session: SessionInfo,
+  kv: KVNamespace,
 ): Promise<void> {
-  const key = `session:${userId}`;
-  try {
-    const data = await kv.get(key);
-    if (data) {
-      const session = JSON.parse(data) as SessionInfo;
-      session.lastActivity = Date.now();
-      await kv.put(key, JSON.stringify(session), { expirationTtl: SESSION_TTL });
-    }
-  } catch (err) {
-    console.error('Session update failed:', err);
-  }
+  const nextSession = { ...session, lastActivity: Date.now() };
+  await createSession(nextSession, kv);
 }
 
-/**
- * Delete user session
- */
 export async function deleteSession(
   userId: string,
-  kv: KVNamespace
+  sessionId: string | null | undefined,
+  kv: KVNamespace,
 ): Promise<void> {
-  const key = `session:${userId}`;
-  await kv.delete(key);
+  const ops: Promise<void>[] = [kv.delete(userKey(userId))];
+  if (sessionId) ops.push(kv.delete(sessionKey(sessionId)));
+  await Promise.all(ops);
 }

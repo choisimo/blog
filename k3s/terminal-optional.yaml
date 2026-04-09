@@ -71,11 +71,26 @@ spec:
             - name: http
               containerPort: 8080
           env:
-            - name: BACKEND_KEY
+            - name: TERMINAL_SESSION_SECRET
               valueFrom:
                 secretKeyRef:
                   name: blog-app-secrets
-                  key: BACKEND_KEY
+                  key: TERMINAL_SESSION_SECRET
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: blog-app-secrets
+                  key: REDIS_URL
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: blog-app-secrets
+                  key: REDIS_PASSWORD
+            - name: TERMINAL_SESSION_TIMEOUT_MS
+              valueFrom:
+                configMapKeyRef:
+                  name: blog-app-config
+                  key: TERMINAL_SESSION_TIMEOUT_MS
             - name: SANDBOX_IMAGE
               valueFrom:
                 configMapKeyRef:

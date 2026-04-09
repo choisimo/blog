@@ -11,20 +11,21 @@ export * from './constants.js';
 let _config = null;
 let _configPromise = null;
 
-async function buildConfig() {
-  const consulConfig = await loadConsulConfig();
-  const merged = { ...process.env, ...consulConfig };
-  const raw = configSchema.parse(merged);
-
+function materializeConfig(raw) {
   const repoRoot = path.resolve(process.cwd(), '..');
-  const allowedOrigins = raw.ALLOWED_ORIGINS.split(',')
-    .map(s => s.trim())
+  const allowedOrigins = String(raw.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim())
     .filter(Boolean);
 
   const publicDir = raw.CONTENT_PUBLIC_DIR || path.join(repoRoot, 'frontend', 'public');
   const postsDir = raw.CONTENT_POSTS_DIR || path.join(publicDir, 'posts');
   const imagesDir = raw.CONTENT_IMAGES_DIR || path.join(publicDir, 'images');
   const assetsBaseUrl = raw.ASSETS_BASE_URL;
+  const terminalBlockedCountries = String(raw.TERMINAL_BLOCKED_COUNTRIES || '')
+    .split(',')
+    .map((s) => s.trim().toUpperCase())
+    .filter(Boolean);
 
   return {
     appEnv: raw.APP_ENV,
@@ -36,6 +37,7 @@ async function buildConfig() {
     siteBaseUrl: raw.SITE_BASE_URL,
     apiBaseUrl: raw.API_BASE_URL,
     allowedOrigins,
+    assetsBaseUrl,
 
     rateLimit: {
       max: raw.RATE_LIMIT_MAX,
@@ -81,6 +83,13 @@ async function buildConfig() {
 
     backendKey: raw.BACKEND_KEY,
 
+    terminal: {
+      sessionSecret: raw.TERMINAL_SESSION_SECRET,
+      connectTokenTtlSeconds: raw.TERMINAL_CONNECT_TOKEN_TTL_SECONDS,
+      sessionTimeoutMs: raw.TERMINAL_SESSION_TIMEOUT_MS,
+      blockedCountries: terminalBlockedCountries,
+    },
+
     content: {
       repoRoot,
       publicDir,
@@ -88,8 +97,6 @@ async function buildConfig() {
       imagesDir,
       postsSource: raw.POSTS_SOURCE,
     },
-
-    assetsBaseUrl,
 
     integrations: {
       vercelDeployHookUrl: raw.VERCEL_DEPLOY_HOOK_URL,
@@ -105,6 +112,7 @@ async function buildConfig() {
 
     redis: {
       url: raw.REDIS_URL,
+      password: raw.REDIS_PASSWORD || null,
     },
 
     search: {
@@ -139,6 +147,13 @@ async function buildConfig() {
   };
 }
 
+async function buildConfig() {
+  const consulConfig = await loadConsulConfig();
+  const merged = { ...process.env, ...consulConfig };
+  const raw = configSchema.parse(merged);
+  return materializeConfig(raw);
+}
+
 export async function initConfig() {
   if (_config) return _config;
   if (_configPromise) return _configPromise;
@@ -148,107 +163,15 @@ export async function initConfig() {
   return _config;
 }
 
-const syncConfig = configSchema.parse(process.env);
-const repoRoot = path.resolve(process.cwd(), '..');
-const allowedOrigins = syncConfig.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean);
-const publicDir = syncConfig.CONTENT_PUBLIC_DIR || path.join(repoRoot, 'frontend', 'public');
+const syncRawConfig = configSchema.parse(process.env);
 
-export const config = {
-  appEnv: syncConfig.APP_ENV,
-  host: syncConfig.HOST,
-  port: syncConfig.PORT,
-  trustProxy: syncConfig.TRUST_PROXY,
-  logLevel: syncConfig.LOG_LEVEL,
-  siteBaseUrl: syncConfig.SITE_BASE_URL,
-  apiBaseUrl: syncConfig.API_BASE_URL,
-  allowedOrigins,
-  assetsBaseUrl: syncConfig.ASSETS_BASE_URL,
-  rateLimit: {
-    max: syncConfig.RATE_LIMIT_MAX,
-    windowMs: syncConfig.RATE_LIMIT_WINDOW_MS,
-  },
-  ai: {
-    baseUrl: syncConfig.AI_SERVER_URL,
-    apiKey: syncConfig.AI_API_KEY || syncConfig.OPENAI_API_KEY,
-    defaultModel: syncConfig.AI_DEFAULT_MODEL,
-    asyncMode: syncConfig.AI_ASYNC_MODE === 'true',
-  },
-  github: {
-    token: syncConfig.GITHUB_TOKEN,
-    owner: syncConfig.GITHUB_REPO_OWNER,
-    repo: syncConfig.GITHUB_REPO_NAME,
-    gitUserName: syncConfig.GIT_USER_NAME,
-    gitUserEmail: syncConfig.GIT_USER_EMAIL,
-  },
-  admin: {
-    bearerToken: syncConfig.ADMIN_BEARER_TOKEN,
-  },
-  totp: {
-    secret: syncConfig.TOTP_SECRET,
-  },
-  oauth: {
-    allowedEmails: syncConfig.ADMIN_ALLOWED_EMAILS,
-    githubClientId: syncConfig.GITHUB_CLIENT_ID,
-    githubClientSecret: syncConfig.GITHUB_CLIENT_SECRET,
-    googleClientId: syncConfig.GOOGLE_CLIENT_ID,
-    googleClientSecret: syncConfig.GOOGLE_CLIENT_SECRET,
-    redirectBaseUrl: syncConfig.OAUTH_REDIRECT_BASE_URL,
-  },
-  auth: {
-    jwtSecret: syncConfig.JWT_SECRET,
-    jwtExpiresIn: syncConfig.JWT_EXPIRES_IN,
-  },
-  backendKey: syncConfig.BACKEND_KEY,
-  content: {
-    repoRoot,
-    publicDir,
-    postsDir: syncConfig.CONTENT_POSTS_DIR || path.join(publicDir, 'posts'),
-    imagesDir: syncConfig.CONTENT_IMAGES_DIR || path.join(publicDir, 'images'),
-    postsSource: syncConfig.POSTS_SOURCE,
-  },
-  integrations: {
-    vercelDeployHookUrl: syncConfig.VERCEL_DEPLOY_HOOK_URL,
-  },
-  rag: {
-    embeddingUrl: syncConfig.AI_EMBEDDING_URL || syncConfig.AI_SERVER_URL,
-    embeddingApiKey: syncConfig.AI_EMBEDDING_API_KEY || syncConfig.AI_API_KEY || syncConfig.OPENAI_API_KEY,
-    embeddingModel: syncConfig.AI_EMBED_MODEL,
-    chromaUrl: syncConfig.CHROMA_URL,
-    chromaCollection: syncConfig.CHROMA_COLLECTION,
-  },
-  redis: {
-    url: syncConfig.REDIS_URL,
-  },
-  search: {
-    perplexityApiKey: syncConfig.PERPLEXITY_API_KEY,
-    tavilyApiKey: syncConfig.TAVILY_API_KEY,
-    braveApiKey: syncConfig.BRAVE_SEARCH_API_KEY,
-    serperApiKey: syncConfig.SERPER_API_KEY,
-  },
-  services: {
-    backendUrl: syncConfig.INTERNAL_API_URL || `http://localhost:${syncConfig.PORT}`,
-    terminalServerUrl: syncConfig.TERMINAL_SERVER_URL,
-    terminalGatewayUrl: syncConfig.TERMINAL_GATEWAY_URL,
-    openNotebookUrl: syncConfig.OPEN_NOTEBOOK_URL,
-    workerApiUrl: syncConfig.WORKER_API_URL || null,
-  },
-  consul: {
-    enabled: CONSUL.ENABLED,
-    host: CONSUL.HOST,
-    port: CONSUL.PORT,
-  },
-  features: {
-    aiEnabled: syncConfig.FEATURE_AI_ENABLED === 'true',
-    ragEnabled: syncConfig.FEATURE_RAG_ENABLED === 'true',
-    terminalEnabled: syncConfig.FEATURE_TERMINAL_ENABLED === 'true',
-    aiInline: syncConfig.FEATURE_AI_INLINE === 'true',
-    commentsEnabled: syncConfig.FEATURE_COMMENTS_ENABLED === 'true',
-    openNotebookEnabled: syncConfig.OPEN_NOTEBOOK_ENABLED === 'true',
-  },
-};
+export const config = materializeConfig(syncRawConfig);
 
 if (!config.services.workerApiUrl) {
-  logger.warn({}, 'WORKER_API_URL is not set — AI dynamic config from Worker will be unavailable. Set WORKER_API_URL to the api-gateway Worker URL.');
+  logger.warn(
+    {},
+    'WORKER_API_URL is not set — AI dynamic config from Worker will be unavailable. Set WORKER_API_URL to the api-gateway Worker URL.',
+  );
 }
 
 export async function loadAndApplyConsulConfig() {
@@ -269,6 +192,7 @@ export async function loadAndApplyConsulConfig() {
       rag: asyncConfig.rag,
       redis: asyncConfig.redis,
       services: asyncConfig.services,
+      terminal: asyncConfig.terminal,
       features: asyncConfig.features,
     });
 
@@ -300,11 +224,11 @@ export async function getServiceUrl(serviceName) {
   if (url) return url;
 
   const fallbacks = {
-    'backend': config.services?.backendUrl || `http://localhost:${config.port}`,
-    'chromadb': config.rag.chromaUrl,
-    'embedding': config.rag.embeddingUrl,
-    'redis': config.redis?.url || 'redis://localhost:6379',
-    'terminal': config.services?.terminalServerUrl || 'http://terminal-server:8080',
+    backend: config.services?.backendUrl || `http://localhost:${config.port}`,
+    chromadb: config.rag.chromaUrl,
+    embedding: config.rag.embeddingUrl,
+    redis: config.redis?.url || 'redis://localhost:6379',
+    terminal: config.services?.terminalServerUrl || 'http://terminal-server:8080',
   };
 
   return fallbacks[serviceName] || null;

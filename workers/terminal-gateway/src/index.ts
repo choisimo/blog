@@ -1,19 +1,13 @@
 /**
  * Terminal Gateway - Main Entry Point
  *
- * Cloudflare Worker that acts as a security gateway for WebSocket connections
- * to the Docker terminal origin server.
- *
- * Features:
- * - JWT authentication
- * - Rate limiting (IP-based)
- * - Single session per user
- * - Secret key injection for origin authentication
- * - Geo-blocking (optional)
+ * Cloudflare Worker that authenticates user JWTs, issues a short-lived
+ * origin-admission token, and proxies the WebSocket connection to terminal-server.
  */
 
-import type { Env } from './types';
+import type { Env, SessionInfo } from './types';
 import { verifyToken, extractToken } from './auth';
+import { createTerminalAdmissionToken, hashUserAgent } from './terminal-session';
 import {
   checkRateLimit,
   hasActiveSession,
@@ -21,104 +15,133 @@ import {
   deleteSession,
 } from './ratelimit';
 
+function getBlockedCountries(env: Env): string[] {
+  return String(env.TERMINAL_BLOCKED_COUNTRIES || '')
+    .split(',')
+    .map((value) => value.trim().toUpperCase())
+    .filter(Boolean);
+}
+
+function sanitizeOriginUrl(url: URL, origin: string): string {
+  const originUrl = new URL('/terminal', origin);
+  for (const [key, value] of url.searchParams.entries()) {
+    if (key === 'token') continue;
+    originUrl.searchParams.set(key, value);
+  }
+  return originUrl.toString();
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    // Health check endpoint
     if (url.pathname === '/health') {
       return new Response(
-        JSON.stringify({ status: 'ok', env: env.ENV }),
-        {
-          headers: { 'Content-Type': 'application/json' },
-        }
+        JSON.stringify({ status: 'ok', env: env.ENV, gateway: 'terminal-gateway' }),
+        { headers: { 'Content-Type': 'application/json' } },
       );
     }
 
-    // Only handle /terminal path
     if (url.pathname !== '/terminal' && url.pathname !== '/terminal/') {
       return new Response('Not Found', { status: 404 });
     }
 
-    // 1. Check WebSocket upgrade request
     const upgradeHeader = request.headers.get('Upgrade');
     if (!upgradeHeader || upgradeHeader.toLowerCase() !== 'websocket') {
       return new Response('Expected Upgrade: websocket', { status: 426 });
     }
 
-    // 2. Extract and verify token
     const token = extractToken(request);
     const user = await verifyToken(token, env);
-
     if (!user) {
       return new Response('Unauthorized', { status: 401 });
     }
 
     const userId = user.sub;
     const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+    const userAgent = request.headers.get('User-Agent') || '';
+    const userAgentHash = await hashUserAgent(userAgent);
+    const requestId = crypto.randomUUID();
 
-    // 3. Rate limiting check
     const rateLimitResult = await checkRateLimit(clientIP, env.KV);
     if (!rateLimitResult.allowed) {
       return new Response('Too Many Requests', {
         status: 429,
         headers: {
-          'Retry-After': String(
-            rateLimitResult.resetAt - Math.floor(Date.now() / 1000)
-          ),
+          'Retry-After': String(rateLimitResult.resetAt - Math.floor(Date.now() / 1000)),
           'X-RateLimit-Remaining': '0',
           'X-RateLimit-Reset': String(rateLimitResult.resetAt),
         },
       });
     }
 
-    // 4. Check for existing session (1 session per user)
-    const existingSession = await hasActiveSession(userId, env.KV);
-    if (existingSession) {
-      return new Response('Session already active', { status: 409 });
-    }
-
-    // 5. Optional: Geo-blocking
-    const country = request.cf?.country as string | undefined;
-    const blockedCountries = ['CN', 'RU', 'KP']; // Example blocked countries
+    const blockedCountries = getBlockedCountries(env);
+    const country = (request.cf?.country as string | undefined)?.toUpperCase();
     if (country && blockedCountries.includes(country)) {
-      console.log(`Blocked connection from country: ${country}`);
+      console.log(`Blocked terminal connection from country: ${country}`);
       return new Response('Forbidden', { status: 403 });
     }
 
-    // 6. Create session
-    await createSession(userId, clientIP, env.KV);
+    if (await hasActiveSession(userId, env.KV)) {
+      return new Response('Session already active', { status: 409 });
+    }
 
-    // 7. Prepare origin request with injected headers
-    const originUrl = `${env.TERMINAL_ORIGIN}/terminal`;
+    const sessionId = crypto.randomUUID();
+    const sessionInfo: SessionInfo = {
+      sessionId,
+      userId,
+      clientIP,
+      userAgentHash,
+      connectedAt: Date.now(),
+      lastActivity: Date.now(),
+    };
+    await createSession(sessionInfo, env.KV);
+
+    const originToken = await createTerminalAdmissionToken(env, {
+      sessionId,
+      userId,
+      email: user.email,
+      clientIP,
+      userAgentHash,
+    });
+
     const originHeaders = new Headers(request.headers);
+    originHeaders.delete('Authorization');
+    originHeaders.delete('Cookie');
+    originHeaders.delete('Host');
+    originHeaders.delete('X-Backend-Key');
 
-    // Inject secret key for origin authentication
-    originHeaders.set('X-Backend-Key', env.BACKEND_KEY);
-    originHeaders.set('X-User-ID', userId);
-    originHeaders.set('X-User-Email', user.email || '');
+    originHeaders.set('X-Terminal-Session-Token', originToken);
+    originHeaders.set('X-Terminal-Session-Id', sessionId);
+    originHeaders.set('X-Request-ID', requestId);
     originHeaders.set('X-Client-IP', clientIP);
-    originHeaders.set('X-Request-ID', crypto.randomUUID());
 
-    const originRequest = new Request(originUrl, {
+    const originRequest = new Request(sanitizeOriginUrl(url, env.TERMINAL_ORIGIN), {
       method: request.method,
       headers: originHeaders,
     });
 
-    // 8. Proxy to origin
     try {
       const response = await fetch(originRequest);
 
-      // If connection fails or closes, clean up session
       if (!response.ok || response.status >= 400) {
-        await deleteSession(userId, env.KV);
+        await deleteSession(userId, sessionId, env.KV);
       }
 
-      return response;
+      const responseHeaders = new Headers(response.headers);
+      responseHeaders.set('X-Terminal-Session-Id', sessionId);
+      responseHeaders.set('X-Terminal-Request-Id', requestId);
+
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: responseHeaders,
+        webSocket: response.webSocket,
+      });
     } catch (err) {
-      console.error('Origin connection failed:', err);
-      await deleteSession(userId, env.KV);
-      return new Response('Bad Gateway', { status: 502 });
+      console.error('Terminal origin fetch failed:', err);
+      await deleteSession(userId, sessionId, env.KV);
+      return new Response('Service Unavailable', { status: 503 });
     }
   },
 };

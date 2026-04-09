@@ -52,6 +52,7 @@ export const configSchema = z.object({
   CHROMA_URL: z.string().default('http://chromadb:8000'),
   CHROMA_COLLECTION: z.string().default('blog-posts__all-MiniLM-L6-v2'),
   REDIS_URL: z.string().optional(),
+  REDIS_PASSWORD: z.string().optional(),
 
   BACKEND_KEY: z.string().optional(),
 
@@ -67,6 +68,11 @@ export const configSchema = z.object({
   WORKER_API_URL: z.string().optional(),
   TERMINAL_SERVER_URL: z.string().default('http://terminal-server:8080'),
   TERMINAL_GATEWAY_URL: z.string().default('https://terminal.nodove.com'),
+
+  TERMINAL_SESSION_SECRET: z.string().optional(),
+  TERMINAL_CONNECT_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(60),
+  TERMINAL_SESSION_TIMEOUT_MS: z.coerce.number().int().positive().default(10 * 60 * 1000),
+  TERMINAL_BLOCKED_COUNTRIES: z.string().optional(),
 
   CONTENT_PUBLIC_DIR: z.string().optional(),
   CONTENT_POSTS_DIR: z.string().optional(),

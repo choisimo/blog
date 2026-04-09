@@ -12,7 +12,7 @@ fi
 # List of keys to generate secrets for if they are empty
 KEYS=(
     "BACKEND_KEY"
-    "BACKEND_KEY"
+    "TERMINAL_SESSION_SECRET"
     "JWT_SECRET"
     "ADMIN_BEARER_TOKEN"
     "ADMIN_USERNAME"
