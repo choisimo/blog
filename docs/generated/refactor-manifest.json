@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2026-04-08T00:00:00Z",
+  "package": "refactored code bundle",
+  "changedFiles": 46,
+  "artifacts": [
+    "docs/architecture/service-boundaries.md",
+    "docs/architecture/config-contract.md",
+    "docs/architecture/data-ownership.md",
+    "docs/architecture/terminal-session-flow.md",
+    "docs/generated/route-governance.snapshot.json",
+    "docs/generated/analysis/change_set.csv",
+    "docs/generated/analysis/issues_inventory.csv"
+  ]
+}
