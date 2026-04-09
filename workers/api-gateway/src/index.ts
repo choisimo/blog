@@ -3,11 +3,8 @@
  *
  * 통합된 블로그 API Gateway:
  * - 모든 /api/v1/* 라우트 처리 (D1, R2, KV 기반)
- * - 백엔드 서버로 프록시 (fallback 또는 특정 경로)
+ * - backend-owned / proxy-only 경로만 origin 으로 프록시
  * - Cron 트리거 지원
- *
- * Architecture:
- *   Client → Cloudflare Workers (api.nodove.com) → Internal Routes OR → Backend Server
  */
 
 import { Hono } from 'hono';
@@ -19,51 +16,20 @@ import { errorHandler } from './middleware/error';
 import { success } from './lib/response';
 import { getCorsHeadersForRequest } from './lib/cors';
 import { getApiBaseUrl, getAiDefaultModel, getAiVisionModel } from './lib/config';
-
-// Import routes
-import auth from './routes/auth';
-import comments from './routes/comments';
-import ai from './routes/ai';
-import chat from './routes/chat';
-import images from './routes/images';
-import og from './routes/og';
-import analytics from './routes/analytics';
-import translate from './routes/translate';
-import config from './routes/config';
-import rag from './routes/rag';
-import gateway from './routes/gateway';
-import memos from './routes/memos';
-import memories from './routes/memories';
-import adminAi from './routes/admin-ai';
-import adminOutbox from './routes/admin-outbox';
-import secrets from './routes/secrets';
-import internal from './routes/internal';
-import personas from './routes/personas';
-import userContent from './routes/user-content';
-import search from './routes/search';
-import user from './routes/user';
-import debate from './routes/debate';
-import subscribe from './routes/subscribe';
-import contact from './routes/contact';
-import notifications from './routes/notifications';
-import adminLogs from './routes/admin-logs';
 import type { Env } from './types';
 import { flushAiArtifactOutbox } from './lib/ai-artifact-outbox';
+import {
+  buildProxyBoundaryHeaders,
+  canProxyPath,
+  registerWorkerRoutes,
+} from './routes/registry';
 
 const app = new Hono<HonoEnv>();
 
-// =============================================================================
-// Configuration
-// =============================================================================
-
-// NOTE: CORS helpers live in ./lib/cors.
-
-// =============================================================================
-// Backend Proxy (for routes not handled by Workers)
-// =============================================================================
-
 async function proxyToBackend(request: Request, env: Env): Promise<Response> {
   const backendOrigin = env.BACKEND_ORIGIN;
+  const url = new URL(request.url);
+
   if (!backendOrigin) {
     const corsHeaders = await getCorsHeadersForRequest(request, env);
     return new Response(
@@ -74,13 +40,29 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
       {
         status: 500,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      }
+      },
     );
   }
 
-  const url = new URL(request.url);
-  const backendUrl = new URL(url.pathname + url.search, backendOrigin);
+  if (!canProxyPath(url.pathname)) {
+    const corsHeaders = await getCorsHeadersForRequest(request, env);
+    return new Response(
+      JSON.stringify({
+        error: 'Route ownership violation',
+        message: `${url.pathname} is not allowed to fall through to backend proxy`,
+      }),
+      {
+        status: 404,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+          ...buildProxyBoundaryHeaders(url.pathname),
+        },
+      },
+    );
+  }
 
+  const backendUrl = new URL(url.pathname + url.search, backendOrigin);
   const headers = new Headers(request.headers);
   headers.delete('Host');
   headers.set('Host', 'blog-b.nodove.com');
@@ -128,16 +110,18 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
     const corsHeaders = await getCorsHeadersForRequest(request, env);
     const responseHeaders = new Headers(response.headers);
 
-    // Prevent upstream CORS headers from causing Origin mismatch issues
     responseHeaders.delete('Access-Control-Allow-Origin');
     responseHeaders.delete('Access-Control-Allow-Credentials');
     responseHeaders.delete('Access-Control-Allow-Methods');
     responseHeaders.delete('Access-Control-Allow-Headers');
     responseHeaders.delete('Access-Control-Max-Age');
 
-    Object.entries(corsHeaders).forEach(([key, value]) => {
+    for (const [key, value] of Object.entries(corsHeaders)) {
       responseHeaders.set(key, value);
-    });
+    }
+    for (const [key, value] of Object.entries(buildProxyBoundaryHeaders(url.pathname))) {
+      responseHeaders.set(key, value);
+    }
 
     if (response.status >= 502 && response.status <= 504) {
       console.error('Backend returned error status:', response.status);
@@ -155,7 +139,7 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
           status: response.status,
           statusText: response.statusText,
           headers: responseHeaders,
-        }
+        },
       );
     }
 
@@ -179,24 +163,17 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
           'Content-Type': 'application/json',
           'Retry-After': '30',
           ...corsHeaders,
+          ...buildProxyBoundaryHeaders(url.pathname),
         },
-      }
+      },
     );
   }
 }
-
-// =============================================================================
-// Global Middlewares
-// =============================================================================
 
 app.use('*', corsMiddleware);
 app.use('*', loggerMiddleware);
 app.use('/api/v1/ai/*', tracingMiddleware);
 app.use('/api/v1/chat/*', tracingMiddleware);
-
-// =============================================================================
-// Health & Status Endpoints
-// =============================================================================
 
 app.get('/_health', (c) => {
   return c.json({
@@ -255,51 +232,14 @@ app.get('/api/v1/public/config', async (c) => {
   return success(c, await buildPublicConfig(c.env));
 });
 
-// =============================================================================
-// Mount API Routes under /api/v1
-// =============================================================================
-
 const api = new Hono<HonoEnv>();
-api.route('/auth', auth);
-api.route('/comments', comments);
-api.route('/ai', ai);
-api.route('/chat', chat);
-api.route('/images', images);
-api.route('/og', og);
-api.route('/analytics', analytics);
-api.route('/', translate);
-api.route('/config', config);
-api.route('/rag', rag);
-api.route('/memos', memos);
-api.route('/memories', memories);
-api.route('/admin/ai', adminAi);
-api.route('/admin/outbox', adminOutbox);
-api.route('/admin/secrets', secrets);
-api.route('/internal', internal);
-api.route('/personas', personas);
-api.route('/user-content', userContent);
-api.route('/search', search);
-api.route('/user', user);
-api.route('/debate', debate);
-api.route('/subscribe', subscribe);
-api.route('/contact', contact);
-api.route('/notifications', notifications);
-api.route('/admin/logs', adminLogs);
-api.route('/gateway', gateway);
-// /posts is backend-owned. Requests fall through to the backend proxy below.
-
+registerWorkerRoutes(api);
 app.route('/api/v1', api);
 
-// =============================================================================
-// Fallback: Proxy to Backend for unhandled routes
-// =============================================================================
-
 app.all('*', async (c) => {
-  // If it's a route we don't handle, proxy to backend
   return proxyToBackend(c.req.raw, c.env);
 });
 
-// Error handler
 app.onError(errorHandler);
 
 // =============================================================================

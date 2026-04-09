@@ -1,4 +1,3 @@
-import { randomUUID } from "crypto";
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
@@ -18,31 +17,13 @@ import {
   isPgConfigured,
 } from "./repositories/analytics.repository.js";
 import { closeRedis } from "./lib/redis-client.js";
-
-import aiRouter from "./routes/ai.js";
-import commentsRouter from "./routes/comments.js";
-import analyticsRouter from "./routes/analytics.js";
-import chatRouter, { initChatWebSocket } from "./routes/chat.js";
-import translateRouter from "./routes/translate.js";
-import userContentRouter from "./routes/userContent.js";
-import ogRouter from "./routes/og.js";
-import adminRouter from "./routes/admin.js";
-import postsRouter from "./routes/posts.js";
-import imagesRouter from "./routes/images.js";
-import authRouter from "./routes/auth.js";
-import ragRouter from "./routes/rag.js";
-import memoriesRouter from "./routes/memories.js";
-import memosRouter from "./routes/memos.js";
-import userRouter from "./routes/user.js";
-import searchRouter from "./routes/search.js";
-import configRouter from "./routes/config.js";
-import workersRouter from "./routes/workers.js";
-import agentRouter from "./routes/agent.js";
-import notificationsRouter from "./routes/notifications.js";
-import debateRouter from "./routes/debate.js";
 import metricsRouter from "./routes/metrics.js";
-import adminLogsRouter from "./routes/adminLogs.js";
-import executeRouter from "./routes/execute.js";
+import { initChatWebSocket } from "./routes/chat.js";
+import {
+  PUBLIC_ROUTE_REGISTRY,
+  PROTECTED_ROUTE_REGISTRY,
+  mountRouteRegistry,
+} from "./routes/registry.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 
 async function startServer() {
@@ -96,6 +77,7 @@ async function startServer() {
   app.get("/api/v1/healthz", (req, res) => {
     res.json({ ok: true, env: config.appEnv, uptime: process.uptime() });
   });
+
   app.get(
     "/api/v1/public/config",
     httpCache({ ttl: 300, prefix: "config" }),
@@ -103,9 +85,11 @@ async function startServer() {
       res.json({ ok: true, data: publicRuntimeConfig() });
     },
   );
+
   app.use("/metrics", metricsRouter);
 
-  app.use("/api/v1/notifications", notificationsRouter);
+  mountRouteRegistry(app, PUBLIC_ROUTE_REGISTRY);
+
   app.use(requireBackendKey);
 
   app.use(express.json({ limit: "1mb" }));
@@ -119,32 +103,9 @@ async function startServer() {
   });
   app.use(limiter);
 
-  app.use("/api/v1/ai", aiRouter);
-  app.use("/api/v1/comments", commentsRouter);
-  app.use("/api/v1/analytics", analyticsRouter);
-  app.use("/api/v1/chat", chatRouter);
-  app.use("/api/v1", translateRouter);
-  app.use("/api/v1/memos", memosRouter);
-  app.use("/api/v1/user-content", userContentRouter);
-  app.use("/api/v1/og", ogRouter);
-  app.use("/api/v1/admin", adminRouter);
-  app.use("/api/v1/posts", postsRouter);
-  app.use("/api/v1/images", imagesRouter);
-  app.use("/api/v1/auth", authRouter);
-  app.use("/api/v1/rag", ragRouter);
-  app.use("/api/v1/memories", memoriesRouter);
-  app.use("/api/v1/user", userRouter);
-  app.use("/api/v1/search", searchRouter);
-  app.use("/api/v1/admin/config", configRouter);
-  app.use("/api/v1/admin/workers", workersRouter);
-  app.use("/api/v1/admin", adminLogsRouter);
-  app.use("/api/v1/agent", agentRouter);
-
-  app.use("/api/v1/debate", debateRouter);
-  app.use("/api/v1/execute", executeRouter);
+  mountRouteRegistry(app, PROTECTED_ROUTE_REGISTRY);
 
   app.use(notFoundHandler);
-
   app.use(errorHandler);
 
   const port = config.port;
@@ -157,11 +118,13 @@ async function startServer() {
           ai: config.features.aiEnabled,
           rag: config.features.ragEnabled,
           comments: config.features.commentsEnabled,
+          terminal: config.features.terminalEnabled,
         },
       },
       "features",
     );
   });
+
   initChatWebSocket(server);
 
   let shuttingDown = false;
@@ -193,6 +156,7 @@ async function startServer() {
   process.on("unhandledRejection", (reason) => {
     logger.error({ err: reason }, "Unhandled promise rejection");
   });
+
   process.on("uncaughtException", (err) => {
     logger.error({ err }, "Uncaught exception — shutting down");
     gracefulShutdown("uncaughtException");

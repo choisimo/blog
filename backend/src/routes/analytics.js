@@ -10,9 +10,17 @@ import {
 } from '../repositories/analytics.repository.js';
 import { httpCache, invalidateCacheByPrefix } from '../middleware/httpCache.js';
 import { createLogger } from '../lib/logger.js';
+import { buildDataOwnershipHeaders } from '../../../shared/src/contracts/data-ownership.js';
 
 const router = Router();
 const logger = createLogger('analytics');
+
+function applyDataOwnership(res, ownershipId) {
+  const headers = buildDataOwnershipHeaders(ownershipId);
+  for (const [key, value] of Object.entries(headers)) {
+    res.setHeader(key, value);
+  }
+}
 
 const requirePg = (req, res, next) => {
   if (!isPgConfigured()) {
@@ -30,6 +38,7 @@ const requireD1 = (req, res, next) => {
 
 router.post('/view', requirePg, async (req, res, next) => {
   try {
+    applyDataOwnership(res, 'analytics.post_stats');
     const { year, slug } = req.body || {};
     if (!year || !slug) {
       return res.status(400).json({ ok: false, error: 'year and slug are required' });
@@ -54,6 +63,7 @@ router.post('/view', requirePg, async (req, res, next) => {
 
 router.get('/stats/:year/:slug', requirePg, async (req, res, next) => {
   try {
+    applyDataOwnership(res, 'analytics.post_stats');
     const { year, slug } = req.params;
     const stats = await getPostStats(slug, year);
     return res.json({
@@ -70,6 +80,7 @@ router.get('/all-stats', requirePg, getAllPostStatsHandler);
 
 export async function getAllPostStatsHandler(req, res, next) {
   try {
+    applyDataOwnership(res, 'analytics.post_stats');
     const limit = req.query.limit ? parseInt(req.query.limit) : undefined;
     const offset = parseInt(req.query.offset) || 0;
     const orderBy = req.query.orderBy || 'total_views';
@@ -82,6 +93,7 @@ export async function getAllPostStatsHandler(req, res, next) {
 
 router.get('/editor-picks', requireD1, httpCache({ ttl: 600, prefix: 'analytics' }), async (req, res, next) => {
   try {
+    applyDataOwnership(res, 'analytics.editor_picks');
     const limit = parseInt(req.query.limit) || 3;
     const picks = await queryAll(
       `SELECT * FROM editor_picks
@@ -100,6 +112,7 @@ router.get('/editor-picks', requireD1, httpCache({ ttl: 600, prefix: 'analytics'
 
 router.get('/trending', requirePg, httpCache({ ttl: 300, prefix: 'analytics' }), async (req, res, next) => {
   try {
+    applyDataOwnership(res, 'analytics.post_stats');
     const limit = parseInt(req.query.limit) || 10;
     const days = parseInt(req.query.days) || 7;
     const trending = await getTrendingPosts({ days, limit });
@@ -112,6 +125,7 @@ router.get('/trending', requirePg, httpCache({ ttl: 300, prefix: 'analytics' }),
 
 router.post('/refresh-stats', requirePg, async (req, res, next) => {
   try {
+    applyDataOwnership(res, 'analytics.post_stats');
     const refreshed = await refreshPeriodicStats();
     await invalidateCacheByPrefix('analytics');
     return res.json({ ok: true, data: { refreshed } });

@@ -4,37 +4,16 @@ import requireAdmin from '../middleware/adminAuth.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { WORKER_DEPLOYMENTS } from '../../../shared/src/contracts/workers.js';
 
 const router = Router();
 
 const WORKERS_ROOT = path.join(config.content.repoRoot, 'workers');
 
-const WORKERS_CONFIG = [
-  {
-    id: 'api-gateway',
-    name: 'Blog API Gateway',
-    description: '메인 블로그 API Worker (blog-api-gateway)',
-    path: 'api-gateway',
-    wranglerPath: 'api-gateway/wrangler.toml',
-    hasProduction: true,
-  },
-  {
-    id: 'r2-gateway',
-    name: 'R2 Gateway',
-    description: 'R2 스토리지 게이트웨이',
-    path: 'r2-gateway',
-    wranglerPath: 'r2-gateway/wrangler.toml',
-    hasProduction: true,
-  },
-  {
-    id: 'terminal-gateway',
-    name: 'Terminal Gateway',
-    description: '터미널 WebSocket 게이트웨이',
-    path: 'terminal-gateway',
-    wranglerPath: 'terminal-gateway/wrangler.toml',
-    hasProduction: true,
-  },
-];
+
+const WORKERS_CONFIG = WORKER_DEPLOYMENTS.map((worker) => ({
+  ...worker,
+}));
 
 const KNOWN_SECRETS = [
   { key: 'JWT_SECRET', description: 'JWT 서명 키', workers: ['api-gateway', 'terminal-gateway'] },
@@ -47,6 +26,7 @@ const KNOWN_SECRETS = [
   { key: 'BACKEND_KEY', description: 'Workers → Backend 인증 키 (X-Backend-Key)', workers: ['api-gateway', 'terminal-gateway'] },
   { key: 'RESEND_API_KEY', description: 'Resend.com API 키', workers: ['api-gateway'] },
   { key: 'INTERNAL_KEY', description: 'API GW → R2 GW 인증 키 (X-Internal-Key)', workers: ['api-gateway', 'r2-gateway'] },
+  { key: 'TERMINAL_SESSION_SECRET', description: 'Terminal connect token signing key', workers: ['terminal-gateway'] },
 ];
 
 router.get('/list', requireAdmin, async (req, res) => {

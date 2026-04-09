@@ -3,6 +3,7 @@ import type { HonoEnv, Env, PostStats, EditorPick } from '../types';
 import { queryOne, queryAll, execute } from '../lib/d1';
 import { success, error, badRequest, notFound } from '../lib/response';
 import { requireAdmin } from '../middleware/auth';
+import { buildDataOwnershipHeaders } from '../../../../shared/src/contracts/data-ownership.js';
 
 // ---------------------------------------------------------------------------
 // Backend proxy helper
@@ -43,6 +44,13 @@ async function proxyToBackend(
 
 const app = new Hono<HonoEnv>();
 
+function applyDataOwnership(c: any, ownershipId: string) {
+  const headers = buildDataOwnershipHeaders(ownershipId);
+  for (const [key, value] of Object.entries(headers)) {
+    c.header(key, value);
+  }
+}
+
 /**
  * POST /api/v1/analytics/view
  * Record a view for a post.
@@ -50,6 +58,7 @@ const app = new Hono<HonoEnv>();
  */
 app.post('/view', async (c) => {
   try {
+    applyDataOwnership(c, 'analytics.post_stats');
     const body = await c.req.json<{ year: string; slug: string }>().catch(() => ({}) as { year: string; slug: string });
     if (!body.year || !body.slug) {
       return error(c, 'year and slug are required', 400);
@@ -75,6 +84,7 @@ app.post('/view', async (c) => {
  */
 app.get('/stats/:year/:slug', async (c) => {
   try {
+    applyDataOwnership(c, 'analytics.post_stats');
     const { year, slug } = c.req.param();
 
     const result = await proxyToBackend(c.env, `/stats/${year}/${slug}`, 'GET');
@@ -102,6 +112,7 @@ app.get('/stats/:year/:slug', async (c) => {
  */
 app.get('/editor-picks', async (c) => {
   try {
+    applyDataOwnership(c, 'analytics.editor_picks');
     const db = c.env.DB;
     const limit = parseInt(c.req.query('limit') || '3');
 
@@ -129,6 +140,7 @@ app.get('/editor-picks', async (c) => {
  */
 app.get('/trending', async (c) => {
   try {
+    applyDataOwnership(c, 'analytics.post_stats');
     const limit = Math.min(parseInt(c.req.query('limit') || '10'), 50);
     const offset = Math.max(parseInt(c.req.query('offset') || '0'), 0);
     const days = parseInt(c.req.query('days') || '7');
@@ -160,6 +172,7 @@ app.get('/trending', async (c) => {
  */
 app.post('/refresh-stats', requireAdmin, async (c) => {
   try {
+    applyDataOwnership(c, 'analytics.post_stats');
     const result = await proxyToBackend(c.env, '/refresh-stats', 'POST');
     if (!result.ok) {
       return error(c, result.error || 'Failed to refresh stats', result.status as 500 | 503);
@@ -433,6 +446,7 @@ app.delete('/admin/editor-picks/:year/:slug', requireAdmin, async (c) => {
 
 app.post('/heartbeat', async (c) => {
   try {
+    applyDataOwnership(c, 'analytics.post_stats');
     const body = await c.req.json<{ visitorId?: string }>().catch(() => ({ visitorId: undefined }));
     const kv = c.env.KV;
     
