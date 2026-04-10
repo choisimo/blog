@@ -1,0 +1,7 @@
+issue_id,status,resolution
+route-ownership,closed,Shared service boundary contract + runtime response headers + worker proxy gating
+config-sprawl,mitigated,Platform config contract + schema/env/configmap/secret examples aligned
+terminal-shared-secret,closed,X-Backend-Key admission replaced with short-lived signed terminal token
+terminal-session-memory-only,mitigated,Terminal session lease moved to Redis-backed external store with memory fallback
+analytics-editor-picks-sot,closed,Canonical PG vs D1 cache ownership documented and surfaced via headers
+worker-deploy-drift,closed,deploy-workers workflow expanded to actual worker inventory

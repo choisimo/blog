@@ -9,7 +9,11 @@
     "./contracts/translation": "./src/contracts/translation.js",
     "./contracts/notifications": "./src/contracts/notifications.js",
     "./contracts/auth": "./src/contracts/auth.js",
-    "./contracts/async-jobs": "./src/contracts/async-jobs.js"
+    "./contracts/async-jobs": "./src/contracts/async-jobs.js",
+    "./contracts/service-boundaries": "./src/contracts/service-boundaries.js",
+    "./contracts/platform-config": "./src/contracts/platform-config.js",
+    "./contracts/data-ownership": "./src/contracts/data-ownership.js",
+    "./contracts/workers": "./src/contracts/workers.js"
   },
   "dependencies": {
     "zod": "^3.23.8"

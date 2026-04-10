@@ -3,3 +3,7 @@ export * from "./contracts/translation.js";
 export * from "./contracts/notifications.js";
 export * from "./contracts/auth.js";
 export * from "./contracts/async-jobs.js";
+export * from "./contracts/service-boundaries.js";
+export * from "./contracts/platform-config.js";
+export * from "./contracts/data-ownership.js";
+export * from "./contracts/workers.js";

@@ -1,0 +1,274 @@
+{
+  "generatedAt": "2026-04-09T00:03:55.899Z",
+  "counts": {
+    "worker-owned": 26,
+    "backend-owned": 6,
+    "proxy-only": 3,
+    "compatibility": 1
+  },
+  "serviceBoundaries": [
+    {
+      "id": "auth",
+      "prefix": "/api/v1/auth",
+      "owner": "worker-owned",
+      "description": "Authentication, sessions, OAuth, TOTP"
+    },
+    {
+      "id": "comments",
+      "prefix": "/api/v1/comments",
+      "owner": "worker-owned",
+      "description": "Comment CRUD and moderation at the edge"
+    },
+    {
+      "id": "ai",
+      "prefix": "/api/v1/ai",
+      "owner": "worker-owned",
+      "description": "AI gateway and request shaping"
+    },
+    {
+      "id": "chat",
+      "prefix": "/api/v1/chat",
+      "owner": "worker-owned",
+      "description": "Chat streaming edge gateway"
+    },
+    {
+      "id": "images",
+      "prefix": "/api/v1/images",
+      "owner": "worker-owned",
+      "description": "Image upload and vision routing"
+    },
+    {
+      "id": "og",
+      "prefix": "/api/v1/og",
+      "owner": "worker-owned",
+      "description": "OpenGraph image generation"
+    },
+    {
+      "id": "analytics",
+      "prefix": "/api/v1/analytics",
+      "owner": "worker-owned",
+      "description": "Edge reads with backend-backed canonical analytics flows"
+    },
+    {
+      "id": "translate",
+      "prefix": "/api/v1/translate",
+      "owner": "worker-owned",
+      "description": "Translation jobs and cache orchestration"
+    },
+    {
+      "id": "config",
+      "prefix": "/api/v1/config",
+      "owner": "worker-owned",
+      "description": "Worker-side runtime config endpoints"
+    },
+    {
+      "id": "rag",
+      "prefix": "/api/v1/rag",
+      "owner": "worker-owned",
+      "description": "RAG query orchestration"
+    },
+    {
+      "id": "memos",
+      "prefix": "/api/v1/memos",
+      "owner": "worker-owned",
+      "description": "D1-backed memo workflows"
+    },
+    {
+      "id": "memories",
+      "prefix": "/api/v1/memories",
+      "owner": "worker-owned",
+      "description": "Edge memory store workflows"
+    },
+    {
+      "id": "admin-ai",
+      "prefix": "/api/v1/admin/ai",
+      "owner": "worker-owned",
+      "description": "Worker-managed AI admin APIs"
+    },
+    {
+      "id": "admin-outbox",
+      "prefix": "/api/v1/admin/outbox",
+      "owner": "worker-owned",
+      "description": "Worker outbox admin APIs"
+    },
+    {
+      "id": "admin-secrets",
+      "prefix": "/api/v1/admin/secrets",
+      "owner": "worker-owned",
+      "description": "Secret registry and edge encryption"
+    },
+    {
+      "id": "admin-logs",
+      "prefix": "/api/v1/admin/logs",
+      "owner": "worker-owned",
+      "description": "Worker/admin operational logs"
+    },
+    {
+      "id": "internal",
+      "prefix": "/api/v1/internal",
+      "owner": "worker-owned",
+      "description": "Internal worker-only control endpoints"
+    },
+    {
+      "id": "personas",
+      "prefix": "/api/v1/personas",
+      "owner": "worker-owned",
+      "description": "Persona and profile data"
+    },
+    {
+      "id": "user-content",
+      "prefix": "/api/v1/user-content",
+      "owner": "worker-owned",
+      "description": "User content APIs"
+    },
+    {
+      "id": "search",
+      "prefix": "/api/v1/search",
+      "owner": "worker-owned",
+      "description": "Search and web-enrichment endpoints"
+    },
+    {
+      "id": "user",
+      "prefix": "/api/v1/user",
+      "owner": "worker-owned",
+      "description": "User account endpoints"
+    },
+    {
+      "id": "debate",
+      "prefix": "/api/v1/debate",
+      "owner": "worker-owned",
+      "description": "Debate arena and session storage"
+    },
+    {
+      "id": "subscribe",
+      "prefix": "/api/v1/subscribe",
+      "owner": "worker-owned",
+      "description": "Email subscriptions"
+    },
+    {
+      "id": "contact",
+      "prefix": "/api/v1/contact",
+      "owner": "worker-owned",
+      "description": "Contact form ingestion"
+    },
+    {
+      "id": "notifications",
+      "prefix": "/api/v1/notifications",
+      "owner": "worker-owned",
+      "description": "Notification fan-out and live streams"
+    },
+    {
+      "id": "gateway",
+      "prefix": "/api/v1/gateway",
+      "owner": "worker-owned",
+      "description": "Internal gateway endpoints"
+    },
+    {
+      "id": "posts",
+      "prefix": "/api/v1/posts",
+      "owner": "backend-owned",
+      "description": "Filesystem/GitHub post ingestion and publishing"
+    },
+    {
+      "id": "agent",
+      "prefix": "/api/v1/agent",
+      "owner": "backend-owned",
+      "description": "Agent coordinator and tool execution"
+    },
+    {
+      "id": "execute",
+      "prefix": "/api/v1/execute",
+      "owner": "backend-owned",
+      "description": "Code execution and terminal-adjacent backend tasks"
+    },
+    {
+      "id": "admin-config",
+      "prefix": "/api/v1/admin/config",
+      "owner": "backend-owned",
+      "description": "Backend runtime config administration"
+    },
+    {
+      "id": "admin-workers",
+      "prefix": "/api/v1/admin/workers",
+      "owner": "backend-owned",
+      "description": "Worker deployment admin APIs"
+    },
+    {
+      "id": "admin",
+      "prefix": "/api/v1/admin",
+      "owner": "backend-owned",
+      "description": "Backend admin APIs and operational controls"
+    },
+    {
+      "id": "healthz",
+      "prefix": "/api/v1/healthz",
+      "owner": "proxy-only",
+      "description": "Origin health check exposure through edge"
+    },
+    {
+      "id": "health",
+      "prefix": "/health",
+      "owner": "proxy-only",
+      "description": "Backend health passthrough for compatibility"
+    },
+    {
+      "id": "metrics",
+      "prefix": "/metrics",
+      "owner": "proxy-only",
+      "description": "Prometheus metrics exposure"
+    },
+    {
+      "id": "public-config",
+      "prefix": "/api/v1/public/config",
+      "owner": "compatibility",
+      "description": "Public runtime config served by both edge and origin"
+    }
+  ],
+  "workers": [
+    {
+      "id": "api-gateway",
+      "name": "Blog API Gateway",
+      "description": "메인 블로그 API Worker (blog-api-gateway)",
+      "path": "api-gateway",
+      "wranglerPath": "api-gateway/wrangler.toml",
+      "hasProduction": true,
+      "requiredSecrets": [
+        "BACKEND_ORIGIN",
+        "BACKEND_KEY",
+        "JWT_SECRET"
+      ]
+    },
+    {
+      "id": "r2-gateway",
+      "name": "R2 Gateway",
+      "description": "R2 스토리지 게이트웨이",
+      "path": "r2-gateway",
+      "wranglerPath": "r2-gateway/wrangler.toml",
+      "hasProduction": true,
+      "requiredSecrets": [
+        "INTERNAL_KEY"
+      ]
+    },
+    {
+      "id": "terminal-gateway",
+      "name": "Terminal Gateway",
+      "description": "터미널 WebSocket 게이트웨이",
+      "path": "terminal-gateway",
+      "wranglerPath": "terminal-gateway/wrangler.toml",
+      "hasProduction": true,
+      "requiredSecrets": [
+        "JWT_SECRET",
+        "TERMINAL_SESSION_SECRET"
+      ]
+    },
+    {
+      "id": "seo-gateway",
+      "name": "SEO Gateway",
+      "description": "SEO 및 HTML edge rendering worker",
+      "path": "seo-gateway",
+      "wranglerPath": "seo-gateway/wrangler.toml",
+      "hasProduction": true,
+      "requiredSecrets": []
+    }
+  ]
+}
