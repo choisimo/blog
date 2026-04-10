@@ -1,0 +1,76 @@
+import { buildRouteBoundaryHeaders } from '../../../shared/src/contracts/service-boundaries.js';
+
+import aiRouter from './ai.js';
+import commentsRouter from './comments.js';
+import analyticsRouter from './analytics.js';
+import chatRouter from './chat.js';
+import translateRouter from './translate.js';
+import userContentRouter from './userContent.js';
+import ogRouter from './og.js';
+import adminRouter from './admin.js';
+import postsRouter from './posts.js';
+import imagesRouter from './images.js';
+import authRouter from './auth.js';
+import ragRouter from './rag.js';
+import memoriesRouter from './memories.js';
+import memosRouter from './memos.js';
+import userRouter from './user.js';
+import searchRouter from './search.js';
+import configRouter from './config.js';
+import workersRouter from './workers.js';
+import agentRouter from './agent.js';
+import notificationsRouter from './notifications.js';
+import debateRouter from './debate.js';
+import adminLogsRouter from './adminLogs.js';
+import executeRouter from './execute.js';
+
+export const PUBLIC_ROUTE_REGISTRY = [
+  { boundaryId: 'notifications', basePath: '/api/v1/notifications', router: notificationsRouter },
+];
+
+export const PROTECTED_ROUTE_REGISTRY = [
+  { boundaryId: 'ai', basePath: '/api/v1/ai', router: aiRouter },
+  { boundaryId: 'comments', basePath: '/api/v1/comments', router: commentsRouter },
+  { boundaryId: 'analytics', basePath: '/api/v1/analytics', router: analyticsRouter },
+  { boundaryId: 'chat', basePath: '/api/v1/chat', router: chatRouter },
+  { boundaryId: 'translate', basePath: '/api/v1', router: translateRouter },
+  { boundaryId: 'memos', basePath: '/api/v1/memos', router: memosRouter },
+  { boundaryId: 'user-content', basePath: '/api/v1/user-content', router: userContentRouter },
+  { boundaryId: 'og', basePath: '/api/v1/og', router: ogRouter },
+  { boundaryId: 'admin', basePath: '/api/v1/admin', router: adminRouter },
+  { boundaryId: 'posts', basePath: '/api/v1/posts', router: postsRouter },
+  { boundaryId: 'images', basePath: '/api/v1/images', router: imagesRouter },
+  { boundaryId: 'auth', basePath: '/api/v1/auth', router: authRouter },
+  { boundaryId: 'rag', basePath: '/api/v1/rag', router: ragRouter },
+  { boundaryId: 'memories', basePath: '/api/v1/memories', router: memoriesRouter },
+  { boundaryId: 'user', basePath: '/api/v1/user', router: userRouter },
+  { boundaryId: 'search', basePath: '/api/v1/search', router: searchRouter },
+  { boundaryId: 'admin-config', basePath: '/api/v1/admin/config', router: configRouter },
+  { boundaryId: 'admin-workers', basePath: '/api/v1/admin/workers', router: workersRouter },
+  { boundaryId: 'admin', basePath: '/api/v1/admin', router: adminLogsRouter },
+  { boundaryId: 'agent', basePath: '/api/v1/agent', router: agentRouter },
+  { boundaryId: 'debate', basePath: '/api/v1/debate', router: debateRouter },
+  { boundaryId: 'execute', basePath: '/api/v1/execute', router: executeRouter },
+];
+
+export function attachBoundaryHeaders(boundaryId, responder = 'backend') {
+  return (req, res, next) => {
+    const headers = buildRouteBoundaryHeaders(boundaryId, {
+      responder,
+      edgeMode: 'origin-bypass',
+      originMode: 'native',
+    });
+
+    for (const [key, value] of Object.entries(headers)) {
+      res.setHeader(key, value);
+    }
+
+    next();
+  };
+}
+
+export function mountRouteRegistry(app, registry, responder = 'backend') {
+  for (const entry of registry) {
+    app.use(entry.basePath, attachBoundaryHeaders(entry.boundaryId, responder), entry.router);
+  }
+}

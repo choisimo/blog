@@ -28,8 +28,21 @@ import {
 } from '../lib/translation-service';
 import { enqueueTranslationGeneration } from '../lib/ai-artifact-outbox';
 import { ERROR_MESSAGES } from '../config/defaults';
+import { buildRouteBoundaryHeaders } from '../../../../shared/src/contracts/service-boundaries.js';
 
 const app = new Hono<HonoEnv>();
+
+app.use('*', async (c, next) => {
+  await next();
+  const headers = buildRouteBoundaryHeaders('translate', {
+    responder: 'worker',
+    edgeMode: 'native',
+    originMode: 'worker',
+  });
+  for (const [key, value] of Object.entries(headers)) {
+    c.res.headers.set(key, value);
+  }
+});
 const LEGACY_TRANSLATE_SUNSET = 'Tue, 30 Jun 2026 00:00:00 GMT';
 
 type GenerateOptions = {
