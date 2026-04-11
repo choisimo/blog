@@ -4,6 +4,11 @@ import { queryOne, queryAll, execute } from '../lib/d1';
 import { success, error, badRequest, notFound } from '../lib/response';
 import { requireAdmin } from '../middleware/auth';
 import { buildDataOwnershipHeaders } from '../../../../shared/src/contracts/data-ownership.js';
+import {
+  replaceActiveEditorPicks,
+  selectTopEditorPicks,
+  type EditorPickStatRow,
+} from '../lib/editor-picks';
 
 // ---------------------------------------------------------------------------
 // Backend proxy helper
@@ -89,11 +94,19 @@ app.get('/stats/:year/:slug', async (c) => {
 
     const result = await proxyToBackend(c.env, `/stats/${year}/${slug}`, 'GET');
     if (!result.ok) {
-      // Graceful fallback: return zero stats rather than erroring
-      console.warn('Backend stats proxy failed, returning zero stats:', result.error || result.status);
-      return success(c, {
-        stats: { total_views: 0, views_7d: 0, views_30d: 0 },
-      });
+      console.warn('Backend stats proxy failed:', result.error || result.status);
+      return c.json(
+        {
+          ok: false,
+          error: {
+            code: 'ANALYTICS_BACKEND_UNAVAILABLE',
+            message: 'Analytics backend unavailable',
+          },
+          degraded: true,
+          sourceStatus: result.status || 503,
+        },
+        503
+      );
     }
 
     const payload = result.data as { ok?: boolean; data?: { stats?: PostStats } } | null;
@@ -149,7 +162,18 @@ app.get('/trending', async (c) => {
     const result = await proxyToBackend(c.env, '/trending', 'GET', undefined, query);
     if (!result.ok) {
       console.warn('Backend trending proxy failed:', result.error || result.status);
-      return success(c, { trending: [], total: 0, limit, offset });
+      return c.json(
+        {
+          ok: false,
+          error: {
+            code: 'ANALYTICS_BACKEND_UNAVAILABLE',
+            message: 'Analytics backend unavailable',
+          },
+          degraded: true,
+          sourceStatus: result.status || 503,
+        },
+        503
+      );
     }
 
     const payload = result.data as { ok?: boolean; data?: { trending?: unknown[]; total?: number } } | null;
@@ -207,80 +231,18 @@ app.post('/update-editor-picks', requireAdmin, async (c) => {
       return error(c, 'Failed to fetch stats from backend', statsResult.status as 500 | 503);
     }
 
-    type StatRow = {
-      post_slug: string;
-      year: string;
-      total_views: number;
-      views_7d: number;
-      views_30d: number;
-    };
     const statsPayload = statsResult.data as {
       ok?: boolean;
-      data?: { stats?: StatRow[] };
+      data?: { stats?: EditorPickStatRow[] };
     } | null;
-    const allStats: StatRow[] = statsPayload?.data?.stats || [];
+    const allStats = statsPayload?.data?.stats || [];
+    const topPicks = selectTopEditorPicks(allStats);
 
-    // Score: 50% 7d + 30% 30d + 20% total
-    const scored = allStats
-      .filter((s) => s.total_views > 0)
-      .map((s) => ({
-        ...s,
-        score: s.views_7d * 0.5 + s.views_30d * 0.3 + s.total_views * 0.2,
-      }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 10);
-
-    if (scored.length === 0) {
+    if (topPicks.length === 0) {
       return success(c, { message: 'No posts with views found' });
     }
 
-    // Deactivate all current picks in D1 cache
-    await execute(db, `UPDATE editor_picks SET is_active = 0, updated_at = datetime('now')`);;
-
-    // Calculate expiry (6 AM next day)
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 1);
-    expiresAt.setHours(6, 0, 0, 0);
-    const expiresAtStr = expiresAt.toISOString();
-
-    const topPicks = scored.slice(0, 3);
-    for (let i = 0; i < topPicks.length; i++) {
-      const postItem = topPicks[i];
-      if (!postItem) continue;
-
-      let reason = 'Popular post';
-      if (postItem.views_7d > postItem.views_30d * 0.5) {
-        reason = 'Trending this week';
-      } else if (postItem.total_views > 100) {
-        reason = 'Evergreen favorite';
-      }
-
-      await execute(
-        db,
-        `INSERT INTO editor_picks (post_slug, year, title, rank, score, reason, expires_at, is_active)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 1)
-         ON CONFLICT(post_slug, year)
-         DO UPDATE SET
-           rank = ?,
-           score = ?,
-           reason = ?,
-           expires_at = ?,
-           is_active = 1,
-           picked_at = datetime('now'),
-           updated_at = datetime('now')`,
-        postItem.post_slug,
-        postItem.year,
-        '', // title filled by frontend
-        i + 1,
-        postItem.score,
-        reason,
-        expiresAtStr,
-        i + 1,
-        postItem.score,
-        reason,
-        expiresAtStr
-      );
-    }
+    await replaceActiveEditorPicks(db, topPicks);
 
     return success(c, {
       updated: topPicks.length,

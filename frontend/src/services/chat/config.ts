@@ -5,12 +5,18 @@ type ChatWindow = Window & {
     chatBaseUrl?: string;
     chatApiKey?: string;
     chatWsBaseUrl?: string;
+    capabilities?: {
+      supportsChatWebSocket?: boolean;
+    };
     aiUnified?: unknown;
   };
   __APP_CONFIG?: {
     chatBaseUrl?: string;
     chatApiKey?: string;
     chatWsBaseUrl?: string;
+    capabilities?: {
+      supportsChatWebSocket?: boolean;
+    };
     aiUnified?: unknown;
   };
 };
@@ -62,12 +68,30 @@ export function getChatWebSocketBaseUrl(): string | null {
   return null;
 }
 
+function getChatWebSocketCapability(): boolean | null {
+  const w = getChatWindow();
+  const runtime =
+    w?.APP_CONFIG?.capabilities?.supportsChatWebSocket ??
+    w?.__APP_CONFIG?.capabilities?.supportsChatWebSocket;
+  if (typeof runtime === 'boolean') return runtime;
+
+  const env = import.meta.env.VITE_CHAT_WS_ENABLED as string | boolean | undefined;
+  if (typeof env === 'boolean') return env;
+  if (typeof env === 'string' && env) {
+    return env === 'true';
+  }
+
+  return null;
+}
+
 export function shouldUseChatWebSocket(): boolean {
+  const capability = getChatWebSocketCapability();
+  if (capability === false) return false;
   if (getChatWebSocketBaseUrl()) return true;
   try {
     const base = getChatBaseUrl();
     const url = new URL(base);
-    return ['localhost', '127.0.0.1'].includes(url.hostname);
+    return capability !== false && ['localhost', '127.0.0.1'].includes(url.hostname);
   } catch {
     return false;
   }
@@ -101,6 +125,9 @@ export function buildChatUrl(path: string, sessionId?: string): string {
 
 export function buildChatWebSocketUrl(sessionId?: string): string {
   const overrideBase = getChatWebSocketBaseUrl();
+  if (!overrideBase && !shouldUseChatWebSocket()) {
+    throw new Error('Chat WebSocket capability is disabled');
+  }
   const base = (overrideBase || getChatBaseUrl()).replace(/\/$/, '');
   const wsBase = base.replace(/^http:\/\//, 'ws://').replace(/^https:\/\//, 'wss://');
   const url = new URL(`${wsBase}/api/v1/chat/ws`);

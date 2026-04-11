@@ -9,6 +9,15 @@
 
 import { getApiBaseUrl } from "@/utils/network/apiBase";
 import { MEMORY_DEFAULTS } from "@/config/defaults";
+import {
+  getPrincipalHeaders,
+  getPrincipalUserId,
+  getSessionAuthToken,
+} from "@/services/session/userContentAuth";
+import {
+  getStoredAnonymousToken,
+  parseJwtPayload,
+} from "@/services/session/auth";
 
 // ============================================================================
 // Types
@@ -69,28 +78,43 @@ export interface MemorySearchResult {
 }
 
 // ============================================================================
-// User ID Management
+// Principal Identity
 // ============================================================================
 
-const USER_ID_KEY = "memory.userId";
+function getCachedPrincipalUserId(): string | null {
+  const token = getSessionAuthToken() || getStoredAnonymousToken();
+  const payload = token ? parseJwtPayload(token) : null;
+  return typeof payload?.sub === "string" && payload.sub.trim()
+    ? payload.sub.trim()
+    : null;
+}
 
 /**
- * 현재 사용자 ID 가져오기 (없으면 생성)
+ * Prefer async principal helpers for new code paths.
  */
 export function getUserId(): string {
-  let userId = localStorage.getItem(USER_ID_KEY);
+  const userId = getCachedPrincipalUserId();
   if (!userId) {
-    userId = `user-${crypto.randomUUID()}`;
-    localStorage.setItem(USER_ID_KEY, userId);
+    throw new Error("No principal token available");
   }
   return userId;
 }
 
 /**
- * 사용자 ID 설정 (로그인 시)
+ * Legacy no-op kept for compatibility with older callers.
  */
-export function setUserId(id: string): void {
-  localStorage.setItem(USER_ID_KEY, id);
+export function setUserId(_id: string): void {
+  console.warn("[memory] setUserId is deprecated. Principal identity is derived from the auth token.");
+}
+
+async function getPrincipalContext(
+  headersInit?: HeadersInit,
+): Promise<{ userId: string; headers: Headers }> {
+  const [userId, headers] = await Promise.all([
+    getPrincipalUserId(),
+    getPrincipalHeaders(headersInit),
+  ]);
+  return { userId, headers };
 }
 
 // ============================================================================
@@ -109,7 +133,7 @@ export async function getMemories(
     signal?: AbortSignal;
   } = {},
 ): Promise<{ memories: UserMemory[]; total: number }> {
-  const userId = getUserId();
+  const { userId, headers } = await getPrincipalContext();
   const base = getApiBaseUrl();
   const params = new URLSearchParams();
   if (options.type) params.set("type", options.type);
@@ -121,6 +145,7 @@ export async function getMemories(
 
   const res = await fetch(url, {
     method: "GET",
+    headers,
     signal: options.signal,
   });
 
@@ -143,13 +168,15 @@ export async function createMemory(memory: {
   sourceId?: string;
   importanceScore?: number;
 }): Promise<{ id: string }> {
-  const userId = getUserId();
+  const { userId, headers } = await getPrincipalContext({
+    "Content-Type": "application/json",
+  });
   const base = getApiBaseUrl();
   const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}`;
 
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(memory),
   });
 
@@ -175,13 +202,15 @@ export async function createMemoriesBatch(
     importanceScore?: number;
   }>,
 ): Promise<{ ids: string[]; created: number }> {
-  const userId = getUserId();
+  const { userId, headers } = await getPrincipalContext({
+    "Content-Type": "application/json",
+  });
   const base = getApiBaseUrl();
   const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}/batch`;
 
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ memories }),
   });
 
@@ -197,11 +226,11 @@ export async function createMemoriesBatch(
  * 메모리 삭제
  */
 export async function deleteMemory(memoryId: string): Promise<void> {
-  const userId = getUserId();
+  const { userId, headers } = await getPrincipalContext();
   const base = getApiBaseUrl();
   const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}/${memoryId}`;
 
-  const res = await fetch(url, { method: "DELETE" });
+  const res = await fetch(url, { method: "DELETE", headers });
 
   if (!res.ok) {
     throw new Error(`Failed to delete memory: ${res.status}`);
@@ -223,19 +252,21 @@ export async function upsertMemoryEmbedding(
     category?: string;
   }>,
 ): Promise<void> {
-  const userId = getUserId();
+  const { userId, headers } = await getPrincipalContext({
+    "Content-Type": "application/json",
+  });
   const base = getApiBaseUrl();
   const url = `${base.replace(/\/$/, "")}/api/v1/rag/memories/upsert`;
 
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ userId, memories }),
   });
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    console.warn("Failed to upsert memory embedding:", res.status, text);
+    throw new Error(`Failed to upsert memory embedding: ${res.status} ${text}`.trim());
   }
 }
 
@@ -243,15 +274,15 @@ export async function upsertMemoryEmbedding(
  * 메모리 임베딩 삭제
  */
 export async function deleteMemoryEmbedding(memoryId: string): Promise<void> {
-  const userId = getUserId();
+  const { userId, headers } = await getPrincipalContext();
   const base = getApiBaseUrl();
   const url = `${base.replace(/\/$/, "")}/api/v1/rag/memories/${userId}/${memoryId}`;
 
-  const res = await fetch(url, { method: "DELETE" });
+  const res = await fetch(url, { method: "DELETE", headers });
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    console.warn("Failed to delete memory embedding:", res.status, text);
+    throw new Error(`Failed to delete memory embedding: ${res.status} ${text}`.trim());
   }
 }
 
@@ -267,14 +298,16 @@ export async function searchMemories(
     signal?: AbortSignal;
   } = {},
 ): Promise<MemorySearchResult[]> {
-  const userId = getUserId();
+  const { userId, headers } = await getPrincipalContext({
+    "Content-Type": "application/json",
+  });
   const base = getApiBaseUrl();
   const url = `${base.replace(/\/$/, "")}/api/v1/rag/memories/search`;
 
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         userId,
         query,
@@ -286,16 +319,17 @@ export async function searchMemories(
     });
 
     if (!res.ok) {
-      console.warn("Memory search failed:", res.status);
-      return [];
+      const text = await res.text().catch(() => "");
+      throw new Error(`Memory search failed: ${res.status} ${text}`.trim());
     }
 
     const data = await res.json();
     return data.data?.results || [];
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") return [];
-    console.warn("Memory search error:", err);
-    return [];
+    throw err instanceof Error
+      ? err
+      : new Error("Memory search failed");
   }
 }
 
@@ -314,7 +348,7 @@ export async function getChatSessions(
     signal?: AbortSignal;
   } = {},
 ): Promise<{ sessions: ChatSession[] }> {
-  const userId = getUserId();
+  const { userId, headers } = await getPrincipalContext();
   const base = getApiBaseUrl();
   const params = new URLSearchParams();
   if (options.limit) params.set("limit", String(options.limit));
@@ -325,6 +359,7 @@ export async function getChatSessions(
 
   const res = await fetch(url, {
     method: "GET",
+    headers,
     signal: options.signal,
   });
 
@@ -344,13 +379,15 @@ export async function createChatSession(options: {
   questionMode?: "general" | "article";
   articleSlug?: string;
 }): Promise<{ id: string }> {
-  const userId = getUserId();
+  const { userId, headers } = await getPrincipalContext({
+    "Content-Type": "application/json",
+  });
   const base = getApiBaseUrl();
   const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}/sessions`;
 
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(options),
   });
 
@@ -372,7 +409,7 @@ export async function getChatSession(
     signal?: AbortSignal;
   } = {},
 ): Promise<{ session: ChatSession; messages: ChatMessage[] }> {
-  const userId = getUserId();
+  const { userId, headers } = await getPrincipalContext();
   const base = getApiBaseUrl();
   const params = new URLSearchParams();
   if (options.limit) params.set("limit", String(options.limit));
@@ -381,6 +418,7 @@ export async function getChatSession(
 
   const res = await fetch(url, {
     method: "GET",
+    headers,
     signal: options.signal,
   });
 
@@ -404,13 +442,15 @@ export async function addChatMessage(
     metadata?: Record<string, unknown>;
   },
 ): Promise<{ id: string }> {
-  const userId = getUserId();
+  const { userId, headers } = await getPrincipalContext({
+    "Content-Type": "application/json",
+  });
   const base = getApiBaseUrl();
   const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}/sessions/${sessionId}/messages`;
 
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(message),
   });
 
@@ -434,13 +474,15 @@ export async function addChatMessagesBatch(
     metadata?: Record<string, unknown>;
   }>,
 ): Promise<{ ids: string[]; created: number }> {
-  const userId = getUserId();
+  const { userId, headers } = await getPrincipalContext({
+    "Content-Type": "application/json",
+  });
   const base = getApiBaseUrl();
   const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}/sessions/${sessionId}/messages/batch`;
 
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ messages }),
   });
 
@@ -463,13 +505,15 @@ export async function updateChatSession(
     isArchived?: boolean;
   },
 ): Promise<void> {
-  const userId = getUserId();
+  const { userId, headers } = await getPrincipalContext({
+    "Content-Type": "application/json",
+  });
   const base = getApiBaseUrl();
   const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}/sessions/${sessionId}`;
 
   const res = await fetch(url, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(updates),
   });
 
@@ -482,11 +526,11 @@ export async function updateChatSession(
  * 채팅 세션 삭제
  */
 export async function deleteChatSession(sessionId: string): Promise<void> {
-  const userId = getUserId();
+  const { userId, headers } = await getPrincipalContext();
   const base = getApiBaseUrl();
   const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}/sessions/${sessionId}`;
 
-  const res = await fetch(url, { method: "DELETE" });
+  const res = await fetch(url, { method: "DELETE", headers });
 
   if (!res.ok) {
     throw new Error(`Failed to delete chat session: ${res.status}`);
@@ -618,10 +662,6 @@ export async function extractAndSaveMemories(
       sourceId: sessionId,
     }));
 
-    try {
-      await createMemoriesBatch(memoriesWithSource);
-    } catch (err) {
-      console.warn("Failed to save extracted memories:", err);
-    }
+    await createMemoriesBatch(memoriesWithSource);
   }
 }

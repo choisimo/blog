@@ -53,6 +53,7 @@ export interface NotificationState {
   ) => string;
   upsertNotifications: (notifications: AppNotification[]) => void;
   markRead: (id: string) => void;
+  setReadState: (ids: string[], read: boolean) => void;
   markAllRead: () => void;
   removeNotification: (id: string) => void;
   clearAll: () => void;
@@ -136,6 +137,21 @@ export const useNotificationStore = create<NotificationState>()(
         set((state) => {
           const next = state.notifications.map((n) =>
             n.id === id ? { ...n, read: true } : n,
+          );
+          return {
+            notifications: next,
+            unreadCount: next.filter((n) => !n.read).length,
+          };
+        });
+      },
+
+      setReadState: (ids, read) => {
+        const idSet = new Set(ids);
+        set((state) => {
+          const next = state.notifications.map((notification) =>
+            idSet.has(notification.id)
+              ? { ...notification, read }
+              : notification,
           );
           return {
             notifications: next,

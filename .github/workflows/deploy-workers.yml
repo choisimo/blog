@@ -6,23 +6,37 @@ on:
     branches: [main]
     paths:
       - 'workers/**'
+      - 'shared/**'
+      - 'scripts/worker-deploy-matrix.mjs'
       - '.github/workflows/deploy-workers.yml'
 
 permissions:
   contents: read
 
 jobs:
-  deploy-api-gateway:
+  build-matrix:
     runs-on: ubuntu-latest
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      AI_DEFAULT_MODEL: ${{ secrets.AI_DEFAULT_MODEL }}
-      AI_VISION_MODEL: ${{ secrets.AI_VISION_MODEL }}
-      PERPLEXITY_MODEL: ${{ secrets.PERPLEXITY_MODEL }}
-      API_BASE_URL: ${{ secrets.API_BASE_URL }}
-      ASSETS_BASE_URL: ${{ secrets.ASSETS_BASE_URL }}
-      ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS }}
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build deploy matrix
+        id: matrix
+        run: echo "matrix=$(node scripts/worker-deploy-matrix.mjs)" >> "$GITHUB_OUTPUT"
+
+  deploy-workers:
+    needs: build-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.build-matrix.outputs.matrix) }}
 
     steps:
       - name: Checkout
@@ -33,41 +47,94 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: workers/api-gateway/package-lock.json
+          cache-dependency-path: ${{ matrix.cacheDependencyPath }}
 
       - name: Install dependencies
-        working-directory: workers/api-gateway
+        working-directory: workers/${{ matrix.path }}
         run: npm ci
 
+      - name: Verify worker quality gates
+        working-directory: workers/${{ matrix.path }}
+        run: |
+          node -e "const p=require('./package.json'); if(!p.scripts?.typecheck) process.exit(1)"
+          node -e "const p=require('./package.json'); if(!p.scripts?.test) process.exit(1)"
+
       - name: Type-check worker
-        working-directory: workers/api-gateway
+        working-directory: workers/${{ matrix.path }}
         run: npm run typecheck
 
       - name: Run worker tests
-        working-directory: workers/api-gateway
-        run: npm test
+        working-directory: workers/${{ matrix.path }}
+        run: npm run test
 
       - name: Inject runtime secrets
-        working-directory: workers/api-gateway
+        if: ${{ matrix.hasSecrets }}
+        working-directory: workers/${{ matrix.path }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          REQUIRED_SECRETS_JSON: ${{ toJson(matrix.requiredSecrets) }}
+          OPTIONAL_SECRETS_JSON: ${{ toJson(matrix.optionalSecrets) }}
+          BACKEND_ORIGIN: ${{ secrets.BACKEND_ORIGIN }}
+          BACKEND_KEY: ${{ secrets.BACKEND_KEY }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          INTERNAL_KEY: ${{ secrets.INTERNAL_KEY }}
+          TERMINAL_SESSION_SECRET: ${{ secrets.TERMINAL_SESSION_SECRET }}
+          ADMIN_ALLOWED_EMAILS: ${{ secrets.ADMIN_ALLOWED_EMAILS }}
+          ADMIN_SETUP_TOKEN: ${{ secrets.ADMIN_SETUP_TOKEN }}
+          GITHUB_CLIENT_ID: ${{ secrets.GITHUB_CLIENT_ID }}
+          GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          OAUTH_REDIRECT_BASE_URL: ${{ secrets.OAUTH_REDIRECT_BASE_URL }}
+          CF_ACCESS_AUD: ${{ secrets.CF_ACCESS_AUD }}
+          CF_TEAM_DOMAIN: ${{ secrets.CF_TEAM_DOMAIN }}
+          AI_DEFAULT_MODEL: ${{ secrets.AI_DEFAULT_MODEL }}
+          AI_VISION_MODEL: ${{ secrets.AI_VISION_MODEL }}
+          PERPLEXITY_MODEL: ${{ secrets.PERPLEXITY_MODEL }}
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          ASSETS_BASE_URL: ${{ secrets.ASSETS_BASE_URL }}
+          ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS }}
         run: |
           set -euo pipefail
+
           put_secret() {
             local key="$1"
             local value="$2"
+            printf "%s" "$value" | npx wrangler secret put "$key" --env production
+          }
+
+          put_required() {
+            local key="$1"
+            local value="${!key:-}"
+            if [ -z "$value" ]; then
+              echo "::error::Missing required secret $key for ${{ matrix.id }}"
+              exit 1
+            fi
+            put_secret "$key" "$value"
+          }
+
+          put_optional() {
+            local key="$1"
+            local value="${!key:-}"
             if [ -n "$value" ]; then
-              printf "%s" "$value" | npx wrangler secret put "$key" --env production
+              put_secret "$key" "$value"
             else
               echo "skip: $key (empty)"
             fi
           }
 
-          put_secret AI_DEFAULT_MODEL "${AI_DEFAULT_MODEL}"
-          put_secret AI_VISION_MODEL "${AI_VISION_MODEL}"
-          put_secret PERPLEXITY_MODEL "${PERPLEXITY_MODEL}"
-          put_secret API_BASE_URL "${API_BASE_URL}"
-          put_secret ASSETS_BASE_URL "${ASSETS_BASE_URL}"
-          put_secret ALLOWED_ORIGINS "${ALLOWED_ORIGINS}"
+          while IFS= read -r key; do
+            [ -n "$key" ] && put_required "$key"
+          done < <(node -e 'for (const key of JSON.parse(process.env.REQUIRED_SECRETS_JSON || "[]")) console.log(key)')
 
-      - name: Deploy api-gateway
-        working-directory: workers/api-gateway
+          while IFS= read -r key; do
+            [ -n "$key" ] && put_optional "$key"
+          done < <(node -e 'for (const key of JSON.parse(process.env.OPTIONAL_SECRETS_JSON || "[]")) console.log(key)')
+
+      - name: Deploy worker
+        working-directory: workers/${{ matrix.path }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler deploy --env production

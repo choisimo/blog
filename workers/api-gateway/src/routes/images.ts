@@ -26,6 +26,34 @@ async function resolveAssetsBaseUrl(env: Env): Promise<string> {
   return `${apiBaseUrl.replace(/\/$/, '')}/images`;
 }
 
+images.post('/upload', requireAdmin, async (c) => {
+  const backendOrigin = c.env.BACKEND_ORIGIN;
+  if (!backendOrigin) {
+    return error(c, 'BACKEND_ORIGIN not configured', 500, 'CONFIG_ERROR');
+  }
+
+  const upstream = new URL('/api/v1/images/upload', backendOrigin);
+  const headers = new Headers(c.req.raw.headers);
+  headers.delete('host');
+  if (c.env.BACKEND_KEY) {
+    headers.set('X-Backend-Key', c.env.BACKEND_KEY);
+  }
+
+  const response = await fetch(upstream.toString(), {
+    method: 'POST',
+    headers,
+    body: c.req.raw.body,
+    redirect: 'manual',
+    signal: c.req.raw.signal,
+  });
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+});
+
 // POST /images/presign - Generate presigned URL for R2 upload (admin only)
 images.post('/presign', requireAdmin, async (c) => {
   const body = await c.req.json().catch(() => ({}));

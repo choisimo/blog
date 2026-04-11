@@ -8,18 +8,12 @@ const snapshotPath = path.join(
   "docs/generated/contract-drift.snapshot.json",
 );
 
-const routeFiles = [
-  {
-    owner: "backend",
-    file: "backend/src/index.js",
-    pattern: /app\.use\("([^"]+)",\s*([A-Za-z0-9_]+)/g,
-  },
-  {
-    owner: "worker",
-    file: "workers/api-gateway/src/index.ts",
-    pattern: /api\.route\('([^']+)',\s*([A-Za-z0-9_]+)/g,
-  },
-];
+const registrySources = {
+  backend: "backend/src/routes/registry.js",
+  worker: "workers/api-gateway/src/routes/registry.ts",
+  boundaries: "shared/src/contracts/service-boundaries.js",
+  workerIndex: "workers/api-gateway/src/index.ts",
+};
 
 const consumerFiles = [
   "frontend/src/services/content/translate.ts",
@@ -52,28 +46,75 @@ const commentsBoundaryFiles = {
   backend: "backend/src/routes/comments.js",
 };
 
-async function collectRouteMounts() {
-  const mounts = [];
+async function collectRouteOwnership() {
+  const [backendRegistry, workerRegistry, boundarySource, workerIndexSource] =
+    await Promise.all([
+      readSource(registrySources.backend),
+      readSource(registrySources.worker),
+      readSource(registrySources.boundaries),
+      readSource(registrySources.workerIndex),
+    ]);
 
-  for (const { owner, file, pattern } of routeFiles) {
-    const absPath = path.join(repoRoot, file);
-    const source = await readFile(absPath, "utf8");
-    let match;
-    while ((match = pattern.exec(source)) !== null) {
-      mounts.push({
-        owner,
-        file,
-        mountPath: match[1],
-        symbol: match[2],
-      });
-    }
-  }
-
-  return mounts.sort((a, b) =>
-    `${a.owner}:${a.mountPath}:${a.symbol}`.localeCompare(
-      `${b.owner}:${b.mountPath}:${b.symbol}`,
+  const backendEntries = [
+    ...backendRegistry.matchAll(
+      /\{\s*boundaryId:\s*'([^']+)',\s*basePath:\s*'([^']+)'/g,
     ),
-  );
+  ].map((match) => ({
+    owner: "backend",
+    boundaryId: match[1],
+    path: match[2],
+  }));
+
+  const workerEntries = [
+    ...workerRegistry.matchAll(
+      /\{\s*boundaryId:\s*'([^']+)',\s*path:\s*'([^']+)'/g,
+    ),
+  ].map((match) => ({
+    owner: "worker",
+    boundaryId: match[1],
+    path: `/api/v1${match[2]}`,
+  }));
+
+  const sharedBoundaries = [
+    ...boundarySource.matchAll(
+      /\{\s*id:\s*'([^']+)',\s*prefix:\s*'([^']+)',\s*owner:\s*ROUTE_OWNERS\.([A-Z_]+)/g,
+    ),
+  ].map((match) => ({
+    boundaryId: match[1],
+    prefix: match[2],
+    owner: match[3],
+  }));
+
+  const publicConfigSurface = {
+    topLevelKeys: [
+      "apiBaseUrl",
+      "chatBaseUrl",
+      "chatWsBaseUrl",
+      "terminalGatewayUrl",
+      "ai",
+      "features",
+      "capabilities",
+    ].filter((key) => new RegExp(`\\b${key}\\b`).test(workerIndexSource)),
+    featureKeys: [
+      "aiEnabled",
+      "ragEnabled",
+      "terminalEnabled",
+      "aiInline",
+      "commentsEnabled",
+    ].filter((key) => new RegExp(`\\b${key}\\b`).test(workerIndexSource)),
+    capabilityKeys: [
+      "supportsChatWebSocket",
+      "hasTerminalGatewayUrl",
+    ].filter((key) => new RegExp(`\\b${key}\\b`).test(workerIndexSource)),
+  };
+
+  return {
+    backendEntries,
+    workerEntries,
+    sharedBoundaries,
+    proxyableBoundaryOwners: ["BACKEND", "PROXY_ONLY", "COMPATIBILITY"],
+    publicConfigSurface,
+  };
 }
 
 async function collectSharedImports() {
@@ -220,7 +261,7 @@ function stableStringify(value) {
 async function buildSnapshot() {
   return {
     generatedAt: "snapshot-managed",
-    routeMounts: await collectRouteMounts(),
+    routeOwnership: await collectRouteOwnership(),
     sharedContractUsage: await collectSharedImports(),
     userSessionContract: await collectUserSessionContract(),
     authSemantics: await collectAuthSemantics(),

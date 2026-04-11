@@ -30,7 +30,12 @@ export interface RuntimeConfig {
   apiBaseUrl?: string;
   chatBaseUrl?: string;
   chatWsBaseUrl?: string;
+  terminalGatewayUrl?: string | null;
   env?: string;
+  capabilities?: {
+    supportsChatWebSocket?: boolean;
+    hasTerminalGatewayUrl?: boolean;
+  };
   ai?: {
     modelSelectionEnabled?: boolean;
     defaultModel?: string | null;
@@ -57,11 +62,11 @@ export interface FeatureFlagsState {
 // ============================================================================
 
 const DEFAULT_FLAGS: FeatureFlags = {
-  aiEnabled: true,
-  ragEnabled: true,
+  aiEnabled: false,
+  ragEnabled: false,
   terminalEnabled: false,
-  aiInline: true,
-  commentsEnabled: true,
+  aiInline: false,
+  commentsEnabled: false,
 };
 
 // Cache duration: 5 minutes
@@ -140,6 +145,8 @@ export const useFeatureFlagsStore = create<FeatureFlagsState>((set, get) => ({
               apiBaseUrl?: string;
               chatBaseUrl?: string;
               chatWsBaseUrl?: string;
+              terminalGatewayUrl?: string | null;
+              capabilities?: RuntimeConfig["capabilities"];
               ai?: Record<string, unknown>;
               features?: FeatureFlags;
             };
@@ -153,6 +160,21 @@ export const useFeatureFlagsStore = create<FeatureFlagsState>((set, get) => ({
           }
           if (typeof data?.chatWsBaseUrl === "string" && data.chatWsBaseUrl) {
             w.APP_CONFIG.chatWsBaseUrl = data.chatWsBaseUrl;
+          }
+          if (data?.chatWsBaseUrl === null) {
+            w.APP_CONFIG.chatWsBaseUrl = undefined;
+          }
+          if (
+            data?.terminalGatewayUrl === null ||
+            (typeof data?.terminalGatewayUrl === "string" && data.terminalGatewayUrl)
+          ) {
+            w.APP_CONFIG.terminalGatewayUrl = data.terminalGatewayUrl ?? null;
+          }
+          if (data?.capabilities && typeof data.capabilities === "object") {
+            w.APP_CONFIG.capabilities = {
+              ...(w.APP_CONFIG.capabilities ?? {}),
+              ...(data.capabilities as RuntimeConfig["capabilities"]),
+            };
           }
           if (data?.ai && typeof data.ai === "object") {
             w.APP_CONFIG.ai = {

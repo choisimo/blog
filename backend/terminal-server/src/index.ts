@@ -13,20 +13,26 @@
  */
 
 import http from 'http';
+import crypto from 'crypto';
 import { WebSocketServer, WebSocket } from 'ws';
 import { startContainer, stopContainer, cleanupStaleContainers } from './docker.js';
 import { createPtyBridge, parseTerminalSize } from './pty-bridge.js';
+import {
+  INTERNAL_AUTH_HEADER,
+  verifyAdmissionToken,
+  verifyInternalRequest,
+} from './admission.js';
 
 // Configuration
 const PORT = parseInt(process.env.PORT || '8080', 10);
-const BACKEND_KEY = process.env.BACKEND_KEY;
+const TERMINAL_SESSION_SECRET = process.env.TERMINAL_SESSION_SECRET;
 const SESSION_TIMEOUT = parseInt(
-  process.env.SESSION_TIMEOUT || String(10 * 60 * 1000),
+  process.env.TERMINAL_SESSION_TIMEOUT_MS || process.env.SESSION_TIMEOUT || String(10 * 60 * 1000),
   10
 ); // 10 minutes default
 
-if (!BACKEND_KEY) {
-  console.error('BACKEND_KEY environment variable is required');
+if (!TERMINAL_SESSION_SECRET) {
+  console.error('TERMINAL_SESSION_SECRET environment variable is required');
   process.exit(1);
 }
 
@@ -58,6 +64,19 @@ const server = http.createServer((req, res) => {
 
   // Stats endpoint
   if (req.url === '/stats') {
+    if (
+      !verifyInternalRequest({
+        headerValue: req.headers[INTERNAL_AUTH_HEADER],
+        secret: TERMINAL_SESSION_SECRET,
+        method: req.method || 'GET',
+        path: '/stats',
+      })
+    ) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized' }));
+      return;
+    }
+
     const sessionList = Array.from(sessions.values()).map((s) => ({
       userId: s.userId,
       containerName: s.containerName,
@@ -66,6 +85,17 @@ const server = http.createServer((req, res) => {
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ sessions: sessionList }));
+    return;
+  }
+
+  if (req.url === '/execute' || req.url === '/execute/') {
+    res.writeHead(410, { 'Content-Type': 'application/json' });
+    res.end(
+      JSON.stringify({
+        ok: false,
+        error: 'Code execution moved to backend /api/v1/execute. terminal-server only handles /terminal.',
+      })
+    );
     return;
   }
 
@@ -87,26 +117,41 @@ server.on('upgrade', (request, socket, head) => {
     return;
   }
 
-  // Verify backend key
-  const clientSecret = request.headers['x-backend-key'];
-  if (clientSecret !== BACKEND_KEY) {
-    console.warn('Unauthorized connection attempt - invalid secret');
+  const admissionToken = request.headers['x-terminal-admission'];
+  const clientIP = request.headers['x-client-ip'];
+  const clientUserAgent = request.headers['x-client-user-agent'];
+  const requestId =
+    (request.headers['x-request-id'] as string | undefined) || crypto.randomUUID();
+
+  if (typeof admissionToken !== 'string') {
+    console.warn('Unauthorized connection attempt - missing admission token');
     socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
     socket.destroy();
     return;
   }
 
-  // Extract user info from headers (set by gateway)
-  const userId = request.headers['x-user-id'] as string;
-  const clientIP = request.headers['x-client-ip'] as string;
-  const requestId = request.headers['x-request-id'] as string;
-
-  if (!userId) {
-    console.warn('Missing user ID in request');
-    socket.write('HTTP/1.1 400 Bad Request\r\n\r\n');
+  if (typeof clientIP !== 'string' || typeof clientUserAgent !== 'string') {
+    console.warn('Unauthorized connection attempt - missing client binding headers');
+    socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
     socket.destroy();
     return;
   }
+
+  const admission = verifyAdmissionToken({
+    token: admissionToken,
+    secret: TERMINAL_SESSION_SECRET,
+    clientIP,
+    userAgent: clientUserAgent,
+  });
+
+  if (!admission?.sub) {
+    console.warn('Unauthorized connection attempt - invalid admission token');
+    socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+    socket.destroy();
+    return;
+  }
+
+  const userId = admission.sub;
 
   console.log(`[${requestId}] WebSocket upgrade for user: ${userId} from ${clientIP}`);
 

@@ -8,6 +8,12 @@ type RuntimeWindow = Window & {
 };
 
 let warnedMissingApiBase = false;
+const PROD_ALLOWLIST = new Set([
+  "noblog.nodove.com",
+  "blog.nodove.com",
+  "blog-test.nodove.com",
+  "api.nodove.com",
+]);
 
 function normalizeBaseUrl(url: string): string {
   let normalized = url.trim();
@@ -75,10 +81,19 @@ export function getApiBaseUrl(): string {
       hostname === "127.0.0.1" ||
       hostname === "::1";
 
-    baseUrl = isLocalhost ? "http://localhost:5080" : "https://api.nodove.com";
-    source = "default";
+    if (isLocalhost) {
+      baseUrl = "http://localhost:5080";
+      source = "default";
+    } else if (PROD_ALLOWLIST.has(hostname)) {
+      baseUrl = "https://api.nodove.com";
+      source = "default";
+    } else {
+      throw new Error(
+        `[apiBase] No runtime or environment API base configured for host ${hostname || "<unknown>"}.`,
+      );
+    }
 
-    if (typeof window !== "undefined" && !warnedMissingApiBase) {
+    if (typeof window !== "undefined" && !warnedMissingApiBase && source === "default") {
       warnedMissingApiBase = true;
       console.warn(
         "[apiBase] VITE_API_BASE_URL is not configured. " +

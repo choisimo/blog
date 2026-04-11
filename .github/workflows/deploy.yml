@@ -7,12 +7,14 @@ on:
     paths:
       - 'frontend/**'
       - 'frontend/public/project-data/**'
+      - 'shared/**'
       - '.github/workflows/deploy.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'frontend/**'
       - 'frontend/public/project-data/**'
+      - 'shared/**'
       - '.github/workflows/deploy.yml'
 
 permissions:
@@ -58,11 +60,12 @@ jobs:
       run: npm --prefix frontend run type-check
 
     - name: Test (frontend)
-      # Run the characterization and warming baseline tests that gate translation/sentio behavior.
-      # Pre-existing failures in BlogCard, BlogPost integration, and FloatingActionBar are excluded.
+      # Run characterization plus platform regressions for auth/runtime gating.
       run: |
         npm --prefix frontend run test:run -- \
           BlogPost.characterization \
+          AdminAuth.security \
+          FloatingActionBar.feature-flag \
           Sentio.feed-cache \
           Sentio.feed-cache.warming-baseline
 

@@ -104,6 +104,10 @@ chat.post('/session', async (c: Context<ChatContext>) => {
   return proxyRequest(c, '/session');
 });
 
+chat.all('/ws', async (c: Context<ChatContext>) => {
+  return error(c, 'Chat WebSocket is not enabled on the edge in this environment', 501, 'CHAT_WS_DISABLED');
+});
+
 chat.post('/session/:sessionId/message', async (c: Context<ChatContext>) => {
   const { sessionId } = c.req.param();
   return proxyRequest(c, `/session/${sessionId}/message`, {

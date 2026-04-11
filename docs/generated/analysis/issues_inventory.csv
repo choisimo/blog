@@ -1,7 +1,7 @@
 issue_id,status,resolution
-route-ownership,closed,Shared service boundary contract + runtime response headers + worker proxy gating
-config-sprawl,mitigated,Platform config contract + schema/env/configmap/secret examples aligned
-terminal-shared-secret,closed,X-Backend-Key admission replaced with short-lived signed terminal token
-terminal-session-memory-only,mitigated,Terminal session lease moved to Redis-backed external store with memory fallback
-analytics-editor-picks-sot,closed,Canonical PG vs D1 cache ownership documented and surfaced via headers
-worker-deploy-drift,closed,deploy-workers workflow expanded to actual worker inventory
+production-audit-2026-04-11,in-progress,Use scripts/check-contract-drift.mjs and runtime/package quality gates as the source of truth before marking issues closed
+route-ownership,tracked,Shared service boundary contract is present but must be re-validated against backend/worker registries and snapshots
+runtime-config,tracked,Fail-closed defaults and runtime capability exposure are required before production promotion
+worker-operations,tracked,Worker deploy and secret mutation flows are restricted to CI or GitOps-capable environments
+analytics-degraded,tracked,Backend proxy failures must surface degraded or unavailable status instead of zero-value success payloads
+worker-quality-gates,tracked,Each worker package must expose explicit typecheck and test scripts consumed by CI

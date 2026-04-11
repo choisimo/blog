@@ -58,20 +58,28 @@ async function getEditorPicks(): Promise<EditorPick[]> {
 async function getTrendingPosts(
   days: number = 7,
   offset: number = 0,
-): Promise<{ trending: TrendingPost[]; total: number }> {
+): Promise<{ trending: TrendingPost[]; total: number; degraded?: boolean; errorMessage?: string }> {
   const base = getApiBaseUrl();
   try {
     const res = await fetch(
       `${base}/api/v1/analytics/trending?days=${days}&limit=10&offset=${offset}`,
     );
-    if (!res.ok) return { trending: [], total: 0 };
     const data = await res.json();
+    if (!res.ok) {
+      return {
+        trending: [],
+        total: 0,
+        degraded: Boolean(data?.degraded),
+        errorMessage: data?.error?.message || "Analytics backend unavailable",
+      };
+    }
     return {
       trending: data.data?.trending ?? [],
       total: data.data?.total ?? 0,
+      degraded: Boolean(data?.degraded),
     };
   } catch {
-    return { trending: [], total: 0 };
+    return { trending: [], total: 0, degraded: true, errorMessage: "Analytics backend unavailable" };
   }
 }
 
@@ -334,6 +342,7 @@ function TrendingPostsSection() {
   const [days, setDays] = useState(7);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
+  const [degradedMessage, setDegradedMessage] = useState<string | null>(null);
   const PAGE_SIZE = 10;
 
   const fetchTrending = useCallback(async () => {
@@ -341,6 +350,7 @@ function TrendingPostsSection() {
     const result = await getTrendingPosts(days, page * PAGE_SIZE);
     setTrending(result.trending);
     setTotal(result.total);
+    setDegradedMessage(result.degraded ? result.errorMessage || "Analytics backend unavailable" : null);
     setLoading(false);
   }, [days, page]);
 
@@ -390,6 +400,11 @@ function TrendingPostsSection() {
           </button>
         </div>
       </div>
+      {degradedMessage && (
+        <div className="px-4 py-2 border-b border-amber-100 bg-amber-50 text-xs text-amber-700">
+          {degradedMessage}
+        </div>
+      )}
       {loading ? (
         <div className="flex items-center gap-2 px-4 py-3 text-xs text-zinc-400">
           <RefreshCw className="h-3 w-3 animate-spin" />

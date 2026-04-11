@@ -29,6 +29,7 @@ interface WorkerConfig {
   path: string;
   wranglerPath: string;
   hasProduction: boolean;
+  mutationsEnabled?: boolean;
   exists: boolean;
   config: {
     name: string;
@@ -50,6 +51,20 @@ interface SecretInfo {
   key: string;
   description: string;
   workers: string[];
+}
+
+function getApiErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === 'string' && error) return error;
+  if (
+    error &&
+    typeof error === 'object' &&
+    'message' in error &&
+    typeof error.message === 'string' &&
+    error.message
+  ) {
+    return error.message;
+  }
+  return fallback;
 }
 
 const TABS = [
@@ -141,7 +156,7 @@ export function WorkersManager({ subtab, onSubtabChange }: WorkersManagerProps) 
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || 'Deploy failed');
+        throw new Error(getApiErrorMessage(err.error, 'Deploy failed'));
       }
       return res.json();
     },
@@ -171,7 +186,7 @@ export function WorkersManager({ subtab, onSubtabChange }: WorkersManagerProps) 
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || 'Failed to set secret');
+        throw new Error(getApiErrorMessage(err.error, 'Failed to set secret'));
       }
       return res.json();
     },
@@ -228,10 +243,17 @@ export function WorkersManager({ subtab, onSubtabChange }: WorkersManagerProps) 
 
   const workers = workersData || [];
   const secrets = secretsData || [];
+  const mutationsEnabled = workers[0]?.mutationsEnabled !== false;
 
   return (
     <div className='rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden'>
       <AdminSubtabs tabs={TABS} activeTab={activeTab} onTabChange={(id) => onSubtabChange?.(id)} />
+
+      {!mutationsEnabled && (
+        <div className='px-4 py-3 border-b border-amber-100 dark:border-amber-900/30 bg-amber-50/70 dark:bg-amber-950/20 text-xs text-amber-700 dark:text-amber-300'>
+          이 환경에서는 Worker 배포/비밀값 변경이 비활성화되어 있습니다. 실제 변경은 GitHub Actions와 GitOps 경로로만 수행됩니다.
+        </div>
+      )}
 
       {activeTab === 'workers' && (
         <div className='divide-y divide-zinc-50 dark:divide-zinc-800/50'>
@@ -451,7 +473,7 @@ export function WorkersManager({ subtab, onSubtabChange }: WorkersManagerProps) 
                         onClick={() =>
                           deployMutation.mutate({ workerId: worker.id, env: deployEnv, dryRun: true })
                         }
-                        disabled={deployMutation.isPending}
+                        disabled={deployMutation.isPending || !mutationsEnabled}
                         className='flex items-center gap-1.5 h-9 px-3 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400'
                       >
                         <Terminal className='h-3 w-3' aria-hidden='true' />
@@ -462,7 +484,7 @@ export function WorkersManager({ subtab, onSubtabChange }: WorkersManagerProps) 
                         onClick={() =>
                           deployMutation.mutate({ workerId: worker.id, env: deployEnv, dryRun: false })
                         }
-                        disabled={deployMutation.isPending}
+                        disabled={deployMutation.isPending || !mutationsEnabled}
                         className='flex items-center gap-1.5 h-9 px-3 text-xs font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 text-white shadow-sm transition-all active:scale-95 disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400'
                       >
                         <Rocket className='h-3 w-3' aria-hidden='true' />
@@ -559,7 +581,7 @@ export function WorkersManager({ subtab, onSubtabChange }: WorkersManagerProps) 
                       });
                     }
                   }}
-                  disabled={!secretInputs[secret.key] || secretMutation.isPending}
+                  disabled={!secretInputs[secret.key] || secretMutation.isPending || !mutationsEnabled}
                   className='h-9 px-3 text-xs font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 text-white shadow-sm transition-all active:scale-95 disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 shrink-0'
                 >
                   Set

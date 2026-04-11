@@ -9,6 +9,15 @@
 
 import { useAuthStore } from '@/stores/session/useAuthStore';
 
+type RuntimeWindow = Window & {
+  APP_CONFIG?: {
+    terminalGatewayUrl?: string | null;
+  };
+  __APP_CONFIG?: {
+    terminalGatewayUrl?: string | null;
+  };
+};
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -33,7 +42,7 @@ export interface TerminalConnection {
 // Configuration
 // ============================================================================
 
-function getTerminalGatewayUrl(): string {
+export function getTerminalGatewayUrl(): string | null {
   // Check localStorage override first (for development)
   try {
     const override = localStorage.getItem('aiMemo.terminalGatewayUrl');
@@ -45,16 +54,23 @@ function getTerminalGatewayUrl(): string {
     // ignore
   }
 
+  if (typeof window !== 'undefined') {
+    const runtimeWindow = window as RuntimeWindow;
+    const runtimeUrl =
+      runtimeWindow.APP_CONFIG?.terminalGatewayUrl ??
+      runtimeWindow.__APP_CONFIG?.terminalGatewayUrl;
+    if (typeof runtimeUrl === 'string' && runtimeUrl) {
+      return runtimeUrl;
+    }
+  }
+
   // Environment variable (REQUIRED - no hardcoded fallback)
   const envUrl = import.meta.env.VITE_TERMINAL_GATEWAY_URL;
   if (typeof envUrl === 'string' && envUrl) {
     return envUrl;
   }
 
-  throw new Error(
-    '[terminal] VITE_TERMINAL_GATEWAY_URL is not configured. ' +
-    'Set this environment variable to enable terminal functionality.'
-  );
+  return null;
 }
 
 function getAuthToken(): string | null {
@@ -89,6 +105,53 @@ function getAuthToken(): string | null {
   return null;
 }
 
+function deriveCookieDomain(hostname: string): string | null {
+  if (!hostname || hostname === 'localhost' || hostname.includes(':')) {
+    return null;
+  }
+
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname)) {
+    return null;
+  }
+
+  const segments = hostname.split('.').filter(Boolean);
+  if (segments.length < 2) {
+    return null;
+  }
+
+  return `.${segments.slice(-2).join('.')}`;
+}
+
+function buildTerminalCookie(baseUrl: string, token: string, maxAgeSeconds: number): string {
+  const url = new URL(baseUrl);
+  const parts = [
+    `terminal_token=${encodeURIComponent(token)}`,
+    'Path=/',
+    `Max-Age=${maxAgeSeconds}`,
+    'SameSite=Lax',
+  ];
+
+  const domain = deriveCookieDomain(url.hostname);
+  if (domain) {
+    parts.push(`Domain=${domain}`);
+  }
+  if (url.protocol === 'https:' || url.protocol === 'wss:') {
+    parts.push('Secure');
+  }
+
+  return parts.join('; ');
+}
+
+function setTerminalTokenCookie(baseUrl: string, token: string): void {
+  if (typeof document === 'undefined') return;
+  document.cookie = buildTerminalCookie(baseUrl, token, 120);
+}
+
+function clearTerminalTokenCookie(baseUrl: string): void {
+  if (typeof document === 'undefined') return;
+  document.cookie = buildTerminalCookie(baseUrl, '', 0);
+}
+
 // ============================================================================
 // Terminal Connection
 // ============================================================================
@@ -119,12 +182,19 @@ export function connectTerminal(options: TerminalOptions = {}): TerminalConnecti
   }
 
   const baseUrl = getTerminalGatewayUrl();
+  if (!baseUrl) {
+    console.error('[terminal] Terminal gateway URL is not configured');
+    return null;
+  }
   const cols = options.cols || 80;
   const rows = options.rows || 24;
 
-  // Build WebSocket URL with query params
+  // Browsers cannot set Authorization headers for WebSocket handshakes.
+  // Use a short-lived cookie instead and keep the token out of the URL.
+  setTerminalTokenCookie(baseUrl, token);
+
+  // Build WebSocket URL with terminal size params only
   const url = new URL(`${baseUrl}/terminal`);
-  url.searchParams.set('token', token);
   url.searchParams.set('cols', String(cols));
   url.searchParams.set('rows', String(rows));
 
@@ -155,18 +225,23 @@ export function connectTerminal(options: TerminalOptions = {}): TerminalConnecti
 
     ws.onclose = (event) => {
       connected = false;
+      clearTerminalTokenCookie(baseUrl);
       console.log('[terminal] Disconnected:', event.code, event.reason);
       options.onClose?.(event.code, event.reason);
     };
 
     ws.onerror = (error) => {
+      clearTerminalTokenCookie(baseUrl);
       console.error('[terminal] Error:', error);
       options.onError?.(error);
     };
   } catch (err) {
+    clearTerminalTokenCookie(baseUrl);
     console.error('[terminal] Failed to connect:', err);
     return null;
   }
+
+  window.setTimeout(() => clearTerminalTokenCookie(baseUrl), 120_000);
 
   return {
     send: (data: string) => {
@@ -186,6 +261,7 @@ export function connectTerminal(options: TerminalOptions = {}): TerminalConnecti
         ws = null;
         connected = false;
       }
+      clearTerminalTokenCookie(baseUrl);
     },
     isConnected: () => connected,
   };
@@ -196,7 +272,9 @@ export function connectTerminal(options: TerminalOptions = {}): TerminalConnecti
  */
 export async function checkTerminalHealth(): Promise<boolean> {
   try {
-    const baseUrl = getTerminalGatewayUrl().replace('wss://', 'https://').replace('ws://', 'http://');
+    const terminalGatewayUrl = getTerminalGatewayUrl();
+    if (!terminalGatewayUrl) return false;
+    const baseUrl = terminalGatewayUrl.replace('wss://', 'https://').replace('ws://', 'http://');
     const response = await fetch(`${baseUrl}/health`, {
       method: 'GET',
       signal: AbortSignal.timeout(5000),
@@ -213,4 +291,8 @@ export async function checkTerminalHealth(): Promise<boolean> {
  */
 export function hasAuthToken(): boolean {
   return !!getAuthToken();
+}
+
+export function hasTerminalGatewayUrl(): boolean {
+  return Boolean(getTerminalGatewayUrl());
 }
