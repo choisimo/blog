@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore, scheduleTokenRefresh } from '@/stores/session/useAuthStore';
+import { useAuthStore } from '@/stores/session/useAuthStore';
 
 export default function AdminAuthCallback() {
   const navigate = useNavigate();
@@ -9,6 +9,13 @@ export default function AdminAuthCallback() {
 
   useEffect(() => {
     const hash = window.location.hash.slice(1);
+    if (window.location.hash) {
+      window.history.replaceState(
+        null,
+        document.title,
+        `${window.location.pathname}${window.location.search}`
+      );
+    }
     const params = new URLSearchParams(hash);
     const token = params.get('token');
     const refreshToken = params.get('refreshToken');
@@ -25,7 +32,6 @@ export default function AdminAuthCallback() {
     }
 
     setTokensFromOAuth(token, refreshToken);
-    scheduleTokenRefresh();
     navigate('/admin/config', { replace: true });
   }, [navigate, setTokensFromOAuth]);
 

@@ -11,10 +11,17 @@
 import { Context, Next } from 'hono';
 import type { Env } from '../types';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
-import { unauthorized, error } from '../lib/response';
+import { unauthorized } from '../lib/response';
 
 // Cache the JWKS fetcher per team domain to avoid refetching on every request
 const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
+const PUBLIC_BYPASS_PATHS = new Set([
+  '/_health',
+  '/health',
+  '/healthz',
+  '/public/config',
+  '/api/v1/public/config',
+]);
 
 function getJwks(teamDomain: string): ReturnType<typeof createRemoteJWKSet> {
   const existing = jwksCache.get(teamDomain);
@@ -36,6 +43,12 @@ export async function validateIapJwt(c: Context, next: Next): Promise<Response |
   const env = c.env as Env;
   const aud = env.CF_ACCESS_AUD;
   const teamDomain = env.CF_TEAM_DOMAIN;
+  const pathname = new URL(c.req.url).pathname;
+
+  if (c.req.method === 'OPTIONS' || PUBLIC_BYPASS_PATHS.has(pathname)) {
+    await next();
+    return;
+  }
 
   // IAP is optional — skip if not configured
   if (!aud || !teamDomain) {
@@ -56,7 +69,7 @@ export async function validateIapJwt(c: Context, next: Next): Promise<Response |
     });
     await next();
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Invalid Cloudflare Access JWT';
-    return unauthorized(c, `IAP validation failed: ${message}`);
+    console.error('IAP validation failed:', err);
+    return unauthorized(c, 'Invalid Cloudflare Access JWT');
   }
 }

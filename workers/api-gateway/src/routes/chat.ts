@@ -35,7 +35,6 @@ async function proxyRequest(c: Context<ChatContext>, path: string, options: Prox
 
   const upstreamHeaders = new Headers(c.req.raw.headers);
   upstreamHeaders.delete('host');
-  upstreamHeaders.set('Host', 'blog-b.nodove.com');
 
   if (c.env.BACKEND_KEY) {
     upstreamHeaders.set('X-Backend-Key', c.env.BACKEND_KEY);

@@ -7,6 +7,16 @@ export type PaginationMeta = {
   hasMore?: boolean;
 };
 
+function sanitizeServerMessage(
+  message: string,
+  status: ContentfulStatusCode
+): string {
+  if (status >= 500 && status <= 504) {
+    return status >= 502 ? 'Service unavailable' : 'Internal server error';
+  }
+  return message;
+}
+
 export function success<T>(
   c: Context,
   data: T,
@@ -27,10 +37,11 @@ export function error(
   status: ContentfulStatusCode = 500,
   code?: string
 ) {
+  const responseMessage = sanitizeServerMessage(message, status);
   return c.json<ApiResponse>(
     {
       ok: false,
-      error: { message, code },
+      error: { message: responseMessage, code },
     },
     { status }
   );

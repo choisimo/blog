@@ -85,7 +85,7 @@ adminLogs.get('/stream', async (c) => {
   const headers = new Headers(c.req.raw.headers);
   const clientIp = c.req.raw.headers.get('CF-Connecting-IP') || '';
 
-  headers.set('Host', 'blog-b.nodove.com');
+  headers.delete('Host');
   if (c.env.BACKEND_KEY) {
     headers.set('X-Backend-Key', c.env.BACKEND_KEY);
   } else {

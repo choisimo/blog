@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'backend/**'
+      - 'shared/**'
       - '.github/workflows/deploy-blog-workflow.yml'
   workflow_dispatch:
     inputs:

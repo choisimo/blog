@@ -8,7 +8,12 @@ import { verifyJwt, isAdminClaims } from '../lib/jwt.js';
  */
 export function requireAdmin(req, res, next) {
   const protectionEnabled = !!(config.admin.bearerToken || config.auth?.jwtSecret);
-  if (!protectionEnabled) return next();
+  if (!protectionEnabled) {
+    if (config.security?.protectedEnvironment) {
+      return res.status(503).json({ ok: false, error: 'Service unavailable' });
+    }
+    return next();
+  }
 
   const auth = req.headers['authorization'] || '';
   const token = auth.replace(/^Bearer\s+/i, '').trim();
@@ -22,7 +27,7 @@ export function requireAdmin(req, res, next) {
     try {
       const claims = verifyJwt(token);
       if (claims?.type === 'refresh') return res.status(401).json({ ok: false, error: 'Unauthorized' });
-      if (isAdminClaims(claims)) return next();
+      if (isAdminClaims(claims) && claims.emailVerified === true) return next();
     } catch {}
   }
 

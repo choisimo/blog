@@ -8,6 +8,7 @@
  */
 
 import { Hono } from 'hono';
+import { buildPublicRuntimeConfig } from '@blog/shared/contracts/public-runtime-config';
 import type { HonoEnv } from './types';
 import { corsMiddleware } from './middleware/cors';
 import { loggerMiddleware } from './middleware/logger';
@@ -71,7 +72,6 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
   const backendUrl = new URL(url.pathname + url.search, backendOrigin);
   const headers = new Headers(request.headers);
   headers.delete('Host');
-  headers.set('Host', 'blog-b.nodove.com');
 
   if (env.BACKEND_KEY) {
     headers.set('X-Backend-Key', env.BACKEND_KEY);
@@ -212,20 +212,13 @@ async function buildPublicConfig(env: Env) {
   ]);
   const supportsChatWebSocket = env.CHAT_WS_ENABLED === 'true';
   const terminalEnabled = env.FEATURE_TERMINAL_ENABLED === 'true';
-  const chatWsBaseUrl = supportsChatWebSocket
-    ? apiBaseUrl.replace(/^http:\/\//, 'ws://').replace(/^https:\/\//, 'wss://')
-    : null;
-  const terminalGatewayUrl =
-    terminalEnabled && env.TERMINAL_GATEWAY_URL
-      ? env.TERMINAL_GATEWAY_URL.replace(/\/$/, '')
-      : null;
-
-  return {
+  return buildPublicRuntimeConfig({
     env: env.ENV,
+    siteBaseUrl: env.PUBLIC_SITE_URL,
     apiBaseUrl,
     chatBaseUrl: apiBaseUrl,
-    chatWsBaseUrl,
-    terminalGatewayUrl,
+    supportsChatWebSocket,
+    terminalGatewayUrl: env.TERMINAL_GATEWAY_URL,
     ai: {
       modelSelectionEnabled: false,
       defaultModel: forcedModel || null,
@@ -238,11 +231,7 @@ async function buildPublicConfig(env: Env) {
       aiInline: env.FEATURE_AI_INLINE === 'true',
       commentsEnabled: env.FEATURE_COMMENTS_ENABLED === 'true',
     },
-    capabilities: {
-      supportsChatWebSocket,
-      hasTerminalGatewayUrl: Boolean(terminalGatewayUrl),
-    },
-  };
+  });
 }
 
 app.get('/public/config', async (c) => {

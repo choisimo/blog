@@ -105,51 +105,38 @@ function getAuthToken(): string | null {
   return null;
 }
 
-function deriveCookieDomain(hostname: string): string | null {
-  if (!hostname || hostname === 'localhost' || hostname.includes(':')) {
-    return null;
-  }
-
-  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname)) {
-    return null;
-  }
-
-  const segments = hostname.split('.').filter(Boolean);
-  if (segments.length < 2) {
-    return null;
-  }
-
-  return `.${segments.slice(-2).join('.')}`;
+function getTerminalHttpBaseUrl(baseUrl: string): string {
+  return baseUrl.replace(/^wss:\/\//, 'https://').replace(/^ws:\/\//, 'http://').replace(/\/$/, '');
 }
 
-function buildTerminalCookie(baseUrl: string, token: string, maxAgeSeconds: number): string {
-  const url = new URL(baseUrl);
-  const parts = [
-    `terminal_token=${encodeURIComponent(token)}`,
-    'Path=/',
-    `Max-Age=${maxAgeSeconds}`,
-    'SameSite=Lax',
-  ];
+async function createTerminalSession(
+  baseUrl: string,
+  token: string,
+  signal: AbortSignal
+): Promise<void> {
+  const response = await fetch(`${getTerminalHttpBaseUrl(baseUrl)}/session`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    credentials: 'include',
+    signal,
+  });
 
-  const domain = deriveCookieDomain(url.hostname);
-  if (domain) {
-    parts.push(`Domain=${domain}`);
+  if (!response.ok) {
+    throw new Error(`Terminal session bootstrap failed with status ${response.status}`);
   }
-  if (url.protocol === 'https:' || url.protocol === 'wss:') {
-    parts.push('Secure');
-  }
-
-  return parts.join('; ');
 }
 
-function setTerminalTokenCookie(baseUrl: string, token: string): void {
-  if (typeof document === 'undefined') return;
-  document.cookie = buildTerminalCookie(baseUrl, token, 120);
-}
-
-function clearTerminalTokenCookie(baseUrl: string): void {
-  if (typeof document === 'undefined') return;
-  document.cookie = buildTerminalCookie(baseUrl, '', 0);
+async function clearTerminalSession(baseUrl: string): Promise<void> {
+  try {
+    await fetch(`${getTerminalHttpBaseUrl(baseUrl)}/session`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+  } catch (error) {
+    console.warn('[terminal] Failed to clear session cookie:', error);
+  }
 }
 
 // ============================================================================
@@ -189,59 +176,82 @@ export function connectTerminal(options: TerminalOptions = {}): TerminalConnecti
   const cols = options.cols || 80;
   const rows = options.rows || 24;
 
-  // Browsers cannot set Authorization headers for WebSocket handshakes.
-  // Use a short-lived cookie instead and keep the token out of the URL.
-  setTerminalTokenCookie(baseUrl, token);
-
   // Build WebSocket URL with terminal size params only
-  const url = new URL(`${baseUrl}/terminal`);
+  const url = new URL('/terminal', `${baseUrl.replace(/\/$/, '')}/`);
   url.searchParams.set('cols', String(cols));
   url.searchParams.set('rows', String(rows));
 
   let ws: WebSocket | null = null;
   let connected = false;
+  let closed = false;
+  let sessionEstablished = false;
+  let sessionReleased = false;
+  const connectAbortController = new AbortController();
 
-  try {
-    ws = new WebSocket(url.toString());
-    ws.binaryType = 'arraybuffer';
+  const releaseSession = () => {
+    if (!sessionEstablished || sessionReleased) {
+      return;
+    }
 
-    ws.onopen = () => {
-      connected = true;
-      console.log('[terminal] Connected');
-      options.onOpen?.();
-    };
+    sessionReleased = true;
+    void clearTerminalSession(baseUrl);
+  };
 
-    ws.onmessage = (event) => {
-      let data: string;
-      if (typeof event.data === 'string') {
-        data = event.data;
-      } else if (event.data instanceof ArrayBuffer) {
-        data = new TextDecoder().decode(event.data);
-      } else {
+  void (async () => {
+    try {
+      await createTerminalSession(baseUrl, token, connectAbortController.signal);
+      sessionEstablished = true;
+
+      if (closed) {
+        releaseSession();
         return;
       }
-      options.onData?.(data);
-    };
 
-    ws.onclose = (event) => {
-      connected = false;
-      clearTerminalTokenCookie(baseUrl);
-      console.log('[terminal] Disconnected:', event.code, event.reason);
-      options.onClose?.(event.code, event.reason);
-    };
+      ws = new WebSocket(url.toString());
+      ws.binaryType = 'arraybuffer';
 
-    ws.onerror = (error) => {
-      clearTerminalTokenCookie(baseUrl);
-      console.error('[terminal] Error:', error);
-      options.onError?.(error);
-    };
-  } catch (err) {
-    clearTerminalTokenCookie(baseUrl);
-    console.error('[terminal] Failed to connect:', err);
-    return null;
-  }
+      ws.onopen = () => {
+        connected = true;
+        releaseSession();
+        console.log('[terminal] Connected');
+        options.onOpen?.();
+      };
 
-  window.setTimeout(() => clearTerminalTokenCookie(baseUrl), 120_000);
+      ws.onmessage = (event) => {
+        let data: string;
+        if (typeof event.data === 'string') {
+          data = event.data;
+        } else if (event.data instanceof ArrayBuffer) {
+          data = new TextDecoder().decode(event.data);
+        } else {
+          return;
+        }
+        options.onData?.(data);
+      };
+
+      ws.onclose = (event) => {
+        connected = false;
+        ws = null;
+        releaseSession();
+        console.log('[terminal] Disconnected:', event.code, event.reason);
+        options.onClose?.(event.code, event.reason);
+      };
+
+      ws.onerror = (error) => {
+        releaseSession();
+        console.error('[terminal] Error:', error);
+        options.onError?.(error);
+      };
+    } catch (err) {
+      releaseSession();
+      if (connectAbortController.signal.aborted || closed) {
+        return;
+      }
+
+      console.error('[terminal] Failed to connect:', err);
+      options.onError?.(new Event('error'));
+    }
+  })();
 
   return {
     send: (data: string) => {
@@ -256,12 +266,15 @@ export function connectTerminal(options: TerminalOptions = {}): TerminalConnecti
       }
     },
     close: () => {
+      closed = true;
+      connectAbortController.abort();
       if (ws) {
         ws.close(1000, 'Client closed');
         ws = null;
         connected = false;
+      } else {
+        releaseSession();
       }
-      clearTerminalTokenCookie(baseUrl);
     },
     isConnected: () => connected,
   };
@@ -274,7 +287,7 @@ export async function checkTerminalHealth(): Promise<boolean> {
   try {
     const terminalGatewayUrl = getTerminalGatewayUrl();
     if (!terminalGatewayUrl) return false;
-    const baseUrl = terminalGatewayUrl.replace('wss://', 'https://').replace('ws://', 'http://');
+    const baseUrl = getTerminalHttpBaseUrl(terminalGatewayUrl);
     const response = await fetch(`${baseUrl}/health`, {
       method: 'GET',
       signal: AbortSignal.timeout(5000),

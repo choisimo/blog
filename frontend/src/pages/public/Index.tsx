@@ -37,7 +37,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 import { OptimizedImage } from "@/components/common/OptimizedImage";
 import { formatDate } from "@/utils/content/blog";
-import { getEditorPicks, type EditorPick } from "@/services/content/analytics";
+import { getEditorPicks } from "@/services/content/analytics";
 import TerminalCategories from "@/components/features/navigation/TerminalCategories";
 import { useSEO } from "@/hooks/seo/useSEO";
 import { generateSEOData, generateStructuredData } from "@/utils/seo/seo";
@@ -97,6 +97,7 @@ const Index = () => {
   // Editor's Picks
   const [featuredPosts, setFeaturedPosts] = useState<BlogPost[]>([]);
   const [featuredLoading, setFeaturedLoading] = useState(true);
+  const [featuredNotice, setFeaturedNotice] = useState<string | null>(null);
 
   // Recently Viewed (from localStorage)
   const [recentlyViewed, setRecentlyViewed] = useState<VisitedPostItem[]>([]);
@@ -124,14 +125,18 @@ const Index = () => {
     const loadFeatured = async () => {
       try {
         setFeaturedLoading(true);
+        setFeaturedNotice(null);
 
         // 1. Try to load from D1 database (analytics-based editor picks)
         const dbPicks = await getEditorPicks(3);
+        if (!cancelled && dbPicks.degraded) {
+          setFeaturedNotice("Analytics picks are unavailable. Showing curated fallback.");
+        }
 
-        if (dbPicks.length > 0) {
+        if (dbPicks.data.length > 0) {
           // Resolve posts from D1 picks
           const resolved = await Promise.all(
-            dbPicks.map(async (pick: EditorPick) => {
+            dbPicks.data.map(async (pick) => {
               const post = await getPostBySlug(pick.year, pick.post_slug);
               return post || null;
             }),
@@ -169,6 +174,9 @@ const Index = () => {
         });
         setFeaturedPosts(res.items);
       } catch {
+        if (!cancelled) {
+          setFeaturedNotice("Analytics picks are unavailable. Showing recent posts instead.");
+        }
         // Fallback to latest posts on error
         try {
           const res = await getPostsPage({
@@ -434,6 +442,16 @@ const Index = () => {
             {isTerminal ? "// editor_picks" : "Editor's Picks"}
           </h2>
         </div>
+        {featuredNotice && (
+          <p
+            className={cn(
+              "mb-4 text-sm",
+              isTerminal ? "text-amber-600" : "text-muted-foreground",
+            )}
+          >
+            {featuredNotice}
+          </p>
+        )}
 
         {featuredLoading ? (
           <div className="grid lg:grid-cols-3 gap-6">

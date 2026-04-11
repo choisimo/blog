@@ -1,5 +1,6 @@
 /// <reference types="vitest" />
 import { defineConfig, loadEnv } from 'vite';
+import { configDefaults } from 'vitest/config';
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
 import { componentTagger } from 'lovable-tagger';
@@ -10,6 +11,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, path.resolve(__dirname, '..', '..'), '');
   const devHost = env.VITE_DEV_HOST || '::';
   const devPort = Number(env.VITE_DEV_PORT || 8080);
+  const preserveSymlinks = mode !== 'test';
   return {
     css: {
       postcss: path.resolve(__dirname, './postcss.config.js'),
@@ -67,10 +69,11 @@ export default defineConfig(({ mode }) => {
         }),
     ].filter(Boolean),
     resolve: {
-      preserveSymlinks: true,
+      preserveSymlinks,
       alias: {
         '@': path.resolve(__dirname, '../src'),
         buffer: 'buffer',
+        zod: path.resolve(__dirname, '../node_modules/zod/index.js'),
       },
     },
     test: {
@@ -78,6 +81,7 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       setupFiles: [path.resolve(__dirname, '../src/test/setup.ts')],
       css: true,
+      exclude: [...configDefaults.exclude, 'e2e/**'],
     },
   };
 });

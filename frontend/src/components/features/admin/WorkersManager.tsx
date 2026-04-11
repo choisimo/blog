@@ -244,6 +244,8 @@ export function WorkersManager({ subtab, onSubtabChange }: WorkersManagerProps) 
   const workers = workersData || [];
   const secrets = secretsData || [];
   const mutationsEnabled = workers[0]?.mutationsEnabled !== false;
+  const deploymentRunbook = '.github/workflows/deploy-blog-workflow.yml';
+  const gitOpsManifests = 'k3s/ + ArgoCD overlays';
 
   return (
     <div className='rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden'>
@@ -449,48 +451,62 @@ export function WorkersManager({ subtab, onSubtabChange }: WorkersManagerProps) 
                       })}
                     </div>
 
-                    <div className='flex items-center gap-2 px-4 py-3 border-t border-zinc-100 dark:border-zinc-800'>
-                      <Select
-                        value={deployEnv}
-                        onValueChange={(v) => setDeployEnv(v as 'development' | 'production')}
-                      >
-                        <SelectTrigger className='h-9 text-xs w-[140px] border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 rounded-lg'>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value='development' className='text-xs'>
-                            Development
-                          </SelectItem>
-                          {worker.hasProduction && (
-                            <SelectItem value='production' className='text-xs'>
-                              Production
+                    {mutationsEnabled ? (
+                      <div className='flex items-center gap-2 px-4 py-3 border-t border-zinc-100 dark:border-zinc-800'>
+                        <Select
+                          value={deployEnv}
+                          onValueChange={(v) => setDeployEnv(v as 'development' | 'production')}
+                        >
+                          <SelectTrigger className='h-9 text-xs w-[140px] border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 rounded-lg'>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value='development' className='text-xs'>
+                              Development
                             </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <button
-                        type='button'
-                        onClick={() =>
-                          deployMutation.mutate({ workerId: worker.id, env: deployEnv, dryRun: true })
-                        }
-                        disabled={deployMutation.isPending || !mutationsEnabled}
-                        className='flex items-center gap-1.5 h-9 px-3 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400'
-                      >
-                        <Terminal className='h-3 w-3' aria-hidden='true' />
-                        Dry Run
-                      </button>
-                      <button
-                        type='button'
-                        onClick={() =>
-                          deployMutation.mutate({ workerId: worker.id, env: deployEnv, dryRun: false })
-                        }
-                        disabled={deployMutation.isPending || !mutationsEnabled}
-                        className='flex items-center gap-1.5 h-9 px-3 text-xs font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 text-white shadow-sm transition-all active:scale-95 disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400'
-                      >
-                        <Rocket className='h-3 w-3' aria-hidden='true' />
-                        {deployMutation.isPending ? 'Deploying…' : 'Deploy'}
-                      </button>
-                    </div>
+                            {worker.hasProduction && (
+                              <SelectItem value='production' className='text-xs'>
+                                Production
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <button
+                          type='button'
+                          onClick={() =>
+                            deployMutation.mutate({ workerId: worker.id, env: deployEnv, dryRun: true })
+                          }
+                          disabled={deployMutation.isPending}
+                          className='flex items-center gap-1.5 h-9 px-3 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400'
+                        >
+                          <Terminal className='h-3 w-3' aria-hidden='true' />
+                          Dry Run
+                        </button>
+                        <button
+                          type='button'
+                          onClick={() =>
+                            deployMutation.mutate({ workerId: worker.id, env: deployEnv, dryRun: false })
+                          }
+                          disabled={deployMutation.isPending}
+                          className='flex items-center gap-1.5 h-9 px-3 text-xs font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 text-white shadow-sm transition-all active:scale-95 disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400'
+                        >
+                          <Rocket className='h-3 w-3' aria-hidden='true' />
+                          {deployMutation.isPending ? 'Deploying…' : 'Deploy'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className='px-4 py-3 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-800/20 text-xs text-zinc-600 dark:text-zinc-400 space-y-2'>
+                        <p>Production deploys are read-only here. Use the operational path below instead.</p>
+                        <div className='flex flex-wrap gap-2'>
+                          <span className='font-mono rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1'>
+                            {deploymentRunbook}
+                          </span>
+                          <span className='font-mono rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1'>
+                            {gitOpsManifests}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -503,7 +519,9 @@ export function WorkersManager({ subtab, onSubtabChange }: WorkersManagerProps) 
         <div className='divide-y divide-zinc-50 dark:divide-zinc-800/50'>
           <div className='px-4 py-2.5 bg-amber-50/50 dark:bg-amber-950/10 border-b border-amber-100 dark:border-amber-900/20'>
             <p className='text-xs text-amber-700 dark:text-amber-400'>
-              Secrets are encrypted and stored securely. Set secrets per worker.
+              {mutationsEnabled
+                ? 'Secrets are encrypted and stored securely. Set secrets per worker.'
+                : `Secret rotation is read-only here. Update ${deploymentRunbook} and your GitOps secret source instead.`}
             </p>
           </div>
           {secrets.length === 0 && (
@@ -529,64 +547,70 @@ export function WorkersManager({ subtab, onSubtabChange }: WorkersManagerProps) 
                   ))}
                 </div>
               </div>
-              <div className='flex gap-2'>
-                <Input
-                  type={visibleSecrets.has(secret.key) ? 'text' : 'password'}
-                  placeholder='Enter new secret value…'
-                  value={secretInputs[secret.key] || ''}
-                  onChange={(e) =>
-                    setSecretInputs((prev) => ({ ...prev, [secret.key]: e.target.value }))
-                  }
-                  className='h-9 text-sm rounded-lg border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-200 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 focus-visible:ring-offset-0 flex-1'
-                />
-                <button
-                  type='button'
-                  onClick={() => toggleSecretVisibility(secret.key)}
-                  aria-label={visibleSecrets.has(secret.key) ? 'Hide secret' : 'Show secret'}
-                  className='h-9 w-9 flex items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 shrink-0'
-                >
-                  {visibleSecrets.has(secret.key) ? (
-                    <EyeOff className='h-3.5 w-3.5' aria-hidden='true' />
-                  ) : (
-                    <Eye className='h-3.5 w-3.5' aria-hidden='true' />
-                  )}
-                </button>
-                <Select
-                  value={selectedWorkers[secret.key] ?? secret.workers[0]}
-                  onValueChange={(v) =>
-                    setSelectedWorkers((prev) => ({ ...prev, [secret.key]: v }))
-                  }
-                >
-                  <SelectTrigger className='h-9 text-xs w-[150px] border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 rounded-lg'>
-                    <SelectValue placeholder='Select worker' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {secret.workers.map((w) => (
-                      <SelectItem key={w} value={w} className='text-xs'>
-                        {w}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <button
-                  type='button'
-                  onClick={() => {
-                    const value = secretInputs[secret.key];
-                    if (value) {
-                      secretMutation.mutate({
-                        workerId: selectedWorkers[secret.key] ?? secret.workers[0],
-                        key: secret.key,
-                        value,
-                        env: 'production',
-                      });
+              {mutationsEnabled ? (
+                <div className='flex gap-2'>
+                  <Input
+                    type={visibleSecrets.has(secret.key) ? 'text' : 'password'}
+                    placeholder='Enter new secret value…'
+                    value={secretInputs[secret.key] || ''}
+                    onChange={(e) =>
+                      setSecretInputs((prev) => ({ ...prev, [secret.key]: e.target.value }))
                     }
-                  }}
-                  disabled={!secretInputs[secret.key] || secretMutation.isPending || !mutationsEnabled}
-                  className='h-9 px-3 text-xs font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 text-white shadow-sm transition-all active:scale-95 disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 shrink-0'
-                >
-                  Set
-                </button>
-              </div>
+                    className='h-9 text-sm rounded-lg border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-200 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 focus-visible:ring-offset-0 flex-1'
+                  />
+                  <button
+                    type='button'
+                    onClick={() => toggleSecretVisibility(secret.key)}
+                    aria-label={visibleSecrets.has(secret.key) ? 'Hide secret' : 'Show secret'}
+                    className='h-9 w-9 flex items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 shrink-0'
+                  >
+                    {visibleSecrets.has(secret.key) ? (
+                      <EyeOff className='h-3.5 w-3.5' aria-hidden='true' />
+                    ) : (
+                      <Eye className='h-3.5 w-3.5' aria-hidden='true' />
+                    )}
+                  </button>
+                  <Select
+                    value={selectedWorkers[secret.key] ?? secret.workers[0]}
+                    onValueChange={(v) =>
+                      setSelectedWorkers((prev) => ({ ...prev, [secret.key]: v }))
+                    }
+                  >
+                    <SelectTrigger className='h-9 text-xs w-[150px] border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 rounded-lg'>
+                      <SelectValue placeholder='Select worker' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {secret.workers.map((w) => (
+                        <SelectItem key={w} value={w} className='text-xs'>
+                          {w}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <button
+                    type='button'
+                    onClick={() => {
+                      const value = secretInputs[secret.key];
+                      if (value) {
+                        secretMutation.mutate({
+                          workerId: selectedWorkers[secret.key] ?? secret.workers[0],
+                          key: secret.key,
+                          value,
+                          env: 'production',
+                        });
+                      }
+                    }}
+                    disabled={!secretInputs[secret.key] || secretMutation.isPending}
+                    className='h-9 px-3 text-xs font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 text-white shadow-sm transition-all active:scale-95 disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 shrink-0'
+                  >
+                    Set
+                  </button>
+                </div>
+              ) : (
+                <p className='text-xs text-zinc-500 dark:text-zinc-400'>
+                  Update this secret through GitHub Actions/GitOps secret management. UI writes are disabled in this environment.
+                </p>
+              )}
             </div>
           ))}
         </div>

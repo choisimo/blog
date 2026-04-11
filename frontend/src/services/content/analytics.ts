@@ -32,6 +32,45 @@ export type TrendingPost = {
   total_views: number;
 };
 
+export type AnalyticsReadResult<T> = {
+  data: T;
+  degraded: boolean;
+  errorMessage: string | null;
+  sourceStatus: number | null;
+};
+
+type AnalyticsErrorPayload = {
+  degraded?: boolean;
+  sourceStatus?: number;
+  error?: {
+    message?: string;
+  };
+};
+
+function buildReadResult<T>(
+  data: T,
+  options: Partial<AnalyticsReadResult<T>> = {}
+): AnalyticsReadResult<T> {
+  return {
+    data,
+    degraded: Boolean(options.degraded),
+    errorMessage: options.errorMessage ?? null,
+    sourceStatus: options.sourceStatus ?? null,
+  };
+}
+
+async function parseAnalyticsError(
+  response: Response,
+  fallbackMessage: string
+): Promise<AnalyticsReadResult<null>> {
+  const payload = (await response.json().catch(() => null)) as AnalyticsErrorPayload | null;
+  return buildReadResult(null, {
+    degraded: Boolean(payload?.degraded) || response.status >= 500,
+    errorMessage: payload?.error?.message || fallbackMessage,
+    sourceStatus: payload?.sourceStatus ?? response.status,
+  });
+}
+
 // ============================================================================
 // API Functions
 // ============================================================================
@@ -63,60 +102,102 @@ export async function recordView(year: string, slug: string): Promise<boolean> {
 /**
  * Get stats for a specific post
  */
-export async function getPostStats(year: string, slug: string): Promise<PostStats | null> {
+export async function getPostStats(
+  year: string,
+  slug: string
+): Promise<AnalyticsReadResult<PostStats | null>> {
   try {
     const baseUrl = getApiBaseUrl();
     const response = await fetch(`${baseUrl}/api/v1/analytics/stats/${year}/${slug}`);
 
     if (!response.ok) {
-      return null;
+      const result = await parseAnalyticsError(
+        response,
+        'Failed to load post analytics'
+      );
+      return buildReadResult(null, result);
     }
 
     const data = await response.json();
-    return data.data?.stats || null;
+    return buildReadResult(data.data?.stats || null);
   } catch (err) {
     console.warn('Failed to get post stats:', err);
-    return null;
+    return buildReadResult(null, {
+      degraded: true,
+      errorMessage: 'Analytics backend unavailable',
+    });
   }
 }
 
 /**
  * Get active editor picks from D1 database
  */
-export async function getEditorPicks(limit: number = 3): Promise<EditorPick[]> {
+export async function getEditorPicks(
+  limit: number = 3
+): Promise<AnalyticsReadResult<EditorPick[]>> {
   try {
     const baseUrl = getApiBaseUrl();
     const response = await fetch(`${baseUrl}/api/v1/analytics/editor-picks?limit=${limit}`);
 
     if (!response.ok) {
-      return [];
+      return buildReadResult([], {
+        degraded: true,
+        errorMessage: 'Editor picks unavailable',
+        sourceStatus: response.status,
+      });
     }
 
     const data = await response.json();
-    return data.data?.picks || [];
+    return buildReadResult(data.data?.picks || []);
   } catch (err) {
     console.warn('Failed to get editor picks:', err);
-    return [];
+    return buildReadResult([], {
+      degraded: true,
+      errorMessage: 'Editor picks unavailable',
+    });
   }
 }
 
 /**
  * Get trending posts based on recent views
  */
-export async function getTrendingPosts(limit: number = 5, days: number = 7): Promise<TrendingPost[]> {
+export async function getTrendingPosts(
+  limit: number = 5,
+  days: number = 7
+): Promise<AnalyticsReadResult<{ trending: TrendingPost[]; total: number }>> {
   try {
     const baseUrl = getApiBaseUrl();
     const response = await fetch(`${baseUrl}/api/v1/analytics/trending?limit=${limit}&days=${days}`);
 
     if (!response.ok) {
-      return [];
+      const result = await parseAnalyticsError(
+        response,
+        'Failed to load trending posts'
+      );
+      return buildReadResult(
+        { trending: [], total: 0 },
+        {
+          degraded: result.degraded,
+          errorMessage: result.errorMessage,
+          sourceStatus: result.sourceStatus,
+        }
+      );
     }
 
     const data = await response.json();
-    return data.data?.trending || [];
+    return buildReadResult({
+      trending: data.data?.trending || [],
+      total: data.data?.total || 0,
+    });
   } catch (err) {
     console.warn('Failed to get trending posts:', err);
-    return [];
+    return buildReadResult(
+      { trending: [], total: 0 },
+      {
+        degraded: true,
+        errorMessage: 'Analytics backend unavailable',
+      }
+    );
   }
 }
 

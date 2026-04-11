@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import type { MiddlewareHandler } from 'hono';
 import type { HonoEnv } from '../types';
 import {
   buildRouteBoundaryHeaders,
@@ -36,7 +37,7 @@ import adminLogs from './admin-logs';
 export type WorkerRouteRegistryEntry = {
   boundaryId: string;
   path: string;
-  router: Hono<HonoEnv>;
+  router: Hono<any>;
 };
 
 export const WORKER_ROUTE_REGISTRY: WorkerRouteRegistryEntry[] = [
@@ -68,7 +69,7 @@ export const WORKER_ROUTE_REGISTRY: WorkerRouteRegistryEntry[] = [
   { boundaryId: 'gateway', path: '/gateway', router: gateway },
 ];
 
-function applyBoundaryHeaderMiddleware(boundaryId: string) {
+function applyBoundaryHeaderMiddleware(boundaryId: string): MiddlewareHandler<HonoEnv> {
   return async (c, next) => {
     await next();
     const headers = buildRouteBoundaryHeaders(boundaryId, {
@@ -76,7 +77,7 @@ function applyBoundaryHeaderMiddleware(boundaryId: string) {
       edgeMode: 'native',
       originMode: 'worker',
     });
-    for (const [key, value] of Object.entries(headers)) {
+    for (const [key, value] of Object.entries(headers) as [string, string][]) {
       c.res.headers.set(key, value);
     }
   };
@@ -88,7 +89,7 @@ export function registerWorkerRoutes(api: Hono<HonoEnv>) {
       api.use(entry.path, applyBoundaryHeaderMiddleware(entry.boundaryId));
       api.use(`${entry.path}/*`, applyBoundaryHeaderMiddleware(entry.boundaryId));
     }
-    api.route(entry.path, entry.router);
+    api.route(entry.path, entry.router as Hono<any>);
   }
 }
 

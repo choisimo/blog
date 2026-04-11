@@ -21,7 +21,7 @@ import metricsRouter from "./routes/metrics.js";
 import { initChatWebSocket } from "./routes/chat.js";
 import {
   PUBLIC_ROUTE_REGISTRY,
-  PROTECTED_ROUTE_REGISTRY,
+  getProtectedRouteRegistry,
   mountRouteRegistry,
 } from "./routes/registry.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
@@ -86,9 +86,9 @@ async function startServer() {
     },
   );
 
-  app.use("/metrics", metricsRouter);
-
   mountRouteRegistry(app, PUBLIC_ROUTE_REGISTRY);
+
+  app.use("/metrics", requireBackendKey, metricsRouter);
 
   app.use(requireBackendKey);
 
@@ -103,7 +103,7 @@ async function startServer() {
   });
   app.use(limiter);
 
-  mountRouteRegistry(app, PROTECTED_ROUTE_REGISTRY);
+  mountRouteRegistry(app, getProtectedRouteRegistry());
 
   app.use(notFoundHandler);
   app.use(errorHandler);

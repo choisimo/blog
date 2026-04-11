@@ -33,7 +33,7 @@ function buildProxyHeaders(request: Request, env: Env): Headers {
   const headers = new Headers(request.headers);
   const clientIp = request.headers.get('CF-Connecting-IP') || '';
 
-  headers.set('Host', 'blog-b.nodove.com');
+  headers.delete('Host');
   if (env.BACKEND_KEY) {
     headers.set('X-Backend-Key', env.BACKEND_KEY);
   } else {
