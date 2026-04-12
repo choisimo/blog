@@ -264,13 +264,22 @@ export class AITaskQueue {
 
   async getQueueStats() {
     const client = await getRedisClient();
-    
-    const length = await client.xLen(STREAM_NAME);
+
+    const streamLength = await client.xLen(STREAM_NAME);
     const dlqLength = await client.xLen(DLQ_STREAM).catch(() => 0);
     const groups = await client.xInfoGroups(STREAM_NAME).catch(() => []);
+
+    // Report backlog pressure from consumer-group pending entries, not the raw
+    // stream length. The stream retains acknowledged history, so XLEN grows over
+    // time and is not a proxy for queued work.
+    const pendingLength = groups.reduce(
+      (sum, group) => sum + Number(group.pending || 0),
+      0
+    );
     
     return {
-      queueLength: length,
+      queueLength: pendingLength,
+      streamLength,
       dlqLength,
       consumerGroups: groups.map(g => ({
         name: g.name,
