@@ -91,7 +91,7 @@ export function shouldUseChatWebSocket(): boolean {
   try {
     const base = getChatBaseUrl();
     const url = new URL(base);
-    return capability !== false && ['localhost', '127.0.0.1'].includes(url.hostname);
+    return ['localhost', '127.0.0.1'].includes(url.hostname);
   } catch {
     return false;
   }
@@ -124,6 +124,11 @@ export function buildChatUrl(path: string, sessionId?: string): string {
 }
 
 export function buildChatWebSocketUrl(sessionId?: string): string {
+  const capability = getChatWebSocketCapability();
+  if (capability === false) {
+    throw new Error('Chat WebSocket capability is disabled');
+  }
+
   const overrideBase = getChatWebSocketBaseUrl();
   if (!overrideBase && !shouldUseChatWebSocket()) {
     throw new Error('Chat WebSocket capability is disabled');

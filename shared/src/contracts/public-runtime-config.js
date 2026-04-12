@@ -18,11 +18,8 @@ export function buildPublicRuntimeConfig(input) {
     ? toOptionalString(input.chatWsBaseUrl) ||
       chatBaseUrl.replace(/^http:\/\//, 'ws://').replace(/^https:\/\//, 'wss://')
     : null;
-  const terminalEnabled = toBoolean(input.features?.terminalEnabled);
-  const terminalGatewayUrl =
-    terminalEnabled && input.terminalGatewayUrl
-      ? trimTrailingSlash(input.terminalGatewayUrl)
-      : null;
+  const terminalGatewayUrl = toOptionalString(input.terminalGatewayUrl);
+  const terminalEnabled = toBoolean(input.features?.terminalEnabled) && Boolean(terminalGatewayUrl);
 
   return {
     env: input.env,
@@ -45,7 +42,7 @@ export function buildPublicRuntimeConfig(input) {
     },
     capabilities: {
       supportsChatWebSocket,
-      hasTerminalGatewayUrl: Boolean(terminalGatewayUrl),
+      hasTerminalGatewayUrl: terminalEnabled,
     },
   };
 }

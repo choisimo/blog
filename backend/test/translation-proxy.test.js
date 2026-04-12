@@ -79,6 +79,7 @@ function createAdminToken() {
     sub: "admin-1",
     role: "admin",
     type: "access",
+    emailVerified: true,
   });
 }
 

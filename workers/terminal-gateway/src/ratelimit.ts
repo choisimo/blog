@@ -40,6 +40,7 @@ export async function checkRateLimit(
         allowed: false,
         remaining: 0,
         resetAt: windowStart + RATE_LIMIT_WINDOW,
+        reason: 'limit_exceeded',
       };
     }
 
@@ -58,7 +59,11 @@ export async function checkRateLimit(
     };
   } catch (err) {
     console.error('Rate limit check failed:', err);
-    // Allow on error (fail open)
-    return { allowed: true, remaining: 1, resetAt: now + RATE_LIMIT_WINDOW };
+    return {
+      allowed: false,
+      remaining: 0,
+      resetAt: now + RATE_LIMIT_WINDOW,
+      reason: 'kv_unavailable',
+    };
   }
 }

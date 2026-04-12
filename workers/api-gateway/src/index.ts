@@ -210,7 +210,7 @@ async function buildPublicConfig(env: Env) {
     getAiDefaultModel(env),
     getAiVisionModel(env),
   ]);
-  const supportsChatWebSocket = env.CHAT_WS_ENABLED === 'true';
+  const supportsChatWebSocket = false;
   const terminalEnabled = env.FEATURE_TERMINAL_ENABLED === 'true';
   return buildPublicRuntimeConfig({
     env: env.ENV,

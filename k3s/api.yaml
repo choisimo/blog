@@ -106,7 +106,7 @@ spec:
             periodSeconds: 5
           readinessProbe:
             httpGet:
-              path: /api/v1/healthz
+              path: /api/v1/readiness
               port: http
             initialDelaySeconds: 15
             periodSeconds: 10

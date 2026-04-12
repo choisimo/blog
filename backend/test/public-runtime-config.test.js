@@ -29,7 +29,7 @@ test("publicRuntimeConfig uses the shared contract shape", () => {
       siteBaseUrl: "https://blog.example.com",
       apiBaseUrl: "https://api.example.com/",
       chatBaseUrl: "https://api.example.com/",
-      supportsChatWebSocket: true,
+      supportsChatWebSocket: false,
       terminalGatewayUrl: "wss://terminal.example.com/",
       ai: {
         modelSelectionEnabled: false,
@@ -45,4 +45,31 @@ test("publicRuntimeConfig uses the shared contract shape", () => {
       },
     }),
   );
+});
+
+test("shared public runtime config suppresses terminal capability without a gateway url", () => {
+  const result = buildPublicRuntimeConfig({
+    env: "test",
+    siteBaseUrl: "https://blog.example.com",
+    apiBaseUrl: "https://api.example.com/",
+    chatBaseUrl: "https://api.example.com/",
+    supportsChatWebSocket: false,
+    terminalGatewayUrl: "",
+    ai: {
+      modelSelectionEnabled: false,
+      defaultModel: "gpt-4.1",
+      visionModel: "gpt-4o",
+    },
+    features: {
+      aiEnabled: true,
+      ragEnabled: true,
+      terminalEnabled: true,
+      aiInline: false,
+      commentsEnabled: true,
+    },
+  });
+
+  assert.equal(result.features.terminalEnabled, false);
+  assert.equal(result.terminalGatewayUrl, null);
+  assert.equal(result.capabilities.hasTerminalGatewayUrl, false);
 });

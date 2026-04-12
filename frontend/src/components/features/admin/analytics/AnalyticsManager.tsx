@@ -6,11 +6,13 @@ import {
   Eye,
   BarChart3,
   Table,
+  Users,
   ChevronUp,
   ChevronDown as ChevronDownIcon,
 } from "lucide-react";
 import { getApiBaseUrl } from "@/utils/network/apiBase";
 import { adminFetchRaw } from "@/services/admin/apiClient";
+import { getRealtimeVisitorsSnapshot } from "@/services/content/analytics";
 import { useAuthStore } from "@/stores/session/useAuthStore";
 import { PostMetricsDetail } from "./PostMetricsDetail";
 
@@ -93,6 +95,139 @@ async function refreshStats(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+function RealtimeVisitorsSection() {
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeVisitors, setActiveVisitors] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  const [degradedMessage, setDegradedMessage] = useState<string | null>(null);
+
+  const fetchVisitors = useCallback(
+    async (reason: "initial" | "refresh" = "refresh") => {
+      if (reason === "initial") {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
+
+      const result = await getRealtimeVisitorsSnapshot();
+      setActiveVisitors(result.data.activeVisitors);
+      setLastUpdated(result.data.timestamp ?? Date.now());
+      setDegradedMessage(
+        result.degraded
+          ? result.errorMessage || "Realtime visitor analytics unavailable"
+          : null
+      );
+      setLoading(false);
+      setRefreshing(false);
+    },
+    []
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const clearTimer = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    const sync = () => {
+      if (cancelled || document.hidden) {
+        return;
+      }
+      void fetchVisitors("refresh");
+    };
+
+    void fetchVisitors("initial");
+    intervalId = setInterval(sync, 30000);
+
+    const handleVisibilityChange = () => {
+      if (cancelled) return;
+      if (document.hidden) {
+        clearTimer();
+        return;
+      }
+      void fetchVisitors("refresh");
+      if (!intervalId) {
+        intervalId = setInterval(sync, 30000);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      clearTimer();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [fetchVisitors]);
+
+  return (
+    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
+        <div className="flex items-center gap-2">
+          <Users className="h-3.5 w-3.5 text-zinc-500" />
+          <span className="text-xs font-semibold text-zinc-700">
+            Realtime Visitors
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => void fetchVisitors("refresh")}
+          disabled={loading || refreshing}
+          className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+          aria-label="Refresh realtime visitors"
+        >
+          <RefreshCw
+            className={`h-3 w-3 ${
+              loading || refreshing ? "animate-spin" : ""
+            }`}
+          />
+        </button>
+      </div>
+      {degradedMessage && (
+        <div className="px-4 py-2 border-b border-amber-100 bg-amber-50 text-xs text-amber-700">
+          {degradedMessage}
+        </div>
+      )}
+      <div className="px-4 py-3 space-y-2">
+        {loading ? (
+          <div className="flex items-center gap-2 text-xs text-zinc-400">
+            <RefreshCw className="h-3 w-3 animate-spin" />
+            Loading...
+          </div>
+        ) : (
+          <>
+            <div className="flex items-end gap-2">
+              <span className="font-mono text-2xl font-semibold text-zinc-900">
+                {activeVisitors.toLocaleString()}
+              </span>
+              <span className="pb-0.5 text-xs text-zinc-400">
+                active within 60s
+              </span>
+            </div>
+            <p className="text-xs text-zinc-400">
+              Best-effort signal backed by heartbeat writes and KV-based reads.
+            </p>
+            {lastUpdated && (
+              <p className="text-xs text-zinc-400">
+                Last updated:{" "}
+                <span className="font-mono">
+                  {new Date(lastUpdated).toLocaleString()}
+                </span>
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function EditorPicksSection() {
@@ -747,6 +882,7 @@ export function AnalyticsManager() {
       <div className="grid gap-4 md:grid-cols-2">
         <TrendingPostsSection />
         <div className="space-y-4">
+          <RealtimeVisitorsSection />
           <StatsRefreshSection />
           <EditorPicksSection />
         </div>

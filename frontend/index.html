@@ -92,14 +92,7 @@
 
   <body>
     <div id="root"></div>
-    <script type="module">
-      // Runtime configuration injected by Vite at build time.
-      // Production requires an explicit API base URL via runtime config or env.
-      window.APP_CONFIG = Object.assign({}, window.APP_CONFIG || {}, {
-        apiBaseUrl: import.meta.env.VITE_API_BASE_URL || null,
-      });
-    </script>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="/src/bootstrap.ts"></script>
     <script defer src="/ai-memo/ai-memo.js?v=20251019-1"></script>
   </body>
 </html>

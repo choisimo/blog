@@ -6,7 +6,8 @@
     "outbox:check-memory": "node scripts/check-memory-embedding-outbox.mjs",
     "contracts:generate": "node scripts/generate-architecture-contracts.mjs",
     "routes:check": "node scripts/check-route-governance.mjs",
-    "routes:snapshot": "node scripts/check-route-governance.mjs --write"
+    "routes:snapshot": "node scripts/check-route-governance.mjs --write",
+    "routes:check:orphans": "node scripts/check-orphan-routes.mjs"
   },
   "devDependencies": {},
   "dependencies": {

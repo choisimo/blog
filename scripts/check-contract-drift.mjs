@@ -43,7 +43,7 @@ const authSemanticsFiles = {
 
 const commentsBoundaryFiles = {
   worker: "workers/api-gateway/src/routes/comments.ts",
-  backend: "backend/src/routes/comments.js",
+  backend: null,
 };
 
 async function collectRouteOwnership() {
@@ -221,10 +221,10 @@ async function collectAuthSemantics() {
 }
 
 async function collectCommentsBoundary() {
-  const [workerSource, backendSource] = await Promise.all([
-    readSource(commentsBoundaryFiles.worker),
-    readSource(commentsBoundaryFiles.backend),
-  ]);
+  const workerSource = await readSource(commentsBoundaryFiles.worker);
+  const backendSource = commentsBoundaryFiles.backend
+    ? await readSource(commentsBoundaryFiles.backend)
+    : "";
 
   return {
     workerUsesDirectD1:
@@ -234,6 +234,7 @@ async function collectCommentsBoundary() {
     workerUsesBackendProxy:
       /BACKEND_ORIGIN/.test(workerSource) &&
       /\bfetch\s*\(/.test(workerSource),
+    backendRoutePresent: Boolean(commentsBoundaryFiles.backend),
     backendUsesDirectD1:
       /\bquery(All|One)\s*\(/.test(backendSource) ||
       /\bexecute\s*\(/.test(backendSource),

@@ -39,7 +39,7 @@ describe('public runtime config contract', () => {
         siteBaseUrl: env.PUBLIC_SITE_URL,
         apiBaseUrl: env.API_BASE_URL || payload.data.apiBaseUrl,
         chatBaseUrl: env.API_BASE_URL || payload.data.chatBaseUrl,
-        supportsChatWebSocket: env.CHAT_WS_ENABLED === 'true',
+        supportsChatWebSocket: false,
         terminalGatewayUrl: env.TERMINAL_GATEWAY_URL,
         ai: {
           modelSelectionEnabled: false,

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getEditorPicks,
   getPostStats,
+  getRealtimeVisitorsSnapshot,
   getTrendingPosts,
 } from '@/services/content/analytics';
 
@@ -88,5 +89,41 @@ describe('analytics service degraded handling', () => {
     expect(result.degraded).toBe(false);
     expect(result.data.total).toBe(1);
     expect(result.data.trending).toHaveLength(1);
+  });
+
+  it('preserves realtime visitor snapshots and degraded state', async () => {
+    global.fetch = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            activeVisitors: 17,
+            timestamp: 1760000000000,
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
+    ) as typeof fetch;
+
+    const result = await getRealtimeVisitorsSnapshot();
+
+    expect(result.degraded).toBe(false);
+    expect(result.data.activeVisitors).toBe(17);
+    expect(result.data.timestamp).toBe(1760000000000);
+  });
+
+  it('marks realtime visitor reads as degraded when the backend is unavailable', async () => {
+    global.fetch = vi.fn(async () => new Response(null, { status: 503 })) as typeof fetch;
+
+    const result = await getRealtimeVisitorsSnapshot();
+
+    expect(result.data.activeVisitors).toBe(0);
+    expect(result.data.timestamp).toBeNull();
+    expect(result.degraded).toBe(true);
+    expect(result.errorMessage).toBe('Realtime visitor analytics unavailable');
+    expect(result.sourceStatus).toBe(503);
   });
 });

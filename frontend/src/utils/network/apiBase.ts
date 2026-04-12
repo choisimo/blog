@@ -38,21 +38,13 @@ function isLocalHostname(hostname: string): boolean {
 
 export function getApiBaseUrl(): string {
   let baseUrl: string | undefined;
-  let source: "runtime" | "env" | "localStorage" | "default" | undefined;
+  let source: "runtime" | "localStorage" | "default" | undefined;
 
   const w = typeof window !== "undefined" ? (window as RuntimeWindow) : null;
   const fromRuntime = w?.APP_CONFIG?.apiBaseUrl || w?.__APP_CONFIG?.apiBaseUrl;
   if (typeof fromRuntime === "string" && fromRuntime) {
     baseUrl = fromRuntime;
     source = "runtime";
-  }
-
-  if (!baseUrl) {
-    const fromEnv = import.meta?.env?.VITE_API_BASE_URL as string | undefined;
-    if (typeof fromEnv === "string" && fromEnv) {
-      baseUrl = fromEnv;
-      source = "env";
-    }
   }
 
   if (!baseUrl) {

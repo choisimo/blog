@@ -39,6 +39,11 @@ export type AnalyticsReadResult<T> = {
   sourceStatus: number | null;
 };
 
+export type RealtimeVisitorsSnapshot = {
+  activeVisitors: number;
+  timestamp: number | null;
+};
+
 type AnalyticsErrorPayload = {
   degraded?: boolean;
   sourceStatus?: number;
@@ -270,18 +275,46 @@ export function stopHeartbeat(): void {
 /**
  * Get current active visitor count
  */
-export async function getRealtimeVisitors(): Promise<number> {
+export async function getRealtimeVisitorsSnapshot(): Promise<
+  AnalyticsReadResult<RealtimeVisitorsSnapshot>
+> {
   try {
     const baseUrl = getApiBaseUrl();
     const response = await fetch(`${baseUrl}/api/v1/analytics/realtime`);
 
     if (!response.ok) {
-      return 0;
+      const result = await parseAnalyticsError(
+        response,
+        'Realtime visitor analytics unavailable'
+      );
+      return buildReadResult(
+        { activeVisitors: 0, timestamp: null },
+        {
+          degraded: result.degraded,
+          errorMessage: result.errorMessage,
+          sourceStatus: result.sourceStatus,
+        }
+      );
     }
 
     const data = await response.json();
-    return data.data?.activeVisitors || 0;
+    return buildReadResult({
+      activeVisitors: data.data?.activeVisitors || 0,
+      timestamp:
+        typeof data.data?.timestamp === 'number' ? data.data.timestamp : null,
+    });
   } catch {
-    return 0;
+    return buildReadResult(
+      { activeVisitors: 0, timestamp: null },
+      {
+        degraded: true,
+        errorMessage: 'Realtime visitor analytics unavailable',
+      }
+    );
   }
+}
+
+export async function getRealtimeVisitors(): Promise<number> {
+  const result = await getRealtimeVisitorsSnapshot();
+  return result.data.activeVisitors;
 }

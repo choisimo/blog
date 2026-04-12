@@ -33,16 +33,16 @@ backend의 중요한 경계는 `requireBackendKey` 적용 시점입니다.
 ### Public or pre-guard routes
 
 - `GET /api/v1/healthz`
+- `GET /api/v1/readiness`
 - `GET /api/v1/public/config`
-- `GET /metrics`
-- `/api/v1/notifications`
+- `GET /metrics` (`requireBackendKey` is applied on the route mount itself)
+- `/api/v1/notifications` (endpoint-level auth inside the router)
 
 이후 `app.use(requireBackendKey)`가 등록되므로, 나머지 mounted routes는 backend-to-backend key 전제를 가집니다.
 
 ### Guarded route mounts
 
 - `/api/v1/ai`
-- `/api/v1/comments`
 - `/api/v1/analytics`
 - `/api/v1/chat`
 - `/api/v1/translate`
@@ -67,12 +67,14 @@ backend의 중요한 경계는 `requireBackendKey` 적용 시점입니다.
 
 - frontend가 backend를 직접 두드리는 구조가 아니라면, 이 경계는 주로 `api-gateway` 또는 다른 내부 서비스 호출을 위한 것입니다.
 - `X-Backend-Key`가 빠지면 guarded routes는 접근이 거부됩니다.
+- 댓글 surface는 backend legacy router를 제거하고 worker D1 경로만 authoritative surface로 유지합니다.
 
 ## Verified Contracts
 
 ### Health and public config
 
-- `GET /api/v1/healthz` -> `{ ok: true, env, uptime }`
+- `GET /api/v1/healthz` -> `{ ok: true, status, degraded, degradedReasons, env, uptime }`
+- `GET /api/v1/readiness` -> `200 ready` 또는 `503 degraded`
 - `GET /api/v1/public/config` -> `{ ok: true, data: publicRuntimeConfig() }`
 
 ### Metrics
@@ -80,6 +82,7 @@ backend의 중요한 경계는 `requireBackendKey` 적용 시점입니다.
 파일: `backend/src/routes/metrics.js`
 
 - endpoint: `GET /metrics`
+- auth: `X-Backend-Key` required
 - output: Prometheus metrics text
 - behavior:
   - Redis 상태를 측정값으로 갱신
@@ -150,7 +153,7 @@ npm run dev
 
 ```bash
 curl http://localhost:5080/api/v1/healthz
-curl http://localhost:5080/metrics
+curl -H 'X-Backend-Key: <key>' http://localhost:5080/metrics
 ```
 
 background worker:
@@ -186,7 +189,7 @@ npm run worker
 curl http://localhost:5080/api/v1/healthz
 
 # metrics
-curl http://localhost:5080/metrics
+curl -H 'X-Backend-Key: <key>' http://localhost:5080/metrics
 
 # notifications subsystem health (requires backend key)
 curl -H 'X-Backend-Key: <key>' http://localhost:5080/api/v1/notifications/health
@@ -195,7 +198,7 @@ curl -H 'X-Backend-Key: <key>' http://localhost:5080/api/v1/notifications/health
 ### Failure modes
 
 - Consul load 실패 또는 미구성 -> env fallback 전제
-- PostgreSQL migration 실패 -> warning을 남기고 계속 부팅
+- PostgreSQL migration 실패 -> warning을 남기고 계속 부팅하지만 readiness는 degraded를 노출
 - Redis close 실패 -> shutdown 시 error log
 - missing `X-Backend-Key` -> guarded routes 접근 실패
 - SSE subscriber 누적 -> notification stream 메모리 사용 증가 가능

@@ -36,4 +36,5 @@ export interface RateLimitResult {
   allowed: boolean;
   remaining: number;
   resetAt: number;
+  reason?: 'limit_exceeded' | 'kv_unavailable';
 }

@@ -17,6 +17,11 @@ import {
   isPgConfigured,
 } from "./repositories/analytics.repository.js";
 import { closeRedis } from "./lib/redis-client.js";
+import {
+  buildHealthPayload,
+  buildReadinessResponse,
+  markReadinessDegraded,
+} from "./lib/readiness.js";
 import metricsRouter from "./routes/metrics.js";
 import { initChatWebSocket } from "./routes/chat.js";
 import {
@@ -35,6 +40,7 @@ async function startServer() {
       enablePgLogs();
       logger.info({}, "PostgreSQL migrations applied");
     } catch (err) {
+      markReadinessDegraded("postgres_migration_failed");
       logger.warn({}, "PostgreSQL migration failed, continuing without PG", {
         error: err.message,
       });
@@ -75,7 +81,17 @@ async function startServer() {
   });
 
   app.get("/api/v1/healthz", (req, res) => {
-    res.json({ ok: true, env: config.appEnv, uptime: process.uptime() });
+    res.json(
+      buildHealthPayload({ env: config.appEnv, uptime: process.uptime() }),
+    );
+  });
+
+  app.get("/api/v1/readiness", (req, res) => {
+    const readiness = buildReadinessResponse({
+      env: config.appEnv,
+      uptime: process.uptime(),
+    });
+    res.status(readiness.statusCode).json(readiness.body);
   });
 
   app.get(

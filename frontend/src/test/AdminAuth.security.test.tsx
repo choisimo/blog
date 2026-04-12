@@ -17,6 +17,7 @@ import {
   cancelTokenRefresh,
   useAuthStore,
 } from '@/stores/session/useAuthStore';
+import { DEFAULT_ADMIN_PATH } from '@/services/session/adminReturnTo';
 
 function createToken(expiresInSeconds = 3600) {
   const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
@@ -72,6 +73,7 @@ describe('admin auth security hardening', () => {
   });
 
   it('clears the OAuth callback hash after extracting tokens', async () => {
+    sessionStorage.setItem('admin.returnTo', '/admin/config/logs');
     window.history.replaceState(
       null,
       '',
@@ -81,10 +83,25 @@ describe('admin auth security hardening', () => {
     render(<AdminAuthCallback />);
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/admin/config', { replace: true });
+      expect(mockNavigate).toHaveBeenCalledWith('/admin/config/logs', { replace: true });
     });
 
     expect(window.location.hash).toBe('');
+  });
+
+  it('falls back to the default admin route for unsafe stored redirects', async () => {
+    sessionStorage.setItem('admin.returnTo', 'https://evil.example.com');
+    window.history.replaceState(
+      null,
+      '',
+      `/admin/auth/callback#token=${createToken()}&refreshToken=${createToken(7 * 24 * 3600)}`
+    );
+
+    render(<AdminAuthCallback />);
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(DEFAULT_ADMIN_PATH, { replace: true });
+    });
   });
 
   it('no longer allows inline style or wildcard data attributes in blog markdown', () => {

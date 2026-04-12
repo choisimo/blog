@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -24,6 +25,10 @@ import {
   scheduleTokenRefresh,
 } from '@/stores/session/useAuthStore';
 import { AdminDashboard } from '@/pages/admin/AdminDashboard';
+import {
+  consumeAdminReturnPath,
+  rememberAdminReturnPath,
+} from '@/services/session/adminReturnTo';
 
 type AuthStep = 'initial-gate' | 'totp-login' | 'totp-setup' | 'authenticated';
 
@@ -482,6 +487,12 @@ export default function AdminConfig() {
   const [pageLoading, setPageLoading] = useState(true);
   const [gateLoading, setGateLoading] = useState(false);
   const [setupToken, setSetupToken] = useState('');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isLoginRoute = location.pathname === '/admin/login';
+  const locationState = location.state as { from?: string } | null;
+  const requestedPath =
+    typeof locationState?.from === 'string' ? locationState.from : null;
 
   const { isAuthenticated, getValidAccessToken, logout, user, setTokens } =
     useAuthStore();
@@ -492,6 +503,12 @@ export default function AdminConfig() {
     setError('');
     setStep(status.setupComplete ? 'totp-login' : 'initial-gate');
   }, []);
+
+  useEffect(() => {
+    if (isLoginRoute) {
+      rememberAdminReturnPath(requestedPath);
+    }
+  }, [isLoginRoute, requestedPath]);
 
   useEffect(() => {
     migrateFromLegacyStorage();
@@ -528,6 +545,14 @@ export default function AdminConfig() {
 
     void checkAuth();
   }, [getValidAccessToken, isAuthenticated, logout, resolveEntryStep]);
+
+  useEffect(() => {
+    if (step !== 'authenticated' || !isLoginRoute) {
+      return;
+    }
+
+    navigate(consumeAdminReturnPath(requestedPath), { replace: true });
+  }, [isLoginRoute, navigate, requestedPath, step]);
 
   const handleServerKeySubmit = useCallback(async (key: string) => {
     setGateLoading(true);
@@ -612,6 +637,10 @@ export default function AdminConfig() {
         onError={handleError}
       />
     );
+  }
+
+  if (isLoginRoute) {
+    return <PageLoadingState />;
   }
 
   return <AdminDashboard userEmail={user?.email} onLogout={handleLogout} />;

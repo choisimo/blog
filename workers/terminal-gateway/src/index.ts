@@ -255,6 +255,15 @@ export default {
     // 3. Rate limiting check
     const rateLimitResult = await checkRateLimit(clientIP, env.KV);
     if (!rateLimitResult.allowed) {
+      if (rateLimitResult.reason === 'kv_unavailable') {
+        return new Response('Service Unavailable', {
+          status: 503,
+          headers: {
+            'Retry-After': '60',
+          },
+        });
+      }
+
       return new Response('Too Many Requests', {
         status: 429,
         headers: {

@@ -72,3 +72,5 @@ Thumbs.db
 **/*.onnx
 **/*.bin
 **/*.pt
+**/*.tar.gz
+**/*.tgz

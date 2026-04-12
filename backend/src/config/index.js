@@ -307,7 +307,7 @@ export function publicRuntimeConfig() {
     siteBaseUrl: config.siteBaseUrl,
     apiBaseUrl: config.apiBaseUrl,
     chatBaseUrl: config.apiBaseUrl,
-    supportsChatWebSocket: config.services.chatWebSocketEnabled,
+    supportsChatWebSocket: false,
     terminalGatewayUrl: config.services.terminalGatewayUrl,
     ai: {
       modelSelectionEnabled: false,

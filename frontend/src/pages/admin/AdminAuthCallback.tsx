@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/session/useAuthStore';
+import { consumeAdminReturnPath } from '@/services/session/adminReturnTo';
 
 export default function AdminAuthCallback() {
   const navigate = useNavigate();
@@ -32,7 +33,7 @@ export default function AdminAuthCallback() {
     }
 
     setTokensFromOAuth(token, refreshToken);
-    navigate('/admin/config', { replace: true });
+    navigate(consumeAdminReturnPath(), { replace: true });
   }, [navigate, setTokensFromOAuth]);
 
   if (error) {

@@ -78,7 +78,7 @@ npm run dev
 ```
 
 - dev server: `http://localhost:5173`
-- `predev`에서 manifest 생성 스크립트를 먼저 실행합니다.
+- `predev`에서 manifest와 `runtime-config.json`을 먼저 생성합니다.
 
 ### Workers
 
@@ -132,8 +132,8 @@ npm run dev
 - public routes before backend-key guard:
   - `GET /api/v1/healthz`
   - `GET /api/v1/public/config`
-  - `GET /metrics`
-  - `/api/v1/notifications`
+  - `GET /metrics` (`X-Backend-Key` required by the route itself)
+  - `/api/v1/notifications` (route-local auth)
 - 이후 `requireBackendKey`가 적용되고 나머지 `/api/v1/*` backend routes가 mount 됩니다.
 
 ## Deployment Notes
@@ -142,21 +142,19 @@ npm run dev
 
 - `deploy-workers.yml`
   - trigger: `workers/**` 또는 workflow file 변경, 수동 실행
-  - installs dependencies in `workers/api-gateway`
-  - runtime secrets 일부를 `wrangler secret put`으로 주입
-  - production `api-gateway` deploy 실행
-  - 현재 workflow 기준으로 `r2-gateway`, `terminal-gateway`, `seo-gateway`는 같은 자동 배포 경로에 포함되지 않음
+  - worker matrix 기준으로 production worker를 검증 후 배포
+  - secret 주입은 `sync-workers-secrets.yml` 수동 workflow로 분리
 - `deploy-blog-workflow.yml`
   - trigger: `backend/**` 또는 workflow file 변경, 수동 실행
   - `blog-api`, `blog-terminal` 이미지를 GHCR에 build/push
   - production rollout model은 GitOps 기준임
   - Argo CD가 저장소의 `k3s` 경로를 감시하고, Argo CD Image Updater가 immutable SHA tag를 선택한 뒤 auto-sync로 반영함
   - production 기준으로는 SSH 접속 후 수동 `git pull` 또는 수동 rollout restart를 전제하지 않음
-- `deploy.yml`도 저장소에 존재하지만 이 문서는 해당 workflow의 역할을 추가 검증하지 않습니다.
+- PR validation은 `deploy.yml`, `validate-workers.yml`, `validate-backend.yml`, `governance.yml`, `validate-k3s.yml`로 분리됩니다.
 
 ### k3s
 
-- `k3s/kustomization.yaml` base set에는 `namespace.yaml`, `limitrange.yaml`, `resourcequota.yaml`, `configmap.yaml`, `postgres.yaml`, `redis.yaml`, `chromadb.yaml`, `surrealdb.yaml`, `open-notebook.yaml`, `api.yaml`, `ingress.yaml`, `middleware.yaml`, `piston.yaml`이 포함됩니다.
+- `k3s/kustomization.yaml` base set에는 `namespace.yaml`, `limitrange.yaml`, `resourcequota.yaml`, `configmap.yaml`, `postgres.yaml`, `redis.yaml`, `chromadb.yaml`, `surrealdb.yaml`, `open-notebook.yaml`, `api.yaml`, `ingress.yaml`, `middleware.yaml`, `piston.yaml`이 포함되고 terminal runtime은 제외됩니다.
 - optional terminal runtime과 optional `cloudflared` tunnel connector는 각각 `k3s/optional/terminal`, `k3s/optional/cloudflared`로 분리됩니다.
 - production bootstrap은 `k3s/argocd` 기준으로 Argo CD와 Argo CD Image Updater를 설치하는 흐름입니다.
 - `docker-compose` 기반 재시작은 local/dev 또는 ad-hoc origin debugging 문맥으로만 해석하는 편이 안전합니다.
@@ -168,7 +166,7 @@ npm run dev
 curl http://localhost:5080/api/v1/healthz
 
 # backend metrics
-curl http://localhost:5080/metrics
+curl -H 'X-Backend-Key: <key>' http://localhost:5080/metrics
 
 # workers health (local or deployed base URL)
 curl https://api.example.com/_health

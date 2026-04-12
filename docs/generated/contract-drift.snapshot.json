@@ -18,7 +18,8 @@
     }
   },
   "commentsBoundary": {
-    "backendUsesDirectD1": true,
+    "backendRoutePresent": false,
+    "backendUsesDirectD1": false,
     "workerUsesBackendProxy": false,
     "workerUsesDirectD1": true
   },
@@ -34,11 +35,6 @@
         "boundaryId": "ai",
         "owner": "backend",
         "path": "/api/v1/ai"
-      },
-      {
-        "boundaryId": "comments",
-        "owner": "backend",
-        "path": "/api/v1/comments"
       },
       {
         "boundaryId": "analytics",
@@ -148,8 +144,7 @@
     ],
     "publicConfigSurface": {
       "capabilityKeys": [
-        "supportsChatWebSocket",
-        "hasTerminalGatewayUrl"
+        "supportsChatWebSocket"
       ],
       "featureKeys": [
         "aiEnabled",
@@ -161,11 +156,9 @@
       "topLevelKeys": [
         "apiBaseUrl",
         "chatBaseUrl",
-        "chatWsBaseUrl",
         "terminalGatewayUrl",
         "ai",
-        "features",
-        "capabilities"
+        "features"
       ]
     },
     "sharedBoundaries": [
