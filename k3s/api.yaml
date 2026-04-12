@@ -87,6 +87,10 @@ spec:
             - name: sqlite-data
               mountPath: /app/.data
             - name: repo-data
+              mountPath: /shared
+              subPath: shared
+              readOnly: true
+            - name: repo-data
               mountPath: /frontend
               subPath: frontend
               readOnly: true
@@ -133,6 +137,11 @@ spec:
                 name: blog-app-config
             - secretRef:
                 name: blog-app-secrets
+          volumeMounts:
+            - name: repo-data
+              mountPath: /shared
+              subPath: shared
+              readOnly: true
           resources:
             requests:
               cpu: 100m
