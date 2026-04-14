@@ -20,7 +20,11 @@ import {
   AI_TEMPERATURES,
 } from "../config/constants.js";
 import { createLogger } from "../lib/logger.js";
-import { getCachedAIConfigSnapshot, getProviderSnapshot } from '../services/ai/dynamic-config.service.js';
+import {
+  getAiConfigHealth,
+  getCachedAIConfigSnapshot,
+  getProviderSnapshot,
+} from '../services/ai/dynamic-config.service.js';
 import { getOpenAIClientConfigSnapshot } from '../services/ai/openai-client.service.js';
 
 const router = Router();
@@ -330,6 +334,7 @@ router.get("/health", async (req, res) => {
   const healthResult = await aiService.health();
   const providerInfo = aiService.getProviderInfo();
   const configSnapshot = getCachedAIConfigSnapshot();
+  const aiConfigHealth = getAiConfigHealth();
 
   res.json({
     ok: true,
@@ -339,6 +344,7 @@ router.get("/health", async (req, res) => {
       health: healthResult,
       hasApiKey: !!configSnapshot.apiKey,
       configSource: configSnapshot.source,
+      aiConfig: aiConfigHealth,
       timestamp: new Date().toISOString(),
     },
   });
@@ -349,6 +355,7 @@ router.get("/status", async (req, res) => {
   const providerInfo = aiService.getProviderInfo();
   const healthResult = await aiService.health();
   const clientConfigSnapshot = getOpenAIClientConfigSnapshot();
+  const aiConfigHealth = getAiConfigHealth();
 
   res.json({
     ok: true,
@@ -368,6 +375,7 @@ router.get("/status", async (req, res) => {
         stream: true,
         embeddings: false,
       },
+      aiConfig: aiConfigHealth,
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
     },

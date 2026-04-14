@@ -6,31 +6,35 @@ export interface Env {
   // Environment variables
   ENV: string;
   TERMINAL_ORIGIN: string;
+  TERMINAL_CONNECT_TOKEN_TTL_SECONDS?: string;
+  TERMINAL_BLOCKED_COUNTRIES?: string;
+  ALLOWED_ORIGINS?: string;
 
   // Secrets
-  BACKEND_KEY: string;
   JWT_SECRET: string;
+  TERMINAL_SESSION_SECRET: string;
 
   // KV Namespace
   KV: KVNamespace;
+  TERMINAL_LEASES: DurableObjectNamespace;
 }
 
 export interface JWTPayload {
   sub: string; // user id
   email?: string;
-  exp: number;
-  iat: number;
+  role?: string;
+  emailVerified?: boolean;
+  type?: 'access' | 'refresh';
+  iss?: string;
+  aud?: string | string[];
+  nbf?: number;
+  exp?: number;
+  iat?: number;
 }
 
 export interface RateLimitResult {
   allowed: boolean;
   remaining: number;
   resetAt: number;
-}
-
-export interface SessionInfo {
-  userId: string;
-  clientIP: string;
-  connectedAt: number;
-  lastActivity: number;
+  reason?: 'limit_exceeded' | 'kv_unavailable';
 }

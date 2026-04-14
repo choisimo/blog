@@ -1,5 +1,6 @@
 export interface Env {
   GITHUB_PAGES_ORIGIN: string;
+  RAW_CONTENT_ORIGIN?: string;
   API_BASE_URL: string;
   SITE_BASE_URL: string;
   SITE_NAME: string;

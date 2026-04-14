@@ -1,10 +1,5 @@
 import { getApiBaseUrl } from '@/utils/network/apiBase';
-import { bearerAuth } from '@/lib/auth';
-import { useAuthStore } from '@/stores/session/useAuthStore';
-import { 
-  isTokenExpired,
-  getValidAnonymousToken 
-} from '@/services/session/auth';
+import { getPrincipalHeaders } from '@/services/session/userContentAuth';
 
 export type Persona = {
   id: string;
@@ -70,20 +65,6 @@ export type UpdatePersonaInput = Omit<PersonaPayload, 'id'>;
 export type CreateMemoInput = Omit<MemoPayload, 'id'>;
 export type UpdateMemoInput = Omit<MemoPayload, 'id'>;
 
-/**
- * Get auth token, requesting anonymous token if needed (async)
- */
-async function getAuthTokenAsync(): Promise<string> {
-  // First try admin token from auth store
-  const authToken = useAuthStore.getState().accessToken;
-  if (authToken && authToken.trim() && !isTokenExpired(authToken, 60)) {
-    return authToken.trim();
-  }
-  
-  // Get or request anonymous token
-  return getValidAnonymousToken();
-}
-
 async function request<T>(
   path: string,
   init?: RequestInit,
@@ -92,15 +73,10 @@ async function request<T>(
   const base = getApiBaseUrl();
   const url = `${base.replace(/\/$/, '')}${path}`;
 
-  const headers = new Headers(init?.headers);
+  const headers = await getPrincipalHeaders(init?.headers);
   if (!headers.has('Content-Type') && init?.body) {
     headers.set('Content-Type', 'application/json');
   }
-  
-  // Get token asynchronously (will request anonymous token if needed)
-  const token = await getAuthTokenAsync();
-  if (token) headers.set('Authorization', bearerAuth(token).Authorization);
-  if (!headers.has('Accept')) headers.set('Accept', 'application/json');
 
   const res = await fetch(url, {
     ...init,

@@ -23,6 +23,7 @@ export const configSchema = z.object({
   AI_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
   AI_DEFAULT_MODEL: z.string().default(AI_MODELS.DEFAULT),
+  AI_VISION_MODEL: z.string().optional(),
   AI_ASYNC_MODE: z.enum(['true', 'false']).default('false'),
 
   JWT_EXPIRES_IN: z.string().default('12h'),
@@ -54,6 +55,7 @@ export const configSchema = z.object({
   REDIS_URL: z.string().optional(),
 
   BACKEND_KEY: z.string().optional(),
+  ENABLE_LEGACY_BACKEND_AUTH: z.enum(['true', 'false']).default('false'),
 
   OPEN_NOTEBOOK_URL: z.string().default('http://open-notebook:8501'),
   OPEN_NOTEBOOK_ENABLED: z.enum(['true', 'false']).default('false'),
@@ -65,6 +67,7 @@ export const configSchema = z.object({
 
   INTERNAL_API_URL: z.string().optional(),
   WORKER_API_URL: z.string().optional(),
+  CHAT_WS_ENABLED: z.enum(['true', 'false']).default('false'),
   TERMINAL_SERVER_URL: z.string().default('http://terminal-server:8080'),
   TERMINAL_GATEWAY_URL: z.string().default('https://terminal.nodove.com'),
 

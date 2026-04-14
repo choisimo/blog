@@ -1,124 +1,37 @@
 import { Hono } from 'hono';
-import type { HonoEnv, Env } from '../types';
-import { getCorsHeadersForRequest } from '../lib/cors';
+import type { HonoEnv } from '../types';
 import { requireAuth } from '../middleware/auth';
+import { proxyToBackendWithPolicy } from '../lib/backend-proxy';
 
 const notifications = new Hono<HonoEnv>();
 
-function applyCorsHeaders(headers: Headers, corsHeaders: Record<string, string>): void {
-  headers.delete('Access-Control-Allow-Origin');
-  headers.delete('Access-Control-Allow-Credentials');
-  headers.delete('Access-Control-Allow-Methods');
-  headers.delete('Access-Control-Allow-Headers');
-  headers.delete('Access-Control-Max-Age');
-
-  Object.entries(corsHeaders).forEach(([key, value]) => {
-    headers.set(key, value);
-  });
-}
-
-function buildBackendUrl(request: Request, env: Env): URL | null {
-  const backendOrigin = env.BACKEND_ORIGIN;
-  if (!backendOrigin) {
-    return null;
-  }
-
-  const requestUrl = new URL(request.url);
-  const backendUrl = new URL('/api/v1/notifications/stream', backendOrigin);
-  backendUrl.search = requestUrl.search;
-  return backendUrl;
-}
-
 notifications.get('/stream', requireAuth, async (c) => {
-  const corsHeaders = await getCorsHeadersForRequest(c.req.raw, c.env);
-  const backendUrl = buildBackendUrl(c.req.raw, c.env);
+  return proxyToBackendWithPolicy(c, {
+    upstreamPath: '/api/v1/notifications/stream',
+    stream: true,
+    backendUnavailableMessage: 'Could not connect to notifications backend',
+  });
+});
 
-  if (!backendUrl) {
-    return new Response(
-      JSON.stringify({
-        ok: false,
-        error: { message: 'BACKEND_ORIGIN not configured', code: 'CONFIG_ERROR' },
-      }),
-      {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders,
-        },
-      }
-    );
-  }
+notifications.get('/unread', requireAuth, async (c) => {
+  return proxyToBackendWithPolicy(c, {
+    upstreamPath: '/api/v1/notifications/unread',
+    backendUnavailableMessage: 'Could not connect to notifications backend',
+  });
+});
 
-  const headers = new Headers(c.req.raw.headers);
-  const clientIp = c.req.raw.headers.get('CF-Connecting-IP') || '';
+notifications.get('/history', requireAuth, async (c) => {
+  return proxyToBackendWithPolicy(c, {
+    upstreamPath: '/api/v1/notifications/history',
+    backendUnavailableMessage: 'Could not connect to notifications backend',
+  });
+});
 
-  headers.set('Host', 'blog-b.nodove.com');
-  if (c.env.BACKEND_KEY) {
-    headers.set('X-Backend-Key', c.env.BACKEND_KEY);
-  } else {
-    headers.delete('X-Backend-Key');
-  }
-  headers.set('X-Forwarded-For', clientIp);
-  headers.set('X-Real-IP', clientIp);
-  if (!headers.has('Accept')) {
-    headers.set('Accept', 'text/event-stream');
-  }
-
-  try {
-    const response = await fetch(backendUrl.toString(), {
-      method: 'GET',
-      headers,
-      redirect: 'manual',
-      signal: c.req.raw.signal,
-    });
-
-    const responseHeaders = new Headers(response.headers);
-    applyCorsHeaders(responseHeaders, corsHeaders);
-    responseHeaders.set('Cache-Control', 'no-cache, no-transform');
-    responseHeaders.set('Connection', 'keep-alive');
-    responseHeaders.set('X-Accel-Buffering', 'no');
-
-    // Normalize upstream 502/503/504 — prevent raw error passthrough to browser
-    if (response.status >= 502 && response.status <= 504) {
-      console.error('Notifications backend returned error status:', response.status);
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          error: { message: `Notifications backend returned ${response.status}. Retry after 30 seconds.`, code: 'BACKEND_UNAVAILABLE' },
-        }),
-        {
-          status: 503,
-          headers: {
-            'Content-Type': 'application/json',
-            'Retry-After': '30',
-            ...corsHeaders,
-          },
-        }
-      );
-    }
-
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: responseHeaders,
-    });
-  } catch (error) {
-    console.error('Notifications SSE proxy failed:', error);
-    return new Response(
-      JSON.stringify({
-        ok: false,
-        error: { message: 'Could not connect to notifications backend', code: 'BACKEND_UNAVAILABLE' },
-      }),
-      {
-        status: 503,
-        headers: {
-          'Content-Type': 'application/json',
-          'Retry-After': '30',
-          ...corsHeaders,
-        },
-      }
-    );
-  }
+notifications.patch('/:notificationId/read', requireAuth, async (c) => {
+  return proxyToBackendWithPolicy(c, {
+    upstreamPath: `/api/v1/notifications/${encodeURIComponent(c.req.param('notificationId'))}/read`,
+    backendUnavailableMessage: 'Could not connect to notifications backend',
+  });
 });
 
 export default notifications;

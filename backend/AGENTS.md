@@ -52,7 +52,6 @@ All registered in `src/index.js`:
 | `/api/v1/ai` | `routes/ai.js` | AI completions |
 | `/api/v1/agent` | `routes/agent.js` | AI agent orchestration |
 | `/api/v1/chat` | `routes/chat.js` | WebSocket + REST chat |
-| `/api/v1/comments` | `routes/comments.js` | Post comments |
 | `/api/v1/posts` | `routes/posts.js` | Post CRUD |
 | `/api/v1/memories` | `routes/memories.js` | AI memories |
 | `/api/v1/memos` | `routes/memos.js` | User memos |
@@ -75,7 +74,7 @@ All registered in `src/index.js`:
 
 - Do NOT add TypeScript — intentionally plain JS (ESM)
 - Do NOT bypass `backendAuth.js` for internal routes — require `X-Backend-Key`
-- Do NOT add SSH-based deployment to CI — server self-manages via `git pull && docker-compose up -d`
+- Do NOT add SSH-based deployment to CI — build images and let the GitOps path reconcile `k3s/`
 - Do NOT hardcode secrets — use env vars or Consul KV
 - Do NOT call Consul directly from routes — use `src/config.js` helpers
 

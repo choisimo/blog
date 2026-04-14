@@ -18,313 +18,464 @@
     }
   },
   "commentsBoundary": {
-    "backendUsesDirectD1": true,
+    "backendRoutePresent": false,
+    "backendUsesDirectD1": false,
     "workerUsesBackendProxy": false,
     "workerUsesDirectD1": true
   },
   "generatedAt": "snapshot-managed",
-  "routeMounts": [
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1",
-      "owner": "backend",
-      "symbol": "translateRouter"
+  "routeOwnership": {
+    "backendEntries": [
+      {
+        "boundaryId": "notifications",
+        "owner": "backend",
+        "path": "/api/v1/notifications"
+      },
+      {
+        "boundaryId": "ai",
+        "owner": "backend",
+        "path": "/api/v1/ai"
+      },
+      {
+        "boundaryId": "analytics",
+        "owner": "backend",
+        "path": "/api/v1/analytics"
+      },
+      {
+        "boundaryId": "chat",
+        "owner": "backend",
+        "path": "/api/v1/chat"
+      },
+      {
+        "boundaryId": "translate",
+        "owner": "backend",
+        "path": "/api/v1"
+      },
+      {
+        "boundaryId": "memos",
+        "owner": "backend",
+        "path": "/api/v1/memos"
+      },
+      {
+        "boundaryId": "user-content",
+        "owner": "backend",
+        "path": "/api/v1/user-content"
+      },
+      {
+        "boundaryId": "og",
+        "owner": "backend",
+        "path": "/api/v1/og"
+      },
+      {
+        "boundaryId": "admin",
+        "owner": "backend",
+        "path": "/api/v1/admin"
+      },
+      {
+        "boundaryId": "posts",
+        "owner": "backend",
+        "path": "/api/v1/posts"
+      },
+      {
+        "boundaryId": "images",
+        "owner": "backend",
+        "path": "/api/v1/images"
+      },
+      {
+        "boundaryId": "auth",
+        "owner": "backend",
+        "path": "/api/v1/auth"
+      },
+      {
+        "boundaryId": "rag",
+        "owner": "backend",
+        "path": "/api/v1/rag"
+      },
+      {
+        "boundaryId": "memories",
+        "owner": "backend",
+        "path": "/api/v1/memories"
+      },
+      {
+        "boundaryId": "user",
+        "owner": "backend",
+        "path": "/api/v1/user"
+      },
+      {
+        "boundaryId": "search",
+        "owner": "backend",
+        "path": "/api/v1/search"
+      },
+      {
+        "boundaryId": "admin-config",
+        "owner": "backend",
+        "path": "/api/v1/admin/config"
+      },
+      {
+        "boundaryId": "admin-workers",
+        "owner": "backend",
+        "path": "/api/v1/admin/workers"
+      },
+      {
+        "boundaryId": "admin",
+        "owner": "backend",
+        "path": "/api/v1/admin"
+      },
+      {
+        "boundaryId": "agent",
+        "owner": "backend",
+        "path": "/api/v1/agent"
+      },
+      {
+        "boundaryId": "debate",
+        "owner": "backend",
+        "path": "/api/v1/debate"
+      },
+      {
+        "boundaryId": "execute",
+        "owner": "backend",
+        "path": "/api/v1/execute"
+      }
+    ],
+    "proxyableBoundaryOwners": [
+      "BACKEND",
+      "PROXY_ONLY",
+      "COMPATIBILITY"
+    ],
+    "publicConfigSurface": {
+      "capabilityKeys": [
+        "supportsChatWebSocket"
+      ],
+      "featureKeys": [
+        "aiEnabled",
+        "ragEnabled",
+        "terminalEnabled",
+        "aiInline",
+        "commentsEnabled"
+      ],
+      "topLevelKeys": [
+        "apiBaseUrl",
+        "chatBaseUrl",
+        "terminalGatewayUrl",
+        "ai",
+        "features"
+      ]
     },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/admin",
-      "owner": "backend",
-      "symbol": "adminLogsRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/admin",
-      "owner": "backend",
-      "symbol": "adminRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/admin/config",
-      "owner": "backend",
-      "symbol": "configRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/admin/workers",
-      "owner": "backend",
-      "symbol": "workersRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/agent",
-      "owner": "backend",
-      "symbol": "agentRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/ai",
-      "owner": "backend",
-      "symbol": "aiRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/analytics",
-      "owner": "backend",
-      "symbol": "analyticsRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/auth",
-      "owner": "backend",
-      "symbol": "authRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/chat",
-      "owner": "backend",
-      "symbol": "chatRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/comments",
-      "owner": "backend",
-      "symbol": "commentsRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/debate",
-      "owner": "backend",
-      "symbol": "debateRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/execute",
-      "owner": "backend",
-      "symbol": "executeRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/images",
-      "owner": "backend",
-      "symbol": "imagesRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/memories",
-      "owner": "backend",
-      "symbol": "memoriesRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/memos",
-      "owner": "backend",
-      "symbol": "memosRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/notifications",
-      "owner": "backend",
-      "symbol": "notificationsRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/og",
-      "owner": "backend",
-      "symbol": "ogRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/posts",
-      "owner": "backend",
-      "symbol": "postsRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/rag",
-      "owner": "backend",
-      "symbol": "ragRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/search",
-      "owner": "backend",
-      "symbol": "searchRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/user-content",
-      "owner": "backend",
-      "symbol": "userContentRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/api/v1/user",
-      "owner": "backend",
-      "symbol": "userRouter"
-    },
-    {
-      "file": "backend/src/index.js",
-      "mountPath": "/metrics",
-      "owner": "backend",
-      "symbol": "metricsRouter"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/",
-      "owner": "worker",
-      "symbol": "translate"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/admin/ai",
-      "owner": "worker",
-      "symbol": "adminAi"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/admin/logs",
-      "owner": "worker",
-      "symbol": "adminLogs"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/admin/outbox",
-      "owner": "worker",
-      "symbol": "adminOutbox"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/admin/secrets",
-      "owner": "worker",
-      "symbol": "secrets"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/ai",
-      "owner": "worker",
-      "symbol": "ai"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/analytics",
-      "owner": "worker",
-      "symbol": "analytics"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/auth",
-      "owner": "worker",
-      "symbol": "auth"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/chat",
-      "owner": "worker",
-      "symbol": "chat"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/comments",
-      "owner": "worker",
-      "symbol": "comments"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/config",
-      "owner": "worker",
-      "symbol": "config"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/contact",
-      "owner": "worker",
-      "symbol": "contact"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/debate",
-      "owner": "worker",
-      "symbol": "debate"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/gateway",
-      "owner": "worker",
-      "symbol": "gateway"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/images",
-      "owner": "worker",
-      "symbol": "images"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/internal",
-      "owner": "worker",
-      "symbol": "internal"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/memories",
-      "owner": "worker",
-      "symbol": "memories"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/memos",
-      "owner": "worker",
-      "symbol": "memos"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/notifications",
-      "owner": "worker",
-      "symbol": "notifications"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/og",
-      "owner": "worker",
-      "symbol": "og"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/personas",
-      "owner": "worker",
-      "symbol": "personas"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/rag",
-      "owner": "worker",
-      "symbol": "rag"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/search",
-      "owner": "worker",
-      "symbol": "search"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/subscribe",
-      "owner": "worker",
-      "symbol": "subscribe"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/user-content",
-      "owner": "worker",
-      "symbol": "userContent"
-    },
-    {
-      "file": "workers/api-gateway/src/index.ts",
-      "mountPath": "/user",
-      "owner": "worker",
-      "symbol": "user"
-    }
-  ],
+    "sharedBoundaries": [
+      {
+        "boundaryId": "auth",
+        "owner": "WORKER",
+        "prefix": "/api/v1/auth"
+      },
+      {
+        "boundaryId": "comments",
+        "owner": "WORKER",
+        "prefix": "/api/v1/comments"
+      },
+      {
+        "boundaryId": "ai",
+        "owner": "WORKER",
+        "prefix": "/api/v1/ai"
+      },
+      {
+        "boundaryId": "chat",
+        "owner": "WORKER",
+        "prefix": "/api/v1/chat"
+      },
+      {
+        "boundaryId": "images",
+        "owner": "WORKER",
+        "prefix": "/api/v1/images"
+      },
+      {
+        "boundaryId": "og",
+        "owner": "WORKER",
+        "prefix": "/api/v1/og"
+      },
+      {
+        "boundaryId": "analytics",
+        "owner": "WORKER",
+        "prefix": "/api/v1/analytics"
+      },
+      {
+        "boundaryId": "translate",
+        "owner": "WORKER",
+        "prefix": "/api/v1/translate"
+      },
+      {
+        "boundaryId": "config",
+        "owner": "WORKER",
+        "prefix": "/api/v1/config"
+      },
+      {
+        "boundaryId": "rag",
+        "owner": "WORKER",
+        "prefix": "/api/v1/rag"
+      },
+      {
+        "boundaryId": "memos",
+        "owner": "WORKER",
+        "prefix": "/api/v1/memos"
+      },
+      {
+        "boundaryId": "memories",
+        "owner": "WORKER",
+        "prefix": "/api/v1/memories"
+      },
+      {
+        "boundaryId": "admin-ai",
+        "owner": "WORKER",
+        "prefix": "/api/v1/admin/ai"
+      },
+      {
+        "boundaryId": "admin-outbox",
+        "owner": "WORKER",
+        "prefix": "/api/v1/admin/outbox"
+      },
+      {
+        "boundaryId": "admin-secrets",
+        "owner": "WORKER",
+        "prefix": "/api/v1/admin/secrets"
+      },
+      {
+        "boundaryId": "admin-logs",
+        "owner": "WORKER",
+        "prefix": "/api/v1/admin/logs"
+      },
+      {
+        "boundaryId": "internal",
+        "owner": "WORKER",
+        "prefix": "/api/v1/internal"
+      },
+      {
+        "boundaryId": "personas",
+        "owner": "WORKER",
+        "prefix": "/api/v1/personas"
+      },
+      {
+        "boundaryId": "user-content",
+        "owner": "WORKER",
+        "prefix": "/api/v1/user-content"
+      },
+      {
+        "boundaryId": "search",
+        "owner": "WORKER",
+        "prefix": "/api/v1/search"
+      },
+      {
+        "boundaryId": "user",
+        "owner": "WORKER",
+        "prefix": "/api/v1/user"
+      },
+      {
+        "boundaryId": "debate",
+        "owner": "WORKER",
+        "prefix": "/api/v1/debate"
+      },
+      {
+        "boundaryId": "subscribe",
+        "owner": "WORKER",
+        "prefix": "/api/v1/subscribe"
+      },
+      {
+        "boundaryId": "contact",
+        "owner": "WORKER",
+        "prefix": "/api/v1/contact"
+      },
+      {
+        "boundaryId": "notifications",
+        "owner": "WORKER",
+        "prefix": "/api/v1/notifications"
+      },
+      {
+        "boundaryId": "gateway",
+        "owner": "WORKER",
+        "prefix": "/api/v1/gateway"
+      },
+      {
+        "boundaryId": "posts",
+        "owner": "BACKEND",
+        "prefix": "/api/v1/posts"
+      },
+      {
+        "boundaryId": "agent",
+        "owner": "BACKEND",
+        "prefix": "/api/v1/agent"
+      },
+      {
+        "boundaryId": "execute",
+        "owner": "BACKEND",
+        "prefix": "/api/v1/execute"
+      },
+      {
+        "boundaryId": "admin-config",
+        "owner": "BACKEND",
+        "prefix": "/api/v1/admin/config"
+      },
+      {
+        "boundaryId": "admin-workers",
+        "owner": "BACKEND",
+        "prefix": "/api/v1/admin/workers"
+      },
+      {
+        "boundaryId": "admin",
+        "owner": "BACKEND",
+        "prefix": "/api/v1/admin"
+      },
+      {
+        "boundaryId": "healthz",
+        "owner": "PROXY_ONLY",
+        "prefix": "/api/v1/healthz"
+      },
+      {
+        "boundaryId": "health",
+        "owner": "PROXY_ONLY",
+        "prefix": "/health"
+      },
+      {
+        "boundaryId": "metrics",
+        "owner": "PROXY_ONLY",
+        "prefix": "/metrics"
+      },
+      {
+        "boundaryId": "public-config",
+        "owner": "COMPATIBILITY",
+        "prefix": "/api/v1/public/config"
+      }
+    ],
+    "workerEntries": [
+      {
+        "boundaryId": "auth",
+        "owner": "worker",
+        "path": "/api/v1/auth"
+      },
+      {
+        "boundaryId": "comments",
+        "owner": "worker",
+        "path": "/api/v1/comments"
+      },
+      {
+        "boundaryId": "ai",
+        "owner": "worker",
+        "path": "/api/v1/ai"
+      },
+      {
+        "boundaryId": "chat",
+        "owner": "worker",
+        "path": "/api/v1/chat"
+      },
+      {
+        "boundaryId": "images",
+        "owner": "worker",
+        "path": "/api/v1/images"
+      },
+      {
+        "boundaryId": "og",
+        "owner": "worker",
+        "path": "/api/v1/og"
+      },
+      {
+        "boundaryId": "analytics",
+        "owner": "worker",
+        "path": "/api/v1/analytics"
+      },
+      {
+        "boundaryId": "translate",
+        "owner": "worker",
+        "path": "/api/v1/"
+      },
+      {
+        "boundaryId": "config",
+        "owner": "worker",
+        "path": "/api/v1/config"
+      },
+      {
+        "boundaryId": "rag",
+        "owner": "worker",
+        "path": "/api/v1/rag"
+      },
+      {
+        "boundaryId": "memos",
+        "owner": "worker",
+        "path": "/api/v1/memos"
+      },
+      {
+        "boundaryId": "memories",
+        "owner": "worker",
+        "path": "/api/v1/memories"
+      },
+      {
+        "boundaryId": "admin-ai",
+        "owner": "worker",
+        "path": "/api/v1/admin/ai"
+      },
+      {
+        "boundaryId": "admin-outbox",
+        "owner": "worker",
+        "path": "/api/v1/admin/outbox"
+      },
+      {
+        "boundaryId": "admin-secrets",
+        "owner": "worker",
+        "path": "/api/v1/admin/secrets"
+      },
+      {
+        "boundaryId": "internal",
+        "owner": "worker",
+        "path": "/api/v1/internal"
+      },
+      {
+        "boundaryId": "personas",
+        "owner": "worker",
+        "path": "/api/v1/personas"
+      },
+      {
+        "boundaryId": "user-content",
+        "owner": "worker",
+        "path": "/api/v1/user-content"
+      },
+      {
+        "boundaryId": "search",
+        "owner": "worker",
+        "path": "/api/v1/search"
+      },
+      {
+        "boundaryId": "user",
+        "owner": "worker",
+        "path": "/api/v1/user"
+      },
+      {
+        "boundaryId": "debate",
+        "owner": "worker",
+        "path": "/api/v1/debate"
+      },
+      {
+        "boundaryId": "subscribe",
+        "owner": "worker",
+        "path": "/api/v1/subscribe"
+      },
+      {
+        "boundaryId": "contact",
+        "owner": "worker",
+        "path": "/api/v1/contact"
+      },
+      {
+        "boundaryId": "notifications",
+        "owner": "worker",
+        "path": "/api/v1/notifications"
+      },
+      {
+        "boundaryId": "admin-logs",
+        "owner": "worker",
+        "path": "/api/v1/admin/logs"
+      },
+      {
+        "boundaryId": "gateway",
+        "owner": "worker",
+        "path": "/api/v1/gateway"
+      }
+    ]
+  },
   "sharedContractUsage": [
     {
       "file": "frontend/src/services/content/translate.ts",

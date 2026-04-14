@@ -1,12 +1,13 @@
 import { Hono } from 'hono';
 import type { HonoEnv, Env } from '../types';
-import { success, badRequest, notFound, error } from '../lib/response';
+import { success, badRequest, error } from '../lib/response';
 import { execute } from '../lib/d1';
 import { requireAdmin } from '../middleware/auth';
 import { createAIService } from '../lib/ai-service';
 import { getAllowedOrigins } from '../lib/cors';
 import { getSecret } from '../lib/secrets';
 import { getApiBaseUrl } from '../lib/config';
+import { proxyToBackendWithPolicy } from '../lib/backend-proxy';
 
 const images = new Hono<HonoEnv>();
 
@@ -25,6 +26,13 @@ async function resolveAssetsBaseUrl(env: Env): Promise<string> {
   const apiBaseUrl = await getApiBaseUrl(env);
   return `${apiBaseUrl.replace(/\/$/, '')}/images`;
 }
+
+images.post('/upload', requireAdmin, async (c) => {
+  return proxyToBackendWithPolicy(c, {
+    upstreamPath: '/api/v1/images/upload',
+    backendUnavailableMessage: 'Could not connect to images backend',
+  });
+});
 
 // POST /images/presign - Generate presigned URL for R2 upload (admin only)
 images.post('/presign', requireAdmin, async (c) => {

@@ -7,9 +7,7 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { Env } from '../types';
-import { success, badRequest, error } from '../lib/response';
-import { getCorsHeadersForRequest } from '../lib/cors';
-import { getAiDefaultModel, getAiVisionModel } from '../lib/config';
+import { success, badRequest } from '../lib/response';
 import { requireAdmin } from '../middleware/auth';
 import type { LensCard, ThoughtCard } from '../lib/feed-contract';
 import {
@@ -17,6 +15,7 @@ import {
   normalizeThoughtFeedRequest,
 } from '../lib/feed-normalizers';
 import { enqueueFeedArtifactGeneration, generateAndStoreInitialFeedArtifact, getServeableFeedPage } from '../lib/ai-artifact-outbox';
+import { proxyToBackendWithPolicy } from '../lib/backend-proxy';
 
 type ChatContext = { Bindings: Env };
 
@@ -24,79 +23,16 @@ const chat = new Hono<ChatContext>();
 
 type ProxyOptions = {
   sanitizeClientModel?: boolean;
+  stream?: boolean;
 };
 
 async function proxyRequest(c: Context<ChatContext>, path: string, options: ProxyOptions = {}) {
-  const backendOrigin = c.env.BACKEND_ORIGIN;
-  if (!backendOrigin) {
-    return error(c, 'BACKEND_ORIGIN not configured', 500, 'CONFIGURATION_ERROR');
-  }
-  const upstreamUrl = `${backendOrigin}/api/v1/chat${path}`;
-
-  const upstreamHeaders = new Headers(c.req.raw.headers);
-  upstreamHeaders.delete('host');
-  upstreamHeaders.set('Host', 'blog-b.nodove.com');
-
-  if (c.env.BACKEND_KEY) {
-    upstreamHeaders.set('X-Backend-Key', c.env.BACKEND_KEY);
-  }
-
-  const [forcedModel, forcedVisionModel] = await Promise.all([
-    getAiDefaultModel(c.env),
-    getAiVisionModel(c.env),
-  ]);
-  if (forcedModel) {
-    upstreamHeaders.set('X-AI-Model', forcedModel);
-  }
-  if (forcedVisionModel) {
-    upstreamHeaders.set('X-AI-Vision-Model', forcedVisionModel);
-  }
-
-  if (!upstreamHeaders.has('Authorization') && c.env.OPENCODE_AUTH_TOKEN) {
-    upstreamHeaders.set('Authorization', `Bearer ${c.env.OPENCODE_AUTH_TOKEN}`);
-  }
-
-  let upstreamBody: BodyInit | null | undefined = c.req.raw.body;
-  if (options.sanitizeClientModel && !['GET', 'HEAD'].includes(c.req.method)) {
-    const contentType = (c.req.header('content-type') || '').toLowerCase();
-    if (contentType.includes('application/json')) {
-      const rawBody = await c.req.raw.text();
-      if (rawBody.trim()) {
-        try {
-          const payload = JSON.parse(rawBody) as Record<string, unknown>;
-          if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
-            const sanitized = { ...payload };
-            delete sanitized.model;
-            upstreamBody = JSON.stringify(sanitized);
-          } else {
-            upstreamBody = rawBody;
-          }
-        } catch {
-          upstreamBody = rawBody;
-        }
-      } else {
-        upstreamBody = rawBody;
-      }
-    }
-  }
-
-  const upstreamRequest = new Request(upstreamUrl, {
-    method: c.req.method,
-    headers: upstreamHeaders,
-    body: upstreamBody,
-    redirect: 'manual',
-  });
-
-  const upstreamResponse = await fetch(upstreamRequest);
-  const headers = new Headers(upstreamResponse.headers);
-  const corsHeaders = await getCorsHeadersForRequest(c.req.raw, c.env);
-  Object.entries(corsHeaders).forEach(([key, value]) => {
-    headers.set(key, value);
-  });
-
-  return new Response(upstreamResponse.body, {
-    status: upstreamResponse.status,
-    headers,
+  return proxyToBackendWithPolicy(c, {
+    upstreamPath: `/api/v1/chat${path}`,
+    sanitizeClientModel: options.sanitizeClientModel,
+    stream: options.stream,
+    forceAiModels: true,
+    backendUnavailableMessage: 'Could not connect to chat backend',
   });
 }
 
@@ -325,7 +261,9 @@ chat.post('/aggregate', async (c: Context<ChatContext>) => {
 
 chat.get('/live/stream', async (c: Context<ChatContext>) => {
   const query = c.req.url.split('?')[1] || '';
-  return proxyRequest(c, `/live/stream${query ? `?${query}` : ''}`);
+  return proxyRequest(c, `/live/stream${query ? `?${query}` : ''}`, {
+    stream: true,
+  });
 });
 
 chat.post('/live/message', async (c: Context<ChatContext>) => {

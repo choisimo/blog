@@ -11,6 +11,7 @@ import {
   connectTerminal,
   checkTerminalHealth,
   hasAuthToken,
+  hasTerminalGatewayUrl,
   type TerminalConnection,
   type TerminalOptions,
 } from "@/services/realtime/terminal";
@@ -76,9 +77,13 @@ export function useRealTerminal(
   // Check if terminal service is available on mount
   useEffect(() => {
     const checkAvailability = async () => {
-      if (!terminalEnabled) {
+      if (!terminalEnabled || !hasTerminalGatewayUrl()) {
         setIsAvailable(false);
-        setError(null);
+        setError(
+          terminalEnabled
+            ? "터미널 게이트웨이 URL이 설정되지 않았습니다"
+            : null,
+        );
         return;
       }
 
@@ -94,7 +99,7 @@ export function useRealTerminal(
   }, [terminalEnabled]);
 
   useEffect(() => {
-    if (!terminalEnabled && connectionRef.current) {
+    if ((!terminalEnabled || !hasTerminalGatewayUrl()) && connectionRef.current) {
       connectionRef.current.close();
       connectionRef.current = null;
       setStatus("disconnected");
@@ -110,6 +115,13 @@ export function useRealTerminal(
     if (!terminalEnabled) {
       setIsAvailable(false);
       setError("터미널 기능이 현재 비활성화되어 있습니다");
+      setStatus("error");
+      return;
+    }
+
+    if (!hasTerminalGatewayUrl()) {
+      setIsAvailable(false);
+      setError("터미널 게이트웨이 URL이 설정되지 않았습니다");
       setStatus("error");
       return;
     }
@@ -181,7 +193,7 @@ export function useRealTerminal(
   }, []);
 
   const checkHealth = useCallback(async () => {
-    if (!terminalEnabled) {
+    if (!terminalEnabled || !hasTerminalGatewayUrl()) {
       setIsAvailable(false);
       return false;
     }

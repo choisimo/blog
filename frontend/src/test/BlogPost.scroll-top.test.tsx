@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import BlogPost from '@/pages/public/BlogPost';
 
@@ -45,9 +46,11 @@ const renderRoute = (initialEntries: string[]) =>
   render(
     <MemoryRouter initialEntries={initialEntries}>
       <ThemeProvider>
-        <Routes>
-          <Route path='/blog/:year/:slug' element={<BlogPost />} />
-        </Routes>
+        <LanguageProvider>
+          <Routes>
+            <Route path='/blog/:year/:slug' element={<BlogPost />} />
+          </Routes>
+        </LanguageProvider>
       </ThemeProvider>
     </MemoryRouter>
   );
@@ -62,13 +65,17 @@ describe('BlogPost scroll-to-top', () => {
   });
 
   it('scrolls to top when navigating to a different post', async () => {
-    renderRoute(['/blog/2025/foo']);
+    const firstView = renderRoute(['/blog/2025/foo']);
     // Wait for initial post title
-    await screen.findByText(/Test Blog Post/i);
+    await within(firstView.container).findByRole('heading', {
+      name: /Test Blog Post/i,
+    });
 
     // Navigate to new entry by pushing a new location
-    renderRoute(['/blog/2025/bar']);
-    await screen.findByText(/Test Blog Post/i);
+    const secondView = renderRoute(['/blog/2025/bar']);
+    await within(secondView.container).findByRole('heading', {
+      name: /Test Blog Post/i,
+    });
 
     expect(window.scrollTo).toHaveBeenCalledWith({
       top: 0,
@@ -79,8 +86,10 @@ describe('BlogPost scroll-to-top', () => {
 
   it('records visited posts to localStorage on load', async () => {
     localStorage.clear();
-    renderRoute(['/blog/2025/abc']);
-    await screen.findByText(/Test Blog Post/i);
+    const view = renderRoute(['/blog/2025/abc']);
+    await within(view.container).findByRole('heading', {
+      name: /Test Blog Post/i,
+    });
     const raw = localStorage.getItem('visited.posts');
     expect(raw).toBeTruthy();
     const arr = JSON.parse(raw || '[]');

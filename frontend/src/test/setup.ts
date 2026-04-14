@@ -132,5 +132,83 @@ global.fetch = (input: any, init?: any): Promise<Response> => {
       })
     );
   }
+  if (
+    url.startsWith('http://localhost:5080/') ||
+    url.startsWith('http://127.0.0.1:5080/') ||
+    url.startsWith('https://api.nodove.com/')
+  ) {
+    const parsed = new URL(url);
+
+    if (parsed.pathname === '/api/v1/public/config') {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: {
+              apiBaseUrl: 'https://api.nodove.com',
+              features: {
+                aiEnabled: true,
+                ragEnabled: true,
+                terminalEnabled: false,
+                aiInline: true,
+                commentsEnabled: true,
+              },
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      );
+    }
+
+    if (parsed.pathname === '/api/v1/notifications/unread') {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: {
+              items: [],
+              unreadCount: 0,
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      );
+    }
+
+    if (
+      parsed.pathname === '/api/v1/notifications/history' ||
+      /^\/api\/v1\/notifications\/[^/]+\/read$/.test(parsed.pathname)
+    ) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: {
+              items: [],
+              id: 'test-notification',
+              readAt: new Date().toISOString(),
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      );
+    }
+
+    return Promise.resolve(
+      new Response(JSON.stringify({ ok: true, data: {} }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+  }
   return originalFetch(input as any, init);
 };

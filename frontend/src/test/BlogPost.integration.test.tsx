@@ -6,6 +6,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import BlogPost from '@/pages/public/BlogPost';
 
@@ -99,10 +100,12 @@ const renderWithProviders = (initialEntries: string[]) => {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
       <ThemeProvider>
-        <Routes>
-          <Route path='/blog/:year/:slug' element={<BlogPost />} />
-          <Route path='*' element={<div>Fallback</div>} />
-        </Routes>
+        <LanguageProvider>
+          <Routes>
+            <Route path='/blog/:year/:slug' element={<BlogPost />} />
+            <Route path='*' element={<div>Fallback</div>} />
+          </Routes>
+        </LanguageProvider>
       </ThemeProvider>
     </MemoryRouter>
   );
@@ -121,7 +124,7 @@ describe('BlogPost integration', () => {
     renderWithProviders(['/blog/2025/test']);
 
     // Wait for page to leave initial loading state (title visible)
-    await screen.findByText('Test Blog Post');
+    await screen.findByRole('heading', { name: 'Test Blog Post' });
 
     // Suspense fallback should be visible initially
     const fallback = screen.getByLabelText(/Loading article content/i);

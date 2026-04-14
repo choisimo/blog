@@ -6,13 +6,32 @@
   "exports": {
     ".": "./src/index.js",
     "./contracts/common": "./src/contracts/common.js",
-    "./contracts/translation": "./src/contracts/translation.js",
-    "./contracts/notifications": "./src/contracts/notifications.js",
-    "./contracts/auth": "./src/contracts/auth.js",
+    "./contracts/translation": {
+      "types": "./src/contracts/translation.d.ts",
+      "default": "./src/contracts/translation.js"
+    },
+    "./contracts/notifications": {
+      "types": "./src/contracts/notifications.d.ts",
+      "default": "./src/contracts/notifications.js"
+    },
+    "./contracts/auth": {
+      "types": "./src/contracts/auth.d.ts",
+      "default": "./src/contracts/auth.js"
+    },
     "./contracts/async-jobs": "./src/contracts/async-jobs.js",
-    "./contracts/service-boundaries": "./src/contracts/service-boundaries.js",
+    "./contracts/service-boundaries": {
+      "types": "./src/contracts/service-boundaries.d.ts",
+      "default": "./src/contracts/service-boundaries.js"
+    },
     "./contracts/platform-config": "./src/contracts/platform-config.js",
-    "./contracts/data-ownership": "./src/contracts/data-ownership.js",
+    "./contracts/public-runtime-config": {
+      "types": "./src/contracts/public-runtime-config.d.ts",
+      "default": "./src/contracts/public-runtime-config.js"
+    },
+    "./contracts/data-ownership": {
+      "types": "./src/contracts/data-ownership.d.ts",
+      "default": "./src/contracts/data-ownership.js"
+    },
     "./contracts/workers": "./src/contracts/workers.js"
   },
   "dependencies": {

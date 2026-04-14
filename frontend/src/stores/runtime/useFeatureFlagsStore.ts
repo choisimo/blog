@@ -11,33 +11,25 @@
 
 import { useEffect, useRef } from "react";
 import { create } from "zustand";
+import type { PublicRuntimeConfig } from "@blog/shared/contracts/public-runtime-config";
 import { getApiBaseUrl } from "@/utils/network/apiBase";
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export interface FeatureFlags {
-  aiEnabled: boolean;
-  ragEnabled: boolean;
-  terminalEnabled: boolean;
-  aiInline: boolean;
-  commentsEnabled: boolean;
-}
+export type FeatureFlags = PublicRuntimeConfig["features"];
+export type RuntimeConfig = PublicRuntimeConfig;
 
-export interface RuntimeConfig {
-  siteBaseUrl?: string;
-  apiBaseUrl?: string;
-  chatBaseUrl?: string;
-  chatWsBaseUrl?: string;
-  env?: string;
-  ai?: {
-    modelSelectionEnabled?: boolean;
-    defaultModel?: string | null;
-    visionModel?: string | null;
-  };
-  features: FeatureFlags;
-}
+type RuntimeAppConfig = Partial<RuntimeConfig> & {
+  capabilities?: Partial<RuntimeConfig["capabilities"]>;
+  ai?: Partial<RuntimeConfig["ai"]>;
+  features?: Partial<FeatureFlags>;
+};
+
+type RuntimeWindow = Window & {
+  APP_CONFIG?: RuntimeAppConfig;
+};
 
 export interface FeatureFlagsState {
   // State
@@ -57,17 +49,65 @@ export interface FeatureFlagsState {
 // ============================================================================
 
 const DEFAULT_FLAGS: FeatureFlags = {
-  aiEnabled: true,
-  ragEnabled: true,
+  aiEnabled: false,
+  ragEnabled: false,
   terminalEnabled: false,
-  aiInline: true,
-  commentsEnabled: true,
+  aiInline: false,
+  commentsEnabled: false,
 };
 
 // Cache duration: 5 minutes
 const CACHE_DURATION_MS = 5 * 60 * 1000;
 let featureFlagsInitialized = false;
 let visibilityChangeHandler: (() => void) | null = null;
+
+function applyRuntimeConfigToWindow(runtimeConfig: RuntimeAppConfig): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const w = window as RuntimeWindow;
+  w.APP_CONFIG = w.APP_CONFIG ?? {};
+
+  if (runtimeConfig.siteBaseUrl !== undefined) {
+    w.APP_CONFIG.siteBaseUrl = runtimeConfig.siteBaseUrl;
+  }
+  if (typeof runtimeConfig.apiBaseUrl === "string" && runtimeConfig.apiBaseUrl) {
+    w.APP_CONFIG.apiBaseUrl = runtimeConfig.apiBaseUrl;
+  }
+  if (typeof runtimeConfig.chatBaseUrl === "string" && runtimeConfig.chatBaseUrl) {
+    w.APP_CONFIG.chatBaseUrl = runtimeConfig.chatBaseUrl;
+  }
+  if (typeof runtimeConfig.chatWsBaseUrl === "string" && runtimeConfig.chatWsBaseUrl) {
+    w.APP_CONFIG.chatWsBaseUrl = runtimeConfig.chatWsBaseUrl;
+  } else if (runtimeConfig.chatWsBaseUrl === null) {
+    w.APP_CONFIG.chatWsBaseUrl = undefined;
+  }
+  if (runtimeConfig.terminalGatewayUrl !== undefined) {
+    w.APP_CONFIG.terminalGatewayUrl = runtimeConfig.terminalGatewayUrl ?? null;
+  }
+  if (typeof runtimeConfig.env === "string" && runtimeConfig.env) {
+    w.APP_CONFIG.env = runtimeConfig.env;
+  }
+  if (runtimeConfig.capabilities && typeof runtimeConfig.capabilities === "object") {
+    w.APP_CONFIG.capabilities = {
+      ...(w.APP_CONFIG.capabilities ?? {}),
+      ...runtimeConfig.capabilities,
+    };
+  }
+  if (runtimeConfig.ai && typeof runtimeConfig.ai === "object") {
+    w.APP_CONFIG.ai = {
+      ...(w.APP_CONFIG.ai ?? {}),
+      ...runtimeConfig.ai,
+    };
+  }
+  if (runtimeConfig.features && typeof runtimeConfig.features === "object") {
+    w.APP_CONFIG.features = {
+      ...(w.APP_CONFIG.features ?? DEFAULT_FLAGS),
+      ...runtimeConfig.features,
+    } as FeatureFlags;
+  }
+}
 
 // ============================================================================
 // Store
@@ -115,53 +155,27 @@ export const useFeatureFlagsStore = create<FeatureFlagsState>((set, get) => ({
       const json = await response.json();
 
       // Handle both { data: { features } } and { features } structures
-      const data = json?.data ?? json;
+      const data = (json?.data ?? json) as RuntimeAppConfig | null;
       const features = data?.features;
 
       if (features && typeof features === "object") {
+        const nextFlags: FeatureFlags = {
+          aiEnabled: features.aiEnabled ?? DEFAULT_FLAGS.aiEnabled,
+          ragEnabled: features.ragEnabled ?? DEFAULT_FLAGS.ragEnabled,
+          terminalEnabled:
+            features.terminalEnabled ?? DEFAULT_FLAGS.terminalEnabled,
+          aiInline: features.aiInline ?? DEFAULT_FLAGS.aiInline,
+          commentsEnabled:
+            features.commentsEnabled ?? DEFAULT_FLAGS.commentsEnabled,
+        };
+
         set({
-          flags: {
-            aiEnabled: features.aiEnabled ?? DEFAULT_FLAGS.aiEnabled,
-            ragEnabled: features.ragEnabled ?? DEFAULT_FLAGS.ragEnabled,
-            terminalEnabled:
-              features.terminalEnabled ?? DEFAULT_FLAGS.terminalEnabled,
-            aiInline: features.aiInline ?? DEFAULT_FLAGS.aiInline,
-            commentsEnabled:
-              features.commentsEnabled ?? DEFAULT_FLAGS.commentsEnabled,
-          },
+          flags: nextFlags,
           isLoading: false,
           lastFetched: Date.now(),
         });
 
-        // Also inject into window for legacy compatibility
-        if (typeof window !== "undefined") {
-          const w = window as Window & {
-            APP_CONFIG?: {
-              apiBaseUrl?: string;
-              chatBaseUrl?: string;
-              chatWsBaseUrl?: string;
-              ai?: Record<string, unknown>;
-              features?: FeatureFlags;
-            };
-          };
-          w.APP_CONFIG = w.APP_CONFIG ?? {};
-          if (typeof data?.apiBaseUrl === "string" && data.apiBaseUrl) {
-            w.APP_CONFIG.apiBaseUrl = data.apiBaseUrl;
-          }
-          if (typeof data?.chatBaseUrl === "string" && data.chatBaseUrl) {
-            w.APP_CONFIG.chatBaseUrl = data.chatBaseUrl;
-          }
-          if (typeof data?.chatWsBaseUrl === "string" && data.chatWsBaseUrl) {
-            w.APP_CONFIG.chatWsBaseUrl = data.chatWsBaseUrl;
-          }
-          if (data?.ai && typeof data.ai === "object") {
-            w.APP_CONFIG.ai = {
-              ...(w.APP_CONFIG.ai ?? {}),
-              ...(data.ai as Record<string, unknown>),
-            };
-          }
-          w.APP_CONFIG.features = get().flags;
-        }
+        applyRuntimeConfigToWindow({ ...(data ?? {}), features: nextFlags });
       } else {
         // No features in response - use defaults
         set({
@@ -170,10 +184,14 @@ export const useFeatureFlagsStore = create<FeatureFlagsState>((set, get) => ({
         });
       }
     } catch (err) {
-      console.warn("[FeatureFlags] Failed to fetch, using defaults:", err);
+      const message = err instanceof Error ? err.message : "Unknown error";
+      const isRuntimeConfigError =
+        err instanceof Error && err.message.startsWith("[apiBase]");
+      const log = isRuntimeConfigError ? console.error : console.warn;
+      log("[FeatureFlags] Failed to fetch public runtime config:", err);
       set({
         isLoading: false,
-        error: err instanceof Error ? err.message : "Unknown error",
+        error: message,
         lastFetched: Date.now(),
       });
     }

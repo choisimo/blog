@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 process.env.JWT_SECRET = process.env.JWT_SECRET || "auth-contract-test-secret";
 process.env.JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "15m";
 process.env.APP_ENV = process.env.APP_ENV || "test";
+process.env.AI_DEFAULT_MODEL = process.env.AI_DEFAULT_MODEL || "gpt-4.1-mini";
 
 const [{ signJwt, verifyJwt }, { requireUserAuth }] = await Promise.all([
   import("../src/lib/jwt.js"),

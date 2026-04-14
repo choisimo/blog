@@ -171,9 +171,9 @@ function handleNotificationEvent(data: SSENotificationPayload) {
     type,
     title,
     message,
-    sourceId: data.sourceId,
+    sourceId: data.sourceId ?? undefined,
     payload: data.payload,
-    createdAt: data.createdAt,
+    createdAt: data.createdAt ?? undefined,
     read: Boolean(data.readAt),
   });
 }
@@ -313,9 +313,8 @@ async function connect() {
     const token = await tokenProvider.getAccessToken();
     if (!token) {
       clearReconnectTimer();
-      reconnectTimer = setTimeout(() => {
-        if (!disposed) connect();
-      }, 15_000);
+      clearPingWatchdog();
+      reconnectAttempts = 0;
       return;
     }
 
@@ -347,7 +346,7 @@ async function connect() {
     reconnectAttempts = 0;
     slowPollMode = false;
     resetPingWatchdog();
-    void syncUnreadNotifications();
+    await syncUnreadNotifications().catch(() => void 0);
 
     // Start parsing the stream
     const reader = response.body.getReader();
@@ -382,8 +381,7 @@ export function initNotificationSSE(options?: {
   if (initialized) return;
   disposed = false;
   initialized = true;
-  void syncUnreadNotifications();
-  connect();
+  void connect();
 }
 
 /**

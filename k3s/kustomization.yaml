@@ -15,8 +15,6 @@ resources:
   - ingress.yaml
   - middleware.yaml
   - piston.yaml
-  - terminal-optional.yaml
-  - terminal-ingress-optional.yaml
 
 images:
   - name: ghcr.io/choisimo/blog-api

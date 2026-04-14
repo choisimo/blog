@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { buildPublicRuntimeConfig } from '../../../shared/src/contracts/public-runtime-config.js';
 import { configSchema } from './schema.js';
 import { loadConsulConfig, consulGet } from './env.js';
 import { CONSUL } from './constants.js';
@@ -10,6 +11,11 @@ export * from './constants.js';
 
 let _config = null;
 let _configPromise = null;
+const PROTECTED_ENVS = new Set(['production', 'staging']);
+
+export function isProtectedEnvironment(appEnv) {
+  return PROTECTED_ENVS.has(appEnv || process.env.APP_ENV);
+}
 
 async function buildConfig() {
   const consulConfig = await loadConsulConfig();
@@ -46,6 +52,7 @@ async function buildConfig() {
       baseUrl: raw.AI_SERVER_URL,
       apiKey: raw.AI_API_KEY || raw.OPENAI_API_KEY,
       defaultModel: raw.AI_DEFAULT_MODEL,
+      visionModel: raw.AI_VISION_MODEL,
       asyncMode: raw.AI_ASYNC_MODE === 'true',
     },
 
@@ -77,6 +84,11 @@ async function buildConfig() {
     auth: {
       jwtSecret: raw.JWT_SECRET,
       jwtExpiresIn: raw.JWT_EXPIRES_IN,
+    },
+
+    security: {
+      protectedEnvironment: isProtectedEnvironment(raw.APP_ENV),
+      enableLegacyBackendAuth: raw.ENABLE_LEGACY_BACKEND_AUTH === 'true',
     },
 
     backendKey: raw.BACKEND_KEY,
@@ -116,6 +128,7 @@ async function buildConfig() {
 
     services: {
       backendUrl: raw.INTERNAL_API_URL || `http://localhost:${raw.PORT}`,
+      chatWebSocketEnabled: raw.CHAT_WS_ENABLED === 'true',
       terminalServerUrl: raw.TERMINAL_SERVER_URL,
       terminalGatewayUrl: raw.TERMINAL_GATEWAY_URL,
       openNotebookUrl: raw.OPEN_NOTEBOOK_URL,
@@ -171,6 +184,7 @@ export const config = {
     baseUrl: syncConfig.AI_SERVER_URL,
     apiKey: syncConfig.AI_API_KEY || syncConfig.OPENAI_API_KEY,
     defaultModel: syncConfig.AI_DEFAULT_MODEL,
+    visionModel: syncConfig.AI_VISION_MODEL,
     asyncMode: syncConfig.AI_ASYNC_MODE === 'true',
   },
   github: {
@@ -197,6 +211,10 @@ export const config = {
   auth: {
     jwtSecret: syncConfig.JWT_SECRET,
     jwtExpiresIn: syncConfig.JWT_EXPIRES_IN,
+  },
+  security: {
+    protectedEnvironment: isProtectedEnvironment(syncConfig.APP_ENV),
+    enableLegacyBackendAuth: syncConfig.ENABLE_LEGACY_BACKEND_AUTH === 'true',
   },
   backendKey: syncConfig.BACKEND_KEY,
   content: {
@@ -227,6 +245,7 @@ export const config = {
   },
   services: {
     backendUrl: syncConfig.INTERNAL_API_URL || `http://localhost:${syncConfig.PORT}`,
+    chatWebSocketEnabled: syncConfig.CHAT_WS_ENABLED === 'true',
     terminalServerUrl: syncConfig.TERMINAL_SERVER_URL,
     terminalGatewayUrl: syncConfig.TERMINAL_GATEWAY_URL,
     openNotebookUrl: syncConfig.OPEN_NOTEBOOK_URL,
@@ -266,8 +285,10 @@ export async function loadAndApplyConsulConfig() {
       allowedOrigins: asyncConfig.allowedOrigins,
       assetsBaseUrl: asyncConfig.assetsBaseUrl,
       ai: asyncConfig.ai,
+      auth: asyncConfig.auth,
       rag: asyncConfig.rag,
       redis: asyncConfig.redis,
+      security: asyncConfig.security,
       services: asyncConfig.services,
       features: asyncConfig.features,
     });
@@ -281,10 +302,18 @@ export async function loadAndApplyConsulConfig() {
 }
 
 export function publicRuntimeConfig() {
-  return {
+  return buildPublicRuntimeConfig({
+    env: config.appEnv,
     siteBaseUrl: config.siteBaseUrl,
     apiBaseUrl: config.apiBaseUrl,
-    env: config.appEnv,
+    chatBaseUrl: config.apiBaseUrl,
+    supportsChatWebSocket: false,
+    terminalGatewayUrl: config.services.terminalGatewayUrl,
+    ai: {
+      modelSelectionEnabled: false,
+      defaultModel: config.ai.defaultModel,
+      visionModel: config.ai.visionModel,
+    },
     features: {
       aiEnabled: config.features.aiEnabled,
       ragEnabled: config.features.ragEnabled,
@@ -292,7 +321,7 @@ export function publicRuntimeConfig() {
       aiInline: config.features.aiInline,
       commentsEnabled: config.features.commentsEnabled,
     },
-  };
+  });
 }
 
 export async function getServiceUrl(serviceName) {

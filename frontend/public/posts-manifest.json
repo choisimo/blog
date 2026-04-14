@@ -1,6 +1,29 @@
 {
-  "total": 275,
+  "total": 276,
   "items": [
+    {
+      "path": "/posts/2026/argocd-github-dns-failure.md",
+      "year": "2026",
+      "slug": "argocd-github-dns-failure",
+      "title": "ArgoCD에서 GitHub 연결이 실패했을 때, 진짜 원인은 SSH가 아니라 DNS였다",
+      "description": "ArgoCD의 Repository Failed는 마지막 증상이었고, 실제 원인은 CoreDNS가 외부 질의를 넘기던 upstream resolver 체인이 깨져 `github.com` 이름 해석이 실패한 데 있었다.",
+      "snippet": "ArgoCD의 Repository Failed는 마지막 증상이었고, 실제 원인은 CoreDNS가 외부 질의를 넘기던 upstream resolver 체인이 깨져 `github.com` 이름 해석이 실패한 데 있었다.",
+      "date": "2026-04-11",
+      "tags": [
+        "ArgoCD",
+        "CoreDNS",
+        "DNS",
+        "GitHub",
+        "Kubernetes",
+        "k3s",
+        "Troubleshooting"
+      ],
+      "category": "Kubernetes",
+      "author": "Admin",
+      "readingTime": "6 min read",
+      "published": true,
+      "url": "/blog/2026/argocd-github-dns-failure"
+    },
     {
       "path": "/posts/2026/hsp.md",
       "year": "2026",
@@ -5829,13 +5852,14 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-04-01T15:39:50.393Z",
+  "generatedAt": "2026-04-11T02:14:38.311Z",
   "years": [
     "2026",
     "2025",
     "2024"
   ],
   "categoryCounts": {
+    "Kubernetes": 2,
     "Mindset": 1,
     "기술": 24,
     "Life": 1,
@@ -5855,7 +5879,6 @@
     "Tech & Philosophy": 5,
     "Fiction": 1,
     "네트워크,proxmox,lxc": 1,
-    "Kubernetes": 1,
     "Essays": 1,
     "Backend": 1,
     "Network": 9,

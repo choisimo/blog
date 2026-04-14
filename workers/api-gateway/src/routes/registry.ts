@@ -1,7 +1,9 @@
 import { Hono } from 'hono';
+import type { MiddlewareHandler } from 'hono';
 import type { HonoEnv } from '../types';
 import {
   buildRouteBoundaryHeaders,
+  matchRouteBoundary,
   matchServiceBoundary,
   ROUTE_OWNERS,
 } from '../../../../shared/src/contracts/service-boundaries.js';
@@ -36,7 +38,7 @@ import adminLogs from './admin-logs';
 export type WorkerRouteRegistryEntry = {
   boundaryId: string;
   path: string;
-  router: Hono<HonoEnv>;
+  router: Hono<any>;
 };
 
 export const WORKER_ROUTE_REGISTRY: WorkerRouteRegistryEntry[] = [
@@ -68,15 +70,33 @@ export const WORKER_ROUTE_REGISTRY: WorkerRouteRegistryEntry[] = [
   { boundaryId: 'gateway', path: '/gateway', router: gateway },
 ];
 
-function applyBoundaryHeaderMiddleware(boundaryId: string) {
+function normalizePublicApiPath(pathname: string, fallbackPath: string): string {
+  const raw = typeof pathname === 'string' && pathname.trim() ? pathname : fallbackPath;
+
+  if (raw.startsWith('/api/v1') || raw === '/health' || raw === '/metrics') {
+    return raw;
+  }
+
+  if (raw === '/') {
+    return '/api/v1';
+  }
+
+  return `/api/v1${raw.startsWith('/') ? raw : `/${raw}`}`;
+}
+
+function applyBoundaryHeaderMiddleware(boundaryId: string, routePath: string): MiddlewareHandler<HonoEnv> {
   return async (c, next) => {
     await next();
-    const headers = buildRouteBoundaryHeaders(boundaryId, {
-      responder: 'worker',
-      edgeMode: 'native',
-      originMode: 'worker',
-    });
-    for (const [key, value] of Object.entries(headers)) {
+    const pathname = normalizePublicApiPath(c.req.path, routePath);
+    const headers = buildRouteBoundaryHeaders(
+      { id: boundaryId, pathname, method: c.req.method },
+      {
+        responder: 'worker',
+        edgeMode: 'native',
+        originMode: 'worker',
+      },
+    );
+    for (const [key, value] of Object.entries(headers) as [string, string][]) {
       c.res.headers.set(key, value);
     }
   };
@@ -85,27 +105,32 @@ function applyBoundaryHeaderMiddleware(boundaryId: string) {
 export function registerWorkerRoutes(api: Hono<HonoEnv>) {
   for (const entry of WORKER_ROUTE_REGISTRY) {
     if (entry.path !== '/') {
-      api.use(entry.path, applyBoundaryHeaderMiddleware(entry.boundaryId));
-      api.use(`${entry.path}/*`, applyBoundaryHeaderMiddleware(entry.boundaryId));
+      api.use(entry.path, applyBoundaryHeaderMiddleware(entry.boundaryId, entry.path));
+      api.use(`${entry.path}/*`, applyBoundaryHeaderMiddleware(entry.boundaryId, entry.path));
     }
-    api.route(entry.path, entry.router);
+    api.route(entry.path, entry.router as Hono<any>);
   }
 }
 
-export function canProxyPath(pathname: string) {
-  const boundary = matchServiceBoundary(pathname);
-  if (!boundary) return true;
+export function canProxyPath(pathname: string, method?: string) {
+  const boundary = method
+    ? matchRouteBoundary({ pathname, method }) || matchServiceBoundary(pathname)
+    : matchServiceBoundary(pathname);
+
   return (
-    boundary.owner === ROUTE_OWNERS.BACKEND ||
-    boundary.owner === ROUTE_OWNERS.PROXY_ONLY ||
-    boundary.owner === ROUTE_OWNERS.COMPATIBILITY
+    boundary?.owner === ROUTE_OWNERS.BACKEND ||
+    boundary?.owner === ROUTE_OWNERS.PROXY_ONLY ||
+    boundary?.owner === ROUTE_OWNERS.COMPATIBILITY
   );
 }
 
-export function buildProxyBoundaryHeaders(pathname: string) {
-  return buildRouteBoundaryHeaders(pathname, {
-    responder: 'worker-proxy',
-    edgeMode: 'proxy',
-    originMode: 'backend',
-  });
+export function buildProxyBoundaryHeaders(pathname: string, method?: string) {
+  return buildRouteBoundaryHeaders(
+    method ? { pathname, method } : pathname,
+    {
+      responder: 'worker-proxy',
+      edgeMode: 'proxy',
+      originMode: 'backend',
+    },
+  );
 }

@@ -1,11 +1,13 @@
 import './polyfills';
-import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
 const GLOBAL_ERROR_LOG_WINDOW_MS = 5000;
 const globalErrorLastSeen = new Map<string, number>();
+let root = null as ReturnType<typeof createRoot> | null;
+let mounted = false;
+let errorHandlersInstalled = false;
 
 function toErrorSignature(value: unknown): string {
   if (value instanceof Error) {
@@ -40,24 +42,40 @@ function shouldLogGlobalError(signature: string): boolean {
   return true;
 }
 
-// Debug logs to diagnose blank screen
-console.log('[main] script loaded');
-const rootEl = document.getElementById('root');
-console.log('[main] root element:', rootEl);
-// Global error handlers
-window.addEventListener('error', e => {
-  const signature = `error:${e.message}:${toErrorSignature(e.error)}`;
-  if (!shouldLogGlobalError(signature)) return;
-  console.error('[main] Global error:', e.message, e.error);
-});
-window.addEventListener('unhandledrejection', e => {
-  const signature = `unhandledrejection:${toErrorSignature(e.reason)}`;
-  if (!shouldLogGlobalError(signature)) return;
-  console.error('[main] Unhandled rejection:', e.reason);
-});
-if (rootEl) {
-  createRoot(rootEl).render(<App />);
-  console.log('[main] React root mounted');
-} else {
-  console.error('[main] #root element not found');
+function installGlobalErrorHandlers() {
+  if (errorHandlersInstalled || typeof window === 'undefined') {
+    return;
+  }
+
+  errorHandlersInstalled = true;
+
+  window.addEventListener('error', (event) => {
+    const signature = `error:${event.message}:${toErrorSignature(event.error)}`;
+    if (!shouldLogGlobalError(signature)) return;
+    console.error('[main] Global error:', event.message, event.error);
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    const signature = `unhandledrejection:${toErrorSignature(event.reason)}`;
+    if (!shouldLogGlobalError(signature)) return;
+    console.error('[main] Unhandled rejection:', event.reason);
+  });
+}
+
+export function mountApp() {
+  installGlobalErrorHandlers();
+
+  if (mounted) {
+    return;
+  }
+
+  const rootEl = document.getElementById('root');
+  if (!rootEl) {
+    console.error('[main] #root element not found');
+    return;
+  }
+
+  root = root ?? createRoot(rootEl);
+  root.render(<App />);
+  mounted = true;
 }

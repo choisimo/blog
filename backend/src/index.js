@@ -17,11 +17,16 @@ import {
   isPgConfigured,
 } from "./repositories/analytics.repository.js";
 import { closeRedis } from "./lib/redis-client.js";
+import {
+  buildHealthPayload,
+  buildReadinessResponse,
+  markReadinessDegraded,
+} from "./lib/readiness.js";
 import metricsRouter from "./routes/metrics.js";
 import { initChatWebSocket } from "./routes/chat.js";
 import {
   PUBLIC_ROUTE_REGISTRY,
-  PROTECTED_ROUTE_REGISTRY,
+  getProtectedRouteRegistry,
   mountRouteRegistry,
 } from "./routes/registry.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
@@ -35,6 +40,7 @@ async function startServer() {
       enablePgLogs();
       logger.info({}, "PostgreSQL migrations applied");
     } catch (err) {
+      markReadinessDegraded("postgres_migration_failed");
       logger.warn({}, "PostgreSQL migration failed, continuing without PG", {
         error: err.message,
       });
@@ -75,7 +81,17 @@ async function startServer() {
   });
 
   app.get("/api/v1/healthz", (req, res) => {
-    res.json({ ok: true, env: config.appEnv, uptime: process.uptime() });
+    res.json(
+      buildHealthPayload({ env: config.appEnv, uptime: process.uptime() }),
+    );
+  });
+
+  app.get("/api/v1/readiness", (req, res) => {
+    const readiness = buildReadinessResponse({
+      env: config.appEnv,
+      uptime: process.uptime(),
+    });
+    res.status(readiness.statusCode).json(readiness.body);
   });
 
   app.get(
@@ -86,9 +102,9 @@ async function startServer() {
     },
   );
 
-  app.use("/metrics", metricsRouter);
-
   mountRouteRegistry(app, PUBLIC_ROUTE_REGISTRY);
+
+  app.use("/metrics", requireBackendKey, metricsRouter);
 
   app.use(requireBackendKey);
 
@@ -103,7 +119,7 @@ async function startServer() {
   });
   app.use(limiter);
 
-  mountRouteRegistry(app, PROTECTED_ROUTE_REGISTRY);
+  mountRouteRegistry(app, getProtectedRouteRegistry());
 
   app.use(notFoundHandler);
   app.use(errorHandler);

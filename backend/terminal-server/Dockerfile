@@ -1,31 +1,28 @@
-# =============================================================================
-# Terminal Server Dockerfile
-# =============================================================================
-# Builds the WebSocket PTY server that bridges browser terminals to Docker
-# =============================================================================
+FROM node:20-alpine AS build
 
-FROM node:20-alpine
-
-# Install build dependencies for node-pty
 RUN apk add --no-cache python3 make g++ docker-cli
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json ./
+COPY package.json package-lock.json ./
+RUN npm ci
 
-# Install dependencies
-RUN npm install
-
-# Copy source
 COPY tsconfig.json ./
 COPY src ./src
 
-# Build TypeScript
 RUN npm run build
 
-# Expose WebSocket port
+FROM node:20-alpine AS runtime
+
+RUN apk add --no-cache python3 make g++ docker-cli
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+COPY --from=build /app/dist ./dist
+
 EXPOSE 8080
 
-# Run the server
 CMD ["node", "dist/index.js"]

@@ -12,12 +12,16 @@ import { getAiServeUrl, getAiDefaultModel } from '../lib/config';
 import { getAiServeApiKey, getAIProviderKey } from '../lib/secrets';
 import { getProvidersFromDB } from '../lib/provider-config';
 import {
+  AI_ARTIFACT_STREAM,
   enqueueFeedArtifactGeneration,
   enqueueTranslationGeneration,
+  flushAiArtifactOutbox,
   getWarmResourceSnapshot,
 } from '../lib/ai-artifact-outbox';
 import { fetchPublishedPost } from '../lib/translation-service';
 import { sha256Hex } from '../lib/ai-artifacts';
+import { getLatestSchedulerDecision } from '../lib/ai-artifacts';
+import { getDomainOutboxSummary, listStuckDomainOutboxEvents } from '../lib/domain-outbox';
 
 const internal = new Hono<HonoEnv>();
 
@@ -37,6 +41,14 @@ function requireBackendKey(c: import('hono').Context<HonoEnv>) {
   }
 
   return null;
+}
+
+function parseLimit(value: string | undefined, fallback: number) {
+  const parsed = Number.parseInt(value || '', 10);
+  if (Number.isNaN(parsed)) {
+    return fallback;
+  }
+  return Math.max(1, Math.min(200, parsed));
 }
 
 async function buildFeedSegmentId(year: string, slug: string, paragraph: string) {
@@ -147,6 +159,53 @@ internal.get('/ai/resources', async (c) => {
   } catch (error) {
     console.error('Failed to build warm resource snapshot:', error);
     return serverError(c, 'Failed to build warm resource snapshot');
+  }
+});
+
+internal.get('/ai/outbox/status', async (c) => {
+  const authError = requireBackendKey(c);
+  if (authError) return authError;
+
+  try {
+    const olderThanMinutes = Math.min(parseLimit(c.req.query('olderThanMinutes'), 5), 60);
+    const limit = Math.min(parseLimit(c.req.query('limit'), 20), 50);
+
+    const [summary, stuck, scheduler] = await Promise.all([
+      getDomainOutboxSummary(c.env.DB, AI_ARTIFACT_STREAM),
+      listStuckDomainOutboxEvents(c.env.DB, {
+        stream: AI_ARTIFACT_STREAM,
+        olderThanMinutes,
+        limit,
+      }),
+      getLatestSchedulerDecision(c.env.DB, 'artifact-scheduler'),
+    ]);
+
+    return success(c, {
+      stream: AI_ARTIFACT_STREAM,
+      summary,
+      stuck,
+      scheduler,
+    });
+  } catch (error) {
+    console.error('Failed to build AI outbox status:', error);
+    return serverError(c, 'Failed to build AI outbox status');
+  }
+});
+
+internal.post('/ai/outbox/flush', async (c) => {
+  const authError = requireBackendKey(c);
+  if (authError) return authError;
+
+  try {
+    const limit = Math.min(parseLimit(c.req.query('limit'), 10), 50);
+    const result = await flushAiArtifactOutbox(c.env, { limit });
+    return success(c, {
+      stream: AI_ARTIFACT_STREAM,
+      ...result,
+    });
+  } catch (error) {
+    console.error('Failed to flush AI outbox:', error);
+    return serverError(c, 'Failed to flush AI outbox');
   }
 });
 

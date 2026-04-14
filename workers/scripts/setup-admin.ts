@@ -1,23 +1,22 @@
 /**
  * Setup Admin User Script
- * 
+ *
  * Creates an admin user in D1 database with hashed password.
- * 
+ *
  * Usage:
  *   npx tsx scripts/setup-admin.ts
- * 
- * Note: This script uses a simple hash. For production, use bcrypt or argon2.
  */
 
+import { randomBytes, scryptSync } from 'node:crypto';
+
 async function hashPassword(password: string): Promise<string> {
-  // Simple SHA-256 hash (not secure for production)
-  // TODO: Replace with bcrypt or argon2 when available in Workers
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-  return `sha256:${hashHex}`;
+  const salt = randomBytes(16).toString('hex');
+  const derivedKey = scryptSync(password, salt, 64, {
+    N: 16384,
+    r: 8,
+    p: 1,
+  }).toString('hex');
+  return `scrypt:${salt}:${derivedKey}`;
 }
 
 async function main() {

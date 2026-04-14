@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { ThemeProvider } from '../contexts/ThemeContext';
+import { LanguageProvider } from '../contexts/LanguageContext';
 import { BrowserRouter } from 'react-router-dom';
 import { BlogCard } from '../components/features/blog';
 
@@ -25,7 +26,9 @@ const mockPost = {
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(
     <BrowserRouter>
-      <ThemeProvider>{ui}</ThemeProvider>
+      <LanguageProvider>
+        <ThemeProvider>{ui}</ThemeProvider>
+      </LanguageProvider>
     </BrowserRouter>
   );
 };
@@ -46,6 +49,6 @@ describe('BlogCard Component', () => {
   it('displays read time when provided', () => {
     renderWithProviders(<BlogCard post={mockPost} />);
 
-    expect(screen.getByText('5분 읽기')).toBeInTheDocument();
+    expect(screen.getByText(/5 (min read|분 읽기)/i)).toBeInTheDocument();
   });
 });

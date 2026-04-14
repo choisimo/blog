@@ -271,7 +271,7 @@ Ingress terminal-origin
 | `POSTGRES_USER` | `bloguser` | `postgres` | PostgreSQL 사용자 |
 | `CONTENT_GIT_REPO` | `https://github.com/example-org/blog.git` | `api.initContainer` | repo sync 용 Git URL |
 | `CONTENT_GIT_REF` | `main` | `api.initContainer` | clone할 branch/ref |
-| `SANDBOX_IMAGE` | `alpine:latest` | `terminal-server` optional | terminal sandbox 기본 이미지 |
+| `SANDBOX_IMAGE` | `alpine:3.20` | `terminal-server` optional | terminal sandbox 기본 이미지 |
 
 ### 연관관계
 

@@ -45,12 +45,17 @@ import {
   generateSecureToken,
   REFRESH_TOKEN_EXPIRY,
 } from '../lib/jwt';
-import { generateTotpSecret, buildOtpauthUri, verifyTotp } from '../lib/totp';
+import {
+  generateTotpSecret,
+  buildOtpauthUri,
+  findMatchingTotpStep,
+} from '../lib/totp';
 import {
   buildGithubAuthUrl,
   exchangeGithubCode,
   buildGoogleAuthUrl,
   exchangeGoogleCode,
+  generatePkcePair,
   isEmailAllowed,
 } from '../lib/oauth';
 
@@ -58,8 +63,10 @@ const auth = new Hono<HonoEnv>();
 
 // KV key prefixes
 const KV_REFRESH_TOKEN_PREFIX = 'auth:refresh:';
+const KV_REFRESH_FAMILY_PREFIX = 'auth:refresh-family:';
 const KV_TOTP_SECRET_KEY = 'totp:secret';
 const KV_TOTP_SETUP_KEY = 'totp:setup:complete';
+const KV_TOTP_LAST_STEP_KEY = 'totp:last-successful-step';
 const KV_CHALLENGE_PREFIX = 'auth:challenge:';
 const KV_OAUTH_STATE_PREFIX = 'auth:oauth:state:';
 
@@ -87,27 +94,146 @@ function adminPayload(email: string) {
   };
 }
 
+type RefreshTokenRecord = {
+  jti: string;
+  familyId: string;
+  sub: string;
+  email?: string;
+  status: 'active' | 'rotated' | 'revoked';
+  createdAt: string;
+  rotatedAt?: string;
+  replacedBy?: string;
+  reason?: string;
+};
+
+type RefreshFamilyRecord = {
+  familyId: string;
+  revokedAt: string;
+  reason: string;
+  lastJti?: string;
+};
+
+function normalizeFrontendBaseUrl(rawValue: string | undefined): string | null {
+  const trimmed = rawValue?.trim();
+  if (!trimmed) return null;
+  return trimmed.replace(/\/admin\/auth\/callback\/?$/i, '').replace(/\/+$/g, '');
+}
+
+function getFrontendCallbackUrl(env: HonoEnv['Bindings']): string | null {
+  const frontendBase = normalizeFrontendBaseUrl(env.OAUTH_REDIRECT_BASE_URL);
+  if (!frontendBase) {
+    return null;
+  }
+  return `${frontendBase}/admin/auth/callback`;
+}
+
+function getProviderCallbackUrl(requestUrl: string, provider: 'github' | 'google'): string {
+  const origin = new URL(requestUrl).origin;
+  return `${origin}/api/v1/auth/oauth/${provider}/callback`;
+}
+
+async function getRefreshFamilyRecord(
+  env: HonoEnv['Bindings'],
+  familyId: string
+): Promise<RefreshFamilyRecord | null> {
+  const raw = await env.KV.get(`${KV_REFRESH_FAMILY_PREFIX}${familyId}`);
+  if (!raw) return null;
+  return JSON.parse(raw) as RefreshFamilyRecord;
+}
+
+async function revokeRefreshFamily(
+  env: HonoEnv['Bindings'],
+  familyId: string,
+  reason: string,
+  lastJti?: string
+): Promise<void> {
+  await env.KV.put(
+    `${KV_REFRESH_FAMILY_PREFIX}${familyId}`,
+    JSON.stringify({
+      familyId,
+      revokedAt: new Date().toISOString(),
+      reason,
+      ...(lastJti ? { lastJti } : {}),
+    } satisfies RefreshFamilyRecord),
+    { expirationTtl: REFRESH_TOKEN_EXPIRY }
+  );
+}
+
+async function putRefreshTokenRecord(
+  env: HonoEnv['Bindings'],
+  record: RefreshTokenRecord
+): Promise<void> {
+  await env.KV.put(`${KV_REFRESH_TOKEN_PREFIX}${record.jti}`, JSON.stringify(record), {
+    expirationTtl: REFRESH_TOKEN_EXPIRY,
+  });
+}
+
+async function getRefreshTokenRecord(
+  env: HonoEnv['Bindings'],
+  jti: string
+): Promise<RefreshTokenRecord | null> {
+  const raw = await env.KV.get(`${KV_REFRESH_TOKEN_PREFIX}${jti}`);
+  if (!raw) return null;
+  return JSON.parse(raw) as RefreshTokenRecord;
+}
+
 /** Issue access + refresh tokens and store refresh token in KV */
 async function issueAdminTokens(
   payload: ReturnType<typeof adminPayload>,
-  env: HonoEnv['Bindings']
-): Promise<{ accessToken: string; refreshToken: string }> {
+  env: HonoEnv['Bindings'],
+  options: { familyId?: string } = {}
+): Promise<{
+  accessToken: string;
+  refreshToken: string;
+  refreshTokenId: string;
+  familyId: string;
+}> {
+  const familyId = options.familyId ?? generateSecureToken(16);
   const refreshTokenId = generateSecureToken(16);
 
   const accessToken = await generateAccessToken(payload, env);
-  const refreshToken = await generateRefreshToken(payload, env, refreshTokenId);
-
-  await env.KV.put(
-    `${KV_REFRESH_TOKEN_PREFIX}${refreshTokenId}`,
-    JSON.stringify({
-      sub: payload.sub,
-      email: payload.email,
-      createdAt: new Date().toISOString(),
-    }),
-    { expirationTtl: REFRESH_TOKEN_EXPIRY }
+  const refreshToken = await generateRefreshToken(
+    {
+      ...payload,
+      familyId,
+    },
+    env,
+    refreshTokenId
   );
 
-  return { accessToken, refreshToken };
+  await putRefreshTokenRecord(env, {
+    jti: refreshTokenId,
+    familyId,
+    sub: payload.sub,
+    email: payload.email,
+    status: 'active',
+    createdAt: new Date().toISOString(),
+  });
+
+  return {
+    accessToken,
+    refreshToken,
+    refreshTokenId,
+    familyId,
+  };
+}
+
+async function consumeTotpStep(
+  env: HonoEnv['Bindings'],
+  step: number
+): Promise<boolean> {
+  const previous = await env.KV.get(KV_TOTP_LAST_STEP_KEY);
+  const previousStep = previous ? Number.parseInt(previous, 10) : Number.NaN;
+  if (Number.isFinite(previousStep) && step <= previousStep) {
+    return false;
+  }
+
+  await env.KV.put(
+    KV_TOTP_LAST_STEP_KEY,
+    String(step),
+    { expirationTtl: 30 * 24 * 60 * 60 }
+  );
+  return true;
 }
 
 // ============================================================================
@@ -208,9 +334,13 @@ auth.post('/totp/setup/verify', async (c) => {
   const secret = await c.env.KV.get(KV_TOTP_SECRET_KEY);
   if (!secret) return error(c, 'TOTP not yet initialized — call GET /auth/totp/setup first', 400);
 
-  const valid = await verifyTotp(secret, code);
-  if (!valid) {
+  const matchingStep = await findMatchingTotpStep(secret, code);
+  if (matchingStep === null) {
     return unauthorized(c, 'Invalid TOTP code');
+  }
+
+  if (!(await consumeTotpStep(c.env, matchingStep))) {
+    return unauthorized(c, 'TOTP code already used');
   }
 
   await c.env.KV.put(KV_TOTP_SETUP_KEY, 'true');
@@ -274,10 +404,15 @@ auth.post('/totp/verify', async (c) => {
     return error(c, 'TOTP not configured', 500);
   }
 
-  const valid = await verifyTotp(secret, code);
-  if (!valid) {
+  const matchingStep = await findMatchingTotpStep(secret, code);
+  if (matchingStep === null) {
     await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 500));
     return unauthorized(c, 'Invalid TOTP code');
+  }
+
+  if (!(await consumeTotpStep(c.env, matchingStep))) {
+    await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 500));
+    return unauthorized(c, 'TOTP code already used');
   }
 
   // Issue tokens — use a placeholder email since TOTP has no identity
@@ -290,8 +425,10 @@ auth.post('/totp/verify', async (c) => {
     tokenType: 'Bearer',
     expiresIn: 15 * 60,
     user: {
+      username: 'admin',
       email: 'admin@totp.local',
       role: 'admin',
+      emailVerified: true,
       authMethod: 'totp',
     },
   });
@@ -307,21 +444,27 @@ auth.post('/totp/verify', async (c) => {
  */
 auth.get('/oauth/github', async (c) => {
   const clientId = c.env.GITHUB_CLIENT_ID;
-  const redirectBase = c.env.OAUTH_REDIRECT_BASE_URL;
+  const frontendCallbackUrl = getFrontendCallbackUrl(c.env);
 
-  if (!clientId || !redirectBase) {
+  if (!clientId || !frontendCallbackUrl) {
     return error(c, 'GitHub OAuth not configured', 500);
   }
 
   const state = generateSecureToken(32);
+  const { codeVerifier, codeChallenge } = await generatePkcePair();
   await c.env.KV.put(
     `${KV_OAUTH_STATE_PREFIX}${state}`,
-    JSON.stringify({ state, provider: 'github', createdAt: new Date().toISOString() }),
+    JSON.stringify({
+      state,
+      provider: 'github',
+      createdAt: new Date().toISOString(),
+      codeVerifier,
+    }),
     { expirationTtl: OAUTH_STATE_TTL }
   );
 
-  const redirectUri = `${redirectBase}/api/v1/auth/oauth/github/callback`;
-  const url = buildGithubAuthUrl(state, clientId, redirectUri);
+  const redirectUri = getProviderCallbackUrl(c.req.url, 'github');
+  const url = buildGithubAuthUrl(state, clientId, redirectUri, codeChallenge);
   return c.redirect(url, 302);
 });
 
@@ -332,9 +475,9 @@ auth.get('/oauth/github', async (c) => {
 auth.get('/oauth/github/callback', async (c) => {
   const code = c.req.query('code');
   const state = c.req.query('state');
-  const frontendBase = c.env.OAUTH_REDIRECT_BASE_URL;
+  const frontendCallbackUrl = getFrontendCallbackUrl(c.env);
 
-  if (!code || !state || !frontendBase) {
+  if (!code || !state || !frontendCallbackUrl) {
     return error(c, 'Invalid callback parameters', 400);
   }
 
@@ -344,6 +487,13 @@ auth.get('/oauth/github/callback', async (c) => {
     return unauthorized(c, 'Invalid or expired OAuth state');
   }
   await c.env.KV.delete(`${KV_OAUTH_STATE_PREFIX}${state}`);
+  const parsedState = JSON.parse(stateData) as {
+    provider?: string;
+    codeVerifier?: string;
+  };
+  if (parsedState.provider !== 'github' || !parsedState.codeVerifier) {
+    return unauthorized(c, 'Invalid or expired OAuth state');
+  }
 
   const clientId = c.env.GITHUB_CLIENT_ID;
   const clientSecret = c.env.GITHUB_CLIENT_SECRET;
@@ -354,23 +504,28 @@ auth.get('/oauth/github/callback', async (c) => {
   }
 
   try {
-    const redirectUri = `${frontendBase}/api/v1/auth/oauth/github/callback`;
-    const { email } = await exchangeGithubCode(code, clientId, clientSecret, redirectUri);
+    const redirectUri = getProviderCallbackUrl(c.req.url, 'github');
+    const { email } = await exchangeGithubCode(
+      code,
+      clientId,
+      clientSecret,
+      redirectUri,
+      parsedState.codeVerifier
+    );
 
     // Check allowlist
     if (!allowedEmails || !isEmailAllowed(email, allowedEmails)) {
-      return c.redirect(`${frontendBase}/admin/auth/callback#error=email_not_allowed`, 302);
+      return c.redirect(`${frontendCallbackUrl}#error=email_not_allowed`, 302);
     }
 
     const payload = adminPayload(email);
     const { accessToken, refreshToken } = await issueAdminTokens(payload, c.env);
 
     const fragment = new URLSearchParams({ token: accessToken, refreshToken });
-    return c.redirect(`${frontendBase}/admin/auth/callback#${fragment.toString()}`, 302);
+    return c.redirect(`${frontendCallbackUrl}#${fragment.toString()}`, 302);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'OAuth error';
-    console.error('GitHub callback error:', msg);
-    return c.redirect(`${frontendBase}/admin/auth/callback#error=${encodeURIComponent(msg)}`, 302);
+    console.error('GitHub callback error:', err);
+    return c.redirect(`${frontendCallbackUrl}#error=oauth_failed`, 302);
   }
 });
 
@@ -384,21 +539,27 @@ auth.get('/oauth/github/callback', async (c) => {
  */
 auth.get('/oauth/google', async (c) => {
   const clientId = c.env.GOOGLE_CLIENT_ID;
-  const redirectBase = c.env.OAUTH_REDIRECT_BASE_URL;
+  const frontendCallbackUrl = getFrontendCallbackUrl(c.env);
 
-  if (!clientId || !redirectBase) {
+  if (!clientId || !frontendCallbackUrl) {
     return error(c, 'Google OAuth not configured', 500);
   }
 
   const state = generateSecureToken(32);
+  const { codeVerifier, codeChallenge } = await generatePkcePair();
   await c.env.KV.put(
     `${KV_OAUTH_STATE_PREFIX}${state}`,
-    JSON.stringify({ state, provider: 'google', createdAt: new Date().toISOString() }),
+    JSON.stringify({
+      state,
+      provider: 'google',
+      createdAt: new Date().toISOString(),
+      codeVerifier,
+    }),
     { expirationTtl: OAUTH_STATE_TTL }
   );
 
-  const redirectUri = `${redirectBase}/api/v1/auth/oauth/google/callback`;
-  const url = buildGoogleAuthUrl(state, clientId, redirectUri);
+  const redirectUri = getProviderCallbackUrl(c.req.url, 'google');
+  const url = buildGoogleAuthUrl(state, clientId, redirectUri, codeChallenge);
   return c.redirect(url, 302);
 });
 
@@ -409,9 +570,9 @@ auth.get('/oauth/google', async (c) => {
 auth.get('/oauth/google/callback', async (c) => {
   const code = c.req.query('code');
   const state = c.req.query('state');
-  const frontendBase = c.env.OAUTH_REDIRECT_BASE_URL;
+  const frontendCallbackUrl = getFrontendCallbackUrl(c.env);
 
-  if (!code || !state || !frontendBase) {
+  if (!code || !state || !frontendCallbackUrl) {
     return error(c, 'Invalid callback parameters', 400);
   }
 
@@ -421,6 +582,13 @@ auth.get('/oauth/google/callback', async (c) => {
     return unauthorized(c, 'Invalid or expired OAuth state');
   }
   await c.env.KV.delete(`${KV_OAUTH_STATE_PREFIX}${state}`);
+  const parsedState = JSON.parse(stateData) as {
+    provider?: string;
+    codeVerifier?: string;
+  };
+  if (parsedState.provider !== 'google' || !parsedState.codeVerifier) {
+    return unauthorized(c, 'Invalid or expired OAuth state');
+  }
 
   const clientId = c.env.GOOGLE_CLIENT_ID;
   const clientSecret = c.env.GOOGLE_CLIENT_SECRET;
@@ -431,23 +599,28 @@ auth.get('/oauth/google/callback', async (c) => {
   }
 
   try {
-    const redirectUri = `${frontendBase}/api/v1/auth/oauth/google/callback`;
-    const { email } = await exchangeGoogleCode(code, clientId, clientSecret, redirectUri);
+    const redirectUri = getProviderCallbackUrl(c.req.url, 'google');
+    const { email } = await exchangeGoogleCode(
+      code,
+      clientId,
+      clientSecret,
+      redirectUri,
+      parsedState.codeVerifier
+    );
 
     // Check allowlist
     if (!allowedEmails || !isEmailAllowed(email, allowedEmails)) {
-      return c.redirect(`${frontendBase}/admin/auth/callback#error=email_not_allowed`, 302);
+      return c.redirect(`${frontendCallbackUrl}#error=email_not_allowed`, 302);
     }
 
     const payload = adminPayload(email);
     const { accessToken, refreshToken } = await issueAdminTokens(payload, c.env);
 
     const fragment = new URLSearchParams({ token: accessToken, refreshToken });
-    return c.redirect(`${frontendBase}/admin/auth/callback#${fragment.toString()}`, 302);
+    return c.redirect(`${frontendCallbackUrl}#${fragment.toString()}`, 302);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'OAuth error';
-    console.error('Google callback error:', msg);
-    return c.redirect(`${frontendBase}/admin/auth/callback#error=${encodeURIComponent(msg)}`, 302);
+    console.error('Google callback error:', err);
+    return c.redirect(`${frontendCallbackUrl}#error=oauth_failed`, 302);
   }
 });
 
@@ -473,23 +646,43 @@ auth.post('/refresh', async (c) => {
     if (payload.type !== 'refresh') {
       return unauthorized(c, 'Invalid token type');
     }
+    if (payload.role !== 'admin' || !payload.emailVerified || !payload.email) {
+      return unauthorized(c, 'Invalid refresh token');
+    }
 
     if (!payload.jti) {
       return unauthorized(c, 'Token missing jti claim');
     }
+    if (!payload.familyId) {
+      return unauthorized(c, 'Token missing family claim');
+    }
 
-    const kvKey = `${KV_REFRESH_TOKEN_PREFIX}${payload.jti}`;
-    const kvEntry = await c.env.KV.get(kvKey);
-    if (!kvEntry) {
+    const revokedFamily = await getRefreshFamilyRecord(c.env, payload.familyId);
+    if (revokedFamily) {
       return unauthorized(c, 'Refresh token revoked or expired');
     }
 
-    await c.env.KV.delete(kvKey);
+    const tokenRecord = await getRefreshTokenRecord(c.env, payload.jti);
+    if (!tokenRecord) {
+      await revokeRefreshFamily(c.env, payload.familyId, 'reuse-detected', payload.jti);
+      return unauthorized(c, 'Refresh token revoked or expired');
+    }
+    if (tokenRecord.status !== 'active') {
+      await revokeRefreshFamily(c.env, payload.familyId, 'reuse-detected', payload.jti);
+      return unauthorized(c, 'Refresh token reuse detected');
+    }
 
     const newTokens = await issueAdminTokens(
-      adminPayload(payload.email || ''),
-      c.env
+      adminPayload(payload.email),
+      c.env,
+      { familyId: payload.familyId }
     );
+    await putRefreshTokenRecord(c.env, {
+      ...tokenRecord,
+      status: 'rotated',
+      rotatedAt: new Date().toISOString(),
+      replacedBy: newTokens.refreshTokenId,
+    });
 
     return success(c, {
       accessToken: newTokens.accessToken,
@@ -514,8 +707,21 @@ auth.post('/logout', async (c) => {
   if (refreshToken) {
     try {
       const payload = await verifyJwt(refreshToken, c.env);
+      if (payload.type !== 'refresh') {
+        throw new Error('Invalid token type');
+      }
+      if (payload.familyId) {
+        await revokeRefreshFamily(c.env, payload.familyId, 'logout', payload.jti);
+      }
       if (payload.jti) {
-        await c.env.KV.delete(`${KV_REFRESH_TOKEN_PREFIX}${payload.jti}`);
+        const tokenRecord = await getRefreshTokenRecord(c.env, payload.jti);
+        if (tokenRecord) {
+          await putRefreshTokenRecord(c.env, {
+            ...tokenRecord,
+            status: 'revoked',
+            reason: 'logout',
+          });
+        }
       }
     } catch {
       // Token may already be expired/invalid — still acknowledge logout
