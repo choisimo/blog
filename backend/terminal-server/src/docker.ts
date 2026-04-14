@@ -5,6 +5,7 @@
  */
 
 import { spawn, ChildProcess } from 'child_process';
+import crypto from 'crypto';
 
 export interface ContainerConfig {
   userId: string;
@@ -41,7 +42,8 @@ const activeContainers = new Map<string, ContainerInfo>();
 export function generateContainerName(userId: string): string {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 8);
-  return `terminal-${userId}-${timestamp}-${random}`;
+  const userHash = crypto.createHash('sha256').update(userId).digest('hex').slice(0, 12);
+  return `terminal-${userHash}-${timestamp}-${random}`;
 }
 
 /**

@@ -3,20 +3,17 @@
  */
 
 export interface Env {
-  // Environment variables
   ENV: string;
   TERMINAL_ORIGIN: string;
-
-  // Secrets
-  BACKEND_KEY: string;
   JWT_SECRET: string;
-
-  // KV Namespace
+  TERMINAL_SESSION_SECRET: string;
+  TERMINAL_CONNECT_TOKEN_TTL_SECONDS?: string;
+  TERMINAL_BLOCKED_COUNTRIES?: string;
   KV: KVNamespace;
 }
 
 export interface JWTPayload {
-  sub: string; // user id
+  sub: string;
   email?: string;
   exp: number;
   iat: number;
@@ -29,8 +26,24 @@ export interface RateLimitResult {
 }
 
 export interface SessionInfo {
+  sessionId: string;
   userId: string;
   clientIP: string;
+  userAgentHash?: string | null;
   connectedAt: number;
   lastActivity: number;
+}
+
+export interface TerminalAdmissionClaims {
+  iss: 'terminal-gateway';
+  aud: 'terminal-server';
+  scope: 'terminal.connect';
+  sid: string;
+  sub: string;
+  email?: string;
+  ip: string;
+  ua?: string | null;
+  iat: number;
+  nbf: number;
+  exp: number;
 }

@@ -91,6 +91,9 @@ const CONSUL_KEYS = [
   ['services/redis/url', 'REDIS_URL'],
   ['services/backend/url', 'INTERNAL_API_URL'],
   ['services/terminal/url', 'TERMINAL_SERVER_URL'],
+  ['config/terminal/connect_token_ttl_seconds', 'TERMINAL_CONNECT_TOKEN_TTL_SECONDS'],
+  ['config/terminal/session_timeout_ms', 'TERMINAL_SESSION_TIMEOUT_MS'],
+  ['config/terminal/blocked_countries', 'TERMINAL_BLOCKED_COUNTRIES'],
 ];
 
 export async function loadConsulConfig() {
