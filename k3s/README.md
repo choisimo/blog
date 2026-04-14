@@ -106,6 +106,7 @@ Trade-off:
 
 파일:
 
+- `k3s/optional/terminal/configmap-patch.yaml`
 - `k3s/optional/terminal/terminal-optional.yaml`
 - `k3s/optional/terminal/terminal-ingress-optional.yaml`
 
@@ -121,7 +122,8 @@ Trade-off:
 
 - 장점: 기존 terminal-server의 Docker shelling model을 크게 바꾸지 않고 유지할 수 있습니다.
 - 단점: privileged DinD sidecar가 필요하므로 base set보다 보안 위험과 운영 복잡도가 큽니다.
-- 결과: optional terminal manifests는 `k3s/optional/terminal/` kustomization으로 분리되며 base apply에는 포함되지 않습니다.
+- 결과: optional terminal manifests는 `k3s/optional/terminal/` add-on kustomization으로 분리되며, base render에 terminal이 섞이지 않고 optional render에서만 feature flag가 다시 활성화됩니다.
+- PR에서는 `.github/workflows/validate-k3s.yml`가 base/optional render와 schema validation을 수행합니다.
 
 ## Resource Guardrails
 
@@ -187,6 +189,15 @@ base set을 적용하기 전에 문서와 manifest가 전제하는 항목:
 ## Rollout Model
 
 현재 문서와 workflow evidence를 종합하면, 이 디렉토리는 compose-era watchtower 대체가 아니라 선언적 rollout 전환을 목표로 합니다.
+
+## Validation
+
+- base render:
+  - `kubectl kustomize k3s`
+- optional terminal render:
+  - `kubectl kustomize k3s/optional/terminal`
+- CI:
+  - `.github/workflows/validate-k3s.yml`가 두 렌더 결과를 `kubeconform -strict`로 검증합니다.
 
 - backend images는 GitHub Actions에서 GHCR로 build/push 가능
 - cluster apply는 GitOps 도구가 담당하도록 정리하는 편이 안전함

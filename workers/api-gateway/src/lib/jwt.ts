@@ -132,7 +132,7 @@ export async function generateAccessToken(
  * @param jti - unique token ID for KV-backed revocation; embedded as `jti` claim
  */
 export async function generateRefreshToken(
-  payload: { sub: string; role: string; username: string },
+  payload: { sub: string; role: string; username: string; familyId?: string; email?: string; emailVerified?: boolean },
   env: Env,
   jti?: string
 ): Promise<string> {

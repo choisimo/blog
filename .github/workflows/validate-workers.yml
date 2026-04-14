@@ -1,0 +1,61 @@
+name: Validate Workers
+
+on:
+  pull_request:
+    paths:
+      - 'workers/**'
+      - 'shared/**'
+      - 'scripts/worker-deploy-matrix.mjs'
+      - '.github/workflows/validate-workers.yml'
+
+jobs:
+  build-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build validation matrix
+        id: matrix
+        run: echo "matrix=$(node scripts/worker-deploy-matrix.mjs)" >> "$GITHUB_OUTPUT"
+
+  validate:
+    needs: build-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.build-matrix.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ${{ matrix.cacheDependencyPath }}
+
+      - name: Install dependencies
+        working-directory: workers/${{ matrix.path }}
+        run: npm ci
+
+      - name: Require worker test files
+        working-directory: workers/${{ matrix.path }}
+        run: |
+          find test -type f \( -name '*.test.ts' -o -name '*.test.js' -o -name '*.spec.ts' -o -name '*.spec.js' \) 2>/dev/null | grep -q .
+
+      - name: Type-check worker
+        working-directory: workers/${{ matrix.path }}
+        run: npm run typecheck
+
+      - name: Run worker tests
+        working-directory: workers/${{ matrix.path }}
+        run: npm test

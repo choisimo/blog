@@ -137,7 +137,7 @@ set_var "GITHUB_REPO_NAME" "blog"
 set_var "ADMIN_EMAIL" "admin@nodove.com"
 set_var "ADMIN_USERNAME" "admin"
 set_var "MINIO_USER" "minioadmin"
-set_var "SANDBOX_IMAGE" "alpine:latest"
+set_var "SANDBOX_IMAGE" "alpine:3.20"
 set_var "PGADMIN_EMAIL" "admin@nodove.com"
 
 echo ""

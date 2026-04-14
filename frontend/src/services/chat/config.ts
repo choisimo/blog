@@ -4,13 +4,11 @@ type ChatWindow = Window & {
   APP_CONFIG?: {
     chatBaseUrl?: string;
     chatApiKey?: string;
-    chatWsBaseUrl?: string;
     aiUnified?: unknown;
   };
   __APP_CONFIG?: {
     chatBaseUrl?: string;
     chatApiKey?: string;
-    chatWsBaseUrl?: string;
     aiUnified?: unknown;
   };
 };
@@ -42,35 +40,11 @@ export function getChatApiKey(): string | null {
 }
 
 export function getChatWebSocketBaseUrl(): string | null {
-  if (typeof window !== 'undefined') {
-    try {
-      const override = localStorage.getItem('aiMemo.chatWsBaseUrl');
-      if (override) {
-        const parsed = JSON.parse(override) as unknown;
-        if (typeof parsed === 'string' && parsed) return parsed;
-      }
-    } catch { void 0; }
-  }
-
-  const w = getChatWindow();
-  const runtime = w?.APP_CONFIG?.chatWsBaseUrl ?? w?.__APP_CONFIG?.chatWsBaseUrl;
-  if (typeof runtime === 'string' && runtime) return runtime;
-
-  const env = import.meta.env.VITE_CHAT_WS_URL as string | undefined;
-  if (typeof env === 'string' && env) return env;
-
   return null;
 }
 
 export function shouldUseChatWebSocket(): boolean {
-  if (getChatWebSocketBaseUrl()) return true;
-  try {
-    const base = getChatBaseUrl();
-    const url = new URL(base);
-    return ['localhost', '127.0.0.1'].includes(url.hostname);
-  } catch {
-    return false;
-  }
+  return false;
 }
 
 export function getBooleanFromUnknown(value: unknown): boolean {
@@ -100,12 +74,8 @@ export function buildChatUrl(path: string, sessionId?: string): string {
 }
 
 export function buildChatWebSocketUrl(sessionId?: string): string {
-  const overrideBase = getChatWebSocketBaseUrl();
-  const base = (overrideBase || getChatBaseUrl()).replace(/\/$/, '');
-  const wsBase = base.replace(/^http:\/\//, 'ws://').replace(/^https:\/\//, 'wss://');
-  const url = new URL(`${wsBase}/api/v1/chat/ws`);
-  if (sessionId) url.searchParams.set('sessionId', sessionId);
-  return url.toString();
+  void sessionId;
+  throw new Error('Chat WebSocket transport has been removed; use SSE streaming instead');
 }
 
 export function buildChatHeaders(

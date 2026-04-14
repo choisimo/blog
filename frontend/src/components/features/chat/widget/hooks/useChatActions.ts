@@ -395,8 +395,15 @@ export function useChatActions({
 
         try {
           memoryContext = await getMemoryContextForChat(baseText, 5);
-        } catch {
-          // Memory search failed, continue without context
+        } catch (error) {
+          push({
+            id: `${aiId}_memory_search_warn`,
+            role: "system",
+            text: `저장된 사용자 메모리를 불러오지 못해 개인화 없이 답변합니다: ${getErrorMessage(error, "memory subsystem unavailable")}`,
+            systemLevel: "warn",
+            systemKind: "status",
+            statusSource: "memory",
+          });
         }
 
         let acc = "";
@@ -446,8 +453,15 @@ export function useChatActions({
 
         // Extract and save memories from conversation (fire and forget)
         if (acc) {
-          extractAndSaveMemories(baseText, acc).catch(() => {
-            // Silent fail - memory extraction is optional
+          extractAndSaveMemories(baseText, acc).catch((error) => {
+            push({
+              id: `${aiId}_memory_save_warn`,
+              role: "system",
+              text: `개인화 메모리를 저장하지 못했습니다: ${getErrorMessage(error, "memory subsystem unavailable")}`,
+              systemLevel: "warn",
+              systemKind: "status",
+              statusSource: "memory",
+            });
           });
         }
       }

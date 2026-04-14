@@ -1,8 +1,8 @@
 /**
  * Code Execution Tool - Safe code execution in sandbox
- * 
- * Provides secure code execution capabilities using the terminal server
- * sandbox environment. Supports multiple languages.
+ *
+ * Provides secure code execution capabilities using the backend execute route,
+ * which fronts the shared Piston sandbox.
  */
 
 import { config } from '../../../config.js';
@@ -10,29 +10,59 @@ import { createLogger } from '../../../lib/logger.js';
 
 const logger = createLogger('code-execution');
 
-const getTerminalServerUrl = () => config.services?.terminalServerUrl || process.env.TERMINAL_SERVER_URL || 'http://terminal-server:8080';
+const getExecuteUrl = () => {
+  const baseUrl =
+    config.services?.backendUrl ||
+    config.apiBaseUrl ||
+    process.env.INTERNAL_API_URL ||
+    `http://localhost:${config.port}`;
+  return `${String(baseUrl).replace(/\/$/, '')}/api/v1/execute`;
+};
 const EXECUTION_TIMEOUT = parseInt(process.env.CODE_EXEC_TIMEOUT || '30000', 10);
 
 /**
  * Execute code in sandbox
  */
 async function executeInSandbox(code, language) {
-  const response = await fetch(`${getTerminalServerUrl()}/execute`, {
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (config.backendKey) {
+    headers['X-Backend-Key'] = config.backendKey;
+  }
+
+  const response = await fetch(getExecuteUrl(), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({
-      code,
       language,
-      timeout: EXECUTION_TIMEOUT,
+      files: [{ content: code }],
+      run_timeout: EXECUTION_TIMEOUT,
     }),
   });
 
+  const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    const error = await response.text().catch(() => '');
-    throw new Error(`Execution failed: ${response.status} ${error}`);
+    const errorMessage =
+      payload?.error?.message ||
+      payload?.error ||
+      payload?.message ||
+      '';
+    throw new Error(`Execution failed: ${response.status} ${errorMessage}`.trim());
   }
 
-  return response.json();
+  if (!payload?.ok || !payload.data) {
+    throw new Error('Execution failed: malformed execute response');
+  }
+
+  const run = payload.data.run || {};
+  return {
+    success: typeof run.code === 'number' ? run.code === 0 : true,
+    output: [run.stdout, run.stderr].filter(Boolean).join(''),
+    result: run.output ?? run.stdout ?? undefined,
+    error: typeof run.code === 'number' && run.code !== 0 ? run.stderr || `Exit code ${run.code}` : undefined,
+    run,
+  };
 }
 
 /**

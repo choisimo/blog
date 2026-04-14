@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -50,7 +50,14 @@ import {
   disposeNotificationSSE,
 } from "@/services/realtime/notificationSSE";
 import { adminAccessTokenProvider } from "@/services/core/admin-access-token.provider";
+import {
+  startHeartbeat,
+  stopHeartbeat,
+} from "@/services/content/analytics";
 import { PageTransitionFallback } from "@/components/atoms";
+import { useAuthStore } from "@/stores/session/useAuthStore";
+import { isTokenExpired } from "@/services/session/auth";
+import { useNotificationStore } from "@/stores/realtime/useNotificationStore";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -65,6 +72,13 @@ const queryClient = new QueryClient({
 
 function App() {
   const [fabOn, setFabOn] = useState(true);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const refreshToken = useAuthStore((s) => s.refreshToken);
+  const hasAdminSession = useMemo(() => {
+    if (accessToken && !isTokenExpired(accessToken, 0)) return true;
+    if (refreshToken && !isTokenExpired(refreshToken, 0)) return true;
+    return false;
+  }, [accessToken, refreshToken]);
 
   useEffect(() => {
     initFeatureFlags();
@@ -74,11 +88,36 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const syncHeartbeat = () => {
+      if (document.hidden) {
+        stopHeartbeat();
+        return;
+      }
+
+      startHeartbeat();
+    };
+
+    syncHeartbeat();
+    document.addEventListener("visibilitychange", syncHeartbeat);
+
+    return () => {
+      document.removeEventListener("visibilitychange", syncHeartbeat);
+      stopHeartbeat();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hasAdminSession) {
+      disposeNotificationSSE();
+      useNotificationStore.getState().clearAll();
+      return;
+    }
+
     initNotificationSSE({ tokenProvider: adminAccessTokenProvider });
     return () => {
       disposeNotificationSSE();
     };
-  }, []);
+  }, [hasAdminSession]);
 
   useEffect(() => {
     const getFabEnabled = () => {
@@ -169,6 +208,10 @@ function App() {
                         <Route
                           path="/maintenance"
                           element={<Navigate to="/503" replace />}
+                        />
+                        <Route
+                          path="/admin/login"
+                          element={<AdminConfig />}
                         />
                         <Route
                           path="/admin/new-post"

@@ -9,6 +9,21 @@
 
 import { useAuthStore } from '@/stores/session/useAuthStore';
 
+type RuntimeWindow = Window & {
+  APP_CONFIG?: {
+    terminalGatewayUrl?: string | null;
+    features?: {
+      terminalEnabled?: boolean;
+    };
+  };
+  __APP_CONFIG?: {
+    terminalGatewayUrl?: string | null;
+    features?: {
+      terminalEnabled?: boolean;
+    };
+  };
+};
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -33,7 +48,24 @@ export interface TerminalConnection {
 // Configuration
 // ============================================================================
 
-function getTerminalGatewayUrl(): string {
+function isTerminalFeatureEnabled(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const runtimeWindow = window as RuntimeWindow;
+  const enabled =
+    runtimeWindow.APP_CONFIG?.features?.terminalEnabled ??
+    runtimeWindow.__APP_CONFIG?.features?.terminalEnabled;
+
+  return enabled === true;
+}
+
+export function getTerminalGatewayUrl(): string | null {
+  if (!isTerminalFeatureEnabled()) {
+    return null;
+  }
+
   // Check localStorage override first (for development)
   try {
     const override = localStorage.getItem('aiMemo.terminalGatewayUrl');
@@ -45,16 +77,23 @@ function getTerminalGatewayUrl(): string {
     // ignore
   }
 
+  if (typeof window !== 'undefined') {
+    const runtimeWindow = window as RuntimeWindow;
+    const runtimeUrl =
+      runtimeWindow.APP_CONFIG?.terminalGatewayUrl ??
+      runtimeWindow.__APP_CONFIG?.terminalGatewayUrl;
+    if (typeof runtimeUrl === 'string' && runtimeUrl) {
+      return runtimeUrl;
+    }
+  }
+
   // Environment variable (REQUIRED - no hardcoded fallback)
   const envUrl = import.meta.env.VITE_TERMINAL_GATEWAY_URL;
   if (typeof envUrl === 'string' && envUrl) {
     return envUrl;
   }
 
-  throw new Error(
-    '[terminal] VITE_TERMINAL_GATEWAY_URL is not configured. ' +
-    'Set this environment variable to enable terminal functionality.'
-  );
+  return null;
 }
 
 function getAuthToken(): string | null {
@@ -89,6 +128,40 @@ function getAuthToken(): string | null {
   return null;
 }
 
+function getTerminalHttpBaseUrl(baseUrl: string): string {
+  return baseUrl.replace(/^wss:\/\//, 'https://').replace(/^ws:\/\//, 'http://').replace(/\/$/, '');
+}
+
+async function createTerminalSession(
+  baseUrl: string,
+  token: string,
+  signal: AbortSignal
+): Promise<void> {
+  const response = await fetch(`${getTerminalHttpBaseUrl(baseUrl)}/session`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    credentials: 'include',
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Terminal session bootstrap failed with status ${response.status}`);
+  }
+}
+
+async function clearTerminalSession(baseUrl: string): Promise<void> {
+  try {
+    await fetch(`${getTerminalHttpBaseUrl(baseUrl)}/session`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+  } catch (error) {
+    console.warn('[terminal] Failed to clear session cookie:', error);
+  }
+}
+
 // ============================================================================
 // Terminal Connection
 // ============================================================================
@@ -119,54 +192,89 @@ export function connectTerminal(options: TerminalOptions = {}): TerminalConnecti
   }
 
   const baseUrl = getTerminalGatewayUrl();
+  if (!baseUrl) {
+    console.error('[terminal] Terminal gateway URL is not configured');
+    return null;
+  }
   const cols = options.cols || 80;
   const rows = options.rows || 24;
 
-  // Build WebSocket URL with query params
-  const url = new URL(`${baseUrl}/terminal`);
-  url.searchParams.set('token', token);
+  // Build WebSocket URL with terminal size params only
+  const url = new URL('/terminal', `${baseUrl.replace(/\/$/, '')}/`);
   url.searchParams.set('cols', String(cols));
   url.searchParams.set('rows', String(rows));
 
   let ws: WebSocket | null = null;
   let connected = false;
+  let closed = false;
+  let sessionEstablished = false;
+  let sessionReleased = false;
+  const connectAbortController = new AbortController();
 
-  try {
-    ws = new WebSocket(url.toString());
-    ws.binaryType = 'arraybuffer';
+  const releaseSession = () => {
+    if (!sessionEstablished || sessionReleased) {
+      return;
+    }
 
-    ws.onopen = () => {
-      connected = true;
-      console.log('[terminal] Connected');
-      options.onOpen?.();
-    };
+    sessionReleased = true;
+    void clearTerminalSession(baseUrl);
+  };
 
-    ws.onmessage = (event) => {
-      let data: string;
-      if (typeof event.data === 'string') {
-        data = event.data;
-      } else if (event.data instanceof ArrayBuffer) {
-        data = new TextDecoder().decode(event.data);
-      } else {
+  void (async () => {
+    try {
+      await createTerminalSession(baseUrl, token, connectAbortController.signal);
+      sessionEstablished = true;
+
+      if (closed) {
+        releaseSession();
         return;
       }
-      options.onData?.(data);
-    };
 
-    ws.onclose = (event) => {
-      connected = false;
-      console.log('[terminal] Disconnected:', event.code, event.reason);
-      options.onClose?.(event.code, event.reason);
-    };
+      ws = new WebSocket(url.toString());
+      ws.binaryType = 'arraybuffer';
 
-    ws.onerror = (error) => {
-      console.error('[terminal] Error:', error);
-      options.onError?.(error);
-    };
-  } catch (err) {
-    console.error('[terminal] Failed to connect:', err);
-    return null;
-  }
+      ws.onopen = () => {
+        connected = true;
+        releaseSession();
+        console.log('[terminal] Connected');
+        options.onOpen?.();
+      };
+
+      ws.onmessage = (event) => {
+        let data: string;
+        if (typeof event.data === 'string') {
+          data = event.data;
+        } else if (event.data instanceof ArrayBuffer) {
+          data = new TextDecoder().decode(event.data);
+        } else {
+          return;
+        }
+        options.onData?.(data);
+      };
+
+      ws.onclose = (event) => {
+        connected = false;
+        ws = null;
+        releaseSession();
+        console.log('[terminal] Disconnected:', event.code, event.reason);
+        options.onClose?.(event.code, event.reason);
+      };
+
+      ws.onerror = (error) => {
+        releaseSession();
+        console.error('[terminal] Error:', error);
+        options.onError?.(error);
+      };
+    } catch (err) {
+      releaseSession();
+      if (connectAbortController.signal.aborted || closed) {
+        return;
+      }
+
+      console.error('[terminal] Failed to connect:', err);
+      options.onError?.(new Event('error'));
+    }
+  })();
 
   return {
     send: (data: string) => {
@@ -181,10 +289,14 @@ export function connectTerminal(options: TerminalOptions = {}): TerminalConnecti
       }
     },
     close: () => {
+      closed = true;
+      connectAbortController.abort();
       if (ws) {
         ws.close(1000, 'Client closed');
         ws = null;
         connected = false;
+      } else {
+        releaseSession();
       }
     },
     isConnected: () => connected,
@@ -196,7 +308,9 @@ export function connectTerminal(options: TerminalOptions = {}): TerminalConnecti
  */
 export async function checkTerminalHealth(): Promise<boolean> {
   try {
-    const baseUrl = getTerminalGatewayUrl().replace('wss://', 'https://').replace('ws://', 'http://');
+    const terminalGatewayUrl = getTerminalGatewayUrl();
+    if (!terminalGatewayUrl) return false;
+    const baseUrl = getTerminalHttpBaseUrl(terminalGatewayUrl);
     const response = await fetch(`${baseUrl}/health`, {
       method: 'GET',
       signal: AbortSignal.timeout(5000),
@@ -213,4 +327,8 @@ export async function checkTerminalHealth(): Promise<boolean> {
  */
 export function hasAuthToken(): boolean {
   return !!getAuthToken();
+}
+
+export function hasTerminalGatewayUrl(): boolean {
+  return Boolean(getTerminalGatewayUrl());
 }

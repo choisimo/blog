@@ -8,13 +8,16 @@ import { requireAdmin } from '../middleware/auth';
 const comments = new Hono<HonoEnv>();
 
 const ALLOWED_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '🎉', '💡'];
+const COMMENT_STREAM_POLL_INTERVAL_MS = 5000;
 
 function stripHtml(input: string): string {
   return input.replace(/<[^>]*>/g, '').trim();
 }
 
 function normalizePostIdentifier(value: unknown): string {
-  return String(value || '').trim().slice(0, 256);
+  return String(value || '')
+    .trim()
+    .slice(0, 256);
 }
 
 function resolvePostIdentifier(value: {
@@ -26,15 +29,86 @@ function resolvePostIdentifier(value: {
 }
 
 function normalizeCommentId(value: unknown): string {
-  return String(value || '').trim().slice(0, 128);
+  return String(value || '')
+    .trim()
+    .slice(0, 128);
 }
 
 function normalizeEmoji(value: unknown): string {
-  return String(value || '').trim().slice(0, 8);
+  return String(value || '')
+    .trim()
+    .slice(0, 8);
 }
 
 function normalizeFingerprint(value: unknown): string {
-  return String(value || '').trim().slice(0, 128);
+  return String(value || '')
+    .trim()
+    .slice(0, 128);
+}
+
+export type CommentStreamCursor = {
+  createdAt: string;
+  id: string;
+};
+
+function normalizeCursorTimestamp(value: unknown): string | null {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+
+  const parsed = Date.parse(raw);
+  if (Number.isNaN(parsed)) {
+    return null;
+  }
+
+  return new Date(parsed).toISOString();
+}
+
+export function createCommentStreamCursor(
+  since: unknown,
+  sinceId: unknown,
+  fallbackSince = new Date().toISOString()
+): CommentStreamCursor {
+  return {
+    createdAt: normalizeCursorTimestamp(since) || fallbackSince,
+    id: normalizeCommentId(sinceId),
+  };
+}
+
+export function buildVisibleCommentsAfterCursorQuery(postId: string, cursor: CommentStreamCursor) {
+  return {
+    sql: `SELECT id, post_id, author, content, email, status, created_at, updated_at
+            FROM comments
+           WHERE post_id = ?
+             AND status = 'visible'
+             AND (
+               created_at > ?
+               OR (created_at = ? AND id > ?)
+             )
+           ORDER BY created_at ASC, id ASC`,
+    params: [postId, cursor.createdAt, cursor.createdAt, cursor.id],
+  };
+}
+
+export function getNextCommentStreamCursor(
+  items: Array<Pick<Comment, 'id' | 'created_at'>>,
+  current: CommentStreamCursor
+): CommentStreamCursor {
+  const last = items[items.length - 1];
+  if (!last) return current;
+
+  return {
+    createdAt: last.created_at,
+    id: last.id,
+  };
+}
+
+async function queryVisibleCommentsAfterCursor(
+  db: HonoEnv['Bindings']['DB'],
+  postId: string,
+  cursor: CommentStreamCursor
+) {
+  const query = buildVisibleCommentsAfterCursorQuery(postId, cursor);
+  return queryAll<Comment>(db, query.sql, ...query.params);
 }
 
 function mapComment(item: Comment) {
@@ -332,6 +406,7 @@ comments.get('/stream', async (c) => {
 
   const encoder = new TextEncoder();
   const corsHeaders = await getCorsHeadersForRequest(c.req.raw, c.env);
+  const initialCursor = createCommentStreamCursor(c.req.query('since'), c.req.query('sinceId'));
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -342,7 +417,7 @@ comments.get('/stream', async (c) => {
       const signal = c.req.raw.signal;
 
       let closed = false;
-      let lastTs = Date.now();
+      let cursor = initialCursor;
       let lastPing = 0;
 
       const onAbort = () => {
@@ -366,28 +441,12 @@ comments.get('/stream', async (c) => {
 
       while (!closed) {
         try {
-          const items = await queryAll<Comment>(
-            c.env.DB,
-            `SELECT id, post_id, author, content, email, status, created_at, updated_at
-               FROM comments
-              WHERE post_id = ? AND status = 'visible'
-              ORDER BY created_at ASC`,
-            postId
-          );
-
-          const appended = items
-            .filter((item) => Date.parse(item.created_at) > lastTs)
-            .map(mapComment);
+          const items = await queryVisibleCommentsAfterCursor(c.env.DB, postId, cursor);
+          const appended = items.map(mapComment);
 
           if (appended.length > 0) {
-            appended.sort((left, right) => {
-              return Date.parse(left.createdAt || '') - Date.parse(right.createdAt || '');
-            });
             send({ type: 'append', items: appended });
-            lastTs = Math.max(
-              lastTs,
-              ...appended.map((item) => Date.parse(item.createdAt || '') || 0)
-            );
+            cursor = getNextCommentStreamCursor(items, cursor);
           }
 
           const now = Date.now();
@@ -400,7 +459,7 @@ comments.get('/stream', async (c) => {
           send({ type: 'error', message });
         }
 
-        await sleep(5000);
+        await sleep(COMMENT_STREAM_POLL_INTERVAL_MS);
       }
 
       try {

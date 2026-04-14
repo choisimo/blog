@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useState } from "react";
 import {
   useNotificationStore,
   type AppNotification,
@@ -190,24 +191,37 @@ export function NotificationPanel() {
     notifications,
     unreadCount,
     markRead,
+    setReadState,
     markAllRead,
     removeNotification,
     clearRead,
   } = useNotificationStore();
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const hasRead = notifications.some((n) => n.read);
 
   const handleMarkRead = async (id: string) => {
+    setSyncError(null);
     markRead(id);
-    await markNotificationReadRemote(id).catch(() => false);
+    const ok = await markNotificationReadRemote(id).catch(() => false);
+    if (!ok) {
+      setReadState([id], false);
+      setSyncError("알림 상태를 서버와 동기화하지 못했습니다.");
+    }
   };
 
   const handleMarkAllRead = async () => {
     const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
+    setSyncError(null);
     markAllRead();
-    await Promise.all(
+    const results = await Promise.all(
       unreadIds.map((id) => markNotificationReadRemote(id).catch(() => false)),
     );
+    const failedIds = unreadIds.filter((_, index) => !results[index]);
+    if (failedIds.length > 0) {
+      setReadState(failedIds, false);
+      setSyncError("일부 알림을 읽음 처리하지 못했습니다.");
+    }
   };
 
   return (
@@ -289,6 +303,18 @@ export function NotificationPanel() {
 
       {/* Notification list */}
       <div className="max-h-[360px] overflow-y-auto overscroll-contain">
+        {syncError && (
+          <div
+            className={cn(
+              "px-4 py-2 text-xs border-b",
+              isTerminal
+                ? "border-destructive/40 text-destructive"
+                : "border-destructive/20 bg-destructive/5 text-destructive",
+            )}
+          >
+            {syncError}
+          </div>
+        )}
         {notifications.length === 0 ? (
           <div
             className={cn(

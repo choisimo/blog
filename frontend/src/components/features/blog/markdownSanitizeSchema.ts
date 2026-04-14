@@ -7,7 +7,6 @@ export const blogMarkdownSanitizeSchema = {
     "*": [
       ...(defaultSchema.attributes?.["*"] ?? []),
       "className",
-      "style",
       "id",
     ],
     img: [
@@ -41,14 +40,10 @@ export const blogMarkdownSanitizeSchema = {
     div: [
       ...(defaultSchema.attributes?.div ?? []),
       "className",
-      "style",
-      "data-*",
     ],
     span: [
       ...(defaultSchema.attributes?.span ?? []),
       "className",
-      "style",
-      "data-*",
     ],
     code: ["className"],
     pre: ["className"],

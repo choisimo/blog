@@ -400,45 +400,46 @@ export function Header() {
                 </DropdownMenu>
               )}
 
-              {/* Notification Bell */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
+              {hasAdmin && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        "relative h-11 w-11",
+                        isTerminal &&
+                          "text-primary hover:text-primary hover:bg-primary/10",
+                      )}
+                      aria-label="알림"
+                    >
+                      <Bell className="h-5 w-5" />
+                      {unreadCount > 0 && (
+                        <span
+                          className={cn(
+                            "absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold",
+                            isTerminal
+                              ? "bg-primary/80 text-background border border-background"
+                              : "bg-destructive text-destructive-foreground",
+                          )}
+                        >
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
                     className={cn(
-                      "relative h-11 w-11",
+                      "w-80 p-0",
                       isTerminal &&
-                        "text-primary hover:text-primary hover:bg-primary/10",
+                        "border-primary/40 bg-background/95 backdrop-blur",
                     )}
-                    aria-label="알림"
                   >
-                    <Bell className="h-5 w-5" />
-                    {unreadCount > 0 && (
-                      <span
-                        className={cn(
-                          "absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold",
-                          isTerminal
-                            ? "bg-primary/80 text-background border border-background"
-                            : "bg-destructive text-destructive-foreground",
-                        )}
-                      >
-                        {unreadCount > 9 ? "9+" : unreadCount}
-                      </span>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className={cn(
-                    "w-80 p-0",
-                    isTerminal &&
-                      "border-primary/40 bg-background/95 backdrop-blur",
-                  )}
-                >
-                  <NotificationPanel />
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <NotificationPanel />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
 
               <div className="flex md:hidden">
                 <Button

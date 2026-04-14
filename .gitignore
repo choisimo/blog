@@ -167,6 +167,7 @@ test-results/
 playwright-report/
 frontend/test-results/
 frontend/playwright-report/
+frontend/public/runtime-config.json
 htmlcov/
 .coverage
 **/.pytest_cache/

@@ -1,6 +1,9 @@
 import { getApiBaseUrl } from '@/utils/network/apiBase';
 import { getCachedAdvancedVisitorId, getAdvancedFingerprint } from '@/services/session/fingerprint';
 
+const ADVANCED_FINGERPRINT_KEY = 'nodove_adv_fingerprint';
+const PENDING_FINGERPRINT_KEY = 'nodove_adv_fingerprint_pending';
+
 // Available emoji reactions
 export const ALLOWED_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '🎉', '💡'] as const;
 export type ReactionEmoji = typeof ALLOWED_EMOJIS[number];
@@ -12,22 +15,63 @@ export interface ReactionCount {
 
 // Use the advanced hybrid fingerprint for reaction tracking.
 // Prefers the cached synchronous value for performance; falls back to async.
+function readFingerprintKey(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeFingerprintKey(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    void 0;
+  }
+}
+
+function clearFingerprintKey(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    void 0;
+  }
+}
+
+function getStablePendingFingerprint(): string {
+  const cached = readFingerprintKey(PENDING_FINGERPRINT_KEY);
+  if (cached) return cached;
+
+  const created =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? `pending_${crypto.randomUUID()}`
+      : `pending_${Date.now().toString(36)}`;
+  writeFingerprintKey(PENDING_FINGERPRINT_KEY, created);
+  return created;
+}
+
 export function getFingerprint(): string {
   // Fast path: return cached advanced visitor ID
   const cached = getCachedAdvancedVisitorId();
   if (cached) return cached;
 
   // Fallback: legacy localStorage key (will be populated once async init runs)
-  const stored = localStorage.getItem('nodove_adv_fingerprint');
+  const stored = readFingerprintKey(ADVANCED_FINGERPRINT_KEY);
   if (stored) return stored;
 
-  // Last resort: trigger async generation and return a temporary placeholder
-  // The next reaction will use the real ID once it's cached.
-  getAdvancedFingerprint().catch(() => { });
+  // Trigger async generation, but keep a stable fallback so rapid reactions
+  // stay tied to one pending identity until the real fingerprint resolves.
+  void getAdvancedFingerprint()
+    .then((fingerprint) => {
+      writeFingerprintKey(ADVANCED_FINGERPRINT_KEY, fingerprint.advancedVisitorId);
+      clearFingerprintKey(PENDING_FINGERPRINT_KEY);
+    })
+    .catch(() => {
+      void 0;
+    });
 
-  // Generate a temporary ID so the current request isn't blocked
-  const tempId = `tmp_${Date.now().toString(36)}`;
-  return tempId;
+  return getStablePendingFingerprint();
 }
 
 // Fetch reactions for multiple comments

@@ -1,10 +1,16 @@
 {
-  "generatedAt": "2026-04-09T00:03:55.899Z",
+  "generatedAt": "2026-04-13T13:48:06.861Z",
   "counts": {
-    "worker-owned": 26,
-    "backend-owned": 6,
-    "proxy-only": 3,
-    "compatibility": 1
+    "serviceBoundaries": {
+      "worker-owned": 26,
+      "backend-owned": 6,
+      "proxy-only": 3,
+      "compatibility": 1
+    },
+    "routeBoundaries": {
+      "backend-owned": 19,
+      "worker-owned": 2
+    }
   },
   "serviceBoundaries": [
     {
@@ -29,7 +35,7 @@
       "id": "chat",
       "prefix": "/api/v1/chat",
       "owner": "worker-owned",
-      "description": "Chat streaming edge gateway"
+      "description": "Hybrid chat surface: worker-owned feeds, backend-owned session/live operations via worker proxy"
     },
     {
       "id": "images",
@@ -155,7 +161,7 @@
       "id": "notifications",
       "prefix": "/api/v1/notifications",
       "owner": "worker-owned",
-      "description": "Notification fan-out and live streams"
+      "description": "Edge-authenticated notification ingress with backend-origin streaming/history handlers"
     },
     {
       "id": "gateway",
@@ -222,6 +228,176 @@
       "prefix": "/api/v1/public/config",
       "owner": "compatibility",
       "description": "Public runtime config served by both edge and origin"
+    }
+  ],
+  "routeBoundaries": [
+    {
+      "id": "chat.session.create",
+      "method": "POST",
+      "path": "/api/v1/chat/session",
+      "owner": "backend-owned",
+      "boundaryId": "chat",
+      "description": "Create backend chat session through worker proxy"
+    },
+    {
+      "id": "chat.message",
+      "method": "POST",
+      "path": "/api/v1/chat/session/:sessionId/message",
+      "owner": "backend-owned",
+      "boundaryId": "chat",
+      "description": "Backend chat completion streaming via worker proxy"
+    },
+    {
+      "id": "chat.task",
+      "method": "POST",
+      "path": "/api/v1/chat/session/:sessionId/task",
+      "owner": "backend-owned",
+      "boundaryId": "chat",
+      "description": "Backend task orchestration via worker proxy"
+    },
+    {
+      "id": "chat.feed.lens",
+      "method": "POST",
+      "path": "/api/v1/chat/session/:sessionId/lens-feed",
+      "owner": "worker-owned",
+      "boundaryId": "chat",
+      "description": "Worker-native lens feed generation"
+    },
+    {
+      "id": "chat.feed.thought",
+      "method": "POST",
+      "path": "/api/v1/chat/session/:sessionId/thought-feed",
+      "owner": "worker-owned",
+      "boundaryId": "chat",
+      "description": "Worker-native thought feed generation"
+    },
+    {
+      "id": "chat.aggregate",
+      "method": "POST",
+      "path": "/api/v1/chat/aggregate",
+      "owner": "backend-owned",
+      "boundaryId": "chat",
+      "description": "Backend aggregate summaries via worker proxy"
+    },
+    {
+      "id": "chat.live.stream",
+      "method": "GET",
+      "path": "/api/v1/chat/live/stream",
+      "owner": "backend-owned",
+      "boundaryId": "chat",
+      "description": "Backend live SSE stream via worker proxy"
+    },
+    {
+      "id": "chat.live.message",
+      "method": "POST",
+      "path": "/api/v1/chat/live/message",
+      "owner": "backend-owned",
+      "boundaryId": "chat",
+      "description": "Backend live message publish via worker proxy"
+    },
+    {
+      "id": "chat.live.config.get",
+      "method": "GET",
+      "path": "/api/v1/chat/live/config",
+      "owner": "backend-owned",
+      "boundaryId": "chat",
+      "description": "Backend live chat config read via worker proxy"
+    },
+    {
+      "id": "chat.live.config.put",
+      "method": "PUT",
+      "path": "/api/v1/chat/live/config",
+      "owner": "backend-owned",
+      "boundaryId": "chat",
+      "description": "Backend live chat config update via worker proxy"
+    },
+    {
+      "id": "chat.live.room-stats",
+      "method": "GET",
+      "path": "/api/v1/chat/live/room-stats",
+      "owner": "backend-owned",
+      "boundaryId": "chat",
+      "description": "Backend live room stats via worker proxy"
+    },
+    {
+      "id": "chat.live.rooms",
+      "method": "GET",
+      "path": "/api/v1/chat/live/rooms",
+      "owner": "backend-owned",
+      "boundaryId": "chat",
+      "description": "Backend live room list via worker proxy"
+    },
+    {
+      "id": "notifications.stream",
+      "method": "GET",
+      "path": "/api/v1/notifications/stream",
+      "owner": "backend-owned",
+      "boundaryId": "notifications",
+      "description": "Backend SSE notification stream via worker proxy"
+    },
+    {
+      "id": "notifications.unread",
+      "method": "GET",
+      "path": "/api/v1/notifications/unread",
+      "owner": "backend-owned",
+      "boundaryId": "notifications",
+      "description": "Backend unread notification list via worker proxy"
+    },
+    {
+      "id": "notifications.history",
+      "method": "GET",
+      "path": "/api/v1/notifications/history",
+      "owner": "backend-owned",
+      "boundaryId": "notifications",
+      "description": "Backend notification history via worker proxy"
+    },
+    {
+      "id": "notifications.read",
+      "method": "PATCH",
+      "path": "/api/v1/notifications/:notificationId/read",
+      "owner": "backend-owned",
+      "boundaryId": "notifications",
+      "description": "Backend notification read mutation via worker proxy"
+    },
+    {
+      "id": "admin-logs.stream",
+      "method": "GET",
+      "path": "/api/v1/admin/logs/stream",
+      "owner": "backend-owned",
+      "boundaryId": "admin-logs",
+      "description": "Backend admin log SSE stream via worker proxy"
+    },
+    {
+      "id": "analytics.view",
+      "method": "POST",
+      "path": "/api/v1/analytics/view",
+      "owner": "backend-owned",
+      "boundaryId": "analytics",
+      "description": "Backend canonical analytics writes via worker proxy"
+    },
+    {
+      "id": "analytics.stats",
+      "method": "GET",
+      "path": "/api/v1/analytics/stats/:year/:slug",
+      "owner": "backend-owned",
+      "boundaryId": "analytics",
+      "description": "Backend canonical analytics stats via worker proxy"
+    },
+    {
+      "id": "analytics.trending",
+      "method": "GET",
+      "path": "/api/v1/analytics/trending",
+      "owner": "backend-owned",
+      "boundaryId": "analytics",
+      "description": "Backend canonical trending analytics via worker proxy"
+    },
+    {
+      "id": "analytics.refresh",
+      "method": "POST",
+      "path": "/api/v1/analytics/refresh-stats",
+      "owner": "backend-owned",
+      "boundaryId": "analytics",
+      "description": "Backend analytics refresh via worker proxy"
     }
   ],
   "workers": [

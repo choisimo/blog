@@ -1,12 +1,14 @@
 {
   "scripts": {
     "export:source-md": "node scripts/export-source-to-markdown.js",
+    "export:source-archive": "node scripts/archive-source-code.js",
     "contracts:check": "node scripts/check-contract-drift.mjs",
     "contracts:snapshot": "node scripts/check-contract-drift.mjs --write",
     "outbox:check-memory": "node scripts/check-memory-embedding-outbox.mjs",
     "contracts:generate": "node scripts/generate-architecture-contracts.mjs",
     "routes:check": "node scripts/check-route-governance.mjs",
-    "routes:snapshot": "node scripts/check-route-governance.mjs --write"
+    "routes:snapshot": "node scripts/check-route-governance.mjs --write",
+    "routes:check:orphans": "node scripts/check-orphan-routes.mjs"
   },
   "devDependencies": {},
   "dependencies": {

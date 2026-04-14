@@ -40,6 +40,10 @@ export default function NewPost() {
   const [uploaded, setUploaded] = useState<
     Array<{ url: string; variantWebp?: { url: string } | null }>
   >([]);
+  const [failedUploadAttempt, setFailedUploadAttempt] = useState<{
+    files: File[];
+    message: string;
+  } | null>(null);
 
   const logout = async () => {
     await storeLogout();
@@ -92,6 +96,7 @@ export default function NewPost() {
       if (!slug.trim()) throw new Error("슬러그(slug)를 먼저 입력하세요 (이미지 경로 생성에 필요)");
 
       setUploading(true);
+      setFailedUploadAttempt(null);
       const res = await uploadPostImages(
         { year, slug: slug.trim() },
         files,
@@ -109,6 +114,10 @@ export default function NewPost() {
         description: `${res.items.length}개 업로드됨`,
       });
     } catch (e) {
+      setFailedUploadAttempt({
+        files,
+        message: getErrorMessage(e, "오류"),
+      });
       toast({
         title: "업로드 실패",
         description: getErrorMessage(e, "오류"),
@@ -304,6 +313,25 @@ export default function NewPost() {
                         {uploading ? "업로드 중…" : "수동 이미지 업로드"}
                       </Button>
                     </div>
+                    {failedUploadAttempt && (
+                      <div className="border border-destructive/20 bg-destructive/5 rounded-md p-3 text-sm">
+                        <div className="font-medium text-destructive">업로드가 중단되었습니다</div>
+                        <div className="text-muted-foreground mt-1">
+                          {failedUploadAttempt.message}
+                        </div>
+                        <Button
+                          className="mt-3"
+                          size="sm"
+                          variant="outline"
+                          disabled={uploading}
+                          onClick={() => {
+                            void handleImageUploads(failedUploadAttempt.files);
+                          }}
+                        >
+                          실패한 업로드 다시 시도
+                        </Button>
+                      </div>
+                    )}
                     {uploaded.length > 0 && (
                       <div className="border rounded-md p-3 space-y-2">
                         <div className="text-sm text-muted-foreground">

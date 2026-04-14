@@ -8,6 +8,8 @@ import { upsertNotifications } from '@/stores/realtime/useNotificationStore';
 import { getAuthHeadersAsync } from '@/stores/session/useAuthStore';
 import { getApiBaseUrl } from '@/utils/network/apiBase';
 
+type AuthHeaders = Awaited<ReturnType<typeof getAuthHeadersAsync>>;
+
 type RemoteNotification = {
   id: string;
   type: AppNotification['type'];
@@ -34,7 +36,12 @@ function toAppNotification(notification: RemoteNotification): AppNotification {
 
 export async function fetchUnreadNotifications(limit = 50): Promise<AppNotification[]> {
   const baseUrl = getApiBaseUrl();
-  const headers = await getAuthHeadersAsync();
+  const headers = (await getAuthHeadersAsync()) as AuthHeaders & {
+    Authorization?: string;
+  };
+  if (!headers.Authorization) {
+    return [];
+  }
   const response = await fetch(
     `${baseUrl}/api/v1/notifications/unread?limit=${encodeURIComponent(String(limit))}`,
     { headers }
@@ -57,7 +64,12 @@ export async function fetchUnreadNotifications(limit = 50): Promise<AppNotificat
 
 export async function fetchNotificationHistory(limit = 50): Promise<AppNotification[]> {
   const baseUrl = getApiBaseUrl();
-  const headers = await getAuthHeadersAsync();
+  const headers = (await getAuthHeadersAsync()) as AuthHeaders & {
+    Authorization?: string;
+  };
+  if (!headers.Authorization) {
+    return [];
+  }
   const response = await fetch(
     `${baseUrl}/api/v1/notifications/history?limit=${encodeURIComponent(String(limit))}`,
     { headers }
@@ -90,7 +102,10 @@ export async function markNotificationReadRemote(id: string): Promise<boolean> {
   const headers = {
     ...(await getAuthHeadersAsync()),
     'Content-Type': 'application/json',
-  };
+  } as AuthHeaders & { Authorization?: string };
+  if (!headers.Authorization) {
+    return false;
+  }
   const response = await fetch(`${baseUrl}/api/v1/notifications/${id}/read`, {
     method: 'PATCH',
     headers,

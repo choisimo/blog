@@ -39,6 +39,19 @@ type ReadStateRow = {
   item_hash: string;
 };
 
+type SchedulerDecisionRow = {
+  id: string;
+  scheduler_id: string;
+  redis_up: number;
+  queue_enabled: number;
+  queue_length: number;
+  dlq_length: number;
+  allow_warm: number;
+  decision_reason: string;
+  snapshot_json: string;
+  created_at: string;
+};
+
 export type ArtifactPagePayload<T> = {
   items: T[];
   nextCursor: unknown | null;
@@ -66,6 +79,19 @@ export type ItemReadState = {
   itemHash: string;
   unread: boolean;
   changed: boolean;
+};
+
+export type SchedulerDecision = {
+  id: string;
+  schedulerId: string;
+  redisUp: boolean;
+  queueEnabled: boolean;
+  queueLength: number;
+  dlqLength: number;
+  allowWarm: boolean;
+  decisionReason: string;
+  snapshot: Record<string, unknown> | null;
+  createdAt: string;
 };
 
 const schemaInit = new WeakMap<D1Database, Promise<void>>();
@@ -550,6 +576,49 @@ export async function recordSchedulerDecision(
     JSON.stringify(input.snapshot),
     nowIso()
   );
+}
+
+function parseSchedulerSnapshot(raw: string): Record<string, unknown> | null {
+  try {
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+export async function getLatestSchedulerDecision(
+  db: D1Database,
+  schedulerId: string,
+): Promise<SchedulerDecision | null> {
+  await ensureAiArtifactSchema(db);
+
+  const row = await queryOne<SchedulerDecisionRow>(
+    db,
+    `SELECT id, scheduler_id, redis_up, queue_enabled, queue_length,
+            dlq_length, allow_warm, decision_reason, snapshot_json, created_at
+       FROM ai_scheduler_decisions
+      WHERE scheduler_id = ?
+      ORDER BY created_at DESC
+      LIMIT 1`,
+    schedulerId,
+  );
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    schedulerId: row.scheduler_id,
+    redisUp: row.redis_up === 1,
+    queueEnabled: row.queue_enabled === 1,
+    queueLength: row.queue_length,
+    dlqLength: row.dlq_length,
+    allowWarm: row.allow_warm === 1,
+    decisionReason: row.decision_reason,
+    snapshot: parseSchedulerSnapshot(row.snapshot_json),
+    createdAt: row.created_at,
+  };
 }
 
 export async function buildItemReadStates(

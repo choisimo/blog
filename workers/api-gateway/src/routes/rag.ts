@@ -13,10 +13,10 @@
 
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { Env } from '../types';
-import { error } from '../lib/response';
-import { requireAdmin } from '../middleware/auth';
+import { forbidden } from '../lib/response';
+import { requireAdmin, requireAuth } from '../middleware/auth';
+import { proxyToBackendWithPolicy } from '../lib/backend-proxy';
 
 type RagContext = { Bindings: Env };
 
@@ -32,55 +32,44 @@ const rag = new Hono<RagContext>();
 async function proxyToBackend(
   c: Context<RagContext>,
   path: string,
-  method: 'GET' | 'POST' = 'POST'
+  method: 'GET' | 'POST' | 'DELETE' = 'POST',
+  body?: BodyInit | null
 ) {
-  const backendOrigin = c.env.BACKEND_ORIGIN;
-  if (!backendOrigin) {
-    return error(c, 'BACKEND_ORIGIN not configured', 500, 'CONFIG_ERROR');
-  }
-
-  // Preserve query string for GET requests (e.g. /status?collection=xxx)
-  const url = new URL(c.req.url);
-  const upstreamUrl = `${backendOrigin}/api/v1/rag${path}${url.search}`;
-
-  const headers = new Headers();
-  headers.set('Content-Type', 'application/json');
-
-  // Inject backend authentication key
-  if (c.env.BACKEND_KEY) {
-    headers.set('X-Backend-Key', c.env.BACKEND_KEY);
-  }
-
-  // Forward original Authorization header so backend requireAdmin can validate JWT
-  const authHeader = c.req.header('Authorization');
-  if (authHeader) {
-    headers.set('Authorization', authHeader);
-  }
-
-  const requestInit: RequestInit = {
+  return proxyToBackendWithPolicy(c, {
+    upstreamPath: `/api/v1/rag${path}`,
     method,
-    headers,
-  };
+    overrideBody: body === undefined ? undefined : body,
+    contentType: typeof body === 'string' ? 'application/json' : undefined,
+    backendUnavailableMessage: 'Could not connect to RAG backend',
+  });
+}
 
-  if (method === 'POST') {
-    const body = await c.req.text();
-    requestInit.body = body;
+function getAuthenticatedSub(c: Context<RagContext>): string {
+  const user = c.get('user' as never) as { sub?: string };
+  if (!user?.sub) {
+    throw new Error('Missing authenticated user');
+  }
+  return user.sub;
+}
+
+async function proxyPrincipalMemoryRoute(
+  c: Context<RagContext>,
+  path: string,
+  transformBody?: (body: Record<string, unknown>, sub: string) => Record<string, unknown>
+) {
+  const sub = getAuthenticatedSub(c);
+  const rawBody = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+
+  if (
+    rawBody.userId !== undefined &&
+    typeof rawBody.userId === 'string' &&
+    rawBody.userId !== sub
+  ) {
+    return forbidden(c, 'User ID mismatch');
   }
 
-  try {
-    const response = await fetch(upstreamUrl, requestInit);
-    const data = await response.json();
-
-    if (!response.ok) {
-      return error(c, (data as any).error || 'RAG request failed', response.status as ContentfulStatusCode);
-    }
-
-    return c.json(data);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'RAG proxy failed';
-    console.error('RAG proxy error:', message);
-    return error(c, message, 500, 'RAG_PROXY_ERROR');
-  }
+  const nextBody = transformBody ? transformBody(rawBody, sub) : { ...rawBody, userId: sub };
+  return proxyToBackend(c, path, 'POST', JSON.stringify(nextBody));
 }
 
 /**
@@ -128,6 +117,27 @@ rag.get('/status', requireAdmin, async (c) => {
  */
 rag.get('/collections', requireAdmin, async (c) => {
   return proxyToBackend(c, '/collections', 'GET');
+});
+
+rag.post('/memories/search', requireAuth, async (c) => {
+  return proxyPrincipalMemoryRoute(c, '/memories/search');
+});
+
+rag.post('/memories/upsert', requireAuth, async (c) => {
+  return proxyPrincipalMemoryRoute(c, '/memories/upsert');
+});
+
+rag.delete('/memories/:userId/:memoryId', requireAuth, async (c) => {
+  const sub = getAuthenticatedSub(c);
+  const { userId, memoryId } = c.req.param();
+  if (userId !== sub) {
+    return forbidden(c, 'User ID mismatch');
+  }
+  return proxyToBackend(
+    c,
+    `/memories/${encodeURIComponent(userId)}/${encodeURIComponent(memoryId)}`,
+    'DELETE'
+  );
 });
 
 export default rag;

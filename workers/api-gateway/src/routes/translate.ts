@@ -39,7 +39,7 @@ app.use('*', async (c, next) => {
     edgeMode: 'native',
     originMode: 'worker',
   });
-  for (const [key, value] of Object.entries(headers)) {
+  for (const [key, value] of Object.entries(headers) as [string, string][]) {
     c.res.headers.set(key, value);
   }
 });

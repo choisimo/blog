@@ -49,10 +49,13 @@ describe('FloatingActionBar feature flag', () => {
 
   it('renders FAB toolbar when enabled', async () => {
     await withFab(true);
-    const toolbar = screen.queryByRole('toolbar', { name: 'Floating actions' });
-    expect(toolbar).not.toBeNull();
-    // Insight button label should be visible
-    expect(screen.queryByRole('button', { name: 'Insight' })).not.toBeNull();
+    await waitFor(() => {
+      const toolbar = screen.queryByRole('toolbar', { name: 'Floating actions' });
+      expect(toolbar).not.toBeNull();
+    });
+    expect(
+      screen.queryByRole('button', { name: /Insight|인사이트/i })
+    ).not.toBeNull();
   });
 
   it('falls back to visited-posts minimap when ai-memo is absent', async () => {
@@ -70,10 +73,12 @@ describe('FloatingActionBar feature flag', () => {
     // Spy on window.dispatchEvent to capture fallback event
     const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
 
-    // Click Insight and expect a visitedposts:open fallback event
-    const insightBtn = screen.getByRole('button', { name: 'Insight' });
+    // Click Stack and expect a visitedposts:open fallback event
+    const stackBtn = screen.getByRole('button', {
+      name: /Visited Stack|방문 스택/i,
+    });
     await act(async () => {
-      insightBtn.click();
+      stackBtn.click();
     });
 
     await waitFor(() => {
@@ -125,6 +130,7 @@ describe('FloatingActionBar feature flag', () => {
   });
 
   it('hides FAB while legacy history overlay is open and shows after close', async () => {
+    seedVisited();
     // Enable FAB
     window.localStorage.setItem('aiMemo.fab.enabled', 'true');
 
@@ -161,11 +167,16 @@ describe('FloatingActionBar feature flag', () => {
       expect(toolbar).not.toBeNull();
     });
 
-    // Clicking Insight should call history open on the component
-    const openHistorySpy = vi.fn();
-    (aiMemo as any).openHistory = openHistorySpy;
-    const insightBtn = screen.getByRole('button', { name: 'Insight' });
-    insightBtn.click();
-    expect(openHistorySpy).toHaveBeenCalled();
+    // Clicking Stack should dispatch the visited-posts open event
+    const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+    const stackBtn = screen.getByRole('button', {
+      name: /Visited Stack|방문 스택/i,
+    });
+    stackBtn.click();
+
+    expect(
+      dispatchSpy.mock.calls.some(args => args?.[0]?.type === 'visitedposts:open')
+    ).toBe(true);
+    dispatchSpy.mockRestore();
   });
 });

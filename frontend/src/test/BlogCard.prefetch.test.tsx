@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ThemeProvider } from '../contexts/ThemeContext';
+import { LanguageProvider } from '../contexts/LanguageContext';
 import { BrowserRouter } from 'react-router-dom';
 import { BlogCard } from '../components/features/blog';
 
@@ -17,7 +18,9 @@ import { prefetchPost } from '@/data/content/posts';
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(
     <BrowserRouter>
-      <ThemeProvider>{ui}</ThemeProvider>
+      <LanguageProvider>
+        <ThemeProvider>{ui}</ThemeProvider>
+      </LanguageProvider>
     </BrowserRouter>
   );
 };

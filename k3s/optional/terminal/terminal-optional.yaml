@@ -61,11 +61,21 @@ spec:
             - name: http
               containerPort: 8080
           env:
-            - name: BACKEND_KEY
+            - name: TERMINAL_SESSION_SECRET
               valueFrom:
                 secretKeyRef:
                   name: blog-app-secrets
-                  key: BACKEND_KEY
+                  key: TERMINAL_SESSION_SECRET
+            - name: TERMINAL_GATEWAY_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: blog-app-config
+                  key: TERMINAL_GATEWAY_URL
+            - name: TERMINAL_SESSION_TIMEOUT_MS
+              valueFrom:
+                configMapKeyRef:
+                  name: blog-app-config
+                  key: TERMINAL_SESSION_TIMEOUT_MS
             - name: SANDBOX_IMAGE
               valueFrom:
                 configMapKeyRef:

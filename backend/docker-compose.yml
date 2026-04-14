@@ -110,7 +110,7 @@ services:
     environment:
       - NODE_ENV=production
       - BACKEND_KEY=${BACKEND_KEY}
-      - SANDBOX_IMAGE=${SANDBOX_IMAGE:-alpine:latest}
+      - SANDBOX_IMAGE=${SANDBOX_IMAGE:-alpine:3.20}
     networks:
       - blog-network
     healthcheck:

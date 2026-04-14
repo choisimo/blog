@@ -53,7 +53,13 @@ export type Env = {
   // Variables
   ENV: 'development' | 'staging' | 'production';
   ALLOWED_ORIGINS?: string;
+  FEATURE_AI_ENABLED?: string;
+  FEATURE_RAG_ENABLED?: string;
   FEATURE_TERMINAL_ENABLED?: string;
+  FEATURE_AI_INLINE?: string;
+  FEATURE_COMMENTS_ENABLED?: string;
+  CHAT_WS_ENABLED?: string;
+  TERMINAL_GATEWAY_URL?: string;
 
   // Secrets encryption key (optional, falls back to JWT_SECRET)
   SECRETS_ENCRYPTION_KEY?: string;
@@ -134,6 +140,7 @@ export type JwtPayload = {
   type?: 'access' | 'refresh';
   tokenClass?: string;
   jti?: string;
+  familyId?: string;
   iss?: string;
   aud?: string;
   nbf?: number;
@@ -153,6 +160,7 @@ export type OAuthState = {
   state: string;
   provider: 'github' | 'google';
   createdAt: string;
+  codeVerifier?: string;
 };
 
 // Post Analytics Models

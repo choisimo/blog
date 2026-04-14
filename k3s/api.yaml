@@ -110,7 +110,7 @@ spec:
             periodSeconds: 5
           readinessProbe:
             httpGet:
-              path: /api/v1/healthz
+              path: /api/v1/readiness
               port: http
             initialDelaySeconds: 15
             periodSeconds: 10
@@ -127,11 +127,44 @@ spec:
             limits:
               cpu: 1
               memory: 1Gi
+      volumes:
+        - name: sqlite-data
+          persistentVolumeClaim:
+            claimName: api-sqlite
+        - name: repo-data
+          emptyDir:
+            sizeLimit: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-worker
+  namespace: blog
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ai-worker
+  template:
+    metadata:
+      labels:
+        app: ai-worker
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      imagePullSecrets:
+        - name: ghcr-creds
+      containers:
         - name: ai-worker
           image: ghcr.io/choisimo/blog-api:latest
           imagePullPolicy: Always
-          command: ["node", "src/workers/ai-worker.js"]
-          workingDir: /app
+          workingDir: /app/backend
+          command:
+            - node
+            - src/workers/ai-worker.js
+          env:
+            - name: NODE_ENV
+              value: production
           envFrom:
             - configMapRef:
                 name: blog-app-config
@@ -149,10 +182,3 @@ spec:
             limits:
               cpu: 400m
               memory: 512Mi
-      volumes:
-        - name: sqlite-data
-          persistentVolumeClaim:
-            claimName: api-sqlite
-        - name: repo-data
-          emptyDir:
-            sizeLimit: 2Gi

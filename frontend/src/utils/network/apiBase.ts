@@ -1,10 +1,10 @@
 type RuntimeWindow = Window & {
   APP_CONFIG?: {
-    apiBaseUrl?: string;
+    apiBaseUrl?: string | null;
     chatBaseUrl?: string;
     chatWsBaseUrl?: string;
   };
-  __APP_CONFIG?: { apiBaseUrl?: string };
+  __APP_CONFIG?: { apiBaseUrl?: string | null };
 };
 
 let warnedMissingApiBase = false;
@@ -28,9 +28,17 @@ function normalizeBaseUrl(url: string): string {
   return normalized;
 }
 
+function isLocalHostname(hostname: string): boolean {
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1"
+  );
+}
+
 export function getApiBaseUrl(): string {
   let baseUrl: string | undefined;
-  let source: "runtime" | "env" | "localStorage" | "default" | undefined;
+  let source: "runtime" | "localStorage" | "default" | undefined;
 
   const w = typeof window !== "undefined" ? (window as RuntimeWindow) : null;
   const fromRuntime = w?.APP_CONFIG?.apiBaseUrl || w?.__APP_CONFIG?.apiBaseUrl;
@@ -40,27 +48,18 @@ export function getApiBaseUrl(): string {
   }
 
   if (!baseUrl) {
-    const fromEnv = import.meta?.env?.VITE_API_BASE_URL as string | undefined;
-    if (typeof fromEnv === "string" && fromEnv) {
-      baseUrl = fromEnv;
-      source = "env";
-    }
-  }
-
-  if (!baseUrl) {
     try {
       const v = localStorage.getItem("aiMemo.backendUrl");
       if (v) {
         const parsed = JSON.parse(v) as unknown;
         if (typeof parsed === "string" && parsed) {
-          const isProd = import.meta.env.PROD as boolean | undefined;
           // Require an explicit localhost host/port match to avoid suffix spoofing.
-          const isLocalhost =
+          const isLocalhostOverride =
             /^http:\/\/localhost(:\d+)?(\/|$)/.test(parsed) ||
             /^http:\/\/127\.0\.0\.1(:\d+)?(\/|$)/.test(parsed);
-          if (!isProd || parsed.startsWith("https://") || isLocalhost) {
-          baseUrl = parsed;
-          source = "localStorage";
+          if (!import.meta.env.PROD || isLocalhostOverride) {
+            baseUrl = parsed;
+            source = "localStorage";
           }
         }
       }
@@ -70,15 +69,19 @@ export function getApiBaseUrl(): string {
   if (!baseUrl) {
     const hostname =
       typeof window !== "undefined" ? window.location.hostname : "";
-    const isLocalhost =
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname === "::1";
+    const isLocalhost = isLocalHostname(hostname);
 
-    baseUrl = isLocalhost ? "http://localhost:5080" : "https://api.nodove.com";
-    source = "default";
+    if (isLocalhost && !import.meta.env.PROD) {
+      baseUrl = "http://localhost:5080";
+      source = "default";
+    } else {
+      throw new Error(
+        `[apiBase] Missing runtime API base for ${hostname || "<unknown>"}. ` +
+          "Production origin must be provided explicitly via public runtime config.",
+      );
+    }
 
-    if (typeof window !== "undefined" && !warnedMissingApiBase) {
+    if (typeof window !== "undefined" && !warnedMissingApiBase && source === "default") {
       warnedMissingApiBase = true;
       console.warn(
         "[apiBase] VITE_API_BASE_URL is not configured. " +

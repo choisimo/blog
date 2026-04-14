@@ -205,8 +205,9 @@ npm run deploy:prod
   - `workflow_dispatch`
   - `main` branch push with `workers/**`
   - workflow file 자체 변경
-- 현재 workflow가 자동 배포하는 대상은 `workers/api-gateway`입니다.
-- workflow는 `AI_DEFAULT_MODEL`, `AI_VISION_MODEL`, `PERPLEXITY_MODEL`, `API_BASE_URL`, `ASSETS_BASE_URL`, `ALLOWED_ORIGINS`를 non-empty일 때 production secret으로 주입합니다.
+- deploy workflow는 worker matrix 기준으로 production worker를 배포합니다.
+- PR 검증은 `.github/workflows/validate-workers.yml`에서 분리 실행됩니다.
+- secret 주입은 `.github/workflows/sync-workers-secrets.yml` 수동 workflow에서만 수행합니다.
 
 ## Operations
 

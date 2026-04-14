@@ -24,7 +24,7 @@ router.get('/', async (req, res) => {
     res.set('Content-Type', register.contentType);
     res.end(metrics);
   } catch (err) {
-    res.status(500).end(err.message);
+    res.status(500).type('text/plain').end('Internal server error');
   }
 });
 

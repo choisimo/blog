@@ -8,16 +8,23 @@
  */
 
 import { Hono } from 'hono';
+import { buildPublicRuntimeConfig } from '@blog/shared/contracts/public-runtime-config';
 import type { HonoEnv } from './types';
 import { corsMiddleware } from './middleware/cors';
 import { loggerMiddleware } from './middleware/logger';
 import { tracingMiddleware } from './middleware/tracing';
 import { errorHandler } from './middleware/error';
+import { validateIapJwt } from './middleware/iap';
 import { success } from './lib/response';
 import { getCorsHeadersForRequest } from './lib/cors';
 import { getApiBaseUrl, getAiDefaultModel, getAiVisionModel } from './lib/config';
 import type { Env } from './types';
 import { flushAiArtifactOutbox } from './lib/ai-artifact-outbox';
+import {
+  replaceActiveEditorPicks,
+  selectTopEditorPicks,
+  type EditorPickStatRow,
+} from './lib/editor-picks';
 import {
   buildProxyBoundaryHeaders,
   canProxyPath,
@@ -44,7 +51,7 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
     );
   }
 
-  if (!canProxyPath(url.pathname)) {
+  if (!canProxyPath(url.pathname, request.method)) {
     const corsHeaders = await getCorsHeadersForRequest(request, env);
     return new Response(
       JSON.stringify({
@@ -56,7 +63,7 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
         headers: {
           'Content-Type': 'application/json',
           ...corsHeaders,
-          ...buildProxyBoundaryHeaders(url.pathname),
+          ...buildProxyBoundaryHeaders(url.pathname, request.method),
         },
       },
     );
@@ -65,7 +72,6 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
   const backendUrl = new URL(url.pathname + url.search, backendOrigin);
   const headers = new Headers(request.headers);
   headers.delete('Host');
-  headers.set('Host', 'blog-b.nodove.com');
 
   if (env.BACKEND_KEY) {
     headers.set('X-Backend-Key', env.BACKEND_KEY);
@@ -119,7 +125,9 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
     for (const [key, value] of Object.entries(corsHeaders)) {
       responseHeaders.set(key, value);
     }
-    for (const [key, value] of Object.entries(buildProxyBoundaryHeaders(url.pathname))) {
+    for (const [key, value] of Object.entries(
+      buildProxyBoundaryHeaders(url.pathname, request.method)
+    ) as [string, string][]) {
       responseHeaders.set(key, value);
     }
 
@@ -163,7 +171,7 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
           'Content-Type': 'application/json',
           'Retry-After': '30',
           ...corsHeaders,
-          ...buildProxyBoundaryHeaders(url.pathname),
+          ...buildProxyBoundaryHeaders(url.pathname, request.method),
         },
       },
     );
@@ -171,6 +179,7 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
 }
 
 app.use('*', corsMiddleware);
+app.use('*', validateIapJwt);
 app.use('*', loggerMiddleware);
 app.use('/api/v1/ai/*', tracingMiddleware);
 app.use('/api/v1/chat/*', tracingMiddleware);
@@ -201,27 +210,28 @@ async function buildPublicConfig(env: Env) {
     getAiDefaultModel(env),
     getAiVisionModel(env),
   ]);
+  const supportsChatWebSocket = false;
   const terminalEnabled = env.FEATURE_TERMINAL_ENABLED === 'true';
-  const chatWsBaseUrl = apiBaseUrl.replace(/^http:\/\//, 'ws://').replace(/^https:\/\//, 'wss://');
-
-  return {
+  return buildPublicRuntimeConfig({
     env: env.ENV,
+    siteBaseUrl: env.PUBLIC_SITE_URL,
     apiBaseUrl,
     chatBaseUrl: apiBaseUrl,
-    chatWsBaseUrl,
+    supportsChatWebSocket,
+    terminalGatewayUrl: env.TERMINAL_GATEWAY_URL,
     ai: {
       modelSelectionEnabled: false,
       defaultModel: forcedModel || null,
       visionModel: forcedVisionModel || null,
     },
     features: {
-      aiEnabled: true,
-      ragEnabled: true,
+      aiEnabled: env.FEATURE_AI_ENABLED === 'true',
+      ragEnabled: env.FEATURE_RAG_ENABLED === 'true',
       terminalEnabled,
-      aiInline: true,
-      commentsEnabled: true,
+      aiInline: env.FEATURE_AI_INLINE === 'true',
+      commentsEnabled: env.FEATURE_COMMENTS_ENABLED === 'true',
     },
-  };
+  });
 }
 
 app.get('/public/config', async (c) => {
@@ -281,49 +291,14 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
         });
         const statsData = await statsResp.json<{
           ok?: boolean;
-          data?: { stats?: Array<{ post_slug: string; year: string; total_views: number; views_7d: number; views_30d: number }> };
+          data?: { stats?: EditorPickStatRow[] };
         }>().catch(() => null);
 
         const allStats = statsData?.data?.stats || [];
-        const scored = allStats
-          .filter((s) => s.total_views > 0)
-          .map((s) => ({
-            ...s,
-            score: s.views_7d * 0.5 + s.views_30d * 0.3 + s.total_views * 0.2,
-          }))
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 10);
+        const topPicks = selectTopEditorPicks(allStats);
 
-        if (scored.length > 0) {
-          const db = env.DB;
-          await db.prepare(`UPDATE editor_picks SET is_active = 0, updated_at = datetime('now')`).run();
-
-          const expiresAt = new Date();
-          expiresAt.setDate(expiresAt.getDate() + 1);
-          expiresAt.setHours(6, 0, 0, 0);
-          const expiresAtStr = expiresAt.toISOString();
-
-          const topPicks = scored.slice(0, 3);
-          for (let i = 0; i < topPicks.length; i++) {
-            const postItem = topPicks[i];
-            if (!postItem) continue;
-            let reason = 'Popular post';
-            if (postItem.views_7d > postItem.views_30d * 0.5) reason = 'Trending this week';
-            else if (postItem.total_views > 100) reason = 'Evergreen favorite';
-
-            await db
-              .prepare(
-                `INSERT INTO editor_picks (post_slug, year, title, rank, score, reason, expires_at, is_active)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, 1)
-                 ON CONFLICT(post_slug, year)
-                 DO UPDATE SET rank = ?, score = ?, reason = ?, expires_at = ?, is_active = 1, picked_at = datetime('now'), updated_at = datetime('now')`
-              )
-              .bind(
-                postItem.post_slug, postItem.year, '', i + 1, postItem.score, reason, expiresAtStr,
-                i + 1, postItem.score, reason, expiresAtStr
-              )
-              .run();
-          }
+        if (topPicks.length > 0) {
+          await replaceActiveEditorPicks(env.DB, topPicks);
           console.log(`Updated ${topPicks.length} editor picks from Backend stats`);
         }
       } catch (picksErr) {

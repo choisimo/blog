@@ -123,16 +123,26 @@ export async function verifyTotp(
   code: string,
   window = 1
 ): Promise<boolean> {
-  if (!/^\d{6}$/.test(code)) return false;
+  return (await findMatchingTotpStep(secret, code, window)) !== null;
+}
+
+export async function findMatchingTotpStep(
+  secret: string,
+  code: string,
+  window = 1
+): Promise<number | null> {
+  if (!/^\d{6}$/.test(code)) return null;
 
   const userCode = parseInt(code, 10);
   const secretBytes = base32Decode(secret);
-  const counter = BigInt(Math.floor(Date.now() / 1000 / 30));
+  const counter = Math.floor(Date.now() / 1000 / 30);
 
   for (let delta = -window; delta <= window; delta++) {
-    const expected = await hotp(secretBytes, counter + BigInt(delta));
-    if (expected === userCode) return true;
+    const step = counter + delta;
+    if (step < 0) continue;
+    const expected = await hotp(secretBytes, BigInt(step));
+    if (expected === userCode) return step;
   }
 
-  return false;
+  return null;
 }

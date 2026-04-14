@@ -9,6 +9,7 @@ import { WORKER_DEPLOYMENTS } from '../../../shared/src/contracts/workers.js';
 const router = Router();
 
 const WORKERS_ROOT = path.join(config.content.repoRoot, 'workers');
+const workerMutationsEnabled = process.env.ADMIN_WORKER_MUTATIONS === 'true';
 
 
 const WORKERS_CONFIG = WORKER_DEPLOYMENTS.map((worker) => ({
@@ -28,6 +29,19 @@ const KNOWN_SECRETS = [
   { key: 'INTERNAL_KEY', description: 'API GW → R2 GW 인증 키 (X-Internal-Key)', workers: ['api-gateway', 'r2-gateway'] },
   { key: 'TERMINAL_SESSION_SECRET', description: 'Terminal connect token signing key', workers: ['terminal-gateway'] },
 ];
+
+function requireWorkerMutationCapability(req, res, next) {
+  if (!workerMutationsEnabled) {
+    return res.status(403).json({
+      ok: false,
+      error: {
+        code: 'WORKER_MUTATIONS_DISABLED',
+        message: 'Worker mutations are disabled in this environment. Use CI/GitOps.',
+      },
+    });
+  }
+  next();
+}
 
 router.get('/list', requireAdmin, async (req, res) => {
   try {
@@ -49,6 +63,7 @@ router.get('/list', requireAdmin, async (req, res) => {
           ...w,
           exists,
           config,
+          mutationsEnabled: workerMutationsEnabled,
         };
       })
     );
@@ -89,7 +104,7 @@ router.get('/:workerId/config', requireAdmin, async (req, res) => {
   }
 });
 
-router.post('/:workerId/vars', requireAdmin, async (req, res) => {
+router.post('/:workerId/vars', requireAdmin, requireWorkerMutationCapability, async (req, res) => {
   const { workerId } = req.params;
   const { vars, env = 'development' } = req.body;
   const worker = WORKERS_CONFIG.find((w) => w.id === workerId);
@@ -127,7 +142,7 @@ router.post('/:workerId/vars', requireAdmin, async (req, res) => {
   }
 });
 
-router.post('/:workerId/secret', requireAdmin, async (req, res) => {
+router.post('/:workerId/secret', requireAdmin, requireWorkerMutationCapability, async (req, res) => {
   const { workerId } = req.params;
   const { key, value, env = 'production' } = req.body;
   const worker = WORKERS_CONFIG.find((w) => w.id === workerId);
@@ -155,7 +170,7 @@ router.post('/:workerId/secret', requireAdmin, async (req, res) => {
   }
 });
 
-router.post('/:workerId/deploy', requireAdmin, async (req, res) => {
+router.post('/:workerId/deploy', requireAdmin, requireWorkerMutationCapability, async (req, res) => {
   const { workerId } = req.params;
   const { env = 'production', dryRun = false } = req.body;
   const worker = WORKERS_CONFIG.find((w) => w.id === workerId);

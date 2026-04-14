@@ -2,13 +2,14 @@ import type { Env } from './types';
 import { isCrawler } from './crawler-detect';
 import { resolvePostMeta } from './post-resolver';
 import { createRewriter } from './meta-rewriter';
-
-const GITHUB_PAGES_CDN = 'https://choisimo.github.io/blog';
-// JSON manifests must bypass GitHub Pages/Fastly cache (which has max-age=31536000,immutable).
-// raw.githubusercontent.com serves repo files fresh on every request with no immutable caching.
-const RAW_GITHUB_SOURCE = 'https://raw.githubusercontent.com/choisimo/blog/main/frontend/public';
-// index.html lives at repo root (Vite template), not under public/
-const RAW_INDEX_HTML_URL = 'https://raw.githubusercontent.com/choisimo/blog/main/frontend/index.html';
+const HTML_SECURITY_HEADERS = Object.freeze({
+  'Content-Security-Policy':
+    "default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' https: data: blob:; font-src 'self' https: data:; connect-src 'self' https: wss:; frame-src 'self' https:; base-uri 'self'; frame-ancestors 'self'",
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+});
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -36,18 +37,71 @@ function getMimeType(path: string): string {
   return MIME_TYPES[ext] || 'application/octet-stream';
 }
 
-async function fetchFromRawGitHub(path: string): Promise<Response> {
+function applyHtmlSecurityHeaders(headers: Headers): Headers {
+  for (const [key, value] of Object.entries(HTML_SECURITY_HEADERS)) {
+    headers.set(key, value);
+  }
+  return headers;
+}
+
+function normalizeOrigin(url: string): string {
+  return url.replace(/\/$/, '');
+}
+
+function getPagesOrigin(env: Env): string | null {
+  return env.GITHUB_PAGES_ORIGIN ? normalizeOrigin(env.GITHUB_PAGES_ORIGIN) : null;
+}
+
+function getRawContentOrigin(env: Env): string | null {
+  return env.RAW_CONTENT_ORIGIN
+    ? normalizeOrigin(env.RAW_CONTENT_ORIGIN)
+    : getPagesOrigin(env);
+}
+
+async function fetchBuiltIndexHtml(env: Env): Promise<Response> {
+  const pagesOrigin = getPagesOrigin(env);
+  if (!pagesOrigin) {
+    return new Response('SEO origin configuration missing', { status: 500 });
+  }
+
+  const response = await fetch(`${pagesOrigin}/index.html`, {
+    headers: { 'User-Agent': 'SEO-Gateway/1.0' },
+    redirect: 'follow',
+  });
+
+  if (!response.ok) {
+    return response;
+  }
+
+  const headers = new Headers(response.headers);
+  headers.set('Content-Type', 'text/html; charset=utf-8');
+  headers.set('Cache-Control', 'public, max-age=300');
+  applyHtmlSecurityHeaders(headers);
+
+  return new Response(response.body, {
+    status: response.status,
+    headers,
+  });
+}
+
+async function fetchFromConfiguredOrigins(env: Env, path: string): Promise<Response> {
   const strippedPath = path.split('?')[0];
   const isJson = strippedPath.endsWith('.json');
   const isIndexHtml = strippedPath === '/' || strippedPath === '/index.html' || strippedPath === '';
+  const pagesOrigin = getPagesOrigin(env);
+  const rawOrigin = getRawContentOrigin(env);
+
+  if (!pagesOrigin || !rawOrigin) {
+    return new Response('SEO origin configuration missing', { status: 500 });
+  }
 
   let fetchUrl: string;
   if (isJson) {
-    fetchUrl = `${RAW_GITHUB_SOURCE}${strippedPath}`;
+    fetchUrl = `${rawOrigin}${strippedPath}`;
   } else if (isIndexHtml) {
-    fetchUrl = `${GITHUB_PAGES_CDN}/index.html`;
+    fetchUrl = `${pagesOrigin}/index.html`;
   } else {
-    fetchUrl = `${GITHUB_PAGES_CDN}${strippedPath}`;
+    fetchUrl = `${pagesOrigin}${strippedPath}`;
   }
 
   const response = await fetch(fetchUrl, {
@@ -69,7 +123,9 @@ async function fetchFromRawGitHub(path: string): Promise<Response> {
   } else {
     newHeaders.set('Cache-Control', 'public, max-age=300');
   }
-  newHeaders.delete('Content-Security-Policy');
+  if (contentType.startsWith('text/html')) {
+    applyHtmlSecurityHeaders(newHeaders);
+  }
   
   return new Response(response.body, {
     status: response.status,
@@ -90,8 +146,8 @@ export default {
         meta, 
         isCrawler: isCrawler(userAgent),
         origins: {
-          raw: env.GITHUB_PAGES_ORIGIN,
-          cdn: GITHUB_PAGES_CDN
+          pages: env.GITHUB_PAGES_ORIGIN,
+          raw: env.RAW_CONTENT_ORIGIN ?? env.GITHUB_PAGES_ORIGIN
         }
       }, null, 2), {
         headers: { 'Content-Type': 'application/json' },
@@ -102,19 +158,16 @@ export default {
       let requestPath = url.pathname;
       
       if (requestPath.includes('.')) {
-        return fetchFromRawGitHub(requestPath + url.search);
+        return fetchFromConfiguredOrigins(env, requestPath + url.search);
       }
       
-      const htmlResponse = await fetchFromRawGitHub('/index.html');
+      const htmlResponse = await fetchBuiltIndexHtml(env);
       return htmlResponse;
     }
 
     const meta = await resolvePostMeta(url, env);
 
-    const originResponse = await fetch(RAW_INDEX_HTML_URL, {
-      headers: { 'User-Agent': 'SEO-Gateway/1.0' },
-      redirect: 'follow',
-    });
+    const originResponse = await fetchBuiltIndexHtml(env);
 
     if (!originResponse.ok) {
       return new Response('Not Found', { status: 404 });
@@ -127,6 +180,7 @@ export default {
     newHeaders.set('Content-Type', 'text/html; charset=utf-8');
     newHeaders.set('X-SEO-Gateway', 'active');
     newHeaders.set('Cache-Control', 'public, max-age=300');
+    applyHtmlSecurityHeaders(newHeaders);
 
     return new Response(transformedResponse.body, {
       status: 200,
