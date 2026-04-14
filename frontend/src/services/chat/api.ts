@@ -8,8 +8,6 @@ import { getApiBaseUrl } from "@/utils/network/apiBase";
 import {
   buildChatUrl,
   buildChatHeaders,
-  buildChatWebSocketUrl,
-  shouldUseChatWebSocket,
 } from "./config";
 import { ensureSession, storeSessionId } from "./session";
 import {
@@ -24,7 +22,6 @@ import {
 import {
   getParserForContentType,
   createFirstTokenTracker,
-  parseStreamObject,
 } from "./stream";
 import type {
   ChatStreamEvent,
@@ -36,8 +33,7 @@ import type {
   ThoughtFeedRequest,
   ThoughtFeedResponse,
   ChatImageUploadResult,
-  ContentPart,
-  ChatErrorCode,
+  ContentPart
 } from "./types";
 import { ChatError } from "./types";
 
@@ -95,26 +91,6 @@ function getEnvelopeData(parsed: unknown): unknown {
     envelope.payload ??
     parsed
   );
-}
-
-function getParsedObject(parsed: unknown): Record<string, unknown> | null {
-  return parsed && typeof parsed === "object"
-    ? (parsed as Record<string, unknown>)
-    : null;
-}
-
-function getStreamErrorMessage(payload: Record<string, unknown>): string {
-  return typeof payload.error === "string"
-    ? payload.error
-    : typeof payload.message === "string"
-      ? payload.message
-      : "Chat failed";
-}
-
-function getStreamErrorCode(payload: Record<string, unknown>): ChatErrorCode {
-  return typeof payload.code === "string"
-    ? (payload.code as ChatErrorCode)
-    : "SERVER_ERROR";
 }
 
 async function postSessionJson<T>(
@@ -245,32 +221,6 @@ export async function* streamChatEvents(
   const sessionID = await ensureSession();
   const { page, parts, enableRag } = buildStreamPayload(input);
 
-  if (shouldUseChatWebSocket()) {
-    let gotEvent = false;
-    try {
-      for await (const event of streamChatEventsWebSocket({
-        sessionId: sessionID,
-        parts,
-        page,
-        signal: input.signal,
-        onFirstToken: input.onFirstToken,
-        enableRag,
-      })) {
-        gotEvent = true;
-        yield event;
-      }
-      return;
-    } catch (err) {
-      if (input.signal?.aborted) {
-        throw err;
-      }
-      if (gotEvent) {
-        throw err;
-      }
-      console.warn("[Chat] WebSocket failed, falling back to SSE:", err);
-    }
-  }
-
   const url = buildChatUrl("/message", sessionID);
   const headers = buildChatHeaders("stream");
 
@@ -389,159 +339,6 @@ function buildStreamPayload(input: StreamChatInput): {
   }
 
   return { page, parts, enableRag: input.enableRag ?? false };
-}
-
-async function* streamChatEventsWebSocket(input: {
-  sessionId: string;
-  parts: ContentPart[];
-  page: { url?: string; title?: string };
-  signal?: AbortSignal;
-  onFirstToken?: (ms: number) => void;
-  enableRag?: boolean;
-}): AsyncGenerator<ChatStreamEvent, void, void> {
-  const url = buildChatWebSocketUrl(input.sessionId);
-  const ws = new WebSocket(url);
-  const queue: ChatStreamEvent[] = [];
-  let resolveQueue: (() => void) | null = null;
-  let closed = false;
-  let error: ChatError | null = null;
-
-  const markFirst = createFirstTokenTracker(input.onFirstToken);
-
-  const wake = () => {
-    if (resolveQueue) {
-      resolveQueue();
-      resolveQueue = null;
-    }
-  };
-
-  const push = (event: ChatStreamEvent) => {
-    if (event.type === "text") markFirst();
-    queue.push(event);
-    wake();
-  };
-
-  const finish = (err?: ChatError | null) => {
-    if (closed) return;
-    closed = true;
-    error = err ?? null;
-    try {
-      if (
-        ws.readyState === WebSocket.OPEN ||
-        ws.readyState === WebSocket.CONNECTING
-      ) {
-        ws.close(1000, "stream end");
-      }
-    } catch {
-      // ignore close errors
-    }
-    wake();
-  };
-
-  const handleAbort = () => {
-    finish(new ChatError("Request aborted", "ABORTED"));
-  };
-
-  if (input.signal) {
-    if (input.signal.aborted) {
-      handleAbort();
-    } else {
-      input.signal.addEventListener("abort", handleAbort, { once: true });
-    }
-  }
-
-  ws.onopen = () => {
-    ws.send(
-      JSON.stringify({
-        type: "message",
-        sessionId: input.sessionId,
-        parts: input.parts,
-        context: { page: input.page },
-        enableRag: input.enableRag,
-      }),
-    );
-  };
-
-  ws.onmessage = (event) => {
-    const raw = typeof event.data === "string" ? event.data : "";
-    if (!raw) return;
-
-    try {
-      const payload = JSON.parse(raw) as unknown;
-      const payloadObject = getParsedObject(payload);
-      if (!payloadObject) return;
-
-      if (
-        payloadObject.type === "session" &&
-        typeof payloadObject.sessionId === "string"
-      ) {
-        storeSessionId(payloadObject.sessionId);
-        return;
-      }
-
-      if (payloadObject.type === "done") {
-        push({ type: "done" });
-        finish();
-        return;
-      }
-
-      if (payloadObject.type === "error") {
-        finish(
-          new ChatError(
-            getStreamErrorMessage(payloadObject),
-            getStreamErrorCode(payloadObject),
-          ),
-        );
-        return;
-      }
-
-      const events = parseStreamObject(payloadObject);
-      if (events.length === 0 && typeof payloadObject.text === "string") {
-        push({ type: "text", text: payloadObject.text });
-        return;
-      }
-
-      for (const evt of events) {
-        push(evt);
-      }
-    } catch {
-      // ignore malformed payloads
-    }
-  };
-
-  ws.onerror = () => {
-    finish(new ChatError("WebSocket error", "NETWORK_ERROR"));
-  };
-
-  ws.onclose = () => {
-    finish();
-  };
-
-  try {
-    while (true) {
-      if (queue.length > 0) {
-        const next = queue.shift();
-        if (next) {
-          yield next;
-          if (next.type === "done") return;
-          continue;
-        }
-      }
-
-      if (closed) {
-        if (error) throw error;
-        return;
-      }
-
-      await new Promise<void>((resolve) => {
-        resolveQueue = resolve;
-      });
-    }
-  } finally {
-    if (input.signal) {
-      input.signal.removeEventListener("abort", handleAbort);
-    }
-  }
 }
 
 /**

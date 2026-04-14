@@ -13,10 +13,10 @@
 
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { Env } from '../types';
-import { error, forbidden } from '../lib/response';
+import { forbidden } from '../lib/response';
 import { requireAdmin, requireAuth } from '../middleware/auth';
+import { proxyToBackendWithPolicy } from '../lib/backend-proxy';
 
 type RagContext = { Bindings: Env };
 
@@ -35,54 +35,13 @@ async function proxyToBackend(
   method: 'GET' | 'POST' | 'DELETE' = 'POST',
   body?: BodyInit | null
 ) {
-  const backendOrigin = c.env.BACKEND_ORIGIN;
-  if (!backendOrigin) {
-    return error(c, 'BACKEND_ORIGIN not configured', 500, 'CONFIG_ERROR');
-  }
-
-  // Preserve query string for GET requests (e.g. /status?collection=xxx)
-  const url = new URL(c.req.url);
-  const upstreamUrl = `${backendOrigin}/api/v1/rag${path}${url.search}`;
-
-  const headers = new Headers();
-
-  // Inject backend authentication key
-  if (c.env.BACKEND_KEY) {
-    headers.set('X-Backend-Key', c.env.BACKEND_KEY);
-  }
-
-  // Forward original Authorization header so backend requireAdmin can validate JWT
-  const authHeader = c.req.header('Authorization');
-  if (authHeader) {
-    headers.set('Authorization', authHeader);
-  }
-
-  const requestInit: RequestInit = {
+  return proxyToBackendWithPolicy(c, {
+    upstreamPath: `/api/v1/rag${path}`,
     method,
-    headers,
-  };
-
-  if (method !== 'GET') {
-    requestInit.body = body ?? (await c.req.text());
-    if (typeof requestInit.body === 'string') {
-      headers.set('Content-Type', 'application/json');
-    }
-  }
-
-  try {
-    const response = await fetch(upstreamUrl, requestInit);
-    const data = await response.json();
-
-    if (!response.ok) {
-      return error(c, (data as any).error || 'RAG request failed', response.status as ContentfulStatusCode);
-    }
-
-    return c.json(data);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'RAG proxy failed';
-    console.error('RAG proxy error:', message);
-    return error(c, message, 500, 'RAG_PROXY_ERROR');
-  }
+    overrideBody: body === undefined ? undefined : body,
+    contentType: typeof body === 'string' ? 'application/json' : undefined,
+    backendUnavailableMessage: 'Could not connect to RAG backend',
+  });
 }
 
 function getAuthenticatedSub(c: Context<RagContext>): string {

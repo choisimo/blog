@@ -61,13 +61,30 @@ export function getProtectedRouteRegistry() {
 
 export const PROTECTED_ROUTE_REGISTRY = getProtectedRouteRegistry();
 
-export function attachBoundaryHeaders(boundaryId, responder = 'backend') {
+function normalizeMountedPath(basePath, requestPath) {
+  const path = typeof requestPath === 'string' && requestPath.trim() ? requestPath : '/';
+  if (path.startsWith('/api/v1') || path === '/health' || path === '/metrics') {
+    return path;
+  }
+
+  if (path === '/') {
+    return basePath;
+  }
+
+  return `${basePath.replace(/\/$/, '')}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+export function attachBoundaryHeaders(boundaryId, basePath, responder = 'backend') {
   return (req, res, next) => {
-    const headers = buildRouteBoundaryHeaders(boundaryId, {
-      responder,
-      edgeMode: 'origin-bypass',
-      originMode: 'native',
-    });
+    const pathname = normalizeMountedPath(basePath, `${req.baseUrl || ''}${req.path || ''}` || req.originalUrl || basePath);
+    const headers = buildRouteBoundaryHeaders(
+      { id: boundaryId, pathname, method: req.method },
+      {
+        responder,
+        edgeMode: 'origin-bypass',
+        originMode: 'native',
+      },
+    );
 
     for (const [key, value] of Object.entries(headers)) {
       res.setHeader(key, value);
@@ -79,6 +96,6 @@ export function attachBoundaryHeaders(boundaryId, responder = 'backend') {
 
 export function mountRouteRegistry(app, registry, responder = 'backend') {
   for (const entry of registry) {
-    app.use(entry.basePath, attachBoundaryHeaders(entry.boundaryId, responder), entry.router);
+    app.use(entry.basePath, attachBoundaryHeaders(entry.boundaryId, entry.basePath, responder), entry.router);
   }
 }

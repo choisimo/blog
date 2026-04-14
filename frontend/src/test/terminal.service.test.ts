@@ -1,7 +1,7 @@
 import { act, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { connectTerminal } from '@/services/realtime/terminal';
+import { connectTerminal, getTerminalGatewayUrl } from '@/services/realtime/terminal';
 import { cancelTokenRefresh, useAuthStore } from '@/stores/session/useAuthStore';
 
 function createToken(expiresInSeconds = 3600) {
@@ -65,10 +65,19 @@ describe('terminal service security hardening', () => {
     MockWebSocket.instances = [];
     globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
     (window as Window & {
-      APP_CONFIG?: { terminalGatewayUrl?: string | null };
-      __APP_CONFIG?: { terminalGatewayUrl?: string | null };
+      APP_CONFIG?: {
+        terminalGatewayUrl?: string | null;
+        features?: { terminalEnabled?: boolean };
+      };
+      __APP_CONFIG?: {
+        terminalGatewayUrl?: string | null;
+        features?: { terminalEnabled?: boolean };
+      };
     }).APP_CONFIG = {
       terminalGatewayUrl: 'wss://terminal.nodove.com',
+      features: {
+        terminalEnabled: true,
+      },
     };
     delete (window as Window & { __APP_CONFIG?: unknown }).__APP_CONFIG;
   });
@@ -186,5 +195,23 @@ describe('terminal service security hardening', () => {
 
     expect(MockWebSocket.instances).toHaveLength(0);
     expect(document.cookie).not.toContain('terminal_token=');
+  });
+
+  it('does not allow runtime overrides when the terminal feature is disabled', () => {
+    localStorage.setItem('aiMemo.terminalGatewayUrl', JSON.stringify('wss://override.example.com'));
+    (window as Window & {
+      APP_CONFIG?: {
+        terminalGatewayUrl?: string | null;
+        features?: { terminalEnabled?: boolean };
+      };
+    }).APP_CONFIG = {
+      terminalGatewayUrl: 'wss://terminal.nodove.com',
+      features: {
+        terminalEnabled: false,
+      },
+    };
+
+    expect(getTerminalGatewayUrl()).toBeNull();
+    expect(connectTerminal()).toBeNull();
   });
 });

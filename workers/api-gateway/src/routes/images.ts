@@ -1,12 +1,13 @@
 import { Hono } from 'hono';
 import type { HonoEnv, Env } from '../types';
-import { success, badRequest, notFound, error } from '../lib/response';
+import { success, badRequest, error } from '../lib/response';
 import { execute } from '../lib/d1';
 import { requireAdmin } from '../middleware/auth';
 import { createAIService } from '../lib/ai-service';
 import { getAllowedOrigins } from '../lib/cors';
 import { getSecret } from '../lib/secrets';
 import { getApiBaseUrl } from '../lib/config';
+import { proxyToBackendWithPolicy } from '../lib/backend-proxy';
 
 const images = new Hono<HonoEnv>();
 
@@ -27,30 +28,9 @@ async function resolveAssetsBaseUrl(env: Env): Promise<string> {
 }
 
 images.post('/upload', requireAdmin, async (c) => {
-  const backendOrigin = c.env.BACKEND_ORIGIN;
-  if (!backendOrigin) {
-    return error(c, 'BACKEND_ORIGIN not configured', 500, 'CONFIG_ERROR');
-  }
-
-  const upstream = new URL('/api/v1/images/upload', backendOrigin);
-  const headers = new Headers(c.req.raw.headers);
-  headers.delete('host');
-  if (c.env.BACKEND_KEY) {
-    headers.set('X-Backend-Key', c.env.BACKEND_KEY);
-  }
-
-  const response = await fetch(upstream.toString(), {
-    method: 'POST',
-    headers,
-    body: c.req.raw.body,
-    redirect: 'manual',
-    signal: c.req.raw.signal,
-  });
-
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers: response.headers,
+  return proxyToBackendWithPolicy(c, {
+    upstreamPath: '/api/v1/images/upload',
+    backendUnavailableMessage: 'Could not connect to images backend',
   });
 });
 

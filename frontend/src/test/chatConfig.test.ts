@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { buildChatWebSocketUrl } from "@/services/chat/config";
+import {
+  buildChatWebSocketUrl,
+  shouldUseChatWebSocket,
+} from "@/services/chat/config";
 
 describe("chat websocket capability gating", () => {
   const originalAppConfig = (window as Window & {
@@ -28,14 +31,15 @@ describe("chat websocket capability gating", () => {
     delete (window as Window & { __APP_CONFIG?: unknown }).__APP_CONFIG;
   });
 
-  it("refuses local websocket overrides when runtime capability is disabled", () => {
+  it("refuses websocket transport even when legacy overrides are present", () => {
     localStorage.setItem(
       "aiMemo.chatWsBaseUrl",
       JSON.stringify("wss://override.example.com"),
     );
 
+    expect(shouldUseChatWebSocket()).toBe(false);
     expect(() => buildChatWebSocketUrl("session-1")).toThrow(
-      "Chat WebSocket capability is disabled",
+      "Chat WebSocket transport has been removed; use SSE streaming instead",
     );
   });
 });

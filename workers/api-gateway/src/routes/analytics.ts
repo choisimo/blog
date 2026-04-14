@@ -1,7 +1,9 @@
 import { Hono } from 'hono';
-import type { HonoEnv, Env, PostStats, EditorPick } from '../types';
+import type { Context } from 'hono';
+import type { HonoEnv, PostStats, EditorPick } from '../types';
 import { queryOne, queryAll, execute } from '../lib/d1';
 import { success, error, badRequest, notFound } from '../lib/response';
+import { proxyToBackendWithPolicy } from '../lib/backend-proxy';
 import { requireAdmin } from '../middleware/auth';
 import { buildDataOwnershipHeaders } from '../../../../shared/src/contracts/data-ownership.js';
 import {
@@ -16,35 +18,35 @@ import {
 // to api.example.com (this worker itself) and would cause an infinite loop.
 // ---------------------------------------------------------------------------
 async function proxyToBackend(
-  env: Env,
+  c: Context<HonoEnv>,
   path: string,
   method: 'GET' | 'POST',
   body?: unknown,
   query?: string
 ): Promise<{ ok: boolean; data?: unknown; error?: string; status: number }> {
-  const backendOrigin = env.BACKEND_ORIGIN;
-  if (!backendOrigin) {
-    return { ok: false, error: 'BACKEND_ORIGIN not configured', status: 500 };
-  }
+  const response = await proxyToBackendWithPolicy(c, {
+    upstreamPath: `/api/v1/analytics${path}${query ? `?${query}` : ''}`,
+    method,
+    preserveQuery: !query,
+    overrideBody: body !== undefined ? JSON.stringify(body) : undefined,
+    contentType: body !== undefined ? 'application/json' : undefined,
+    backendUnavailableMessage: 'Could not connect to analytics backend',
+  });
 
-  const url = `${backendOrigin}/api/v1/analytics${path}${query ? `?${query}` : ''}`;
-  const headers: HeadersInit = { 'Content-Type': 'application/json' };
-  if (env.BACKEND_KEY) {
-    headers['X-Backend-Key'] = env.BACKEND_KEY;
-  }
+  const json = await response.clone().json().catch(() => null);
+  const errorValue = (json as { error?: { message?: string } | string } | null)?.error;
 
-  try {
-    const response = await fetch(url, {
-      method,
-      headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
-    const json = await response.json().catch(() => null);
-    return { ok: response.ok, data: json, status: response.status };
-  } catch (err) {
-    console.error(`Backend proxy error [${method} ${path}]:`, err);
-    return { ok: false, error: 'Backend unavailable', status: 503 };
-  }
+  return {
+    ok: response.ok,
+    data: json ?? undefined,
+    error:
+      typeof errorValue === 'string'
+        ? errorValue
+        : errorValue && typeof errorValue === 'object'
+          ? (errorValue.message ?? undefined)
+          : undefined,
+    status: response.status,
+  };
 }
 
 const app = new Hono<HonoEnv>();
@@ -69,7 +71,7 @@ app.post('/view', async (c) => {
       return error(c, 'year and slug are required', 400);
     }
 
-    const result = await proxyToBackend(c.env, '/view', 'POST', body);
+    const result = await proxyToBackend(c, '/view', 'POST', body);
     if (!result.ok) {
       console.error('Backend view proxy failed:', result.error || result.status);
       return error(c, result.error || 'Failed to record view', result.status as 400 | 500 | 503);
@@ -92,7 +94,7 @@ app.get('/stats/:year/:slug', async (c) => {
     applyDataOwnership(c, 'analytics.post_stats');
     const { year, slug } = c.req.param();
 
-    const result = await proxyToBackend(c.env, `/stats/${year}/${slug}`, 'GET');
+    const result = await proxyToBackend(c, `/stats/${year}/${slug}`, 'GET');
     if (!result.ok) {
       console.warn('Backend stats proxy failed:', result.error || result.status);
       return c.json(
@@ -159,7 +161,7 @@ app.get('/trending', async (c) => {
     const days = parseInt(c.req.query('days') || '7');
 
     const query = `limit=${limit}&offset=${offset}&days=${days}`;
-    const result = await proxyToBackend(c.env, '/trending', 'GET', undefined, query);
+    const result = await proxyToBackend(c, '/trending', 'GET', undefined, query);
     if (!result.ok) {
       console.warn('Backend trending proxy failed:', result.error || result.status);
       return c.json(
@@ -197,7 +199,7 @@ app.get('/trending', async (c) => {
 app.post('/refresh-stats', requireAdmin, async (c) => {
   try {
     applyDataOwnership(c, 'analytics.post_stats');
-    const result = await proxyToBackend(c.env, '/refresh-stats', 'POST');
+    const result = await proxyToBackend(c, '/refresh-stats', 'POST');
     if (!result.ok) {
       return error(c, result.error || 'Failed to refresh stats', result.status as 500 | 503);
     }
@@ -220,7 +222,7 @@ app.post('/update-editor-picks', requireAdmin, async (c) => {
 
     // Fetch top posts stats from Backend (Postgres is the canonical source)
     const statsResult = await proxyToBackend(
-      c.env,
+      c,
       '/all-stats',
       'GET',
       undefined,

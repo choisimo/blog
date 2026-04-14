@@ -46,6 +46,14 @@ let currentProviderSnapshot = null;
 /** @type {Promise<ProviderSnapshot> | null} */
 let providerRefreshPromise = null;
 
+/** @type {{status: 'unknown' | 'ok' | 'degraded', source: 'worker' | 'env' | 'none', reason: string | null, updatedAt: string | null}} */
+let aiConfigHealth = {
+  status: 'unknown',
+  source: 'none',
+  reason: null,
+  updatedAt: null,
+};
+
 // =============================================================================
 // Types (JSDoc)
 // =============================================================================
@@ -126,6 +134,18 @@ let providerRefreshPromise = null;
  */
 function buildFingerprint(baseUrl, apiKey, defaultModel) {
   return `${baseUrl}::${apiKey ?? ''}::${defaultModel ?? ''}`;
+}
+
+function markAiConfigHealth(next) {
+  aiConfigHealth = {
+    ...aiConfigHealth,
+    ...next,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export function getAiConfigHealth() {
+  return { ...aiConfigHealth };
 }
 
 /**
@@ -236,6 +256,12 @@ async function refreshAIConfig() {
         );
       }
 
+      markAiConfigHealth({
+        status: 'ok',
+        source: snapshot.source,
+        reason: null,
+      });
+
       return snapshot;
     } catch (err) {
       logger.warn(
@@ -250,11 +276,21 @@ async function refreshAIConfig() {
           ...currentSnapshot,
           expiresAt: Date.now() + CACHE_TTL_MS,
         };
+        markAiConfigHealth({
+          status: 'degraded',
+          source: currentSnapshot.source,
+          reason: err.message,
+        });
         return currentSnapshot;
       }
 
       const fallback = getEnvFallbackSnapshot();
       currentSnapshot = fallback;
+      markAiConfigHealth({
+        status: 'degraded',
+        source: fallback.source,
+        reason: err.message,
+      });
       return fallback;
     } finally {
       refreshPromise = null;
@@ -282,6 +318,11 @@ async function refreshAIConfig() {
 export function getCachedAIConfigSnapshot() {
   if (!currentSnapshot) {
     currentSnapshot = getEnvFallbackSnapshot();
+    markAiConfigHealth({
+      status: 'degraded',
+      source: currentSnapshot.source,
+      reason: 'Using local fallback until Worker config refresh succeeds',
+    });
     // Fire background refresh to populate from Worker ASAP
     refreshAIConfig().catch(() => {}); // swallow, already logged inside
     return currentSnapshot;
@@ -328,6 +369,12 @@ export function invalidateAIConfigCache() {
   refreshPromise = null;
   currentProviderSnapshot = null;
   providerRefreshPromise = null;
+  aiConfigHealth = {
+    status: 'unknown',
+    source: 'none',
+    reason: null,
+    updatedAt: new Date().toISOString(),
+  };
   logger.info({ operation: 'invalidate' }, 'AI config cache invalidated');
 }
 
@@ -338,6 +385,11 @@ export function invalidateAIConfigCache() {
 export function primeAIConfigRefresh() {
   const workerApiUrl = config.services?.workerApiUrl;
   if (!workerApiUrl) {
+    markAiConfigHealth({
+      status: 'degraded',
+      source: 'env',
+      reason: 'WORKER_API_URL is not configured',
+    });
     logger.warn(
       { operation: 'prime' },
       '⚠️  WORKER_API_URL is not configured. AI config will use local env fallback only. ' +

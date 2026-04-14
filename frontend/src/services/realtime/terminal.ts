@@ -12,9 +12,15 @@ import { useAuthStore } from '@/stores/session/useAuthStore';
 type RuntimeWindow = Window & {
   APP_CONFIG?: {
     terminalGatewayUrl?: string | null;
+    features?: {
+      terminalEnabled?: boolean;
+    };
   };
   __APP_CONFIG?: {
     terminalGatewayUrl?: string | null;
+    features?: {
+      terminalEnabled?: boolean;
+    };
   };
 };
 
@@ -42,7 +48,24 @@ export interface TerminalConnection {
 // Configuration
 // ============================================================================
 
+function isTerminalFeatureEnabled(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const runtimeWindow = window as RuntimeWindow;
+  const enabled =
+    runtimeWindow.APP_CONFIG?.features?.terminalEnabled ??
+    runtimeWindow.__APP_CONFIG?.features?.terminalEnabled;
+
+  return enabled === true;
+}
+
 export function getTerminalGatewayUrl(): string | null {
+  if (!isTerminalFeatureEnabled()) {
+    return null;
+  }
+
   // Check localStorage override first (for development)
   try {
     const override = localStorage.getItem('aiMemo.terminalGatewayUrl');

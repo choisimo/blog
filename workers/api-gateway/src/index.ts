@@ -51,7 +51,7 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
     );
   }
 
-  if (!canProxyPath(url.pathname)) {
+  if (!canProxyPath(url.pathname, request.method)) {
     const corsHeaders = await getCorsHeadersForRequest(request, env);
     return new Response(
       JSON.stringify({
@@ -63,7 +63,7 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
         headers: {
           'Content-Type': 'application/json',
           ...corsHeaders,
-          ...buildProxyBoundaryHeaders(url.pathname),
+          ...buildProxyBoundaryHeaders(url.pathname, request.method),
         },
       },
     );
@@ -126,7 +126,7 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
       responseHeaders.set(key, value);
     }
     for (const [key, value] of Object.entries(
-      buildProxyBoundaryHeaders(url.pathname)
+      buildProxyBoundaryHeaders(url.pathname, request.method)
     ) as [string, string][]) {
       responseHeaders.set(key, value);
     }
@@ -171,7 +171,7 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
           'Content-Type': 'application/json',
           'Retry-After': '30',
           ...corsHeaders,
-          ...buildProxyBoundaryHeaders(url.pathname),
+          ...buildProxyBoundaryHeaders(url.pathname, request.method),
         },
       },
     );
