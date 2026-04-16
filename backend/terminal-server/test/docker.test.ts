@@ -29,7 +29,7 @@ test('startContainer tracks container metadata without starting docker eagerly',
   const { containerName, args } = startContainer('user-2');
   const info = getContainerInfo(containerName);
 
-  assert.equal(containerName.startsWith('terminal-user-2-'), true);
+  assert.match(containerName, /^terminal-[0-9a-f]{12}-\d+-[a-z0-9]+$/);
   assert.ok(args.length > 0);
   assert.equal(info?.userId, 'user-2');
 });

@@ -16,7 +16,6 @@ export interface Env {
 
   // KV Namespace
   KV: KVNamespace;
-  TERMINAL_LEASES: DurableObjectNamespace;
 }
 
 export interface JWTPayload {
@@ -37,4 +36,13 @@ export interface RateLimitResult {
   remaining: number;
   resetAt: number;
   reason?: 'limit_exceeded' | 'kv_unavailable';
+}
+
+export interface SessionInfo {
+  sessionId: string;
+  userId: string;
+  clientIP: string;
+  userAgentHash?: string | null;
+  connectedAt: number;
+  lastActivity: number;
 }

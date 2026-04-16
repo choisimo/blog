@@ -109,7 +109,10 @@ services:
     container_name: blog-terminal
     environment:
       - NODE_ENV=production
-      - BACKEND_KEY=${BACKEND_KEY}
+      - TERMINAL_SESSION_SECRET=${TERMINAL_SESSION_SECRET}
+      - TERMINAL_SESSION_TIMEOUT_MS=${TERMINAL_SESSION_TIMEOUT_MS:-600000}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - SANDBOX_IMAGE=${SANDBOX_IMAGE:-alpine:3.20}
     networks:
       - blog-network

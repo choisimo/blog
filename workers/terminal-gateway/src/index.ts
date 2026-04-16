@@ -8,33 +8,20 @@
  * - JWT authentication
  * - Rate limiting (IP-based)
  * - Single session per user
- * - Secret key injection for origin authentication
+ * - Short-lived terminal ticket cookie for browser WebSocket bootstrap
+ * - HMAC admission token injection for terminal-server
  * - Geo-blocking (optional)
  */
 
-import type { Env } from './types';
+import type { Env, SessionInfo } from './types';
 import {
   authenticateTerminalRequest,
   createTerminalTicket,
   TERMINAL_TICKET_COOKIE_NAME,
   verifyToken,
 } from './auth';
-import {
-  createAdmissionToken,
-  getAdmissionTtlSeconds,
-  INTERNAL_AUTH_HEADER,
-  verifyInternalRequest,
-} from './admission';
-import {
-  callLeaseMutation,
-  claimLease,
-  closeLease,
-} from './lease';
-import {
-  checkRateLimit,
-} from './ratelimit';
-
-export { TerminalLeaseObject } from './lease';
+import { createAdmissionToken, getAdmissionTtlSeconds, hashUserAgent } from './admission';
+import { checkRateLimit, createSession, deleteSession, hasActiveSession } from './ratelimit';
 
 const LEGACY_SESSION_COOKIE_NAME = 'terminal_token';
 const DEFAULT_ALLOWED_ORIGINS = [
@@ -162,88 +149,30 @@ async function handleSessionRequest(request: Request, env: Env): Promise<Respons
   return new Response(null, { status: 204, headers });
 }
 
-async function handleInternalLeaseRequest(
-  request: Request,
-  env: Env,
-  pathname: string
-): Promise<Response> {
-  if (request.method !== 'POST') {
-    return new Response('Method Not Allowed', {
-      status: 405,
-      headers: { Allow: 'POST' },
-    });
-  }
-
-  const authorized = await verifyInternalRequest({
-    headerValue: request.headers.get(INTERNAL_AUTH_HEADER),
-    secret: env.TERMINAL_SESSION_SECRET,
-    method: request.method,
-    path: pathname,
-  });
-  if (!authorized) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-
-  const payload = await request
-    .json<{ userId?: string; leaseId?: string }>()
-    .catch(() => null);
-  if (!payload?.userId || !payload.leaseId) {
-    return Response.json(
-      {
-        ok: false,
-        error: 'userId and leaseId are required',
-      },
-      { status: 400, headers: { 'Cache-Control': 'no-store' } }
-    );
-  }
-
-  const action = pathname.split('/').pop();
-  if (action !== 'open' && action !== 'heartbeat' && action !== 'close') {
-    return new Response('Not Found', { status: 404 });
-  }
-
-  return callLeaseMutation(env, action, {
-    userId: payload.userId,
-    leaseId: payload.leaseId,
-  });
-}
-
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    // Health check endpoint
     if (url.pathname === '/health') {
-      return new Response(
-        JSON.stringify({ status: 'ok', env: env.ENV }),
-        {
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return new Response(JSON.stringify({ status: 'ok', env: env.ENV }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     if (url.pathname === '/session') {
       return handleSessionRequest(request, env);
     }
 
-    if (url.pathname.startsWith('/internal/leases/')) {
-      return handleInternalLeaseRequest(request, env, url.pathname);
-    }
-
-    // Only handle /terminal path
     if (url.pathname !== '/terminal' && url.pathname !== '/terminal/') {
       return new Response('Not Found', { status: 404 });
     }
 
-    // 1. Check WebSocket upgrade request
     const upgradeHeader = request.headers.get('Upgrade');
     if (!upgradeHeader || upgradeHeader.toLowerCase() !== 'websocket') {
       return new Response('Expected Upgrade: websocket', { status: 426 });
     }
 
-    // 2. Extract and verify token
     const user = await authenticateTerminalRequest(request, env);
-
     if (!user) {
       return new Response('Unauthorized', { status: 401 });
     }
@@ -252,7 +181,6 @@ export default {
     const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
     const userAgent = request.headers.get('User-Agent') || '';
 
-    // 3. Rate limiting check
     const rateLimitResult = await checkRateLimit(clientIP, env.KV);
     if (!rateLimitResult.allowed) {
       if (rateLimitResult.reason === 'kv_unavailable') {
@@ -276,19 +204,6 @@ export default {
       });
     }
 
-    const requestId = crypto.randomUUID();
-
-    // 4. Claim an authoritative terminal lease (1 session per user)
-    const claimed = await claimLease(env, {
-      userId,
-      clientIP,
-      leaseId: requestId,
-    });
-    if (!claimed) {
-      return new Response('Session already active', { status: 409 });
-    }
-
-    // 5. Optional: Geo-blocking
     const country = request.cf?.country as string | undefined;
     const blockedCountries = (env.TERMINAL_BLOCKED_COUNTRIES || 'CN,RU,KP')
       .split(',')
@@ -296,13 +211,24 @@ export default {
       .filter(Boolean);
     if (country && blockedCountries.includes(country)) {
       console.log(`Blocked connection from country: ${country}`);
-      await closeLease(env, { userId, leaseId: requestId }).catch((err) => {
-        console.warn('Failed to close blocked terminal lease:', err);
-      });
       return new Response('Forbidden', { status: 403 });
     }
 
-    // 6. Prepare origin request with injected headers
+    if (await hasActiveSession(userId, env.KV)) {
+      return new Response('Session already active', { status: 409 });
+    }
+
+    const requestId = crypto.randomUUID();
+    const sessionInfo: SessionInfo = {
+      sessionId: requestId,
+      userId,
+      clientIP,
+      userAgentHash: await hashUserAgent(userAgent),
+      connectedAt: Date.now(),
+      lastActivity: Date.now(),
+    };
+    await createSession(sessionInfo, env.KV);
+
     const originUrl = `${env.TERMINAL_ORIGIN}/terminal`;
     const originHeaders = new Headers(request.headers);
     const admissionToken = await createAdmissionToken({
@@ -313,9 +239,9 @@ export default {
       requestId,
     });
 
-    // Do not forward browser auth material to the origin.
     originHeaders.delete('Authorization');
     originHeaders.delete('Cookie');
+    originHeaders.delete('Host');
     originHeaders.delete('X-Backend-Key');
     originHeaders.set('X-Terminal-Admission', admissionToken);
     originHeaders.set('X-Client-IP', clientIP);
@@ -327,22 +253,29 @@ export default {
       headers: originHeaders,
     });
 
-    // 7. Proxy to origin
     try {
       const response = await fetch(originRequest);
 
-      // If connection fails or closes, clean up session
       if (!response.ok || response.status >= 400) {
-        await closeLease(env, { userId, leaseId: requestId }).catch((err) => {
-          console.warn('Failed to close rejected terminal lease:', err);
+        await deleteSession(userId, requestId, env.KV).catch((err) => {
+          console.warn('Failed to delete rejected terminal session:', err);
         });
       }
 
-      return response;
+      const responseHeaders = new Headers(response.headers);
+      responseHeaders.set('X-Terminal-Session-Id', requestId);
+      responseHeaders.set('X-Terminal-Request-Id', requestId);
+
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: responseHeaders,
+        webSocket: response.webSocket,
+      });
     } catch (err) {
       console.error('Origin connection failed:', err);
-      await closeLease(env, { userId, leaseId: requestId }).catch((closeErr) => {
-        console.warn('Failed to close failed terminal lease:', closeErr);
+      await deleteSession(userId, requestId, env.KV).catch((closeErr) => {
+        console.warn('Failed to delete failed terminal session:', closeErr);
       });
       return new Response('Bad Gateway', { status: 502 });
     }

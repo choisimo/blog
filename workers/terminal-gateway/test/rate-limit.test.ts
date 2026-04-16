@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { checkRateLimit } from '../src/ratelimit';
+import {
+  checkRateLimit,
+  createSession,
+  deleteSession,
+  hasActiveSession,
+} from '../src/ratelimit';
 
 class MemoryKV {
   store = new Map<string, string>();
@@ -19,6 +24,13 @@ class MemoryKV {
       throw new Error('kv unavailable');
     }
     this.store.set(key, value);
+  }
+
+  async delete(key: string) {
+    if (this.fail) {
+      throw new Error('kv unavailable');
+    }
+    this.store.delete(key);
   }
 }
 
@@ -44,4 +56,43 @@ test('checkRateLimit fails closed when KV storage is unavailable', async () => {
   assert.equal(result.allowed, false);
   assert.equal(result.reason, 'kv_unavailable');
   assert.equal(result.remaining, 0);
+});
+
+test('hasActiveSession clears stale user locks', async () => {
+  const kv = new MemoryKV() as unknown as KVNamespace;
+  const staleAt = Date.now() - 6 * 60 * 1000;
+
+  await createSession(
+    {
+      sessionId: 'session-stale',
+      userId: 'user-1',
+      clientIP: '127.0.0.1',
+      connectedAt: staleAt,
+      lastActivity: staleAt,
+    },
+    kv,
+  );
+
+  const active = await hasActiveSession('user-1', kv);
+  assert.equal(active, false);
+});
+
+test('deleteSession removes both user and session keys', async () => {
+  const kv = new MemoryKV() as unknown as KVNamespace;
+
+  await createSession(
+    {
+      sessionId: 'session-1',
+      userId: 'user-1',
+      clientIP: '127.0.0.1',
+      connectedAt: Date.now(),
+      lastActivity: Date.now(),
+    },
+    kv,
+  );
+
+  await deleteSession('user-1', 'session-1', kv);
+
+  const active = await hasActiveSession('user-1', kv);
+  assert.equal(active, false);
 });

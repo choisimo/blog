@@ -66,11 +66,16 @@ spec:
                 secretKeyRef:
                   name: blog-app-secrets
                   key: TERMINAL_SESSION_SECRET
-            - name: TERMINAL_GATEWAY_URL
+            - name: REDIS_URL
               valueFrom:
-                configMapKeyRef:
-                  name: blog-app-config
-                  key: TERMINAL_GATEWAY_URL
+                secretKeyRef:
+                  name: blog-app-secrets
+                  key: REDIS_URL
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: blog-app-secrets
+                  key: REDIS_PASSWORD
             - name: TERMINAL_SESSION_TIMEOUT_MS
               valueFrom:
                 configMapKeyRef:

@@ -1,18 +1,22 @@
 /**
- * Terminal Gateway - Rate Limiting
- * 
- * Uses KV to track connection attempts per IP
- * Limits: 5 connections per minute
+ * Terminal Gateway - Rate Limiting and Session Tracking
  */
 
-import type { RateLimitResult } from './types';
+import type { RateLimitResult, SessionInfo } from './types';
 
 const RATE_LIMIT_WINDOW = 60; // 1 minute in seconds
 const RATE_LIMIT_MAX = 5; // max connections per window
+const SESSION_TTL_SECONDS = 15 * 60;
+const SESSION_STALE_MS = 5 * 60 * 1000;
 
-/**
- * Check rate limit for an IP address
- */
+function sessionKey(sessionId: string): string {
+  return `terminal:session:${sessionId}`;
+}
+
+function userKey(userId: string): string {
+  return `terminal:user:${userId}`;
+}
+
 export async function checkRateLimit(
   clientIP: string,
   kv: KVNamespace
@@ -27,14 +31,12 @@ export async function checkRateLimit(
 
     if (data) {
       const parsed = JSON.parse(data);
-      // Check if we're still in the same window
       if (now - parsed.windowStart < RATE_LIMIT_WINDOW) {
         count = parsed.count;
         windowStart = parsed.windowStart;
       }
     }
 
-    // Check if limit exceeded
     if (count >= RATE_LIMIT_MAX) {
       return {
         allowed: false,
@@ -44,13 +46,10 @@ export async function checkRateLimit(
       };
     }
 
-    // Increment counter
     count++;
-    await kv.put(
-      key,
-      JSON.stringify({ count, windowStart }),
-      { expirationTtl: RATE_LIMIT_WINDOW }
-    );
+    await kv.put(key, JSON.stringify({ count, windowStart }), {
+      expirationTtl: RATE_LIMIT_WINDOW,
+    });
 
     return {
       allowed: true,
@@ -66,4 +65,47 @@ export async function checkRateLimit(
       reason: 'kv_unavailable',
     };
   }
+}
+
+export async function hasActiveSession(userId: string, kv: KVNamespace): Promise<boolean> {
+  try {
+    const raw = await kv.get(userKey(userId));
+    if (!raw) {
+      return false;
+    }
+
+    const info = JSON.parse(raw) as SessionInfo;
+    if (Date.now() - info.lastActivity > SESSION_STALE_MS) {
+      await deleteSession(userId, info.sessionId, kv);
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    console.error('Session check failed:', err);
+    return false;
+  }
+}
+
+export async function createSession(
+  session: SessionInfo,
+  kv: KVNamespace,
+  ttlSeconds: number = SESSION_TTL_SECONDS
+): Promise<void> {
+  await Promise.all([
+    kv.put(userKey(session.userId), JSON.stringify(session), { expirationTtl: ttlSeconds }),
+    kv.put(sessionKey(session.sessionId), JSON.stringify(session), { expirationTtl: ttlSeconds }),
+  ]);
+}
+
+export async function deleteSession(
+  userId: string,
+  sessionId: string | null | undefined,
+  kv: KVNamespace
+): Promise<void> {
+  const ops: Promise<void>[] = [kv.delete(userKey(userId))];
+  if (sessionId) {
+    ops.push(kv.delete(sessionKey(sessionId)));
+  }
+  await Promise.all(ops);
 }

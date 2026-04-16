@@ -1,5 +1,5 @@
 # =============================================================================
-# GitHub Actions Secrets - 프론트엔드/CI 전용
+# GitHub Actions Secrets - CI / Worker 배포용
 # =============================================================================
 # 이 파일은 GitHub Actions 워크플로우에서 사용하는 secrets 템플릿입니다.
 # 백엔드 인프라(DB, SSH, 모니터링 등)는 .env.backend에서 별도 관리합니다.
@@ -25,3 +25,36 @@ VITE_TERMINAL_GATEWAY_URL=wss://terminal.nodove.com
 VITE_CHAT_BASE_URL=
 VITE_CHAT_API_KEY=
 VITE_FEATURE_FAB=true
+
+# -----------------------------------------------------------------------------
+# [Workers] Shared worker deployment secrets
+# sync-workers-secrets.yml / worker control plane / deploy contracts
+# -----------------------------------------------------------------------------
+BACKEND_ORIGIN=https://blog-b.nodove.com
+BACKEND_KEY=
+JWT_SECRET=
+INTERNAL_KEY=
+TERMINAL_SESSION_SECRET=
+
+# -----------------------------------------------------------------------------
+# [Workers] Optional control-plane and OAuth secrets
+# -----------------------------------------------------------------------------
+ADMIN_ALLOWED_EMAILS=
+ADMIN_SETUP_TOKEN=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+OAUTH_REDIRECT_BASE_URL=https://noblog.nodove.com
+CF_ACCESS_AUD=
+CF_TEAM_DOMAIN=
+
+# -----------------------------------------------------------------------------
+# [Workers] AI / public runtime configuration secrets
+# -----------------------------------------------------------------------------
+AI_DEFAULT_MODEL=gpt-5.2
+AI_VISION_MODEL=gpt-4o
+PERPLEXITY_MODEL=sonar
+API_BASE_URL=https://api.nodove.com
+ASSETS_BASE_URL=https://noblog.nodove.com/images
+ALLOWED_ORIGINS=https://noblog.nodove.com

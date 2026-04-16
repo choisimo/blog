@@ -16,15 +16,6 @@ TERMINAL_ORIGIN = "https://terminal-origin.nodove.com"
 TERMINAL_CONNECT_TOKEN_TTL_SECONDS = "60"
 TERMINAL_BLOCKED_COUNTRIES = "CN,RU,KP"
 
-[durable_objects]
-bindings = [
-  { name = "TERMINAL_LEASES", class_name = "TerminalLeaseObject" }
-]
-
-[[migrations]]
-tag = "v1-terminal-leases"
-new_classes = ["TerminalLeaseObject"]
-
 # KV namespace for rate limiting and session tracking
 [[kv_namespaces]]
 binding = "KV"
@@ -39,10 +30,6 @@ ENV = "production"
 TERMINAL_ORIGIN = "https://terminal-origin.nodove.com"
 TERMINAL_CONNECT_TOKEN_TTL_SECONDS = "60"
 TERMINAL_BLOCKED_COUNTRIES = "CN,RU,KP"
-
-[[env.production.durable_objects.bindings]]
-name = "TERMINAL_LEASES"
-class_name = "TerminalLeaseObject"
 
 [[env.production.kv_namespaces]]
 binding = "KV"
