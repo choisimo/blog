@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-04-13T13:48:06.861Z",
+  "generatedAt": "2026-04-14T17:56:51.173Z",
   "counts": {
     "serviceBoundaries": {
       "worker-owned": 26,
-      "backend-owned": 6,
+      "backend-owned": 7,
       "proxy-only": 3,
       "compatibility": 1
     },
@@ -198,6 +198,12 @@
       "prefix": "/api/v1/admin/workers",
       "owner": "backend-owned",
       "description": "Worker deployment admin APIs"
+    },
+    {
+      "id": "admin-analytics",
+      "prefix": "/api/v1/admin/analytics",
+      "owner": "backend-owned",
+      "description": "Backend admin analytics and visit inspection APIs"
     },
     {
       "id": "admin",

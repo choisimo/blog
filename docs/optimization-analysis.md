@@ -128,7 +128,7 @@
 #### P2-2: 백엔드 동기 FS 제거
 - **파일**: `backend/src/routes/posts.js:113, 191`, `backend/src/routes/images.js:172`
 - **현황**: `readdirSync`, `readFileSync`가 Express 요청 핸들러에서 직접 호출 → Node.js 이벤트 루프 블록
-- **제안**: `fs.promises.readdir`, `fs.promises.readFile`로 교체. `backend/src/services/posts.service.js`의 서비스 레이어에 집중.
+- **제안**: `fs.promises.readdir`, `fs.promises.readFile`로 교체. 현재는 `backend/src/routes/posts.js`와 관련 저장소/유틸 경로를 중심으로 정리하는 편이 안전하다.
 
 #### P2-3: 이미지 업로드와 Vision 분석 분리
 - **파일**: `backend/src/routes/images.js:246–293`
@@ -212,7 +212,6 @@
 - `frontend/src/components/common/OptimizedImage.tsx`
 - `backend/src/routes/posts.js`
 - `backend/src/routes/images.js`
-- `backend/src/services/image.service.js`
 - `workers/api-gateway/src/lib/ai-service.ts`
 - `workers/api-gateway/src/routes/images.ts`
 - `workers/api-gateway/src/index.ts`

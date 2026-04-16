@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-09T00:03:55.841Z",
+  "generatedAt": "2026-04-14T17:56:51.307Z",
   "serviceBoundaries": [
     {
       "id": "auth",
@@ -23,7 +23,7 @@
       "id": "chat",
       "prefix": "/api/v1/chat",
       "owner": "worker-owned",
-      "description": "Chat streaming edge gateway"
+      "description": "Hybrid chat surface: worker-owned feeds, backend-owned session/live operations via worker proxy"
     },
     {
       "id": "images",
@@ -149,7 +149,7 @@
       "id": "notifications",
       "prefix": "/api/v1/notifications",
       "owner": "worker-owned",
-      "description": "Notification fan-out and live streams"
+      "description": "Edge-authenticated notification ingress with backend-origin streaming/history handlers"
     },
     {
       "id": "gateway",
@@ -186,6 +186,12 @@
       "prefix": "/api/v1/admin/workers",
       "owner": "backend-owned",
       "description": "Worker deployment admin APIs"
+    },
+    {
+      "id": "admin-analytics",
+      "prefix": "/api/v1/admin/analytics",
+      "owner": "backend-owned",
+      "description": "Backend admin analytics and visit inspection APIs"
     },
     {
       "id": "admin",
