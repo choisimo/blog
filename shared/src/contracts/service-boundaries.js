@@ -38,6 +38,7 @@ export const SERVICE_BOUNDARIES = Object.freeze([
   { id: 'execute', prefix: '/api/v1/execute', owner: ROUTE_OWNERS.BACKEND, description: 'Code execution and terminal-adjacent backend tasks' },
   { id: 'admin-config', prefix: '/api/v1/admin/config', owner: ROUTE_OWNERS.BACKEND, description: 'Backend runtime config administration' },
   { id: 'admin-workers', prefix: '/api/v1/admin/workers', owner: ROUTE_OWNERS.BACKEND, description: 'Worker deployment admin APIs' },
+  { id: 'admin-analytics', prefix: '/api/v1/admin/analytics', owner: ROUTE_OWNERS.BACKEND, description: 'Backend admin analytics and visit inspection APIs' },
   { id: 'admin', prefix: '/api/v1/admin', owner: ROUTE_OWNERS.BACKEND, description: 'Backend admin APIs and operational controls' },
 
   { id: 'healthz', prefix: '/api/v1/healthz', owner: ROUTE_OWNERS.PROXY_ONLY, description: 'Origin health check exposure through edge' },
