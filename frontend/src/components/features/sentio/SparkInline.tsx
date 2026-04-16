@@ -94,7 +94,7 @@ const INLINE_ONLY_TAGS = new Set([
 
 function hasNonInlineChildren(children: React.ReactNode): boolean {
   return React.Children.toArray(children).some((node) => {
-    if (node == null || node === false) return false;
+    if (node == null) return false;
     if (typeof node === "string" || typeof node === "number") return false;
     if (Array.isArray(node)) return hasNonInlineChildren(node);
     if (!React.isValidElement(node)) return false;

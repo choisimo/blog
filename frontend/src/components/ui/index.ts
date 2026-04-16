@@ -14,7 +14,11 @@ export * from './chart';
 export * from './checkbox';
 export * from './collapsible';
 export * from './command';
-export * from './command-bar';
+export {
+  CommandBar,
+  CommandButton,
+  CommandGroup as CommandBarGroup,
+} from './command-bar';
 export * from './context-menu';
 export * from './dialog';
 export * from './drawer';

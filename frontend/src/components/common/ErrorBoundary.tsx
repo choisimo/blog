@@ -17,13 +17,13 @@ interface State {
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { hasError: false };
+  override state: State = { hasError: false };
 
   static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     this.setState({ errorInfo });
     this.props.onError?.(error, errorInfo);
 
@@ -41,7 +41,7 @@ export class ErrorBoundary extends Component<Props, State> {
     this.handleReset();
   };
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
         return this.props.fallback;
@@ -91,7 +91,7 @@ export class ErrorBoundary extends Component<Props, State> {
 }
 
 export class PageErrorBoundary extends ErrorBoundary {
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center py-16 px-4">

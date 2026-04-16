@@ -1,4 +1,3 @@
-import React from "react";
 import { createPortal } from "react-dom";
 import { Terminal, X, ChevronRight, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";

@@ -28,3 +28,5 @@ interface ImportMeta {
     pattern: string,
   ) => Record<string, () => Promise<T>>;
 }
+
+declare module "@xterm/xterm/css/xterm.css";

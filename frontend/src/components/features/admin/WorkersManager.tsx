@@ -532,6 +532,11 @@ export function WorkersManager({
 
                     <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
                       {(["vars", "bindings"] as const).map((section) => {
+                        const resourceConfig = worker.config ?? {
+                          d1_databases: [],
+                          r2_buckets: [],
+                          kv_namespaces: [],
+                        };
                         const isOpen = expandedSection[worker.id] === section;
                         return (
                           <div key={section}>
@@ -619,7 +624,7 @@ export function WorkersManager({
 
                             {isOpen && section === "bindings" && (
                               <div className="px-4 pb-4 space-y-2">
-                                {worker.config.d1_databases.map((db) => (
+                                {resourceConfig.d1_databases.map((db) => (
                                   <div
                                     key={db.binding}
                                     className="flex items-center gap-2 text-xs"
@@ -641,7 +646,7 @@ export function WorkersManager({
                                     </span>
                                   </div>
                                 ))}
-                                {worker.config.r2_buckets.map((bucket) => (
+                                {resourceConfig.r2_buckets.map((bucket) => (
                                   <div
                                     key={bucket.binding}
                                     className="flex items-center gap-2 text-xs"
@@ -663,7 +668,7 @@ export function WorkersManager({
                                     </span>
                                   </div>
                                 ))}
-                                {worker.config.kv_namespaces.map((kv) => (
+                                {resourceConfig.kv_namespaces.map((kv) => (
                                   <div
                                     key={kv.binding}
                                     className="flex items-center gap-2 text-xs"
@@ -685,9 +690,9 @@ export function WorkersManager({
                                     </span>
                                   </div>
                                 ))}
-                                {worker.config.d1_databases.length === 0 &&
-                                  worker.config.r2_buckets.length === 0 &&
-                                  worker.config.kv_namespaces.length === 0 && (
+                                {resourceConfig.d1_databases.length === 0 &&
+                                  resourceConfig.r2_buckets.length === 0 &&
+                                  resourceConfig.kv_namespaces.length === 0 && (
                                     <p className="text-xs text-zinc-400 dark:text-zinc-500 italic">
                                       No resource bindings
                                     </p>

@@ -111,7 +111,6 @@ function inferReferrer(): CuriosityEventMeta['ref'] {
 class CuriosityStorage {
   private events: CuriosityEvent[] = [];
   private settings: CuriositySettings = { ...DEFAULT_SETTINGS };
-  private initialized = false;
 
   constructor() {
     this.loadFromStorage();
@@ -137,8 +136,6 @@ class CuriosityStorage {
           this.cleanupOldEvents();
         }
       }
-
-      this.initialized = true;
     } catch (err) {
       console.warn('[Curiosity] Failed to load from storage:', err);
       this.events = [];

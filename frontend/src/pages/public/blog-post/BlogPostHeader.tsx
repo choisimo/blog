@@ -19,6 +19,7 @@ import { formatDate } from "@/utils/content/blog";
 import type {
   BlogPost as BlogPostType,
   ResolvedPostViewModel,
+  SupportedLanguage,
 } from "@/types/blog";
 import type { TranslationResult } from "@/services/content/translate";
 import { SafeDescriptionMarkdown } from "@/components/features/blog/SafeDescriptionMarkdown";
@@ -29,8 +30,8 @@ interface BlogPostHeaderProps {
   postView: ResolvedPostViewModel;
   year: string;
   slug: string;
-  language: string;
-  setLanguage: (lang: string) => void;
+  language: SupportedLanguage;
+  setLanguage: (lang: SupportedLanguage) => void;
   resolveLanguageName: (code: string) => string;
   translationStatus: AsyncArtifactStatus;
   aiTranslation: TranslationResult | null;

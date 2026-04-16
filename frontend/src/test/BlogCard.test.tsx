@@ -17,6 +17,7 @@ const mockPost = {
   tags: ['React', 'TypeScript'],
   content: 'Test content',
   slug: 'test-blog-post',
+  language: 'ko' as const,
   readTime: 5,
   readingTime: '5분 읽기',
   author: 'Test Author',

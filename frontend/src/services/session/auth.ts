@@ -59,6 +59,8 @@ export interface RefreshTokenResponse {
   expiresIn: number;
 }
 
+export interface OAuthHandoffResponse extends TotpVerifyResponse {}
+
 export interface UserInfo {
   username: string;
   email: string;
@@ -215,6 +217,15 @@ export async function refreshAccessToken(
     body: JSON.stringify({ refreshToken }),
   });
   return unwrapApiResponse<RefreshTokenResponse>(res, 'Token refresh failed');
+}
+
+export async function consumeOAuthHandoff(handoff: string): Promise<OAuthHandoffResponse> {
+  const res = await fetch(`${getBaseUrl()}/api/v1/auth/oauth/handoff/consume`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ handoff }),
+  });
+  return unwrapApiResponse<OAuthHandoffResponse>(res, 'OAuth handoff failed');
 }
 
 /**

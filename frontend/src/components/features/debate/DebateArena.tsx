@@ -405,7 +405,9 @@ export default function DebateArena({
           className="flex items-center justify-center h-10 w-10 rounded-full shrink-0"
           style={{ backgroundColor: `${msg.color}20` }}
         >
-          <Icon className="h-5 w-5" style={{ color: msg.color }} />
+          <span style={{ color: msg.color }}>
+            <Icon className="h-5 w-5" />
+          </span>
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
