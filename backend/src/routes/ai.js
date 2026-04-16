@@ -1,3 +1,5 @@
+import { lookup as dnsLookup } from "node:dns/promises";
+import net from "node:net";
 import { Router } from "express";
 import { aiService, tryParseJson } from "../lib/ai-service.js";
 import { config } from "../config.js";
@@ -29,6 +31,7 @@ import { getOpenAIClientConfigSnapshot } from '../services/ai/openai-client.serv
 
 const router = Router();
 const logger = createLogger("ai");
+const BLOCKED_HOSTNAMES = new Set(["localhost"]);
 
 router.use(requireFeature("ai"));
 
@@ -497,16 +500,95 @@ router.get("/rate-limit", async (req, res) => {
 /**
  * Fetch image from URL with SSRF protection and size limits
  */
-async function fetchImageAsBase64(imageUrl) {
+export function isPrivateIpAddress(address) {
+  if (typeof address !== "string") return false;
+
+  const normalized = address.trim().toLowerCase();
+  if (!normalized) return false;
+
+  if (normalized.startsWith("::ffff:")) {
+    const mapped = normalized.slice("::ffff:".length);
+    if (net.isIP(mapped) === 4) {
+      return isPrivateIpAddress(mapped);
+    }
+  }
+
+  const version = net.isIP(normalized);
+  if (version === 4) {
+    const octets = normalized.split(".").map((part) => Number.parseInt(part, 10));
+    if (octets.length !== 4 || octets.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+      return false;
+    }
+
+    const [a, b] = octets;
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 198 && (b === 18 || b === 19))
+    );
+  }
+
+  if (version === 6) {
+    return (
+      normalized === "::" ||
+      normalized === "::1" ||
+      normalized.startsWith("fc") ||
+      normalized.startsWith("fd") ||
+      normalized.startsWith("fe80:")
+    );
+  }
+
+  return false;
+}
+
+function isBlockedHostname(hostname) {
+  if (typeof hostname !== "string") return true;
+  const normalized = hostname.trim().toLowerCase();
+  if (!normalized) return true;
+
+  return (
+    BLOCKED_HOSTNAMES.has(normalized) ||
+    normalized.endsWith(".localhost") ||
+    normalized.endsWith(".local") ||
+    normalized.endsWith(".internal")
+  );
+}
+
+async function resolveAllAddresses(hostname, lookupImpl = dnsLookup) {
+  const records = await lookupImpl(hostname, { all: true, verbatim: true });
+  return Array.isArray(records) ? records : [];
+}
+
+export async function assertSafeImageUrl(imageUrl, options = {}) {
   const parsedUrl = new URL(imageUrl);
+  const lookupImpl = options.lookupImpl || dnsLookup;
 
   // 1. 프로토콜 제한 (http, https만 허용)
   if (!["http:", "https:"].includes(parsedUrl.protocol)) {
     throw new Error("Invalid protocol");
   }
 
-  // 2. (옵션) 내부망 IP 접근 차단 로직 추가 권장 (프로덕션 환경)
-  // 예: ipaddr.js 라이브러리 등을 사용하여 private IP 대역 차단
+  if (isBlockedHostname(parsedUrl.hostname)) {
+    throw new Error("Blocked hostname");
+  }
+
+  if (isPrivateIpAddress(parsedUrl.hostname)) {
+    throw new Error("Blocked private IP");
+  }
+
+  const records = await resolveAllAddresses(parsedUrl.hostname, lookupImpl);
+  if (records.some((record) => isPrivateIpAddress(record?.address))) {
+    throw new Error("Blocked private network address");
+  }
+}
+
+async function fetchImageAsBase64(imageUrl) {
+  await assertSafeImageUrl(imageUrl);
 
   const response = await fetch(imageUrl, {
     // 3. 타임아웃 설정 (AbortSignal)

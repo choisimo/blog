@@ -12,25 +12,59 @@ export * from './constants.js';
 let _config = null;
 let _configPromise = null;
 const PROTECTED_ENVS = new Set(['production', 'staging']);
+const DEFAULT_REPO_ROOT = path.resolve(process.cwd(), '..');
 
 export function isProtectedEnvironment(appEnv) {
   return PROTECTED_ENVS.has(appEnv || process.env.APP_ENV);
 }
 
-async function buildConfig() {
-  const consulConfig = await loadConsulConfig();
-  const merged = { ...process.env, ...consulConfig };
-  const raw = configSchema.parse(merged);
+function resolveRepoRoot(rawRepoRoot) {
+  const candidate =
+    typeof rawRepoRoot === 'string' && rawRepoRoot.trim()
+      ? rawRepoRoot.trim()
+      : process.env.REPO_ROOT && String(process.env.REPO_ROOT).trim()
+        ? String(process.env.REPO_ROOT).trim()
+        : '';
 
-  const repoRoot = path.resolve(process.cwd(), '..');
-  const allowedOrigins = raw.ALLOWED_ORIGINS.split(',')
-    .map(s => s.trim())
+  return candidate ? path.resolve(candidate) : DEFAULT_REPO_ROOT;
+}
+
+function splitCsv(value) {
+  return String(value || '')
+    .split(',')
+    .map((entry) => entry.trim())
     .filter(Boolean);
+}
 
-  const publicDir = raw.CONTENT_PUBLIC_DIR || path.join(repoRoot, 'frontend', 'public');
+function buildPathConfig(raw) {
+  const repoRoot = resolveRepoRoot(raw.REPO_ROOT);
+  const frontendDir = path.join(repoRoot, 'frontend');
+  const backendDir = path.join(repoRoot, 'backend');
+  const workersDir = path.join(repoRoot, 'workers');
+  const sharedDir = path.join(repoRoot, 'shared');
+  const publicDir = raw.CONTENT_PUBLIC_DIR || path.join(frontendDir, 'public');
   const postsDir = raw.CONTENT_POSTS_DIR || path.join(publicDir, 'posts');
   const imagesDir = raw.CONTENT_IMAGES_DIR || path.join(publicDir, 'images');
+
+  return {
+    repoRoot,
+    frontendDir,
+    backendDir,
+    workersDir,
+    sharedDir,
+    publicDir,
+    postsDir,
+    imagesDir,
+  };
+}
+
+function createConfig(raw) {
+  const paths = buildPathConfig(raw);
+  const allowedOrigins = splitCsv(raw.ALLOWED_ORIGINS);
   const assetsBaseUrl = raw.ASSETS_BASE_URL;
+  const terminalBlockedCountries = splitCsv(raw.TERMINAL_BLOCKED_COUNTRIES).map((entry) =>
+    entry.toUpperCase(),
+  );
 
   return {
     appEnv: raw.APP_ENV,
@@ -88,16 +122,22 @@ async function buildConfig() {
 
     security: {
       protectedEnvironment: isProtectedEnvironment(raw.APP_ENV),
-      enableLegacyBackendAuth: raw.ENABLE_LEGACY_BACKEND_AUTH === 'true',
     },
 
     backendKey: raw.BACKEND_KEY,
+    terminal: {
+      sessionSecret: raw.TERMINAL_SESSION_SECRET,
+      connectTokenTtlSeconds: raw.TERMINAL_CONNECT_TOKEN_TTL_SECONDS,
+      sessionTimeoutMs: raw.TERMINAL_SESSION_TIMEOUT_MS,
+      blockedCountries: terminalBlockedCountries,
+    },
+    paths,
 
     content: {
-      repoRoot,
-      publicDir,
-      postsDir,
-      imagesDir,
+      repoRoot: paths.repoRoot,
+      publicDir: paths.publicDir,
+      postsDir: paths.postsDir,
+      imagesDir: paths.imagesDir,
       postsSource: raw.POSTS_SOURCE,
     },
 
@@ -117,6 +157,7 @@ async function buildConfig() {
 
     redis: {
       url: raw.REDIS_URL,
+      password: raw.REDIS_PASSWORD || null,
     },
 
     search: {
@@ -152,6 +193,13 @@ async function buildConfig() {
   };
 }
 
+async function buildConfig() {
+  const consulConfig = await loadConsulConfig();
+  const merged = { ...process.env, ...consulConfig };
+  const raw = configSchema.parse(merged);
+  return createConfig(raw);
+}
+
 export async function initConfig() {
   if (_config) return _config;
   if (_configPromise) return _configPromise;
@@ -162,112 +210,11 @@ export async function initConfig() {
 }
 
 const syncConfig = configSchema.parse(process.env);
-const repoRoot = path.resolve(process.cwd(), '..');
-const allowedOrigins = syncConfig.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean);
-const publicDir = syncConfig.CONTENT_PUBLIC_DIR || path.join(repoRoot, 'frontend', 'public');
 
-export const config = {
-  appEnv: syncConfig.APP_ENV,
-  host: syncConfig.HOST,
-  port: syncConfig.PORT,
-  trustProxy: syncConfig.TRUST_PROXY,
-  logLevel: syncConfig.LOG_LEVEL,
-  siteBaseUrl: syncConfig.SITE_BASE_URL,
-  apiBaseUrl: syncConfig.API_BASE_URL,
-  allowedOrigins,
-  assetsBaseUrl: syncConfig.ASSETS_BASE_URL,
-  rateLimit: {
-    max: syncConfig.RATE_LIMIT_MAX,
-    windowMs: syncConfig.RATE_LIMIT_WINDOW_MS,
-  },
-  ai: {
-    baseUrl: syncConfig.AI_SERVER_URL,
-    apiKey: syncConfig.AI_API_KEY || syncConfig.OPENAI_API_KEY,
-    defaultModel: syncConfig.AI_DEFAULT_MODEL,
-    visionModel: syncConfig.AI_VISION_MODEL,
-    asyncMode: syncConfig.AI_ASYNC_MODE === 'true',
-  },
-  github: {
-    token: syncConfig.GITHUB_TOKEN,
-    owner: syncConfig.GITHUB_REPO_OWNER,
-    repo: syncConfig.GITHUB_REPO_NAME,
-    gitUserName: syncConfig.GIT_USER_NAME,
-    gitUserEmail: syncConfig.GIT_USER_EMAIL,
-  },
-  admin: {
-    bearerToken: syncConfig.ADMIN_BEARER_TOKEN,
-  },
-  totp: {
-    secret: syncConfig.TOTP_SECRET,
-  },
-  oauth: {
-    allowedEmails: syncConfig.ADMIN_ALLOWED_EMAILS,
-    githubClientId: syncConfig.GITHUB_CLIENT_ID,
-    githubClientSecret: syncConfig.GITHUB_CLIENT_SECRET,
-    googleClientId: syncConfig.GOOGLE_CLIENT_ID,
-    googleClientSecret: syncConfig.GOOGLE_CLIENT_SECRET,
-    redirectBaseUrl: syncConfig.OAUTH_REDIRECT_BASE_URL,
-  },
-  auth: {
-    jwtSecret: syncConfig.JWT_SECRET,
-    jwtExpiresIn: syncConfig.JWT_EXPIRES_IN,
-  },
-  security: {
-    protectedEnvironment: isProtectedEnvironment(syncConfig.APP_ENV),
-    enableLegacyBackendAuth: syncConfig.ENABLE_LEGACY_BACKEND_AUTH === 'true',
-  },
-  backendKey: syncConfig.BACKEND_KEY,
-  content: {
-    repoRoot,
-    publicDir,
-    postsDir: syncConfig.CONTENT_POSTS_DIR || path.join(publicDir, 'posts'),
-    imagesDir: syncConfig.CONTENT_IMAGES_DIR || path.join(publicDir, 'images'),
-    postsSource: syncConfig.POSTS_SOURCE,
-  },
-  integrations: {
-    vercelDeployHookUrl: syncConfig.VERCEL_DEPLOY_HOOK_URL,
-  },
-  rag: {
-    embeddingUrl: syncConfig.AI_EMBEDDING_URL || syncConfig.AI_SERVER_URL,
-    embeddingApiKey: syncConfig.AI_EMBEDDING_API_KEY || syncConfig.AI_API_KEY || syncConfig.OPENAI_API_KEY,
-    embeddingModel: syncConfig.AI_EMBED_MODEL,
-    chromaUrl: syncConfig.CHROMA_URL,
-    chromaCollection: syncConfig.CHROMA_COLLECTION,
-  },
-  redis: {
-    url: syncConfig.REDIS_URL,
-  },
-  search: {
-    perplexityApiKey: syncConfig.PERPLEXITY_API_KEY,
-    tavilyApiKey: syncConfig.TAVILY_API_KEY,
-    braveApiKey: syncConfig.BRAVE_SEARCH_API_KEY,
-    serperApiKey: syncConfig.SERPER_API_KEY,
-  },
-  services: {
-    backendUrl: syncConfig.INTERNAL_API_URL || `http://localhost:${syncConfig.PORT}`,
-    chatWebSocketEnabled: syncConfig.CHAT_WS_ENABLED === 'true',
-    terminalServerUrl: syncConfig.TERMINAL_SERVER_URL,
-    terminalGatewayUrl: syncConfig.TERMINAL_GATEWAY_URL,
-    openNotebookUrl: syncConfig.OPEN_NOTEBOOK_URL,
-    workerApiUrl: syncConfig.WORKER_API_URL || null,
-  },
-  consul: {
-    enabled: CONSUL.ENABLED,
-    host: CONSUL.HOST,
-    port: CONSUL.PORT,
-  },
-  features: {
-    aiEnabled: syncConfig.FEATURE_AI_ENABLED === 'true',
-    ragEnabled: syncConfig.FEATURE_RAG_ENABLED === 'true',
-    terminalEnabled: syncConfig.FEATURE_TERMINAL_ENABLED === 'true',
-    aiInline: syncConfig.FEATURE_AI_INLINE === 'true',
-    commentsEnabled: syncConfig.FEATURE_COMMENTS_ENABLED === 'true',
-    openNotebookEnabled: syncConfig.OPEN_NOTEBOOK_ENABLED === 'true',
-  },
-};
+export const config = createConfig(syncConfig);
 
 if (!config.services.workerApiUrl) {
-  logger.warn({}, 'WORKER_API_URL is not set — AI dynamic config from Worker will be unavailable. Set WORKER_API_URL to the api-gateway Worker URL.');
+  logger.warn({}, 'WORKER_API_URL is not set - AI dynamic config from Worker will be unavailable. Set WORKER_API_URL to the api-gateway Worker URL.');
 }
 
 export async function loadAndApplyConsulConfig() {
@@ -286,10 +233,13 @@ export async function loadAndApplyConsulConfig() {
       assetsBaseUrl: asyncConfig.assetsBaseUrl,
       ai: asyncConfig.ai,
       auth: asyncConfig.auth,
+      content: asyncConfig.content,
+      paths: asyncConfig.paths,
       rag: asyncConfig.rag,
       redis: asyncConfig.redis,
       security: asyncConfig.security,
       services: asyncConfig.services,
+      terminal: asyncConfig.terminal,
       features: asyncConfig.features,
     });
 
@@ -329,11 +279,11 @@ export async function getServiceUrl(serviceName) {
   if (url) return url;
 
   const fallbacks = {
-    'backend': config.services?.backendUrl || `http://localhost:${config.port}`,
-    'chromadb': config.rag.chromaUrl,
-    'embedding': config.rag.embeddingUrl,
-    'redis': config.redis?.url || 'redis://localhost:6379',
-    'terminal': config.services?.terminalServerUrl || 'http://terminal-server:8080',
+    backend: config.services?.backendUrl || `http://localhost:${config.port}`,
+    chromadb: config.rag.chromaUrl,
+    embedding: config.rag.embeddingUrl,
+    redis: config.redis?.url || 'redis://localhost:6379',
+    terminal: config.services?.terminalServerUrl || 'http://terminal-server:8080',
   };
 
   return fallbacks[serviceName] || null;

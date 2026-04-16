@@ -141,7 +141,11 @@ async function startServer() {
     );
   });
 
-  initChatWebSocket(server);
+  if (config.services.chatWebSocketEnabled) {
+    initChatWebSocket(server);
+  } else {
+    logger.info({}, 'Chat WebSocket transport disabled - SSE-only mode');
+  }
 
   let shuttingDown = false;
   function gracefulShutdown(signal) {

@@ -28,14 +28,38 @@ let totpSetupComplete = !!totpSecret;
 // ADMIN_SETUP_TOKEN: used to gate the one-time TOTP provisioning flow.
 // If not supplied in env, generate a random one and print it once to the console.
 const adminSetupToken = process.env.ADMIN_SETUP_TOKEN || (() => {
+  if (config.security?.protectedEnvironment) {
+    return null;
+  }
+
   const generated = crypto.randomBytes(32).toString('hex');
   console.warn(
-    '\n[auth] ⚠️  ADMIN_SETUP_TOKEN not set — generated a one-time token for this session:\n' +
+    '\n[auth] ⚠️  ADMIN_SETUP_TOKEN not set - generated a one-time token for this session:\n' +
     `       ADMIN_SETUP_TOKEN=${generated}\n` +
     '       Set this in your .env to make it permanent.\n'
   );
   return generated;
 })();
+
+const TOTP_BOOTSTRAP_DISABLED_ERROR = {
+  code: 'TOTP_BOOTSTRAP_DISABLED',
+  message: 'First-time TOTP bootstrap is disabled in protected environments. Provision TOTP_SECRET via your secret manager and redeploy.',
+};
+
+function isRuntimeTotpBootstrapDisabled() {
+  return config.security?.protectedEnvironment && !totpSetupComplete;
+}
+
+function buildTotpBootstrapDisabledPayload() {
+  return {
+    ok: false,
+    error: TOTP_BOOTSTRAP_DISABLED_ERROR,
+    data: {
+      setupComplete: false,
+      requiresProvisionedSecret: true,
+    },
+  };
+}
 
 /** @type {Map<string, { expiresAt: number }>} */
 const totpChallenges = new Map();
@@ -221,6 +245,10 @@ router.get('/totp/setup', async (req, res) => {
     return res.json({ ok: true, data: { setupComplete: true } });
   }
 
+  if (isRuntimeTotpBootstrapDisabled()) {
+    return res.status(503).json(buildTotpBootstrapDisabledPayload());
+  }
+
   const providedToken = req.headers['setup-token'];
   if (!providedToken || providedToken !== adminSetupToken) {
     return res.json({ ok: true, data: { setupComplete: false, requiresToken: true } });
@@ -256,6 +284,10 @@ router.post('/totp/setup/verify', async (req, res) => {
     return res.json({ ok: true, data: { setupComplete: true } });
   }
 
+  if (isRuntimeTotpBootstrapDisabled()) {
+    return res.status(503).json(buildTotpBootstrapDisabledPayload());
+  }
+
   const providedToken = req.headers['setup-token'];
   if (!providedToken || providedToken !== adminSetupToken) {
     return res.status(401).json({ ok: false, error: 'Setup-Token required' });
@@ -271,10 +303,13 @@ router.post('/totp/setup/verify', async (req, res) => {
   totpSetupComplete = true;
 
   try {
-    const envPath = path.join(config.content.repoRoot, 'backend', '.env');
+    const envPath = path.join(config.paths?.backendDir || path.join(config.content.repoRoot, 'backend'), '.env');
     await upsertEnvVar(envPath, 'TOTP_SECRET', totpSecret);
   } catch (err) {
+    totpSecret = null;
+    totpSetupComplete = false;
     logger.error({}, 'Failed to persist TOTP_SECRET to .env', { error: err.message });
+    return res.status(500).json({ ok: false, error: 'Failed to persist TOTP secret' });
   }
 
   return res.json({ ok: true, data: { setupComplete: true } });

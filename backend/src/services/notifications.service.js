@@ -43,28 +43,33 @@ export function createNotificationsService({
       const inbox = envelope.targetUserId
         ? await repository.materializeInbox(outbox, envelope.targetUserId)
         : null;
+      const alreadyBroadcasted = Boolean(outbox.broadcastedAt);
 
-      notificationStream.broadcast(
-        envelope.eventName,
-        {
-          notificationId: inbox?.id ?? null,
-          type: envelope.type,
-          title: envelope.title,
-          message: envelope.message,
-          payload: envelope.payload ?? null,
-          sourceId: envelope.sourceId ?? null,
-          createdAt: inbox?.createdAt ?? outbox.createdAt,
-          readAt: inbox?.readAt ?? null,
-        },
-        envelope.targetUserId || undefined,
-      );
+      if (!alreadyBroadcasted) {
+        notificationStream.broadcast(
+          envelope.eventName,
+          {
+            notificationId: inbox?.id ?? outbox.id,
+            outboxId: outbox.id,
+            type: envelope.type,
+            title: envelope.title,
+            message: envelope.message,
+            payload: envelope.payload ?? null,
+            sourceId: envelope.sourceId ?? null,
+            createdAt: inbox?.createdAt ?? outbox.createdAt,
+            readAt: inbox?.readAt ?? null,
+          },
+          envelope.targetUserId || undefined,
+        );
 
-      await repository.markOutboxBroadcasted(outbox.id);
+        await repository.markOutboxBroadcasted(outbox.id);
+      }
 
       return {
         outbox,
         inbox,
-        delivered: notificationStream.getSubscriberCount(),
+        delivered: alreadyBroadcasted ? 0 : notificationStream.getSubscriberCount(),
+        deduped: alreadyBroadcasted,
       };
     },
 
