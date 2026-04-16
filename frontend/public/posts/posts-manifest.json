@@ -8,7 +8,7 @@
       "title": "ArgoCD에서 GitHub 연결이 실패했을 때, 진짜 원인은 SSH가 아니라 DNS였다",
       "description": "ArgoCD의 Repository Failed는 마지막 증상이었고, 실제 원인은 CoreDNS가 외부 질의를 넘기던 upstream resolver 체인이 깨져 `github.com` 이름 해석이 실패한 데 있었다.",
       "snippet": "ArgoCD의 Repository Failed는 마지막 증상이었고, 실제 원인은 CoreDNS가 외부 질의를 넘기던 upstream resolver 체인이 깨져 `github.com` 이름 해석이 실패한 데 있었다.",
-      "date": "2026-04-11",
+      "date": "2026-04-05",
       "tags": [
         "ArgoCD",
         "CoreDNS",
@@ -5852,7 +5852,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-04-11T02:14:38.311Z",
+  "generatedAt": "2026-04-15T09:39:46.440Z",
   "years": [
     "2026",
     "2025",
