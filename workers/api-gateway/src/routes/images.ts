@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import type { HonoEnv, Env } from '../types';
 import { success, badRequest, error } from '../lib/response';
 import { execute } from '../lib/d1';
-import { requireAdmin } from '../middleware/auth';
+import { requireAdmin, requireAuth } from '../middleware/auth';
 import { createAIService } from '../lib/ai-service';
 import { getAllowedOrigins } from '../lib/cors';
 import { getSecret } from '../lib/secrets';
@@ -132,12 +132,16 @@ images.post('/upload-direct', requireAdmin, async (c) => {
   );
 });
 
-// POST /images/chat-upload - Direct upload for AI Chat images (origin-guarded, rate-limited)
-images.post('/chat-upload', async (c) => {
+// POST /images/chat-upload - Direct upload for AI Chat images (auth + origin-guarded, rate-limited)
+images.post('/chat-upload', requireAuth, async (c) => {
   const origin = c.req.header('origin') || '';
   const allowedOrigins = await getAllowedOrigins(c.env);
 
-  if (origin && allowedOrigins.length > 0 && !allowedOrigins.includes(origin)) {
+  if (!origin) {
+    return error(c, 'Forbidden - Origin header required', 403);
+  }
+
+  if (allowedOrigins.length > 0 && !allowedOrigins.includes(origin)) {
     return error(c, 'Forbidden - Invalid origin', 403);
   }
 

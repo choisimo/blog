@@ -152,9 +152,10 @@ public config 응답에는 다음 필드가 포함됩니다.
 - 각 worker의 `wrangler.toml`에 `compatibility_flags = ["nodejs_compat"]`
 - secret은 `wrangler.toml`이 아니라 `wrangler secret put`으로 넣어야 합니다.
 
-`workers/package.json` 기준 공용 스크립트:
+루트 `workers/package.json` 기준 공용 스크립트(하위 worker로 위임):
 
 ```bash
+npm run bootstrap
 npm run dev
 npm run deploy
 npm run deploy:prod
@@ -170,8 +171,8 @@ npm run format
 
 파일 위치: `workers/migrations/`
 
-- 확인된 범위: `0001_init.sql` -> `0023_openai_key_ownership.sql`
-- 중간 migration은 config, AI model, agent orchestration, playground, fingerprints, debate, subscribers, secrets key standardization 등을 포함합니다.
+- 확인된 범위: `0001_init.sql` -> `0027_comments_stream_cursor_index.sql`
+- 중간 migration은 config, AI model, agent orchestration, playground, fingerprints, debate, subscribers, domain outbox, AI artifacts, translation jobs, comments stream cursor index 등을 포함합니다.
 
 적용 명령:
 
@@ -191,23 +192,16 @@ npm run migrations:apply:prod
 
 ```bash
 cd workers
-npm ci
+npm run bootstrap
 npm run deploy:prod
 ```
 
 개별 worker는 각 디렉토리에서 `wrangler deploy --env production`으로 배포할 수 있습니다.
 
-### GitHub Actions
+### GitHub Actions metadata in this archive
 
-파일: `.github/workflows/deploy-workers.yml`
-
-- trigger:
-  - `workflow_dispatch`
-  - `main` branch push with `workers/**`
-  - workflow file 자체 변경
-- deploy workflow는 worker matrix 기준으로 production worker를 배포합니다.
-- PR 검증은 `.github/workflows/validate-workers.yml`에서 분리 실행됩니다.
-- secret 주입은 `.github/workflows/sync-workers-secrets.yml` 수동 workflow에서만 수행합니다.
+- 현재 저장소에는 `.github/workflows/` 디렉터리가 포함되어 있지 않습니다.
+- 따라서 worker CI/CD 설명은 이 문서의 책임 범위에서 제외하고, 실제 확인 가능한 `wrangler.toml`, 하위 패키지 스크립트, `k3s/` 매니페스트만 근거로 삼습니다.
 
 ## Operations
 

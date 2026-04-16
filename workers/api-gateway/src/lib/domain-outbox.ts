@@ -186,19 +186,30 @@ export async function appendDomainOutboxEvent<TPayload>(
   input: AppendDomainOutboxInput<TPayload>
 ): Promise<DomainOutboxEvent<TPayload>> {
   await ensureDomainOutboxSchema(db);
+  const prepared = await prepareAppendDomainOutboxStatement(db, input);
+
+  await prepared.statement.run();
+
+  return prepared.event;
+}
+
+export async function prepareAppendDomainOutboxStatement<TPayload>(
+  db: D1Database,
+  input: AppendDomainOutboxInput<TPayload>
+): Promise<{ event: DomainOutboxEvent<TPayload>; statement: D1PreparedStatement }> {
+  await ensureDomainOutboxSchema(db);
 
   const id = `outbox-${crypto.randomUUID()}`;
   const now = new Date().toISOString();
   const availableAt = input.availableAt || now;
   const payload = JSON.stringify(input.payload);
-
-  await execute(
-    db,
+  const statement = db.prepare(
     `INSERT INTO domain_outbox (
        id, stream, aggregate_id, event_type, payload_json, idempotency_key,
        status, retry_count, created_at, next_attempt_at, locked_at, consumer_id,
        updated_at, last_attempt_at, processed_at, last_error
-     ) VALUES (?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, NULL, NULL, ?, NULL, NULL, NULL)`,
+     ) VALUES (?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, NULL, NULL, ?, NULL, NULL, NULL)`
+  ).bind(
     id,
     input.stream,
     input.aggregateId,
@@ -211,19 +222,22 @@ export async function appendDomainOutboxEvent<TPayload>(
   );
 
   return {
-    id,
-    stream: input.stream,
-    aggregateId: input.aggregateId,
-    eventType: input.eventType,
-    payload: input.payload,
-    idempotencyKey: input.idempotencyKey ?? null,
-    status: 'pending',
-    retryCount: 0,
-    createdAt: now,
-    availableAt,
-    lastAttemptAt: null,
-    processedAt: null,
-    lastError: null,
+    statement,
+    event: {
+      id,
+      stream: input.stream,
+      aggregateId: input.aggregateId,
+      eventType: input.eventType,
+      payload: input.payload,
+      idempotencyKey: input.idempotencyKey ?? null,
+      status: 'pending',
+      retryCount: 0,
+      createdAt: now,
+      availableAt,
+      lastAttemptAt: null,
+      processedAt: null,
+      lastError: null,
+    },
   };
 }
 

@@ -12,9 +12,10 @@
  *
  * OAuth2 flow:
  *   GET  /auth/oauth/github           - Redirect to GitHub
- *   GET  /auth/oauth/github/callback  - Exchange code → issue JWT → redirect to frontend
+ *   GET  /auth/oauth/github/callback  - Exchange code → issue JWT → create one-time handoff → redirect to frontend
  *   GET  /auth/oauth/google           - Redirect to Google
- *   GET  /auth/oauth/google/callback  - Exchange code → issue JWT → redirect to frontend
+ *   GET  /auth/oauth/google/callback  - Exchange code → issue JWT → create one-time handoff → redirect to frontend
+ *   POST /auth/oauth/handoff/consume  - Exchange one-time handoff for JWT tokens
  *
  * Token management (unchanged):
  *   POST /auth/refresh    - Refresh access token
@@ -58,6 +59,11 @@ import {
   generatePkcePair,
   isEmailAllowed,
 } from '../lib/oauth';
+import {
+  createOAuthHandoff,
+  consumeOAuthHandoff,
+  type OAuthHandoffProvider,
+} from '../lib/oauth-handoff-repository';
 
 const auth = new Hono<HonoEnv>();
 
@@ -78,6 +84,9 @@ const CHALLENGE_TTL = 5 * 60;
 
 // OAuth state TTL (5 minutes)
 const OAUTH_STATE_TTL = 5 * 60;
+
+// OAuth handoff TTL (60 seconds)
+const OAUTH_HANDOFF_TTL_SECONDS = 60;
 
 // ============================================================================
 // HELPERS
@@ -130,6 +139,34 @@ function getFrontendCallbackUrl(env: HonoEnv['Bindings']): string | null {
 function getProviderCallbackUrl(requestUrl: string, provider: 'github' | 'google'): string {
   const origin = new URL(requestUrl).origin;
   return `${origin}/api/v1/auth/oauth/${provider}/callback`;
+}
+
+function buildFrontendRedirect(frontendCallbackUrl: string, params: URLSearchParams): string {
+  return `${frontendCallbackUrl}#${params.toString()}`;
+}
+
+async function issueOAuthRedirectHandoff(
+  env: HonoEnv['Bindings'],
+  provider: OAuthHandoffProvider,
+  email: string,
+  accessToken: string,
+  refreshToken: string
+): Promise<string> {
+  const createdAt = new Date();
+  const expiresAt = new Date(createdAt.getTime() + OAUTH_HANDOFF_TTL_SECONDS * 1000);
+  const handoffId = `oauth-handoff-${generateSecureToken(24)}`;
+
+  await createOAuthHandoff(env.DB, {
+    id: handoffId,
+    provider,
+    email,
+    accessToken,
+    refreshToken,
+    createdAt: createdAt.toISOString(),
+    expiresAt: expiresAt.toISOString(),
+  });
+
+  return handoffId;
 }
 
 async function getRefreshFamilyRecord(
@@ -235,6 +272,34 @@ async function consumeTotpStep(
   );
   return true;
 }
+
+auth.post('/oauth/handoff/consume', async (c) => {
+  const body = (await c.req.json().catch(() => ({}))) as { handoff?: string };
+  const handoffId = body.handoff?.trim();
+
+  if (!handoffId) {
+    return badRequest(c, 'handoff required');
+  }
+
+  const handoff = await consumeOAuthHandoff(c.env.DB, handoffId, new Date().toISOString());
+  if (!handoff) {
+    return unauthorized(c, 'Invalid or expired OAuth handoff');
+  }
+
+  return success(c, {
+    accessToken: handoff.accessToken,
+    refreshToken: handoff.refreshToken,
+    tokenType: 'Bearer',
+    expiresIn: 15 * 60,
+    user: {
+      username: 'admin',
+      email: handoff.email,
+      role: 'admin',
+      emailVerified: true,
+      authMethod: handoff.provider,
+    },
+  });
+});
 
 // ============================================================================
 // TOTP SETUP
@@ -470,7 +535,7 @@ auth.get('/oauth/github', async (c) => {
 
 /**
  * GET /auth/oauth/github/callback
- * Exchange code → verify email → issue JWT → redirect to frontend
+ * Exchange code → verify email → issue JWT → redirect to frontend via one-time handoff
  */
 auth.get('/oauth/github/callback', async (c) => {
   const code = c.req.query('code');
@@ -515,17 +580,32 @@ auth.get('/oauth/github/callback', async (c) => {
 
     // Check allowlist
     if (!allowedEmails || !isEmailAllowed(email, allowedEmails)) {
-      return c.redirect(`${frontendCallbackUrl}#error=email_not_allowed`, 302);
+      return c.redirect(
+        buildFrontendRedirect(frontendCallbackUrl, new URLSearchParams({ error: 'email_not_allowed' })),
+        302
+      );
     }
 
     const payload = adminPayload(email);
     const { accessToken, refreshToken } = await issueAdminTokens(payload, c.env);
+    const handoff = await issueOAuthRedirectHandoff(
+      c.env,
+      'github',
+      email,
+      accessToken,
+      refreshToken
+    );
 
-    const fragment = new URLSearchParams({ token: accessToken, refreshToken });
-    return c.redirect(`${frontendCallbackUrl}#${fragment.toString()}`, 302);
+    return c.redirect(
+      buildFrontendRedirect(frontendCallbackUrl, new URLSearchParams({ handoff })),
+      302
+    );
   } catch (err) {
     console.error('GitHub callback error:', err);
-    return c.redirect(`${frontendCallbackUrl}#error=oauth_failed`, 302);
+    return c.redirect(
+      buildFrontendRedirect(frontendCallbackUrl, new URLSearchParams({ error: 'oauth_failed' })),
+      302
+    );
   }
 });
 
@@ -565,7 +645,7 @@ auth.get('/oauth/google', async (c) => {
 
 /**
  * GET /auth/oauth/google/callback
- * Exchange code → verify email → issue JWT → redirect to frontend
+ * Exchange code → verify email → issue JWT → redirect to frontend via one-time handoff
  */
 auth.get('/oauth/google/callback', async (c) => {
   const code = c.req.query('code');
@@ -610,17 +690,32 @@ auth.get('/oauth/google/callback', async (c) => {
 
     // Check allowlist
     if (!allowedEmails || !isEmailAllowed(email, allowedEmails)) {
-      return c.redirect(`${frontendCallbackUrl}#error=email_not_allowed`, 302);
+      return c.redirect(
+        buildFrontendRedirect(frontendCallbackUrl, new URLSearchParams({ error: 'email_not_allowed' })),
+        302
+      );
     }
 
     const payload = adminPayload(email);
     const { accessToken, refreshToken } = await issueAdminTokens(payload, c.env);
+    const handoff = await issueOAuthRedirectHandoff(
+      c.env,
+      'google',
+      email,
+      accessToken,
+      refreshToken
+    );
 
-    const fragment = new URLSearchParams({ token: accessToken, refreshToken });
-    return c.redirect(`${frontendCallbackUrl}#${fragment.toString()}`, 302);
+    return c.redirect(
+      buildFrontendRedirect(frontendCallbackUrl, new URLSearchParams({ handoff })),
+      302
+    );
   } catch (err) {
     console.error('Google callback error:', err);
-    return c.redirect(`${frontendCallbackUrl}#error=oauth_failed`, 302);
+    return c.redirect(
+      buildFrontendRedirect(frontendCallbackUrl, new URLSearchParams({ error: 'oauth_failed' })),
+      302
+    );
   }
 });
 

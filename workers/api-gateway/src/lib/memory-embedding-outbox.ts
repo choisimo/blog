@@ -4,6 +4,7 @@ import {
   claimDomainOutboxEvents,
   markDomainOutboxFailed,
   markDomainOutboxProcessed,
+  prepareAppendDomainOutboxStatement,
 } from './domain-outbox';
 
 const MEMORY_EMBEDDING_STREAM = 'memory.embedding';
@@ -94,6 +95,34 @@ export async function enqueueMemoryEmbeddingDelete(
   updatedAt: string
 ) {
   return appendDomainOutboxEvent(env.DB, {
+    stream: MEMORY_EMBEDDING_STREAM,
+    aggregateId: payload.memoryId,
+    eventType: 'memory.embedding.delete',
+    payload,
+    idempotencyKey: `memory.embedding.delete:${payload.memoryId}:${updatedAt}`,
+  });
+}
+
+export async function prepareMemoryEmbeddingUpsert(
+  env: Env,
+  payload: MemoryEmbeddingUpsertPayload,
+  updatedAt: string
+) {
+  return prepareAppendDomainOutboxStatement(env.DB, {
+    stream: MEMORY_EMBEDDING_STREAM,
+    aggregateId: payload.memoryId,
+    eventType: 'memory.embedding.upsert',
+    payload,
+    idempotencyKey: `memory.embedding.upsert:${payload.memoryId}:${updatedAt}`,
+  });
+}
+
+export async function prepareMemoryEmbeddingDelete(
+  env: Env,
+  payload: MemoryEmbeddingDeletePayload,
+  updatedAt: string
+) {
+  return prepareAppendDomainOutboxStatement(env.DB, {
     stream: MEMORY_EMBEDDING_STREAM,
     aggregateId: payload.memoryId,
     eventType: 'memory.embedding.delete',

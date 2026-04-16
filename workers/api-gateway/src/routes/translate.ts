@@ -398,7 +398,12 @@ async function generateFromSourcePost(
     return error(c, `Unsupported target language: ${targetLang}`, 400, 'BAD_REQUEST');
   }
 
-  const immediate = await getImmediateTranslationResult(sourcePost, normalizedTargetLang, options, c);
+  const immediate = await getImmediateTranslationResult(
+    sourcePost,
+    normalizedTargetLang,
+    options,
+    c
+  );
   if (immediate) {
     return buildGenerateSuccessResponse(c, immediate);
   }
@@ -412,7 +417,6 @@ async function generateFromSourcePost(
     normalizedTargetLang
   );
   const userId = getAuthenticatedUserId(c);
-  let jobId = '';
   const job = await startTranslationJob<TranslationResponseData>(c.env.DB, {
     key: buildTranslationJobKey(sourcePost.year, sourcePost.slug, normalizedTargetLang),
     year: sourcePost.year,
@@ -422,35 +426,33 @@ async function generateFromSourcePost(
     forceRefresh: options.forceRefresh,
     contentHash,
     urls,
-    runner: async () => {
-      try {
-        const result = await translateAndCachePost(c.env, c.env.DB, {
-          year: sourcePost.year,
-          slug: sourcePost.slug,
-          targetLang: normalizedTargetLang,
-          sourceLang,
-          title: sourcePost.title,
-          description: sourcePost.description,
-          content: sourcePost.content,
-          forceRefresh: options.forceRefresh,
-        });
-
-        await notifyTranslationJob(c, userId, jobId, urls, sourcePost, normalizedTargetLang, {
-          type: 'success',
-          title: '번역 준비 완료',
-          message: `${sourcePost.title} 번역이 준비되었습니다.`,
-        });
-
-        return result;
-      } catch (err) {
-        const details = normalizeGenerateError(err);
-        await notifyTranslationJob(c, userId, jobId, urls, sourcePost, normalizedTargetLang, {
-          type: 'error',
-          title: '번역 준비 실패',
-          message: details.message,
-        });
-        throw err;
+    runner: async () =>
+      translateAndCachePost(c.env, c.env.DB, {
+        year: sourcePost.year,
+        slug: sourcePost.slug,
+        targetLang: normalizedTargetLang,
+        sourceLang,
+        title: sourcePost.title,
+        description: sourcePost.description,
+        content: sourcePost.content,
+        forceRefresh: options.forceRefresh,
+      }),
+    resolveRemoteResult: async () => {
+      const cached = await getCachedTranslationRecord(
+        c.env.DB,
+        sourcePost.year,
+        sourcePost.slug,
+        normalizedTargetLang
+      );
+      if (
+        cached &&
+        cached.content_hash === contentHash &&
+        !isSuspiciousTranslation(sourcePost.content, cached.content)
+      ) {
+        return buildTranslationResponse(cached);
       }
+
+      throw new Error('Translation job completed without a valid cached translation');
     },
     summarizeResult: summarizeTranslationResult,
     normalizeError: (err): TranslationJobError => {
@@ -463,12 +465,28 @@ async function generateFromSourcePost(
         retryAfterSeconds: details.retryAfterSeconds,
       };
     },
+    onSuccess: async (_result, settledJob) => {
+      await notifyTranslationJob(c, userId, settledJob.id, urls, sourcePost, normalizedTargetLang, {
+        type: 'success',
+        title: '번역 준비 완료',
+        message: `${sourcePost.title} 번역이 준비되었습니다.`,
+      });
+    },
+    onFailure: async (_error, settledJob, details) => {
+      await notifyTranslationJob(c, userId, settledJob.id, urls, sourcePost, normalizedTargetLang, {
+        type: 'error',
+        title: '번역 준비 실패',
+        message: details.message,
+      });
+    },
   });
-  jobId = job.job.id;
 
   if (wantsAsyncResponse(c, options)) {
     applyJobHeaders(c, job.job);
     c.header('Retry-After', '3');
+    if (job.created) {
+      c.executionCtx.waitUntil(job.wait.catch(() => void 0));
+    }
     return c.json({ ok: true, data: null, job: job.job }, 202);
   }
 

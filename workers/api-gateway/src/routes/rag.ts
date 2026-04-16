@@ -13,14 +13,12 @@
 
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import type { Env } from '../types';
+import type { HonoEnv } from '../types';
 import { forbidden } from '../lib/response';
 import { requireAdmin, requireAuth } from '../middleware/auth';
 import { proxyToBackendWithPolicy } from '../lib/backend-proxy';
 
-type RagContext = { Bindings: Env };
-
-const rag = new Hono<RagContext>();
+const rag = new Hono<HonoEnv>();
 
 /**
  * Backend RAG API로 요청을 프록시합니다.
@@ -30,7 +28,7 @@ const rag = new Hono<RagContext>();
  * 무한 루프가 발생합니다 (Cloudflare error 1033).
  */
 async function proxyToBackend(
-  c: Context<RagContext>,
+  c: Context<HonoEnv>,
   path: string,
   method: 'GET' | 'POST' | 'DELETE' = 'POST',
   body?: BodyInit | null
@@ -44,7 +42,7 @@ async function proxyToBackend(
   });
 }
 
-function getAuthenticatedSub(c: Context<RagContext>): string {
+function getAuthenticatedSub(c: Context<HonoEnv>): string {
   const user = c.get('user' as never) as { sub?: string };
   if (!user?.sub) {
     throw new Error('Missing authenticated user');
@@ -53,7 +51,7 @@ function getAuthenticatedSub(c: Context<RagContext>): string {
 }
 
 async function proxyPrincipalMemoryRoute(
-  c: Context<RagContext>,
+  c: Context<HonoEnv>,
   path: string,
   transformBody?: (body: Record<string, unknown>, sub: string) => Record<string, unknown>
 ) {

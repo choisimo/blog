@@ -1,5 +1,5 @@
 import { env, SELF } from 'cloudflare:test';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   REFRESH_TOKEN_EXPIRY,
   generateRefreshToken,
@@ -9,7 +9,36 @@ import {
 import type { Env } from '../src/types';
 
 declare module 'cloudflare:test' {
-  interface ProvidedEnv extends Pick<Env, 'JWT_SECRET' | 'KV'> {}
+  interface ProvidedEnv
+    extends Pick<
+      Env,
+      | 'DB'
+      | 'JWT_SECRET'
+      | 'KV'
+      | 'ADMIN_ALLOWED_EMAILS'
+      | 'GITHUB_CLIENT_ID'
+      | 'GITHUB_CLIENT_SECRET'
+      | 'OAUTH_REDIRECT_BASE_URL'
+    > {}
+}
+
+beforeEach(async () => {
+  env.ADMIN_ALLOWED_EMAILS = 'admin@example.com';
+  env.GITHUB_CLIENT_ID = 'github-client-id';
+  env.GITHUB_CLIENT_SECRET = 'github-client-secret';
+  env.OAUTH_REDIRECT_BASE_URL = 'https://blog.example';
+  await env.DB.prepare('DELETE FROM oauth_handoffs').run();
+});
+
+afterEach(async () => {
+  vi.restoreAllMocks();
+  await env.DB.prepare('DELETE FROM oauth_handoffs').run();
+});
+
+function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
+  const headers = new Headers(init.headers);
+  headers.set('Content-Type', 'application/json');
+  return new Response(JSON.stringify(body), { ...init, headers });
 }
 
 describe('auth contract', () => {
@@ -141,5 +170,168 @@ describe('auth contract', () => {
     };
     expect(rotatedPayload.ok).toBe(false);
     expect(rotatedPayload.error.message).toBe('Refresh token revoked or expired');
+  });
+
+  it('redirects OAuth callbacks with a one-time handoff instead of raw JWT fragments', async () => {
+    const state = `oauth-state-${crypto.randomUUID()}`;
+    await env.KV.put(
+      `auth:oauth:state:${state}`,
+      JSON.stringify({
+        state,
+        provider: 'github',
+        createdAt: new Date().toISOString(),
+        codeVerifier: 'pkce-verifier',
+      }),
+      { expirationTtl: 300 }
+    );
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+
+      if (url === 'https://github.com/login/oauth/access_token') {
+        return jsonResponse({ access_token: 'github-oauth-token' });
+      }
+      if (url === 'https://api.github.com/user/emails') {
+        return jsonResponse([
+          {
+            email: 'admin@example.com',
+            primary: true,
+            verified: true,
+          },
+        ]);
+      }
+
+      throw new Error(`Unexpected fetch in auth test: ${url}`);
+    });
+
+    const response = await SELF.fetch(
+      `https://example.com/api/v1/auth/oauth/github/callback?code=test-code&state=${state}`,
+      {
+        redirect: 'manual',
+      }
+    );
+
+    expect(response.status).toBe(302);
+
+    const location = response.headers.get('Location');
+    expect(location).toBeTruthy();
+
+    const redirectUrl = new URL(location || '');
+    const fragment = new URLSearchParams(redirectUrl.hash.slice(1));
+    const handoff = fragment.get('handoff');
+
+    expect(redirectUrl.origin).toBe('https://blog.example');
+    expect(redirectUrl.pathname).toBe('/admin/auth/callback');
+    expect(handoff).toMatch(/^oauth-handoff-/);
+    expect(fragment.get('token')).toBeNull();
+    expect(fragment.get('refreshToken')).toBeNull();
+    expect(await env.KV.get(`auth:oauth:state:${state}`)).toBeNull();
+
+    const handoffRow = await env.DB
+      .prepare('SELECT provider, email FROM oauth_handoffs WHERE id = ?')
+      .bind(handoff)
+      .first<{ provider: string; email: string }>();
+    expect(handoffRow).toEqual({
+      provider: 'github',
+      email: 'admin@example.com',
+    });
+  });
+
+  it('consumes OAuth handoffs once and invalidates them afterwards', async () => {
+    const state = `oauth-state-${crypto.randomUUID()}`;
+    await env.KV.put(
+      `auth:oauth:state:${state}`,
+      JSON.stringify({
+        state,
+        provider: 'github',
+        createdAt: new Date().toISOString(),
+        codeVerifier: 'pkce-verifier',
+      }),
+      { expirationTtl: 300 }
+    );
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+
+      if (url === 'https://github.com/login/oauth/access_token') {
+        return jsonResponse({ access_token: 'github-oauth-token' });
+      }
+      if (url === 'https://api.github.com/user/emails') {
+        return jsonResponse([
+          {
+            email: 'admin@example.com',
+            primary: true,
+            verified: true,
+          },
+        ]);
+      }
+
+      throw new Error(`Unexpected fetch in auth test: ${url}`);
+    });
+
+    const callback = await SELF.fetch(
+      `https://example.com/api/v1/auth/oauth/github/callback?code=test-code&state=${state}`,
+      {
+        redirect: 'manual',
+      }
+    );
+    const location = new URL(callback.headers.get('Location') || '');
+    const handoff = new URLSearchParams(location.hash.slice(1)).get('handoff');
+    expect(handoff).toBeTruthy();
+
+    const consume = await SELF.fetch('https://example.com/api/v1/auth/oauth/handoff/consume', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ handoff }),
+    });
+
+    expect(consume.status).toBe(200);
+    const payload = (await consume.json()) as {
+      ok: boolean;
+      data: {
+        accessToken: string;
+        refreshToken: string;
+        user: {
+          username: string;
+          email: string;
+          role: string;
+          emailVerified: boolean;
+          authMethod: string;
+        };
+      };
+    };
+    expect(payload.ok).toBe(true);
+    expect(payload.data.user).toMatchObject({
+      username: 'admin',
+      email: 'admin@example.com',
+      role: 'admin',
+      emailVerified: true,
+    });
+
+    const accessClaims = await verifyJwt(payload.data.accessToken, env);
+    const refreshClaims = await verifyJwt(payload.data.refreshToken, env);
+    expect(accessClaims.email).toBe('admin@example.com');
+    expect(refreshClaims.type).toBe('refresh');
+    expect(refreshClaims.email).toBe('admin@example.com');
+
+    const replay = await SELF.fetch('https://example.com/api/v1/auth/oauth/handoff/consume', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ handoff }),
+    });
+    expect(replay.status).toBe(401);
+
+    const replayPayload = (await replay.json()) as {
+      ok: boolean;
+      error: { message: string };
+    };
+    expect(replayPayload.ok).toBe(false);
+    expect(replayPayload.error.message).toBe('Invalid or expired OAuth handoff');
+
+    const handoffRow = await env.DB
+      .prepare('SELECT id FROM oauth_handoffs WHERE id = ?')
+      .bind(handoff)
+      .first();
+    expect(handoffRow).toBeNull();
   });
 });

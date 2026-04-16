@@ -37,6 +37,8 @@ async function sendConfirmationEmail(
   const apiKey = env.RESEND_API_KEY;
   const from = env.NOTIFY_FROM_EMAIL;
   const siteUrl = env.PUBLIC_SITE_URL || 'https://noblog.nodove.com';
+  const confirmUrl = `${siteUrl}/api/v1/subscribe/confirm?token=${token}`;
+  const unsubscribeUrl = `${siteUrl}/api/v1/subscribe/unsubscribe?token=${token}`;
 
   if (!apiKey || !from) {
     console.error(
@@ -47,8 +49,6 @@ async function sendConfirmationEmail(
     return { ok: false, reason: 'missing_config' };
   }
 
-  const confirmUrl = `${siteUrl}/api/v1/subscribe/confirm?token=${token}`;
-
   const html = `
     <div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #0f172a; max-width: 600px; margin: 0 auto;">
       <h2 style="margin: 0 0 16px; color: #0f172a;">Nodove Blog 구독 확인</h2>
@@ -58,7 +58,8 @@ async function sendConfirmationEmail(
       </p>
       <p style="margin: 0; color: #64748b; font-size: 14px;">버튼이 작동하지 않으면 다음 링크를 복사하여 브라우저에 붙여넣으세요:<br/><a href="${confirmUrl}" style="color: #0ea5e9;">${confirmUrl}</a></p>
       <hr style="margin: 24px 0; border: none; border-top: 1px solid #e2e8f0;" />
-      <p style="margin: 0; color: #94a3b8; font-size: 12px;">이 이메일은 Nodove Blog 구독 요청에 의해 발송되었습니다.</p>
+      <p style="margin: 0 0 8px; color: #94a3b8; font-size: 12px;">이 이메일은 Nodove Blog 구독 요청에 의해 발송되었습니다.</p>
+      <p style="margin: 0; color: #94a3b8; font-size: 12px;">구독을 원하지 않으면 언제든지 <a href="${unsubscribeUrl}" style="color: #0ea5e9;">여기서 구독을 해지</a>할 수 있습니다.</p>
     </div>
   `;
 
@@ -192,7 +193,7 @@ app.get('/confirm', async (c) => {
 
     await execute(
       db,
-      `UPDATE subscribers SET status = 'confirmed', confirm_token = NULL, confirmed_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`,
+      `UPDATE subscribers SET status = 'confirmed', confirmed_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`,
       subscriber.id
     );
 
@@ -205,29 +206,18 @@ app.get('/confirm', async (c) => {
 
 app.get('/unsubscribe', async (c) => {
   try {
-    const email = c.req.query('email');
     const token = c.req.query('token');
 
-    if (!email && !token) {
-      return c.redirect('/?unsubscribe=error&reason=missing_params');
+    if (!token) {
+      return c.redirect('/?unsubscribe=error&reason=missing_token');
     }
 
     const db = c.env.DB;
-    let subscriber: Subscriber | null = null;
-
-    if (token) {
-      subscriber = await queryOne<Subscriber>(
-        db,
-        `SELECT * FROM subscribers WHERE confirm_token = ?`,
-        token
-      );
-    } else if (email) {
-      subscriber = await queryOne<Subscriber>(
-        db,
-        `SELECT * FROM subscribers WHERE email = ?`,
-        email.toLowerCase().trim()
-      );
-    }
+    const subscriber = await queryOne<Subscriber>(
+      db,
+      `SELECT * FROM subscribers WHERE confirm_token = ?`,
+      token
+    );
 
     if (!subscriber) {
       return c.redirect('/?unsubscribe=error&reason=not_found');
