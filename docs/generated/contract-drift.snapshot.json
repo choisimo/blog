@@ -82,6 +82,11 @@
         "path": "/api/v1/images"
       },
       {
+        "boundaryId": "auth",
+        "owner": "backend",
+        "path": "/api/v1/auth"
+      },
+      {
         "boundaryId": "rag",
         "owner": "backend",
         "path": "/api/v1/rag"
@@ -112,14 +117,9 @@
         "path": "/api/v1/admin/workers"
       },
       {
-        "boundaryId": "admin-logs",
+        "boundaryId": "admin",
         "owner": "backend",
-        "path": "/api/v1/admin/logs"
-      },
-      {
-        "boundaryId": "admin-analytics",
-        "owner": "backend",
-        "path": "/api/v1/admin/analytics"
+        "path": "/api/v1/admin"
       },
       {
         "boundaryId": "agent",
