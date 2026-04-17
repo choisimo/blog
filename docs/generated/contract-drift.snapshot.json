@@ -318,6 +318,11 @@
         "prefix": "/api/v1/admin/workers"
       },
       {
+        "boundaryId": "admin-analytics",
+        "owner": "BACKEND",
+        "prefix": "/api/v1/admin/analytics"
+      },
+      {
         "boundaryId": "admin",
         "owner": "BACKEND",
         "prefix": "/api/v1/admin"

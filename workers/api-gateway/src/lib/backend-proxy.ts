@@ -8,6 +8,7 @@ export type BackendProxyOptions = {
   method?: string;
   stream?: boolean;
   preserveQuery?: boolean;
+  injectFallbackAuthorization?: boolean;
   sanitizeClientModel?: boolean;
   forceAiModels?: boolean;
   forceVisionModel?: boolean;
@@ -76,7 +77,11 @@ async function buildProxyHeaders(c: Context<HonoEnv>, options: BackendProxyOptio
     }
   }
 
-  if (!headers.has('Authorization') && c.env.OPENCODE_AUTH_TOKEN) {
+  if (
+    options.injectFallbackAuthorization !== false &&
+    !headers.has('Authorization') &&
+    c.env.OPENCODE_AUTH_TOKEN
+  ) {
     headers.set('Authorization', `Bearer ${c.env.OPENCODE_AUTH_TOKEN}`);
   }
 
