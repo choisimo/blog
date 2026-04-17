@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-04-13T13:48:06.861Z",
+  "generatedAt": "2026-04-17T03:52:29.172Z",
   "counts": {
     "serviceBoundaries": {
       "worker-owned": 26,
-      "backend-owned": 6,
+      "backend-owned": 7,
       "proxy-only": 3,
       "compatibility": 1
     },
     "routeBoundaries": {
-      "backend-owned": 19,
+      "backend-owned": 27,
       "worker-owned": 2
     }
   },
@@ -200,6 +200,12 @@
       "description": "Worker deployment admin APIs"
     },
     {
+      "id": "admin-analytics",
+      "prefix": "/api/v1/admin/analytics",
+      "owner": "backend-owned",
+      "description": "Backend admin analytics and visit inspection APIs"
+    },
+    {
       "id": "admin",
       "prefix": "/api/v1/admin",
       "owner": "backend-owned",
@@ -366,6 +372,70 @@
       "owner": "backend-owned",
       "boundaryId": "admin-logs",
       "description": "Backend admin log SSE stream via worker proxy"
+    },
+    {
+      "id": "admin-logs.list",
+      "method": "GET",
+      "path": "/api/v1/admin/logs",
+      "owner": "backend-owned",
+      "boundaryId": "admin-logs",
+      "description": "Backend admin log history via worker proxy"
+    },
+    {
+      "id": "rag.search",
+      "method": "POST",
+      "path": "/api/v1/rag/search",
+      "owner": "backend-owned",
+      "boundaryId": "rag",
+      "description": "Backend RAG semantic search via worker proxy"
+    },
+    {
+      "id": "rag.embed",
+      "method": "POST",
+      "path": "/api/v1/rag/embed",
+      "owner": "backend-owned",
+      "boundaryId": "rag",
+      "description": "Backend RAG embedding generation via worker proxy"
+    },
+    {
+      "id": "rag.health",
+      "method": "GET",
+      "path": "/api/v1/rag/health",
+      "owner": "backend-owned",
+      "boundaryId": "rag",
+      "description": "Backend RAG health via worker proxy"
+    },
+    {
+      "id": "rag.status",
+      "method": "GET",
+      "path": "/api/v1/rag/status",
+      "owner": "backend-owned",
+      "boundaryId": "rag",
+      "description": "Backend RAG collection status via worker proxy"
+    },
+    {
+      "id": "rag.collections",
+      "method": "GET",
+      "path": "/api/v1/rag/collections",
+      "owner": "backend-owned",
+      "boundaryId": "rag",
+      "description": "Backend RAG collection listing via worker proxy"
+    },
+    {
+      "id": "rag.index.create",
+      "method": "POST",
+      "path": "/api/v1/rag/index",
+      "owner": "backend-owned",
+      "boundaryId": "rag",
+      "description": "Backend RAG document indexing via worker proxy"
+    },
+    {
+      "id": "rag.index.delete",
+      "method": "DELETE",
+      "path": "/api/v1/rag/index/:documentId",
+      "owner": "backend-owned",
+      "boundaryId": "rag",
+      "description": "Backend RAG document delete via worker proxy"
     },
     {
       "id": "analytics.view",

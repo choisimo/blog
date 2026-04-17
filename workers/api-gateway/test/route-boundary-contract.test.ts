@@ -43,6 +43,41 @@ describe('route boundary contract', () => {
     expect(isWorkerOwnedPath('/api/v1/chat/session/session-123/lens-feed', 'POST')).toBe(true);
   });
 
+  it('resolves backend-owned rag index operations inside the worker-owned rag service boundary', () => {
+    const boundary = matchRouteBoundary({
+      pathname: '/api/v1/rag/index/doc-123',
+      method: 'DELETE',
+    });
+
+    expect(boundary).toMatchObject({
+      id: 'rag.index.delete',
+      owner: 'backend-owned',
+      boundaryId: 'rag',
+    });
+    expect(isBackendOwnedPath('/api/v1/rag/index/doc-123', 'DELETE')).toBe(true);
+  });
+
+  it('resolves backend-owned admin log history operations behind the worker proxy', () => {
+    const headers = buildRouteBoundaryHeaders(
+      {
+        pathname: '/api/v1/admin/logs',
+        method: 'GET',
+      },
+      {
+        responder: 'worker-proxy',
+        edgeMode: 'proxy',
+        originMode: 'backend',
+      },
+    );
+
+    expect(headers).toMatchObject({
+      'X-Route-Boundary-Id': 'admin-logs.list',
+      'X-Route-Owner': 'backend-owned',
+      'X-Route-Responder': 'worker-proxy',
+    });
+    expect(isBackendOwnedPath('/api/v1/admin/logs', 'GET')).toBe(true);
+  });
+
   it('falls back to service boundaries for non-specialized paths', () => {
     const headers = buildRouteBoundaryHeaders(
       {

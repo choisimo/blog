@@ -1,36 +1,36 @@
 /**
  * RAG Routes (Workers)
- * 
+ *
  * Cloudflare Tunnel을 통해 Backend API의 RAG 엔드포인트를 호출합니다.
- * 
+ *
  * 엔드포인트:
  * - POST /rag/search - 시맨틱 검색 (프록시)
- * - POST /rag/embed - 텍스트 임베딩 생성 (프록시)
+ * - POST /rag/embed - 텍스트 임베딩 생성 (프록시, 관리자)
  * - GET /rag/health - RAG 서비스 상태 확인 (프록시)
- * - GET /rag/status - 컬렉션 상태 조회 (프록시)
- * - GET /rag/collections - 컬렉션 목록 조회 (프록시)
+ * - GET /rag/status - 컬렉션 상태 조회 (프록시, 관리자)
+ * - GET /rag/collections - 컬렉션 목록 조회 (프록시, 관리자)
+ * - POST /rag/index - 문서 인덱싱 (프록시, 관리자)
+ * - DELETE /rag/index/:documentId - 인덱스 문서 삭제 (프록시, 관리자)
  */
 
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import type { Env } from '../types';
+import type { HonoEnv } from '../types';
 import { forbidden } from '../lib/response';
 import { requireAdmin, requireAuth } from '../middleware/auth';
 import { proxyToBackendWithPolicy } from '../lib/backend-proxy';
 
-type RagContext = { Bindings: Env };
-
-const rag = new Hono<RagContext>();
+const rag = new Hono<HonoEnv>();
 
 /**
  * Backend RAG API로 요청을 프록시합니다.
- * 
+ *
  * IMPORTANT: BACKEND_ORIGIN을 직접 사용해야 합니다.
  * getApiBaseUrl()은 기본값이 api.nodove.com (Workers 자신)이므로
  * 무한 루프가 발생합니다 (Cloudflare error 1033).
  */
 async function proxyToBackend(
-  c: Context<RagContext>,
+  c: Context<HonoEnv>,
   path: string,
   method: 'GET' | 'POST' | 'DELETE' = 'POST',
   body?: BodyInit | null
@@ -44,7 +44,7 @@ async function proxyToBackend(
   });
 }
 
-function getAuthenticatedSub(c: Context<RagContext>): string {
+function getAuthenticatedSub(c: Context<HonoEnv>): string {
   const user = c.get('user' as never) as { sub?: string };
   if (!user?.sub) {
     throw new Error('Missing authenticated user');
@@ -53,7 +53,7 @@ function getAuthenticatedSub(c: Context<RagContext>): string {
 }
 
 async function proxyPrincipalMemoryRoute(
-  c: Context<RagContext>,
+  c: Context<HonoEnv>,
   path: string,
   transformBody?: (body: Record<string, unknown>, sub: string) => Record<string, unknown>
 ) {
@@ -74,7 +74,7 @@ async function proxyPrincipalMemoryRoute(
 
 /**
  * POST /search - 시맨틱 검색
- * 
+ *
  * Request Body:
  * {
  *   query: string,      // 검색 쿼리
@@ -87,7 +87,7 @@ rag.post('/search', async (c) => {
 
 /**
  * POST /embed - 텍스트 임베딩 생성
- * 
+ *
  * Request Body:
  * {
  *   texts: string[]  // 임베딩할 텍스트 배열
@@ -117,6 +117,24 @@ rag.get('/status', requireAdmin, async (c) => {
  */
 rag.get('/collections', requireAdmin, async (c) => {
   return proxyToBackend(c, '/collections', 'GET');
+});
+
+/**
+ * POST /index - 문서 인덱싱
+ */
+rag.post('/index', requireAdmin, async (c) => {
+  return proxyToBackend(c, '/index', 'POST');
+});
+
+/**
+ * DELETE /index/:documentId - 인덱스에서 문서 삭제
+ */
+rag.delete('/index/:documentId', requireAdmin, async (c) => {
+  return proxyToBackend(
+    c,
+    `/index/${encodeURIComponent(c.req.param('documentId'))}`,
+    'DELETE'
+  );
 });
 
 rag.post('/memories/search', requireAuth, async (c) => {

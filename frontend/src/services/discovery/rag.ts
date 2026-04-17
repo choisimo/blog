@@ -7,6 +7,7 @@
 
 import { getApiBaseUrl } from '@/utils/network/apiBase';
 import { PostService } from '@/services/content/postService';
+import { getAuthHeadersAsync } from '@/stores/session/useAuthStore';
 import { expandQueryWithSynonyms, getRelatedKeywords } from './synonyms';
 import { RAG_DEFAULTS } from '@/config/defaults';
 
@@ -59,6 +60,16 @@ export interface RAGHealthResponse {
     timestamp: string;
   };
   error?: { message: string; code?: string };
+}
+
+type AuthenticatedJsonHeaders = Record<string, string> & { Authorization: string };
+
+async function getAdminRequestHeaders(): Promise<AuthenticatedJsonHeaders | null> {
+  const headers = await getAuthHeadersAsync();
+  if (!headers.Authorization) {
+    return null;
+  }
+  return headers as AuthenticatedJsonHeaders;
 }
 
 // ============================================================================
@@ -144,9 +155,20 @@ export async function generateEmbeddings(
   const url = `${base.replace(/\/$/, '')}/api/v1/rag/embed`;
 
   try {
+    const headers = await getAdminRequestHeaders();
+    if (!headers) {
+      return {
+        ok: false,
+        error: {
+          message: 'Not authenticated. Please log in again.',
+          code: 'UNAUTHORIZED',
+        },
+      };
+    }
+
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ texts }),
       signal,
     });
@@ -518,7 +540,12 @@ export async function getCollections(): Promise<RAGCollectionsResponse> {
   const url = `${base.replace(/\/$/, '')}/api/v1/rag/collections`;
 
   try {
-    const res = await fetch(url, { method: 'GET' });
+    const headers = await getAdminRequestHeaders();
+    if (!headers) {
+      return { ok: false, error: 'Not authenticated. Please log in again.' };
+    }
+
+    const res = await fetch(url, { method: 'GET', headers });
     const data = await res.json();
 
     if (!res.ok) {
@@ -542,7 +569,12 @@ export async function getCollectionStatus(collection?: string): Promise<RAGStatu
     : `${base.replace(/\/$/, '')}/api/v1/rag/status`;
 
   try {
-    const res = await fetch(url, { method: 'GET' });
+    const headers = await getAdminRequestHeaders();
+    if (!headers) {
+      return { ok: false, error: 'Not authenticated. Please log in again.' };
+    }
+
+    const res = await fetch(url, { method: 'GET', headers });
     const data = await res.json();
 
     if (!res.ok) {
@@ -567,9 +599,14 @@ export async function indexDocuments(
   const url = `${base.replace(/\/$/, '')}/api/v1/rag/index`;
 
   try {
+    const headers = await getAdminRequestHeaders();
+    if (!headers) {
+      return { ok: false, error: 'Not authenticated. Please log in again.' };
+    }
+
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ documents, collection }),
     });
 
@@ -599,7 +636,12 @@ export async function deleteFromIndex(
     : `${base.replace(/\/$/, '')}/api/v1/rag/index/${encodeURIComponent(documentId)}`;
 
   try {
-    const res = await fetch(url, { method: 'DELETE' });
+    const headers = await getAdminRequestHeaders();
+    if (!headers) {
+      return { ok: false, error: 'Not authenticated. Please log in again.' };
+    }
+
+    const res = await fetch(url, { method: 'DELETE', headers });
     const data = await res.json();
 
     if (!res.ok) {
