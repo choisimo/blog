@@ -9,7 +9,6 @@
     "deploy:prod": "wrangler deploy --env production",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test test/*.test.ts"
-    "test": "node --import tsx --test test/*.test.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241218.0",
