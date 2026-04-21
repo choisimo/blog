@@ -59,7 +59,7 @@ export interface RefreshTokenResponse {
   expiresIn: number;
 }
 
-export interface OAuthHandoffResponse extends TotpVerifyResponse {}
+export type OAuthHandoffResponse = TotpVerifyResponse;
 
 export interface UserInfo {
   username: string;

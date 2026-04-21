@@ -170,11 +170,6 @@ spec:
                 name: blog-app-config
             - secretRef:
                 name: blog-app-secrets
-          volumeMounts:
-            - name: repo-data
-              mountPath: /shared
-              subPath: shared
-              readOnly: true
           resources:
             requests:
               cpu: 100m
