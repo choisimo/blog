@@ -12,7 +12,7 @@ let _migrationsReady = false;
 function getDbPath() {
   const fromEnv = process.env.SQLITE_PATH || process.env.DB_PATH;
   if (fromEnv && String(fromEnv).trim()) return String(fromEnv).trim();
-  return path.join(config.content.repoRoot, '.data', 'blog.db');
+  return path.join(config.paths?.repoRoot || config.content.repoRoot, '.data', 'blog.db');
 }
 
 function ensureDirForFile(filePath) {
@@ -37,7 +37,7 @@ function ensureMigrations(db) {
   );
 
   const migrationsDir =
-    process.env.SQLITE_MIGRATIONS_DIR || path.join(config.content.repoRoot, 'workers', 'migrations');
+    process.env.SQLITE_MIGRATIONS_DIR || path.join(config.paths?.workersDir || path.join(config.content.repoRoot, 'workers'), 'migrations');
   if (!fs.existsSync(migrationsDir)) {
     _migrationsReady = true;
     return;

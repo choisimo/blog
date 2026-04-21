@@ -3,7 +3,12 @@ import path from 'node:path';
 import { CONSUL, CACHE_TTL } from './constants.js';
 import { createLogger } from '../lib/logger.js';
 
-dotenv.config({ path: path.resolve(process.cwd(), '..', '.env') });
+const repoRoot =
+  process.env.REPO_ROOT && String(process.env.REPO_ROOT).trim()
+    ? path.resolve(String(process.env.REPO_ROOT).trim())
+    : path.resolve(process.cwd(), '..');
+
+dotenv.config({ path: path.join(repoRoot, '.env') });
 // override: true but preserve vars that are non-empty (prevents empty .env entries from clearing test env)
 const _localEnv = dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 if (_localEnv.parsed) {
@@ -91,6 +96,9 @@ const CONSUL_KEYS = [
   ['services/redis/url', 'REDIS_URL'],
   ['services/backend/url', 'INTERNAL_API_URL'],
   ['services/terminal/url', 'TERMINAL_SERVER_URL'],
+  ['config/terminal/connect_token_ttl_seconds', 'TERMINAL_CONNECT_TOKEN_TTL_SECONDS'],
+  ['config/terminal/session_timeout_ms', 'TERMINAL_SESSION_TIMEOUT_MS'],
+  ['config/terminal/blocked_countries', 'TERMINAL_BLOCKED_COUNTRIES'],
 ];
 
 export async function loadConsulConfig() {

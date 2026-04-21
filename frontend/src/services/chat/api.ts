@@ -5,6 +5,8 @@
  */
 
 import { getApiBaseUrl } from "@/utils/network/apiBase";
+import { bearerAuth } from "@/lib/auth";
+import { getPrincipalToken } from "@/services/session/userContentAuth";
 import {
   buildChatUrl,
   buildChatHeaders,
@@ -367,6 +369,7 @@ export async function uploadChatImage(
   const url = `${base.replace(/\/$/, "")}/api/v1/images/chat-upload`;
   const formData = new FormData();
   formData.append("file", file);
+  const token = await getPrincipalToken();
 
   if (process.env.NODE_ENV === "development") {
     console.log("[ChatImage] Uploading to:", url);
@@ -374,6 +377,7 @@ export async function uploadChatImage(
 
   const res = await fetch(url, {
     method: "POST",
+    headers: bearerAuth(token),
     body: formData,
     signal,
   });

@@ -595,7 +595,7 @@ export async function getMemoryContextForChat(
  */
 export async function extractAndSaveMemories(
   userMessage: string,
-  assistantResponse: string,
+  _assistantResponse: string,
   sessionId?: string,
 ): Promise<void> {
   // 간단한 휴리스틱으로 메모리 추출

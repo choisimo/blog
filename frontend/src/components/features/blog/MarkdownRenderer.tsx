@@ -939,7 +939,10 @@ function MarkdownRendererInner({
         children,
         node: _node,
         ...props
-      }: React.ComponentProps<"code"> & { inline?: boolean }) {
+      }: React.ComponentProps<"code"> & {
+        inline?: boolean;
+        node?: unknown;
+      }) {
         void inline;
         return (
           <code

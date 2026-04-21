@@ -153,7 +153,15 @@ interface SSENotificationPayload {
   readAt?: string | null;
 }
 
-function handleNotificationEvent(data: SSENotificationPayload) {
+export function handleNotificationEvent(data: SSENotificationPayload) {
+  if (!data.notificationId) {
+    console.warn("[NotificationSSE] Dropping notification event without notificationId", {
+      type: data.type,
+      sourceId: data.sourceId,
+    });
+    return;
+  }
+
   const title = data.title || "알림";
   const message = data.message || "";
   const type: NotificationType =
@@ -166,16 +174,25 @@ function handleNotificationEvent(data: SSENotificationPayload) {
           ? "agent_complete"
           : "info");
 
-  addNotification({
+  const notification: Parameters<typeof addNotification>[0] = {
     id: data.notificationId,
     type,
     title,
     message,
-    sourceId: data.sourceId ?? undefined,
-    payload: data.payload,
-    createdAt: data.createdAt ?? undefined,
     read: Boolean(data.readAt),
-  });
+  };
+
+  if (data.sourceId) {
+    notification.sourceId = data.sourceId;
+  }
+  if (data.payload) {
+    notification.payload = data.payload;
+  }
+  if (data.createdAt) {
+    notification.createdAt = data.createdAt;
+  }
+
+  addNotification(notification);
 }
 
 function parseSSEData(raw: string): SSENotificationPayload | null {

@@ -145,12 +145,12 @@ describe("LogViewer stream controller", () => {
         ok: false,
         status: 401,
         body: { getReader: firstGetReader },
-      } as Response)
+      } as unknown as Response)
       .mockResolvedValueOnce({
         ok: false,
         status: 401,
         body: { getReader: secondGetReader },
-      } as Response);
+      } as unknown as Response);
 
     const state = createLogState();
     const setConnected = vi.fn();

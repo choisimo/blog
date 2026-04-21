@@ -131,7 +131,7 @@ const dictionary = {
   },
 } as const;
 
-export type UIStrings = (typeof dictionary)["ko"];
+export type UIStrings = (typeof dictionary)[SupportedLanguage];
 export type SupportedLanguage = keyof typeof dictionary;
 
 /**

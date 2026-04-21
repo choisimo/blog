@@ -6,6 +6,28 @@ import path from "node:path";
 
 const router = Router();
 
+const configMutationsEnabled = !config.security?.protectedEnvironment;
+const configMutationGuidance = configMutationsEnabled
+  ? "Runtime environment edits are enabled in this environment."
+  : "Runtime environment edits are disabled in protected environments. Update the Git-managed source of truth, Secret, or ConfigMap and redeploy.";
+const BACKEND_ENV_PATH = path.join(config.paths?.backendDir || path.join(config.content.repoRoot, "backend"), ".env");
+const ROOT_ENV_PATH = path.join(config.paths?.repoRoot || config.content.repoRoot, ".env");
+
+function buildConfigMutationsDisabledPayload() {
+  return {
+    ok: false,
+    error: {
+      code: "CONFIG_MUTATIONS_DISABLED",
+      message: configMutationGuidance,
+    },
+    data: {
+      mutationsEnabled: false,
+      mutationGuidance: configMutationGuidance,
+    },
+  };
+}
+
+
 const CONFIG_CATEGORIES = [
   {
     id: "app",
@@ -300,7 +322,14 @@ router.get("/current", requireAdmin, (req, res) => {
     });
   });
 
-  res.json({ ok: true, data: { config: currentConfig } });
+  res.json({
+    ok: true,
+    data: {
+      config: currentConfig,
+      mutationsEnabled: configMutationsEnabled,
+      mutationGuidance: configMutationGuidance,
+    },
+  });
 });
 
 router.post("/validate", requireAdmin, (req, res) => {
@@ -431,6 +460,10 @@ function generateWranglerVars(includeSecrets = false) {
 router.post("/save-env", requireAdmin, async (req, res) => {
   const { variables, target = "backend" } = req.body;
 
+  if (!configMutationsEnabled) {
+    return res.status(403).json(buildConfigMutationsDisabledPayload());
+  }
+
   if (!variables || typeof variables !== "object") {
     return res
       .status(400)
@@ -440,9 +473,9 @@ router.post("/save-env", requireAdmin, async (req, res) => {
   try {
     let envPath;
     if (target === "root") {
-      envPath = path.join(config.content.repoRoot, ".env");
+      envPath = ROOT_ENV_PATH;
     } else {
-      envPath = path.join(config.content.repoRoot, "backend", ".env");
+      envPath = BACKEND_ENV_PATH;
     }
 
     const lines = [];

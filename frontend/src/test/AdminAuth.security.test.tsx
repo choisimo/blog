@@ -43,6 +43,7 @@ describe('admin auth security hardening', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     cancelTokenRefresh();
     act(() => {
       useAuthStore.getState().clearAuth();
@@ -72,7 +73,54 @@ describe('admin auth security hardening', () => {
     expect(localStorage.getItem('admin.auth')).toBeNull();
   });
 
-  it('clears the OAuth callback hash after extracting tokens', async () => {
+  it('consumes a one-time OAuth handoff and clears the callback hash', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            accessToken: createToken(),
+            refreshToken: createToken(7 * 24 * 3600),
+            tokenType: 'Bearer',
+            expiresIn: 900,
+            user: {
+              username: 'admin',
+              email: 'admin@example.com',
+              role: 'admin',
+              emailVerified: true,
+            },
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
+    );
+
+    sessionStorage.setItem('admin.returnTo', '/admin/config/logs');
+    window.history.replaceState(
+      null,
+      '',
+      '/admin/auth/callback#handoff=oauth-handoff-test'
+    );
+
+    render(<AdminAuthCallback />);
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/admin/config/logs', { replace: true });
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'http://localhost:5080/api/v1/auth/oauth/handoff/consume',
+      expect.objectContaining({
+        method: 'POST',
+      })
+    );
+    expect(window.location.hash).toBe('');
+  });
+
+  it('keeps supporting legacy OAuth token fragments during rollout', async () => {
     sessionStorage.setItem('admin.returnTo', '/admin/config/logs');
     window.history.replaceState(
       null,
@@ -90,13 +138,32 @@ describe('admin auth security hardening', () => {
   });
 
   it('falls back to the default admin route for unsafe stored redirects', async () => {
-    sessionStorage.setItem('admin.returnTo', 'https://evil.example.com');
-    window.history.replaceState(
-      null,
-      '',
-      `/admin/auth/callback#token=${createToken()}&refreshToken=${createToken(7 * 24 * 3600)}`
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            accessToken: createToken(),
+            refreshToken: createToken(7 * 24 * 3600),
+            tokenType: 'Bearer',
+            expiresIn: 900,
+            user: {
+              username: 'admin',
+              email: 'admin@example.com',
+              role: 'admin',
+              emailVerified: true,
+            },
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
     );
 
+    sessionStorage.setItem('admin.returnTo', 'https://evil.example.com');
+    window.history.replaceState(null, '', '/admin/auth/callback#handoff=oauth-handoff-test');
     render(<AdminAuthCallback />);
 
     await waitFor(() => {

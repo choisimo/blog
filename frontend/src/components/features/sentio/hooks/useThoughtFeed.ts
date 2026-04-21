@@ -50,7 +50,7 @@ function isAbortError(error: unknown): boolean {
 }
 
 function mapChainFallbackToThoughts(
-  questions: Array<{ q: string; why: string }>,
+  questions: ReadonlyArray<{ q: string; why: string }>,
 ): ThoughtCardData[] {
   return questions.map((question, index) => ({
     id: `fallback-thought-${index + 1}`,

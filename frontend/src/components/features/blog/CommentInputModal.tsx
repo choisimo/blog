@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Globe2, Loader2, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -55,6 +54,7 @@ export default function CommentInputModal({
       }, 100);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [isOpen, initialAuthor]);
 
   // Handle ESC key to close

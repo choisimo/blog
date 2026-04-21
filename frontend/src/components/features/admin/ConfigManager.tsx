@@ -43,6 +43,14 @@ interface ConfigValue {
   default: string;
 }
 
+interface ConfigStateResponse {
+  config: Record<string, ConfigValue>;
+  mutationsEnabled?: boolean;
+  mutationGuidance?: string;
+}
+
+const EMPTY_CONFIG_VALUES: Record<string, ConfigValue> = {};
+
 export function ConfigManager() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('app');
@@ -72,9 +80,15 @@ export function ConfigManager() {
       const res = await adminFetchRaw(`${API_BASE}/api/v1/admin/config/current`);
       if (!res.ok) throw new Error('Failed to fetch config');
       const json = await res.json();
-      return json.data.config as Record<string, ConfigValue>;
+      return json.data as ConfigStateResponse;
     },
   });
+
+  const configValues = configData?.config ?? EMPTY_CONFIG_VALUES;
+  const mutationsEnabled = configData?.mutationsEnabled !== false;
+  const mutationGuidance =
+    configData?.mutationGuidance ||
+    'Runtime edits are disabled in this environment. Update the source of truth and redeploy.';
 
   const exportMutation = useMutation({
     mutationFn: async (format: string) => {
@@ -112,7 +126,16 @@ export function ConfigManager() {
         method: 'POST',
         body: JSON.stringify({ variables, target: 'backend' }),
       });
-      if (!res.ok) throw new Error('Save failed');
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        const message =
+          typeof payload?.error === 'string'
+            ? payload.error
+            : payload?.error?.message || 'Save failed';
+        throw new Error(message);
+      }
+
       return res.json();
     },
     onSuccess: () => {
@@ -123,15 +146,20 @@ export function ConfigManager() {
       setHasChanges(false);
       refetchConfig();
     },
-    onError: () => {
-      toast({ title: 'Save failed', variant: 'destructive' });
+    onError: (error: Error) => {
+      toast({
+        title: 'Save failed',
+        description: error.message,
+        variant: 'destructive',
+      });
     },
   });
 
   const updateValue = useCallback((key: string, value: string) => {
+    if (!mutationsEnabled) return;
     setEditedValues((prev) => ({ ...prev, [key]: value }));
     setHasChanges(true);
-  }, []);
+  }, [mutationsEnabled]);
 
   const toggleSecretVisibility = useCallback((key: string) => {
     setVisibleSecrets((prev) => {
@@ -153,12 +181,20 @@ export function ConfigManager() {
   const getValue = useCallback(
     (key: string): string => {
       if (key in editedValues) return editedValues[key];
-      return configData?.[key]?.value || '';
+      return configValues[key]?.value || '';
     },
-    [editedValues, configData]
+    [configValues, editedValues]
   );
 
   const handleSave = () => {
+    if (!mutationsEnabled) {
+      toast({
+        title: 'Read-only environment',
+        description: mutationGuidance,
+      });
+      return;
+    }
+
     saveMutation.mutate(editedValues);
   };
 
@@ -171,7 +207,7 @@ export function ConfigManager() {
     switch (variable.type) {
       case 'select':
         return (
-          <Select value={value} onValueChange={(v) => updateValue(variable.key, v)}>
+          <Select value={value} onValueChange={(v) => updateValue(variable.key, v)} disabled={!mutationsEnabled}>
             <SelectTrigger className={`${baseInputClass} w-full`}>
               <SelectValue placeholder={variable.default || 'Select...'} />
             </SelectTrigger>
@@ -193,14 +229,17 @@ export function ConfigManager() {
               type={isVisible ? 'text' : 'password'}
               value={value}
               onChange={(e) => updateValue(variable.key, e.target.value)}
-              placeholder={configData?.[variable.key]?.isSet ? '••••••••' : 'Not set'}
+              placeholder={configValues[variable.key]?.isSet ? '••••••••' : 'Not set'}
               className={`${baseInputClass} flex-1`}
+              readOnly={!mutationsEnabled}
+              disabled={!mutationsEnabled}
             />
             <button
               type='button'
               onClick={() => toggleSecretVisibility(variable.key)}
               aria-label={isVisible ? 'Hide value' : 'Show value'}
               className={iconBtnClass}
+              disabled={!mutationsEnabled}
             >
               {isVisible ? <EyeOff className='h-3.5 w-3.5' aria-hidden='true' /> : <Eye className='h-3.5 w-3.5' aria-hidden='true' />}
             </button>
@@ -216,6 +255,8 @@ export function ConfigManager() {
             placeholder={variable.default || ''}
             rows={3}
             className='text-sm rounded-lg border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-200 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 focus-visible:ring-offset-0 transition-all resize-none'
+            readOnly={!mutationsEnabled}
+            disabled={!mutationsEnabled}
           />
         );
 
@@ -229,6 +270,8 @@ export function ConfigManager() {
               onChange={(e) => updateValue(variable.key, e.target.value)}
               placeholder={variable.default || 'https://…'}
               className={`${baseInputClass} flex-1`}
+              readOnly={!mutationsEnabled}
+              disabled={!mutationsEnabled}
             />
             {value && (
               <button
@@ -252,6 +295,8 @@ export function ConfigManager() {
             onChange={(e) => updateValue(variable.key, e.target.value)}
             placeholder={variable.default || '0'}
             className={baseInputClass}
+            readOnly={!mutationsEnabled}
+            disabled={!mutationsEnabled}
           />
         );
 
@@ -264,6 +309,8 @@ export function ConfigManager() {
             onChange={(e) => updateValue(variable.key, e.target.value)}
             placeholder={variable.default || ''}
             className={baseInputClass}
+            readOnly={!mutationsEnabled}
+            disabled={!mutationsEnabled}
           />
         );
     }
@@ -286,7 +333,12 @@ export function ConfigManager() {
     <div className='space-y-3'>
       <div className='rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3 flex items-center justify-between gap-3'>
         <div className='flex items-center gap-2 min-w-0'>
-          {hasChanges ? (
+          {!mutationsEnabled ? (
+            <>
+              <AlertCircle className='h-3.5 w-3.5 text-amber-500 shrink-0' aria-hidden='true' />
+              <span className='text-xs text-amber-600 dark:text-amber-400 font-medium'>Read-only runtime config</span>
+            </>
+          ) : hasChanges ? (
             <>
               <AlertCircle className='h-3.5 w-3.5 text-amber-500 shrink-0' aria-hidden='true' />
               <span className='text-xs text-amber-600 dark:text-amber-400 font-medium'>Unsaved changes</span>
@@ -314,17 +366,29 @@ export function ConfigManager() {
             <Download className='h-3 w-3' aria-hidden='true' />
             Docker
           </button>
-          <button
-            type='button'
-            onClick={handleSave}
-            disabled={!hasChanges || saveMutation.isPending}
-            className='flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 text-white shadow-sm transition-all active:scale-95 disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 outline-none'
-          >
-            <Save className='h-3 w-3' aria-hidden='true' />
-            {saveMutation.isPending ? 'Saving…' : 'Save'}
-          </button>
+          {mutationsEnabled ? (
+            <button
+              type='button'
+              onClick={handleSave}
+              disabled={!hasChanges || saveMutation.isPending}
+              className='flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 text-white shadow-sm transition-all active:scale-95 disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 outline-none'
+            >
+              <Save className='h-3 w-3' aria-hidden='true' />
+              {saveMutation.isPending ? 'Saving…' : 'Save'}
+            </button>
+          ) : (
+            <span className='inline-flex h-8 items-center rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-medium text-amber-700 dark:border-amber-800/50 dark:bg-amber-950/20 dark:text-amber-300'>
+              GitOps only
+            </span>
+          )}
         </div>
       </div>
+
+      {!mutationsEnabled && (
+        <div className='rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/20 dark:text-amber-200'>
+          {mutationGuidance}
+        </div>
+      )}
 
         <div className='rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden'>
           <AdminSubtabs
@@ -348,7 +412,7 @@ export function ConfigManager() {
         {activeCategory && (
           <div className='divide-y divide-zinc-50 dark:divide-zinc-800/50'>
             {activeCategory.variables.map((variable) => {
-              const configValue = configData?.[variable.key];
+              const configValue = configValues[variable.key];
               return (
                 <div key={variable.key} className='px-4 py-3.5 space-y-2 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 transition-colors'>
                   <div className='flex items-center gap-2 flex-wrap'>

@@ -486,7 +486,7 @@ ${description}
     }
 
     let cancelled = false;
-    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+    let pollTimer: number | null = null;
     let pollAttempts = 0;
     const pollStartMs = Date.now();
     const MAX_POLL_ATTEMPTS = 5;

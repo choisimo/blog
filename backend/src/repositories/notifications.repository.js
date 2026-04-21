@@ -79,6 +79,24 @@ function mapInboxRow(row) {
   };
 }
 
+function mapOutboxRow(row) {
+  if (!row) return null;
+
+  return {
+    id: String(row.id),
+    eventName: String(row.event_name || "notification"),
+    type: String(row.notification_type || "info"),
+    title: String(row.title || ""),
+    message: String(row.message || ""),
+    payload: parsePayload(row.payload_json),
+    targetUserId: row.target_user_id ? String(row.target_user_id) : null,
+    sourceId: row.source_id ? String(row.source_id) : null,
+    dedupeKey: row.dedupe_key ? String(row.dedupe_key) : null,
+    createdAt: String(row.created_at),
+    broadcastedAt: row.broadcasted_at ? String(row.broadcasted_at) : null,
+  };
+}
+
 function buildNotificationRecord(input = {}) {
   return {
     eventName: normalizeText(input.eventName || "notification", 64) || "notification",
@@ -98,6 +116,7 @@ class NotificationsRepository {
     this._schemaPromise = null;
     this._fallbackOutbox = [];
     this._fallbackInbox = new Map();
+    this._fallbackDedupeIndex = new Map();
   }
 
   async _isD1Available() {
@@ -172,6 +191,17 @@ class NotificationsRepository {
         `CREATE INDEX IF NOT EXISTS idx_notification_inbox_user_read_created
          ON notification_inbox (user_id, read_at, created_at DESC)`,
       );
+      try {
+        await execute(
+          `CREATE UNIQUE INDEX IF NOT EXISTS idx_notification_outbox_dedupe_key
+             ON notification_outbox (dedupe_key)
+           WHERE dedupe_key IS NOT NULL`,
+        );
+      } catch (error) {
+        logger.warn({}, "Notification dedupe index unavailable; continuing with read-before-write dedupe", {
+          error: error?.message,
+        });
+      }
 
       return true;
     })().catch((error) => {
@@ -186,32 +216,67 @@ class NotificationsRepository {
     return this._schemaPromise;
   }
 
+  async _findOutboxByDedupeKey(dedupeKey) {
+    const normalizedDedupeKey = normalizeOptionalText(dedupeKey, 256);
+    if (!normalizedDedupeKey) {
+      return null;
+    }
+
+    const row = await queryOne(
+      `SELECT *
+         FROM notification_outbox
+        WHERE dedupe_key = ?
+        ORDER BY created_at DESC
+        LIMIT 1`,
+      normalizedDedupeKey,
+    );
+
+    return mapOutboxRow(row);
+  }
+
   async appendOutbox(input) {
     const record = buildNotificationRecord(input);
 
     try {
       const schemaReady = await this._ensureSchema();
       if (schemaReady) {
+        if (record.dedupeKey) {
+          const existing = await this._findOutboxByDedupeKey(record.dedupeKey);
+          if (existing) {
+            return existing;
+          }
+        }
+
         const outboxId = createId("nout");
         const createdAt = nowIso();
         const payloadJson = serializePayload(record.payload);
 
-        await execute(
-          `INSERT INTO notification_outbox (
-             id, event_name, notification_type, title, message, payload_json,
-             target_user_id, source_id, dedupe_key, created_at, broadcasted_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
-          outboxId,
-          record.eventName,
-          record.type,
-          record.title,
-          record.message,
-          payloadJson,
-          record.targetUserId,
-          record.sourceId,
-          record.dedupeKey,
-          createdAt,
-        );
+        try {
+          await execute(
+            `INSERT INTO notification_outbox (
+               id, event_name, notification_type, title, message, payload_json,
+               target_user_id, source_id, dedupe_key, created_at, broadcasted_at
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+            outboxId,
+            record.eventName,
+            record.type,
+            record.title,
+            record.message,
+            payloadJson,
+            record.targetUserId,
+            record.sourceId,
+            record.dedupeKey,
+            createdAt,
+          );
+        } catch (error) {
+          if (record.dedupeKey) {
+            const existing = await this._findOutboxByDedupeKey(record.dedupeKey);
+            if (existing) {
+              return existing;
+            }
+          }
+          throw error;
+        }
 
         return {
           id: outboxId,
@@ -238,6 +303,13 @@ class NotificationsRepository {
   }
 
   _fallbackAppendOutbox(record) {
+    if (record.dedupeKey) {
+      const existing = this._fallbackDedupeIndex.get(record.dedupeKey);
+      if (existing) {
+        return existing;
+      }
+    }
+
     const outbox = {
       id: createId("nout"),
       eventName: record.eventName,
@@ -255,6 +327,9 @@ class NotificationsRepository {
     this._fallbackOutbox.unshift(outbox);
     if (this._fallbackOutbox.length > FALLBACK_OUTBOX_LIMIT) {
       this._fallbackOutbox.length = FALLBACK_OUTBOX_LIMIT;
+    }
+    if (record.dedupeKey) {
+      this._fallbackDedupeIndex.set(record.dedupeKey, outbox);
     }
 
     return outbox;

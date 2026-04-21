@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Users, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getLiveRooms } from "@/services/chat";

@@ -1,12 +1,12 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { HonoEnv } from '../types';
-import { success, badRequest, notFound, serverError, forbidden } from '../lib/response';
-import { queryAll, execute, queryOne } from '../lib/d1';
+import { success, badRequest, notFound, forbidden } from '../lib/response';
+import { queryAll, execute, executeBatch, queryOne } from '../lib/d1';
 import {
-  enqueueMemoryEmbeddingDelete,
-  enqueueMemoryEmbeddingUpsert,
   flushMemoryEmbeddingOutbox,
+  prepareMemoryEmbeddingDelete,
+  prepareMemoryEmbeddingUpsert,
 } from '../lib/memory-embedding-outbox';
 import { requireAuth } from '../middleware/auth';
 
@@ -45,7 +45,13 @@ interface UserMemory {
 }
 
 function scheduleMemoryEmbeddingFlush(c: Context<HonoEnv>) {
-  c.executionCtx.waitUntil(flushMemoryEmbeddingOutbox(c.env, { limit: 10 }));
+  try {
+    c.executionCtx.waitUntil(flushMemoryEmbeddingOutbox(c.env, { limit: 10 }));
+  } catch {
+    // Non-worker invocation contexts (for example, isolated route tests) do not
+    // provide an ExecutionContext. In those cases, leave the durable outbox row
+    // pending instead of running an unsafe best-effort flush inline.
+  }
 }
 
 interface ChatSession {
@@ -183,27 +189,7 @@ memories.post('/:userId', async (c) => {
   const db = c.env.DB;
   const now = new Date().toISOString();
   const id = `mem-${crypto.randomUUID()}`;
-
-  await execute(
-    db,
-    `INSERT INTO user_memories
-     (id, user_id, memory_type, category, content, source_type, source_id,
-      importance_score, expires_at, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    id,
-    userId,
-    memoryType,
-    category || null,
-    content,
-    sourceType || null,
-    sourceId || null,
-    Math.max(0, Math.min(1, importanceScore)),
-    expiresAt || null,
-    now,
-    now
-  );
-
-  await enqueueMemoryEmbeddingUpsert(
+  const outbox = await prepareMemoryEmbeddingUpsert(
     c.env,
     {
       userId,
@@ -214,6 +200,28 @@ memories.post('/:userId', async (c) => {
     },
     now
   );
+
+  await executeBatch(db, [
+    db.prepare(
+      `INSERT INTO user_memories
+       (id, user_id, memory_type, category, content, source_type, source_id,
+        importance_score, expires_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+      id,
+      userId,
+      memoryType,
+      category || null,
+      content,
+      sourceType || null,
+      sourceId || null,
+      Math.max(0, Math.min(1, importanceScore)),
+      expiresAt || null,
+      now,
+      now
+    ),
+    outbox.statement,
+  ]);
   scheduleMemoryEmbeddingFlush(c);
 
   return success(c, { id, created: true }, 201);
@@ -247,30 +255,14 @@ memories.post('/:userId/batch', async (c) => {
   const db = c.env.DB;
   const now = new Date().toISOString();
   const createdIds: string[] = [];
+  const statements: D1PreparedStatement[] = [];
 
   for (const item of memoryItems) {
     if (!item.content || typeof item.content !== 'string') continue;
     if (item.content.length > 10000) continue;
 
     const id = `mem-${crypto.randomUUID()}`;
-    await execute(
-      db,
-      `INSERT INTO user_memories
-       (id, user_id, memory_type, category, content, source_type, source_id,
-        importance_score, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      id,
-      userId,
-      item.memoryType || 'fact',
-      item.category || null,
-      item.content,
-      item.sourceType || null,
-      item.sourceId || null,
-      Math.max(0, Math.min(1, item.importanceScore || 0.5)),
-      now,
-      now
-    );
-    await enqueueMemoryEmbeddingUpsert(
+    const outbox = await prepareMemoryEmbeddingUpsert(
       c.env,
       {
         userId,
@@ -281,10 +273,31 @@ memories.post('/:userId/batch', async (c) => {
       },
       now
     );
+    statements.push(
+      db.prepare(
+        `INSERT INTO user_memories
+         (id, user_id, memory_type, category, content, source_type, source_id,
+          importance_score, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        id,
+        userId,
+        item.memoryType || 'fact',
+        item.category || null,
+        item.content,
+        item.sourceType || null,
+        item.sourceId || null,
+        Math.max(0, Math.min(1, item.importanceScore || 0.5)),
+        now,
+        now
+      ),
+      outbox.statement
+    );
     createdIds.push(id);
   }
 
   if (createdIds.length > 0) {
+    await executeBatch(db, statements);
     scheduleMemoryEmbeddingFlush(c);
   }
 
@@ -344,35 +357,38 @@ memories.patch('/:userId/:memoryId', async (c) => {
 
   params.push(memoryId);
 
-  await execute(db, `UPDATE user_memories SET ${updates.join(', ')} WHERE id = ?`, ...params);
-
   const affectsEmbeddingProjection =
     content !== undefined || category !== undefined || isActive !== undefined;
   if (affectsEmbeddingProjection) {
     const nextIsActive = isActive !== undefined ? (isActive ? 1 : 0) : existing.is_active;
-    if (nextIsActive === 0) {
-      await enqueueMemoryEmbeddingDelete(
-        c.env,
-        {
-          userId,
-          memoryId,
-        },
-        now
-      );
-    } else {
-      await enqueueMemoryEmbeddingUpsert(
-        c.env,
-        {
-          userId,
-          memoryId,
-          content: content !== undefined ? content : existing.content,
-          memoryType: existing.memory_type,
-          category: category !== undefined ? category : existing.category,
-        },
-        now
-      );
-    }
+    const outbox =
+      nextIsActive === 0
+        ? await prepareMemoryEmbeddingDelete(
+            c.env,
+            {
+              userId,
+              memoryId,
+            },
+            now
+          )
+        : await prepareMemoryEmbeddingUpsert(
+            c.env,
+            {
+              userId,
+              memoryId,
+              content: content !== undefined ? content : existing.content,
+              memoryType: existing.memory_type,
+              category: category !== undefined ? category : existing.category,
+            },
+            now
+          );
+    await executeBatch(db, [
+      db.prepare(`UPDATE user_memories SET ${updates.join(', ')} WHERE id = ?`).bind(...params),
+      outbox.statement,
+    ]);
     scheduleMemoryEmbeddingFlush(c);
+  } else {
+    await execute(db, `UPDATE user_memories SET ${updates.join(', ')} WHERE id = ?`, ...params);
   }
 
   return success(c, { updated: true });
@@ -386,18 +402,16 @@ memories.delete('/:userId/:memoryId', async (c) => {
 
   const db = c.env.DB;
   const now = new Date().toISOString();
-
-  const result = await execute(
+  const existing = await queryOne<{ id: string }>(
     db,
-    `UPDATE user_memories SET is_active = 0, updated_at = ? WHERE id = ? AND user_id = ?`,
-    now,
+    `SELECT id FROM user_memories WHERE id = ? AND user_id = ?`,
     memoryId,
     userId
   );
 
-  if (result.meta?.changes === 0) return notFound(c, 'Memory not found');
+  if (!existing) return notFound(c, 'Memory not found');
 
-  await enqueueMemoryEmbeddingDelete(
+  const outbox = await prepareMemoryEmbeddingDelete(
     c.env,
     {
       userId,
@@ -405,6 +419,13 @@ memories.delete('/:userId/:memoryId', async (c) => {
     },
     now
   );
+  await executeBatch(db, [
+    db.prepare(
+      `UPDATE user_memories SET is_active = 0, updated_at = ? WHERE id = ? AND user_id = ?`
+    ).bind(now, memoryId, userId),
+    outbox.statement,
+  ]);
+
   scheduleMemoryEmbeddingFlush(c);
 
   return success(c, { deleted: true });

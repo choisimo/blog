@@ -27,10 +27,23 @@ type TranslationJobRow = {
   generate_url: string;
   error_json: string | null;
   result_json: string | null;
+  lock_token: string | null;
+  lock_expires_at: string | null;
 };
 
 type TranslationJobInput = TranslationJobSnapshot & {
   contentHash: string;
+};
+
+type TranslationJobLeaseInput = TranslationJobInput & {
+  lockToken: string;
+  lockExpiresAt: string;
+};
+
+export type TranslationJobLeaseClaim = {
+  job: TranslationJobSnapshot;
+  acquired: boolean;
+  reclaimedStaleLease: boolean;
 };
 
 function parseJson<T>(value: string | null): T | undefined {
@@ -71,45 +84,10 @@ function serializeJson(value: TranslationJobError | TranslationJobResultSummary 
   return value === undefined ? null : JSON.stringify(value);
 }
 
-async function fetchTranslationJobRowById(db: D1Database, id: string) {
-  return await queryOne<TranslationJobRow>(
-    db,
-    `SELECT id, key, status, year, slug, target_lang, source_lang, force_refresh,
-            content_hash, created_at, updated_at, started_at, completed_at,
-            status_url, cache_url, generate_url, error_json, result_json
-       FROM translation_jobs
-      WHERE id = ?
-      LIMIT 1`,
-    id
-  );
-}
-
-async function fetchTranslationJobRowByScopeHash(
-  db: D1Database,
-  year: string,
-  slug: string,
-  targetLang: string,
-  contentHash: string
+function bindInput(
+  input: TranslationJobInput,
+  lock: { lockToken?: string | null; lockExpiresAt?: string | null } = {}
 ) {
-  return await queryOne<TranslationJobRow>(
-    db,
-    `SELECT id, key, status, year, slug, target_lang, source_lang, force_refresh,
-            content_hash, created_at, updated_at, started_at, completed_at,
-            status_url, cache_url, generate_url, error_json, result_json
-       FROM translation_jobs
-      WHERE year = ?
-        AND slug = ?
-        AND target_lang = ?
-        AND content_hash = ?
-      LIMIT 1`,
-    year,
-    slug,
-    targetLang,
-    contentHash
-  );
-}
-
-function bindInput(input: TranslationJobInput) {
   return [
     input.id,
     input.key,
@@ -129,7 +107,49 @@ function bindInput(input: TranslationJobInput) {
     input.generateUrl,
     serializeJson(input.error),
     serializeJson(input.result),
+    lock.lockToken ?? null,
+    lock.lockExpiresAt ?? null,
   ];
+}
+
+async function fetchTranslationJobRowById(db: D1Database, id: string) {
+  return await queryOne<TranslationJobRow>(
+    db,
+    `SELECT id, key, status, year, slug, target_lang, source_lang, force_refresh,
+            content_hash, created_at, updated_at, started_at, completed_at,
+            status_url, cache_url, generate_url, error_json, result_json,
+            lock_token, lock_expires_at
+       FROM translation_jobs
+      WHERE id = ?
+      LIMIT 1`,
+    id
+  );
+}
+
+async function fetchTranslationJobRowByScopeHash(
+  db: D1Database,
+  year: string,
+  slug: string,
+  targetLang: string,
+  contentHash: string
+) {
+  return await queryOne<TranslationJobRow>(
+    db,
+    `SELECT id, key, status, year, slug, target_lang, source_lang, force_refresh,
+            content_hash, created_at, updated_at, started_at, completed_at,
+            status_url, cache_url, generate_url, error_json, result_json,
+            lock_token, lock_expires_at
+       FROM translation_jobs
+      WHERE year = ?
+        AND slug = ?
+        AND target_lang = ?
+        AND content_hash = ?
+      LIMIT 1`,
+    year,
+    slug,
+    targetLang,
+    contentHash
+  );
 }
 
 export async function createTranslationJobRow(
@@ -141,8 +161,9 @@ export async function createTranslationJobRow(
     `INSERT INTO translation_jobs (
        id, key, status, year, slug, target_lang, source_lang, force_refresh,
        content_hash, created_at, updated_at, started_at, completed_at,
-       status_url, cache_url, generate_url, error_json, result_json
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       status_url, cache_url, generate_url, error_json, result_json,
+       lock_token, lock_expires_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ...bindInput(input)
   );
 
@@ -163,8 +184,9 @@ export async function upsertTranslationJobRow(
     `INSERT OR REPLACE INTO translation_jobs (
        id, key, status, year, slug, target_lang, source_lang, force_refresh,
        content_hash, created_at, updated_at, started_at, completed_at,
-       status_url, cache_url, generate_url, error_json, result_json
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       status_url, cache_url, generate_url, error_json, result_json,
+       lock_token, lock_expires_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ...bindInput(input)
   );
 
@@ -201,4 +223,141 @@ export async function fetchActiveTranslationJob(
 ): Promise<TranslationJobSnapshot | null> {
   const row = await fetchTranslationJobRowByScopeHash(db, year, slug, targetLang, contentHash);
   return row ? mapRow(row) : null;
+}
+
+export async function claimTranslationJobLease(
+  db: D1Database,
+  input: TranslationJobLeaseInput
+): Promise<TranslationJobLeaseClaim> {
+  const insertResult = await execute(
+    db,
+    `INSERT OR IGNORE INTO translation_jobs (
+       id, key, status, year, slug, target_lang, source_lang, force_refresh,
+       content_hash, created_at, updated_at, started_at, completed_at,
+       status_url, cache_url, generate_url, error_json, result_json,
+       lock_token, lock_expires_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ...bindInput(input, {
+      lockToken: input.lockToken,
+      lockExpiresAt: input.lockExpiresAt,
+    })
+  );
+
+  if ((insertResult.meta?.changes || 0) > 0) {
+    const inserted = await fetchTranslationJobRowById(db, input.id);
+    if (!inserted) {
+      throw new Error(`Failed to fetch translation job after lease insert: ${input.id}`);
+    }
+    return {
+      job: mapRow(inserted),
+      acquired: true,
+      reclaimedStaleLease: false,
+    };
+  }
+
+  const reclaimResult = await execute(
+    db,
+    `UPDATE translation_jobs
+        SET id = ?,
+            key = ?,
+            status = ?,
+            source_lang = ?,
+            force_refresh = ?,
+            created_at = ?,
+            updated_at = ?,
+            started_at = ?,
+            completed_at = ?,
+            status_url = ?,
+            cache_url = ?,
+            generate_url = ?,
+            error_json = ?,
+            result_json = ?,
+            lock_token = ?,
+            lock_expires_at = ?
+      WHERE year = ?
+        AND slug = ?
+        AND target_lang = ?
+        AND content_hash = ?
+        AND (status != 'running' OR lock_expires_at IS NULL OR lock_expires_at < ?)`,
+    input.id,
+    input.key,
+    input.status,
+    input.sourceLang ?? null,
+    input.forceRefresh ? 1 : 0,
+    input.createdAt,
+    input.updatedAt,
+    input.startedAt,
+    input.completedAt ?? null,
+    input.statusUrl,
+    input.cacheUrl,
+    input.generateUrl,
+    serializeJson(input.error),
+    serializeJson(input.result),
+    input.lockToken,
+    input.lockExpiresAt,
+    input.year,
+    input.slug,
+    input.targetLang,
+    input.contentHash,
+    input.updatedAt
+  );
+
+  const row = await fetchTranslationJobRowByScopeHash(
+    db,
+    input.year,
+    input.slug,
+    input.targetLang,
+    input.contentHash
+  );
+  if (!row) {
+    throw new Error(
+      `Failed to fetch translation job after lease claim: ${input.year}/${input.slug}/${input.targetLang}`
+    );
+  }
+
+  return {
+    job: mapRow(row),
+    acquired: row.lock_token === input.lockToken,
+    reclaimedStaleLease: (reclaimResult.meta?.changes || 0) > 0,
+  };
+}
+
+export async function settleTranslationJobLease(
+  db: D1Database,
+  input: {
+    id: string;
+    lockToken: string;
+    status: Extract<TranslationJobSnapshot['status'], 'succeeded' | 'failed'>;
+    updatedAt: string;
+    completedAt: string;
+    error?: TranslationJobError;
+    result?: TranslationJobResultSummary;
+  }
+): Promise<TranslationJobSnapshot | null> {
+  const result = await execute(
+    db,
+    `UPDATE translation_jobs
+        SET status = ?,
+            updated_at = ?,
+            completed_at = ?,
+            error_json = ?,
+            result_json = ?,
+            lock_token = NULL,
+            lock_expires_at = NULL
+      WHERE id = ?
+        AND lock_token = ?`,
+    input.status,
+    input.updatedAt,
+    input.completedAt,
+    serializeJson(input.error),
+    serializeJson(input.result),
+    input.id,
+    input.lockToken
+  );
+
+  if ((result.meta?.changes || 0) === 0) {
+    return null;
+  }
+
+  return fetchTranslationJobById(db, input.id);
 }

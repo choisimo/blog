@@ -62,7 +62,7 @@ blog/
 |- k3s/                   Kubernetes manifests for origin-side services
 |- docs/                  Project documentation and analysis notes
 |- scripts/               Repository utility scripts
-`- .github/workflows/     GitHub Actions workflows
+`- docs/generated/        Generated governance and contract artifacts
 ```
 
 ## Local Development
@@ -84,12 +84,12 @@ npm run dev
 
 ```bash
 cd workers
-npm ci
+npm run bootstrap
 npm run dev
 ```
 
-- 기본 `npm run dev`는 `wrangler dev`로 `api-gateway`를 띄웁니다.
-- 개별 worker 작업 시 `workers/<name>/`에서 `wrangler dev`를 실행합니다.
+- 루트 `workers/package.json`의 `npm run dev`는 `api-gateway` 하위 패키지로 위임됩니다.
+- 개별 worker 작업 시 `workers/<name>/`에서 `npm ci && wrangler dev`를 직접 실행합니다.
 
 ### Backend
 
@@ -138,19 +138,11 @@ npm run dev
 
 ## Deployment Notes
 
-### GitHub Actions
+### CI/CD metadata in this archive
 
-- `deploy-workers.yml`
-  - trigger: `workers/**` 또는 workflow file 변경, 수동 실행
-  - worker matrix 기준으로 production worker를 검증 후 배포
-  - secret 주입은 `sync-workers-secrets.yml` 수동 workflow로 분리
-- `deploy-blog-workflow.yml`
-  - trigger: `backend/**` 또는 workflow file 변경, 수동 실행
-  - `blog-api`, `blog-terminal` 이미지를 GHCR에 build/push
-  - production rollout model은 GitOps 기준임
-  - Argo CD가 저장소의 `k3s` 경로를 감시하고, Argo CD Image Updater가 immutable SHA tag를 선택한 뒤 auto-sync로 반영함
-  - production 기준으로는 SSH 접속 후 수동 `git pull` 또는 수동 rollout restart를 전제하지 않음
-- PR validation은 `deploy.yml`, `validate-workers.yml`, `validate-backend.yml`, `governance.yml`, `validate-k3s.yml`로 분리됩니다.
+- 현재 저장소에는 `.github/workflows/` 디렉터리가 포함되어 있지 않습니다.
+- 따라서 이 문서에서는 실제 확인 가능한 `k3s/` 매니페스트와 생성된 governance 산출물을 기준으로 운영 모델을 설명합니다.
+- GitHub Actions 세부 workflow 이름과 trigger는 현재 저장소만으로는 검증할 수 없습니다.
 
 ### k3s
 
@@ -176,5 +168,5 @@ curl https://api.example.com/healthz
 ## Notes And Boundaries
 
 - 이 저장소 기준으로 루트에서 모든 서비스를 한 번에 실행하는 스크립트는 확인되지 않았습니다.
-- `doc-converter/`, `backend/README-CICD.md`, `docs/AI_SERVICE_ANATOMY_MAP.md`는 현재 저장소에서 확인되지 않았으므로 이 문서에서 제외했습니다.
+- `.github/workflows/`, `doc-converter/`, `backend/README-CICD.md`, `docs/AI_SERVICE_ANATOMY_MAP.md`는 현재 저장소에서 확인되지 않았으므로 이 문서에서 제외했습니다.
 - 서비스별 상세 계약, 운영 지침, 제약은 `workers/README.md`, `backend/README.md`, `k3s/README.md`를 기준으로 확인하는 것이 안전합니다.

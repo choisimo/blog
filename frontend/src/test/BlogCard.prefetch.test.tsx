@@ -36,6 +36,7 @@ const mockPost = {
   tags: ['React'],
   content: '',
   slug: 'test-blog-post',
+  language: 'ko' as const,
   readTime: 5,
   readingTime: '5 min read',
   author: 'Me',

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import { render, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { LanguageProvider } from '@/contexts/LanguageContext';
@@ -10,16 +10,17 @@ vi.mock('@/data/content/posts', () => {
     id: 'test',
     title: 'Test Blog Post',
     description: 'Desc',
-    excerpt: 'Desc',
-    content: '# Hello',
-    date: '2025-01-01',
-    author: 'Me',
-    tags: ['tag1'],
-    category: 'Tech',
-    readingTime: '1 min read',
-    slug: 'test',
-    year: '2025',
-    published: true,
+      excerpt: 'Desc',
+      content: '# Hello',
+      date: '2025-01-01',
+      author: 'Me',
+      tags: ['tag1'],
+      category: 'Tech',
+      readingTime: '1 min read',
+      slug: 'test',
+      year: '2025',
+      language: 'ko' as const,
+      published: true,
   };
   return {
     getPostBySlug: vi.fn(async (_year: string, slug: string) => ({
@@ -60,8 +61,7 @@ describe('BlogPost scroll-to-top', () => {
 
   beforeEach(() => {
     // jsdom doesn't implement scrollTo; mock and track calls
-    // @ts-expect-error - allow spying on scrollTo
-    window.scrollTo = vi.fn();
+    window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
   });
 
   it('scrolls to top when navigating to a different post', async () => {

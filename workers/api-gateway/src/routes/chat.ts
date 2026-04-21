@@ -6,7 +6,7 @@
 
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import type { Env } from '../types';
+import type { HonoEnv } from '../types';
 import { success, badRequest } from '../lib/response';
 import { requireAdmin } from '../middleware/auth';
 import type { LensCard, ThoughtCard } from '../lib/feed-contract';
@@ -17,16 +17,14 @@ import {
 import { enqueueFeedArtifactGeneration, generateAndStoreInitialFeedArtifact, getServeableFeedPage } from '../lib/ai-artifact-outbox';
 import { proxyToBackendWithPolicy } from '../lib/backend-proxy';
 
-type ChatContext = { Bindings: Env };
-
-const chat = new Hono<ChatContext>();
+const chat = new Hono<HonoEnv>();
 
 type ProxyOptions = {
   sanitizeClientModel?: boolean;
   stream?: boolean;
 };
 
-async function proxyRequest(c: Context<ChatContext>, path: string, options: ProxyOptions = {}) {
+async function proxyRequest(c: Context<HonoEnv>, path: string, options: ProxyOptions = {}) {
   return proxyToBackendWithPolicy(c, {
     upstreamPath: `/api/v1/chat${path}`,
     sanitizeClientModel: options.sanitizeClientModel,
@@ -36,25 +34,25 @@ async function proxyRequest(c: Context<ChatContext>, path: string, options: Prox
   });
 }
 
-chat.post('/session', async (c: Context<ChatContext>) => {
+chat.post('/session', async (c: Context<HonoEnv>) => {
   return proxyRequest(c, '/session');
 });
 
-chat.post('/session/:sessionId/message', async (c: Context<ChatContext>) => {
+chat.post('/session/:sessionId/message', async (c: Context<HonoEnv>) => {
   const { sessionId } = c.req.param();
   return proxyRequest(c, `/session/${sessionId}/message`, {
     sanitizeClientModel: true,
   });
 });
 
-chat.post('/session/:sessionId/task', async (c: Context<ChatContext>) => {
+chat.post('/session/:sessionId/task', async (c: Context<HonoEnv>) => {
   const { sessionId } = c.req.param();
   return proxyRequest(c, `/session/${sessionId}/task`, {
     sanitizeClientModel: true,
   });
 });
 
-chat.post('/session/:sessionId/lens-feed', async (c: Context<ChatContext>) => {
+chat.post('/session/:sessionId/lens-feed', async (c: Context<HonoEnv>) => {
   const { sessionId } = c.req.param();
   const body = await c.req.json().catch(() => ({}));
   const input = normalizeLensFeedRequest(body);
@@ -154,7 +152,7 @@ chat.post('/session/:sessionId/lens-feed', async (c: Context<ChatContext>) => {
   });
 });
 
-chat.post('/session/:sessionId/thought-feed', async (c: Context<ChatContext>) => {
+chat.post('/session/:sessionId/thought-feed', async (c: Context<HonoEnv>) => {
   const { sessionId } = c.req.param();
   const body = await c.req.json().catch(() => ({}));
   const input = normalizeThoughtFeedRequest(body);
@@ -253,39 +251,39 @@ chat.post('/session/:sessionId/thought-feed', async (c: Context<ChatContext>) =>
     nextCursor: null,
   });
 });
-chat.post('/aggregate', async (c: Context<ChatContext>) => {
+chat.post('/aggregate', async (c: Context<HonoEnv>) => {
   return proxyRequest(c, '/aggregate', {
     sanitizeClientModel: true,
   });
 });
 
-chat.get('/live/stream', async (c: Context<ChatContext>) => {
+chat.get('/live/stream', async (c: Context<HonoEnv>) => {
   const query = c.req.url.split('?')[1] || '';
   return proxyRequest(c, `/live/stream${query ? `?${query}` : ''}`, {
     stream: true,
   });
 });
 
-chat.post('/live/message', async (c: Context<ChatContext>) => {
+chat.post('/live/message', async (c: Context<HonoEnv>) => {
   return proxyRequest(c, '/live/message', {
     sanitizeClientModel: true,
   });
 });
 
-chat.get('/live/config', async (c: Context<ChatContext>) => {
+chat.get('/live/config', async (c: Context<HonoEnv>) => {
   return proxyRequest(c, '/live/config');
 });
 
-chat.put('/live/config', requireAdmin, async (c: Context<ChatContext>) => {
+chat.put('/live/config', requireAdmin, async (c: Context<HonoEnv>) => {
   return proxyRequest(c, '/live/config');
 });
 
-chat.get('/live/room-stats', requireAdmin, async (c: Context<ChatContext>) => {
+chat.get('/live/room-stats', requireAdmin, async (c: Context<HonoEnv>) => {
   const query = c.req.url.split('?')[1] || '';
   return proxyRequest(c, `/live/room-stats${query ? `?${query}` : ''}`);
 });
 
-chat.get('/live/rooms', requireAdmin, async (c: Context<ChatContext>) => {
+chat.get('/live/rooms', requireAdmin, async (c: Context<HonoEnv>) => {
   return proxyRequest(c, '/live/rooms');
 });
 

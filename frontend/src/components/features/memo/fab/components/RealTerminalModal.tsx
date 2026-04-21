@@ -5,7 +5,7 @@
  * via the terminal gateway WebSocket.
  */
 
-import React, { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Terminal, X, Wifi, WifiOff, Loader2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";

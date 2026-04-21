@@ -9,7 +9,6 @@ import ogRouter from './og.js';
 import adminRouter from './admin.js';
 import postsRouter from './posts.js';
 import imagesRouter from './images.js';
-import authRouter from './auth.js';
 import ragRouter from './rag.js';
 import memoriesRouter from './memories.js';
 import memosRouter from './memos.js';
@@ -21,6 +20,7 @@ import agentRouter from './agent.js';
 import notificationsRouter from './notifications.js';
 import debateRouter from './debate.js';
 import adminLogsRouter from './adminLogs.js';
+import adminAnalyticsRouter from './adminAnalytics.js';
 import executeRouter from './execute.js';
 import { config } from '../config.js';
 
@@ -29,9 +29,6 @@ export const PUBLIC_ROUTE_REGISTRY = [
 ];
 
 export function getProtectedRouteRegistry() {
-  const legacyAuthEnabled =
-    !config.security?.protectedEnvironment || config.security.enableLegacyBackendAuth;
-
   return [
     { boundaryId: 'ai', basePath: '/api/v1/ai', router: aiRouter },
     { boundaryId: 'analytics', basePath: '/api/v1/analytics', router: analyticsRouter },
@@ -43,16 +40,14 @@ export function getProtectedRouteRegistry() {
     { boundaryId: 'admin', basePath: '/api/v1/admin', router: adminRouter },
     { boundaryId: 'posts', basePath: '/api/v1/posts', router: postsRouter },
     { boundaryId: 'images', basePath: '/api/v1/images', router: imagesRouter },
-    ...(legacyAuthEnabled
-      ? [{ boundaryId: 'auth', basePath: '/api/v1/auth', router: authRouter }]
-      : []),
     { boundaryId: 'rag', basePath: '/api/v1/rag', router: ragRouter },
     { boundaryId: 'memories', basePath: '/api/v1/memories', router: memoriesRouter },
     { boundaryId: 'user', basePath: '/api/v1/user', router: userRouter },
     { boundaryId: 'search', basePath: '/api/v1/search', router: searchRouter },
     { boundaryId: 'admin-config', basePath: '/api/v1/admin/config', router: configRouter },
     { boundaryId: 'admin-workers', basePath: '/api/v1/admin/workers', router: workersRouter },
-    { boundaryId: 'admin', basePath: '/api/v1/admin', router: adminLogsRouter },
+    { boundaryId: 'admin-logs', basePath: '/api/v1/admin/logs', router: adminLogsRouter },
+    { boundaryId: 'admin-analytics', basePath: '/api/v1/admin/analytics', router: adminAnalyticsRouter },
     { boundaryId: 'agent', basePath: '/api/v1/agent', router: agentRouter },
     { boundaryId: 'debate', basePath: '/api/v1/debate', router: debateRouter },
     { boundaryId: 'execute', basePath: '/api/v1/execute', router: executeRouter },

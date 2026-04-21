@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/session/useAuthStore';
 import { consumeAdminReturnPath } from '@/services/session/adminReturnTo';
+import { consumeOAuthHandoff } from '@/services/session/auth';
 
 export default function AdminAuthCallback() {
   const navigate = useNavigate();
-  const { setTokensFromOAuth } = useAuthStore();
+  const { setTokens, setTokensFromOAuth } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -18,23 +19,51 @@ export default function AdminAuthCallback() {
       );
     }
     const params = new URLSearchParams(hash);
+    const handoff = params.get('handoff');
     const token = params.get('token');
     const refreshToken = params.get('refreshToken');
     const err = params.get('error');
+    let cancelled = false;
 
-    if (err) {
-      setError(`Authentication failed: ${err}`);
-      return;
-    }
+    const complete = async () => {
+      if (handoff) {
+        try {
+          const response = await consumeOAuthHandoff(handoff);
+          if (cancelled) {
+            return;
+          }
+          setTokens(response.accessToken, response.refreshToken, response.user);
+          navigate(consumeAdminReturnPath(), { replace: true });
+        } catch (exchangeError) {
+          if (!cancelled) {
+            const message =
+              exchangeError instanceof Error ? exchangeError.message : 'OAuth handoff failed';
+            setError(`Authentication failed: ${message}`);
+          }
+        }
+        return;
+      }
 
-    if (!token || !refreshToken) {
-      setError('Authentication failed: missing tokens');
-      return;
-    }
+      if (err) {
+        setError(`Authentication failed: ${err}`);
+        return;
+      }
 
-    setTokensFromOAuth(token, refreshToken);
-    navigate(consumeAdminReturnPath(), { replace: true });
-  }, [navigate, setTokensFromOAuth]);
+      if (!token || !refreshToken) {
+        setError('Authentication failed: missing tokens');
+        return;
+      }
+
+      setTokensFromOAuth(token, refreshToken);
+      navigate(consumeAdminReturnPath(), { replace: true });
+    };
+
+    void complete();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate, setTokens, setTokensFromOAuth]);
 
   if (error) {
     return (

@@ -275,7 +275,7 @@ describe("sentio feed warming baseline", () => {
   it("keeps the current lens feed state ready when append returns an empty warming response", async () => {
     const lensCardsBeforeAppend = [...lensItems, {
       id: "lens-4",
-      personaId: "skeptic" as const,
+      personaId: "analyst" as const,
       angleKey: "lens-4",
       title: "Lens 4",
       summary: "Summary 4",

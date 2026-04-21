@@ -1,9 +1,10 @@
 import type { D1Database } from '@cloudflare/workers-types';
 
 import {
+  claimTranslationJobLease,
   fetchActiveTranslationJob,
   fetchTranslationJobById,
-  upsertTranslationJobRow,
+  settleTranslationJobLease,
 } from '../../lib/translation-job-repository';
 
 type TranslationJobState = 'running' | 'succeeded' | 'failed';
@@ -61,8 +62,15 @@ type StartTranslationJobInput<T> = {
   contentHash: string;
   urls: TranslationJobUrls;
   runner: () => Promise<T>;
+  resolveRemoteResult: (job: TranslationJobSnapshot) => Promise<T>;
   summarizeResult?: (result: T) => TranslationJobResultSummary;
   normalizeError?: (error: unknown) => TranslationJobError;
+  onSuccess?: (result: T, job: TranslationJobSnapshot) => Promise<void>;
+  onFailure?: (
+    error: unknown,
+    job: TranslationJobSnapshot,
+    details: TranslationJobError
+  ) => Promise<void>;
 };
 
 type TranslationJobHandle<T> = {
@@ -72,6 +80,9 @@ type TranslationJobHandle<T> = {
 };
 
 const runningJobs = new Map<string, Promise<unknown>>();
+const TRANSLATION_JOB_LEASE_TTL_MS = 2 * 60 * 1000;
+const REMOTE_JOB_POLL_INTERVAL_MS = 200;
+const REMOTE_JOB_WAIT_TIMEOUT_MS = TRANSLATION_JOB_LEASE_TTL_MS + 15 * 1000;
 
 function defaultJobError(error: unknown): TranslationJobError {
   return {
@@ -79,6 +90,45 @@ function defaultJobError(error: unknown): TranslationJobError {
     code: 'INTERNAL_ERROR',
     message: error instanceof Error ? error.message : 'Translation job failed',
   };
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function buildRemoteJobError(details?: TranslationJobError): Error {
+  const error = new Error(details?.message ?? 'Translation job failed');
+  if (details?.code) {
+    error.name = details.code;
+  }
+  return error;
+}
+
+async function waitForRemoteTranslationJob<T>(
+  db: D1Database,
+  jobId: string,
+  resolveRemoteResult: (job: TranslationJobSnapshot) => Promise<T>
+): Promise<T> {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < REMOTE_JOB_WAIT_TIMEOUT_MS) {
+    const latestJob = await fetchTranslationJobById(db, jobId);
+    if (!latestJob) {
+      throw new Error(`Translation job not found: ${jobId}`);
+    }
+
+    if (latestJob.status === 'succeeded') {
+      return resolveRemoteResult(latestJob);
+    }
+
+    if (latestJob.status === 'failed') {
+      throw buildRemoteJobError(latestJob.error);
+    }
+
+    await sleep(REMOTE_JOB_POLL_INTERVAL_MS);
+  }
+
+  throw new Error(`Timed out waiting for translation job: ${jobId}`);
 }
 
 function parseTranslationJobKey(key: string): {
@@ -89,7 +139,11 @@ function parseTranslationJobKey(key: string): {
   const firstSeparator = key.indexOf(':');
   const lastSeparator = key.lastIndexOf(':');
 
-  if (firstSeparator <= 0 || lastSeparator <= firstSeparator + 1 || lastSeparator >= key.length - 1) {
+  if (
+    firstSeparator <= 0 ||
+    lastSeparator <= firstSeparator + 1 ||
+    lastSeparator >= key.length - 1
+  ) {
     return null;
   }
 
@@ -115,7 +169,9 @@ export async function startTranslationJob<T>(
     input.targetLang,
     input.contentHash
   );
-  const existingWait = existing ? (runningJobs.get(existing.id) as Promise<T> | undefined) : undefined;
+  const existingWait = existing
+    ? (runningJobs.get(existing.id) as Promise<T> | undefined)
+    : undefined;
 
   if (existing?.status === 'running' && existingWait) {
     return {
@@ -126,7 +182,9 @@ export async function startTranslationJob<T>(
   }
 
   const now = new Date().toISOString();
+  const lockExpiresAt = new Date(Date.now() + TRANSLATION_JOB_LEASE_TTL_MS).toISOString();
   const jobId = `translation-job-${crypto.randomUUID()}`;
+  const lockToken = `translation-job-lock-${crypto.randomUUID()}`;
   const baseJob = {
     id: jobId,
     key: input.key,
@@ -143,43 +201,82 @@ export async function startTranslationJob<T>(
     generateUrl: input.urls.generateUrl,
   } satisfies Omit<TranslationJobSnapshot, 'status'>;
 
-  const job = await upsertTranslationJobRow(db, {
+  const claim = await claimTranslationJobLease(db, {
     ...baseJob,
     status: 'running',
     contentHash: input.contentHash,
+    lockToken,
+    lockExpiresAt,
   });
+
+  if (!claim.acquired) {
+    const remoteWait =
+      (runningJobs.get(claim.job.id) as Promise<T> | undefined) ||
+      waitForRemoteTranslationJob(db, claim.job.id, input.resolveRemoteResult);
+
+    console.warn('[translation-jobs] joining existing durable job', {
+      jobId: claim.job.id,
+      key: claim.job.key,
+      reclaimedStaleLease: claim.reclaimedStaleLease,
+    });
+
+    return {
+      created: false,
+      job: claim.job,
+      wait: remoteWait,
+    };
+  }
+
+  const job = claim.job;
 
   const wait = Promise.resolve()
     .then(input.runner)
     .then(async (result) => {
       const completedAt = new Date().toISOString();
 
-      await upsertTranslationJobRow(db, {
-        ...baseJob,
+      const settledJob = await settleTranslationJobLease(db, {
         id: job.id,
+        lockToken,
         status: 'succeeded',
         updatedAt: completedAt,
         completedAt,
         error: undefined,
         result: input.summarizeResult ? input.summarizeResult(result) : undefined,
-        contentHash: input.contentHash,
       });
+      if (settledJob && input.onSuccess) {
+        await input.onSuccess(result, settledJob);
+      } else if (!settledJob) {
+        console.warn('[translation-jobs] lease lost before success commit', {
+          jobId: job.id,
+          key: job.key,
+        });
+      }
 
       return result;
     })
     .catch(async (error) => {
       const completedAt = new Date().toISOString();
+      const normalizedError = input.normalizeError
+        ? input.normalizeError(error)
+        : defaultJobError(error);
 
-      await upsertTranslationJobRow(db, {
-        ...baseJob,
+      const settledJob = await settleTranslationJobLease(db, {
         id: job.id,
+        lockToken,
         status: 'failed',
         updatedAt: completedAt,
         completedAt,
-        error: input.normalizeError ? input.normalizeError(error) : defaultJobError(error),
+        error: normalizedError,
         result: undefined,
-        contentHash: input.contentHash,
       });
+      if (settledJob && input.onFailure) {
+        await input.onFailure(error, settledJob, normalizedError);
+      } else if (!settledJob) {
+        console.warn('[translation-jobs] lease lost before failure commit', {
+          jobId: job.id,
+          key: job.key,
+        });
+      }
 
       throw error;
     })

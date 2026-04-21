@@ -6,6 +6,6 @@ export * from './organisms';
 // Feature-based exports
 export * from './features/blog';
 export * from './features/search';
-export * from './features/navigation';
+export { Pagination, PostNavigation } from './features/navigation';
 export * from './common';
 export * from './ui';

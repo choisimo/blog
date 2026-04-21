@@ -117,9 +117,14 @@
         "path": "/api/v1/admin/workers"
       },
       {
-        "boundaryId": "admin",
+        "boundaryId": "admin-logs",
         "owner": "backend",
-        "path": "/api/v1/admin"
+        "path": "/api/v1/admin/logs"
+      },
+      {
+        "boundaryId": "admin-analytics",
+        "owner": "backend",
+        "path": "/api/v1/admin/analytics"
       },
       {
         "boundaryId": "agent",

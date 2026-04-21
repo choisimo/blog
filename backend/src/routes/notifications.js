@@ -83,6 +83,10 @@ function validatePushBody(push) {
   return Boolean(push?.title && push?.message);
 }
 
+export function buildNotificationStreamReadyFrame() {
+  return `event: ping\ndata: ${JSON.stringify({ connected: true, ts: Date.now() })}\n\n`;
+}
+
 async function handleDurablePush(req, res, { compatibilityMode = false } = {}) {
   const push = parsePushBody(req.body);
 
@@ -104,6 +108,7 @@ async function handleDurablePush(req, res, { compatibilityMode = false } = {}) {
       inboxId: result.inbox?.id ?? null,
       targeted: Boolean(push.targetUserId),
       storage,
+      deduped: result.deduped === true,
       ...(compatibilityMode ? {} : { durable: true }),
     },
   });
@@ -129,14 +134,9 @@ router.get("/stream", requireUserAuth, (req, res) => {
   res.setHeader("X-Accel-Buffering", "no"); // Nginx buffering off
   res.flushHeaders();
 
-  // Send an immediate "connected" event so the client knows the stream is live
-  res.write(
-    `event: notification\ndata: ${JSON.stringify({
-      type: "system",
-      title: "알림 연결됨",
-      message: "실시간 알림이 활성화되었습니다.",
-    })}\n\n`,
-  );
+  // Send an immediate keepalive frame so the client knows the stream is live
+  // without creating an ID-less notification payload.
+  res.write(buildNotificationStreamReadyFrame());
 
   const subId = notificationStream.addSubscriber(res, userId);
 

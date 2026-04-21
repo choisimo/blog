@@ -1,8 +1,8 @@
 export type SupportedLanguage = "ko" | "en";
 
 export interface LocalizedPostFields {
-  title: string;
-  description: string;
+  title?: string;
+  description?: string;
   excerpt?: string;
   content?: string;
 }

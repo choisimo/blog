@@ -5,8 +5,23 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Wed, 01 Apr 2026 15:39:50 GMT</lastBuildDate>
+    <lastBuildDate>Wed, 15 Apr 2026 09:39:46 GMT</lastBuildDate>
     <language>en-US</language>
+    <item>
+      <title>ArgoCD에서 GitHub 연결이 실패했을 때, 진짜 원인은 SSH가 아니라 DNS였다</title>
+      <description>ArgoCD의 Repository Failed는 마지막 증상이었고, 실제 원인은 CoreDNS가 외부 질의를 넘기던 upstream resolver 체인이 깨져 `github.com` 이름 해석이 실패한 데 있었다.</description>
+      <link>https://noblog.nodove.com/blog/2026/argocd-github-dns-failure</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/argocd-github-dns-failure</guid>
+      <pubDate>Sun, 05 Apr 2026 00:00:00 GMT</pubDate>
+      <category>Kubernetes</category>
+      <category>ArgoCD</category>
+      <category>CoreDNS</category>
+      <category>DNS</category>
+      <category>GitHub</category>
+      <category>Kubernetes</category>
+      <category>k3s</category>
+      <category>Troubleshooting</category>
+    </item>
     <item>
       <title>약점으로 오해되는 예민함, HSP</title>
       <description>HSP는 유난이나 결함이 아니라, 더 깊게 받아들이고 더 쉽게 과부하되는 처리 방식에 가깝다.</description>
@@ -275,19 +290,6 @@
       <category>Device Code OAuth</category>
       <category>Security</category>
       <category>Gateway</category>
-    </item>
-    <item>
-      <title>[Arena 상세] GPT-5.3-codex-x-high 분석</title>
-      <description>GPT-5.3-codex-x-high의 AppContainer DI, Topology 검증, 확장 계층 설계를 상세 분석</description>
-      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gpt-5-3-codex-x-high</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gpt-5-3-codex-x-high</guid>
-      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
-      <category>AI Engineering</category>
-      <category>GPT-5.3</category>
-      <category>DI Container</category>
-      <category>Topology</category>
-      <category>Agent Skills</category>
-      <category>MCP</category>
     </item>
   </channel>
 </rss>

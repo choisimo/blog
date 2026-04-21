@@ -311,17 +311,19 @@ export class PostService {
     ): LocalizedPostFields | undefined => {
       if (!fields || typeof fields !== "object") return undefined;
       const record = fields as Record<string, unknown>;
-      const localized: LocalizedPostFields = {
-        title: typeof record.title === "string" ? record.title : "",
-        description:
-          typeof record.description === "string" ? record.description : "",
-      };
-      if (!localized.title) delete localized.title;
-      if (!localized.description) delete localized.description;
-      if (typeof record.excerpt === "string")
+      const localized: Partial<LocalizedPostFields> = {};
+      if (typeof record.title === "string" && record.title) {
+        localized.title = record.title;
+      }
+      if (typeof record.description === "string" && record.description) {
+        localized.description = record.description;
+      }
+      if (typeof record.excerpt === "string") {
         localized.excerpt = record.excerpt;
-      if (typeof record.content === "string")
+      }
+      if (typeof record.content === "string") {
         localized.content = record.content;
+      }
       return Object.keys(localized).length ? localized : undefined;
     };
 
@@ -350,22 +352,41 @@ export class PostService {
       ]),
     );
 
+    const title =
+      typeof frontMatter.title === "string" && frontMatter.title
+        ? frontMatter.title
+        : filename.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+    const description =
+      typeof frontMatter.description === "string" && frontMatter.description
+        ? frontMatter.description
+        : `${markdownContent.substring(0, 150)}...`;
+    const excerpt =
+      typeof frontMatter.excerpt === "string" && frontMatter.excerpt
+        ? frontMatter.excerpt
+        : description;
+    const date =
+      typeof frontMatter.date === "string" && frontMatter.date
+        ? frontMatter.date
+        : `${year}-01-01`;
+    const author =
+      typeof frontMatter.author === "string" && frontMatter.author
+        ? frontMatter.author
+        : "Admin";
+    const category =
+      typeof frontMatter.category === "string" && frontMatter.category
+        ? frontMatter.category
+        : "General";
+
     return {
       id: filename,
-      title:
-        frontMatter.title ||
-        filename.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
-      description:
-        frontMatter.description || `${markdownContent.substring(0, 150)}...`,
-      excerpt:
-        frontMatter.excerpt ||
-        frontMatter.description ||
-        `${markdownContent.substring(0, 150)}...`,
+      title,
+      description,
+      excerpt,
       content: markdownContent,
-      date: frontMatter.date || `${year}-01-01`,
-      author: frontMatter.author || "Admin",
+      date,
+      author,
       tags: Array.isArray(frontMatter.tags) ? frontMatter.tags : [],
-      category: frontMatter.category || "General",
+      category,
       readingTime: readingTimeText,
       slug: filename,
       year,

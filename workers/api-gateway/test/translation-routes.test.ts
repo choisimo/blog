@@ -1,13 +1,20 @@
 import { env, SELF } from 'cloudflare:test';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { claimTranslationJobLease } from '../src/lib/translation-job-repository';
 import { signJwt } from '../src/lib/jwt';
-import { hashContent, type SourcePost, type SupportedTranslationLang } from '../src/lib/translation-service';
+import {
+  hashContent,
+  type SourcePost,
+  type SupportedTranslationLang,
+} from '../src/lib/translation-service';
 import type { Env } from '../src/types';
 
 declare module 'cloudflare:test' {
-  interface ProvidedEnv
-    extends Pick<Env, 'DB' | 'R2' | 'KV' | 'JWT_SECRET' | 'ENV' | 'PUBLIC_SITE_URL' | 'BACKEND_ORIGIN'> {}
+  interface ProvidedEnv extends Pick<
+    Env,
+    'DB' | 'R2' | 'KV' | 'JWT_SECRET' | 'ENV' | 'PUBLIC_SITE_URL' | 'BACKEND_ORIGIN'
+  > {}
 }
 
 type Deferred<T> = {
@@ -96,7 +103,8 @@ function installFetchInterception(): void {
   originalFetch = globalThis.fetch;
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+    const url =
+      typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 
     if (url === `${env.PUBLIC_SITE_URL}/posts-manifest.json`) {
       return jsonResponse({
@@ -137,6 +145,10 @@ function installFetchInterception(): void {
       const payload = JSON.parse(bodyText) as { prompt?: string };
       const text = await aiGenerateHandler(payload.prompt ?? '');
       return jsonResponse({ ok: true, data: { text } });
+    }
+
+    if (url === `${env.BACKEND_ORIGIN}/api/v1/notifications/outbox/internal`) {
+      return jsonResponse({ ok: true, queued: true }, { status: 202 });
     }
 
     return originalFetch(input, init);
@@ -510,6 +522,67 @@ describe('translation routes characterization', () => {
 
     deferred.resolve('Finished title');
     await deferred.promise;
+  });
+
+  it('reuses an existing durable running job without invoking AI generation again', async () => {
+    const sourcePost = buildSourcePost();
+    const userToken = await createUserToken();
+    const contentHash = hashContent(sourcePost.content);
+
+    registerPublishedPost(sourcePost);
+    aiGenerateHandler = async () => {
+      throw new Error('AI generation should not run for an existing durable job');
+    };
+
+    await claimTranslationJobLease(env.DB, {
+      id: 'translation-job-existing-remote',
+      key: `${sourcePost.year}:${sourcePost.slug}:en`,
+      status: 'running',
+      year: sourcePost.year,
+      slug: sourcePost.slug,
+      targetLang: 'en',
+      sourceLang: sourcePost.sourceLang,
+      forceRefresh: true,
+      contentHash,
+      createdAt: '2026-03-27T10:00:00.000Z',
+      updatedAt: '2026-03-27T10:00:00.000Z',
+      startedAt: '2026-03-27T10:00:00.000Z',
+      statusUrl: `https://example.com/api/v1/internal/posts/${sourcePost.year}/${sourcePost.slug}/translations/en/generate/status`,
+      cacheUrl: `https://example.com/api/v1/public/posts/${sourcePost.year}/${sourcePost.slug}/translations/en/cache`,
+      generateUrl: `https://example.com/api/v1/internal/posts/${sourcePost.year}/${sourcePost.slug}/translations/en/generate`,
+      lockToken: 'remote-owner-lock',
+      lockExpiresAt: '2099-03-27T10:05:00.000Z',
+    });
+
+    const response = await SELF.fetch(
+      `https://example.com/api/v1/internal/posts/${sourcePost.year}/${sourcePost.slug}/translations/en/generate?async=true`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${userToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ forceRefresh: true }),
+      }
+    );
+
+    expect(response.status).toBe(202);
+    const payload = (await response.json()) as {
+      ok: boolean;
+      data: null;
+      job: {
+        id: string;
+        status: string;
+      };
+    };
+
+    expect(payload.ok).toBe(true);
+    expect(payload.data).toBeNull();
+    expect(payload.job).toMatchObject({
+      id: 'translation-job-existing-remote',
+      status: 'running',
+    });
+    expect(response.headers.get('X-Translation-Job-Id')).toBe('translation-job-existing-remote');
   });
 
   it('returns NOT_FOUND for unknown translation jobs', async () => {

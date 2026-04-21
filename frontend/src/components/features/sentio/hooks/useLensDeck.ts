@@ -59,7 +59,10 @@ const PERSONA_BY_INDEX: LensCardData["personaId"][] = [
 function mapPrismFallbackToCards(
   paragraph: string,
   postTitle: string | undefined,
-  facets: Array<{ title: string; points: string[] }>,
+  facets: ReadonlyArray<{
+    title: string;
+    points: ReadonlyArray<string>;
+  }>,
 ): LensCardData[] {
   const seed = `${postTitle || "post"}-${paragraph.slice(0, 24) || "lens"}`
     .toLowerCase()

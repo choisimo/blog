@@ -47,9 +47,8 @@ export interface NotificationState {
 
   // Actions
   addNotification: (
-    notification: Omit<AppNotification, "type" | "title" | "message"> &
-      Pick<AppNotification, "type" | "title" | "message"> &
-      Partial<Pick<AppNotification, "id" | "createdAt" | "read">>,
+    notification: Pick<AppNotification, "type" | "title" | "message"> &
+      Partial<Omit<AppNotification, "type" | "title" | "message">>,
   ) => string;
   upsertNotifications: (notifications: AppNotification[]) => void;
   markRead: (id: string) => void;
@@ -206,9 +205,8 @@ export const useNotificationStore = create<NotificationState>()(
 // ============================================================================
 
 export function addNotification(
-  notif: Omit<AppNotification, "type" | "title" | "message"> &
-    Pick<AppNotification, "type" | "title" | "message"> &
-    Partial<Pick<AppNotification, "id" | "createdAt" | "read">>,
+  notif: Pick<AppNotification, "type" | "title" | "message"> &
+    Partial<Omit<AppNotification, "type" | "title" | "message">>,
 ): string {
   return useNotificationStore.getState().addNotification(notif);
 }

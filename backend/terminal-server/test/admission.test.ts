@@ -8,14 +8,14 @@ import {
 
 test('internal auth headers validate only for the original method and path', () => {
   const secret = 'terminal-secret';
-  const header = createInternalAuthHeader(secret, 'POST', '/internal/leases/open');
+  const header = createInternalAuthHeader(secret, 'GET', '/stats');
 
   assert.equal(
     verifyInternalRequest({
       headerValue: header,
       secret,
-      method: 'POST',
-      path: '/internal/leases/open',
+      method: 'GET',
+      path: '/stats',
     }),
     true
   );
@@ -24,8 +24,8 @@ test('internal auth headers validate only for the original method and path', () 
     verifyInternalRequest({
       headerValue: header,
       secret,
-      method: 'GET',
-      path: '/internal/leases/open',
+      method: 'POST',
+      path: '/stats',
     }),
     false
   );

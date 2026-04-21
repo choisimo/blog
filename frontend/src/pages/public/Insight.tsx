@@ -14,6 +14,9 @@ import { loadSessionsIndex } from '@/services/chat';
 
 type NodeType = 'post' | 'chat' | 'comment' | 'question' | 'memo' | 'tag' | 'search';
 
+type SessionIndexEntry = ReturnType<typeof loadSessionsIndex>[number];
+type ChatSession = SessionIndexEntry;
+
 interface GraphNode {
   id: string;
   type: NodeType;
@@ -33,16 +36,6 @@ interface GraphEdge {
   type: 'category' | 'tag' | 'chat' | 'comment' | 'curiosity';
 }
 
-interface ChatSession {
-  id: string;
-  title?: string;
-  summary?: string;
-  articleUrl?: string;
-  articleTitle?: string;
-  updatedAt?: string;
-  messages?: Array<{ role: string; content: string }>;
-}
-
 interface MemoEvent {
   type: string;
   t: number;
@@ -59,14 +52,14 @@ interface MemoEvent {
   };
 }
 
-type SessionIndexEntry = ReturnType<typeof loadSessionsIndex>[number];
-
 interface PostNodeData {
-  year: number;
+  year: string;
   slug: string;
   title: string;
   category: string;
   tags: string[];
+  excerpt?: string;
+  date?: string;
 }
 
 interface TagNodeData {
@@ -87,8 +80,22 @@ interface MemoNodeData {
   snippet?: string;
 }
 
-function isChatSession(value: SessionIndexEntry): value is ChatSession {
-  return Boolean(value && typeof value.id === 'string');
+function isChatSession(value: unknown): value is ChatSession {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      'id' in value &&
+      typeof (value as { id?: unknown }).id === 'string'
+  );
+}
+
+function isPostNodeData(value: GraphNode['data'] | undefined): value is PostNodeData {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      'year' in value &&
+      'slug' in value
+  );
 }
 
 function isMemoEvent(value: unknown): value is MemoEvent {
@@ -913,13 +920,15 @@ const Insight = () => {
     
     // Find related content for the selected node
     const node = nodes.find(n => n.id === id);
-    if (node?.type === 'post' && node.data) {
-      const postKey = `${node.data.year}/${node.data.slug}`;
+    const postData =
+      node?.type === 'post' && isPostNodeData(node.data) ? node.data : null;
+    if (postData) {
+      const postKey = `${postData.year}/${postData.slug}`;
       
       // Find related chats
       const relatedChats = allChatSessions.filter(s => {
         if (!s.articleUrl) return false;
-        return s.articleUrl.includes(node.data.slug);
+        return s.articleUrl.includes(postData.slug);
       });
       
       // Find related memo events (memos and thoughts for this post)
@@ -1459,6 +1468,8 @@ const Insight = () => {
             
             const hasRelated = relatedContent.chats.length > 0 || relatedContent.memos.length > 0 || relatedContent.thoughts.length > 0;
             
+            const postData = isPostNodeData(node.data) ? node.data : null;
+
             return (
               <div className='space-y-2'>
                 <div className='flex items-center justify-between'>
@@ -1488,12 +1499,12 @@ const Insight = () => {
                 )}>
                   {node.label}
                 </h3>
-                {node.data?.category && (
+                {postData?.category && (
                   <p className={cn(
                     'text-xs',
                     isTerminal ? 'font-mono text-[#50fa7b]/60' : 'text-muted-foreground'
                   )}>
-                    {isTerminal ? `category: ${node.data.category}` : node.data.category}
+                    {isTerminal ? `category: ${postData.category}` : postData.category}
                   </p>
                 )}
                 <div className='flex gap-2 mt-3'>
@@ -1521,8 +1532,8 @@ const Insight = () => {
                         : 'bg-primary text-primary-foreground hover:bg-primary/90'
                     )}
                     onClick={() => {
-                      if (node.type === 'post' && node.data) {
-                        navigate(`/blog/${node.data.year}/${node.data.slug}`);
+                      if (node.type === 'post' && postData) {
+                        navigate(`/blog/${postData.year}/${postData.slug}`);
                       }
                     }}
                   >
@@ -1547,6 +1558,8 @@ const Insight = () => {
             const node = nodes.find(n => n.id === selectedNode);
             if (!node) return null;
             
+            const postData = isPostNodeData(node.data) ? node.data : null;
+
             return (
               <>
                 {/* Header */}
@@ -1570,13 +1583,13 @@ const Insight = () => {
                     )}>
                       {node.label}
                     </h3>
-                    {node.data?.category && (
+                    {postData?.category && (
                       <p className={cn(
                         'text-xs mt-1',
                         isTerminal ? 'font-mono text-[#50fa7b]/60' : 'text-muted-foreground'
                       )}>
-                        {node.data.category}
-                        {node.data?.date && ` • ${new Date(node.data.date).toLocaleDateString()}`}
+                        {postData.category}
+                        {postData.date && ` • ${new Date(postData.date).toLocaleDateString()}`}
                       </p>
                     )}
                   </div>
@@ -1596,7 +1609,7 @@ const Insight = () => {
                   isTerminal ? 'scrollbar-thin scrollbar-thumb-[#50fa7b]/20' : ''
                 )}>
                   {/* Post excerpt */}
-                  {node.data?.excerpt && (
+                  {postData?.excerpt && (
                     <div className={cn(
                       'p-3 rounded-lg',
                       isTerminal ? 'bg-[#50fa7b]/5 border border-[#50fa7b]/10' : 'bg-gray-50'
@@ -1605,15 +1618,15 @@ const Insight = () => {
                         'text-sm',
                         isTerminal ? 'font-mono text-[#50fa7b]/80' : 'text-muted-foreground'
                       )}>
-                        {node.data.excerpt}
+                        {postData.excerpt}
                       </p>
                     </div>
                   )}
                   
                   {/* Tags */}
-                  {node.data?.tags?.length > 0 && (
+                  {postData?.tags?.length ? (
                     <div className='flex flex-wrap gap-1.5'>
-                      {node.data.tags.map((tag: string) => (
+                      {postData.tags.map((tag: string) => (
                         <span
                           key={tag}
                           className={cn(
@@ -1627,7 +1640,7 @@ const Insight = () => {
                         </span>
                       ))}
                     </div>
-                  )}
+                  ) : null}
                   
                   {/* Related AI Chats */}
                   {relatedContent.chats.length > 0 && (
@@ -1787,8 +1800,8 @@ const Insight = () => {
                         : 'bg-primary text-primary-foreground hover:bg-primary/90'
                     )}
                     onClick={() => {
-                      if (node.type === 'post' && node.data) {
-                        navigate(`/blog/${node.data.year}/${node.data.slug}`);
+                      if (node.type === 'post' && postData) {
+                        navigate(`/blog/${postData.year}/${postData.slug}`);
                       }
                     }}
                   >

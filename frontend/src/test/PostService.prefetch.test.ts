@@ -48,14 +48,14 @@ describe('PostService.prefetchPost', () => {
   it('caches markdown and avoids duplicate markdown fetches on subsequent prefetch', async () => {
     const fetchMock = vi
       .spyOn(global, 'fetch' as any)
-      .mockImplementation((url: RequestInfo | URL) => {
-        const href = String(url);
+      .mockImplementation((async (...args: Parameters<typeof fetch>) => {
+        const href = String(args[0]);
         if (href.endsWith('/posts-manifest.json'))
           return Promise.resolve(jsonResponse(manifest));
         if (href.endsWith('/posts/2025/test.md'))
           return Promise.resolve(textResponse(markdown));
         return Promise.resolve(new Response('', { status: 404 }));
-      });
+      }) as any);
 
     await PostService.prefetchPost('2025', 'test');
 
@@ -83,14 +83,14 @@ describe('PostService.prefetchPost', () => {
   it('uses cached markdown when getPostBySlug is called after prefetch', async () => {
     const fetchMock = vi
       .spyOn(global, 'fetch' as any)
-      .mockImplementation((url: RequestInfo | URL) => {
-        const href = String(url);
+      .mockImplementation((async (...args: Parameters<typeof fetch>) => {
+        const href = String(args[0]);
         if (href.endsWith('/posts-manifest.json'))
           return Promise.resolve(jsonResponse(manifest));
         if (href.endsWith('/posts/2025/test.md'))
           return Promise.resolve(textResponse(markdown));
         return Promise.resolve(new Response('', { status: 404 }));
-      });
+      }) as any);
 
     await PostService.prefetchPost('2025', 'test');
 

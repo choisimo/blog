@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import {
   X,
   Send,
@@ -11,6 +11,12 @@ import {
   Compass,
   BarChart3,
   Check,
+  HelpCircle,
+  Lightbulb,
+  MessageSquare,
+  Sparkles,
+  ThumbsDown,
+  ThumbsUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -234,7 +240,7 @@ function StepProgress({
         const isDone = i < currentIdx;
         const isActive = i === currentIdx;
         return (
-          <React.Fragment key={s.key}>
+          <Fragment key={s.key}>
             <div className="flex flex-col items-center gap-1">
               <div
                 className={cn(
@@ -284,7 +290,7 @@ function StepProgress({
                 )}
               />
             )}
-          </React.Fragment>
+          </Fragment>
         );
       })}
     </div>

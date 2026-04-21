@@ -205,6 +205,7 @@ export const loadPostBySlug = async (
       tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
       slug,
       content: bodyContent,
+      language: "ko",
       readTime,
     };
   } catch (error) {

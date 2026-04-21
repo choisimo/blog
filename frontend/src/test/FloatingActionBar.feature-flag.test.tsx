@@ -1,5 +1,5 @@
 import { render, screen, cleanup, waitFor } from '@testing-library/react';
-import { describe, it, expect, afterEach, beforeEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { act } from 'react';
 import App from '../App';
 
@@ -82,8 +82,8 @@ describe('FloatingActionBar feature flag', () => {
     });
 
     await waitFor(() => {
-      const calls = (dispatchSpy.mock?.calls || []) as unknown[] as any[];
-      const hasVisitedOpen = calls.some(args => args?.[0]?.type === 'visitedposts:open');
+      const calls = dispatchSpy.mock?.calls || [];
+      const hasVisitedOpen = calls.some((args: unknown[]) => args?.[0] && (args[0] as Event).type === 'visitedposts:open');
       expect(hasVisitedOpen).toBe(true);
     });
 
@@ -175,7 +175,9 @@ describe('FloatingActionBar feature flag', () => {
     stackBtn.click();
 
     expect(
-      dispatchSpy.mock.calls.some(args => args?.[0]?.type === 'visitedposts:open')
+      dispatchSpy.mock.calls.some(
+        (args: unknown[]) => args?.[0] && (args[0] as Event).type === 'visitedposts:open'
+      )
     ).toBe(true);
     dispatchSpy.mockRestore();
   });

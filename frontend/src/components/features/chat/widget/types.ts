@@ -50,7 +50,7 @@ export type ChatMessage = {
   authorMeta?: string;
   systemLevel?: SystemMessageLevel;
   systemKind?: "status" | "error";
-  statusSource?: "event" | "command";
+  statusSource?: "event" | "command" | "memory";
   transient?: boolean;
   expiresAt?: number;
   sources?: SourceLink[];

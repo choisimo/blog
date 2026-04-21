@@ -133,11 +133,12 @@ beforeEach(async () => {
 describe('internal AI outbox routes', () => {
   it('returns outbox summary, stuck events, and scheduler state with backend key auth', async () => {
     const eventId = await seedStuckAiArtifactEvent();
+    const backendKey = env.BACKEND_KEY ?? 'test-backend-key';
 
     const response = await requestInternal('/api/v1/internal/ai/outbox/status', {
       method: 'GET',
       headers: {
-        'X-Backend-Key': env.BACKEND_KEY,
+        'X-Backend-Key': backendKey,
       },
     });
     const json = await response.json<{
@@ -175,12 +176,13 @@ describe('internal AI outbox routes', () => {
       skipped: false,
       reason: 'ok',
     };
+    const backendKey = env.BACKEND_KEY ?? 'test-backend-key';
     outboxMocks.flushAiArtifactOutbox.mockResolvedValueOnce(flushResult);
 
     const response = await requestInternal('/api/v1/internal/ai/outbox/flush?limit=99', {
       method: 'POST',
       headers: {
-        'X-Backend-Key': env.BACKEND_KEY,
+        'X-Backend-Key': backendKey,
       },
     });
     const json = await response.json<{
