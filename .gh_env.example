@@ -25,3 +25,21 @@ VITE_TERMINAL_GATEWAY_URL=wss://terminal.nodove.com
 VITE_CHAT_BASE_URL=
 VITE_CHAT_API_KEY=
 VITE_FEATURE_FAB=true
+
+
+# -----------------------------------------------------------------------------
+# [Workers] Shared worker/backend deployment contract
+# -----------------------------------------------------------------------------
+BACKEND_ORIGIN=https://blog-b.nodove.com
+BACKEND_KEY=
+JWT_SECRET=
+TERMINAL_SESSION_SECRET=
+INTERNAL_KEY=
+AI_DEFAULT_MODEL=gpt-5.2
+AI_VISION_MODEL=gpt-4o
+PERPLEXITY_MODEL=sonar
+API_BASE_URL=https://api.nodove.com
+ASSETS_BASE_URL=https://noblog.nodove.com/images
+ALLOWED_ORIGINS=https://noblog.nodove.com
+TERMINAL_CONNECT_TOKEN_TTL_SECONDS=60
+TERMINAL_BLOCKED_COUNTRIES=
