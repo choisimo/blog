@@ -204,6 +204,27 @@ app.get('/health', async (c) => {
   return proxyToBackend(c.req.raw, c.env);
 });
 
+// Do not expose origin metrics through the public edge.
+app.all('/metrics', async (c) => {
+  const corsHeaders = await getCorsHeadersForRequest(c.req.raw, c.env);
+  return new Response(
+    JSON.stringify({
+      ok: false,
+      error: {
+        message: 'Route not found: metrics',
+        code: 'NOT_FOUND',
+      },
+    }),
+    {
+      status: 404,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders,
+      },
+    },
+  );
+});
+
 async function buildPublicConfig(env: Env) {
   const [apiBaseUrl, forcedModel, forcedVisionModel] = await Promise.all([
     getApiBaseUrl(env),

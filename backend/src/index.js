@@ -86,6 +86,12 @@ async function startServer() {
     );
   });
 
+  app.get("/health", (req, res) => {
+    res.json(
+      buildHealthPayload({ env: config.appEnv, uptime: process.uptime() }),
+    );
+  });
+
   app.get("/api/v1/readiness", (req, res) => {
     const readiness = buildReadinessResponse({
       env: config.appEnv,
