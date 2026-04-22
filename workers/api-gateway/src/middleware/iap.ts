@@ -19,6 +19,7 @@ const PUBLIC_BYPASS_PATHS = new Set([
   '/_health',
   '/health',
   '/healthz',
+  '/api/v1/readiness',
   '/public/config',
   '/api/v1/public/config',
 ]);

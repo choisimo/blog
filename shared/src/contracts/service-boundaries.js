@@ -42,6 +42,7 @@ export const SERVICE_BOUNDARIES = Object.freeze([
   { id: 'admin', prefix: '/api/v1/admin', owner: ROUTE_OWNERS.BACKEND, description: 'Backend admin APIs and operational controls' },
 
   { id: 'healthz', prefix: '/api/v1/healthz', owner: ROUTE_OWNERS.PROXY_ONLY, description: 'Origin health check exposure through edge' },
+  { id: 'readiness', prefix: '/api/v1/readiness', owner: ROUTE_OWNERS.PROXY_ONLY, description: 'Origin readiness check exposure through edge' },
   { id: 'health', prefix: '/health', owner: ROUTE_OWNERS.PROXY_ONLY, description: 'Backend health passthrough for compatibility' },
   { id: 'metrics', prefix: '/metrics', owner: ROUTE_OWNERS.PROXY_ONLY, description: 'Prometheus metrics exposure' },
   { id: 'public-config', prefix: '/api/v1/public/config', owner: ROUTE_OWNERS.COMPATIBILITY, description: 'Public runtime config served by both edge and origin' },

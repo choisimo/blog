@@ -204,6 +204,10 @@ app.get('/health', async (c) => {
   return proxyToBackend(c.req.raw, c.env);
 });
 
+app.get('/api/v1/readiness', async (c) => {
+  return proxyToBackend(c.req.raw, c.env);
+});
+
 // Do not expose origin metrics through the public edge.
 app.all('/metrics', async (c) => {
   const corsHeaders = await getCorsHeadersForRequest(c.req.raw, c.env);
