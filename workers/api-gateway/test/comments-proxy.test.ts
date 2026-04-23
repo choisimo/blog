@@ -1,17 +1,49 @@
 import { env, SELF } from 'cloudflare:test';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { execute, queryOne } from '../src/lib/d1';
 import { signJwt } from '../src/lib/jwt';
 import type { Env } from '../src/types';
 
 declare module 'cloudflare:test' {
-  interface ProvidedEnv extends Pick<Env, 'DB' | 'JWT_SECRET'> {}
+  interface ProvidedEnv extends Pick<Env, 'DB' | 'JWT_SECRET' | 'PUBLIC_SITE_URL'> {}
+}
+
+const validPostIds = new Set(['2026/test-post', '2026/alias-post', '2026/reactions-post']);
+
+function installPublishedPostFetchInterception() {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    const url =
+      typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+    const parsedUrl = new URL(url);
+
+    if (url.startsWith(String(env.PUBLIC_SITE_URL))) {
+      const match = parsedUrl.pathname.match(/^\/posts\/(\d{4})\/([^/]+)\.md$/);
+      const postId = match ? `${match[1]}/${decodeURIComponent(match[2])}` : '';
+      if (validPostIds.has(postId)) {
+        return new Response(`---\ntitle: ${postId}\npublished: true\n---\n\nPost body`, {
+          status: 200,
+          headers: { 'Content-Type': 'text/markdown; charset=utf-8' },
+        });
+      }
+
+      return new Response('Not Found', { status: 404 });
+    }
+
+    return new Response('Unhandled fetch in comments test', { status: 500 });
+  });
 }
 
 beforeEach(async () => {
+  vi.restoreAllMocks();
+  env.PUBLIC_SITE_URL = 'https://public.example';
   await execute(env.DB, 'DELETE FROM comment_reactions');
   await execute(env.DB, 'DELETE FROM comments');
+  installPublishedPostFetchInterception();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe('comments route ownership on worker D1', () => {
@@ -143,6 +175,69 @@ describe('comments route ownership on worker D1', () => {
     });
   });
 
+  it('rejects comments for unknown posts', async () => {
+    const response = await SELF.fetch('https://example.com/api/v1/comments', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Device-Fingerprint': 'fp-missing-post',
+      },
+      body: JSON.stringify({
+        postId: '2026/missing-post',
+        author: 'Mallory',
+        content: 'This post should not exist',
+      }),
+    });
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: {
+        message: 'Post not found',
+      },
+    });
+  });
+
+  it('rate limits comments without a device fingerprint by IP and user agent', async () => {
+    const firstResponse = await SELF.fetch('https://example.com/api/v1/comments', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'CF-Connecting-IP': '203.0.113.5',
+        'User-Agent': 'comments-test-agent',
+      },
+      body: JSON.stringify({
+        postId: '2026/test-post',
+        author: 'Dana',
+        content: 'First anonymous comment',
+      }),
+    });
+
+    expect(firstResponse.status).toBe(201);
+
+    const secondResponse = await SELF.fetch('https://example.com/api/v1/comments', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'CF-Connecting-IP': '203.0.113.5',
+        'User-Agent': 'comments-test-agent',
+      },
+      body: JSON.stringify({
+        postId: '2026/test-post',
+        author: 'Dana',
+        content: 'Second anonymous comment',
+      }),
+    });
+
+    expect(secondResponse.status).toBe(429);
+    const rateLimited = (await secondResponse.json()) as {
+      ok: boolean;
+      error: { code: string; message: string };
+    };
+    expect(rateLimited.ok).toBe(false);
+    expect(rateLimited.error.code).toBe('RATE_LIMITED');
+  });
+
   it('stores reactions in D1 and hides comments through admin delete', async () => {
     const createResponse = await SELF.fetch('https://example.com/api/v1/comments', {
       method: 'POST',
@@ -236,6 +331,11 @@ describe('comments route ownership on worker D1', () => {
       created.data.id
     );
     expect(hidden?.status).toBe('hidden');
+
+    const hiddenReactionResponse = await SELF.fetch(
+      `https://example.com/api/v1/comments/${created.data.id}/reactions`
+    );
+    expect(hiddenReactionResponse.status).toBe(404);
 
     const listResponse = await SELF.fetch(
       'https://example.com/api/v1/comments?postId=2026%2Freactions-post'

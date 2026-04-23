@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import type { HonoEnv, Comment } from '../types';
 import { badRequest, notFound, success } from '../lib/response';
 import { execute, queryAll, queryOne } from '../lib/d1';
@@ -9,6 +10,7 @@ const comments = new Hono<HonoEnv>();
 
 const ALLOWED_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '🎉', '💡'];
 const COMMENT_STREAM_POLL_INTERVAL_MS = 5000;
+const COMMENT_RATE_LIMIT_SECONDS = 60;
 
 function stripHtml(input: string): string {
   return input.replace(/<[^>]*>/g, '').trim();
@@ -44,6 +46,54 @@ function normalizeFingerprint(value: unknown): string {
   return String(value || '')
     .trim()
     .slice(0, 128);
+}
+
+function parseYearSlugPostId(postId: string): { year: string; slug: string } | null {
+  const match = postId.match(/^(\d{4})\/([a-zA-Z0-9][a-zA-Z0-9_-]{0,127})$/);
+  if (!match) return null;
+  return { year: match[1], slug: match[2] };
+}
+
+function getPublicSiteUrl(env: HonoEnv['Bindings']): string {
+  return String(env.PUBLIC_SITE_URL || 'https://noblog.nodove.com').replace(/\/$/, '');
+}
+
+async function publicPostExists(env: HonoEnv['Bindings'], postId: string): Promise<boolean> {
+  const parsed = parseYearSlugPostId(postId);
+  if (!parsed) return false;
+
+  const url = `${getPublicSiteUrl(env)}/posts/${encodeURIComponent(parsed.year)}/${encodeURIComponent(parsed.slug)}.md`;
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: 'text/markdown, text/plain, */*' },
+      signal: AbortSignal.timeout(5000),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Failed to verify comment post existence:', error);
+    return false;
+  }
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const encoded = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest('SHA-256', encoded);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function resolveCommentRateLimitIdentity(
+  c: Context<HonoEnv>,
+  fingerprint: string
+): Promise<string> {
+  if (fingerprint) return fingerprint;
+
+  const ip =
+    c.req.header('cf-connecting-ip') ||
+    c.req.header('x-forwarded-for') ||
+    'unknown-ip';
+  const userAgent = c.req.header('user-agent') || 'unknown-ua';
+  const digest = await sha256Hex(`${ip}:${userAgent}`);
+  return `ip:${digest}`;
 }
 
 export type CommentStreamCursor = {
@@ -169,6 +219,16 @@ comments.get('/:commentId/reactions', async (c) => {
   const commentId = normalizeCommentId(c.req.param('commentId'));
   if (!commentId) {
     return badRequest(c, 'commentId is required');
+  }
+
+  const comment = await queryOne<{ id: string }>(
+    c.env.DB,
+    'SELECT id FROM comments WHERE id = ? AND status = ?',
+    commentId,
+    'visible'
+  );
+  if (!comment) {
+    return notFound(c, 'Comment not found');
   }
 
   type ReactionRow = {
@@ -319,6 +379,10 @@ comments.post('/', async (c) => {
     return badRequest(c, 'postId, postSlug, or slug is required');
   }
 
+  if (!(await publicPostExists(c.env, postId))) {
+    return notFound(c, 'Post not found');
+  }
+
   if (typeof body.author !== 'string' || typeof body.content !== 'string') {
     return badRequest(c, 'author and content are required');
   }
@@ -333,34 +397,34 @@ comments.post('/', async (c) => {
   const fingerprint = normalizeFingerprint(
     c.req.header('X-Device-Fingerprint') || body.fingerprint
   );
+  const rateLimitIdentity = await resolveCommentRateLimitIdentity(c, fingerprint);
 
   if (!author || !content) {
     return badRequest(c, 'Author and content must not be empty after sanitization');
   }
 
-  if (fingerprint) {
-    const recent = await queryOne<{ id: string }>(
-      c.env.DB,
-      `SELECT id
-         FROM comments
-        WHERE device_fingerprint = ?
-          AND created_at > datetime('now', '-60 seconds')
-        LIMIT 1`,
-      fingerprint
-    );
+  const recent = await queryOne<{ id: string }>(
+    c.env.DB,
+    `SELECT id
+       FROM comments
+      WHERE device_fingerprint = ?
+        AND created_at > datetime('now', ?)
+      LIMIT 1`,
+    rateLimitIdentity,
+    `-${COMMENT_RATE_LIMIT_SECONDS} seconds`
+  );
 
-    if (recent) {
-      return c.json(
-        {
-          ok: false,
-          error: {
-            code: 'RATE_LIMITED',
-            message: 'Too many comments. Please wait a moment before posting again.',
-          },
+  if (recent) {
+    return c.json(
+      {
+        ok: false,
+        error: {
+          code: 'RATE_LIMITED',
+          message: 'Too many comments. Please wait a moment before posting again.',
         },
-        { status: 429 }
-      );
-    }
+      },
+      { status: 429 }
+    );
   }
 
   const commentId = `comment-${crypto.randomUUID()}`;
@@ -384,7 +448,7 @@ comments.post('/', async (c) => {
     author,
     email,
     content,
-    fingerprint || null,
+    rateLimitIdentity,
     'visible',
     now,
     now

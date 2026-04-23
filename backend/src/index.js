@@ -7,6 +7,7 @@ import {
   config,
   publicRuntimeConfig,
   loadAndApplyConsulConfig,
+  assertSecurityConfiguration,
 } from "./config.js";
 import { requireBackendKey } from "./middleware/backendAuth.js";
 import { httpCache } from "./middleware/httpCache.js";
@@ -33,6 +34,7 @@ import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 
 async function startServer() {
   await loadAndApplyConsulConfig();
+  assertSecurityConfiguration();
 
   if (isPgConfigured()) {
     try {

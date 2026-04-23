@@ -122,6 +122,7 @@ function createConfig(raw) {
 
     security: {
       protectedEnvironment: isProtectedEnvironment(raw.APP_ENV),
+      allowInsecureDevAuth: raw.ALLOW_INSECURE_DEV_AUTH === 'true',
     },
 
     backendKey: raw.BACKEND_KEY,
@@ -213,6 +214,51 @@ const syncConfig = configSchema.parse(process.env);
 
 export const config = createConfig(syncConfig);
 
+export function getSecurityConfigurationErrors(currentConfig = config) {
+  const errors = [];
+  const protectedEnvironment = currentConfig.security?.protectedEnvironment === true;
+  const allowInsecureDevAuth = currentConfig.security?.allowInsecureDevAuth === true;
+
+  if (!currentConfig.backendKey && (protectedEnvironment || !allowInsecureDevAuth)) {
+    errors.push(
+      protectedEnvironment
+        ? 'BACKEND_KEY is required in protected environments'
+        : 'BACKEND_KEY is required unless ALLOW_INSECURE_DEV_AUTH=true'
+    );
+  }
+
+  if (!currentConfig.auth?.jwtSecret && (protectedEnvironment || !allowInsecureDevAuth)) {
+    errors.push(
+      protectedEnvironment
+        ? 'JWT_SECRET is required in protected environments'
+        : 'JWT_SECRET is required unless ALLOW_INSECURE_DEV_AUTH=true'
+    );
+  }
+
+  if (
+    !currentConfig.admin?.bearerToken &&
+    !currentConfig.auth?.jwtSecret &&
+    (protectedEnvironment || !allowInsecureDevAuth)
+  ) {
+    errors.push(
+      protectedEnvironment
+        ? 'ADMIN_BEARER_TOKEN or JWT_SECRET is required for admin routes in protected environments'
+        : 'ADMIN_BEARER_TOKEN or JWT_SECRET is required for admin routes unless ALLOW_INSECURE_DEV_AUTH=true'
+    );
+  }
+
+  return errors;
+}
+
+export function assertSecurityConfiguration(currentConfig = config) {
+  const errors = getSecurityConfigurationErrors(currentConfig);
+  if (errors.length > 0) {
+    const err = new Error(`Security configuration is incomplete: ${errors.join('; ')}`);
+    err.code = 'SECURITY_CONFIG_INCOMPLETE';
+    throw err;
+  }
+}
+
 if (!config.services.workerApiUrl) {
   logger.warn({}, 'WORKER_API_URL is not set - AI dynamic config from Worker will be unavailable. Set WORKER_API_URL to the api-gateway Worker URL.');
 }
@@ -231,8 +277,10 @@ export async function loadAndApplyConsulConfig() {
       apiBaseUrl: asyncConfig.apiBaseUrl,
       allowedOrigins: asyncConfig.allowedOrigins,
       assetsBaseUrl: asyncConfig.assetsBaseUrl,
+      admin: asyncConfig.admin,
       ai: asyncConfig.ai,
       auth: asyncConfig.auth,
+      backendKey: asyncConfig.backendKey,
       content: asyncConfig.content,
       paths: asyncConfig.paths,
       rag: asyncConfig.rag,

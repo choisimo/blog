@@ -2,6 +2,8 @@ export {
   config,
   initConfig,
   loadAndApplyConsulConfig,
+  assertSecurityConfiguration,
+  getSecurityConfigurationErrors,
   publicRuntimeConfig,
   getServiceUrl,
   consulGet,

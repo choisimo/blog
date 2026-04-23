@@ -56,6 +56,7 @@ export const configSchema = z.object({
   REDIS_PASSWORD: z.string().optional(),
 
   BACKEND_KEY: z.string().optional(),
+  ALLOW_INSECURE_DEV_AUTH: z.enum(['true', 'false']).default('false'),
 
   OPEN_NOTEBOOK_URL: z.string().default('http://open-notebook:8501'),
   OPEN_NOTEBOOK_ENABLED: z.enum(['true', 'false']).default('false'),
