@@ -11,11 +11,61 @@ import { proxyToBackendWithPolicy } from '../lib/backend-proxy';
 
 const images = new Hono<HonoEnv>();
 
+const DIRECT_UPLOAD_MAX_SIZE = 20 * 1024 * 1024; // 20MB
+const DIRECT_UPLOAD_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const CHAT_UPLOAD_MAX_SIZE = 10 * 1024 * 1024; // 10MB
 const CHAT_UPLOAD_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const KV_RATE_LIMIT_PREFIX = 'ratelimit:chat-upload:';
 const CHAT_UPLOAD_RATE_LIMIT = 20;
 const CHAT_UPLOAD_RATE_WINDOW = 60;
+
+function sanitizeR2Filename(name: string): string {
+  const sanitized = String(name || '').replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-+/g, '-');
+  if (!sanitized || sanitized.startsWith('.')) return `upload-${Date.now()}`;
+  return sanitized.slice(0, 160);
+}
+
+function sanitizeR2Segment(value: string): string {
+  return String(value || '')
+    .replace(/[^a-zA-Z0-9_-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 128);
+}
+
+function validateUploadFile(
+  file: File,
+  {
+    maxSize,
+    allowedTypes,
+  }: {
+    maxSize: number;
+    allowedTypes: string[];
+  }
+): string | null {
+  if (file.size > maxSize) {
+    return `File too large - maximum ${maxSize / 1024 / 1024}MB allowed`;
+  }
+
+  if (!allowedTypes.includes(file.type)) {
+    return `Invalid file type - allowed: ${allowedTypes.join(', ')}`;
+  }
+
+  return null;
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  let binary = '';
+
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    const chunk = bytes.subarray(offset, offset + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+
+  return btoa(binary);
+}
 
 async function resolveAssetsBaseUrl(env: Env): Promise<string> {
   const secretValue = await getSecret(env, 'ASSETS_BASE_URL');
@@ -49,10 +99,11 @@ images.post('/presign', requireAdmin, async (c) => {
   }
 
   // Generate a unique key for R2
-  const sanitized = filename.replace(/[^a-zA-Z0-9._-]/g, '-');
+  const sanitized = sanitizeR2Filename(filename);
   const timestamp = Date.now();
-  const key = postId
-    ? `posts/${postId}/${timestamp}-${sanitized}`
+  const sanitizedPostId = postId ? sanitizeR2Segment(postId) : '';
+  const key = sanitizedPostId
+    ? `posts/${sanitizedPostId}/${timestamp}-${sanitized}`
     : `uploads/${new Date().getFullYear()}/${timestamp}-${sanitized}`;
 
   // For presigned URL approach, we'd use R2's presigned URL API
@@ -78,6 +129,14 @@ images.post('/upload-direct', requireAdmin, async (c) => {
     return badRequest(c, 'file is required');
   }
 
+  const validationError = validateUploadFile(file, {
+    maxSize: DIRECT_UPLOAD_MAX_SIZE,
+    allowedTypes: DIRECT_UPLOAD_ALLOWED_TYPES,
+  });
+  if (validationError) {
+    return badRequest(c, validationError);
+  }
+
   const r2 = c.env.R2;
   if (!r2) {
     return badRequest(c, 'R2 bucket is not configured');
@@ -85,10 +144,11 @@ images.post('/upload-direct', requireAdmin, async (c) => {
   const db = c.env.DB;
 
   // Generate R2 key
-  const sanitized = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+  const sanitized = sanitizeR2Filename(file.name);
   const timestamp = Date.now();
-  const key = postId
-    ? `posts/${postId}/${timestamp}-${sanitized}`
+  const sanitizedPostId = postId ? sanitizeR2Segment(postId) : '';
+  const key = sanitizedPostId
+    ? `posts/${sanitizedPostId}/${timestamp}-${sanitized}`
     : `uploads/${new Date().getFullYear()}/${timestamp}-${sanitized}`;
 
   // Upload to R2
@@ -173,15 +233,12 @@ images.post('/chat-upload', requireAuth, async (c) => {
     return badRequest(c, 'file is required');
   }
 
-  if (file.size > CHAT_UPLOAD_MAX_SIZE) {
-    return badRequest(
-      c,
-      `File too large - maximum ${CHAT_UPLOAD_MAX_SIZE / 1024 / 1024}MB allowed`
-    );
-  }
-
-  if (!CHAT_UPLOAD_ALLOWED_TYPES.includes(file.type)) {
-    return badRequest(c, `Invalid file type - allowed: ${CHAT_UPLOAD_ALLOWED_TYPES.join(', ')}`);
+  const validationError = validateUploadFile(file, {
+    maxSize: CHAT_UPLOAD_MAX_SIZE,
+    allowedTypes: CHAT_UPLOAD_ALLOWED_TYPES,
+  });
+  if (validationError) {
+    return badRequest(c, validationError);
   }
 
   const r2 = c.env.R2;
@@ -189,7 +246,7 @@ images.post('/chat-upload', requireAuth, async (c) => {
     return badRequest(c, 'R2 bucket is not configured');
   }
 
-  const sanitized = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+  const sanitized = sanitizeR2Filename(file.name);
   const timestamp = Date.now();
   const key = `ai-chat/${new Date().getFullYear()}/${timestamp}-${sanitized}`;
 
@@ -207,7 +264,7 @@ images.post('/chat-upload', requireAuth, async (c) => {
 
   if (file.type?.startsWith('image/')) {
     try {
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+      const base64 = arrayBufferToBase64(buffer);
       const aiService = createAIService(c.env);
       imageAnalysis = await aiService.vision(base64, 'Describe this image briefly', {
         mimeType: file.type,

@@ -14,6 +14,13 @@ import { createLogger } from "../lib/logger.js";
 const logger = createLogger('images-route');
 
 const router = Router();
+const ALLOWED_IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "gif"]);
+const ALLOWED_IMAGE_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
 
 function readHeaderValue(value) {
   if (Array.isArray(value)) return value[0];
@@ -81,9 +88,13 @@ function buildDir({ year, slug, subdir }) {
 async function saveWithVariants(destDirAbs, relDir, file) {
   const origName = sanitizeFilename(file.originalname || "image");
   const ext = (origName.split(".").pop() || "").toLowerCase();
-  const allowed = new Set(["jpg", "jpeg", "png", "webp", "gif", "svg"]);
-  if (!allowed.has(ext)) {
+  if (!ALLOWED_IMAGE_EXTENSIONS.has(ext)) {
     throw Object.assign(new Error(`Unsupported file type: .${ext}`), {
+      status: 400,
+    });
+  }
+  if (file.mimetype && !ALLOWED_IMAGE_MIME_TYPES.has(file.mimetype)) {
+    throw Object.assign(new Error(`Unsupported content type: ${file.mimetype}`), {
       status: 400,
     });
   }
@@ -116,7 +127,7 @@ async function saveWithVariants(destDirAbs, relDir, file) {
     await fse.writeFile(absWebp, webpBuffer);
     webpUrl = `/images/${relDir}/${webpName}`;
   } catch (_) {
-    // If sharp fails (e.g., SVG), silently skip variant
+    // If sharp cannot decode a supported image, keep the original and skip variants.
   }
 
   return {
@@ -248,6 +259,12 @@ router.post("/chat-upload", requireAdmin, upload.single("file"), async (req, res
     const file = req.file;
     if (!file) {
       return res.status(400).json({ ok: false, error: "file is required" });
+    }
+    if (file.mimetype && !ALLOWED_IMAGE_MIME_TYPES.has(file.mimetype)) {
+      return res.status(400).json({
+        ok: false,
+        error: `Unsupported content type: ${file.mimetype}`,
+      });
     }
 
     // Generate key

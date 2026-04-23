@@ -5,7 +5,7 @@ import path from 'node:path';
 import matter from 'gray-matter';
 import slugify from 'slugify';
 import { config } from '../config.js';
-import requireAdmin from '../middleware/adminAuth.js';
+import requireAdmin, { isAdminRequest } from '../middleware/adminAuth.js';
 import { buildFrontmatterMarkdown } from '../lib/markdown.js';
 import { httpCache, invalidateCacheByPrefix } from '../middleware/httpCache.js';
 import { createLogger } from '../lib/logger.js';
@@ -114,6 +114,18 @@ function computeItem(year, file, fm, body) {
   };
 }
 
+function isPublishedPost(fm) {
+  return fm?.published !== false;
+}
+
+function hasAuthorization(req) {
+  return typeof req.headers?.authorization === 'string' && req.headers.authorization.trim() !== '';
+}
+
+function shouldBypassPublicPostCache(req) {
+  return hasAuthorization(req) || String(req.query?.includeDrafts || 'false') === 'true';
+}
+
 async function listYears(postsDir) {
   const entries = await fs.promises.readdir(postsDir);
   const years = [];
@@ -199,13 +211,18 @@ async function generateUnifiedManifest() {
   return unified;
 }
 
-router.get('/', httpCache({ ttl: 300, prefix: 'posts' }), async (req, res, next) => {
+router.get('/', httpCache({ ttl: 300, prefix: 'posts', skip: shouldBypassPublicPostCache }), async (req, res, next) => {
   try {
     const q = req.query || {};
     const year = (q.year || '').toString();
     const includeDrafts = String(q.includeDrafts || 'false') === 'true';
     const limit = parseInt(q.limit) || 0;
     const offset = parseInt(q.offset) || 0;
+    const includeDraftsAllowed = includeDrafts && isAdminRequest(req);
+
+    if (includeDrafts && !includeDraftsAllowed) {
+      return res.status(403).json({ ok: false, error: 'Admin authorization required' });
+    }
 
     // Try filesystem first, fallback to remote manifest
     if (await isFilesystemAvailable()) {
@@ -223,7 +240,7 @@ router.get('/', httpCache({ ttl: 300, prefix: 'posts' }), async (req, res, next)
           const abs = path.join(dir, file);
           const raw = await fs.promises.readFile(abs, 'utf8');
           const { data: fm, content } = matter(raw);
-          if (fm.published === false && !includeDrafts) continue;
+          if (!isPublishedPost(fm) && !includeDraftsAllowed) continue;
           items.push(computeItem(y, file, fm, content));
         }
       }
@@ -248,7 +265,7 @@ router.get('/', httpCache({ ttl: 300, prefix: 'posts' }), async (req, res, next)
     }
 
     // Filter drafts
-    if (!includeDrafts) {
+    if (!includeDraftsAllowed) {
       items = items.filter(item => item.published !== false);
     }
 
@@ -268,7 +285,7 @@ router.get('/', httpCache({ ttl: 300, prefix: 'posts' }), async (req, res, next)
   }
 });
 
-router.get('/:year/:slug', httpCache({ ttl: 600, prefix: 'posts' }), async (req, res, next) => {
+router.get('/:year/:slug', httpCache({ ttl: 600, prefix: 'posts', skip: hasAuthorization }), async (req, res, next) => {
   try {
     const { year, slug } = req.params;
     if (!/^\d{4}$/.test(year))
@@ -282,6 +299,9 @@ router.get('/:year/:slug', httpCache({ ttl: 600, prefix: 'posts' }), async (req,
       if (await exists(abs)) {
         const raw = await fs.promises.readFile(abs, 'utf8');
         const { data: fm, content } = matter(raw);
+        if (!isPublishedPost(fm) && !isAdminRequest(req)) {
+          return res.status(404).json({ ok: false, error: 'Not found' });
+        }
         const item = computeItem(year, file, fm, content);
         return res.json({ ok: true, data: { item, markdown: raw }, source: 'filesystem' });
       }
@@ -294,6 +314,9 @@ router.get('/:year/:slug', httpCache({ ttl: 600, prefix: 'posts' }), async (req,
     }
 
     const { data: fm, content } = matter(markdown);
+    if (!isPublishedPost(fm) && !isAdminRequest(req)) {
+      return res.status(404).json({ ok: false, error: 'Not found' });
+    }
     const item = computeItem(year, file, fm, content);
     return res.json({ ok: true, data: { item, markdown }, source: 'remote' });
   } catch (err) {

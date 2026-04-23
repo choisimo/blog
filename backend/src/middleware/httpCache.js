@@ -39,6 +39,7 @@ function buildCacheKey(req, { prefix, keyFromBody }) {
  * @param {string} [options.prefix='route']   - Cache key namespace
  * @param {string[]} [options.keyFromBody]    - POST body fields to include in cache key
  * @param {boolean} [options.allowPost=false] - Cache POST requests
+ * @param {(req: import('express').Request) => boolean} [options.skip] - Predicate to bypass cache
  * @returns {import('express').RequestHandler}
  */
 export function httpCache(options = {}) {
@@ -47,10 +48,16 @@ export function httpCache(options = {}) {
     prefix = 'route',
     keyFromBody = [],
     allowPost = false,
+    skip = null,
   } = options;
 
   return async (req, res, next) => {
     const method = req.method;
+
+    if (typeof skip === 'function' && skip(req)) {
+      res.set('X-Cache-Status', 'BYPASS');
+      return next();
+    }
 
     if (method !== 'GET' && !(method === 'POST' && allowPost)) {
       res.set('X-Cache-Status', 'BYPASS');
