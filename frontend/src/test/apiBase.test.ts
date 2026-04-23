@@ -43,6 +43,7 @@ describe('api base runtime contract', () => {
       configurable: true,
       value: { hostname: 'blog.nodove.com' },
     });
+    vi.stubEnv('VITE_API_BASE_URL', '');
 
     expect(() => getApiBaseUrl()).toThrow(
       '[apiBase] Missing runtime API base for blog.nodove.com. Production origin must be provided explicitly via public runtime config.'
@@ -54,6 +55,7 @@ describe('api base runtime contract', () => {
       configurable: true,
       value: { hostname: 'localhost' },
     });
+    vi.stubEnv('VITE_API_BASE_URL', '');
 
     expect(getApiBaseUrl()).toBe('http://localhost:5080');
   });

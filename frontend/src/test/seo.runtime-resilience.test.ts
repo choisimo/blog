@@ -23,6 +23,7 @@ describe('seo runtime resilience', () => {
   beforeEach(() => {
     delete (window as Window & { APP_CONFIG?: unknown }).APP_CONFIG;
     delete (window as Window & { __APP_CONFIG?: unknown }).__APP_CONFIG;
+    vi.stubEnv('VITE_API_BASE_URL', '');
     Object.defineProperty(window, 'location', {
       configurable: true,
       value: new URL('https://noblog.nodove.com/'),

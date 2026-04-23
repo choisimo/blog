@@ -33,6 +33,7 @@ function createToken(expiresInSeconds = 3600) {
 describe('admin auth security hardening', () => {
   beforeEach(() => {
     mockNavigate.mockReset();
+    vi.stubEnv('VITE_API_BASE_URL', 'https://api.nodove.com');
     cancelTokenRefresh();
     localStorage.clear();
     sessionStorage.clear();
@@ -44,6 +45,7 @@ describe('admin auth security hardening', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
     cancelTokenRefresh();
     act(() => {
       useAuthStore.getState().clearAuth();
@@ -112,7 +114,7 @@ describe('admin auth security hardening', () => {
     });
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      'http://localhost:5080/api/v1/auth/oauth/handoff/consume',
+      'https://api.nodove.com/api/v1/auth/oauth/handoff/consume',
       expect.objectContaining({
         method: 'POST',
       })
