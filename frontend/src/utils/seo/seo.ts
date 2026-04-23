@@ -87,7 +87,7 @@ export const generateSEOData = (
       : defaultOgImage;
 
   switch (pageType) {
-    case "post":
+    case "post": {
       if (!post) throw new Error("Post data required for post page");
       const apiBase = getOptionalApiBaseUrl();
       return {
@@ -105,6 +105,7 @@ export const generateSEOData = (
         section: post.category,
         tags: post.tags,
       };
+    }
 
     case "blog":
       return {
