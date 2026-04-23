@@ -61,6 +61,14 @@ const buildCategoryImagePath = (
   return slug ? `${basePath}/${slug}/seo.png` : `${basePath}/default/seo.png`;
 };
 
+function getOptionalApiBaseUrl(): string | null {
+  try {
+    return getApiBaseUrl().replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
+
 export const generateSEOData = (
   post?: SEOResolvedPost,
   pageType: SEOPageType = "home",
@@ -68,7 +76,6 @@ export const generateSEOData = (
 ): SEOData => {
   const baseUrl =
     import.meta.env.VITE_SITE_BASE_URL || "https://noblog.nodove.com";
-  const apiBase = getApiBaseUrl();
   const siteName = import.meta.env.VITE_SITE_NAME || "nodove-blog";
   const seoImageBase = `${baseUrl}/images/seo`;
   const defaultOgImage = `${seoImageBase}/default/seo.png`;
@@ -82,12 +89,15 @@ export const generateSEOData = (
   switch (pageType) {
     case "post":
       if (!post) throw new Error("Post data required for post page");
+      const apiBase = getOptionalApiBaseUrl();
       return {
         title: `${post.title} | ${siteName}`,
         description: post.description,
         keywords: [...post.tags, post.category],
         canonicalUrl: `${baseUrl}/blog/${post.year}/${post.slug}`,
-        ogImage: `${(apiBase || baseUrl).replace(/\/$/, "")}/api/${apiBase ? "v1/og" : "og"}?title=${encodeURIComponent(post.title)}`,
+        ogImage: apiBase
+          ? `${apiBase}/api/v1/og?title=${encodeURIComponent(post.title)}`
+          : defaultOgImage,
         ogType: "article",
         publishedTime: post.date,
         modifiedTime: post.date,
@@ -173,19 +183,20 @@ export const generateStructuredData = (
 ) => {
   const baseUrl =
     import.meta.env.VITE_SITE_BASE_URL || "https://noblog.nodove.com";
-  const apiBase = getApiBaseUrl();
   const siteName = import.meta.env.VITE_SITE_NAME || "nodove-blog";
   const authorName = import.meta.env.VITE_AUTHOR_NAME || "nodove";
+  const defaultOgImage = `${baseUrl}/images/seo/default/seo.png`;
 
   if (pageType === "post" && post) {
+    const apiBase = getOptionalApiBaseUrl();
     return {
       "@context": "https://schema.org",
       "@type": "BlogPosting",
       headline: post.title,
       description: post.description,
-      image: `${(apiBase || baseUrl).replace(/\/$/, "")}/api/${apiBase ? "v1/og" : "og"}?title=${encodeURIComponent(
-        post.title,
-      )}`,
+      image: apiBase
+        ? `${apiBase}/api/v1/og?title=${encodeURIComponent(post.title)}`
+        : defaultOgImage,
       author: {
         "@type": "Person",
         name: authorName,

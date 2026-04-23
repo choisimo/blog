@@ -7,11 +7,17 @@ interface ImportMetaEnv {
   readonly VITE_SITE_BASE_URL?: string;
   readonly VITE_API_BASE_URL?: string;
   readonly VITE_CHAT_BASE_URL?: string;
+  readonly VITE_CHAT_WS_BASE_URL?: string;
   readonly VITE_CHAT_API_KEY?: string;
   readonly VITE_CHAT_WS_URL?: string;
   readonly VITE_CHAT_WS_ENABLED?: string;
   readonly VITE_AI_UNIFIED?: string;
   readonly VITE_FEATURE_FAB?: string;
+  readonly VITE_FEATURE_AI_ENABLED?: string;
+  readonly VITE_FEATURE_RAG_ENABLED?: string;
+  readonly VITE_FEATURE_TERMINAL_ENABLED?: string;
+  readonly VITE_FEATURE_AI_INLINE?: string;
+  readonly VITE_FEATURE_COMMENTS_ENABLED?: string;
   readonly VITE_DEV_HOST?: string;
   readonly VITE_DEV_PORT?: string;
   readonly VITE_SITE_NAME?: string;

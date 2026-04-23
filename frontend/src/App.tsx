@@ -145,12 +145,12 @@ function App() {
   }, []);
 
   return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <LanguageProvider>
-          <ThemeProvider>
-            <TooltipProvider>
-              <Router>
+    <Router>
+      <ErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <LanguageProvider>
+            <ThemeProvider>
+              <TooltipProvider>
                 <div className="min-h-screen flex flex-col bg-background text-foreground">
                   <Header />
                   <main className="flex-1 pb-[calc(110px+env(safe-area-inset-bottom,0px))] md:pb-[calc(84px+env(safe-area-inset-bottom,0px))] lg:pb-[calc(96px+env(safe-area-inset-bottom,0px))]">
@@ -262,12 +262,12 @@ function App() {
                   </Suspense>
                   <Toaster />
                 </div>
-              </Router>
-            </TooltipProvider>
-          </ThemeProvider>
-        </LanguageProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
+              </TooltipProvider>
+            </ThemeProvider>
+          </LanguageProvider>
+        </QueryClientProvider>
+      </ErrorBoundary>
+    </Router>
   );
 }
 

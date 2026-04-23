@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getApiBaseUrl } from '@/utils/network/apiBase';
 
@@ -16,6 +16,7 @@ describe('api base runtime contract', () => {
       configurable: true,
       value: originalLocation,
     });
+    vi.unstubAllEnvs();
     localStorage.clear();
   });
 
@@ -27,7 +28,17 @@ describe('api base runtime contract', () => {
     expect(getApiBaseUrl()).toBe('https://api.example.com');
   });
 
-  it('fails closed on non-local hosts when no runtime config is available', () => {
+  it('uses the build-time API base when runtime config is unavailable', () => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { hostname: 'noblog.nodove.com' },
+    });
+    vi.stubEnv('VITE_API_BASE_URL', 'https://api.nodove.com/');
+
+    expect(getApiBaseUrl()).toBe('https://api.nodove.com');
+  });
+
+  it('fails closed on non-local hosts when neither runtime nor build-time config is available', () => {
     Object.defineProperty(window, 'location', {
       configurable: true,
       value: { hostname: 'blog.nodove.com' },

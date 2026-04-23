@@ -38,13 +38,21 @@ function isLocalHostname(hostname: string): boolean {
 
 export function getApiBaseUrl(): string {
   let baseUrl: string | undefined;
-  let source: "runtime" | "localStorage" | "default" | undefined;
+  let source: "runtime" | "build" | "localStorage" | "default" | undefined;
 
   const w = typeof window !== "undefined" ? (window as RuntimeWindow) : null;
   const fromRuntime = w?.APP_CONFIG?.apiBaseUrl || w?.__APP_CONFIG?.apiBaseUrl;
   if (typeof fromRuntime === "string" && fromRuntime) {
     baseUrl = fromRuntime;
     source = "runtime";
+  }
+
+  if (!baseUrl) {
+    const fromBuild = import.meta.env.VITE_API_BASE_URL;
+    if (typeof fromBuild === "string" && fromBuild.trim()) {
+      baseUrl = fromBuild;
+      source = "build";
+    }
   }
 
   if (!baseUrl) {
@@ -105,13 +113,13 @@ export function getApiBaseUrl(): string {
   }
 
   if (
-    source === "runtime" &&
+    (source === "runtime" || source === "build") &&
     typeof window !== "undefined" &&
     normalized !== baseUrl
   ) {
     try {
       const w2 = window as RuntimeWindow;
-      if (w2?.APP_CONFIG?.apiBaseUrl) w2.APP_CONFIG.apiBaseUrl = normalized;
+      w2.APP_CONFIG = { ...(w2.APP_CONFIG ?? {}), apiBaseUrl: normalized };
       if (w2?.__APP_CONFIG?.apiBaseUrl) w2.__APP_CONFIG.apiBaseUrl = normalized;
     } catch { void 0; }
   }
