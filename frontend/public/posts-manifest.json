@@ -1,5 +1,5 @@
 {
-  "total": 276,
+  "total": 277,
   "items": [
     {
       "path": "/posts/2026/argocd-github-dns-failure.md",
@@ -92,6 +92,29 @@
       "published": true,
       "coverImage": "/images/2026/haircut/1.png",
       "url": "/blog/2026/haircut"
+    },
+    {
+      "path": "/posts/2026/c-lang-2.md",
+      "year": "2026",
+      "slug": "c-lang-2",
+      "title": "[C 언어 2부] 같은 함수 안의 지역변수와 포인터는 메모리에서 어떻게 연결될까?",
+      "description": "같은 함수의 지역변수와 포인터가 같은 스택 프레임 안에서 어떠한 주소 변경이 일어나는지 추적해보기",
+      "snippet": "같은 함수의 지역변수와 포인터가 같은 스택 프레임 안에서 어떠한 주소 변경이 일어나는지 추적해보기",
+      "date": "2026-03-26",
+      "tags": [
+        "C",
+        "Pointer",
+        "Memory",
+        "Stack",
+        "Compiler",
+        "Local Variable"
+      ],
+      "category": "기술",
+      "author": "Admin",
+      "readingTime": "8 min read",
+      "published": true,
+      "coverImage": "/images/2026/c-lang-2/1.png",
+      "url": "/blog/2026/c-lang-2"
     },
     {
       "path": "/posts/2026/c-lang-1.md",
@@ -2766,6 +2789,7 @@
       "author": "Admin",
       "readingTime": "5 min read",
       "published": true,
+      "coverImage": "/images/2024/blade-runner-philosophy/memory-identity.png",
       "url": "/blog/2024/blade-runner-philosophy"
     },
     {
@@ -4351,6 +4375,7 @@
       "author": "Admin",
       "readingTime": "5 min read",
       "published": true,
+      "coverImage": "/images/2024/brazil-1985-review/bureaucracy-maze.png",
       "url": "/blog/2024/brazil-1985-review"
     },
     {
@@ -5852,7 +5877,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-04-15T09:39:46.440Z",
+  "generatedAt": "2026-04-23T16:39:40.269Z",
   "years": [
     "2026",
     "2025",
@@ -5861,7 +5886,7 @@
   "categoryCounts": {
     "Kubernetes": 2,
     "Mindset": 1,
-    "기술": 24,
+    "기술": 25,
     "Life": 1,
     "Git": 1,
     "system-architecture": 1,
