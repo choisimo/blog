@@ -19,6 +19,7 @@
     "argocd-github-dns-failure.md",
     "awk-1.md",
     "c-lang-1.md",
+    "c-lang-2.md",
     "current-crowd.md",
     "draft-continuation-test.md",
     "git-history-rewrite-reset-rebase-reflog.md",
@@ -43,7 +44,7 @@
     "understanding-ssm-and-mamba.md",
     "vim-architecture-functionality-commands-integration.md"
   ],
-  "generatedAt": "2026-04-15T09:39:46.380Z",
-  "totalFiles": 42,
+  "generatedAt": "2026-04-23T16:39:40.213Z",
+  "totalFiles": 43,
   "excludedFiles": 0
 }
