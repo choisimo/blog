@@ -29,6 +29,13 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Build frontend
+        env:
+          VITE_API_BASE_URL: https://api.nodove.com
+          VITE_CHAT_BASE_URL: https://api.nodove.com
+          VITE_FEATURE_AI_ENABLED: "true"
+          VITE_FEATURE_RAG_ENABLED: "true"
+          VITE_FEATURE_AI_INLINE: "true"
+          VITE_FEATURE_COMMENTS_ENABLED: "true"
         run: npm --prefix frontend run build
 
       - name: Start preview server

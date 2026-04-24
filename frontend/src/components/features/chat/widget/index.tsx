@@ -487,6 +487,9 @@ export default function ChatWidget(props: {
             />
             <div
               ref={state.scrollRef}
+              data-testid="chat-messages"
+              role="log"
+              aria-live="polite"
               className={cn(
                 "flex-1 overflow-auto overscroll-contain px-4 py-4 space-y-4 [content-visibility:auto]",
                 isKeyboardFocusMode && "py-2",

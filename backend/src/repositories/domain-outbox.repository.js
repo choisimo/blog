@@ -212,17 +212,27 @@ class DomainOutboxRepository {
       await execute(`ALTER TABLE domain_outbox ADD COLUMN idempotency_key TEXT`);
     }
 
+    const payloadFallback = columnNames.has("payload")
+      ? "COALESCE(payload_json, payload, 'null')"
+      : "COALESCE(payload_json, 'null')";
+    const nextAttemptFallback = columnNames.has("available_at")
+      ? "COALESCE(next_attempt_at, available_at, created_at)"
+      : "COALESCE(next_attempt_at, created_at)";
+    const updatedAtFallback = columnNames.has("last_attempt_at")
+      ? "COALESCE(updated_at, processed_at, last_attempt_at, created_at)"
+      : "COALESCE(updated_at, processed_at, created_at)";
+
     await execute(
       `UPDATE domain_outbox
-       SET payload_json = COALESCE(payload_json, payload, 'null')`,
+       SET payload_json = ${payloadFallback}`,
     );
     await execute(
       `UPDATE domain_outbox
-       SET next_attempt_at = COALESCE(next_attempt_at, available_at, created_at)`,
+       SET next_attempt_at = ${nextAttemptFallback}`,
     );
     await execute(
       `UPDATE domain_outbox
-       SET updated_at = COALESCE(updated_at, processed_at, last_attempt_at, created_at)`,
+       SET updated_at = ${updatedAtFallback}`,
     );
     await execute(
       `UPDATE domain_outbox
@@ -805,25 +815,32 @@ export function createDomainOutboxRepository() {
 }
 
 export async function getDomainOutboxSummary(stream = MEMORY_EMBEDDING_STREAM) {
-  const summary = await getDomainOutboxRepository().getStats({ stream });
-  const oldestPending = await queryOne(
-    `SELECT created_at
-       FROM domain_outbox
-      WHERE stream = ?
-        AND status = 'pending'
-      ORDER BY created_at ASC
-      LIMIT 1`,
-    stream,
-  );
-  const oldestDeadLetter = await queryOne(
-    `SELECT created_at
-       FROM domain_outbox
-      WHERE stream = ?
-        AND status = 'dead_letter'
-      ORDER BY created_at ASC
-      LIMIT 1`,
-    stream,
-  );
+  const repository = getDomainOutboxRepository();
+  const summary = await repository.getStats({ stream });
+  const schemaReady = await repository._ensureSchema();
+
+  let oldestPending = null;
+  let oldestDeadLetter = null;
+  if (schemaReady) {
+    oldestPending = await queryOne(
+      `SELECT created_at
+         FROM domain_outbox
+        WHERE stream = ?
+          AND status = 'pending'
+        ORDER BY created_at ASC
+        LIMIT 1`,
+      stream,
+    );
+    oldestDeadLetter = await queryOne(
+      `SELECT created_at
+         FROM domain_outbox
+        WHERE stream = ?
+          AND status = 'dead_letter'
+        ORDER BY created_at ASC
+        LIMIT 1`,
+      stream,
+    );
+  }
 
   return {
     stream,
@@ -844,12 +861,33 @@ export async function listStuckDomainOutboxEvents({
   const safeMinutes = Math.max(1, Math.min(24 * 60, Number(olderThanMinutes) || 15));
   const safeLimit = Math.max(1, Math.min(200, Number(limit) || 25));
   const cutoff = new Date(Date.now() - safeMinutes * 60_000).toISOString();
+  const repository = getDomainOutboxRepository();
+  const schemaReady = await repository._ensureSchema();
+  if (!schemaReady) {
+    return repository._fallbackEvents
+      .filter((item) => item.stream === stream)
+      .filter((item) => (
+        item.status === "dead_letter" ||
+        (item.status === "processing" && item.lockedAt && item.lockedAt <= cutoff) ||
+        (
+          ["pending", "failed"].includes(item.status) &&
+          Number(item.retryCount || 0) > 0 &&
+          item.nextAttemptAt <= cutoff
+        )
+      ))
+      .sort((a, b) =>
+        String(a.lockedAt || a.nextAttemptAt || a.createdAt).localeCompare(
+          String(b.lockedAt || b.nextAttemptAt || b.createdAt),
+        ),
+      )
+      .slice(0, safeLimit);
+  }
 
   return queryAll(
     `SELECT id, stream, aggregate_id, event_type, status, retry_count,
             created_at,
-            COALESCE(next_attempt_at, available_at, created_at) AS available_at,
-            COALESCE(locked_at, last_attempt_at) AS last_attempt_at,
+            next_attempt_at AS available_at,
+            locked_at AS last_attempt_at,
             processed_at, last_error
        FROM domain_outbox
       WHERE stream = ?
@@ -857,15 +895,15 @@ export async function listStuckDomainOutboxEvents({
           status = 'dead_letter'
           OR (
             status = 'processing'
-            AND COALESCE(locked_at, last_attempt_at, created_at) <= ?
+            AND COALESCE(locked_at, created_at) <= ?
           )
           OR (
             status IN ('pending', 'failed')
             AND retry_count > 0
-            AND COALESCE(next_attempt_at, available_at, created_at) <= ?
+            AND COALESCE(next_attempt_at, created_at) <= ?
           )
         )
-      ORDER BY COALESCE(locked_at, last_attempt_at, created_at) ASC
+      ORDER BY COALESCE(locked_at, next_attempt_at, created_at) ASC
       LIMIT ?`,
     stream,
     cutoff,

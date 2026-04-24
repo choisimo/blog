@@ -37,3 +37,12 @@ export interface RateLimitResult {
   resetAt: number;
   reason?: 'limit_exceeded' | 'kv_unavailable';
 }
+
+export interface SessionInfo {
+  sessionId: string;
+  userId: string;
+  clientIP: string;
+  userAgentHash?: string | null;
+  connectedAt: number;
+  lastActivity: number;
+}

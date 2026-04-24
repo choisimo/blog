@@ -82,7 +82,8 @@ async function getActiveSessionByToken(token) {
      WHERE (
        (s.session_token_hash IS NOT NULL AND s.session_token_hash = ?)
        OR (s.session_token_hash IS NULL AND s.session_token = ?)
-     ) AND s.is_active = 1`,
+     ) AND s.is_active = 1
+       AND datetime(s.expires_at) > datetime('now')`,
     tokenHash,
     token,
   );
@@ -95,7 +96,8 @@ async function getRecoverableSessionByToken(token) {
      WHERE (
        (session_token_hash IS NOT NULL AND session_token_hash = ?)
        OR (session_token_hash IS NULL AND session_token = ?)
-     ) AND is_active = 1`,
+     ) AND is_active = 1
+       AND datetime(expires_at) > datetime('now')`,
     tokenHash,
     token,
   );
@@ -313,7 +315,8 @@ router.post("/session/recover", requireDb, async (req, res, next) => {
          WHERE (
            (s.session_token_hash IS NOT NULL AND s.session_token_hash = ?)
            OR (s.session_token_hash IS NULL AND s.session_token = ?)
-         ) AND s.is_active = 1`,
+         ) AND s.is_active = 1
+           AND datetime(s.expires_at) > datetime('now')`,
         tokenHash,
         token,
       );

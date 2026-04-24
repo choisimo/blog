@@ -27,6 +27,11 @@
   "routeOwnership": {
     "backendEntries": [
       {
+        "boundaryId": "auth",
+        "owner": "backend",
+        "path": "/api/v1/auth"
+      },
+      {
         "boundaryId": "notifications",
         "owner": "backend",
         "path": "/api/v1/notifications"
@@ -80,11 +85,6 @@
         "boundaryId": "images",
         "owner": "backend",
         "path": "/api/v1/images"
-      },
-      {
-        "boundaryId": "auth",
-        "owner": "backend",
-        "path": "/api/v1/auth"
       },
       {
         "boundaryId": "rag",
@@ -336,6 +336,11 @@
         "boundaryId": "healthz",
         "owner": "PROXY_ONLY",
         "prefix": "/api/v1/healthz"
+      },
+      {
+        "boundaryId": "readiness",
+        "owner": "PROXY_ONLY",
+        "prefix": "/api/v1/readiness"
       },
       {
         "boundaryId": "health",
