@@ -16,6 +16,10 @@ import {
   flushMemoryEmbeddingOutbox,
   MEMORY_EMBEDDING_STREAM,
 } from '../lib/memory-embedding-outbox';
+import {
+  flushNotificationOutbox,
+  NOTIFICATION_DELIVERY_STREAM,
+} from '../lib/notification-outbox';
 import { requireAdmin } from '../middleware/auth';
 
 const adminOutbox = new Hono<HonoEnv>();
@@ -106,6 +110,10 @@ adminOutbox.post('/:stream/replay', async (c) => {
     flushResult = await flushMemoryEmbeddingOutbox(c.env, {
       limit: Math.max(ids.length, 25),
     });
+  } else if (stream === NOTIFICATION_DELIVERY_STREAM) {
+    flushResult = await flushNotificationOutbox(c.env, {
+      limit: Math.max(ids.length, 25),
+    });
   }
 
   return success(c, {
@@ -131,12 +139,17 @@ adminOutbox.post('/:stream/flush', async (c) => {
   const stream = c.req.param('stream');
   const limit = parseLimit(c.req.query('limit'), 25);
 
-  if (stream !== MEMORY_EMBEDDING_STREAM) {
-    return badRequest(c, `Unsupported stream: ${stream}`);
+  if (stream === MEMORY_EMBEDDING_STREAM) {
+    const result = await flushMemoryEmbeddingOutbox(c.env, { limit });
+    return success(c, result);
   }
 
-  const result = await flushMemoryEmbeddingOutbox(c.env, { limit });
-  return success(c, result);
+  if (stream === NOTIFICATION_DELIVERY_STREAM) {
+    const result = await flushNotificationOutbox(c.env, { limit });
+    return success(c, result);
+  }
+
+  return badRequest(c, `Unsupported stream: ${stream}`);
 });
 
 export default adminOutbox;

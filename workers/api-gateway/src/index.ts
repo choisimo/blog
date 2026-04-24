@@ -20,6 +20,7 @@ import { getCorsHeadersForRequest } from './lib/cors';
 import { getApiBaseUrl, getAiDefaultModel, getAiVisionModel } from './lib/config';
 import type { Env } from './types';
 import { flushAiArtifactOutbox } from './lib/ai-artifact-outbox';
+import { flushNotificationOutbox } from './lib/notification-outbox';
 import {
   replaceActiveEditorPicks,
   selectTopEditorPicks,
@@ -346,6 +347,12 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       limit: 10,
     });
     console.log('Artifact scheduler result:', artifactResult);
+
+    // 5. Flush durable notification deliveries that could not be sent inline.
+    const notificationResult = await flushNotificationOutbox(env, {
+      limit: 25,
+    });
+    console.log('Notification outbox scheduler result:', notificationResult);
 
     console.log('Cron job completed successfully');
   } catch (err) {

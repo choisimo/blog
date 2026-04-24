@@ -29,6 +29,7 @@ type TranslationJobRow = {
   result_json: string | null;
   lock_token: string | null;
   lock_expires_at: string | null;
+  lease_version: number | null;
 };
 
 type TranslationJobInput = TranslationJobSnapshot & {
@@ -44,6 +45,7 @@ export type TranslationJobLeaseClaim = {
   job: TranslationJobSnapshot;
   acquired: boolean;
   reclaimedStaleLease: boolean;
+  leaseVersion: number;
 };
 
 function parseJson<T>(value: string | null): T | undefined {
@@ -86,7 +88,7 @@ function serializeJson(value: TranslationJobError | TranslationJobResultSummary 
 
 function bindInput(
   input: TranslationJobInput,
-  lock: { lockToken?: string | null; lockExpiresAt?: string | null } = {}
+  lock: { lockToken?: string | null; lockExpiresAt?: string | null; leaseVersion?: number | null } = {}
 ) {
   return [
     input.id,
@@ -109,6 +111,7 @@ function bindInput(
     serializeJson(input.result),
     lock.lockToken ?? null,
     lock.lockExpiresAt ?? null,
+    lock.leaseVersion ?? 0,
   ];
 }
 
@@ -118,7 +121,7 @@ async function fetchTranslationJobRowById(db: D1Database, id: string) {
     `SELECT id, key, status, year, slug, target_lang, source_lang, force_refresh,
             content_hash, created_at, updated_at, started_at, completed_at,
             status_url, cache_url, generate_url, error_json, result_json,
-            lock_token, lock_expires_at
+            lock_token, lock_expires_at, lease_version
        FROM translation_jobs
       WHERE id = ?
       LIMIT 1`,
@@ -138,7 +141,7 @@ async function fetchTranslationJobRowByScopeHash(
     `SELECT id, key, status, year, slug, target_lang, source_lang, force_refresh,
             content_hash, created_at, updated_at, started_at, completed_at,
             status_url, cache_url, generate_url, error_json, result_json,
-            lock_token, lock_expires_at
+            lock_token, lock_expires_at, lease_version
        FROM translation_jobs
       WHERE year = ?
         AND slug = ?
@@ -162,8 +165,8 @@ export async function createTranslationJobRow(
        id, key, status, year, slug, target_lang, source_lang, force_refresh,
        content_hash, created_at, updated_at, started_at, completed_at,
        status_url, cache_url, generate_url, error_json, result_json,
-       lock_token, lock_expires_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       lock_token, lock_expires_at, lease_version
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ...bindInput(input)
   );
 
@@ -185,8 +188,8 @@ export async function upsertTranslationJobRow(
        id, key, status, year, slug, target_lang, source_lang, force_refresh,
        content_hash, created_at, updated_at, started_at, completed_at,
        status_url, cache_url, generate_url, error_json, result_json,
-       lock_token, lock_expires_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       lock_token, lock_expires_at, lease_version
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ...bindInput(input)
   );
 
@@ -235,11 +238,12 @@ export async function claimTranslationJobLease(
        id, key, status, year, slug, target_lang, source_lang, force_refresh,
        content_hash, created_at, updated_at, started_at, completed_at,
        status_url, cache_url, generate_url, error_json, result_json,
-       lock_token, lock_expires_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       lock_token, lock_expires_at, lease_version
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ...bindInput(input, {
       lockToken: input.lockToken,
       lockExpiresAt: input.lockExpiresAt,
+      leaseVersion: 1,
     })
   );
 
@@ -252,6 +256,7 @@ export async function claimTranslationJobLease(
       job: mapRow(inserted),
       acquired: true,
       reclaimedStaleLease: false,
+      leaseVersion: inserted.lease_version ?? 1,
     };
   }
 
@@ -273,7 +278,8 @@ export async function claimTranslationJobLease(
             error_json = ?,
             result_json = ?,
             lock_token = ?,
-            lock_expires_at = ?
+            lock_expires_at = ?,
+            lease_version = COALESCE(lease_version, 0) + 1
       WHERE year = ?
         AND slug = ?
         AND target_lang = ?
@@ -319,6 +325,7 @@ export async function claimTranslationJobLease(
     job: mapRow(row),
     acquired: row.lock_token === input.lockToken,
     reclaimedStaleLease: (reclaimResult.meta?.changes || 0) > 0,
+    leaseVersion: row.lease_version ?? 0,
   };
 }
 
@@ -327,6 +334,7 @@ export async function settleTranslationJobLease(
   input: {
     id: string;
     lockToken: string;
+    leaseVersion: number;
     status: Extract<TranslationJobSnapshot['status'], 'succeeded' | 'failed'>;
     updatedAt: string;
     completedAt: string;
@@ -345,14 +353,16 @@ export async function settleTranslationJobLease(
             lock_token = NULL,
             lock_expires_at = NULL
       WHERE id = ?
-        AND lock_token = ?`,
+        AND lock_token = ?
+        AND lease_version = ?`,
     input.status,
     input.updatedAt,
     input.completedAt,
     serializeJson(input.error),
     serializeJson(input.result),
     input.id,
-    input.lockToken
+    input.lockToken,
+    input.leaseVersion
   );
 
   if ((result.meta?.changes || 0) === 0) {

@@ -38,7 +38,7 @@ beforeEach(async () => {
 describe('translation-jobs', () => {
   it('waits for an existing durable job instead of starting a duplicate runner', async () => {
     const running = buildRunningJob();
-    await claimTranslationJobLease(env.DB, {
+    const claim = await claimTranslationJobLease(env.DB, {
       ...running,
       lockToken: 'remote-owner-lock',
       lockExpiresAt: '2099-03-27T10:10:00.000Z',
@@ -72,6 +72,7 @@ describe('translation-jobs', () => {
     await settleTranslationJobLease(env.DB, {
       id: running.id,
       lockToken: 'remote-owner-lock',
+      leaseVersion: claim.leaseVersion,
       status: 'succeeded',
       updatedAt: '2026-03-27T10:02:00.000Z',
       completedAt: '2026-03-27T10:02:00.000Z',

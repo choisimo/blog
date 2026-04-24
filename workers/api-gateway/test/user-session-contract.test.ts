@@ -62,7 +62,7 @@ describe('user session contract', () => {
     expect(typeof verified.data.expiresAt).toBe('string');
   });
 
-  it('keeps the legacy session path while recovering through the canonical endpoint', async () => {
+  it('rejects URL bearer-token routes and recovers only through the canonical endpoint', async () => {
     const visitorId = `visitor-${crypto.randomUUID()}`;
     const createResponse = await SELF.fetch('https://example.com/api/v1/user/session', {
       method: 'POST',
@@ -79,12 +79,13 @@ describe('user session contract', () => {
     const legacyVerify = await SELF.fetch(
       `https://example.com/api/v1/user/session/${created.data.sessionToken}`
     );
-    expect(legacyVerify.status).toBe(200);
-    const legacyPayload = (await legacyVerify.json()) as {
-      data: { sessionId: string; sessionToken: string };
-    };
-    expect(typeof legacyPayload.data.sessionId).toBe('string');
-    expect(legacyPayload.data.sessionToken).toBe(created.data.sessionToken);
+    expect(legacyVerify.status).toBe(410);
+
+    const legacyRecover = await SELF.fetch(
+      `https://example.com/api/v1/user/session/${created.data.sessionToken}/recover`,
+      { method: 'POST' }
+    );
+    expect(legacyRecover.status).toBe(410);
 
     const recoverResponse = await SELF.fetch(
       'https://example.com/api/v1/user/session/recover',
@@ -105,6 +106,17 @@ describe('user session contract', () => {
     expect(recovered.ok).toBe(true);
     expect(recovered.data.sessionToken).not.toBe(created.data.sessionToken);
     expect(recovered.data.fingerprintId).toBe(created.data.fingerprintId);
+
+    const replayRecover = await SELF.fetch(
+      'https://example.com/api/v1/user/session/recover',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${created.data.sessionToken}`,
+        },
+      }
+    );
+    expect(replayRecover.status).toBe(404);
 
     const oldVerify = await SELF.fetch(
       'https://example.com/api/v1/user/session/verify',

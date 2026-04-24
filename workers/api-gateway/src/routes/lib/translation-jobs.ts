@@ -237,6 +237,7 @@ export async function startTranslationJob<T>(
       const settledJob = await settleTranslationJobLease(db, {
         id: job.id,
         lockToken,
+        leaseVersion: claim.leaseVersion,
         status: 'succeeded',
         updatedAt: completedAt,
         completedAt,
@@ -263,6 +264,7 @@ export async function startTranslationJob<T>(
       const settledJob = await settleTranslationJobLease(db, {
         id: job.id,
         lockToken,
+        leaseVersion: claim.leaseVersion,
         status: 'failed',
         updatedAt: completedAt,
         completedAt,

@@ -74,3 +74,15 @@ Thumbs.db
 **/*.pt
 **/*.tar.gz
 **/*.tgz
+
+# Local/runtime data and generated analysis artifacts
+.data
+**/*.db
+**/*.db-shm
+**/*.db-wal
+.worktrees
+.evidence
+.sisyphus/evidence
+analysis-exports
+test-results
+playwright-report

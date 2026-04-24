@@ -135,7 +135,7 @@ app.get('/editor-picks', async (c) => {
       db,
       `SELECT * FROM editor_picks
        WHERE is_active = 1
-         AND (expires_at IS NULL OR expires_at > datetime('now'))
+         AND (expires_at IS NULL OR datetime(expires_at) > datetime('now'))
        ORDER BY rank ASC
        LIMIT ?`,
       limit

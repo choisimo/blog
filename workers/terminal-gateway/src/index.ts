@@ -13,7 +13,7 @@
  * - Geo-blocking (optional)
  */
 
-import type { Env, SessionInfo } from './types';
+import type { Env } from './types';
 import {
   authenticateTerminalRequest,
   createTerminalTicket,
@@ -21,7 +21,7 @@ import {
   verifyToken,
 } from './auth';
 import { createAdmissionToken, getAdmissionTtlSeconds, hashUserAgent } from './admission';
-import { checkRateLimit, createSession, deleteSession, hasActiveSession } from './ratelimit';
+import { checkRateLimit } from './ratelimit';
 
 const LEGACY_SESSION_COOKIE_NAME = 'terminal_token';
 const DEFAULT_ALLOWED_ORIGINS = [
@@ -214,21 +214,7 @@ export default {
       return new Response('Forbidden', { status: 403 });
     }
 
-    if (await hasActiveSession(userId, env.KV)) {
-      return new Response('Session already active', { status: 409 });
-    }
-
     const requestId = crypto.randomUUID();
-    const sessionInfo: SessionInfo = {
-      sessionId: requestId,
-      userId,
-      clientIP,
-      userAgentHash: await hashUserAgent(userAgent),
-      connectedAt: Date.now(),
-      lastActivity: Date.now(),
-    };
-    await createSession(sessionInfo, env.KV);
-
     const originUrl = `${env.TERMINAL_ORIGIN}/terminal`;
     const originHeaders = new Headers(request.headers);
     const admissionToken = await createAdmissionToken({
@@ -256,12 +242,6 @@ export default {
     try {
       const response = await fetch(originRequest);
 
-      if (!response.ok || response.status >= 400) {
-        await deleteSession(userId, requestId, env.KV).catch((err) => {
-          console.warn('Failed to delete rejected terminal session:', err);
-        });
-      }
-
       const responseHeaders = new Headers(response.headers);
       responseHeaders.set('X-Terminal-Session-Id', requestId);
       responseHeaders.set('X-Terminal-Request-Id', requestId);
@@ -274,9 +254,6 @@ export default {
       });
     } catch (err) {
       console.error('Origin connection failed:', err);
-      await deleteSession(userId, requestId, env.KV).catch((closeErr) => {
-        console.warn('Failed to delete failed terminal session:', closeErr);
-      });
       return new Response('Bad Gateway', { status: 502 });
     }
   },

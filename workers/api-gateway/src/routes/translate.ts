@@ -27,6 +27,10 @@ import {
   type TranslationResponseData,
 } from '../lib/translation-service';
 import { enqueueTranslationGeneration } from '../lib/ai-artifact-outbox';
+import {
+  enqueueNotificationDelivery,
+  flushNotificationOutbox,
+} from '../lib/notification-outbox';
 import { ERROR_MESSAGES } from '../config/defaults';
 import { buildRouteBoundaryHeaders } from '../../../../shared/src/contracts/service-boundaries.js';
 
@@ -188,41 +192,40 @@ async function notifyTranslationJob(
     message: string;
   }
 ) {
-  if (!userId || !jobId || !c.env.BACKEND_ORIGIN || !c.env.BACKEND_KEY) {
+  if (!userId || !jobId) {
     return;
   }
 
-  try {
-    await fetch(new URL('/api/v1/notifications/outbox/internal', c.env.BACKEND_ORIGIN), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Backend-Key': c.env.BACKEND_KEY,
-      },
-      body: JSON.stringify({
-        event: 'notification',
-        type: input.type,
-        title: input.title,
-        message: input.message,
-        userId,
-        sourceId: jobId,
-        payload: {
-          jobId,
-          resultRef: urls.cacheUrl,
-          statusUrl: urls.statusUrl,
-          cacheUrl: urls.cacheUrl,
-          generateUrl: urls.generateUrl,
-          translation: {
-            year: sourcePost.year,
-            slug: sourcePost.slug,
-            targetLang,
-          },
+  await enqueueNotificationDelivery(
+    c.env,
+    {
+      event: 'notification',
+      type: input.type,
+      title: input.title,
+      message: input.message,
+      userId,
+      sourceId: jobId,
+      payload: {
+        jobId,
+        resultRef: urls.cacheUrl,
+        statusUrl: urls.statusUrl,
+        cacheUrl: urls.cacheUrl,
+        generateUrl: urls.generateUrl,
+        translation: {
+          year: sourcePost.year,
+          slug: sourcePost.slug,
+          targetLang,
         },
-      }),
-    });
-  } catch (error) {
-    console.error('Failed to enqueue translation notification:', error);
-  }
+      },
+    },
+    { idempotencyKey: `translation-notification:${jobId}:${input.type}` }
+  );
+
+  c.executionCtx.waitUntil(
+    flushNotificationOutbox(c.env, { limit: 10 }).catch((error) => {
+      console.error('Failed to flush translation notification outbox:', error);
+    })
+  );
 }
 
 function wantsAsyncResponse(c: Context<HonoEnv>, options: GenerateOptions = {}) {

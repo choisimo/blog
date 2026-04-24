@@ -36,7 +36,7 @@ export async function getSecret(
     // 2. Try database
     const secret = await env.DB.prepare(
       `SELECT encrypted_value, iv, env_fallback, default_value
-       FROM secrets WHERE key_name = ? AND (expires_at IS NULL OR expires_at > datetime('now'))`
+       FROM secrets WHERE key_name = ? AND (expires_at IS NULL OR datetime(expires_at) > datetime('now'))`
     )
       .bind(keyName)
       .first<Pick<Secret, 'encrypted_value' | 'iv' | 'env_fallback' | 'default_value'>>();
@@ -99,7 +99,7 @@ export async function getSecrets(
     const secrets = await env.DB.prepare(
       `SELECT key_name, encrypted_value, iv, env_fallback, default_value
        FROM secrets WHERE key_name IN (${placeholders})
-       AND (expires_at IS NULL OR expires_at > datetime('now'))`
+       AND (expires_at IS NULL OR datetime(expires_at) > datetime('now'))`
     )
       .bind(...uncachedKeys)
       .all<

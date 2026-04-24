@@ -181,7 +181,7 @@ secrets.get('/', async (c) => {
   }
 
   if (!includeExpired) {
-    query += ' AND (s.expires_at IS NULL OR s.expires_at > datetime("now"))';
+    query += ' AND (s.expires_at IS NULL OR datetime(s.expires_at) > datetime("now"))';
   }
 
   query += ' ORDER BY c.sort_order ASC, s.key_name ASC';
@@ -840,7 +840,7 @@ secrets.get('/health', async (c) => {
     `SELECT 
       COUNT(*) as total,
       SUM(CASE WHEN encrypted_value IS NOT NULL THEN 1 ELSE 0 END) as with_value,
-      SUM(CASE WHEN expires_at IS NOT NULL AND expires_at < datetime('now') THEN 1 ELSE 0 END) as expired
+      SUM(CASE WHEN expires_at IS NOT NULL AND datetime(expires_at) < datetime('now') THEN 1 ELSE 0 END) as expired
      FROM secrets`
   ).first<{ total: number; with_value: number; expired: number }>();
 
@@ -873,7 +873,7 @@ secrets.get('/overview', async (c) => {
         COUNT(*) as total,
         SUM(CASE WHEN encrypted_value IS NOT NULL THEN 1 ELSE 0 END) as configured,
         SUM(CASE WHEN is_required = 1 AND encrypted_value IS NULL THEN 1 ELSE 0 END) as missing_required,
-        SUM(CASE WHEN expires_at IS NOT NULL AND expires_at < datetime('now', '+7 days') THEN 1 ELSE 0 END) as expiring_soon
+        SUM(CASE WHEN expires_at IS NOT NULL AND datetime(expires_at) < datetime('now', '+7 days') THEN 1 ELSE 0 END) as expiring_soon
        FROM secrets`
     ).first<{
       total: number;

@@ -17,7 +17,7 @@
  *   GET  /auth/oauth/google/callback  - Exchange code → issue JWT → create one-time handoff → redirect to frontend
  *   POST /auth/oauth/handoff/consume  - Exchange one-time handoff for JWT tokens
  *
- * Token management (unchanged):
+ * Token management:
  *   POST /auth/refresh    - Refresh access token
  *   POST /auth/logout     - Invalidate session
  *   GET  /auth/me         - Current user info
@@ -27,8 +27,7 @@
  *   POST /auth/anonymous/refresh - Refresh anonymous JWT
  *
  * Security:
- *   - TOTP secret stored in KV at key `totp:secret`
- *   - TOTP setup complete flag at `totp:setup:complete`
+ *   - TOTP secret/setup flag stored in KV; successful TOTP step consumption is fenced in D1
  *   - TOTP challenges expire in 5 minutes (`auth:challenge:{id}`)
  *   - OAuth state tokens expire in 5 minutes (`auth:oauth:state:{state}`)
  *   - Only emails in ADMIN_ALLOWED_EMAILS can authenticate via OAuth
@@ -64,15 +63,25 @@ import {
   consumeOAuthHandoff,
   type OAuthHandoffProvider,
 } from '../lib/oauth-handoff-repository';
+import {
+  buildRefreshTokenExpiresAt,
+  consumeTotpStepOnce,
+  createRefreshTokenRecord,
+  getRefreshFamilyRecord,
+  getRefreshTokenRecord,
+  insertRefreshTokenRecordIfMissing,
+  markRefreshTokenRevoked,
+  revokeRefreshFamily,
+  rotateRefreshTokenCas,
+  type RefreshFamilyRecord,
+  type RefreshTokenRecord,
+} from '../lib/auth-state-repository';
 
 const auth = new Hono<HonoEnv>();
 
 // KV key prefixes
-const KV_REFRESH_TOKEN_PREFIX = 'auth:refresh:';
-const KV_REFRESH_FAMILY_PREFIX = 'auth:refresh-family:';
 const KV_TOTP_SECRET_KEY = 'totp:secret';
 const KV_TOTP_SETUP_KEY = 'totp:setup:complete';
-const KV_TOTP_LAST_STEP_KEY = 'totp:last-successful-step';
 const KV_CHALLENGE_PREFIX = 'auth:challenge:';
 const KV_OAUTH_STATE_PREFIX = 'auth:oauth:state:';
 
@@ -102,25 +111,6 @@ function adminPayload(email: string) {
     emailVerified: true,
   };
 }
-
-type RefreshTokenRecord = {
-  jti: string;
-  familyId: string;
-  sub: string;
-  email?: string;
-  status: 'active' | 'rotated' | 'revoked';
-  createdAt: string;
-  rotatedAt?: string;
-  replacedBy?: string;
-  reason?: string;
-};
-
-type RefreshFamilyRecord = {
-  familyId: string;
-  revokedAt: string;
-  reason: string;
-  lastJti?: string;
-};
 
 function normalizeFrontendBaseUrl(rawValue: string | undefined): string | null {
   const trimmed = rawValue?.trim();
@@ -169,64 +159,20 @@ async function issueOAuthRedirectHandoff(
   return handoffId;
 }
 
-async function getRefreshFamilyRecord(
-  env: HonoEnv['Bindings'],
-  familyId: string
-): Promise<RefreshFamilyRecord | null> {
-  const raw = await env.KV.get(`${KV_REFRESH_FAMILY_PREFIX}${familyId}`);
-  if (!raw) return null;
-  return JSON.parse(raw) as RefreshFamilyRecord;
-}
-
-async function revokeRefreshFamily(
-  env: HonoEnv['Bindings'],
-  familyId: string,
-  reason: string,
-  lastJti?: string
-): Promise<void> {
-  await env.KV.put(
-    `${KV_REFRESH_FAMILY_PREFIX}${familyId}`,
-    JSON.stringify({
-      familyId,
-      revokedAt: new Date().toISOString(),
-      reason,
-      ...(lastJti ? { lastJti } : {}),
-    } satisfies RefreshFamilyRecord),
-    { expirationTtl: REFRESH_TOKEN_EXPIRY }
-  );
-}
-
-async function putRefreshTokenRecord(
-  env: HonoEnv['Bindings'],
-  record: RefreshTokenRecord
-): Promise<void> {
-  await env.KV.put(`${KV_REFRESH_TOKEN_PREFIX}${record.jti}`, JSON.stringify(record), {
-    expirationTtl: REFRESH_TOKEN_EXPIRY,
-  });
-}
-
-async function getRefreshTokenRecord(
-  env: HonoEnv['Bindings'],
-  jti: string
-): Promise<RefreshTokenRecord | null> {
-  const raw = await env.KV.get(`${KV_REFRESH_TOKEN_PREFIX}${jti}`);
-  if (!raw) return null;
-  return JSON.parse(raw) as RefreshTokenRecord;
-}
-
-/** Issue access + refresh tokens and store refresh token in KV */
-async function issueAdminTokens(
+/** Build access + refresh tokens without persisting the refresh token row. */
+async function buildAdminTokenPair(
   payload: ReturnType<typeof adminPayload>,
   env: HonoEnv['Bindings'],
-  options: { familyId?: string } = {}
+  options: { familyId?: string; now?: Date } = {}
 ): Promise<{
   accessToken: string;
   refreshToken: string;
-  refreshTokenId: string;
+  refreshTokenRecord: RefreshTokenRecord;
   familyId: string;
 }> {
   const familyId = options.familyId ?? generateSecureToken(16);
   const refreshTokenId = generateSecureToken(16);
+  const now = options.now ?? new Date();
 
   const accessToken = await generateAccessToken(payload, env);
   const refreshToken = await generateRefreshToken(
@@ -238,39 +184,119 @@ async function issueAdminTokens(
     refreshTokenId
   );
 
-  await putRefreshTokenRecord(env, {
-    jti: refreshTokenId,
-    familyId,
-    sub: payload.sub,
-    email: payload.email,
-    status: 'active',
-    createdAt: new Date().toISOString(),
-  });
-
   return {
     accessToken,
     refreshToken,
-    refreshTokenId,
     familyId,
+    refreshTokenRecord: {
+      jti: refreshTokenId,
+      familyId,
+      sub: payload.sub,
+      email: payload.email,
+      status: 'active',
+      createdAt: now.toISOString(),
+      expiresAt: buildRefreshTokenExpiresAt(now, REFRESH_TOKEN_EXPIRY),
+    },
   };
+}
+
+/** Issue access + refresh tokens and store refresh token in D1. */
+async function issueAdminTokens(
+  payload: ReturnType<typeof adminPayload>,
+  env: HonoEnv['Bindings'],
+  options: { familyId?: string } = {}
+): Promise<{
+  accessToken: string;
+  refreshToken: string;
+  refreshTokenId: string;
+  familyId: string;
+}> {
+  const tokens = await buildAdminTokenPair(payload, env, options);
+  await createRefreshTokenRecord(env.DB, tokens.refreshTokenRecord);
+
+  return {
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    refreshTokenId: tokens.refreshTokenRecord.jti,
+    familyId: tokens.familyId,
+  };
+}
+
+async function hydrateLegacyRefreshTokenRecord(
+  env: HonoEnv['Bindings'],
+  payload: { jti?: string; familyId?: string; sub: string; email?: string }
+): Promise<RefreshTokenRecord | null> {
+  if (!payload.jti || !payload.familyId) {
+    return null;
+  }
+
+  const raw = await env.KV.get(`auth:refresh:${payload.jti}`);
+  if (!raw) {
+    return null;
+  }
+
+  let parsed: Partial<RefreshTokenRecord> | null = null;
+  try {
+    parsed = JSON.parse(raw) as Partial<RefreshTokenRecord>;
+  } catch {
+    return null;
+  }
+
+  const now = new Date();
+  const legacyRecord: RefreshTokenRecord = {
+    jti: payload.jti,
+    familyId: payload.familyId,
+    sub: typeof parsed.sub === 'string' ? parsed.sub : payload.sub,
+    email: typeof parsed.email === 'string' ? parsed.email : payload.email,
+    status:
+      parsed.status === 'rotated' || parsed.status === 'revoked'
+        ? parsed.status
+        : 'active',
+    createdAt: typeof parsed.createdAt === 'string' ? parsed.createdAt : now.toISOString(),
+    rotatedAt: typeof parsed.rotatedAt === 'string' ? parsed.rotatedAt : undefined,
+    replacedBy: typeof parsed.replacedBy === 'string' ? parsed.replacedBy : undefined,
+    reason: typeof parsed.reason === 'string' ? parsed.reason : undefined,
+    expiresAt: buildRefreshTokenExpiresAt(now, REFRESH_TOKEN_EXPIRY),
+  };
+
+  await insertRefreshTokenRecordIfMissing(env.DB, legacyRecord);
+  return getRefreshTokenRecord(env.DB, payload.jti);
+}
+
+async function hydrateLegacyRefreshFamilyRecord(
+  env: HonoEnv['Bindings'],
+  familyId: string
+): Promise<RefreshFamilyRecord | null> {
+  const raw = await env.KV.get(`auth:refresh-family:${familyId}`);
+  if (!raw) {
+    return null;
+  }
+
+  let parsed: Partial<RefreshFamilyRecord> | null = null;
+  try {
+    parsed = JSON.parse(raw) as Partial<RefreshFamilyRecord>;
+  } catch {
+    return null;
+  }
+
+  const now = new Date();
+  const expiresAt = buildRefreshTokenExpiresAt(now, REFRESH_TOKEN_EXPIRY);
+  await revokeRefreshFamily(env.DB, {
+    familyId,
+    reason: typeof parsed.reason === 'string' ? parsed.reason : 'legacy-revoked',
+    lastJti: typeof parsed.lastJti === 'string' ? parsed.lastJti : undefined,
+    revokedAt: typeof parsed.revokedAt === 'string' ? parsed.revokedAt : now.toISOString(),
+    expiresAt,
+  });
+
+  return getRefreshFamilyRecord(env.DB, familyId);
 }
 
 async function consumeTotpStep(
   env: HonoEnv['Bindings'],
   step: number
 ): Promise<boolean> {
-  const previous = await env.KV.get(KV_TOTP_LAST_STEP_KEY);
-  const previousStep = previous ? Number.parseInt(previous, 10) : Number.NaN;
-  if (Number.isFinite(previousStep) && step <= previousStep) {
-    return false;
-  }
-
-  await env.KV.put(
-    KV_TOTP_LAST_STEP_KEY,
-    String(step),
-    { expirationTtl: 30 * 24 * 60 * 60 }
-  );
-  return true;
+  return consumeTotpStepOnce(env.DB, step);
 }
 
 auth.post('/oauth/handoff/consume', async (c) => {
@@ -720,7 +746,7 @@ auth.get('/oauth/google/callback', async (c) => {
 });
 
 // ============================================================================
-// TOKEN MANAGEMENT (unchanged)
+// TOKEN MANAGEMENT
 // ============================================================================
 
 /**
@@ -752,32 +778,70 @@ auth.post('/refresh', async (c) => {
       return unauthorized(c, 'Token missing family claim');
     }
 
-    const revokedFamily = await getRefreshFamilyRecord(c.env, payload.familyId);
-    if (revokedFamily) {
+    const d1Family = await getRefreshFamilyRecord(c.env.DB, payload.familyId);
+    const familyRecord = d1Family || (await hydrateLegacyRefreshFamilyRecord(c.env, payload.familyId));
+    if (familyRecord) {
       return unauthorized(c, 'Refresh token revoked or expired');
     }
 
-    const tokenRecord = await getRefreshTokenRecord(c.env, payload.jti);
+    const d1Token = await getRefreshTokenRecord(c.env.DB, payload.jti);
+    const tokenRecord = d1Token || (await hydrateLegacyRefreshTokenRecord(c.env, payload));
     if (!tokenRecord) {
-      await revokeRefreshFamily(c.env, payload.familyId, 'reuse-detected', payload.jti);
+      await revokeRefreshFamily(c.env.DB, {
+        familyId: payload.familyId,
+        reason: 'reuse-detected',
+        lastJti: payload.jti,
+        expiresAt: buildRefreshTokenExpiresAt(new Date(), REFRESH_TOKEN_EXPIRY),
+      });
       return unauthorized(c, 'Refresh token revoked or expired');
     }
     if (tokenRecord.status !== 'active') {
-      await revokeRefreshFamily(c.env, payload.familyId, 'reuse-detected', payload.jti);
+      await revokeRefreshFamily(c.env.DB, {
+        familyId: payload.familyId,
+        reason: 'reuse-detected',
+        lastJti: payload.jti,
+        expiresAt: buildRefreshTokenExpiresAt(new Date(), REFRESH_TOKEN_EXPIRY),
+      });
       return unauthorized(c, 'Refresh token reuse detected');
     }
 
-    const newTokens = await issueAdminTokens(
+    const now = new Date();
+    const newTokens = await buildAdminTokenPair(
       adminPayload(payload.email),
       c.env,
-      { familyId: payload.familyId }
+      { familyId: payload.familyId, now }
     );
-    await putRefreshTokenRecord(c.env, {
-      ...tokenRecord,
-      status: 'rotated',
-      rotatedAt: new Date().toISOString(),
-      replacedBy: newTokens.refreshTokenId,
+    const rotation = await rotateRefreshTokenCas(c.env.DB, {
+      currentJti: payload.jti,
+      familyId: payload.familyId,
+      replacement: newTokens.refreshTokenRecord,
+      rotatedAt: now.toISOString(),
     });
+
+    if (!rotation.ok) {
+      if (rotation.family) {
+        return unauthorized(c, 'Refresh token revoked or expired');
+      }
+      if (!rotation.current) {
+        await revokeRefreshFamily(c.env.DB, {
+          familyId: payload.familyId,
+          reason: 'reuse-detected',
+          lastJti: payload.jti,
+          expiresAt: buildRefreshTokenExpiresAt(new Date(), REFRESH_TOKEN_EXPIRY),
+        });
+        return unauthorized(c, 'Refresh token revoked or expired');
+      }
+      if (rotation.current.status !== 'active') {
+        await revokeRefreshFamily(c.env.DB, {
+          familyId: payload.familyId,
+          reason: 'reuse-detected',
+          lastJti: payload.jti,
+          expiresAt: buildRefreshTokenExpiresAt(new Date(), REFRESH_TOKEN_EXPIRY),
+        });
+        return unauthorized(c, 'Refresh token reuse detected');
+      }
+      return unauthorized(c, 'Refresh token rotation failed');
+    }
 
     return success(c, {
       accessToken: newTokens.accessToken,
@@ -806,17 +870,15 @@ auth.post('/logout', async (c) => {
         throw new Error('Invalid token type');
       }
       if (payload.familyId) {
-        await revokeRefreshFamily(c.env, payload.familyId, 'logout', payload.jti);
+        await revokeRefreshFamily(c.env.DB, {
+          familyId: payload.familyId,
+          reason: 'logout',
+          lastJti: payload.jti,
+          expiresAt: buildRefreshTokenExpiresAt(new Date(), REFRESH_TOKEN_EXPIRY),
+        });
       }
       if (payload.jti) {
-        const tokenRecord = await getRefreshTokenRecord(c.env, payload.jti);
-        if (tokenRecord) {
-          await putRefreshTokenRecord(c.env, {
-            ...tokenRecord,
-            status: 'revoked',
-            reason: 'logout',
-          });
-        }
+        await markRefreshTokenRevoked(c.env.DB, payload.jti, 'logout');
       }
     } catch {
       // Token may already be expired/invalid — still acknowledge logout
