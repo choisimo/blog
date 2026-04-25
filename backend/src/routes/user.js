@@ -22,6 +22,14 @@ function sha256(input) {
   return crypto.createHash("sha256").update(String(input)).digest("hex");
 }
 
+function hashSessionToken(token) {
+  return sha256(`user-session:${token}`);
+}
+
+function sessionTokenMarker(tokenHash) {
+  return `sha256:${tokenHash}`;
+}
+
 function toJson(v) {
   try {
     return JSON.stringify(v);
@@ -66,11 +74,31 @@ function isExpired(expiresAt) {
 }
 
 async function getActiveSessionByToken(token) {
+  const tokenHash = hashSessionToken(token);
   return queryOne(
     `SELECT s.*, f.fingerprint_hash
      FROM user_sessions s
      JOIN user_fingerprints f ON s.fingerprint_id = f.id
-     WHERE s.session_token = ? AND s.is_active = 1`,
+     WHERE (
+       (s.session_token_hash IS NOT NULL AND s.session_token_hash = ?)
+       OR (s.session_token_hash IS NULL AND s.session_token = ?)
+     ) AND s.is_active = 1
+       AND datetime(s.expires_at) > datetime('now')`,
+    tokenHash,
+    token,
+  );
+}
+
+async function getRecoverableSessionByToken(token) {
+  const tokenHash = hashSessionToken(token);
+  return queryOne(
+    `SELECT * FROM user_sessions
+     WHERE (
+       (session_token_hash IS NOT NULL AND session_token_hash = ?)
+       OR (session_token_hash IS NULL AND session_token = ?)
+     ) AND is_active = 1
+       AND datetime(expires_at) > datetime('now')`,
+    tokenHash,
     token,
   );
 }
@@ -87,12 +115,13 @@ async function touchSessionActivity(sessionId) {
 }
 
 async function deactivateSession(sessionId) {
-  if (!sessionId) return;
-  await execute(
-    `UPDATE user_sessions SET is_active = 0, updated_at = ? WHERE id = ?`,
+  if (!sessionId) return false;
+  const result = await execute(
+    `UPDATE user_sessions SET is_active = 0, updated_at = ? WHERE id = ? AND is_active = 1`,
     new Date().toISOString(),
     sessionId,
   );
+  return result.changes === 1;
 }
 
 router.post("/session", requireDb, validateBody(sessionBodySchema), async (req, res, next) => {
@@ -188,6 +217,7 @@ router.post("/session", requireDb, validateBody(sessionBodySchema), async (req, 
     }
 
     const sessionToken = `sess_${crypto.randomBytes(24).toString("hex")}`;
+    const sessionTokenHash = hashSessionToken(sessionToken);
     const sessionId = `sess-${crypto.randomUUID()}`;
     const expiresAt = new Date(
       Date.now() + 1000 * 60 * 60 * 24 * 30,
@@ -195,12 +225,13 @@ router.post("/session", requireDb, validateBody(sessionBodySchema), async (req, 
 
     await execute(
       `INSERT INTO user_sessions (
-        id, fingerprint_id, session_token, user_agent, ip_address, country_code, preferences,
+        id, fingerprint_id, session_token, session_token_hash, user_agent, ip_address, country_code, preferences,
         started_at, expires_at, last_activity_at, is_active, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
       sessionId,
       fpRow.id,
-      sessionToken,
+      sessionTokenMarker(sessionTokenHash),
+      sessionTokenHash,
       String(req.body?.userAgent || "").slice(0, 512) || null,
       String(req.ip || "").slice(0, 64) || null,
       null,
@@ -245,7 +276,7 @@ router.get("/session/verify", requireDb, async (req, res, next) => {
     return res.json({
       ok: true,
       data: {
-        sessionToken: row.session_token,
+        sessionToken: token,
         fingerprintId: row.fingerprint_id,
         expiresAt: row.expires_at,
         firstSeenAt: row.started_at,
@@ -265,11 +296,8 @@ router.post("/session/recover", requireDb, async (req, res, next) => {
         .status(401)
         .json({ ok: false, error: "missing authorization header" });
 
-    // Look up the session (active or inactive — we may auto-recover expired ones)
-    let old = await queryOne(
-      `SELECT * FROM user_sessions WHERE session_token = ? AND is_active = 1`,
-      token,
-    );
+    // Look up only an active session. A recovered/inactive token must not mint additional sessions.
+    let old = await getRecoverableSessionByToken(token);
 
     // --- Fuzzy matching for expired sessions ---
     const incomingFp = req.body?.fingerprint || {};
@@ -277,13 +305,19 @@ router.post("/session/recover", requireDb, async (req, res, next) => {
       incomingFp.canvasHash || incomingFp.webglHash || incomingFp.audioHash;
 
     if (!old && hasComponentHashes) {
-      // Try to find an expired but recent session and see if the device matches
+      // Try to match an active session using device evidence when the direct lookup fails.
+      const tokenHash = hashSessionToken(token);
       const expired = await queryOne(
         `SELECT s.*, f.canvas_hash, f.webgl_hash, f.audio_hash,
                 f.screen_resolution, f.advanced_fingerprint_hash
          FROM user_sessions s
          JOIN user_fingerprints f ON s.fingerprint_id = f.id
-         WHERE s.session_token = ?`,
+         WHERE (
+           (s.session_token_hash IS NOT NULL AND s.session_token_hash = ?)
+           OR (s.session_token_hash IS NULL AND s.session_token = ?)
+         ) AND s.is_active = 1
+           AND datetime(s.expires_at) > datetime('now')`,
+        tokenHash,
         token,
       );
 
@@ -310,12 +344,16 @@ router.post("/session/recover", requireDb, async (req, res, next) => {
 
     const now = new Date().toISOString();
     const newToken = `sess_${crypto.randomBytes(24).toString("hex")}`;
+    const newTokenHash = hashSessionToken(newToken);
     const expiresAt = new Date(
       Date.now() + 1000 * 60 * 60 * 24 * 30,
     ).toISOString();
 
-    // deactivate old
-    await deactivateSession(old.id);
+    // deactivate old. A duplicate recovery/retry after the first successful recovery must not mint another session.
+    const deactivated = await deactivateSession(old.id);
+    if (!deactivated) {
+      return res.status(404).json({ ok: false, error: "session not found or already recovered" });
+    }
 
     // Update fingerprint component hashes if provided
     const VALID_COLUMNS = new Set([
@@ -353,12 +391,13 @@ router.post("/session/recover", requireDb, async (req, res, next) => {
     const newId = `sess-${crypto.randomUUID()}`;
     await execute(
       `INSERT INTO user_sessions (
-        id, fingerprint_id, session_token, user_agent, ip_address, country_code, preferences,
+        id, fingerprint_id, session_token, session_token_hash, user_agent, ip_address, country_code, preferences,
         started_at, expires_at, last_activity_at, is_active, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
       newId,
       old.fingerprint_id,
-      newToken,
+      sessionTokenMarker(newTokenHash),
+      newTokenHash,
       old.user_agent,
       old.ip_address,
       old.country_code,

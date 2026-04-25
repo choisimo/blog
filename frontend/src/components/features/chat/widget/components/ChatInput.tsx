@@ -304,6 +304,7 @@ function TerminalInput({
           </span>
         )}
         <Textarea
+          data-testid="chat-input"
           value={input}
           onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={onKeyDown}
@@ -425,6 +426,7 @@ function DefaultInput({
     >
       <div className="flex items-end gap-2">
         <Textarea
+          data-testid="chat-input"
           value={input}
           onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={onKeyDown}

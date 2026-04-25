@@ -67,7 +67,10 @@ export async function checkRateLimit(
   }
 }
 
-export async function hasActiveSession(userId: string, kv: KVNamespace): Promise<boolean> {
+export async function hasActiveSession(
+  userId: string,
+  kv: KVNamespace
+): Promise<boolean> {
   try {
     const raw = await kv.get(userKey(userId));
     if (!raw) {
@@ -93,8 +96,12 @@ export async function createSession(
   ttlSeconds: number = SESSION_TTL_SECONDS
 ): Promise<void> {
   await Promise.all([
-    kv.put(userKey(session.userId), JSON.stringify(session), { expirationTtl: ttlSeconds }),
-    kv.put(sessionKey(session.sessionId), JSON.stringify(session), { expirationTtl: ttlSeconds }),
+    kv.put(userKey(session.userId), JSON.stringify(session), {
+      expirationTtl: ttlSeconds,
+    }),
+    kv.put(sessionKey(session.sessionId), JSON.stringify(session), {
+      expirationTtl: ttlSeconds,
+    }),
   ]);
 }
 

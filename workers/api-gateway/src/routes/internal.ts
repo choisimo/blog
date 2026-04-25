@@ -32,16 +32,48 @@ type WarmSegment = {
   postTitle?: string;
 };
 
-function requireBackendKey(c: import('hono').Context<HonoEnv>) {
+async function sha256HexLocal(value: string): Promise<string> {
+  const data = new TextEncoder().encode(value);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function timingSafeHexEqual(left: string, right: string): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  let mismatch = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    mismatch |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+  return mismatch === 0;
+}
+
+async function hasValidBackendKey(c: import('hono').Context<HonoEnv>): Promise<boolean> {
   const env = c.env;
   const providedKey = c.req.header('X-Backend-Key');
 
-  if (!providedKey || !env.BACKEND_KEY || providedKey !== env.BACKEND_KEY) {
+  if (!providedKey || !env.BACKEND_KEY) {
+    return false;
+  }
+
+  const [providedHash, expectedHash] = await Promise.all([
+    sha256HexLocal(providedKey),
+    sha256HexLocal(env.BACKEND_KEY),
+  ]);
+  return timingSafeHexEqual(providedHash, expectedHash);
+}
+
+internal.use('*', async (c, next) => {
+  if (!(await hasValidBackendKey(c))) {
     return unauthorized(c, 'X-Backend-Key required');
   }
 
-  return null;
-}
+  await next();
+});
 
 function parseLimit(value: string | undefined, fallback: number) {
   const parsed = Number.parseInt(value || '', 10);
@@ -73,9 +105,6 @@ function deriveSegmentsFromContent(content: string, postTitle: string): WarmSegm
 }
 
 internal.get('/ai-config', async (c) => {
-  const authError = requireBackendKey(c);
-  if (authError) return authError;
-
   const [baseUrl, apiKey, defaultModel] = await Promise.all([
     getAiServeUrl(c.env),
     getAiServeApiKey(c.env),
@@ -90,9 +119,6 @@ internal.get('/ai-config', async (c) => {
 });
 
 internal.get('/ai-config/providers', async (c) => {
-  const authError = requireBackendKey(c);
-  if (authError) return authError;
-
   try {
     const providers = await getProvidersFromDB(c.env);
     const providersWithKeys = await Promise.all(
@@ -150,9 +176,6 @@ internal.get('/ai-config/providers', async (c) => {
 });
 
 internal.get('/ai/resources', async (c) => {
-  const authError = requireBackendKey(c);
-  if (authError) return authError;
-
   try {
     const snapshot = await getWarmResourceSnapshot(c.env);
     return success(c, snapshot);
@@ -163,9 +186,6 @@ internal.get('/ai/resources', async (c) => {
 });
 
 internal.get('/ai/outbox/status', async (c) => {
-  const authError = requireBackendKey(c);
-  if (authError) return authError;
-
   try {
     const olderThanMinutes = Math.min(parseLimit(c.req.query('olderThanMinutes'), 5), 60);
     const limit = Math.min(parseLimit(c.req.query('limit'), 20), 50);
@@ -193,9 +213,6 @@ internal.get('/ai/outbox/status', async (c) => {
 });
 
 internal.post('/ai/outbox/flush', async (c) => {
-  const authError = requireBackendKey(c);
-  if (authError) return authError;
-
   try {
     const limit = Math.min(parseLimit(c.req.query('limit'), 10), 50);
     const result = await flushAiArtifactOutbox(c.env, { limit });
@@ -210,9 +227,6 @@ internal.post('/ai/outbox/flush', async (c) => {
 });
 
 internal.post('/ai/warm', async (c) => {
-  const authError = requireBackendKey(c);
-  if (authError) return authError;
-
   const body = (await c.req.json().catch(() => ({}))) as {
     artifactTypes?: string[];
     year?: string;
@@ -310,9 +324,6 @@ internal.post('/ai/warm', async (c) => {
 });
 
 internal.post('/ai/warm/revisit', async (c) => {
-  const authError = requireBackendKey(c);
-  if (authError) return authError;
-
   const body = (await c.req.json().catch(() => ({}))) as {
     year?: string;
     slug?: string;

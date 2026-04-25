@@ -87,9 +87,21 @@ async function handleAssetRequest(request: Request, env: Env, key: string) {
   return new Response(object.body, { headers });
 }
 
+function timingSafeEqual(left: string, right: string): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  let mismatch = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    mismatch |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+  return mismatch === 0;
+}
+
 function isInternalCall(request: Request, env: Env): boolean {
   const key = request.headers.get("X-Internal-Key") || "";
-  return !!(env.INTERNAL_KEY && key === env.INTERNAL_KEY);
+  return !!(env.INTERNAL_KEY && timingSafeEqual(key, env.INTERNAL_KEY));
 }
 
 async function handleInternalRequest(

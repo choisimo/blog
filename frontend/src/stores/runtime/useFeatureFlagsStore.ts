@@ -61,6 +61,31 @@ const CACHE_DURATION_MS = 5 * 60 * 1000;
 let featureFlagsInitialized = false;
 let visibilityChangeHandler: (() => void) | null = null;
 
+function mergeFeatureFlags(features?: Partial<FeatureFlags> | null): FeatureFlags {
+  return {
+    aiEnabled: features?.aiEnabled ?? DEFAULT_FLAGS.aiEnabled,
+    ragEnabled: features?.ragEnabled ?? DEFAULT_FLAGS.ragEnabled,
+    terminalEnabled:
+      features?.terminalEnabled ?? DEFAULT_FLAGS.terminalEnabled,
+    aiInline: features?.aiInline ?? DEFAULT_FLAGS.aiInline,
+    commentsEnabled:
+      features?.commentsEnabled ?? DEFAULT_FLAGS.commentsEnabled,
+  };
+}
+
+function getInitialFeatureFlags(): FeatureFlags {
+  if (typeof window === "undefined") {
+    return { ...DEFAULT_FLAGS };
+  }
+
+  const runtimeFeatures = (window as RuntimeWindow).APP_CONFIG?.features;
+  if (runtimeFeatures && typeof runtimeFeatures === "object") {
+    return mergeFeatureFlags(runtimeFeatures);
+  }
+
+  return { ...DEFAULT_FLAGS };
+}
+
 function applyRuntimeConfigToWindow(runtimeConfig: RuntimeAppConfig): void {
   if (typeof window === "undefined") {
     return;
@@ -115,7 +140,7 @@ function applyRuntimeConfigToWindow(runtimeConfig: RuntimeAppConfig): void {
 
 export const useFeatureFlagsStore = create<FeatureFlagsState>((set, get) => ({
   // Initial state - keep optional infrastructure-backed features safe by default
-  flags: { ...DEFAULT_FLAGS },
+  flags: getInitialFeatureFlags(),
   isLoading: false,
   error: null,
   lastFetched: null,
@@ -159,15 +184,7 @@ export const useFeatureFlagsStore = create<FeatureFlagsState>((set, get) => ({
       const features = data?.features;
 
       if (features && typeof features === "object") {
-        const nextFlags: FeatureFlags = {
-          aiEnabled: features.aiEnabled ?? DEFAULT_FLAGS.aiEnabled,
-          ragEnabled: features.ragEnabled ?? DEFAULT_FLAGS.ragEnabled,
-          terminalEnabled:
-            features.terminalEnabled ?? DEFAULT_FLAGS.terminalEnabled,
-          aiInline: features.aiInline ?? DEFAULT_FLAGS.aiInline,
-          commentsEnabled:
-            features.commentsEnabled ?? DEFAULT_FLAGS.commentsEnabled,
-        };
+        const nextFlags = mergeFeatureFlags(features);
 
         set({
           flags: nextFlags,

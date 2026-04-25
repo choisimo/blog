@@ -1,8 +1,13 @@
+import crypto from "crypto";
 import { queryOne, execute, isD1Configured } from "../../lib/d1.js";
 
 /**
  * D1-backed SessionTokenStore adapter.
  */
+function hashSessionToken(token) {
+  return crypto.createHash("sha256").update(`user-session:${token}`).digest("hex");
+}
+
 export function createD1SessionTokenStore() {
   return {
     isAvailable() {
@@ -10,10 +15,15 @@ export function createD1SessionTokenStore() {
     },
 
     async findActiveByToken(token) {
+      const tokenHash = hashSessionToken(token);
       const row = await queryOne(
-        `SELECT id, session_token, expires_at, is_active
+        `SELECT id, session_token, session_token_hash, expires_at, is_active
          FROM user_sessions
-         WHERE session_token = ? AND is_active = 1`,
+         WHERE (
+           (session_token_hash IS NOT NULL AND session_token_hash = ?)
+           OR (session_token_hash IS NULL AND session_token = ?)
+         ) AND is_active = 1`,
+        tokenHash,
         token,
       );
 
@@ -21,7 +31,7 @@ export function createD1SessionTokenStore() {
 
       return {
         id: String(row.id),
-        sessionToken: String(row.session_token || ""),
+        sessionToken: token,
         expiresAt: row.expires_at || null,
         isActive: Number(row.is_active) === 1,
       };
@@ -39,7 +49,7 @@ export function createD1SessionTokenStore() {
 
     async deactivateById(sessionId) {
       await execute(
-        `UPDATE user_sessions SET is_active = 0, updated_at = ? WHERE id = ?`,
+        `UPDATE user_sessions SET is_active = 0, updated_at = ? WHERE id = ? AND is_active = 1`,
         new Date().toISOString(),
         sessionId,
       );

@@ -158,6 +158,7 @@ export const useAuthStore = create<AuthState>()(
             const result = await refreshAccessToken(refreshToken);
             set({
               accessToken: result.accessToken,
+              refreshToken: result.refreshToken,
               isRefreshing: false,
             });
             scheduleTokenRefresh();

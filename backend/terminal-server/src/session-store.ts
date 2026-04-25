@@ -38,6 +38,54 @@ function userKey(userId: string) {
   return `terminal:user:${userId}`;
 }
 
+export const CLAIM_SESSION_LUA = `
+local user_key = KEYS[1]
+local session_key = KEYS[2]
+local session_id = ARGV[1]
+local session_json = ARGV[2]
+local ttl_seconds = tonumber(ARGV[3])
+
+local current_session_id = redis.call('GET', user_key)
+if current_session_id and current_session_id ~= session_id then
+  return {0, 'user-session-active'}
+end
+
+redis.call('SET', user_key, session_id, 'EX', ttl_seconds)
+redis.call('SET', session_key, session_json, 'EX', ttl_seconds)
+return {1, 'claimed'}
+`;
+
+export const RELEASE_SESSION_LUA = `
+local user_key = KEYS[1]
+local session_key = KEYS[2]
+local session_id = ARGV[1]
+
+local current_session_id = redis.call('GET', user_key)
+if current_session_id == session_id then
+  redis.call('DEL', user_key)
+end
+
+redis.call('DEL', session_key)
+return 1
+`;
+
+export const CAS_UPDATE_SESSION_LUA = `
+local user_key = KEYS[1]
+local session_key = KEYS[2]
+local session_id = ARGV[1]
+local session_json = ARGV[2]
+local ttl_seconds = tonumber(ARGV[3])
+
+local current_session_id = redis.call('GET', user_key)
+if current_session_id ~= session_id then
+  return 0
+end
+
+redis.call('SET', user_key, session_id, 'EX', ttl_seconds)
+redis.call('SET', session_key, session_json, 'EX', ttl_seconds)
+return 1
+`;
+
 class InMemorySessionStore implements SessionStore {
   readonly kind = 'memory' as const;
   private readonly sessions = new Map<string, StoredTerminalSession>();
@@ -60,6 +108,7 @@ class InMemorySessionStore implements SessionStore {
   }
 
   async markConnected(sessionId: string, userId: string, containerName: string): Promise<void> {
+    if (this.users.get(userId) !== sessionId) return;
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
@@ -69,10 +118,10 @@ class InMemorySessionStore implements SessionStore {
       state: 'connected',
       lastActivity: Date.now(),
     });
-    this.users.set(userId, sessionId);
   }
 
-  async touchSession(sessionId: string): Promise<void> {
+  async touchSession(sessionId: string, userId: string): Promise<void> {
+    if (this.users.get(userId) !== sessionId) return;
     const session = this.sessions.get(sessionId);
     if (!session) return;
     this.sessions.set(sessionId, { ...session, lastActivity: Date.now() });
@@ -95,7 +144,16 @@ class InMemorySessionStore implements SessionStore {
   }
 }
 
-class RedisSessionStore implements SessionStore {
+function normalizeEvalResult(value: unknown): [number, string | undefined] {
+  if (Array.isArray(value)) {
+    const first = Number(value[0]);
+    return [Number.isFinite(first) ? first : 0, value[1] === undefined ? undefined : String(value[1])];
+  }
+  const numeric = Number(value);
+  return [Number.isFinite(numeric) ? numeric : 0, undefined];
+}
+
+export class RedisSessionStore implements SessionStore {
   readonly kind = 'redis' as const;
   private client: any;
 
@@ -119,16 +177,15 @@ class RedisSessionStore implements SessionStore {
     session: StoredTerminalSession,
     ttlSeconds: number,
   ): Promise<{ ok: true } | { ok: false; reason: string }> {
-    const existingSessionId = await this.client.get(userKey(session.userId));
-    if (existingSessionId && existingSessionId !== session.sessionId) {
-      return { ok: false, reason: 'user-session-active' };
+    const result = await this.client.eval(CLAIM_SESSION_LUA, {
+      keys: [userKey(session.userId), sessionKey(session.sessionId)],
+      arguments: [session.sessionId, JSON.stringify(session), String(ttlSeconds)],
+    });
+    const [ok, reason] = normalizeEvalResult(result);
+    if (ok === 1) {
+      return { ok: true };
     }
-
-    const multi = this.client.multi();
-    multi.set(userKey(session.userId), session.sessionId, { EX: ttlSeconds });
-    multi.set(sessionKey(session.sessionId), JSON.stringify(session), { EX: ttlSeconds });
-    await multi.exec();
-    return { ok: true };
+    return { ok: false, reason: reason || 'claim-failed' };
   }
 
   async markConnected(
@@ -147,10 +204,11 @@ class RedisSessionStore implements SessionStore {
       state: 'connected' as const,
       lastActivity: Date.now(),
     };
-    const multi = this.client.multi();
-    multi.set(userKey(userId), sessionId, { EX: ttlSeconds });
-    multi.set(sessionKey(sessionId), JSON.stringify(nextSession), { EX: ttlSeconds });
-    await multi.exec();
+
+    await this.client.eval(CAS_UPDATE_SESSION_LUA, {
+      keys: [userKey(userId), sessionKey(sessionId)],
+      arguments: [sessionId, JSON.stringify(nextSession), String(ttlSeconds)],
+    });
   }
 
   async touchSession(sessionId: string, userId: string, ttlSeconds: number): Promise<void> {
@@ -159,17 +217,17 @@ class RedisSessionStore implements SessionStore {
 
     const session = JSON.parse(raw) as StoredTerminalSession;
     const nextSession = { ...session, lastActivity: Date.now() };
-    const multi = this.client.multi();
-    multi.set(userKey(userId), sessionId, { EX: ttlSeconds });
-    multi.set(sessionKey(sessionId), JSON.stringify(nextSession), { EX: ttlSeconds });
-    await multi.exec();
+    await this.client.eval(CAS_UPDATE_SESSION_LUA, {
+      keys: [userKey(userId), sessionKey(sessionId)],
+      arguments: [sessionId, JSON.stringify(nextSession), String(ttlSeconds)],
+    });
   }
 
   async releaseSession(sessionId: string, userId: string): Promise<void> {
-    const multi = this.client.multi();
-    multi.del(userKey(userId));
-    multi.del(sessionKey(sessionId));
-    await multi.exec();
+    await this.client.eval(RELEASE_SESSION_LUA, {
+      keys: [userKey(userId), sessionKey(sessionId)],
+      arguments: [sessionId],
+    });
   }
 
   async listSessions(): Promise<StoredTerminalSession[]> {

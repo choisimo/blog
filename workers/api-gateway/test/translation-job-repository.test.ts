@@ -310,7 +310,7 @@ describe('translation-job-repository', () => {
       status: 'running',
     });
 
-    await claimTranslationJobLease(env.DB, {
+    const claim = await claimTranslationJobLease(env.DB, {
       ...running,
       lockToken: 'active-lock-token',
       lockExpiresAt: '2026-03-27T10:10:00.000Z',
@@ -319,6 +319,7 @@ describe('translation-job-repository', () => {
     const rejected = await settleTranslationJobLease(env.DB, {
       id: running.id,
       lockToken: 'stale-lock-token',
+      leaseVersion: claim.leaseVersion,
       status: 'succeeded',
       updatedAt: '2026-03-27T10:06:00.000Z',
       completedAt: '2026-03-27T10:06:00.000Z',
@@ -334,6 +335,7 @@ describe('translation-job-repository', () => {
     const settled = await settleTranslationJobLease(env.DB, {
       id: running.id,
       lockToken: 'active-lock-token',
+      leaseVersion: claim.leaseVersion,
       status: 'succeeded',
       updatedAt: '2026-03-27T10:07:00.000Z',
       completedAt: '2026-03-27T10:07:00.000Z',
@@ -353,4 +355,68 @@ describe('translation-job-repository', () => {
     );
     expect(persisted?.lock_token).toBeNull();
   });
+
+  it('rejects a stale owner that still presents the old fencing version after lease reclaim', async () => {
+    const running = buildJobInput({
+      id: 'translation-job-fenced-old',
+      key: '2026:fenced-post:es',
+      slug: 'fenced-post',
+      targetLang: 'es',
+      contentHash: 'hash-fenced',
+      status: 'running',
+      updatedAt: '2026-03-27T10:00:00.000Z',
+      startedAt: '2026-03-27T10:00:00.000Z',
+    });
+
+    const firstClaim = await claimTranslationJobLease(env.DB, {
+      ...running,
+      lockToken: 'old-lock-token',
+      lockExpiresAt: '2026-03-27T10:01:00.000Z',
+    });
+
+    const reclaimed = await claimTranslationJobLease(env.DB, {
+      ...running,
+      id: 'translation-job-fenced-new',
+      updatedAt: '2026-03-27T10:05:00.000Z',
+      startedAt: '2026-03-27T10:05:00.000Z',
+      lockToken: 'new-lock-token',
+      lockExpiresAt: '2026-03-27T10:07:00.000Z',
+    });
+
+    expect(reclaimed.acquired).toBe(true);
+    expect(reclaimed.leaseVersion).toBeGreaterThan(firstClaim.leaseVersion);
+
+    const staleSettle = await settleTranslationJobLease(env.DB, {
+      id: 'translation-job-fenced-new',
+      lockToken: 'new-lock-token',
+      leaseVersion: firstClaim.leaseVersion,
+      status: 'succeeded',
+      updatedAt: '2026-03-27T10:06:00.000Z',
+      completedAt: '2026-03-27T10:06:00.000Z',
+      result: {
+        source: 'generated',
+        cached: false,
+        isAiGenerated: true,
+        translationAvailable: true,
+      },
+    });
+    expect(staleSettle).toBeNull();
+
+    const settled = await settleTranslationJobLease(env.DB, {
+      id: 'translation-job-fenced-new',
+      lockToken: 'new-lock-token',
+      leaseVersion: reclaimed.leaseVersion,
+      status: 'succeeded',
+      updatedAt: '2026-03-27T10:07:00.000Z',
+      completedAt: '2026-03-27T10:07:00.000Z',
+      result: {
+        source: 'generated',
+        cached: false,
+        isAiGenerated: true,
+        translationAvailable: true,
+      },
+    });
+    expect(settled?.status).toBe('succeeded');
+  });
+
 });

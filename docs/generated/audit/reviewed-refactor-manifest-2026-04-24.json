@@ -1,0 +1,44 @@
+{
+  "createdAt": "2026-04-24T06:55:52.959471+00:00",
+  "baseArchive": "blog-production-refactor-2026-04-24.zip",
+  "reviewedPatchArchive": "blog-code-only-refactored-high-risk-2026-04-23.tar.gz",
+  "excludedFromCodeArchive": [
+    "frontend/public/** generated/static public assets"
+  ],
+  "overlaidFiles": [
+    "backend/terminal-server/src/session-store.ts",
+    "backend/terminal-server/test/session-store.test.ts",
+    "frontend/src/services/session/auth.ts",
+    "frontend/src/stores/session/useAuthStore.ts",
+    "workers/api-gateway/src/index.ts",
+    "workers/api-gateway/src/lib/auth-state-repository.ts",
+    "workers/api-gateway/src/lib/notification-outbox.ts",
+    "workers/api-gateway/src/lib/translation-job-repository.ts",
+    "workers/api-gateway/src/routes/admin-outbox.ts",
+    "workers/api-gateway/src/routes/auth.ts",
+    "workers/api-gateway/src/routes/lib/translation-jobs.ts",
+    "workers/api-gateway/src/routes/translate.ts",
+    "workers/api-gateway/test/auth-contract.test.ts",
+    "workers/api-gateway/test/auth-state-repository.test.ts",
+    "workers/api-gateway/test/notification-outbox.test.ts",
+    "workers/api-gateway/test/translation-job-repository.test.ts",
+    "workers/api-gateway/test/translation-jobs.test.ts",
+    "workers/migrations/0032_auth_refresh_totp_state.sql",
+    "workers/migrations/0033_translation_job_lease_fence.sql",
+    "workers/migrations/0034_domain_outbox_last_attempt_at.sql",
+    "workers/terminal-gateway/src/index.ts",
+    "workers/terminal-gateway/src/ratelimit.ts",
+    "workers/terminal-gateway/src/types.ts",
+    "workers/terminal-gateway/test/rate-limit.test.ts"
+  ],
+  "preservedBaseDueToRegressionRisk": [
+    "backend/src/adapters/session/d1-session-token-store.adapter.js",
+    "backend/src/routes/user.js",
+    "workers/api-gateway/src/routes/user.ts",
+    "workers/api-gateway/src/lib/jwt.ts",
+    "workers/api-gateway/src/routes/internal.ts",
+    "workers/r2-gateway/src/index.ts",
+    ".dockerignore",
+    "workers/api-gateway/test/user-session-contract.test.ts"
+  ]
+}

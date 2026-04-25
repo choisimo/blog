@@ -20,8 +20,17 @@ import {
   TERMINAL_TICKET_COOKIE_NAME,
   verifyToken,
 } from './auth';
-import { createAdmissionToken, getAdmissionTtlSeconds, hashUserAgent } from './admission';
-import { checkRateLimit, createSession, deleteSession, hasActiveSession } from './ratelimit';
+import {
+  createAdmissionToken,
+  getAdmissionTtlSeconds,
+  hashUserAgent,
+} from './admission';
+import {
+  checkRateLimit,
+  createSession,
+  deleteSession,
+  hasActiveSession,
+} from './ratelimit';
 
 const LEGACY_SESSION_COOKIE_NAME = 'terminal_token';
 const DEFAULT_ALLOWED_ORIGINS = [
@@ -256,7 +265,9 @@ export default {
     try {
       const response = await fetch(originRequest);
 
-      if (!response.ok || response.status >= 400) {
+      const acceptedWebSocket =
+        response.status === 101 || Boolean(response.webSocket);
+      if (!acceptedWebSocket || response.status >= 400) {
         await deleteSession(userId, requestId, env.KV).catch((err) => {
           console.warn('Failed to delete rejected terminal session:', err);
         });

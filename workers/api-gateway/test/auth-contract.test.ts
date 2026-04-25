@@ -28,11 +28,15 @@ beforeEach(async () => {
   env.GITHUB_CLIENT_SECRET = 'github-client-secret';
   env.OAUTH_REDIRECT_BASE_URL = 'https://blog.example';
   await env.DB.prepare('DELETE FROM oauth_handoffs').run();
+  await env.DB.prepare('DELETE FROM auth_refresh_tokens').run();
+  await env.DB.prepare('DELETE FROM auth_refresh_families').run();
 });
 
 afterEach(async () => {
   vi.restoreAllMocks();
   await env.DB.prepare('DELETE FROM oauth_handoffs').run();
+  await env.DB.prepare('DELETE FROM auth_refresh_tokens').run();
+  await env.DB.prepare('DELETE FROM auth_refresh_families').run();
 });
 
 function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
@@ -150,10 +154,12 @@ describe('auth contract', () => {
     expect(reusedPayload.ok).toBe(false);
     expect(reusedPayload.error.message).toBe('Refresh token reuse detected');
 
-    const familyRecord = await env.KV.get(`auth:refresh-family:${familyId}`);
-    expect(familyRecord).not.toBeNull();
-    expect(JSON.parse(familyRecord || '{}')).toMatchObject({
-      familyId,
+    const familyRecord = await env.DB
+      .prepare('SELECT family_id, reason FROM auth_refresh_families WHERE family_id = ?')
+      .bind(familyId)
+      .first<{ family_id: string; reason: string }>();
+    expect(familyRecord).toEqual({
+      family_id: familyId,
       reason: 'reuse-detected',
     });
 

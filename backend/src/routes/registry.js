@@ -22,9 +22,11 @@ import debateRouter from './debate.js';
 import adminLogsRouter from './adminLogs.js';
 import adminAnalyticsRouter from './adminAnalytics.js';
 import executeRouter from './execute.js';
+import authRouter from './auth.js';
 import { config } from '../config.js';
 
 export const PUBLIC_ROUTE_REGISTRY = [
+  { boundaryId: 'auth', basePath: '/api/v1/auth', router: authRouter },
   { boundaryId: 'notifications', basePath: '/api/v1/notifications', router: notificationsRouter },
 ];
 

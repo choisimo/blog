@@ -23,6 +23,19 @@ function base64UrlDecode(str: string): Uint8Array {
   return Uint8Array.from(binary, (c) => c.charCodeAt(0));
 }
 
+
+function constantTimeEqual(left: string, right: string): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  let mismatch = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    mismatch |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+  return mismatch === 0;
+}
+
 async function hmacSign(message: string, secret: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     'raw',
@@ -79,7 +92,7 @@ export async function verifyJwt(token: string, env: Env): Promise<JwtPayload> {
 
   // Verify signature
   const expectedSignature = await hmacSign(message, env.JWT_SECRET);
-  if (signatureB64 !== expectedSignature) {
+  if (!constantTimeEqual(signatureB64, expectedSignature)) {
     throw new Error('Invalid signature');
   }
 
