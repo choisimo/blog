@@ -9,7 +9,7 @@ const ALLOWED_METHODS = ["GET", "HEAD", "OPTIONS"];
 const MAX_LIST_PAGE_SIZE = 100;
 
 // Public prefixes - these paths are publicly accessible without authentication
-const PUBLIC_PREFIXES = ["ai-chat/", "images/", "posts/", "assets/"];
+const PUBLIC_PREFIXES = ["images/", "posts/", "assets/"];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
@@ -237,8 +237,9 @@ export default {
       return handleAssetRequest(request, env, pathname.replace(/^assets\//, ""));
     }
 
-    // Public paths - serve directly without /assets/ prefix
-    // This allows URLs like /ai-chat/2025/image.png to work
+    // Public paths - serve directly without /assets/ prefix.
+    // User chat uploads are intentionally excluded and must be served by an
+    // authenticated API Gateway route.
     if (isPublicPath(pathname)) {
       return handleAssetRequest(request, env, pathname);
     }

@@ -77,6 +77,11 @@ async function resolveAssetsBaseUrl(env: Env): Promise<string> {
   return `${apiBaseUrl.replace(/\/$/, '')}/images`;
 }
 
+async function resolveApiBaseUrl(env: Env): Promise<string> {
+  const apiBaseUrl = await getApiBaseUrl(env);
+  return apiBaseUrl.replace(/\/$/, '');
+}
+
 images.post('/upload', requireAdmin, async (c) => {
   return proxyToBackendWithPolicy(c, {
     upstreamPath: '/api/v1/images/upload',
@@ -246,9 +251,16 @@ images.post('/chat-upload', requireAuth, async (c) => {
     return badRequest(c, 'R2 bucket is not configured');
   }
 
+  const user = c.get('user');
+  const userId = user?.sub;
+  if (!userId) {
+    return error(c, 'Authentication required', 401, 'UNAUTHORIZED');
+  }
+
   const sanitized = sanitizeR2Filename(file.name);
   const timestamp = Date.now();
-  const key = `ai-chat/${new Date().getFullYear()}/${timestamp}-${sanitized}`;
+  const sanitizedUserId = sanitizeR2Segment(userId);
+  const key = `private/ai-chat/${sanitizedUserId}/${new Date().getFullYear()}/${timestamp}-${sanitized}`;
 
   const buffer = await file.arrayBuffer();
   await r2.put(key, buffer, {
@@ -257,8 +269,8 @@ images.post('/chat-upload', requireAuth, async (c) => {
     },
   });
 
-  const assetsBase = await resolveAssetsBaseUrl(c.env);
-  const url = `${assetsBase}/${key}`;
+  const apiBase = await resolveApiBaseUrl(c.env);
+  const url = `${apiBase}/api/v1/images/chat-object?key=${encodeURIComponent(key)}`;
 
   let imageAnalysis: string | null = null;
 
@@ -279,12 +291,42 @@ images.post('/chat-upload', requireAuth, async (c) => {
     {
       url,
       key,
+      visibility: 'private',
       size: file.size,
       contentType: file.type || 'application/octet-stream',
       imageAnalysis,
     },
     201
   );
+});
+
+// GET /images/chat-object?key=... - Authenticated read for private chat uploads
+images.get('/chat-object', requireAuth, async (c) => {
+  const key = c.req.query('key') || '';
+  const user = c.get('user');
+  const userId = user?.sub;
+  const prefix = `private/ai-chat/${sanitizeR2Segment(userId || '')}/`;
+
+  if (!key || !key.startsWith(prefix)) {
+    return error(c, 'Forbidden - Invalid chat object key', 403, 'FORBIDDEN');
+  }
+
+  const r2 = c.env.R2;
+  if (!r2) {
+    return badRequest(c, 'R2 bucket is not configured');
+  }
+
+  const object = await r2.get(key);
+  if (!object) {
+    return error(c, 'Object not found', 404, 'NOT_FOUND');
+  }
+
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set('Cache-Control', 'private, no-store');
+  headers.set('ETag', object.httpEtag || '');
+
+  return new Response(object.body, { headers });
 });
 
 // DELETE /images/:key - Delete image from R2 (admin only)

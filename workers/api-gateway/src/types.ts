@@ -60,8 +60,11 @@ export type Env = {
   FEATURE_COMMENTS_ENABLED?: string;
   CHAT_WS_ENABLED?: string;
   TERMINAL_GATEWAY_URL?: string;
+  AI_RATE_LIMIT_PER_MINUTE?: string;
+  CHAT_RATE_LIMIT_PER_MINUTE?: string;
+  SECRET_PLAINTEXT_ACCESS_ENABLED?: string;
 
-  // Secrets encryption key (optional, falls back to JWT_SECRET)
+  // Secrets encryption key. Required outside development.
   SECRETS_ENCRYPTION_KEY?: string;
 };
 

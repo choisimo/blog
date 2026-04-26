@@ -1,24 +1,101 @@
 import { Hono } from 'hono';
-import type { HonoEnv, Env } from '../types';
-import { success, badRequest } from '../lib/response';
+import type { Context } from 'hono';
+import type { HonoEnv } from '../types';
+import { success, badRequest, error } from '../lib/response';
 import { createAIService, tryParseJson } from '../lib/ai-service';
 import { AI_TEMPERATURES, STREAMING } from '../config/defaults';
 import type { TaskMode, TaskPayload } from '../lib/prompts';
 import { markArtifactItemsRead } from '../lib/ai-artifacts';
+import { requireAuth } from '../middleware/auth';
 
 const ai = new Hono<HonoEnv>();
+
+const AI_JSON_MAX_BYTES = 128 * 1024;
+const AI_PROMPT_MAX_CHARS = 16000;
+const AI_CHAT_MAX_MESSAGES = 32;
+const AI_CHAT_MAX_CONTENT_CHARS = 32000;
+const AI_VISION_MAX_IMAGE_CHARS = 8 * 1024 * 1024;
+const AI_DEFAULT_TIMEOUT_MS = 30000;
+const AI_VISION_TIMEOUT_MS = 45000;
+const AI_RATE_WINDOW_SECONDS = 60;
+const AI_DEFAULT_RATE_LIMIT = 30;
+
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(value || '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function getAuthenticatedSubject(c: Context<HonoEnv>): string {
+  return c.get('user')?.sub || 'unknown';
+}
+
+function rejectOversizeJson(c: Context<HonoEnv>, maxBytes = AI_JSON_MAX_BYTES): Response | null {
+  const contentLength = c.req.header('content-length');
+  if (contentLength && Number.parseInt(contentLength, 10) > maxBytes) {
+    return error(c, 'AI request body too large', 413, 'PAYLOAD_TOO_LARGE');
+  }
+  return null;
+}
+
+async function enforceAiRateLimit(c: Context<HonoEnv>, routeKey: string): Promise<Response | null> {
+  const kv = c.env.KV;
+  if (!kv) return null;
+
+  const limit = parsePositiveInt(c.env.AI_RATE_LIMIT_PER_MINUTE, AI_DEFAULT_RATE_LIMIT);
+  const subject = getAuthenticatedSubject(c);
+  const key = `ratelimit:ai:${routeKey}:${subject}`;
+  const currentCount = Number.parseInt((await kv.get(key)) || '0', 10);
+
+  if (currentCount >= limit) {
+    console.warn('[ai] rate limit exceeded', { routeKey, subject });
+    return error(c, 'Too many AI requests', 429, 'RATE_LIMITED');
+  }
+
+  await kv.put(key, String(currentCount + 1), { expirationTtl: AI_RATE_WINDOW_SECONDS });
+  return null;
+}
+
+function validatePrompt(prompt: unknown, field = 'prompt'): string | null {
+  if (!prompt || typeof prompt !== 'string') {
+    return `${field} is required`;
+  }
+  if (prompt.length > AI_PROMPT_MAX_CHARS) {
+    return `${field} is too large`;
+  }
+  return null;
+}
+
+function validateChatMessages(messages: unknown): string | null {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return 'messages array is required';
+  }
+  if (messages.length > AI_CHAT_MAX_MESSAGES) {
+    return 'messages array is too large';
+  }
+  const totalChars = messages.reduce((sum, message) => {
+    if (!message || typeof message !== 'object') return sum + AI_CHAT_MAX_CONTENT_CHARS + 1;
+    const content = (message as { content?: unknown }).content;
+    return sum + (typeof content === 'string' ? content.length : AI_CHAT_MAX_CONTENT_CHARS + 1);
+  }, 0);
+  return totalChars > AI_CHAT_MAX_CONTENT_CHARS ? 'messages content is too large' : null;
+}
 
 // ============================================================================
 // Task Endpoints (sketch, prism, chain)
 // ============================================================================
 
 // POST /ai/sketch - Generate emotional sketch from paragraph
-ai.post('/sketch', async (c) => {
+ai.post('/sketch', requireAuth, async (c) => {
+  const sizeError = rejectOversizeJson(c);
+  if (sizeError) return sizeError;
+  const rateLimit = await enforceAiRateLimit(c, 'sketch');
+  if (rateLimit) return rateLimit;
   const body = await c.req.json().catch(() => ({}));
   const { paragraph, postTitle, persona } = body;
 
-  if (!paragraph || typeof paragraph !== 'string') {
-    return badRequest(c, 'paragraph is required');
+  const promptError = validatePrompt(paragraph, 'paragraph');
+  if (promptError) {
+    return badRequest(c, promptError);
   }
 
   const aiService = createAIService(c.env);
@@ -31,12 +108,17 @@ ai.post('/sketch', async (c) => {
 });
 
 // POST /ai/prism - Generate idea facets
-ai.post('/prism', async (c) => {
+ai.post('/prism', requireAuth, async (c) => {
+  const sizeError = rejectOversizeJson(c);
+  if (sizeError) return sizeError;
+  const rateLimit = await enforceAiRateLimit(c, 'prism');
+  if (rateLimit) return rateLimit;
   const body = await c.req.json().catch(() => ({}));
   const { paragraph, postTitle } = body;
 
-  if (!paragraph || typeof paragraph !== 'string') {
-    return badRequest(c, 'paragraph is required');
+  const promptError = validatePrompt(paragraph, 'paragraph');
+  if (promptError) {
+    return badRequest(c, promptError);
   }
 
   const aiService = createAIService(c.env);
@@ -49,12 +131,17 @@ ai.post('/prism', async (c) => {
 });
 
 // POST /ai/chain - Generate follow-up questions
-ai.post('/chain', async (c) => {
+ai.post('/chain', requireAuth, async (c) => {
+  const sizeError = rejectOversizeJson(c);
+  if (sizeError) return sizeError;
+  const rateLimit = await enforceAiRateLimit(c, 'chain');
+  if (rateLimit) return rateLimit;
   const body = await c.req.json().catch(() => ({}));
   const { paragraph, postTitle } = body;
 
-  if (!paragraph || typeof paragraph !== 'string') {
-    return badRequest(c, 'paragraph is required');
+  const promptError = validatePrompt(paragraph, 'paragraph');
+  if (promptError) {
+    return badRequest(c, promptError);
   }
 
   const aiService = createAIService(c.env);
@@ -71,18 +158,24 @@ ai.post('/chain', async (c) => {
 // ============================================================================
 
 // POST /ai/generate - Generic AI generation
-ai.post('/generate', async (c) => {
+ai.post('/generate', requireAuth, async (c) => {
+  const sizeError = rejectOversizeJson(c);
+  if (sizeError) return sizeError;
+  const rateLimit = await enforceAiRateLimit(c, 'generate');
+  if (rateLimit) return rateLimit;
   const body = await c.req.json().catch(() => ({}));
   const { prompt, temperature } = body;
 
-  if (!prompt || typeof prompt !== 'string') {
-    return badRequest(c, 'prompt is required');
+  const promptError = validatePrompt(prompt);
+  if (promptError) {
+    return badRequest(c, promptError);
   }
 
   const aiService = createAIService(c.env);
   try {
     const text = await aiService.generate(prompt, {
       temperature: typeof temperature === 'number' ? temperature : AI_TEMPERATURES.GENERATE,
+      timeout: AI_DEFAULT_TIMEOUT_MS,
     });
     return success(c, { text });
   } catch (err) {
@@ -92,7 +185,7 @@ ai.post('/generate', async (c) => {
 });
 
 // GET /ai/generate/stream - SSE streaming tokens
-ai.get('/generate/stream', async (c) => {
+ai.get('/generate/stream', requireAuth, async (c) => {
   const url = new URL(c.req.url);
   const q = (
     url.searchParams.get('prompt') ||
@@ -134,6 +227,18 @@ ai.get('/generate/stream', async (c) => {
     });
     return new Response(stream, { headers, status: 400 });
   }
+  if (q.length > AI_PROMPT_MAX_CHARS) {
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(frame('error', { message: 'prompt is too large' }));
+        controller.close();
+      },
+    });
+    return new Response(stream, { headers, status: 400 });
+  }
+
+  const rateLimit = await enforceAiRateLimit(c, 'generate-stream');
+  if (rateLimit) return rateLimit;
 
   const aiService = createAIService(c.env);
 
@@ -142,7 +247,7 @@ ai.get('/generate/stream', async (c) => {
       try {
         controller.enqueue(frame('open', { type: 'open' }));
 
-        const text = await aiService.generate(String(q), { temperature });
+        const text = await aiService.generate(String(q), { temperature, timeout: AI_DEFAULT_TIMEOUT_MS });
 
         const chunkSize = STREAMING.CHUNK_SIZE;
         for (let i = 0; i < text.length; i += chunkSize) {
@@ -171,13 +276,18 @@ ai.get('/generate/stream', async (c) => {
 // ============================================================================
 
 // POST /ai/summarize - Summarize article with memo
-ai.post('/summarize', async (c) => {
+ai.post('/summarize', requireAuth, async (c) => {
+  const sizeError = rejectOversizeJson(c);
+  if (sizeError) return sizeError;
+  const rateLimit = await enforceAiRateLimit(c, 'summarize');
+  if (rateLimit) return rateLimit;
   const body = await c.req.json().catch(() => ({}));
   const { input, text, instructions } = body;
   const content = input || text;
 
-  if (!content || typeof content !== 'string') {
-    return badRequest(c, 'input or text is required');
+  const promptError = validatePrompt(content, 'input or text');
+  if (promptError) {
+    return badRequest(c, promptError);
   }
 
   const aiService = createAIService(c.env);
@@ -191,17 +301,26 @@ ai.post('/summarize', async (c) => {
 // ============================================================================
 
 // POST /ai/auto-chat - Chat completion
-ai.post('/auto-chat', async (c) => {
+ai.post('/auto-chat', requireAuth, async (c) => {
+  const sizeError = rejectOversizeJson(c);
+  if (sizeError) return sizeError;
+  const rateLimit = await enforceAiRateLimit(c, 'auto-chat');
+  if (rateLimit) return rateLimit;
   const body = await c.req.json().catch(() => ({}));
   const { messages, temperature, maxTokens } = body;
 
-  if (!messages || !Array.isArray(messages) || messages.length === 0) {
-    return badRequest(c, 'messages array is required');
+  const messagesError = validateChatMessages(messages);
+  if (messagesError) {
+    return badRequest(c, messagesError);
   }
 
   const aiService = createAIService(c.env);
   try {
-    const result = await aiService.chat(messages, { temperature, maxTokens });
+    const result = await aiService.chat(messages, {
+      temperature,
+      maxTokens,
+      timeout: AI_DEFAULT_TIMEOUT_MS,
+    });
     return success(c, {
       content: result.content,
       model: result.model,
@@ -218,12 +337,22 @@ ai.post('/auto-chat', async (c) => {
 // ============================================================================
 
 // POST /ai/vision/analyze - Vision analysis
-ai.post('/vision/analyze', async (c) => {
+ai.post('/vision/analyze', requireAuth, async (c) => {
+  const sizeError = rejectOversizeJson(c, AI_VISION_MAX_IMAGE_CHARS + AI_JSON_MAX_BYTES);
+  if (sizeError) return sizeError;
+  const rateLimit = await enforceAiRateLimit(c, 'vision-analyze');
+  if (rateLimit) return rateLimit;
   const body = await c.req.json().catch(() => ({}));
   const { imageUrl, imageBase64, mimeType, prompt } = body;
 
   if (!imageBase64 && !imageUrl) {
     return badRequest(c, 'imageBase64 or imageUrl is required');
+  }
+  if (typeof imageBase64 === 'string' && imageBase64.length > AI_VISION_MAX_IMAGE_CHARS) {
+    return error(c, 'imageBase64 is too large', 413, 'PAYLOAD_TOO_LARGE');
+  }
+  if (prompt && typeof prompt === 'string' && prompt.length > AI_PROMPT_MAX_CHARS) {
+    return badRequest(c, 'prompt is too large');
   }
 
   const aiService = createAIService(c.env);
@@ -232,6 +361,7 @@ ai.post('/vision/analyze', async (c) => {
     const imageData = imageBase64 || imageUrl;
     const description = await aiService.vision(imageData, prompt || 'Describe this image', {
       mimeType: mimeType || 'image/jpeg',
+      timeout: AI_VISION_TIMEOUT_MS,
     });
     return success(c, { description });
   } catch (err) {

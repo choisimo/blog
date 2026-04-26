@@ -5,7 +5,7 @@
  * Compatible with Cloudflare Workers runtime
  *
  * Security:
- * - Master key derived from SECRETS_ENCRYPTION_KEY env var (or JWT_SECRET as fallback)
+ * - Master key derived from SECRETS_ENCRYPTION_KEY env var
  * - Each secret has unique IV (Initialization Vector)
  * - PBKDF2 key derivation with salt
  */
@@ -54,23 +54,33 @@ async function deriveKey(masterSecret: string, salt: Uint8Array): Promise<Crypto
 async function getEncryptionKey(env: {
   SECRETS_ENCRYPTION_KEY?: string;
   JWT_SECRET: string;
+  ENV?: string;
 }): Promise<CryptoKey> {
-  // Use dedicated encryption key or fall back to JWT_SECRET
-  const masterSecret = env.SECRETS_ENCRYPTION_KEY || env.JWT_SECRET;
+  const masterSecret = env.SECRETS_ENCRYPTION_KEY;
+  if (!masterSecret) {
+    if (env.ENV === 'development') {
+      console.warn(
+        '[secrets] SECRETS_ENCRYPTION_KEY is missing; using JWT_SECRET fallback in development only'
+      );
+    } else {
+      throw new Error('SECRETS_ENCRYPTION_KEY is required for secrets encryption');
+    }
+  }
+  const keySource = masterSecret || env.JWT_SECRET;
 
   // Return cached key if same source
-  if (cachedKey && cachedKeySource === masterSecret) {
+  if (cachedKey && cachedKeySource === keySource) {
     return cachedKey;
   }
 
   // Use a fixed salt derived from the master secret for consistent key derivation
   // This allows decryption with the same master secret
   const encoder = new TextEncoder();
-  const saltSource = await crypto.subtle.digest('SHA-256', encoder.encode(masterSecret + ':salt'));
+  const saltSource = await crypto.subtle.digest('SHA-256', encoder.encode(keySource + ':salt'));
   const salt = new Uint8Array(saltSource).slice(0, SALT_LENGTH);
 
-  cachedKey = await deriveKey(masterSecret, salt);
-  cachedKeySource = masterSecret;
+  cachedKey = await deriveKey(keySource, salt);
+  cachedKeySource = keySource;
 
   return cachedKey;
 }
@@ -91,7 +101,7 @@ function generateIV(): Uint8Array {
  */
 export async function encryptSecret(
   plaintext: string,
-  env: { SECRETS_ENCRYPTION_KEY?: string; JWT_SECRET: string }
+  env: { SECRETS_ENCRYPTION_KEY?: string; JWT_SECRET: string; ENV?: string }
 ): Promise<{ encryptedValue: string; iv: string }> {
   const key = await getEncryptionKey(env);
   const iv = generateIV();
@@ -120,7 +130,7 @@ export async function encryptSecret(
 export async function decryptSecret(
   encryptedValue: string,
   iv: string,
-  env: { SECRETS_ENCRYPTION_KEY?: string; JWT_SECRET: string }
+  env: { SECRETS_ENCRYPTION_KEY?: string; JWT_SECRET: string; ENV?: string }
 ): Promise<string> {
   const key = await getEncryptionKey(env);
   const ivBuffer = base64ToArrayBuffer(iv);
@@ -218,8 +228,8 @@ function base64ToArrayBuffer(base64: string): Uint8Array {
 export async function reEncryptSecret(
   encryptedValue: string,
   iv: string,
-  oldEnv: { SECRETS_ENCRYPTION_KEY?: string; JWT_SECRET: string },
-  newEnv: { SECRETS_ENCRYPTION_KEY?: string; JWT_SECRET: string }
+  oldEnv: { SECRETS_ENCRYPTION_KEY?: string; JWT_SECRET: string; ENV?: string },
+  newEnv: { SECRETS_ENCRYPTION_KEY?: string; JWT_SECRET: string; ENV?: string }
 ): Promise<{ encryptedValue: string; iv: string }> {
   // Decrypt with old key
   const plaintext = await decryptSecret(encryptedValue, iv, oldEnv);
@@ -236,7 +246,7 @@ export async function reEncryptSecret(
  * Validate that decryption works (for health checks)
  */
 export async function validateEncryption(
-  env: { SECRETS_ENCRYPTION_KEY?: string; JWT_SECRET: string }
+  env: { SECRETS_ENCRYPTION_KEY?: string; JWT_SECRET: string; ENV?: string }
 ): Promise<boolean> {
   try {
     const testValue = 'encryption-test-' + Date.now();

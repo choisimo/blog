@@ -33,12 +33,12 @@ export async function executeBatch(db: D1Database, statements: D1PreparedStateme
   return await db.batch(statements);
 }
 
-// Transaction helper (D1 supports batch as atomic operations)
+// Compatibility helper only. This does not create a database transaction.
+// Use executeBatch() for grouped D1 statements and explicit idempotency or
+// compensation for multi-store writes.
 export async function transaction<T>(
   db: D1Database,
   fn: (db: D1Database) => Promise<T>
 ): Promise<T> {
-  // D1 doesn't have explicit transactions, but batch operations are atomic
-  // For now, just execute the function
   return await fn(db);
 }

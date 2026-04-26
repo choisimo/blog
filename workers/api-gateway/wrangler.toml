@@ -15,6 +15,7 @@ routes = [
 # =============================================================================
 # Required for Authentication:
 #   - JWT_SECRET: Secret key for JWT token signing
+#   - SECRETS_ENCRYPTION_KEY: Dedicated key for secrets vault encryption
 #   - ADMIN_USERNAME: Admin username for login
 #   - ADMIN_PASSWORD: Admin password
 #   - ADMIN_EMAIL: Admin email for OTP verification
@@ -43,6 +44,9 @@ routes = [
 #   - API_BASE_URL
 #   - ASSETS_BASE_URL
 #   - ALLOWED_ORIGINS
+#   - AI_RATE_LIMIT_PER_MINUTE
+#   - CHAT_RATE_LIMIT_PER_MINUTE
+#   - SECRET_PLAINTEXT_ACCESS_ENABLED: set to true only for break-glass windows
 # =============================================================================
 
 # Development environment variables

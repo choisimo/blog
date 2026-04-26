@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { HonoEnv, Env } from '../types';
-import { success, badRequest, notFound, unauthorized, forbidden } from '../lib/response';
-import { queryAll, execute, queryOne } from '../lib/d1';
+import { success, badRequest, notFound, unauthorized, forbidden, conflict } from '../lib/response';
+import { queryAll, execute, executeBatch, queryOne } from '../lib/d1';
 import { getUserIdFromToken } from '../lib/auth-helpers';
 
 const memos = new Hono<HonoEnv>();
@@ -25,6 +25,229 @@ interface MemoVersion {
   content_length: number;
   change_summary: string | null;
   created_at: string;
+}
+
+type SaveMemoBody = {
+  content: string;
+  createVersion?: boolean;
+  changeSummary?: string;
+  expectedVersion?: number;
+};
+
+function getExpectedVersion(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    return null;
+  }
+  return value;
+}
+
+async function createInitialMemo(
+  db: D1Database,
+  userId: string,
+  content: string,
+  now: string
+): Promise<string> {
+  const memoId = `memo-${crypto.randomUUID()}`;
+  await executeBatch(db, [
+    db
+      .prepare(
+        `INSERT INTO memo_content (id, user_id, content, version, created_at, updated_at)
+         VALUES (?, ?, ?, 1, ?, ?)`
+      )
+      .bind(memoId, userId, content, now, now),
+    db
+      .prepare(
+        `INSERT INTO memo_versions (memo_id, user_id, version, content, content_length, change_summary, created_at)
+         VALUES (?, ?, 1, ?, ?, ?, ?)`
+      )
+      .bind(memoId, userId, content, content.length, 'Initial save', now),
+  ]);
+  return memoId;
+}
+
+async function updateMemoContent(
+  db: D1Database,
+  options: {
+    memoId: string;
+    userId: string;
+    content: string;
+    expectedVersion: number;
+    newVersion: number;
+    now: string;
+    createVersion: boolean;
+    changeSummary?: string | null;
+  }
+): Promise<boolean> {
+  const updateStatement = db
+    .prepare(`UPDATE memo_content SET content = ?, version = ?, updated_at = ? WHERE id = ? AND version = ?`)
+    .bind(options.content, options.newVersion, options.now, options.memoId, options.expectedVersion);
+
+  if (!options.createVersion) {
+    const result = await updateStatement.run();
+    return (result.meta?.changes || 0) > 0;
+  }
+
+  const results = await executeBatch(db, [
+    updateStatement,
+    db
+      .prepare(
+        `INSERT INTO memo_versions (memo_id, user_id, version, content, content_length, change_summary, created_at)
+         SELECT ?, ?, ?, ?, ?, ?, ?
+         WHERE EXISTS (
+           SELECT 1 FROM memo_content WHERE id = ? AND version = ? AND updated_at = ?
+         )`
+      )
+      .bind(
+        options.memoId,
+        options.userId,
+        options.newVersion,
+        options.content,
+        options.content.length,
+        options.changeSummary || null,
+        options.now,
+        options.memoId,
+        options.newVersion,
+        options.now
+      ),
+  ]);
+
+  return (results[0]?.meta?.changes || 0) > 0;
+}
+
+async function pruneMemoVersions(db: D1Database, memoId: string): Promise<void> {
+  await execute(
+    db,
+    `DELETE FROM memo_versions
+     WHERE memo_id = ? AND id NOT IN (
+       SELECT id FROM memo_versions WHERE memo_id = ? ORDER BY version DESC LIMIT 50
+     )`,
+    memoId,
+    memoId
+  );
+}
+
+async function saveMemoForUser(c: any, userId: string) {
+  const body = (await c.req.json().catch(() => ({}))) as SaveMemoBody;
+  const { content, createVersion = false, changeSummary } = body;
+
+  if (typeof content !== 'string') {
+    return badRequest(c, 'content is required');
+  }
+
+  if (content.length > 100000) {
+    return badRequest(c, 'Content too large (max 100KB)');
+  }
+
+  const db = c.env.DB;
+  const now = new Date().toISOString();
+
+  const existing = await queryOne<MemoContent>(
+    db,
+    `SELECT id, version, content FROM memo_content WHERE user_id = ?`,
+    userId
+  );
+
+  if (!existing) {
+    const expectedVersion = body.expectedVersion === undefined ? 0 : getExpectedVersion(body.expectedVersion);
+    if (expectedVersion !== 0) {
+      return conflict(c, 'Memo version conflict');
+    }
+
+    try {
+      const memoId = await createInitialMemo(db, userId, content, now);
+      return success(c, { id: memoId, version: 1 }, 201);
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('UNIQUE')) {
+        return conflict(c, 'Memo version conflict');
+      }
+      throw err;
+    }
+  }
+
+  const expectedVersion = getExpectedVersion(body.expectedVersion);
+  if (expectedVersion === null) {
+    return badRequest(c, 'expectedVersion is required');
+  }
+  if (expectedVersion !== existing.version) {
+    return conflict(c, 'Memo version conflict');
+  }
+
+  const newVersion = createVersion ? existing.version + 1 : existing.version;
+  const updated = await updateMemoContent(db, {
+    memoId: existing.id,
+    userId,
+    content,
+    expectedVersion,
+    newVersion,
+    now,
+    createVersion,
+    changeSummary,
+  });
+
+  if (!updated) {
+    return conflict(c, 'Memo version conflict');
+  }
+
+  if (createVersion) {
+    await pruneMemoVersions(db, existing.id);
+  }
+
+  return success(c, { id: existing.id, version: newVersion });
+}
+
+async function restoreMemoVersionForUser(c: any, userId: string, version: number) {
+  const body = (await c.req.json().catch(() => ({}))) as { expectedVersion?: number };
+  const db = c.env.DB;
+  const now = new Date().toISOString();
+
+  const memo = await queryOne<MemoContent>(
+    db,
+    `SELECT id, version FROM memo_content WHERE user_id = ?`,
+    userId
+  );
+
+  if (!memo) {
+    return notFound(c, 'Memo not found');
+  }
+
+  const expectedVersion =
+    body.expectedVersion === undefined ? memo.version : getExpectedVersion(body.expectedVersion);
+  if (expectedVersion === null || expectedVersion !== memo.version) {
+    return conflict(c, 'Memo version conflict');
+  }
+
+  const versionData = await queryOne<MemoVersion>(
+    db,
+    `SELECT content FROM memo_versions WHERE memo_id = ? AND version = ?`,
+    memo.id,
+    version
+  );
+
+  if (!versionData) {
+    return notFound(c, 'Version not found');
+  }
+
+  const newVersion = memo.version + 1;
+  const updated = await updateMemoContent(db, {
+    memoId: memo.id,
+    userId,
+    content: versionData.content,
+    expectedVersion,
+    newVersion,
+    now,
+    createVersion: true,
+    changeSummary: `Restored from version ${version}`,
+  });
+
+  if (!updated) {
+    return conflict(c, 'Memo version conflict');
+  }
+
+  return success(c, {
+    id: memo.id,
+    version: newVersion,
+    restoredFrom: version,
+  });
 }
 
 
@@ -81,96 +304,7 @@ memos.put('/', async (c) => {
   if (!userId) {
     return unauthorized(c, 'Authentication required');
   }
-
-  const body = await c.req.json().catch(() => ({}));
-  const { content, createVersion = false, changeSummary } = body as {
-    content: string;
-    createVersion?: boolean;
-    changeSummary?: string;
-  };
-
-  if (typeof content !== 'string') {
-    return badRequest(c, 'content is required');
-  }
-
-  if (content.length > 100000) {
-    return badRequest(c, 'Content too large (max 100KB)');
-  }
-
-  const db = c.env.DB;
-  const now = new Date().toISOString();
-
-  const existing = await queryOne<MemoContent>(
-    db,
-    `SELECT id, version, content FROM memo_content WHERE user_id = ?`,
-    userId
-  );
-
-  if (!existing) {
-    const memoId = `memo-${crypto.randomUUID()}`;
-    await execute(
-      db,
-      `INSERT INTO memo_content (id, user_id, content, version, created_at, updated_at)
-       VALUES (?, ?, ?, 1, ?, ?)`,
-      memoId,
-      userId,
-      content,
-      now,
-      now
-    );
-
-    await execute(
-      db,
-      `INSERT INTO memo_versions (memo_id, user_id, version, content, content_length, change_summary, created_at)
-       VALUES (?, ?, 1, ?, ?, ?, ?)`,
-      memoId,
-      userId,
-      content,
-      content.length,
-      'Initial save',
-      now
-    );
-
-    return success(c, { id: memoId, version: 1 }, 201);
-  }
-
-  const newVersion = createVersion ? existing.version + 1 : existing.version;
-
-  await execute(
-    db,
-    `UPDATE memo_content SET content = ?, version = ?, updated_at = ? WHERE id = ?`,
-    content,
-    newVersion,
-    now,
-    existing.id
-  );
-
-  if (createVersion) {
-    await execute(
-      db,
-      `INSERT INTO memo_versions (memo_id, user_id, version, content, content_length, change_summary, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      existing.id,
-      userId,
-      newVersion,
-      content,
-      content.length,
-      changeSummary || null,
-      now
-    );
-
-    await execute(
-      db,
-      `DELETE FROM memo_versions
-       WHERE memo_id = ? AND id NOT IN (
-         SELECT id FROM memo_versions WHERE memo_id = ? ORDER BY version DESC LIMIT 50
-       )`,
-      existing.id,
-      existing.id
-    );
-  }
-
-  return success(c, { id: existing.id, version: newVersion });
+  return saveMemoForUser(c, userId);
 });
 
 // GET /memos/versions - Get version history for authenticated user
@@ -289,60 +423,7 @@ memos.post('/restore/:version', async (c) => {
   if (isNaN(version)) {
     return badRequest(c, 'Invalid version number');
   }
-
-  const db = c.env.DB;
-  const now = new Date().toISOString();
-
-  const memo = await queryOne<MemoContent>(
-    db,
-    `SELECT id, version FROM memo_content WHERE user_id = ?`,
-    userId
-  );
-
-  if (!memo) {
-    return notFound(c, 'Memo not found');
-  }
-
-  const versionData = await queryOne<MemoVersion>(
-    db,
-    `SELECT content FROM memo_versions WHERE memo_id = ? AND version = ?`,
-    memo.id,
-    version
-  );
-
-  if (!versionData) {
-    return notFound(c, 'Version not found');
-  }
-
-  const newVersion = memo.version + 1;
-
-  await execute(
-    db,
-    `UPDATE memo_content SET content = ?, version = ?, updated_at = ? WHERE id = ?`,
-    versionData.content,
-    newVersion,
-    now,
-    memo.id
-  );
-
-  await execute(
-    db,
-    `INSERT INTO memo_versions (memo_id, user_id, version, content, content_length, change_summary, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    memo.id,
-    userId,
-    newVersion,
-    versionData.content,
-    versionData.content.length,
-    `Restored from version ${version}`,
-    now
-  );
-
-  return success(c, {
-    id: memo.id,
-    version: newVersion,
-    restoredFrom: version,
-  });
+  return restoreMemoVersionForUser(c, userId, version);
 });
 
 // DELETE /memos - Delete memo for authenticated user
@@ -429,103 +510,7 @@ memos.put('/:userId', async (c) => {
   const result = await requireOwnerFromPath(c);
   if (result instanceof Response) return result;
   const userId = result;
-
-  const body = await c.req.json().catch(() => ({}));
-  const { content, createVersion = false, changeSummary } = body as {
-    content: string;
-    createVersion?: boolean;
-    changeSummary?: string;
-  };
-
-  if (typeof content !== 'string') {
-    return badRequest(c, 'content is required');
-  }
-
-  // Limit content size (100KB)
-  if (content.length > 100000) {
-    return badRequest(c, 'Content too large (max 100KB)');
-  }
-
-  const db = c.env.DB;
-  const now = new Date().toISOString();
-
-  // Check if memo exists
-  const existing = await queryOne<MemoContent>(
-    db,
-    `SELECT id, version, content FROM memo_content WHERE user_id = ?`,
-    userId
-  );
-
-  if (!existing) {
-    // Create new memo
-    const memoId = `memo-${crypto.randomUUID()}`;
-    await execute(
-      db,
-      `INSERT INTO memo_content (id, user_id, content, version, created_at, updated_at)
-       VALUES (?, ?, ?, 1, ?, ?)`,
-      memoId,
-      userId,
-      content,
-      now,
-      now
-    );
-
-    // Create initial version
-    await execute(
-      db,
-      `INSERT INTO memo_versions (memo_id, user_id, version, content, content_length, change_summary, created_at)
-       VALUES (?, ?, 1, ?, ?, ?, ?)`,
-      memoId,
-      userId,
-      content,
-      content.length,
-      'Initial save',
-      now
-    );
-
-    return success(c, { id: memoId, version: 1 }, 201);
-  }
-
-  // Update existing memo
-  const newVersion = createVersion ? existing.version + 1 : existing.version;
-
-  await execute(
-    db,
-    `UPDATE memo_content SET content = ?, version = ?, updated_at = ? WHERE id = ?`,
-    content,
-    newVersion,
-    now,
-    existing.id
-  );
-
-  // Create version snapshot if requested
-  if (createVersion) {
-    await execute(
-      db,
-      `INSERT INTO memo_versions (memo_id, user_id, version, content, content_length, change_summary, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      existing.id,
-      userId,
-      newVersion,
-      content,
-      content.length,
-      changeSummary || null,
-      now
-    );
-
-    // Keep only last 50 versions
-    await execute(
-      db,
-      `DELETE FROM memo_versions
-       WHERE memo_id = ? AND id NOT IN (
-         SELECT id FROM memo_versions WHERE memo_id = ? ORDER BY version DESC LIMIT 50
-       )`,
-      existing.id,
-      existing.id
-    );
-  }
-
-  return success(c, { id: existing.id, version: newVersion });
+  return saveMemoForUser(c, userId);
 });
 
 // GET /memos/:userId/versions - Get version history for a user's memo
@@ -653,64 +638,7 @@ memos.post('/:userId/restore/:version', async (c) => {
   if (isNaN(version)) {
     return badRequest(c, 'Invalid version number');
   }
-
-  const db = c.env.DB;
-  const now = new Date().toISOString();
-
-  // Get memo_id first
-  const memo = await queryOne<MemoContent>(
-    db,
-    `SELECT id, version FROM memo_content WHERE user_id = ?`,
-    userId
-  );
-
-  if (!memo) {
-    return notFound(c, 'Memo not found');
-  }
-
-  // Get the version to restore
-  const versionData = await queryOne<MemoVersion>(
-    db,
-    `SELECT content FROM memo_versions WHERE memo_id = ? AND version = ?`,
-    memo.id,
-    version
-  );
-
-  if (!versionData) {
-    return notFound(c, 'Version not found');
-  }
-
-  // Create new version with restored content
-  const newVersion = memo.version + 1;
-
-  await execute(
-    db,
-    `UPDATE memo_content SET content = ?, version = ?, updated_at = ? WHERE id = ?`,
-    versionData.content,
-    newVersion,
-    now,
-    memo.id
-  );
-
-  // Save version snapshot
-  await execute(
-    db,
-    `INSERT INTO memo_versions (memo_id, user_id, version, content, content_length, change_summary, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    memo.id,
-    userId,
-    newVersion,
-    versionData.content,
-    versionData.content.length,
-    `Restored from version ${version}`,
-    now
-  );
-
-  return success(c, {
-    id: memo.id,
-    version: newVersion,
-    restoredFrom: version,
-  });
+  return restoreMemoVersionForUser(c, userId, version);
 });
 
 // DELETE /memos/:userId - Delete memo and all versions

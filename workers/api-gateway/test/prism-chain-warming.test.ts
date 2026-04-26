@@ -1,6 +1,7 @@
 import { env, SELF } from 'cloudflare:test';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { signJwt } from '../src/lib/jwt';
 import type {
   FeedCursor,
   LensCard,
@@ -69,11 +70,27 @@ async function loadChatRouter() {
   return mod.default;
 }
 
+async function createUserToken() {
+  return signJwt(
+    {
+      sub: 'user-1',
+      role: 'user',
+      username: 'user',
+      type: 'access',
+    },
+    env,
+  );
+}
+
 async function postFeed(path: string, body: object) {
   const chat = await loadChatRouter();
+  const token = await createUserToken();
   return chat.request(`https://example.com${path}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify(body),
   }, env);
 }

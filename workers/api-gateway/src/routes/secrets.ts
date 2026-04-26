@@ -99,6 +99,34 @@ function toPublic(secret: Secret, categoryName?: string): SecretPublic {
   };
 }
 
+function isPlaintextAccessEnabled(env: Env): boolean {
+  return env.ENV !== 'production' || env.SECRET_PLAINTEXT_ACCESS_ENABLED === 'true';
+}
+
+function getBreakGlassReason(
+  c: Parameters<typeof badRequest>[0],
+  body?: { reason?: unknown }
+): string {
+  const reason = body?.reason || c.req.query('reason') || c.req.header('X-Break-Glass-Reason');
+  return typeof reason === 'string' ? reason.trim() : '';
+}
+
+function validatePlaintextAccess(
+  c: Parameters<typeof badRequest>[0],
+  action: 'reveal' | 'export',
+  reason: string
+): Response | null {
+  if (!isPlaintextAccessEnabled(c.env as Env)) {
+    return error(c, `Secret plaintext ${action} is disabled`, 403, 'SECRET_PLAINTEXT_DISABLED');
+  }
+
+  if ((c.env as Env).ENV === 'production' && reason.length < 8) {
+    return badRequest(c, 'break-glass reason is required');
+  }
+
+  return null;
+}
+
 // ============================================================================
 // Categories
 // ============================================================================
@@ -219,6 +247,10 @@ secrets.get('/:id', async (c) => {
 
   // Optionally reveal masked value (for copying)
   if (reveal && secret.encrypted_value && secret.iv) {
+    const reason = getBreakGlassReason(c);
+    const accessError = validatePlaintextAccess(c, 'reveal', reason);
+    if (accessError) return accessError;
+
     try {
       const decrypted = await decryptSecret(secret.encrypted_value, secret.iv, c.env);
       result.masked_value = secret.is_sensitive ? maskSecret(decrypted, 6) : decrypted;
@@ -228,6 +260,7 @@ secrets.get('/:id', async (c) => {
         changedBy: 'admin',
         ipAddress: c.req.header('CF-Connecting-IP'),
         userAgent: c.req.header('User-Agent'),
+        metadata: { action: 'masked_reveal', reason: reason || undefined },
       });
     } catch {
       // Decryption failed - likely wrong key
@@ -534,6 +567,10 @@ secrets.delete('/:id', async (c) => {
  */
 secrets.post('/:id/reveal', async (c) => {
   const { id } = c.req.param();
+  const body = (await c.req.json().catch(() => ({}))) as { reason?: string };
+  const reason = getBreakGlassReason(c, body);
+  const accessError = validatePlaintextAccess(c, 'reveal', reason);
+  if (accessError) return accessError;
 
   const secret = await c.env.DB.prepare(`SELECT * FROM secrets WHERE id = ? OR key_name = ?`)
     .bind(id, id)
@@ -555,7 +592,7 @@ secrets.post('/:id/reveal', async (c) => {
       changedBy: 'admin',
       ipAddress: c.req.header('CF-Connecting-IP'),
       userAgent: c.req.header('User-Agent'),
-      metadata: { action: 'reveal' },
+      metadata: { action: 'reveal', reason: reason || undefined },
     });
 
     return success(c, {
@@ -604,6 +641,7 @@ secrets.post('/generate', async (c) => {
  */
 secrets.get('/export', async (c) => {
   const includeValues = c.req.query('includeValues') === 'true';
+  const reason = getBreakGlassReason(c);
 
   const [categoriesResult, secretsResult] = await Promise.all([
     c.env.DB.prepare(`SELECT * FROM secret_categories ORDER BY sort_order`).all<SecretCategory>(),
@@ -616,6 +654,9 @@ secrets.get('/export', async (c) => {
 
   // Optionally include decrypted values (for migration/backup)
   if (includeValues) {
+    const accessError = validatePlaintextAccess(c, 'export', reason);
+    if (accessError) return accessError;
+
     secretsExport = await Promise.all(
       secretsResult.results.map(async (s) => {
         const pub = toPublic(s);
@@ -639,7 +680,7 @@ secrets.get('/export', async (c) => {
       changedBy: 'admin',
       ipAddress: c.req.header('CF-Connecting-IP'),
       userAgent: c.req.header('User-Agent'),
-      metadata: { count: secretsResult.results.length },
+      metadata: { count: secretsResult.results.length, reason: reason || undefined },
     });
   }
 

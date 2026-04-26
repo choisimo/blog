@@ -42,3 +42,18 @@ test('r2-gateway answers OPTIONS requests for public assets', async () => {
   assert.equal(response.headers.get('Access-Control-Allow-Origin'), 'https://app.example.com');
   assert.equal(response.headers.get('Access-Control-Allow-Methods'), 'GET, HEAD, OPTIONS');
 });
+
+test('r2-gateway does not publicly serve ai-chat objects', async () => {
+  const response = await worker.fetch(
+    new Request('https://assets.example.com/ai-chat/2026/private.png', {
+      headers: { Origin: 'https://app.example.com' },
+    }),
+    env
+  );
+
+  assert.equal(response.status, 404);
+  assert.deepEqual(await response.json(), {
+    ok: false,
+    error: 'Not Found',
+  });
+});
