@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 process.env.APP_ENV = process.env.APP_ENV || "test";
 process.env.JWT_SECRET = process.env.JWT_SECRET || "code-execution-test-secret";
+process.env.AI_DEFAULT_MODEL = process.env.AI_DEFAULT_MODEL || "gpt-4.1-mini";
 process.env.FEATURE_CODE_EXECUTION_ENABLED = "true";
 
 const { createCodeExecutionTool } = await import(

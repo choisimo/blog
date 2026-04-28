@@ -143,7 +143,7 @@ function buildBackendReadinessChecks() {
           return dependencyNotConfigured(false);
         }
 
-        const health = await withReadinessTimeout("ai", () => aiService.health(true));
+        const health = await withReadinessTimeout("ai", () => aiService.health(false));
         return {
           ok: health?.ok === true,
           status: health?.ok === true ? "ok" : "failed",
