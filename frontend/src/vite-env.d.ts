@@ -17,6 +17,7 @@ interface ImportMetaEnv {
   readonly VITE_FEATURE_RAG_ENABLED?: string;
   readonly VITE_FEATURE_TERMINAL_ENABLED?: string;
   readonly VITE_FEATURE_AI_INLINE?: string;
+  readonly VITE_FEATURE_CODE_EXECUTION_ENABLED?: string;
   readonly VITE_FEATURE_COMMENTS_ENABLED?: string;
   readonly VITE_DEV_HOST?: string;
   readonly VITE_DEV_PORT?: string;

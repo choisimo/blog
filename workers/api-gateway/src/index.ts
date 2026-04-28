@@ -297,6 +297,8 @@ async function buildPublicConfig(env: Env) {
       ragEnabled: env.FEATURE_RAG_ENABLED === 'true',
       terminalEnabled,
       aiInline: env.FEATURE_AI_INLINE === 'true',
+      // /api/v1/execute is intentionally not exposed through the public edge.
+      codeExecutionEnabled: false,
       commentsEnabled: env.FEATURE_COMMENTS_ENABLED === 'true',
     },
   });

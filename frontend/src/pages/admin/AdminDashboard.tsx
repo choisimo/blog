@@ -8,6 +8,7 @@ import {
   Database,
   Activity,
   BarChart3,
+  FileText,
   LogOut,
   Server,
   ScrollText,
@@ -21,12 +22,14 @@ const RAGManager = lazy(() => import('@/components/features/admin/rag').then(m =
 const SystemHealth = lazy(() => import('@/components/features/admin/health').then(m => ({ default: m.SystemHealth })));
 const AnalyticsManager = lazy(() => import('@/components/features/admin/analytics').then(m => ({ default: m.AnalyticsManager })));
 const LogViewer = lazy(() => import('@/components/features/admin/logs').then(m => ({ default: m.LogViewer })));
+const ContentManager = lazy(() => import('@/components/features/admin/content').then(m => ({ default: m.ContentManager })));
 
 type NavTab =
   | 'health'
   | 'rag'
   | 'analytics'
   | 'logs'
+  | 'content'
   | 'ai'
   | 'config'
   | 'secrets'
@@ -60,6 +63,12 @@ const NAV_TABS: {
     id: 'logs',
     label: 'Logs',
     icon: <ScrollText className='h-3.5 w-3.5' />,
+    group: 'ops',
+  },
+  {
+    id: 'content',
+    label: 'Content',
+    icon: <FileText className='h-3.5 w-3.5' />,
     group: 'ops',
   },
   {
@@ -201,6 +210,7 @@ export function AdminDashboard({ userEmail, onLogout }: AdminDashboardProps) {
           {activeTab === 'rag' && <RAGManager />}
           {activeTab === 'analytics' && <AnalyticsManager />}
           {activeTab === 'logs' && <LogViewer />}
+          {activeTab === 'content' && <ContentManager />}
           {activeTab === 'ai' && (
             <AIManager
               subtab={subtab}

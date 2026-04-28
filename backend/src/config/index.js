@@ -334,6 +334,7 @@ export function publicRuntimeConfig() {
       ragEnabled: config.features.ragEnabled,
       terminalEnabled: config.features.terminalEnabled,
       aiInline: config.features.aiInline,
+      codeExecutionEnabled: config.features.codeExecutionEnabled,
       commentsEnabled: config.features.commentsEnabled,
     },
   });

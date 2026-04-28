@@ -76,6 +76,11 @@ export function buildRuntimeConfigFromEnv(
         'VITE_FEATURE_TERMINAL_ENABLED'
       ),
       aiInline: readFlag(env, 'FEATURE_AI_INLINE', 'VITE_FEATURE_AI_INLINE'),
+      codeExecutionEnabled: readFlag(
+        env,
+        'FEATURE_CODE_EXECUTION_ENABLED',
+        'VITE_FEATURE_CODE_EXECUTION_ENABLED'
+      ),
       commentsEnabled: readFlag(
         env,
         'FEATURE_COMMENTS_ENABLED',
