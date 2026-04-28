@@ -1,6 +1,11 @@
 import { Hono, type Context } from 'hono';
 import type { HonoEnv } from '../types';
 import { success, badRequest, notFound, serverError, error } from '../lib/response';
+import {
+  getCachedIdempotencyResponse,
+  idempotentJson,
+  releaseIdempotencyClaim,
+} from '../lib/idempotency';
 
 const user = new Hono<HonoEnv>();
 
@@ -132,22 +137,6 @@ async function findRecoverableSessionByToken(
   return session ?? null;
 }
 
-async function deactivateSessionIfActive(
-  db: HonoEnv['Bindings']['DB'],
-  sessionId: string
-): Promise<boolean> {
-  const result = await db
-    .prepare(`
-      UPDATE user_sessions
-      SET is_active = 0, updated_at = datetime('now')
-      WHERE id = ? AND is_active = 1
-    `)
-    .bind(sessionId)
-    .run();
-
-  return Number(result.meta?.changes ?? 0) === 1;
-}
-
 async function touchSessionActivity(db: HonoEnv['Bindings']['DB'], sessionId: string): Promise<void> {
   await db
     .prepare(`
@@ -179,11 +168,6 @@ async function recoverSessionByToken(c: Context<HonoEnv>, token: string) {
     return notFound(c, 'Session not found or already recovered');
   }
 
-  const deactivated = await deactivateSessionIfActive(db, oldSession.id);
-  if (!deactivated) {
-    return notFound(c, 'Session not found or already recovered');
-  }
-
   const newSessionToken = generateSessionToken();
   const newSessionTokenHash = await hashSessionToken(newSessionToken);
   const newSessionId = generateId();
@@ -193,22 +177,37 @@ async function recoverSessionByToken(c: Context<HonoEnv>, token: string) {
   const ipAddress = cfHeaders.get('CF-Connecting-IP') || '';
   const countryCode = cfHeaders.get('CF-IPCountry') || '';
 
-  await db
-    .prepare(`
-      INSERT INTO user_sessions (
-        id, fingerprint_id, session_token, session_token_hash, ip_address, country_code, expires_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
-    `)
-    .bind(
-      newSessionId,
-      oldSession.fingerprint_id,
-      sessionTokenMarker(newSessionTokenHash),
-      newSessionTokenHash,
-      ipAddress,
-      countryCode,
-      expiresAt
-    )
-    .run();
+  const results = await db.batch([
+    db
+      .prepare(`
+        INSERT INTO user_sessions (
+          id, fingerprint_id, session_token, session_token_hash, ip_address, country_code, expires_at
+        )
+        SELECT ?, fingerprint_id, ?, ?, ?, ?, ?
+        FROM user_sessions
+        WHERE id = ? AND is_active = 1
+      `)
+      .bind(
+        newSessionId,
+        sessionTokenMarker(newSessionTokenHash),
+        newSessionTokenHash,
+        ipAddress,
+        countryCode,
+        expiresAt,
+        oldSession.id
+      ),
+    db
+      .prepare(`
+        UPDATE user_sessions
+        SET is_active = 0, updated_at = datetime('now')
+        WHERE id = ? AND is_active = 1
+      `)
+      .bind(oldSession.id),
+  ]);
+
+  if (Number(results[0]?.meta?.changes ?? 0) !== 1 || Number(results[1]?.meta?.changes ?? 0) !== 1) {
+    return notFound(c, 'Session not found or already recovered');
+  }
 
   return success(c, {
     sessionToken: newSessionToken,
@@ -224,52 +223,21 @@ user.post('/session', async (c) => {
     return badRequest(c, 'fingerprint.visitorId is required');
   }
 
+  const idempotencyPayload = {
+    fingerprint: body.fingerprint,
+    userAgent: body.userAgent || null,
+  };
+  const cached = await getCachedIdempotencyResponse(
+    c,
+    'user.session.create',
+    idempotencyPayload
+  );
+  if (cached) return cached;
+
   const db = c.env.DB;
   const fingerprintHash = await hashFingerprint(body.fingerprint.visitorId);
 
   try {
-    let fingerprintRecord = await db
-      .prepare('SELECT * FROM user_fingerprints WHERE fingerprint_hash = ?')
-      .bind(fingerprintHash)
-      .first<{ id: string; visit_count: number }>();
-
-    let fingerprintId: string;
-    let isNewUser = false;
-
-    if (fingerprintRecord) {
-      fingerprintId = fingerprintRecord.id;
-      await db
-        .prepare(`
-          UPDATE user_fingerprints 
-          SET last_seen_at = datetime('now'), 
-              visit_count = visit_count + 1,
-              updated_at = datetime('now')
-          WHERE id = ?
-        `)
-        .bind(fingerprintId)
-        .run();
-    } else {
-      isNewUser = true;
-      fingerprintId = generateId();
-      const components = body.fingerprint.components;
-
-      await db
-        .prepare(`
-          INSERT INTO user_fingerprints (
-            id, fingerprint_hash, screen_info, timezone, language, browser_info
-          ) VALUES (?, ?, ?, ?, ?, ?)
-        `)
-        .bind(
-          fingerprintId,
-          fingerprintHash,
-          components?.screenResolution?.value ? JSON.stringify(components.screenResolution.value) : null,
-          components?.timezone?.value || null,
-          components?.language?.value || null,
-          components?.platform?.value || null
-        )
-        .run();
-    }
-
     const sessionToken = generateSessionToken();
     const sessionTokenHash = await hashSessionToken(sessionToken);
     const sessionId = generateId();
@@ -279,31 +247,66 @@ user.post('/session', async (c) => {
     const ipAddress = cfHeaders.get('CF-Connecting-IP') || '';
     const countryCode = cfHeaders.get('CF-IPCountry') || '';
 
-    await db
+    const components = body.fingerprint.components;
+    const proposedFingerprintId = generateId();
+    const fingerprintRecord = await db
       .prepare(`
-        INSERT INTO user_sessions (
-          id, fingerprint_id, session_token, session_token_hash, user_agent, ip_address, country_code, expires_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO user_fingerprints (
+          id, fingerprint_hash, screen_info, timezone, language, browser_info
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(fingerprint_hash)
+        DO UPDATE SET
+          last_seen_at = datetime('now'),
+          visit_count = COALESCE(visit_count, 0) + 1,
+          updated_at = datetime('now')
+        RETURNING id, visit_count
       `)
       .bind(
-        sessionId,
-        fingerprintId,
-        sessionTokenMarker(sessionTokenHash),
-        sessionTokenHash,
-        body.userAgent || null,
-        ipAddress,
-        countryCode,
-        expiresAt
+        proposedFingerprintId,
+        fingerprintHash,
+        components?.screenResolution?.value ? JSON.stringify(components.screenResolution.value) : null,
+        components?.timezone?.value || null,
+        components?.language?.value || null,
+        components?.platform?.value || null
       )
-      .run();
+      .first<{ id: string; visit_count: number }>();
 
-    return success(c, {
-      sessionToken,
-      fingerprintId,
-      isNewUser,
-      expiresAt,
+    if (!fingerprintRecord?.id) {
+      throw new Error('Failed to upsert user fingerprint');
+    }
+    const fingerprintId = fingerprintRecord.id;
+    const isNewUser = fingerprintId === proposedFingerprintId && Number(fingerprintRecord.visit_count || 1) === 1;
+
+    await db.batch([
+      db
+        .prepare(`
+          INSERT INTO user_sessions (
+            id, fingerprint_id, session_token, session_token_hash, user_agent, ip_address, country_code, expires_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `)
+        .bind(
+          sessionId,
+          fingerprintId,
+          sessionTokenMarker(sessionTokenHash),
+          sessionTokenHash,
+          body.userAgent || null,
+          ipAddress,
+          countryCode,
+          expiresAt
+        ),
+    ]);
+
+    return idempotentJson(c, 'user.session.create', idempotencyPayload, 200, {
+      ok: true,
+      data: {
+        sessionToken,
+        fingerprintId,
+        isNewUser,
+        expiresAt,
+      },
     });
   } catch (err) {
+    await releaseIdempotencyClaim(c, 'user.session.create', idempotencyPayload).catch(() => undefined);
     const message = err instanceof Error ? err.message : 'Failed to create session';
     console.error('Session creation failed:', message);
     return serverError(c, message);

@@ -18,6 +18,7 @@ import { validateIapJwt } from './middleware/iap';
 import { success } from './lib/response';
 import { getCorsHeadersForRequest } from './lib/cors';
 import { getApiBaseUrl, getAiDefaultModel, getAiVisionModel } from './lib/config';
+import { attachOriginSignatureHeaders, stripOriginSignatureHeaders } from './lib/origin-signature';
 import type { Env } from './types';
 import { flushAiArtifactOutbox } from './lib/ai-artifact-outbox';
 import { flushNotificationOutbox } from './lib/notification-outbox';
@@ -34,6 +35,14 @@ import {
 
 const app = new Hono<HonoEnv>();
 
+const PUBLIC_EDGE_BLOCKED_BACKEND_PREFIXES = ['/api/v1/agent', '/api/v1/execute'];
+
+function isPublicEdgeBlockedBackendPath(pathname: string): boolean {
+  return PUBLIC_EDGE_BLOCKED_BACKEND_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
 async function proxyToBackend(request: Request, env: Env): Promise<Response> {
   const backendOrigin = env.BACKEND_ORIGIN;
   const url = new URL(request.url);
@@ -48,6 +57,24 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
       {
         status: 500,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      },
+    );
+  }
+
+  if (isPublicEdgeBlockedBackendPath(url.pathname)) {
+    const corsHeaders = await getCorsHeadersForRequest(request, env);
+    return new Response(
+      JSON.stringify({
+        error: 'Route not exposed',
+        message: `${url.pathname} is not exposed through the public edge`,
+      }),
+      {
+        status: 404,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+          ...buildProxyBoundaryHeaders(url.pathname, request.method),
+        },
       },
     );
   }
@@ -73,6 +100,11 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
   const backendUrl = new URL(url.pathname + url.search, backendOrigin);
   const headers = new Headers(request.headers);
   headers.delete('Host');
+  headers.delete('X-Backend-Key');
+  headers.delete('X-Internal-Gateway-Key');
+  headers.delete('X-AI-Model');
+  headers.delete('X-AI-Vision-Model');
+  stripOriginSignatureHeaders(headers);
 
   if (env.BACKEND_KEY) {
     headers.set('X-Backend-Key', env.BACKEND_KEY);
@@ -99,11 +131,21 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
     ]);
     if (forcedModel) {
       headers.set('X-AI-Model', forcedModel);
+      headers.set('X-AI-Model-Source', 'gateway');
     }
     if (forcedVisionModel && isVisionPath) {
       headers.set('X-AI-Vision-Model', forcedVisionModel);
+      headers.set('X-AI-Vision-Model-Source', 'gateway');
     }
   }
+
+  await attachOriginSignatureHeaders({
+    env,
+    headers,
+    method: request.method,
+    pathAndQuery: `${backendUrl.pathname}${backendUrl.search}`,
+    requestId: headers.get('X-Request-ID') || undefined,
+  });
 
   try {
     const response = await fetch(backendUrl.toString(), {

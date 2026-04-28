@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { createLogger } from '../lib/logger.js';
+import { requireFeature } from '../middleware/featureFlags.js';
+import { requireAdmin } from '../middleware/adminAuth.js';
 import { validateBody } from '../middleware/validation.js';
 import { executeBodySchema } from '../middleware/schemas/execute.schema.js';
 
@@ -7,6 +9,9 @@ const router = Router();
 const logger = createLogger('execute');
 
 const PISTON_BASE_URL = process.env.PISTON_URL || 'http://piston:2000';
+
+router.use(requireFeature('code_execution'));
+router.use(requireAdmin);
 
 router.get('/runtimes', async (req, res) => {
   try {

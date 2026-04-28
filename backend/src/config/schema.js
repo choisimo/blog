@@ -56,6 +56,8 @@ export const configSchema = z.object({
   REDIS_PASSWORD: z.string().optional(),
 
   BACKEND_KEY: z.string().optional(),
+  GATEWAY_SIGNING_SECRET: z.string().optional(),
+  BACKEND_GATEWAY_SIGNING_SECRET: z.string().optional(),
   ALLOW_INSECURE_DEV_AUTH: z.enum(['true', 'false']).default('false'),
 
   OPEN_NOTEBOOK_URL: z.string().default('http://open-notebook:8501'),
@@ -90,6 +92,7 @@ export const configSchema = z.object({
   FEATURE_RAG_ENABLED: z.enum(['true', 'false']).default(FEATURES.RAG_ENABLED ? 'true' : 'false'),
   FEATURE_TERMINAL_ENABLED: z.enum(['true', 'false']).default(FEATURES.TERMINAL_ENABLED ? 'true' : 'false'),
   FEATURE_AI_INLINE: z.enum(['true', 'false']).default(FEATURES.AI_INLINE ? 'true' : 'false'),
+  FEATURE_CODE_EXECUTION_ENABLED: z.enum(['true', 'false']).default(FEATURES.CODE_EXECUTION_ENABLED ? 'true' : 'false'),
   FEATURE_COMMENTS_ENABLED: z.enum(['true', 'false']).default(FEATURES.COMMENTS_ENABLED ? 'true' : 'false'),
 });
 

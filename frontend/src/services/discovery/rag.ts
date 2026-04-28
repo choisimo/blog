@@ -528,6 +528,8 @@ export interface RAGIndexResponse {
   data?: {
     indexed: number;
     collection: string;
+    status?: 'pending' | 'succeeded';
+    outboxId?: string;
   };
   error?: string;
 }

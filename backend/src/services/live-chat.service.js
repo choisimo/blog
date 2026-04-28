@@ -102,6 +102,17 @@ const LIVE_REDIS_PRESENCE_TTL_SEC = Math.max(
 
 let liveRedisBridgeReady = false;
 let liveRedisBridgeFailed = false;
+let liveRedisBridgeNextRetryAt = 0;
+let liveRedisBridgeRetryCount = 0;
+let liveRedisBridgeLastError = null;
+const LIVE_REDIS_BRIDGE_BASE_RETRY_MS = Math.max(
+  500,
+  Number.parseInt(process.env.LIVE_REDIS_BRIDGE_BASE_RETRY_MS || "1000", 10),
+);
+const LIVE_REDIS_BRIDGE_MAX_RETRY_MS = Math.max(
+  LIVE_REDIS_BRIDGE_BASE_RETRY_MS,
+  Number.parseInt(process.env.LIVE_REDIS_BRIDGE_MAX_RETRY_MS || "30000", 10),
+);
 
 // ---------------------------------------------------------------------------
 // Agent policy (parsed from env, mutable at runtime via PUT /live/config)
@@ -681,7 +692,9 @@ export async function getRoomParticipantCountGlobal(room) {
 // ---------------------------------------------------------------------------
 
 export async function ensureLiveRedisBridge() {
-  if (liveRedisBridgeReady || liveRedisBridgeFailed) return;
+  if (liveRedisBridgeReady) return;
+  const now = Date.now();
+  if (liveRedisBridgeFailed && now < liveRedisBridgeNextRetryAt) return;
 
   try {
     const subscriber = await getRedisSubscriber();
@@ -705,13 +718,25 @@ export async function ensureLiveRedisBridge() {
     });
 
     liveRedisBridgeReady = true;
+    liveRedisBridgeFailed = false;
+    liveRedisBridgeRetryCount = 0;
+    liveRedisBridgeNextRetryAt = 0;
+    liveRedisBridgeLastError = null;
     logger.info({}, "Redis bridge enabled");
   } catch (err) {
     liveRedisBridgeFailed = true;
+    liveRedisBridgeReady = false;
+    liveRedisBridgeRetryCount += 1;
+    const backoffMs = Math.min(
+      LIVE_REDIS_BRIDGE_MAX_RETRY_MS,
+      LIVE_REDIS_BRIDGE_BASE_RETRY_MS * 2 ** Math.min(liveRedisBridgeRetryCount - 1, 8),
+    );
+    liveRedisBridgeNextRetryAt = Date.now() + backoffMs;
+    liveRedisBridgeLastError = err?.message || "Redis bridge unavailable";
     logger.warn(
       {},
-      "Redis bridge unavailable. Using local-only live fan-out.",
-      { error: err?.message },
+      "Redis bridge unavailable. Using local-only live fan-out until retry.",
+      { error: err?.message, retryCount: liveRedisBridgeRetryCount, nextRetryInMs: backoffMs },
     );
   }
 }
@@ -1341,7 +1366,24 @@ export function getLivePolicySnapshot() {
     liveResearchEnabled: true,
     redisBridgeEnabled: liveRedisBridgeReady,
     redisBridgeFailed: liveRedisBridgeFailed,
+    redisBridgeRetryCount: liveRedisBridgeRetryCount,
+    redisBridgeNextRetryAt: liveRedisBridgeNextRetryAt
+      ? new Date(liveRedisBridgeNextRetryAt).toISOString()
+      : null,
+    redisBridgeLastError: liveRedisBridgeLastError,
     redisPresenceTtlSec: LIVE_REDIS_PRESENCE_TTL_SEC,
+  };
+}
+
+export function getLiveRedisBridgeSnapshot() {
+  return {
+    enabled: liveRedisBridgeReady,
+    failed: liveRedisBridgeFailed,
+    retryCount: liveRedisBridgeRetryCount,
+    nextRetryAt: liveRedisBridgeNextRetryAt
+      ? new Date(liveRedisBridgeNextRetryAt).toISOString()
+      : null,
+    lastError: liveRedisBridgeLastError,
   };
 }
 

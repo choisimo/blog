@@ -10,6 +10,7 @@ import {
   assertSecurityConfiguration,
 } from "./config.js";
 import { requireBackendKey } from "./middleware/backendAuth.js";
+import { requireGatewaySignature } from "./middleware/gatewaySignature.js";
 import { httpCache } from "./middleware/httpCache.js";
 import { httpRequestDuration, httpRequestsTotal } from "./lib/metrics.js";
 import { logger, enablePgLogs } from "./lib/logger.js";
@@ -25,6 +26,8 @@ import {
 } from "./lib/readiness.js";
 import metricsRouter from "./routes/metrics.js";
 import { initChatWebSocket } from "./routes/chat.js";
+import { getLiveRedisBridgeSnapshot } from "./services/live-chat.service.js";
+import { startBackendDomainOutboxWorker } from "./services/backend-outbox.service.js";
 import {
   PUBLIC_ROUTE_REGISTRY,
   getProtectedRouteRegistry,
@@ -70,6 +73,12 @@ async function startServer() {
   app.use(cors(corsOptions));
 
   app.use(morgan("combined"));
+  app.use(
+    requireGatewaySignature({
+      allowBackendKey: true,
+      bypassPaths: ["/api/v1/healthz", "/health", "/api/v1/readiness"],
+    }),
+  );
 
   app.use((req, res, next) => {
     const end = httpRequestDuration.startTimer();
@@ -98,6 +107,12 @@ async function startServer() {
     const readiness = buildReadinessResponse({
       env: config.appEnv,
       uptime: process.uptime(),
+      liveRedisBridge: getLiveRedisBridgeSnapshot(),
+      processLocalState: {
+        mode: process.env.BACKEND_STATE_MODE || "single-instance",
+        durable: false,
+        constraint: "See docs/operational-state.md before horizontal scaling",
+      },
     });
     res.status(readiness.statusCode).json(readiness.body);
   });
@@ -110,14 +125,15 @@ async function startServer() {
     },
   );
 
+  app.use(express.json({ limit: "1mb" }));
+  app.use(express.urlencoded({ extended: false }));
+
+  app.use(PUBLIC_ROUTE_REGISTRY.map((entry) => entry.basePath), requireBackendKey);
   mountRouteRegistry(app, PUBLIC_ROUTE_REGISTRY);
 
   app.use("/metrics", requireBackendKey, metricsRouter);
 
   app.use(requireBackendKey);
-
-  app.use(express.json({ limit: "1mb" }));
-  app.use(express.urlencoded({ extended: false }));
 
   const limiter = rateLimit({
     windowMs: config.rateLimit.windowMs,
@@ -155,11 +171,14 @@ async function startServer() {
     logger.info({}, 'Chat WebSocket transport disabled - SSE-only mode');
   }
 
+  const backendOutboxWorker = startBackendDomainOutboxWorker();
+
   let shuttingDown = false;
   function gracefulShutdown(signal) {
     if (shuttingDown) return;
     shuttingDown = true;
     logger.info({ signal }, "Received shutdown signal, closing server...");
+    backendOutboxWorker.stop();
 
     server.close(async () => {
       logger.info({}, "HTTP server closed");

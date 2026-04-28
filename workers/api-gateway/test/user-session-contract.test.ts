@@ -1,4 +1,4 @@
-import { SELF } from 'cloudflare:test';
+import { SELF, env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 
 function buildFingerprint(visitorId: string) {
@@ -62,6 +62,50 @@ describe('user session contract', () => {
     expect(typeof verified.data.expiresAt).toBe('string');
   });
 
+  it('dedupes session creation by Idempotency-Key', async () => {
+    const visitorId = `visitor-${crypto.randomUUID()}`;
+    const idempotencyKey = `session-${crypto.randomUUID()}`;
+    const body = {
+      fingerprint: buildFingerprint(visitorId),
+      userAgent: 'vitest',
+    };
+
+    const first = await SELF.fetch('https://example.com/api/v1/user/session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Idempotency-Key': idempotencyKey,
+      },
+      body: JSON.stringify(body),
+    });
+    const replay = await SELF.fetch('https://example.com/api/v1/user/session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Idempotency-Key': idempotencyKey,
+      },
+      body: JSON.stringify(body),
+    });
+
+    expect(first.status).toBe(200);
+    expect(replay.status).toBe(200);
+    expect(replay.headers.get('Idempotency-Replayed')).toBe('true');
+    expect(await replay.json()).toEqual(await first.clone().json());
+
+    const conflict = await SELF.fetch('https://example.com/api/v1/user/session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Idempotency-Key': idempotencyKey,
+      },
+      body: JSON.stringify({
+        fingerprint: buildFingerprint(`${visitorId}-different`),
+        userAgent: 'vitest',
+      }),
+    });
+    expect(conflict.status).toBe(409);
+  });
+
   it('rejects URL bearer-token routes and recovers only through the canonical endpoint', async () => {
     const visitorId = `visitor-${crypto.randomUUID()}`;
     const createResponse = await SELF.fetch('https://example.com/api/v1/user/session', {
@@ -117,6 +161,18 @@ describe('user session contract', () => {
       }
     );
     expect(replayRecover.status).toBe(404);
+
+    const sessionCounts = await env.DB.prepare(`
+      SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active
+      FROM user_sessions
+      WHERE fingerprint_id = ?
+    `)
+      .bind(created.data.fingerprintId)
+      .first<{ total: number; active: number }>();
+    expect(Number(sessionCounts?.total || 0)).toBe(2);
+    expect(Number(sessionCounts?.active || 0)).toBe(1);
 
     const oldVerify = await SELF.fetch(
       'https://example.com/api/v1/user/session/verify',

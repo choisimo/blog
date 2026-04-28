@@ -2,6 +2,7 @@ import { Router } from "express";
 import crypto from "crypto";
 import { aiService } from "../lib/ai-service.js";
 import { AI_MODELS } from "../config/constants.js";
+import { runIdempotent } from "../lib/idempotency.js";
 
 const router = Router();
 
@@ -35,6 +36,7 @@ router.post("/sessions", async (req, res, next) => {
       currentRound: 0,
       history: [], // Array of all messages from all rounds
       votes: {}, // { roundNumber: { attacker: count, defender: count } }
+      voteIdentities: {}, // { roundNumber: { voterKey: votedFor } }
       status: "active",
       createdAt: new Date().toISOString(),
     };
@@ -86,15 +88,15 @@ router.post("/sessions/:sessionId/round", async (req, res, next) => {
       });
     }
 
-    session.currentRound += 1;
-
     // Validate round limit
-    if (session.currentRound > session.rounds) {
+    if (session.currentRound >= session.rounds) {
       return res.status(400).json({
         ok: false,
         error: `Cannot exceed ${session.rounds} rounds`,
       });
     }
+
+    session.currentRound += 1;
 
     // Generate debate positions using AI
     let defenderPosition = "";
@@ -193,14 +195,14 @@ router.post("/sessions/:sessionId/round/stream", async (req, res) => {
     return res.status(400).json({ ok: false, error: "Session is not active" });
   }
 
-  session.currentRound += 1;
-
-  if (session.currentRound > session.rounds) {
+  if (session.currentRound >= session.rounds) {
     return res.status(400).json({
       ok: false,
       error: `Cannot exceed ${session.rounds} rounds`,
     });
   }
+
+  session.currentRound += 1;
 
   // Set up SSE
   res.writeHead(200, {
@@ -314,7 +316,7 @@ router.post("/sessions/:sessionId/round/stream", async (req, res) => {
 router.post("/sessions/:sessionId/vote", async (req, res, next) => {
   try {
     const { sessionId } = req.params;
-    const { roundNumber, votedFor } = req.body;
+    const { roundNumber, votedFor, voterId, userId, fingerprintId } = req.body;
 
     const session = debateSessions.get(sessionId);
 
@@ -336,16 +338,42 @@ router.post("/sessions/:sessionId/vote", async (req, res, next) => {
     if (!session.votes[roundNumber]) {
       session.votes[roundNumber] = { attacker: 0, defender: 0 };
     }
+    if (!session.voteIdentities) {
+      session.voteIdentities = {};
+    }
+    if (!session.voteIdentities[roundNumber]) {
+      session.voteIdentities[roundNumber] = {};
+    }
 
-    // Record vote
-    session.votes[roundNumber][votedFor] += 1;
+    const voterKey = String(
+      voterId || userId || fingerprintId || req.headers["x-session-token"] || req.ip || "anonymous",
+    ).slice(0, 256);
+    return await runIdempotent(
+      req,
+      res,
+      "debate.vote",
+      { sessionId, roundNumber, votedFor, voterKey },
+      async () => {
+        const previousVote = session.voteIdentities[roundNumber][voterKey];
+        if (previousVote && session.votes[roundNumber][previousVote] > 0) {
+          session.votes[roundNumber][previousVote] -= 1;
+        }
 
-    res.json({
-      ok: true,
-      data: {
-        votes: session.votes[roundNumber],
+        // Record vote
+        session.votes[roundNumber][votedFor] += 1;
+        session.voteIdentities[roundNumber][voterKey] = votedFor;
+
+        return {
+          statusCode: 200,
+          response: {
+            ok: true,
+            data: {
+              votes: session.votes[roundNumber],
+            },
+          },
+        };
       },
-    });
+    );
   } catch (error) {
     next(error);
   }

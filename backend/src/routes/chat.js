@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { WebSocketServer } from "ws";
+import crypto from "node:crypto";
 import { aiService, tryParseJson } from "../lib/ai-service.js";
 import { config } from "../config.js";
+import { verifyJwt } from "../lib/jwt.js";
+import { verifyGatewaySignatureRequest } from "../middleware/gatewaySignature.js";
 import openNotebook from "../services/open-notebook.service.js";
 import { AI_MODELS, AI_TEMPERATURES, STREAMING } from "../config/constants.js";
 import { createLogger } from "../lib/logger.js";
@@ -86,9 +89,12 @@ function readHeaderValue(value) {
   return undefined;
 }
 
-function resolveChatModelFromRequest(req) {
+function resolveChatModel(req) {
   const forced = readHeaderValue(req?.headers?.["x-ai-model"])?.trim();
-  if (forced) return forced;
+  const source = readHeaderValue(req?.headers?.["x-ai-model-source"])?.trim();
+  if (forced && source === "gateway" && req?.gatewaySignatureVerified === true) {
+    return forced;
+  }
   return config.ai?.defaultModel || AI_MODELS.DEFAULT;
 }
 
@@ -96,6 +102,63 @@ const CHAT_RESPONSE_TIMEOUT_MS = Math.max(
   5_000,
   Number.parseInt(process.env.CHAT_RESPONSE_TIMEOUT_MS || "45000", 10),
 );
+
+function timingSafeEqualString(a, b) {
+  if (typeof a !== "string" || typeof b !== "string") return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) {
+    try {
+      crypto.timingSafeEqual(bufA, bufA);
+    } catch {}
+    return false;
+  }
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+function getBearerFromUpgrade(request) {
+  const auth = String(request.headers?.authorization || "").trim();
+  if (auth.toLowerCase().startsWith("bearer ")) {
+    return auth.slice(7).trim();
+  }
+  return "";
+}
+
+function isAuthorizedChatUpgrade(request) {
+  const gatewaySignature = verifyGatewaySignatureRequest(request);
+  if (gatewaySignature.ok && !gatewaySignature.skipped) {
+    return true;
+  }
+
+  const backendKey = config.backendKey;
+  const presentedBackendKey = String(request.headers?.["x-backend-key"] || "");
+  if (backendKey && timingSafeEqualString(presentedBackendKey, backendKey)) {
+    return true;
+  }
+
+  const token = getBearerFromUpgrade(request);
+  if (!token) return false;
+  try {
+    verifyJwt(token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function rejectUpgrade(socket, statusCode, message) {
+  try {
+    socket.write(
+      `HTTP/1.1 ${statusCode} ${message}\r\n` +
+        "Connection: close\r\n" +
+        "Content-Type: application/json\r\n" +
+        "\r\n" +
+        JSON.stringify({ ok: false, error: message }),
+    );
+  } finally {
+    socket.destroy();
+  }
+}
 
 // ----------------------------------------------------------------------------
 // WebSocket Chat Streaming
@@ -110,6 +173,11 @@ export function initChatWebSocket(server) {
       const url = new URL(request.url || "/", `http://${request.headers.host}`);
       if (url.pathname !== "/api/v1/chat/ws") return;
 
+      if (!isAuthorizedChatUpgrade(request)) {
+        rejectUpgrade(socket, 401, "Unauthorized");
+        return;
+      }
+
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit("connection", ws, request, url);
       });
@@ -121,7 +189,7 @@ export function initChatWebSocket(server) {
   wss.on("connection", (ws, request, url) => {
     let busy = false;
     let closed = false;
-    const forcedModel = resolveChatModelFromRequest(request);
+    const forcedModel = resolveChatModel(request);
 
     const send = (payload) => {
       if (ws.readyState === ws.OPEN) {
@@ -308,7 +376,7 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
   try {
     const { sessionId } = req.params;
     const { parts, context, enableRag } = req.body || {};
-    const forcedModel = resolveChatModelFromRequest(req);
+    const forcedModel = resolveChatModel(req);
     let effectiveSessionId = sessionId;
 
     // Get or create session

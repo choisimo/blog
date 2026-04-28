@@ -1,6 +1,6 @@
-import { pgQuery, pgQueryOne, pgExecute, pgTransaction, isPgConfigured } from './base/pg.repository.js';
+import { pgQuery, pgQueryOne, pgExecute, pgTransaction, isPgConfigured, testPgConnection } from './base/pg.repository.js';
 
-export { isPgConfigured };
+export { isPgConfigured, testPgConnection };
 
 export async function runMigrations() {
   await pgExecute(`
@@ -20,6 +20,12 @@ export async function runMigrations() {
   `);
   await pgExecute(`CREATE INDEX IF NOT EXISTS idx_post_visits_slug_year ON post_visits (post_slug, year)`);
   await pgExecute(`CREATE INDEX IF NOT EXISTS idx_post_visits_visited_at ON post_visits (visited_at DESC)`);
+  await pgExecute(`ALTER TABLE post_visits ADD COLUMN IF NOT EXISTS event_id TEXT`);
+  await pgExecute(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_post_visits_event_id
+      ON post_visits (event_id)
+      WHERE event_id IS NOT NULL
+  `);
 
   await pgExecute(`
     CREATE TABLE IF NOT EXISTS server_logs (
@@ -49,13 +55,20 @@ export async function runMigrations() {
   `);
 }
 
-export async function recordVisit({ slug, year, ip, userAgent, referer, path, sessionId }) {
+export async function recordVisit({ slug, year, ip, userAgent, referer, path, sessionId, eventId }) {
+  let inserted = false;
   await pgTransaction(async (client) => {
-    await client.query(
-      `INSERT INTO post_visits (post_slug, year, ip_address, user_agent, referer, path, session_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [slug, year, ip || null, userAgent || null, referer || null, path || null, sessionId || null]
+    const visit = await client.query(
+      `INSERT INTO post_visits (
+         post_slug, year, ip_address, user_agent, referer, path, session_id, event_id
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT DO NOTHING
+       RETURNING id`,
+      [slug, year, ip || null, userAgent || null, referer || null, path || null, sessionId || null, eventId || null]
     );
+    inserted = visit.rowCount === 1;
+    if (!inserted) return;
 
     await client.query(
       `INSERT INTO post_stats_pg (post_slug, year, total_views, last_viewed_at, updated_at)
@@ -68,6 +81,7 @@ export async function recordVisit({ slug, year, ip, userAgent, referer, path, se
       [slug, year]
     );
   });
+  return { recorded: inserted, deduped: !inserted };
 }
 
 export async function getPostStats(slug, year) {

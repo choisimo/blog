@@ -3,11 +3,17 @@ import type { HonoEnv, Env } from '../types';
 import { success, badRequest, notFound, serverError } from '../lib/response';
 import { requireAuth } from '../middleware/auth';
 import {
+  getCachedIdempotencyResponse,
+  idempotentJson,
+  releaseIdempotencyClaim,
+} from '../lib/idempotency';
+import {
   getApiBaseUrl,
   getAiServeApiKey,
   getAiDefaultModel,
   getAiVisionModel,
 } from '../lib/config';
+import { attachOriginSignatureHeaders } from '../lib/origin-signature';
 
 const debate = new Hono<HonoEnv>();
 
@@ -50,20 +56,29 @@ async function callAI(
     getAiVisionModel(env),
   ]);
 
-  const headers: Record<string, string> = {
+  const upstreamPath = '/api/v1/ai/auto-chat';
+  const headers = new Headers({
     'Content-Type': 'application/json',
-  };
+  });
   if (apiKey) {
-    headers['X-Internal-Gateway-Key'] = apiKey;
+    headers.set('X-Internal-Gateway-Key', apiKey);
   }
   if (forcedModel) {
-    headers['X-AI-Model'] = forcedModel;
+    headers.set('X-AI-Model', forcedModel);
+    headers.set('X-AI-Model-Source', 'gateway');
   }
   if (forcedVisionModel) {
-    headers['X-AI-Vision-Model'] = forcedVisionModel;
+    headers.set('X-AI-Vision-Model', forcedVisionModel);
+    headers.set('X-AI-Vision-Model-Source', 'gateway');
   }
+  await attachOriginSignatureHeaders({
+    env,
+    headers,
+    method: 'POST',
+    pathAndQuery: upstreamPath,
+  });
 
-  const response = await fetch(`${backendUrl}/api/v1/ai/auto-chat`, {
+  const response = await fetch(`${backendUrl}${upstreamPath}`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -382,17 +397,24 @@ debate.post('/sessions/:id/round/stream', requireAuth, async (c) => {
   const backendUrl = await getApiBaseUrl(c.env);
   const apiKey = await getAiServeApiKey(c.env);
 
-  const headers: Record<string, string> = {
+  const headers = new Headers({
     'Content-Type': 'application/json',
-  };
+  });
   if (apiKey) {
-    headers['X-Internal-Gateway-Key'] = apiKey;
+    headers.set('X-Internal-Gateway-Key', apiKey);
   }
+  const upstreamPath = `/api/v1/debate/sessions/${sessionId}/round/stream`;
+  await attachOriginSignatureHeaders({
+    env: c.env,
+    headers,
+    method: 'POST',
+    pathAndQuery: upstreamPath,
+  });
 
   let backendRes: Response;
   try {
     backendRes = await fetch(
-      `${backendUrl}/api/v1/debate/sessions/${sessionId}/round/stream`,
+      `${backendUrl}${upstreamPath}`,
       {
         method: 'POST',
         headers,
@@ -441,6 +463,22 @@ debate.post('/sessions/:id/vote', requireAuth, async (c) => {
   }
 
   const db = c.env.DB;
+  const authUserId = c.get('user')?.sub;
+  const voterKey = authUserId
+    ? `user:${authUserId}`
+    : body.userId
+      ? `user:${body.userId}`
+      : body.fingerprintId
+        ? `fp:${body.fingerprintId}`
+        : 'anonymous';
+  const idempotencyPayload = {
+    sessionId,
+    roundNumber: body.roundNumber,
+    votedFor: body.votedFor,
+    voterKey,
+  };
+  const cached = await getCachedIdempotencyResponse(c, 'debate.vote', idempotencyPayload);
+  if (cached) return cached;
 
   try {
     await db
@@ -456,8 +494,8 @@ debate.post('/sessions/:id/vote', requireAuth, async (c) => {
         generateId(),
         sessionId,
         body.roundNumber,
-        body.userId || null,
-        body.fingerprintId || 'anonymous',
+        authUserId || body.userId || null,
+        voterKey,
         body.votedFor,
         body.votedFor
       )
@@ -480,15 +518,19 @@ debate.post('/sessions/:id/vote', requireAuth, async (c) => {
       voteCount[v.voted_for] = v.count;
     }
 
-    return success(c, {
-      recorded: true,
-      roundNumber: body.roundNumber,
-      votes: {
-        attacker: voteCount.attacker || 0,
-        defender: voteCount.defender || 0,
+    return idempotentJson(c, 'debate.vote', idempotencyPayload, 200, {
+      ok: true,
+      data: {
+        recorded: true,
+        roundNumber: body.roundNumber,
+        votes: {
+          attacker: voteCount.attacker || 0,
+          defender: voteCount.defender || 0,
+        },
       },
     });
   } catch (err) {
+    await releaseIdempotencyClaim(c, 'debate.vote', idempotencyPayload).catch(() => undefined);
     const message = err instanceof Error ? err.message : 'Failed to record vote';
     console.error('Vote recording failed:', message);
     return serverError(c, message);

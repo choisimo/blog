@@ -23,6 +23,7 @@ export function requireFeature(featureName) {
       'terminal': features.terminalEnabled,
       'comments': features.commentsEnabled,
       'ai_inline': features.aiInline,
+      'code_execution': features.codeExecutionEnabled,
     };
     
     const isEnabled = featureMap[featureName];

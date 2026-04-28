@@ -66,55 +66,10 @@ async function executeInSandbox(code, language) {
 }
 
 /**
- * Execute JavaScript code (using Node.js vm module locally)
+ * Execute JavaScript code through the configured sandbox only.
  */
 async function executeJavaScript(code) {
-  try {
-    // Try sandbox first
-    return await executeInSandbox(code, 'javascript');
-  } catch {
-    // Fallback to basic evaluation (limited)
-    const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-    
-    // Create a sandboxed context
-    const sandbox = {
-      console: {
-        log: (...args) => output.push(args.map(String).join(' ')),
-        error: (...args) => output.push(`[Error] ${args.map(String).join(' ')}`),
-      },
-      Math,
-      Date,
-      JSON,
-      Array,
-      Object,
-      String,
-      Number,
-      Boolean,
-      parseInt,
-      parseFloat,
-      isNaN,
-      isFinite,
-    };
-
-    const output = [];
-    
-    try {
-      const fn = new AsyncFunction(...Object.keys(sandbox), code);
-      const result = await fn(...Object.values(sandbox));
-      
-      return {
-        success: true,
-        output: output.join('\n'),
-        result: result !== undefined ? String(result) : undefined,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-        output: output.join('\n'),
-      };
-    }
-  }
+  return executeInSandbox(code, 'javascript');
 }
 
 /**
@@ -135,6 +90,11 @@ async function executeShell(code) {
  * Create Code Execution Tool
  */
 export function createCodeExecutionTool() {
+  if (config.features?.codeExecutionEnabled !== true) {
+    logger.info({ feature: 'code_execution' }, 'Code execution tool disabled by feature flag');
+    return null;
+  }
+
   return {
     name: 'code_execution',
     description: 'Execute code in a sandboxed environment. Supports JavaScript, Python, and shell commands. Use for calculations, data processing, or testing code snippets.',

@@ -10,6 +10,7 @@ const { createNotificationsService } = await import("../src/services/notificatio
 
 test("notifications service emits a stable outbox notificationId when no inbox record exists", async () => {
   const broadcasts = [];
+  const queued = [];
   const service = createNotificationsService({
     notificationStream: {
       broadcast(eventName, data, targetUserId) {
@@ -44,6 +45,12 @@ test("notifications service emits a stable outbox notificationId when no inbox r
       },
       async markOutboxBroadcasted() {},
     },
+    broadcastOutbox: {
+      async append(input) {
+        queued.push(input);
+        return { id: "dout-1", ...input };
+      },
+    },
   });
 
   const result = await service.deliver({
@@ -53,15 +60,18 @@ test("notifications service emits a stable outbox notificationId when no inbox r
     message: "Uses outbox ID when inbox is absent",
   });
 
-  assert.equal(result.delivered, 2);
-  assert.equal(broadcasts.length, 1);
-  assert.equal(broadcasts[0].data.notificationId, "nout-1");
-  assert.equal(broadcasts[0].data.outboxId, "nout-1");
+  assert.equal(result.delivered, 0);
+  assert.equal(result.broadcastQueued, true);
+  assert.equal(broadcasts.length, 0);
+  assert.equal(queued.length, 1);
+  assert.equal(queued[0].payload.data.notificationId, "nout-1");
+  assert.equal(queued[0].payload.data.outboxId, "nout-1");
 });
 
 test("notifications service does not rebroadcast when appendOutbox returns an already-broadcasted dedupe hit", async () => {
   let markBroadcastedCalled = false;
   let broadcastCalled = false;
+  let outboxAppendCalled = false;
   const service = createNotificationsService({
     notificationStream: {
       broadcast() {
@@ -98,6 +108,12 @@ test("notifications service does not rebroadcast when appendOutbox returns an al
         markBroadcastedCalled = true;
       },
     },
+    broadcastOutbox: {
+      async append() {
+        outboxAppendCalled = true;
+        return null;
+      },
+    },
   });
 
   const result = await service.deliver({
@@ -111,5 +127,6 @@ test("notifications service does not rebroadcast when appendOutbox returns an al
   assert.equal(result.delivered, 0);
   assert.equal(result.deduped, true);
   assert.equal(broadcastCalled, false);
+  assert.equal(outboxAppendCalled, false);
   assert.equal(markBroadcastedCalled, false);
 });

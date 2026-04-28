@@ -1,11 +1,46 @@
 import { Router } from 'express';
-import { Octokit } from '@octokit/rest';
 import { config } from '../config.js';
-import { queryAll, execute, isD1Configured } from '../lib/d1.js';
+import { queryAll, isD1Configured } from '../lib/d1.js';
 import requireAdmin from '../middleware/adminAuth.js'; // centralized admin auth middleware
 import { buildFrontmatterMarkdown } from '../lib/markdown.js';
+import {
+  getDomainOutboxRepository,
+  getDomainOutboxSummary,
+} from '../repositories/domain-outbox.repository.js';
+import {
+  GITHUB_PR_STREAM,
+  flushBackendDomainOutbox,
+} from '../services/backend-outbox.service.js';
 
 const router = Router();
+
+function getIdempotencyKey(req, fallback) {
+  const raw = req.headers?.['idempotency-key'];
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  const normalized = String(value || '').trim();
+  return normalized ? normalized.slice(0, 256) : fallback;
+}
+
+function buildTimestamp() {
+  return new Date()
+    .toISOString()
+    .replace(/[-:T.Z]/g, '')
+    .slice(0, 12);
+}
+
+function requireGithubConfig(res) {
+  const owner = config.github.owner;
+  const repo = config.github.repo;
+  const token = config.github.token;
+  if (!owner || !repo || !token) {
+    res.status(500).json({
+      ok: false,
+      error: 'Server not configured for GitHub (owner/repo/token missing)',
+    });
+    return false;
+  }
+  return true;
+}
 
 
 router.post('/propose-new-version', requireAdmin, async (req, res, next) => {
@@ -15,82 +50,18 @@ router.post('/propose-new-version', requireAdmin, async (req, res, next) => {
       return res.status(400).json({ ok: false, error: 'markdown is required' });
     }
 
-    const owner = config.github.owner;
-    const repo = config.github.repo;
-    const token = config.github.token;
-    if (!owner || !repo || !token) {
-      return res.status(500).json({
-        ok: false,
-        error: 'Server not configured for GitHub (owner/repo/token missing)',
-      });
-    }
+    if (!requireGithubConfig(res)) return;
 
-    const octokit = new Octokit({ auth: token });
-
-    // get repo default branch
-    const repoInfo = await octokit.rest.repos.get({ owner, repo });
-    const baseBranch = repoInfo.data.default_branch || 'main';
-
-    // base ref
-    const baseRef = await octokit.rest.git.getRef({
-      owner,
-      repo,
-      ref: `heads/${baseBranch}`,
-    });
-    const baseSha = baseRef.data.object.sha;
-
-    // branch name
-    const stamp = new Date()
-      .toISOString()
-      .replace(/[-:T.Z]/g, '')
-      .slice(0, 12);
+    const stamp = buildTimestamp();
     const slug = (original?.slug || 'post').toString();
     const year = (original?.year || new Date().getFullYear()).toString();
     const branch = `propose/${year}-${slug}-${stamp}`;
 
-    // create branch
-    await octokit.rest.git.createRef({
-      owner,
-      repo,
-      ref: `refs/heads/${branch}`,
-      sha: baseSha,
-    });
-
-    // destination path
     let origPath = (original?.path || `/posts/${year}/${slug}.md`).toString();
     if (!origPath.startsWith('/')) origPath = `/${origPath}`;
-    // Propose into a new file to avoid overwriting
     const proposedName = origPath.replace(/\.md$/i, `-rev-${stamp}.md`);
     const destPath = `frontend/public${proposedName}`.replace(/^\/+/, '');
 
-    // commit file content
-    const contentBase64 = Buffer.from(markdown, 'utf-8').toString('base64');
-    const message = `propose: ${year}/${slug} (${stamp})\n\nsource: ${sourcePage || ''}`;
-
-    await octokit.rest.repos.createOrUpdateFileContents({
-      owner,
-      repo,
-      path: destPath,
-      message,
-      content: contentBase64,
-      branch,
-      committer:
-        config.github.gitUserName && config.github.gitUserEmail
-          ? {
-              name: config.github.gitUserName,
-              email: config.github.gitUserEmail,
-            }
-          : undefined,
-      author:
-        config.github.gitUserName && config.github.gitUserEmail
-          ? {
-              name: config.github.gitUserName,
-              email: config.github.gitUserEmail,
-            }
-          : undefined,
-    });
-
-    // create PR
     const prTitle = `Propose new version: ${year}/${slug}`;
     const prBody = [
       sourcePage ? `Source: ${sourcePage}` : '',
@@ -99,16 +70,30 @@ router.post('/propose-new-version', requireAdmin, async (req, res, next) => {
       .filter(Boolean)
       .join('\n');
 
-    const pr = await octokit.rest.pulls.create({
-      owner,
-      repo,
-      title: prTitle,
-      head: branch,
-      base: baseBranch,
-      body: prBody,
+    const outbox = await getDomainOutboxRepository().append({
+      stream: GITHUB_PR_STREAM,
+      aggregateId: `propose:${year}:${slug}`,
+      eventType: 'github.pr.propose-new-version',
+      payload: {
+        branch,
+        path: destPath,
+        markdown,
+        commitMessage: `propose: ${year}/${slug} (${stamp})\n\nsource: ${sourcePage || ''}`,
+        prTitle,
+        prBody,
+      },
+      idempotencyKey: getIdempotencyKey(req, `github.pr.propose:${year}:${slug}:${stamp}`),
     });
 
-    return res.json({ ok: true, data: { prUrl: pr.data.html_url } });
+    return res.status(202).json({
+      ok: true,
+      data: {
+        status: 'pending',
+        outboxId: outbox.id,
+        branch,
+        path: destPath,
+      },
+    });
   } catch (err) {
     return next(err);
   }
@@ -156,23 +141,11 @@ router.post('/archive-comments', requireAdmin, async (req, res, next) => {
       groups.get(pid).push(comment);
     }
 
-    const owner = config.github.owner;
-    const repo = config.github.repo;
-    const token = config.github.token;
-    if (!owner || !repo || !token) {
-      return res.status(500).json({
-        ok: false,
-        error: 'Server not configured for GitHub (owner/repo/token missing)',
-      });
-    }
-
-    const octokit = new Octokit({ auth: token });
-    // Ensure we use default branch
-    const repoInfo = await octokit.rest.repos.get({ owner, repo });
-    const baseBranch = repoInfo.data.default_branch || 'main';
+    if (!dryRun && !requireGithubConfig(res)) return;
 
     const results = [];
     let total = 0;
+    const archives = [];
 
     for (const [postId, items] of groups.entries()) {
       const formattedComments = items.map((c) => ({
@@ -190,51 +163,41 @@ router.post('/archive-comments', requireAdmin, async (req, res, next) => {
       const contentStr = `${JSON.stringify({ comments: formattedComments }, null, 2)}\n`;
 
       if (!dryRun) {
-        // get existing sha if any
-        let sha;
-        try {
-          const existing = await octokit.rest.repos.getContent({ owner, repo, path, ref: baseBranch });
-          if (!Array.isArray(existing.data)) sha = existing.data.sha;
-        } catch (_) {
-          // not found OK
-        }
-
-        await octokit.rest.repos.createOrUpdateFileContents({
-          owner,
-          repo,
+        archives.push({
+          postId,
           path,
           message: `chore(archive): comments for ${postId} (${formattedComments.length})`,
-          content: Buffer.from(contentStr, 'utf8').toString('base64'),
-          branch: baseBranch,
-          committer:
-            config.github.gitUserName && config.github.gitUserEmail
-              ? { name: config.github.gitUserName, email: config.github.gitUserEmail }
-              : undefined,
-          author:
-            config.github.gitUserName && config.github.gitUserEmail
-              ? { name: config.github.gitUserName, email: config.github.gitUserEmail }
-              : undefined,
-          sha,
+          content: contentStr,
+          commentIds: items.map((c) => c.id),
         });
-
-        // Mark archived in D1
-        const ids = items.map(c => c.id);
-        const placeholders = ids.map(() => '?').join(',');
-        await execute(
-          `UPDATE comments SET archived = 1, updated_at = datetime('now') WHERE id IN (${placeholders})`,
-          ...ids
-        );
       }
 
-      results.push({ postId, count: formattedComments.length, path, committed: !dryRun });
+      results.push({ postId, count: formattedComments.length, path, committed: false });
     }
 
-    // Optional deploy hook (compat)
     const hook = config.integrations?.vercelDeployHookUrl;
-    if (hook && !dryRun) {
-      try {
-        await fetch(hook, { method: 'POST' });
-      } catch (_) {}
+    if (!dryRun) {
+      const outbox = await getDomainOutboxRepository().append({
+        stream: GITHUB_PR_STREAM,
+        aggregateId: `comments-archive:${cutoffIso}`,
+        eventType: 'github.comments.archive',
+        payload: {
+          cutoffIso,
+          archives,
+          deployHookUrl: hook || null,
+        },
+        idempotencyKey: getIdempotencyKey(req, `github.comments.archive:${cutoffIso}`),
+      });
+
+      return res.status(202).json({
+        ok: true,
+        data: {
+          status: 'pending',
+          outboxId: outbox.id,
+          archivedPosts: results,
+          totalComments: total,
+        },
+      });
     }
 
     return res.json({ ok: true, data: { archivedPosts: results, totalComments: total } });
@@ -248,12 +211,7 @@ router.post('/create-post-pr', requireAdmin, async (req, res, next) => {
   try {
     const { title, slug: slugRaw, year: yearRaw, content, frontmatter, draft } = req.body || {};
 
-    const owner = config.github.owner;
-    const repo = config.github.repo;
-    const token = config.github.token;
-    if (!owner || !repo || !token) {
-      return res.status(500).json({ ok: false, error: 'Server not configured for GitHub (owner/repo/token missing)' });
-    }
+    if (!requireGithubConfig(res)) return;
 
     const year = String(yearRaw || new Date().getFullYear());
     if (!/^\d{4}$/.test(year)) {
@@ -282,60 +240,75 @@ router.post('/create-post-pr', requireAdmin, async (req, res, next) => {
     const body = typeof content === 'string' ? content : '';
     const markdown = buildFrontmatterMarkdown(fm, body);
 
-    const octokit = new Octokit({ auth: token });
-
-    // Get default branch
-    const repoInfo = await octokit.rest.repos.get({ owner, repo });
-    const baseBranch = repoInfo.data.default_branch || 'main';
-
-    // Base ref SHA
-    const baseRef = await octokit.rest.git.getRef({ owner, repo, ref: `heads/${baseBranch}` });
-    const baseSha = baseRef.data.object.sha;
-
-    // Branch name
-    const stamp = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 12);
+    const stamp = buildTimestamp();
     const branch = `post/${year}-${normalizedSlug}-${stamp}`;
-
-    await octokit.rest.git.createRef({ owner, repo, ref: `refs/heads/${branch}`, sha: baseSha });
-
-    // Destination path in repo
     const destPath = `frontend/public/posts/${year}/${filename}`;
-
-    // Commit file
-    await octokit.rest.repos.createOrUpdateFileContents({
-      owner,
-      repo,
-      path: destPath,
-      message: `feat(post): add ${year}/${filename}`,
-      content: Buffer.from(markdown, 'utf8').toString('base64'),
-      branch,
-      committer:
-        config.github.gitUserName && config.github.gitUserEmail
-          ? { name: config.github.gitUserName, email: config.github.gitUserEmail }
-          : undefined,
-      author:
-        config.github.gitUserName && config.github.gitUserEmail
-          ? { name: config.github.gitUserName, email: config.github.gitUserEmail }
-          : undefined,
-    });
-
-    // Optionally run manifest generation file updates inside PR by touching a file
-    // (CI will generate manifests automatically on PR)
-
-    // Create PR
     const prTitle = `Add new post: ${baseTitle} (${year}/${normalizedSlug})`;
     const prBody = `This PR adds a new post file at ${destPath}.\n\n- Title: ${baseTitle}\n- Year: ${year}\n- Slug: ${normalizedSlug}\n- Published: ${fm.published !== false}`;
 
-    const pr = await octokit.rest.pulls.create({
-      owner,
-      repo,
-      title: prTitle,
-      head: branch,
-      base: baseBranch,
-      body: prBody,
+    const outbox = await getDomainOutboxRepository().append({
+      stream: GITHUB_PR_STREAM,
+      aggregateId: `post:${year}:${normalizedSlug}`,
+      eventType: 'github.pr.create-post',
+      payload: {
+        branch,
+        path: destPath,
+        markdown,
+        commitMessage: `feat(post): add ${year}/${filename}`,
+        prTitle,
+        prBody,
+      },
+      idempotencyKey: getIdempotencyKey(req, `github.pr.create-post:${year}:${normalizedSlug}:${stamp}`),
     });
 
-    return res.status(201).json({ ok: true, data: { prUrl: pr.data.html_url, branch, path: destPath } });
+    return res.status(202).json({
+      ok: true,
+      data: {
+        status: 'pending',
+        outboxId: outbox.id,
+        branch,
+        path: destPath,
+      },
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.get('/backend-outbox', requireAdmin, async (req, res, next) => {
+  try {
+    const stream = String(req.query.stream || '').trim() || undefined;
+    const limit = Number.parseInt(String(req.query.limit || '25'), 10);
+    const repository = getDomainOutboxRepository();
+    const [stats, events] = await Promise.all([
+      stream ? getDomainOutboxSummary(stream) : repository.getStats({}),
+      repository.listEvents({ stream, limit: Number.isFinite(limit) ? limit : 25, includePayload: false }),
+    ]);
+    const summary = stream
+      ? stats
+      : {
+          stream: null,
+          pending: stats.pending,
+          processing: stats.processing,
+          failed: stats.failed,
+          processed: stats.succeeded,
+          deadLetter: stats.deadLetter,
+          stuck: stats.stuck,
+        };
+
+    return res.json({ ok: true, data: { summary, events } });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.post('/backend-outbox/flush', requireAdmin, async (req, res, next) => {
+  try {
+    const result = await flushBackendDomainOutbox({
+      streams: req.body?.streams || req.body?.stream,
+      limit: req.body?.limit,
+    });
+    return res.json({ ok: true, data: result });
   } catch (err) {
     return next(err);
   }

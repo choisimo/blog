@@ -36,7 +36,7 @@ backend의 중요한 경계는 `requireBackendKey` 적용 시점입니다.
 - `GET /api/v1/readiness`
 - `GET /api/v1/public/config`
 - `GET /metrics` (`requireBackendKey` is applied on the route mount itself)
-- `/api/v1/notifications` (endpoint-level auth inside the router)
+- `/api/v1/auth` and `/api/v1/notifications` are mounted before the global guard but still require `X-Backend-Key` at the mount boundary.
 
 이후 `app.use(requireBackendKey)`가 등록되므로, 나머지 mounted routes는 backend-to-backend key 전제를 가집니다.
 
@@ -52,7 +52,6 @@ backend의 중요한 경계는 `requireBackendKey` 적용 시점입니다.
 - `/api/v1/admin`
 - `/api/v1/posts`
 - `/api/v1/images`
-- `/api/v1/auth`
 - `/api/v1/rag`
 - `/api/v1/memories`
 - `/api/v1/user`
@@ -67,6 +66,8 @@ backend의 중요한 경계는 `requireBackendKey` 적용 시점입니다.
 
 - frontend가 backend를 직접 두드리는 구조가 아니라면, 이 경계는 주로 `api-gateway` 또는 다른 내부 서비스 호출을 위한 것입니다.
 - `X-Backend-Key`가 빠지면 guarded routes는 접근이 거부됩니다.
+- 프로덕션에서는 backend origin을 public internet에 직접 노출하지 않고 Worker/firewall/mTLS/IP allowlist 뒤에 둡니다. process-local state 운영 제약은 [operational-state.md](/home/nodove/workspace/blog/docs/operational-state.md)를 기준으로 관리합니다.
+- GitHub PR 생성, image vision, RAG Chroma index/delete, deploy hook, notification broadcast는 backend `domain_outbox` worker가 재시도하며 처리합니다. 수동 점검은 `/api/v1/admin/backend-outbox`, 수동 flush는 `/api/v1/admin/backend-outbox/flush`를 사용합니다.
 - 댓글 surface는 backend legacy router를 제거하고 worker D1 경로만 authoritative surface로 유지합니다.
 
 ## Verified Contracts

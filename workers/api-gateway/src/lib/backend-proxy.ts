@@ -2,6 +2,7 @@ import type { Context } from 'hono';
 import type { HonoEnv } from '../types';
 import { getCorsHeadersForRequest } from './cors';
 import { getAiDefaultModel, getAiVisionModel } from './config';
+import { attachOriginSignatureHeaders, stripOriginSignatureHeaders } from './origin-signature';
 
 export type BackendProxyOptions = {
   upstreamPath: string;
@@ -42,15 +43,22 @@ function buildBackendUrl(c: Context<HonoEnv>, options: BackendProxyOptions): URL
   return url;
 }
 
-async function buildProxyHeaders(c: Context<HonoEnv>, options: BackendProxyOptions): Promise<Headers> {
+async function buildProxyHeaders(
+  c: Context<HonoEnv>,
+  options: BackendProxyOptions,
+  backendUrl: URL
+): Promise<Headers> {
   const headers = new Headers(c.req.raw.headers);
   const clientIp = c.req.raw.headers.get('CF-Connecting-IP') || '';
 
   headers.delete('Host');
+  headers.delete('X-Backend-Key');
+  headers.delete('X-Internal-Gateway-Key');
+  headers.delete('X-AI-Model');
+  headers.delete('X-AI-Vision-Model');
+  stripOriginSignatureHeaders(headers);
   if (c.env.BACKEND_KEY) {
     headers.set('X-Backend-Key', c.env.BACKEND_KEY);
-  } else {
-    headers.delete('X-Backend-Key');
   }
 
   if (clientIp) {
@@ -71,9 +79,11 @@ async function buildProxyHeaders(c: Context<HonoEnv>, options: BackendProxyOptio
 
     if (forcedModel) {
       headers.set('X-AI-Model', forcedModel);
+      headers.set('X-AI-Model-Source', 'gateway');
     }
     if (forcedVisionModel) {
       headers.set('X-AI-Vision-Model', forcedVisionModel);
+      headers.set('X-AI-Vision-Model-Source', 'gateway');
     }
   }
 
@@ -88,6 +98,14 @@ async function buildProxyHeaders(c: Context<HonoEnv>, options: BackendProxyOptio
   if (options.contentType) {
     headers.set('Content-Type', options.contentType);
   }
+
+  await attachOriginSignatureHeaders({
+    env: c.env,
+    headers,
+    method: options.method || c.req.method,
+    pathAndQuery: `${backendUrl.pathname}${backendUrl.search}`,
+    requestId: c.req.raw.headers.get('X-Request-ID') || undefined,
+  });
 
   return headers;
 }
@@ -157,7 +175,7 @@ export async function proxyToBackendWithPolicy(
   }
 
   const [headers, body] = await Promise.all([
-    buildProxyHeaders(c, options),
+    buildProxyHeaders(c, options, backendUrl),
     buildProxyBody(c, options),
   ]);
 

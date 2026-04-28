@@ -47,6 +47,13 @@ export async function pgExecute(sql, ...params) {
   await pool.query(sql, params);
 }
 
+export async function testPgConnection() {
+  const pool = getPool();
+  if (!pool) return false;
+  await pool.query('SELECT 1');
+  return true;
+}
+
 export async function pgTransaction(fn) {
   const pool = getPool();
   if (!pool) throw new Error('PostgreSQL not configured (DATABASE_URL missing)');
