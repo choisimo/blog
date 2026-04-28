@@ -112,11 +112,25 @@ const REDIS_KEY_PREFIX = 'refresh_token:';
 const ANONYMOUS_TOKEN_EXPIRY = '30d';
 const ANONYMOUS_TOKEN_EXPIRY_SECONDS = 30 * 24 * 60 * 60;
 
+function isRefreshTokenFallbackAllowed() {
+  return config.security?.protectedEnvironment !== true;
+}
+
+function buildRefreshTokenStoreError(cause) {
+  const error = new Error('Refresh token store unavailable');
+  error.code = 'REFRESH_TOKEN_STORE_UNAVAILABLE';
+  error.cause = cause;
+  return error;
+}
+
 async function addRefreshToken(token) {
   try {
     const redis = await getRedisClient();
     await redis.set(`${REDIS_KEY_PREFIX}${token}`, '1', { EX: REFRESH_TOKEN_TTL });
   } catch (err) {
+    if (!isRefreshTokenFallbackAllowed()) {
+      throw buildRefreshTokenStoreError(err);
+    }
     logger.warn({}, 'Redis unavailable, falling back to in-memory store for refresh token', { error: err.message });
     guardedSetAdd(_refreshTokenFallback, token);
   }
@@ -128,6 +142,9 @@ async function hasRefreshToken(token) {
     const val = await redis.get(`${REDIS_KEY_PREFIX}${token}`);
     return val !== null;
   } catch (err) {
+    if (!isRefreshTokenFallbackAllowed()) {
+      throw buildRefreshTokenStoreError(err);
+    }
     logger.warn({}, 'Redis unavailable, checking in-memory fallback for refresh token', { error: err.message });
     return _refreshTokenFallback.has(token);
   }
@@ -138,6 +155,9 @@ async function removeRefreshToken(token) {
     const redis = await getRedisClient();
     await redis.del(`${REDIS_KEY_PREFIX}${token}`);
   } catch (err) {
+    if (!isRefreshTokenFallbackAllowed()) {
+      throw buildRefreshTokenStoreError(err);
+    }
     logger.warn({}, 'Redis unavailable, removing from in-memory fallback for refresh token', { error: err.message });
     _refreshTokenFallback.delete(token);
   }
@@ -160,7 +180,7 @@ function decodeExpiresAtFromToken(token) {
   }
 }
 
-function issueTokens(email) {
+async function issueTokens(email) {
   const accessToken = signJwt(
     { sub: 'admin', role: 'admin', username: 'admin', email, emailVerified: true, type: 'access' },
     { expiresIn: '15m' }
@@ -169,7 +189,7 @@ function issueTokens(email) {
     { sub: 'admin', role: 'admin', username: 'admin', email, emailVerified: true, type: 'refresh' },
     { expiresIn: '7d' }
   );
-  addRefreshToken(refreshToken).catch(err => logger.error({}, 'Failed to store refresh token', { error: err.message }));
+  await addRefreshToken(refreshToken);
   return { accessToken, refreshToken };
 }
 
@@ -341,7 +361,14 @@ router.post('/totp/verify', async (req, res) => {
   totpChallenges.delete(challengeId);
 
   const email = process.env.ADMIN_EMAIL || 'admin@local';
-  const { accessToken, refreshToken } = issueTokens(email);
+  let accessToken;
+  let refreshToken;
+  try {
+    ({ accessToken, refreshToken } = await issueTokens(email));
+  } catch (err) {
+    logger.error({}, 'Failed to issue TOTP tokens', { error: err.message });
+    return res.status(503).json({ ok: false, error: 'Refresh token store unavailable' });
+  }
 
   return res.json({
     ok: true,
@@ -442,7 +469,7 @@ router.get('/oauth/github/callback', async (req, res) => {
       return res.redirect(302, `${frontendBase}/admin/auth/callback#error=email_not_allowed`);
     }
 
-    const { accessToken, refreshToken } = issueTokens(email);
+    const { accessToken, refreshToken } = await issueTokens(email);
     const params = new URLSearchParams({ token: accessToken, refreshToken });
     return res.redirect(302, `${frontendBase}/admin/auth/callback#${params.toString()}`);
   } catch (err) {
@@ -530,11 +557,15 @@ router.get('/oauth/google/callback', async (req, res) => {
       return res.redirect(302, `${frontendBase}/admin/auth/callback#error=no_email`);
     }
 
+    if (userInfo?.email_verified !== true) {
+      return res.redirect(302, `${frontendBase}/admin/auth/callback#error=email_not_verified`);
+    }
+
     if (!isEmailAllowed(email)) {
       return res.redirect(302, `${frontendBase}/admin/auth/callback#error=email_not_allowed`);
     }
 
-    const { accessToken, refreshToken } = issueTokens(email);
+    const { accessToken, refreshToken } = await issueTokens(email);
     const params = new URLSearchParams({ token: accessToken, refreshToken });
     return res.redirect(302, `${frontendBase}/admin/auth/callback#${params.toString()}`);
   } catch (err) {
@@ -577,6 +608,9 @@ router.post('/refresh', async (req, res) => {
       },
     });
   } catch (err) {
+    if (err?.code === 'REFRESH_TOKEN_STORE_UNAVAILABLE') {
+      return res.status(503).json({ ok: false, error: 'Refresh token store unavailable' });
+    }
     return res.status(401).json({ ok: false, error: 'invalid refresh token' });
   }
 });
@@ -584,7 +618,17 @@ router.post('/refresh', async (req, res) => {
 router.post('/logout', async (req, res) => {
   const { refreshToken } = req.body || {};
   const token = String(refreshToken || '').trim();
-  if (token) await removeRefreshToken(token);
+  if (token) {
+    try {
+      await removeRefreshToken(token);
+    } catch (err) {
+      if (err?.code === 'REFRESH_TOKEN_STORE_UNAVAILABLE') {
+        return res.status(503).json({ ok: false, error: 'Refresh token store unavailable' });
+      }
+      logger.error({}, 'Failed to remove refresh token', { error: err.message });
+      return res.status(500).json({ ok: false, error: 'Failed to logout' });
+    }
+  }
   return res.json({ ok: true });
 });
 

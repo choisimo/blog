@@ -15,6 +15,25 @@ afterEach(() => {
 });
 
 describe('generic backend proxy', () => {
+  it('does not expose agent or execute paths through the public backend proxy', async () => {
+    const upstreamFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(null, {
+        status: 204,
+      })
+    );
+
+    const agentResponse = await SELF.fetch('https://example.com/api/v1/agent/run', {
+      method: 'POST',
+    });
+    const executeResponse = await SELF.fetch('https://example.com/api/v1/execute', {
+      method: 'POST',
+    });
+
+    expect(agentResponse.status).toBe(404);
+    expect(executeResponse.status).toBe(404);
+    expect(upstreamFetch).not.toHaveBeenCalled();
+  });
+
   it('does not overwrite Host while forwarding backend-owned paths', async () => {
     const upstreamFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(null, {
