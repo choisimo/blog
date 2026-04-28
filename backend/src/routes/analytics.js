@@ -11,6 +11,7 @@ import {
 import { httpCache, invalidateCacheByPrefix } from '../middleware/httpCache.js';
 import { createLogger } from '../lib/logger.js';
 import { buildDataOwnershipHeaders } from '../../../shared/src/contracts/data-ownership.js';
+import { runIdempotent } from '../lib/idempotency.js';
 
 const router = Router();
 const logger = createLogger('analytics');
@@ -52,9 +53,34 @@ router.post('/view', requirePg, async (req, res, next) => {
     const referer = req.headers['referer'] || req.headers['referrer'] || null;
     const path = req.body.path || null;
     const sessionId = req.body.sessionId || null;
+    const eventId =
+      req.headers['idempotency-key'] ||
+      req.body.eventId ||
+      req.body.viewId ||
+      null;
 
-    await recordVisit({ slug, year, ip, userAgent, referer, path, sessionId });
-    return res.json({ ok: true, data: { recorded: true } });
+    return await runIdempotent(
+      req,
+      res,
+      'analytics.view',
+      { year, slug, path, sessionId, eventId },
+      async () => {
+        const result = await recordVisit({
+          slug,
+          year,
+          ip,
+          userAgent,
+          referer,
+          path,
+          sessionId,
+          eventId,
+        });
+        return {
+          statusCode: 200,
+          response: { ok: true, data: result || { recorded: true, deduped: false } },
+        };
+      },
+    );
   } catch (err) {
     logger.error({}, 'Failed to record view', { error: err.message });
     return next(err);

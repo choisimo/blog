@@ -1,5 +1,8 @@
 import { createLogger } from "../lib/logger.js";
 import { getNotificationsRepository } from "../repositories/notifications.repository.js";
+import { getDomainOutboxRepository } from "../repositories/domain-outbox.repository.js";
+import { NOTIFICATION_BROADCAST_STREAM } from "./backend-outbox.service.js";
+import { transaction } from "../lib/d1.js";
 
 const logger = createLogger("notifications-service");
 
@@ -19,6 +22,7 @@ function normalizeEnvelope(input = {}) {
 export function createNotificationsService({
   notificationStream,
   repository = getNotificationsRepository(),
+  broadcastOutbox = getDomainOutboxRepository(),
 }) {
   return {
     async getStorageMode() {
@@ -39,37 +43,47 @@ export function createNotificationsService({
 
     async deliver(input = {}) {
       const envelope = normalizeEnvelope(input);
-      const outbox = await repository.appendOutbox(envelope);
-      const inbox = envelope.targetUserId
-        ? await repository.materializeInbox(outbox, envelope.targetUserId)
-        : null;
+      const { outbox, inbox, broadcastEvent } = await transaction(async () => {
+        const appended = await repository.appendOutbox(envelope);
+        const materialized = envelope.targetUserId
+          ? await repository.materializeInbox(appended, envelope.targetUserId)
+          : null;
+        const queued = appended.broadcastedAt
+          ? null
+          : await broadcastOutbox.append({
+              stream: NOTIFICATION_BROADCAST_STREAM,
+              aggregateId: appended.id,
+              eventType: "notification.broadcast",
+              payload: {
+                outboxId: appended.id,
+                eventName: envelope.eventName,
+                targetUserId: envelope.targetUserId || null,
+                data: {
+                  notificationId: materialized?.id ?? appended.id,
+                  outboxId: appended.id,
+                  type: envelope.type,
+                  title: envelope.title,
+                  message: envelope.message,
+                  payload: envelope.payload ?? null,
+                  sourceId: envelope.sourceId ?? null,
+                  createdAt: materialized?.createdAt ?? appended.createdAt,
+                  readAt: materialized?.readAt ?? null,
+                },
+              },
+              idempotencyKey: `notification.broadcast:${appended.id}`,
+            },
+          );
+        return { outbox: appended, inbox: materialized, broadcastEvent: queued };
+      });
       const alreadyBroadcasted = Boolean(outbox.broadcastedAt);
-
-      if (!alreadyBroadcasted) {
-        notificationStream.broadcast(
-          envelope.eventName,
-          {
-            notificationId: inbox?.id ?? outbox.id,
-            outboxId: outbox.id,
-            type: envelope.type,
-            title: envelope.title,
-            message: envelope.message,
-            payload: envelope.payload ?? null,
-            sourceId: envelope.sourceId ?? null,
-            createdAt: inbox?.createdAt ?? outbox.createdAt,
-            readAt: inbox?.readAt ?? null,
-          },
-          envelope.targetUserId || undefined,
-        );
-
-        await repository.markOutboxBroadcasted(outbox.id);
-      }
 
       return {
         outbox,
         inbox,
-        delivered: alreadyBroadcasted ? 0 : notificationStream.getSubscriberCount(),
+        broadcastOutbox: broadcastEvent,
+        delivered: 0,
         deduped: alreadyBroadcasted,
+        broadcastQueued: Boolean(broadcastEvent),
       };
     },
 

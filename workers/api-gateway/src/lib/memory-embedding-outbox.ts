@@ -36,7 +36,7 @@ async function requireBackend(env: Env) {
 
 async function upsertMemoryEmbedding(env: Env, payload: MemoryEmbeddingUpsertPayload) {
   const { backendOrigin, backendKey } = await requireBackend(env);
-  const response = await fetch(`${backendOrigin}/api/v1/rag/memories/upsert`, {
+  const response = await fetch(`${backendOrigin}/api/v1/rag/memories/upsert/internal`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -63,7 +63,7 @@ async function upsertMemoryEmbedding(env: Env, payload: MemoryEmbeddingUpsertPay
 async function deleteMemoryEmbedding(env: Env, payload: MemoryEmbeddingDeletePayload) {
   const { backendOrigin, backendKey } = await requireBackend(env);
   const response = await fetch(
-    `${backendOrigin}/api/v1/rag/memories/${payload.userId}/${payload.memoryId}`,
+    `${backendOrigin}/api/v1/rag/memories/${payload.userId}/${payload.memoryId}/internal`,
     {
       method: 'DELETE',
       headers: backendKey ? { 'X-Backend-Key': backendKey } : undefined,

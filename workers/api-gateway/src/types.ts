@@ -25,6 +25,8 @@ export type Env = {
   // Backend Proxy Configuration
   BACKEND_ORIGIN?: string; // e.g., http://YOUR_SERVER_IP:8080
   BACKEND_KEY?: string; // Shared secret for backend authentication
+  GATEWAY_SIGNING_SECRET?: string;
+  BACKEND_GATEWAY_SIGNING_SECRET?: string;
 
   // Backend AI Server (via Cloudflare Tunnel)
   // 모든 AI 호출은 이 서버를 통해 처리됩니다

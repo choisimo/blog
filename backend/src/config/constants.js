@@ -415,6 +415,9 @@ export const FEATURES = {
   /** Inline AI features enabled */
   AI_INLINE: parseBoolEnv(process.env.FEATURE_AI_INLINE, true),
 
+  /** Code execution endpoints and agent code tool enabled */
+  CODE_EXECUTION_ENABLED: parseBoolEnv(process.env.FEATURE_CODE_EXECUTION_ENABLED, false),
+
   /** Comments enabled */
   COMMENTS_ENABLED: parseBoolEnv(process.env.FEATURE_COMMENTS_ENABLED, true),
 };

@@ -121,6 +121,58 @@ export async function execute(sql, ...params) {
   };
 }
 
+let _transactionDepth = 0;
+let _transactionSequence = 0;
+
+export async function transaction(fn) {
+  if (typeof fn !== 'function') {
+    throw new TypeError('transaction callback is required');
+  }
+
+  const db = getDb();
+  const isNested = _transactionDepth > 0;
+  const savepoint = `app_tx_${++_transactionSequence}`;
+
+  if (isNested) {
+    db.exec(`SAVEPOINT ${savepoint}`);
+  } else {
+    db.exec('BEGIN IMMEDIATE');
+  }
+
+  _transactionDepth += 1;
+  try {
+    const result = await fn({
+      query,
+      queryAll,
+      queryOne,
+      execute,
+    });
+
+    _transactionDepth -= 1;
+    if (isNested) {
+      db.exec(`RELEASE SAVEPOINT ${savepoint}`);
+    } else {
+      db.exec('COMMIT');
+    }
+    return result;
+  } catch (err) {
+    _transactionDepth -= 1;
+    try {
+      if (isNested) {
+        db.exec(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+        db.exec(`RELEASE SAVEPOINT ${savepoint}`);
+      } else {
+        db.exec('ROLLBACK');
+      }
+    } catch (rollbackErr) {
+      logger.error({}, 'DB transaction rollback failed', {
+        error: rollbackErr?.message,
+      });
+    }
+    throw err;
+  }
+}
+
 export function isConfigured() {
   try {
     getDb();

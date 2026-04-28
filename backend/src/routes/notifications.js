@@ -79,6 +79,13 @@ function parsePushBody(body) {
   };
 }
 
+function getIdempotencyHeader(req) {
+  const value = req.headers["idempotency-key"];
+  const raw = Array.isArray(value) ? value[0] : value;
+  const normalized = String(raw || "").trim();
+  return normalized ? normalized.slice(0, 256) : null;
+}
+
 function validatePushBody(push) {
   return Boolean(push?.title && push?.message);
 }
@@ -89,6 +96,7 @@ export function buildNotificationStreamReadyFrame() {
 
 async function handleDurablePush(req, res, { compatibilityMode = false } = {}) {
   const push = parsePushBody(req.body);
+  push.dedupeKey = push.dedupeKey || getIdempotencyHeader(req);
 
   if (!validatePushBody(push)) {
     return res.status(400).json({
@@ -99,6 +107,10 @@ async function handleDurablePush(req, res, { compatibilityMode = false } = {}) {
 
   const result = await notificationsService.deliver(push);
   const storage = await notificationsService.getStorageMode();
+  const idempotencyKey = getIdempotencyHeader(req);
+  if (idempotencyKey) {
+    res.setHeader("Idempotency-Key", idempotencyKey);
+  }
 
   return res.json({
     ok: true,

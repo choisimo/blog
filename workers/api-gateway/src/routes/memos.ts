@@ -75,6 +75,8 @@ async function updateMemoContent(
     newVersion: number;
     now: string;
     createVersion: boolean;
+    snapshotVersion?: number;
+    snapshotContent?: string;
     changeSummary?: string | null;
   }
 ): Promise<boolean> {
@@ -95,19 +97,23 @@ async function updateMemoContent(
          SELECT ?, ?, ?, ?, ?, ?, ?
          WHERE EXISTS (
            SELECT 1 FROM memo_content WHERE id = ? AND version = ? AND updated_at = ?
+         ) AND NOT EXISTS (
+           SELECT 1 FROM memo_versions WHERE memo_id = ? AND version = ?
          )`
       )
       .bind(
         options.memoId,
         options.userId,
-        options.newVersion,
-        options.content,
-        options.content.length,
+        options.snapshotVersion ?? options.expectedVersion,
+        options.snapshotContent ?? '',
+        (options.snapshotContent ?? '').length,
         options.changeSummary || null,
         options.now,
         options.memoId,
         options.newVersion,
-        options.now
+        options.now,
+        options.memoId,
+        options.snapshotVersion ?? options.expectedVersion
       ),
   ]);
 
@@ -181,6 +187,8 @@ async function saveMemoForUser(c: any, userId: string) {
     newVersion,
     now,
     createVersion,
+    snapshotVersion: existing.version,
+    snapshotContent: existing.content,
     changeSummary,
   });
 
@@ -202,7 +210,7 @@ async function restoreMemoVersionForUser(c: any, userId: string, version: number
 
   const memo = await queryOne<MemoContent>(
     db,
-    `SELECT id, version FROM memo_content WHERE user_id = ?`,
+    `SELECT id, version, content FROM memo_content WHERE user_id = ?`,
     userId
   );
 
@@ -236,6 +244,8 @@ async function restoreMemoVersionForUser(c: any, userId: string, version: number
     newVersion,
     now,
     createVersion: true,
+    snapshotVersion: memo.version,
+    snapshotContent: memo.content,
     changeSummary: `Restored from version ${version}`,
   });
 
