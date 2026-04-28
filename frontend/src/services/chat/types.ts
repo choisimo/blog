@@ -246,6 +246,7 @@ export type StreamChatInput = {
   ragContext?: string | null;
   memoryContext?: string | null;
   enableRag?: boolean;
+  selectedBlockAttachments?: SelectedBlockAttachment[];
 };
 
 // ============================================================================
@@ -276,7 +277,33 @@ export type PageContext = {
   };
 };
 
-export type ContentPart = {
+export type SelectedBlockAttachment = {
+  kind: "selected-block";
+  id: string;
+  name: string;
+  contentType: "text/markdown";
+  markdown: string;
+  textPreview: string;
+  sizeBytes: number;
+  truncated?: boolean;
+  persistRaw?: false;
+  source?: {
+    url?: string;
+    title?: string;
+    year?: string;
+    slug?: string;
+  };
+};
+
+export type TextContentPart = {
   type: "text";
   text: string;
+  purpose?: "system" | "context" | "user";
 };
+
+export type SelectedBlockContentPart = {
+  type: "selected-block";
+  attachment: SelectedBlockAttachment;
+};
+
+export type ContentPart = TextContentPart | SelectedBlockContentPart;

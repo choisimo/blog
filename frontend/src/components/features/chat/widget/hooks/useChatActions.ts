@@ -1,6 +1,12 @@
 import { useCallback } from "react";
-import type { ChatMessage, LiveReplyTarget, UploadedChatImage } from "../types";
+import type {
+  ChatMessage,
+  ChatMessageAttachment,
+  LiveReplyTarget,
+  UploadedChatImage,
+} from "../types";
 import type { PageContext } from "@/services/chat/types";
+import type { SelectedBlockAttachment } from "@/services/chat";
 import {
   streamChatEvents,
   uploadChatImage,
@@ -29,7 +35,11 @@ type UseChatActionsProps = {
   input: string;
   setInput: (input: string) => void;
   attachedImage: File | null;
+  selectedBlockAttachments: SelectedBlockAttachment[];
   setAttachedImage: (file: File | null) => void;
+  setSelectedBlockAttachments: React.Dispatch<
+    React.SetStateAction<SelectedBlockAttachment[]>
+  >;
   setAttachedPreviewUrl: (url: string | null) => void;
   setBusy: (busy: boolean) => void;
   setFirstTokenMs: (ms: number | null) => void;
@@ -64,7 +74,9 @@ export function useChatActions({
   input,
   setInput,
   attachedImage,
+  selectedBlockAttachments,
   setAttachedImage,
+  setSelectedBlockAttachments,
   setAttachedPreviewUrl,
   setBusy,
   setFirstTokenMs,
@@ -87,6 +99,31 @@ export function useChatActions({
   setLiveReplyTarget,
   currentPost,
 }: UseChatActionsProps) {
+  const redactSelectedBlockAttachments = useCallback(
+    (attachments: SelectedBlockAttachment[]): ChatMessageAttachment[] =>
+      attachments.map(
+        ({
+          id,
+          name,
+          contentType,
+          textPreview,
+          sizeBytes,
+          source,
+          truncated,
+        }) => ({
+          kind: "selected-block",
+          id,
+          name,
+          contentType,
+          textPreview,
+          sizeBytes,
+          source,
+          truncated,
+        }),
+      ),
+    [],
+  );
+
   const buildLiveReplyMeta = useCallback(() => {
     if (!liveReplyTarget) {
       return {
@@ -306,7 +343,8 @@ export function useChatActions({
       liveReplyTarget &&
       trimmed &&
       !trimmed.startsWith("/") &&
-      attachedImage === null
+      attachedImage === null &&
+      selectedBlockAttachments.length === 0
     ) {
       await sendDirectLiveMessage(trimmed);
       return;
@@ -316,7 +354,8 @@ export function useChatActions({
       livePinned &&
       trimmed &&
       !trimmed.startsWith("/") &&
-      attachedImage === null
+      attachedImage === null &&
+      selectedBlockAttachments.length === 0
     ) {
       await sendDirectLiveMessage(trimmed);
       return;
@@ -345,8 +384,14 @@ export function useChatActions({
         uploaded = await uploadChatImage(imageToUpload, controller.signal);
       }
 
+      const selectedBlocksToSend = [...selectedBlockAttachments];
       const baseText =
-        trimmed || (imageToUpload ? "첨부한 이미지에 대해 설명해줘." : "");
+        trimmed ||
+        (imageToUpload
+          ? "첨부한 이미지에 대해 설명해줘."
+          : selectedBlocksToSend.length > 0
+            ? "이 선택한 블록을 현재 글의 문맥에 맞게 설명해줘."
+            : "");
 
       const lines: string[] = [baseText];
 
@@ -379,8 +424,14 @@ export function useChatActions({
       const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       setInput("");
       setAttachedImage(null);
+      setSelectedBlockAttachments([]);
       setAttachedPreviewUrl(null);
-      push({ id, role: "user", text });
+      push({
+        id,
+        role: "user",
+        text: baseText,
+        attachments: redactSelectedBlockAttachments(selectedBlocksToSend),
+      });
       aiId = `${id}_ai`;
 
       if (isAggregatePrompt) {
@@ -423,6 +474,7 @@ export function useChatActions({
           onFirstToken: (ms) => setFirstTokenMs(ms),
           useArticleContext: questionMode === "article",
           currentPost,
+          selectedBlockAttachments: selectedBlocksToSend,
           imageUrl: uploaded?.url,
           imageAnalysis: uploaded?.imageAnalysis,
           memoryContext,
@@ -482,12 +534,14 @@ export function useChatActions({
     canSend,
     input,
     attachedImage,
+    selectedBlockAttachments,
     setBusy,
     setFirstTokenMs,
     abortRef,
     push,
     setInput,
     setAttachedImage,
+    setSelectedBlockAttachments,
     setAttachedPreviewUrl,
     isAggregatePrompt,
     setIsAggregatePrompt,
@@ -495,6 +549,7 @@ export function useChatActions({
     lastPromptRef,
     setUploadedImages,
     setMessages,
+    redactSelectedBlockAttachments,
     currentLiveRoom,
     switchLiveRoom,
     livePinned,
@@ -517,6 +572,7 @@ export function useChatActions({
       setFirstTokenMs(null);
       setAttachedImage(null);
       setAttachedPreviewUrl(null);
+      setSelectedBlockAttachments([]);
       setUploadedImages([]);
       setIsAggregatePrompt(false);
       setLiveReplyTarget(null);
@@ -531,6 +587,7 @@ export function useChatActions({
       setFirstTokenMs,
       setAttachedImage,
       setAttachedPreviewUrl,
+      setSelectedBlockAttachments,
       setUploadedImages,
       setIsAggregatePrompt,
       setLiveReplyTarget,

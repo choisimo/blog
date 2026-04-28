@@ -6,6 +6,7 @@ import ChatMarkdown from "../../ChatMarkdown";
 import { cn } from "@/lib/utils";
 import type {
   ChatMessage,
+  ChatMessageAttachment,
   LiveReplyTarget,
   SourceLink,
   SystemMessageLevel,
@@ -370,6 +371,7 @@ const TerminalMessage = React.memo(function TerminalMessage({
                 (imageUrl ? "첨부한 이미지에 대해 설명해줘." : m.text)}
             </span>
           </div>
+          <MessageAttachments attachments={m.attachments} isTerminal />
           {imageUrl && <UserImage imageUrl={imageUrl} isTerminal />}
         </div>
       )}
@@ -595,6 +597,10 @@ const DefaultMessage = React.memo(function DefaultMessage({
               {cleanText ||
                 (imageUrl ? "첨부한 이미지에 대해 설명해줘." : m.text)}
             </span>
+            <MessageAttachments
+              attachments={m.attachments}
+              isTerminal={false}
+            />
             {imageUrl && <UserImage imageUrl={imageUrl} isTerminal={false} />}
           </div>
         ) : (
@@ -632,6 +638,47 @@ const DefaultMessage = React.memo(function DefaultMessage({
           </div>
         )}
       </div>
+    </div>
+  );
+});
+
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0B";
+  if (bytes < 1024) return `${bytes}B`;
+  return `${Math.max(1, Math.round(bytes / 1024))}KB`;
+}
+
+const MessageAttachments = React.memo(function MessageAttachments({
+  attachments,
+  isTerminal,
+}: {
+  attachments?: ChatMessageAttachment[];
+  isTerminal: boolean;
+}) {
+  if (!attachments?.length) return null;
+
+  return (
+    <div className="mt-2 space-y-1.5">
+      {attachments.map((attachment) => (
+        <div
+          key={attachment.id}
+          className={cn(
+            "rounded-lg border px-3 py-2 text-xs",
+            isTerminal
+              ? "border-primary/25 text-primary/80"
+              : "border-primary-foreground/20 bg-primary-foreground/10",
+          )}
+        >
+          <div className="font-semibold">
+            {attachment.name} · {formatBytes(attachment.sizeBytes)}
+          </div>
+          {attachment.textPreview ? (
+            <div className="mt-1 line-clamp-3 opacity-80">
+              {attachment.textPreview}
+            </div>
+          ) : null}
+        </div>
+      ))}
     </div>
   );
 });
