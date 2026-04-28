@@ -134,6 +134,7 @@ vi.mock("@/contexts/ThemeContext", () => ({
 vi.mock("@/lib/utils", () => ({
   cn: (...parts: Array<string | false | null | undefined>) =>
     parts.filter(Boolean).join(" "),
+  throttle: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
 }));
 vi.mock("@/services/content/analytics", () => ({
   recordView: vi.fn().mockResolvedValue(undefined),
