@@ -11,7 +11,7 @@ data:
   LOG_LEVEL: "info"
   SITE_BASE_URL: "https://noblog.nodove.com"
   API_BASE_URL: "https://api.nodove.com"
-  ALLOWED_ORIGINS: "https://noblog.nodove.com,http://localhost:5173"
+  ALLOWED_ORIGINS: "https://noblog.nodove.com"
   ENABLE_LEGACY_BACKEND_AUTH: "false"
   RATE_LIMIT_MAX: "60"
   RATE_LIMIT_WINDOW_MS: "60000"
