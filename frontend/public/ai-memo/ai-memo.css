@@ -1546,6 +1546,159 @@
   border-radius: 0;
 }
 
+
+/* Selected block action menu */
+.block-action-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  border: 0;
+  background: rgba(15, 23, 42, 0.28);
+  padding: 0;
+}
+
+.block-action-menu {
+  position: fixed;
+  z-index: 2147483647;
+  width: min(260px, calc(100vw - 24px));
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: rgba(255, 255, 255, 0.96);
+  color: #111827;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.18);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  opacity: 0;
+  transform: translateY(6px) scale(0.98);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.block-action-menu.open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+:host(.dark) .block-action-menu {
+  background: rgba(15, 23, 42, 0.98);
+  color: #e5e7eb;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.block-action-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.block-action-preview {
+  max-height: 64px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(99, 102, 241, 0.08);
+  color: #4b5563;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+:host(.dark) .block-action-preview {
+  color: #cbd5e1;
+  background: rgba(99, 102, 241, 0.16);
+}
+
+.block-action-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.block-action-button,
+.block-action-cancel {
+  min-height: 40px;
+  border: 0;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.block-action-button {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.block-action-button.primary {
+  color: #ffffff;
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+}
+
+.block-action-cancel {
+  width: 100%;
+  margin-top: 8px;
+  background: transparent;
+  color: #6b7280;
+}
+
+.block-action-menu.mobile {
+  left: 10px !important;
+  right: 10px !important;
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  top: auto !important;
+  width: auto;
+  padding: 14px;
+  border-radius: 20px;
+  transform: translateY(16px);
+}
+
+.block-action-menu.mobile.open {
+  transform: translateY(0);
+}
+
+.block-action-menu.mobile .block-action-buttons {
+  gap: 10px;
+}
+
+.block-action-menu.mobile .block-action-button,
+.block-action-menu.mobile .block-action-cancel {
+  min-height: 44px;
+  font-size: 14px;
+}
+
+/* Desktop blog detail page can reserve a right rail for the memo panel. */
+@media (min-width: 1536px) and (min-height: 680px) {
+  :host(.desktop-rail) .panel {
+    top: calc(72px + env(safe-area-inset-top, 0px)) !important;
+    right: max(20px, calc((100vw - 1460px) / 2 + 16px)) !important;
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
+    left: auto !important;
+    width: clamp(320px, 23vw, 370px) !important;
+    height: auto !important;
+    max-height: none !important;
+    border-radius: 24px;
+  }
+
+  :host(.desktop-rail) .panel.open {
+    display: flex;
+    flex-direction: column;
+  }
+
+  :host(.desktop-rail) .header {
+    cursor: default;
+  }
+
+  :host(.desktop-rail) .body {
+    min-height: 0;
+  }
+
+  :host(.desktop-rail) .textarea {
+    min-height: clamp(260px, 38vh, 520px) !important;
+    height: clamp(260px, 38vh, 520px) !important;
+  }
+}
+
 /* ========================================
    MOBILE STYLES - Bottom Sheet Design
    ======================================== */

@@ -5,7 +5,11 @@ import { cn, throttle } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/ui/use-mobile';
 import { useTheme } from '@/contexts/ThemeContext';
 
-export const ScrollToTop = () => {
+type ScrollToTopProps = {
+  className?: string;
+};
+
+export const ScrollToTop = ({ className }: ScrollToTopProps = {}) => {
   const [isVisible, setIsVisible] = useState(false);
   const isMobile = useIsMobile();
   const { isTerminal } = useTheme();
@@ -53,7 +57,8 @@ export const ScrollToTop = () => {
         // Muted styling to differentiate from AI feature buttons
         isTerminal
           ? 'border-[hsl(var(--terminal-inactive-border))] bg-background/80 text-[hsl(var(--terminal-glow)/0.6)] hover:text-[hsl(var(--terminal-glow))] hover:bg-background'
-          : 'border-border/60 bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'
+          : 'border-border/60 bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground',
+        className,
       )}
     >
       <ArrowUp className='h-4 w-4' />

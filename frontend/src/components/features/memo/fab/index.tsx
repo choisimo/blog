@@ -29,6 +29,7 @@ import {
   useFabAnalytics,
 } from "./hooks";
 import { useShellCommander } from "./hooks/useShellCommander";
+import { useSelectedBlockActions } from "./hooks/useSelectedBlockActions";
 import {
   ShellModal,
   ShellOutputOverlay,
@@ -77,6 +78,8 @@ export default function FloatingActionBar() {
     setChatCurrentPost(null);
     send("fab_ai_chat_close");
   }, [send]);
+
+  useSelectedBlockActions({ openChat, send });
 
   // Shell Commander state (for terminal theme mobile)
   const [shellOpen, setShellOpen] = useState(false);

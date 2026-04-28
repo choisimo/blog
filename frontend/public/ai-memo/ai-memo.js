@@ -58,6 +58,7 @@
   // 기본값 설정
   const DEFAULT_API_URL = 'https://api.nodove.com';
   const DEFAULT_REPO_URL = 'https://github.com/choisimo/blog';
+  const AI_MEMO_ASSET_VERSION = '20260428-block-actions';
   const BLOCK_SELECTORS = 'p, pre, code, blockquote, ul, ol, li, table, thead, tbody, tr, th, td, figure, figcaption, h1, h2, h3, h4, h5, h6, section, article, main';
 
   function normalizeBaseUrl(url) {
@@ -91,6 +92,14 @@
     return 'bottom';
   }
 
+  function isReactFabManagingLaunchers() {
+    try {
+      const raw = localStorage.getItem('aiMemo.fab.enabled');
+      if (raw != null) return !!JSON.parse(raw);
+    } catch (_) {}
+    return true;
+  }
+
   class AIMemoPad extends HTMLElement {
     constructor() {
       super();
@@ -121,9 +130,13 @@
       this.highlightedBlock = null;
       this._turndown = null;
       this._prevCursor = '';
+      this.blockActionMode = 'memo';
+      this._blockActionMenu = null;
+      this._blockActionBackdrop = null;
       this._boundBlockHighlight = this.handleBlockHighlight.bind(this);
       this._boundBlockCapture = this.handleBlockCapture.bind(this);
       this._boundBlockKeydown = this.handleBlockKeydown.bind(this);
+      this._boundExternalDesktopLayout = this.handleExternalDesktopLayout.bind(this);
       this.$previewSplit = null;
       this.$layoutSplit = null;
       this.$layoutTabs = null;
@@ -207,6 +220,7 @@
         'aiMemo:log',
         this._onExternalLog
       );
+      window.addEventListener('aiMemo:desktopLayout', this._boundExternalDesktopLayout);
       this._boundBeforeUnload = () => {
         if (this.state.memo) {
           LS.set(KEYS.memo, this.state.memo);
@@ -227,6 +241,7 @@
         'aiMemo:log',
         this._onExternalLog
       );
+      window.removeEventListener('aiMemo:desktopLayout', this._boundExternalDesktopLayout);
       window.removeEventListener('beforeunload', this._boundBeforeUnload);
       this.cleanupHistoryInteractions();
       
@@ -1105,11 +1120,12 @@
 
     render() {
       const doc = document.createElement('div');
+      const launcherStyle = isReactFabManagingLaunchers() ? ' style="display:none;"' : '';
       doc.innerHTML = `
-        <link rel="stylesheet" href="/ai-memo/ai-memo.css" />
+        <link rel="stylesheet" href="/ai-memo/ai-memo.css?v=${AI_MEMO_ASSET_VERSION}" />
         <div class="bottom-app-bar"></div>
-        <div id="launcher" class="launcher button" title="AI Memo" aria-label="AI Memo">📝</div>
-        <div id="historyLauncher" class="launcher history button" title="History" aria-label="History">📖</div>
+        <div id="launcher" class="launcher button" title="AI Memo" aria-label="AI Memo"${launcherStyle}>📝</div>
+        <div id="historyLauncher" class="launcher history button" title="History" aria-label="History"${launcherStyle}>📖</div>
         <div id="historyOverlay" class="history-overlay" style="display:none;">
           <div class="history-toolbar">
             <div class="left">
@@ -1459,8 +1475,182 @@
       this.highlightedBlock = null;
     }
 
-    toggleBlockSelectMode(force) {
+    closeBlockActionMenu() {
+      if (this._blockActionMenu) {
+        this._blockActionMenu.remove();
+        this._blockActionMenu = null;
+      }
+      if (this._blockActionBackdrop) {
+        this._blockActionBackdrop.remove();
+        this._blockActionBackdrop = null;
+      }
+    }
+
+    isMobileViewport() {
+      try {
+        return window.matchMedia('(max-width: 640px)').matches;
+      } catch (_) {
+        return window.innerWidth <= 640;
+      }
+    }
+
+    handleExternalDesktopLayout(event) {
+      const mode = event?.detail?.mode === 'rail' ? 'rail' : 'float';
+      this.classList.toggle('desktop-rail', mode === 'rail');
+      if (this.$panel) {
+        this.$panel.classList.toggle('desktop-rail', mode === 'rail');
+        if (mode === 'rail') {
+          Object.assign(this.$panel.style, { left: '', top: '', right: '', bottom: '' });
+        }
+      }
+    }
+
+    getBlockPayload(block) {
+      const html = block?.outerHTML || '';
+      const markdown = this._turndown
+        ? this._turndown.turndown(html || '')
+        : (block?.textContent || '');
+      const text = (block?.textContent || '').replace(/\s+\n/g, '\n').trim();
+      return {
+        html,
+        markdown: (markdown || '').trim(),
+        text,
+        title: document.title,
+        url: location.href,
+        post: this.getCurrentPostInfo(),
+      };
+    }
+
+    openMemoPanel() {
+      if (!this.$panel) return;
+      this.$tabs?.forEach((tab) => tab.classList.toggle('active', tab.dataset.tab === 'memo'));
+      this.state.mode = 'memo';
+      LS.set(KEYS.mode, 'memo');
+      this.updateMode();
+      this.$panel.classList.add('open');
+      this.updateOpen();
+    }
+
+    appendBlockPayloadToMemo(payload) {
+      const markdown = (payload?.markdown || payload?.text || '').trim();
+      if (!markdown) {
+        this.out.toast('추가할 내용이 없습니다.');
+        return;
+      }
+      this.openMemoPanel();
+      this.out.append(`\n\n${markdown}\n`);
+      this.out.toast('선택한 블록을 메모에 추가했습니다.');
+      this.logEvent({ type: 'add_block', label: 'block', content: markdown.slice(0, 2000) });
+    }
+
+    buildBlockAskMessage(payload) {
+      const markdown = (payload?.markdown || payload?.text || '').trim();
+      const post = payload?.post;
+      const path = post?.year && post?.slug ? `${post.year}/${post.slug}` : location.pathname;
+      return [
+        '이 블록을 현재 글의 문맥에 맞게 설명해줘.',
+        '사용법, 예시, 비슷한 명령/개념, 언제 쓰면 좋은지도 함께 정리해줘.',
+        '',
+        `[현재 글] ${payload?.title || document.title}`,
+        `[경로] ${path}`,
+        '',
+        '[선택한 블록]',
+        '```md',
+        markdown,
+        '```',
+      ].join('\n');
+    }
+
+    dispatchAskBlock(payload) {
+      const markdown = (payload?.markdown || payload?.text || '').trim();
+      if (!markdown) {
+        this.out.toast('질문할 내용이 없습니다.');
+        return;
+      }
+      window.dispatchEvent(
+        new CustomEvent('aiMemo:askSelectedBlock', {
+          detail: {
+            ...payload,
+            message: this.buildBlockAskMessage(payload),
+          },
+        })
+      );
+      this.out.toast('AI 챗봇에 선택한 블록을 전달했습니다.');
+      this.logEvent({ type: 'ask_block', label: 'AI에게 묻기', content: markdown.slice(0, 2000) });
+    }
+
+    showBlockActionMenu(payload, rect) {
+      this.closeBlockActionMenu();
+
+      const isMobile = this.isMobileViewport();
+      if (isMobile) {
+        const backdrop = document.createElement('button');
+        backdrop.type = 'button';
+        backdrop.className = 'block-action-backdrop';
+        backdrop.setAttribute('aria-label', '블록 작업 닫기');
+        backdrop.addEventListener('click', () => this.closeBlockActionMenu());
+        this.shadowRoot.appendChild(backdrop);
+        this._blockActionBackdrop = backdrop;
+      }
+
+      const menu = document.createElement('div');
+      menu.className = `block-action-menu${isMobile ? ' mobile' : ''}`;
+      menu.setAttribute('role', isMobile ? 'dialog' : 'menu');
+      menu.setAttribute('aria-label', '선택한 블록 작업');
+
+      const title = document.createElement('div');
+      title.className = 'block-action-title';
+      title.textContent = '선택한 블록';
+
+      const preview = document.createElement('div');
+      preview.className = 'block-action-preview';
+      preview.textContent = (payload.text || payload.markdown || '').replace(/\s+/g, ' ').trim().slice(0, 160);
+
+      const actions = document.createElement('div');
+      actions.className = 'block-action-buttons';
+
+      const memoBtn = document.createElement('button');
+      memoBtn.type = 'button';
+      memoBtn.className = 'block-action-button';
+      memoBtn.textContent = '메모에 붙여넣기';
+      memoBtn.addEventListener('click', () => {
+        this.appendBlockPayloadToMemo(payload);
+        this.closeBlockActionMenu();
+      });
+
+      const askBtn = document.createElement('button');
+      askBtn.type = 'button';
+      askBtn.className = 'block-action-button primary';
+      askBtn.textContent = 'AI에게 묻기';
+      askBtn.addEventListener('click', () => {
+        this.dispatchAskBlock(payload);
+        this.closeBlockActionMenu();
+      });
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'block-action-cancel';
+      cancelBtn.textContent = '취소';
+      cancelBtn.addEventListener('click', () => this.closeBlockActionMenu());
+
+      actions.append(memoBtn, askBtn);
+      menu.append(title, preview, actions, cancelBtn);
+      this.shadowRoot.appendChild(menu);
+      this._blockActionMenu = menu;
+
+      if (!isMobile && rect) {
+        const menuWidth = 260;
+        const left = Math.min(Math.max(12, rect.left + rect.width - menuWidth), window.innerWidth - menuWidth - 12);
+        const top = Math.min(rect.bottom + 10, window.innerHeight - 180);
+        Object.assign(menu.style, { left: `${left}px`, top: `${Math.max(12, top)}px` });
+      }
+
+      requestAnimationFrame(() => menu.classList.add('open'));
+    }
+
+    toggleBlockSelectMode(force, actionMode = 'memo') {
       const next = typeof force === 'boolean' ? force : !this.isBlockSelectMode;
+      if (next) this.blockActionMode = actionMode || 'memo';
       if (next === this.isBlockSelectMode) return;
       this.isBlockSelectMode = next;
 
@@ -1477,7 +1667,10 @@
       if (this.$panel) this.$panel.classList.toggle('selecting-block', next);
 
       if (next) {
-        this.out.tempStatus('추가할 블록을 클릭하세요 (ESC 취소)', 'Ready', 2400);
+        const status = this.blockActionMode === 'menu'
+          ? '블록을 클릭하면 메모/AI 작업을 선택할 수 있습니다. (ESC 취소)'
+          : '추가할 블록을 클릭하세요. (ESC 취소)';
+        this.out.tempStatus(status, 'Ready', 2400);
         this.createBlockHighlighter();
         document.addEventListener('mousemove', this._boundBlockHighlight, { capture: true, passive: true });
         document.addEventListener('click', this._boundBlockCapture, true);
@@ -1503,8 +1696,14 @@
         return;
       }
 
+      const articleScope = document.querySelector('[data-ai-block-scope="article"]');
+      if (articleScope && !articleScope.contains(target)) {
+        this.highlightedBlock = null;
+        return;
+      }
+
       const block = target.closest(BLOCK_SELECTORS);
-      if (!block) {
+      if (!block || (articleScope && !articleScope.contains(block))) {
         this.highlightedBlock = null;
         return;
       }
@@ -1532,21 +1731,29 @@
       }
 
       try {
-        const html = this.highlightedBlock.outerHTML;
-        const markdown = this._turndown.turndown(html || '');
-        if (markdown.trim()) {
-          this.out.append(`\n\n${markdown.trim()}\n`);
-          this.out.toast('선택한 블록을 메모에 추가했습니다.');
-          this.logEvent({ type: 'add_block', label: 'block', content: markdown.slice(0, 2000) });
-        } else {
+        const block = this.highlightedBlock;
+        const payload = this.getBlockPayload(block);
+        const rect = block.getBoundingClientRect();
+        const actionMode = this.blockActionMode;
+        this.toggleBlockSelectMode(false);
+
+        if (!payload.markdown) {
           this.out.toast('추가할 내용이 없습니다.');
+          return;
+        }
+
+        if (actionMode === 'menu') {
+          this.showBlockActionMenu(payload, rect);
+        } else if (actionMode === 'chat') {
+          this.dispatchAskBlock(payload);
+        } else {
+          this.appendBlockPayloadToMemo(payload);
         }
       } catch (err) {
         console.error('Block capture failed', err);
-        this.out.toast('블록을 추가하지 못했습니다.');
+        this.out.toast('블록을 처리하지 못했습니다.');
+        this.toggleBlockSelectMode(false);
       }
-
-      this.toggleBlockSelectMode(false);
     }
 
     handleBlockKeydown(event) {
@@ -1616,7 +1823,7 @@
         };
 
         // Fetch CSS and inline it
-        fetch('/ai-memo/ai-memo.css')
+        fetch(`/ai-memo/ai-memo.css?v=${AI_MEMO_ASSET_VERSION}`)
           .then((r) => (r.ok ? r.text() : ''))
           .then((txt) => { if (txt) attachText(txt); })
           .catch(() => {});
@@ -2695,7 +2902,7 @@
             return;
           }
         const now = new Date();
-        const entry = `\n> ${text}\n\u0014 ${now.toLocaleString()}\n`;
+        const entry = `\n> ${text}\n— ${now.toLocaleString()}\n`;
         this.out.append(entry);
         this.out.toast('\uc120\ud0dd \ub0b4\uc6a9\uc744 \ucd94\uac00\ud588\uc2b5\ub2c8\ub2e4.');
         this.logEvent({ type: 'selection', label: '\uc120\ud0dd \ucd94\uac00', content: text });
@@ -2705,7 +2912,7 @@
       if (this.$addBlock) {
         this.$addBlock.addEventListener('click', () => {
           this.logEvent({ type: 'enter_block_select', label: '\ube14\ub85d \ucd94\uac00' });
-          this.toggleBlockSelectMode(true);
+          this.toggleBlockSelectMode(true, 'menu');
         });
       }
 
@@ -3270,13 +3477,14 @@
           throw new Error(`요청 실패(${res.status}) ${t.slice(0, 200)}`);
         }
         const data = await res.json().catch(() => ({}));
-        const prUrl = data.prUrl || data.url || data.html_url;
+        const payloadData = data.data || data;
+        const prUrl = payloadData.prUrl || payloadData.url || payloadData.html_url;
         if (prUrl && this.$prLink) {
           this.$prLink.href = prUrl;
           this.$prLink.style.display = '';
         }
-        this.out.toast(prUrl ? 'PR이 생성되었습니다.' : '요청이 완료되었습니다.');
-        this.out.setStatus('완료');
+        this.out.toast(prUrl ? 'PR이 생성되었습니다.' : 'PR 생성 대기열에 등록되었습니다.');
+        this.out.setStatus(prUrl ? '완료' : '대기열 등록됨');
       } catch (err) {
         console.error('proposeNewVersion error:', err);
         this.out.setStatus('오류');
