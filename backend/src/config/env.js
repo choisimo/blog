@@ -86,6 +86,7 @@ const CONSUL_KEYS = [
   ['config/features/rag_enabled', 'FEATURE_RAG_ENABLED'],
   ['config/features/terminal_enabled', 'FEATURE_TERMINAL_ENABLED'],
   ['config/features/ai_inline', 'FEATURE_AI_INLINE'],
+  ['config/features/code_execution_enabled', 'FEATURE_CODE_EXECUTION_ENABLED'],
   ['config/features/comments_enabled', 'FEATURE_COMMENTS_ENABLED'],
   ['services/ai/url', 'AI_SERVER_URL'],
   ['services/embedding/url', 'AI_EMBEDDING_URL'],

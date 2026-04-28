@@ -177,6 +177,7 @@ const FEATURE_LABELS: Record<keyof FeatureFlags, string> = {
   ragEnabled: "RAG Search",
   terminalEnabled: "Terminal",
   aiInline: "Inline AI",
+  codeExecutionEnabled: "Code Execution",
   commentsEnabled: "Comments",
 };
 

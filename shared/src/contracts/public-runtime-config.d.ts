@@ -3,6 +3,7 @@ export interface PublicRuntimeConfigFeatures {
   ragEnabled: boolean;
   terminalEnabled: boolean;
   aiInline: boolean;
+  codeExecutionEnabled: boolean;
   commentsEnabled: boolean;
 }
 

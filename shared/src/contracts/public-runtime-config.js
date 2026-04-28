@@ -38,6 +38,7 @@ export function buildPublicRuntimeConfig(input) {
       ragEnabled: toBoolean(input.features?.ragEnabled),
       terminalEnabled,
       aiInline: toBoolean(input.features?.aiInline),
+      codeExecutionEnabled: toBoolean(input.features?.codeExecutionEnabled),
       commentsEnabled: toBoolean(input.features?.commentsEnabled),
     },
     capabilities: {
