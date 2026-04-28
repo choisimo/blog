@@ -72,6 +72,7 @@ import {
   splitStreamingText,
   emitTextChunks,
   extractUserMessage,
+  extractPartContext,
   streamWithFallback,
   finalizeChatTurn,
 } from "../lib/chat-streaming.js";
@@ -239,6 +240,7 @@ export function initChatWebSocket(server) {
           }
         }
 
+        const partContext = extractPartContext(payload.parts);
         let userMessage = extractUserMessage(payload.parts, payload.text);
 
         if (!userMessage.trim()) {
@@ -271,9 +273,12 @@ export function initChatWebSocket(server) {
 
         let messagesWithContext = [...session.messages];
         const liveContext = getLiveContextForSession(sessionId);
-        const contextParts = [liveContext, ragContext, notebookContext].filter(
-          Boolean,
-        );
+        const contextParts = [
+          partContext,
+          liveContext,
+          ragContext,
+          notebookContext,
+        ].filter(Boolean);
 
         if (contextParts.length > 0) {
           const lastIdx = messagesWithContext.length - 1;
@@ -394,6 +399,7 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
     }
 
     // Extract text from parts
+    const partContext = extractPartContext(parts);
     let userMessage = extractUserMessage(parts);
 
     if (!userMessage.trim()) {
@@ -456,9 +462,12 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
 
       let messagesWithContext = [...session.messages];
       const liveContext = getLiveContextForSession(effectiveSessionId);
-      const contextParts = [liveContext, ragContext, notebookContext].filter(
-        Boolean,
-      );
+      const contextParts = [
+        partContext,
+        liveContext,
+        ragContext,
+        notebookContext,
+      ].filter(Boolean);
       if (contextParts.length > 0) {
         const lastIdx = messagesWithContext.length - 1;
         if (lastIdx >= 0 && messagesWithContext[lastIdx].role === "user") {

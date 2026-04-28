@@ -458,8 +458,22 @@ export function deriveUserQuery(parts, fallback) {
     return String(fallback || "");
   }
 
+  const userPurposeCandidates = parts
+    .filter((p) => p?.type === "text" && p?.purpose === "user")
+    .map((p) => (typeof p?.text === "string" ? p.text : ""))
+    .filter((t) => t && !t.startsWith("["));
+
+  if (userPurposeCandidates.length > 0) {
+    return userPurposeCandidates[userPurposeCandidates.length - 1];
+  }
+
   const candidates = parts
-    .filter((p) => p?.type === "text")
+    .filter(
+      (p) =>
+        p?.type === "text" &&
+        p?.purpose !== "system" &&
+        p?.purpose !== "context",
+    )
     .map((p) => (typeof p?.text === "string" ? p.text : ""))
     .filter((t) => t && !t.startsWith("["));
 

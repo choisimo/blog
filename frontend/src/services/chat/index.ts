@@ -21,7 +21,10 @@ export type {
   StreamChatInput,
   ChatImageUploadResult,
   PageContext,
+  SelectedBlockAttachment,
+  SelectedBlockContentPart,
   ContentPart,
+  TextContentPart,
   ChatErrorCode,
 } from "./types";
 

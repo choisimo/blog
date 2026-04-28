@@ -41,6 +41,7 @@ export type ChatMessage = {
   id: string;
   role: "user" | "assistant" | "system";
   text: string;
+  attachments?: ChatMessageAttachment[];
   pending?: boolean;
   typingLabel?: string;
   typingKey?: string;
@@ -55,6 +56,22 @@ export type ChatMessage = {
   expiresAt?: number;
   sources?: SourceLink[];
   followups?: string[];
+};
+
+export type ChatMessageAttachment = {
+  kind: "selected-block";
+  id: string;
+  name: string;
+  contentType: "text/markdown";
+  textPreview: string;
+  sizeBytes: number;
+  truncated?: boolean;
+  source?: {
+    url?: string;
+    title?: string;
+    year?: string;
+    slug?: string;
+  };
 };
 
 export type UploadedChatImage = {

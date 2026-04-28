@@ -38,6 +38,7 @@ import {
   ChatSidebar,
 } from "./components";
 import { streamChatEvents } from "@/services/chat";
+import type { SelectedBlockAttachment } from "@/services/chat";
 
 function formatLiveRoomName(room: string): string {
   return String(room || "room:lobby")
@@ -48,6 +49,7 @@ function formatLiveRoomName(room: string): string {
 export default function ChatWidget(props: {
   onClose?: () => void;
   initialMessage?: string;
+  initialSelectedBlockAttachments?: SelectedBlockAttachment[];
   currentPost?: PageContext["article"];
 }) {
   const isMobile = useIsMobile();
@@ -61,7 +63,10 @@ export default function ChatWidget(props: {
   const widgetRef = useRef<HTMLDivElement | null>(null);
 
   // Main state hook
-  const state = useChatState({ initialMessage: props.initialMessage });
+  const state = useChatState({
+    initialMessage: props.initialMessage,
+    initialSelectedBlockAttachments: props.initialSelectedBlockAttachments,
+  });
   const {
     focusInput,
     push,
@@ -142,7 +147,9 @@ export default function ChatWidget(props: {
     input: state.input,
     setInput: state.setInput,
     attachedImage: state.attachedImage,
+    selectedBlockAttachments: state.selectedBlockAttachments,
     setAttachedImage: state.setAttachedImage,
+    setSelectedBlockAttachments: state.setSelectedBlockAttachments,
     setAttachedPreviewUrl: state.setAttachedPreviewUrl,
     setBusy: state.setBusy,
     setFirstTokenMs: state.setFirstTokenMs,
@@ -541,6 +548,12 @@ export default function ChatWidget(props: {
               onStop={actions.stop}
               onClearAll={handleClearAll}
               onFileSelect={state.setAttachedImage}
+              selectedBlockAttachments={state.selectedBlockAttachments}
+              onRemoveSelectedBlockAttachment={(id) =>
+                state.setSelectedBlockAttachments((prev) =>
+                  prev.filter((attachment) => attachment.id !== id),
+                )
+              }
               attachedImage={state.attachedImage}
               attachedPreviewUrl={state.attachedPreviewUrl}
               busy={state.busy}

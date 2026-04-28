@@ -16,6 +16,7 @@ import {
   SESSION_MESSAGES_PREFIX,
   loadSessionsIndex,
 } from "@/services/chat";
+import type { SelectedBlockAttachment } from "@/services/chat";
 import { hasArticlePageContext } from "@/services/chat/context";
 
 const SESSION_PERSIST_DEBOUNCE_MS = 400;
@@ -23,7 +24,10 @@ const MAX_MESSAGES_PER_SESSION = 200;
 const LIVE_PINNED_KEY = "aiChat.livePinned";
 const AUTO_SCROLL_BOTTOM_THRESHOLD_PX = 120;
 
-export function useChatState(options?: { initialMessage?: string }) {
+export function useChatState(options?: {
+  initialMessage?: string;
+  initialSelectedBlockAttachments?: SelectedBlockAttachment[];
+}) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState(options?.initialMessage || "");
   const [busy, setBusy] = useState(false);
@@ -52,6 +56,9 @@ export function useChatState(options?: { initialMessage?: string }) {
     hasArticlePageContext() ? "article" : "general",
   );
   const [attachedImage, setAttachedImage] = useState<File | null>(null);
+  const [selectedBlockAttachments, setSelectedBlockAttachments] = useState<
+    SelectedBlockAttachment[]
+  >(() => options?.initialSelectedBlockAttachments ?? []);
   const [attachedPreviewUrl, setAttachedPreviewUrl] = useState<string | null>(
     null,
   );
@@ -75,13 +82,24 @@ export function useChatState(options?: { initialMessage?: string }) {
   const persistTimerRef = useRef<number | null>(null);
   const autoScrollEnabledRef = useRef(true);
 
-  const canSend = (input.trim().length > 0 || attachedImage !== null) && !busy;
+  const canSend =
+    (input.trim().length > 0 ||
+      attachedImage !== null ||
+      selectedBlockAttachments.length > 0) &&
+    !busy;
 
   useEffect(() => {
     if (typeof options?.initialMessage !== "string") return;
     setInput(options.initialMessage);
     requestAnimationFrame(() => textareaRef.current?.focus());
   }, [options?.initialMessage]);
+
+  useEffect(() => {
+    setSelectedBlockAttachments(options?.initialSelectedBlockAttachments ?? []);
+    if (options?.initialSelectedBlockAttachments?.length) {
+      requestAnimationFrame(() => textareaRef.current?.focus());
+    }
+  }, [options?.initialSelectedBlockAttachments]);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -282,6 +300,7 @@ export function useChatState(options?: { initialMessage?: string }) {
         setSelectedSessionIds([]);
         setShowSessions(false);
         setInput("");
+        setSelectedBlockAttachments([]);
         setIsAggregatePrompt(false);
         setSessionKey(generateLocalSessionId());
 
@@ -354,6 +373,8 @@ export function useChatState(options?: { initialMessage?: string }) {
     setQuestionMode,
     attachedImage,
     setAttachedImage,
+    selectedBlockAttachments,
+    setSelectedBlockAttachments,
     attachedPreviewUrl,
     setAttachedPreviewUrl,
     uploadedImages,
