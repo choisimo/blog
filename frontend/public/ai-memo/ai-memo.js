@@ -34,7 +34,8 @@
     closeAfterInject: 'aiMemo.closeAfterInject',
     events: 'aiMemo.events',
     layoutMode: 'aiMemo.layoutMode',
-    previewPane: 'aiMemo.previewPane'
+    previewPane: 'aiMemo.previewPane',
+    window: 'aiMemo.window'
   };
 
   const NOISY_EVENT_TYPES = new Set([
@@ -58,8 +59,36 @@
   // 기본값 설정
   const DEFAULT_API_URL = 'https://api.nodove.com';
   const DEFAULT_REPO_URL = 'https://github.com/choisimo/blog';
-  const AI_MEMO_ASSET_VERSION = '20260428-block-actions';
+  const AI_MEMO_ASSET_VERSION = '20260429-code-mode';
   const BLOCK_SELECTORS = 'p, pre, code, blockquote, ul, ol, li, table, thead, tbody, tr, th, td, figure, figcaption, h1, h2, h3, h4, h5, h6, section, article, main';
+  const MAX_BLOCK_PAYLOAD_CHARS = 6000;
+  const WINDOW_MIN_WIDTH = 320;
+  const WINDOW_MIN_HEIGHT = 340;
+  const WINDOW_DEFAULT_WIDTH = 400;
+  const WINDOW_DEFAULT_HEIGHT = 520;
+  const WINDOW_EDGE_PADDING = 12;
+  const WINDOW_SNAP_THRESHOLD = 34;
+  const WINDOW_MODES = new Set(['floating', 'fullscreen', 'docked']);
+  const WINDOW_SNAPS = new Set([
+    'left-half',
+    'right-half',
+    'top-half',
+    'bottom-half',
+    'top-center',
+    'bottom-center',
+    'bottom-left',
+    'bottom-right',
+    'fullscreen',
+  ]);
+  const CODE_LANGUAGE_OPTIONS = [
+    { label: 'Python', value: 'python', aliases: ['py', 'python3'], pistonLang: 'python', pistonVersion: '3.10.0' },
+    { label: 'JavaScript', value: 'javascript', aliases: ['js', 'node', 'nodejs'], pistonLang: 'javascript', pistonVersion: '18.15.0' },
+    { label: 'TypeScript', value: 'typescript', aliases: ['ts'], pistonLang: 'typescript', pistonVersion: '5.0.3' },
+    { label: 'Java', value: 'java', aliases: [], pistonLang: 'java', pistonVersion: '15.0.2' },
+    { label: 'C++', value: 'cpp', aliases: ['c++', 'cc', 'cxx'], pistonLang: 'c++', pistonVersion: '10.2.0' },
+    { label: 'C', value: 'c', aliases: [], pistonLang: 'c', pistonVersion: '10.2.0' },
+    { label: 'Shell', value: 'bash', aliases: ['sh', 'shell', 'zsh'], pistonLang: 'bash', pistonVersion: '5.2.0' },
+  ];
 
   function normalizeBaseUrl(url) {
     let normalized = String(url || '').trim();
@@ -122,7 +151,8 @@
         fabPosition: getFabPositionSetting(),
         events: LS.get(KEYS.events, []),
         layoutMode: LS.get(KEYS.layoutMode, 'split'),
-        previewPane: LS.get(KEYS.previewPane, 'editor')
+        previewPane: LS.get(KEYS.previewPane, 'editor'),
+        windowState: this.normalizeWindowState(LS.get(KEYS.window, null))
       };
       this.root = null; // shadow root container
       this._originalLoaded = false;
@@ -137,11 +167,26 @@
       this._boundBlockCapture = this.handleBlockCapture.bind(this);
       this._boundBlockKeydown = this.handleBlockKeydown.bind(this);
       this._boundExternalDesktopLayout = this.handleExternalDesktopLayout.bind(this);
+      this._boundExternalWindowCommand = this.handleExternalWindowCommand.bind(this);
       this.$previewSplit = null;
       this.$layoutSplit = null;
       this.$layoutTabs = null;
       this.$previewPaneToggle = null;
       this.$previewPaneButtons = [];
+      this.$windowMinimize = null;
+      this.$windowRestore = null;
+      this.$windowFull = null;
+      this.$resizeHandles = [];
+      this.$codeMode = null;
+      this.$codeModeLanguage = null;
+      this.$codeModeCopy = null;
+      this.$codeModeRun = null;
+      this.$codeModeStatus = null;
+      this.$codeModeConsole = null;
+      this.$codeModeOutput = null;
+      this._detectedCode = null;
+      this._codeModeRevision = '';
+      this._codeRunController = null;
 
       if (window.TurndownService) {
         this._turndown = new window.TurndownService();
@@ -221,6 +266,7 @@
         this._onExternalLog
       );
       window.addEventListener('aiMemo:desktopLayout', this._boundExternalDesktopLayout);
+      window.addEventListener('aiMemo:windowCommand', this._boundExternalWindowCommand);
       this._boundBeforeUnload = () => {
         if (this.state.memo) {
           LS.set(KEYS.memo, this.state.memo);
@@ -242,6 +288,7 @@
         this._onExternalLog
       );
       window.removeEventListener('aiMemo:desktopLayout', this._boundExternalDesktopLayout);
+      window.removeEventListener('aiMemo:windowCommand', this._boundExternalWindowCommand);
       window.removeEventListener('beforeunload', this._boundBeforeUnload);
       this.cleanupHistoryInteractions();
       
@@ -271,8 +318,11 @@
       this._bodyScrollLocked = true;
       this._originalBodyOverflow = document.body.style.overflow;
       this._originalBodyPosition = document.body.style.position;
+      this._originalBodyTop = document.body.style.top;
+      this._bodyScrollY = window.scrollY || window.pageYOffset || 0;
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
+      document.body.style.top = `-${this._bodyScrollY}px`;
       document.body.style.width = '100%';
     }
 
@@ -281,7 +331,12 @@
       this._bodyScrollLocked = false;
       document.body.style.overflow = this._originalBodyOverflow || '';
       document.body.style.position = this._originalBodyPosition || '';
+      document.body.style.top = this._originalBodyTop || '';
       document.body.style.width = '';
+      if (typeof this._bodyScrollY === 'number') {
+        window.scrollTo(0, this._bodyScrollY);
+      }
+      this._bodyScrollY = null;
     }
 
     cleanupHistoryInteractions() {
@@ -331,6 +386,297 @@
       const nx = Math.max(padding, Math.min(vw - w - padding, x));
       const ny = Math.max(padding, Math.min(vh - h - padding, y));
       return { x: nx, y: ny };
+    }
+
+    normalizeBounds(bounds) {
+      if (!bounds || typeof bounds !== 'object') return null;
+      if (bounds.x == null || bounds.y == null || bounds.width == null || bounds.height == null) return null;
+      const x = Number(bounds.x);
+      const y = Number(bounds.y);
+      const width = Number(bounds.width);
+      const height = Number(bounds.height);
+      if (![x, y, width, height].every(Number.isFinite)) return null;
+      return { x, y, width, height };
+    }
+
+    normalizeWindowState(raw) {
+      const state = raw && typeof raw === 'object' ? raw : {};
+      const mode = WINDOW_MODES.has(state.mode) ? state.mode : 'floating';
+      const snap = WINDOW_SNAPS.has(state.snap) ? state.snap : null;
+      return {
+        mode,
+        snap,
+        bounds: this.normalizeBounds(state.bounds),
+        previousBounds: this.normalizeBounds(state.previousBounds),
+      };
+    }
+
+    getViewportSize() {
+      return {
+        width: Math.max(1, window.innerWidth || 1),
+        height: Math.max(1, window.visualViewport?.height || window.innerHeight || 1),
+      };
+    }
+
+    clampWindowBounds(bounds) {
+      const viewport = this.getViewportSize();
+      const padding = WINDOW_EDGE_PADDING;
+      const maxWidth = Math.max(240, viewport.width - padding * 2);
+      const maxHeight = Math.max(260, viewport.height - padding * 2);
+      const minWidth = Math.min(WINDOW_MIN_WIDTH, maxWidth);
+      const minHeight = Math.min(WINDOW_MIN_HEIGHT, maxHeight);
+      const rawX = Number(bounds?.x);
+      const rawY = Number(bounds?.y);
+      const width = Math.max(minWidth, Math.min(maxWidth, Number(bounds?.width) || WINDOW_DEFAULT_WIDTH));
+      const height = Math.max(minHeight, Math.min(maxHeight, Number(bounds?.height) || WINDOW_DEFAULT_HEIGHT));
+      const maxX = Math.max(padding, viewport.width - width - padding);
+      const maxY = Math.max(padding, viewport.height - height - padding);
+      const fallbackX = viewport.width - width - 20;
+      const fallbackY = viewport.height - height - 100;
+      const x = Math.max(padding, Math.min(maxX, Number.isFinite(rawX) ? rawX : fallbackX));
+      const y = Math.max(padding, Math.min(maxY, Number.isFinite(rawY) ? rawY : fallbackY));
+      return { x, y, width, height };
+    }
+
+    getDefaultWindowBounds() {
+      const viewport = this.getViewportSize();
+      return this.clampWindowBounds({
+        width: Math.min(WINDOW_DEFAULT_WIDTH, viewport.width - WINDOW_EDGE_PADDING * 2),
+        height: Math.min(WINDOW_DEFAULT_HEIGHT, viewport.height - WINDOW_EDGE_PADDING * 2),
+        x: viewport.width - WINDOW_DEFAULT_WIDTH - 20,
+        y: viewport.height - WINDOW_DEFAULT_HEIGHT - 100,
+      });
+    }
+
+    getPanelWindowBounds() {
+      const rect = this.$panel?.getBoundingClientRect();
+      if (!rect || rect.width <= 0 || rect.height <= 0) {
+        return this.state.windowState?.bounds || this.getDefaultWindowBounds();
+      }
+      return this.clampWindowBounds({
+        x: rect.left,
+        y: rect.top,
+        width: rect.width,
+        height: rect.height,
+      });
+    }
+
+    persistWindowState() {
+      const windowState = this.normalizeWindowState(this.state.windowState);
+      this.state.windowState = windowState;
+      LS.set(KEYS.window, windowState);
+      if (windowState.bounds) {
+        LS.set(KEYS.position, { x: windowState.bounds.x, y: windowState.bounds.y });
+      }
+    }
+
+    emitWindowLayoutChanged() {
+      try {
+        window.dispatchEvent(new CustomEvent('aiMemo:layoutChanged', {
+          detail: {
+            mode: this.state.windowState?.mode || 'floating',
+            snap: this.state.windowState?.snap || null,
+            bounds: this.state.windowState?.bounds || null,
+          },
+        }));
+      } catch (_) {}
+    }
+
+    applyWindowBounds(bounds, persist = true) {
+      if (!this.$panel || !bounds) return;
+      const next = this.clampWindowBounds(bounds);
+      Object.assign(this.$panel.style, {
+        left: `${next.x}px`,
+        top: `${next.y}px`,
+        right: 'auto',
+        bottom: 'auto',
+        width: `${next.width}px`,
+        height: `${next.height}px`,
+        maxWidth: 'none',
+        maxHeight: 'none',
+      });
+      this.state.windowState = this.normalizeWindowState({
+        ...(this.state.windowState || {}),
+        mode: 'floating',
+        bounds: next,
+      });
+      if (persist) this.persistWindowState();
+    }
+
+    clearWindowInlinePlacement() {
+      if (!this.$panel) return;
+      Object.assign(this.$panel.style, {
+        left: '',
+        top: '',
+        right: '',
+        bottom: '',
+        width: '',
+        height: '',
+        maxWidth: '',
+        maxHeight: '',
+      });
+    }
+
+    applyWindowState({ persist = false } = {}) {
+      if (!this.$panel) return;
+      const state = this.normalizeWindowState(this.state.windowState);
+      this.state.windowState = state;
+      const fullscreen = state.mode === 'fullscreen';
+      const docked = state.mode === 'docked';
+      this.classList.toggle('memo-full', fullscreen);
+      this.$panel.classList.toggle('window-fullscreen', fullscreen);
+      this.$panel.classList.toggle('window-docked', docked);
+      this.$panel.classList.toggle('window-snapped', Boolean(state.snap));
+      this.$panel.dataset.windowMode = state.mode;
+      this.$panel.dataset.snap = state.snap || '';
+      if (fullscreen || docked) {
+        this.clearWindowInlinePlacement();
+      } else {
+        this.applyWindowBounds(state.bounds || this.getDefaultWindowBounds(), false);
+      }
+      const shouldLockBody = this.$panel.classList.contains('open') && (fullscreen || window.innerWidth <= 640);
+      if (shouldLockBody) this.lockBodyScroll();
+      else if (window.innerWidth > 640) this.restoreBodyScroll();
+      this.updateWindowControls();
+      if (persist) this.persistWindowState();
+      this.emitWindowLayoutChanged();
+    }
+
+    updateWindowControls() {
+      const fullscreen = this.state.windowState?.mode === 'fullscreen';
+      if (this.$windowFull) {
+        this.$windowFull.setAttribute('aria-pressed', fullscreen ? 'true' : 'false');
+        this.$windowFull.title = fullscreen ? '일반 크기로 복원' : '전체 화면';
+      }
+      if (this.$memoFull) {
+        this.$memoFull.setAttribute('aria-pressed', fullscreen ? 'true' : 'false');
+        this.$memoFull.title = fullscreen ? '일반 크기로 복원' : '전체화면';
+      }
+    }
+
+    setWindowMode(mode, options = {}) {
+      const nextMode = WINDOW_MODES.has(mode) ? mode : 'floating';
+      const current = this.normalizeWindowState(this.state.windowState);
+      const currentBounds = this.getPanelWindowBounds();
+      const next = {
+        mode: nextMode,
+        snap: options.snap || null,
+        bounds: null,
+        previousBounds: current.previousBounds,
+      };
+      if (nextMode === 'floating') {
+        next.bounds = this.normalizeBounds(options.bounds) || current.previousBounds || current.bounds || this.getDefaultWindowBounds();
+        next.previousBounds = null;
+      } else {
+        next.previousBounds = current.mode === 'floating' ? currentBounds : current.previousBounds || current.bounds || currentBounds;
+      }
+      this.state.windowState = this.normalizeWindowState(next);
+      this.applyWindowState({ persist: options.persist !== false });
+      if (this.$memoPreview) this.renderMarkdownToPreview(this.$memoEditor?.value || this.$memo?.value || '');
+    }
+
+    toggleFullscreen() {
+      const entering = this.state.windowState?.mode !== 'fullscreen';
+      this.setWindowMode(entering ? 'fullscreen' : 'floating');
+      this.out.toast(entering ? '전체화면' : '일반 모드');
+      this.logEvent({ type: 'toggle_fullscreen', label: entering ? 'enter' : 'exit' });
+    }
+
+    minimizeWindow() {
+      this.$panel?.classList.remove('open');
+      this.updateOpen();
+      this.out.toast('메모 창을 최소화했습니다.');
+      this.logEvent({ type: 'minimize_window', label: 'header' });
+    }
+
+    restoreFloatingWindow() {
+      this.classList.remove('desktop-rail');
+      this.$panel?.classList.remove('desktop-rail');
+      this.setWindowMode('floating');
+      this.out.toast('창 크기를 복원했습니다.');
+      this.logEvent({ type: 'restore_window', label: 'header' });
+    }
+
+    getSnapForPointer(clientX, clientY) {
+      const { width, height } = this.getViewportSize();
+      const edge = WINDOW_SNAP_THRESHOLD;
+      const nearLeft = clientX <= edge;
+      const nearRight = clientX >= width - edge;
+      const nearTop = clientY <= edge;
+      const nearBottom = clientY >= height - edge;
+      if (nearTop && Math.abs(clientX - width / 2) <= width * 0.2) return 'fullscreen';
+      if (nearBottom && nearLeft) return 'bottom-left';
+      if (nearBottom && nearRight) return 'bottom-right';
+      if (nearLeft) return 'left-half';
+      if (nearRight) return 'right-half';
+      if (nearTop) return 'top-half';
+      if (nearBottom) return 'bottom-half';
+      return null;
+    }
+
+    getSnapBounds(snap) {
+      const { width, height } = this.getViewportSize();
+      const p = WINDOW_EDGE_PADDING;
+      const halfW = Math.max(WINDOW_MIN_WIDTH, Math.floor((width - p * 3) / 2));
+      const halfH = Math.max(WINDOW_MIN_HEIGHT, Math.floor((height - p * 3) / 2));
+      const defaultBounds = this.getDefaultWindowBounds();
+      const compactW = Math.min(520, width - p * 2);
+      const compactH = Math.min(520, height - p * 2);
+      const map = {
+        'left-half': { x: p, y: p, width: halfW, height: height - p * 2 },
+        'right-half': { x: width - halfW - p, y: p, width: halfW, height: height - p * 2 },
+        'top-half': { x: p, y: p, width: width - p * 2, height: halfH },
+        'bottom-half': { x: p, y: height - halfH - p, width: width - p * 2, height: halfH },
+        'top-center': { x: (width - compactW) / 2, y: p, width: compactW, height: compactH },
+        'bottom-center': { x: (width - compactW) / 2, y: height - compactH - p, width: compactW, height: compactH },
+        'bottom-left': { x: p, y: height - compactH - p, width: compactW, height: compactH },
+        'bottom-right': { x: width - compactW - p, y: height - compactH - p, width: compactW, height: compactH },
+      };
+      return this.clampWindowBounds(map[snap] || defaultBounds);
+    }
+
+    applySnap(snap) {
+      if (!WINDOW_SNAPS.has(snap)) return false;
+      if (snap === 'fullscreen') {
+        this.setWindowMode('fullscreen', { snap: 'fullscreen' });
+        return true;
+      }
+      this.setWindowMode('floating', { bounds: this.getSnapBounds(snap), snap });
+      this.out.toast('스냅 위치로 정렬했습니다.');
+      this.logEvent({ type: 'snap_window', label: snap });
+      return true;
+    }
+
+    handleExternalWindowCommand(event) {
+      const detail = event?.detail || {};
+      const action = detail.action || detail.type;
+      if (action === 'toggle') {
+        this.$panel?.classList.toggle('open');
+        this.updateOpen();
+        return;
+      }
+      if (action === 'open') {
+        this.$panel?.classList.add('open');
+        this.updateOpen();
+        if (detail.mode) this.setWindowMode(detail.mode, { snap: detail.snap });
+        return;
+      }
+      if (action === 'close' || action === 'minimize') {
+        this.minimizeWindow();
+        return;
+      }
+      if (action === 'restore') {
+        this.restoreFloatingWindow();
+        return;
+      }
+      if (action === 'fullscreen') {
+        this.setWindowMode('fullscreen', { snap: 'fullscreen' });
+        return;
+      }
+      if (detail.mode) {
+        if (detail.snap) this.applySnap(detail.snap);
+        else this.setWindowMode(detail.mode);
+      }
     }
 
     // Deprecated: prefer using this.out.toast(msg) directly to keep output scoped within the shadow DOM
@@ -556,6 +902,224 @@
 
       // 4) Default production URL
       return normalizeBaseUrl(DEFAULT_API_URL);
+    }
+
+    getRuntimeFeatures() {
+      const w = typeof window !== 'undefined' ? window : null;
+      return w?.APP_CONFIG?.features || w?.__APP_CONFIG?.features || {};
+    }
+
+    isCodeExecutionEnabled() {
+      return this.getRuntimeFeatures()?.codeExecutionEnabled === true;
+    }
+
+    getCodeLanguageOption(value) {
+      const normalized = String(value || '').trim().toLowerCase();
+      return CODE_LANGUAGE_OPTIONS.find(option =>
+        option.value === normalized ||
+        option.pistonLang === normalized ||
+        option.aliases.includes(normalized)
+      ) || CODE_LANGUAGE_OPTIONS[1];
+    }
+
+    detectCodeLanguage(code, explicitLanguage = '') {
+      if (explicitLanguage) return this.getCodeLanguageOption(explicitLanguage);
+      const text = String(code || '').toLowerCase();
+      if (/\bdef\s+\w+\s*\(|\bprint\s*\(|\bimport\s+\w+|^\s*from\s+\w+\s+import\s+/m.test(text)) {
+        return this.getCodeLanguageOption('python');
+      }
+      if (/\binterface\s+\w+|:\s*(string|number|boolean)\b|=>\s*\w+/m.test(text)) {
+        return this.getCodeLanguageOption('typescript');
+      }
+      if (/\bpublic\s+class\s+\w+|\bSystem\.out\.println\s*\(/.test(code || '')) {
+        return this.getCodeLanguageOption('java');
+      }
+      if (/#include\s*<|std::|int\s+main\s*\(/.test(code || '')) {
+        return this.getCodeLanguageOption('cpp');
+      }
+      if (/^\s*(npm|pnpm|yarn|curl|grep|awk|sed|for\s+\w+\s+in|echo\s+)/m.test(text)) {
+        return this.getCodeLanguageOption('bash');
+      }
+      return this.getCodeLanguageOption('javascript');
+    }
+
+    hashCodeSnippet(code) {
+      let hash = 0;
+      const value = String(code || '');
+      for (let i = 0; i < value.length; i += 1) {
+        hash = (hash * 31 + value.charCodeAt(i)) | 0;
+      }
+      return String(hash >>> 0);
+    }
+
+    extractRunnableCode(src) {
+      const text = String(src || '');
+      const fences = Array.from(text.matchAll(/```([A-Za-z0-9_+#.-]*)\s*\n([\s\S]*?)```/g));
+      if (fences.length) {
+        const last = fences[fences.length - 1];
+        const code = String(last[2] || '').trim();
+        if (code) {
+          const option = this.detectCodeLanguage(code, last[1]);
+          return {
+            code,
+            language: option.value,
+            label: option.label,
+            source: 'fence',
+            revision: `${option.value}:${code.length}:${this.hashCodeSnippet(code)}`,
+          };
+        }
+      }
+
+      const trimmed = text.trim();
+      if (!trimmed || trimmed.length < 10) return null;
+      const codeSignals = [
+        /\bdef\s+\w+\s*\(/,
+        /\bfunction\s+\w+\s*\(/,
+        /=>\s*[{(]/,
+        /\b(class|interface)\s+\w+/,
+        /\b(import|from|const|let|var)\s+/,
+        /console\.log\s*\(/,
+        /print\s*\(/,
+        /#include\s*</,
+        /\b(public|private|protected)\s+static\s+/,
+      ];
+      const score = codeSignals.reduce((total, pattern) => total + (pattern.test(trimmed) ? 1 : 0), 0);
+      if (score < 2) return null;
+      const option = this.detectCodeLanguage(trimmed);
+      return {
+        code: trimmed,
+        language: option.value,
+        label: option.label,
+        source: 'memo',
+        revision: `${option.value}:${trimmed.length}:${this.hashCodeSnippet(trimmed)}`,
+      };
+    }
+
+    syncCodeMode(src) {
+      if (!this.$codeMode) return;
+      const detected = this.extractRunnableCode(src);
+      this._detectedCode = detected;
+      this.$codeMode.hidden = !detected;
+      this.$codeMode.classList.toggle('is-visible', !!detected);
+
+      if (!detected) {
+        this._codeModeRevision = '';
+        if (this.$codeModeOutput) this.$codeModeOutput.textContent = '';
+        if (this.$codeModeConsole) this.$codeModeConsole.hidden = true;
+        return;
+      }
+
+      const selected = this.$codeModeLanguage?.value && this.$codeModeLanguage.value !== 'auto'
+        ? this.getCodeLanguageOption(this.$codeModeLanguage.value)
+        : this.getCodeLanguageOption(detected.language);
+      if (this.$codeModeLanguage && !this.$codeModeLanguage.value) {
+        this.$codeModeLanguage.value = 'auto';
+      }
+
+      const executionEnabled = this.isCodeExecutionEnabled();
+      if (this.$codeModeRun) {
+        this.$codeModeRun.disabled = !executionEnabled;
+        this.$codeModeRun.title = executionEnabled
+          ? '감지된 코드를 실행합니다'
+          : '코드 실행 기능이 비활성화되어 있습니다';
+      }
+      if (this.$codeModeStatus) {
+        this.$codeModeStatus.textContent = executionEnabled
+          ? `${selected.label} 감지됨`
+          : `${selected.label} 감지됨 · 실행 비활성`;
+      }
+
+      if (this._codeModeRevision && this._codeModeRevision !== detected.revision) {
+        if (this.$codeModeConsole) this.$codeModeConsole.hidden = true;
+        if (this.$codeModeOutput) this.$codeModeOutput.textContent = '';
+      }
+      this._codeModeRevision = detected.revision;
+    }
+
+    setCodeModeBusy(isBusy) {
+      if (!this.$codeModeRun) return;
+      this.$codeModeRun.classList.toggle('is-loading', !!isBusy);
+      this.$codeModeRun.disabled = !!isBusy || !this.isCodeExecutionEnabled();
+      this.$codeModeRun.setAttribute('aria-busy', isBusy ? 'true' : 'false');
+    }
+
+    setCodeModeOutput(text, status = '완료') {
+      if (this.$codeModeConsole) this.$codeModeConsole.hidden = false;
+      if (this.$codeModeOutput) this.$codeModeOutput.textContent = text || '(no output)';
+      if (this.$codeModeStatus) this.$codeModeStatus.textContent = status;
+    }
+
+    async copyDetectedCode() {
+      const detected = this._detectedCode || this.extractRunnableCode(this.state.memo);
+      if (!detected?.code) {
+        this.out.toast('복사할 코드가 없습니다.');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(detected.code);
+        this.out.toast('코드를 복사했습니다.');
+      } catch (_) {
+        this.out.toast('클립보드 복사에 실패했습니다.');
+      }
+    }
+
+    async runDetectedCode() {
+      const detected = this._detectedCode || this.extractRunnableCode(this.state.memo);
+      if (!detected?.code) {
+        this.out.toast('실행할 코드가 없습니다.');
+        return;
+      }
+      if (!this.isCodeExecutionEnabled()) {
+        this.out.toast('코드 실행 기능이 비활성화되어 있습니다.');
+        return;
+      }
+
+      this._codeRunController?.abort();
+      const controller = new AbortController();
+      this._codeRunController = controller;
+      const selected = this.getCodeLanguageOption(
+        this.$codeModeLanguage?.value && this.$codeModeLanguage.value !== 'auto'
+          ? this.$codeModeLanguage.value
+          : detected.language
+      );
+      const revision = detected.revision;
+      this.setCodeModeBusy(true);
+      this.setCodeModeOutput('', `${selected.label} 실행 중...`);
+
+      try {
+        const adminToken = LS.get(KEYS.adminToken, '');
+        const headers = { 'Content-Type': 'application/json' };
+        if (adminToken) headers.Authorization = `Bearer ${adminToken}`;
+        const res = await fetch(`${this.getApiBase()}/api/v1/execute`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            language: selected.pistonLang,
+            version: selected.pistonVersion,
+            files: [{ content: detected.code }],
+            run_timeout: 10_000,
+          }),
+          signal: controller.signal,
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (revision !== this._codeModeRevision) return;
+        if (!res.ok || payload?.ok === false) {
+          const message = payload?.error?.message || payload?.error || payload?.message || `Execution failed (${res.status})`;
+          throw new Error(message);
+        }
+        const run = payload?.data?.run || {};
+        const output = [run.stdout, run.stderr].filter(Boolean).join('\n');
+        const status = typeof run.code === 'number' ? `완료 · exit ${run.code}` : '완료';
+        this.setCodeModeOutput(output, status);
+        this.logEvent({ type: 'code_run', label: selected.value, exitCode: run.code });
+      } catch (err) {
+        if (err?.name !== 'AbortError') {
+          this.setCodeModeOutput(err?.message || '실행 실패', '오류');
+        }
+      } finally {
+        if (this._codeRunController === controller) this._codeRunController = null;
+        this.setCodeModeBusy(false);
+      }
     }
 
     async syncToCloud() {
@@ -1159,7 +1723,12 @@
           <div id="drag" class="header">
             <div class="title">떠다니는 AI 메모</div>
             <div class="spacer"></div>
-            <div id="close" class="close" aria-label="닫기">✕</div>
+            <div class="window-controls" aria-label="창 제어">
+              <button id="windowMinimize" class="window-control" type="button" title="최소화" aria-label="최소화">—</button>
+              <button id="windowRestore" class="window-control" type="button" title="복원" aria-label="복원">▣</button>
+              <button id="windowFull" class="window-control" type="button" title="전체 화면" aria-label="전체 화면" aria-pressed="false">⛶</button>
+              <button id="close" class="close" type="button" aria-label="닫기">✕</button>
+            </div>
           </div>
           <div class="tabs">
             <div class="tab" data-tab="memo">메모</div>
@@ -1203,6 +1772,27 @@
                 <span class="hint-shortcut"><kbd>Alt</kbd>+<kbd>M</kbd> 토글</span>
                 <span class="hint-divider">•</span>
                 <span class="hint-shortcut"><kbd>/</kbd> 명령어</span>
+              </div>
+              <div id="codeMode" class="code-mode" hidden>
+                <div class="code-mode-main">
+                  <div class="code-mode-badge" aria-hidden="true">{ }</div>
+                  <div class="code-mode-copy">
+                    <strong>Code Mode</strong>
+                    <span id="codeModeStatus">코드 감지됨</span>
+                  </div>
+                </div>
+                <div class="code-mode-actions" role="toolbar" aria-label="코드 작업">
+                  <label class="code-mode-select-label" for="codeModeLanguage">언어</label>
+                  <select id="codeModeLanguage" class="code-mode-select" aria-label="실행 언어">
+                    <option value="auto">자동</option>
+                    ${CODE_LANGUAGE_OPTIONS.map(option => `<option value="${option.value}">${option.label}</option>`).join('')}
+                  </select>
+                  <button id="codeModeCopy" class="code-mode-button" type="button">복사</button>
+                  <button id="codeModeRun" class="code-mode-button primary" type="button">실행</button>
+                </div>
+                <div id="codeModeConsole" class="code-mode-console" hidden>
+                  <pre id="codeModeOutput"></pre>
+                </div>
               </div>
               <textarea id="memo" class="textarea" style="min-height:300px; height:300px;" placeholder="여기에 메모를 작성하세요...&#10;&#10;Tip: / 를 입력하면 서식 메뉴가 열립니다"></textarea>
             </div>
@@ -1375,6 +1965,14 @@
             </div>
           </div>
           <div id="toast" class="toast"></div>
+          <div class="resize-handle resize-handle-n" data-resize="n" aria-hidden="true"></div>
+          <div class="resize-handle resize-handle-e" data-resize="e" aria-hidden="true"></div>
+          <div class="resize-handle resize-handle-s" data-resize="s" aria-hidden="true"></div>
+          <div class="resize-handle resize-handle-w" data-resize="w" aria-hidden="true"></div>
+          <div class="resize-handle resize-handle-ne" data-resize="ne" aria-hidden="true"></div>
+          <div class="resize-handle resize-handle-nw" data-resize="nw" aria-hidden="true"></div>
+          <div class="resize-handle resize-handle-se" data-resize="se" aria-hidden="true"></div>
+          <div class="resize-handle resize-handle-sw" data-resize="sw" aria-hidden="true"></div>
         </div>
       `;
       this.shadowRoot.appendChild(doc);
@@ -1395,6 +1993,12 @@
       this.$historyImport = this.shadowRoot.getElementById('historyImport');
       this.$drag = this.shadowRoot.getElementById('drag');
       this.$close = this.shadowRoot.getElementById('close');
+      this.$windowMinimize = this.shadowRoot.getElementById('windowMinimize');
+      this.$windowRestore = this.shadowRoot.getElementById('windowRestore');
+      this.$windowFull = this.shadowRoot.getElementById('windowFull');
+      this.$resizeHandles = Array.from(
+        this.shadowRoot.querySelectorAll('.resize-handle')
+      );
       this.$tabs = Array.from(this.shadowRoot.querySelectorAll('.tab'));
       this.$memoBody = this.shadowRoot.getElementById('memoBody');
       this.$previewBody = this.shadowRoot.getElementById('previewBody');
@@ -1404,6 +2008,13 @@
       this.$memo = this.shadowRoot.getElementById('memo');
       this.$memoEditor = this.shadowRoot.getElementById('memoEditor');
       this.$memoPreview = this.shadowRoot.getElementById('memoPreview');
+      this.$codeMode = this.shadowRoot.getElementById('codeMode');
+      this.$codeModeLanguage = this.shadowRoot.getElementById('codeModeLanguage');
+      this.$codeModeCopy = this.shadowRoot.getElementById('codeModeCopy');
+      this.$codeModeRun = this.shadowRoot.getElementById('codeModeRun');
+      this.$codeModeStatus = this.shadowRoot.getElementById('codeModeStatus');
+      this.$codeModeConsole = this.shadowRoot.getElementById('codeModeConsole');
+      this.$codeModeOutput = this.shadowRoot.getElementById('codeModeOutput');
       this.$previewSplit = this.shadowRoot.getElementById('previewSplit');
       this.$layoutSplit = this.shadowRoot.getElementById('layoutSplit');
       this.$layoutTabs = this.shadowRoot.getElementById('layoutTabs');
@@ -1500,20 +2111,34 @@
       if (this.$panel) {
         this.$panel.classList.toggle('desktop-rail', mode === 'rail');
         if (mode === 'rail') {
-          Object.assign(this.$panel.style, { left: '', top: '', right: '', bottom: '' });
+          if (this.state.windowState?.mode !== 'fullscreen') {
+            this.setWindowMode('docked', { persist: false });
+          }
+        } else if (this.state.windowState?.mode === 'docked') {
+          this.setWindowMode('floating', { persist: false });
         }
       }
     }
 
     getBlockPayload(block) {
-      const html = block?.outerHTML || '';
-      const markdown = this._turndown
-        ? this._turndown.turndown(html || '')
+      const rawHtml = block?.outerHTML || '';
+      const html = rawHtml.length > MAX_BLOCK_PAYLOAD_CHARS
+        ? `${rawHtml.slice(0, MAX_BLOCK_PAYLOAD_CHARS)}\n...(truncated)`
+        : rawHtml;
+      const rawMarkdown = this._turndown
+        ? this._turndown.turndown(rawHtml || '')
         : (block?.textContent || '');
-      const text = (block?.textContent || '').replace(/\s+\n/g, '\n').trim();
+      const rawText = (block?.textContent || '').replace(/\s+\n/g, '\n').trim();
+      const markdown = (rawMarkdown || '').trim();
+      const truncatedMarkdown = markdown.length > MAX_BLOCK_PAYLOAD_CHARS
+        ? `${markdown.slice(0, MAX_BLOCK_PAYLOAD_CHARS)}\n...(truncated)`
+        : markdown;
+      const text = rawText.length > MAX_BLOCK_PAYLOAD_CHARS
+        ? `${rawText.slice(0, MAX_BLOCK_PAYLOAD_CHARS)}\n...(truncated)`
+        : rawText;
       return {
         html,
-        markdown: (markdown || '').trim(),
+        markdown: truncatedMarkdown,
         text,
         title: document.title,
         url: location.href,
@@ -1792,6 +2417,10 @@
             max-height: calc(100dvh - 80px);
           }
           .panel.open { display: flex; flex-direction: column; }
+          .window-controls { display: flex; align-items: center; gap: 4px; }
+          .window-control, .close { min-width: 28px; min-height: 28px; }
+          .resize-handle { position: absolute; z-index: 4; touch-action: none; }
+          .resize-handle-se { right: 0; bottom: 0; width: 18px; height: 18px; cursor: nwse-resize; }
           .history-overlay { position: fixed !important; inset: 0; z-index: 2147483647; display: none; }
           .versions-overlay { position: fixed !important; inset: 0; z-index: 2147483647; display: none; }
         `;
@@ -1834,6 +2463,7 @@
       // content
       this.$memo.value = this.state.memo || '';
       if (this.$memoEditor) this.$memoEditor.value = this.state.memo || '';
+      this.syncCodeMode(this.state.memo || '');
       if (this.$inlineEnabled)
         this.$inlineEnabled.checked = !!this.state.inlineEnabled;
       if (this.$closeAfterInject)
@@ -1849,20 +2479,18 @@
 
       // panel open
       this.$panel.classList.toggle('open', !!this.state.isOpen);
-
-      // position - Reset to CSS defaults to prevent panel appearing outside viewport
-      // Always use CSS default positioning (right: 20px, bottom: 100px) instead of saved position
-      // This ensures panel always starts in a safe visible location
-      this.state.position = { x: null, y: null };
-      LS.set(KEYS.position, { x: null, y: null });
-      // Explicitly set position to ensure panel is visible even if CSS hasn't loaded
-      Object.assign(this.$panel.style, {
-        left: '',
-        top: '',
-        right: '20px',
-        bottom: 'calc(100px + env(safe-area-inset-bottom, 0px))',
-        position: 'fixed',
-      });
+      this.state.windowState = this.normalizeWindowState(this.state.windowState);
+      if (!this.state.windowState.bounds) {
+        const legacyPosition = this.normalizeBounds({
+          ...(this.state.position || {}),
+          width: WINDOW_DEFAULT_WIDTH,
+          height: WINDOW_DEFAULT_HEIGHT,
+        });
+        if (legacyPosition) {
+          this.state.windowState.bounds = this.clampWindowBounds(legacyPosition);
+        }
+      }
+      this.applyWindowState({ persist: true });
 
       // dev content
       if (this.$proposalMd)
@@ -2447,28 +3075,17 @@
         const isOpen = this.$panel.classList.contains('open');
         LS.set(KEYS.isOpen, isOpen);
         this.state.isOpen = isOpen;
-        
-        const isMobile = window.innerWidth <= 640;
-        if (isMobile) {
-          isOpen ? this.lockBodyScroll() : this.restoreBodyScroll();
-        }
-        
+
+        this.applyWindowState({ persist: true });
+
         if (isOpen) {
           requestAnimationFrame(() => {
-            const rect = this.$panel.getBoundingClientRect();
-            const { x, y } = this.clamp(rect.left, rect.top);
-            if (x == null || y == null) {
-              // Reset to CSS defaults if position is invalid
-              Object.assign(this.$panel.style, {
-                left: '',
-                top: '',
-                right: '',
-                bottom: '',
-              });
-              this.state.position = { x: null, y: null };
-              LS.set(KEYS.position, { x: null, y: null });
+            if (this.state.windowState?.mode === 'floating') {
+              this.applyWindowBounds(this.getPanelWindowBounds(), true);
             }
           });
+        } else {
+          this.restoreBodyScroll();
         }
       }
 
@@ -2618,6 +3235,124 @@
       }
     }
 
+    bindWindowInteractions() {
+      const beginFloatingInteraction = () => {
+        if (this.state.windowState?.mode !== 'floating') {
+          this.classList.remove('desktop-rail');
+          this.$panel?.classList.remove('desktop-rail');
+          this.setWindowMode('floating', {
+            bounds: this.getPanelWindowBounds(),
+            persist: true,
+          });
+        }
+      };
+
+      const scheduleBounds = (() => {
+        let raf = 0;
+        let pending = null;
+        return bounds => {
+          pending = bounds;
+          if (raf) return;
+          raf = requestAnimationFrame(() => {
+            raf = 0;
+            if (pending) this.applyWindowBounds(pending, false);
+            pending = null;
+          });
+        };
+      })();
+
+      const onPointerMove = e => {
+        if (!this._drag?.active) return;
+        const dx = e.clientX - this._drag.startX;
+        const dy = e.clientY - this._drag.startY;
+        scheduleBounds({
+          ...this._drag.origBounds,
+          x: this._drag.origBounds.x + dx,
+          y: this._drag.origBounds.y + dy,
+        });
+      };
+      const onPointerUp = e => {
+        if (!this._drag?.active) return;
+        this._drag.active = false;
+        this.$panel?.classList.remove('window-dragging');
+        document.removeEventListener('pointermove', onPointerMove);
+        document.removeEventListener('pointerup', onPointerUp);
+        const snap = this.getSnapForPointer(e.clientX, e.clientY);
+        if (snap) this.applySnap(snap);
+        else this.applyWindowBounds(this.getPanelWindowBounds(), true);
+      };
+
+      this.$drag.addEventListener('pointerdown', e => {
+        if (e.button !== 0) return;
+        if (e.target?.closest?.('.window-controls')) return;
+        if (this.isMobileViewport()) return;
+        beginFloatingInteraction();
+        this._drag = {
+          active: true,
+          startX: e.clientX,
+          startY: e.clientY,
+          origBounds: this.getPanelWindowBounds(),
+        };
+        this.$panel?.classList.add('window-dragging');
+        document.addEventListener('pointermove', onPointerMove);
+        document.addEventListener('pointerup', onPointerUp);
+      });
+
+      const onResizeMove = e => {
+        if (!this._resize?.active) return;
+        const dx = e.clientX - this._resize.startX;
+        const dy = e.clientY - this._resize.startY;
+        const dir = this._resize.dir;
+        const b = { ...this._resize.origBounds };
+        if (dir.includes('e')) b.width += dx;
+        if (dir.includes('s')) b.height += dy;
+        if (dir.includes('w')) {
+          b.x += dx;
+          b.width -= dx;
+        }
+        if (dir.includes('n')) {
+          b.y += dy;
+          b.height -= dy;
+        }
+        scheduleBounds(b);
+      };
+      const onResizeUp = () => {
+        if (!this._resize?.active) return;
+        this._resize.active = false;
+        this.$panel?.classList.remove('window-resizing');
+        document.removeEventListener('pointermove', onResizeMove);
+        document.removeEventListener('pointerup', onResizeUp);
+        this.applyWindowBounds(this.getPanelWindowBounds(), true);
+      };
+
+      this.$resizeHandles.forEach(handle => {
+        handle.addEventListener('pointerdown', e => {
+          if (e.button !== 0 || this.isMobileViewport()) return;
+          e.preventDefault();
+          beginFloatingInteraction();
+          this._resize = {
+            active: true,
+            startX: e.clientX,
+            startY: e.clientY,
+            dir: handle.dataset.resize || 'se',
+            origBounds: this.getPanelWindowBounds(),
+          };
+          this.$panel?.classList.add('window-resizing');
+          document.addEventListener('pointermove', onResizeMove);
+          document.addEventListener('pointerup', onResizeUp);
+        });
+      });
+
+      window.addEventListener('resize', () => {
+        if (!this.$panel.classList.contains('open')) return;
+        if (this.state.windowState?.mode === 'floating') {
+          this.applyWindowBounds(this.getPanelWindowBounds(), true);
+        } else {
+          this.applyWindowState({ persist: false });
+        }
+      });
+    }
+
      bind() {
        // launcher
        this.$launcher.addEventListener('click', () => {
@@ -2639,6 +3374,9 @@
         this.updateOpen();
         this.closeHistory();
       });
+      this.$windowMinimize?.addEventListener('click', () => this.minimizeWindow());
+      this.$windowRestore?.addEventListener('click', () => this.restoreFloatingWindow());
+      this.$windowFull?.addEventListener('click', () => this.toggleFullscreen());
 
       // tabs
       this.$tabs.forEach(tab =>
@@ -2680,6 +3418,7 @@
        
        const updateMemoState = (value) => {
          this.state.memo = value;
+         this.syncCodeMode(value);
          if (this.$memoEditor && this.$memoEditor.value !== value) {
            this.$memoEditor.value = value;
          }
@@ -2729,6 +3468,7 @@
         
         const saveAndRender = () => {
           this.state.memo = this.$memoEditor.value;
+          this.syncCodeMode(this.state.memo);
           this.scheduleRenderPreview(this.state.memo);
           if (this.$memo.value !== this.state.memo) this.$memo.value = this.state.memo;
           scheduleEditorSave();
@@ -2782,15 +3522,15 @@
           try {
             this.state.position = { x: null, y: null };
             LS.set(KEYS.position, this.state.position);
-          } catch (_) {}
-          if (this.$panel) {
-            Object.assign(this.$panel.style, {
-              left: '',
-              top: '',
-              right: '',
-              bottom: '',
+            this.state.windowState = this.normalizeWindowState({
+              mode: 'floating',
+              bounds: this.getDefaultWindowBounds(),
+              previousBounds: null,
+              snap: null,
             });
-          }
+            LS.set(KEYS.window, this.state.windowState);
+          } catch (_) {}
+          this.applyWindowState({ persist: true });
           this.out.toast('패널 위치를 기본값으로 되돌렸어요.');
           this.logEvent({ type: 'reset_position', label: 'settings' });
         });
@@ -2842,17 +3582,20 @@
         this.$memoBold?.addEventListener('click', () => surround('**'));
         this.$memoItalic?.addEventListener('click', () => surround('*'));
         this.$memoCode?.addEventListener('click', () => surround('`'));
-        this.$memoH1?.addEventListener('click', () => linePrefix('#'));
-        this.$memoH2?.addEventListener('click', () => linePrefix('##'));
-        this.$memoUl?.addEventListener('click', () => linePrefix('-'));
-        this.$memoOl?.addEventListener('click', () => linePrefix('1.'));
-         this.$memoFull?.addEventListener('click', () => {
-           const entering = !this.classList.contains('memo-full');
-           this.classList.toggle('memo-full');
-            this.out.toast(entering ? '전체화면' : '일반 모드');
-            this.logEvent({ type: 'toggle_fullscreen', label: entering ? 'enter' : 'exit' });
-           if (this.$memoPreview) this.renderMarkdownToPreview(this.$memoEditor?.value || this.$memo?.value || '');
-         });
+      this.$memoH1?.addEventListener('click', () => linePrefix('#'));
+      this.$memoH2?.addEventListener('click', () => linePrefix('##'));
+      this.$memoUl?.addEventListener('click', () => linePrefix('-'));
+      this.$memoOl?.addEventListener('click', () => linePrefix('1.'));
+      this.$codeModeLanguage?.addEventListener('change', () =>
+        this.syncCodeMode(this.state.memo)
+      );
+      this.$codeModeCopy?.addEventListener('click', () =>
+        this.copyDetectedCode()
+      );
+      this.$codeModeRun?.addEventListener('click', () =>
+        this.runDetectedCode()
+      );
+      this.$memoFull?.addEventListener('click', () => this.toggleFullscreen());
 
        this.$memoClear?.addEventListener('click', () => {
          if (confirm('메모를 모두 지울까요?')) {
@@ -3104,69 +3847,7 @@
           this.proposeNewVersion()
         );
 
-      // drag move
-      const onPointerMove = e => {
-        if (!this._drag.active) return;
-        const dx = e.clientX - this._drag.startX;
-        const dy = e.clientY - this._drag.startY;
-        const { x, y } = this.clamp(
-          this._drag.origX + dx,
-          this._drag.origY + dy
-        );
-        Object.assign(this.$panel.style, {
-          left: `${x}px`,
-          top: `${y}px`,
-          right: 'auto',
-          bottom: 'auto',
-        });
-      };
-      const onPointerUp = e => {
-        if (!this._drag.active) return;
-        this._drag.active = false;
-        document.removeEventListener('pointermove', onPointerMove);
-        document.removeEventListener('pointerup', onPointerUp);
-        // persist position
-        const rect = this.$panel.getBoundingClientRect();
-        LS.set(KEYS.position, { x: rect.left, y: rect.top });
-      };
-      this.$drag.addEventListener('pointerdown', e => {
-        if (e.button !== 0) return;
-        const rect = this.$panel.getBoundingClientRect();
-        this._drag = {
-          active: true,
-          startX: e.clientX,
-          startY: e.clientY,
-          origX: rect.left,
-          origY: rect.top,
-        };
-        document.addEventListener('pointermove', onPointerMove);
-        document.addEventListener('pointerup', onPointerUp);
-      });
-
-      // viewport clamp on resize
-      window.addEventListener('resize', () => {
-        if (!this.$panel.classList.contains('open')) return;
-        const rect = this.$panel.getBoundingClientRect();
-        const { x, y } = this.clamp(rect.left, rect.top);
-        if (x == null || y == null) {
-          // Reset to CSS defaults if position is invalid
-          Object.assign(this.$panel.style, {
-            left: '',
-            top: '',
-            right: '',
-            bottom: '',
-          });
-          LS.set(KEYS.position, { x: null, y: null });
-        } else {
-          Object.assign(this.$panel.style, {
-            left: `${x}px`,
-            top: `${y}px`,
-            right: 'auto',
-            bottom: 'auto',
-          });
-          LS.set(KEYS.position, { x, y });
-        }
-      });
+      this.bindWindowInteractions();
 
        // keyboard: Esc to close + editor shortcuts
         window.addEventListener('keydown', e => {

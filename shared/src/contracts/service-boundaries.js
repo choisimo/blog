@@ -31,6 +31,7 @@ export const SERVICE_BOUNDARIES = Object.freeze([
   { id: 'subscribe', prefix: '/api/v1/subscribe', owner: ROUTE_OWNERS.WORKER, description: 'Email subscriptions' },
   { id: 'contact', prefix: '/api/v1/contact', owner: ROUTE_OWNERS.WORKER, description: 'Contact form ingestion' },
   { id: 'notifications', prefix: '/api/v1/notifications', owner: ROUTE_OWNERS.WORKER, description: 'Edge-authenticated notification ingress with backend-origin streaming/history handlers' },
+  { id: 'site-content', prefix: '/api/v1/site-content', owner: ROUTE_OWNERS.WORKER, description: 'D1-backed public and admin-managed site content blocks' },
   { id: 'gateway', prefix: '/api/v1/gateway', owner: ROUTE_OWNERS.WORKER, description: 'Internal gateway endpoints' },
 
   { id: 'posts', prefix: '/api/v1/posts', owner: ROUTE_OWNERS.BACKEND, description: 'Filesystem/GitHub post ingestion and publishing' },

@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-04-24T15:23:44.560Z",
+  "generatedAt": "2026-04-28T18:59:38.359Z",
   "counts": {
     "serviceBoundaries": {
-      "worker-owned": 26,
+      "worker-owned": 27,
       "backend-owned": 7,
       "proxy-only": 4,
       "compatibility": 1
@@ -162,6 +162,12 @@
       "prefix": "/api/v1/notifications",
       "owner": "worker-owned",
       "description": "Edge-authenticated notification ingress with backend-origin streaming/history handlers"
+    },
+    {
+      "id": "site-content",
+      "prefix": "/api/v1/site-content",
+      "owner": "worker-owned",
+      "description": "D1-backed public and admin-managed site content blocks"
     },
     {
       "id": "gateway",

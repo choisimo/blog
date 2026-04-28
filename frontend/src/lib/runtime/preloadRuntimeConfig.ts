@@ -48,6 +48,7 @@ export function applyBuildTimeRuntimeConfig(
   const ragEnabled = readBooleanEnv(import.meta.env.VITE_FEATURE_RAG_ENABLED);
   const terminalEnabled = readBooleanEnv(import.meta.env.VITE_FEATURE_TERMINAL_ENABLED);
   const aiInline = readBooleanEnv(import.meta.env.VITE_FEATURE_AI_INLINE);
+  const codeExecutionEnabled = readBooleanEnv(import.meta.env.VITE_FEATURE_CODE_EXECUTION_ENABLED);
   const commentsEnabled = readBooleanEnv(import.meta.env.VITE_FEATURE_COMMENTS_ENABLED);
 
   if (siteBaseUrl) {
@@ -71,6 +72,7 @@ export function applyBuildTimeRuntimeConfig(
     ...(ragEnabled !== undefined ? { ragEnabled } : {}),
     ...(terminalEnabled !== undefined ? { terminalEnabled } : {}),
     ...(aiInline !== undefined ? { aiInline } : {}),
+    ...(codeExecutionEnabled !== undefined ? { codeExecutionEnabled } : {}),
     ...(commentsEnabled !== undefined ? { commentsEnabled } : {}),
   };
 

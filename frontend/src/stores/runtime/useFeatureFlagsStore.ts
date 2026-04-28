@@ -53,6 +53,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
   ragEnabled: false,
   terminalEnabled: false,
   aiInline: false,
+  codeExecutionEnabled: false,
   commentsEnabled: false,
 };
 
@@ -68,6 +69,8 @@ function mergeFeatureFlags(features?: Partial<FeatureFlags> | null): FeatureFlag
     terminalEnabled:
       features?.terminalEnabled ?? DEFAULT_FLAGS.terminalEnabled,
     aiInline: features?.aiInline ?? DEFAULT_FLAGS.aiInline,
+    codeExecutionEnabled:
+      features?.codeExecutionEnabled ?? DEFAULT_FLAGS.codeExecutionEnabled,
     commentsEnabled:
       features?.commentsEnabled ?? DEFAULT_FLAGS.commentsEnabled,
   };

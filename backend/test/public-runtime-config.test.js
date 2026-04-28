@@ -16,6 +16,8 @@ process.env.FEATURE_RAG_ENABLED = process.env.FEATURE_RAG_ENABLED || "true";
 process.env.FEATURE_TERMINAL_ENABLED =
   process.env.FEATURE_TERMINAL_ENABLED || "true";
 process.env.FEATURE_AI_INLINE = process.env.FEATURE_AI_INLINE || "false";
+process.env.FEATURE_CODE_EXECUTION_ENABLED =
+  process.env.FEATURE_CODE_EXECUTION_ENABLED || "true";
 process.env.FEATURE_COMMENTS_ENABLED =
   process.env.FEATURE_COMMENTS_ENABLED || "true";
 
@@ -41,6 +43,7 @@ test("publicRuntimeConfig uses the shared contract shape", () => {
         ragEnabled: true,
         terminalEnabled: true,
         aiInline: false,
+        codeExecutionEnabled: true,
         commentsEnabled: true,
       },
     }),
@@ -65,6 +68,7 @@ test("shared public runtime config suppresses terminal capability without a gate
       ragEnabled: true,
       terminalEnabled: true,
       aiInline: false,
+      codeExecutionEnabled: true,
       commentsEnabled: true,
     },
   });

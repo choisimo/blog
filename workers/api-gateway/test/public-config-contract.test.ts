@@ -51,6 +51,7 @@ describe('public runtime config contract', () => {
           ragEnabled: env.FEATURE_RAG_ENABLED === 'true',
           terminalEnabled: env.FEATURE_TERMINAL_ENABLED === 'true',
           aiInline: env.FEATURE_AI_INLINE === 'true',
+          codeExecutionEnabled: false,
           commentsEnabled: env.FEATURE_COMMENTS_ENABLED === 'true',
         },
       })
