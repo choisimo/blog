@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import crypto from 'crypto';
-import { queryAll, queryOne, execute, isD1Configured } from '../lib/d1.js';
+import { queryAll, queryOne, execute, isD1Configured, transaction } from '../lib/d1.js';
 import { requireUserAuth, requireUserOwnership } from '../middleware/userAuth.js';
 
 const router = Router();
@@ -133,29 +133,31 @@ router.post('/:userId/batch', requireDb, requireUserAuth, requireUserOwnership('
     const now = new Date().toISOString();
     const ids = [];
 
-    for (const m of memories.slice(0, 200)) {
-      const content = String(m?.content || '').trim();
-      if (!content) continue;
-      const id = `mem-${crypto.randomUUID()}`;
-      ids.push(id);
-      await execute(
-        `INSERT INTO user_memories (
-          id, user_id, memory_type, category, content, source_type, source_id,
-          importance_score, access_count, last_accessed_at, expires_at, is_active,
-          created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, 1, ?, ?)`,
-        id,
-        userId,
-        String(m.memoryType || 'fact').trim().slice(0, 32),
-        m.category ? String(m.category).trim().slice(0, 64) : null,
-        content,
-        m.sourceType ? String(m.sourceType).trim().slice(0, 32) : null,
-        m.sourceId ? String(m.sourceId).trim().slice(0, 128) : null,
-        typeof m.importanceScore === 'number' ? m.importanceScore : 0.5,
-        now,
-        now
-      );
-    }
+    await transaction(async () => {
+      for (const m of memories.slice(0, 200)) {
+        const content = String(m?.content || '').trim();
+        if (!content) continue;
+        const id = `mem-${crypto.randomUUID()}`;
+        ids.push(id);
+        await execute(
+          `INSERT INTO user_memories (
+            id, user_id, memory_type, category, content, source_type, source_id,
+            importance_score, access_count, last_accessed_at, expires_at, is_active,
+            created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, 1, ?, ?)`,
+          id,
+          userId,
+          String(m.memoryType || 'fact').trim().slice(0, 32),
+          m.category ? String(m.category).trim().slice(0, 64) : null,
+          content,
+          m.sourceType ? String(m.sourceType).trim().slice(0, 32) : null,
+          m.sourceId ? String(m.sourceId).trim().slice(0, 128) : null,
+          typeof m.importanceScore === 'number' ? m.importanceScore : 0.5,
+          now,
+          now
+        );
+      }
+    });
 
     return res.status(201).json({ ok: true, data: { ids, created: ids.length } });
   } catch (err) {

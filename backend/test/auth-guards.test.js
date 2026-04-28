@@ -10,10 +10,12 @@ const [
   { config, getSecurityConfigurationErrors },
   { requireAdmin },
   { requireBackendKey },
+  { requireGatewaySignature },
 ] = await Promise.all([
   import("../src/config/index.js"),
   import("../src/middleware/adminAuth.js"),
   import("../src/middleware/backendAuth.js"),
+  import("../src/middleware/gatewaySignature.js"),
 ]);
 
 function createResponseRecorder() {
@@ -140,5 +142,59 @@ test("protected security configuration requires backend and JWT secrets", () => 
     errors.includes(
       "ADMIN_BEARER_TOKEN or JWT_SECRET is required for admin routes in protected environments",
     ),
+  );
+  assert.ok(errors.includes("GATEWAY_SIGNING_SECRET is required in protected environments"));
+});
+
+test("gateway signature guard can reject backend-key-only origin requests", async () => {
+  await withSecurityConfig(
+    {
+      backendKey: "backend-key",
+      security: {
+        protectedEnvironment: true,
+        allowInsecureDevAuth: false,
+        gatewaySigningSecret: "gateway-signing-secret",
+      },
+    },
+    () => {
+      const req = {
+        method: "GET",
+        path: "/api/v1/posts",
+        originalUrl: "/api/v1/posts",
+        headers: { "x-backend-key": "backend-key" },
+      };
+      const res = createResponseRecorder();
+      let nextCalled = false;
+
+      requireGatewaySignature({ allowBackendKey: false })(req, res, () => {
+        nextCalled = true;
+      });
+
+      assert.equal(nextCalled, false);
+      assert.equal(res.statusCode, 401);
+      assert.equal(res.payload.error.code, "MISSING_GATEWAY_SIGNATURE");
+    },
+  );
+});
+
+test("protected OAuth configuration requires an admin email allowlist", () => {
+  const errors = getSecurityConfigurationErrors({
+    backendKey: "backend-key",
+    security: {
+      protectedEnvironment: true,
+      allowInsecureDevAuth: false,
+      gatewaySigningSecret: "gateway-signing-secret",
+    },
+    admin: { bearerToken: undefined },
+    auth: { jwtSecret: "jwt-secret" },
+    oauth: {
+      googleClientId: "google-client-id",
+      googleClientSecret: "google-client-secret",
+      allowedEmails: "",
+    },
+  });
+
+  assert.ok(
+    errors.includes("ADMIN_ALLOWED_EMAILS is required for OAuth in protected environments"),
   );
 });

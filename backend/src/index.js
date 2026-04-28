@@ -10,27 +10,193 @@ import {
   assertSecurityConfiguration,
 } from "./config.js";
 import { requireBackendKey } from "./middleware/backendAuth.js";
+import { requireGatewaySignature } from "./middleware/gatewaySignature.js";
 import { httpCache } from "./middleware/httpCache.js";
 import { httpRequestDuration, httpRequestsTotal } from "./lib/metrics.js";
 import { logger, enablePgLogs } from "./lib/logger.js";
 import {
   runMigrations,
   isPgConfigured,
+  testPgConnection,
 } from "./repositories/analytics.repository.js";
-import { closeRedis } from "./lib/redis-client.js";
+import { closeRedis, isRedisAvailable } from "./lib/redis-client.js";
+import { testConnection as testD1Connection } from "./lib/d1.js";
 import {
   buildHealthPayload,
   buildReadinessResponse,
   markReadinessDegraded,
+  runReadinessChecks,
 } from "./lib/readiness.js";
+import { aiService } from "./services/ai/ai.service.js";
+import { getDomainOutboxRepository } from "./repositories/domain-outbox.repository.js";
 import metricsRouter from "./routes/metrics.js";
 import { initChatWebSocket } from "./routes/chat.js";
+import { getLiveRedisBridgeSnapshot } from "./services/live-chat.service.js";
+import { startBackendDomainOutboxWorker } from "./services/backend-outbox.service.js";
 import {
   PUBLIC_ROUTE_REGISTRY,
   getProtectedRouteRegistry,
   mountRouteRegistry,
 } from "./routes/registry.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
+
+const READINESS_CHECK_TIMEOUT_MS = Number.parseInt(
+  process.env.READINESS_CHECK_TIMEOUT_MS || "1500",
+  10,
+);
+
+function getReadinessCheckTimeoutMs() {
+  return Number.isFinite(READINESS_CHECK_TIMEOUT_MS)
+    ? Math.max(250, READINESS_CHECK_TIMEOUT_MS)
+    : 1500;
+}
+
+async function withReadinessTimeout(name, check) {
+  const timeoutMs = getReadinessCheckTimeoutMs();
+
+  let timeout;
+  try {
+    return await Promise.race([
+      Promise.resolve().then(check),
+      new Promise((_, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error(`${name} readiness check timed out`)),
+          timeoutMs,
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function dependencyNotConfigured(required) {
+  return {
+    ok: !required,
+    status: required ? "not_configured" : "skipped",
+  };
+}
+
+function buildBackendReadinessChecks() {
+  const protectedRuntime = config.security?.protectedEnvironment === true;
+
+  return [
+    {
+      name: "postgres",
+      required: protectedRuntime || isPgConfigured(),
+      check: async () => {
+        if (!isPgConfigured()) {
+          return dependencyNotConfigured(protectedRuntime);
+        }
+        const ok = await withReadinessTimeout("postgres", testPgConnection);
+        return { ok, status: ok ? "ok" : "failed" };
+      },
+    },
+    {
+      name: "redis",
+      required: protectedRuntime || Boolean(config.redis?.url),
+      check: async () => {
+        if (!config.redis?.url) {
+          return dependencyNotConfigured(protectedRuntime);
+        }
+        const ok = await withReadinessTimeout("redis", isRedisAvailable);
+        return { ok, status: ok ? "ok" : "failed" };
+      },
+    },
+    {
+      name: "d1",
+      required: protectedRuntime,
+      check: async () => {
+        const ok = await withReadinessTimeout("d1", testD1Connection);
+        return { ok, status: ok ? "ok" : "failed" };
+      },
+    },
+    {
+      name: "chroma",
+      required: config.features?.ragEnabled === true,
+      check: async () => {
+        if (!config.features?.ragEnabled) {
+          return dependencyNotConfigured(false);
+        }
+        if (!config.rag?.chromaUrl) {
+          return dependencyNotConfigured(true);
+        }
+
+        const heartbeatUrl = new URL("/api/v2/heartbeat", config.rag.chromaUrl);
+        const response = await withReadinessTimeout("chroma", () =>
+          fetch(heartbeatUrl, {
+            signal: AbortSignal.timeout(getReadinessCheckTimeoutMs()),
+          }),
+        );
+        return {
+          ok: response.ok,
+          status: response.ok ? "ok" : "failed",
+          detail: response.ok ? null : `HTTP ${response.status}`,
+        };
+      },
+    },
+    {
+      name: "ai",
+      required: config.features?.aiEnabled === true,
+      check: async () => {
+        if (!config.features?.aiEnabled) {
+          return dependencyNotConfigured(false);
+        }
+
+        const health = await withReadinessTimeout("ai", () => aiService.health(false));
+        return {
+          ok: health?.ok === true,
+          status: health?.ok === true ? "ok" : "failed",
+          detail: health?.error || null,
+        };
+      },
+    },
+    {
+      name: "worker",
+      required: protectedRuntime,
+      check: async () => {
+        if (!config.services?.workerApiUrl) {
+          return dependencyNotConfigured(protectedRuntime);
+        }
+
+        const configUrl = new URL("/api/v1/public/config", config.services.workerApiUrl);
+        const response = await withReadinessTimeout("worker", () =>
+          fetch(configUrl, {
+            signal: AbortSignal.timeout(getReadinessCheckTimeoutMs()),
+          }),
+        );
+        return {
+          ok: response.ok,
+          status: response.ok ? "ok" : "failed",
+          detail: response.ok ? null : `HTTP ${response.status}`,
+        };
+      },
+    },
+    {
+      name: "domain_outbox",
+      required: protectedRuntime,
+      check: async () => {
+        const repository = getDomainOutboxRepository();
+        const [storageMode, stats] = await withReadinessTimeout(
+          "domain_outbox",
+          () => Promise.all([repository.getStorageMode(), repository.getStats({})]),
+        );
+        const durable = storageMode !== "memory";
+        const ok = durable && Number(stats.deadLetter || 0) === 0 && Number(stats.stuck || 0) === 0;
+
+        return {
+          ok,
+          status: ok ? "ok" : "failed",
+          detail: {
+            storageMode,
+            deadLetter: Number(stats.deadLetter || 0),
+            stuck: Number(stats.stuck || 0),
+          },
+        };
+      },
+    },
+  ];
+}
 
 async function startServer() {
   await loadAndApplyConsulConfig();
@@ -42,8 +208,15 @@ async function startServer() {
       enablePgLogs();
       logger.info({}, "PostgreSQL migrations applied");
     } catch (err) {
+      if (config.security?.protectedEnvironment === true) {
+        logger.error({}, "PostgreSQL migration failed in protected environment", {
+          error: err.message,
+        });
+        throw err;
+      }
+
       markReadinessDegraded("postgres_migration_failed");
-      logger.warn({}, "PostgreSQL migration failed, continuing without PG", {
+      logger.warn({}, "PostgreSQL migration failed, continuing in degraded mode", {
         error: err.message,
       });
     }
@@ -70,6 +243,12 @@ async function startServer() {
   app.use(cors(corsOptions));
 
   app.use(morgan("combined"));
+  app.use(
+    requireGatewaySignature({
+      allowBackendKey: config.security?.protectedEnvironment !== true,
+      bypassPaths: ["/api/v1/healthz", "/health", "/api/v1/readiness"],
+    }),
+  );
 
   app.use((req, res, next) => {
     const end = httpRequestDuration.startTimer();
@@ -94,11 +273,21 @@ async function startServer() {
     );
   });
 
-  app.get("/api/v1/readiness", (req, res) => {
-    const readiness = buildReadinessResponse({
-      env: config.appEnv,
-      uptime: process.uptime(),
-    });
+  app.get("/api/v1/readiness", async (req, res) => {
+    const dependencyChecks = await runReadinessChecks(buildBackendReadinessChecks());
+    const readiness = buildReadinessResponse(
+      {
+        env: config.appEnv,
+        uptime: process.uptime(),
+        liveRedisBridge: getLiveRedisBridgeSnapshot(),
+        processLocalState: {
+          mode: process.env.BACKEND_STATE_MODE || "single-instance",
+          durable: false,
+          constraint: "See docs/operational-state.md before horizontal scaling",
+        },
+      },
+      dependencyChecks,
+    );
     res.status(readiness.statusCode).json(readiness.body);
   });
 
@@ -110,14 +299,15 @@ async function startServer() {
     },
   );
 
+  app.use(express.json({ limit: "1mb" }));
+  app.use(express.urlencoded({ extended: false }));
+
+  app.use(PUBLIC_ROUTE_REGISTRY.map((entry) => entry.basePath), requireBackendKey);
   mountRouteRegistry(app, PUBLIC_ROUTE_REGISTRY);
 
   app.use("/metrics", requireBackendKey, metricsRouter);
 
   app.use(requireBackendKey);
-
-  app.use(express.json({ limit: "1mb" }));
-  app.use(express.urlencoded({ extended: false }));
 
   const limiter = rateLimit({
     windowMs: config.rateLimit.windowMs,
@@ -143,6 +333,7 @@ async function startServer() {
           rag: config.features.ragEnabled,
           comments: config.features.commentsEnabled,
           terminal: config.features.terminalEnabled,
+          codeExecution: config.features.codeExecutionEnabled,
         },
       },
       "features",
@@ -155,11 +346,14 @@ async function startServer() {
     logger.info({}, 'Chat WebSocket transport disabled - SSE-only mode');
   }
 
+  const backendOutboxWorker = startBackendDomainOutboxWorker();
+
   let shuttingDown = false;
   function gracefulShutdown(signal) {
     if (shuttingDown) return;
     shuttingDown = true;
     logger.info({ signal }, "Received shutdown signal, closing server...");
+    backendOutboxWorker.stop();
 
     server.close(async () => {
       logger.info({}, "HTTP server closed");

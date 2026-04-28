@@ -43,6 +43,7 @@ import type { AsyncArtifactStatus } from "@/components/features/sentio/hooks/use
 import { BlogPostHeader } from "./blog-post/BlogPostHeader";
 import { BlogPostContent } from "./blog-post/BlogPostContent";
 import { BlogPostRelated } from "./blog-post/BlogPostRelated";
+import { ArticleQuickActions } from "./blog-post/ArticleQuickActions";
 
 type VisitedPostItem = {
   path: string;
@@ -327,6 +328,8 @@ ${description}
     [],
   );
 
+  const postId = post ? `${post.year}/${post.slug}` : "";
+
   const getTranslationErrorMessage = useCallback(
     (code: TranslationErrorCode) => {
       switch (code) {
@@ -349,6 +352,23 @@ ${description}
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [year, slug]);
+
+  // Blog post pages have enough horizontal room on desktop to dock the memo panel
+  // as a right-side rail instead of overlapping the article. The web component
+  // falls back to its existing floating/bottom-sheet layout on narrower screens.
+  useEffect(() => {
+    if (!post) return;
+    window.dispatchEvent(
+      new CustomEvent("aiMemo:desktopLayout", {
+        detail: { mode: "rail", postId: `${post.year}/${post.slug}` },
+      }),
+    );
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent("aiMemo:desktopLayout", { detail: { mode: "float" } }),
+      );
+    };
+  }, [post]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -788,13 +808,23 @@ ${description}
         )}
       >
         <div
-          className="mx-auto w-full max-w-7xl px-4 pt-6 pb-32 sm:pt-12"
+          className="mx-auto w-full max-w-7xl px-4 pt-6 pb-32 sm:pt-12 2xl:max-w-[1460px]"
           style={safeAreaPaddingStyle}
         >
-          <div className="relative flex justify-center gap-8">
+          <div
+            className={cn(
+              "relative grid grid-cols-1 gap-8",
+              "xl:grid-cols-[260px_minmax(0,768px)] xl:justify-center",
+              "2xl:grid-cols-[260px_minmax(0,768px)_minmax(320px,360px)]",
+            )}
+          >
+            <aside className="hidden xl:block xl:col-start-1">
+              <MemoizedTableOfContents {...tocProps!} />
+            </aside>
+
             <article
               className={cn(
-                "w-full max-w-3xl space-y-12",
+                "w-full max-w-3xl space-y-12 xl:col-start-2",
                 isTerminal && "terminal-card p-4 sm:p-6",
               )}
             >
@@ -863,13 +893,15 @@ ${description}
               />
             </article>
 
-            <aside className="hidden xl:block relative">
-              <MemoizedTableOfContents {...tocProps!} />
-            </aside>
+            <aside
+              className="hidden 2xl:block 2xl:col-start-3"
+              aria-hidden="true"
+            />
           </div>
         </div>
       </div>
-      <ScrollToTop />
+      <ScrollToTop className="hidden sm:inline-flex" />
+      <ArticleQuickActions postId={postId} isTerminal={isTerminal} />
       {/* Mobile TOC floating button */}
       <MemoizedTocDrawer {...tocProps!} />
     </>

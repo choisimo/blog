@@ -3,6 +3,7 @@ export {
   queryAll,
   queryOne,
   execute,
+  transaction,
   isConfigured,
   isD1Configured,
   testConnection,

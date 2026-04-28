@@ -72,12 +72,19 @@ export default function NewPost() {
       return await createPostPR(payload, token);
     },
     onSuccess: (data) => {
-      toast({ title: "PR 생성됨", description: data.prUrl });
-      try {
-        window.open(data.prUrl, "_blank");
-      } catch {
-        void 0;
+      if (data.prUrl) {
+        toast({ title: "PR 생성됨", description: data.prUrl });
+        try {
+          window.open(data.prUrl, "_blank");
+        } catch {
+          void 0;
+        }
+        return;
       }
+      toast({
+        title: "PR 생성 대기열 등록됨",
+        description: data.outboxId ? `Outbox: ${data.outboxId}` : data.path,
+      });
     },
     onError: (e) =>
       toast({

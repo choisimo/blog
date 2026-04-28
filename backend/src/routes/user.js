@@ -1,6 +1,7 @@
 import { Router } from "express";
 import crypto from "crypto";
-import { queryAll, queryOne, execute, isD1Configured } from "../lib/d1.js";
+import { queryAll, queryOne, execute, isD1Configured, transaction } from "../lib/d1.js";
+import { runIdempotent } from "../lib/idempotency.js";
 import { validateBody } from "../middleware/validation.js";
 import {
   sessionBodySchema,
@@ -124,23 +125,23 @@ async function deactivateSession(sessionId) {
   return result.changes === 1;
 }
 
-router.post("/session", requireDb, validateBody(sessionBodySchema), async (req, res, next) => {
-  try {
-    const fingerprint = req.body.fingerprint;
-    const visitorId = fingerprint.visitorId;
+async function createSessionResponse(req) {
+  const fingerprint = req.body.fingerprint;
+  const visitorId = fingerprint.visitorId;
 
-    const fingerprintHash = sha256(visitorId);
-    const now = new Date().toISOString();
+  const fingerprintHash = sha256(visitorId);
+  const now = new Date().toISOString();
 
-    // Extract advanced components
-    const advancedVisitorId = String(fingerprint.advancedVisitorId || "").trim();
-    const canvasHash = String(fingerprint.canvasHash || "").trim() || null;
-    const webglHash = String(fingerprint.webglHash || "").trim() || null;
-    const audioHash = String(fingerprint.audioHash || "").trim() || null;
-    const screenResolution = String(fingerprint.screenResolution || "").trim() || null;
-    const osVersion = String(fingerprint.osVersion || "").trim() || null;
-    const advancedHash = advancedVisitorId ? sha256(advancedVisitorId) : null;
+  // Extract advanced components
+  const advancedVisitorId = String(fingerprint.advancedVisitorId || "").trim();
+  const canvasHash = String(fingerprint.canvasHash || "").trim() || null;
+  const webglHash = String(fingerprint.webglHash || "").trim() || null;
+  const audioHash = String(fingerprint.audioHash || "").trim() || null;
+  const screenResolution = String(fingerprint.screenResolution || "").trim() || null;
+  const osVersion = String(fingerprint.osVersion || "").trim() || null;
+  const advancedHash = advancedVisitorId ? sha256(advancedVisitorId) : null;
 
+  return transaction(async () => {
     // Try to find by advanced hash first, then fallback to legacy hash
     let fpRow = advancedHash
       ? await queryOne(
@@ -243,14 +244,32 @@ router.post("/session", requireDb, validateBody(sessionBodySchema), async (req, 
       now,
     );
 
-    return res.json({
-      ok: true,
-      data: {
-        sessionToken,
-        fingerprintId: fpRow.id,
-        expiresAt,
+    return {
+      statusCode: 200,
+      response: {
+        ok: true,
+        data: {
+          sessionToken,
+          fingerprintId: fpRow.id,
+          expiresAt,
+        },
       },
-    });
+    };
+  });
+}
+
+router.post("/session", requireDb, validateBody(sessionBodySchema), async (req, res, next) => {
+  try {
+    return await runIdempotent(
+      req,
+      res,
+      "user.session.create",
+      {
+        fingerprint: req.body?.fingerprint,
+        userAgent: req.body?.userAgent,
+      },
+      () => createSessionResponse(req),
+    );
   } catch (err) {
     return next(err);
   }
@@ -349,73 +368,81 @@ router.post("/session/recover", requireDb, async (req, res, next) => {
       Date.now() + 1000 * 60 * 60 * 24 * 30,
     ).toISOString();
 
-    // deactivate old. A duplicate recovery/retry after the first successful recovery must not mint another session.
-    const deactivated = await deactivateSession(old.id);
-    if (!deactivated) {
-      return res.status(404).json({ ok: false, error: "session not found or already recovered" });
-    }
-
-    // Update fingerprint component hashes if provided
-    const VALID_COLUMNS = new Set([
-      "canvas_hash", "webgl_hash", "audio_hash",
-      "screen_resolution", "os_version", "advanced_fingerprint_hash",
-    ]);
-
-    if (hasComponentHashes) {
-      const updates = [];
-      const params = [];
-      const addUpdate = (col, val) => {
-        if (!VALID_COLUMNS.has(col)) return;
-        updates.push(`${col} = ?`);
-        params.push(val);
-      };
-      if (incomingFp.canvasHash) addUpdate("canvas_hash", incomingFp.canvasHash);
-      if (incomingFp.webglHash) addUpdate("webgl_hash", incomingFp.webglHash);
-      if (incomingFp.audioHash) addUpdate("audio_hash", incomingFp.audioHash);
-      if (incomingFp.screenResolution) addUpdate("screen_resolution", incomingFp.screenResolution);
-      if (incomingFp.osVersion) addUpdate("os_version", incomingFp.osVersion);
-      if (incomingFp.advancedVisitorId) {
-        addUpdate("advanced_fingerprint_hash", sha256(incomingFp.advancedVisitorId));
+    const responseData = await transaction(async () => {
+      // deactivate old. A duplicate recovery/retry after the first successful recovery must not mint another session.
+      const deactivated = await deactivateSession(old.id);
+      if (!deactivated) {
+        return null;
       }
-      if (updates.length > 0) {
-        updates.push("updated_at = ?");
-        params.push(now);
-        params.push(old.fingerprint_id);
-        await execute(
-          `UPDATE user_fingerprints SET ${updates.join(", ")} WHERE id = ?`,
-          ...params,
-        );
+
+      // Update fingerprint component hashes if provided
+      const VALID_COLUMNS = new Set([
+        "canvas_hash", "webgl_hash", "audio_hash",
+        "screen_resolution", "os_version", "advanced_fingerprint_hash",
+      ]);
+
+      if (hasComponentHashes) {
+        const updates = [];
+        const params = [];
+        const addUpdate = (col, val) => {
+          if (!VALID_COLUMNS.has(col)) return;
+          updates.push(`${col} = ?`);
+          params.push(val);
+        };
+        if (incomingFp.canvasHash) addUpdate("canvas_hash", incomingFp.canvasHash);
+        if (incomingFp.webglHash) addUpdate("webgl_hash", incomingFp.webglHash);
+        if (incomingFp.audioHash) addUpdate("audio_hash", incomingFp.audioHash);
+        if (incomingFp.screenResolution) addUpdate("screen_resolution", incomingFp.screenResolution);
+        if (incomingFp.osVersion) addUpdate("os_version", incomingFp.osVersion);
+        if (incomingFp.advancedVisitorId) {
+          addUpdate("advanced_fingerprint_hash", sha256(incomingFp.advancedVisitorId));
+        }
+        if (updates.length > 0) {
+          updates.push("updated_at = ?");
+          params.push(now);
+          params.push(old.fingerprint_id);
+          await execute(
+            `UPDATE user_fingerprints SET ${updates.join(", ")} WHERE id = ?`,
+            ...params,
+          );
+        }
       }
-    }
 
-    const newId = `sess-${crypto.randomUUID()}`;
-    await execute(
-      `INSERT INTO user_sessions (
-        id, fingerprint_id, session_token, session_token_hash, user_agent, ip_address, country_code, preferences,
-        started_at, expires_at, last_activity_at, is_active, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-      newId,
-      old.fingerprint_id,
-      sessionTokenMarker(newTokenHash),
-      newTokenHash,
-      old.user_agent,
-      old.ip_address,
-      old.country_code,
-      old.preferences,
-      now,
-      expiresAt,
-      now,
-      now,
-      now,
-    );
+      const newId = `sess-${crypto.randomUUID()}`;
+      await execute(
+        `INSERT INTO user_sessions (
+          id, fingerprint_id, session_token, session_token_hash, user_agent, ip_address, country_code, preferences,
+          started_at, expires_at, last_activity_at, is_active, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+        newId,
+        old.fingerprint_id,
+        sessionTokenMarker(newTokenHash),
+        newTokenHash,
+        old.user_agent,
+        old.ip_address,
+        old.country_code,
+        old.preferences,
+        now,
+        expiresAt,
+        now,
+        now,
+        now,
+      );
 
-    return res.json({
-      ok: true,
-      data: {
+      return {
         sessionToken: newToken,
         fingerprintId: old.fingerprint_id,
         expiresAt,
-      },
+      };
+    });
+
+    if (!responseData) {
+      return res.status(404).json({ ok: false, error: "session not found or already recovered" });
+    }
+
+    return res.json({
+      ok: true,
+      data: responseData,
     });
   } catch (err) {
     return next(err);

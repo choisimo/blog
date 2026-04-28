@@ -7,6 +7,11 @@ import { AI_TEMPERATURES, STREAMING } from '../config/defaults';
 import type { TaskMode, TaskPayload } from '../lib/prompts';
 import { markArtifactItemsRead } from '../lib/ai-artifacts';
 import { requireAuth } from '../middleware/auth';
+import {
+  getCachedIdempotencyResponse,
+  idempotentJson,
+  releaseIdempotencyClaim,
+} from '../lib/idempotency';
 
 const ai = new Hono<HonoEnv>();
 
@@ -171,14 +176,22 @@ ai.post('/generate', requireAuth, async (c) => {
     return badRequest(c, promptError);
   }
 
+  const idempotencyPayload = { prompt, temperature };
+  const cached = await getCachedIdempotencyResponse(c, 'ai.generate', idempotencyPayload);
+  if (cached) return cached;
+
   const aiService = createAIService(c.env);
   try {
     const text = await aiService.generate(prompt, {
       temperature: typeof temperature === 'number' ? temperature : AI_TEMPERATURES.GENERATE,
       timeout: AI_DEFAULT_TIMEOUT_MS,
     });
-    return success(c, { text });
+    return idempotentJson(c, 'ai.generate', idempotencyPayload, 200, {
+      ok: true,
+      data: { text },
+    });
   } catch (err) {
+    await releaseIdempotencyClaim(c, 'ai.generate', idempotencyPayload).catch(() => undefined);
     const message = err instanceof Error ? err.message : 'AI generation failed';
     return badRequest(c, message);
   }
@@ -314,6 +327,10 @@ ai.post('/auto-chat', requireAuth, async (c) => {
     return badRequest(c, messagesError);
   }
 
+  const idempotencyPayload = { messages, temperature, maxTokens };
+  const cached = await getCachedIdempotencyResponse(c, 'ai.auto-chat', idempotencyPayload);
+  if (cached) return cached;
+
   const aiService = createAIService(c.env);
   try {
     const result = await aiService.chat(messages, {
@@ -321,12 +338,16 @@ ai.post('/auto-chat', requireAuth, async (c) => {
       maxTokens,
       timeout: AI_DEFAULT_TIMEOUT_MS,
     });
-    return success(c, {
-      content: result.content,
-      model: result.model,
-      provider: result.provider,
+    return idempotentJson(c, 'ai.auto-chat', idempotencyPayload, 200, {
+      ok: true,
+      data: {
+        content: result.content,
+        model: result.model,
+        provider: result.provider,
+      },
     });
   } catch (err) {
+    await releaseIdempotencyClaim(c, 'ai.auto-chat', idempotencyPayload).catch(() => undefined);
     const message = err instanceof Error ? err.message : 'Chat failed';
     return badRequest(c, message);
   }
@@ -355,6 +376,10 @@ ai.post('/vision/analyze', requireAuth, async (c) => {
     return badRequest(c, 'prompt is too large');
   }
 
+  const idempotencyPayload = { imageUrl, imageBase64, mimeType, prompt };
+  const cached = await getCachedIdempotencyResponse(c, 'ai.vision.analyze', idempotencyPayload);
+  if (cached) return cached;
+
   const aiService = createAIService(c.env);
   try {
     // If URL provided, we need to fetch and convert (or let backend handle it)
@@ -363,8 +388,12 @@ ai.post('/vision/analyze', requireAuth, async (c) => {
       mimeType: mimeType || 'image/jpeg',
       timeout: AI_VISION_TIMEOUT_MS,
     });
-    return success(c, { description });
+    return idempotentJson(c, 'ai.vision.analyze', idempotencyPayload, 200, {
+      ok: true,
+      data: { description },
+    });
   } catch (err) {
+    await releaseIdempotencyClaim(c, 'ai.vision.analyze', idempotencyPayload).catch(() => undefined);
     const message = err instanceof Error ? err.message : 'Vision analysis failed';
     return badRequest(c, message);
   }

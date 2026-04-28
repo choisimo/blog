@@ -5,7 +5,7 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Fri, 24 Apr 2026 15:30:32 GMT</lastBuildDate>
+    <lastBuildDate>Tue, 28 Apr 2026 03:38:25 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
       <title>ArgoCD에서 GitHub 연결이 실패했을 때, 진짜 원인은 SSH가 아니라 DNS였다</title>

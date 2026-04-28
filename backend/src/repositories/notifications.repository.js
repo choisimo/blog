@@ -94,6 +94,14 @@ function mapOutboxRow(row) {
     dedupeKey: row.dedupe_key ? String(row.dedupe_key) : null,
     createdAt: String(row.created_at),
     broadcastedAt: row.broadcasted_at ? String(row.broadcasted_at) : null,
+    deliveryStatus: row.delivery_status
+      ? String(row.delivery_status)
+      : row.broadcasted_at
+        ? "broadcasted"
+        : "pending",
+    broadcastAttempts: Number(row.broadcast_attempts || 0),
+    lastAttemptAt: row.last_attempt_at ? String(row.last_attempt_at) : null,
+    lastError: row.last_error ? String(row.last_error) : null,
   };
 }
 
@@ -159,8 +167,42 @@ class NotificationsRepository {
           source_id TEXT,
           dedupe_key TEXT,
           created_at TEXT NOT NULL,
-          broadcasted_at TEXT
+          broadcasted_at TEXT,
+          delivery_status TEXT NOT NULL DEFAULT 'pending',
+          broadcast_attempts INTEGER NOT NULL DEFAULT 0,
+          last_attempt_at TEXT,
+          last_error TEXT,
+          updated_at TEXT
         )`,
+      );
+      const outboxColumns = await queryAll(`PRAGMA table_info(notification_outbox)`);
+      const outboxColumnNames = new Set(outboxColumns.map((column) => column.name));
+      if (!outboxColumnNames.has("delivery_status")) {
+        await execute(`ALTER TABLE notification_outbox ADD COLUMN delivery_status TEXT`);
+      }
+      if (!outboxColumnNames.has("broadcast_attempts")) {
+        await execute(`ALTER TABLE notification_outbox ADD COLUMN broadcast_attempts INTEGER NOT NULL DEFAULT 0`);
+      }
+      if (!outboxColumnNames.has("last_attempt_at")) {
+        await execute(`ALTER TABLE notification_outbox ADD COLUMN last_attempt_at TEXT`);
+      }
+      if (!outboxColumnNames.has("last_error")) {
+        await execute(`ALTER TABLE notification_outbox ADD COLUMN last_error TEXT`);
+      }
+      if (!outboxColumnNames.has("updated_at")) {
+        await execute(`ALTER TABLE notification_outbox ADD COLUMN updated_at TEXT`);
+      }
+      await execute(
+        `UPDATE notification_outbox
+            SET delivery_status = CASE
+                  WHEN broadcasted_at IS NOT NULL THEN 'broadcasted'
+                  ELSE COALESCE(delivery_status, 'pending')
+                END,
+                broadcast_attempts = COALESCE(broadcast_attempts, 0),
+                updated_at = COALESCE(updated_at, created_at)
+          WHERE delivery_status IS NULL
+             OR broadcast_attempts IS NULL
+             OR updated_at IS NULL`,
       );
       await execute(
         `CREATE TABLE IF NOT EXISTS notification_inbox (
@@ -190,6 +232,10 @@ class NotificationsRepository {
       await execute(
         `CREATE INDEX IF NOT EXISTS idx_notification_inbox_user_read_created
          ON notification_inbox (user_id, read_at, created_at DESC)`,
+      );
+      await execute(
+        `CREATE INDEX IF NOT EXISTS idx_notification_outbox_delivery_status
+         ON notification_outbox (delivery_status, broadcasted_at, last_attempt_at)`,
       );
       try {
         await execute(
@@ -255,8 +301,9 @@ class NotificationsRepository {
           await execute(
             `INSERT INTO notification_outbox (
                id, event_name, notification_type, title, message, payload_json,
-               target_user_id, source_id, dedupe_key, created_at, broadcasted_at
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+               target_user_id, source_id, dedupe_key, created_at, broadcasted_at,
+               delivery_status, broadcast_attempts, last_attempt_at, last_error, updated_at
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', 0, NULL, NULL, ?)`,
             outboxId,
             record.eventName,
             record.type,
@@ -266,6 +313,7 @@ class NotificationsRepository {
             record.targetUserId,
             record.sourceId,
             record.dedupeKey,
+            createdAt,
             createdAt,
           );
         } catch (error) {
@@ -290,6 +338,10 @@ class NotificationsRepository {
           dedupeKey: record.dedupeKey,
           createdAt,
           broadcastedAt: null,
+          deliveryStatus: "pending",
+          broadcastAttempts: 0,
+          lastAttemptAt: null,
+          lastError: null,
         };
       }
     } catch (error) {
@@ -322,6 +374,10 @@ class NotificationsRepository {
       dedupeKey: record.dedupeKey,
       createdAt: nowIso(),
       broadcastedAt: null,
+      deliveryStatus: "pending",
+      broadcastAttempts: 0,
+      lastAttemptAt: null,
+      lastError: null,
     };
 
     this._fallbackOutbox.unshift(outbox);
@@ -422,8 +478,12 @@ class NotificationsRepository {
       if (schemaReady) {
         await execute(
           `UPDATE notification_outbox
-           SET broadcasted_at = COALESCE(broadcasted_at, ?)
+           SET broadcasted_at = COALESCE(broadcasted_at, ?),
+               delivery_status = 'broadcasted',
+               last_error = NULL,
+               updated_at = ?
            WHERE id = ?`,
+          nowIso(),
           nowIso(),
           normalizedOutboxId,
         );
@@ -439,6 +499,108 @@ class NotificationsRepository {
     const item = this._fallbackOutbox.find((entry) => entry.id === normalizedOutboxId);
     if (item && !item.broadcastedAt) {
       item.broadcastedAt = nowIso();
+      item.deliveryStatus = "broadcasted";
+      item.lastError = null;
+    }
+  }
+
+  async claimOutboxForBroadcast(outboxId, options = {}) {
+    const normalizedOutboxId = normalizeOptionalText(outboxId, 256);
+    if (!normalizedOutboxId) return null;
+    const staleSeconds = Math.max(1, Number.parseInt(String(options.staleSeconds || 300), 10));
+
+    try {
+      const schemaReady = await this._ensureSchema();
+      if (schemaReady) {
+        const claimedAt = nowIso();
+        const result = await execute(
+          `UPDATE notification_outbox
+              SET delivery_status = 'broadcasting',
+                  broadcast_attempts = COALESCE(broadcast_attempts, 0) + 1,
+                  last_attempt_at = ?,
+                  last_error = NULL,
+                  updated_at = ?
+            WHERE id = ?
+              AND broadcasted_at IS NULL
+              AND (
+                COALESCE(delivery_status, 'pending') IN ('pending', 'failed')
+                OR (
+                  delivery_status = 'broadcasting'
+                  AND (
+                    last_attempt_at IS NULL
+                    OR datetime(last_attempt_at) <= datetime('now', ?)
+                  )
+                )
+              )`,
+          claimedAt,
+          claimedAt,
+          normalizedOutboxId,
+          `-${staleSeconds} seconds`,
+        );
+
+        if (Number(result?.changes ?? 0) !== 1) {
+          return null;
+        }
+        const row = await queryOne(
+          `SELECT * FROM notification_outbox WHERE id = ?`,
+          normalizedOutboxId,
+        );
+        return mapOutboxRow(row);
+      }
+    } catch (error) {
+      logger.error({}, "claimOutboxForBroadcast failed; using memory fallback", {
+        error: error?.message,
+      });
+      this._d1Available = false;
+    }
+
+    const item = this._fallbackOutbox.find((entry) => entry.id === normalizedOutboxId);
+    if (!item || item.broadcastedAt || item.deliveryStatus === "broadcasting") {
+      return null;
+    }
+    item.deliveryStatus = "broadcasting";
+    item.broadcastAttempts = Number(item.broadcastAttempts || 0) + 1;
+    item.lastAttemptAt = nowIso();
+    item.lastError = null;
+    return { ...item };
+  }
+
+  async markOutboxBroadcastFailed(outboxId, error) {
+    const normalizedOutboxId = normalizeOptionalText(outboxId, 256);
+    if (!normalizedOutboxId) return;
+    const message = normalizeText(error?.message || error || "notification broadcast failed", 1000);
+
+    try {
+      const schemaReady = await this._ensureSchema();
+      if (schemaReady) {
+        const failedAt = nowIso();
+        await execute(
+          `UPDATE notification_outbox
+              SET delivery_status = 'failed',
+                  last_attempt_at = ?,
+                  last_error = ?,
+                  updated_at = ?
+            WHERE id = ?
+              AND broadcasted_at IS NULL`,
+          failedAt,
+          message,
+          failedAt,
+          normalizedOutboxId,
+        );
+        return;
+      }
+    } catch (failure) {
+      logger.error({}, "markOutboxBroadcastFailed failed; using memory fallback", {
+        error: failure?.message,
+      });
+      this._d1Available = false;
+    }
+
+    const item = this._fallbackOutbox.find((entry) => entry.id === normalizedOutboxId);
+    if (item && !item.broadcastedAt) {
+      item.deliveryStatus = "failed";
+      item.lastAttemptAt = nowIso();
+      item.lastError = message;
     }
   }
 

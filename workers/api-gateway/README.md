@@ -64,6 +64,7 @@
 
 - `BACKEND_ORIGIN`이 없으면 `500` JSON 오류 반환
 - `BACKEND_KEY`가 있으면 `X-Backend-Key` 주입
+- `GATEWAY_SIGNING_SECRET`이 있으면 `X-Gateway-*` HMAC origin signature 주입
 - 추가 전달 가능 헤더:
   - `X-Forwarded-For`
   - `X-Forwarded-Proto`

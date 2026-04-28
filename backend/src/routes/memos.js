@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import crypto from 'crypto';
-import { queryAll, queryOne, execute, isD1Configured } from '../lib/d1.js';
+import { queryAll, queryOne, execute, isD1Configured, transaction } from '../lib/d1.js';
 import { requireUserAuth, requireUserOwnership } from '../middleware/userAuth.js';
 
 const router = Router();
@@ -66,36 +66,45 @@ router.put('/:userId', requireDb, requireUserAuth, requireUserOwnership('userId'
     const { content, createVersion = false, changeSummary } = req.body || {};
     const newContent = String(content ?? '');
 
-    const row = await ensureMemoRow(userId);
-    const memoId = row?.id ?? `memo-${crypto.randomUUID()}`;
-    const prevVersion = row?.version ?? 1;
-    const nextVersion = prevVersion + 1;
-    const now = new Date().toISOString();
+    const { memoId, nextVersion } = await transaction(async () => {
+      const row = await ensureMemoRow(userId);
+      const memoId = row?.id ?? `memo-${crypto.randomUUID()}`;
+      const prevVersion = row?.version ?? 1;
+      const previousContent = String(row?.content ?? '');
+      const nextVersion = prevVersion + 1;
+      const now = new Date().toISOString();
 
-    // Save version snapshot if requested
-    if (createVersion) {
+      // Version rows are snapshots of the content being replaced.
+      if (createVersion) {
+        await execute(
+          `INSERT INTO memo_versions (memo_id, user_id, version, content, content_length, change_summary, created_at)
+           SELECT ?, ?, ?, ?, ?, ?, ?
+           WHERE NOT EXISTS (
+             SELECT 1 FROM memo_versions WHERE memo_id = ? AND version = ?
+           )` ,
+          memoId,
+          userId,
+          prevVersion,
+          previousContent,
+          previousContent.length,
+          changeSummary ? String(changeSummary).slice(0, 400) : null,
+          now,
+          memoId,
+          prevVersion,
+        );
+      }
+
       await execute(
-        `INSERT INTO memo_versions (memo_id, user_id, version, content, content_length, change_summary, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)` ,
-        memoId,
-        userId,
-        nextVersion,
+        `UPDATE memo_content
+         SET content = ?, version = ?, updated_at = ?
+         WHERE user_id = ?` ,
         newContent,
-        newContent.length,
-        changeSummary ? String(changeSummary).slice(0, 400) : null,
-        now
+        nextVersion,
+        now,
+        userId
       );
-    }
-
-    await execute(
-      `UPDATE memo_content
-       SET content = ?, version = ?, updated_at = ?
-       WHERE user_id = ?` ,
-      newContent,
-      nextVersion,
-      now,
-      userId
-    );
+      return { memoId, nextVersion };
+    });
 
     return res.json({ ok: true, data: { id: memoId, version: nextVersion } });
   } catch (err) {
@@ -208,13 +217,31 @@ router.post('/:userId/restore/:version', requireDb, requireUserAuth, requireUser
     const now = new Date().toISOString();
     const nextVersion = (row?.version ?? 1) + 1;
 
-    await execute(
-      `UPDATE memo_content SET content = ?, version = ?, updated_at = ? WHERE user_id = ?`,
-      v.content,
-      nextVersion,
-      now,
-      userId
-    );
+    await transaction(async () => {
+      await execute(
+        `INSERT INTO memo_versions (memo_id, user_id, version, content, content_length, change_summary, created_at)
+         SELECT ?, ?, ?, ?, ?, ?, ?
+         WHERE NOT EXISTS (
+           SELECT 1 FROM memo_versions WHERE memo_id = ? AND version = ?
+         )`,
+        memoId,
+        userId,
+        row?.version ?? 1,
+        row?.content ?? '',
+        String(row?.content ?? '').length,
+        `Restore requested from version ${version}`,
+        now,
+        memoId,
+        row?.version ?? 1,
+      );
+      await execute(
+        `UPDATE memo_content SET content = ?, version = ?, updated_at = ? WHERE user_id = ?`,
+        v.content,
+        nextVersion,
+        now,
+        userId
+      );
+    });
 
     return res.json({ ok: true, data: { id: memoId, version: nextVersion, restoredFrom: version } });
   } catch (err) {
@@ -229,8 +256,10 @@ router.delete('/:userId', requireDb, requireUserAuth, requireUserOwnership('user
     const row = await queryOne(`SELECT id FROM memo_content WHERE user_id = ?`, userId);
     if (!row) return res.json({ ok: true });
 
-    await execute(`DELETE FROM memo_versions WHERE memo_id = ? AND user_id = ?`, row.id, userId);
-    await execute(`DELETE FROM memo_content WHERE user_id = ?`, userId);
+    await transaction(async () => {
+      await execute(`DELETE FROM memo_versions WHERE memo_id = ? AND user_id = ?`, row.id, userId);
+      await execute(`DELETE FROM memo_content WHERE user_id = ?`, userId);
+    });
 
     return res.json({ ok: true });
   } catch (err) {

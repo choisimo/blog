@@ -9,6 +9,7 @@ import requireAdmin, { isAdminRequest } from '../middleware/adminAuth.js';
 import { buildFrontmatterMarkdown } from '../lib/markdown.js';
 import { httpCache, invalidateCacheByPrefix } from '../middleware/httpCache.js';
 import { createLogger } from '../lib/logger.js';
+import { runIdempotent } from '../lib/idempotency.js';
 
 const logger = createLogger('posts-route');
 
@@ -16,6 +17,21 @@ const router = Router();
 
 async function exists(filePath) {
   try { await fs.promises.access(filePath); return true; } catch { return false; }
+}
+
+async function writeFileAtomic(filePath, content) {
+  await fse.ensureDir(path.dirname(filePath));
+  const tempPath = path.join(
+    path.dirname(filePath),
+    `.${path.basename(filePath)}.${process.pid}.${Date.now()}.tmp`,
+  );
+  try {
+    await fs.promises.writeFile(tempPath, content, 'utf8');
+    await fs.promises.rename(tempPath, filePath);
+  } catch (error) {
+    await fs.promises.unlink(tempPath).catch(() => undefined);
+    throw error;
+  }
 }
 
 /**
@@ -170,7 +186,7 @@ async function generatePerYearManifest(year) {
     totalFiles: valid.length,
     excludedFiles: invalid.length,
   };
-  await fs.promises.writeFile(path.join(yearDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  await writeFileAtomic(path.join(yearDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   return { valid: valid.length, invalid: invalid.length };
 }
 
@@ -204,10 +220,9 @@ async function generateUnifiedManifest() {
   };
   const rootPath = path.join(publicDir, 'posts-manifest.json');
   const nestedPath = path.join(publicDir, 'posts', 'posts-manifest.json');
-  await fse.ensureDir(path.dirname(nestedPath));
   const payload = `${JSON.stringify(unified, null, 2)}\n`;
-  await fs.promises.writeFile(rootPath, payload);
-  await fs.promises.writeFile(nestedPath, payload);
+  await writeFileAtomic(rootPath, payload);
+  await writeFileAtomic(nestedPath, payload);
   return unified;
 }
 
@@ -340,8 +355,6 @@ router.post('/', requireAdmin, async (req, res, next) => {
     const yearDir = path.join(config.content.postsDir, year);
     await fse.ensureDir(yearDir);
     const abs = path.join(yearDir, filename);
-    if (await exists(abs))
-      return res.status(409).json({ ok: false, error: 'already exists' });
 
     const fm = {
       title: title || slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
@@ -354,16 +367,37 @@ router.post('/', requireAdmin, async (req, res, next) => {
     const body = typeof content === 'string' ? content : '';
     const md = buildFrontmatterMarkdown(fm, body);
 
-    await fs.promises.writeFile(abs, md);
+    return await runIdempotent(
+      req,
+      res,
+      'posts.create',
+      { year, slug, title, frontmatter, content: body },
+      async () => {
+        if (await exists(abs)) {
+          return { statusCode: 409, response: { ok: false, error: 'already exists' } };
+        }
 
-    // regenerate manifests
-    await generatePerYearManifest(year);
-    const unified = await generateUnifiedManifest();
+        await fs.promises.writeFile(abs, md, { flag: 'wx' });
 
-    await invalidateCacheByPrefix('posts');
+        // regenerate manifests
+        await generatePerYearManifest(year);
+        const unified = await generateUnifiedManifest();
 
-    return res.status(201).json({ ok: true, data: { path: `/posts/${year}/${filename}`, manifestTotal: unified.total } });
+        await invalidateCacheByPrefix('posts');
+
+        return {
+          statusCode: 201,
+          response: {
+            ok: true,
+            data: { path: `/posts/${year}/${filename}`, manifestTotal: unified.total },
+          },
+        };
+      },
+    );
   } catch (err) {
+    if (err?.code === 'EEXIST') {
+      return res.status(409).json({ ok: false, error: 'already exists' });
+    }
     return next(err);
   }
 });

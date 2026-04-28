@@ -24,6 +24,7 @@ export function BlogPostContent({
   return (
     <section
       data-toc-boundary
+      data-ai-block-scope="article"
       className={cn(
         "rounded-[32px] border border-white/50 bg-card/70 p-4 shadow-soft backdrop-blur-sm dark:border-white/5 dark:bg-[hsl(var(--card-blog)/0.9)] sm:p-8 -mx-2 sm:mx-0",
         isTerminal &&
@@ -31,6 +32,7 @@ export function BlogPostContent({
       )}
     >
       <div
+        data-ai-block-content
         className={cn(
           "prose prose-gray max-w-none dark:prose-invert",
           isTerminal &&

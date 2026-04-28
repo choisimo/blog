@@ -13,7 +13,13 @@ export type CreatePostPayload = {
 export async function createPostPR(
   payload: CreatePostPayload,
   token: string
-): Promise<{ prUrl: string; branch: string; path: string }> {
+): Promise<{
+  prUrl?: string;
+  status?: 'pending' | 'succeeded';
+  outboxId?: string;
+  branch: string;
+  path: string;
+}> {
   const base = getApiBaseUrl();
   const res = await fetch(`${base}/api/v1/admin/create-post-pr`, {
     method: 'POST',
@@ -27,7 +33,13 @@ export async function createPostPR(
   if (!res.ok || !json?.ok) {
     throw new Error(json?.error || 'Failed to create PR');
   }
-  return json.data as { prUrl: string; branch: string; path: string };
+  return json.data as {
+    prUrl?: string;
+    status?: 'pending' | 'succeeded';
+    outboxId?: string;
+    branch: string;
+    path: string;
+  };
 }
 
 export async function uploadPostImages(

@@ -2,14 +2,16 @@ import { Router } from "express";
 import fs from "fs";
 import fse from "fs-extra";
 import path from "node:path";
+import crypto from "node:crypto";
 import multer from "multer";
 import sharp from "sharp";
 import { config } from "../config.js";
 import requireAdmin from "../middleware/adminAuth.js";
-import { upload as r2Upload, isR2Configured, generateKey } from "../lib/r2.js";
-import { aiService } from "../lib/ai-service.js";
+import { upload as r2Upload, generateKey } from "../lib/r2.js";
 import { AI_MODELS } from "../config/constants.js";
 import { createLogger } from "../lib/logger.js";
+import { runIdempotent } from "../lib/idempotency.js";
+import { getDomainOutboxRepository } from "../repositories/domain-outbox.repository.js";
 
 const logger = createLogger('images-route');
 
@@ -22,26 +24,30 @@ const ALLOWED_IMAGE_MIME_TYPES = new Set([
   "image/gif",
 ]);
 
-function readHeaderValue(value) {
-  if (Array.isArray(value)) return value[0];
-  if (typeof value === "string") return value;
-  return undefined;
-}
-
-function resolveVisionModelFromRequest(req) {
-  const forcedVision = readHeaderValue(
-    req?.headers?.["x-ai-vision-model"],
-  )?.trim();
-  if (forcedVision) return forcedVision;
-  const forcedChat = readHeaderValue(req?.headers?.["x-ai-model"])?.trim();
-  if (forcedChat) return forcedChat;
-  return AI_MODELS.VISION || config.ai?.defaultModel || AI_MODELS.DEFAULT;
+function resolveVisionModelFromRequest() {
+  return config.ai?.visionModel || AI_MODELS.VISION || config.ai?.defaultModel || AI_MODELS.DEFAULT;
 }
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024, files: 20 },
 });
+
+function hashBuffer(buffer) {
+  return crypto.createHash("sha256").update(buffer).digest("hex");
+}
+
+function filesIdempotencyPayload(files, extra = {}) {
+  return {
+    ...extra,
+    files: files.map((file) => ({
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      sha256: hashBuffer(file.buffer),
+    })),
+  };
+}
 
 function sanitizeSegment(s) {
   return String(s || "")
@@ -159,15 +165,24 @@ router.post(
           .status(400)
           .json({ ok: false, error: 'No files uploaded (use field "files")' });
 
-      const results = [];
-      for (const file of files) {
-        const item = await saveWithVariants(abs, rel, file);
-        results.push(item);
-      }
+      return await runIdempotent(
+        req,
+        res,
+        "images.upload",
+        filesIdempotencyPayload(files, { year, slug, subdir }),
+        async () => {
+          const results = [];
+          for (const file of files) {
+            const item = await saveWithVariants(abs, rel, file);
+            results.push(item);
+          }
 
-      return res
-        .status(201)
-        .json({ ok: true, data: { dir: `/images/${rel}`, items: results } });
+          return {
+            statusCode: 201,
+            response: { ok: true, data: { dir: `/images/${rel}`, items: results } },
+          };
+        },
+      );
     } catch (err) {
       return next(err);
     }
@@ -267,47 +282,62 @@ router.post("/chat-upload", requireAdmin, upload.single("file"), async (req, res
       });
     }
 
-    // Generate key
-    const key = generateKey(file.originalname || "image", "ai-chat");
+    return await runIdempotent(
+      req,
+      res,
+      "images.chat-upload",
+      filesIdempotencyPayload([file]),
+      async () => {
+        // Generate key
+        const key = generateKey(file.originalname || "image", "ai-chat");
 
-    // Upload
-    const result = await r2Upload(key, file.buffer, {
-      contentType: file.mimetype || "application/octet-stream",
-    });
+        // Upload
+        const result = await r2Upload(key, file.buffer, {
+          contentType: file.mimetype || "application/octet-stream",
+        });
 
-    // Perform AI vision analysis if it's an image
-    // Prefer URL instead of base64
-    let imageAnalysis = null;
-    const forcedVisionModel = resolveVisionModelFromRequest(req);
-    if (file.mimetype?.startsWith("image/")) {
-      try {
-        const analysisPrompt = `이 이미지를 분석해주세요. 다음 내용을 간결하게 설명해주세요:
+        let visionOutboxId = null;
+        if (file.mimetype?.startsWith("image/")) {
+          const analysisPrompt = `이 이미지를 분석해주세요. 다음 내용을 간결하게 설명해주세요:
 1. 이미지에 보이는 주요 요소들
 2. 전체적인 분위기나 맥락
 3. 텍스트가 있다면 해당 내용
 
 한국어로 2-3문장으로 간결하게 요약해주세요.`;
+          const outbox = await getDomainOutboxRepository().append({
+            stream: "image.vision",
+            aggregateId: result.key,
+            eventType: "image.vision.analyze",
+            payload: {
+              url: result.url,
+              key: result.key,
+              mimeType: file.mimetype,
+              prompt: analysisPrompt,
+              model: resolveVisionModelFromRequest(),
+            },
+            idempotencyKey: `image.vision:${result.key}`,
+          });
+          visionOutboxId = outbox?.id || null;
+        }
 
-        imageAnalysis = await aiService.vision(result.url, analysisPrompt, {
-          mimeType: file.mimetype,
-          model: forcedVisionModel,
-        });
-      } catch (err) {
-        // Vision analysis failed, but upload succeeded - continue without analysis
-        logger.error({}, 'Vision analysis failed', { error: err.message });
-      }
-    }
-
-    return res.status(201).json({
-      ok: true,
-      data: {
-        url: result.url,
-        key: result.key,
-        size: result.size,
-        contentType: result.contentType,
-        imageAnalysis,
+        return {
+          statusCode: 201,
+          response: {
+            ok: true,
+            data: {
+              url: result.url,
+              key: result.key,
+              size: result.size,
+              contentType: result.contentType,
+              imageAnalysis: null,
+              vision: visionOutboxId
+                ? { status: "pending", outboxId: visionOutboxId }
+                : { status: "skipped" },
+            },
+          },
+        };
       },
-    });
+    );
   } catch (err) {
     logger.error({}, 'chat-upload error', { error: err.message });
     return next(err);

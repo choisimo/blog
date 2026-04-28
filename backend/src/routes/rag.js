@@ -17,6 +17,7 @@
  */
 
 import express from 'express';
+import crypto from 'node:crypto';
 import { config } from '../config.js';
 import { requireFeature } from '../middleware/featureFlags.js';
 import { validateBody } from '../middleware/validation.js';
@@ -34,6 +35,8 @@ import { expandQuery, getCombinedQueries } from '../lib/query-expander.js';
 import { getOpenAIEmbeddingClient, openaiEmbeddings } from '../lib/openai-compat-client.js';
 import openNotebook from '../services/open-notebook.service.js';
 import { createLogger } from '../lib/logger.js';
+import { getDomainOutboxRepository } from '../repositories/domain-outbox.repository.js';
+import { RAG_CHROMA_STREAM } from '../services/backend-outbox.service.js';
 
 const logger = createLogger('rag');
 
@@ -50,6 +53,51 @@ const CHROMA_DATABASE = 'default_database';
 
 // Cache for collection name -> UUID mapping
 const collectionUUIDCache = new Map();
+
+function getIdempotencyKey(req, fallback) {
+  const raw = req.headers?.['idempotency-key'];
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  const normalized = String(value || '').trim();
+  return normalized ? normalized.slice(0, 256) : fallback;
+}
+
+function stableHash(value) {
+  return crypto
+    .createHash('sha256')
+    .update(JSON.stringify(value))
+    .digest('hex')
+    .slice(0, 32);
+}
+
+function getMemoryCollectionName(userId) {
+  return `${MEMORY_COLLECTION_PREFIX}${userId}`;
+}
+
+function toMemoryDocuments(userId, memories) {
+  return memories.map((memory) => ({
+    id: memory.id,
+    content: memory.content,
+    metadata: {
+      user_id: userId,
+      memory_type: memory.memoryType || 'fact',
+      category: memory.category || '',
+      created_at: new Date().toISOString(),
+    },
+  }));
+}
+
+async function enqueueRagChroma(req, { aggregateId, eventType, collection, payload, fallbackKey }) {
+  return getDomainOutboxRepository().append({
+    stream: RAG_CHROMA_STREAM,
+    aggregateId,
+    eventType,
+    payload: {
+      collection,
+      ...payload,
+    },
+    idempotencyKey: getIdempotencyKey(req, fallbackKey),
+  });
+}
 
 /**
  * Get ChromaDB v2 collections base URL
@@ -291,6 +339,34 @@ async function deleteFromChroma(collectionName, ids) {
   return response.json();
 }
 
+async function upsertMemoriesToChroma(userId, memories) {
+  const texts = memories.map(m => m.content);
+  const embeddings = await getEmbeddings(texts);
+  const ids = memories.map(m => m.id);
+  const documents = texts;
+  const metadatas = memories.map(m => ({
+    user_id: userId,
+    memory_type: m.memoryType || 'fact',
+    category: m.category || '',
+    created_at: new Date().toISOString(),
+  }));
+  const collectionName = getMemoryCollectionName(userId);
+  await upsertToChroma(collectionName, ids, embeddings, documents, metadatas);
+  return { upserted: ids.length };
+}
+
+async function deleteMemoriesFromChroma(userId, memoryIds) {
+  const collectionName = getMemoryCollectionName(userId);
+  try {
+    await deleteFromChroma(collectionName, memoryIds);
+  } catch (err) {
+    if (!err.message.includes('404') && !err.message.includes('not found')) {
+      throw err;
+    }
+  }
+  return { deleted: memoryIds.length };
+}
+
 /**
  * POST /search - 시맨틱 검색 (블로그 포스트)
  * 
@@ -509,33 +585,41 @@ router.get('/health', async (req, res) => {
  *   memories: [{ id, content, memoryType, category }]
  * }
  */
+router.post('/memories/upsert/internal', validateBody(memoriesUpsertBodySchema), async (req, res) => {
+  try {
+    const { userId, memories } = req.body;
+    const result = await upsertMemoriesToChroma(userId, memories);
+    res.json({ ok: true, data: result });
+  } catch (err) {
+    logger.error({}, 'Memory upsert error', { error: err.message });
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 router.post('/memories/upsert', validateBody(memoriesUpsertBodySchema), async (req, res) => {
   try {
     const { userId, memories } = req.body;
+    const collectionName = getMemoryCollectionName(userId);
+    const documents = toMemoryDocuments(userId, memories);
+    const outbox = await enqueueRagChroma(req, {
+      aggregateId: `memory:${userId}`,
+      eventType: 'rag.chroma.index',
+      collection: collectionName,
+      payload: { documents },
+      fallbackKey: `rag.memory.upsert:${userId}:${stableHash({ memories })}`,
+    });
 
-    // 1. Extract texts for embedding
-    const texts = memories.map(m => m.content);
-    
-    // 2. Generate embeddings
-    const embeddings = await getEmbeddings(texts);
-
-    // 3. Prepare data for ChromaDB
-    const ids = memories.map(m => m.id);
-    const documents = texts;
-    const metadatas = memories.map(m => ({
-      user_id: userId,
-      memory_type: m.memoryType || 'fact',
-      category: m.category || '',
-      created_at: new Date().toISOString(),
-    }));
-
-    // 4. Upsert to user-specific collection
-    const collectionName = `${MEMORY_COLLECTION_PREFIX}${userId}`;
-    await upsertToChroma(collectionName, ids, embeddings, documents, metadatas);
-
-    res.json({ ok: true, data: { upserted: ids.length } });
+    res.status(202).json({
+      ok: true,
+      data: {
+        status: 'pending',
+        outboxId: outbox.id,
+        upserted: memories.length,
+        collection: collectionName,
+      },
+    });
   } catch (err) {
-    logger.error({}, 'Memory upsert error', { error: err.message });
+    logger.error({}, 'Memory upsert enqueue error', { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -611,7 +695,7 @@ router.post('/memories/search', validateBody(memoriesSearchBodySchema), async (r
 /**
  * DELETE /memories/:userId/:memoryId - 메모리 임베딩 삭제
  */
-router.delete('/memories/:userId/:memoryId', async (req, res) => {
+router.delete('/memories/:userId/:memoryId/internal', async (req, res) => {
   try {
     const { userId, memoryId } = req.params;
 
@@ -619,16 +703,7 @@ router.delete('/memories/:userId/:memoryId', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'userId and memoryId are required' });
     }
 
-    const collectionName = `${MEMORY_COLLECTION_PREFIX}${userId}`;
-    
-    try {
-      await deleteFromChroma(collectionName, [memoryId]);
-    } catch (err) {
-      // Ignore if collection or document doesn't exist
-      if (!err.message.includes('404') && !err.message.includes('not found')) {
-        throw err;
-      }
-    }
+    await deleteMemoriesFromChroma(userId, [memoryId]);
 
     res.json({ ok: true, data: { deleted: true } });
   } catch (err) {
@@ -637,26 +712,73 @@ router.delete('/memories/:userId/:memoryId', async (req, res) => {
   }
 });
 
+router.delete('/memories/:userId/:memoryId', async (req, res) => {
+  try {
+    const { userId, memoryId } = req.params;
+
+    if (!userId || !memoryId) {
+      return res.status(400).json({ ok: false, error: 'userId and memoryId are required' });
+    }
+
+    const collectionName = getMemoryCollectionName(userId);
+    const outbox = await enqueueRagChroma(req, {
+      aggregateId: `memory:${userId}:${memoryId}`,
+      eventType: 'rag.chroma.delete',
+      collection: collectionName,
+      payload: { ids: [memoryId] },
+      fallbackKey: `rag.memory.delete:${userId}:${memoryId}`,
+    });
+
+    res.status(202).json({
+      ok: true,
+      data: {
+        status: 'pending',
+        outboxId: outbox.id,
+        deleted: true,
+      },
+    });
+  } catch (err) {
+    logger.error({}, 'Memory delete enqueue error', { error: err.message });
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 /**
  * POST /memories/batch-delete - 여러 메모리 임베딩 일괄 삭제
  */
-router.post('/memories/batch-delete', validateBody(memoriesBatchDeleteBodySchema), async (req, res) => {
+router.post('/memories/batch-delete/internal', validateBody(memoriesBatchDeleteBodySchema), async (req, res) => {
   try {
     const { userId, memoryIds } = req.body;
-
-    const collectionName = `${MEMORY_COLLECTION_PREFIX}${userId}`;
-    
-    try {
-      await deleteFromChroma(collectionName, memoryIds);
-    } catch (err) {
-      if (!err.message.includes('404') && !err.message.includes('not found')) {
-        throw err;
-      }
-    }
-
+    await deleteMemoriesFromChroma(userId, memoryIds);
     res.json({ ok: true, data: { deleted: memoryIds.length } });
   } catch (err) {
     logger.error({}, 'Memory batch-delete error', { error: err.message });
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/memories/batch-delete', validateBody(memoriesBatchDeleteBodySchema), async (req, res) => {
+  try {
+    const { userId, memoryIds } = req.body;
+    const collectionName = getMemoryCollectionName(userId);
+    const outbox = await enqueueRagChroma(req, {
+      aggregateId: `memory:${userId}:batch-delete`,
+      eventType: 'rag.chroma.delete',
+      collection: collectionName,
+      payload: { ids: memoryIds },
+      fallbackKey: `rag.memory.batch-delete:${userId}:${stableHash({ memoryIds })}`,
+    });
+
+    res.status(202).json({
+      ok: true,
+      data: {
+        status: 'pending',
+        outboxId: outbox.id,
+        deleted: memoryIds.length,
+      },
+    });
+  } catch (err) {
+    logger.error({}, 'Memory batch-delete enqueue error', { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -681,25 +803,30 @@ router.post('/memories/batch-delete', validateBody(memoriesBatchDeleteBodySchema
 router.post('/index', validateBody(ragIndexBodySchema), async (req, res) => {
   try {
     const { documents, collection } = req.body;
-
-    // 1. Extract texts for embedding
-    const texts = documents.map(d => d.content);
-    
-    // 2. Generate embeddings
-    const embeddings = await getEmbeddings(texts);
-
-    // 3. Prepare data for ChromaDB
-    const ids = documents.map(d => d.id);
-    const metadatas = documents.map(d => ({
-      ...d.metadata,
-      indexed_at: new Date().toISOString(),
-    }));
-
-    // 4. Upsert to collection
     const collectionName = collection || config.rag.chromaCollection;
-    await upsertToChroma(collectionName, ids, embeddings, texts, metadatas);
+    const outbox = await getDomainOutboxRepository().append({
+      stream: RAG_CHROMA_STREAM,
+      aggregateId: `index:${collectionName}`,
+      eventType: 'rag.chroma.index',
+      payload: {
+        collection: collectionName,
+        documents,
+      },
+      idempotencyKey: getIdempotencyKey(
+        req,
+        `rag.chroma.index:${collectionName}:${documents.map((document) => document.id).join(',')}`,
+      ),
+    });
 
-    res.json({ ok: true, data: { indexed: ids.length, collection: collectionName } });
+    res.status(202).json({
+      ok: true,
+      data: {
+        status: 'pending',
+        outboxId: outbox.id,
+        indexed: documents.length,
+        collection: collectionName,
+      },
+    });
   } catch (err) {
     logger.error({}, 'RAG index error', { error: err.message });
     res.status(500).json({ ok: false, error: err.message });
@@ -719,16 +846,25 @@ router.delete('/index/:documentId', async (req, res) => {
     }
 
     const collectionName = collection || config.rag.chromaCollection;
-    
-    try {
-      await deleteFromChroma(collectionName, [documentId]);
-    } catch (err) {
-      if (!err.message.includes('404') && !err.message.includes('not found')) {
-        throw err;
-      }
-    }
+    const outbox = await getDomainOutboxRepository().append({
+      stream: RAG_CHROMA_STREAM,
+      aggregateId: `index:${collectionName}:${documentId}`,
+      eventType: 'rag.chroma.delete',
+      payload: {
+        collection: collectionName,
+        ids: [documentId],
+      },
+      idempotencyKey: getIdempotencyKey(req, `rag.chroma.delete:${collectionName}:${documentId}`),
+    });
 
-    res.json({ ok: true, data: { deleted: true } });
+    res.status(202).json({
+      ok: true,
+      data: {
+        status: 'pending',
+        outboxId: outbox.id,
+        deleted: true,
+      },
+    });
   } catch (err) {
     logger.error({}, 'RAG delete error', { error: err.message });
     res.status(500).json({ ok: false, error: err.message });

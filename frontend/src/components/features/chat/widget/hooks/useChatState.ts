@@ -77,6 +77,12 @@ export function useChatState(options?: { initialMessage?: string }) {
 
   const canSend = (input.trim().length > 0 || attachedImage !== null) && !busy;
 
+  useEffect(() => {
+    if (typeof options?.initialMessage !== "string") return;
+    setInput(options.initialMessage);
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }, [options?.initialMessage]);
+
   // Auto-scroll on new messages
   useEffect(() => {
     const sc = scrollRef.current;

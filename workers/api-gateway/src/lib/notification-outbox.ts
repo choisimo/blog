@@ -71,7 +71,11 @@ export async function enqueueNotificationDelivery(
   });
 }
 
-async function deliverNotification(env: Env, payload: NotificationDeliveryPayload) {
+async function deliverNotification(
+  env: Env,
+  payload: NotificationDeliveryPayload,
+  idempotencyKey?: string | null
+) {
   if (!env.BACKEND_ORIGIN) {
     throw new Error('BACKEND_ORIGIN not configured');
   }
@@ -85,6 +89,7 @@ async function deliverNotification(env: Env, payload: NotificationDeliveryPayloa
     headers: {
       'Content-Type': 'application/json',
       'X-Backend-Key': env.BACKEND_KEY,
+      ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
     },
     body: JSON.stringify(payload),
   });
@@ -108,7 +113,11 @@ export async function flushNotificationOutbox(env: Env, options: { limit?: numbe
       if (event.eventType !== 'notification.deliver') {
         throw new Error(`Unsupported notification event type: ${event.eventType}`);
       }
-      await deliverNotification(env, event.payload as NotificationDeliveryPayload);
+      await deliverNotification(
+        env,
+        event.payload as NotificationDeliveryPayload,
+        event.idempotencyKey
+      );
       await markDomainOutboxProcessed(env.DB, event.id);
       processed += 1;
     } catch (error) {

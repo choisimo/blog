@@ -123,6 +123,8 @@ function createConfig(raw) {
     security: {
       protectedEnvironment: isProtectedEnvironment(raw.APP_ENV),
       allowInsecureDevAuth: raw.ALLOW_INSECURE_DEV_AUTH === 'true',
+      gatewaySigningSecret:
+        raw.GATEWAY_SIGNING_SECRET || raw.BACKEND_GATEWAY_SIGNING_SECRET,
     },
 
     backendKey: raw.BACKEND_KEY,
@@ -188,6 +190,7 @@ function createConfig(raw) {
       ragEnabled: raw.FEATURE_RAG_ENABLED === 'true',
       terminalEnabled: raw.FEATURE_TERMINAL_ENABLED === 'true',
       aiInline: raw.FEATURE_AI_INLINE === 'true',
+      codeExecutionEnabled: raw.FEATURE_CODE_EXECUTION_ENABLED === 'true',
       commentsEnabled: raw.FEATURE_COMMENTS_ENABLED === 'true',
       openNotebookEnabled: raw.OPEN_NOTEBOOK_ENABLED === 'true',
     },
@@ -245,6 +248,20 @@ export function getSecurityConfigurationErrors(currentConfig = config) {
         ? 'ADMIN_BEARER_TOKEN or JWT_SECRET is required for admin routes in protected environments'
         : 'ADMIN_BEARER_TOKEN or JWT_SECRET is required for admin routes unless ALLOW_INSECURE_DEV_AUTH=true'
     );
+  }
+
+  if (!currentConfig.security?.gatewaySigningSecret && protectedEnvironment) {
+    errors.push('GATEWAY_SIGNING_SECRET is required in protected environments');
+  }
+
+  const oauthConfigured = Boolean(
+    currentConfig.oauth?.githubClientId ||
+      currentConfig.oauth?.githubClientSecret ||
+      currentConfig.oauth?.googleClientId ||
+      currentConfig.oauth?.googleClientSecret,
+  );
+  if (protectedEnvironment && oauthConfigured && !currentConfig.oauth?.allowedEmails) {
+    errors.push('ADMIN_ALLOWED_EMAILS is required for OAuth in protected environments');
   }
 
   return errors;

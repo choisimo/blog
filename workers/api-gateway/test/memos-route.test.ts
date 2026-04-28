@@ -73,4 +73,41 @@ describe('memo optimistic locking', () => {
       data: { version: 2 },
     });
   });
+
+  it('stores a version snapshot of the previous content before replacing memo content', async () => {
+    const userId = `memo-user-${crypto.randomUUID()}`;
+    const token = await createUserToken(userId);
+
+    const created = await putMemo(userId, {
+      content: 'before',
+      createVersion: true,
+      expectedVersion: 0,
+    });
+    expect(created.status).toBe(201);
+
+    const updated = await putMemo(userId, {
+      content: 'after',
+      createVersion: true,
+      expectedVersion: 1,
+    });
+    expect(updated.status).toBe(200);
+
+    const version = await createApp().request(
+      'https://example.com/api/v1/memos/versions/1',
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+      env
+    );
+
+    expect(version.status).toBe(200);
+    const payload = (await version.json()) as {
+      ok: boolean;
+      data: { version: { content: string; version: number } };
+    };
+    expect(payload.data.version.version).toBe(1);
+    expect(payload.data.version.content).toBe('before');
+  });
 });

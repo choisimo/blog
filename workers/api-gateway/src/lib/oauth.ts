@@ -182,9 +182,13 @@ export async function exchangeGoogleCode(
     throw new Error(`Google userinfo fetch failed: ${userRes.status}`);
   }
 
-  const userInfo = (await userRes.json()) as { email?: string };
+  const userInfo = (await userRes.json()) as { email?: string; email_verified?: boolean };
   if (!userInfo.email) {
     throw new Error('No email found in Google account');
+  }
+
+  if (userInfo.email_verified !== true) {
+    throw new Error('Google email is not verified');
   }
 
   return { email: userInfo.email };

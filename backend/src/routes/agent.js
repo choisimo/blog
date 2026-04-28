@@ -43,6 +43,7 @@ const router = express.Router();
 const logger = createLogger("agent");
 
 router.use(requireFeature("ai"));
+router.use(requireAdmin);
 
 /**
  * Get or create the singleton agent coordinator

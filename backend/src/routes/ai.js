@@ -22,6 +22,7 @@ import {
   AI_TEMPERATURES,
 } from "../config/constants.js";
 import { createLogger } from "../lib/logger.js";
+import { runIdempotent } from "../lib/idempotency.js";
 import {
   getAiConfigHealth,
   getCachedAIConfigSnapshot,
@@ -35,25 +36,13 @@ const BLOCKED_HOSTNAMES = new Set(["localhost"]);
 
 router.use(requireFeature("ai"));
 
-function readHeaderValue(value) {
-  if (Array.isArray(value)) return value[0];
-  if (typeof value === "string") return value;
-  return undefined;
-}
-
-function resolveChatModelFromRequest(req) {
-  const forced = readHeaderValue(req?.headers?.["x-ai-model"])?.trim();
-  if (forced) return forced;
+function resolveChatModelFromRequest() {
   const snapshot = getCachedAIConfigSnapshot();
   return snapshot.defaultModel || config.ai?.defaultModel || AI_MODELS.DEFAULT;
 }
 
-function resolveVisionModelFromRequest(req) {
-  const forcedVision = readHeaderValue(
-    req?.headers?.["x-ai-vision-model"],
-  )?.trim();
-  if (forcedVision) return forcedVision;
-  return resolveChatModelFromRequest(req);
+function resolveVisionModelFromRequest() {
+  return config.ai?.visionModel || resolveChatModelFromRequest();
 }
 
 // ============================================================================
@@ -264,7 +253,7 @@ function getFallbackModels(defaultModel) {
 router.post("/auto-chat", rateLimitMiddleware(), async (req, res, next) => {
   try {
     const { messages, temperature, maxTokens } = req.body || {};
-    const forcedModel = resolveChatModelFromRequest(req);
+    const forcedModel = resolveChatModelFromRequest();
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({
@@ -310,22 +299,33 @@ router.post("/auto-chat", rateLimitMiddleware(), async (req, res, next) => {
       }
     }
 
-    // Client model override is not allowed; model is controlled by gateway/runtime config.
-    const result = await aiService.chat(enrichedMessages, {
-      temperature,
-      maxTokens,
-      model: forcedModel,
-    });
+    return await runIdempotent(
+      req,
+      res,
+      "ai.auto-chat",
+      { messages, temperature, maxTokens },
+      async () => {
+        // Client model override is not allowed; model is controlled by gateway/runtime config.
+        const result = await aiService.chat(enrichedMessages, {
+          temperature,
+          maxTokens,
+          model: forcedModel,
+        });
 
-    return res.json({
-      ok: true,
-      data: {
-        content: result.content,
-        model: result.model,
-        provider: result.provider,
-        usedRAG, // Let client know if RAG was used
+        return {
+          statusCode: 200,
+          response: {
+            ok: true,
+            data: {
+              content: result.content,
+              model: result.model,
+              provider: result.provider,
+              usedRAG, // Let client know if RAG was used
+            },
+          },
+        };
       },
-    });
+    );
   } catch (err) {
     logger.error({}, 'auto-chat error', { error: err.message });
     return next(err);
@@ -684,24 +684,35 @@ router.post(
       }
 
       const analysisPrompt = prompt || VISION_PROMPTS.DEFAULT;
-      const forcedVisionModel = resolveVisionModelFromRequest(req);
+      const forcedVisionModel = resolveVisionModelFromRequest();
 
       // Use unified AI service for vision analysis
       // aiService.vision handles both URL and base64 formats
       try {
-        const description = await aiService.vision(imageData, analysisPrompt, {
-          mimeType,
-          model: forcedVisionModel,
-        });
+        return await runIdempotent(
+          req,
+          res,
+          "ai.vision.analyze",
+          { imageUrl, imageBase64, mimeType, prompt },
+          async () => {
+            const description = await aiService.vision(imageData, analysisPrompt, {
+              mimeType,
+              model: forcedVisionModel,
+            });
 
-        return res.json({
-          ok: true,
-          data: {
-            description,
-            provider: aiService.provider,
-            imageType, // Let client know how image was processed
+            return {
+              statusCode: 200,
+              response: {
+                ok: true,
+                data: {
+                  description,
+                  provider: aiService.provider,
+                  imageType, // Let client know how image was processed
+                },
+              },
+            };
           },
-        });
+        );
       } catch (err) {
         logger.error({}, 'Vision analysis failed', { error: err.message });
         return res.status(502).json({
@@ -867,13 +878,21 @@ router.post("/generate", rateLimitMiddleware(), async (req, res, next) => {
     if (!prompt || typeof prompt !== "string") {
       return res.status(400).json({ ok: false, error: "prompt is required" });
     }
-    const text = await aiService.generate(String(prompt), {
-      temperature:
-        typeof temperature === "number"
-          ? temperature
-          : AI_TEMPERATURES.GENERATE,
-    });
-    return res.json({ ok: true, data: { text } });
+    return await runIdempotent(
+      req,
+      res,
+      "ai.generate",
+      { prompt, temperature },
+      async () => {
+        const text = await aiService.generate(String(prompt), {
+          temperature:
+            typeof temperature === "number"
+              ? temperature
+              : AI_TEMPERATURES.GENERATE,
+        });
+        return { statusCode: 200, response: { ok: true, data: { text } } };
+      },
+    );
   } catch (err) {
     return next(err);
   }
