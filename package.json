@@ -8,7 +8,10 @@
     "contracts:generate": "node scripts/generate-architecture-contracts.mjs",
     "routes:check": "node scripts/check-route-governance.mjs",
     "routes:snapshot": "node scripts/check-route-governance.mjs --write",
-    "routes:check:orphans": "node scripts/check-orphan-routes.mjs"
+    "routes:check:orphans": "node scripts/check-orphan-routes.mjs",
+    "k3s:backend:tunnel": "bash scripts/k3s-backend-tunnel.sh",
+    "dev:frontend:k3s": "bash scripts/dev-frontend-k3s.sh",
+    "smoke:k3s:endpoints": "node scripts/smoke-k3s-endpoints.mjs"
   },
   "devDependencies": {},
   "dependencies": {

@@ -10,6 +10,9 @@ spec:
     - name: web
       port: 8501
       targetPort: web
+    - name: api
+      port: 5055
+      targetPort: health
 ---
 apiVersion: apps/v1
 kind: Deployment
