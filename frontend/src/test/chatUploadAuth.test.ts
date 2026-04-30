@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/utils/network/apiBase', () => ({
   getApiBaseUrl: () => 'https://api.example.com',
@@ -9,7 +9,12 @@ vi.mock('@/services/session/userContentAuth', () => ({
 }));
 
 describe('chat upload authentication', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   afterEach(() => {
+    localStorage.clear();
     vi.restoreAllMocks();
   });
 
@@ -44,6 +49,66 @@ describe('chat upload authentication', () => {
         headers: {
           Authorization: 'Bearer principal-token',
         },
+      })
+    );
+  });
+
+  it('sends the principal bearer token when creating chat sessions', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, data: { id: 'session-1' } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const { createBackendSession } = await import('@/services/chat/session');
+
+    await expect(createBackendSession('Visitor session')).resolves.toBe(
+      'session-1'
+    );
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'https://api.example.com/api/v1/chat/session',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer principal-token',
+        }),
+      })
+    );
+  });
+
+  it('sends the principal bearer token with chat feed requests', async () => {
+    localStorage.setItem('nodove_chat_session_id', 'session-1');
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            items: [],
+            nextCursor: null,
+            exhausted: true,
+            source: 'snapshot',
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
+    );
+
+    const { invokeLensFeed } = await import('@/services/chat/api');
+
+    await invokeLensFeed({ paragraph: 'hello', postTitle: 'debug' });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'https://api.example.com/api/v1/chat/session/session-1/lens-feed',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer principal-token',
+        }),
       })
     );
   });

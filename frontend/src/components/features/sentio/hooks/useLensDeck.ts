@@ -291,6 +291,21 @@ export function useLensDeck({
     persistCache();
   }, [cards, currentIndex, exhausted, persistCache, source]);
 
+  const applyFallbackCards = useCallback(() => {
+    const mapped = mapPrismFacetsToCards(
+      paragraph,
+      postTitle,
+      FALLBACK_DATA.PRISM.FACETS,
+      'fallback'
+    );
+    setCards(mapped);
+    setCurrentIndex(0);
+    setExhausted(true);
+    setSource('fallback');
+    nextCursorRef.current = null;
+    notifyReady(mapped, 'fallback');
+  }, [notifyReady, paragraph, postTitle]);
+
   const loadInitial = useCallback(
     async (warmingRetry = false) => {
       if (!paragraph.trim()) return;
@@ -385,18 +400,7 @@ export function useLensDeck({
           );
         }
 
-        const mapped = mapPrismFacetsToCards(
-          paragraph,
-          postTitle,
-          FALLBACK_DATA.PRISM.FACETS,
-          'fallback'
-        );
-        setCards(mapped);
-        setCurrentIndex(0);
-        setExhausted(true);
-        setSource('fallback');
-        nextCursorRef.current = null;
-        notifyReady(mapped, 'fallback');
+        applyFallbackCards();
       } finally {
         if (requestId === requestIdRef.current) {
           setLoading(false);
@@ -406,8 +410,58 @@ export function useLensDeck({
         }
       }
     },
-    [notifyReady, paragraph, postTitle]
+    [applyFallbackCards, notifyReady, paragraph, postTitle]
   );
+
+  const recoverAfterWarmingExhausted = useCallback(async () => {
+    if (!paragraph.trim()) {
+      applyFallbackCards();
+      return;
+    }
+
+    requestIdRef.current += 1;
+    const requestId = requestIdRef.current;
+    initialAbortRef.current?.abort();
+    const controller = new AbortController();
+    initialAbortRef.current = controller;
+    setLoading(cardsRef.current.length === 0);
+
+    try {
+      const mapped = await loadLensCardsViaTask({
+        paragraph,
+        postTitle,
+        signal: controller.signal,
+      });
+      if (requestId !== requestIdRef.current || controller.signal.aborted) {
+        return;
+      }
+
+      setCards(mapped);
+      setCurrentIndex(0);
+      setExhausted(true);
+      setSource('feed');
+      nextCursorRef.current = null;
+      notifyReady(mapped, 'feed');
+    } catch (error) {
+      if (isAbortError(error) || controller.signal.aborted) {
+        return;
+      }
+      console.warn(
+        '[PrismDeck] warming exhausted; task recovery failed, using local fallback cards',
+        error
+      );
+      if (requestId === requestIdRef.current) {
+        applyFallbackCards();
+      }
+    } finally {
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
+      if (initialAbortRef.current === controller) {
+        initialAbortRef.current = null;
+      }
+    }
+  }, [applyFallbackCards, notifyReady, paragraph, postTitle]);
 
   const { reset: resetWarmingRetry } = useWarmingRetry({
     enabled:
@@ -421,7 +475,7 @@ export function useLensDeck({
       void loadInitial(true);
     },
     onExhausted: () => {
-      setSource('fallback');
+      void recoverAfterWarmingExhausted();
     },
   });
 

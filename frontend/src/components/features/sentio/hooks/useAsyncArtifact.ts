@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type AsyncArtifactSource = "feed" | "warming" | "fallback";
 
@@ -53,6 +53,7 @@ export function useWarmingRetry({
 }: UseWarmingRetryOptions) {
   const attemptRef = useRef(0);
   const onRetryRef = useRef(onRetry);
+  const [retryTick, setRetryTick] = useState(0);
 
   useEffect(() => {
     onRetryRef.current = onRetry;
@@ -60,6 +61,7 @@ export function useWarmingRetry({
 
   const reset = useCallback(() => {
     attemptRef.current = 0;
+    setRetryTick(tick => tick + 1);
   }, []);
 
   const onExhaustedRef = useRef(onExhausted);
@@ -81,15 +83,21 @@ export function useWarmingRetry({
 
     const delay = delays[attemptRef.current] ?? delays[delays.length - 1] ?? 3000;
 
+    let cancelled = false;
     const timer = window.setTimeout(() => {
       attemptRef.current += 1;
-      void onRetryRef.current();
+      void Promise.resolve(onRetryRef.current()).finally(() => {
+        if (!cancelled) {
+          setRetryTick(tick => tick + 1);
+        }
+      });
     }, delay);
 
     return () => {
+      cancelled = true;
       clearTimeout(timer);
     };
-  }, [delays, enabled, status]);
+  }, [delays, enabled, retryTick, status]);
 
   return { reset };
 }

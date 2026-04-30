@@ -67,6 +67,18 @@ type ChatJsonResponse<T> = {
   raw: unknown;
 };
 
+async function buildAuthenticatedChatHeaders(
+  contentType: "json" | "stream",
+  extraHeaders?: Record<string, string>,
+): Promise<Record<string, string>> {
+  const token = await getPrincipalToken();
+  return {
+    ...buildChatHeaders(contentType),
+    ...bearerAuth(token),
+    ...(extraHeaders ?? {}),
+  };
+}
+
 function getAggregateText(data: ChatAggregateEnvelope["data"]): string | null {
   if (typeof data === "string") {
     return data;
@@ -102,9 +114,7 @@ async function postSessionJson<T>(
   options?: ChatJsonRequestOptions,
 ): Promise<ChatJsonResponse<T>> {
   const url = buildChatUrl(path, sessionId);
-  const headers = buildChatHeaders("json");
-
-  if (options?.headers) Object.assign(headers, options.headers);
+  const headers = await buildAuthenticatedChatHeaders("json", options?.headers);
 
   const res = await fetch(url, {
     method: "POST",
@@ -224,7 +234,7 @@ export async function* streamChatEvents(
   const { page, parts, enableRag } = buildStreamPayload(input);
 
   const url = buildChatUrl("/message", sessionID);
-  const headers = buildChatHeaders("stream");
+  const headers = await buildAuthenticatedChatHeaders("stream");
 
   const res = await fetch(url, {
     method: "POST",
@@ -436,10 +446,11 @@ export async function invokeChatAggregate(input: {
 }): Promise<string> {
   const base = getApiBaseUrl();
   const url = `${base.replace(/\/$/, "")}/api/v1/chat/aggregate`;
+  const headers = await buildAuthenticatedChatHeaders("json");
 
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ prompt: input.prompt }),
     signal: input.signal,
   });
