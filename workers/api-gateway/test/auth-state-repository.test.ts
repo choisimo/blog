@@ -14,14 +14,21 @@ import {
   type RefreshTokenRecord,
 } from '../src/lib/auth-state-repository';
 
+const REFRESH_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
+const MINUTE_MS = 60 * 1000;
+
 declare module 'cloudflare:test' {
   interface ProvidedEnv {
     DB: D1Database;
   }
 }
 
+function isoMinutesFromNow(minutes: number): string {
+  return new Date(Date.now() + minutes * MINUTE_MS).toISOString();
+}
+
 function buildRefreshRecord(overrides: Partial<RefreshTokenRecord> = {}): RefreshTokenRecord {
-  const now = overrides.createdAt ? new Date(overrides.createdAt) : new Date('2026-04-23T00:00:00.000Z');
+  const now = overrides.createdAt ? new Date(overrides.createdAt) : new Date();
   return {
     jti: overrides.jti ?? `refresh-${crypto.randomUUID()}`,
     familyId: overrides.familyId ?? `family-${crypto.randomUUID()}`,
@@ -29,7 +36,7 @@ function buildRefreshRecord(overrides: Partial<RefreshTokenRecord> = {}): Refres
     email: overrides.email ?? 'admin@example.com',
     status: overrides.status ?? 'active',
     createdAt: now.toISOString(),
-    expiresAt: overrides.expiresAt ?? buildRefreshTokenExpiresAt(now, 7 * 24 * 60 * 60),
+    expiresAt: overrides.expiresAt ?? buildRefreshTokenExpiresAt(now, REFRESH_TOKEN_TTL_SECONDS),
     rotatedAt: overrides.rotatedAt,
     replacedBy: overrides.replacedBy,
     reason: overrides.reason,
@@ -47,12 +54,12 @@ describe('auth-state-repository', () => {
     const current = buildRefreshRecord({
       jti: 'refresh-current',
       familyId: 'family-cas',
-      createdAt: '2026-04-23T00:00:00.000Z',
+      createdAt: isoMinutesFromNow(0),
     });
     const replacement = buildRefreshRecord({
       jti: 'refresh-next',
       familyId: current.familyId,
-      createdAt: '2026-04-23T00:01:00.000Z',
+      createdAt: isoMinutesFromNow(1),
     });
 
     await createRefreshTokenRecord(env.DB, current);
@@ -61,7 +68,7 @@ describe('auth-state-repository', () => {
       currentJti: current.jti,
       familyId: current.familyId,
       replacement,
-      rotatedAt: '2026-04-23T00:01:00.000Z',
+      rotatedAt: replacement.createdAt,
     });
     expect(first.ok).toBe(true);
 
@@ -71,9 +78,9 @@ describe('auth-state-repository', () => {
       replacement: buildRefreshRecord({
         jti: 'refresh-replay',
         familyId: current.familyId,
-        createdAt: '2026-04-23T00:02:00.000Z',
+        createdAt: isoMinutesFromNow(2),
       }),
-      rotatedAt: '2026-04-23T00:02:00.000Z',
+      rotatedAt: isoMinutesFromNow(2),
     });
     expect(replay.ok).toBe(false);
     if (!replay.ok) {
@@ -95,14 +102,14 @@ describe('auth-state-repository', () => {
       reason: 'reuse-detected',
       lastJti: current.jti,
       expiresAt: current.expiresAt,
-      revokedAt: '2026-04-23T00:03:00.000Z',
+      revokedAt: isoMinutesFromNow(3),
     });
 
     const rotation = await rotateRefreshTokenCas(env.DB, {
       currentJti: current.jti,
       familyId: current.familyId,
       replacement: buildRefreshRecord({ jti: 'refresh-after-revoke', familyId: current.familyId }),
-      rotatedAt: '2026-04-23T00:04:00.000Z',
+      rotatedAt: isoMinutesFromNow(4),
     });
 
     expect(rotation.ok).toBe(false);
