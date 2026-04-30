@@ -6,6 +6,8 @@
  * - 모든 세션 관련 상수와 함수를 여기서 관리
  */
 
+import { bearerAuth } from '@/lib/auth';
+import { getPrincipalToken } from '@/services/session/userContentAuth';
 import { buildChatUrl, buildChatHeaders } from './config';
 
 // ============================================================================
@@ -269,10 +271,14 @@ export function setPersistEnabled(enabled: boolean): void {
 export async function createBackendSession(title?: string): Promise<string> {
   const url = buildChatUrl('/session');
   const headers = buildChatHeaders('json');
+  const token = await getPrincipalToken();
 
   const res = await fetch(url, {
     method: 'POST',
-    headers,
+    headers: {
+      ...headers,
+      ...bearerAuth(token),
+    },
     body: JSON.stringify({ title: title || 'Nodove Blog Visitor Session' }),
   });
 
