@@ -293,6 +293,11 @@
         "prefix": "/api/v1/notifications"
       },
       {
+        "boundaryId": "site-content",
+        "owner": "WORKER",
+        "prefix": "/api/v1/site-content"
+      },
+      {
         "boundaryId": "gateway",
         "owner": "WORKER",
         "prefix": "/api/v1/gateway"
@@ -483,6 +488,11 @@
         "boundaryId": "admin-logs",
         "owner": "worker",
         "path": "/api/v1/admin/logs"
+      },
+      {
+        "boundaryId": "site-content",
+        "owner": "worker",
+        "path": "/api/v1/site-content"
       },
       {
         "boundaryId": "gateway",
