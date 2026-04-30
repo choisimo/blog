@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FALLBACK_DATA } from '@/config/defaults';
 import { useLensDeck } from '@/components/features/sentio/hooks/useLensDeck';
@@ -188,6 +188,96 @@ describe('sentio feed warming baseline', () => {
     });
     expect(screen.getByTestId('thought-status')).toHaveTextContent('warming');
     expect(screen.getByTestId('thought-cards')).toHaveTextContent('');
+  });
+
+  it('recovers a lens feed that stays warming by using the prism task', async () => {
+    vi.useFakeTimers();
+    vi.mocked(invokeLensFeed).mockResolvedValue({
+      items: [],
+      nextCursor: null,
+      exhausted: false,
+      warming: true,
+      source: 'warming',
+    } satisfies LensFeedResponse);
+    vi.mocked(invokeChatTask).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      data: {
+        facets: [
+          {
+            title: 'Recovered lens',
+            points: ['Recovered point'],
+          },
+        ],
+      },
+      raw: {},
+    });
+
+    render(<LensStateHarness cacheKey='lens:warming-task' enabled={true} />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId('lens-source')).toHaveTextContent('warming');
+
+    for (const delay of [1500, 3000, 5000, 8000]) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(delay);
+      });
+    }
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(invokeChatTask).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: 'prism' })
+    );
+    expect(screen.getByTestId('lens-source')).toHaveTextContent('feed');
+    expect(screen.getByTestId('lens-status')).toHaveTextContent('ready');
+    expect(screen.getByTestId('lens-cards')).toHaveTextContent(
+      'Recovered lens'
+    );
+  });
+
+  it('recovers a thought feed that stays warming by using local fallback when the chain task fails', async () => {
+    vi.useFakeTimers();
+    vi.mocked(invokeThoughtFeed).mockResolvedValue({
+      items: [],
+      nextCursor: null,
+      exhausted: false,
+      warming: true,
+      source: 'warming',
+    } satisfies ThoughtFeedResponse);
+    vi.mocked(invokeChatTask).mockRejectedValueOnce(new Error('chain failed'));
+
+    render(
+      <ThoughtStateHarness cacheKey='thought:warming-fallback' enabled={true} />
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId('thought-source')).toHaveTextContent('warming');
+
+    for (const delay of [1500, 3000, 5000, 8000]) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(delay);
+      });
+    }
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(invokeChatTask).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: 'chain' })
+    );
+    expect(screen.getByTestId('thought-source')).toHaveTextContent('fallback');
+    expect(screen.getByTestId('thought-status')).toHaveTextContent(
+      'fallback-hard'
+    );
+    expect(screen.getByTestId('thought-cards')).toHaveTextContent(
+      FALLBACK_DATA.CHAIN.QUESTIONS[0].q
+    );
   });
 
   it('uses locally generated prism fallback cards when the lens request fails', async () => {

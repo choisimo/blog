@@ -46,6 +46,7 @@ import {
   translateAndCachePost,
   type SupportedTranslationLang,
 } from './translation-service';
+import { attachOriginSignatureHeaders } from './origin-signature';
 
 export const AI_ARTIFACT_STREAM = 'ai.artifact.generate';
 const FEED_SCHEMA_VERSION = '2';
@@ -168,8 +169,19 @@ async function fetchQueueStats(env: Env): Promise<QueueStatsSnapshot> {
   }
 
   try {
-    const response = await fetch(`${env.BACKEND_ORIGIN.replace(/\/$/, '')}/api/v1/ai/queue-stats`, {
-      headers: env.BACKEND_KEY ? { 'X-Backend-Key': env.BACKEND_KEY } : undefined,
+    const url = `${env.BACKEND_ORIGIN.replace(/\/$/, '')}/api/v1/ai/queue-stats`;
+    const headers = new Headers();
+    if (env.BACKEND_KEY) {
+      headers.set('X-Backend-Key', env.BACKEND_KEY);
+    }
+    await attachOriginSignatureHeaders({
+      env,
+      headers,
+      method: 'GET',
+      pathAndQuery: new URL(url).pathname,
+    });
+    const response = await fetch(url, {
+      headers,
     });
     if (!response.ok) {
       throw new Error(`queue stats failed: ${response.status}`);

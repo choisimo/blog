@@ -9,6 +9,7 @@ import type { Env } from '../types';
 import type { PromptConfig, TaskMode } from './prompts';
 import { getFallbackData } from './prompts';
 import { getApiBaseUrl, getAiServeApiKey, getAiDefaultModel, getAiVisionModel } from './config';
+import { attachOriginSignatureHeaders } from './origin-signature';
 
 export type LLMRequest = {
   system?: string;
@@ -78,6 +79,21 @@ function toText(value: unknown): string {
     return String(value);
   }
   return '';
+}
+
+async function attachBackendSignature(
+  env: Env,
+  headers: Headers,
+  method: string,
+  url: string
+): Promise<void> {
+  const parsed = new URL(url);
+  await attachOriginSignatureHeaders({
+    env,
+    headers,
+    method,
+    pathAndQuery: `${parsed.pathname}${parsed.search}`,
+  });
 }
 
 function normalizeQuizType(value: unknown): QuizQuestionType {
@@ -445,25 +461,26 @@ async function callBackendAutoChat(
 
   const message = request.system ? `${request.system}\n\n${request.user}` : request.user;
 
-  const headers: Record<string, string> = {
+  const headers = new Headers({
     'Content-Type': 'application/json',
     Accept: 'application/json',
     'User-Agent': 'Blog-Workers/1.0',
-  };
+  });
 
   // Backend authentication - required for all AI requests
   if (env.BACKEND_KEY) {
-    headers['X-Backend-Key'] = env.BACKEND_KEY;
+    headers.set('X-Backend-Key', env.BACKEND_KEY);
   }
 
   const apiKey = await getAiServeApiKey(env);
   if (apiKey) {
-    headers['X-API-KEY'] = apiKey;
+    headers.set('X-API-KEY', apiKey);
   }
   const forcedModel = await getAiDefaultModel(env);
   if (forcedModel) {
-    headers['X-AI-Model'] = forcedModel;
+    headers.set('X-AI-Model', forcedModel);
   }
+  await attachBackendSignature(env, headers, 'POST', url);
 
   try {
     const res = await fetch(url, {
@@ -527,29 +544,30 @@ async function callBackendGenerate(
 
   const fullPrompt = request.system ? `${request.system}\n\n${request.user}` : request.user;
 
-  const headers: Record<string, string> = {
+  const headers = new Headers({
     'Content-Type': 'application/json',
     'User-Agent': 'Blog-Workers/1.0',
-  };
+  });
 
   if (env.BACKEND_KEY) {
-    headers['X-Backend-Key'] = env.BACKEND_KEY;
+    headers.set('X-Backend-Key', env.BACKEND_KEY);
   }
 
   const apiKey = await getAiServeApiKey(env);
   if (apiKey) {
-    headers['X-API-KEY'] = apiKey;
+    headers.set('X-API-KEY', apiKey);
   }
   const [forcedModel, forcedVisionModel] = await Promise.all([
     getAiDefaultModel(env),
     getAiVisionModel(env),
   ]);
   if (forcedModel) {
-    headers['X-AI-Model'] = forcedModel;
+    headers.set('X-AI-Model', forcedModel);
   }
   if (forcedVisionModel) {
-    headers['X-AI-Vision-Model'] = forcedVisionModel;
+    headers.set('X-AI-Vision-Model', forcedVisionModel);
   }
+  await attachBackendSignature(env, headers, 'POST', url);
 
   try {
     const res = await fetch(url, {
