@@ -819,14 +819,14 @@ ${description}
         )}
       >
         <div
-          className='mx-auto w-full max-w-7xl px-4 pt-6 pb-32 sm:pt-12 2xl:max-w-[1460px]'
+          className='mx-auto w-full max-w-[1500px] px-4 pt-6 pb-32 sm:pt-12 2xl:max-w-[1600px]'
           style={safeAreaPaddingStyle}
         >
           <div
             className={cn(
               'relative grid grid-cols-1 gap-8',
-              'xl:grid-cols-[320px_minmax(0,768px)] xl:justify-center',
-              '2xl:grid-cols-[320px_minmax(0,768px)_minmax(260px,300px)]'
+              'xl:grid-cols-[300px_minmax(0,980px)] xl:justify-center',
+              '2xl:grid-cols-[300px_minmax(0,1040px)_minmax(220px,260px)]'
             )}
           >
             <aside className='hidden xl:block xl:col-start-1'>
@@ -835,7 +835,7 @@ ${description}
 
             <article
               className={cn(
-                'mx-auto w-full max-w-3xl space-y-12 xl:col-start-2 xl:mx-0',
+                'mx-auto w-full max-w-5xl space-y-12 xl:col-start-2 xl:mx-0',
                 isTerminal && 'terminal-card p-4 sm:p-6'
               )}
             >

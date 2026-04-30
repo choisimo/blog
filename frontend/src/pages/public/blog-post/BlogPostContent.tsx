@@ -1,9 +1,9 @@
-import { Suspense, lazy } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { Suspense, lazy } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 const MarkdownRenderer = lazy(
-  () => import("@/components/features/blog/MarkdownRenderer"),
+  () => import('@/components/features/blog/MarkdownRenderer')
 );
 
 interface BlogPostContentProps {
@@ -24,33 +24,29 @@ export function BlogPostContent({
   return (
     <section
       data-toc-boundary
-      data-ai-block-scope="article"
+      data-ai-block-scope='article'
       className={cn(
-        "rounded-[32px] border border-white/50 bg-card/70 p-4 shadow-soft backdrop-blur-sm dark:border-white/5 dark:bg-[hsl(var(--card-blog)/0.9)] sm:p-8 -mx-2 sm:mx-0",
+        '-mx-2 rounded-[28px] border border-white/50 bg-card/80 p-4 shadow-soft backdrop-blur-sm dark:border-white/5 dark:bg-[hsl(var(--card-blog)/0.9)] sm:mx-0 sm:p-7 lg:p-9',
         isTerminal &&
-          "rounded-lg border-border bg-[hsl(var(--terminal-code-bg))]",
+          'rounded-lg border-border bg-[hsl(var(--terminal-code-bg))]'
       )}
     >
       <div
         data-ai-block-content
         className={cn(
-          "prose prose-gray max-w-none dark:prose-invert",
-          isTerminal &&
-            "prose-headings:font-mono prose-headings:terminal-glow",
+          'max-w-none',
+          isTerminal && 'prose-headings:font-mono prose-headings:terminal-glow'
         )}
       >
         <Suspense
           fallback={
-            <div
-              className="space-y-3"
-              aria-label="Loading article content"
-            >
-              <Skeleton className="h-6 w-3/4" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-11/12" />
-              <Skeleton className="h-4 w-10/12" />
-              <Skeleton className="h-4 w-9/12" />
-              <Skeleton className="h-4 w-1/2" />
+            <div className='space-y-3' aria-label='Loading article content'>
+              <Skeleton className='h-6 w-3/4' />
+              <Skeleton className='h-4 w-full' />
+              <Skeleton className='h-4 w-11/12' />
+              <Skeleton className='h-4 w-10/12' />
+              <Skeleton className='h-4 w-9/12' />
+              <Skeleton className='h-4 w-1/2' />
             </div>
           }
         >

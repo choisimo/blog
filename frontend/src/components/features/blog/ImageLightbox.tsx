@@ -6,28 +6,28 @@ import {
   type ComponentProps,
   type RefCallback,
   type ReactNode,
-} from "react";
+} from 'react';
 import {
   Dialog,
   DialogContent,
   DialogTitle,
   DialogDescription,
-} from "@/components/ui/dialog";
-import { TouchIconButton } from "@/components/atoms/TouchIconButton";
+} from '@/components/ui/dialog';
+import { TouchIconButton } from '@/components/atoms/TouchIconButton';
 import {
   overlayControlPlateClassName,
   overlayControlButtonClassName,
   overlayControlCloseButtonClassName,
-} from "@/components/atoms/overlayControl";
-import { X, ZoomIn, ZoomOut, RotateCw, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+} from '@/components/atoms/overlayControl';
+import { X, ZoomIn, ZoomOut, RotateCw, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import {
   getThumbSrc,
   isVideoMedia,
   resolvePostMediaSrc,
   shouldUseThumb,
-} from "@/utils/content/postMedia";
+} from '@/utils/content/postMedia';
 
 interface ImageLightboxProps {
   src: string;
@@ -63,11 +63,11 @@ export function ImageLightbox({
   }, [translate]);
 
   const handleZoomIn = useCallback(() => {
-    setScale((prev) => Math.min(prev + 0.25, 4));
+    setScale(prev => Math.min(prev + 0.25, 4));
   }, []);
 
   const handleZoomOut = useCallback(() => {
-    setScale((prev) => {
+    setScale(prev => {
       const next = Math.max(prev - 0.25, 0.5);
       if (next <= 1) setTranslate({ x: 0, y: 0 });
       return next;
@@ -75,7 +75,7 @@ export function ImageLightbox({
   }, []);
 
   const handleRotate = useCallback(() => {
-    setRotation((prev) => (prev + 90) % 360);
+    setRotation(prev => (prev + 90) % 360);
   }, []);
 
   const handleReset = useCallback(() => {
@@ -92,23 +92,23 @@ export function ImageLightbox({
       }
       onOpenChange(newOpen);
     },
-    [onOpenChange, handleReset],
+    [onOpenChange, handleReset]
   );
 
   // Callback ref: attaches wheel listener immediately when the Dialog portal renders the container DOM node.
   // This fixes the race condition where useEffect(,[open]) fires before the Radix Dialog portal mounts.
-  const containerRef: RefCallback<HTMLDivElement> = useCallback((node) => {
+  const containerRef: RefCallback<HTMLDivElement> = useCallback(node => {
     if (!node) return;
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       const delta = e.deltaY < 0 ? 0.15 : -0.15;
-      setScale((prev) => {
+      setScale(prev => {
         const next = Math.min(Math.max(prev + delta, 0.5), 4);
         if (next <= 1) setTranslate({ x: 0, y: 0 });
         return next;
       });
     };
-    node.addEventListener("wheel", handleWheel, { passive: false });
+    node.addEventListener('wheel', handleWheel, { passive: false });
     // React will call this with null when the node unmounts — but callback refs called with null
     // don't get the previous node, so we store cleanup on the node itself.
     // For cleanup, we rely on the Dialog unmounting the whole subtree when closed.
@@ -129,7 +129,7 @@ export function ImageLightbox({
       };
       (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
     },
-    [],
+    []
   );
 
   const handlePointerMove = useCallback(
@@ -147,7 +147,7 @@ export function ImageLightbox({
         });
       }
     },
-    [],
+    []
   );
 
   const handlePointerUp = useCallback(
@@ -159,7 +159,7 @@ export function ImageLightbox({
         handleOpenChange(false);
       }
     },
-    [handleOpenChange],
+    [handleOpenChange]
   );
 
   // Preload full image when lightbox opens
@@ -175,11 +175,11 @@ export function ImageLightbox({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         hideClose
-        className="w-[100vw] h-[100vh] max-w-[100vw] max-h-[100vh] sm:w-auto sm:h-auto sm:max-w-[95vw] sm:max-h-[95vh] p-0 bg-black/95 border-none overflow-hidden rounded-none sm:rounded-lg"
+        className='w-[100vw] h-[100vh] max-w-[100vw] max-h-[100vh] sm:w-auto sm:h-auto sm:max-w-[95vw] sm:max-h-[95vh] p-0 bg-black/95 border-none overflow-hidden rounded-none sm:rounded-lg'
         onPointerDownOutside={() => handleOpenChange(false)}
       >
         <VisuallyHidden>
-          <DialogTitle>{alt || "Image preview"}</DialogTitle>
+          <DialogTitle>{alt || 'Image preview'}</DialogTitle>
           <DialogDescription>
             Click outside or press Escape to close. Scroll to zoom. Drag to pan
             when zoomed.
@@ -188,73 +188,71 @@ export function ImageLightbox({
 
         <div
           className={cn(
-            "absolute top-4 right-4 z-20 flex items-center gap-2",
-            overlayControlPlateClassName,
+            'absolute top-4 right-4 z-20 flex items-center gap-2',
+            overlayControlPlateClassName
           )}
         >
           <TouchIconButton
-            variant="ghost"
+            variant='ghost'
             onClick={handleZoomOut}
-            aria-label="Zoom out image preview"
+            aria-label='Zoom out image preview'
             className={overlayControlButtonClassName}
             disabled={scale <= 0.5}
           >
-            <ZoomOut className="h-4 w-4" />
+            <ZoomOut className='h-4 w-4' />
           </TouchIconButton>
           <TouchIconButton
-            variant="ghost"
+            variant='ghost'
             onClick={handleZoomIn}
-            aria-label="Zoom in image preview"
+            aria-label='Zoom in image preview'
             className={overlayControlButtonClassName}
             disabled={scale >= 4}
           >
-            <ZoomIn className="h-4 w-4" />
+            <ZoomIn className='h-4 w-4' />
           </TouchIconButton>
           <TouchIconButton
-            variant="ghost"
+            variant='ghost'
             onClick={handleRotate}
-            aria-label="Rotate image preview"
+            aria-label='Rotate image preview'
             className={overlayControlButtonClassName}
           >
-            <RotateCw className="h-4 w-4" />
+            <RotateCw className='h-4 w-4' />
           </TouchIconButton>
           <TouchIconButton
-            variant="ghost"
+            variant='ghost'
             onClick={() => handleOpenChange(false)}
-            aria-label="Close image preview"
+            aria-label='Close image preview'
             autoFocus
             className={overlayControlCloseButtonClassName}
           >
-            <X className="h-4 w-4" />
+            <X className='h-4 w-4' />
           </TouchIconButton>
         </div>
 
         <div
           ref={containerRef}
-          data-testid="lightbox-container"
+          data-testid='lightbox-container'
           className={cn(
-            "flex items-center justify-center w-full h-full min-h-[50vh] p-3 sm:p-8",
-            scale > 1
-              ? "cursor-grab active:cursor-grabbing"
-              : "cursor-zoom-out",
+            'flex items-center justify-center w-full h-full min-h-[50vh] p-3 sm:p-8',
+            scale > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-zoom-out'
           )}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
         >
           {!imageLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-white/70" />
+            <div className='absolute inset-0 flex items-center justify-center'>
+              <Loader2 className='h-8 w-8 animate-spin text-white/70' />
             </div>
           )}
           <img
             src={src}
-            alt={alt || ""}
-            data-testid="lightbox-image"
+            alt={alt || ''}
+            data-testid='lightbox-image'
             className={cn(
-              "max-w-full max-h-[85vh] sm:max-h-[85vh] object-contain transition-[opacity] duration-300",
-              "select-none pointer-events-none",
-              imageLoaded ? "opacity-100" : "opacity-0",
+              'max-w-full max-h-[85vh] sm:max-h-[85vh] object-contain transition-[opacity] duration-300',
+              'select-none pointer-events-none',
+              imageLoaded ? 'opacity-100' : 'opacity-0'
             )}
             style={{
               transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale}) rotate(${rotation}deg)`,
@@ -264,8 +262,8 @@ export function ImageLightbox({
         </div>
 
         {alt && (
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-            <p className="text-white/90 text-sm text-center">{alt}</p>
+          <div className='absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4'>
+            <p className='text-white/90 text-sm text-center'>{alt}</p>
           </div>
         )}
       </DialogContent>
@@ -273,12 +271,24 @@ export function ImageLightbox({
   );
 }
 
+export type ArticleMediaLayout =
+  | 'center'
+  | 'wide'
+  | 'full'
+  | 'compact'
+  | 'aside-left'
+  | 'aside-right';
+
 interface ClickableImageProps {
   src: string;
   alt?: string;
+  caption?: string;
   className?: string;
   isTerminal?: boolean;
   postPath?: string; // e.g., "2025/future-tech-six-insights" for resolving relative image paths
+  layout?: ArticleMediaLayout;
+  intrinsicWidth?: string | number;
+  intrinsicHeight?: string | number;
 }
 
 interface EmbeddedVideoProps extends ClickableImageProps {
@@ -303,9 +313,9 @@ function useInView<T extends HTMLElement>() {
         }
       },
       {
-        rootMargin: "100px",
+        rootMargin: '100px',
         threshold: 0.01,
-      },
+      }
     );
 
     const currentRef = mediaRef.current;
@@ -326,9 +336,11 @@ function useInView<T extends HTMLElement>() {
 export function EmbeddedVideo({
   src,
   alt,
+  caption,
   className,
   isTerminal,
   postPath,
+  layout = 'wide',
   autoPlay = true,
   controls = true,
   loop = true,
@@ -346,16 +358,22 @@ export function EmbeddedVideo({
   }
 
   return (
-    <span className="my-8 text-center block">
+    <figure
+      className={cn(
+        'article-media-frame my-8 block text-center',
+        isTerminal && 'article-media-frame--terminal'
+      )}
+      data-layout={layout}
+    >
       {loadFailed ? (
         <div
           className={cn(
-            "rounded-xl border border-border/50 bg-muted/40 px-6 py-12 text-sm text-muted-foreground",
-            isTerminal && "rounded-lg border-border",
-            className,
+            'rounded-xl border border-border/50 bg-muted/40 px-6 py-12 text-sm text-muted-foreground',
+            isTerminal && 'rounded-lg border-border',
+            className
           )}
         >
-          {alt || "Video unavailable"}
+          {alt || 'Video unavailable'}
         </div>
       ) : (
         <video
@@ -367,33 +385,33 @@ export function EmbeddedVideo({
           loop={loop}
           muted={muted}
           playsInline={playsInline}
-          preload="metadata"
-          onCanPlay={(event) => {
+          preload='metadata'
+          onCanPlay={event => {
             if (!autoPlay) return;
             void event.currentTarget.play().catch(() => undefined);
           }}
           onError={() => setLoadFailed(true)}
           className={cn(
-            "rounded-xl shadow-lg mx-auto max-w-full h-auto bg-black",
-            isTerminal && "rounded-lg border border-border",
-            className,
+            'mx-auto h-auto max-w-full rounded-xl bg-black shadow-lg',
+            isTerminal && 'rounded-lg border border-border',
+            className
           )}
-          aria-label={alt || "Embedded video"}
+          aria-label={alt || 'Embedded video'}
         >
           {children}
         </video>
       )}
-      {alt && (
-        <span
+      {(caption || alt) && (
+        <figcaption
           className={cn(
-            "text-sm text-muted-foreground mt-2 italic",
-            isTerminal && "font-mono not-italic",
+            'mt-3 text-sm text-muted-foreground',
+            isTerminal && 'font-mono not-italic'
           )}
         >
-          {isTerminal ? `// ${alt}` : alt}
-        </span>
+          {isTerminal ? `// ${caption || alt}` : caption || alt}
+        </figcaption>
       )}
-    </span>
+    </figure>
   );
 }
 
@@ -401,9 +419,9 @@ export function NormalizedVideoSource({
   src,
   postPath,
   ...props
-}: ComponentProps<"source"> & { postPath?: string }) {
+}: ComponentProps<'source'> & { postPath?: string }) {
   const resolvedSrc =
-    typeof src === "string" ? resolvePostMediaSrc(src, postPath) : src;
+    typeof src === 'string' ? resolvePostMediaSrc(src, postPath) : src;
 
   return <source {...props} src={resolvedSrc} />;
 }
@@ -411,9 +429,13 @@ export function NormalizedVideoSource({
 export function ClickableImage({
   src,
   alt,
+  caption,
   className,
   isTerminal,
   postPath,
+  layout = 'wide',
+  intrinsicWidth,
+  intrinsicHeight,
 }: ClickableImageProps) {
   const resolvedSrc = resolvePostMediaSrc(src, postPath);
   const isVideo = isVideoMedia(resolvedSrc);
@@ -435,9 +457,11 @@ export function ClickableImage({
       <EmbeddedVideo
         src={resolvedSrc}
         alt={alt}
+        caption={caption}
         className={className}
         isTerminal={isTerminal}
         postPath={postPath}
+        layout={layout}
       />
     );
   }
@@ -448,61 +472,94 @@ export function ClickableImage({
       ? resolvedSrc
       : getThumbSrc(resolvedSrc);
 
+  const hasIntrinsicSize =
+    intrinsicWidth !== undefined && intrinsicHeight !== undefined;
+  const mediaAspectRatio = hasIntrinsicSize
+    ? `${intrinsicWidth} / ${intrinsicHeight}`
+    : undefined;
+  const fallbackAspectClass =
+    layout === 'aside-left' || layout === 'aside-right'
+      ? 'aspect-[4/3]'
+      : 'aspect-[16/9]';
+  const displayCaption = caption ?? alt;
+
   return (
     <>
-      <span className="my-8 text-center block">
-        <button
-          type="button"
-          onClick={() => setLightboxOpen(true)}
-          className="cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-xl inline-block relative overflow-hidden"
-          aria-label={`View ${alt || "image"} in full size`}
-        >
-          {/* Placeholder skeleton while loading */}
-          {!thumbLoaded && (
-            <div className="absolute inset-0 bg-muted/50 animate-pulse rounded-xl flex items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/50" />
-            </div>
-          )}
-          <img
-            ref={imgRef}
-            src={isInView ? displaySrc : undefined}
-            data-src={displaySrc}
-            alt={alt || ""}
-            loading="lazy"
-            decoding="async"
-            onLoad={handleThumbLoad}
-            onError={handleThumbError}
-            className={cn(
-              "rounded-xl shadow-lg mx-auto max-w-full h-auto transition-all duration-300",
-              "hover:scale-[1.02]",
-              thumbLoaded ? "opacity-100 blur-0" : "opacity-0",
-              isTerminal && "rounded-lg border border-border",
-              className,
-            )}
-          />
-          {/* Click hint overlay */}
-          <div
-            className={cn(
-              "absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity",
-              "bg-black/20 rounded-xl",
-            )}
-          >
-            <ZoomIn className="h-8 w-8 text-white drop-shadow-lg" />
-          </div>
-        </button>
-        {alt && (
-          <span
-            className={cn(
-              "text-sm text-muted-foreground mt-2 italic",
-              isTerminal && "font-mono not-italic",
-            )}
-          >
-            {isTerminal ? `// ${alt}` : alt}
-          </span>
+      <figure
+        className={cn(
+          'article-media-frame my-8 block',
+          isTerminal && 'article-media-frame--terminal'
         )}
-      </span>
+        data-layout={layout}
+      >
+        <div
+          className={cn(
+            'article-media-surface relative overflow-hidden rounded-2xl border border-border/60 bg-white/70 shadow-sm',
+            'dark:bg-white/[0.03]',
+            isTerminal &&
+              'rounded border-border bg-[hsl(var(--terminal-code-bg))]'
+          )}
+        >
+          <button
+            type='button'
+            onClick={() => setLightboxOpen(true)}
+            className={cn(
+              'group/article-image relative block w-full cursor-zoom-in overflow-hidden',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+              !hasIntrinsicSize && fallbackAspectClass
+            )}
+            style={
+              mediaAspectRatio ? { aspectRatio: mediaAspectRatio } : undefined
+            }
+            aria-label={`View ${alt || caption || 'image'} in full size`}
+          >
+            {!thumbLoaded && (
+              <div className='absolute inset-0 flex items-center justify-center bg-muted/60'>
+                <Loader2 className='h-6 w-6 animate-spin text-muted-foreground/60' />
+              </div>
+            )}
+            <img
+              ref={imgRef}
+              src={isInView ? displaySrc : undefined}
+              data-src={displaySrc}
+              alt={alt || ''}
+              loading='lazy'
+              decoding='async'
+              onLoad={handleThumbLoad}
+              onError={handleThumbError}
+              className={cn(
+                'h-full w-full object-contain transition-[opacity,transform] duration-300 ease-smooth',
+                'group-hover/article-image:scale-[1.015]',
+                thumbLoaded ? 'opacity-100 blur-0' : 'opacity-0',
+                isTerminal && 'border-border',
+                className
+              )}
+            />
+            <span
+              className={cn(
+                'pointer-events-none absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full',
+                'border border-white/35 bg-black/45 text-white opacity-0 shadow-sm backdrop-blur transition-[opacity,transform] duration-200 ease-smooth',
+                'group-hover/article-image:opacity-100 group-hover/article-image:scale-100 group-focus-visible/article-image:opacity-100'
+              )}
+              aria-hidden='true'
+            >
+              <ZoomIn className='h-5 w-5' />
+            </span>
+          </button>
+        </div>
 
-      {/* Lightbox uses ORIGINAL full-size image */}
+        {displayCaption && (
+          <figcaption
+            className={cn(
+              'mx-auto mt-3 max-w-3xl text-center text-sm leading-relaxed text-muted-foreground',
+              isTerminal && 'font-mono'
+            )}
+          >
+            {isTerminal ? `// ${displayCaption}` : displayCaption}
+          </figcaption>
+        )}
+      </figure>
+
       <ImageLightbox
         src={resolvedSrc}
         alt={alt}
