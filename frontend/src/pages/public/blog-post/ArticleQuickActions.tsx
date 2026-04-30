@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowUp, Bookmark } from "lucide-react";
-import { useIsBookmarked } from "@/hooks/content/useBookmarks";
+import { ArrowUp } from "lucide-react";
+import { TocDrawer } from "@/components/features/blog";
 import { cn, throttle } from "@/lib/utils";
 
 type ArticleQuickActionsProps = {
   postId: string;
   isTerminal: boolean;
+  tocContent: string;
+  tocPostTitle?: string;
 };
 
-export function ArticleQuickActions({ postId, isTerminal }: ArticleQuickActionsProps) {
-  const { bookmarked, toggleBookmark } = useIsBookmarked(postId);
+export function ArticleQuickActions({
+  postId,
+  isTerminal,
+  tocContent,
+  tocPostTitle,
+}: ArticleQuickActionsProps) {
   const [showTop, setShowTop] = useState(false);
 
   const updateVisibility = useCallback(() => {
@@ -38,7 +44,7 @@ export function ArticleQuickActions({ postId, isTerminal }: ArticleQuickActionsP
       className={cn(
         "fixed z-[var(--z-fab-bar)] flex flex-col gap-1 rounded-2xl border p-1 shadow-sm backdrop-blur-md sm:hidden print:hidden",
         "transition-opacity duration-200 pointer-events-none",
-        bookmarked || showTop ? "opacity-90" : "opacity-65",
+        showTop ? "opacity-90" : "opacity-75",
         isTerminal
           ? "border-[hsl(var(--terminal-inactive-border))] bg-background/75"
           : "border-border/60 bg-background/70",
@@ -65,22 +71,12 @@ export function ArticleQuickActions({ postId, isTerminal }: ArticleQuickActionsP
         </button>
       )}
 
-      <button
-        type="button"
-        onClick={toggleBookmark}
-        aria-label={bookmarked ? "북마크 해제" : "북마크 추가"}
-        aria-pressed={bookmarked}
-        className={cn(
-          "relative grid h-9 w-9 place-items-center rounded-xl pointer-events-auto",
-          "text-muted-foreground transition-all duration-200 after:absolute after:-inset-1 after:rounded-[14px]",
-          bookmarked && "bg-primary/10 text-primary",
-          isTerminal
-            ? "hover:bg-[hsl(var(--terminal-glow)/0.12)] hover:text-[hsl(var(--terminal-glow))]"
-            : "hover:bg-muted hover:text-foreground",
-        )}
-      >
-        <Bookmark className={cn("h-4 w-4", bookmarked && "fill-current")} />
-      </button>
+      <TocDrawer
+        content={tocContent}
+        postTitle={tocPostTitle}
+        triggerPlacement="inline"
+        triggerClassName="pointer-events-auto"
+      />
     </div>
   );
 }

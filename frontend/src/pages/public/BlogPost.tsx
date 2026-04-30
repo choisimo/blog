@@ -156,7 +156,12 @@ const MemoizedTableOfContents = memo(
 const MemoizedTocDrawer = memo(
   TocDrawer,
   (prev, next) =>
-    prev.content === next.content && prev.postTitle === next.postTitle
+    prev.content === next.content &&
+    prev.postTitle === next.postTitle &&
+    prev.showAfterScroll === next.showAfterScroll &&
+    prev.triggerClassName === next.triggerClassName &&
+    prev.triggerPlacement === next.triggerPlacement &&
+    prev.scrollThreshold === next.scrollThreshold
 );
 
 const BlogPost = () => {
@@ -712,7 +717,6 @@ ${description}
   }, [post]);
 
   const displayTitle = resolvedPost?.title ?? post?.title ?? '';
-  const tocContent = resolvedPost?.content ?? post?.content ?? '';
 
   const postView = useMemo<ResolvedPostViewModel | null>(() => {
     if (!post) return null;
@@ -753,11 +757,11 @@ ${description}
     () =>
       post
         ? {
-            content: tocContent,
+            content: contentForRender,
             postTitle: displayTitle,
           }
         : null,
-    [displayTitle, post, tocContent]
+    [contentForRender, displayTitle, post]
   );
 
   const handleShare = async () => {
@@ -821,8 +825,8 @@ ${description}
           <div
             className={cn(
               'relative grid grid-cols-1 gap-8',
-              'xl:grid-cols-[260px_minmax(0,768px)] xl:justify-center',
-              '2xl:grid-cols-[260px_minmax(0,768px)_minmax(320px,360px)]'
+              'xl:grid-cols-[320px_minmax(0,768px)] xl:justify-center',
+              '2xl:grid-cols-[320px_minmax(0,768px)_minmax(260px,300px)]'
             )}
           >
             <aside className='hidden xl:block xl:col-start-1'>
@@ -831,7 +835,7 @@ ${description}
 
             <article
               className={cn(
-                'w-full max-w-3xl space-y-12 xl:col-start-2',
+                'mx-auto w-full max-w-3xl space-y-12 xl:col-start-2 xl:mx-0',
                 isTerminal && 'terminal-card p-4 sm:p-6'
               )}
             >
@@ -884,7 +888,7 @@ ${description}
               {/* AI Quiz Panel — shown only for posts with code blocks */}
               <MemoizedQuizPanel
                 key={`${year}:${slug}`}
-                content={tocContent}
+                content={contentForRender}
                 postTitle={displayTitle}
                 postTags={post.tags}
               />
@@ -909,9 +913,17 @@ ${description}
         </div>
       </div>
       <ScrollToTop className='hidden sm:inline-flex' />
-      <ArticleQuickActions postId={postId} isTerminal={isTerminal} />
-      {/* Mobile TOC floating button */}
-      <MemoizedTocDrawer {...tocProps!} />
+      <ArticleQuickActions
+        postId={postId}
+        isTerminal={isTerminal}
+        tocContent={contentForRender}
+        tocPostTitle={displayTitle}
+      />
+      <MemoizedTocDrawer
+        {...tocProps!}
+        showAfterScroll
+        triggerClassName='hidden sm:flex'
+      />
     </>
   );
 };

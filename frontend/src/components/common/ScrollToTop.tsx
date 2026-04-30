@@ -50,6 +50,7 @@ export const ScrollToTop = ({ className }: ScrollToTopProps = {}) => {
     <TouchIconButton
       onClick={scrollToTop}
       variant='outline'
+      aria-label='맨 위로 이동'
       className={cn(
         'fixed right-4 md:right-6 lg:right-8 z-[var(--z-fab-bar)] rounded-full shadow-lg transition-all duration-300',
         'bottom-[calc(92px+env(safe-area-inset-bottom,0px))] md:bottom-28 lg:bottom-[calc(108px+env(safe-area-inset-bottom,0px))]',
