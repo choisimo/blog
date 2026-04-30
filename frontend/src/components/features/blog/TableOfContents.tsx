@@ -9,7 +9,7 @@ import {
   SheetTrigger,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { BookOpen, X } from "lucide-react";
+import { BookOpen, Menu, X } from "lucide-react";
 import { buildMarkdownToc } from "@/utils/content/markdownHeadings";
 
 interface TocItem {
@@ -35,31 +35,25 @@ export const TableOfContents = ({
   const [activeId, setActiveId] = useState<string>("");
   const { isTerminal } = useTheme();
   const isMobile = useIsMobile();
-  const [isStuck, setIsStuck] = useState(false);
-  const [animateDropIn, setAnimateDropIn] = useState(false);
 
-  const rafRef = useRef<number | null>(null);
-  const lastScrollTime = useRef<number>(0);
-  const THROTTLE_MS = 100;
-  const containerRef = useRef<HTMLDivElement | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const STICKY_TOP_PX = 96;
-  const isStuckRef = useRef(false);
-  const dropInTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     const headings = buildMarkdownToc(content, postTitle) as TocItem[];
     setToc(headings);
+    setActiveId(headings[0]?.id ?? "");
+    itemRefs.current = {};
   }, [content, postTitle]);
 
   useEffect(() => {
-    // Skip scroll tracking on mobile for performance
     if (isMobile) return;
 
-    let resizeObserver: ResizeObserver | null = null;
+    let mutationObserver: MutationObserver | null = null;
 
     const visibleHeadings = new Map<string, number>();
+    const observedHeadingIds = new Set<string>();
     const headingObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -84,89 +78,26 @@ export const TableOfContents = ({
     );
 
     const boundaryEl = document.querySelector("[data-toc-boundary]");
-    boundaryEl?.querySelectorAll("h1,h2,h3,h4,h5,h6").forEach((heading) => {
-      if (heading.id) {
+    const observeHeadings = () => {
+      boundaryEl?.querySelectorAll("h1,h2,h3,h4,h5,h6").forEach((heading) => {
+        if (!heading.id || observedHeadingIds.has(heading.id)) return;
+        observedHeadingIds.add(heading.id);
         headingObserver.observe(heading);
-      }
-    });
-
-    const updateTocPosition = () => {
-      const tocEl = containerRef.current;
-      if (!tocEl) {
-        if (isStuckRef.current) {
-          isStuckRef.current = false;
-          setIsStuck(false);
-        }
-        return;
-      }
-
-      const stuckNow = tocEl.getBoundingClientRect().top <= STICKY_TOP_PX + 1;
-      if (stuckNow !== isStuckRef.current) {
-        isStuckRef.current = stuckNow;
-        setIsStuck(stuckNow);
-
-        if (stuckNow) {
-          setAnimateDropIn(true);
-          if (dropInTimeoutRef.current) {
-            window.clearTimeout(dropInTimeoutRef.current);
-          }
-          dropInTimeoutRef.current = window.setTimeout(() => {
-            setAnimateDropIn(false);
-            dropInTimeoutRef.current = null;
-          }, 220);
-        }
-      }
-    };
-
-    const handleScroll = () => {
-      const now = Date.now();
-
-      // Throttle: skip if called too frequently
-      if (now - lastScrollTime.current < THROTTLE_MS) {
-        return;
-      }
-      lastScrollTime.current = now;
-
-      // Cancel any pending RAF
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
-
-      // Schedule update in next animation frame
-      rafRef.current = requestAnimationFrame(updateTocPosition);
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    updateTocPosition();
-
-    if (typeof ResizeObserver !== "undefined" && containerRef.current) {
-      resizeObserver = new ResizeObserver(() => {
-        updateTocPosition();
       });
-      resizeObserver.observe(containerRef.current);
+    };
+
+    observeHeadings();
+
+    if (boundaryEl && typeof MutationObserver !== "undefined") {
+      mutationObserver = new MutationObserver(observeHeadings);
+      mutationObserver.observe(boundaryEl, { childList: true, subtree: true });
     }
 
-    const handleResize = () => {
-      updateTocPosition();
-    };
-    window.addEventListener("resize", handleResize);
-
     return () => {
-      window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleResize);
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
-      if (dropInTimeoutRef.current) {
-        window.clearTimeout(dropInTimeoutRef.current);
-        dropInTimeoutRef.current = null;
-      }
-      if (resizeObserver) {
-        resizeObserver.disconnect();
-      }
+      mutationObserver?.disconnect();
       headingObserver.disconnect();
     };
-  }, [isMobile]);
+  }, [content, isMobile, postTitle]);
 
   useEffect(() => {
     if (isMobile || !activeId) return;
@@ -216,16 +147,13 @@ export const TableOfContents = ({
 
   return (
     <div
-      ref={containerRef}
       data-testid="toc-panel"
-      className={cn("w-full", sticky && "w-72 sticky top-24")}
+      className={cn("w-full", sticky && "sticky top-24")}
     >
       <div
         className={cn(
-          "bg-card/50 backdrop-blur-sm border rounded-2xl p-6 shadow-lg",
-          animateDropIn &&
-            isStuck &&
-            "animate-in slide-in-from-top-2 fade-in duration-200",
+          "flex flex-col rounded-[24px] border border-zinc-200/70 bg-white/90 px-6 py-7 shadow-[0_24px_60px_rgba(15,23,42,0.14)] backdrop-blur dark:border-white/10 dark:bg-[hsl(var(--card-blog)/0.9)]",
+          sticky && "min-h-[calc(100vh-8rem)] max-h-[calc(100vh-7rem)]",
           isTerminal &&
             "bg-[hsl(var(--terminal-code-bg))] border-border rounded-lg",
         )}
@@ -241,7 +169,7 @@ export const TableOfContents = ({
 
         <h3
           className={cn(
-            "font-bold mb-4 text-base flex items-center",
+            "mb-6 flex items-center gap-3 px-2 text-base font-bold text-foreground",
             isTerminal && "font-mono text-primary text-sm",
           )}
         >
@@ -252,25 +180,19 @@ export const TableOfContents = ({
             </>
           ) : (
             <>
-              <svg
-                className="w-5 h-5 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 10h16M4 14h16M4 18h16"
-                />
-              </svg>
+              <Menu className="h-5 w-5" aria-hidden="true" />
               목차
             </>
           )}
         </h3>
-        <ScrollArea ref={scrollAreaRef} className="max-h-[calc(100vh-12rem)]">
-          <nav className="space-y-2 pr-2">
+        <ScrollArea
+          ref={scrollAreaRef}
+          className={cn(
+            "min-h-0",
+            sticky ? "h-[calc(100vh-15rem)]" : "max-h-[calc(100vh-12rem)]",
+          )}
+        >
+          <nav className="space-y-3 pr-2" aria-label="글 목차">
             {toc.map((item, index) => (
               <button
                 key={`${item.id}-${index}`}
@@ -283,17 +205,17 @@ export const TableOfContents = ({
                 }}
                 title={item.title}
                 onClick={() => scrollToHeading(item.id)}
+                aria-current={activeId === item.id ? "location" : undefined}
                 className={cn(
-                  "block w-full text-left text-sm py-2 px-3 rounded-lg hover:bg-primary/10 transition-all duration-200",
-                  "text-muted-foreground hover:text-foreground",
+                  "block w-full rounded-lg border-l-2 border-transparent py-3 pr-3 text-left text-sm transition-colors duration-200",
+                  "text-muted-foreground hover:bg-primary/10 hover:text-foreground",
                   activeId === item.id &&
-                    "bg-primary/15 text-primary font-semibold border-l-2 border-primary",
-                  item.level === 1 && "ml-0 font-medium",
-                  item.level === 2 && "ml-4",
-                  item.level === 3 && "ml-8",
-                  item.level === 4 && "ml-12",
-                  item.level === 5 && "ml-16",
-                  item.level === 6 && "ml-20",
+                    "border-primary bg-primary/15 font-semibold text-primary",
+                  item.level <= 2 && "pl-4",
+                  item.level === 3 && "pl-7",
+                  item.level === 4 && "pl-10",
+                  item.level === 5 && "pl-12",
+                  item.level === 6 && "pl-14",
                   isTerminal && "font-mono text-xs rounded hover:bg-primary/20",
                   isTerminal &&
                     activeId === item.id &&
@@ -321,16 +243,63 @@ export const TableOfContents = ({
 export const TocDrawer = ({
   content,
   postTitle,
+  showAfterScroll = false,
+  triggerClassName,
+  triggerPlacement = "floating",
+  scrollThreshold = 300,
 }: {
   content: string;
   postTitle?: string;
+  showAfterScroll?: boolean;
+  triggerClassName?: string;
+  triggerPlacement?: "floating" | "inline";
+  scrollThreshold?: number;
 }) => {
   const [open, setOpen] = useState(false);
+  const [isTriggerVisible, setIsTriggerVisible] = useState(!showAfterScroll);
   const { isTerminal } = useTheme();
+  const triggerVisibleRef = useRef(!showAfterScroll);
 
-  // Extract toc to check if there are any headings
-  const hasToc = /^#{1,6}\s+.+$/m.test(content);
+  useEffect(() => {
+    if (!showAfterScroll) {
+      triggerVisibleRef.current = true;
+      setIsTriggerVisible(true);
+      return;
+    }
+
+    let rafId: number | null = null;
+
+    const updateVisibility = () => {
+      const nextVisible = window.scrollY > scrollThreshold;
+      if (nextVisible !== triggerVisibleRef.current) {
+        triggerVisibleRef.current = nextVisible;
+        setIsTriggerVisible(nextVisible);
+      }
+    };
+
+    const handleScroll = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        updateVisibility();
+      });
+    };
+
+    updateVisibility();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+      }
+    };
+  }, [scrollThreshold, showAfterScroll]);
+
+  const hasToc = buildMarkdownToc(content, postTitle).length > 0;
   if (!hasToc) return null;
+
+  const isFloatingTrigger = triggerPlacement === "floating";
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -339,17 +308,34 @@ export const TocDrawer = ({
           type="button"
           data-testid="toc-mobile-trigger"
           aria-label="목차 열기"
+          aria-hidden={!isTriggerVisible}
+          tabIndex={isTriggerVisible ? undefined : -1}
           className={cn(
-            "fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 z-[51] xl:hidden",
-            "flex items-center justify-center",
-            "h-12 w-12 rounded-full shadow-lg",
-            "bg-primary text-primary-foreground",
-            "hover:bg-primary/90 active:scale-95 transition-all duration-200",
-            isTerminal &&
-              "rounded-lg border border-primary/40 bg-[hsl(var(--terminal-code-bg))] text-primary",
+            "transition-[opacity,transform,background-color,color,box-shadow] duration-200 ease-out",
+            isTriggerVisible
+              ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
+              : "pointer-events-none translate-y-2 scale-95 opacity-0",
+            isFloatingTrigger
+              ? [
+                  "fixed z-[var(--z-fab-bar)] print:hidden",
+                  "flex h-12 w-12 items-center justify-center rounded-full shadow-lg",
+                  "right-4 bottom-[calc(224px+env(safe-area-inset-bottom,0px))] sm:bottom-[calc(156px+env(safe-area-inset-bottom,0px))] md:right-6 md:bottom-44 lg:right-8 lg:bottom-[calc(172px+env(safe-area-inset-bottom,0px))]",
+                  "bg-primary text-primary-foreground",
+                  "hover:bg-primary/90 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2",
+                  isTerminal &&
+                    "rounded-lg border border-primary/40 bg-[hsl(var(--terminal-code-bg))] text-primary",
+                ]
+              : [
+                  "relative grid h-9 w-9 place-items-center rounded-xl",
+                  "text-muted-foreground after:absolute after:-inset-1 after:rounded-[14px]",
+                  "hover:bg-muted hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+                  isTerminal &&
+                    "hover:bg-[hsl(var(--terminal-glow)/0.12)] hover:text-[hsl(var(--terminal-glow))]",
+                ],
+            triggerClassName,
           )}
         >
-          <BookOpen className="h-5 w-5" />
+          <BookOpen className={cn(isFloatingTrigger ? "h-5 w-5" : "h-4 w-4")} />
         </button>
       </SheetTrigger>
       <SheetContent
