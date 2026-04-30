@@ -809,20 +809,20 @@ ${description}
       <ReadingProgress />
       <div
         className={cn(
-          'min-h-screen bg-gradient-to-b from-[#f5f6fb] via-background to-background/70 dark:from-[#04050a] dark:via-[#0b0f18] dark:to-[#111827]',
+          'min-h-screen bg-[#f7f8fb] dark:bg-[#070a12]',
           isTerminal &&
             'bg-background from-background via-background to-background'
         )}
       >
         <div
-          className='mx-auto w-full max-w-7xl px-4 pt-6 pb-32 sm:pt-12 2xl:max-w-[1460px]'
+          className='mx-auto w-full max-w-7xl px-4 pt-6 pb-32 sm:pt-10 2xl:max-w-[1460px]'
           style={safeAreaPaddingStyle}
         >
           <div
             className={cn(
               'relative grid grid-cols-1 gap-8',
-              'xl:grid-cols-[260px_minmax(0,768px)] xl:justify-center',
-              '2xl:grid-cols-[260px_minmax(0,768px)_minmax(320px,360px)]'
+              'xl:grid-cols-[240px_minmax(0,920px)] xl:justify-center',
+              '2xl:grid-cols-[240px_minmax(0,920px)_280px]'
             )}
           >
             <aside className='hidden xl:block xl:col-start-1'>
@@ -831,8 +831,9 @@ ${description}
 
             <article
               className={cn(
-                'w-full max-w-3xl space-y-12 xl:col-start-2',
-                isTerminal && 'terminal-card p-4 sm:p-6'
+                'w-full max-w-[920px] space-y-10 rounded-lg border border-slate-200/80 bg-white/95 px-5 py-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-sm xl:col-start-2 sm:px-9 sm:py-10 lg:px-12 dark:border-white/10 dark:bg-[hsl(var(--card-blog)/0.92)]',
+                isTerminal &&
+                  'terminal-card rounded-lg border-border bg-card p-4 sm:p-6'
               )}
             >
               <BlogPostHeader

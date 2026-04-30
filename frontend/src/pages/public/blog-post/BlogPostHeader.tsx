@@ -139,12 +139,7 @@ export function BlogPostHeader({
         </Button>
       </div>
 
-      <div
-        className={cn(
-          'rounded-[32px] border border-white/60 bg-white/80 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-[hsl(var(--card-blog))] sm:p-8',
-          isTerminal && 'rounded-lg border-border bg-card'
-        )}
-      >
+      <div className={cn('space-y-6', isTerminal && 'rounded-lg bg-card')}>
         <div className='space-y-5'>
           {/* Terminal-style path indicator */}
           {isTerminal && (
@@ -155,7 +150,7 @@ export function BlogPostHeader({
 
           <div
             className={cn(
-              'inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-primary',
+              'inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-primary',
               isTerminal && 'rounded font-mono tracking-wider'
             )}
           >
@@ -166,7 +161,7 @@ export function BlogPostHeader({
 
           <h1
             className={cn(
-              'text-3xl font-bold leading-tight tracking-tight text-foreground dark:text-white sm:text-4xl lg:text-5xl',
+              'text-4xl font-extrabold leading-[1.08] tracking-tight text-foreground dark:text-white sm:text-5xl lg:text-[3.75rem]',
               isTerminal && 'font-mono terminal-glow'
             )}
           >
@@ -178,7 +173,7 @@ export function BlogPostHeader({
             <SafeDescriptionMarkdown
               text={description}
               className={cn(
-                'text-base leading-relaxed text-foreground/85 dark:text-foreground/85 sm:text-lg',
+                'max-w-[760px] text-base leading-8 text-muted-foreground sm:text-lg',
                 isTerminal && 'border-l-2 border-primary/30 pl-4'
               )}
             />
@@ -186,14 +181,15 @@ export function BlogPostHeader({
 
           <div
             className={cn(
-              'grid gap-3 text-sm text-muted-foreground sm:grid-cols-3',
+              'flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground',
               isTerminal && 'font-mono text-xs'
             )}
           >
             <div
               className={cn(
-                'flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[hsl(var(--card-blog))] dark:text-white',
-                isTerminal && 'rounded bg-[hsl(var(--terminal-code-bg))]'
+                'inline-flex items-center gap-2',
+                isTerminal &&
+                  'rounded bg-[hsl(var(--terminal-code-bg))] px-2 py-1'
               )}
             >
               <Calendar className='h-4 w-4 text-foreground/70' />
@@ -204,8 +200,9 @@ export function BlogPostHeader({
             {postView.readingTimeLabel && (
               <div
                 className={cn(
-                  'flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[hsl(var(--card-blog))] dark:text-white',
-                  isTerminal && 'rounded bg-[hsl(var(--terminal-code-bg))]'
+                  'inline-flex items-center gap-2',
+                  isTerminal &&
+                    'rounded bg-[hsl(var(--terminal-code-bg))] px-2 py-1'
                 )}
               >
                 <Clock className='h-4 w-4 text-foreground/70' />
@@ -219,8 +216,9 @@ export function BlogPostHeader({
             {postView.author && (
               <div
                 className={cn(
-                  'flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[hsl(var(--card-blog))] dark:text-white',
-                  isTerminal && 'rounded bg-[hsl(var(--terminal-code-bg))]'
+                  'inline-flex items-center gap-2',
+                  isTerminal &&
+                    'rounded bg-[hsl(var(--terminal-code-bg))] px-2 py-1'
                 )}
               >
                 <User className='h-4 w-4 text-foreground/70' />
@@ -234,7 +232,7 @@ export function BlogPostHeader({
           {/* Language Selection */}
           <div
             className={cn(
-              'flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-xs font-medium text-muted-foreground dark:border-primary/40 dark:bg-primary/10 dark:text-white/80',
+              'flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-primary/25 bg-primary/5 px-4 py-3 text-xs font-medium text-muted-foreground dark:border-primary/40 dark:bg-primary/10 dark:text-white/80',
               isTerminal && 'rounded-lg font-mono border-solid',
               isTranslationWarming && 'animate-pulse'
             )}
