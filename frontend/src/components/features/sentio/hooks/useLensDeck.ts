@@ -1,13 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { invokeLensFeed, type LensCard as LensCardData } from "@/services/chat";
-import { FALLBACK_DATA } from "@/config/defaults";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  invokeChatTask,
+  invokeLensFeed,
+  type LensCard as LensCardData,
+} from '@/services/chat';
+import { FALLBACK_DATA } from '@/config/defaults';
 import {
   getAsyncArtifactStatus,
   shouldPersistAsyncArtifactSource,
   useWarmingRetry,
   type AsyncArtifactStatus,
   type AsyncArtifactSource,
-} from "./useAsyncArtifact";
+} from './useAsyncArtifact';
 
 export type LensDeckSource = AsyncArtifactSource;
 
@@ -49,52 +53,113 @@ type CachedLensDeck = {
   nextCursor: LensCursor;
 };
 
-const PERSONA_BY_INDEX: LensCardData["personaId"][] = [
-  "mentor",
-  "explorer",
-  "analyst",
-  "debater",
+type PrismFacet = {
+  title: string;
+  points: string[];
+};
+
+type PrismTaskData = {
+  facets?: PrismFacet[];
+};
+
+const PERSONA_BY_INDEX: LensCardData['personaId'][] = [
+  'mentor',
+  'explorer',
+  'analyst',
+  'debater',
 ];
 
-function mapPrismFallbackToCards(
+function mapPrismFacetsToCards(
   paragraph: string,
   postTitle: string | undefined,
   facets: ReadonlyArray<{
     title: string;
     points: ReadonlyArray<string>;
   }>,
+  sourceTag: 'feed' | 'fallback'
 ): LensCardData[] {
-  const seed = `${postTitle || "post"}-${paragraph.slice(0, 24) || "lens"}`
+  const seed = `${postTitle || 'post'}-${paragraph.slice(0, 24) || 'lens'}`
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 
   return facets.map((facet, index) => {
-    const angleKey = `${seed || "lens"}-${index + 1}`;
+    const angleKey = `${seed || 'lens'}-${index + 1}`;
     const bullets = facet.points.slice(0, 5);
     return {
-      id: `fallback-${angleKey}`,
+      id: `${sourceTag === 'fallback' ? 'fallback-' : 'task-'}${angleKey}`,
       personaId: PERSONA_BY_INDEX[index % PERSONA_BY_INDEX.length],
       angleKey,
       title: facet.title,
       summary: bullets[0] || facet.title,
       bullets,
-      detail: [facet.title, ...facet.points].join("\n\n"),
-      tags: ["fallback", "prism"],
+      detail: [facet.title, ...facet.points].join('\n\n'),
+      tags: [sourceTag, 'prism'],
     };
   });
 }
 
+function isFallbackTaskResponse(raw: unknown): boolean {
+  return Boolean(
+    raw &&
+    typeof raw === 'object' &&
+    '_fallback' in raw &&
+    raw._fallback === true
+  );
+}
+
+function normalizePrismFacets(data: PrismTaskData | null): PrismFacet[] {
+  if (!data || !Array.isArray(data.facets)) return [];
+  return data.facets
+    .map(facet => ({
+      title: typeof facet.title === 'string' ? facet.title.trim() : '',
+      points: Array.isArray(facet.points)
+        ? facet.points
+            .filter((point): point is string => typeof point === 'string')
+            .map(point => point.trim())
+            .filter(Boolean)
+        : [],
+    }))
+    .filter(facet => facet.title && facet.points.length > 0);
+}
+
+async function loadLensCardsViaTask({
+  paragraph,
+  postTitle,
+  signal,
+}: {
+  paragraph: string;
+  postTitle?: string;
+  signal: AbortSignal;
+}): Promise<LensCardData[]> {
+  const result = await invokeChatTask<PrismTaskData>({
+    mode: 'prism',
+    payload: { paragraph, postTitle },
+    signal,
+  });
+
+  if (isFallbackTaskResponse(result.raw)) {
+    throw new Error('Prism task returned fallback data');
+  }
+
+  const facets = normalizePrismFacets(result.data);
+  if (facets.length === 0) {
+    throw new Error('Prism task returned no facets');
+  }
+
+  return mapPrismFacetsToCards(paragraph, postTitle, facets, 'feed');
+}
+
 function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError";
+  return error instanceof DOMException && error.name === 'AbortError';
 }
 
 function mergeCards(
   previous: LensCardData[],
-  incoming: LensCardData[],
+  incoming: LensCardData[]
 ): { items: LensCardData[]; appendedCount: number } {
-  const seen = new Set(previous.map((card) => card.angleKey));
-  const appended = incoming.filter((card) => {
+  const seen = new Set(previous.map(card => card.angleKey));
+  const appended = incoming.filter(card => {
     const key = card.angleKey;
     if (seen.has(key)) return false;
     seen.add(key);
@@ -107,19 +172,24 @@ function mergeCards(
 }
 
 function resolveResponseSource(
-  response: { source?: string; warming?: boolean } | null | undefined,
-): Exclude<LensDeckSource, "fallback"> {
-  if (response?.source === "warming" || response?.warming === true) {
-    return "warming";
+  response: { source?: string; warming?: boolean } | null | undefined
+): Exclude<LensDeckSource, 'fallback'> {
+  if (response?.source === 'warming' || response?.warming === true) {
+    return 'warming';
   }
-  return "feed";
+  return 'feed';
 }
 
-function isWarmingResponse(response: {
-  source?: string;
-  warming?: boolean;
-} | null | undefined): boolean {
-  return response?.warming === true || response?.source === "warming";
+function isWarmingResponse(
+  response:
+    | {
+        source?: string;
+        warming?: boolean;
+      }
+    | null
+    | undefined
+): boolean {
+  return response?.warming === true || response?.source === 'warming';
 }
 
 export function useLensDeck({
@@ -155,13 +225,13 @@ export function useLensDeck({
       if (!onReady || nextCards.length === 0) return;
       const key = `${cacheKey}:${nextSource}:${nextCards
         .slice(0, 4)
-        .map((card) => card.angleKey)
-        .join("|")}`;
+        .map(card => card.angleKey)
+        .join('|')}`;
       if (readyKeyRef.current === key) return;
       readyKeyRef.current = key;
       onReady(nextCards, nextSource);
     },
-    [cacheKey, onReady],
+    [cacheKey, onReady]
   );
 
   const cancelInFlight = useCallback(() => {
@@ -196,7 +266,7 @@ export function useLensDeck({
         nextCursor: overrides.nextCursor ?? nextCursorRef.current,
       });
     },
-    [],
+    []
   );
 
   const hydrateCache = useCallback(
@@ -210,7 +280,7 @@ export function useLensDeck({
       nextCursorRef.current = cached.nextCursor;
       notifyReady(cached.cards, cached.source);
     },
-    [notifyReady],
+    [notifyReady]
   );
 
   useEffect(() => {
@@ -251,7 +321,7 @@ export function useLensDeck({
             postTitle,
             count: 4,
           },
-          { signal: controller.signal },
+          { signal: controller.signal }
         );
         if (requestId !== requestIdRef.current || controller.signal.aborted) {
           return;
@@ -259,50 +329,74 @@ export function useLensDeck({
 
         const items = response.items ?? [];
         const responseSource = resolveResponseSource(response);
-        if (responseSource === "warming") {
+        if (responseSource === 'warming') {
           setCards(items);
           setCurrentIndex(0);
           setExhausted(false);
-          setSource("warming");
+          setSource('warming');
           nextCursorRef.current = response.nextCursor;
           return;
         }
 
         if (items.length === 0) {
-          throw new Error("Empty lens feed");
+          throw new Error('Empty lens feed');
         }
 
         setCards(items);
         setCurrentIndex(0);
         setExhausted(response.exhausted);
-        setSource("feed");
+        setSource('feed');
         nextCursorRef.current = response.nextCursor;
-        notifyReady(items, "feed");
+        notifyReady(items, 'feed');
       } catch (error) {
         if (isAbortError(error) || requestId !== requestIdRef.current) {
           return;
         }
 
-        if (warmingRetry && sourceRef.current === "warming") {
-          console.warn("[PrismDeck] warming refresh failed; retrying", error);
+        if (warmingRetry && sourceRef.current === 'warming') {
+          console.warn('[PrismDeck] warming refresh failed; retrying', error);
           return;
         }
 
-        console.warn(
-          "[PrismDeck] lens-feed failed, using local fallback cards",
-          error,
-        );
-        const mapped = mapPrismFallbackToCards(
+        try {
+          const mapped = await loadLensCardsViaTask({
+            paragraph,
+            postTitle,
+            signal: controller.signal,
+          });
+          if (requestId !== requestIdRef.current || controller.signal.aborted) {
+            return;
+          }
+
+          setCards(mapped);
+          setCurrentIndex(0);
+          setExhausted(true);
+          setSource('feed');
+          nextCursorRef.current = null;
+          notifyReady(mapped, 'feed');
+          return;
+        } catch (taskError) {
+          if (isAbortError(taskError) || controller.signal.aborted) {
+            return;
+          }
+          console.warn(
+            '[PrismDeck] lens-feed failed and task recovery failed, using local fallback cards',
+            { feedError: error, taskError }
+          );
+        }
+
+        const mapped = mapPrismFacetsToCards(
           paragraph,
           postTitle,
           FALLBACK_DATA.PRISM.FACETS,
+          'fallback'
         );
         setCards(mapped);
         setCurrentIndex(0);
         setExhausted(true);
-        setSource("fallback");
+        setSource('fallback');
         nextCursorRef.current = null;
-        notifyReady(mapped, "fallback");
+        notifyReady(mapped, 'fallback');
       } finally {
         if (requestId === requestIdRef.current) {
           setLoading(false);
@@ -312,7 +406,7 @@ export function useLensDeck({
         }
       }
     },
-    [notifyReady, paragraph, postTitle],
+    [notifyReady, paragraph, postTitle]
   );
 
   const { reset: resetWarmingRetry } = useWarmingRetry({
@@ -327,7 +421,7 @@ export function useLensDeck({
       void loadInitial(true);
     },
     onExhausted: () => {
-      setSource("fallback");
+      setSource('fallback');
     },
   });
 
@@ -336,7 +430,7 @@ export function useLensDeck({
       loading ||
       loadingMore ||
       exhausted ||
-      source !== "feed" ||
+      source !== 'feed' ||
       !nextCursorRef.current
     ) {
       return;
@@ -359,7 +453,7 @@ export function useLensDeck({
           count: 4,
           cursor,
         },
-        { signal: controller.signal },
+        { signal: controller.signal }
       );
       if (requestId !== requestIdRef.current || controller.signal.aborted) {
         return;
@@ -367,7 +461,7 @@ export function useLensDeck({
 
       const incoming = response.items ?? [];
       let appendedCount = 0;
-      setCards((prev) => {
+      setCards(prev => {
         const merged = mergeCards(prev, incoming);
         appendedCount = merged.appendedCount;
         return merged.items;
@@ -378,7 +472,7 @@ export function useLensDeck({
         nextCursorRef.current = response.nextCursor ?? cursor;
         persistCache({
           exhausted: false,
-          source: "feed",
+          source: 'feed',
           nextCursor: response.nextCursor ?? cursor,
         });
         return;
@@ -396,7 +490,7 @@ export function useLensDeck({
         return;
       }
 
-      console.warn("[PrismDeck] lens-feed prefetch failed", error);
+      console.warn('[PrismDeck] lens-feed prefetch failed', error);
       setExhausted(true);
       nextCursorRef.current = null;
     } finally {
@@ -469,7 +563,7 @@ export function useLensDeck({
   }, []);
 
   useEffect(() => {
-    if (!enabled || cards.length === 0 || source !== "feed") return;
+    if (!enabled || cards.length === 0 || source !== 'feed') return;
     const remaining = cards.length - currentIndex - 1;
     if (remaining <= 2) {
       void loadMore();
@@ -480,18 +574,16 @@ export function useLensDeck({
   const canGoNext = currentIndex < cards.length - 1;
 
   const goPrev = useCallback(() => {
-    setCurrentIndex((prev) => Math.max(prev - 1, 0));
+    setCurrentIndex(prev => Math.max(prev - 1, 0));
   }, []);
 
   const goNext = useCallback(() => {
-    setCurrentIndex((prev) =>
-      Math.min(prev + 1, Math.max(cards.length - 1, 0)),
-    );
+    setCurrentIndex(prev => Math.min(prev + 1, Math.max(cards.length - 1, 0)));
   }, [cards.length]);
 
   const activeCard = useMemo(
     () => cards[currentIndex] ?? null,
-    [cards, currentIndex],
+    [cards, currentIndex]
   );
 
   return {

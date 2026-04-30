@@ -67,7 +67,7 @@ blog/
 
 ## Local Development
 
-루트 `package.json`은 서비스 오케스트레이션을 제공하지 않습니다. 각 서비스는 자신의 디렉토리에서 따로 실행합니다.
+일반 로컬 실행은 각 서비스 디렉토리에서 따로 실행합니다. 루트 `package.json`에는 k3s backend 연결 확인용 보조 스크립트만 둡니다.
 
 ### Frontend
 
@@ -79,6 +79,25 @@ npm run dev
 
 - dev server: `http://localhost:5173`
 - `predev`에서 manifest와 `runtime-config.json`을 먼저 생성합니다.
+
+#### k3s backend 연결 로컬 실행
+
+브라우저 CORS를 피하면서 실제 k3s backend를 로컬 프론트에서 확인하려면 터미널 2개를 사용합니다.
+
+```bash
+npm run k3s:backend:tunnel
+```
+
+다른 터미널:
+
+```bash
+npm run dev:frontend:k3s
+```
+
+- `k3s:backend:tunnel`은 `ssh blog` 접속 후 원격 k3s에서 `blog/api:5080` 서비스를 로컬 `127.0.0.1:5081`로 포워딩합니다. SSH TCP forwarding이 막힌 환경을 위해 기본값은 `socat` 기반 stdio 브리지입니다.
+- `dev:frontend:k3s`는 프론트를 `http://localhost:8093`에서 실행하고, 같은 origin의 `/api` 요청을 `http://127.0.0.1:5081`로 프록시합니다.
+- 보호 라우트 호출을 위해 `dev:frontend:k3s`는 `ssh blog`로 k3s `blog-app-secrets/GATEWAY_SIGNING_SECRET`과 `BACKEND_KEY`를 읽고 Vite proxy에서 `X-Gateway-*` 서명과 `X-Backend-Key`를 붙입니다.
+- 포트 변경: `K3S_BACKEND_LOCAL_PORT=5091 VITE_DEV_PORT=8094 npm run dev:frontend:k3s`
 
 ### Workers
 

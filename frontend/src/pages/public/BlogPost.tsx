@@ -1,49 +1,51 @@
-import { useParams, Navigate, useLocation } from "react-router-dom";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { ReadingProgress } from "@/components/common/ReadingProgress";
-import { ScrollToTop } from "@/components/common/ScrollToTop";
+import { useParams, Navigate, useLocation } from 'react-router-dom';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { ReadingProgress } from '@/components/common/ReadingProgress';
+import { ScrollToTop } from '@/components/common/ScrollToTop';
 import {
   getPostBySlug,
   getPostsPage,
   getPostsBySeries,
-} from "@/data/content/posts";
+} from '@/data/content/posts';
 import {
   BlogPost as BlogPostType,
   type ResolvedPostViewModel,
   type ResolvedRelatedPostCard,
-} from "@/types/blog";
+  type SupportedLanguage,
+} from '@/types/blog';
 import {
   formatReadingTimeLabel,
+  getAvailableLanguages,
   resolveLocalizedPost,
-} from "@/utils/content/blog";
+} from '@/utils/content/blog';
 import {
   CommentSection,
   TableOfContents,
   TocDrawer,
   SeriesNavigation,
-} from "@/components/features/blog";
-import { QuizPanel } from "@/components/features/sentio/QuizPanel";
-import { useToast } from "@/components/ui/use-toast";
-import useLanguage from "@/hooks/i18n/useLanguage";
-import { useTheme } from "@/contexts/ThemeContext";
-import { cn } from "@/lib/utils";
-import { recordView } from "@/services/content/analytics";
+} from '@/components/features/blog';
+import { QuizPanel } from '@/components/features/sentio/QuizPanel';
+import { useToast } from '@/components/ui/use-toast';
+import useLanguage from '@/hooks/i18n/useLanguage';
+import { useTheme } from '@/contexts/ThemeContext';
+import { cn } from '@/lib/utils';
+import { recordView } from '@/services/content/analytics';
 import {
   getCachedTranslation,
   TranslationApiError,
   type TranslationErrorCode,
   type TranslationResult,
-} from "@/services/content/translate";
-import { curiosityTracker } from "@/services/engagement/curiosity";
-import { useUIStrings } from "@/utils/i18n/uiStrings";
-import { findRelatedPosts as findRAGRelatedPosts } from "@/services/discovery/rag";
-import { useSEO } from "@/hooks/seo/useSEO";
-import { generateSEOData, generateStructuredData } from "@/utils/seo/seo";
-import type { AsyncArtifactStatus } from "@/components/features/sentio/hooks/useAsyncArtifact";
-import { BlogPostHeader } from "./blog-post/BlogPostHeader";
-import { BlogPostContent } from "./blog-post/BlogPostContent";
-import { BlogPostRelated } from "./blog-post/BlogPostRelated";
-import { ArticleQuickActions } from "./blog-post/ArticleQuickActions";
+} from '@/services/content/translate';
+import { curiosityTracker } from '@/services/engagement/curiosity';
+import { useUIStrings } from '@/utils/i18n/uiStrings';
+import { findRelatedPosts as findRAGRelatedPosts } from '@/services/discovery/rag';
+import { useSEO } from '@/hooks/seo/useSEO';
+import { generateSEOData, generateStructuredData } from '@/utils/seo/seo';
+import type { AsyncArtifactStatus } from '@/components/features/sentio/hooks/useAsyncArtifact';
+import { BlogPostHeader } from './blog-post/BlogPostHeader';
+import { BlogPostContent } from './blog-post/BlogPostContent';
+import { BlogPostRelated } from './blog-post/BlogPostRelated';
+import { ArticleQuickActions } from './blog-post/ArticleQuickActions';
 
 type VisitedPostItem = {
   path: string;
@@ -70,7 +72,7 @@ function isAppShellHtml(content: string): boolean {
     sample.includes('<div id="root"></div>') ||
     sample.includes("<div id='root'></div>") ||
     sample.includes('script type="module" crossorigin src="/assets/index-') ||
-    sample.includes("<title>nodove blog</title>")
+    sample.includes('<title>nodove blog</title>')
   );
 }
 
@@ -82,10 +84,10 @@ async function checkSimulatorExists(path: string): Promise<boolean> {
   let exists = false;
 
   try {
-    const res = await fetch(path, { method: "GET", cache: "no-store" });
+    const res = await fetch(path, { method: 'GET', cache: 'no-store' });
     if (res.ok) {
-      const contentType = res.headers.get("content-type") ?? "";
-      if (contentType.includes("text/html")) {
+      const contentType = res.headers.get('content-type') ?? '';
+      if (contentType.includes('text/html')) {
         const html = await res.text();
         exists = !isAppShellHtml(html);
       } else {
@@ -107,14 +109,14 @@ const MemoizedBlogPostContent = memo(
     prev.inlineEnabled === next.inlineEnabled &&
     prev.postTitle === next.postTitle &&
     prev.postPath === next.postPath &&
-    prev.isTerminal === next.isTerminal,
+    prev.isTerminal === next.isTerminal
 );
 
 const MemoizedSeriesNavigation = memo(
   SeriesNavigation,
   (prev, next) =>
     prev.currentPost === next.currentPost &&
-    prev.seriesPosts === next.seriesPosts,
+    prev.seriesPosts === next.seriesPosts
 );
 
 const MemoizedQuizPanel = memo(
@@ -122,12 +124,12 @@ const MemoizedQuizPanel = memo(
   (prev, next) =>
     prev.content === next.content &&
     prev.postTitle === next.postTitle &&
-    prev.postTags === next.postTags,
+    prev.postTags === next.postTags
 );
 
 const MemoizedCommentSection = memo(
   CommentSection,
-  (prev, next) => prev.postId === next.postId,
+  (prev, next) => prev.postId === next.postId
 );
 
 const MemoizedBlogPostRelated = memo(
@@ -139,7 +141,7 @@ const MemoizedBlogPostRelated = memo(
     prev.preservedFrom?.search === next.preservedFrom?.search &&
     prev.isTerminal === next.isTerminal &&
     prev.relatedPostsLabel === next.relatedPostsLabel &&
-    prev.relatedPostsDescLabel === next.relatedPostsDescLabel,
+    prev.relatedPostsDescLabel === next.relatedPostsDescLabel
 );
 
 const MemoizedTableOfContents = memo(
@@ -148,13 +150,13 @@ const MemoizedTableOfContents = memo(
     prev.content === next.content &&
     prev.postTitle === next.postTitle &&
     prev.onClose === next.onClose &&
-    prev.sticky === next.sticky,
+    prev.sticky === next.sticky
 );
 
 const MemoizedTocDrawer = memo(
   TocDrawer,
   (prev, next) =>
-    prev.content === next.content && prev.postTitle === next.postTitle,
+    prev.content === next.content && prev.postTitle === next.postTitle
 );
 
 const BlogPost = () => {
@@ -162,12 +164,12 @@ const BlogPost = () => {
   const location = useLocation();
   const from = (location.state as { from?: unknown })?.from;
   const preservedFrom =
-    from && typeof from === "object" && "pathname" in from
+    from && typeof from === 'object' && 'pathname' in from
       ? (from as { pathname: string; search?: string })
       : undefined;
   const preservedSearch =
     preservedFrom?.search ??
-    (typeof location.search === "string" ? location.search : "");
+    (typeof location.search === 'string' ? location.search : '');
   const { toast } = useToast();
   const { language, setLanguage } = useLanguage();
   const { isTerminal } = useTheme();
@@ -184,9 +186,9 @@ const BlogPost = () => {
 
   // AI Translation state
   const [translationStatus, setTranslationStatus] =
-    useState<AsyncArtifactStatus>("idle");
+    useState<AsyncArtifactStatus>('idle');
   const [aiTranslation, setAiTranslation] = useState<TranslationResult | null>(
-    null,
+    null
   );
   const [translationError, setTranslationError] =
     useState<TranslationErrorState | null>(null);
@@ -195,7 +197,7 @@ const BlogPost = () => {
   // Check if native translation exists for the selected language
   const hasNativeTranslation = useMemo(() => {
     if (!post) return false;
-    const defaultLang = post.defaultLanguage || post.language || "ko";
+    const defaultLang = post.defaultLanguage || post.language || 'ko';
     if (language === defaultLang) return true;
     return !!post.translations?.[language];
   }, [post, language]);
@@ -221,22 +223,22 @@ const BlogPost = () => {
   }, [post, language, aiTranslation, hasNativeTranslation, year, slug]);
 
   const contentForRender = useMemo(() => {
-    if (!post) return "";
+    if (!post) return '';
 
     const baseContent = localized?.content ?? post.content;
     if (!autoSimulatorSrc) return baseContent;
     if (/<iframe[\s\S]*?>/i.test(baseContent)) return baseContent;
 
     const heading =
-      language === "ko"
-        ? "## 인터랙티브 시뮬레이터"
-        : "## Interactive Simulator";
+      language === 'ko'
+        ? '## 인터랙티브 시뮬레이터'
+        : '## Interactive Simulator';
     const description =
-      language === "ko"
-        ? "아래에서 알고리즘 동작을 직접 실행해볼 수 있습니다."
-        : "Run the interactive simulation below.";
+      language === 'ko'
+        ? '아래에서 알고리즘 동작을 직접 실행해볼 수 있습니다.'
+        : 'Run the interactive simulation below.';
     const rawTitle = `${localized?.title ?? post.title} simulator`;
-    const safeTitle = rawTitle.replace(/"/g, "&quot;");
+    const safeTitle = rawTitle.replace(/"/g, '&quot;');
 
     return `${baseContent.trimEnd()}
 
@@ -253,7 +255,7 @@ ${description}
   const readingTimeLabel = useMemo(() => {
     return formatReadingTimeLabel(
       post?.readingTime ?? post?.readTime,
-      language === "en" ? "en" : "ko",
+      language === 'en' ? 'en' : 'ko'
     );
   }, [language, post]);
 
@@ -279,7 +281,7 @@ ${description}
   }, [localized, post, readingTimeLabel]);
 
   const resolvedRelatedPosts = useMemo<ResolvedRelatedPostCard[]>(() => {
-    return relatedPosts.map((relatedPost) => {
+    return relatedPosts.map(relatedPost => {
       const localizedRelated = resolveLocalizedPost(relatedPost, language);
 
       return {
@@ -293,7 +295,7 @@ ${description}
         categoryLabel: relatedPost.category,
         readingTimeLabel: formatReadingTimeLabel(
           relatedPost.readingTime ?? relatedPost.readTime,
-          language === "en" ? "en" : "ko",
+          language === 'en' ? 'en' : 'ko'
         ),
       };
     });
@@ -310,47 +312,52 @@ ${description}
   }, [post, resolvedPost]);
 
   const seoData = seoPost
-    ? generateSEOData(seoPost, "post")
-    : generateSEOData(undefined, "home");
+    ? generateSEOData(seoPost, 'post')
+    : generateSEOData(undefined, 'home');
   const structuredData = seoPost
-    ? generateStructuredData(seoPost, "post")
+    ? generateStructuredData(seoPost, 'post')
     : undefined;
   useSEO(seoData, structuredData);
 
   const resolveLanguageName = useCallback((code: string) => {
-    if (code === "ko") return "한국어";
-    if (code === "en") return "English";
+    if (code === 'ko') return '한국어';
+    if (code === 'en') return 'English';
     return code.toUpperCase();
   }, []);
 
+  const languageOptions = useMemo<SupportedLanguage[]>(() => {
+    if (!post) return ['ko', 'en'];
+    return Array.from(new Set([...getAvailableLanguages(post), 'ko', 'en']));
+  }, [post]);
+
   const safeAreaPaddingStyle = useMemo(
-    () => ({ paddingBottom: "calc(120px + env(safe-area-inset-bottom))" }),
-    [],
+    () => ({ paddingBottom: 'calc(120px + env(safe-area-inset-bottom))' }),
+    []
   );
 
-  const postId = post ? `${post.year}/${post.slug}` : "";
+  const postId = post ? `${post.year}/${post.slug}` : '';
 
   const getTranslationErrorMessage = useCallback(
     (code: TranslationErrorCode) => {
       switch (code) {
-        case "NOT_AVAILABLE":
+        case 'NOT_AVAILABLE':
           return str.blog.translationNotAvailable;
-        case "AUTH_REQUIRED":
+        case 'AUTH_REQUIRED':
           return str.blog.translationAuthRequired;
-        case "AI_TIMEOUT":
+        case 'AI_TIMEOUT':
           return str.blog.translationTimeout;
-        case "AI_ERROR":
+        case 'AI_ERROR':
           return str.blog.translationServerError;
         default:
           return str.blog.translationUnknownError;
       }
     },
-    [str],
+    [str]
   );
 
   // Ensure scroll starts at top when navigating between posts
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [year, slug]);
 
   // Blog post pages have enough horizontal room on desktop to dock the memo panel
@@ -359,13 +366,13 @@ ${description}
   useEffect(() => {
     if (!post) return;
     window.dispatchEvent(
-      new CustomEvent("aiMemo:desktopLayout", {
-        detail: { mode: "rail", postId: `${post.year}/${post.slug}` },
-      }),
+      new CustomEvent('aiMemo:desktopLayout', {
+        detail: { mode: 'rail', postId: `${post.year}/${post.slug}` },
+      })
     );
     return () => {
       window.dispatchEvent(
-        new CustomEvent("aiMemo:desktopLayout", { detail: { mode: "float" } }),
+        new CustomEvent('aiMemo:desktopLayout', { detail: { mode: 'float' } })
       );
     };
   }, [post]);
@@ -377,7 +384,7 @@ ${description}
         setError(false);
         // Reset translation states on route change to prevent stale content
         setAiTranslation(null);
-        setTranslationStatus("idle");
+        setTranslationStatus('idle');
         setTranslationError(null);
 
         if (!year || !slug) {
@@ -398,7 +405,7 @@ ${description}
         setPost(foundPost);
         setLoading(false);
       } catch (err) {
-        console.error("Error loading blog post:", err);
+        console.error('Error loading blog post:', err);
         setError(true);
         setLoading(false);
       }
@@ -427,7 +434,7 @@ ${description}
     // without delay; the write itself is tiny.
     const path = `/blog/${post.year}/${post.slug}`;
     try {
-      const key = "visited.posts";
+      const key = 'visited.posts';
       const raw = localStorage.getItem(key);
       const items: VisitedPostItem[] = raw ? JSON.parse(raw) : [];
       const next: VisitedPostItem = {
@@ -437,19 +444,19 @@ ${description}
         year: post.year,
         slug: post.slug,
       };
-      const deduped = [next, ...items.filter((i) => i.path !== path)].slice(
+      const deduped = [next, ...items.filter(i => i.path !== path)].slice(
         0,
-        12,
+        12
       );
       localStorage.setItem(key, JSON.stringify(deduped));
-      window.dispatchEvent(new CustomEvent("visitedposts:update"));
+      window.dispatchEvent(new CustomEvent('visitedposts:update'));
     } catch (err) {
       try {
-        window.dispatchEvent(new CustomEvent("visitedposts:error"));
+        window.dispatchEvent(new CustomEvent('visitedposts:error'));
       } catch {
         void 0;
       }
-      console.warn("Failed to persist visited posts", err);
+      console.warn('Failed to persist visited posts', err);
     }
 
     const loadSeriesPosts = async () => {
@@ -496,12 +503,12 @@ ${description}
       return;
     }
 
-    const defaultLang = post.defaultLanguage || post.language || "ko";
+    const defaultLang = post.defaultLanguage || post.language || 'ko';
 
     if (language === defaultLang || post.translations?.[language]) {
       setAiTranslation(null);
       setTranslationError(null);
-      setTranslationStatus("idle");
+      setTranslationStatus('idle');
       return;
     }
 
@@ -518,7 +525,7 @@ ${description}
         pollAttempts >= MAX_POLL_ATTEMPTS ||
         Date.now() - pollStartMs >= MAX_POLL_DURATION_MS
       ) {
-        setTranslationStatus("idle");
+        setTranslationStatus('idle');
         return;
       }
       const retryDelayMs = Math.max(1, delaySeconds ?? 15) * 1000;
@@ -538,15 +545,15 @@ ${description}
 
         if (result.pending) {
           setTranslationError(null);
-          setTranslationStatus("warming");
+          setTranslationStatus('warming');
           scheduleRetry(result.retryAfterSeconds);
           return;
         }
 
         setTranslationError(null);
-        setTranslationStatus(result.translation ? "ready" : "idle");
+        setTranslationStatus(result.translation ? 'ready' : 'idle');
       } catch (err) {
-        console.error("Translation failed:", err);
+        console.error('Translation failed:', err);
         if (!cancelled) {
           if (err instanceof TranslationApiError) {
             setTranslationError({
@@ -555,16 +562,16 @@ ${description}
             });
           } else {
             setTranslationError({
-              code: "UNKNOWN",
+              code: 'UNKNOWN',
               retryable: false,
             });
           }
-          setTranslationStatus("error");
+          setTranslationStatus('error');
         }
       }
     };
 
-    setTranslationStatus("warming");
+    setTranslationStatus('warming');
     setTranslationError(null);
     setAiTranslation(null);
     void loadTranslation();
@@ -580,31 +587,31 @@ ${description}
   const handleRetryTranslation = useCallback(() => {
     setTranslationError(null);
     setAiTranslation(null);
-    setTranslationStatus("idle");
-    setTranslationRetryNonce((prev) => prev + 1);
+    setTranslationStatus('idle');
+    setTranslationRetryNonce(prev => prev + 1);
   }, []);
 
   // sync inline feature flag from localStorage and storage events
   useEffect(() => {
     const read = () => {
       try {
-        const v = localStorage.getItem("aiMemo.inline.enabled");
-        setInlineEnabled(!!JSON.parse(v || "true"));
+        const v = localStorage.getItem('aiMemo.inline.enabled');
+        setInlineEnabled(!!JSON.parse(v || 'true'));
       } catch {
         setInlineEnabled(true);
       }
     };
     read();
     const onStorage = (e: StorageEvent) => {
-      if (e.key === "aiMemo.inline.enabled") {
+      if (e.key === 'aiMemo.inline.enabled') {
         read();
       }
     };
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("focus", read);
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('focus', read);
     return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("focus", read);
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('focus', read);
     };
   }, [year, slug]);
 
@@ -620,14 +627,14 @@ ${description}
           const ragResults = await findRAGRelatedPosts(
             {
               title: post.title,
-              content: post.content?.slice(0, 500) || "",
+              content: post.content?.slice(0, 500) || '',
               slug: post.slug,
             },
-            4,
+            4
           );
 
           if (ragResults.length >= 2) {
-            const ragPostPromises = ragResults.map(async (r) => {
+            const ragPostPromises = ragResults.map(async r => {
               const postYear = r.metadata.year as string;
               const postSlug = r.metadata.slug as string;
               if (postYear && postSlug) {
@@ -636,7 +643,7 @@ ${description}
               return null;
             });
             const ragPosts = (await Promise.all(ragPostPromises)).filter(
-              (p): p is BlogPostType => !!p,
+              (p): p is BlogPostType => !!p
             );
             selected = ragPosts.slice(0, 3);
           }
@@ -649,12 +656,12 @@ ${description}
             page: 1,
             pageSize: 6,
             category: post.category,
-            sort: "date",
+            sort: 'date',
           });
           const candidates = byCategory.items.filter(
-            (p) =>
+            p =>
               `${p.year}/${p.slug}` !== `${post.year}/${post.slug}` &&
-              !selected.some((s) => s.year === p.year && s.slug === p.slug),
+              !selected.some(s => s.year === p.year && s.slug === p.slug)
           );
           selected = selected.concat(candidates).slice(0, 3);
         }
@@ -664,12 +671,12 @@ ${description}
             page: 1,
             pageSize: 6,
             search: post.tags[0],
-            sort: "date",
+            sort: 'date',
           });
           const more = byTag.items.filter(
-            (p) =>
+            p =>
               `${p.year}/${p.slug}` !== `${post.year}/${post.slug}` &&
-              !selected.some((s) => s.year === p.year && s.slug === p.slug),
+              !selected.some(s => s.year === p.year && s.slug === p.slug)
           );
           selected = selected.concat(more).slice(0, 3);
         }
@@ -678,12 +685,12 @@ ${description}
           const latest = await getPostsPage({
             page: 1,
             pageSize: 6,
-            sort: "date",
+            sort: 'date',
           });
           const more = latest.items.filter(
-            (p) =>
+            p =>
               `${p.year}/${p.slug}` !== `${post.year}/${post.slug}` &&
-              !selected.some((s) => s.year === p.year && s.slug === p.slug),
+              !selected.some(s => s.year === p.year && s.slug === p.slug)
           );
           selected = selected.concat(more).slice(0, 3);
         }
@@ -704,8 +711,8 @@ ${description}
     };
   }, [post]);
 
-  const displayTitle = resolvedPost?.title ?? post?.title ?? "";
-  const tocContent = resolvedPost?.content ?? post?.content ?? "";
+  const displayTitle = resolvedPost?.title ?? post?.title ?? '';
+  const tocContent = resolvedPost?.content ?? post?.content ?? '';
 
   const postView = useMemo<ResolvedPostViewModel | null>(() => {
     if (!post) return null;
@@ -739,7 +746,7 @@ ${description}
             isTerminal,
           }
         : null,
-    [contentForRender, displayTitle, inlineEnabled, isTerminal, post],
+    [contentForRender, displayTitle, inlineEnabled, isTerminal, post]
   );
 
   const tocProps = useMemo(
@@ -750,7 +757,7 @@ ${description}
             postTitle: displayTitle,
           }
         : null,
-    [displayTitle, post, tocContent],
+    [displayTitle, post, tocContent]
   );
 
   const handleShare = async () => {
@@ -763,28 +770,28 @@ ${description}
           url,
         });
       } catch (err) {
-        console.log("Error sharing:", err);
+        console.log('Error sharing:', err);
       }
     } else {
       navigator.clipboard.writeText(url);
       toast({
-        title: "Link copied!",
-        description: "The post URL has been copied to your clipboard.",
+        title: 'Link copied!',
+        description: 'The post URL has been copied to your clipboard.',
       });
     }
   };
 
   if (loading) {
     return (
-      <div className="container mx-auto max-w-4xl px-4 py-12">
-        <div className="space-y-4 animate-pulse rounded-3xl border border-border/60 bg-card/60 p-6 shadow-sm">
-          <div className="h-4 w-24 rounded bg-muted"></div>
-          <div className="h-10 w-3/4 rounded bg-muted"></div>
-          <div className="h-4 w-1/2 rounded bg-muted"></div>
-          <div className="mt-8 space-y-2">
-            <div className="h-4 rounded bg-muted"></div>
-            <div className="h-4 rounded bg-muted"></div>
-            <div className="h-4 w-5/6 rounded bg-muted"></div>
+      <div className='container mx-auto max-w-4xl px-4 py-12'>
+        <div className='space-y-4 animate-pulse rounded-3xl border border-border/60 bg-card/60 p-6 shadow-sm'>
+          <div className='h-4 w-24 rounded bg-muted'></div>
+          <div className='h-10 w-3/4 rounded bg-muted'></div>
+          <div className='h-4 w-1/2 rounded bg-muted'></div>
+          <div className='mt-8 space-y-2'>
+            <div className='h-4 rounded bg-muted'></div>
+            <div className='h-4 rounded bg-muted'></div>
+            <div className='h-4 w-5/6 rounded bg-muted'></div>
           </div>
         </div>
       </div>
@@ -792,7 +799,7 @@ ${description}
   }
 
   if (error || !post) {
-    return <Navigate to="/404" replace />;
+    return <Navigate to='/404' replace />;
   }
 
   // Related posts are loaded lazily via paginated metadata
@@ -802,30 +809,30 @@ ${description}
       <ReadingProgress />
       <div
         className={cn(
-          "min-h-screen bg-gradient-to-b from-[#f5f6fb] via-background to-background/70 dark:from-[#04050a] dark:via-[#0b0f18] dark:to-[#111827]",
+          'min-h-screen bg-gradient-to-b from-[#f5f6fb] via-background to-background/70 dark:from-[#04050a] dark:via-[#0b0f18] dark:to-[#111827]',
           isTerminal &&
-            "bg-background from-background via-background to-background",
+            'bg-background from-background via-background to-background'
         )}
       >
         <div
-          className="mx-auto w-full max-w-7xl px-4 pt-6 pb-32 sm:pt-12 2xl:max-w-[1460px]"
+          className='mx-auto w-full max-w-7xl px-4 pt-6 pb-32 sm:pt-12 2xl:max-w-[1460px]'
           style={safeAreaPaddingStyle}
         >
           <div
             className={cn(
-              "relative grid grid-cols-1 gap-8",
-              "xl:grid-cols-[260px_minmax(0,768px)] xl:justify-center",
-              "2xl:grid-cols-[260px_minmax(0,768px)_minmax(320px,360px)]",
+              'relative grid grid-cols-1 gap-8',
+              'xl:grid-cols-[260px_minmax(0,768px)] xl:justify-center',
+              '2xl:grid-cols-[260px_minmax(0,768px)_minmax(320px,360px)]'
             )}
           >
-            <aside className="hidden xl:block xl:col-start-1">
+            <aside className='hidden xl:block xl:col-start-1'>
               <MemoizedTableOfContents {...tocProps!} />
             </aside>
 
             <article
               className={cn(
-                "w-full max-w-3xl space-y-12 xl:col-start-2",
-                isTerminal && "terminal-card p-4 sm:p-6",
+                'w-full max-w-3xl space-y-12 xl:col-start-2',
+                isTerminal && 'terminal-card p-4 sm:p-6'
               )}
             >
               <BlogPostHeader
@@ -835,6 +842,7 @@ ${description}
                 slug={slug!}
                 language={language}
                 setLanguage={setLanguage}
+                availableLanguages={languageOptions}
                 resolveLanguageName={resolveLanguageName}
                 translationStatus={translationStatus}
                 aiTranslation={aiTranslation}
@@ -843,7 +851,7 @@ ${description}
                   translationError
                     ? {
                         message: getTranslationErrorMessage(
-                          translationError.code,
+                          translationError.code
                         ),
                         retryable: translationError.retryable,
                       }
@@ -894,13 +902,13 @@ ${description}
             </article>
 
             <aside
-              className="hidden 2xl:block 2xl:col-start-3"
-              aria-hidden="true"
+              className='hidden 2xl:block 2xl:col-start-3'
+              aria-hidden='true'
             />
           </div>
         </div>
       </div>
-      <ScrollToTop className="hidden sm:inline-flex" />
+      <ScrollToTop className='hidden sm:inline-flex' />
       <ArticleQuickActions postId={postId} isTerminal={isTerminal} />
       {/* Mobile TOC floating button */}
       <MemoizedTocDrawer {...tocProps!} />

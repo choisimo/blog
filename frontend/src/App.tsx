@@ -4,6 +4,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
@@ -69,6 +70,25 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+function GlobalAssistants({ fabOn }: { fabOn: boolean }) {
+  const { pathname } = useLocation();
+  const insightWorkspaceActive =
+    pathname === "/insight" || pathname.startsWith("/insight/");
+
+  if (insightWorkspaceActive) return null;
+
+  return (
+    <>
+      <Suspense fallback={null}>
+        {!fabOn && <VisitedPostsMinimap />}
+      </Suspense>
+      <Suspense fallback={null}>
+        <FloatingActionBar />
+      </Suspense>
+    </>
+  );
+}
 
 function App() {
   const [fabOn, setFabOn] = useState(true);
@@ -254,12 +274,7 @@ function App() {
                     </Suspense>
                   </main>
                   <Footer />
-                  <Suspense fallback={null}>
-                    {!fabOn && <VisitedPostsMinimap />}
-                  </Suspense>
-                  <Suspense fallback={null}>
-                    <FloatingActionBar />
-                  </Suspense>
+                  <GlobalAssistants fabOn={fabOn} />
                   <Toaster />
                 </div>
               </TooltipProvider>

@@ -28,7 +28,7 @@ data:
   CONTENT_POSTS_DIR: "/frontend/public/posts"
   CONTENT_IMAGES_DIR: "/frontend/public/images"
   POSTS_SOURCE: "filesystem"
-  OPEN_NOTEBOOK_URL: "http://open-notebook:8501"
+  OPEN_NOTEBOOK_URL: "http://open-notebook:5055"
   OPEN_NOTEBOOK_ENABLED: "true"
   WORKER_API_URL: "https://api.nodove.com"
   TERMINAL_SERVER_URL: "http://terminal-server:8080"

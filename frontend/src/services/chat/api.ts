@@ -310,20 +310,31 @@ function buildStreamPayload(input: StreamChatInput): {
     ? getArticleTextSnippet(4000)
     : null;
 
-  const parts: ContentPart[] = [{ type: "text", text: CHAT_STYLE_PROMPT }];
+  const parts: ContentPart[] = [
+    { type: "text", purpose: "system", text: CHAT_STYLE_PROMPT },
+  ];
 
   if (input.ragContext) {
     const ragPrompt = buildRAGContextPrompt(input.ragContext);
-    if (ragPrompt) parts.push({ type: "text", text: ragPrompt });
+    if (ragPrompt)
+      parts.push({ type: "text", purpose: "context", text: ragPrompt });
   }
 
   if (input.memoryContext) {
     const memoryPrompt = buildMemoryContextPrompt(input.memoryContext);
-    if (memoryPrompt) parts.push({ type: "text", text: memoryPrompt });
+    if (memoryPrompt)
+      parts.push({ type: "text", purpose: "context", text: memoryPrompt });
   }
 
   const contextPrompt = buildContextPrompt(articleSnippet, page);
-  if (contextPrompt) parts.push({ type: "text", text: contextPrompt });
+  if (contextPrompt)
+    parts.push({ type: "text", purpose: "context", text: contextPrompt });
+
+  if (Array.isArray(input.selectedBlockAttachments)) {
+    for (const attachment of input.selectedBlockAttachments) {
+      parts.push({ type: "selected-block", attachment });
+    }
+  }
 
   if (input.imageUrl) {
     const imageContext = buildImageContext(
@@ -334,10 +345,11 @@ function buildStreamPayload(input: StreamChatInput): {
     parts.push({ type: "text", text: imageContext });
     parts.push({
       type: "text",
+      purpose: "user",
       text: input.text || "이 이미지에 대해 설명해 주세요.",
     });
   } else {
-    parts.push({ type: "text", text: input.text });
+    parts.push({ type: "text", purpose: "user", text: input.text });
   }
 
   return { page, parts, enableRag: input.enableRag ?? false };

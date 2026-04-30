@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { useUIStrings } from "@/utils/i18n";
 import { useFeatureFlags } from "@/stores/runtime/useFeatureFlagsStore";
 import { getArticleContext } from "@/services/chat/context";
+import type { SelectedBlockAttachment } from "@/services/chat";
 
 import type { DockAction } from "./types";
 import {
@@ -54,6 +55,8 @@ export default function FloatingActionBar() {
   const { items: visitedPosts, storageAvailable } = useVisitedPostsState();
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInitialMessage, setChatInitialMessage] = useState<string | undefined>(undefined);
+  const [chatSelectedBlockAttachments, setChatSelectedBlockAttachments] =
+    useState<SelectedBlockAttachment[]>([]);
   const [chatCurrentPost, setChatCurrentPost] = useState<ReturnType<typeof getArticleContext>>(null);
   const scrollHidden = useScrollHide();
   const [fabPinned] = useFabPinned();
@@ -66,15 +69,32 @@ export default function FloatingActionBar() {
   const str = useUIStrings();
   const { flags: featureFlags } = useFeatureFlags();
 
-  const openChat = useCallback((initialMessage?: string) => {
-    setChatCurrentPost(getArticleContext());
-    setChatInitialMessage(initialMessage);
-    setChatOpen(true);
-  }, []);
+  const openChat = useCallback(
+    (
+      input?:
+        | string
+        | {
+            initialMessage?: string;
+            selectedBlockAttachments?: SelectedBlockAttachment[];
+          },
+    ) => {
+      const initialMessage =
+        typeof input === "string" ? input : input?.initialMessage;
+      const selectedBlockAttachments =
+        typeof input === "string" ? [] : (input?.selectedBlockAttachments ?? []);
+
+      setChatCurrentPost(getArticleContext());
+      setChatInitialMessage(initialMessage);
+      setChatSelectedBlockAttachments(selectedBlockAttachments);
+      setChatOpen(true);
+    },
+    [],
+  );
 
   const closeChat = useCallback(() => {
     setChatOpen(false);
     setChatInitialMessage(undefined);
+    setChatSelectedBlockAttachments([]);
     setChatCurrentPost(null);
     send("fab_ai_chat_close");
   }, [send]);
@@ -155,7 +175,20 @@ export default function FloatingActionBar() {
   );
 
   const toggleMemo = useCallback(
-    () => clickShadowBtn("launcher"),
+    () => {
+      let dispatched = false;
+      try {
+        window.dispatchEvent(
+          new CustomEvent("aiMemo:windowCommand", {
+            detail: { action: "toggle" },
+          }),
+        );
+        dispatched = true;
+      } catch {
+        void 0;
+      }
+      if (!dispatched) clickShadowBtn("launcher");
+    },
     [clickShadowBtn],
   );
 
@@ -480,6 +513,7 @@ export default function FloatingActionBar() {
       {chatOpen && (
         <ChatWidget
           initialMessage={chatInitialMessage}
+          initialSelectedBlockAttachments={chatSelectedBlockAttachments}
           currentPost={chatCurrentPost ?? undefined}
           onClose={closeChat}
         />

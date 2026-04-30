@@ -1,16 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  invokeChatTask,
   invokeThoughtFeed,
   type ThoughtCard as ThoughtCardData,
-} from "@/services/chat";
-import { FALLBACK_DATA } from "@/config/defaults";
+} from '@/services/chat';
+import { FALLBACK_DATA } from '@/config/defaults';
 import {
   getAsyncArtifactStatus,
   shouldPersistAsyncArtifactSource,
   useWarmingRetry,
   type AsyncArtifactStatus,
   type AsyncArtifactSource,
-} from "./useAsyncArtifact";
+} from './useAsyncArtifact';
 
 export type ThoughtFeedSource = AsyncArtifactSource;
 
@@ -35,6 +36,15 @@ type CachedThoughtFeed = {
   nextCursor: ThoughtCursor;
 };
 
+type ChainQuestion = {
+  q: string;
+  why: string;
+};
+
+type ChainTaskData = {
+  questions?: ChainQuestion[];
+};
+
 type UseThoughtFeedResult = {
   cards: ThoughtCardData[];
   loading: boolean;
@@ -46,33 +56,80 @@ type UseThoughtFeedResult = {
 };
 
 function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError";
+  return error instanceof DOMException && error.name === 'AbortError';
 }
 
-function mapChainFallbackToThoughts(
+function mapChainQuestionsToThoughts(
   questions: ReadonlyArray<{ q: string; why: string }>,
+  sourceTag: 'feed' | 'fallback'
 ): ThoughtCardData[] {
   return questions.map((question, index) => ({
-    id: `fallback-thought-${index + 1}`,
-    trackKey: `fallback-thought-${index + 1}`,
+    id: `${sourceTag === 'fallback' ? 'fallback' : 'task'}-thought-${index + 1}`,
+    trackKey: `${sourceTag === 'fallback' ? 'fallback' : 'task'}-thought-${index + 1}`,
     title: question.q,
-    subtitle: "질문 흐름 fallback",
+    subtitle: sourceTag === 'fallback' ? '질문 흐름 fallback' : '질문 흐름',
     body: question.why || question.q,
     bullets: [
       question.q,
-      question.why || "이 질문을 한 단계 더 밀어보세요.",
-      "카드 흐름 안에서 이 생각을 바로 이어갈 수 있습니다.",
+      question.why || '이 질문을 한 단계 더 밀어보세요.',
+      '카드 흐름 안에서 이 생각을 바로 이어갈 수 있습니다.',
     ],
-    tags: ["fallback", "chain"],
+    tags: [sourceTag, 'chain'],
   }));
+}
+
+function isFallbackTaskResponse(raw: unknown): boolean {
+  return Boolean(
+    raw &&
+    typeof raw === 'object' &&
+    '_fallback' in raw &&
+    raw._fallback === true
+  );
+}
+
+function normalizeChainQuestions(data: ChainTaskData | null): ChainQuestion[] {
+  if (!data || !Array.isArray(data.questions)) return [];
+  return data.questions
+    .map(question => ({
+      q: typeof question.q === 'string' ? question.q.trim() : '',
+      why: typeof question.why === 'string' ? question.why.trim() : '',
+    }))
+    .filter(question => question.q);
+}
+
+async function loadThoughtCardsViaTask({
+  paragraph,
+  postTitle,
+  signal,
+}: {
+  paragraph: string;
+  postTitle?: string;
+  signal: AbortSignal;
+}): Promise<ThoughtCardData[]> {
+  const result = await invokeChatTask<ChainTaskData>({
+    mode: 'chain',
+    payload: { paragraph, postTitle },
+    signal,
+  });
+
+  if (isFallbackTaskResponse(result.raw)) {
+    throw new Error('Chain task returned fallback data');
+  }
+
+  const questions = normalizeChainQuestions(result.data);
+  if (questions.length === 0) {
+    throw new Error('Chain task returned no questions');
+  }
+
+  return mapChainQuestionsToThoughts(questions, 'feed');
 }
 
 function mergeThoughtCards(
   previous: ThoughtCardData[],
-  incoming: ThoughtCardData[],
+  incoming: ThoughtCardData[]
 ): { items: ThoughtCardData[]; appendedCount: number } {
-  const seen = new Set(previous.map((card) => card.trackKey));
-  const appended = incoming.filter((card) => {
+  const seen = new Set(previous.map(card => card.trackKey));
+  const appended = incoming.filter(card => {
     const key = card.trackKey;
     if (seen.has(key)) return false;
     seen.add(key);
@@ -85,19 +142,24 @@ function mergeThoughtCards(
 }
 
 function resolveResponseSource(
-  response: { source?: string; warming?: boolean } | null | undefined,
-): Exclude<ThoughtFeedSource, "fallback"> {
-  if (response?.source === "warming" || response?.warming === true) {
-    return "warming";
+  response: { source?: string; warming?: boolean } | null | undefined
+): Exclude<ThoughtFeedSource, 'fallback'> {
+  if (response?.source === 'warming' || response?.warming === true) {
+    return 'warming';
   }
-  return "feed";
+  return 'feed';
 }
 
-function isWarmingResponse(response: {
-  source?: string;
-  warming?: boolean;
-} | null | undefined): boolean {
-  return response?.warming === true || response?.source === "warming";
+function isWarmingResponse(
+  response:
+    | {
+        source?: string;
+        warming?: boolean;
+      }
+    | null
+    | undefined
+): boolean {
+  return response?.warming === true || response?.source === 'warming';
 }
 
 export function useThoughtFeed({
@@ -131,13 +193,13 @@ export function useThoughtFeed({
       if (!onReady || nextCards.length === 0) return;
       const key = `${cacheKey}:${nextSource}:${nextCards
         .slice(0, 6)
-        .map((card) => card.trackKey)
-        .join("|")}`;
+        .map(card => card.trackKey)
+        .join('|')}`;
       if (readyKeyRef.current === key) return;
       readyKeyRef.current = key;
       onReady(nextCards, nextSource);
     },
-    [cacheKey, onReady],
+    [cacheKey, onReady]
   );
 
   const cancelInFlight = useCallback(() => {
@@ -170,7 +232,7 @@ export function useThoughtFeed({
         nextCursor: overrides.nextCursor ?? nextCursorRef.current,
       });
     },
-    [],
+    []
   );
 
   const hydrateCache = useCallback(
@@ -183,7 +245,7 @@ export function useThoughtFeed({
       nextCursorRef.current = cached.nextCursor;
       notifyReady(cached.cards, cached.source);
     },
-    [notifyReady],
+    [notifyReady]
   );
 
   useEffect(() => {
@@ -222,7 +284,7 @@ export function useThoughtFeed({
             postTitle,
             count: 4,
           },
-          { signal: controller.signal },
+          { signal: controller.signal }
         );
         if (requestId !== requestIdRef.current || controller.signal.aborted) {
           return;
@@ -230,45 +292,68 @@ export function useThoughtFeed({
 
         const items = response.items ?? [];
         const responseSource = resolveResponseSource(response);
-        if (responseSource === "warming") {
+        if (responseSource === 'warming') {
           setCards(items);
           setExhausted(false);
-          setSource("warming");
+          setSource('warming');
           nextCursorRef.current = response.nextCursor;
           return;
         }
 
         if (items.length === 0) {
-          throw new Error("Empty thought feed");
+          throw new Error('Empty thought feed');
         }
 
         setCards(items);
         setExhausted(response.exhausted);
-        setSource("feed");
+        setSource('feed');
         nextCursorRef.current = response.nextCursor;
-        notifyReady(items, "feed");
+        notifyReady(items, 'feed');
       } catch (error) {
         if (isAbortError(error) || requestId !== requestIdRef.current) {
           return;
         }
 
-        if (warmingRetry && sourceRef.current === "warming") {
-          console.warn("[ThoughtFeed] warming refresh failed; retrying", error);
+        if (warmingRetry && sourceRef.current === 'warming') {
+          console.warn('[ThoughtFeed] warming refresh failed; retrying', error);
           return;
         }
 
-        console.warn(
-          "[ThoughtFeed] thought-feed failed, using local fallback cards",
-          error,
-        );
-        const mapped = mapChainFallbackToThoughts(
+        try {
+          const mapped = await loadThoughtCardsViaTask({
+            paragraph,
+            postTitle,
+            signal: controller.signal,
+          });
+          if (requestId !== requestIdRef.current || controller.signal.aborted) {
+            return;
+          }
+
+          setCards(mapped);
+          setExhausted(true);
+          setSource('feed');
+          nextCursorRef.current = null;
+          notifyReady(mapped, 'feed');
+          return;
+        } catch (taskError) {
+          if (isAbortError(taskError) || controller.signal.aborted) {
+            return;
+          }
+          console.warn(
+            '[ThoughtFeed] thought-feed failed and task recovery failed, using local fallback cards',
+            { feedError: error, taskError }
+          );
+        }
+
+        const mapped = mapChainQuestionsToThoughts(
           FALLBACK_DATA.CHAIN.QUESTIONS,
+          'fallback'
         );
         setCards(mapped);
         setExhausted(true);
-        setSource("fallback");
+        setSource('fallback');
         nextCursorRef.current = null;
-        notifyReady(mapped, "fallback");
+        notifyReady(mapped, 'fallback');
       } finally {
         if (requestId === requestIdRef.current) {
           setLoading(false);
@@ -278,7 +363,7 @@ export function useThoughtFeed({
         }
       }
     },
-    [notifyReady, paragraph, postTitle],
+    [notifyReady, paragraph, postTitle]
   );
 
   const { reset: resetWarmingRetry } = useWarmingRetry({
@@ -293,7 +378,7 @@ export function useThoughtFeed({
       void loadInitial(true);
     },
     onExhausted: () => {
-      setSource("fallback");
+      setSource('fallback');
     },
   });
 
@@ -302,7 +387,7 @@ export function useThoughtFeed({
       loading ||
       loadingMore ||
       exhausted ||
-      source !== "feed" ||
+      source !== 'feed' ||
       !nextCursorRef.current
     ) {
       return;
@@ -325,7 +410,7 @@ export function useThoughtFeed({
           count: 4,
           cursor,
         },
-        { signal: controller.signal },
+        { signal: controller.signal }
       );
       if (requestId !== requestIdRef.current || controller.signal.aborted) {
         return;
@@ -333,7 +418,7 @@ export function useThoughtFeed({
 
       const incoming = response.items ?? [];
       let appendedCount = 0;
-      setCards((prev) => {
+      setCards(prev => {
         const merged = mergeThoughtCards(prev, incoming);
         appendedCount = merged.appendedCount;
         return merged.items;
@@ -344,7 +429,7 @@ export function useThoughtFeed({
         nextCursorRef.current = response.nextCursor ?? cursor;
         persistCache({
           exhausted: false,
-          source: "feed",
+          source: 'feed',
           nextCursor: response.nextCursor ?? cursor,
         });
         return;
@@ -362,7 +447,7 @@ export function useThoughtFeed({
         return;
       }
 
-      console.warn("[ThoughtFeed] thought-feed append failed", error);
+      console.warn('[ThoughtFeed] thought-feed append failed', error);
       setExhausted(true);
       nextCursorRef.current = null;
     } finally {

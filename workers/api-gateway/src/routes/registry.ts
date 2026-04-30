@@ -34,6 +34,7 @@ import subscribe from './subscribe';
 import contact from './contact';
 import notifications from './notifications';
 import adminLogs from './admin-logs';
+import siteContent from './site-content';
 
 export type WorkerRouteRegistryEntry = {
   boundaryId: string;
@@ -67,6 +68,7 @@ export const WORKER_ROUTE_REGISTRY: WorkerRouteRegistryEntry[] = [
   { boundaryId: 'contact', path: '/contact', router: contact },
   { boundaryId: 'notifications', path: '/notifications', router: notifications },
   { boundaryId: 'admin-logs', path: '/admin/logs', router: adminLogs },
+  { boundaryId: 'site-content', path: '/site-content', router: siteContent },
   { boundaryId: 'gateway', path: '/gateway', router: gateway },
 ];
 

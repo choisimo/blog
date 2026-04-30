@@ -23,6 +23,7 @@ export {
   type StreamChatInput,
   type ChatImageUploadResult,
   type ChatSessionMeta,
+  type SelectedBlockAttachment,
   type LiveRoom,
   isUnifiedTasksEnabled,
   SESSION_ID_KEY,

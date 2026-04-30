@@ -59,6 +59,7 @@ export type Env = {
   FEATURE_RAG_ENABLED?: string;
   FEATURE_TERMINAL_ENABLED?: string;
   FEATURE_AI_INLINE?: string;
+  FEATURE_CODE_EXECUTION_ENABLED?: string;
   FEATURE_COMMENTS_ENABLED?: string;
   CHAT_WS_ENABLED?: string;
   TERMINAL_GATEWAY_URL?: string;

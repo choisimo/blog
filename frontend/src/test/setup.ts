@@ -151,6 +151,7 @@ global.fetch = (input: any, init?: any): Promise<Response> => {
                 ragEnabled: true,
                 terminalEnabled: false,
                 aiInline: true,
+                codeExecutionEnabled: false,
                 commentsEnabled: true,
               },
             },

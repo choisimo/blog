@@ -53,6 +53,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
   ragEnabled: false,
   terminalEnabled: false,
   aiInline: false,
+  codeExecutionEnabled: false,
   commentsEnabled: false,
 };
 
@@ -68,6 +69,8 @@ function mergeFeatureFlags(features?: Partial<FeatureFlags> | null): FeatureFlag
     terminalEnabled:
       features?.terminalEnabled ?? DEFAULT_FLAGS.terminalEnabled,
     aiInline: features?.aiInline ?? DEFAULT_FLAGS.aiInline,
+    codeExecutionEnabled:
+      features?.codeExecutionEnabled ?? DEFAULT_FLAGS.codeExecutionEnabled,
     commentsEnabled:
       features?.commentsEnabled ?? DEFAULT_FLAGS.commentsEnabled,
   };
@@ -86,6 +89,28 @@ function getInitialFeatureFlags(): FeatureFlags {
   return { ...DEFAULT_FLAGS };
 }
 
+function isLocalUrl(value: string | null | undefined): boolean {
+  if (!value) return false;
+  try {
+    const url = new URL(value, window.location.origin);
+    return (
+      url.hostname === "localhost" ||
+      url.hostname === "127.0.0.1" ||
+      url.hostname === "::1"
+    );
+  } catch {
+    return false;
+  }
+}
+
+function shouldPreserveLocalRuntimeBase(
+  currentValue: string | null | undefined,
+  nextValue: string | null | undefined,
+): boolean {
+  if (typeof window === "undefined") return false;
+  return isLocalUrl(window.location.origin) && isLocalUrl(currentValue) && !isLocalUrl(nextValue);
+}
+
 function applyRuntimeConfigToWindow(runtimeConfig: RuntimeAppConfig): void {
   if (typeof window === "undefined") {
     return;
@@ -97,10 +122,18 @@ function applyRuntimeConfigToWindow(runtimeConfig: RuntimeAppConfig): void {
   if (runtimeConfig.siteBaseUrl !== undefined) {
     w.APP_CONFIG.siteBaseUrl = runtimeConfig.siteBaseUrl;
   }
-  if (typeof runtimeConfig.apiBaseUrl === "string" && runtimeConfig.apiBaseUrl) {
+  if (
+    typeof runtimeConfig.apiBaseUrl === "string" &&
+    runtimeConfig.apiBaseUrl &&
+    !shouldPreserveLocalRuntimeBase(w.APP_CONFIG.apiBaseUrl, runtimeConfig.apiBaseUrl)
+  ) {
     w.APP_CONFIG.apiBaseUrl = runtimeConfig.apiBaseUrl;
   }
-  if (typeof runtimeConfig.chatBaseUrl === "string" && runtimeConfig.chatBaseUrl) {
+  if (
+    typeof runtimeConfig.chatBaseUrl === "string" &&
+    runtimeConfig.chatBaseUrl &&
+    !shouldPreserveLocalRuntimeBase(w.APP_CONFIG.chatBaseUrl, runtimeConfig.chatBaseUrl)
+  ) {
     w.APP_CONFIG.chatBaseUrl = runtimeConfig.chatBaseUrl;
   }
   if (typeof runtimeConfig.chatWsBaseUrl === "string" && runtimeConfig.chatWsBaseUrl) {

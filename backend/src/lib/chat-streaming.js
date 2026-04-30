@@ -104,14 +104,74 @@ export async function emitTextChunks({
  */
 export function extractUserMessage(parts, textFallback) {
   if (Array.isArray(parts)) {
-    return parts
-      .filter((p) => p?.type === "text")
+    const userParts = parts
+      .filter((p) => p?.type === "text" && p?.purpose === "user")
       .map((p) => p.text)
       .join("\n");
+    if (userParts.trim()) return userParts;
+
+    const legacyText = parts
+      .filter(
+        (p) =>
+          p?.type === "text" &&
+          p?.purpose !== "system" &&
+          p?.purpose !== "context",
+      )
+      .map((p) => p.text)
+      .join("\n");
+    if (legacyText.trim()) return legacyText;
+    if (typeof textFallback === "string") return textFallback;
+    return "";
   }
   if (typeof parts === "string") return parts;
   if (typeof textFallback === "string") return textFallback;
   return "";
+}
+
+function formatSelectedBlockAttachment(attachment) {
+  if (!attachment || typeof attachment !== "object") return null;
+  if (attachment.kind !== "selected-block") return null;
+
+  const markdown =
+    typeof attachment.markdown === "string" ? attachment.markdown.trim() : "";
+  if (!markdown) return null;
+
+  const title =
+    typeof attachment.source?.title === "string" && attachment.source.title
+      ? attachment.source.title
+      : "selected block";
+  const path =
+    typeof attachment.source?.year === "string" &&
+    typeof attachment.source?.slug === "string"
+      ? `${attachment.source.year}/${attachment.source.slug}`
+      : null;
+
+  return [
+    `[Selected block attachment: ${attachment.name || "selected-block.md"}]`,
+    `Source: ${title}${path ? ` (${path})` : ""}`,
+    "Content:",
+    markdown,
+  ].join("\n");
+}
+
+export function extractPartContext(parts) {
+  if (!Array.isArray(parts)) return "";
+
+  const contextParts = [];
+  for (const part of parts) {
+    if (part?.type === "text" && part?.purpose && part.purpose !== "user") {
+      const text = typeof part.text === "string" ? part.text.trim() : "";
+      if (text) contextParts.push(text);
+      continue;
+    }
+
+    if (part?.type === "selected-block") {
+      const selectedBlockContext = formatSelectedBlockAttachment(part.attachment);
+      if (selectedBlockContext) contextParts.push(selectedBlockContext);
+    }
+  }
+
+  return contextParts.join("\n\n");
 }
 
 /**

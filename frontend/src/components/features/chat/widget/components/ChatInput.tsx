@@ -1,9 +1,19 @@
 import React from "react";
-import { Send, Loader2, Square, Image as ImageIcon, X } from "lucide-react";
+import {
+  Send,
+  Loader2,
+  Square,
+  Image as ImageIcon,
+  X,
+  FileText,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { LiveReplyTarget, QuestionMode } from "../types";
+import type { SelectedBlockAttachment } from "@/services/chat";
 
 type ChatInputProps = {
   input: string;
@@ -13,6 +23,8 @@ type ChatInputProps = {
   onStop: () => void;
   onClearAll: () => void;
   onFileSelect: (file: File | null) => void;
+  selectedBlockAttachments: SelectedBlockAttachment[];
+  onRemoveSelectedBlockAttachment: (id: string) => void;
   attachedImage: File | null;
   attachedPreviewUrl: string | null;
   busy: boolean;
@@ -36,6 +48,8 @@ export function ChatInput({
   onStop,
   onClearAll,
   onFileSelect,
+  selectedBlockAttachments,
+  onRemoveSelectedBlockAttachment,
   attachedImage,
   attachedPreviewUrl,
   busy,
@@ -102,6 +116,15 @@ export function ChatInput({
           </button>
         )}
       </div>
+      )}
+
+      {/* Selected block attachment preview */}
+      {selectedBlockAttachments.length > 0 && (
+        <SelectedBlockAttachmentList
+          attachments={selectedBlockAttachments}
+          onRemove={onRemoveSelectedBlockAttachment}
+          isTerminal={isTerminal}
+        />
       )}
 
       {/* Attached image preview */}
@@ -181,6 +204,105 @@ export function ChatInput({
           onFileSelect={onFileSelect}
         />
       )}
+    </div>
+  );
+}
+
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0B";
+  if (bytes < 1024) return `${bytes}B`;
+  return `${Math.max(1, Math.round(bytes / 1024))}KB`;
+}
+
+function SelectedBlockAttachmentList({
+  attachments,
+  onRemove,
+  isTerminal,
+}: {
+  attachments: SelectedBlockAttachment[];
+  onRemove: (id: string) => void;
+  isTerminal: boolean;
+}) {
+  const [expandedId, setExpandedId] = React.useState<string | null>(null);
+
+  return (
+    <div className="mb-3 space-y-2">
+      {attachments.map((attachment) => {
+        const expanded = expandedId === attachment.id;
+        return (
+          <div
+            key={attachment.id}
+            className={cn(
+              "rounded-xl border px-3 py-2.5",
+              isTerminal
+                ? "border-primary/30 bg-[hsl(var(--terminal-code-bg))] font-mono"
+                : "border-primary/15 bg-primary/5",
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={cn(
+                  "grid h-9 w-9 shrink-0 place-items-center rounded-lg",
+                  isTerminal
+                    ? "border border-primary/25 text-primary"
+                    : "bg-white text-primary shadow-sm dark:bg-[#101010]",
+                )}
+              >
+                <FileText className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold">
+                  {attachment.name}
+                </div>
+                <div className="truncate text-xs text-muted-foreground">
+                  Markdown · {formatBytes(attachment.sizeBytes)}
+                  {attachment.truncated ? " · truncated" : ""}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setExpandedId((current) =>
+                    current === attachment.id ? null : attachment.id,
+                  )
+                }
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                aria-label={
+                  expanded ? "첨부 미리보기 접기" : "첨부 미리보기 펼치기"
+                }
+              >
+                {expanded ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => onRemove(attachment.id)}
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                aria-label="선택 블록 첨부 제거"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {expanded && (
+              <div
+                className={cn(
+                  "mt-3 rounded-lg border px-3 py-2 text-xs leading-5 text-muted-foreground",
+                  isTerminal
+                    ? "border-primary/20"
+                    : "border-primary/10 bg-white/70 dark:bg-black/20",
+                )}
+              >
+                <p className="line-clamp-6 whitespace-pre-wrap break-words">
+                  {attachment.textPreview || attachment.markdown.slice(0, 360)}
+                </p>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
