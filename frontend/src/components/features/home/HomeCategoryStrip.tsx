@@ -4,7 +4,7 @@ import {
   BrainCircuit,
   Code2,
   Coffee,
-  Infinity,
+  Infinity as InfinityIcon,
   Network,
   TerminalSquare,
 } from 'lucide-react';
@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 
 const CATEGORY_ICONS = [
   Code2,
-  Infinity,
+  InfinityIcon,
   BrainCircuit,
   TerminalSquare,
   Network,
