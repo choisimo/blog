@@ -1,4 +1,11 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -71,11 +78,35 @@ const queryClient = new QueryClient({
   },
 });
 
-function GlobalAssistants({ fabOn }: { fabOn: boolean }) {
+function useInsightWorkspaceActive() {
   const { pathname } = useLocation();
-  const insightWorkspaceActive =
-    pathname === "/insight" || pathname.startsWith("/insight/");
-  const cleanPublicListing = pathname === "/" || pathname === "/blog";
+  return pathname === "/insight" || pathname.startsWith("/insight/");
+}
+
+function RouteMain({ children }: { children: ReactNode }) {
+  const insightWorkspaceActive = useInsightWorkspaceActive();
+
+  return (
+    <main
+      className={
+        insightWorkspaceActive
+          ? "flex-1"
+          : "flex-1 pb-[calc(110px+env(safe-area-inset-bottom,0px))] md:pb-[calc(84px+env(safe-area-inset-bottom,0px))] lg:pb-[calc(96px+env(safe-area-inset-bottom,0px))]"
+      }
+    >
+      {children}
+    </main>
+  );
+}
+
+function RouteFooter() {
+  const insightWorkspaceActive = useInsightWorkspaceActive();
+  if (insightWorkspaceActive) return null;
+  return <Footer />;
+}
+
+function GlobalAssistants({ fabOn }: { fabOn: boolean }) {
+  const insightWorkspaceActive = useInsightWorkspaceActive();
 
   useEffect(() => {
     if (!cleanPublicListing || typeof document === "undefined") return;
@@ -179,7 +210,7 @@ function App() {
               <TooltipProvider>
                 <div className="min-h-screen flex flex-col bg-background text-foreground">
                   <Header />
-                  <main className="flex-1 pb-[calc(110px+env(safe-area-inset-bottom,0px))] md:pb-[calc(84px+env(safe-area-inset-bottom,0px))] lg:pb-[calc(96px+env(safe-area-inset-bottom,0px))]">
+                  <RouteMain>
                     <Suspense fallback={<PageTransitionFallback />}>
                       <Routes>
                         <Route path="/" element={<Index />} />
@@ -278,8 +309,8 @@ function App() {
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </Suspense>
-                  </main>
-                  <Footer />
+                  </RouteMain>
+                  <RouteFooter />
                   <GlobalAssistants fabOn={fabOn} />
                   <Toaster />
                 </div>

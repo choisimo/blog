@@ -264,7 +264,7 @@
   }
 
   .terminal .terminal-crt::before {
-    content: "";
+    content: '';
     position: absolute;
     inset: 0;
     pointer-events: none;
@@ -287,7 +287,7 @@
   }
 
   .terminal .terminal-crt::after {
-    content: "";
+    content: '';
     position: absolute;
     inset: 0;
     pointer-events: none;
@@ -315,7 +315,7 @@
     box-shadow:
       inset 0 0 60px rgba(0, 0, 0, 0.5),
       inset 0 1px 0 hsl(var(--terminal-glow) / 0.1);
-    font-family: "JetBrains Mono", "PT Mono", "DM Mono", monospace;
+    font-family: 'JetBrains Mono', 'PT Mono', 'DM Mono', monospace;
     color: var(--terminal-code-text);
   }
 
@@ -429,17 +429,17 @@
   body {
     @apply bg-background text-foreground;
     font-family:
-      "Pretendard Variable",
-      "Pretendard",
+      'Pretendard Variable',
+      'Pretendard',
       -apple-system,
       BlinkMacSystemFont,
-      "Segoe UI",
+      'Segoe UI',
       Roboto,
-      "Noto Sans KR",
+      'Noto Sans KR',
       sans-serif;
     font-feature-settings:
-      "rlig" 1,
-      "calt" 1;
+      'rlig' 1,
+      'calt' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -449,14 +449,14 @@
   :root {
     /* 본문 폰트 크기 및 행간 최적화 */
     --content-line-height: 1.8;
-    --content-letter-spacing: -0.01em;
+    --content-letter-spacing: 0;
   }
 
   /* 본문 텍스트 가독성 향상 */
   .prose,
   article,
   .content,
-  [role="article"] {
+  [role='article'] {
     line-height: var(--content-line-height);
     letter-spacing: var(--content-letter-spacing);
   }
@@ -475,21 +475,21 @@
   h1,
   section h1,
   article h1,
-  [role="article"] h1,
+  [role='article'] h1,
   .prose h1 {
     @apply text-3xl md:text-4xl font-extrabold leading-tight my-4;
   }
   h2,
   section h2,
   article h2,
-  [role="article"] h2,
+  [role='article'] h2,
   .prose h2 {
     @apply text-2xl md:text-3xl font-semibold leading-snug my-3;
   }
   h3,
   section h3,
   article h3,
-  [role="article"] h3,
+  [role='article'] h3,
   .prose h3 {
     @apply text-xl md:text-2xl font-medium leading-snug my-2;
   }
@@ -726,7 +726,7 @@
 
 /* Terminal scanline effect (optional, performance-friendly) */
 .terminal-scanlines::before {
-  content: "";
+  content: '';
   position: fixed;
   top: 0;
   left: 0;
@@ -908,7 +908,7 @@
 }
 
 .terminal .typewriter-cursor::after {
-  content: "";
+  content: '';
   display: inline-block;
   width: 0.5em;
   height: 1em;
@@ -973,7 +973,7 @@
 .terminal h5,
 .terminal h6 {
   font-family:
-    "JetBrains Mono", "Fira Code", "IBM Plex Mono", ui-monospace, "SF Mono",
+    'JetBrains Mono', 'Fira Code', 'IBM Plex Mono', ui-monospace, 'SF Mono',
     monospace;
   letter-spacing: 0.04em;
 }
@@ -984,7 +984,7 @@
 .terminal kbd,
 .terminal samp {
   font-family:
-    "JetBrains Mono", "Fira Code", "IBM Plex Mono", ui-monospace, "SF Mono",
+    'JetBrains Mono', 'Fira Code', 'IBM Plex Mono', ui-monospace, 'SF Mono',
     monospace;
 }
 
@@ -1017,7 +1017,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-family: "JetBrains Mono", monospace;
+  font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
 }
 
@@ -1048,20 +1048,20 @@
 
 /* Terminal prompt prefix */
 .terminal-prompt::before {
-  content: "> ";
+  content: '> ';
   color: hsl(var(--terminal-prompt));
   font-weight: 600;
 }
 
 /* Terminal code block styles */
-.terminal pre[class*="language-"],
+.terminal pre[class*='language-'],
 .terminal .code-block {
   background: hsl(var(--terminal-code-bg)) !important;
   border: 1px solid hsl(var(--border));
   border-radius: 6px;
 }
 
-.terminal pre[class*="language-"] code,
+.terminal pre[class*='language-'] code,
 .terminal .code-block code {
   color: hsl(var(--terminal-code-text)) !important;
 }
@@ -1078,13 +1078,13 @@
 
 /* Terminal list styles (ASCII bullets) */
 .terminal ul:not(.no-terminal-style) > li::marker {
-  content: "- ";
+  content: '- ';
   color: hsl(var(--terminal-prompt));
 }
 
 .terminal ol:not(.no-terminal-style) > li::marker {
   color: hsl(var(--terminal-prompt));
-  font-family: "JetBrains Mono", monospace;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 /* Terminal blockquote */
@@ -1099,12 +1099,12 @@
 }
 
 .terminal blockquote::before {
-  content: ">";
+  content: '>';
   position: absolute;
   left: -12px;
   top: 16px;
   color: hsl(var(--terminal-glow));
-  font-family: "JetBrains Mono", monospace;
+  font-family: 'JetBrains Mono', monospace;
   font-weight: 700;
   font-size: 1.1em;
 }
@@ -1130,7 +1130,7 @@
 /* Terminal prose body text - optimized for long-form reading */
 .terminal .prose,
 .terminal article,
-.terminal [role="article"] {
+.terminal [role='article'] {
   font-size: 1rem;
   line-height: 1.85;
   letter-spacing: 0.01em;
@@ -1138,7 +1138,7 @@
 
 .terminal .prose p,
 .terminal article p,
-.terminal [role="article"] p {
+.terminal [role='article'] p {
   margin-bottom: 1.5em;
   line-height: 1.85;
   color: hsl(var(--foreground));
@@ -1218,8 +1218,8 @@
 }
 
 /* Terminal inline code in prose */
-.terminal .prose code[data-inline-code="true"],
-.terminal article code[data-inline-code="true"] {
+.terminal .prose code[data-inline-code='true'],
+.terminal article code[data-inline-code='true'] {
   background: hsl(var(--terminal-code-bg));
   border: 1px solid hsl(var(--border));
   border-radius: 3px;
@@ -1274,7 +1274,7 @@
 
 .terminal .prose figcaption,
 .terminal article figcaption {
-  font-family: "JetBrains Mono", monospace;
+  font-family: 'JetBrains Mono', monospace;
   font-size: 0.85em;
   color: hsl(var(--muted-foreground));
   text-align: center;
@@ -1282,7 +1282,7 @@
 }
 
 .terminal .prose figcaption::before {
-  content: "// ";
+  content: '// ';
   color: hsl(var(--terminal-glow) / 0.6);
 }
 
@@ -1294,7 +1294,7 @@
 .terminal th {
   background: hsl(var(--terminal-code-bg));
   color: hsl(var(--terminal-glow));
-  font-family: "JetBrains Mono", monospace;
+  font-family: 'JetBrains Mono', monospace;
   font-weight: 600;
   text-transform: uppercase;
   font-size: 0.85em;
@@ -1312,17 +1312,17 @@
 }
 
 /* Terminal toast notification */
-.terminal [data-radix-toast-viewport] [data-state="open"] {
+.terminal [data-radix-toast-viewport] [data-state='open'] {
   background: hsl(var(--terminal-titlebar));
   border: 1px solid hsl(var(--terminal-glow) / 0.3);
-  font-family: "JetBrains Mono", monospace;
+  font-family: 'JetBrains Mono', monospace;
   box-shadow: 0 0 20px hsl(var(--terminal-glow) / 0.2);
 }
 
-.terminal [data-radix-toast-viewport] [data-state="open"] [class*="ToastTitle"],
+.terminal [data-radix-toast-viewport] [data-state='open'] [class*='ToastTitle'],
 .terminal
   [data-radix-toast-viewport]
-  [data-state="open"]
+  [data-state='open']
   > div
   > div:first-child {
   color: hsl(var(--terminal-glow));
@@ -1331,11 +1331,11 @@
 
 .terminal
   [data-radix-toast-viewport]
-  [data-state="open"]
-  [class*="ToastDescription"],
+  [data-state='open']
+  [class*='ToastDescription'],
 .terminal
   [data-radix-toast-viewport]
-  [data-state="open"]
+  [data-state='open']
   > div
   > div:last-child {
   color: hsl(var(--terminal-secondary));
@@ -1395,7 +1395,7 @@
   border: 1px solid hsl(var(--terminal-inactive-border, var(--border)));
   color: hsl(var(--muted-foreground));
   padding: 0.5rem 1rem;
-  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 0.75rem;
   font-weight: bold;
   border-radius: 4px;
@@ -1437,16 +1437,16 @@
 
 /* Terminal Prompt Style */
 .terminal .prompt-prefix::before {
-  content: "> ";
+  content: '> ';
   color: hsl(var(--terminal-prompt, var(--primary)));
   font-weight: 600;
-  font-family: "JetBrains Mono", monospace;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 /* Comment Style Title (// prefix) */
 .terminal .section-comment {
   color: hsl(var(--muted-foreground));
-  font-family: "JetBrains Mono", monospace;
+  font-family: 'JetBrains Mono', monospace;
   font-size: 0.95rem;
   font-weight: normal;
 }
@@ -1471,36 +1471,36 @@
 
 /* 기본 테마 카드/컨테이너 스타일 */
 :not(.terminal) .card,
-:not(.terminal) [class*="Card"] {
+:not(.terminal) [class*='Card'] {
   @apply transition-all duration-200;
 }
 
 :not(.terminal) .card:hover,
-:not(.terminal) [class*="Card"]:hover {
+:not(.terminal) [class*='Card']:hover {
   @apply shadow-lg;
 }
 
 /* 기본 테마 버튼 최소 터치 타겟 */
 :not(.terminal) button,
-:not(.terminal) [role="button"],
+:not(.terminal) [role='button'],
 :not(.terminal) a[href] {
   min-height: 44px;
   min-width: 44px;
 }
 
 /* 예외: 인라인 링크와 작은 아이콘 버튼 */
-:not(.terminal) a:not([class*="btn"]):not([class*="Button"]),
+:not(.terminal) a:not([class*='btn']):not([class*='Button']),
 :not(.terminal) .inline-link,
-:not(.terminal) [class*="icon-only"] {
+:not(.terminal) [class*='icon-only'] {
   min-height: unset;
   min-width: unset;
 }
 
 /* 기본 테마 인풋 필드 스타일링 */
-:not(.terminal) input[type="text"],
-:not(.terminal) input[type="email"],
-:not(.terminal) input[type="password"],
-:not(.terminal) input[type="search"],
+:not(.terminal) input[type='text'],
+:not(.terminal) input[type='email'],
+:not(.terminal) input[type='password'],
+:not(.terminal) input[type='search'],
 :not(.terminal) textarea,
 :not(.terminal) select {
   @apply transition-all duration-200;
@@ -1535,8 +1535,8 @@
 /* Light 테마 카드 스타일 - Flat design, 미니멀 shadow */
 :root:not(.dark):not(.terminal) .card,
 .light .card,
-:root:not(.dark):not(.terminal) [data-slot="card"],
-.light [data-slot="card"] {
+:root:not(.dark):not(.terminal) [data-slot='card'],
+.light [data-slot='card'] {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   box-shadow: 0 1px 2px hsl(30 10% 30% / 0.03);
@@ -1601,9 +1601,9 @@
 }
 
 /* Light 테마 모달/다이얼로그 */
-:root:not(.dark):not(.terminal) [role="dialog"],
+:root:not(.dark):not(.terminal) [role='dialog'],
 :root:not(.dark):not(.terminal) [data-radix-dialog-content],
-.light [role="dialog"],
+.light [role='dialog'],
 .light [data-radix-dialog-content] {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
@@ -1615,9 +1615,9 @@
 /* Light 테마 드롭다운/팝오버 */
 :root:not(.dark):not(.terminal)
   [data-radix-popper-content-wrapper]
-  [role="menu"],
+  [role='menu'],
 :root:not(.dark):not(.terminal) [data-radix-popover-content],
-.light [data-radix-popper-content-wrapper] [role="menu"],
+.light [data-radix-popper-content-wrapper] [role='menu'],
 .light [data-radix-popover-content] {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
@@ -1662,17 +1662,17 @@
 
 /* Light 테마 뱃지/칩 */
 :root:not(.dark):not(.terminal) .badge,
-:root:not(.dark):not(.terminal) [data-slot="badge"],
+:root:not(.dark):not(.terminal) [data-slot='badge'],
 .light .badge,
-.light [data-slot="badge"] {
+.light [data-slot='badge'] {
   border: 1px solid hsl(var(--border));
 }
 
 /* Light 테마 구분선 */
 :root:not(.dark):not(.terminal) hr,
-:root:not(.dark):not(.terminal) [role="separator"],
+:root:not(.dark):not(.terminal) [role='separator'],
 .light hr,
-.light [role="separator"] {
+.light [role='separator'] {
   border-color: hsl(var(--border));
 }
 
@@ -1697,7 +1697,7 @@
 
 /* Dark 테마 카드 스타일 - 배경과 확실한 구분 */
 .dark .card,
-.dark [data-slot="card"] {
+.dark [data-slot='card'] {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   box-shadow:
@@ -1744,7 +1744,7 @@
 }
 
 /* Dark 테마 모달/다이얼로그 */
-.dark [role="dialog"],
+.dark [role='dialog'],
 .dark [data-radix-dialog-content] {
   background: hsl(var(--popover));
   border: 1px solid hsl(var(--border));
@@ -1754,7 +1754,7 @@
 }
 
 /* Dark 테마 드롭다운/팝오버 */
-.dark [data-radix-popper-content-wrapper] [role="menu"],
+.dark [data-radix-popper-content-wrapper] [role='menu'],
 .dark [data-radix-popover-content] {
   background: hsl(var(--popover));
   border: 1px solid hsl(var(--border));
@@ -1793,13 +1793,13 @@
 
 /* Dark 테마 뱃지/칩 */
 .dark .badge,
-.dark [data-slot="badge"] {
+.dark [data-slot='badge'] {
   border: 1px solid hsl(var(--border));
 }
 
 /* Dark 테마 구분선 */
 .dark hr,
-.dark [role="separator"] {
+.dark [role='separator'] {
   border-color: hsl(var(--border));
 }
 
@@ -1829,8 +1829,8 @@
 :not(.terminal) .prose h4 {
   @apply font-semibold tracking-tight;
   font-family:
-    "Pretendard Variable",
-    "Pretendard",
+    'Pretendard Variable',
+    'Pretendard',
     -apple-system,
     BlinkMacSystemFont,
     sans-serif;
@@ -1849,7 +1849,7 @@
   @apply border-l-4 border-primary/30 bg-muted/30 py-2 px-4 my-4 italic;
 }
 
-:not(.terminal) .prose code[data-inline-code="true"] {
+:not(.terminal) .prose code[data-inline-code='true'] {
   @apply bg-muted px-1.5 py-0.5 rounded text-sm font-normal;
 }
 
@@ -1901,6 +1901,145 @@
   @apply text-center text-sm text-muted-foreground mt-3;
 }
 
+/* Blog article visual reading flow */
+.article-flow {
+  --article-readable-max: 760px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  column-gap: 1rem;
+}
+
+.article-flow > * {
+  min-width: 0;
+}
+
+.article-flow > :where(.article-readable, p, ul, ol, blockquote, h4, h5, h6) {
+  width: 100%;
+  max-width: var(--article-readable-max);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.article-flow
+  > :where(
+    .article-heading,
+    .article-wide-block,
+    .article-code-card,
+    .article-table-shell,
+    .article-media-frame,
+    hr
+  ) {
+  width: 100%;
+  max-width: none;
+}
+
+.article-flow > .article-table-shell {
+  border: 1px solid hsl(var(--border) / 0.72);
+  border-radius: 16px;
+  background: hsl(var(--card) / 0.72);
+  box-shadow: 0 14px 34px hsl(220 35% 18% / 0.08);
+}
+
+.article-flow > .article-table-shell table {
+  margin: 0;
+}
+
+.article-media-frame {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.article-media-surface {
+  transition:
+    transform 220ms var(--ease-smooth),
+    border-color 220ms var(--ease-smooth),
+    opacity 220ms var(--ease-smooth);
+}
+
+.article-media-frame:focus-within .article-media-surface,
+.article-media-frame:hover .article-media-surface {
+  transform: translateY(-1px);
+  border-color: hsl(var(--primary) / 0.42);
+}
+
+.article-media-frame--terminal .article-media-surface {
+  box-shadow: none;
+}
+
+@media (min-width: 1024px) {
+  .article-flow {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: clamp(1rem, 2vw, 1.75rem);
+  }
+
+  .article-flow > :where(.article-readable, p, ul, ol, blockquote, h4, h5, h6) {
+    grid-column: 3 / 11;
+    max-width: none;
+  }
+
+  .article-flow > .article-heading {
+    grid-column: 2 / 12;
+  }
+
+  .article-flow > :where(.article-wide-block, .article-code-card) {
+    grid-column: 2 / 12;
+  }
+
+  .article-flow > .article-table-shell {
+    grid-column: 2 / 12;
+  }
+
+  .article-flow > .article-media-frame {
+    grid-column: 2 / 12;
+  }
+
+  .article-flow > .article-media-frame[data-layout='wide'],
+  .article-flow > .article-media-frame[data-layout='full'] {
+    grid-column: 1 / -1;
+  }
+
+  .article-flow > .article-media-frame[data-layout='compact'] {
+    grid-column: 4 / 10;
+  }
+
+  .article-flow > .article-media-frame[data-layout='aside-left'] {
+    grid-column: 1 / 6;
+  }
+
+  .article-flow > .article-media-frame[data-layout='aside-right'] {
+    grid-column: 8 / -1;
+  }
+
+  .article-flow
+    > .article-code-card:has(+ .article-media-frame[data-layout='wide']),
+  .article-flow
+    > .article-table-shell:has(+ .article-media-frame[data-layout='wide']) {
+    grid-column: 1 / 8;
+  }
+
+  .article-flow > .article-code-card + .article-media-frame[data-layout='wide'],
+  .article-flow
+    > .article-table-shell
+    + .article-media-frame[data-layout='wide'] {
+    grid-column: 8 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .article-media-surface,
+  .article-media-frame img,
+  .article-media-frame span {
+    transition-duration: 1ms !important;
+  }
+
+  .article-media-frame:focus-within .article-media-surface,
+  .article-media-frame:hover .article-media-surface,
+  .article-media-frame img {
+    transform: none !important;
+  }
+}
+
 /* ============================================
    Compact TUI System
    ============================================ */
@@ -1917,7 +2056,7 @@
   padding: 0.5rem 1rem;
   height: auto;
   min-height: 36px;
-  font-family: "JetBrains Mono", monospace;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .tui-card {
@@ -1930,16 +2069,16 @@
 
 /* Primary button: ensure text is always readable */
 .btn-primary,
-button[class*="bg-primary"]:not([class*="bg-primary/"]) {
+button[class*='bg-primary']:not([class*='bg-primary/']) {
   color: hsl(var(--primary-foreground)) !important;
 }
 
 /* Terminal theme primary buttons - Dark text on bright neon green */
 .terminal .btn-primary,
-.terminal button[class*="bg-primary"]:not([class*="bg-primary/"]),
-.terminal a[class*="bg-primary"]:not([class*="bg-primary/"]),
-.terminal button[class*="terminal-active"],
-.terminal [class*="terminal-active"] {
+.terminal button[class*='bg-primary']:not([class*='bg-primary/']),
+.terminal a[class*='bg-primary']:not([class*='bg-primary/']),
+.terminal button[class*='terminal-active'],
+.terminal [class*='terminal-active'] {
   background-color: hsl(var(--primary));
   color: hsl(210 50% 2%) !important; /* Force dark text on neon green */
   font-weight: 600;
@@ -1957,40 +2096,40 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
 }
 
 /* FAB dock buttons - only apply to actual FAB elements, not all bg-primary/20 */
-.terminal [role="toolbar"] [class*="bg-primary/20"],
-.terminal .fab-button[class*="bg-primary/20"] {
+.terminal [role='toolbar'] [class*='bg-primary/20'],
+.terminal .fab-button[class*='bg-primary/20'] {
   color: hsl(var(--primary));
 }
 
 /* Terminal active tabs - ensure contrast */
-.terminal [data-state="active"][class*="bg-primary"],
-.terminal button[data-state="active"][class*="terminal"] {
+.terminal [data-state='active'][class*='bg-primary'],
+.terminal button[data-state='active'][class*='terminal'] {
   color: hsl(210 50% 2%) !important; /* Dark text on neon green */
 }
 
 /* Destructive buttons - ensure red text is visible on dark backgrounds */
-.terminal button[class*="destructive"],
-.terminal [class*="destructive"] {
+.terminal button[class*='destructive'],
+.terminal [class*='destructive'] {
   --destructive-text: 0 70% 60%; /* Slightly brighter red for dark mode */
 }
 
-.terminal button[class*="bg-destructive"]:not([class*="bg-destructive/"]) {
+.terminal button[class*='bg-destructive']:not([class*='bg-destructive/']) {
   color: hsl(0 0% 100%) !important; /* White text on red background */
 }
 
 /* Secondary buttons in terminal theme */
-.terminal button[class*="bg-secondary"]:not([class*="bg-secondary/"]) {
+.terminal button[class*='bg-secondary']:not([class*='bg-secondary/']) {
   color: hsl(var(--secondary-foreground));
 }
 
 /* Ghost and outline buttons should have visible text */
-.terminal button[class*="ghost"],
-.terminal button[class*="outline"] {
+.terminal button[class*='ghost'],
+.terminal button[class*='outline'] {
   color: hsl(var(--foreground));
 }
 
-.terminal button[class*="ghost"]:hover,
-.terminal button[class*="outline"]:hover {
+.terminal button[class*='ghost']:hover,
+.terminal button[class*='outline']:hover {
   color: hsl(var(--primary));
 }
 
@@ -2001,16 +2140,16 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
 @media (max-width: 767px) {
   /* 모바일 버튼 최소 크기 - 터치 타겟 44px 보장 */
   button,
-  [role="button"],
+  [role='button'],
   .btn,
-  [class*="Button"] {
+  [class*='Button'] {
     min-height: 44px;
   }
 
   /* 아이콘 전용 버튼은 width도 보장 */
-  button[class*="icon"],
-  [role="button"][class*="icon"],
-  button[aria-label]:not([class*="w-"]) {
+  button[class*='icon'],
+  [role='button'][class*='icon'],
+  button[aria-label]:not([class*='w-']) {
     min-width: 44px;
   }
 
@@ -2047,7 +2186,7 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
   }
 
   /* Input/Select 높이 강화 - 모바일 48px 권장 */
-  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+  input:not([type='checkbox']):not([type='radio']):not([type='hidden']),
   select,
   textarea {
     min-height: 48px;
@@ -2059,7 +2198,7 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
   .backdrop-blur-md,
   .backdrop-blur-lg,
   .backdrop-blur-xl,
-  [class*="backdrop-blur"] {
+  [class*='backdrop-blur'] {
     --tw-backdrop-blur: blur(4px) !important;
   }
 
@@ -2070,7 +2209,7 @@ button[class*="bg-primary"]:not([class*="bg-primary/"]) {
     .backdrop-blur-md,
     .backdrop-blur-lg,
     .backdrop-blur-xl,
-    [class*="backdrop-blur"] {
+    [class*='backdrop-blur'] {
       backdrop-filter: none !important;
       -webkit-backdrop-filter: none !important;
       background-color: hsl(var(--background) / 0.95) !important;
