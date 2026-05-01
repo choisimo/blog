@@ -32,6 +32,7 @@ import {
   deriveUserQuery,
   getLiveContextForSession,
   setPerformRAGSearch,
+  claimSessionTurn,
 } from "../services/session.service.js";
 
 import {
@@ -76,6 +77,12 @@ import {
   streamWithFallback,
   finalizeChatTurn,
 } from "../lib/chat-streaming.js";
+import {
+  claimIdempotencyRecord,
+  getIdempotencyKey,
+  releaseIdempotencyRecord,
+  storeIdempotencyRecord,
+} from "../lib/idempotency.js";
 
 const router = Router();
 const {
@@ -103,6 +110,88 @@ const CHAT_RESPONSE_TIMEOUT_MS = Math.max(
   5_000,
   Number.parseInt(process.env.CHAT_RESPONSE_TIMEOUT_MS || "45000", 10),
 );
+const CHAT_IDEMPOTENCY_TTL_SECONDS = Math.max(
+  60,
+  Number.parseInt(process.env.CHAT_IDEMPOTENCY_TTL_SECONDS || `${24 * 60 * 60}`, 10),
+);
+const CHAT_TURN_LOCK_SECONDS = Math.max(
+  5,
+  Math.ceil(CHAT_RESPONSE_TIMEOUT_MS / 1000) + 15,
+);
+const CHAT_TURN_RETRY_AFTER_SECONDS = 3;
+
+function setIdempotencyHeaders(res, key, replayed = false) {
+  if (!key) return;
+  res.setHeader("Idempotency-Key", key);
+  if (replayed) {
+    res.setHeader("Idempotency-Replayed", "true");
+  }
+}
+
+function sendConflict(res, code, message, extraHeaders = {}) {
+  for (const [name, value] of Object.entries(extraHeaders)) {
+    res.setHeader(name, value);
+  }
+  return res.status(409).json({
+    ok: false,
+    error: { code, message },
+  });
+}
+
+function writeSseHeaders(res, extraHeaders = {}) {
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
+    ...extraHeaders,
+  });
+}
+
+function writeSseEvent(res, data) {
+  const payload = typeof data === "string" ? data : JSON.stringify(data);
+  res.write(`data: ${payload}\n\n`);
+}
+
+async function replayCachedChatTurn(res, idempotencyKey, cachedResponse) {
+  writeSseHeaders(res, {
+    "Idempotency-Key": idempotencyKey,
+    "Idempotency-Replayed": "true",
+  });
+
+  let closed = false;
+  res.on("close", () => {
+    closed = true;
+  });
+
+  if (cachedResponse?.sessionId) {
+    writeSseEvent(res, { type: "session", sessionId: cachedResponse.sessionId });
+  }
+  if (Array.isArray(cachedResponse?.sources) && cachedResponse.sources.length > 0) {
+    writeSseEvent(res, { type: "sources", sources: cachedResponse.sources });
+  }
+  if (typeof cachedResponse?.text === "string" && cachedResponse.text) {
+    await emitTextChunks({
+      text: cachedResponse.text,
+      chunkSize: STREAMING.CHUNK_SIZE,
+      chunkDelayMs: 0,
+      isClosed: () => closed,
+      sendChunk: (piece) => writeSseEvent(res, { type: "text", text: piece }),
+    });
+  }
+
+  if (cachedResponse?.error) {
+    writeSseEvent(res, {
+      type: "error",
+      message: cachedResponse.error.message || "Chat failed",
+      code: cachedResponse.error.code,
+    });
+  } else {
+    writeSseEvent(res, { type: "done" });
+  }
+
+  res.end();
+}
 
 function timingSafeEqualString(a, b) {
   if (typeof a !== "string" || typeof b !== "string") return false;
@@ -378,25 +467,15 @@ router.post("/session", async (req, res, next) => {
  * Send chat message (SSE streaming)
  */
 router.post("/session/:sessionId/message", async (req, res, next) => {
+  let turnClaim = null;
+  let effectiveTurnClaim = null;
+  let idempotencyClaim = null;
+  let sideEffectStarted = false;
+
   try {
     const { sessionId } = req.params;
     const { parts, context, enableRag } = req.body || {};
     const forcedModel = resolveChatModel(req);
-    let effectiveSessionId = sessionId;
-
-    // Get or create session
-    let session = getSession(sessionId);
-    if (!session) {
-      effectiveSessionId = createSession();
-      session = getSession(effectiveSessionId);
-      if (openNotebook.isEnabled()) {
-        void ensureSessionNotebook(effectiveSessionId).catch((err) => {
-          logger.warn({}, "Session notebook bootstrap failed", {
-            error: err?.message,
-          });
-        });
-      }
-    }
 
     // Extract text from parts
     const partContext = extractPartContext(parts);
@@ -413,27 +492,134 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
       userMessage = `${serializedPageContext}\n\n${userMessage}`;
     }
 
+    const idempotencyKey = getIdempotencyKey(req);
+    const idempotencyScope = `chat.message:${sessionId}`;
+    const idempotencyPayload = {
+      sessionId,
+      parts: parts ?? null,
+      context: context ?? null,
+      enableRag: enableRag === true,
+      model: forcedModel,
+    };
+
+    if (idempotencyKey) {
+      const claim = await claimIdempotencyRecord(
+        idempotencyScope,
+        idempotencyKey,
+        idempotencyPayload,
+        {
+          ttlSeconds: CHAT_IDEMPOTENCY_TTL_SECONDS,
+          lockSeconds: CHAT_TURN_LOCK_SECONDS,
+        },
+      );
+
+      if (claim.conflict) {
+        return sendConflict(
+          res,
+          "IDEMPOTENCY_KEY_REUSED",
+          "Idempotency-Key was reused with a different chat message payload",
+          { "Idempotency-Key": idempotencyKey },
+        );
+      }
+      if (claim.cached) {
+        return replayCachedChatTurn(res, idempotencyKey, claim.cached.response);
+      }
+      if (claim.inProgress) {
+        return sendConflict(
+          res,
+          "IDEMPOTENCY_IN_PROGRESS",
+          "A chat message with this Idempotency-Key is already in progress",
+          {
+            "Idempotency-Key": idempotencyKey,
+            "Retry-After": String(CHAT_TURN_RETRY_AFTER_SECONDS),
+          },
+        );
+      }
+
+      idempotencyClaim = {
+        key: idempotencyKey,
+        scope: idempotencyScope,
+        requestHash: claim.requestHash,
+      };
+      setIdempotencyHeaders(res, idempotencyKey);
+    }
+
+    turnClaim = claimSessionTurn(sessionId, {
+      idempotencyKey: idempotencyKey || null,
+      ttlMs: CHAT_TURN_LOCK_SECONDS * 1000,
+    });
+    if (!turnClaim.claimed) {
+      if (idempotencyClaim) {
+        await releaseIdempotencyRecord(
+          idempotencyClaim.scope,
+          idempotencyClaim.key,
+          idempotencyClaim.requestHash,
+        );
+        idempotencyClaim = null;
+      }
+      return sendConflict(
+        res,
+        "CHAT_TURN_IN_PROGRESS",
+        "Another chat turn is already in progress for this session",
+        { "Retry-After": String(CHAT_TURN_RETRY_AFTER_SECONDS) },
+      );
+    }
+
+    let effectiveSessionId = sessionId;
+
+    // Get or create session
+    let session = getSession(sessionId);
+    if (!session) {
+      effectiveSessionId = createSession();
+      session = getSession(effectiveSessionId);
+      effectiveTurnClaim = claimSessionTurn(effectiveSessionId, {
+        requestedSessionId: sessionId,
+        idempotencyKey: idempotencyKey || null,
+        ttlMs: CHAT_TURN_LOCK_SECONDS * 1000,
+      });
+      if (!effectiveTurnClaim.claimed) {
+        if (idempotencyClaim) {
+          await releaseIdempotencyRecord(
+            idempotencyClaim.scope,
+            idempotencyClaim.key,
+            idempotencyClaim.requestHash,
+          );
+          idempotencyClaim = null;
+        }
+        turnClaim?.release?.();
+        turnClaim = null;
+        return sendConflict(
+          res,
+          "CHAT_TURN_IN_PROGRESS",
+          "Another chat turn is already in progress for this session",
+          { "Retry-After": String(CHAT_TURN_RETRY_AFTER_SECONDS) },
+        );
+      }
+      if (openNotebook.isEnabled()) {
+        void ensureSessionNotebook(effectiveSessionId).catch((err) => {
+          logger.warn({}, "Session notebook bootstrap failed", {
+            error: err?.message,
+          });
+        });
+      }
+    }
+
     // Store message
     session.lastActivityAt = Date.now();
     session.messages.push({ role: "user", content: userMessage });
+    sideEffectStarted = true;
 
     // Set up SSE
-    res.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no",
-    });
+    writeSseHeaders(res);
 
     const send = (data) => {
-      const payload = typeof data === "string" ? data : JSON.stringify(data);
-      res.write(`data: ${payload}\n\n`);
+      writeSseEvent(res, data);
     };
 
     send({ type: "session", sessionId: effectiveSessionId });
 
     let closed = false;
-    req.on("close", () => {
+    res.on("close", () => {
       closed = true;
     });
 
@@ -442,6 +628,10 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
         send({ type: "heartbeat", ts: Date.now() });
       }
     }, 15000);
+
+    let emittedText = "";
+    let replaySources = [];
+    let idempotencyStored = false;
 
     try {
       const userQuery = deriveUserQuery(parts, userMessage);
@@ -457,6 +647,7 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
         });
 
       if (ragSources.length > 0) {
+        replaySources = ragSources;
         send({ type: "sources", sources: ragSources });
       }
 
@@ -493,7 +684,10 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
         chunkSize: STREAMING.CHUNK_SIZE,
         chunkDelayMs: STREAMING.CHUNK_DELAY,
         isClosed: () => closed,
-        sendChunk: (piece) => send({ type: "text", text: piece }),
+        sendChunk: (piece) => {
+          emittedText += piece;
+          send({ type: "text", text: piece });
+        },
       });
 
       if (!text.trim()) {
@@ -510,14 +704,79 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
       });
 
       send({ type: "done" });
+      if (idempotencyClaim) {
+        try {
+          await storeIdempotencyRecord(
+            idempotencyClaim.scope,
+            idempotencyClaim.key,
+            idempotencyClaim.requestHash,
+            200,
+            {
+              type: "chat.sse",
+              sessionId: effectiveSessionId,
+              text,
+              sources: replaySources,
+            },
+            CHAT_IDEMPOTENCY_TTL_SECONDS,
+          );
+          idempotencyStored = true;
+        } catch (storeError) {
+          logger.error({}, "Failed to cache chat idempotency response", {
+            error: storeError?.message,
+          });
+        }
+      }
     } catch (err) {
       logger.error({}, "Chat streaming error", { error: err.message });
-      send({ type: "error", error: err.message || "Chat failed" });
+      const message = err.message || "Chat failed";
+      send({ type: "error", error: message, message });
+      if (idempotencyClaim) {
+        try {
+          await storeIdempotencyRecord(
+            idempotencyClaim.scope,
+            idempotencyClaim.key,
+            idempotencyClaim.requestHash,
+            200,
+            {
+              type: "chat.sse",
+              sessionId: effectiveSessionId,
+              text: emittedText,
+              sources: replaySources,
+              error: { code: "CHAT_STREAM_FAILED", message },
+            },
+            CHAT_IDEMPOTENCY_TTL_SECONDS,
+          );
+          idempotencyStored = true;
+        } catch (storeError) {
+          logger.error({}, "Failed to cache chat idempotency error response", {
+            error: storeError?.message,
+          });
+        }
+      }
+    } finally {
+      if (idempotencyClaim && !idempotencyStored && !sideEffectStarted) {
+        await releaseIdempotencyRecord(
+          idempotencyClaim.scope,
+          idempotencyClaim.key,
+          idempotencyClaim.requestHash,
+        );
+      }
+      effectiveTurnClaim?.release?.();
+      turnClaim?.release?.();
     }
 
     clearInterval(heartbeatInterval);
     res.end();
   } catch (err) {
+    if (idempotencyClaim && !sideEffectStarted) {
+      await releaseIdempotencyRecord(
+        idempotencyClaim.scope,
+        idempotencyClaim.key,
+        idempotencyClaim.requestHash,
+      );
+    }
+    effectiveTurnClaim?.release?.();
+    turnClaim?.release?.();
     return next(err);
   }
 });

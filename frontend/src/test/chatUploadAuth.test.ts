@@ -112,4 +112,35 @@ describe('chat upload authentication', () => {
       })
     );
   });
+
+  it('sends an Idempotency-Key with streamed chat messages', async () => {
+    localStorage.setItem('nodove_chat_session_id', 'session-1');
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('data: {"type":"done"}\n\n', {
+        status: 200,
+        headers: { 'Content-Type': 'text/event-stream' },
+      })
+    );
+
+    const { streamChatEvents } = await import('@/services/chat/api');
+    const events: unknown[] = [];
+    for await (const event of streamChatEvents({
+      text: 'hello',
+      idempotencyKey: 'chat-turn-key-1',
+    })) {
+      events.push(event);
+    }
+
+    expect(events).toEqual([{ type: 'done' }]);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'https://api.example.com/api/v1/chat/session/session-1/message',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer principal-token',
+          'Idempotency-Key': 'chat-turn-key-1',
+        }),
+      })
+    );
+  });
 });
