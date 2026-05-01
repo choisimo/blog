@@ -4179,8 +4179,18 @@
 
   customElements.define('ai-memo-pad', AIMemoPad);
 
+  const isSuppressedRoute = () => {
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
+    return path === '/' || path === '/blog';
+  };
+
   // Ensure single instance mounted
   const mountOnce = () => {
+    if (isSuppressedRoute()) {
+      document.querySelector('ai-memo-pad')?.remove();
+      return;
+    }
+
     if (document.body && !document.querySelector('ai-memo-pad')) {
       const el = document.createElement('ai-memo-pad');
       document.body.appendChild(el);

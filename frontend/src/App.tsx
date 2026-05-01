@@ -75,8 +75,14 @@ function GlobalAssistants({ fabOn }: { fabOn: boolean }) {
   const { pathname } = useLocation();
   const insightWorkspaceActive =
     pathname === "/insight" || pathname.startsWith("/insight/");
+  const cleanPublicListing = pathname === "/" || pathname === "/blog";
 
-  if (insightWorkspaceActive) return null;
+  useEffect(() => {
+    if (!cleanPublicListing || typeof document === "undefined") return;
+    document.querySelectorAll("ai-memo-pad").forEach((el) => el.remove());
+  }, [cleanPublicListing]);
+
+  if (insightWorkspaceActive || cleanPublicListing) return null;
 
   return (
     <>

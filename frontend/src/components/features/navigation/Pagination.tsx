@@ -232,14 +232,16 @@ const Pagination = ({
     >
       <div className={cn('flex items-center', styles.gap)}>
         {showFirstLast && (
-          <NavButton
-            onClick={() => onPageChange(1)}
-            disabled={currentPage === 1}
-            label='First page'
-            variant='ghost'
-          >
-            <ChevronsLeft className={styles.icon} />
-          </NavButton>
+          <span className='hidden sm:inline-flex'>
+            <NavButton
+              onClick={() => onPageChange(1)}
+              disabled={currentPage === 1}
+              label='First page'
+              variant='ghost'
+            >
+              <ChevronsLeft className={styles.icon} />
+            </NavButton>
+          </span>
         )}
 
         <NavButton
@@ -272,14 +274,16 @@ const Pagination = ({
         </NavButton>
 
         {showFirstLast && (
-          <NavButton
-            onClick={() => onPageChange(totalPages)}
-            disabled={currentPage === totalPages}
-            label='Last page'
-            variant='ghost'
-          >
-            <ChevronsRight className={styles.icon} />
-          </NavButton>
+          <span className='hidden sm:inline-flex'>
+            <NavButton
+              onClick={() => onPageChange(totalPages)}
+              disabled={currentPage === totalPages}
+              label='Last page'
+              variant='ghost'
+            >
+              <ChevronsRight className={styles.icon} />
+            </NavButton>
+          </span>
         )}
       </div>
 
