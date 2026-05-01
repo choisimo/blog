@@ -1,16 +1,23 @@
 import type { HomeCategoryStripProps } from './home.types';
 import { Link } from 'react-router-dom';
 import {
-  Bot,
-  Boxes,
+  BrainCircuit,
   Code2,
+  Coffee,
+  Infinity as InfinityIcon,
   Network,
-  ServerCog,
   TerminalSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const CATEGORY_ICONS = [Bot, ServerCog, TerminalSquare, Network, Code2, Boxes];
+const CATEGORY_ICONS = [
+  Code2,
+  InfinityIcon,
+  BrainCircuit,
+  TerminalSquare,
+  Network,
+  Coffee,
+];
 
 export function HomeCategoryStrip({
   categories,
@@ -22,12 +29,17 @@ export function HomeCategoryStrip({
   return (
     <section className='mb-14'>
       <div className='mb-5 flex items-center justify-between gap-4'>
-        <h2 className={cn('text-2xl font-bold', isTerminal && 'font-mono')}>
+        <h2
+          className={cn(
+            'my-0 text-2xl font-bold tracking-tight text-[hsl(var(--blog-title))]',
+            isTerminal && 'font-mono'
+          )}
+        >
           {isTerminal ? '// categories' : 'Browse Categories'}
         </h2>
         <Link
           to='/blog'
-          className='text-sm font-medium text-muted-foreground transition-colors hover:text-primary'
+          className='inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-muted-foreground transition-[color,transform] duration-200 ease-spring hover:text-primary active:scale-[0.98] whitespace-nowrap'
         >
           전체 보기
         </Link>
@@ -38,7 +50,7 @@ export function HomeCategoryStrip({
           {Array.from({ length: 6 }).map((_, index) => (
             <div
               key={index}
-              className='h-24 animate-pulse rounded-lg border border-border/60 bg-muted/60'
+              className='h-32 animate-pulse rounded-lg border border-[hsl(var(--blog-border))] bg-[hsl(var(--blog-surface-muted))]'
             />
           ))}
         </div>
@@ -50,12 +62,12 @@ export function HomeCategoryStrip({
               <Link
                 key={category.name}
                 to={`/blog?category=${encodeURIComponent(category.name)}`}
-                className='group rounded-lg border border-border/60 bg-card px-3 py-4 text-center transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm'
+                className='group rounded-lg border border-[hsl(var(--blog-border))] bg-[hsl(var(--blog-surface))] px-3 py-5 text-center transition-[border-color,box-shadow,transform] duration-200 ease-spring hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[var(--blog-shadow-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[0.99]'
               >
-                <span className='mx-auto mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary'>
-                  <Icon className='h-4 w-4' />
+                <span className='mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-lg text-primary transition-transform duration-200 ease-spring group-hover:scale-105'>
+                  <Icon className='h-7 w-7 stroke-[1.8]' />
                 </span>
-                <span className='block truncate text-sm font-semibold'>
+                <span className='block truncate text-sm font-semibold text-[hsl(var(--blog-title))]'>
                   {category.name}
                 </span>
                 <span className='mt-1 block text-xs text-muted-foreground'>

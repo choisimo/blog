@@ -75,7 +75,7 @@ export function HeaderSearchBar({
   const { isTerminal } = useTheme();
 
   const isHome = location.pathname === "/";
-  const usePopoverSearch = presentation !== "inline" && isHome;
+  const usePopoverSearch = presentation !== "inline";
   const terminalPath =
     location.pathname === "/" ? "~" : `~${location.pathname}`;
   const queryTrimmed = query.trim();
@@ -113,7 +113,7 @@ export function HeaderSearchBar({
   }, []);
 
   useEffect(() => {
-    if (!usePopoverSearch) {
+    if (!usePopoverSearch || !isHome) {
       setHomeScrolled(false);
       return;
     }
@@ -125,7 +125,7 @@ export function HeaderSearchBar({
     updateScrollState();
     window.addEventListener("scroll", updateScrollState, { passive: true });
     return () => window.removeEventListener("scroll", updateScrollState);
-  }, [usePopoverSearch]);
+  }, [isHome, usePopoverSearch]);
 
   const handleSelect = useCallback(
     (post: BlogPost) => {

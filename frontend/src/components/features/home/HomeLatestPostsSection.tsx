@@ -16,10 +16,20 @@ export function HomeLatestPostsSection({
   return (
     <section className='mb-14'>
       <div className='mb-5 flex items-center justify-between gap-4'>
-        <h2 className={cn('text-2xl font-bold', isTerminal && 'font-mono')}>
+        <h2
+          className={cn(
+            'my-0 text-2xl font-bold tracking-tight text-[hsl(var(--blog-title))]',
+            isTerminal && 'font-mono'
+          )}
+        >
           {isTerminal ? '// latest_posts' : 'Latest Posts'}
         </h2>
-        <Button asChild variant='ghost' size='sm'>
+        <Button
+          asChild
+          variant='ghost'
+          size='sm'
+          className='min-h-11 whitespace-nowrap'
+        >
           <Link to='/blog'>
             전체 보기
             <ArrowRight className='ml-2 h-4 w-4' />
@@ -38,7 +48,7 @@ export function HomeLatestPostsSection({
               {Array.from({ length: 3 }).map((_, index) => (
                 <div
                   key={index}
-                  className='h-28 animate-pulse rounded-lg border border-border/60 bg-muted/60'
+                  className='h-28 animate-pulse rounded-lg border border-[hsl(var(--blog-border))] bg-[hsl(var(--blog-surface-muted))]'
                 />
               ))}
             </div>
@@ -48,15 +58,15 @@ export function HomeLatestPostsSection({
                 <Link
                   key={`${post.year}/${post.slug}`}
                   to={`/blog/${post.year}/${post.slug}`}
-                  className='group block rounded-lg border border-border/60 bg-card p-3 transition-[border-color,box-shadow] hover:border-primary/40 hover:shadow-sm'
+                  className='group block rounded-lg border border-[hsl(var(--blog-border))] bg-[hsl(var(--blog-surface))] p-3 transition-[border-color,box-shadow,transform] duration-200 ease-spring hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[var(--blog-shadow-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[0.99]'
                 >
                   <article className='grid grid-cols-[88px_minmax(0,1fr)] gap-4 sm:grid-cols-[128px_minmax(0,1fr)]'>
-                    <div className='aspect-[16/11] overflow-hidden rounded-md bg-muted'>
+                    <div className='aspect-[16/11] overflow-hidden rounded-md bg-[hsl(var(--blog-surface-muted))]'>
                       {post.coverImage ? (
                         <OptimizedImage
                           src={post.coverImage}
                           alt={post.title}
-                          className='h-full w-full object-cover transition-transform duration-300 group-hover:scale-105'
+                          className='h-full w-full object-cover transition-transform duration-300 ease-smooth group-hover:scale-[1.03]'
                         />
                       ) : (
                         <div className='flex h-full w-full items-center justify-center'>
@@ -66,7 +76,7 @@ export function HomeLatestPostsSection({
                     </div>
                     <div className='min-w-0 self-center'>
                       <div className='mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground'>
-                        <span className='rounded bg-secondary px-2 py-0.5 text-secondary-foreground'>
+                        <span className='rounded-md bg-secondary px-2 py-1 text-secondary-foreground'>
                           {post.category}
                         </span>
                         <span>{formatDate(post.date)}</span>
@@ -77,7 +87,7 @@ export function HomeLatestPostsSection({
                           </span>
                         )}
                       </div>
-                      <h3 className='line-clamp-1 text-base font-semibold transition-colors group-hover:text-primary'>
+                      <h3 className='my-0 line-clamp-1 text-base font-semibold text-[hsl(var(--blog-title))] transition-colors group-hover:text-primary'>
                         {post.title}
                       </h3>
                       {post.description && (
@@ -93,10 +103,12 @@ export function HomeLatestPostsSection({
           )}
         </div>
 
-        <aside className='rounded-lg border border-border/60 bg-card p-4'>
+        <aside className='rounded-lg border border-[hsl(var(--blog-border))] bg-[hsl(var(--blog-surface))] p-4'>
           <div className='mb-4 flex items-center gap-2'>
             <Hash className='h-4 w-4 text-primary' />
-            <h3 className='text-sm font-semibold'>Popular Tags</h3>
+            <h3 className='my-0 text-sm font-semibold text-[hsl(var(--blog-title))]'>
+              Popular Tags
+            </h3>
           </div>
           {tags.length === 0 ? (
             <p className='text-sm text-muted-foreground'>
@@ -108,7 +120,7 @@ export function HomeLatestPostsSection({
                 <Link
                   key={tag.name}
                   to={`/blog?tag=${encodeURIComponent(tag.name)}`}
-                  className='flex items-center justify-between rounded-md border border-border/50 px-3 py-2 text-sm transition-colors hover:border-primary/40 hover:text-primary'
+                  className='flex min-h-11 items-center justify-between rounded-md border border-[hsl(var(--blog-border))] px-3 py-2 text-sm transition-[border-color,color,transform] duration-200 ease-spring hover:border-primary/40 hover:text-primary active:scale-[0.99]'
                 >
                   <span className='truncate'>#{tag.name}</span>
                   <span className='ml-3 font-mono text-xs text-muted-foreground'>

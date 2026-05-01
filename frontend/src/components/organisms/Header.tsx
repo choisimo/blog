@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { LanguageToggle, ThemeToggle } from "@/components/common";
 import {
@@ -67,6 +67,7 @@ function TerminalWindowButtons() {
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchSheetOpen, setSearchSheetOpen] = useState(false);
+  const location = useLocation();
   const { theme, setTheme, isTerminal } = useTheme();
   const { language, setLanguage } = useLanguage();
   const isMobile = useIsMobile();
@@ -78,6 +79,7 @@ export function Header() {
     if (refreshToken && !isTokenExpired(refreshToken, 0)) return true;
     return false;
   }, [accessToken, refreshToken]);
+  const isHome = location.pathname === "/";
 
   const navigation = hasAdmin
     ? [
@@ -97,7 +99,7 @@ export function Header() {
         )}
       >
         <nav
-          className="container mx-auto px-4 sm:px-6 lg:px-8"
+          className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8"
           aria-label="Global"
         >
           <div className="flex h-16 items-center justify-between">
@@ -206,9 +208,11 @@ export function Header() {
               </div>
             </div>
 
-            <div className="hidden md:block flex-1 max-w-xs lg:max-w-sm mx-4">
-              <HeaderSearchBar />
-            </div>
+            {!isMobile && !isHome && (
+              <div className="hidden md:flex flex-1 justify-center mx-4">
+                <HeaderSearchBar />
+              </div>
+            )}
 
             <div className="flex items-center gap-x-2 sm:gap-x-4">
               {!isMobile && (
@@ -219,7 +223,7 @@ export function Header() {
               )}
 
               {/* 모바일: 검색 버튼 */}
-              {isMobile && (
+              {isMobile && !isHome && (
                 <Button
                   variant="ghost"
                   size="icon"

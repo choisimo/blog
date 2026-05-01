@@ -193,7 +193,7 @@ export function SearchBar({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={onFocus}
-          className="pl-11 pr-10 h-11 rounded-xl border border-border/60 bg-background shadow-none focus:border-primary/60 focus:ring-0 transition-colors duration-200 placeholder:text-muted-foreground/60"
+          className="h-12 rounded-lg border border-[hsl(var(--blog-border))] bg-[hsl(var(--blog-surface))] pl-11 pr-10 text-sm shadow-none transition-[border-color,box-shadow] duration-200 placeholder:text-muted-foreground/60 focus:border-primary/60 focus:ring-0 focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.12)]"
         />
         {query && (
           <Button

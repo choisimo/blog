@@ -20,6 +20,7 @@ const withFab = async (enabled: boolean) => {
 
 beforeEach(() => {
   localStorage.clear();
+  window.history.replaceState({}, '', '/projects');
 });
 
 afterEach(() => {

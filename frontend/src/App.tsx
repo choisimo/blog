@@ -83,6 +83,11 @@ function useInsightWorkspaceActive() {
   return pathname === "/insight" || pathname.startsWith("/insight/");
 }
 
+function useCleanPublicListing() {
+  const { pathname } = useLocation();
+  return pathname === "/" || pathname === "/blog";
+}
+
 function RouteMain({ children }: { children: ReactNode }) {
   const insightWorkspaceActive = useInsightWorkspaceActive();
 
@@ -107,8 +112,14 @@ function RouteFooter() {
 
 function GlobalAssistants({ fabOn }: { fabOn: boolean }) {
   const insightWorkspaceActive = useInsightWorkspaceActive();
+  const cleanPublicListing = useCleanPublicListing();
 
-  if (insightWorkspaceActive) return null;
+  useEffect(() => {
+    if (!cleanPublicListing || typeof document === "undefined") return;
+    document.querySelectorAll("ai-memo-pad").forEach((el) => el.remove());
+  }, [cleanPublicListing]);
+
+  if (insightWorkspaceActive || cleanPublicListing) return null;
 
   return (
     <>

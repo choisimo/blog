@@ -60,7 +60,7 @@ export function Footer() {
       'border-t bg-background',
       isTerminal && 'border-primary/30'
     )}>
-      <div className='container mx-auto px-4 sm:px-6 lg:px-8'>
+      <div className='mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8'>
         <div className='py-10 md:py-14'>
             <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 md:grid-cols-4 md:gap-8'>
             <div className='space-y-4'>

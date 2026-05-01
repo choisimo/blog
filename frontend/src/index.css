@@ -97,6 +97,17 @@
     /* Easing tokens */
     --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
     --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Blog redesign tokens */
+    --blog-page: 210 20% 99%;
+    --blog-surface: 0 0% 100%;
+    --blog-surface-muted: 220 22% 96%;
+    --blog-border: 214 24% 90%;
+    --blog-border-strong: 214 18% 82%;
+    --blog-title: 220 18% 10%;
+    --blog-muted: 220 8% 45%;
+    --blog-shadow: 0 16px 40px hsl(220 24% 18% / 0.06);
+    --blog-shadow-soft: 0 8px 24px hsl(220 24% 18% / 0.045);
   }
 
   .dark {
@@ -172,6 +183,17 @@
 
     /* Blog card surface — blue-tinted elevated surface */
     --card-blog: 222 22% 13%;
+
+    /* Blog redesign tokens */
+    --blog-page: 220 18% 5%;
+    --blog-surface: 222 22% 9%;
+    --blog-surface-muted: 222 16% 13%;
+    --blog-border: 220 12% 18%;
+    --blog-border-strong: 220 12% 26%;
+    --blog-title: 0 0% 98%;
+    --blog-muted: 220 10% 66%;
+    --blog-shadow: 0 16px 40px hsl(0 0% 0% / 0.28);
+    --blog-shadow-soft: 0 8px 24px hsl(0 0% 0% / 0.22);
   }
 
   /* Terminal Theme - CRT / Green Monitor Aesthetic */

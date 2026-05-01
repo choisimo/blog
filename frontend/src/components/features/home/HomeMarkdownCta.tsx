@@ -27,7 +27,7 @@ export function HomeMarkdownCta({
   return (
     <section
       className={cn(
-        'mb-6 overflow-hidden rounded-lg border border-border/60 bg-card',
+        'mb-6 overflow-hidden rounded-lg border border-[hsl(var(--blog-border))] bg-[hsl(var(--blog-surface))]',
         isTerminal && 'border-primary/30'
       )}
     >
@@ -51,7 +51,7 @@ export function HomeMarkdownCta({
                   href={ctaHref}
                   target='_blank'
                   rel='noopener noreferrer'
-                  className='inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90'
+                  className='inline-flex h-11 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-[background-color,transform] duration-200 ease-spring hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[0.98]'
                 >
                   {ctaLabel}
                   <ArrowRight className='h-4 w-4' />
@@ -59,7 +59,7 @@ export function HomeMarkdownCta({
               ) : (
                 <Link
                   to={ctaHref}
-                  className='inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90'
+                  className='inline-flex h-11 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-[background-color,transform] duration-200 ease-spring hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[0.98]'
                 >
                   {ctaLabel}
                   <ArrowRight className='h-4 w-4' />
@@ -69,7 +69,7 @@ export function HomeMarkdownCta({
           )}
         </div>
 
-        <div className='hidden min-h-28 rounded-lg border border-border/60 bg-background/70 p-3 md:block'>
+        <div className='hidden min-h-28 rounded-lg border border-[hsl(var(--blog-border))] bg-[hsl(var(--blog-page))] p-3 md:block'>
           <div className='mb-3 flex items-center justify-between'>
             <div className='flex items-center gap-2 text-xs font-semibold'>
               <span className='flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary'>
