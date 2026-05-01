@@ -194,6 +194,27 @@ async function releaseRecord(scope, key, requestHash) {
   );
 }
 
+export async function claimIdempotencyRecord(scope, key, requestPayload, options = {}) {
+  const requestHash = hashIdempotencyPayload(requestPayload);
+  const claim = await claimRecord(scope, key, requestHash, options);
+  return { ...claim, requestHash };
+}
+
+export async function storeIdempotencyRecord(
+  scope,
+  key,
+  requestHash,
+  statusCode,
+  response,
+  ttlSeconds = DEFAULT_TTL_SECONDS,
+) {
+  return storeRecord(scope, key, requestHash, statusCode, response, ttlSeconds);
+}
+
+export async function releaseIdempotencyRecord(scope, key, requestHash) {
+  return releaseRecord(scope, key, requestHash);
+}
+
 export async function runIdempotent(req, res, scope, requestPayload, handler, options = {}) {
   const key = getIdempotencyKey(req);
   if (!key) {

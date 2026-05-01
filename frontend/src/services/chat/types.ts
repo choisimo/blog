@@ -239,6 +239,7 @@ export type StreamChatInput = {
   page?: { url?: string; title?: string };
   currentPost?: PageContext["article"];
   signal?: AbortSignal;
+  idempotencyKey?: string;
   onFirstToken?: (ms: number) => void;
   useArticleContext?: boolean;
   imageUrl?: string;

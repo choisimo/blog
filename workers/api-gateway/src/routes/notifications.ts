@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { HonoEnv } from '../types';
 import { requireAuth } from '../middleware/auth';
 import { proxyToBackendWithPolicy } from '../lib/backend-proxy';
+import { badRequest } from '../lib/response';
 
 const notifications = new Hono<HonoEnv>();
 
@@ -28,8 +29,11 @@ notifications.get('/history', requireAuth, async (c) => {
 });
 
 notifications.patch('/:notificationId/read', requireAuth, async (c) => {
+  const notificationId = c.req.param('notificationId');
+  if (!notificationId) return badRequest(c, 'Notification id is required');
+
   return proxyToBackendWithPolicy(c, {
-    upstreamPath: `/api/v1/notifications/${encodeURIComponent(c.req.param('notificationId'))}/read`,
+    upstreamPath: `/api/v1/notifications/${encodeURIComponent(notificationId)}/read`,
     backendUnavailableMessage: 'Could not connect to notifications backend',
   });
 });

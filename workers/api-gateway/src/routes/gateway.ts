@@ -21,6 +21,10 @@ import {
   getAiDefaultModel,
   getAiVisionModel,
 } from '../lib/config';
+import {
+  attachOriginSignatureHeadersForUrl,
+  stripOriginSignatureHeaders,
+} from '../lib/origin-signature';
 import { requireAdmin, requireAuth } from '../middleware/auth';
 
 const gateway = new Hono<HonoEnv>();
@@ -61,6 +65,7 @@ async function proxyToBackendAi(request: Request, env: Env, path: string): Promi
 
   const headers = new Headers(request.headers);
   headers.set('Host', new URL(backendUrl).host);
+  stripOriginSignatureHeaders(headers);
 
   // Add internal key if configured
   const apiKey = await getAiServeApiKey(env);
@@ -74,6 +79,13 @@ async function proxyToBackendAi(request: Request, env: Env, path: string): Promi
 
   // Remove sensitive headers
   headers.delete('X-Gateway-Caller-Key');
+  await attachOriginSignatureHeadersForUrl({
+    env,
+    headers,
+    method: request.method,
+    url: url.toString(),
+    requestId: headers.get('X-Request-ID') || undefined,
+  });
 
   const body = ['GET', 'HEAD'].includes(request.method) ? undefined : await request.blob();
 
@@ -119,14 +131,21 @@ gateway.get('/call/status', async (c) => {
     const backendUrl = await getAiAgentBackendUrl(c.env);
     const apiKey = await getAiServeApiKey(c.env);
 
-    const headers: Record<string, string> = {
+    const url = `${backendUrl}/api/v1/ai/status`;
+    const headers = new Headers({
       'Content-Type': 'application/json',
-    };
+    });
     if (apiKey) {
-      headers['X-Internal-Gateway-Key'] = apiKey;
+      headers.set('X-Internal-Gateway-Key', apiKey);
     }
+    await attachOriginSignatureHeadersForUrl({
+      env: c.env,
+      headers,
+      method: 'GET',
+      url,
+    });
 
-    const response = await fetch(`${backendUrl}/api/v1/ai/status`, {
+    const response = await fetch(url, {
       method: 'GET',
       headers,
     });
@@ -180,23 +199,29 @@ async function analyzeWithBackend(
   const backendUrl = await getAiAgentBackendUrl(env);
   const url = `${backendUrl}/api/v1/ai/vision/analyze`;
 
-  const headers: Record<string, string> = {
+  const headers = new Headers({
     'Content-Type': 'application/json',
-  };
+  });
   const apiKey = await getAiServeApiKey(env);
   if (apiKey) {
-    headers['X-Internal-Gateway-Key'] = apiKey;
+    headers.set('X-Internal-Gateway-Key', apiKey);
   }
   const [forcedModel, forcedVisionModel] = await Promise.all([
     getAiDefaultModel(env),
     getAiVisionModel(env),
   ]);
   if (forcedModel) {
-    headers['X-AI-Model'] = forcedModel;
+    headers.set('X-AI-Model', forcedModel);
   }
   if (forcedVisionModel) {
-    headers['X-AI-Vision-Model'] = forcedVisionModel;
+    headers.set('X-AI-Vision-Model', forcedVisionModel);
   }
+  await attachOriginSignatureHeadersForUrl({
+    env,
+    headers,
+    method: 'POST',
+    url,
+  });
 
   const response = await fetch(url, {
     method: 'POST',

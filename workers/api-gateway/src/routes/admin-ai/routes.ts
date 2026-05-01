@@ -30,6 +30,7 @@ routes.get('/', requireAdmin, async (c) => {
 
 routes.get('/:id', requireAdmin, async (c) => {
   const id = c.req.param('id');
+  if (!id) return badRequest(c, 'Route id is required');
 
   try {
     const route = await queryOne(
@@ -108,11 +109,7 @@ routes.post('/', requireAdmin, async (c) => {
       is_default ? 1 : 0
     );
 
-    const route = await queryOne<AIRoute>(
-      c.env.DB,
-      `SELECT * FROM ai_routes WHERE id = ?`,
-      id
-    );
+    const route = await queryOne<AIRoute>(c.env.DB, `SELECT * FROM ai_routes WHERE id = ?`, id);
 
     return success(c, { route }, 201);
   } catch (err) {
@@ -126,14 +123,11 @@ routes.post('/', requireAdmin, async (c) => {
 
 routes.put('/:id', requireAdmin, async (c) => {
   const id = c.req.param('id');
+  if (!id) return badRequest(c, 'Route id is required');
   const body = await c.req.json().catch(() => ({}));
 
   try {
-    const existing = await queryOne<AIRoute>(
-      c.env.DB,
-      `SELECT * FROM ai_routes WHERE id = ?`,
-      id
-    );
+    const existing = await queryOne<AIRoute>(c.env.DB, `SELECT * FROM ai_routes WHERE id = ?`, id);
 
     if (!existing) {
       return notFound(c, `Route not found: ${id}`);
@@ -222,17 +216,9 @@ routes.put('/:id', requireAdmin, async (c) => {
     updates.push('updated_at = CURRENT_TIMESTAMP');
     values.push(id);
 
-    await execute(
-      c.env.DB,
-      `UPDATE ai_routes SET ${updates.join(', ')} WHERE id = ?`,
-      ...values
-    );
+    await execute(c.env.DB, `UPDATE ai_routes SET ${updates.join(', ')} WHERE id = ?`, ...values);
 
-    const route = await queryOne<AIRoute>(
-      c.env.DB,
-      `SELECT * FROM ai_routes WHERE id = ?`,
-      id
-    );
+    const route = await queryOne<AIRoute>(c.env.DB, `SELECT * FROM ai_routes WHERE id = ?`, id);
 
     return success(c, { route });
   } catch (err) {
@@ -243,13 +229,10 @@ routes.put('/:id', requireAdmin, async (c) => {
 
 routes.delete('/:id', requireAdmin, async (c) => {
   const id = c.req.param('id');
+  if (!id) return badRequest(c, 'Route id is required');
 
   try {
-    const existing = await queryOne<AIRoute>(
-      c.env.DB,
-      `SELECT * FROM ai_routes WHERE id = ?`,
-      id
-    );
+    const existing = await queryOne<AIRoute>(c.env.DB, `SELECT * FROM ai_routes WHERE id = ?`, id);
 
     if (!existing) {
       return notFound(c, `Route not found: ${id}`);

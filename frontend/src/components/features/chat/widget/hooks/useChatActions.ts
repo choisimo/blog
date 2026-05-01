@@ -8,6 +8,7 @@ import type {
 import type { PageContext } from "@/services/chat/types";
 import type { SelectedBlockAttachment } from "@/services/chat";
 import {
+  createChatIdempotencyKey,
   streamChatEvents,
   uploadChatImage,
   invokeChatAggregate,
@@ -460,6 +461,7 @@ export function useChatActions({
         let acc = "";
         let finalSources: ChatMessage["sources"] | undefined;
         let finalFollowups: ChatMessage["followups"] | undefined;
+        const idempotencyKey = createChatIdempotencyKey();
 
         push({
           id: aiId,
@@ -471,6 +473,7 @@ export function useChatActions({
         for await (const ev of streamChatEvents({
           text: baseText,
           signal: controller.signal,
+          idempotencyKey,
           onFirstToken: (ms) => setFirstTokenMs(ms),
           useArticleContext: questionMode === "article",
           currentPost,

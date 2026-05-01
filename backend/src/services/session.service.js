@@ -20,6 +20,7 @@ const logger = createLogger("session");
 
 const sessions = new Map();
 const notebookBootstrapJobs = new Map();
+const sessionTurnLocks = new Map();
 let postsCorpusCache = null;
 
 // ---------------------------------------------------------------------------
@@ -37,6 +38,12 @@ const sessionGcInterval = setInterval(() => {
     if (now - lastActivity > SESSION_TTL_MS) {
       sessions.delete(id);
       notebookBootstrapJobs.delete(id);
+      sessionTurnLocks.delete(id);
+    }
+  }
+  for (const [id, lock] of sessionTurnLocks) {
+    if (Number.isFinite(lock?.expiresAt) && lock.expiresAt <= now) {
+      sessionTurnLocks.delete(id);
     }
   }
 }, SESSION_GC_INTERVAL_MS);
@@ -102,6 +109,52 @@ export function createSession(title = "") {
 
 export function getSession(sessionId) {
   return sessions.get(sessionId);
+}
+
+export function claimSessionTurn(sessionId, metadata = {}) {
+  const key = String(sessionId || "").trim();
+  if (!key) {
+    return { claimed: false, reason: "missing_session_id" };
+  }
+
+  const now = Date.now();
+  const existing = sessionTurnLocks.get(key);
+  if (existing) {
+    if (Number.isFinite(existing.expiresAt) && existing.expiresAt <= now) {
+      sessionTurnLocks.delete(key);
+    } else {
+      return { claimed: false, lock: existing };
+    }
+  }
+
+  const ttlMs = Number.isFinite(metadata.ttlMs)
+    ? Math.max(1, Number(metadata.ttlMs))
+    : null;
+  const lockMetadata = { ...metadata };
+  delete lockMetadata.ttlMs;
+
+  const lock = {
+    id: `turn-${now}-${Math.random().toString(36).slice(2, 8)}`,
+    sessionId: key,
+    startedAt: now,
+    expiresAt: ttlMs ? now + ttlMs : null,
+    ...lockMetadata,
+  };
+  sessionTurnLocks.set(key, lock);
+
+  return {
+    claimed: true,
+    lock,
+    release() {
+      if (sessionTurnLocks.get(key) === lock) {
+        sessionTurnLocks.delete(key);
+      }
+    },
+  };
+}
+
+export function isSessionTurnInProgress(sessionId) {
+  return sessionTurnLocks.has(String(sessionId || "").trim());
 }
 
 // ---------------------------------------------------------------------------

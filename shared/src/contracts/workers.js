@@ -6,7 +6,13 @@ export const WORKER_DEPLOYMENTS = Object.freeze([
     path: 'api-gateway',
     wranglerPath: 'api-gateway/wrangler.toml',
     hasProduction: true,
-    requiredSecrets: ['BACKEND_ORIGIN', 'BACKEND_KEY', 'JWT_SECRET'],
+    requiredSecrets: [
+      'BACKEND_ORIGIN',
+      'BACKEND_KEY',
+      'GATEWAY_SIGNING_SECRET',
+      'JWT_SECRET',
+      'SECRETS_ENCRYPTION_KEY',
+    ],
   },
   {
     id: 'r2-gateway',

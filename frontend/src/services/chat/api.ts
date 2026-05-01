@@ -79,6 +79,14 @@ async function buildAuthenticatedChatHeaders(
   };
 }
 
+export function createChatIdempotencyKey(): string {
+  const randomUUID = globalThis.crypto?.randomUUID;
+  if (typeof randomUUID === "function") {
+    return randomUUID.call(globalThis.crypto);
+  }
+  return `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 function getAggregateText(data: ChatAggregateEnvelope["data"]): string | null {
   if (typeof data === "string") {
     return data;
@@ -234,7 +242,10 @@ export async function* streamChatEvents(
   const { page, parts, enableRag } = buildStreamPayload(input);
 
   const url = buildChatUrl("/message", sessionID);
-  const headers = await buildAuthenticatedChatHeaders("stream");
+  const idempotencyKey = input.idempotencyKey || createChatIdempotencyKey();
+  const headers = await buildAuthenticatedChatHeaders("stream", {
+    "Idempotency-Key": idempotencyKey,
+  });
 
   const res = await fetch(url, {
     method: "POST",

@@ -1,11 +1,19 @@
 import type { Env } from '../types';
 
 const SIGNATURE_VERSION = 'v1';
+const PROTECTED_ENVS = new Set(['production', 'staging']);
+
+export class OriginSignatureConfigurationError extends Error {
+  code = 'ORIGIN_SIGNATURE_CONFIG_MISSING';
+
+  constructor() {
+    super('GATEWAY_SIGNING_SECRET is required for backend origin signing');
+    this.name = 'OriginSignatureConfigurationError';
+  }
+}
 
 function toHex(bytes: ArrayBuffer): string {
-  return [...new Uint8Array(bytes)]
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
+  return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 async function hmacSha256(secret: string, value: string): Promise<string> {
@@ -23,6 +31,10 @@ async function hmacSha256(secret: string, value: string): Promise<string> {
 function gatewaySigningSecret(env: Env): string | null {
   const secret = env.GATEWAY_SIGNING_SECRET || env.BACKEND_GATEWAY_SIGNING_SECRET;
   return typeof secret === 'string' && secret.trim() ? secret.trim() : null;
+}
+
+function isProtectedEnv(env: Env): boolean {
+  return PROTECTED_ENVS.has(env.ENV);
 }
 
 function buildPayload(input: {
@@ -59,7 +71,12 @@ export async function attachOriginSignatureHeaders(input: {
   now?: Date;
 }): Promise<string | null> {
   const secret = gatewaySigningSecret(input.env);
-  if (!secret) return null;
+  if (!secret) {
+    if (isProtectedEnv(input.env)) {
+      throw new OriginSignatureConfigurationError();
+    }
+    return null;
+  }
 
   const requestId = input.requestId || crypto.randomUUID();
   const timestamp = Math.floor((input.now || new Date()).getTime() / 1000).toString();
@@ -79,4 +96,23 @@ export async function attachOriginSignatureHeaders(input: {
   input.headers.set('X-Gateway-Signature', signature);
   input.headers.set('X-Origin-Verified-By', 'api-gateway');
   return requestId;
+}
+
+export async function attachOriginSignatureHeadersForUrl(input: {
+  env: Env;
+  headers: Headers;
+  method: string;
+  url: string;
+  requestId?: string;
+  now?: Date;
+}): Promise<string | null> {
+  const parsed = new URL(input.url);
+  return attachOriginSignatureHeaders({
+    env: input.env,
+    headers: input.headers,
+    method: input.method,
+    pathAndQuery: `${parsed.pathname}${parsed.search}`,
+    requestId: input.requestId,
+    now: input.now,
+  });
 }

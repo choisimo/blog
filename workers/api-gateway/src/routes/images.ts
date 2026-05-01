@@ -20,7 +20,9 @@ const CHAT_UPLOAD_RATE_LIMIT = 20;
 const CHAT_UPLOAD_RATE_WINDOW = 60;
 
 function sanitizeR2Filename(name: string): string {
-  const sanitized = String(name || '').replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-+/g, '-');
+  const sanitized = String(name || '')
+    .replace(/[^a-zA-Z0-9._-]/g, '-')
+    .replace(/-+/g, '-');
   if (!sanitized || sanitized.startsWith('.')) return `upload-${Date.now()}`;
   return sanitized.slice(0, 160);
 }
@@ -332,6 +334,7 @@ images.get('/chat-object', requireAuth, async (c) => {
 // DELETE /images/:key - Delete image from R2 (admin only)
 images.delete('/:key', requireAdmin, async (c) => {
   const key = c.req.param('key');
+  if (!key) return badRequest(c, 'Image key is required');
   const r2 = c.env.R2;
   if (!r2) {
     return badRequest(c, 'R2 bucket is not configured');

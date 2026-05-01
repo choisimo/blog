@@ -6,6 +6,7 @@ import {
   markDomainOutboxProcessed,
   prepareAppendDomainOutboxStatement,
 } from './domain-outbox';
+import { attachOriginSignatureHeadersForUrl } from './origin-signature';
 
 const MEMORY_EMBEDDING_STREAM = 'memory.embedding';
 const MEMORY_EMBEDDING_MAX_RETRIES = 5;
@@ -36,12 +37,21 @@ async function requireBackend(env: Env) {
 
 async function upsertMemoryEmbedding(env: Env, payload: MemoryEmbeddingUpsertPayload) {
   const { backendOrigin, backendKey } = await requireBackend(env);
-  const response = await fetch(`${backendOrigin}/api/v1/rag/memories/upsert/internal`, {
+  const url = `${backendOrigin}/api/v1/rag/memories/upsert/internal`;
+  const headers = new Headers({
+    'Content-Type': 'application/json',
+    ...(backendKey ? { 'X-Backend-Key': backendKey } : {}),
+  });
+  await attachOriginSignatureHeadersForUrl({
+    env,
+    headers,
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(backendKey ? { 'X-Backend-Key': backendKey } : {}),
-    },
+    url,
+  });
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
     body: JSON.stringify({
       userId: payload.userId,
       memories: [
@@ -62,13 +72,18 @@ async function upsertMemoryEmbedding(env: Env, payload: MemoryEmbeddingUpsertPay
 
 async function deleteMemoryEmbedding(env: Env, payload: MemoryEmbeddingDeletePayload) {
   const { backendOrigin, backendKey } = await requireBackend(env);
-  const response = await fetch(
-    `${backendOrigin}/api/v1/rag/memories/${payload.userId}/${payload.memoryId}/internal`,
-    {
-      method: 'DELETE',
-      headers: backendKey ? { 'X-Backend-Key': backendKey } : undefined,
-    }
-  );
+  const url = `${backendOrigin}/api/v1/rag/memories/${payload.userId}/${payload.memoryId}/internal`;
+  const headers = new Headers(backendKey ? { 'X-Backend-Key': backendKey } : undefined);
+  await attachOriginSignatureHeadersForUrl({
+    env,
+    headers,
+    method: 'DELETE',
+    url,
+  });
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers,
+  });
 
   if (!response.ok && response.status !== 404) {
     throw new Error(`Memory embedding delete failed: ${response.status}`);

@@ -95,6 +95,7 @@ export {
   invokeChatTask,
   invokeLensFeed,
   invokeThoughtFeed,
+  createChatIdempotencyKey,
   streamChatEvents,
   streamChatMessage,
   uploadChatImage,

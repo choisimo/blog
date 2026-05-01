@@ -104,6 +104,7 @@ templates.post('/', requireAdmin, async (c) => {
 
 templates.put('/:id', requireAdmin, async (c) => {
   const id = c.req.param('id');
+  if (!id) return badRequest(c, 'Template id is required');
   const body = await c.req.json().catch(() => ({}));
 
   try {
@@ -213,6 +214,7 @@ templates.put('/:id', requireAdmin, async (c) => {
 
 templates.delete('/:id', requireAdmin, async (c) => {
   const id = c.req.param('id');
+  if (!id) return badRequest(c, 'Template id is required');
 
   try {
     const existing = await queryOne(
@@ -236,6 +238,7 @@ templates.delete('/:id', requireAdmin, async (c) => {
 
 templates.post('/:id/use', requireAdmin, async (c) => {
   const id = c.req.param('id');
+  if (!id) return badRequest(c, 'Template id is required');
 
   try {
     const template = await queryOne<PromptTemplate>(

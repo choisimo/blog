@@ -50,6 +50,7 @@ models.get('/', requireAdmin, async (c) => {
 
 models.get('/:id', requireAdmin, async (c) => {
   const id = c.req.param('id');
+  if (!id) return badRequest(c, 'Model id is required');
 
   try {
     const model = await queryOne(
@@ -147,11 +148,7 @@ models.post('/', requireAdmin, async (c) => {
       priority || 0
     );
 
-    const model = await queryOne<AIModel>(
-      c.env.DB,
-      `SELECT * FROM ai_models WHERE id = ?`,
-      id
-    );
+    const model = await queryOne<AIModel>(c.env.DB, `SELECT * FROM ai_models WHERE id = ?`, id);
 
     return success(c, { model }, 201);
   } catch (err) {
@@ -165,14 +162,11 @@ models.post('/', requireAdmin, async (c) => {
 
 models.put('/:id', requireAdmin, async (c) => {
   const id = c.req.param('id');
+  if (!id) return badRequest(c, 'Model id is required');
   const body = await c.req.json().catch(() => ({}));
 
   try {
-    const existing = await queryOne<AIModel>(
-      c.env.DB,
-      `SELECT * FROM ai_models WHERE id = ?`,
-      id
-    );
+    const existing = await queryOne<AIModel>(c.env.DB, `SELECT * FROM ai_models WHERE id = ?`, id);
 
     if (!existing) {
       return notFound(c, `Model not found: ${id}`);
@@ -265,17 +259,9 @@ models.put('/:id', requireAdmin, async (c) => {
     updates.push('updated_at = CURRENT_TIMESTAMP');
     values.push(id);
 
-    await execute(
-      c.env.DB,
-      `UPDATE ai_models SET ${updates.join(', ')} WHERE id = ?`,
-      ...values
-    );
+    await execute(c.env.DB, `UPDATE ai_models SET ${updates.join(', ')} WHERE id = ?`, ...values);
 
-    const model = await queryOne<AIModel>(
-      c.env.DB,
-      `SELECT * FROM ai_models WHERE id = ?`,
-      id
-    );
+    const model = await queryOne<AIModel>(c.env.DB, `SELECT * FROM ai_models WHERE id = ?`, id);
 
     return success(c, { model });
   } catch (err) {
@@ -286,13 +272,10 @@ models.put('/:id', requireAdmin, async (c) => {
 
 models.delete('/:id', requireAdmin, async (c) => {
   const id = c.req.param('id');
+  if (!id) return badRequest(c, 'Model id is required');
 
   try {
-    const existing = await queryOne<AIModel>(
-      c.env.DB,
-      `SELECT * FROM ai_models WHERE id = ?`,
-      id
-    );
+    const existing = await queryOne<AIModel>(c.env.DB, `SELECT * FROM ai_models WHERE id = ?`, id);
 
     if (!existing) {
       return notFound(c, `Model not found: ${id}`);
