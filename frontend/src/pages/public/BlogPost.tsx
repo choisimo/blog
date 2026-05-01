@@ -1,7 +1,6 @@
 import { useParams, Navigate, useLocation } from 'react-router-dom';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { ReadingProgress } from '@/components/common/ReadingProgress';
-import { ScrollToTop } from '@/components/common/ScrollToTop';
 import {
   getPostBySlug,
   getPostsPage,
@@ -20,8 +19,6 @@ import {
 } from '@/utils/content/blog';
 import {
   CommentSection,
-  TableOfContents,
-  TocDrawer,
   SeriesNavigation,
 } from '@/components/features/blog';
 import { QuizPanel } from '@/components/features/sentio/QuizPanel';
@@ -142,26 +139,6 @@ const MemoizedBlogPostRelated = memo(
     prev.isTerminal === next.isTerminal &&
     prev.relatedPostsLabel === next.relatedPostsLabel &&
     prev.relatedPostsDescLabel === next.relatedPostsDescLabel
-);
-
-const MemoizedTableOfContents = memo(
-  TableOfContents,
-  (prev, next) =>
-    prev.content === next.content &&
-    prev.postTitle === next.postTitle &&
-    prev.onClose === next.onClose &&
-    prev.sticky === next.sticky
-);
-
-const MemoizedTocDrawer = memo(
-  TocDrawer,
-  (prev, next) =>
-    prev.content === next.content &&
-    prev.postTitle === next.postTitle &&
-    prev.showAfterScroll === next.showAfterScroll &&
-    prev.triggerClassName === next.triggerClassName &&
-    prev.triggerPlacement === next.triggerPlacement &&
-    prev.scrollThreshold === next.scrollThreshold
 );
 
 const BlogPost = () => {
@@ -753,17 +730,6 @@ ${description}
     [contentForRender, displayTitle, inlineEnabled, isTerminal, post]
   );
 
-  const tocProps = useMemo(
-    () =>
-      post
-        ? {
-            content: contentForRender,
-            postTitle: displayTitle,
-          }
-        : null,
-    [contentForRender, displayTitle, post]
-  );
-
   const handleShare = async () => {
     const url = window.location.href;
     if (navigator.share) {
@@ -819,23 +785,17 @@ ${description}
         )}
       >
         <div
-          className='mx-auto w-full max-w-7xl px-4 pt-6 pb-32 sm:pt-12 2xl:max-w-[1460px]'
+          className='mx-auto w-full max-w-[1500px] px-4 pt-6 pb-32 sm:pt-12 2xl:max-w-[1600px]'
           style={safeAreaPaddingStyle}
         >
           <div
             className={cn(
-              'relative grid grid-cols-1 gap-8',
-              'xl:grid-cols-[320px_minmax(0,768px)] xl:justify-center',
-              '2xl:grid-cols-[320px_minmax(0,768px)_minmax(260px,300px)]'
+              'relative grid grid-cols-1 justify-items-center gap-8'
             )}
           >
-            <aside className='hidden xl:block xl:col-start-1'>
-              <MemoizedTableOfContents {...tocProps!} />
-            </aside>
-
             <article
               className={cn(
-                'mx-auto w-full max-w-3xl space-y-12 xl:col-start-2 xl:mx-0',
+                'mx-auto w-full max-w-5xl space-y-12',
                 isTerminal && 'terminal-card p-4 sm:p-6'
               )}
             >
@@ -904,25 +864,14 @@ ${description}
                 relatedPostsDescLabel={str.blog.relatedPostsDesc}
               />
             </article>
-
-            <aside
-              className='hidden 2xl:block 2xl:col-start-3'
-              aria-hidden='true'
-            />
           </div>
         </div>
       </div>
-      <ScrollToTop className='hidden sm:inline-flex' />
       <ArticleQuickActions
         postId={postId}
         isTerminal={isTerminal}
         tocContent={contentForRender}
         tocPostTitle={displayTitle}
-      />
-      <MemoizedTocDrawer
-        {...tocProps!}
-        showAfterScroll
-        triggerClassName='hidden sm:flex'
       />
     </>
   );

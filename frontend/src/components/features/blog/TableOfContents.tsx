@@ -239,7 +239,7 @@ export const TableOfContents = ({
   );
 };
 
-// Mobile TOC Drawer — floating button that opens a Sheet
+// TOC Drawer — opened from the article quick-actions button.
 export const TocDrawer = ({
   content,
   postTitle,

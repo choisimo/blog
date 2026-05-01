@@ -347,6 +347,14 @@ test('renders post content when loaded successfully', async () => {
   expect(await screen.findByText('Test Post')).toBeInTheDocument();
 });
 
+test('exposes table of contents only through the quick actions drawer', async () => {
+  renderBlogPost();
+
+  expect(await screen.findByText('Test Post')).toBeInTheDocument();
+  expect(screen.queryByTestId('table-of-contents')).not.toBeInTheDocument();
+  expect(screen.getAllByTestId('toc-drawer')).toHaveLength(1);
+});
+
 test('renders original content when translation fails', async () => {
   hoisted.currentLanguage = 'en';
   vi.mocked(postsData.getPostBySlug).mockResolvedValue(basePost);
