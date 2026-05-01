@@ -13,7 +13,8 @@ import {
 const siteContent = new Hono<HonoEnv>();
 
 siteContent.get('/admin/:key', requireAdmin, async (c) => {
-  const key = parseSiteContentBlockKey(c.req.param('key'));
+  const rawKey = c.req.param('key');
+  const key = rawKey ? parseSiteContentBlockKey(rawKey) : null;
   if (!key) return badRequest(c, 'Invalid site content block key');
 
   try {
@@ -30,7 +31,8 @@ siteContent.get('/admin/:key', requireAdmin, async (c) => {
 });
 
 siteContent.put('/admin/:key', requireAdmin, async (c) => {
-  const key = parseSiteContentBlockKey(c.req.param('key'));
+  const rawKey = c.req.param('key');
+  const key = rawKey ? parseSiteContentBlockKey(rawKey) : null;
   if (!key) return badRequest(c, 'Invalid site content block key');
 
   const body = await c.req.json().catch(() => null);
@@ -68,7 +70,8 @@ siteContent.put('/admin/:key', requireAdmin, async (c) => {
 });
 
 siteContent.get('/:key', async (c) => {
-  const key = parseSiteContentBlockKey(c.req.param('key'));
+  const rawKey = c.req.param('key');
+  const key = rawKey ? parseSiteContentBlockKey(rawKey) : null;
   if (!key) return badRequest(c, 'Invalid site content block key');
 
   try {

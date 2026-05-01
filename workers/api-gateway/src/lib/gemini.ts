@@ -13,6 +13,7 @@
 
 import type { Env } from '../types';
 import { getAiServeUrl, getAiServeApiKey } from './config';
+import { attachOriginSignatureHeadersForUrl } from './origin-signature';
 
 export type GenerateOptions = {
   temperature?: number;
@@ -23,7 +24,7 @@ export type GenerateOptions = {
  * 백엔드 AI 서버를 통해 콘텐츠를 생성합니다.
  *
  * @deprecated Use createAIService(env).generate() from ai-service.ts instead
- * 
+ *
  * @param prompt - 생성할 프롬프트
  * @param env - Worker 환경 변수
  * @param options - 생성 옵션 (temperature, maxTokens)
@@ -39,21 +40,27 @@ export async function generateContent(
   const maxTokens = options?.maxTokens ?? 2048;
 
   // Use BACKEND_ORIGIN to avoid circular calls (api.nodove.com -> api.nodove.com)
-  const base = env.BACKEND_ORIGIN || await getAiServeUrl(env);
+  const base = env.BACKEND_ORIGIN || (await getAiServeUrl(env));
   const url = `${base.replace(/\/$/, '')}/api/v1/ai/generate`;
 
-  const headers: Record<string, string> = {
+  const headers = new Headers({
     'Content-Type': 'application/json',
     'User-Agent': 'Blog-Workers/1.0',
-    'Accept': 'application/json',
-  };
+    Accept: 'application/json',
+  });
   const apiKey = await getAiServeApiKey(env);
   if (apiKey) {
-    headers['X-API-KEY'] = apiKey;
+    headers.set('X-API-KEY', apiKey);
   }
   if (env.BACKEND_KEY) {
-    headers['X-Backend-Key'] = env.BACKEND_KEY;
+    headers.set('X-Backend-Key', env.BACKEND_KEY);
   }
+  await attachOriginSignatureHeadersForUrl({
+    env,
+    headers,
+    method: 'POST',
+    url,
+  });
 
   const res = await fetch(url, {
     method: 'POST',

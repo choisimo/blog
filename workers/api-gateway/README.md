@@ -64,7 +64,8 @@
 
 - `BACKEND_ORIGIN`이 없으면 `500` JSON 오류 반환
 - `BACKEND_KEY`가 있으면 `X-Backend-Key` 주입
-- `GATEWAY_SIGNING_SECRET`이 있으면 `X-Gateway-*` HMAC origin signature 주입
+- protected env(`production`, `staging`)에서는 `GATEWAY_SIGNING_SECRET`이 필수이며, 없으면 backend로 unsigned 요청을 보내지 않고 `500`으로 실패
+- `GATEWAY_SIGNING_SECRET`으로 `X-Gateway-*` HMAC origin signature 주입
 - 추가 전달 가능 헤더:
   - `X-Forwarded-For`
   - `X-Forwarded-Proto`
@@ -110,9 +111,10 @@ public config 응답에는 다음 필드가 포함됩니다.
 
 - cron: `0 6 * * *`
 - 확인된 동작:
-  - `post_stats`의 `views_7d`, `views_30d` 갱신
-  - `editor_picks` 재선정
-  - `post_views`의 90일 초과 데이터 삭제
+- `post_stats`의 `views_7d`, `views_30d` 갱신
+- `editor_picks` 재선정
+- `post_views`의 90일 초과 데이터 삭제
+- backend 호출은 `X-Backend-Key`와 `X-Gateway-*` HMAC signature를 함께 전송
 
 이 job은 D1 binding `DB`를 전제로 합니다.
 
@@ -171,4 +173,5 @@ GitHub Actions 파일: `.github/workflows/deploy-workers.yml`
 
 - `workers/**` 변경 또는 수동 실행 시 동작
 - 현재 자동 배포 대상은 `api-gateway`
+- api-gateway deploy 전 production D1 migration을 apply하고 schema smoke query를 실행
 - 일부 runtime config를 production secret으로 주입한 뒤 deploy 실행

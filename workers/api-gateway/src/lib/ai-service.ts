@@ -16,6 +16,7 @@
 
 import type { Env } from '../types';
 import { getAiServeUrl, getAiServeApiKey, getAiDefaultModel, getAiVisionModel } from './config';
+import { attachOriginSignatureHeadersForUrl } from './origin-signature';
 import { buildTaskPrompt, getFallbackData, type TaskMode, type TaskPayload } from './prompts';
 
 export const TRACE_ID_HEADER = 'X-Trace-ID';
@@ -108,15 +109,15 @@ export class AIService {
   /**
    * Build request headers with authentication
    */
-  private async buildHeaders(): Promise<Record<string, string>> {
-    const headers: Record<string, string> = {
+  private async buildHeaders(): Promise<Headers> {
+    const headers = new Headers({
       'Content-Type': 'application/json',
       'User-Agent': 'Blog-Workers/1.0',
       Accept: 'application/json',
-    };
+    });
 
     if (this.traceId) {
-      headers[TRACE_ID_HEADER] = this.traceId;
+      headers.set(TRACE_ID_HEADER, this.traceId);
     }
 
     const [apiKey, forcedModel, forcedVisionModel] = await Promise.all([
@@ -125,17 +126,17 @@ export class AIService {
       getAiVisionModel(this.env),
     ]);
     if (apiKey) {
-      headers['X-API-KEY'] = apiKey;
+      headers.set('X-API-KEY', apiKey);
     }
     if (forcedModel) {
-      headers['X-AI-Model'] = forcedModel;
+      headers.set('X-AI-Model', forcedModel);
     }
     if (forcedVisionModel) {
-      headers['X-AI-Vision-Model'] = forcedVisionModel;
+      headers.set('X-AI-Vision-Model', forcedVisionModel);
     }
 
     if (this.env.BACKEND_KEY) {
-      headers['X-Backend-Key'] = this.env.BACKEND_KEY;
+      headers.set('X-Backend-Key', this.env.BACKEND_KEY);
     }
 
     return headers;
@@ -152,6 +153,12 @@ export class AIService {
     const baseUrl = await this.getBaseUrl();
     const url = `${baseUrl.replace(/\/$/, '')}/api/v1/ai${endpoint}`;
     const headers = await this.buildHeaders();
+    await attachOriginSignatureHeadersForUrl({
+      env: this.env,
+      headers,
+      method: 'POST',
+      url,
+    });
 
     const controller = new AbortController();
     const timeoutId = options.timeout
@@ -300,14 +307,20 @@ export class AIService {
 
       const url = `${backendOrigin.replace(/\/$/, '')}/api/v1/ai/health`;
 
-      const headers: Record<string, string> = {
+      const headers = new Headers({
         Accept: 'application/json',
         'User-Agent': 'Blog-Workers/1.0',
-      };
+      });
 
       if (this.env.BACKEND_KEY) {
-        headers['X-Backend-Key'] = this.env.BACKEND_KEY;
+        headers.set('X-Backend-Key', this.env.BACKEND_KEY);
       }
+      await attachOriginSignatureHeadersForUrl({
+        env: this.env,
+        headers,
+        method: 'GET',
+        url,
+      });
 
       const res = await fetch(url, {
         method: 'GET',

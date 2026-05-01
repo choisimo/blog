@@ -16,7 +16,7 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { HonoEnv } from '../types';
-import { forbidden } from '../lib/response';
+import { badRequest, forbidden } from '../lib/response';
 import { requireAdmin, requireAuth } from '../middleware/auth';
 import { proxyToBackendWithPolicy } from '../lib/backend-proxy';
 
@@ -130,11 +130,9 @@ rag.post('/index', requireAdmin, async (c) => {
  * DELETE /index/:documentId - 인덱스에서 문서 삭제
  */
 rag.delete('/index/:documentId', requireAdmin, async (c) => {
-  return proxyToBackend(
-    c,
-    `/index/${encodeURIComponent(c.req.param('documentId'))}`,
-    'DELETE'
-  );
+  const documentId = c.req.param('documentId');
+  if (!documentId) return badRequest(c, 'Document id is required');
+  return proxyToBackend(c, `/index/${encodeURIComponent(documentId)}`, 'DELETE');
 });
 
 rag.post('/memories/search', requireAuth, async (c) => {

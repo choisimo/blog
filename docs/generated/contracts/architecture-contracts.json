@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-14T17:56:51.307Z",
+  "generatedAt": "2026-05-01T12:17:04.135Z",
   "serviceBoundaries": [
     {
       "id": "auth",
@@ -152,6 +152,12 @@
       "description": "Edge-authenticated notification ingress with backend-origin streaming/history handlers"
     },
     {
+      "id": "site-content",
+      "prefix": "/api/v1/site-content",
+      "owner": "worker-owned",
+      "description": "D1-backed public and admin-managed site content blocks"
+    },
+    {
       "id": "gateway",
       "prefix": "/api/v1/gateway",
       "owner": "worker-owned",
@@ -204,6 +210,12 @@
       "prefix": "/api/v1/healthz",
       "owner": "proxy-only",
       "description": "Origin health check exposure through edge"
+    },
+    {
+      "id": "readiness",
+      "prefix": "/api/v1/readiness",
+      "owner": "proxy-only",
+      "description": "Origin readiness check exposure through edge"
     },
     {
       "id": "health",
@@ -362,7 +374,9 @@
       "requiredSecrets": [
         "BACKEND_ORIGIN",
         "BACKEND_KEY",
-        "JWT_SECRET"
+        "GATEWAY_SIGNING_SECRET",
+        "JWT_SECRET",
+        "SECRETS_ENCRYPTION_KEY"
       ]
     },
     {

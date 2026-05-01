@@ -2,7 +2,11 @@ import type { Context } from 'hono';
 import type { HonoEnv } from '../types';
 import { getCorsHeadersForRequest } from './cors';
 import { getAiDefaultModel, getAiVisionModel } from './config';
-import { attachOriginSignatureHeaders, stripOriginSignatureHeaders } from './origin-signature';
+import {
+  OriginSignatureConfigurationError,
+  attachOriginSignatureHeaders,
+  stripOriginSignatureHeaders,
+} from './origin-signature';
 
 export type BackendProxyOptions = {
   upstreamPath: string;
@@ -112,7 +116,7 @@ async function buildProxyHeaders(
 
 async function buildProxyBody(
   c: Context<HonoEnv>,
-  options: BackendProxyOptions,
+  options: BackendProxyOptions
 ): Promise<BodyInit | null | undefined> {
   const method = (options.method || c.req.method).toUpperCase();
   if (method === 'GET' || method === 'HEAD') {
@@ -148,12 +152,13 @@ async function buildProxyBody(
 
 export async function proxyToBackendWithPolicy(
   c: Context<HonoEnv>,
-  options: BackendProxyOptions,
+  options: BackendProxyOptions
 ): Promise<Response> {
   const corsHeaders = await getCorsHeadersForRequest(c.req.raw, c.env);
   const backendUrl = buildBackendUrl(c, options);
   const method = options.method || c.req.method;
-  const unavailableMessage = options.backendUnavailableMessage || 'Could not connect to backend service';
+  const unavailableMessage =
+    options.backendUnavailableMessage || 'Could not connect to backend service';
 
   if (!backendUrl) {
     return new Response(
@@ -170,16 +175,16 @@ export async function proxyToBackendWithPolicy(
           'Content-Type': 'application/json',
           ...corsHeaders,
         },
-      },
+      }
     );
   }
 
-  const [headers, body] = await Promise.all([
-    buildProxyHeaders(c, options, backendUrl),
-    buildProxyBody(c, options),
-  ]);
-
   try {
+    const [headers, body] = await Promise.all([
+      buildProxyHeaders(c, options, backendUrl),
+      buildProxyBody(c, options),
+    ]);
+
     const requestInit: RequestInit & { duplex?: 'half' } = {
       method,
       headers,
@@ -225,7 +230,7 @@ export async function proxyToBackendWithPolicy(
             'Retry-After': '30',
             ...corsHeaders,
           },
-        },
+        }
       );
     }
 
@@ -235,6 +240,26 @@ export async function proxyToBackendWithPolicy(
       headers: responseHeaders,
     });
   } catch (error) {
+    if (error instanceof OriginSignatureConfigurationError) {
+      console.error('[backend-proxy] origin signing configuration error', error);
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: {
+            code: 'CONFIG_ERROR',
+            message: error.message,
+          },
+        }),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders,
+          },
+        }
+      );
+    }
+
     console.error('[backend-proxy] upstream request failed', error);
     return new Response(
       JSON.stringify({
@@ -251,7 +276,7 @@ export async function proxyToBackendWithPolicy(
           'Retry-After': '30',
           ...corsHeaders,
         },
-      },
+      }
     );
   }
 }

@@ -18,7 +18,11 @@ import { validateIapJwt } from './middleware/iap';
 import { success } from './lib/response';
 import { getCorsHeadersForRequest } from './lib/cors';
 import { getApiBaseUrl, getAiDefaultModel, getAiVisionModel } from './lib/config';
-import { attachOriginSignatureHeaders, stripOriginSignatureHeaders } from './lib/origin-signature';
+import {
+  OriginSignatureConfigurationError,
+  attachOriginSignatureHeaders,
+  stripOriginSignatureHeaders,
+} from './lib/origin-signature';
 import type { Env } from './types';
 import { flushAiArtifactOutbox } from './lib/ai-artifact-outbox';
 import { flushNotificationOutbox } from './lib/notification-outbox';
@@ -27,11 +31,7 @@ import {
   selectTopEditorPicks,
   type EditorPickStatRow,
 } from './lib/editor-picks';
-import {
-  buildProxyBoundaryHeaders,
-  canProxyPath,
-  registerWorkerRoutes,
-} from './routes/registry';
+import { buildProxyBoundaryHeaders, canProxyPath, registerWorkerRoutes } from './routes/registry';
 
 const app = new Hono<HonoEnv>();
 
@@ -39,7 +39,7 @@ const PUBLIC_EDGE_BLOCKED_BACKEND_PREFIXES = ['/api/v1/agent', '/api/v1/execute'
 
 function isPublicEdgeBlockedBackendPath(pathname: string): boolean {
   return PUBLIC_EDGE_BLOCKED_BACKEND_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
 }
 
@@ -57,7 +57,7 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
       {
         status: 500,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      },
+      }
     );
   }
 
@@ -75,7 +75,7 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
           ...corsHeaders,
           ...buildProxyBoundaryHeaders(url.pathname, request.method),
         },
-      },
+      }
     );
   }
 
@@ -93,7 +93,7 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
           ...corsHeaders,
           ...buildProxyBoundaryHeaders(url.pathname, request.method),
         },
-      },
+      }
     );
   }
 
@@ -139,15 +139,15 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
     }
   }
 
-  await attachOriginSignatureHeaders({
-    env,
-    headers,
-    method: request.method,
-    pathAndQuery: `${backendUrl.pathname}${backendUrl.search}`,
-    requestId: headers.get('X-Request-ID') || undefined,
-  });
-
   try {
+    await attachOriginSignatureHeaders({
+      env,
+      headers,
+      method: request.method,
+      pathAndQuery: `${backendUrl.pathname}${backendUrl.search}`,
+      requestId: headers.get('X-Request-ID') || undefined,
+    });
+
     const response = await fetch(backendUrl.toString(), {
       method: request.method,
       headers,
@@ -190,7 +190,7 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
           status: response.status,
           statusText: response.statusText,
           headers: responseHeaders,
-        },
+        }
       );
     }
 
@@ -200,6 +200,25 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
       headers: responseHeaders,
     });
   } catch (error) {
+    if (error instanceof OriginSignatureConfigurationError) {
+      console.error('Backend origin signing configuration error:', error.message);
+      const corsHeaders = await getCorsHeadersForRequest(request, env);
+      return new Response(
+        JSON.stringify({
+          error: 'Configuration error',
+          message: error.message,
+        }),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders,
+            ...buildProxyBoundaryHeaders(url.pathname, request.method),
+          },
+        }
+      );
+    }
+
     console.error('Backend request failed:', error);
 
     const corsHeaders = await getCorsHeadersForRequest(request, env);
@@ -216,9 +235,32 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
           ...corsHeaders,
           ...buildProxyBoundaryHeaders(url.pathname, request.method),
         },
-      },
+      }
     );
   }
+}
+
+async function buildScheduledBackendHeaders(
+  env: Env,
+  method: string,
+  url: string,
+  init?: HeadersInit
+): Promise<Headers> {
+  const headers = new Headers(init);
+  if (env.BACKEND_KEY) {
+    headers.set('X-Backend-Key', env.BACKEND_KEY);
+  }
+  const requestId = crypto.randomUUID();
+  headers.set('X-Request-ID', requestId);
+  const parsed = new URL(url);
+  await attachOriginSignatureHeaders({
+    env,
+    headers,
+    method,
+    pathAndQuery: `${parsed.pathname}${parsed.search}`,
+    requestId,
+  });
+  return headers;
 }
 
 app.use('*', corsMiddleware);
@@ -268,7 +310,7 @@ app.all('/metrics', async (c) => {
         'Content-Type': 'application/json',
         ...corsHeaders,
       },
-    },
+    }
   );
 });
 
@@ -335,15 +377,21 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     if (env.BACKEND_ORIGIN && env.BACKEND_KEY) {
       try {
         const refreshUrl = `${env.BACKEND_ORIGIN}/api/v1/analytics/refresh-stats`;
+        const headers = await buildScheduledBackendHeaders(env, 'POST', refreshUrl, {
+          'Content-Type': 'application/json',
+        });
         const refreshResp = await fetch(refreshUrl, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Backend-Key': env.BACKEND_KEY,
-          },
+          headers,
         });
-        const refreshData = await refreshResp.json<{ ok?: boolean; data?: { refreshed?: number } }>().catch(() => null);
-        console.log(`Stats refresh: ${refreshResp.status}`, refreshData?.data?.refreshed ?? 0, 'rows');
+        const refreshData = await refreshResp
+          .json<{ ok?: boolean; data?: { refreshed?: number } }>()
+          .catch(() => null);
+        console.log(
+          `Stats refresh: ${refreshResp.status}`,
+          refreshData?.data?.refreshed ?? 0,
+          'rows'
+        );
       } catch (refreshErr) {
         console.error('Stats refresh failed (non-fatal):', refreshErr);
       }
@@ -356,13 +404,16 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     if (env.BACKEND_ORIGIN && env.BACKEND_KEY) {
       try {
         const statsUrl = `${env.BACKEND_ORIGIN}/api/v1/analytics/all-stats?limit=10&orderBy=total_views`;
+        const headers = await buildScheduledBackendHeaders(env, 'GET', statsUrl);
         const statsResp = await fetch(statsUrl, {
-          headers: { 'X-Backend-Key': env.BACKEND_KEY },
+          headers,
         });
-        const statsData = await statsResp.json<{
-          ok?: boolean;
-          data?: { stats?: EditorPickStatRow[] };
-        }>().catch(() => null);
+        const statsData = await statsResp
+          .json<{
+            ok?: boolean;
+            data?: { stats?: EditorPickStatRow[] };
+          }>()
+          .catch(() => null);
 
         const allStats = statsData?.data?.stats || [];
         const topPicks = selectTopEditorPicks(allStats);

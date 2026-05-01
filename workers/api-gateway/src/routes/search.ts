@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { HonoEnv, Env } from '../types';
 import { success, badRequest, serverError } from '../lib/response';
 import { getPerplexityModel } from '../lib/config';
+import { attachOriginSignatureHeadersForUrl } from '../lib/origin-signature';
 
 const search = new Hono<HonoEnv>();
 
@@ -179,13 +180,19 @@ async function proxyToBackendWebSearch(
 
   const upstreamUrl = `${backendOrigin.replace(/\/$/, '')}/api/v1/search/web`;
 
-  const headers: HeadersInit = {
+  const headers = new Headers({
     'Content-Type': 'application/json',
-  };
+  });
 
   if (env.BACKEND_KEY) {
-    headers['X-Backend-Key'] = env.BACKEND_KEY;
+    headers.set('X-Backend-Key', env.BACKEND_KEY);
   }
+  await attachOriginSignatureHeadersForUrl({
+    env,
+    headers,
+    method: 'POST',
+    url: upstreamUrl,
+  });
 
   const response = await fetch(upstreamUrl, {
     method: 'POST',

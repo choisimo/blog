@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-28T18:59:38.359Z",
+  "generatedAt": "2026-05-01T12:17:03.996Z",
   "counts": {
     "serviceBoundaries": {
       "worker-owned": 27,
@@ -493,7 +493,9 @@
       "requiredSecrets": [
         "BACKEND_ORIGIN",
         "BACKEND_KEY",
-        "JWT_SECRET"
+        "GATEWAY_SIGNING_SECRET",
+        "JWT_SECRET",
+        "SECRETS_ENCRYPTION_KEY"
       ]
     },
     {

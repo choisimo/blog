@@ -32,7 +32,9 @@ VITE_FEATURE_FAB=true
 # -----------------------------------------------------------------------------
 BACKEND_ORIGIN=https://blog-b.nodove.com
 BACKEND_KEY=
+GATEWAY_SIGNING_SECRET=
 JWT_SECRET=
+SECRETS_ENCRYPTION_KEY=
 INTERNAL_KEY=
 TERMINAL_SESSION_SECRET=
 

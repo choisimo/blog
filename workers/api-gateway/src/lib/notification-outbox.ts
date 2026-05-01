@@ -7,6 +7,7 @@ import {
   markDomainOutboxProcessed,
   reviveDomainOutboxEvent,
 } from './domain-outbox';
+import { attachOriginSignatureHeadersForUrl } from './origin-signature';
 
 export const NOTIFICATION_DELIVERY_STREAM = 'notification.delivery';
 const NOTIFICATION_MAX_RETRIES = 8;
@@ -21,12 +22,15 @@ export type NotificationDeliveryPayload = {
   payload?: Record<string, unknown>;
 };
 
-async function appendOrReuseNotification(env: Env, input: {
-  aggregateId: string;
-  eventType: string;
-  payload: NotificationDeliveryPayload;
-  idempotencyKey: string;
-}) {
+async function appendOrReuseNotification(
+  env: Env,
+  input: {
+    aggregateId: string;
+    eventType: string;
+    payload: NotificationDeliveryPayload;
+    idempotencyKey: string;
+  }
+) {
   try {
     return await appendDomainOutboxEvent(env.DB, {
       stream: NOTIFICATION_DELIVERY_STREAM,
@@ -66,8 +70,7 @@ export async function enqueueNotificationDelivery(
     aggregateId: payload.sourceId,
     eventType: 'notification.deliver',
     payload,
-    idempotencyKey:
-      options.idempotencyKey || `notification:${payload.sourceId}:${payload.type}`,
+    idempotencyKey: options.idempotencyKey || `notification:${payload.sourceId}:${payload.type}`,
   });
 }
 
@@ -84,13 +87,22 @@ async function deliverNotification(
   }
 
   const backendOrigin = env.BACKEND_ORIGIN.replace(/\/$/, '');
-  const response = await fetch(`${backendOrigin}/api/v1/notifications/outbox/internal`, {
+  const url = `${backendOrigin}/api/v1/notifications/outbox/internal`;
+  const headers = new Headers({
+    'Content-Type': 'application/json',
+    'X-Backend-Key': env.BACKEND_KEY,
+    ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
+  });
+  await attachOriginSignatureHeadersForUrl({
+    env,
+    headers,
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Backend-Key': env.BACKEND_KEY,
-      ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
-    },
+    url,
+  });
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
     body: JSON.stringify(payload),
   });
 
