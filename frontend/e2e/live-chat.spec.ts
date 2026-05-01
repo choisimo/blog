@@ -1,6 +1,8 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
 
 const API_BASE = process.env.PLAYWRIGHT_API_BASE ?? 'https://api.nodove.com';
+const CHAT_TEST_PATH = '/about';
+const CHAT_TEST_ROOM = 'room:page:about';
 
 function stubLiveEndpoints(page: Page) {
   page.route(`${API_BASE}/api/v1/chat/live/stream*`, (route: Route) => {
@@ -142,7 +144,7 @@ test.describe('/live command — unit-level routing logic', () => {
 test.describe('/live command — integration with chat widget', () => {
   test.beforeEach(async ({ page }) => {
     stubLiveEndpoints(page);
-    await page.goto('/');
+    await page.goto(CHAT_TEST_PATH);
     await page.waitForLoadState('networkidle');
   });
 
@@ -259,7 +261,7 @@ test.describe('/live SSE stream events', () => {
       });
     });
 
-    await page.goto('/');
+    await page.goto(CHAT_TEST_PATH);
     await page.waitForLoadState('networkidle');
     await openChatWidget(page);
     await page.waitForTimeout(500);
@@ -278,12 +280,12 @@ test.describe('/live SSE stream events', () => {
         headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
         body: [
           'data: {"type":"connected","sessionId":"sess-abc"}\n\n',
-          'data: {"type":"live_message","text":"Hello from admin","senderType":"admin","room":"room:lobby"}\n\n',
+          `data: {"type":"live_message","text":"Hello from admin","senderType":"admin","room":"${CHAT_TEST_ROOM}"}\n\n`,
         ].join(''),
       });
     });
 
-    await page.goto('/');
+    await page.goto(CHAT_TEST_PATH);
     await page.waitForLoadState('networkidle');
     await openChatWidget(page);
     await page.waitForTimeout(600);
@@ -302,12 +304,12 @@ test.describe('/live SSE stream events', () => {
         headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
         body: [
           'data: {"type":"connected","sessionId":"sess-abc"}\n\n',
-          'data: {"type":"presence","event":"join","name":"visitor-x1y2","room":"room:lobby","count":2}\n\n',
+          `data: {"type":"presence","event":"join","name":"visitor-x1y2","room":"${CHAT_TEST_ROOM}","count":2}\n\n`,
         ].join(''),
       });
     });
 
-    await page.goto('/');
+    await page.goto(CHAT_TEST_PATH);
     await page.waitForLoadState('networkidle');
     await openChatWidget(page);
     await page.waitForTimeout(600);
@@ -334,7 +336,7 @@ test.describe('/live — API failure handling', () => {
       route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'Internal server error' }) });
     });
 
-    await page.goto('/');
+    await page.goto(CHAT_TEST_PATH);
     await page.waitForLoadState('networkidle');
     await openChatWidget(page);
 
@@ -360,7 +362,7 @@ test.describe('/live — API failure handling', () => {
       route.abort('failed');
     });
 
-    await page.goto('/');
+    await page.goto(CHAT_TEST_PATH);
     await page.waitForLoadState('networkidle');
     await openChatWidget(page);
     await page.waitForTimeout(600);
@@ -377,13 +379,13 @@ test.describe('/live — advanced simulated conversation', () => {
         status: 200,
         headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
         body: [
-          'data: {"type":"connected","sessionId":"advanced-sess","room":"room:lobby","onlineCount":1}\n\n',
-          'data: {"type":"live_message","sessionId":"admin-sess","name":"admin","text":"Welcome to Live Chat!","senderType":"agent","room":"room:lobby","onlineCount":1}\n\n',
+          `data: {"type":"connected","sessionId":"advanced-sess","room":"${CHAT_TEST_ROOM}","onlineCount":1}\n\n`,
+          `data: {"type":"live_message","sessionId":"admin-sess","name":"admin","text":"Welcome to Live Chat!","senderType":"agent","room":"${CHAT_TEST_ROOM}","onlineCount":1}\n\n`,
         ].join(''),
       });
     });
 
-    await page.goto('/');
+    await page.goto(CHAT_TEST_PATH);
     await page.waitForLoadState('networkidle');
     await openChatWidget(page);
 
