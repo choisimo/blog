@@ -22,6 +22,7 @@
     isOpen: 'aiMemo.isOpen',
     position: 'aiMemo.position',
     mode: 'aiMemo.mode',
+    title: 'aiMemo.title',
     memo: 'aiMemo.content',
     apiKey: 'aiMemo.apiKey',
     adminToken: 'aiMemo.adminToken',
@@ -59,13 +60,13 @@
   // 기본값 설정
   const DEFAULT_API_URL = 'https://api.nodove.com';
   const DEFAULT_REPO_URL = 'https://github.com/choisimo/blog';
-  const AI_MEMO_ASSET_VERSION = '20260429-code-mode';
+  const AI_MEMO_ASSET_VERSION = '20260501-memo-editor-redesign';
   const BLOCK_SELECTORS = 'p, pre, code, blockquote, ul, ol, li, table, thead, tbody, tr, th, td, figure, figcaption, h1, h2, h3, h4, h5, h6, section, article, main';
   const MAX_BLOCK_PAYLOAD_CHARS = 6000;
-  const WINDOW_MIN_WIDTH = 320;
-  const WINDOW_MIN_HEIGHT = 340;
-  const WINDOW_DEFAULT_WIDTH = 400;
-  const WINDOW_DEFAULT_HEIGHT = 520;
+  const WINDOW_MIN_WIDTH = 360;
+  const WINDOW_MIN_HEIGHT = 420;
+  const WINDOW_DEFAULT_WIDTH = 1040;
+  const WINDOW_DEFAULT_HEIGHT = 760;
   const WINDOW_EDGE_PADDING = 12;
   const WINDOW_SNAP_THRESHOLD = 34;
   const WINDOW_MODES = new Set(['floating', 'fullscreen', 'docked']);
@@ -137,6 +138,7 @@
         isOpen: !!LS.get(KEYS.isOpen, false),
         position: LS.get(KEYS.position, { x: null, y: null }),
         mode: LS.get(KEYS.mode, 'memo'),
+        title: LS.get(KEYS.title, '새 메모'),
         memo: LS.get(KEYS.memo, ''),
         inlineEnabled: !!LS.get(KEYS.inlineEnabled, true),
         closeAfterInject: !!LS.get(KEYS.closeAfterInject, false),
@@ -184,9 +186,17 @@
       this.$codeModeStatus = null;
       this.$codeModeConsole = null;
       this.$codeModeOutput = null;
+      this.$memoLineNumbers = null;
+      this.$memoStats = null;
+      this.$memoAutoSave = null;
+      this.$memoTitleDisplay = null;
+      this.$memoTitleInput = null;
+      this.$memoDraft = null;
+      this.$memoSaveClose = null;
       this._detectedCode = null;
       this._codeModeRevision = '';
       this._codeRunController = null;
+      this._memoLineCount = 0;
 
       if (window.TurndownService) {
         this._turndown = new window.TurndownService();
@@ -1295,6 +1305,7 @@
         if (this.$memoPreview) {
           this.scheduleRenderPreview(content);
         }
+        this.updateMemoChrome(content);
 
         // Call restore endpoint to create a new version
         const restoreRes = await fetch(`${apiBase}/api/v1/memos/${encodeURIComponent(userId)}/restore/${version}`, {
@@ -1324,6 +1335,60 @@
         t.style.fontSize = `${fs}px`;
         if (t.tagName === 'TEXTAREA') t.style.lineHeight = '1.6';
       });
+    }
+
+    getMemoMetrics(value) {
+      const text = String(value || '');
+      const trimmed = text.trim();
+      const words = trimmed ? trimmed.split(/\s+/).filter(Boolean).length : 0;
+      const chars = text.length;
+      const lines = Math.max(1, text.split(/\r\n|\r|\n/).length);
+      return { words, chars, lines };
+    }
+
+    setMemoAutoSaveText(text) {
+      if (!this.$memoAutoSave) return;
+      this.$memoAutoSave.textContent = String(text || '자동 저장됨');
+    }
+
+    setMemoTitle(title, options = {}) {
+      const next = String(title || '').trim() || '새 메모';
+      this.state.title = next;
+      if (this.$memoTitleDisplay) this.$memoTitleDisplay.textContent = next;
+      if (options.syncInput !== false && this.$memoTitleInput && this.$memoTitleInput.value !== next) {
+        this.$memoTitleInput.value = next;
+      }
+      LS.set(KEYS.title, next);
+    }
+
+    syncMemoLineNumberScroll() {
+      if (!this.$memoLineNumbers || !this.$memo) return;
+      this.$memoLineNumbers.style.transform = `translateY(${-this.$memo.scrollTop}px)`;
+    }
+
+    updateLineNumbers(value) {
+      if (!this.$memoLineNumbers) return;
+      const { lines } = this.getMemoMetrics(value);
+      if (this._memoLineCount !== lines) {
+        this.$memoLineNumbers.innerHTML = Array.from(
+          { length: lines },
+          (_, index) => `<span>${index + 1}</span>`
+        ).join('');
+        this._memoLineCount = lines;
+      }
+      this.syncMemoLineNumberScroll();
+    }
+
+    updateMemoChrome(value = this.state.memo || '') {
+      const metrics = this.getMemoMetrics(value);
+      if (this.$memoStats) {
+        this.$memoStats.textContent = [
+          '마크다운',
+          `${metrics.words.toLocaleString('ko-KR')} 단어`,
+          `${metrics.chars.toLocaleString('ko-KR')} 문자`,
+        ].join(' · ');
+      }
+      this.updateLineNumbers(value);
     }
 
     // Convert Markdown to sanitized HTML string
@@ -1426,67 +1491,132 @@
         const m = cls.match(/lang-([\w-]+)/);
         const lang = (m && m[1] || 'text').toLowerCase();
         const raw = codeEl.textContent || '';
-        const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        const escapeHtml = (s) => String(s || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+        const wrapToken = (className, value) =>
+          `<span class="${className}">${escapeHtml(value)}</span>`;
+        const languageGroup =
+          lang === 'js' || lang === 'javascript' || lang === 'ts' || lang === 'typescript'
+            ? 'js'
+            : lang === 'c' || lang === 'cpp' || lang === 'c++' || lang === 'java'
+              ? 'c'
+              : lang === 'py' || lang === 'python'
+                ? 'python'
+                : lang === 'bash' || lang === 'sh' || lang === 'shell' || lang === 'zsh'
+                  ? 'bash'
+                  : lang === 'json'
+                    ? 'json'
+                    : 'text';
 
-        const highlightLine = (line) => {
-          let out = escapeHtml(line);
-          const apply = (regex, wrap) => {
-            out = out.replace(regex, wrap);
+        const keywordMap = {
+          js: ['const','let','var','function','return','if','else','for','while','do','switch','case','break','continue','class','extends','new','try','catch','finally','throw','await','async','yield','import','from','export','default','in','of','this','super','true','false','null','undefined'],
+          c: ['auto','break','case','char','class','const','continue','default','delete','do','double','else','enum','extern','float','for','if','include','inline','int','long','namespace','new','private','protected','public','return','short','signed','sizeof','static','struct','switch','template','this','throw','try','typedef','typename','unsigned','using','void','while'],
+          python: ['def','return','if','elif','else','for','while','try','except','finally','with','as','class','import','from','pass','break','continue','True','False','None','in','is','not','and','or','lambda','yield'],
+          bash: ['if','then','fi','for','do','done','case','esac','function','in','elif','else','return','local','export'],
+          json: ['true','false','null'],
+        };
+        const keywords = keywordMap[languageGroup] || [];
+        const keywordSet = new Set(keywords);
+        const keywordPattern = keywords.length
+          ? keywords.map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
+          : 'a^';
+        const plainPattern = new RegExp(
+          `\\b(?:${keywordPattern})\\b|\\b\\d+(?:\\.\\d+)?\\b|\\b[A-Za-z_][A-Za-z0-9_]*\\s*(?=\\()`,
+          'g'
+        );
+
+        const findCommentStart = (line, index) => {
+          if (languageGroup === 'js' || languageGroup === 'c') {
+            if (line.startsWith('//', index) || line.startsWith('/*', index)) return index;
+          }
+          if (languageGroup === 'python' || languageGroup === 'bash') {
+            if (line[index] === '#') return index;
+          }
+          return -1;
+        };
+
+        const splitLineSegments = (line) => {
+          const segments = [];
+          let index = 0;
+          let plainStart = 0;
+
+          const flushPlain = (end) => {
+            if (end > plainStart) {
+              segments.push({ type: 'plain', value: line.slice(plainStart, end) });
+            }
           };
 
-          const word = (list) => new RegExp(`\\b(?:${list.join('|')})\\b`, 'g');
-          const fnName = /\b([A-Za-z_][A-Za-z0-9_]*)\s*(?=\()/g;
+          while (index < line.length) {
+            const commentStart = findCommentStart(line, index);
+            if (commentStart === index) {
+              flushPlain(index);
+              segments.push({ type: 'comment', value: line.slice(index) });
+              return segments;
+            }
 
-          if (lang === 'js' || lang === 'ts' || lang === 'javascript' || lang === 'typescript' || lang === 'c' || lang === 'cpp' || lang === 'java') {
-            // split comment part
-            const idx = out.indexOf('//');
-            let head = idx >= 0 ? out.slice(0, idx) : out;
-            let tail = idx >= 0 ? out.slice(idx) : '';
-            // strings
-            head = head
-              .replace(/"([^"\\]|\\.)*"/g, '<span class="str">$&</span>')
-              .replace(/'([^'\\]|\\.)*'/g, '<span class="str">$&</span>')
-              .replace(/`([^`\\]|\\.)*`/g, '<span class="str">$&</span>');
-            // numbers
-            head = head.replace(/\b\d+(?:\.\d+)?\b/g, '<span class="num">$&</span>');
-            // keywords
-            const kws = word(['const','let','var','function','return','if','else','for','while','do','switch','case','break','continue','class','extends','new','try','catch','finally','throw','await','async','yield','import','from','export','default','in','of','this','super','true','false','null','undefined']);
-            head = head.replace(kws, '<span class="kw">$&</span>');
-            // function names
-            head = head.replace(fnName, (m, g1) => `<span class="fn">${g1}</span>`);
-            if (tail) tail = `<span class="cm">${tail}</span>`;
-            out = head + tail;
-          } else if (lang === 'py' || lang === 'python') {
-            const hash = out.indexOf('#');
-            let head = hash >= 0 ? out.slice(0, hash) : out;
-            let tail = hash >= 0 ? out.slice(hash) : '';
-            head = head
-              .replace(/"([^"\\]|\\.)*"/g, '<span class="str">$&</span>')
-              .replace(/'([^'\\]|\\.)*'/g, '<span class="str">$&</span>');
-            head = head.replace(/\b\d+(?:\.\d+)?\b/g, '<span class="num">$&</span>');
-            const kws = word(['def','return','if','elif','else','for','while','try','except','finally','with','as','class','import','from','pass','break','continue','True','False','None','in','is','not','and','or','lambda','yield']);
-            head = head.replace(kws, '<span class="kw">$&</span>');
-            head = head.replace(fnName, (m, g1) => `<span class="fn">${g1}</span>`);
-            if (tail) tail = `<span class="cm">${tail}</span>`;
-            out = head + tail;
-          } else if (lang === 'json') {
-            out = out
-              .replace(/"([^"\\]|\\.)*"(?=\s*:)/g, '<span class="kw">$&</span>')
-              .replace(/"([^"\\]|\\.)*"/g, '<span class="str">$&</span>')
-              .replace(/\b\d+(?:\.\d+)?\b/g, '<span class="num">$&</span>')
-              .replace(/\b(true|false|null)\b/g, '<span class="kw">$1</span>');
-          } else if (lang === 'bash' || lang === 'sh' || lang === 'shell') {
-            const hash = out.indexOf('#');
-            let head = hash >= 0 ? out.slice(0, hash) : out;
-            let tail = hash >= 0 ? out.slice(hash) : '';
-            head = head.replace(/"([^"\\]|\\.)*"/g, '<span class="str">$&</span>').replace(/'([^'\\]|\\.)*'/g, '<span class="str">$&</span>');
-            const kws = word(['if','then','fi','for','do','done','case','esac','function','in','elif','else','return','local','export']);
-            head = head.replace(kws, '<span class="kw">$&</span>');
-            if (tail) tail = `<span class="cm">${tail}</span>`;
-            out = head + tail;
+            const ch = line[index];
+            const isStringStart =
+              ch === '"' ||
+              ch === "'" ||
+              (ch === '`' && (languageGroup === 'js' || languageGroup === 'bash'));
+            if (!isStringStart) {
+              index += 1;
+              continue;
+            }
+
+            flushPlain(index);
+            const quote = ch;
+            let end = index + 1;
+            let escaped = false;
+            while (end < line.length) {
+              const current = line[end];
+              if (escaped) {
+                escaped = false;
+              } else if (current === '\\') {
+                escaped = true;
+              } else if (current === quote) {
+                end += 1;
+                break;
+              }
+              end += 1;
+            }
+            segments.push({ type: 'string', value: line.slice(index, end) });
+            index = end;
+            plainStart = end;
           }
-          return out;
+          flushPlain(line.length);
+          return segments;
         };
+
+        const highlightPlain = (segment) => {
+          if (languageGroup === 'text') return escapeHtml(segment);
+          let html = '';
+          let last = 0;
+          segment.replace(plainPattern, (match, offset) => {
+            html += escapeHtml(segment.slice(last, offset));
+            const trimmed = match.trimEnd();
+            const trailing = match.slice(trimmed.length);
+            if (/^\d/.test(trimmed)) {
+              html += wrapToken('num', trimmed);
+            } else if (keywordSet.has(trimmed)) {
+              html += wrapToken('kw', trimmed);
+            } else {
+              html += wrapToken('fn', trimmed);
+            }
+            html += escapeHtml(trailing);
+            last = offset + match.length;
+            return match;
+          });
+          return html + escapeHtml(segment.slice(last));
+        };
+
+        const highlightLine = (line) => splitLineSegments(line).map(segment => {
+          if (segment.type === 'string') return wrapToken('str', segment.value);
+          if (segment.type === 'comment') return wrapToken('cm', segment.value);
+          return highlightPlain(segment.value);
+        }).join('');
 
         const lines = raw.split('\n');
         const html = lines.map(l => `<span class="line">${highlightLine(l)}</span>`).join('\n');
@@ -1565,10 +1695,9 @@
 
     // Check if preview pane is actually visible
     isPreviewVisible() {
-      // Preview is visible when:
-      // 1. In preview mode with split layout, or
-      // 2. In preview mode with tab layout AND preview pane is active
+      // The redesigned composer keeps the live preview mounted in write mode.
       const mode = this.state.mode;
+      if (mode === 'memo') return true;
       if (mode !== 'preview') return false;
       const layout = this.state.layoutMode;
       if (layout === 'split') return true;
@@ -1721,8 +1850,12 @@
         </div>
         <div id="panel" class="panel">
           <div id="drag" class="header">
-            <div class="title">떠다니는 AI 메모</div>
+            <div class="title-stack">
+              <div id="memoTitleDisplay" class="title">새 메모</div>
+              <div id="memoAutoSave" class="auto-save">자동 저장됨</div>
+            </div>
             <div class="spacer"></div>
+            <button id="memoHelp" class="header-help" type="button" aria-label="도움말">도움말</button>
             <div class="window-controls" aria-label="창 제어">
               <button id="windowMinimize" class="window-control" type="button" title="최소화" aria-label="최소화">—</button>
               <button id="windowRestore" class="window-control" type="button" title="복원" aria-label="복원">▣</button>
@@ -1730,49 +1863,49 @@
               <button id="close" class="close" type="button" aria-label="닫기">✕</button>
             </div>
           </div>
-          <div class="tabs">
-            <div class="tab" data-tab="memo">메모</div>
-            <div class="tab" data-tab="preview">미리보기</div>
-            <div class="tab" data-tab="versions">버전</div>
-            <div class="tab" data-tab="dev">새 버전 제안</div>
-            <div class="tab" data-tab="settings">설정</div>
+          <div class="memo-toolbar">
+            <div class="toolbar-group format-group" role="toolbar" aria-label="서식">
+              <button id="memoBold" class="toolbar-btn" title="Bold (Ctrl+B)" aria-label="Bold"><span class="icon">B</span></button>
+              <button id="memoItalic" class="toolbar-btn" title="Italic (Ctrl+I)" aria-label="Italic"><span class="icon italic">I</span></button>
+              <button id="memoCode" class="toolbar-btn" title="Inline code" aria-label="Inline code"><span class="icon mono">{}</span></button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <div class="toolbar-group heading-group" role="toolbar" aria-label="제목">
+              <button id="memoH1" class="toolbar-btn" title="제목 1 (#)" aria-label="Heading 1"><span class="icon">H1</span></button>
+              <button id="memoH2" class="toolbar-btn" title="제목 2 (##)" aria-label="Heading 2"><span class="icon">H2</span></button>
+              <button id="memoH3" class="toolbar-btn" title="제목 3 (###)" aria-label="Heading 3"><span class="icon">H3</span></button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <div class="toolbar-group list-group" role="toolbar" aria-label="목록">
+              <button id="memoUl" class="toolbar-btn" title="글머리 기호 (-)" aria-label="Bullet list"><span class="icon">•─</span></button>
+              <button id="memoOl" class="toolbar-btn" title="번호 목록 (1.)" aria-label="Numbered list"><span class="icon">1.</span></button>
+              <button id="memoQuote" class="toolbar-btn" title="인용문 (>)" aria-label="Quote"><span class="icon">❝</span></button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <div class="toolbar-group insert-group" role="toolbar" aria-label="삽입">
+              <button id="memoLink" class="toolbar-btn" title="링크" aria-label="Link"><span class="icon">↗</span></button>
+              <button id="memoCodeBlock" class="toolbar-btn" title="코드 블록" aria-label="Code block"><span class="icon mono">&#96;&#96;&#96;</span></button>
+            </div>
+            <div class="toolbar-spacer"></div>
+            <div class="toolbar-group action-group" role="toolbar" aria-label="동작">
+              <button id="addSelection" class="toolbar-btn action" type="button" title="선택한 텍스트 추가" aria-label="선택 추가"><span class="icon">✂</span><span class="label">선택</span></button>
+              <button id="addBlock" class="toolbar-btn action" type="button" title="블록 선택 모드" aria-label="블록 추가"><span class="icon">▢</span><span class="label">블록</span></button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <div class="toolbar-group ai-group" role="toolbar" aria-label="AI 기능">
+              <button id="aiSummary" class="toolbar-btn ai" type="button" title="AI로 요약 생성" aria-label="AI 요약"><span class="icon">✦</span><span class="label">요약</span></button>
+              <button id="catalyst" class="toolbar-btn ai primary" type="button" title="Catalyst 프롬프트" aria-label="Catalyst"><span class="icon">⚡</span><span class="label">Catalyst</span></button>
+            </div>
+          </div>
+          <div class="tabs" role="tablist" aria-label="메모 패널">
+            <button class="tab" type="button" data-tab="memo" role="tab">작성</button>
+            <button class="tab" type="button" data-tab="preview" role="tab">미리보기</button>
+            <button class="tab" type="button" data-tab="versions" role="tab">버전</button>
+            <button class="tab" type="button" data-tab="dev" role="tab">제안</button>
+            <button class="tab" type="button" data-tab="settings" role="tab">설정</button>
           </div>
           <div id="memoBody" class="body">
-            <div class="section">
-              <div class="memo-toolbar">
-                <div class="toolbar-group format-group" role="toolbar" aria-label="서식">
-                  <button id="memoBold" class="toolbar-btn" title="Bold (Ctrl+B)" aria-label="Bold"><span class="icon">B</span></button>
-                  <button id="memoItalic" class="toolbar-btn" title="Italic (Ctrl+I)" aria-label="Italic"><span class="icon italic">I</span></button>
-                  <button id="memoCode" class="toolbar-btn" title="Inline code" aria-label="Inline code"><span class="icon mono">{}</span></button>
-                </div>
-                <div class="toolbar-divider"></div>
-                <div class="toolbar-group heading-group" role="toolbar" aria-label="제목">
-                  <button id="memoH1" class="toolbar-btn" title="제목 1 (#)" aria-label="Heading 1"><span class="icon">H1</span></button>
-                  <button id="memoH2" class="toolbar-btn" title="제목 2 (##)" aria-label="Heading 2"><span class="icon">H2</span></button>
-                </div>
-                <div class="toolbar-divider"></div>
-                <div class="toolbar-group list-group" role="toolbar" aria-label="목록">
-                  <button id="memoUl" class="toolbar-btn" title="글머리 기호 (-)" aria-label="Bullet list"><span class="icon">•─</span></button>
-                  <button id="memoOl" class="toolbar-btn" title="번호 목록 (1.)" aria-label="Numbered list"><span class="icon">1.</span></button>
-                </div>
-                <div class="toolbar-spacer"></div>
-                <div class="toolbar-group action-group" role="toolbar" aria-label="동작">
-                  <button id="addSelection" class="toolbar-btn action" type="button" title="선택한 텍스트 추가" aria-label="선택 추가"><span class="icon">✂</span><span class="label">선택</span></button>
-                  <button id="addBlock" class="toolbar-btn action" type="button" title="블록 선택 모드" aria-label="블록 추가"><span class="icon">▢</span><span class="label">블록</span></button>
-                </div>
-                <div class="toolbar-divider"></div>
-                <div class="toolbar-group ai-group" role="toolbar" aria-label="AI 기능">
-                  <button id="aiSummary" class="toolbar-btn ai" type="button" title="AI로 요약 생성" aria-label="AI 요약"><span class="icon">✦</span><span class="label">요약</span></button>
-                  <button id="catalyst" class="toolbar-btn ai primary" type="button" title="Catalyst 프롬프트" aria-label="Catalyst"><span class="icon">⚡</span><span class="label">Catalyst</span></button>
-                </div>
-              </div>
-              <div class="memo-hint">
-                <span class="hint-text">Markdown 지원</span>
-                <span class="hint-divider">•</span>
-                <span class="hint-shortcut"><kbd>Alt</kbd>+<kbd>M</kbd> 토글</span>
-                <span class="hint-divider">•</span>
-                <span class="hint-shortcut"><kbd>/</kbd> 명령어</span>
-              </div>
+            <div class="memo-editor-shell">
               <div id="codeMode" class="code-mode" hidden>
                 <div class="code-mode-main">
                   <div class="code-mode-badge" aria-hidden="true">{ }</div>
@@ -1794,32 +1927,32 @@
                   <pre id="codeModeOutput"></pre>
                 </div>
               </div>
-              <textarea id="memo" class="textarea" style="min-height:300px; height:300px;" placeholder="여기에 메모를 작성하세요...&#10;&#10;Tip: / 를 입력하면 서식 메뉴가 열립니다"></textarea>
+              <div class="split memo-compose" id="previewSplit" data-layout="split" data-active-pane="editor">
+                <section class="split-left memo-editor-pane" data-pane="editor" aria-label="마크다운 작성">
+                  <div class="pane-header">
+                    <label class="label" for="memo">마크다운</label>
+                    <span class="pane-meta">작성</span>
+                  </div>
+                  <div class="editor-surface">
+                    <div id="memoLineNumbers" class="memo-line-numbers" aria-hidden="true"><span>1</span></div>
+                    <textarea id="memo" class="textarea memo-input" spellcheck="true" placeholder="# 새 메모&#10;&#10;생각을 마크다운으로 작성하세요. 코드 블록, 목록, 링크를 바로 미리볼 수 있습니다."></textarea>
+                  </div>
+                </section>
+                <section class="split-right memo-preview-pane" data-pane="preview" aria-label="마크다운 미리보기">
+                  <div class="pane-header">
+                    <div class="label">미리보기</div>
+                    <span class="pane-meta">실시간 렌더링</span>
+                  </div>
+                  <div id="memoPreview" class="preview-md"></div>
+                </section>
+              </div>
+              <div class="memo-editor-footer">
+                <span id="memoStats" class="memo-stats">마크다운 · 0 단어 · 0 문자</span>
+                <span class="memo-save-note">변경 사항은 자동 저장됩니다</span>
+              </div>
             </div>
           </div>
-
-          <div id="previewBody" class="body">
-            <div class="preview-layout-bar">
-              <div class="layout-toggle" role="group" aria-label="레이아웃 전환">
-                <button id="layoutSplit" class="layout-btn" type="button" data-layout="split" aria-pressed="false">분할</button>
-                <button id="layoutTabs" class="layout-btn" type="button" data-layout="tab" aria-pressed="false">탭</button>
-              </div>
-              <div id="previewPaneToggle" class="preview-pane-toggle" role="tablist" aria-label="미리보기 전환" data-visible="false">
-                <button type="button" data-pane="editor" role="tab" aria-selected="false">편집</button>
-                <button type="button" data-pane="preview" role="tab" aria-selected="false">미리보기</button>
-              </div>
-            </div>
-            <div class="split" id="previewSplit" data-layout="split" data-active-pane="editor">
-              <div class="split-left" data-pane="editor">
-                <label class="label" for="memoEditor">편집기</label>
-                <textarea id="memoEditor" class="textarea" placeholder="여기에 메모를 작성하세요"></textarea>
-              </div>
-              <div class="split-right" data-pane="preview">
-                <label class="label">미리보기</label>
-                <div id="memoPreview" class="preview-md"></div>
-              </div>
-            </div>
-          </div>
+          <div id="previewBody" class="body"></div>
 
           <div id="devBody" class="body">
             <div class="section">
@@ -1843,50 +1976,63 @@
           </div>
 
           <div id="settingsBody" class="body">
-            <div class="section">
-              <label class="label" for="inlineEnabled">문단 끝 ✨ 인라인 확장</label>
-              <div class="row">
-                <input id="inlineEnabled" type="checkbox" aria-label="문단 끝 인라인 확장" />
-                <div class="small" style="opacity:0.8">글 본문 단락 끝에 ✨ 아이콘을 표시하고 아래로 결과를 펼칩니다.</div>
-              </div>
+            <div class="settings-shell">
+              <section class="settings-section">
+                <div class="settings-heading">
+                  <h3>일반 설정</h3>
+                  <p>메모의 기본 정보와 표시 옵션을 설정합니다.</p>
+                </div>
+                <label class="settings-field" for="memoTitleInput">
+                  <span>제목</span>
+                  <input id="memoTitleInput" class="input settings-input" value="새 메모" />
+                </label>
+                <label class="settings-field" for="fontSize">
+                  <span>폰트 크기</span>
+                  <select id="fontSize" class="input settings-input">
+                    <option value="12">12</option>
+                    <option value="13" selected>13</option>
+                    <option value="14">14</option>
+                    <option value="16">16</option>
+                  </select>
+                </label>
+              </section>
+
+              <section class="settings-section">
+                <div class="settings-heading">
+                  <h3>동작 설정</h3>
+                  <p>본문 선택, 그래프 주입, 도크 배치를 조정합니다.</p>
+                </div>
+                <label class="settings-toggle-row" for="inlineEnabled">
+                  <span>
+                    <strong>인라인 확장</strong>
+                    <em>글 본문 단락 끝에 빠른 확장 버튼을 표시합니다.</em>
+                  </span>
+                  <input id="inlineEnabled" class="settings-toggle" type="checkbox" aria-label="문단 끝 인라인 확장" />
+                </label>
+                <label class="settings-toggle-row" for="closeAfterInject">
+                  <span>
+                    <strong>주입 후 창 닫기</strong>
+                    <em>그래프에 추가한 뒤 메모 패널을 자동으로 닫습니다.</em>
+                  </span>
+                  <input id="closeAfterInject" class="settings-toggle" type="checkbox" aria-label="생각 노드 주입 후 창 닫기" />
+                </label>
+                <label class="settings-field" for="fabPosition">
+                  <span>FAB 배치</span>
+                  <select id="fabPosition" class="input settings-input">
+                    <option value="bottom">하단 바</option>
+                    <option value="left">좌측 사이드</option>
+                  </select>
+                </label>
+              </section>
+
+              <section class="settings-section">
+                <div class="settings-heading">
+                  <h3>기타 옵션</h3>
+                  <p>패널이 화면 밖으로 밀렸거나 크기가 맞지 않을 때 복원합니다.</p>
+                </div>
+                <button id="resetPosition" class="settings-reset" type="button">위치 초기화</button>
+              </section>
             </div>
-             <div class="section">
-               <label class="label" for="closeAfterInject">주입 후 창 닫기</label>
-               <div class="row">
-                 <input id="closeAfterInject" type="checkbox" aria-label="생각 노드 주입 후 창 닫기" />
-                 <div class="small" style="opacity:0.8">그래프에 주입이 완료되면 메모 패널을 닫습니다.</div>
-               </div>
-             </div>
-             <div class="section">
-               <label class="label" for="fontSize">폰트 크기</label>
-               <select id="fontSize" class="input">
-                 <option value="12">12</option>
-                 <option value="13" selected>13</option>
-                 <option value="14">14</option>
-                 <option value="16">16</option>
-               </select>
-             </div>
-             <div class="section">
-               <label class="label" for="fabPosition">FAB 배치</label>
-               <div class="row" style="gap:8px; align-items:flex-start;">
-                 <select id="fabPosition" class="input">
-                   <option value="bottom">하단 바</option>
-                   <option value="left">좌측 사이드</option>
-                 </select>
-                 <div class="small" style="opacity:0.8">
-                   채팅/메모 도크 위치를 선택합니다.
-                 </div>
-               </div>
-             </div>
-             <div class="section">
-               <label class="label">패널 위치</label>
-               <div class="row" style="gap:10px; align-items:flex-start;">
-                 <button id="resetPosition" class="btn secondary" type="button">위치 초기화</button>
-                 <div class="small" style="opacity:0.8">
-                   화면이 작거나 패널이 보이지 않을 때 기본 위치로 되돌립니다.
-                 </div>
-               </div>
-             </div>
           </div>
 
           <div id="versionsBody" class="body">
@@ -1939,29 +2085,35 @@
             </div>
           </div>
           <div class="footer">
-            <div id="status" class="status-bar">
-              <span class="status-dot"></span>
-              <span class="status-text">Ready</span>
+            <div class="footer-utility">
+              <div id="status" class="status-bar">
+                <span class="status-dot"></span>
+                <span class="status-text">Ready</span>
+              </div>
+              <div class="footer-actions">
+                <button id="memoSync" class="footer-btn" type="button" title="클라우드 동기화" aria-label="클라우드 동기화" data-tooltip="클라우드 동기화">
+                  <span class="btn-icon">☁</span>
+                </button>
+                <button id="memoVersions" class="footer-btn" type="button" title="버전 기록" aria-label="버전 기록" data-tooltip="버전 기록">
+                  <span class="btn-icon">⏱</span>
+                </button>
+                <button id="memoToGraph" class="footer-btn" type="button" title="그래프에 추가" aria-label="그래프에 추가" data-tooltip="그래프에 추가">
+                  <span class="btn-icon">◉</span>
+                </button>
+                <button id="download" class="footer-btn" type="button" title="다운로드" aria-label="메모 다운로드" data-tooltip="메모 다운로드">
+                  <span class="btn-icon">↓</span>
+                </button>
+                <button id="memoFull" class="footer-btn" type="button" title="전체화면" aria-label="전체화면" data-tooltip="전체화면 전환">
+                  <span class="btn-icon">⛶</span>
+                </button>
+                <button id="memoClear" class="footer-btn danger" type="button" title="지우기" aria-label="지우기" data-tooltip="메모 지우기">
+                  <span class="btn-icon">✕</span>
+                </button>
+              </div>
             </div>
-            <div class="footer-actions">
-              <button id="memoSync" class="footer-btn" type="button" title="클라우드 동기화" aria-label="클라우드 동기화" data-tooltip="클라우드 동기화">
-                <span class="btn-icon">☁</span>
-              </button>
-              <button id="memoVersions" class="footer-btn" type="button" title="버전 기록" aria-label="버전 기록" data-tooltip="버전 기록">
-                <span class="btn-icon">⏱</span>
-              </button>
-              <button id="memoToGraph" class="footer-btn" type="button" title="그래프에 추가" aria-label="그래프에 추가" data-tooltip="그래프에 추가">
-                <span class="btn-icon">◉</span>
-              </button>
-              <button id="download" class="footer-btn" type="button" title="다운로드" aria-label="메모 다운로드" data-tooltip="메모 다운로드">
-                <span class="btn-icon">↓</span>
-              </button>
-              <button id="memoFull" class="footer-btn" type="button" title="전체화면" aria-label="전체화면" data-tooltip="전체화면 전환">
-                <span class="btn-icon">⛶</span>
-              </button>
-              <button id="memoClear" class="footer-btn danger" type="button" title="지우기" aria-label="지우기" data-tooltip="메모 지우기">
-                <span class="btn-icon">✕</span>
-              </button>
+            <div class="footer-primary-actions">
+              <button id="memoDraft" class="save-btn secondary" type="button">임시저장</button>
+              <button id="memoSaveClose" class="save-btn primary" type="button">저장 및 닫기</button>
             </div>
           </div>
           <div id="toast" class="toast"></div>
@@ -2032,9 +2184,20 @@
       this.$memoCode = this.shadowRoot.getElementById('memoCode');
       this.$memoH1 = this.shadowRoot.getElementById('memoH1');
       this.$memoH2 = this.shadowRoot.getElementById('memoH2');
+      this.$memoH3 = this.shadowRoot.getElementById('memoH3');
       this.$memoUl = this.shadowRoot.getElementById('memoUl');
       this.$memoOl = this.shadowRoot.getElementById('memoOl');
+      this.$memoQuote = this.shadowRoot.getElementById('memoQuote');
+      this.$memoLink = this.shadowRoot.getElementById('memoLink');
+      this.$memoCodeBlock = this.shadowRoot.getElementById('memoCodeBlock');
       this.$memoFull = this.shadowRoot.getElementById('memoFull');
+      this.$memoLineNumbers = this.shadowRoot.getElementById('memoLineNumbers');
+      this.$memoStats = this.shadowRoot.getElementById('memoStats');
+      this.$memoAutoSave = this.shadowRoot.getElementById('memoAutoSave');
+      this.$memoTitleDisplay = this.shadowRoot.getElementById('memoTitleDisplay');
+      this.$memoTitleInput = this.shadowRoot.getElementById('memoTitleInput');
+      this.$memoDraft = this.shadowRoot.getElementById('memoDraft');
+      this.$memoSaveClose = this.shadowRoot.getElementById('memoSaveClose');
 
       this.$memoClear = this.shadowRoot.getElementById('memoClear');
       this.$addBlock = this.shadowRoot.getElementById('addBlock');
@@ -2461,8 +2624,12 @@
 
     restore() {
       // content
+      this.setMemoTitle(this.state.title || '새 메모');
       this.$memo.value = this.state.memo || '';
       if (this.$memoEditor) this.$memoEditor.value = this.state.memo || '';
+      if (this.$memoPreview) this.renderMarkdownToPreview(this.state.memo || '');
+      this.updateMemoChrome(this.state.memo || '');
+      this.setMemoAutoSaveText('자동 저장됨');
       this.syncCodeMode(this.state.memo || '');
       if (this.$inlineEnabled)
         this.$inlineEnabled.checked = !!this.state.inlineEnabled;
@@ -3217,21 +3384,23 @@
       LS.set(KEYS.mode, mode);
       this.state.mode = mode;
       const previewMode = mode === 'preview';
+      const editorMode = mode === 'memo' || previewMode;
       if (this.$panel) this.$panel.classList.toggle('preview-mode', previewMode);
       this.classList.toggle('preview-mode', previewMode);
       if (mode === 'dev') {
         this.maybeLoadOriginalMarkdown();
       }
-      if (this.$memoBody) this.$memoBody.classList.toggle('active', mode === 'memo');
-      if (this.$previewBody) this.$previewBody.classList.toggle('active', mode === 'preview');
+      if (this.$memoBody) this.$memoBody.classList.toggle('active', editorMode);
+      if (this.$previewBody) this.$previewBody.classList.toggle('active', false);
       if (this.$devBody) this.$devBody.classList.toggle('active', mode === 'dev');
       if (this.$settingsBody) this.$settingsBody.classList.toggle('active', mode === 'settings');
       if (this.$versionsBody) this.$versionsBody.classList.toggle('active', mode === 'versions');
-      this.applyLayoutMode(this.state.layoutMode);
-      if (previewMode && this.$memoEditor && this.$memoPreview) {
-        this.$memoEditor.value = this.$memo.value || '';
-        this.applyPreviewPane(this.state.previewPane);
-        this.scheduleRenderPreview(this.$memoEditor.value);
+      this.applyLayoutMode('split');
+      if (editorMode && this.$memoPreview) {
+        if (this.$memoEditor) this.$memoEditor.value = this.$memo.value || '';
+        this.applyPreviewPane(previewMode ? 'preview' : 'editor');
+        this.scheduleRenderPreview(this.$memo.value || '');
+        this.updateMemoChrome(this.$memo.value || '');
       }
     }
 
@@ -3419,6 +3588,8 @@
        const updateMemoState = (value) => {
          this.state.memo = value;
          this.syncCodeMode(value);
+         this.updateMemoChrome(value);
+         this.setMemoAutoSaveText('자동 저장 중…');
          if (this.$memoEditor && this.$memoEditor.value !== value) {
            this.$memoEditor.value = value;
          }
@@ -3431,6 +3602,7 @@
          clearTimeout(memoSaveTimer);
          memoSaveTimer = setTimeout(() => {
            LS.set(KEYS.memo, this.state.memo);
+           this.setMemoAutoSaveText('자동 저장됨 방금 전');
            this.out.tempStatus('저장됨', 'Ready', 900);
          }, MEMO_SAVE_DELAY);
        };
@@ -3438,6 +3610,7 @@
        const saveMemoImmediately = () => {
          clearTimeout(memoSaveTimer);
          LS.set(KEYS.memo, this.state.memo);
+         this.setMemoAutoSaveText('자동 저장됨 방금 전');
        };
        
        const saveMemo = () => {
@@ -3447,6 +3620,7 @@
 
       this.$memo.addEventListener('input', saveMemo);
       this.$memo.addEventListener('change', saveMemo);
+      this.$memo.addEventListener('scroll', () => this.syncMemoLineNumberScroll());
       // Save immediately on blur
       this.$memo.addEventListener('blur', saveMemoImmediately);
       if (this.$memoEditor) {
@@ -3457,6 +3631,7 @@
           clearTimeout(editorSaveTimer);
           editorSaveTimer = setTimeout(() => {
             LS.set(KEYS.memo, this.state.memo);
+            this.setMemoAutoSaveText('자동 저장됨 방금 전');
             this.out.tempStatus('저장됨', 'Ready', 900);
           }, EDITOR_SAVE_DELAY);
         };
@@ -3464,11 +3639,14 @@
         const saveEditorImmediately = () => {
           clearTimeout(editorSaveTimer);
           LS.set(KEYS.memo, this.state.memo);
+          this.setMemoAutoSaveText('자동 저장됨 방금 전');
         };
         
         const saveAndRender = () => {
           this.state.memo = this.$memoEditor.value;
           this.syncCodeMode(this.state.memo);
+          this.updateMemoChrome(this.state.memo);
+          this.setMemoAutoSaveText('자동 저장 중…');
           this.scheduleRenderPreview(this.state.memo);
           if (this.$memo.value !== this.state.memo) this.$memo.value = this.state.memo;
           scheduleEditorSave();
@@ -3543,12 +3721,34 @@
         this.$proposalMd.addEventListener('input', persistProposal);
         this.$proposalMd.addEventListener('change', persistProposal);
       }
+      if (this.$memoTitleInput) {
+        const persistTitle = () => this.setMemoTitle(this.$memoTitleInput.value, { syncInput: false });
+        this.$memoTitleInput.addEventListener('input', persistTitle);
+        this.$memoTitleInput.addEventListener('change', persistTitle);
+      }
 
        // memo toolbar helpers
        const getActiveTextarea = () => {
          const active = this.shadowRoot.activeElement || document.activeElement;
          if (active === this.$memoEditor) return this.$memoEditor;
          return this.$memo;
+       };
+       const insertBlock = block => {
+         const ta = getActiveTextarea();
+         const { selectionStart: s, selectionEnd: e, value } = ta;
+         if (s == null || e == null) return;
+         const before = value.slice(0, s);
+         const selection = value.slice(s, e);
+         const after = value.slice(e);
+         const needsLeadingBreak = before && !before.endsWith('\n') ? '\n\n' : '';
+         const needsTrailingBreak = after && !after.startsWith('\n') ? '\n\n' : '';
+         const content = typeof block === 'function' ? block(selection) : block;
+         const next = `${before}${needsLeadingBreak}${content}${needsTrailingBreak}${after}`;
+         ta.value = next;
+         ta.focus();
+         const caret = (before + needsLeadingBreak + content).length;
+         ta.setSelectionRange(caret, caret);
+         ta.dispatchEvent(new Event('input', { bubbles: true }));
        };
        const surround = (prefix, suffix = prefix) => {
          const ta = getActiveTextarea();
@@ -3584,8 +3784,14 @@
         this.$memoCode?.addEventListener('click', () => surround('`'));
       this.$memoH1?.addEventListener('click', () => linePrefix('#'));
       this.$memoH2?.addEventListener('click', () => linePrefix('##'));
+      this.$memoH3?.addEventListener('click', () => linePrefix('###'));
       this.$memoUl?.addEventListener('click', () => linePrefix('-'));
       this.$memoOl?.addEventListener('click', () => linePrefix('1.'));
+      this.$memoQuote?.addEventListener('click', () => linePrefix('>'));
+      this.$memoLink?.addEventListener('click', () => surround('[', '](https://)'));
+      this.$memoCodeBlock?.addEventListener('click', () =>
+        insertBlock(selection => `\`\`\`text\n${selection || 'code'}\n\`\`\``)
+      );
       this.$codeModeLanguage?.addEventListener('change', () =>
         this.syncCodeMode(this.state.memo)
       );
@@ -3596,6 +3802,29 @@
         this.runDetectedCode()
       );
       this.$memoFull?.addEventListener('click', () => this.toggleFullscreen());
+      const persistMemoNow = label => {
+        this.state.memo = this.$memo.value || '';
+        LS.set(KEYS.memo, this.state.memo);
+        this.updateMemoChrome(this.state.memo);
+        this.setMemoAutoSaveText('자동 저장됨 방금 전');
+        this.out.tempStatus(label || '저장됨', 'Ready', 900);
+      };
+      this.$memoDraft?.addEventListener('click', () => {
+        persistMemoNow('임시저장됨');
+        this.out.toast('임시저장했습니다.');
+      });
+      this.$memoSaveClose?.addEventListener('click', () => {
+        persistMemoNow('저장됨');
+        this.out.toast('저장했습니다.');
+        this.$panel.classList.remove('open');
+        this.updateOpen();
+      });
+      this.$memo?.addEventListener('keydown', e => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+          e.preventDefault();
+          this.$memoSaveClose?.click();
+        }
+      });
 
        this.$memoClear?.addEventListener('click', () => {
          if (confirm('메모를 모두 지울까요?')) {

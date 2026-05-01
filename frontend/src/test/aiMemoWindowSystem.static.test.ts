@@ -29,4 +29,44 @@ describe("AI Memo window system assets", () => {
     expect(css).toContain(".resize-handle-se");
     expect(css).toContain(":host(.terminal) .panel");
   });
+
+  it("highlights fenced C code without leaking highlighter attributes into text", () => {
+    const js = readFileSync(
+      resolve(root, "public/ai-memo/ai-memo.js"),
+      "utf8",
+    );
+
+    document.querySelectorAll("ai-memo-pad").forEach((el) => el.remove());
+    if (!customElements.get("ai-memo-pad")) {
+      new Function(js)();
+    }
+
+    const memo =
+      document.querySelector("ai-memo-pad") ??
+      document.body.appendChild(document.createElement("ai-memo-pad"));
+    const memoElement = memo as HTMLElement & {
+      renderMarkdownToPreview: (source: string) => void;
+      enhanceCodeBlocks: () => void;
+      shadowRoot: ShadowRoot;
+    };
+
+    memoElement.renderMarkdownToPreview(
+      [
+        "```c",
+        "#include <stdio.h>",
+        "",
+        "int main(int argc, char** argv) {",
+        '  printf("hell the world");',
+        "}",
+        "```",
+      ].join("\n"),
+    );
+    memoElement.enhanceCodeBlocks();
+
+    const code = memoElement.shadowRoot.querySelector("#memoPreview pre code");
+    expect(code?.textContent).toContain('printf("hell the world");');
+    expect(code?.textContent).not.toContain('class="str"');
+    expect(code?.querySelector(".str")?.textContent).toBe('"hell the world"');
+    expect(code?.querySelector(".fn")?.textContent).toBe("main");
+  });
 });
