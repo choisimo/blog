@@ -59,6 +59,50 @@ describe('FloatingActionBar feature flag', () => {
     ).not.toBeNull();
   });
 
+  it('renders memo stack and insight actions on the home route when enabled', async () => {
+    seedVisited();
+    window.history.replaceState({}, '', '/');
+
+    await withFab(true);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('toolbar', { name: 'Floating actions' })
+      ).not.toBeNull();
+    });
+
+    expect(screen.queryByRole('button', { name: /Memo|메모/i })).not.toBeNull();
+    expect(
+      screen.queryByRole('button', { name: /Visited Stack|방문 스택/i })
+    ).not.toBeNull();
+    expect(
+      screen.queryByRole('button', { name: /Insight|인사이트/i })
+    ).not.toBeNull();
+  });
+
+  it('remounts the memo pad after navigating away from the blog listing', async () => {
+    window.localStorage.setItem('aiMemo.fab.enabled', 'true');
+    window.history.replaceState({}, '', '/blog');
+    document.body.appendChild(document.createElement('ai-memo-pad'));
+
+    await act(async () => {
+      render(<App />);
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector('ai-memo-pad')).toBeNull();
+    });
+
+    const homeLink = screen.getByRole('link', { name: /Nodove/i });
+    await act(async () => {
+      homeLink.click();
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector('ai-memo-pad')).not.toBeNull();
+    });
+  });
+
   it('falls back to visited-posts minimap when ai-memo is absent', async () => {
     // Enable FAB with no ai-memo element present
     seedVisited();

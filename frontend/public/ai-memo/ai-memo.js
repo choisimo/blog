@@ -4410,7 +4410,7 @@
 
   const isSuppressedRoute = () => {
     const path = window.location.pathname.replace(/\/+$/, '') || '/';
-    return path === '/' || path === '/blog';
+    return path === '/blog';
   };
 
   // Ensure single instance mounted
