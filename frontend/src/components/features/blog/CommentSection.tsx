@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   Bot,
   Globe2,
@@ -14,12 +14,7 @@ import remarkGfm from "remark-gfm";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 import CommentInputModal from "./CommentInputModal";
-import CommentReactions from "./CommentReactions";
 import { streamChatEvents } from "@/services/chat";
-import {
-  fetchReactionsBatch,
-  ReactionCount,
-} from "@/services/engagement/reactions";
 import { getCachedAdvancedVisitorId } from "@/services/session/fingerprint";
 import { getRAGContextForChat } from "@/services/discovery/rag";
 import { useFeatureFlags } from "@/stores/runtime/useFeatureFlagsStore";
@@ -34,11 +29,6 @@ export default function CommentSection({ postId }: { postId: string }) {
   const { flags: featureFlags } = useFeatureFlags();
   const { comments, setComments, loading, error, hasArchived } =
     useCommentsFeed(postId);
-
-  // Reactions state: map of commentId -> reactions
-  const [reactionsMap, setReactionsMap] = useState<
-    Record<string, ReactionCount[]>
-  >({});
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -56,21 +46,6 @@ export default function CommentSection({ postId }: { postId: string }) {
   });
   const [aiResponding, setAiResponding] = useState(false);
   const [aiStreamingText, setAiStreamingText] = useState("");
-
-  // Fetch reactions when comments change
-  useEffect(() => {
-    if (!comments || comments.length === 0) return;
-
-    const commentIds = comments
-      .map((c) => c.id)
-      .filter((id): id is string => !!id);
-
-    if (commentIds.length === 0) return;
-
-    fetchReactionsBatch(commentIds)
-      .then((reactions) => setReactionsMap(reactions))
-      .catch((err) => console.warn("Failed to fetch reactions:", err));
-  }, [comments]);
 
   // Toggle AI discussion mode
   const handleToggleAiDiscussion = useCallback(() => {
@@ -491,17 +466,6 @@ ${ragContext ? "위의 관련 지식을 참고하여 " : ""}${userName}님의 �
                             {c.website}
                           </a>
                         )}
-                        {/* Comment Reactions */}
-                        {c.id && (
-                          <div className="pl-0 sm:pl-4">
-                            <CommentReactions
-                              commentId={c.id}
-                              initialReactions={reactionsMap[c.id] || []}
-                              isTerminal={isTerminal}
-                              compact
-                            />
-                          </div>
-                        )}
                       </div>
                     ) : (
                       /* Standard mode: Card style */
@@ -557,14 +521,6 @@ ${ragContext ? "위의 관련 지식을 참고하여 " : ""}${userName}님의 �
                             <Globe2 className="h-3 w-3" />
                             {c.website}
                           </a>
-                        )}
-                        {/* Comment Reactions */}
-                        {c.id && (
-                          <CommentReactions
-                            commentId={c.id}
-                            initialReactions={reactionsMap[c.id] || []}
-                            isTerminal={isTerminal}
-                          />
                         )}
                       </>
                     )}

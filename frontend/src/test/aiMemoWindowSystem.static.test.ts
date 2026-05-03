@@ -30,6 +30,16 @@ describe("AI Memo window system assets", () => {
     expect(css).toContain(":host(.terminal) .panel");
   });
 
+  it("mounts the memo pad on the home route while keeping the blog listing suppressed", () => {
+    const js = readFileSync(
+      resolve(root, "public/ai-memo/ai-memo.js"),
+      "utf8",
+    );
+
+    expect(js).toContain("return path === '/blog';");
+    expect(js).not.toContain("path === '/' || path === '/blog'");
+  });
+
   it("highlights fenced C code without leaking highlighter attributes into text", () => {
     const js = readFileSync(
       resolve(root, "public/ai-memo/ai-memo.js"),
