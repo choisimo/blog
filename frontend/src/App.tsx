@@ -83,9 +83,15 @@ function useInsightWorkspaceActive() {
   return pathname === "/insight" || pathname.startsWith("/insight/");
 }
 
-function useCleanPublicListing() {
+function useCleanBlogListing() {
   const { pathname } = useLocation();
-  return pathname === "/" || pathname === "/blog";
+  return pathname === "/blog";
+}
+
+function ensureAIMemoPadMounted() {
+  if (typeof document === "undefined" || !document.body) return;
+  if (document.querySelector("ai-memo-pad")) return;
+  document.body.appendChild(document.createElement("ai-memo-pad"));
 }
 
 function RouteMain({ children }: { children: ReactNode }) {
@@ -112,14 +118,18 @@ function RouteFooter() {
 
 function GlobalAssistants({ fabOn }: { fabOn: boolean }) {
   const insightWorkspaceActive = useInsightWorkspaceActive();
-  const cleanPublicListing = useCleanPublicListing();
+  const cleanBlogListing = useCleanBlogListing();
 
   useEffect(() => {
-    if (!cleanPublicListing || typeof document === "undefined") return;
-    document.querySelectorAll("ai-memo-pad").forEach((el) => el.remove());
-  }, [cleanPublicListing]);
+    if (typeof document === "undefined") return;
+    if (cleanBlogListing) {
+      document.querySelectorAll("ai-memo-pad").forEach((el) => el.remove());
+      return;
+    }
+    ensureAIMemoPadMounted();
+  }, [cleanBlogListing]);
 
-  if (insightWorkspaceActive || cleanPublicListing) return null;
+  if (insightWorkspaceActive || cleanBlogListing) return null;
 
   return (
     <>
