@@ -18,6 +18,39 @@ const withFab = async (enabled: boolean) => {
   });
 };
 
+const ensureTestAIMemoElementDefinition = () => {
+  if (customElements.get('ai-memo-pad')) return;
+
+  class TestAIMemoPad extends HTMLElement {
+    private panel: HTMLElement | null = null;
+    private readonly onWindowCommand = (event: Event) => {
+      const detail = (event as CustomEvent<{ action?: string }>).detail || {};
+      if (detail.action === 'toggle') {
+        this.panel?.classList.toggle('open');
+      }
+    };
+
+    connectedCallback() {
+      if (!this.shadowRoot) {
+        const shadow = this.attachShadow({ mode: 'open' });
+        const panel = document.createElement('div');
+        panel.id = 'panel';
+        shadow.appendChild(panel);
+        this.panel = panel;
+      } else {
+        this.panel = this.shadowRoot.getElementById('panel');
+      }
+      window.addEventListener('aiMemo:windowCommand', this.onWindowCommand);
+    }
+
+    disconnectedCallback() {
+      window.removeEventListener('aiMemo:windowCommand', this.onWindowCommand);
+    }
+  }
+
+  customElements.define('ai-memo-pad', TestAIMemoPad);
+};
+
 beforeEach(() => {
   localStorage.clear();
   window.history.replaceState({}, '', '/projects');
