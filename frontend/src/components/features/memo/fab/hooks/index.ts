@@ -10,6 +10,7 @@ export {
   useScrollHide,
   useFabPinned,
   useFabPosition,
+  ensureAIMemoElement,
   hideLegacyLaunchers,
   useFabAnalytics,
 } from "./useFabState";

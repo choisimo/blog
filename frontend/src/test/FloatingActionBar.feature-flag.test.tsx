@@ -18,6 +18,39 @@ const withFab = async (enabled: boolean) => {
   });
 };
 
+const ensureTestAIMemoElementDefinition = () => {
+  if (customElements.get('ai-memo-pad')) return;
+
+  class TestAIMemoPad extends HTMLElement {
+    private panel: HTMLElement | null = null;
+    private readonly onWindowCommand = (event: Event) => {
+      const detail = (event as CustomEvent<{ action?: string }>).detail || {};
+      if (detail.action === 'toggle') {
+        this.panel?.classList.toggle('open');
+      }
+    };
+
+    connectedCallback() {
+      if (!this.shadowRoot) {
+        const shadow = this.attachShadow({ mode: 'open' });
+        const panel = document.createElement('div');
+        panel.id = 'panel';
+        shadow.appendChild(panel);
+        this.panel = panel;
+      } else {
+        this.panel = this.shadowRoot.getElementById('panel');
+      }
+      window.addEventListener('aiMemo:windowCommand', this.onWindowCommand);
+    }
+
+    disconnectedCallback() {
+      window.removeEventListener('aiMemo:windowCommand', this.onWindowCommand);
+    }
+  }
+
+  customElements.define('ai-memo-pad', TestAIMemoPad);
+};
+
 beforeEach(() => {
   localStorage.clear();
   window.history.replaceState({}, '', '/projects');
@@ -57,6 +90,28 @@ describe('FloatingActionBar feature flag', () => {
     expect(
       screen.queryByRole('button', { name: /Insight|인사이트/i })
     ).not.toBeNull();
+  });
+
+  it('mounts and opens ai-memo-pad when the memo action is clicked', async () => {
+    ensureTestAIMemoElementDefinition();
+    await withFab(true);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('toolbar', { name: 'Floating actions' })
+      ).not.toBeNull();
+    });
+
+    const memoButton = screen.getByRole('button', { name: /Memo|메모/i });
+    await act(async () => {
+      memoButton.click();
+    });
+
+    await waitFor(() => {
+      const memo = document.querySelector('ai-memo-pad');
+      const panel = memo?.shadowRoot?.getElementById('panel');
+      expect(panel?.classList.contains('open')).toBe(true);
+    });
   });
 
   it('falls back to visited-posts minimap when ai-memo is absent', async () => {

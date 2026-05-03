@@ -11,6 +11,28 @@ function getMemoShadowRoot(aiMemoEl: HTMLElement | null): ShadowRoot | null {
   return (aiMemoEl as MemoPadElement | null)?.shadowRoot ?? null;
 }
 
+function findAIMemoElement(): HTMLElement | null {
+  if (typeof document === "undefined") return null;
+  return document.querySelector("ai-memo-pad") as HTMLElement | null;
+}
+
+export function ensureAIMemoElement(): HTMLElement | null {
+  const existing = findAIMemoElement();
+  if (existing) return existing;
+  if (
+    typeof document === "undefined" ||
+    typeof customElements === "undefined" ||
+    !customElements.get("ai-memo-pad") ||
+    !document.body
+  ) {
+    return null;
+  }
+
+  const el = document.createElement("ai-memo-pad") as HTMLElement;
+  document.body.appendChild(el);
+  return el;
+}
+
 // Feature flag: build-time + runtime override
 export function isFabEnabled(): boolean {
   let lsValue: boolean | null = null;
@@ -39,17 +61,42 @@ export function useAIMemoElement(): HTMLElement | null {
   const [el, setEl] = useState<HTMLElement | null>(null);
   useEffect(() => {
     let active = true;
-    const find = () =>
-      document.querySelector("ai-memo-pad") as HTMLElement | null;
-    const loop = () => {
+    let pollId: number | null = null;
+
+    const syncElement = () => {
       if (!active) return;
-      const e = find();
-      if (e) setEl(e);
-      else setTimeout(loop, 200);
+      const e = ensureAIMemoElement();
+      if (!e) return false;
+      setEl(e);
+      return true;
     };
-    loop();
+
+    if (!syncElement()) {
+      pollId = window.setInterval(() => {
+        if (syncElement() && pollId) {
+          clearInterval(pollId);
+          pollId = null;
+        }
+      }, 200);
+
+      if (typeof customElements !== "undefined") {
+        void customElements
+          .whenDefined("ai-memo-pad")
+          .then(() => {
+            if (syncElement() && pollId) {
+              clearInterval(pollId);
+              pollId = null;
+            }
+          })
+          .catch(() => {
+            void 0;
+          });
+      }
+    }
+
     return () => {
       active = false;
+      if (pollId) clearInterval(pollId);
     };
   }, []);
   return el;

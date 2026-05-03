@@ -26,6 +26,7 @@ import {
   useScrollHide,
   useFabPinned,
   useFabPosition,
+  ensureAIMemoElement,
   hideLegacyLaunchers,
   useFabAnalytics,
 } from "./hooks";
@@ -164,7 +165,8 @@ export default function FloatingActionBar() {
   const clickShadowBtn = useCallback(
     (id: string) => {
       try {
-        const shadow = (aiMemoEl as MemoPadElement | null)?.shadowRoot ?? undefined;
+        const memoEl = aiMemoEl?.isConnected ? aiMemoEl : ensureAIMemoElement();
+        const shadow = (memoEl as MemoPadElement | null)?.shadowRoot ?? undefined;
         const btn = shadow?.getElementById(id) as HTMLButtonElement | null;
         btn?.click();
       } catch {
@@ -176,20 +178,52 @@ export default function FloatingActionBar() {
 
   const toggleMemo = useCallback(
     () => {
-      let dispatched = false;
-      try {
+      const dispatchToggle = () => {
         window.dispatchEvent(
           new CustomEvent("aiMemo:windowCommand", {
             detail: { action: "toggle" },
           }),
         );
-        dispatched = true;
-      } catch {
-        void 0;
+      };
+
+      const memoEl = aiMemoEl?.isConnected ? aiMemoEl : ensureAIMemoElement();
+      const hasMemoPanel = Boolean(
+        (memoEl as MemoPadElement | null)?.shadowRoot?.getElementById("panel"),
+      );
+
+      if (hasMemoPanel) {
+        try {
+          dispatchToggle();
+          return;
+        } catch {
+          clickShadowBtn("launcher");
+          return;
+        }
       }
-      if (!dispatched) clickShadowBtn("launcher");
+
+      if (typeof customElements !== "undefined") {
+        void customElements
+          .whenDefined("ai-memo-pad")
+          .then(() => {
+            const readyMemoEl = ensureAIMemoElement();
+            const readyPanel = Boolean(
+              (readyMemoEl as MemoPadElement | null)?.shadowRoot?.getElementById(
+                "panel",
+              ),
+            );
+            if (!readyPanel) {
+              clickShadowBtn("launcher");
+              return;
+            }
+            dispatchToggle();
+          })
+          .catch(() => clickShadowBtn("launcher"));
+        return;
+      }
+
+      clickShadowBtn("launcher");
     },
-    [clickShadowBtn],
+    [aiMemoEl, clickShadowBtn],
   );
 
   const openHistory = useCallback(() => {
