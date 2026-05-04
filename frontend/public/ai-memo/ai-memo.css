@@ -1301,255 +1301,208 @@
 }
 
 /* ========================================
-   CATALYST PANEL - Improved UX
+   CATALYST PANEL - Unified assistant panel
    ======================================== */
 .catalyst-panel {
-  padding: 18px;
-  background: radial-gradient(circle at top, rgba(124, 58, 237, 0.08), rgba(15, 23, 42, 0))
-      rgba(247, 248, 252, 0.9);
-  border-top: 1px solid rgba(124, 58, 237, 0.15);
-  animation: catalyst-slide-in 0.2s ease-out;
+  padding: 14px 18px 18px;
+  border-top: 1px solid var(--memo-border);
+  background: var(--memo-surface-subtle);
+  animation: catalyst-slide-in 180ms var(--memo-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+}
+
+.catalyst-panel[hidden] {
+  display: none !important;
 }
 
 @keyframes catalyst-slide-in {
   from {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateY(-6px) scale(0.995);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
-:host(.dark) .catalyst-panel {
-  background: radial-gradient(circle at top, rgba(124, 58, 237, 0.25), rgba(7, 11, 22, 0.85))
-      rgba(6, 9, 18, 0.92);
-  border-top-color: rgba(124, 58, 237, 0.35);
-}
-
 .catalyst-card {
-  border-radius: 24px;
-  padding: 20px 24px;
-  background: #fff;
-  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12);
-  border: 1px solid rgba(124, 58, 237, 0.1);
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--memo-border);
+  border-radius: 8px;
+  background: var(--memo-surface);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
 }
 
-:host(.dark) .catalyst-card {
-  background: rgba(15, 23, 42, 0.9);
-  border-color: rgba(124, 58, 237, 0.25);
-  box-shadow: 0 25px 50px rgba(4, 6, 12, 0.6);
+.catalyst-header,
+.catalyst-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
 
 .catalyst-header {
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 12px;
-}
-
-.catalyst-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(124, 58, 237, 0.1);
-  border: 1px solid rgba(124, 58, 237, 0.2);
 }
 
 .catalyst-icon {
-  font-size: 14px;
-  color: #7c3aed;
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(109, 93, 252, 0.1);
+  color: var(--memo-ai);
+  font-size: 17px;
 }
 
 .catalyst-title {
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  font-size: 11px;
-  color: #4c1d95;
-}
-
-:host(.dark) .catalyst-icon {
-  color: #c4b5fd;
-}
-
-:host(.dark) .catalyst-title {
-  color: #d8b4fe;
+  color: var(--memo-text);
+  font: 850 15px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif;
+  letter-spacing: 0;
 }
 
 .catalyst-status {
-  font-size: 12px;
-  font-weight: 500;
-  color: rgba(15, 23, 42, 0.6);
-}
-
-:host(.dark) .catalyst-status {
-  color: rgba(248, 250, 252, 0.6);
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid rgba(109, 93, 252, 0.18);
+  border-radius: 999px;
+  background: rgba(109, 93, 252, 0.08);
+  color: var(--memo-ai);
+  font: 800 11px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .catalyst-subtext {
-  font-size: 13px;
-  line-height: 1.5;
-  color: rgba(15, 23, 42, 0.75);
-  margin: 0;
-}
-
-:host(.dark) .catalyst-subtext {
-  color: rgba(226, 232, 240, 0.78);
+  margin: 3px 0 0;
+  color: var(--memo-text-muted);
+  font: 600 12px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .catalyst-input-label {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: rgba(15, 23, 42, 0.7);
-}
-
-:host(.dark) .catalyst-input-label {
-  color: rgba(226, 232, 240, 0.7);
+  color: var(--memo-text);
+  font: 800 12px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .catalyst-input-shell {
   position: relative;
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 .catalyst-input {
   width: 100%;
-  padding: 14px 44px 14px 38px;
-  font: 500 14px/1.4 'Pretendard', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    sans-serif;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 16px;
+  min-height: 48px;
+  padding: 12px 72px 12px 14px;
+  border: 1px solid var(--memo-border);
+  border-radius: 8px;
+  background: var(--memo-surface);
+  color: var(--memo-text);
+  font: 700 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 140ms var(--memo-ease), box-shadow 140ms var(--memo-ease), background 140ms var(--memo-ease);
   box-sizing: border-box;
-  color: #0f172a;
 }
 
 .catalyst-input::placeholder {
-  color: rgba(15, 23, 42, 0.4);
+  color: var(--memo-text-subtle);
 }
 
 .catalyst-input:hover {
-  border-color: rgba(124, 58, 237, 0.45);
+  border-color: var(--memo-border-strong);
 }
 
 .catalyst-input:focus {
-  border-color: rgba(124, 58, 237, 0.65);
-  box-shadow: 0 10px 30px rgba(124, 58, 237, 0.18), 0 0 0 3px rgba(124, 58, 237, 0.15);
-  background: #fff;
+  border-color: var(--memo-ai);
+  box-shadow: 0 0 0 3px rgba(109, 93, 252, 0.14);
 }
 
-:host(.dark) .catalyst-input {
-  background: rgba(10, 12, 25, 0.9);
-  border-color: rgba(124, 58, 237, 0.25);
-  color: #e2e8f0;
-}
-
-:host(.dark) .catalyst-input::placeholder {
-  color: rgba(226, 232, 240, 0.45);
-}
-
-:host(.dark) .catalyst-input:hover {
-  border-color: rgba(168, 85, 247, 0.5);
-}
-
-:host(.dark) .catalyst-input:focus {
-  border-color: rgba(190, 161, 255, 0.9);
-  box-shadow: 0 18px 45px rgba(7, 10, 20, 0.9), 0 0 0 3px rgba(124, 58, 237, 0.2);
-  background: rgba(7, 10, 20, 0.95);
-}
-
-.catalyst-input-indicator {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(124, 58, 237, 0.9);
+.catalyst-input:disabled {
+  opacity: 0.62;
 }
 
 .catalyst-input-hint {
   position: absolute;
-  right: 16px;
+  right: 14px;
   top: 50%;
+  color: var(--memo-text-subtle);
+  font: 750 11px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   transform: translateY(-50%);
-  font-size: 11px;
-  color: rgba(15, 23, 42, 0.4);
 }
 
-:host(.dark) .catalyst-input-hint {
-  color: rgba(226, 232, 240, 0.45);
-}
-
-.catalyst-suggestions {
-  display: flex;
-  flex-wrap: wrap;
+.catalyst-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
-  margin-top: 4px;
 }
 
 .catalyst-suggestion {
-  border: none;
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border: 1px solid var(--memo-border);
+  border-radius: 8px;
+  background: var(--memo-surface);
+  color: var(--memo-text-muted);
   cursor: pointer;
-  font: inherit;
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(124, 58, 237, 0.08);
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  color: #5b21b6;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s, transform 0.2s;
+  font: 800 12px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  transition: transform 140ms var(--memo-spring), border-color 140ms var(--memo-ease), background 140ms var(--memo-ease), color 140ms var(--memo-ease);
 }
 
 .catalyst-suggestion:hover {
-  background: rgba(124, 58, 237, 0.2);
   transform: translateY(-1px);
+  border-color: rgba(109, 93, 252, 0.28);
+  background: rgba(109, 93, 252, 0.08);
+  color: var(--memo-ai);
 }
 
-:host(.dark) .catalyst-suggestion {
-  background: rgba(124, 58, 237, 0.2);
-  border-color: rgba(124, 58, 237, 0.35);
-  color: #d8b4fe;
+.catalyst-suggestion:active {
+  transform: scale(0.97);
+}
+
+.catalyst-suggestion:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(109, 93, 252, 0.16);
 }
 
 .catalyst-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 6px;
+  gap: 8px;
+  padding-top: 2px;
 }
 
 .catalyst-run {
   display: inline-flex;
+  min-height: 44px;
   align-items: center;
   gap: 8px;
-  padding-inline: 18px;
-  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 45%, #ec4899 100%);
-  color: #fff;
   border-color: transparent;
-  border-radius: 999px;
-  box-shadow: 0 15px 35px rgba(124, 58, 237, 0.35);
+  border-radius: 8px;
+  background: var(--memo-ai);
+  color: #fff;
+  box-shadow: 0 12px 28px rgba(109, 93, 252, 0.24);
 }
 
-.catalyst-run:hover {
-  transform: translateY(-1px) scale(1.01);
-  box-shadow: 0 20px 45px rgba(124, 58, 237, 0.45);
+.catalyst-run:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 34px rgba(109, 93, 252, 0.32);
 }
 
-.catalyst-run:active {
-  transform: translateY(0);
+.catalyst-run:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.catalyst-run:disabled {
+  cursor: not-allowed;
+  opacity: 0.54;
+  box-shadow: none;
 }
 
 .catalyst-run-icon {
@@ -2360,6 +2313,19 @@
   /* Catalyst panel mobile */
   .catalyst-panel {
     padding: 12px;
+  }
+
+  .catalyst-header,
+  .catalyst-heading {
+    align-items: flex-start;
+  }
+
+  .catalyst-header {
+    flex-direction: column;
+  }
+
+  .catalyst-quick-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .catalyst-actions {
@@ -3509,6 +3475,18 @@ body.ai-memo-block-select-active {
   background: var(--memo-primary);
 }
 
+.status-bar[data-state="busy"] .status-dot {
+  background: var(--memo-ai);
+}
+
+.status-bar[data-state="saved"] .status-dot {
+  background: #16a34a;
+}
+
+.status-bar[data-state="error"] .status-dot {
+  background: var(--memo-danger);
+}
+
 .footer-actions {
   gap: 6px;
 }
@@ -3959,6 +3937,10 @@ body.ai-memo-block-select-active {
   .tab,
   .footer-btn,
   .save-btn,
+  .catalyst-panel,
+  .catalyst-input,
+  .catalyst-suggestion,
+  .catalyst-run,
   .window-control,
   .header .close,
   .status-dot {
@@ -4832,14 +4814,20 @@ body.ai-memo-block-select-active {
   .history-info,
   .code-mode,
   .code-mode-button,
-  .code-mode-select {
+  .code-mode-select,
+  .catalyst-panel,
+  .catalyst-input,
+  .catalyst-suggestion,
+  .catalyst-run {
     animation: none !important;
     transition: none !important;
   }
 
   .code-mode,
   .code-mode.is-visible,
-  .code-mode-button:active:not(:disabled) {
+  .code-mode-button:active:not(:disabled),
+  .catalyst-suggestion,
+  .catalyst-run {
     transform: none !important;
   }
 
