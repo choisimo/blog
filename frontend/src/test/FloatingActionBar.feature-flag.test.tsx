@@ -52,6 +52,7 @@ const ensureTestAIMemoElementDefinition = () => {
 };
 
 beforeEach(() => {
+  ensureTestAIMemoElementDefinition();
   localStorage.clear();
   window.history.replaceState({}, '', '/projects');
 });
