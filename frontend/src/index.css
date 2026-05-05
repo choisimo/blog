@@ -1903,7 +1903,7 @@
 
 /* Blog article visual reading flow */
 .article-flow {
-  --article-readable-max: 760px;
+  --article-readable-max: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
@@ -1974,7 +1974,7 @@
   }
 
   .article-flow > :where(.article-readable, p, ul, ol, blockquote, h4, h5, h6) {
-    grid-column: 3 / 11;
+    grid-column: 2 / 12;
     max-width: none;
   }
 
