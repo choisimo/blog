@@ -1,28 +1,99 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bot,
   Globe2,
   Loader2,
   MessageCircle,
   PenLine,
+  Quote,
+  Radio,
+  Reply,
   Sparkles,
   User,
-} from "lucide-react";
-import { getApiBaseUrl } from "@/utils/network/apiBase";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { useTheme } from "@/contexts/ThemeContext";
-import { cn } from "@/lib/utils";
-import CommentInputModal from "./CommentInputModal";
-import { streamChatEvents } from "@/services/chat";
-import { getCachedAdvancedVisitorId } from "@/services/session/fingerprint";
-import { getRAGContextForChat } from "@/services/discovery/rag";
-import { useFeatureFlags } from "@/stores/runtime/useFeatureFlagsStore";
+  Users,
+} from 'lucide-react';
+import { getApiBaseUrl } from '@/utils/network/apiBase';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { useTheme } from '@/contexts/ThemeContext';
+import { cn } from '@/lib/utils';
+import CommentInputModal from './CommentInputModal';
+import CommentReactions from './CommentReactions';
+import { streamChatEvents } from '@/services/chat';
+import { getCachedAdvancedVisitorId } from '@/services/session/fingerprint';
+import { getRAGContextForChat } from '@/services/discovery/rag';
+import { useFeatureFlags } from '@/stores/runtime/useFeatureFlagsStore';
 import {
   mergeCommentItems,
+  type CommentItem,
   type CommentListResponse,
   useCommentsFeed,
-} from "./commentFeed";
+} from './commentFeed';
+import {
+  fetchReactionsBatch,
+  type ReactionCount,
+} from '@/services/engagement/reactions';
+
+const AI_AUTHOR_NAME = 'AI Assistant';
+
+type ComposerMode = 'comment' | 'reply' | 'quote';
+
+type ComposerContext = {
+  mode: ComposerMode;
+  target?: CommentItem;
+};
+
+const DEFAULT_COMPOSER_CONTEXT: ComposerContext = { mode: 'comment' };
+
+function isAiComment(comment: CommentItem): boolean {
+  return (
+    comment.author === AI_AUTHOR_NAME || Boolean(comment.id?.startsWith('ai-'))
+  );
+}
+
+function formatDiscussionDate(value?: string | null): string {
+  if (!value) return 'unknown';
+
+  try {
+    return new Date(value).toLocaleString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return 'unknown';
+  }
+}
+
+function buildQuoteDraft(comment?: CommentItem): string {
+  if (!comment?.content) return '';
+
+  const normalized = comment.content.replace(/\s+/g, ' ').trim();
+  const excerpt =
+    normalized.length > 280
+      ? `${normalized.slice(0, 280).trim()}...`
+      : normalized;
+
+  return `> ${comment.author}: ${excerpt}\n\n`;
+}
+
+function getComposerContextLabel(context: ComposerContext): string | undefined {
+  if (!context.target) return undefined;
+  if (context.mode === 'reply')
+    return `${context.target.author}에게 답글 작성 중`;
+  if (context.mode === 'quote') return `${context.target.author}의 메시지 인용`;
+  return undefined;
+}
+
+function getComposerContextPreview(
+  context: ComposerContext
+): string | undefined {
+  const content = context.target?.content?.replace(/\s+/g, ' ').trim();
+  if (!content) return undefined;
+  return content.length > 160 ? `${content.slice(0, 160).trim()}...` : content;
+}
 
 export default function CommentSection({ postId }: { postId: string }) {
   const { isTerminal } = useTheme();
@@ -30,29 +101,78 @@ export default function CommentSection({ postId }: { postId: string }) {
   const { comments, setComments, loading, error, hasArchived } =
     useCommentsFeed(postId);
 
-  // Modal state
+  const commentList = useMemo(() => comments || [], [comments]);
+  const commentIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          commentList
+            .map(comment => comment.id)
+            .filter((id): id is string => Boolean(id))
+        )
+      ),
+    [commentList]
+  );
+  const commentIdsKey = commentIds.join(',');
+
+  const discussionCounts = useMemo(() => {
+    const ai = commentList.filter(isAiComment).length;
+    return {
+      total: commentList.length,
+      ai,
+      human: commentList.length - ai,
+    };
+  }, [commentList]);
+
+  const [reactionsByCommentId, setReactionsByCommentId] = useState<
+    Record<string, ReactionCount[]>
+  >({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (commentIds.length === 0) {
+      setReactionsByCommentId({});
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void fetchReactionsBatch(commentIds).then(next => {
+      if (!cancelled) {
+        setReactionsByCommentId(next);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [commentIds, commentIdsKey]);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [savedAuthor, setSavedAuthor] = useState("");
+  const [composerContext, setComposerContext] = useState<ComposerContext>(
+    DEFAULT_COMPOSER_CONTEXT
+  );
+  const [savedAuthor, setSavedAuthor] = useState('');
   const formShownAt = useRef<number>(Date.now());
 
-  // AI Discussion mode state
   const [aiDiscussionEnabled, setAiDiscussionEnabled] = useState(() => {
-    if (typeof window === "undefined") return false;
+    if (typeof window === 'undefined') return false;
     try {
-      return localStorage.getItem("comment.aiDiscussion") === "true";
+      return localStorage.getItem('comment.aiDiscussion') === 'true';
     } catch {
       return false;
     }
   });
   const [aiResponding, setAiResponding] = useState(false);
-  const [aiStreamingText, setAiStreamingText] = useState("");
+  const [aiStreamingText, setAiStreamingText] = useState('');
+  const [aiError, setAiError] = useState<string | null>(null);
 
-  // Toggle AI discussion mode
   const handleToggleAiDiscussion = useCallback(() => {
-    setAiDiscussionEnabled((prev) => {
+    setAiDiscussionEnabled(prev => {
       const next = !prev;
       try {
-        localStorage.setItem("comment.aiDiscussion", String(next));
+        localStorage.setItem('comment.aiDiscussion', String(next));
       } catch {
         void 0;
       }
@@ -60,25 +180,43 @@ export default function CommentSection({ postId }: { postId: string }) {
     });
   }, []);
 
-  // AI response error state
-  const [aiError, setAiError] = useState<string | null>(null);
+  const openComposer = useCallback((context: ComposerContext) => {
+    formShownAt.current = Date.now();
+    setComposerContext(context);
+    setIsModalOpen(true);
+  }, []);
 
-  // Generate AI response to a user comment
+  const closeComposer = useCallback(() => {
+    setIsModalOpen(false);
+  }, []);
+
+  const composerInitialContent =
+    composerContext.mode === 'quote'
+      ? buildQuoteDraft(composerContext.target)
+      : '';
+  const composerContextLabel = getComposerContextLabel(composerContext);
+  const composerContextPreview = getComposerContextPreview(composerContext);
+
   const generateAiResponse = useCallback(
-    async (userComment: string, userName: string) => {
-      if (!aiDiscussionEnabled) return;
+    async (
+      userComment: string,
+      userName: string,
+      options: { force?: boolean } = {}
+    ) => {
+      if (!options.force && !aiDiscussionEnabled) return;
+      if (aiResponding) return;
 
       setAiResponding(true);
-      setAiStreamingText("");
+      setAiStreamingText('');
       setAiError(null);
 
-      const pageTitle = typeof document !== "undefined" ? document.title : "";
-      const pageUrl = typeof window !== "undefined" ? window.location.href : "";
+      const pageTitle = typeof document !== 'undefined' ? document.title : '';
+      const pageUrl = typeof window !== 'undefined' ? window.location.href : '';
 
       const recentComments = (comments || [])
         .slice(-5)
-        .map((c) => `${c.author}: ${c.content}`)
-        .join("\n");
+        .map(c => `${c.author}: ${c.content}`)
+        .join('\n');
 
       const ragContextPromise = getRAGContextForChat(userComment, 2000, 8000);
 
@@ -92,42 +230,41 @@ export default function CommentSection({ postId }: { postId: string }) {
 현재 페이지: ${pageTitle}
 URL: ${pageUrl}
 
-${ragContext ? `[관련 블로그 지식]\n${ragContext}\n\n` : ""}최근 댓글들:
+${ragContext ? `[관련 블로그 지식]\n${ragContext}\n\n` : ''}최근 댓글들:
 ${recentComments}
 
 방금 ${userName}님이 남긴 댓글:
 "${userComment}"
 
-${ragContext ? "위의 관련 지식을 참고하여 " : ""}${userName}님의 댓글에 대해 짧고 통찰력 있게 응답해주세요.
+${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 댓글에 대해 짧고 통찰력 있게 응답해주세요.
 - 2-3문장으로 간결하게
 - 글의 내용과 연결지어 생각을 확장하거나 흥미로운 질문을 던져주세요
 - 존댓말을 사용하고 친근하게 대해주세요`;
 
-        let fullText = "";
+        let fullText = '';
         for await (const ev of streamChatEvents({
           text: prompt,
           useArticleContext: true,
           signal: controller.signal,
         })) {
-          if (ev.type === "text") {
+          if (ev.type === 'text') {
             fullText += ev.text;
             setAiStreamingText(fullText);
           }
         }
 
-        // Persist the AI reply before it is merged into the visible thread.
         if (fullText.trim()) {
           try {
-            const base = getApiBaseUrl().replace(/\/$/, "");
+            const base = getApiBaseUrl().replace(/\/$/, '');
             const url = `${base}/api/v1/comments`;
             const resp = await fetch(url, {
-              method: "POST",
+              method: 'POST',
               headers: {
-                "Content-Type": "application/json",
+                'Content-Type': 'application/json',
               },
               body: JSON.stringify({
                 postId,
-                author: "AI Assistant",
+                author: AI_AUTHOR_NAME,
                 content: fullText.trim(),
               }),
             });
@@ -136,64 +273,69 @@ ${ragContext ? "위의 관련 지식을 참고하여 " : ""}${userName}님의 �
               const respData = (await resp.json()) as CommentListResponse;
               const persistedId = respData?.id ?? respData?.data?.id;
               const createdAt = new Date().toISOString();
-              setComments((prev) =>
+              setComments(prev =>
                 mergeCommentItems(prev, [
                   {
                     id: persistedId,
                     postId,
-                    author: "AI Assistant",
+                    author: AI_AUTHOR_NAME,
                     content: fullText.trim(),
                     website: null,
                     createdAt,
                   },
-                ]),
+                ])
               );
             } else {
               throw new Error(`HTTP ${resp.status}`);
             }
           } catch (persistErr) {
-            console.warn("Failed to persist AI comment:", persistErr);
-            setAiError("AI 응답은 생성되었지만 댓글로 저장하지 못했습니다.");
+            console.warn('Failed to persist AI comment:', persistErr);
+            setAiError('AI 응답은 생성되었지만 댓글로 저장하지 못했습니다.');
           }
         }
       } catch (err) {
-        const error = err as Error;
-        console.error("AI response error:", error);
+        const caught = err as Error;
+        console.error('AI response error:', caught);
 
-        // Set user-facing error message
-        if (error.name === "AbortError") {
+        if (caught.name === 'AbortError') {
           setAiError(
-            "AI 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.",
+            'AI 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.'
           );
         } else {
-          setAiError("AI 응답을 생성하지 못했습니다.");
+          setAiError('AI 응답을 생성하지 못했습니다.');
         }
       } finally {
         clearTimeout(timeoutId);
         setAiResponding(false);
-        setAiStreamingText("");
+        setAiStreamingText('');
       }
     },
-    [aiDiscussionEnabled, comments, postId, setComments],
+    [aiDiscussionEnabled, aiResponding, comments, postId, setComments]
   );
 
-  // Comment submission handler for the modal
+  const handleAskAi = useCallback(
+    (comment: CommentItem) => {
+      if (!featureFlags.aiEnabled || aiResponding) return;
+      void generateAiResponse(comment.content, comment.author, { force: true });
+    },
+    [aiResponding, featureFlags.aiEnabled, generateAiResponse]
+  );
+
   const handleCommentSubmit = useCallback(
     async (data: { author: string; content: string; website: string }) => {
       const now = Date.now();
-      // Spam defense: minimum time before submission
       if (now - formShownAt.current < 3000) {
-        throw new Error("Please take a moment before submitting.");
+        throw new Error('Please take a moment before submitting.');
       }
 
-      const base = getApiBaseUrl().replace(/\/$/, "");
+      const base = getApiBaseUrl().replace(/\/$/, '');
       const url = `${base}/api/v1/comments`;
-      const deviceFp = getCachedAdvancedVisitorId() || "";
+      const deviceFp = getCachedAdvancedVisitorId() || '';
       const resp = await fetch(url, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          ...(deviceFp ? { "X-Device-Fingerprint": deviceFp } : {}),
+          'Content-Type': 'application/json',
+          ...(deviceFp ? { 'X-Device-Fingerprint': deviceFp } : {}),
         },
         body: JSON.stringify({
           postId,
@@ -208,11 +350,9 @@ ${ragContext ? "위의 관련 지식을 참고하여 " : ""}${userName}님의 �
       const respData = (await resp.json()) as CommentListResponse;
       const id = (respData?.id ?? respData?.data?.id) as string | undefined;
 
-      // Optimistic append with deduplication
-      setComments((prev) => {
+      setComments(prev => {
         const existing = prev || [];
-        // Check if comment with this ID already exists (from SSE race condition)
-        if (id && existing.some((c) => c.id === id)) {
+        if (id && existing.some(c => c.id === id)) {
           return existing;
         }
         return mergeCommentItems(existing, [
@@ -227,16 +367,13 @@ ${ragContext ? "위의 관련 지식을 참고하여 " : ""}${userName}님의 �
         ]);
       });
 
-      // Save author name for next comment
       setSavedAuthor(data.author);
-      // Reset form shown time for next submission
+      setComposerContext(DEFAULT_COMPOSER_CONTEXT);
       formShownAt.current = Date.now();
 
-      // Trigger AI response if enabled
       if (aiDiscussionEnabled && featureFlags.aiEnabled) {
-        // Small delay to ensure user comment is visible first
         setTimeout(() => {
-          generateAiResponse(data.content, data.author);
+          void generateAiResponse(data.content, data.author);
         }, 500);
       }
     },
@@ -246,454 +383,583 @@ ${ragContext ? "위의 관련 지식을 참고하여 " : ""}${userName}님의 �
       featureFlags.aiEnabled,
       generateAiResponse,
       setComments,
-    ],
+    ]
+  );
+
+  const streamStatusLabel = error
+    ? isTerminal
+      ? 'STREAM:ERR'
+      : '실시간 오류'
+    : loading
+      ? isTerminal
+        ? 'SYNC...'
+        : '동기화 중'
+      : isTerminal
+        ? 'STREAM:ON'
+        : '실시간 ON';
+
+  const actionButtonClass = cn(
+    'inline-flex min-h-10 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition-[background-color,border-color,color,transform,opacity] duration-200 ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50',
+    isTerminal
+      ? 'border border-primary/20 bg-transparent font-mono text-muted-foreground hover:border-primary/50 hover:bg-primary/10 hover:text-primary'
+      : 'border border-border/60 bg-background/70 text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-foreground dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10'
   );
 
   return (
-    <section aria-label="Comments" className="space-y-6">
+    <section aria-label='Discussion' className='space-y-6'>
       <div
         className={cn(
-          "p-5 sm:p-6 shadow-sm backdrop-blur-sm transition-colors",
+          'rounded-lg border p-4 shadow-sm backdrop-blur-sm transition-colors sm:p-5',
           isTerminal
-            ? "rounded-lg border border-border bg-[hsl(var(--terminal-code-bg))]"
-            : "rounded-[28px] border border-border/40 bg-card/80 dark:border-white/10 dark:bg-[#111725]/80",
+            ? 'border-border bg-[hsl(var(--terminal-code-bg))]'
+            : 'border-border/60 bg-card/90 dark:border-white/10 dark:bg-[#111725]/80'
         )}
       >
-        {/* Header */}
         <div
           className={cn(
-            "flex flex-wrap items-start justify-between gap-3 pb-4",
+            'flex flex-wrap items-start justify-between gap-4 pb-4',
             isTerminal
-              ? "border-b border-border"
-              : "border-b border-border/40 dark:border-white/10",
+              ? 'border-b border-border'
+              : 'border-b border-border/50 dark:border-white/10'
           )}
         >
-          <div className="flex items-start gap-3">
+          <div className='flex min-w-0 items-start gap-3'>
             <span
               className={cn(
-                "p-2.5 rounded-xl",
+                'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border',
                 isTerminal
-                  ? "bg-primary/20 text-primary"
-                  : "bg-gradient-to-br from-primary/15 to-primary/5 text-primary dark:from-primary/20 dark:to-primary/10",
+                  ? 'border-primary/30 bg-primary/10 text-primary'
+                  : 'border-primary/15 bg-primary/10 text-primary'
               )}
             >
               <MessageCircle
-                className={cn("h-5 w-5", isTerminal && "terminal-glow")}
+                className={cn('h-5 w-5', isTerminal && 'terminal-glow')}
               />
             </span>
-            <div>
+            <div className='min-w-0'>
               <h2
                 className={cn(
-                  "text-lg font-semibold",
+                  'text-lg font-semibold tracking-normal',
                   isTerminal
-                    ? "font-mono text-primary terminal-glow"
-                    : "text-foreground dark:text-white",
+                    ? 'font-mono text-primary terminal-glow'
+                    : 'text-foreground dark:text-white'
                 )}
               >
-                {isTerminal ? ">_ Comments" : "Comments"}
+                {isTerminal ? '>_ Discussion' : 'Discussion'}
               </h2>
               <p
                 className={cn(
-                  "text-sm",
+                  'mt-1 max-w-2xl text-sm leading-relaxed',
                   isTerminal
-                    ? "font-mono text-muted-foreground"
-                    : "text-muted-foreground dark:text-white/60",
+                    ? 'font-mono text-muted-foreground'
+                    : 'text-muted-foreground dark:text-white/60'
                 )}
               >
                 {isTerminal
-                  ? "// Leave a short reflection or follow-up question"
-                  : "Leave a short reflection or follow-up question"}
+                  ? '// saved thread for humans, agents, and follow-up context'
+                  : '질문, 보충, 반박, AI 응답이 저장되는 글 하단 토론장'}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className='flex flex-wrap items-center justify-start gap-2 sm:justify-end'>
+            <span
+              className={cn(
+                'inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium',
+                isTerminal
+                  ? 'border-primary/25 bg-primary/10 font-mono text-primary'
+                  : 'border-border/70 bg-background/70 text-foreground dark:border-white/10 dark:bg-white/5 dark:text-white'
+              )}
+            >
+              <Users className='h-3.5 w-3.5' />
+              {isTerminal
+                ? `ALL:${discussionCounts.total}`
+                : `전체 ${discussionCounts.total}`}
+            </span>
+            <span
+              className={cn(
+                'inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium',
+                isTerminal
+                  ? 'border-primary/20 bg-background/30 font-mono text-muted-foreground'
+                  : 'border-border/60 bg-background/60 text-muted-foreground dark:border-white/10 dark:bg-white/5'
+              )}
+            >
+              <User className='h-3.5 w-3.5' />
+              {isTerminal
+                ? `H:${discussionCounts.human}`
+                : `사람 ${discussionCounts.human}`}
+            </span>
+            <span
+              className={cn(
+                'inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium',
+                isTerminal
+                  ? 'border-violet-400/30 bg-violet-400/10 font-mono text-violet-300'
+                  : 'border-violet-500/20 bg-violet-500/10 text-violet-700 dark:text-violet-300'
+              )}
+            >
+              <Bot className='h-3.5 w-3.5' />
+              {isTerminal
+                ? `AI:${discussionCounts.ai}`
+                : `AI ${discussionCounts.ai}`}
+            </span>
+            <span
+              className={cn(
+                'inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium',
+                error
+                  ? 'border-destructive/30 bg-destructive/10 text-destructive'
+                  : isTerminal
+                    ? 'border-primary/20 bg-background/30 font-mono text-muted-foreground'
+                    : 'border-border/60 bg-background/60 text-muted-foreground dark:border-white/10 dark:bg-white/5'
+              )}
+            >
+              <Radio className={cn('h-3.5 w-3.5', !error && 'text-primary')} />
+              {streamStatusLabel}
+            </span>
+
             {featureFlags.aiEnabled && (
               <button
-                type="button"
+                type='button'
                 onClick={handleToggleAiDiscussion}
                 className={cn(
-                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                  'inline-flex min-h-10 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-[background-color,border-color,color,transform] duration-200 ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 active:scale-[0.98]',
                   isTerminal
                     ? aiDiscussionEnabled
-                      ? "bg-primary/20 text-primary border border-primary/30 font-mono"
-                      : "bg-muted/50 text-muted-foreground border border-border font-mono hover:border-primary/50"
+                      ? 'border-primary/40 bg-primary/20 font-mono text-primary'
+                      : 'border-border bg-muted/40 font-mono text-muted-foreground hover:border-primary/50 hover:text-primary'
                     : aiDiscussionEnabled
-                      ? "bg-gradient-to-r from-violet-500/20 to-purple-500/20 text-violet-600 dark:text-violet-400 border border-violet-500/30"
-                      : "bg-muted/50 text-muted-foreground border border-border/50 hover:border-violet-500/30 hover:text-violet-600 dark:hover:text-violet-400",
+                      ? 'border-violet-500/30 bg-violet-500/15 text-violet-700 dark:text-violet-300'
+                      : 'border-border/60 bg-muted/50 text-muted-foreground hover:border-violet-500/30 hover:text-violet-700 dark:hover:text-violet-300'
                 )}
                 title={
                   aiDiscussionEnabled
-                    ? "AI 토론 모드 끄기"
-                    : "AI 토론 모드 켜기"
+                    ? '댓글 작성 후 AI 자동 응답 끄기'
+                    : '댓글 작성 후 AI 자동 응답 켜기'
                 }
               >
                 <Bot
                   className={cn(
-                    "h-3.5 w-3.5",
-                    aiDiscussionEnabled && "animate-pulse",
+                    'h-3.5 w-3.5',
+                    aiDiscussionEnabled && 'animate-pulse'
                   )}
                 />
                 {isTerminal
                   ? aiDiscussionEnabled
-                    ? "AI:ON"
-                    : "AI:OFF"
+                    ? 'AUTO:ON'
+                    : 'AUTO:OFF'
                   : aiDiscussionEnabled
-                    ? "AI 토론"
-                    : "AI 토론"}
-                {aiDiscussionEnabled && <Sparkles className="h-3 w-3" />}
+                    ? 'AI Auto'
+                    : 'AI Off'}
+                {aiDiscussionEnabled && <Sparkles className='h-3 w-3' />}
               </button>
-            )}
-            {error && (
-              <span
-                className={cn(
-                  "rounded-full px-3 py-1 text-xs font-medium",
-                  isTerminal
-                    ? "bg-destructive/20 text-destructive border border-destructive/30"
-                    : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-200",
-                )}
-              >
-                {error}
-              </span>
             )}
           </div>
         </div>
 
-        {/* Comments List */}
-        <div className="space-y-4 py-5">
+        <div className='space-y-4 py-5'>
           {loading && (
             <div
               className={cn(
-                "flex items-center gap-2 py-4",
-                isTerminal && "font-mono",
+                'flex items-center gap-2 rounded-lg border px-3 py-4',
+                isTerminal
+                  ? 'border-primary/20 bg-background/20 font-mono'
+                  : 'border-border/50 bg-background/50'
               )}
             >
               <Loader2
                 className={cn(
-                  "h-4 w-4 animate-spin",
-                  isTerminal && "text-primary",
+                  'h-4 w-4 animate-spin',
+                  isTerminal && 'text-primary'
                 )}
               />
-              <span className="text-sm text-muted-foreground">
-                {isTerminal ? "$ loading comments..." : "Loading comments..."}
+              <span className='text-sm text-muted-foreground'>
+                {isTerminal
+                  ? '$ loading discussion...'
+                  : '토론을 불러오는 중...'}
               </span>
             </div>
           )}
 
-          {comments && comments.length > 0 && (
-            <ul
+          {!loading && commentList.length === 0 && (
+            <div
               className={cn(
-                "space-y-0",
-                isTerminal && "border-l-2 border-primary/30 ml-2",
+                'rounded-lg border border-dashed px-4 py-6 text-sm',
+                isTerminal
+                  ? 'border-primary/20 bg-background/20 font-mono text-muted-foreground'
+                  : 'border-border/60 bg-background/50 text-muted-foreground'
               )}
             >
-              {comments.map((c, idx) => {
-                const isAiComment =
-                  c.author === "AI Assistant" || c.id?.startsWith("ai-");
+              {isTerminal
+                ? '$ no messages yet. start the thread.'
+                : '아직 메시지가 없습니다. 첫 질문이나 보충을 남겨보세요.'}
+            </div>
+          )}
+
+          {commentList.length > 0 && (
+            <ul
+              className={cn(
+                'space-y-2.5',
+                isTerminal && 'ml-2 border-l-2 border-primary/25'
+              )}
+            >
+              {commentList.map((comment, idx) => {
+                const aiComment = isAiComment(comment);
+                const commentKey =
+                  comment.id || `${comment.createdAt || ''}-${idx}`;
+
                 return (
                   <li
-                    key={c.id || idx}
+                    key={commentKey}
                     className={cn(
-                      "text-sm leading-relaxed transition-colors",
+                      'group text-sm leading-relaxed transition-colors',
                       isTerminal
                         ? cn(
-                            "pl-4 py-3 hover:bg-primary/5 relative before:absolute before:left-[-9px] before:top-[18px] before:w-2 before:h-2 before:rounded-full before:border-2 before:border-background",
-                            isAiComment
-                              ? "before:bg-violet-500 bg-violet-500/5"
-                              : "before:bg-primary/50",
+                            'relative py-3 pl-4 before:absolute before:left-[-9px] before:top-5 before:h-2 before:w-2 before:rounded-full before:border-2 before:border-background hover:bg-primary/5',
+                            aiComment
+                              ? 'bg-violet-500/5 before:bg-violet-400'
+                              : 'before:bg-primary/60'
                           )
                         : cn(
-                            "p-4 rounded-2xl border shadow-sm mb-3",
-                            isAiComment
-                              ? "border-violet-500/30 bg-gradient-to-br from-violet-500/5 to-purple-500/5 dark:from-violet-500/10 dark:to-purple-500/10"
-                              : "border-border/30 bg-background/60 hover:bg-background/80 dark:border-white/5 dark:bg-white/5 dark:hover:bg-white/8",
-                          ),
+                            'rounded-lg border p-3 shadow-sm sm:p-4',
+                            aiComment
+                              ? 'border-violet-500/20 bg-violet-500/[0.04] dark:bg-violet-500/10'
+                              : 'border-border/50 bg-background/70 hover:bg-background/90 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/[0.08]'
+                          )
                     )}
                   >
-                    {/* Terminal mode: Git log style */}
-                    {isTerminal ? (
-                      <div className="space-y-1">
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs">
-                          <span className="text-muted-foreground">
-                            [
-                            {c.createdAt
-                              ? new Date(c.createdAt).toLocaleString("ko-KR", {
-                                  year: "numeric",
-                                  month: "2-digit",
-                                  day: "2-digit",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })
-                              : "unknown"}
-                            ]
-                          </span>
+                    <div className='flex gap-3'>
+                      {!isTerminal && (
+                        <span
+                          className={cn(
+                            'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border',
+                            aiComment
+                              ? 'border-violet-500/20 bg-violet-500/10'
+                              : 'border-primary/15 bg-primary/10'
+                          )}
+                        >
+                          {aiComment ? (
+                            <Bot className='h-4 w-4 text-violet-600 dark:text-violet-300' />
+                          ) : (
+                            <User className='h-4 w-4 text-primary' />
+                          )}
+                        </span>
+                      )}
+
+                      <div className='min-w-0 flex-1'>
+                        <div className='flex flex-wrap items-center gap-x-2 gap-y-1'>
                           <span
                             className={cn(
-                              "font-semibold",
-                              isAiComment ? "text-violet-500" : "text-primary",
+                              'font-semibold',
+                              isTerminal
+                                ? cn(
+                                    'font-mono',
+                                    aiComment
+                                      ? 'text-violet-300'
+                                      : 'text-primary'
+                                  )
+                                : aiComment
+                                  ? 'text-violet-700 dark:text-violet-300'
+                                  : 'text-foreground dark:text-white'
                             )}
                           >
-                            {isAiComment ? (
-                              <span className="inline-flex items-center gap-1">
-                                <Bot className="h-3 w-3" />
-                                AI@assistant
-                              </span>
-                            ) : (
-                              `${c.author}@visitor`
-                            )}
+                            {isTerminal
+                              ? aiComment
+                                ? 'AI@assistant'
+                                : `${comment.author}@visitor`
+                              : comment.author}
                           </span>
-                          <span className="text-muted-foreground">:~$</span>
-                        </div>
-                        <div className="font-mono text-foreground pl-0 sm:pl-4">
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            components={{
-                              p: ({ children }) => (
-                                <span className="inline">{children}</span>
-                              ),
-                            }}
+
+                          <span
+                            className={cn(
+                              'inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium',
+                              isTerminal
+                                ? aiComment
+                                  ? 'border-violet-400/30 bg-violet-400/10 font-mono text-violet-300'
+                                  : 'border-primary/20 bg-primary/10 font-mono text-primary'
+                                : aiComment
+                                  ? 'border-violet-500/20 bg-violet-500/10 text-violet-700 dark:text-violet-300'
+                                  : 'border-border/70 bg-muted/50 text-muted-foreground'
+                            )}
                           >
-                            {c.content}
-                          </ReactMarkdown>
-                        </div>
-                        {c.website && (
-                          <a
-                            href={c.website}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-xs font-mono text-primary/70 hover:text-primary hover:underline pl-0 sm:pl-4"
-                          >
-                            <Globe2 className="h-3 w-3" />
-                            {c.website}
-                          </a>
-                        )}
-                      </div>
-                    ) : (
-                      /* Standard mode: Card style */
-                      <>
-                        <div className="mb-2.5 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
+                            {isTerminal
+                              ? aiComment
+                                ? 'agent'
+                                : 'human'
+                              : aiComment
+                                ? 'AI Agent'
+                                : '사람'}
+                          </span>
+
+                          {aiComment && (
                             <span
                               className={cn(
-                                "flex items-center justify-center rounded-full w-7 h-7",
-                                isAiComment
-                                  ? "bg-gradient-to-br from-violet-500/20 to-purple-500/20"
-                                  : "bg-gradient-to-br from-primary/20 to-primary/10",
+                                'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium',
+                                isTerminal
+                                  ? 'border-violet-400/25 bg-background/30 font-mono text-violet-200'
+                                  : 'border-violet-500/15 bg-background/60 text-violet-700/80 dark:text-violet-200/80'
                               )}
                             >
-                              {isAiComment ? (
-                                <Bot className="h-3.5 w-3.5 text-violet-500" />
-                              ) : (
-                                <User className="h-3.5 w-3.5 text-primary" />
-                              )}
-                            </span>
-                            <span
-                              className={cn(
-                                "font-semibold text-[13px]",
-                                isAiComment
-                                  ? "text-violet-600 dark:text-violet-400"
-                                  : "text-foreground dark:text-white",
-                              )}
-                            >
-                              {c.author}
-                              {isAiComment && (
-                                <Sparkles className="inline h-3 w-3 ml-1 text-violet-500" />
-                              )}
-                            </span>
-                          </div>
-                          {c.createdAt && (
-                            <span className="text-xs font-normal text-muted-foreground/70 dark:text-white/50">
-                              {new Date(c.createdAt).toLocaleDateString()}
+                              <Sparkles className='h-3 w-3' />
+                              {isTerminal ? 'auto' : '자동 응답'}
                             </span>
                           )}
+
+                          <span
+                            className={cn(
+                              'text-xs',
+                              isTerminal
+                                ? 'font-mono text-muted-foreground'
+                                : 'text-muted-foreground/80 dark:text-white/50'
+                            )}
+                          >
+                            {formatDiscussionDate(comment.createdAt)} · #
+                            {idx + 1}
+                          </span>
                         </div>
-                        <div className="prose prose-sm max-w-none leading-relaxed dark:prose-invert prose-p:text-foreground/90 dark:prose-p:text-white/85">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {c.content}
+
+                        <div
+                          className={cn(
+                            'mt-2 max-w-none break-words leading-relaxed',
+                            isTerminal
+                              ? 'font-mono text-foreground'
+                              : 'prose prose-sm dark:prose-invert prose-p:my-2 prose-p:text-foreground/90 dark:prose-p:text-white/85'
+                          )}
+                        >
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={
+                              isTerminal
+                                ? {
+                                    p: ({ children }) => (
+                                      <span className='inline'>{children}</span>
+                                    ),
+                                  }
+                                : undefined
+                            }
+                          >
+                            {comment.content}
                           </ReactMarkdown>
                         </div>
-                        {c.website && (
+
+                        {comment.website && (
                           <a
-                            href={c.website}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-2.5 inline-flex items-center gap-1 text-xs text-primary/80 hover:text-primary hover:underline"
+                            href={comment.website}
+                            target='_blank'
+                            rel='noreferrer'
+                            className={cn(
+                              'mt-2 inline-flex items-center gap-1 text-xs hover:underline',
+                              isTerminal
+                                ? 'font-mono text-primary/70 hover:text-primary'
+                                : 'text-primary/80 hover:text-primary'
+                            )}
                           >
-                            <Globe2 className="h-3 w-3" />
-                            {c.website}
+                            <Globe2 className='h-3 w-3' />
+                            {comment.website}
                           </a>
                         )}
-                      </>
-                    )}
+
+                        <div className='mt-3 flex flex-wrap items-center gap-1.5'>
+                          <button
+                            type='button'
+                            className={actionButtonClass}
+                            onClick={() =>
+                              openComposer({ mode: 'reply', target: comment })
+                            }
+                            title='Reply'
+                          >
+                            <Reply className='h-3.5 w-3.5' />
+                            Reply
+                          </button>
+                          <button
+                            type='button'
+                            className={actionButtonClass}
+                            onClick={() =>
+                              openComposer({ mode: 'quote', target: comment })
+                            }
+                            title='Quote'
+                          >
+                            <Quote className='h-3.5 w-3.5' />
+                            Quote
+                          </button>
+                          {featureFlags.aiEnabled && (
+                            <button
+                              type='button'
+                              className={actionButtonClass}
+                              onClick={() => handleAskAi(comment)}
+                              disabled={aiResponding}
+                              title='Ask AI'
+                            >
+                              <Sparkles className='h-3.5 w-3.5' />
+                              Ask AI
+                            </button>
+                          )}
+                          {comment.id && (
+                            <CommentReactions
+                              commentId={comment.id}
+                              initialReactions={
+                                reactionsByCommentId[comment.id] || []
+                              }
+                              isTerminal={isTerminal}
+                              compact
+                              labelledTrigger
+                              className='!mt-0'
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </li>
                 );
               })}
             </ul>
           )}
 
-          {/* AI Streaming Response */}
           {aiResponding && aiStreamingText && (
             <div
               className={cn(
-                "text-sm leading-relaxed animate-in fade-in-0 slide-in-from-bottom-2 duration-300",
+                'rounded-lg border p-3 text-sm leading-relaxed shadow-sm animate-in fade-in-0 slide-in-from-bottom-2 duration-300 sm:p-4',
                 isTerminal
-                  ? "pl-4 py-3 ml-2 border-l-2 border-violet-500/50 bg-violet-500/5"
-                  : "p-4 rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-500/5 to-purple-500/5 dark:from-violet-500/10 dark:to-purple-500/10",
+                  ? 'ml-2 border-violet-400/30 bg-violet-500/5 pl-4 font-mono'
+                  : 'border-violet-500/20 bg-violet-500/[0.04] dark:bg-violet-500/10'
               )}
             >
-              {isTerminal ? (
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs">
-                    <span className="text-muted-foreground">[typing...]</span>
-                    <span className="text-violet-500 font-semibold inline-flex items-center gap-1">
-                      <Bot className="h-3 w-3 animate-pulse" />
-                      AI@assistant
-                    </span>
-                    <span className="text-muted-foreground">:~$</span>
-                  </div>
-                  <div className="font-mono text-foreground pl-0 sm:pl-4">
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        p: ({ children }) => (
-                          <span className="inline">{children}</span>
-                        ),
-                      }}
-                    >
-                      {aiStreamingText}
-                    </ReactMarkdown>
-                    <span className="inline-block w-2 h-4 bg-violet-500 animate-pulse ml-0.5" />
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="mb-2.5 flex items-center gap-2">
-                    <span className="flex items-center justify-center rounded-full w-7 h-7 bg-gradient-to-br from-violet-500/20 to-purple-500/20">
-                      <Bot className="h-3.5 w-3.5 text-violet-500 animate-pulse" />
-                    </span>
-                    <span className="font-semibold text-[13px] text-violet-600 dark:text-violet-400">
-                      AI Assistant
-                      <Sparkles className="inline h-3 w-3 ml-1 text-violet-500 animate-pulse" />
-                    </span>
-                    <Loader2 className="h-3 w-3 animate-spin text-violet-500 ml-auto" />
-                  </div>
-                  <div className="prose prose-sm max-w-none leading-relaxed dark:prose-invert prose-p:text-foreground/90 dark:prose-p:text-white/85">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {aiStreamingText}
-                    </ReactMarkdown>
-                    <span className="inline-block w-2 h-4 bg-violet-500 animate-pulse ml-0.5 align-middle" />
-                  </div>
-                </>
-              )}
+              <div className='mb-2 flex flex-wrap items-center gap-2'>
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 font-semibold',
+                    isTerminal
+                      ? 'text-violet-300'
+                      : 'text-violet-700 dark:text-violet-300'
+                  )}
+                >
+                  <Bot className='h-4 w-4 animate-pulse' />
+                  {isTerminal ? 'AI@assistant' : AI_AUTHOR_NAME}
+                </span>
+                <span
+                  className={cn(
+                    'inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium',
+                    isTerminal
+                      ? 'border-violet-400/30 bg-violet-400/10 text-violet-300'
+                      : 'border-violet-500/20 bg-violet-500/10 text-violet-700 dark:text-violet-300'
+                  )}
+                >
+                  streaming
+                </span>
+                <Loader2 className='h-3.5 w-3.5 animate-spin text-violet-500' />
+              </div>
+              <div
+                className={cn(
+                  'prose prose-sm max-w-none break-words leading-relaxed dark:prose-invert prose-p:my-2 prose-p:text-foreground/90 dark:prose-p:text-white/85',
+                  isTerminal && 'font-mono'
+                )}
+              >
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {aiStreamingText}
+                </ReactMarkdown>
+                <span className='ml-0.5 inline-block h-4 w-2 animate-pulse bg-violet-500 align-middle' />
+              </div>
             </div>
           )}
 
-          {/* AI Responding Indicator (before text starts) */}
           {aiResponding && !aiStreamingText && (
             <div
               className={cn(
-                "flex items-center gap-2 py-3",
+                'flex items-center gap-2 rounded-lg border px-3 py-3 text-sm',
                 isTerminal
-                  ? "pl-4 ml-2 border-l-2 border-violet-500/50 font-mono"
-                  : "px-4",
+                  ? 'ml-2 border-violet-400/30 bg-violet-500/5 font-mono text-violet-300'
+                  : 'border-violet-500/20 bg-violet-500/[0.04] text-violet-700 dark:text-violet-300'
               )}
             >
-              <Bot className="h-4 w-4 text-violet-500 animate-pulse" />
-              <span className="text-sm text-violet-600 dark:text-violet-400">
-                {isTerminal ? "$ AI thinking..." : "AI가 생각하는 중..."}
+              <Bot className='h-4 w-4 animate-pulse' />
+              <span>
+                {isTerminal ? '$ AI thinking...' : 'AI가 생각하는 중...'}
               </span>
-              <Loader2 className="h-3 w-3 animate-spin text-violet-500" />
+              <Loader2 className='h-3.5 w-3.5 animate-spin' />
             </div>
           )}
 
-          {/* AI Error Message */}
           {aiError && !aiResponding && (
             <div
               className={cn(
-                "flex items-center gap-2 py-3 px-4 rounded-lg text-sm",
+                'flex items-center gap-2 rounded-lg border px-4 py-3 text-sm',
                 isTerminal
-                  ? "bg-destructive/10 border border-destructive/30 text-destructive font-mono"
-                  : "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400",
+                  ? 'border-destructive/30 bg-destructive/10 font-mono text-destructive'
+                  : 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400'
               )}
             >
-              <Bot className="h-4 w-4 shrink-0" />
-              <span className="flex-1">{aiError}</span>
+              <Bot className='h-4 w-4 shrink-0' />
+              <span className='flex-1'>{aiError}</span>
               <button
-                type="button"
+                type='button'
                 onClick={() => setAiError(null)}
-                className="text-xs underline hover:no-underline opacity-70 hover:opacity-100"
+                className='text-xs underline opacity-70 hover:opacity-100 hover:no-underline'
               >
-                {isTerminal ? "dismiss" : "닫기"}
+                {isTerminal ? 'dismiss' : '닫기'}
               </button>
             </div>
           )}
 
-          {/* Comment Form Trigger */}
           <div
             className={cn(
-              "p-4 sm:p-5",
+              'rounded-lg border p-3 sm:p-4',
               isTerminal
-                ? "rounded-lg border border-border bg-background/30"
-                : "rounded-2xl border border-border/40 bg-gradient-to-br from-background/60 to-background/40 shadow-inner dark:border-white/10 dark:from-white/5 dark:to-transparent",
+                ? 'border-border bg-background/30'
+                : 'border-border/50 bg-background/60 dark:border-white/10 dark:bg-white/5'
             )}
           >
             <button
-              type="button"
-              onClick={() => setIsModalOpen(true)}
+              type='button'
+              onClick={() => openComposer(DEFAULT_COMPOSER_CONTEXT)}
               className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 text-left transition-all",
+                'group flex w-full items-center gap-3 rounded-lg border border-dashed px-4 py-3 text-left transition-[background-color,border-color,color,transform] duration-200 ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 active:scale-[0.99]',
                 isTerminal
-                  ? "rounded-lg border border-dashed border-border bg-[hsl(var(--terminal-code-bg))] font-mono text-muted-foreground hover:border-primary hover:text-primary group"
-                  : "rounded-xl border border-dashed border-border/50 bg-background/50 text-muted-foreground hover:border-primary/50 hover:bg-primary/5 hover:text-foreground group",
+                  ? 'border-border bg-[hsl(var(--terminal-code-bg))] font-mono text-muted-foreground hover:border-primary hover:text-primary'
+                  : 'border-border/60 bg-background/70 text-muted-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-foreground'
               )}
             >
-              <PenLine
-                className={cn(
-                  "h-5 w-5 shrink-0 transition-colors",
-                  isTerminal
-                    ? "group-hover:text-primary"
-                    : "group-hover:text-primary",
-                )}
-              />
-              <span className="flex-1">
-                {isTerminal ? ">_ Write a comment..." : "Write a comment..."}
+              <PenLine className='h-5 w-5 shrink-0 transition-colors group-hover:text-primary' />
+              <span className='min-w-0 flex-1'>
+                {isTerminal ? '>_ add to discussion...' : '토론에 참여하기'}
               </span>
               <span
                 className={cn(
-                  "text-xs px-2 py-1 rounded transition-colors hidden sm:inline-block",
+                  'hidden rounded-md px-2 py-1 text-xs transition-colors sm:inline-block',
                   isTerminal
-                    ? "bg-primary/10 text-primary/70 group-hover:bg-primary/20"
-                    : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary",
+                    ? 'bg-primary/10 text-primary/70 group-hover:bg-primary/20'
+                    : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'
                 )}
               >
-                {isTerminal ? "INSERT" : "Click to write"}
+                {isTerminal ? 'INSERT' : 'Post'}
               </span>
             </button>
 
             {hasArchived && (
               <p
                 className={cn(
-                  "mt-3 text-xs text-center",
+                  'mt-3 text-center text-xs',
                   isTerminal
-                    ? "font-mono text-muted-foreground"
-                    : "text-muted-foreground dark:text-white/50",
+                    ? 'font-mono text-muted-foreground'
+                    : 'text-muted-foreground dark:text-white/50'
                 )}
               >
                 {isTerminal
-                  ? "// archived comments shown; new ones appear live"
-                  : "Archived comments are shown above; new ones will appear live."}
+                  ? '// archived messages shown; new ones appear live'
+                  : 'Archived discussion messages are shown above; new ones will appear live.'}
               </p>
             )}
           </div>
         </div>
       </div>
 
-      {/* Comment Input Modal */}
       <CommentInputModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={closeComposer}
         onSubmit={handleCommentSubmit}
         isTerminal={isTerminal}
         initialAuthor={savedAuthor}
+        initialContent={composerInitialContent}
+        intent={composerContext.mode}
+        contextLabel={composerContextLabel}
+        contextPreview={composerContextPreview}
       />
     </section>
   );
