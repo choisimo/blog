@@ -61,6 +61,7 @@
   const DEFAULT_API_URL = 'https://api.nodove.com';
   const DEFAULT_REPO_URL = 'https://github.com/choisimo/blog';
   const AI_MEMO_ASSET_VERSION = '20260501-memo-editor-redesign';
+  const CATALYST_PROMPT_MAX_LENGTH = 160;
   const BLOCK_SELECTORS = 'p, pre, code, blockquote, ul, ol, li, table, thead, tbody, tr, th, td, figure, figcaption, h1, h2, h3, h4, h5, h6, section, article, main';
   const MAX_BLOCK_PAYLOAD_CHARS = 6000;
   const WINDOW_MIN_WIDTH = 360;
@@ -90,6 +91,12 @@
     { label: 'C', value: 'c', aliases: [], pistonLang: 'c', pistonVersion: '10.2.0' },
     { label: 'Shell', value: 'bash', aliases: ['sh', 'shell', 'zsh'], pistonLang: 'bash', pistonVersion: '5.2.0' },
   ];
+  const CATALYST_QUICK_ACTIONS = [
+    { id: 'summary', label: '요약', prompt: '현재 문서를 핵심 요약과 다음 행동으로 정리해줘' },
+    { id: 'format', label: '포맷 변환', prompt: '현재 메모를 블로그 글 구조로 변환해줘' },
+    { id: 'visualize', label: '시각화', prompt: '문서의 개념과 데이터를 표와 차트 아이디어로 정리해줘' },
+    { id: 'learning', label: '학습 문제', prompt: '현재 문서 기반의 퀴즈와 플래시카드를 만들어줘' },
+  ];
 
   function normalizeBaseUrl(url) {
     let normalized = String(url || '').trim();
@@ -110,6 +117,14 @@
       normalized = normalized.slice(0, -4);
     }
     return normalized;
+  }
+
+  function escapeAttribute(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
 
   function getFabPositionSetting() {
@@ -723,11 +738,10 @@
 
       const btn = this.$aiSummary;
       const prevStatus = this.out.getStatus();
-      const statusDot = this.shadowRoot?.querySelector('.status-dot');
       
       try {
         btn.disabled = true;
-        if (statusDot) statusDot.style.background = '#7c3aed';
+        this.setStatusState('busy');
         this.out.setStatus('AI 요약 중…');
         
         const backend = window.__APP_CONFIG?.apiBaseUrl || window.APP_CONFIG?.apiBaseUrl || DEFAULT_API_URL;
@@ -758,19 +772,19 @@
         const block = `\n\n[AI 요약 @ ${stamp}]\n${out.trim()}\n`;
         this.out.append(block);
         this.out.toast('AI 요약이 메모에 추가되었습니다.');
-        if (statusDot) statusDot.style.background = 'var(--memo-accent)';
+        this.setStatusState('saved');
         this.out.setStatus('완료');
         this.logEvent({ type: 'ai_summary_done', label: 'ok' });
       } catch (err) {
         console.error('Gemini summarize error:', err);
-        if (statusDot) statusDot.style.background = '#dc2626';
+        this.setStatusState('error');
         this.out.setStatus('오류');
         this.out.toast(err?.message || '요약 중 오류가 발생했습니다.');
         this.logEvent({ type: 'ai_summary_error', label: err?.message || 'error' });
       } finally {
         btn.disabled = false;
         setTimeout(() => {
-          if (statusDot) statusDot.style.background = 'var(--memo-accent)';
+          this.setStatusState('idle');
           this.out.setStatus(prevStatus || 'Ready');
         }, 1400);
       }
@@ -796,14 +810,10 @@
       const prev = this.out.getStatus();
       
       try {
-        // Set loading state
         if (btn) btn.disabled = true;
         if (inputEl) inputEl.disabled = true;
         if (catalystPanel) catalystPanel.classList.add('loading');
-        
-        // Update status with loading indicator
-        const statusDot = this.shadowRoot?.querySelector('.status-dot');
-        if (statusDot) statusDot.style.background = '#7c3aed';
+        this.setStatusState('busy');
         this.out.setStatus('Catalyst 생성 중…');
         
         const backend = window.__APP_CONFIG?.apiBaseUrl || window.APP_CONFIG?.apiBaseUrl || DEFAULT_API_URL;
@@ -836,25 +846,23 @@
         this.out.toast('Catalyst 결과가 메모에 추가되었습니다.');
         this.logEvent({ type: 'catalyst_run', label: prompt });
         if (this.$catalystInput) this.$catalystInput.value = '';
-        if (this.$catalystBox) this.$catalystBox.style.display = 'none';
+        this.syncCatalystInputState();
+        this.setCatalystOpen(false);
         if (this.$catalystInput) this.$catalystInput.disabled = false;
-        
-        // Success status
-        if (statusDot) statusDot.style.background = 'var(--memo-accent)';
+        this.setStatusState('saved');
         this.out.setStatus('완료');
       } catch (err) {
         console.error('Catalyst error:', err);
-        const statusDot = this.shadowRoot?.querySelector('.status-dot');
-        if (statusDot) statusDot.style.background = '#dc2626';
+        this.setStatusState('error');
         this.out.setStatus('오류');
         this.out.toast(err?.message || 'Catalyst 생성 중 오류가 발생했습니다.');
       } finally {
         if (btn) btn.disabled = false;
         if (inputEl) inputEl.disabled = false;
         if (catalystPanel) catalystPanel.classList.remove('loading');
+        this.syncCatalystInputState();
         setTimeout(() => { 
-          const statusDot = this.shadowRoot?.querySelector('.status-dot');
-          if (statusDot) statusDot.style.background = 'var(--memo-accent)';
+          this.setStatusState('idle');
           this.out.setStatus(prev || 'Ready'); 
         }, 1400);
       }
@@ -1348,7 +1356,41 @@
 
     setMemoAutoSaveText(text) {
       if (!this.$memoAutoSave) return;
-      this.$memoAutoSave.textContent = String(text || '자동 저장됨');
+      this.$memoAutoSave.textContent = String(text || '저장됨');
+    }
+
+    setStatusState(state = 'idle') {
+      if (!this.$status) return;
+      const next = ['idle', 'busy', 'saved', 'error'].includes(state) ? state : 'idle';
+      this.$status.dataset.state = next;
+    }
+
+    setCatalystOpen(open) {
+      if (!this.$catalystBox) return;
+      const visible = Boolean(open);
+      this.$catalystBox.hidden = !visible;
+      this.$catalystBox.setAttribute('aria-hidden', visible ? 'false' : 'true');
+      this.$catalystBtn?.setAttribute('aria-expanded', visible ? 'true' : 'false');
+      if (visible) {
+        this.syncCatalystInputState();
+        setTimeout(() => this.$catalystInput?.focus(), 0);
+      }
+    }
+
+    syncCatalystInputState() {
+      if (!this.$catalystInput) return;
+      const raw = this.$catalystInput.value || '';
+      if (raw.length > CATALYST_PROMPT_MAX_LENGTH) {
+        this.$catalystInput.value = raw.slice(0, CATALYST_PROMPT_MAX_LENGTH);
+      }
+      const value = this.$catalystInput.value || '';
+      if (this.$catalystCharCount) {
+        this.$catalystCharCount.textContent = `${value.length}/${CATALYST_PROMPT_MAX_LENGTH}`;
+      }
+      if (this.$catalystRun) {
+        const loading = this.$catalystBox?.classList.contains('loading');
+        this.$catalystRun.disabled = Boolean(loading || !value.trim());
+      }
     }
 
     setMemoTitle(title, options = {}) {
@@ -1852,7 +1894,7 @@
           <div id="drag" class="header">
             <div class="title-stack">
               <div id="memoTitleDisplay" class="title">새 메모</div>
-              <div id="memoAutoSave" class="auto-save">자동 저장됨</div>
+              <div id="memoAutoSave" class="auto-save" aria-live="polite">저장됨</div>
             </div>
             <div class="spacer"></div>
             <button id="memoHelp" class="header-help" type="button" aria-label="도움말">도움말</button>
@@ -1894,7 +1936,7 @@
             <div class="toolbar-divider"></div>
             <div class="toolbar-group ai-group" role="toolbar" aria-label="AI 기능">
               <button id="aiSummary" class="toolbar-btn ai" type="button" title="AI로 요약 생성" aria-label="AI 요약"><span class="icon">✦</span><span class="label">요약</span></button>
-              <button id="catalyst" class="toolbar-btn ai primary" type="button" title="Catalyst 프롬프트" aria-label="Catalyst"><span class="icon">⚡</span><span class="label">Catalyst</span></button>
+              <button id="catalyst" class="toolbar-btn ai primary" type="button" title="Catalyst 프롬프트" aria-label="Catalyst" aria-expanded="false" aria-controls="catalystBox"><span class="icon">⚡</span><span class="label">Catalyst</span></button>
             </div>
           </div>
           <div class="tabs" role="tablist" aria-label="메모 패널">
@@ -2050,43 +2092,44 @@
             </div>
           </div>
 
-          <div id="catalystBox" class="catalyst-panel" style="display:none;">
+          <div id="catalystBox" class="catalyst-panel" hidden aria-hidden="true" aria-label="Catalyst AI 작업 패널">
             <div class="catalyst-card">
               <div class="catalyst-header">
-                <span class="catalyst-pill">
-                  <span class="catalyst-icon">⚡</span>
-                  <span class="catalyst-title">Catalyst</span>
-                </span>
-                <span class="catalyst-status">실험 기능</span>
+                <div class="catalyst-heading">
+                  <span class="catalyst-icon" aria-hidden="true">⚡</span>
+                  <div>
+                    <div class="catalyst-title">Catalyst</div>
+                    <p class="catalyst-subtext">문서 내용과 현재 메모를 기준으로 작업합니다.</p>
+                  </div>
+                </div>
+                <span class="catalyst-status">Beta</span>
               </div>
-              <p class="catalyst-subtext">
-                AI에게 확장 프롬프트를 전달해 요약, 인사이트, 액션 아이템 등을 빠르게 받아보세요.
-              </p>
-              <label class="catalyst-input-label" for="catalystInput">프롬프트</label>
+              <label class="catalyst-input-label" for="catalystInput">문서 작업</label>
               <div class="catalyst-input-shell">
-                <span class="catalyst-input-indicator">/</span>
                 <input
                   id="catalystInput"
                   class="input catalyst-input"
-                  placeholder="어떻게 확장해볼까요? 예: 사용 사례 관점에서 다시 보기"
-                  maxlength="160"
+                  placeholder="문서에서 어떤 작업을 할까요?"
+                  maxlength="${CATALYST_PROMPT_MAX_LENGTH}"
                 />
-                <span class="catalyst-input-hint">최대 160자</span>
+                <span class="catalyst-input-hint" id="catalystCharCount">0/${CATALYST_PROMPT_MAX_LENGTH}</span>
               </div>
-              <div class="catalyst-suggestions" aria-label="추천 프롬프트">
-                <button type="button" class="catalyst-suggestion">사용 사례 정리</button>
-                <button type="button" class="catalyst-suggestion">톤 조정</button>
-                <button type="button" class="catalyst-suggestion">액션 아이템</button>
+              <div class="catalyst-quick-grid" aria-label="자주 쓰는 작업">
+                ${CATALYST_QUICK_ACTIONS.map(action => `
+                  <button type="button" class="catalyst-suggestion" data-action="${escapeAttribute(action.id)}" data-prompt="${escapeAttribute(action.prompt)}">
+                    <span>${escapeAttribute(action.label)}</span>
+                  </button>
+                `).join('')}
               </div>
-              <div class="catalyst-actions">
+              <div id="catalystActionBar" class="catalyst-actions">
                 <button id="catalystCancel" class="btn secondary">취소</button>
-                <button id="catalystRun" class="btn catalyst-run"><span class="catalyst-run-icon">▶</span> 생성</button>
+                <button id="catalystRun" class="btn catalyst-run" disabled><span class="catalyst-run-icon">▶</span> 생성 후 삽입</button>
               </div>
             </div>
           </div>
           <div class="footer">
             <div class="footer-utility">
-              <div id="status" class="status-bar">
+              <div id="status" class="status-bar" data-state="idle" aria-live="polite">
                 <span class="status-dot"></span>
                 <span class="status-text">Ready</span>
               </div>
@@ -2112,8 +2155,8 @@
               </div>
             </div>
             <div class="footer-primary-actions">
-              <button id="memoDraft" class="save-btn secondary" type="button">임시저장</button>
-              <button id="memoSaveClose" class="save-btn primary" type="button">저장 및 닫기</button>
+              <button id="memoDraft" class="save-btn secondary" type="button">지금 저장</button>
+              <button id="memoSaveClose" class="save-btn primary" type="button">닫기</button>
             </div>
           </div>
           <div id="toast" class="toast"></div>
@@ -2217,6 +2260,7 @@
       this.$catalystInput = this.shadowRoot.getElementById('catalystInput');
       this.$catalystRun = this.shadowRoot.getElementById('catalystRun');
       this.$catalystCancel = this.shadowRoot.getElementById('catalystCancel');
+      this.$catalystCharCount = this.shadowRoot.getElementById('catalystCharCount');
       this.$catalystSuggestions = Array.from(
         this.shadowRoot.querySelectorAll('.catalyst-suggestion')
       );
@@ -2629,7 +2673,9 @@
       if (this.$memoEditor) this.$memoEditor.value = this.state.memo || '';
       if (this.$memoPreview) this.renderMarkdownToPreview(this.state.memo || '');
       this.updateMemoChrome(this.state.memo || '');
-      this.setMemoAutoSaveText('자동 저장됨');
+      this.setMemoAutoSaveText('저장됨');
+      this.setStatusState('idle');
+      this.syncCatalystInputState();
       this.syncCodeMode(this.state.memo || '');
       if (this.$inlineEnabled)
         this.$inlineEnabled.checked = !!this.state.inlineEnabled;
@@ -3589,7 +3635,8 @@
          this.state.memo = value;
          this.syncCodeMode(value);
          this.updateMemoChrome(value);
-         this.setMemoAutoSaveText('자동 저장 중…');
+         this.setMemoAutoSaveText('저장 중…');
+         this.setStatusState('busy');
          if (this.$memoEditor && this.$memoEditor.value !== value) {
            this.$memoEditor.value = value;
          }
@@ -3602,7 +3649,8 @@
          clearTimeout(memoSaveTimer);
          memoSaveTimer = setTimeout(() => {
            LS.set(KEYS.memo, this.state.memo);
-           this.setMemoAutoSaveText('자동 저장됨 방금 전');
+           this.setMemoAutoSaveText('저장됨 · 방금 전');
+           this.setStatusState('saved');
            this.out.tempStatus('저장됨', 'Ready', 900);
          }, MEMO_SAVE_DELAY);
        };
@@ -3610,7 +3658,8 @@
        const saveMemoImmediately = () => {
          clearTimeout(memoSaveTimer);
          LS.set(KEYS.memo, this.state.memo);
-         this.setMemoAutoSaveText('자동 저장됨 방금 전');
+         this.setMemoAutoSaveText('저장됨 · 방금 전');
+         this.setStatusState('saved');
        };
        
        const saveMemo = () => {
@@ -3631,7 +3680,8 @@
           clearTimeout(editorSaveTimer);
           editorSaveTimer = setTimeout(() => {
             LS.set(KEYS.memo, this.state.memo);
-            this.setMemoAutoSaveText('자동 저장됨 방금 전');
+            this.setMemoAutoSaveText('저장됨 · 방금 전');
+            this.setStatusState('saved');
             this.out.tempStatus('저장됨', 'Ready', 900);
           }, EDITOR_SAVE_DELAY);
         };
@@ -3639,14 +3689,16 @@
         const saveEditorImmediately = () => {
           clearTimeout(editorSaveTimer);
           LS.set(KEYS.memo, this.state.memo);
-          this.setMemoAutoSaveText('자동 저장됨 방금 전');
+          this.setMemoAutoSaveText('저장됨 · 방금 전');
+          this.setStatusState('saved');
         };
         
         const saveAndRender = () => {
           this.state.memo = this.$memoEditor.value;
           this.syncCodeMode(this.state.memo);
           this.updateMemoChrome(this.state.memo);
-          this.setMemoAutoSaveText('자동 저장 중…');
+          this.setMemoAutoSaveText('저장 중…');
+          this.setStatusState('busy');
           this.scheduleRenderPreview(this.state.memo);
           if (this.$memo.value !== this.state.memo) this.$memo.value = this.state.memo;
           scheduleEditorSave();
@@ -3806,16 +3858,17 @@
         this.state.memo = this.$memo.value || '';
         LS.set(KEYS.memo, this.state.memo);
         this.updateMemoChrome(this.state.memo);
-        this.setMemoAutoSaveText('자동 저장됨 방금 전');
+        this.setMemoAutoSaveText('저장됨 · 방금 전');
+        this.setStatusState('saved');
         this.out.tempStatus(label || '저장됨', 'Ready', 900);
       };
       this.$memoDraft?.addEventListener('click', () => {
-        persistMemoNow('임시저장됨');
-        this.out.toast('임시저장했습니다.');
+        persistMemoNow('저장됨');
+        this.out.toast('저장했습니다.');
       });
       this.$memoSaveClose?.addEventListener('click', () => {
         persistMemoNow('저장됨');
-        this.out.toast('저장했습니다.');
+        this.out.toast('저장하고 닫았습니다.');
         this.$panel.classList.remove('open');
         this.updateOpen();
       });
@@ -3928,27 +3981,22 @@
       if (this.$catalystBtn) {
         this.$catalystBtn.addEventListener('click', () => {
           if (!this.$catalystBox) return;
-          const visible = this.$catalystBox.style.display !== 'none';
-          this.$catalystBox.style.display = visible ? 'none' : 'flex';
+          const visible = !this.$catalystBox.hidden;
+          this.setCatalystOpen(!visible);
           this.logEvent({ type: visible ? 'catalyst_close' : 'catalyst_open', label: visible ? 'close' : 'open' });
-          if (!visible) {
-            setTimeout(() => this.$catalystInput?.focus(), 0);
-          }
         });
       }
       if (this.$catalystCancel) {
          this.$catalystCancel.addEventListener('click', () => {
            if (this.$catalystInput) this.$catalystInput.value = '';
-           if (this.$catalystBox) this.$catalystBox.style.display = 'none';
+           this.syncCatalystInputState();
+           this.setCatalystOpen(false);
            this.logEvent({ type: 'catalyst_cancel', label: 'cancel' });
          });
       }
       if (this.$catalystRun) {
          this.$catalystRun.addEventListener('click', () => this.runCatalyst());
-         this.$catalystInput?.addEventListener('input', () => {
-           const v = this.$catalystInput.value || '';
-           if (v.length > 160) this.$catalystInput.value = v.slice(0,160);
-         });
+         this.$catalystInput?.addEventListener('input', () => this.syncCatalystInputState());
       }
       if (this.$catalystInput) {
         this.$catalystInput.addEventListener('keydown', (e) => {
@@ -3959,7 +4007,7 @@
       if (Array.isArray(this.$catalystSuggestions) && this.$catalystSuggestions.length) {
         this.$catalystSuggestions.forEach(btn => {
           btn.addEventListener('click', () => {
-            const text = btn.textContent?.trim();
+            const text = btn.dataset.prompt || btn.textContent?.trim();
             if (!text || !this.$catalystInput) return;
             this.$catalystInput.value = text;
             this.$catalystInput.focus();

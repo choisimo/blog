@@ -18,6 +18,19 @@ describe("AI Memo window system assets", () => {
     expect(js).toContain("data-resize=\"se\"");
   });
 
+  it("keeps Catalyst on the unified assistant action contract", () => {
+    const js = readFileSync(
+      resolve(root, "public/ai-memo/ai-memo.js"),
+      "utf8",
+    );
+
+    expect(js).toContain("CATALYST_QUICK_ACTIONS");
+    expect(js).toContain("setCatalystOpen");
+    expect(js).toContain("id=\"catalystActionBar\"");
+    expect(js).toContain("생성 후 삽입");
+    expect(js).toContain("aria-live=\"polite\"");
+  });
+
   it("keeps fullscreen, docked, and resize CSS affordances", () => {
     const css = readFileSync(
       resolve(root, "public/ai-memo/ai-memo.css"),
@@ -28,6 +41,19 @@ describe("AI Memo window system assets", () => {
     expect(css).toContain(".panel.window-docked");
     expect(css).toContain(".resize-handle-se");
     expect(css).toContain(":host(.terminal) .panel");
+  });
+
+  it("keeps assistant panel visibility and status states CSS-driven", () => {
+    const css = readFileSync(
+      resolve(root, "public/ai-memo/ai-memo.css"),
+      "utf8",
+    );
+
+    expect(css).toContain(".catalyst-panel[hidden]");
+    expect(css).toContain('.status-bar[data-state="busy"]');
+    expect(css).toContain('.status-bar[data-state="saved"]');
+    expect(css).toContain('.status-bar[data-state="error"]');
+    expect(css).toContain("@media (prefers-reduced-motion: reduce)");
   });
 
   it("mounts the memo pad on the home route while keeping the blog listing suppressed", () => {
