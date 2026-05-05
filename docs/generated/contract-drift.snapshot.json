@@ -77,6 +77,11 @@
         "path": "/api/v1/admin"
       },
       {
+        "boundaryId": "admin-ai-images",
+        "owner": "backend",
+        "path": "/api/v1/admin/ai-images"
+      },
+      {
         "boundaryId": "posts",
         "owner": "backend",
         "path": "/api/v1/posts"
@@ -226,6 +231,11 @@
         "boundaryId": "memories",
         "owner": "WORKER",
         "prefix": "/api/v1/memories"
+      },
+      {
+        "boundaryId": "admin-ai-images",
+        "owner": "BACKEND",
+        "prefix": "/api/v1/admin/ai-images"
       },
       {
         "boundaryId": "admin-ai",

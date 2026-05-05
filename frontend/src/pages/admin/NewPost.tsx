@@ -16,6 +16,7 @@ import { useAuthStore } from "@/stores/session/useAuthStore";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import BotChatPanel from "@/components/features/admin/BotChatPanel";
+import AiImageGeneratorPanel from "@/components/features/admin/AiImageGeneratorPanel";
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
@@ -282,6 +283,18 @@ export default function NewPost() {
                       </label>
                     </div>
                   </div>
+
+                  <AiImageGeneratorPanel
+                    title={title}
+                    category={category}
+                    tags={tags}
+                    content={content}
+                    year={year}
+                    slug={slug}
+                    getAccessToken={getValidAccessToken}
+                    onInsertMarkdown={insertAtCursor}
+                    onSetCoverImage={setCoverImage}
+                  />
 
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     <div>

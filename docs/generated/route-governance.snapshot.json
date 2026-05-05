@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-05-01T12:17:03.996Z",
+  "generatedAt": "2026-05-05T09:22:23.601Z",
   "counts": {
     "serviceBoundaries": {
       "worker-owned": 27,
-      "backend-owned": 7,
+      "backend-owned": 8,
       "proxy-only": 4,
       "compatibility": 1
     },
     "routeBoundaries": {
-      "backend-owned": 27,
+      "backend-owned": 29,
       "worker-owned": 2
     }
   },
@@ -84,6 +84,12 @@
       "prefix": "/api/v1/memories",
       "owner": "worker-owned",
       "description": "Edge memory store workflows"
+    },
+    {
+      "id": "admin-ai-images",
+      "prefix": "/api/v1/admin/ai-images",
+      "owner": "backend-owned",
+      "description": "Backend admin AI image generation and storage"
     },
     {
       "id": "admin-ai",
@@ -392,6 +398,22 @@
       "owner": "backend-owned",
       "boundaryId": "admin-logs",
       "description": "Backend admin log history via worker proxy"
+    },
+    {
+      "id": "admin-ai-images.generate",
+      "method": "POST",
+      "path": "/api/v1/admin/ai-images/generate",
+      "owner": "backend-owned",
+      "boundaryId": "admin-ai-images",
+      "description": "Backend AI image generation for admin post authoring"
+    },
+    {
+      "id": "admin-ai-images.health",
+      "method": "GET",
+      "path": "/api/v1/admin/ai-images/health",
+      "owner": "backend-owned",
+      "boundaryId": "admin-ai-images",
+      "description": "Backend AI image generation configuration health"
     },
     {
       "id": "rag.search",
