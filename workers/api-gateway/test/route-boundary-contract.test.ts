@@ -78,6 +78,28 @@ describe('route boundary contract', () => {
     expect(isBackendOwnedPath('/api/v1/admin/logs', 'GET')).toBe(true);
   });
 
+  it('resolves backend-owned admin AI image generation behind the worker proxy', () => {
+    const headers = buildRouteBoundaryHeaders(
+      {
+        pathname: '/api/v1/admin/ai-images/generate',
+        method: 'POST',
+      },
+      {
+        responder: 'worker-proxy',
+        edgeMode: 'proxy',
+        originMode: 'backend',
+      },
+    );
+
+    expect(headers).toMatchObject({
+      'X-Route-Boundary-Id': 'admin-ai-images.generate',
+      'X-Route-Owner': 'backend-owned',
+      'X-Route-Responder': 'worker-proxy',
+    });
+    expect(isBackendOwnedPath('/api/v1/admin/ai-images/generate', 'POST')).toBe(true);
+    expect(isWorkerOwnedPath('/api/v1/admin/ai-images/generate', 'POST')).toBe(false);
+  });
+
   it('falls back to service boundaries for non-specialized paths', () => {
     const headers = buildRouteBoundaryHeaders(
       {

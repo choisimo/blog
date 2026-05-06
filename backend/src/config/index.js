@@ -88,6 +88,16 @@ function createConfig(raw) {
       defaultModel: raw.AI_DEFAULT_MODEL,
       visionModel: raw.AI_VISION_MODEL,
       asyncMode: raw.AI_ASYNC_MODE === 'true',
+      image: {
+        proxyBaseUrl: raw.AI_IMAGE_PROXY_BASE_URL,
+        proxyApiKey: raw.AI_IMAGE_PROXY_API_KEY,
+        model: raw.AI_IMAGE_MODEL,
+        timeoutMs: raw.AI_IMAGE_TIMEOUT_MS,
+        maxCount: raw.AI_IMAGE_MAX_COUNT,
+        maxPromptLength: raw.AI_IMAGE_MAX_PROMPT_LENGTH,
+        maxOutputBytes: raw.AI_IMAGE_MAX_OUTPUT_BYTES,
+        storageSubdir: raw.AI_IMAGE_STORAGE_SUBDIR,
+      },
     },
 
     github: {
@@ -193,6 +203,7 @@ function createConfig(raw) {
       codeExecutionEnabled: raw.FEATURE_CODE_EXECUTION_ENABLED === 'true',
       commentsEnabled: raw.FEATURE_COMMENTS_ENABLED === 'true',
       openNotebookEnabled: raw.OPEN_NOTEBOOK_ENABLED === 'true',
+      adminAiImageEnabled: raw.FEATURE_ADMIN_AI_IMAGE_ENABLED === 'true',
     },
   };
 }
@@ -336,6 +347,7 @@ export function publicRuntimeConfig() {
       aiInline: config.features.aiInline,
       codeExecutionEnabled: config.features.codeExecutionEnabled,
       commentsEnabled: config.features.commentsEnabled,
+      adminAiImageEnabled: config.features.adminAiImageEnabled,
     },
   });
 }

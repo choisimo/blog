@@ -7,6 +7,7 @@ import translateRouter from './translate.js';
 import userContentRouter from './userContent.js';
 import ogRouter from './og.js';
 import adminRouter from './admin.js';
+import adminAiImagesRouter from './adminAiImages.js';
 import postsRouter from './posts.js';
 import imagesRouter from './images.js';
 import ragRouter from './rag.js';
@@ -40,6 +41,7 @@ export function getProtectedRouteRegistry() {
     { boundaryId: 'user-content', basePath: '/api/v1/user-content', router: userContentRouter },
     { boundaryId: 'og', basePath: '/api/v1/og', router: ogRouter },
     { boundaryId: 'admin', basePath: '/api/v1/admin', router: adminRouter },
+    { boundaryId: 'admin-ai-images', basePath: '/api/v1/admin/ai-images', router: adminAiImagesRouter },
     { boundaryId: 'posts', basePath: '/api/v1/posts', router: postsRouter },
     { boundaryId: 'images', basePath: '/api/v1/images', router: imagesRouter },
     { boundaryId: 'rag', basePath: '/api/v1/rag', router: ragRouter },
