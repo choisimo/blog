@@ -1903,7 +1903,7 @@
 
 /* Blog article visual reading flow */
 .article-flow {
-  --article-readable-max: 760px;
+  --article-readable-max: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
