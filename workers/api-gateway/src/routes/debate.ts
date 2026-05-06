@@ -8,7 +8,7 @@ import {
   releaseIdempotencyClaim,
 } from '../lib/idempotency';
 import {
-  getApiBaseUrl,
+  getAiServeUrl,
   getAiServeApiKey,
   getAiDefaultModel,
   getAiVisionModel,
@@ -16,6 +16,8 @@ import {
 import { attachOriginSignatureHeaders } from '../lib/origin-signature';
 
 const debate = new Hono<HonoEnv>();
+
+const DEFAULT_AI_BACKEND_URL = 'https://blog-b.nodove.com';
 
 const DEBATE_AGENTS = {
   attacker: {
@@ -44,23 +46,29 @@ function generateId(): string {
   return crypto.randomUUID();
 }
 
-async function callAI(
-  env: Env,
-  systemPrompt: string,
-  userPrompt: string
-): Promise<{ content: string; tokensUsed?: number }> {
-  const backendUrl = await getApiBaseUrl(env);
-  const apiKey = await getAiServeApiKey(env);
-  const [forcedModel, forcedVisionModel] = await Promise.all([
+async function getBackendUrl(env: Env): Promise<string> {
+  return env.BACKEND_ORIGIN || (await getAiServeUrl(env)) || DEFAULT_AI_BACKEND_URL;
+}
+
+async function applyBackendAiHeaders(env: Env, headers: Headers): Promise<void> {
+  headers.delete('X-Backend-Key');
+  headers.delete('X-Internal-Gateway-Key');
+  headers.delete('X-API-KEY');
+  headers.delete('X-AI-Model');
+  headers.delete('X-AI-Vision-Model');
+
+  if (env.BACKEND_KEY) {
+    headers.set('X-Backend-Key', env.BACKEND_KEY);
+  }
+
+  const [apiKey, forcedModel, forcedVisionModel] = await Promise.all([
+    getAiServeApiKey(env),
     getAiDefaultModel(env),
     getAiVisionModel(env),
   ]);
 
-  const upstreamPath = '/api/v1/ai/auto-chat';
-  const headers = new Headers({
-    'Content-Type': 'application/json',
-  });
   if (apiKey) {
+    headers.set('X-API-KEY', apiKey);
     headers.set('X-Internal-Gateway-Key', apiKey);
   }
   if (forcedModel) {
@@ -71,6 +79,20 @@ async function callAI(
     headers.set('X-AI-Vision-Model', forcedVisionModel);
     headers.set('X-AI-Vision-Model-Source', 'gateway');
   }
+}
+
+async function callAI(
+  env: Env,
+  systemPrompt: string,
+  userPrompt: string
+): Promise<{ content: string; tokensUsed?: number }> {
+  const backendUrl = await getBackendUrl(env);
+
+  const upstreamPath = '/api/v1/ai/auto-chat';
+  const headers = new Headers({
+    'Content-Type': 'application/json',
+  });
+  await applyBackendAiHeaders(env, headers);
   await attachOriginSignatureHeaders({
     env,
     headers,
@@ -394,16 +416,13 @@ debate.post('/sessions/:id/round', requireAuth, async (c) => {
 debate.post('/sessions/:id/round/stream', requireAuth, async (c) => {
   const sessionId = c.req.param('id');
 
-  const backendUrl = await getApiBaseUrl(c.env);
-  const apiKey = await getAiServeApiKey(c.env);
+  const backendUrl = await getBackendUrl(c.env);
 
   const headers = new Headers({
     'Content-Type': 'application/json',
   });
-  if (apiKey) {
-    headers.set('X-Internal-Gateway-Key', apiKey);
-  }
   const upstreamPath = `/api/v1/debate/sessions/${sessionId}/round/stream`;
+  await applyBackendAiHeaders(c.env, headers);
   await attachOriginSignatureHeaders({
     env: c.env,
     headers,

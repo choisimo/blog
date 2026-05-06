@@ -17,6 +17,7 @@ import type { HonoEnv, Env } from '../types';
 import { success, badRequest, error, serverError } from '../lib/response';
 import {
   getApiBaseUrl,
+  getAiServeUrl,
   getAiServeApiKey,
   getAiDefaultModel,
   getAiVisionModel,
@@ -37,13 +38,65 @@ const CONFIG_KEYS = {
   AI_AGENT_BACKEND_URL: 'config:ai_agent_backend_url',
 } as const;
 
+const DEFAULT_AI_BACKEND_URL = 'https://blog-b.nodove.com';
+
+function sameOrigin(left: string | undefined, right: string | undefined): boolean {
+  if (!left || !right) return false;
+  try {
+    return new URL(left).origin === new URL(right).origin;
+  } catch {
+    return false;
+  }
+}
+
 async function getAiAgentBackendUrl(env: Env): Promise<string> {
+  const apiBaseUrl = await getApiBaseUrl(env);
+  const backendOrigin = env.BACKEND_ORIGIN;
+  if (backendOrigin && !sameOrigin(backendOrigin, apiBaseUrl)) {
+    return backendOrigin;
+  }
+
   try {
     const kvValue = await env.KV.get(CONFIG_KEYS.AI_AGENT_BACKEND_URL);
-    if (kvValue) return kvValue;
+    if (kvValue && !sameOrigin(kvValue, apiBaseUrl)) return kvValue;
   } catch {}
-  // Fall back to API_BASE_URL (Tunnel)
-  return getApiBaseUrl(env);
+
+  const aiServeUrl = await getAiServeUrl(env);
+  if (aiServeUrl && !sameOrigin(aiServeUrl, apiBaseUrl)) return aiServeUrl;
+
+  return backendOrigin || DEFAULT_AI_BACKEND_URL;
+}
+
+async function applyBackendAiHeaders(env: Env, headers: Headers): Promise<void> {
+  headers.delete('X-Backend-Key');
+  headers.delete('X-Internal-Gateway-Key');
+  headers.delete('X-API-KEY');
+  headers.delete('X-AI-Model');
+  headers.delete('X-AI-Vision-Model');
+  stripOriginSignatureHeaders(headers);
+
+  if (env.BACKEND_KEY) {
+    headers.set('X-Backend-Key', env.BACKEND_KEY);
+  }
+
+  const [apiKey, forcedModel, forcedVisionModel] = await Promise.all([
+    getAiServeApiKey(env),
+    getAiDefaultModel(env),
+    getAiVisionModel(env),
+  ]);
+
+  if (apiKey) {
+    headers.set('X-API-KEY', apiKey);
+    headers.set('X-Internal-Gateway-Key', apiKey);
+  }
+  if (forcedModel) {
+    headers.set('X-AI-Model', forcedModel);
+    headers.set('X-AI-Model-Source', 'gateway');
+  }
+  if (forcedVisionModel) {
+    headers.set('X-AI-Vision-Model', forcedVisionModel);
+    headers.set('X-AI-Vision-Model-Source', 'gateway');
+  }
 }
 
 // ============================================================================
@@ -65,17 +118,7 @@ async function proxyToBackendAi(request: Request, env: Env, path: string): Promi
 
   const headers = new Headers(request.headers);
   headers.set('Host', new URL(backendUrl).host);
-  stripOriginSignatureHeaders(headers);
-
-  // Add internal key if configured
-  const apiKey = await getAiServeApiKey(env);
-  if (apiKey) {
-    headers.set('X-Internal-Gateway-Key', apiKey);
-  }
-  const forcedModel = await getAiDefaultModel(env);
-  if (forcedModel) {
-    headers.set('X-AI-Model', forcedModel);
-  }
+  await applyBackendAiHeaders(env, headers);
 
   // Remove sensitive headers
   headers.delete('X-Gateway-Caller-Key');
@@ -129,15 +172,12 @@ gateway.get('/call/health', async (c) => {
 gateway.get('/call/status', async (c) => {
   try {
     const backendUrl = await getAiAgentBackendUrl(c.env);
-    const apiKey = await getAiServeApiKey(c.env);
 
     const url = `${backendUrl}/api/v1/ai/status`;
     const headers = new Headers({
       'Content-Type': 'application/json',
     });
-    if (apiKey) {
-      headers.set('X-Internal-Gateway-Key', apiKey);
-    }
+    await applyBackendAiHeaders(c.env, headers);
     await attachOriginSignatureHeadersForUrl({
       env: c.env,
       headers,
@@ -202,20 +242,8 @@ async function analyzeWithBackend(
   const headers = new Headers({
     'Content-Type': 'application/json',
   });
-  const apiKey = await getAiServeApiKey(env);
-  if (apiKey) {
-    headers.set('X-Internal-Gateway-Key', apiKey);
-  }
-  const [forcedModel, forcedVisionModel] = await Promise.all([
-    getAiDefaultModel(env),
-    getAiVisionModel(env),
-  ]);
-  if (forcedModel) {
-    headers.set('X-AI-Model', forcedModel);
-  }
-  if (forcedVisionModel) {
-    headers.set('X-AI-Vision-Model', forcedVisionModel);
-  }
+  const forcedVisionModel = await getAiVisionModel(env);
+  await applyBackendAiHeaders(env, headers);
   await attachOriginSignatureHeadersForUrl({
     env,
     headers,

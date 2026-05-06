@@ -1,13 +1,25 @@
 import { env } from 'cloudflare:test';
 import { Hono } from 'hono';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { signJwt } from '../src/lib/jwt';
 import debate from '../src/routes/debate';
 import type { Env } from '../src/types';
 
 declare module 'cloudflare:test' {
-  interface ProvidedEnv extends Pick<Env, 'DB' | 'JWT_SECRET' | 'ENV'> {}
+  interface ProvidedEnv
+    extends Pick<
+      Env,
+      | 'DB'
+      | 'KV'
+      | 'JWT_SECRET'
+      | 'ENV'
+      | 'BACKEND_ORIGIN'
+      | 'BACKEND_KEY'
+      | 'GATEWAY_SIGNING_SECRET'
+      | 'AI_API_KEY'
+      | 'AI_DEFAULT_MODEL'
+    > {}
 }
 
 function createApp() {
@@ -27,6 +39,15 @@ async function createUserToken(userId: string) {
     env
   );
 }
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  env.BACKEND_ORIGIN = undefined;
+  env.BACKEND_KEY = undefined;
+  env.GATEWAY_SIGNING_SECRET = undefined;
+  env.AI_API_KEY = undefined;
+  env.AI_DEFAULT_MODEL = undefined;
+});
 
 describe('debate vote state', () => {
   it('dedupes votes by authenticated voter identity and idempotency key', async () => {
@@ -102,5 +123,59 @@ describe('debate vote state', () => {
       .first<{ user_id: string; fingerprint_id: string }>();
     expect(voteRow?.user_id).toBe(userId);
     expect(voteRow?.fingerprint_id).toBe(`user:${userId}`);
+  });
+
+  it('generates debate rounds through backend origin AI calls with backend auth', async () => {
+    env.BACKEND_ORIGIN = 'https://backend.example';
+    env.BACKEND_KEY = 'backend-secret';
+    env.GATEWAY_SIGNING_SECRET = 'gateway-signing-secret';
+    env.AI_API_KEY = 'ai-secret';
+    env.AI_DEFAULT_MODEL = 'gpt-4.1';
+
+    const upstreamFetch = vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ ok: true, data: { content: 'debate response' } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+    );
+
+    const app = createApp();
+    const userId = `debate-user-${crypto.randomUUID()}`;
+    const token = await createUserToken(userId);
+    const topicId = `topic-${crypto.randomUUID()}`;
+    const sessionId = `session-${crypto.randomUUID()}`;
+
+    await env.DB.prepare('INSERT INTO debate_topics (id, title) VALUES (?, ?)')
+      .bind(topicId, 'test topic')
+      .run();
+    await env.DB.prepare('INSERT INTO debate_sessions (id, topic_id, user_id) VALUES (?, ?, ?)')
+      .bind(sessionId, topicId, userId)
+      .run();
+
+    const response = await app.request(
+      `https://example.com/api/v1/debate/sessions/${sessionId}/round`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+      env
+    );
+
+    expect(response.status).toBe(200);
+    expect(upstreamFetch).toHaveBeenCalledTimes(3);
+
+    for (const [input, init] of upstreamFetch.mock.calls) {
+      expect(input).toBe('https://backend.example/api/v1/ai/auto-chat');
+      const headers = new Headers(init?.headers);
+      expect(headers.get('X-Backend-Key')).toBe('backend-secret');
+      expect(headers.get('X-API-KEY')).toBe('ai-secret');
+      expect(headers.get('X-Internal-Gateway-Key')).toBe('ai-secret');
+      expect(headers.get('X-AI-Model')).toBe('gpt-4.1');
+      expect(headers.get('X-Origin-Verified-By')).toBe('api-gateway');
+      expect(headers.get('X-Gateway-Signature')).toMatch(/^v1:[0-9a-f]{64}$/);
+    }
   });
 });
