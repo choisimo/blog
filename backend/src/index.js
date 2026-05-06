@@ -137,7 +137,10 @@ function buildBackendReadinessChecks() {
     },
     {
       name: "ai",
-      required: config.features?.aiEnabled === true,
+      // AI provider health depends on an external model gateway. Keep the API pod
+      // routable when that provider is degraded so non-AI endpoints and explicit
+      // AI error responses still work instead of removing the Service endpoint.
+      required: false,
       check: async () => {
         if (!config.features?.aiEnabled) {
           return dependencyNotConfigured(false);

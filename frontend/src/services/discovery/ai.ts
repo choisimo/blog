@@ -1,7 +1,10 @@
 import { invokeChatTask, type ChatTaskMode } from "@/services/chat";
 import { TEXT_LIMITS, FALLBACK_DATA } from "@/config/defaults";
 import { bearerAuth } from "@/lib/auth";
-import { getPrincipalToken } from "@/services/session/userContentAuth";
+import {
+  getPrincipalToken,
+  refreshPrincipalTokenAfterAuthFailure,
+} from "@/services/session/userContentAuth";
 import { getApiBaseUrl } from "@/utils/network/apiBase";
 
 // ============================================================================
@@ -165,21 +168,44 @@ async function invokeDirectTask<T>(
   payload: TaskPayload,
   signal: AbortSignal,
 ): Promise<T> {
-  const token = await getPrincipalToken();
-  const res = await fetch(`${getApiBaseUrl()}/api/v1/ai/${mode}`, {
+  return invokeDirectTaskWithToken<T>({
+    mode,
+    payload,
+    signal,
+    token: await getPrincipalToken(),
+    retryAuth: true,
+  });
+}
+
+async function invokeDirectTaskWithToken<T>(input: {
+  mode: ChatTaskMode;
+  payload: TaskPayload;
+  signal: AbortSignal;
+  token: string;
+  retryAuth: boolean;
+}): Promise<T> {
+  const res = await fetch(`${getApiBaseUrl()}/api/v1/ai/${input.mode}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
-      ...bearerAuth(token),
+      ...bearerAuth(input.token),
     },
-    body: JSON.stringify(payload),
-    signal,
+    body: JSON.stringify(input.payload),
+    signal: input.signal,
   });
 
   const text = await res.text().catch(() => "");
   const parsed = text ? tryParseJson<unknown>(text) ?? text : null;
   if (!res.ok) {
+    if (input.retryAuth && isInvalidAuthSignature(res.status, parsed)) {
+      const token = await refreshPrincipalTokenAfterAuthFailure();
+      return invokeDirectTaskWithToken<T>({
+        ...input,
+        token,
+        retryAuth: false,
+      });
+    }
     throw new Error(getTaskErrorMessage(parsed, `AI task failed (${res.status})`));
   }
   if (isFallbackResponse(parsed)) {
@@ -194,6 +220,21 @@ async function invokeDirectTask<T>(
     throw new Error("Invalid AI task response: no data");
   }
   return data as T;
+}
+
+function isInvalidAuthSignature(status: number, parsed: unknown): boolean {
+  if (status !== 401 || !isRecord(parsed)) return false;
+  const error = parsed.error;
+  const code = isRecord(error) && typeof error.code === "string" ? error.code : undefined;
+  const message =
+    typeof error === "string"
+      ? error
+      : isRecord(error) && typeof error.message === "string"
+        ? error.message
+        : typeof parsed.message === "string"
+          ? parsed.message
+          : "";
+  return code === "UNAUTHORIZED" && /invalid signature/i.test(message);
 }
 
 function getEnvelopeData(parsed: unknown): unknown {

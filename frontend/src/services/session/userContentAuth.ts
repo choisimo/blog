@@ -1,5 +1,6 @@
 import { bearerAuth } from "@/lib/auth";
 import {
+  clearAnonymousToken,
   getStoredAnonymousToken,
   getValidAnonymousToken,
   isTokenExpired,
@@ -41,6 +42,12 @@ export async function getPrincipalToken(): Promise<string> {
     return storedAnonymousToken;
   }
 
+  return getValidAnonymousToken();
+}
+
+export async function refreshPrincipalTokenAfterAuthFailure(): Promise<string> {
+  useAuthStore.getState().clearAuth();
+  clearAnonymousToken();
   return getValidAnonymousToken();
 }
 

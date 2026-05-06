@@ -51,6 +51,29 @@ test("readiness reports required dependency failures", () => {
   );
 });
 
+test("readiness keeps serving traffic when an optional dependency fails", () => {
+  resetReadinessState();
+
+  const readiness = buildReadinessResponse(
+    { env: "test" },
+    [{ name: "ai", ok: false, required: false, status: "failed", detail: "HTTP 502" }],
+  );
+
+  assert.equal(readiness.statusCode, 200);
+  assert.equal(readiness.body.ok, true);
+  assert.deepEqual(readiness.body.degradedReasons, []);
+  assert.deepEqual(readiness.body.dependencies, [
+    {
+      name: "ai",
+      ok: false,
+      required: false,
+      status: "failed",
+      detail: "HTTP 502",
+      checkedAt: readiness.body.dependencies[0].checkedAt,
+    },
+  ]);
+});
+
 test("readiness checks fail closed when a dependency probe throws", async () => {
   const [dependency] = await runReadinessChecks([
     {

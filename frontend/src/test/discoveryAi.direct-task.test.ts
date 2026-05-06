@@ -1,16 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const authMocks = vi.hoisted(() => ({
+  getPrincipalToken: vi.fn(async () => 'principal-token'),
+  refreshPrincipalTokenAfterAuthFailure: vi.fn(async () => 'fresh-principal-token'),
+}));
+
 vi.mock('@/utils/network/apiBase', () => ({
   getApiBaseUrl: () => 'https://api.example.com',
 }));
 
 vi.mock('@/services/session/userContentAuth', () => ({
-  getPrincipalToken: vi.fn(async () => 'principal-token'),
+  getPrincipalToken: authMocks.getPrincipalToken,
+  refreshPrincipalTokenAfterAuthFailure: authMocks.refreshPrincipalTokenAfterAuthFailure,
 }));
 
 describe('discovery AI direct tasks', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    authMocks.getPrincipalToken.mockResolvedValue('principal-token');
+    authMocks.refreshPrincipalTokenAfterAuthFailure.mockResolvedValue('fresh-principal-token');
   });
 
   afterEach(() => {
@@ -49,6 +57,68 @@ describe('discovery AI direct tasks', () => {
         method: 'POST',
         headers: expect.objectContaining({
           Authorization: 'Bearer principal-token',
+        }),
+      }),
+    );
+  });
+
+  it('refreshes stale principal auth once when the server rejects an invalid signature', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: false,
+            error: {
+              message: 'Invalid signature',
+              code: 'UNAUTHORIZED',
+            },
+          }),
+          {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: {
+              mood: 'curious',
+              bullets: ['Retried with fresh auth'],
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      );
+
+    const { sketch } = await import('@/services/discovery/ai');
+
+    await expect(sketch({ paragraph: 'A paragraph.' })).resolves.toEqual({
+      mood: 'curious',
+      bullets: ['Retried with fresh auth'],
+    });
+
+    expect(authMocks.refreshPrincipalTokenAfterAuthFailure).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      1,
+      'https://api.example.com/api/v1/ai/sketch',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer principal-token',
+        }),
+      }),
+    );
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      2,
+      'https://api.example.com/api/v1/ai/sketch',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer fresh-principal-token',
         }),
       }),
     );
