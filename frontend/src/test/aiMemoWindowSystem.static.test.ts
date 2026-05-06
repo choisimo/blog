@@ -31,6 +31,19 @@ describe("AI Memo window system assets", () => {
     expect(js).toContain("aria-live=\"polite\"");
   });
 
+  it("authenticates static AI summarize and Catalyst requests", () => {
+    const js = readFileSync(
+      resolve(root, "public/ai-memo/ai-memo.js"),
+      "utf8",
+    );
+
+    expect(js).toContain("anonymousToken: 'anon.token'");
+    expect(js).toContain("getAiJsonHeaders");
+    expect(js).toContain("/api/v1/auth/anonymous");
+    expect(js).toContain("Authorization: `Bearer ${token}`");
+    expect(js).toContain("const headers = await this.getAiJsonHeaders(backend);");
+  });
+
   it("keeps fullscreen, docked, and resize CSS affordances", () => {
     const css = readFileSync(
       resolve(root, "public/ai-memo/ai-memo.css"),

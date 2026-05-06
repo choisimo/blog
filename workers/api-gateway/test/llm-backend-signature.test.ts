@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { Env } from '../src/types';
 import { callTaskLLM } from '../src/lib/llm';
+import { createAIService } from '../src/lib/ai-service';
 
 declare module 'cloudflare:test' {
   interface ProvidedEnv
@@ -42,6 +43,34 @@ describe('backend LLM origin signature', () => {
       },
       env
     );
+
+    expect(upstreamFetch).toHaveBeenCalledTimes(1);
+    const [upstreamUrl, requestInit] = upstreamFetch.mock.calls[0] ?? [];
+    const headers = new Headers(requestInit?.headers);
+
+    expect(upstreamUrl).toBe('https://backend.example/api/v1/ai/generate');
+    expect(headers.get('X-Backend-Key')).toBe('test-backend-key');
+    expect(headers.get('X-Origin-Verified-By')).toBe('api-gateway');
+    expect(headers.get('X-Gateway-Signature-Version')).toBe('v1');
+    expect(headers.get('X-Gateway-Timestamp')).toBeTruthy();
+    expect(headers.get('X-Gateway-Request-ID')).toBeTruthy();
+    expect(headers.get('X-Gateway-Signature')).toMatch(/^v1:[0-9a-f]{64}$/);
+  });
+
+  it('signs AI service generate calls routed through the backend origin', async () => {
+    env.BACKEND_ORIGIN = 'https://backend.example';
+    env.BACKEND_KEY = 'test-backend-key';
+    env.GATEWAY_SIGNING_SECRET = 'test-signing-secret';
+
+    const upstreamFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, data: { text: 'ok' } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const service = createAIService(env);
+    await expect(service.generate('Say OK')).resolves.toBe('ok');
 
     expect(upstreamFetch).toHaveBeenCalledTimes(1);
     const [upstreamUrl, requestInit] = upstreamFetch.mock.calls[0] ?? [];

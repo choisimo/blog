@@ -26,6 +26,7 @@
     memo: 'aiMemo.content',
     apiKey: 'aiMemo.apiKey',
     adminToken: 'aiMemo.adminToken',
+    anonymousToken: 'anon.token',
     inlineEnabled: 'aiMemo.inline.enabled',
     devHtml: 'aiMemo.dev.html',
     devCss: 'aiMemo.dev.css',
@@ -117,6 +118,37 @@
       normalized = normalized.slice(0, -4);
     }
     return normalized;
+  }
+
+  function parseJwtPayload(token) {
+    try {
+      const parts = String(token || '').split('.');
+      if (parts.length !== 3) return null;
+      const normalized = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+      return JSON.parse(atob(padded));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function isTokenExpired(token, bufferSeconds = 60) {
+    const payload = parseJwtPayload(token);
+    if (!payload || typeof payload.exp !== 'number') return true;
+    return Date.now() >= payload.exp * 1000 - bufferSeconds * 1000;
+  }
+
+  async function unwrapTokenResponse(res, fallbackMessage) {
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok || payload?.ok === false) {
+      const error = payload?.error?.message || payload?.error || payload?.message || fallbackMessage;
+      throw new Error(String(error));
+    }
+    const data = payload?.data || payload;
+    if (!data?.token || typeof data.token !== 'string') {
+      throw new Error(fallbackMessage);
+    }
+    return data.token;
   }
 
   function escapeAttribute(value) {
@@ -744,11 +776,12 @@
         this.setStatusState('busy');
         this.out.setStatus('AI 요약 중…');
         
-        const backend = window.__APP_CONFIG?.apiBaseUrl || window.APP_CONFIG?.apiBaseUrl || DEFAULT_API_URL;
-        const endpoint = `${backend.replace(/\/$/, '')}/api/v1/ai/summarize`;
+        const backend = this.getApiBase();
+        const endpoint = `${backend}/api/v1/ai/summarize`;
+        const headers = await this.getAiJsonHeaders(backend);
         const res = await fetch(endpoint, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             input: [
               '[페이지 본문]',
@@ -816,11 +849,12 @@
         this.setStatusState('busy');
         this.out.setStatus('Catalyst 생성 중…');
         
-        const backend = window.__APP_CONFIG?.apiBaseUrl || window.APP_CONFIG?.apiBaseUrl || DEFAULT_API_URL;
-        const endpoint = `${backend.replace(/\/$/, '')}/api/v1/ai/summarize`;
+        const backend = this.getApiBase();
+        const endpoint = `${backend}/api/v1/ai/summarize`;
+        const headers = await this.getAiJsonHeaders(backend);
         const res = await fetch(endpoint, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             input: [
               '[페이지 본문]',
@@ -920,6 +954,77 @@
 
       // 4) Default production URL
       return normalizeBaseUrl(DEFAULT_API_URL);
+    }
+
+    getStoredAnonymousToken() {
+      try {
+        return localStorage.getItem(KEYS.anonymousToken);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    storeAnonymousToken(token) {
+      try {
+        localStorage.setItem(KEYS.anonymousToken, token);
+      } catch (_) {}
+    }
+
+    clearAnonymousToken() {
+      try {
+        localStorage.removeItem(KEYS.anonymousToken);
+      } catch (_) {}
+    }
+
+    async requestAnonymousToken(apiBase) {
+      const res = await fetch(`${apiBase}/api/v1/auth/anonymous`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: '{}',
+      });
+      const token = await unwrapTokenResponse(res, '익명 인증 토큰 발급에 실패했습니다.');
+      this.storeAnonymousToken(token);
+      return token;
+    }
+
+    async refreshAnonymousToken(apiBase, token) {
+      const res = await fetch(`${apiBase}/api/v1/auth/anonymous/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const refreshed = await unwrapTokenResponse(res, '익명 인증 토큰 갱신에 실패했습니다.');
+      this.storeAnonymousToken(refreshed);
+      return refreshed;
+    }
+
+    async getValidAnonymousToken(apiBase) {
+      const existing = this.getStoredAnonymousToken();
+      if (!existing) return this.requestAnonymousToken(apiBase);
+      if (!isTokenExpired(existing, 86400)) return existing;
+
+      try {
+        return await this.refreshAnonymousToken(apiBase, existing);
+      } catch (_) {
+        this.clearAnonymousToken();
+        return this.requestAnonymousToken(apiBase);
+      }
+    }
+
+    async getAiJsonHeaders(apiBase) {
+      const headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
+      const adminToken = LS.get(KEYS.adminToken, '');
+      if (typeof adminToken === 'string' && adminToken.trim() && !isTokenExpired(adminToken, 60)) {
+        headers.Authorization = `Bearer ${adminToken.trim()}`;
+        return headers;
+      }
+
+      const token = await this.getValidAnonymousToken(apiBase);
+      headers.Authorization = `Bearer ${token}`;
+      return headers;
     }
 
     getRuntimeFeatures() {
