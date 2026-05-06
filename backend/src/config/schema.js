@@ -25,6 +25,14 @@ export const configSchema = z.object({
   AI_DEFAULT_MODEL: z.string().default(AI_MODELS.DEFAULT),
   AI_VISION_MODEL: z.string().optional(),
   AI_ASYNC_MODE: z.enum(['true', 'false']).default('false'),
+  AI_IMAGE_PROXY_BASE_URL: z.string().default('https://api.openai.com/v1'),
+  AI_IMAGE_PROXY_API_KEY: z.string().optional(),
+  AI_IMAGE_MODEL: z.string().default(AI_MODELS.DEFAULT || 'gpt-5.5'),
+  AI_IMAGE_TIMEOUT_MS: z.coerce.number().int().positive().default(300_000),
+  AI_IMAGE_MAX_COUNT: z.coerce.number().int().positive().max(4).default(4),
+  AI_IMAGE_MAX_PROMPT_LENGTH: z.coerce.number().int().positive().default(4_000),
+  AI_IMAGE_MAX_OUTPUT_BYTES: z.coerce.number().int().positive().default(12_582_912),
+  AI_IMAGE_STORAGE_SUBDIR: z.string().default('ai'),
 
   JWT_EXPIRES_IN: z.string().default('12h'),
 
@@ -94,6 +102,7 @@ export const configSchema = z.object({
   FEATURE_AI_INLINE: z.enum(['true', 'false']).default(FEATURES.AI_INLINE ? 'true' : 'false'),
   FEATURE_CODE_EXECUTION_ENABLED: z.enum(['true', 'false']).default(FEATURES.CODE_EXECUTION_ENABLED ? 'true' : 'false'),
   FEATURE_COMMENTS_ENABLED: z.enum(['true', 'false']).default(FEATURES.COMMENTS_ENABLED ? 'true' : 'false'),
+  FEATURE_ADMIN_AI_IMAGE_ENABLED: z.enum(['true', 'false']).default('false'),
 });
 
 export default configSchema;

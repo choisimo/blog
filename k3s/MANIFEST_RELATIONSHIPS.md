@@ -248,6 +248,12 @@ Ingress terminal-origin
 | `RATE_LIMIT_WINDOW_MS` | `60000` | `api` | rate limit window |
 | `AI_DEFAULT_MODEL` | `gpt-4.1` | `api`, `open-notebook` | 기본 LLM 모델 |
 | `AI_ASYNC_MODE` | `false` | `api` | async AI 토글 |
+| `AI_IMAGE_MODEL` | `gpt-5.5` | `api` | admin AI 이미지 생성 모델 |
+| `AI_IMAGE_TIMEOUT_MS` | `300000` | `api` | admin AI 이미지 proxy timeout |
+| `AI_IMAGE_MAX_COUNT` | `4` | `api` | 요청당 admin AI 이미지 생성 상한 |
+| `AI_IMAGE_MAX_PROMPT_LENGTH` | `4000` | `api` | admin AI 이미지 prompt 길이 상한 |
+| `AI_IMAGE_MAX_OUTPUT_BYTES` | `12582912` | `api` | 생성 이미지 디코딩/정규화 byte 상한 |
+| `AI_IMAGE_STORAGE_SUBDIR` | `ai` | `api` | 게시글 이미지 경로 하위 저장 디렉터리 |
 | `AI_EMBED_MODEL` | `text-embedding-3-small` | `api`, `open-notebook` | 임베딩 모델 |
 | `CHROMA_URL` | `http://chromadb:8000` | `api` | 내부 Chroma endpoint |
 | `CHROMA_COLLECTION` | `blog-posts__all-MiniLM-L6-v2` | `api` | Chroma collection 이름 |
@@ -266,6 +272,7 @@ Ingress terminal-origin
 | `FEATURE_TERMINAL_ENABLED` | `false` | `api` | terminal 기능 플래그 |
 | `FEATURE_AI_INLINE` | `true` | `api` | inline AI 기능 플래그 |
 | `FEATURE_COMMENTS_ENABLED` | `true` | `api` | comments 기능 플래그 |
+| `FEATURE_ADMIN_AI_IMAGE_ENABLED` | `true` | `api` | admin 게시글 AI 이미지 생성 기능 플래그 |
 | `USE_CONSUL` | `false` | `api` | Consul runtime overlay 비활성화 |
 | `POSTGRES_DB` | `bloganalytics` | `postgres` | PostgreSQL DB 이름 |
 | `POSTGRES_USER` | `bloguser` | `postgres` | PostgreSQL 사용자 |
@@ -295,6 +302,8 @@ Ingress terminal-origin
 | `BACKEND_KEY` | `api`, optional `terminal-server` | 내부 shared auth key |
 | `AI_SERVER_URL` | `api`, `open-notebook` | OpenAI-compatible base URL |
 | `AI_API_KEY` | `api`, `open-notebook` | 기본 AI key |
+| `AI_IMAGE_PROXY_BASE_URL` | `api` | admin AI 이미지 생성 proxy base URL |
+| `AI_IMAGE_PROXY_API_KEY` | `api` | admin AI 이미지 생성 전용 proxy key |
 | `AI_EMBEDDING_URL` | `api`, `open-notebook` | embedding endpoint |
 | `AI_EMBEDDING_API_KEY` | `api`, `open-notebook` | embedding key |
 | `DATABASE_URL` | `api` | PostgreSQL connection string |

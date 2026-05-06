@@ -515,6 +515,43 @@ function hasNonInlineNode(node: unknown): boolean {
   return children.some(child => hasNonInlineNode(child));
 }
 
+function hasMeaningfulInlineContent(children: ReactNode[]): boolean {
+  return children.some(child => {
+    if (child == null || child === false) return false;
+    if (typeof child === 'string' || typeof child === 'number') {
+      return String(child).trim().length > 0;
+    }
+    if (!isValidElement(child)) return true;
+    return extractRawTextFromNode(child).trim().length > 0;
+  });
+}
+
+function splitMixedParagraphChildren(children: ReactNode[]): ReactNode[][] {
+  const segments: ReactNode[][] = [];
+  let inlineSegment: ReactNode[] = [];
+
+  const flushInlineSegment = () => {
+    if (hasMeaningfulInlineContent(inlineSegment)) {
+      segments.push(inlineSegment);
+    }
+    inlineSegment = [];
+  };
+
+  children.forEach(child => {
+    if (hasNonInlineNode(child)) {
+      flushInlineSegment();
+      segments.push([child]);
+      return;
+    }
+
+    inlineSegment.push(child);
+  });
+
+  flushInlineSegment();
+
+  return segments;
+}
+
 const DEFAULT_MEDIA_LAYOUT: ArticleMediaLayout = 'wide';
 
 const MEDIA_LAYOUT_ALIASES: Record<string, ArticleMediaLayout> = {
@@ -934,54 +971,57 @@ function MarkdownRendererInner({
       },
       p: ({ children }: { children?: ReactNode }) => {
         const childArray = Children.toArray(children);
+        const renderInlineParagraph = (
+          inlineChildren: ReactNode[],
+          key?: number
+        ) => {
+          if (inlineEnabled) {
+            return (
+              <div className='article-readable' key={key}>
+                <SparkInline postTitle={postTitle} wrapperTag='p'>
+                  {inlineChildren}
+                </SparkInline>
+              </div>
+            );
+          }
+
+          return (
+            <p
+              key={key}
+              className={cn(
+                'article-readable mb-6 leading-8 text-justify',
+                isTerminal && 'border-l border-border/50 pl-4'
+              )}
+            >
+              {inlineChildren}
+            </p>
+          );
+        };
         const containsNonInlineContent = childArray.some(child =>
           hasNonInlineNode(child)
         );
 
         if (containsNonInlineContent) {
-          const hasInlineText = childArray.some(
-            child => typeof child === 'string' && child.trim().length > 0
-          );
-
-          if (!hasInlineText) {
-            return (
-              <>
-                {childArray.map((child, idx) => (
-                  <Fragment key={idx}>{child}</Fragment>
-                ))}
-              </>
-            );
-          }
-
           return (
-            <div className='article-wide-block space-y-4'>
-              {childArray.map((child, idx) => (
-                <Fragment key={idx}>{child}</Fragment>
+            <>
+              {splitMixedParagraphChildren(childArray).map((segment, idx) => (
+                <Fragment key={idx}>
+                  {segment.some(child => hasNonInlineNode(child))
+                    ? segment.map((child, childIdx) => (
+                        <Fragment key={childIdx}>{child}</Fragment>
+                      ))
+                    : renderInlineParagraph(segment)}
+                </Fragment>
               ))}
-            </div>
+            </>
           );
         }
 
         if (inlineEnabled) {
-          return (
-            <div className='article-readable'>
-              <SparkInline postTitle={postTitle} wrapperTag='p'>
-                {children}
-              </SparkInline>
-            </div>
-          );
+          return renderInlineParagraph(childArray);
         }
 
-        return (
-          <p
-            className={cn(
-              'article-readable mb-6 leading-8 text-justify',
-              isTerminal && 'border-l border-border/50 pl-4'
-            )}
-          >
-            {children}
-          </p>
-        );
+        return renderInlineParagraph(childArray);
       },
       ul: ({ children }: { children?: ReactNode }) => (
         <ul
