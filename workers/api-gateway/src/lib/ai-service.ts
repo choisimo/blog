@@ -371,6 +371,8 @@ export class AIService {
     provider: string;
     features: Record<string, boolean>;
   }> {
+    const visionModel = await getAiVisionModel(this.env);
+
     // Return static info - the actual provider is determined by backend config
     // We don't need to call backend /ai/status which may fail
     return {
@@ -378,7 +380,7 @@ export class AIService {
       features: {
         chat: true,
         generate: true,
-        vision: true,
+        vision: Boolean(visionModel),
         summarize: true,
         stream: true,
         sketch: true,

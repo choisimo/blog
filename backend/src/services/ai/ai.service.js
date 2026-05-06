@@ -345,6 +345,11 @@ export class AIService {
   async vision(imageData, prompt, options = {}) {
     const requestId = `vision-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const startTime = Date.now();
+    const model = options.model || AI_MODELS.VISION;
+
+    if (!model) {
+      throw new Error("Vision model is not configured");
+    }
 
     const isUrl =
       imageData.startsWith("http://") || imageData.startsWith("https://");
@@ -354,7 +359,7 @@ export class AIService {
       "Starting vision analysis",
       {
         type: isUrl ? "url" : "base64",
-        model: options.model || AI_MODELS.VISION,
+        model,
       },
     );
 
@@ -362,7 +367,7 @@ export class AIService {
       const client = this._getClient();
       const result = await client.vision(imageData, prompt, {
         mimeType: options.mimeType || "image/jpeg",
-        model: options.model || AI_MODELS.VISION,
+        model,
         timeout: options.timeout,
       });
 

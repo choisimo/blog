@@ -12,6 +12,7 @@ import {
   idempotentJson,
   releaseIdempotencyClaim,
 } from '../lib/idempotency';
+import { getAiVisionModel } from '../lib/config';
 
 const ai = new Hono<HonoEnv>();
 
@@ -380,12 +381,18 @@ ai.post('/vision/analyze', requireAuth, async (c) => {
   const cached = await getCachedIdempotencyResponse(c, 'ai.vision.analyze', idempotencyPayload);
   if (cached) return cached;
 
+  const visionModel = await getAiVisionModel(c.env);
+  if (!visionModel) {
+    return error(c, 'Vision model is not configured', 503, 'VISION_NOT_CONFIGURED');
+  }
+
   const aiService = createAIService(c.env);
   try {
     // If URL provided, we need to fetch and convert (or let backend handle it)
     const imageData = imageBase64 || imageUrl;
     const description = await aiService.vision(imageData, prompt || 'Describe this image', {
       mimeType: mimeType || 'image/jpeg',
+      model: visionModel,
       timeout: AI_VISION_TIMEOUT_MS,
     });
     return idempotentJson(c, 'ai.vision.analyze', idempotencyPayload, 200, {

@@ -14,7 +14,7 @@
 
 import { Hono } from 'hono';
 import type { HonoEnv, Env } from '../types';
-import { success, badRequest, serverError } from '../lib/response';
+import { success, badRequest, error, serverError } from '../lib/response';
 import {
   getApiBaseUrl,
   getAiServeApiKey,
@@ -226,7 +226,7 @@ async function analyzeWithBackend(
   const response = await fetch(url, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ imageBase64, mimeType, prompt }),
+    body: JSON.stringify({ imageBase64, mimeType, prompt, model: forcedVisionModel }),
   });
 
   if (!response.ok) {
@@ -258,6 +258,10 @@ gateway.post('/vision/analyze', requireAuth, async (c) => {
     prompt?: string;
   };
   const body: VisionRequestBody = await c.req.json<VisionRequestBody>().catch(() => ({}));
+  const visionModel = await getAiVisionModel(c.env);
+  if (!visionModel) {
+    return error(c, 'Vision model is not configured', 503, 'VISION_NOT_CONFIGURED');
+  }
 
   let imageBase64: string;
   let mimeType: string;
@@ -294,11 +298,14 @@ gateway.post('/vision/analyze', requireAuth, async (c) => {
 // GET /gateway/vision/health
 gateway.get('/vision/health', async (c) => {
   const backendUrl = await getAiAgentBackendUrl(c.env);
+  const visionModel = await getAiVisionModel(c.env);
 
   return success(c, {
-    status: 'ok',
+    status: visionModel ? 'ok' : 'not_configured',
     mode: 'backend',
     backendUrl,
+    enabled: Boolean(visionModel),
+    visionModel: visionModel || null,
     timestamp: new Date().toISOString(),
   });
 });

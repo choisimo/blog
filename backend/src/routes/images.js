@@ -24,8 +24,8 @@ const ALLOWED_IMAGE_MIME_TYPES = new Set([
   "image/gif",
 ]);
 
-function resolveVisionModelFromRequest() {
-  return config.ai?.visionModel || AI_MODELS.VISION || config.ai?.defaultModel || AI_MODELS.DEFAULT;
+function getConfiguredVisionModel() {
+  return config.ai?.visionModel || AI_MODELS.VISION || null;
 }
 
 const upload = multer({
@@ -297,7 +297,8 @@ router.post("/chat-upload", requireAdmin, upload.single("file"), async (req, res
         });
 
         let visionOutboxId = null;
-        if (file.mimetype?.startsWith("image/")) {
+        const visionModel = getConfiguredVisionModel();
+        if (file.mimetype?.startsWith("image/") && visionModel) {
           const analysisPrompt = `이 이미지를 분석해주세요. 다음 내용을 간결하게 설명해주세요:
 1. 이미지에 보이는 주요 요소들
 2. 전체적인 분위기나 맥락
@@ -313,7 +314,7 @@ router.post("/chat-upload", requireAdmin, upload.single("file"), async (req, res
               key: result.key,
               mimeType: file.mimetype,
               prompt: analysisPrompt,
-              model: resolveVisionModelFromRequest(),
+              model: visionModel,
             },
             idempotencyKey: `image.vision:${result.key}`,
           });

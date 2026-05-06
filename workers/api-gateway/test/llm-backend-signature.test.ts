@@ -9,7 +9,11 @@ declare module 'cloudflare:test' {
   interface ProvidedEnv
     extends Pick<
       Env,
-      'BACKEND_ORIGIN' | 'BACKEND_KEY' | 'GATEWAY_SIGNING_SECRET' | 'AI_DEFAULT_MODEL'
+      | 'BACKEND_ORIGIN'
+      | 'BACKEND_KEY'
+      | 'GATEWAY_SIGNING_SECRET'
+      | 'AI_DEFAULT_MODEL'
+      | 'AI_VISION_MODEL'
     > {}
 }
 
@@ -19,6 +23,7 @@ afterEach(() => {
   env.BACKEND_KEY = 'test-backend-key';
   env.GATEWAY_SIGNING_SECRET = 'test-signing-secret';
   env.AI_DEFAULT_MODEL = undefined;
+  env.AI_VISION_MODEL = undefined;
 });
 
 describe('backend LLM origin signature', () => {
@@ -83,5 +88,35 @@ describe('backend LLM origin signature', () => {
     expect(headers.get('X-Gateway-Timestamp')).toBeTruthy();
     expect(headers.get('X-Gateway-Request-ID')).toBeTruthy();
     expect(headers.get('X-Gateway-Signature')).toMatch(/^v1:[0-9a-f]{64}$/);
+  });
+
+  it('forwards the configured vision model to backend vision calls', async () => {
+    env.BACKEND_ORIGIN = 'https://backend.example';
+    env.BACKEND_KEY = 'test-backend-key';
+    env.GATEWAY_SIGNING_SECRET = 'test-signing-secret';
+    env.AI_VISION_MODEL = 'vision-model';
+
+    const upstreamFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, data: { description: 'ok' } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const service = createAIService(env);
+    await expect(service.vision('abc123', 'Describe it', { model: env.AI_VISION_MODEL })).resolves.toBe(
+      'ok'
+    );
+
+    expect(upstreamFetch).toHaveBeenCalledTimes(1);
+    const [upstreamUrl, requestInit] = upstreamFetch.mock.calls[0] ?? [];
+    const headers = new Headers(requestInit?.headers);
+    const body = JSON.parse(String(requestInit?.body));
+
+    expect(upstreamUrl).toBe('https://backend.example/api/v1/ai/vision/analyze');
+    expect(headers.get('X-Backend-Key')).toBe('test-backend-key');
+    expect(headers.get('X-AI-Vision-Model')).toBe('vision-model');
+    expect(headers.get('X-Gateway-Signature')).toMatch(/^v1:[0-9a-f]{64}$/);
+    expect(body.model).toBe('vision-model');
   });
 });

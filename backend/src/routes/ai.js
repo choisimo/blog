@@ -41,8 +41,18 @@ function resolveChatModelFromRequest() {
   return snapshot.defaultModel || config.ai?.defaultModel || AI_MODELS.DEFAULT;
 }
 
-function resolveVisionModelFromRequest() {
-  return config.ai?.visionModel || resolveChatModelFromRequest();
+function getConfiguredVisionModel() {
+  return config.ai?.visionModel || AI_MODELS.VISION || null;
+}
+
+export function resolveVisionModelFromRequest(req = {}) {
+  const bodyModel =
+    typeof req.body?.model === "string" ? req.body.model.trim() : "";
+  const headerModel =
+    typeof req.get === "function"
+      ? String(req.get("x-ai-vision-model") || "").trim()
+      : "";
+  return bodyModel || headerModel || getConfiguredVisionModel();
 }
 
 // ============================================================================
@@ -372,7 +382,7 @@ router.get("/status", async (req, res) => {
       },
       features: {
         chat: true,
-        vision: true,
+        vision: Boolean(getConfiguredVisionModel()),
         summarize: true,
         generate: true,
         stream: true,
@@ -630,12 +640,34 @@ router.post(
         imageBase64,
         mimeType: inputMimeType,
         prompt,
+        model,
         provider: preferredProvider,
       } = req.body || {};
 
       let imageData;
       let mimeType;
       let imageType; // 'url' or 'base64'
+
+      if (!imageUrl && !imageBase64) {
+        return res.status(400).json({
+          ok: false,
+          error: {
+            message: "imageUrl or imageBase64 required",
+            code: "INVALID_REQUEST",
+          },
+        });
+      }
+
+      const forcedVisionModel = resolveVisionModelFromRequest(req);
+      if (!forcedVisionModel) {
+        return res.status(503).json({
+          ok: false,
+          error: {
+            message: "Vision model is not configured",
+            code: "VISION_NOT_CONFIGURED",
+          },
+        });
+      }
 
       // Prefer URL if provided
       // For trusted asset URLs we can pass through directly (more efficient than converting to base64)
@@ -673,18 +705,9 @@ router.post(
         imageData = imageBase64;
         mimeType = inputMimeType || IMAGE.DEFAULT_MIME;
         imageType = "base64";
-      } else {
-        return res.status(400).json({
-          ok: false,
-          error: {
-            message: "imageUrl or imageBase64 required",
-            code: "INVALID_REQUEST",
-          },
-        });
       }
 
       const analysisPrompt = prompt || VISION_PROMPTS.DEFAULT;
-      const forcedVisionModel = resolveVisionModelFromRequest();
 
       // Use unified AI service for vision analysis
       // aiService.vision handles both URL and base64 formats
@@ -693,7 +716,7 @@ router.post(
           req,
           res,
           "ai.vision.analyze",
-          { imageUrl, imageBase64, mimeType, prompt },
+          { imageUrl, imageBase64, mimeType, prompt, model },
           async () => {
             const description = await aiService.vision(imageData, analysisPrompt, {
               mimeType,
@@ -734,12 +757,15 @@ router.post(
 router.get("/vision/health", async (req, res) => {
   const healthResult = await aiService.health();
   const providerInfo = aiService.getProviderInfo();
+  const visionModel = getConfiguredVisionModel();
 
   res.json({
     ok: true,
     data: {
-      status: healthResult.ok ? "ok" : "degraded",
+      status: visionModel ? (healthResult.ok ? "ok" : "degraded") : "not_configured",
       provider: providerInfo.provider,
+      model: visionModel,
+      enabled: Boolean(visionModel),
       providers: {
         [providerInfo.provider]: healthResult.ok,
       },

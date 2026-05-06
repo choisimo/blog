@@ -1,13 +1,14 @@
 import { env } from 'cloudflare:test';
 import { Hono } from 'hono';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { signJwt } from '../src/lib/jwt';
 import ai from '../src/routes/ai';
 import type { Env } from '../src/types';
 
 declare module 'cloudflare:test' {
-  interface ProvidedEnv extends Pick<Env, 'JWT_SECRET' | 'ENV' | 'KV' | 'BACKEND_ORIGIN'> {}
+  interface ProvidedEnv
+    extends Pick<Env, 'JWT_SECRET' | 'ENV' | 'KV' | 'BACKEND_ORIGIN' | 'AI_VISION_MODEL'> {}
 }
 
 function createApp() {
@@ -27,6 +28,11 @@ async function createUserToken() {
     env
   );
 }
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  delete (env as Partial<Env>).AI_VISION_MODEL;
+});
 
 describe('AI route security guards', () => {
   it('rejects unauthenticated paid generation requests', async () => {
@@ -63,5 +69,51 @@ describe('AI route security guards', () => {
       ok: false,
       error: { message: 'prompt is too large' },
     });
+  });
+
+  it('reports vision as disabled when no vision model is configured', async () => {
+    delete (env as Partial<Env>).AI_VISION_MODEL;
+
+    const response = await createApp().request('https://example.com/api/v1/ai/status', {}, env);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      data: {
+        features: {
+          vision: false,
+        },
+      },
+    });
+  });
+
+  it('fails vision analysis before backend calls when no vision model is configured', async () => {
+    delete (env as Partial<Env>).AI_VISION_MODEL;
+    const token = await createUserToken();
+    const upstreamFetch = vi.spyOn(globalThis, 'fetch');
+
+    const response = await createApp().request(
+      'https://example.com/api/v1/ai/vision/analyze',
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          imageBase64:
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
+          mimeType: 'image/png',
+        }),
+      },
+      env
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'VISION_NOT_CONFIGURED' },
+    });
+    expect(upstreamFetch).not.toHaveBeenCalled();
   });
 });

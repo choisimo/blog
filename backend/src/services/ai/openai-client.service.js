@@ -271,6 +271,10 @@ export class OpenAICompatClient {
     const isUrl =
       imageData.startsWith("http://") || imageData.startsWith("https://");
 
+    if (!model) {
+      throw new Error("Vision model is not configured");
+    }
+
     if (this._isCircuitOpen()) {
       logger.warn(
         { operation: "vision", requestId },

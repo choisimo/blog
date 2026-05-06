@@ -5,8 +5,9 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || "ai-vision-ssrf-test-secret";
 process.env.JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "15m";
 process.env.APP_ENV = process.env.APP_ENV || "test";
 process.env.AI_DEFAULT_MODEL = process.env.AI_DEFAULT_MODEL || "gpt-4.1-mini";
+delete process.env.AI_VISION_MODEL;
 
-const { assertSafeImageUrl, isPrivateIpAddress } = await import("../src/routes/ai.js");
+const { assertSafeImageUrl, isPrivateIpAddress, resolveVisionModelFromRequest } = await import("../src/routes/ai.js");
 
 test("isPrivateIpAddress blocks local and private address ranges", () => {
   assert.equal(isPrivateIpAddress("127.0.0.1"), true);
@@ -37,5 +38,20 @@ test("assertSafeImageUrl allows public image hosts", async () => {
     assertSafeImageUrl("https://example.com/image.png", {
       lookupImpl: async () => [{ address: "93.184.216.34" }],
     }),
+  );
+});
+
+test("resolveVisionModelFromRequest does not fall back to the chat model", () => {
+  assert.equal(resolveVisionModelFromRequest({ body: {} }), null);
+  assert.equal(
+    resolveVisionModelFromRequest({ body: { model: " vision-model " } }),
+    "vision-model",
+  );
+  assert.equal(
+    resolveVisionModelFromRequest({
+      body: {},
+      get: (name) => (name === "x-ai-vision-model" ? " header-vision " : null),
+    }),
+    "header-vision",
   );
 });
