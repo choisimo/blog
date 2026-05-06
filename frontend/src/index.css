@@ -1914,7 +1914,22 @@
   min-width: 0;
 }
 
-.article-flow > :where(.article-readable, p, ul, ol, blockquote, h4, h5, h6) {
+.article-flow
+  > :where(
+    .article-readable,
+    p,
+    ul,
+    ol,
+    blockquote,
+    h4,
+    h5,
+    h6,
+    em,
+    strong,
+    span,
+    cite,
+    small
+  ) {
   width: 100%;
   max-width: var(--article-readable-max);
   margin-left: auto;
@@ -1973,7 +1988,22 @@
     column-gap: clamp(1rem, 2vw, 1.75rem);
   }
 
-  .article-flow > :where(.article-readable, p, ul, ol, blockquote, h4, h5, h6) {
+  .article-flow
+    > :where(
+      .article-readable,
+      p,
+      ul,
+      ol,
+      blockquote,
+      h4,
+      h5,
+      h6,
+      em,
+      strong,
+      span,
+      cite,
+      small
+    ) {
     grid-column: 3 / 11;
     max-width: none;
   }

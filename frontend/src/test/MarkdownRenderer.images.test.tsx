@@ -88,6 +88,28 @@ describe("MarkdownRenderer image paths", () => {
     expect(inlineGif).toHaveAttribute("data-src", "/images/2026/awk-1/12.gif");
   });
 
+  it("keeps image follow-up emphasis inside the readable article flow", () => {
+    const { container } = renderMarkdown(
+      [
+        "![이벤트 소싱 처리 흐름](/images/2026/hedgefunds_atomicity/event_sourcing.png)",
+        "_명령, 이벤트 기록, 상태 재구성이 분리된 append-only 처리 모델._",
+      ].join("\n"),
+      "2026/hedgefunds_transcation_manage",
+    );
+
+    const flow = container.querySelector(".article-flow");
+    const figure = flow?.querySelector("figure.article-media-frame");
+    const description = figure?.nextElementSibling;
+
+    expect(figure).not.toBeNull();
+    expect(description?.tagName).toBe("P");
+    expect(description).toHaveClass("article-readable");
+    expect(description).toHaveTextContent(
+      "명령, 이벤트 기록, 상태 재구성이 분리된 append-only 처리 모델.",
+    );
+    expect(flow?.querySelector(":scope > em")).toBeNull();
+  });
+
   it("renders markdown video assets as autoplaying inline videos", () => {
     const { container } = renderMarkdown("![Demo](image/demo/clip.mp4)");
 
