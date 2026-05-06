@@ -1,5 +1,8 @@
 import { invokeChatTask, type ChatTaskMode } from "@/services/chat";
 import { TEXT_LIMITS, FALLBACK_DATA } from "@/config/defaults";
+import { bearerAuth } from "@/lib/auth";
+import { getPrincipalToken } from "@/services/session/userContentAuth";
+import { getApiBaseUrl } from "@/utils/network/apiBase";
 
 // ============================================================================
 // Types
@@ -56,6 +59,8 @@ type TaskPayload = {
   persona?: string;
   [key: string]: unknown;
 };
+
+const DIRECT_TASK_MODES = new Set<ChatTaskMode>(["sketch", "prism", "chain"]);
 
 // ============================================================================
 // Utilities
@@ -125,14 +130,19 @@ async function invokeTask<T>(
   payload: TaskPayload,
 ): Promise<T> {
   try {
+    const signal = AbortSignal.timeout(45_000);
+    if (DIRECT_TASK_MODES.has(mode)) {
+      return await invokeDirectTask<T>(mode, payload, signal);
+    }
+
     const result = await invokeChatTask<T>({
       mode,
       payload,
-      signal: AbortSignal.timeout(30_000),
+      signal,
     });
 
     // Detect fallback response from Workers — AI server unavailable
-    if (isRecord(result.raw) && result.raw._fallback === true) {
+    if (isFallbackResponse(result.raw) || isFallbackResponse(result.data)) {
       throw new Error("AI server returned fallback: backend unavailable");
     }
 
@@ -148,6 +158,68 @@ async function invokeTask<T>(
     }
     throw err;
   }
+}
+
+async function invokeDirectTask<T>(
+  mode: ChatTaskMode,
+  payload: TaskPayload,
+  signal: AbortSignal,
+): Promise<T> {
+  const token = await getPrincipalToken();
+  const res = await fetch(`${getApiBaseUrl()}/api/v1/ai/${mode}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...bearerAuth(token),
+    },
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  const text = await res.text().catch(() => "");
+  const parsed = text ? tryParseJson<unknown>(text) ?? text : null;
+  if (!res.ok) {
+    throw new Error(getTaskErrorMessage(parsed, `AI task failed (${res.status})`));
+  }
+  if (isFallbackResponse(parsed)) {
+    throw new Error("AI server returned fallback: backend unavailable");
+  }
+
+  const data = getEnvelopeData(parsed);
+  if (isFallbackResponse(data)) {
+    throw new Error("AI server returned fallback: backend unavailable");
+  }
+  if (data === null || data === undefined) {
+    throw new Error("Invalid AI task response: no data");
+  }
+  return data as T;
+}
+
+function getEnvelopeData(parsed: unknown): unknown {
+  if (!isRecord(parsed)) return parsed;
+  return parsed.data ?? parsed.result ?? parsed.output ?? parsed.payload ?? parsed;
+}
+
+function getTaskErrorMessage(parsed: unknown, fallback: string): string {
+  if (isRecord(parsed)) {
+    const error = parsed.error;
+    if (typeof error === "string" && error.trim()) return error;
+    if (isRecord(error) && typeof error.message === "string" && error.message.trim()) {
+      return error.message;
+    }
+    if (typeof parsed.message === "string" && parsed.message.trim()) return parsed.message;
+  }
+  return fallback;
+}
+
+function isFallbackResponse(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    (value._fallback === true ||
+      value.source === "fallback" ||
+      (isRecord(value.data) && value.data._fallback === true))
+  );
 }
 
 /**
@@ -244,51 +316,6 @@ function isSummaryResult(data: unknown): data is SummaryResult {
 }
 
 // ============================================================================
-// Fallback Generators
-// ============================================================================
-
-function createSketchFallback(paragraph: string): SketchResult {
-  const sentences = (paragraph || "")
-    .replace(/\n+/g, " ")
-    .split(/[.!?]\s+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 10)
-    .slice(0, 4);
-
-  return {
-    mood: FALLBACK_DATA.MOOD,
-    bullets:
-      sentences.length > 0
-        ? sentences.map((s) => safeTruncate(s, TEXT_LIMITS.SKETCH_BULLET))
-        : [...FALLBACK_DATA.SKETCH.BULLETS_ERROR],
-  };
-}
-
-function createPrismFallback(paragraph: string): PrismResult {
-  return {
-    facets: [
-      {
-        title: FALLBACK_DATA.PRISM.FACETS[0].title,
-        points: [
-          safeTruncate(paragraph, TEXT_LIMITS.PRISM_TRUNCATE) ||
-            FALLBACK_DATA.PRISM.FACETS[0].points[0],
-        ],
-      },
-      {
-        title: FALLBACK_DATA.PRISM.FACETS[1].title,
-        points: [...FALLBACK_DATA.PRISM.FACETS[1].points],
-      },
-    ],
-  };
-}
-
-function createChainFallback(): ChainResult {
-  return {
-    questions: FALLBACK_DATA.CHAIN.QUESTIONS.map((q) => ({ ...q })),
-  };
-}
-
-// ============================================================================
 // Public API
 // ============================================================================
 
@@ -302,26 +329,21 @@ export async function sketch(input: {
 }): Promise<SketchResult> {
   const { paragraph, postTitle, persona } = input;
 
-  try {
-    const response = await invokeTask<SketchResult>("sketch", {
-      paragraph,
-      postTitle,
-      persona,
-    });
+  const response = await invokeTask<SketchResult>("sketch", {
+    paragraph,
+    postTitle,
+    persona,
+  });
 
-    const normalized = normalizeResponse(response, isSketchResult);
-    if (normalized) {
-      return {
-        mood: normalized.mood,
-        bullets: normalized.bullets.slice(0, 10),
-      };
-    }
-
-    throw new Error("Invalid sketch response format");
-  } catch (err) {
-    console.error("Sketch AI call failed:", err);
-    return createSketchFallback(paragraph);
+  const normalized = normalizeResponse(response, isSketchResult);
+  if (normalized) {
+    return {
+      mood: normalized.mood,
+      bullets: normalized.bullets.slice(0, 10),
+    };
   }
+
+  throw new Error("Invalid sketch response format");
 }
 
 /**
@@ -333,24 +355,19 @@ export async function prism(input: {
 }): Promise<PrismResult> {
   const { paragraph, postTitle } = input;
 
-  try {
-    const response = await invokeTask<PrismResult>("prism", {
-      paragraph,
-      postTitle,
-    });
+  const response = await invokeTask<PrismResult>("prism", {
+    paragraph,
+    postTitle,
+  });
 
-    const normalized = normalizeResponse(response, isPrismResult);
-    if (normalized) {
-      return {
-        facets: normalized.facets.slice(0, 4),
-      };
-    }
-
-    throw new Error("Invalid prism response format");
-  } catch (err) {
-    console.error("Prism AI call failed:", err);
-    return createPrismFallback(paragraph);
+  const normalized = normalizeResponse(response, isPrismResult);
+  if (normalized) {
+    return {
+      facets: normalized.facets.slice(0, 4),
+    };
   }
+
+  throw new Error("Invalid prism response format");
 }
 
 /**
@@ -362,24 +379,19 @@ export async function chain(input: {
 }): Promise<ChainResult> {
   const { paragraph, postTitle } = input;
 
-  try {
-    const response = await invokeTask<ChainResult>("chain", {
-      paragraph,
-      postTitle,
-    });
+  const response = await invokeTask<ChainResult>("chain", {
+    paragraph,
+    postTitle,
+  });
 
-    const normalized = normalizeResponse(response, isChainResult);
-    if (normalized) {
-      return {
-        questions: normalized.questions.slice(0, 6),
-      };
-    }
-
-    throw new Error("Invalid chain response format");
-  } catch (err) {
-    console.error("Chain AI call failed:", err);
-    return createChainFallback();
+  const normalized = normalizeResponse(response, isChainResult);
+  if (normalized) {
+    return {
+      questions: normalized.questions.slice(0, 6),
+    };
   }
+
+  throw new Error("Invalid chain response format");
 }
 
 /**

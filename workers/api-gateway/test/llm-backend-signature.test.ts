@@ -119,4 +119,26 @@ describe('backend LLM origin signature', () => {
     expect(headers.get('X-Gateway-Signature')).toMatch(/^v1:[0-9a-f]{64}$/);
     expect(body.model).toBe('vision-model');
   });
+
+  it('marks task fallback data as a failed result when backend AI is not parseable', async () => {
+    env.BACKEND_ORIGIN = 'https://backend.example';
+    env.BACKEND_KEY = 'test-backend-key';
+    env.GATEWAY_SIGNING_SECRET = 'test-signing-secret';
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, data: { text: 'not json' } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const service = createAIService(env);
+    const result = await service.task<{ _fallback?: boolean }>('sketch', {
+      paragraph: 'A paragraph that should not be silently copied.',
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe('AI task response was not valid JSON');
+    expect(result.data._fallback).toBe(true);
+  });
 });

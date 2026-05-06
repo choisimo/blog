@@ -265,11 +265,19 @@ export class AIService {
         return { ok: true, data: json };
       }
 
-      // Fallback if JSON parsing fails
-      return { ok: true, data: getFallbackData(mode, payload) as T };
+      console.error(`[AIService:${mode}] Invalid JSON response from backend AI`);
+      return {
+        ok: false,
+        data: { ...(getFallbackData(mode, payload) as Record<string, unknown>), _fallback: true } as T,
+        error: 'AI task response was not valid JSON',
+      };
     } catch (err) {
       console.error(`[AIService:${mode}] Error:`, err instanceof Error ? err.message : err);
-      return { ok: true, data: getFallbackData(mode, payload) as T };
+      return {
+        ok: false,
+        data: { ...(getFallbackData(mode, payload) as Record<string, unknown>), _fallback: true } as T,
+        error: err instanceof Error ? err.message : 'AI task failed',
+      };
     }
   }
 
