@@ -46,6 +46,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _guard(Future<void> Function() action) async {
+    if (!mounted) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -53,7 +54,7 @@ class _LoginPageState extends State<LoginPage> {
     try {
       await action();
     } catch (error) {
-      setState(() => _error = error.toString());
+      if (mounted) setState(() => _error = error.toString());
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -63,6 +64,7 @@ class _LoginPageState extends State<LoginPage> {
     await _guard(() async {
       await widget.auth.setBaseUrl(_baseUrl.text);
       final status = await widget.auth.getTotpStatus();
+      if (!mounted) return;
       setState(() {
         _status = status;
         _step = status['setupComplete'] == true
@@ -77,6 +79,7 @@ class _LoginPageState extends State<LoginPage> {
       await widget.auth.setBaseUrl(_baseUrl.text);
       final setup =
           await widget.auth.getTotpSetup(setupToken: _setupToken.text.trim());
+      if (!mounted) return;
       setState(() {
         _setup = setup;
         _step = setup['setupComplete'] == true
@@ -90,6 +93,7 @@ class _LoginPageState extends State<LoginPage> {
     await _guard(() async {
       await widget.auth.verifyTotpSetup(_setupCode.text.trim(),
           setupToken: _setupToken.text.trim());
+      if (!mounted) return;
       setState(() {
         _step = _LoginStep.login;
         _setupCode.clear();
@@ -100,6 +104,7 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _requestChallenge() async {
     await _guard(() async {
       final id = await widget.auth.createTotpChallenge();
+      if (!mounted) return;
       setState(() => _challengeId = id);
     });
   }

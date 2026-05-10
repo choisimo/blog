@@ -124,16 +124,21 @@ class AdminApiClient {
     if (token == null) {
       throw Exception('Not authenticated. Please log in again.');
     }
+    final client = http.Client();
     final request = http.Request('GET', auth.uri(path, query));
     request.headers['Authorization'] = 'Bearer $token';
-    final response = await http.Client().send(request);
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('Stream failed (${response.statusCode})');
-    }
-    await for (final chunk in response.stream
-        .transform(utf8.decoder)
-        .transform(const LineSplitter())) {
-      if (chunk.trim().isNotEmpty) yield chunk;
+    try {
+      final response = await client.send(request);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('Stream failed (${response.statusCode})');
+      }
+      await for (final chunk in response.stream
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())) {
+        if (chunk.trim().isNotEmpty) yield chunk;
+      }
+    } finally {
+      client.close();
     }
   }
 

@@ -40,24 +40,28 @@ class _LogsPageState extends State<LogsPage> {
   Future<void> _toggleStream() async {
     if (_subscription != null) {
       await _subscription?.cancel();
-      setState(() => _subscription = null);
+      if (mounted) setState(() => _subscription = null);
       return;
     }
+    if (!mounted) return;
     setState(() {
       _stream.clear();
       _streamError = null;
     });
     final sub = widget.api.streamLines('/api/v1/admin/logs/stream').listen(
       (line) {
+        if (!mounted) return;
         setState(() {
           _stream.insert(0, line);
           if (_stream.length > 200) _stream.removeLast();
         });
       },
-      onError: (Object error) =>
-          setState(() => _streamError = error.toString()),
+      onError: (Object error) {
+        if (!mounted) return;
+        setState(() => _streamError = error.toString());
+      },
     );
-    setState(() => _subscription = sub);
+    if (mounted) setState(() => _subscription = sub);
   }
 
   @override

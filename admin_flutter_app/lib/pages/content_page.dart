@@ -35,6 +35,7 @@ class _ContentPageState extends State<ContentPage> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _error = null;
@@ -42,6 +43,7 @@ class _ContentPageState extends State<ContentPage> {
     try {
       final data = await widget.api.get(
           '/api/v1/site-content/admin/${Uri.encodeComponent(_key.text.trim())}');
+      if (!mounted) return;
       final block = data['block'];
       if (block is Map) {
         _markdown.text = block['markdown']?.toString() ?? '';
@@ -51,13 +53,14 @@ class _ContentPageState extends State<ContentPage> {
       }
       setState(() => _lastResult = data);
     } catch (error) {
-      setState(() => _error = error.toString());
+      if (mounted) setState(() => _error = error.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _save() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _error = null;
@@ -71,9 +74,10 @@ class _ContentPageState extends State<ContentPage> {
             'ctaHref': _href.text.trim().isEmpty ? null : _href.text.trim(),
             'enabled': _enabled,
           });
+      if (!mounted) return;
       setState(() => _lastResult = result);
     } catch (error) {
-      setState(() => _error = error.toString());
+      if (mounted) setState(() => _error = error.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }

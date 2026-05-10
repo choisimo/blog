@@ -1,12 +1,14 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'json_utils.dart';
 
 class AuthStore extends ChangeNotifier {
+  static const _secureStorage = FlutterSecureStorage();
   static const defaultBaseUrl = String.fromEnvironment(
     'ADMIN_API_BASE_URL',
     defaultValue: 'https://api.nodove.com',
@@ -34,8 +36,14 @@ class AuthStore extends ChangeNotifier {
     if (savedBaseUrl != baseUrl) {
       await prefs.setString(_baseUrlKey, baseUrl);
     }
-    accessToken = prefs.getString(_accessTokenKey);
-    refreshToken = prefs.getString(_refreshTokenKey);
+    accessToken = await _secureStorage.read(key: _accessTokenKey) ??
+        prefs.getString(_accessTokenKey);
+    refreshToken = await _secureStorage.read(key: _refreshTokenKey) ??
+        prefs.getString(_refreshTokenKey);
+    if (prefs.getString(_accessTokenKey) != null ||
+        prefs.getString(_refreshTokenKey) != null) {
+      await _migratePlaintextTokens(prefs);
+    }
     final rawUser = prefs.getString(_userKey);
     if (rawUser != null && rawUser.trim().isNotEmpty) {
       try {
@@ -99,8 +107,10 @@ class AuthStore extends ChangeNotifier {
     this.refreshToken = refreshToken;
     this.user = user ?? this.user;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_accessTokenKey, accessToken);
-    await prefs.setString(_refreshTokenKey, refreshToken);
+    await _secureStorage.write(key: _accessTokenKey, value: accessToken);
+    await _secureStorage.write(key: _refreshTokenKey, value: refreshToken);
+    await prefs.remove(_accessTokenKey);
+    await prefs.remove(_refreshTokenKey);
     if (this.user != null) {
       await prefs.setString(_userKey, jsonEncode(this.user));
     }
@@ -112,6 +122,8 @@ class AuthStore extends ChangeNotifier {
     refreshToken = null;
     user = null;
     final prefs = await SharedPreferences.getInstance();
+    await _secureStorage.delete(key: _accessTokenKey);
+    await _secureStorage.delete(key: _refreshTokenKey);
     await prefs.remove(_accessTokenKey);
     await prefs.remove(_refreshTokenKey);
     await prefs.remove(_userKey);
@@ -158,25 +170,48 @@ class AuthStore extends ChangeNotifier {
       await clearLocal();
       return null;
     }
-    final response = await http.post(
-      uri('/api/v1/auth/refresh'),
-      headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode({'refreshToken': refreshToken}),
-    );
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    if (!response.statusCode.toString().startsWith('2') ||
-        json['ok'] != true ||
-        json['data'] == null) {
+    final http.Response response;
+    try {
+      response = await http.post(
+        uri('/api/v1/auth/refresh'),
+        headers: const {'Content-Type': 'application/json'},
+        body: jsonEncode({'refreshToken': refreshToken}),
+      );
+    } catch (_) {
       await clearLocal();
       return null;
     }
-    final data = asMap(json['data']);
+    final json = _tryDecodeMap(response.body);
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        json?['ok'] != true ||
+        json?['data'] == null) {
+      await clearLocal();
+      return null;
+    }
+    final data = asMap(json!['data']);
     await saveTokens(
       accessToken: data['accessToken'].toString(),
       refreshToken: data['refreshToken'].toString(),
       user: user,
     );
     return accessToken;
+  }
+
+  Future<void> _migratePlaintextTokens(SharedPreferences prefs) async {
+    final plaintextAccessToken = prefs.getString(_accessTokenKey);
+    final plaintextRefreshToken = prefs.getString(_refreshTokenKey);
+    if (plaintextAccessToken != null && accessToken == plaintextAccessToken) {
+      await _secureStorage.write(
+          key: _accessTokenKey, value: plaintextAccessToken);
+    }
+    if (plaintextRefreshToken != null &&
+        refreshToken == plaintextRefreshToken) {
+      await _secureStorage.write(
+          key: _refreshTokenKey, value: plaintextRefreshToken);
+    }
+    await prefs.remove(_accessTokenKey);
+    await prefs.remove(_refreshTokenKey);
   }
 
   Future<Map<String, dynamic>> getTotpStatus() async {
@@ -271,5 +306,16 @@ class AuthStore extends ChangeNotifier {
       throw Exception('$fallback (${response.statusCode})');
     }
     return asMap(decoded['data']);
+  }
+
+  Map<String, dynamic>? _tryDecodeMap(String body) {
+    try {
+      final trimmed = body.trim();
+      if (trimmed.isEmpty) return <String, dynamic>{};
+      final decoded = jsonDecode(trimmed);
+      return decoded is Map ? asMap(decoded) : null;
+    } catch (_) {
+      return null;
+    }
   }
 }
