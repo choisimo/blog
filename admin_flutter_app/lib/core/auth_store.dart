@@ -7,12 +7,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'json_utils.dart';
 
 class AuthStore extends ChangeNotifier {
+  static const defaultBaseUrl = String.fromEnvironment(
+    'ADMIN_API_BASE_URL',
+    defaultValue: 'https://api.nodove.com',
+  );
   static const _baseUrlKey = 'noblog.admin.baseUrl';
   static const _accessTokenKey = 'noblog.admin.accessToken';
   static const _refreshTokenKey = 'noblog.admin.refreshToken';
   static const _userKey = 'noblog.admin.user';
 
-  String baseUrl = 'http://localhost:5080';
+  String baseUrl = defaultBaseUrl;
   String? accessToken;
   String? refreshToken;
   Map<String, dynamic>? user;
@@ -25,7 +29,11 @@ class AuthStore extends ChangeNotifier {
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
-    baseUrl = normalizeBaseUrl(prefs.getString(_baseUrlKey) ?? baseUrl);
+    final savedBaseUrl = prefs.getString(_baseUrlKey);
+    baseUrl = _initialBaseUrl(savedBaseUrl);
+    if (savedBaseUrl != baseUrl) {
+      await prefs.setString(_baseUrlKey, baseUrl);
+    }
     accessToken = prefs.getString(_accessTokenKey);
     refreshToken = prefs.getString(_refreshTokenKey);
     final rawUser = prefs.getString(_userKey);
@@ -45,6 +53,23 @@ class AuthStore extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_baseUrlKey, baseUrl);
     notifyListeners();
+  }
+
+  static String _initialBaseUrl(String? savedBaseUrl) {
+    if (savedBaseUrl == null || savedBaseUrl.trim().isEmpty) {
+      return normalizeBaseUrl(defaultBaseUrl);
+    }
+    if (_isLoopbackBaseUrl(savedBaseUrl)) {
+      return normalizeBaseUrl(defaultBaseUrl);
+    }
+    return normalizeBaseUrl(savedBaseUrl);
+  }
+
+  static bool _isLoopbackBaseUrl(String value) {
+    final normalized = normalizeBaseUrl(value);
+    final uri = Uri.tryParse(normalized);
+    final host = uri?.host.toLowerCase();
+    return host == 'localhost' || host == '127.0.0.1' || host == '::1';
   }
 
   Uri uri(String path, [Map<String, String?> query = const {}]) {

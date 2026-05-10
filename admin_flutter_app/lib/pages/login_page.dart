@@ -152,7 +152,7 @@ class _LoginPageState extends State<LoginPage> {
                         LabeledTextField(
                             label: 'API Base URL',
                             controller: _baseUrl,
-                            hint: 'http://localhost:5080'),
+                            hint: AuthStore.defaultBaseUrl),
                         const SizedBox(height: 12),
                         if (_step == _LoginStep.loading)
                           const Center(child: CircularProgressIndicator()),

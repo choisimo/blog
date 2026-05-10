@@ -24,7 +24,13 @@ flutter pub get
 flutter run -d chrome
 ```
 
-첫 화면에서 API Base URL을 입력합니다. 로컬 backend 기준 예시는 `http://localhost:5080`입니다. 배포 환경에서는 Worker/API Gateway base URL을 입력합니다.
+API Base URL의 기본값은 프로덕션 Worker/API Gateway인 `https://api.nodove.com`입니다. 이 gateway가 `ssh blog` 서버의 backend origin인 `https://blog-b.nodove.com`으로 서명된 요청을 전달합니다. 직접 `https://blog-b.nodove.com`을 앱 base로 사용하면 gateway signature 검증 때문에 관리자 인증/API가 실패합니다.
+
+다른 환경을 빌드해야 할 때만 build-time define으로 바꿉니다.
+
+```bash
+flutter build linux --release --dart-define=ADMIN_API_BASE_URL=https://api.nodove.com
+```
 
 ## 인증 흐름
 

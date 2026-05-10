@@ -19,9 +19,9 @@ class _WorkersPageState extends State<WorkersPage> {
   final _workerId = TextEditingController(text: 'api-gateway');
   final _env = TextEditingController(text: 'production');
   final _varsBody = TextEditingController(text: '''{
-  "env": "development",
+  "env": "production",
   "vars": {
-    "BACKEND_ORIGIN": "http://localhost:5080"
+    "BACKEND_ORIGIN": "https://blog-b.nodove.com"
   }
 }''');
   final _secretBody = TextEditingController(text: '''{
