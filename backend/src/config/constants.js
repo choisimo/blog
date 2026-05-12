@@ -621,7 +621,20 @@ export const STREAMING = {
  */
 export const VALID_TASK_MODES = parseJsonEnv(
   process.env.VALID_TASK_MODES,
-  ['sketch', 'prism', 'chain', 'catalyst', 'summary', 'custom', 'quiz']
+  [
+    'sketch',
+    'prism',
+    'chain',
+    'catalyst',
+    'summary',
+    'custom',
+    'quiz',
+    'visual_brief',
+    'cover_prompt',
+    'diagram_prompt',
+    'thumbnail_prompt',
+    'alt_text',
+  ]
 );
 
 // ============================================================================

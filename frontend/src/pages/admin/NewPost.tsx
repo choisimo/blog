@@ -412,11 +412,20 @@ export default function NewPost() {
         <ResizablePanel defaultSize={30} minSize={25} className="hidden md:block">
           <BotChatPanel
             title={title}
+            slug={slug}
+            year={year}
+            category={category}
+            tags={tags}
+            coverImage={coverImage}
             content={content}
             setTitle={setTitle}
+            setSlug={setSlug}
             setContent={setContent}
             setTags={setTags}
             setCategory={setCategory}
+            setCoverImage={setCoverImage}
+            onInsertMarkdown={insertAtCursor}
+            getAccessToken={getValidAccessToken}
           />
         </ResizablePanel>
       </ResizablePanelGroup>
