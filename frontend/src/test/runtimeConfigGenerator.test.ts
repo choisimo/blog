@@ -21,6 +21,20 @@ describe("runtime config generator", () => {
 
     expect(runtimeConfig.capabilities.supportsChatWebSocket).toBe(false);
     expect(runtimeConfig.chatWsBaseUrl).toBeNull();
+    expect(runtimeConfig.features.codeExecutionEnabled).toBe(true);
+  });
+
+  it("honors an explicit code execution disable flag", () => {
+    const runtimeConfig = buildRuntimeConfigFromEnv(
+      {
+        APP_ENV: "production",
+        API_BASE_URL: "https://api.example.com",
+        FEATURE_CODE_EXECUTION_ENABLED: "false",
+      },
+      { siteBaseUrl: "https://blog.example.com" }
+    );
+
+    expect(runtimeConfig.features.codeExecutionEnabled).toBe(false);
   });
 
   it("suppresses terminal enablement when the gateway url is missing", () => {

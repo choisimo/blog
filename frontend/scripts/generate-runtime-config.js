@@ -19,7 +19,10 @@ function loadRuntimeConfigEnv() {
   dotenv.config({ path: path.join(frontendRoot, '.env.local'), override: true });
 }
 
-function readFlag(env, directKey, viteKey) {
+function readFlag(env, directKey, viteKey, defaultValue = false) {
+  if (env[directKey] === undefined && env[viteKey] === undefined) {
+    return defaultValue;
+  }
   return env[directKey] === 'true' || env[viteKey] === 'true';
 }
 
@@ -79,7 +82,8 @@ export function buildRuntimeConfigFromEnv(
       codeExecutionEnabled: readFlag(
         env,
         'FEATURE_CODE_EXECUTION_ENABLED',
-        'VITE_FEATURE_CODE_EXECUTION_ENABLED'
+        'VITE_FEATURE_CODE_EXECUTION_ENABLED',
+        true
       ),
       commentsEnabled: readFlag(
         env,

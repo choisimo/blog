@@ -35,7 +35,7 @@ import { buildProxyBoundaryHeaders, canProxyPath, registerWorkerRoutes } from '.
 
 const app = new Hono<HonoEnv>();
 
-const PUBLIC_EDGE_BLOCKED_BACKEND_PREFIXES = ['/api/v1/agent', '/api/v1/execute'];
+const PUBLIC_EDGE_BLOCKED_BACKEND_PREFIXES = ['/api/v1/agent'];
 
 function isPublicEdgeBlockedBackendPath(pathname: string): boolean {
   return PUBLIC_EDGE_BLOCKED_BACKEND_PREFIXES.some(
@@ -339,8 +339,7 @@ async function buildPublicConfig(env: Env) {
       ragEnabled: env.FEATURE_RAG_ENABLED === 'true',
       terminalEnabled,
       aiInline: env.FEATURE_AI_INLINE === 'true',
-      // /api/v1/execute is intentionally not exposed through the public edge.
-      codeExecutionEnabled: false,
+      codeExecutionEnabled: env.FEATURE_CODE_EXECUTION_ENABLED === 'true',
       commentsEnabled: env.FEATURE_COMMENTS_ENABLED === 'true',
     },
   });

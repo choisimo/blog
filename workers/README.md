@@ -88,6 +88,7 @@ public config 응답에는 다음 필드가 포함됩니다.
 - `features.ragEnabled`
 - `features.terminalEnabled`
 - `features.aiInline`
+- `features.codeExecutionEnabled`
 - `features.commentsEnabled`
 
 ### Scheduled job

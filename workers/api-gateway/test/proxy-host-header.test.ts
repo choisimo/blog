@@ -15,7 +15,7 @@ afterEach(() => {
 });
 
 describe('generic backend proxy', () => {
-  it('does not expose agent or execute paths through the public backend proxy', async () => {
+  it('does not expose agent paths through the public backend proxy', async () => {
     const upstreamFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(null, {
         status: 204,
@@ -25,13 +25,36 @@ describe('generic backend proxy', () => {
     const agentResponse = await SELF.fetch('https://example.com/api/v1/agent/run', {
       method: 'POST',
     });
-    const executeResponse = await SELF.fetch('https://example.com/api/v1/execute', {
-      method: 'POST',
-    });
 
     expect(agentResponse.status).toBe(404);
-    expect(executeResponse.status).toBe(404);
     expect(upstreamFetch).not.toHaveBeenCalled();
+  });
+
+  it('proxies execute paths to the backend while preserving admin authorization', async () => {
+    const upstreamFetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
+      new Response(JSON.stringify({ ok: false, error: 'admin required' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const response = await SELF.fetch('https://example.com/api/v1/execute', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer admin-token',
+      },
+    });
+
+    expect(response.status).toBe(401);
+    expect(upstreamFetch).toHaveBeenCalledTimes(1);
+
+    const [upstreamUrl, requestInit] = upstreamFetch.mock.calls[0] ?? [];
+    const forwardedHeaders = new Headers(requestInit?.headers);
+
+    expect(upstreamUrl).toBe('https://backend.example/api/v1/execute');
+    expect(requestInit?.method).toBe('POST');
+    expect(forwardedHeaders.get('Authorization')).toBe('Bearer admin-token');
+    expect(forwardedHeaders.get('X-Backend-Key')).toBe('comments-backend-key');
   });
 
   it('does not overwrite Host while forwarding backend-owned paths', async () => {

@@ -53,7 +53,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
   ragEnabled: false,
   terminalEnabled: false,
   aiInline: false,
-  codeExecutionEnabled: false,
+  codeExecutionEnabled: true,
   commentsEnabled: false,
 };
 

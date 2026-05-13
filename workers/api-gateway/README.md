@@ -100,12 +100,13 @@ public config 응답에는 다음 필드가 포함됩니다.
 - `features.ragEnabled`
 - `features.terminalEnabled`
 - `features.aiInline`
+- `features.codeExecutionEnabled`
 - `features.commentsEnabled`
 
 숨은 전제:
 
 - `chatWsBaseUrl`은 `apiBaseUrl`을 `ws://` 또는 `wss://`로 치환해 계산합니다.
-- feature flags는 현재 코드상 모두 `true`로 고정되어 있습니다.
+- feature flags는 Worker 환경 변수에서 파생됩니다. `features.codeExecutionEnabled`는 `FEATURE_CODE_EXECUTION_ENABLED` 값을 따릅니다.
 
 ## Scheduled Work
 

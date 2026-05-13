@@ -83,7 +83,7 @@ workers/api-gateway/src/
 
 ### Transition Plan
 
-1. Publish `features.codeExecutionEnabled` with default `false`.
+1. Publish `features.codeExecutionEnabled` with default `true`.
 2. Add inline detection and copy controls regardless of execution availability.
 3. Enable run controls only when the public flag is true.
 4. Keep Version C out of memo until a separate workspace route owns file/project state.

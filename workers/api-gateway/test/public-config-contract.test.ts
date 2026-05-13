@@ -14,6 +14,7 @@ declare module 'cloudflare:test' {
       | 'FEATURE_RAG_ENABLED'
       | 'FEATURE_TERMINAL_ENABLED'
       | 'FEATURE_AI_INLINE'
+      | 'FEATURE_CODE_EXECUTION_ENABLED'
       | 'FEATURE_COMMENTS_ENABLED'
       | 'CHAT_WS_ENABLED'
       | 'TERMINAL_GATEWAY_URL'
@@ -51,7 +52,7 @@ describe('public runtime config contract', () => {
           ragEnabled: env.FEATURE_RAG_ENABLED === 'true',
           terminalEnabled: env.FEATURE_TERMINAL_ENABLED === 'true',
           aiInline: env.FEATURE_AI_INLINE === 'true',
-          codeExecutionEnabled: false,
+          codeExecutionEnabled: env.FEATURE_CODE_EXECUTION_ENABLED === 'true',
           commentsEnabled: env.FEATURE_COMMENTS_ENABLED === 'true',
         },
       })
