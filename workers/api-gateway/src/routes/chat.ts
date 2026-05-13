@@ -25,6 +25,7 @@ const CHAT_DEFAULT_RATE_LIMIT = 60;
 type ProxyOptions = {
   sanitizeClientModel?: boolean;
   stream?: boolean;
+  dropClientAuthorization?: boolean;
 };
 
 async function proxyRequest(c: Context<HonoEnv>, path: string, options: ProxyOptions = {}) {
@@ -32,6 +33,7 @@ async function proxyRequest(c: Context<HonoEnv>, path: string, options: ProxyOpt
     upstreamPath: `/api/v1/chat${path}`,
     sanitizeClientModel: options.sanitizeClientModel,
     stream: options.stream,
+    dropClientAuthorization: options.dropClientAuthorization,
     forceAiModels: true,
     backendUnavailableMessage: 'Could not connect to chat backend',
   });
@@ -305,17 +307,43 @@ chat.post('/aggregate', requireAuth, async (c: Context<HonoEnv>) => {
 chat.get('/live/stream', requireAuth, async (c: Context<HonoEnv>) => {
   const guard = await enforceChatGuard(c, 'live-stream');
   if (guard) return guard;
-  const query = c.req.url.split('?')[1] || '';
+  const url = new URL(c.req.url);
+  if (!url.searchParams.get('sessionId')) {
+    const subject = c.get('user')?.sub || 'unknown';
+    url.searchParams.set('sessionId', `live-${subject}`);
+  }
+  const query = url.searchParams.toString();
   return proxyRequest(c, `/live/stream${query ? `?${query}` : ''}`, {
     stream: true,
+    dropClientAuthorization: true,
   });
 });
 
 chat.post('/live/message', requireAuth, async (c: Context<HonoEnv>) => {
   const guard = await enforceChatGuard(c, 'live-message');
   if (guard) return guard;
-  return proxyRequest(c, '/live/message', {
+  const contentType = (c.req.header('content-type') || '').toLowerCase();
+  let body = await c.req.raw.text();
+  if (contentType.includes('application/json')) {
+    try {
+      const payload = body.trim() ? (JSON.parse(body) as Record<string, unknown>) : {};
+      if (!payload.sessionId) {
+        const subject = c.get('user')?.sub || 'unknown';
+        payload.sessionId = `live-${subject}`;
+      }
+      body = JSON.stringify(payload);
+    } catch {
+      // Keep the original body and let the backend validate it.
+    }
+  }
+  return proxyToBackendWithPolicy(c, {
+    upstreamPath: '/api/v1/chat/live/message',
+    overrideBody: body,
+    contentType: contentType.includes('application/json') ? 'application/json' : undefined,
+    dropClientAuthorization: true,
     sanitizeClientModel: true,
+    forceAiModels: true,
+    backendUnavailableMessage: 'Could not connect to chat backend',
   });
 });
 

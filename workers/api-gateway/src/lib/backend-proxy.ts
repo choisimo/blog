@@ -14,6 +14,7 @@ export type BackendProxyOptions = {
   stream?: boolean;
   preserveQuery?: boolean;
   injectFallbackAuthorization?: boolean;
+  dropClientAuthorization?: boolean;
   sanitizeClientModel?: boolean;
   forceAiModels?: boolean;
   forceVisionModel?: boolean;
@@ -61,6 +62,9 @@ async function buildProxyHeaders(
   headers.delete('X-AI-Model');
   headers.delete('X-AI-Vision-Model');
   stripOriginSignatureHeaders(headers);
+  if (options.dropClientAuthorization) {
+    headers.delete('Authorization');
+  }
   if (c.env.BACKEND_KEY) {
     headers.set('X-Backend-Key', c.env.BACKEND_KEY);
   }

@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/utils/network/apiBase";
 import { bearerAuth } from "@/lib/auth";
+import { getPrincipalToken } from "@/services/session/userContentAuth";
 import {
   findSSEFrameBoundary,
   parseSSEFrame as parseRawSSEFrame,
@@ -111,14 +112,6 @@ function toSSEHttpUrl(path: string): string {
   return `${base}${path}`;
 }
 
-function readStoredSessionToken(): string | null {
-  try {
-    return localStorage.getItem("nodove_session_token");
-  } catch {
-    return null;
-  }
-}
-
 function parseLiveChatEventFrame(frame: string): LiveChatEvent | null {
   const parsedFrame = parseRawSSEFrame(frame);
   if (!parsedFrame?.data) return null;
@@ -143,20 +136,18 @@ export function connectLiveChatStream(
     let attempt = 0;
 
     while (!closed) {
-      const sessionToken = readStoredSessionToken();
       const url = new URL(toSSEHttpUrl("/api/v1/chat/live/stream"));
       url.searchParams.set("room", room);
       if (name) url.searchParams.set("name", name);
-      if (!sessionToken && options.sessionId?.trim()) {
-        // Backwards compatibility path when session token is not available.
+      if (options.sessionId?.trim()) {
         url.searchParams.set("sessionId", options.sessionId.trim());
       }
 
       try {
-        const headers: Record<string, string> = {};
-        if (sessionToken) {
-          headers["Authorization"] = bearerAuth(sessionToken).Authorization;
-        }
+        const principalToken = await getPrincipalToken();
+        const headers: Record<string, string> = {
+          Authorization: bearerAuth(principalToken).Authorization,
+        };
 
         const response = await fetch(url.toString(), {
           headers,
@@ -225,20 +216,19 @@ export async function sendLiveChatMessage(input: {
   replyToName?: string;
   mentionedAgents?: string[];
 }): Promise<void> {
-  const sessionToken = readStoredSessionToken();
+  const principalToken = await getPrincipalToken();
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    Authorization: bearerAuth(principalToken).Authorization,
   };
-  if (sessionToken) {
-    headers["Authorization"] = bearerAuth(sessionToken).Authorization;
-  }
 
   const payload: Record<string, unknown> = {
     text: input.text,
     room: input.room || "global",
     name: input.name || "",
     senderType: input.senderType || "client",
+    sessionId: input.sessionId,
   };
   if (input.replyToName?.trim()) {
     payload.replyToName = input.replyToName.trim();
@@ -255,10 +245,6 @@ export async function sendLiveChatMessage(input: {
       )
       .filter(Boolean);
   }
-  if (!sessionToken) {
-    payload.sessionId = input.sessionId;
-  }
-
   const res = await fetch(toSSEHttpUrl("/api/v1/chat/live/message"), {
     method: "POST",
     credentials: "include",
