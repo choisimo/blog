@@ -191,6 +191,9 @@ function expectedUnavailableReason(endpoint, status, bodyText) {
   if (errorCode === 'TOTP_BOOTSTRAP_DISABLED') {
     return 'expected: TOTP_SECRET is not provisioned in this protected k3s environment';
   }
+  if (errorCode === 'OAUTH_NOT_CONFIGURED') {
+    return 'expected: OAuth client credentials are not configured';
+  }
   if (/OAuth not configured/.test(errorText)) {
     return 'expected: OAuth client credentials are not configured';
   }

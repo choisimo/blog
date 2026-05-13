@@ -538,7 +538,7 @@ auth.get('/oauth/github', async (c) => {
   const frontendCallbackUrl = getFrontendCallbackUrl(c.env);
 
   if (!clientId || !frontendCallbackUrl) {
-    return error(c, 'GitHub OAuth not configured', 503);
+    return error(c, 'GitHub OAuth not configured', 503, 'OAUTH_NOT_CONFIGURED');
   }
 
   const state = generateSecureToken(32);
@@ -591,7 +591,7 @@ auth.get('/oauth/github/callback', async (c) => {
   const allowedEmails = c.env.ADMIN_ALLOWED_EMAILS;
 
   if (!clientId || !clientSecret) {
-    return error(c, 'GitHub OAuth not configured', 503);
+    return error(c, 'GitHub OAuth not configured', 503, 'OAUTH_NOT_CONFIGURED');
   }
 
   try {
@@ -648,7 +648,7 @@ auth.get('/oauth/google', async (c) => {
   const frontendCallbackUrl = getFrontendCallbackUrl(c.env);
 
   if (!clientId || !frontendCallbackUrl) {
-    return error(c, 'Google OAuth not configured', 503);
+    return error(c, 'Google OAuth not configured', 503, 'OAUTH_NOT_CONFIGURED');
   }
 
   const state = generateSecureToken(32);
@@ -701,7 +701,7 @@ auth.get('/oauth/google/callback', async (c) => {
   const allowedEmails = c.env.ADMIN_ALLOWED_EMAILS;
 
   if (!clientId || !clientSecret) {
-    return error(c, 'Google OAuth not configured', 503);
+    return error(c, 'Google OAuth not configured', 503, 'OAUTH_NOT_CONFIGURED');
   }
 
   try {
