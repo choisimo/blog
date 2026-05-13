@@ -15,6 +15,7 @@ import { createBlogOpsTool } from './blog-ops.tool.js';
 import { createMCPClientTool } from './mcp-client.tool.js';
 import { createWebSearchTool } from './web-search.tool.js';
 import { createCodeExecutionTool } from './code-execution.tool.js';
+import { createImageGenerationTool } from './image-generation.tool.js';
 import { createLogger } from '../../../lib/logger.js';
 
 const logger = createLogger('tool-registry');
@@ -33,6 +34,7 @@ export class ToolRegistry {
       createBlogOpsTool(),
       createWebSearchTool(),
       createCodeExecutionTool(),
+      createImageGenerationTool(),
     ];
 
     for (const tool of builtInTools) {

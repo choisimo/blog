@@ -5,14 +5,24 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Sparkles, Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/ui/use-toast";
+import { runBlogAgent, type AgentEditorAction } from "@/services/session/agent";
 
 interface BotChatPanelProps {
     title: string;
+    slug: string;
+    year: string;
+    category: string;
+    tags: string;
+    coverImage: string;
     content: string;
     setTitle: (title: string) => void;
+    setSlug: (slug: string) => void;
     setContent: (content: string) => void;
     setTags: (tags: string) => void;
     setCategory: (category: string) => void;
+    setCoverImage: (url: string) => void;
+    onInsertMarkdown: (markdown: string) => void;
+    getAccessToken: () => Promise<string | null>;
 }
 
 interface Message {
@@ -22,18 +32,141 @@ interface Message {
 
 export default function BotChatPanel({
     title,
+    slug,
+    year,
+    category,
+    tags,
+    coverImage,
     content,
     setTitle,
+    setSlug,
     setContent,
     setTags,
     setCategory,
+    setCoverImage,
+    onInsertMarkdown,
+    getAccessToken,
 }: BotChatPanelProps) {
     const [messages, setMessages] = useState<Message[]>([
-        { role: "assistant", content: "안녕하세요! 블로그 작성을 돕는 AI입니다. 초안 작성, 교정, 또는 Frontmatter(제목, 태그 등) 생성을 요청해보세요!" },
+        { role: "assistant", content: "안녕하세요. 현재 글 상태를 읽고 초안, 메타데이터, 커버/본문 이미지 생성을 도울 수 있습니다." },
     ]);
     const [input, setInput] = useState("");
     const [isTyping, setIsTyping] = useState(false);
+    const [sessionId] = useState(() => {
+        const id =
+            typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+                ? crypto.randomUUID()
+                : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        return `new-post-${id}`.slice(0, 128);
+    });
     const { toast } = useToast();
+
+    const buildAgentMessage = (userMessage: string) => {
+        const state = {
+            title,
+            slug,
+            year,
+            category,
+            tags: tags
+                .split(",")
+                .map((tag) => tag.trim())
+                .filter(Boolean),
+            coverImage: coverImage || null,
+            contentLength: content.length,
+            contentExcerpt: content.slice(0, 7000),
+        };
+
+        return [
+            "현재 작성 중인 게시글 상태(JSON):",
+            JSON.stringify(state, null, 2),
+            "",
+            "사용자 요청:",
+            userMessage,
+            "",
+            "에디터에 직접 반영할 변경이 있으면 post_actions JSON block을 함께 반환하세요. 이미지가 필요하면 image_generation tool을 사용하고, year와 slug가 없으면 먼저 필요한 값을 요청하세요.",
+        ].join("\n");
+    };
+
+    const applyActions = (actions: AgentEditorAction[] | undefined) => {
+        if (!actions?.length) return 0;
+
+        let applied = 0;
+        for (const action of actions) {
+            switch (action.type) {
+                case "set_title": {
+                    const value = action.value || action.title;
+                    if (value) {
+                        setTitle(value);
+                        applied += 1;
+                    }
+                    break;
+                }
+                case "set_slug": {
+                    const value = action.value || action.slug;
+                    if (value) {
+                        setSlug(value);
+                        applied += 1;
+                    }
+                    break;
+                }
+                case "set_category": {
+                    const value = action.value || action.category;
+                    if (value) {
+                        setCategory(value);
+                        applied += 1;
+                    }
+                    break;
+                }
+                case "set_tags": {
+                    const value = action.value || action.tags;
+                    if (Array.isArray(value)) {
+                        setTags(value.join(", "));
+                        applied += 1;
+                    } else if (value) {
+                        setTags(value);
+                        applied += 1;
+                    }
+                    break;
+                }
+                case "set_cover_image": {
+                    const value = action.url || action.value;
+                    if (value) {
+                        setCoverImage(value);
+                        applied += 1;
+                    }
+                    break;
+                }
+                case "insert_markdown": {
+                    const value = action.markdown || action.content || action.text;
+                    if (value) {
+                        onInsertMarkdown(value);
+                        applied += 1;
+                    }
+                    break;
+                }
+                case "replace_content": {
+                    const value = action.content || action.markdown;
+                    if (value) {
+                        setContent(value);
+                        applied += 1;
+                    }
+                    break;
+                }
+                case "append_content": {
+                    const value = action.markdown || action.content || action.text;
+                    if (value) {
+                        onInsertMarkdown(value);
+                        applied += 1;
+                    }
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+
+        return applied;
+    };
 
     const handleSend = async () => {
         if (!input.trim()) return;
@@ -44,31 +177,35 @@ export default function BotChatPanel({
         setIsTyping(true);
 
         try {
-            // Mock API latency
-            await new Promise((resolve) => setTimeout(resolve, 1500));
+            const token = await getAccessToken();
+            if (!token) throw new Error("먼저 로그인하세요");
 
-            let botResponse = "처리되었습니다.";
-
-            // Mock actions based on simple keyword matching for demonstration
-            if (userMessage.includes("초안") || userMessage.includes("작성해줘")) {
-                const draft = `# ${userMessage.replace("초안 작성해줘", "").trim() || "새 포스트"}\n\n도입부...\n\n본문 내용...\n\n결론...`;
-                setContent(draft);
-                botResponse = "요청하신 주제로 초안을 작성하여 에디터에 적용했습니다.";
-            } else if (userMessage.includes("구조") || userMessage.includes("제목") || userMessage.includes("태그")) {
-                setTitle(`AI 추천 제목: ${title || "새로운 블로그 글"}`);
-                setTags("AI추천, 기술블로그, 리뷰");
-                setCategory("Tech");
-                botResponse = "에디터에 제목, 태그, 카테고리를 추천값으로 자동 설정했습니다!";
-            } else if (userMessage.includes("교정") || userMessage.includes("다듬어줘")) {
-                setContent(content.replace(/존나/g, "매우").replace(/걍/g, "그냥"));
-                botResponse = "작성하신 본문의 문맥을 매끄럽게 교정했습니다.";
-            } else {
-                botResponse = "이해했습니다! 현재는 모의(Mock) 응답이므로, 실제 백엔드 LLM 연동 후 작동하게 됩니다.";
+            const result = await runBlogAgent(
+                {
+                    message: buildAgentMessage(userMessage),
+                    sessionId,
+                    maxIterations: 6,
+                    temperature: 0.4,
+                },
+                token,
+            );
+            const applied = applyActions(result.actions);
+            const toolSuffix =
+                result.toolsUsed.length > 0 ? `\n\n사용 도구: ${result.toolsUsed.join(", ")}` : "";
+            setMessages((prev) => [
+                ...prev,
+                {
+                    role: "assistant",
+                    content: `${result.response || "처리되었습니다."}${toolSuffix}`,
+                },
+            ]);
+            if (applied > 0) {
+                toast({ title: "AI 변경 적용", description: `${applied}개 작업을 에디터에 반영했습니다.` });
             }
-
-            setMessages((prev) => [...prev, { role: "assistant", content: botResponse }]);
-        } catch {
-            toast({ title: "오류", description: "AI 요청 실패", variant: "destructive" });
+        } catch (error) {
+            const description = error instanceof Error && error.message ? error.message : "AI 요청 실패";
+            setMessages((prev) => [...prev, { role: "assistant", content: `요청 처리에 실패했습니다: ${description}` }]);
+            toast({ title: "오류", description, variant: "destructive" });
         } finally {
             setIsTyping(false);
         }
@@ -93,7 +230,7 @@ export default function BotChatPanel({
                                     }`}
                             >
                                 <div
-                                    className={`px-3 py-2 rounded-lg text-sm ${msg.role === "user"
+                                    className={`whitespace-pre-wrap px-3 py-2 rounded-lg text-sm ${msg.role === "user"
                                         ? "bg-primary text-primary-foreground"
                                         : "bg-muted border text-foreground"
                                         }`}

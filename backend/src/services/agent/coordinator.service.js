@@ -439,9 +439,12 @@ ${toolsDescription}
         return { error: `Tool not found: ${name}` };
       }
 
+      const toolTimeout = Number.isFinite(tool.timeoutMs)
+        ? Math.max(3_000, Math.floor(tool.timeoutMs))
+        : TOOL_TIMEOUT;
       const result = await withTimeout(
-        tool.execute(args),
-        TOOL_TIMEOUT,
+        tool.execute(args, { runId, toolId }),
+        toolTimeout,
         "Tool execution timeout",
       );
 

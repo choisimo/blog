@@ -30,6 +30,7 @@ import { getSessionMemory } from "../lib/agent/memory/session.js";
 import { requireFeature } from "../middleware/featureFlags.js";
 import { requireAdmin } from "../middleware/adminAuth.js";
 import { validateBody } from "../middleware/validation.js";
+import { runIdempotent } from "../lib/idempotency.js";
 import {
   agentRunBodySchema,
   memoryExtractBodySchema,
@@ -56,6 +57,65 @@ function resolveMaxIterations(value) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return 4;
   return Math.max(1, Math.min(10, Math.floor(parsed)));
+}
+
+const AGENT_ACTION_TYPES = new Set([
+  "set_title",
+  "set_slug",
+  "set_category",
+  "set_tags",
+  "set_cover_image",
+  "insert_markdown",
+  "replace_content",
+  "append_content",
+]);
+
+function normalizeAgentAction(action) {
+  if (!action || typeof action !== "object") return null;
+  const type = typeof action.type === "string" ? action.type.trim() : "";
+  if (!AGENT_ACTION_TYPES.has(type)) return null;
+  return { ...action, type };
+}
+
+function extractPostActionsFromContent(content) {
+  const source = typeof content === "string" ? content : "";
+  const actions = [];
+  let cleaned = source;
+  const actionBlockRegex = /```post_actions\s*([\s\S]*?)```/g;
+  let match;
+
+  while ((match = actionBlockRegex.exec(source)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1].trim());
+      const rawActions = Array.isArray(parsed) ? parsed : parsed?.actions;
+      if (Array.isArray(rawActions)) {
+        for (const action of rawActions) {
+          const normalized = normalizeAgentAction(action);
+          if (normalized) actions.push(normalized);
+        }
+      }
+      cleaned = cleaned.replace(match[0], "").trim();
+    } catch (error) {
+      logger.warn({}, "Failed to parse agent post_actions block", {
+        error: error.message,
+      });
+    }
+  }
+
+  return { content: cleaned, actions };
+}
+
+function collectToolActions(toolCalls = []) {
+  const actions = [];
+  for (const toolCall of toolCalls || []) {
+    const rawActions = toolCall?.result?.actions;
+    if (!Array.isArray(rawActions)) continue;
+    for (const action of rawActions) {
+      const normalized = normalizeAgentAction(action);
+      if (normalized) actions.push(normalized);
+    }
+  }
+  return actions;
 }
 
 function enrichAgentMessageWithLiveContext(message, sessionId) {
@@ -120,38 +180,68 @@ router.post("/run", validateBody(agentRunBodySchema), async (req, res) => {
       userId = "default-user",
     } = req.body;
 
-    const coordinator = getCoordinator();
-    const effectiveMessage = enrichAgentMessageWithLiveContext(
+    const effectiveMaxIterations = resolveMaxIterations(maxIterations);
+    const normalizedMode = normalizeMode(mode);
+    const idempotencyPayload = {
       message,
       sessionId,
+      mode: normalizedMode,
+      articleSlug,
+      tools: tools || null,
+      temperature: temperature ?? null,
+      maxIterations: effectiveMaxIterations,
+      userId,
+    };
+
+    return await runIdempotent(
+      req,
+      res,
+      "agent.run",
+      idempotencyPayload,
+      async () => {
+        const coordinator = getCoordinator();
+        const effectiveMessage = enrichAgentMessageWithLiveContext(
+          message,
+          sessionId,
+        );
+
+        const result = await coordinator.run({
+          sessionId,
+          messages: [{ role: "user", content: effectiveMessage }],
+          mode: normalizedMode,
+          context: {
+            articleSlug,
+            userId,
+          },
+          options: {
+            temperature,
+            maxIterations: effectiveMaxIterations,
+          },
+        });
+
+        const extracted = extractPostActionsFromContent(result.content);
+        const actions = [...collectToolActions(result.toolCalls), ...extracted.actions];
+
+        return {
+          statusCode: 200,
+          response: {
+            ok: true,
+            data: {
+              response: extracted.content,
+              actions,
+              sessionId: result.sessionId || sessionId,
+              toolsUsed: result.toolCalls?.map((tc) => tc.function?.name) || [],
+              memoryUpdated: true,
+              model: result.model,
+              tokens: result.usage,
+            },
+          },
+        };
+      },
+      {
+        lockSeconds: Math.max(60, effectiveMaxIterations * 60),
+      },
     );
-    const effectiveMaxIterations = resolveMaxIterations(maxIterations);
-
-    const result = await coordinator.run({
-      sessionId,
-      messages: [{ role: "user", content: effectiveMessage }],
-      mode: normalizeMode(mode),
-      context: {
-        articleSlug,
-        userId,
-      },
-      options: {
-        temperature,
-        maxIterations: effectiveMaxIterations,
-      },
-    });
-
-    res.json({
-      ok: true,
-      data: {
-        response: result.content,
-        sessionId: result.sessionId || sessionId,
-        toolsUsed: result.toolCalls?.map((tc) => tc.function?.name) || [],
-        memoryUpdated: true,
-        model: result.model,
-        tokens: result.usage,
-      },
-    });
   } catch (err) {
     logger.error({}, 'Agent run error', { error: err.message, stack: err.stack });
     res.status(500).json({

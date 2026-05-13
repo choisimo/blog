@@ -12,6 +12,14 @@ import {
   FALLBACK_DATA,
 } from "../config/constants.js";
 
+const VISUAL_TASK_MODES = new Set([
+  "visual_brief",
+  "cover_prompt",
+  "diagram_prompt",
+  "thumbnail_prompt",
+  "alt_text",
+]);
+
 // ---------------------------------------------------------------------------
 // Text helpers
 // ---------------------------------------------------------------------------
@@ -238,9 +246,81 @@ export function normalizeQuizData(value, maxQuestions = 2) {
   return { quiz };
 }
 
+function normalizeStringField(value, maxLength) {
+  const normalized = toText(value).replace(/\s+/g, " ").trim();
+  return normalized ? normalized.slice(0, maxLength) : "";
+}
+
+function normalizeStringArray(value, maxItems = 6, maxLength = 120) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => normalizeStringField(entry, maxLength))
+    .filter(Boolean)
+    .slice(0, maxItems);
+}
+
+function normalizeVisualTaskData(mode, value, payload = {}) {
+  const raw = value && typeof value === "object" ? value : {};
+  const title = normalizeStringField(payload.postTitle, TEXT_LIMITS.TASK_TITLE);
+
+  if (mode === "alt_text") {
+    const alt = normalizeStringField(raw.alt || raw.altText || raw.text, 180);
+    return alt ? { alt } : null;
+  }
+
+  if (mode === "visual_brief") {
+    const brief = raw.brief && typeof raw.brief === "object" ? raw.brief : raw;
+    const subject = normalizeStringField(brief.subject || title, 180);
+    const goal = normalizeStringField(brief.goal || brief.intent, 220);
+    const composition = normalizeStringField(brief.composition, 260);
+    const style = normalizeStringField(brief.style, 220);
+    const palette = normalizeStringArray(brief.palette, 6, 48);
+    const elements = normalizeStringArray(brief.elements, 8, 100);
+    const negativePrompt = normalizeStringField(
+      brief.negativePrompt || brief.negative_prompt,
+      240,
+    );
+    const prompt = normalizeStringField(raw.prompt, 1200);
+    const alt = normalizeStringField(raw.alt || raw.altText, 180);
+
+    if (!subject && !goal && !composition && !prompt) return null;
+
+    return {
+      brief: {
+        subject,
+        goal,
+        composition,
+        style,
+        palette,
+        elements,
+        negativePrompt,
+      },
+      prompt,
+      alt,
+    };
+  }
+
+  const prompt = normalizeStringField(raw.prompt || raw.imagePrompt, 1400);
+  const alt = normalizeStringField(raw.alt || raw.altText, 180);
+  const style = normalizeStringField(raw.style, 220);
+  const placement = normalizeStringField(raw.placement, 120);
+  const size = normalizeStringField(raw.size, 24);
+
+  if (!prompt) return null;
+
+  return {
+    prompt,
+    alt,
+    style,
+    placement,
+    size,
+  };
+}
+
 export function normalizeTaskData(mode, value, payload = {}) {
-  if (mode !== "quiz") return value;
-  return normalizeQuizData(value, clampQuizCount(payload.quizCount, 2));
+  if (mode === "quiz") return normalizeQuizData(value, clampQuizCount(payload.quizCount, 2));
+  if (VISUAL_TASK_MODES.has(mode)) return normalizeVisualTaskData(mode, value, payload);
+  return value;
 }
 
 // ---------------------------------------------------------------------------
@@ -341,6 +421,42 @@ export function projectTaskDataFromText(mode, text, payload) {
 
     case "summary":
       return { summary: rawText };
+
+    case "visual_brief": {
+      const points = sentencePoints(rawText, 3);
+      return {
+        brief: {
+          subject: payload.postTitle || points[0] || "Blog article visual",
+          goal: points[1] || "Represent the article's core idea visually.",
+          composition: points[2] || "Clean editorial composition with one clear focal point.",
+          style: "modern technical editorial illustration",
+          palette: [],
+          elements: points.slice(0, 3),
+          negativePrompt: "visible text, logos, watermark, cluttered layout",
+        },
+        prompt: rawText.slice(0, 1200),
+        alt: payload.postTitle || "Article visual concept",
+      };
+    }
+
+    case "cover_prompt":
+    case "diagram_prompt":
+    case "thumbnail_prompt":
+      return {
+        prompt: rawText.slice(0, 1400),
+        alt: payload.postTitle || "AI generated blog image",
+        style:
+          mode === "diagram_prompt"
+            ? "clean technical diagram"
+            : "modern technical editorial illustration",
+        placement: mode === "cover_prompt" ? "cover" : mode === "thumbnail_prompt" ? "thumbnail" : "inline",
+        size: mode === "cover_prompt" ? "1536x1024" : "1024x1024",
+      };
+
+    case "alt_text":
+      return {
+        alt: rawText.slice(0, 180),
+      };
 
     case "catalyst": {
       const ideas = sentencePoints(rawText, 3);
@@ -457,6 +573,76 @@ export function buildTaskPrompt(mode, payload) {
         temperature: AI_TEMPERATURES.SUMMARY,
       };
 
+    case "visual_brief":
+      return {
+        prompt: [
+          "Return STRICT JSON only for a blog image visual brief.",
+          '{"brief":{"subject":"string","goal":"string","composition":"string","style":"string","palette":["string"],"elements":["string"],"negativePrompt":"string"},"prompt":"string","alt":"string"}',
+          `Post: ${title.slice(0, TEXT_LIMITS.TASK_TITLE)}`,
+          "Content:",
+          text.slice(0, TEXT_LIMITS.TASK_PARAGRAPH),
+          "",
+          "Task: Produce a concise visual concept that can later be used for image generation. Do not generate an image. Avoid visible text, logos, watermarks, and unsafe or copyrighted imagery.",
+        ].join("\n"),
+        temperature: AI_TEMPERATURES.TEMPLATE || AI_TEMPERATURES.GENERATE,
+      };
+
+    case "cover_prompt":
+      return {
+        prompt: [
+          "Return STRICT JSON only for a blog cover image prompt.",
+          '{"prompt":"string","alt":"string","style":"string","placement":"cover","size":"1536x1024"}',
+          `Post: ${title.slice(0, TEXT_LIMITS.TASK_TITLE)}`,
+          "Content:",
+          text.slice(0, TEXT_LIMITS.TASK_PARAGRAPH),
+          "",
+          "Task: Write one production-ready text-to-image prompt for a polished technical blog cover. Include subject, composition, style, lighting, and constraints. No visible text, logos, or watermark.",
+        ].join("\n"),
+        temperature: AI_TEMPERATURES.TEMPLATE || AI_TEMPERATURES.GENERATE,
+      };
+
+    case "diagram_prompt":
+      return {
+        prompt: [
+          "Return STRICT JSON only for an inline technical diagram image prompt.",
+          '{"prompt":"string","alt":"string","style":"string","placement":"inline","size":"1024x1024"}',
+          `Post: ${title.slice(0, TEXT_LIMITS.TASK_TITLE)}`,
+          "Content:",
+          text.slice(0, TEXT_LIMITS.TASK_PARAGRAPH),
+          "",
+          "Task: Write one text-to-image prompt for a clean conceptual diagram or architecture illustration grounded in the content. Prefer simple shapes and clear hierarchy, but no readable text labels.",
+        ].join("\n"),
+        temperature: AI_TEMPERATURES.TEMPLATE || AI_TEMPERATURES.GENERATE,
+      };
+
+    case "thumbnail_prompt":
+      return {
+        prompt: [
+          "Return STRICT JSON only for a compact blog thumbnail image prompt.",
+          '{"prompt":"string","alt":"string","style":"string","placement":"thumbnail","size":"1024x1024"}',
+          `Post: ${title.slice(0, TEXT_LIMITS.TASK_TITLE)}`,
+          "Content:",
+          text.slice(0, TEXT_LIMITS.TASK_PARAGRAPH),
+          "",
+          "Task: Write one text-to-image prompt for a strong square thumbnail. It must read well at small sizes, with one focal subject and no visible text, logos, or watermark.",
+        ].join("\n"),
+        temperature: AI_TEMPERATURES.TEMPLATE || AI_TEMPERATURES.GENERATE,
+      };
+
+    case "alt_text":
+      return {
+        prompt: [
+          "Return STRICT JSON only for accessibility alt text.",
+          '{"alt":"string"}',
+          `Post: ${title.slice(0, TEXT_LIMITS.TASK_TITLE)}`,
+          "Image or visual description:",
+          text.slice(0, TEXT_LIMITS.TASK_PARAGRAPH),
+          "",
+          "Task: Write concise, useful alt text under 180 characters in the original language when possible. Do not start with 'image of' unless necessary.",
+        ].join("\n"),
+        temperature: AI_TEMPERATURES.SUMMARY,
+      };
+
     case "quiz": {
       const batchStart = quizBatchIndex * requestedQuizCount + 1;
       const batchEnd = batchStart + requestedQuizCount - 1;
@@ -563,6 +749,75 @@ export function getFallbackData(mode, payload) {
         summary:
           text.slice(0, FALLBACK_DATA.SUMMARY_LENGTH) +
           (text.length > FALLBACK_DATA.SUMMARY_LENGTH ? "..." : ""),
+      };
+    case "visual_brief": {
+      const sentences = sentencePoints(text, 3);
+      return {
+        brief: {
+          subject: payload.postTitle || sentences[0] || "Blog article visual",
+          goal: sentences[1] || "Represent the core idea of the article.",
+          composition: "Clean editorial composition with one clear focal point.",
+          style: "modern technical editorial illustration",
+          palette: [],
+          elements: sentences.slice(0, 3),
+          negativePrompt: "visible text, logos, watermark, cluttered layout",
+        },
+        prompt: [
+          "Create a polished modern technical blog image.",
+          payload.postTitle ? `Title: ${payload.postTitle}` : "",
+          text.slice(0, 500),
+          "No visible text, logos, or watermark.",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        alt: payload.postTitle || "Blog visual concept",
+      };
+    }
+    case "cover_prompt":
+      return {
+        prompt: [
+          "Create a polished editorial cover image for a technical blog post.",
+          payload.postTitle ? `Title: ${payload.postTitle}` : "",
+          text.slice(0, 700),
+          "Modern tech-blog style, strong composition, no visible text, no logos, no watermark.",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        alt: payload.postTitle || "Blog cover image",
+        style: "modern technical editorial illustration",
+        placement: "cover",
+        size: "1536x1024",
+      };
+    case "diagram_prompt":
+      return {
+        prompt: [
+          "Create a clean conceptual technical diagram for this blog section.",
+          text.slice(0, 700),
+          "Simple hierarchy, crisp raster details, no readable text labels, no logos, no watermark.",
+        ].join("\n"),
+        alt: payload.postTitle || "Technical diagram",
+        style: "clean technical diagram",
+        placement: "inline",
+        size: "1024x1024",
+      };
+    case "thumbnail_prompt":
+      return {
+        prompt: [
+          "Create a compact square thumbnail for a technical blog post.",
+          payload.postTitle ? `Title: ${payload.postTitle}` : "",
+          text.slice(0, 500),
+          "One focal subject, readable at small sizes, no visible text, no logos, no watermark.",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        alt: payload.postTitle || "Blog thumbnail",
+        style: "modern technical editorial illustration",
+        placement: "thumbnail",
+        size: "1024x1024",
+      };
+    case "alt_text":
+      return {
+        alt: (sentences[0] || text || "Generated blog image").slice(0, 180),
       };
     case "catalyst":
       return {
