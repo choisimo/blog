@@ -55,6 +55,7 @@ spec:
             - |
               repo_url="${CONTENT_GIT_REPO_AUTH:-$CONTENT_GIT_REPO}"
               test -n "$repo_url"
+              rm -rf /repo/* /repo/.[!.]* /repo/..?*
               git clone --depth 1 --branch "$CONTENT_GIT_REF" "$repo_url" /repo
           envFrom:
             - configMapRef:
