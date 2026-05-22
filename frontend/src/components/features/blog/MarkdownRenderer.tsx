@@ -459,6 +459,153 @@ function inferCodeLanguage(codeString: string): {
   return { displayLanguage: 'code' };
 }
 
+type MarkdownCodeBlockPresentation =
+  | { kind: 'text-panel' }
+  | { kind: 'code-block'; syntaxLanguage?: string; displayLanguage: string };
+
+const CJK_PROSE_PATTERN =
+  /[\u1100-\u11FF\u3130-\u318F\u3040-\u30FF\u3400-\u9FFF\uAC00-\uD7AF]/;
+
+const NATURAL_LANGUAGE_LETTER_PATTERN =
+  /[A-Za-z\u1100-\u11FF\u3130-\u318F\u3040-\u30FF\u3400-\u9FFF\uAC00-\uD7AF]/;
+
+const MARKDOWN_PROSE_MARKER_PATTERN =
+  /(^|\s)(\*\*[^*\n]+\*\*|__[^_\n]+__|\[[^\]\n]+\]\([^)\n]+\)|`[^`\n]+`)/;
+
+const CODE_LINE_START_PATTERN =
+  /^(import|export|const|let|var|function|class|interface|type|enum|return|if|else|for|while|switch|case|try|catch|finally|throw|new|await|async|def|from|package|public|private|protected|select|insert|update|delete|create|alter|drop)\b/i;
+
+const CODE_OPERATOR_PATTERN = /(=>|===|!==|==|!=|&&|\|\||[{};])/;
+const ASSIGNMENT_LINE_PATTERN = /^[\w.$-]+\s*=\s*\S+/;
+const STRUCTURED_KEY_VALUE_PATTERN =
+  /^["']?[\w.-]+["']?\s*:\s*(?:["'{[\d]|true\b|false\b|null\b|$|[\w.-]+$)/i;
+
+function isLikelyCodeLine(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed) return false;
+
+  if (CODE_LINE_START_PATTERN.test(trimmed)) return true;
+  if (CODE_OPERATOR_PATTERN.test(trimmed)) return true;
+  if (ASSIGNMENT_LINE_PATTERN.test(trimmed)) return true;
+  if (
+    !CJK_PROSE_PATTERN.test(trimmed) &&
+    STRUCTURED_KEY_VALUE_PATTERN.test(trimmed)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function hasNaturalLanguageFlow(line: string): boolean {
+  const words = line.trim().split(/\s+/).filter(Boolean);
+  return words.length >= 3 && NATURAL_LANGUAGE_LETTER_PATTERN.test(line);
+}
+
+function isProseLikeLine(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed || isLikelyCodeLine(trimmed)) return false;
+
+  if (CJK_PROSE_PATTERN.test(trimmed)) {
+    return /[\s.,:;!?()[\]{}'"“”‘’…·-]/.test(trimmed) || trimmed.length >= 12;
+  }
+
+  return (
+    MARKDOWN_PROSE_MARKER_PATTERN.test(trimmed) &&
+    hasNaturalLanguageFlow(trimmed)
+  );
+}
+
+function isProseLikeUnlabeledBlock(codeString: string): boolean {
+  const meaningfulLines = codeString
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  if (meaningfulLines.length === 0) return false;
+
+  const proseLineCount = meaningfulLines.filter(isProseLikeLine).length;
+  if (proseLineCount === 0) return false;
+
+  const codeLineCount = meaningfulLines.filter(isLikelyCodeLine).length;
+  if (codeLineCount > 0 && codeLineCount >= proseLineCount) return false;
+
+  return proseLineCount >= Math.ceil(meaningfulLines.length / 2);
+}
+
+function classifyMarkdownCodeBlock(
+  codeString: string,
+  explicitLanguage: string | undefined
+): MarkdownCodeBlockPresentation {
+  if (explicitLanguage === 'text') {
+    return { kind: 'text-panel' };
+  }
+
+  if (explicitLanguage) {
+    return { kind: 'code-block', ...normalizeCodeLanguage(explicitLanguage) };
+  }
+
+  const inferredLanguage = inferCodeLanguage(codeString);
+  if (inferredLanguage.displayLanguage === 'shell') {
+    return { kind: 'code-block', ...inferredLanguage };
+  }
+
+  if (isProseLikeUnlabeledBlock(codeString)) {
+    return { kind: 'text-panel' };
+  }
+
+  return { kind: 'code-block', ...inferredLanguage };
+}
+
+const TEXT_FENCE_PANEL_STYLES = {
+  panel:
+    'article-readable article-text-panel my-8 max-w-full whitespace-pre-wrap break-words rounded-xl border border-border/70 bg-muted/30 px-4 py-5 font-mono text-sm leading-7 text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-5 sm:py-6 sm:text-base sm:leading-8',
+  terminalPanel:
+    'border-primary/30 bg-[hsl(var(--terminal-code-bg))] text-primary/90 shadow-[0_0_24px_hsl(var(--primary)/0.08)]',
+} as const;
+
+const TEXT_FENCE_PANEL_INLINE_STYLE = {
+  overflowX: 'visible',
+  whiteSpace: 'pre-wrap',
+  overflowWrap: 'break-word',
+  wordBreak: 'keep-all',
+} as const;
+
+const CODE_BLOCK_WRAPPING_STYLE = {
+  whiteSpace: 'pre-wrap',
+  overflowWrap: 'anywhere',
+  wordBreak: 'break-word',
+} satisfies React.CSSProperties;
+
+const ARTICLE_EMPHASIS_STYLES = {
+  strong: 'article-emphasis-strong',
+  em: 'article-emphasis-em',
+} as const;
+
+interface TextFencePanelProps {
+  codeString: string;
+  isTerminalTheme: boolean;
+}
+
+function TextFencePanel({
+  codeString,
+  isTerminalTheme,
+}: TextFencePanelProps) {
+  return (
+    <pre
+      aria-label='Preformatted article panel'
+      data-testid='markdown-text-panel'
+      style={TEXT_FENCE_PANEL_INLINE_STYLE}
+      className={cn(
+        TEXT_FENCE_PANEL_STYLES.panel,
+        isTerminalTheme && TEXT_FENCE_PANEL_STYLES.terminalPanel
+      )}
+    >
+      {codeString}
+    </pre>
+  );
+}
+
 const INLINE_SAFE_TAGS = new Set([
   'a',
   'abbr',
@@ -497,6 +644,7 @@ function hasNonInlineNode(node: unknown): boolean {
 
   if (
     node.type === CodeBlock ||
+    node.type === TextFencePanel ||
     node.type === ClickableImage ||
     node.type === EmbeddedVideo ||
     node.type === NormalizedVideoSource ||
@@ -728,7 +876,7 @@ function CodeBlock({
       <div className='relative overflow-hidden'>
         <div
           className={cn(
-            'overflow-x-auto transition-[max-height] duration-500 ease-in-out',
+            'overflow-x-visible transition-[max-height] duration-500 ease-in-out',
             collapsed ? 'overflow-y-hidden' : 'overflow-y-visible'
           )}
           style={
@@ -767,20 +915,23 @@ function CodeBlock({
                 : '0 18px 36px rgba(15, 23, 42, 0.12)',
               fontSize: '0.92rem',
               lineHeight: 1.75,
+              overflowX: 'visible',
+              ...CODE_BLOCK_WRAPPING_STYLE,
             }}
             codeTagProps={{
               style: {
                 fontFamily:
                   "'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, monospace",
                 fontSize: '0.92rem',
+                ...CODE_BLOCK_WRAPPING_STYLE,
               },
             }}
             className={cn(
-              'rounded-xl shadow-lg !overflow-x-auto',
+              'article-code-highlighter rounded-xl shadow-lg !overflow-x-visible',
               isTerminalTheme && 'rounded-t-none !rounded-b-xl',
               !isTerminalTheme && '!pt-11'
             )}
-            wrapLongLines={false}
+            wrapLongLines
           >
             {codeString}
           </SyntaxHighlighter>
@@ -1059,6 +1210,12 @@ function MarkdownRendererInner({
           {children}
         </blockquote>
       ),
+      strong: ({ children }: { children?: ReactNode }) => (
+        <strong className={ARTICLE_EMPHASIS_STYLES.strong}>{children}</strong>
+      ),
+      em: ({ children }: { children?: ReactNode }) => (
+        <em className={ARTICLE_EMPHASIS_STYLES.em}>{children}</em>
+      ),
       pre({
         children,
         node,
@@ -1071,15 +1228,27 @@ function MarkdownRendererInner({
         }
 
         const match = /language-([\w-]+)/.exec(codeBlockData.className || '');
-        const resolvedLanguage = match
-          ? normalizeCodeLanguage(match[1])
-          : inferCodeLanguage(codeBlockData.codeString);
+        const explicitLanguage = match?.[1]?.trim().toLowerCase();
+
+        const presentation = classifyMarkdownCodeBlock(
+          codeBlockData.codeString,
+          explicitLanguage
+        );
+
+        if (presentation.kind === 'text-panel') {
+          return (
+            <TextFencePanel
+              codeString={codeBlockData.codeString}
+              isTerminalTheme={isTerminal}
+            />
+          );
+        }
 
         return (
           <CodeBlock
             codeString={codeBlockData.codeString}
-            syntaxLanguage={resolvedLanguage.syntaxLanguage}
-            displayLanguage={resolvedLanguage.displayLanguage}
+            syntaxLanguage={presentation.syntaxLanguage}
+            displayLanguage={presentation.displayLanguage}
             isTerminalTheme={isTerminal}
             copiedCode={copiedCode}
             onCopy={copyToClipboard}
