@@ -1,5 +1,6 @@
 import type { Env, PostMeta, Manifest, ManifestItem } from './types';
 
+const BRAND_SEO_IMAGE_PATH = '/images/share/seo.png';
 let manifestCache: { data: Manifest; timestamp: number } | null = null;
 const CACHE_TTL = 5 * 60 * 1000;
 
@@ -36,10 +37,8 @@ function findPostInManifest(manifest: Manifest, year: string, slug: string): Man
   ) || null;
 }
 
-function buildOgImageUrl(env: Env, title: string, subtitle?: string): string {
-  const params = new URLSearchParams({ title, format: 'png' });
-  if (subtitle) params.set('subtitle', subtitle);
-  return `${env.API_BASE_URL}/api/v1/og?${params.toString()}`;
+function buildBrandSeoImageUrl(env: Env): string {
+  return `${env.SITE_BASE_URL}${BRAND_SEO_IMAGE_PATH}`;
 }
 
 export async function resolvePostMeta(url: URL, env: Env): Promise<PostMeta> {
@@ -58,7 +57,7 @@ export async function resolvePostMeta(url: URL, env: Env): Promise<PostMeta> {
           ? (post.coverImage.startsWith('http')
               ? post.coverImage
               : `${env.SITE_BASE_URL}${post.coverImage.startsWith('/') ? '' : '/'}${post.coverImage}`)
-          : buildOgImageUrl(env, post.title, post.category);
+          : buildBrandSeoImageUrl(env);
 
         return {
           title: `${post.title} | ${env.SITE_NAME}`,
@@ -78,7 +77,7 @@ export async function resolvePostMeta(url: URL, env: Env): Promise<PostMeta> {
     return {
       title: `${formattedSlug} | ${env.SITE_NAME}`,
       description: '',
-      ogImage: buildOgImageUrl(env, formattedSlug),
+      ogImage: buildBrandSeoImageUrl(env),
       url: `${env.SITE_BASE_URL}/blog/${year}/${slug}`,
       type: 'article',
     };
@@ -88,7 +87,7 @@ export async function resolvePostMeta(url: URL, env: Env): Promise<PostMeta> {
     return {
       title: `Blog | ${env.SITE_NAME}`,
       description: '기술, 개발, 생각에 대한 글들',
-      ogImage: buildOgImageUrl(env, 'Blog', env.SITE_NAME),
+      ogImage: buildBrandSeoImageUrl(env),
       url: `${env.SITE_BASE_URL}/blog`,
       type: 'website',
     };
@@ -98,7 +97,7 @@ export async function resolvePostMeta(url: URL, env: Env): Promise<PostMeta> {
     return {
       title: `About | ${env.SITE_NAME}`,
       description: 'Nodove 소개',
-      ogImage: buildOgImageUrl(env, 'About', env.SITE_NAME),
+      ogImage: buildBrandSeoImageUrl(env),
       url: `${env.SITE_BASE_URL}/about`,
       type: 'website',
     };
@@ -108,7 +107,7 @@ export async function resolvePostMeta(url: URL, env: Env): Promise<PostMeta> {
     return {
       title: `Tech Stack | ${env.SITE_NAME}`,
       description: '사용하는 기술 스택',
-      ogImage: buildOgImageUrl(env, 'Tech Stack', env.SITE_NAME),
+      ogImage: buildBrandSeoImageUrl(env),
       url: `${env.SITE_BASE_URL}/stack`,
       type: 'website',
     };
@@ -117,7 +116,7 @@ export async function resolvePostMeta(url: URL, env: Env): Promise<PostMeta> {
   return {
     title: env.SITE_NAME,
     description: 'Tech & Programming Blog',
-    ogImage: buildOgImageUrl(env, env.SITE_NAME, 'Tech & Programming'),
+    ogImage: buildBrandSeoImageUrl(env),
     url: env.SITE_BASE_URL,
     type: 'website',
   };

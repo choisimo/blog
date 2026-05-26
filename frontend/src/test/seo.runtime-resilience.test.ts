@@ -45,15 +45,21 @@ describe('seo runtime resilience', () => {
     expect(() => generateStructuredData(undefined, 'home')).not.toThrow();
 
     expect(generateSEOData(undefined, 'home').ogImage).toBe(
-      'https://noblog.nodove.com/images/seo/default/seo.png'
+      'https://noblog.nodove.com/images/share/seo.png'
     );
   });
 
   it('falls back to the static seo image for post metadata when api base is unavailable', () => {
     const seoData = generateSEOData(post, 'post');
-    const structuredData = generateStructuredData(post, 'post') as { image: string };
+    const structuredData = generateStructuredData(post, 'post') as {
+      image: string;
+    };
 
-    expect(seoData.ogImage).toBe('https://noblog.nodove.com/images/seo/default/seo.png');
-    expect(structuredData.image).toBe('https://noblog.nodove.com/images/seo/default/seo.png');
+    expect(seoData.ogImage).toBe(
+      'https://noblog.nodove.com/images/share/seo.png'
+    );
+    expect(structuredData.image).toBe(
+      'https://noblog.nodove.com/images/share/seo.png'
+    );
   });
 });

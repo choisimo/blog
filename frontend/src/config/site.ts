@@ -1,6 +1,12 @@
 export const site = {
   author: 'Nodove',
   email: 'nodove@nodove.com',
+  assets: {
+    logo: '/images/share/logo.png',
+    logoMark: '/images/share/logo-mark.png',
+    seoImage: '/images/share/seo.png',
+    appleTouchIcon: '/apple-touch-icon-180.png',
+  },
   social: {
     github: 'https://github.com/choisimo',
     twitter: 'https://twitter.com',

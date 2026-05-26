@@ -1,6 +1,13 @@
 import { useState, FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { Github, Twitter, Linkedin, Mail, Loader2, CheckCircle } from 'lucide-react';
+import {
+  Github,
+  Twitter,
+  Linkedin,
+  Mail,
+  Loader2,
+  CheckCircle,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { site } from '@/config/site';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -18,7 +25,7 @@ export function Footer() {
 
   const handleSubscribe = async (e: FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !email.includes('@')) {
       setStatus('error');
       setMessage('유효한 이메일 주소를 입력해주세요.');
@@ -51,25 +58,37 @@ export function Footer() {
       }
     } catch (err) {
       setStatus('error');
-      setMessage(err instanceof Error ? err.message : '구독 처리 중 오류가 발생했습니다.');
+      setMessage(
+        err instanceof Error ? err.message : '구독 처리 중 오류가 발생했습니다.'
+      );
     }
   };
 
   return (
-    <footer className={cn(
-      'border-t bg-background',
-      isTerminal && 'border-primary/30'
-    )}>
+    <footer
+      className={cn(
+        'border-t bg-background',
+        isTerminal && 'border-primary/30'
+      )}
+    >
       <div className='mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8'>
         <div className='py-10 md:py-14'>
-            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 md:grid-cols-4 md:gap-8'>
+          <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 md:grid-cols-4 md:gap-8'>
             <div className='space-y-4'>
-              <h3 className={cn(
-                'text-lg font-semibold',
-                isTerminal && 'font-mono text-primary'
-              )}>
-                {isTerminal ? '>_ Nodove Blog' : 'Nodove Blog'}
-              </h3>
+              <Link
+                to='/'
+                className='inline-flex no-terminal-style'
+                aria-label='Nodove home'
+              >
+                <img
+                  src={site.assets.logo}
+                  alt='Nodove'
+                  className={cn(
+                    'h-10 w-auto max-w-[148px] object-contain',
+                    isTerminal && 'rounded-sm'
+                  )}
+                />
+              </Link>
               <p className='text-sm text-muted-foreground'>
                 최신 기술 트렌드를 놓치지 마세요!
               </p>
@@ -77,11 +96,14 @@ export function Footer() {
                 유용한 글을 메일로 보내드려요.
               </p>
               <div className='flex space-x-4'>
-                <Button 
-                  variant='ghost' 
-                  size='icon' 
+                <Button
+                  variant='ghost'
+                  size='icon'
                   asChild
-                  className={cn(isTerminal && 'text-primary hover:text-primary hover:bg-primary/10')}
+                  className={cn(
+                    isTerminal &&
+                      'text-primary hover:text-primary hover:bg-primary/10'
+                  )}
                 >
                   <a
                     href={site.social.github}
@@ -92,11 +114,14 @@ export function Footer() {
                     <span className='sr-only'>GitHub</span>
                   </a>
                 </Button>
-                <Button 
-                  variant='ghost' 
-                  size='icon' 
+                <Button
+                  variant='ghost'
+                  size='icon'
                   asChild
-                  className={cn(isTerminal && 'text-primary hover:text-primary hover:bg-primary/10')}
+                  className={cn(
+                    isTerminal &&
+                      'text-primary hover:text-primary hover:bg-primary/10'
+                  )}
                 >
                   <a
                     href={site.social.twitter}
@@ -107,11 +132,14 @@ export function Footer() {
                     <span className='sr-only'>Twitter</span>
                   </a>
                 </Button>
-                <Button 
-                  variant='ghost' 
-                  size='icon' 
+                <Button
+                  variant='ghost'
+                  size='icon'
                   asChild
-                  className={cn(isTerminal && 'text-primary hover:text-primary hover:bg-primary/10')}
+                  className={cn(
+                    isTerminal &&
+                      'text-primary hover:text-primary hover:bg-primary/10'
+                  )}
                 >
                   <a
                     href={site.social.linkedin}
@@ -122,11 +150,14 @@ export function Footer() {
                     <span className='sr-only'>LinkedIn</span>
                   </a>
                 </Button>
-                <Button 
-                  variant='ghost' 
-                  size='icon' 
+                <Button
+                  variant='ghost'
+                  size='icon'
                   asChild
-                  className={cn(isTerminal && 'text-primary hover:text-primary hover:bg-primary/10')}
+                  className={cn(
+                    isTerminal &&
+                      'text-primary hover:text-primary hover:bg-primary/10'
+                  )}
                 >
                   <a href={`mailto:${site.email}`}>
                     <Mail className='h-5 w-5' />
@@ -137,16 +168,17 @@ export function Footer() {
             </div>
 
             <div className='space-y-4'>
-              <h4 className={cn(
-                'text-sm font-semibold',
-                isTerminal && 'font-mono text-primary'
-              )}>
+              <h4
+                className={cn(
+                  'text-sm font-semibold',
+                  isTerminal && 'font-mono text-primary'
+                )}
+              >
                 {isTerminal ? '$ nav' : 'Navigation'}
               </h4>
-              <ul className={cn(
-                'space-y-2 text-sm',
-                isTerminal && 'font-mono'
-              )}>
+              <ul
+                className={cn('space-y-2 text-sm', isTerminal && 'font-mono')}
+              >
                 <li>
                   <Link
                     to='/'
@@ -183,16 +215,17 @@ export function Footer() {
             </div>
 
             <div className='space-y-4'>
-              <h4 className={cn(
-                'text-sm font-semibold',
-                isTerminal && 'font-mono text-primary'
-              )}>
+              <h4
+                className={cn(
+                  'text-sm font-semibold',
+                  isTerminal && 'font-mono text-primary'
+                )}
+              >
                 {isTerminal ? '$ categories' : 'Categories'}
               </h4>
-              <ul className={cn(
-                'space-y-2 text-sm',
-                isTerminal && 'font-mono'
-              )}>
+              <ul
+                className={cn('space-y-2 text-sm', isTerminal && 'font-mono')}
+              >
                 <li>
                   <Link
                     to='/blog?category=ai'
@@ -229,36 +262,44 @@ export function Footer() {
             </div>
 
             <div className='space-y-4'>
-              <h4 className={cn(
-                'text-sm font-semibold',
-                isTerminal && 'font-mono text-primary'
-              )}>
+              <h4
+                className={cn(
+                  'text-sm font-semibold',
+                  isTerminal && 'font-mono text-primary'
+                )}
+              >
                 {isTerminal ? '$ subscribe' : 'Subscribe'}
               </h4>
-              <p className={cn(
-                'text-sm text-muted-foreground',
-                isTerminal && 'font-mono'
-              )}>
+              <p
+                className={cn(
+                  'text-sm text-muted-foreground',
+                  isTerminal && 'font-mono'
+                )}
+              >
                 최신 글을 메일로 받아보세요.
               </p>
               <form className='space-y-2' onSubmit={handleSubscribe}>
                 <input
                   type='email'
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={isTerminal ? 'email@example.com' : 'Enter your email'}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder={
+                    isTerminal ? 'email@example.com' : 'Enter your email'
+                  }
                   disabled={status === 'loading'}
                   className={cn(
                     'w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50',
-                    isTerminal && 'font-mono border-primary/40 bg-primary/5 text-primary placeholder:text-primary/50 focus:ring-primary/50 focus:border-primary/60'
+                    isTerminal &&
+                      'font-mono border-primary/40 bg-primary/5 text-primary placeholder:text-primary/50 focus:ring-primary/50 focus:border-primary/60'
                   )}
                 />
-                <Button 
-                  type='submit' 
+                <Button
+                  type='submit'
                   disabled={status === 'loading'}
                   className={cn(
                     'w-full',
-                    isTerminal && 'font-mono bg-primary/20 text-primary border border-primary/40 hover:bg-primary/30 hover:shadow-[0_0_10px_rgba(0,255,65,0.3)]'
+                    isTerminal &&
+                      'font-mono bg-primary/20 text-primary border border-primary/40 hover:bg-primary/30 hover:shadow-[0_0_10px_rgba(0,255,65,0.3)]'
                   )}
                   variant={isTerminal ? 'outline' : 'default'}
                 >
@@ -272,16 +313,22 @@ export function Footer() {
                       <CheckCircle className='h-4 w-4 mr-2' />
                       {isTerminal ? '> Subscribed!' : 'Subscribed!'}
                     </>
+                  ) : isTerminal ? (
+                    '> Subscribe'
                   ) : (
-                    isTerminal ? '> Subscribe' : 'Subscribe'
+                    'Subscribe'
                   )}
                 </Button>
                 {message && (
-                  <p className={cn(
-                    'text-xs mt-1',
-                    status === 'error' ? 'text-destructive' : 'text-muted-foreground',
-                    isTerminal && status === 'success' && 'text-primary'
-                  )}>
+                  <p
+                    className={cn(
+                      'text-xs mt-1',
+                      status === 'error'
+                        ? 'text-destructive'
+                        : 'text-muted-foreground',
+                      isTerminal && status === 'success' && 'text-primary'
+                    )}
+                  >
                     {message}
                   </p>
                 )}
@@ -289,14 +336,18 @@ export function Footer() {
             </div>
           </div>
 
-          <div className={cn(
-            'mt-8 border-t pt-8',
-            isTerminal && 'border-primary/30'
-          )}>
-            <p className={cn(
-              'text-center text-sm text-muted-foreground',
-              isTerminal && 'font-mono'
-            )}>
+          <div
+            className={cn(
+              'mt-8 border-t pt-8',
+              isTerminal && 'border-primary/30'
+            )}
+          >
+            <p
+              className={cn(
+                'text-center text-sm text-muted-foreground',
+                isTerminal && 'font-mono'
+              )}
+            >
               © {currentYear} Nodove Blog. All rights reserved.
             </p>
           </div>

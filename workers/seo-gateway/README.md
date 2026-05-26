@@ -114,7 +114,7 @@ post path 처리 규칙:
 - `posts-manifest.json`을 `env.GITHUB_PAGES_ORIGIN`에서 fetch
 - in-memory manifest cache TTL: 5분
 - post가 manifest에 있고 `published !== false`면 manifest metadata 사용
-- cover image가 없으면 `${API_BASE_URL}/api/v1/og` 기반 OG image URL 생성
+- cover image가 없으면 `${SITE_BASE_URL}/images/share/seo.png` 기반 OG image URL 사용
 - post가 manifest에 없으면 slug를 title-case로 가공한 fallback article metadata 사용
 
 기타 path 처리:
@@ -156,7 +156,6 @@ meta text는 HTML escaping 후 삽입됩니다.
 dev/prod vars:
 
 - `GITHUB_PAGES_ORIGIN`
-- `API_BASE_URL`
 - `SITE_BASE_URL`
 - `SITE_NAME`
 

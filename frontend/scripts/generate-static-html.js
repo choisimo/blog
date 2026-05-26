@@ -7,14 +7,20 @@ const PROJECT_ROOT = process.cwd();
 const DIST_DIR = path.join(PROJECT_ROOT, 'dist');
 const PUBLIC_DIR = path.join(PROJECT_ROOT, 'public');
 const MANIFEST_ROOT_PATH = path.join(PUBLIC_DIR, 'posts-manifest.json');
-const MANIFEST_NESTED_PATH = path.join(PUBLIC_DIR, 'posts', 'posts-manifest.json');
+const MANIFEST_NESTED_PATH = path.join(
+  PUBLIC_DIR,
+  'posts',
+  'posts-manifest.json'
+);
 
 const BASE_URL = resolveSiteBaseUrl();
-const API_BASE_URL = process.env.VITE_API_BASE_URL || 'https://api.nodove.com';
 const SITE_NAME = 'Nodove Blog';
+const BRAND_LOGO_IMAGE_PATH = '/images/share/logo.png';
+const BRAND_SEO_IMAGE_PATH = '/images/share/seo.png';
 const THEME_DEFAULT = 'terminal';
 const THEME_DEFAULT_META_TAG = `<meta name="theme-default" content="${THEME_DEFAULT}" />`;
-const THEME_DEFAULT_META_PATTERN = /<meta\s+name="theme-default"\s+content="[^"]*"\s*\/?>/i;
+const THEME_DEFAULT_META_PATTERN =
+  /<meta\s+name="theme-default"\s+content="[^"]*"\s*\/?>/i;
 const LEGACY_THEME_DEFAULT_EXPRESSION = `(document.querySelector('meta[name="theme-default"]') || {}).content || "terminal"`;
 const CANONICAL_THEME_DEFAULT_EXPRESSION = `document.querySelector('meta[name="theme-default"]')?.content ?? '${THEME_DEFAULT}'`;
 
@@ -33,7 +39,10 @@ function applyThemeContract(template) {
     html = html.replace('</head>', `  ${THEME_DEFAULT_META_TAG}\n</head>`);
   }
 
-  return html.replace(LEGACY_THEME_DEFAULT_EXPRESSION, CANONICAL_THEME_DEFAULT_EXPRESSION);
+  return html.replace(
+    LEGACY_THEME_DEFAULT_EXPRESSION,
+    CANONICAL_THEME_DEFAULT_EXPRESSION
+  );
 }
 
 function loadManifest() {
@@ -42,7 +51,9 @@ function loadManifest() {
     manifestPath = MANIFEST_NESTED_PATH;
   }
   if (!fs.existsSync(manifestPath)) {
-    throw new Error(`posts-manifest.json not found. Run 'npm run generate-manifests' first.`);
+    throw new Error(
+      `posts-manifest.json not found. Run 'npm run generate-manifests' first.`
+    );
   }
   return JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 }
@@ -58,16 +69,12 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-function resolveImageUrl(coverImage, title, category) {
+function resolveImageUrl(coverImage) {
   if (coverImage) {
     if (coverImage.startsWith('http')) return coverImage;
     return `${BASE_URL}${coverImage.startsWith('/') ? '' : '/'}${coverImage}`;
   }
-  const params = new URLSearchParams({
-    title: title || 'Blog Post',
-    subtitle: category || '',
-  });
-  return `${API_BASE_URL}/api/v1/og?${params.toString()}`;
+  return `${BASE_URL}${BRAND_SEO_IMAGE_PATH}`;
 }
 
 function generateStructuredDataStr(pageType, data = {}) {
@@ -79,7 +86,7 @@ function generateStructuredDataStr(pageType, data = {}) {
       '@type': 'BlogPosting',
       headline: data.title,
       description: data.description,
-      image: resolveImageUrl(data.coverImage, data.title, data.category),
+      image: resolveImageUrl(data.coverImage),
       author: {
         '@type': 'Person',
         name: authorName,
@@ -89,7 +96,7 @@ function generateStructuredDataStr(pageType, data = {}) {
         name: SITE_NAME,
         logo: {
           '@type': 'ImageObject',
-          url: `${BASE_URL}/nodove.ico`,
+          url: `${BASE_URL}${BRAND_LOGO_IMAGE_PATH}`,
         },
       },
       datePublished: data.date,
@@ -138,18 +145,27 @@ function generatePostHtml(template, post) {
   const description = escapeHtml(post.description || post.snippet || '');
   const url = `${BASE_URL}/blog/${post.year}/${post.slug}`;
   const category = escapeHtml(post.category || 'Blog');
-  const image = resolveImageUrl(post.coverImage, post.title, post.category);
+  const image = resolveImageUrl(post.coverImage);
   const date = post.date || new Date().toISOString();
   const author = escapeHtml(post.author || 'Admin');
-  const tags = Array.isArray(post.tags) ? post.tags.map(t => escapeHtml(t)).join(', ') : '';
+  const tags = Array.isArray(post.tags)
+    ? post.tags.map(t => escapeHtml(t)).join(', ')
+    : '';
 
   let html = template;
 
-  html = html.replace(/<title>[^<]*<\/title>/, `<title>${title} | ${SITE_NAME}</title>`);
+  html = html.replace(
+    /<title>[^<]*<\/title>/,
+    `<title>${title} | ${SITE_NAME}</title>`
+  );
 
-  const existingDescMeta = /<meta\s+name="description"\s+content="[^"]*"\s*\/?>/i;
+  const existingDescMeta =
+    /<meta\s+name="description"\s+content="[^"]*"\s*\/?>/i;
   if (existingDescMeta.test(html)) {
-    html = html.replace(existingDescMeta, `<meta name="description" content="${description}" />`);
+    html = html.replace(
+      existingDescMeta,
+      `<meta name="description" content="${description}" />`
+    );
   }
 
   const ogTags = `
@@ -180,8 +196,10 @@ function generatePostHtml(template, post) {
     ${generateStructuredDataStr('post', post)}
 `;
 
-  const existingOgPattern = /<meta\s+property="og:[^"]+"\s+content="[^"]*"\s*\/?>/gi;
-  const existingTwitterPattern = /<meta\s+name="twitter:[^"]+"\s+content="[^"]*"\s*\/?>/gi;
+  const existingOgPattern =
+    /<meta\s+property="og:[^"]+"\s+content="[^"]*"\s*\/?>/gi;
+  const existingTwitterPattern =
+    /<meta\s+name="twitter:[^"]+"\s+content="[^"]*"\s*\/?>/gi;
   html = html.replace(existingOgPattern, '');
   html = html.replace(existingTwitterPattern, '');
 
@@ -192,8 +210,16 @@ function generatePostHtml(template, post) {
 
 function generateStaticPages(template) {
   const pages = [
-    { path: 'blog', title: 'Blog', description: '기술, 개발, 생각에 대한 글들' },
-    { path: 'projects', title: 'Projects', description: '프로젝트 허브와 AI Console 미리보기' },
+    {
+      path: 'blog',
+      title: 'Blog',
+      description: '기술, 개발, 생각에 대한 글들',
+    },
+    {
+      path: 'projects',
+      title: 'Projects',
+      description: '프로젝트 허브와 AI Console 미리보기',
+    },
     { path: 'about', title: 'About', description: 'Nodove 소개' },
   ];
 
@@ -203,10 +229,13 @@ function generateStaticPages(template) {
     const pageDir = path.join(DIST_DIR, page.path);
     ensureDir(pageDir);
 
-    const pageImage = `${API_BASE_URL}/api/v1/og?title=${encodeURIComponent(page.title)}&subtitle=${encodeURIComponent(SITE_NAME)}`;
+    const pageImage = `${BASE_URL}${BRAND_SEO_IMAGE_PATH}`;
 
     let html = template;
-    html = html.replace(/<title>[^<]*<\/title>/, `<title>${page.title} | ${SITE_NAME}</title>`);
+    html = html.replace(
+      /<title>[^<]*<\/title>/,
+      `<title>${page.title} | ${SITE_NAME}</title>`
+    );
 
     const ogTags = `
     <meta property="og:type" content="website" />
