@@ -119,6 +119,128 @@ export class OpenAICompatClient {
     return this._openai;
   }
 
+  _shouldTryLegacyCompletions(error) {
+    if (process.env.AI_ENABLE_LEGACY_COMPLETIONS_FALLBACK === "false") {
+      return false;
+    }
+
+    const status = error?.status || error?.code;
+    const message = error?.message || "";
+    return (
+      status === 401 ||
+      status === 404 ||
+      status === 405 ||
+      /Authentication is required|not found|method not allowed/i.test(message)
+    );
+  }
+
+  _messageContentToText(content) {
+    if (typeof content === "string") {
+      return content;
+    }
+
+    if (Array.isArray(content)) {
+      if (content.some((part) => part?.type === "image_url" || part?.image_url)) {
+        throw new Error("Legacy completions fallback does not support image content");
+      }
+
+      return content
+        .map((part) => {
+          if (typeof part === "string") return part;
+          if (typeof part?.text === "string") return part.text;
+          if (typeof part?.content === "string") return part.content;
+          return "";
+        })
+        .filter(Boolean)
+        .join("\n");
+    }
+
+    if (typeof content?.text === "string") {
+      return content.text;
+    }
+
+    if (typeof content?.content === "string") {
+      return content.content;
+    }
+
+    return "";
+  }
+
+  _messagesToLegacyPrompt(messages) {
+    const lines = [];
+
+    for (const message of messages || []) {
+      const text = this._messageContentToText(message.content).trim();
+      if (!text) continue;
+
+      const role = String(message.role || "user").toLowerCase();
+      const label =
+        role === "system"
+          ? "System"
+          : role === "assistant"
+            ? "Assistant"
+            : role === "tool"
+              ? "Tool"
+              : "User";
+
+      lines.push(`${label}: ${text}`);
+    }
+
+    lines.push("Assistant:");
+    const prompt = lines.join("\n\n").trim();
+    if (!prompt || prompt === "Assistant:") {
+      throw new Error("Legacy completions fallback requires text messages");
+    }
+
+    return prompt;
+  }
+
+  async _chatViaLegacyCompletions(messages, options, originalModel, requestId, startTime) {
+    const model =
+      options.legacyCompletionsModel ||
+      process.env.AI_LEGACY_COMPLETIONS_MODEL ||
+      originalModel;
+    const prompt = this._messagesToLegacyPrompt(messages);
+
+    logger.warn(
+      { operation: "chat", requestId },
+      "Retrying chat request via legacy completions endpoint",
+      { originalModel, model },
+    );
+
+    const response = await this._openai.completions.create(
+      {
+        model,
+        prompt,
+        temperature: options.temperature ?? 0.7,
+        max_tokens: options.maxTokens || options.max_tokens || 1024,
+        stream: false,
+      },
+      {
+        timeout: options.timeout || DEFAULT_TIMEOUT,
+      },
+    );
+
+    const duration = Date.now() - startTime;
+    this._recordSuccess();
+
+    const result = {
+      content: response.choices[0]?.text || "",
+      model: response.model || model,
+      provider: "openai-compat-legacy-completions",
+      usage: response.usage,
+      finishReason: response.choices[0]?.finish_reason,
+    };
+
+    logger.info({ operation: "chat", requestId }, "Legacy completions completed", {
+      duration,
+      model: result.model,
+      responseLength: result.content?.length,
+    });
+
+    return result;
+  }
+
   /**
    * Check if circuit breaker is open
    */
@@ -219,6 +341,24 @@ export class OpenAICompatClient {
 
       return result;
     } catch (error) {
+      if (this._shouldTryLegacyCompletions(error)) {
+        try {
+          return await this._chatViaLegacyCompletions(
+            messages,
+            options,
+            model,
+            requestId,
+            startTime,
+          );
+        } catch (fallbackError) {
+          logger.warn(
+            { operation: "chat", requestId },
+            "Legacy completions fallback failed",
+            { model, error: fallbackError.message },
+          );
+        }
+      }
+
       const duration = Date.now() - startTime;
       this._recordFailure();
 
