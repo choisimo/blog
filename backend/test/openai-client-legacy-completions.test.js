@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 process.env.APP_ENV = "test";
+process.env.AI_DEFAULT_MODEL = process.env.AI_DEFAULT_MODEL || "gpt-4.1";
 process.env.AI_ENABLE_LEGACY_COMPLETIONS_FALLBACK = "true";
 process.env.AI_LEGACY_COMPLETIONS_MODEL = "gpt-5-mini";
 
