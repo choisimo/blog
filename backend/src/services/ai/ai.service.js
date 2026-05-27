@@ -138,6 +138,7 @@ export class AIService {
         temperature: options.temperature,
         model: options.model,
         systemPrompt: options.systemPrompt,
+        maxTokens: options.maxTokens,
         timeout: options.timeout,
       });
 
@@ -244,6 +245,7 @@ export class AIService {
       const response = await client.chat(messages, {
         temperature: options.temperature,
         model: options.model,
+        maxTokens: options.maxTokens,
         timeout: options.timeout,
       });
 
