@@ -78,7 +78,7 @@ export function Footer() {
               <Link
                 to='/'
                 className='inline-flex no-terminal-style'
-                aria-label='Nodove home'
+                aria-label='Footer home'
               >
                 <img
                   src={site.assets.logo}

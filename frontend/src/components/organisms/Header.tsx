@@ -120,7 +120,7 @@ export function Header() {
                   src={site.assets.logo}
                   alt='Nodove'
                   className={cn(
-                    'h-9 w-auto max-w-[132px] object-contain',
+                    'h-10 w-auto max-w-[148px] object-contain',
                     isTerminal && 'rounded-sm'
                   )}
                 />
@@ -450,7 +450,7 @@ export function Header() {
                   variant='ghost'
                   size='icon'
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  aria-label='Toggle main menu'
+                  aria-label="Toggle main menu"
                   className={cn(
                     'h-11 w-11',
                     isTerminal && 'text-primary hover:text-primary'
