@@ -13,7 +13,7 @@ const DEFAULT_ALLOWED_ORIGINS = [
 ];
 
 const ACCESS_CONTROL_ALLOW_HEADERS =
-  'Content-Type, Authorization, X-Requested-With, X-API-Key, Setup-Token, X-Device-Fingerprint';
+  'Content-Type, Authorization, X-Requested-With, X-API-Key, Setup-Token, X-Device-Fingerprint, X-Principal-Sub, Idempotency-Key';
 
 function parseAllowedOrigins(raw: string | null | undefined): string[] {
   return String(raw || '')
