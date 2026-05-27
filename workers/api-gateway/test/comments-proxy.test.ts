@@ -67,6 +67,26 @@ describe('comments route ownership on worker D1', () => {
     );
   });
 
+  it('allows general chat and memory preflight headers', async () => {
+    const response = await SELF.fetch('https://example.com/api/v1/chat/session/test/message', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://noblog.nodove.com',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers':
+          'content-type,authorization,x-principal-sub,idempotency-key',
+      },
+    });
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe(
+      'https://noblog.nodove.com'
+    );
+    const allowHeaders = response.headers.get('Access-Control-Allow-Headers') || '';
+    expect(allowHeaders).toMatch(/X-Principal-Sub/i);
+    expect(allowHeaders).toMatch(/Idempotency-Key/i);
+  });
+
   it('creates and lists comments from D1', async () => {
     const createResponse = await SELF.fetch('https://example.com/api/v1/comments', {
       method: 'POST',
