@@ -62,6 +62,43 @@ describe('discovery AI direct tasks', () => {
     );
   });
 
+  it('calls the non-streaming AI generate endpoint with principal auth', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            text: 'AI-generated comment reply',
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    );
+
+    const { generateText } = await import('@/services/discovery/ai');
+
+    await expect(
+      generateText({ prompt: 'Reply to this comment.', temperature: 0.35 }),
+    ).resolves.toBe('AI-generated comment reply');
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'https://api.example.com/api/v1/ai/generate',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer principal-token',
+        }),
+        body: JSON.stringify({
+          prompt: 'Reply to this comment.',
+          temperature: 0.35,
+        }),
+      }),
+    );
+  });
+
   it('refreshes stale principal auth once when the server rejects an invalid signature', async () => {
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
@@ -116,6 +153,66 @@ describe('discovery AI direct tasks', () => {
     expect(fetchSpy).toHaveBeenNthCalledWith(
       2,
       'https://api.example.com/api/v1/ai/sketch',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer fresh-principal-token',
+        }),
+      }),
+    );
+  });
+
+  it('refreshes stale principal auth once for generated text', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: false,
+            error: {
+              message: 'Invalid signature',
+              code: 'UNAUTHORIZED',
+            },
+          }),
+          {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: {
+              text: 'Retried generated text',
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      );
+
+    const { generateText } = await import('@/services/discovery/ai');
+
+    await expect(generateText({ prompt: 'Retry this.' })).resolves.toBe(
+      'Retried generated text',
+    );
+
+    expect(authMocks.refreshPrincipalTokenAfterAuthFailure).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      1,
+      'https://api.example.com/api/v1/ai/generate',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer principal-token',
+        }),
+      }),
+    );
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      2,
+      'https://api.example.com/api/v1/ai/generate',
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: 'Bearer fresh-principal-token',

@@ -35,6 +35,12 @@ export type SummaryResult = {
   keyPoints?: string[];
 };
 
+export type GenerateTextInput = {
+  prompt: string;
+  temperature?: number;
+  signal?: AbortSignal;
+};
+
 export type QuizQuestion = {
   type:
     | "fill_blank"
@@ -175,6 +181,69 @@ async function invokeDirectTask<T>(
     token: await getPrincipalToken(),
     retryAuth: true,
   });
+}
+
+async function invokeGenerateWithToken(input: {
+  prompt: string;
+  temperature?: number;
+  signal?: AbortSignal;
+  token: string;
+  retryAuth: boolean;
+}): Promise<string> {
+  const body: { prompt: string; temperature?: number } = {
+    prompt: input.prompt,
+  };
+  if (typeof input.temperature === "number" && Number.isFinite(input.temperature)) {
+    body.temperature = input.temperature;
+  }
+
+  const res = await fetch(`${getApiBaseUrl()}/api/v1/ai/generate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...bearerAuth(input.token),
+    },
+    body: JSON.stringify(body),
+    signal: input.signal,
+  });
+
+  const text = await res.text().catch(() => "");
+  const parsed = text ? tryParseJson<unknown>(text) ?? text : null;
+  if (!res.ok) {
+    if (input.retryAuth && isInvalidAuthSignature(res.status, parsed)) {
+      const token = await refreshPrincipalTokenAfterAuthFailure();
+      return invokeGenerateWithToken({
+        ...input,
+        token,
+        retryAuth: false,
+      });
+    }
+    throw new Error(getTaskErrorMessage(parsed, `AI generation failed (${res.status})`));
+  }
+  if (isFallbackResponse(parsed)) {
+    throw new Error("AI server returned fallback: backend unavailable");
+  }
+
+  const data = getEnvelopeData(parsed);
+  if (isFallbackResponse(data)) {
+    throw new Error("AI server returned fallback: backend unavailable");
+  }
+
+  const generated =
+    typeof data === "string"
+      ? data
+      : isRecord(data) && typeof data.text === "string"
+        ? data.text
+        : isRecord(parsed) && typeof parsed.text === "string"
+          ? parsed.text
+          : "";
+
+  if (!generated.trim()) {
+    throw new Error("Invalid AI generation response: no text");
+  }
+
+  return generated;
 }
 
 async function invokeDirectTaskWithToken<T>(input: {
@@ -359,6 +428,24 @@ function isSummaryResult(data: unknown): data is SummaryResult {
 // ============================================================================
 // Public API
 // ============================================================================
+
+/**
+ * Generic text generation through Workers' non-streaming AI endpoint.
+ */
+export async function generateText(input: GenerateTextInput): Promise<string> {
+  const prompt = input.prompt.trim();
+  if (!prompt) {
+    throw new Error("AI prompt is required");
+  }
+
+  return invokeGenerateWithToken({
+    prompt,
+    temperature: input.temperature,
+    signal: input.signal,
+    token: await getPrincipalToken(),
+    retryAuth: true,
+  });
+}
 
 /**
  * Sketch: 감정(mood)과 핵심 포인트(bullets) 추출

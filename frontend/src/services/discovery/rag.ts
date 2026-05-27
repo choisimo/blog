@@ -428,8 +428,8 @@ export async function findRelatedPosts(
 
 export async function getRAGContextForChat(
   userQuery: string,
-  maxTokens = RAG_DEFAULTS.CONTEXT_MAX_TOKENS,
-  timeoutMs = RAG_DEFAULTS.CONTEXT_TIMEOUT_MS
+  maxTokens: number = RAG_DEFAULTS.CONTEXT_MAX_TOKENS,
+  timeoutMs: number = RAG_DEFAULTS.CONTEXT_TIMEOUT_MS
 ): Promise<string | null> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);

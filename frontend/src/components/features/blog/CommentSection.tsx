@@ -19,8 +19,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import CommentInputModal from './CommentInputModal';
 import CommentReactions from './CommentReactions';
-import { streamChatEvents } from '@/services/chat';
 import { getCachedAdvancedVisitorId } from '@/services/session/fingerprint';
+import { generateText } from '@/services/discovery/ai';
 import { getRAGContextForChat } from '@/services/discovery/rag';
 import { useFeatureFlags } from '@/stores/runtime/useFeatureFlagsStore';
 import {
@@ -35,6 +35,9 @@ import {
 } from '@/services/engagement/reactions';
 
 const AI_AUTHOR_NAME = 'AI Assistant';
+const COMMENT_AI_RAG_CONTEXT_TOKENS = 1500;
+const COMMENT_AI_RECENT_COMMENT_CHARS = 350;
+const COMMENT_AI_TEMPERATURE = 0.35;
 
 type ComposerMode = 'comment' | 'reply' | 'quote';
 
@@ -93,6 +96,12 @@ function getComposerContextPreview(
   const content = context.target?.content?.replace(/\s+/g, ' ').trim();
   if (!content) return undefined;
   return content.length > 160 ? `${content.slice(0, 160).trim()}...` : content;
+}
+
+function compactAiContextText(value: string, maxChars: number): string {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= maxChars) return normalized;
+  return `${normalized.slice(0, maxChars - 3).trim()}...`;
 }
 
 export default function CommentSection({ postId }: { postId: string }) {
@@ -215,10 +224,20 @@ export default function CommentSection({ postId }: { postId: string }) {
 
       const recentComments = (comments || [])
         .slice(-5)
-        .map(c => `${c.author}: ${c.content}`)
+        .map(
+          c =>
+            `${c.author}: ${compactAiContextText(
+              c.content,
+              COMMENT_AI_RECENT_COMMENT_CHARS
+            )}`
+        )
         .join('\n');
 
-      const ragContextPromise = getRAGContextForChat(userComment, 2000, 8000);
+      const ragContextPromise = getRAGContextForChat(
+        userComment,
+        COMMENT_AI_RAG_CONTEXT_TOKENS,
+        8000
+      );
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 120000);
@@ -241,17 +260,12 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${userName}님의 �
 - 글의 내용과 연결지어 생각을 확장하거나 흥미로운 질문을 던져주세요
 - 존댓말을 사용하고 친근하게 대해주세요`;
 
-        let fullText = '';
-        for await (const ev of streamChatEvents({
-          text: prompt,
-          useArticleContext: true,
+        const fullText = await generateText({
+          prompt,
+          temperature: COMMENT_AI_TEMPERATURE,
           signal: controller.signal,
-        })) {
-          if (ev.type === 'text') {
-            fullText += ev.text;
-            setAiStreamingText(fullText);
-          }
-        }
+        });
+        setAiStreamingText(fullText);
 
         if (fullText.trim()) {
           try {

@@ -47,6 +47,26 @@ afterEach(() => {
 });
 
 describe('comments route ownership on worker D1', () => {
+  it('allows comment submit preflight with device fingerprint header', async () => {
+    const response = await SELF.fetch('https://example.com/api/v1/comments', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://noblog.nodove.com',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'content-type,x-device-fingerprint',
+      },
+    });
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe(
+      'https://noblog.nodove.com'
+    );
+    expect(response.headers.get('Access-Control-Allow-Credentials')).toBe('true');
+    expect(response.headers.get('Access-Control-Allow-Headers')).toMatch(
+      /X-Device-Fingerprint/i
+    );
+  });
+
   it('creates and lists comments from D1', async () => {
     const createResponse = await SELF.fetch('https://example.com/api/v1/comments', {
       method: 'POST',

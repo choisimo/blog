@@ -12,6 +12,9 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:8081',
 ];
 
+const ACCESS_CONTROL_ALLOW_HEADERS =
+  'Content-Type, Authorization, X-Requested-With, X-API-Key, Setup-Token, X-Device-Fingerprint';
+
 function parseAllowedOrigins(raw: string | null | undefined): string[] {
   return String(raw || '')
     .split(',')
@@ -42,7 +45,7 @@ export async function setCorsHeaders(c: Context, origin?: string): Promise<void>
   }
 
   c.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Setup-Token');
+  c.header('Access-Control-Allow-Headers', ACCESS_CONTROL_ALLOW_HEADERS);
   c.header('Access-Control-Max-Age', '86400');
 }
 
@@ -55,7 +58,7 @@ export async function getCorsHeadersForRequest(
 
   const headers: Record<string, string> = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, X-API-Key, Setup-Token',
+    'Access-Control-Allow-Headers': ACCESS_CONTROL_ALLOW_HEADERS,
     'Access-Control-Max-Age': '86400',
   };
 
