@@ -114,6 +114,14 @@ export class AIService {
     return this._getOpenAIClient();
   }
 
+  async _enqueueAITask(task) {
+    return enqueueAITask(task);
+  }
+
+  async _waitForAIResult(taskId, timeout) {
+    return waitForAIResult(taskId, timeout);
+  }
+
   async generate(prompt, options = {}) {
     const requestId = `gen-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const startTime = Date.now();
@@ -187,13 +195,31 @@ export class AIService {
       "Enqueueing async generation",
     );
 
-    const taskId = await enqueueAITask({
-      type: "generate",
-      payload: { prompt, options },
-      priority: options.priority || "normal",
-    });
+    let taskId;
+    try {
+      taskId = await this._enqueueAITask({
+        type: "generate",
+        payload: { prompt, options },
+        priority: options.priority || "normal",
+      });
+    } catch (error) {
+      logger.warn(
+        { operation: "generate", requestId, mode: "async" },
+        "Async generation enqueue failed, falling back to sync",
+        { error: error.message },
+      );
+      return this._generateSync(prompt, options, requestId, startTime);
+    }
 
-    const result = await waitForAIResult(
+    if (!taskId) {
+      logger.warn(
+        { operation: "generate", requestId, mode: "async" },
+        "Async generation queue unavailable, falling back to sync",
+      );
+      return this._generateSync(prompt, options, requestId, startTime);
+    }
+
+    const result = await this._waitForAIResult(
       taskId,
       options.timeout || TIMEOUTS.DEFAULT,
     );
@@ -309,13 +335,31 @@ export class AIService {
       "Enqueueing async chat",
     );
 
-    const taskId = await enqueueAITask({
-      type: "chat",
-      payload: { messages, options },
-      priority: options.priority || "normal",
-    });
+    let taskId;
+    try {
+      taskId = await this._enqueueAITask({
+        type: "chat",
+        payload: { messages, options },
+        priority: options.priority || "normal",
+      });
+    } catch (error) {
+      logger.warn(
+        { operation: "chat", requestId, mode: "async" },
+        "Async chat enqueue failed, falling back to sync",
+        { error: error.message },
+      );
+      return this._chatSync(messages, options, requestId, startTime);
+    }
 
-    const result = await waitForAIResult(
+    if (!taskId) {
+      logger.warn(
+        { operation: "chat", requestId, mode: "async" },
+        "Async chat queue unavailable, falling back to sync",
+      );
+      return this._chatSync(messages, options, requestId, startTime);
+    }
+
+    const result = await this._waitForAIResult(
       taskId,
       options.timeout || TIMEOUTS.DEFAULT,
     );
