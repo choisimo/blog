@@ -100,6 +100,7 @@ describe('runtime config preload', () => {
       value: { hostname: 'noblog.nodove.com' },
     });
     vi.stubEnv('VITE_API_BASE_URL', 'https://api.nodove.com');
+    vi.stubEnv('VITE_CHAT_BASE_URL', '');
 
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(

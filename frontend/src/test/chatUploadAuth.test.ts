@@ -11,10 +11,20 @@ vi.mock('@/services/session/userContentAuth', () => ({
 describe('chat upload authentication', () => {
   beforeEach(() => {
     localStorage.clear();
+    (window as Window & {
+      APP_CONFIG?: { apiBaseUrl?: string; chatBaseUrl?: string };
+      __APP_CONFIG?: { apiBaseUrl?: string; chatBaseUrl?: string };
+    }).APP_CONFIG = {
+      apiBaseUrl: 'https://api.example.com',
+      chatBaseUrl: 'https://api.example.com',
+    };
+    delete (window as Window & { __APP_CONFIG?: unknown }).__APP_CONFIG;
   });
 
   afterEach(() => {
     localStorage.clear();
+    delete (window as Window & { APP_CONFIG?: unknown }).APP_CONFIG;
+    delete (window as Window & { __APP_CONFIG?: unknown }).__APP_CONFIG;
     vi.restoreAllMocks();
   });
 
