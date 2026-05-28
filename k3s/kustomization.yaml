@@ -18,7 +18,7 @@ resources:
 
 images:
   - name: ghcr.io/choisimo/blog-api
-    newTag: latest
+    newTag: 6b83760
   - name: ghcr.io/choisimo/blog-terminal
     newTag: latest
   - name: ghcr.io/engineer-man/piston
