@@ -58,7 +58,14 @@ spec:
               rm -rf /repo/* /repo/.[!.]* /repo/..?*
               git clone --depth 1 --filter=blob:none --sparse --branch "$CONTENT_GIT_REF" "$repo_url" /repo
               cd /repo
-              git sparse-checkout set frontend/public workers/migrations backend shared
+              git sparse-checkout set --no-cone \
+                /backend \
+                /shared \
+                /workers/migrations \
+                /frontend/public/posts \
+                /frontend/public/posts-manifest.json \
+                /frontend/public/projects-manifest.json \
+                /frontend/public/project-data
           envFrom:
             - configMapRef:
                 name: blog-app-config
