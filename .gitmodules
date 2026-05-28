@@ -1,0 +1,3 @@
+[submodule "NewsInsight"]
+	path = NewsInsight
+	url = git@github.com:choisimo/NewsInsight.git
