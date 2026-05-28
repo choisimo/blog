@@ -26,6 +26,7 @@ async function handleGenerateTask(task) {
     temperature: options.temperature,
     model: options.model,
     systemPrompt: options.systemPrompt,
+    maxTokens: options.maxTokens,
     timeout: options.timeout,
   });
   
@@ -39,6 +40,7 @@ async function handleChatTask(task) {
   const response = await client.chat(messages, {
     temperature: options.temperature,
     model: options.model,
+    maxTokens: options.maxTokens,
     timeout: options.timeout,
   });
   

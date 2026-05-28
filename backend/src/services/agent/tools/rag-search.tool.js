@@ -11,6 +11,7 @@ import { config } from '../../../config.js';
 import { openaiEmbeddings } from '../../ai/openai-client.service.js';
 import { expandQuery, getCombinedQueries } from '../../ai/query-expander.service.js';
 import { createLogger } from '../../../lib/logger.js';
+import { canonicalizeBlogPostPath } from '../../../lib/blog-post-url.js';
 
 const logger = createLogger('rag-search');
 
@@ -249,6 +250,12 @@ export function createRAGSearchTool() {
             content: r.content?.slice(0, 500) + (r.content?.length > 500 ? '...' : ''),
             title: r.metadata?.title,
             slug: r.metadata?.slug,
+            year: r.metadata?.year,
+            url: canonicalizeBlogPostPath({
+              url: r.metadata?.url,
+              year: r.metadata?.year,
+              slug: r.metadata?.slug,
+            }),
             category: r.metadata?.category,
             tags: r.metadata?.tags,
             score: r.score?.toFixed(3),

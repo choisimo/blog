@@ -38,6 +38,7 @@ import {
 } from "../middleware/schemas/agent.schema.js";
 import { buildLiveContextPrompt } from "../services/live-context.service.js";
 import { createLogger } from "../lib/logger.js";
+import { canonicalizeBlogPostPath } from "../lib/blog-post-url.js";
 
 import { broadcastNotification } from "./notifications.js";
 const router = express.Router();
@@ -375,7 +376,11 @@ router.post("/stream", validateBody(agentRunBodySchema), async (req, res) => {
               } else if (event.data.name === "rag_search") {
                 sources = event.data.result.results.map((r) => ({
                   title: r.title || r.slug,
-                  url: r.slug ? `/posts/${r.slug}` : undefined,
+                  url: canonicalizeBlogPostPath({
+                    url: r.url,
+                    year: r.year,
+                    slug: r.slug,
+                  }),
                   snippet: r.content?.slice(0, 150) + "...",
                   score: parseFloat(r.score),
                 }));

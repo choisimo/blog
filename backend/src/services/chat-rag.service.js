@@ -6,6 +6,7 @@ import { config } from "../config.js";
 import { openaiEmbeddings } from "../lib/openai-compat-client.js";
 import { CHROMA } from "../config/constants.js";
 import { createLogger } from "../lib/logger.js";
+import { canonicalizeBlogPostPath } from "../lib/blog-post-url.js";
 
 const logger = createLogger("chat-rag");
 
@@ -182,19 +183,22 @@ export async function performRAGSearch(query, topK = 5, articleSlug = null, arti
         const meta = metas[i] || {};
         const distance = dists[i];
         const score = distance != null ? Math.max(0, 1 - distance) : null;
+        const url = canonicalizeBlogPostPath({
+          url: meta.url,
+          year: meta.year,
+          slug: meta.slug,
+        });
 
         sources.push({
           title: meta.title || meta.post_title || "Untitled",
-          url: meta.slug
-            ? `/posts/${meta.year || new Date().getFullYear()}/${meta.slug}`
-            : undefined,
+          url,
           score,
           snippet: docs[i]?.slice(0, 200) || "",
         });
 
         const title = meta.title || meta.post_title || "";
         contextParts.push(
-          `[${i + 1}] ${title ? `"${title}": ` : ""}${docs[i]}`,
+          `[${i + 1}] ${title ? `"${title}"${url ? ` (${url})` : ""}: ` : ""}${docs[i]}`,
         );
       }
     }
