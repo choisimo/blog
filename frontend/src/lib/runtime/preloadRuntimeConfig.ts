@@ -17,6 +17,49 @@ function isRuntimeConfig(value: unknown): value is Partial<PublicRuntimeConfig> 
   return typeof value === 'object' && value !== null;
 }
 
+function isLocalHostname(hostname: string): boolean {
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1'
+  );
+}
+
+function isLocalServiceUrl(value: unknown): boolean {
+  if (typeof value !== 'string' || !value.trim()) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(value);
+    return isLocalHostname(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function discardUnsafeRuntimeServiceUrls(
+  runtimeConfig: RuntimeConfigPatch,
+  runtimeWindow: RuntimeWindow
+): RuntimeConfigPatch {
+  const hostname = runtimeWindow.location?.hostname || '';
+  if (!hostname || isLocalHostname(hostname)) {
+    return runtimeConfig;
+  }
+
+  const nextConfig = { ...runtimeConfig };
+  if (isLocalServiceUrl(nextConfig.apiBaseUrl)) {
+    delete nextConfig.apiBaseUrl;
+  }
+  if (isLocalServiceUrl(nextConfig.chatBaseUrl)) {
+    delete nextConfig.chatBaseUrl;
+  }
+  if (isLocalServiceUrl(nextConfig.chatWsBaseUrl)) {
+    delete nextConfig.chatWsBaseUrl;
+  }
+  return nextConfig;
+}
+
 function readBooleanEnv(value: string | boolean | undefined): boolean | undefined {
   if (typeof value === 'boolean') return value;
   if (typeof value !== 'string') return undefined;
@@ -119,7 +162,10 @@ export async function preloadRuntimeConfig(
     }
 
     const runtimeWindow = window as RuntimeWindow;
-    const runtimeConfig = json as RuntimeConfigPatch;
+    const runtimeConfig = discardUnsafeRuntimeServiceUrls(
+      json as RuntimeConfigPatch,
+      runtimeWindow
+    );
 
     runtimeWindow.APP_CONFIG = {
       ...(runtimeWindow.APP_CONFIG ?? {}),

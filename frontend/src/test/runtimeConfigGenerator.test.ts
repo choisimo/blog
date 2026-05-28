@@ -41,4 +41,17 @@ describe("runtime config generator", () => {
     expect(runtimeConfig.terminalGatewayUrl).toBeNull();
     expect(runtimeConfig.capabilities.hasTerminalGatewayUrl).toBe(false);
   });
+
+  it("uses the public API gateway for production artifacts when no explicit API base is set", () => {
+    const runtimeConfig = buildRuntimeConfigFromEnv(
+      {
+        CI: "true",
+        APP_ENV: "production",
+      },
+      { siteBaseUrl: "https://noblog.nodove.com" }
+    );
+
+    expect(runtimeConfig.apiBaseUrl).toBe("https://api.nodove.com");
+    expect(runtimeConfig.chatBaseUrl).toBe("https://api.nodove.com");
+  });
 });

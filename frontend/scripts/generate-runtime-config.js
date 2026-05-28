@@ -11,6 +11,8 @@ const __dirname = path.dirname(__filename);
 const frontendRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(frontendRoot, '..');
 const outputPath = path.join(frontendRoot, 'public', 'runtime-config.json');
+const LOCAL_DEV_API_BASE_URL = 'http://localhost:5080';
+const DEFAULT_PRODUCTION_API_BASE_URL = 'https://api.nodove.com';
 
 function loadRuntimeConfigEnv() {
   dotenv.config({ path: path.join(repoRoot, '.env') });
@@ -28,10 +30,20 @@ export function buildRuntimeConfigFromEnv(
   options = {}
 ) {
   const siteBaseUrl = options.siteBaseUrl || resolveSiteBaseUrl();
+  const lifecycle = String(env.npm_lifecycle_event || '');
+  const isProductionArtifact =
+    env.CI === 'true' ||
+    env.GITHUB_ACTIONS === 'true' ||
+    env.NODE_ENV === 'production' ||
+    lifecycle === 'prebuild' ||
+    lifecycle === 'build' ||
+    lifecycle === 'deploy';
   const apiBaseUrl =
     env.API_BASE_URL ||
     env.VITE_API_BASE_URL ||
-    (env.NODE_ENV === 'production' ? '' : 'http://localhost:5080');
+    (isProductionArtifact
+      ? DEFAULT_PRODUCTION_API_BASE_URL
+      : LOCAL_DEV_API_BASE_URL);
 
   if (!apiBaseUrl) {
     throw new Error(

@@ -6,11 +6,17 @@ import {
 } from '@/lib/runtime/preloadRuntimeConfig';
 
 describe('runtime config preload', () => {
+  const originalLocation = window.location;
+
   beforeEach(() => {
     delete (window as Window & { APP_CONFIG?: unknown }).APP_CONFIG;
   });
 
   afterEach(() => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: originalLocation,
+    });
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
     delete (window as Window & { APP_CONFIG?: unknown }).APP_CONFIG;
@@ -86,5 +92,35 @@ describe('runtime config preload', () => {
         commentsEnabled: true,
       },
     });
+  });
+
+  it('does not let a stale local runtime API base override production build config', async () => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { hostname: 'noblog.nodove.com' },
+    });
+    vi.stubEnv('VITE_API_BASE_URL', 'https://api.nodove.com');
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          apiBaseUrl: 'http://localhost:5080',
+          chatBaseUrl: 'http://127.0.0.1:5080',
+          terminalGatewayUrl: 'wss://terminal.example.com',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    await preloadRuntimeConfig(fetchMock);
+
+    expect((window as Window & { APP_CONFIG?: Record<string, unknown> }).APP_CONFIG).toMatchObject({
+      apiBaseUrl: 'https://api.nodove.com',
+      terminalGatewayUrl: 'wss://terminal.example.com',
+    });
+    expect(
+      (window as Window & { APP_CONFIG?: Record<string, unknown> }).APP_CONFIG
+        ?.chatBaseUrl
+    ).toBeUndefined();
   });
 });

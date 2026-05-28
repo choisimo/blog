@@ -42,17 +42,26 @@ interface ProviderHealth {
 export async function checkBackendHealth(): Promise<{
   ok: boolean;
   latencyMs: number;
+  error?: string;
 }> {
-  const base = getApiBaseUrl();
   const start = Date.now();
   try {
+    const base = getApiBaseUrl();
     const res = await fetch(`${base}/api/v1/healthz`, {
       method: "GET",
       signal: AbortSignal.timeout(5000),
     });
-    return { ok: res.ok, latencyMs: Date.now() - start };
-  } catch {
-    return { ok: false, latencyMs: 0 };
+    return {
+      ok: res.ok,
+      latencyMs: Date.now() - start,
+      error: res.ok ? undefined : `HTTP ${res.status}`,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      latencyMs: 0,
+      error: err instanceof Error ? err.message : "Health check failed",
+    };
   }
 }
 
@@ -61,9 +70,9 @@ async function checkRAGHealth(): Promise<{
   chroma: boolean;
   latencyMs: number;
 }> {
-  const base = getApiBaseUrl();
   const start = Date.now();
   try {
+    const base = getApiBaseUrl();
     const res = await fetch(`${base}/api/v1/rag/health`, {
       method: "GET",
       signal: AbortSignal.timeout(5000),
@@ -82,8 +91,8 @@ async function checkRAGHealth(): Promise<{
 }
 
 async function getProviders(token: string): Promise<ProviderHealth[]> {
-  const base = getApiBaseUrl();
   try {
+    const base = getApiBaseUrl();
     const res = await fetch(`${base}/api/v1/admin/ai/providers`, {
       headers: bearerAuth(token),
       signal: AbortSignal.timeout(10000),
@@ -100,8 +109,8 @@ async function checkProviderHealth(
   providerId: string,
   token: string,
 ): Promise<{ status: string; latencyMs?: number; error?: string }> {
-  const base = getApiBaseUrl();
   try {
+    const base = getApiBaseUrl();
     const res = await fetch(
       `${base}/api/v1/admin/ai/providers/${providerId}/health`,
       {
@@ -132,8 +141,8 @@ interface AgentHealth {
 }
 
 async function checkAgentHealthRequest(): Promise<AgentHealth> {
-  const base = getApiBaseUrl();
   try {
+    const base = getApiBaseUrl();
     const res = await fetch(`${base}/api/v1/agent/health`, {
       method: "GET",
       signal: AbortSignal.timeout(8000),
@@ -216,6 +225,7 @@ export function SystemHealth() {
         displayName: "Backend API",
         status: result.ok ? "healthy" : "down",
         latencyMs: result.latencyMs,
+        error: result.error,
       },
     ]);
     setCoreLoading(false);

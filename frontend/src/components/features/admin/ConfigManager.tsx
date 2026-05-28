@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -51,6 +51,19 @@ interface ConfigStateResponse {
 
 const EMPTY_CONFIG_VALUES: Record<string, ConfigValue> = {};
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+async function readAdminResponseError(res: Response, fallback: string): Promise<string> {
+  const payload = await res.json().catch(() => null);
+  const message =
+    typeof payload?.error === 'string'
+      ? payload.error
+      : payload?.error?.message || payload?.message || fallback;
+  return `${message} (${res.status})`;
+}
+
 export function ConfigManager() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('app');
@@ -58,13 +71,34 @@ export function ConfigManager() {
   const [visibleSecrets, setVisibleSecrets] = useState<Set<string>>(new Set());
   const [hasChanges, setHasChanges] = useState(false);
 
-  const API_BASE = getApiBaseUrl();
+  const apiBaseResolution = useMemo(() => {
+    try {
+      return { value: getApiBaseUrl(), error: null as Error | null };
+    } catch (error) {
+      return {
+        value: '',
+        error:
+          error instanceof Error
+            ? error
+            : new Error('API base URL is not configured'),
+      };
+    }
+  }, []);
+  const API_BASE = apiBaseResolution.value;
+  const apiBaseError = apiBaseResolution.error;
 
-  const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
-    queryKey: ['config-categories'],
+  const {
+    data: categoriesData,
+    isLoading: categoriesLoading,
+    isError: categoriesFailed,
+    error: categoriesError,
+    refetch: refetchCategories,
+  } = useQuery({
+    queryKey: ['config-categories', API_BASE],
+    enabled: !apiBaseError,
     queryFn: async () => {
       const res = await adminFetchRaw(`${API_BASE}/api/v1/admin/config/categories`);
-      if (!res.ok) throw new Error('Failed to fetch categories');
+      if (!res.ok) throw new Error(await readAdminResponseError(res, 'Failed to fetch categories'));
       const json = await res.json();
       return json.data.categories as ConfigCategory[];
     },
@@ -73,12 +107,15 @@ export function ConfigManager() {
   const {
     data: configData,
     isLoading: configLoading,
+    isError: configFailed,
+    error: configError,
     refetch: refetchConfig,
   } = useQuery({
-    queryKey: ['config-current'],
+    queryKey: ['config-current', API_BASE],
+    enabled: !apiBaseError,
     queryFn: async () => {
       const res = await adminFetchRaw(`${API_BASE}/api/v1/admin/config/current`);
-      if (!res.ok) throw new Error('Failed to fetch config');
+      if (!res.ok) throw new Error(await readAdminResponseError(res, 'Failed to fetch config'));
       const json = await res.json();
       return json.data as ConfigStateResponse;
     },
@@ -321,6 +358,47 @@ export function ConfigManager() {
       <div className='rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-8 flex items-center gap-3 text-sm text-zinc-400'>
         <RefreshCw className='h-4 w-4 animate-spin shrink-0' aria-hidden='true' />
         <span>Loading configuration…</span>
+      </div>
+    );
+  }
+
+  if (apiBaseError || categoriesFailed || configFailed) {
+    const message =
+      apiBaseError?.message ||
+      getErrorMessage(categoriesError, '') ||
+      getErrorMessage(configError, '') ||
+      'Backend configuration API is unavailable';
+
+    return (
+      <div className='rounded-xl border border-red-200 bg-red-50/70 p-5 dark:border-red-900/40 dark:bg-red-950/20'>
+        <div className='flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between'>
+          <div className='space-y-2'>
+            <div className='flex items-center gap-2 text-red-700 dark:text-red-300'>
+              <AlertCircle className='h-4 w-4 shrink-0' aria-hidden='true' />
+              <h2 className='text-sm font-semibold'>Backend config API unavailable</h2>
+            </div>
+            <p className='max-w-3xl break-words text-sm leading-relaxed text-red-700/90 dark:text-red-200/90'>
+              {message}
+            </p>
+            {API_BASE && (
+              <p className='font-mono text-xs text-red-700/70 dark:text-red-200/70'>
+                API base: {API_BASE}
+              </p>
+            )}
+          </div>
+          <button
+            type='button'
+            onClick={() => {
+              void refetchCategories();
+              void refetchConfig();
+            }}
+            disabled={Boolean(apiBaseError)}
+            className='inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 text-xs font-semibold text-red-700 shadow-sm transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-800/60 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-900/30'
+          >
+            <RefreshCw className='h-3.5 w-3.5' aria-hidden='true' />
+            Retry
+          </button>
+        </div>
       </div>
     );
   }

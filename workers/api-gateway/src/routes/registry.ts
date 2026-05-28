@@ -11,6 +11,7 @@ import {
 import auth from './auth';
 import comments from './comments';
 import ai from './ai';
+import agent from './agent';
 import chat from './chat';
 import images from './images';
 import og from './og';
@@ -46,6 +47,7 @@ export const WORKER_ROUTE_REGISTRY: WorkerRouteRegistryEntry[] = [
   { boundaryId: 'auth', path: '/auth', router: auth },
   { boundaryId: 'comments', path: '/comments', router: comments },
   { boundaryId: 'ai', path: '/ai', router: ai },
+  { boundaryId: 'agent', path: '/agent', router: agent },
   { boundaryId: 'chat', path: '/chat', router: chat },
   { boundaryId: 'images', path: '/images', router: images },
   { boundaryId: 'og', path: '/og', router: og },

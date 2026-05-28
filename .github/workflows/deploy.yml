@@ -33,9 +33,9 @@ jobs:
       SITE_BASE_URL: https://noblog.nodove.com
       VITE_SITE_BASE_URL: https://noblog.nodove.com
       # Unified backend base URL (e.g., https://api.nodove.com or https://your-server:5080)
-      # Configure this as a repository secret named VITE_API_BASE_URL
-      VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
-      VITE_CHAT_BASE_URL: ${{ secrets.VITE_CHAT_BASE_URL }}
+      API_BASE_URL: ${{ vars.API_BASE_URL || secrets.API_BASE_URL || vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL || 'https://api.nodove.com' }}
+      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL || vars.API_BASE_URL || secrets.API_BASE_URL || 'https://api.nodove.com' }}
+      VITE_CHAT_BASE_URL: ${{ vars.VITE_CHAT_BASE_URL || secrets.VITE_CHAT_BASE_URL || vars.API_BASE_URL || secrets.API_BASE_URL || 'https://api.nodove.com' }}
       VITE_CHAT_API_KEY: ${{ secrets.VITE_CHAT_API_KEY }}
       # Feature flags for frontend (configure as repository secrets)
       # Set VITE_FEATURE_FAB to 'true' to enable FAB by default

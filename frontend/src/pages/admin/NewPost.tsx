@@ -1,5 +1,12 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import {
+  Copy,
+  FilePlus2,
+  LogOut,
+  RotateCcw,
+  UploadCloud,
+} from "lucide-react";
 import {
   createPostPR,
   type CreatePostPayload,
@@ -17,9 +24,19 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 import { ScrollArea } from "@/components/ui/scroll-area";
 import BotChatPanel from "@/components/features/admin/BotChatPanel";
 import AiImageGeneratorPanel from "@/components/features/admin/AiImageGeneratorPanel";
+import { cn } from "@/lib/utils";
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function slugifyTitle(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\-\s_]/g, "")
+    .replace(/[\s_]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 export default function NewPost() {
@@ -35,8 +52,11 @@ export default function NewPost() {
   const [published, setPublished] = useState(true);
   const [coverImage, setCoverImage] = useState("");
   const [content, setContent] = useState("");
+  const [slugEdited, setSlugEdited] = useState(false);
+  const [isDraggingImages, setIsDraggingImages] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState<
     Array<{ url: string; variantWebp?: { url: string } | null }>
@@ -50,6 +70,51 @@ export default function NewPost() {
     await storeLogout();
     window.dispatchEvent(new Event("admin-auth-changed"));
   };
+
+  const handleTitleChange = useCallback(
+    (value: string) => {
+      setTitle(value);
+      if (!slugEdited) {
+        setSlug(slugifyTitle(value));
+      }
+    },
+    [slugEdited],
+  );
+
+  const handleSlugChange = useCallback((value: string) => {
+    setSlugEdited(true);
+    setSlug(value);
+  }, []);
+
+  const insertAtCursor = useCallback((text: string) => {
+    const trimmedText = text.trimEnd();
+    const insertion = `${trimmedText}\n`;
+    const textarea = textareaRef.current;
+
+    setContent((prev) => {
+      if (!textarea) {
+        return prev
+          ? `${prev}${prev.endsWith("\n") ? "" : "\n"}${insertion}`
+          : insertion;
+      }
+
+      const start = textarea.selectionStart ?? prev.length;
+      const end = textarea.selectionEnd ?? start;
+      const before = prev.slice(0, start);
+      const after = prev.slice(end);
+      const prefix = before && !before.endsWith("\n") ? "\n" : "";
+      const suffix = after && !insertion.endsWith("\n\n") ? "\n" : "";
+      const next = `${before}${prefix}${insertion}${suffix}${after}`;
+      const cursor = before.length + prefix.length + insertion.length;
+
+      window.requestAnimationFrame(() => {
+        textarea.focus();
+        textarea.setSelectionRange(cursor, cursor);
+      });
+
+      return next;
+    });
+  }, []);
 
   const createPr = useMutation({
     mutationFn: async () => {
@@ -112,7 +177,6 @@ export default function NewPost() {
       );
       setUploaded((prev) => [...res.items, ...prev]);
 
-      // Auto-insert images into the editor
       res.items.forEach((u) => {
         insertAtCursor(`![image](${u.variantWebp?.url || u.url})`);
       });
@@ -162,9 +226,8 @@ export default function NewPost() {
     }
   };
 
-  const handleDrop = async (e: React.DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-    const items = e.dataTransfer.items;
+  const getImageFilesFromDataTransfer = (dataTransfer: DataTransfer): File[] => {
+    const items = dataTransfer.items;
     const imageFiles: File[] = [];
     if (items) {
       for (let i = 0; i < items.length; i++) {
@@ -174,16 +237,28 @@ export default function NewPost() {
         }
       }
     }
-    if (imageFiles.length > 0) {
-      await handleImageUploads(imageFiles);
+    if (!imageFiles.length && dataTransfer.files?.length) {
+      for (const file of Array.from(dataTransfer.files)) {
+        if (file.type.match("^image/")) imageFiles.push(file);
+      }
     }
+    return imageFiles;
   };
 
-  const insertAtCursor = (text: string) => {
-    setContent((prev) =>
-      prev ? `${prev}${prev.endsWith("\n") ? "" : "\n"}${text}\n` : `${text}\n`,
-    );
+  const handleEditorDrop = async (e: React.DragEvent<HTMLElement>) => {
+    const imageFiles = getImageFilesFromDataTransfer(e.dataTransfer);
+    if (!imageFiles.length) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingImages(false);
+    await handleImageUploads(imageFiles);
   };
+
+  const postPath = useMemo(
+    () => (/^[0-9]{4}$/.test(year) && slug.trim() ? `${year}/${slug.trim()}` : ""),
+    [year, slug],
+  );
 
   const previewContent = useMemo(() => {
     const lines: string[] = [];
@@ -195,6 +270,12 @@ export default function NewPost() {
     if (lines.length) lines.push("");
     return [lines.join("\n"), content].filter(Boolean).join("\n");
   }, [title, coverImage, tags, category, published, content]);
+
+  const editorStats = useMemo(() => {
+    const words = content.trim() ? content.trim().split(/\s+/).length : 0;
+    const images = (content.match(/!\[[^\]]*]\([^)]+\)/g) || []).length;
+    return { words, images, characters: content.length };
+  }, [content]);
 
   return (
     <div className="container mx-auto px-0 md:px-4 py-4 md:py-8 h-[calc(100vh-80px)] max-w-[1400px]">
@@ -211,6 +292,7 @@ export default function NewPost() {
                   <div className="flex items-center gap-3">
                     <span className="text-sm text-green-600">로그인됨</span>
                     <Button variant="secondary" onClick={logout}>
+                      <LogOut className="h-4 w-4" aria-hidden="true" />
                       로그아웃
                     </Button>
                   </div>
@@ -223,7 +305,7 @@ export default function NewPost() {
                       <Input
                         id="title"
                         value={title}
-                        onChange={(e) => setTitle(e.target.value)}
+                        onChange={(e) => handleTitleChange(e.target.value)}
                         placeholder="글 제목"
                       />
                     </div>
@@ -232,7 +314,7 @@ export default function NewPost() {
                       <Input
                         id="slug"
                         value={slug}
-                        onChange={(e) => setSlug(e.target.value)}
+                        onChange={(e) => handleSlugChange(e.target.value)}
                         placeholder="my-new-post"
                       />
                     </div>
@@ -297,23 +379,68 @@ export default function NewPost() {
                   />
 
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                    <div>
-                      <Label htmlFor="content">내용 (Markdown) - 이미지 복사/붙여넣기 지원</Label>
+                    <div
+                      onDragEnter={(event) => {
+                        if (getImageFilesFromDataTransfer(event.dataTransfer).length) {
+                          setIsDraggingImages(true);
+                        }
+                      }}
+                      onDragOver={(event) => {
+                        if (getImageFilesFromDataTransfer(event.dataTransfer).length) {
+                          event.preventDefault();
+                          setIsDraggingImages(true);
+                        }
+                      }}
+                      onDragLeave={(event) => {
+                        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                          setIsDraggingImages(false);
+                        }
+                      }}
+                      onDrop={(event) => void handleEditorDrop(event)}
+                      className="space-y-2"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <Label htmlFor="content">내용 (Markdown)</Label>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="font-mono">{editorStats.words}w</span>
+                          <span className="font-mono">{editorStats.images}img</span>
+                          {uploading && (
+                            <span className="inline-flex items-center gap-1 text-primary">
+                              <UploadCloud className="h-3 w-3 animate-pulse motion-reduce:animate-none" aria-hidden="true" />
+                              upload
+                            </span>
+                          )}
+                        </div>
+                      </div>
                       <Textarea
                         id="content"
+                        ref={textareaRef}
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
                         onPaste={handlePaste}
-                        onDrop={handleDrop}
-                        onDragOver={(e) => e.preventDefault()}
-                        className="min-h-[460px] font-mono"
-                        placeholder="# 새 글 시작...&#10;클립보드 이미지를 여기에 바로 붙여넣거나(Drag & Drop) 드래그하세요."
+                        onDrop={(event) => void handleEditorDrop(event)}
+                        onDragOver={(event) => {
+                          if (getImageFilesFromDataTransfer(event.dataTransfer).length) {
+                            event.preventDefault();
+                          }
+                        }}
+                        className={cn(
+                          "min-h-[460px] font-mono transition-colors",
+                          isDraggingImages &&
+                            "border-primary bg-primary/5 ring-2 ring-primary/20",
+                        )}
+                        placeholder="# 새 글 시작..."
                       />
                     </div>
-                    <div>
-                      <Label>미리보기</Label>
-                      <div className="border rounded-md p-4 min-h-[460px] bg-background">
-                        <MarkdownRenderer content={previewContent} />
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <Label>미리보기</Label>
+                        <span className="rounded-md border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                          live
+                        </span>
+                      </div>
+                      <div className="border rounded-md p-4 min-h-[460px] bg-background overflow-auto">
+                        <MarkdownRenderer content={previewContent} postPath={postPath} />
                       </div>
                     </div>
                   </div>
@@ -330,6 +457,7 @@ export default function NewPost() {
                         />
                       </div>
                       <Button onClick={doUpload} disabled={uploading} variant="secondary">
+                        <UploadCloud className="h-4 w-4" aria-hidden="true" />
                         {uploading ? "업로드 중…" : "수동 이미지 업로드"}
                       </Button>
                     </div>
@@ -348,6 +476,7 @@ export default function NewPost() {
                             void handleImageUploads(failedUploadAttempt.files);
                           }}
                         >
+                          <RotateCcw className="h-4 w-4" aria-hidden="true" />
                           실패한 업로드 다시 시도
                         </Button>
                       </div>
@@ -382,6 +511,7 @@ export default function NewPost() {
                                   )
                                 }
                               >
+                                <Copy className="h-3 w-3" aria-hidden="true" />
                                 복사
                               </Button>
                             </li>
@@ -398,6 +528,7 @@ export default function NewPost() {
                       onClick={() => createPr.mutate()}
                       disabled={createPr.isPending}
                     >
+                      <FilePlus2 className="h-4 w-4" aria-hidden="true" />
                       {createPr.isPending ? "PR 생성 중…" : "PR 생성 및 배포하기"}
                     </Button>
                   </div>

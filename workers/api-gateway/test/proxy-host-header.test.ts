@@ -1,5 +1,5 @@
 import { env, SELF } from 'cloudflare:test';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Env } from '../src/types';
 import { signJwt } from '../src/lib/jwt';
@@ -8,6 +8,11 @@ declare module 'cloudflare:test' {
   interface ProvidedEnv extends Pick<Env, 'BACKEND_ORIGIN' | 'BACKEND_KEY' | 'JWT_SECRET'> {}
 }
 
+beforeEach(() => {
+  env.BACKEND_ORIGIN = 'https://backend.example';
+  env.BACKEND_KEY = 'comments-backend-key';
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
   env.BACKEND_ORIGIN = 'https://backend.example';
@@ -15,7 +20,7 @@ afterEach(() => {
 });
 
 describe('generic backend proxy', () => {
-  it('does not expose agent or execute paths through the public backend proxy', async () => {
+  it('guards agent proxy at the edge and keeps execute blocked', async () => {
     const upstreamFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(null, {
         status: 204,
@@ -29,9 +34,46 @@ describe('generic backend proxy', () => {
       method: 'POST',
     });
 
-    expect(agentResponse.status).toBe(404);
+    expect(agentResponse.status).toBe(401);
     expect(executeResponse.status).toBe(404);
     expect(upstreamFetch).not.toHaveBeenCalled();
+  });
+
+  it('proxies admin-authenticated agent requests to the backend', async () => {
+    const upstreamFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(null, {
+        status: 200,
+      })
+    );
+    const token = await signJwt(
+      {
+        sub: 'admin-1',
+        role: 'admin',
+        username: 'admin',
+        email: 'admin@example.com',
+        emailVerified: true,
+        type: 'access',
+      },
+      env as Env
+    );
+
+    const response = await SELF.fetch('https://example.com/api/v1/agent/run', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ message: 'Draft intro', sessionId: 'post-1' }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(upstreamFetch).toHaveBeenCalledTimes(1);
+    const [upstreamUrl, requestInit] = upstreamFetch.mock.calls[0] ?? [];
+    const forwardedHeaders = new Headers(requestInit?.headers);
+
+    expect(upstreamUrl).toBe('https://backend.example/api/v1/agent/run');
+    expect(forwardedHeaders.get('X-Backend-Key')).toBe('comments-backend-key');
+    expect(forwardedHeaders.get('Authorization')).toBe(`Bearer ${token}`);
   });
 
   it('does not overwrite Host while forwarding backend-owned paths', async () => {
