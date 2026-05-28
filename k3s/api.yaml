@@ -56,7 +56,9 @@ spec:
               repo_url="${CONTENT_GIT_REPO_AUTH:-$CONTENT_GIT_REPO}"
               test -n "$repo_url"
               rm -rf /repo/* /repo/.[!.]* /repo/..?*
-              git clone --depth 1 --branch "$CONTENT_GIT_REF" "$repo_url" /repo
+              git clone --depth 1 --filter=blob:none --sparse --branch "$CONTENT_GIT_REF" "$repo_url" /repo
+              cd /repo
+              git sparse-checkout set frontend/public workers/migrations backend shared
           envFrom:
             - configMapRef:
                 name: blog-app-config
