@@ -23,6 +23,7 @@ import {
 } from "../config/constants.js";
 import { createLogger } from "../lib/logger.js";
 import { runIdempotent } from "../lib/idempotency.js";
+import { canonicalizeBlogPostPath } from "../lib/blog-post-url.js";
 import {
   getAiConfigHealth,
   getCachedAIConfigSnapshot,
@@ -109,8 +110,13 @@ function formatRAGContext(results) {
   const posts = results
     .map((r, i) => {
       const meta = r.metadata || {};
+      const url = canonicalizeBlogPostPath({
+        url: meta.url,
+        year: meta.year,
+        slug: meta.slug,
+      });
       return `${i + 1}. "${meta.title}" (${meta.date || "no date"})
-   - URL: ${meta.url || "/blog/" + meta.slug}
+   - URL: ${url || "N/A"}
    - Category: ${meta.category || "N/A"}
    - Tags: ${meta.tags || "N/A"}
    - Summary: ${r.document?.substring(0, 200) || "N/A"}`;
