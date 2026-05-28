@@ -93,7 +93,18 @@ export class AITaskQueue {
     }
 
     const timeoutSec = Math.max(1, Math.ceil(timeout / 1000));
-    const entry = await client.blPop(notifyKey, timeoutSec);
+    const blockingClient = client.duplicate();
+    blockingClient.on('error', (err) => {
+      logger.error({}, 'Blocking result wait client error', { error: err.message });
+    });
+
+    let entry;
+    try {
+      await blockingClient.connect();
+      entry = await blockingClient.blPop(notifyKey, timeoutSec);
+    } finally {
+      await blockingClient.quit().catch(() => blockingClient.disconnect());
+    }
 
     if (!entry) {
       throw new Error(`AI task timeout after ${timeout}ms: ${taskId}`);
