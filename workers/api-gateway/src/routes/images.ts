@@ -8,6 +8,7 @@ import { getAllowedOrigins } from '../lib/cors';
 import { getSecret } from '../lib/secrets';
 import { getApiBaseUrl } from '../lib/config';
 import { proxyToBackendWithPolicy } from '../lib/backend-proxy';
+import { enforceKvRateLimit } from '../lib/rate-limit';
 
 const images = new Hono<HonoEnv>();
 
@@ -212,21 +213,17 @@ images.post('/chat-upload', requireAuth, async (c) => {
     return error(c, 'Forbidden - Invalid origin', 403);
   }
 
-  const kv = c.env.KV;
-  if (kv) {
-    const clientIP =
-      c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
-    const rateLimitKey = `${KV_RATE_LIMIT_PREFIX}${clientIP}`;
-    const currentCount = parseInt((await kv.get(rateLimitKey)) || '0', 10);
-
-    if (currentCount >= CHAT_UPLOAD_RATE_LIMIT) {
-      return error(c, 'Too many requests - Rate limit exceeded', 429);
-    }
-
-    await kv.put(rateLimitKey, String(currentCount + 1), {
-      expirationTtl: CHAT_UPLOAD_RATE_WINDOW,
-    });
-  }
+  const clientIP = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
+  const rateLimit = await enforceKvRateLimit(c, {
+    key: `${KV_RATE_LIMIT_PREFIX}${clientIP}`,
+    limit: CHAT_UPLOAD_RATE_LIMIT,
+    windowSeconds: CHAT_UPLOAD_RATE_WINDOW,
+    label: 'images.chat-upload',
+    message: 'Too many requests - Rate limit exceeded',
+    code: 'RATE_LIMITED',
+    logContext: { ipPrefix: clientIP.slice(0, 12) },
+  });
+  if (rateLimit) return rateLimit;
 
   const contentType = c.req.header('content-type') || '';
   if (!contentType.toLowerCase().includes('multipart/form-data')) {

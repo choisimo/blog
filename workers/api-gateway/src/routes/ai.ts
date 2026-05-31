@@ -13,6 +13,7 @@ import {
   releaseIdempotencyClaim,
 } from '../lib/idempotency';
 import { getAiVisionModel } from '../lib/config';
+import { enforceKvRateLimit } from '../lib/rate-limit';
 
 const ai = new Hono<HonoEnv>();
 
@@ -44,21 +45,18 @@ function rejectOversizeJson(c: Context<HonoEnv>, maxBytes = AI_JSON_MAX_BYTES): 
 }
 
 async function enforceAiRateLimit(c: Context<HonoEnv>, routeKey: string): Promise<Response | null> {
-  const kv = c.env.KV;
-  if (!kv) return null;
-
   const limit = parsePositiveInt(c.env.AI_RATE_LIMIT_PER_MINUTE, AI_DEFAULT_RATE_LIMIT);
   const subject = getAuthenticatedSubject(c);
   const key = `ratelimit:ai:${routeKey}:${subject}`;
-  const currentCount = Number.parseInt((await kv.get(key)) || '0', 10);
-
-  if (currentCount >= limit) {
-    console.warn('[ai] rate limit exceeded', { routeKey, subject });
-    return error(c, 'Too many AI requests', 429, 'RATE_LIMITED');
-  }
-
-  await kv.put(key, String(currentCount + 1), { expirationTtl: AI_RATE_WINDOW_SECONDS });
-  return null;
+  return enforceKvRateLimit(c, {
+    key,
+    limit,
+    windowSeconds: AI_RATE_WINDOW_SECONDS,
+    label: 'ai',
+    message: 'Too many AI requests',
+    code: 'RATE_LIMITED',
+    logContext: { routeKey, subjectPrefix: subject.slice(0, 16) },
+  });
 }
 
 function validatePrompt(prompt: unknown, field = 'prompt'): string | null {
@@ -261,7 +259,10 @@ ai.get('/generate/stream', requireAuth, async (c) => {
       try {
         controller.enqueue(frame('open', { type: 'open' }));
 
-        const text = await aiService.generate(String(q), { temperature, timeout: AI_DEFAULT_TIMEOUT_MS });
+        const text = await aiService.generate(String(q), {
+          temperature,
+          timeout: AI_DEFAULT_TIMEOUT_MS,
+        });
 
         const chunkSize = STREAMING.CHUNK_SIZE;
         for (let i = 0; i < text.length; i += chunkSize) {
@@ -400,7 +401,9 @@ ai.post('/vision/analyze', requireAuth, async (c) => {
       data: { description },
     });
   } catch (err) {
-    await releaseIdempotencyClaim(c, 'ai.vision.analyze', idempotencyPayload).catch(() => undefined);
+    await releaseIdempotencyClaim(c, 'ai.vision.analyze', idempotencyPayload).catch(
+      () => undefined
+    );
     const message = err instanceof Error ? err.message : 'Vision analysis failed';
     return badRequest(c, message);
   }

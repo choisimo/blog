@@ -7,8 +7,10 @@ import ai from '../src/routes/ai';
 import type { Env } from '../src/types';
 
 declare module 'cloudflare:test' {
-  interface ProvidedEnv
-    extends Pick<Env, 'JWT_SECRET' | 'ENV' | 'KV' | 'BACKEND_ORIGIN' | 'AI_VISION_MODEL'> {}
+  interface ProvidedEnv extends Pick<
+    Env,
+    'JWT_SECRET' | 'ENV' | 'KV' | 'BACKEND_ORIGIN' | 'AI_VISION_MODEL'
+  > {}
 }
 
 function createApp() {
@@ -68,6 +70,31 @@ describe('AI route security guards', () => {
     expect(await response.json()).toMatchObject({
       ok: false,
       error: { message: 'prompt is too large' },
+    });
+  });
+
+  it('keeps AI validation available when KV rate-limit writes are exhausted', async () => {
+    const token = await createUserToken();
+    vi.spyOn(env.KV, 'put').mockRejectedValue(new Error('KV write quota exhausted'));
+
+    const response = await createApp().request(
+      'https://example.com/api/v1/ai/generate',
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({}),
+      },
+      env
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.headers.get('X-RateLimit-Storage')).toBe('degraded');
+    await expect(response.json()).resolves.toMatchObject({
+      ok: false,
+      error: { message: 'prompt is required' },
     });
   });
 

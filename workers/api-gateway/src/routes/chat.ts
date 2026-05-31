@@ -7,15 +7,17 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { HonoEnv } from '../types';
-import { success, badRequest, error } from '../lib/response';
+import { success, badRequest } from '../lib/response';
 import { requireAdmin, requireAuth } from '../middleware/auth';
 import type { LensCard, ThoughtCard } from '../lib/feed-contract';
+import { normalizeLensFeedRequest, normalizeThoughtFeedRequest } from '../lib/feed-normalizers';
 import {
-  normalizeLensFeedRequest,
-  normalizeThoughtFeedRequest,
-} from '../lib/feed-normalizers';
-import { enqueueFeedArtifactGeneration, generateAndStoreInitialFeedArtifact, getServeableFeedPage } from '../lib/ai-artifact-outbox';
+  enqueueFeedArtifactGeneration,
+  generateAndStoreInitialFeedArtifact,
+  getServeableFeedPage,
+} from '../lib/ai-artifact-outbox';
 import { proxyToBackendWithPolicy } from '../lib/backend-proxy';
+import { enforceKvRateLimit } from '../lib/rate-limit';
 
 const chat = new Hono<HonoEnv>();
 const CHAT_RATE_LIMIT_PREFIX = 'ratelimit:chat:';
@@ -48,21 +50,18 @@ async function enforceChatRateLimit(
   c: Context<HonoEnv>,
   routeKey: string
 ): Promise<Response | null> {
-  const kv = c.env.KV;
-  if (!kv) return null;
-
   const subject = c.get('user')?.sub || 'unknown';
   const limit = parsePositiveInt(c.env.CHAT_RATE_LIMIT_PER_MINUTE, CHAT_DEFAULT_RATE_LIMIT);
   const key = `${CHAT_RATE_LIMIT_PREFIX}${routeKey}:${subject}`;
-  const currentCount = Number.parseInt((await kv.get(key)) || '0', 10);
-
-  if (currentCount >= limit) {
-    console.warn('[chat] rate limit exceeded', { routeKey, subject });
-    return error(c, 'Too many chat requests', 429, 'RATE_LIMITED');
-  }
-
-  await kv.put(key, String(currentCount + 1), { expirationTtl: CHAT_RATE_WINDOW_SECONDS });
-  return null;
+  return enforceKvRateLimit(c, {
+    key,
+    limit,
+    windowSeconds: CHAT_RATE_WINDOW_SECONDS,
+    label: 'chat',
+    message: 'Too many chat requests',
+    code: 'RATE_LIMITED',
+    logContext: { routeKey, subjectPrefix: subject.slice(0, 16) },
+  });
 }
 
 async function enforceChatGuard(c: Context<HonoEnv>, routeKey: string): Promise<Response | null> {
