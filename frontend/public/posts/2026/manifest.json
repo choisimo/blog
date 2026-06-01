@@ -15,6 +15,7 @@
     "ai-agent-arena-2026-sonnet-4-6.md",
     "ai-agent-arena-2026-swe-1-5.md",
     "algorithm-1.md",
+    "algorithm-2.md",
     "alone.md",
     "argocd-github-dns-failure.md",
     "awk-1.md",
@@ -44,7 +45,7 @@
     "understanding-ssm-and-mamba.md",
     "vim-architecture-functionality-commands-integration.md"
   ],
-  "generatedAt": "2026-04-24T15:30:32.349Z",
-  "totalFiles": 43,
+  "generatedAt": "2026-06-01T16:45:09.421Z",
+  "totalFiles": 44,
   "excludedFiles": 0
 }

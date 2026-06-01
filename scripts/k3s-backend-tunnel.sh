@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
+IFS=$'\n\t'
 
 SSH_HOST="${SSH_HOST:-blog}"
 SSH_ADDRESS_FAMILY="${SSH_ADDRESS_FAMILY:-inet}"

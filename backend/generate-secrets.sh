@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -Eeuo pipefail
+IFS=$'\n\t'
 
 # Define the environment file
 ENV_FILE=".env"

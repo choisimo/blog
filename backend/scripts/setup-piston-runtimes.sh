@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # Install language runtimes into the Piston container after first start.
 # Run once after `docker compose up -d piston`.
 #
@@ -7,7 +7,8 @@
 #
 # Packages installed match the LANGUAGE_OPTIONS in frontend/src/components/features/sentio/CodeIDE.tsx
 
-set -e
+set -Eeuo pipefail
+IFS=$'\n\t'
 
 PISTON_URL="http://localhost:2000"
 
@@ -25,11 +26,12 @@ wait_for_piston() {
 }
 
 install_runtime() {
-  LANG="$1"
-  VERSION="$2"
-  echo "Installing ${LANG} ${VERSION}..."
-  docker exec blog-piston ppman install "${LANG}=${VERSION}" || \
-    docker exec blog-piston ppman install "${LANG}"
+  local runtime_lang="$1"
+  local runtime_version="$2"
+
+  echo "Installing ${runtime_lang} ${runtime_version}..."
+  docker exec blog-piston ppman install "${runtime_lang}=${runtime_version}" || \
+    docker exec blog-piston ppman install "${runtime_lang}"
 }
 
 wait_for_piston

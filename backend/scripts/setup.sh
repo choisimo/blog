@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # ===================================
 # Blog Backend Quick Setup Script
@@ -6,7 +6,8 @@
 # This script helps set up the blog backend on Ubuntu
 # Usage: bash setup.sh [--pm2|--systemd] [--nginx]
 
-set -e  # Exit on error
+set -Eeuo pipefail
+IFS=$'\n\t'
 
 # Colors for output
 RED='\033[0;31m'
@@ -19,6 +20,12 @@ SERVICE_MANAGER="pm2"  # or "systemd"
 PROXY_METHOD="nginx"
 WORKING_DIR=$(pwd)
 NODE_VERSION="20"
+backup_env="n"
+GITHUB_OWNER=""
+GITHUB_REPO=""
+GIT_USER_EMAIL=""
+ADMIN_TOKEN=""
+API_DOMAIN=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -66,18 +73,23 @@ command_exists() {
 prompt_input() {
     local prompt_text="$1"
     local var_name="$2"
-    local default_value="$3"
-    
-    if [ -n "$default_value" ]; then
-        read -p "$prompt_text [$default_value]: " input_value
-        eval "$var_name=\${input_value:-$default_value}"
+    local default_value="${3-}"
+    local required="${4:-true}"
+    local input_value
+
+    if [[ -n "$default_value" ]]; then
+        read -r -p "$prompt_text [$default_value]: " input_value
+        printf -v "$var_name" '%s' "${input_value:-$default_value}"
+    elif [[ "$required" == "false" ]]; then
+        read -r -p "$prompt_text: " input_value
+        printf -v "$var_name" '%s' "$input_value"
     else
-        read -p "$prompt_text: " input_value
-        while [ -z "$input_value" ]; do
+        read -r -p "$prompt_text: " input_value
+        while [[ -z "$input_value" ]]; do
             echo -e "${RED}This field is required${NC}"
-            read -p "$prompt_text: " input_value
+            read -r -p "$prompt_text: " input_value
         done
-        eval "$var_name=\$input_value"
+        printf -v "$var_name" '%s' "$input_value"
     fi
 }
 
@@ -152,8 +164,8 @@ if [ ! -f ".env" ] || [ "$backup_env" = "y" ]; then
     # Optional configurations
     echo ""
     echo "Optional configurations (press Enter to skip):"
-    prompt_input "Worker API URL (api-gateway Worker, e.g. https://api.example.com)" WORKER_API_URL ""
-    prompt_input "Gemini API Key" GEMINI_API_KEY ""
+    prompt_input "Worker API URL (api-gateway Worker, e.g. https://api.example.com)" WORKER_API_URL "" false
+    prompt_input "Gemini API Key" GEMINI_API_KEY "" false
     
     # Create .env file
     cat > .env << EOF
@@ -214,7 +226,7 @@ if [ "$SERVICE_MANAGER" = "pm2" ]; then
     pm2 start ecosystem.config.js --env production
     
     # Setup PM2 startup script
-    pm2 startup systemd -u $USER --hp $HOME
+    pm2 startup systemd -u "${USER:-$(id -un)}" --hp "${HOME:-$PWD}"
     pm2 save
     
     echo -e "${GREEN}PM2 setup complete${NC}"
@@ -228,7 +240,7 @@ elif [ "$SERVICE_MANAGER" = "systemd" ]; then
     echo "Setting up systemd service..."
     
     # Update paths in service file
-    sed "s|/home/ubuntu|$HOME|g" deploy/blog-backend.service > /tmp/blog-backend.service
+    sed "s|/home/ubuntu|${HOME:-$PWD}|g" deploy/blog-backend.service > /tmp/blog-backend.service
     
     sudo cp /tmp/blog-backend.service /etc/systemd/system/
     sudo systemctl daemon-reload
@@ -284,8 +296,12 @@ if [ "$PROXY_METHOD" = "nginx" ]; then
     echo "Installing Certbot..."
     sudo apt-get install -y certbot python3-certbot-nginx
     
+    if [[ -z "$GIT_USER_EMAIL" ]]; then
+        prompt_input "Email for Let's Encrypt notifications" GIT_USER_EMAIL
+    fi
+
     echo "Obtaining SSL certificate..."
-    sudo certbot --nginx -d $API_DOMAIN --redirect --non-interactive --agree-tos -m $GIT_USER_EMAIL
+    sudo certbot --nginx -d "$API_DOMAIN" --redirect --non-interactive --agree-tos -m "$GIT_USER_EMAIL"
     
     echo -e "${GREEN}Nginx and SSL setup complete${NC}"
 fi
@@ -298,7 +314,11 @@ echo -e "${GREEN}====================================${NC}"
 echo ""
 echo "Next steps:"
 echo "1. Add VITE_API_BASE_URL to GitHub repository secrets:"
-echo "   - Go to: https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/settings/secrets/actions"
+if [[ -n "$GITHUB_OWNER" && -n "$GITHUB_REPO" ]]; then
+    echo "   - Go to: https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/settings/secrets/actions"
+else
+    echo "   - Go to your GitHub repository Settings > Secrets and variables > Actions"
+fi
 echo "   - Add new secret: VITE_API_BASE_URL"
 echo "   - Value: https://${API_DOMAIN}"
 echo ""
@@ -312,7 +332,11 @@ echo "   - Try posting a comment"
 echo ""
 echo -e "${YELLOW}Important information saved:${NC}"
 echo "- Environment config: .env"
-echo "- Admin Bearer Token: $ADMIN_TOKEN"
+if [[ -n "$ADMIN_TOKEN" ]]; then
+    echo "- Admin Bearer Token: $ADMIN_TOKEN"
+else
+    echo "- Admin Bearer Token: unchanged in existing .env"
+fi
 if [ "$SERVICE_MANAGER" = "pm2" ]; then
     echo "- PM2 config: ecosystem.config.js"
 else

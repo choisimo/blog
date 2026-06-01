@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # ===================================
 # GitHub Secrets Setup Helper
@@ -14,7 +14,8 @@
 #   ./setup-secrets.sh --set            Interactively set secrets via gh CLI
 #   ./setup-secrets.sh --export FILE    Export secrets to a file (for backup)
 
-set -e
+set -Eeuo pipefail
+IFS=$'\n\t'
 
 # Colors
 RED='\033[0;31m'
@@ -25,7 +26,9 @@ NC='\033[0m'
 
 # Generate random string
 generate_random() {
-    openssl rand -hex "$1" 2>/dev/null || head -c "$1" /dev/urandom | xxd -p | head -c "$((2 * $1))"
+    local byte_count="$1"
+
+    openssl rand -hex "$byte_count" 2>/dev/null || xxd -p -l "$byte_count" -c "$byte_count" /dev/urandom
 }
 
 # Required secrets list
@@ -97,6 +100,18 @@ get_repo() {
     gh repo view --json nameWithOwner -q '.nameWithOwner' 2>/dev/null || echo ""
 }
 
+list_repo_names() {
+    local resource_name="$1"
+    local output
+
+    if ! output=$(gh "$resource_name" list --repo "$REPO" 2>/dev/null); then
+        echo -e "${YELLOW}Warning: could not list GitHub ${resource_name}s. Treating list as empty.${NC}" >&2
+        return 0
+    fi
+
+    awk '{print $1}' <<< "$output"
+}
+
 # Check which secrets are missing
 check_secrets() {
     echo -e "${BLUE}Checking GitHub Secrets...${NC}"
@@ -121,11 +136,11 @@ check_secrets() {
     echo ""
     
     # Get existing secrets
-    EXISTING=$(gh secret list --repo "$REPO" 2>/dev/null | awk '{print $1}')
+    EXISTING=$(list_repo_names secret)
     
     echo -e "${GREEN}=== Required Secrets ===${NC}"
     for key in "${!SECRETS[@]}"; do
-        if echo "$EXISTING" | grep -q "^${key}$"; then
+        if grep -qxF "$key" <<< "$EXISTING"; then
             echo -e "  ${GREEN}✓${NC} $key"
         else
             echo -e "  ${RED}✗${NC} $key - ${SECRETS[$key]}"
@@ -134,9 +149,9 @@ check_secrets() {
     
     echo ""
     echo -e "${GREEN}=== Repository Variables ===${NC}"
-    EXISTING_VARS=$(gh variable list --repo "$REPO" 2>/dev/null | awk '{print $1}')
+    EXISTING_VARS=$(list_repo_names variable)
     for key in "${!VARIABLES[@]}"; do
-        if echo "$EXISTING_VARS" | grep -q "^${key}$"; then
+        if grep -qxF "$key" <<< "$EXISTING_VARS"; then
             echo -e "  ${GREEN}✓${NC} $key"
         else
             echo -e "  ${YELLOW}○${NC} $key - ${VARIABLES[$key]}"
@@ -226,10 +241,10 @@ set_secrets() {
     echo ""
     
     # Get existing secrets
-    EXISTING=$(gh secret list --repo "$REPO" 2>/dev/null | awk '{print $1}')
+    EXISTING=$(list_repo_names secret)
     
     for key in "${!SECRETS[@]}"; do
-        if echo "$EXISTING" | grep -q "^${key}$"; then
+        if grep -qxF "$key" <<< "$EXISTING"; then
             echo -e "${GREEN}$key${NC} already exists. Skip? (y/n) "
             read -r skip
             if [[ $skip =~ ^[Yy]$ ]]; then
@@ -294,13 +309,13 @@ case "${1:-}" in
         check_secrets
         ;;
     --generate|-g)
-        generate_secrets "$2"
+        generate_secrets "${2:-}"
         ;;
     --set|-s)
         set_secrets
         ;;
     --export|-e)
-        export_secrets_list "$2"
+        export_secrets_list "${2:-}"
         ;;
     --help|-h|*)
         echo "GitHub Secrets Setup Helper"

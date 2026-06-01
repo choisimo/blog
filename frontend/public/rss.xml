@@ -5,7 +5,7 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Tue, 28 Apr 2026 03:38:25 GMT</lastBuildDate>
+    <lastBuildDate>Mon, 01 Jun 2026 16:45:09 GMT</lastBuildDate>
     <language>en-US</language>
     <item>
       <title>ArgoCD에서 GitHub 연결이 실패했을 때, 진짜 원인은 SSH가 아니라 DNS였다</title>
@@ -97,6 +97,21 @@
       <description>시간 복잡도가 실제 실행 시간 대신 성장률을 보는 이유</description>
       <link>https://noblog.nodove.com/blog/2026/algorithm-1</link>
       <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/algorithm-1</guid>
+      <pubDate>Fri, 20 Mar 2026 00:00:00 GMT</pubDate>
+      <category>기술</category>
+      <category>Python</category>
+      <category>Algorithm</category>
+      <category>Complexity</category>
+      <category>Big-O</category>
+      <category>Performance</category>
+      <category>System</category>
+      <category>Architecture</category>
+    </item>
+    <item>
+      <title>[알고리즘 1부] 시간 복잡도라는 숫자에 매몰된 착각</title>
+      <description>시간 복잡도가 실제 실행 시간 대신 성장률을 보는 이유</description>
+      <link>https://noblog.nodove.com/blog/2026/algorithm-2</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/algorithm-2</guid>
       <pubDate>Fri, 20 Mar 2026 00:00:00 GMT</pubDate>
       <category>기술</category>
       <category>Python</category>
@@ -278,19 +293,6 @@
       <category>MVC</category>
       <category>Prototype</category>
       <category>Arena</category>
-    </item>
-    <item>
-      <title>[Arena 상세] GLM-5 분석</title>
-      <description>GLM-5의 DDD 구조, 세션 영속성, MCP/Vector 확장과 Arena 내 평가를 상세 정리</description>
-      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-glm-5</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-glm-5</guid>
-      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
-      <category>AI Engineering</category>
-      <category>GLM-5</category>
-      <category>DDD</category>
-      <category>MCP</category>
-      <category>Session</category>
-      <category>Structured Logging</category>
     </item>
   </channel>
 </rss>
