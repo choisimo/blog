@@ -45,7 +45,11 @@
     "understanding-ssm-and-mamba.md",
     "vim-architecture-functionality-commands-integration.md"
   ],
-  "generatedAt": "2026-06-01T16:45:09.421Z",
+  "simulatorFiles": [
+    "opnsense-policy-step-simulator.html",
+    "vim-simulator.html"
+  ],
+  "generatedAt": "2026-06-02T19:17:29.491Z",
   "totalFiles": 44,
   "excludedFiles": 0
 }
