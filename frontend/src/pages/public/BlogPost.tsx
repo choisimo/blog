@@ -58,9 +58,35 @@ type TranslationErrorState = {
 };
 
 const simulatorExistenceCache = new Map<string, boolean>();
+type SimulatorManifest = {
+  simulatorFiles?: Set<string>;
+};
+
+const simulatorManifestCache = new Map<string, Promise<SimulatorManifest | null>>();
 
 function buildSimulatorCandidate(year: string, slug: string): string {
   return encodeURI(`/posts/${year}/${slug}-simulator.html`);
+}
+
+async function getSimulatorManifest(year: string): Promise<SimulatorManifest | null> {
+  if (!simulatorManifestCache.has(year)) {
+    simulatorManifestCache.set(
+      year,
+      fetch(`/posts/${year}/manifest.json`, { cache: 'force-cache' })
+        .then(async (res) => {
+          if (!res.ok) return null;
+          const payload = (await res.json().catch(() => null)) as { simulatorFiles?: unknown } | null;
+          if (!payload || !Array.isArray(payload.simulatorFiles)) return {};
+          return {
+            simulatorFiles: new Set(
+              payload.simulatorFiles.filter((file): file is string => typeof file === 'string')
+            ),
+          };
+        })
+        .catch(() => null)
+    );
+  }
+  return simulatorManifestCache.get(year)!;
 }
 
 function isAppShellHtml(content: string): boolean {
@@ -73,7 +99,7 @@ function isAppShellHtml(content: string): boolean {
   );
 }
 
-async function checkSimulatorExists(path: string): Promise<boolean> {
+async function checkSimulatorExists(year: string, path: string): Promise<boolean> {
   if (simulatorExistenceCache.has(path)) {
     return simulatorExistenceCache.get(path)!;
   }
@@ -81,6 +107,13 @@ async function checkSimulatorExists(path: string): Promise<boolean> {
   let exists = false;
 
   try {
+    const manifest = await getSimulatorManifest(year);
+    const fileName = decodeURIComponent(path.split('/').pop() ?? '');
+    if (manifest?.simulatorFiles && !manifest.simulatorFiles.has(fileName)) {
+      simulatorExistenceCache.set(path, false);
+      return false;
+    }
+
     const res = await fetch(path, { method: 'GET', cache: 'no-store' });
     if (res.ok) {
       const contentType = res.headers.get('content-type') ?? '';
@@ -462,7 +495,7 @@ ${description}
       }
 
       const candidate = buildSimulatorCandidate(post.year, post.slug);
-      const exists = await checkSimulatorExists(candidate);
+      const exists = await checkSimulatorExists(post.year, candidate);
       if (!cancelled) {
         setAutoSimulatorSrc(exists ? candidate : null);
       }

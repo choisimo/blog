@@ -148,9 +148,11 @@ function generateManifestForYear(year) {
     return;
   }
 
-  const allFiles = fs
-    .readdirSync(yearDir)
-    .filter((file) => file.endsWith(".md"));
+  const yearFiles = fs.readdirSync(yearDir);
+  const allFiles = yearFiles.filter((file) => file.endsWith(".md"));
+  const simulatorFiles = yearFiles
+    .filter((file) => file.endsWith("-simulator.html"))
+    .sort();
 
   console.log(`\n📁 Processing ${year} directory...`);
 
@@ -188,6 +190,7 @@ function generateManifestForYear(year) {
 
   const manifest = {
     files: sortedValidFiles,
+    simulatorFiles,
     generatedAt: new Date().toISOString(),
     totalFiles: sortedValidFiles.length,
     excludedFiles: invalidFiles.length,

@@ -409,22 +409,25 @@ app.delete('/admin/editor-picks/:year/:slug', requireAdmin, async (c) => {
 });
 
 app.post('/heartbeat', async (c) => {
+  applyDataOwnership(c, 'analytics.post_stats');
+  const body = await c.req.json<{ visitorId?: string }>().catch(() => ({ visitorId: undefined }));
+  const visitorId = body.visitorId || crypto.randomUUID();
+
   try {
-    applyDataOwnership(c, 'analytics.post_stats');
-    const body = await c.req.json<{ visitorId?: string }>().catch(() => ({ visitorId: undefined }));
     const kv = c.env.KV;
-    
-    // Generate or use provided visitor ID
-    const visitorId = body.visitorId || crypto.randomUUID();
     const key = `visitor:${visitorId}`;
-    
-    // Store with 60-second TTL
+
     await kv.put(key, Date.now().toString(), { expirationTtl: 60 });
-    
+
     return success(c, { visitorId, recorded: true });
   } catch (err) {
     console.error('Failed to record heartbeat:', err);
-    return error(c, 'Failed to record heartbeat', 500);
+    return success(c, {
+      visitorId,
+      recorded: false,
+      degraded: true,
+      reason: 'heartbeat-store-unavailable',
+    });
   }
 });
 

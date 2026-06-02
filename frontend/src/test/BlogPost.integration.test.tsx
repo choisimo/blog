@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   render,
   screen,
+  waitFor,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -92,7 +93,7 @@ vi.mock('@/components/features/blog/MarkdownRenderer', () => {
 });
 
 // Import mocked modules (vi.mock hoists above)
-import { prefetchPost } from '@/data/content/posts';
+import { getPostBySlug, prefetchPost } from '@/data/content/posts';
 // @ts-expect-error - __resolve is a test-only export from the mock
 import { __resolve as resolveMarkdown } from '@/components/features/blog/MarkdownRenderer';
 
@@ -158,5 +159,121 @@ describe('BlogPost integration', () => {
 
     rel2.focus();
     expect(vi.mocked(prefetchPost)).toHaveBeenCalledWith('2025', 'rel-two');
+  });
+
+  it('does not request a missing simulator html file when simulator manifest excludes it', async () => {
+    vi.mocked(getPostBySlug).mockResolvedValueOnce({
+      id: 'test-2026',
+      title: 'Manifest Gated Post',
+      description: 'Desc',
+      excerpt: 'Desc',
+      content: '# Hello\n\nWorld',
+      date: '2026-01-01',
+      author: 'Me',
+      tags: ['tag1'],
+      category: 'Tech',
+      readingTime: '1 min read',
+      slug: 'manifest-gated',
+      year: '2026',
+      language: 'en',
+      published: true,
+    });
+    const baseFetch = global.fetch;
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((input, init) => {
+      const url =
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : (input as Request).url;
+
+      if (url.endsWith('/posts/2026/manifest.json')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ files: ['manifest-gated.md'], simulatorFiles: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        );
+      }
+
+      if (url.endsWith('/posts/2026/manifest-gated-simulator.html')) {
+        return Promise.resolve(new Response('<html></html>', { status: 200 }));
+      }
+
+      return baseFetch(input, init);
+    });
+
+    renderWithProviders(['/blog/2026/manifest-gated']);
+    await screen.findByRole('heading', { name: 'Manifest Gated Post' });
+    resolveMarkdown();
+    await screen.findByTestId('markdown');
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledWith('/posts/2026/manifest.json', {
+        cache: 'force-cache',
+      });
+    });
+    expect(
+      fetchSpy.mock.calls.some(([input]) => String(input).endsWith('/posts/2026/manifest-gated-simulator.html'))
+    ).toBe(false);
+  });
+
+  it('checks a simulator html file when simulator manifest includes it', async () => {
+    vi.mocked(getPostBySlug).mockResolvedValueOnce({
+      id: 'test-2027-listed',
+      title: 'Listed Simulator Post',
+      description: 'Desc',
+      excerpt: 'Desc',
+      content: '# Hello\n\nWorld',
+      date: '2026-01-02',
+      author: 'Me',
+      tags: ['tag1'],
+      category: 'Tech',
+      readingTime: '1 min read',
+      slug: 'listed',
+      year: '2027',
+      language: 'en',
+      published: true,
+    });
+    const baseFetch = global.fetch;
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((input, init) => {
+      const url =
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : (input as Request).url;
+
+      if (url.endsWith('/posts/2027/manifest.json')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ files: ['listed.md'], simulatorFiles: ['listed-simulator.html'] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        );
+      }
+
+      if (url.endsWith('/posts/2027/listed-simulator.html')) {
+        return Promise.resolve(
+          new Response('<html><head><title>Simulator</title></head><body>ok</body></html>', {
+            status: 200,
+            headers: { 'Content-Type': 'text/html' },
+          })
+        );
+      }
+
+      return baseFetch(input, init);
+    });
+
+    renderWithProviders(['/blog/2027/listed']);
+    await screen.findByRole('heading', { name: 'Listed Simulator Post' });
+    resolveMarkdown();
+    await screen.findByTestId('markdown');
+
+    await waitFor(() => {
+      expect(
+        fetchSpy.mock.calls.some(([input]) => String(input).endsWith('/posts/2027/listed-simulator.html'))
+      ).toBe(true);
+    });
   });
 });
